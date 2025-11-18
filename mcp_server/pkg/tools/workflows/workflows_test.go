@@ -10,7 +10,9 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/feature"
 	workflowpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber_w_f.workflow"
+	projecthubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/projecthub"
 	rbacpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/rbac"
+	repopb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/repository_integrator"
 	statuspb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/status"
 	userpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/user"
 	support "github.com/semaphoreio/semaphore/mcp_server/test/support"
@@ -339,11 +341,221 @@ func TestListWorkflowsScopeMismatchProject(t *testing.T) {
 	}
 }
 
+func TestRunWorkflowSuccess(t *testing.T) {
+	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	projectID := "11111111-2222-3333-4444-555555555555"
+	userID := "99999999-aaaa-bbbb-cccc-dddddddddddd"
+	repo := &projecthubpb.Project_Spec_Repository{
+		Owner:           "octo",
+		Name:            "repo",
+		PipelineFile:    ".semaphore/ci.yml",
+		IntegrationType: repopb.IntegrationType_GITHUB_APP,
+	}
+	projectStub := &projectClientStub{response: newProjectDescribeResponse(orgID, projectID, repo)}
+	workflowStub := &workflowClientStub{
+		scheduleResp: &workflowpb.ScheduleResponse{
+			Status: &statuspb.Status{Code: code.Code_OK},
+			WfId:   "wf-001",
+			PplId:  "ppl-001",
+		},
+	}
+	provider := &support.MockProvider{
+		WorkflowClient: workflowStub,
+		ProjectClient:  projectStub,
+		Timeout:        time.Second,
+		RBACClient:     newRBACStub(projectRunPermission),
+	}
+
+	req := mcp.CallToolRequest{
+		Params: mcp.CallToolParams{
+			Arguments: map[string]any{
+				"organization_id": orgID,
+				"project_id":      projectID,
+				"reference":       "refs/heads/feature/login",
+				"commit_sha":      "abc1234",
+				"parameters": map[string]any{
+					"DEPLOY_ENV": "staging",
+				},
+			},
+		},
+	}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", userID)
+	req.Header = header
+
+	res, err := runHandler(provider)(context.Background(), req)
+	if err != nil {
+		toFail(t, "handler error: %v", err)
+	}
+	result, ok := res.StructuredContent.(runResult)
+	if !ok {
+		toFail(t, "unexpected structured content type: %T", res.StructuredContent)
+	}
+	if result.WorkflowID != "wf-001" || result.PipelineID != "ppl-001" {
+		toFail(t, "unexpected run result: %+v", result)
+	}
+
+	reqMsg := workflowStub.lastSchedule
+	if reqMsg == nil {
+		toFail(t, "expected schedule request to be recorded")
+	}
+	if reqMsg.GetProjectId() != projectID || reqMsg.GetOrganizationId() != orgID {
+		toFail(t, "unexpected schedule scope: %+v", reqMsg)
+	}
+	if reqMsg.GetDefinitionFile() != ".semaphore/ci.yml" {
+		toFail(t, "expected pipeline file from project, got %s", reqMsg.GetDefinitionFile())
+	}
+	if reqMsg.GetRepo().GetBranchName() != "feature/login" {
+		toFail(t, "unexpected branch name: %s", reqMsg.GetRepo().GetBranchName())
+	}
+	if reqMsg.GetRepo().GetCommitSha() != "abc1234" {
+		toFail(t, "unexpected commit sha: %s", reqMsg.GetRepo().GetCommitSha())
+	}
+	if reqMsg.GetLabel() != "feature/login" {
+		toFail(t, "expected label to match branch name, got %s", reqMsg.GetLabel())
+	}
+	if got := reqMsg.GetService(); got != workflowpb.ScheduleRequest_GIT_HUB {
+		toFail(t, "unexpected service type: %v", got)
+	}
+	if len(reqMsg.GetEnvVars()) != 1 || reqMsg.GetEnvVars()[0].GetName() != "DEPLOY_ENV" {
+		toFail(t, "unexpected env vars: %+v", reqMsg.GetEnvVars())
+	}
+}
+
+func TestRunWorkflowFeatureDisabled(t *testing.T) {
+	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	projectID := "11111111-2222-3333-4444-555555555555"
+	provider := &support.MockProvider{
+		WorkflowClient:  &workflowClientStub{},
+		ProjectClient:   &projectClientStub{response: newProjectDescribeResponse(orgID, projectID, &projecthubpb.Project_Spec_Repository{})},
+		Timeout:         time.Second,
+		RBACClient:      newRBACStub(projectRunPermission),
+		FeaturesService: support.FeatureClientStub{State: feature.Hidden},
+	}
+	req := mcp.CallToolRequest{
+		Params: mcp.CallToolParams{Arguments: map[string]any{
+			"organization_id": orgID,
+			"project_id":      projectID,
+			"reference":       "main",
+		}},
+	}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
+	req.Header = header
+
+	res, err := runHandler(provider)(context.Background(), req)
+	if err != nil {
+		toFail(t, "handler error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(strings.ToLower(msg), "disabled") {
+		toFail(t, "expected feature disabled message, got %q", msg)
+	}
+}
+
+func TestRunWorkflowInvalidParameters(t *testing.T) {
+	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	projectID := "11111111-2222-3333-4444-555555555555"
+	provider := &support.MockProvider{
+		WorkflowClient: &workflowClientStub{},
+		ProjectClient:  &projectClientStub{response: newProjectDescribeResponse(orgID, projectID, &projecthubpb.Project_Spec_Repository{})},
+		Timeout:        time.Second,
+		RBACClient:     newRBACStub(projectRunPermission),
+	}
+	req := mcp.CallToolRequest{
+		Params: mcp.CallToolParams{Arguments: map[string]any{
+			"organization_id": orgID,
+			"project_id":      projectID,
+			"reference":       "main",
+			"parameters":      []string{"bad"},
+		}},
+	}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
+	req.Header = header
+
+	res, err := runHandler(provider)(context.Background(), req)
+	if err != nil {
+		toFail(t, "handler error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(strings.ToLower(msg), "parameters") {
+		toFail(t, "expected parameters error, got %q", msg)
+	}
+}
+
+func TestRunWorkflowPermissionDenied(t *testing.T) {
+	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	projectID := "11111111-2222-3333-4444-555555555555"
+	workflowStub := &workflowClientStub{}
+	provider := &support.MockProvider{
+		WorkflowClient: workflowStub,
+		ProjectClient:  &projectClientStub{response: newProjectDescribeResponse(orgID, projectID, &projecthubpb.Project_Spec_Repository{})},
+		Timeout:        time.Second,
+		RBACClient:     newRBACStub(), // no permissions granted
+	}
+	req := mcp.CallToolRequest{
+		Params: mcp.CallToolParams{Arguments: map[string]any{
+			"organization_id": orgID,
+			"project_id":      projectID,
+			"reference":       "main",
+		}},
+	}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
+	req.Header = header
+
+	res, err := runHandler(provider)(context.Background(), req)
+	if err != nil {
+		toFail(t, "handler error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(msg, "Permission denied while accessing project") {
+		toFail(t, "expected permission denied message, got %q", msg)
+	}
+	if workflowStub.lastSchedule != nil {
+		toFail(t, "workflow schedule should not have been invoked when permission is missing")
+	}
+}
+
 type workflowClientStub struct {
 	workflowpb.WorkflowServiceClient
-	listResp *workflowpb.ListKeysetResponse
-	listErr  error
-	lastList *workflowpb.ListKeysetRequest
+	listResp     *workflowpb.ListKeysetResponse
+	listErr      error
+	lastList     *workflowpb.ListKeysetRequest
+	scheduleResp *workflowpb.ScheduleResponse
+	scheduleErr  error
+	lastSchedule *workflowpb.ScheduleRequest
+}
+
+type projectClientStub struct {
+	projecthubpb.ProjectServiceClient
+	response     *projecthubpb.DescribeResponse
+	err          error
+	lastDescribe *projecthubpb.DescribeRequest
+}
+
+func (s *projectClientStub) Describe(ctx context.Context, in *projecthubpb.DescribeRequest, opts ...grpc.CallOption) (*projecthubpb.DescribeResponse, error) {
+	s.lastDescribe = in
+	if s.err != nil {
+		return nil, s.err
+	}
+	return s.response, nil
+}
+
+func newProjectDescribeResponse(orgID, projectID string, repo *projecthubpb.Project_Spec_Repository) *projecthubpb.DescribeResponse {
+	if repo == nil {
+		repo = &projecthubpb.Project_Spec_Repository{}
+	}
+	return &projecthubpb.DescribeResponse{
+		Metadata: &projecthubpb.ResponseMeta{
+			Status: &projecthubpb.ResponseMeta_Status{Code: projecthubpb.ResponseMeta_OK},
+		},
+		Project: &projecthubpb.Project{
+			Metadata: &projecthubpb.Project_Metadata{Id: projectID, OrgId: orgID},
+			Spec:     &projecthubpb.Project_Spec{Repository: repo},
+		},
+	}
 }
 
 func requireErrorText(t *testing.T, res *mcp.CallToolResult) string {
@@ -432,8 +644,15 @@ func normalizeKey(value string) string {
 	return strings.ToLower(strings.TrimSpace(value))
 }
 
-func (s *workflowClientStub) Schedule(context.Context, *workflowpb.ScheduleRequest, ...grpc.CallOption) (*workflowpb.ScheduleResponse, error) {
-	panic("not implemented")
+func (s *workflowClientStub) Schedule(ctx context.Context, in *workflowpb.ScheduleRequest, opts ...grpc.CallOption) (*workflowpb.ScheduleResponse, error) {
+	s.lastSchedule = in
+	if s.scheduleErr != nil {
+		return nil, s.scheduleErr
+	}
+	if s.scheduleResp != nil {
+		return s.scheduleResp, nil
+	}
+	return &workflowpb.ScheduleResponse{Status: &statuspb.Status{Code: code.Code_OK}}, nil
 }
 
 func (s *workflowClientStub) GetPath(context.Context, *workflowpb.GetPathRequest, ...grpc.CallOption) (*workflowpb.GetPathResponse, error) {
