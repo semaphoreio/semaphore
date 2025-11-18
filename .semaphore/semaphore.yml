@@ -37,6 +37,8 @@ global_job_config:
         - 'if [ -f out/dependency-scan-trivy.json ]; then CHECK_TYPE=deps make check.generate-report; fi'
         - 'if [ -f out/security-export.json ]; then artifact push workflow out/security-export.json -d scans/$SEMAPHORE_JOB_ID.json; fi'
         - 'if [ -f out/security-summary.md ]; then artifact push job out/security-summary.md -d .semaphore/REPORT.md; fi'
+        - 'if [ -d out/screenshots ] && [ "$(ls -A out/screenshots)" ]; then artifact push workflow out/screenshots -d screenshots; fi'
+
 
 after_pipeline:
   task:
@@ -2617,6 +2619,77 @@ blocks:
       prologue:
         commands:
           - checkout && cd loghub2
+          - make build
+      jobs:
+        - name: "Test"
+          commands:
+            - make test.setup
+            - make test
+        - name: "Lint"
+          commands:
+            - make lint
+
+
+  # MCP Server
+  - name: "MCP Server: Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/mcp_server', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: APP_ENV
+          value: prod
+      prologue:
+        commands:
+          - checkout && cd mcp_server
+      jobs:
+        - name: "Build prod image"
+          commands:
+            - make pull
+            - make build
+            - make push
+  - name: "MCP Server: Deployment Preconditions"
+    dependencies: ["MCP Server: Provision Prod Image"]
+    run:
+      when: "change_in('/mcp_server', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: APP_ENV
+          value: prod
+        - name: SERVICE_NAME
+          value: "MCP Server"
+      prologue:
+        commands:
+          - checkout && cd mcp_server
+          - make pull
+      jobs:
+        - name: "Check code"
+          commands:
+            - make check.go.code
+        - name: "Check dependencies"
+          commands:
+            - make check.go.deps
+        - name: "Check docker"
+          commands:
+            - make build
+            - make check.docker
+  - name: "MCP Server: QA"
+    dependencies: ["MCP Server: Provision Prod Image"]
+    run:
+      when: "change_in('/mcp_server', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: APP_ENV
+          value: prod
+      prologue:
+        commands:
+          - checkout && cd mcp_server
           - make build
       jobs:
         - name: "Test"

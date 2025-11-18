@@ -4,12 +4,6 @@ description: Access your GitHub repositories
 
 # Connect GitHub
 
-
-
-
-
-
-
 GitHub users need to provide access to Semaphore so it can read their repositories.
 
 ## Overview
@@ -17,6 +11,26 @@ GitHub users need to provide access to Semaphore so it can read their repositori
 Semaphore accesses your GitHub repositories using the [Semaphore GitHub App](https://github.com/apps/semaphore-ci-cd). This method provides fine-grained control and per-repository permissions to control which code Semaphore can access.
 
 You must install the GitHub App in order to create [projects](./projects) on Semaphore.
+
+## How to enable deploy keys {#deploy-keys}
+
+New GitHub organizations might have deploy keys disabled by default. If this happens, Semaphore cannot connect to your GitHub organization and you won't be able to access your GitHub repositories from Semaphore.
+
+To enable deploy keys in GitHub:
+
+<Steps>
+
+1. Open the Organization Settings in GitHub
+
+2. Go to **Security**, then **Deploy Keys**
+
+    ![Deploy keys settings](./img/settings-deploy-keys.jpg)
+
+3. Ensure the Deploy Keys settings is **Enabled**
+
+    ![Enabling deploy keys in the organization](./img/deploy-keys.jpg)
+
+</Steps>
 
 ## How to authorize the GitHub App {#connect-ghapp}
 
@@ -41,12 +55,6 @@ To connect Semaphore with GitHub, follow these steps:
 5. Press **Install**
 
 </Steps>
-
-:::note
-
-You might not be able to install the GitHub App if you are not the GitHub organization owner. In this case, following these steps sends an installation request to the organization's owner. You cannot proceed until the owner authorizes the access.
-
-:::
 
 ## How to transfer projects from OAuth to GitHub App {#transfer}
 

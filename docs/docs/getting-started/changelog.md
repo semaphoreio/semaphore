@@ -8,6 +8,31 @@ Thank you for using Semaphore!
 We continuously deploy changes that improve our product for our customers.
 This page is updated on a weekly basis.
 
+### Week of November 17 2025
+
+**(New)** New macOS Image will be released
+
+- Name: macos-xcode26
+- Availability: a2-standard-4 agent type
+
+**(New)** New packages:
+
+- Xcode 26.1
+  - iOS simulator 26.1
+- Container 0.6.0
+
+**(Updated)** Updated packages:
+
+- (System) Ruby 3.4.6 -> 3.4.7
+- Flutter 3.35.4 -> 3.35.7
+- Homebrew 4.6.11 -> 4.6.20
+- NodeJS 22.14.0 -> 24.11.0
+
+
+To learn more about this image, check our [macOS Xcode 26](https://docs.semaphore.io/reference/os-apple#mac-26).
+
+
+
 ### Week of Sept 29 2025
 
 **(New)** New macOS Image will be released

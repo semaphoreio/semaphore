@@ -56,7 +56,7 @@ To change your Semaphore email address, follow these steps:
 
 </Steps>
 
-### How to reset your access token {#profile-token}
+### How to reset your personal API token {#profile-token}
 
 :::warning
 
@@ -64,7 +64,7 @@ Changing your access token will revoke access to the [Semaphore API](../referenc
 
 :::
 
-To reset your Semaphore access token, follow these steps:
+To reset your Semaphore API token, follow these steps:
 
 <Steps>
 

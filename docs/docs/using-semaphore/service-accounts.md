@@ -6,6 +6,12 @@ description: Enable programmatic access to the API via service accounts
 
 A service account allows you to programmatically access the API.
 
+:::info Request access to this feature
+
+To have this feature enabled for your organization, please contact us at support@semaphoreci.com and include a short description of your use case.
+
+:::
+
 ## Overview
 
 Service accounts are special users that can only be used to consume the [Semaphore API](../reference/api). Service accounts cannot be used to log in to the Semaphore UI.

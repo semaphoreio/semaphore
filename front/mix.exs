@@ -51,7 +51,7 @@ defmodule Front.Mixfile do
       {:tentacat, github: "renderedtext/tentacat"},
       {:httpoison, ">= 0.0.0"},
       {:uuid, "~> 1.1"},
-      {:wallaby, "~> 0.23.0", runtime: false, only: [:dev, :test]},
+      {:wallaby, "~> 0.30", runtime: false, only: [:dev, :test]},
       {:fun_registry, github: "renderedtext/fun-registry", only: [:dev, :test]},
       {:grpc_mock, github: "renderedtext/grpc-mock", only: [:dev, :test]},
       {:yaml_elixir, "~> 2.4"},

@@ -56,7 +56,7 @@ To change your Semaphore email address, follow these steps:
 
 </Steps>
 
-### How to reset your access token {#profile-token}
+### How to reset your personal API token {#profile-token}
 
 :::warning
 
@@ -64,7 +64,7 @@ Changing your access token will revoke access to the [Semaphore API](../referenc
 
 :::
 
-To reset your Semaphore access token, follow these steps:
+To reset your Semaphore API token, follow these steps:
 
 <Steps>
 
@@ -140,6 +140,29 @@ Upon removal, access to all projects in the organization are revoked.
 Only an Admins, Owner, or dedicated [custom roles](./rbac#custom-roles) can remove users from the organization.
 
 :::
+
+### How to download list of users as CSV {#csv-users}
+
+Organization owners and admins can export a list of all users in their Semaphore organization.
+
+To download the list, follow these steps:
+
+<Steps>
+
+1. In the **People** section, press **Download .csv**
+
+    ![Download .csv button location](./img/csv-users.jpg)
+
+2. Semaphore will generate a .csv file containing the following user details:
+
+    - Semaphore account name
+    - Email address
+    - GitHub username
+    - Bitbucket username
+    - GitLab username
+
+</Steps>
+
 
 ### How to change user roles {#roles-people}
 

@@ -21,8 +21,8 @@ defmodule Front.Browser.OrganizationSettings.PreFlightChecksTest do
       {:ok, org_id: org_id, user_id: user_id}
     end
 
-    test "when user cannot view pre-flight checks then renders proper message",
-         %{session: session, org_id: org_id, user_id: user_id} do
+    browser_test "when user cannot view pre-flight checks then renders proper message",
+                 %{session: session, org_id: org_id, user_id: user_id} do
       Support.Stubs.PermissionPatrol.remove_all_permissions()
 
       Support.Stubs.PermissionPatrol.add_permissions(org_id, user_id, [
@@ -35,8 +35,8 @@ defmodule Front.Browser.OrganizationSettings.PreFlightChecksTest do
       |> assert_has(Query.text("Sorry, you can’t access Initialization job agent configuration."))
     end
 
-    test "when Linux & MAC machines are available then renders proper page without warning",
-         %{session: session, org_id: org_id} do
+    browser_test "when Linux & MAC machines are available then renders proper page without warning",
+                 %{session: session, org_id: org_id} do
       Support.Stubs.Feature.enable_machine(org_id, "e1-standard-2")
       Support.Stubs.Feature.enable_machine(org_id, "a1-standard-4")
 
@@ -48,8 +48,8 @@ defmodule Front.Browser.OrganizationSettings.PreFlightChecksTest do
       page |> refute_has(Query.text("No agent types available."))
     end
 
-    test "when only Linux machines are available then renders proper page without warning",
-         %{session: session, org_id: org_id} do
+    browser_test "when only Linux machines are available then renders proper page without warning",
+                 %{session: session, org_id: org_id} do
       Support.Stubs.Feature.enable_machine(org_id, "e1-standard-2")
 
       page = visit(session, "/pre_flight_checks")
@@ -59,8 +59,8 @@ defmodule Front.Browser.OrganizationSettings.PreFlightChecksTest do
       page |> refute_has(Query.text("Mac Based Virtual Machine"))
     end
 
-    test "when only MAC machines are available then renders proper page without warning",
-         %{session: session, org_id: org_id} do
+    browser_test "when only MAC machines are available then renders proper page without warning",
+                 %{session: session, org_id: org_id} do
       Support.Stubs.Feature.enable_machine(org_id, "a1-standard-4")
 
       page = visit(session, "/pre_flight_checks")
@@ -70,8 +70,8 @@ defmodule Front.Browser.OrganizationSettings.PreFlightChecksTest do
       page |> assert_has(Query.text("Mac Based Virtual Machine"))
     end
 
-    test "when Linux & MAC machines are unavailable then renders proper page with warning",
-         %{session: session, org_id: _org_id} do
+    browser_test "when Linux & MAC machines are unavailable then renders proper page with warning",
+                 %{session: session, org_id: _org_id} do
       page = visit(session, "/pre_flight_checks")
 
       page |> assert_has(Query.text("You can modify machine type and OS image"))
@@ -95,12 +95,12 @@ defmodule Front.Browser.OrganizationSettings.PreFlightChecksTest do
       {:ok, org_id: org_id}
     end
 
-    test "Initialization jobs tab does appear", %{session: session} do
+    browser_test "Initialization jobs tab does appear", %{session: session} do
       page = visit(session, "/settings")
       page |> assert_has(Query.text("Initialization jobs"))
     end
 
-    test "Pre-flight checks page renders proper message", %{session: session} do
+    browser_test "Pre-flight checks page renders proper message", %{session: session} do
       page = visit(session, "/pre_flight_checks")
 
       page
@@ -129,8 +129,8 @@ defmodule Front.Browser.OrganizationSettings.PreFlightChecksTest do
       {:ok, org_id: Stubs.Organization.default_org_id()}
     end
 
-    test "initialization jobs tab does appear",
-         %{session: session} do
+    browser_test "initialization jobs tab does appear",
+                 %{session: session} do
       page = visit(session, "/settings")
       page |> assert_has(Query.text("Initialization jobs"))
     end
