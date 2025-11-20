@@ -41,6 +41,9 @@ defmodule Scheduler.EventsConsumers.OrgUnblocked do
          {:periodics_found, true} <- {:periodics_found, length(periodics) > 0},
          {:ok, %{failed: failed}} <- unsuspend_periodics(periodics) do
       if failed != [] do
+        failed_count = length(failed)
+        Watchman.submit("scheduler.org_unblocked.unsuspend.failure", failed_count)
+
         failed
         |> LT.warn("Failed to unsuspend some periodics for organization #{org_id}")
       end
