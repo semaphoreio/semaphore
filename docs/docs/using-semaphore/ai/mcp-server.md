@@ -143,19 +143,7 @@ If you have problems connecting to the MCP Server, see [troubleshooting](#troubl
 
 ## Example Prompts {#examples}
 
-The MCP Server provides access to your Semaphore organization (assuming the MCP Server is enabled for your organization).
-
-
-Here are a few example prompts you can use to interact with your projects, pipelines, and jobs. Use them as starting points to interact with Semaphore. Some prompts might require an API Token with [Admin Role](../rbac#org-admin).
-
-| Task | Prompt |
-|------|--------|
-| List organizations the Agent has access to | "List organizations you have access to" |
-| Save the organization and project IDs in `AGENTS.md` (speeds up tasks and saves tokens) | "Find the current project in Semaphore and obtain the organization id and project id. Save the values in AGENTS.md for future reference" |
-| Understand what the pipeline does | "Describe what my pipeline does for this project on Semaphore" |
-| Troubleshoot failed tests | "Help me figure out why have my test failed on Semaphore" |
-| Troubleshoot failed builds | "Why did my build fail?" |
-| Retrieve the logs for a job |  "Show me the logs for the build job in the latest workflow in Semaphore" |
+See the [MCP Usage Examples](./mcp-usage-examples) for example use cases for the MCP server with a complete explanation of internals.
 
 ## Troubleshooting {#troubleshooting}
 
@@ -182,7 +170,8 @@ Client error: HTTP status client error (401 Unauthorized) for url (https://mcp.s
 
 - [User management](../user-management)
 - [Service accounts](../service-accounts)
-
+- [MCP Usage Examples](./mcp-usage-examples)
+- [Self-healing CI](./self-healing-ci)
 
 
 
