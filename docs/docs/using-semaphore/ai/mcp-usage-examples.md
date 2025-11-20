@@ -7,7 +7,7 @@ sidebar_position: 2
 
 Semaphore’s [MCP Server](./mcp-server) unlocks practical, low-friction AI assistance for CI/CD. With an AI agent already connected, you can ask natural questions and get immediate insights from your Semaphore projects. 
 
-Below, we outline key use cases and examples for developers, each with example prompts, what happens under the hood, and example technical details. These scenarios assume that you have MCP access enabled and an API token configured.
+Below, we outline key use cases and examples for developers, each accompanied by example prompts, an explanation of what happens under the hood, and relevant technical details. These scenarios assume that you have MCP access enabled and an API token configured.
 
 ## Organization and Project Context Discovery
 
@@ -35,7 +35,7 @@ For instance, the MCP response might return a JSON array of projects in your org
 ]
 ```
 
-The agent uses this data to confirm connectivity and context. With IDs known, subsequent commands (like triggering or inspecting pipelines) don’t require you to manually lookup IDs, reducing friction.
+The agent uses this data to confirm connectivity and context. With IDs known, subsequent commands (like triggering or inspecting pipelines) don’t require you to manually look up IDs, reducing friction.
 
 ## Pipeline Overview and Understanding
 
@@ -120,7 +120,7 @@ Example prompts:
 
 Using the log events, the AI looks for error messages. For a build failure, the output might contain compiler errors, missing package messages, or non-zero exit codes. For example, the logs might include lines like error: module not found: XYZ or a stack trace. The MCP log stream would show the commands and their outputs up until the failure. The final job_finished event will indicate a failed result, confirming the build job didn’t succeed.
 
-With this information, the assistant can explain the failure cause. For instance: “The build failed because the compiler couldn’t find module XYZ. It looks like a missing dependency – perhaps you need to add XYZ to your project’s dependencies.” The AI may also suggest next steps or fixes if the context is clear (e.g., installing a package or correcting a config), since the MCP server provided the exact error output that triggered the failure.
+With this information, the assistant can explain the cause. For instance: “The build failed because the compiler couldn’t find module XYZ. It looks like a missing dependency – perhaps you need to add XYZ to your project’s dependencies.” The AI may also suggest next steps or fixes if the context is clear (e.g., installing a package or correcting a config), since the MCP server provided the exact error output that triggered the failure.
 
 ## Retrieving Job Logs for Debugging
 
