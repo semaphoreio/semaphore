@@ -26,7 +26,17 @@ defmodule Scheduler.Workers.QuantumScheduler do
     |> ToTuple.ok()
   end
 
-  defp add_random_second(at_string) do
+  defp add_random_second(at_string) when is_binary(at_string) do
+    at_string
+    |> String.trim()
+    |> do_add_random_second()
+  end
+
+  defp add_random_second(_), do: {:error, :missing_cron_expression}
+
+  defp do_add_random_second(""), do: {:error, :missing_cron_expression}
+
+  defp do_add_random_second(at_string) do
     with {:ok, schedule} <- Crontab.CronExpression.Parser.parse(at_string),
          rand_sec <- :rand.uniform(60) - 1,
          schedule <- Map.merge(schedule, %{extended: true, second: [rand_sec]}) do
