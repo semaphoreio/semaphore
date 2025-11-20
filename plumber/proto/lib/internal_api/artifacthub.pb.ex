@@ -37,17 +37,23 @@ defmodule InternalApi.Artifacthub.RetentionPolicy do
     :last_cleaned_at
   ]
 
-  field(:project_level_retention_policies, 1,
+  field(
+    :project_level_retention_policies,
+    1,
     repeated: true,
     type: InternalApi.Artifacthub.RetentionPolicy.RetentionPolicyRule
   )
 
-  field(:workflow_level_retention_policies, 2,
+  field(
+    :workflow_level_retention_policies,
+    2,
     repeated: true,
     type: InternalApi.Artifacthub.RetentionPolicy.RetentionPolicyRule
   )
 
-  field(:job_level_retention_policies, 3,
+  field(
+    :job_level_retention_policies,
+    3,
     repeated: true,
     type: InternalApi.Artifacthub.RetentionPolicy.RetentionPolicyRule
   )
@@ -281,7 +287,9 @@ defmodule InternalApi.Artifacthub.ListBucketsResponse do
         }
   defstruct [:bucket_names_for_ids]
 
-  field(:bucket_names_for_ids, 1,
+  field(
+    :bucket_names_for_ids,
+    1,
     repeated: true,
     type: InternalApi.Artifacthub.ListBucketsResponse.BucketNamesForIdsEntry,
     map: true
