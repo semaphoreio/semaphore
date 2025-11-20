@@ -143,6 +143,7 @@ defmodule Ppl.PplBlocks.STMHandler.WaitingState.Test do
                     %{"name" => "SEMAPHORE_WORKFLOW_TRIGGERED_BY", "value" => ""},
                     %{"name" => "SEMAPHORE_GIT_COMMIT_AUTHOR", "value" => ""},
                     %{"name" => "SEMAPHORE_GIT_COMMITTER", "value" => ""},
+                    %{"name" => "SEMAPHORE_ORGANIZATION_ID", "value" => req_args["organization_id"]},
                     %{"name" => "SEMAPHORE_PIPELINE_0_ARTEFACT_ID", "value" => "#{id}"}]
     assert get_in(schedule_request.definition, ["build", "ppl_env_variables"]) == ppl_env_vars
     {:ok, UUID.uuid4()}
