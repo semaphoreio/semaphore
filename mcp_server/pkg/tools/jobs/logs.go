@@ -61,7 +61,7 @@ type logsResult struct {
 	Source           string   `json:"source"`
 	Preview          []string `json:"preview,omitempty"`
 	NextCursor       string   `json:"nextCursor,omitempty"`
-	Final            bool     `json:"final,omitempty"`
+	JobFinished      bool     `json:"jobFinished,omitempty"`
 	StartLine        int      `json:"startLine,omitempty"`
 	PreviewTruncated bool     `json:"previewTruncated,omitempty"`
 	Token            string   `json:"token,omitempty"`
@@ -206,11 +206,11 @@ Troubleshooting:
 
 func parseCursor(cursor string) (int, error) {
 	if cursor == "" {
-		return 0, nil
+		return -1, nil
 	}
 	value, err := strconv.Atoi(cursor)
 	if err != nil || value < 0 {
-		return 0, fmt.Errorf("cursor must be a non-negative integer produced by the previous response (got %q)", cursor)
+		return -1, fmt.Errorf("cursor must be a non-negative integer produced by the previous response (got %q)", cursor)
 	}
 	return value, nil
 }
@@ -222,7 +222,7 @@ func fetchHostedLogs(ctx context.Context, api internalapi.Provider, jobID string
 	}
 
 	request := &loghubpb.GetLogEventsRequest{JobId: jobID}
-	if startingLine > 0 {
+	if startingLine >= 0 {
 		offset, err := utils.IntToInt32(startingLine, "cursor offset")
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
@@ -257,24 +257,59 @@ func fetchHostedLogs(ctx context.Context, api internalapi.Provider, jobID string
 	}
 
 	events := append([]string(nil), resp.GetEvents()...)
-	displayEvents := events
+	totalEvents := len(events)
+	displayStartLine := 0
 	truncated := false
-	if len(events) > maxLogPreviewLines {
-		displayEvents, truncated = shared.TruncateList(events, maxLogPreviewLines)
+	relativeStart := 0
+	relativeEnd := totalEvents
+
+	if startingLine < 0 {
+		if totalEvents > maxLogPreviewLines {
+			displayStartLine = totalEvents - maxLogPreviewLines
+			relativeStart = displayStartLine
+			truncated = true
+		}
+	} else {
+		displayStartLine = startingLine
+		truncated = true
+		relativeEnd = maxLogPreviewLines
+		if relativeEnd > totalEvents {
+			relativeEnd = totalEvents
+		}
+	}
+
+	if relativeStart < 0 {
+		relativeStart = 0
+	}
+	if relativeEnd > totalEvents {
+		relativeEnd = totalEvents
+	}
+	if relativeStart > relativeEnd {
+		relativeStart = relativeEnd
+	}
+
+	displayEvents := events[relativeStart:relativeEnd]
+
+	var nextCursor string
+	if displayStartLine > 0 {
+		prev := displayStartLine - maxLogPreviewLines
+		if prev < 0 {
+			prev = 0
+		}
+		nextCursor = strconv.Itoa(prev)
 	}
 
 	result := logsResult{
 		JobID:            jobID,
 		Source:           loghubSource,
 		Preview:          displayEvents,
-		Final:            resp.GetFinal(),
-		StartLine:        startingLine,
+		JobFinished:      resp.GetFinal(),
+		StartLine:        displayStartLine,
 		PreviewTruncated: truncated,
 	}
 
-	if !resp.GetFinal() && len(events) > 0 {
-		next := startingLine + len(events)
-		result.NextCursor = strconv.Itoa(next)
+	if nextCursor != "" {
+		result.NextCursor = nextCursor
 	}
 
 	markdown := formatHostedLogsMarkdown(result)
@@ -348,22 +383,24 @@ func formatHostedLogsMarkdown(result logsResult) string {
 			start = 0
 		}
 
-		mb.Paragraph(fmt.Sprintf("Showing log lines %d-%d (newest first).", start, end))
+		mb.Paragraph(fmt.Sprintf("Showing log lines %d-%d.", start, end))
 		mb.Raw("```\n")
 		mb.Raw(strings.Join(result.Preview, "\n"))
 		mb.Raw("\n```\n")
 
 		if result.PreviewTruncated {
-			mb.Paragraph(fmt.Sprintf("⚠️ Preview truncated to the most recent %d lines. Use pagination to retrieve the full log.", maxLogPreviewLines))
+			if result.NextCursor != "" {
+				mb.Paragraph(fmt.Sprintf("⚠️ Preview is truncated. If you want to see the full log, paginate using `cursor=\"%s\"` to retrieve additional lines.", result.NextCursor))
+			} else {
+				mb.Paragraph("⚠️ Preview is truncated. No further logs are available at this time.")
+			}
 		}
 	}
 
-	if result.Final {
-		mb.Paragraph("✅ This job reported final logs. No additional pages are available.")
-	} else if result.NextCursor != "" {
-		mb.Paragraph(fmt.Sprintf("📄 **More available**. Use `cursor=\"%s\"`", result.NextCursor))
+	if result.JobFinished {
+		mb.Paragraph("✅ This job is finished and it reported final logs.")
 	} else {
-		mb.Paragraph("ℹ️ Logs are still streaming. Retry shortly for additional output.")
+		mb.Paragraph("ℹ️ Job is still running and logs are still streaming. Retry shortly without cursor to fetch most recent output.")
 	}
 
 	mb.Line()
