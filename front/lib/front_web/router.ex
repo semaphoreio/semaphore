@@ -126,6 +126,8 @@ defmodule FrontWeb.Router do
 
     get("/settings/confirm_delete", SettingsController, :confirm_delete)
 
+    post("/settings/confirm_enforce", SettingsController, :confirm_enforce_workflow)
+
     delete("/settings", SettingsController, :destroy)
 
     get("/jwt_config", OrganizationJWTConfigController, :show)
