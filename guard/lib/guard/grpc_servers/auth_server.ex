@@ -24,12 +24,23 @@ defmodule Guard.GrpcServers.AuthServer do
   @spec authenticate_with_cookie(Auth.AuthenticateWithCookieRequest.t(), GRPC.Server.Stream.t()) ::
           Auth.AuthenticateResponse.t()
   def authenticate_with_cookie(%Auth.AuthenticateWithCookieRequest{cookie: cookie}, _stream) do
+    cookie_hash =
+      :crypto.hash(:md5, cookie)
+      |> Base.encode16(case: :lower)
+
+    Logger.debug("[AuthServer] authenticate_with_cookie start hash=#{cookie_hash}")
+
     observe("grpc.authentication.authenticate_with_cookie", fn ->
       case find_user_by_cookie(cookie) do
         {:ok, {user, id_provider, ip_address, user_agent}} ->
+          Logger.debug(
+            "[AuthServer] authenticate_with_cookie user_id=#{user.id} provider=#{id_provider} ip=#{ip_address}"
+          )
+
           respond_with_user(user, id_provider, ip_address, user_agent)
 
         {:error, :user, :not_found} ->
+          Logger.debug("[AuthServer] authenticate_with_cookie not found hash=#{cookie_hash}")
           respond_false()
       end
     end)
@@ -70,23 +81,37 @@ defmodule Guard.GrpcServers.AuthServer do
     end
   end
 
-  defp find_user_by_cookie(""), do: {:error, :user, :not_found}
+  defp find_user_by_cookie("") do
+    Logger.debug("[AuthServer] find_user_by_cookie empty cookie")
+    {:error, :user, :not_found}
+  end
 
   defp find_user_by_cookie(cookie) do
     case Guard.Session.deserialize_from_cookie(cookie) do
       {:ok, {id_provider, user_data, session_data, extras}} ->
+        Logger.debug(
+          "[AuthServer] find_user_by_cookie deserialized provider=#{id_provider} session_keys=#{inspect(Map.keys(session_data))} extras=#{inspect(Map.keys(extras))}"
+        )
+
         with {:ok, user_data, extras} <- process_session(session_data, user_data, extras),
              {:ok, user} <- get_user(user_data) do
+          Logger.debug(
+            "[AuthServer] find_user_by_cookie resolved user_id=#{user.id} provider=#{id_provider}"
+          )
+
           {:ok, {user, id_provider, extras.ip_address, extras.user_agent}}
         else
           {:error, :user_not_found} ->
+            Logger.debug("[AuthServer] find_user_by_cookie user not found after session processing")
             {:error, :user, :not_found}
 
           {:error, :session_process_error} ->
+            Logger.debug("[AuthServer] find_user_by_cookie session processing error")
             {:error, :user, :not_found}
         end
 
       {:error, :invalid_cookie} ->
+        Logger.debug("[AuthServer] find_user_by_cookie invalid cookie format")
         {:error, :user, :not_found}
     end
   end
@@ -111,30 +136,47 @@ defmodule Guard.GrpcServers.AuthServer do
           {:ok, Map.t(), Map.t()}
           | {:error, :session_process_error}
   defp process_session(%{id: session_id}, _, _) do
+    Logger.debug("[AuthServer] process_session OIDC id=#{session_id}")
+
     case Guard.Store.OIDCSession.get(session_id) do
       {:error, :not_found} ->
+        Logger.debug("[AuthServer] process_session session not found id=#{session_id}")
         {:error, :session_process_error}
 
       {:ok, %Guard.Repo.OIDCSession{refresh_token_enc: nil}} ->
+        Logger.debug("[AuthServer] process_session refresh_token missing id=#{session_id}")
         {:error, :session_process_error}
 
       {:ok, session} ->
         extras = %{ip_address: session.ip_address, user_agent: session.user_agent}
 
         if Guard.Store.OIDCSession.expired?(session) do
+          Logger.debug("[AuthServer] process_session expired id=#{session_id} user_id=#{session.user_id}")
+
           case refresh_session(session) do
             {:ok, session} -> {:ok, %{id: session.user_id}, extras}
-            {:error, _} -> {:error, :session_process_error}
+            {:error, reason} ->
+              Logger.debug(
+                "[AuthServer] process_session refresh failed id=#{session_id} user_id=#{session.user_id} reason=#{inspect(reason)}"
+              )
+
+              {:error, :session_process_error}
           end
         else
+          Logger.debug("[AuthServer] process_session valid id=#{session_id} user_id=#{session.user_id}")
           {:ok, %{id: session.user_id}, extras}
         end
     end
   end
 
-  defp process_session(%{}, user_data, extras), do: {:ok, user_data, extras}
+  defp process_session(%{}, user_data, extras)do
+    Logger.debug("[AuthServer] process_session no session_id, skipping")
+    {:ok, user_data, extras}
+  end
 
   defp refresh_session(session) do
+    Logger.debug("[AuthServer] refresh_session id=#{session.id} user_id=#{session.user_id}")
+
     with {:ok, refresh_token} <-
            Guard.OIDC.Token.decrypt(session.refresh_token_enc, session.user_id),
          {:ok, tokens} <- refresh_token(refresh_token, session.user),
