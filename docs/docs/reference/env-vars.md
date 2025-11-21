@@ -139,6 +139,13 @@ A string with a user-supplied block name.
 
 The URL for the organization that owns the project running the current job.
 
+### Organization ID {#organization-id}
+
+- **Environment variable**: `SEMAPHORE_ORGANIZATION_ID`
+- **Example**: `f580f012-1b80-437f-acaf-be038f827270`
+
+The unique identifier for your organization.
+
 ### Pipeline ID {#pipeline-id}
 
 - **Environment variable**: `SEMAPHORE_PIPELINE_ID`
