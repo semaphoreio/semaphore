@@ -27,12 +27,14 @@ defmodule Front.Browser.OrganizationSettings.RolesTest do
       {:ok, ctx}
     end
 
-    test "access control roles tab does not appear", %{session: session} do
+    browser_test "access control roles tab does not appear", %{session: session} do
       page = visit(session, "/settings")
       page |> assert_has(Query.text("Roles"))
     end
 
-    test "access control roles page renders disabled 'New Role' button", %{session: session} do
+    browser_test "access control roles page renders disabled 'New Role' button", %{
+      session: session
+    } do
       page = visit(session, "/roles")
       page |> assert_has(Query.button("New Role", count: 2))
       page |> assert_has(Query.css("button[disabled]", count: 2))
@@ -45,12 +47,12 @@ defmodule Front.Browser.OrganizationSettings.RolesTest do
       {:ok, ctx}
     end
 
-    test "access control roles tab does appear", %{session: session} do
+    browser_test "access control roles tab does appear", %{session: session} do
       page = visit(session, "/settings")
       page |> assert_has(Query.text("Roles"))
     end
 
-    test "access control roles page renders proper message", %{session: session} do
+    browser_test "access control roles page renders proper message", %{session: session} do
       page = visit(session, "/roles/organization/new")
 
       prompt_text = "Sorry, your organization does not have access to manage roles."
@@ -65,12 +67,12 @@ defmodule Front.Browser.OrganizationSettings.RolesTest do
       {:ok, ctx}
     end
 
-    test "access control roles tab does appear", %{session: session} do
+    browser_test "access control roles tab does appear", %{session: session} do
       page = visit(session, "/settings")
       page |> assert_has(Query.text("Roles"))
     end
 
-    test "access control roles page renders content", %{session: session} do
+    browser_test "access control roles page renders content", %{session: session} do
       page = visit(session, "/roles")
 
       page

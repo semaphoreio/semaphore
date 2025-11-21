@@ -136,6 +136,9 @@ type organizationDetails struct {
 
 func listHandler(api internalapi.Provider) server.ToolHandlerFunc {
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		tracker := shared.TrackToolExecution(ctx, listToolName, "")
+		defer tracker.Cleanup()
+
 		client := api.Organizations()
 		if client == nil {
 			return mcp.NewToolResultError(`Organization gRPC endpoint is not configured.
@@ -238,6 +241,7 @@ The RBAC service confirms which organizations the authenticated user can access.
 			markdown := formatOrganizationsMarkdown(result.Organizations, mode, "")
 			markdown = shared.TruncateResponse(markdown, shared.MaxResponseChars)
 
+			tracker.MarkSuccess()
 			return &mcp.CallToolResult{
 				Content:           []mcp.Content{mcp.NewTextContent(markdown)},
 				StructuredContent: result,
@@ -285,6 +289,7 @@ The organization service could not describe the permitted organizations. Retry i
 			markdown := formatOrganizationsMarkdown(result.Organizations, mode, "")
 			markdown = shared.TruncateResponse(markdown, shared.MaxResponseChars)
 
+			tracker.MarkSuccess()
 			return &mcp.CallToolResult{
 				Content:           []mcp.Content{mcp.NewTextContent(markdown)},
 				StructuredContent: result,
@@ -332,6 +337,7 @@ The organization service could not describe the permitted organizations. Retry i
 		markdown := formatOrganizationsMarkdown(orgs, mode, result.NextCursor)
 		markdown = shared.TruncateResponse(markdown, shared.MaxResponseChars)
 
+		tracker.MarkSuccess()
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				mcp.NewTextContent(markdown),

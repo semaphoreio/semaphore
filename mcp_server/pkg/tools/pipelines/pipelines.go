@@ -241,6 +241,9 @@ func listHandler(api internalapi.Provider) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
+		tracker := shared.TrackToolExecution(ctx, listToolName, orgID)
+		defer tracker.Cleanup()
+
 		if err := shared.EnsureReadToolsFeature(ctx, api, orgID); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -433,6 +436,7 @@ Check that:
 		markdown := formatPipelineListMarkdown(result, mode, workflowID, projectID, orgID, limit)
 		markdown = shared.TruncateResponse(markdown, shared.MaxResponseChars)
 
+		tracker.MarkSuccess()
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				mcp.NewTextContent(markdown),
@@ -457,6 +461,9 @@ func jobsHandler(api internalapi.Provider) server.ToolHandlerFunc {
 		if err := shared.ValidateUUID(orgID, "organization_id"); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
+
+		tracker := shared.TrackToolExecution(ctx, jobsToolName, orgID)
+		defer tracker.Cleanup()
 
 		if err := shared.EnsureReadToolsFeature(ctx, api, orgID); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
@@ -595,6 +602,7 @@ Troubleshooting:
 		markdown := formatPipelineJobsMarkdown(result, mode, orgID)
 		markdown = shared.TruncateResponse(markdown, shared.MaxResponseChars)
 
+		tracker.MarkSuccess()
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				mcp.NewTextContent(markdown),
