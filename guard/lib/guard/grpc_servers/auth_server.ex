@@ -102,7 +102,10 @@ defmodule Guard.GrpcServers.AuthServer do
           {:ok, {user, id_provider, extras.ip_address, extras.user_agent}}
         else
           {:error, :user_not_found} ->
-            Logger.debug("[AuthServer] find_user_by_cookie user not found after session processing")
+            Logger.debug(
+              "[AuthServer] find_user_by_cookie user not found after session processing"
+            )
+
             {:error, :user, :not_found}
 
           {:error, :session_process_error} ->
@@ -151,10 +154,14 @@ defmodule Guard.GrpcServers.AuthServer do
         extras = %{ip_address: session.ip_address, user_agent: session.user_agent}
 
         if Guard.Store.OIDCSession.expired?(session) do
-          Logger.debug("[AuthServer] process_session expired id=#{session_id} user_id=#{session.user_id}")
+          Logger.debug(
+            "[AuthServer] process_session expired id=#{session_id} user_id=#{session.user_id}"
+          )
 
           case refresh_session(session) do
-            {:ok, session} -> {:ok, %{id: session.user_id}, extras}
+            {:ok, session} ->
+              {:ok, %{id: session.user_id}, extras}
+
             {:error, reason} ->
               Logger.debug(
                 "[AuthServer] process_session refresh failed id=#{session_id} user_id=#{session.user_id} reason=#{inspect(reason)}"
@@ -163,13 +170,16 @@ defmodule Guard.GrpcServers.AuthServer do
               {:error, :session_process_error}
           end
         else
-          Logger.debug("[AuthServer] process_session valid id=#{session_id} user_id=#{session.user_id}")
+          Logger.debug(
+            "[AuthServer] process_session valid id=#{session_id} user_id=#{session.user_id}"
+          )
+
           {:ok, %{id: session.user_id}, extras}
         end
     end
   end
 
-  defp process_session(%{}, user_data, extras)do
+  defp process_session(%{}, user_data, extras) do
     Logger.debug("[AuthServer] process_session no session_id, skipping")
     {:ok, user_data, extras}
   end
