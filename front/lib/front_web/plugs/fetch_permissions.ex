@@ -26,10 +26,19 @@ defmodule FrontWeb.Plugs.FetchPermissions do
     org_id = conn.assigns.organization_id
 
     has_permissions =
-      if scope == "org" do
-        Front.RBAC.Permissions.has?(user_id, org_id, permissions)
-      else
-        Front.RBAC.Permissions.has?(user_id, org_id, conn.assigns.project.id, permissions)
+      cond do
+        is_nil(user_id) ->
+          Logger.info(
+            "[FetchPermissions] Missing user_id while fetching permissions scope=#{scope} org_id=#{inspect(org_id)} path=#{conn.request_path}"
+          )
+
+          %{}
+
+        scope == "org" ->
+          Front.RBAC.Permissions.has?(user_id, org_id, permissions)
+
+        true ->
+          Front.RBAC.Permissions.has?(user_id, org_id, conn.assigns.project.id, permissions)
       end
 
     Plug.Conn.assign(conn, :permissions, has_permissions)
