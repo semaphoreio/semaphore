@@ -20,6 +20,12 @@ defmodule FrontWeb.Plugs.PublicPageAccess do
         Plug.Conn.assign(conn, :authorization, :guest)
 
       true ->
+        project = conn.assigns[:project]
+
+        Logger.info(
+          "[PageAccess] Anonymous/unauthorized access blocked: path=#{conn.request_path} org_id=#{inspect(conn.assigns[:organization_id])} project_id=#{inspect(project && project.id)} public?=#{inspect(project && project.public)} user_id=#{inspect(conn.assigns[:user_id])}"
+        )
+
         conn |> render_404()
     end
   rescue
