@@ -226,7 +226,9 @@ defmodule Rbac.Store.UserPermissions do
         RBI.generate_cache_key(rbi)
       end)
 
-    case @store_backend.put_batch(@user_permissions_store_name, keys, permissions, timeout: 60_000) do
+    case @store_backend.put_batch(@user_permissions_store_name, keys, permissions,
+           timeout: 60_000
+         ) do
       {:ok, no_of_inserts} ->
         Logger.info("[User-Permissions Store] Batch inserted #{no_of_inserts} into the cache")
         :ok

@@ -57,7 +57,7 @@ defmodule Rbac.Utils.Http do
         {:ok, Plug.Crypto.non_executable_binary_to_term(encoded_state, [:safe]), conn}
 
       :error ->
-        Logger.warn("State key: #{key} not found in cookies")
+        Logger.warning("State key: #{key} not found in cookies")
         {:error, "State key: #{key} not found in cookies"}
     end
   end
