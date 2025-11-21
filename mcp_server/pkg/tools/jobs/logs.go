@@ -61,7 +61,7 @@ type logsResult struct {
 	Source           string   `json:"source"`
 	Preview          []string `json:"preview,omitempty"`
 	NextCursor       string   `json:"nextCursor,omitempty"`
-	JobFinished      bool     `json:"jobFinished,omitempty"`
+	Final            bool     `json:"Final,omitempty"`
 	StartLine        int      `json:"startLine,omitempty"`
 	PreviewTruncated bool     `json:"previewTruncated,omitempty"`
 	Token            string   `json:"token,omitempty"`
@@ -303,7 +303,7 @@ func fetchHostedLogs(ctx context.Context, api internalapi.Provider, jobID string
 		JobID:            jobID,
 		Source:           loghubSource,
 		Preview:          displayEvents,
-		JobFinished:      resp.GetFinal(),
+		Final:            resp.GetFinal(),
 		StartLine:        displayStartLine,
 		PreviewTruncated: truncated,
 	}
@@ -397,7 +397,7 @@ func formatHostedLogsMarkdown(result logsResult) string {
 		}
 	}
 
-	if result.JobFinished {
+	if result.Final {
 		mb.Paragraph("✅ This job is finished and it reported final logs.")
 	} else {
 		mb.Paragraph("ℹ️ Job is still running and logs are still streaming. Retry shortly without cursor to fetch most recent output.")
