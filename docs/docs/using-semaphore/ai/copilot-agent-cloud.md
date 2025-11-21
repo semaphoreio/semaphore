@@ -2,7 +2,6 @@
 description: Automatically assign issues to GitHub Copilot to fix failed builds
 sidebar_position: 4
 ---
-
 # Copilot Cloud Integration
 
 This page explains how to integrate Semaphore CI pipelines with GitHub's Copilot Agent to automatically fix build errors.
@@ -15,14 +14,14 @@ In this scenario, we use GitHub's Cloud version of Copilot. The Copilot AI Agent
 
 ## Overview
 
-GitHub Copilot can run an AI Agent inside their infrastructure to take actions on the repository. In this page, we describe an integration method to automatically fix build errors in the CI using Copilot Agents.
+GitHub Copilot can run an AI Agent inside their infrastructure to take actions on the repository. On this page, we describe an integration method that automatically fixes build errors in the CI using Copilot Agents.
 
 The process is as follows:
 
 1. One or more of the jobs in your pipeline fails
 2. For each failed job, we create an issue on the repository and assign Copilot
 3. GitHub spins up an AI agent and creates a draft Pull Request with a fix
-4. You review the Pull Request and mark is as ready if it seems valid
+4. You review the Pull Request and mark it as ready if it seems valid
 5. Marking the Pull Request valid for review starts a new CI workflow
 6. If the build is fixed, you can merge the Pull Request
 
@@ -33,11 +32,11 @@ This process is repeated for every issue opened and assigned to Copilot.
 ## Prerequisites
 
 - A [GitHub Personal Access Token](https://github.com/settings/tokens) with write permissions on the repository and read permissions in the GitHub organization
-- Copilot Agents enabled in your GitHub organization (available in GitHub Copilot Pro, GitHub Copilot Pro+, GitHub Copilot Business and GitHub Copilot Enterprise plans)
+- Copilot Agents enabled in your GitHub organization (available in GitHub Copilot Pro, GitHub Copilot Pro+, GitHub Copilot Business, and GitHub Copilot Enterprise plans)
 
 ## Preventing build loops
 
-To prevent WIP branches created by Copilot to create a CI loop:
+To prevent WIP branches created by Copilot from creating a CI loop:
 - We only create issues on branches that do not start with `copilot/`
 - We do not run workflows on draft Pull Requests
 
@@ -65,7 +64,7 @@ Copilot Agents are available on a set of paid plans. For this integration to wor
 
 While not entirely mandatory, it's highly recommended to [configure test reports](../tests/test-reports) to obtain a standardized error report that the AI Agent can use to diagnose and fix build errors.
 
-For the rest of the tutorial, we'll assume that all your tests in the CI create a file called `results.xml` with the results of the test.
+For the remainder of the tutorial, we'll assume that all tests in the CI create a file called `results.xml` containing the test results.
 
 ## Set up Copilot Integration
 
@@ -73,14 +72,14 @@ To set up the integration, follow these steps.
 
 <Steps>
 
-1. Disable draft Pull Requests on Semaphore: open you [project settings] and ensure **Build drafts on Pull Requests** is set to "No"
+1. Disable draft Pull Requests on Semaphore: open your [project settings] and ensure **Build drafts on Pull Requests** is set to "No"
 
     ![Disable Draft PRs](./img/disable-draft-pr.jpg)
 
 2. Create a prompt template file called `prompt-template.txt`. Use this example as a starting point:
 
     ```text title="Prompt template for Copilot"
-    Read the following JUnit test report, diagnose the failure and create a Pull Request with the fix. Validat
+    Read the following JUnit test report, diagnose the failure, and create a Pull Request with the fix. Validat
     e the fix before creating the Pull Request.
     ```
 
@@ -118,9 +117,9 @@ You can follow the Copilot activity in the following places:
 - Your GitHub issues page
 - Your GitHub pull request page
 
-While copilot is working, you may see a draft Pull Request with the title containing "[WIP]". This means that Copilot is still working. 
+While Copilot is working, you may see a draft Pull Request with the title containing "[WIP]". This means that Copilot is still working. 
 
-Wait until "[WIP]" dissapears from the Pull Request title before marking it as ready for review. Once you mark it ready for review, a new workflow should automatically start in Semaphore. If the build is fixed, you can merge the Pull Request.
+Wait until "[WIP]" disappears from the Pull Request title before marking it as ready for review. Once you mark it ready for review, a new workflow should automatically start in Semaphore. If the build is fixed, you can merge the Pull Request.
 
 ## See also
 
