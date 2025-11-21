@@ -2,6 +2,8 @@ defmodule FrontWeb.SettingsControllerTest do
   use FrontWeb.ConnCase
   alias Support.Stubs.DB
 
+  import Mock
+
   setup %{conn: conn} do
     Cacheman.clear(:front)
 
@@ -198,6 +200,86 @@ defmodule FrontWeb.SettingsControllerTest do
 
       assert redirected_to(conn) =~ "/settings"
       assert get_flash(conn, :errors)
+    end
+  end
+
+  describe "POST confirm_enforce_workflow" do
+    test "when the user lacks manage permissions => denies the request", %{
+      conn: conn,
+      organization_id: organization_id
+    } do
+      with_mock Front.Models.OrganizationSettings,
+        modify: fn ^organization_id, _ ->
+          send(self(), :modify_called)
+          {:ok, %{}}
+        end do
+        conn =
+          conn
+          |> post("/settings/confirm_enforce")
+
+        assert redirected_to(conn) =~ "/settings"
+        assert get_flash(conn, :alert) == "Insufficient permissions."
+        refute_received :modify_called
+      end
+    end
+
+    test "when the user can manage general settings => applies the enforcement", %{
+      conn: conn,
+      user_id: user_id,
+      organization_id: organization_id
+    } do
+      Support.Stubs.PermissionPatrol.add_permissions(
+        organization_id,
+        user_id,
+        ["organization.view", "organization.general_settings.manage"]
+      )
+
+      with_mock Front.Models.OrganizationSettings,
+        modify: fn ^organization_id, %{"enforce_whitelist" => "true"} ->
+          send(self(), :modify_called)
+          {:ok, %{}}
+        end do
+        conn =
+          conn
+          |> post("/settings/confirm_enforce")
+
+        assert redirected_to(conn) == "/settings"
+        assert get_flash(conn, :notice) == "Whitelist enforcement applied successfully."
+        assert_received :modify_called
+      end
+    end
+
+    test "when enforcing fails => shows the error", %{
+      conn: conn,
+      user_id: user_id,
+      organization_id: organization_id
+    } do
+      Support.Stubs.PermissionPatrol.add_permissions(
+        organization_id,
+        user_id,
+        ["organization.view", "organization.general_settings.manage"]
+      )
+
+      changeset = %Ecto.Changeset{
+        valid?: false,
+        changes: %{},
+        errors: [enforce_whitelist: {"boom", []}],
+        data: %{},
+        types: %{}
+      }
+
+      with_mock Front.Models.OrganizationSettings,
+        modify: fn ^organization_id, %{"enforce_whitelist" => "true"} ->
+          {:error, changeset}
+        end do
+        conn =
+          conn
+          |> post("/settings/confirm_enforce")
+
+        assert redirected_to(conn) == "/settings"
+        assert get_flash(conn, :alert) == "Failed to apply whitelist enforcement."
+        assert get_flash(conn, :errors) == ["enforce_whitelist: boom"]
+      end
     end
   end
 
