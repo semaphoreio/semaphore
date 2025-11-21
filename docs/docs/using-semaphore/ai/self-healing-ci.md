@@ -7,6 +7,14 @@ sidebar_position: 3
 
 This page shows how to implement self-healing CI pipelines using an AI agent and the [Semaphore MCP server](./mcp-server). If you need a more tailored solution, please get in touch with support, and we can help you set up a self-healing workflow for your projects.
 
+:::note
+
+In this scenario, we use OpenAI's Codex inside the CI to fix build errors and automatically create a Pull Request. You can swap Codex with a different AI agent with minimal changes.
+
+If you prefer to use GitHub's Cloud version of Copilot, where the AI Agent runs inside GitHub instead, see [Copilot Agent Integration](./copilot-agent-cloud)
+
+:::
+
 ## Overview
 
 AI Agents such as OpenAI Codex or Claude Code can diagnose and fix test errors inside your CI. When coupled with Semaphore's MCP server, these agents can implement, push fixes, and create pull requests automatically when a build fails.
@@ -209,12 +217,5 @@ The second pipeline only creates a pull request if the AI agent successfully fix
 
 - [MCP Server](./mcp-server)
 - [MCP Usage Examples](./mcp-usage-examples)
-
-
-
-
-
-
-
-
+- [Copilot Cloud Integration](./copilot-agent-cloud)
 
