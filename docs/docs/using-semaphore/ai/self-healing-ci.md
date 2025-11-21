@@ -1,6 +1,6 @@
 ---
 description: Automatically fix tests in CI using an AI Agent and the MCP Server
-sidebar_position: 2
+sidebar_position: 3
 ---
 
 # Self-healing Pipelines
@@ -208,7 +208,7 @@ The second pipeline only creates a pull request if the AI agent successfully fix
 ## See also
 
 - [MCP Server](./mcp-server)
-
+- [MCP Usage Examples](./mcp-usage-examples)
 
 
 
