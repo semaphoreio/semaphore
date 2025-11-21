@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -287,60 +288,149 @@ func TestDescribeJobScopeMismatchMissingProject(t *testing.T) {
 	}
 }
 
-func TestFetchHostedLogs(t *testing.T) {
-	jobID := "99999999-aaaa-bbbb-cccc-dddddddddddd"
+func TestFetchHostedLogsPagination(t *testing.T) {
+	const orgID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	const jobID = "99999999-aaaa-bbbb-cccc-dddddddddddd"
+
 	jobClient := &jobClientStub{
 		describeResp: &jobpb.DescribeResponse{
 			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
 			Job: &jobpb.Job{
 				Id:             jobID,
 				ProjectId:      "proj-1",
-				OrganizationId: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+				OrganizationId: orgID,
 				SelfHosted:     false,
 			},
 		},
 	}
-	loghubClient := &loghubClientStub{
-		resp: &loghubpb.GetLogEventsResponse{
-			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
-			Events: []string{"line1", "line2"},
-			Final:  false,
+
+	makeEvents := func(start, end int) []string {
+		events := make([]string, end-start)
+		for i := start; i < end; i++ {
+			events[i-start] = fmt.Sprintf("line-%d", i)
+		}
+		return events
+	}
+
+	testCases := []struct {
+		name           string
+		cursor         string
+		events         []string
+		expectedStart  int
+		expectedLen    int
+		expectedFirst  string
+		expectedLast   string
+		expectedCursor string
+		truncated      bool
+	}{
+		{
+			name:           "initialRequestTruncatesToNewestLines",
+			cursor:         "",
+			events:         makeEvents(0, 500),
+			expectedStart:  500 - maxLogPreviewLines,
+			expectedLen:    maxLogPreviewLines,
+			expectedFirst:  fmt.Sprintf("line-%d", 500-maxLogPreviewLines),
+			expectedLast:   "line-499",
+			expectedCursor: fmt.Sprintf("%d", 500-(2*maxLogPreviewLines)),
+			truncated:      true,
+		},
+		{
+			name:           "initialRequestShortLog",
+			cursor:         "",
+			events:         makeEvents(0, 100),
+			expectedStart:  0,
+			expectedLen:    100,
+			expectedFirst:  "line-0",
+			expectedLast:   "line-99",
+			expectedCursor: "",
+			truncated:      false,
+		},
+		{
+			name:           "cursorInMiddleReturnsOlderChunk",
+			cursor:         "150",
+			events:         makeEvents(150, 500),
+			expectedStart:  150,
+			expectedLen:    maxLogPreviewLines,
+			expectedFirst:  "line-150",
+			expectedLast:   "line-349",
+			expectedCursor: "0",
+			truncated:      true,
+		},
+		{
+			name:           "cursorAtBeginningHasNoFurtherPages",
+			cursor:         "0",
+			events:         makeEvents(0, 500),
+			expectedStart:  0,
+			expectedLen:    maxLogPreviewLines,
+			expectedFirst:  "line-0",
+			expectedLast:   "line-199",
+			expectedCursor: "",
+			truncated:      true,
 		},
 	}
 
-	provider := &support.MockProvider{
-		JobClient:    jobClient,
-		LoghubClient: loghubClient,
-		RBACClient:   newRBACStub("project.view"),
-		Timeout:      time.Second,
-	}
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			loghubClient := &loghubClientStub{
+				resp: &loghubpb.GetLogEventsResponse{
+					Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
+					Events: tc.events,
+					Final:  false,
+				},
+			}
 
-	handler := logsHandler(provider)
-	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
-		"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-		"job_id":          jobID,
-		"cursor":          "5",
-	}}}
-	header := http.Header{}
-	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
-	req.Header = header
+			provider := &support.MockProvider{
+				JobClient:    jobClient,
+				LoghubClient: loghubClient,
+				RBACClient:   newRBACStub("project.view"),
+				Timeout:      time.Second,
+			}
 
-	res, err := handler(context.Background(), req)
-	if err != nil {
-		toFail(t, "handler error: %v", err)
-	}
+			handler := logsHandler(provider)
+			args := map[string]any{
+				"organization_id": orgID,
+				"job_id":          jobID,
+			}
+			if tc.cursor != "" {
+				args["cursor"] = tc.cursor
+			}
+			req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: args}}
+			header := http.Header{}
+			header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
+			req.Header = header
 
-	result, ok := res.StructuredContent.(logsResult)
-	if !ok {
-		toFail(t, "unexpected structured content type: %T", res.StructuredContent)
-	}
+			res, err := handler(context.Background(), req)
+			if err != nil {
+				toFail(t, "handler error: %v", err)
+			}
 
-	if result.Source != loghubSource || result.NextCursor != "7" || len(result.Preview) != 2 {
-		toFail(t, "unexpected log result: %+v", result)
-	}
+			result, ok := res.StructuredContent.(logsResult)
+			if !ok {
+				toFail(t, "unexpected structured content type: %T", res.StructuredContent)
+			}
 
-	if loghubClient.lastRequest == nil || loghubClient.lastRequest.GetStartingLine() != 5 {
-		toFail(t, "unexpected loghub request: %+v", loghubClient.lastRequest)
+			if result.StartLine != tc.expectedStart {
+				toFail(t, "expected start line %d, got %d", tc.expectedStart, result.StartLine)
+			}
+			if len(result.Preview) != tc.expectedLen {
+				toFail(t, "expected preview length %d, got %d", tc.expectedLen, len(result.Preview))
+			}
+			if tc.expectedLen > 0 {
+				if got := result.Preview[0]; got != tc.expectedFirst {
+					toFail(t, "unexpected first preview line: %s", got)
+				}
+				if got := result.Preview[len(result.Preview)-1]; got != tc.expectedLast {
+					toFail(t, "unexpected last preview line: %s", got)
+				}
+			}
+			if result.NextCursor != tc.expectedCursor {
+				toFail(t, "expected next cursor %q, got %q", tc.expectedCursor, result.NextCursor)
+			}
+			if result.PreviewTruncated != tc.truncated {
+				toFail(t, "expected truncated=%v, got %v", tc.truncated, result.PreviewTruncated)
+			}
+		})
 	}
 }
 
