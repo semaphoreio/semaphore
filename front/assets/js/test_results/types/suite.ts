@@ -55,7 +55,7 @@ export class Suite implements Stateful {
 
   syncSummary() {
     this.summary = new Summary({
-      duration: this.tests.reduce((duration, test) => duration + test.duration, 0),
+      duration: this.summary.duration,
       total: this.tests.length,
       failed: this.tests.filter(test => test.state === State.FAILED).length,
       passed: this.tests.filter(test => test.state === State.PASSED).length,
