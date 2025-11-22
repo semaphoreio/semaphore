@@ -18,7 +18,8 @@ secrethub
 self_hosted
 server_farm.job
 server_farm.mq.job_state_exchange
-task'
+task
+usage'
 
 for element in $list;do
   echo "$element"
