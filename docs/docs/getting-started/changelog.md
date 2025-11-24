@@ -10,7 +10,7 @@ This page is updated on a weekly basis.
 
 ### Week of November 17 2025
 
-**(New)** New macOS Image will be released
+**(Improved) macos_xcode26 image update**
 
 - Name: macos-xcode26
 - Availability: a2-standard-4 agent type
@@ -35,7 +35,7 @@ To learn more about this image, check our [macOS Xcode 26](https://docs.semaphor
 
 ### Week of Sept 29 2025
 
-**(New)** New macOS Image will be released
+**(Improved) macos_xcode26 image update**
 
 - Name: macos-xcode26
 - Availability: a2-standard-4 agent type
