@@ -7,8 +7,6 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
-	"github.com/sirupsen/logrus"
-
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/authz"
 	workflowpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber_w_f.workflow"
 	userpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/user"
@@ -16,14 +14,7 @@ import (
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/logging"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/internal/shared"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/utils"
-)
-
-const (
-	searchToolName        = "workflows_search"
-	defaultLimit          = 20
-	maxLimit              = 100
-	missingWorkflowError  = "workflow gRPC endpoint is not configured"
-	projectViewPermission = "project.view"
+	"github.com/sirupsen/logrus"
 )
 
 func searchFullDescription() string {
@@ -64,12 +55,7 @@ Next steps:
 - Use workflows_search(project_id="...", branch="main") regularly to monitor your own workflows`
 }
 
-// Register wires the workflows tool into the MCP server.
-func Register(s *server.MCPServer, api internalapi.Provider) {
-	s.AddTool(newTool(searchToolName, searchFullDescription()), listHandler(api))
-}
-
-func newTool(name, description string) mcp.Tool {
+func newSearchTool(name, description string) mcp.Tool {
 	return mcp.NewTool(
 		name,
 		mcp.WithDescription(description),
@@ -111,25 +97,6 @@ func newTool(name, description string) mcp.Tool {
 		mcp.WithIdempotentHintAnnotation(true),
 		mcp.WithOpenWorldHintAnnotation(true),
 	)
-}
-
-type summary struct {
-	ID              string `json:"id"`
-	InitialPipeline string `json:"initialPipelineId,omitempty"`
-	ProjectID       string `json:"projectId,omitempty"`
-	OrganizationID  string `json:"organizationId,omitempty"`
-	Branch          string `json:"branch,omitempty"`
-	CommitSHA       string `json:"commitSha,omitempty"`
-	RequesterID     string `json:"requesterId,omitempty"`
-	TriggeredBy     string `json:"triggeredBy,omitempty"`
-	CreatedAt       string `json:"createdAt,omitempty"`
-	RerunOf         string `json:"rerunOf,omitempty"`
-	RepositoryID    string `json:"repositoryId,omitempty"`
-}
-
-type listResult struct {
-	Workflows  []summary `json:"workflows"`
-	NextCursor string    `json:"nextCursor,omitempty"`
 }
 
 func listHandler(api internalapi.Provider) server.ToolHandlerFunc {
@@ -416,34 +383,6 @@ func formatWorkflowsMarkdown(result listResult, mode, projectID, orgID, branch, 
 	}
 
 	return mb.String()
-}
-
-func humanizeTriggeredBy(value string) string {
-	value = strings.TrimSpace(value)
-	if value == "" {
-		return "Unspecified"
-	}
-	parts := strings.Split(value, "_")
-	for i, part := range parts {
-		if part == "" {
-			continue
-		}
-		part = strings.ToLower(part)
-		parts[i] = strings.ToUpper(part[:1]) + part[1:]
-	}
-	return strings.Join(parts, " ")
-}
-
-func shortenCommit(sha string) string {
-	sha = strings.TrimSpace(sha)
-	if len(sha) > 12 {
-		return sha[:12]
-	}
-	return sha
-}
-
-func normalizeID(value string) string {
-	return strings.ToLower(strings.TrimSpace(value))
 }
 
 func resolveRequesterID(ctx context.Context, api internalapi.Provider, raw string) (string, error) {
