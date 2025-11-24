@@ -150,5 +150,6 @@ This use case is essentially an AI-driven `tail -f`` or log viewer: you ask in n
 
 - [MCP Server](./mcp-server)
 - [Self-healing CI](./self-healing-ci)
+- [Copilot Cloud Integration](./copilot-agent-cloud)
 
 
