@@ -32,15 +32,15 @@ import (
 func New() internalapi.Provider {
 	return &provider{
 		timeout:       time.Second,
-		workflows:     &workflowStub{},
+		workflows:     &WorkflowClientStub{},
 		organizations: &organizationStub{},
-		projects:      &projectStub{},
+		projects:      &ProjectClientStub{},
 		pipelines:     &pipelineStub{},
 		jobs:          &jobStub{},
 		loghub:        &loghubStub{},
 		loghub2:       &loghub2Stub{},
-		users:         &userStub{},
-		rbac:          &rbacStub{},
+		users:         &UserClientStub{},
+		rbac:          &RBACStub{},
 		features:      &featureStub{},
 	}
 }
@@ -80,31 +80,6 @@ func (p *provider) Users() userpb.UserServiceClient { return p.users }
 func (p *provider) RBAC() rbacpb.RBACClient { return p.rbac }
 
 func (p *provider) Features() featuresvc.FeatureClient { return p.features }
-
-// --- workflow stub ---
-
-type workflowStub struct {
-	workflowpb.WorkflowServiceClient
-}
-
-func (w *workflowStub) ListKeyset(ctx context.Context, in *workflowpb.ListKeysetRequest, opts ...grpc.CallOption) (*workflowpb.ListKeysetResponse, error) {
-	return &workflowpb.ListKeysetResponse{
-		Status: &statuspb.Status{Code: code.Code_OK},
-		Workflows: []*workflowpb.WorkflowDetails{
-			{
-				WfId:           "wf-local",
-				InitialPplId:   "ppl-local",
-				ProjectId:      orDefault(in.GetProjectId(), "project-local"),
-				BranchName:     "main",
-				CommitSha:      "abcdef0",
-				CreatedAt:      timestamppb.New(time.Unix(1_700_000_000, 0)),
-				TriggeredBy:    workflowpb.TriggeredBy_MANUAL_RUN,
-				OrganizationId: "org-local",
-			},
-		},
-		NextPageToken: "",
-	}, nil
-}
 
 // --- pipeline stub ---
 
@@ -206,38 +181,6 @@ func (l *loghub2Stub) GenerateToken(ctx context.Context, in *loghub2pb.GenerateT
 	return &loghub2pb.GenerateTokenResponse{Token: "stub-token", Type: loghub2pb.TokenType_PULL}, nil
 }
 
-// --- rbac stub ---
-
-type rbacStub struct {
-	rbacpb.RBACClient
-	orgIDs []string
-}
-
-func (r *rbacStub) ListAccessibleOrgs(ctx context.Context, in *rbacpb.ListAccessibleOrgsRequest, opts ...grpc.CallOption) (*rbacpb.ListAccessibleOrgsResponse, error) {
-	ids := r.orgIDs
-	if len(ids) == 0 {
-		ids = []string{"org-local"}
-	}
-	return &rbacpb.ListAccessibleOrgsResponse{OrgIds: ids}, nil
-}
-
-// --- user stub ---
-
-type userStub struct {
-	userpb.UserServiceClient
-}
-
-func (u *userStub) DescribeByRepositoryProvider(ctx context.Context, in *userpb.DescribeByRepositoryProviderRequest, opts ...grpc.CallOption) (*userpb.User, error) {
-	login := ""
-	if in != nil && in.GetProvider() != nil {
-		login = strings.TrimSpace(in.GetProvider().GetLogin())
-	}
-	if login == "" {
-		login = "stub-user"
-	}
-	return &userpb.User{Id: fmt.Sprintf("user-%s", login)}, nil
-}
-
 func orDefault(value, fallback string) string {
 	if value != "" {
 		return value
@@ -294,44 +237,6 @@ func (o *organizationStub) DescribeMany(ctx context.Context, in *orgpb.DescribeM
 				OwnerId:     "user-local",
 				CreatedAt:   timestamppb.New(time.Unix(1_700_000_000, 0)),
 				Verified:    true,
-			},
-		},
-	}, nil
-}
-
-// --- project stub ---
-
-type projectStub struct {
-	projecthubpb.ProjectServiceClient
-}
-
-func (p *projectStub) List(ctx context.Context, in *projecthubpb.ListRequest, opts ...grpc.CallOption) (*projecthubpb.ListResponse, error) {
-	return &projecthubpb.ListResponse{
-		Metadata: &projecthubpb.ResponseMeta{
-			Status: &projecthubpb.ResponseMeta_Status{Code: projecthubpb.ResponseMeta_OK},
-		},
-		Pagination: &projecthubpb.PaginationResponse{
-			PageNumber:   in.GetPagination().GetPage(),
-			PageSize:     in.GetPagination().GetPageSize(),
-			TotalEntries: 1,
-			TotalPages:   1,
-		},
-		Projects: []*projecthubpb.Project{
-			{
-				Metadata: &projecthubpb.Project_Metadata{
-					Id:        "project-local",
-					Name:      "Example Project",
-					OrgId:     "org-local",
-					OwnerId:   "user-local",
-					CreatedAt: timestamppb.New(time.Unix(1_700_000_000, 0)),
-				},
-				Spec: &projecthubpb.Project_Spec{
-					Repository: &projecthubpb.Project_Spec_Repository{
-						Url:           "https://github.com/example/project",
-						DefaultBranch: "main",
-						PipelineFile:  ".semaphore/semaphore.yml",
-					},
-				},
 			},
 		},
 	}, nil
@@ -428,4 +333,256 @@ func (s *FeatureHubServiceStub) CallCount() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.callCount
+}
+
+// --- workflow tool focused stubs ---
+
+// WorkflowClientStub records workflow RPC requests and returns configurable responses.
+type WorkflowClientStub struct {
+	workflowpb.WorkflowServiceClient
+
+	ListResp     *workflowpb.ListKeysetResponse
+	ListErr      error
+	LastList     *workflowpb.ListKeysetRequest
+	ScheduleResp *workflowpb.ScheduleResponse
+	ScheduleErr  error
+	LastSchedule *workflowpb.ScheduleRequest
+}
+
+func (s *WorkflowClientStub) Schedule(ctx context.Context, in *workflowpb.ScheduleRequest, opts ...grpc.CallOption) (*workflowpb.ScheduleResponse, error) {
+	s.LastSchedule = in
+	if s.ScheduleErr != nil {
+		return nil, s.ScheduleErr
+	}
+	if s.ScheduleResp != nil {
+		return s.ScheduleResp, nil
+	}
+	return &workflowpb.ScheduleResponse{Status: &statuspb.Status{Code: code.Code_OK}}, nil
+}
+
+func (s *WorkflowClientStub) ListKeyset(ctx context.Context, in *workflowpb.ListKeysetRequest, opts ...grpc.CallOption) (*workflowpb.ListKeysetResponse, error) {
+	s.LastList = in
+	if s.ListErr != nil {
+		return nil, s.ListErr
+	}
+	if s.ListResp != nil {
+		return s.ListResp, nil
+	}
+	projectID := "project-local"
+	if in != nil && strings.TrimSpace(in.GetProjectId()) != "" {
+		projectID = in.GetProjectId()
+	}
+	return &workflowpb.ListKeysetResponse{
+		Status: &statuspb.Status{Code: code.Code_OK},
+		Workflows: []*workflowpb.WorkflowDetails{
+			{
+				WfId:           "wf-local",
+				InitialPplId:   "ppl-local",
+				ProjectId:      projectID,
+				BranchName:     "main",
+				CommitSha:      "abcdef0",
+				CreatedAt:      timestamppb.New(time.Unix(1_700_000_000, 0)),
+				TriggeredBy:    workflowpb.TriggeredBy_MANUAL_RUN,
+				OrganizationId: "org-local",
+			},
+		},
+		NextPageToken: "",
+	}, nil
+}
+
+// ProjectClientStub records describe requests and returns configurable responses.
+type ProjectClientStub struct {
+	projecthubpb.ProjectServiceClient
+
+	Response     *projecthubpb.DescribeResponse
+	Err          error
+	LastDescribe *projecthubpb.DescribeRequest
+	ListResponse *projecthubpb.ListResponse
+	ListErr      error
+}
+
+func (s *ProjectClientStub) Describe(ctx context.Context, in *projecthubpb.DescribeRequest, opts ...grpc.CallOption) (*projecthubpb.DescribeResponse, error) {
+	s.LastDescribe = in
+	if s.Err != nil {
+		return nil, s.Err
+	}
+	if s.Response != nil {
+		return s.Response, nil
+	}
+	orgID := "org-local"
+	projectID := "project-local"
+	if in != nil {
+		if pid := strings.TrimSpace(in.GetId()); pid != "" {
+			projectID = pid
+		}
+	}
+	return NewProjectDescribeResponse(orgID, projectID, &projecthubpb.Project_Spec_Repository{
+		PipelineFile: ".semaphore/semaphore.yml",
+	}), nil
+}
+
+func (s *ProjectClientStub) List(ctx context.Context, in *projecthubpb.ListRequest, opts ...grpc.CallOption) (*projecthubpb.ListResponse, error) {
+	if s.ListErr != nil {
+		return nil, s.ListErr
+	}
+	if s.ListResponse != nil {
+		return s.ListResponse, nil
+	}
+	page := int32(0)
+	size := int32(0)
+	if in != nil && in.GetPagination() != nil {
+		page = in.GetPagination().GetPage()
+		size = in.GetPagination().GetPageSize()
+	}
+	return &projecthubpb.ListResponse{
+		Metadata: &projecthubpb.ResponseMeta{
+			Status: &projecthubpb.ResponseMeta_Status{Code: projecthubpb.ResponseMeta_OK},
+		},
+		Pagination: &projecthubpb.PaginationResponse{
+			PageNumber:   page,
+			PageSize:     size,
+			TotalEntries: 1,
+			TotalPages:   1,
+		},
+		Projects: []*projecthubpb.Project{
+			{
+				Metadata: &projecthubpb.Project_Metadata{
+					Id:        "project-local",
+					Name:      "Example Project",
+					OrgId:     "org-local",
+					OwnerId:   "user-local",
+					CreatedAt: timestamppb.New(time.Unix(1_700_000_000, 0)),
+				},
+				Spec: &projecthubpb.Project_Spec{
+					Repository: &projecthubpb.Project_Spec_Repository{
+						Url:           "https://github.com/example/project",
+						DefaultBranch: "main",
+						PipelineFile:  ".semaphore/semaphore.yml",
+					},
+				},
+			},
+		},
+	}, nil
+}
+
+// NewProjectDescribeResponse creates a minimal project describe response for tests.
+func NewProjectDescribeResponse(orgID, projectID string, repo *projecthubpb.Project_Spec_Repository) *projecthubpb.DescribeResponse {
+	if repo == nil {
+		repo = &projecthubpb.Project_Spec_Repository{}
+	}
+	return &projecthubpb.DescribeResponse{
+		Metadata: &projecthubpb.ResponseMeta{
+			Status: &projecthubpb.ResponseMeta_Status{Code: projecthubpb.ResponseMeta_OK},
+		},
+		Project: &projecthubpb.Project{
+			Metadata: &projecthubpb.Project_Metadata{Id: projectID, OrgId: orgID},
+			Spec:     &projecthubpb.Project_Spec{Repository: repo},
+		},
+	}
+}
+
+// NewRBACStub returns an RBAC stub with optional default permissions.
+func NewRBACStub(perms ...string) *RBACStub {
+	copied := append([]string(nil), perms...)
+	return &RBACStub{Permissions: copied}
+}
+
+// RBACStub records authorization checks and returns configurable results.
+type RBACStub struct {
+	rbacpb.RBACClient
+
+	Permissions      []string
+	PerProject       map[string][]string
+	PerOrg           map[string][]string
+	Err              error
+	ErrorForProject  map[string]error
+	ErrorForOrg      map[string]error
+	LastRequests     []*rbacpb.ListUserPermissionsRequest
+	AccessibleOrgIDs []string
+}
+
+func (s *RBACStub) ListUserPermissions(ctx context.Context, in *rbacpb.ListUserPermissionsRequest, opts ...grpc.CallOption) (*rbacpb.ListUserPermissionsResponse, error) {
+	reqCopy := &rbacpb.ListUserPermissionsRequest{
+		UserId:    in.GetUserId(),
+		OrgId:     in.GetOrgId(),
+		ProjectId: in.GetProjectId(),
+	}
+	s.LastRequests = append(s.LastRequests, reqCopy)
+
+	if s.Err != nil {
+		return nil, s.Err
+	}
+
+	projectKey := normalizeKey(in.GetProjectId())
+	orgKey := normalizeKey(in.GetOrgId())
+
+	if projectKey != "" {
+		if err := s.ErrorForProject[projectKey]; err != nil {
+			return nil, err
+		}
+	} else if orgKey != "" {
+		if err := s.ErrorForOrg[orgKey]; err != nil {
+			return nil, err
+		}
+	}
+
+	perms := s.Permissions
+	if projectKey != "" {
+		if override, ok := s.PerProject[projectKey]; ok {
+			perms = override
+		}
+	} else if orgKey != "" {
+		if override, ok := s.PerOrg[orgKey]; ok {
+			perms = override
+		}
+	}
+	if perms == nil {
+		perms = []string{}
+	}
+
+	return &rbacpb.ListUserPermissionsResponse{
+		UserId:      in.GetUserId(),
+		OrgId:       in.GetOrgId(),
+		ProjectId:   in.GetProjectId(),
+		Permissions: append([]string(nil), perms...),
+	}, nil
+}
+
+func normalizeKey(value string) string {
+	return strings.ToLower(strings.TrimSpace(value))
+}
+
+func (s *RBACStub) ListAccessibleOrgs(ctx context.Context, in *rbacpb.ListAccessibleOrgsRequest, opts ...grpc.CallOption) (*rbacpb.ListAccessibleOrgsResponse, error) {
+	ids := s.AccessibleOrgIDs
+	if len(ids) == 0 {
+		ids = []string{"org-local"}
+	}
+	return &rbacpb.ListAccessibleOrgsResponse{OrgIds: append([]string(nil), ids...)}, nil
+}
+
+// UserClientStub captures user lookups and returns configurable responses.
+type UserClientStub struct {
+	userpb.UserServiceClient
+
+	Response    *userpb.User
+	Err         error
+	LastRequest *userpb.DescribeByRepositoryProviderRequest
+}
+
+func (u *UserClientStub) DescribeByRepositoryProvider(ctx context.Context, in *userpb.DescribeByRepositoryProviderRequest, opts ...grpc.CallOption) (*userpb.User, error) {
+	u.LastRequest = in
+	if u.Err != nil {
+		return nil, u.Err
+	}
+	if u.Response != nil {
+		return u.Response, nil
+	}
+	login := "stub-user"
+	if in != nil && in.GetProvider() != nil {
+		candidate := strings.TrimSpace(in.GetProvider().GetLogin())
+		if candidate != "" {
+			login = candidate
+		}
+	}
+	return &userpb.User{Id: fmt.Sprintf("user-%s", login)}, nil
 }

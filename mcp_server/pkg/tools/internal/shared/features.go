@@ -45,7 +45,7 @@ func EnsureWriteToolsFeature(ctx context.Context, api internalapi.Provider, orgI
 	}
 
 	if state != feature.Enabled {
-		return fmt.Errorf("Semaphore MCP write tools actions are disabled for this organization. Please contact support if you believe this is an error.")
+		return fmt.Errorf("Semaphore MCP write tools are disabled for this organization. Please contact support if you believe this is an error.")
 	}
 
 	return nil
