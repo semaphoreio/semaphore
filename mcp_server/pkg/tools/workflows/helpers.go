@@ -30,6 +30,14 @@ type runResult struct {
 	PipelineFile string `json:"pipelineFile"`
 }
 
+type rerunResult struct {
+	WorkflowID string `json:"workflowId"`
+	PipelineID string `json:"pipelineId"`
+	RerunOf    string `json:"rerunOf"`
+	ProjectID  string `json:"projectId"`
+	OrgID      string `json:"organizationId"`
+}
+
 func humanizeTriggeredBy(value string) string {
 	value = strings.TrimSpace(value)
 	if value == "" {

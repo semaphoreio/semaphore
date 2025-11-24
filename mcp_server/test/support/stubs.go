@@ -341,12 +341,21 @@ func (s *FeatureHubServiceStub) CallCount() int {
 type WorkflowClientStub struct {
 	workflowpb.WorkflowServiceClient
 
-	ListResp     *workflowpb.ListKeysetResponse
-	ListErr      error
-	LastList     *workflowpb.ListKeysetRequest
-	ScheduleResp *workflowpb.ScheduleResponse
-	ScheduleErr  error
-	LastSchedule *workflowpb.ScheduleRequest
+	ListResp         *workflowpb.ListKeysetResponse
+	ListErr          error
+	LastList         *workflowpb.ListKeysetRequest
+	ScheduleResp     *workflowpb.ScheduleResponse
+	ScheduleErr      error
+	LastSchedule     *workflowpb.ScheduleRequest
+	RescheduleResp   *workflowpb.ScheduleResponse
+	RescheduleErr    error
+	LastReschedule   *workflowpb.RescheduleRequest
+	GetProjectResp   *workflowpb.GetProjectIdResponse
+	GetProjectErr    error
+	LastGetProjectId *workflowpb.GetProjectIdRequest
+	DescribeResp     *workflowpb.DescribeResponse
+	DescribeErr      error
+	LastDescribe     *workflowpb.DescribeRequest
 }
 
 func (s *WorkflowClientStub) Schedule(ctx context.Context, in *workflowpb.ScheduleRequest, opts ...grpc.CallOption) (*workflowpb.ScheduleResponse, error) {
@@ -387,6 +396,49 @@ func (s *WorkflowClientStub) ListKeyset(ctx context.Context, in *workflowpb.List
 			},
 		},
 		NextPageToken: "",
+	}, nil
+}
+
+func (s *WorkflowClientStub) Reschedule(ctx context.Context, in *workflowpb.RescheduleRequest, opts ...grpc.CallOption) (*workflowpb.ScheduleResponse, error) {
+	s.LastReschedule = in
+	if s.RescheduleErr != nil {
+		return nil, s.RescheduleErr
+	}
+	if s.RescheduleResp != nil {
+		return s.RescheduleResp, nil
+	}
+	return &workflowpb.ScheduleResponse{Status: &statuspb.Status{Code: code.Code_OK}, WfId: "wf-rerun", PplId: "ppl-rerun"}, nil
+}
+
+func (s *WorkflowClientStub) GetProjectId(ctx context.Context, in *workflowpb.GetProjectIdRequest, opts ...grpc.CallOption) (*workflowpb.GetProjectIdResponse, error) {
+	s.LastGetProjectId = in
+	if s.GetProjectErr != nil {
+		return nil, s.GetProjectErr
+	}
+	if s.GetProjectResp != nil {
+		return s.GetProjectResp, nil
+	}
+	return &workflowpb.GetProjectIdResponse{
+		Status:    &statuspb.Status{Code: code.Code_OK},
+		ProjectId: "project-local",
+	}, nil
+}
+
+func (s *WorkflowClientStub) Describe(ctx context.Context, in *workflowpb.DescribeRequest, opts ...grpc.CallOption) (*workflowpb.DescribeResponse, error) {
+	s.LastDescribe = in
+	if s.DescribeErr != nil {
+		return nil, s.DescribeErr
+	}
+	if s.DescribeResp != nil {
+		return s.DescribeResp, nil
+	}
+	return &workflowpb.DescribeResponse{
+		Status: &statuspb.Status{Code: code.Code_OK},
+		Workflow: &workflowpb.WorkflowDetails{
+			WfId:           orDefault(in.GetWfId(), "wf-local"),
+			ProjectId:      "project-local",
+			OrganizationId: "org-local",
+		},
 	}, nil
 }
 
