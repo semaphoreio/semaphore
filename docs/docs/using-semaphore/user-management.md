@@ -110,14 +110,6 @@ To invite a user to your organization, press the **Add people** button:
 
 </Steps>
 
-:::info
-
-If you see an error with the message "error finding USERNAME: 401", it's likely that the your Semaphore account, as the inviter, is no longer linked to GitHub or BitBucket.
-
-To fix the issue, reconnect your account by granting access again via [GitHub](./connect-github-oauth#connect-oauth) or [Bitbucket](./connect-bitbucket#grant-bb). This should restore your ability to send invitations.
-
-:::
-
 ### How to remove users {#remove-users}
 
 Users can only be removed from the organization when they don't own any projects. You must [transfer the ownership](./projects#owner-change) of all the user's projects before they can be removed from the organization.
