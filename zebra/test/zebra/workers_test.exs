@@ -3,6 +3,7 @@ defmodule Zebra.Workers.Test do
 
   test "no environment variables set => only default workers start" do
     assert Zebra.Workers.active() == [
+             Zebra.Workers.JobDeletionPolicyMarker,
              Zebra.Workers.JobDeletionPolicyWorker,
              Zebra.FeatureProviderInvalidatorWorker
            ]
@@ -23,6 +24,7 @@ defmodule Zebra.Workers.Test do
 
     test "active workers are returned" do
       assert Zebra.Workers.active() == [
+               Zebra.Workers.JobDeletionPolicyMarker,
                Zebra.Workers.JobDeletionPolicyWorker,
                Zebra.Workers.TaskFinisher,
                Zebra.Workers.TaskFailFast,
