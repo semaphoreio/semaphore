@@ -229,7 +229,7 @@ Selecting **Run on** allows you to configure what triggers are enabled for the p
 
 :::note
 
-**Whitelisted only** only affects branches and tags created *after* enabling this setting. Branches and tags that existed before the setting is enabled are not affected and are always built.
+**Whitelisted only** only affects branches and tags created *after* enabling this setting. Branches and tags that existed before the setting is enabled are not affected and are always built. You can change that by enforcing whitelist on the organization settings
 
 :::
 
