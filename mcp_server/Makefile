@@ -2,6 +2,7 @@ include ../Makefile
 
 APP_NAME=mcp_server
 APP_ENV=prod
+CHECK_CODE_OPTS?=--config-options "-exclude-generated"
 
 INTERNAL_API_BRANCH?=master
 TMP_REPO_DIR ?= /tmp/internal_api
