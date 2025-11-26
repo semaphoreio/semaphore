@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/feature"
+	artifacthubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/artifacthub"
 	featurepb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/feature"
 	loghubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub"
 	loghub2pb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub2"
@@ -52,6 +53,7 @@ type provider struct {
 	projects      projecthubpb.ProjectServiceClient
 	pipelines     pipelinepb.PipelineServiceClient
 	jobs          jobpb.JobServiceClient
+	artifacthub   artifacthubpb.ArtifactServiceClient
 	loghub        loghubpb.LoghubClient
 	loghub2       loghub2pb.Loghub2Client
 	users         userpb.UserServiceClient
@@ -70,6 +72,8 @@ func (p *provider) Projects() projecthubpb.ProjectServiceClient { return p.proje
 func (p *provider) Pipelines() pipelinepb.PipelineServiceClient { return p.pipelines }
 
 func (p *provider) Jobs() jobpb.JobServiceClient { return p.jobs }
+
+func (p *provider) Artifacthub() artifacthubpb.ArtifactServiceClient { return p.artifacthub }
 
 func (p *provider) Loghub() loghubpb.LoghubClient { return p.loghub }
 
