@@ -20,13 +20,13 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	RepositoryIntegratorService_GetToken_FullMethodName               = "/InternalApi.RepositoryIntegrator.RepositoryIntegratorService/GetToken"               // #nosec G101 -- gRPC method name, not credential
-	RepositoryIntegratorService_CheckToken_FullMethodName             = "/InternalApi.RepositoryIntegrator.RepositoryIntegratorService/CheckToken"             // #nosec G101 -- gRPC method name, not credential
-	RepositoryIntegratorService_PreheatFileCache_FullMethodName       = "/InternalApi.RepositoryIntegrator.RepositoryIntegratorService/PreheatFileCache"       // #nosec G101 -- gRPC method name, not credential
-	RepositoryIntegratorService_GetFile_FullMethodName                = "/InternalApi.RepositoryIntegrator.RepositoryIntegratorService/GetFile"                // #nosec G101 -- gRPC method name, not credential
-	RepositoryIntegratorService_GithubInstallationInfo_FullMethodName = "/InternalApi.RepositoryIntegrator.RepositoryIntegratorService/GithubInstallationInfo" // #nosec G101 -- gRPC method name, not credential
-	RepositoryIntegratorService_InitGithubInstallation_FullMethodName = "/InternalApi.RepositoryIntegrator.RepositoryIntegratorService/InitGithubInstallation" // #nosec G101 -- gRPC method name, not credential
-	RepositoryIntegratorService_GetRepositories_FullMethodName        = "/InternalApi.RepositoryIntegrator.RepositoryIntegratorService/GetRepositories"        // #nosec G101 -- gRPC method name, not credential
+	RepositoryIntegratorService_GetToken_FullMethodName               = "/InternalApi.RepositoryIntegrator.RepositoryIntegratorService/GetToken"
+	RepositoryIntegratorService_CheckToken_FullMethodName             = "/InternalApi.RepositoryIntegrator.RepositoryIntegratorService/CheckToken"
+	RepositoryIntegratorService_PreheatFileCache_FullMethodName       = "/InternalApi.RepositoryIntegrator.RepositoryIntegratorService/PreheatFileCache"
+	RepositoryIntegratorService_GetFile_FullMethodName                = "/InternalApi.RepositoryIntegrator.RepositoryIntegratorService/GetFile"
+	RepositoryIntegratorService_GithubInstallationInfo_FullMethodName = "/InternalApi.RepositoryIntegrator.RepositoryIntegratorService/GithubInstallationInfo"
+	RepositoryIntegratorService_InitGithubInstallation_FullMethodName = "/InternalApi.RepositoryIntegrator.RepositoryIntegratorService/InitGithubInstallation"
+	RepositoryIntegratorService_GetRepositories_FullMethodName        = "/InternalApi.RepositoryIntegrator.RepositoryIntegratorService/GetRepositories"
 )
 
 // RepositoryIntegratorServiceClient is the client API for RepositoryIntegratorService service.
