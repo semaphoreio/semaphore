@@ -20,8 +20,8 @@ RSpec.describe InternalApi::RepoProxy::PrPayload do
   let(:project)  { instance_double(Project, repo_owner_and_name: "owner/repo") }
   let(:user) do
     host_account = Struct.new(:name, :github_uid, :login).new("Alice", 123, "alice")
-    Struct.new(:github_repo_host_account, :email)
-          .new(host_account, "alice@example.com")
+    Struct.new(:github_repo_host_account, :email, :name)
+          .new(host_account, "alice@example.com", "Alice")
   end
 
   let(:pr_commit) do
@@ -81,6 +81,22 @@ RSpec.describe InternalApi::RepoProxy::PrPayload do
       expect(commit["author"]["username"]).to eq("alice")
       expect(commit["id"]).to eq("abc123")
       expect(commit["message"]).to eq("PR commit")
+    end
+
+    context "when user has no repo host account" do
+      subject(:payload_without_account) { described_class.new(ref, number).call(project, user_without_repo_host_account) }
+
+      let(:user_without_repo_host_account) do
+        Struct.new(:github_repo_host_account, :email, :name)
+              .new(nil, "alice@example.com", "Alice")
+      end
+
+      it "uses the user's name and email for pusher data" do
+        expect(payload_without_account["pusher"]["name"]).to eq("Alice")
+        expect(payload_without_account["pusher"]["email"]).to eq("alice@example.com")
+        expect(payload_without_account["sender"]["id"]).to be_nil
+        expect(payload_without_account["sender"]["login"]).to eq("Alice")
+      end
     end
   end
 

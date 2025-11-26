@@ -261,7 +261,7 @@ GEM
       nio4r (~> 2.0)
     raabro (1.4.0)
     racc (1.8.1)
-    rack (2.2.17)
+    rack (2.2.20)
     rack-session (1.0.2)
       rack (< 3)
     rack-test (2.2.0)
@@ -446,7 +446,7 @@ GEM
       unicode-emoji (~> 4.0, >= 4.0.4)
     unicode-emoji (4.0.4)
     uniform_notifier (1.17.0)
-    uri (1.0.3)
+    uri (1.0.4)
     useragent (0.16.11)
     vcr (6.3.1)
       base64
@@ -499,6 +499,7 @@ DEPENDENCIES
   pg (~> 1.1)
   pry-byebug (~> 3.10, >= 3.10.1)
   puma
+  rack (~> 2.2.20)
   rails (>= 8.0.2.1, < 8.1)
   retryable
   rspec-benchmark
@@ -528,9 +529,10 @@ DEPENDENCIES
   sprockets-rails
   thin
   timecop
+  uri (~> 1.0, >= 1.0.4)
   vcr
   webmock
   xmlrpc
 
 BUNDLED WITH
-   2.6.9
+   2.5.22

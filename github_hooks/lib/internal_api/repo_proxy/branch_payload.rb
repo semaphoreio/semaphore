@@ -1,5 +1,7 @@
 module InternalApi::RepoProxy
   class BranchPayload
+    include UserInfo
+
     SHA_REGEXP = /\A[0-9a-f]{40}\z/
 
     def initialize(ref, sha)
@@ -16,10 +18,7 @@ module InternalApi::RepoProxy
       branch_commit = repo_host.commit(project.repo_owner_and_name, commit_sha(sha, reference))
 
       repo_url = branch_commit[:html_url].split("/").first(5).join("/")
-      author_name  = user.github_repo_host_account.name
-      author_email = user.email
-      github_uid = user.github_repo_host_account.github_uid
-      avatar = ::Avatar.avatar_url(github_uid)
+      author_name, author_email, github_uid, avatar, _login = user_info(user)
 
       commit = {
         "message" => branch_commit.commit.message,
