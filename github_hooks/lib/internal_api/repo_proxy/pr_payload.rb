@@ -1,5 +1,7 @@
 module InternalApi::RepoProxy
   class PrPayload
+    include UserInfo
+
     class PrNotMergeableError < StandardError; end
 
     def initialize(ref, number)
@@ -35,10 +37,7 @@ module InternalApi::RepoProxy
       }
 
       repo_url = pr[:html_url].split("/").first(5).join("/")
-      author_name  = user.github_repo_host_account.name
-      author_email = user.email
-      github_uid = user.github_repo_host_account.github_uid
-      avatar = ::Avatar.avatar_url(github_uid)
+      author_name, author_email, github_uid, avatar, login = user_info(user)
 
       {
         "semaphore_ref" => meta[:ref],
@@ -69,7 +68,7 @@ module InternalApi::RepoProxy
         "sender" => {
           "id" => github_uid,
           "avatar_url" => avatar,
-          "login" => author_name
+          "login" => login.presence || author_name
         }
       }
     end
@@ -77,5 +76,6 @@ module InternalApi::RepoProxy
     private
 
     attr_reader :ref, :number
+
   end
 end

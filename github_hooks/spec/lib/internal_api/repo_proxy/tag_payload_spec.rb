@@ -37,8 +37,8 @@ RSpec.describe InternalApi::RepoProxy::TagPayload do
   let(:user) do
     host_account = Struct.new(:name, :github_uid, :login)
                          .new("Alice", 123, "alice")
-    Struct.new(:github_repo_host_account, :email)
-          .new(host_account, "alice@example.com")
+    Struct.new(:github_repo_host_account, :email, :name)
+          .new(host_account, "alice@example.com", "Alice")
   end
 
   let(:tag_commit) do
@@ -82,6 +82,21 @@ RSpec.describe InternalApi::RepoProxy::TagPayload do
       expect(commit["author"]["username"]).to eq("alice")
       expect(commit["id"]).to eq("abc123")
       expect(commit["message"]).to eq("Tag commit")
+    end
+
+    context "when user has no repo host account" do
+      subject(:payload_without_account) { described_class.new(ref).call(project, user_without_repo_host_account) }
+
+      let(:user_without_repo_host_account) do
+        Struct.new(:github_repo_host_account, :email, :name)
+              .new(nil, "alice@example.com", "Alice")
+      end
+
+      it "uses the user's name and email for pusher data" do
+        expect(payload_without_account["pusher"]["name"]).to eq("Alice")
+        expect(payload_without_account["pusher"]["email"]).to eq("alice@example.com")
+        expect(payload_without_account["sender"]["id"]).to be_nil
+      end
     end
   end
 

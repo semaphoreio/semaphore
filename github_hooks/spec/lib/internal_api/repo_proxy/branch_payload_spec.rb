@@ -34,8 +34,8 @@ RSpec.describe InternalApi::RepoProxy::BranchPayload do
   let(:user) do
     host_account = Struct.new(:name, :github_uid, :login)
                          .new("Alice", 123, "alice")
-    Struct.new(:github_repo_host_account, :email)
-          .new(host_account, "alice@example.com")
+    Struct.new(:github_repo_host_account, :email, :name)
+          .new(host_account, "alice@example.com", "Alice")
   end
 
   let(:branch_commit) do
@@ -79,6 +79,35 @@ RSpec.describe InternalApi::RepoProxy::BranchPayload do
       expect(commit["author"]["username"]).to eq("alice")
       expect(commit["id"]).to eq(sha)
       expect(commit["message"]).to eq("Branch commit")
+    end
+
+    context "when user has no repo host account" do
+      subject(:payload_without_account) { described_class.new(ref, sha).call(project, user_without_repo_host_account) }
+
+      let(:user_without_repo_host_account) do
+        Struct.new(:github_repo_host_account, :email, :name)
+              .new(nil, "alice@example.com", "Alice")
+      end
+
+      it "uses the user's name and email for pusher data" do
+        expect(payload_without_account["pusher"]["name"]).to eq("Alice")
+        expect(payload_without_account["pusher"]["email"]).to eq("alice@example.com")
+        expect(payload_without_account["sender"]["id"]).to be_nil
+      end
+    end
+
+    context "when user name differs from repo host account name" do
+      subject(:payload_with_custom_name) { described_class.new(ref, sha).call(project, user_with_custom_name) }
+
+      let(:host_account) { Struct.new(:name, :github_uid, :login).new("Repo Name", 999, "alice") }
+      let(:user_with_custom_name) do
+        Struct.new(:github_repo_host_account, :email, :name)
+              .new(host_account, "alice@example.com", "Displayed Alice")
+      end
+
+      it "uses the user's name for pusher data" do
+        expect(payload_with_custom_name["pusher"]["name"]).to eq("Displayed Alice")
+      end
     end
   end
 
