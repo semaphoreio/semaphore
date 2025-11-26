@@ -21,15 +21,15 @@ import (
 )
 
 const (
-	testOrgID      = "11111111-1111-1111-1111-111111111111"
-	testOrgIDOther = "22222222-2222-2222-2222-222222222222"
-	testProjectID  = "33333333-3333-3333-3333-333333333333"
+	testOrgID          = "11111111-1111-1111-1111-111111111111"
+	testOrgIDOther     = "22222222-2222-2222-2222-222222222222"
+	testProjectID      = "33333333-3333-3333-3333-333333333333"
 	testProjectIDOther = "44444444-4444-4444-4444-444444444444"
-	testPipelineID = "55555555-5555-5555-5555-555555555555"
-	testWorkflowID = "66666666-6666-6666-6666-666666666666"
-	testJobID      = "77777777-7777-7777-7777-777777777777"
-	testUserID     = "88888888-8888-8888-8888-888888888888"
-	testStoreID    = "99999999-9999-9999-9999-999999999999"
+	testPipelineID     = "55555555-5555-5555-5555-555555555555"
+	testWorkflowID     = "66666666-6666-6666-6666-666666666666"
+	testJobID          = "77777777-7777-7777-7777-777777777777"
+	testUserID         = "88888888-8888-8888-8888-888888888888"
+	testStoreID        = "99999999-9999-9999-9999-999999999999"
 )
 
 func TestSignedURL_PublicProject_AllowsGuest(t *testing.T) {
@@ -131,6 +131,54 @@ func TestSignedURL_PrivateProject_WithPermission(t *testing.T) {
 	}
 	if content["artifactUrl"] != "https://example.com/private.json" {
 		t.Fatalf("unexpected url: %+v", content)
+	}
+}
+
+func TestDescribeProject_PassesMetadata(t *testing.T) {
+	projectClient := &projectStub{orgID: testOrgID, projectID: testProjectID, public: false, artifactStoreID: testStoreID}
+
+	provider := &support.MockProvider{
+		Timeout:           time.Second,
+		FeaturesService:   support.FeatureClientStub{State: feature.Enabled},
+		ArtifacthubClient: &artifacthubStub{url: "https://example.com/private.json"},
+		ProjectClient:     projectClient,
+		PipelineClient:    &pipelineStub{orgID: testOrgID, projectID: testProjectID, workflowID: testWorkflowID},
+		RBACClient:        &rbacStub{perms: []string{"project.view"}},
+	}
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"organization_id": testOrgID,
+		"project_id":      testProjectID,
+		"scope":           "pipeline",
+		"pipeline_id":     testPipelineID,
+		"workflow_id":     testWorkflowID,
+	}}}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", testUserID)
+	req.Header = header
+
+	res, err := handler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+	if res == nil || res.StructuredContent == nil {
+		t.Fatalf("expected structured content on success")
+	}
+	if projectClient.lastDescribe == nil {
+		t.Fatalf("expected project describe to be called")
+	}
+	meta := projectClient.lastDescribe.GetMetadata()
+	if meta == nil {
+		t.Fatalf("expected metadata to be set on project describe request")
+	}
+	if meta.GetOrgId() != testOrgID {
+		t.Fatalf("expected org_id %s, got: %s", testOrgID, meta.GetOrgId())
+	}
+	if meta.GetUserId() != testUserID {
+		t.Fatalf("expected user_id %s, got: %s", testUserID, meta.GetUserId())
+	}
+	if strings.TrimSpace(meta.GetReqId()) == "" {
+		t.Fatalf("expected req_id to be populated")
 	}
 }
 
@@ -312,9 +360,12 @@ type projectStub struct {
 	projectID       string
 	public          bool
 	artifactStoreID string
+	lastDescribe    *projecthubpb.DescribeRequest
 }
 
 func (p *projectStub) Describe(ctx context.Context, req *projecthubpb.DescribeRequest, opts ...grpc.CallOption) (*projecthubpb.DescribeResponse, error) {
+	p.lastDescribe = req
+
 	visibility := projecthubpb.Project_Spec_PRIVATE
 	if p.public {
 		visibility = projecthubpb.Project_Spec_PUBLIC

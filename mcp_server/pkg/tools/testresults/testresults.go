@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/sirupsen/logrus"
@@ -128,6 +129,13 @@ func handler(api internalapi.Provider) server.ToolHandlerFunc {
 			return mcp.NewToolResultError("scope must be 'job' or 'pipeline'."), nil
 		}
 
+		userID := strings.ToLower(strings.TrimSpace(req.Header.Get("X-Semaphore-User-ID")))
+		if userID != "" {
+			if err := shared.ValidateUUID(userID, "x-semaphore-user-id header"); err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+		}
+
 		tracker := shared.TrackToolExecution(ctx, toolName, orgID)
 		defer tracker.Cleanup()
 
@@ -135,7 +143,7 @@ func handler(api internalapi.Provider) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		project, err := describeProject(ctx, api, projectID)
+		project, err := describeProject(ctx, api, orgID, userID, projectID)
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -162,17 +170,11 @@ func handler(api internalapi.Provider) server.ToolHandlerFunc {
 			return shared.ScopeMismatchError(toolName, "organization"), nil
 		}
 
-		userID := strings.ToLower(strings.TrimSpace(req.Header.Get("X-Semaphore-User-ID")))
 		projectPublic := isProjectPublic(project)
 		if userID == "" && !projectPublic {
 			return mcp.NewToolResultError(`Missing X-Semaphore-User-ID header.
 
 This tool enforces project permissions before returning signed URLs. Provide the authenticated user ID (UUID) in the header, or ensure the project is public to allow guest access.`), nil
-		}
-		if userID != "" {
-			if err := shared.ValidateUUID(userID, "x-semaphore-user-id header"); err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
 		}
 		if !projectPublic {
 			if err := authz.CheckProjectPermission(ctx, api, userID, orgID, projectID, projectViewPermission); err != nil {
@@ -330,7 +332,7 @@ func formatResultMarkdown(scope, path, url string) string {
 	return mb.String()
 }
 
-func describeProject(ctx context.Context, api internalapi.Provider, projectID string) (*projecthubpb.Project, error) {
+func describeProject(ctx context.Context, api internalapi.Provider, orgID, userID, projectID string) (*projecthubpb.Project, error) {
 	client := api.Projects()
 	if client == nil {
 		return nil, fmt.Errorf("project gRPC endpoint is not configured")
@@ -338,12 +340,25 @@ func describeProject(ctx context.Context, api internalapi.Provider, projectID st
 	callCtx, cancel := context.WithTimeout(ctx, api.CallTimeout())
 	defer cancel()
 
-	resp, err := client.Describe(callCtx, &projecthubpb.DescribeRequest{Id: projectID})
+	req := &projecthubpb.DescribeRequest{
+		Id: projectID,
+		Metadata: &projecthubpb.RequestMeta{
+			ApiVersion: "v1alpha",
+			Kind:       "Project",
+			OrgId:      strings.TrimSpace(orgID),
+			UserId:     strings.TrimSpace(userID),
+			ReqId:      uuid.NewString(),
+		},
+	}
+
+	resp, err := client.Describe(callCtx, req)
 	if err != nil {
 		logging.ForComponent("rpc").
 			WithFields(logrus.Fields{
 				"rpc":       "project.Describe",
 				"projectId": projectID,
+				"orgId":     orgID,
+				"userId":    userID,
 			}).
 			WithError(err).
 			Error("describe project RPC failed")
