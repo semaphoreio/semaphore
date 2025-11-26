@@ -388,12 +388,14 @@ defmodule InternalApi.Artifacthub.ListItem do
 
   @type t :: %__MODULE__{
           name: String.t(),
-          is_directory: boolean
+          is_directory: boolean,
+          size: integer
         }
-  defstruct [:name, :is_directory]
+  defstruct [:name, :is_directory, :size]
 
   field(:name, 1, type: :string)
   field(:is_directory, 2, type: :bool)
+  field(:size, 3, type: :int64)
 end
 
 defmodule InternalApi.Artifacthub.Artifact do
