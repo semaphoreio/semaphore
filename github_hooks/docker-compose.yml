@@ -15,6 +15,9 @@ services:
       - "3000:3000"
     volumes:
       - .:/app
+      - /app/vendor
+      - /app/.bundle
+
     links:
       - db:db
       - redis:redis
