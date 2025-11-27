@@ -2,6 +2,7 @@ defmodule Support.StubbedProvider do
   use FeatureProvider.Provider
 
   @e1_to_f1_org_id "org-e1-to-f1-enabled"
+  @e2_to_f1_org_id "org-e2-to-f1-enabled"
 
   @impl FeatureProvider.Provider
   def provide_features(org_id \\ nil, _opts \\ []) do
@@ -11,11 +12,13 @@ defmodule Support.StubbedProvider do
        feature("cache_cli_parallel_archive_method", [:hidden]),
        feature("some_custom_feature", [:hidden]),
        max_job_time_limit_feature(org_id),
-       feature("e1_to_f1_migration", e1_to_f1_traits(org_id))
+       feature("e1_to_f1_migration", e1_to_f1_traits(org_id)),
+       feature("e2_to_f1_migration", e2_to_f1_traits(org_id))
      ]}
   end
 
   def e1_to_f1_org_id, do: @e1_to_f1_org_id
+  def e2_to_f1_org_id, do: @e2_to_f1_org_id
 
   defp max_job_time_limit_feature("enabled_30") do
     feature("max_job_execution_time_limit", [:enabled, {:quantity, 30}])
@@ -31,6 +34,9 @@ defmodule Support.StubbedProvider do
 
   defp e1_to_f1_traits(@e1_to_f1_org_id), do: [:enabled]
   defp e1_to_f1_traits(_org_id), do: [:hidden]
+
+  defp e2_to_f1_traits(@e2_to_f1_org_id), do: [:enabled]
+  defp e2_to_f1_traits(_org_id), do: [:hidden]
 
   @impl FeatureProvider.Provider
   def provide_machines(_org_id \\ nil, _opts \\ []) do
