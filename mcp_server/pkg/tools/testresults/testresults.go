@@ -295,9 +295,11 @@ This tool enforces project permissions before returning signed URLs. Provide the
 				mcp.NewTextContent(markdown),
 			},
 			StructuredContent: map[string]string{
-				"scope":       scope,
-				"artifactUrl": url,
-				"path":        path,
+				"scope":        scope,
+				"artifactUrl":  url,
+				"path":         path,
+				"compression":  "gzip",
+				"content_type": "application/json",
 			},
 		}, nil
 	}
@@ -309,8 +311,9 @@ func formatResultMarkdown(scope, path, url string) string {
 	mb.KeyValue("Scope", scope)
 	mb.KeyValue("Path", fmt.Sprintf("`%s`", path))
 	mb.KeyValue("URL", url)
+	mb.KeyValue("Compression", "gzip (decompress after download)")
 	mb.Line()
-	mb.Paragraph("This URL is short-lived. Fetch it promptly or request a new URL if expired.")
+	mb.Paragraph("This URL is short-lived. Fetch it promptly or request a new URL if expired. Downloaded JSON is gzip-compressed; gunzip before parsing.")
 	return mb.String()
 }
 

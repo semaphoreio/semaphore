@@ -126,6 +126,9 @@ func TestSignedURL_PrivateProject_WithPermission(t *testing.T) {
 	if content["artifactUrl"] != "https://example.com/private.json" {
 		t.Fatalf("unexpected url: %+v", content)
 	}
+	if content["compression"] != "gzip" {
+		t.Fatalf("expected compression=gzip, got: %s", content["compression"])
+	}
 }
 
 func TestDescribeProject_PassesMetadata(t *testing.T) {
@@ -210,6 +213,9 @@ func TestSignedURL_JobScope_WithPermission(t *testing.T) {
 	if content["path"] != expectedPath {
 		t.Fatalf("expected path=%s, got: %s", expectedPath, content["path"])
 	}
+	if content["compression"] != "gzip" {
+		t.Fatalf("expected compression=gzip, got: %s", content["compression"])
+	}
 }
 
 func TestSignedURL_JobScope_PublicProject_AllowsGuest(t *testing.T) {
@@ -238,6 +244,9 @@ func TestSignedURL_JobScope_PublicProject_AllowsGuest(t *testing.T) {
 	}
 	if content["artifactUrl"] != "https://example.com/public-job.json" {
 		t.Fatalf("unexpected url: %+v", content)
+	}
+	if content["compression"] != "gzip" {
+		t.Fatalf("expected compression=gzip, got: %s", content["compression"])
 	}
 }
 
