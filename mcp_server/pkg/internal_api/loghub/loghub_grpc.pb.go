@@ -19,7 +19,7 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Loghub_GetLogEvents_FullMethodName = "/InternalApi.Loghub.Loghub/GetLogEvents" // #nosec G101 -- gRPC method name, not credential
+	Loghub_GetLogEvents_FullMethodName = "/InternalApi.Loghub.Loghub/GetLogEvents"
 )
 
 // LoghubClient is the client API for Loghub service.
