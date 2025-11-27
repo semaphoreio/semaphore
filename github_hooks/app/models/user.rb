@@ -8,9 +8,8 @@ class User < ActiveRecord::Base
   def github_repo_host_account
     account = repo_host_account(::Repository::GITHUB_PROVIDER)
     return account if account.present?
-    return synthetic_repo_host_account if service_account?
 
-    nil
+    synthetic_repo_host_account
   end
 
   def bitbucket_repo_host_account
@@ -39,19 +38,26 @@ class User < ActiveRecord::Base
     end
 
     def name
-      user.name || "Service Account"
+      user.name || fallback_name
     end
 
     def github_uid
-      "service_account_#{user.id}".hash.abs.to_s
+      prefix = user.service_account? ? "service_account" : "user"
+      "#{prefix}_#{user.id}".hash.abs.to_s
     end
 
     def login
-      "service-account"
+      user.service_account? ? "service-account" : github_uid
     end
 
     def repo_host
       ::Repository::GITHUB_PROVIDER
+    end
+
+    private
+
+    def fallback_name
+      user.service_account? ? "Service Account" : ""
     end
   end
 end
