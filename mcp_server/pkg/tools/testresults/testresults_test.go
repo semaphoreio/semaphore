@@ -45,11 +45,9 @@ func TestSignedURL_PublicProject_AllowsGuest(t *testing.T) {
 	}
 
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
-		"organization_id": testOrgID,
-		"project_id":      testProjectID,
-		"scope":           "pipeline",
-		"pipeline_id":     testPipelineID,
-		"workflow_id":     testWorkflowID,
+		"scope":       "pipeline",
+		"pipeline_id": testPipelineID,
+		"workflow_id": testWorkflowID,
 	}}}
 	// No user header (guest)
 
@@ -80,11 +78,9 @@ func TestSignedURL_PrivateProject_MissingUserHeader(t *testing.T) {
 	}
 
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
-		"organization_id": testOrgID,
-		"project_id":      testProjectID,
-		"scope":           "pipeline",
-		"pipeline_id":     testPipelineID,
-		"workflow_id":     testWorkflowID,
+		"scope":       "pipeline",
+		"pipeline_id": testPipelineID,
+		"workflow_id": testWorkflowID,
 	}}}
 
 	res, err := handler(provider)(context.Background(), req)
@@ -111,11 +107,9 @@ func TestSignedURL_PrivateProject_WithPermission(t *testing.T) {
 	}
 
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
-		"organization_id": testOrgID,
-		"project_id":      testProjectID,
-		"scope":           "pipeline",
-		"pipeline_id":     testPipelineID,
-		"workflow_id":     testWorkflowID,
+		"scope":       "pipeline",
+		"pipeline_id": testPipelineID,
+		"workflow_id": testWorkflowID,
 	}}}
 	header := http.Header{}
 	header.Set("X-Semaphore-User-ID", testUserID)
@@ -147,11 +141,9 @@ func TestDescribeProject_PassesMetadata(t *testing.T) {
 	}
 
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
-		"organization_id": testOrgID,
-		"project_id":      testProjectID,
-		"scope":           "pipeline",
-		"pipeline_id":     testPipelineID,
-		"workflow_id":     testWorkflowID,
+		"scope":       "pipeline",
+		"pipeline_id": testPipelineID,
+		"workflow_id": testWorkflowID,
 	}}}
 	header := http.Header{}
 	header.Set("X-Semaphore-User-ID", testUserID)
@@ -193,10 +185,8 @@ func TestSignedURL_JobScope_WithPermission(t *testing.T) {
 	}
 
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
-		"organization_id": testOrgID,
-		"project_id":      testProjectID,
-		"scope":           "job",
-		"job_id":          testJobID,
+		"scope":  "job",
+		"job_id": testJobID,
 	}}}
 	header := http.Header{}
 	header.Set("X-Semaphore-User-ID", testUserID)
@@ -216,7 +206,7 @@ func TestSignedURL_JobScope_WithPermission(t *testing.T) {
 	if content["scope"] != "job" {
 		t.Fatalf("expected scope=job, got: %s", content["scope"])
 	}
-	expectedPath := "jobs/" + testJobID + "/test-results/junit.json"
+	expectedPath := "artifacts/jobs/" + testJobID + "/test-results/junit.json"
 	if content["path"] != expectedPath {
 		t.Fatalf("expected path=%s, got: %s", expectedPath, content["path"])
 	}
@@ -233,10 +223,8 @@ func TestSignedURL_JobScope_PublicProject_AllowsGuest(t *testing.T) {
 	}
 
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
-		"organization_id": testOrgID,
-		"project_id":      testProjectID,
-		"scope":           "job",
-		"job_id":          testJobID,
+		"scope":  "job",
+		"job_id": testJobID,
 	}}}
 	// No user header (guest)
 
@@ -264,9 +252,7 @@ func TestSignedURL_JobScope_MissingJobID(t *testing.T) {
 	}
 
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
-		"organization_id": testOrgID,
-		"project_id":      testProjectID,
-		"scope":           "job",
+		"scope": "job",
 		// job_id is missing
 	}}}
 
@@ -294,10 +280,8 @@ func TestSignedURL_JobScope_OrgMismatch(t *testing.T) {
 	}
 
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
-		"organization_id": testOrgID,
-		"project_id":      testProjectID,
-		"scope":           "job",
-		"job_id":          testJobID,
+		"scope":  "job",
+		"job_id": testJobID,
 	}}}
 
 	res, err := handler(provider)(context.Background(), req)
@@ -324,10 +308,8 @@ func TestSignedURL_JobScope_ProjectMismatch(t *testing.T) {
 	}
 
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
-		"organization_id": testOrgID,
-		"project_id":      testProjectID,
-		"scope":           "job",
-		"job_id":          testJobID,
+		"scope":  "job",
+		"job_id": testJobID,
 	}}}
 
 	res, err := handler(provider)(context.Background(), req)

@@ -38,10 +38,10 @@ Scopes:
 
 Examples:
 1. Get job-level test results:
-   get_test_results(organization_id="...", project_id="...", scope="job", job_id="...")
+   get_test_results(scope="job", job_id="...")
 
 2. Get pipeline-level test results:
-   get_test_results(organization_id="...", project_id="...", scope="pipeline", pipeline_id="...", workflow_id="...")
+   get_test_results(scope="pipeline", pipeline_id="...", workflow_id="...")
 
 Typical workflow:
 1. Use pipelines_list or pipeline_jobs to identify the job/pipeline ID
@@ -61,18 +61,6 @@ func newTool() mcp.Tool {
 	return mcp.NewTool(
 		toolName,
 		mcp.WithDescription(fullDescription()),
-		mcp.WithString(
-			"organization_id",
-			mcp.Required(),
-			mcp.Description("Organization UUID context for this request. Get this from organizations_list. Format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx."),
-			mcp.Pattern(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`),
-		),
-		mcp.WithString(
-			"project_id",
-			mcp.Required(),
-			mcp.Description("Project UUID that owns the artifacts. Get this from projects_list or jobs_describe. Format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx."),
-			mcp.Pattern(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`),
-		),
 		mcp.WithString(
 			"scope",
 			mcp.Required(),
@@ -102,24 +90,6 @@ func newTool() mcp.Tool {
 
 func handler(api internalapi.Provider) server.ToolHandlerFunc {
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		orgID, err := req.RequireString("organization_id")
-		if err != nil {
-			return mcp.NewToolResultError("organization_id is required."), nil
-		}
-		orgID = strings.TrimSpace(orgID)
-		if err := shared.ValidateUUID(orgID, "organization_id"); err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
-		}
-
-		projectID, err := req.RequireString("project_id")
-		if err != nil {
-			return mcp.NewToolResultError("project_id is required."), nil
-		}
-		projectID = strings.TrimSpace(projectID)
-		if err := shared.ValidateUUID(projectID, "project_id"); err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
-		}
-
 		scope, err := req.RequireString("scope")
 		if err != nil {
 			return mcp.NewToolResultError("scope is required (job|pipeline)."), nil
@@ -136,8 +106,118 @@ func handler(api internalapi.Provider) server.ToolHandlerFunc {
 			}
 		}
 
-		tracker := shared.TrackToolExecution(ctx, toolName, orgID)
-		defer tracker.Cleanup()
+		var tracker *shared.ToolExecutionTracker
+		defer func() {
+			if tracker != nil {
+				tracker.Cleanup()
+			}
+		}()
+		ensureTracker := func(orgID string) {
+			if tracker == nil {
+				tracker = shared.TrackToolExecution(ctx, toolName, orgID)
+			}
+		}
+
+		var orgID string
+		var projectID string
+		var path string
+
+		switch scope {
+		case "job":
+			jobID, err := req.RequireString("job_id")
+			if err != nil {
+				ensureTracker("")
+				return mcp.NewToolResultError(`job_id is required when scope=job.
+
+Provide the job UUID from jobs_describe or pipeline_jobs. Example:
+test_results_signed_url(scope="job", job_id="11111111-2222-3333-4444-555555555555")`), nil
+			}
+			jobID = strings.TrimSpace(jobID)
+			if err := shared.ValidateUUID(jobID, "job_id"); err != nil {
+				ensureTracker("")
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			job, err := fetchJob(ctx, api, jobID)
+			if err != nil {
+				ensureTracker("")
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			orgID = strings.TrimSpace(job.GetOrganizationId())
+			projectID = strings.TrimSpace(job.GetProjectId())
+			if err := shared.ValidateUUID(orgID, "job organization_id"); err != nil {
+				ensureTracker("")
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			if err := shared.ValidateUUID(projectID, "job project_id"); err != nil {
+				ensureTracker("")
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			path = fmt.Sprintf("artifacts/jobs/%s/test-results/junit.json", jobID)
+		case "pipeline":
+			pipelineID, err := req.RequireString("pipeline_id")
+			if err != nil {
+				ensureTracker("")
+				return mcp.NewToolResultError(`pipeline_id is required when scope=pipeline.
+
+Provide the pipeline UUID from pipelines_list. Example:
+test_results_signed_url(scope="pipeline", pipeline_id="...", workflow_id="...")`), nil
+			}
+			pipelineID = strings.TrimSpace(pipelineID)
+			if err := shared.ValidateUUID(pipelineID, "pipeline_id"); err != nil {
+				ensureTracker("")
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			workflowID, err := req.RequireString("workflow_id")
+			if err != nil {
+				ensureTracker("")
+				return mcp.NewToolResultError(`workflow_id is required when scope=pipeline.
+
+Provide the workflow UUID from workflows_search. The pipeline must belong to this workflow. Example:
+test_results_signed_url(scope="pipeline", pipeline_id="...", workflow_id="...")`), nil
+			}
+			workflowID = strings.TrimSpace(workflowID)
+			if err := shared.ValidateUUID(workflowID, "workflow_id"); err != nil {
+				ensureTracker("")
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			pipeline, err := describePipeline(ctx, api, pipelineID)
+			if err != nil {
+				ensureTracker("")
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			orgID = strings.TrimSpace(pipeline.GetOrganizationId())
+			projectID = strings.TrimSpace(pipeline.GetProjectId())
+			pipelineWorkflowID := strings.TrimSpace(pipeline.GetWfId())
+			if err := shared.ValidateUUID(orgID, "pipeline organization_id"); err != nil {
+				ensureTracker("")
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			if err := shared.ValidateUUID(projectID, "pipeline project_id"); err != nil {
+				ensureTracker("")
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			if err := shared.ValidateUUID(pipelineWorkflowID, "pipeline workflow_id"); err != nil {
+				ensureTracker("")
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			if !sameID(pipelineWorkflowID, workflowID) {
+				ensureTracker(orgID)
+				shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
+					Tool:              toolName,
+					ResourceType:      "pipeline",
+					ResourceID:        pipelineID,
+					RequestOrgID:      orgID,
+					ResourceOrgID:     pipeline.GetOrganizationId(),
+					RequestProjectID:  projectID,
+					ResourceProjectID: pipeline.GetProjectId(),
+				})
+				return shared.ScopeMismatchError(toolName, "workflow"), nil
+			}
+			path = fmt.Sprintf("artifacts/workflows/%s/test-results/%s.json", pipelineWorkflowID, pipelineID)
+		}
+
+		ensureTracker(orgID)
 
 		if err := shared.EnsureReadToolsFeature(ctx, api, orgID); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
@@ -169,6 +249,18 @@ func handler(api internalapi.Provider) server.ToolHandlerFunc {
 			})
 			return shared.ScopeMismatchError(toolName, "organization"), nil
 		}
+		if projectMetaID != "" && !sameID(projectMetaID, projectID) {
+			shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
+				Tool:              toolName,
+				ResourceType:      "project",
+				ResourceID:        projectMetaID,
+				RequestOrgID:      orgID,
+				ResourceOrgID:     projectOrgID,
+				RequestProjectID:  projectID,
+				ResourceProjectID: projectMetaID,
+			})
+			return shared.ScopeMismatchError(toolName, "project"), nil
+		}
 
 		projectPublic := isProjectPublic(project)
 		if userID == "" && !projectPublic {
@@ -188,116 +280,6 @@ This tool enforces project permissions before returning signed URLs. Provide the
 		}
 		if storeID == "" {
 			return mcp.NewToolResultError("project is missing an artifact_store_id; cannot generate signed URLs"), nil
-		}
-
-		var path string
-		switch scope {
-		case "job":
-			jobID, err := req.RequireString("job_id")
-			if err != nil {
-				return mcp.NewToolResultError(`job_id is required when scope=job.
-
-Provide the job UUID from jobs_describe or pipeline_jobs. Example:
-test_results_signed_url(organization_id="...", project_id="...", scope="job", job_id="11111111-2222-3333-4444-555555555555")`), nil
-			}
-			jobID = strings.TrimSpace(jobID)
-			if err := shared.ValidateUUID(jobID, "job_id"); err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			job, err := fetchJob(ctx, api, jobID)
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			if !sameID(job.GetOrganizationId(), orgID) {
-				shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
-					Tool:              toolName,
-					ResourceType:      "job",
-					ResourceID:        jobID,
-					RequestOrgID:      orgID,
-					ResourceOrgID:     job.GetOrganizationId(),
-					RequestProjectID:  projectID,
-					ResourceProjectID: job.GetProjectId(),
-				})
-				return shared.ScopeMismatchError(toolName, "organization"), nil
-			}
-			if !sameID(job.GetProjectId(), projectID) {
-				shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
-					Tool:              toolName,
-					ResourceType:      "job",
-					ResourceID:        jobID,
-					RequestOrgID:      orgID,
-					ResourceOrgID:     job.GetOrganizationId(),
-					RequestProjectID:  projectID,
-					ResourceProjectID: job.GetProjectId(),
-				})
-				return shared.ScopeMismatchError(toolName, "project"), nil
-			}
-			path = fmt.Sprintf("jobs/%s/test-results/junit.json", jobID)
-		case "pipeline":
-			pipelineID, err := req.RequireString("pipeline_id")
-			if err != nil {
-				return mcp.NewToolResultError(`pipeline_id is required when scope=pipeline.
-
-Provide the pipeline UUID from pipelines_list. Example:
-test_results_signed_url(organization_id="...", project_id="...", scope="pipeline", pipeline_id="...", workflow_id="...")`), nil
-			}
-			pipelineID = strings.TrimSpace(pipelineID)
-			if err := shared.ValidateUUID(pipelineID, "pipeline_id"); err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			workflowID, err := req.RequireString("workflow_id")
-			if err != nil {
-				return mcp.NewToolResultError(`workflow_id is required when scope=pipeline.
-
-Provide the workflow UUID from workflows_search. The pipeline must belong to this workflow. Example:
-test_results_signed_url(organization_id="...", project_id="...", scope="pipeline", pipeline_id="...", workflow_id="...")`), nil
-			}
-			workflowID = strings.TrimSpace(workflowID)
-			if err := shared.ValidateUUID(workflowID, "workflow_id"); err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-
-			pipeline, err := describePipeline(ctx, api, pipelineID)
-			if err != nil {
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			if !sameID(pipeline.GetOrganizationId(), orgID) {
-				shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
-					Tool:              toolName,
-					ResourceType:      "pipeline",
-					ResourceID:        pipelineID,
-					RequestOrgID:      orgID,
-					ResourceOrgID:     pipeline.GetOrganizationId(),
-					RequestProjectID:  projectID,
-					ResourceProjectID: pipeline.GetProjectId(),
-				})
-				return shared.ScopeMismatchError(toolName, "organization"), nil
-			}
-			if !sameID(pipeline.GetProjectId(), projectID) {
-				shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
-					Tool:              toolName,
-					ResourceType:      "pipeline",
-					ResourceID:        pipelineID,
-					RequestOrgID:      orgID,
-					ResourceOrgID:     pipeline.GetOrganizationId(),
-					RequestProjectID:  projectID,
-					ResourceProjectID: pipeline.GetProjectId(),
-				})
-				return shared.ScopeMismatchError(toolName, "project"), nil
-			}
-			if !sameID(pipeline.GetWfId(), workflowID) {
-				shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
-					Tool:              toolName,
-					ResourceType:      "pipeline",
-					ResourceID:        pipelineID,
-					RequestOrgID:      orgID,
-					ResourceOrgID:     pipeline.GetOrganizationId(),
-					RequestProjectID:  projectID,
-					ResourceProjectID: pipeline.GetProjectId(),
-				})
-				return shared.ScopeMismatchError(toolName, "workflow"), nil
-			}
-			path = fmt.Sprintf("workflows/%s/test-results/%s.json", workflowID, pipelineID)
 		}
 
 		url, err := signedURL(ctx, api, storeID, path)
