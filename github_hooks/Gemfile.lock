@@ -148,6 +148,7 @@ GEM
     faraday-net_http (1.0.2)
     faraday_middleware (1.2.1)
       faraday (~> 1.0)
+    ffi (1.17.2-aarch64-linux-gnu)
     ffi (1.17.2-arm-linux-gnu)
     ffi (1.17.2-arm-linux-musl)
     ffi (1.17.2-x86_64-linux-gnu)
@@ -157,9 +158,17 @@ GEM
     globalid (1.2.1)
       activesupport (>= 6.1)
     google-protobuf (3.25.8)
+    google-protobuf (3.25.8-aarch64-linux)
+    google-protobuf (3.25.8-x86_64-linux)
     googleapis-common-protos-types (1.18.0)
       google-protobuf (>= 3.18, < 5.a)
     grpc (1.62.3)
+      google-protobuf (~> 3.25)
+      googleapis-common-protos-types (~> 1.0)
+    grpc (1.62.3-aarch64-linux)
+      google-protobuf (~> 3.25)
+      googleapis-common-protos-types (~> 1.0)
+    grpc (1.62.3-x86_64-linux)
       google-protobuf (~> 3.25)
       googleapis-common-protos-types (~> 1.0)
     grpc-tools (1.74.1)
@@ -228,6 +237,8 @@ GEM
     net-smtp (0.5.1)
       net-protocol
     nio4r (2.7.4)
+    nokogiri (1.18.9-aarch64-linux-gnu)
+      racc (~> 1.4)
     nokogiri (1.18.9-arm-linux-gnu)
       racc (~> 1.4)
     nokogiri (1.18.9-arm-linux-musl)
@@ -242,6 +253,7 @@ GEM
       ast (~> 2.4.1)
       racc
     pg (1.6.1)
+    pg (1.6.1-aarch64-linux)
     pg (1.6.1-x86_64-linux)
     pp (0.6.2)
       prettyprint
@@ -261,7 +273,7 @@ GEM
       nio4r (~> 2.0)
     raabro (1.4.0)
     racc (1.8.1)
-    rack (2.2.17)
+    rack (2.2.20)
     rack-session (1.0.2)
       rack (< 3)
     rack-test (2.2.0)
@@ -446,7 +458,7 @@ GEM
       unicode-emoji (~> 4.0, >= 4.0.4)
     unicode-emoji (4.0.4)
     uniform_notifier (1.17.0)
-    uri (1.0.3)
+    uri (1.0.4)
     useragent (0.16.11)
     vcr (6.3.1)
       base64
@@ -467,6 +479,7 @@ GEM
     zeitwerk (2.7.3)
 
 PLATFORMS
+  aarch64-linux
   arm-linux-gnu
   arm-linux-musl
   x86_64-linux
@@ -499,6 +512,7 @@ DEPENDENCIES
   pg (~> 1.1)
   pry-byebug (~> 3.10, >= 3.10.1)
   puma
+  rack (~> 2.2.20)
   rails (>= 8.0.2.1, < 8.1)
   retryable
   rspec-benchmark
@@ -528,9 +542,10 @@ DEPENDENCIES
   sprockets-rails
   thin
   timecop
+  uri (~> 1.0, >= 1.0.4)
   vcr
   webmock
   xmlrpc
 
 BUNDLED WITH
-   2.6.9
+   2.5.23
