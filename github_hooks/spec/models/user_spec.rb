@@ -41,10 +41,44 @@ RSpec.describe User, :type => :model do
     end
 
     context "when user is a regular user without github connection" do
-      let(:user) { FactoryBot.create(:user) }
+      let(:user) { FactoryBot.create(:user, name: "Regular User", email: "regular@example.com") }
 
-      it "returns nil" do
-        expect(user.github_repo_host_account).to be_nil
+      it "returns a synthetic account object" do
+        account = user.github_repo_host_account
+        expect(account).to be_a(User::SyntheticRepoHostAccount)
+      end
+
+      it "provides expected name from user.name" do
+        account = user.github_repo_host_account
+        expect(account.name).to eq("Regular User")
+      end
+
+      it "provides empty string fallback when name is nil" do
+        user.update!(name: nil)
+        account = user.github_repo_host_account
+        expect(account.name).to eq("")
+      end
+
+      it "provides a deterministic github_uid based on user id with 'user' prefix" do
+        account = user.github_repo_host_account
+        expected_uid = "user_#{user.id}".hash.abs.to_s
+        expect(account.github_uid).to eq(expected_uid)
+      end
+
+      it "provides github_uid as login" do
+        account = user.github_repo_host_account
+        expect(account.login).to eq(account.github_uid)
+      end
+
+      it "provides correct repo_host" do
+        account = user.github_repo_host_account
+        expect(account.repo_host).to eq(::Repository::GITHUB_PROVIDER)
+      end
+
+      it "caches the synthetic account object" do
+        account1 = user.github_repo_host_account
+        account2 = user.github_repo_host_account
+        expect(account1).to be(account2)
       end
     end
 
