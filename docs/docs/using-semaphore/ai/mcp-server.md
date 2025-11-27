@@ -172,6 +172,7 @@ Client error: HTTP status client error (401 Unauthorized) for url (https://mcp.s
 - [Service accounts](../service-accounts)
 - [MCP Usage Examples](./mcp-usage-examples)
 - [Self-healing CI](./self-healing-ci)
+- [Copilot Cloud Integration](./copilot-agent-cloud)
 
 
 
