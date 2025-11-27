@@ -24,6 +24,7 @@ import (
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/organizations"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/pipelines"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/projects"
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/testresults"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/workflows"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/watchman"
 	support "github.com/semaphoreio/semaphore/mcp_server/test/support"
@@ -109,6 +110,7 @@ func main() {
 	workflows.Register(srv, provider)
 	pipelines.Register(srv, provider)
 	jobs.Register(srv, provider)
+	testresults.Register(srv, provider)
 
 	mux := http.NewServeMux()
 	streamable := server.NewStreamableHTTPServer(

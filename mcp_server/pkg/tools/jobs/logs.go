@@ -40,13 +40,13 @@ Outputs:
 
 Examples:
 1. Fetch latest job logs:
-   jobs_logs(job_id="...", organization_id="...")
+   jobs_logs(job_id="...")
 
 2. Paginate through more logs:
-   jobs_logs(job_id="...", organization_id="...", cursor="next-page-token")
+   jobs_logs(job_id="...", cursor="next-page-token")
 
 3. Get logs for self-hosted job:
-   jobs_logs(job_id="...", organization_id="...")
+   jobs_logs(job_id="...")
 
 Typical workflow:
 1. jobs_describe(job_id="...") → identify failing job
@@ -74,12 +74,6 @@ func newLogsTool(name, description string) mcp.Tool {
 		name,
 		mcp.WithDescription(description),
 		mcp.WithString(
-			"organization_id",
-			mcp.Required(),
-			mcp.Description("Organization UUID associated with the job. Cache this value after calling semaphore_organizations_list."),
-			mcp.Pattern(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`),
-		),
-		mcp.WithString(
 			"job_id",
 			mcp.Required(),
 			mcp.Description("Job UUID to fetch logs for (format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)."),
@@ -97,22 +91,6 @@ func newLogsTool(name, description string) mcp.Tool {
 
 func logsHandler(api internalapi.Provider) server.ToolHandlerFunc {
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		orgIDRaw, err := req.RequireString("organization_id")
-		if err != nil {
-			return mcp.NewToolResultError("organization_id is required. Provide the organization UUID returned by organizations_list."), nil
-		}
-		orgID := strings.TrimSpace(orgIDRaw)
-		if err := shared.ValidateUUID(orgID, "organization_id"); err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
-		}
-
-		tracker := shared.TrackToolExecution(ctx, logsToolName, orgID)
-		defer tracker.Cleanup()
-
-		if err := shared.EnsureReadToolsFeature(ctx, api, orgID); err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
-		}
-
 		jobIDRaw, err := req.RequireString("job_id")
 		if err != nil {
 			return mcp.NewToolResultError("job_id is required. Provide the job UUID shown by jobs_describe."), nil
@@ -147,34 +125,22 @@ Troubleshooting:
 		}
 		jobProjectID := strings.TrimSpace(job.GetProjectId())
 		jobOrg := strings.TrimSpace(job.GetOrganizationId())
-		if jobOrg == "" || !strings.EqualFold(jobOrg, orgID) {
-			shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
-				Tool:              logsToolName,
-				ResourceType:      "job",
-				ResourceID:        jobID,
-				RequestOrgID:      orgID,
-				ResourceOrgID:     job.GetOrganizationId(),
-				RequestProjectID:  "",
-				ResourceProjectID: jobProjectID,
-			})
-			return shared.ScopeMismatchError(logsToolName, "organization"), nil
+		if err := shared.ValidateUUID(jobOrg, "job organization_id"); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+		if err := shared.ValidateUUID(jobProjectID, "job project_id"); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		if jobProjectID == "" {
-			shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
-				Tool:              logsToolName,
-				ResourceType:      "job",
-				ResourceID:        jobID,
-				RequestOrgID:      orgID,
-				ResourceOrgID:     jobOrg,
-				RequestProjectID:  "",
-				ResourceProjectID: jobProjectID,
-			})
-			return shared.ScopeMismatchError(logsToolName, "project"), nil
+		tracker := shared.TrackToolExecution(ctx, logsToolName, jobOrg)
+		defer tracker.Cleanup()
+
+		if err := shared.EnsureReadToolsFeature(ctx, api, jobOrg); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		if err := authz.CheckProjectPermission(ctx, api, userID, orgID, jobProjectID, projectViewPermission); err != nil {
-			return shared.ProjectAuthorizationError(err, orgID, jobProjectID, projectViewPermission), nil
+		if err := authz.CheckProjectPermission(ctx, api, userID, jobOrg, jobProjectID, projectViewPermission); err != nil {
+			return shared.ProjectAuthorizationError(err, jobOrg, jobProjectID, projectViewPermission), nil
 		}
 
 		var (
