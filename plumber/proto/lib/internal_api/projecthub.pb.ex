@@ -172,13 +172,17 @@ defmodule InternalApi.Projecthub.Project.Spec do
   field(:public, 4, type: :bool)
   field(:visibility, 5, type: InternalApi.Projecthub.Project.Spec.Visibility, enum: true)
 
-  field(:debug_permissions, 6,
+  field(
+    :debug_permissions,
+    6,
     repeated: true,
     type: InternalApi.Projecthub.Project.Spec.PermissionType,
     enum: true
   )
 
-  field(:attach_permissions, 7,
+  field(
+    :attach_permissions,
+    7,
     repeated: true,
     type: InternalApi.Projecthub.Project.Spec.PermissionType,
     enum: true
@@ -234,13 +238,17 @@ defmodule InternalApi.Projecthub.Project.Spec.Repository do
   field(:name, 2, type: :string)
   field(:owner, 3, type: :string)
 
-  field(:run_on, 4,
+  field(
+    :run_on,
+    4,
     repeated: true,
     type: InternalApi.Projecthub.Project.Spec.Repository.RunType,
     enum: true
   )
 
-  field(:forked_pull_requests, 5,
+  field(
+    :forked_pull_requests,
+    5,
     type: InternalApi.Projecthub.Project.Spec.Repository.ForkedPullRequests
   )
 
@@ -278,7 +286,9 @@ defmodule InternalApi.Projecthub.Project.Spec.Repository.Status do
         }
   defstruct [:pipeline_files]
 
-  field(:pipeline_files, 1,
+  field(
+    :pipeline_files,
+    1,
     repeated: true,
     type: InternalApi.Projecthub.Project.Spec.Repository.Status.PipelineFile
   )
@@ -296,7 +306,9 @@ defmodule InternalApi.Projecthub.Project.Spec.Repository.Status.PipelineFile do
 
   field(:path, 1, type: :string)
 
-  field(:level, 2,
+  field(
+    :level,
+    2,
     type: InternalApi.Projecthub.Project.Spec.Repository.Status.PipelineFile.Level,
     enum: true
   )

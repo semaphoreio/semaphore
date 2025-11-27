@@ -52,6 +52,7 @@ defmodule Ppl.Application do
     [
       Ppl.Sup.STM,
       worker(Ppl.OrgEventsConsumer, []),
+      worker(Ppl.Retention.PolicyConsumer, [])
     ]
   end
 

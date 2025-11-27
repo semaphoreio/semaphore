@@ -54,7 +54,12 @@ defmodule InternalApi.RepositoryIntegrator.CheckTokenResponse do
 
   field(:valid, 1, type: :bool)
 
-  field(:integration_scope, 2, type: InternalApi.RepositoryIntegrator.IntegrationScope, enum: true)
+  field(
+    :integration_scope,
+    2,
+    type: InternalApi.RepositoryIntegrator.IntegrationScope,
+    enum: true
+  )
 end
 
 defmodule InternalApi.RepositoryIntegrator.PreheatFileCacheRequest do
