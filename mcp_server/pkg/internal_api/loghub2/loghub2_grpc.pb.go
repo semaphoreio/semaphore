@@ -19,7 +19,7 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Loghub2_GenerateToken_FullMethodName = "/InternalApi.Loghub2.Loghub2/GenerateToken" // #nosec G101 -- gRPC method name, not credential
+	Loghub2_GenerateToken_FullMethodName = "/InternalApi.Loghub2.Loghub2/GenerateToken"
 )
 
 // Loghub2Client is the client API for Loghub2 service.
