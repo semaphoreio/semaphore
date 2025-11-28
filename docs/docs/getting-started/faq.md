@@ -243,7 +243,7 @@ There are two other indicators you can use:
 
 ### How long my workflow history is kept?
 
-Semaphore keeps your workflow history for the past **400 days**. Workflows and artifacts older than this limit are automatically deleted.
+Workflows and artifacts in the [workflow and job namespace](../using-semaphore/artifacts#namespaces) older than 400 days are automatically deleted.
 
 ### Some of my artifacts are missing. Why?
 

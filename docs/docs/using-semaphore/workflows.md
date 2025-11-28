@@ -45,7 +45,7 @@ See the [jobs page](./jobs) to learn how to define jobs and blocks.
 
 ## Workflow History Retention {#workflow-retention}
 
-Semaphore retains workflow history and artifacts for up to **400 days**. Any workflows and [artifacts](./artifacts) older than this limit are automatically deleted and won't be available in the UI or via the [public API](../reference/api).
+Any workflows and [artifacts](./artifacts) older than this limit are automatically deleted and won't be available in the UI or via the [public API](../reference/api).
 
 ## Modeling Complex Workflows {#modeling-complex-workflows}
 
