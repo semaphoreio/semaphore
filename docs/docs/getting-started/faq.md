@@ -241,6 +241,16 @@ There are two other indicators you can use:
 
 - **Block Chomping Indicator**: The chomping indicator controls what should happen with new lines at the end of the string. The default, clip, puts a single newline at the end of the string. To remove all new lines, strip them by putting a minus sign `-` after the style indicator. Both clip and strip ignore how many new lines are actually at the end of the block; to keep them all put a plus sign `+` after the style indicator.
 
+### How long my workflow history is kept?
+
+Semaphore keeps your workflow history for the past **400 days**. Workflows and artifacts older than this limit are automatically deleted.
+
+### Some of my artifacts are missing. Why?
+
+First, there is a hard-limit of 400 days for artifacts. Artifacts older than this limit are automatically deleted.
+
+Second, check if you have an [artifact retention policy](../using-semaphore/artifacts#retention) in place. If you have configured a retention policy incorrectly, it might have unexpectedly deleted some of your artifacts.
+
 ### Can I use different agents in the same pipeline?
 
 Yes. Use the [agent override](../using-semaphore/jobs#agent-override) in a block to use a different agent.
