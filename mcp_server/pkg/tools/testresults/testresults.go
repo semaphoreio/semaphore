@@ -212,7 +212,7 @@ test_results_signed_url(scope="pipeline", pipeline_id="...", workflow_id="...")`
 				})
 				return shared.ScopeMismatchError(toolName, "workflow"), nil
 			}
-			path = fmt.Sprintf("artifacts/workflows/%s/test-results/mcp-summary.json", pipelineWorkflowID)
+			path = fmt.Sprintf("artifacts/workflows/%s/test-results/%s-mcp-summary.json", pipelineWorkflowID, pipelineID)
 		}
 
 		ensureTracker(orgID)
