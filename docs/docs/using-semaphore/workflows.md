@@ -43,6 +43,10 @@ To access the editor, open one of your projects on and press **Edit Workflow**. 
 
 See the [jobs page](./jobs) to learn how to define jobs and blocks.
 
+## Workflow History Retention {#workflow-retention}
+
+Any workflows and [artifacts](./artifacts) older than this limit are automatically deleted and won't be available in the UI or via the [public API](../reference/api).
+
 ## Modeling Complex Workflows {#modeling-complex-workflows}
 
 This section provides guides to model complex, non-linear CI/CD processes.
