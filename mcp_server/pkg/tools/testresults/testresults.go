@@ -27,10 +27,10 @@ const (
 )
 
 func fullDescription() string {
-	return `Fetch test results for a job or pipeline.
+	return `Fetch aggregated test results for a job or pipeline.
 
-Use this tool to retrieve parsed JUnit/test results for analysis. Returns a URL to fetch detailed
-test information including passed/failed tests, durations, and error messages.
+Use this tool to retrieve the pre-parsed JSON summary produced by the MCP pipeline (failed tests
+only). Returns a URL to fetch details including failed cases and durations.
 
 Scopes:
 - job: Get test results for a specific job
@@ -46,9 +46,7 @@ Examples:
 Typical workflow:
 1. Use pipelines_list or pipeline_jobs to identify the job/pipeline ID
 2. Call this tool to get the test results URL
-3. Fetch the URL content to analyze results (failed tests, durations, error messages, etc.)
-
-Note: The returned URL expires after a short period. Request a fresh URL if it expires.`
+3. Download the JSON once (URL expires quickly) and reuse it locally for analysis.`
 }
 
 // Register wires the test results URL tool.
@@ -152,7 +150,7 @@ test_results_signed_url(scope="job", job_id="11111111-2222-3333-4444-55555555555
 				ensureTracker("")
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			path = fmt.Sprintf("artifacts/jobs/%s/test-results/junit.json", jobID)
+			path = fmt.Sprintf("artifacts/jobs/%s/test-results/mcp-summary.json", jobID)
 		case "pipeline":
 			pipelineID, err := req.RequireString("pipeline_id")
 			if err != nil {
@@ -214,7 +212,7 @@ test_results_signed_url(scope="pipeline", pipeline_id="...", workflow_id="...")`
 				})
 				return shared.ScopeMismatchError(toolName, "workflow"), nil
 			}
-			path = fmt.Sprintf("artifacts/workflows/%s/test-results/%s.json", pipelineWorkflowID, pipelineID)
+			path = fmt.Sprintf("artifacts/workflows/%s/test-results/mcp-summary.json", pipelineWorkflowID)
 		}
 
 		ensureTracker(orgID)
@@ -298,7 +296,7 @@ This tool enforces project permissions before returning signed URLs. Provide the
 				"scope":        scope,
 				"artifactUrl":  url,
 				"path":         path,
-				"compression":  "gzip",
+				"compression":  "none",
 				"content_type": "application/json",
 			},
 		}, nil
@@ -311,18 +309,16 @@ func formatResultMarkdown(scope, path, url string) string {
 	mb.KeyValue("Scope", scope)
 	mb.KeyValue("Path", fmt.Sprintf("`%s`", path))
 	mb.KeyValue("URL", url)
-	mb.KeyValue("Compression", "gzip")
+	mb.KeyValue("Compression", "none (plain JSON, failed tests only)")
 	mb.Line()
-	mb.H3("IMPORTANT: How to fetch this artifact")
-	mb.Paragraph("The artifact is gzip-compressed. Do NOT use web fetch tools directly on this URL - they will fail to parse the binary gzip data.")
+	mb.H3("IMPORTANT: Download once and reuse locally")
+	mb.Paragraph("The signed URL expires quickly. Download the failed-test JSON to a local file and reuse it instead of fetching repeatedly.")
 	mb.Line()
-	mb.Paragraph("**To download and decompress, run this command:**")
+	mb.Paragraph("**Download command:**")
 	mb.Line()
-	mb.CodeBlock("bash", fmt.Sprintf(`curl -s "%s" | gunzip > test_results.json`, url))
+	mb.CodeBlock("bash", fmt.Sprintf(`curl -s "%s" -o failed-tests.json`, url))
 	mb.Line()
-	mb.Paragraph("Then read the `test_results.json` file to analyze the results.")
-	mb.Line()
-	mb.Paragraph("**Note:** This URL expires after a short period. Request a fresh URL if it expires.")
+	mb.Paragraph("Then read `failed-tests.json` to analyze the results.")
 	return mb.String()
 }
 
