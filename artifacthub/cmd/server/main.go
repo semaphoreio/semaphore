@@ -14,6 +14,7 @@ import (
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/storage"
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/util/log"
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/workers/bucketcleaner"
+	"github.com/semaphoreio/semaphore/artifacthub/pkg/workers/jobdeleter"
 	"go.uber.org/zap"
 )
 
@@ -26,6 +27,9 @@ var (
 	bucketcleanerSchedulerNaptime             = os.Getenv("BUCKETCLEANER_SCHEDULER_NAPTIME")
 	bucketcleanerSchedulerBatchSize           = os.Getenv("BUCKETCLEANER_SCHEDULER_BATCHSIZE")
 	bucketcleanerWorkerNumberOfObjectsInOneGo = os.Getenv("BUCKETCLEANER_WORKER_NUMBER_OF_PAGES_TO_PROCESS_IN_ONE_GO")
+	jobDeleterExchange                        = envOrDefault("JOB_DELETER_EXCHANGE", "artifacthub.jobdeleter")
+	jobDeleterRoutingKey                      = envOrDefault("JOB_DELETER_ROUTING_KEY", "delete")
+	jobDeleterService                         = envOrDefault("JOB_DELETER_SERVICE", "artifacthub.jobdeleter.worker")
 )
 
 func configureWatchman() {
@@ -119,6 +123,21 @@ func bucketcleanerWorker(client storage.Client) {
 	worker.Start()
 }
 
+func jobArtifactDeleterWorker(client storage.Client) {
+	cfg := jobdeleter.Config{
+		Exchange:   jobDeleterExchange,
+		RoutingKey: jobDeleterRoutingKey,
+		Service:    jobDeleterService,
+	}
+
+	worker, err := jobdeleter.NewWorker(amqpURL, cfg, client)
+	if err != nil {
+		panic(err)
+	}
+
+	worker.Start()
+}
+
 func main() {
 	flag.Parse()
 
@@ -159,6 +178,10 @@ func main() {
 		go bucketcleanerWorker(storageClient)
 	}
 
+	if os.Getenv("START_JOB_ARTIFACT_DELETER") == "yes" {
+		go jobArtifactDeleterWorker(storageClient)
+	}
+
 	select {}
 }
 
@@ -170,4 +193,12 @@ func requireEnvVar(varName string) string {
 	}
 
 	return varValue
+}
+
+func envOrDefault(name, defaultValue string) string {
+	if value := os.Getenv(name); value != "" {
+		return value
+	}
+
+	return defaultValue
 }
