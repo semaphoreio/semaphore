@@ -162,12 +162,15 @@ defmodule FrontWeb.PeopleView do
     Timex.format!(Timex.from_unix(seconds), "%b %d, %Y, %I:%M%p", :strftime)
   end
 
+  def people_management_permissions?(org_scope?, permissions) do
+    (org_scope? && permissions["organization.people.manage"]) ||
+      (!org_scope? && permissions["project.access.manage"])
+  end
+
   def show_people_management_buttons?(conn, org_scope?, permissions) do
     org_id = conn.assigns[:organization_id]
 
-    user_has_permissions? =
-      (org_scope? && permissions["organization.people.manage"]) ||
-        (!org_scope? && permissions["project.access.manage"])
+    user_has_permissions? = people_management_permissions?(org_scope?, permissions)
 
     feature_enabled? =
       org_scope? || FeatureProvider.feature_enabled?(:rbac__project_roles, param: org_id) ||
