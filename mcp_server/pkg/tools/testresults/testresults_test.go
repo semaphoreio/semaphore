@@ -38,7 +38,7 @@ func TestSignedURL_PublicProject_AllowsGuest(t *testing.T) {
 		FeaturesService: support.FeatureClientStub{
 			State: feature.Enabled,
 		},
-		ArtifacthubClient: &artifacthubStub{url: "https://example.com/public.json"},
+		ArtifacthubClient: &artifacthubStub{url: "https://example.com/public.json", listItems: []string{testPipelineID + "-mcp-summary.json"}},
 		ProjectClient:     &projectStub{orgID: testOrgID, projectID: testProjectID, public: true, artifactStoreID: testStoreID},
 		PipelineClient:    &pipelineStub{orgID: testOrgID, projectID: testProjectID, workflowID: testWorkflowID},
 		RBACClient:        &rbacStub{perms: []string{"project.view"}},
@@ -71,7 +71,7 @@ func TestSignedURL_PrivateProject_MissingUserHeader(t *testing.T) {
 	provider := &support.MockProvider{
 		Timeout:           time.Second,
 		FeaturesService:   support.FeatureClientStub{State: feature.Enabled},
-		ArtifacthubClient: &artifacthubStub{url: "https://example.com/private.json"},
+		ArtifacthubClient: &artifacthubStub{url: "https://example.com/private.json", listItems: []string{testPipelineID + "-mcp-summary.json"}},
 		ProjectClient:     &projectStub{orgID: testOrgID, projectID: testProjectID, public: false, artifactStoreID: testStoreID},
 		PipelineClient:    &pipelineStub{orgID: testOrgID, projectID: testProjectID, workflowID: testWorkflowID},
 		RBACClient:        &rbacStub{perms: []string{"project.view"}},
@@ -100,7 +100,7 @@ func TestSignedURL_PrivateProject_WithPermission(t *testing.T) {
 	provider := &support.MockProvider{
 		Timeout:           time.Second,
 		FeaturesService:   support.FeatureClientStub{State: feature.Enabled},
-		ArtifacthubClient: &artifacthubStub{url: "https://example.com/private.json"},
+		ArtifacthubClient: &artifacthubStub{url: "https://example.com/private.json", listItems: []string{testPipelineID + "-mcp-summary.json"}},
 		ProjectClient:     &projectStub{orgID: testOrgID, projectID: testProjectID, public: false, artifactStoreID: testStoreID},
 		PipelineClient:    &pipelineStub{orgID: testOrgID, projectID: testProjectID, workflowID: testWorkflowID},
 		RBACClient:        &rbacStub{perms: []string{"project.view"}},
@@ -137,7 +137,7 @@ func TestDescribeProject_PassesMetadata(t *testing.T) {
 	provider := &support.MockProvider{
 		Timeout:           time.Second,
 		FeaturesService:   support.FeatureClientStub{State: feature.Enabled},
-		ArtifacthubClient: &artifacthubStub{url: "https://example.com/private.json"},
+		ArtifacthubClient: &artifacthubStub{url: "https://example.com/private.json", listItems: []string{testPipelineID + "-mcp-summary.json"}},
 		ProjectClient:     projectClient,
 		PipelineClient:    &pipelineStub{orgID: testOrgID, projectID: testProjectID, workflowID: testWorkflowID},
 		RBACClient:        &rbacStub{perms: []string{"project.view"}},
@@ -181,7 +181,7 @@ func TestSignedURL_JobScope_WithPermission(t *testing.T) {
 	provider := &support.MockProvider{
 		Timeout:           time.Second,
 		FeaturesService:   support.FeatureClientStub{State: feature.Enabled},
-		ArtifacthubClient: &artifacthubStub{url: "https://example.com/job-results.json"},
+		ArtifacthubClient: &artifacthubStub{url: "https://example.com/job-results.json", listItems: []string{"mcp-summary.json"}},
 		ProjectClient:     &projectStub{orgID: testOrgID, projectID: testProjectID, public: false, artifactStoreID: testStoreID},
 		JobClient:         &jobStub{orgID: testOrgID, projectID: testProjectID},
 		RBACClient:        &rbacStub{perms: []string{"project.view"}},
@@ -222,7 +222,7 @@ func TestSignedURL_JobScope_PublicProject_AllowsGuest(t *testing.T) {
 	provider := &support.MockProvider{
 		Timeout:           time.Second,
 		FeaturesService:   support.FeatureClientStub{State: feature.Enabled},
-		ArtifacthubClient: &artifacthubStub{url: "https://example.com/public-job.json"},
+		ArtifacthubClient: &artifacthubStub{url: "https://example.com/public-job.json", listItems: []string{"mcp-summary.json"}},
 		ProjectClient:     &projectStub{orgID: testOrgID, projectID: testProjectID, public: true, artifactStoreID: testStoreID},
 		JobClient:         &jobStub{orgID: testOrgID, projectID: testProjectID},
 		RBACClient:        &rbacStub{perms: []string{"project.view"}},
@@ -334,15 +334,119 @@ func TestSignedURL_JobScope_ProjectMismatch(t *testing.T) {
 	}
 }
 
+func TestSignedURL_JobScope_FallsBackToJunit(t *testing.T) {
+	provider := &support.MockProvider{
+		Timeout:           time.Second,
+		FeaturesService:   support.FeatureClientStub{State: feature.Enabled},
+		ArtifacthubClient: &artifacthubStub{url: "https://example.com/job-junit.xml", listItems: []string{"junit.xml"}},
+		ProjectClient:     &projectStub{orgID: testOrgID, projectID: testProjectID, public: true, artifactStoreID: testStoreID},
+		JobClient:         &jobStub{orgID: testOrgID, projectID: testProjectID},
+		RBACClient:        &rbacStub{perms: []string{"project.view"}},
+	}
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"scope":  "job",
+		"job_id": testJobID,
+	}}}
+
+	res, err := handler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+	content, ok := res.StructuredContent.(map[string]string)
+	if !ok {
+		t.Fatalf("unexpected content type: %T", res.StructuredContent)
+	}
+	if content["path"] != "artifacts/jobs/"+testJobID+"/test-results/junit.xml" {
+		t.Fatalf("expected junit path, got: %s", content["path"])
+	}
+	if content["content_type"] != "application/xml" {
+		t.Fatalf("expected xml content type, got: %s", content["content_type"])
+	}
+}
+
+func TestSignedURL_PipelineScope_FallsBackToSummary(t *testing.T) {
+	provider := &support.MockProvider{
+		Timeout:           time.Second,
+		FeaturesService:   support.FeatureClientStub{State: feature.Enabled},
+		ArtifacthubClient: &artifacthubStub{url: "https://example.com/pipeline-summary.json", listItems: []string{testPipelineID + "-summary.json"}},
+		ProjectClient:     &projectStub{orgID: testOrgID, projectID: testProjectID, public: true, artifactStoreID: testStoreID},
+		PipelineClient:    &pipelineStub{orgID: testOrgID, projectID: testProjectID, workflowID: testWorkflowID},
+		RBACClient:        &rbacStub{perms: []string{"project.view"}},
+	}
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"scope":       "pipeline",
+		"pipeline_id": testPipelineID,
+		"workflow_id": testWorkflowID,
+	}}}
+
+	res, err := handler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+	content, ok := res.StructuredContent.(map[string]string)
+	if !ok {
+		t.Fatalf("unexpected content type: %T", res.StructuredContent)
+	}
+	if content["path"] != "artifacts/workflows/"+testWorkflowID+"/test-results/"+testPipelineID+"-summary.json" {
+		t.Fatalf("expected summary path, got: %s", content["path"])
+	}
+	if content["compression"] != "gzip" {
+		t.Fatalf("expected compression=gzip for summary fallback, got: %s", content["compression"])
+	}
+}
+
+func TestSignedURL_ErrorsWhenNoArtifactsFound(t *testing.T) {
+	provider := &support.MockProvider{
+		Timeout:           time.Second,
+		FeaturesService:   support.FeatureClientStub{State: feature.Enabled},
+		ArtifacthubClient: &artifacthubStub{url: "https://example.com/missing.json", listItems: []string{}},
+		ProjectClient:     &projectStub{orgID: testOrgID, projectID: testProjectID, public: true, artifactStoreID: testStoreID},
+		PipelineClient:    &pipelineStub{orgID: testOrgID, projectID: testProjectID, workflowID: testWorkflowID},
+		RBACClient:        &rbacStub{perms: []string{"project.view"}},
+	}
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"scope":       "pipeline",
+		"pipeline_id": testPipelineID,
+		"workflow_id": testWorkflowID,
+	}}}
+
+	res, err := handler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+
+	msg := requireErrorText(t, res)
+	if !contains(msg, "no test result artifacts") {
+		t.Fatalf("expected missing artifacts error, got: %s", msg)
+	}
+}
+
 // --- stubs ---
 
 type artifacthubStub struct {
 	artifacthubpb.ArtifactServiceClient
-	url string
+	url       string
+	listErr   error
+	listItems []string
 }
 
 func (a *artifacthubStub) GetSignedURL(ctx context.Context, req *artifacthubpb.GetSignedURLRequest, opts ...grpc.CallOption) (*artifacthubpb.GetSignedURLResponse, error) {
 	return &artifacthubpb.GetSignedURLResponse{Url: a.url}, nil
+}
+
+func (a *artifacthubStub) ListPath(ctx context.Context, req *artifacthubpb.ListPathRequest, opts ...grpc.CallOption) (*artifacthubpb.ListPathResponse, error) {
+	if a.listErr != nil {
+		return nil, a.listErr
+	}
+
+	resp := &artifacthubpb.ListPathResponse{}
+	for _, name := range a.listItems {
+		resp.Items = append(resp.Items, &artifacthubpb.ListItem{Name: name})
+	}
+	return resp, nil
 }
 
 type projectStub struct {

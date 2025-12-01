@@ -3,6 +3,7 @@ package testresults
 import (
 	"context"
 	"fmt"
+	"path"
 	"strings"
 
 	"github.com/google/uuid"
@@ -25,6 +26,12 @@ const (
 	toolName              = "get_test_results"
 	projectViewPermission = "project.view"
 )
+
+type resultArtifact struct {
+	path        string
+	compression string
+	contentType string
+}
 
 func fullDescription() string {
 	return `Fetch aggregated test results for a job or pipeline.
@@ -118,7 +125,8 @@ func handler(api internalapi.Provider) server.ToolHandlerFunc {
 
 		var orgID string
 		var projectID string
-		var path string
+		var listingDir string
+		var artifactCandidates []resultArtifact
 
 		switch scope {
 		case "job":
@@ -150,7 +158,11 @@ test_results_signed_url(scope="job", job_id="11111111-2222-3333-4444-55555555555
 				ensureTracker("")
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			path = fmt.Sprintf("artifacts/jobs/%s/test-results/mcp-summary.json", jobID)
+			listingDir = fmt.Sprintf("artifacts/jobs/%s/test-results", jobID)
+			artifactCandidates = []resultArtifact{
+				{path: fmt.Sprintf("%s/mcp-summary.json", listingDir), compression: "none", contentType: "application/json"},
+				{path: fmt.Sprintf("%s/junit.xml", listingDir), compression: "none", contentType: "application/xml"},
+			}
 		case "pipeline":
 			pipelineID, err := req.RequireString("pipeline_id")
 			if err != nil {
@@ -212,7 +224,11 @@ test_results_signed_url(scope="pipeline", pipeline_id="...", workflow_id="...")`
 				})
 				return shared.ScopeMismatchError(toolName, "workflow"), nil
 			}
-			path = fmt.Sprintf("artifacts/workflows/%s/test-results/%s-mcp-summary.json", pipelineWorkflowID, pipelineID)
+			listingDir = fmt.Sprintf("artifacts/workflows/%s/test-results", pipelineWorkflowID)
+			artifactCandidates = []resultArtifact{
+				{path: fmt.Sprintf("%s/%s-mcp-summary.json", listingDir, pipelineID), compression: "none", contentType: "application/json"},
+				{path: fmt.Sprintf("%s/%s-summary.json", listingDir, pipelineID), compression: "gzip", contentType: "application/json"},
+			}
 		}
 
 		ensureTracker(orgID)
@@ -280,12 +296,17 @@ This tool enforces project permissions before returning signed URLs. Provide the
 			return mcp.NewToolResultError("project is missing an artifact_store_id; cannot generate signed URLs"), nil
 		}
 
-		url, err := signedURL(ctx, api, storeID, path)
+		selectedArtifact, err := resolveResultArtifact(ctx, api, storeID, listingDir, artifactCandidates)
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		markdown := formatResultMarkdown(scope, path, url)
+		url, err := signedURL(ctx, api, storeID, selectedArtifact.path)
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		markdown := formatResultMarkdown(scope, selectedArtifact, url)
 
 		tracker.MarkSuccess()
 		return &mcp.CallToolResult{
@@ -295,30 +316,105 @@ This tool enforces project permissions before returning signed URLs. Provide the
 			StructuredContent: map[string]string{
 				"scope":        scope,
 				"artifactUrl":  url,
-				"path":         path,
-				"compression":  "none",
-				"content_type": "application/json",
+				"path":         selectedArtifact.path,
+				"compression":  selectedArtifact.compression,
+				"content_type": selectedArtifact.contentType,
 			},
 		}, nil
 	}
 }
 
-func formatResultMarkdown(scope, path, url string) string {
+func resolveResultArtifact(ctx context.Context, api internalapi.Provider, storeID, listingDir string, candidates []resultArtifact) (resultArtifact, error) {
+	if len(candidates) == 0 {
+		return resultArtifact{}, fmt.Errorf("no artifact candidates configured")
+	}
+
+	items, err := listPath(ctx, api, storeID, listingDir)
+	if err != nil {
+		logging.ForComponent("rpc").
+			WithFields(logrus.Fields{
+				"rpc":        "artifacthub.ListPath",
+				"artifactId": storeID,
+				"path":       listingDir,
+			}).
+			WithError(err).
+			Warn("ListPath RPC failed; falling back to preferred path without existence check")
+		return candidates[0], nil
+	}
+
+	available := make(map[string]struct{}, len(items)*2)
+	for _, item := range items {
+		if item.GetIsDirectory() {
+			continue
+		}
+		name := strings.TrimSpace(item.GetName())
+		if name == "" {
+			continue
+		}
+		lowerName := strings.ToLower(name)
+		available[lowerName] = struct{}{}
+
+		base := strings.ToLower(path.Base(strings.TrimSuffix(name, "/")))
+		if base != "" {
+			available[base] = struct{}{}
+		}
+	}
+
+	for _, candidate := range candidates {
+		base := strings.ToLower(path.Base(candidate.path))
+		if _, ok := available[base]; ok {
+			return candidate, nil
+		}
+	}
+
+	return resultArtifact{}, fmt.Errorf("no test result artifacts found in `%s`", strings.TrimSuffix(listingDir, "/"))
+}
+
+func listPath(ctx context.Context, api internalapi.Provider, artifactID, directory string) ([]*artifacthubpb.ListItem, error) {
+	client := api.Artifacthub()
+	if client == nil {
+		return nil, fmt.Errorf("artifacthub gRPC endpoint is not configured")
+	}
+
+	callCtx, cancel := context.WithTimeout(ctx, api.CallTimeout())
+	defer cancel()
+
+	resp, err := client.ListPath(callCtx, &artifacthubpb.ListPathRequest{
+		ArtifactId: artifactID,
+		Path:       directory,
+	})
+	if err != nil {
+		logging.ForComponent("rpc").
+			WithFields(logrus.Fields{
+				"rpc":        "artifacthub.ListPath",
+				"artifactId": artifactID,
+				"path":       directory,
+			}).
+			WithError(err).
+			Error("ListPath RPC failed")
+		return nil, fmt.Errorf("artifacthub ListPath failed: %w", err)
+	}
+
+	return resp.GetItems(), nil
+}
+
+func formatResultMarkdown(scope string, artifact resultArtifact, url string) string {
 	mb := shared.NewMarkdownBuilder()
 	mb.H2("Test Results URL")
 	mb.KeyValue("Scope", scope)
-	mb.KeyValue("Path", fmt.Sprintf("`%s`", path))
+	mb.KeyValue("Path", fmt.Sprintf("`%s`", artifact.path))
 	mb.KeyValue("URL", url)
-	mb.KeyValue("Compression", "none (plain JSON, failed tests only)")
+	mb.KeyValue("Compression", artifact.compression)
+	mb.KeyValue("Content Type", artifact.contentType)
 	mb.Line()
 	mb.H3("IMPORTANT: Download once and reuse locally")
 	mb.Paragraph("The signed URL expires quickly. Download the failed-test JSON to a local file and reuse it instead of fetching repeatedly.")
 	mb.Line()
 	mb.Paragraph("**Download command:**")
 	mb.Line()
-	mb.CodeBlock("bash", fmt.Sprintf(`curl -s "%s" -o failed-tests.json`, url))
+	mb.CodeBlock("bash", fmt.Sprintf(`curl -s "%s" -o %s`, url, path.Base(artifact.path)))
 	mb.Line()
-	mb.Paragraph("Then read `failed-tests.json` to analyze the results.")
+	mb.Paragraph(fmt.Sprintf("Then read `%s` to analyze the results.", path.Base(artifact.path)))
 	return mb.String()
 }
 
