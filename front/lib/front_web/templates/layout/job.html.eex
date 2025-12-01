@@ -47,9 +47,17 @@
   </div>
   <div class="flex items-center justify-between mt1 mt2-m mb2 mb3-m">
     <div class="flex justify-center items-center">
-      <h1 class="f2 f1-m lh-title mt1 mb0 pr3 truncate">
-        <%= @job.name %>
-      </h1>
+      <div>
+        <h1 class="f2 f1-m lh-title mt1 mb0 pr3 truncate">
+          <%= @job.name %>
+        </h1>
+        <div class="f6 gray mt1">
+          <%= if @block do %>
+            <%= @block.name %> ·
+          <% end %>
+          <%= @pipeline.name %>
+        </div>
+      </div>
       <%= render FrontWeb.JobView, "_status_badge.html", job: @job, badge_pollman: @badge_pollman %>
     </div>
     <div class="flex">
