@@ -36,6 +36,10 @@ var (
 		"MCP_JOB_GRPC_ENDPOINT",
 		"JOBS_API_URL",
 	}
+	artifacthubEndpointEnvs = []string{
+		"INTERNAL_API_URL_ARTIFACTHUB",
+		"MCP_ARTIFACTHUB_GRPC_ENDPOINT",
+	}
 	loghubEndpointEnvs = []string{
 		"INTERNAL_API_URL_LOGHUB",
 		"MCP_LOGHUB_GRPC_ENDPOINT",
@@ -67,6 +71,7 @@ type Config struct {
 	ProjectEndpoint      string
 	PipelineEndpoint     string
 	JobEndpoint          string
+	ArtifacthubEndpoint  string
 	LoghubEndpoint       string
 	Loghub2Endpoint      string
 	UserEndpoint         string
@@ -94,6 +99,7 @@ func LoadConfig() (Config, error) {
 		ProjectEndpoint:      endpointFromEnv(projectEndpointEnvs...),
 		PipelineEndpoint:     endpointFromEnv(pipelineEndpointEnvs...),
 		JobEndpoint:          endpointFromEnv(jobEndpointEnvs...),
+		ArtifacthubEndpoint:  endpointFromEnv(artifacthubEndpointEnvs...),
 		LoghubEndpoint:       endpointFromEnv(loghubEndpointEnvs...),
 		Loghub2Endpoint:      endpointFromEnv(loghub2EndpointEnvs...),
 		UserEndpoint:         endpointFromEnv(userEndpointEnvs...),
@@ -130,6 +136,9 @@ func (c Config) Validate() error {
 	}
 	if c.JobEndpoint == "" {
 		missing = append(missing, "job gRPC endpoint")
+	}
+	if c.ArtifacthubEndpoint == "" {
+		missing = append(missing, "artifacthub gRPC endpoint")
 	}
 	if c.RBACEndpoint == "" {
 		missing = append(missing, "rbac gRPC endpoint")
