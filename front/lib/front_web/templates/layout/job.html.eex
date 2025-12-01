@@ -30,22 +30,26 @@
         <span class="b db-l mr1">Workflow</span>
         <%= link get_header_navigation_element(@breadcrumbs, :workflow, :name),
               to: get_header_navigation_element(@breadcrumbs, :workflow, :url) %> (<%= link "#{commit_sha(@hook)} ↗", to: commit_url(@hook), target: "_blank" %>)
-        <span data-tippy-content="
-          Pipeline: <%= @pipeline.name %>
-          <%= if @block != nil do %>
-            / Block: <%= @block.name %>
-          <% end %>
-          <%= "· by #{@hook.repo_host_username}, #{Front.Utils.decorate_relative(@workflow.created_at)}" %>
-          ">
-          <img src="<%= assets_path() %>/images/icn-info-15.svg" width="16px" height="16px" alt="commit" class="v-mid">
-        </span>
       </div>
       <div class="b dn db-l">
         ›
       </div>
+      <div class="ph3">
+        <span class="b db-l mr1">Pipeline</span>
+        <%= link @pipeline.name, to: workflow_path(@conn, :show, @workflow.id, pipeline_id: @pipeline.id) %>
+      </div>
+      <%= if @block do %>
+        <div class="b dn db-l">
+          ›
+        </div>
+        <div class="ph3">
+          <span class="b db-l mr1">Block</span>
+          <%= @block.name %>
+        </div>
+      <% end %>
     </div>
   </div>
-  <div class="flex items-center justify-between mt1 mt2-m mb2">
+  <div class="flex items-center justify-between mt1 mt2-m mb1">
     <div class="flex items-center mr2" style="min-width: 0; flex: 1;">
       <h1 class="f2 f1-m lh-title mt1 mb0 pr3 truncate" title="<%= @job.name %>" style="min-width: 0;">
         <%= @job.name %>
@@ -68,15 +72,8 @@
     </div>
   </div>
 
-  <div class="f6 mt1 pr3" style="display: grid; grid-template-columns: auto 1fr; gap: 0.25rem 0.5rem; align-items: baseline;">
-    <%= if @block do %>
-      <span class="gray">Block:</span>
-      <span><%= @block.name %></span>
-    <% end %>
-    <span class="gray">Pipeline:</span>
-    <%= link @pipeline.name, to: workflow_path(@conn, :show, @workflow.id, pipeline_id: @pipeline.id) %>
-    <span class="gray">Author:</span>
-    <span><%= @hook.repo_host_username %>, <%= Front.Utils.decorate_relative(@workflow.created_at) %></span>
+  <div class="f6 gray mb3">
+    by <%= @hook.repo_host_username %>, <%= Front.Utils.decorate_relative(@workflow.created_at) %>
   </div>
 
   <div class="tabs">
