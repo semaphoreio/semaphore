@@ -638,9 +638,7 @@ defmodule InternalApi.Repository.GetChangedFilePathsRequest do
   field(:base_rev, 2, type: InternalApi.Repository.Revision)
   field(:repository_id, 3, type: :string)
 
-  field(
-    :comparison_type,
-    4,
+  field(:comparison_type, 4,
     type: InternalApi.Repository.GetChangedFilePathsRequest.ComparisonType,
     enum: true
   )
