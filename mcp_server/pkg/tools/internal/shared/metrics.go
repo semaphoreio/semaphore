@@ -159,6 +159,9 @@ func TrackToolExecution(ctx context.Context, toolName, orgID string) *ToolExecut
 		metrics.IncrementTotal()
 	}
 
+	// Emit generic tool_call metric with org_name tag
+	emitGenericToolCall(ctx, toolName, orgID)
+
 	success := false
 	return &ToolExecutionTracker{
 		metrics: metrics,
@@ -186,5 +189,32 @@ func (t *ToolExecutionTracker) Cleanup() {
 		t.metrics.IncrementSuccess()
 	} else {
 		t.metrics.IncrementFailure()
+	}
+}
+
+// emitGenericToolCall emits a generic tool_call metric with org_name tag.
+// This provides a single metric to track all tool invocations across the MCP server.
+func emitGenericToolCall(ctx context.Context, toolName, orgID string) {
+	resolver := getOrgNameResolver()
+	emitGenericToolCallWithResolver(ctx, toolName, orgID, resolver)
+}
+
+func emitGenericToolCallWithResolver(ctx context.Context, toolName, orgID string, resolver OrgNameResolver) {
+	tags := make([]string, 0, 2)
+
+	// Add tool name tag
+	toolName = strings.TrimSpace(toolName)
+	if toolName != "" {
+		tags = append(tags, sanitizeMetricTag("tool_"+toolName))
+	}
+
+	// Add org name tag
+	if tag := resolveOrgTag(ctx, orgID, resolver); tag != "" {
+		tags = append(tags, tag)
+	}
+
+	metricName := "tool_call"
+	if err := watchmanIncrementWithTags(metricName, tags); err != nil {
+		logMetricError(metricName, err)
 	}
 }
