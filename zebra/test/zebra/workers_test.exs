@@ -1,8 +1,12 @@
 defmodule Zebra.Workers.Test do
   use ExUnit.Case, async: false
 
-  test "no environment variables set => only feature provider invalidator starts" do
-    assert Zebra.Workers.active() == [Zebra.FeatureProviderInvalidatorWorker]
+  test "no environment variables set => only default workers start" do
+    assert Zebra.Workers.active() == [
+             Zebra.Workers.JobDeletionPolicyMarker,
+             Zebra.Workers.JobDeletionPolicyWorker,
+             Zebra.FeatureProviderInvalidatorWorker
+           ]
   end
 
   describe "with environment variables set" do
@@ -20,6 +24,8 @@ defmodule Zebra.Workers.Test do
 
     test "active workers are returned" do
       assert Zebra.Workers.active() == [
+               Zebra.Workers.JobDeletionPolicyMarker,
+               Zebra.Workers.JobDeletionPolicyWorker,
                Zebra.Workers.TaskFinisher,
                Zebra.Workers.TaskFailFast,
                Zebra.Workers.JobStopper,
