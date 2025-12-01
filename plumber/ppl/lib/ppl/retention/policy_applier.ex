@@ -22,8 +22,7 @@ defmodule Ppl.Retention.PolicyApplier do
         where: is_nil(pr.expires_at) or pr.expires_at > ^cutoff
       )
 
-    {count, _} = EctoRepo.update_all(query, set: [expires_at: ^cutoff])
+    {count, _} = EctoRepo.update_all(query, set: [expires_at: cutoff])
     count
   end
 end
-
