@@ -68,15 +68,12 @@
     </div>
   </div>
 
-  <div class="f6 mt1 pr3" style="display: grid; grid-template-columns: auto 1fr; gap: 0.25rem 0.5rem; align-items: baseline;">
-    <%= if @block do %>
-      <span class="gray">Block:</span>
-      <span><%= @block.name %></span>
-    <% end %>
-    <span class="gray">Pipeline:</span>
+  <div class="f6 gray mt1 pr3">
     <%= link @pipeline.name, to: workflow_path(@conn, :show, @workflow.id, pipeline_id: @pipeline.id) %>
-    <span class="gray">Author:</span>
-    <span><%= @hook.repo_host_username %>, <%= Front.Utils.decorate_relative(@workflow.created_at) %></span>
+    <%= if @block do %>
+      <span> / <%= @block.name %></span>
+    <% end %>
+    <span> · by <%= @hook.repo_host_username %>, <%= Front.Utils.decorate_relative(@workflow.created_at) %></span>
   </div>
 
   <div class="tabs">
