@@ -218,16 +218,9 @@ defmodule InternalApi.Task.ScheduleRequest.Job.Agent do
 
   field(:machine, 1, type: InternalApi.Task.ScheduleRequest.Job.Agent.Machine)
 
-  field(
-    :containers,
-    2,
-    repeated: true,
-    type: InternalApi.Task.ScheduleRequest.Job.Agent.Container
-  )
+  field(:containers, 2, repeated: true, type: InternalApi.Task.ScheduleRequest.Job.Agent.Container)
 
-  field(
-    :image_pull_secrets,
-    3,
+  field(:image_pull_secrets, 3,
     repeated: true,
     type: InternalApi.Task.ScheduleRequest.Job.Agent.ImagePullSecret
   )
