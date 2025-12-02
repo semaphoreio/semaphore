@@ -45,9 +45,9 @@
       </div>
     </div>
   </div>
-  <div class="flex items-center justify-between mt1 mt2-m mb2 mb3-m">
-    <div class="flex justify-center items-center">
-      <h1 class="f2 f1-m lh-title mt1 mb0 pr3 truncate">
+  <div class="flex items-center justify-between mt1 mt2-m mb2">
+    <div class="flex items-center mr2" style="min-width: 0; flex: 1;">
+      <h1 class="f2 f1-m lh-title mt1 mb0 pr3 truncate" title="<%= @job.name %>" style="min-width: 0;">
         <%= @job.name %>
       </h1>
       <%= render FrontWeb.JobView, "_status_badge.html", job: @job, badge_pollman: @badge_pollman %>
@@ -67,6 +67,15 @@
       </div>
     </div>
   </div>
+
+  <div class="f6 gray mt1 pr3">
+    <%= link @pipeline.name, to: workflow_path(@conn, :show, @workflow.id, pipeline_id: @pipeline.id) %>
+    <%= if @block do %>
+      <span> / <%= @block.name %></span>
+    <% end %>
+    <span> · by <%= @hook.repo_host_username %>, <%= Front.Utils.decorate_relative(@workflow.created_at) %></span>
+  </div>
+
   <div class="tabs">
     <%= link raw(~s'
           <svg width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M2.025 2.025A3.5 3.5 0 001 4.5v7A3.5 3.5 0 004.5 15h7a3.5 3.5 0 003.5-3.5v-7A3.5 3.5 0 0011.5 1h-7a3.5 3.5 0 00-2.475 1.025zm.99.99A2.1 2.1 0 014.5 2.4h7a2.1 2.1 0 012.1 2.1v7a2.1 2.1 0 01-2.1 2.1h-7a2.1 2.1 0 01-2.1-2.1v-7a2.1 2.1 0 01.615-1.485zM4.7 4a.7.7 0 100 1.4h3.194a.7.7 0 100-1.4H4.7zM4 8a.7.7 0 01.7-.7h4.975a.7.7 0 110 1.4H4.7A.7.7 0 014 8zm4.731 2.594a.7.7 0 100 1.4h2.788a.7.7 0 000-1.4H8.73zm-4.731.7a.7.7 0 01.7-.7h1.787a.7.7 0 110 1.4H4.7a.7.7 0 01-.7-.7zM10.512 4a.7.7 0 100 1.4h1.007a.7.7 0 000-1.4h-1.007z"/></svg>
