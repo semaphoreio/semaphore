@@ -688,7 +688,7 @@ To learn more about this image, check our [Ubuntu 22.04 page](../reference/os-ub
 
 - Ruby 3.1.6, 3.3.2
 
-To learn more about these images check our [Ubuntu 20.04](../reference/os-ubuntu-images/ubuntu-2004-image), [Ubuntu 22.04](../reference/os-ubuntu-images/ubuntu-2204-image) and [Ubuntu 22.04 ARM](../reference/os-ubuntu-images/ubuntu-2204-arm-image).
+To learn more about these images check our [Ubuntu 20.04](../reference/os-ubuntu-images/ubuntu-2004-image) and [Ubuntu 22.04](../reference/os-ubuntu-images/ubuntu-2204-image).
 
 ## Week of May 27, 2024
 
@@ -712,7 +712,7 @@ To learn more about these images check our [Ubuntu 20.04](../reference/os-ubuntu
 - PHP 8.1.28, 8.2.17, 8.2.18, 8.2.19, 8.3.4, 8.3.6, 8.3.7
 - Ruby 3.0.7, 3.1.5, 3.2.4, 3.3.1
 
-To learn more about these images check our [Ubuntu 20.04](../reference/os-ubuntu-images/ubuntu-2004-image), [Ubuntu 22.04](../reference/os-ubuntu-images/ubuntu-2204-image) and [Ubuntu 22.04 ARM](../reference/os-ubuntu-images/ubuntu-2204-arm-image).
+To learn more about these images check our [Ubuntu 20.04](../reference/os-ubuntu-images/ubuntu-2004-image), [Ubuntu 22.04](../reference/os-ubuntu-images/ubuntu-2204-image) and ~~Ubuntu 22.04 ARM~~.
 
 ## Week of March 11, 2024
 
@@ -726,7 +726,7 @@ To learn more about these images check our [Ubuntu 20.04](../reference/os-ubuntu
 - Elixir 1.16.2
 - PHP 8.2.16, 8.3.3
 
-To learn more about these images check our [Ubuntu 20.04](../reference/os-ubuntu-images/ubuntu-2004-image), [Ubuntu 22.04](../reference/os-ubuntu-images/ubuntu-2204-image) and [Ubuntu 22.04 ARM](../reference/os-ubuntu-images/ubuntu-2204-arm-image).
+To learn more about these images check our [Ubuntu 20.04](../reference/os-ubuntu-images/ubuntu-2004-image), [Ubuntu 22.04](../reference/os-ubuntu-images/ubuntu-2204-image) and ~~Ubuntu 22.04 ARM~~.
 
 **(Improved) Toolbox**
 **(Updated)** Sem-service addons:
@@ -920,7 +920,7 @@ To learn more about this image, check our [Ubuntu 22.04 page](../reference/os-ub
 - Rust 1.74.1 -> 1.75.0
 - Terraform 1.6.5 -> 1.7.0
 
-To learn more about this image, check our [Ubuntu 22.04 ARM page](../reference/os-ubuntu-images/ubuntu-2204-arm-image)
+To learn more about this image, check our ~~Ubuntu 22.04 ARM page~~
 
 ## Week of December 18, 2023
 
@@ -1055,7 +1055,7 @@ To learn more about this image, check our [Ubuntu 22.04 page](../reference/os-ub
 - Terraform 1.5.7 -> 1.6.5
 - Vrtualenv 20.24.5 -> 20.25.0
 
-To learn more about this image, check our [Ubuntu 22.04 ARM page](../reference/os-ubuntu-images/ubuntu-2204-arm-image)
+To learn more about this image, check our ~~Ubuntu 22.04 ARM page~~.
 
 ## Week of October 09, 2023
 
@@ -1201,7 +1201,7 @@ To learn more about this image, check our [Ubuntu 22.04 page](../reference/os-ub
 - Terraform 1.4.6 -> 1.5.7
 - Virtualenv 20.23.0 -> 20.24.5
 
-To learn more about this image, check our [Ubuntu 22.04 ARM page](../reference/os-ubuntu-images/ubuntu-2204-arm-image)
+To learn more about this image, check our ~~Ubuntu 22.04 ARM page~~.
 
 ## Week of September 11, 2023
 
