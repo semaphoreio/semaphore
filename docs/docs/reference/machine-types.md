@@ -21,7 +21,7 @@ Linux machines are provided in four generations. The following table shows what 
 | [E1](#e1) | Intel x86_64 | [Ubuntu 20.04](./os-ubuntu-images/ubuntu-2004-image) |  Yes |
 | [E2](#e2) | Intel x86_64 | [Ubuntu 22.04](./os-ubuntu-images/ubuntu-2204-image)<br/>[Ubuntu 20.04](./os-ubuntu-images/ubuntu-2004-image) | Yes |
 | [F1](#f1) | Intel x86_64 | [Ubuntu 24.04](./os-ubuntu-images/ubuntu-2404-image) <br/> [Ubuntu 22.04](./os-ubuntu-images/ubuntu-2204-image)<br/>[Ubuntu 20.04](./os-ubuntu-images/ubuntu-2004-image) | Yes |
-| [R1](#r1) | ARM | [Ubuntu 22.04 ARM](./os-ubuntu-images/ubuntu-2204-arm-image) | No |
+| [R1](#r1) | ARM | [Ubuntu 24.04 ARM](./os-ubuntu-images/ubuntu-2404-arm-image) | No |
 
 ### E1 generation {#e1}
 
