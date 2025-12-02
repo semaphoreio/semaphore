@@ -95,9 +95,7 @@ F1 machines can be paired with:
 
 ### R1 generation {#r1}
 
-These are ARM machines. They currently in the **Technical Preview stage**. If you're interested in trying them out, please contact our support team.
-
-Implementation details:
+These are ARM machines. Implementation details:
 
 - **CPU**: emulated ARM on [Ampere Altra Q80-30](https://amperecomputing.com/briefs/ampere-altra-family-product-brief)
 - **Memory**: DDR4 RAM
@@ -112,7 +110,7 @@ The r1 generation is presented in the following types:
 
 R1 Generation machine types can only be paired with:
 
-- [`ubuntu2204`](../reference/os-ubuntu-images/ubuntu-2204-arm-image) ARM version
+- [`ubuntu2404`](../reference/os-ubuntu-images/ubuntu-2404-arm-image) ARM version
 
 ## Apple machines {#macos}
 
