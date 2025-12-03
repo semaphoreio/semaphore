@@ -14,7 +14,7 @@ defmodule Ppl.Retention.PolicyConsumerTest do
   end
 
   describe "handle_message/1" do
-    test "decodes valid event and marks pipelines" do
+    test "decodes valid event and marks pipelines with expires_at ~15 days from now" do
       org_id = UUID.uuid4()
       cutoff = ~N[2025-06-01 12:00:00.000000]
 
@@ -23,7 +23,8 @@ defmodule Ppl.Retention.PolicyConsumerTest do
       message = encode_event(org_id, cutoff)
       PolicyConsumer.handle_message(message)
 
-      assert get_expires_at(pipeline.id) == cutoff
+      expires_at = get_expires_at(pipeline.id)
+      assert_expires_at_approximately_15_days_from_now(expires_at)
     end
 
     test "handles multiple pipelines for organization" do
@@ -37,9 +38,27 @@ defmodule Ppl.Retention.PolicyConsumerTest do
       message = encode_event(org_id, cutoff)
       PolicyConsumer.handle_message(message)
 
-      assert get_expires_at(pipeline_1.id) == cutoff
-      assert get_expires_at(pipeline_2.id) == cutoff
+      assert_expires_at_approximately_15_days_from_now(get_expires_at(pipeline_1.id))
+      assert_expires_at_approximately_15_days_from_now(get_expires_at(pipeline_2.id))
       assert get_expires_at(pipeline_3.id) == nil
+    end
+
+    test "unmarks pipelines when cutoff moves backward" do
+      org_id = UUID.uuid4()
+      old_expires = ~N[2025-07-01 12:00:00.000000]
+
+      pipeline_old = insert_pipeline(org_id, ~N[2025-04-01 10:00:00.000000])
+      pipeline_between = insert_pipeline(org_id, ~N[2025-05-15 10:00:00.000000])
+
+      set_expires_at(pipeline_old.id, old_expires)
+      set_expires_at(pipeline_between.id, old_expires)
+
+      new_cutoff = ~N[2025-05-01 12:00:00.000000]
+      message = encode_event(org_id, new_cutoff)
+      PolicyConsumer.handle_message(message)
+
+      assert_expires_at_approximately_15_days_from_now(get_expires_at(pipeline_old.id))
+      assert get_expires_at(pipeline_between.id) == nil
     end
 
     test "handles event with zero timestamp" do
@@ -115,8 +134,7 @@ defmodule Ppl.Retention.PolicyConsumerTest do
 
       PolicyConsumer.handle_message(message)
 
-      expected = ~N[2025-06-01 12:30:45.123456]
-      assert get_expires_at(pipeline.id) == expected
+      assert_expires_at_approximately_15_days_from_now(get_expires_at(pipeline.id))
     end
   end
 
@@ -167,5 +185,17 @@ defmodule Ppl.Retention.PolicyConsumerTest do
   defp get_expires_at(pipeline_id) do
     from(pr in PplRequests, where: pr.id == ^pipeline_id, select: pr.expires_at)
     |> EctoRepo.one()
+  end
+
+  defp set_expires_at(pipeline_id, expires_at) do
+    from(pr in PplRequests, where: pr.id == ^pipeline_id)
+    |> EctoRepo.update_all(set: [expires_at: expires_at])
+  end
+
+  defp assert_expires_at_approximately_15_days_from_now(expires_at) do
+    now = NaiveDateTime.utc_now()
+    expected = NaiveDateTime.add(now, 15, :day)
+    diff_seconds = NaiveDateTime.diff(expires_at, expected, :second) |> abs()
+    assert diff_seconds < 60, "Expected expires_at to be ~15 days from now, got #{expires_at}"
   end
 end
