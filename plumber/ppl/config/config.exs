@@ -48,6 +48,10 @@ config :ppl, Ppl.Retention.PolicyConsumer,
   exchange: System.get_env("USAGE_POLICY_EXCHANGE"),
   routing_key: System.get_env("USAGE_POLICY_ROUTING_KEY")
 
+# Retention policy grace period in days before data is deleted (min: 7, default: 15)
+config :ppl, Ppl.Retention.PolicyApplier,
+  grace_period_days: String.to_integer(System.get_env("RETENTION_GRACE_PERIOD_DAYS") || "15")
+
 # How many times should wormhole retry to publish pipeline events to RabbitMQ
 config :ppl, publish_retry_count: 3
 # Timeout for publishing pipeline events to RabbitMQ
