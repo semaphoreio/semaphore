@@ -5,22 +5,28 @@ defmodule Ppl.Retention.PolicyApplier do
 
   import Ecto.Query
 
+  require Logger
+
   alias Ppl.EctoRepo
   alias Ppl.PplRequests.Model.PplRequests
 
-  @soft_delete_days 15
+  @default_grace_period_days 15
+  @min_grace_period_days 7
 
   @doc """
   Applies retention policy for `org_id` with given `cutoff` date.
 
-  - Pipelines inserted before `cutoff` are marked with `expires_at = now + 15 days`
+  - Pipelines inserted before `cutoff` are marked with `expires_at = now + grace_period_days`
   - Pipelines inserted on or after `cutoff` have their `expires_at` cleared (unmarked)
+
+  The grace period is configurable via RETENTION_GRACE_PERIOD_DAYS env var (default: 15, min: 7).
 
   Returns `{marked_count, unmarked_count}`.
   """
   @spec mark_expiring(String.t(), NaiveDateTime.t()) :: {non_neg_integer(), non_neg_integer()}
   def mark_expiring(org_id, cutoff) do
-    expires_at = NaiveDateTime.utc_now() |> NaiveDateTime.add(@soft_delete_days, :day)
+    grace_period_days = grace_period_days()
+    expires_at = NaiveDateTime.utc_now() |> NaiveDateTime.add(grace_period_days, :day)
 
     mark_query =
       from(pr in PplRequests,
@@ -39,5 +45,20 @@ defmodule Ppl.Retention.PolicyApplier do
     {unmarked_count, _} = EctoRepo.update_all(unmark_query, set: [expires_at: nil])
 
     {marked_count, unmarked_count}
+  end
+
+  defp grace_period_days do
+    config = Application.get_env(:ppl, __MODULE__, [])
+    days = Keyword.get(config, :grace_period_days, @default_grace_period_days)
+
+    if days < @min_grace_period_days do
+      Logger.warning(
+        "[Retention] grace_period_days=#{days} is below minimum, using #{@min_grace_period_days}"
+      )
+
+      @min_grace_period_days
+    else
+      days
+    end
   end
 end
