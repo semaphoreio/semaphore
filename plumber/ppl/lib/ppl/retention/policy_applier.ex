@@ -8,21 +8,36 @@ defmodule Ppl.Retention.PolicyApplier do
   alias Ppl.EctoRepo
   alias Ppl.PplRequests.Model.PplRequests
 
+  @soft_delete_days 15
+
   @doc """
-  Sets `expires_at` on all pipelines for `org_id` inserted before `cutoff`.
-  Pipelines already marked with an earlier or equal expiration are left untouched.
-  Returns the number of rows affected.
+  Applies retention policy for `org_id` with given `cutoff` date.
+
+  - Pipelines inserted before `cutoff` are marked with `expires_at = now + 15 days`
+  - Pipelines inserted on or after `cutoff` have their `expires_at` cleared (unmarked)
+
+  Returns `{marked_count, unmarked_count}`.
   """
-  @spec mark_expiring(String.t(), NaiveDateTime.t()) :: non_neg_integer()
+  @spec mark_expiring(String.t(), NaiveDateTime.t()) :: {non_neg_integer(), non_neg_integer()}
   def mark_expiring(org_id, cutoff) do
-    query =
+    expires_at = NaiveDateTime.utc_now() |> NaiveDateTime.add(@soft_delete_days, :day)
+
+    mark_query =
       from(pr in PplRequests,
         where: fragment("?->>?", pr.request_args, "organization_id") == ^org_id,
-        where: pr.inserted_at < ^cutoff,
-        where: is_nil(pr.expires_at) or pr.expires_at > ^cutoff
+        where: pr.inserted_at < ^cutoff
       )
 
-    {count, _} = EctoRepo.update_all(query, set: [expires_at: cutoff])
-    count
+    unmark_query =
+      from(pr in PplRequests,
+        where: fragment("?->>?", pr.request_args, "organization_id") == ^org_id,
+        where: pr.inserted_at >= ^cutoff,
+        where: not is_nil(pr.expires_at)
+      )
+
+    {marked_count, _} = EctoRepo.update_all(mark_query, set: [expires_at: expires_at])
+    {unmarked_count, _} = EctoRepo.update_all(unmark_query, set: [expires_at: nil])
+
+    {marked_count, unmarked_count}
   end
 end
