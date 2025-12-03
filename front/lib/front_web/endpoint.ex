@@ -53,6 +53,8 @@ defmodule FrontWeb.Endpoint do
     signing_salt: {FrontWeb.Endpoint, :signing_salt, []}
   )
 
+  plug(ETag.Plug)
+
   plug(FrontWeb.Router)
 
   @doc """
