@@ -52,6 +52,12 @@ config :ppl, Ppl.Retention.PolicyConsumer,
 config :ppl, Ppl.Retention.PolicyApplier,
   grace_period_days: String.to_integer(System.get_env("RETENTION_GRACE_PERIOD_DAYS") || "15")
 
+# Retention record deleter worker (deletes expired pipeline records)
+config :ppl, Ppl.Retention.RecordDeleter,
+  enabled: System.get_env("RETENTION_DELETER_ENABLED", "true") == "true",
+  sleep_period_sec: String.to_integer(System.get_env("RETENTION_DELETER_SLEEP_PERIOD_SEC") || "30"),
+  batch_size: String.to_integer(System.get_env("RETENTION_DELETER_BATCH_SIZE") || "100")
+
 # How many times should wormhole retry to publish pipeline events to RabbitMQ
 config :ppl, publish_retry_count: 3
 # Timeout for publishing pipeline events to RabbitMQ
