@@ -26,7 +26,8 @@ defmodule Ppl.Retention.PolicyApplier do
   @spec mark_expiring(String.t(), NaiveDateTime.t()) :: {non_neg_integer(), non_neg_integer()}
   def mark_expiring(org_id, cutoff) do
     grace_period_days = grace_period_days()
-    expires_at = NaiveDateTime.utc_now() |> NaiveDateTime.add(grace_period_days, :day)
+    grace_period_seconds = grace_period_days * 24 * 60 * 60
+    expires_at = NaiveDateTime.utc_now() |> NaiveDateTime.add(grace_period_seconds, :second)
 
     mark_query =
       from(pr in PplRequests,

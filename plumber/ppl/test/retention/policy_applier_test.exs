@@ -171,7 +171,8 @@ defmodule Ppl.Retention.PolicyApplierTest do
 
   defp assert_expires_at_approximately_15_days_from_now(expires_at) do
     now = NaiveDateTime.utc_now()
-    expected = NaiveDateTime.add(now, 15, :day)
+    fifteen_days_in_seconds = 15 * 24 * 60 * 60
+    expected = NaiveDateTime.add(now, fifteen_days_in_seconds, :second)
     diff_seconds = NaiveDateTime.diff(expires_at, expected, :second) |> abs()
     assert diff_seconds < 60, "Expected expires_at to be ~15 days from now, got #{expires_at}"
   end
