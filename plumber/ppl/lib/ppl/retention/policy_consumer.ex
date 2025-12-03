@@ -22,8 +22,8 @@ defmodule Ppl.Retention.PolicyConsumer do
          {:ok, cutoff} <- cutoff_to_naive(event.cutoff_date),
          {:ok, org_id} <- non_empty(event.org_id) do
       {marked, unmarked} = PolicyApplier.mark_expiring(org_id, cutoff)
-      Watchman.increment({"retention.marked", [org_id]}, marked)
-      Watchman.increment({"retention.unmarked", [org_id]}, unmarked)
+      Watchman.submit({"retention.marked", [org_id]}, marked, :count)
+      Watchman.submit({"retention.unmarked", [org_id]}, unmarked, :count)
 
       Logger.info(
         "[Retention] org=#{org_id} cutoff=#{cutoff} marked=#{marked} unmarked=#{unmarked}"
