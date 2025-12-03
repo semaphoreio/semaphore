@@ -77,7 +77,8 @@ defmodule Front.Mixfile do
       # since ex_crypto's maintainer didn't release the version for OTP 24, we're using the git ref
       {:ex_crypto, github: "ntrepid8/ex_crypto", ref: "0997a1aaebe701523c0a9b71d4acec4a1819354e"},
       {:money, "~> 1.12.4"},
-      {:quantum, "~> 3.0"}
+      {:quantum, "~> 3.0"},
+      {:etag_plug, "~> 1.0"}
     ]
   end
 

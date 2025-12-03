@@ -1,6 +1,8 @@
 defmodule Front.Browser.ProjectSettings.ArtifactsTest do
   use FrontWeb.WallabyCase
 
+  alias Support.Browser
+
   @project_policies Query.data("container", "project-policies")
   @workflow_policies Query.data("container", "workflow-policies")
   @job_policies Query.data("container", "job-policies")
@@ -193,10 +195,12 @@ defmodule Front.Browser.ProjectSettings.ArtifactsTest do
 
   defp remove_policy(page, section_selector, index: index) do
     find(page, section_selector, fn section ->
-      input_forms = all(section, Query.data("name", "input-form"))
-      input_form = Enum.at(input_forms, index)
+      section |> Browser.assert_stable(Query.data("name", "input-form"))
 
-      input_form |> click(Query.data("action", "remove-retention-policy"))
+      section
+      |> all(Query.data("name", "input-form"))
+      |> Enum.fetch!(index)
+      |> click(Query.data("action", "remove-retention-policy"))
     end)
   end
 
