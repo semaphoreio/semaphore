@@ -21,9 +21,13 @@ defmodule Ppl.Retention.PolicyConsumer do
     with {:ok, event} <- decode(message),
          {:ok, cutoff} <- cutoff_to_naive(event.cutoff_date),
          {:ok, org_id} <- non_empty(event.org_id) do
-      count = PolicyApplier.mark_expiring(org_id, cutoff)
-      Watchman.increment({"retention.marked", [org_id]})
-      Logger.info("[Retention] Marked #{count} pipelines for org #{org_id} until #{cutoff}")
+      {marked, unmarked} = PolicyApplier.mark_expiring(org_id, cutoff)
+      Watchman.increment({"retention.marked", [org_id]}, marked)
+      Watchman.increment({"retention.unmarked", [org_id]}, unmarked)
+
+      Logger.info(
+        "[Retention] org=#{org_id} cutoff=#{cutoff} marked=#{marked} unmarked=#{unmarked}"
+      )
     else
       {:error, reason} ->
         Logger.error("[Retention] Failed to apply policy event: #{inspect(reason)}")
