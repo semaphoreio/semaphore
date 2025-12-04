@@ -22,7 +22,9 @@ defmodule Projecthub.FeatureHubClient do
 
   alias InternalApi.Feature.{
     ListOrganizationFeaturesRequest,
-    ListOrganizationFeaturesResponse
+    ListOrganizationFeaturesResponse,
+    ListFeaturesRequest,
+    ListFeaturesResponse
   }
 
   @type rpc_request(response_type) :: response_type | Map.t()
@@ -35,4 +37,11 @@ defmodule Projecthub.FeatureHubClient do
       request
       |> decorate(ListOrganizationFeaturesRequest)
       |> grpc_call(:list_organization_features)
+
+  @spec list_features(rpc_request(ListFeaturesRequest.t())) ::  rpc_response(ListFeaturesResponse.t())
+  def list_features(request),
+    do:
+      request
+      |> decorate(ListFeaturesRequest)
+      |> grpc_call(:list_features)
 end

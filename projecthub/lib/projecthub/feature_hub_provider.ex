@@ -11,15 +11,28 @@ defmodule Projecthub.FeatureHubProvider do
   @cache_version :crypto.hash(:md5, File.read(__ENV__.file) |> elem(1)) |> Base.encode64()
 
   @impl FeatureProvider.Provider
+  def provide_features(nil, opts) do
+    use_cache? = Keyword.get(opts, :use_cache, true)
+
+    if use_cache? do
+      cache_fetch("", "organization_features", fn ->
+        do_list_features(update_cache: true)
+      end)
+    else
+      do_list_features()
+    end
+  end
+
+  @impl FeatureProvider.Provider
   def provide_features(org_id, opts) do
     use_cache? = Keyword.get(opts, :use_cache, true)
 
     if use_cache? do
       cache_fetch(org_id, "list_organization_features", fn ->
-        do_list_features(org_id, update_cache: true)
+        do_list_organization_features(org_id, update_cache: true)
       end)
     else
-      do_list_features(org_id)
+      do_list_organization_features(org_id)
     end
   end
 
@@ -55,7 +68,7 @@ defmodule Projecthub.FeatureHubProvider do
   defp cache_key(org_id, operation),
     do: "feature_hub/#{@cache_version}/#{org_id}/#{operation}"
 
-  defp do_list_features(org_id, opts \\ []) do
+  defp do_list_organization_features(org_id, opts \\ []) do
     update_cache = Keyword.get(opts, :update_cache, false)
 
     Projecthub.FeatureHubClient.list_organization_features(%{org_id: org_id})
@@ -67,6 +80,25 @@ defmodule Projecthub.FeatureHubProvider do
 
       if update_cache do
         cache_key = cache_key(org_id, "list_organization_features")
+        AgentStore.store(:feature_store, cache_key, features)
+      end
+
+      wrap(features)
+    end)
+  end
+
+    defp do_list_features(opts \\ []) do
+    update_cache = Keyword.get(opts, :update_cache, false)
+
+    Projecthub.FeatureHubClient.list_features()
+    |> unwrap(fn response ->
+      features =
+        response.features
+        |> Enum.map(&feature_from_grpc/1)
+        |> Enum.filter(&FeatureProvider.Feature.enabled?/1)
+
+      if update_cache do
+        cache_key = cache_key("", "list_features")
         AgentStore.store(:feature_store, cache_key, features)
       end
 
