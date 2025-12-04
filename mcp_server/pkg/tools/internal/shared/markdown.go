@@ -60,6 +60,12 @@ func (mb *MarkdownBuilder) Code(text string) *MarkdownBuilder {
 	return mb
 }
 
+// CodeBlock adds a fenced code block with optional language.
+func (mb *MarkdownBuilder) CodeBlock(language, code string) *MarkdownBuilder {
+	mb.sb.WriteString(fmt.Sprintf("```%s\n%s\n```\n\n", language, code))
+	return mb
+}
+
 // Bold adds bold text inline.
 func (mb *MarkdownBuilder) Bold(text string) *MarkdownBuilder {
 	mb.sb.WriteString(fmt.Sprintf("**%s**", text))
