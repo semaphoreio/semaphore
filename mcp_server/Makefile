@@ -2,6 +2,7 @@ include ../Makefile
 
 APP_NAME=mcp_server
 APP_ENV=prod
+DOCKER_BUILD_PATH=..
 
 INTERNAL_API_BRANCH?=master
 TMP_REPO_DIR ?= /tmp/internal_api

@@ -11,14 +11,14 @@ ENV CGO_ENABLED=0 \
     GOOS=linux \
     GOARCH=amd64
 
-COPY go.mod go.sum ./
+COPY mcp_server/go.mod mcp_server/go.sum ./
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     go mod download
 
-COPY cmd ./cmd
-COPY pkg ./pkg
-COPY test ./test
+COPY mcp_server/cmd ./cmd
+COPY mcp_server/pkg ./pkg
+COPY mcp_server/test ./test
 
 FROM base AS dev
 RUN --mount=type=cache,target=/root/.cache/go-build \
