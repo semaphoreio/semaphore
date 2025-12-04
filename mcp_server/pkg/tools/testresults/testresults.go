@@ -6,19 +6,17 @@ import (
 	"path"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/sirupsen/logrus"
 
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/authz"
 	artifacthubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/artifacthub"
-	pipelinepb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber.pipeline"
 	projecthubenum "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/projecthub"
 	projecthubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/projecthub"
-	jobpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/server_farm.job"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/logging"
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/internal/clients"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/internal/shared"
 )
 
@@ -138,7 +136,7 @@ test_results_signed_url(scope="job", job_id="11111111-2222-3333-4444-55555555555
 				ensureTracker("")
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			job, err := fetchJob(ctx, api, jobID)
+			job, err := clients.DescribeJob(ctx, api, jobID)
 			if err != nil {
 				ensureTracker("")
 				return mcp.NewToolResultError(err.Error()), nil
@@ -173,11 +171,12 @@ test_results_signed_url(scope="pipeline", pipeline_id="...")`), nil
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 
-			pipeline, err := describePipeline(ctx, api, pipelineID)
+			pipelineResp, err := clients.DescribePipeline(ctx, api, pipelineID, false)
 			if err != nil {
 				ensureTracker("")
 				return mcp.NewToolResultError(err.Error()), nil
 			}
+			pipeline := pipelineResp.GetPipeline()
 			orgID = strings.TrimSpace(pipeline.GetOrganizationId())
 			projectID = strings.TrimSpace(pipeline.GetProjectId())
 			pipelineWorkflowID := strings.TrimSpace(pipeline.GetWfId())
@@ -206,7 +205,7 @@ test_results_signed_url(scope="pipeline", pipeline_id="...")`), nil
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		project, err := describeProject(ctx, api, orgID, userID, projectID)
+		project, err := clients.DescribeProject(ctx, api, orgID, userID, projectID)
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -387,79 +386,6 @@ func formatResultMarkdown(scope string, artifact resultArtifact, url string) str
 	return mb.String()
 }
 
-func describeProject(ctx context.Context, api internalapi.Provider, orgID, userID, projectID string) (*projecthubpb.Project, error) {
-	client := api.Projects()
-	if client == nil {
-		return nil, fmt.Errorf("project gRPC endpoint is not configured")
-	}
-	callCtx, cancel := context.WithTimeout(ctx, api.CallTimeout())
-	defer cancel()
-
-	req := &projecthubpb.DescribeRequest{
-		Id: projectID,
-		Metadata: &projecthubpb.RequestMeta{
-			ApiVersion: "v1alpha",
-			Kind:       "Project",
-			OrgId:      strings.TrimSpace(orgID),
-			UserId:     strings.TrimSpace(userID),
-			ReqId:      uuid.NewString(),
-		},
-	}
-
-	resp, err := client.Describe(callCtx, req)
-	if err != nil {
-		logging.ForComponent("rpc").
-			WithFields(logrus.Fields{
-				"rpc":       "project.Describe",
-				"projectId": projectID,
-				"orgId":     orgID,
-				"userId":    userID,
-			}).
-			WithError(err).
-			Error("describe project RPC failed")
-		return nil, fmt.Errorf("describe project RPC failed: %w", err)
-	}
-	if err := shared.CheckProjectResponseMeta(resp.GetMetadata()); err != nil {
-		return nil, err
-	}
-	if resp.GetProject() == nil {
-		return nil, fmt.Errorf("describe project returned no project payload")
-	}
-	return resp.GetProject(), nil
-}
-
-func describePipeline(ctx context.Context, api internalapi.Provider, pipelineID string) (*pipelinepb.Pipeline, error) {
-	client := api.Pipelines()
-	if client == nil {
-		return nil, fmt.Errorf("pipeline gRPC endpoint is not configured")
-	}
-	callCtx, cancel := context.WithTimeout(ctx, api.CallTimeout())
-	defer cancel()
-
-	resp, err := client.Describe(callCtx, &pipelinepb.DescribeRequest{PplId: pipelineID, Detailed: false})
-	if err != nil {
-		logging.ForComponent("rpc").
-			WithFields(logrus.Fields{
-				"rpc":        "pipeline.Describe",
-				"pipelineId": pipelineID,
-			}).
-			WithError(err).
-			Error("pipeline describe RPC failed")
-		return nil, fmt.Errorf("pipeline describe RPC failed: %w", err)
-	}
-	if status := resp.GetResponseStatus(); status != nil && status.GetCode() != pipelinepb.ResponseStatus_OK {
-		message := strings.TrimSpace(status.GetMessage())
-		if message == "" {
-			message = "pipeline describe returned non-OK status"
-		}
-		return nil, fmt.Errorf("pipeline describe failed: %s", message)
-	}
-	if resp.GetPipeline() == nil {
-		return nil, fmt.Errorf("pipeline describe returned no pipeline payload")
-	}
-	return resp.GetPipeline(), nil
-}
-
 func signedURL(ctx context.Context, api internalapi.Provider, artifactID, path string) (string, error) {
 	client := api.Artifacthub()
 	if client == nil {
@@ -504,37 +430,4 @@ func isProjectPublic(project *projecthubpb.Project) bool {
 		return true
 	}
 	return spec.GetPublic()
-}
-
-func fetchJob(ctx context.Context, api internalapi.Provider, jobID string) (*jobpb.Job, error) {
-	client := api.Jobs()
-	if client == nil {
-		return nil, fmt.Errorf("job gRPC endpoint is not configured")
-	}
-
-	callCtx, cancel := context.WithTimeout(ctx, api.CallTimeout())
-	defer cancel()
-
-	resp, err := client.Describe(callCtx, &jobpb.DescribeRequest{JobId: jobID})
-	if err != nil {
-		logging.ForComponent("rpc").
-			WithFields(logrus.Fields{
-				"rpc":   "jobs.Describe",
-				"jobId": jobID,
-			}).
-			WithError(err).
-			Error("gRPC call failed")
-		return nil, fmt.Errorf("describe job RPC failed: %w", err)
-	}
-
-	if err := shared.CheckResponseStatus(resp.GetStatus()); err != nil {
-		return nil, err
-	}
-
-	job := resp.GetJob()
-	if job == nil {
-		return nil, fmt.Errorf("describe job returned no job payload")
-	}
-
-	return job, nil
 }

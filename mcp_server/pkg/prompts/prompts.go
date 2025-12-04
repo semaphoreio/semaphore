@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	agentSetupPromptName = "semaphore_agent_setup"
+	agentSetupPromptName = "mcp_setup"
 )
 
 // Register wires all prompts into the MCP server.
@@ -109,8 +109,9 @@ Discover IDs once with ` + "`organizations_list`" + ` and ` + "`projects_list`" 
 
 1. ` + "`workflows_search`" + ` → find failing workflow
 2. ` + "`pipelines_list`" + ` → get pipeline from workflow
-3. ` + "`pipeline_jobs`" + ` → find failed jobs
-4. ` + "`jobs_logs`" + ` → read error output
+3. ` + "`pipeline_jobs`" + ` → find failed jobs and check ` + "`result_reason`" + `
+4. If ` + "`result_reason=test`" + `: use ` + "`get_test_results`" + ` first (structured failure data), fall back to ` + "`jobs_logs`" + ` only if no test results
+5. Otherwise: use ` + "`jobs_logs`" + ` → read error output
 
 ## Test Results
 
