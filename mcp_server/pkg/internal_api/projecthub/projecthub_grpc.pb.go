@@ -19,24 +19,24 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ProjectService_List_FullMethodName                    = "/InternalApi.Projecthub.ProjectService/List" // #nosec G101 -- gRPC method name, not credential
-	ProjectService_ListKeyset_FullMethodName              = "/InternalApi.Projecthub.ProjectService/ListKeyset" // #nosec G101 -- gRPC method name, not credential
-	ProjectService_Describe_FullMethodName                = "/InternalApi.Projecthub.ProjectService/Describe" // #nosec G101 -- gRPC method name, not credential
-	ProjectService_DescribeMany_FullMethodName            = "/InternalApi.Projecthub.ProjectService/DescribeMany" // #nosec G101 -- gRPC method name, not credential
-	ProjectService_Create_FullMethodName                  = "/InternalApi.Projecthub.ProjectService/Create" // #nosec G101 -- gRPC method name, not credential
-	ProjectService_Update_FullMethodName                  = "/InternalApi.Projecthub.ProjectService/Update" // #nosec G101 -- gRPC method name, not credential
-	ProjectService_Destroy_FullMethodName                 = "/InternalApi.Projecthub.ProjectService/Destroy" // #nosec G101 -- gRPC method name, not credential
-	ProjectService_Restore_FullMethodName                 = "/InternalApi.Projecthub.ProjectService/Restore" // #nosec G101 -- gRPC method name, not credential
-	ProjectService_Users_FullMethodName                   = "/InternalApi.Projecthub.ProjectService/Users" // #nosec G101 -- gRPC method name, not credential
-	ProjectService_CheckDeployKey_FullMethodName          = "/InternalApi.Projecthub.ProjectService/CheckDeployKey" // #nosec G101 -- gRPC method name, not credential
-	ProjectService_RegenerateDeployKey_FullMethodName     = "/InternalApi.Projecthub.ProjectService/RegenerateDeployKey" // #nosec G101 -- gRPC method name, not credential
-	ProjectService_CheckWebhook_FullMethodName            = "/InternalApi.Projecthub.ProjectService/CheckWebhook" // #nosec G101 -- gRPC method name, not credential
-	ProjectService_RegenerateWebhook_FullMethodName       = "/InternalApi.Projecthub.ProjectService/RegenerateWebhook" // #nosec G101 -- gRPC method name, not credential
-	ProjectService_RegenerateWebhookSecret_FullMethodName = "/InternalApi.Projecthub.ProjectService/RegenerateWebhookSecret" // #nosec G101 -- gRPC method name, not credential
-	ProjectService_ChangeProjectOwner_FullMethodName      = "/InternalApi.Projecthub.ProjectService/ChangeProjectOwner" // #nosec G101 -- gRPC method name, not credential
-	ProjectService_ForkAndCreate_FullMethodName           = "/InternalApi.Projecthub.ProjectService/ForkAndCreate" // #nosec G101 -- gRPC method name, not credential
-	ProjectService_GithubAppSwitch_FullMethodName         = "/InternalApi.Projecthub.ProjectService/GithubAppSwitch" // #nosec G101 -- gRPC method name, not credential
-	ProjectService_FinishOnboarding_FullMethodName        = "/InternalApi.Projecthub.ProjectService/FinishOnboarding" // #nosec G101 -- gRPC method name, not credential
+	ProjectService_List_FullMethodName                    = "/InternalApi.Projecthub.ProjectService/List"
+	ProjectService_ListKeyset_FullMethodName              = "/InternalApi.Projecthub.ProjectService/ListKeyset"
+	ProjectService_Describe_FullMethodName                = "/InternalApi.Projecthub.ProjectService/Describe"
+	ProjectService_DescribeMany_FullMethodName            = "/InternalApi.Projecthub.ProjectService/DescribeMany"
+	ProjectService_Create_FullMethodName                  = "/InternalApi.Projecthub.ProjectService/Create"
+	ProjectService_Update_FullMethodName                  = "/InternalApi.Projecthub.ProjectService/Update"
+	ProjectService_Destroy_FullMethodName                 = "/InternalApi.Projecthub.ProjectService/Destroy"
+	ProjectService_Restore_FullMethodName                 = "/InternalApi.Projecthub.ProjectService/Restore"
+	ProjectService_Users_FullMethodName                   = "/InternalApi.Projecthub.ProjectService/Users"
+	ProjectService_CheckDeployKey_FullMethodName          = "/InternalApi.Projecthub.ProjectService/CheckDeployKey"
+	ProjectService_RegenerateDeployKey_FullMethodName     = "/InternalApi.Projecthub.ProjectService/RegenerateDeployKey"
+	ProjectService_CheckWebhook_FullMethodName            = "/InternalApi.Projecthub.ProjectService/CheckWebhook"
+	ProjectService_RegenerateWebhook_FullMethodName       = "/InternalApi.Projecthub.ProjectService/RegenerateWebhook"
+	ProjectService_RegenerateWebhookSecret_FullMethodName = "/InternalApi.Projecthub.ProjectService/RegenerateWebhookSecret"
+	ProjectService_ChangeProjectOwner_FullMethodName      = "/InternalApi.Projecthub.ProjectService/ChangeProjectOwner"
+	ProjectService_ForkAndCreate_FullMethodName           = "/InternalApi.Projecthub.ProjectService/ForkAndCreate"
+	ProjectService_GithubAppSwitch_FullMethodName         = "/InternalApi.Projecthub.ProjectService/GithubAppSwitch"
+	ProjectService_FinishOnboarding_FullMethodName        = "/InternalApi.Projecthub.ProjectService/FinishOnboarding"
 )
 
 // ProjectServiceClient is the client API for ProjectService service.
