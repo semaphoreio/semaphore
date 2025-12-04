@@ -29,8 +29,7 @@ Use this when you need to answer:
 Parameters:
 - query (required): Search term to find in the documentation
 - limit (optional): Number of results to return (1-30, default 10)
-- version (optional): Filter by doc version ("saas", "CE", "EE")
-- doc_type (optional): Filter by doc type ("saas" or "versioned"). Defaults to "saas".
+- version (optional): Filter by doc version. Use "saas" for cloud docs (default), or "CE"/"EE" for self-hosted versioned docs (e.g., "CE", "EE", "CE-1.4", "EE-1.4")
 
 After finding relevant documents, read the full content using the resource URI:
 semaphore-docs://{path}
@@ -52,8 +51,8 @@ Examples:
 3. Look up environment variables:
    docs_search(query="environment variables", limit=5)
 
-4. Search only SaaS docs:
-   docs_search(query="artifacts", doc_type="saas")`
+4. Search self-hosted CE docs:
+   docs_search(query="install", version="CE")`
 }
 
 func newSearchTool(name, description string) mcp.Tool {
@@ -71,10 +70,7 @@ func newSearchTool(name, description string) mcp.Tool {
 			mcp.DefaultNumber(float64(defaultLimit)),
 		),
 		mcp.WithString("version",
-			mcp.Description("Filter by doc version: 'saas', 'CE', 'EE', 'CE-1.4', 'EE-1.4'."),
-		),
-		mcp.WithString("doc_type",
-			mcp.Description("Filter by doc type: 'saas' (cloud) or 'versioned' (self-hosted)."),
+			mcp.Description("Filter by doc version: 'saas' (default, cloud docs) or CE/EE versions for self-hosted (e.g., 'CE', 'EE', 'CE-1.4', 'EE-1.4')."),
 		),
 		mcp.WithReadOnlyHintAnnotation(true),
 		mcp.WithIdempotentHintAnnotation(true),
@@ -120,14 +116,19 @@ Troubleshooting:
 			docssearch.WithLimit(limit),
 		}
 
-		if version := req.GetString("version", ""); version != "" {
+		// Infer doc_type from version parameter
+		version := req.GetString("version", "")
+		if version == "" || version == "saas" {
+			// Default to saas docs
+			opts = append(opts, docssearch.WithDocType("saas"))
+		} else if strings.HasPrefix(version, "CE") || strings.HasPrefix(version, "EE") {
+			// CE/EE versions are versioned (self-hosted) docs
+			opts = append(opts, docssearch.WithDocType("versioned"))
 			opts = append(opts, docssearch.WithVersion(version))
-		}
-
-		// Default to saas docs when doc_type not specified
-		docType := req.GetString("doc_type", "saas")
-		if docType != "" {
-			opts = append(opts, docssearch.WithDocType(docType))
+		} else {
+			// Unknown version format, try as-is with versioned doc_type
+			opts = append(opts, docssearch.WithDocType("versioned"))
+			opts = append(opts, docssearch.WithVersion(version))
 		}
 
 		results, err := client.Search(ctx, query, opts...)
