@@ -48,7 +48,7 @@ Examples:
    get_test_results(scope="job", job_id="...")
 
 2. Get pipeline-level test results:
-   get_test_results(scope="pipeline", pipeline_id="...", workflow_id="...")
+   get_test_results(scope="pipeline", pipeline_id="...")
 
 Typical workflow:
 1. Use pipelines_list or pipeline_jobs to identify the job/pipeline ID
@@ -80,11 +80,6 @@ func newTool() mcp.Tool {
 		mcp.WithString(
 			"pipeline_id",
 			mcp.Description("Pipeline UUID (required when scope=pipeline). Get this from pipelines_list. Format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx."),
-			mcp.Pattern(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`),
-		),
-		mcp.WithString(
-			"workflow_id",
-			mcp.Description("Workflow UUID that owns the pipeline (required when scope=pipeline). Get this from workflows_search. Format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx."),
 			mcp.Pattern(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`),
 		),
 		mcp.WithReadOnlyHintAnnotation(true),
@@ -170,23 +165,10 @@ test_results_signed_url(scope="job", job_id="11111111-2222-3333-4444-55555555555
 				return mcp.NewToolResultError(`pipeline_id is required when scope=pipeline.
 
 Provide the pipeline UUID from pipelines_list. Example:
-test_results_signed_url(scope="pipeline", pipeline_id="...", workflow_id="...")`), nil
+test_results_signed_url(scope="pipeline", pipeline_id="...")`), nil
 			}
 			pipelineID = strings.TrimSpace(pipelineID)
 			if err := shared.ValidateUUID(pipelineID, "pipeline_id"); err != nil {
-				ensureTracker("")
-				return mcp.NewToolResultError(err.Error()), nil
-			}
-			workflowID, err := req.RequireString("workflow_id")
-			if err != nil {
-				ensureTracker("")
-				return mcp.NewToolResultError(`workflow_id is required when scope=pipeline.
-
-Provide the workflow UUID from workflows_search. The pipeline must belong to this workflow. Example:
-test_results_signed_url(scope="pipeline", pipeline_id="...", workflow_id="...")`), nil
-			}
-			workflowID = strings.TrimSpace(workflowID)
-			if err := shared.ValidateUUID(workflowID, "workflow_id"); err != nil {
 				ensureTracker("")
 				return mcp.NewToolResultError(err.Error()), nil
 			}
@@ -210,19 +192,6 @@ test_results_signed_url(scope="pipeline", pipeline_id="...", workflow_id="...")`
 			if err := shared.ValidateUUID(pipelineWorkflowID, "pipeline workflow_id"); err != nil {
 				ensureTracker("")
 				return mcp.NewToolResultError(err.Error()), nil
-			}
-			if !sameID(pipelineWorkflowID, workflowID) {
-				ensureTracker(orgID)
-				shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
-					Tool:              toolName,
-					ResourceType:      "pipeline",
-					ResourceID:        pipelineID,
-					RequestOrgID:      orgID,
-					ResourceOrgID:     pipeline.GetOrganizationId(),
-					RequestProjectID:  projectID,
-					ResourceProjectID: pipeline.GetProjectId(),
-				})
-				return shared.ScopeMismatchError(toolName, "workflow"), nil
 			}
 			listingDir = fmt.Sprintf("artifacts/workflows/%s/test-results", pipelineWorkflowID)
 			artifactCandidates = []resultArtifact{

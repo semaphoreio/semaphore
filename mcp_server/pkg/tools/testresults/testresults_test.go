@@ -47,7 +47,6 @@ func TestSignedURL_PublicProject_AllowsGuest(t *testing.T) {
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
 		"scope":       "pipeline",
 		"pipeline_id": testPipelineID,
-		"workflow_id": testWorkflowID,
 	}}}
 	// No user header (guest)
 
@@ -80,7 +79,6 @@ func TestSignedURL_PrivateProject_MissingUserHeader(t *testing.T) {
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
 		"scope":       "pipeline",
 		"pipeline_id": testPipelineID,
-		"workflow_id": testWorkflowID,
 	}}}
 
 	res, err := handler(provider)(context.Background(), req)
@@ -109,7 +107,6 @@ func TestSignedURL_PrivateProject_WithPermission(t *testing.T) {
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
 		"scope":       "pipeline",
 		"pipeline_id": testPipelineID,
-		"workflow_id": testWorkflowID,
 	}}}
 	header := http.Header{}
 	header.Set("X-Semaphore-User-ID", testUserID)
@@ -146,7 +143,6 @@ func TestDescribeProject_PassesMetadata(t *testing.T) {
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
 		"scope":       "pipeline",
 		"pipeline_id": testPipelineID,
-		"workflow_id": testWorkflowID,
 	}}}
 	header := http.Header{}
 	header.Set("X-Semaphore-User-ID", testUserID)
@@ -378,7 +374,6 @@ func TestSignedURL_PipelineScope_FallsBackToSummary(t *testing.T) {
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
 		"scope":       "pipeline",
 		"pipeline_id": testPipelineID,
-		"workflow_id": testWorkflowID,
 	}}}
 
 	res, err := handler(provider)(context.Background(), req)
@@ -410,7 +405,6 @@ func TestSignedURL_ErrorsWhenNoArtifactsFound(t *testing.T) {
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
 		"scope":       "pipeline",
 		"pipeline_id": testPipelineID,
-		"workflow_id": testWorkflowID,
 	}}}
 
 	res, err := handler(provider)(context.Background(), req)
