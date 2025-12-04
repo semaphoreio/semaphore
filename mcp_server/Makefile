@@ -8,7 +8,7 @@ TMP_REPO_DIR ?= /tmp/internal_api
 INTERNAL_API_MODULES?=include/internal_api/status,include/internal_api/response_status,plumber_w_f.workflow,plumber.pipeline,server_farm.job,loghub,loghub2,user,repository_integrator,rbac,organization,projecthub,feature
 PROTOC_IMAGE?=golang:1.24-alpine
 
-.PHONY: tidy test test.setup lint pb.gen dev.run
+.PHONY: tidy test test.setup lint pb.gen dev.run index
 
 tidy:
 	go mod tidy
@@ -45,3 +45,10 @@ dev.run:
 		echo "air not found, falling back to go run"; \
 		MCP_USE_STUBS=true go run ./cmd/mcp_server -http :3001; \
 	fi
+
+# Build the documentation search index
+# Usage: make index DOCS_ROOT=../docs INDEX_PATH=./index
+DOCS_ROOT ?= ../docs
+INDEX_PATH ?= ./index
+index:
+	go run ./cmd/indexer -docs=$(DOCS_ROOT) -output=$(INDEX_PATH)
