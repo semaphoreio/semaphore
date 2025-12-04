@@ -297,9 +297,9 @@ Here you can:
 
 ## Retention policies {#retention}
 
-Semaphore will never delete your artifacts automatically. To control usage and [costs](#usage), it's recommended to set up retention policies to automatically delete old artifacts.
+Semaphore does not delete artifacts before the configured retention period. However, all artifacts on the [workflow and job namespaces/scopes](#namespaces) **have a maximum retention of 400 days** and are automatically deleted once the retention limit is passed.
 
-Retention policies are rule-based and scoped to namespaces. You must create one or more rules with file selectors and ages. Semaphore attempts to match each rule to existing files and delete them if they exceed the maximum age.
+[Project-level](#projects) artifacts have no age limit and are not affected by the 400-day retention default. To control [usage and costs](#usage), we recommend to set up **retention rules** to automatically delete old project-level artifacts.
 
 ### How to create retention policies
 
