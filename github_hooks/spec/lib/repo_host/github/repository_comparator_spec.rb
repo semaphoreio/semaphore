@@ -12,7 +12,7 @@ RSpec.describe RepoHost::Github::RepositoryComparator do
       )
       comparator = described_class.new(
         repository,
-        RepoHost::Github::Responses::Payload.repository_renamed_hook
+        JSON.parse(RepoHost::Github::Responses::Payload.repository_renamed_hook)["repository"]
       )
 
       expect(comparator.different?).to be(false)
@@ -31,7 +31,7 @@ RSpec.describe RepoHost::Github::RepositoryComparator do
       )
       comparator = described_class.new(
         repository,
-        RepoHost::Github::Responses::Payload.default_branch_changed
+        JSON.parse(RepoHost::Github::Responses::Payload.default_branch_changed)["repository"]
       )
 
       expect(comparator.different?).to be(true)
@@ -50,7 +50,7 @@ RSpec.describe RepoHost::Github::RepositoryComparator do
       )
       comparator = described_class.new(
         repository,
-        RepoHost::Github::Responses::Payload.repository_renamed_hook
+        JSON.parse(RepoHost::Github::Responses::Payload.repository_renamed_hook)["repository"]
       )
 
       expect(comparator.different?).to be(true)
