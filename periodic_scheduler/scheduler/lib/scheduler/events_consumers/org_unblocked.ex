@@ -36,35 +36,60 @@ defmodule Scheduler.EventsConsumers.OrgUnblocked do
   def unsuspend_periodics_from_org(error),
     do: error |> LT.warn("Error while processing org unblocked RabbitMQ message:")
 
-  defp unsuspend_batch(org_id, batch_no) do
+  defp unsuspend_batch(org_id, batch_no, has_failures \\ false) do
     with {:ok, periodics} <- PeriodicsQueries.get_all_from_org(org_id, batch_no),
          {:periodics_found, true} <- {:periodics_found, length(periodics) > 0},
-         {:ok, %{failed: failed}} <- unsuspend_periodics(periodics) do
-      if failed != [] do
-        failed
-        |> LT.warn("Failed to unsuspend some periodics for organization #{org_id}")
-      end
+         {:ok, %{failed: failed, ignored: ignored}} <- unsuspend_periodics(periodics) do
+      log_failures(failed, org_id)
+      log_ignored(ignored, org_id)
 
-      unsuspend_batch(org_id, batch_no + 1)
+      unsuspend_batch(org_id, batch_no + 1, has_failures || length(failed) > 0)
     else
       {:periodics_found, false} ->
-        LT.info(org_id, "Unsuspended all periodics from organization")
+        finalize_result(has_failures, org_id)
 
       error ->
         LT.warn(error, "Error while unsuspending periodics from organization #{org_id}")
+        {:error, :batch_processing_failed}
     end
+  end
+
+  defp log_failures([], _org_id), do: :ok
+
+  defp log_failures(failed, org_id) do
+    count = length(failed)
+    Watchman.submit("scheduler.org_unblocked.unsuspend.failure", count)
+    failed |> LT.warn("Failed to unsuspend #{count} periodics for organization #{org_id}")
+  end
+
+  defp log_ignored([], _org_id), do: :ok
+
+  defp log_ignored(ignored, org_id) do
+    count = length(ignored)
+    Watchman.submit("scheduler.org_unblocked.unsuspend.ignored", count)
+    ignored |> LT.info("Ignored #{count} periodics with data issues for organization #{org_id}")
+  end
+
+  defp finalize_result(false, org_id) do
+    LT.info(org_id, "Unsuspended all periodics from organization")
+    :ok
+  end
+
+  defp finalize_result(true, org_id) do
+    LT.warn(org_id, "Finished unsuspending periodics from organization but some failed")
+    {:error, :failed_unsuspending_periodics}
   end
 
   defp unsuspend_periodics(periodics) do
     result =
-      Enum.reduce(periodics, %{unsuspended: [], failed: []}, fn periodic, acc ->
+      Enum.reduce(periodics, %{unsuspended: [], ignored: [], failed: []}, fn periodic, acc ->
         case unsuspend_periodic(periodic) do
           {:ok, periodic} ->
-            %{acc | unsuspended: [periodic | acc.unsuspended]}
+            %{acc | unsuspended: [periodic.id | acc.unsuspended]}
 
-          {:error, reason} ->
-            failed_entry = %{id: periodic.id, reason: reason}
-            %{acc | failed: [failed_entry | acc.failed]}
+          {:error, :missing_cron_expression} ->
+            ignored_entry = %{id: periodic.id, reason: :missing_cron_expression}
+            %{acc | ignored: [ignored_entry | acc.ignored]}
 
           other ->
             failed_entry = %{id: periodic.id, reason: other}
@@ -75,6 +100,7 @@ defmodule Scheduler.EventsConsumers.OrgUnblocked do
     {:ok,
      %{
        unsuspended: Enum.reverse(result.unsuspended),
+       ignored: Enum.reverse(result.ignored),
        failed: Enum.reverse(result.failed)
      }}
   end

@@ -74,53 +74,72 @@ defmodule Scheduler.EventsConsumers.OrgUnblocked.Test do
     assert_only_periodics_from_unblocked_org_unsuspended(periodics, ctx.ids_1.org_id)
   end
 
-  test "invalid cron expression does not block unsuspending other periodics", ctx do
-    [{:ok, first_id}, {:ok, invalid_id}, {:ok, nil_cron_id}, {:ok, third_id}] =
-      1..4
-      |> Enum.map(&create_periodic(ctx.ids_3, &1))
+  describe "ignored errors (missing_cron_expression)" do
+    test "does not block unsuspending other periodics", ctx do
+      [{:ok, first_id}, {:ok, invalid_id}, {:ok, nil_cron_id}, {:ok, third_id}] =
+        1..4
+        |> Enum.map(&create_periodic(ctx.ids_3, &1))
 
-    invalidate_cron_expression(invalid_id)
-    remove_cron_expression(nil_cron_id)
+      invalidate_cron_expression(invalid_id)
+      remove_cron_expression(nil_cron_id)
 
-    event = Proto.deep_new!(OrganizationUnblocked, %{org_id: ctx.ids_3.org_id})
-    encoded = OrganizationUnblocked.encode(event)
+      event = Proto.deep_new!(OrganizationUnblocked, %{org_id: ctx.ids_3.org_id})
+      encoded = OrganizationUnblocked.encode(event)
 
-    Tackle.publish(encoded, exchange_params())
+      Tackle.publish(encoded, exchange_params())
 
-    :timer.sleep(2_000)
+      :timer.sleep(2_000)
 
-    assert {:ok, first_periodic} = PeriodicsQueries.get_by_id(first_id)
-    assert first_periodic.suspended == false
-    assert nil != first_id |> String.to_atom() |> QuantumScheduler.find_job()
+      assert {:ok, first_periodic} = PeriodicsQueries.get_by_id(first_id)
+      assert first_periodic.suspended == false
+      assert nil != first_id |> String.to_atom() |> QuantumScheduler.find_job()
 
-    assert {:ok, invalid_periodic} = PeriodicsQueries.get_by_id(invalid_id)
-    assert invalid_periodic.suspended == false
-    assert nil == invalid_id |> String.to_atom() |> QuantumScheduler.find_job()
+      assert {:ok, invalid_periodic} = PeriodicsQueries.get_by_id(invalid_id)
+      assert invalid_periodic.suspended == false
+      assert nil == invalid_id |> String.to_atom() |> QuantumScheduler.find_job()
 
-    assert {:ok, nil_cron_periodic} = PeriodicsQueries.get_by_id(nil_cron_id)
-    assert nil_cron_periodic.suspended == false
-    assert nil == nil_cron_id |> String.to_atom() |> QuantumScheduler.find_job()
+      assert {:ok, nil_cron_periodic} = PeriodicsQueries.get_by_id(nil_cron_id)
+      assert nil_cron_periodic.suspended == false
+      assert nil == nil_cron_id |> String.to_atom() |> QuantumScheduler.find_job()
 
-    assert {:ok, third_periodic} = PeriodicsQueries.get_by_id(third_id)
-    assert third_periodic.suspended == false
-    assert nil != third_id |> String.to_atom() |> QuantumScheduler.find_job()
+      assert {:ok, third_periodic} = PeriodicsQueries.get_by_id(third_id)
+      assert third_periodic.suspended == false
+      assert nil != third_id |> String.to_atom() |> QuantumScheduler.find_job()
+    end
+
+    test "returns :ok when only ignored errors occur (no redelivery)", ctx do
+      [{:ok, nil_cron_id}] =
+        [1]
+        |> Enum.map(&create_periodic(ctx.ids_3, &1))
+
+      remove_cron_expression(nil_cron_id)
+
+      # Direct call to verify return value
+      assert :ok = OrgUnblocked.unsuspend_periodics_from_org({:ok, %{org_id: ctx.ids_3.org_id}})
+
+      # Verify periodic was still unsuspended in DB
+      assert {:ok, periodic} = PeriodicsQueries.get_by_id(nil_cron_id)
+      assert periodic.suspended == false
+    end
   end
 
-  test "returns error when database is unavailable", ctx do
-    repo_supervisor = Scheduler.Supervisor
-    repo_child = Scheduler.PeriodicsRepo
+  describe "non-recoverable errors" do
+    test "returns error when database is unavailable", ctx do
+      repo_supervisor = Scheduler.Supervisor
+      repo_child = Scheduler.PeriodicsRepo
 
-    on_exit(fn ->
-      if Process.whereis(repo_child) == nil do
-        {:ok, _pid} = Supervisor.start_child(repo_supervisor, {repo_child, []})
-      end
-    end)
+      on_exit(fn ->
+        if Process.whereis(repo_child) == nil do
+          {:ok, _pid} = Supervisor.start_child(repo_supervisor, {repo_child, []})
+        end
+      end)
 
-    assert :ok = Supervisor.terminate_child(repo_supervisor, repo_child)
-    assert :ok = Supervisor.delete_child(repo_supervisor, repo_child)
+      assert :ok = Supervisor.terminate_child(repo_supervisor, repo_child)
+      assert :ok = Supervisor.delete_child(repo_supervisor, repo_child)
 
-    assert {:error, _reason} =
-             OrgUnblocked.unsuspend_periodics_from_org({:ok, %{org_id: ctx.ids_1.org_id}})
+      assert {:error, :batch_processing_failed} =
+               OrgUnblocked.unsuspend_periodics_from_org({:ok, %{org_id: ctx.ids_1.org_id}})
+    end
   end
 
   defp create_periodic(ids, ind) do
