@@ -21,6 +21,10 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+const (
+	testProjectUUID = "33333333-3333-3333-3333-333333333333"
+)
+
 func TestDescribeJob_FeatureFlagDisabled(t *testing.T) {
 	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
@@ -50,8 +54,7 @@ func TestDescribeJob_FeatureFlagDisabled(t *testing.T) {
 func TestLogsHandler_FeatureFlagDisabled(t *testing.T) {
 	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
-		"organization_id": orgID,
-		"job_id":          "11111111-2222-3333-4444-555555555555",
+		"job_id": "11111111-2222-3333-4444-555555555555",
 	}}}
 	header := http.Header{}
 	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
@@ -67,7 +70,7 @@ func TestLogsHandler_FeatureFlagDisabled(t *testing.T) {
 				Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
 				Job: &jobpb.Job{
 					Id:             "11111111-2222-3333-4444-555555555555",
-					ProjectId:      "proj-1",
+					ProjectId:      testProjectUUID,
 					OrganizationId: orgID,
 				},
 			},
@@ -95,7 +98,7 @@ func TestDescribeJob(t *testing.T) {
 				Id:             jobID,
 				Name:           "Build",
 				PplId:          "ppl-1",
-				ProjectId:      "proj-1",
+				ProjectId:      testProjectUUID,
 				OrganizationId: orgID,
 				FailureReason:  "",
 				Timeline: &jobpb.Job_Timeline{
@@ -139,7 +142,7 @@ func TestDescribeJobPermissionDenied(t *testing.T) {
 			Job: &jobpb.Job{
 				Id:             jobID,
 				PplId:          "ppl-1",
-				ProjectId:      "proj-1",
+				ProjectId:      testProjectUUID,
 				OrganizationId: orgID,
 			},
 		},
@@ -161,14 +164,14 @@ func TestDescribeJobPermissionDenied(t *testing.T) {
 	}
 
 	msg := requireErrorText(t, res)
-	if !strings.Contains(msg, `Permission denied while accessing project proj-1`) {
+	if !strings.Contains(msg, `Permission denied while accessing project `+testProjectUUID) {
 		toFail(t, "expected project denial message, got %q", msg)
 	}
 	if len(rbac.lastRequests) != 1 {
 		toFail(t, "expected one RBAC request, got %d", len(rbac.lastRequests))
 	}
-	if got := rbac.lastRequests[0].GetProjectId(); got != "proj-1" {
-		toFail(t, "expected RBAC project proj-1, got %s", got)
+	if got := rbac.lastRequests[0].GetProjectId(); got != testProjectUUID {
+		toFail(t, "expected RBAC project %s, got %s", testProjectUUID, got)
 	}
 	if got := rbac.lastRequests[0].GetOrgId(); got != orgID {
 		toFail(t, "expected RBAC org %s, got %s", orgID, got)
@@ -184,7 +187,7 @@ func TestDescribeJobRBACUnavailable(t *testing.T) {
 			Job: &jobpb.Job{
 				Id:             jobID,
 				PplId:          "ppl-1",
-				ProjectId:      "proj-1",
+				ProjectId:      testProjectUUID,
 				OrganizationId: orgID,
 			},
 		},
@@ -219,7 +222,7 @@ func TestDescribeJobScopeMismatchOrganization(t *testing.T) {
 			Job: &jobpb.Job{
 				Id:             jobID,
 				PplId:          "ppl-1",
-				ProjectId:      "proj-1",
+				ProjectId:      testProjectUUID,
 				OrganizationId: "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
 			},
 		},
@@ -297,7 +300,7 @@ func TestFetchHostedLogsPagination(t *testing.T) {
 			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
 			Job: &jobpb.Job{
 				Id:             jobID,
-				ProjectId:      "proj-1",
+				ProjectId:      testProjectUUID,
 				OrganizationId: orgID,
 				SelfHosted:     false,
 			},
@@ -389,8 +392,7 @@ func TestFetchHostedLogsPagination(t *testing.T) {
 
 			handler := logsHandler(provider)
 			args := map[string]any{
-				"organization_id": orgID,
-				"job_id":          jobID,
+				"job_id": jobID,
 			}
 			if tc.cursor != "" {
 				args["cursor"] = tc.cursor
@@ -441,7 +443,7 @@ func TestFetchSelfHostedLogs(t *testing.T) {
 			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
 			Job: &jobpb.Job{
 				Id:             jobID,
-				ProjectId:      "proj-1",
+				ProjectId:      testProjectUUID,
 				OrganizationId: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
 				SelfHosted:     true,
 			},
@@ -460,8 +462,7 @@ func TestFetchSelfHostedLogs(t *testing.T) {
 
 	handler := logsHandler(provider)
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
-		"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-		"job_id":          jobID,
+		"job_id": jobID,
 	}}}
 	header := http.Header{}
 	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
@@ -494,7 +495,7 @@ func TestLogsPermissionDenied(t *testing.T) {
 			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
 			Job: &jobpb.Job{
 				Id:             jobID,
-				ProjectId:      "proj-1",
+				ProjectId:      testProjectUUID,
 				OrganizationId: orgID,
 				SelfHosted:     false,
 			},
@@ -511,8 +512,7 @@ func TestLogsPermissionDenied(t *testing.T) {
 	}
 
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
-		"organization_id": orgID,
-		"job_id":          jobID,
+		"job_id": jobID,
 	}}}
 	header := http.Header{}
 	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
@@ -524,7 +524,7 @@ func TestLogsPermissionDenied(t *testing.T) {
 	}
 
 	msg := requireErrorText(t, res)
-	if !strings.Contains(msg, `Permission denied while accessing project proj-1`) {
+	if !strings.Contains(msg, `Permission denied while accessing project `+testProjectUUID) {
 		toFail(t, "expected project denial message, got %q", msg)
 	}
 	if len(rbac.lastRequests) != 1 {
@@ -535,16 +535,15 @@ func TestLogsPermissionDenied(t *testing.T) {
 	}
 }
 
-func TestLogsScopeMismatchOrganization(t *testing.T) {
+func TestLogsMissingOrgFromJob(t *testing.T) {
 	jobID := "99999999-aaaa-bbbb-cccc-dddddddddddd"
-	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 	jobClient := &jobClientStub{
 		describeResp: &jobpb.DescribeResponse{
 			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
 			Job: &jobpb.Job{
 				Id:             jobID,
-				ProjectId:      "proj-1",
-				OrganizationId: "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+				ProjectId:      testProjectUUID,
+				OrganizationId: "",
 				SelfHosted:     false,
 			},
 		},
@@ -560,8 +559,7 @@ func TestLogsScopeMismatchOrganization(t *testing.T) {
 	}
 
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
-		"organization_id": orgID,
-		"job_id":          jobID,
+		"job_id": jobID,
 	}}}
 	header := http.Header{}
 	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
@@ -573,8 +571,8 @@ func TestLogsScopeMismatchOrganization(t *testing.T) {
 	}
 
 	msg := requireErrorText(t, res)
-	if !strings.Contains(msg, "outside the authorized organization scope") {
-		toFail(t, "expected organization scope mismatch message, got %q", msg)
+	if !strings.Contains(msg, "job organization_id") {
+		toFail(t, "expected organization validation error, got %q", msg)
 	}
 	if len(rbac.lastRequests) != 0 {
 		toFail(t, "expected no RBAC calls, got %d", len(rbac.lastRequests))
@@ -592,7 +590,7 @@ func TestLogsRBACUnavailable(t *testing.T) {
 			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
 			Job: &jobpb.Job{
 				Id:             jobID,
-				ProjectId:      "proj-1",
+				ProjectId:      testProjectUUID,
 				OrganizationId: orgID,
 				SelfHosted:     false,
 			},
@@ -607,8 +605,7 @@ func TestLogsRBACUnavailable(t *testing.T) {
 	}
 
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
-		"organization_id": orgID,
-		"job_id":          jobID,
+		"job_id": jobID,
 	}}}
 	header := http.Header{}
 	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
