@@ -8,13 +8,13 @@ module RepoHost::Github
     end
 
     def different?
-      changes.value?(true)
+      changes.values.any? { |values| values.size > 1 }
     end
 
     def changes
-      {
-        :name_changed => name_changed?,
-        :default_branch_changed => default_branch_changed?
+      @changes ||= {
+        :name_changed => unique_values(database_full_name, payload_full_name),
+        :default_branch_changed => unique_values(repository.default_branch, payload_default_branch)
       }
     end
 
@@ -22,12 +22,20 @@ module RepoHost::Github
 
     attr_reader :repository, :payload
 
-    def name_changed?
-      "#{repository.owner}/#{repository.name}" != payload["full_name"]
+    def database_full_name
+      [repository.owner, repository.name].compact.join("/")
     end
 
-    def default_branch_changed?
-      repository.default_branch != payload["default_branch"]
+    def payload_full_name
+      payload["full_name"]
+    end
+
+    def payload_default_branch
+      payload["default_branch"]
+    end
+
+    def unique_values(*values)
+      values.compact.uniq
     end
   end
 end

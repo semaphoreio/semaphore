@@ -17,8 +17,8 @@ RSpec.describe RepoHost::Github::RepositoryComparator do
 
       expect(comparator.different?).to be(false)
       expect(comparator.changes).to eq(
-        :name_changed => false,
-        :default_branch_changed => false
+        :name_changed => ["radwo/refactored-octo-spoon-two"],
+        :default_branch_changed => ["master"]
       )
     end
 
@@ -36,8 +36,8 @@ RSpec.describe RepoHost::Github::RepositoryComparator do
 
       expect(comparator.different?).to be(true)
       expect(comparator.changes).to include(
-        :default_branch_changed => true,
-        :name_changed => false
+        :default_branch_changed => ["main", "master"],
+        :name_changed => ["renderedtext/guard"]
       )
     end
 
@@ -55,8 +55,8 @@ RSpec.describe RepoHost::Github::RepositoryComparator do
 
       expect(comparator.different?).to be(true)
       expect(comparator.changes).to include(
-        :name_changed => true,
-        :default_branch_changed => false
+        :name_changed => ["radwo/refactored-octo-spoon", "radwo/refactored-octo-spoon-two"],
+        :default_branch_changed => ["master"]
       )
     end
   end
