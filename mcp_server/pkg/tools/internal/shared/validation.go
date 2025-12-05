@@ -5,6 +5,8 @@ import (
 	"regexp"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/config"
 )
 
 var (
@@ -14,6 +16,20 @@ var (
 	requesterPattern     = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{0,62}$`)
 	repositoryURLPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9:/._?#=&%+\-@]*$`)
 )
+
+// ExtractUserID gets the user ID from the X-Semaphore-User-ID header.
+// In dev mode, returns DevUserID without validation.
+func ExtractUserID(headerValue string) (string, error) {
+	if config.IsDevMode() {
+		return config.DevUserID, nil
+	}
+
+	userID := strings.ToLower(strings.TrimSpace(headerValue))
+	if err := ValidateUUID(userID, "x-semaphore-user-id header"); err != nil {
+		return "", err
+	}
+	return userID, nil
+}
 
 // ValidateUUID ensures a string is a valid UUID format.
 func ValidateUUID(value, fieldName string) error {
@@ -131,6 +147,32 @@ func SanitizeSearchQuery(raw, fieldName string) (string, error) {
 	if strings.ContainsAny(value, `"'\\`) {
 		return "", fmt.Errorf("%s must not contain quotes or backslashes", fieldName)
 	}
+	return value, nil
+}
+
+// SanitizeDocsSearchQuery validates and sanitizes search queries for GitHub docs search.
+// It strips GitHub search operators to prevent query injection.
+func SanitizeDocsSearchQuery(raw, fieldName string) (string, error) {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return "", fmt.Errorf("%s is required", fieldName)
+	}
+	if utf8.RuneCountInString(value) > 256 {
+		return "", fmt.Errorf("%s must not exceed 256 characters", fieldName)
+	}
+	if hasControlRune(value) {
+		return "", fmt.Errorf("%s contains control characters", fieldName)
+	}
+
+	// Remove GitHub search operators that could alter the query scope
+	operators := []string{"repo:", "path:", "user:", "org:", "language:", "filename:", "extension:"}
+	lower := strings.ToLower(value)
+	for _, op := range operators {
+		if strings.Contains(lower, op) {
+			return "", fmt.Errorf("%s must not contain search operators like %s", fieldName, op)
+		}
+	}
+
 	return value, nil
 }
 

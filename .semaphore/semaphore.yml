@@ -2634,7 +2634,7 @@ blocks:
   - name: "MCP Server: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/mcp_server', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/mcp_server', {pipeline_file: 'ignore', default_branch: 'main'}) or change_in('/docs/docs', {default_branch: 'main'}) or change_in('/docs/versioned_docs', {default_branch: 'main'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -2653,7 +2653,7 @@ blocks:
   - name: "MCP Server: Deployment Preconditions"
     dependencies: ["MCP Server: Provision Prod Image"]
     run:
-      when: "change_in('/mcp_server', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/mcp_server', {pipeline_file: 'ignore', default_branch: 'main'}) or change_in('/docs/docs', {default_branch: 'main'}) or change_in('/docs/versioned_docs', {default_branch: 'main'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -2669,7 +2669,7 @@ blocks:
       jobs:
         - name: "Check code"
           commands:
-            - make check.go.code
+            - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated"'
         - name: "Check dependencies"
           commands:
             - make check.go.deps
@@ -2680,7 +2680,7 @@ blocks:
   - name: "MCP Server: QA"
     dependencies: ["MCP Server: Provision Prod Image"]
     run:
-      when: "change_in('/mcp_server', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/mcp_server', {pipeline_file: 'ignore', default_branch: 'main'}) or change_in('/docs/docs', {default_branch: 'main'}) or change_in('/docs/versioned_docs', {default_branch: 'main'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
