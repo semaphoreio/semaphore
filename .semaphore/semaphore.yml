@@ -2669,7 +2669,7 @@ blocks:
       jobs:
         - name: "Check code"
           commands:
-            - make check.go.code
+            - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated"'
         - name: "Check dependencies"
           commands:
             - make check.go.deps

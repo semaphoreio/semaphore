@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/docssearch/search"
 )
@@ -58,14 +59,26 @@ func WithDocType(docType string) SearchOption {
 // WithLimit sets the maximum number of results.
 func WithLimit(limit int) SearchOption {
 	return func(r *search.SearchRequest) {
-		r.Limit = int32(limit)
+		// Clamp to valid int32 range to prevent overflow
+		if limit < 0 {
+			limit = 0
+		} else if limit > 1000 {
+			limit = 1000 // Reasonable max for search results
+		}
+		r.Limit = int32(limit) // #nosec G115 -- bounds checked above
 	}
 }
 
 // WithOffset sets the result offset for pagination.
 func WithOffset(offset int) SearchOption {
 	return func(r *search.SearchRequest) {
-		r.Offset = int32(offset)
+		// Clamp to valid int32 range to prevent overflow
+		if offset < 0 {
+			offset = 0
+		} else if offset > 10000 {
+			offset = 10000 // Reasonable max for pagination offset
+		}
+		r.Offset = int32(offset) // #nosec G115 -- bounds checked above
 	}
 }
 
@@ -144,7 +157,21 @@ func (c *Client) GetDocument(ctx context.Context, path string) (*Document, error
 	}
 
 	fullPath := filepath.Join(c.docsRoot, cleanPath)
-	content, err := os.ReadFile(fullPath)
+
+	// Ensure the resolved path is within docsRoot (prevent path traversal)
+	absDocsRoot, err := filepath.Abs(c.docsRoot)
+	if err != nil {
+		return nil, fmt.Errorf("invalid docs root: %w", err)
+	}
+	absFullPath, err := filepath.Abs(fullPath)
+	if err != nil {
+		return nil, fmt.Errorf("invalid path: %w", err)
+	}
+	if !strings.HasPrefix(absFullPath, absDocsRoot+string(filepath.Separator)) && absFullPath != absDocsRoot {
+		return nil, fmt.Errorf("invalid path: outside docs root")
+	}
+
+	content, err := os.ReadFile(absFullPath) // #nosec G304 -- path validated above
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, fmt.Errorf("document not found: %s", path)

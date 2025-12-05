@@ -119,7 +119,7 @@ func (l *Loader) loadFromPath(basePath, version, docType string) ([]Document, er
 }
 
 func (l *Loader) parseFile(path, version, docType string) (*Document, error) {
-	content, err := os.ReadFile(path)
+	content, err := os.ReadFile(path) // #nosec G304 -- path from filepath.Walk constrained to docsRoot
 	if err != nil {
 		return nil, err
 	}
