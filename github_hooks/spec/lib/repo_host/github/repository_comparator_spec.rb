@@ -36,7 +36,7 @@ RSpec.describe RepoHost::Github::RepositoryComparator do
 
       expect(comparator.different?).to be(true)
       expect(comparator.changes).to include(
-        :default_branch_changed => ["main", "master"],
+        :default_branch_changed => %w[main master],
         :name_changed => ["renderedtext/guard"]
       )
     end
