@@ -41,8 +41,8 @@ RUN adduser -D -H -s /sbin/nologin appuser
 WORKDIR /app
 
 COPY --from=builder /tmp/mcp_server /usr/local/bin/mcp_server
-COPY --from=indexer /tmp/docssearch_index /app/docssearch/index
-COPY --from=indexer /docs /app/docssearch/docs
+COPY --from=indexer --chown=appuser:appuser /tmp/docssearch_index /app/docssearch/index
+COPY --from=indexer --chown=appuser:appuser /docs /app/docssearch/docs
 
 USER appuser
 
