@@ -1,0 +1,287 @@
+defmodule Zebra.Workers.JobDeletionPolicyMarkerTest do
+  use Zebra.DataCase
+
+  alias Google.Protobuf.Timestamp
+  alias InternalApi.Usage.OrganizationPolicyApply
+  alias Zebra.Models.Job
+  alias Zebra.Workers.JobDeletionPolicyMarker, as: Worker
+
+  describe ".handle_message" do
+    setup do
+      original_config = Application.get_env(:zebra, Worker)
+
+      on_exit(fn ->
+        Application.put_env(:zebra, Worker, original_config)
+      end)
+
+      {:ok, original_config: original_config || []}
+    end
+
+    test "marks eligible jobs for deletion", %{original_config: original_config} do
+      days = 3
+      Application.put_env(:zebra, Worker, Keyword.put(original_config, :days, days))
+
+      org_id = Ecto.UUID.generate()
+
+      cutoff_date =
+        DateTime.utc_now()
+        |> DateTime.add(-3600, :second)
+        |> DateTime.truncate(:second)
+
+      older_created_at = DateTime.add(cutoff_date, -3600, :second)
+      newer_created_at = DateTime.add(cutoff_date, 3600, :second)
+
+      {:ok, job_to_mark} =
+        Support.Factories.Job.create(:finished, %{
+          organization_id: org_id,
+          created_at: older_created_at,
+          updated_at: older_created_at
+        })
+
+      {:ok, newer_job} =
+        Support.Factories.Job.create(:finished, %{
+          organization_id: org_id,
+          created_at: newer_created_at,
+          updated_at: newer_created_at
+        })
+
+      {:ok, other_org_job} =
+        Support.Factories.Job.create(:finished, %{
+          organization_id: Ecto.UUID.generate(),
+          created_at: older_created_at,
+          updated_at: older_created_at
+        })
+
+      cutoff_timestamp = Timestamp.new(seconds: DateTime.to_unix(cutoff_date))
+
+      message =
+        %OrganizationPolicyApply{org_id: org_id, cutoff_date: cutoff_timestamp}
+        |> OrganizationPolicyApply.encode()
+
+      Worker.handle_message(message)
+
+      {:ok, updated_job} = Job.find(job_to_mark.id)
+
+      assert updated_job.expires_at
+      assert DateTime.diff(updated_job.expires_at, DateTime.utc_now()) > 0
+
+      assert {:ok, newer_job} = Job.find(newer_job.id)
+      assert is_nil(newer_job.expires_at)
+
+      assert {:ok, other_org_job} = Job.find(other_org_job.id)
+      assert is_nil(other_org_job.expires_at)
+    end
+
+    test "raises when cutoff date is missing", %{original_config: original_config} do
+      Application.put_env(:zebra, Worker, original_config)
+
+      message =
+        %OrganizationPolicyApply{org_id: Ecto.UUID.generate(), cutoff_date: nil}
+        |> OrganizationPolicyApply.encode()
+
+      assert_raise ArgumentError, "cutoff_date is missing in policy payload", fn ->
+        Worker.handle_message(message)
+      end
+    end
+
+    test "raises when org_id is empty string (proto3 default)", %{
+      original_config: original_config
+    } do
+      Application.put_env(:zebra, Worker, Keyword.put(original_config, :days, 3))
+
+      cutoff_date = DateTime.utc_now() |> DateTime.truncate(:second)
+      cutoff_timestamp = Timestamp.new(seconds: DateTime.to_unix(cutoff_date))
+
+      message =
+        %OrganizationPolicyApply{org_id: "", cutoff_date: cutoff_timestamp}
+        |> OrganizationPolicyApply.encode()
+
+      assert_raise ArgumentError, "org_id is missing in policy payload", fn ->
+        Worker.handle_message(message)
+      end
+    end
+
+    test "raises when org_id is not a valid UUID", %{original_config: original_config} do
+      Application.put_env(:zebra, Worker, Keyword.put(original_config, :days, 3))
+
+      cutoff_date = DateTime.utc_now() |> DateTime.truncate(:second)
+      cutoff_timestamp = Timestamp.new(seconds: DateTime.to_unix(cutoff_date))
+
+      message =
+        %OrganizationPolicyApply{org_id: "invalid-uuid", cutoff_date: cutoff_timestamp}
+        |> OrganizationPolicyApply.encode()
+
+      assert_raise ArgumentError, ~r/Invalid org_id format/, fn ->
+        Worker.handle_message(message)
+      end
+    end
+
+    test "uses default grace period (14 days) when configuration is missing" do
+      Application.delete_env(:zebra, Worker)
+
+      org_id = Ecto.UUID.generate()
+
+      cutoff_date =
+        DateTime.utc_now()
+        |> DateTime.add(-3600, :second)
+        |> DateTime.truncate(:second)
+
+      older_created_at = DateTime.add(cutoff_date, -3600, :second)
+
+      {:ok, job_to_mark} =
+        Support.Factories.Job.create(:finished, %{
+          organization_id: org_id,
+          created_at: older_created_at,
+          updated_at: older_created_at
+        })
+
+      cutoff_timestamp = Timestamp.new(seconds: DateTime.to_unix(cutoff_date))
+
+      message =
+        %OrganizationPolicyApply{org_id: org_id, cutoff_date: cutoff_timestamp}
+        |> OrganizationPolicyApply.encode()
+
+      # Should not raise, should use default grace period (14 days)
+      Worker.handle_message(message)
+
+      {:ok, updated_job} = Job.find(job_to_mark.id)
+      assert updated_job.expires_at
+    end
+
+    test "uses default grace period (14 days) when days value is missing", %{
+      original_config: original_config
+    } do
+      Application.put_env(:zebra, Worker, Keyword.delete(original_config, :days))
+
+      org_id = Ecto.UUID.generate()
+
+      cutoff_date =
+        DateTime.utc_now()
+        |> DateTime.add(-3600, :second)
+        |> DateTime.truncate(:second)
+
+      older_created_at = DateTime.add(cutoff_date, -3600, :second)
+
+      {:ok, job_to_mark} =
+        Support.Factories.Job.create(:finished, %{
+          organization_id: org_id,
+          created_at: older_created_at,
+          updated_at: older_created_at
+        })
+
+      cutoff_timestamp = Timestamp.new(seconds: DateTime.to_unix(cutoff_date))
+
+      message =
+        %OrganizationPolicyApply{org_id: org_id, cutoff_date: cutoff_timestamp}
+        |> OrganizationPolicyApply.encode()
+
+      # Should not raise, should use default grace period (14 days)
+      Worker.handle_message(message)
+
+      {:ok, updated_job} = Job.find(job_to_mark.id)
+      assert updated_job.expires_at
+    end
+
+    test "uses minimum grace period (7 days) when configured below minimum", %{
+      original_config: original_config
+    } do
+      Application.put_env(:zebra, Worker, Keyword.put(original_config, :days, 5))
+
+      org_id = Ecto.UUID.generate()
+
+      cutoff_date =
+        DateTime.utc_now()
+        |> DateTime.add(-3600, :second)
+        |> DateTime.truncate(:second)
+
+      older_created_at = DateTime.add(cutoff_date, -3600, :second)
+
+      {:ok, job_to_mark} =
+        Support.Factories.Job.create(:finished, %{
+          organization_id: org_id,
+          created_at: older_created_at,
+          updated_at: older_created_at
+        })
+
+      cutoff_timestamp = Timestamp.new(seconds: DateTime.to_unix(cutoff_date))
+
+      message =
+        %OrganizationPolicyApply{org_id: org_id, cutoff_date: cutoff_timestamp}
+        |> OrganizationPolicyApply.encode()
+
+      # Should not raise, should use minimum grace period (7 days)
+      Worker.handle_message(message)
+
+      {:ok, updated_job} = Job.find(job_to_mark.id)
+      assert updated_job.expires_at
+    end
+
+    test "uses default grace period (14 days) when days is invalid", %{
+      original_config: original_config
+    } do
+      Application.put_env(:zebra, Worker, Keyword.put(original_config, :days, "invalid"))
+
+      org_id = Ecto.UUID.generate()
+
+      cutoff_date =
+        DateTime.utc_now()
+        |> DateTime.add(-3600, :second)
+        |> DateTime.truncate(:second)
+
+      older_created_at = DateTime.add(cutoff_date, -3600, :second)
+
+      {:ok, job_to_mark} =
+        Support.Factories.Job.create(:finished, %{
+          organization_id: org_id,
+          created_at: older_created_at,
+          updated_at: older_created_at
+        })
+
+      cutoff_timestamp = Timestamp.new(seconds: DateTime.to_unix(cutoff_date))
+
+      message =
+        %OrganizationPolicyApply{org_id: org_id, cutoff_date: cutoff_timestamp}
+        |> OrganizationPolicyApply.encode()
+
+      # Should not raise, should use default grace period (14 days)
+      Worker.handle_message(message)
+
+      {:ok, updated_job} = Job.find(job_to_mark.id)
+      assert updated_job.expires_at
+    end
+
+    test "uses minimum grace period (7 days) when days is zero", %{
+      original_config: original_config
+    } do
+      Application.put_env(:zebra, Worker, Keyword.put(original_config, :days, 0))
+
+      org_id = Ecto.UUID.generate()
+
+      cutoff_date =
+        DateTime.utc_now()
+        |> DateTime.add(-3600, :second)
+        |> DateTime.truncate(:second)
+
+      older_created_at = DateTime.add(cutoff_date, -3600, :second)
+
+      {:ok, job_to_mark} =
+        Support.Factories.Job.create(:finished, %{
+          organization_id: org_id,
+          created_at: older_created_at,
+          updated_at: older_created_at
+        })
+
+      cutoff_timestamp = Timestamp.new(seconds: DateTime.to_unix(cutoff_date))
+
+      message =
+        %OrganizationPolicyApply{org_id: org_id, cutoff_date: cutoff_timestamp}
+        |> OrganizationPolicyApply.encode()
+
+      # Should not raise, should use default grace period (14 days) since 0 is invalid
+      Worker.handle_message(message)
+
+      {:ok, updated_job} = Job.find(job_to_mark.id)
+      assert updated_job.expires_at
+    end
+  end
+end
