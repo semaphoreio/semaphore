@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	artifacthubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/artifacthub"
 	loghubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub"
 	loghub2pb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub2"
 	orgpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/organization"
@@ -29,6 +30,7 @@ type Provider interface {
 	Projects() projecthubpb.ProjectServiceClient
 	Pipelines() pipelinepb.PipelineServiceClient
 	Jobs() jobpb.JobServiceClient
+	Artifacthub() artifacthubpb.ArtifactServiceClient
 	Loghub() loghubpb.LoghubClient
 	Loghub2() loghub2pb.Loghub2Client
 	Users() userpb.UserServiceClient
@@ -45,6 +47,7 @@ type Manager struct {
 	projectConn      *grpc.ClientConn
 	pipelineConn     *grpc.ClientConn
 	jobConn          *grpc.ClientConn
+	artifacthubConn  *grpc.ClientConn
 	loghubConn       *grpc.ClientConn
 	loghub2Conn      *grpc.ClientConn
 	userConn         *grpc.ClientConn
@@ -55,6 +58,7 @@ type Manager struct {
 	projectClient      projecthubpb.ProjectServiceClient
 	pipelineClient     pipelinepb.PipelineServiceClient
 	jobClient          jobpb.JobServiceClient
+	artifacthubClient  artifacthubpb.ArtifactServiceClient
 	loghubClient       loghubpb.LoghubClient
 	loghub2Client      loghub2pb.Loghub2Client
 	userClient         userpb.UserServiceClient
@@ -112,6 +116,9 @@ func NewManager(ctx context.Context, cfg Config) (*Manager, error) {
 	if m.jobConn, err = dial(cfg.JobEndpoint); err != nil {
 		return nil, handleDialError("job", err)
 	}
+	if m.artifacthubConn, err = dial(cfg.ArtifacthubEndpoint); err != nil {
+		return nil, handleDialError("artifacthub", err)
+	}
 	if m.loghubConn, err = dial(cfg.LoghubEndpoint); err != nil {
 		return nil, handleDialError("loghub", err)
 	}
@@ -139,6 +146,9 @@ func NewManager(ctx context.Context, cfg Config) (*Manager, error) {
 	}
 	if m.jobConn != nil {
 		m.jobClient = jobpb.NewJobServiceClient(m.jobConn)
+	}
+	if m.artifacthubConn != nil {
+		m.artifacthubClient = artifacthubpb.NewArtifactServiceClient(m.artifacthubConn)
 	}
 	if m.loghubConn != nil {
 		m.loghubClient = loghubpb.NewLoghubClient(m.loghubConn)
@@ -169,6 +179,7 @@ func (m *Manager) Close() error {
 		m.projectConn,
 		m.pipelineConn,
 		m.jobConn,
+		m.artifacthubConn,
 		m.loghubConn,
 		m.loghub2Conn,
 		m.userConn,
@@ -212,6 +223,10 @@ func (m *Manager) Pipelines() pipelinepb.PipelineServiceClient {
 
 func (m *Manager) Jobs() jobpb.JobServiceClient {
 	return m.jobClient
+}
+
+func (m *Manager) Artifacthub() artifacthubpb.ArtifactServiceClient {
+	return m.artifacthubClient
 }
 
 func (m *Manager) Loghub() loghubpb.LoghubClient {
