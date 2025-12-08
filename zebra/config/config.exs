@@ -32,6 +32,10 @@ config :zebra, Zebra.Workers.JobDeletionPolicyWorker,
 config :zebra, Zebra.Workers.JobDeletionPolicyMarker,
   days: 14
 
+config :zebra, Zebra.JobDeletedPublisher,
+  exchange: "zebra_public_api",
+  routing_key: "zebra.job_deleted"
+
 config :zebra, Zebra.Workers.Scheduler,
   cooldown_period: 1_000,
   batch_size: 3

@@ -2,6 +2,7 @@ defmodule Zebra.Workers.JobDeletionPolicyWorker do
   require Logger
 
   alias Zebra.Models.Job
+  alias Zebra.JobDeletedPublisher
 
   defstruct [
     # period of sleep between worker ticks when jobs are deleted
@@ -68,7 +69,12 @@ defmodule Zebra.Workers.JobDeletionPolicyWorker do
 
   defp delete_expired_data(limit) do
     with {:ok, deleted_stop_requests} <- Job.delete_old_job_stop_requests(limit),
-         {:ok, deleted_jobs} <- Job.delete_old_jobs(limit) do
+         {:ok, deleted_jobs, jobs_to_delete} <- Job.delete_old_jobs(limit) do
+
+      Enum.each(jobs_to_delete, fn job ->
+        JobDeletedPublisher.publish(job.organization_id, job.id, job.project_id)
+      end)
+
       {:ok, deleted_stop_requests, deleted_jobs}
     else
       {:error, reason} -> {:error, reason}
