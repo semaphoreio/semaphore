@@ -373,6 +373,174 @@ func TestMetricsIntegrationWithWatchman(t *testing.T) {
 	}
 }
 
+func TestEmitGenericToolCall(t *testing.T) {
+	withTestOrgResolver(t, orgResolverFunc(func(ctx context.Context, orgID string) (string, error) {
+		return "Test Org", nil
+	}))
+
+	origInc := watchmanIncrementWithTags
+	defer func() { watchmanIncrementWithTags = origInc }()
+
+	var calledMetric string
+	var calledTags []string
+
+	watchmanIncrementWithTags = func(metric string, tags []string) error {
+		calledMetric = metric
+		calledTags = append([]string(nil), tags...)
+		return nil
+	}
+
+	emitGenericToolCall(context.Background(), "my_tool", "org-123")
+
+	if calledMetric != "tool_call" {
+		t.Fatalf("expected metric 'tool_call', got %q", calledMetric)
+	}
+
+	if len(calledTags) != 2 {
+		t.Fatalf("expected 2 tags, got %d: %v", len(calledTags), calledTags)
+	}
+
+	hasToolTag := false
+	hasOrgTag := false
+	for _, tag := range calledTags {
+		if tag == "tool_my_tool" {
+			hasToolTag = true
+		}
+		if tag == "org_test_org" {
+			hasOrgTag = true
+		}
+	}
+
+	if !hasToolTag {
+		t.Fatalf("expected tool_my_tool tag, got %v", calledTags)
+	}
+	if !hasOrgTag {
+		t.Fatalf("expected org_test_org tag, got %v", calledTags)
+	}
+}
+
+func TestEmitGenericToolCallWithoutOrg(t *testing.T) {
+	origInc := watchmanIncrementWithTags
+	defer func() { watchmanIncrementWithTags = origInc }()
+
+	var calledTags []string
+
+	watchmanIncrementWithTags = func(metric string, tags []string) error {
+		calledTags = append([]string(nil), tags...)
+		return nil
+	}
+
+	emitGenericToolCall(context.Background(), "my_tool", "")
+
+	if len(calledTags) != 1 {
+		t.Fatalf("expected 1 tag, got %d: %v", len(calledTags), calledTags)
+	}
+
+	if calledTags[0] != "tool_my_tool" {
+		t.Fatalf("expected tool_my_tool tag, got %v", calledTags)
+	}
+}
+
+func TestEmitGenericToolCallWithoutToolName(t *testing.T) {
+	withTestOrgResolver(t, orgResolverFunc(func(ctx context.Context, orgID string) (string, error) {
+		return "Test Org", nil
+	}))
+
+	origInc := watchmanIncrementWithTags
+	defer func() { watchmanIncrementWithTags = origInc }()
+
+	var calledTags []string
+
+	watchmanIncrementWithTags = func(metric string, tags []string) error {
+		calledTags = append([]string(nil), tags...)
+		return nil
+	}
+
+	emitGenericToolCall(context.Background(), "", "org-123")
+
+	if len(calledTags) != 1 {
+		t.Fatalf("expected 1 tag (only org), got %d: %v", len(calledTags), calledTags)
+	}
+
+	if calledTags[0] != "org_test_org" {
+		t.Fatalf("expected org_test_org tag, got %v", calledTags)
+	}
+}
+
+func TestTrackToolExecutionEmitsGenericMetric(t *testing.T) {
+	withTestOrgResolver(t, orgResolverFunc(func(ctx context.Context, orgID string) (string, error) {
+		return "Generic Test Org", nil
+	}))
+
+	origInc := watchmanIncrementWithTags
+	origBench := watchmanBenchmarkWithTags
+	defer func() {
+		watchmanIncrementWithTags = origInc
+		watchmanBenchmarkWithTags = origBench
+	}()
+
+	type metricCall struct {
+		name string
+		tags []string
+	}
+	var incrementCalls []metricCall
+	var mu sync.Mutex
+
+	watchmanIncrementWithTags = func(metric string, tags []string) error {
+		mu.Lock()
+		defer mu.Unlock()
+		incrementCalls = append(incrementCalls, metricCall{
+			name: metric,
+			tags: append([]string(nil), tags...),
+		})
+		return nil
+	}
+
+	watchmanBenchmarkWithTags = func(start time.Time, name string, tags []string) error {
+		return nil
+	}
+
+	tracker := TrackToolExecution(context.Background(), "test_tool", "org-123")
+	tracker.MarkSuccess()
+	tracker.Cleanup()
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	// Should have: count_total, tool_call, count_passed
+	if len(incrementCalls) != 3 {
+		t.Fatalf("expected 3 increment calls, got %d: %v", len(incrementCalls), incrementCalls)
+	}
+
+	// Verify tool_call metric was emitted
+	foundToolCall := false
+	for _, call := range incrementCalls {
+		if call.name == "tool_call" {
+			foundToolCall = true
+			hasToolTag := false
+			hasOrgTag := false
+			for _, tag := range call.tags {
+				if tag == "tool_test_tool" {
+					hasToolTag = true
+				}
+				if tag == "org_generic_test_org" {
+					hasOrgTag = true
+				}
+			}
+			if !hasToolTag {
+				t.Errorf("tool_call missing tool_test_tool tag, got %v", call.tags)
+			}
+			if !hasOrgTag {
+				t.Errorf("tool_call missing org_generic_test_org tag, got %v", call.tags)
+			}
+		}
+	}
+
+	if !foundToolCall {
+		t.Fatalf("expected tool_call metric to be emitted, got: %v", incrementCalls)
+	}
+}
+
 // TestMetricsIntegrationFailureCase verifies that failure metrics are properly
 // emitted when a tool execution fails.
 func TestMetricsIntegrationFailureCase(t *testing.T) {

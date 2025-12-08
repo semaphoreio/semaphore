@@ -14,6 +14,7 @@ import (
 	pipelinepb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber.pipeline"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/logging"
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/internal/clients"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/internal/shared"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/utils"
 )
@@ -495,34 +496,9 @@ Troubleshooting:
 			return mcp.NewToolResultError(fmt.Sprintf("Invalid mode parameter: %v", err)), nil
 		}
 
-		callCtx, cancel := context.WithTimeout(ctx, api.CallTimeout())
-		defer cancel()
-
-		describeResp, err := client.Describe(callCtx, &pipelinepb.DescribeRequest{PplId: pipelineID, Detailed: true})
+		describeResp, err := clients.DescribePipeline(ctx, api, pipelineID, true)
 		if err != nil {
-			logging.ForComponent("rpc").
-				WithFields(logrus.Fields{
-					"rpc":        "pipeline.Describe",
-					"pipelineId": pipelineID,
-				}).
-				WithError(err).
-				Error("pipeline describe RPC failed")
-			return mcp.NewToolResultError(fmt.Sprintf("Pipeline describe RPC failed: %v", err)), nil
-		}
-
-		if status := describeResp.GetResponseStatus(); status != nil && status.GetCode() != pipelinepb.ResponseStatus_OK {
-			message := strings.TrimSpace(status.GetMessage())
-			if message == "" {
-				message = "pipeline describe returned non-OK status"
-			}
-			logging.ForComponent("rpc").
-				WithFields(logrus.Fields{
-					"rpc":        "pipeline.Describe",
-					"pipelineId": pipelineID,
-					"statusCode": status.GetCode(),
-				}).
-				Warn("pipeline describe returned non-OK status")
-			return mcp.NewToolResultError(message), nil
+			return mcp.NewToolResultError(err.Error()), nil
 		}
 
 		pipeline := summarizePipeline(describeResp.GetPipeline())
