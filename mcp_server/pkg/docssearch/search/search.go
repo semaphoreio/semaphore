@@ -46,9 +46,13 @@ type Searcher struct {
 	index bleve.Index
 }
 
-// Open opens an existing Bleve index at the given path.
+// Open opens an existing Bleve index at the given path in read-only mode.
+// Read-only mode is required for deployments where the index is baked into
+// a read-only container filesystem (e.g., Kubernetes).
 func Open(indexPath string) (*Searcher, error) {
-	index, err := bleve.Open(indexPath)
+	index, err := bleve.OpenUsing(indexPath, map[string]interface{}{
+		"read_only": true,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("open index: %w", err)
 	}
