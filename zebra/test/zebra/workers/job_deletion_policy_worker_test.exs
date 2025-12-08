@@ -4,6 +4,10 @@ defmodule Zebra.Workers.JobDeletionPolicyWorkerTest do
   alias Zebra.Models.{Job, JobStopRequest}
   alias Zebra.Workers.JobDeletionPolicyWorker, as: Worker
 
+  defmodule MockJobDeletedPublisher do
+    def publish(_org_id, _job_id, _project_id), do: :ok
+  end
+
   describe ".start_link" do
     setup do
       original_config = Application.get_env(:zebra, Worker)
@@ -114,6 +118,21 @@ defmodule Zebra.Workers.JobDeletionPolicyWorkerTest do
   end
 
   describe ".tick" do
+    setup do
+      original_publisher = Application.get_env(:zebra, :job_deleted_publisher)
+      Application.put_env(:zebra, :job_deleted_publisher, MockJobDeletedPublisher)
+
+      on_exit(fn ->
+        if original_publisher do
+          Application.put_env(:zebra, :job_deleted_publisher, original_publisher)
+        else
+          Application.delete_env(:zebra, :job_deleted_publisher)
+        end
+      end)
+
+      :ok
+    end
+
     test "deletes expired jobs and related stop requests" do
       worker = %Worker{limit: 10, naptime: 1000, longnaptime: 5000}
 
