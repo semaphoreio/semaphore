@@ -72,7 +72,7 @@ defmodule Projecthub.Models.Project do
     field(:deleted_by, :binary_id, default: nil)
   end
 
-  def create(request_id, user, org, project_spec, repo_details, integration_type, skip_onboarding \\ false) do
+  def create(request_id, user, org, project_spec, repo_details, _integration_type, skip_onboarding \\ false) do
     Toolkit.log("Creating a new project for #{org.id} from #{repo_details.url}")
 
     initial_state =
