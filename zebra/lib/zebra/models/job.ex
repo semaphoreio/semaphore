@@ -425,6 +425,13 @@ defmodule Zebra.Models.Job do
         select: j.id
       )
 
+    jobs_to_delete =
+      from(j in Zebra.Models.Job,
+        where: j.id in subquery(jobs_subquery),
+        select: %{id: j.id, organization_id: j.organization_id, project_id: j.project_id}
+      )
+      |> Zebra.LegacyRepo.all()
+
     query =
       from(j in Zebra.Models.Job,
         where: j.id in subquery(jobs_subquery)
@@ -432,7 +439,7 @@ defmodule Zebra.Models.Job do
 
     {deleted_count, _} = Zebra.LegacyRepo.delete_all(query)
 
-    {:ok, deleted_count}
+    {:ok, deleted_count, jobs_to_delete}
   end
 
   def wait_for_agent(job) do
