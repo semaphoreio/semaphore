@@ -16,10 +16,10 @@ import (
 
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/authz"
 	workflowpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber_w_f.workflow"
-	projecthubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/projecthub"
 	repopb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/repository_integrator"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/logging"
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/internal/clients"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/internal/shared"
 )
 
@@ -110,10 +110,6 @@ func runHandler(api internalapi.Provider) server.ToolHandlerFunc {
 		if workflowClient == nil {
 			return mcp.NewToolResultError(missingWorkflowError), nil
 		}
-		projectClient := api.Projects()
-		if projectClient == nil {
-			return mcp.NewToolResultError("project gRPC endpoint is not configured"), nil
-		}
 
 		projectIDRaw, err := req.RequireString("project_id")
 		if err != nil {
@@ -159,26 +155,26 @@ The authentication layer must inject the X-Semaphore-User-ID header so we can au
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		describeReq := projectDescribeRequest(projectID, orgID, userID)
-		callCtx, cancel := context.WithTimeout(ctx, api.CallTimeout())
-		defer cancel()
-
-		describeResp, err := projectClient.Describe(callCtx, describeReq)
+		project, err := clients.DescribeProject(ctx, api, orgID, userID, projectID)
 		if err != nil {
-			logging.ForComponent("rpc").
-				WithFields(logrus.Fields{
-					"rpc":       "project.Describe",
-					"projectId": projectID,
-					"orgId":     orgID,
-				}).
-				WithError(err).
-				Error("project describe RPC failed")
 			return mcp.NewToolResultError("Unable to load project details. Please confirm the project exists and retry."), nil
 		}
 
-		project, err := validateProjectDescribeResponse(describeResp, orgID, projectID)
-		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
+		projMeta := project.GetMetadata()
+		if projMeta == nil {
+			return mcp.NewToolResultError("Project metadata is missing"), nil
+		}
+		if resourceOrg := strings.TrimSpace(projMeta.GetOrgId()); resourceOrg == "" || !strings.EqualFold(resourceOrg, orgID) {
+			shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
+				Tool:              runToolName,
+				ResourceType:      "project",
+				ResourceID:        projMeta.GetId(),
+				RequestOrgID:      orgID,
+				ResourceOrgID:     resourceOrg,
+				RequestProjectID:  projectID,
+				ResourceProjectID: projMeta.GetId(),
+			})
+			return mcp.NewToolResultError(fmt.Sprintf("Project %s does not belong to organization %s", projectID, orgID)), nil
 		}
 
 		spec := project.GetSpec()
@@ -417,57 +413,6 @@ func parameterValueToString(value any) (string, error) {
 	default:
 		return "", fmt.Errorf("parameters values must be strings, numbers, booleans, or null")
 	}
-}
-
-func projectDescribeRequest(projectID, orgID, userID string) *projecthubpb.DescribeRequest {
-	return &projecthubpb.DescribeRequest{
-		Id: projectID,
-		Metadata: &projecthubpb.RequestMeta{
-			ApiVersion: "v1alpha",
-			Kind:       "Project",
-			OrgId:      strings.TrimSpace(orgID),
-			UserId:     strings.TrimSpace(userID),
-			ReqId:      uuid.NewString(),
-		},
-	}
-}
-
-func validateProjectDescribeResponse(resp *projecthubpb.DescribeResponse, orgID, projectID string) (*projecthubpb.Project, error) {
-	if resp == nil {
-		return nil, fmt.Errorf("Project describe returned no data")
-	}
-	meta := resp.GetMetadata()
-	if meta == nil || meta.GetStatus() == nil {
-		return nil, fmt.Errorf("Project describe response is missing status information")
-	}
-	if meta.GetStatus().GetCode() != projecthubpb.ResponseMeta_OK {
-		message := strings.TrimSpace(meta.GetStatus().GetMessage())
-		if message == "" {
-			message = "Project describe request failed"
-		}
-		return nil, fmt.Errorf("%s", message)
-	}
-	project := resp.GetProject()
-	if project == nil {
-		return nil, fmt.Errorf("Project describe response did not include project details")
-	}
-	projMeta := project.GetMetadata()
-	if projMeta == nil {
-		return nil, fmt.Errorf("Project metadata is missing")
-	}
-	if resourceOrg := strings.TrimSpace(projMeta.GetOrgId()); resourceOrg == "" || !strings.EqualFold(resourceOrg, orgID) {
-		shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
-			Tool:              runToolName,
-			ResourceType:      "project",
-			ResourceID:        projMeta.GetId(),
-			RequestOrgID:      orgID,
-			ResourceOrgID:     resourceOrg,
-			RequestProjectID:  projectID,
-			ResourceProjectID: projMeta.GetId(),
-		})
-		return nil, fmt.Errorf("Project %s does not belong to organization %s", projectID, orgID)
-	}
-	return project, nil
 }
 
 // branchNameFromReference extracts the branch name from a git reference.

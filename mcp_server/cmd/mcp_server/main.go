@@ -19,11 +19,13 @@ import (
 
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/logging"
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/prompts"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/jobs"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/organizations"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/pipelines"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/projects"
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/testresults"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/workflows"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/watchman"
 	support "github.com/semaphoreio/semaphore/mcp_server/test/support"
@@ -63,6 +65,7 @@ func main() {
 		*nameFlag,
 		version,
 		server.WithToolCapabilities(true),
+		server.WithPromptCapabilities(true),
 		server.WithHooks(hooks),
 	)
 
@@ -109,6 +112,10 @@ func main() {
 	workflows.Register(srv, provider)
 	pipelines.Register(srv, provider)
 	jobs.Register(srv, provider)
+	testresults.Register(srv, provider)
+
+	// Register prompts for agent configuration guidance
+	prompts.Register(srv)
 
 	mux := http.NewServeMux()
 	streamable := server.NewStreamableHTTPServer(

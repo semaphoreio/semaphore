@@ -1,6 +1,5 @@
 defmodule Projecthub.Models.Organization do
   defstruct [:id, :username, :open_source]
-  alias Projecthub.Models.Member
   require Logger
 
   def find(id, metadata \\ nil) do
