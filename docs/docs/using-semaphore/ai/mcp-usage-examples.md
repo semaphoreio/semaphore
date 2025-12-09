@@ -18,6 +18,16 @@ Example prompts:
 - List organizations you have access to
 - Find the current project’s organization ID and project ID and save them in AGENTS.md
 
+:::note Claude Users
+
+Claude users can automate project and organization ID discovery with the following command. See [MCP Server configuration](./mcp-server#claude-code) for more information:
+
+```shell title="Initialize project's CLAUDE.md"
+/semaphore:mcp_setup (MCP) your-project-name your-semaphore-organization
+```
+
+:::
+
 Under the hood, the MCP server will determine the user based on the provided API token and fetch organizations or projects that are accessible to that user. The response returns organization or project metadata (IDs, names, etc.). The AI agent then presents a list of organization or project names or IDs, and can optionally write these identifiers to a file for future reference.
 
 ```text title="Related API calls"
