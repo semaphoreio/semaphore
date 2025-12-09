@@ -69,6 +69,26 @@ If you have problems connecting to the MCP Server, see [troubleshooting](#troubl
 
 3. If you have a session open, restart Claude Code
 
+4. Open a terminal and navigate to your repository
+
+5. Start **Claude Code** and run the following command to update `CLAUDE.md` and add Semaphore project details to the repository. This step is optional but recommended to speed up AI tasks and reduce token usage
+
+    ```shell title="Initialize Claude configuration for MCP"
+    /semaphore:mcp_setup (MCP) your-project-name your-semaphore-organization
+    ```
+
+    :::note
+
+    If you get an error stating `strategy requires thinking to be enabled`. This error is caused by [known bug](https://github.com/anthropics/claude-code/issues/11231) in Claude Code.
+
+    The workaround is to add `ultrathink` to the previous command:
+    
+    ```shell title="Initialize Claude configuration for MCP"
+    /semaphore:mcp_setup (MCP) your-project-name your-semaphore-organization ultrathink
+    ```
+
+    :::
+
 </Steps>
 
 ### OpenAI's Codex {#codex}
