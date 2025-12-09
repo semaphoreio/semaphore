@@ -415,15 +415,16 @@ defmodule Zebra.Models.Job do
   end
 
   def delete_old_jobs(limit) do
-    import Ecto.Query, only: [from: 2, subquery: 1]
+    import Ecto.Query, only: [from: 2]
 
-    jobs_subquery =
+    jobs_to_delete =
       from(j in Zebra.Models.Job,
         where: not is_nil(j.expires_at) and j.expires_at <= fragment("CURRENT_TIMESTAMP"),
         order_by: [asc: j.created_at],
         limit: ^limit,
-        select: j.id
+        select: %{id: j.id, organization_id: j.organization_id, project_id: j.project_id}
       )
+      |> Zebra.LegacyRepo.all()
 
     jobs_to_delete =
       from(j in Zebra.Models.Job,
@@ -437,7 +438,10 @@ defmodule Zebra.Models.Job do
         where: j.id in subquery(jobs_subquery)
       )
 
-    {deleted_count, _} = Zebra.LegacyRepo.delete_all(query)
+      query =
+        from(j in Zebra.Models.Job,
+          where: j.id in ^job_ids
+        )
 
     {:ok, deleted_count, jobs_to_delete}
   end
