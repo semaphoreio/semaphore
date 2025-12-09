@@ -26,7 +26,9 @@ defmodule Zebra.JobDeletedPublisher do
       }
       |> Poison.encode!()
 
-    Logger.info("Publishing job deleted event for job #{job_id} (org: #{org_id}, project: #{project_id})")
+    Logger.info(
+      "Publishing job deleted event for job #{job_id} (org: #{org_id}, project: #{project_id})"
+    )
 
     %{channel: channel_name, exchange: exchange, routing_key: routing_key} = publish_options()
 
