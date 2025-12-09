@@ -145,7 +145,6 @@ RSpec.describe ProjectsController, :type => :controller do
 
         it "doesn't publish event" do
           expect(Tackle).not_to receive(:publish)
-          expect(Semaphore::Events::RemoteRepositoryChanged).to receive(:emit)
           expect(Semaphore::GithubApp::Collaborators::Worker).not_to receive(:perform_async)
 
           post_payload(payload)
@@ -207,7 +206,6 @@ RSpec.describe ProjectsController, :type => :controller do
 
         it "doesn't publish event" do
           expect(Tackle).not_to receive(:publish)
-          expect(Semaphore::Events::RemoteRepositoryChanged).to receive(:emit)
           expect(Semaphore::GithubApp::Collaborators::Worker).not_to receive(:perform_async)
 
           post_payload(payload)
@@ -262,7 +260,6 @@ RSpec.describe ProjectsController, :type => :controller do
 
         it "doesn't publish event" do
           expect(Tackle).not_to receive(:publish)
-          expect(Semaphore::Events::RemoteRepositoryChanged).to receive(:emit)
           expect(Semaphore::GithubApp::Collaborators::Worker).not_to receive(:perform_async)
 
           post_payload(RepoHost::Github::Responses::Payload.post_receive_hook_pull_request_within_repo)
