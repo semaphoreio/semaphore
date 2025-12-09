@@ -62,9 +62,13 @@ Copilot Agents are available on a set of paid plans. For this integration to wor
 
 ### Configure test reports
 
-While not entirely mandatory, it's highly recommended to [configure test reports](../tests/test-reports) to obtain a standardized error report that the AI Agent can use to diagnose and fix build errors.
+While not entirely mandatory, it's highly recommended to [configure AI test results](../tests/test-reports#ai) to obtain a standardized error report that the AI Agent can use to diagnose and fix build errors.
 
-For the remainder of the tutorial, we'll assume that all tests in the CI create a file called `results.xml` containing the test results.
+For the remainder of the tutorial, we'll assume that all tests in the CI create a file called `results.xml` containing the test results and that you are processing the reports using `--generate-mcp-summary`. 
+
+For example:
+- [Publish test results](../tests/test-reports#step2): `test-results publish --generate-mcp-summary results.xml`
+- [Merge test results](../tests/test-reports#step3): `test-results gen-pipeline-report --generate-mcp-summary` 
 
 ## Set up Copilot Integration
 
@@ -79,8 +83,7 @@ To set up the integration, follow these steps.
 2. Create a prompt template file called `prompt-template.txt`. Use this example as a starting point:
 
     ```text title="Prompt template for Copilot"
-    Read the following JUnit test report, diagnose the failure, and create a Pull Request with the fix. Validat
-    e the fix before creating the Pull Request.
+    Read the following error summary file to diagnose the failure, and create a Pull Request with the fix. Validat e the fix before creating the Pull Request.
     ```
 
 3. Push the prompt template file to the repository on GitHub
@@ -92,10 +95,11 @@ To set up the integration, follow these steps.
 6. Open the **Epilogue** and add the following commands in the **If job has failed** command box
 
     ```shell title="Commands to create a GitHub Issue for Copilot"
+    artifact pull job test-results
     cp prompt-template.txt prompt-issue.txt
-    echo '```xml' >> prompt-issue.txt
-    cat results.xml >> prompt-issue.txt
-    echo -e '\n```' >> prompt-ussue.txt
+    echo '```json' >> prompt-issue.txt
+    cat test-results/mcp-summary.xml >> prompt-issue.txt
+    echo -e '\n```' >> prompt-issue.txt
     [[ ! "$SEMAPHORE_GIT_WORKING_BRANCH" =~ ^copilot/ ]] && gh issue create --assignee "@copilot" --title "Fix failed job: ${SEMAPHORE_JOB_NAME}" -F prompt-issue.txt
     ```
 
