@@ -131,6 +131,14 @@ class ProjectsController < ApplicationController
           next
         end
 
+        repository_comparator = RepoHost::Github::RepositoryComparator.new(project.repository, webhook_filter.repository)
+        if repository_comparator.different?
+          logger.info("Repository Changed", :changes => repository_comparator.changes)
+          Watchman.increment("repo_host_post_commit_hooks.controller.repository_changed")
+
+          Semaphore::Events::RemoteRepositoryChanged.emit(webhook_filter.repository)
+        end
+
         workflow.update_attribute(:result, Workflow::RESULT_OK)
 
         Watchman.increment("IncommingHooks.processed", { external: true })
