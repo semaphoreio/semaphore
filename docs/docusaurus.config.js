@@ -144,6 +144,15 @@ const config = {
         indexName: 'v2-sxmoon',
         // Optional: see doc section below
         contextualSearch: true,
+        askAi: {
+          indexName: 'askai-assistant-docs-semaphoreio', // Markdown index for Ask AI
+          apiKey: '5d6175600a64cf232ea5be2b88cd5cab', // (or a different key if needed)
+          appId: 'HJWFPD10QI',
+          assistantId: 'eTt93IPOlemb',
+          searchParameters: {
+            facetFilters: ['language:en'], // Optional: filter to specific language/version
+          },
+        },
       },
       navbar: {
         title: 'Semaphore Docs',
