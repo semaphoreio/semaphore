@@ -131,7 +131,7 @@ config :front,
   google_gtag: System.get_env("GOOGLE_GTAG")
 
 edition = System.get_env("EDITION", "") |> String.trim() |> String.downcase()
-is_saas? = !(edition in ["ce", "ee"])
+is_saas? = !(edition in ["ce", "ee", "onprem"])
 
 if is_saas? do
   config :front,
