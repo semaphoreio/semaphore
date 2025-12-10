@@ -38,7 +38,7 @@
               <span class="gray mh1">·</span>
 
               <%= cond do %>
-                  <% @self_hosted and Front.os?() -> %>
+                  <% @self_hosted and !Front.saas?() -> %>
                       <span class="gray hover-dark-gray pointer js-job-dropdown-menu-trigger" data-value="<%= debug_or_attach_self_hosted_txt(@debug_action) %>" data-template="sshSelfHostedMenu">
                           SSH <%= @debug_action |> String.capitalize() %>
                       </span>
