@@ -73,6 +73,10 @@ defmodule FrontWeb.Plug.ContentSecurityPolicy do
       "*.sumologic.com",
       "www.google-analytics.com",
       "*.sitesearch360.com"
-    ]
+    ] ++ additional_connect_domains()
+  end
+
+  defp additional_connect_domains do
+    Application.get_env(:front, :csp_additional_connect_domains, [])
   end
 end
