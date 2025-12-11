@@ -20,3 +20,18 @@
 - StatsD via Watchman: set `METRICS_HOST`, `METRICS_PORT`, `METRICS_NAMESPACE`.
 - DB settings: `POSTGRES_DB_*` env vars control `Ppl.EctoRepo`; separate vars govern the `block` repo.
 - Retention consumer: `USAGE_POLICY_EXCHANGE` / `USAGE_POLICY_ROUTING_KEY` configure which RabbitMQ route the policy consumer listens to.
+
+## Commit Format
+
+Use conventional commits with tagged lines for categorizing changes:
+
+```text
+feat(plumber): short description
+
+[db] Database changes (migrations, indexes, schema)
+[worker] Background worker changes (consumers, loopers, beholders)
+[api] API changes (GRPC servers, endpoints)
+[config] Configuration changes (env vars, runtime config)
+```
+
+Tags: `[db]`, `[worker]`, `[api]`, `[config]`, `[test]`, `[docs]`
