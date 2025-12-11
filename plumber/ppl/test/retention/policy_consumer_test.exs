@@ -57,7 +57,7 @@ defmodule Ppl.Retention.PolicyConsumerTest do
       message = encode_event(org_id, new_cutoff)
       PolicyConsumer.handle_message(message)
 
-      assert_expires_at_approximately_15_days_from_now(get_expires_at(pipeline_old.id))
+      assert get_expires_at(pipeline_old.id) == old_expires
       assert get_expires_at(pipeline_between.id) == nil
     end
 
