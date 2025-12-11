@@ -45,6 +45,7 @@ config :ppl, deletion_offset_h: 24
 
 # Retention policy event consumer
 config :ppl, Ppl.Retention.PolicyConsumer,
+  enabled: System.get_env("RETENTION_CONSUMER_ENABLED", "false") == "true",
   exchange: System.get_env("USAGE_POLICY_EXCHANGE"),
   routing_key: System.get_env("USAGE_POLICY_ROUTING_KEY")
 
