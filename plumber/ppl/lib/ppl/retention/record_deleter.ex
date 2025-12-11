@@ -18,12 +18,7 @@ defmodule Ppl.Retention.RecordDeleter do
   @default_batch_size 100
 
   def start_link(_opts \\ []) do
-    if enabled?() do
-      GenServer.start_link(__MODULE__, [], name: __MODULE__)
-    else
-      Logger.info("[Retention] Deleter disabled via config")
-      :ignore
-    end
+    GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
 
   @impl true
@@ -69,8 +64,4 @@ defmodule Ppl.Retention.RecordDeleter do
     Keyword.get(config, :batch_size, @default_batch_size)
   end
 
-  defp enabled? do
-    config = Application.get_env(:ppl, __MODULE__, [])
-    Keyword.get(config, :enabled, true)
-  end
 end
