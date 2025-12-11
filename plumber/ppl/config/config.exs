@@ -48,9 +48,10 @@ config :ppl, Ppl.Retention.PolicyConsumer,
   exchange: System.get_env("USAGE_POLICY_EXCHANGE"),
   routing_key: System.get_env("USAGE_POLICY_ROUTING_KEY")
 
-# Retention policy grace period in days before data is deleted (min: 7, default: 15)
+# Retention policy applier settings
 config :ppl, Ppl.Retention.PolicyApplier,
-  grace_period_days: String.to_integer(System.get_env("RETENTION_GRACE_PERIOD_DAYS") || "15")
+  grace_period_days: String.to_integer(System.get_env("RETENTION_GRACE_PERIOD_DAYS") || "15"),
+  batch_size: String.to_integer(System.get_env("RETENTION_APPLIER_BATCH_SIZE") || "10000")
 
 # Retention record deleter worker (deletes expired pipeline records)
 config :ppl, Ppl.Retention.RecordDeleter,
