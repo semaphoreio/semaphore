@@ -45,19 +45,19 @@ defmodule Ppl.Retention.PolicyApplierTest do
       assert get_expires_at(pipeline_2.id) == nil
     end
 
-    test "updates pipelines already marked with new expires_at" do
+    test "does not re-mark already marked pipelines" do
       org_id = UUID.uuid4()
-      earlier_cutoff = ~N[2025-05-15 12:00:00.000000]
-      later_cutoff = ~N[2025-06-01 12:00:00.000000]
+      cutoff = ~N[2025-06-01 12:00:00.000000]
+      existing_expires = ~N[2025-07-01 12:00:00.000000]
 
       pipeline = insert_pipeline(org_id, ~N[2025-05-01 10:00:00.000000])
-      set_expires_at(pipeline.id, earlier_cutoff)
+      set_expires_at(pipeline.id, existing_expires)
 
-      {marked, unmarked} = PolicyApplier.mark_expiring(org_id, later_cutoff)
+      {marked, unmarked} = PolicyApplier.mark_expiring(org_id, cutoff)
 
-      assert marked == 1
+      assert marked == 0
       assert unmarked == 0
-      assert_expires_at_approximately_15_days_from_now(get_expires_at(pipeline.id))
+      assert get_expires_at(pipeline.id) == existing_expires
     end
 
     test "unmarks pipelines when cutoff moves backward" do
@@ -74,10 +74,10 @@ defmodule Ppl.Retention.PolicyApplierTest do
       new_cutoff = ~N[2025-05-01 12:00:00.000000]
       {marked, unmarked} = PolicyApplier.mark_expiring(org_id, new_cutoff)
 
-      assert marked == 1
+      assert marked == 0
       assert unmarked == 1
 
-      assert_expires_at_approximately_15_days_from_now(get_expires_at(pipeline_old.id))
+      assert get_expires_at(pipeline_old.id) == old_expires
       assert get_expires_at(pipeline_between.id) == nil
       assert get_expires_at(pipeline_recent.id) == nil
     end
