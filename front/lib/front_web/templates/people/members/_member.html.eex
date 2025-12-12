@@ -26,8 +26,12 @@
     </div>
 
     <% member_role_names = Enum.map(@member.subject_role_bindings, &(&1.role.name)) %>
-    <%= if show_people_management_buttons?(@conn, @org_scope?, @permissions)
-      && "Owner" not in member_role_names do %>
+    <% show_buttons? = if @member_type == :service_account do
+      show_service_account_management_buttons?(@conn, @org_scope?, @permissions)
+    else
+      show_people_management_buttons?(@conn, @org_scope?, @permissions)
+    end %>
+    <%= if show_buttons? && "Owner" not in member_role_names do %>
       <div class="flex-shrink-0 pl2">
         <div class="button-group">
           <%= unless !@org_scope? && Front.ce?() do %>
