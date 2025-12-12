@@ -179,6 +179,15 @@ defmodule FrontWeb.PeopleView do
     user_has_permissions? and feature_enabled?
   end
 
+  def show_service_account_management_buttons?(conn, org_scope?, permissions) do
+    # Service accounts bypass the rbac__project_roles feature flag at project level
+    if org_scope? do
+      show_people_management_buttons?(conn, org_scope?, permissions)
+    else
+      people_management_permissions?(org_scope?, permissions)
+    end
+  end
+
   def roles_action_message do
     if Front.ce?(), do: "View", else: "Manage"
   end
