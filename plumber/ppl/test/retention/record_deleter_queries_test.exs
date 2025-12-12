@@ -1,8 +1,14 @@
 defmodule Ppl.Retention.RecordDeleterQueriesTest do
-  use ExUnit.Case
+  use Ppl.IntegrationCase, async: false
 
+  alias Ppl.Actions
   alias Ppl.EctoRepo
   alias Ppl.PplRequests.Model.PplRequests
+  alias Ppl.PplRequests.Model.PplRequestsQueries
+  alias Ppl.Ppls.Model.PplsQueries
+  alias Ppl.PplSubInits.Model.PplSubInitsQueries
+  alias Ppl.PplTraces.Model.PplTracesQueries
+  alias Ppl.PplBlocks.Model.PplBlocksQueries
   alias Ppl.Retention.RecordDeleterQueries
 
   setup do
@@ -121,5 +127,46 @@ defmodule Ppl.Retention.RecordDeleterQueriesTest do
   defp future_expires_at do
     NaiveDateTime.utc_now()
     |> NaiveDateTime.add(3600, :second)
+  end
+
+  @tag :integration
+  test "deletes pipeline and all related records from ppl and block databases" do
+    {:ok, %{ppl_id: ppl_id}} =
+      %{"repo_name" => "5_v1_full", "file_name" => "no_cmd_files.yml"}
+      |> Test.Helpers.schedule_request_factory(:local)
+      |> Actions.schedule()
+
+    loopers = Test.Helpers.start_all_loopers()
+    {:ok, _ppl} = Test.Helpers.wait_for_ppl_state(ppl_id, "done", 10_000)
+    Test.Helpers.stop_all_loopers(loopers)
+
+    assert {:ok, ppl_blk_0} = PplBlocksQueries.get_by_id_and_index(ppl_id, 0)
+    assert {:ok, ppl_blk_1} = PplBlocksQueries.get_by_id_and_index(ppl_id, 1)
+
+    assert {:ok, _} = PplRequestsQueries.get_by_id(ppl_id)
+    assert {:ok, _} = PplsQueries.get_by_id(ppl_id)
+    assert {:ok, _} = PplSubInitsQueries.get_by_id(ppl_id)
+    assert {:ok, _} = PplTracesQueries.get_by_id(ppl_id)
+    assert {:ok, _} = Block.describe(ppl_blk_0.block_id)
+    assert {:ok, _} = Block.describe(ppl_blk_1.block_id)
+
+    set_expired(ppl_id)
+
+    {:ok, count} = RecordDeleterQueries.delete_expired_batch(100)
+
+    assert count == 1
+    assert {:error, _} = PplRequestsQueries.get_by_id(ppl_id)
+    assert {:error, _} = Block.describe(ppl_blk_0.block_id)
+    assert {:error, _} = Block.describe(ppl_blk_1.block_id)
+  end
+
+  defp set_expired(ppl_id) do
+    expired_at = NaiveDateTime.utc_now() |> NaiveDateTime.add(-3600, :second)
+    {:ok, binary_id} = Ecto.UUID.dump(ppl_id)
+
+    EctoRepo.query!(
+      "UPDATE pipeline_requests SET expires_at = $1 WHERE id = $2",
+      [expired_at, binary_id]
+    )
   end
 end
