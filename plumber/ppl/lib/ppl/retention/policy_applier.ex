@@ -38,7 +38,7 @@ defmodule Ppl.Retention.PolicyApplier do
   end
 
   defp batch_update_mark(org_id, cutoff, expires_at, batch_size, acc) do
-    ids_query =
+    ids_subquery =
       from(pr in PplRequests,
         where: fragment("?->>?", pr.request_args, "organization_id") == ^org_id,
         where: pr.inserted_at < ^cutoff,
@@ -47,21 +47,17 @@ defmodule Ppl.Retention.PolicyApplier do
         limit: ^batch_size
       )
 
-    ids = EctoRepo.all(ids_query)
+    update_query = from(pr in PplRequests, where: pr.id in subquery(ids_subquery))
+    {count, _} = EctoRepo.update_all(update_query, set: [expires_at: expires_at])
 
-    case ids do
-      [] ->
-        acc
-
-      ids ->
-        update_query = from(pr in PplRequests, where: pr.id in ^ids)
-        {count, _} = EctoRepo.update_all(update_query, set: [expires_at: expires_at])
-        batch_update_mark(org_id, cutoff, expires_at, batch_size, acc + count)
+    case count do
+      0 -> acc
+      n -> batch_update_mark(org_id, cutoff, expires_at, batch_size, acc + n)
     end
   end
 
   defp batch_update_unmark(org_id, cutoff, batch_size, acc) do
-    ids_query =
+    ids_subquery =
       from(pr in PplRequests,
         where: fragment("?->>?", pr.request_args, "organization_id") == ^org_id,
         where: pr.inserted_at >= ^cutoff,
@@ -70,16 +66,12 @@ defmodule Ppl.Retention.PolicyApplier do
         limit: ^batch_size
       )
 
-    ids = EctoRepo.all(ids_query)
+    update_query = from(pr in PplRequests, where: pr.id in subquery(ids_subquery))
+    {count, _} = EctoRepo.update_all(update_query, set: [expires_at: nil])
 
-    case ids do
-      [] ->
-        acc
-
-      ids ->
-        update_query = from(pr in PplRequests, where: pr.id in ^ids)
-        {count, _} = EctoRepo.update_all(update_query, set: [expires_at: nil])
-        batch_update_unmark(org_id, cutoff, batch_size, acc + count)
+    case count do
+      0 -> acc
+      n -> batch_update_unmark(org_id, cutoff, batch_size, acc + n)
     end
   end
 
