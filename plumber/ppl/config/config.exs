@@ -43,22 +43,6 @@ config :gofer_client, gofer_grpc_timeout: 4_567
 # Time in hours before delete requests are processed
 config :ppl, deletion_offset_h: 24
 
-# Retention policy event consumer
-config :ppl, Ppl.Retention.PolicyConsumer,
-  enabled: System.get_env("RETENTION_CONSUMER_ENABLED", "false") == "true",
-  exchange: System.get_env("USAGE_POLICY_EXCHANGE"),
-  routing_key: System.get_env("USAGE_POLICY_ROUTING_KEY")
-
-# Retention policy applier settings
-config :ppl, Ppl.Retention.PolicyApplier,
-  grace_period_days: String.to_integer(System.get_env("RETENTION_GRACE_PERIOD_DAYS") || "15"),
-  batch_size: String.to_integer(System.get_env("RETENTION_APPLIER_BATCH_SIZE") || "10000")
-
-# Retention record deleter worker (deletes expired pipeline records)
-config :ppl, Ppl.Retention.RecordDeleter,
-  enabled: System.get_env("RETENTION_DELETER_ENABLED", "false") == "true",
-  sleep_period_sec: String.to_integer(System.get_env("RETENTION_DELETER_SLEEP_PERIOD_SEC") || "30"),
-  batch_size: String.to_integer(System.get_env("RETENTION_DELETER_BATCH_SIZE") || "100")
 
 # How many times should wormhole retry to publish pipeline events to RabbitMQ
 config :ppl, publish_retry_count: 3
