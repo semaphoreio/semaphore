@@ -188,6 +188,14 @@ defmodule FrontWeb.PeopleView do
     end
   end
 
+  def show_member_management_buttons?(conn, org_scope?, permissions, member_type) do
+    if member_type == :service_account do
+      show_service_account_management_buttons?(conn, org_scope?, permissions)
+    else
+      show_people_management_buttons?(conn, org_scope?, permissions)
+    end
+  end
+
   def roles_action_message do
     if Front.ce?(), do: "View", else: "Manage"
   end
