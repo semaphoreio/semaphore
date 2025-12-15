@@ -39,7 +39,7 @@ WORKDIR /app
 RUN go install github.com/mgechev/revive@v1.7.0
 RUN go install gotest.tools/gotestsum@v1.12.1
 RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.10
-RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.77.0
+RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1
 
 CMD [ "/bin/bash",  "-c \"while sleep 1000; do :; done\"" ]
 
