@@ -79,7 +79,7 @@
     "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^5.29.0",
     "@typescript-eslint/parser": "^5.29.0",
-    "anser": "2.0.1",
+    "anser": "github:skipi/anser#grayscale-palette-fix",
     "ansiparse": "0.1.0",
     "autoprefixer": "^10.4.21",
     "chai": "^4.3.6",

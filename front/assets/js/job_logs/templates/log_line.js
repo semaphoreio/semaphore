@@ -1,5 +1,5 @@
 import { Utils } from "../../utils"
-import ansiparse from "ansiparse";
+import anser from "anser";
 var _ = require("lodash/");
 
 export class LogLineTemplate {
@@ -12,9 +12,44 @@ export class LogLineTemplate {
   }
 
   static renderOutput(logLine) {
-    return ansiparse(logLine.output).map((parsed) => {
-      return `<span class="${parsed.foreground}">${_.escape(parsed.text)}</span>`;
+    return anser.ansiToJson(logLine.output).map((parsed) => {
+      const styles = this.buildStyles(parsed);
+      const styleAttr = styles.length > 0 ? ` style="${styles.join("; ")}"` : "";
+      return `<span${styleAttr}>${_.escape(parsed.content)}</span>`;
     }).join("");
+  }
+
+  static buildStyles(parsed) {
+    const styles = [];
+
+    if (parsed.fg) {
+      styles.push(`color: rgb(${parsed.fg})`);
+    }
+
+    if (parsed.bg) {
+      styles.push(`background-color: rgb(${parsed.bg})`);
+    }
+
+    if (parsed.decorations && parsed.decorations.length > 0) {
+      if (parsed.decorations.includes("bold")) {
+        styles.push("font-weight: bold");
+      }
+      if (parsed.decorations.includes("italic")) {
+        styles.push("font-style: italic");
+      }
+      const textDecorations = [];
+      if (parsed.decorations.includes("underline")) {
+        textDecorations.push("underline");
+      }
+      if (parsed.decorations.includes("strikethrough")) {
+        textDecorations.push("line-through");
+      }
+      if (textDecorations.length > 0) {
+        styles.push(`text-decoration: ${textDecorations.join(" ")}`);
+      }
+    }
+
+    return styles;
   }
 
   static renderTimestamp(logLine) {
