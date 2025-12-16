@@ -47,6 +47,12 @@ func docsResourceHandler(client *docssearch.Client) func(ctx context.Context, re
 		}
 
 		path := strings.TrimPrefix(uri, docsResourceURIPrefix)
+
+		// Strip fragment/anchor if present (e.g., "docs/foo.md#section" -> "docs/foo.md")
+		if idx := strings.Index(path, "#"); idx != -1 {
+			path = path[:idx]
+		}
+
 		if path == "" {
 			return nil, fmt.Errorf("invalid URI: path cannot be empty")
 		}
