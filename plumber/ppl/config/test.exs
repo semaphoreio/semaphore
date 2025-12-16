@@ -47,10 +47,6 @@ config :ppl, dr_pending_sp: 100
 config :ppl, dr_deleting_sp: 100
 config :ppl, dr_queue_deleting_sp: 100
 
-config :ppl, Ppl.Retention.PolicyConsumer,
-  exchange: "usage_internal_api_test",
-  routing_key: "usage.apply_organization_policy.test"
-
 config :watchman,
   host: "localhost",
   port: 8125,

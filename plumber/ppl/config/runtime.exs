@@ -41,9 +41,7 @@ config :watchman,
 
 # Retention policy event consumer
 config :ppl, Ppl.Retention.PolicyConsumer,
-  enabled: System.get_env("RETENTION_CONSUMER_ENABLED", "false") == "true",
-  exchange: System.get_env("USAGE_POLICY_EXCHANGE", "usage_internal_api"),
-  routing_key: System.get_env("USAGE_POLICY_ROUTING_KEY", "usage.apply_organization_policy")
+  enabled: System.get_env("RETENTION_CONSUMER_ENABLED", "false") == "true"
 
 # Retention policy applier settings
 config :ppl, Ppl.Retention.PolicyApplier,

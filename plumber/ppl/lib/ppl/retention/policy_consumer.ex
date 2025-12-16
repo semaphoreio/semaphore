@@ -3,12 +3,10 @@ defmodule Ppl.Retention.PolicyConsumer do
   Subscribes to usage.ApplyOrganizationPolicyEvent and marks pipelines for expiration.
   """
 
-  @consumer_opts Application.compile_env(:ppl, __MODULE__, [])
-
   use Tackle.Consumer,
     url: System.get_env("RABBITMQ_URL"),
-    exchange: Keyword.get(@consumer_opts, :exchange, "usage_internal_api"),
-    routing_key: Keyword.get(@consumer_opts, :routing_key, "usage.apply_organization_policy"),
+    exchange: "usage_internal_api",
+    routing_key: "usage.apply_organization_policy",
     service: "plumber-retention"
 
   require Logger
