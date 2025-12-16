@@ -12,7 +12,12 @@ export class LogLineTemplate {
   }
 
   static renderOutput(logLine) {
-    return anser.ansiToJson(logLine.output).map((parsed) => {
+    const chunks = anser.ansiToJson(logLine.output);
+    const hasContent = chunks.some((parsed) => parsed.content);
+    if (!hasContent) {
+      return "";
+    }
+    return chunks.map((parsed) => {
       const styles = this.buildStyles(parsed);
       const styleAttr = styles.length > 0 ? ` style="${styles.join("; ")}"` : "";
       return `<span${styleAttr}>${_.escape(parsed.content)}</span>`;
