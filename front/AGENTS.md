@@ -38,6 +38,8 @@
 
 ## Commit & Pull Request Guidelines
 - Commits follow `type(scope): message (#issue)` (e.g., `fix(front): adjust mermaid rendering (#621)`).
+- First line must be 50 characters or less.
+- Each subsequent line should describe a feature tagged with `[type]` where type is one of: `ui`, `worker`, `ci`, `api`, `db`, `config`, `docs`, `test`.
 - Each commit should bundle code, schema, and tests for a single concern.
 - PRs summarize impact, list manual checks, link tracking items, and add UI screenshots when relevant.
 - Verify CI (mix, JS lint, tests) is green before requesting review and call out any external dependencies.
