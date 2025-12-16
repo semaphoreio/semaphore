@@ -2,6 +2,7 @@ defmodule Zebra.Workers.JobDeletionPolicyWorker do
   require Logger
 
   alias Zebra.Models.Job
+  alias Zebra.JobDeletedPublisher
 
   defstruct [
     # period of sleep between worker ticks when jobs are deleted
@@ -45,11 +46,11 @@ defmodule Zebra.Workers.JobDeletionPolicyWorker do
     Logger.info("Starting cleanup tick (limit: #{worker.limit})...")
 
     case delete_expired_data(worker.limit) do
-      {:ok, 0, 0} ->
+      {:ok, 0, 0, []} ->
         Logger.info("No expired jobs found for deletion.")
         false
 
-      {:ok, deleted_stop_requests, deleted_jobs} ->
+      {:ok, deleted_stop_requests, deleted_jobs, deleted_jobs_list} ->
         total_deleted = deleted_stop_requests + deleted_jobs
 
         Watchman.submit({"retention.deleted"}, deleted_jobs, :count)
@@ -57,6 +58,9 @@ defmodule Zebra.Workers.JobDeletionPolicyWorker do
         Logger.info(
           "Cleanup complete: deleted #{deleted_stop_requests} job stop requests and #{deleted_jobs} jobs (total: #{total_deleted})."
         )
+
+        # Publish messages for deleted jobs (non-blocking)
+        publish_job_deletion_messages(deleted_jobs_list)
 
         true
 
@@ -68,7 +72,12 @@ defmodule Zebra.Workers.JobDeletionPolicyWorker do
 
   defp delete_expired_data(limit) do
     with {:ok, deleted_stop_requests} <- Job.delete_old_job_stop_requests(limit),
-         {:ok, deleted_jobs} <- Job.delete_old_jobs(limit) do
+         {:ok, deleted_jobs, jobs_to_delete} <- Job.delete_old_jobs(limit) do
+
+      Enum.each(jobs_to_delete, fn job ->
+        JobDeletedPublisher.publish(job.organization_id, job.id, job.project_id)
+      end)
+
       {:ok, deleted_stop_requests, deleted_jobs}
     else
       {:error, reason} -> {:error, reason}
@@ -136,6 +145,47 @@ defmodule Zebra.Workers.JobDeletionPolicyWorker do
 
       :error ->
         {:error, "limit configuration is missing"}
+    end
+  end
+
+  defp publish_job_deletion_messages([]), do: :ok
+
+  defp publish_job_deletion_messages(jobs) do
+    spawn(fn ->
+      Enum.each(jobs, fn job ->
+        case publish_job_deletion_message(job) do
+          :ok ->
+            Logger.debug("Published job deletion message for job_id: #{job.id}")
+
+          {:error, reason} ->
+            Logger.error(
+              "Failed to publish job deletion message for job_id: #{job.id}, reason: #{inspect(reason)}"
+            )
+        end
+      end)
+    end)
+
+    :ok
+  end
+
+  defp publish_job_deletion_message(job) do
+    exchange_name = "artifacthub.job_deletion"
+    routing_key = "job.deleted"
+
+    message =
+      Poison.encode!(%{
+        job_id: job.id,
+        organization_id: job.organization_id,
+        project_id: job.project_id
+      })
+
+    try do
+      {:ok, channel} = AMQP.Application.get_channel(:job_deletion)
+      Tackle.Exchange.create(channel, exchange_name)
+      :ok = Tackle.Exchange.publish(channel, exchange_name, message, routing_key)
+      :ok
+    rescue
+      e -> {:error, Exception.message(e)}
     end
   end
 end

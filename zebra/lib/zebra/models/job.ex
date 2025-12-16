@@ -430,9 +430,11 @@ defmodule Zebra.Models.Job do
         where: j.id in subquery(jobs_subquery)
       )
 
+    {deleted_jobs_ids, _} = Zebra.LegacyRepo.all(jobs_subquery)
+
     {deleted_count, _} = Zebra.LegacyRepo.delete_all(query)
 
-    {:ok, deleted_count}
+    {:ok, deleted_count, deleted_jobs_ids}
   end
 
   def wait_for_agent(job) do
