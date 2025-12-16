@@ -36,7 +36,7 @@ defmodule Auth.Mixfile do
       {:sentry, "~> 8.0"},
       {:hackney, "~> 1.20"},
       {:plug_cowboy, "~> 2.3"},
-      {:jason, "~> 1.1"},
+      {:jason, "~> 1.4"},
       {:inet_cidr, "~> 1.0.0"},
       {:wormhole, "~> 2.3"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},

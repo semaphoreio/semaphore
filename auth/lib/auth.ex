@@ -233,7 +233,10 @@ defmodule Auth do
   # This endpoint must be accessible without authentication
   #
   get "/.well-known/oauth-protected-resource", host: "mcp." do
-    log_request(conn, "mcp.#{Application.fetch_env!(:auth, :domain)}/.well-known/oauth-protected-resource")
+    log_request(
+      conn,
+      "mcp.#{Application.fetch_env!(:auth, :domain)}/.well-known/oauth-protected-resource"
+    )
 
     domain = Application.fetch_env!(:auth, :domain)
 
@@ -300,7 +303,10 @@ defmodule Auth do
         resource_metadata = "https://mcp.#{domain}/.well-known/oauth-protected-resource"
 
         conn
-        |> put_resp_header("www-authenticate", ~s(Bearer resource_metadata="#{resource_metadata}"))
+        |> put_resp_header(
+          "www-authenticate",
+          ~s(Bearer resource_metadata="#{resource_metadata}")
+        )
         |> send_resp(401, "Unauthorized")
 
       token ->
