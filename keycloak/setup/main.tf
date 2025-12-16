@@ -202,6 +202,36 @@ resource "keycloak_oidc_identity_provider" "gitlab_provider" {
   sync_mode = "IMPORT"
 }
 
+// MCP OAuth 2.1 Client Scope
+resource "keycloak_openid_client_scope" "mcp" {
+  realm_id               = keycloak_realm.semaphore_realm.id
+  name                   = "mcp"
+  description            = "MCP server access scope for OAuth 2.1"
+  include_in_token_scope = true
+}
+
+// Map semaphore_user_id user attribute to JWT claim
+resource "keycloak_openid_user_attribute_protocol_mapper" "semaphore_user_id" {
+  realm_id        = keycloak_realm.semaphore_realm.id
+  client_scope_id = keycloak_openid_client_scope.mcp.id
+  name            = "semaphore-user-id-mapper"
+
+  user_attribute       = "semaphore_user_id"
+  claim_name           = "semaphore_user_id"
+  add_to_id_token      = true
+  add_to_access_token  = true
+  add_to_userinfo      = true
+  claim_value_type     = "String"
+}
+
+// Audience mapper for MCP resource server (required for JWT aud validation)
+resource "keycloak_openid_audience_protocol_mapper" "mcp_audience" {
+  realm_id                 = keycloak_realm.semaphore_realm.id
+  client_scope_id          = keycloak_openid_client_scope.mcp.id
+  name                     = "mcp-audience"
+  included_custom_audience = "https://mcp.${var.base_domain}"
+}
+
 // Realm User Profile
 resource "keycloak_realm_user_profile" "userprofile" {
   realm_id = keycloak_realm.semaphore_realm.id
@@ -281,6 +311,25 @@ resource "keycloak_realm_user_profile" "userprofile" {
       name = "length"
       config = {
         max = 255
+      }
+    }
+  }
+
+  // Semaphore User ID - synced from Guard service, used in MCP JWT tokens
+  attribute {
+    name         = "semaphore_user_id"
+    display_name = "Semaphore User ID"
+
+    permissions {
+      view = ["admin"]
+      edit = ["admin"]
+    }
+
+    validator {
+      name = "length"
+      config = {
+        min = 36
+        max = 36
       }
     }
   }

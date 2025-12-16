@@ -229,6 +229,95 @@ defmodule Auth do
   end
 
   #
+  # OAuth 2.1 Protected Resource Metadata (RFC 9728) for MCP
+  # This endpoint must be accessible without authentication
+  #
+  get "/.well-known/oauth-protected-resource", host: "mcp." do
+    log_request(conn, "mcp.#{Application.fetch_env!(:auth, :domain)}/.well-known/oauth-protected-resource")
+
+    domain = Application.fetch_env!(:auth, :domain)
+
+    metadata = %{
+      resource: "https://mcp.#{domain}",
+      authorization_servers: ["https://id.#{domain}/realms/semaphore"],
+      scopes_supported: ["mcp"],
+      bearer_methods_supported: ["header"],
+      resource_documentation: "https://docs.semaphoreci.com/mcp"
+    }
+
+    conn
+    |> put_resp_content_type("application/json")
+    |> put_resp_header("access-control-allow-origin", "*")
+    |> put_resp_header("access-control-allow-methods", "GET, OPTIONS")
+    |> send_resp(200, Jason.encode!(metadata))
+  end
+
+  #
+  # DCR Proxy for MCP OAuth 2.1 - bypasses Keycloak CORS issues
+  # This endpoint must be accessible without authentication
+  #
+  post "/oauth/register", host: "mcp." do
+    log_request(conn, "mcp.#{Application.fetch_env!(:auth, :domain)}/oauth/register")
+
+    {:ok, body, conn} = Plug.Conn.read_body(conn)
+
+    case proxy_dcr_to_keycloak(body) do
+      {:ok, response} ->
+        conn
+        |> put_resp_content_type("application/json")
+        |> put_resp_header("access-control-allow-origin", "*")
+        |> put_resp_header("access-control-allow-methods", "POST, OPTIONS")
+        |> put_resp_header("access-control-allow-headers", "Content-Type")
+        |> send_resp(201, response)
+
+      {:error, status, error_body} ->
+        conn
+        |> put_resp_content_type("application/json")
+        |> put_resp_header("access-control-allow-origin", "*")
+        |> send_resp(status, error_body)
+    end
+  end
+
+  # Handle CORS preflight for DCR endpoint
+  options "/oauth/register", host: "mcp." do
+    conn
+    |> put_resp_header("access-control-allow-origin", "*")
+    |> put_resp_header("access-control-allow-methods", "POST, OPTIONS")
+    |> put_resp_header("access-control-allow-headers", "Content-Type")
+    |> send_resp(204, "")
+  end
+
+  #
+  # Routes for mcp.{domain}/mcp requests - OAuth 2.1 JWT validation
+  #
+  match "/exauth/mcp:path/*rest", host: "mcp." do
+    log_request(conn, "mcp.#{Application.fetch_env!(:auth, :domain)}/mcp")
+
+    case parse_auth_token(conn.req_headers) do
+      nil ->
+        # No token provided - return 401 with WWW-Authenticate header per MCP spec
+        domain = Application.fetch_env!(:auth, :domain)
+        resource_metadata = "https://mcp.#{domain}/.well-known/oauth-protected-resource"
+
+        conn
+        |> put_resp_header("www-authenticate", ~s(Bearer resource_metadata="#{resource_metadata}"))
+        |> send_resp(401, "Unauthorized")
+
+      token ->
+        case Auth.JWT.validate_mcp_token(token) do
+          {:ok, user_id, _claims} ->
+            conn
+            |> put_resp_header("x-semaphore-user-id", user_id)
+            |> send_resp(200, "")
+
+          {:error, reason} ->
+            Logger.warning("[Auth] MCP JWT validation failed: #{inspect(reason)}")
+            send_resp(conn, 401, "Unauthorized")
+        end
+    end
+  end
+
+  #
   # Routes for <org-name>.<domain>/badges*
   #
   match "/exauth/badges:path" do
@@ -692,4 +781,28 @@ defmodule Auth do
   Returns true if the application is running on-prem environment.
   """
   def on_prem?, do: System.get_env("ON_PREM") == "true"
+
+  #
+  # MCP OAuth 2.1 DCR Proxy
+  # Proxies Dynamic Client Registration requests to Keycloak to bypass CORS issues
+  #
+  defp proxy_dcr_to_keycloak(body) do
+    domain = Application.fetch_env!(:auth, :domain)
+    dcr_url = "https://id.#{domain}/realms/semaphore/clients-registrations/openid-connect"
+
+    headers = [{"Content-Type", "application/json"}]
+
+    case :hackney.request(:post, dcr_url, headers, body, [:with_body, recv_timeout: 30_000]) do
+      {:ok, 201, _headers, response_body} ->
+        {:ok, response_body}
+
+      {:ok, status, _headers, response_body} ->
+        Logger.warning("[Auth] DCR proxy failed with status #{status}: #{response_body}")
+        {:error, status, response_body}
+
+      {:error, reason} ->
+        Logger.error("[Auth] DCR proxy request failed: #{inspect(reason)}")
+        {:error, 500, Jason.encode!(%{error: "DCR request failed"})}
+    end
+  end
 end

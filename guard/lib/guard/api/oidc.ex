@@ -253,6 +253,51 @@ defmodule Guard.Api.OIDC do
     end
   end
 
+  @doc """
+  Sets a user attribute in Keycloak. Used to sync semaphore_user_id for MCP OAuth tokens.
+
+  ## Examples
+
+      Guard.Api.OIDC.set_user_attribute(client, oidc_user_id, "semaphore_user_id", "uuid-here")
+  """
+  def set_user_attribute(client, oidc_user_id, attribute_name, attribute_value) do
+    # First get the current user to preserve existing attributes
+    case Tesla.get(client, "/users/" <> oidc_user_id) do
+      {:ok, %{status: status, body: body}} when status in 200..299 ->
+        existing_attributes = body["attributes"] || %{}
+
+        updated_attributes =
+          Map.put(existing_attributes, attribute_name, [attribute_value])
+
+        update_data = %{attributes: updated_attributes}
+
+        case Tesla.put(client, "/users/" <> oidc_user_id, update_data) do
+          {:ok, %{status: update_status}} when update_status in 200..299 ->
+            {:ok, oidc_user_id}
+
+          {:ok, %{status: _, body: error_body}} ->
+            Logger.error(
+              "[OIDC API] Error setting attribute #{attribute_name} for user #{oidc_user_id}: #{inspect(error_body)}"
+            )
+
+            {:error, "#{error_body["errorMessage"]}"}
+
+          {:error, error} ->
+            {:error, error}
+        end
+
+      {:ok, %{status: _, body: error_body}} ->
+        Logger.error(
+          "[OIDC API] Error fetching user #{oidc_user_id} for attribute update: #{inspect(error_body)}"
+        )
+
+        {:error, "#{error_body["error"]}. #{error_body["error_description"]}"}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
   defp get_provider(nil, _), do: nil
 
   defp get_provider(fed_idns, provider) do

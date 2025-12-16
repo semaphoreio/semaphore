@@ -162,3 +162,8 @@ variable "gitlab_provider_authorization_url" {
   description = "Gitlab provider authorization url"
   type        = string
 }
+
+variable "base_domain" {
+  description = "Base domain for the MCP server (e.g., semaphoreci.com)"
+  type        = string
+}

@@ -41,7 +41,10 @@ defmodule Auth.Mixfile do
       {:wormhole, "~> 2.3"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:junit_formatter, "~> 3.1", only: [:test]},
-      {:uuid, "~> 1.1"}
+      {:uuid, "~> 1.1"},
+      # MCP OAuth 2.1 JWT validation
+      {:joken, "~> 2.6"},
+      {:joken_jwks, "~> 1.6"}
     ]
   end
 end
