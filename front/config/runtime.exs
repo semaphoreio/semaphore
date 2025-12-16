@@ -131,7 +131,7 @@ config :front,
   google_gtag: System.get_env("GOOGLE_GTAG")
 
 edition = System.get_env("EDITION", "") |> String.trim() |> String.downcase()
-is_saas? = !(edition in ["ce", "ee"])
+is_saas? = !(edition in ["ce", "ee", "onprem"])
 
 if is_saas? do
   config :front,
@@ -187,3 +187,12 @@ config :front, :edition, edition
 config :front,
        :status_page_url,
        System.get_env("STATUS_PAGE_URL") || "https://status.semaphore.io/"
+
+# Configure additional domains allowed in Content-Security-Policy connect-src directive
+# Format: comma-separated list of domains, e.g. "*.example.com,*.example2.com"
+csp_additional_domains =
+  System.get_env("CSP_ADDITIONAL_CONNECT_DOMAINS", "")
+  |> String.split(",", trim: true)
+  |> Enum.map(&String.trim/1)
+
+config :front, :csp_additional_connect_domains, csp_additional_domains

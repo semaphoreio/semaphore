@@ -20,35 +20,53 @@
             <%= case {@user.github_scope, @user.github_login} do %>
               <% {:NONE, nil} -> %>
                 <span class="red">Not Connected</span>
-                <div>
-                <%= link "Connect…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :email]), method: :post %>
-                </div>
+                <%= unless FeatureProvider.feature_enabled?(:restrict_user_repos_access) do %>
+                  <div>
+                    <%= link "Grant public access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :public]), method: :post %>
+                    <%= link "Grant private access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :private]), method: :post %>
+                  </div>
+                <% else %>
+                  <div>
+                    <%= link "Connect…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :email]), method: :post %>
+                  </div>
+                <% end %>
               <% {:NONE, _} -> %>
                 <span class="red">Not Connected</span>
                  ·
                 <span><a href="https://github.com/<%= @user.github_login %>" target="_blank">@<%= @user.github_login %></a></span>
-                <div>
-                <%= link "Connect…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :public]), method: :post %>
-                </div>
+                <%= unless FeatureProvider.feature_enabled?(:restrict_user_repos_access) do %>
+                  <div>
+                    <%= link "Grant public access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :public]), method: :post %>
+                    <%= link "Grant private access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :private]), method: :post %>
+                  </div>
+                <% else %>
+                  <div>
+                    <%= link "Connect…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :email]), method: :post %>
+                  </div>
+                <% end %>
               <% {:EMAIL, _} -> %>
                 <span class="green">Connected</span>
                  ·
                 <span class="gray">email only</span>
                  ·
                 <span><a href="https://github.com/<%= @user.github_login %>" target="_blank">@<%= @user.github_login %></a></span>
-                <div>
-                <%= link "Grant public access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :public]), method: :post %>
-                <%= link "Grant private access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :private]), method: :post %>
-                </div>
+                <%= unless FeatureProvider.feature_enabled?(:restrict_user_repos_access) do %>
+                  <div>
+                    <%= link "Grant public access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :public]), method: :post %>
+                    <%= link "Grant private access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :private]), method: :post %>
+                  </div>
+                <% end %>
               <% {:PUBLIC, _} -> %>
                 <span class="green">Connected</span>
                  ·
                 <span class="gray">public repositories</span>
                  ·
                 <span><a href="https://github.com/<%= @user.github_login %>" target="_blank">@<%= @user.github_login %></a></span>
-                <div>
-                <%= link "Grant private access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :private]), method: :post %>
-                </div>
+                <%= unless FeatureProvider.feature_enabled?(:restrict_user_repos_access) do %>
+                  <div>
+                    <%= link "Grant private access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :private]), method: :post %>
+                  </div>
+                <% end %>
               <% {:PRIVATE, _} -> %>
                 <span class="green">Connected</span>
                  ·

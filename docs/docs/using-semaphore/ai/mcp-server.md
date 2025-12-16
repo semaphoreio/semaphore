@@ -23,7 +23,7 @@ With MCP, you can now ask your AI agent why your build failed and to provide a f
 
 ## MCP Server Capabilities {#tools}
 
-Semaphore's MCP Server provides **read-only access** to your Semaphore organization via the following tools:
+Semaphore's MCP Server provides access to your Semaphore organization via the following tools:
 
 - `echo`: Returns the provided `message` verbatim (handy for smoke tests) 
 - `organizations_list`: Lists organizations that the user can access
@@ -34,6 +34,12 @@ Semaphore's MCP Server provides **read-only access** to your Semaphore organizat
 - `pipeline_jobs`: List jobs belonging to a specific pipeline 
 - `jobs_describe`: Describes a job, surfacing agent details, and lifecycle timestamps
 - `jobs_logs`: Fetches job logs. For cloud jobs, it streams loghub events. For self-hosted jobs, returns a URL where logs can be fetched
+- `get_test_results`: Returns a signed URL (gzip JSON) for JUnit-style [test reports](../tests/test-reports). Response includes URL, path, compression, and fetch instructions.
+
+The following tools require MCP Server write permissions in your organization. Contact `support@semaphore.io` to enable this feature.
+
+- `workflow_run`: Schedules a new workflow to be executed
+- `workflow_rerun`: Reruns an existing workflow with the original parameters
 
 See [example prompts](#examples) to see a bit of what's possible.
 
@@ -68,6 +74,26 @@ If you have problems connecting to the MCP Server, see [troubleshooting](#troubl
     ```
 
 3. If you have a session open, restart Claude Code
+
+4. Open a terminal and navigate to your repository
+
+5. Start **Claude Code** and run the following command to update `CLAUDE.md` and add Semaphore project details to the repository. This step is optional but recommended to speed up AI tasks and reduce token usage
+
+    ```shell title="Initialize Claude configuration for MCP"
+    /semaphore:mcp_setup (MCP) your-project-name your-semaphore-organization
+    ```
+
+    :::note
+
+    If you get an error stating `strategy requires thinking to be enabled`. This error is caused by [known bug](https://github.com/anthropics/claude-code/issues/11231) in Claude Code.
+
+    The workaround is to add `ultrathink` to the previous command:
+    
+    ```shell title="Initialize Claude configuration for MCP"
+    /semaphore:mcp_setup (MCP) your-project-name your-semaphore-organization ultrathink
+    ```
+
+    :::
 
 </Steps>
 

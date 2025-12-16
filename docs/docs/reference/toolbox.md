@@ -504,6 +504,7 @@ The available flags are:
 - `--parser <name>` or `-p <name>`: override the parser used. Defaults to "auto"
 - `--suite-prefix <name>` or `-S <name>`: add a prefix for the test suite name
 - `--trace`: provide trace logging
+- `--generate-mcp-summary`: generates a JSON error summary optimized for AI agent consumption. Works with the `compile`, `publish`, and `gen-pipeline-report` commands
 
 The test-results CLI is open-sourced and available on [semaphoreci/test-results](https://github.com/semaphoreci/test-results). You can access the source code, contribute, and report issues there.
 

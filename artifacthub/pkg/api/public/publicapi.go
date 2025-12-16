@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/api/descriptors/artifacts"
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/models"
@@ -134,7 +133,6 @@ func generateSignedURLsList(ctx context.Context, client storage.Client, artifact
 
 // GenerateSignedURLsList wraps signing URLs list with error logging.
 func GenerateSignedURLsList(ctx context.Context, client storage.Client, artifact *models.Artifact, p, method string) ([]*artifacts.SignedURL, error) {
-	p = strings.ReplaceAll(p, "+", "/")
 	us, err := generateSignedURLsList(ctx, client, artifact, p, method)
 	if err != nil {
 		return nil, err
