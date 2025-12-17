@@ -406,7 +406,7 @@ defmodule Auth do
 
     conn
     |> put_resp_header("location", location)
-    |> send_resp(302, "Redirected to #{location}")
+    |> send_resp(302, "Redirected to #{Plug.HTML.html_escape(location)}")
   end
 
   def set_public_headers(conn, org_name, params \\ []) do
