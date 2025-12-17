@@ -34,9 +34,9 @@ Installing and running Semaphore is easy and only takes **10-30 minutes** ⏱️
 
 Choose your preferred installation method from our detailed guides:
 
-[![Ubuntu](https://img.shields.io/badge/Ubuntu-E95420?logo=ubuntu&logoColor=white)(https://docs.semaphore.io/CE/getting-started/install-single-machine)]
+[![Ubuntu](https://img.shields.io/badge/Ubuntu-E95420?logo=ubuntu&logoColor=white)](https://docs.semaphore.io/CE/getting-started/install-single-machine)
 
-[![Kubernetes](https://img.shields.io/badge/Kubernetes-326CE5?logo=kubernetes&logoColor=white)(https://docs.semaphore.io/CE/getting-started/install-kubernetes)]
+[![Kubernetes](https://img.shields.io/badge/Kubernetes-326CE5?logo=kubernetes&logoColor=white)](https://docs.semaphore.io/CE/getting-started/install-kubernetes)
 
 [![Minikube](https://img.shields.io/badge/Minikube-0078D7?style=for-the-badge&logo=minikube&logoColor=white)](LOCAL-DEVELOPMENT.md)
 
