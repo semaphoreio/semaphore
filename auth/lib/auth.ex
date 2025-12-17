@@ -216,7 +216,7 @@ defmodule Auth do
 
     log_request(conn, "#{org_name}.#{Application.fetch_env!(:auth, :domain)}/api")
 
-    if Auth.Cli.is_call_from_deprecated_cli?(conn) do
+    if Auth.Cli.call_from_deprecated_cli?(conn) do
       Auth.Cli.reject_cli_client(conn)
     else
       case set_org_and_user_headers(conn, org_name, allow_cookie: false) do

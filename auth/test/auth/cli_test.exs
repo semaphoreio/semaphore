@@ -4,32 +4,32 @@ defmodule Auth.CliTest do
   import Plug.Test
   import Plug.Conn
 
-  describe ".is_call_from_deprecated_cli?" do
+  describe ".call_from_deprecated_cli?" do
     test "no user agent => returns false" do
       conn = conn(:get, "https://org1.semaphoretest.test/exauth/api/v1alpha/jobs")
 
-      refute Auth.Cli.is_call_from_deprecated_cli?(conn)
+      refute Auth.Cli.call_from_deprecated_cli?(conn)
     end
 
     test "SemaphoreCLI user agent with a fresh version => returns false" do
       conn = conn(:get, "https://org1.semaphoretest.test/exauth/api/v1alpha/jobs")
       conn = conn |> put_req_header("user-agent", "SemaphoreCLI/v0.30.0 (...)")
 
-      refute Auth.Cli.is_call_from_deprecated_cli?(conn)
+      refute Auth.Cli.call_from_deprecated_cli?(conn)
     end
 
     test "SemaphoreCLI user agent with an old version" do
       conn = conn(:get, "https://org1.semaphoretest.test/exauth/api/v1alpha/jobs")
       conn = conn |> put_req_header("user-agent", "SemaphoreCLI/v0.24.0 (...)")
 
-      assert Auth.Cli.is_call_from_deprecated_cli?(conn)
+      assert Auth.Cli.call_from_deprecated_cli?(conn)
     end
 
     test "request to the API with a golang request" do
       conn = conn(:get, "https://org1.semaphoretest.test/exauth/api/v1alpha/jobs")
       conn = conn |> put_req_header("user-agent", "Go-http-client/2.0")
 
-      refute Auth.Cli.is_call_from_deprecated_cli?(conn)
+      refute Auth.Cli.call_from_deprecated_cli?(conn)
     end
   end
 
@@ -52,7 +52,7 @@ defmodule Auth.CliTest do
     end
   end
 
-  describe ".is_sem_cli?" do
+  describe ".sem_cli?" do
     setup do
       conn = conn(:get, "https://org1.semaphoretest.test/exauth/api/v1alpha/jobs")
       conn = conn |> put_req_header("user-agent", "")
@@ -60,18 +60,18 @@ defmodule Auth.CliTest do
       {:ok, conn: conn}
     end
 
-    test "is_sem_cli? returns false without SemaphoreCLI user-agent", %{conn: conn} do
-      refute Auth.Cli.is_sem_cli?(conn)
+    test "sem_cli? returns false without SemaphoreCLI user-agent", %{conn: conn} do
+      refute Auth.Cli.sem_cli?(conn)
     end
 
-    test "is_sem_cli? returns true with SemaphoreCLI user-agent", %{conn: conn} do
+    test "sem_cli? returns true with SemaphoreCLI user-agent", %{conn: conn} do
       conn = put_req_header(conn, "user-agent", "SemaphoreCLI/v0.25.0 (...)")
-      assert Auth.Cli.is_sem_cli?(conn)
+      assert Auth.Cli.sem_cli?(conn)
     end
 
-    test "is_sem_cli? returns false with Go user-agent", %{conn: conn} do
+    test "sem_cli? returns false with Go user-agent", %{conn: conn} do
       conn = put_req_header(conn, "user-agent", "Go-http-client/2.0")
-      refute Auth.Cli.is_sem_cli?(conn)
+      refute Auth.Cli.sem_cli?(conn)
     end
   end
 end
