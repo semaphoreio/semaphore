@@ -17,10 +17,12 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/sirupsen/logrus"
 
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/config"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/logging"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/prompts"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools"
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/docs"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/jobs"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/organizations"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/pipelines"
@@ -77,6 +79,8 @@ func main() {
 	bootstrapLog := logging.ForComponent("bootstrap")
 	if strings.EqualFold(os.Getenv("MCP_USE_STUBS"), "true") {
 		bootstrapLog.Info("using stubbed internal API clients (MCP_USE_STUBS=true)")
+		config.SetDevMode(true)
+		bootstrapLog.Info("dev mode enabled - skipping X-Semaphore-User-ID validation")
 		provider = support.New()
 	} else {
 		cfg, err := internalapi.LoadConfig()
@@ -116,6 +120,7 @@ func main() {
 
 	// Register prompts for agent configuration guidance
 	prompts.Register(srv)
+	docs.Register(srv)
 
 	mux := http.NewServeMux()
 	streamable := server.NewStreamableHTTPServer(
