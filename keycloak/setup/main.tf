@@ -216,12 +216,12 @@ resource "keycloak_openid_user_attribute_protocol_mapper" "semaphore_user_id" {
   client_scope_id = keycloak_openid_client_scope.mcp.id
   name            = "semaphore-user-id-mapper"
 
-  user_attribute       = "semaphore_user_id"
-  claim_name           = "semaphore_user_id"
-  add_to_id_token      = true
-  add_to_access_token  = true
-  add_to_userinfo      = true
-  claim_value_type     = "String"
+  user_attribute      = "semaphore_user_id"
+  claim_name          = "semaphore_user_id"
+  add_to_id_token     = true
+  add_to_access_token = true
+  add_to_userinfo     = true
+  claim_value_type    = "String"
 }
 
 // Audience mapper for MCP resource server (required for JWT aud validation)
