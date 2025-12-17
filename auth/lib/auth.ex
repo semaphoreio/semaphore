@@ -127,6 +127,42 @@ defmodule Auth do
   end
 
   #
+  # OAuth 2.1 Protected Resource Metadata (RFC 9728) for MCP
+  # This endpoint must be accessible without authentication
+  # IMPORTANT: Must be before the catch-all .well-known route to match properly
+  #
+  get "/exauth/.well-known/oauth-protected-resource", host: "mcp." do
+    log_request(
+      conn,
+      "mcp.#{Application.fetch_env!(:auth, :domain)}/.well-known/oauth-protected-resource"
+    )
+
+    domain = Application.fetch_env!(:auth, :domain)
+
+    metadata = %{
+      resource: "https://mcp.#{domain}",
+      authorization_servers: ["https://id.#{domain}/realms/semaphore"],
+      scopes_supported: ["mcp"],
+      bearer_methods_supported: ["header"],
+      resource_documentation: "https://docs.semaphoreci.com/mcp"
+    }
+
+    conn
+    |> put_resp_content_type("application/json")
+    |> put_resp_header("access-control-allow-origin", "*")
+    |> put_resp_header("access-control-allow-methods", "GET, OPTIONS")
+    |> send_resp(200, Jason.encode!(metadata))
+  end
+
+  # Handle CORS preflight for OAuth protected resource metadata
+  options "/exauth/.well-known/oauth-protected-resource", host: "mcp." do
+    conn
+    |> put_resp_header("access-control-allow-origin", "*")
+    |> put_resp_header("access-control-allow-methods", "GET, OPTIONS")
+    |> send_resp(204, "")
+  end
+
+  #
   # Routes for <org-name>.<domain>/.well-known requests.
   # The well-known endpoints are a fully public endpoint that advertises our public
   # OpenID Connect keys. Once this request goes throught Auth, it will hit
@@ -229,37 +265,10 @@ defmodule Auth do
   end
 
   #
-  # OAuth 2.1 Protected Resource Metadata (RFC 9728) for MCP
-  # This endpoint must be accessible without authentication
-  #
-  get "/.well-known/oauth-protected-resource", host: "mcp." do
-    log_request(
-      conn,
-      "mcp.#{Application.fetch_env!(:auth, :domain)}/.well-known/oauth-protected-resource"
-    )
-
-    domain = Application.fetch_env!(:auth, :domain)
-
-    metadata = %{
-      resource: "https://mcp.#{domain}",
-      authorization_servers: ["https://id.#{domain}/realms/semaphore"],
-      scopes_supported: ["mcp"],
-      bearer_methods_supported: ["header"],
-      resource_documentation: "https://docs.semaphoreci.com/mcp"
-    }
-
-    conn
-    |> put_resp_content_type("application/json")
-    |> put_resp_header("access-control-allow-origin", "*")
-    |> put_resp_header("access-control-allow-methods", "GET, OPTIONS")
-    |> send_resp(200, Jason.encode!(metadata))
-  end
-
-  #
   # DCR Proxy for MCP OAuth 2.1 - bypasses Keycloak CORS issues
   # This endpoint must be accessible without authentication
   #
-  post "/oauth/register", host: "mcp." do
+  post "/exauth/oauth/register", host: "mcp." do
     log_request(conn, "mcp.#{Application.fetch_env!(:auth, :domain)}/oauth/register")
 
     {:ok, body, conn} = Plug.Conn.read_body(conn)
@@ -282,7 +291,7 @@ defmodule Auth do
   end
 
   # Handle CORS preflight for DCR endpoint
-  options "/oauth/register", host: "mcp." do
+  options "/exauth/oauth/register", host: "mcp." do
     conn
     |> put_resp_header("access-control-allow-origin", "*")
     |> put_resp_header("access-control-allow-methods", "POST, OPTIONS")
