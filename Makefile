@@ -1,4 +1,4 @@
-.PHONY: build
+.PHONY: build registry.configure registry.ghcr.ensure_public
 
 TAG_NAME=$(shell git describe --exact-match --tags HEAD 2>/dev/null)
 
@@ -310,6 +310,53 @@ configure.sign:
 registry.push:
 	docker tag $(IMAGE):$(IMAGE_TAG) $(REGISTRY_HOST)/$(APP_NAME):$(RELEASE_TAG)
 	docker push $(REGISTRY_HOST)/$(APP_NAME):$(RELEASE_TAG)
+	@$(MAKE) registry.ghcr.ensure_public
+
+registry.ghcr.ensure_public:
+	@image_ref="$(REGISTRY_HOST)/$(APP_NAME)"; \
+	case "$$image_ref" in \
+		ghcr.io/*/*) ;; \
+		*) echo "Skipping GHCR visibility step (image_ref=$$image_ref)"; exit 0 ;; \
+	esac; \
+	owner=$$(printf "%s" "$$image_ref" | cut -d/ -f2); \
+	package=$$(printf "%s" "$$image_ref" | cut -d/ -f3-); \
+	package_api=$$(printf "%s" "$$package" | sed 's|/|%2F|g'); \
+	if [ -z "$(GITHUB_TOKEN)" ]; then \
+		echo "GITHUB_TOKEN is required to update GHCR package visibility"; \
+		exit 1; \
+	fi; \
+	echo "Ensuring GHCR package is public: $$owner/$$package"; \
+	tmpfile="$$(mktemp 2>/dev/null || echo /tmp/ghcr-visibility.json)"; \
+	code=""; \
+	last_url=""; \
+	i=1; \
+	while [ $$i -le 30 ]; do \
+		for scope in orgs users; do \
+			last_url="https://api.github.com/$$scope/$$owner/packages/container/$$package_api"; \
+			code=$$(curl -sS -o "$$tmpfile" -w "%{http_code}" -X PATCH \
+				-H "Accept: application/vnd.github+json" \
+				-H "Authorization: Bearer $(GITHUB_TOKEN)" \
+				-H "X-GitHub-Api-Version: 2022-11-28" \
+				"$$last_url" \
+				-d '{"visibility":"public"}'); \
+			if [ "$$code" = "200" ]; then \
+				rm -f "$$tmpfile"; \
+				exit 0; \
+			fi; \
+			if [ "$$code" != "404" ]; then \
+				break; \
+			fi; \
+		done; \
+		sleep 2; \
+		i=$$((i + 1)); \
+	done; \
+	echo "Failed to set GHCR package visibility to public (HTTP $$code) via $$last_url."; \
+	echo "HTTP 404 often means the token lacks permission (GitHub returns 404 to unauthorized callers) or the owner/package name is wrong."; \
+	echo "To succeed, use a token that can administer the package visibility (typically a PAT for an org owner with at least packages:write and appropriate org/package admin rights)."; \
+	echo "Response:"; \
+	cat "$$tmpfile"; \
+	rm -f "$$tmpfile"; \
+	exit 1
 
 registry.sign: cosign.install
 	cosign sign -y \
@@ -320,7 +367,7 @@ registry.image:
 	@echo $(REGISTRY_HOST)/$(APP_NAME):$(RELEASE_TAG)
 
 registry.configure:
-    @echo	"Configuring registry for user: $(GITHUB_USERNAME)"
+	@echo "Configuring registry for user: $(GITHUB_USERNAME)"
 	@printf "%s" "$(GITHUB_TOKEN)" | docker login ghcr.io -u "$(GITHUB_USERNAME)" --password-stdin
 
 registry.helm.configure:

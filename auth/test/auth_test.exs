@@ -553,7 +553,7 @@ defmodule AuthTest do
       body =
         Enum.join(
           [
-            "{\"message\": \"Call rejected because the client is outdated. ",
+            "{\"message\":\"Call rejected because the client is outdated. ",
             "To continue, upgrade Semaphore CLI with ",
             "'curl https://storage.googleapis.com/sem-cli-releases/get.sh | bash'.",
             "\"}"
