@@ -10,6 +10,9 @@ defmodule Auth.JWT do
   use Joken.Config
   require Logger
 
+  # Add JokenJwks hook for automatic JWKS-based signature verification
+  add_hook(JokenJwks, strategy: Auth.JWKSStrategy)
+
   @doc """
   Validates an MCP OAuth token and extracts the semaphore_user_id.
 
@@ -41,12 +44,10 @@ defmodule Auth.JWT do
   end
 
   defp verify_token(token) do
-    signer = fetch_signer()
-    config = token_config()
-
-    case Joken.verify(token, signer) do
+    # Use verify_and_validate which triggers the JokenJwks hook
+    case __MODULE__.verify_and_validate(token) do
       {:ok, claims} ->
-        validate_claims(claims, config)
+        validate_claims(claims)
 
       {:error, reason} ->
         Logger.warning("[Auth.JWT] Token verification failed: #{inspect(reason)}")
@@ -54,7 +55,7 @@ defmodule Auth.JWT do
     end
   end
 
-  defp validate_claims(claims, _config) do
+  defp validate_claims(claims) do
     issuer = keycloak_issuer()
     now = DateTime.utc_now() |> DateTime.to_unix()
 
@@ -108,38 +109,8 @@ defmodule Auth.JWT do
     end
   end
 
-  defp fetch_signer do
-    jwks_url = keycloak_jwks_url()
-
-    # JokenJwks handles caching internally
-    case JokenJwks.signers(jwks_url) do
-      {:ok, signers} ->
-        # Return the first RS256 signer
-        Enum.find(signers, fn {_kid, signer} ->
-          match?(%Joken.Signer{alg: "RS256"}, signer)
-        end)
-        |> case do
-          {_kid, signer} -> signer
-          nil -> raise "No RS256 signer found in JWKS"
-        end
-
-      {:error, reason} ->
-        Logger.error("[Auth.JWT] Failed to fetch JWKS: #{inspect(reason)}")
-        raise "Failed to fetch JWKS from #{jwks_url}"
-    end
-  end
-
-  defp token_config do
-    default_claims(skip: [:aud, :iss, :exp])
-  end
-
   defp keycloak_issuer do
     domain = Application.fetch_env!(:auth, :domain)
     "https://id.#{domain}/realms/semaphore"
-  end
-
-  defp keycloak_jwks_url do
-    domain = Application.fetch_env!(:auth, :domain)
-    "https://id.#{domain}/realms/semaphore/protocol/openid-connect/certs"
   end
 end

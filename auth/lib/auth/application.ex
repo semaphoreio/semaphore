@@ -19,7 +19,8 @@ defmodule Auth.Application do
         %{
           id: FeatureProvider.Cachex,
           start: {Cachex, :start_link, [:feature_provider_cache, []]}
-        }
+        },
+        Auth.JWKSStrategy
       ] ++ feature_provider(provider)
 
     {:ok, _} = Logger.add_backend(Sentry.LoggerBackend)

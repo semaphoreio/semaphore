@@ -635,11 +635,10 @@ defmodule Auth do
       Auth.Cache.fetch!("authentication-based-on-cookie-#{cache_key}", :timer.minutes(5), fn ->
         stub = InternalApi.Auth.Authentication.Stub
 
-        req =
-          InternalApi.Auth.AuthenticateWithCookieRequest.new(
-            cookie: session_cookie,
-            remember_user_token: ""
-          )
+        req = %InternalApi.Auth.AuthenticateWithCookieRequest{
+          cookie: session_cookie,
+          remember_user_token: ""
+        }
 
         endpoint = Application.fetch_env!(:auth, :authentication_grpc_endpoint)
         opts = [timeout: 30_000]
@@ -704,7 +703,7 @@ defmodule Auth do
     Watchman.benchmark("authenticate_with_token.duration", fn ->
       Auth.Cache.fetch!("authentication-based-on-token-#{token}", :timer.minutes(5), fn ->
         stub = InternalApi.Auth.Authentication.Stub
-        req = InternalApi.Auth.AuthenticateRequest.new(token: token)
+        req = %InternalApi.Auth.AuthenticateRequest{token: token}
         endpoint = Application.fetch_env!(:auth, :authentication_grpc_endpoint)
         opts = [timeout: 30_000]
 
@@ -723,7 +722,7 @@ defmodule Auth do
     Watchman.benchmark("find_org.duration", fn ->
       Auth.Cache.fetch!("find-org-#{username}", :timer.minutes(5), fn ->
         stub = InternalApi.Organization.OrganizationService.Stub
-        req = InternalApi.Organization.DescribeRequest.new(org_username: username)
+        req = %InternalApi.Organization.DescribeRequest{org_username: username}
         endpoint = Application.fetch_env!(:auth, :organization_grpc_endpoint)
         opts = [timeout: 30_000]
 
