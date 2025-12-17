@@ -40,7 +40,7 @@ defmodule Auth.Mixfile do
       {:jason, "~> 1.4"},
       {:inet_cidr, "~> 1.0.0"},
       {:wormhole, "~> 2.3"},
-      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:credo, "~> 1.7.10", only: [:dev, :test], runtime: false},
       {:junit_formatter, "~> 3.1", only: [:test]},
       {:uuid, "~> 1.1"},
       # MCP OAuth 2.1 JWT validation
