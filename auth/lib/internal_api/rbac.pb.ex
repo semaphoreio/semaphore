@@ -322,7 +322,11 @@ defmodule InternalApi.RBAC.Subject do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:subject_type, 1, type: InternalApi.RBAC.SubjectType, json_name: "subjectType", enum: true)
+  field(:subject_type, 1,
+    type: InternalApi.RBAC.SubjectType,
+    json_name: "subjectType",
+    enum: true
+  )
 
   field(:subject_id, 2, type: :string, json_name: "subjectId")
   field(:display_name, 3, type: :string, json_name: "displayName")

@@ -41,14 +41,7 @@ defmodule Auth.CliTest do
       assert conn.status == 400
 
       assert conn.resp_body ==
-               Enum.join(
-                 [
-                   "{\"message\": \"Call rejected because the client is outdated. ",
-                   "To continue, upgrade Semaphore CLI with 'curl ",
-                   "https://storage.googleapis.com/sem-cli-releases/get.sh | bash'.\"}"
-                 ],
-                 ""
-               )
+               "{\"message\":\"Call rejected because the client is outdated. To continue, upgrade Semaphore CLI with 'curl https://storage.googleapis.com/sem-cli-releases/get.sh | bash'.\"}"
     end
   end
 

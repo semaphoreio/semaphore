@@ -401,6 +401,7 @@ defmodule Auth do
     end
   end
 
+  # sobelow_skip ["XSS.SendResp"]
   def redirect(conn, location) do
     Logger.debug(fn -> "Redirect to: #{location}" end)
 

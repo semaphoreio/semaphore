@@ -763,7 +763,7 @@ defmodule AuthTest do
       end)
 
       cookie = "#{Application.get_env(:auth, :cookie_name)}=#{@valid_cookie}"
-      new_ip_in_same_subnet = String.slice(@random_ip, 0..-3) <> "11"
+      new_ip_in_same_subnet = String.slice(@random_ip, 0..-3//1) <> "11"
 
       conn = conn(:get, "https://rt.semaphoretest.test/exauth/somepath")
 

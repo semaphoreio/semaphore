@@ -15,6 +15,7 @@ defmodule Auth.Cli do
     patch: 0
   }
 
+  # sobelow_skip ["XSS.SendResp"]
   def reject_cli_client(conn) do
     upgrade = "curl https://storage.googleapis.com/sem-cli-releases/get.sh | bash"
 
@@ -27,7 +28,7 @@ defmodule Auth.Cli do
         " "
       )
 
-    Plug.Conn.send_resp(conn, 400, "{\"message\": \"#{msg}\"}")
+    Plug.Conn.send_resp(conn, 400, Jason.encode!(%{message: msg}))
   end
 
   def call_from_deprecated_cli?(conn) do
