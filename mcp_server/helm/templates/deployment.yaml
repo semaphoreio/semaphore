@@ -41,7 +41,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: {{ .Chart.Name }}
-          image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
+          image: "{{ .Values.global.image.registry }}/auth:mcp_{{ .Values.imageTag }}"
           ports:
             - name: http
               containerPort: 3001
