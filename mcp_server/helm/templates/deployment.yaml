@@ -32,6 +32,12 @@ spec:
         app: {{ .Chart.Name }}
         product: semaphoreci
     spec:
+{{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{- range .Values.imagePullSecrets }}
+        - name: {{ . }}
+{{- end }}
+{{- end }}
       automountServiceAccountToken: false
       containers:
         - name: {{ .Chart.Name }}

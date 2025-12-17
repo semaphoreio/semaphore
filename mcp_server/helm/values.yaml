@@ -2,6 +2,7 @@ enabled: true
 
 image: mcp_server
 imageTag: latest
+imagePullSecrets: []
 replicas: 1
 
 logging:

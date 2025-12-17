@@ -320,6 +320,7 @@ registry.image:
 	@echo $(REGISTRY_HOST)/$(APP_NAME):$(RELEASE_TAG)
 
 registry.configure:
+    @echo	"Configuring registry for user: $(GITHUB_USERNAME)"
 	@printf "%s" "$(GITHUB_TOKEN)" | docker login ghcr.io -u "$(GITHUB_USERNAME)" --password-stdin
 
 registry.helm.configure:
