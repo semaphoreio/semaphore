@@ -62,7 +62,7 @@ defmodule Guard.Tasks.BackfillKeycloakUserId do
     import Ecto.Query
 
     query =
-      from(ou in Guard.Repo.OidcUser,
+      from(ou in Guard.Repo.OIDCUser,
         join: ru in Guard.Repo.RbacUser,
         on: ou.user_id == ru.id,
         select: %{
