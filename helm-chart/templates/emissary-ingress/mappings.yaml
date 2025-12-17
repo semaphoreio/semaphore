@@ -522,8 +522,44 @@ spec:
   rewrite: ""
   service: secrethub-http.{{ .Release.Namespace }}:4000
   precedence: 100
-{{- if eq .Values.global.edition "ee" }}
+{{- if and (eq .Values.global.edition "ee") (index .Values "mcp-server" "enabled") }}
 ---
+# MCP OAuth 2.1 Protected Resource Metadata (RFC 9728)
+# Bypasses ExtAuth and returns OAuth discovery metadata directly
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: mcp-oauth-metadata-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: "^mcp\\..*"
+  host_regex: true
+  prefix: /.well-known/oauth-protected-resource
+  rewrite: /exauth/.well-known/oauth-protected-resource
+  service: auth.{{ .Release.Namespace }}:4000
+  bypass_auth: true
+  precedence: 200
+  timeout_ms: 5000
+---
+# MCP OAuth 2.1 Dynamic Client Registration (DCR) Proxy
+# Bypasses ExtAuth and proxies DCR requests to Keycloak
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: mcp-oauth-register-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: "^mcp\\..*"
+  host_regex: true
+  prefix: /oauth/register
+  rewrite: /exauth/oauth/register
+  service: auth.{{ .Release.Namespace }}:4000
+  bypass_auth: true
+  precedence: 200
+  timeout_ms: 10000
+{{- end }}
+---
+{{- if eq .Values.global.edition "ee" }}
 apiVersion: getambassador.io/v3alpha1
 kind: Mapping
 metadata:
