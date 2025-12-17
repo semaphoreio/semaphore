@@ -609,3 +609,22 @@ spec:
       retry_on: connect-failure
       num_retries: 3
 {{- end }}
+{{- if and (eq .Values.global.edition "ee") (index .Values "mcp-server" "enabled") }}
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: mcp-server-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: "^mcp\\..*"
+  host_regex: true
+  prefix: /
+  rewrite: ""
+  service: mcp-server.{{ .Release.Namespace }}:3001
+  timeout_ms: 30000
+  envoy_override:
+    retry_policy:
+      retry_on: connect-failure
+      num_retries: 3
+{{- end }}

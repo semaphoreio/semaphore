@@ -117,3 +117,7 @@ dependencies:
   - name: velocity-hub
     version: "@chartVersion@"
     repository: "file://../ee/velocity/helm"
+  - name: mcp-server
+    version: "@chartVersion@"
+    repository: "file://../mcp_server/helm"
+    condition: mcp-server.enabled

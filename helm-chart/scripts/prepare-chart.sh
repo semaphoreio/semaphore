@@ -48,6 +48,7 @@ applications=(
   "PeriodicScheduler"
   "Loghub2"
   "GithubHooks"
+  "MCP Server"
   "Notifications"
   "Plumber"
   "ProjectHub"

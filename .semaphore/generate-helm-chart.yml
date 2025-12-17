@@ -42,6 +42,7 @@ blocks:
                 - "Bootstrapper"
                 - "PeriodicScheduler"
                 - "Loghub2"
+                - "MCP Server"
                 - "GithubHooks"
                 - "Notifications"
                 - "Plumber"
