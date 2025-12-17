@@ -58,9 +58,7 @@ spec:
             - name: KC_DB_POOL_MAX_SIZE
               value: {{ .Values.db.poolSize | quote }}
             - name: JAVA_OPTS_APPEND
-              value: "-Djgroups.dns.query={{ .Chart.Name }}-headless -Djboss.bind.address=0.0.0.0 -Djboss.bind.address.management=0.0.0.0 -Djboss.bind.address.private=0.0.0.0 -Djboss.management.http.port=9990 -Dkeycloak.profile.feature.metrics=enabled"
-            - name: JGROUPS_DISCOVERY_PROTOCOL
-              value: "KUBE_PING"
+              value: "-Djboss.bind.address=0.0.0.0 -Djboss.bind.address.management=0.0.0.0 -Djboss.bind.address.private=0.0.0.0 -Djboss.management.http.port=9990"
             # The following values are used to configure the number of cache owners for the Infinispan cache
             - name: CACHE_OWNERS_COUNT
               value: {{ .Values.cacheOwnersCount | quote }}

@@ -86,6 +86,8 @@ spec:
             value: ""
           - name: TF_VAR_semaphore_realm_login_theme
             value: "semaphore"
+          - name: TF_VAR_base_domain
+            valueFrom: { configMapKeyRef: { name: {{ .Values.global.domain.configMapName }}, key: BASE_DOMAIN } }
           - name: KUBERNETES_NAMESPACE
             valueFrom:
               fieldRef:
