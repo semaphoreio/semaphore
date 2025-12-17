@@ -36,7 +36,7 @@ defmodule Auth.Mixfile do
       {:httpoison, "~> 0.11", only: [:dev, :test]},
       {:sentry, "~> 8.0"},
       {:hackney, "~> 1.20"},
-      {:plug_cowboy, "~> 2.3"},
+      {:plug_cowboy, "~> 2.7"},
       {:jason, "~> 1.4"},
       {:inet_cidr, "~> 1.0.0"},
       {:wormhole, "~> 2.3"},
