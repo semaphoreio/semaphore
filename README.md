@@ -1,10 +1,10 @@
 <div align="center">
 
 # Semaphore - Open Source CI/CD Platform
+
 [![CI/CD, Semaphore, Continuous Integration](files/hero.png)](https://www.semaphore.io/)
 
 <!-- Badges -->
-
 
 [![Build Status](https://semaphore.semaphoreci.com/badges/semaphore/branches/main.svg?key=e8fbbbbc-ba9f-43cd-8438-e55c61ca6308)](https://semaphore.semaphoreci.com/projects/semaphore)
 [![Stars](https://img.shields.io/github/stars/semaphoreio/semaphore)](https://github.com/semaphoreio/semaphore/stargazers)
@@ -29,24 +29,17 @@ ___
 ___
 
 ## Installation
+
 Installing and running Semaphore is easy and only takes **10-30 minutes** ⏱️
 
 Choose your preferred installation method from our detailed guides:
 
-### 🎡 Kubernetes Cluster
+[![Ubuntu](https://img.shields.io/badge/Ubuntu-E95420?logo=ubuntu&logoColor=white)](https://docs.semaphore.io/CE/getting-started/install-single-machine)
 
-[![GKE](https://img.shields.io/badge/Google_Kuberenetes_Engine_(GKE)-4285F4?style=for-the-badge&logo=google-cloud&logoColor=white)](https://docs.semaphoreci.com/CE/getting-started/install-gke)
-[![EKS](https://img.shields.io/badge/Amazon_Elastic_Kubernetes_Service_(EKS)-FF9900?style=for-the-badge&logo=amazonwebservices&logoColor=black)](https://docs.semaphoreci.com/CE/getting-started/install-eks)
-
-### 💻 Single Machine
-
-[![Ubuntu VM](https://img.shields.io/badge/Ubuntu_Machine-E95420?style=for-the-badge&logo=ubuntu&logoColor=white)](https://docs.semaphoreci.com/CE/getting-started/install-ubuntu)
-[![Google Cloud Compute (VM)](https://img.shields.io/badge/Google_Cloud_Compute-4285F4?style=for-the-badge&logo=google-cloud&logoColor=white)](https://docs.semaphoreci.com/CE/getting-started/install-gcompute)
-[![EC2](https://img.shields.io/badge/AWS_Compute_(EC2)-FF9900?style=for-the-badge&logo=amazonwebservices&logoColor=black)](https://docs.semaphoreci.com/CE/getting-started/install-aws-ec2)
-
-### Local
+[![Kubernetes](https://img.shields.io/badge/Kubernetes-326CE5?logo=kubernetes&logoColor=white)](https://docs.semaphore.io/CE/getting-started/install-kubernetes)
 
 [![Minikube](https://img.shields.io/badge/Minikube-0078D7?style=for-the-badge&logo=minikube&logoColor=white)](LOCAL-DEVELOPMENT.md)
+
 ___
 
 ## Semaphore Versions
@@ -54,12 +47,15 @@ ___
 Semaphore comes in three flavors to fit your needs:
 
 ### 🌱 Community Edition
+
 Free and open source under [Apache 2.0 license](LICENSE). This is what you'll find in this repository (everything outside the `ee/` folder). Perfect for teams who want to run Semaphore on their own infrastructure with community support.
 
 ### 🏢 Enterprise Edition
+
 Our enhanced version with extra features for larger organizations, available under a commercial license. You'll find this code in the `ee/` directory. Comes with professional support to keep your CI/CD running smoothly.
 
 ### ☁️ Semaphore Cloud
+
 Don't want to manage your own infrastructure? Our hosted version at [semaphoreci.com](https://semaphoreci.com) gives you all the power of Semaphore without the setup. From free plans for small projects to enterprise-scale solutions.
 
 ___
