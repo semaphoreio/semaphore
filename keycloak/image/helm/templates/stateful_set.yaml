@@ -38,7 +38,7 @@ spec:
             - name: KC_HTTP_ENABLED
               value: "true"
             - name: KC_HOSTNAME
-              value: "id.$(BASE_DOMAIN)"
+              value: "https://id.$(BASE_DOMAIN)"
             - name: KC_CACHE_STACK
               value: "kubernetes"
             - name: KC_HOSTNAME_ADMIN
