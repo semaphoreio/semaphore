@@ -266,8 +266,7 @@ defmodule Guard.Api.OIDC do
       {:ok, %{status: status, body: body}} when status in 200..299 ->
         existing_attributes = body["attributes"] || %{}
 
-        updated_attributes =
-          Map.put(existing_attributes, attribute_name, [attribute_value])
+        updated_attributes = Map.put(existing_attributes, attribute_name, [attribute_value])
 
         update_data = %{attributes: updated_attributes}
 
