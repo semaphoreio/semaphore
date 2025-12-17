@@ -29,9 +29,9 @@ spec:
           env:
             - name: BASE_DOMAIN
               valueFrom: { configMapKeyRef: { name: {{ .Values.global.domain.configMapName }}, key: BASE_DOMAIN } }
-            - name: KEYCLOAK_ADMIN
+            - name: KC_BOOTSTRAP_ADMIN_USERNAME
               valueFrom: { secretKeyRef: { name: {{ include "secrets.authentication.name" . }}, key: KC_ADMIN_LOGIN } }
-            - name: KEYCLOAK_ADMIN_PASSWORD
+            - name: KC_BOOTSTRAP_ADMIN_PASSWORD
               valueFrom: { secretKeyRef: { name: {{ include "secrets.authentication.name" . }}, key: KC_ADMIN_PASSWORD } }
             - name: KC_PROXY_HEADERS
               value: "xforwarded"
@@ -39,8 +39,6 @@ spec:
               value: "true"
             - name: KC_HOSTNAME
               value: "https://id.$(BASE_DOMAIN)"
-            - name: KC_CACHE_STACK
-              value: "kubernetes"
             - name: KC_HOSTNAME_ADMIN
               value: "https://id.$(BASE_DOMAIN)"
             - name: KC_HOSTNAME_DEBUG
