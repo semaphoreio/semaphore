@@ -14,6 +14,7 @@ import (
 	"github.com/semaphoreio/semaphore/loghub2/pkg/publicapi"
 	"github.com/semaphoreio/semaphore/loghub2/pkg/storage"
 	"github.com/semaphoreio/semaphore/loghub2/pkg/utils"
+	"github.com/semaphoreio/semaphore/loghub2/pkg/workers/jobdeletion"
 )
 
 const (
@@ -121,6 +122,20 @@ func startRabbitMQConsumer(redisStorage *storage.RedisStorage, cloudStorage stor
 	}
 }
 
+func startJobDeletionWorker(redisStorage *storage.RedisStorage, cloudStorage storage.Storage) {
+	log.Println("Starting Job Deletion Worker")
+
+	rabbitMqURL := utils.AssertEnvVar("RABBITMQ_URL")
+
+	worker, err := jobdeletion.NewWorker(rabbitMqURL, redisStorage, cloudStorage)
+	if err != nil {
+		log.Fatalf("Error creating job deletion worker: %v", err)
+	}
+
+	worker.Start()
+	log.Println("Job Deletion Worker started successfully")
+}
+
 func createRedisStorage() *storage.RedisStorage {
 	host := utils.AssertEnvVar("REDIS_HOST")
 	port := utils.AssertEnvVar("REDIS_PORT")
@@ -145,7 +160,7 @@ func createRedisStorage() *storage.RedisStorage {
 }
 
 func shouldInitializeStorages() bool {
-	return os.Getenv("START_PUBLIC_API") == "yes" || os.Getenv("START_ARCHIVATOR") == "yes"
+	return os.Getenv("START_PUBLIC_API") == "yes" || os.Getenv("START_ARCHIVATOR") == "yes" || os.Getenv("START_JOBDELETION_WORKER") == "yes"
 }
 
 func main() {
@@ -174,6 +189,10 @@ func main() {
 
 	if os.Getenv("START_ARCHIVATOR") == "yes" {
 		go startRabbitMQConsumer(redisStorage, cloudStorage)
+	}
+
+	if os.Getenv("START_JOBDELETION_WORKER") == "yes" {
+		go startJobDeletionWorker(redisStorage, cloudStorage)
 	}
 
 	log.Println("loghub2 is UP.")
