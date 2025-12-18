@@ -39,8 +39,8 @@ defmodule Zebra.Workers.JobDeletionPolicyWorker do
 
     Logger.debug("Sleeping for #{sleep_for}ms...")
     :timer.sleep(sleep_for)
-    # Additionally sleeps for 14 seconds because we are not deleting anything yet
-    :timer.sleep(14_000)
+    # Additionally sleeps for 1 minute because we are not deleting anything yet
+    :timer.sleep(60_000)
 
     loop(worker)
   end
@@ -88,6 +88,10 @@ defmodule Zebra.Workers.JobDeletionPolicyWorker do
 
       {:error, reason} ->
         {:error, reason}
+
+      jobs when is_list(jobs) ->
+        deleted_jobs_count = length(jobs)
+        {:ok, 0, deleted_jobs_count, jobs}
     end
   end
 
