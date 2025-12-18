@@ -30,17 +30,17 @@ defmodule Zebra.Workers.JobDeletionPolicyWorker do
   def loop(worker) do
     deleted_any? = tick(worker)
 
-    sleep_for =
-      if deleted_any? do
-        worker.naptime
-      else
-        worker.longnaptime || worker.naptime
-      end
+    # sleep_for =
+    #   if deleted_any? do
+    #     worker.naptime
+    #   else
+    #     worker.longnaptime || worker.naptime
+    #   end
 
-    Logger.debug("Sleeping for #{sleep_for}ms...")
-    :timer.sleep(sleep_for)
-    # Additionally sleeps for 14 seconds because we are not deleting anything yet
-    :timer.sleep(14_000)
+    # Logger.debug("Sleeping for #{sleep_for}ms...")
+    # :timer.sleep(sleep_for)
+    # Additionally sleeps for 1 minute because we are not deleting anything yet
+    :timer.sleep(60_000)
 
     loop(worker)
   end
@@ -48,13 +48,23 @@ defmodule Zebra.Workers.JobDeletionPolicyWorker do
   def tick(worker) do
     Logger.info("Starting cleanup tick (limit: #{worker.limit})...")
 
+    # DEBUG_LOG
+    Logger.debug("DELETION_DEBUG: Calling delete_expired_data with limit=#{worker.limit}")
+
     case delete_expired_data(worker.limit) do
       {:ok, 0, 0, []} ->
+        # DEBUG_LOG
+        Logger.debug("DELETION_DEBUG: No jobs found - empty result")
         Logger.info("No expired jobs found for deletion.")
         false
 
       {:ok, deleted_stop_requests, deleted_jobs, deleted_jobs_list} ->
         total_deleted = deleted_stop_requests + deleted_jobs
+
+        # DEBUG_LOG
+        Logger.debug(
+          "DELETION_DEBUG: Found #{deleted_jobs} jobs for deletion, job_ids=#{inspect(Enum.map(deleted_jobs_list, & &1.id))}"
+        )
 
         Watchman.submit({"retention.deleted"}, deleted_jobs, :count)
 
@@ -62,11 +72,16 @@ defmodule Zebra.Workers.JobDeletionPolicyWorker do
           "Cleanup complete: deleted #{deleted_stop_requests} job stop requests and #{deleted_jobs} jobs (total: #{total_deleted})."
         )
 
-        publish_job_deletion_messages(10)
+        # DEBUG_LOG
+        Logger.debug("DELETION_DEBUG: Publishing deletion messages for #{length(deleted_jobs_list)} jobs")
+
+        publish_job_deletion_messages(deleted_jobs_list)
 
         true
 
       {:error, reason} ->
+        # DEBUG_LOG
+        Logger.debug("DELETION_DEBUG: Error getting expired data: #{inspect(reason)}")
         Logger.error("Cleanup tick failed: #{reason}")
         false
     end
@@ -81,13 +96,26 @@ defmodule Zebra.Workers.JobDeletionPolicyWorker do
     #   error -> {:error, "Unexpected error: #{inspect(error)}"}
     # end
     # For now this will return just a list of jobs to simulate deletion
+    # DEBUG_LOG
+    Logger.debug("DELETION_DEBUG: Querying Job.get_jobs_marked_for_deletion with limit=#{limit}")
+
     case Job.get_jobs_marked_for_deletion(limit) do
       {:ok, jobs} ->
         deleted_jobs_count = length(jobs)
+        # DEBUG_LOG
+        Logger.debug("DELETION_DEBUG: Got {:ok, jobs} with count=#{deleted_jobs_count}")
         {:ok, 0, deleted_jobs_count, jobs}
 
       {:error, reason} ->
+        # DEBUG_LOG
+        Logger.debug("DELETION_DEBUG: Got {:error, #{inspect(reason)}}")
         {:error, reason}
+
+      jobs when is_list(jobs) ->
+        deleted_jobs_count = length(jobs)
+        # DEBUG_LOG
+        Logger.debug("DELETION_DEBUG: Got bare list with count=#{deleted_jobs_count}")
+        {:ok, 0, deleted_jobs_count, jobs}
     end
   end
 
@@ -154,9 +182,16 @@ defmodule Zebra.Workers.JobDeletionPolicyWorker do
     end
   end
 
-  defp publish_job_deletion_messages([]), do: :ok
+  defp publish_job_deletion_messages([]) do
+    # DEBUG_LOG
+    Logger.debug("DELETION_DEBUG: publish_job_deletion_messages called with empty list")
+    :ok
+  end
 
   defp publish_job_deletion_messages(jobs) do
+    # DEBUG_LOG
+    Logger.debug("DELETION_DEBUG: Spawning publisher process for #{length(jobs)} jobs")
+
     spawn(fn ->
       Enum.each(jobs, fn job ->
         Logger.debug("Publishing job deletion message for job_id: #{job.id}")
@@ -180,8 +215,14 @@ defmodule Zebra.Workers.JobDeletionPolicyWorker do
     exchange_name = "artifacthub.job_deletion"
     routing_key = "job.deleted"
 
+    # DEBUG_LOG
+    Logger.debug("DELETION_DEBUG: Looking up project for job_id=#{job.id}, project_id=#{job.project_id}")
+
     case Project.find(job.project_id) do
       {:ok, project} ->
+        # DEBUG_LOG
+        Logger.debug("DELETION_DEBUG: Found project, artifact_id=#{project.artifact_store_id}")
+
         message =
           Poison.encode!(%{
             job_id: job.id,
@@ -190,16 +231,28 @@ defmodule Zebra.Workers.JobDeletionPolicyWorker do
             artifact_id: project.artifact_store_id
           })
 
+        # DEBUG_LOG
+        Logger.debug("DELETION_DEBUG: Publishing message to RabbitMQ: #{message}")
+
         try do
           {:ok, channel} = AMQP.Application.get_channel(:job_deletion)
           Tackle.Exchange.create(channel, exchange_name)
           :ok = Tackle.Exchange.publish(channel, exchange_name, message, routing_key)
+
+          # DEBUG_LOG
+          Logger.debug("DELETION_DEBUG: Successfully published message for job_id=#{job.id}")
           :ok
         rescue
-          e -> {:error, Exception.message(e)}
+          e ->
+            # DEBUG_LOG
+            Logger.debug("DELETION_DEBUG: Failed to publish message, error=#{Exception.message(e)}")
+            {:error, Exception.message(e)}
         end
 
       {:error, reason} ->
+        # DEBUG_LOG
+        Logger.debug("DELETION_DEBUG: Project not found for job_id=#{job.id}, reason=#{inspect(reason)}")
+
         Logger.error(
           "Failed to find project for job_id: #{job.id}, reason: #{inspect(reason)}"
         )
