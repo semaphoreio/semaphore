@@ -160,7 +160,9 @@ func createRedisStorage() *storage.RedisStorage {
 }
 
 func shouldInitializeStorages() bool {
-	return os.Getenv("START_PUBLIC_API") == "yes" || os.Getenv("START_ARCHIVATOR") == "yes" || os.Getenv("START_JOBDELETION_WORKER") == "yes"
+	// TODO: Revert to conditional initialization after testing job deletion worker
+	// return os.Getenv("START_PUBLIC_API") == "yes" || os.Getenv("START_ARCHIVATOR") == "yes" || os.Getenv("START_JOBDELETION_WORKER") == "yes"
+	return true
 }
 
 func main() {
@@ -191,9 +193,8 @@ func main() {
 		go startRabbitMQConsumer(redisStorage, cloudStorage)
 	}
 
-	if os.Getenv("START_JOBDELETION_WORKER") == "yes" {
-		go startJobDeletionWorker(redisStorage, cloudStorage)
-	}
+	// TODO: Add back env check for START_JOBDELETION_WORKER after testing
+	go startJobDeletionWorker(redisStorage, cloudStorage)
 
 	log.Println("loghub2 is UP.")
 	select {}

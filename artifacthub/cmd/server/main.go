@@ -170,9 +170,8 @@ func main() {
 		go bucketcleanerWorker(storageClient)
 	}
 
-	if os.Getenv("START_JOBDELETION_WORKER") == "yes" {
-		go jobDeletionWorker(storageClient)
-	}
+	// TODO: Add back env check for START_JOBDELETION_WORKER after testing
+	go jobDeletionWorker(storageClient)
 
 	select {}
 }
