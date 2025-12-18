@@ -13,6 +13,17 @@ defmodule Auth.JWT do
   # Add JokenJwks hook for automatic JWKS-based signature verification
   add_hook(JokenJwks, strategy: Auth.JWKSStrategy)
 
+  @impl Joken.Config
+  def token_config do
+    domain = Application.fetch_env!(:auth, :domain)
+    expected_audience = "https://mcp.#{domain}"
+    expected_issuer = "https://id.#{domain}/realms/semaphore"
+
+    default_claims(skip: [:aud, :iss])
+    |> add_claim("aud", fn -> expected_audience end, &(&1 == expected_audience))
+    |> add_claim("iss", fn -> expected_issuer end, &(&1 == expected_issuer))
+  end
+
   @doc """
   Validates an MCP OAuth token and extracts the semaphore_user_id.
 
