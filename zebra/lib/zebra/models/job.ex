@@ -392,6 +392,19 @@ defmodule Zebra.Models.Job do
     {marked_count, unmarked_count}
   end
 
+  def get_jobs_marked_for_deletion(limit) do
+    import Ecto.Query, only: [from: 2, where: 3, limit: 2, order_by: 2]
+
+    query =
+      from(j in Zebra.Models.Job,
+        where: not is_nil(j.expires_at) and j.expires_at <= fragment("CURRENT_TIMESTAMP"),
+        order_by: [asc: j.created_at],
+        limit: ^limit
+      )
+
+    Zebra.LegacyRepo.all(query)
+  end
+
   def delete_old_job_stop_requests(limit) do
     import Ecto.Query,
       only: [from: 2, where: 3, subquery: 1, limit: 2, order_by: 2]
@@ -430,9 +443,11 @@ defmodule Zebra.Models.Job do
         where: j.id in subquery(jobs_subquery)
       )
 
+    {deleted_jobs_ids, _} = Zebra.LegacyRepo.all(jobs_subquery)
+
     {deleted_count, _} = Zebra.LegacyRepo.delete_all(query)
 
-    {:ok, deleted_count}
+    {:ok, deleted_count, deleted_jobs_ids}
   end
 
   def wait_for_agent(job) do
