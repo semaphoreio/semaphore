@@ -201,3 +201,27 @@ func (s *S3Storage) ReadFileAsReader(ctx context.Context, fileName string) (io.R
 
 	return response.Body, nil
 }
+
+func (s *S3Storage) DeleteFile(ctx context.Context, fileName string) error {
+	defer watchman.Benchmark(time.Now(), "s3.delete")
+
+	log.Printf("Deleting %s from S3 bucket %s", fileName, s.Bucket)
+
+	input := &s3.DeleteObjectInput{
+		Bucket: &s.Bucket,
+		Key:    &fileName,
+	}
+
+	_, err := s.Client.DeleteObject(ctx, input)
+	if err != nil {
+		var apiErr smithy.APIError
+		if errors.As(err, &apiErr) && apiErr.ErrorCode() == "NoSuchKey" {
+			log.Printf("File %s does not exist in S3 - treating as success", fileName)
+			return nil
+		}
+		return err
+	}
+
+	log.Printf("Successfully deleted %s from S3", fileName)
+	return nil
+}
