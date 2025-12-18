@@ -88,6 +88,10 @@ defmodule Zebra.Workers.JobDeletionPolicyWorker do
 
       {:error, reason} ->
         {:error, reason}
+
+      jobs when is_list(jobs) ->
+        deleted_jobs_count = length(jobs)
+        {:ok, 0, deleted_jobs_count, jobs}
     end
   end
 
