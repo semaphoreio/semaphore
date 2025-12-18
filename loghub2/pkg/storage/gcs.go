@@ -149,3 +149,21 @@ func (s *GCSStorage) ReadFileAsReader(ctx context.Context, fileName string) (io.
 
 	return reader, nil
 }
+
+func (s *GCSStorage) DeleteFile(ctx context.Context, fileName string) error {
+	defer watchman.Benchmark(time.Now(), "gcs.delete")
+
+	log.Printf("Deleting %s from GCS bucket %s", fileName, s.Bucket)
+
+	err := s.Client.Bucket(s.Bucket).Object(fileName).Delete(ctx)
+	if err != nil {
+		if err == gcs.ErrObjectNotExist {
+			log.Printf("File %s does not exist in GCS - treating as success", fileName)
+			return nil
+		}
+		return err
+	}
+
+	log.Printf("Successfully deleted %s from GCS", fileName)
+	return nil
+}
