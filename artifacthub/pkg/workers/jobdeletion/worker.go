@@ -74,67 +74,33 @@ func (w *Worker) handleMessage(delivery tackle.Delivery) error {
 		return err
 	}
 
-	log.Printf("JobDeletion: processing job_id=%s org_id=%s project_id=%s",
+	log.Printf("JobDeletion: processing job_id=%s artifact_id=%s",
 		event.JobID.String(),
-		event.OrganizationID.String(),
-		event.ProjectID.String(),
+		event.ArtifactID.String(),
 	)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	deletedCount := 0
-	errors := []error{}
-
-	artifact, err := models.FindArtifactByIdempotencyToken(event.OrganizationID.String())
-	if err == nil {
-		err = w.deleteJobArtifactsFromBucket(ctx, artifact, event.JobID)
-		if err != nil {
-			log.Printf("Failed to delete from org bucket: %v", err)
-			errors = append(errors, err)
-		} else {
-			deletedCount++
-		}
-	}
-
-	buckets := []string{}
-	err = models.IterAllBuckets(func(bucketName string) {
-		buckets = append(buckets, bucketName)
-	})
+	artifact, err := models.FindArtifactByID(event.ArtifactID.String())
 	if err != nil {
-		log.Printf("Failed to list buckets: %v", err)
-		errors = append(errors, err)
-		_ = watchman.Increment("jobdeletion.worker.bucket_list_error")
-		return fmt.Errorf("failed to list buckets: %w", err)
+		log.Printf("JobDeletion: artifact not found artifact_id=%s err=%+v", event.ArtifactID.String(), err)
+		_ = watchman.Increment("jobdeletion.worker.artifact_not_found")
+		return fmt.Errorf("artifact not found: %w", err)
 	}
 
-	for _, bucketName := range buckets {
-		artifact, err := models.FindByBucketName(bucketName)
-		if err != nil {
-			continue
-		}
-
-		err = w.deleteJobArtifactsFromBucket(ctx, &artifact, event.JobID)
-		if err != nil {
-			log.Printf("Failed to delete from bucket %s: %v", bucketName, err)
-			errors = append(errors, err)
-		} else {
-			deletedCount++
-		}
+	err = w.deleteJobArtifactsFromBucket(ctx, artifact, event.JobID)
+	if err != nil {
+		log.Printf("JobDeletion FAILED for job_id=%s: %v", event.JobID.String(), err)
+		_ = watchman.Increment("jobdeletion.worker.deletion_failed")
+		return err
 	}
 
 	_ = watchman.Increment("jobdeletion.worker.processed")
-	_ = watchman.IncrementBy("jobdeletion.worker.buckets_checked", len(buckets))
-	_ = watchman.IncrementBy("jobdeletion.worker.deletions_succeeded", deletedCount)
+	_ = watchman.Increment("jobdeletion.worker.deletion_succeeded")
 
-	if len(errors) > 0 {
-		_ = watchman.IncrementBy("jobdeletion.worker.deletions_failed", len(errors))
-		log.Printf("JobDeletion FAILED for job_id=%s: %d errors", event.JobID.String(), len(errors))
-		return fmt.Errorf("deletion failed with %d errors", len(errors))
-	}
-
-	log.Printf("JobDeletion: completed successfully for job_id=%s deleted_from=%d buckets",
-		event.JobID.String(), deletedCount)
+	log.Printf("JobDeletion: completed successfully for job_id=%s artifact_id=%s",
+		event.JobID.String(), event.ArtifactID.String())
 
 	return nil
 }

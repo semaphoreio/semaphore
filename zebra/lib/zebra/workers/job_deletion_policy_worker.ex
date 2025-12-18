@@ -2,6 +2,7 @@ defmodule Zebra.Workers.JobDeletionPolicyWorker do
   require Logger
 
   alias Zebra.Models.Job
+  alias Zebra.Models.Project
   alias Zebra.JobDeletedPublisher
 
   defstruct [
@@ -179,20 +180,31 @@ defmodule Zebra.Workers.JobDeletionPolicyWorker do
     exchange_name = "artifacthub.job_deletion"
     routing_key = "job.deleted"
 
-    message =
-      Poison.encode!(%{
-        job_id: job.id,
-        organization_id: job.organization_id,
-        project_id: job.project_id
-      })
+    case Project.find(job.project_id) do
+      {:ok, project} ->
+        message =
+          Poison.encode!(%{
+            job_id: job.id,
+            organization_id: job.organization_id,
+            project_id: job.project_id,
+            artifact_id: project.artifact_store_id
+          })
 
-    try do
-      {:ok, channel} = AMQP.Application.get_channel(:job_deletion)
-      Tackle.Exchange.create(channel, exchange_name)
-      :ok = Tackle.Exchange.publish(channel, exchange_name, message, routing_key)
-      :ok
-    rescue
-      e -> {:error, Exception.message(e)}
+        try do
+          {:ok, channel} = AMQP.Application.get_channel(:job_deletion)
+          Tackle.Exchange.create(channel, exchange_name)
+          :ok = Tackle.Exchange.publish(channel, exchange_name, message, routing_key)
+          :ok
+        rescue
+          e -> {:error, Exception.message(e)}
+        end
+
+      {:error, reason} ->
+        Logger.error(
+          "Failed to find project for job_id: #{job.id}, reason: #{inspect(reason)}"
+        )
+
+        {:error, reason}
     end
   end
 end
