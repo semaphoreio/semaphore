@@ -14,6 +14,7 @@ import (
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/storage"
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/util/log"
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/workers/bucketcleaner"
+	"github.com/semaphoreio/semaphore/artifacthub/pkg/workers/jobdeletion"
 	"go.uber.org/zap"
 )
 
@@ -119,6 +120,16 @@ func bucketcleanerWorker(client storage.Client) {
 	worker.Start()
 }
 
+func jobDeletionWorker(storageClient storage.Client) {
+	log.Info("Starting job deletion worker...")
+	worker, err := jobdeletion.NewWorker(amqpURL, storageClient)
+	if err != nil {
+		panic(err)
+	}
+
+	worker.Start()
+}
+
 func main() {
 	flag.Parse()
 
@@ -158,6 +169,9 @@ func main() {
 	if os.Getenv("START_BUCKETCLEANER_WORKER") == "yes" {
 		go bucketcleanerWorker(storageClient)
 	}
+
+	// TODO: Add back env check for START_JOBDELETION_WORKER after testing
+	go jobDeletionWorker(storageClient)
 
 	select {}
 }
