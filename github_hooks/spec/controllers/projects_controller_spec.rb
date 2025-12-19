@@ -144,7 +144,7 @@ RSpec.describe ProjectsController, :type => :controller do
         end
 
         it "doesn't publish event" do
-          expect(Semaphore::Events::ProjectCollaboratorsChaned).not_to receive(:emit)
+          expect(Semaphore::Events::ProjectCollaboratorsChanged).not_to receive(:emit)
           expect(Semaphore::Events::RemoteRepositoryChanged).to receive(:emit)
           expect(Semaphore::GithubApp::Collaborators::Worker).not_to receive(:perform_async)
 
@@ -206,7 +206,7 @@ RSpec.describe ProjectsController, :type => :controller do
         end
 
         it "doesn't publish event" do
-          expect(Semaphore::Events::ProjectCollaboratorsChaned).not_to receive(:emit)
+          expect(Semaphore::Events::ProjectCollaboratorsChanged).not_to receive(:emit)
           expect(Semaphore::Events::RemoteRepositoryChanged).to receive(:emit)
           expect(Semaphore::GithubApp::Collaborators::Worker).not_to receive(:perform_async)
 
@@ -261,7 +261,7 @@ RSpec.describe ProjectsController, :type => :controller do
         let(:event) { "pull_request" }
 
         it "doesn't publish event" do
-          expect(Semaphore::Events::ProjectCollaboratorsChaned).not_to receive(:emit)
+          expect(Semaphore::Events::ProjectCollaboratorsChanged).not_to receive(:emit)
           expect(Semaphore::Events::RemoteRepositoryChanged).to receive(:emit)
           expect(Semaphore::GithubApp::Collaborators::Worker).not_to receive(:perform_async)
 
@@ -561,7 +561,7 @@ RSpec.describe ProjectsController, :type => :controller do
         end
 
         it "doesn't publish event" do
-          expect(Semaphore::Events::ProjectCollaboratorsChaned).not_to receive(:emit)
+          expect(Semaphore::Events::ProjectCollaboratorsChanged).not_to receive(:emit)
           expect(Semaphore::GithubApp::Collaborators::Worker).not_to receive(:perform_async)
 
           post_payload(payload)
@@ -595,7 +595,7 @@ RSpec.describe ProjectsController, :type => :controller do
         end
 
         it "publish event" do
-          expect(Semaphore::Events::ProjectCollaboratorsChaned).to receive(:emit).and_call_original
+          expect(Semaphore::Events::ProjectCollaboratorsChanged).to receive(:emit).and_call_original
           expect(Semaphore::GithubApp::Collaborators::Worker).to receive(:perform_async)
 
           post_payload(payload)
@@ -629,7 +629,7 @@ RSpec.describe ProjectsController, :type => :controller do
         end
 
         it "doesn't publish event" do
-          expect(Semaphore::Events::ProjectCollaboratorsChaned).not_to receive(:emit)
+          expect(Semaphore::Events::ProjectCollaboratorsChanged).not_to receive(:emit)
           expect(Semaphore::GithubApp::Collaborators::Worker).not_to receive(:perform_async)
 
           post_payload(payload)
@@ -663,7 +663,7 @@ RSpec.describe ProjectsController, :type => :controller do
         end
 
         it "publish event" do
-          expect(Semaphore::Events::ProjectCollaboratorsChaned).to receive(:emit).and_call_original
+          expect(Semaphore::Events::ProjectCollaboratorsChanged).to receive(:emit).and_call_original
           expect(Semaphore::GithubApp::Collaborators::Worker).to receive(:perform_async)
 
           post_payload(payload)
@@ -696,7 +696,7 @@ RSpec.describe ProjectsController, :type => :controller do
         end
 
         it "publish event" do
-          expect(Semaphore::Events::ProjectCollaboratorsChaned).to receive(:emit).and_call_original
+          expect(Semaphore::Events::ProjectCollaboratorsChanged).to receive(:emit).and_call_original
           expect(Semaphore::GithubApp::Collaborators::Worker).to receive(:perform_async)
 
           post_payload(payload)
@@ -729,7 +729,7 @@ RSpec.describe ProjectsController, :type => :controller do
         end
 
         it "publish event" do
-          expect(Semaphore::Events::ProjectCollaboratorsChaned).to receive(:emit).and_call_original
+          expect(Semaphore::Events::ProjectCollaboratorsChanged).to receive(:emit).and_call_original
           expect(Semaphore::GithubApp::Collaborators::Worker).to receive(:perform_async)
 
           post_payload(payload)
@@ -763,7 +763,7 @@ RSpec.describe ProjectsController, :type => :controller do
         end
 
         it "publish event" do
-          expect(Semaphore::Events::ProjectCollaboratorsChaned).to receive(:emit).and_call_original
+          expect(Semaphore::Events::ProjectCollaboratorsChanged).to receive(:emit).and_call_original
           expect(Semaphore::GithubApp::Collaborators::Worker).to receive(:perform_async)
 
           post_payload(payload)
@@ -797,7 +797,7 @@ RSpec.describe ProjectsController, :type => :controller do
         end
 
         it "publish event" do
-          expect(Semaphore::Events::ProjectCollaboratorsChaned).to receive(:emit).and_call_original
+          expect(Semaphore::Events::ProjectCollaboratorsChanged).to receive(:emit).and_call_original
           expect(Semaphore::GithubApp::Collaborators::Worker).to receive(:perform_async)
 
           post_payload(payload)
@@ -816,7 +816,7 @@ RSpec.describe ProjectsController, :type => :controller do
         let(:event) { "ping" }
 
         it "doesn't publish event" do
-          expect(Semaphore::Events::ProjectCollaboratorsChaned).not_to receive(:emit)
+          expect(Semaphore::Events::ProjectCollaboratorsChanged).not_to receive(:emit)
           expect(Semaphore::GithubApp::Collaborators::Worker).not_to receive(:perform_async)
 
           post_payload("123")
@@ -847,7 +847,7 @@ RSpec.describe ProjectsController, :type => :controller do
         let(:event) { "gollum" }
 
         it "doesn't publish event" do
-          expect(Semaphore::Events::ProjectCollaboratorsChaned).not_to receive(:emit)
+          expect(Semaphore::Events::ProjectCollaboratorsChanged).not_to receive(:emit)
           expect(Semaphore::GithubApp::Collaborators::Worker).not_to receive(:perform_async)
 
           post_payload("123")
@@ -882,7 +882,7 @@ RSpec.describe ProjectsController, :type => :controller do
         end
 
         it "doesn't publish event" do
-          expect(Semaphore::Events::ProjectCollaboratorsChaned).not_to receive(:emit)
+          expect(Semaphore::Events::ProjectCollaboratorsChanged).not_to receive(:emit)
           expect(Semaphore::GithubApp::Collaborators::Worker).not_to receive(:perform_async)
 
           post_payload("")
