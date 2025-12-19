@@ -6,6 +6,7 @@ defmodule Zebra.Workers.JobDeletionPolicyMarker do
 
   @default_grace_period_days 14
   @min_grace_period_days 7
+  @default_batch_size 500
 
   use Tackle.Consumer,
     url: Application.get_env(:zebra, :amqp_url),
@@ -20,7 +21,10 @@ defmodule Zebra.Workers.JobDeletionPolicyMarker do
          {:ok, org_id} <- validate_org_id(decoded.org_id),
          {:ok, cutoff_date} <- parse_cutoff_date(decoded.cutoff_date),
          {:ok, days} <- validate_policy_days() do
-      {marked, unmarked} = Job.mark_jobs_for_deletion(org_id, cutoff_date, days)
+      batch_size = get_batch_size()
+
+      marked = batch_mark_jobs_for_deletion(org_id, cutoff_date, days, batch_size, 0)
+      unmarked = batch_unmark_jobs_for_deletion(org_id, cutoff_date, batch_size, 0)
 
       Watchman.submit({"retention.marked", [org_id]}, marked, :count)
       Watchman.submit({"retention.unmarked", [org_id]}, unmarked, :count)
@@ -33,6 +37,31 @@ defmodule Zebra.Workers.JobDeletionPolicyMarker do
         Logger.error("Failed to process policy message: #{reason}")
         raise ArgumentError, reason
     end
+  end
+
+  defp batch_mark_jobs_for_deletion(org_id, cutoff_date, deletion_days, batch_size, acc) do
+    case Job.mark_jobs_for_deletion(org_id, cutoff_date, deletion_days, batch_size) do
+      {0, _} ->
+        acc
+
+      {marked, _} ->
+        batch_mark_jobs_for_deletion(org_id, cutoff_date, deletion_days, batch_size, acc + marked)
+    end
+  end
+
+  defp batch_unmark_jobs_for_deletion(org_id, cutoff_date, batch_size, acc) do
+    case Job.unmark_jobs_for_deletion(org_id, cutoff_date, batch_size) do
+      {0, _} ->
+        acc
+
+      {unmarked, _} ->
+        batch_unmark_jobs_for_deletion(org_id, cutoff_date, batch_size, acc + unmarked)
+    end
+  end
+
+  defp get_batch_size do
+    config = Application.get_env(:zebra, __MODULE__, [])
+    Keyword.get(config, :batch_size, @default_batch_size)
   end
 
   defp decode_message(message) do
