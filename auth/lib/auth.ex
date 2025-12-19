@@ -80,6 +80,8 @@ defmodule Auth do
   # the metadata URL is: https://id.{domain}/.well-known/oauth-authorization-server/realms/semaphore
   # We extract the path and proxy to Keycloak's OIDC discovery endpoint
   # This route handles MCP 2024-06-18 spec with issuer path components
+  # RFC 8414 path insertion for MCP 2024-06-18 spec compatibility
+  # Handles paths like /realms/semaphore when issuer has path component
   get "/exauth/.well-known/oauth-authorization-server/*issuer_path", host: "id." do
     # issuer_path will be ["realms", "semaphore"] for /realms/semaphore
     path = "/" <> Enum.join(issuer_path, "/")
@@ -90,7 +92,19 @@ defmodule Auth do
     )
 
     domain = Application.fetch_env!(:auth, :domain)
-    keycloak_oidc_url = "https://id.#{domain}#{path}/.well-known/openid-configuration"
+
+    # Only append path if it's a valid issuer path (starts with /realms/)
+    # Otherwise ignore the path and return base OIDC configuration
+    keycloak_oidc_url =
+      if String.starts_with?(path, "/realms/") do
+        "https://id.#{domain}#{path}/.well-known/openid-configuration"
+      else
+        Logger.debug(
+          "[Auth] Ignoring invalid issuer path #{path}, returning base OIDC configuration"
+        )
+
+        "https://id.#{domain}/realms/semaphore/.well-known/openid-configuration"
+      end
 
     case :hackney.request(:get, keycloak_oidc_url, [], "", [:with_body, recv_timeout: 10_000]) do
       {:ok, 200, _headers, body} ->
@@ -250,6 +264,39 @@ defmodule Auth do
     |> send_resp(204, "")
   end
 
+  # Handle protected resource metadata with path suffix (e.g., /mcp)
+  # Some clients may append the resource path to the metadata URL
+  get "/exauth/.well-known/oauth-protected-resource/*resource_path", host: "mcp." do
+    log_request(
+      conn,
+      "mcp.#{Application.fetch_env!(:auth, :domain)}/.well-known/oauth-protected-resource/#{Enum.join(resource_path, "/")}"
+    )
+
+    domain = Application.fetch_env!(:auth, :domain)
+
+    metadata = %{
+      resource: "https://mcp.#{domain}",
+      authorization_servers: ["https://id.#{domain}/realms/semaphore"],
+      scopes_supported: ["mcp"],
+      bearer_methods_supported: ["header"],
+      resource_documentation: "https://docs.semaphoreci.com/mcp"
+    }
+
+    conn
+    |> put_resp_content_type("application/json")
+    |> put_resp_header("access-control-allow-origin", "*")
+    |> put_resp_header("access-control-allow-methods", "GET, OPTIONS")
+    |> send_resp(200, Jason.encode!(metadata))
+  end
+
+  # Handle CORS preflight for OAuth protected resource metadata with path suffix
+  options "/exauth/.well-known/oauth-protected-resource/*resource_path", host: "mcp." do
+    conn
+    |> put_resp_header("access-control-allow-origin", "*")
+    |> put_resp_header("access-control-allow-methods", "GET, OPTIONS")
+    |> send_resp(204, "")
+  end
+
   #
   # OAuth 2.0 Authorization Server Metadata (RFC 8414) for mcp. subdomain
   # Some MCP clients may request AS metadata from MCP server directly
@@ -286,6 +333,7 @@ defmodule Auth do
   end
 
   # RFC 8414 path insertion for MCP 2024-06-18 spec compatibility
+  # Handles paths like /realms/semaphore when issuer has path component
   get "/exauth/.well-known/oauth-authorization-server/*issuer_path", host: "mcp." do
     # issuer_path will be ["realms", "semaphore"] for /realms/semaphore
     path = "/" <> Enum.join(issuer_path, "/")
@@ -296,7 +344,19 @@ defmodule Auth do
     )
 
     domain = Application.fetch_env!(:auth, :domain)
-    keycloak_oidc_url = "https://id.#{domain}#{path}/.well-known/openid-configuration"
+
+    # Only append path if it's a valid issuer path (starts with /realms/)
+    # Otherwise ignore the path and return base OIDC configuration
+    keycloak_oidc_url =
+      if String.starts_with?(path, "/realms/") do
+        "https://id.#{domain}#{path}/.well-known/openid-configuration"
+      else
+        Logger.debug(
+          "[Auth] Ignoring invalid issuer path #{path}, returning base OIDC configuration"
+        )
+
+        "https://id.#{domain}/realms/semaphore/.well-known/openid-configuration"
+      end
 
     case :hackney.request(:get, keycloak_oidc_url, [], "", [:with_body, recv_timeout: 10_000]) do
       {:ok, 200, _headers, body} ->
@@ -979,19 +1039,29 @@ defmodule Auth do
 
     case :hackney.request(:post, dcr_url, headers, body, [:with_body, recv_timeout: 30_000]) do
       {:ok, 201, _headers, response_body} ->
-        # Inject "scope" field into DCR response to tell Claude Code which scopes it was registered with
-        # This works around Claude Code not requesting the "mcp" scope explicitly during authorization
+        # NOTE: The PREFERRED solution is to configure Keycloak's "Default Client Scopes" policy
+        # (Clients → Client Registration → Anonymous Access → Default Client Scopes)
+        # to automatically assign "mcp" scope to all dynamically registered clients.
+        #
+        # This injection is kept as a fallback for environments where the policy isn't configured,
+        # but it's a workaround and not the proper solution.
         case Jason.decode(response_body) do
           {:ok, response_json} ->
-            # Add the "mcp" scope to the response
+            # Add both "scope" (singular, space-separated string per RFC 7591)
+            # and "scopes" (plural, array) to handle clients that might expect either format
             modified_response =
               response_json
               |> Map.put("scope", "mcp")
+              |> Map.put("scopes", ["mcp"])
 
+            Logger.info("[Auth.DCR] Injected scopes into DCR response: #{inspect(modified_response)}")
             {:ok, Jason.encode!(modified_response)}
 
-          {:error, _} ->
-            Logger.warning("[Auth] Failed to parse DCR response for scope injection")
+          {:error, decode_error} ->
+            Logger.warning(
+              "[Auth] Failed to parse DCR response for scope injection: #{inspect(decode_error)}"
+            )
+
             {:ok, response_body}
         end
 

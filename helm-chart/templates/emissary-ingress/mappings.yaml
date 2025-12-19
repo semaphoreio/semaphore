@@ -526,6 +526,7 @@ spec:
 ---
 # MCP OAuth 2.1 Protected Resource Metadata (RFC 9728)
 # Bypasses ExtAuth and returns OAuth discovery metadata directly
+# Uses regex to preserve path suffix (e.g., /mcp) for clients that append resource path
 apiVersion: getambassador.io/v3alpha1
 kind: Mapping
 metadata:
@@ -534,8 +535,11 @@ metadata:
 spec:
   host: "^mcp\\..*"
   host_regex: true
-  prefix: /.well-known/oauth-protected-resource
-  rewrite: /exauth/.well-known/oauth-protected-resource
+  prefix_regex: true
+  prefix: /.well-known/oauth-protected-resource(.*)
+  regex_rewrite:
+    pattern: /.well-known/oauth-protected-resource(.*)
+    substitution: /exauth/.well-known/oauth-protected-resource\1
   service: auth.{{ .Release.Namespace }}:4000
   bypass_auth: true
   precedence: 200
