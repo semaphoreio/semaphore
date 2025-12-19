@@ -357,39 +357,40 @@ defmodule Zebra.Models.Job do
     )
   end
 
-  def mark_jobs_for_deletion(org_id, cutoff_date, deletion_days) do
-    import Ecto.Query, only: [from: 2]
+  def unmark_jobs_for_deletion(org_id, cutoff_date, deletion_days, limit) do
+    import Ecto.Query, only: [from: 2, subquery: 1]
+    unmark_ids = from(j in Zebra.Models.Job,
+      where: not is_nil(j.expires_at) and
+              j.organization_id == ^org_id and
+              j.created_at > ^cutoff_date
+      limit: ^limit,
+      select: j.id
+    )
 
-    mark_query =
-      from(j in Zebra.Models.Job,
-        where:
-          is_nil(j.expires_at) and
-            j.organization_id == ^org_id and
-            j.created_at <= ^cutoff_date,
-        update: [
-          set: [
-            expires_at: fragment("CURRENT_TIMESTAMP + (? * INTERVAL '1 day')", ^deletion_days)
-          ]
-        ]
-      )
+    unmark_query = from(j in Zebra.Models.Job,
+      where: j.id in subquery(unmark_ids)
+      set: [expires_at: nil]
+    )
 
-    unmark_query =
-      from(j in Zebra.Models.Job,
-        where:
-          not is_nil(j.expires_at) and
-            j.organization_id == ^org_id and
-            j.created_at > ^cutoff_date,
-        update: [
-          set: [
-            expires_at: nil
-          ]
-        ]
-      )
+    Zebra.LegacyRepo.update_all(unmark_query, [])
+  end
 
-    {marked_count, _} = Zebra.LegacyRepo.update_all(mark_query, [])
-    {unmarked_count, _} = Zebra.LegacyRepo.update_all(unmark_query, [])
+  def mark_jobs_for_deletion(org_id, cutoff_date, deletion_days, limit) do
+    import Ecto.Query, only: [from: 2, subquery: 1]
+    mark_ids = from(j in Zebra.Models.Job,
+      where: is_nil(j.expires_at) and
+              j.organization_id == ^org_id and
+              j.created_at <= ^cutoff_date
+      limit: ^limit,
+      select: j.id
+    )
 
-    {marked_count, unmarked_count}
+    mark_query = from(j in Zebra.Models.Job,
+      where: j.id in subquery(mark_ids)
+      set: [expires_at: fragment("CURRENT_TIMESTAMP + (? * INTERVAL '1 day')", ^deletion_days)]
+    )
+
+    Zebra.LegacyRepo.update_all(mark_query, [])
   end
 
   def delete_old_job_stop_requests(limit) do
