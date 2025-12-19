@@ -1,7 +1,14 @@
 module Semaphore::Events
   class ProjectCollaboratorsChanged
+    include Sidekiq::Worker
+
+    sidekiq_options :queue => :rabbitmq, :retry => 5
 
     def self.emit(project_id)
+      perform_async(project_id)
+    end
+
+    def perform(project_id)
       msg_klass = InternalApi::Projecthub::CollaboratorsChanged
 
       event = msg_klass.new(

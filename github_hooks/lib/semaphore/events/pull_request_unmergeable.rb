@@ -1,7 +1,14 @@
 module Semaphore::Events
   class PullRequestUnmergeable
+    include Sidekiq::Worker
+
+    sidekiq_options :queue => :rabbitmq, :retry => 5
 
     def self.emit(project_id, branch_name)
+      perform_async(project_id, branch_name)
+    end
+
+    def perform(project_id, branch_name)
       event = InternalApi::RepoProxy::PullRequestUnmergeable.new(
         :project_id => project_id,
         :branch_name => branch_name,

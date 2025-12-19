@@ -1,7 +1,14 @@
 module Semaphore::Events
   class RemoteRepositoryChanged
+    include Sidekiq::Worker
+
+    sidekiq_options :queue => :rabbitmq, :retry => 5
 
     def self.emit(repository_id)
+      perform_async(repository_id)
+    end
+
+    def perform(repository_id)
       msg_klass = InternalApi::Repository::RemoteRepositoryChanged
 
       event = msg_klass.new(
