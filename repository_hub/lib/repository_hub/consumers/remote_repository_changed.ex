@@ -33,10 +33,10 @@ defmodule RepositoryHub.RemoteRepositoryChangedConsumer do
   end
 
   defp log(%{remote_id: remote_id}, message) when is_binary(remote_id) and remote_id != "" do
-    log_msg("repository_id: #{repository_id}", message)
+    log_msg("remote_id: #{remote_id}", message)
   end
 
-  defp log(_, message), do: :noop
+  defp log(_, _), do: :noop
 
   defp log_msg(sufix, message) do
     Logger.info("[RemoteRepositoryChanged] #{sufix}: #{message}")
