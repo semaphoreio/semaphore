@@ -1,10 +1,17 @@
 module Semaphore::Events
   class PullRequestUnmergeable
+    include Sidekiq::Worker
 
-    def self.emit(workflow, branch)
+    sidekiq_options :queue => :rabbitmq, :retry => 5
+
+    def self.emit(project_id, branch_name)
+      perform_async(project_id, branch_name)
+    end
+
+    def perform(project_id, branch_name)
       event = InternalApi::RepoProxy::PullRequestUnmergeable.new(
-        :project_id => workflow.project_id,
-        :branch_name => branch.name,
+        :project_id => project_id,
+        :branch_name => branch_name,
         :timestamp => ::Google::Protobuf::Timestamp.new(:seconds => Time.now.to_i)
       )
 
@@ -16,7 +23,7 @@ module Semaphore::Events
         :url => App.amqp_url
       }
 
-      Logman.info "Publishing pr_unmergeable event for project #{workflow.project_id}, branch #{branch.name}"
+      Logman.info "Publishing pr_unmergeable event for project #{project_id}, branch #{branch_name}"
 
       Tackle.publish(message, options)
     end
