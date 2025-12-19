@@ -561,7 +561,7 @@ RSpec.describe ProjectsController, :type => :controller do
         end
 
         it "doesn't publish event" do
-          expect(Semaphore::Events::ProjectCollaboratorsChaned).not_to receive(:emit)
+          expect(Semaphore::Events::ProjectCollaboratorsChanged).not_to receive(:emit)
           expect(Semaphore::GithubApp::Collaborators::Worker).not_to receive(:perform_async)
 
           post_payload(payload)
