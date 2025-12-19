@@ -30,7 +30,8 @@ config :zebra, Zebra.Workers.JobDeletionPolicyWorker,
   limit: 100
 
 config :zebra, Zebra.Workers.JobDeletionPolicyMarker,
-  days: 14
+  days: 14,
+  batch_size: 500
 
 config :zebra, Zebra.Workers.Scheduler,
   cooldown_period: 1_000,
