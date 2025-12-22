@@ -1,0 +1,6 @@
+# Binaries (in root directory only)
+/mcp_server
+/indexer
+
+# Generated search index
+/index/
