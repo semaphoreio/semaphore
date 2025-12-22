@@ -657,7 +657,7 @@ defmodule Zebra.Models.Job do
     # Publish to exchange
     case Tackle.Exchange.publish(channel, exchange_name, message, routing_key) do
       :ok ->
-        Logger.debug("Published deletion event for job #{id} #{organization_id}/#{project_id}")
+        Logger.info("Published deletion event for job #{id} #{organization_id}/#{project_id}")
 
         :ok
 
