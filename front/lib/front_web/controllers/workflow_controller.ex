@@ -108,15 +108,19 @@ defmodule FrontWeb.WorkflowController do
 
       {initial_yaml, yamls, job_id, alert} =
         if FeatureProvider.feature_enabled?(:wf_editor_via_jobs, param: org_id) do
-          {:ok, {:ok, job_id}} = Async.await(fetch_files_or_create_job)
-          {project.initial_pipeline_file, [], job_id, nil}
+          fetching_job_result(
+            fetch_files_or_create_job,
+            hook,
+            org_id,
+            project.initial_pipeline_file
+          )
         else
-          {:ok, {:ok, yaml_files}} = Async.await(fetch_files_or_create_job)
-
-          {initial_yaml, yamls, alert} =
-            extract_yamls(yaml_files, project.initial_pipeline_file, org_id)
-
-          {initial_yaml, yamls, "", alert}
+          fetching_files_result(
+            fetch_files_or_create_job,
+            hook,
+            org_id,
+            project.initial_pipeline_file
+          )
         end
 
       workflow_data = %{createdInEditor: false, initialYAML: initial_yaml, yamls: yamls}
@@ -201,6 +205,92 @@ defmodule FrontWeb.WorkflowController do
       |> Enum.into(%{})
 
     {initial_yaml, files, nil}
+  end
+
+  defp fetching_job_result(fetch_files_or_create_job, hook, org_id, initial_yaml) do
+    case Async.await(fetch_files_or_create_job) do
+      {:ok, {:ok, job_id}} ->
+        {initial_yaml, [], job_id, nil}
+
+      {:ok, {:error, %GRPC.RPCError{} = error}} ->
+        {yaml_path, yamls, alert} = handle_workflow_files_error(error, hook, org_id, initial_yaml)
+
+        {yaml_path, yamls, "", alert}
+
+      {:ok, {:error, reason}} ->
+        Logger.warn("[workflow.edit] Unable to start fetching job: #{inspect(reason)}")
+
+        {yaml_path, yamls, alert} =
+          handle_workflow_files_error(reason, hook, org_id, initial_yaml)
+
+        {yaml_path, yamls, "", alert}
+
+      {:exit, reason} ->
+        Logger.warn("[workflow.edit] Fetching job crashed: #{inspect(reason)}")
+
+        {yaml_path, yamls, alert} =
+          handle_workflow_files_error(reason, hook, org_id, initial_yaml)
+
+        {yaml_path, yamls, "", alert}
+    end
+  end
+
+  defp fetching_files_result(fetch_files_or_create_job, hook, org_id, initial_yaml) do
+    case Async.await(fetch_files_or_create_job) do
+      {:ok, {:ok, yaml_files}} ->
+        {yaml_path, yamls, alert} = extract_yamls(yaml_files, initial_yaml, org_id)
+        {yaml_path, yamls, "", alert}
+
+      {:ok, {:error, %GRPC.RPCError{} = error}} ->
+        {yaml_path, yamls, alert} = handle_workflow_files_error(error, hook, org_id, initial_yaml)
+
+        {yaml_path, yamls, "", alert}
+
+      {:ok, {:error, reason}} ->
+        Logger.warn("[workflow.edit] Unable to load workflow files: #{inspect(reason)}")
+
+        {yaml_path, yamls, alert} =
+          handle_workflow_files_error(reason, hook, org_id, initial_yaml)
+
+        {yaml_path, yamls, "", alert}
+
+      {:exit, reason} ->
+        Logger.warn("[workflow.edit] Fetching workflow files crashed: #{inspect(reason)}")
+
+        {yaml_path, yamls, alert} =
+          handle_workflow_files_error(reason, hook, org_id, initial_yaml)
+
+        {yaml_path, yamls, "", alert}
+    end
+  end
+
+  defp handle_workflow_files_error(error, hook, org_id, initial_yaml) do
+    Logger.warn("[workflow.edit] Unable to load workflow files: #{inspect(error)}")
+
+    {yaml_path, yamls, _alert} = extract_yamls([], initial_yaml, org_id)
+
+    {yaml_path, yamls, workflow_files_error_message(error, hook)}
+  end
+
+  defp workflow_files_error_message(%GRPC.RPCError{message: message}, hook) do
+    if String.contains?(message, "couldn't find remote ref") do
+      "We couldn't load workflow files because #{workflow_reference_label(hook)} no longer exists."
+    else
+      "We couldn't load workflow files. Please try again."
+    end
+  end
+
+  defp workflow_files_error_message(_error, _hook) do
+    "We couldn't load workflow files. Please try again."
+  end
+
+  defp workflow_reference_label(hook) do
+    case hook.type do
+      "branch" -> "the branch \"#{hook.branch_name}\""
+      "tag" -> "the tag \"#{hook.tag_name}\""
+      "pr" -> "the pull request branch \"#{hook.pr_branch_name}\""
+      _ -> "the selected reference"
+    end
   end
 
   def rebuild(conn, _params) do
