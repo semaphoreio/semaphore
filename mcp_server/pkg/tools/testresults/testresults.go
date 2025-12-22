@@ -12,8 +12,10 @@ import (
 
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/authz"
 	artifacthubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/artifacthub"
+	pipelinepb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber.pipeline"
 	projecthubenum "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/projecthub"
 	projecthubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/projecthub"
+	jobpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/server_farm.job"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/logging"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/internal/clients"
@@ -141,6 +143,10 @@ test_results_signed_url(scope="job", job_id="11111111-2222-3333-4444-55555555555
 				ensureTracker("")
 				return mcp.NewToolResultError(err.Error()), nil
 			}
+			if job.GetState() != jobpb.Job_FINISHED {
+				ensureTracker("")
+				return mcp.NewToolResultError(fmt.Sprintf("job is not finished (current state: %s). Test results are only available after the job completes. Use jobs_describe to check job status.", job.GetState().String())), nil
+			}
 			orgID = strings.TrimSpace(job.GetOrganizationId())
 			projectID = strings.TrimSpace(job.GetProjectId())
 			if err := shared.ValidateUUID(orgID, "job organization_id"); err != nil {
@@ -177,6 +183,10 @@ test_results_signed_url(scope="pipeline", pipeline_id="...")`), nil
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 			pipeline := pipelineResp.GetPipeline()
+			if pipeline.GetState() != pipelinepb.Pipeline_DONE {
+				ensureTracker("")
+				return mcp.NewToolResultError(fmt.Sprintf("pipeline is not done (current state: %s). Test results are only available after the pipeline completes. Use pipelines_describe to check pipeline status.", pipeline.GetState().String())), nil
+			}
 			orgID = strings.TrimSpace(pipeline.GetOrganizationId())
 			projectID = strings.TrimSpace(pipeline.GetProjectId())
 			pipelineWorkflowID := strings.TrimSpace(pipeline.GetWfId())
@@ -335,7 +345,7 @@ func resolveResultArtifact(ctx context.Context, api internalapi.Provider, storeI
 		}
 	}
 
-	return resultArtifact{}, fmt.Errorf("no test result artifacts found in `%s`", strings.TrimSuffix(listingDir, "/"))
+	return resultArtifact{}, fmt.Errorf("no test result artifacts found in `%s`. Test reports may not be configured for this project. Use the docs_search tool with query 'test reports setup' to learn how to configure test reports", strings.TrimSuffix(listingDir, "/"))
 }
 
 func listPath(ctx context.Context, api internalapi.Provider, artifactID, directory string) ([]*artifacthubpb.ListItem, error) {
