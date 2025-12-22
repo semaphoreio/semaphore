@@ -67,7 +67,8 @@ if System.get_env("AMQP_URL") != nil do
     ],
     channels: [
       task_finisher: [connection: :amqp],
-      job_finisher: [connection: :amqp]
+      job_finisher: [connection: :amqp],
+      job_deletion: [connection: :amqp]
     ]
 end
 
