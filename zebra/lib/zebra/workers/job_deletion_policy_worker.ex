@@ -2,6 +2,7 @@ defmodule Zebra.Workers.JobDeletionPolicyWorker do
   require Logger
 
   alias Zebra.Models.Job
+  alias Zebra.Models.Project
 
   defstruct [
     # period of sleep between worker ticks when jobs are deleted
@@ -67,12 +68,27 @@ defmodule Zebra.Workers.JobDeletionPolicyWorker do
   end
 
   defp delete_expired_data(limit) do
-    with {:ok, deleted_stop_requests} <- Job.delete_old_job_stop_requests(limit),
-         {:ok, deleted_jobs} <- Job.delete_old_jobs(limit) do
-      {:ok, deleted_stop_requests, deleted_jobs}
+    with {:ok, jobs_expired} <- Job.expired_job_ids(limit),
+         true <- length(jobs_expired) > 0 do
+      job_ids =
+        Enum.map(jobs_expired, fn {id, _artifact_store_id, _organization_id, _project_id} ->
+          id
+        end)
+
+      Logger.info("Found #{length(job_ids)} expired jobs for deletion: #{inspect(job_ids)}")
+
+      with :ok <- Job.publish_job_deletion_events(jobs_expired) do
+        # {:ok, deleted_stop_requests} = Job.delete_job_stop_requests(job_ids)
+        # {:ok, deleted_jobs} = Job.delete_jobs(job_ids) do
+        # {:ok, deleted_stop_requests, deleted_jobs}
+        {:ok, 0, 0}
+      end
     else
-      {:error, reason} -> {:error, reason}
-      error -> {:error, "Unexpected error: #{inspect(error)}"}
+      false ->
+        {:ok, 0, 0}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
