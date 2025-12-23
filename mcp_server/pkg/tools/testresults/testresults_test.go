@@ -482,9 +482,14 @@ type pipelineStub struct {
 	orgID      string
 	projectID  string
 	workflowID string
+	state      pipelinepb.Pipeline_State
 }
 
 func (p *pipelineStub) Describe(ctx context.Context, req *pipelinepb.DescribeRequest, opts ...grpc.CallOption) (*pipelinepb.DescribeResponse, error) {
+	state := p.state
+	if state == 0 {
+		state = pipelinepb.Pipeline_DONE // default to DONE for test convenience
+	}
 	return &pipelinepb.DescribeResponse{
 		ResponseStatus: &pipelinepb.ResponseStatus{Code: pipelinepb.ResponseStatus_OK},
 		Pipeline: &pipelinepb.Pipeline{
@@ -492,6 +497,7 @@ func (p *pipelineStub) Describe(ctx context.Context, req *pipelinepb.DescribeReq
 			WfId:           p.workflowID,
 			ProjectId:      p.projectID,
 			OrganizationId: p.orgID,
+			State:          state,
 		},
 	}, nil
 }
@@ -500,15 +506,21 @@ type jobStub struct {
 	jobpb.JobServiceClient
 	orgID     string
 	projectID string
+	state     jobpb.Job_State
 }
 
 func (j *jobStub) Describe(ctx context.Context, req *jobpb.DescribeRequest, opts ...grpc.CallOption) (*jobpb.DescribeResponse, error) {
+	state := j.state
+	if state == 0 {
+		state = jobpb.Job_FINISHED // default to FINISHED for test convenience
+	}
 	return &jobpb.DescribeResponse{
 		Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
 		Job: &jobpb.Job{
 			Id:             req.GetJobId(),
 			OrganizationId: j.orgID,
 			ProjectId:      j.projectID,
+			State:          state,
 		},
 	}, nil
 }
