@@ -55,6 +55,12 @@ defmodule Guard.Id.Api do
   end
 
   #
+  # MCP OAuth Grant Selection
+  #
+
+  forward("/mcp/oauth", to: Guard.Id.McpOAuth)
+
+  #
   # OAuth2
   #
 

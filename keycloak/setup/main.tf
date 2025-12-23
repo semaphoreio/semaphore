@@ -203,12 +203,41 @@ resource "keycloak_oidc_identity_provider" "gitlab_provider" {
 }
 
 // MCP OAuth 2.1 Client Scope
+// This scope is used for Dynamic Client Registration (DCR) and MCP server access
 resource "keycloak_openid_client_scope" "mcp" {
   realm_id               = keycloak_realm.semaphore_realm.id
   name                   = "mcp"
   description            = "MCP server access scope for OAuth 2.1"
   include_in_token_scope = true
 }
+
+// IMPORTANT: Client Registration Policies Configuration
+// Keycloak Terraform provider doesn't fully support Client Registration Policies.
+// You must manually configure in Keycloak Admin UI:
+//
+// Navigate to: Clients → Client Registration → Anonymous Access Policies
+//
+// Required Configuration:
+// 1. "Allowed Client Scopes" policy:
+//    - Add "mcp" to the list of allowed scopes
+//    - This allows DCR clients to request the mcp scope
+//
+// 2. "Default Client Scopes" policy:
+//    - Create or edit this policy
+//    - Add "mcp" to the list of default scopes
+//    - This ensures all dynamically registered clients get the mcp scope by default
+//    - CRITICAL: This makes Claude Code and other MCP clients automatically use scope=mcp
+//      during authorization, even if they don't explicitly request it
+//
+// 3. "Trusted Hosts" policy:
+//    - EITHER: Delete this policy entirely (recommended for internal/dev environments)
+//    - OR: Add trusted host patterns that include:
+//      * Pod network CIDR (e.g., "10.*" for Kubernetes pod IPs)
+//      * "127.0.0.1", "localhost" for local testing
+//    - Note: Auth service proxies DCR requests, so Keycloak sees the auth pod IP,
+//      not the original client IP
+//
+// 4. Verify "Max Clients" and other policies don't block DCR as needed
 
 // Map semaphore_user_id user attribute to JWT claim
 resource "keycloak_openid_user_attribute_protocol_mapper" "semaphore_user_id" {
@@ -230,6 +259,34 @@ resource "keycloak_openid_audience_protocol_mapper" "mcp_audience" {
   client_scope_id          = keycloak_openid_client_scope.mcp.id
   name                     = "mcp-audience"
   included_custom_audience = "https://mcp.${var.base_domain}"
+}
+
+// MCP grant ID session note mapper - adds mcp_grant_id from user session to JWT
+// This is set during OAuth consent flow and persists for the session
+resource "keycloak_openid_user_session_note_protocol_mapper" "mcp_grant_id" {
+  realm_id        = keycloak_realm.semaphore_realm.id
+  client_scope_id = keycloak_openid_client_scope.mcp.id
+  name            = "mcp-grant-id-mapper"
+
+  claim_name          = "mcp_grant_id"
+  session_note        = "mcp_grant_id"
+  add_to_id_token     = true
+  add_to_access_token = true
+  claim_value_type    = "String"
+}
+
+// MCP tool scopes array mapper - adds list of granted tool scopes to JWT
+// This allows quick scope validation without database lookup
+resource "keycloak_openid_user_session_note_protocol_mapper" "mcp_tool_scopes" {
+  realm_id        = keycloak_realm.semaphore_realm.id
+  client_scope_id = keycloak_openid_client_scope.mcp.id
+  name            = "mcp-tool-scopes-mapper"
+
+  claim_name          = "mcp_tool_scopes"
+  session_note        = "mcp_tool_scopes"
+  add_to_id_token     = false
+  add_to_access_token = true
+  claim_value_type    = "JSON"
 }
 
 // Realm User Profile

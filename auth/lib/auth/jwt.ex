@@ -45,7 +45,11 @@ defmodule Auth.JWT do
           {:error, :missing_user_id}
 
         user_id when is_binary(user_id) ->
-          {:ok, user_id, claims}
+          # Extract MCP-specific claims
+          grant_id = Map.get(claims, "mcp_grant_id", "")
+          tool_scopes = Map.get(claims, "mcp_tool_scopes", [])
+
+          {:ok, user_id, grant_id, tool_scopes, claims}
 
         _ ->
           Logger.warning("[Auth.JWT] Invalid semaphore_user_id claim type")

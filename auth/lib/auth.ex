@@ -550,9 +550,12 @@ defmodule Auth do
 
       token ->
         case Auth.JWT.validate_mcp_token(token) do
-          {:ok, user_id, _claims} ->
+          {:ok, user_id, grant_id, tool_scopes, _claims} ->
+            # Inject MCP headers for downstream services
             conn
             |> put_resp_header("x-semaphore-user-id", user_id)
+            |> put_resp_header("x-mcp-grant-id", grant_id)
+            |> put_resp_header("x-mcp-tool-scopes", Enum.join(tool_scopes, ","))
             |> send_resp(200, "")
 
           {:error, reason} ->
@@ -1052,7 +1055,7 @@ defmodule Auth do
             modified_response =
               response_json
               |> Map.put("scope", "mcp")
-              |> Map.put("scopes", ["mcp"])
+              |> Map.put("scopes", "mcp")
 
             Logger.info("[Auth.DCR] Injected scopes into DCR response: #{inspect(modified_response)}")
             {:ok, Jason.encode!(modified_response)}

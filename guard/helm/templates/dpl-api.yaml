@@ -88,6 +88,8 @@ spec:
               value: "true"
             - name: START_GPRC_GUARD_API
               value: "true"
+            - name: START_GRPC_MCP_GRANT_API
+              value: "true"
             - name: START_GPRC_HEALTH_CHECK
               value: "true"
             - name: RABBIT_CONSUMER

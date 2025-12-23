@@ -93,6 +93,19 @@ userApi:
       cpu: 25m
       memory: 150Mi
 
+mcpGrantApi:
+  logging:
+    level: info
+  replicas: 1
+  dbPoolSize: 2
+  resources:
+    limits:
+      cpu: 100m
+      memory: 300Mi
+    requests:
+      cpu: 25m
+      memory: 150Mi
+
 statsd:
   resources:
     limits:

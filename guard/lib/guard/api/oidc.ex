@@ -297,6 +297,102 @@ defmodule Guard.Api.OIDC do
     end
   end
 
+  @doc """
+  Get the active session ID for a user.
+
+  Keycloak maintains user sessions. We need the session ID to set session notes
+  for MCP OAuth grants.
+
+  ## Examples
+
+      Guard.Api.OIDC.get_active_session_id(oidc_user_id)
+      {:ok, "session-uuid-here"}
+  """
+  def get_active_session_id(client, oidc_user_id) do
+    # GET /admin/realms/{realm}/users/{user-id}/sessions
+    case Tesla.get(client, "/users/#{oidc_user_id}/sessions") do
+      {:ok, %{status: 200, body: sessions}} when is_list(sessions) and length(sessions) > 0 ->
+        # Get most recent active session
+        active_session =
+          Enum.find(sessions, fn s ->
+            Map.get(s, "state") == "ACTIVE" || Map.get(s, "active") == true
+          end)
+
+        case active_session do
+          nil ->
+            Logger.warning(
+              "[OIDC API] No active session found for user #{oidc_user_id}, using most recent session"
+            )
+
+            # Use most recent session if no explicitly active one
+            most_recent = List.first(sessions)
+            {:ok, most_recent["id"]}
+
+          session ->
+            {:ok, session["id"]}
+        end
+
+      {:ok, %{status: 200, body: []}} ->
+        Logger.error("[OIDC API] No sessions found for user #{oidc_user_id}")
+        {:error, :no_sessions}
+
+      {:ok, %{status: status, body: body}} ->
+        Logger.error(
+          "[OIDC API] Failed to get sessions for user #{oidc_user_id}: #{status} - #{inspect(body)}"
+        )
+
+        {:error, :api_error}
+
+      {:error, error} ->
+        Logger.error(
+          "[OIDC API] Error fetching sessions for user #{oidc_user_id}: #{inspect(error)}"
+        )
+
+        {:error, error}
+    end
+  end
+
+  @doc """
+  Set a session note (attribute) on a Keycloak user session.
+
+  Session notes are ephemeral and last only for the session lifetime.
+  They are used to pass data to protocol mappers (like mcp_grant_id and mcp_tool_scopes).
+
+  Note: Keycloak's REST API doesn't have a direct "update session notes" endpoint.
+  This function works by passing the note through the authentication session context,
+  which requires the session to be in an active OAuth flow state.
+
+  For MCP OAuth grants, session notes should be set during the Required Action flow
+  by the Keycloak Required Action SPI (Java code), which has direct access to
+  AuthenticationSessionModel.setUserSessionNote().
+
+  This Elixir function is provided for testing/debugging purposes, but the production
+  implementation should set notes in the Keycloak Required Action Java code.
+
+  ## Examples
+
+      OIDC.set_session_note(client, session_id, "mcp_grant_id", "uuid-here")
+      OIDC.set_session_note(client, session_id, "mcp_tool_scopes", "[\\\"org:list\\\"]")
+  """
+  def set_session_note(_client, _session_id, _note_key, _note_value) do
+    # Keycloak Admin REST API doesn't provide a direct endpoint for setting session notes
+    # on UserSessionModel. Session notes can only be set during authentication flow
+    # via AuthenticationSessionModel.setUserSessionNote() in Java SPI code.
+    #
+    # For MCP OAuth implementation, session notes MUST be set in the
+    # McpGrantSelectionRequiredAction Java class using:
+    #   context.getAuthenticationSession().setUserSessionNote(key, value)
+    #
+    # This function returns :not_implemented to make it clear that session notes
+    # cannot be set via REST API and must be set in Keycloak Java code.
+
+    Logger.warning(
+      "[OIDC API] set_session_note called but not implemented - session notes must be set in Keycloak Required Action Java code"
+    )
+
+    {:error, :not_implemented}
+  end
+
   defp get_provider(nil, _), do: nil
 
   defp get_provider(fed_idns, provider) do
