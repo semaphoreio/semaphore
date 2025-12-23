@@ -97,7 +97,7 @@ class ProjectsController < ApplicationController
           Watchman.increment("repo_host_post_commit_hooks.controller.member_webhook")
           logger.info("Member Webhook")
 
-          Semaphore::Events::ProjectCollaboratorsChanged.emit(project)
+          Semaphore::Events::ProjectCollaboratorsChanged.emit(project.id)
           Semaphore::GithubApp::Collaborators::Worker.perform_async(project.repo_owner_and_name)
 
           next
@@ -111,7 +111,7 @@ class ProjectsController < ApplicationController
           else
             Watchman.increment("repo_host_post_commit_hooks.controller.repository_webhook")
 
-            Semaphore::Events::RemoteRepositoryChanged.emit(webhook_filter.repository)
+            Semaphore::Events::RemoteRepositoryChanged.emit(project.repository.id)
           end
 
           next
@@ -129,6 +129,14 @@ class ProjectsController < ApplicationController
           workflow.update_attribute(:result, Workflow::RESULT_BAD_REQUEST)
 
           next
+        end
+
+        repository_comparator = RepoHost::Github::RepositoryComparator.new(project.repository, webhook_filter.repository)
+        if repository_comparator.different?
+          logger.info("Repository Changed", :changes => repository_comparator.changes)
+          Watchman.increment("repo_host_post_commit_hooks.controller.repository_changed")
+
+          Semaphore::Events::RemoteRepositoryChanged.emit(project.repository.id)
         end
 
         workflow.update_attribute(:result, Workflow::RESULT_OK)
