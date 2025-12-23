@@ -47,7 +47,7 @@ defmodule FrontWeb.Router do
     plug(FrontWeb.Plugs.LicenseVerifier)
     plug(Traceman.Plug.TraceHeaders)
     plug(Front.Tracing.TracingPlug)
-    plug(FrontWeb.Plugs.CacheControl, :private_cache)
+    plug(FrontWeb.Plugs.CacheControl, :etag_cache)
   end
 
   scope "/is_alive", FrontWeb do
