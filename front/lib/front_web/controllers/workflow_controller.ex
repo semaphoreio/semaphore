@@ -106,40 +106,52 @@ defmodule FrontWeb.WorkflowController do
       {:ok, {:ok, self_hosted_agent_types}} = Async.await(fetch_self_hosted_agent_types)
       {:ok, {:ok, deployment_targets}} = Async.await(fetch_deployment_targets)
 
-      {initial_yaml, yamls, job_id, alert} =
+      fetch_result =
         if FeatureProvider.feature_enabled?(:wf_editor_via_jobs, param: org_id) do
-          {:ok, {:ok, job_id}} = Async.await(fetch_files_or_create_job)
-          {project.initial_pipeline_file, [], job_id, nil}
+          fetching_job_result(
+            fetch_files_or_create_job,
+            hook,
+            project.initial_pipeline_file
+          )
         else
-          {:ok, {:ok, yaml_files}} = Async.await(fetch_files_or_create_job)
-
-          {initial_yaml, yamls, alert} =
-            extract_yamls(yaml_files, project.initial_pipeline_file, org_id)
-
-          {initial_yaml, yamls, "", alert}
+          fetching_files_result(
+            fetch_files_or_create_job,
+            hook,
+            org_id,
+            project.initial_pipeline_file
+          )
         end
 
-      workflow_data = %{createdInEditor: false, initialYAML: initial_yaml, yamls: yamls}
+      case fetch_result do
+        {:error, error_message} ->
+          conn
+          |> put_flash(:alert, error_message)
+          |> redirect(to: project_path(conn, :show, project.name))
+          |> halt()
 
-      params = [
-        title: "Edit workflow・#{hook.name}・#{project.name}・#{organization.name}",
-        js: :workflow_editor,
-        org_secrets: org_secrets,
-        project_secrets: project_secrets,
-        project: project,
-        hook: hook,
-        sidebar_selected_item: project.id,
-        commiter_avatar: user.avatar_url,
-        workflow_data: workflow_data,
-        fetching_job_id: job_id,
-        agent_types: combine_agent_types(hosted_agent_types, self_hosted_agent_types),
-        deployment_targets: Enum.map(deployment_targets, & &1.name),
-        hide_promotions: Application.get_env(:front, :hide_promotions, false)
-      ]
+        {:ok, {initial_yaml, yamls, job_id, alert}} ->
+          workflow_data = %{createdInEditor: false, initialYAML: initial_yaml, yamls: yamls}
 
-      conn
-      |> put_flash(:alert, alert)
-      |> render("edit.html", params)
+          params = [
+            title: "Edit workflow・#{hook.name}・#{project.name}・#{organization.name}",
+            js: :workflow_editor,
+            org_secrets: org_secrets,
+            project_secrets: project_secrets,
+            project: project,
+            hook: hook,
+            sidebar_selected_item: project.id,
+            commiter_avatar: user.avatar_url,
+            workflow_data: workflow_data,
+            fetching_job_id: job_id,
+            agent_types: combine_agent_types(hosted_agent_types, self_hosted_agent_types),
+            deployment_targets: Enum.map(deployment_targets, & &1.name),
+            hide_promotions: Application.get_env(:front, :hide_promotions, false)
+          ]
+
+          conn
+          |> put_flash(:alert, alert)
+          |> render("edit.html", params)
+      end
     end)
   end
 
@@ -201,6 +213,64 @@ defmodule FrontWeb.WorkflowController do
       |> Enum.into(%{})
 
     {initial_yaml, files, nil}
+  end
+
+  defp fetching_job_result(fetch_files_or_create_job, hook, initial_yaml) do
+    case Async.await(fetch_files_or_create_job) do
+      {:ok, {:ok, job_id}} ->
+        {:ok, {initial_yaml, %{}, job_id, nil}}
+
+      {:ok, {:error, %GRPC.RPCError{} = error}} ->
+        {:error, workflow_files_error_message(error, hook)}
+
+      {:ok, {:error, reason}} ->
+        Logger.warn("[workflow.edit] Unable to start fetching job: #{inspect(reason)}")
+        {:error, workflow_files_error_message(reason, hook)}
+
+      {:exit, reason} ->
+        Logger.warn("[workflow.edit] Fetching job crashed: #{inspect(reason)}")
+        {:error, workflow_files_error_message(reason, hook)}
+    end
+  end
+
+  defp fetching_files_result(fetch_files_or_create_job, hook, org_id, initial_yaml) do
+    case Async.await(fetch_files_or_create_job) do
+      {:ok, {:ok, yaml_files}} ->
+        {yaml_path, yamls, alert} = extract_yamls(yaml_files, initial_yaml, org_id)
+        {:ok, {yaml_path, yamls, "", alert}}
+
+      {:ok, {:error, %GRPC.RPCError{} = error}} ->
+        {:error, workflow_files_error_message(error, hook)}
+
+      {:ok, {:error, reason}} ->
+        Logger.warn("[workflow.edit] Unable to load workflow files: #{inspect(reason)}")
+        {:error, workflow_files_error_message(reason, hook)}
+
+      {:exit, reason} ->
+        Logger.warn("[workflow.edit] Fetching workflow files crashed: #{inspect(reason)}")
+        {:error, workflow_files_error_message(reason, hook)}
+    end
+  end
+
+  defp workflow_files_error_message(%GRPC.RPCError{message: message}, hook) do
+    if String.contains?(message, "couldn't find remote ref") do
+      "We couldn't load workflow files because #{workflow_reference_label(hook)} no longer exists."
+    else
+      "We couldn't load workflow files. Please try again."
+    end
+  end
+
+  defp workflow_files_error_message(_error, _hook) do
+    "We couldn't load workflow files. Please try again."
+  end
+
+  defp workflow_reference_label(hook) do
+    case hook.type do
+      "branch" -> "the branch \"#{hook.branch_name}\""
+      "tag" -> "the tag \"#{hook.tag_name}\""
+      "pr" -> "the pull request branch \"#{hook.pr_branch_name}\""
+      _ -> "the selected reference"
+    end
   end
 
   def rebuild(conn, _params) do
