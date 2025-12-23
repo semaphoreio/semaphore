@@ -104,6 +104,49 @@ defmodule FrontWeb.WorkflowControllerTest do
 
       assert job.job_spec == expected_spec(project, workflow)
     end
+
+    test "shows alert when workflow files reference a missing branch", %{
+      conn: conn,
+      workflow: workflow
+    } do
+      message =
+        "err: fatal: couldn't find remote ref refs/heads/#{workflow.api_model.branch_name}: exit status 128"
+
+      GrpcMock.stub(RepositoryMock, :get_files, fn _req, _stream ->
+        raise GRPC.RPCError, status: 2, message: message
+      end)
+
+      conn = conn |> get("/workflows/#{workflow.id}/edit")
+
+      assert html_response(conn, 200)
+
+      assert get_flash(conn, :alert) ==
+               "We couldn't load workflow files because the branch \"#{workflow.api_model.branch_name}\" no longer exists."
+    end
+
+    test "shows alert when fetching job creation fails", %{
+      conn: conn,
+      organization: organization,
+      workflow: workflow
+    } do
+      Support.Stubs.Feature.enable_feature(organization.id, :wf_editor_via_jobs)
+
+      Support.Stubs.Organization.put_settings(organization, %{
+        "plan_machine_type" => "e2-standard-2",
+        "plan_os_image" => "ubuntu2004"
+      })
+
+      error_user = Support.Stubs.User.create(id: "error_response")
+      PermissionPatrol.allow_everything(organization.id, error_user.id)
+
+      conn =
+        conn
+        |> put_req_header("x-semaphore-user-id", error_user.id)
+        |> get("/workflows/#{workflow.id}/edit")
+
+      assert html_response(conn, 200)
+      assert get_flash(conn, :alert) == "We couldn't load workflow files. Please try again."
+    end
   end
 
   defp expected_spec(project, workflow) do
