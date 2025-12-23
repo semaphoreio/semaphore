@@ -400,21 +400,28 @@ defmodule Zebra.Models.Job do
     )
   end
 
-  def delete_old_job_stop_requests(limit) do
+  def expired_job_ids(limit) do
     import Ecto.Query,
-      only: [from: 2, where: 3, subquery: 1, limit: 2, order_by: 2]
-
-    jobs_subquery =
-      from(j in Zebra.Models.Job,
-        where: not is_nil(j.expires_at) and j.expires_at <= fragment("CURRENT_TIMESTAMP"),
-        order_by: [asc: j.created_at],
-        limit: ^limit,
-        select: j.id
-      )
+      only: [from: 2, where: 3, limit: 2, select: 2]
 
     query =
-      from(jsr in Zebra.Models.JobStopRequest,
-        where: jsr.job_id in subquery(jobs_subquery)
+      from(j in Zebra.Models.Job,
+        where: not is_nil(j.expires_at) and j.expires_at <= fragment("CURRENT_TIMESTAMP"),
+        limit: ^limit,
+        select: {j.id, j.organization_id, j.project_id}
+      )
+
+    result = Zebra.LegacyRepo.all(query)
+    {:ok, result}
+  end
+
+  def delete_job_stop_requests(job_ids) do
+    import Ecto.Query,
+      only: [from: 2, where: 3, limit: 2, order_by: 2]
+
+    query =
+      from(j in Zebra.Models.JobStopRequest,
+        where: j.job_id in ^job_ids
       )
 
     {deleted_count, _} = Zebra.LegacyRepo.delete_all(query)
@@ -422,20 +429,12 @@ defmodule Zebra.Models.Job do
     {:ok, deleted_count}
   end
 
-  def delete_old_jobs(limit) do
-    import Ecto.Query, only: [from: 2, subquery: 1]
-
-    jobs_subquery =
-      from(j in Zebra.Models.Job,
-        where: not is_nil(j.expires_at) and j.expires_at <= fragment("CURRENT_TIMESTAMP"),
-        order_by: [asc: j.created_at],
-        limit: ^limit,
-        select: j.id
-      )
+  def delete_jobs(job_ids) do
+    import Ecto.Query, only: [from: 2]
 
     query =
       from(j in Zebra.Models.Job,
-        where: j.id in subquery(jobs_subquery)
+        where: j.id in ^job_ids
       )
 
     {deleted_count, _} = Zebra.LegacyRepo.delete_all(query)
@@ -607,6 +606,73 @@ defmodule Zebra.Models.Job do
 
     Tackle.Exchange.create(channel, exchange_name)
     :ok = Tackle.Exchange.publish(channel, exchange_name, message, routing_key)
+  end
+
+  def publish_job_deletion_events(jobs_metadata) when is_list(jobs_metadata) do
+    exchange_name = "job_deletion_exchange"
+    routing_key = "job.deleted"
+
+    case AMQP.Application.get_channel(:job_deletion) do
+      {:ok, channel} ->
+        Tackle.Exchange.create(channel, exchange_name)
+
+        results =
+          Enum.map(jobs_metadata, fn job_meta ->
+            publish_single_job_deletion(channel, exchange_name, routing_key, job_meta)
+          end)
+
+        failures = Enum.filter(results, fn result -> result != :ok end)
+
+        if Enum.empty?(failures) do
+          :ok
+        else
+          {:error,
+           "Failed to publish #{length(failures)} of #{length(jobs_metadata)} deletion events"}
+        end
+
+      {:error, reason} ->
+        Logger.error("Failed to get AMQP channel for job deletion: #{inspect(reason)}")
+        {:error, "AMQP channel unavailable"}
+    end
+  rescue
+    error ->
+      Logger.error("Exception in publish_job_deletion_events: #{inspect(error)}")
+      {:error, "Publishing failed with exception"}
+  end
+
+  defp publish_single_job_deletion(channel, exchange_name, routing_key, job_meta) do
+    # Extract values from tuple {job_id, org_id, project_id}
+    {id, organization_id, project_id} = job_meta
+
+    # Create JSON message
+    message =
+      %{
+        job_id: id,
+        organization_id: organization_id,
+        project_id: project_id,
+        deleted_at: DateTime.utc_now() |> DateTime.to_iso8601()
+      }
+      |> Jason.encode!()
+
+    # Publish to exchange
+    case Tackle.Exchange.publish(channel, exchange_name, message, routing_key) do
+      :ok ->
+        Logger.info("Published deletion event for job #{id} #{organization_id}/#{project_id}")
+
+        :ok
+
+      error ->
+        Logger.error(
+          "Failed to publish deletion event for job #{id} #{organization_id}/#{project_id}: #{inspect(error)}"
+        )
+
+        {:error, error}
+    end
+  rescue
+    error ->
+      Logger.error("Exception publishing deletion event for job: #{inspect(error)}")
+
+      {:error, error}
   end
 
   ##
