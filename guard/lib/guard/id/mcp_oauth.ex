@@ -9,6 +9,14 @@ defmodule Guard.Id.McpOAuth do
 
   use Plug.Router
 
+  # Parse query parameters and request body
+  # CRITICAL: This must come BEFORE :match to populate conn.params
+  plug(Plug.Parsers,
+    parsers: [:urlencoded, :multipart, :json],
+    pass: ["*/*"],
+    json_decoder: Jason
+  )
+
   plug(:match)
   plug(:dispatch)
 
@@ -68,10 +76,21 @@ defmodule Guard.Id.McpOAuth do
       "https://id.#{base_url}/auth/realms/semaphore/protocol/openid-connect/auth"
 
     # Build Keycloak login URL with return to this page
-    redirect_uri = "https://id.#{base_url}/oidc/callback?return_to=#{URI.encode(return_url)}"
+    # CRITICAL: Use URI.encode_query to properly encode ALL query parameters
+    # This prevents the query string in return_url from being misinterpreted
+    callback_params = URI.encode_query(%{"return_to" => return_url})
+    redirect_uri = "https://id.#{base_url}/oidc/callback?#{callback_params}"
 
-    keycloak_url =
-      "#{keycloak_login_url}?client_id=guard&response_type=code&redirect_uri=#{URI.encode(redirect_uri)}"
+    keycloak_params =
+      URI.encode_query(%{
+        "client_id" => "guard",
+        "response_type" => "code",
+        "redirect_uri" => redirect_uri
+      })
+
+    keycloak_url = "#{keycloak_login_url}?#{keycloak_params}"
+
+    Logger.debug("[McpOAuth] Redirecting to Keycloak login: #{keycloak_url}")
 
     conn
     |> put_resp_header("location", keycloak_url)

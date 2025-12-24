@@ -11,6 +11,14 @@ defmodule Auth do
 
   def proxies, do: Application.fetch_env!(:auth, :trusted_proxies)
 
+  # Parse query parameters and request body
+  # CRITICAL: This must come BEFORE :match to populate conn.params
+  plug(Plug.Parsers,
+    parsers: [:urlencoded, :multipart, :json],
+    pass: ["*/*"],
+    json_decoder: Jason
+  )
+
   plug(:match)
   plug(:dispatch)
 
@@ -594,22 +602,31 @@ defmodule Auth do
   post "/exauth/oauth/register", host: "mcp." do
     log_request(conn, "mcp.#{Application.fetch_env!(:auth, :domain)}/oauth/register")
 
-    {:ok, body, conn} = Plug.Conn.read_body(conn)
+    # Use conn.body_params populated by Plug.Parsers instead of reading raw body
+    # (Plug.Parsers already consumed the body stream)
+    case Jason.encode(conn.body_params) do
+      {:ok, body_json} ->
+        case proxy_dcr_to_keycloak(body_json) do
+          {:ok, response} ->
+            conn
+            |> put_resp_content_type("application/json")
+            |> put_resp_header("access-control-allow-origin", "*")
+            |> put_resp_header("access-control-allow-methods", "POST, OPTIONS")
+            |> put_resp_header("access-control-allow-headers", "Content-Type")
+            |> send_resp(201, response)
 
-    case proxy_dcr_to_keycloak(body) do
-      {:ok, response} ->
+          {:error, status, error_body} ->
+            conn
+            |> put_resp_content_type("application/json")
+            |> put_resp_header("access-control-allow-origin", "*")
+            |> send_resp(status, error_body)
+        end
+
+      {:error, _} ->
         conn
         |> put_resp_content_type("application/json")
         |> put_resp_header("access-control-allow-origin", "*")
-        |> put_resp_header("access-control-allow-methods", "POST, OPTIONS")
-        |> put_resp_header("access-control-allow-headers", "Content-Type")
-        |> send_resp(201, response)
-
-      {:error, status, error_body} ->
-        conn
-        |> put_resp_content_type("application/json")
-        |> put_resp_header("access-control-allow-origin", "*")
-        |> send_resp(status, error_body)
+        |> send_resp(400, Jason.encode!(%{error: "invalid_request", error_description: "Invalid JSON body"}))
     end
   end
 
@@ -630,10 +647,11 @@ defmodule Auth do
   post "/exauth/oauth/token", host: "mcp." do
     log_request(conn, "mcp.#{Application.fetch_env!(:auth, :domain)}/oauth/token")
 
-    {:ok, body, conn} = Plug.Conn.read_body(conn)
-    params = URI.decode_query(body)
-
+    # Use conn.body_params populated by Plug.Parsers instead of reading raw body
+    # Re-encode as URL-encoded string for Keycloak
+    params = conn.body_params
     code = params["code"]
+    body = URI.encode_query(params)
 
     case proxy_token_to_keycloak(body) do
       {:ok, token_response} ->
@@ -694,10 +712,11 @@ defmodule Auth do
   post "/exauth/internal/oauth-session/:correlation_id/grant", host: "mcp." do
     log_request(conn, "mcp.#{Application.fetch_env!(:auth, :domain)}/internal/oauth-session/#{correlation_id}/grant")
 
-    {:ok, body, conn} = Plug.Conn.read_body(conn)
+    # Use conn.body_params populated by Plug.Parsers (JSON already parsed)
+    params = conn.body_params
 
-    case Jason.decode(body) do
-      {:ok, %{"grant_id" => grant_id, "tool_scopes" => tool_scopes}} ->
+    case params do
+      %{"grant_id" => grant_id, "tool_scopes" => tool_scopes} ->
         case Auth.OAuthSession.store_grant(correlation_id, grant_id, tool_scopes) do
           {:ok, _session} ->
             Logger.info("[Auth.OAuth] Stored grant #{grant_id} for correlation #{correlation_id}")
@@ -721,10 +740,10 @@ defmodule Auth do
             |> send_resp(500, Jason.encode!(%{error: "Failed to store grant"}))
         end
 
-      {:error, _} ->
+      _ ->
         conn
         |> put_resp_content_type("application/json")
-        |> send_resp(400, Jason.encode!(%{error: "Invalid JSON body"}))
+        |> send_resp(400, Jason.encode!(%{error: "Missing required fields: grant_id, tool_scopes"}))
     end
   end
 
@@ -736,10 +755,11 @@ defmodule Auth do
   post "/exauth/internal/oauth-session/:correlation_id/auth-code", host: "mcp." do
     log_request(conn, "mcp.#{Application.fetch_env!(:auth, :domain)}/internal/oauth-session/#{correlation_id}/auth-code")
 
-    {:ok, body, conn} = Plug.Conn.read_body(conn)
+    # Use conn.body_params populated by Plug.Parsers (JSON already parsed)
+    params = conn.body_params
 
-    case Jason.decode(body) do
-      {:ok, %{"auth_code" => auth_code}} ->
+    case params do
+      %{"auth_code" => auth_code} ->
         case Auth.OAuthSession.store_auth_code(correlation_id, auth_code) do
           {:ok, session} ->
             Logger.info("[Auth.OAuth] Stored auth code for correlation #{correlation_id}")
@@ -770,10 +790,10 @@ defmodule Auth do
             |> send_resp(500, Jason.encode!(%{error: "Failed to store auth code"}))
         end
 
-      {:error, _} ->
+      _ ->
         conn
         |> put_resp_content_type("application/json")
-        |> send_resp(400, Jason.encode!(%{error: "Invalid JSON body"}))
+        |> send_resp(400, Jason.encode!(%{error: "Missing required field: auth_code"}))
     end
   end
 
