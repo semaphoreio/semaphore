@@ -530,6 +530,236 @@ defmodule Auth do
   end
 
   #
+  # OAuth Token Endpoint - Proxies to Keycloak and injects MCP grant info
+  # Looks up grant_id from OAuth session using auth code
+  # Returns enhanced token response with mcp_grant_id and mcp_tool_scopes
+  #
+  post "/exauth/oauth/token", host: "mcp." do
+    log_request(conn, "mcp.#{Application.fetch_env!(:auth, :domain)}/oauth/token")
+
+    {:ok, body, conn} = Plug.Conn.read_body(conn)
+    params = URI.decode_query(body)
+
+    code = params["code"]
+
+    case proxy_token_to_keycloak(body) do
+      {:ok, token_response} ->
+        # Check if this was an MCP OAuth flow with a grant
+        enhanced_response =
+          case Auth.OAuthSession.get_by_auth_code(code) do
+            {:ok, %{grant_id: grant_id, tool_scopes: tool_scopes}}
+            when not is_nil(grant_id) ->
+              Logger.info(
+                "[Auth.OAuth] Injecting grant info into token response: grant_id=#{grant_id}"
+              )
+
+              # Inject MCP grant info into response
+              token_response
+              |> Map.put("mcp_grant_id", grant_id)
+              |> Map.put("mcp_tool_scopes", tool_scopes)
+
+            _ ->
+              # Not an MCP flow or grant not found
+              token_response
+          end
+
+        # Clean up OAuth session
+        if code, do: Auth.OAuthSession.delete_by_auth_code(code)
+
+        conn
+        |> put_resp_content_type("application/json")
+        |> put_resp_header("access-control-allow-origin", "*")
+        |> put_resp_header("access-control-allow-methods", "POST, OPTIONS")
+        |> put_resp_header("access-control-allow-headers", "Content-Type, Authorization")
+        |> put_resp_header("cache-control", "no-store")
+        |> put_resp_header("pragma", "no-cache")
+        |> send_resp(200, Jason.encode!(enhanced_response))
+
+      {:error, status, error_body} ->
+        Logger.error("[Auth.OAuth] Token exchange failed: #{status} - #{error_body}")
+
+        conn
+        |> put_resp_content_type("application/json")
+        |> put_resp_header("access-control-allow-origin", "*")
+        |> send_resp(status, error_body)
+    end
+  end
+
+  # Handle CORS preflight for token endpoint
+  options "/exauth/oauth/token", host: "mcp." do
+    conn
+    |> put_resp_header("access-control-allow-origin", "*")
+    |> put_resp_header("access-control-allow-methods", "POST, OPTIONS")
+    |> put_resp_header("access-control-allow-headers", "Content-Type, Authorization")
+    |> send_resp(204, "")
+  end
+
+  #
+  # Internal API: Store grant in OAuth Session (called by Guard)
+  # Allows Guard to store grant_id in the OAuth session after grant creation
+  #
+  post "/exauth/internal/oauth-session/:correlation_id/grant", host: "mcp." do
+    log_request(conn, "mcp.#{Application.fetch_env!(:auth, :domain)}/internal/oauth-session/#{correlation_id}/grant")
+
+    {:ok, body, conn} = Plug.Conn.read_body(conn)
+
+    case Jason.decode(body) do
+      {:ok, %{"grant_id" => grant_id, "tool_scopes" => tool_scopes}} ->
+        case Auth.OAuthSession.store_grant(correlation_id, grant_id, tool_scopes) do
+          {:ok, _session} ->
+            Logger.info("[Auth.OAuth] Stored grant #{grant_id} for correlation #{correlation_id}")
+
+            conn
+            |> put_resp_content_type("application/json")
+            |> send_resp(200, Jason.encode!(%{status: "ok"}))
+
+          {:error, :not_found} ->
+            Logger.error("[Auth.OAuth] OAuth session not found: #{correlation_id}")
+
+            conn
+            |> put_resp_content_type("application/json")
+            |> send_resp(404, Jason.encode!(%{error: "Session not found"}))
+
+          {:error, reason} ->
+            Logger.error("[Auth.OAuth] Failed to store grant: #{inspect(reason)}")
+
+            conn
+            |> put_resp_content_type("application/json")
+            |> send_resp(500, Jason.encode!(%{error: "Failed to store grant"}))
+        end
+
+      {:error, _} ->
+        conn
+        |> put_resp_content_type("application/json")
+        |> send_resp(400, Jason.encode!(%{error: "Invalid JSON body"}))
+    end
+  end
+
+  #
+  # Internal API: Store auth code in OAuth Session (called by Guard)
+  # Allows Guard to store the authorization code after Keycloak callback
+  # Returns redirect_uri and client_state for final redirect to client
+  #
+  post "/exauth/internal/oauth-session/:correlation_id/auth-code", host: "mcp." do
+    log_request(conn, "mcp.#{Application.fetch_env!(:auth, :domain)}/internal/oauth-session/#{correlation_id}/auth-code")
+
+    {:ok, body, conn} = Plug.Conn.read_body(conn)
+
+    case Jason.decode(body) do
+      {:ok, %{"auth_code" => auth_code}} ->
+        case Auth.OAuthSession.store_auth_code(correlation_id, auth_code) do
+          {:ok, session} ->
+            Logger.info("[Auth.OAuth] Stored auth code for correlation #{correlation_id}")
+
+            # Return redirect info for Guard to complete the flow
+            response = %{
+              status: "ok",
+              redirect_uri: session.redirect_uri,
+              client_state: session.client_state
+            }
+
+            conn
+            |> put_resp_content_type("application/json")
+            |> send_resp(200, Jason.encode!(response))
+
+          {:error, :not_found} ->
+            Logger.error("[Auth.OAuth] OAuth session not found: #{correlation_id}")
+
+            conn
+            |> put_resp_content_type("application/json")
+            |> send_resp(404, Jason.encode!(%{error: "Session not found"}))
+
+          {:error, reason} ->
+            Logger.error("[Auth.OAuth] Failed to store auth code: #{inspect(reason)}")
+
+            conn
+            |> put_resp_content_type("application/json")
+            |> send_resp(500, Jason.encode!(%{error: "Failed to store auth code"}))
+        end
+
+      {:error, _} ->
+        conn
+        |> put_resp_content_type("application/json")
+        |> send_resp(400, Jason.encode!(%{error: "Invalid JSON body"}))
+    end
+  end
+
+  #
+  # OAuth Authorization Endpoint - Intercepts MCP OAuth flows
+  # Detects "mcp" scope and redirects to Guard for grant selection
+  # Otherwise forwards to Keycloak for standard OAuth flow
+  #
+  get "/exauth/oauth/authorize", host: "mcp." do
+    log_request(conn, "mcp.#{Application.fetch_env!(:auth, :domain)}/oauth/authorize")
+
+    client_id = conn.params["client_id"]
+    scope = conn.params["scope"] || ""
+    redirect_uri = conn.params["redirect_uri"]
+    state = conn.params["state"]
+    response_type = conn.params["response_type"]
+
+    # Only intercept MCP OAuth flows (scope contains "mcp")
+    if String.contains?(scope, "mcp") do
+      # Create OAuth session for flow correlation
+      correlation_id = UUID.uuid4()
+
+      session_data = %{
+        client_id: client_id,
+        client_state: state,
+        redirect_uri: redirect_uri,
+        scope: scope,
+        response_type: response_type
+      }
+
+      case Auth.OAuthSession.create(correlation_id, session_data) do
+        {:ok, _} ->
+          # Redirect to Guard pre-authorization endpoint
+          domain = Application.fetch_env!(:auth, :domain)
+
+          guard_url =
+            "https://id.#{domain}/mcp/oauth/pre-authorize" <>
+              "?correlation_id=#{URI.encode(correlation_id)}" <>
+              "&client_id=#{URI.encode(client_id || "")}" <>
+              "&scope=#{URI.encode(scope)}"
+
+          Logger.info(
+            "[Auth.OAuth] Intercepting MCP OAuth flow for client=#{client_id}, redirecting to Guard"
+          )
+
+          conn
+          |> put_resp_header("location", guard_url)
+          |> send_resp(302, "")
+
+        {:error, reason} ->
+          Logger.error("[Auth.OAuth] Failed to create OAuth session: #{inspect(reason)}")
+
+          send_resp(
+            conn,
+            500,
+            "Failed to initiate OAuth flow. Please try again."
+          )
+      end
+    else
+      # Standard OAuth flow (non-MCP) - forward directly to Keycloak
+      domain = Application.fetch_env!(:auth, :domain)
+
+      keycloak_url =
+        "https://id.#{domain}/realms/semaphore/protocol/openid-connect/auth" <>
+          "?client_id=#{URI.encode(client_id || "")}" <>
+          "&response_type=#{URI.encode(response_type || "code")}" <>
+          "&scope=#{URI.encode(scope)}" <>
+          "&redirect_uri=#{URI.encode(redirect_uri || "")}" <>
+          if(state, do: "&state=#{URI.encode(state)}", else: "")
+
+      Logger.debug("[Auth.OAuth] Forwarding non-MCP OAuth flow to Keycloak")
+
+      conn
+      |> put_resp_header("location", keycloak_url)
+      |> send_resp(302, "")
+    end
+  end
+
+  #
   # Routes for mcp.{domain}/mcp requests - OAuth 2.1 JWT validation
   #
   match "/exauth/mcp:path/*rest", host: "mcp." do
@@ -1075,6 +1305,36 @@ defmodule Auth do
       {:error, reason} ->
         Logger.error("[Auth] DCR proxy request failed: #{inspect(reason)}")
         {:error, 500, Jason.encode!(%{error: "DCR request failed"})}
+    end
+  end
+
+  defp proxy_token_to_keycloak(body) do
+    domain = Application.fetch_env!(:auth, :domain)
+    token_url = "https://id.#{domain}/realms/semaphore/protocol/openid-connect/token"
+
+    headers = [{"Content-Type", "application/x-www-form-urlencoded"}]
+
+    case :hackney.request(:post, token_url, headers, body, [:with_body, recv_timeout: 30_000]) do
+      {:ok, 200, _headers, response_body} ->
+        case Jason.decode(response_body) do
+          {:ok, response_json} ->
+            {:ok, response_json}
+
+          {:error, decode_error} ->
+            Logger.error(
+              "[Auth.OAuth] Failed to parse token response: #{inspect(decode_error)}"
+            )
+
+            {:error, 500, Jason.encode!(%{error: "Failed to parse token response"})}
+        end
+
+      {:ok, status, _headers, response_body} ->
+        Logger.warning("[Auth.OAuth] Token exchange failed with status #{status}: #{response_body}")
+        {:error, status, response_body}
+
+      {:error, reason} ->
+        Logger.error("[Auth.OAuth] Token exchange request failed: #{inspect(reason)}")
+        {:error, 500, Jason.encode!(%{error: "Token exchange request failed"})}
     end
   end
 end

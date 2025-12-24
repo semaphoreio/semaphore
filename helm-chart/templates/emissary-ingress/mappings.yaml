@@ -595,6 +595,127 @@ spec:
   bypass_auth: true
   precedence: 200
   timeout_ms: 10000
+---
+# MCP OAuth Authorization Interceptor (Guard OAuth Proxy Pattern)
+# Intercepts MCP OAuth authorization requests and redirects to Guard for grant selection
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: mcp-oauth-authorize-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: "^mcp\\..*"
+  host_regex: true
+  prefix: /exauth/oauth/authorize
+  rewrite: /exauth/oauth/authorize
+  service: auth.{{ .Release.Namespace }}:4000
+  bypass_auth: true
+  precedence: 200
+  timeout_ms: 10000
+---
+# MCP OAuth Token Exchange with Grant Injection
+# Proxies token requests to Keycloak and injects mcp_grant_id into response
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: mcp-oauth-token-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: "^mcp\\..*"
+  host_regex: true
+  prefix: /exauth/oauth/token
+  rewrite: /exauth/oauth/token
+  service: auth.{{ .Release.Namespace }}:4000
+  bypass_auth: true
+  precedence: 200
+  timeout_ms: 10000
+---
+# MCP OAuth Session Internal API - Store Grant (Guard → Auth)
+# Internal API for Guard to store grant_id in OAuth session
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: mcp-oauth-session-grant-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: "^mcp\\..*"
+  host_regex: true
+  prefix_regex: true
+  prefix: /exauth/internal/oauth-session/[^/]+/grant
+  rewrite: ""
+  service: auth.{{ .Release.Namespace }}:4000
+  bypass_auth: true
+  precedence: 250
+  timeout_ms: 5000
+---
+# MCP OAuth Session Internal API - Store Auth Code (Guard → Auth)
+# Internal API for Guard to store auth code and get client redirect info
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: mcp-oauth-session-auth-code-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: "^mcp\\..*"
+  host_regex: true
+  prefix_regex: true
+  prefix: /exauth/internal/oauth-session/[^/]+/auth-code
+  rewrite: ""
+  service: auth.{{ .Release.Namespace }}:4000
+  bypass_auth: true
+  precedence: 250
+  timeout_ms: 5000
+---
+# Guard MCP OAuth Pre-Authorization (Grant Selection UI)
+# Shows grant selection UI and handles grant creation
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: guard-mcp-oauth-pre-authorize-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: "^id\\..*"
+  host_regex: true
+  prefix: /mcp/oauth/pre-authorize
+  rewrite: ""
+  service: guard-id-http-api.{{ .Release.Namespace }}:80
+  bypass_auth: true
+  precedence: 200
+  timeout_ms: 30000
+---
+# Guard MCP OAuth Callback (Keycloak → Guard → Client)
+# Handles Keycloak OAuth callback and redirects to client
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: guard-mcp-oauth-callback-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: "^id\\..*"
+  host_regex: true
+  prefix: /mcp/oauth/callback
+  rewrite: ""
+  service: guard-id-http-api.{{ .Release.Namespace }}:80
+  bypass_auth: true
+  precedence: 200
+  timeout_ms: 30000
+---
+# Guard MCP OAuth Grant Selection (DEPRECATED - old Required Action route)
+# Kept for backward compatibility during migration
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: guard-mcp-oauth-grant-selection-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: "^id\\..*"
+  host_regex: true
+  prefix: /mcp/oauth/grant-selection
+  rewrite: ""
+  service: guard-id-http-api.{{ .Release.Namespace }}:80
+  bypass_auth: true
+  precedence: 200
+  timeout_ms: 30000
 {{- end }}
 ---
 {{- if eq .Values.global.edition "ee" }}

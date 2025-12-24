@@ -20,6 +20,10 @@ defmodule Auth.Application do
         %{
           id: FeatureProvider.Cachex,
           start: {Cachex, :start_link, [:feature_provider_cache, []]}
+        },
+        %{
+          id: OAuthSessionCachex,
+          start: {Cachex, :start_link, [:oauth_sessions, []]}
         }
       ] ++ jwks_strategy() ++ feature_provider(provider)
 
