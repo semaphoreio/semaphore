@@ -185,7 +185,7 @@ spec:
   agent:
     machine:
       type: e1-standard-2
-      os_image: ubuntu2004
+      os_image: ubuntu2404
   files: []
   envvars:
   - name: SEMAPHORE_GIT_SHA

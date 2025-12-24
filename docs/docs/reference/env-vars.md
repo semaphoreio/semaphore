@@ -37,7 +37,7 @@ Possible values are:
 ### Agent OS image {#agent-machine-os-image}
 
 - **Environment variable**: `SEMAPHORE_AGENT_MACHINE_OS_IMAGE`
-- **Example**: `ubuntu2004`
+- **Example**: `ubuntu2404`
 
 The name of the operating system image active in the current job.
 
