@@ -163,7 +163,7 @@ name: Monorepo
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 global_job_config:
   prologue:
     commands:
@@ -264,7 +264,7 @@ name: Monorepo
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
   - name: Backend
     dependencies: []
@@ -355,7 +355,7 @@ name: Monorepo
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
   - name: Backend
     dependencies: []
@@ -385,7 +385,7 @@ name: Monorepo
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
   - name: Backend
     dependencies: []
@@ -521,7 +521,7 @@ name: Monorepo Demo
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
   - name: 'UI Service'
     dependencies: []
