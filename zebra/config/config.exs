@@ -26,7 +26,7 @@ config :zebra, Zebra.Workers.Monitor, timeout: 60_000
 
 config :zebra, Zebra.Workers.JobDeletionPolicyWorker,
   naptime: 1_000, # 1 second
-  longnaptime: 3_600_000, # 1 hour
+  longnaptime: 60_000, # 1 minute
   limit: 100
 
 config :zebra, Zebra.Workers.JobDeletionPolicyMarker,
