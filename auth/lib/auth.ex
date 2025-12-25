@@ -399,39 +399,10 @@ defmodule Auth do
   end
 
   #
-  # OAuth 2.0 Authorization Server Metadata (RFC 8414) for mcp. subdomain
-  # Some MCP clients may request AS metadata from MCP server directly
-  # instead of following the two-step discovery (protected resource -> AS metadata)
+  # NOTE: OAuth 2.0 Authorization Server Metadata for mcp. subdomain is defined earlier
+  # (lines 193-236) with OAuth Proxy Pattern endpoint rewriting.
+  # This is the correct behavior - MCP clients should use the rewritten endpoints.
   #
-  # ROUTE ORDER CRITICAL: Base route (no path) must come BEFORE wildcard route!
-  #
-  # Base path for authorization server metadata on mcp. subdomain - for MCP 2025-03-26 spec
-  get "/exauth/.well-known/oauth-authorization-server", host: "mcp." do
-    log_request(
-      conn,
-      "mcp.#{Application.fetch_env!(:auth, :domain)}/.well-known/oauth-authorization-server"
-    )
-
-    domain = Application.fetch_env!(:auth, :domain)
-    keycloak_oidc_url = "https://id.#{domain}/realms/semaphore/.well-known/openid-configuration"
-
-    case :hackney.request(:get, keycloak_oidc_url, [], "", [:with_body, recv_timeout: 10_000]) do
-      {:ok, 200, _headers, body} ->
-        conn
-        |> put_resp_content_type("application/json")
-        |> put_resp_header("access-control-allow-origin", "*")
-        |> put_resp_header("access-control-allow-methods", "GET, OPTIONS")
-        |> send_resp(200, body)
-
-      {:ok, status, _headers, error_body} ->
-        Logger.error("[Auth] Failed to fetch Keycloak OIDC metadata: #{status} - #{error_body}")
-        send_resp(conn, 500, "Failed to fetch authorization server metadata")
-
-      {:error, reason} ->
-        Logger.error("[Auth] Failed to connect to Keycloak: #{inspect(reason)}")
-        send_resp(conn, 500, "Failed to fetch authorization server metadata")
-    end
-  end
 
   # RFC 8414 path insertion for MCP 2024-06-18 spec compatibility
   # Handles paths like /realms/semaphore when issuer has path component
@@ -461,11 +432,29 @@ defmodule Auth do
 
     case :hackney.request(:get, keycloak_oidc_url, [], "", [:with_body, recv_timeout: 10_000]) do
       {:ok, 200, _headers, body} ->
-        conn
-        |> put_resp_content_type("application/json")
-        |> put_resp_header("access-control-allow-origin", "*")
-        |> put_resp_header("access-control-allow-methods", "GET, OPTIONS")
-        |> send_resp(200, body)
+        # Parse Keycloak's OIDC metadata and rewrite OAuth endpoints
+        case Jason.decode(body) do
+          {:ok, metadata} ->
+            # Rewrite OAuth endpoints to point to Auth service
+            # This enables the OAuth Proxy Pattern for MCP grant selection
+            rewritten_metadata =
+              Map.merge(metadata, %{
+                "authorization_endpoint" => "https://mcp.#{domain}/exauth/oauth/authorize",
+                "token_endpoint" => "https://mcp.#{domain}/exauth/oauth/token",
+                "registration_endpoint" => "https://mcp.#{domain}/oauth/register"
+                # Keep issuer unchanged - must match JWT issuer claim from Keycloak
+              })
+
+            conn
+            |> put_resp_content_type("application/json")
+            |> put_resp_header("access-control-allow-origin", "*")
+            |> put_resp_header("access-control-allow-methods", "GET, OPTIONS")
+            |> send_resp(200, Jason.encode!(rewritten_metadata))
+
+          {:error, _reason} ->
+            Logger.error("[Auth] Failed to parse Keycloak OIDC metadata")
+            send_resp(conn, 500, "Failed to parse authorization server metadata")
+        end
 
       {:ok, status, _headers, error_body} ->
         Logger.error("[Auth] Failed to fetch Keycloak OIDC metadata: #{status} - #{error_body}")
@@ -477,14 +466,7 @@ defmodule Auth do
     end
   end
 
-  # CORS preflight for authorization server metadata on mcp. subdomain (base)
-  options "/exauth/.well-known/oauth-authorization-server", host: "mcp." do
-    conn
-    |> put_resp_header("access-control-allow-origin", "*")
-    |> put_resp_header("access-control-allow-methods", "GET, OPTIONS")
-    |> send_resp(204, "")
-  end
-
+  # NOTE: CORS preflight for base path is defined earlier (line 239)
   # CORS preflight for authorization server metadata on mcp. subdomain (with path)
   options "/exauth/.well-known/oauth-authorization-server/*_issuer_path", host: "mcp." do
     conn
