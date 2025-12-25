@@ -202,6 +202,32 @@ resource "keycloak_oidc_identity_provider" "gitlab_provider" {
   sync_mode = "IMPORT"
 }
 
+// CLIENT - guard
+// Guard service uses this client to authenticate users during MCP OAuth flow
+// This enables Guard to check if users are already logged in before showing grant selection UI
+resource "keycloak_openid_client" "guard" {
+  enabled       = true
+  realm_id      = keycloak_realm.semaphore_realm.id
+  name          = "Guard Service"
+  client_id     = "guard"
+
+  # Public client - no client secret needed for OIDC authentication
+  access_type           = "PUBLIC"
+  standard_flow_enabled = true
+
+  # Guard's OIDC callback endpoint
+  root_url    = "https://id.${var.base_domain}"
+  base_url    = "/"
+  valid_redirect_uris = [
+    "https://id.${var.base_domain}/oidc/callback*"
+  ]
+  web_origins = ["+"]  # Allow same origin
+
+  # Session settings
+  frontchannel_logout_enabled         = false
+  backchannel_logout_session_required = false
+}
+
 // MCP OAuth 2.1 Client Scope
 // This scope is used for Dynamic Client Registration (DCR) and MCP server access
 resource "keycloak_openid_client_scope" "mcp" {

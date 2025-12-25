@@ -343,7 +343,7 @@ defmodule Auth do
     domain = Application.fetch_env!(:auth, :domain)
 
     metadata = %{
-      resource: "https://mcp.#{domain}",
+      resource: "https://mcp.#{domain}/mcp",
       authorization_servers: ["https://id.#{domain}/realms/semaphore"],
       scopes_supported: ["mcp"],
       bearer_methods_supported: ["header"],
