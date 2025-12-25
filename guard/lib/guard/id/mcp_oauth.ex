@@ -72,8 +72,9 @@ defmodule Guard.Id.McpOAuth do
     # Store return URL in session and redirect to Keycloak
     base_url = System.get_env("BASE_DOMAIN") || "localhost"
 
+    # Keycloak 17+ uses path without /auth prefix
     keycloak_login_url =
-      "https://id.#{base_url}/auth/realms/semaphore/protocol/openid-connect/auth"
+      "https://id.#{base_url}/realms/semaphore/protocol/openid-connect/auth"
 
     # Build Keycloak login URL with return to this page
     # CRITICAL: Use URI.encode_query to properly encode ALL query parameters
@@ -321,8 +322,9 @@ defmodule Guard.Id.McpOAuth do
             # The Required Action will read grant_id from query param and set session notes
             keycloak_base_url = System.get_env("KEYCLOAK_BASE_URL") || "http://localhost:8080"
 
+            # Keycloak 17+ uses path without /auth prefix
             callback_url =
-              "#{keycloak_base_url}/auth/realms/semaphore/login-actions/required-action" <>
+              "#{keycloak_base_url}/realms/semaphore/login-actions/required-action" <>
                 "?session_code=#{URI.encode(state)}" <>
                 "&execution=MCP_GRANT_SELECTION" <>
                 "&mcp_grant_id=#{grant.id}" <>
