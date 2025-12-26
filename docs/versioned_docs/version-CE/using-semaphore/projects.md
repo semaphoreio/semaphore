@@ -189,7 +189,7 @@ To add or remove a user from a project, follow these steps:
 
 <Steps>
 
-1. Ensure the user is [already part of the Semaphore server](./organizations#add-people)
+1. Ensure the user is [already part of the Semaphore server](./user-management#add-people)
 2. Open your project
 3. Select the **People** tab
 4. Press **Add People**
@@ -220,7 +220,7 @@ The actions with enabled checkbox are allowed for that role.
 
 ### How to change the project's owner {#owner-change}
 
-Open the [project settings](#settings), under **Project Owner** type the username and press **Change**. The user must already have been [invited to the server](./organizations#add-people).
+Open the [project settings](#settings), under **Project Owner** type the username and press **Change**. The user must already have been [invited to the server](./user-management#add-people).
 
 ![Changing project owner](./img/change-project-owner.jpg)
 

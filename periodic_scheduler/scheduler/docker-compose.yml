@@ -1,6 +1,6 @@
 services:
   app:
-    build: 
+    build:
       context: ../..
       dockerfile: periodic_scheduler/scheduler/Dockerfile
       target: dev
@@ -26,6 +26,8 @@ services:
     tty: true
     volumes:
       - ../:/app:delegated
+      - /app/scheduler/_build
+      - /app/scheduler/deps
     working_dir: "/app/scheduler"
 
   ciapp:
@@ -39,7 +41,7 @@ services:
       SSH_AUTH_SOCK: ${SSH_AUTH_SOCK}
     depends_on:
       postgres:
-        condition: service_healthy      
+        condition: service_healthy
       rabbitmq:
         condition: service_healthy
     profiles: ["ci"]

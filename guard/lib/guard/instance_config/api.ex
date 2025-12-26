@@ -185,6 +185,7 @@ defmodule Guard.InstanceConfig.Api do
     end
   end
 
+  # sobelow_skip ["XSS.SendResp"]
   defp render_manifest_page(conn, assigns) do
     html_content =
       Guard.TemplateRenderer.render_template([assigns: assigns], "submit_manifest.html")

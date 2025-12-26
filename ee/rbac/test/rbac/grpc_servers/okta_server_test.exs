@@ -601,8 +601,7 @@ defmodule Rbac.GrpcServers.OktaServer.Test do
       assert {:ok, response} = InternalApi.Okta.Okta.Stub.set_up_mapping(channel, request)
       assert %InternalApi.Okta.SetUpMappingResponse{} = response
 
-      {:ok, idp_mapping} =
-        Rbac.Okta.IdpGroupMapping.get_for_organization(integration.org_id)
+      {:ok, idp_mapping} = Rbac.Okta.IdpGroupMapping.get_for_organization(integration.org_id)
 
       assert length(idp_mapping.group_mapping) == 2
       assert length(idp_mapping.role_mapping) == 1
@@ -800,8 +799,7 @@ defmodule Rbac.GrpcServers.OktaServer.Test do
 
       assert {:ok, channel} = GRPC.Stub.connect("localhost:50051")
 
-      assert {:error, error} =
-               InternalApi.Okta.Okta.Stub.set_up_mapping(channel, initial_request)
+      assert {:error, error} = InternalApi.Okta.Okta.Stub.set_up_mapping(channel, initial_request)
 
       assert error.message =~ "Invalid"
     end

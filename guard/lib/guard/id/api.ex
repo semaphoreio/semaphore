@@ -139,29 +139,30 @@ defmodule Guard.Id.Api do
   # Signup endpoint
   #
   get "/signup" do
-    ensure_empty_user(conn, fn ->
-      case default_login_method() do
-        method when method in ["local", "oidc"] ->
-          conn |> signup_page(method)
+    logged_in = conn.assigns[:user_id] != nil
 
-        unknown ->
-          Logger.error("Unknown default signup method: #{unknown}")
+    case default_login_method() do
+      method when method in ["local", "oidc"] ->
+        conn |> signup_page(method, logged_in)
 
-          conn |> error_login_page("Signup is disabled")
-      end
-    end)
+      unknown ->
+        Logger.error("Unknown default signup method: #{unknown}")
+        conn |> error_login_page("Signup is disabled")
+    end
   end
 
-  defp signup_page(conn, "local") do
+  defp signup_page(conn, "local", logged_in) do
     conn
     |> render_signup_page(
       github: id_page("github"),
       bitbucket: id_page("bitbucket"),
-      gitlab: id_page("gitlab") |> filter_gitlab()
+      gitlab: id_page("gitlab") |> filter_gitlab(),
+      logged_in: logged_in,
+      me_url: me_page()
     )
   end
 
-  defp signup_page(conn, "oidc") do
+  defp signup_page(conn, "oidc", logged_in) do
     if Guard.OIDC.enabled?() do
       oidc_callback = id_page("oidc/callback")
 
@@ -172,7 +173,9 @@ defmodule Guard.Id.Api do
           |> render_signup_page(
             github: "#{url}&kc_idp_hint=github",
             bitbucket: "#{url}&kc_idp_hint=bitbucket",
-            gitlab: "#{url}&kc_idp_hint=gitlab" |> filter_gitlab()
+            gitlab: "#{url}&kc_idp_hint=gitlab" |> filter_gitlab(),
+            logged_in: logged_in,
+            me_url: me_page()
           )
 
         {:error, error} ->
@@ -187,6 +190,7 @@ defmodule Guard.Id.Api do
     end
   end
 
+  # sobelow_skip ["XSS.SendResp"]
   defp render_signup_page(conn, assigns) do
     assigns =
       Keyword.merge(assigns,
@@ -265,25 +269,11 @@ defmodule Guard.Id.Api do
   defp login_page(conn, "root") do
     methods = Application.get_env(:guard, :root_login_methods)
 
-    assigns =
-      Enum.reduce(methods, [], fn method, acc ->
-        case method do
-          "github" ->
-            Keyword.merge(acc, github: id_page("github"))
-
-          "bitbucket" ->
-            Keyword.merge(acc, bitbucket: id_page("bitbucket"))
-
-          "gitlab" ->
-            Keyword.merge(acc, gitlab: id_page("gitlab") |> filter_gitlab())
-
-          _ ->
-            acc
-        end
-      end)
-
-    conn
-    |> render_login_page(assigns)
+    if Guard.OIDC.enabled?() do
+      root_oidc_login(conn, methods)
+    else
+      root_local_login(conn, methods)
+    end
   end
 
   defp login_page(conn, "local") do
@@ -317,6 +307,45 @@ defmodule Guard.Id.Api do
     end
   end
 
+  defp root_oidc_login(conn, _methods) do
+    oidc_callback = id_page("oidc/callback")
+
+    case Guard.OIDC.authorization_uri(oidc_callback) do
+      {:ok, {state, verifier, url}} ->
+        conn
+        |> Guard.Utils.Http.put_state_value(@state_cookie_key, {state, verifier})
+        |> render_login_page(github: "#{url}&kc_idp_hint=github")
+
+      {:error, error} ->
+        Logger.error("Error occurred while fetching authorization uri: #{inspect(error)}")
+
+        conn
+        |> error_login_page("Error occurred while fetching authorization uri")
+    end
+  end
+
+  defp root_local_login(conn, methods) do
+    assigns =
+      Enum.reduce(methods, [], fn method, acc ->
+        case method do
+          "github" ->
+            Keyword.merge(acc, github: id_page("oauth/github"))
+
+          "bitbucket" ->
+            Keyword.merge(acc, bitbucket: id_page("oauth/bitbucket"))
+
+          "gitlab" ->
+            Keyword.merge(acc, gitlab: id_page("oauth/gitlab") |> filter_gitlab())
+
+          _ ->
+            acc
+        end
+      end)
+
+    conn
+    |> render_login_page(assigns)
+  end
+
   defp render_login_page(conn, url) when is_binary(url) do
     if Application.get_env(:guard, :keycloak_login_page) do
       conn
@@ -331,6 +360,7 @@ defmodule Guard.Id.Api do
     end
   end
 
+  # sobelow_skip ["XSS.SendResp"]
   defp render_login_page(conn, assigns) do
     assigns =
       Keyword.merge(assigns,
@@ -403,6 +433,8 @@ defmodule Guard.Id.Api do
       with :ok <- Guard.OIDC.state_match?(state, callback_state),
            {:ok, {user_data, tokens}} <-
              Guard.OIDC.exchange_code(code, verifier, oidc_callback),
+           {:ok, allowed, error_message} <- verify_oidc_login_allowed(user_data),
+           true <- allowed || {:error, :login_not_allowed, error_message},
            {:ok, user, mode} <- find_or_create_user(user_data),
            {:ok, id_token_enc} <- Guard.OIDC.Token.encrypt(tokens[:id_token], user.id),
            {:ok, refresh_token_enc} <- Guard.OIDC.Token.encrypt(tokens[:refresh_token], user.id),
@@ -428,6 +460,15 @@ defmodule Guard.Id.Api do
           Logger.warning("State mismatch: #{inspect(state)} != #{inspect(callback_state)}")
 
           conn |> Guard.Utils.Http.redirect_to_url(id_page())
+
+        {:error, :login_not_allowed, message} ->
+          Logger.warning("Login not allowed: #{message}")
+
+          conn
+          |> redirect(:noop, %{
+            status: "error",
+            message: message || "Login not allowed. Please contact your administrator."
+          })
 
         {:error, :user_blocked, user} ->
           Logger.warning("User #{user.id} is blocked")
@@ -571,6 +612,78 @@ defmodule Guard.Id.Api do
 
             {:error, :user_creation_error}
         end
+    end
+  end
+
+  defp find_user(user_data) do
+    case Guard.OIDC.User.find_user_by_oidc_id(user_data[:oidc_user_id]) do
+      {:ok, user} ->
+        Logger.debug(
+          "Found user with oidc_user_id: #{inspect(user_data[:oidc_user_id])}: #{inspect(user)}"
+        )
+
+        case Guard.Store.User.Front.find(user.id) do
+          {:ok, front_user = %Guard.FrontRepo.User{blocked_at: nil}} ->
+            Logger.debug(
+              "Found front user with oidc_user_id: #{inspect(user_data[:oidc_user_id])}: #{inspect(front_user)}"
+            )
+
+            {:ok, front_user}
+
+          {:ok, _} ->
+            {:error, :user_blocked}
+
+          {:error, :not_found} ->
+            {:error, :user_not_found}
+        end
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  # Verifies if the user is allowed to login with OIDC when default login method is SAML
+  # Returns {:ok, boolean, error_message}
+  defp verify_oidc_login_allowed(user_data) do
+    Logger.debug("Verifying if OIDC login is allowed for user_data: #{inspect(user_data)}")
+
+    # If default login method is not SAML, always allow OIDC login
+    if default_login_method() != "saml" do
+      {:ok, true, nil}
+    else
+      verify_oidc_login_allowed_on_saml(user_data)
+    end
+  end
+
+  defp verify_oidc_login_allowed_on_saml(user_data) do
+    Logger.debug("Verifying if OIDC login is allowed for user_data: #{inspect(user_data)}")
+
+    case find_user(user_data) do
+      {:ok, user} ->
+        Logger.debug(
+          "Found user with oidc_user_id: #{inspect(user_data[:oidc_user_id])}: #{inspect(user)}"
+        )
+
+        verify_oidc_user_login_allowed_on_saml(user)
+
+      {:error, error} ->
+        Logger.error(
+          "Error finding user with user_data: #{inspect(user_data)} error: #{inspect(error)}"
+        )
+
+        {:ok, false,
+         "Login is not allowed when using SAML as the default authentication method. Please contact your administrator."}
+    end
+  end
+
+  defp verify_oidc_user_login_allowed_on_saml(user) do
+    if user != nil and user.creation_source == nil && !user.single_org_user do
+      {:ok, true, nil}
+    else
+      Logger.warning("OIDC login not allowed for this user")
+
+      {:ok, false,
+       "Login is not allowed when using SAML as the default authentication method. Please contact your administrator."}
     end
   end
 

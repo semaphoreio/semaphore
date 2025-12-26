@@ -315,12 +315,12 @@ defmodule Rbac.RoleManagement do
       "[Role Management] Assigning roles based of collaborators list for RBI: #{inspect(rbi)}"
     )
 
-    roles_to_be_assign =
+    roles_to_be_assigned =
       gen_query_to_assign_roles_to_collaborators(rbi)
       |> Rbac.Repo.all()
 
     list_of_subject_role_bindings =
-      Enum.map(roles_to_be_assign, fn binding ->
+      Enum.map(roles_to_be_assigned, fn binding ->
         %{
           role_id:
             Rbac.Repo.RepoToRoleMapping.get_project_role_from_repo_access_rights(
@@ -335,6 +335,7 @@ defmodule Rbac.RoleManagement do
           binding_source: String.to_atom(binding[:provider])
         }
       end)
+      |> Enum.filter(fn binding -> binding.role_id != nil end)
 
     assign_roles(list_of_subject_role_bindings, rbi)
   end

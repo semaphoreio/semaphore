@@ -16,6 +16,14 @@ defmodule Front do
   end
 
   @doc """
+  Check if it's specifically the on-prem edition
+  """
+  @spec onprem?() :: boolean()
+  def onprem? do
+    Application.get_env(:front, :edition) == "onprem"
+  end
+
+  @doc """
   Check if it's OS edition
   """
   @spec os?() :: boolean()
@@ -28,6 +36,6 @@ defmodule Front do
   """
   @spec saas?() :: boolean()
   def saas? do
-    !os?()
+    !os?() && !onprem?()
   end
 end

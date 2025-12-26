@@ -113,6 +113,15 @@ defmodule Secrethub.OpenIDConnect.JWTClaim do
         is_mandatory: false,
         is_active: true
       },
+      "sub127" => %__MODULE__{
+        name: "sub127",
+        description:
+          "Compact subject (org:project_id:repo:ref_type:ref) stripped of ':' characters, ref without leading 'refs/', capped at 127 chars",
+        is_system_claim: true,
+        is_aws_tag: false,
+        is_mandatory: false,
+        is_active: true
+      },
       "org_id" => %__MODULE__{
         name: "org_id",
         description: "Organization ID",

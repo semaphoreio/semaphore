@@ -21,7 +21,7 @@ Linux machines are provided in four generations. The following table shows what 
 | [E1](#e1) | Intel x86_64 | [Ubuntu 20.04](./os-ubuntu-images/ubuntu-2004-image) |  Yes |
 | [E2](#e2) | Intel x86_64 | [Ubuntu 22.04](./os-ubuntu-images/ubuntu-2204-image)<br/>[Ubuntu 20.04](./os-ubuntu-images/ubuntu-2004-image) | Yes |
 | [F1](#f1) | Intel x86_64 | [Ubuntu 24.04](./os-ubuntu-images/ubuntu-2404-image) <br/> [Ubuntu 22.04](./os-ubuntu-images/ubuntu-2204-image)<br/>[Ubuntu 20.04](./os-ubuntu-images/ubuntu-2004-image) | Yes |
-| [R1](#r1) | ARM | [Ubuntu 22.04 ARM](./os-ubuntu-images/ubuntu-2204-arm-image) | No |
+| [R1](#r1) | ARM | [Ubuntu 24.04 ARM](./os-ubuntu-images/ubuntu-2404-arm-image) | No |
 
 ### E1 generation {#e1}
 
@@ -65,6 +65,7 @@ The E2 generation is presented in the following types:
 
 E2 machines can also be paired with:
 
+- [`ubuntu2404`](../reference/os-ubuntu-images/ubuntu-2404-image)
 - [`ubuntu2204`](../reference/os-ubuntu-images/ubuntu-2204-image)
 - [`ubuntu2004`](../reference/os-ubuntu-images/ubuntu-2004-image)
 - [Docker-based environments](../using-semaphore/pipelines#docker-environments).
@@ -95,7 +96,7 @@ F1 machines can be paired with:
 
 ### R1 generation {#r1}
 
-These are ARM machines. They currently in the **Technical Preview stage**. If you're interested in trying them out, please contact our support team.
+These are ARM machines.
 
 Implementation details:
 
@@ -112,7 +113,7 @@ The r1 generation is presented in the following types:
 
 R1 Generation machine types can only be paired with:
 
-- [`ubuntu2204`](../reference/os-ubuntu-images/ubuntu-2204-arm-image) ARM version
+- [`ubuntu2404`](../reference/os-ubuntu-images/ubuntu-2404-arm-image) ARM version
 
 ## Apple machines {#macos}
 
@@ -120,15 +121,12 @@ Semaphore Cloud provides the following Apple machine types:
 
 | Type | Virtual CPUs | Architecture | OS Supported | Memory | Disk |
 |--|--|--|--|--|--|
-| `a1-standard-4` | 4 | x86_64 (AMD) | [macOS Xcode15](./os-apple#mac-15) | 8 | 150 |
-| `a2-standard-4` | 4 | Apple Silicon | [macOS Xcode15](./os-apple#mac-15)<br/>[macOS Xcode16](./os-apple#mac-16) | 8 | 150 |
-
-A1 machines can only be paired with [macOS Xcode15](./os-apple#mac-15).
+| `a2-standard-4` | 4 | Apple Silicon | [macOS Xcode16](./os-apple#mac-16)<br/>[macOS Xcode26](./os-apple#mac-26) | 8 | 150 |
 
 A2 machines can be paired with:
 
-- [macOS Xcode15](./os-apple#mac-15)
 - [macOS Xcode16](./os-apple#mac-16)
+- [macOS Xcode26](./os-apple#mac-26)
 
 ## See also
 

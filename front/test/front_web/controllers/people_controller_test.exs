@@ -36,6 +36,46 @@ defmodule FrontWeb.PeopleControllerTest do
     ]
   end
 
+  describe "GET organization_users" do
+    test "when the user can't access the org => returns 404", %{
+      conn: conn
+    } do
+      PermissionPatrol.remove_all_permissions()
+
+      conn =
+        conn
+        |> get("/people/export")
+
+      assert html_response(conn, 404) =~ "404"
+    end
+
+    test "when the user can access the org => send csv", %{
+      conn: conn
+    } do
+      conn =
+        conn
+        |> get("/people/export")
+
+      assert response_content_type(conn, :csv)
+
+      rows =
+        conn.resp_body
+        |> String.split("\r\n", trim: true)
+        |> CSV.decode!(validate_row_length: true, headers: true)
+        |> Enum.to_list()
+
+      assert length(rows) == 8
+
+      first = List.first(rows)
+
+      assert Map.has_key?(first, "name")
+      assert Map.has_key?(first, "email")
+      assert Map.has_key?(first, "github_login")
+      assert Map.has_key?(first, "bitbucket_login")
+      assert Map.has_key?(first, "gitlab_login")
+    end
+  end
+
   describe "GET show" do
     test "when the user can't access the org => returns 404", %{
       conn: conn,

@@ -138,4 +138,55 @@ defmodule FrontWeb.ServiceAccountController do
         |> json(%{error: message})
     end
   end
+
+  def export(conn, _params) do
+    org_id = conn.assigns.organization_id
+
+    data =
+      Stream.unfold(1, fn
+        nil ->
+          nil
+
+        page ->
+          case Models.ServiceAccount.list(org_id, page) do
+            {:ok, {service_accounts, total_pages}} ->
+              {service_accounts, next_valid_page_or_nil(total_pages, page)}
+
+            _ ->
+              nil
+          end
+      end)
+      |> Enum.flat_map(& &1)
+      |> Enum.map(fn e ->
+        %{
+          "name" => e.name,
+          "description" => e.description,
+          "deactivated" => e.deactivated,
+          "created_at" => e.created_at,
+          "updated_at" => e.created_at
+        }
+      end)
+      |> CSV.encode(
+        headers: [
+          "name",
+          "description",
+          "deactivated",
+          "created_at",
+          "updated_at"
+        ]
+      )
+      |> Enum.to_list()
+
+    send_download(conn, {:binary, data}, filename: "service_accounts.csv")
+  end
+
+  defp next_valid_page_or_nil(total_pages, page) do
+    next_page_no = page + 1
+
+    if next_page_no <= total_pages do
+      next_page_no
+    else
+      nil
+    end
+  end
 end

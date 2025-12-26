@@ -1,7 +1,6 @@
-version: '3.6'
+version: "3.6"
 
 services:
-
   app:
     build:
       context: ..
@@ -20,6 +19,8 @@ services:
     tty: true
     volumes:
       - .:/app
+      - /app/deps
+      - /app/_build
 
     links:
       - db:db
@@ -46,7 +47,7 @@ services:
       - postgres-data:/var/lib/postgresql/data
     environment:
       POSTGRES_PASSWORD: "the-cake-is-a-lie"
-  
+
   rabbitmq:
     image: rabbitmq:3-management
     ports:

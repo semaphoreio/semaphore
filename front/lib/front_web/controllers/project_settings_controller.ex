@@ -344,7 +344,7 @@ defmodule FrontWeb.ProjectSettingsController do
 
       changeset = DeletionValidator.run(project, params)
 
-      if Front.os?() or changeset.valid? do
+      if !Front.saas?() or changeset.valid? do
         case Project.destroy(project.id, user_id, org_id) do
           {:ok, _} ->
             conn

@@ -8,6 +8,8 @@ defmodule Secrethub.OpenIDConnect.JWT do
     "jti",
     # Subject of the JWT
     "sub",
+    # Compact subject limited to 127 chars (org:project_id:repo:ref_type:ref)
+    "sub127",
     # Recipient for which the JWT is intended
     "aud",
     # Issuer of the JWT
@@ -54,6 +56,14 @@ defmodule Secrethub.OpenIDConnect.JWT do
   ]
 
   @aws_tags_claim "https://aws.amazon.com/tags"
+  @max_subject_length 127
+  @truncate_rules %{
+    org: 25,
+    project_id: 36,
+    repo: 25,
+    ref_type: 2,
+    ref: 35
+  }
 
   @algo "RS256"
 
@@ -114,6 +124,7 @@ defmodule Secrethub.OpenIDConnect.JWT do
       "branch" => req.git_branch_name,
       "pr" => req.git_pull_request_number,
       "sub" => req.subject,
+      "sub127" => build_subject_127(req),
       "iss" => "https://#{req.org_username}.#{domain}",
       "aud" => "https://#{req.org_username}.#{domain}",
       "job_type" => req.job_type,
@@ -153,4 +164,67 @@ defmodule Secrethub.OpenIDConnect.JWT do
 
     Secrethub.OpenIDConnect.JWTFilter.filter_claims(claims, req.org_id, req.project_id)
   end
+
+  defp build_subject_127(req) do
+    org =
+      req.org_username
+      |> sanitize()
+      |> cap(:org)
+
+    project =
+      req.project_id
+      |> sanitize()
+      |> cap(:project_id)
+
+    repo =
+      req.repository_name
+      |> sanitize()
+      |> cap(:repo)
+
+    ref_type =
+      req.git_ref_type
+      |> sanitize()
+      |> short_ref_type()
+      |> cap(:ref_type)
+
+    ref =
+      req.git_ref
+      |> sanitize()
+      |> trim_refs_prefix()
+      |> cap(:ref)
+
+    [org, project, repo, ref_type, ref]
+    |> Enum.join(":")
+    |> String.slice(0, @max_subject_length)
+  end
+
+  defp sanitize(nil), do: ""
+
+  defp sanitize(value) when is_binary(value) do
+    String.replace(value, ":", "")
+  end
+
+  defp sanitize(value) do
+    value
+    |> to_string()
+    |> sanitize()
+  end
+
+  defp trim_refs_prefix("refs/" <> rest), do: rest
+  defp trim_refs_prefix(value), do: value
+
+  defp cap(value, key) do
+    limit = Map.fetch!(@truncate_rules, key)
+    String.slice(value, 0, limit) || ""
+  end
+
+  defp short_ref_type("branch"), do: "br"
+  defp short_ref_type("tag"), do: "tg"
+  defp short_ref_type("pull_request"), do: "pr"
+  defp short_ref_type("pull-request"), do: "pr"
+
+  defp short_ref_type(value) when is_binary(value) and byte_size(value) > 2,
+    do: String.slice(value, 0, 2)
+
+  defp short_ref_type(value), do: value
 end

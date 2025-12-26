@@ -3,6 +3,7 @@ import $ from "jquery"
 import { TriggerEvent } from "./trigger_event"
 import { Pollman } from "../pollman"
 import { TargetParams } from "./target_params"
+import { Utils } from "../utils"
 
 export var Switch = {
   init: function() {
@@ -40,7 +41,8 @@ export var Switch = {
       Switch.askToConfirmPromotion(switchId, promotionTarget);
 
       // Focus on first input or select in the promotion box
-      const promotionForm = $(`[data-promotion-target="${promotionTarget}"]`);
+      const escapedPromotionTarget = Utils.escapeCSSAttributeValue(promotionTarget);
+      const promotionForm = $(`[data-promotion-target="${escapedPromotionTarget}"]`);
       const firstInput = promotionForm.find('input, select').first();
       if (firstInput.length) {
         if (firstInput[0].tomselect) {
@@ -82,8 +84,9 @@ export var Switch = {
         Pollman.start();
         alert("Something went wrong. Please try again.");
 
-        $(`[switch='${parentPromotionSwitch}'] [data-promotion-target='${parentPromotionTarget}'][promote-button]`).removeAttr("disabled");
-        $(`[switch='${parentPromotionSwitch}'] [data-promotion-target='${parentPromotionTarget}'][promote-button]`).removeClass("btn-working");
+        let escapedTarget = Utils.escapeCSSAttributeValue(parentPromotionTarget);
+        $(`[switch='${parentPromotionSwitch}'] [data-promotion-target='${escapedTarget}'][promote-button]`).removeAttr("disabled");
+        $(`[switch='${parentPromotionSwitch}'] [data-promotion-target='${escapedTarget}'][promote-button]`).removeClass("btn-working");
       });
     })
   },
@@ -96,9 +99,10 @@ export var Switch = {
 
       let promotionTarget = Switch.parentPromotionTarget(target)
       let promotionSwitch = Switch.parentSwitch(target)
+      let escapedTarget = Utils.escapeCSSAttributeValue(promotionTarget);
 
-      $(`[switch='${promotionSwitch}'] [data-promotion-target='${promotionTarget}'][promote-confirmation]`).hide();
-      $(`[switch='${promotionSwitch}'] [data-promotion-target='${promotionTarget}'][promote-button]`).show();
+      $(`[switch='${promotionSwitch}'] [data-promotion-target='${escapedTarget}'][promote-confirmation]`).hide();
+      $(`[switch='${promotionSwitch}'] [data-promotion-target='${escapedTarget}'][promote-button]`).show();
 
       Pollman.pollNow();
       Pollman.start();
@@ -138,18 +142,21 @@ export var Switch = {
 
   askToConfirmPromotion: function(promotionSwitch, promotionTarget) {
     Switch.hidePromotionBoxElements(promotionSwitch, promotionTarget);
-    $(`[switch='${promotionSwitch}'] [data-promotion-target='${promotionTarget}'][promote-confirmation]`).show();
+    let escapedTarget = Utils.escapeCSSAttributeValue(promotionTarget);
+    $(`[switch='${promotionSwitch}'] [data-promotion-target='${escapedTarget}'][promote-confirmation]`).show();
   },
 
   hidePromotionBoxElements: function(promotionSwitch, promotionTarget) {
-    $(`[switch='${promotionSwitch}'] [promotion-box][data-promotion-target='${promotionTarget}']`).children().hide();
+    let escapedTarget = Utils.escapeCSSAttributeValue(promotionTarget);
+    $(`[switch='${promotionSwitch}'] [promotion-box][data-promotion-target='${escapedTarget}']`).children().hide();
   },
 
   showPromotingInProgress(promotionSwitch, promotionTarget) {
-    $(`[switch='${promotionSwitch}'] [data-promotion-target='${promotionTarget}'][promote-confirmation]`).hide();
-    $(`[switch='${promotionSwitch}'] [data-promotion-target='${promotionTarget}'][promote-button]`).show();
-    $(`[switch='${promotionSwitch}'] [data-promotion-target='${promotionTarget}'][promote-button]`).attr("disabled", "");
-    $(`[switch='${promotionSwitch}'] [data-promotion-target='${promotionTarget}'][promote-button]`).addClass("btn-working");
+    let escapedTarget = Utils.escapeCSSAttributeValue(promotionTarget);
+    $(`[switch='${promotionSwitch}'] [data-promotion-target='${escapedTarget}'][promote-confirmation]`).hide();
+    $(`[switch='${promotionSwitch}'] [data-promotion-target='${escapedTarget}'][promote-button]`).show();
+    $(`[switch='${promotionSwitch}'] [data-promotion-target='${escapedTarget}'][promote-button]`).attr("disabled", "");
+    $(`[switch='${promotionSwitch}'] [data-promotion-target='${escapedTarget}'][promote-button]`).addClass("btn-working");
     Switch.afterResize(promotionSwitch);
   },
 
@@ -167,7 +174,8 @@ export var Switch = {
   },
 
   latestTriggerEvent: function(promotionSwitch, promotionTarget) {
-    return $(`[switch='${promotionSwitch}'] [trigger-event][data-promotion-target='${promotionTarget}']`).first();
+    let escapedTarget = Utils.escapeCSSAttributeValue(promotionTarget);
+    return $(`[switch='${promotionSwitch}'] [trigger-event][data-promotion-target='${escapedTarget}']`).first();
   },
 
   isProcessed: function(triggerEvent) {

@@ -53,7 +53,7 @@ To create a notification, navigate to **Notifications** and press **New Notifica
 
 :::note
 
-Regular expressions must wrapped in forward slashes, e.g. `/.*/` matches all values. You can use regular expressions in Projects, Branches, and Pipelines.
+Regular expressions must wrapped in forward slashes, e.g. `/.*/` matches all values. You can use regular expressions in Projects, Branches, Tags, and Pipelines.
 
 :::
 
@@ -114,8 +114,7 @@ sem create notification <name> \
 
 Use the [Slack webhook](https://slack.com/help/articles/360041352714-Build-a-workflow--Create-a-workflow-that-starts-outside-of-Slack) for your Slack Workspace
 
-For example, to create a notification on the "web", "cli", and "api" projects on the "master" branch:
-
+For example, to create a notification on the "web", "cli", and "api" projects on the "master" branch **or** on tags ending with "-rc" (like "v1.0-rc")
 
 ```shell title="Sending Slack notifications on a list of projects"
 sem create notification master-pipelines \
@@ -144,12 +143,13 @@ sem create notifications new-releases \
     --slack-channels "#dev-team,#qa-team"
 ```
 
-The `--branches`, `--projects` and `--pipelines` options accept regular expressions. For example:
+The `--branches`, `--tags`, `--projects`, and `--pipelines` options accept regular expressions. For example:
 
 ```shell title="Sending Slack notifications on branches"
 sem create notifications example \
     --projects "/.*api$/" \
     --branches "master,/hotfix\/.*/" \
+    --tags "/-rc$/" \
     --pipelines "/prod-.*/" \
     --slack-endpoint <slack-webhook-endpoint>
 ```

@@ -268,7 +268,7 @@ Create custom roles to give your users the precise permissions they need.
 
 ### How to change the project's owner {#owner-change}
 
-Open the [project settings](#settings), under **Project Owner** type the username and press **Change**. The user must already have been [invited to the server](./organizations#add-people).
+Open the [project settings](#settings), under **Project Owner** type the username and press **Change**. The user must already have been [invited to the server](./user-management#add-people).
 
 ![Changing project owner](./img/change-project-owner.jpg)
 
