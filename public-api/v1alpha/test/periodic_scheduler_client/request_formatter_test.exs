@@ -119,6 +119,19 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.RequestFormatter.Test do
     assert request.requester_id == ""
   end
 
+  test "form_list_request() converts pagination params provided as strings" do
+    conn = create_conn(:describe)
+
+    params = %{
+      "project_id" => UUID.uuid4(),
+      "page" => "3",
+      "page_size" => "25"
+    }
+
+    assert {:ok, %ListRequest{page: 3, page_size: 25}} =
+             RequestFormatter.form_list_request(params, conn)
+  end
+
   # Run Now
 
   test "form_run_now_request() returns internal error when it is not called with map as a param" do

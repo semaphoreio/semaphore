@@ -126,6 +126,8 @@ defmodule FrontWeb.Router do
 
     get("/settings/confirm_delete", SettingsController, :confirm_delete)
 
+    post("/settings/confirm_enforce", SettingsController, :confirm_enforce_workflow)
+
     delete("/settings", SettingsController, :destroy)
 
     get("/jwt_config", OrganizationJWTConfigController, :show)
@@ -152,6 +154,7 @@ defmodule FrontWeb.Router do
 
     scope "/people" do
       get("/", PeopleController, :organization)
+      get("/export", PeopleController, :organization_users)
       post("/", PeopleController, :create)
       post("/refresh", PeopleController, :refresh)
       post("/assign_role", PeopleController, :assign_role)
@@ -175,6 +178,7 @@ defmodule FrontWeb.Router do
     scope "/service_accounts" do
       get("/", ServiceAccountController, :index)
       post("/", ServiceAccountController, :create)
+      get("/export", ServiceAccountController, :export)
       get("/:id", ServiceAccountController, :show)
       put("/:id", ServiceAccountController, :update)
       delete("/:id", ServiceAccountController, :delete)

@@ -127,7 +127,7 @@
       <%= support_requests_card(@conn, @layout_model) %>
       <%= render FrontWeb.LayoutView, "page_header/_menu_card.html",
             options: [target: "_blank", rel: "noopener"],
-            card_url: "https://status.#{Application.fetch_env!(:front, :domain)}",
+            card_url: Application.fetch_env!(:front, :status_page_url),
             card_title: "Status",
             card_description: "Live system health",
             tooltip: false %>

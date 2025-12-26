@@ -23,14 +23,18 @@ defmodule Rbac.Repo.RepoToRoleMapping do
       - pull_acess (boolean) Whehter you have pull access on specific repo
   """
   @spec get_project_role_from_repo_access_rights(String.t(), boolean(), boolean(), boolean()) ::
-          String.t()
+          String.t() | nil
   def get_project_role_from_repo_access_rights(org_id, admin_access, push_access, pull_access) do
-    repo_to_role_mapping = get_repo_to_role_mapping(org_id)
+    case get_repo_to_role_mapping(org_id) do
+      nil ->
+        nil
 
-    case {admin_access, push_access, pull_access} do
-      {true, _, _} -> Map.get(repo_to_role_mapping, :admin_access_role_id)
-      {false, true, _} -> Map.get(repo_to_role_mapping, :push_access_role_id)
-      {false, false, true} -> Map.get(repo_to_role_mapping, :pull_access_role_id)
+      mapping ->
+        case {admin_access, push_access, pull_access} do
+          {true, _, _} -> mapping.admin_access_role_id
+          {false, true, _} -> mapping.push_access_role_id
+          {false, false, true} -> mapping.pull_access_role_id
+        end
     end
   end
 

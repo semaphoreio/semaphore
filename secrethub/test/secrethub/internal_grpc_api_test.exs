@@ -798,17 +798,27 @@ defmodule Secrethub.InternalGrpcApi.Test do
   describe ".generate_openid_connect_token" do
     test "it returns a signed token, no AWS tags field" do
       org_id = Ecto.UUID.generate()
+      project_id = Ecto.UUID.generate()
+      repo = "web"
+      ref_type = "branch"
+      git_ref = "refs/heads/main"
 
       req =
         GenerateOpenIDConnectTokenRequest.new(
           org_id: org_id,
           org_username: "testera",
           expire_in: 3600,
-          subject: "project:front:pipeline:semaphore.yml",
-          project_id: Ecto.UUID.generate(),
+          subject:
+            "org:testera:project:#{project_id}:repo:#{repo}:ref_type:#{ref_type}:ref:#{git_ref}",
+          project_id: project_id,
           workflow_id: Ecto.UUID.generate(),
           pipeline_id: Ecto.UUID.generate(),
           job_id: Ecto.UUID.generate(),
+          repository_name: repo,
+          git_ref_type: ref_type,
+          git_ref: git_ref,
+          git_branch_name: "main",
+          repo_slug: "renderedtext/#{repo}",
           job_type: "pipeline_job",
           project_name: "my-project"
         )
@@ -834,7 +844,12 @@ defmodule Secrethub.InternalGrpcApi.Test do
       assert Map.get(jwt.fields, "job_type") == req.job_type
       assert Map.get(jwt.fields, "aud") == "https://testera.localhost"
       assert Map.get(jwt.fields, "iss") == "https://testera.localhost"
-      assert Map.get(jwt.fields, "sub") == "project:front:pipeline:semaphore.yml"
+
+      assert Map.get(jwt.fields, "sub") == req.subject
+
+      assert Map.get(jwt.fields, "sub127") ==
+               "testera:#{project_id}:#{repo}:br:heads/main"
+
       assert Map.get(jwt.fields, "prj") == req.project_name
       assert Map.get(jwt.fields, "org") == req.org_username
       refute Map.has_key?(jwt.fields, "https://aws.amazon.com/tags")
@@ -843,20 +858,26 @@ defmodule Secrethub.InternalGrpcApi.Test do
     test "it returns a signed token, with AWS tags field" do
       Support.FakeServices.enable_features(["open_id_connect_aws_tags"])
       org_id = Ecto.UUID.generate()
+      project_id = Ecto.UUID.generate()
+      repo = "my-repo"
+      ref_type = "branch"
+      git_ref = "refs/heads/main"
 
       req =
         GenerateOpenIDConnectTokenRequest.new(
           org_id: org_id,
           org_username: "testera",
           expire_in: 3600,
-          subject: "project:front:pipeline:semaphore.yml",
-          project_id: Ecto.UUID.generate(),
+          subject:
+            "org:testera:project:#{project_id}:repo:#{repo}:ref_type:#{ref_type}:ref:#{git_ref}",
+          project_id: project_id,
           workflow_id: Ecto.UUID.generate(),
           pipeline_id: Ecto.UUID.generate(),
           job_id: Ecto.UUID.generate(),
-          git_branch_name: "master",
-          repository_name: "my-repo",
-          git_ref_type: "branch",
+          git_branch_name: "main",
+          repository_name: repo,
+          git_ref_type: ref_type,
+          git_ref: git_ref,
           job_type: "debug_job",
           repo_slug: "renderedtext/front",
           triggerer: "h:f,i:f"
@@ -885,9 +906,9 @@ defmodule Secrethub.InternalGrpcApi.Test do
       assert Map.get(jwt.fields, "https://aws.amazon.com/tags") == %{
                "principal_tags" => %{
                  "prj_id" => [req.project_id],
-                 "repo" => [req.repository_name],
+                 "repo" => [repo],
                  "branch" => [req.git_branch_name],
-                 "ref_type" => [req.git_ref_type],
+                 "ref_type" => [ref_type],
                  "job_type" => [req.job_type],
                  "pr_branch" => [""],
                  "repo_slug" => [req.repo_slug],
@@ -907,26 +928,157 @@ defmodule Secrethub.InternalGrpcApi.Test do
 
       assert Map.get(jwt.fields, "aud") == "https://testera.localhost"
       assert Map.get(jwt.fields, "iss") == "https://testera.localhost"
-      assert Map.get(jwt.fields, "sub") == "project:front:pipeline:semaphore.yml"
+
+      assert Map.get(jwt.fields, "sub") == req.subject
+
+      assert Map.get(jwt.fields, "sub127") ==
+               "testera:#{project_id}:#{repo}:br:heads/main"
+    end
+
+    test "sub127 claim sanitizes values, trims refs/ prefix, caps lengths, and stays within 127 chars" do
+      long_org = String.duplicate("org-with:colon:", 10)
+      long_repo = String.duplicate("repo-with:colon:", 10)
+      long_ref = "refs/" <> String.duplicate("feature/super-long:ref/", 12)
+      project_id = Ecto.UUID.generate()
+
+      req =
+        GenerateOpenIDConnectTokenRequest.new(
+          org_id: Ecto.UUID.generate(),
+          org_username: long_org,
+          expire_in: 3600,
+          subject:
+            "org:#{long_org}:project:#{project_id}:repo:#{long_repo}:ref_type:branch:ref:#{long_ref}",
+          project_id: project_id,
+          workflow_id: Ecto.UUID.generate(),
+          pipeline_id: Ecto.UUID.generate(),
+          job_id: Ecto.UUID.generate(),
+          git_branch_name: "master",
+          repository_name: long_repo,
+          git_ref_type: "branch",
+          git_ref: long_ref,
+          job_type: "pipeline_job",
+          repo_slug: "renderedtext/front",
+          triggerer: "api"
+        )
+
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+
+      assert {:ok, response} = SecretService.Stub.generate_open_id_connect_token(channel, req)
+      assert {true, jwt, _} = Secrethub.OpenIDConnect.JWT.verify(response.token)
+
+      claim = Map.fetch!(jwt.fields, "sub127")
+      parts = String.split(claim, ":", parts: 5, trim: false)
+
+      assert length(parts) == 5
+      assert Enum.all?(parts, &(not String.contains?(&1, ":")))
+      assert String.length(claim) <= 127
+
+      expected_org =
+        long_org
+        |> String.replace(":", "")
+        |> String.slice(0, 25)
+
+      expected_repo =
+        long_repo
+        |> String.replace(":", "")
+        |> String.slice(0, 25)
+
+      expected_ref_full =
+        long_ref
+        |> String.replace(":", "")
+        |> String.replace_prefix("refs/", "")
+
+      expected_ref =
+        expected_ref_full
+        |> String.slice(0, 35)
+
+      expected =
+        Enum.join(
+          [
+            expected_org,
+            String.slice(req.project_id, 0, 36),
+            expected_repo,
+            "br",
+            expected_ref
+          ],
+          ":"
+        )
+
+      assert claim == expected
+      assert Enum.at(parts, 0) == expected_org
+      assert Enum.at(parts, 1) == String.slice(req.project_id, 0, 36)
+      assert Enum.at(parts, 2) == expected_repo
+      assert Enum.at(parts, 3) == "br"
+      assert Enum.at(parts, 4) == expected_ref
+      assert String.length(Enum.at(parts, 0)) <= 25
+      assert String.length(Enum.at(parts, 2)) <= 25
+      assert String.length(Enum.at(parts, 4)) <= 35
+
+      assert Map.fetch!(jwt.fields, "sub") == req.subject
+    end
+
+    test "sub127 claim shortens ref types to two characters" do
+      org_id = Ecto.UUID.generate()
+      project_id = Ecto.UUID.generate()
+
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+
+      for {ref_type, expected} <- [
+            {"branch", "br"},
+            {"tag", "tg"},
+            {"pull_request", "pr"},
+            {"pull-request", "pr"},
+            {"custom", "cu"},
+            {"", ""}
+          ] do
+        req =
+          GenerateOpenIDConnectTokenRequest.new(
+            org_id: org_id,
+            org_username: "organization",
+            expire_in: 3600,
+            subject: "sub",
+            project_id: project_id,
+            workflow_id: Ecto.UUID.generate(),
+            pipeline_id: Ecto.UUID.generate(),
+            job_id: Ecto.UUID.generate(),
+            repository_name: "repository",
+            git_ref_type: ref_type,
+            git_ref: "feature/example",
+            job_type: "pipeline_job"
+          )
+
+        assert {:ok, response} = SecretService.Stub.generate_open_id_connect_token(channel, req)
+        assert {true, jwt, _} = Secrethub.OpenIDConnect.JWT.verify(response.token)
+
+        claim = Map.fetch!(jwt.fields, "sub127")
+        [_org, _project, _repo, actual, _ref] = String.split(claim, ":", parts: 5, trim: false)
+        assert actual == expected
+      end
     end
 
     test "it returns a signed token with filtered claims in on_prem mode" do
       Support.FakeServices.enable_features(["open_id_connect_aws_tags", "open_id_connect_filter"])
       org_id = Ecto.UUID.generate()
+      project_id = Ecto.UUID.generate()
+      repo = "my-repo"
+      ref_type = "branch"
+      git_ref = "refs/heads/master"
 
       req =
         GenerateOpenIDConnectTokenRequest.new(
           org_id: org_id,
           org_username: "testera",
           expire_in: 3600,
-          subject: "project:front:pipeline:semaphore.yml",
-          project_id: Ecto.UUID.generate(),
+          subject:
+            "org:testera:project:#{project_id}:repo:#{repo}:ref_type:#{ref_type}:ref:#{git_ref}",
+          project_id: project_id,
           workflow_id: Ecto.UUID.generate(),
           pipeline_id: Ecto.UUID.generate(),
           job_id: Ecto.UUID.generate(),
           git_branch_name: "master",
-          repository_name: "my-repo",
-          git_ref_type: "branch",
+          repository_name: repo,
+          git_ref_type: ref_type,
+          git_ref: git_ref,
           job_type: "debug_job",
           repo_slug: "renderedtext/front",
           triggerer: "h:f-i:f",
@@ -941,7 +1093,11 @@ defmodule Secrethub.InternalGrpcApi.Test do
         now = epoch()
 
         # Essential claims should be present
-        assert Map.get(jwt.fields, "sub") == "project:front:pipeline:semaphore.yml"
+        assert Map.get(jwt.fields, "sub") == req.subject
+
+        assert Map.get(jwt.fields, "sub127") ==
+                 "testera:#{project_id}:#{repo}:br:heads/master"
+
         assert Map.get(jwt.fields, "aud") == "https://testera.localhost"
         assert Map.get(jwt.fields, "iss") == "https://testera.localhost"
         assert_in_delta Map.get(jwt.fields, "exp") + req.expires_in, now, 5
@@ -1022,8 +1178,8 @@ defmodule Secrethub.InternalGrpcApi.Test do
     } do
       claim_config =
         ClaimConfig.new(
-          name: "sub2",
-          description: "Subject identifier",
+          name: "custom_claim",
+          description: "Test custom claim",
           is_active: true,
           is_mandatory: true,
           is_aws_tag: false,
@@ -1046,8 +1202,8 @@ defmodule Secrethub.InternalGrpcApi.Test do
     test "with empty org_id returns error", %{project_id: project_id, channel: channel} do
       claim_config =
         ClaimConfig.new(
-          name: "sub2",
-          description: "Subject identifier",
+          name: "custom_claim",
+          description: "Test custom claim",
           is_active: true,
           is_mandatory: true,
           is_aws_tag: false,
@@ -1161,8 +1317,8 @@ defmodule Secrethub.InternalGrpcApi.Test do
       # Set up initial JWT configuration
       claim_config =
         ClaimConfig.new(
-          name: "sub2",
-          description: "Subject identifier",
+          name: "custom_claim",
+          description: "Test custom claim",
           is_active: true,
           is_mandatory: true,
           is_aws_tag: false,
@@ -1221,8 +1377,8 @@ defmodule Secrethub.InternalGrpcApi.Test do
           project_id: "",
           claims: [
             ClaimConfig.new(
-              name: "sub2",
-              description: "Subject identifier",
+              name: "custom_claim",
+              description: "Test custom claim",
               is_active: true,
               is_mandatory: true,
               is_aws_tag: false,
@@ -1249,8 +1405,8 @@ defmodule Secrethub.InternalGrpcApi.Test do
       refute is_nil(response.project_id), "Expected project_id not to be nil"
 
       expected_claim = %{
-        name: "sub2",
-        description: "Subject identifier",
+        name: "custom_claim",
+        description: "Test custom claim",
         is_active: true,
         is_mandatory: false,
         is_aws_tag: false,

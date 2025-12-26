@@ -34,6 +34,20 @@ To connect Semaphore to BitBucket, follow these steps:
 
 </Steps>
 
+## How to connect existing accounts to BitBucket {#grant-bb}
+
+If you already have a Semaphore account, you can connect it with your BitBucket account. To do that, follow these steps:
+
+<Steps>
+
+1. Log in to your existing Semaphore account
+2. Go to your [Semaphore account page](https://me.semaphore.io/account)
+3. Under the **Repository**, click on the Grant access link next to Bitbucket.
+    ![Grant access to BitBucket](./img/grant-bb.jpg)
+4. Grant access to the Semaphore OAuth App
+
+</Steps>
+
 ## How to disconnect a BitBucket account {#disconnect-bb}
 
 Disconnecting a BitBucket account removes Semaphore access to your repositories.

@@ -25,6 +25,7 @@ config :watchman,
 config :guard,
   projecthub_grpc_endpoint: "127.0.0.1:50052",
   organization_grpc_endpoint: "127.0.0.1:50052",
+  # sobelow_skip ["Config.Secrets"]
   secrethub_grpc_endpoint: "127.0.0.1:50052",
   pipeline_grpc_endpoint: "127.0.0.1:50052",
   repo_proxy_grpc_endpoint: "127.0.0.1:50052",

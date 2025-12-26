@@ -14,21 +14,16 @@ Semaphore comes in three editions:
 - **[Semaphore CE](/CE/getting-started/install)**: is the free and open-source Community Edition of Semaphore. Meant for anyone that wishes to host and manage their own CI/CD architecture.
 - **[Semaphore EE](/EE/getting-started/install)**: fully-featured Semaphore Enterprise Edition that can run behind a firewall using your infrastructure
 
-In addition, you can install a **[Develpment Build](/CE/getting-started/install-local)**. This is a Semaphore CE build optimized to run in your laptop or desktop. Intended for development and testing.
-
 See the [feature comparison](./features) to decide which edition of Semaphore is best for you.
 
-## What is CI/CD?
+## Architecture Overview
 
-Continuous Integration (CI) is an automated process of regularly merging code changes, running tests, and providing rapid feedback to developers.
+A Semaphore Community Edition instance consists of two components:
 
-CI enables developers to frequently merge code changes, automatically test them, and detect integration issues early, leading to faster development cycles and higher-quality software.
+- **Control plane**: the control plane orchestrates jobs, serves the web application and public API, handles logging, manages permissions, and connects with your repositories.
+- [**Agents**](../using-semaphore/self-hosted): the only purpose of an agent is to run jobs. The default Semaphore installation includes one agent that runs on the same cluster as the control plane but you can add more to expand capacity and build on multiple architectures.
 
-![CI Workflow](./tour/img/ci-workflow.jpg)
-
-Continuous Delivery and Continuous Deployment extend this process by providing a package you can release and deploy to the world. The whole thing is automated and can be set up to not need human intervention. No more stressing over deployment or releases!
-
-![CD Workflow](./tour/img/cd-workflow.jpg)
+![Semaphore architecture](./img/arch-semaphore.jpg)
 
 ## Where to go next?
 

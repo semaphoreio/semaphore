@@ -37,7 +37,7 @@ defmodule Front.ProjectPage.ModelTest do
         )
 
       assert Model.cache_key(params) ==
-               "#{Model.cache_prefix()}/#{Model.cache_version()}/project_id=1/ref_types=branchtag/"
+               "#{Model.cache_prefix()}/#{Model.cache_version()}/project_id=1/ref_types=branchtag/list_mode=latest/"
     end
   end
 

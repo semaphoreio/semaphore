@@ -29,7 +29,8 @@ defmodule Ppl.DefinitionReviser.BlocksReviser.Test do
     blocks = [%{"build" => %{}, "name" => "blk 0"}, %{"build" => %{}, "name" => "blk 1"}]
     ppl_def = %{"agent" => agent, "blocks" => blocks, "name" => "Test Pipeline"}
     args = %{"service" => "local", "repo_name" => "4_cmd_file", "branch_name" => "master",
-            "commit_sha" => "sha_1", "working_dir" => ".semaphore", "file_name" => "semaphore.yml"}
+            "commit_sha" => "sha_1", "working_dir" => ".semaphore", "file_name" => "semaphore.yml",
+            "organization_id" => "test-org-id-123"}
     source_args = %{"repo_host_username" => "gh_username_1", "commit_author" => "gh_username_2"}
     ppl_req = %{id: ppl_id, request_args: args, source_args: source_args, wf_id: real_ppl_req.wf_id, top_level: true,
                 prev_ppl_artefact_ids: [], ppl_artefact_id: "A1", initial_request: true}
@@ -54,6 +55,7 @@ defmodule Ppl.DefinitionReviser.BlocksReviser.Test do
   @workflow_triggered_by "SEMAPHORE_WORKFLOW_TRIGGERED_BY"
   @git_commit_author "SEMAPHORE_GIT_COMMIT_AUTHOR"
   @git_committer "SEMAPHORE_GIT_COMMITTER"
+  @organization_id "SEMAPHORE_ORGANIZATION_ID"
 
   test "BlocksReviser correctly sets agent", ctx do
     agent = %{"machine" => %{"type" => "e1-standard-4", "os_image" => "ubuntu1804"}}
@@ -97,6 +99,7 @@ defmodule Ppl.DefinitionReviser.BlocksReviser.Test do
         %{"name" => @workflow_triggered_by, "value" => "gh_username_1"},
         %{"name" => @git_commit_author, "value" => "gh_username_2"},
         %{"name" => @git_committer, "value" => "gh_username_1"},
+        %{"name" => @organization_id, "value" => "test-org-id-123"},
         %{"name" => "SEMAPHORE_PIPELINE_0_ARTEFACT_ID", "value" => "A1"}]
 
       assert is_map(block)
@@ -131,6 +134,7 @@ defmodule Ppl.DefinitionReviser.BlocksReviser.Test do
         %{"name" => @workflow_triggered_by, "value" => "gh_username_1"},
         %{"name" => @git_commit_author, "value" => "gh_username_2"},
         %{"name" => @git_committer, "value" => "gh_username_1"},
+        %{"name" => @organization_id, "value" => "test-org-id-123"},
         %{"name" => "SEMAPHORE_PIPELINE_0_ARTEFACT_ID", "value" => "A1"},
         %{"name" => "TEST", "value" => "VALUE"}]
 
@@ -163,6 +167,7 @@ defmodule Ppl.DefinitionReviser.BlocksReviser.Test do
         %{"name" => @workflow_triggered_by, "value" => "gh_username_1"},
         %{"name" => @git_commit_author, "value" => "gh_username_2"},
         %{"name" => @git_committer, "value" => "gh_username_1"},
+        %{"name" => @organization_id, "value" => "test-org-id-123"},
         %{"name" => "SEMAPHORE_PIPELINE_0_ARTEFACT_ID", "value" => "Previous id value"},
         %{"name" => "SEMAPHORE_PIPELINE_1_ARTEFACT_ID", "value" => "A1"}]
 
@@ -227,6 +232,7 @@ defmodule Ppl.DefinitionReviser.BlocksReviser.Test do
         %{"name" => @workflow_triggered_by, "value" => "github_username_2"},
         %{"name" => @git_commit_author, "value" => "gh_username_2"},
         %{"name" => @git_committer, "value" => "gh_username_1"},
+        %{"name" => @organization_id, "value" => "test-org-id-123"},
         %{"name" => "SEMAPHORE_PIPELINE_0_ARTEFACT_ID", "value" => "A1"}]
       assert is_map(block)
       assert get_in(block, ["build", "ppl_env_variables"]) == expected_env_vars

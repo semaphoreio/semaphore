@@ -37,6 +37,12 @@ defmodule Guard.Session do
         #
         domain: ".#{Application.get_env(:guard, :base_domain)}",
         secure: true,
+        #
+        # If `same_site` is set to `Strict` then the cookie will not be sent on
+        # cross-site navigations (e.g. clicking a link from GitHub to Semaphore).
+        # `Lax` allows the cookie to be sent on top-level navigations.
+        #
+        same_site: "Lax",
         signing_with_salt: true,
         encrypt: true,
         key_iterations: 1000,

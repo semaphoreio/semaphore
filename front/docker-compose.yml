@@ -45,6 +45,11 @@ services:
     tty: true
     volumes:
       - .:/app
+      - /app/_build
+      - /app/deps
+      - /app/assets/node_modules
+      - /app/assets/lib
+      - /app/assets/bin
 
   redis-cache:
     image: "redis:5-buster"

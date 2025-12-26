@@ -1,5 +1,6 @@
 defmodule FrontWeb.PipelineViewTest do
   use FrontWeb.ConnCase
+  import Phoenix.View, only: [render_to_string: 3]
   alias Front.Models
   alias FrontWeb.PipelineView
   alias Support.Factories
@@ -185,6 +186,121 @@ defmodule FrontWeb.PipelineViewTest do
   defp update_triggerer(pipeline, triggerer_update) do
     triggerer = Map.merge(pipeline.triggerer, triggerer_update)
     %{pipeline | triggerer: triggerer}
+  end
+
+  describe "switch/_target_form.html" do
+    test "renders promotion attributes correctly when the target name includes single quotes", %{
+      conn: conn
+    } do
+      html =
+        render_to_string(PipelineView, "switch/_target_form.html", %{
+          conn: conn,
+          workflow: %{id: "wf-1"},
+          pipeline: %{id: "pl-1"},
+          switch: %{id: "sw-1"},
+          target: %{name: "Publish 'my-package' to Production", parameters: []}
+        })
+
+      assert html =~ ~s(data-promotion-target="Publish &#39;my-package&#39; to Production")
+      assert html =~ ~s(data-switch="sw-1")
+      assert html =~ ~s(promote-confirmation)
+    end
+
+    test "escapes double quotes inside promotion target names", %{conn: conn} do
+      target_name = ~s(Publish "critical" to Production)
+
+      html =
+        render_to_string(PipelineView, "switch/_target_form.html", %{
+          conn: conn,
+          workflow: %{id: "wf-1"},
+          pipeline: %{id: "pl-1"},
+          switch: %{id: "sw-1"},
+          target: %{name: target_name, parameters: []}
+        })
+
+      assert html =~ ~s(data-promotion-target="Publish &quot;critical&quot; to Production")
+      assert html =~ ~s(Start promotion)
+    end
+
+    test "handles promotion target names with unicode emoji", %{conn: conn} do
+      target_name = "Deploy 🚀 to Production"
+
+      html =
+        render_to_string(PipelineView, "switch/_target_form.html", %{
+          conn: conn,
+          workflow: %{id: "wf-1"},
+          pipeline: %{id: "pl-1"},
+          switch: %{id: "sw-1"},
+          target: %{name: target_name, parameters: []}
+        })
+
+      assert html =~ ~s(data-promotion-target="Deploy 🚀 to Production")
+      assert html =~ ~s(promote-confirmation)
+    end
+
+    test "handles promotion target names with accented characters", %{conn: conn} do
+      target_name = "Déploiement en Français"
+
+      html =
+        render_to_string(PipelineView, "switch/_target_form.html", %{
+          conn: conn,
+          workflow: %{id: "wf-1"},
+          pipeline: %{id: "pl-1"},
+          switch: %{id: "sw-1"},
+          target: %{name: target_name, parameters: []}
+        })
+
+      assert html =~ ~s(data-promotion-target="Déploiement en Français")
+      assert html =~ ~s(promote-confirmation)
+    end
+
+    test "handles promotion target names with CJK characters", %{conn: conn} do
+      target_name = "部署到生产环境"
+
+      html =
+        render_to_string(PipelineView, "switch/_target_form.html", %{
+          conn: conn,
+          workflow: %{id: "wf-1"},
+          pipeline: %{id: "pl-1"},
+          switch: %{id: "sw-1"},
+          target: %{name: target_name, parameters: []}
+        })
+
+      assert html =~ ~s(data-promotion-target="部署到生产环境")
+      assert html =~ ~s(promote-confirmation)
+    end
+
+    test "handles promotion target names with mixed unicode and special characters", %{conn: conn} do
+      target_name = "Deploy 'app' 🎉 to Staging"
+
+      html =
+        render_to_string(PipelineView, "switch/_target_form.html", %{
+          conn: conn,
+          workflow: %{id: "wf-1"},
+          pipeline: %{id: "pl-1"},
+          switch: %{id: "sw-1"},
+          target: %{name: target_name, parameters: []}
+        })
+
+      assert html =~ ~s(data-promotion-target="Deploy &#39;app&#39; 🎉 to Staging")
+      assert html =~ ~s(promote-confirmation)
+    end
+
+    test "handles CSS selector metacharacters in target names", %{conn: conn} do
+      target_name = "Deploy[test]:value.class#id"
+
+      html =
+        render_to_string(PipelineView, "switch/_target_form.html", %{
+          conn: conn,
+          workflow: %{id: "wf-1"},
+          pipeline: %{id: "pl-1"},
+          switch: %{id: "sw-1"},
+          target: %{name: target_name, parameters: []}
+        })
+
+      assert html =~ ~s(data-promotion-target=)
+      assert html =~ ~s(promote-confirmation)
+    end
   end
 
   describe ".action_string" do

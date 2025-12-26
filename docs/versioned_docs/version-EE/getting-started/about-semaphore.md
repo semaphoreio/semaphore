@@ -14,8 +14,6 @@ Semaphore comes in three editions:
 - **[Semaphore CE](/CE/getting-started/install)**: is the free and open-source Community Edition of Semaphore. Meant for anyone that wishes to host and manage their own CI/CD architecture.
 - **[Semaphore EE](/EE/getting-started/install)**: fully-featured Semaphore Enterprise Edition that can run behind a firewall using your infrastructure
 
-In addition, you can install a **[Develpment Build](/CE/getting-started/install-local)**. This is a Semaphore CE build optimized to run in your laptop or desktop. Intended for development and testing.
-
 See the [feature comparison](./features) to decide which edition of Semaphore is best for you.
 
 ## What is CI/CD?
