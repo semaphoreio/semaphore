@@ -1,0 +1,115 @@
+package jobdeletion
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"log"
+	"os"
+	"time"
+
+	tackle "github.com/renderedtext/go-tackle"
+	"github.com/semaphoreio/semaphore/artifacthub/pkg/models"
+	"github.com/semaphoreio/semaphore/artifacthub/pkg/storage"
+)
+
+type Worker struct {
+	amqpOptions       *tackle.Options
+	consumer          *tackle.Consumer
+	storageClient     storage.Client
+	reconnectAttempts int
+}
+
+const (
+	JobDeletionExchange    = "zebra.job_deletion_exchange"
+	JobDeletionServiceName = "artifacthub.jobdeletion.worker"
+	JobDeletionRoutingKey  = "deleted"
+)
+
+type JobDeletionEvent struct {
+	JobID           string `json:"job_id"`
+	OrganizationID  string `json:"organization_id"`
+	ProjectID       string `json:"project_id"`
+	ArtifactStoreID string `json:"artifact_store_id"`
+	DeletedAt       string `json:"deleted_at"`
+}
+
+func NewWorker(amqpURL string, client storage.Client) (*Worker, error) {
+	options := &tackle.Options{
+		URL:            amqpURL,
+		ConnectionName: workerConnName(),
+		RemoteExchange: JobDeletionExchange,
+		Service:        JobDeletionServiceName,
+		RoutingKey:     JobDeletionRoutingKey,
+	}
+
+	consumer := tackle.NewConsumer()
+
+	return &Worker{
+		consumer:      consumer,
+		amqpOptions:   options,
+		storageClient: client,
+	}, nil
+}
+
+func workerConnName() string {
+	hostname := os.Getenv("HOSTNAME")
+	if hostname == "" {
+		return "artifacthub.jobdeletion.worker"
+	}
+	return hostname
+}
+
+func (w *Worker) Start() {
+	log.Printf("JobDeletion Worker: Starting consumer for exchange=%s routing_key=%s", JobDeletionExchange, JobDeletionRoutingKey)
+	go func() {
+		err := w.consumer.Start(w.amqpOptions, w.handleMessage)
+		if err != nil {
+			log.Printf("JobDeletion Worker: error starting consumer %s", err)
+
+			w.reconnectAttempts++
+			waitTime := max(w.reconnectAttempts*2, 60)
+			time.Sleep(time.Duration(waitTime) * time.Second)
+			w.Start()
+		}
+	}()
+}
+
+func (w *Worker) Stop() {
+	w.consumer.Stop()
+}
+
+func (w *Worker) handleMessage(delivery tackle.Delivery) error {
+	var event JobDeletionEvent
+
+	err := json.Unmarshal(delivery.Body(), &event)
+	if err != nil {
+		log.Printf("JobDeletion Worker: Failed to parse message: %s, error: %+v", delivery.Body(), err)
+		return err
+	}
+
+	artifact, err := models.FindArtifactByID(event.ArtifactStoreID)
+	if err != nil {
+		log.Printf("JobDeletion Worker: Failed to find artifact store with ID=%s: %v", event.ArtifactStoreID, err)
+		return err
+	}
+
+	bucketName := artifact.BucketName
+	idempotencyToken := artifact.IdempotencyToken
+
+	jobPath := fmt.Sprintf("artifacts/jobs/%s/", event.JobID)
+
+	bucket := w.storageClient.GetBucket(storage.BucketOptions{
+		Name:       bucketName,
+		PathPrefix: idempotencyToken,
+	})
+
+	err = bucket.DeletePath(context.Background(), jobPath)
+	if err != nil {
+		log.Printf("JobDeletion Worker: Error deleting artifacts at path %s: %v", jobPath, err)
+		return err
+	}
+
+	log.Printf("JobDeletion Worker: Successfully deleteted artifacts at path %s for JobID=%s", jobPath, event.JobID)
+	return nil
+}
