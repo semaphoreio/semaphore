@@ -3,38 +3,35 @@ package jobdeletion
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"os"
 	"time"
 
 	tackle "github.com/renderedtext/go-tackle"
-	"github.com/semaphoreio/semaphore/artifacthub/pkg/models"
-	"github.com/semaphoreio/semaphore/artifacthub/pkg/storage"
+	"github.com/semaphoreio/semaphore/loghub2/pkg/storage"
 )
 
 type Worker struct {
 	amqpOptions       *tackle.Options
 	consumer          *tackle.Consumer
-	storageClient     storage.Client
+	storageClient     storage.Storage
 	reconnectAttempts int
 }
 
 const (
 	JobDeletionExchange    = "zebra.job_deletion_exchange"
-	JobDeletionServiceName = "artifacthub.jobdeletion.worker"
+	JobDeletionServiceName = "loghub2.jobdeletion.worker"
 	JobDeletionRoutingKey  = "deleted"
 )
 
 type JobDeletionEvent struct {
-	JobID           string `json:"job_id"`
-	OrganizationID  string `json:"organization_id"`
-	ProjectID       string `json:"project_id"`
-	ArtifactStoreID string `json:"artifact_store_id"`
-	DeletedAt       string `json:"deleted_at"`
+	JobID          string `json:"job_id"`
+	OrganizationID string `json:"organization_id"`
+	ProjectID      string `json:"project_id"`
+	DeletedAt      string `json:"deleted_at"`
 }
 
-func NewWorker(amqpURL string, client storage.Client) (*Worker, error) {
+func NewWorker(amqpURL string, client storage.Storage) (*Worker, error) {
 	options := &tackle.Options{
 		URL:            amqpURL,
 		ConnectionName: workerConnName(),
@@ -55,7 +52,7 @@ func NewWorker(amqpURL string, client storage.Client) (*Worker, error) {
 func workerConnName() string {
 	hostname := os.Getenv("HOSTNAME")
 	if hostname == "" {
-		return "artifacthub.jobdeletion.worker"
+		return "loghub2.jobdeletion.worker"
 	}
 	return hostname
 }
@@ -88,28 +85,25 @@ func (w *Worker) handleMessage(delivery tackle.Delivery) error {
 		return err
 	}
 
-	artifact, err := models.FindArtifactByID(event.ArtifactStoreID)
+	ctx := context.Background()
+
+	exists, err := w.storageClient.Exists(ctx, event.JobID)
 	if err != nil {
-		log.Printf("JobDeletion Worker: Failed to find artifact store with ID=%s: %v", event.ArtifactStoreID, err)
+		log.Printf("JobDeletion Worker: Error checking if logs exist for JobID=%s: %v", event.JobID, err)
 		return err
 	}
 
-	bucketName := artifact.BucketName
-	idempotencyToken := artifact.IdempotencyToken
+	if !exists {
+		log.Printf("JobDeletion Worker: No logs found for JobID=%s", event.JobID)
+		return nil
+	}
 
-	jobPath := fmt.Sprintf("artifacts/jobs/%s/", event.JobID)
-
-	bucket := w.storageClient.GetBucket(storage.BucketOptions{
-		Name:       bucketName,
-		PathPrefix: idempotencyToken,
-	})
-
-	err = bucket.DeletePath(context.Background(), jobPath)
+	err = w.storageClient.DeleteFile(ctx, event.JobID)
 	if err != nil {
-		log.Printf("JobDeletion Worker: Error deleting artifacts at path %s: %v", jobPath, err)
+		log.Printf("JobDeletion Worker: Error deleting logs for JobID=%s: %v", event.JobID, err)
 		return err
 	}
 
-	log.Printf("JobDeletion Worker: Successfully deleted artifacts at path %s for JobID=%s", jobPath, event.JobID)
+	log.Printf("JobDeletion Worker: Successfully deleted logs for JobID=%s", event.JobID)
 	return nil
 }
