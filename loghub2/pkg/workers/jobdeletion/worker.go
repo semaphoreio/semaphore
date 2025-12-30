@@ -2,13 +2,14 @@ package jobdeletion
 
 import (
 	"context"
-	"encoding/json"
 	"log"
 	"os"
 	"time"
 
 	tackle "github.com/renderedtext/go-tackle"
+	server_farm_job "github.com/semaphoreio/semaphore/loghub2/pkg/protos/server_farm.job"
 	"github.com/semaphoreio/semaphore/loghub2/pkg/storage"
+	"google.golang.org/protobuf/proto"
 )
 
 type Worker struct {
@@ -23,13 +24,6 @@ const (
 	JobDeletionServiceName = "loghub2.jobdeletion.worker"
 	JobDeletionRoutingKey  = "deleted"
 )
-
-type JobDeletionEvent struct {
-	JobID          string `json:"job_id"`
-	OrganizationID string `json:"organization_id"`
-	ProjectID      string `json:"project_id"`
-	DeletedAt      string `json:"deleted_at"`
-}
 
 func NewWorker(amqpURL string, client storage.Storage) (*Worker, error) {
 	options := &tackle.Options{
@@ -77,33 +71,34 @@ func (w *Worker) Stop() {
 }
 
 func (w *Worker) handleMessage(delivery tackle.Delivery) error {
-	var event JobDeletionEvent
+	event := &server_farm_job.JobDeleted{}
 
-	err := json.Unmarshal(delivery.Body(), &event)
+	err := proto.Unmarshal(delivery.Body(), event)
 	if err != nil {
 		log.Printf("JobDeletion Worker: Failed to parse message: %s, error: %+v", delivery.Body(), err)
 		return err
 	}
 
 	ctx := context.Background()
+	jobID := event.GetJobId()
 
-	exists, err := w.storageClient.Exists(ctx, event.JobID)
+	exists, err := w.storageClient.Exists(ctx, jobID)
 	if err != nil {
-		log.Printf("JobDeletion Worker: Error checking if logs exist for JobID=%s: %v", event.JobID, err)
+		log.Printf("JobDeletion Worker: Error checking if logs exist for JobID=%s: %v", jobID, err)
 		return err
 	}
 
 	if !exists {
-		log.Printf("JobDeletion Worker: No logs found for JobID=%s", event.JobID)
+		log.Printf("JobDeletion Worker: No logs found for JobID=%s", jobID)
 		return nil
 	}
 
-	err = w.storageClient.DeleteFile(ctx, event.JobID)
+	err = w.storageClient.DeleteFile(ctx, jobID)
 	if err != nil {
-		log.Printf("JobDeletion Worker: Error deleting logs for JobID=%s: %v", event.JobID, err)
+		log.Printf("JobDeletion Worker: Error deleting logs for JobID=%s: %v", jobID, err)
 		return err
 	}
 
-	log.Printf("JobDeletion Worker: Successfully deleted logs for JobID=%s", event.JobID)
+	log.Printf("JobDeletion Worker: Successfully deleted logs for JobID=%s", jobID)
 	return nil
 }
