@@ -62,7 +62,7 @@ _set_go_package() {
   echo "$(bold "Processing $FILE")"
   echo "Removing current go_package"
 	sed --in-place '/go_package/d' $FILE
-  GO_PACKAGE="option go_package = \"github.com/semaphoreio/semaphore/self_hosted_hub/pkg/protos/$MODULE\";"
+  GO_PACKAGE="option go_package = \"github.com/semaphoreio/semaphore/loghub2/pkg/protos/$MODULE\";"
   echo "Setting new go_package"
   echo $GO_PACKAGE >> $FILE
   echo "New go_package set: $GO_PACKAGE"
