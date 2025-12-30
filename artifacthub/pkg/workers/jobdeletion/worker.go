@@ -2,15 +2,16 @@ package jobdeletion
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"time"
 
 	tackle "github.com/renderedtext/go-tackle"
+	server_farm_job "github.com/semaphoreio/semaphore/artifacthub/pkg/api/descriptors/server_farm.job"
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/models"
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/storage"
+	"google.golang.org/protobuf/proto"
 )
 
 type Worker struct {
@@ -25,14 +26,6 @@ const (
 	JobDeletionServiceName = "artifacthub.jobdeletion.worker"
 	JobDeletionRoutingKey  = "deleted"
 )
-
-type JobDeletionEvent struct {
-	JobID           string `json:"job_id"`
-	OrganizationID  string `json:"organization_id"`
-	ProjectID       string `json:"project_id"`
-	ArtifactStoreID string `json:"artifact_store_id"`
-	DeletedAt       string `json:"deleted_at"`
-}
 
 func NewWorker(amqpURL string, client storage.Client) (*Worker, error) {
 	options := &tackle.Options{
@@ -80,24 +73,27 @@ func (w *Worker) Stop() {
 }
 
 func (w *Worker) handleMessage(delivery tackle.Delivery) error {
-	var event JobDeletionEvent
+	event := &server_farm_job.JobDeleted{}
 
-	err := json.Unmarshal(delivery.Body(), &event)
+	err := proto.Unmarshal(delivery.Body(), event)
 	if err != nil {
 		log.Printf("JobDeletion Worker: Failed to parse message: %s, error: %+v", delivery.Body(), err)
 		return err
 	}
 
-	artifact, err := models.FindArtifactByID(event.ArtifactStoreID)
+	jobID := event.GetJobId()
+	artifactStoreID := event.GetArtifactStoreId()
+
+	artifact, err := models.FindArtifactByID(artifactStoreID)
 	if err != nil {
-		log.Printf("JobDeletion Worker: Failed to find artifact store with ID=%s: %v", event.ArtifactStoreID, err)
+		log.Printf("JobDeletion Worker: Failed to find artifact store with ID=%s: %v", artifactStoreID, err)
 		return err
 	}
 
 	bucketName := artifact.BucketName
 	idempotencyToken := artifact.IdempotencyToken
 
-	jobPath := fmt.Sprintf("artifacts/jobs/%s/", event.JobID)
+	jobPath := fmt.Sprintf("artifacts/jobs/%s/", jobID)
 
 	bucket := w.storageClient.GetBucket(storage.BucketOptions{
 		Name:       bucketName,
@@ -110,6 +106,6 @@ func (w *Worker) handleMessage(delivery tackle.Delivery) error {
 		return err
 	}
 
-	log.Printf("JobDeletion Worker: Successfully deleted artifacts at path %s for JobID=%s", jobPath, event.JobID)
+	log.Printf("JobDeletion Worker: Successfully deleted artifacts at path %s for JobID=%s", jobPath, jobID)
 	return nil
 }
