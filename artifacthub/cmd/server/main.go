@@ -170,7 +170,7 @@ func main() {
 		go bucketcleanerWorker(storageClient)
 	}
 
-	if os.Getenv("START_JOBDELETION_WORKER") == "yes" {
+	if os.Getenv("START_JOB_DELETION_WORKER") == "yes" {
 		go jobDeletionWorker(storageClient)
 	}
 
