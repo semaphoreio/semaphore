@@ -5,9 +5,7 @@ defmodule Guard.Id.Api.Test do
   doctest Guard.Id.Api, import: true
 
   use Plug.Test
-
-  @port 4003
-  @host "http://localhost:#{@port}"
+  import Support.ApiTestHelpers
 
   setup do
     FunRegistry.clear!()
@@ -417,6 +415,66 @@ defmodule Guard.Id.Api.Test do
       {_, location} = Enum.find(response.headers, fn h -> elem(h, 0) == "location" end)
 
       assert location == "https://id.#{domain()}/login?baz=qux&foo=bar"
+    end
+  end
+
+  describe "/signup" do
+    test "shows normal signup page when user is not logged in" do
+      {:ok, response} = send_login_request(path: "/signup")
+
+      assert response.status_code == 200
+      assert response.body =~ "Get started - Semaphore"
+      assert response.body =~ "Try Cloud"
+      assert response.body =~ "Signup with GitHub"
+      assert response.body =~ "Signup with Bitbucket"
+      refute response.body =~ "You're already logged in"
+      refute response.body =~ "Continue to"
+    end
+
+    test "shows logged-in version when user is already logged in" do
+      user_id = Ecto.UUID.generate()
+      {:ok, _front_user} = Support.Factories.FrontUser.insert(id: user_id)
+      {:ok, _rbac_user} = Support.Factories.RbacUser.insert(user_id)
+
+      {:ok, response} =
+        send_login_request(path: "/signup", headers: [{"x-semaphore-user-id", user_id}])
+
+      assert response.status_code == 200
+      assert response.body =~ "Get started - Semaphore"
+      assert response.body =~ "You're already logged in"
+      assert response.body =~ "Continue to"
+      assert response.body =~ "https://me.#{domain()}"
+      refute response.body =~ "Try Cloud"
+      refute response.body =~ "Signup with GitHub"
+      refute response.body =~ "Signup with Bitbucket"
+    end
+
+    test "renders signup page correctly when redirect_to param is present" do
+      {:ok, response} =
+        send_login_request(path: "/signup", query: %{redirect_to: "https://#{domain()}"})
+
+      assert response.status_code == 200
+      assert response.body =~ "Get started - Semaphore"
+      assert response.body =~ "Try Cloud"
+      assert response.body =~ "Signup with GitHub"
+      assert response.body =~ "Signup with Bitbucket"
+    end
+
+    test "shows correct page for logged-in user even with redirect_to param" do
+      user_id = Ecto.UUID.generate()
+      {:ok, _front_user} = Support.Factories.FrontUser.insert(id: user_id)
+      {:ok, _rbac_user} = Support.Factories.RbacUser.insert(user_id)
+
+      {:ok, response} =
+        send_login_request(
+          path: "/signup",
+          query: %{redirect_to: "https://#{domain()}"},
+          headers: [{"x-semaphore-user-id", user_id}]
+        )
+
+      assert response.status_code == 200
+      assert response.body =~ "You're already logged in"
+      assert response.body =~ "Continue to"
     end
   end
 
@@ -1185,21 +1243,6 @@ defmodule Guard.Id.Api.Test do
       %{"state" => state} -> {:ok, state}
     end
   end
-
-  defp send_login_request(params \\ []) do
-    query_string = parse_query_params(params[:query])
-    path = params[:path] || "/login"
-
-    headers =
-      (params[:headers] || []) ++ [{"x-forwarded-proto", "https"}, {"user-agent", "test-agent"}]
-
-    "#{@host}/#{path}#{query_string}"
-    |> URI.encode()
-    |> HTTPoison.get(headers)
-  end
-
-  defp parse_query_params(nil), do: ""
-  defp parse_query_params(params), do: "?#{URI.encode_query(params)}"
 
   defp domain, do: Application.get_env(:guard, :base_domain)
 end

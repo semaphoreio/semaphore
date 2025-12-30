@@ -35,6 +35,8 @@ defmodule Secrethub.OpenIDConnect.HTTPServerTest do
 
       assert response.status_code == 200
 
+      assert {"cache-control", "max-age=900, public, must-revalidate"} in response.headers
+
       {:ok, body} = Poison.decode(response.body)
 
       full_url = "#{@org_username}.#{domain}"
@@ -48,6 +50,8 @@ defmodule Secrethub.OpenIDConnect.HTTPServerTest do
 
       assert response.status_code == 200
 
+      assert {"cache-control", "max-age=900, public, must-revalidate"} in response.headers
+
       {:ok, body} = Poison.decode(response.body)
 
       assert body == %{"keys" => Secrethub.OpenIDConnect.KeyManager.public_keys(:openid_keys)}
@@ -57,6 +61,8 @@ defmodule Secrethub.OpenIDConnect.HTTPServerTest do
       {:ok, response} = HTTPoison.get("#{@host}/.well-known/jwks")
 
       assert response.status_code == 200
+
+      assert {"cache-control", "max-age=900, public, must-revalidate"} in response.headers
 
       {:ok, body} = Poison.decode(response.body)
 
@@ -75,6 +81,16 @@ defmodule Secrethub.OpenIDConnect.HTTPServerTest do
       end)
     end
 
+    test "GET /.well-known/openid-configuration" do
+      {:ok, response} = request("/.well-known/openid-configuration")
+
+      assert response.status_code == 200
+
+      cache_max_age = Application.fetch_env!(:secrethub, :openid_keys_cache_max_age_in_s)
+
+      assert {"cache-control", "max-age=#{cache_max_age}, public, must-revalidate"} in response.headers
+    end
+
     test "GET /.well-known/jwks" do
       {:ok, response} = HTTPoison.get("#{@host}/.well-known/jwks")
 
@@ -82,7 +98,7 @@ defmodule Secrethub.OpenIDConnect.HTTPServerTest do
 
       cache_max_age = Application.fetch_env!(:secrethub, :openid_keys_cache_max_age_in_s)
 
-      assert {"cache-control", "max-age=#{cache_max_age}, private, must-revalidate"} in response.headers
+      assert {"cache-control", "max-age=#{cache_max_age}, public, must-revalidate"} in response.headers
 
       {:ok, body} = Poison.decode(response.body)
 
@@ -96,7 +112,7 @@ defmodule Secrethub.OpenIDConnect.HTTPServerTest do
 
       cache_max_age = Application.fetch_env!(:secrethub, :openid_keys_cache_max_age_in_s)
 
-      assert {"cache-control", "max-age=#{cache_max_age}, private, must-revalidate"} in response.headers
+      assert {"cache-control", "max-age=#{cache_max_age}, public, must-revalidate"} in response.headers
 
       {:ok, body} = Poison.decode(response.body)
 

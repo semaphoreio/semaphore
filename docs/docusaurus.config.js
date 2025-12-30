@@ -13,7 +13,7 @@ const config = {
   // https://docusaurus.io/docs/next/api/docusaurus-config#noIndex
   noIndex: false,
   title: 'Semaphore',
-  tagline: 'The open source delivery platform',
+  tagline: 'All-in-one delivery platform for teams who’ve outgrown default tools',
   favicon: 'img/favicon.ico',
 
   // extra themes
@@ -68,22 +68,22 @@ const config = {
               banner: "none",
             },
             "CE": {
-              label: 'Community Edition v1.4 (latest)',
+              label: 'Community Edition v1.5 (latest)',
               path: 'CE',
               banner: "none"
             },
-            "CE-1.3": {
-              label: 'Community Edition v1.3',
-              path: 'CE-1.3',
+            "CE-1.4": {
+              label: 'Community Edition v1.4',
+              path: 'CE-1.4',
             },
             "EE": {
-              label: 'Enterprise Edition v1.4 (latest)',
+              label: 'Enterprise Edition v1.5 (latest)',
               path: 'EE',
               banner: "none"
             },
-            "EE-1.3": {
-              label: 'Enterprise Edition v1.3',
-              path: 'EE-1.3',
+            "EE-1.4": {
+              label: 'Enterprise Edition v1.4',
+              path: 'EE-1.4',
             },
           },
 
@@ -144,6 +144,15 @@ const config = {
         indexName: 'v2-sxmoon',
         // Optional: see doc section below
         contextualSearch: true,
+        askAi: {
+          indexName: 'askai-assistant-docs-semaphoreio', // Markdown index for Ask AI
+          apiKey: '5d6175600a64cf232ea5be2b88cd5cab', // (or a different key if needed)
+          appId: 'HJWFPD10QI',
+          assistantId: 'eTt93IPOlemb',
+          searchParameters: {
+            facetFilters: ['language:en'], // Optional: filter to specific language/version
+          },
+        },
       },
       navbar: {
         title: 'Semaphore Docs',
@@ -199,6 +208,11 @@ const config = {
 
           },
           {
+            href: 'https://status.semaphore.io/',
+            position: 'right',
+            label: 'Service Status'
+          },
+          {
             type: 'search',
             position: 'right',
           },
@@ -243,6 +257,10 @@ const config = {
           {
             title: 'More',
             items: [
+              {
+                label: 'Cloud Service Status',
+                href: 'https://status.semaphore.io/',
+              },
               {
                 label: 'Semaphore Blog',
                 href: 'https://semaphore.io/blog',

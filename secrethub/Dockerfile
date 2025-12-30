@@ -1,6 +1,6 @@
 ARG ELIXIR_VERSION=1.13.4
 ARG OTP_VERSION=24.2.2
-ARG ALPINE_VERSION=3.19.0
+ARG ALPINE_VERSION=3.22.2
 ARG BUILDER_IMAGE="hexpm/elixir:${ELIXIR_VERSION}-erlang-${OTP_VERSION}-alpine-${ALPINE_VERSION}"
 ARG RUNNER_IMAGE="alpine:${ALPINE_VERSION}"
 
@@ -11,7 +11,7 @@ ENV MIX_ENV=$BUILD_ENV
 
 RUN echo "Build for $MIX_ENV environment started"
 
-RUN apk update && apk add --no-cache build-base git python3 curl openssh
+RUN apk update && apk add --no-cache build-base git python3 curl bash openssh
 
 RUN mkdir -p ~/.ssh
 RUN touch ~/.ssh/known_hosts

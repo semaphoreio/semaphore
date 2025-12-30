@@ -110,14 +110,16 @@ defmodule Rbac.CollaboratorsRefresher do
               collaborator["permissions"]["pull"]
             )
 
-          Rbac.Repo.RbacRefreshProjectAccessRequest.add_request(
-            project.org_id,
-            user_id,
-            project_id,
-            :add,
-            source,
-            role_to_be_assigned
-          )
+          if role_to_be_assigned do
+            Rbac.Repo.RbacRefreshProjectAccessRequest.add_request(
+              project.org_id,
+              user_id,
+              project_id,
+              :add,
+              source,
+              role_to_be_assigned
+            )
+          end
       end
     end)
   end

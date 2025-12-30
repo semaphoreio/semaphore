@@ -20,7 +20,14 @@ window.InjectedDataByBackend.AssetsPath = "<%= assets_path() %>"
 
 <div class="bg-washed-gray pa3 br3 mt3 ba b--black-075">
   <div id="workflow-lists">
-    <%= render FrontWeb.ProjectView, "public/_tabs.html", project: @project, conn: @conn, type: @type, requester: @requester %>
+    <%= render FrontWeb.ProjectView, "public/_tabs.html",
+      project: @project,
+      conn: @conn,
+      type: @type,
+      requester: @requester,
+      listing: @listing,
+      listing_requester: @listing_requester,
+      all_pipelines_enabled: @all_pipelines_enabled %>
 
     <%= render FrontWeb.ProjectView, "public/_workflows.html", project: @project, conn: @conn, pollman: @pollman, workflows: @workflows, page: :project %>
   </div>

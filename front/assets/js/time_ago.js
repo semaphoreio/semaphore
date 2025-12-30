@@ -36,7 +36,6 @@ class TimeAgo extends HTMLElement {
         const diffInHours = Math.floor(diffInSeconds / 3600);
         const daysDifference = Math.floor(diffInSeconds / 86400);
 
-        if (daysDifference > 3) return this.formatFullDate(date);
         if (diffInHours >= 1) return this.formatDateWithTime(date);
         return this.formatRelativeTime(diffInSeconds);
     }
@@ -47,16 +46,6 @@ class TimeAgo extends HTMLElement {
         if (Math.abs(seconds) < 60) return rtf.format(-seconds, "second");
         if (Math.abs(seconds) < 3600) return rtf.format(-Math.floor(seconds / 60), "minute");
         return rtf.format(-Math.floor(seconds / 3600), "hour");
-    }
-
-    formatFullDate(date) {
-        const options = { weekday: "short", day: "numeric", month: "short", year: "numeric" };
-        const formattedDate = date.toLocaleDateString(this.locale, options);
-        
-        const [weekday, month, day, year] = formattedDate.replaceAll(",", "").split(" ");
-        const suffixedDay = day + this.ordinalSuffix(parseInt(day, 10));
-        
-        return `on ${weekday} ${suffixedDay} ${month} ${year}`;
     }
 
     formatDateWithTime(date) {

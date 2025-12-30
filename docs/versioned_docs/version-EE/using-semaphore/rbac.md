@@ -62,7 +62,7 @@ Among other actions, members can:
 - View and manage [secrets](./secrets)
 - View and manage [self-hosted agents](./self-hosted)
 
-For the full list of member permissions, see [server roles](./organizations#org-roles).
+For the full list of member permissions, see [server roles](./user-management#org-roles).
 
 ### Admin {#org-admin}
 
@@ -80,13 +80,13 @@ In addition to the [member permissions](#org-member), admins can:
 - View and manage [pre-flight checks](./org-preflight)
 - View and manage [usage policy for secrets](./secrets#secret-access-policy)
 
-For the full list of admin permissions, see [server roles](./organizations#org-roles).
+For the full list of admin permissions, see [server roles](./user-management#org-roles).
 
 ### Owner {#org-owner}
 
 The owner of the server is the person that created it. An server can have multiple owners.  Owners have access to all functionalities within the server and any of its projects. Only Admins and Owners can invite users to the server.
 
-For the full list of owner permissions, see [server roles](./organizations#org-roles).
+For the full list of owner permissions, see [server roles](./user-management#org-roles).
 
 To remove an owner, see [how to remove an owner](https://docs.semaphoreci.com/using-semaphore/organizations#remove-owner).
 
@@ -153,11 +153,11 @@ In addition to the pre-defined roles provided by Semaphore, you can create your 
 
 To manage custom roles, see the following pages:
 
-- [How to manage server custom roles](./organizations#custom)
+- [How to manage server custom roles](./user-management#custom)
 - [How to manage project custom roles](./projects#custom-roles)
 
 ## See also
 
-- [How to manage server users](./organizations#people)
+- [How to manage server users](./user-management#people)
 - [How to manage project access](./projects#people)
 - [Okta integration](./okta)

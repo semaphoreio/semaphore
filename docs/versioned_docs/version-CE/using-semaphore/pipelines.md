@@ -4,12 +4,6 @@ description: Connect blocks to get things done
 
 # Pipelines
 
-
-
-
-
-
-
 A pipeline is a group of connected blocks. This page explains what pipelines are, how they organize workflow execution order, and what settings are available. In this page, the terms organization, server, and instance are used interchangeably.
 
 ## Overview {#overview}
@@ -211,94 +205,7 @@ blocks:
 
 ### Docker containers {#docker-environments}
 
-:::tip
-
-If you want to build and run Docker images in your jobs, check the [working with Docker page](./containers/docker).
-
-:::
-
-Jobs can run inside Docker containers. This allows you to define a custom-build environment with pre-installed tools and dependencies needed for your project. You can enable this setting in the pipeline agent or in the [block agent override](./jobs#agent-override).
-
-You can run multiple containers at the same time. The job runs in the first container (called `main`) and attaches the other containers to the same network. This is similar to how containers inside a Kubernetes pod communicate.
-
-The network addresses of all containers are mapped to their names. Let's say you have two containers, "main" and "mysql", you can connect to the database from main with:
-
-```shell title="container 'main'"
-mysql --host=mysql --user=root
-```
-
-To run the job inside a Docker container:
-
-<Tabs groupId="editor-yaml">
-<TabItem value="editor" label="Editor">
-
-<Steps>
-
-1. Select the pipeline
-2. In **Environment Types** select **Docker Container(s)**
-3. Select the [self-hosted agent](./self-hosted), default is `s1-kubernetes`
-4. Type the **Image** name for this container
-5. Optionally, add environment variables
-6. Optionally, add more containers
-
-  ![Setting Docker environments](./img/agent-docker.jpg)
-
-</Steps>
-
-</TabItem>
-<TabItem value="yaml" label="YAML">
-
-<Steps>
-
-1. Add the `agent` and `machine`
-2. Add a `containers` key
-3. Each list item is a container. The first one must be called `main`
-4. Add the `image`
-5. Optionally, add `env_vars`
-6. Optionally, add more containers
-
-</Steps>
-
-```yaml title=".semaphore/semaphore.yml"
-version: v1.0
-name: Initial Pipeline
-agent:
-  machine:
-    type: s1-kubernetes
-    os_image: ''
-  containers:
-    - name: main
-      image: 'registry.semaphoreci.com/ubuntu:22.04'
-  # highlight-start
-  containers:
-    - name: main
-      image: 'semaphoreci/ubuntu:20.04'
-      env_vars:
-        - name: FOO_1
-          value: BAR_1
-    - name: web
-      image: nginx
-  # highlight-end
-blocks:
-  - name: 'Block #1'
-    dependencies: []
-    task:
-      jobs:
-        - name: 'Job #1'
-          commands:
-            - 'curl http://web'
-```
-
-</TabItem>
-</Tabs>
-
-To use images in private repositories see [Private Docker Registries](#docker-private).
-
-:::info
-
-Semaphore provides a [public Docker registry](./containers/container-registry) for popular images.
-
-:::
+The [Running Jobs in Docker Containers page](./containers) shows how to use Docker environments in your jobs.
 
 ### Prologue {#prologue}
 

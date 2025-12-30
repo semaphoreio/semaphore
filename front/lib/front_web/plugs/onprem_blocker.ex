@@ -9,14 +9,14 @@ defmodule FrontWeb.Plugs.OnPremBlocker do
   def init(default), do: default
 
   def call(conn, _opts) do
-    if Front.os?() do
+    if Front.saas?() do
+      conn
+    else
       Logger.info("Blocking access to #{conn.request_path} because of on-premises")
 
       conn
       |> FrontWeb.PageController.status404(%{})
       |> Plug.Conn.halt()
-    else
-      conn
     end
   end
 end

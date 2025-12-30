@@ -10,6 +10,26 @@ GitHub users need to provide access to Semaphore so it can read their repositori
 
 Semaphore accesses your GitHub repositories using the [Semaphore GitHub App](https://github.com/apps/semaphore-ci-cd). This method provides fine-grained control and per-repository permissions to control which code Semaphore can access.
 
+## How to enable deploy keys {#deploy-keys}
+
+New GitHub organizations might have deploy keys disabled by default. If this happens, Semaphore cannot connect to your GitHub organization and you won't be able to access your GitHub repositories from Semaphore.
+
+To enable deploy keys in GitHub:
+
+<Steps>
+
+1. Open the Organization Settings in GitHub
+
+2. Go to **Security**, then **Deploy Keys**
+
+    ![Deploy keys settings](./img/settings-deploy-keys.jpg)
+
+3. Ensure the Deploy Keys settings is **Enabled**
+
+    ![Enabling deploy keys in the organization](./img/deploy-keys.jpg)
+
+</Steps>
+
 ## How to authorize the GitHub App {#connect-ghapp}
 
 To install the GitHub App in your organization:
@@ -45,12 +65,6 @@ To create a connection using [GitHub App](https://github.com/apps/semaphore-ci-c
 5. Select a repository from the list and finish the [project setup](./projects)
 
 </Steps>
-
-:::note
-
-You might not be able to install the GitHub App if you are not the GitHub organization owner. In this case, following these steps sends an installation request to the organization's owner. You cannot proceed until the owner authorizes the access.
-
-:::
 
 ## How to transfer projects from OAuth to GitHub App {#transfer}
 
@@ -119,6 +133,38 @@ A deploy key can be invalidated if:
 - the repository's original owner no longer has access to it (only for projects added [via OAuth](./connect-github-oauth))
 
 :::
+
+### Verify deploy key settings on GitHub {#deploy-key-github}
+
+GitHub recently changed the default setting for Deploy keys, which may now be set to Disabled for new organizations. When this setting is disabled, Semaphore cannot create or connect projects from GitHub repositories.
+
+If you encounter issues connecting Semaphore to your GitHub repository (for example, projects failing to create or the connection breaking), please verify your deploy key configuration, depending on the type of GitHub account:
+
+#### GitHub organization accounts:
+
+1. Go to your organization’s settings page on GitHub: https://github.com/organizations/ORGANIZATION_NAME/settings/deploy_keys
+1. Under **Security → Deploy keys**, check the **Default policy** setting.
+1. If the default option is **Disabled**, change it to **Enabled**.
+
+    <img width="626" height="234" alt="Image" src="https://github.com/user-attachments/assets/ca603af3-cbbc-47b2-b566-f1912704b8fe" />
+
+1. Once updated, retry creating or reconnecting your project on Semaphore.
+
+#### GitHub Enterprise Accounts:**
+
+For GitHub Enterprise Cloud users, deploy key policies are controlled at the enterprise level. A user with Admin permissions must enable deploy keys.
+
+1. Log in to your GitHub Enterprise Cloud account as an admin.
+
+1. Follow the instructions in GitHub’s documentation: [Enforcing a policy for deploy keys in your enterprise](https://docs.github.com/en/enterprise-cloud@latest/admin/enforcing-policies/enforcing-policies-for-your-enterprise/enforcing-repository-management-policies-in-your-enterprise#enforcing-a-policy-for-deploy-keys)
+
+    - In the top-right corner of GitHub, click your profile picture.
+    - Click on **Your enterprise/Your enterprises** and select your organization.
+    - Click on **Policies > Member privileges**.
+    - Under **Deploy keys**, review the information about changing the setting, select a policy, and save.
+
+1. Once updated, retry creating or reconnecting your project on Semaphore.
+
 
 ### Verify webhook health {#webhook}
 

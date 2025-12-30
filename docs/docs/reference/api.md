@@ -580,7 +580,7 @@ curl -H "Authorization: Token {api_token}"  \
 
 ## Tasks {#tasks}
 
-### Trigger a taks
+### Trigger a tasks
 
 [Tasks](../using-semaphore/tasks) can be triggered via the API.
 
@@ -594,7 +594,7 @@ curl -X POST --location "https://<organization-url>.semaphoreci.com/api/v1alpha/
 
 You can pass any of the following options when you trigger the task:
 
-- `branch`: (string) specify the branch where the task runs
+- `reference`: (string) specify the branch or Git tag where the task runs
 - `pipeline_file`: (string) specify the [pipeline file](../using-semaphore/pipelines#yaml-path) to execute
 - `parameters`: (key-values) specify parameters values for [parameterized promotions](../using-semaphore/promotions#parameters) 
 
@@ -605,7 +605,7 @@ curl -X POST --location "https://<organization-url>.semaphoreci.com/api/v1alpha/
     -H "Authorization: Token {api_token}" \
     -H "Content-Type: application/json" \
     -d $'{
-    "branch": "master",
+    "reference": "master",
     "pipeline_file": ".semaphore/semaphore.yml",
     "parameters": {
         "PARAM_NAME": "PARAM_VALUE",
