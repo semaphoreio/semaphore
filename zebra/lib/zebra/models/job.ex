@@ -647,16 +647,21 @@ defmodule Zebra.Models.Job do
 
     {:ok, artifact_store_id_str} = Ecto.UUID.load(artifact_store_id)
 
-    # Create JSON message
+    now = DateTime.utc_now()
+
     message =
-      %{
+      InternalApi.ServerFarm.Job.JobDeleted.new(
         job_id: id,
         organization_id: organization_id,
         project_id: project_id,
         artifact_store_id: artifact_store_id_str,
-        deleted_at: DateTime.utc_now() |> DateTime.to_iso8601()
-      }
-      |> Jason.encode!()
+        deleted_at:
+          Google.Protobuf.Timestamp.new(
+            seconds: DateTime.to_unix(now),
+            nanos: 0
+          )
+      )
+      |> InternalApi.ServerFarm.Job.JobDeleted.encode()
 
     # Publish to exchange
     case Tackle.Exchange.publish(channel, exchange_name, message, routing_key) do
