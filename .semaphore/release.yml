@@ -2,8 +2,8 @@ version: v1.0
 name: Release
 agent:
   machine:
-    type: e2-standard-2
-    os_image: ubuntu2004
+    type: f1-standard-2
+    os_image: ubuntu2404
 blocks:
   - name: "Release"
     dependencies: []
