@@ -23,7 +23,7 @@ With MCP, you can now ask your AI agent why your build failed and to provide a f
 
 ## MCP Server Capabilities {#tools}
 
-Semaphore's MCP Server provides access to your Semaphore organization via the following tools:
+Semaphore's MCP Server provides access to your Semaphore organization via the following tools and resources:
 
 - `echo`: Returns the provided `message` verbatim (handy for smoke tests) 
 - `organizations_list`: Lists organizations that the user can access
@@ -35,6 +35,7 @@ Semaphore's MCP Server provides access to your Semaphore organization via the fo
 - `jobs_describe`: Describes a job, surfacing agent details, and lifecycle timestamps
 - `jobs_logs`: Fetches job logs. For cloud jobs, it streams loghub events. For self-hosted jobs, returns a URL where logs can be fetched
 - `get_test_results`: Returns a signed URL (gzip JSON) for JUnit-style [test reports](../tests/test-reports). Response includes URL, path, compression, and fetch instructions.
+- `doc_tools`: Allows AI to access a copy of the full Semaphore documentation site
 
 The following tools require MCP Server write permissions in your organization. Contact `support@semaphore.io` to enable this feature.
 

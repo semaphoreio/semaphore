@@ -43,7 +43,7 @@ The E1 generation is presented in the following types:
 
 E1 Generation machine types can be paired with:
 
-- [`ubuntu2004`](../reference/os-ubuntu-images/ubuntu-2004-image)
+- [`ubuntu2404`](../reference/os-ubuntu-images/ubuntu-2004-image)
 - [Docker-based environment](../using-semaphore/pipelines#docker-environments).
 
 ### E2 generation {#e2}
@@ -67,7 +67,7 @@ E2 machines can also be paired with:
 
 - [`ubuntu2404`](../reference/os-ubuntu-images/ubuntu-2404-image)
 - [`ubuntu2204`](../reference/os-ubuntu-images/ubuntu-2204-image)
-- [`ubuntu2004`](../reference/os-ubuntu-images/ubuntu-2004-image)
+- [`ubuntu2404`](../reference/os-ubuntu-images/ubuntu-2004-image)
 - [Docker-based environments](../using-semaphore/pipelines#docker-environments).
 
 ### F1 generation {#f1}
@@ -91,7 +91,7 @@ F1 machines can be paired with:
 
 - [`ubuntu2404`](../reference/os-ubuntu-images/ubuntu-2404-image)
 - [`ubuntu2204`](../reference/os-ubuntu-images/ubuntu-2204-image)
-- [`ubuntu2004`](../reference/os-ubuntu-images/ubuntu-2004-image)
+- [`ubuntu2404`](../reference/os-ubuntu-images/ubuntu-2004-image)
 - [Docker-based environments](../using-semaphore/pipelines#docker-environments).
 
 ### R1 generation {#r1}

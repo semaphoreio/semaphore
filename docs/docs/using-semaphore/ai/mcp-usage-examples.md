@@ -47,6 +47,24 @@ For instance, the MCP response might return a JSON array of projects in your org
 
 The agent uses this data to confirm connectivity and context. With IDs known, subsequent commands (like triggering or inspecting pipelines) don’t require you to manually look up IDs, reducing friction.
 
+## Pipeline creation and edition
+
+With the MCP Server, AI agents can create Semaphore pipelines from scratch using real project context and official documentation—without relying on guesswork or generic CI templates. This is especially useful when onboarding new projects, migrating CI systems, or iterating quickly on pipeline design.
+
+In this scenario, the agent combines repository inspection with access to Semaphore’s documentation (via `doc_tools``) to generate a valid`semaphore.yml` tailored to the project.
+
+Example prompts:
+
+- Create a Semaphore pipeline for this repository that runs linting and unit tests
+- Generate a `semaphore.yml` file for this project and cache dependencies
+
+To create a pipeline, the agent typically performs the following steps:
+
+1. Repository inspection: the agent analyzes the repository structure (language, package manager, test framework, etc.) to understand what the pipeline should do
+2. Documentation lookup via doc_tools: using the doc_tools resource, the agent reads Semaphore’s official pipeline YAML documentation
+3. Pipeline generation: based on the repository context and documentation guidance, the agent generates a complete `semaphore.yml` file aligned with Semaphore’s syntax and best practices
+4. Validation through execution: after the YAML is committed and pushed, Semaphore validates and runs the pipeline. Because the agent relied on authoritative docs, the pipeline typically passes validation and executes successfully on the first run.
+
 ## Pipeline Overview and Understanding
 
 Get a high-level summary of what a given Semaphore pipeline does. This helps onboard to a new project or review pipeline structure without digging through YAML. The AI agent can describe the pipeline’s stages, jobs, and purpose in plain language.
@@ -155,6 +173,23 @@ The MCP server returns the job’s log as a structured series of events (each co
 Each `cmd_output` event contains a chunk of the log text (in order). The agent can either stream this output back to you or compile it into a readable format. In practice, the AI might present the logs as plain text. If the logs are lengthy, the agent could summarize them or highlight key sections (e.g., errors or warnings) per your prompt.
 
 This use case is essentially an AI-driven `tail -f`` or log viewer: you ask in natural language, and the MCP integration retrieves the exact logs from Semaphore for your inspection. It’s especially handy for sharing specific logs or examining them in your chat/IDE without switching contexts.
+
+## Configuring Test Reports
+
+Beyond creating a basic pipeline, MCP-enabled AI agents can proactively improve CI feedback by configuring test reports. Test reports convert raw test output into structured data that Semaphore can process and display in the Tests tab failures easier to review for both humans and AI agents.
+
+Example prompts:
+
+- Configure Semaphore test reports for this pipeline
+- Update the Semaphore pipeline to generate and process test results
+- Add test reports so Semaphore can display failed tests
+
+To configure test reports, the agent typically:
+
+1. Inspects the existing pipeline: the agent reviews the current `semaphore.yml` to see whether test results are already being generated or uploaded
+2. Consults Semaphore documentation: using doc_tools, the agent reads Semaphore’s documentation on test reports to determine what to do next
+3. Updates the pipeline configuration: The agent modifies the test job to generate test result files, upload the artifacts and process them
+4. Validates via execution: after the updated pipeline is pushed, Semaphore processes the test results and surfaces them in the Tests tab
 
 ## See also
 

@@ -267,7 +267,7 @@ name: Aliases test
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
   - name: Block 1
     task:

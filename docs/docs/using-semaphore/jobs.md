@@ -81,7 +81,7 @@ name: Initial Pipeline
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
   - name: 'Block #1'
     dependencies: []
@@ -149,7 +149,7 @@ name: Initial Pipeline
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
   - name: 'Block #1'
     dependencies: []
@@ -208,7 +208,7 @@ name: Initial Pipeline
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
   - name: 'Block #1'
     dependencies: []
@@ -282,7 +282,7 @@ name: Initial Pipeline
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
   - name: Install
     dependencies: []
@@ -620,7 +620,7 @@ name: Initial Pipeline
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
   - name: Build
     dependencies: []
@@ -682,7 +682,7 @@ name: Initial Pipeline
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
   - name: Build
     dependencies: []
@@ -757,7 +757,7 @@ name: Initial Pipeline
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
   - name: Build
     dependencies: []
@@ -837,7 +837,7 @@ name: Initial Pipeline
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
   - name: AWS Login Test
     dependencies: []
@@ -893,7 +893,7 @@ name: Initial Pipeline
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
   - name: Build
     dependencies: []
@@ -926,7 +926,7 @@ name: Initial Pipeline
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
   - name: Build
     dependencies: []
@@ -983,7 +983,7 @@ name: Initial Pipeline
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
   - name: Build
     dependencies: []
@@ -1064,7 +1064,7 @@ name: Continuous Integration Pipeline
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
   - name: Parallel jobs
     dependencies: []
@@ -1148,7 +1148,7 @@ name: Continuous Integration Pipeline
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
   - name: Job matrix
     dependencies: []
@@ -1231,7 +1231,7 @@ name: Job priorities
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 
 blocks:
   - name: Tests
@@ -1280,7 +1280,7 @@ name: An example of using global_job_config
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 
 # highlight-start
 global_job_config:
@@ -1335,7 +1335,7 @@ name: Pipeline using execution_time_limit
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
   - name: Job limited to 3 hours
     # highlight-start

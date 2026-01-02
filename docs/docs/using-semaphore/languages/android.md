@@ -59,7 +59,7 @@ To configure your Android container using YAML, follow these steps:
     agent:
       machine:
         type: e1-standard-2
-        os_image: ubuntu2004
+        os_image: ubuntu2404
         # highlight-start
       containers:
         - name: main
@@ -140,7 +140,7 @@ name: React Native example
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
     # highlight-start
   # Use an image with Node.js for React Native  
   containers:

@@ -507,7 +507,7 @@ spec:
   agent:
     machine:
       type: e1-standard-2
-      os_image: ubuntu2004
+      os_image: ubuntu2404
   project_id: a2ba1008-afc9-4326-b994-58fb816fc4d5
 status:
   state: FINISHED
