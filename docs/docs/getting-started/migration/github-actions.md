@@ -419,7 +419,7 @@ name: CI Pipeline
 agent:
   machine:
     type: f1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 global_job_config:
   prologue:
     commands:

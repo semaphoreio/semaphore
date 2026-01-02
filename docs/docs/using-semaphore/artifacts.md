@@ -79,7 +79,7 @@ name: Continuous Integration Pipelines
 agent:
   machine:
     type: f1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
   - name: Build
     dependencies: []
@@ -139,7 +139,7 @@ name: Continuous Integration Pipelines
 agent:
   machine:
     type: f1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
   - name: Build
     dependencies: []
@@ -173,7 +173,7 @@ name: Deploy to production
 agent:
   machine:
     type: f1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
   - name: Deploy
     task:
@@ -211,7 +211,7 @@ name: Continuous Integration Pipelines
 agent:
   machine:
     type: f1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
   - name: Build
     dependencies: []

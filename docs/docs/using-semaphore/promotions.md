@@ -63,7 +63,7 @@ name: Initial Pipeline
 agent:
   machine:
     type: f1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
   - name: Build
     dependencies: []
@@ -115,7 +115,7 @@ name: Initial Pipeline
 agent:
   machine:
     type: f1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
   - name: 'Block #1'
     dependencies: []
@@ -166,7 +166,7 @@ name: Continuous Integration Pipeline
 agent:
   machine:
     type: f1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
   - name: Install
     dependencies: []
@@ -335,7 +335,7 @@ name: Deployment pipeline
 agent:
   machine:
     type: f1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
   - name: Deploy
     task:

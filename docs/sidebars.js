@@ -194,7 +194,6 @@ const sidebars = {
             },
             collapsed: true,
             items: [
-              'reference/os-ubuntu-images/ubuntu-2004-image',
               'reference/os-ubuntu-images/ubuntu-2204-image',
               'reference/os-ubuntu-images/ubuntu-2404-image',
               'reference/os-ubuntu-images/ubuntu-2404-arm-image'
