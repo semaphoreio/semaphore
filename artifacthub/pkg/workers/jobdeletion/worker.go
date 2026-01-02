@@ -84,6 +84,11 @@ func (w *Worker) handleMessage(delivery tackle.Delivery) error {
 	jobID := event.GetJobId()
 	artifactStoreID := event.GetArtifactStoreId()
 
+	if jobID == "" || artifactStoreID == "" {
+		log.Printf("JobDeletion Worker: Invalid message, missing jobID or artifactStoreID: %+v", event)
+		return fmt.Errorf("invalid message, missing jobID or artifactStoreID")
+	}
+
 	artifact, err := models.FindArtifactByID(artifactStoreID)
 	if err != nil {
 		log.Printf("JobDeletion Worker: Failed to find artifact store with ID=%s: %v", artifactStoreID, err)
