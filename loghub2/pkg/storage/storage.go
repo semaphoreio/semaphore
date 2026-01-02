@@ -17,6 +17,7 @@ type Storage interface {
 	Exists(ctx context.Context, fileName string) (bool, error)
 	ReadFile(ctx context.Context, fileName string) ([]byte, error)
 	ReadFileAsReader(ctx context.Context, fileName string) (io.ReadCloser, error)
+	DeleteFile(ctx context.Context, fileName string) error
 }
 
 func InitStorage() (Storage, error) {
