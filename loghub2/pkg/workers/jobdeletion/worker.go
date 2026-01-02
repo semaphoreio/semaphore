@@ -2,10 +2,12 @@ package jobdeletion
 
 import (
 	"context"
+	"errors"
 	"log"
 	"os"
 	"time"
 
+	gcs "cloud.google.com/go/storage"
 	tackle "github.com/renderedtext/go-tackle"
 	server_farm_job "github.com/semaphoreio/semaphore/loghub2/pkg/protos/server_farm.job"
 	"github.com/semaphoreio/semaphore/loghub2/pkg/storage"
@@ -83,7 +85,7 @@ func (w *Worker) handleMessage(delivery tackle.Delivery) error {
 	jobID := event.GetJobId()
 
 	exists, err := w.storageClient.Exists(ctx, jobID)
-	if err != nil {
+	if err != nil && !errors.Is(err, gcs.ErrObjectNotExist) {
 		log.Printf("JobDeletion Worker: Error checking if logs exist for JobID=%s: %v", jobID, err)
 		return err
 	}
