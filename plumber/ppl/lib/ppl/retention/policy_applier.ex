@@ -50,6 +50,8 @@ defmodule Ppl.Retention.PolicyApplier do
     update_query = from(pr in PplRequests, where: pr.id in subquery(ids_subquery))
     {count, _} = EctoRepo.update_all(update_query, set: [expires_at: expires_at])
 
+    Watchman.submit({"retention.marked", [org_id]}, count, :count)
+
     case count do
       0 -> acc
       n -> batch_update_mark(org_id, cutoff, expires_at, batch_size, acc + n)
@@ -68,6 +70,8 @@ defmodule Ppl.Retention.PolicyApplier do
 
     update_query = from(pr in PplRequests, where: pr.id in subquery(ids_subquery))
     {count, _} = EctoRepo.update_all(update_query, set: [expires_at: nil])
+
+    Watchman.submit({"retention.unmarked", [org_id]}, count, :count)
 
     case count do
       0 -> acc
