@@ -1,6 +1,8 @@
 defmodule PipelinesAPI.Router do
   use Plug.{Router, ErrorHandler}
 
+  import PipelinesAPI.Util.APIResponse
+
   alias PipelinesAPI.Pipelines.Terminate
   alias PipelinesAPI.Pipelines.DescribeTopology
   alias PipelinesAPI.Pipelines.PartialRebuild
@@ -156,7 +158,7 @@ defmodule PipelinesAPI.Router do
   match("/logs/:job_id", via: :get, to: PipelinesAPI.Logs.Get)
 
   get "/health_check/ping" do
-    send_resp(conn, 200, "pong")
+    text(conn, "pong")
   end
 
   # sobelow_skip ["XSS.SendResp"]
@@ -167,20 +169,27 @@ defmodule PipelinesAPI.Router do
     case reason.__struct__ do
       Plug.Parsers.ParseError ->
         %{exception: %{message: message}} = reason
-        send_resp(conn, conn.status, "Malformed request: " <> Plug.HTML.html_escape(message))
+
+        conn
+        |> put_status(conn.status)
+        |> text("Malformed request: " <> Plug.HTML.html_escape(message))
 
       _ ->
-        send_resp(conn, conn.status, "Something went wrong")
+        conn
+        |> put_status(conn.status)
+        |> text("Something went wrong")
     end
   end
 
   # Root path has to return 200 OK in order to pass health checks made by ingress
   # on Kubernets
   get "/" do
-    send_resp(conn, 200, "pong")
+    text(conn, "pong")
   end
 
   match _ do
-    send_resp(conn, 404, "oops")
+    conn
+    |> put_status(404)
+    |> text("oops")
   end
 end
