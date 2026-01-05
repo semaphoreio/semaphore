@@ -24,7 +24,7 @@ To use this operating system, and choose `ubuntu2404` in the **OS Image** select
 </TabItem>
 <TabItem value="yaml" label="YAML">
 
-To use this operating system, you must select an [`r1-standard-4`] machine and use `ubuntu2404` as the `os_image`:
+To use this operating system, you must select an `r1-standard-4` machine and use `ubuntu2404` as the `os_image`:
 
 ```yaml
 version: 1.0

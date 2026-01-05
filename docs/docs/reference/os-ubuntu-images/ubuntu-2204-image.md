@@ -4,31 +4,19 @@ description: Ubuntu 22.04 (x86_64) Image Reference
 
 # Ubuntu 22.04 (x86_64)
 
-
-
-
-
-
-
-:::note
-
-The Ubuntu 22.04 (x86_64) image is currently available for [e2-standard](../machine-types#e2) and [f1-standard](../machine-types#f1) agent types.
-
-:::
-
 This is a customized x86_64 image based on [Ubuntu 22.04](https://wiki.ubuntu.com/JammyJellyfish/ReleaseNotes) (Jammy Jellyfish LTS).
 
 <Tabs groupId="editor-yaml">
 <TabItem value="editor" label="Editor">
 
-To use this operating system, and choose `ubuntu2204` in the **OS Image** selector. This OS can only be paired with [E2 machines](../machine-types#e2) or higher.
+To use this operating system, and choose `ubuntu2204` in the **OS Image** selector. 
 
 ![Selecting the Ubuntu 22.04 using the workflow editor](./img/ubuntu2204-selector.jpg)
 
 </TabItem>
 <TabItem value="yaml" label="YAML">
 
-To use this operating system,  you must select an [`e2-standard`] machine and use `ubuntu2204` as the `os_image`:
+To use this operating system, you must select a machine type and use `ubuntu2204` as the `os_image`:
 
 ```yaml
 version: v1.0
