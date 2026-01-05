@@ -26,9 +26,6 @@ defmodule Zebra.Workers.JobDeletionPolicyMarker do
       marked = batch_mark_jobs_for_deletion(org_id, cutoff_date, days, batch_size, 0)
       unmarked = batch_unmark_jobs_for_deletion(org_id, cutoff_date, batch_size, 0)
 
-      Watchman.submit({"retention.marked", [org_id]}, marked, :count)
-      Watchman.submit({"retention.unmarked", [org_id]}, unmarked, :count)
-
       Logger.info(
         "Marked #{marked} jobs for deletion, unmarked #{unmarked} jobs for org #{org_id}."
       )
@@ -45,6 +42,7 @@ defmodule Zebra.Workers.JobDeletionPolicyMarker do
         acc
 
       {marked, _} ->
+        Watchman.submit({"retention.marked", [org_id]}, marked, :count)
         batch_mark_jobs_for_deletion(org_id, cutoff_date, deletion_days, batch_size, acc + marked)
     end
   end
@@ -55,6 +53,7 @@ defmodule Zebra.Workers.JobDeletionPolicyMarker do
         acc
 
       {unmarked, _} ->
+        Watchman.submit({"retention.unmarked", [org_id]}, unmarked, :count)
         batch_unmark_jobs_for_deletion(org_id, cutoff_date, batch_size, acc + unmarked)
     end
   end
