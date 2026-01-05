@@ -104,7 +104,13 @@ defmodule Guard.Id.McpOAuth do
       {:ok, existing_grant} ->
         Logger.info("[McpOAuth] Found existing grant #{existing_grant.id}, reusing")
         # Reuse existing grant, skip UI and go straight to Keycloak
-        forward_to_keycloak(conn, correlation_id, existing_grant.id, existing_grant.tool_scopes)
+        forward_to_keycloak(
+          conn,
+          correlation_id,
+          existing_grant.id,
+          existing_grant.tool_scopes,
+          client_id
+        )
 
       {:error, :not_found} ->
         # Show grant selection UI
@@ -164,7 +170,7 @@ defmodule Guard.Id.McpOAuth do
     |> Enum.map(&String.trim/1)
   end
 
-  defp forward_to_keycloak(conn, correlation_id, grant_id, tool_scopes) do
+  defp forward_to_keycloak(conn, correlation_id, grant_id, tool_scopes, client_id) do
     # Update Auth service's OAuth session with grant info
     base_url = System.get_env("BASE_DOMAIN") || "localhost"
     auth_url = "https://mcp.#{base_url}/exauth/internal/oauth-session/#{correlation_id}/grant"
@@ -180,12 +186,14 @@ defmodule Guard.Id.McpOAuth do
     case :hackney.request(:post, auth_url, headers, body, [:with_body, recv_timeout: 10_000]) do
       {:ok, 200, _headers, _response} ->
         # Successfully stored grant, continue to Keycloak
+        redirect_uri = "https://id.#{base_url}/mcp/oauth/callback"
+
         keycloak_url =
           "https://id.#{base_url}/realms/semaphore/protocol/openid-connect/auth" <>
-            "?client_id=guard" <>
+            "?client_id=#{URI.encode(client_id || "")}" <>
             "&response_type=code" <>
             "&scope=openid" <>
-            "&redirect_uri=https://id.#{base_url}/mcp/oauth/callback" <>
+            "&redirect_uri=#{URI.encode(redirect_uri)}" <>
             "&state=#{URI.encode(correlation_id)}"
 
         Logger.info(
@@ -250,7 +258,7 @@ defmodule Guard.Id.McpOAuth do
             )
 
             # Forward to Keycloak (this will update Auth's OAuth session)
-            forward_to_keycloak(conn, correlation_id, grant.id, grant.tool_scopes)
+            forward_to_keycloak(conn, correlation_id, grant.id, grant.tool_scopes, client_id)
 
           {:error, reason} ->
             Logger.error("[McpOAuth] Failed to create grant: #{inspect(reason)}")

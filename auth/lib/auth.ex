@@ -627,21 +627,34 @@ defmodule Auth do
   # Returns enhanced token response with mcp_grant_id and mcp_tool_scopes
   #
   post "/exauth/oauth/token", host: "mcp." do
-    log_request(conn, "mcp.#{Application.fetch_env!(:auth, :domain)}/oauth/token")
+    domain = Application.fetch_env!(:auth, :domain)
+    log_request(conn, "mcp.#{domain}/oauth/token")
 
     # Use conn.body_params populated by Plug.Parsers instead of reading raw body
     # Re-encode as URL-encoded string for Keycloak
     params = conn.body_params
     code = params["code"]
+    session =
+      case code && Auth.OAuthSession.get_by_auth_code(code) do
+        {:ok, session} -> session
+        _ -> nil
+      end
+
+    params =
+      if session do
+        Map.put(params, "redirect_uri", "https://id.#{domain}/mcp/oauth/callback")
+      else
+        params
+      end
+
     body = URI.encode_query(params)
 
     case proxy_token_to_keycloak(body) do
       {:ok, token_response} ->
         # Check if this was an MCP OAuth flow with a grant
         enhanced_response =
-          case Auth.OAuthSession.get_by_auth_code(code) do
-            {:ok, %{grant_id: grant_id, tool_scopes: tool_scopes}}
-            when not is_nil(grant_id) ->
+          case session do
+            %{grant_id: grant_id, tool_scopes: tool_scopes} when not is_nil(grant_id) ->
               Logger.info(
                 "[Auth.OAuth] Injecting grant info into token response: grant_id=#{grant_id}"
               )
@@ -788,13 +801,14 @@ defmodule Auth do
     log_request(conn, "mcp.#{Application.fetch_env!(:auth, :domain)}/oauth/authorize")
 
     client_id = conn.params["client_id"]
-    scope = conn.params["scope"] || ""
+    raw_scope = conn.params["scope"] || ""
+    scope = ensure_mcp_scope(raw_scope)
     redirect_uri = conn.params["redirect_uri"]
     state = conn.params["state"]
     response_type = conn.params["response_type"]
 
-    # Only intercept MCP OAuth flows (scope contains "mcp")
-    if String.contains?(scope, "mcp") do
+    # Always intercept MCP OAuth flows; inject "mcp" scope if missing.
+    if scope_includes_mcp?(scope) do
       # Create OAuth session for flow correlation
       correlation_id = UUID.uuid4()
 
@@ -1431,5 +1445,28 @@ defmodule Auth do
         Logger.error("[Auth.OAuth] Token exchange request failed: #{inspect(reason)}")
         {:error, 500, Jason.encode!(%{error: "Token exchange request failed"})}
     end
+  end
+
+  defp ensure_mcp_scope(scope_string) when is_binary(scope_string) do
+    scopes = split_scopes(scope_string)
+
+    if Enum.member?(scopes, "mcp") do
+      Enum.join(scopes, " ")
+    else
+      Enum.join(scopes ++ ["mcp"], " ")
+    end
+  end
+
+  defp scope_includes_mcp?(scope_string) when is_binary(scope_string) do
+    scope_string
+    |> split_scopes()
+    |> Enum.member?("mcp")
+  end
+
+  defp split_scopes(scope_string) when is_binary(scope_string) do
+    scope_string
+    |> String.split(" ")
+    |> Enum.map(&String.trim/1)
+    |> Enum.filter(&(&1 != ""))
   end
 end
