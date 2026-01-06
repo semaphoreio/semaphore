@@ -4,31 +4,19 @@ description: Ubuntu 24.04 Image Reference
 
 # Ubuntu 24.04 (x86_64)
 
-
-
-
-
-
-
-:::note
-
-The Ubuntu 24.04 (x86_64) image is currently available for [e2-standard](../machine-types#e2) and [f1-standard](../machine-types#f1) agent types.
-
-:::
-
 This is a customized x86_64 image based on [Ubuntu 24.04](https://releases.ubuntu.com/noble/) (Noble Numbat LTS).
 
 <Tabs groupId="editor-yaml">
 <TabItem value="editor" label="Editor">
 
-To use this operating system, and choose `ubuntu2404` in the **OS Image** selector. This OS can be paired with [F1 machines](../machine-types#f1) or higher.
+To use this operating system, and choose `ubuntu2404` in the **OS Image** selector.
 
 ![Selecting the Ubuntu 24.04 using the workflow editor](./img/ubuntu2404-selector.jpg)
 
 </TabItem>
 <TabItem value="yaml" label="YAML">
 
-To use this operating system,  you must select an [`f1-standard`] machine and use `ubuntu2404` as the `os_image`:
+To use this operating system, you must select a machine type and use `ubuntu2404` as the `os_image`:
 
 ```yaml
 version: 1.0

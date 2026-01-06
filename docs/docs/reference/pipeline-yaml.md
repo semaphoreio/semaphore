@@ -50,7 +50,7 @@ The `agent` can contain the following properties:
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 ```
 
 :::note
@@ -72,7 +72,7 @@ It requires two properties:
 # highlight-next-line
 machine:
   type: e1-standard-2
-  os_image: ubuntu2004
+  os_image: ubuntu2404
 ```
 
 ### type {#type}
@@ -85,7 +85,7 @@ The list of valid values for Semaphore Cloud is available on the [machine types 
 machine:
   # highlight-next-line
   type: e1-standard-4
-  os_image: ubuntu2004
+  os_image: ubuntu2404
 ```
 
 ### os_image {#os-image}
@@ -94,7 +94,7 @@ Part of the [`agent`](#agent) definition. This is an optional property to specif
 
 If a value is not provided, the default for the machine type is used:
 
-- `e1-standard-*` machine types: `ubuntu2004`
+- `e1-standard-*` machine types: `ubuntu2404`
 - `a2-standard-*` machine types: `macos-xcode16`
 
 The list of valid values for Semaphore Cloud is available on the [machine types reference](./machine-types) page.
@@ -103,7 +103,7 @@ The list of valid values for Semaphore Cloud is available on the [machine types 
 machine:
   type: e1-standard-4
   # highlight-next-line
-  os_image: ubuntu2004
+  os_image: ubuntu2404
 ```
 
 ## containers {#containers}
@@ -266,7 +266,7 @@ name: Using execution_time_limit
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 
 # highlight-start
 execution_time_limit:
@@ -295,7 +295,7 @@ name: Setting fail fast stop policy
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 
 # highlight-start
 fail_fast:
@@ -343,7 +343,7 @@ name: Setting fail fast cancel policy
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 
 # highlight-start
 fail_fast:
@@ -441,7 +441,7 @@ name: Setting auto-cancel running strategy
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 
 # highlight-start
 auto_cancel:
@@ -470,7 +470,7 @@ name: Setting auto-cancel queued strategy
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 # highlight-start
 auto_cancel:
   queued:
@@ -511,7 +511,7 @@ name: An example of using global_job_config
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 # highlight-start
 global_job_config:
   prologue:
@@ -568,7 +568,7 @@ name: Pipeline with dependencies
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 
 blocks:
   - name: "Block A"
@@ -605,7 +605,7 @@ name: Invalid pipeline
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 
 blocks:
   - name: "Block A"
@@ -646,7 +646,7 @@ name: The name of the Semaphore project
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
  - name: Inspect Linux environment
  # highlight-start
@@ -683,7 +683,7 @@ name: The name of the Semaphore project
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
  - name: Inspect Linux environment
  # highlight-start
@@ -720,7 +720,7 @@ name: The name of the Semaphore project
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
  - name: Inspect Linux environment
  # highlight-next-line
@@ -744,7 +744,7 @@ name: YAML file example with task and agent.
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
  - name: Run in Linux environment
    task:
@@ -777,7 +777,7 @@ name: A Semaphore project
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
    task:
       jobs:
@@ -811,7 +811,7 @@ name: YAML file illustrating the prologue property
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
  - name: Display a file
    task:
@@ -850,7 +850,7 @@ name: YAML file illustrating the epilogue property
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
  - name: Linux version
    task:
@@ -880,7 +880,7 @@ name: YAML file illustrating the epilogue property
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
  - name: Linux version
    task:
@@ -930,7 +930,7 @@ name: Pipeline configuration with secrets
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
   - task:
       jobs:
@@ -978,7 +978,7 @@ name: The name of the Semaphore project
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
    task:
       jobs:
@@ -1002,7 +1002,7 @@ name: Using commands_file
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
  - name: Calling text file
    task:
@@ -1042,7 +1042,7 @@ name: Using env_vars per jobs
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 
 blocks:
   - name: Using Local Environment variables only
@@ -1101,7 +1101,7 @@ name: Job priorities
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 
 blocks:
   - name: Tests
@@ -1141,7 +1141,7 @@ name: Using the matrix property
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 
 blocks:
   - name: Elixir + Erlang
@@ -1186,7 +1186,7 @@ name: Using the parallelism property
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 
 blocks:
   - name: Example for parallelism
@@ -1273,7 +1273,7 @@ name: Using promotions
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 
 blocks:
   - name: ls
@@ -1305,7 +1305,7 @@ name: This is Pipeline 1
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 
 blocks:
   - name: Environment variable
@@ -1324,7 +1324,7 @@ name: This is Pipeline 2
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 
 blocks:
   - name: List VM Linux version
@@ -1387,7 +1387,7 @@ name: Testing Auto Promoting
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 
 promotions:
 - name: Staging
@@ -1441,7 +1441,7 @@ name: Pipeline 1
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 
 blocks:
   - name: Environment variable
@@ -1460,7 +1460,7 @@ name: Pipeline 2
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 
 blocks:
   - name: Update docs
@@ -1479,7 +1479,7 @@ name: This is Pipeline 3
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 
 blocks:
   - name: List VM Linux version
@@ -1731,7 +1731,7 @@ name: Deploy pipeline
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 
 blocks:
 # highlight-next-line
@@ -1772,7 +1772,7 @@ name: Deployment pipeline
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
     task:
       jobs:
@@ -1795,7 +1795,7 @@ name: Deployment pipeline
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 
 blocks:
     task:
@@ -1822,7 +1822,7 @@ name: Deployment pipeline
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 
 
 global_job_config:
@@ -1842,7 +1842,7 @@ name: Deployment pipeline
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 
 queue:
 # highlight-start
@@ -1862,7 +1862,7 @@ name: Deployment pipeline
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 
 blocks:
   - name: Run tests
@@ -1885,7 +1885,7 @@ name: Deployment pipeline
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 
 blocks:
   - name: Deploy application in all regions
@@ -2042,7 +2042,7 @@ name: Testing Auto Promoting
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 
 promotions:
 - name: Staging
@@ -2097,7 +2097,7 @@ name: Pipeline 1
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 
 blocks:
   - name: Environment variable
@@ -2116,7 +2116,7 @@ name: This is Pipeline 2
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 
 blocks:
   - name: List VM Linux version
@@ -2147,7 +2147,7 @@ name: YAML file example for Go project
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 
 blocks:
  - name: Inspect Linux environment
@@ -2203,7 +2203,7 @@ name: Pipeline configuration with secrets
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
   - task:
       jobs:
@@ -2238,7 +2238,7 @@ name: Basic YAML configuration file example.
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
   - task:
       jobs:

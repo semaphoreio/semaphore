@@ -4,9 +4,11 @@ description: Ubuntu 20.04 Image Reference
 
 # Ubuntu 20.04 (x86_64)
 
+:::warning
 
+This Ubuntu image has been deprecated. 
 
-
+:::
 
 
 
@@ -15,14 +17,14 @@ This is a customized x86_64 image based on [Ubuntu 20.04](https://wiki.ubuntu.co
 <Tabs groupId="editor-yaml">
 <TabItem value="editor" label="Editor">
 
-To use this operating system, choose `ubuntu2004` in the **OS Image** selector. This OS can be paired with any Intel-x86_64 [Linux Machine](../machine-types#linux).
+To use this operating system, choose `ubuntu2404` in the **OS Image** selector. This OS can be paired with any Intel-x86_64 [Linux Machine](../machine-types#linux).
 
-![Selecting the Ubuntu 20.04 using the workflow editor](./img/ubuntu2004-selector.jpg)
+![Selecting the Ubuntu 20.04 using the workflow editor](./img/ubuntu2404-selector.jpg)
 
 </TabItem>
 <TabItem value="yaml" label="YAML">
 
-To use this operating system, use `ubuntu2004` as the `os_image`. This OS can be paired with any [Linux Machine](../machine-types#linux).
+To use this operating system, use `ubuntu2404` as the `os_image`. This OS can be paired with any [Linux Machine](../machine-types#linux).
 
 ```yaml
 version: v1.0
@@ -31,7 +33,7 @@ agent:
   machine:
   # highlight-start
     type: e1-standard-1
-    os_image: ubuntu2004
+    os_image: ubuntu2404
   # highlight-end
 ```
 
