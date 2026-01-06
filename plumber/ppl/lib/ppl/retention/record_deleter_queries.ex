@@ -17,31 +17,34 @@ defmodule Ppl.Retention.RecordDeleterQueries do
   def delete_expired_batch(limit) do
     now = NaiveDateTime.utc_now()
 
-    expired_ids =
-      from(pr in PplRequests,
-        where: pr.expires_at < ^now,
-        select: pr.id,
-        limit: ^limit
-      )
-      |> EctoRepo.all()
+    EctoRepo.transaction(fn ->
+      expired_ids =
+        from(pr in PplRequests,
+          where: pr.expires_at < ^now,
+          select: pr.id,
+          limit: ^limit,
+          lock: "FOR UPDATE SKIP LOCKED"
+        )
+        |> EctoRepo.all()
 
-    case expired_ids do
-      [] ->
-        {:ok, 0}
+      case expired_ids do
+        [] ->
+          0
 
-      ids ->
-        Enum.each(ids, fn id ->
-          Block.delete_blocks_from_ppl(id)
-        end)
+        ids ->
+          Enum.each(ids, fn id ->
+            Block.delete_blocks_from_ppl(id)
+          end)
 
-        delete_query =
-          from(pr in PplRequests,
-            where: pr.id in ^ids
-          )
+          delete_query =
+            from(pr in PplRequests,
+              where: pr.id in ^ids
+            )
 
-        {count, _} = EctoRepo.delete_all(delete_query)
-        {:ok, count}
-    end
+          {count, _} = EctoRepo.delete_all(delete_query)
+          count
+      end
+    end)
   rescue
     e -> {:error, e}
   end
