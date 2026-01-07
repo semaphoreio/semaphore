@@ -1548,9 +1548,7 @@ The examples below show all the ways these parameters can be used.
 
 ### Using Sprout functions {#parameters-functions}
 
-Strings using the form `%{{parameters}}` (starting with the `%` sign) produce a JSON-serialized output and support string manipulation via pipes and functions. Internally, the templates are processed using the [Sprout library]
-
-Internally, Semaphore uses [Sprout](https://docs.atom.codes/sprout) as the templating engine and supports a subset of the [Sprout functions](https://docs.atom.codes/sprout/registries/list-of-all-registries).
+Strings using the form `%{{parameters}}` (starting with the `%` sign) produce a JSON-serialized output and support string manipulation via pipes and functions. Internally, Semaphore uses [Sprout](https://docs.atom.codes/sprout) as the templating engine and supports a subset of the [Sprout functions](https://docs.atom.codes/sprout/registries/list-of-all-registries).
 
 For example, given `VAR1='Hello World'` the string:
 
