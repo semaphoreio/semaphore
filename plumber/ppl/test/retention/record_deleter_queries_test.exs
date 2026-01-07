@@ -83,6 +83,31 @@ defmodule Ppl.Retention.RecordDeleterQueriesTest do
       assert get_pipeline(expired_2.id) == nil
       assert get_pipeline(non_expired.id) != nil
     end
+
+    test "concurrent workers do not process the same records" do
+      org_id = UUID.uuid4()
+
+      Enum.each(1..10, fn _ ->
+        insert_pipeline(org_id, expired_at())
+      end)
+
+      parent = self()
+
+      tasks =
+        Enum.map(1..3, fn _ ->
+          Task.async(fn ->
+            {:ok, count} = RecordDeleterQueries.delete_expired_batch(10)
+            send(parent, {:deleted, count})
+            count
+          end)
+        end)
+
+      results = Enum.map(tasks, &Task.await/1)
+      total_deleted = Enum.sum(results)
+
+      assert total_deleted == 10
+      assert count_all_pipelines() == 0
+    end
   end
 
   defp insert_pipeline(org_id, expires_at) do
