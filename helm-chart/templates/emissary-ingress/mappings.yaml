@@ -596,8 +596,9 @@ spec:
   precedence: 200
   timeout_ms: 10000
 ---
-# MCP OAuth Authorization Interceptor (Guard OAuth Proxy Pattern)
-# Intercepts MCP OAuth authorization requests and redirects to Guard for grant selection
+# MCP OAuth Authorization Endpoint (Cookie Auth Flow)
+# Routes to Guard THROUGH ExtAuth (cookie validation) - user will be authenticated
+# Guard handles grant selection with user identity from headers
 apiVersion: getambassador.io/v3alpha1
 kind: Mapping
 metadata:
@@ -606,12 +607,12 @@ metadata:
 spec:
   host: "^mcp\\..*"
   host_regex: true
-  prefix: /exauth/oauth/authorize
-  rewrite: /exauth/oauth/authorize
-  service: auth.{{ .Release.Namespace }}:4000
-  bypass_auth: true
+  prefix: /oauth/authorize
+  rewrite: /oauth/authorize
+  service: guard-id-http-api.{{ .Release.Namespace }}:80
+  # NO bypass_auth - goes through ExtAuth for cookie validation
   precedence: 200
-  timeout_ms: 10000
+  timeout_ms: 30000
 ---
 # MCP OAuth Token Exchange with Grant Injection
 # Proxies token requests to Keycloak and injects mcp_grant_id into response
@@ -623,45 +624,26 @@ metadata:
 spec:
   host: "^mcp\\..*"
   host_regex: true
-  prefix: /exauth/oauth/token
-  rewrite: /exauth/oauth/token
+  prefix: /oauth/token
+  rewrite: /oauth/token
   service: auth.{{ .Release.Namespace }}:4000
   bypass_auth: true
   precedence: 200
   timeout_ms: 10000
 ---
-# MCP OAuth Session Internal API - Store Grant (Guard → Auth)
-# Internal API for Guard to store grant_id in OAuth session
+# Guard Internal API - Grant lookup by auth code (Auth → Guard)
+# Used by Auth token endpoint to get grant info for injection into token response
 apiVersion: getambassador.io/v3alpha1
 kind: Mapping
 metadata:
-  name: mcp-oauth-session-grant-mapping
+  name: guard-internal-mcp-grant-lookup-mapping
   namespace: {{ .Release.Namespace }}
 spec:
-  host: "^mcp\\..*"
+  host: "^id\\..*"
   host_regex: true
-  prefix_regex: true
-  prefix: /exauth/internal/oauth-session/[^/]+/grant
+  prefix: /internal/mcp/grant-by-code/
   rewrite: ""
-  service: auth.{{ .Release.Namespace }}:4000
-  bypass_auth: true
-  precedence: 250
-  timeout_ms: 5000
----
-# MCP OAuth Session Internal API - Store Auth Code (Guard → Auth)
-# Internal API for Guard to store auth code and get client redirect info
-apiVersion: getambassador.io/v3alpha1
-kind: Mapping
-metadata:
-  name: mcp-oauth-session-auth-code-mapping
-  namespace: {{ .Release.Namespace }}
-spec:
-  host: "^mcp\\..*"
-  host_regex: true
-  prefix_regex: true
-  prefix: /exauth/internal/oauth-session/[^/]+/auth-code
-  rewrite: ""
-  service: auth.{{ .Release.Namespace }}:4000
+  service: guard-id-http-api.{{ .Release.Namespace }}:80
   bypass_auth: true
   precedence: 250
   timeout_ms: 5000

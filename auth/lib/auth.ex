@@ -76,8 +76,8 @@ defmodule Auth do
             # This enables the OAuth Proxy Pattern for MCP grant selection
             rewritten_metadata =
               Map.merge(metadata, %{
-                "authorization_endpoint" => "https://mcp.#{domain}/exauth/oauth/authorize",
-                "token_endpoint" => "https://mcp.#{domain}/exauth/oauth/token",
+                "authorization_endpoint" => "https://mcp.#{domain}/oauth/authorize",
+                "token_endpoint" => "https://mcp.#{domain}/oauth/token",
                 "registration_endpoint" => "https://mcp.#{domain}/oauth/register"
                 # Keep issuer unchanged - must match JWT issuer claim from Keycloak
               })
@@ -142,8 +142,8 @@ defmodule Auth do
             # This enables the OAuth Proxy Pattern for MCP grant selection
             rewritten_metadata =
               Map.merge(metadata, %{
-                "authorization_endpoint" => "https://mcp.#{domain}/exauth/oauth/authorize",
-                "token_endpoint" => "https://mcp.#{domain}/exauth/oauth/token",
+                "authorization_endpoint" => "https://mcp.#{domain}/oauth/authorize",
+                "token_endpoint" => "https://mcp.#{domain}/oauth/token",
                 "registration_endpoint" => "https://mcp.#{domain}/oauth/register"
                 # Keep issuer unchanged - must match JWT issuer claim from Keycloak
               })
@@ -208,8 +208,8 @@ defmodule Auth do
             # This enables the OAuth Proxy Pattern for MCP grant selection
             rewritten_metadata =
               Map.merge(metadata, %{
-                "authorization_endpoint" => "https://mcp.#{domain}/exauth/oauth/authorize",
-                "token_endpoint" => "https://mcp.#{domain}/exauth/oauth/token",
+                "authorization_endpoint" => "https://mcp.#{domain}/oauth/authorize",
+                "token_endpoint" => "https://mcp.#{domain}/oauth/token",
                 "registration_endpoint" => "https://mcp.#{domain}/oauth/register"
                 # Keep issuer unchanged - must match JWT issuer claim from Keycloak
               })
@@ -342,8 +342,10 @@ defmodule Auth do
 
     domain = Application.fetch_env!(:auth, :domain)
 
+    # IMPORTANT: resource identifier must match the JWT audience configured in Keycloak
+    # Use host-only URL (without /mcp path) to align with keycloak/setup/main.tf audience mapper
     metadata = %{
-      resource: "https://mcp.#{domain}/mcp",
+      resource: "https://mcp.#{domain}",
       authorization_servers: ["https://id.#{domain}/realms/semaphore"],
       scopes_supported: ["mcp"],
       bearer_methods_supported: ["header"],
@@ -439,8 +441,8 @@ defmodule Auth do
             # This enables the OAuth Proxy Pattern for MCP grant selection
             rewritten_metadata =
               Map.merge(metadata, %{
-                "authorization_endpoint" => "https://mcp.#{domain}/exauth/oauth/authorize",
-                "token_endpoint" => "https://mcp.#{domain}/exauth/oauth/token",
+                "authorization_endpoint" => "https://mcp.#{domain}/oauth/authorize",
+                "token_endpoint" => "https://mcp.#{domain}/oauth/token",
                 "registration_endpoint" => "https://mcp.#{domain}/oauth/register"
                 # Keep issuer unchanged - must match JWT issuer claim from Keycloak
               })
@@ -623,25 +625,23 @@ defmodule Auth do
 
   #
   # OAuth Token Endpoint - Proxies to Keycloak and injects MCP grant info
-  # Looks up grant_id from OAuth session using auth code
+  # Looks up grant_id from Guard's cache using auth code
   # Returns enhanced token response with mcp_grant_id and mcp_tool_scopes
   #
-  post "/exauth/oauth/token", host: "mcp." do
+  post "/oauth/token", host: "mcp." do
     domain = Application.fetch_env!(:auth, :domain)
     log_request(conn, "mcp.#{domain}/oauth/token")
 
     # Use conn.body_params populated by Plug.Parsers instead of reading raw body
-    # Re-encode as URL-encoded string for Keycloak
     params = conn.body_params
     code = params["code"]
-    session =
-      case code && Auth.OAuthSession.get_by_auth_code(code) do
-        {:ok, session} -> session
-        _ -> nil
-      end
 
+    # Lookup grant from Guard's cache (replaces OAuthSession)
+    grant_info = lookup_grant_from_guard(code)
+
+    # If this is an MCP flow, set redirect_uri to our callback
     params =
-      if session do
+      if grant_info do
         Map.put(params, "redirect_uri", "https://id.#{domain}/mcp/oauth/callback")
       else
         params
@@ -653,7 +653,7 @@ defmodule Auth do
       {:ok, token_response} ->
         # Check if this was an MCP OAuth flow with a grant
         enhanced_response =
-          case session do
+          case grant_info do
             %{grant_id: grant_id, tool_scopes: tool_scopes} when not is_nil(grant_id) ->
               Logger.info(
                 "[Auth.OAuth] Injecting grant info into token response: grant_id=#{grant_id}"
@@ -668,9 +668,6 @@ defmodule Auth do
               # Not an MCP flow or grant not found
               token_response
           end
-
-        # Clean up OAuth session
-        if code, do: Auth.OAuthSession.delete_by_auth_code(code)
 
         conn
         |> put_resp_content_type("application/json")
@@ -691,8 +688,35 @@ defmodule Auth do
     end
   end
 
+  # Lookup grant info from Guard's internal API
+  defp lookup_grant_from_guard(nil), do: nil
+
+  defp lookup_grant_from_guard(code) do
+    domain = Application.fetch_env!(:auth, :domain)
+    guard_url = "https://id.#{domain}/internal/mcp/grant-by-code/#{URI.encode(code)}"
+
+    case :hackney.request(:get, guard_url, [], "", [:with_body, recv_timeout: 5_000]) do
+      {:ok, 200, _headers, response_body} ->
+        case Jason.decode(response_body) do
+          {:ok, %{"grant_id" => grant_id, "tool_scopes" => tool_scopes}} ->
+            %{grant_id: grant_id, tool_scopes: tool_scopes}
+
+          _ ->
+            nil
+        end
+
+      {:ok, 404, _headers, _body} ->
+        # Grant not found - might be a non-MCP flow or legacy session
+        nil
+
+      {:error, reason} ->
+        Logger.warning("[Auth.OAuth] Failed to lookup grant from Guard: #{inspect(reason)}")
+        nil
+    end
+  end
+
   # Handle CORS preflight for token endpoint
-  options "/exauth/oauth/token", host: "mcp." do
+  options "/oauth/token", host: "mcp." do
     conn
     |> put_resp_header("access-control-allow-origin", "*")
     |> put_resp_header("access-control-allow-methods", "POST, OPTIONS")
@@ -701,104 +725,46 @@ defmodule Auth do
   end
 
   #
-  # Internal API: Store grant in OAuth Session (called by Guard)
-  # Allows Guard to store grant_id in the OAuth session after grant creation
+  # NOTE: OAuth session endpoints removed - now using Keycloak state parameter
+  # Grant info is cached in Guard and looked up via /internal/mcp/grant-by-code/:code
   #
-  post "/exauth/internal/oauth-session/:correlation_id/grant", host: "mcp." do
-    log_request(conn, "mcp.#{Application.fetch_env!(:auth, :domain)}/internal/oauth-session/#{correlation_id}/grant")
 
-    # Use conn.body_params populated by Plug.Parsers (JSON already parsed)
-    params = conn.body_params
+  #
+  # MCP OAuth Authorization ExtAuth - Cookie-based authentication
+  # This route validates cookies and sets user headers for Guard
+  # Guard will handle the actual authorization logic
+  #
+  match "/exauth/oauth/authorize", host: "mcp." do
+    log_request(conn, "mcp.#{Application.fetch_env!(:auth, :domain)}/oauth/authorize (ExtAuth)")
 
-    case params do
-      %{"grant_id" => grant_id, "tool_scopes" => tool_scopes} ->
-        case Auth.OAuthSession.store_grant(correlation_id, grant_id, tool_scopes) do
-          {:ok, _session} ->
-            Logger.info("[Auth.OAuth] Stored grant #{grant_id} for correlation #{correlation_id}")
+    # Validate cookie and set user headers
+    case set_user_headers(conn, allow_token: false) do
+      {:ok, conn_with_headers} ->
+        # User is authenticated, allow request to proceed to Guard
+        send_resp(conn_with_headers, 200, "")
 
-            conn
-            |> put_resp_content_type("application/json")
-            |> send_resp(200, Jason.encode!(%{status: "ok"}))
+      {:error, conn} ->
+        # User not authenticated - redirect to login with return URL
+        domain = Application.fetch_env!(:auth, :domain)
+        # Build current URL for redirect back after login
+        current_url = "https://mcp.#{domain}#{conn.request_path}?#{conn.query_string}"
+        encoded_return = URI.encode_www_form(current_url)
+        login_url = "https://id.#{domain}/login?redirect_to=#{encoded_return}"
 
-          {:error, :not_found} ->
-            Logger.error("[Auth.OAuth] OAuth session not found: #{correlation_id}")
-
-            conn
-            |> put_resp_content_type("application/json")
-            |> send_resp(404, Jason.encode!(%{error: "Session not found"}))
-
-          {:error, reason} ->
-            Logger.error("[Auth.OAuth] Failed to store grant: #{inspect(reason)}")
-
-            conn
-            |> put_resp_content_type("application/json")
-            |> send_resp(500, Jason.encode!(%{error: "Failed to store grant"}))
-        end
-
-      _ ->
         conn
-        |> put_resp_content_type("application/json")
-        |> send_resp(400, Jason.encode!(%{error: "Missing required fields: grant_id, tool_scopes"}))
+        |> put_resp_header("location", login_url)
+        |> send_resp(302, "")
     end
   end
 
   #
-  # Internal API: Store auth code in OAuth Session (called by Guard)
-  # Allows Guard to store the authorization code after Keycloak callback
-  # Returns redirect_uri and client_state for final redirect to client
-  #
-  post "/exauth/internal/oauth-session/:correlation_id/auth-code", host: "mcp." do
-    log_request(conn, "mcp.#{Application.fetch_env!(:auth, :domain)}/internal/oauth-session/#{correlation_id}/auth-code")
-
-    # Use conn.body_params populated by Plug.Parsers (JSON already parsed)
-    params = conn.body_params
-
-    case params do
-      %{"auth_code" => auth_code} ->
-        case Auth.OAuthSession.store_auth_code(correlation_id, auth_code) do
-          {:ok, session} ->
-            Logger.info("[Auth.OAuth] Stored auth code for correlation #{correlation_id}")
-
-            # Return redirect info for Guard to complete the flow
-            response = %{
-              status: "ok",
-              redirect_uri: session.redirect_uri,
-              client_state: session.client_state
-            }
-
-            conn
-            |> put_resp_content_type("application/json")
-            |> send_resp(200, Jason.encode!(response))
-
-          {:error, :not_found} ->
-            Logger.error("[Auth.OAuth] OAuth session not found: #{correlation_id}")
-
-            conn
-            |> put_resp_content_type("application/json")
-            |> send_resp(404, Jason.encode!(%{error: "Session not found"}))
-
-          {:error, reason} ->
-            Logger.error("[Auth.OAuth] Failed to store auth code: #{inspect(reason)}")
-
-            conn
-            |> put_resp_content_type("application/json")
-            |> send_resp(500, Jason.encode!(%{error: "Failed to store auth code"}))
-        end
-
-      _ ->
-        conn
-        |> put_resp_content_type("application/json")
-        |> send_resp(400, Jason.encode!(%{error: "Missing required field: auth_code"}))
-    end
-  end
-
-  #
-  # OAuth Authorization Endpoint - Intercepts MCP OAuth flows
+  # OAuth Authorization Endpoint (Legacy /exauth path) - Direct handling
+  # Kept for backward compatibility during migration
   # Detects "mcp" scope and redirects to Guard for grant selection
   # Otherwise forwards to Keycloak for standard OAuth flow
   #
-  get "/exauth/oauth/authorize", host: "mcp." do
-    log_request(conn, "mcp.#{Application.fetch_env!(:auth, :domain)}/oauth/authorize")
+  get "/exauth/internal/oauth/authorize", host: "mcp." do
+    log_request(conn, "mcp.#{Application.fetch_env!(:auth, :domain)}/internal/oauth/authorize")
 
     client_id = conn.params["client_id"]
     raw_scope = conn.params["scope"] || ""

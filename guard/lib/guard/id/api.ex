@@ -61,6 +61,33 @@ defmodule Guard.Id.Api do
   forward("/mcp/oauth", to: Guard.Id.McpOAuth)
 
   #
+  # MCP OAuth Authorization Endpoint (Cookie Auth Flow)
+  # User is already authenticated via ExtAuth (headers set by Auth service)
+  #
+  forward("/oauth/authorize", to: Guard.Id.McpOAuth)
+
+  #
+  # Internal API: Grant lookup by auth code (called by Auth during token exchange)
+  #
+  get "/internal/mcp/grant-by-code/:code" do
+    code = conn.params["code"]
+
+    case Guard.Id.McpOAuth.lookup_grant_for_code(code) do
+      {:ok, grant_id, tool_scopes} ->
+        response = Jason.encode!(%{grant_id: grant_id, tool_scopes: tool_scopes})
+
+        conn
+        |> put_resp_content_type("application/json")
+        |> send_resp(200, response)
+
+      {:error, :not_found} ->
+        conn
+        |> put_resp_content_type("application/json")
+        |> send_resp(404, Jason.encode!(%{error: "not_found"}))
+    end
+  end
+
+  #
   # OAuth2
   #
 
