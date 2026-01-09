@@ -13,12 +13,17 @@ defmodule RepositoryHub.Application do
 
     Logger.info("Running application in #{env} environment")
 
+    remote_id_sync_worker = Application.get_env(:repository_hub, RepositoryHub.RemoteIdSyncWorker, [])
+    remote_id_sync_worker_enabled = Keyword.get(remote_id_sync_worker, :enabled, false)
+    remote_id_sync_worker_opts = Keyword.delete(remote_id_sync_worker, :enabled)
+
     children =
       filter_enabled([
         {{Task.Supervisor, name: RepositoryHub.SentryEventSupervisor}, true},
         {{RepositoryHub.Repo, []}, true},
         {{GRPC.Server.Supervisor, endpoint: RepositoryHub.Server.Endpoint, port: grpc_port, start_server: true}, true},
-        {{RepositoryHub.RemoteRepositoryChangedConsumer, []}, true}
+        {{RepositoryHub.RemoteRepositoryChangedConsumer, []}, true},
+        {{RepositoryHub.RemoteIdSyncWorker, remote_id_sync_worker_opts}, remote_id_sync_worker_enabled}
       ])
 
     opts = [strategy: :one_for_one, name: RepositoryHub.Supervisor]
