@@ -36,6 +36,10 @@ defmodule Support.StubbedProvider do
     feature("max_job_execution_time_limit", [:enabled, {:quantity, 48 * 60}])
   end
 
+  defp max_job_time_limit_feature("enabled_48h_verified") do
+    feature("max_job_execution_time_limit", [:enabled, {:quantity, 48 * 60}])
+  end
+
   defp max_job_time_limit_feature(_org_id) do
     feature("max_job_execution_time_limit", [:hidden])
   end

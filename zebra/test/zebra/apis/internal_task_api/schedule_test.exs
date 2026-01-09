@@ -266,6 +266,27 @@ defmodule Zebra.Apis.InternalTaskApi.ScheduleTest do
       # requested limit of 180 minutes should be capped to 30 minutes by feature flag
       assert 30 * 60 == Schedule.configure_execution_time_limit(org_id, 180)
     end
+
+    test "when org is verified and feature extends limit beyond 24h => uses extended limit" do
+      org_id = "enabled_48h_verified"
+
+      Cachex.clear(:zebra_cache)
+
+      GrpcMock.stub(Support.FakeServers.OrganizationApi, :describe, fn _, _ ->
+        InternalApi.Organization.DescribeResponse.new(
+          status:
+            InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
+          organization:
+            InternalApi.Organization.Organization.new(
+              org_username: "verified-org",
+              verified: true
+            )
+        )
+      end)
+
+      # verified org with 48h feature flag should be able to use the extended limit
+      assert 30 * 60 * 60 == Schedule.configure_execution_time_limit(org_id, 30 * 60)
+    end
   end
 
   #
