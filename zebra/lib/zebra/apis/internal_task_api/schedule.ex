@@ -138,6 +138,14 @@ defmodule Zebra.Apis.InternalTaskApi.Schedule do
   end
 
   defp find_max_and_default_job_time_limits(org_id) do
+    if org_verified?(org_id) do
+      {@max_job_execution_time_limit, @default_job_execution_time_limit}
+    else
+      find_feature_based_job_time_limits(org_id)
+    end
+  end
+
+  defp find_feature_based_job_time_limits(org_id) do
     if FeatureProvider.feature_enabled?(:max_job_execution_time_limit, param: org_id) do
       max_limit = FeatureProvider.feature_quota(:max_job_execution_time_limit, param: org_id)
 
@@ -151,6 +159,13 @@ defmodule Zebra.Apis.InternalTaskApi.Schedule do
       {max_limit, default_limit}
     else
       {@max_job_execution_time_limit, @default_job_execution_time_limit}
+    end
+  end
+
+  defp org_verified?(org_id) do
+    case Zebra.Workers.Scheduler.Org.load(org_id) do
+      {:ok, org} -> org.verified
+      _ -> false
     end
   end
 
