@@ -9,7 +9,7 @@ defmodule Zebra.Workers.Scheduler.Org do
   # 15 minutes
   @cache_timeout :timer.minutes(15)
 
-  defstruct [:id, :username, :suspended, :machines, :features]
+  defstruct [:id, :username, :suspended, :verified, :machines, :features]
 
   @doc """
   Returns quota information for the given organization.
@@ -17,7 +17,7 @@ defmodule Zebra.Workers.Scheduler.Org do
   {:ok, quotas} on success.
   """
   def load(org_id) do
-    Zebra.Cache.fetch!("quotas-#{org_id}-v3", @cache_timeout, fn ->
+    Zebra.Cache.fetch!("quotas-#{org_id}-v4", @cache_timeout, fn ->
       result =
         Wormhole.capture(__MODULE__, :fetch_org, [org_id],
           timeout: 10_500,
@@ -70,7 +70,8 @@ defmodule Zebra.Workers.Scheduler.Org do
     %__MODULE__{
       id: org_id,
       username: org.org_username,
-      suspended: org.suspended
+      suspended: org.suspended,
+      verified: org.verified
     }
   end
 
