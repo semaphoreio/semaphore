@@ -785,16 +785,19 @@ defmodule Zebra.Api.InternalJobApiTest do
       alias Support.Time
 
       org_id = Ecto.UUID.generate()
+      now = DateTime.utc_now() |> DateTime.truncate(:second)
 
       {:ok, _} =
         Job.create(:started, %{
           organization_id: org_id,
+          created_at: now,
           started_at: Time.ago(minutes: 15)
         })
 
       {:ok, j2} =
         Job.create(:finished, %{
           organization_id: org_id,
+          created_at: now,
           started_at: Time.ago(minutes: 10),
           finished_at: Time.ago(minutes: 2)
         })
