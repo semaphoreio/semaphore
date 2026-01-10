@@ -132,7 +132,7 @@ defmodule RepositoryHub.RemoteIdSyncWorker do
         result
 
       {:error, error} ->
-        Logger.warn("[RemoteIdSyncWorker] Failed to lock repository: #{inspect(error)}")
+        Logger.warning("[RemoteIdSyncWorker] Failed to lock repository: #{inspect(error)}")
     end
   end
 
@@ -141,7 +141,7 @@ defmodule RepositoryHub.RemoteIdSyncWorker do
 
     SyncRepositoryAction.execute(adapter, repository.id)
     |> Toolkit.unwrap_error(fn error ->
-      Logger.warn("[RemoteIdSyncWorker] Sync failed for #{repository.id}: #{inspect(error)}")
+      Logger.warning("[RemoteIdSyncWorker] Sync failed for #{repository.id}: #{inspect(error)}")
     end)
   end
 
