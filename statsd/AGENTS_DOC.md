@@ -49,7 +49,7 @@ See: `statsd/localConfig.js`, `statsd/Dockerfile`, `statsd/docker-compose.yml`.
 - CI: Semaphore pipeline blocks for statsd handle image build/push and security checks; daily builds repeat these steps. See: `.semaphore/semaphore.yml`, `.semaphore/daily-builds.yml`.
 
 # Testing Strategy (as implemented here)
-- Node's built-in test runner executes unit and integration tests in `statsd/test/*.test.js`. See: `statsd/package.json`, `statsd/test/localConfig.test.js`, `statsd/test/graphite.integration.test.js`.
+- Node's built-in test runner executes unit and integration tests in `statsd/test/*.test.js` and writes JUnit output to `out/test-reports.xml`. See: `statsd/package.json`, `statsd/test/localConfig.test.js`, `statsd/test/graphite.integration.test.js`.
 - Integration coverage includes Graphite flush behavior by spawning statsd and asserting emitted lines. See: `statsd/test/graphite.integration.test.js`.
 - CI runs `make test` for statsd and also validates JS code/dependencies and the Docker image via security tooling. See: `.semaphore/semaphore.yml`, `statsd/Makefile`, `Makefile`.
 

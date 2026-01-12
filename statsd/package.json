@@ -9,7 +9,7 @@
   },
   "devDependencies": {},
   "scripts": {
-    "test": "node --test test/*.test.js"
+    "test": "mkdir -p out && node --test --test-reporter=spec --test-reporter-destination=stdout --test-reporter=junit --test-reporter-destination=out/test-reports.xml test/*.test.js"
   },
   "repository": {
     "type": "git",

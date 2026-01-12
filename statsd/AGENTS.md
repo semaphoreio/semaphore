@@ -22,7 +22,7 @@
 - Prereqs: Docker and docker compose are required for `make build` and the compose workflow. See: `Makefile`, `statsd/docker-compose.yml`.
 - Build locally: `make pull` then `make build` (defaults to `APP_ENV=prod` and the `runner` target). See: `statsd/Makefile`, `Makefile`.
 - Run locally via compose: `docker compose up --build` exposes UDP 8125 and wires env vars; the service command is `sh`, so start statsd manually with `./node_modules/.bin/statsd localConfig.js` if needed. See: `statsd/docker-compose.yml`, `statsd/Dockerfile`.
-- Tests: `npm test` runs Node's built-in test runner for `statsd/test/*.test.js`; `make test` runs the same inside the built image. See: `statsd/package.json`, `statsd/test/localConfig.test.js`, `statsd/test/graphite.integration.test.js`, `statsd/Makefile`.
+- Tests: `npm test` runs Node's built-in test runner for `statsd/test/*.test.js` and writes JUnit output to `out/test-reports.xml`; `make test` runs the same inside the built image. See: `statsd/package.json`, `statsd/test/localConfig.test.js`, `statsd/test/graphite.integration.test.js`, `statsd/Makefile`.
 - CI (main pipeline): statsd builds run `make pull`, `make build`, `make push`, tests run `make test`, then security checks run `make check.js.code`, `make check.js.deps`, and `make check.docker CHECK_DOCKER_OPTS='--skip-dirs node_modules'`. See: `.semaphore/semaphore.yml`.
 - CI (daily builds): the daily pipeline repeats the same build + security steps for statsd. See: `.semaphore/daily-builds.yml`.
 
