@@ -8,8 +8,8 @@ defmodule InternalApi.PreFlightChecksHub.PreFlightChecks do
         }
   defstruct [:organization_pfc, :project_pfc]
 
-  field(:organization_pfc, 1, type: InternalApi.PreFlightChecksHub.OrganizationPFC)
-  field(:project_pfc, 2, type: InternalApi.PreFlightChecksHub.ProjectPFC)
+  field :organization_pfc, 1, type: InternalApi.PreFlightChecksHub.OrganizationPFC
+  field :project_pfc, 2, type: InternalApi.PreFlightChecksHub.ProjectPFC
 end
 
 defmodule InternalApi.PreFlightChecksHub.OrganizationPFC do
@@ -26,12 +26,12 @@ defmodule InternalApi.PreFlightChecksHub.OrganizationPFC do
         }
   defstruct [:commands, :secrets, :agent, :requester_id, :created_at, :updated_at]
 
-  field(:commands, 1, repeated: true, type: :string)
-  field(:secrets, 2, repeated: true, type: :string)
-  field(:agent, 3, type: InternalApi.PreFlightChecksHub.Agent)
-  field(:requester_id, 4, type: :string)
-  field(:created_at, 5, type: Google.Protobuf.Timestamp)
-  field(:updated_at, 6, type: Google.Protobuf.Timestamp)
+  field :commands, 1, repeated: true, type: :string
+  field :secrets, 2, repeated: true, type: :string
+  field :agent, 3, type: InternalApi.PreFlightChecksHub.Agent
+  field :requester_id, 4, type: :string
+  field :created_at, 5, type: Google.Protobuf.Timestamp
+  field :updated_at, 6, type: Google.Protobuf.Timestamp
 end
 
 defmodule InternalApi.PreFlightChecksHub.ProjectPFC do
@@ -48,12 +48,12 @@ defmodule InternalApi.PreFlightChecksHub.ProjectPFC do
         }
   defstruct [:commands, :secrets, :requester_id, :created_at, :updated_at, :agent]
 
-  field(:commands, 1, repeated: true, type: :string)
-  field(:secrets, 2, repeated: true, type: :string)
-  field(:requester_id, 3, type: :string)
-  field(:created_at, 4, type: Google.Protobuf.Timestamp)
-  field(:updated_at, 5, type: Google.Protobuf.Timestamp)
-  field(:agent, 6, type: InternalApi.PreFlightChecksHub.Agent)
+  field :commands, 1, repeated: true, type: :string
+  field :secrets, 2, repeated: true, type: :string
+  field :requester_id, 3, type: :string
+  field :created_at, 4, type: Google.Protobuf.Timestamp
+  field :updated_at, 5, type: Google.Protobuf.Timestamp
+  field :agent, 6, type: InternalApi.PreFlightChecksHub.Agent
 end
 
 defmodule InternalApi.PreFlightChecksHub.Agent do
@@ -66,8 +66,8 @@ defmodule InternalApi.PreFlightChecksHub.Agent do
         }
   defstruct [:machine_type, :os_image]
 
-  field(:machine_type, 1, type: :string)
-  field(:os_image, 2, type: :string)
+  field :machine_type, 1, type: :string
+  field :os_image, 2, type: :string
 end
 
 defmodule InternalApi.PreFlightChecksHub.DescribeRequest do
@@ -81,9 +81,9 @@ defmodule InternalApi.PreFlightChecksHub.DescribeRequest do
         }
   defstruct [:level, :organization_id, :project_id]
 
-  field(:level, 1, type: InternalApi.PreFlightChecksHub.PFCLevel, enum: true)
-  field(:organization_id, 2, type: :string)
-  field(:project_id, 3, type: :string)
+  field :level, 1, type: InternalApi.PreFlightChecksHub.PFCLevel, enum: true
+  field :organization_id, 2, type: :string
+  field :project_id, 3, type: :string
 end
 
 defmodule InternalApi.PreFlightChecksHub.DescribeResponse do
@@ -96,8 +96,8 @@ defmodule InternalApi.PreFlightChecksHub.DescribeResponse do
         }
   defstruct [:status, :pre_flight_checks]
 
-  field(:status, 1, type: InternalApi.Status)
-  field(:pre_flight_checks, 2, type: InternalApi.PreFlightChecksHub.PreFlightChecks)
+  field :status, 1, type: InternalApi.Status
+  field :pre_flight_checks, 2, type: InternalApi.PreFlightChecksHub.PreFlightChecks
 end
 
 defmodule InternalApi.PreFlightChecksHub.ApplyRequest do
@@ -113,11 +113,11 @@ defmodule InternalApi.PreFlightChecksHub.ApplyRequest do
         }
   defstruct [:level, :organization_id, :project_id, :requester_id, :pre_flight_checks]
 
-  field(:level, 1, type: InternalApi.PreFlightChecksHub.PFCLevel, enum: true)
-  field(:organization_id, 2, type: :string)
-  field(:project_id, 3, type: :string)
-  field(:requester_id, 4, type: :string)
-  field(:pre_flight_checks, 5, type: InternalApi.PreFlightChecksHub.PreFlightChecks)
+  field :level, 1, type: InternalApi.PreFlightChecksHub.PFCLevel, enum: true
+  field :organization_id, 2, type: :string
+  field :project_id, 3, type: :string
+  field :requester_id, 4, type: :string
+  field :pre_flight_checks, 5, type: InternalApi.PreFlightChecksHub.PreFlightChecks
 end
 
 defmodule InternalApi.PreFlightChecksHub.ApplyResponse do
@@ -130,8 +130,8 @@ defmodule InternalApi.PreFlightChecksHub.ApplyResponse do
         }
   defstruct [:status, :pre_flight_checks]
 
-  field(:status, 1, type: InternalApi.Status)
-  field(:pre_flight_checks, 2, type: InternalApi.PreFlightChecksHub.PreFlightChecks)
+  field :status, 1, type: InternalApi.Status
+  field :pre_flight_checks, 2, type: InternalApi.PreFlightChecksHub.PreFlightChecks
 end
 
 defmodule InternalApi.PreFlightChecksHub.DestroyRequest do
@@ -146,10 +146,10 @@ defmodule InternalApi.PreFlightChecksHub.DestroyRequest do
         }
   defstruct [:level, :organization_id, :project_id, :requester_id]
 
-  field(:level, 1, type: InternalApi.PreFlightChecksHub.PFCLevel, enum: true)
-  field(:organization_id, 2, type: :string)
-  field(:project_id, 3, type: :string)
-  field(:requester_id, 4, type: :string)
+  field :level, 1, type: InternalApi.PreFlightChecksHub.PFCLevel, enum: true
+  field :organization_id, 2, type: :string
+  field :project_id, 3, type: :string
+  field :requester_id, 4, type: :string
 end
 
 defmodule InternalApi.PreFlightChecksHub.DestroyResponse do
@@ -161,39 +161,33 @@ defmodule InternalApi.PreFlightChecksHub.DestroyResponse do
         }
   defstruct [:status]
 
-  field(:status, 1, type: InternalApi.Status)
+  field :status, 1, type: InternalApi.Status
 end
 
 defmodule InternalApi.PreFlightChecksHub.PFCLevel do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field(:ORGANIZATION, 0)
-  field(:PROJECT, 1)
-  field(:EVERYTHING, 2)
+  field :ORGANIZATION, 0
+  field :PROJECT, 1
+  field :EVERYTHING, 2
 end
 
 defmodule InternalApi.PreFlightChecksHub.PreFlightChecksService.Service do
   @moduledoc false
   use GRPC.Service, name: "InternalApi.PreFlightChecksHub.PreFlightChecksService"
 
-  rpc(
-    :Describe,
-    InternalApi.PreFlightChecksHub.DescribeRequest,
-    InternalApi.PreFlightChecksHub.DescribeResponse
-  )
+  rpc :Describe,
+      InternalApi.PreFlightChecksHub.DescribeRequest,
+      InternalApi.PreFlightChecksHub.DescribeResponse
 
-  rpc(
-    :Apply,
-    InternalApi.PreFlightChecksHub.ApplyRequest,
-    InternalApi.PreFlightChecksHub.ApplyResponse
-  )
+  rpc :Apply,
+      InternalApi.PreFlightChecksHub.ApplyRequest,
+      InternalApi.PreFlightChecksHub.ApplyResponse
 
-  rpc(
-    :Destroy,
-    InternalApi.PreFlightChecksHub.DestroyRequest,
-    InternalApi.PreFlightChecksHub.DestroyResponse
-  )
+  rpc :Destroy,
+      InternalApi.PreFlightChecksHub.DestroyRequest,
+      InternalApi.PreFlightChecksHub.DestroyResponse
 end
 
 defmodule InternalApi.PreFlightChecksHub.PreFlightChecksService.Stub do
