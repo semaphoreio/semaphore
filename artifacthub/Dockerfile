@@ -31,7 +31,13 @@ WORKDIR /app
 FROM base AS dev
 
 WORKDIR /tmp
-RUN curl -sL https://github.com/google/protobuf/releases/download/v3.20.0/protoc-3.20.0-linux-x86_64.zip -o protoc && \
+ARG TARGETARCH
+RUN case "${TARGETARCH}" in \
+    amd64) PROTOC_ARCH="linux-x86_64" ;; \
+    arm64) PROTOC_ARCH="linux-aarch_64" ;; \
+    *) echo "unsupported TARGETARCH=${TARGETARCH}" && exit 1 ;; \
+  esac && \
+  curl -sL "https://github.com/google/protobuf/releases/download/v3.20.0/protoc-3.20.0-${PROTOC_ARCH}.zip" -o protoc && \
   unzip protoc && \
   mv bin/protoc /usr/local/bin/protoc
 
