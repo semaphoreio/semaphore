@@ -10,12 +10,21 @@ defimpl RepositoryHub.SyncRepositoryAction, for: RepositoryHub.GithubAdapter do
 
   @impl true
   def execute(adapter, repository_id) do
-    with {:ok, context} <- GithubAdapter.context(adapter, repository_id),
+    with {:ok, context} <- get_github_context(adapter, repository_id),
          {:ok, github_repository} <- get_github_repository(context.repository, context.github_token),
          {:ok, repository} <- sync_repository_data(context.repository, github_repository) do
       repository
       |> wrap()
     end
+  end
+
+  defp get_github_context(adapter, repository_id) do
+    GithubAdapter.context(adapter, repository_id)
+    |> unwrap_error(fn error ->
+      set_not_connected(repository)
+
+      error(error)
+    end)
   end
 
   defp get_github_repository(repository, github_token) do
