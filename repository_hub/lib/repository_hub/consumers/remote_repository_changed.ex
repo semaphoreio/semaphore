@@ -17,11 +17,11 @@ defmodule RepositoryHub.RemoteRepositoryChangedConsumer do
       |> RepositoryHub.Toolkit.unwrap(fn adapter ->
         RepositoryHub.SyncRepositoryAction.execute(adapter, event.repository_id)
         |> RepositoryHub.Toolkit.unwrap_error(fn e ->
-          log(event, "Error during Repository Sync: #{e.inspect}")
+          log(event, "Error during Repository Sync: #{inspect(e)}")
         end)
       end)
       |> RepositoryHub.Toolkit.unwrap_error(fn e ->
-        log(event, "Error during Repository lookup: #{e.inspect}")
+        log(event, "Error during Repository lookup: #{inspect(e)}")
       end)
 
       log(event, "Finish")
