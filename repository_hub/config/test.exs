@@ -18,3 +18,5 @@ config :tesla, adapter: Tesla.Mock
 
 config :repository_hub, RepositoryHub.DeployKeyEncryptor, module: {RepositoryHub.FakeEncryptor, []}
 config :repository_hub, RepositoryHub.WebhookSecretEncryptor, module: {RepositoryHub.FakeEncryptor, []}
+
+config :repository_hub, RepositoryHub.RemoteIdSyncWorker, enabled: false
