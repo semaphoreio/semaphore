@@ -118,9 +118,14 @@ defmodule RepositoryHub.RemoteIdSyncWorker do
     Repo.transaction(fn ->
       case Model.RepositoryQuery.lock_next_github_without_remote_id() do
         nil ->
+          Logger.debug("[RemoteIdSyncWorker] no repository found")
           :noop
 
         repository ->
+          Logger.debug(
+            "[RemoteIdSyncWorker] processing repository #{repository.owner}/#{repository.name} (#{repository.id})"
+          )
+
           sync_repository(repository)
       end
     end)
@@ -138,6 +143,8 @@ defmodule RepositoryHub.RemoteIdSyncWorker do
 
   defp sync_repository(repository) do
     {:ok, adapter} = Adapters.from_repository_id(%{repository_id: repository.id})
+
+    Logger.debug("[RemoteIdSyncWorker] syncing repository #{repository.owner}/#{repository.name} (#{repository.id})")
 
     SyncRepositoryAction.execute(adapter, repository.id)
     |> Toolkit.unwrap_error(fn error ->
