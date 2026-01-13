@@ -18,6 +18,15 @@ defimpl RepositoryHub.SyncRepositoryAction, for: RepositoryHub.GithubAdapter do
     end
   end
 
+  defp get_github_context(adapter, repository_id) do
+    GithubAdapter.context(adapter, repository_id)
+    |> unwrap_error(fn error ->
+      Model.RepositoryQuery.set_not_connected(repository_id)
+
+      error(error)
+    end)
+  end
+
   defp get_github_repository(repository, github_token) do
     GithubClient.find_repository(
       %{
@@ -27,24 +36,10 @@ defimpl RepositoryHub.SyncRepositoryAction, for: RepositoryHub.GithubAdapter do
       token: github_token
     )
     |> unwrap_error(fn error ->
-      set_not_connected(repository)
+      Model.RepositoryQuery.set_not_connected(repository.id)
 
       error(error)
     end)
-  end
-
-  defp set_not_connected(repository) do
-    params = %{
-      # sync data
-      connected: false
-    }
-
-    repository
-    |> Model.RepositoryQuery.update(
-      params,
-      returning: true
-    )
-    |> wrap()
   end
 
   defp sync_repository_data(repository, github_repository) do
