@@ -145,6 +145,11 @@ defmodule Zebra.Apis.InternalTaskApi.ScheduleTest do
   end
 
   describe ".configure_execution_time_limit" do
+    setup do
+      Cachex.clear(:zebra_cache)
+      :ok
+    end
+
     test "when feature is disabled and limit from request is valid => returns limit from request in seconds" do
       org_id = UUID.uuid4()
 
@@ -202,8 +207,6 @@ defmodule Zebra.Apis.InternalTaskApi.ScheduleTest do
     test "when org is verified and feature is enabled => bypasses feature limit and uses requested limit" do
       org_id = "enabled_30_verified"
 
-      Cachex.clear(:zebra_cache)
-
       GrpcMock.stub(Support.FakeServers.OrganizationApi, :describe, fn _, _ ->
         InternalApi.Organization.DescribeResponse.new(
           status:
@@ -223,8 +226,6 @@ defmodule Zebra.Apis.InternalTaskApi.ScheduleTest do
 
     test "when org is verified and feature is enabled with invalid request => returns default limit" do
       org_id = "enabled_30_verified"
-
-      Cachex.clear(:zebra_cache)
 
       GrpcMock.stub(Support.FakeServers.OrganizationApi, :describe, fn _, _ ->
         InternalApi.Organization.DescribeResponse.new(
@@ -248,8 +249,6 @@ defmodule Zebra.Apis.InternalTaskApi.ScheduleTest do
 
     test "when org is not verified and feature is enabled => applies feature limit" do
       org_id = "enabled_30_unverified"
-
-      Cachex.clear(:zebra_cache)
 
       GrpcMock.stub(Support.FakeServers.OrganizationApi, :describe, fn _, _ ->
         InternalApi.Organization.DescribeResponse.new(
