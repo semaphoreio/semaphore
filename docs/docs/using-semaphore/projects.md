@@ -596,7 +596,7 @@ There are several actions that can break the connection between GitHub and Semap
 - renaming the GitHub user account
 - renaming the GitHub organization
 
-When this happens, please email Semaphore at [support@semaphoreci.com](mailto:support@semaphore.io) providing the following details:
+When this happens, please email Semaphore at [support@semaphore.io](mailto:support@semaphore.io) providing the following details:
 
 - Previous repository name and URL
 - New repository name and URL
