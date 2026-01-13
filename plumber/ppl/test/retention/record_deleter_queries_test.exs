@@ -1,6 +1,8 @@
 defmodule Ppl.Retention.RecordDeleterQueriesTest do
   use Ppl.IntegrationCase, async: false
 
+  import Mock
+
   alias Ppl.Actions
   alias Ppl.EctoRepo
   alias Ppl.PplRequests.Model.PplRequests
@@ -22,7 +24,7 @@ defmodule Ppl.Retention.RecordDeleterQueriesTest do
       expired_pipeline = insert_pipeline(org_id, expired_at())
       non_expired_pipeline = insert_pipeline(org_id, nil)
 
-      {:ok, count} = RecordDeleterQueries.delete_expired_batch(100)
+      {:ok, count} = delete_expired_batch_with_ok_publisher(100)
 
       assert count == 1
       assert get_pipeline(expired_pipeline.id) == nil
@@ -36,7 +38,7 @@ defmodule Ppl.Retention.RecordDeleterQueriesTest do
         insert_pipeline(org_id, expired_at())
       end)
 
-      {:ok, count} = RecordDeleterQueries.delete_expired_batch(3)
+      {:ok, count} = delete_expired_batch_with_ok_publisher(3)
 
       assert count == 3
       assert count_all_pipelines() == 7
@@ -46,7 +48,7 @@ defmodule Ppl.Retention.RecordDeleterQueriesTest do
       org_id = UUID.uuid4()
       future_pipeline = insert_pipeline(org_id, future_expires_at())
 
-      {:ok, count} = RecordDeleterQueries.delete_expired_batch(100)
+      {:ok, count} = delete_expired_batch_with_ok_publisher(100)
 
       assert count == 0
       assert get_pipeline(future_pipeline.id) != nil
@@ -56,14 +58,14 @@ defmodule Ppl.Retention.RecordDeleterQueriesTest do
       org_id = UUID.uuid4()
       pipeline = insert_pipeline(org_id, nil)
 
-      {:ok, count} = RecordDeleterQueries.delete_expired_batch(100)
+      {:ok, count} = delete_expired_batch_with_ok_publisher(100)
 
       assert count == 0
       assert get_pipeline(pipeline.id) != nil
     end
 
     test "returns 0 when no expired records exist" do
-      {:ok, count} = RecordDeleterQueries.delete_expired_batch(100)
+      {:ok, count} = delete_expired_batch_with_ok_publisher(100)
 
       assert count == 0
     end
@@ -76,7 +78,7 @@ defmodule Ppl.Retention.RecordDeleterQueriesTest do
       expired_2 = insert_pipeline(org_2, expired_at())
       non_expired = insert_pipeline(org_1, nil)
 
-      {:ok, count} = RecordDeleterQueries.delete_expired_batch(100)
+      {:ok, count} = delete_expired_batch_with_ok_publisher(100)
 
       assert count == 2
       assert get_pipeline(expired_1.id) == nil
@@ -93,31 +95,116 @@ defmodule Ppl.Retention.RecordDeleterQueriesTest do
 
       parent = self()
 
-      tasks =
-        Enum.map(1..3, fn _ ->
-          Task.async(fn ->
-            {:ok, count} = RecordDeleterQueries.delete_expired_batch(10)
-            send(parent, {:deleted, count})
-            count
+      with_mock Ppl.Retention.EventPublisher,
+        publish_pipeline_deleted: fn _ppl_id, _wf_id, _org_id, _project_id, _artifact_store_id ->
+          :ok
+        end,
+        publish_workflow_deleted: fn _wf_id, _org_id, _project_id, _artifact_store_id ->
+          :ok
+        end do
+        tasks =
+          Enum.map(1..3, fn _ ->
+            Task.async(fn ->
+              {:ok, count} = RecordDeleterQueries.delete_expired_batch(10)
+              send(parent, {:deleted, count})
+              count
+            end)
           end)
-        end)
 
-      results = Enum.map(tasks, &Task.await/1)
-      total_deleted = Enum.sum(results)
+        results = Enum.map(tasks, &Task.await/1)
+        total_deleted = Enum.sum(results)
 
-      assert total_deleted == 10
-      assert count_all_pipelines() == 0
+        assert total_deleted == 10
+        assert count_all_pipelines() == 0
+      end
+    end
+
+    test "publishes pipeline and workflow deleted events when workflow is empty" do
+      org_id = UUID.uuid4()
+      pipeline = insert_pipeline(org_id, expired_at())
+      project_id = pipeline.request_args["project_id"]
+      artifact_store_id = pipeline.request_args["artifact_store_id"]
+
+      with_mock Ppl.Retention.EventPublisher,
+        publish_pipeline_deleted: fn ppl_id, wf_id, org_id_arg, project_id_arg, artifact_store_id_arg ->
+          send(
+            self(),
+            {:pipeline_deleted, ppl_id, wf_id, org_id_arg, project_id_arg, artifact_store_id_arg}
+          )
+
+          :ok
+        end,
+        publish_workflow_deleted: fn wf_id, org_id_arg, project_id_arg, artifact_store_id_arg ->
+          send(self(), {:workflow_deleted, wf_id, org_id_arg, project_id_arg, artifact_store_id_arg})
+          :ok
+        end do
+        {:ok, count} = RecordDeleterQueries.delete_expired_batch(100)
+
+        assert count == 1
+
+        assert_received {:pipeline_deleted, ^pipeline.id, ^pipeline.wf_id, ^org_id, ^project_id,
+                         ^artifact_store_id}
+
+        assert_received {:workflow_deleted, ^pipeline.wf_id, ^org_id, ^project_id,
+                         ^artifact_store_id}
+      end
+    end
+
+    test "does not publish workflow deleted when workflow still has pipelines" do
+      org_id = UUID.uuid4()
+      workflow_id = UUID.uuid4()
+      expired_pipeline = insert_pipeline(org_id, expired_at(), workflow_id)
+      insert_pipeline(org_id, nil, workflow_id)
+
+      with_mock Ppl.Retention.EventPublisher,
+        publish_pipeline_deleted: fn ppl_id, wf_id, org_id_arg, project_id_arg, artifact_store_id_arg ->
+          send(
+            self(),
+            {:pipeline_deleted, ppl_id, wf_id, org_id_arg, project_id_arg, artifact_store_id_arg}
+          )
+
+          :ok
+        end,
+        publish_workflow_deleted: fn wf_id, org_id_arg, project_id_arg, artifact_store_id_arg ->
+          send(self(), {:workflow_deleted, wf_id, org_id_arg, project_id_arg, artifact_store_id_arg})
+          :ok
+        end do
+        {:ok, count} = RecordDeleterQueries.delete_expired_batch(100)
+
+        assert count == 1
+        assert_received {:pipeline_deleted, ^expired_pipeline.id, ^workflow_id, _, _, _}
+        refute_received {:workflow_deleted, ^workflow_id, _, _, _}
+      end
+    end
+
+    test "returns error after deletion when pipeline event publish fails" do
+      org_id = UUID.uuid4()
+      pipeline = insert_pipeline(org_id, expired_at())
+
+      with_mock Ppl.Retention.EventPublisher,
+        publish_pipeline_deleted: fn _ppl_id, _wf_id, _org_id, _project_id, _artifact_store_id ->
+          {:error, :failed}
+        end,
+        publish_workflow_deleted: fn _wf_id, _org_id, _project_id, _artifact_store_id ->
+          :ok
+        end do
+        assert {:error, :failed} = RecordDeleterQueries.delete_expired_batch(100)
+      end
+
+      assert get_pipeline(pipeline.id) == nil
     end
   end
 
-  defp insert_pipeline(org_id, expires_at) do
+  defp insert_pipeline(org_id, expires_at, wf_id \\ UUID.uuid4()) do
     id = UUID.uuid4()
     ppl_id = UUID.uuid4()
-    wf_id = UUID.uuid4()
+    project_id = UUID.uuid4()
+    artifact_store_id = UUID.uuid4()
 
     request_args = %{
       "organization_id" => org_id,
-      "project_id" => UUID.uuid4(),
+      "project_id" => project_id,
+      "artifact_store_id" => artifact_store_id,
       "service" => "local"
     }
 
@@ -142,6 +229,18 @@ defmodule Ppl.Retention.RecordDeleterQueriesTest do
 
   defp count_all_pipelines do
     EctoRepo.aggregate(PplRequests, :count)
+  end
+
+  defp delete_expired_batch_with_ok_publisher(limit) do
+    with_mock Ppl.Retention.EventPublisher,
+      publish_pipeline_deleted: fn _ppl_id, _wf_id, _org_id, _project_id, _artifact_store_id ->
+        :ok
+      end,
+      publish_workflow_deleted: fn _wf_id, _org_id, _project_id, _artifact_store_id ->
+        :ok
+      end do
+      RecordDeleterQueries.delete_expired_batch(limit)
+    end
   end
 
   defp expired_at do
@@ -177,9 +276,16 @@ defmodule Ppl.Retention.RecordDeleterQueriesTest do
 
     set_expired(ppl_id)
 
-    {:ok, count} = RecordDeleterQueries.delete_expired_batch(100)
-
-    assert count == 1
+    with_mock Ppl.Retention.EventPublisher,
+      publish_pipeline_deleted: fn _ppl_id, _wf_id, _org_id, _project_id, _artifact_store_id ->
+        :ok
+      end,
+      publish_workflow_deleted: fn _wf_id, _org_id, _project_id, _artifact_store_id ->
+        :ok
+      end do
+      {:ok, count} = RecordDeleterQueries.delete_expired_batch(100)
+      assert count == 1
+    end
     assert {:error, _} = PplRequestsQueries.get_by_id(ppl_id)
     assert {:error, _} = Block.describe(ppl_blk_0.block_id)
     assert {:error, _} = Block.describe(ppl_blk_1.block_id)
