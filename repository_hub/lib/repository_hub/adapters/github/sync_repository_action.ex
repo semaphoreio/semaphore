@@ -21,7 +21,9 @@ defimpl RepositoryHub.SyncRepositoryAction, for: RepositoryHub.GithubAdapter do
   defp get_github_context(adapter, repository_id) do
     GithubAdapter.context(adapter, repository_id)
     |> unwrap_error(fn error ->
-      Model.RepositoryQuery.set_not_connected(repository_id)
+      if error == "Token for not found." do
+        Model.RepositoryQuery.set_not_connected(repository_id)
+      end
 
       error(error)
     end)
