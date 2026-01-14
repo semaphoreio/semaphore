@@ -4,6 +4,8 @@ defmodule Support.StubbedProvider do
   @e1_to_f1_org_id "org-e1-to-f1-enabled"
   @e2_to_f1_org_id "org-e2-to-f1-enabled"
 
+  @test_results_no_trim_org_id "org-test-results-no-trim-enabled"
+
   @impl FeatureProvider.Provider
   def provide_features(org_id \\ nil, _opts \\ []) do
     {:ok,
@@ -13,9 +15,12 @@ defmodule Support.StubbedProvider do
        feature("some_custom_feature", [:hidden]),
        max_job_time_limit_feature(org_id),
        feature("e1_to_f1_migration", e1_to_f1_traits(org_id)),
-       feature("e2_to_f1_migration", e2_to_f1_traits(org_id))
+       feature("e2_to_f1_migration", e2_to_f1_traits(org_id)),
+       feature("test_results_no_trim", test_results_no_trim_traits(org_id))
      ]}
   end
+
+  def test_results_no_trim_org_id, do: @test_results_no_trim_org_id
 
   def e1_to_f1_org_id, do: @e1_to_f1_org_id
   def e2_to_f1_org_id, do: @e2_to_f1_org_id
@@ -37,6 +42,9 @@ defmodule Support.StubbedProvider do
 
   defp e2_to_f1_traits(@e2_to_f1_org_id), do: [:enabled]
   defp e2_to_f1_traits(_org_id), do: [:hidden]
+
+  defp test_results_no_trim_traits(@test_results_no_trim_org_id), do: [:enabled]
+  defp test_results_no_trim_traits(_org_id), do: [:hidden]
 
   @impl FeatureProvider.Provider
   def provide_machines(_org_id \\ nil, _opts \\ []) do
