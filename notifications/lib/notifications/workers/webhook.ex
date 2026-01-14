@@ -31,8 +31,8 @@ defmodule Notifications.Workers.Webhook do
           {:ok, response}
 
         {:error, error} ->
-          Logger.debug(fn ->
-            "#{request_id} Failure with #{endpoint} #{body} and signature '#{signature}' error: #{inspect(error)}"
+          Logger.error(fn ->
+            "#{request_id} Failure with #{endpoint} error: #{inspect(error)}"
           end)
 
           Watchman.increment("notification.webhook.failure")
