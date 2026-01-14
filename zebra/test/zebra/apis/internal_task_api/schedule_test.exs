@@ -145,6 +145,11 @@ defmodule Zebra.Apis.InternalTaskApi.ScheduleTest do
   end
 
   describe ".configure_execution_time_limit" do
+    setup do
+      Cachex.clear(:zebra_cache)
+      :ok
+    end
+
     test "when feature is disabled and limit from request is valid => returns limit from request in seconds" do
       org_id = UUID.uuid4()
 

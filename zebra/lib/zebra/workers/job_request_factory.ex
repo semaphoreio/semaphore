@@ -17,6 +17,7 @@ defmodule Zebra.Workers.JobRequestFactory do
     Repository,
     Secrets,
     Spec,
+    TestResults,
     ToolboxInstall
   }
 
@@ -100,6 +101,7 @@ defmodule Zebra.Workers.JobRequestFactory do
           artifact_env_var ++
           cache_env_vars ++
           ToolboxInstall.env_vars(job) ++
+          TestResults.env_vars(org_id) ++
           open_id_token_env_vars ++
           repo_env_vars ++
           Enum.flat_map(all_secrets.job_secrets, & &1.env_vars) ++
