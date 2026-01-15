@@ -49,7 +49,7 @@ defmodule Zebra.Workers.JobDeletionPolicyWorkerTest do
         assert_called(Job.publish_job_deletion_events(expired_jobs))
         assert_called(Job.delete_job_stop_requests([job_id_1, job_id_2]))
         assert_called(Job.delete_jobs([job_id_1, job_id_2]))
-        assert_called(Watchman.submit({"retention.deleted"}, 2, :count))
+        assert_called(Watchman.submit({"retention.deleted", []}, 2, :count))
       end
     end
 
