@@ -52,7 +52,7 @@ defmodule Zebra.Workers.JobDeletionPolicyWorker do
       {:ok, deleted_stop_requests, deleted_jobs} ->
         total_deleted = deleted_stop_requests + deleted_jobs
 
-        Watchman.submit({"retention.deleted"}, deleted_jobs, :count)
+        Watchman.submit({"retention.deleted", []}, deleted_jobs, :count)
 
         Logger.info(
           "Cleanup complete: deleted #{deleted_stop_requests} job stop requests and #{deleted_jobs} jobs (total: #{total_deleted})."
