@@ -168,6 +168,115 @@ If you have problems connecting to the MCP Server, see [troubleshooting](#troubl
 
 </Steps>
 
+### GitHub Copilot {#copilot}
+
+<Steps>
+
+1. Export an environment variable with your API token
+
+    ```shell
+    export SEMAPHORE_API_TOKEN=my-token
+    ```
+
+    :::note
+    Consider adding this line to your `.bashrc`, `.zshrc`, or equivalent shell configuration file so that it persists across terminal sessions.
+    :::
+
+2. Open the GitHub Copilot MCP configuration file
+
+    In Visual Studio Code, open the Command Palette (`Cmd+Shift+P`) and run:
+
+    ```text
+    MCP: Open User Configuration
+    ```
+
+    This opens the `mcp.json` file where you can define external MCP servers.
+
+3. Add the Semaphore MCP Server to the configuration
+
+    ```json title="Semaphore MCP Configuration for GitHub Copilot"
+    {
+      "servers": {
+        "semaphore": {
+          "type": "sse",
+          "url": "https://mcp.semaphoreci.com/mcp",
+          "headers": {
+            "Authorization": "Bearer ${env:SEMAPHORE_API_TOKEN}"
+          }
+        }
+      }
+    }
+    ```
+
+    :::note
+    This configuration uses `${env:SEMAPHORE_API_TOKEN}` to dynamically load your token from the environment each time the server is started.
+    :::
+
+4. Start VS Code from your terminal session
+
+    You must launch VS Code from the same terminal session where the `SEMAPHORE_API_TOKEN` variable is set so that the MCP server can authenticate properly.
+
+    ```shell
+    code path/to/project
+    ```
+
+5. Start the Semaphore MCP server
+
+    In the Command Palette, run:
+
+    ```text
+    MCP: Start Server
+    ```
+
+    Select `semaphore` from the list. Once the server starts successfully, you should see a message like:
+
+    ```text
+    Discovered 12 tools
+    ```
+
+    :::note
+    If the server fails with a `401 Unauthorized` error, confirm that your API token is valid and that your environment variable is properly set before launching VS Code.
+    :::
+
+6. Open GitHub Copilot Chat in Agent mode
+
+    In the Command Palette, run:
+
+    ```text
+    Chat: Open Chat (Agent)
+    ```
+
+    This opens the Copilot Chat panel with Agent mode enabled. Ensure the dropdown at the bottom of the panel is set to:
+
+    ```text
+    Agent | Auto | ...
+    ```
+
+7. Test the integration
+
+    To verify the setup, enter the following in Copilot Chat:
+
+    ```text
+    #echo Hello Semaphore
+    ```
+
+    If the integration is working correctly, you should see the following response:
+
+    ```text
+    Hello Semaphore
+    ```
+
+    You can also try more advanced commands like:
+
+    ```text
+    #list organizations
+    ```
+
+    This confirms that GitHub Copilot is communicating with the Semaphore MCP Server and has access to your organization's tools.
+
+</Steps>
+
+
 ## Example Prompts {#examples}
 
 See the [MCP Usage Examples](./mcp-usage-examples) for example use cases for the MCP server with a complete explanation of internals.
