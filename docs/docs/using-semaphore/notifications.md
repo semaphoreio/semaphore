@@ -195,6 +195,28 @@ Semaphore includes the signature in the `X-Semaphore-Signature-256` header when 
 
 :::
 
+You can configure timeout and retry behavior for webhook notifications by editing the notification YAML:
+
+```shell title="Editing a notification"
+sem edit notification <name>
+```
+
+Then add `timeout` and `retries` to the webhook configuration:
+
+```yaml title="Webhook with timeout and retries"
+notify:
+  webhook:
+    endpoint: https://example.org/webhook
+    timeout: 1000
+    retries: 3
+    secret: my-webhook-secret
+```
+
+- **`timeout`**: Response timeout in milliseconds (default: 500)
+- **`retries`**: Number of retry attempts on timeout errors (default: 0, max: 5)
+
+When retries are enabled, Semaphore uses exponential backoff with increasing timeouts on each attempt. See the [Notifications YAML reference](../reference/notifications-yaml#webhook-in-notify) for details.
+
 </TabItem>
 </Tabs>
 

@@ -5,8 +5,8 @@ defmodule Notifications.Workers.Webhook do
 
   @default_connect_timeout 1_000
   @default_recv_timeout 500
-  @max_timeout 5_000
-  @max_retries 3
+  @max_timeout 15_000
+  @max_retries 5
   @initial_retry_delay_ms 500
 
   def publish(_request_id, %{endpoint: endpoint}, _) when is_nil(endpoint) or endpoint == "" do
@@ -39,7 +39,8 @@ defmodule Notifications.Workers.Webhook do
       headers: headers,
       options: options,
       signature: signature,
-      webhook_id: webhook_id
+      webhook_id: webhook_id,
+      max_retries: min(settings.retries, @max_retries)
     }
 
     Watchman.benchmark("notification.webhook.duration", fn ->
@@ -76,12 +77,12 @@ defmodule Notifications.Workers.Webhook do
   end
 
   defp handle_timeout_error(request_id, req, attempt, error) do
-    if attempt < @max_retries do
+    if attempt < req.max_retries do
       delay = retry_delay(attempt)
       new_req = increase_timeouts(req, attempt + 1)
 
       Logger.warning(fn ->
-        "#{request_id} #{req.webhook_id} Timeout on attempt #{attempt + 1}/#{@max_retries + 1} with #{req.endpoint}, " <>
+        "#{request_id} #{req.webhook_id} Timeout on attempt #{attempt + 1}/#{req.max_retries + 1} with #{req.endpoint}, " <>
           "retrying in #{delay}ms with increased timeouts. Error: #{inspect(error)}"
       end)
 
@@ -92,7 +93,7 @@ defmodule Notifications.Workers.Webhook do
       do_request_with_retry(request_id, new_req, attempt + 1)
     else
       Logger.error(fn ->
-        "#{request_id} #{req.webhook_id} Failure with #{req.endpoint} after #{@max_retries + 1} attempts, error: #{inspect(error)}"
+        "#{request_id} #{req.webhook_id} Failure with #{req.endpoint} after #{req.max_retries + 1} attempts, error: #{inspect(error)}"
       end)
 
       Watchman.increment("notification.webhook.failure")
