@@ -17,6 +17,8 @@ services:
     tty: true
     volumes:
       - .:/app
+      - /app/_build
+      - /app/deps
 
     links:
       - db:db
