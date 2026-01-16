@@ -186,7 +186,8 @@ defmodule Notifications.Workers.WebhookTest do
         endpoint: @endpoint,
         action: "post",
         timeout: 0,
-        secret: ""
+        secret: "",
+        retries: 3
       }
 
       {:ok, agent} = Agent.start_link(fn -> [] end)
@@ -215,19 +216,20 @@ defmodule Notifications.Workers.WebhookTest do
         assert third[:timeout] == 4000
         assert third[:recv_timeout] == 2000
 
-        assert fourth[:timeout] == 5000
+        assert fourth[:timeout] == 8000
         assert fourth[:recv_timeout] == 4000
       end
 
       Agent.stop(agent)
     end
 
-    test "caps timeouts at max value of 5000ms", %{data: data} do
+    test "caps timeouts at max value of 15000ms", %{data: data} do
       settings_high_timeout = %{
         endpoint: @endpoint,
         action: "post",
         timeout: 2000,
-        secret: ""
+        secret: "",
+        retries: 3
       }
 
       {:ok, agent} = Agent.start_link(fn -> [] end)
@@ -245,8 +247,8 @@ defmodule Notifications.Workers.WebhookTest do
 
         [_first, _second, third, fourth] = calls
 
-        assert third[:recv_timeout] == 5000
-        assert fourth[:recv_timeout] == 5000
+        assert third[:recv_timeout] == 8_000
+        assert fourth[:recv_timeout] == 15_000
       end
 
       Agent.stop(agent)
@@ -326,7 +328,8 @@ defmodule Notifications.Workers.WebhookTest do
       endpoint: @endpoint,
       action: "post",
       timeout: 100,
-      secret: ""
+      secret: "",
+      retries: 3
     }
   end
 end
