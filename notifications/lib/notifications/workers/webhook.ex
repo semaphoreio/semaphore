@@ -20,9 +20,11 @@ defmodule Notifications.Workers.Webhook do
     method = if(settings.action == "", do: "post", else: settings.action)
     recv_timeout = if(settings.timeout == 0, do: @default_recv_timeout, else: settings.timeout)
 
+    webhook_id = Ecto.UUID.generate()
+
     body = Webhook.Message.construct(data) |> Poison.encode!()
     signature = get_signature(body, data.organization.org_id, settings.secret)
-    headers = get_headers(signature)
+    headers = get_headers(webhook_id, signature)
 
     options = [
       timeout: @default_connect_timeout,
@@ -36,7 +38,8 @@ defmodule Notifications.Workers.Webhook do
       body: body,
       headers: headers,
       options: options,
-      signature: signature
+      signature: signature,
+      webhook_id: webhook_id
     }
 
     Watchman.benchmark("notification.webhook.duration", fn ->
@@ -48,7 +51,7 @@ defmodule Notifications.Workers.Webhook do
     case HTTPoison.request(req.method, req.endpoint, req.body, req.headers, req.options) do
       {:ok, response} ->
         Logger.debug(fn ->
-          "#{request_id} Success with #{req.endpoint} #{req.body} and signature '#{req.signature}'"
+          "#{request_id} #{req.webhook_id} Success with #{req.endpoint} #{req.body} and signature '#{req.signature}'"
         end)
 
         Watchman.increment("notification.webhook.success")
@@ -63,7 +66,7 @@ defmodule Notifications.Workers.Webhook do
 
       {:error, error} ->
         Logger.error(fn ->
-          "#{request_id} Failure with #{req.endpoint} error: #{inspect(error)}"
+          "#{request_id} #{req.webhook_id} Failure with #{req.endpoint} error: #{inspect(error)}"
         end)
 
         Watchman.increment("notification.webhook.failure")
@@ -78,7 +81,7 @@ defmodule Notifications.Workers.Webhook do
       new_req = increase_timeouts(req, attempt + 1)
 
       Logger.warning(fn ->
-        "#{request_id} Timeout on attempt #{attempt + 1}/#{@max_retries + 1} with #{req.endpoint}, " <>
+        "#{request_id} #{req.webhook_id} Timeout on attempt #{attempt + 1}/#{@max_retries + 1} with #{req.endpoint}, " <>
           "retrying in #{delay}ms with increased timeouts. Error: #{inspect(error)}"
       end)
 
@@ -89,7 +92,7 @@ defmodule Notifications.Workers.Webhook do
       do_request_with_retry(request_id, new_req, attempt + 1)
     else
       Logger.error(fn ->
-        "#{request_id} Failure with #{req.endpoint} after #{@max_retries + 1} attempts, error: #{inspect(error)}"
+        "#{request_id} #{req.webhook_id} Failure with #{req.endpoint} after #{@max_retries + 1} attempts, error: #{inspect(error)}"
       end)
 
       Watchman.increment("notification.webhook.failure")
@@ -116,13 +119,18 @@ defmodule Notifications.Workers.Webhook do
     %{req | options: new_opts}
   end
 
-  defp get_headers(signature \\ nil)
+  defp get_headers(webhook_id, signature) when is_binary(signature) and signature != "",
+    do: base_headers(webhook_id) ++ [{"X-Semaphore-Signature-256", signature}]
 
-  defp get_headers(signature) when is_binary(signature) and signature != "",
-    do: get_headers() ++ [{"X-Semaphore-Signature-256", signature}]
+  defp get_headers(webhook_id, _), do: base_headers(webhook_id)
 
-  defp get_headers(_),
-    do: [{"Content-type", "application/json"}, {"User-Agent", "Semaphore-Webhook"}]
+  defp base_headers(webhook_id) do
+    [
+      {"Content-type", "application/json"},
+      {"User-Agent", "Semaphore-Webhook"},
+      {"X-Semaphore-Webhook-Id", webhook_id}
+    ]
+  end
 
   defp get_signature(body, org_id, secret_name) do
     case Webhook.Secret.get(org_id, secret_name) do

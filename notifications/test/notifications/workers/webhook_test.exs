@@ -251,6 +251,60 @@ defmodule Notifications.Workers.WebhookTest do
 
       Agent.stop(agent)
     end
+
+    test "includes X-Semaphore-Webhook-Id header with unique UUID", %{
+      data: data,
+      settings: settings
+    } do
+      {:ok, agent} = Agent.start_link(fn -> [] end)
+
+      with_mock HTTPoison,
+        request: fn _method, _url, _body, headers, _opts ->
+          Agent.update(agent, fn calls -> calls ++ [headers] end)
+          {:ok, %HTTPoison.Response{status_code: 200, body: "ok"}}
+        end do
+        s = Notifications.Models.Rule.decode_webhook(settings)
+
+        Webhook.publish("test-9", s, data)
+
+        [headers] = Agent.get(agent, & &1)
+
+        webhook_id_header =
+          Enum.find(headers, fn {name, _} -> name == "X-Semaphore-Webhook-Id" end)
+
+        assert webhook_id_header != nil
+        {_, webhook_id} = webhook_id_header
+        assert {:ok, _} = Ecto.UUID.cast(webhook_id)
+      end
+
+      Agent.stop(agent)
+    end
+
+    test "uses same webhook ID across retries", %{data: data, settings: settings} do
+      {:ok, agent} = Agent.start_link(fn -> [] end)
+
+      with_mock HTTPoison,
+        request: fn _method, _url, _body, headers, _opts ->
+          Agent.update(agent, fn calls -> calls ++ [headers] end)
+          {:error, %HTTPoison.Error{id: nil, reason: :timeout}}
+        end do
+        s = Notifications.Models.Rule.decode_webhook(settings)
+
+        Webhook.publish("test-10", s, data)
+
+        calls = Agent.get(agent, & &1)
+
+        webhook_ids =
+          Enum.map(calls, fn headers ->
+            {_, id} = Enum.find(headers, fn {name, _} -> name == "X-Semaphore-Webhook-Id" end)
+            id
+          end)
+
+        assert length(Enum.uniq(webhook_ids)) == 1
+      end
+
+      Agent.stop(agent)
+    end
   end
 
   defp build_test_data do
