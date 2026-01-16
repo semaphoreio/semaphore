@@ -765,11 +765,11 @@ defmodule InternalApi.PlumberWF.WorkflowDeleted do
         }
   defstruct [:workflow_id, :organization_id, :project_id, :artifact_store_id, :deleted_at]
 
-  field :workflow_id, 1, type: :string
-  field :organization_id, 2, type: :string
-  field :project_id, 3, type: :string
-  field :artifact_store_id, 4, type: :string
-  field :deleted_at, 5, type: Google.Protobuf.Timestamp
+  field(:workflow_id, 1, type: :string)
+  field(:organization_id, 2, type: :string)
+  field(:project_id, 3, type: :string)
+  field(:artifact_store_id, 4, type: :string)
+  field(:deleted_at, 5, type: Google.Protobuf.Timestamp)
 end
 
 defmodule InternalApi.PlumberWF.TriggeredBy do

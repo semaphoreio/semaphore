@@ -8,8 +8,8 @@ defmodule InternalApi.Paparazzo.PutRequest do
         }
   defstruct [:content, :ttl_sec]
 
-  field :content, 2, type: :string
-  field :ttl_sec, 3, type: :uint32
+  field(:content, 2, type: :string)
+  field(:ttl_sec, 3, type: :uint32)
 end
 
 defmodule InternalApi.Paparazzo.PutResponse do
@@ -22,8 +22,8 @@ defmodule InternalApi.Paparazzo.PutResponse do
         }
   defstruct [:status, :id]
 
-  field :status, 1, type: Google.Rpc.Status
-  field :id, 2, type: :string
+  field(:status, 1, type: Google.Rpc.Status)
+  field(:id, 2, type: :string)
 end
 
 defmodule InternalApi.Paparazzo.GetRequest do
@@ -35,7 +35,7 @@ defmodule InternalApi.Paparazzo.GetRequest do
         }
   defstruct [:id]
 
-  field :id, 1, type: :string
+  field(:id, 1, type: :string)
 end
 
 defmodule InternalApi.Paparazzo.GetResponse do
@@ -48,8 +48,8 @@ defmodule InternalApi.Paparazzo.GetResponse do
         }
   defstruct [:status, :content]
 
-  field :status, 1, type: Google.Rpc.Status
-  field :content, 2, type: :string
+  field(:status, 1, type: Google.Rpc.Status)
+  field(:content, 2, type: :string)
 end
 
 defmodule InternalApi.Paparazzo.DeleteRequest do
@@ -61,7 +61,7 @@ defmodule InternalApi.Paparazzo.DeleteRequest do
         }
   defstruct [:id]
 
-  field :id, 1, type: :string
+  field(:id, 1, type: :string)
 end
 
 defmodule InternalApi.Paparazzo.DeleteResponse do
@@ -74,8 +74,8 @@ defmodule InternalApi.Paparazzo.DeleteResponse do
         }
   defstruct [:status, :content]
 
-  field :status, 1, type: Google.Rpc.Status
-  field :content, 2, type: :string
+  field(:status, 1, type: Google.Rpc.Status)
+  field(:content, 2, type: :string)
 end
 
 defmodule InternalApi.Paparazzo.GetFileRequest do
@@ -88,8 +88,8 @@ defmodule InternalApi.Paparazzo.GetFileRequest do
         }
   defstruct [:id, :path]
 
-  field :id, 1, type: :string
-  field :path, 2, type: :string
+  field(:id, 1, type: :string)
+  field(:path, 2, type: :string)
 end
 
 defmodule InternalApi.Paparazzo.GetFileResponse do
@@ -102,18 +102,18 @@ defmodule InternalApi.Paparazzo.GetFileResponse do
         }
   defstruct [:status, :content]
 
-  field :status, 1, type: Google.Rpc.Status
-  field :content, 2, type: :string
+  field(:status, 1, type: Google.Rpc.Status)
+  field(:content, 2, type: :string)
 end
 
 defmodule InternalApi.Paparazzo.SnapshotService.Service do
   @moduledoc false
   use GRPC.Service, name: "InternalApi.Paparazzo.SnapshotService"
 
-  rpc :Put, InternalApi.Paparazzo.PutRequest, InternalApi.Paparazzo.PutResponse
-  rpc :Get, InternalApi.Paparazzo.GetRequest, InternalApi.Paparazzo.GetResponse
-  rpc :Delete, InternalApi.Paparazzo.DeleteRequest, InternalApi.Paparazzo.DeleteResponse
-  rpc :GetFile, InternalApi.Paparazzo.GetFileRequest, InternalApi.Paparazzo.GetFileResponse
+  rpc(:Put, InternalApi.Paparazzo.PutRequest, InternalApi.Paparazzo.PutResponse)
+  rpc(:Get, InternalApi.Paparazzo.GetRequest, InternalApi.Paparazzo.GetResponse)
+  rpc(:Delete, InternalApi.Paparazzo.DeleteRequest, InternalApi.Paparazzo.DeleteResponse)
+  rpc(:GetFile, InternalApi.Paparazzo.GetFileRequest, InternalApi.Paparazzo.GetFileResponse)
 end
 
 defmodule InternalApi.Paparazzo.SnapshotService.Stub do
