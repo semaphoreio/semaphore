@@ -191,7 +191,10 @@ To add a password to your notification:
 
 :::info
 
-Semaphore includes the signature in the `X-Semaphore-Signature-256` header when the webhook secret is present. Semaphore uses an HMAC-SHA256 to compute the signature of the request body.
+Semaphore includes the following headers with webhook notifications:
+
+- **X-Semaphore-Webhook-Id**: A unique identifier (UUID) for each webhook delivery. Use this for idempotency to prevent processing duplicate deliveries.
+- **X-Semaphore-Signature-256**: HMAC-SHA256 signature of the request body (only present when a webhook secret is configured).
 
 :::
 
