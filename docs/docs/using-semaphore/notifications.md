@@ -198,6 +198,27 @@ Semaphore includes the signature in the `X-Semaphore-Signature-256` header when 
 </TabItem>
 </Tabs>
 
+## Webhook headers {#webhook-headers}
+
+When Semaphore sends a webhook notification, the following HTTP headers are included:
+
+| Header | Description |
+|--------|-------------|
+| `Content-type` | `application/json` |
+| `User-Agent` | `Semaphore-Webhook` |
+| `X-Semaphore-Webhook-Id` | Unique UUID for this webhook delivery |
+| `X-Semaphore-Signature-256` | HMAC-SHA256 signature (only if webhook secret is configured) |
+
+### Idempotency
+
+The `X-Semaphore-Webhook-Id` header contains a unique UUID generated for each webhook delivery. If a delivery times out and Semaphore retries, the same ID is sent on all retry attempts. This allows your webhook endpoint to deduplicate notifications and avoid processing the same event multiple times.
+
+:::tip
+
+Store the `X-Semaphore-Webhook-Id` values you've processed and check incoming requests against this list to ensure idempotent handling of webhook notifications.
+
+:::
+
 ## Manage notifications from the CLI
 
 You can use the [Semaphore command line tool](../reference/semaphore-cli) to view, delete and edit notifications:
