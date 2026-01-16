@@ -1,7 +1,6 @@
-version: '3.6'
+version: "3.6"
 
 services:
-
   app:
     build:
       context: .
@@ -58,7 +57,7 @@ services:
 
   gcs:
     image: fsouza/fake-gcs-server
-    container_name: 'gcs'
+    container_name: "gcs"
     volumes:
       - gcs-data:/data
     ports:
@@ -67,7 +66,7 @@ services:
 
   s3:
     image: minio/minio:RELEASE.2021-04-22T15-44-28Z.hotfix.56647434e
-    container_name: 's3'
+    container_name: "s3"
     ports:
       - 9000:9000
     entrypoint: sh

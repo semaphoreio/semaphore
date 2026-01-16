@@ -1,6 +1,6 @@
-defmodule Ppl.Retention.PolicyApplier do
+defmodule Ppl.Retention.Policy.Queries do
   @moduledoc """
-  Marks pipelines for expiration when an organization policy is applied.
+  Database queries for marking pipelines for expiration based on organization policy.
   """
 
   import Ecto.Query
@@ -19,10 +19,6 @@ defmodule Ppl.Retention.PolicyApplier do
 
   - Pipelines inserted before `cutoff` are marked with `expires_at = now + grace_period_days`
   - Pipelines inserted on or after `cutoff` have their `expires_at` cleared (unmarked)
-
-  Updates are performed in batches to avoid lock contention and connection timeouts.
-  The grace period is configurable via application config (default: 15 days, min: 7 days).
-  Batch size is configurable via application config (default: 10_000).
 
   Returns `{marked_count, unmarked_count}`.
   """
@@ -89,10 +85,7 @@ defmodule Ppl.Retention.PolicyApplier do
     days = Keyword.get(config, :grace_period_days, @default_grace_period_days)
 
     if days < @min_grace_period_days do
-      Logger.warning(
-        "[Retention] org_id=#{org_id} grace_period_days=#{days} is below minimum, using #{@min_grace_period_days}"
-      )
-
+      Logger.warning("[Retention] org_id=#{org_id} grace_period_days=#{days} below minimum, using #{@min_grace_period_days}")
       @min_grace_period_days
     else
       days

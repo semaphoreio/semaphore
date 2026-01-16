@@ -15,6 +15,8 @@ import (
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/util/log"
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/workers/bucketcleaner"
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/workers/jobdeletion"
+	"github.com/semaphoreio/semaphore/artifacthub/pkg/workers/pipelinedeletion"
+	"github.com/semaphoreio/semaphore/artifacthub/pkg/workers/workflowdeletion"
 	"go.uber.org/zap"
 )
 
@@ -130,6 +132,26 @@ func jobDeletionWorker(client storage.Client) {
 	worker.Start()
 }
 
+func pipelineDeletionWorker(client storage.Client) {
+	log.Info("Starting pipeline deletion worker...")
+	worker, err := pipelinedeletion.NewWorker(amqpURL, client)
+	if err != nil {
+		panic(err)
+	}
+
+	worker.Start()
+}
+
+func workflowDeletionWorker(client storage.Client) {
+	log.Info("Starting workflow deletion worker...")
+	worker, err := workflowdeletion.NewWorker(amqpURL, client)
+	if err != nil {
+		panic(err)
+	}
+
+	worker.Start()
+}
+
 func main() {
 	flag.Parse()
 
@@ -172,6 +194,14 @@ func main() {
 
 	if os.Getenv("START_JOB_DELETION_WORKER") == "yes" {
 		go jobDeletionWorker(storageClient)
+	}
+
+	if os.Getenv("START_PIPELINE_DELETION_WORKER") == "yes" {
+		go pipelineDeletionWorker(storageClient)
+	}
+
+	if os.Getenv("START_WORKFLOW_DELETION_WORKER") == "yes" {
+		go workflowDeletionWorker(storageClient)
 	}
 
 	select {}
