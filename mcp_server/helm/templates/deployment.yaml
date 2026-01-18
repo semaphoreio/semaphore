@@ -1,4 +1,4 @@
-{{- if and (eq .Values.global.edition "ee") .Values.enabled }}
+{{- if .Values.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -41,7 +41,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: {{ .Chart.Name }}
-          image: "{{ .Values.global.image.registry }}/auth:mcp_{{ .Values.imageTag }}"
+          image: "{{ .Values.global.image.registry }}/mcp_server:{{ .Values.imageTag }}"
           ports:
             - name: http
               containerPort: 3001
@@ -55,6 +55,8 @@ spec:
           env:
             - name: LOG_LEVEL
               value: {{ .Values.logging.level }}
+            - name: MCP_USE_STUBS
+              value: {{ .Values.useStubs | quote }}
             - name: PPL_GRPC_URL
               valueFrom:
                 configMapKeyRef:

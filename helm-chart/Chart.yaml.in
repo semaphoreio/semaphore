@@ -8,6 +8,7 @@ dependencies:
   - name: emissary-ingress
     version: "8.9.1"
     repository: https://app.getambassador.io
+    condition: emissary-ingress.enabled
   - name: controller
     version: "0.2.4"
     repository: https://renderedtext.github.io/helm-charts
@@ -15,108 +16,143 @@ dependencies:
   - name: artifacthub
     version: "@chartVersion@"
     repository: "file://../artifacthub/helm"
+    condition: artifacthub.enabled
   - name: audit
     version: "@chartVersion@"
     repository: "file://../ee/audit/helm"
+    condition: audit.enabled
   - name: auth
     version: "@chartVersion@"
     repository: "file://../auth/helm"
+    condition: auth.enabled
   - name: bootstrapper
     version: "@chartVersion@"
     repository: "file://../bootstrapper/helm"
+    condition: bootstrapper.enabled
   - name: guard
     version: "@chartVersion@"
     repository: "file://../guard/helm"
+    condition: guard.enabled
   - name: gofer
     version: "@chartVersion@"
     repository: "file://../ee/gofer/helm"
+    condition: gofer.enabled
   - name: secrethub
     version: "@chartVersion@"
     repository: "file://../secrethub/helm"
+    condition: secrethub.enabled
   - name: self-hosted-hub
     version: "@chartVersion@"
     repository: "file://../self_hosted_hub/helm"
+    condition: self-hosted-hub.enabled
   - name: loghub2
     version: "@chartVersion@"
     repository: "file://../loghub2/helm"
+    condition: loghub2.enabled
   - name: keycloak
     version: "@chartVersion@"
     repository: "file://../keycloak/image/helm"
+    condition: keycloak.enabled
   - name: keycloak-setup
     version: "@chartVersion@"
     repository: "file://../keycloak/setup/helm"
+    condition: keycloak-setup.enabled
   - name: periodic-scheduler
     version: "@chartVersion@"
     repository: "file://../periodic_scheduler/scheduler/helm"
+    condition: periodic-scheduler.enabled
   - name: projecthub
     version: "@chartVersion@"
     repository: "file://../projecthub/helm"
+    condition: projecthub.enabled
   - name: projecthub-public
     version: "@chartVersion@"
     repository: "file://../projecthub-rest-api/helm"
+    condition: projecthub-public.enabled
   - name: public-api-gateway
     version: "@chartVersion@"
     repository: "file://../public-api-gateway/helm"
+    condition: public-api-gateway.enabled
   - name: repository_hub
     version: "@chartVersion@"
     repository: "file://../repository_hub/helm"
+    condition: repository_hub.enabled
   - name: github_hooks
     version: "@chartVersion@"
     repository: "file://../github_hooks/helm"
+    condition: github_hooks.enabled
   - name: notifications
     version: "@chartVersion@"
     repository: "file://../notifications/helm"
+    condition: notifications.enabled
   - name: zebra
     version: "@chartVersion@"
     repository: "file://../zebra/helm"
+    condition: zebra.enabled
   - name: front
     version: "@chartVersion@"
     repository: "file://../front/helm"
+    condition: front.enabled
   - name: badges
     version: "@chartVersion@"
     repository: "file://../badge/helm"
+    condition: badges.enabled
   - name: branch_hub
     version: "@chartVersion@"
     repository: "file://../branch_hub/helm"
+    condition: branch_hub.enabled
   - name: hooks-receiver
     version: "@chartVersion@"
     repository: "file://../hooks_receiver/helm"
+    condition: hooks-receiver.enabled
   - name: dashboardhub
     version: "@chartVersion@"
     repository: "file://../dashboardhub/helm"
+    condition: dashboardhub.enabled
   - name: hooks-processor
     version: "@chartVersion@"
     repository: "file://../hooks_processor/helm"
+    condition: hooks-processor.enabled
   - name: plumber
     version: "@chartVersion@"
     repository: "file://../plumber/ppl/helm"
+    condition: plumber.enabled
   - name: plumber-public
     version: "@chartVersion@"
     repository: "file://../public-api/v1alpha/helm"
+    condition: plumber-public.enabled
   - name: public-api
     version: "@chartVersion@"
     repository: "file://../public-api/v2/helm"
+    condition: public-api.enabled
   - name: rbac_ee
     version: "@chartVersion@"
     repository: "file://../ee/rbac/helm"
+    condition: rbac_ee.enabled
   - name: rbac
     version: "@chartVersion@"
     repository: "file://../rbac/ce/helm"
+    condition: rbac.enabled
   - name: repohub
     version: "@chartVersion@"
     repository: "file://../repohub/helm"
+    condition: repohub.enabled
   - name: scouter
     version: "@chartVersion@"
     repository: "file://../scouter/helm"
+    condition: scouter.enabled
   - name: github-notifier
     version: "@chartVersion@"
     repository: "file://../github_notifier/helm"
+    condition: github-notifier.enabled
   - name: pre-flight-checks-hub
     version: "@chartVersion@"
     repository: "file://../ee/pre_flight_checks/helm"
+    condition: pre-flight-checks-hub.enabled
   - name: velocity-hub
     version: "@chartVersion@"
     repository: "file://../ee/velocity/helm"
+    condition: velocity-hub.enabled
   - name: mcp-server
     version: "@chartVersion@"
     repository: "file://../mcp_server/helm"

@@ -4,6 +4,7 @@ image: mcp_server
 imageTag: latest
 imagePullSecrets: []
 replicas: 1
+useStubs: false
 
 logging:
   level: info

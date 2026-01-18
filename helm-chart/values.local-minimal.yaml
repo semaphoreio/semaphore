@@ -1,0 +1,126 @@
+global:
+  edition: "ee"
+  development:
+    minimalDeployment: true
+    writableRootFilesystem: true
+    skipTlsVerifyInternal: true
+
+ingress:
+  className: "nginx"
+  ssl:
+    type: "custom"
+
+emissary-ingress:
+  enabled: false
+
+controller:
+  install: false
+
+artifacthub:
+  enabled: false
+
+audit:
+  enabled: false
+
+auth:
+  enabled: true
+
+bootstrapper:
+  enabled: true
+
+guard:
+  enabled: true
+
+gofer:
+  enabled: false
+
+secrethub:
+  enabled: false
+
+self-hosted-hub:
+  enabled: false
+
+loghub2:
+  enabled: false
+
+keycloak:
+  enabled: true
+
+keycloak-setup:
+  enabled: true
+
+periodic-scheduler:
+  enabled: false
+
+projecthub:
+  enabled: false
+
+projecthub-public:
+  enabled: false
+
+public-api-gateway:
+  enabled: false
+
+repository_hub:
+  enabled: false
+
+github_hooks:
+  enabled: false
+
+notifications:
+  enabled: false
+
+zebra:
+  enabled: false
+
+front:
+  enabled: false
+
+badges:
+  enabled: false
+
+branch_hub:
+  enabled: false
+
+hooks-receiver:
+  enabled: false
+
+dashboardhub:
+  enabled: false
+
+hooks-processor:
+  enabled: false
+
+plumber:
+  enabled: false
+
+plumber-public:
+  enabled: false
+
+public-api:
+  enabled: false
+
+rbac_ee:
+  enabled: false
+
+rbac:
+  enabled: false
+
+repohub:
+  enabled: false
+
+scouter:
+  enabled: false
+
+github-notifier:
+  enabled: false
+
+pre-flight-checks-hub:
+  enabled: false
+
+velocity-hub:
+  enabled: false
+
+mcp-server:
+  enabled: true
+  useStubs: true

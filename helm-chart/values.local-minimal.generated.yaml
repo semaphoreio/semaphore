@@ -1,0 +1,15 @@
+global:
+  domain:
+    ip: "__MINIKUBE_IP__"
+    name: "__BASE_DOMAIN__"
+  rootUser:
+    email: "__ROOT_EMAIL__"
+  organization:
+    name: "__ORG_NAME__"
+
+ingress:
+  ssl:
+    enabled: true
+    type: "custom"
+    crt: "__TLS_CRT__"
+    key: "__TLS_KEY__"

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: mcp-server
+description: A Helm chart for deploying Semaphore MCP server
+type: application
+version: "v1.5.0-rc.2"
+appVersion: ""

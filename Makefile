@@ -209,18 +209,82 @@ else
 endif
 
 build.skaffold: DOCKER_BUILD_PROGRESS=plain
-build.skaffold: pull
+build.skaffold:
+	if [ "$(SKAFFOLD_NO_PULL)" != "true" ]; then \
+		$(MAKE) pull; \
+	fi
 ifneq ($(MIX_ENV),)
 	mkdir -p deps _build
 endif
+	if [ -n "$(IMAGE)" ]; then \
+		BUILD_IMAGE=$(IMAGE); \
+	else \
+		BUILD_IMAGE=$(APP_NAME)/$(BRANCH); \
+	fi; \
 	docker build -f Dockerfile \
 		--target $(DOCKER_BUILD_TARGET) \
 		--progress $(DOCKER_BUILD_PROGRESS) \
 		--build-arg BUILDKIT_INLINE_CACHE=$(BUILDKIT_INLINE_CACHE) \
 		--build-arg APP_NAME=$(APP_NAME) \
 		--build-arg BUILD_ENV=$(BUILD_ENV) \
-		-t $(IMAGE) \
+		-t $$BUILD_IMAGE \
 		$(DOCKER_BUILD_PATH)
+
+minikube.start:
+	mkdir -p ~/semaphore-local-dev/certs
+	mkcert -install
+	mkcert -cert-file ~/semaphore-local-dev/certs/_wildcard.semaphore.localhost.pem \
+		-key-file ~/semaphore-local-dev/certs/_wildcard.semaphore.localhost-key.pem '*.semaphore.localhost'
+	minikube start --cpus 4 --memory 6144 --profile semaphore
+	minikube profile semaphore
+	minikube addons enable ingress
+	minikube addons enable ingress-dns
+	kubectl apply -f https://app.getambassador.io/yaml/emissary/3.9.1/emissary-crds.yaml
+	kubectl wait --timeout=90s --for=condition=available deployment emissary-apiext -n emissary-system
+	kubectl rollout status deployment emissary-apiext -n emissary-system --timeout=180s
+
+minikube.stop:
+	minikube stop --profile semaphore
+
+minikube.delete:
+	minikube delete --profile semaphore
+
+skaffold.dev.minimal:
+	CHART_VERSION=$$(git tag | sort --version-sort | tail -n 1); \
+	if [ -z "$$CHART_VERSION" ]; then \
+		CHART_VERSION=$$(git rev-parse HEAD | cut -c 1-8); \
+	fi; \
+	(cd helm-chart && ./scripts/prepare-chart.sh $$CHART_VERSION); \
+	if [ ! -f helm-chart/charts/emissary-ingress-8.9.1.tgz ]; then \
+		mkdir -p helm-chart/charts; \
+		for attempt in 1 2 3; do \
+			helm pull ambassador/emissary-ingress --version 8.9.1 --destination helm-chart/charts && break; \
+			echo "emissary-ingress download failed (attempt $$attempt), retrying..."; \
+			sleep 3; \
+		done; \
+	fi; \
+	for attempt in 1 2 3; do \
+		(cd helm-chart && helm dependency build --skip-refresh) && break; \
+		echo "helm dependency build failed (attempt $$attempt), retrying..."; \
+		sleep 3; \
+	done; \
+	helm uninstall semaphore --wait >/dev/null 2>&1 || true; \
+	MINIKUBE_IP=$$(minikube ip --profile semaphore); \
+	sed -e "s|__MINIKUBE_IP__|$$MINIKUBE_IP|" \
+		-e "s|__BASE_DOMAIN__|semaphore.localhost|" \
+		-e "s|__ROOT_EMAIL__|root@semaphore.localhost|" \
+		-e "s|__ORG_NAME__|semaphore|" \
+		-e "s|__TLS_CRT__|$$(base64 -w 0 ~/semaphore-local-dev/certs/_wildcard.semaphore.localhost.pem | tr -d '\n')|" \
+		-e "s|__TLS_KEY__|$$(base64 -w 0 ~/semaphore-local-dev/certs/_wildcard.semaphore.localhost-key.pem | tr -d '\n')|" \
+		helm-chart/values.local-minimal.generated.yaml > helm-chart/values.local-minimal.rendered.yaml; \
+	env -u IMAGE -u IMAGE_TAG -u APP_NAME -u BRANCH \
+		RELEASE_TAG=$$(git rev-list -1 HEAD -- mcp_server) \
+		skaffold dev \
+			--filename skaffold.yaml \
+			--profile local-minimal \
+			--default-repo local \
+			--port-forward=false \
+			--status-check=true
 
 #
 # Development operations

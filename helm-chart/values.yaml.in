@@ -228,10 +228,124 @@ ingress:
     key: ""
 
 #
+# Subchart toggles
+#
+artifacthub:
+  enabled: true
+
+audit:
+  enabled: true
+
+auth:
+  enabled: true
+
+bootstrapper:
+  enabled: true
+
+guard:
+  enabled: true
+
+gofer:
+  enabled: true
+
+secrethub:
+  enabled: true
+
+self-hosted-hub:
+  enabled: true
+
+loghub2:
+  enabled: true
+
+keycloak:
+  enabled: true
+
+keycloak-setup:
+  enabled: true
+
+periodic-scheduler:
+  enabled: true
+
+projecthub:
+  enabled: true
+
+projecthub-public:
+  enabled: true
+
+public-api-gateway:
+  enabled: true
+
+repository_hub:
+  enabled: true
+
+github_hooks:
+  enabled: true
+
+notifications:
+  enabled: true
+
+zebra:
+  enabled: true
+
+front:
+  enabled: true
+
+badges:
+  enabled: true
+
+branch_hub:
+  enabled: true
+
+hooks-receiver:
+  enabled: true
+
+dashboardhub:
+  enabled: true
+
+hooks-processor:
+  enabled: true
+
+plumber:
+  enabled: true
+
+plumber-public:
+  enabled: true
+
+public-api:
+  enabled: true
+
+rbac_ee:
+  enabled: true
+
+rbac:
+  enabled: true
+
+repohub:
+  enabled: true
+
+scouter:
+  enabled: true
+
+github-notifier:
+  enabled: true
+
+pre-flight-checks-hub:
+  enabled: true
+
+velocity-hub:
+  enabled: true
+
+mcp-server:
+  enabled: true
+  useStubs: false
+
+#
 # Overrides for subcharts
 #
 
+
 emissary-ingress:
+  enabled: true
   nameOverride: ambassador
   fullnameOverride: ambassador
   replicaCount: 1
@@ -266,3 +380,4 @@ controller:
 
 mcp-server:
   enabled: true
+  useStubs: false

@@ -103,6 +103,10 @@ build:
       custom:
         buildCommand: "APP_ENV=prod make build.skaffold"
       context: keycloak/image
+    - image: ghcr.io/semaphoreio/mcp_server
+      custom:
+        buildCommand: "APP_ENV=prod APP_NAME=mcp_server IMAGE=$IMAGE make build.skaffold"
+      context: mcp_server
 deploy:
   helm:
     releases:
@@ -126,3 +130,43 @@ deploy:
     flags:
       upgrade: ["--timeout", "120m"]
       install: ["--timeout", "120m"]
+
+profiles:
+  - name: local-minimal
+    build:
+      local: {}
+      artifacts:
+        - image: ghcr.io/semaphoreio/auth
+          custom:
+            buildCommand: "MIX_ENV=prod APP_NAME=auth IMAGE=$IMAGE SKAFFOLD_NO_PULL=true make build.skaffold"
+          context: auth
+        - image: ghcr.io/semaphoreio/guard
+          custom:
+            buildCommand: "MIX_ENV=prod APP_NAME=guard IMAGE=$IMAGE SKAFFOLD_NO_PULL=true make build.skaffold"
+          context: guard
+        - image: ghcr.io/semaphoreio/keycloak-setup
+          custom:
+            buildCommand: "APP_ENV=prod APP_NAME=keycloak-setup IMAGE=$IMAGE SKAFFOLD_NO_PULL=true make build.skaffold"
+          context: keycloak/setup
+        - image: ghcr.io/semaphoreio/keycloak
+          custom:
+            buildCommand: "APP_ENV=prod APP_NAME=keycloak IMAGE=$IMAGE SKAFFOLD_NO_PULL=true make build.skaffold"
+          context: keycloak/image
+        - image: ghcr.io/semaphoreio/mcp_server
+          custom:
+            buildCommand: "APP_ENV=prod APP_NAME=mcp_server IMAGE=$IMAGE SKAFFOLD_NO_PULL=true make build.skaffold"
+          context: mcp_server
+    deploy:
+      helm:
+        releases:
+          - name: semaphore
+            chartPath: helm-chart
+            skipBuildDependencies: true
+            valuesFiles:
+              - helm-chart/values.yaml
+              - helm-chart/values.local-minimal.yaml
+              - helm-chart/values.local-minimal.rendered.yaml
+            version: 0.1.0
+        flags:
+          upgrade: ["--timeout", "120m"]
+          install: ["--timeout", "120m"]

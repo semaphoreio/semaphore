@@ -2,3 +2,5 @@
 */*/out/*
 **/_wildcard*
 **/.tool-versions
+local-dev/
+helm-chart/values.local-minimal.rendered.yaml
