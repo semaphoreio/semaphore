@@ -32,6 +32,15 @@ config :zebra, Zebra.Workers.JobRequestFactory,
 config :zebra, Zebra.Workers.WaitingJobTerminator,
   max_scheduled_time_in_seconds: System.get_env("MAX_SCHEDULED_TIME_IN_SECONDS") || "86400"
 
+config :zebra, Zebra.Workers.JobDeletionPolicyWorker,
+  naptime: String.to_integer(System.get_env("JOB_DELETION_POLICY_WORKER_NAPTIME_MS") || "60000"),
+  longnaptime: String.to_integer(System.get_env("JOB_DELETION_POLICY_WORKER_LONGNAPTIME_MS") || "600000"),
+  batch_size: String.to_integer(System.get_env("JOB_DELETION_POLICY_WORKER_BATCH_SIZE") || "100")
+
+config :zebra, Zebra.Workers.JobDeletionPolicyMarker,
+  days: String.to_integer(System.get_env("JOB_DELETION_POLICY_MARKER_GRACE_PERIOD_DAYS") || "15"),
+  batch_size: String.to_integer(System.get_env("JOB_DELETION_POLICY_MARKER_BATCH_SIZE") || "1000")
+
 #
 # Feature provider configuration
 #
