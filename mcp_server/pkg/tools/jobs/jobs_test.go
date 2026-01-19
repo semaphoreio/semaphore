@@ -12,6 +12,7 @@ import (
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/feature"
 	loghubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub"
 	loghub2pb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub2"
+	orgpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/organization"
 	rbacpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/rbac"
 	responsepb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/response_status"
 	jobpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/server_farm.job"
@@ -438,13 +439,14 @@ func TestFetchHostedLogsPagination(t *testing.T) {
 
 func TestFetchSelfHostedLogs(t *testing.T) {
 	jobID := "88888888-7777-6666-5555-444444444444"
+	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 	jobClient := &jobClientStub{
 		describeResp: &jobpb.DescribeResponse{
 			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
 			Job: &jobpb.Job{
 				Id:             jobID,
 				ProjectId:      testProjectUUID,
-				OrganizationId: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+				OrganizationId: orgID,
 				SelfHosted:     true,
 			},
 		},
@@ -452,12 +454,22 @@ func TestFetchSelfHostedLogs(t *testing.T) {
 	loghub2Client := &loghub2ClientStub{
 		resp: &loghub2pb.GenerateTokenResponse{Token: "token", Type: loghub2pb.TokenType_PULL},
 	}
+	orgClient := &orgClientStub{
+		resp: &orgpb.DescribeResponse{
+			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
+			Organization: &orgpb.Organization{
+				OrgId:       orgID,
+				OrgUsername: "acme",
+			},
+		},
+	}
 
 	provider := &support.MockProvider{
-		JobClient:     jobClient,
-		Loghub2Client: loghub2Client,
-		RBACClient:    newRBACStub("project.view"),
-		Timeout:       time.Second,
+		JobClient:          jobClient,
+		Loghub2Client:      loghub2Client,
+		OrganizationClient: orgClient,
+		RBACClient:         newRBACStub("project.view"),
+		Timeout:            time.Second,
 	}
 
 	handler := logsHandler(provider)
@@ -482,8 +494,17 @@ func TestFetchSelfHostedLogs(t *testing.T) {
 		toFail(t, "unexpected loghub2 response: %+v", result)
 	}
 
+	expectedURL := fmt.Sprintf("https://acme.semaphoreci.com/api/v1/logs/%s?jwt=token", jobID)
+	if result.LogsURL != expectedURL {
+		toFail(t, "expected logs URL %q, got %q", expectedURL, result.LogsURL)
+	}
+
 	if loghub2Client.lastRequest == nil || loghub2Client.lastRequest.GetJobId() != jobID {
 		toFail(t, "unexpected loghub2 request: %+v", loghub2Client.lastRequest)
+	}
+
+	if orgClient.lastRequest == nil || orgClient.lastRequest.GetOrgId() != orgID {
+		toFail(t, "unexpected org describe request: %+v", orgClient.lastRequest)
 	}
 }
 
@@ -625,6 +646,24 @@ func TestLogsRBACUnavailable(t *testing.T) {
 	}
 }
 
+func TestBuildLogsURL(t *testing.T) {
+	jobID := "job-123"
+	url := buildLogsURL("semaphoreci.com", "acme", jobID, "token")
+	expected := fmt.Sprintf("https://acme.semaphoreci.com/api/v1/logs/%s?jwt=token", jobID)
+	if url != expected {
+		toFail(t, "expected %q, got %q", expected, url)
+	}
+}
+
+func TestBuildLogsURLMissingValues(t *testing.T) {
+	if url := buildLogsURL("semaphoreci.com", "", "job-123", "token"); url != "" {
+		toFail(t, "expected empty URL when org username missing, got %q", url)
+	}
+	if url := buildLogsURL("semaphoreci.com", "acme", "job-123", ""); url != "" {
+		toFail(t, "expected empty URL when token missing, got %q", url)
+	}
+}
+
 type jobClientStub struct {
 	jobpb.JobServiceClient
 	describeResp *jobpb.DescribeResponse
@@ -703,6 +742,21 @@ type loghub2ClientStub struct {
 }
 
 func (s *loghub2ClientStub) GenerateToken(ctx context.Context, in *loghub2pb.GenerateTokenRequest, opts ...grpc.CallOption) (*loghub2pb.GenerateTokenResponse, error) {
+	s.lastRequest = in
+	if s.err != nil {
+		return nil, s.err
+	}
+	return s.resp, nil
+}
+
+type orgClientStub struct {
+	orgpb.OrganizationServiceClient
+	resp        *orgpb.DescribeResponse
+	err         error
+	lastRequest *orgpb.DescribeRequest
+}
+
+func (s *orgClientStub) Describe(ctx context.Context, in *orgpb.DescribeRequest, opts ...grpc.CallOption) (*orgpb.DescribeResponse, error) {
 	s.lastRequest = in
 	if s.err != nil {
 		return nil, s.err
