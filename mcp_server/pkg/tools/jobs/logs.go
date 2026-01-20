@@ -401,12 +401,17 @@ func formatSelfHostedLogsMarkdown(result logsResult) string {
 		mb.Raw("```bash\n")
 		mb.Raw(fmt.Sprintf("curl \"%s\"", result.LogsURL))
 		mb.Raw("\n```\n")
+		mb.Paragraph("If the logs are large, save them to a local file (ask the user before writing files) to avoid repeated API requests:")
+		mb.Raw("```bash\n")
+		mb.Raw(fmt.Sprintf("curl -o job-%s.log \"%s\"", result.JobID, result.LogsURL))
+		mb.Raw("\n```\n")
 	} else if result.Token != "" {
 		mb.Paragraph("Use the following JWT within the TTL to stream logs:")
 		mb.Raw("```\n")
 		mb.Raw(result.Token)
 		mb.Raw("\n```\n")
 		mb.Paragraph("⚠️ Could not construct a full logs URL. Use the token above with your workspace URL.")
+		mb.Paragraph("If the logs are large, save them to a local file (ask the user before writing files) to avoid repeated API requests.")
 	} else {
 		mb.Paragraph("⚠️ No token was returned. Retry the request or contact support if the problem persists.")
 	}
