@@ -239,19 +239,22 @@ defmodule Ppl.WorkflowQueries do
   Uses keyset pagination.
   """
   def list_latest_workflows(params = %{requester_id: nil}) do
-    Metrics.benchmark("WorkflowPB.queries", "projet_page",  fn ->
+    Metrics.benchmark("WorkflowPB.queries", "projet_page", fn ->
       list_latest_workflows_(params)
     end)
   end
+
   def list_latest_workflows(params = %{requester_id: requester_id})
-    when is_binary(requester_id) do
-      Metrics.benchmark("WorkflowPB.queries", "projet_page_for_user",  fn ->
-        list_latest_workflows_(params)
-      end)
+      when is_binary(requester_id) do
+    Metrics.benchmark("WorkflowPB.queries", "projet_page_for_user", fn ->
+      list_latest_workflows_(params)
+    end)
   end
+
   def list_latest_workflows(params) do
     list_latest_workflows_(params)
   end
+
   def list_latest_workflows_(params) do
     # We have to perform a different kind of query
     # in case requester_id is present because the
@@ -469,50 +472,46 @@ defmodule Ppl.WorkflowQueries do
   and page that matches given keyset_params is returned
   """
   def list_keyset(params = %{requester_id: requester_id, projects: projects}, keyset_params)
-    when is_binary(requester_id) and is_list(projects) do
-      Metrics.benchmark("WorkflowPB.queries", "my_work_legacy",  fn ->
-        list_keyset_(params, keyset_params)
-      end)
+      when is_binary(requester_id) and is_list(projects) do
+    Metrics.benchmark("WorkflowPB.queries", "my_work_legacy", fn ->
+      list_keyset_(params, keyset_params)
+    end)
   end
+
   def list_keyset(params = %{requesters: requesters, projects: projects}, keyset_params)
-    when is_list(requesters) and is_list(projects) do
-      Metrics.benchmark("WorkflowPB.queries", "my_work",  fn ->
-        list_keyset_(params, keyset_params)
-      end)
+      when is_list(requesters) and is_list(projects) do
+    Metrics.benchmark("WorkflowPB.queries", "my_work", fn ->
+      list_keyset_(params, keyset_params)
+    end)
   end
+
   def list_keyset(params = %{requesters: :skip, projects: projects}, keyset_params)
-    when is_list(projects) do
-      Metrics.benchmark("WorkflowPB.queries", "everyones",  fn ->
-        list_keyset_(params, keyset_params)
-      end)
+      when is_list(projects) do
+    Metrics.benchmark("WorkflowPB.queries", "everyones", fn ->
+      list_keyset_(params, keyset_params)
+    end)
   end
-  def list_keyset(params = %{requesters: :skip, project_id: project_id, branch_name: branch_name}, keyset_params)
-    when is_binary(branch_name) and is_binary(project_id) do
-      Metrics.benchmark("WorkflowPB.queries", "branch_page",  fn ->
-        list_keyset_(params, keyset_params)
-      end)
+
+  def list_keyset(
+        params = %{requesters: :skip, project_id: project_id, branch_name: branch_name},
+        keyset_params
+      )
+      when is_binary(branch_name) and is_binary(project_id) do
+    Metrics.benchmark("WorkflowPB.queries", "branch_page", fn ->
+      list_keyset_(params, keyset_params)
+    end)
   end
+
   def list_keyset(params, keyset_params) do
     list_keyset_(params, keyset_params)
   end
 
   defp list_keyset_(params, keyset_params) do
-    page =
-      PplRequests
-      |> where([p], p.initial_request)
-      |> filter_by_organization_id(params.org_id)
-      |> filter_by_projects(params.projects)
-      |> filter_by_project_id(params.project_id)
-      |> filter_by_requesters(params.requesters)
-      |> filter_by_requester_id(params.requester_id)
-      |> filter_by_branch(params.branch_name)
-      |> filter_by_label_and_git_ref_types(params.label, params.git_ref_types)
-      |> filter_by_triggerers(params.triggerers)
-      |> filter_by_inserted_at(params.created_before, :before)
-      |> filter_by_inserted_at(params.created_after, :after)
-      |> order_by([p], desc: p.inserted_at, desc: p.id)
+    query =
+      build_list_keyset_query(params)
       |> select_workflow_details()
-      |> paginate(keyset_params)
+
+    page = execute_paginated_query(query, keyset_params, params.projects)
 
     {:ok,
      %{
@@ -520,6 +519,42 @@ defmodule Ppl.WorkflowQueries do
        next_page_token: page.metadata.after || "",
        previous_page_token: page.metadata.before || ""
      }}
+  end
+
+  # For large project lists, disable hash/merge joins to force nested loop + index usage
+  defp execute_paginated_query(query, keyset_params, projects)
+       when is_list(projects) and length(projects) > 100 do
+    {:ok, page} =
+      Repo.transaction(fn ->
+        Repo.query!("SET LOCAL enable_hashjoin = off")
+        Repo.query!("SET LOCAL enable_mergejoin = off")
+        paginate(query, keyset_params)
+      end)
+
+    page
+  end
+
+  defp execute_paginated_query(query, keyset_params, _projects) do
+    paginate(query, keyset_params)
+  end
+
+  @doc """
+  Builds the list_keyset query without executing it.
+  """
+  def build_list_keyset_query(params) do
+    PplRequests
+    |> where([p], p.initial_request)
+    |> filter_by_organization_id(params.org_id)
+    |> filter_by_projects(params.projects)
+    |> filter_by_project_id(params.project_id)
+    |> filter_by_requesters(params.requesters)
+    |> filter_by_requester_id(params.requester_id)
+    |> filter_by_branch(params.branch_name)
+    |> filter_by_label_and_git_ref_types(params.label, params.git_ref_types)
+    |> filter_by_triggerers(params.triggerers)
+    |> filter_by_inserted_at(params.created_before, :before)
+    |> filter_by_inserted_at(params.created_after, :after)
+    |> order_by([p], desc: p.inserted_at, desc: p.id)
   end
 
   def paginate(query, params, cursor_fields \\ [:inserted_at, :id])
@@ -552,6 +587,16 @@ defmodule Ppl.WorkflowQueries do
   end
 
   defp filter_by_projects(query, :skip), do: query
+
+  # For large project lists (>100), use JOIN with unnest to force PostgreSQL
+  # to use index lookups instead of abandoning the index for a seq scan.
+  # The query planner often makes poor decisions with large IN clauses.
+  defp filter_by_projects(query, projects) when is_list(projects) and length(projects) > 20 do
+    query
+    |> join(:inner, [p], pid in fragment("SELECT unnest(?::text[]) AS project_id", ^projects),
+      on: fragment("?->>? = ?", p.request_args, "project_id", pid.project_id)
+    )
+  end
 
   defp filter_by_projects(query, projects),
     do: query |> where([p], fragment("?->>?", p.request_args, "project_id") in ^projects)

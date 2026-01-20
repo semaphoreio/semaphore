@@ -77,11 +77,13 @@ defmodule Ppl.WorkflowQueries.Test do
 
     test "returns workflows for everyone's activity in organization" do
       organization_id = UUID.uuid4()
+
       project_ids = [
         UUID.uuid4(),
         UUID.uuid4(),
         UUID.uuid4()
       ]
+
       hook_id = UUID.uuid4()
 
       workflow_ids =
@@ -241,6 +243,177 @@ defmodule Ppl.WorkflowQueries.Test do
        }} = WQ.list_keyset(params, keyset_params)
 
       assert Enum.map(workflows, fn workflow -> workflow.wf_id end) == [Enum.at(workflow_ids, -1)]
+    end
+
+    test "returns workflows when project list exceeds JOIN threshold (>100)" do
+      organization_id = UUID.uuid4()
+      hook_id = UUID.uuid4()
+
+      # Create 3 workflows with known project IDs
+      known_project_ids =
+        [1, 2, 3]
+        |> Enum.map(fn _ -> UUID.uuid4() end)
+
+      workflow_ids =
+        known_project_ids
+        |> Enum.map(fn project_id ->
+          {:ok, wf_id, _ppl_id} =
+            %{
+              "organization_id" => organization_id,
+              "label" => "master",
+              "branch_name" => "master",
+              "hook_id" => hook_id,
+              "repo_name" => "semaphore",
+              "project_id" => project_id
+            }
+            |> WorkflowBuilder.schedule()
+
+          wf_id
+        end)
+
+      # Build a large project list (>100) that includes our known project IDs
+      # This triggers the JOIN with unnest code path
+      large_project_list = Enum.map(1..150, fn _ -> UUID.uuid4() end) ++ known_project_ids
+
+      params = %{
+        org_id: :skip,
+        projects: large_project_list,
+        project_id: :skip,
+        requesters: :skip,
+        requester_id: :skip,
+        label: :skip,
+        git_ref_types: :skip,
+        branch_name: :skip,
+        triggerers: :skip,
+        created_before: :skip,
+        created_after: :skip
+      }
+
+      keyset_params = %{
+        order: :BY_CREATION_TIME_DESC,
+        direction: :NEXT,
+        page_token: nil,
+        page_size: 10
+      }
+
+      {:ok,
+       %{
+         workflows: workflows,
+         next_page_token: _next_token,
+         previous_page_token: _previous_token
+       }} = WQ.list_keyset(params, keyset_params)
+
+      # Should return all 3 workflows that match the known project IDs
+      assert Enum.count(workflows) == 3
+      assert Enum.map(workflows, fn workflow -> workflow.wf_id end) == Enum.reverse(workflow_ids)
+    end
+
+    @tag timeout: :infinity
+    test "handles 1000 workflows across different projects and uses index" do
+      organization_id = UUID.uuid4()
+      hook_id = UUID.uuid4()
+
+      # Create 1000 workflows, each with a unique project_id
+      project_ids =
+        1..1000
+        |> Enum.map(fn _ -> UUID.uuid4() end)
+
+      # Schedule workflows in parallel batches to speed up test
+      workflow_ids =
+        project_ids
+        |> Enum.chunk_every(100)
+        |> Enum.flat_map(fn chunk ->
+          chunk
+          |> Task.async_stream(
+            fn project_id ->
+              {:ok, wf_id, _ppl_id} =
+                %{
+                  "organization_id" => organization_id,
+                  "label" => "master",
+                  "branch_name" => "master",
+                  "hook_id" => hook_id,
+                  "repo_name" => "semaphore",
+                  "project_id" => project_id
+                }
+                |> WorkflowBuilder.schedule()
+
+              wf_id
+            end,
+            max_concurrency: 10,
+            timeout: 60_000
+          )
+          |> Enum.map(fn {:ok, wf_id} -> wf_id end)
+        end)
+
+      assert length(workflow_ids) == 1000
+
+      # Query with all 1000 project_ids - this triggers the JOIN unnest path
+      params = %{
+        org_id: :skip,
+        projects: project_ids,
+        project_id: :skip,
+        requesters: :skip,
+        requester_id: :skip,
+        label: :skip,
+        git_ref_types: :skip,
+        branch_name: :skip,
+        triggerers: :skip,
+        created_before: :skip,
+        created_after: :skip
+      }
+
+      keyset_params = %{
+        order: :BY_CREATION_TIME_DESC,
+        direction: :NEXT,
+        page_token: nil,
+        page_size: 20
+      }
+
+      {:ok,
+       %{
+         workflows: workflows,
+         next_page_token: next_token,
+         previous_page_token: _previous_token
+       }} = WQ.list_keyset(params, keyset_params)
+
+      # Should return first page of 20 workflows
+      assert Enum.count(workflows) == 20
+      # Should have a next page token for pagination
+      assert next_token != ""
+
+      # Verify that production code uses planner hints (SET LOCAL) for large project lists.
+      # The execute_paginated_query function disables hash/merge joins for >100 projects,
+      # which forces nested loop + index usage. We verify this by running EXPLAIN ANALYZE
+      # with the same settings that production uses.
+      query = WQ.build_list_keyset_query(params) |> limit(20)
+      {sql, params_list} = Repo.to_sql(:all, query)
+
+      # Run EXPLAIN with the same planner hints as production (execute_paginated_query)
+      {:ok, explain_result} =
+        Repo.transaction(fn ->
+          Repo.query!("SET LOCAL enable_hashjoin = off")
+          Repo.query!("SET LOCAL enable_mergejoin = off")
+          %{rows: rows} = Repo.query!("EXPLAIN ANALYZE " <> sql, params_list)
+          rows |> Enum.map(&hd/1) |> Enum.join("\n")
+        end)
+
+      IO.puts("\n=== Query Execution Plan ===\n#{explain_result}\n===========================\n")
+
+      # With hash/merge joins disabled (as in production for >100 projects),
+      # PostgreSQL should use Nested Loop + Index Scan
+      assert explain_result =~ "Nested Loop",
+             "Expected Nested Loop join. Got plan:\n#{explain_result}"
+
+      assert explain_result =~ "Index Scan" or explain_result =~ "Index Only Scan" or
+               explain_result =~ "pipeline_requests_project_id",
+             "Expected query to use project_id index. Got plan:\n#{explain_result}"
+
+      # Verify the query completes quickly (should be under 5 seconds even with 1000 projects)
+      {time_microseconds, {:ok, _result}} =
+        :timer.tc(fn -> WQ.list_keyset(params, keyset_params) end)
+
+      assert time_microseconds < 5_000_000,
+             "Query took too long: #{time_microseconds / 1_000}ms"
     end
   end
 
