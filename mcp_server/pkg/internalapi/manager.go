@@ -25,6 +25,7 @@ import (
 // Provider exposes access to internal API clients.
 type Provider interface {
 	CallTimeout() time.Duration
+	BaseURL() string
 	Workflow() workflowpb.WorkflowServiceClient
 	Organizations() orgpb.OrganizationServiceClient
 	Projects() projecthubpb.ProjectServiceClient
@@ -203,6 +204,11 @@ func (m *Manager) Close() error {
 // CallTimeout returns the timeout applied to outbound RPCs.
 func (m *Manager) CallTimeout() time.Duration {
 	return m.cfg.CallTimeout
+}
+
+// BaseURL returns the base URL for the Semaphore installation.
+func (m *Manager) BaseURL() string {
+	return m.cfg.BaseURL
 }
 
 func (m *Manager) Workflow() workflowpb.WorkflowServiceClient {
