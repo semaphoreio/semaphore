@@ -401,7 +401,7 @@ func formatSelfHostedLogsMarkdown(result logsResult) string {
 		mb.Raw("```bash\n")
 		mb.Raw(fmt.Sprintf("curl \"%s\"", result.LogsURL))
 		mb.Raw("\n```\n")
-		mb.Paragraph("If the logs are large, save them to a local file (ask the user before writing files) to avoid repeated API requests:")
+		mb.Paragraph("For easier local processing and to run commands without repeated API requests, download the logs to a local file (ask the user before writing files):")
 		mb.Raw("```bash\n")
 		mb.Raw(fmt.Sprintf("curl -o job-%s.log \"%s\"", result.JobID, result.LogsURL))
 		mb.Raw("\n```\n")
@@ -411,7 +411,7 @@ func formatSelfHostedLogsMarkdown(result logsResult) string {
 		mb.Raw(result.Token)
 		mb.Raw("\n```\n")
 		mb.Paragraph("⚠️ Could not construct a full logs URL. Use the token above with your workspace URL.")
-		mb.Paragraph("If the logs are large, save them to a local file (ask the user before writing files) to avoid repeated API requests.")
+		mb.Paragraph("For easier local processing and to run commands without repeated API requests, download the logs to a local file (ask the user before writing files).")
 	} else {
 		mb.Paragraph("⚠️ No token was returned. Retry the request or contact support if the problem persists.")
 	}
