@@ -92,6 +92,11 @@ func (b *S3Bucket) IsDir(ctx context.Context, path string) (bool, error) {
 func (b *S3Bucket) DeletePath(ctx context.Context, path string) error {
 	isFile, err := b.IsFile(ctx, path)
 	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			if aerr.Code() == s3.ErrCodeNoSuchBucket {
+				return ErrMissingBucket
+			}
+		}
 		return err
 	}
 
@@ -99,7 +104,15 @@ func (b *S3Bucket) DeletePath(ctx context.Context, path string) error {
 		return b.DeleteFile(ctx, path)
 	}
 
-	return b.DeleteDir(ctx, path)
+	err = b.DeleteDir(ctx, path)
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			if aerr.Code() == s3.ErrCodeNoSuchBucket {
+				return ErrMissingBucket
+			}
+		}
+	}
+	return err
 }
 
 // When deleting a directory, we list all the files in that directory
@@ -108,6 +121,11 @@ func (b *S3Bucket) DeleteDir(ctx context.Context, path string) error {
 	iterator, err := b.ListPath(ListOptions{Path: path})
 
 	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			if aerr.Code() == s3.ErrCodeNoSuchBucket {
+				return ErrMissingBucket
+			}
+		}
 		return err
 	}
 
@@ -120,6 +138,11 @@ func (b *S3Bucket) DeleteDir(ctx context.Context, path string) error {
 		}
 
 		if err != nil {
+			if aerr, ok := err.(awserr.Error); ok {
+				if aerr.Code() == s3.ErrCodeNoSuchBucket {
+					return ErrMissingBucket
+				}
+			}
 			return err
 		}
 
@@ -262,6 +285,11 @@ func (b *S3Bucket) ListPath(options ListOptions) (PathIterator, error) {
 	output, err := b.Client.ListObjects(&input)
 
 	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			if aerr.Code() == s3.ErrCodeNoSuchBucket {
+				return nil, ErrMissingBucket
+			}
+		}
 		return nil, err
 	}
 

@@ -23,6 +23,11 @@ func (i *GcsPathIterator) Next() (*PathItem, error) {
 			return nil, ErrNoMoreObjects
 		}
 
+		if err == gcsstorage.ErrBucketNotExist {
+			i.isDone = true
+			return nil, ErrMissingBucket
+		}
+
 		return nil, err
 	}
 
