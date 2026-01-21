@@ -174,42 +174,11 @@ defmodule Rbac.Okta.Saml.Api.Test do
     end
 
     test "redirect links work when present in cookie", ctx do
-      assert {:ok, okta_user} = create_okta_user(ctx.integration, "denis@example.com")
-      assert :ok = create_user(okta_user)
-
-      okta_user = reload_okta_user(okta_user.id)
-      {:ok, _} = create_github_connection(okta_user)
-
-      with_mocks([
-        {Rbac.Utils.Http, [:passthrough],
-         [fetch_redirect_value: fn _, _ -> "#{@host}/settings" end]}
-      ]) do
-        {:ok, response} = post("/okta/auth", saml_payload("denis@example.com"))
-
-        assert response.status_code == 302
-
-        location = Enum.find(response.headers, fn h -> elem(h, 0) == "location" end)
-
-        assert location == {"location", "#{@host}/settings"}
-      end
+      assert_redirect_to_settings(ctx, with_repo_host_account: true)
     end
 
     test "redirect links work when present in cookie without repo host account", ctx do
-      assert {:ok, okta_user} = create_okta_user(ctx.integration, "denis@example.com")
-      assert :ok = create_user(okta_user)
-
-      with_mocks([
-        {Rbac.Utils.Http, [:passthrough],
-         [fetch_redirect_value: fn _, _ -> "#{@host}/settings" end]}
-      ]) do
-        {:ok, response} = post("/okta/auth", saml_payload("denis@example.com"))
-
-        assert response.status_code == 302
-
-        location = Enum.find(response.headers, fn h -> elem(h, 0) == "location" end)
-
-        assert location == {"location", "#{@host}/settings"}
-      end
+      assert_redirect_to_settings(ctx, with_repo_host_account: false)
     end
   end
 
@@ -227,6 +196,31 @@ defmodule Rbac.Okta.Saml.Api.Test do
     cs = Rbac.FrontRepo.User.changeset(user, %{remember_created_at: nil})
     {:ok, user} = Rbac.FrontRepo.update(cs)
     user
+  end
+
+  defp assert_redirect_to_settings(ctx, opts) do
+    with_repo_host_account = Keyword.get(opts, :with_repo_host_account, false)
+
+    assert {:ok, okta_user} = create_okta_user(ctx.integration, "denis@example.com")
+    assert :ok = create_user(okta_user)
+
+    if with_repo_host_account do
+      okta_user = reload_okta_user(okta_user.id)
+      {:ok, _} = create_github_connection(okta_user)
+    end
+
+    with_mocks([
+      {Rbac.Utils.Http, [:passthrough],
+       [fetch_redirect_value: fn _, _ -> "#{@host}/settings" end]}
+    ]) do
+      {:ok, response} = post("/okta/auth", saml_payload("denis@example.com"))
+
+      assert response.status_code == 302
+
+      location = Enum.find(response.headers, fn h -> elem(h, 0) == "location" end)
+
+      assert location == {"location", "#{@host}/settings"}
+    end
   end
 
   defp create_okta_user(integration, email) do
