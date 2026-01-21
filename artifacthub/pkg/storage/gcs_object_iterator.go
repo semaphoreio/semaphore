@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"errors"
 	"time"
 
 	gcsstorage "cloud.google.com/go/storage"
@@ -21,6 +22,11 @@ func (i *GcsPathIterator) Next() (*PathItem, error) {
 		if err == iterator.Done {
 			i.isDone = true
 			return nil, ErrNoMoreObjects
+		}
+
+		if errors.Is(err, gcsstorage.ErrBucketNotExist) {
+			i.isDone = true
+			return nil, ErrMissingBucket
 		}
 
 		return nil, err
