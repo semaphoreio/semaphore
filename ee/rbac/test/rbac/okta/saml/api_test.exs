@@ -144,6 +144,35 @@ defmodule Rbac.Okta.Saml.Api.Test do
       assert Enum.at(cookie_parts, 4) == "HttpOnly"
     end
 
+    test "on login it embeds expires_at based on integration session minutes", ctx do
+      ctx.integration
+      |> Rbac.Repo.OktaIntegration.changeset(%{session_expiration_minutes: 5})
+      |> Rbac.Repo.update!()
+
+      assert {:ok, okta_user} = create_okta_user(ctx.integration, "denis@example.com")
+      assert :ok = create_user(okta_user)
+
+      started_at = DateTime.utc_now()
+
+      {:ok, response} = post("/okta/auth", saml_payload("denis@example.com"))
+
+      cookie = Enum.find(response.headers, fn h -> elem(h, 0) == "set-cookie" end)
+      cookie_value = elem(cookie, 1)
+
+      session_cookie =
+        cookie_value
+        |> String.split(";")
+        |> List.first()
+        |> String.split("=", parts: 2)
+        |> List.last()
+
+      values = Rbac.Session.decrypt_cookie(session_cookie)
+      expires_at = normalize_expires_at(values["expires_at"])
+
+      expected = DateTime.to_unix(started_at) + 5 * 60
+      assert abs(expires_at - expected) <= 10
+    end
+
     test "redirect links work when present in cookie", ctx do
       assert {:ok, okta_user} = create_okta_user(ctx.integration, "denis@example.com")
       assert :ok = create_user(okta_user)
@@ -244,5 +273,12 @@ defmodule Rbac.Okta.Saml.Api.Test do
 
   defp reload_okta_user(okta_user_id) do
     Rbac.Repo.get(Rbac.Repo.OktaUser, okta_user_id)
+  end
+
+  defp normalize_expires_at(value) when is_integer(value), do: value
+
+  defp normalize_expires_at(value) when is_binary(value) do
+    {parsed, _} = Integer.parse(value)
+    parsed
   end
 end

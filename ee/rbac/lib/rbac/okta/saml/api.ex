@@ -131,7 +131,7 @@ defmodule Rbac.Okta.Saml.Api do
       )
 
       conn
-      |> inject_session_cookie(user)
+      |> inject_session_cookie(user, integration)
       |> redirect(user)
     else
       {:error, :scim_saml_user, :not_found} = e ->
@@ -156,18 +156,23 @@ defmodule Rbac.Okta.Saml.Api do
       render_not_found(conn)
   end
 
-  defp inject_session_cookie(conn, user) do
+  defp inject_session_cookie(conn, user, integration) do
     Logger.debug("User which was found: #{inspect(user)}")
 
     secret_key_base = Application.get_env(:rbac, :session_secret_key_base)
     conn = put_in(conn.secret_key_base, secret_key_base)
 
     {key, content} = Rbac.Session.serialize_into_session(user)
+    expires_at = expires_at_unix(integration)
 
     Logger.debug("Session key #{inspect(key)}")
     Logger.debug("Session content #{inspect(content)}")
 
-    conn |> fetch_session() |> put_session(key, content) |> put_session("id_provider", "OKTA")
+    conn
+    |> fetch_session()
+    |> put_session(key, content)
+    |> put_session("id_provider", "OKTA")
+    |> put_session("expires_at", expires_at)
   end
 
   defp redirect(conn, user) do
@@ -196,6 +201,19 @@ defmodule Rbac.Okta.Saml.Api do
     else
       {:ok, user} -> {:ok, user}
     end
+  end
+
+  defp expires_at_unix(integration) do
+    minutes =
+      case integration.session_expiration_minutes do
+        nil -> 1440
+        value when value > 0 -> value
+        _ -> 1440
+      end
+
+    DateTime.utc_now()
+    |> DateTime.add(minutes * 60, :second)
+    |> DateTime.to_unix()
   end
 
   defp find_user(saml_scim_user) do
