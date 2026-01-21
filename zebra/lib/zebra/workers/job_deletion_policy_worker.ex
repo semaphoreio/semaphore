@@ -141,7 +141,7 @@ defmodule Zebra.Workers.JobDeletionPolicyWorker do
   end
 
   defp validate_limit(config) do
-    case Keyword.fetch(config, :limit) do
+    case Keyword.fetch(config, :batch_size) do
       {:ok, limit} when is_integer(limit) and limit > 0 ->
         {:ok, limit}
 
