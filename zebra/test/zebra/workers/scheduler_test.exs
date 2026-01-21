@@ -129,7 +129,7 @@ defmodule Zebra.Workers.SchedulerTest do
       quota = org_quotas[org_id]
 
       features =
-        Support.StubbedProvider.provide_features(opts)
+        Support.StubbedProvider.provide_features(org_id, opts)
         |> case do
           {:ok, features} -> features
           {:error, _} -> []
