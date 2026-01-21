@@ -193,6 +193,24 @@ defmodule Rbac.Okta.Saml.Api.Test do
         assert location == {"location", "#{@host}/settings"}
       end
     end
+
+    test "redirect links work when present in cookie without repo host account", ctx do
+      assert {:ok, okta_user} = create_okta_user(ctx.integration, "denis@example.com")
+      assert :ok = create_user(okta_user)
+
+      with_mocks([
+        {Rbac.Utils.Http, [:passthrough],
+         [fetch_redirect_value: fn _, _ -> "#{@host}/settings" end]}
+      ]) do
+        {:ok, response} = post("/okta/auth", saml_payload("denis@example.com"))
+
+        assert response.status_code == 302
+
+        location = Enum.find(response.headers, fn h -> elem(h, 0) == "location" end)
+
+        assert location == {"location", "#{@host}/settings"}
+      end
+    end
   end
 
   ###

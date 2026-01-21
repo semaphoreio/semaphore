@@ -176,11 +176,18 @@ defmodule Rbac.Okta.Saml.Api do
   end
 
   defp redirect(conn, user) do
+    default_redirect = "/"
+    redirect_value = Rbac.Utils.Http.fetch_redirect_value(conn, default_redirect)
+
     url =
-      if Rbac.FrontRepo.RepoHostAccount.count(user.id) > 0 do
-        Rbac.Utils.Http.fetch_redirect_value(conn, "/")
+      if redirect_value != default_redirect do
+        redirect_value
       else
-        "https://me.#{domain()}/account/welcome/okta"
+        if Rbac.FrontRepo.RepoHostAccount.count(user.id) > 0 do
+          default_redirect
+        else
+          "https://me.#{domain()}/account/welcome/okta"
+        end
       end
 
     conn
