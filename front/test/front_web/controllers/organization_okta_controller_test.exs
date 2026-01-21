@@ -80,6 +80,36 @@ defmodule FrontWeb.OrganizationOktaControllerTest do
       # No buttons are disabled
       refute html =~ "disabled"
     end
+
+    test "If okta integration exists, show session expiration editor", %{conn: conn} = ctx do
+      add_permissions(ctx, [
+        "organization.view",
+        "organization.okta.view",
+        "organization.okta.manage"
+      ])
+
+      DB.insert(:okta_integrations, %{
+        id: Ecto.UUID.generate(),
+        org_id: ctx.organization_id,
+        creator_id: ctx.user_id,
+        sso_url: "https://example.okta.com",
+        saml_issuer: "https://example.okta.com",
+        saml_certificate: "test-certificate",
+        jit_provisioning_enabled: true,
+        session_expiration_minutes: 90,
+        created_at: Support.Stubs.Time.now(),
+        updated_at: Support.Stubs.Time.now()
+      })
+
+      conn =
+        conn
+        |> get(organization_okta_path(conn, :show))
+
+      html = html_response(conn, 200)
+      assert html =~ "Session expiration"
+      assert html =~ "session_expiration_minutes"
+      assert html =~ "value=\"90\""
+    end
   end
 
   describe "form" do
@@ -105,6 +135,93 @@ defmodule FrontWeb.OrganizationOktaControllerTest do
         |> get(organization_okta_path(conn, :form))
 
       assert html_response(conn, 200) =~ "Save"
+    end
+
+    test "it renders session expiration minutes field with default", %{conn: conn} = ctx do
+      add_permissions(ctx, [
+        "organization.view",
+        "organization.okta.view",
+        "organization.okta.manage"
+      ])
+
+      conn =
+        conn
+        |> get(organization_okta_path(conn, :form))
+
+      html = html_response(conn, 200)
+      assert html =~ "Session expiration (minutes)"
+      assert html =~ "name=\"okta_integration[session_expiration_minutes]\""
+      assert html =~ "value=\"1440\""
+    end
+  end
+
+  describe "create" do
+    test "it sends session expiration minutes to okta service", %{conn: conn} = ctx do
+      add_permissions(ctx, [
+        "organization.view",
+        "organization.okta.view",
+        "organization.okta.manage"
+      ])
+
+      params = %{
+        "sso_url" => "https://example.okta.com",
+        "issuer" => "https://example.okta.com",
+        "certificate" => "test-certificate",
+        "jit_provisioning_enabled" => "true",
+        "idempotency_token" => Ecto.UUID.generate(),
+        "session_expiration_minutes" => "30"
+      }
+
+      conn =
+        conn
+        |> post(organization_okta_path(conn, :create), %{"okta_integration" => params})
+
+      assert html_response(conn, 200) =~ "SCIM Authorization token"
+
+      integration =
+        DB.find_all_by(:okta_integrations, :org_id, ctx.organization_id)
+        |> List.last()
+
+      assert integration.org_id == ctx.organization_id
+      assert integration.session_expiration_minutes == 30
+    end
+
+    test "it updates expiration without regenerating scim token", %{conn: conn} = ctx do
+      add_permissions(ctx, [
+        "organization.view",
+        "organization.okta.view",
+        "organization.okta.manage"
+      ])
+
+      DB.insert(:okta_integrations, %{
+        id: Ecto.UUID.generate(),
+        org_id: ctx.organization_id,
+        creator_id: ctx.user_id,
+        sso_url: "https://example.okta.com",
+        saml_issuer: "https://example.okta.com",
+        saml_certificate: "test-certificate",
+        jit_provisioning_enabled: true,
+        session_expiration_minutes: 1440,
+        created_at: Support.Stubs.Time.now(),
+        updated_at: Support.Stubs.Time.now()
+      })
+
+      params = %{
+        "idempotency_token" => Ecto.UUID.generate(),
+        "session_expiration_minutes" => "45"
+      }
+
+      conn =
+        conn
+        |> post(organization_okta_path(conn, :create), %{"okta_integration" => params})
+
+      assert redirected_to(conn) == organization_okta_path(conn, :show)
+
+      integration =
+        DB.find_all_by(:okta_integrations, :org_id, ctx.organization_id)
+        |> List.last()
+
+      assert integration.session_expiration_minutes == 45
     end
   end
 

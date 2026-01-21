@@ -78,29 +78,11 @@ defmodule FrontWeb.OrganizationOktaController do
     Watchman.benchmark(watchman_name(:create, :duration), fn ->
       org_id = conn.assigns.organization_id
       user_id = conn.assigns.user_id
+      existing_integration = find_existing_integration(org_id)
 
       case fetch_params(org_id) do
         {:ok, params} ->
-          with {:ok, model} <- create_integration(org_id, user_id, integration),
-               {:ok, token} <- gen_token(model) do
-            Watchman.increment(watchman_name(:create, :success))
-            if !Front.saas?(), do: log_create(conn, user_id, model)
-
-            conn
-            |> put_flash(:notice, "Success: Your organization is connected with Okta")
-            |> render_token(token, model.jit_provisioning_enabled, params)
-          else
-            {:error, :create_integration, changeset, alert} ->
-              Watchman.increment(watchman_name(:create, :failure))
-
-              conn
-              |> put_flash(:alert, alert)
-              |> render_form(changeset, params)
-
-            {:error, :gen_token, err} ->
-              Watchman.increment(watchman_name(:create, :failure))
-              {:error, err}
-          end
+          handle_create(conn, org_id, user_id, integration, existing_integration, params)
 
         {:error, reason} ->
           Watchman.increment(watchman_name(:create, :failure))
@@ -242,6 +224,111 @@ defmodule FrontWeb.OrganizationOktaController do
       {:error, err} -> {:error, :gen_token, err}
     end
   end
+
+  defp find_existing_integration(org_id) do
+    case OktaIntegration.find_for_org(org_id) do
+      {:ok, integration} -> integration
+      _ -> nil
+    end
+  end
+
+  defp handle_create(conn, org_id, user_id, integration_params, existing_integration, params) do
+    case create_integration(org_id, user_id, integration_params) do
+      {:ok, model} ->
+        Watchman.increment(watchman_name(:create, :success))
+        maybe_log_create(conn, user_id, model)
+
+        maybe_render_token_or_redirect(
+          conn,
+          model,
+          existing_integration,
+          integration_params,
+          params
+        )
+
+      {:error, :create_integration, changeset, alert} ->
+        Watchman.increment(watchman_name(:create, :failure))
+
+        conn
+        |> put_flash(:alert, alert)
+        |> render_form(changeset, params)
+    end
+  end
+
+  defp maybe_log_create(conn, user_id, model) do
+    if !Front.saas?(), do: log_create(conn, user_id, model)
+  end
+
+  defp maybe_render_token_or_redirect(
+         conn,
+         model,
+         existing_integration,
+         integration_params,
+         params
+       ) do
+    if should_regenerate_token?(existing_integration, integration_params) do
+      render_with_token(conn, model, params)
+    else
+      conn
+      |> put_flash(:notice, "Success: Okta settings updated")
+      |> redirect(to: organization_okta_path(conn, :show))
+    end
+  end
+
+  defp render_with_token(conn, model, params) do
+    case gen_token(model) do
+      {:ok, token} ->
+        conn
+        |> put_flash(:notice, "Success: Your organization is connected with Okta")
+        |> render_token(token, model.jit_provisioning_enabled, params)
+
+      {:error, :gen_token, err} ->
+        Watchman.increment(watchman_name(:create, :failure))
+        {:error, err}
+    end
+  end
+
+  defp should_regenerate_token?(nil, _params), do: true
+
+  defp should_regenerate_token?(integration, params) do
+    sso_url_changed?(integration, params) or issuer_changed?(integration, params) or
+      jit_changed?(integration, params) or certificate_provided?(params)
+  end
+
+  defp sso_url_changed?(integration, params) do
+    optional_string_changed?(params, "sso_url", integration.sso_url)
+  end
+
+  defp issuer_changed?(integration, params) do
+    optional_string_changed?(params, "issuer", integration.issuer)
+  end
+
+  defp optional_string_changed?(params, key, current_value) do
+    case Map.fetch(params, key) do
+      {:ok, value} -> normalize_string(value) != normalize_string(current_value)
+      :error -> false
+    end
+  end
+
+  defp certificate_provided?(params), do: present?(params["certificate"])
+
+  defp jit_changed?(integration, params) do
+    case Map.fetch(params, "jit_provisioning_enabled") do
+      {:ok, value} ->
+        case Ecto.Type.cast(:boolean, value) do
+          {:ok, casted} -> casted != integration.jit_provisioning_enabled
+          :error -> false
+        end
+
+      :error ->
+        false
+    end
+  end
+
+  defp normalize_string(value) when value in [nil, ""], do: nil
+  defp normalize_string(value), do: value
+
+  defp present?(value), do: value not in [nil, ""]
 
   defp fetch_params(organization_id) do
     maybe_organization = Async.run(fetch_organization(organization_id))

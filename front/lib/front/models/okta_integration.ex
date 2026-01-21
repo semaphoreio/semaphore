@@ -10,10 +10,11 @@ defmodule Front.Models.OktaIntegration do
           issuer: String.t() | nil,
           certificate: String.t() | nil,
           idempotency_token: String.t(),
-          jit_provisioning_enabled: boolean() | nil
+          jit_provisioning_enabled: boolean() | nil,
+          session_expiration_minutes: integer() | nil
         }
 
-  @fields ~w(org_id creator_id sso_url issuer certificate idempotency_token jit_provisioning_enabled)a
+  @fields ~w(org_id creator_id sso_url issuer certificate idempotency_token jit_provisioning_enabled session_expiration_minutes)a
   @primary_key false
 
   embedded_schema do
@@ -25,6 +26,7 @@ defmodule Front.Models.OktaIntegration do
     field(:certificate, :string)
     field(:jit_provisioning_enabled, :boolean)
     field(:idempotency_token, :string)
+    field(:session_expiration_minutes, :integer, default: 1440)
   end
 
   def new do
@@ -61,8 +63,14 @@ defmodule Front.Models.OktaIntegration do
   end
 
   def create_or_upadte(org_id, creator_id, params) do
+    base =
+      case find_for_org(org_id) do
+        {:ok, integration} -> %{integration | org_id: org_id, creator_id: creator_id}
+        _ -> struct(__MODULE__, org_id: org_id, creator_id: creator_id)
+      end
+
     result =
-      struct(__MODULE__, org_id: org_id, creator_id: creator_id)
+      base
       |> changeset(params)
       |> Ecto.Changeset.apply_action(:insert)
 
@@ -245,15 +253,33 @@ defmodule Front.Models.OktaIntegration do
   def changeset(schema, params \\ %{}) do
     schema
     |> cast(params, @fields)
-    |> validate_required([
+    |> validate_required(required_fields(schema))
+    |> validate_number(:session_expiration_minutes, greater_than: 0)
+  end
+
+  defp required_fields(%__MODULE__{id: nil}) do
+    [
       :org_id,
       :creator_id,
       :sso_url,
       :issuer,
       :certificate,
       :jit_provisioning_enabled,
-      :idempotency_token
-    ])
+      :idempotency_token,
+      :session_expiration_minutes
+    ]
+  end
+
+  defp required_fields(%__MODULE__{}) do
+    [
+      :org_id,
+      :creator_id,
+      :sso_url,
+      :issuer,
+      :jit_provisioning_enabled,
+      :idempotency_token,
+      :session_expiration_minutes
+    ]
   end
 
   defp grpc_set_up(model) do
@@ -263,11 +289,12 @@ defmodule Front.Models.OktaIntegration do
       InternalApi.Okta.SetUpRequest.new(
         org_id: model.org_id,
         creator_id: model.creator_id,
-        sso_url: model.sso_url,
-        saml_issuer: model.issuer,
-        saml_certificate: model.certificate,
-        idempotency_token: model.idempotency_token,
-        jit_provisioning_enabled: model.jit_provisioning_enabled
+        sso_url: safe_string(model.sso_url),
+        saml_issuer: safe_string(model.issuer),
+        saml_certificate: safe_string(model.certificate),
+        idempotency_token: safe_string(model.idempotency_token),
+        jit_provisioning_enabled: model.jit_provisioning_enabled || false,
+        session_expiration_minutes: model.session_expiration_minutes
       )
 
     with {:ok, channel} <- GRPC.Stub.connect(endpoint) do
@@ -277,7 +304,8 @@ defmodule Front.Models.OktaIntegration do
            struct!(__MODULE__,
              id: response.integration.id,
              org_id: response.integration.org_id,
-             jit_provisioning_enabled: response.integration.jit_provisioning_enabled
+             jit_provisioning_enabled: response.integration.jit_provisioning_enabled,
+             session_expiration_minutes: response.integration.session_expiration_minutes
            )}
 
         e ->
@@ -301,7 +329,8 @@ defmodule Front.Models.OktaIntegration do
                 org_id: i.org_id,
                 sso_url: i.sso_url,
                 issuer: i.saml_issuer,
-                jit_provisioning_enabled: i.jit_provisioning_enabled
+                jit_provisioning_enabled: i.jit_provisioning_enabled,
+                session_expiration_minutes: i.session_expiration_minutes
               )
             end)
 
@@ -312,4 +341,7 @@ defmodule Front.Models.OktaIntegration do
       end
     end
   end
+
+  defp safe_string(value) when value in [nil, ""], do: ""
+  defp safe_string(value), do: value
 end
