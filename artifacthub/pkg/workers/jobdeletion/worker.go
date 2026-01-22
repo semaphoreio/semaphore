@@ -2,6 +2,7 @@ package jobdeletion
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -20,6 +21,7 @@ type Worker struct {
 	consumer          *tackle.Consumer
 	storageClient     storage.Client
 	reconnectAttempts int
+	idx               int
 }
 
 const (
@@ -28,10 +30,10 @@ const (
 	JobDeletionRoutingKey  = "deleted"
 )
 
-func NewWorker(amqpURL string, client storage.Client) (*Worker, error) {
+func NewWorker(amqpURL string, client storage.Client, idx int) (*Worker, error) {
 	options := &tackle.Options{
 		URL:            amqpURL,
-		ConnectionName: workerConnName(),
+		ConnectionName: workerConnName(idx),
 		RemoteExchange: JobDeletionExchange,
 		Service:        JobDeletionServiceName,
 		RoutingKey:     JobDeletionRoutingKey,
@@ -43,15 +45,16 @@ func NewWorker(amqpURL string, client storage.Client) (*Worker, error) {
 		consumer:      consumer,
 		amqpOptions:   options,
 		storageClient: client,
+		idx:           idx,
 	}, nil
 }
 
-func workerConnName() string {
+func workerConnName(idx int) string {
 	hostname := os.Getenv("HOSTNAME")
 	if hostname == "" {
-		return "artifacthub.jobdeletion.worker"
+		return fmt.Sprintf("artifacthub.jobdeletion.worker.%d", idx)
 	}
-	return hostname
+	return fmt.Sprintf("%s.%d", hostname, idx)
 }
 
 func (w *Worker) Start() {
@@ -109,7 +112,7 @@ func (w *Worker) handleMessage(delivery tackle.Delivery) error {
 	})
 
 	err = bucket.DeletePath(context.Background(), jobPath)
-	if err != nil {
+	if err != nil && !errors.Is(err, storage.ErrMissingBucket) {
 		log.Printf("JobDeletion Worker: Error deleting artifacts at path %s: %v", jobPath, err)
 		return err
 	}
