@@ -713,44 +713,6 @@ defmodule InternalApi.PlumberWF.GetProjectIdResponse do
   field :project_id, 2, type: :string
 end
 
-defmodule InternalApi.PlumberWF.CreateRequest do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          project_id: String.t(),
-          label: String.t(),
-          hook_id: String.t(),
-          request_token: String.t(),
-          definition_file: String.t(),
-          requester_id: String.t()
-        }
-  defstruct [:project_id, :label, :hook_id, :request_token, :definition_file, :requester_id]
-
-  field :project_id, 1, type: :string
-  field :label, 2, type: :string
-  field :hook_id, 3, type: :string
-  field :request_token, 4, type: :string
-  field :definition_file, 5, type: :string
-  field :requester_id, 6, type: :string
-end
-
-defmodule InternalApi.PlumberWF.CreateResponse do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          wf_id: String.t(),
-          status: InternalApi.Status.t(),
-          ppl_id: String.t()
-        }
-  defstruct [:wf_id, :status, :ppl_id]
-
-  field :wf_id, 1, type: :string
-  field :status, 2, type: InternalApi.Status
-  field :ppl_id, 3, type: :string
-end
-
 defmodule InternalApi.PlumberWF.WorkflowDeleted do
   @moduledoc false
   use Protobuf, syntax: :proto3
@@ -831,8 +793,6 @@ defmodule InternalApi.PlumberWF.WorkflowService.Service do
   rpc :GetProjectId,
       InternalApi.PlumberWF.GetProjectIdRequest,
       InternalApi.PlumberWF.GetProjectIdResponse
-
-  rpc :Create, InternalApi.PlumberWF.CreateRequest, InternalApi.PlumberWF.CreateResponse
 end
 
 defmodule InternalApi.PlumberWF.WorkflowService.Stub do
