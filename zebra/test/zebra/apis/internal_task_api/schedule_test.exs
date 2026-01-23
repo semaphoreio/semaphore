@@ -147,6 +147,19 @@ defmodule Zebra.Apis.InternalTaskApi.ScheduleTest do
   describe ".configure_execution_time_limit" do
     setup do
       Cachex.clear(:zebra_cache)
+
+      GrpcMock.stub(Support.FakeServers.OrganizationApi, :describe, fn _, _ ->
+        InternalApi.Organization.DescribeResponse.new(
+          status:
+            InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
+          organization:
+            InternalApi.Organization.Organization.new(
+              org_username: "test-org",
+              verified: false
+            )
+        )
+      end)
+
       :ok
     end
 

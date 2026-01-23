@@ -127,12 +127,21 @@ func jobDeletionWorker(cloudStorage storage.Storage) {
 
 	rabbitMqURL := utils.AssertEnvVar("RABBITMQ_URL")
 
-	worker, err := jobdeletion.NewWorker(rabbitMqURL, cloudStorage)
-	if err != nil {
-		panic(err)
+	parallelWorkers := os.Getenv("JOB_DELETION_WORKER_PARALLEL_WORKERS")
+
+	numWorkers, err := strconv.Atoi(parallelWorkers)
+	if err != nil || numWorkers <= 0 {
+		numWorkers = 4
 	}
 
-	worker.Start()
+	for i := 0; i < numWorkers; i++ {
+		worker, err := jobdeletion.NewWorker(rabbitMqURL, cloudStorage)
+		if err != nil {
+			panic(err)
+		}
+
+		worker.Start()
+	}
 }
 
 func createRedisStorage() *storage.RedisStorage {
