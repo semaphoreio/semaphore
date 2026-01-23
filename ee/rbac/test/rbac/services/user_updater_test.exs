@@ -71,26 +71,7 @@ defmodule Rbac.Services.UserUpdaterTest do
           repo_host: "gitlab"
         )
 
-      test_pid = self()
-
-      Tesla.Mock.mock_global(fn
-        %{method: :put, url: url, body: body} ->
-          if String.contains?(url, "/users/#{oidc_user_id}") do
-            send(test_pid, {:oidc_put, body})
-          end
-
-          {:ok, %Tesla.Env{status: 200, body: %{}}}
-
-        %{method: :post, url: url, body: body} ->
-          if String.contains?(url, "/users/#{oidc_user_id}/federated-identity/") do
-            send(test_pid, {:oidc_post, url, body})
-          end
-
-          {:ok, %Tesla.Env{status: 200, body: %{}}}
-
-        %{method: :delete} ->
-          {:ok, %Tesla.Env{status: 204, body: %{}}}
-      end)
+      setup_tesla_mock(oidc_user_id)
 
       with_mocks [
         {Rbac.RoleManagement, [:passthrough],
@@ -146,26 +127,7 @@ defmodule Rbac.Services.UserUpdaterTest do
           repo_host: "bitbucket"
         )
 
-      test_pid = self()
-
-      Tesla.Mock.mock_global(fn
-        %{method: :put, url: url, body: body} ->
-          if String.contains?(url, "/users/#{oidc_user_id}") do
-            send(test_pid, {:oidc_put, body})
-          end
-
-          {:ok, %Tesla.Env{status: 200, body: %{}}}
-
-        %{method: :post, url: url, body: body} ->
-          if String.contains?(url, "/users/#{oidc_user_id}/federated-identity/") do
-            send(test_pid, {:oidc_post, url, body})
-          end
-
-          {:ok, %Tesla.Env{status: 200, body: %{}}}
-
-        %{method: :delete} ->
-          {:ok, %Tesla.Env{status: 204, body: %{}}}
-      end)
+      setup_tesla_mock(oidc_user_id)
 
       with_mocks [
         {Rbac.Api.Bitbucket, [:passthrough],
@@ -197,6 +159,29 @@ defmodule Rbac.Services.UserUpdaterTest do
   #
   # Helpers
   #
+
+  defp setup_tesla_mock(oidc_user_id) do
+    test_pid = self()
+
+    Tesla.Mock.mock_global(fn
+      %{method: :put, url: url, body: body} ->
+        if String.contains?(url, "/users/#{oidc_user_id}") do
+          send(test_pid, {:oidc_put, body})
+        end
+
+        {:ok, %Tesla.Env{status: 200, body: %{}}}
+
+      %{method: :post, url: url, body: body} ->
+        if String.contains?(url, "/users/#{oidc_user_id}/federated-identity/") do
+          send(test_pid, {:oidc_post, url, body})
+        end
+
+        {:ok, %Tesla.Env{status: 200, body: %{}}}
+
+      %{method: :delete} ->
+        {:ok, %Tesla.Env{status: 204, body: %{}}}
+    end)
+  end
 
   defp decode_json_body(body) when is_binary(body), do: Jason.decode!(body)
   defp decode_json_body(body), do: body
