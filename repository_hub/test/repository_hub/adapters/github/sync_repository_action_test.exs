@@ -2,10 +2,14 @@ defmodule RepositoryHub.Github.SyncRepositoryActionTest do
   @moduledoc false
   use RepositoryHub.ServerActionCase, async: false
 
-  alias RepositoryHub.Adapters
-  alias RepositoryHub.SyncRepositoryAction
-  alias RepositoryHub.GithubClientFactory
-  alias RepositoryHub.RepositoryModelFactory
+  alias RepositoryHub.{
+    Adapters,
+    SyncRepositoryAction,
+    GithubClientFactory,
+    RepositoryModelFactory,
+    GithubAdapter,
+    Model
+  }
 
   import Mock
 
@@ -30,6 +34,22 @@ defmodule RepositoryHub.Github.SyncRepositoryActionTest do
 
       assert updated_repository.id == repository.id
       assert updated_repository.url == "git@github.com:dummy/repository.git"
+    end
+
+    test "marks repository as not connected on disconnect error", %{adapter: adapter, repository: repository} do
+      mocks =
+        GithubClientFactory.mocks() ++
+          [
+            {GithubAdapter, [:passthrough],
+             [context: fn _adapter, _repository_id -> {:error, "Token for not found."} end]}
+          ]
+
+      with_mocks(mocks) do
+        assert {:error, "Token for not found."} = SyncRepositoryAction.execute(adapter, repository.id)
+
+        assert {:ok, updated_repository} = Model.RepositoryQuery.get_by_id(repository.id)
+        refute updated_repository.connected
+      end
     end
   end
 
