@@ -70,6 +70,7 @@ defmodule Front.Browser.OrganizationSettings.OktaIntegrationTest do
     browser_test "the page shows that okta is connected", %{page: page} do
       page
       |> set_up()
+      |> Browser.assert_stable(Query.link("View Integration"))
       |> visit("/settings/okta")
       |> Browser.assert_stable(Query.css("div.bg-green", text: "Connected"))
     end
