@@ -45,6 +45,8 @@ defmodule RepositoryHub.Github.SyncRepositoryActionTest do
           ]
 
       with_mocks(mocks) do
+        assert repository.connected
+
         assert {:error, "Token for not found."} = SyncRepositoryAction.execute(adapter, repository.id)
 
         assert {:ok, updated_repository} = Model.RepositoryQuery.get_by_id(repository.id)
