@@ -47,7 +47,7 @@ defmodule Rbac.Services.UserUpdaterTest do
     end
 
     test "updates oidc user with gitlab identity when gitlab is connected" do
-      Rbac.Mocks.OpenIDConnect.stub_oidc_connection()
+      setup_oidc_connection()
 
       user_id = Ecto.UUID.generate()
       oidc_user_id = Ecto.UUID.generate()
@@ -101,7 +101,7 @@ defmodule Rbac.Services.UserUpdaterTest do
     end
 
     test "updates oidc user with bitbucket identity when bitbucket is connected" do
-      Rbac.Mocks.OpenIDConnect.stub_oidc_connection()
+      setup_oidc_connection()
 
       user_id = Ecto.UUID.generate()
       oidc_user_id = Ecto.UUID.generate()
@@ -159,6 +159,15 @@ defmodule Rbac.Services.UserUpdaterTest do
   #
   # Helpers
   #
+
+  defp setup_oidc_connection do
+    oidc_env = Application.get_env(:rbac, :oidc)
+    Rbac.Mocks.OpenIDConnect.stub_oidc_connection()
+
+    on_exit(fn ->
+      Application.put_env(:rbac, :oidc, oidc_env)
+    end)
+  end
 
   defp setup_tesla_mock(oidc_user_id) do
     test_pid = self()
