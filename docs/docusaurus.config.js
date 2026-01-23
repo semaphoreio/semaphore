@@ -13,7 +13,7 @@ const config = {
   // https://docusaurus.io/docs/next/api/docusaurus-config#noIndex
   noIndex: false,
   title: 'Semaphore',
-  tagline: 'All-in-one delivery platform for teams who’ve outgrown default tools',
+  tagline: 'All-in-one delivery platform for AI-driven development',
   favicon: 'img/favicon.ico',
 
   // extra themes

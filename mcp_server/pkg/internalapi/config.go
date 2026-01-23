@@ -10,6 +10,8 @@ import (
 const (
 	envDialTimeout = "MCP_GRPC_DIAL_TIMEOUT"
 	envCallTimeout = "MCP_GRPC_CALL_TIMEOUT"
+	envBaseURL     = "BASE_DOMAIN"
+	defaultBaseURL = "semaphoreci.com"
 )
 
 var (
@@ -78,6 +80,8 @@ type Config struct {
 	RBACEndpoint         string
 	FeatureHubEndpoint   string
 
+	BaseURL string
+
 	DialTimeout time.Duration
 	CallTimeout time.Duration
 }
@@ -105,6 +109,7 @@ func LoadConfig() (Config, error) {
 		UserEndpoint:         endpointFromEnv(userEndpointEnvs...),
 		RBACEndpoint:         endpointFromEnv(rbacEndpointEnvs...),
 		FeatureHubEndpoint:   endpointFromEnv(featureHubEndpointEnvs...),
+		BaseURL:              baseURLFromEnv(),
 		DialTimeout:          dialTimeout,
 		CallTimeout:          callTimeout,
 	}
@@ -176,4 +181,11 @@ func durationFromEnv(key string, def time.Duration) (time.Duration, error) {
 		return 0, fmt.Errorf("invalid duration for %s: %w", key, err)
 	}
 	return d, nil
+}
+
+func baseURLFromEnv() string {
+	if v := strings.TrimSpace(os.Getenv(envBaseURL)); v != "" {
+		return v
+	}
+	return defaultBaseURL
 }

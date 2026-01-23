@@ -16,7 +16,13 @@ To have this feature enabled for your organization, please contact us at support
 
 Service accounts are special users that can only be used to consume the [Semaphore API](../reference/api). Service accounts cannot be used to log in to the Semaphore UI.
 
-Service accounts share the same [role-based authentication control model](./rbac) used for regular Semaphore users.
+Service accounts share the same [role-based authentication control model](./rbac) used for regular Semaphore users. However, project access is handled differently:
+
+- Service accounts with the Member role at the organization level do not automatically have access to any projects. They must be manually added to each project they should access from the project’s People page.
+
+- Service accounts with the Admin role will automatically have access to all projects in the organization.
+
+If a service account has not been added to a project, API requests targeting that project will return a `404 Not Found` response.
 
 ## How to create a service account {#create}
 
@@ -37,6 +43,8 @@ To create a service account, follow these steps:
 5. Take note of the API token, *as it can only be viewed once*. Press **Done** when ready
 
     ![Service account token reveal](./img/service-account-token.jpg)
+
+6. Make sure to add the service account to each project they should access from the project’s People page. If a service account has not been added to a project, API requests targeting that project will return a `404 Not Found` response.
 
 </Steps>
 

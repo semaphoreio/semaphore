@@ -121,13 +121,22 @@ func bucketcleanerWorker(client storage.Client) {
 }
 
 func jobDeletionWorker(client storage.Client) {
-	log.Info("Starting job deletion worker...")
-	worker, err := jobdeletion.NewWorker(amqpURL, client)
-	if err != nil {
-		panic(err)
+	log.Info("Starting job deletion workers...")
+	parallelWorkers := os.Getenv("JOB_DELETION_WORKER_PARALLEL_WORKERS")
+
+	numWorkers, err := strconv.Atoi(parallelWorkers)
+	if err != nil || numWorkers <= 0 {
+		numWorkers = 4
 	}
 
-	worker.Start()
+	for i := 0; i < numWorkers; i++ {
+		worker, err := jobdeletion.NewWorker(amqpURL, client, i)
+		if err != nil {
+			panic(err)
+		}
+
+		worker.Start()
+	}
 }
 
 func main() {
