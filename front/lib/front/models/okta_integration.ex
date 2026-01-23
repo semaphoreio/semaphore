@@ -26,7 +26,7 @@ defmodule Front.Models.OktaIntegration do
     field(:certificate, :string)
     field(:jit_provisioning_enabled, :boolean)
     field(:idempotency_token, :string)
-    field(:session_expiration_minutes, :integer, default: 1440)
+    field(:session_expiration_minutes, :integer, default: 4320)
   end
 
   def new do

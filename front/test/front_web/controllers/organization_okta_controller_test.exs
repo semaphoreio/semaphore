@@ -151,7 +151,7 @@ defmodule FrontWeb.OrganizationOktaControllerTest do
       html = html_response(conn, 200)
       assert html =~ "Session expiration (minutes)"
       assert html =~ "name=\"okta_integration[session_expiration_minutes]\""
-      assert html =~ "value=\"1440\""
+      assert html =~ "value=\"4320\""
     end
   end
 
@@ -201,7 +201,7 @@ defmodule FrontWeb.OrganizationOktaControllerTest do
         saml_issuer: "https://example.okta.com",
         saml_certificate: "test-certificate",
         jit_provisioning_enabled: true,
-        session_expiration_minutes: 1440,
+        session_expiration_minutes: 4320,
         created_at: Support.Stubs.Time.now(),
         updated_at: Support.Stubs.Time.now()
       })

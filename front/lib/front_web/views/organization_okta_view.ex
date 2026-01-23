@@ -7,8 +7,8 @@ defmodule FrontWeb.OrganizationOktaView do
 
   def session_expiration_minutes_value(form) do
     case input_value(form, :session_expiration_minutes) do
-      nil -> 1440
-      "" -> 1440
+      nil -> 4320
+      "" -> 4320
       value -> value
     end
   end

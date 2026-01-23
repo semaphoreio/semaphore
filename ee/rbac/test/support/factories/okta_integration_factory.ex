@@ -48,6 +48,6 @@ defmodule Support.Factories.OktaIntegration do
 
   defp get_cert(cert), do: cert
 
-  defp get_session_expiration_minutes(nil), do: 1440
+  defp get_session_expiration_minutes(nil), do: 4320
   defp get_session_expiration_minutes(value), do: value
 end

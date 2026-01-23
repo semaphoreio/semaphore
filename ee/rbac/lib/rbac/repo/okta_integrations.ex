@@ -29,7 +29,7 @@ defmodule Rbac.Repo.OktaIntegration do
     field(:saml_certificate_fingerprint, :string)
     field(:scim_token_hash, :string)
     field(:jit_provisioning_enabled, :boolean, default: false)
-    field(:session_expiration_minutes, :integer, default: 1440)
+    field(:session_expiration_minutes, :integer, default: 4320)
 
     timestamps()
   end

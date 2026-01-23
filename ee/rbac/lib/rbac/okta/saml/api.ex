@@ -213,9 +213,9 @@ defmodule Rbac.Okta.Saml.Api do
   defp expires_at_unix(integration) do
     minutes =
       case integration.session_expiration_minutes do
-        nil -> 1440
+        nil -> 4320
         value when value > 0 -> value
-        _ -> 1440
+        _ -> 4320
       end
 
     DateTime.utc_now()
