@@ -13,7 +13,7 @@ const config = {
   // https://docusaurus.io/docs/next/api/docusaurus-config#noIndex
   noIndex: false,
   title: 'Semaphore',
-  tagline: 'All-in-one delivery platform for teams who’ve outgrown default tools',
+  tagline: 'All-in-one delivery platform for AI-driven development',
   favicon: 'img/favicon.ico',
 
   // extra themes
@@ -101,33 +101,33 @@ const config = {
   ],
 
   plugins: [
-      '@docusaurus/plugin-ideal-image',
-      [
-        "posthog-docusaurus",
-        {
-          apiKey: "phc_BTxwQUnbsnovudhs0s8IKekz9HRT8gXXortX1g1rocf",
-          appUrl: "https://eu.i.posthog.com", // optional, defaults to "https://us.i.posthog.com"
-          enableInDevelopment: false, // optional
-        },
-      ],
-      [
-        'docusaurus-plugin-openapi-docs',
-        {
-          id: "api", // plugin id
-          docsPluginId: "classic", // configured for preset-classic
-          config: {
-            semaphoreAPI: {
-              specPath: "https://docs.semaphore.io/v2/api-spec/openapi.yaml",
-              outputDir: "docs/openapi-spec",
-              downloadUrl: "https://docs.semaphore.io/v2/api-spec/openapi.json",
-              sidebarOptions: {
-                categoryLinkSource: "tag",
-                groupPathsBy: "tag",
-              },
+    '@docusaurus/plugin-ideal-image',
+    [
+      "posthog-docusaurus",
+      {
+        apiKey: "phc_BTxwQUnbsnovudhs0s8IKekz9HRT8gXXortX1g1rocf",
+        appUrl: "https://eu.i.posthog.com", // optional, defaults to "https://us.i.posthog.com"
+        enableInDevelopment: false, // optional
+      },
+    ],
+    [
+      'docusaurus-plugin-openapi-docs',
+      {
+        id: "api", // plugin id
+        docsPluginId: "classic", // configured for preset-classic
+        config: {
+          semaphoreAPI: {
+            specPath: "https://docs.semaphore.io/v2/api-spec/openapi.yaml",
+            outputDir: "docs/openapi-spec",
+            downloadUrl: "https://docs.semaphore.io/v2/api-spec/openapi.json",
+            sidebarOptions: {
+              categoryLinkSource: "tag",
+              groupPathsBy: "tag",
             },
-          }
-        },
-      ]
+          },
+        }
+      },
+    ]
   ],
 
   themeConfig:
@@ -284,9 +284,9 @@ const config = {
         additionalLanguages: ['elixir', 'java', 'groovy'],
       },
     }),
-    // future: {
-      // experimental_faster: true,
-    // },
+  // future: {
+  // experimental_faster: true,
+  // },
 };
 
 export default config;
