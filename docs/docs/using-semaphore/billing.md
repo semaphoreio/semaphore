@@ -62,6 +62,7 @@ Each cloud machine type has its own **price per minute**, listed in the table be
 | E1 (Linux) |       $0.0075       |       $0.015        |        $0.03        |
 | E2 (Linux) |        $0.01        |        $0.02        |          /          |
 | F1 (Linux) |       $0.015        |        $0.03        |          /          |
+| R1 (Linux) |       $0.00225      |        $0.0045      |          /          |
 | A1 (MacOS ARM64) |          /          |        $0.03        |          /          |
 | A2 (MacOS Silicon) |          /          |        $0.09        |          /          |
 
