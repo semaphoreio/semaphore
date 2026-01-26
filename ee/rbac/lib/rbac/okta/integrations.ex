@@ -10,7 +10,8 @@ defmodule Rbac.Okta.Integration do
   alias Rbac.Repo
   alias Rbac.Okta.Saml.Certificate
 
-  @default_session_expiration_minutes 4320
+  # Default session expiration is 14 days
+  @default_session_expiration_minutes 14 * 24 * 60
   #
   # Integration storage
   #

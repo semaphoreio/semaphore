@@ -10,6 +10,9 @@ defmodule Rbac.Repo.OktaIntegration do
     :saml_certificate_fingerprint
   ]
 
+  # 30 days
+  @max_session_expiration_minutes 30 * 24 * 60
+
   @updatable_fields [
     :saml_issuer,
     :saml_certificate_fingerprint,
@@ -29,7 +32,7 @@ defmodule Rbac.Repo.OktaIntegration do
     field(:saml_certificate_fingerprint, :string)
     field(:scim_token_hash, :string)
     field(:jit_provisioning_enabled, :boolean, default: false)
-    field(:session_expiration_minutes, :integer, default: 4320)
+    field(:session_expiration_minutes, :integer, default: 20_160)
 
     timestamps()
   end
@@ -46,7 +49,10 @@ defmodule Rbac.Repo.OktaIntegration do
       name: "okta_integrations_idempotency_token_index",
       message: "Idempotent Request"
     )
-    |> validate_number(:session_expiration_minutes, greater_than: 0)
+    |> validate_number(:session_expiration_minutes,
+      greater_than: 0,
+      less_than_or_equal_to: @max_session_expiration_minutes
+    )
   end
 
   def insert_or_update(fields \\ [], opts \\ []) do

@@ -15,6 +15,9 @@ defmodule Front.Models.OktaIntegration do
         }
 
   @fields ~w(org_id creator_id sso_url issuer certificate idempotency_token jit_provisioning_enabled session_expiration_minutes)a
+
+  # 30 days
+  @max_session_expiration_minutes 43_200
   @primary_key false
 
   embedded_schema do
@@ -26,7 +29,8 @@ defmodule Front.Models.OktaIntegration do
     field(:certificate, :string)
     field(:jit_provisioning_enabled, :boolean)
     field(:idempotency_token, :string)
-    field(:session_expiration_minutes, :integer, default: 4320)
+    # 14 days
+    field(:session_expiration_minutes, :integer, default: 20_160)
   end
 
   def new do
@@ -254,7 +258,10 @@ defmodule Front.Models.OktaIntegration do
     schema
     |> cast(params, @fields)
     |> validate_required(required_fields(schema))
-    |> validate_number(:session_expiration_minutes, greater_than: 0)
+    |> validate_number(:session_expiration_minutes,
+      greater_than: 0,
+      less_than_or_equal_to: @max_session_expiration_minutes
+    )
   end
 
   defp required_fields(%__MODULE__{id: nil}) do

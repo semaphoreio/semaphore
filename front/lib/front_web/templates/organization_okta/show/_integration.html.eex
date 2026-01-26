@@ -32,7 +32,8 @@
         <%= number_input f, :session_expiration_minutes,
           class: "form-control w-30",
           min: "1",
-          value: @integration.session_expiration_minutes || 4320 %>
+          max: FrontWeb.OrganizationOktaView.session_expiration_minutes_max(),
+          value: @integration.session_expiration_minutes || 20160 %>
         <%= submit "Update", class: "btn btn-primary ml2" %>
       </div>
       <div class="mt1 f6 gray">Updates only the session duration (in minutes). SCIM token is unchanged.</div>
