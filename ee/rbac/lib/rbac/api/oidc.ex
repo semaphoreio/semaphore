@@ -211,7 +211,7 @@ defmodule Rbac.Api.OIDC do
     end
   end
 
-  defp map_federated_identity(%{identityProvider: "gitlab"}), do: nil
+  defp map_federated_identity(%{identityProvider: "gitlab"} = identity), do: identity
   defp map_federated_identity(%{identityProvider: "github"} = identity), do: identity
 
   defp map_federated_identity(%{identityProvider: "bitbucket", userId: bitbucket_id} = identity) do
@@ -233,8 +233,9 @@ defmodule Rbac.Api.OIDC do
             id: res.body["id"],
             email: res.body["email"],
             name: get_name(res.body),
-            github_id: get_provider_id(res.body["federatedIdentities"], "github"),
-            bitbucket_id: get_provider_id(res.body["federatedIdentities"], "bitbucket")
+            github: get_provider(res.body["federatedIdentities"], "github"),
+            bitbucket: get_provider(res.body["federatedIdentities"], "bitbucket"),
+            gitlab: get_provider(res.body["federatedIdentities"], "gitlab")
           }
 
           {:ok, user}
@@ -249,11 +250,15 @@ defmodule Rbac.Api.OIDC do
     end
   end
 
-  defp get_provider_id(nil, _), do: nil
+  defp get_provider(nil, _), do: nil
 
-  defp get_provider_id(fed_idns, provider) do
+  defp get_provider(fed_idns, provider) do
     Enum.find_value(fed_idns, fn idn ->
-      if idn["identityProvider"] == provider, do: idn["userId"]
+      if idn["identityProvider"] == provider,
+        do: %{
+          id: idn["userId"],
+          username: idn["userName"] || ""
+        }
     end)
   end
 
