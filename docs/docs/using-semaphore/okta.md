@@ -129,7 +129,11 @@ Semaphore is now connected to Okta. You can enable user provisioning in the next
 
 :::note
 
-You can update the **Session expiration (minutes)** later from the Okta Integration settings page. Changing it only updates the session duration for new SSO sessions and does not regenerate the SCIM token.
+You can update the **Session expiration (minutes)** later from the Okta Integration settings page.
+Changing it only updates the session duration for new SSO sessions and does not regenerate the SCIM
+token.
+
+![Updating only the session expiration in Okta settings](./img/setup-okta-session-update.jpg)
 
 :::
 
@@ -254,4 +258,3 @@ If you are not sure how many organization members have corporate email accounts,
 
 - [Semaphore organizations](./organizations)
 - [How to set up OpenID Connect](./openid.md)
-
