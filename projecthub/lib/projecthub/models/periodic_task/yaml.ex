@@ -18,30 +18,38 @@ defmodule Projecthub.Models.PeriodicTask.YAML do
   end
 
   defp build_task_map(task, project) do
-    base = %{
+    %{
       "apiVersion" => "v1.2",
       "kind" => "Schedule",
-      "metadata" => %{
-        "name" => task.name || "",
-        "id" => task.id || "",
-        "description" => task.description || ""
-      },
-      "spec" => %{
-        "project" => project.name || "",
-        "recurring" => task.recurring,
-        "paused" => task.status == :STATUS_INACTIVE,
-        "at" => task.at || "",
-        "reference" => build_reference(task.branch),
-        "pipeline_file" => task.pipeline_file || ""
-      }
+      "metadata" => build_metadata(task),
+      "spec" => build_spec(task, project)
+    }
+  end
+
+  defp build_metadata(task) do
+    %{
+      "name" => task.name || "",
+      "id" => task.id || "",
+      "description" => task.description || ""
+    }
+  end
+
+  defp build_spec(task, project) do
+    base = %{
+      "project" => project.name || "",
+      "recurring" => task.recurring,
+      "paused" => task.status == :STATUS_INACTIVE,
+      "at" => task.at || "",
+      "reference" => build_reference(task.branch),
+      "pipeline_file" => task.pipeline_file || ""
     }
 
-    case task.parameters do
-      nil -> base
-      [] -> base
-      params -> put_in(base, ["spec", "parameters"], build_parameters(params))
-    end
+    maybe_add_parameters(base, task.parameters)
   end
+
+  defp maybe_add_parameters(spec, nil), do: spec
+  defp maybe_add_parameters(spec, []), do: spec
+  defp maybe_add_parameters(spec, params), do: Map.put(spec, "parameters", build_parameters(params))
 
   defp build_reference(branch) when is_binary(branch) do
     {ref_type, ref_name} = parse_reference(branch)

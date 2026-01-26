@@ -28,23 +28,26 @@ defmodule Projecthub.Models.PeriodicTask.YamlTest do
           %Project{name: "project_name"}
         )
 
-      assert_yaml_equals(result, %{
-        "apiVersion" => "v1.2",
-        "kind" => "Schedule",
-        "metadata" => %{
-          "name" => "name",
-          "id" => "id",
-          "description" => "test description"
-        },
-        "spec" => %{
-          "project" => "project_name",
-          "recurring" => true,
-          "paused" => true,
-          "at" => "* * * * *",
-          "reference" => %{"type" => "BRANCH", "name" => "master"},
-          "pipeline_file" => "semaphore.yml"
+      assert_yaml_equals(
+        result,
+        %{
+          "apiVersion" => "v1.2",
+          "kind" => "Schedule",
+          "metadata" => %{
+            "name" => "name",
+            "id" => "id",
+            "description" => "test description"
+          },
+          "spec" => %{
+            "project" => "project_name",
+            "recurring" => true,
+            "paused" => true,
+            "at" => "* * * * *",
+            "reference" => %{"type" => "BRANCH", "name" => "master"},
+            "pipeline_file" => "semaphore.yml"
+          }
         }
-      })
+      )
     end
 
     test "without description" do
@@ -64,23 +67,26 @@ defmodule Projecthub.Models.PeriodicTask.YamlTest do
           %Project{name: "project_name"}
         )
 
-      assert_yaml_equals(result, %{
-        "apiVersion" => "v1.2",
-        "kind" => "Schedule",
-        "metadata" => %{
-          "name" => "name",
-          "id" => "id",
-          "description" => ""
-        },
-        "spec" => %{
-          "project" => "project_name",
-          "recurring" => true,
-          "paused" => true,
-          "at" => "* * * * *",
-          "reference" => %{"type" => "BRANCH", "name" => "master"},
-          "pipeline_file" => "semaphore.yml"
+      assert_yaml_equals(
+        result,
+        %{
+          "apiVersion" => "v1.2",
+          "kind" => "Schedule",
+          "metadata" => %{
+            "name" => "name",
+            "id" => "id",
+            "description" => ""
+          },
+          "spec" => %{
+            "project" => "project_name",
+            "recurring" => true,
+            "paused" => true,
+            "at" => "* * * * *",
+            "reference" => %{"type" => "BRANCH", "name" => "master"},
+            "pipeline_file" => "semaphore.yml"
+          }
         }
-      })
+      )
     end
 
     test "without parameters" do
@@ -309,10 +315,13 @@ defmodule Projecthub.Models.PeriodicTask.YamlTest do
 
       # Verify the values are preserved correctly after round-trip
       assert parsed["metadata"]["description"] == "Example: '{\"kafka\": \"value\"}' is valid JSON"
+
       assert hd(parsed["spec"]["parameters"])["description"] ==
                "Dictionary of mappings. Example: '{\"key\": \"value\"}'"
+
       assert hd(parsed["spec"]["parameters"])["default_value"] ==
                "{\"kafka1\": {\"lkc\": \"lkc-123\"}}"
+
       assert hd(parsed["spec"]["parameters"])["options"] ==
                ["{\"opt1\": \"val1\"}", "{\"opt2\": \"val2\"}"]
     end
