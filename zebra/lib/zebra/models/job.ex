@@ -402,18 +402,33 @@ defmodule Zebra.Models.Job do
 
   def expired_job_ids(limit) do
     import Ecto.Query,
-      only: [from: 2, join: 5, where: 3, limit: 2, select: 2]
+      only: [from: 2, where: 3, limit: 2, select: 2, order_by: 2]
 
-    query =
+    jobs_query =
       from(j in Zebra.Models.Job,
-        join: p in "projects",
-        on: j.project_id == p.id,
         where: not is_nil(j.expires_at) and j.expires_at <= fragment("CURRENT_TIMESTAMP"),
+        order_by: [asc: j.expires_at],
         limit: ^limit,
-        select: {j.id, j.organization_id, j.project_id, p.artifact_store_id}
+        select: {j.id, j.organization_id, j.project_id}
       )
 
-    result = Zebra.LegacyRepo.all(query)
+    jobs = Zebra.LegacyRepo.all(jobs_query)
+
+    project_ids = jobs |> Enum.map(fn {_, _, project_id} -> project_id end) |> Enum.uniq()
+
+    artifact_store_map =
+      from(p in "projects",
+        where: p.id in ^project_ids,
+        select: {p.id, p.artifact_store_id}
+      )
+      |> Zebra.LegacyRepo.all()
+      |> Map.new()
+
+    result =
+      Enum.map(jobs, fn {id, org_id, project_id} ->
+        {id, org_id, project_id, Map.get(artifact_store_map, project_id)}
+      end)
+
     {:ok, result}
   end
 
