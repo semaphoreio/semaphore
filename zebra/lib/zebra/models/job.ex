@@ -414,7 +414,16 @@ defmodule Zebra.Models.Job do
 
     jobs = Zebra.LegacyRepo.all(jobs_query)
 
-    project_ids = jobs |> Enum.map(fn {_, _, project_id} -> project_id end) |> Enum.uniq()
+    project_ids =
+      jobs
+      |> Enum.map(fn {_, _, project_id} -> project_id end)
+      |> Enum.uniq()
+      |> Enum.flat_map(fn id ->
+        case Ecto.UUID.dump(id) do
+          {:ok, binary} -> [binary]
+          :error -> []
+        end
+      end)
 
     artifact_store_map =
       from(p in "projects",
@@ -422,6 +431,7 @@ defmodule Zebra.Models.Job do
         select: {p.id, p.artifact_store_id}
       )
       |> Zebra.LegacyRepo.all()
+      |> Enum.map(fn {id, artifact_store_id} -> {Ecto.UUID.cast!(id), artifact_store_id} end)
       |> Map.new()
 
     result =
@@ -657,14 +667,15 @@ defmodule Zebra.Models.Job do
       {:error, "Publishing failed with exception"}
   end
 
+  defp publish_single_job_deletion(_channel, _exchange_name, _routing_key, {id, _, _, nil}) do
+    Logger.info("Skipping deletion event for job #{id} - no artifact_store_id")
+    :ok
+  end
+
   defp publish_single_job_deletion(channel, exchange_name, routing_key, job_meta) do
     {id, organization_id, project_id, artifact_store_id} = job_meta
 
-    artifact_store_id_str =
-      case Ecto.UUID.load(artifact_store_id) do
-        {:ok, uuid_str} -> uuid_str
-        :error -> ""
-      end
+    {:ok, artifact_store_id_str} = Ecto.UUID.load(artifact_store_id)
 
     now = DateTime.utc_now()
 
