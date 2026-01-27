@@ -591,4 +591,85 @@ defmodule Zebra.Models.JobTest do
       assert Job.detect_type(job) == :project_debug_job
     end
   end
+
+  describe ".expired_job_ids" do
+    test "returns expired jobs with artifact_store_id from project" do
+      now = DateTime.utc_now() |> DateTime.truncate(:second)
+      past = DateTime.add(now, -3600, :second)
+
+      project_id = Ecto.UUID.generate()
+      artifact_store_id = Ecto.UUID.generate()
+
+      Ecto.Adapters.SQL.query!(
+        Zebra.LegacyRepo,
+        "INSERT INTO projects (id, artifact_store_id) VALUES ($1, $2)",
+        [Ecto.UUID.dump!(project_id), Ecto.UUID.dump!(artifact_store_id)]
+      )
+
+      {:ok, job} =
+        Support.Factories.Job.create(:finished, %{
+          project_id: project_id,
+          expires_at: past
+        })
+
+      {:ok, result} = Job.expired_job_ids(10)
+
+      job_result = Enum.find(result, fn {id, _, _, _} -> id == job.id end)
+      assert job_result != nil
+
+      {_id, _org_id, returned_project_id, returned_artifact_store_id} = job_result
+      assert returned_project_id == project_id
+
+      {:ok, expected_artifact_store_id} = Ecto.UUID.dump(artifact_store_id)
+      assert returned_artifact_store_id == expected_artifact_store_id
+    end
+
+    test "returns nil artifact_store_id for jobs without matching project" do
+      now = DateTime.utc_now() |> DateTime.truncate(:second)
+      past = DateTime.add(now, -3600, :second)
+      orphan_project_id = Ecto.UUID.generate()
+
+      {:ok, job} =
+        Support.Factories.Job.create(:finished, %{
+          project_id: orphan_project_id,
+          expires_at: past
+        })
+
+      {:ok, result} = Job.expired_job_ids(10)
+
+      job_result = Enum.find(result, fn {id, _, _, _} -> id == job.id end)
+      assert job_result != nil
+
+      {_id, _org_id, returned_project_id, returned_artifact_store_id} = job_result
+      assert returned_project_id == orphan_project_id
+      assert returned_artifact_store_id == nil
+    end
+
+    test "does not return jobs without expires_at" do
+      {:ok, job} =
+        Support.Factories.Job.create(:finished, %{
+          expires_at: nil
+        })
+
+      {:ok, result} = Job.expired_job_ids(10)
+
+      job_result = Enum.find(result, fn {id, _, _, _} -> id == job.id end)
+      assert job_result == nil
+    end
+
+    test "does not return jobs with future expires_at" do
+      now = DateTime.utc_now() |> DateTime.truncate(:second)
+      future = DateTime.add(now, 3600, :second)
+
+      {:ok, job} =
+        Support.Factories.Job.create(:finished, %{
+          expires_at: future
+        })
+
+      {:ok, result} = Job.expired_job_ids(10)
+
+      job_result = Enum.find(result, fn {id, _, _, _} -> id == job.id end)
+      assert job_result == nil
+    end
+  end
 end
