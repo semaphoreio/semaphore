@@ -1005,7 +1005,8 @@ defmodule FrontWeb.ProjectController do
   defp user_page?(conn) do
     memory = conn.req_cookies["memory"] |> MemoryCookie.values()
 
-    !is_nil(conn.assigns.user_id) &&
+    workflow_list_mode_setting(conn) != "latest" &&
+      !is_nil(conn.assigns.user_id) &&
       (conn.params["requester"] == "true" || memory["projectRequester"] == "true")
   end
 
