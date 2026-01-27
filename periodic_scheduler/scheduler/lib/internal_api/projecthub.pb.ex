@@ -184,7 +184,7 @@ defmodule InternalApi.Projecthub.Project.Spec.Repository do
   @moduledoc false
   use Protobuf, protoc_gen_elixir_version: "0.11.0", syntax: :proto3
 
-  oneof(:run_present, 0)
+  oneof :run_present, 0
 
   field :url, 1, type: :string
   field :name, 2, type: :string
