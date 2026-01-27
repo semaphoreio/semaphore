@@ -101,33 +101,33 @@ const config = {
   ],
 
   plugins: [
-      '@docusaurus/plugin-ideal-image',
-      [
-        "posthog-docusaurus",
-        {
-          apiKey: "phc_BTxwQUnbsnovudhs0s8IKekz9HRT8gXXortX1g1rocf",
-          appUrl: "https://eu.i.posthog.com", // optional, defaults to "https://us.i.posthog.com"
-          enableInDevelopment: false, // optional
-        },
-      ],
-      [
-        'docusaurus-plugin-openapi-docs',
-        {
-          id: "api", // plugin id
-          docsPluginId: "classic", // configured for preset-classic
-          config: {
-            semaphoreAPI: {
-              specPath: "https://docs.semaphore.io/v2/api-spec/openapi.yaml",
-              outputDir: "docs/openapi-spec",
-              downloadUrl: "https://docs.semaphore.io/v2/api-spec/openapi.json",
-              sidebarOptions: {
-                categoryLinkSource: "tag",
-                groupPathsBy: "tag",
-              },
+    '@docusaurus/plugin-ideal-image',
+    [
+      "posthog-docusaurus",
+      {
+        apiKey: "phc_BTxwQUnbsnovudhs0s8IKekz9HRT8gXXortX1g1rocf",
+        appUrl: "https://eu.i.posthog.com", // optional, defaults to "https://us.i.posthog.com"
+        enableInDevelopment: false, // optional
+      },
+    ],
+    [
+      'docusaurus-plugin-openapi-docs',
+      {
+        id: "api", // plugin id
+        docsPluginId: "classic", // configured for preset-classic
+        config: {
+          semaphoreAPI: {
+            specPath: "https://docs.semaphore.io/v2/api-spec/openapi.yaml",
+            outputDir: "docs/openapi-spec",
+            downloadUrl: "https://docs.semaphore.io/v2/api-spec/openapi.json",
+            sidebarOptions: {
+              categoryLinkSource: "tag",
+              groupPathsBy: "tag",
             },
-          }
-        },
-      ]
+          },
+        }
+      },
+    ]
   ],
 
   themeConfig:
@@ -140,13 +140,13 @@ const config = {
         // The application ID provided by Algolia
         appId: 'HJWFPD10QI',
         // Public API key: it is safe to commit it
-        apiKey: '5d6175600a64cf232ea5be2b88cd5cab',
+        apiKey: '5e45ead1cb06eae7c2122719235d52ac',
         indexName: 'v2-sxmoon',
         // Optional: see doc section below
         contextualSearch: true,
         askAi: {
           indexName: 'askai-assistant-docs-semaphoreio', // Markdown index for Ask AI
-          apiKey: '5d6175600a64cf232ea5be2b88cd5cab', // (or a different key if needed)
+          apiKey: '5e45ead1cb06eae7c2122719235d52ac', // (or a different key if needed)
           appId: 'HJWFPD10QI',
           assistantId: 'eTt93IPOlemb',
           searchParameters: {
@@ -284,9 +284,9 @@ const config = {
         additionalLanguages: ['elixir', 'java', 'groovy'],
       },
     }),
-    // future: {
-      // experimental_faster: true,
-    // },
+  // future: {
+  // experimental_faster: true,
+  // },
 };
 
 export default config;
