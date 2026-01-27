@@ -140,13 +140,13 @@ const config = {
         // The application ID provided by Algolia
         appId: 'HJWFPD10QI',
         // Public API key: it is safe to commit it
-        apiKey: '5d6175600a64cf232ea5be2b88cd5cab',
+        apiKey: '5e45ead1cb06eae7c2122719235d52ac',
         indexName: 'v2-sxmoon',
         // Optional: see doc section below
         contextualSearch: true,
         askAi: {
           indexName: 'askai-assistant-docs-semaphoreio', // Markdown index for Ask AI
-          apiKey: '5d6175600a64cf232ea5be2b88cd5cab', // (or a different key if needed)
+          apiKey: '5e45ead1cb06eae7c2122719235d52ac', // (or a different key if needed)
           appId: 'HJWFPD10QI',
           assistantId: 'eTt93IPOlemb',
           searchParameters: {
