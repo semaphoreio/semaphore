@@ -195,7 +195,7 @@ defmodule FrontWeb.OrganizationOktaController do
     end
   end
 
-  defp create_integration(org_id, user_id, integration) do
+  defp create_integration(org_id, user_id, integration, existing_integration) do
     alias Front.Models.OktaIntegration
 
     case OktaIntegration.create_or_upadte(org_id, user_id, integration) do
@@ -205,7 +205,8 @@ defmodule FrontWeb.OrganizationOktaController do
       {:error, %GRPC.RPCError{} = err} ->
         # This case happens when validation on okta-serrvice side fails
         changeset =
-          struct(OktaIntegration, org_id: org_id, creator_id: user_id)
+          existing_integration
+          |> okta_integration_base(org_id, user_id)
           |> OktaIntegration.changeset(integration)
 
         {:error, :create_integration, changeset, err.message}
@@ -215,6 +216,12 @@ defmodule FrontWeb.OrganizationOktaController do
         {:error, :create_integration, changeset, "Failure: provided invalid data"}
     end
   end
+
+  defp okta_integration_base(nil, org_id, user_id),
+    do: struct(OktaIntegration, org_id: org_id, creator_id: user_id)
+
+  defp okta_integration_base(integration, org_id, user_id),
+    do: %{integration | org_id: org_id, creator_id: user_id}
 
   defp gen_token(integration) do
     alias Front.Models.OktaIntegration
@@ -233,7 +240,10 @@ defmodule FrontWeb.OrganizationOktaController do
   end
 
   defp handle_create(conn, org_id, user_id, integration_params, existing_integration, params) do
-    case create_integration(org_id, user_id, integration_params) do
+    integration_params =
+      maybe_drop_session_expiration_for_edit(integration_params, existing_integration)
+
+    case create_integration(org_id, user_id, integration_params, existing_integration) do
       {:ok, model} ->
         Watchman.increment(watchman_name(:create, :success))
         maybe_log_create(conn, user_id, model)
@@ -253,6 +263,25 @@ defmodule FrontWeb.OrganizationOktaController do
         |> put_flash(:alert, alert)
         |> render_form(changeset, params)
     end
+  end
+
+  defp maybe_drop_session_expiration_for_edit(params, nil), do: params
+
+  defp maybe_drop_session_expiration_for_edit(params, _existing) when is_map(params) do
+    if edit_integration_params?(params) do
+      Map.delete(params, "session_expiration_minutes")
+    else
+      params
+    end
+  end
+
+  defp maybe_drop_session_expiration_for_edit(params, _existing), do: params
+
+  defp edit_integration_params?(params) do
+    Enum.any?(
+      ["sso_url", "issuer", "certificate", "jit_provisioning_enabled"],
+      &Map.has_key?(params, &1)
+    )
   end
 
   defp maybe_log_create(conn, user_id, model) do

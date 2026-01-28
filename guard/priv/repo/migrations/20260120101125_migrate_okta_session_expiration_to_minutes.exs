@@ -1,4 +1,4 @@
-defmodule Rbac.Repo.Migrations.MigrateOktaSessionExpirationToMinutes do
+defmodule Guard.Repo.Migrations.MigrateOktaSessionExpirationToMinutes do
   use Ecto.Migration
 
   def change do

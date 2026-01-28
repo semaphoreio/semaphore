@@ -262,7 +262,27 @@ defmodule Front.Models.OktaIntegration do
       greater_than: 0,
       less_than_or_equal_to: @max_session_expiration_minutes
     )
+    |> validate_certificate_for_issuer_or_sso_change()
   end
+
+  defp validate_certificate_for_issuer_or_sso_change(changeset) do
+    if edit_form_submission?(changeset) do
+      validate_required(changeset, [:certificate])
+    else
+      changeset
+    end
+  end
+
+  defp edit_form_submission?(%Ecto.Changeset{data: %__MODULE__{id: nil}}), do: false
+
+  defp edit_form_submission?(%Ecto.Changeset{params: params}) when is_map(params) do
+    Enum.any?(
+      ["sso_url", "issuer", "certificate", "jit_provisioning_enabled"],
+      &Map.has_key?(params, &1)
+    )
+  end
+
+  defp edit_form_submission?(_changeset), do: false
 
   defp required_fields(%__MODULE__{id: nil}) do
     [

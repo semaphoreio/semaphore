@@ -153,6 +153,38 @@ defmodule FrontWeb.OrganizationOktaControllerTest do
       assert html =~ "name=\"okta_integration[session_expiration_minutes]\""
       assert html =~ "value=\"20160\""
     end
+
+    test "it hides session expiration field when editing existing integration",
+         %{
+           conn: conn
+         } = ctx do
+      add_permissions(ctx, [
+        "organization.view",
+        "organization.okta.view",
+        "organization.okta.manage"
+      ])
+
+      DB.insert(:okta_integrations, %{
+        id: Ecto.UUID.generate(),
+        org_id: ctx.organization_id,
+        creator_id: ctx.user_id,
+        sso_url: "https://example.okta.com",
+        saml_issuer: "https://example.okta.com",
+        saml_certificate: "test-certificate",
+        jit_provisioning_enabled: true,
+        session_expiration_minutes: 20_160,
+        created_at: Support.Stubs.Time.now(),
+        updated_at: Support.Stubs.Time.now()
+      })
+
+      conn =
+        conn
+        |> get(organization_okta_path(conn, :form))
+
+      html = html_response(conn, 200)
+      refute html =~ "Session expiration (minutes)"
+      refute html =~ "session_expiration_minutes"
+    end
   end
 
   describe "create" do
@@ -222,6 +254,42 @@ defmodule FrontWeb.OrganizationOktaControllerTest do
         |> List.last()
 
       assert integration.session_expiration_minutes == 45
+    end
+
+    test "editing existing integration requires certificate", %{conn: conn} = ctx do
+      add_permissions(ctx, [
+        "organization.view",
+        "organization.okta.view",
+        "organization.okta.manage"
+      ])
+
+      DB.insert(:okta_integrations, %{
+        id: Ecto.UUID.generate(),
+        org_id: ctx.organization_id,
+        creator_id: ctx.user_id,
+        sso_url: "https://example.okta.com",
+        saml_issuer: "https://example.okta.com",
+        saml_certificate: "test-certificate",
+        jit_provisioning_enabled: true,
+        session_expiration_minutes: 20_160,
+        created_at: Support.Stubs.Time.now(),
+        updated_at: Support.Stubs.Time.now()
+      })
+
+      params = %{
+        "sso_url" => "https://example.okta.com",
+        "issuer" => "https://example.okta.com",
+        "certificate" => "",
+        "jit_provisioning_enabled" => "false",
+        "idempotency_token" => Ecto.UUID.generate()
+      }
+
+      conn =
+        conn
+        |> post(organization_okta_path(conn, :create), %{"okta_integration" => params})
+
+      html = html_response(conn, 200)
+      assert html =~ "Certificate can't be blank"
     end
   end
 

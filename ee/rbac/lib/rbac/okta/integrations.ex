@@ -86,7 +86,7 @@ defmodule Rbac.Okta.Integration do
       resolve_jit_provisioning(existing, inputs.jit_provisioning_enabled, credentials_present?)
 
     session_expiration_minutes =
-      resolve_session_expiration(existing, inputs.session_expiration_minutes)
+      resolve_session_expiration(existing, inputs.session_expiration_minutes, inputs.certificate)
 
     %{
       sso_url: sso_url,
@@ -113,15 +113,19 @@ defmodule Rbac.Okta.Integration do
 
   defp resolve_jit_provisioning(_existing, value, true), do: value
 
-  defp resolve_session_expiration(existing, session_expiration_minutes) do
-    case session_expiration_minutes do
-      value when is_integer(value) and value > 0 ->
-        value
+  defp resolve_session_expiration(existing, session_expiration_minutes, certificate) do
+    cond do
+      existing && present?(certificate) ->
+        existing.session_expiration_minutes
 
-      _ ->
-        if existing,
-          do: existing.session_expiration_minutes,
-          else: @default_session_expiration_minutes
+      is_integer(session_expiration_minutes) and session_expiration_minutes > 0 ->
+        session_expiration_minutes
+
+      existing ->
+        existing.session_expiration_minutes
+
+      true ->
+        @default_session_expiration_minutes
     end
   end
 
