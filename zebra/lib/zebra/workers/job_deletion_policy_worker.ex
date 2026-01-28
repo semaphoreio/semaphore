@@ -44,7 +44,7 @@ defmodule Zebra.Workers.JobDeletionPolicyWorker do
   def tick(worker) do
     Logger.info("Starting cleanup tick (limit: #{worker.limit})...")
 
-    case delete_expired_data(worker.limit) do
+    case Job.claim_and_delete_expired_jobs(worker.limit) do
       {:ok, 0, 0} ->
         Logger.info("No expired jobs found for deletion.")
         false
@@ -64,10 +64,6 @@ defmodule Zebra.Workers.JobDeletionPolicyWorker do
         Logger.error("Cleanup tick failed: #{inspect(reason)}")
         false
     end
-  end
-
-  defp delete_expired_data(limit) do
-    Job.claim_and_delete_expired_jobs(limit)
   end
 
   defp fetch_config do
