@@ -45,17 +45,19 @@ defmodule RepositoryHub.RemoteIdSyncWorker do
   end
 
   @impl true
-  def handle_cast(:pause, state) do
-    Logger.info("[RemoteIdSyncWorker] Paused indefinitely")
-    {:noreply, %{state | paused_until: :infinity}}
-  end
-
   def handle_cast({:pause_for, milliseconds}, state) do
     paused_until = System.monotonic_time(:millisecond) + milliseconds
     Logger.info("[RemoteIdSyncWorker] Paused for #{milliseconds}ms")
     {:noreply, %{state | paused_until: paused_until}}
   end
 
+  @impl true
+  def handle_cast(:pause, state) do
+    Logger.info("[RemoteIdSyncWorker] Paused indefinitely")
+    {:noreply, %{state | paused_until: :infinity}}
+  end
+
+  @impl true
   def handle_cast(:resume, state) do
     Logger.info("[RemoteIdSyncWorker] Resumed")
     {:noreply, %{state | paused_until: nil}}
@@ -84,6 +86,13 @@ defmodule RepositoryHub.RemoteIdSyncWorker do
 
   @impl true
   def handle_info(:tick, state) do
+    Watchman.increment("repository_hub.remote_id_sync_worker.tick")
+
+    Logger.debug(
+      "[RemoteIdSyncWorker] tick paused_until=#{inspect(state.paused_until)} " <>
+        "interval_ms=#{state.interval_ms} memory=#{format_memory(:erlang.memory())}"
+    )
+
     state = maybe_process_next_repository(state)
     schedule_tick(state.interval_ms)
     {:noreply, state}
@@ -160,5 +169,31 @@ defmodule RepositoryHub.RemoteIdSyncWorker do
 
   defp schedule_tick(interval_ms) do
     Process.send_after(self(), :tick, interval_ms)
+  end
+
+  defp format_memory(memory) when is_map(memory) do
+    total = Map.get(memory, :total, 0)
+    processes = Map.get(memory, :processes, 0)
+    binary = Map.get(memory, :binary, 0)
+    system = Map.get(memory, :system, 0)
+
+    "total=#{format_bytes(total)} processes=#{format_bytes(processes)} " <>
+      "binary=#{format_bytes(binary)} system=#{format_bytes(system)}"
+  end
+
+  defp format_bytes(bytes) when is_integer(bytes) do
+    cond do
+      bytes >= 1_073_741_824 ->
+        "#{Float.round(bytes / 1_073_741_824, 2)}GB"
+
+      bytes >= 1_048_576 ->
+        "#{Float.round(bytes / 1_048_576, 2)}MB"
+
+      bytes >= 1_024 ->
+        "#{Float.round(bytes / 1_024, 2)}KB"
+
+      true ->
+        "#{bytes}B"
+    end
   end
 end
