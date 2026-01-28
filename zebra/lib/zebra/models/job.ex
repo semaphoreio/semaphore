@@ -667,15 +667,14 @@ defmodule Zebra.Models.Job do
       {:error, "Publishing failed with exception"}
   end
 
-  defp publish_single_job_deletion(_channel, _exchange_name, _routing_key, {id, _, _, nil}) do
-    Logger.info("Skipping deletion event for job #{id} - no artifact_store_id")
-    :ok
-  end
-
   defp publish_single_job_deletion(channel, exchange_name, routing_key, job_meta) do
     {id, organization_id, project_id, artifact_store_id} = job_meta
 
-    {:ok, artifact_store_id_str} = Ecto.UUID.load(artifact_store_id)
+    artifact_store_id_str =
+      case Ecto.UUID.load(artifact_store_id) do
+        {:ok, uuid_str} -> uuid_str
+        :error -> ""
+      end
 
     now = DateTime.utc_now()
 
