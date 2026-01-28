@@ -196,48 +196,20 @@ defmodule Guard.McpOAuth.Server do
   # ====================
 
   defp get_authenticated_user(conn) do
-    # Check for existing session from Keycloak login
-    # The session contains OIDC user ID which we map to Semaphore user
-    case get_session(conn, "oidc_session_id") do
-      nil ->
-        {:error, :not_authenticated}
-
-      session_id ->
-        case Guard.Store.OIDCSession.get(session_id) do
-          {:ok, session} ->
-            # Session is valid, get the user
-            case Guard.Store.RbacUser.fetch(session.user_id) do
-              {:ok, user} -> {:ok, user}
-              {:error, _} -> {:error, :not_authenticated}
-            end
-
-          {:error, _} ->
-            {:error, :not_authenticated}
+    # User ID is set by auth service after validating browser session cookie
+    # Auth service handles login redirect if user is not authenticated
+    case get_req_header(conn, "x-semaphore-user-id") do
+      [user_id] when is_binary(user_id) and user_id != "" ->
+        case Guard.Store.RbacUser.fetch(user_id) do
+          {:ok, user} -> {:ok, user}
+          {:error, _} -> {:error, :not_authenticated}
         end
+
+      _ ->
+        # No auth header means user not authenticated
+        # Auth service would have redirected to login if no session
+        {:error, :not_authenticated}
     end
-  end
-
-  defp redirect_to_login(conn, validated_params) do
-    # Store OAuth params in session for after login
-    domain = Application.fetch_env!(:guard, :base_domain)
-
-    # Build return URL that includes OAuth params
-    oauth_params = URI.encode_query(%{
-      "client_id" => validated_params.client_id,
-      "redirect_uri" => validated_params.redirect_uri,
-      "code_challenge" => validated_params.code_challenge,
-      "state" => validated_params.state || "",
-      "scope" => validated_params.scope
-    })
-
-    return_url = "https://mcp.#{domain}/mcp/oauth/authorize?#{oauth_params}"
-
-    # Redirect to login with return URL
-    login_url = "https://id.#{domain}/login?redirect_to=#{URI.encode(return_url)}"
-
-    conn
-    |> put_resp_header("location", login_url)
-    |> send_resp(302, "")
   end
 
   defp render_grant_selection(conn, validated_params, user) do
@@ -406,6 +378,26 @@ defmodule Guard.McpOAuth.Server do
   end
 
   defp parse_tool_scopes(_), do: []
+
+  defp redirect_to_login(conn, validated_params) do
+    # Build the return URL with all OAuth params so user comes back after login
+    return_params = URI.encode_query(%{
+      "client_id" => validated_params.client_id,
+      "redirect_uri" => validated_params.redirect_uri,
+      "code_challenge" => validated_params.code_challenge,
+      "code_challenge_method" => "S256",
+      "response_type" => "code",
+      "scope" => validated_params.scope,
+      "state" => validated_params.state || ""
+    })
+
+    return_url = "/mcp/oauth/authorize?#{return_params}"
+    login_url = "/login?return_to=#{URI.encode_www_form(return_url)}"
+
+    conn
+    |> put_resp_header("location", login_url)
+    |> send_resp(302, "")
+  end
 
   defp html_escape(nil), do: ""
   defp html_escape(string) when is_binary(string) do

@@ -173,7 +173,7 @@ defmodule Guard.Api.OIDC do
         hashlen: hashlen,
         format: :raw_hash
       )
-      |> Base.decode16!(case: :lower)
+      # |> Base.decode16!(case: :lower)
       |> Base.encode64()
 
     %{

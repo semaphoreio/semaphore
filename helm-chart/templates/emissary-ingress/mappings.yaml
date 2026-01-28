@@ -545,21 +545,68 @@ spec:
   precedence: 200
   timeout_ms: 5000
 ---
-# MCP OAuth Authorization Server - All OAuth endpoints routed to Guard
-# Guard acts as the OAuth Authorization Server (minting JWTs with HS256)
+# MCP OAuth DCR endpoint - bypass auth (public client registration)
 apiVersion: getambassador.io/v3alpha1
 kind: Mapping
 metadata:
-  name: mcp-oauth-server-mapping
+  name: mcp-oauth-register-mapping
   namespace: {{ .Release.Namespace }}
 spec:
   host: "^mcp\\..*"
   host_regex: true
-  prefix: /mcp/oauth/
-  rewrite: /mcp/oauth/
+  prefix: /mcp/oauth/register
+  rewrite: /mcp/oauth/register
   service: guard-id-http-api.{{ .Release.Namespace }}:80
   bypass_auth: true
-  precedence: 200
+  precedence: 210
+  timeout_ms: 30000
+---
+# MCP OAuth Token endpoint - bypass auth (uses PKCE for security)
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: mcp-oauth-token-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: "^mcp\\..*"
+  host_regex: true
+  prefix: /mcp/oauth/token
+  rewrite: /mcp/oauth/token
+  service: guard-id-http-api.{{ .Release.Namespace }}:80
+  bypass_auth: true
+  precedence: 210
+  timeout_ms: 30000
+---
+# MCP OAuth Authorize endpoint - REQUIRE auth (user must be logged in via browser)
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: mcp-oauth-authorize-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: "^mcp\\..*"
+  host_regex: true
+  prefix: /mcp/oauth/authorize
+  rewrite: /mcp/oauth/authorize
+  service: guard-id-http-api.{{ .Release.Namespace }}:80
+  bypass_auth: false
+  precedence: 210
+  timeout_ms: 30000
+---
+# MCP OAuth Grant Selection - REQUIRE auth (user consent flow)
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: mcp-oauth-grant-selection-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: "^mcp\\..*"
+  host_regex: true
+  prefix: /mcp/oauth/grant-selection
+  rewrite: /mcp/oauth/grant-selection
+  service: guard-id-http-api.{{ .Release.Namespace }}:80
+  bypass_auth: false
+  precedence: 210
   timeout_ms: 30000
 ---
 # OAuth 2.0 Authorization Server Metadata (RFC 8414) - mcp. subdomain

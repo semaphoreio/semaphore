@@ -412,6 +412,38 @@ defmodule Auth do
   #
 
   #
+  # MCP OAuth Authorization - requires browser session
+  # User must be logged in before authorizing MCP clients
+  # These routes must come BEFORE the catch-all /mcp route below
+  #
+  get "/exauth/mcp/oauth/authorize", host: "mcp." do
+    log_request(conn, "mcp.#{Application.fetch_env!(:auth, :domain)}/mcp/oauth/authorize")
+
+    case set_user_headers(conn, allow_token: false) do
+      {:ok, conn_with_headers} -> send_resp(conn_with_headers, 200, "")
+      {:error, conn} -> redirect_or_unauthorized(conn, backurl: true)
+    end
+  end
+
+  get "/exauth/mcp/oauth/grant-selection", host: "mcp." do
+    log_request(conn, "mcp.#{Application.fetch_env!(:auth, :domain)}/mcp/oauth/grant-selection")
+
+    case set_user_headers(conn, allow_token: false) do
+      {:ok, conn_with_headers} -> send_resp(conn_with_headers, 200, "")
+      {:error, conn} -> redirect_or_unauthorized(conn, backurl: true)
+    end
+  end
+
+  post "/exauth/mcp/oauth/grant-selection", host: "mcp." do
+    log_request(conn, "mcp.#{Application.fetch_env!(:auth, :domain)}/mcp/oauth/grant-selection (POST)")
+
+    case set_user_headers(conn, allow_token: false) do
+      {:ok, conn_with_headers} -> send_resp(conn_with_headers, 200, "")
+      {:error, conn} -> redirect_or_unauthorized(conn, backurl: true)
+    end
+  end
+
+  #
   # Routes for mcp.{domain}/mcp requests - OAuth 2.1 JWT validation
   #
   match "/exauth/mcp:path/*rest", host: "mcp." do
