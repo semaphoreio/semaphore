@@ -37,7 +37,7 @@ defmodule Guard.GrpcServers.AuthServer do
             "[AuthServer] authenticate_with_cookie user_id=#{user.id} provider=#{id_provider} ip=#{ip_address}"
           )
 
-          if session_expired?(expires_at) do
+          if session_expired?(id_provider, expires_at) do
             Logger.info(
               "[AuthServer] authenticate_with_cookie session_expired user_id=#{user.id} provider=#{id_provider}"
             )
@@ -197,20 +197,21 @@ defmodule Guard.GrpcServers.AuthServer do
     {:ok, user_data, extras}
   end
 
-  defp session_expired?(nil), do: false
+  defp session_expired?("OKTA", nil), do: true
+  defp session_expired?(_, nil), do: false
 
-  defp session_expired?(%DateTime{} = expires_at) do
+  defp session_expired?(_, %DateTime{} = expires_at) do
     DateTime.compare(expires_at, DateTime.utc_now()) == :lt
   end
 
-  defp session_expired?(expires_at) when is_binary(expires_at) do
+  defp session_expired?(id_provider, expires_at) when is_binary(expires_at) do
     case Integer.parse(expires_at) do
-      {value, _} -> session_expired?(value)
+      {value, _} -> session_expired?(id_provider, value)
       :error -> false
     end
   end
 
-  defp session_expired?(expires_at) when is_integer(expires_at) do
+  defp session_expired?(_, expires_at) when is_integer(expires_at) do
     DateTime.to_unix(DateTime.utc_now()) >= expires_at
   end
 

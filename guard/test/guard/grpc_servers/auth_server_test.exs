@@ -527,6 +527,19 @@ defmodule Guard.GrpcServers.AuthServerTest do
       assert response.error_reason == "SESSION_EXPIRED_OKTA"
     end
 
+    test "return false with okta expiration reason for okta cookie without expires_at", %{
+      user: user
+    } do
+      cookie = legacy_okta_session(user)
+      request = AuthenticateWithCookieRequest.new(cookie: cookie)
+
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+      {:ok, response} = channel |> Stub.authenticate_with_cookie(request)
+
+      assert_response(response)
+      assert response.error_reason == "SESSION_EXPIRED_OKTA"
+    end
+
     test "return false with generic expiration reason for expired non-okta session", %{user: user} do
       cookie = expired_session(user, "GITHUB")
       request = AuthenticateWithCookieRequest.new(cookie: cookie)
@@ -569,6 +582,16 @@ defmodule Guard.GrpcServers.AuthServerTest do
   defp legacy_session(user) do
     %{
       "id_provider" => "GITHUB",
+      "ip_address" => "127.0.0.1",
+      "user_agent" => "Mozilla/5.0",
+      "warden.user.user.key" => [[user.id], user.salt]
+    }
+    |> Guard.Session.encrypt_cookie()
+  end
+
+  defp legacy_okta_session(user) do
+    %{
+      "id_provider" => "OKTA",
       "ip_address" => "127.0.0.1",
       "user_agent" => "Mozilla/5.0",
       "warden.user.user.key" => [[user.id], user.salt]
