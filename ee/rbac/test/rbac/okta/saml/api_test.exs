@@ -58,6 +58,8 @@ defmodule Rbac.Okta.Saml.Api.Test do
         assert response.body == "User provisioning started, try again in a minute"
       end
 
+      wait_for_saml_jit_user_processed(ctx.integration, "denis@example.com")
+
       {:ok, response} = post("/okta/auth", saml_payload("denis@example.com"))
       location = Enum.find(response.headers, fn h -> elem(h, 0) == "location" end)
       assert response.status_code == 302
@@ -240,11 +242,35 @@ defmodule Rbac.Okta.Saml.Api.Test do
   defp create_user(okta_user) do
     Rbac.Okta.Scim.Provisioner.perform_now(okta_user.id)
 
-    Support.Wait.run("Waiting for #{okta_user.id} to be processed", fn ->
-      Rbac.Repo.get(Rbac.Repo.OktaUser, okta_user.id).user_id != nil
-    end)
+    wait_for_okta_user_processed(okta_user.id)
 
     :ok
+  end
+
+  defp wait_for_okta_user_processed(okta_user_id) do
+    Support.Wait.run("Waiting for #{okta_user_id} to be processed", 30, 200, fn ->
+      case Rbac.Repo.get(Rbac.Repo.OktaUser, okta_user_id) do
+        nil ->
+          false
+
+        okta_user ->
+          okta_user.user_id != nil and okta_user.state == :processed and
+            Rbac.FrontRepo.get(Rbac.FrontRepo.User, okta_user.user_id) != nil
+      end
+    end)
+  end
+
+  defp wait_for_saml_jit_user_processed(integration, email) do
+    Support.Wait.run("Waiting for JIT user #{email} to be processed", 30, 200, fn ->
+      case Rbac.Repo.SamlJitUser.find_by_email(integration, email) do
+        {:ok, saml_user} ->
+          saml_user.user_id != nil and saml_user.state == :processed and
+            Rbac.FrontRepo.get(Rbac.FrontRepo.User, saml_user.user_id) != nil
+
+        {:error, :not_found} ->
+          false
+      end
+    end)
   end
 
   defp load_user(user_id) do
