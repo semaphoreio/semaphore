@@ -61,33 +61,13 @@ defmodule Zebra.Workers.JobDeletionPolicyWorker do
         true
 
       {:error, reason} ->
-        Logger.error("Cleanup tick failed: #{reason}")
+        Logger.error("Cleanup tick failed: #{inspect(reason)}")
         false
     end
   end
 
   defp delete_expired_data(limit) do
-    with {:ok, jobs_expired} <- Job.expired_job_ids(limit),
-         true <- length(jobs_expired) > 0 do
-      job_ids =
-        Enum.map(jobs_expired, fn {id, _organization_id, _project_id, _artifact_store_id} ->
-          id
-        end)
-
-      Logger.info("Found #{length(job_ids)} expired jobs for deletion: #{inspect(job_ids)}")
-
-      with :ok <- Job.publish_job_deletion_events(jobs_expired),
-           {:ok, deleted_stop_requests} <- Job.delete_job_stop_requests(job_ids),
-           {:ok, deleted_jobs} <- Job.delete_jobs(job_ids) do
-        {:ok, deleted_stop_requests, deleted_jobs}
-      end
-    else
-      false ->
-        {:ok, 0, 0}
-
-      {:error, reason} ->
-        {:error, reason}
-    end
+    Job.claim_and_delete_expired_jobs(limit)
   end
 
   defp fetch_config do
