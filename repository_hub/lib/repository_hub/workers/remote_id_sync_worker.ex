@@ -44,17 +44,20 @@ defmodule RepositoryHub.RemoteIdSyncWorker do
     {:ok, state}
   end
 
+  @impl true
   def handle_cast({:pause_for, milliseconds}, state) do
     paused_until = System.monotonic_time(:millisecond) + milliseconds
     Logger.info("[RemoteIdSyncWorker] Paused for #{milliseconds}ms")
     {:noreply, %{state | paused_until: paused_until}}
   end
 
+  @impl true
   def handle_cast(:pause, state) do
     Logger.info("[RemoteIdSyncWorker] Paused indefinitely")
     {:noreply, %{state | paused_until: :infinity}}
   end
 
+  @impl true
   def handle_cast(:resume, state) do
     Logger.info("[RemoteIdSyncWorker] Resumed")
     {:noreply, %{state | paused_until: nil}}
