@@ -12,17 +12,15 @@ defmodule Guard.Id.McpOAuth do
   plug(:match)
   plug(:dispatch)
 
-  @doc """
-  GET /mcp/oauth/grant-selection
-
-  Shows grant selection UI to the user during OAuth flow.
-
-  Query params:
-  - state: Keycloak auth session tab ID (for correlation)
-  - client_id: OAuth client requesting access
-  - user_id: Keycloak user ID (OIDC user ID)
-  - scopes: Requested OAuth scopes (URL encoded)
-  """
+  # GET /mcp/oauth/grant-selection
+  #
+  # Shows grant selection UI to the user during OAuth flow.
+  #
+  # Query params:
+  # - state: Keycloak auth session tab ID (for correlation)
+  # - client_id: OAuth client requesting access
+  # - user_id: Keycloak user ID (OIDC user ID)
+  # - scopes: Requested OAuth scopes (URL encoded)
   get "/grant-selection" do
     state = conn.params["state"]
     client_id = conn.params["client_id"]
@@ -82,17 +80,15 @@ defmodule Guard.Id.McpOAuth do
     |> send_resp(200, html_response)
   end
 
-  @doc """
-  POST /mcp/oauth/grant-selection
-
-  Creates MCP grant and redirects back to Keycloak.
-
-  Form params:
-  - state: Keycloak auth session tab ID
-  - client_id: OAuth client ID
-  - oidc_user_id: Keycloak user ID
-  - tool_scopes: Requested tool scopes (space-separated)
-  """
+  # POST /mcp/oauth/grant-selection
+  #
+  # Creates MCP grant and redirects back to Keycloak.
+  #
+  # Form params:
+  # - state: Keycloak auth session tab ID
+  # - client_id: OAuth client ID
+  # - oidc_user_id: Keycloak user ID
+  # - tool_scopes: Requested tool scopes (space-separated)
   post "/grant-selection" do
     state = conn.params["state"]
     client_id = conn.params["client_id"]

@@ -545,25 +545,25 @@ spec:
   precedence: 200
   timeout_ms: 5000
 ---
-# OAuth 2.0 Authorization Server Metadata (RFC 8414) - id. subdomain
-# Proxies authorization server metadata from Keycloak
+# MCP OAuth Authorization Server - All OAuth endpoints routed to Guard
+# Guard acts as the OAuth Authorization Server (minting JWTs with HS256)
 apiVersion: getambassador.io/v3alpha1
 kind: Mapping
 metadata:
-  name: oauth-as-metadata-mapping-id
+  name: mcp-oauth-server-mapping
   namespace: {{ .Release.Namespace }}
 spec:
-  host: "^id\\..*"
+  host: "^mcp\\..*"
   host_regex: true
-  prefix: /.well-known/oauth-authorization-server
-  rewrite: /exauth/.well-known/oauth-authorization-server
-  service: auth.{{ .Release.Namespace }}:4000
+  prefix: /mcp/oauth/
+  rewrite: /mcp/oauth/
+  service: guard-id-http-api.{{ .Release.Namespace }}:80
   bypass_auth: true
   precedence: 200
-  timeout_ms: 10000
+  timeout_ms: 30000
 ---
 # OAuth 2.0 Authorization Server Metadata (RFC 8414) - mcp. subdomain
-# Some clients may request AS metadata from MCP server directly
+# Routes to Guard which serves AS metadata for the MCP OAuth server
 apiVersion: getambassador.io/v3alpha1
 kind: Mapping
 metadata:
@@ -573,25 +573,8 @@ spec:
   host: "^mcp\\..*"
   host_regex: true
   prefix: /.well-known/oauth-authorization-server
-  rewrite: /exauth/.well-known/oauth-authorization-server
-  service: auth.{{ .Release.Namespace }}:4000
-  bypass_auth: true
-  precedence: 200
-  timeout_ms: 10000
----
-# MCP OAuth 2.1 Dynamic Client Registration (DCR) Proxy
-# Bypasses ExtAuth and proxies DCR requests to Keycloak
-apiVersion: getambassador.io/v3alpha1
-kind: Mapping
-metadata:
-  name: mcp-oauth-register-mapping
-  namespace: {{ .Release.Namespace }}
-spec:
-  host: "^mcp\\..*"
-  host_regex: true
-  prefix: /oauth/register
-  rewrite: /exauth/oauth/register
-  service: auth.{{ .Release.Namespace }}:4000
+  rewrite: /mcp/oauth/.well-known/oauth-authorization-server
+  service: guard-id-http-api.{{ .Release.Namespace }}:80
   bypass_auth: true
   precedence: 200
   timeout_ms: 10000

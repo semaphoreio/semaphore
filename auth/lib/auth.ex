@@ -243,7 +243,7 @@ defmodule Auth do
 
     metadata = %{
       resource: "https://mcp.#{domain}",
-      authorization_servers: ["https://id.#{domain}/realms/semaphore"],
+      authorization_servers: ["https://mcp.#{domain}/mcp/oauth"],
       scopes_supported: ["mcp"],
       bearer_methods_supported: ["header"],
       resource_documentation: "https://docs.semaphoreci.com/mcp"
@@ -276,7 +276,7 @@ defmodule Auth do
 
     metadata = %{
       resource: "https://mcp.#{domain}",
-      authorization_servers: ["https://id.#{domain}/realms/semaphore"],
+      authorization_servers: ["https://mcp.#{domain}/mcp/oauth"],
       scopes_supported: ["mcp"],
       bearer_methods_supported: ["header"],
       resource_documentation: "https://docs.semaphoreci.com/mcp"
@@ -298,99 +298,10 @@ defmodule Auth do
   end
 
   #
-  # OAuth 2.0 Authorization Server Metadata (RFC 8414) for mcp. subdomain
-  # Some MCP clients may request AS metadata from MCP server directly
-  # instead of following the two-step discovery (protected resource -> AS metadata)
+  # NOTE: Authorization Server Metadata for mcp.* subdomain is now served by Guard
+  # (Guard.McpOAuth.Server handles /.well-known/oauth-authorization-server)
+  # The old Keycloak proxy endpoints have been removed.
   #
-  # ROUTE ORDER CRITICAL: Base route (no path) must come BEFORE wildcard route!
-  #
-  # Base path for authorization server metadata on mcp. subdomain - for MCP 2025-03-26 spec
-  get "/exauth/.well-known/oauth-authorization-server", host: "mcp." do
-    log_request(
-      conn,
-      "mcp.#{Application.fetch_env!(:auth, :domain)}/.well-known/oauth-authorization-server"
-    )
-
-    domain = Application.fetch_env!(:auth, :domain)
-    keycloak_oidc_url = "https://id.#{domain}/realms/semaphore/.well-known/openid-configuration"
-
-    case :hackney.request(:get, keycloak_oidc_url, [], "", [:with_body, recv_timeout: 10_000]) do
-      {:ok, 200, _headers, body} ->
-        conn
-        |> put_resp_content_type("application/json")
-        |> put_resp_header("access-control-allow-origin", "*")
-        |> put_resp_header("access-control-allow-methods", "GET, OPTIONS")
-        |> send_resp(200, body)
-
-      {:ok, status, _headers, error_body} ->
-        Logger.error("[Auth] Failed to fetch Keycloak OIDC metadata: #{status} - #{error_body}")
-        send_resp(conn, 500, "Failed to fetch authorization server metadata")
-
-      {:error, reason} ->
-        Logger.error("[Auth] Failed to connect to Keycloak: #{inspect(reason)}")
-        send_resp(conn, 500, "Failed to fetch authorization server metadata")
-    end
-  end
-
-  # RFC 8414 path insertion for MCP 2024-06-18 spec compatibility
-  # Handles paths like /realms/semaphore when issuer has path component
-  get "/exauth/.well-known/oauth-authorization-server/*issuer_path", host: "mcp." do
-    # issuer_path will be ["realms", "semaphore"] for /realms/semaphore
-    path = "/" <> Enum.join(issuer_path, "/")
-
-    log_request(
-      conn,
-      "mcp.#{Application.fetch_env!(:auth, :domain)}/.well-known/oauth-authorization-server#{path}"
-    )
-
-    domain = Application.fetch_env!(:auth, :domain)
-
-    # Only append path if it's a valid issuer path (starts with /realms/)
-    # Otherwise ignore the path and return base OIDC configuration
-    keycloak_oidc_url =
-      if String.starts_with?(path, "/realms/") do
-        "https://id.#{domain}#{path}/.well-known/openid-configuration"
-      else
-        Logger.debug(
-          "[Auth] Ignoring invalid issuer path #{path}, returning base OIDC configuration"
-        )
-
-        "https://id.#{domain}/realms/semaphore/.well-known/openid-configuration"
-      end
-
-    case :hackney.request(:get, keycloak_oidc_url, [], "", [:with_body, recv_timeout: 10_000]) do
-      {:ok, 200, _headers, body} ->
-        conn
-        |> put_resp_content_type("application/json")
-        |> put_resp_header("access-control-allow-origin", "*")
-        |> put_resp_header("access-control-allow-methods", "GET, OPTIONS")
-        |> send_resp(200, body)
-
-      {:ok, status, _headers, error_body} ->
-        Logger.error("[Auth] Failed to fetch Keycloak OIDC metadata: #{status} - #{error_body}")
-        send_resp(conn, 500, "Failed to fetch authorization server metadata")
-
-      {:error, reason} ->
-        Logger.error("[Auth] Failed to connect to Keycloak: #{inspect(reason)}")
-        send_resp(conn, 500, "Failed to fetch authorization server metadata")
-    end
-  end
-
-  # CORS preflight for authorization server metadata on mcp. subdomain (base)
-  options "/exauth/.well-known/oauth-authorization-server", host: "mcp." do
-    conn
-    |> put_resp_header("access-control-allow-origin", "*")
-    |> put_resp_header("access-control-allow-methods", "GET, OPTIONS")
-    |> send_resp(204, "")
-  end
-
-  # CORS preflight for authorization server metadata on mcp. subdomain (with path)
-  options "/exauth/.well-known/oauth-authorization-server/*_issuer_path", host: "mcp." do
-    conn
-    |> put_resp_header("access-control-allow-origin", "*")
-    |> put_resp_header("access-control-allow-methods", "GET, OPTIONS")
-    |> send_resp(204, "")
-  end
 
   #
   # Routes for <org-name>.<domain>/.well-known requests.
@@ -495,39 +406,10 @@ defmodule Auth do
   end
 
   #
-  # DCR Proxy for MCP OAuth 2.1 - bypasses Keycloak CORS issues
-  # This endpoint must be accessible without authentication
+  # NOTE: Dynamic Client Registration (DCR) for MCP is now handled by Guard
+  # (Guard.McpOAuth.Server handles /mcp/oauth/register)
+  # The old Keycloak DCR proxy has been removed.
   #
-  post "/exauth/oauth/register", host: "mcp." do
-    log_request(conn, "mcp.#{Application.fetch_env!(:auth, :domain)}/oauth/register")
-
-    {:ok, body, conn} = Plug.Conn.read_body(conn)
-
-    case proxy_dcr_to_keycloak(body) do
-      {:ok, response} ->
-        conn
-        |> put_resp_content_type("application/json")
-        |> put_resp_header("access-control-allow-origin", "*")
-        |> put_resp_header("access-control-allow-methods", "POST, OPTIONS")
-        |> put_resp_header("access-control-allow-headers", "Content-Type")
-        |> send_resp(201, response)
-
-      {:error, status, error_body} ->
-        conn
-        |> put_resp_content_type("application/json")
-        |> put_resp_header("access-control-allow-origin", "*")
-        |> send_resp(status, error_body)
-    end
-  end
-
-  # Handle CORS preflight for DCR endpoint
-  options "/exauth/oauth/register", host: "mcp." do
-    conn
-    |> put_resp_header("access-control-allow-origin", "*")
-    |> put_resp_header("access-control-allow-methods", "POST, OPTIONS")
-    |> put_resp_header("access-control-allow-headers", "Content-Type")
-    |> send_resp(204, "")
-  end
 
   #
   # Routes for mcp.{domain}/mcp requests - OAuth 2.1 JWT validation
@@ -1030,51 +912,4 @@ defmodule Auth do
   """
   def on_prem?, do: System.get_env("ON_PREM") == "true"
 
-  #
-  # MCP OAuth 2.1 DCR Proxy
-  # Proxies Dynamic Client Registration requests to Keycloak to bypass CORS issues
-  #
-  defp proxy_dcr_to_keycloak(body) do
-    domain = Application.fetch_env!(:auth, :domain)
-    dcr_url = "https://id.#{domain}/realms/semaphore/clients-registrations/openid-connect"
-
-    headers = [{"Content-Type", "application/json"}]
-
-    case :hackney.request(:post, dcr_url, headers, body, [:with_body, recv_timeout: 30_000]) do
-      {:ok, 201, _headers, response_body} ->
-        # NOTE: The PREFERRED solution is to configure Keycloak's "Default Client Scopes" policy
-        # (Clients → Client Registration → Anonymous Access → Default Client Scopes)
-        # to automatically assign "mcp" scope to all dynamically registered clients.
-        #
-        # This injection is kept as a fallback for environments where the policy isn't configured,
-        # but it's a workaround and not the proper solution.
-        case Jason.decode(response_body) do
-          {:ok, response_json} ->
-            # Add both "scope" (singular, space-separated string per RFC 7591)
-            # and "scopes" (plural, array) to handle clients that might expect either format
-            modified_response =
-              response_json
-              |> Map.put("scope", "mcp")
-              |> Map.put("scopes", "mcp")
-
-            Logger.info("[Auth.DCR] Injected scopes into DCR response: #{inspect(modified_response)}")
-            {:ok, Jason.encode!(modified_response)}
-
-          {:error, decode_error} ->
-            Logger.warning(
-              "[Auth] Failed to parse DCR response for scope injection: #{inspect(decode_error)}"
-            )
-
-            {:ok, response_body}
-        end
-
-      {:ok, status, _headers, response_body} ->
-        Logger.warning("[Auth] DCR proxy failed with status #{status}: #{response_body}")
-        {:error, status, response_body}
-
-      {:error, reason} ->
-        Logger.error("[Auth] DCR proxy request failed: #{inspect(reason)}")
-        {:error, 500, Jason.encode!(%{error: "DCR request failed"})}
-    end
-  end
 end

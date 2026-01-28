@@ -1,38 +1,28 @@
 defmodule Auth.JWT do
   @moduledoc """
-  JWT validation for MCP OAuth 2.1 tokens using Keycloak JWKS.
+  JWT validation for MCP OAuth tokens using HS256 shared secret.
 
-  This module validates JWT tokens issued by Keycloak for MCP server access.
-  It verifies the token signature using JWKS, and validates standard claims
-  including issuer, expiration, and the custom semaphore_user_id claim.
+  This module validates JWT tokens issued by Guard for MCP server access.
+  It verifies the token signature using a shared secret (HS256), and validates
+  standard claims including issuer, audience, expiration, and the custom
+  semaphore_user_id claim.
+
+  The signing keys are read from MCP_OAUTH_JWT_KEYS environment variable,
+  which supports comma-separated keys for rotation.
   """
 
-  use Joken.Config
   require Logger
-
-  # Add JokenJwks hook for automatic JWKS-based signature verification
-  add_hook(JokenJwks, strategy: Auth.JWKSStrategy)
-
-  @impl Joken.Config
-  def token_config do
-    domain = Application.fetch_env!(:auth, :domain)
-    expected_audience = "https://mcp.#{domain}"
-    expected_issuer = "https://id.#{domain}/realms/semaphore"
-
-    default_claims(skip: [:aud, :iss])
-    |> add_claim("aud", fn -> expected_audience end, &(&1 == expected_audience))
-    |> add_claim("iss", fn -> expected_issuer end, &(&1 == expected_issuer))
-  end
 
   @doc """
   Validates an MCP OAuth token and extracts the semaphore_user_id.
 
-  Returns `{:ok, user_id, claims}` on success, or `{:error, reason}` on failure.
+  Returns `{:ok, user_id, grant_id, tool_scopes, claims}` on success,
+  or `{:error, reason}` on failure.
 
   ## Examples
 
-      iex> Auth.JWT.validate_mcp_token("eyJhbGciOiJSUzI1NiIs...")
-      {:ok, "user-uuid-here", %{"sub" => "...", "semaphore_user_id" => "user-uuid-here", ...}}
+      iex> Auth.JWT.validate_mcp_token("eyJhbGciOiJIUzI1NiIs...")
+      {:ok, "user-uuid-here", "grant-uuid", ["tools:read"], %{...}}
 
       iex> Auth.JWT.validate_mcp_token("invalid-token")
       {:error, :invalid_token}
@@ -59,29 +49,45 @@ defmodule Auth.JWT do
   end
 
   defp verify_token(token) do
-    # Use verify_and_validate which triggers the JokenJwks hook
-    case __MODULE__.verify_and_validate(token) do
-      {:ok, claims} ->
-        validate_claims(claims)
+    case get_all_signers() do
+      {:ok, signers} ->
+        # Try each signer (supports key rotation)
+        result =
+          Enum.reduce_while(signers, {:error, :invalid_signature}, fn signer, _acc ->
+            case Joken.verify(token, signer) do
+              {:ok, claims} ->
+                {:halt, {:ok, claims}}
 
-      {:error, reason} ->
-        Logger.warning("[Auth.JWT] Token verification failed: #{inspect(reason)}")
-        {:error, :invalid_token}
+              {:error, _reason} ->
+                {:cont, {:error, :invalid_signature}}
+            end
+          end)
+
+        case result do
+          {:ok, claims} -> validate_claims(claims)
+          error -> error
+        end
+
+      {:error, :no_signing_key} ->
+        Logger.error("[Auth.JWT] No signing keys configured")
+        {:error, :configuration_error}
     end
   end
 
   defp validate_claims(claims) do
-    issuer = keycloak_issuer()
     now = DateTime.utc_now() |> DateTime.to_unix()
 
-    with :ok <- validate_issuer(claims, issuer),
+    with :ok <- validate_issuer(claims),
+         :ok <- validate_audience(claims),
          :ok <- validate_expiration(claims, now),
          :ok <- validate_mcp_scope(claims) do
       {:ok, claims}
     end
   end
 
-  defp validate_issuer(claims, expected_issuer) do
+  defp validate_issuer(claims) do
+    expected_issuer = oauth_issuer()
+
     case Map.get(claims, "iss") do
       ^expected_issuer ->
         :ok
@@ -92,6 +98,22 @@ defmodule Auth.JWT do
         )
 
         {:error, :invalid_issuer}
+    end
+  end
+
+  defp validate_audience(claims) do
+    expected_audience = oauth_audience()
+
+    case Map.get(claims, "aud") do
+      ^expected_audience ->
+        :ok
+
+      actual_audience ->
+        Logger.warning(
+          "[Auth.JWT] Invalid audience: expected #{expected_audience}, got #{inspect(actual_audience)}"
+        )
+
+        {:error, :invalid_audience}
     end
   end
 
@@ -124,8 +146,38 @@ defmodule Auth.JWT do
     end
   end
 
-  defp keycloak_issuer do
+  defp oauth_issuer do
     domain = Application.fetch_env!(:auth, :domain)
-    "https://id.#{domain}/realms/semaphore"
+    "https://mcp.#{domain}/mcp/oauth"
+  end
+
+  defp oauth_audience do
+    domain = Application.fetch_env!(:auth, :domain)
+    "https://mcp.#{domain}"
+  end
+
+  defp get_all_signers do
+    case get_signing_keys() do
+      [] -> {:error, :no_signing_key}
+      keys -> {:ok, Enum.map(keys, &Joken.Signer.create("HS256", &1))}
+    end
+  end
+
+  defp get_signing_keys do
+    case System.get_env("MCP_OAUTH_JWT_KEYS") do
+      nil ->
+        Logger.warning("[Auth.JWT] MCP_OAUTH_JWT_KEYS not set")
+        []
+
+      "" ->
+        Logger.warning("[Auth.JWT] MCP_OAUTH_JWT_KEYS is empty")
+        []
+
+      keys_string ->
+        keys_string
+        |> String.split(",")
+        |> Enum.map(&String.trim/1)
+        |> Enum.filter(&(&1 != ""))
+    end
   end
 end
