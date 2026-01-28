@@ -715,13 +715,15 @@ defmodule Zebra.Models.Job do
         :error -> ""
       end
 
+    project_id_str = project_id || ""
+
     now = DateTime.utc_now()
 
     message =
       InternalApi.ServerFarm.Job.JobDeleted.new(
         job_id: id,
         organization_id: organization_id,
-        project_id: project_id,
+        project_id: project_id_str,
         artifact_store_id: artifact_store_id_str,
         deleted_at:
           Google.Protobuf.Timestamp.new(
