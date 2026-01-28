@@ -592,8 +592,8 @@ defmodule Zebra.Models.JobTest do
     end
   end
 
-  describe ".expired_job_ids" do
-    test "returns expired jobs with artifact_store_id from project" do
+  describe ".claim_and_delete_expired_jobs" do
+    test "claims and deletes expired jobs in a transaction" do
       now = DateTime.utc_now() |> DateTime.truncate(:second)
       past = DateTime.add(now, -3600, :second)
 
@@ -612,52 +612,22 @@ defmodule Zebra.Models.JobTest do
           expires_at: past
         })
 
-      {:ok, result} = Job.expired_job_ids(10)
+      {:ok, _deleted_stop_requests, deleted_jobs} = Job.claim_and_delete_expired_jobs(10)
 
-      job_result = Enum.find(result, fn {id, _, _, _} -> id == job.id end)
-      assert job_result != nil
+      assert deleted_jobs >= 1
 
-      {_id, _org_id, returned_project_id, returned_artifact_store_id} = job_result
-      assert returned_project_id == project_id
-
-      {:ok, expected_artifact_store_id} = Ecto.UUID.dump(artifact_store_id)
-      assert returned_artifact_store_id == expected_artifact_store_id
+      # Verify the job is actually deleted
+      assert Zebra.LegacyRepo.get(Zebra.Models.Job, job.id) == nil
     end
 
-    test "returns nil artifact_store_id for jobs without matching project" do
-      now = DateTime.utc_now() |> DateTime.truncate(:second)
-      past = DateTime.add(now, -3600, :second)
-      orphan_project_id = Ecto.UUID.generate()
+    test "returns 0 counts when no expired jobs exist" do
+      {:ok, deleted_stop_requests, deleted_jobs} = Job.claim_and_delete_expired_jobs(10)
 
-      {:ok, job} =
-        Support.Factories.Job.create(:finished, %{
-          project_id: orphan_project_id,
-          expires_at: past
-        })
-
-      {:ok, result} = Job.expired_job_ids(10)
-
-      job_result = Enum.find(result, fn {id, _, _, _} -> id == job.id end)
-      assert job_result != nil
-
-      {_id, _org_id, returned_project_id, returned_artifact_store_id} = job_result
-      assert returned_project_id == orphan_project_id
-      assert returned_artifact_store_id == nil
+      assert deleted_stop_requests == 0
+      assert deleted_jobs == 0
     end
 
-    test "does not return jobs without expires_at" do
-      {:ok, job} =
-        Support.Factories.Job.create(:finished, %{
-          expires_at: nil
-        })
-
-      {:ok, result} = Job.expired_job_ids(10)
-
-      job_result = Enum.find(result, fn {id, _, _, _} -> id == job.id end)
-      assert job_result == nil
-    end
-
-    test "does not return jobs with future expires_at" do
+    test "does not claim jobs with future expires_at" do
       now = DateTime.utc_now() |> DateTime.truncate(:second)
       future = DateTime.add(now, 3600, :second)
 
@@ -666,10 +636,12 @@ defmodule Zebra.Models.JobTest do
           expires_at: future
         })
 
-      {:ok, result} = Job.expired_job_ids(10)
+      {:ok, _deleted_stop_requests, deleted_jobs} = Job.claim_and_delete_expired_jobs(10)
 
-      job_result = Enum.find(result, fn {id, _, _, _} -> id == job.id end)
-      assert job_result == nil
+      assert deleted_jobs == 0
+
+      # Verify the job still exists
+      assert Zebra.LegacyRepo.get(Zebra.Models.Job, job.id) != nil
     end
   end
 end
