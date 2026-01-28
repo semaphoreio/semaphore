@@ -469,6 +469,97 @@ defmodule Zebra.Models.Job do
     {:ok, deleted_count}
   end
 
+  @doc """
+  Atomically claims and deletes expired jobs using FOR UPDATE SKIP LOCKED.
+
+  This prevents multiple workers from fighting for the same jobs by:
+  1. Selecting expired jobs with a row lock (SKIP LOCKED means other workers will skip already-locked rows)
+  2. Publishing deletion events
+  3. Deleting job stop requests and jobs
+
+  Returns {:ok, deleted_stop_requests, deleted_jobs} on success.
+  """
+  def claim_and_delete_expired_jobs(limit) do
+    Zebra.LegacyRepo.transaction(fn ->
+      jobs = claim_expired_jobs(limit)
+
+      if Enum.empty?(jobs) do
+        {0, 0}
+      else
+        delete_claimed_jobs(jobs)
+      end
+    end)
+    |> case do
+      {:ok, {deleted_stop_requests, deleted_jobs}} ->
+        {:ok, deleted_stop_requests, deleted_jobs}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp claim_expired_jobs(limit) do
+    import Ecto.Query, only: [from: 2, lock: 2]
+
+    from(j in __MODULE__,
+      where: not is_nil(j.expires_at) and j.expires_at <= fragment("CURRENT_TIMESTAMP"),
+      order_by: [asc: j.expires_at],
+      limit: ^limit,
+      select: {j.id, j.organization_id, j.project_id}
+    )
+    |> lock("FOR UPDATE SKIP LOCKED")
+    |> Zebra.LegacyRepo.all()
+  end
+
+  defp delete_claimed_jobs(jobs) do
+    jobs_with_artifacts = enrich_jobs_with_artifact_store_ids(jobs)
+    job_ids = Enum.map(jobs, fn {id, _, _} -> id end)
+
+    Logger.info("Claimed #{length(job_ids)} expired jobs for deletion: #{inspect(job_ids)}")
+
+    case publish_job_deletion_events(jobs_with_artifacts) do
+      :ok ->
+        {:ok, deleted_stop_requests} = delete_job_stop_requests(job_ids)
+        {:ok, deleted_jobs} = delete_jobs(job_ids)
+        {deleted_stop_requests, deleted_jobs}
+
+      {:error, reason} ->
+        Logger.error("Failed to publish deletion events: #{reason}")
+        Zebra.LegacyRepo.rollback({:error, reason})
+    end
+  end
+
+  defp enrich_jobs_with_artifact_store_ids(jobs) do
+    artifact_store_map = fetch_artifact_store_ids(jobs)
+
+    Enum.map(jobs, fn {id, org_id, project_id} ->
+      {id, org_id, project_id, Map.get(artifact_store_map, project_id)}
+    end)
+  end
+
+  defp fetch_artifact_store_ids(jobs) do
+    import Ecto.Query, only: [from: 2]
+
+    project_ids =
+      jobs
+      |> Enum.map(fn {_, _, project_id} -> project_id end)
+      |> Enum.uniq()
+      |> Enum.flat_map(fn id ->
+        case Ecto.UUID.dump(id) do
+          {:ok, binary} -> [binary]
+          :error -> []
+        end
+      end)
+
+    from(p in "projects",
+      where: p.id in ^project_ids,
+      select: {p.id, p.artifact_store_id}
+    )
+    |> Zebra.LegacyRepo.all()
+    |> Enum.map(fn {id, artifact_store_id} -> {Ecto.UUID.cast!(id), artifact_store_id} end)
+    |> Map.new()
+  end
+
   def wait_for_agent(job) do
     if valid_transition?(job.aasm_state, state_waiting_for_agent()) do
       update(job, %{aasm_state: state_waiting_for_agent()})
