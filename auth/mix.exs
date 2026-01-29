@@ -43,9 +43,8 @@ defmodule Auth.Mixfile do
       {:credo, "~> 1.7.10", only: [:dev, :test], runtime: false},
       {:junit_formatter, "~> 3.1", only: [:test]},
       {:uuid, "~> 1.1"},
-      # MCP OAuth 2.1 JWT validation
-      {:joken, "~> 2.6"},
-      {:joken_jwks, "~> 1.6"}
+      # MCP OAuth 2.1 JWT validation (HS256)
+      {:joken, "~> 2.6"}
     ]
   end
 end
