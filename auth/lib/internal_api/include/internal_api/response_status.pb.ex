@@ -3,8 +3,8 @@ defmodule InternalApi.ResponseStatus.Code do
 
   use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:OK, 0)
-  field(:BAD_PARAM, 1)
+  field :OK, 0
+  field :BAD_PARAM, 1
 end
 
 defmodule InternalApi.ResponseStatus do
@@ -12,6 +12,6 @@ defmodule InternalApi.ResponseStatus do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:code, 1, type: InternalApi.ResponseStatus.Code, enum: true)
-  field(:message, 2, type: :string)
+  field :code, 1, type: InternalApi.ResponseStatus.Code, enum: true
+  field :message, 2, type: :string
 end
