@@ -71,7 +71,7 @@ defmodule AuthTest do
 
   setup do
     FunRegistry.set!(Fake.RbacService, :list_user_permissions, fn _, _ ->
-      InternalApi.RBAC.ListUserPermissionsResponse.new(permissions: ["organization.view"])
+      %InternalApi.RBAC.ListUserPermissionsResponse{permissions: ["organization.view"]}
     end)
 
     FunRegistry.set!(Fake.FeatureService, :list_organization_features, fn _req, _stream ->
@@ -97,18 +97,16 @@ defmodule AuthTest do
         |> Enum.find(fn org -> org.name == req.org_username end)
 
       if org do
-        InternalApi.Organization.DescribeResponse.new(
-          status:
-            InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
-          organization:
-            InternalApi.Organization.Organization.new(
-              org_id: org.id,
-              org_username: org.name,
-              restricted: org.restricted,
-              ip_allow_list: org.ip_allow_list,
-              allowed_id_providers: org.allowed_id_providers
-            )
-        )
+        %InternalApi.Organization.DescribeResponse{
+          status: %InternalApi.ResponseStatus{code: InternalApi.ResponseStatus.Code.value(:OK)},
+          organization: %InternalApi.Organization.Organization{
+            org_id: org.id,
+            org_username: org.name,
+            restricted: org.restricted,
+            ip_allow_list: org.ip_allow_list,
+            allowed_id_providers: org.allowed_id_providers
+          }
+        }
       else
         raise GRPC.RPCError, status: :not_found, message: "not found"
       end
@@ -117,42 +115,42 @@ defmodule AuthTest do
     FunRegistry.set!(Fake.AuthenticationService, :authenticate, fn req, _stream ->
       case req.token do
         @valid_token ->
-          AuthenticateResponse.new(
+          %AuthenticateResponse{
             authenticated: true,
-            username: "test-user",
+            name: "test-user",
             user_id: @user_id,
             id_provider: InternalApi.Auth.IdProvider.value(:ID_PROVIDER_API_TOKEN)
-          )
+          }
 
         _ ->
-          InternalApi.Auth.AuthenticateResponse.new(authenticated: false)
+          %InternalApi.Auth.AuthenticateResponse{authenticated: false}
       end
     end)
 
     FunRegistry.set!(Fake.AuthenticationService, :authenticate_with_cookie, fn req, _stream ->
       case req.cookie do
         @valid_cookie ->
-          AuthenticateResponse.new(
+          %AuthenticateResponse{
             authenticated: true,
-            username: "test-user",
+            name: "test-user",
             user_id: @user_id,
             ip_address: @random_ip,
             user_agent: "test-agent",
             id_provider: InternalApi.Auth.IdProvider.value(:ID_PROVIDER_OKTA)
-          )
+          }
 
         @valid_cookie2 ->
-          AuthenticateResponse.new(
+          %AuthenticateResponse{
             authenticated: true,
-            username: "test-user-2",
+            name: "test-user-2",
             user_id: @user_id2,
             ip_address: @closed_restricted_org_ip,
             user_agent: "test-agent",
             id_provider: InternalApi.Auth.IdProvider.value(:ID_PROVIDER_GITHUB)
-          )
+          }
 
         _ ->
-          InternalApi.Auth.AuthenticateResponse.new(authenticated: false)
+          %InternalApi.Auth.AuthenticateResponse{authenticated: false}
       end
     end)
 
@@ -555,7 +553,7 @@ defmodule AuthTest do
       body =
         Enum.join(
           [
-            "{\"message\": \"Call rejected because the client is outdated. ",
+            "{\"message\":\"Call rejected because the client is outdated. ",
             "To continue, upgrade Semaphore CLI with ",
             "'curl https://storage.googleapis.com/sem-cli-releases/get.sh | bash'.",
             "\"}"
@@ -765,7 +763,7 @@ defmodule AuthTest do
       end)
 
       cookie = "#{Application.get_env(:auth, :cookie_name)}=#{@valid_cookie}"
-      new_ip_in_same_subnet = String.slice(@random_ip, 0..-3) <> "11"
+      new_ip_in_same_subnet = String.slice(@random_ip, 0..-3//1) <> "11"
 
       conn = conn(:get, "https://rt.semaphoretest.test/exauth/somepath")
 
@@ -817,7 +815,7 @@ defmodule AuthTest do
                     "https://id.semaphoretest.test/login?org_id=#{@other_org_id}&redirect_to=https%3A%2F%2Fsemaphore.semaphoretest.test%2Fsomepath"
                   }
                 ],
-                "Redirected to https://id.semaphoretest.test/login?org_id=#{@other_org_id}&redirect_to=https%3A%2F%2Fsemaphore.semaphoretest.test%2Fsomepath"}
+                "Redirected to https://id.semaphoretest.test/login?org_id=#{@other_org_id}&amp;redirect_to=https%3A%2F%2Fsemaphore.semaphoretest.test%2Fsomepath"}
     end
 
     test "when a user has a valid session cookie, but tries to use it from a different user-agent" do
