@@ -13,9 +13,9 @@ defmodule Auth.GrpcClient do
   defp do_call(stub, endpoint, rpc, req, opts) do
     case GRPC.Stub.connect(endpoint) do
       {:ok, channel} ->
-        response = apply(stub, rpc, [channel, req, opts])
-        GRPC.Stub.disconnect(channel)
-        response
+        # Note: With GRPC.Client.Supervisor managing connections (grpc >= 0.9),
+        # we should NOT manually disconnect. The supervisor handles connection lifecycle.
+        apply(stub, rpc, [channel, req, opts])
 
       err ->
         Logger.error("GRCP endpoint #{endpoint} is unrechable #{inspect(err)}")

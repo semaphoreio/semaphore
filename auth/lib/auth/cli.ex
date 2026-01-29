@@ -4,7 +4,7 @@ defmodule Auth.Cli do
 
   Example usage:
 
-    if is_call_from_deprecated_cli?(conn) do
+    if call_from_deprecated_cli?(conn) do
       reject_cli_client(conn)
     end
   """
@@ -15,6 +15,7 @@ defmodule Auth.Cli do
     patch: 0
   }
 
+  # sobelow_skip ["XSS.SendResp"]
   def reject_cli_client(conn) do
     upgrade = "curl https://storage.googleapis.com/sem-cli-releases/get.sh | bash"
 
@@ -27,10 +28,10 @@ defmodule Auth.Cli do
         " "
       )
 
-    Plug.Conn.send_resp(conn, 400, "{\"message\": \"#{msg}\"}")
+    Plug.Conn.send_resp(conn, 400, Jason.encode!(%{message: msg}))
   end
 
-  def is_call_from_deprecated_cli?(conn) do
+  def call_from_deprecated_cli?(conn) do
     #
     # If the call is coming from a recent cli, version >= 0.16,
     # it will include the SemaphoreCLI user agent. We can use the info
@@ -38,14 +39,14 @@ defmodule Auth.Cli do
     #
     case sem_cli_version(conn) do
       {:ok, version} ->
-        is_version_deprecated?(version)
+        version_deprecated?(version)
 
       _ ->
         false
     end
   end
 
-  def is_sem_cli?(conn) do
+  def sem_cli?(conn) do
     case sem_cli_version(conn) do
       {:ok, _} -> true
       _ -> false
@@ -69,9 +70,9 @@ defmodule Auth.Cli do
     end
   end
 
-  def is_version_deprecated?("dev"), do: false
+  def version_deprecated?("dev"), do: false
 
-  def is_version_deprecated?(version) do
+  def version_deprecated?(version) do
     case parse_semantic_version(version) do
       {:ok, [major, minor, patch]} ->
         major < @min_cli_version.major ||

@@ -14,12 +14,10 @@ defmodule Auth.FeatureClient do
   alias Util
 
   def list_organization_features(org_id),
-    do:
-      grpc_call(ListOrganizationFeaturesRequest.new(org_id: org_id), :list_organization_features)
+    do: grpc_call(%ListOrganizationFeaturesRequest{org_id: org_id}, :list_organization_features)
 
   def list_organization_machines(org_id),
-    do:
-      grpc_call(ListOrganizationMachinesRequest.new(org_id: org_id), :list_organization_machines)
+    do: grpc_call(%ListOrganizationMachinesRequest{org_id: org_id}, :list_organization_machines)
 
   defp grpc_call(request, action) do
     Watchman.benchmark("feature_hub.#{action}.duration", fn ->

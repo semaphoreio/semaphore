@@ -14,13 +14,14 @@ defmodule Auth.Application do
 
     children =
       [
+        {GRPC.Client.Supervisor, []},
         Plug.Cowboy.child_spec(scheme: :http, plug: Auth, options: [port: port]),
         %{id: Cachex, start: {Cachex, :start_link, [:grpc_api_cache, []]}},
         %{
           id: FeatureProvider.Cachex,
           start: {Cachex, :start_link, [:feature_provider_cache, []]}
         }
-      ] ++ feature_provider(provider)
+      ] ++ jwks_strategy() ++ feature_provider(provider)
 
     {:ok, _} = Logger.add_backend(Sentry.LoggerBackend)
 
@@ -31,6 +32,14 @@ defmodule Auth.Application do
   def feature_provider(provider) do
     if System.get_env("FEATURE_YAML_PATH") != nil do
       [provider]
+    else
+      []
+    end
+  end
+
+  defp jwks_strategy do
+    if Application.get_env(:auth, :jwks_enabled, true) do
+      [Auth.JWKSStrategy]
     else
       []
     end

@@ -5,7 +5,7 @@ defmodule Auth.Mixfile do
     [
       app: :auth,
       version: "0.1.0",
-      elixir: "~> 1.12",
+      elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       deps: deps()
     ]
@@ -24,9 +24,10 @@ defmodule Auth.Mixfile do
     [
       {:plug, "~> 1.14"},
       {:remote_ip, "~> 1.1"},
-      {:grpc, "0.5.0-beta.1"},
-      {:cowboy, "~> 2.9.0", override: true},
-      {:cowlib, "~> 2.11.0", override: true},
+      {:grpc, "~> 0.9"},
+      {:protobuf, "~> 0.14", override: true},
+      {:cowboy, "~> 2.10", override: true},
+      {:cowlib, "~> 2.12", override: true},
       {:fun_registry, github: "renderedtext/fun-registry", only: [:dev, :test]},
       {:watchman, github: "renderedtext/ex-watchman"},
       {:feature_provider, path: "../feature_provider"},
@@ -35,13 +36,16 @@ defmodule Auth.Mixfile do
       {:httpoison, "~> 0.11", only: [:dev, :test]},
       {:sentry, "~> 8.0"},
       {:hackney, "~> 1.20"},
-      {:plug_cowboy, "~> 2.3"},
-      {:jason, "~> 1.1"},
+      {:plug_cowboy, "~> 2.7"},
+      {:jason, "~> 1.4"},
       {:inet_cidr, "~> 1.0.0"},
       {:wormhole, "~> 2.3"},
-      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:credo, "~> 1.7.10", only: [:dev, :test], runtime: false},
       {:junit_formatter, "~> 3.1", only: [:test]},
-      {:uuid, "~> 1.1"}
+      {:uuid, "~> 1.1"},
+      # MCP OAuth 2.1 JWT validation
+      {:joken, "~> 2.6"},
+      {:joken_jwks, "~> 1.6"}
     ]
   end
 end

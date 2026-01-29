@@ -41,6 +41,108 @@ defmodule Auth do
   end
 
   #
+  # OAuth 2.0 Authorization Server Metadata (RFC 8414) for Keycloak
+  # IMPORTANT: These routes must come BEFORE the catch-all routes for id. host
+  # This endpoint proxies to Keycloak's OpenID Connect discovery endpoint
+  # OIDC metadata is a superset of OAuth 2.0 AS metadata, so we can forward it directly
+  #
+  # ROUTE ORDER CRITICAL: Base route (no path) must come BEFORE wildcard route!
+  #
+  # Base path (no issuer component) - for MCP 2025-03-26 spec and simple clients
+  get "/exauth/.well-known/oauth-authorization-server", host: "id." do
+    log_request(
+      conn,
+      "id.#{Application.fetch_env!(:auth, :domain)}/.well-known/oauth-authorization-server"
+    )
+
+    domain = Application.fetch_env!(:auth, :domain)
+    keycloak_oidc_url = "https://id.#{domain}/realms/semaphore/.well-known/openid-configuration"
+
+    case :hackney.request(:get, keycloak_oidc_url, [], "", [:with_body, recv_timeout: 10_000]) do
+      {:ok, 200, _headers, body} ->
+        conn
+        |> put_resp_content_type("application/json")
+        |> put_resp_header("access-control-allow-origin", "*")
+        |> put_resp_header("access-control-allow-methods", "GET, OPTIONS")
+        |> send_resp(200, body)
+
+      {:ok, status, _headers, error_body} ->
+        Logger.error("[Auth] Failed to fetch Keycloak OIDC metadata: #{status} - #{error_body}")
+        send_resp(conn, 500, "Failed to fetch authorization server metadata")
+
+      {:error, reason} ->
+        Logger.error("[Auth] Failed to connect to Keycloak: #{inspect(reason)}")
+        send_resp(conn, 500, "Failed to fetch authorization server metadata")
+    end
+  end
+
+  # RFC 8414 path insertion: When issuer has a path component (e.g., /realms/semaphore),
+  # the metadata URL is: https://id.{domain}/.well-known/oauth-authorization-server/realms/semaphore
+  # We extract the path and proxy to Keycloak's OIDC discovery endpoint
+  # This route handles MCP 2024-06-18 spec with issuer path components
+  # RFC 8414 path insertion for MCP 2024-06-18 spec compatibility
+  # Handles paths like /realms/semaphore when issuer has path component
+  get "/exauth/.well-known/oauth-authorization-server/*issuer_path", host: "id." do
+    # issuer_path will be ["realms", "semaphore"] for /realms/semaphore
+    path = "/" <> Enum.join(issuer_path, "/")
+
+    log_request(
+      conn,
+      "id.#{Application.fetch_env!(:auth, :domain)}/.well-known/oauth-authorization-server#{path}"
+    )
+
+    domain = Application.fetch_env!(:auth, :domain)
+
+    # Only append path if it's a valid issuer path (starts with /realms/)
+    # Otherwise ignore the path and return base OIDC configuration
+    keycloak_oidc_url =
+      if String.starts_with?(path, "/realms/") do
+        "https://id.#{domain}#{path}/.well-known/openid-configuration"
+      else
+        Logger.debug(
+          "[Auth] Ignoring invalid issuer path #{path}, returning base OIDC configuration"
+        )
+
+        "https://id.#{domain}/realms/semaphore/.well-known/openid-configuration"
+      end
+
+    case :hackney.request(:get, keycloak_oidc_url, [], "", [:with_body, recv_timeout: 10_000]) do
+      {:ok, 200, _headers, body} ->
+        # Keycloak's OIDC metadata is compatible with OAuth 2.0 AS metadata (RFC 8414)
+        # Just forward it with CORS headers
+        conn
+        |> put_resp_content_type("application/json")
+        |> put_resp_header("access-control-allow-origin", "*")
+        |> put_resp_header("access-control-allow-methods", "GET, OPTIONS")
+        |> send_resp(200, body)
+
+      {:ok, status, _headers, error_body} ->
+        Logger.error("[Auth] Failed to fetch Keycloak OIDC metadata: #{status} - #{error_body}")
+        send_resp(conn, 500, "Failed to fetch authorization server metadata")
+
+      {:error, reason} ->
+        Logger.error("[Auth] Failed to connect to Keycloak: #{inspect(reason)}")
+        send_resp(conn, 500, "Failed to fetch authorization server metadata")
+    end
+  end
+
+  # CORS preflight for authorization server metadata (base)
+  options "/exauth/.well-known/oauth-authorization-server", host: "id." do
+    conn
+    |> put_resp_header("access-control-allow-origin", "*")
+    |> put_resp_header("access-control-allow-methods", "GET, OPTIONS")
+    |> send_resp(204, "")
+  end
+
+  # CORS preflight for authorization server metadata (with path)
+  options "/exauth/.well-known/oauth-authorization-server/*_issuer_path", host: "id." do
+    conn
+    |> put_resp_header("access-control-allow-origin", "*")
+    |> put_resp_header("access-control-allow-methods", "GET, OPTIONS")
+    |> send_resp(204, "")
+  end
+
+  #
   # Keycloak endpoint for the realm
   # Route for id.<domain>/resources
   #
@@ -125,6 +227,81 @@ defmodule Auth do
         |> send_resp(200, "")
     end
   end
+
+  #
+  # OAuth 2.1 Protected Resource Metadata (RFC 9728) for MCP
+  # This endpoint must be accessible without authentication
+  # IMPORTANT: Must be before the catch-all .well-known route to match properly
+  #
+  get "/exauth/.well-known/oauth-protected-resource", host: "mcp." do
+    log_request(
+      conn,
+      "mcp.#{Application.fetch_env!(:auth, :domain)}/.well-known/oauth-protected-resource"
+    )
+
+    domain = Application.fetch_env!(:auth, :domain)
+
+    metadata = %{
+      resource: "https://mcp.#{domain}",
+      authorization_servers: ["https://mcp.#{domain}/mcp/oauth"],
+      scopes_supported: ["mcp"],
+      bearer_methods_supported: ["header"],
+      resource_documentation: "https://docs.semaphoreci.com/mcp"
+    }
+
+    conn
+    |> put_resp_content_type("application/json")
+    |> put_resp_header("access-control-allow-origin", "*")
+    |> put_resp_header("access-control-allow-methods", "GET, OPTIONS")
+    |> send_resp(200, Jason.encode!(metadata))
+  end
+
+  # Handle CORS preflight for OAuth protected resource metadata
+  options "/exauth/.well-known/oauth-protected-resource", host: "mcp." do
+    conn
+    |> put_resp_header("access-control-allow-origin", "*")
+    |> put_resp_header("access-control-allow-methods", "GET, OPTIONS")
+    |> send_resp(204, "")
+  end
+
+  # Handle protected resource metadata with path suffix (e.g., /mcp)
+  # Some clients may append the resource path to the metadata URL
+  get "/exauth/.well-known/oauth-protected-resource/*resource_path", host: "mcp." do
+    log_request(
+      conn,
+      "mcp.#{Application.fetch_env!(:auth, :domain)}/.well-known/oauth-protected-resource/#{Enum.join(resource_path, "/")}"
+    )
+
+    domain = Application.fetch_env!(:auth, :domain)
+
+    metadata = %{
+      resource: "https://mcp.#{domain}",
+      authorization_servers: ["https://mcp.#{domain}/mcp/oauth"],
+      scopes_supported: ["mcp"],
+      bearer_methods_supported: ["header"],
+      resource_documentation: "https://docs.semaphoreci.com/mcp"
+    }
+
+    conn
+    |> put_resp_content_type("application/json")
+    |> put_resp_header("access-control-allow-origin", "*")
+    |> put_resp_header("access-control-allow-methods", "GET, OPTIONS")
+    |> send_resp(200, Jason.encode!(metadata))
+  end
+
+  # Handle CORS preflight for OAuth protected resource metadata with path suffix
+  options "/exauth/.well-known/oauth-protected-resource/*resource_path", host: "mcp." do
+    conn
+    |> put_resp_header("access-control-allow-origin", "*")
+    |> put_resp_header("access-control-allow-methods", "GET, OPTIONS")
+    |> send_resp(204, "")
+  end
+
+  #
+  # NOTE: Authorization Server Metadata for mcp.* subdomain is now served by Guard
+  # (Guard.McpOAuth.Server handles /.well-known/oauth-authorization-server)
+  # The old Keycloak proxy endpoints have been removed.
+  #
 
   #
   # Routes for <org-name>.<domain>/.well-known requests.
@@ -216,7 +393,7 @@ defmodule Auth do
 
     log_request(conn, "#{org_name}.#{Application.fetch_env!(:auth, :domain)}/api")
 
-    if Auth.Cli.is_call_from_deprecated_cli?(conn) do
+    if Auth.Cli.call_from_deprecated_cli?(conn) do
       Auth.Cli.reject_cli_client(conn)
     else
       case set_org_and_user_headers(conn, org_name, allow_cookie: false) do
@@ -225,6 +402,83 @@ defmodule Auth do
         {:error, :unauthorized_ip, conn} -> send_resp(conn, 404, blocked_ip_response(conn))
         {:error, _, conn} -> send_resp(conn, 401, "Unauthorized")
       end
+    end
+  end
+
+  #
+  # NOTE: Dynamic Client Registration (DCR) for MCP is now handled by Guard
+  # (Guard.McpOAuth.Server handles /mcp/oauth/register)
+  # The old Keycloak DCR proxy has been removed.
+  #
+
+  #
+  # MCP OAuth Authorization - requires browser session
+  # User must be logged in before authorizing MCP clients
+  # These routes must come BEFORE the catch-all /mcp route below
+  #
+  get "/exauth/mcp/oauth/authorize", host: "mcp." do
+    log_request(conn, "mcp.#{Application.fetch_env!(:auth, :domain)}/mcp/oauth/authorize")
+
+    case set_user_headers(conn, allow_token: false) do
+      {:ok, conn_with_headers} -> send_resp(conn_with_headers, 200, "")
+      {:error, conn} -> redirect_or_unauthorized(conn, backurl: true)
+    end
+  end
+
+  get "/exauth/mcp/oauth/grant-selection", host: "mcp." do
+    log_request(conn, "mcp.#{Application.fetch_env!(:auth, :domain)}/mcp/oauth/grant-selection")
+
+    case set_user_headers(conn, allow_token: false) do
+      {:ok, conn_with_headers} -> send_resp(conn_with_headers, 200, "")
+      {:error, conn} -> redirect_or_unauthorized(conn, backurl: true)
+    end
+  end
+
+  post "/exauth/mcp/oauth/grant-selection", host: "mcp." do
+    log_request(
+      conn,
+      "mcp.#{Application.fetch_env!(:auth, :domain)}/mcp/oauth/grant-selection (POST)"
+    )
+
+    case set_user_headers(conn, allow_token: false) do
+      {:ok, conn_with_headers} -> send_resp(conn_with_headers, 200, "")
+      {:error, conn} -> redirect_or_unauthorized(conn, backurl: true)
+    end
+  end
+
+  #
+  # Routes for mcp.{domain}/mcp requests - OAuth 2.1 JWT validation
+  #
+  match "/exauth/mcp:path/*rest", host: "mcp." do
+    log_request(conn, "mcp.#{Application.fetch_env!(:auth, :domain)}/mcp")
+
+    case parse_auth_token(conn.req_headers) do
+      nil ->
+        # No token provided - return 401 with WWW-Authenticate header per MCP spec
+        domain = Application.fetch_env!(:auth, :domain)
+        resource_metadata = "https://mcp.#{domain}/.well-known/oauth-protected-resource"
+
+        conn
+        |> put_resp_header(
+          "www-authenticate",
+          ~s(Bearer resource_metadata="#{resource_metadata}")
+        )
+        |> send_resp(401, "Unauthorized")
+
+      token ->
+        case Auth.JWT.validate_mcp_token(token) do
+          {:ok, user_id, grant_id, tool_scopes, _claims} ->
+            # Inject MCP headers for downstream services
+            conn
+            |> put_resp_header("x-semaphore-user-id", user_id)
+            |> put_resp_header("x-mcp-grant-id", grant_id)
+            |> put_resp_header("x-mcp-tool-scopes", Enum.join(tool_scopes, ","))
+            |> send_resp(200, "")
+
+          {:error, reason} ->
+            Logger.warning("[Auth] MCP JWT validation failed: #{inspect(reason)}")
+            send_resp(conn, 401, "Unauthorized")
+        end
     end
   end
 
@@ -306,12 +560,13 @@ defmodule Auth do
     end
   end
 
+  # sobelow_skip ["XSS.SendResp"]
   def redirect(conn, location) do
     Logger.debug(fn -> "Redirect to: #{location}" end)
 
     conn
     |> put_resp_header("location", location)
-    |> send_resp(302, "Redirected to #{location}")
+    |> send_resp(302, "Redirected to #{Plug.HTML.html_escape(location)}")
   end
 
   def set_public_headers(conn, org_name, params \\ []) do
@@ -540,11 +795,10 @@ defmodule Auth do
       Auth.Cache.fetch!("authentication-based-on-cookie-#{cache_key}", :timer.minutes(5), fn ->
         stub = InternalApi.Auth.Authentication.Stub
 
-        req =
-          InternalApi.Auth.AuthenticateWithCookieRequest.new(
-            cookie: session_cookie,
-            remember_user_token: ""
-          )
+        req = %InternalApi.Auth.AuthenticateWithCookieRequest{
+          cookie: session_cookie,
+          remember_user_token: ""
+        }
 
         endpoint = Application.fetch_env!(:auth, :authentication_grpc_endpoint)
         opts = [timeout: 30_000]
@@ -609,7 +863,7 @@ defmodule Auth do
     Watchman.benchmark("authenticate_with_token.duration", fn ->
       Auth.Cache.fetch!("authentication-based-on-token-#{token}", :timer.minutes(5), fn ->
         stub = InternalApi.Auth.Authentication.Stub
-        req = InternalApi.Auth.AuthenticateRequest.new(token: token)
+        req = %InternalApi.Auth.AuthenticateRequest{token: token}
         endpoint = Application.fetch_env!(:auth, :authentication_grpc_endpoint)
         opts = [timeout: 30_000]
 
@@ -628,7 +882,7 @@ defmodule Auth do
     Watchman.benchmark("find_org.duration", fn ->
       Auth.Cache.fetch!("find-org-#{username}", :timer.minutes(5), fn ->
         stub = InternalApi.Organization.OrganizationService.Stub
-        req = InternalApi.Organization.DescribeRequest.new(org_username: username)
+        req = %InternalApi.Organization.DescribeRequest{org_username: username}
         endpoint = Application.fetch_env!(:auth, :organization_grpc_endpoint)
         opts = [timeout: 30_000]
 
