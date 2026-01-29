@@ -467,12 +467,9 @@ defmodule Auth do
 
       token ->
         case Auth.JWT.validate_mcp_token(token) do
-          {:ok, user_id, grant_id, tool_scopes, _claims} ->
-            # Inject MCP headers for downstream services
+          {:ok, user_id, _claims} ->
             conn
             |> put_resp_header("x-semaphore-user-id", user_id)
-            |> put_resp_header("x-mcp-grant-id", grant_id)
-            |> put_resp_header("x-mcp-tool-scopes", Enum.join(tool_scopes, ","))
             |> send_resp(200, "")
 
           {:error, reason} ->

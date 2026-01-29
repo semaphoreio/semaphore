@@ -16,13 +16,12 @@ defmodule Auth.JWT do
   @doc """
   Validates an MCP OAuth token and extracts the semaphore_user_id.
 
-  Returns `{:ok, user_id, grant_id, tool_scopes, claims}` on success,
-  or `{:error, reason}` on failure.
+  Returns `{:ok, user_id, claims}` on success, or `{:error, reason}` on failure.
 
   ## Examples
 
       iex> Auth.JWT.validate_mcp_token("eyJhbGciOiJIUzI1NiIs...")
-      {:ok, "user-uuid-here", "grant-uuid", ["tools:read"], %{...}}
+      {:ok, "user-uuid-here", %{...}}
 
       iex> Auth.JWT.validate_mcp_token("invalid-token")
       {:error, :invalid_token}
@@ -35,11 +34,7 @@ defmodule Auth.JWT do
           {:error, :missing_user_id}
 
         user_id when is_binary(user_id) ->
-          # Extract MCP-specific claims
-          grant_id = Map.get(claims, "mcp_grant_id", "")
-          tool_scopes = Map.get(claims, "mcp_tool_scopes", [])
-
-          {:ok, user_id, grant_id, tool_scopes, claims}
+          {:ok, user_id, claims}
 
         _ ->
           Logger.warning("[Auth.JWT] Invalid semaphore_user_id claim type")
