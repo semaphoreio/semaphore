@@ -60,7 +60,9 @@ defmodule Rbac.Repo.OktaUser do
     result =
       Repo.one(
         from(e in __MODULE__,
-          where: e.integration_id == ^integration.id and e.email == ^email,
+          where:
+            e.integration_id == ^integration.id and
+              fragment("LOWER(?) = LOWER(?)", e.email, ^email),
           limit: 1
         )
       )
@@ -156,7 +158,7 @@ defmodule Rbac.Repo.OktaUser do
       payload["emails"]
       |> Enum.find(fn e -> e["primary"] == true end)
 
-    email["value"]
+    if email, do: email["value"], else: nil
   end
 
   def connect_user(okta_user, user_id) do
