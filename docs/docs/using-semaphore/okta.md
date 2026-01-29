@@ -112,7 +112,7 @@ To create the connection between Semaphore and Okta, follow these steps:
 2. Open the organization menu on the top-right corner and select **Settings**
 3. Go to **Okta Integration** and press **Set up**
 4. Paste the **Single Sign On URL**, **SAML Issuer** and **SAML Certificate** values from the Okta SAML setup instructions
-5. (Optional) Set **Session expiration (minutes)** to control how long Okta SSO sessions last. The default is 14 days (20,160 minutes) and the maximum is 30 days (43,200 minutes).
+5. (Optional) Set **Session expiration (days)** to control how long Okta SSO sessions last. The default is 14 days and the maximum is 30 days.
 
     ![Set up SAML values on Semaphore](./img/setup-okta-values.jpg)
 
@@ -129,7 +129,7 @@ Semaphore is now connected to Okta. You can enable user provisioning in the next
 
 :::note
 
-You can update the **Session expiration (minutes)** later from the Okta Integration settings page.
+You can update the **Session expiration (days)** later from the Okta Integration settings page.
 Changing it only updates the session duration for new SSO sessions and does not regenerate the SCIM
 token.
 
