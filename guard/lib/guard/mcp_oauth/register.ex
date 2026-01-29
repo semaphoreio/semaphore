@@ -30,7 +30,11 @@ defmodule Guard.McpOAuth.Register do
   defp validate_metadata(metadata) do
     cond do
       !is_list(metadata["redirect_uris"]) || Enum.empty?(metadata["redirect_uris"]) ->
-        {:error, error_response("invalid_redirect_uri", "redirect_uris is required and must be a non-empty array")}
+        {:error,
+         error_response(
+           "invalid_redirect_uri",
+           "redirect_uris is required and must be a non-empty array"
+         )}
 
       !Enum.all?(metadata["redirect_uris"], &valid_redirect_uri?/1) ->
         {:error, error_response("invalid_redirect_uri", "All redirect_uris must be valid URIs")}
