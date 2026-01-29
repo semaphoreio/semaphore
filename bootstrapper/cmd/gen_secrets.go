@@ -52,6 +52,7 @@ func generateAuthenticationSecret(client *kubernetes.KubernetesClient) {
 		"OIDC_MANAGE_CLIENT_SECRET": random.Base64String(32),
 		"KC_ADMIN_LOGIN":            random.Base64String(32),
 		"KC_ADMIN_PASSWORD":         random.Base64String(32),
+		"MCP_OAUTH_JWT_KEYS":        random.Base64String(32),
 	})
 
 	if err != nil {
