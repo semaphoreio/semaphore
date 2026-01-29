@@ -165,9 +165,14 @@ defmodule Guard.McpOAuth.JWT do
     expected = issuer()
 
     case Map.get(claims, "iss") do
-      ^expected -> :ok
+      ^expected ->
+        :ok
+
       actual ->
-        Logger.warning("[McpOAuth.JWT] Invalid issuer: expected #{expected}, got #{inspect(actual)}")
+        Logger.warning(
+          "[McpOAuth.JWT] Invalid issuer: expected #{expected}, got #{inspect(actual)}"
+        )
+
         {:error, :invalid_issuer}
     end
   end
@@ -176,9 +181,14 @@ defmodule Guard.McpOAuth.JWT do
     expected = audience()
 
     case Map.get(claims, "aud") do
-      ^expected -> :ok
+      ^expected ->
+        :ok
+
       actual ->
-        Logger.warning("[McpOAuth.JWT] Invalid audience: expected #{expected}, got #{inspect(actual)}")
+        Logger.warning(
+          "[McpOAuth.JWT] Invalid audience: expected #{expected}, got #{inspect(actual)}"
+        )
+
         {:error, :invalid_audience}
     end
   end

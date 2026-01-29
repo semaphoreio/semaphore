@@ -47,7 +47,11 @@ defmodule Guard.McpOAuth.Token do
         {:error, error_response("invalid_request", "grant_type is required")}
 
       other ->
-        {:error, error_response("unsupported_grant_type", "grant_type must be 'authorization_code', got '#{other}'")}
+        {:error,
+         error_response(
+           "unsupported_grant_type",
+           "grant_type must be 'authorization_code', got '#{other}'"
+         )}
     end
   end
 

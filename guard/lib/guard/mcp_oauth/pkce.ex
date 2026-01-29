@@ -17,7 +17,8 @@ defmodule Guard.McpOAuth.PKCE do
   - `false` if verification fails
   """
   @spec verify(String.t(), String.t()) :: boolean()
-  def verify(code_verifier, code_challenge) when is_binary(code_verifier) and is_binary(code_challenge) do
+  def verify(code_verifier, code_challenge)
+      when is_binary(code_verifier) and is_binary(code_challenge) do
     computed_challenge = compute_challenge(code_verifier)
     secure_compare(computed_challenge, code_challenge)
   end
