@@ -55,6 +55,12 @@ defmodule Guard.Id.Api do
   end
 
   #
+  # MCP OAuth Server (Authorization Server endpoints)
+  #
+
+  forward("/mcp/oauth", to: Guard.McpOAuth.Server)
+
+  #
   # OAuth2
   #
 

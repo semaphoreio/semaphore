@@ -56,6 +56,8 @@ defmodule Guard.OIDC.User do
          {:ok, user} <-
            create_user(oidc_user_id, oidc_user.email, oidc_user.name, repository_providers) do
       tmp_sync_new_user_with_rbac(user.id)
+      # Sync semaphore_user_id to Keycloak for MCP OAuth tokens
+      sync_user_id_to_keycloak(oidc_user_id, user.id)
       {:ok, user, mode}
     else
       {:error, changeset} -> {:error, changeset}
@@ -137,6 +139,33 @@ defmodule Guard.OIDC.User do
       # User Updated Consumer should Refresh Providers related to RBAC
       Guard.Events.UserUpdated.publish(user_id, "user_exchange", "updated")
       Guard.Rbac.TempSync.sync_new_user_with_members_table(user_id)
+    end)
+  end
+
+  @doc """
+  Syncs the Semaphore user ID to Keycloak as a user attribute.
+  This attribute is used in MCP OAuth 2.1 tokens via the semaphore_user_id claim mapper.
+  """
+  def sync_user_id_to_keycloak(oidc_user_id, semaphore_user_id) do
+    Task.async(fn ->
+      with {:ok, client} <- Guard.Api.OIDC.client() do
+        case Guard.Api.OIDC.set_user_attribute(
+               client,
+               oidc_user_id,
+               "semaphore_user_id",
+               semaphore_user_id
+             ) do
+          {:ok, _} ->
+            Logger.info(
+              "[OIDC User] Synced semaphore_user_id #{semaphore_user_id} to Keycloak user #{oidc_user_id}"
+            )
+
+          {:error, error} ->
+            Logger.error(
+              "[OIDC User] Failed to sync semaphore_user_id to Keycloak for user #{oidc_user_id}: #{inspect(error)}"
+            )
+        end
+      end
     end)
   end
 end
