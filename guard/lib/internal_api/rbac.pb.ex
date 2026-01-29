@@ -509,6 +509,32 @@ defmodule InternalApi.RBAC.Permission do
   field(:scope, 4, type: InternalApi.RBAC.Scope, enum: true)
 end
 
+defmodule InternalApi.RBAC.ListSubjectsRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          org_id: String.t(),
+          subject_ids: [String.t()]
+        }
+
+  defstruct [:org_id, :subject_ids]
+  field(:org_id, 1, type: :string)
+  field(:subject_ids, 2, repeated: true, type: :string)
+end
+
+defmodule InternalApi.RBAC.ListSubjectsResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          subjects: [InternalApi.RBAC.Subject.t()]
+        }
+
+  defstruct [:subjects]
+  field(:subjects, 1, repeated: true, type: InternalApi.RBAC.Subject)
+end
+
 defmodule InternalApi.RBAC.SubjectType do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
@@ -607,6 +633,8 @@ defmodule InternalApi.RBAC.RBAC.Service do
     InternalApi.RBAC.RefreshCollaboratorsRequest,
     InternalApi.RBAC.RefreshCollaboratorsResponse
   )
+
+  rpc(:ListSubjects, InternalApi.RBAC.ListSubjectsRequest, InternalApi.RBAC.ListSubjectsResponse)
 end
 
 defmodule InternalApi.RBAC.RBAC.Stub do
