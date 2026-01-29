@@ -3,9 +3,9 @@ defmodule InternalApi.RBAC.SubjectType do
 
   use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:USER, 0)
-  field(:GROUP, 1)
-  field(:SERVICE_ACCOUNT, 2)
+  field :USER, 0
+  field :GROUP, 1
+  field :SERVICE_ACCOUNT, 2
 end
 
 defmodule InternalApi.RBAC.Scope do
@@ -13,9 +13,9 @@ defmodule InternalApi.RBAC.Scope do
 
   use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:SCOPE_UNSPECIFIED, 0)
-  field(:SCOPE_ORG, 1)
-  field(:SCOPE_PROJECT, 2)
+  field :SCOPE_UNSPECIFIED, 0
+  field :SCOPE_ORG, 1
+  field :SCOPE_PROJECT, 2
 end
 
 defmodule InternalApi.RBAC.RoleBindingSource do
@@ -23,14 +23,14 @@ defmodule InternalApi.RBAC.RoleBindingSource do
 
   use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:ROLE_BINDING_SOURCE_UNSPECIFIED, 0)
-  field(:ROLE_BINDING_SOURCE_MANUALLY, 1)
-  field(:ROLE_BINDING_SOURCE_GITHUB, 2)
-  field(:ROLE_BINDING_SOURCE_BITBUCKET, 3)
-  field(:ROLE_BINDING_SOURCE_GITLAB, 4)
-  field(:ROLE_BINDING_SOURCE_SCIM, 5)
-  field(:ROLE_BINDING_SOURCE_INHERITED_FROM_ORG_ROLE, 6)
-  field(:ROLE_BINDING_SOURCE_SAML_JIT, 7)
+  field :ROLE_BINDING_SOURCE_UNSPECIFIED, 0
+  field :ROLE_BINDING_SOURCE_MANUALLY, 1
+  field :ROLE_BINDING_SOURCE_GITHUB, 2
+  field :ROLE_BINDING_SOURCE_BITBUCKET, 3
+  field :ROLE_BINDING_SOURCE_GITLAB, 4
+  field :ROLE_BINDING_SOURCE_SCIM, 5
+  field :ROLE_BINDING_SOURCE_INHERITED_FROM_ORG_ROLE, 6
+  field :ROLE_BINDING_SOURCE_SAML_JIT, 7
 end
 
 defmodule InternalApi.RBAC.ListUserPermissionsRequest do
@@ -38,9 +38,9 @@ defmodule InternalApi.RBAC.ListUserPermissionsRequest do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:user_id, 1, type: :string, json_name: "userId")
-  field(:org_id, 2, type: :string, json_name: "orgId")
-  field(:project_id, 3, type: :string, json_name: "projectId")
+  field :user_id, 1, type: :string, json_name: "userId"
+  field :org_id, 2, type: :string, json_name: "orgId"
+  field :project_id, 3, type: :string, json_name: "projectId"
 end
 
 defmodule InternalApi.RBAC.ListUserPermissionsResponse do
@@ -48,10 +48,10 @@ defmodule InternalApi.RBAC.ListUserPermissionsResponse do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:user_id, 1, type: :string, json_name: "userId")
-  field(:org_id, 2, type: :string, json_name: "orgId")
-  field(:project_id, 3, type: :string, json_name: "projectId")
-  field(:permissions, 4, repeated: true, type: :string)
+  field :user_id, 1, type: :string, json_name: "userId"
+  field :org_id, 2, type: :string, json_name: "orgId"
+  field :project_id, 3, type: :string, json_name: "projectId"
+  field :permissions, 4, repeated: true, type: :string
 end
 
 defmodule InternalApi.RBAC.ListExistingPermissionsRequest do
@@ -59,7 +59,7 @@ defmodule InternalApi.RBAC.ListExistingPermissionsRequest do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:scope, 1, type: InternalApi.RBAC.Scope, enum: true)
+  field :scope, 1, type: InternalApi.RBAC.Scope, enum: true
 end
 
 defmodule InternalApi.RBAC.ListExistingPermissionsResponse do
@@ -67,7 +67,7 @@ defmodule InternalApi.RBAC.ListExistingPermissionsResponse do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:permissions, 1, repeated: true, type: InternalApi.RBAC.Permission)
+  field :permissions, 1, repeated: true, type: InternalApi.RBAC.Permission
 end
 
 defmodule InternalApi.RBAC.AssignRoleRequest do
@@ -75,8 +75,8 @@ defmodule InternalApi.RBAC.AssignRoleRequest do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:role_assignment, 1, type: InternalApi.RBAC.RoleAssignment, json_name: "roleAssignment")
-  field(:requester_id, 2, type: :string, json_name: "requesterId")
+  field :role_assignment, 1, type: InternalApi.RBAC.RoleAssignment, json_name: "roleAssignment"
+  field :requester_id, 2, type: :string, json_name: "requesterId"
 end
 
 defmodule InternalApi.RBAC.AssignRoleResponse do
@@ -90,8 +90,8 @@ defmodule InternalApi.RBAC.RetractRoleRequest do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:role_assignment, 1, type: InternalApi.RBAC.RoleAssignment, json_name: "roleAssignment")
-  field(:requester_id, 2, type: :string, json_name: "requesterId")
+  field :role_assignment, 1, type: InternalApi.RBAC.RoleAssignment, json_name: "roleAssignment"
+  field :requester_id, 2, type: :string, json_name: "requesterId"
 end
 
 defmodule InternalApi.RBAC.RetractRoleResponse do
@@ -105,11 +105,10 @@ defmodule InternalApi.RBAC.SubjectsHaveRolesRequest do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:role_assignments, 1,
+  field :role_assignments, 1,
     repeated: true,
     type: InternalApi.RBAC.RoleAssignment,
     json_name: "roleAssignments"
-  )
 end
 
 defmodule InternalApi.RBAC.SubjectsHaveRolesResponse.HasRole do
@@ -117,8 +116,8 @@ defmodule InternalApi.RBAC.SubjectsHaveRolesResponse.HasRole do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:role_assignment, 1, type: InternalApi.RBAC.RoleAssignment, json_name: "roleAssignment")
-  field(:has_role, 2, type: :bool, json_name: "hasRole")
+  field :role_assignment, 1, type: InternalApi.RBAC.RoleAssignment, json_name: "roleAssignment"
+  field :has_role, 2, type: :bool, json_name: "hasRole"
 end
 
 defmodule InternalApi.RBAC.SubjectsHaveRolesResponse do
@@ -126,11 +125,10 @@ defmodule InternalApi.RBAC.SubjectsHaveRolesResponse do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:has_roles, 1,
+  field :has_roles, 1,
     repeated: true,
     type: InternalApi.RBAC.SubjectsHaveRolesResponse.HasRole,
     json_name: "hasRoles"
-  )
 end
 
 defmodule InternalApi.RBAC.ListRolesRequest do
@@ -138,8 +136,8 @@ defmodule InternalApi.RBAC.ListRolesRequest do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:org_id, 1, type: :string, json_name: "orgId")
-  field(:scope, 2, type: InternalApi.RBAC.Scope, enum: true)
+  field :org_id, 1, type: :string, json_name: "orgId"
+  field :scope, 2, type: InternalApi.RBAC.Scope, enum: true
 end
 
 defmodule InternalApi.RBAC.ListRolesResponse do
@@ -147,7 +145,7 @@ defmodule InternalApi.RBAC.ListRolesResponse do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:roles, 1, repeated: true, type: InternalApi.RBAC.Role)
+  field :roles, 1, repeated: true, type: InternalApi.RBAC.Role
 end
 
 defmodule InternalApi.RBAC.DescribeRoleRequest do
@@ -155,8 +153,8 @@ defmodule InternalApi.RBAC.DescribeRoleRequest do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:org_id, 1, type: :string, json_name: "orgId")
-  field(:role_id, 2, type: :string, json_name: "roleId")
+  field :org_id, 1, type: :string, json_name: "orgId"
+  field :role_id, 2, type: :string, json_name: "roleId"
 end
 
 defmodule InternalApi.RBAC.DescribeRoleResponse do
@@ -164,7 +162,7 @@ defmodule InternalApi.RBAC.DescribeRoleResponse do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:role, 1, type: InternalApi.RBAC.Role)
+  field :role, 1, type: InternalApi.RBAC.Role
 end
 
 defmodule InternalApi.RBAC.ModifyRoleRequest do
@@ -172,8 +170,8 @@ defmodule InternalApi.RBAC.ModifyRoleRequest do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:role, 1, type: InternalApi.RBAC.Role)
-  field(:requester_id, 2, type: :string, json_name: "requesterId")
+  field :role, 1, type: InternalApi.RBAC.Role
+  field :requester_id, 2, type: :string, json_name: "requesterId"
 end
 
 defmodule InternalApi.RBAC.ModifyRoleResponse do
@@ -181,7 +179,7 @@ defmodule InternalApi.RBAC.ModifyRoleResponse do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:role, 1, type: InternalApi.RBAC.Role)
+  field :role, 1, type: InternalApi.RBAC.Role
 end
 
 defmodule InternalApi.RBAC.DestroyRoleRequest do
@@ -189,9 +187,9 @@ defmodule InternalApi.RBAC.DestroyRoleRequest do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:org_id, 1, type: :string, json_name: "orgId")
-  field(:role_id, 2, type: :string, json_name: "roleId")
-  field(:requester_id, 3, type: :string, json_name: "requesterId")
+  field :org_id, 1, type: :string, json_name: "orgId"
+  field :role_id, 2, type: :string, json_name: "roleId"
+  field :requester_id, 3, type: :string, json_name: "requesterId"
 end
 
 defmodule InternalApi.RBAC.DestroyRoleResponse do
@@ -199,7 +197,7 @@ defmodule InternalApi.RBAC.DestroyRoleResponse do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:role_id, 1, type: :string, json_name: "roleId")
+  field :role_id, 1, type: :string, json_name: "roleId"
 end
 
 defmodule InternalApi.RBAC.ListMembersRequest.Page do
@@ -207,8 +205,8 @@ defmodule InternalApi.RBAC.ListMembersRequest.Page do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:page_no, 1, type: :int32, json_name: "pageNo")
-  field(:page_size, 2, type: :int32, json_name: "pageSize")
+  field :page_no, 1, type: :int32, json_name: "pageNo"
+  field :page_size, 2, type: :int32, json_name: "pageSize"
 end
 
 defmodule InternalApi.RBAC.ListMembersRequest do
@@ -216,12 +214,12 @@ defmodule InternalApi.RBAC.ListMembersRequest do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:org_id, 1, type: :string, json_name: "orgId")
-  field(:project_id, 2, type: :string, json_name: "projectId")
-  field(:member_name_contains, 3, type: :string, json_name: "memberNameContains")
-  field(:page, 4, type: InternalApi.RBAC.ListMembersRequest.Page)
-  field(:member_has_role, 5, type: :string, json_name: "memberHasRole")
-  field(:member_type, 6, type: InternalApi.RBAC.SubjectType, json_name: "memberType", enum: true)
+  field :org_id, 1, type: :string, json_name: "orgId"
+  field :project_id, 2, type: :string, json_name: "projectId"
+  field :member_name_contains, 3, type: :string, json_name: "memberNameContains"
+  field :page, 4, type: InternalApi.RBAC.ListMembersRequest.Page
+  field :member_has_role, 5, type: :string, json_name: "memberHasRole"
+  field :member_type, 6, type: InternalApi.RBAC.SubjectType, json_name: "memberType", enum: true
 end
 
 defmodule InternalApi.RBAC.ListMembersResponse.Member do
@@ -229,13 +227,12 @@ defmodule InternalApi.RBAC.ListMembersResponse.Member do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:subject, 1, type: InternalApi.RBAC.Subject)
+  field :subject, 1, type: InternalApi.RBAC.Subject
 
-  field(:subject_role_bindings, 3,
+  field :subject_role_bindings, 3,
     repeated: true,
     type: InternalApi.RBAC.SubjectRoleBinding,
     json_name: "subjectRoleBindings"
-  )
 end
 
 defmodule InternalApi.RBAC.ListMembersResponse do
@@ -243,8 +240,8 @@ defmodule InternalApi.RBAC.ListMembersResponse do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:members, 1, repeated: true, type: InternalApi.RBAC.ListMembersResponse.Member)
-  field(:total_pages, 2, type: :int32, json_name: "totalPages")
+  field :members, 1, repeated: true, type: InternalApi.RBAC.ListMembersResponse.Member
+  field :total_pages, 2, type: :int32, json_name: "totalPages"
 end
 
 defmodule InternalApi.RBAC.CountMembersRequest do
@@ -252,7 +249,7 @@ defmodule InternalApi.RBAC.CountMembersRequest do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:org_id, 1, type: :string, json_name: "orgId")
+  field :org_id, 1, type: :string, json_name: "orgId"
 end
 
 defmodule InternalApi.RBAC.CountMembersResponse do
@@ -260,7 +257,7 @@ defmodule InternalApi.RBAC.CountMembersResponse do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:members, 1, type: :int32)
+  field :members, 1, type: :int32
 end
 
 defmodule InternalApi.RBAC.SubjectRoleBinding do
@@ -268,9 +265,9 @@ defmodule InternalApi.RBAC.SubjectRoleBinding do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:role, 1, type: InternalApi.RBAC.Role)
-  field(:source, 2, type: InternalApi.RBAC.RoleBindingSource, enum: true)
-  field(:role_assigned_at, 3, type: Google.Protobuf.Timestamp, json_name: "roleAssignedAt")
+  field :role, 1, type: InternalApi.RBAC.Role
+  field :source, 2, type: InternalApi.RBAC.RoleBindingSource, enum: true
+  field :role_assigned_at, 3, type: Google.Protobuf.Timestamp, json_name: "roleAssignedAt"
 end
 
 defmodule InternalApi.RBAC.ListAccessibleOrgsRequest do
@@ -278,7 +275,7 @@ defmodule InternalApi.RBAC.ListAccessibleOrgsRequest do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:user_id, 1, type: :string, json_name: "userId")
+  field :user_id, 1, type: :string, json_name: "userId"
 end
 
 defmodule InternalApi.RBAC.ListAccessibleOrgsResponse do
@@ -286,7 +283,7 @@ defmodule InternalApi.RBAC.ListAccessibleOrgsResponse do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:org_ids, 1, repeated: true, type: :string, json_name: "orgIds")
+  field :org_ids, 1, repeated: true, type: :string, json_name: "orgIds"
 end
 
 defmodule InternalApi.RBAC.ListAccessibleProjectsRequest do
@@ -294,8 +291,8 @@ defmodule InternalApi.RBAC.ListAccessibleProjectsRequest do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:user_id, 1, type: :string, json_name: "userId")
-  field(:org_id, 2, type: :string, json_name: "orgId")
+  field :user_id, 1, type: :string, json_name: "userId"
+  field :org_id, 2, type: :string, json_name: "orgId"
 end
 
 defmodule InternalApi.RBAC.ListAccessibleProjectsResponse do
@@ -303,7 +300,7 @@ defmodule InternalApi.RBAC.ListAccessibleProjectsResponse do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:project_ids, 1, repeated: true, type: :string, json_name: "projectIds")
+  field :project_ids, 1, repeated: true, type: :string, json_name: "projectIds"
 end
 
 defmodule InternalApi.RBAC.RoleAssignment do
@@ -311,10 +308,10 @@ defmodule InternalApi.RBAC.RoleAssignment do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:role_id, 1, type: :string, json_name: "roleId")
-  field(:subject, 2, type: InternalApi.RBAC.Subject)
-  field(:org_id, 3, type: :string, json_name: "orgId")
-  field(:project_id, 4, type: :string, json_name: "projectId")
+  field :role_id, 1, type: :string, json_name: "roleId"
+  field :subject, 2, type: InternalApi.RBAC.Subject
+  field :org_id, 3, type: :string, json_name: "orgId"
+  field :project_id, 4, type: :string, json_name: "projectId"
 end
 
 defmodule InternalApi.RBAC.Subject do
@@ -322,14 +319,9 @@ defmodule InternalApi.RBAC.Subject do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:subject_type, 1,
-    type: InternalApi.RBAC.SubjectType,
-    json_name: "subjectType",
-    enum: true
-  )
-
-  field(:subject_id, 2, type: :string, json_name: "subjectId")
-  field(:display_name, 3, type: :string, json_name: "displayName")
+  field :subject_type, 1, type: InternalApi.RBAC.SubjectType, json_name: "subjectType", enum: true
+  field :subject_id, 2, type: :string, json_name: "subjectId"
+  field :display_name, 3, type: :string, json_name: "displayName"
 end
 
 defmodule InternalApi.RBAC.RefreshCollaboratorsRequest do
@@ -337,7 +329,7 @@ defmodule InternalApi.RBAC.RefreshCollaboratorsRequest do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:org_id, 1, type: :string, json_name: "orgId")
+  field :org_id, 1, type: :string, json_name: "orgId"
 end
 
 defmodule InternalApi.RBAC.RefreshCollaboratorsResponse do
@@ -351,22 +343,21 @@ defmodule InternalApi.RBAC.Role do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:id, 1, type: :string)
-  field(:name, 2, type: :string)
-  field(:org_id, 3, type: :string, json_name: "orgId")
-  field(:scope, 4, type: InternalApi.RBAC.Scope, enum: true)
-  field(:description, 5, type: :string)
-  field(:permissions, 6, repeated: true, type: :string)
+  field :id, 1, type: :string
+  field :name, 2, type: :string
+  field :org_id, 3, type: :string, json_name: "orgId"
+  field :scope, 4, type: InternalApi.RBAC.Scope, enum: true
+  field :description, 5, type: :string
+  field :permissions, 6, repeated: true, type: :string
 
-  field(:rbac_permissions, 7,
+  field :rbac_permissions, 7,
     repeated: true,
     type: InternalApi.RBAC.Permission,
     json_name: "rbacPermissions"
-  )
 
-  field(:inherited_role, 8, type: InternalApi.RBAC.Role, json_name: "inheritedRole")
-  field(:maps_to, 9, type: InternalApi.RBAC.Role, json_name: "mapsTo")
-  field(:readonly, 10, type: :bool)
+  field :inherited_role, 8, type: InternalApi.RBAC.Role, json_name: "inheritedRole"
+  field :maps_to, 9, type: InternalApi.RBAC.Role, json_name: "mapsTo"
+  field :readonly, 10, type: :bool
 end
 
 defmodule InternalApi.RBAC.Permission do
@@ -374,10 +365,10 @@ defmodule InternalApi.RBAC.Permission do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:id, 1, type: :string)
-  field(:name, 2, type: :string)
-  field(:description, 3, type: :string)
-  field(:scope, 4, type: InternalApi.RBAC.Scope, enum: true)
+  field :id, 1, type: :string
+  field :name, 2, type: :string
+  field :description, 3, type: :string
+  field :scope, 4, type: InternalApi.RBAC.Scope, enum: true
 end
 
 defmodule InternalApi.RBAC.ListSubjectsRequest do
@@ -385,8 +376,8 @@ defmodule InternalApi.RBAC.ListSubjectsRequest do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:org_id, 1, type: :string, json_name: "orgId")
-  field(:subject_ids, 2, repeated: true, type: :string, json_name: "subjectIds")
+  field :org_id, 1, type: :string, json_name: "orgId"
+  field :subject_ids, 2, repeated: true, type: :string, json_name: "subjectIds"
 end
 
 defmodule InternalApi.RBAC.ListSubjectsResponse do
@@ -394,7 +385,7 @@ defmodule InternalApi.RBAC.ListSubjectsResponse do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:subjects, 1, repeated: true, type: InternalApi.RBAC.Subject)
+  field :subjects, 1, repeated: true, type: InternalApi.RBAC.Subject
 end
 
 defmodule InternalApi.RBAC.RBAC.Service do
@@ -402,59 +393,47 @@ defmodule InternalApi.RBAC.RBAC.Service do
 
   use GRPC.Service, name: "InternalApi.RBAC.RBAC", protoc_gen_elixir_version: "0.12.0"
 
-  rpc(
-    :ListUserPermissions,
-    InternalApi.RBAC.ListUserPermissionsRequest,
-    InternalApi.RBAC.ListUserPermissionsResponse
-  )
+  rpc :ListUserPermissions,
+      InternalApi.RBAC.ListUserPermissionsRequest,
+      InternalApi.RBAC.ListUserPermissionsResponse
 
-  rpc(
-    :ListExistingPermissions,
-    InternalApi.RBAC.ListExistingPermissionsRequest,
-    InternalApi.RBAC.ListExistingPermissionsResponse
-  )
+  rpc :ListExistingPermissions,
+      InternalApi.RBAC.ListExistingPermissionsRequest,
+      InternalApi.RBAC.ListExistingPermissionsResponse
 
-  rpc(:AssignRole, InternalApi.RBAC.AssignRoleRequest, InternalApi.RBAC.AssignRoleResponse)
+  rpc :AssignRole, InternalApi.RBAC.AssignRoleRequest, InternalApi.RBAC.AssignRoleResponse
 
-  rpc(:RetractRole, InternalApi.RBAC.RetractRoleRequest, InternalApi.RBAC.RetractRoleResponse)
+  rpc :RetractRole, InternalApi.RBAC.RetractRoleRequest, InternalApi.RBAC.RetractRoleResponse
 
-  rpc(
-    :SubjectsHaveRoles,
-    InternalApi.RBAC.SubjectsHaveRolesRequest,
-    InternalApi.RBAC.SubjectsHaveRolesResponse
-  )
+  rpc :SubjectsHaveRoles,
+      InternalApi.RBAC.SubjectsHaveRolesRequest,
+      InternalApi.RBAC.SubjectsHaveRolesResponse
 
-  rpc(:ListRoles, InternalApi.RBAC.ListRolesRequest, InternalApi.RBAC.ListRolesResponse)
+  rpc :ListRoles, InternalApi.RBAC.ListRolesRequest, InternalApi.RBAC.ListRolesResponse
 
-  rpc(:DescribeRole, InternalApi.RBAC.DescribeRoleRequest, InternalApi.RBAC.DescribeRoleResponse)
+  rpc :DescribeRole, InternalApi.RBAC.DescribeRoleRequest, InternalApi.RBAC.DescribeRoleResponse
 
-  rpc(:ModifyRole, InternalApi.RBAC.ModifyRoleRequest, InternalApi.RBAC.ModifyRoleResponse)
+  rpc :ModifyRole, InternalApi.RBAC.ModifyRoleRequest, InternalApi.RBAC.ModifyRoleResponse
 
-  rpc(:DestroyRole, InternalApi.RBAC.DestroyRoleRequest, InternalApi.RBAC.DestroyRoleResponse)
+  rpc :DestroyRole, InternalApi.RBAC.DestroyRoleRequest, InternalApi.RBAC.DestroyRoleResponse
 
-  rpc(:ListMembers, InternalApi.RBAC.ListMembersRequest, InternalApi.RBAC.ListMembersResponse)
+  rpc :ListMembers, InternalApi.RBAC.ListMembersRequest, InternalApi.RBAC.ListMembersResponse
 
-  rpc(:CountMembers, InternalApi.RBAC.CountMembersRequest, InternalApi.RBAC.CountMembersResponse)
+  rpc :CountMembers, InternalApi.RBAC.CountMembersRequest, InternalApi.RBAC.CountMembersResponse
 
-  rpc(
-    :ListAccessibleOrgs,
-    InternalApi.RBAC.ListAccessibleOrgsRequest,
-    InternalApi.RBAC.ListAccessibleOrgsResponse
-  )
+  rpc :ListAccessibleOrgs,
+      InternalApi.RBAC.ListAccessibleOrgsRequest,
+      InternalApi.RBAC.ListAccessibleOrgsResponse
 
-  rpc(
-    :ListAccessibleProjects,
-    InternalApi.RBAC.ListAccessibleProjectsRequest,
-    InternalApi.RBAC.ListAccessibleProjectsResponse
-  )
+  rpc :ListAccessibleProjects,
+      InternalApi.RBAC.ListAccessibleProjectsRequest,
+      InternalApi.RBAC.ListAccessibleProjectsResponse
 
-  rpc(
-    :RefreshCollaborators,
-    InternalApi.RBAC.RefreshCollaboratorsRequest,
-    InternalApi.RBAC.RefreshCollaboratorsResponse
-  )
+  rpc :RefreshCollaborators,
+      InternalApi.RBAC.RefreshCollaboratorsRequest,
+      InternalApi.RBAC.RefreshCollaboratorsResponse
 
-  rpc(:ListSubjects, InternalApi.RBAC.ListSubjectsRequest, InternalApi.RBAC.ListSubjectsResponse)
+  rpc :ListSubjects, InternalApi.RBAC.ListSubjectsRequest, InternalApi.RBAC.ListSubjectsResponse
 end
 
 defmodule InternalApi.RBAC.RBAC.Stub do
