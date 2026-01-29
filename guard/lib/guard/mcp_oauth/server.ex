@@ -112,19 +112,23 @@ defmodule Guard.McpOAuth.Server do
         # Cannot redirect, show error directly
         conn
         |> put_resp_content_type("application/json")
-        |> send_resp(400, Jason.encode!(%{
-          error: error.error,
-          error_description: error.error_description
-        }))
+        |> send_resp(
+          400,
+          Jason.encode!(%{
+            error: error.error,
+            error_description: error.error_description
+          })
+        )
 
       {:error, %{type: :redirect} = error} ->
         # Can redirect with error
-        redirect_url = Authorize.build_error_redirect(
-          error.redirect_uri,
-          error.error,
-          error.error_description,
-          error.state
-        )
+        redirect_url =
+          Authorize.build_error_redirect(
+            error.redirect_uri,
+            error.error,
+            error.error_description,
+            error.state
+          )
 
         conn
         |> put_resp_header("location", redirect_url)
@@ -318,14 +322,27 @@ defmodule Guard.McpOAuth.Server do
 
             {:error, reason} ->
               Logger.error("[McpOAuth.Server] Failed to create auth code: #{inspect(reason)}")
-              error_url = Authorize.build_error_redirect(redirect_uri, "server_error", "Failed to create authorization code", state)
+
+              error_url =
+                Authorize.build_error_redirect(
+                  redirect_uri,
+                  "server_error",
+                  "Failed to create authorization code",
+                  state
+                )
 
               conn
               |> put_resp_header("location", error_url)
               |> send_resp(302, "")
           end
         else
-          error_url = Authorize.build_error_redirect(redirect_uri, "invalid_request", "Invalid redirect_uri", state)
+          error_url =
+            Authorize.build_error_redirect(
+              redirect_uri,
+              "invalid_request",
+              "Invalid redirect_uri",
+              state
+            )
 
           conn
           |> put_resp_header("location", error_url)
@@ -341,15 +358,16 @@ defmodule Guard.McpOAuth.Server do
 
   defp redirect_to_login(conn, validated_params) do
     # Build the return URL with all OAuth params so user comes back after login
-    return_params = URI.encode_query(%{
-      "client_id" => validated_params.client_id,
-      "redirect_uri" => validated_params.redirect_uri,
-      "code_challenge" => validated_params.code_challenge,
-      "code_challenge_method" => "S256",
-      "response_type" => "code",
-      "scope" => validated_params.scope,
-      "state" => validated_params.state || ""
-    })
+    return_params =
+      URI.encode_query(%{
+        "client_id" => validated_params.client_id,
+        "redirect_uri" => validated_params.redirect_uri,
+        "code_challenge" => validated_params.code_challenge,
+        "code_challenge_method" => "S256",
+        "response_type" => "code",
+        "scope" => validated_params.scope,
+        "state" => validated_params.state || ""
+      })
 
     return_url = "/mcp/oauth/authorize?#{return_params}"
     login_url = "/login?return_to=#{URI.encode_www_form(return_url)}"
@@ -360,6 +378,7 @@ defmodule Guard.McpOAuth.Server do
   end
 
   defp html_escape(nil), do: ""
+
   defp html_escape(string) when is_binary(string) do
     string
     |> String.replace("&", "&amp;")
