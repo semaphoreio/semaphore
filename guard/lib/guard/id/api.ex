@@ -36,10 +36,13 @@ defmodule Guard.Id.Api do
 
   plug(Plug.Parsers,
     parsers: [:urlencoded],
-    pass: ["text/*"]
+    pass: ["text/*", "application/json"]
   )
 
-  plug(Plug.CSRFProtection)
+  plug(Unplug,
+    if: {Unplug.Predicates.RequestPathNotIn, ["/mcp/oauth/register", "/mcp/oauth/token"]},
+    do: {Plug.CSRFProtection, []}
+  )
 
   plug(:match)
   plug(:dispatch)
