@@ -17,7 +17,7 @@ defmodule Rbac.Okta.Saml.PayloadParser do
       email = esaml_assertion(assertion, :subject) |> esaml_subject(:name)
       attributes = esaml_assertion(assertion, :attributes) |> construct_attributes_map()
 
-      {:ok, to_string(email), attributes}
+      {:ok, email |> to_string |> String.downcase(), attributes}
     end
   end
 
