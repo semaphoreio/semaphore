@@ -10,6 +10,7 @@ defmodule Support.Factories.OktaIntegration do
     - saml_issuer (also needs to be url)
     - cert_fingerprint (valid)
     - jit_provisioning_enabled (bool)
+    - session_expiration_minutes (integer)
 
     All of these parameters are optional.
     If they are not present they will be generated.
@@ -21,7 +22,9 @@ defmodule Support.Factories.OktaIntegration do
       sso_url: get_url(options[:sso_url]),
       saml_issuer: get_url(options[:saml_issuer]),
       saml_certificate_fingerprint: get_cert(options[:cert_fingerprint]),
-      jit_provisioning_enabled: options[:jit_provisioning_enabled] || false
+      jit_provisioning_enabled: options[:jit_provisioning_enabled] || false,
+      session_expiration_minutes:
+        get_session_expiration_minutes(options[:session_expiration_minutes])
     }
     |> Rbac.Repo.insert(on_conflict: :replace_all, conflict_target: :id)
   end
@@ -44,4 +47,7 @@ defmodule Support.Factories.OktaIntegration do
       |> Base.encode64()
 
   defp get_cert(cert), do: cert
+
+  defp get_session_expiration_minutes(nil), do: 20_160
+  defp get_session_expiration_minutes(value), do: value
 end
