@@ -156,7 +156,7 @@ defmodule Rbac.Repo.OktaUser do
       payload["emails"]
       |> Enum.find(fn e -> e["primary"] == true end)
 
-    email["value"]
+    email["value"] |> String.downcase()
   end
 
   def connect_user(okta_user, user_id) do
