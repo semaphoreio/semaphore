@@ -48,6 +48,9 @@ end
 
 {:ok, _} = FunRegistry.start()
 
+# Start GRPC.Client.Supervisor (required by grpc ~> 0.9)
+{:ok, _} = DynamicSupervisor.start_link(strategy: :one_for_one, name: GRPC.Client.Supervisor)
+
 services = [
   Fake.AuthenticationService,
   Fake.OrganizationService,
