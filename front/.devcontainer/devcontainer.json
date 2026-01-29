@@ -1,0 +1,29 @@
+{
+	"name": "Semaphoreio - Front",
+	"dockerComposeFile": [
+		"../docker-compose.yml",
+		"docker-compose.yml"
+	],
+	"service": "app",
+	"workspaceFolder": "/workspace/${localWorkspaceFolderBasename}",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"mjmcloug.vscode-elixir",
+				"pantajoe.vscode-elixir-credo",
+				"dbaeumer.vscode-eslint",
+				"bierner.markdown-mermaid",
+				"samuel-pordeus.elixir-test",
+				"eamodio.gitlens",
+				"rvest.vs-code-prettier-eslint",
+				"openai.chatgpt",
+				"JakeBecker.elixir-ls@0.28.0"
+			]
+		}
+	},
+	"features": {
+		"ghcr.io/cirolosapio/devcontainers-features/alpine-node:0": {
+			"version": "22"
+		}
+	}
+}

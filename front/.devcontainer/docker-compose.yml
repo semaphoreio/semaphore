@@ -1,0 +1,9 @@
+version: '3.6'
+services:
+  app:
+    volumes:
+      - ..:/workspace:cached
+    command: /bin/sh -c "while sleep 1000; do :; done"
+    environment:
+      COMPOSE_BAKE: "true"
+      SEMAPHORE_API_TOKEN: "q1b4Oqyis8sBPt1tssmV"
