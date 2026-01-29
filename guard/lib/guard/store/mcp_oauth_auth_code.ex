@@ -14,7 +14,8 @@ defmodule Guard.Store.McpOAuthAuthCode do
   Find an authorization code by its code value.
   Only returns unused, non-expired codes.
   """
-  @spec find_by_code(String.t()) :: {:ok, McpOAuthAuthCode.t()} | {:error, :not_found | :expired | :used}
+  @spec find_by_code(String.t()) ::
+          {:ok, McpOAuthAuthCode.t()} | {:error, :not_found | :expired | :used}
   def find_by_code(code) when is_binary(code) do
     query = from(ac in McpOAuthAuthCode, where: ac.code == ^code)
 

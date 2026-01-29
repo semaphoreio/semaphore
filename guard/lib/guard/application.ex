@@ -195,7 +195,7 @@ defmodule Guard.Application do
       %{
         worker: Guard.GrpcServers.OrganizationServer,
         active: System.get_env("START_GRPC_ORGANIZATION_API") == "true"
-      },
+      }
     ])
   end
 

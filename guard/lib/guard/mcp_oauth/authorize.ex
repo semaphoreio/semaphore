@@ -84,7 +84,8 @@ defmodule Guard.McpOAuth.Authorize do
         {:error, direct_error("invalid_request", "response_type is required")}
 
       other ->
-        {:error, direct_error("unsupported_response_type", "response_type must be 'code', got '#{other}'")}
+        {:error,
+         direct_error("unsupported_response_type", "response_type must be 'code', got '#{other}'")}
     end
   end
 
