@@ -522,8 +522,112 @@ spec:
   rewrite: ""
   service: secrethub-http.{{ .Release.Namespace }}:4000
   precedence: 100
-{{- if eq .Values.global.edition "ee" }}
+{{- if and (eq .Values.global.edition "ee") (index .Values "mcp-server" "enabled") }}
 ---
+# MCP OAuth 2.1 Protected Resource Metadata (RFC 9728)
+# Bypasses ExtAuth and returns OAuth discovery metadata directly
+# Uses regex to preserve path suffix (e.g., /mcp) for clients that append resource path
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: mcp-oauth-metadata-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: "^mcp\\..*"
+  host_regex: true
+  prefix_regex: true
+  prefix: /.well-known/oauth-protected-resource(.*)
+  regex_rewrite:
+    pattern: /.well-known/oauth-protected-resource(.*)
+    substitution: /exauth/.well-known/oauth-protected-resource\1
+  service: auth.{{ .Release.Namespace }}:4000
+  bypass_auth: true
+  precedence: 200
+  timeout_ms: 5000
+---
+# MCP OAuth DCR endpoint - bypass auth (public client registration)
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: mcp-oauth-register-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: "^mcp\\..*"
+  host_regex: true
+  prefix: /mcp/oauth/register
+  rewrite: /mcp/oauth/register
+  service: guard-id-http-api.{{ .Release.Namespace }}:80
+  bypass_auth: true
+  precedence: 210
+  timeout_ms: 30000
+---
+# MCP OAuth Token endpoint - bypass auth (uses PKCE for security)
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: mcp-oauth-token-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: "^mcp\\..*"
+  host_regex: true
+  prefix: /mcp/oauth/token
+  rewrite: /mcp/oauth/token
+  service: guard-id-http-api.{{ .Release.Namespace }}:80
+  bypass_auth: true
+  precedence: 210
+  timeout_ms: 30000
+---
+# MCP OAuth Authorize endpoint - REQUIRE auth (user must be logged in via browser)
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: mcp-oauth-authorize-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: "^mcp\\..*"
+  host_regex: true
+  prefix: /mcp/oauth/authorize
+  rewrite: /mcp/oauth/authorize
+  service: guard-id-http-api.{{ .Release.Namespace }}:80
+  bypass_auth: false
+  precedence: 210
+  timeout_ms: 30000
+---
+# MCP OAuth Grant Selection - REQUIRE auth (user consent flow)
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: mcp-oauth-grant-selection-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: "^mcp\\..*"
+  host_regex: true
+  prefix: /mcp/oauth/grant-selection
+  rewrite: /mcp/oauth/grant-selection
+  service: guard-id-http-api.{{ .Release.Namespace }}:80
+  bypass_auth: false
+  precedence: 210
+  timeout_ms: 30000
+---
+# OAuth 2.0 Authorization Server Metadata (RFC 8414) - mcp. subdomain
+# Routes to Guard which serves AS metadata for the MCP OAuth server
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: oauth-as-metadata-mapping-mcp
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: "^mcp\\..*"
+  host_regex: true
+  prefix: /.well-known/oauth-authorization-server
+  rewrite: /mcp/oauth/.well-known/oauth-authorization-server
+  service: guard-id-http-api.{{ .Release.Namespace }}:80
+  bypass_auth: true
+  precedence: 200
+  timeout_ms: 10000
+{{- end }}
+---
+{{- if eq .Values.global.edition "ee" }}
 apiVersion: getambassador.io/v3alpha1
 kind: Mapping
 metadata:
@@ -604,6 +708,25 @@ spec:
   service: minio-logs.{{ .Release.Namespace }}:9000
   timeout_ms: 30000
   bypass_auth: true
+  envoy_override:
+    retry_policy:
+      retry_on: connect-failure
+      num_retries: 3
+{{- end }}
+{{- if and (eq .Values.global.edition "ee") (index .Values "mcp-server" "enabled") }}
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: mcp-server-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: "^mcp\\..*"
+  host_regex: true
+  prefix: /
+  rewrite: ""
+  service: mcp-server.{{ .Release.Namespace }}:3001
+  timeout_ms: 30000
   envoy_override:
     retry_policy:
       retry_on: connect-failure
