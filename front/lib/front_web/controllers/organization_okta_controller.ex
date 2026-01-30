@@ -280,13 +280,13 @@ defmodule FrontWeb.OrganizationOktaController do
   defp maybe_drop_session_expiration_for_edit(params, _existing), do: params
 
   defp maybe_convert_session_expiration_days(params = %{"session_expiration_days" => days}) do
-    case Integer.parse(to_string(days)) do
-      {value, _} ->
+    case Front.Okta.SessionExpiration.days_to_minutes(days) do
+      value when is_integer(value) ->
         params
-        |> Map.put("session_expiration_minutes", value * 1440)
+        |> Map.put("session_expiration_minutes", value)
         |> Map.delete("session_expiration_days")
 
-      :error ->
+      _ ->
         params
     end
   end

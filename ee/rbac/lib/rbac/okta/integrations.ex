@@ -10,8 +10,7 @@ defmodule Rbac.Okta.Integration do
   alias Rbac.Repo
   alias Rbac.Okta.Saml.Certificate
 
-  # Default session expiration is 14 days
-  @default_session_expiration_minutes 14 * 24 * 60
+  alias Rbac.Okta.SessionExpiration
   #
   # Integration storage
   #
@@ -24,7 +23,7 @@ defmodule Rbac.Okta.Integration do
         certificate,
         jit_provisioning_enabled,
         idempotency_token \\ Ecto.UUID.generate(),
-        session_expiration_minutes \\ @default_session_expiration_minutes
+        session_expiration_minutes \\ nil
       ) do
     existing = fetch_existing(org_id)
 
@@ -125,7 +124,7 @@ defmodule Rbac.Okta.Integration do
         existing.session_expiration_minutes
 
       true ->
-        @default_session_expiration_minutes
+        SessionExpiration.default_minutes()
     end
   end
 

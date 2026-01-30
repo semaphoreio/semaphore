@@ -16,8 +16,6 @@ defmodule Front.Models.OktaIntegration do
 
   @fields ~w(org_id creator_id sso_url issuer certificate idempotency_token jit_provisioning_enabled session_expiration_minutes)a
 
-  # 30 days
-  @max_session_expiration_minutes 43_200
   @primary_key false
 
   embedded_schema do
@@ -29,12 +27,12 @@ defmodule Front.Models.OktaIntegration do
     field(:certificate, :string)
     field(:jit_provisioning_enabled, :boolean)
     field(:idempotency_token, :string)
-    # 14 days
-    field(:session_expiration_minutes, :integer, default: 20_160)
+    field(:session_expiration_minutes, :integer)
   end
 
   def new do
-    struct(__MODULE__) |> changeset()
+    struct(__MODULE__, session_expiration_minutes: Front.Okta.SessionExpiration.default_minutes())
+    |> changeset()
   end
 
   def find_for_org(org_id) do
@@ -69,8 +67,15 @@ defmodule Front.Models.OktaIntegration do
   def create_or_upadte(org_id, creator_id, params) do
     base =
       case find_for_org(org_id) do
-        {:ok, integration} -> %{integration | org_id: org_id, creator_id: creator_id}
-        _ -> struct(__MODULE__, org_id: org_id, creator_id: creator_id)
+        {:ok, integration} ->
+          %{integration | org_id: org_id, creator_id: creator_id}
+
+        _ ->
+          struct(__MODULE__,
+            org_id: org_id,
+            creator_id: creator_id,
+            session_expiration_minutes: Front.Okta.SessionExpiration.default_minutes()
+          )
       end
 
     result =
@@ -260,7 +265,7 @@ defmodule Front.Models.OktaIntegration do
     |> validate_required(required_fields(schema))
     |> validate_number(:session_expiration_minutes,
       greater_than: 0,
-      less_than_or_equal_to: @max_session_expiration_minutes
+      less_than_or_equal_to: Front.Okta.SessionExpiration.max_minutes()
     )
     |> validate_certificate_for_issuer_or_sso_change()
   end

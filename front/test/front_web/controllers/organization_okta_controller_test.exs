@@ -96,7 +96,7 @@ defmodule FrontWeb.OrganizationOktaControllerTest do
         saml_issuer: "https://example.okta.com",
         saml_certificate: "test-certificate",
         jit_provisioning_enabled: true,
-        session_expiration_minutes: 1440,
+        session_expiration_minutes: session_expiration_days_to_minutes(1),
         created_at: Support.Stubs.Time.now(),
         updated_at: Support.Stubs.Time.now()
       })
@@ -151,7 +151,7 @@ defmodule FrontWeb.OrganizationOktaControllerTest do
       html = html_response(conn, 200)
       assert html =~ "Session expiration (days)"
       assert html =~ "name=\"okta_integration[session_expiration_days]\""
-      assert html =~ "value=\"14\""
+      assert html =~ "value=\"#{default_session_expiration_days()}\""
     end
 
     test "it hides session expiration field when editing existing integration",
@@ -172,7 +172,7 @@ defmodule FrontWeb.OrganizationOktaControllerTest do
         saml_issuer: "https://example.okta.com",
         saml_certificate: "test-certificate",
         jit_provisioning_enabled: true,
-        session_expiration_minutes: 20_160,
+        session_expiration_minutes: default_session_expiration_minutes(),
         created_at: Support.Stubs.Time.now(),
         updated_at: Support.Stubs.Time.now()
       })
@@ -215,7 +215,7 @@ defmodule FrontWeb.OrganizationOktaControllerTest do
         |> List.last()
 
       assert integration.org_id == ctx.organization_id
-      assert integration.session_expiration_minutes == 2880
+      assert integration.session_expiration_minutes == session_expiration_days_to_minutes(2)
     end
 
     test "it updates expiration without regenerating scim token", %{conn: conn} = ctx do
@@ -233,7 +233,7 @@ defmodule FrontWeb.OrganizationOktaControllerTest do
         saml_issuer: "https://example.okta.com",
         saml_certificate: "test-certificate",
         jit_provisioning_enabled: true,
-        session_expiration_minutes: 20_160,
+        session_expiration_minutes: default_session_expiration_minutes(),
         created_at: Support.Stubs.Time.now(),
         updated_at: Support.Stubs.Time.now()
       })
@@ -253,7 +253,7 @@ defmodule FrontWeb.OrganizationOktaControllerTest do
         DB.find_all_by(:okta_integrations, :org_id, ctx.organization_id)
         |> List.last()
 
-      assert integration.session_expiration_minutes == 2880
+      assert integration.session_expiration_minutes == session_expiration_days_to_minutes(2)
     end
 
     test "editing existing integration requires certificate", %{conn: conn} = ctx do
@@ -271,7 +271,7 @@ defmodule FrontWeb.OrganizationOktaControllerTest do
         saml_issuer: "https://example.okta.com",
         saml_certificate: "test-certificate",
         jit_provisioning_enabled: true,
-        session_expiration_minutes: 20_160,
+        session_expiration_minutes: default_session_expiration_minutes(),
         created_at: Support.Stubs.Time.now(),
         updated_at: Support.Stubs.Time.now()
       })
@@ -310,7 +310,7 @@ defmodule FrontWeb.OrganizationOktaControllerTest do
         saml_issuer: "https://example.okta.com",
         saml_certificate: "test-certificate",
         jit_provisioning_enabled: true,
-        session_expiration_minutes: 20_160,
+        session_expiration_minutes: default_session_expiration_minutes(),
         created_at: Support.Stubs.Time.now(),
         updated_at: Support.Stubs.Time.now()
       })
@@ -334,7 +334,7 @@ defmodule FrontWeb.OrganizationOktaControllerTest do
         DB.find_all_by(:okta_integrations, :org_id, ctx.organization_id)
         |> List.last()
 
-      assert integration.session_expiration_minutes == 20_160
+      assert integration.session_expiration_minutes == default_session_expiration_minutes()
     end
   end
 
@@ -344,5 +344,17 @@ defmodule FrontWeb.OrganizationOktaControllerTest do
       ctx.user_id,
       permissions
     )
+  end
+
+  defp default_session_expiration_minutes do
+    Front.Okta.SessionExpiration.default_minutes()
+  end
+
+  defp default_session_expiration_days do
+    Front.Okta.SessionExpiration.default_days()
+  end
+
+  defp session_expiration_days_to_minutes(days) do
+    Front.Okta.SessionExpiration.days_to_minutes(days)
   end
 end

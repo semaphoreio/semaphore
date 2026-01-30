@@ -10,8 +10,7 @@ defmodule Rbac.Repo.OktaIntegration do
     :saml_certificate_fingerprint
   ]
 
-  # 30 days
-  @max_session_expiration_minutes 30 * 24 * 60
+  alias Rbac.Okta.SessionExpiration
 
   @updatable_fields [
     :saml_issuer,
@@ -32,7 +31,7 @@ defmodule Rbac.Repo.OktaIntegration do
     field(:saml_certificate_fingerprint, :string)
     field(:scim_token_hash, :string)
     field(:jit_provisioning_enabled, :boolean, default: false)
-    field(:session_expiration_minutes, :integer, default: 20_160)
+    field(:session_expiration_minutes, :integer)
 
     timestamps()
   end
@@ -51,7 +50,7 @@ defmodule Rbac.Repo.OktaIntegration do
     )
     |> validate_number(:session_expiration_minutes,
       greater_than: 0,
-      less_than_or_equal_to: @max_session_expiration_minutes
+      less_than_or_equal_to: SessionExpiration.max_minutes()
     )
   end
 

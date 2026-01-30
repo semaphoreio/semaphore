@@ -1,4 +1,5 @@
 defmodule Support.Factories.OktaIntegration do
+  alias Rbac.Okta.SessionExpiration
   alias Rbac.Repo.OktaIntegration
   alias Ecto.UUID
 
@@ -48,6 +49,6 @@ defmodule Support.Factories.OktaIntegration do
 
   defp get_cert(cert), do: cert
 
-  defp get_session_expiration_minutes(nil), do: 20_160
+  defp get_session_expiration_minutes(nil), do: SessionExpiration.default_minutes()
   defp get_session_expiration_minutes(value), do: value
 end

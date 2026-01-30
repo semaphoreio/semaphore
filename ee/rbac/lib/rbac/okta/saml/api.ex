@@ -64,6 +64,7 @@ defmodule Rbac.Okta.Saml.Api do
   """
 
   alias Rbac.FrontRepo
+  alias Rbac.Okta.SessionExpiration
 
   require Logger
   use Plug.Router
@@ -213,11 +214,9 @@ defmodule Rbac.Okta.Saml.Api do
   defp expires_at_unix(integration) do
     minutes =
       case integration.session_expiration_minutes do
-        # 14 days
-        nil -> 20_160
+        nil -> SessionExpiration.default_minutes()
         value when value > 0 -> value
-        # 14 days
-        _ -> 20_160
+        _ -> SessionExpiration.default_minutes()
       end
 
     DateTime.utc_now()
