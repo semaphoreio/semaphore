@@ -17,8 +17,26 @@
 </div>
 
 <div class="bg-white shadow-1 mv3 ph3 pv2 br3">
-  <div class="flex items-center justify-between">
-    <div class="b">Connected Members</div>
-    <div><%= @no_of_okta_members %></div>
-  </div>
+    <div class="flex items-center justify-between">
+      <div class="b">Connected Members</div>
+      <div><%= @no_of_okta_members %></div>
+    </div>
 </div>
+
+<%= if @permissions["organization.okta.manage"] do %>
+  <div class="bg-white shadow-1 mv3 ph3 pv2 br3">
+    <div class="b mb2">Session expiration (days)</div>
+    <%= form_for :okta_integration, organization_okta_path(@conn, :create), [method: :post], fn f -> %>
+      <%= hidden_input f, :idempotency_token, value: Ecto.UUID.generate() %>
+      <div class="flex items-center">
+        <%= number_input f, :session_expiration_days,
+          class: "form-control w-30",
+          min: "1",
+          max: FrontWeb.OrganizationOktaView.session_expiration_days_max(),
+          value: FrontWeb.OrganizationOktaView.session_expiration_days_from_minutes(@integration.session_expiration_minutes) %>
+        <%= submit "Update", class: "btn btn-primary ml2" %>
+      </div>
+      <div class="mt1 f6 gray">Updates only the session duration (in days). SCIM token is unchanged.</div>
+    <% end %>
+  </div>
+<% end %>
