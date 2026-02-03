@@ -3,6 +3,28 @@ defmodule Zebra.Machines.BrownoutScheduleTest do
   doctest Zebra.Machines.BrownoutSchedule
   alias Zebra.Machines.BrownoutSchedule
 
+  test "creates ubuntu2004 brownout schedule" do
+    schedule = BrownoutSchedule.ubuntu2004()
+
+    assert length(schedule) == 81
+
+    [first_event | _] = schedule
+
+    assert first_event == %{
+             from: ~U[2026-02-02 00:00:00Z],
+             os_images: ["ubuntu2004"],
+             to: ~U[2026-02-02 00:15:00Z]
+           }
+
+    [last_event | _] = schedule |> Enum.reverse()
+
+    assert last_event == %{
+             from: ~U[2026-02-28 15:00:00Z],
+             os_images: ["ubuntu2004"],
+             to: ~U[2026-02-28 18:00:00Z]
+           }
+  end
+
   test "creates macos-xcode14 brownout schedule" do
     schedule = BrownoutSchedule.macosxcode14()
 
