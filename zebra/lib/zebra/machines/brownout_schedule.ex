@@ -7,6 +7,55 @@ defmodule Zebra.Machines.BrownoutSchedule do
   @type date_or_range :: [Date.t()] | Date.Range.t()
   @type time_period :: {Time.t(), Time.t()}
 
+  @spec ubuntu2004 :: Brownout.brownout_schedules()
+  def ubuntu2004 do
+    first_phase =
+      phase(
+        Date.range(~D[2026-02-02], ~D[2026-02-08]),
+        [
+          {~T[00:00:00], ~T[00:15:00]},
+          {~T[10:00:00], ~T[10:15:00]},
+          {~T[15:00:00], ~T[15:15:00]}
+        ],
+        ["ubuntu2004"]
+      )
+
+    second_phase =
+      phase(
+        Date.range(~D[2026-02-09], ~D[2026-02-15]),
+        [
+          {~T[00:00:00], ~T[00:30:00]},
+          {~T[10:00:00], ~T[10:30:00]},
+          {~T[15:00:00], ~T[15:30:00]}
+        ],
+        ["ubuntu2004"]
+      )
+
+    third_phase =
+      phase(
+        Date.range(~D[2026-02-16], ~D[2026-02-22]),
+        [
+          {~T[00:00:00], ~T[01:00:00]},
+          {~T[10:00:00], ~T[11:00:00]},
+          {~T[15:00:00], ~T[16:00:00]}
+        ],
+        ["ubuntu2004"]
+      )
+
+    fourth_phase =
+      phase(
+        Date.range(~D[2026-02-23], ~D[2026-02-28]),
+        [
+          {~T[00:00:00], ~T[03:00:00]},
+          {~T[10:00:00], ~T[13:00:00]},
+          {~T[15:00:00], ~T[18:00:00]}
+        ],
+        ["ubuntu2004"]
+      )
+
+    first_phase ++ second_phase ++ third_phase ++ fourth_phase
+  end
+
   @spec macosxcode14 :: Brownout.brownout_schedules()
   def macosxcode14 do
     first_phase =
