@@ -6,6 +6,7 @@ defmodule Notifications.Workers.Webhook do
   @default_connect_timeout 1_000
   @default_recv_timeout 500
   @max_timeout 15_000
+  @max_retry_delay_ms 30_000
   @max_retries 5
   @initial_retry_delay_ms 500
 
@@ -103,7 +104,8 @@ defmodule Notifications.Workers.Webhook do
   end
 
   defp retry_delay(attempt) do
-    (@initial_retry_delay_ms * :math.pow(2, attempt)) |> round()
+    delay = (@initial_retry_delay_ms * :math.pow(2, attempt)) |> round()
+    min(delay, @max_retry_delay_ms)
   end
 
   defp increase_timeouts(req, _attempt) do
