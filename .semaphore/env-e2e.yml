@@ -3,7 +3,7 @@ name: E2E Tests - ${{parameters.CLOUD_TEST_ENV_PREFIX}} - ${{parameters.CLOUD_TE
 agent:
   machine:
     type: f1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 global_job_config:
   secrets:
     - name: e2e-test-github-app-${{parameters.CLOUD_TEST_ENV_PREFIX}}

@@ -1,7 +1,7 @@
 defmodule Front.Clients.LicenseTest do
   use ExUnit.Case, async: false
   alias Front.Clients.License
-  alias InternalApi.License.VerifyLicenseResponse
+  alias InternalApi.License.{VerifyLicenseRequest, VerifyLicenseResponse}
 
   @valid_response %VerifyLicenseResponse{
     valid: true,
@@ -51,6 +51,7 @@ defmodule Front.Clients.LicenseTest do
       result1 = License.verify_license()
       assert match?({:ok, %VerifyLicenseResponse{valid: true, message: "ok"}}, result1)
       GrpcMock.verify!(LicenseMock)
+      wait_for_cache!(cache_key())
 
       # Reset GrpcMock expectations
       GrpcMock.stub(LicenseMock, self(), InternalApi.License.LicenseService.Service)
@@ -80,6 +81,7 @@ defmodule Front.Clients.LicenseTest do
       result1 = License.verify_license()
       assert match?({:ok, %VerifyLicenseResponse{valid: true}}, result1)
       GrpcMock.verify!(LicenseMock)
+      wait_for_cache!(cache_key())
 
       # Second call should use cache (no mock expectation needed)
       result2 = License.verify_license()
@@ -110,6 +112,7 @@ defmodule Front.Clients.LicenseTest do
 
       License.verify_license()
       GrpcMock.verify!(LicenseMock)
+      wait_for_cache!(cache_key())
 
       # Second call with reload_cache?: true should hit the service again
       GrpcMock.stub(LicenseMock, :verify_license, %{@valid_response | message: "reloaded"})
@@ -125,6 +128,7 @@ defmodule Front.Clients.LicenseTest do
 
       License.verify_license()
       GrpcMock.verify!(LicenseMock)
+      wait_for_cache!(cache_key())
 
       # Invalidate cache
       License.invalidate_cache()
@@ -155,6 +159,24 @@ defmodule Front.Clients.LicenseTest do
       result2 = License.verify_license()
       assert match?({:ok, %VerifyLicenseResponse{valid: true}}, result2)
       GrpcMock.verify!(LicenseMock)
+    end
+  end
+
+  defp cache_key do
+    License.cache_key(:verify_license, %VerifyLicenseRequest{})
+  end
+
+  defp wait_for_cache!(key, attempts \\ 20, delay_ms \\ 25) do
+    case Front.Cache.get(key) do
+      {:ok, _} ->
+        :ok
+
+      _ when attempts > 0 ->
+        Process.sleep(delay_ms)
+        wait_for_cache!(key, attempts - 1, delay_ms)
+
+      _ ->
+        flunk("license cache not set after waiting")
     end
   end
 end
