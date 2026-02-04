@@ -20,7 +20,7 @@ defmodule Front.Models.AgentTypeTest do
       {:ok, agent_type_list} = AgentType.list(org_id)
 
       assert %{
-               default_linux_os_image: "ubuntu2004",
+               default_linux_os_image: "ubuntu2204",
                default_mac_os_image: "macos-xcode13"
              } = agent_type_list
 
