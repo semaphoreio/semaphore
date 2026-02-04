@@ -19,11 +19,9 @@ defmodule Guard.McpOAuth.Server do
   alias Guard.McpOAuth.{Authorize, Metadata, Register, Token}
   alias Guard.Store.{McpOAuthAuthCode, McpOAuthClient}
 
-  plug(Plug.Parsers,
-    parsers: [:urlencoded, :json],
-    pass: ["application/json", "application/x-www-form-urlencoded"],
-    json_decoder: Jason
-  )
+  # Note: Plug.Parsers is NOT used here because Guard.Id.Api already parses
+  # the body before forwarding to this router. Adding Plug.Parsers here
+  # would attempt to re-read an already-consumed body.
 
   plug(:match)
   plug(:dispatch)
