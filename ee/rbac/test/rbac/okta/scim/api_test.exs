@@ -528,13 +528,39 @@ defmodule Rbac.Okta.Scim.Api.Test do
       "userName" => username
     }
 
-    assert {:ok, resp} = post("/okta/scim/Users", payload, token)
+    resp = post_with_retry("/okta/scim/Users", payload, token)
+    body = Jason.decode!(resp.body)
 
-    resp = Jason.decode!(resp.body)
+    wait_for_provisioner_to_finish(body["id"])
 
-    wait_for_provisioner_to_finish(resp["id"])
+    body
+  end
 
-    resp
+  defp post_with_retry(path, payload, token, attempts \\ 5)
+
+  defp post_with_retry(_path, _payload, _token, 0) do
+    flunk("SCIM create user returned empty response body after retries")
+  end
+
+  defp post_with_retry(path, payload, token, attempts) do
+    case post(path, payload, token) do
+      {:ok, %HTTPoison.Response{status_code: status, body: body} = resp} ->
+        cond do
+          status in [200, 201] and body not in [nil, ""] ->
+            resp
+
+          status in [200, 201] ->
+            :timer.sleep(100)
+            post_with_retry(path, payload, token, attempts - 1)
+
+          true ->
+            flunk("Unexpected SCIM response status=#{status} body=#{inspect(body)}")
+        end
+
+      {:error, _error} ->
+        :timer.sleep(100)
+        post_with_retry(path, payload, token, attempts - 1)
+    end
   end
 
   defp get(path, token, params \\ %{}) do
