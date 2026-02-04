@@ -83,7 +83,7 @@ defmodule Guard.Store.McpOAuthAuthCode do
 
     changeset =
       auth_code
-      |> Ecto.Changeset.change(%{used_at: DateTime.utc_now()})
+      |> Ecto.Changeset.change(%{used_at: DateTime.utc_now() |> DateTime.truncate(:second)})
 
     case Repo.update(changeset) do
       {:ok, updated} ->
@@ -120,8 +120,10 @@ defmodule Guard.Store.McpOAuthAuthCode do
   """
   @spec cleanup_expired() :: {integer(), nil}
   def cleanup_expired do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
     from(ac in McpOAuthAuthCode,
-      where: ac.expires_at < ^DateTime.utc_now()
+      where: ac.expires_at < ^now
     )
     |> Repo.delete_all()
   end

@@ -298,7 +298,10 @@ defmodule Guard.McpOAuth.Server do
         if McpOAuthClient.valid_redirect_uri?(client, redirect_uri) do
           # Generate authorization code
           code = McpOAuthAuthCode.generate_code()
-          expires_at = DateTime.utc_now() |> DateTime.add(@auth_code_ttl_seconds, :second)
+          expires_at =
+            DateTime.utc_now()
+            |> DateTime.add(@auth_code_ttl_seconds, :second)
+            |> DateTime.truncate(:second)
 
           auth_code_params = %{
             code: code,
