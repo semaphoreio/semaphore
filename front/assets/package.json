@@ -24,7 +24,7 @@
     "@trevoreyre/autocomplete": "^2.1.1",
     "@types/markdown-it": "^14.1.2",
     "ajv": "^8.17.1",
-    "billboard.js": "^3.16.0",
+    "billboard.js": "^3.18.0",
     "brace": "^0.11.1",
     "codemirror": "^5.64.0",
     "cron-parser": "^2.16.3",
@@ -52,6 +52,7 @@
     "phoenix": "^1.5.14",
     "phoenix_html": "^3.0.0",
     "pikaday": "^1.8.0",
+    "posthog-js": "^1.96.1",
     "preact": "^10.25.3",
     "preactement": "^1.8.2",
     "querystringify": "^2.1.1",
@@ -59,7 +60,6 @@
     "semver": "^7.5.4",
     "tippy.js": "^6.3.7",
     "tom-select": "^2.0.3",
-    "posthog-js": "^1.96.1",
     "uuid": "^11.0.3"
   },
   "devDependencies": {
