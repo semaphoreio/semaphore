@@ -205,8 +205,8 @@ defmodule Guard.McpOAuth.Server do
     case get_req_header(conn, "x-semaphore-user-id") do
       [user_id] when is_binary(user_id) and user_id != "" ->
         case Guard.Store.RbacUser.fetch(user_id) do
-          {:ok, user} -> {:ok, user}
-          {:error, _} -> {:error, :not_authenticated}
+          user when not is_nil(user) -> {:ok, user}
+          nil -> {:error, :not_authenticated}
         end
 
       _ ->
