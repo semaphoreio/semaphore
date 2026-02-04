@@ -4,6 +4,12 @@ config :front, FrontWeb.Endpoint, server: true, secret_key_base: System.get_env(
 
 config :front, :signing_salt, System.get_env("SESSION_SIGNING_SALT")
 
+config :front,
+  okta_session_expiration_default_minutes:
+    String.to_integer(System.get_env("OKTA_SESSION_EXPIRATION_DEFAULT_MINUTES") || "20160"),
+  okta_session_expiration_max_minutes:
+    String.to_integer(System.get_env("OKTA_SESSION_EXPIRATION_MAX_MINUTES") || "43200")
+
 if System.get_env("TZDATA_DATA_DIRECTORY") != nil do
   config :tzdata, :data_dir, System.get_env("TZDATA_DATA_DIRECTORY")
 else
