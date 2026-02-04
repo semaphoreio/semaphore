@@ -416,8 +416,17 @@ defmodule Auth do
   # User must be logged in before authorizing MCP clients
   # These routes must come BEFORE the catch-all /mcp route below
   #
-  get "/exauth/mcp/oauth/authorize", host: "mcp." do
+  match "/exauth/mcp/oauth/authorize", host: "mcp." do
     log_request(conn, "mcp.#{Application.fetch_env!(:auth, :domain)}/mcp/oauth/authorize")
+
+    case set_user_headers(conn, allow_token: false) do
+      {:ok, conn_with_headers} -> send_resp(conn_with_headers, 200, "")
+      {:error, conn} -> redirect_or_unauthorized(conn, backurl: true)
+    end
+  end
+
+  match "/exauth/mcp/oauth/grant-selection", host: "mcp." do
+    log_request(conn, "mcp.#{Application.fetch_env!(:auth, :domain)}/mcp/oauth/grant-selection")
 
     case set_user_headers(conn, allow_token: false) do
       {:ok, conn_with_headers} -> send_resp(conn_with_headers, 200, "")
