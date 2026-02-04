@@ -45,6 +45,7 @@ applications=(
   "HooksReceiver"
   "Keycloak image"
   "Keycloak setup"
+  "MCP Server"
   "PeriodicScheduler"
   "Loghub2"
   "GithubHooks"
