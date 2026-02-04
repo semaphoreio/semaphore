@@ -35,8 +35,9 @@ defmodule Guard.Id.Api do
   plug(Ueberauth)
 
   plug(Plug.Parsers,
-    parsers: [:urlencoded],
-    pass: ["text/*", "application/json"]
+    parsers: [:urlencoded, :json],
+    pass: ["text/*"],
+    json_decoder: Jason
   )
 
   plug(Unplug,
