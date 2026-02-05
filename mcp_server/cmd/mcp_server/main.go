@@ -27,6 +27,7 @@ import (
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/organizations"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/pipelines"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/projects"
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/tasks"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/testresults"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/workflows"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/watchman"
@@ -117,6 +118,7 @@ func main() {
 	pipelines.Register(srv, provider)
 	jobs.Register(srv, provider)
 	testresults.Register(srv, provider)
+	tasks.Register(srv, provider)
 
 	// Register prompts for agent configuration guidance
 	prompts.Register(srv)

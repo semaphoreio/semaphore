@@ -8,6 +8,7 @@ import (
 	loghubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub"
 	loghub2pb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub2"
 	orgpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/organization"
+	schedulerpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/periodic_scheduler"
 	pipelinepb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber.pipeline"
 	workflowpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber_w_f.workflow"
 	projecthubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/projecthub"
@@ -29,6 +30,7 @@ type MockProvider struct {
 	Loghub2Client      loghub2pb.Loghub2Client
 	UserClient         userpb.UserServiceClient
 	RBACClient         rbacpb.RBACClient
+	SchedulerClient    schedulerpb.PeriodicSchedulerClient
 	FeaturesService    featuresvc.FeatureClient
 	Timeout            time.Duration
 }
@@ -65,6 +67,8 @@ func (m *MockProvider) Loghub2() loghub2pb.Loghub2Client { return m.Loghub2Clien
 func (m *MockProvider) Users() userpb.UserServiceClient { return m.UserClient }
 
 func (m *MockProvider) RBAC() rbacpb.RBACClient { return m.RBACClient }
+
+func (m *MockProvider) Scheduler() schedulerpb.PeriodicSchedulerClient { return m.SchedulerClient }
 
 func (m *MockProvider) Features() featuresvc.FeatureClient {
 	if m.FeaturesService == nil {

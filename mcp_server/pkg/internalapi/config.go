@@ -64,6 +64,10 @@ var (
 		"INTERNAL_API_URL_FEATURE",
 		"MCP_FEATURE_GRPC_ENDPOINT",
 	}
+	schedulerEndpointEnvs = []string{
+		"INTERNAL_API_URL_SCHEDULER",
+		"MCP_SCHEDULER_GRPC_ENDPOINT",
+	}
 )
 
 // Config captures the connection settings for talking to internal API services.
@@ -79,6 +83,7 @@ type Config struct {
 	UserEndpoint         string
 	RBACEndpoint         string
 	FeatureHubEndpoint   string
+	SchedulerEndpoint    string
 
 	BaseURL string
 
@@ -109,6 +114,7 @@ func LoadConfig() (Config, error) {
 		UserEndpoint:         endpointFromEnv(userEndpointEnvs...),
 		RBACEndpoint:         endpointFromEnv(rbacEndpointEnvs...),
 		FeatureHubEndpoint:   endpointFromEnv(featureHubEndpointEnvs...),
+		SchedulerEndpoint:    endpointFromEnv(schedulerEndpointEnvs...),
 		BaseURL:              baseURLFromEnv(),
 		DialTimeout:          dialTimeout,
 		CallTimeout:          callTimeout,
