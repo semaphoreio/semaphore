@@ -363,6 +363,54 @@ func TestDescribeTask_InvalidTaskID(t *testing.T) {
 	}
 }
 
+func TestValidateParameterName(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantErr bool
+	}{
+		// Valid names
+		{name: "lowercase letter start", input: "myParam", wantErr: false},
+		{name: "uppercase letter start", input: "MyParam", wantErr: false},
+		{name: "underscore start", input: "_myParam", wantErr: false},
+		{name: "single letter", input: "x", wantErr: false},
+		{name: "single underscore", input: "_", wantErr: false},
+
+		// Invalid: starts with number
+		{name: "number start", input: "1param", wantErr: true},
+
+		// Invalid: starts with special character
+		{name: "hyphen start", input: "-param", wantErr: true},
+		{name: "dot start", input: ".param", wantErr: true},
+
+		// Invalid: starts with multi-byte UTF-8 character
+		// These test the utf8.DecodeRuneInString fix - the old code using
+		// rune(name[0]) would incorrectly interpret multi-byte characters
+		{name: "emoji start", input: "🚀param", wantErr: true},
+		{name: "chinese char start", input: "中param", wantErr: true},
+		{name: "accented char start", input: "éparam", wantErr: true},
+
+		// Invalid: control characters
+		{name: "tab in name", input: "my\tparam", wantErr: true},
+		{name: "newline in name", input: "my\nparam", wantErr: true},
+
+		// Invalid: too long (over 128 characters)
+		{name: "too long", input: strings.Repeat("a", 129), wantErr: true},
+
+		// Valid: exactly 128 characters
+		{name: "max length", input: strings.Repeat("a", 128), wantErr: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateParameterName(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validateParameterName(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
+			}
+		})
+	}
+}
+
 // --- test helpers ---
 
 func requireErrorText(t *testing.T, res *mcp.CallToolResult) string {
