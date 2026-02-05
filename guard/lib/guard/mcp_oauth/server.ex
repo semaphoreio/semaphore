@@ -4,6 +4,7 @@ defmodule Guard.McpOAuth.Server do
 
   Implements OAuth 2.0 endpoints for MCP client authentication:
   - /.well-known/oauth-authorization-server (RFC 8414)
+  - /.well-known/openid-configuration (OIDC discovery for compatibility)
   - /register (RFC 7591 - Dynamic Client Registration)
   - /authorize (Authorization endpoint)
   - /token (Token endpoint)
@@ -45,7 +46,30 @@ defmodule Guard.McpOAuth.Server do
     conn
     |> put_resp_header("access-control-allow-origin", "*")
     |> put_resp_header("access-control-allow-methods", "GET, OPTIONS")
-    |> put_resp_header("access-control-allow-headers", "content-type")
+    |> put_resp_header("access-control-allow-headers", "content-type, mcp-protocol-version")
+    |> send_resp(204, "")
+  end
+
+  # ====================
+  # OpenID Connect Discovery (for OIDC-compliant clients)
+  # Some MCP clients use OIDC discovery instead of RFC 8414
+  # Path insertion: /mcp/oauth/.well-known/openid-configuration
+  # ====================
+
+  get "/.well-known/openid-configuration" do
+    conn
+    |> put_resp_content_type("application/json")
+    |> put_resp_header("access-control-allow-origin", "*")
+    |> put_resp_header("cache-control", "public, max-age=3600")
+    |> send_resp(200, Metadata.get_metadata_json())
+  end
+
+  # CORS preflight for OIDC metadata
+  options "/.well-known/openid-configuration" do
+    conn
+    |> put_resp_header("access-control-allow-origin", "*")
+    |> put_resp_header("access-control-allow-methods", "GET, OPTIONS")
+    |> put_resp_header("access-control-allow-headers", "content-type, mcp-protocol-version")
     |> send_resp(204, "")
   end
 
