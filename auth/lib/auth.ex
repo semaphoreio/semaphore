@@ -446,12 +446,19 @@ defmodule Auth do
         domain = Application.fetch_env!(:auth, :domain)
         resource_metadata = "https://mcp.#{domain}/.well-known/oauth-protected-resource"
 
+        error_body =
+          Jason.encode!(%{
+            "error" => "unauthorized",
+            "error_description" => "Bearer token or oauth2 required"
+          })
+
         conn
+        |> put_resp_content_type("application/json")
         |> put_resp_header(
           "www-authenticate",
           ~s(Bearer resource_metadata="#{resource_metadata}")
         )
-        |> send_resp(401, "Unauthorized")
+        |> send_resp(401, error_body)
 
       token ->
         case Auth.JWT.validate_mcp_token(token) do
@@ -462,7 +469,16 @@ defmodule Auth do
 
           {:error, reason} ->
             Logger.warning("[Auth] MCP JWT validation failed: #{inspect(reason)}")
-            send_resp(conn, 401, "Unauthorized")
+
+            error_body =
+              Jason.encode!(%{
+                "error" => "invalid_token",
+                "error_description" => "The access token is invalid or expired"
+              })
+
+            conn
+            |> put_resp_content_type("application/json")
+            |> send_resp(401, error_body)
         end
     end
   end
