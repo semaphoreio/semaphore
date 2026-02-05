@@ -7,7 +7,7 @@ DOCKER_BUILD_PATH=..
 
 INTERNAL_API_BRANCH?=master
 TMP_REPO_DIR ?= /tmp/internal_api
-INTERNAL_API_MODULES?=include/internal_api/status,include/internal_api/response_status,plumber_w_f.workflow,plumber.pipeline,server_farm.job,loghub,loghub2,user,repository_integrator,rbac,organization,projecthub,feature,artifacthub
+INTERNAL_API_MODULES?=include/internal_api/status,include/internal_api/response_status,plumber_w_f.workflow,plumber.pipeline,server_farm.job,loghub,loghub2,user,repository_integrator,rbac,organization,projecthub,feature,artifacthub,periodic_scheduler
 PROTOC_IMAGE?=golang:1.24-alpine
 
 .PHONY: tidy test test.setup lint pb.gen dev.run index

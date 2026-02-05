@@ -13,6 +13,7 @@ import (
 	loghubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub"
 	loghub2pb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub2"
 	orgpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/organization"
+	schedulerpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/periodic_scheduler"
 	pipelinepb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber.pipeline"
 	workflowpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber_w_f.workflow"
 	projecthubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/projecthub"
@@ -42,6 +43,7 @@ func New() internalapi.Provider {
 		loghub2:       &loghub2Stub{},
 		users:         &UserClientStub{},
 		rbac:          &RBACStub{},
+		scheduler:     &SchedulerClientStub{},
 		features:      &featureStub{},
 	}
 }
@@ -58,6 +60,7 @@ type provider struct {
 	loghub2       loghub2pb.Loghub2Client
 	users         userpb.UserServiceClient
 	rbac          rbacpb.RBACClient
+	scheduler     schedulerpb.PeriodicSchedulerClient
 	features      featuresvc.FeatureClient
 }
 
@@ -84,6 +87,8 @@ func (p *provider) Loghub2() loghub2pb.Loghub2Client { return p.loghub2 }
 func (p *provider) Users() userpb.UserServiceClient { return p.users }
 
 func (p *provider) RBAC() rbacpb.RBACClient { return p.rbac }
+
+func (p *provider) Scheduler() schedulerpb.PeriodicSchedulerClient { return p.scheduler }
 
 func (p *provider) Features() featuresvc.FeatureClient { return p.features }
 
@@ -643,4 +648,106 @@ func (u *UserClientStub) DescribeByRepositoryProvider(ctx context.Context, in *u
 		}
 	}
 	return &userpb.User{Id: fmt.Sprintf("user-%s", login)}, nil
+}
+
+// --- scheduler stub ---
+
+// SchedulerClientStub records scheduler RPC requests and returns configurable responses.
+type SchedulerClientStub struct {
+	schedulerpb.PeriodicSchedulerClient
+
+	ListResp     *schedulerpb.ListKeysetResponse
+	ListErr      error
+	LastList     *schedulerpb.ListKeysetRequest
+	DescribeResp *schedulerpb.DescribeResponse
+	DescribeErr  error
+	LastDescribe *schedulerpb.DescribeRequest
+	RunNowResp   *schedulerpb.RunNowResponse
+	RunNowErr    error
+	LastRunNow   *schedulerpb.RunNowRequest
+}
+
+func (s *SchedulerClientStub) ListKeyset(ctx context.Context, in *schedulerpb.ListKeysetRequest, opts ...grpc.CallOption) (*schedulerpb.ListKeysetResponse, error) {
+	s.LastList = in
+	if s.ListErr != nil {
+		return nil, s.ListErr
+	}
+	if s.ListResp != nil {
+		return s.ListResp, nil
+	}
+	return &schedulerpb.ListKeysetResponse{
+		Status: &statuspb.Status{Code: code.Code_OK},
+		Periodics: []*schedulerpb.Periodic{
+			{
+				Id:             "task-local",
+				Name:           "Nightly Build",
+				Description:    "Runs nightly builds",
+				ProjectId:      orDefault(in.GetProjectId(), "project-local"),
+				OrganizationId: orDefault(in.GetOrganizationId(), "org-local"),
+				Branch:         "main",
+				PipelineFile:   ".semaphore/nightly.yml",
+				Schedule:       "0 0 * * *",
+				Paused:         false,
+				Suspended:      false,
+				CreatedAt:      timestamppb.New(time.Unix(1_700_000_000, 0)),
+				UpdatedAt:      timestamppb.New(time.Unix(1_700_000_000, 0)),
+			},
+		},
+		NextPageToken: "",
+	}, nil
+}
+
+func (s *SchedulerClientStub) Describe(ctx context.Context, in *schedulerpb.DescribeRequest, opts ...grpc.CallOption) (*schedulerpb.DescribeResponse, error) {
+	s.LastDescribe = in
+	if s.DescribeErr != nil {
+		return nil, s.DescribeErr
+	}
+	if s.DescribeResp != nil {
+		return s.DescribeResp, nil
+	}
+	return &schedulerpb.DescribeResponse{
+		Status: &statuspb.Status{Code: code.Code_OK},
+		Periodic: &schedulerpb.Periodic{
+			Id:             orDefault(in.GetId(), "task-local"),
+			Name:           "Nightly Build",
+			Description:    "Runs nightly builds",
+			ProjectId:      "project-local",
+			OrganizationId: orDefault(in.GetOrganizationId(), "org-local"),
+			Branch:         "main",
+			PipelineFile:   ".semaphore/nightly.yml",
+			Schedule:       "0 0 * * *",
+			Paused:         false,
+			Suspended:      false,
+			CreatedAt:      timestamppb.New(time.Unix(1_700_000_000, 0)),
+			UpdatedAt:      timestamppb.New(time.Unix(1_700_000_000, 0)),
+		},
+		RecentTriggers: []*schedulerpb.Trigger{
+			{
+				TriggeredAt:  timestamppb.New(time.Unix(1_700_000_000, 0)),
+				WorkflowId:   "wf-local",
+				Status:       schedulerpb.TriggerStatus_TRIGGER_STATUS_PASSED,
+				Branch:       "main",
+				PipelineFile: ".semaphore/nightly.yml",
+			},
+		},
+	}, nil
+}
+
+func (s *SchedulerClientStub) RunNow(ctx context.Context, in *schedulerpb.RunNowRequest, opts ...grpc.CallOption) (*schedulerpb.RunNowResponse, error) {
+	s.LastRunNow = in
+	if s.RunNowErr != nil {
+		return nil, s.RunNowErr
+	}
+	if s.RunNowResp != nil {
+		return s.RunNowResp, nil
+	}
+	return &schedulerpb.RunNowResponse{
+		Status:       &statuspb.Status{Code: code.Code_OK},
+		WorkflowId:   "wf-triggered",
+		PeriodicId:   orDefault(in.GetId(), "task-local"),
+		PeriodicName: "Nightly Build",
+		Branch:       orDefault(in.GetBranch(), "main"),
+		PipelineFile: orDefault(in.GetPipelineFile(), ".semaphore/nightly.yml"),
+		TriggeredAt:  timestamppb.New(time.Now()),
+	}, nil
 }
