@@ -301,7 +301,7 @@ func validateParameterName(name string) error {
 	}
 	// Parameter names should start with a letter or underscore
 	if len(name) > 0 {
-		first := rune(name[0])
+		first, _ := utf8.DecodeRuneInString(name)
 		if !((first >= 'a' && first <= 'z') || (first >= 'A' && first <= 'Z') || first == '_') {
 			return fmt.Errorf("parameter %q must start with a letter or underscore", name)
 		}
