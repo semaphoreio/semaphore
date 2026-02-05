@@ -12,6 +12,7 @@ defmodule Guard.McpOAuth.Metadata do
     issuer = "https://mcp.#{domain}/mcp/oauth"
 
     %{
+      # OAuth 2.0 Authorization Server Metadata (RFC 8414)
       "issuer" => issuer,
       "authorization_endpoint" => "#{issuer}/authorize",
       "token_endpoint" => "#{issuer}/token",
@@ -22,7 +23,13 @@ defmodule Guard.McpOAuth.Metadata do
       "code_challenge_methods_supported" => ["S256"],
       "token_endpoint_auth_methods_supported" => ["none"],
       "scopes_supported" => ["mcp"],
-      "service_documentation" => "https://docs.semaphoreci.com/mcp"
+      "service_documentation" => "https://docs.semaphoreci.com/mcp",
+      # OpenID Connect Discovery 1.0 required fields for OIDC-compliant clients
+      # Note: We use HS256 (symmetric) for token signing, so JWKS returns empty keys.
+      # Token validation is done server-side by the MCP resource server.
+      "jwks_uri" => "#{issuer}/jwks",
+      "subject_types_supported" => ["public"],
+      "id_token_signing_alg_values_supported" => ["HS256"]
     }
   end
 

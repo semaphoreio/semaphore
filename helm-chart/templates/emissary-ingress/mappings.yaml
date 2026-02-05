@@ -577,6 +577,22 @@ spec:
   precedence: 210
   timeout_ms: 30000
 ---
+# MCP OAuth JWKS endpoint - bypass auth (public key discovery for OIDC)
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: mcp-oauth-jwks-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: "^mcp\\..*"
+  host_regex: true
+  prefix: /mcp/oauth/jwks
+  rewrite: /mcp/oauth/jwks
+  service: guard-id-http-api.{{ .Release.Namespace }}:80
+  bypass_auth: true
+  precedence: 210
+  timeout_ms: 10000
+---
 # MCP OAuth Authorize endpoint - REQUIRE auth (user must be logged in via browser)
 apiVersion: getambassador.io/v3alpha1
 kind: Mapping
