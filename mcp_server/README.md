@@ -47,6 +47,9 @@ Refer to [`AGENTS.md`](AGENTS.md) for repository guidelines, project structure, 
 | `pipeline_jobs` | List jobs belonging to a specific pipeline. |
 | `jobs_describe` | Describes a job, surfacing agent details and lifecycle timestamps. |
 | `jobs_logs` | Fetches job logs. Hosted jobs stream loghub events; self-hosted jobs return a URL to fetch logs. |
+| `tasks_list` | List scheduled tasks (periodics) for a project. |
+| `tasks_describe` | Get detailed information about a scheduled task including recent trigger history. |
+| `tasks_run` | Trigger a scheduled task to run immediately. |
 
 ## Requirements
 
@@ -78,6 +81,7 @@ The server dials internal gRPC services based on environment variables. Deployme
 | RBAC gRPC endpoint | `INTERNAL_API_URL_RBAC`, `MCP_RBAC_GRPC_ENDPOINT` |
 | Users gRPC endpoint | `INTERNAL_API_URL_USER`, `MCP_USER_GRPC_ENDPOINT` |
 | Featurehub gRPC endpoint | `INTERNAL_API_URL_FEATURE`, `MCP_FEATURE_GRPC_ENDPOINT` |
+| Scheduler gRPC endpoint | `INTERNAL_API_URL_SCHEDULER`, `MCP_SCHEDULER_GRPC_ENDPOINT` |
 | Dial timeout | `MCP_GRPC_DIAL_TIMEOUT` (default `5s`) |
 | Call timeout | `MCP_GRPC_CALL_TIMEOUT` (default `15s`) |
 
