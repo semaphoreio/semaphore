@@ -74,6 +74,35 @@ defmodule Guard.McpOAuth.Server do
   end
 
   # ====================
+  # JWKS Endpoint (for OIDC compatibility)
+  # Note: We use HS256 (symmetric HMAC) for token signing.
+  # HS256 keys cannot be exposed via JWKS (would leak the secret).
+  # Token validation is done server-side by the resource server.
+  # ====================
+
+  get "/jwks" do
+    # Return empty key set - tokens are validated server-side
+    jwks = %{
+      "keys" => []
+    }
+
+    conn
+    |> put_resp_content_type("application/json")
+    |> put_resp_header("access-control-allow-origin", "*")
+    |> put_resp_header("cache-control", "public, max-age=3600")
+    |> send_resp(200, Jason.encode!(jwks))
+  end
+
+  # CORS preflight for JWKS
+  options "/jwks" do
+    conn
+    |> put_resp_header("access-control-allow-origin", "*")
+    |> put_resp_header("access-control-allow-methods", "GET, OPTIONS")
+    |> put_resp_header("access-control-allow-headers", "content-type")
+    |> send_resp(204, "")
+  end
+
+  # ====================
   # Dynamic Client Registration (RFC 7591)
   # ====================
 
