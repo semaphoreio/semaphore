@@ -625,6 +625,40 @@ spec:
   bypass_auth: true
   precedence: 200
   timeout_ms: 10000
+---
+# OIDC Discovery (path suffix) - for clients that use OpenID Connect style discovery
+# Handles: /.well-known/openid-configuration and /.well-known/openid-configuration/mcp/oauth
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: mcp-oidc-metadata-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: "^mcp\\..*"
+  host_regex: true
+  prefix: /.well-known/openid-configuration
+  rewrite: /mcp/oauth/.well-known/openid-configuration
+  service: guard-id-http-api.{{ .Release.Namespace }}:80
+  bypass_auth: true
+  precedence: 200
+  timeout_ms: 10000
+---
+# OIDC Discovery (path insertion) - for clients using issuer path insertion
+# Handles: /mcp/oauth/.well-known/openid-configuration
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: mcp-oidc-metadata-path-insertion-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: "^mcp\\..*"
+  host_regex: true
+  prefix: /mcp/oauth/.well-known/openid-configuration
+  rewrite: /mcp/oauth/.well-known/openid-configuration
+  service: guard-id-http-api.{{ .Release.Namespace }}:80
+  bypass_auth: true
+  precedence: 210
+  timeout_ms: 10000
 {{- end }}
 ---
 {{- if eq .Values.global.edition "ee" }}
