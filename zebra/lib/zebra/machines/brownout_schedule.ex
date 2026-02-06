@@ -11,7 +11,7 @@ defmodule Zebra.Machines.BrownoutSchedule do
   def ubuntu2004 do
     first_phase =
       phase(
-        Date.range(~D[2026-02-02], ~D[2026-02-08]),
+        [~D[2026-02-02], ~D[2026-02-03], ~D[2026-02-04], ~D[2026-02-05]],
         [
           {~T[00:00:00], ~T[00:15:00]},
           {~T[10:00:00], ~T[10:15:00]},
@@ -22,7 +22,7 @@ defmodule Zebra.Machines.BrownoutSchedule do
 
     second_phase =
       phase(
-        Date.range(~D[2026-02-09], ~D[2026-02-15]),
+        Date.range(~D[2026-02-11], ~D[2026-02-15]),
         [
           {~T[00:00:00], ~T[00:30:00]},
           {~T[10:00:00], ~T[10:30:00]},
