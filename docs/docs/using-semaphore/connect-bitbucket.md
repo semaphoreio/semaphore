@@ -136,18 +136,12 @@ There are several actions that can break the connection between BitBucket and Se
 - renaming the repository
 - renaming the BitBucket user account
 
-When this happens, you must update the URL of the repository in Semaphore. To do this:
+When this happens, please email Semaphore at [support@semaphore.io](mailto:support@semaphore.io) providing the following details:
 
-<Steps>
+- Previous repository name and URL
+- New repository name and URL
 
-1. Open your [project settings](./projects#settings)
-2. Type the new repository URL
-3. Press **Change**
-    ![Changing the repository URL in Semaphore](./img/repository-url-bb.jpg)
-
-</Steps>
-
-After changing the URL, double-check the status of the [deploy key](#deploy-key) and the [webhook](#webhook).
+The Semaphore support team will relink the project to the new repository.
 
 ## See also
 
