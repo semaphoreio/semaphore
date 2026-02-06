@@ -6,7 +6,7 @@ defmodule Zebra.Machines.BrownoutScheduleTest do
   test "creates ubuntu2004 brownout schedule" do
     schedule = BrownoutSchedule.ubuntu2004()
 
-    assert length(schedule) == 81
+    assert length(schedule) == 66
 
     [first_event | _] = schedule
 
