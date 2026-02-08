@@ -46,15 +46,13 @@ defmodule Guard.McpOAuth.Register do
 
   defp valid_redirect_uri?(uri) when is_binary(uri) do
     case URI.parse(uri) do
-      %URI{scheme: scheme, host: host} when scheme in ["http", "https"] and not is_nil(host) ->
+      %URI{scheme: "https", host: host} when is_binary(host) and host != "" ->
         true
 
-      # Allow localhost with any scheme for development
-      %URI{scheme: scheme, host: "localhost"} when not is_nil(scheme) ->
+      %URI{scheme: "http", host: "localhost"} ->
         true
 
-      # Allow loopback addresses
-      %URI{scheme: scheme, host: "127.0.0.1"} when not is_nil(scheme) ->
+      %URI{scheme: "http", host: "127.0.0.1"} ->
         true
 
       _ ->

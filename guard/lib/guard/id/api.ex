@@ -41,7 +41,7 @@ defmodule Guard.Id.Api do
   )
 
   plug(Unplug,
-    if: {Unplug.Predicates.RequestPathNotIn, ["/mcp/oauth/register", "/mcp/oauth/token", "/mcp/oauth/grant-selection"]},
+    if: {Unplug.Predicates.RequestPathNotIn, ["/mcp/oauth/register", "/mcp/oauth/token"]},
     do: {Plug.CSRFProtection, []}
   )
 

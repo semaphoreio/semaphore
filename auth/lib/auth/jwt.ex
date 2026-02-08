@@ -133,7 +133,7 @@ defmodule Auth.JWT do
   defp validate_mcp_scope(claims) do
     scope = Map.get(claims, "scope", "")
 
-    if String.contains?(scope, "mcp") do
+    if scope |> String.split() |> Enum.member?("mcp") do
       :ok
     else
       Logger.warning("[Auth.JWT] Token missing mcp scope: #{inspect(scope)}")

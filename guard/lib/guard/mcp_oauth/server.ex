@@ -310,7 +310,6 @@ defmodule Guard.McpOAuth.Server do
           <input type="hidden" name="code_challenge" value="#{html_escape(validated_params.code_challenge)}" />
           <input type="hidden" name="state" value="#{html_escape(validated_params.state || "")}" />
           <input type="hidden" name="scope" value="#{html_escape(validated_params.scope)}" />
-          <input type="hidden" name="user_id" value="#{user.id}" />
           <input type="hidden" name="_csrf_token" value="#{Plug.CSRFProtection.get_csrf_token()}" />
           <div class="buttons">
             <button type="button" class="cancel-btn" onclick="window.location.href='#{html_escape(Authorize.build_error_redirect(validated_params.redirect_uri, "access_denied", "User denied access", validated_params.state))}'">Cancel</button>
@@ -335,13 +334,24 @@ defmodule Guard.McpOAuth.Server do
   end
 
   defp handle_grant_selection(conn) do
+    case get_authenticated_user(conn) do
+      {:ok, user} ->
+        do_handle_grant_selection(conn, user.id)
+
+      {:error, :not_authenticated} ->
+        conn
+        |> put_resp_content_type("application/json")
+        |> send_resp(401, Jason.encode!(%{error: "unauthorized", error_description: "User not authenticated"}))
+    end
+  end
+
+  defp do_handle_grant_selection(conn, user_id) do
     params = conn.body_params
 
     client_id = params["client_id"]
     redirect_uri = params["redirect_uri"]
     code_challenge = params["code_challenge"]
     state = params["state"]
-    user_id = params["user_id"]
 
     Logger.info("[McpOAuth.Server] Grant selection: client=#{client_id}, user=#{user_id}")
 
