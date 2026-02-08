@@ -11,32 +11,26 @@ defmodule Guard.Store.McpOAuthAuthCode do
   alias Guard.Repo.McpOAuthAuthCode
 
   @doc """
-  Find an authorization code by its code value.
-  Only returns unused, non-expired codes.
+  Atomically find and consume an authorization code.
+  Uses UPDATE ... WHERE used_at IS NULL to prevent TOCTOU race conditions.
+  Only one concurrent request can successfully consume a given code.
   """
-  @spec find_by_code(String.t()) ::
-          {:ok, McpOAuthAuthCode.t()} | {:error, :not_found | :expired | :used}
-  def find_by_code(code) when is_binary(code) do
-    Logger.debug("[McpOAuthAuthCode] Looking up code: #{String.slice(code, 0, 8)}...")
-    query = from(ac in McpOAuthAuthCode, where: ac.code == ^code)
+  @spec consume_code(String.t(), String.t()) ::
+          {:ok, McpOAuthAuthCode.t()} | {:error, :invalid_or_used}
+  def consume_code(code, client_id) when is_binary(code) and is_binary(client_id) do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
 
-    case Repo.one(query) do
-      nil ->
-        Logger.warning("[McpOAuthAuthCode] Code not found")
-        {:error, :not_found}
+    query =
+      from(ac in McpOAuthAuthCode,
+        where:
+          ac.code == ^code and is_nil(ac.used_at) and ac.expires_at > ^now and
+            ac.client_id == ^client_id,
+        select: ac
+      )
 
-      %McpOAuthAuthCode{used_at: used_at} = auth_code when not is_nil(used_at) ->
-        Logger.warning("[McpOAuthAuthCode] Code already used: id=#{auth_code.id}")
-        {:error, :used}
-
-      %McpOAuthAuthCode{expires_at: expires_at} = auth_code ->
-        if DateTime.compare(expires_at, DateTime.utc_now()) == :lt do
-          Logger.warning("[McpOAuthAuthCode] Code expired: id=#{auth_code.id}")
-          {:error, :expired}
-        else
-          Logger.debug("[McpOAuthAuthCode] Found valid code: id=#{auth_code.id}, client=#{auth_code.client_id}")
-          {:ok, auth_code}
-        end
+    case Repo.update_all(query, set: [used_at: now]) do
+      {1, [auth_code]} -> {:ok, auth_code}
+      {0, _} -> {:error, :invalid_or_used}
     end
   end
 
@@ -69,37 +63,6 @@ defmodule Guard.Store.McpOAuthAuthCode do
   rescue
     e ->
       Logger.error("[McpOAuthAuthCode] Exception creating MCP OAuth auth code: #{inspect(e)}")
-      Logger.error("[McpOAuthAuthCode] Stacktrace: #{Exception.format_stacktrace(__STACKTRACE__)}")
-      {:error, :internal_error}
-  end
-
-  @doc """
-  Mark an authorization code as used.
-  This makes it single-use per OAuth spec.
-  """
-  @spec mark_used(McpOAuthAuthCode.t()) :: {:ok, McpOAuthAuthCode.t()} | {:error, term()}
-  def mark_used(%McpOAuthAuthCode{} = auth_code) do
-    Logger.debug("[McpOAuthAuthCode] Marking code as used: id=#{auth_code.id}")
-
-    changeset =
-      auth_code
-      |> Ecto.Changeset.change(%{used_at: DateTime.utc_now() |> DateTime.truncate(:second)})
-
-    case Repo.update(changeset) do
-      {:ok, updated} ->
-        Logger.debug("[McpOAuthAuthCode] Successfully marked code as used: id=#{updated.id}")
-        {:ok, updated}
-
-      {:error, changeset} ->
-        Logger.error(
-          "[McpOAuthAuthCode] Failed to mark code as used: #{inspect(changeset.errors)}"
-        )
-
-        {:error, changeset}
-    end
-  rescue
-    e ->
-      Logger.error("[McpOAuthAuthCode] Exception marking auth code as used: #{inspect(e)}")
       Logger.error("[McpOAuthAuthCode] Stacktrace: #{Exception.format_stacktrace(__STACKTRACE__)}")
       {:error, :internal_error}
   end
