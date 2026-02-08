@@ -269,7 +269,7 @@ defmodule Auth do
   match "/exauth/mcp:path/*rest", host: "mcp." do
     log_request(conn, "mcp.#{Application.fetch_env!(:auth, :domain)}/mcp")
 
-    case parse_auth_token(conn.req_headers) do
+    case parse_auth_header(conn.req_headers) do
       nil ->
         # No token provided - return 401 with WWW-Authenticate header per MCP spec
         domain = Application.fetch_env!(:auth, :domain)
@@ -289,15 +289,15 @@ defmodule Auth do
         )
         |> send_resp(401, error_body)
 
-      token ->
-        case Auth.JWT.validate_mcp_token(token) do
-          {:ok, user_id, _claims} ->
+      {_scheme, token} ->
+        case authenticate_mcp_token(token) do
+          {:ok, user_id} ->
             conn
             |> put_resp_header("x-semaphore-user-id", user_id)
             |> send_resp(200, "")
 
           {:error, reason} ->
-            Logger.warning("[Auth] MCP JWT validation failed: #{inspect(reason)}")
+            Logger.warning("[Auth] MCP token validation failed: #{inspect(reason)}")
 
             error_body =
               Jason.encode!(%{
@@ -609,6 +609,39 @@ defmodule Auth do
 
       _ ->
         nil
+    end
+  end
+
+  defp parse_auth_header(headers) do
+    # note: Plug downcases all headers
+
+    case List.keyfind(headers, "authorization", 0) do
+      {_, auth_header} ->
+        case String.split(auth_header, " ", parts: 2) do
+          [scheme, token] -> {String.downcase(scheme), token}
+          _ -> nil
+        end
+
+      _ ->
+        nil
+    end
+  end
+
+  defp authenticate_mcp_token(token) do
+    case Auth.JWT.validate_mcp_token(token) do
+      {:ok, user_id, _claims} ->
+        {:ok, user_id}
+
+      {:error, reason} ->
+        # Fall back to legacy API token validation for existing MCP clients.
+        case authenticate_based_on_token(token) do
+          {:ok, %{id: user_id}} ->
+            Logger.info("[Auth] MCP token validated via legacy API token")
+            {:ok, user_id}
+
+          {:error, auth_error} ->
+            {:error, {:jwt_invalid, reason, auth_error}}
+        end
     end
   end
 
