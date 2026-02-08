@@ -128,11 +128,11 @@ defmodule Guard.McpOAuth.Server do
   post "/register" do
     body = conn.body_params
 
-    Logger.info("[McpOAuth.Server] DCR request received")
+    Logger.debug("[McpOAuth.Server] DCR request received")
 
     case Register.register(body) do
       {:ok, response} ->
-        Logger.info("[McpOAuth.Server] DCR successful: client_id=#{response["client_id"]}")
+        Logger.debug("[McpOAuth.Server] DCR successful: client_id=#{response["client_id"]}")
 
         conn
         |> put_resp_content_type("application/json")
@@ -163,7 +163,7 @@ defmodule Guard.McpOAuth.Server do
   # ====================
 
   get "/authorize" do
-    Logger.info("[McpOAuth.Server] Authorization request: client_id=#{conn.params["client_id"]}")
+    Logger.debug("[McpOAuth.Server] Authorization request: client_id=#{conn.params["client_id"]}")
 
     case Authorize.validate_request(conn.params) do
       {:ok, validated_params} ->
@@ -228,11 +228,11 @@ defmodule Guard.McpOAuth.Server do
   post "/token" do
     body = conn.body_params
 
-    Logger.info("[McpOAuth.Server] Token request: grant_type=#{body["grant_type"]}")
+    Logger.debug("[McpOAuth.Server] Token request: grant_type=#{body["grant_type"]}")
 
     case Token.exchange(body) do
       {:ok, response} ->
-        Logger.info("[McpOAuth.Server] Token issued successfully")
+        Logger.debug("[McpOAuth.Server] Token issued successfully")
 
         conn
         |> put_resp_content_type("application/json")
@@ -372,7 +372,7 @@ defmodule Guard.McpOAuth.Server do
     code_challenge = params["code_challenge"]
     state = params["state"]
 
-    Logger.info("[McpOAuth.Server] Grant selection: client=#{client_id}, user=#{user_id}")
+    Logger.debug("[McpOAuth.Server] Grant selection: client=#{client_id}, user=#{user_id}")
 
     # Validate the client and redirect_uri again
     case McpOAuthClient.find_by_client_id(client_id) do
