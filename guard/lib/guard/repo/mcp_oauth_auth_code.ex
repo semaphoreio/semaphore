@@ -5,7 +5,7 @@ defmodule Guard.Repo.McpOAuthAuthCode do
   """
 
   use Guard.Repo.Schema
-  alias Guard.Repo.{RbacUser}
+  alias Guard.Repo.RbacUser
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id

@@ -42,7 +42,9 @@ defmodule Guard.McpOAuth.JWT do
         "semaphore_user_id" => params.user_id,
         "scope" => "mcp",
         "iat" => now,
-        "exp" => now + ttl
+        "nbf" => now,
+        "exp" => now + ttl,
+        "jti" => Ecto.UUID.generate()
       }
 
       token = Joken.generate_and_sign!(%{}, claims, signer)

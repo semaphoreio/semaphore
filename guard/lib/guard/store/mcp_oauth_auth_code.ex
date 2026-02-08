@@ -17,7 +17,7 @@ defmodule Guard.Store.McpOAuthAuthCode do
   @spec find_by_code(String.t()) ::
           {:ok, McpOAuthAuthCode.t()} | {:error, :not_found | :expired | :used}
   def find_by_code(code) when is_binary(code) do
-    Logger.info("[McpOAuthAuthCode] Looking up code: #{String.slice(code, 0, 8)}...")
+    Logger.debug("[McpOAuthAuthCode] Looking up code: #{String.slice(code, 0, 8)}...")
     query = from(ac in McpOAuthAuthCode, where: ac.code == ^code)
 
     case Repo.one(query) do
@@ -34,7 +34,7 @@ defmodule Guard.Store.McpOAuthAuthCode do
           Logger.warning("[McpOAuthAuthCode] Code expired: id=#{auth_code.id}")
           {:error, :expired}
         else
-          Logger.info("[McpOAuthAuthCode] Found valid code: id=#{auth_code.id}, client=#{auth_code.client_id}")
+          Logger.debug("[McpOAuthAuthCode] Found valid code: id=#{auth_code.id}, client=#{auth_code.client_id}")
           {:ok, auth_code}
         end
     end
@@ -53,13 +53,13 @@ defmodule Guard.Store.McpOAuthAuthCode do
   """
   @spec create(map()) :: {:ok, McpOAuthAuthCode.t()} | {:error, term()}
   def create(params) do
-    Logger.info("[McpOAuthAuthCode] Creating auth code for client=#{params[:client_id]}, user=#{params[:user_id]}")
+    Logger.debug("[McpOAuthAuthCode] Creating auth code for client=#{params[:client_id]}, user=#{params[:user_id]}")
 
     changeset = McpOAuthAuthCode.changeset(%McpOAuthAuthCode{}, params)
 
     case Repo.insert(changeset) do
       {:ok, auth_code} ->
-        Logger.info("[McpOAuthAuthCode] Created auth code: id=#{auth_code.id}, code=#{String.slice(auth_code.code, 0, 8)}...")
+        Logger.debug("[McpOAuthAuthCode] Created auth code: id=#{auth_code.id}, code=#{String.slice(auth_code.code, 0, 8)}...")
         {:ok, auth_code}
 
       {:error, changeset} ->
@@ -79,7 +79,7 @@ defmodule Guard.Store.McpOAuthAuthCode do
   """
   @spec mark_used(McpOAuthAuthCode.t()) :: {:ok, McpOAuthAuthCode.t()} | {:error, term()}
   def mark_used(%McpOAuthAuthCode{} = auth_code) do
-    Logger.info("[McpOAuthAuthCode] Marking code as used: id=#{auth_code.id}")
+    Logger.debug("[McpOAuthAuthCode] Marking code as used: id=#{auth_code.id}")
 
     changeset =
       auth_code
@@ -87,7 +87,7 @@ defmodule Guard.Store.McpOAuthAuthCode do
 
     case Repo.update(changeset) do
       {:ok, updated} ->
-        Logger.info("[McpOAuthAuthCode] Successfully marked code as used: id=#{updated.id}")
+        Logger.debug("[McpOAuthAuthCode] Successfully marked code as used: id=#{updated.id}")
         {:ok, updated}
 
       {:error, changeset} ->
