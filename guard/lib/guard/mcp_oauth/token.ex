@@ -67,27 +67,12 @@ defmodule Guard.McpOAuth.Token do
         {:error, error_response("invalid_request", "client_id is required")}
 
       true ->
-        case McpOAuthAuthCode.find_by_code(code) do
+        case McpOAuthAuthCode.consume_code(code, client_id) do
           {:ok, auth_code} ->
-            if auth_code.client_id == client_id do
-              # Mark code as used (single-use)
-              case McpOAuthAuthCode.mark_used(auth_code) do
-                {:ok, _} -> {:ok, auth_code}
-                {:error, _} -> {:error, error_response("server_error", "Failed to process code")}
-              end
-            else
-              {:error, error_response("invalid_grant", "Code was not issued to this client")}
-            end
+            {:ok, auth_code}
 
-          {:error, :not_found} ->
-            {:error, error_response("invalid_grant", "Invalid authorization code")}
-
-          {:error, :expired} ->
-            {:error, error_response("invalid_grant", "Authorization code has expired")}
-
-          {:error, :used} ->
-            Logger.warning("[McpOAuth.Token] Attempted reuse of authorization code")
-            {:error, error_response("invalid_grant", "Authorization code has already been used")}
+          {:error, :invalid_or_used} ->
+            {:error, error_response("invalid_grant", "Invalid, expired, or already used authorization code")}
         end
     end
   end
