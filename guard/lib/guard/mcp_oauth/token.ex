@@ -128,7 +128,7 @@ defmodule Guard.McpOAuth.Token do
     %{
       "access_token" => token,
       "token_type" => "Bearer",
-      "expires_in" => 3600,
+      "expires_in" => JWT.default_token_ttl_seconds(),
       "scope" => "mcp"
     }
   end

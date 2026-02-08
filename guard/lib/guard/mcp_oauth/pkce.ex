@@ -36,17 +36,6 @@ defmodule Guard.McpOAuth.PKCE do
     |> Base.url_encode64(padding: false)
   end
 
-  @doc """
-  Generates a cryptographically secure code_verifier.
-
-  Returns a 43-128 character URL-safe string.
-  """
-  @spec generate_verifier() :: String.t()
-  def generate_verifier do
-    :crypto.strong_rand_bytes(32)
-    |> Base.url_encode64(padding: false)
-  end
-
   # Constant-time string comparison to prevent timing attacks
   defp secure_compare(a, b) when byte_size(a) != byte_size(b), do: false
 

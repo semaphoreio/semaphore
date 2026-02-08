@@ -125,6 +125,12 @@ config :guard, Guard.OrganizationCleaner,
     {"0 0 * * *", {Guard.OrganizationCleaner, :process, []}}
   ]
 
+config :guard, Guard.McpOAuth.AuthCodeCleaner,
+  jobs: [
+    # Every 30 minutes
+    {"*/30 * * * *", {Guard.McpOAuth.AuthCodeCleaner, :process, []}}
+  ]
+
 config :guard, :hard_destroy_grace_period_days, 30
 
 config :guard, :posthog_api_key, ""

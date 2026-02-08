@@ -30,6 +30,25 @@ defmodule Guard.McpOAuth.Server do
   @auth_code_ttl_seconds 600
 
   # ====================
+  # Protected Resource Metadata (RFC 9728)
+  # ====================
+
+  get "/.well-known/oauth-protected-resource" do
+    conn
+    |> put_resp_content_type("application/json")
+    |> put_resp_header("access-control-allow-origin", "*")
+    |> put_resp_header("access-control-allow-methods", "GET, OPTIONS")
+    |> send_resp(200, Metadata.get_resource_metadata_json())
+  end
+
+  options "/.well-known/oauth-protected-resource" do
+    conn
+    |> put_resp_header("access-control-allow-origin", "*")
+    |> put_resp_header("access-control-allow-methods", "GET, OPTIONS")
+    |> send_resp(204, "")
+  end
+
+  # ====================
   # Authorization Server Metadata (RFC 8414)
   # ====================
 

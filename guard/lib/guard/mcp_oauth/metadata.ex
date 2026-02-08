@@ -40,4 +40,28 @@ defmodule Guard.McpOAuth.Metadata do
   def get_metadata_json do
     Jason.encode!(get_metadata())
   end
+
+  @doc """
+  Returns the OAuth 2.1 Protected Resource Metadata (RFC 9728) as a map.
+  """
+  @spec get_resource_metadata() :: map()
+  def get_resource_metadata do
+    domain = Application.fetch_env!(:guard, :base_domain)
+
+    %{
+      resource: "https://mcp.#{domain}",
+      authorization_servers: ["https://mcp.#{domain}/mcp/oauth"],
+      scopes_supported: ["mcp"],
+      bearer_methods_supported: ["header"],
+      resource_documentation: "https://docs.semaphoreci.com/mcp"
+    }
+  end
+
+  @doc """
+  Returns the protected resource metadata as JSON string.
+  """
+  @spec get_resource_metadata_json() :: String.t()
+  def get_resource_metadata_json do
+    Jason.encode!(get_resource_metadata())
+  end
 end
