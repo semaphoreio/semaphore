@@ -560,6 +560,51 @@ defmodule Gofer.Actions.TriggerImplTest do
     assert [] == SwitchTrigger |> where(switch_id: ^switch.id) |> Repo.all()
   end
 
+  test "trigger() returns :REFUSED when pending queue limit is reached", ctx do
+    previous_queue_limit = Application.get_env(:gofer, :target_trigger_queue_limit)
+    Application.put_env(:gofer, :target_trigger_queue_limit, 1)
+
+    on_exit(fn ->
+      Application.put_env(:gofer, :target_trigger_queue_limit, previous_queue_limit)
+    end)
+
+    Helpers.use_test_plumber_service(@grpc_port)
+    Helpers.test_plumber_service_schedule_response("timeout")
+
+    assert {:ok, switch} = SwitchQueries.insert(ctx.switch_def)
+    assert {:ok, _target} = TargetQueries.insert(ctx.targets_defs |> Enum.at(0), switch)
+    assert {:ok, _target} = TargetQueries.insert(ctx.targets_defs |> Enum.at(1), switch)
+
+    request_1 = %{
+      switch_id: switch.id,
+      target_name: "prod",
+      triggered_by: "user1",
+      override: true,
+      request_token: UUID.uuid4(),
+      env_variables: []
+    }
+
+    request_2 = %{
+      switch_id: switch.id,
+      target_name: "prod",
+      triggered_by: "user1",
+      override: true,
+      request_token: UUID.uuid4(),
+      env_variables: []
+    }
+
+    assert {:ok, {:OK, _message}} = Actions.trigger(request_1)
+
+    assert :ok == wait_for_pending_count(switch.id, "prod", 1)
+
+    assert {:ok, {:REFUSED, message}} = Actions.trigger(request_2)
+
+    assert message ==
+             "Too many pending promotions for target 'prod' (1/1). Please retry later."
+
+    assert 1 == SwitchTrigger |> where(switch_id: ^switch.id) |> Repo.all() |> length()
+  end
+
   test "trigger() is idempotent in regard to request_token", ctx do
     Helpers.use_test_plumber_service(@grpc_port)
     Helpers.test_plumber_service_schedule_response("valid")
@@ -585,5 +630,22 @@ defmodule Gofer.Actions.TriggerImplTest do
     assert message == "Target trigger request recorded."
 
     assert 1 == SwitchTrigger |> where(switch_id: ^switch.id) |> Repo.all() |> length()
+  end
+
+  defp wait_for_pending_count(switch_id, target_name, expected_count, attempts_left \\ 20) do
+    case TargetTriggerQueries.get_unprocessed_triggers_count(switch_id, target_name) do
+      {:ok, ^expected_count} ->
+        :ok
+
+      {:ok, _count} when attempts_left > 0 ->
+        :timer.sleep(100)
+        wait_for_pending_count(switch_id, target_name, expected_count, attempts_left - 1)
+
+      {:ok, count} ->
+        {:error, {:unexpected_count, count}}
+
+      error ->
+        error
+    end
   end
 end
