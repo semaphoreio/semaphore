@@ -286,6 +286,7 @@ defmodule Guard.McpOAuth.Server do
     end
   end
 
+  # sobelow_skip ["XSS.SendResp"]
   defp render_grant_selection(conn, validated_params, user) do
     # Render consent UI
     html_response = """
@@ -304,7 +305,7 @@ defmodule Guard.McpOAuth.Server do
         .scope-item:last-child { border-bottom: none; }
         .user-info { color: #666; font-size: 14px; margin-bottom: 20px; }
         .buttons { display: flex; gap: 10px; margin-top: 20px; }
-        button { padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; }
+        .buttons button, .buttons a { display: inline-flex; align-items: center; justify-content: center; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; text-decoration: none; }
         .authorize-btn { background: #4CAF50; color: white; flex: 1; }
         .authorize-btn:hover { background: #45a049; }
         .cancel-btn { background: #f5f5f5; color: #666; }
@@ -314,7 +315,7 @@ defmodule Guard.McpOAuth.Server do
     <body>
       <div class="container">
         <h1>Authorize MCP Access</h1>
-        <p class="user-info">Logged in as: #{user.name || user.id}</p>
+        <p class="user-info">Logged in as: #{html_escape(user.name || user.id)}</p>
         <div class="client-info">
           <span class="client-name">#{html_escape(validated_params.client_name)}</span>
           <p>wants to access your Semaphore account via MCP.</p>
@@ -331,7 +332,7 @@ defmodule Guard.McpOAuth.Server do
           <input type="hidden" name="scope" value="#{html_escape(validated_params.scope)}" />
           <input type="hidden" name="_csrf_token" value="#{Plug.CSRFProtection.get_csrf_token()}" />
           <div class="buttons">
-            <button type="button" class="cancel-btn" onclick="window.location.href='#{html_escape(Authorize.build_error_redirect(validated_params.redirect_uri, "access_denied", "User denied access", validated_params.state))}'">Cancel</button>
+            <a class="cancel-btn" href="#{html_escape(Authorize.build_error_redirect(validated_params.redirect_uri, "access_denied", "User denied access", validated_params.state))}">Cancel</a>
             <button type="submit" class="authorize-btn">Authorize</button>
           </div>
         </form>
@@ -360,7 +361,10 @@ defmodule Guard.McpOAuth.Server do
       {:error, :not_authenticated} ->
         conn
         |> put_resp_content_type("application/json")
-        |> send_resp(401, Jason.encode!(%{error: "unauthorized", error_description: "User not authenticated"}))
+        |> send_resp(
+          401,
+          Jason.encode!(%{error: "unauthorized", error_description: "User not authenticated"})
+        )
     end
   end
 
@@ -380,6 +384,7 @@ defmodule Guard.McpOAuth.Server do
         if McpOAuthClient.valid_redirect_uri?(client, redirect_uri) do
           # Generate authorization code
           code = McpOAuthAuthCode.generate_code()
+
           expires_at =
             DateTime.utc_now()
             |> DateTime.add(@auth_code_ttl_seconds, :second)

@@ -1,6 +1,6 @@
 ARG GO_VERSION=1.23
 ARG UBUNTU_VERSION=3.17.7
-ARG ALPINE_VERSION=3.20.3
+ARG ALPINE_VERSION=3.20.6
 ARG BUILDER_IMAGE="golang:${GO_VERSION}"
 ARG RUNNER_IMAGE="alpine:${ALPINE_VERSION}"
 
@@ -51,7 +51,7 @@ LABEL org.opencontainers.image.source https://github.com/semaphoreio/semaphore
 # are intended to run in Kubernetes pods, which have probes.
 HEALTHCHECK NONE
 
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat && apk upgrade --no-cache --available libcrypto3 libssl3
 
 WORKDIR /app
 RUN chown nobody /app

@@ -72,7 +72,11 @@ defmodule Guard.McpOAuth.Token do
             {:ok, auth_code}
 
           {:error, :invalid_or_used} ->
-            {:error, error_response("invalid_grant", "Invalid, expired, or already used authorization code")}
+            {:error,
+             error_response(
+               "invalid_grant",
+               "Invalid, expired, or already used authorization code"
+             )}
         end
     end
   end

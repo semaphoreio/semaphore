@@ -47,23 +47,35 @@ defmodule Guard.Store.McpOAuthAuthCode do
   """
   @spec create(map()) :: {:ok, McpOAuthAuthCode.t()} | {:error, term()}
   def create(params) do
-    Logger.debug("[McpOAuthAuthCode] Creating auth code for client=#{params[:client_id]}, user=#{params[:user_id]}")
+    Logger.debug(
+      "[McpOAuthAuthCode] Creating auth code for client=#{params[:client_id]}, user=#{params[:user_id]}"
+    )
 
     changeset = McpOAuthAuthCode.changeset(%McpOAuthAuthCode{}, params)
 
     case Repo.insert(changeset) do
       {:ok, auth_code} ->
-        Logger.debug("[McpOAuthAuthCode] Created auth code: id=#{auth_code.id}, code=#{String.slice(auth_code.code, 0, 8)}...")
+        Logger.debug(
+          "[McpOAuthAuthCode] Created auth code: id=#{auth_code.id}, code=#{String.slice(auth_code.code, 0, 8)}..."
+        )
+
         {:ok, auth_code}
 
       {:error, changeset} ->
-        Logger.error("[McpOAuthAuthCode] Failed to create auth code: #{inspect(changeset.errors)}")
+        Logger.error(
+          "[McpOAuthAuthCode] Failed to create auth code: #{inspect(changeset.errors)}"
+        )
+
         {:error, changeset}
     end
   rescue
     e ->
       Logger.error("[McpOAuthAuthCode] Exception creating MCP OAuth auth code: #{inspect(e)}")
-      Logger.error("[McpOAuthAuthCode] Stacktrace: #{Exception.format_stacktrace(__STACKTRACE__)}")
+
+      Logger.error(
+        "[McpOAuthAuthCode] Stacktrace: #{Exception.format_stacktrace(__STACKTRACE__)}"
+      )
+
       {:error, :internal_error}
   end
 
