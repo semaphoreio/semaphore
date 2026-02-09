@@ -22,7 +22,7 @@ defmodule Auth.IpFilter do
 
   defp allow?(cidr_or_ip, client_ip) do
     if cidr?(cidr_or_ip) do
-      InetCidr.parse(cidr_or_ip, true) |> InetCidr.contains?(client_ip)
+      InetCidr.parse_cidr!(cidr_or_ip, true) |> InetCidr.contains?(client_ip)
     else
       InetCidr.parse_address!(cidr_or_ip) == client_ip
     end

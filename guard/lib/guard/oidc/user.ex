@@ -139,5 +139,4 @@ defmodule Guard.OIDC.User do
       Guard.Rbac.TempSync.sync_new_user_with_members_table(user_id)
     end)
   end
-
 end
