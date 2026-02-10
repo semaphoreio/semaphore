@@ -22,7 +22,7 @@ defmodule Zebra.Machines.BrownoutSchedule do
 
     second_phase =
       phase(
-        Date.range(~D[2026-02-11], ~D[2026-02-15]),
+        Date.range(~D[2026-02-12], ~D[2026-02-15]),
         [
           {~T[00:00:00], ~T[00:30:00]},
           {~T[10:00:00], ~T[10:30:00]},
