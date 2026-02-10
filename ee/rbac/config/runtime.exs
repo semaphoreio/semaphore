@@ -4,6 +4,7 @@ config :logger, level: (System.get_env("LOG_LEVEL") || "debug") |> String.to_ato
 
 config :rbac, Rbac.Repo,
   adapter: Ecto.Adapters.Postgres,
+  prepare: :unnamed,
   database: System.get_env("POSTGRES_DB_NAME") || "guard",
   username: System.get_env("POSTGRES_DB_USER") || "postgres",
   password: System.get_env("POSTGRES_DB_PASSWORD") || "the-cake-is-a-lie",
@@ -21,6 +22,7 @@ config :rbac, Rbac.Repo,
 
 config :rbac, Rbac.FrontRepo,
   adapter: Ecto.Adapters.Postgres,
+  prepare: :unnamed,
   database: System.get_env("POSTGRES_FRONT_DB_NAME") || "front",
   username: System.get_env("POSTGRES_DB_USER") || "postgres",
   password: System.get_env("POSTGRES_DB_PASSWORD") || "the-cake-is-a-lie",

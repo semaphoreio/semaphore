@@ -7,6 +7,7 @@ config :watchman,
 
 config :rbac, Rbac.Repo,
   adapter: Ecto.Adapters.Postgres,
+  prepare: :unnamed,
   database: System.get_env("POSTGRES_DB_NAME") || "rbac_ce",
   username: System.get_env("POSTGRES_DB_USER") || "postgres",
   password: System.get_env("POSTGRES_DB_PASSWORD") || "the-cake-is-a-lie",
