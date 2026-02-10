@@ -111,8 +111,6 @@ config :sentry,
 
 if config_env() == :prod do
   config :zebra, domain: System.get_env("BASE_DOMAIN")
-  config :zebra, Zebra.Machines.Brownout,
-    excluded_organization_ids: System.get_env("BROWNOUT_EXCLUDED_ORGANIZATION_IDS") || ""
 
   config :zebra, artifacthub_api_endpoint: System.fetch_env!("INTERNAL_API_URL_ARTIFACTHUB")
   config :zebra, cachehub_api_endpoint: System.fetch_env!("INTERNAL_API_URL_CACHEHUB")
