@@ -2,6 +2,10 @@ import $ from "jquery"
 
 export var EditNotification = {
   init: function() {
+    const docsDomain =
+      document.querySelector("[data-docs-domain]")?.dataset.docsDomain ||
+      "docs.semaphoreci.com";
+
     $("body").on("click", ".remove-rule", function(event) {
       $(event.target).closest(".rule-container").remove();
       return false;
@@ -120,7 +124,43 @@ export var EditNotification = {
               <input id="webhook_secret" name="rule_${rule_hash}[webhook_secret]" type="text"
                      class="form-control w-100"
                      placeholder="webhook-secret">
-              <p class="f6 mt1 mb0 nb1">Read more about <a href="https://docs.semaphoreci.com/essentials/webhook-notifications/#securing-webhook-notifications" target="_blank" rel="noopener">securing webhook notifications</a></p>
+              <p class="f6 mt1 mb0 nb1">Read more about <a href="https://${docsDomain}/essentials/webhook-notifications/#securing-webhook-notifications" target="_blank" rel="noopener">securing webhook notifications</a></p>
+            </div>
+
+            <div class="pl4 mb3">
+              <label for="webhook_timeout" class="db b mb1">
+                Webhook timeout (ms)
+                <span class="f6 normal gray"> · optional</span>
+              </label>
+              <input id="webhook_timeout" name="rule_${rule_hash}[webhook_timeout]" type="number"
+                     class="form-control w-100 w-25-m"
+                     min="0"
+                     max="30000"
+                     step="1"
+                     value="500"
+                     placeholder="e.g. 500" >
+              <p class="f6 mt1 mb0 nb1">0 uses the default timeout (500ms).</p>
+              <p class="f6 mt1 mb0 nb1">Maximum timeout is 30s (30000ms).</p>
+            </div>
+
+            <div class="pl4 mb3">
+              <label for="webhook_retries" class="db b mb1">
+                Webhook retries
+                <span class="f6 normal gray"> · optional</span>
+              </label>
+              <input id="webhook_retries" name="rule_${rule_hash}[webhook_retries]" type="number"
+                     class="form-control w-100 w-25-m"
+                     min="0"
+                     max="10"
+                     step="1"
+                     value="0"
+                     placeholder="e.g. 2" >
+              <p class="f6 mt1 mb0 nb1">0 disables retries.</p>
+              <p class="f6 mt1 mb0 nb1">Maximum retries is 10.</p>
+              <p class="f6 mt1 mb0 nb1">
+                Retries include the <code>X-Semaphore-Webhook-Id</code> header (UUID) for idempotency.
+                <a href="https://${docsDomain}/using-semaphore/notifications/#idempotency" target="_blank" rel="noopener">Docs</a>
+              </p>
             </div>
 
             <div class="f6 tc bt b--lighter-gray pv2 mt4 nh3 nb3 bg-washed-gray br3 br--bottom">

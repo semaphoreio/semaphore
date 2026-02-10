@@ -39,7 +39,9 @@ defmodule FrontWeb.NotificationsControllerTest do
         "slack_channels" => "@bmarkons",
         "slack_endpoint" => "https://hooks.slack.com/services/xxxx",
         "webhook_endpoint" => "https://hooks.slack.com/services/xxxx",
-        "webhook_secret" => ""
+        "webhook_secret" => "",
+        "webhook_timeout" => "500",
+        "webhook_retries" => "2"
       },
       "rule_682323" => %{
         "projects" => "test",
@@ -50,7 +52,9 @@ defmodule FrontWeb.NotificationsControllerTest do
         "slack_channels" => "#stopped",
         "slack_endpoint" => "https://hooks.slack.com/services/xxxx",
         "webhook_endpoint" => "https://hooks.slack.com/services/xxxx",
-        "webhook_secret" => "foo"
+        "webhook_secret" => "foo",
+        "webhook_timeout" => "0",
+        "webhook_retries" => "0"
       }
     }
 
@@ -138,6 +142,8 @@ defmodule FrontWeb.NotificationsControllerTest do
       assert html_response(conn, 200) =~ "Rules"
       assert html_response(conn, 200) =~ "Add another Rule"
       assert html_response(conn, 200) =~ "Save Notification"
+      assert html_response(conn, 200) =~ "max=\"30000\""
+      assert html_response(conn, 200) =~ "max=\"10\""
     end
 
     test "it redirects with a note", %{conn: conn, raw_update_params: raw_update_params} do
@@ -217,6 +223,8 @@ defmodule FrontWeb.NotificationsControllerTest do
       assert html_response(conn, 200) =~ "Rules"
       assert html_response(conn, 200) =~ "Add another Rule"
       assert html_response(conn, 200) =~ "Save Notification"
+      assert html_response(conn, 200) =~ "max=\"30000\""
+      assert html_response(conn, 200) =~ "max=\"10\""
     end
 
     test "when notification is not found, it shows 404", %{conn: conn} do
@@ -409,6 +417,14 @@ defmodule FrontWeb.NotificationsControllerTest do
 
       assert redirected_to(conn) == "/notifications"
       assert get_flash(conn, :alert) == "Insufficient permissions."
+    end
+  end
+
+  describe "parse_integer/2" do
+    test "clamps values to min and max boundaries" do
+      assert FrontWeb.NotificationsController.parse_integer("-5", 10) == 0
+      assert FrontWeb.NotificationsController.parse_integer("11", 10) == 10
+      assert FrontWeb.NotificationsController.parse_integer("50000", 30_000) == 30_000
     end
   end
 end

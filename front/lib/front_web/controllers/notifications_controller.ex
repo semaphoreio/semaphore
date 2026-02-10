@@ -6,6 +6,9 @@ defmodule FrontWeb.NotificationsController do
   alias Front.Audit
   alias Front.Models.{Notification, Organization, User}
 
+  @max_webhook_timeout 30_000
+  @max_webhook_retries 10
+
   plug(FrontWeb.Plugs.FetchPermissions, scope: "org")
   plug(FrontWeb.Plugs.PageAccess, permissions: "organization.view")
   plug(FrontWeb.Plugs.Header when action in [:index, :edit, :new, :create, :update])
@@ -347,7 +350,9 @@ defmodule FrontWeb.NotificationsController do
       slack_channels: params["slack_channels"] |> parse_entry,
       slack_endpoint: params["slack_endpoint"],
       webhook_endpoint: params["webhook_endpoint"],
-      webhook_secret: params["webhook_secret"]
+      webhook_secret: params["webhook_secret"],
+      webhook_timeout: params["webhook_timeout"] |> parse_integer(@max_webhook_timeout),
+      webhook_retries: params["webhook_retries"] |> parse_integer(@max_webhook_retries)
     }
   end
 
@@ -359,6 +364,25 @@ defmodule FrontWeb.NotificationsController do
     |> String.split(",")
     |> Enum.map(&String.trim(&1))
   end
+
+  def parse_integer(nil, _max_value), do: 0
+  def parse_integer("", _max_value), do: 0
+
+  def parse_integer(value, max_value) when is_binary(value) and is_integer(max_value) do
+    case value |> String.trim() do
+      "" ->
+        0
+
+      trimmed ->
+        case Integer.parse(trimmed) do
+          {int, _} -> int |> max(0) |> min(max_value)
+          :error -> 0
+        end
+    end
+  end
+
+  def parse_integer(value, max_value) when is_integer(value) and is_integer(max_value),
+    do: value |> max(0) |> min(max_value)
 
   def empty_notification do
     alias Semaphore.Notifications.V1alpha.Notification
@@ -392,7 +416,9 @@ defmodule FrontWeb.NotificationsController do
               },
               webhook: %Notification.Spec.Rule.Notify.Webhook{
                 endpoint: "",
-                secret: ""
+                secret: "",
+                timeout: 500,
+                retries: 0
               }
             }
           }

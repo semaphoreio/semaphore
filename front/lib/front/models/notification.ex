@@ -142,7 +142,9 @@ defmodule Front.Models.Notification do
           webhook:
             PublicApi.Notification.Spec.Rule.Notify.Webhook.new(
               endpoint: data.webhook_endpoint,
-              secret: data.webhook_secret
+              secret: data.webhook_secret,
+              timeout: data.webhook_timeout,
+              retries: data.webhook_retries
             )
         )
     )

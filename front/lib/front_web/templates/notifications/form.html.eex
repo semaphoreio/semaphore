@@ -1,5 +1,5 @@
 <%= if @permissions["organization.notifications.manage"] do %>
-<div>
+<div data-docs-domain="<%= Application.fetch_env!(:front, :docs_domain) %>">
   <h2 class="f3 f2-m mb3 bb b--black-10 pb2"><%= @form_title %></h2>
 
   <%= form_for @conn, @action, [method: @method], fn f -> %>
@@ -144,6 +144,48 @@
                   class: "form-control w-100",
                   placeholder: "webhook-secret" %>
               <p class="f6 mt1 mb0 nb1">Read more about <a href="https://<%= Application.fetch_env!(:front, :docs_domain) %>/essentials/webhook-notifications/#securing-webhook-notifications" target="_blank" rel="noopener">securing webhook notifications</a></p>
+            </div>
+
+            <div class="mb3 pl4">
+              <label class="db b mb1">
+                Webhook timeout (ms)
+                <span class="f6 normal gray"> · optional</span>
+              </label>
+              <%= number_input f, :webhook_timeout,
+                  name: "rule_#{rule_hash}[webhook_timeout]",
+                  value:
+                    if(rule.notify.webhook == nil || rule.notify.webhook.timeout == 0,
+                      do: 500,
+                      else: rule.notify.webhook.timeout
+                    ),
+                  class: "form-control w-100 w-25-m",
+                  min: "0",
+                  max: "30000",
+                  step: "1",
+                  placeholder: "e.g. 500" %>
+              <p class="f6 mt1 mb0 nb1">0 uses the default timeout (500ms).</p>
+              <p class="f6 mt1 mb0 nb1">Maximum timeout is 30s (30000ms).</p>
+            </div>
+
+            <div class="mb3 pl4">
+              <label class="db b mb1">
+                Webhook retries
+                <span class="f6 normal gray"> · optional</span>
+              </label>
+              <%= number_input f, :webhook_retries,
+                  name: "rule_#{rule_hash}[webhook_retries]",
+                  value: if(rule.notify.webhook == nil, do: 0, else: rule.notify.webhook.retries),
+                  class: "form-control w-100 w-25-m",
+                  min: "0",
+                  max: "10",
+                  step: "1",
+                  placeholder: "e.g. 2" %>
+              <p class="f6 mt1 mb0 nb1">0 disables retries.</p>
+              <p class="f6 mt1 mb0 nb1">Maximum retries is 10.</p>
+              <p class="f6 mt1 mb0 nb1">
+                Retries include the <code>X-Semaphore-Webhook-Id</code> header (UUID) for idempotency.
+                <a href="https://<%= Application.fetch_env!(:front, :docs_domain) %>/using-semaphore/notifications/#idempotency" target="_blank" rel="noopener">Docs</a>
+              </p>
             </div>
 
             <div class="f6 tc bt b--lighter-gray pv2 mt4 nh3 nb3 bg-washed-gray br3 br--bottom">
