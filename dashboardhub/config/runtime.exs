@@ -4,6 +4,7 @@ config :dashboardhub,
   amqp_url: System.get_env("AMQP_URL")
 
 config :dashboardhub, Dashboardhub.Repo,
+  prepare: :unnamed,
   database: System.get_env("POSTGRES_DB_NAME"),
   username: System.get_env("POSTGRES_DB_USER"),
   password: System.get_env("POSTGRES_DB_PASSWORD"),
