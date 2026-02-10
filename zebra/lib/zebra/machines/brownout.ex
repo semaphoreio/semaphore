@@ -13,7 +13,6 @@ defmodule Zebra.Machines.Brownout do
 
   @type brownout_schedules :: [brownout_schedule]
 
-  @type organization_ids :: [String.t()]
 
   @doc """
   Returns the combined brownout schedules for all OS images.
@@ -65,23 +64,6 @@ defmodule Zebra.Machines.Brownout do
 
   @spec apply_brownout_to_organization?(String.t()) :: boolean()
   defp apply_brownout_to_organization?(organization_id) do
-    organization_id not in excluded_organization_ids()
-  end
-
-  @spec excluded_organization_ids :: organization_ids()
-  defp excluded_organization_ids do
-    config()
-    |> Keyword.get(:excluded_organization_ids, "")
-    |> String.split(",")
-    |> Enum.map(&String.trim/1)
-  end
-
-  @spec config :: Keyword.t()
-  defp config do
-    Application.get_env(:zebra, __MODULE__, [])
-    |> case do
-      nil -> []
-      config -> config
-    end
+    not FeatureProvider.feature_enabled?(:exclude_from_brownouts, param: organization_id)
   end
 end
