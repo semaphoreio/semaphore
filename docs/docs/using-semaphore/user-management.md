@@ -100,7 +100,7 @@ To invite a user to your organization, press the **Add people** button:
 1. Select one of the available tabs
 
     - Type the user's handle, e.g. `TomFern`, or select the user from the list. Usernames are case-sensitive and all characters are considered. Ensure the handle is entered accurately to avoid errors.
-    - If you don't see the user in the list. Ensure they have repository access in **GitHub** or **BitBucket** for at least one project in your organization
+    - If you don't see the user in the list. Ensure they have repository access in **GitHub** or **BitBucket** for at least one project in your organization.
 
     ![Invite users](./img/invite-users.jpg)
 
@@ -109,6 +109,13 @@ To invite a user to your organization, press the **Add people** button:
 
 
 </Steps>
+
+In case you run into a 401 error when adding a user, please attempt the following steps:
+
+1. Go to your [Semaphore account page](https://me.semaphoreci.com/account) and ensure the GitHub status of your account is marked as "connected". This will ensure you have the ability to send invitations. In case it's marked as "Not connected" here's how you can correct it: [Connect GitHub: Troubleshooting guide](https://docs.semaphore.io/using-semaphore/connect-github#troubleshooting-guide)
+2. Ensure the user has repository access in **GitHub** or **BitBucket** for at least one project in your organization and then click on the "re-sync" button located in the People page.
+3. Wait 2-5min and then try to invite the user again.
+
 
 ### How to remove users {#remove-users}
 
