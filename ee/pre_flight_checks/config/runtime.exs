@@ -9,6 +9,7 @@ import Config
 
 if config_env() == :prod do
   config :pre_flight_checks, PreFlightChecks.EctoRepo,
+    prepare: :unnamed,
     hostname: System.get_env("DB_HOSTNAME") || raise("env variable DB_HOSTNAME is missing"),
     username: System.get_env("DB_USERNAME") || raise("env variable DB_USERNAME is missing"),
     password: System.get_env("DB_PASSWORD") || raise("env variable DB_PASSWORD is missing"),
