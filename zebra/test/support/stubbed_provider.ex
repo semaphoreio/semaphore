@@ -28,19 +28,27 @@ defmodule Support.StubbedProvider do
   def e1_to_f1_org_id, do: @e1_to_f1_org_id
   def e2_to_f1_org_id, do: @e2_to_f1_org_id
 
-  defp max_job_time_limit_feature("enabled_30") do
+  defp max_job_time_limit_feature("org_30min_limit_valid_request") do
     feature("max_job_execution_time_limit", [:enabled, {:quantity, 30}])
   end
 
-  defp max_job_time_limit_feature("enabled_30_verified") do
+  defp max_job_time_limit_feature("org_30min_limit_invalid_request") do
     feature("max_job_execution_time_limit", [:enabled, {:quantity, 30}])
   end
 
-  defp max_job_time_limit_feature("enabled_30_unverified") do
+  defp max_job_time_limit_feature("org_30min_limit_verified") do
     feature("max_job_execution_time_limit", [:enabled, {:quantity, 30}])
   end
 
-  defp max_job_time_limit_feature("enabled_48h") do
+  defp max_job_time_limit_feature("org_30min_limit_unverified") do
+    feature("max_job_execution_time_limit", [:enabled, {:quantity, 30}])
+  end
+
+  defp max_job_time_limit_feature("org_48h_limit_invalid_request") do
+    feature("max_job_execution_time_limit", [:enabled, {:quantity, 48 * 60}])
+  end
+
+  defp max_job_time_limit_feature("org_48h_limit_verified") do
     feature("max_job_execution_time_limit", [:enabled, {:quantity, 48 * 60}])
   end
 
