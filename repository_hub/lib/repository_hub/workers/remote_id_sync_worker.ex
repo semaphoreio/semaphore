@@ -171,11 +171,11 @@ defmodule RepositoryHub.RemoteIdSyncWorker do
     Process.send_after(self(), :tick, interval_ms)
   end
 
-  defp format_memory(memory) when is_map(memory) do
-    total = Map.get(memory, :total, 0)
-    processes = Map.get(memory, :processes, 0)
-    binary = Map.get(memory, :binary, 0)
-    system = Map.get(memory, :system, 0)
+  defp format_memory(memory) do
+    total = Keyword.get(memory, :total, 0)
+    processes = Keyword.get(memory, :processes, 0)
+    binary = Keyword.get(memory, :binary, 0)
+    system = Keyword.get(memory, :system, 0)
 
     "total=#{format_bytes(total)} processes=#{format_bytes(processes)} " <>
       "binary=#{format_bytes(binary)} system=#{format_bytes(system)}"
