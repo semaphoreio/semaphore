@@ -80,9 +80,9 @@ export var Switch = {
         Pollman.start();
       });
 
-      promotion.fail(function() {
+      promotion.fail(function(xhr) {
         Pollman.start();
-        alert("Something went wrong. Please try again.");
+        alert(Switch.promotionErrorMessage(xhr));
 
         let escapedTarget = Utils.escapeCSSAttributeValue(parentPromotionTarget);
         $(`[switch='${parentPromotionSwitch}'] [data-promotion-target='${escapedTarget}'][promote-button]`).removeAttr("disabled");
@@ -171,6 +171,35 @@ export var Switch = {
         xhr.setRequestHeader("X-CSRF-Token", $("meta[name='csrf-token']").attr("content"));
       }
     });
+  },
+
+  promotionErrorMessage: function(xhr) {
+    if (xhr && xhr.responseJSON) {
+      return Switch.promotionErrorFromPayload(xhr.responseJSON);
+    }
+
+    if (xhr && xhr.responseText) {
+      try {
+        const payload = JSON.parse(xhr.responseText)
+        return Switch.promotionErrorFromPayload(payload)
+      } catch (_error) {
+        return xhr.responseText;
+      }
+    }
+
+    return "Something went wrong. Please try again.";
+  },
+
+  promotionErrorFromPayload: function(payload) {
+    if (payload && payload.code && payload.message) {
+      return `${payload.code}: ${payload.message}`;
+    }
+
+    if (payload && payload.message) {
+      return payload.message;
+    }
+
+    return "Something went wrong. Please try again.";
   },
 
   latestTriggerEvent: function(promotionSwitch, promotionTarget) {
