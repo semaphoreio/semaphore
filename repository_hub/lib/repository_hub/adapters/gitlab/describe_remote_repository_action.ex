@@ -12,7 +12,7 @@ defimpl RepositoryHub.Server.DescribeRemoteRepositoryAction, for: RepositoryHub.
 
   @impl true
   def execute(_adapter, request) do
-    with {:ok, git_repository} <- GitRepository.new(request.url),
+    with {:ok, git_repository} <- GitRepository.from_gitlab(request.url),
          {:ok, gitlab_token} <- GitlabAdapter.fetch_token(request.user_id),
          {:ok, repository} <-
            GitlabClient.find_repository(
