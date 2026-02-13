@@ -107,6 +107,28 @@ defmodule RepositoryHub.Model.GitRepositoryTest do
       assert url_parts.owner == "marvinwills"
       assert url_parts.repo == "base-app"
     end
+
+    test "GitLab subgroup SSH URL => ✅" do
+      url = "git@gitlab.com:testorg/testgroup/testrepo.git"
+
+      {:ok, url_parts} = GitRepository.from_gitlab(url)
+      assert url_parts.protocol == ""
+      assert url_parts.host == "gitlab.com"
+      assert url_parts.owner == "testorg/testgroup"
+      assert url_parts.repo == "testrepo"
+      assert url_parts.ssh_git_url == "git@gitlab.com:testorg/testgroup/testrepo.git"
+    end
+
+    test "GitLab subgroup HTTPS URL => ✅" do
+      url = "https://gitlab.com/testorg/testgroup/testrepo.git"
+
+      {:ok, url_parts} = GitRepository.from_gitlab(url)
+      assert url_parts.protocol == "https://"
+      assert url_parts.host == "gitlab.com"
+      assert url_parts.owner == "testorg/testgroup"
+      assert url_parts.repo == "testrepo"
+      assert url_parts.ssh_git_url == "git@gitlab.com:testorg/testgroup/testrepo.git"
+    end
   end
 
   describe ".equal?" do
