@@ -270,6 +270,34 @@ defmodule Gofer.TargetTrigger.Model.TargetTriggerQueries.Test do
     assert {:ok, 2} = tt_2 |> TargetTriggerQueries.get_older_unprocessed_triggers_count()
   end
 
+  test "get_unprocessed_triggers_count() returns all pending requests for target in switch",
+       ctx do
+    assert {:ok, 1} =
+             TargetTriggerQueries.get_unprocessed_triggers_count(ctx.switch_id, "staging")
+
+    assert {:ok, 1} = TargetTriggerQueries.get_unprocessed_triggers_count(ctx.switch_id, "prod")
+
+    request =
+      ctx.st_request
+      |> Map.put("id", UUID.uuid4())
+      |> Map.put("request_token", UUID.uuid4())
+      |> Map.put("processed", true)
+
+    assert {:ok, processed_st} = SwitchTriggerQueries.insert(request)
+
+    assert {:ok, _tt} =
+             TargetTriggerQueries.insert(%{
+               "switch_id" => ctx.switch_id,
+               "target_name" => "staging",
+               "switch_trigger_id" => processed_st.id
+             })
+
+    assert {:ok, 2} =
+             TargetTriggerQueries.get_unprocessed_triggers_count(ctx.switch_id, "staging")
+
+    assert {:ok, 1} = TargetTriggerQueries.get_unprocessed_triggers_count(ctx.switch_id, "prod")
+  end
+
   test "get by switch_trigger_id and target_name", ctx do
     {:ok, request} = Map.fetch(ctx, :request)
     assert {:ok, target_trigger} = TargetTriggerQueries.insert(request)
