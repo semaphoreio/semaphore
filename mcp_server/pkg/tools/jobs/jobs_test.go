@@ -41,19 +41,18 @@ type selfHostedTestEnv struct {
 }
 
 // newSelfHostedTestEnv creates a standard self-hosted logs test environment
-// with an httptest server, downloadLogsFn override, and all required stubs.
-// The returned cleanup function must be deferred.
-//
-// WARNING: This function mutates the package-level downloadLogsFn variable
-// without synchronization. Tests using this helper must NOT call t.Parallel().
-func newSelfHostedTestEnv(t *testing.T, httpHandler http.HandlerFunc) (selfHostedTestEnv, func()) {
+// with an httptest server, test log downloader, and all required stubs.
+func newSelfHostedTestEnv(t *testing.T, httpHandler http.HandlerFunc) selfHostedTestEnv {
 	t.Helper()
 	ts := httptest.NewServer(httpHandler)
-	origFn := downloadLogsFn
-	downloadLogsFn = func(ctx context.Context, url string) ([]string, error) {
+	t.Cleanup(ts.Close)
+
+	resetLogCache()
+	t.Cleanup(resetLogCache)
+
+	testDownloader := func(ctx context.Context, url string) ([]string, error) {
 		return downloadSelfHostedLogs(ctx, ts.URL)
 	}
-	resetLogCache()
 
 	loghub2Client := &loghub2ClientStub{
 		resp: &loghub2pb.GenerateTokenResponse{Token: "token", Type: loghub2pb.TokenType_PULL},
@@ -87,13 +86,9 @@ func newSelfHostedTestEnv(t *testing.T, httpHandler http.HandlerFunc) (selfHoste
 	}
 
 	return selfHostedTestEnv{
-		Handler:       logsHandler(provider),
+		Handler:       logsHandler(provider, testDownloader),
 		Loghub2Client: loghub2Client,
 		OrgClient:     orgClient,
-	}, func() {
-		downloadLogsFn = origFn
-		ts.Close()
-		resetLogCache()
 	}
 }
 
@@ -171,7 +166,7 @@ func TestLogsHandler_FeatureFlagDisabled(t *testing.T) {
 		},
 	}
 
-	res, err := logsHandler(provider)(context.Background(), req)
+	res, err := logsHandler(provider, downloadSelfHostedLogs)(context.Background(), req)
 	if err != nil {
 		toFail(t, "unexpected error: %v", err)
 	}
@@ -464,6 +459,15 @@ func TestFetchHostedLogsPagination(t *testing.T) {
 			expectedCursor: "",
 			truncated:      true,
 		},
+		{
+			name:           "cursorBeyondEndReturnsEmptyPreview",
+			cursor:         "9999",
+			events:         []string{},
+			expectedStart:  9999,
+			expectedLen:    0,
+			expectedCursor: "9799",
+			truncated:      true,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -484,7 +488,7 @@ func TestFetchHostedLogsPagination(t *testing.T) {
 				Timeout:      time.Second,
 			}
 
-			handler := logsHandler(provider)
+			handler := logsHandler(provider, downloadSelfHostedLogs)
 			args := map[string]any{
 				"job_id": jobID,
 			}
@@ -531,7 +535,7 @@ func TestFetchHostedLogsPagination(t *testing.T) {
 }
 
 func TestFetchSelfHostedLogs(t *testing.T) {
-	env, cleanup := newSelfHostedTestEnv(t, func(w http.ResponseWriter, r *http.Request) {
+	env := newSelfHostedTestEnv(t, func(w http.ResponseWriter, r *http.Request) {
 		resp := logResponse{
 			Events: []logEvent{
 				{Output: "hello from self-hosted\n"},
@@ -541,7 +545,6 @@ func TestFetchSelfHostedLogs(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(resp)
 	})
-	defer cleanup()
 
 	_, result := callLogsHandler(t, env.Handler, map[string]any{"job_id": selfHostedTestJobID})
 
@@ -570,10 +573,9 @@ func TestFetchSelfHostedLogs(t *testing.T) {
 }
 
 func TestSelfHostedLogsDownloadFailureFallback(t *testing.T) {
-	env, cleanup := newSelfHostedTestEnv(t, func(w http.ResponseWriter, r *http.Request) {
+	env := newSelfHostedTestEnv(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	})
-	defer cleanup()
 
 	_, result := callLogsHandler(t, env.Handler, map[string]any{"job_id": selfHostedTestJobID})
 
@@ -591,12 +593,11 @@ func TestSelfHostedLogsDownloadFailureFallback(t *testing.T) {
 }
 
 func TestSelfHostedLogsEmptyDownloadFallback(t *testing.T) {
-	env, cleanup := newSelfHostedTestEnv(t, func(w http.ResponseWriter, r *http.Request) {
+	env := newSelfHostedTestEnv(t, func(w http.ResponseWriter, r *http.Request) {
 		resp := logResponse{Events: []logEvent{}}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(resp)
 	})
-	defer cleanup()
 
 	res, result := callLogsHandler(t, env.Handler, map[string]any{"job_id": selfHostedTestJobID})
 
@@ -681,18 +682,26 @@ func TestSelfHostedLogsPagination(t *testing.T) {
 			expectedLast:  fmt.Sprintf("line-%d", maxLogPreviewLines-1),
 			truncated:     true,
 		},
+		{
+			name:           "cursorBeyondEndReturnsEmptyPreview",
+			cursor:         "9999",
+			lineCount:      50,
+			expectedStart:  9999,
+			expectedLen:    0,
+			expectedCursor: "9799",
+			truncated:      true,
+		},
 	}
 
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			events := makeLogEvents(tc.lineCount)
-			env, cleanup := newSelfHostedTestEnv(t, func(w http.ResponseWriter, r *http.Request) {
+			env := newSelfHostedTestEnv(t, func(w http.ResponseWriter, r *http.Request) {
 				resp := logResponse{Events: events}
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(resp)
 			})
-			defer cleanup()
 
 			args := map[string]any{"job_id": selfHostedTestJobID}
 			if tc.cursor != "" {
@@ -826,7 +835,7 @@ func TestDownloadSelfHostedLogs(t *testing.T) {
 
 func TestSelfHostedLogsCacheAvoidsDuplicateDownload(t *testing.T) {
 	downloadCount := 0
-	env, cleanup := newSelfHostedTestEnv(t, func(w http.ResponseWriter, r *http.Request) {
+	env := newSelfHostedTestEnv(t, func(w http.ResponseWriter, r *http.Request) {
 		downloadCount++
 		resp := logResponse{
 			Events: []logEvent{{Output: "cached-line-1\ncached-line-2\n"}},
@@ -834,7 +843,6 @@ func TestSelfHostedLogsCacheAvoidsDuplicateDownload(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(resp)
 	})
-	defer cleanup()
 
 	// First call: should download from server and cache.
 	_, result1 := callLogsHandler(t, env.Handler, map[string]any{"job_id": selfHostedTestJobID})
@@ -852,6 +860,15 @@ func TestSelfHostedLogsCacheAvoidsDuplicateDownload(t *testing.T) {
 	}
 	if downloadCount != 1 {
 		toFail(t, "expected still 1 download after cache hit, got %d", downloadCount)
+	}
+
+	// Verify cached response includes token metadata (Issue 5).
+	if result2.Token == "" {
+		toFail(t, "expected Token in cached response")
+	}
+	expectedURL := fmt.Sprintf("https://acme.semaphoreci.com/api/v1/logs/%s?jwt=token", selfHostedTestJobID)
+	if result2.LogsURL != expectedURL {
+		toFail(t, "expected LogsURL %q in cached response, got %q", expectedURL, result2.LogsURL)
 	}
 }
 
@@ -886,7 +903,7 @@ func TestLogsPermissionDenied(t *testing.T) {
 	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
 	req.Header = header
 
-	res, err := logsHandler(provider)(context.Background(), req)
+	res, err := logsHandler(provider, downloadSelfHostedLogs)(context.Background(), req)
 	if err != nil {
 		toFail(t, "handler error: %v", err)
 	}
@@ -933,7 +950,7 @@ func TestLogsMissingOrgFromJob(t *testing.T) {
 	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
 	req.Header = header
 
-	res, err := logsHandler(provider)(context.Background(), req)
+	res, err := logsHandler(provider, downloadSelfHostedLogs)(context.Background(), req)
 	if err != nil {
 		toFail(t, "handler error: %v", err)
 	}
@@ -979,7 +996,7 @@ func TestLogsRBACUnavailable(t *testing.T) {
 	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
 	req.Header = header
 
-	res, err := logsHandler(provider)(context.Background(), req)
+	res, err := logsHandler(provider, downloadSelfHostedLogs)(context.Background(), req)
 	if err != nil {
 		toFail(t, "handler error: %v", err)
 	}

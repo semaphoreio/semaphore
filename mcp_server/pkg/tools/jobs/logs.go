@@ -95,7 +95,11 @@ func newLogsTool(name, description string) mcp.Tool {
 	)
 }
 
-func logsHandler(api internalapi.Provider) server.ToolHandlerFunc {
+// logDownloader fetches self-hosted job logs from the given URL and returns
+// the individual output lines.
+type logDownloader func(ctx context.Context, url string) ([]string, error)
+
+func logsHandler(api internalapi.Provider, downloader logDownloader) server.ToolHandlerFunc {
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		jobIDRaw, err := req.RequireString("job_id")
 		if err != nil {
@@ -162,7 +166,7 @@ Troubleshooting:
 					WithError(err).
 					Warn("failed to resolve org username for logs URL")
 			}
-			result, callErr = fetchSelfHostedLogs(ctx, api, jobID, orgUsername, startingLine)
+			result, callErr = fetchSelfHostedLogs(ctx, api, downloader, jobID, orgUsername, startingLine)
 		} else {
 			result, callErr = fetchHostedLogs(ctx, api, jobID, startingLine)
 		}
@@ -191,6 +195,57 @@ func parseCursor(cursor string) (int, error) {
 		return -1, fmt.Errorf("cursor must be a non-negative integer produced by the previous response (got %q)", cursor)
 	}
 	return value, nil
+}
+
+type paginationWindow struct {
+	Start       int    // slice start index (inclusive)
+	End         int    // slice end index (exclusive)
+	DisplayLine int    // logical line number for display
+	Truncated   bool
+	NextCursor  string
+}
+
+// computePaginationWindow calculates the slice window, display metadata, and
+// next cursor for a paginated log view. totalLines is the total number of lines
+// in the full array, startingLine is the cursor position (-1 means "latest"),
+// and maxLines is the maximum number of lines to return.
+func computePaginationWindow(totalLines, startingLine, maxLines int) paginationWindow {
+	var w paginationWindow
+	start := 0
+	end := totalLines
+
+	if startingLine < 0 {
+		if totalLines > maxLines {
+			w.DisplayLine = totalLines - maxLines
+			start = w.DisplayLine
+			w.Truncated = true
+		}
+	} else {
+		w.DisplayLine = startingLine
+		start = startingLine
+		w.Truncated = true
+		end = startingLine + maxLines
+		if end > totalLines {
+			end = totalLines
+		}
+	}
+
+	if start > end {
+		start = end
+	}
+
+	w.Start = start
+	w.End = end
+
+	if w.DisplayLine > 0 {
+		prev := w.DisplayLine - maxLines
+		if prev < 0 {
+			prev = 0
+		}
+		w.NextCursor = strconv.Itoa(prev)
+	}
+
+	return w
 }
 
 func fetchHostedLogs(ctx context.Context, api internalapi.Provider, jobID string, startingLine int) (*mcp.CallToolResult, error) {
@@ -236,58 +291,25 @@ func fetchHostedLogs(ctx context.Context, api internalapi.Provider, jobID string
 
 	events := append([]string(nil), resp.GetEvents()...)
 	totalEvents := len(events)
-	displayStartLine := 0
-	truncated := false
-	relativeStart := 0
-	relativeEnd := totalEvents
 
-	if startingLine < 0 {
-		if totalEvents > maxLogPreviewLines {
-			displayStartLine = totalEvents - maxLogPreviewLines
-			relativeStart = displayStartLine
-			truncated = true
-		}
-	} else {
-		displayStartLine = startingLine
-		truncated = true
-		relativeEnd = maxLogPreviewLines
-		if relativeEnd > totalEvents {
-			relativeEnd = totalEvents
-		}
+	virtualTotal := totalEvents
+	sliceOffset := 0
+	if startingLine >= 0 {
+		virtualTotal = startingLine + totalEvents
+		sliceOffset = startingLine
 	}
 
-	if relativeStart < 0 {
-		relativeStart = 0
-	}
-	if relativeEnd > totalEvents {
-		relativeEnd = totalEvents
-	}
-	if relativeStart > relativeEnd {
-		relativeStart = relativeEnd
-	}
-
-	displayEvents := events[relativeStart:relativeEnd]
-
-	var nextCursor string
-	if displayStartLine > 0 {
-		prev := displayStartLine - maxLogPreviewLines
-		if prev < 0 {
-			prev = 0
-		}
-		nextCursor = strconv.Itoa(prev)
-	}
+	w := computePaginationWindow(virtualTotal, startingLine, maxLogPreviewLines)
+	displayEvents := events[w.Start-sliceOffset : w.End-sliceOffset]
 
 	result := logsResult{
 		JobID:            jobID,
 		Source:           loghubSource,
 		Preview:          displayEvents,
 		Final:            resp.GetFinal(),
-		StartLine:        displayStartLine,
-		PreviewTruncated: truncated,
-	}
-
-	if nextCursor != "" {
-		result.NextCursor = nextCursor
+		StartLine:        w.DisplayLine,
+		PreviewTruncated: w.Truncated,
+		NextCursor:       w.NextCursor,
 	}
 
 	markdown := formatHostedLogsMarkdown(result)
@@ -300,10 +322,6 @@ func fetchHostedLogs(ctx context.Context, api internalapi.Provider, jobID string
 		StructuredContent: result,
 	}, nil
 }
-
-// downloadLogsFn is the function used to download self-hosted logs from
-// the logs URL. It is a package-level variable to allow overriding in tests.
-var downloadLogsFn func(ctx context.Context, url string) ([]string, error) = downloadSelfHostedLogs
 
 // errLogResponseTooLarge is returned when the log response exceeds maxLogDownloadBytes.
 var errLogResponseTooLarge = fmt.Errorf("log response exceeded %d bytes size limit", maxLogDownloadBytes)
@@ -325,8 +343,12 @@ var selfHostedHTTPClient = &http.Client{Timeout: 30 * time.Second}
 // self-hosted logs are fetched via a single HTTP GET (no server-side windowing),
 // each paginated request would otherwise re-download the entire payload.
 type cachedLogLines struct {
-	lines     []string
-	expiresAt time.Time
+	lines           []string
+	expiresAt       time.Time
+	token           string
+	tokenType       string
+	tokenTtlSeconds uint32
+	logsURL         string
 }
 
 var (
@@ -334,18 +356,23 @@ var (
 	logCache   = map[string]*cachedLogLines{}
 )
 
-func getCachedLogLines(jobID string) ([]string, bool) {
+func getCachedLogLines(jobID string) (*cachedLogLines, bool) {
 	logCacheMu.Lock()
 	defer logCacheMu.Unlock()
+	now := time.Now()
+	for k, v := range logCache {
+		if now.After(v.expiresAt) {
+			delete(logCache, k)
+		}
+	}
 	entry, ok := logCache[jobID]
-	if !ok || time.Now().After(entry.expiresAt) {
-		delete(logCache, jobID)
+	if !ok {
 		return nil, false
 	}
-	return entry.lines, true
+	return entry, true
 }
 
-func cacheLogLines(jobID string, lines []string) {
+func cacheLogLines(jobID string, lines []string, token, tokenType string, tokenTtlSeconds uint32, logsURL string) {
 	logCacheMu.Lock()
 	defer logCacheMu.Unlock()
 	now := time.Now()
@@ -367,8 +394,12 @@ func cacheLogLines(jobID string, lines []string) {
 		delete(logCache, oldestKey)
 	}
 	logCache[jobID] = &cachedLogLines{
-		lines:     lines,
-		expiresAt: now.Add(logCacheTTL),
+		lines:           lines,
+		expiresAt:       now.Add(logCacheTTL),
+		token:           token,
+		tokenType:       tokenType,
+		tokenTtlSeconds: tokenTtlSeconds,
+		logsURL:         logsURL,
 	}
 }
 
@@ -378,17 +409,21 @@ func resetLogCache() {
 	logCache = map[string]*cachedLogLines{}
 }
 
-func fetchSelfHostedLogs(ctx context.Context, api internalapi.Provider, jobID, orgUsername string, startingLine int) (*mcp.CallToolResult, error) {
+func fetchSelfHostedLogs(ctx context.Context, api internalapi.Provider, downloader logDownloader, jobID, orgUsername string, startingLine int) (*mcp.CallToolResult, error) {
 	// Check cache first to avoid unnecessary gRPC token generation on
 	// paginated calls. The token from the initial (cache-miss) call has
 	// a 300s TTL (> 60s cache TTL) and is available in that response's
 	// structured content for programmatic MCP clients.
-	if lines, ok := getCachedLogLines(jobID); ok && len(lines) > 0 {
+	if cached, ok := getCachedLogLines(jobID); ok && len(cached.lines) > 0 {
 		result := logsResult{
-			JobID:  jobID,
-			Source: loghub2Source,
+			JobID:           jobID,
+			Source:          loghub2Source,
+			Token:           cached.token,
+			TokenType:       cached.tokenType,
+			TokenTtlSeconds: cached.tokenTtlSeconds,
+			LogsURL:         cached.logsURL,
 		}
-		paginateSelfHostedLines(&result, lines, startingLine)
+		paginateSelfHostedLines(&result, cached.lines, startingLine)
 		markdown := formatSelfHostedLogsMarkdown(result)
 		markdown = shared.TruncateResponse(markdown, shared.MaxResponseChars)
 		return &mcp.CallToolResult{
@@ -435,7 +470,7 @@ func fetchSelfHostedLogs(ctx context.Context, api internalapi.Provider, jobID, o
 	}
 
 	if logsURL != "" {
-		lines, dlErr := downloadLogsFn(ctx, logsURL)
+		lines, dlErr := downloader(ctx, logsURL)
 		if dlErr != nil {
 			logging.ForComponent("tools").
 				WithField("jobId", jobID).
@@ -444,7 +479,7 @@ func fetchSelfHostedLogs(ctx context.Context, api internalapi.Provider, jobID, o
 		} else if len(lines) > 0 {
 			// Only cache non-empty results so that jobs still starting up
 			// (returning empty events) are re-checked on subsequent calls.
-			cacheLogLines(jobID, lines)
+			cacheLogLines(jobID, lines, resp.GetToken(), tokenTypeToString(resp.GetType()), loghub2TokenDuration, logsURL)
 			paginateSelfHostedLines(&result, lines, startingLine)
 		}
 	}
@@ -481,7 +516,7 @@ func downloadSelfHostedLogs(ctx context.Context, logsURL string) ([]string, erro
 		return nil, fmt.Errorf("failed to read log response body: %w", err)
 	}
 
-	if int64(len(body)) > maxLogDownloadBytes {
+	if int64(len(body)) > int64(maxLogDownloadBytes) {
 		return nil, errLogResponseTooLarge
 	}
 
@@ -509,53 +544,11 @@ func downloadSelfHostedLogs(ctx context.Context, logsURL string) ([]string, erro
 }
 
 func paginateSelfHostedLines(result *logsResult, lines []string, startingLine int) {
-	totalLines := len(lines)
-	displayStartLine := 0
-	truncated := false
-	relativeStart := 0
-	relativeEnd := totalLines
-
-	if startingLine < 0 {
-		if totalLines > maxLogPreviewLines {
-			displayStartLine = totalLines - maxLogPreviewLines
-			relativeStart = displayStartLine
-			truncated = true
-		}
-	} else {
-		displayStartLine = startingLine
-		relativeStart = startingLine
-		// When an explicit cursor is provided, mark as truncated even if the
-		// window happens to cover all remaining lines. This is consistent with
-		// hosted pagination behavior and correct in practice: users only reach
-		// a specific cursor value via pagination from a later page.
-		truncated = true
-		relativeEnd = startingLine + maxLogPreviewLines
-		if relativeEnd > totalLines {
-			relativeEnd = totalLines
-		}
-	}
-
-	if relativeStart < 0 {
-		relativeStart = 0
-	}
-	if relativeEnd > totalLines {
-		relativeEnd = totalLines
-	}
-	if relativeStart > relativeEnd {
-		relativeStart = relativeEnd
-	}
-
-	result.Preview = lines[relativeStart:relativeEnd]
-	result.StartLine = displayStartLine
-	result.PreviewTruncated = truncated
-
-	if displayStartLine > 0 {
-		prev := displayStartLine - maxLogPreviewLines
-		if prev < 0 {
-			prev = 0
-		}
-		result.NextCursor = strconv.Itoa(prev)
-	}
+	w := computePaginationWindow(len(lines), startingLine, maxLogPreviewLines)
+	result.Preview = lines[w.Start:w.End]
+	result.StartLine = w.DisplayLine
+	result.PreviewTruncated = w.Truncated
+	result.NextCursor = w.NextCursor
 }
 
 func formatHostedLogsMarkdown(result logsResult) string {
@@ -566,13 +559,9 @@ func formatHostedLogsMarkdown(result logsResult) string {
 	if len(result.Preview) == 0 {
 		mb.Paragraph("No log lines were returned. The job may not have produced output yet, or all logs have been consumed.")
 	} else {
-		start := result.StartLine
 		end := result.StartLine + len(result.Preview) - 1
-		if start <= 0 {
-			start = 0
-		}
 
-		mb.Paragraph(fmt.Sprintf("Showing log lines %d-%d.", start, end))
+		mb.Paragraph(fmt.Sprintf("Showing log lines %d-%d.", result.StartLine, end))
 		mb.Raw("```\n")
 		mb.Raw(strings.Join(result.Preview, "\n"))
 		mb.Raw("\n```\n")
@@ -607,13 +596,9 @@ func formatSelfHostedLogsMarkdown(result logsResult) string {
 	// markdown. The token is still present in the structured content (logsResult)
 	// for programmatic access by MCP clients if needed.
 	if len(result.Preview) > 0 {
-		start := result.StartLine
 		end := result.StartLine + len(result.Preview) - 1
-		if start <= 0 {
-			start = 0
-		}
 
-		mb.Paragraph(fmt.Sprintf("Showing log lines %d-%d.", start, end))
+		mb.Paragraph(fmt.Sprintf("Showing log lines %d-%d.", result.StartLine, end))
 		mb.Raw("```\n")
 		mb.Raw(strings.Join(result.Preview, "\n"))
 		mb.Raw("\n```\n")
