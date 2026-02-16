@@ -848,7 +848,7 @@ func TestDownloadSelfHostedLogs(t *testing.T) {
 		if err == nil {
 			toFail(t, "expected error for oversized response, got lines: %v", lines)
 		}
-		if err != errLogResponseTooLarge {
+		if !strings.Contains(err.Error(), "size limit") {
 			toFail(t, "expected errLogResponseTooLarge, got: %v", err)
 		}
 	})

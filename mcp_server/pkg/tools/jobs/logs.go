@@ -3,7 +3,6 @@ package jobs
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -335,7 +334,7 @@ func fetchHostedLogs(ctx context.Context, api internalapi.Provider, jobID string
 }
 
 // errLogResponseTooLarge is returned when the log response exceeds maxLogDownloadBytes.
-var errLogResponseTooLarge = errors.New("log response exceeded 10485760 bytes size limit")
+var errLogResponseTooLarge = fmt.Errorf("log response exceeded %d bytes size limit", maxLogDownloadBytes)
 
 type logEvent struct {
 	Output string `json:"output"`
@@ -531,6 +530,7 @@ func downloadSelfHostedLogs(ctx context.Context, logsURL string) ([]string, erro
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		io.Copy(io.Discard, resp.Body) // drain body so the connection can be reused
 		return nil, fmt.Errorf("log download returned HTTP %d", resp.StatusCode)
 	}
 
