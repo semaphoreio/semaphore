@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -33,6 +34,7 @@ const (
 	errLoghubMissing     = "loghub gRPC endpoint is not configured"
 	errLoghub2Missing    = "loghub2 gRPC endpoint is not configured"
 	maxLogDownloadBytes  = 10 << 20 // 10 MiB safety cap for HTTP log downloads
+	logCacheTTL          = 60 * time.Second
 )
 
 func logsFullDescription() string {
@@ -313,6 +315,56 @@ type logResponse struct {
 	Events []logEvent `json:"events"`
 }
 
+// selfHostedHTTPClient is reused across download calls to enable connection
+// pooling and avoid creating a new transport per invocation.
+var selfHostedHTTPClient = &http.Client{Timeout: 30 * time.Second}
+
+// cachedLogLines holds downloaded log lines with an expiration time. The cache
+// avoids re-downloading the full log response on every pagination call — since
+// self-hosted logs are fetched via a single HTTP GET (no server-side windowing),
+// each paginated request would otherwise re-download the entire payload.
+type cachedLogLines struct {
+	lines     []string
+	expiresAt time.Time
+}
+
+var (
+	logCacheMu sync.Mutex
+	logCache   = map[string]*cachedLogLines{}
+)
+
+func getCachedLogLines(jobID string) ([]string, bool) {
+	logCacheMu.Lock()
+	defer logCacheMu.Unlock()
+	entry, ok := logCache[jobID]
+	if !ok || time.Now().After(entry.expiresAt) {
+		delete(logCache, jobID)
+		return nil, false
+	}
+	return entry.lines, true
+}
+
+func cacheLogLines(jobID string, lines []string) {
+	logCacheMu.Lock()
+	defer logCacheMu.Unlock()
+	now := time.Now()
+	for k, v := range logCache {
+		if now.After(v.expiresAt) {
+			delete(logCache, k)
+		}
+	}
+	logCache[jobID] = &cachedLogLines{
+		lines:     lines,
+		expiresAt: now.Add(logCacheTTL),
+	}
+}
+
+func resetLogCache() {
+	logCacheMu.Lock()
+	defer logCacheMu.Unlock()
+	logCache = map[string]*cachedLogLines{}
+}
+
 func fetchSelfHostedLogs(ctx context.Context, api internalapi.Provider, jobID, orgUsername string, startingLine int) (*mcp.CallToolResult, error) {
 	client := api.Loghub2()
 	if client == nil {
@@ -352,13 +404,20 @@ func fetchSelfHostedLogs(ctx context.Context, api internalapi.Provider, jobID, o
 	}
 
 	if logsURL != "" {
-		lines, dlErr := downloadLogsFn(ctx, logsURL)
-		if dlErr != nil {
-			logging.ForComponent("tools").
-				WithField("jobId", jobID).
-				WithError(dlErr).
-				Warn("failed to download self-hosted job logs, falling back to token/URL")
-		} else if len(lines) > 0 {
+		lines, cached := getCachedLogLines(jobID)
+		if !cached {
+			var dlErr error
+			lines, dlErr = downloadLogsFn(ctx, logsURL)
+			if dlErr != nil {
+				logging.ForComponent("tools").
+					WithField("jobId", jobID).
+					WithError(dlErr).
+					Warn("failed to download self-hosted job logs, falling back to token/URL")
+			} else if len(lines) > 0 {
+				cacheLogLines(jobID, lines)
+			}
+		}
+		if len(lines) > 0 {
 			paginateSelfHostedLines(&result, lines, startingLine)
 		}
 	}
@@ -380,9 +439,7 @@ func downloadSelfHostedLogs(ctx context.Context, logsURL string) ([]string, erro
 		return nil, fmt.Errorf("failed to create log download request: %w", err)
 	}
 
-	client := &http.Client{Timeout: 30 * time.Second}
-
-	resp, err := client.Do(req)
+	resp, err := selfHostedHTTPClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to download logs: %w", err)
 	}
@@ -392,12 +449,12 @@ func downloadSelfHostedLogs(ctx context.Context, logsURL string) ([]string, erro
 		return nil, fmt.Errorf("log download returned HTTP %d", resp.StatusCode)
 	}
 
-	body, err := io.ReadAll(io.LimitReader(resp.Body, maxLogDownloadBytes))
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxLogDownloadBytes+1))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read log response body: %w", err)
 	}
 
-	if int64(len(body)) >= maxLogDownloadBytes {
+	if int64(len(body)) > maxLogDownloadBytes {
 		return nil, errLogResponseTooLarge
 	}
 
@@ -514,6 +571,10 @@ func formatSelfHostedLogsMarkdown(result logsResult) string {
 
 	mb.H1(fmt.Sprintf("Self-Hosted Logs for Job %s", result.JobID))
 
+	// When preview lines are available from a successful download, we show the
+	// log content directly and omit the token/security instructions from the
+	// markdown. The token is still present in the structured content (logsResult)
+	// for programmatic access by MCP clients if needed.
 	if len(result.Preview) > 0 {
 		start := result.StartLine
 		end := result.StartLine + len(result.Preview) - 1
@@ -529,6 +590,8 @@ func formatSelfHostedLogsMarkdown(result logsResult) string {
 		if result.PreviewTruncated {
 			if result.NextCursor != "" {
 				mb.Paragraph(fmt.Sprintf("⚠️ Preview is truncated. If you want to see the full log, paginate using `cursor=\"%s\"` to retrieve additional lines.", result.NextCursor))
+			} else if result.StartLine == 0 {
+				mb.Paragraph("This is the beginning of the log. More recent output was shown in previous responses.")
 			} else {
 				mb.Paragraph("⚠️ Preview is truncated. No further logs are available at this time.")
 			}

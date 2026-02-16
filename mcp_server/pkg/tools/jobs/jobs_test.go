@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/mark3labs/mcp-go/server"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/feature"
 	loghubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub"
 	loghub2pb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub2"
@@ -25,8 +26,95 @@ import (
 )
 
 const (
-	testProjectUUID = "33333333-3333-3333-3333-333333333333"
+	testProjectUUID     = "33333333-3333-3333-3333-333333333333"
+	selfHostedTestJobID = "88888888-7777-6666-5555-444444444444"
+	selfHostedTestOrgID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	selfHostedTestUser  = "99999999-aaaa-bbbb-cccc-dddddddddddd"
 )
+
+// selfHostedTestEnv holds references to the stubs created by
+// newSelfHostedTestEnv, allowing tests to inspect gRPC request details.
+type selfHostedTestEnv struct {
+	Handler       server.ToolHandlerFunc
+	Loghub2Client *loghub2ClientStub
+	OrgClient     *orgClientStub
+}
+
+// newSelfHostedTestEnv creates a standard self-hosted logs test environment
+// with an httptest server, downloadLogsFn override, and all required stubs.
+// The returned cleanup function must be deferred.
+func newSelfHostedTestEnv(t *testing.T, httpHandler http.HandlerFunc) (selfHostedTestEnv, func()) {
+	t.Helper()
+	ts := httptest.NewServer(httpHandler)
+	origFn := downloadLogsFn
+	downloadLogsFn = func(ctx context.Context, url string) ([]string, error) {
+		return downloadSelfHostedLogs(ctx, ts.URL)
+	}
+	resetLogCache()
+
+	loghub2Client := &loghub2ClientStub{
+		resp: &loghub2pb.GenerateTokenResponse{Token: "token", Type: loghub2pb.TokenType_PULL},
+	}
+	orgClient := &orgClientStub{
+		resp: &orgpb.DescribeResponse{
+			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
+			Organization: &orgpb.Organization{
+				OrgId:       selfHostedTestOrgID,
+				OrgUsername: "acme",
+			},
+		},
+	}
+
+	provider := &support.MockProvider{
+		JobClient: &jobClientStub{
+			describeResp: &jobpb.DescribeResponse{
+				Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
+				Job: &jobpb.Job{
+					Id:             selfHostedTestJobID,
+					ProjectId:      testProjectUUID,
+					OrganizationId: selfHostedTestOrgID,
+					SelfHosted:     true,
+				},
+			},
+		},
+		Loghub2Client:      loghub2Client,
+		OrganizationClient: orgClient,
+		RBACClient:         newRBACStub("project.view"),
+		Timeout:            time.Second,
+	}
+
+	return selfHostedTestEnv{
+		Handler:       logsHandler(provider),
+		Loghub2Client: loghub2Client,
+		OrgClient:     orgClient,
+	}, func() {
+		downloadLogsFn = origFn
+		ts.Close()
+		resetLogCache()
+	}
+}
+
+// callLogsHandler invokes the handler with the given arguments and a standard
+// test user header, returning both the raw result and the typed logsResult.
+func callLogsHandler(t *testing.T, handler server.ToolHandlerFunc, args map[string]any) (*mcp.CallToolResult, logsResult) {
+	t.Helper()
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: args}}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", selfHostedTestUser)
+	req.Header = header
+
+	res, err := handler(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+
+	result, ok := res.StructuredContent.(logsResult)
+	if !ok {
+		t.Fatalf("unexpected structured content type: %T", res.StructuredContent)
+	}
+
+	return res, result
+}
 
 func TestDescribeJob_FeatureFlagDisabled(t *testing.T) {
 	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
@@ -440,10 +528,7 @@ func TestFetchHostedLogsPagination(t *testing.T) {
 }
 
 func TestFetchSelfHostedLogs(t *testing.T) {
-	jobID := "88888888-7777-6666-5555-444444444444"
-	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
-
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	env, cleanup := newSelfHostedTestEnv(t, func(w http.ResponseWriter, r *http.Request) {
 		resp := logResponse{
 			Events: []logEvent{
 				{Output: "hello from self-hosted\n"},
@@ -452,70 +537,16 @@ func TestFetchSelfHostedLogs(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(resp)
-	}))
-	defer ts.Close()
+	})
+	defer cleanup()
 
-	origFn := downloadLogsFn
-	downloadLogsFn = func(ctx context.Context, url string) ([]string, error) {
-		return downloadSelfHostedLogs(ctx, ts.URL)
-	}
-	defer func() { downloadLogsFn = origFn }()
-
-	jobClient := &jobClientStub{
-		describeResp: &jobpb.DescribeResponse{
-			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
-			Job: &jobpb.Job{
-				Id:             jobID,
-				ProjectId:      testProjectUUID,
-				OrganizationId: orgID,
-				SelfHosted:     true,
-			},
-		},
-	}
-	loghub2Client := &loghub2ClientStub{
-		resp: &loghub2pb.GenerateTokenResponse{Token: "token", Type: loghub2pb.TokenType_PULL},
-	}
-	orgClient := &orgClientStub{
-		resp: &orgpb.DescribeResponse{
-			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
-			Organization: &orgpb.Organization{
-				OrgId:       orgID,
-				OrgUsername: "acme",
-			},
-		},
-	}
-
-	provider := &support.MockProvider{
-		JobClient:          jobClient,
-		Loghub2Client:      loghub2Client,
-		OrganizationClient: orgClient,
-		RBACClient:         newRBACStub("project.view"),
-		Timeout:            time.Second,
-	}
-
-	handler := logsHandler(provider)
-	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
-		"job_id": jobID,
-	}}}
-	header := http.Header{}
-	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
-	req.Header = header
-
-	res, err := handler(context.Background(), req)
-	if err != nil {
-		toFail(t, "handler error: %v", err)
-	}
-
-	result, ok := res.StructuredContent.(logsResult)
-	if !ok {
-		toFail(t, "unexpected structured content type: %T", res.StructuredContent)
-	}
+	_, result := callLogsHandler(t, env.Handler, map[string]any{"job_id": selfHostedTestJobID})
 
 	if result.Source != loghub2Source || result.Token != "token" || result.TokenTtlSeconds != loghub2TokenDuration {
 		toFail(t, "unexpected loghub2 response: %+v", result)
 	}
 
-	expectedURL := fmt.Sprintf("https://acme.semaphoreci.com/api/v1/logs/%s?jwt=token", jobID)
+	expectedURL := fmt.Sprintf("https://acme.semaphoreci.com/api/v1/logs/%s?jwt=token", selfHostedTestJobID)
 	if result.LogsURL != expectedURL {
 		toFail(t, "expected logs URL %q, got %q", expectedURL, result.LogsURL)
 	}
@@ -527,79 +558,21 @@ func TestFetchSelfHostedLogs(t *testing.T) {
 		toFail(t, "unexpected preview lines: %v", result.Preview)
 	}
 
-	if loghub2Client.lastRequest == nil || loghub2Client.lastRequest.GetJobId() != jobID {
-		toFail(t, "unexpected loghub2 request: %+v", loghub2Client.lastRequest)
+	if env.Loghub2Client.lastRequest == nil || env.Loghub2Client.lastRequest.GetJobId() != selfHostedTestJobID {
+		toFail(t, "unexpected loghub2 request: %+v", env.Loghub2Client.lastRequest)
 	}
-
-	if orgClient.lastRequest == nil || orgClient.lastRequest.GetOrgId() != orgID {
-		toFail(t, "unexpected org describe request: %+v", orgClient.lastRequest)
+	if env.OrgClient.lastRequest == nil || env.OrgClient.lastRequest.GetOrgId() != selfHostedTestOrgID {
+		toFail(t, "unexpected org describe request: %+v", env.OrgClient.lastRequest)
 	}
 }
 
 func TestSelfHostedLogsDownloadFailureFallback(t *testing.T) {
-	jobID := "88888888-7777-6666-5555-444444444444"
-	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
-
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	env, cleanup := newSelfHostedTestEnv(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-	}))
-	defer ts.Close()
+	})
+	defer cleanup()
 
-	origFn := downloadLogsFn
-	downloadLogsFn = func(ctx context.Context, url string) ([]string, error) {
-		return downloadSelfHostedLogs(ctx, ts.URL)
-	}
-	defer func() { downloadLogsFn = origFn }()
-
-	jobClient := &jobClientStub{
-		describeResp: &jobpb.DescribeResponse{
-			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
-			Job: &jobpb.Job{
-				Id:             jobID,
-				ProjectId:      testProjectUUID,
-				OrganizationId: orgID,
-				SelfHosted:     true,
-			},
-		},
-	}
-	loghub2Client := &loghub2ClientStub{
-		resp: &loghub2pb.GenerateTokenResponse{Token: "token", Type: loghub2pb.TokenType_PULL},
-	}
-	orgClient := &orgClientStub{
-		resp: &orgpb.DescribeResponse{
-			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
-			Organization: &orgpb.Organization{
-				OrgId:       orgID,
-				OrgUsername: "acme",
-			},
-		},
-	}
-
-	provider := &support.MockProvider{
-		JobClient:          jobClient,
-		Loghub2Client:      loghub2Client,
-		OrganizationClient: orgClient,
-		RBACClient:         newRBACStub("project.view"),
-		Timeout:            time.Second,
-	}
-
-	handler := logsHandler(provider)
-	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
-		"job_id": jobID,
-	}}}
-	header := http.Header{}
-	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
-	req.Header = header
-
-	res, err := handler(context.Background(), req)
-	if err != nil {
-		toFail(t, "handler error: %v", err)
-	}
-
-	result, ok := res.StructuredContent.(logsResult)
-	if !ok {
-		toFail(t, "unexpected structured content type: %T", res.StructuredContent)
-	}
+	_, result := callLogsHandler(t, env.Handler, map[string]any{"job_id": selfHostedTestJobID})
 
 	if result.Token != "token" {
 		toFail(t, "expected token in fallback, got %q", result.Token)
@@ -608,78 +581,21 @@ func TestSelfHostedLogsDownloadFailureFallback(t *testing.T) {
 		toFail(t, "expected no preview lines in fallback, got %d", len(result.Preview))
 	}
 
-	expectedURL := fmt.Sprintf("https://acme.semaphoreci.com/api/v1/logs/%s?jwt=token", jobID)
+	expectedURL := fmt.Sprintf("https://acme.semaphoreci.com/api/v1/logs/%s?jwt=token", selfHostedTestJobID)
 	if result.LogsURL != expectedURL {
 		toFail(t, "expected logs URL %q, got %q", expectedURL, result.LogsURL)
 	}
 }
 
 func TestSelfHostedLogsEmptyDownloadFallback(t *testing.T) {
-	jobID := "88888888-7777-6666-5555-444444444444"
-	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
-
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	env, cleanup := newSelfHostedTestEnv(t, func(w http.ResponseWriter, r *http.Request) {
 		resp := logResponse{Events: []logEvent{}}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(resp)
-	}))
-	defer ts.Close()
+	})
+	defer cleanup()
 
-	origFn := downloadLogsFn
-	downloadLogsFn = func(ctx context.Context, url string) ([]string, error) {
-		return downloadSelfHostedLogs(ctx, ts.URL)
-	}
-	defer func() { downloadLogsFn = origFn }()
-
-	jobClient := &jobClientStub{
-		describeResp: &jobpb.DescribeResponse{
-			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
-			Job: &jobpb.Job{
-				Id:             jobID,
-				ProjectId:      testProjectUUID,
-				OrganizationId: orgID,
-				SelfHosted:     true,
-			},
-		},
-	}
-	loghub2Client := &loghub2ClientStub{
-		resp: &loghub2pb.GenerateTokenResponse{Token: "token", Type: loghub2pb.TokenType_PULL},
-	}
-	orgClient := &orgClientStub{
-		resp: &orgpb.DescribeResponse{
-			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
-			Organization: &orgpb.Organization{
-				OrgId:       orgID,
-				OrgUsername: "acme",
-			},
-		},
-	}
-
-	provider := &support.MockProvider{
-		JobClient:          jobClient,
-		Loghub2Client:      loghub2Client,
-		OrganizationClient: orgClient,
-		RBACClient:         newRBACStub("project.view"),
-		Timeout:            time.Second,
-	}
-
-	handler := logsHandler(provider)
-	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
-		"job_id": jobID,
-	}}}
-	header := http.Header{}
-	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
-	req.Header = header
-
-	res, err := handler(context.Background(), req)
-	if err != nil {
-		toFail(t, "handler error: %v", err)
-	}
-
-	result, ok := res.StructuredContent.(logsResult)
-	if !ok {
-		toFail(t, "unexpected structured content type: %T", res.StructuredContent)
-	}
+	res, result := callLogsHandler(t, env.Handler, map[string]any{"job_id": selfHostedTestJobID})
 
 	if len(result.Preview) != 0 {
 		toFail(t, "expected no preview lines for empty events, got %d", len(result.Preview))
@@ -701,9 +617,6 @@ func TestSelfHostedLogsEmptyDownloadFallback(t *testing.T) {
 }
 
 func TestSelfHostedLogsPagination(t *testing.T) {
-	jobID := "88888888-7777-6666-5555-444444444444"
-	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
-
 	makeLogEvents := func(n int) []logEvent {
 		var output strings.Builder
 		for i := 0; i < n; i++ {
@@ -771,71 +684,18 @@ func TestSelfHostedLogsPagination(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			events := makeLogEvents(tc.lineCount)
-
-			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			env, cleanup := newSelfHostedTestEnv(t, func(w http.ResponseWriter, r *http.Request) {
 				resp := logResponse{Events: events}
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(resp)
-			}))
-			defer ts.Close()
+			})
+			defer cleanup()
 
-			origFn := downloadLogsFn
-			downloadLogsFn = func(ctx context.Context, url string) ([]string, error) {
-				return downloadSelfHostedLogs(ctx, ts.URL)
-			}
-			defer func() { downloadLogsFn = origFn }()
-
-			jobClient := &jobClientStub{
-				describeResp: &jobpb.DescribeResponse{
-					Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
-					Job: &jobpb.Job{
-						Id:             jobID,
-						ProjectId:      testProjectUUID,
-						OrganizationId: orgID,
-						SelfHosted:     true,
-					},
-				},
-			}
-			loghub2Client := &loghub2ClientStub{
-				resp: &loghub2pb.GenerateTokenResponse{Token: "token", Type: loghub2pb.TokenType_PULL},
-			}
-			orgClient := &orgClientStub{
-				resp: &orgpb.DescribeResponse{
-					Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
-					Organization: &orgpb.Organization{
-						OrgId:       orgID,
-						OrgUsername: "acme",
-					},
-				},
-			}
-
-			provider := &support.MockProvider{
-				JobClient:          jobClient,
-				Loghub2Client:      loghub2Client,
-				OrganizationClient: orgClient,
-				RBACClient:         newRBACStub("project.view"),
-				Timeout:            time.Second,
-			}
-
-			handler := logsHandler(provider)
-			args := map[string]any{"job_id": jobID}
+			args := map[string]any{"job_id": selfHostedTestJobID}
 			if tc.cursor != "" {
 				args["cursor"] = tc.cursor
 			}
-			req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: args}}
-			header := http.Header{}
-			header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
-			req.Header = header
-
-			res, err := handler(context.Background(), req)
-			if err != nil {
-				toFail(t, "handler error: %v", err)
-			}
-
-			result, ok := res.StructuredContent.(logsResult)
-			if !ok {
-				toFail(t, "unexpected structured content type: %T", res.StructuredContent)
-			}
+			_, result := callLogsHandler(t, env.Handler, args)
 
 			if result.StartLine != tc.expectedStart {
 				toFail(t, "expected start line %d, got %d", tc.expectedStart, result.StartLine)
@@ -959,6 +819,37 @@ func TestDownloadSelfHostedLogs(t *testing.T) {
 			toFail(t, "expected errLogResponseTooLarge, got: %v", err)
 		}
 	})
+}
+
+func TestSelfHostedLogsCacheAvoidsDuplicateDownload(t *testing.T) {
+	downloadCount := 0
+	env, cleanup := newSelfHostedTestEnv(t, func(w http.ResponseWriter, r *http.Request) {
+		downloadCount++
+		resp := logResponse{
+			Events: []logEvent{{Output: "cached-line-1\ncached-line-2\n"}},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	})
+	defer cleanup()
+
+	// First call: should download from server and cache.
+	_, result1 := callLogsHandler(t, env.Handler, map[string]any{"job_id": selfHostedTestJobID})
+	if len(result1.Preview) != 2 {
+		toFail(t, "expected 2 preview lines on first call, got %d", len(result1.Preview))
+	}
+	if downloadCount != 1 {
+		toFail(t, "expected 1 download on first call, got %d", downloadCount)
+	}
+
+	// Second call: should use cached lines without hitting the server.
+	_, result2 := callLogsHandler(t, env.Handler, map[string]any{"job_id": selfHostedTestJobID})
+	if len(result2.Preview) != 2 {
+		toFail(t, "expected 2 preview lines on second call, got %d", len(result2.Preview))
+	}
+	if downloadCount != 1 {
+		toFail(t, "expected still 1 download after cache hit, got %d", downloadCount)
+	}
 }
 
 func TestLogsPermissionDenied(t *testing.T) {
