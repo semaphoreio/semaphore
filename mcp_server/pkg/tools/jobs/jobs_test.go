@@ -2,13 +2,17 @@ package jobs
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/mark3labs/mcp-go/server"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/feature"
 	loghubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub"
 	loghub2pb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub2"
@@ -23,8 +27,110 @@ import (
 )
 
 const (
-	testProjectUUID = "33333333-3333-3333-3333-333333333333"
+	testProjectUUID     = "33333333-3333-3333-3333-333333333333"
+	selfHostedTestJobID = "88888888-7777-6666-5555-444444444444"
+	selfHostedTestOrgID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	selfHostedTestUser  = "99999999-aaaa-bbbb-cccc-dddddddddddd"
 )
+
+// selfHostedTestEnv holds references to the stubs created by
+// newSelfHostedTestEnv, allowing tests to inspect gRPC request details.
+type selfHostedTestEnv struct {
+	Handler       server.ToolHandlerFunc
+	Loghub2Client *loghub2ClientStub
+	OrgClient     *orgClientStub
+}
+
+// newSelfHostedTestEnv creates a standard self-hosted logs test environment
+// with an httptest server, test log downloader, and all required stubs.
+// By default the job state is FINISHED; pass opts to override.
+func newSelfHostedTestEnv(t *testing.T, httpHandler http.HandlerFunc, opts ...selfHostedTestOpt) selfHostedTestEnv {
+	t.Helper()
+	ts := httptest.NewServer(httpHandler)
+	t.Cleanup(ts.Close)
+
+	resetLogCache()
+	t.Cleanup(resetLogCache)
+
+	expectedLogsURL := fmt.Sprintf("https://acme.semaphoreci.com/api/v1/logs/%s?jwt=token", selfHostedTestJobID)
+	testDownloader := func(ctx context.Context, url string) ([]string, error) {
+		if url != expectedLogsURL {
+			t.Errorf("downloader received unexpected URL %q, want %q", url, expectedLogsURL)
+		}
+		return downloadSelfHostedLogs(ctx, ts.URL)
+	}
+
+	loghub2Client := &loghub2ClientStub{
+		resp: &loghub2pb.GenerateTokenResponse{Token: "token", Type: loghub2pb.TokenType_PULL},
+	}
+	orgClient := &orgClientStub{
+		resp: &orgpb.DescribeResponse{
+			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
+			Organization: &orgpb.Organization{
+				OrgId:       selfHostedTestOrgID,
+				OrgUsername: "acme",
+			},
+		},
+	}
+
+	jobState := jobpb.Job_FINISHED
+	for _, o := range opts {
+		if o.jobState != 0 {
+			jobState = o.jobState
+		}
+	}
+
+	provider := &support.MockProvider{
+		JobClient: &jobClientStub{
+			describeResp: &jobpb.DescribeResponse{
+				Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
+				Job: &jobpb.Job{
+					Id:             selfHostedTestJobID,
+					ProjectId:      testProjectUUID,
+					OrganizationId: selfHostedTestOrgID,
+					SelfHosted:     true,
+					State:          jobState,
+				},
+			},
+		},
+		Loghub2Client:      loghub2Client,
+		OrganizationClient: orgClient,
+		RBACClient:         newRBACStub("project.view"),
+		Timeout:            time.Second,
+	}
+
+	return selfHostedTestEnv{
+		Handler:       logsHandler(provider, testDownloader),
+		Loghub2Client: loghub2Client,
+		OrgClient:     orgClient,
+	}
+}
+
+type selfHostedTestOpt struct {
+	jobState jobpb.Job_State
+}
+
+// callLogsHandler invokes the handler with the given arguments and a standard
+// test user header, returning both the raw result and the typed logsResult.
+func callLogsHandler(t *testing.T, handler server.ToolHandlerFunc, args map[string]any) (*mcp.CallToolResult, logsResult) {
+	t.Helper()
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: args}}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", selfHostedTestUser)
+	req.Header = header
+
+	res, err := handler(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+
+	result, ok := res.StructuredContent.(logsResult)
+	if !ok {
+		t.Fatalf("unexpected structured content type: %T", res.StructuredContent)
+	}
+
+	return res, result
+}
 
 func TestDescribeJob_FeatureFlagDisabled(t *testing.T) {
 	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
@@ -78,7 +184,7 @@ func TestLogsHandler_FeatureFlagDisabled(t *testing.T) {
 		},
 	}
 
-	res, err := logsHandler(provider)(context.Background(), req)
+	res, err := logsHandler(provider, downloadSelfHostedLogs)(context.Background(), req)
 	if err != nil {
 		toFail(t, "unexpected error: %v", err)
 	}
@@ -371,6 +477,15 @@ func TestFetchHostedLogsPagination(t *testing.T) {
 			expectedCursor: "",
 			truncated:      true,
 		},
+		{
+			name:           "cursorBeyondEndReturnsEmptyPreview",
+			cursor:         "9999",
+			events:         []string{},
+			expectedStart:  9999,
+			expectedLen:    0,
+			expectedCursor: "9799",
+			truncated:      true,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -391,7 +506,7 @@ func TestFetchHostedLogsPagination(t *testing.T) {
 				Timeout:      time.Second,
 			}
 
-			handler := logsHandler(provider)
+			handler := logsHandler(provider, downloadSelfHostedLogs)
 			args := map[string]any{
 				"job_id": jobID,
 			}
@@ -438,73 +553,373 @@ func TestFetchHostedLogsPagination(t *testing.T) {
 }
 
 func TestFetchSelfHostedLogs(t *testing.T) {
-	jobID := "88888888-7777-6666-5555-444444444444"
-	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
-	jobClient := &jobClientStub{
-		describeResp: &jobpb.DescribeResponse{
-			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
-			Job: &jobpb.Job{
-				Id:             jobID,
-				ProjectId:      testProjectUUID,
-				OrganizationId: orgID,
-				SelfHosted:     true,
+	env := newSelfHostedTestEnv(t, func(w http.ResponseWriter, r *http.Request) {
+		resp := logResponse{
+			Events: []logEvent{
+				{Output: "hello from self-hosted\n"},
+				{Output: "build succeeded\n"},
 			},
-		},
-	}
-	loghub2Client := &loghub2ClientStub{
-		resp: &loghub2pb.GenerateTokenResponse{Token: "token", Type: loghub2pb.TokenType_PULL},
-	}
-	orgClient := &orgClientStub{
-		resp: &orgpb.DescribeResponse{
-			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
-			Organization: &orgpb.Organization{
-				OrgId:       orgID,
-				OrgUsername: "acme",
-			},
-		},
-	}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	})
 
-	provider := &support.MockProvider{
-		JobClient:          jobClient,
-		Loghub2Client:      loghub2Client,
-		OrganizationClient: orgClient,
-		RBACClient:         newRBACStub("project.view"),
-		Timeout:            time.Second,
-	}
-
-	handler := logsHandler(provider)
-	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
-		"job_id": jobID,
-	}}}
-	header := http.Header{}
-	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
-	req.Header = header
-
-	res, err := handler(context.Background(), req)
-	if err != nil {
-		toFail(t, "handler error: %v", err)
-	}
-
-	result, ok := res.StructuredContent.(logsResult)
-	if !ok {
-		toFail(t, "unexpected structured content type: %T", res.StructuredContent)
-	}
+	_, result := callLogsHandler(t, env.Handler, map[string]any{"job_id": selfHostedTestJobID})
 
 	if result.Source != loghub2Source || result.Token != "token" || result.TokenTtlSeconds != loghub2TokenDuration {
 		toFail(t, "unexpected loghub2 response: %+v", result)
 	}
 
-	expectedURL := fmt.Sprintf("https://acme.semaphoreci.com/api/v1/logs/%s?jwt=token", jobID)
+	expectedURL := fmt.Sprintf("https://acme.semaphoreci.com/api/v1/logs/%s?jwt=token", selfHostedTestJobID)
 	if result.LogsURL != expectedURL {
 		toFail(t, "expected logs URL %q, got %q", expectedURL, result.LogsURL)
 	}
 
-	if loghub2Client.lastRequest == nil || loghub2Client.lastRequest.GetJobId() != jobID {
-		toFail(t, "unexpected loghub2 request: %+v", loghub2Client.lastRequest)
+	if len(result.Preview) != 2 {
+		toFail(t, "expected 2 preview lines, got %d: %v", len(result.Preview), result.Preview)
+	}
+	if result.Preview[0] != "hello from self-hosted" || result.Preview[1] != "build succeeded" {
+		toFail(t, "unexpected preview lines: %v", result.Preview)
 	}
 
-	if orgClient.lastRequest == nil || orgClient.lastRequest.GetOrgId() != orgID {
-		toFail(t, "unexpected org describe request: %+v", orgClient.lastRequest)
+	if env.Loghub2Client.lastRequest == nil || env.Loghub2Client.lastRequest.GetJobId() != selfHostedTestJobID {
+		toFail(t, "unexpected loghub2 request: %+v", env.Loghub2Client.lastRequest)
+	}
+	if env.OrgClient.lastRequest == nil || env.OrgClient.lastRequest.GetOrgId() != selfHostedTestOrgID {
+		toFail(t, "unexpected org describe request: %+v", env.OrgClient.lastRequest)
+	}
+}
+
+func TestSelfHostedLogsDownloadFailureFallback(t *testing.T) {
+	env := newSelfHostedTestEnv(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	})
+
+	_, result := callLogsHandler(t, env.Handler, map[string]any{"job_id": selfHostedTestJobID})
+
+	if result.Token != "token" {
+		toFail(t, "expected token in fallback, got %q", result.Token)
+	}
+	if len(result.Preview) != 0 {
+		toFail(t, "expected no preview lines in fallback, got %d", len(result.Preview))
+	}
+
+	expectedURL := fmt.Sprintf("https://acme.semaphoreci.com/api/v1/logs/%s?jwt=token", selfHostedTestJobID)
+	if result.LogsURL != expectedURL {
+		toFail(t, "expected logs URL %q, got %q", expectedURL, result.LogsURL)
+	}
+}
+
+func TestSelfHostedLogsEmptyDownloadFallback(t *testing.T) {
+	env := newSelfHostedTestEnv(t, func(w http.ResponseWriter, r *http.Request) {
+		resp := logResponse{Events: []logEvent{}}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	})
+
+	res, result := callLogsHandler(t, env.Handler, map[string]any{"job_id": selfHostedTestJobID})
+
+	if len(result.Preview) != 0 {
+		toFail(t, "expected no preview lines for empty events, got %d", len(result.Preview))
+	}
+	if !result.DownloadEmpty {
+		toFail(t, "expected DownloadEmpty=true for empty events")
+	}
+	if result.Token != "token" {
+		toFail(t, "expected token in fallback, got %q", result.Token)
+	}
+	if result.LogsURL == "" {
+		toFail(t, "expected logs URL in fallback")
+	}
+
+	text, ok := res.Content[0].(mcp.TextContent)
+	if !ok {
+		toFail(t, "expected text content, got %T", res.Content[0])
+	}
+	if !strings.Contains(text.Text, "has not produced log output yet") {
+		toFail(t, "expected empty-download message, got %q", text.Text)
+	}
+}
+
+func TestSelfHostedLogsPagination(t *testing.T) {
+	makeLogEvents := func(n int) []logEvent {
+		var output strings.Builder
+		for i := 0; i < n; i++ {
+			fmt.Fprintf(&output, "line-%d\n", i)
+		}
+		return []logEvent{{Output: output.String()}}
+	}
+
+	testCases := []struct {
+		name           string
+		cursor         string
+		lineCount      int
+		expectedStart  int
+		expectedLen    int
+		expectedFirst  string
+		expectedLast   string
+		expectedCursor string
+		truncated      bool
+	}{
+		{
+			name:           "initialRequestTruncatesToNewestLines",
+			cursor:         "",
+			lineCount:      500,
+			expectedStart:  500 - maxLogPreviewLines,
+			expectedLen:    maxLogPreviewLines,
+			expectedFirst:  fmt.Sprintf("line-%d", 500-maxLogPreviewLines),
+			expectedLast:   "line-499",
+			expectedCursor: fmt.Sprintf("%d", 500-(2*maxLogPreviewLines)),
+			truncated:      true,
+		},
+		{
+			name:          "initialRequestShortLog",
+			cursor:        "",
+			lineCount:     50,
+			expectedStart: 0,
+			expectedLen:   50,
+			expectedFirst: "line-0",
+			expectedLast:  "line-49",
+			truncated:     false,
+		},
+		{
+			name:           "cursorInMiddleReturnsOlderChunk",
+			cursor:         "150",
+			lineCount:      500,
+			expectedStart:  150,
+			expectedLen:    maxLogPreviewLines,
+			expectedFirst:  "line-150",
+			expectedLast:   fmt.Sprintf("line-%d", 150+maxLogPreviewLines-1),
+			expectedCursor: "0",
+			truncated:      true,
+		},
+		{
+			name:          "cursorAtBeginningHasNoFurtherPages",
+			cursor:        "0",
+			lineCount:     500,
+			expectedStart: 0,
+			expectedLen:   maxLogPreviewLines,
+			expectedFirst: "line-0",
+			expectedLast:  fmt.Sprintf("line-%d", maxLogPreviewLines-1),
+			truncated:     true,
+		},
+		{
+			name:           "cursorBeyondEndReturnsEmptyPreview",
+			cursor:         "9999",
+			lineCount:      50,
+			expectedStart:  9999,
+			expectedLen:    0,
+			expectedCursor: "0",
+			truncated:      true,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			events := makeLogEvents(tc.lineCount)
+			env := newSelfHostedTestEnv(t, func(w http.ResponseWriter, r *http.Request) {
+				resp := logResponse{Events: events}
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(resp)
+			})
+
+			args := map[string]any{"job_id": selfHostedTestJobID}
+			if tc.cursor != "" {
+				args["cursor"] = tc.cursor
+			}
+			_, result := callLogsHandler(t, env.Handler, args)
+
+			if result.StartLine != tc.expectedStart {
+				toFail(t, "expected start line %d, got %d", tc.expectedStart, result.StartLine)
+			}
+			if len(result.Preview) != tc.expectedLen {
+				toFail(t, "expected preview length %d, got %d", tc.expectedLen, len(result.Preview))
+			}
+			if tc.expectedLen > 0 {
+				if got := result.Preview[0]; got != tc.expectedFirst {
+					toFail(t, "unexpected first preview line: %s", got)
+				}
+				if got := result.Preview[len(result.Preview)-1]; got != tc.expectedLast {
+					toFail(t, "unexpected last preview line: %s", got)
+				}
+			}
+			if result.NextCursor != tc.expectedCursor {
+				toFail(t, "expected next cursor %q, got %q", tc.expectedCursor, result.NextCursor)
+			}
+			if result.PreviewTruncated != tc.truncated {
+				toFail(t, "expected truncated=%v, got %v", tc.truncated, result.PreviewTruncated)
+			}
+		})
+	}
+}
+
+func TestDownloadSelfHostedLogs(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("validResponse", func(t *testing.T) {
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			resp := logResponse{
+				Events: []logEvent{
+					{Output: "first line\nsecond line\n"},
+					{Output: "third line\n"},
+				},
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(resp)
+		}))
+		defer ts.Close()
+
+		lines, err := downloadSelfHostedLogs(ctx, ts.URL)
+		if err != nil {
+			toFail(t, "unexpected error: %v", err)
+		}
+		if len(lines) != 3 {
+			toFail(t, "expected 3 lines, got %d: %v", len(lines), lines)
+		}
+		if lines[0] != "first line" || lines[1] != "second line" || lines[2] != "third line" {
+			toFail(t, "unexpected lines: %v", lines)
+		}
+	})
+
+	t.Run("emptyEvents", func(t *testing.T) {
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			resp := logResponse{Events: []logEvent{}}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(resp)
+		}))
+		defer ts.Close()
+
+		lines, err := downloadSelfHostedLogs(ctx, ts.URL)
+		if err != nil {
+			toFail(t, "unexpected error: %v", err)
+		}
+		if lines != nil {
+			toFail(t, "expected nil lines for empty events, got %v", lines)
+		}
+	})
+
+	t.Run("serverError", func(t *testing.T) {
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+		}))
+		defer ts.Close()
+
+		lines, err := downloadSelfHostedLogs(ctx, ts.URL)
+		if err == nil {
+			toFail(t, "expected error for 500 status, got lines: %v", lines)
+		}
+		if !strings.Contains(err.Error(), "HTTP 500") {
+			toFail(t, "expected HTTP 500 error message, got: %v", err)
+		}
+	})
+
+	t.Run("invalidJSON", func(t *testing.T) {
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte("not json"))
+		}))
+		defer ts.Close()
+
+		lines, err := downloadSelfHostedLogs(ctx, ts.URL)
+		if err == nil {
+			toFail(t, "expected error for invalid JSON, got lines: %v", lines)
+		}
+		if !strings.Contains(err.Error(), "parse log response JSON") {
+			toFail(t, "expected JSON parse error, got: %v", err)
+		}
+	})
+
+	t.Run("responseTooLarge", func(t *testing.T) {
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			// Write a response that exceeds maxLogDownloadBytes.
+			// Start with valid JSON prefix, then pad to exceed the limit.
+			w.Write([]byte(`{"events":[{"output":"`))
+			padding := make([]byte, maxLogDownloadBytes)
+			for i := range padding {
+				padding[i] = 'x'
+			}
+			w.Write(padding)
+			w.Write([]byte(`"}]}`))
+		}))
+		defer ts.Close()
+
+		lines, err := downloadSelfHostedLogs(ctx, ts.URL)
+		if err == nil {
+			toFail(t, "expected error for oversized response, got lines: %v", lines)
+		}
+		if err != errLogResponseTooLarge {
+			toFail(t, "expected errLogResponseTooLarge, got: %v", err)
+		}
+	})
+}
+
+func TestSelfHostedLogsCacheAvoidsDuplicateDownload(t *testing.T) {
+	var downloadCount atomic.Int32
+	env := newSelfHostedTestEnv(t, func(w http.ResponseWriter, r *http.Request) {
+		downloadCount.Add(1)
+		resp := logResponse{
+			Events: []logEvent{{Output: "cached-line-1\ncached-line-2\n"}},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	})
+
+	// First call: should download from server and cache.
+	_, result1 := callLogsHandler(t, env.Handler, map[string]any{"job_id": selfHostedTestJobID})
+	if len(result1.Preview) != 2 {
+		toFail(t, "expected 2 preview lines on first call, got %d", len(result1.Preview))
+	}
+	if downloadCount.Load() != 1 {
+		toFail(t, "expected 1 download on first call, got %d", downloadCount.Load())
+	}
+
+	// Second call: should use cached lines without hitting the server.
+	_, result2 := callLogsHandler(t, env.Handler, map[string]any{"job_id": selfHostedTestJobID})
+	if len(result2.Preview) != 2 {
+		toFail(t, "expected 2 preview lines on second call, got %d", len(result2.Preview))
+	}
+	if downloadCount.Load() != 1 {
+		toFail(t, "expected still 1 download after cache hit, got %d", downloadCount.Load())
+	}
+
+	// Verify cached response includes token metadata (Issue 5).
+	if result2.Token == "" {
+		toFail(t, "expected Token in cached response")
+	}
+	expectedURL := fmt.Sprintf("https://acme.semaphoreci.com/api/v1/logs/%s?jwt=token", selfHostedTestJobID)
+	if result2.LogsURL != expectedURL {
+		toFail(t, "expected LogsURL %q in cached response, got %q", expectedURL, result2.LogsURL)
+	}
+}
+
+func TestSelfHostedRunningJobSkipsCache(t *testing.T) {
+	var downloadCount atomic.Int32
+	env := newSelfHostedTestEnv(t, func(w http.ResponseWriter, r *http.Request) {
+		downloadCount.Add(1)
+		resp := logResponse{
+			Events: []logEvent{{Output: "running-line-1\nrunning-line-2\n"}},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}, selfHostedTestOpt{jobState: jobpb.Job_STARTED})
+
+	// First call: should download but NOT cache (job is still running).
+	_, result1 := callLogsHandler(t, env.Handler, map[string]any{"job_id": selfHostedTestJobID})
+	if len(result1.Preview) != 2 {
+		toFail(t, "expected 2 preview lines on first call, got %d", len(result1.Preview))
+	}
+	if downloadCount.Load() != 1 {
+		toFail(t, "expected 1 download on first call, got %d", downloadCount.Load())
+	}
+
+	// Second call: should download again because running jobs are not cached.
+	_, result2 := callLogsHandler(t, env.Handler, map[string]any{"job_id": selfHostedTestJobID})
+	if len(result2.Preview) != 2 {
+		toFail(t, "expected 2 preview lines on second call, got %d", len(result2.Preview))
+	}
+	if downloadCount.Load() != 2 {
+		toFail(t, "expected 2 downloads for running job (no cache), got %d", downloadCount.Load())
 	}
 }
 
@@ -539,7 +954,7 @@ func TestLogsPermissionDenied(t *testing.T) {
 	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
 	req.Header = header
 
-	res, err := logsHandler(provider)(context.Background(), req)
+	res, err := logsHandler(provider, downloadSelfHostedLogs)(context.Background(), req)
 	if err != nil {
 		toFail(t, "handler error: %v", err)
 	}
@@ -586,7 +1001,7 @@ func TestLogsMissingOrgFromJob(t *testing.T) {
 	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
 	req.Header = header
 
-	res, err := logsHandler(provider)(context.Background(), req)
+	res, err := logsHandler(provider, downloadSelfHostedLogs)(context.Background(), req)
 	if err != nil {
 		toFail(t, "handler error: %v", err)
 	}
@@ -632,7 +1047,7 @@ func TestLogsRBACUnavailable(t *testing.T) {
 	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
 	req.Header = header
 
-	res, err := logsHandler(provider)(context.Background(), req)
+	res, err := logsHandler(provider, downloadSelfHostedLogs)(context.Background(), req)
 	if err != nil {
 		toFail(t, "handler error: %v", err)
 	}
