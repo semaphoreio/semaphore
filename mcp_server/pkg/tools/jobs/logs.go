@@ -300,7 +300,10 @@ func fetchHostedLogs(ctx context.Context, api internalapi.Provider, jobID string
 
 // downloadLogsFn is the function used to download self-hosted logs from
 // the logs URL. It is a package-level variable to allow overriding in tests.
-var downloadLogsFn = downloadSelfHostedLogs
+var downloadLogsFn func(ctx context.Context, url string) ([]string, error) = downloadSelfHostedLogs
+
+// errLogResponseTooLarge is returned when the log response exceeds maxLogDownloadBytes.
+var errLogResponseTooLarge = fmt.Errorf("log response exceeded %d bytes size limit", maxLogDownloadBytes)
 
 type logEvent struct {
 	Output string `json:"output"`
@@ -349,7 +352,7 @@ func fetchSelfHostedLogs(ctx context.Context, api internalapi.Provider, jobID, o
 	}
 
 	if logsURL != "" {
-		lines, dlErr := downloadLogsFn(logsURL)
+		lines, dlErr := downloadLogsFn(ctx, logsURL)
 		if dlErr != nil {
 			logging.ForComponent("tools").
 				WithField("jobId", jobID).
@@ -371,10 +374,15 @@ func fetchSelfHostedLogs(ctx context.Context, api internalapi.Provider, jobID, o
 	}, nil
 }
 
-func downloadSelfHostedLogs(logsURL string) ([]string, error) {
+func downloadSelfHostedLogs(ctx context.Context, logsURL string) ([]string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, logsURL, nil) // #nosec G107 -- URL is constructed from trusted internal sources
+	if err != nil {
+		return nil, fmt.Errorf("failed to create log download request: %w", err)
+	}
+
 	client := &http.Client{Timeout: 30 * time.Second}
 
-	resp, err := client.Get(logsURL) // #nosec G107 -- URL is constructed from trusted internal sources
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to download logs: %w", err)
 	}
@@ -387,6 +395,10 @@ func downloadSelfHostedLogs(logsURL string) ([]string, error) {
 	body, err := io.ReadAll(io.LimitReader(resp.Body, maxLogDownloadBytes))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read log response body: %w", err)
+	}
+
+	if int64(len(body)) >= maxLogDownloadBytes {
+		return nil, errLogResponseTooLarge
 	}
 
 	var logResp logResponse

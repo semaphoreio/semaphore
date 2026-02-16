@@ -456,8 +456,8 @@ func TestFetchSelfHostedLogs(t *testing.T) {
 	defer ts.Close()
 
 	origFn := downloadLogsFn
-	downloadLogsFn = func(url string) ([]string, error) {
-		return downloadSelfHostedLogs(ts.URL)
+	downloadLogsFn = func(ctx context.Context, url string) ([]string, error) {
+		return downloadSelfHostedLogs(ctx, ts.URL)
 	}
 	defer func() { downloadLogsFn = origFn }()
 
@@ -546,8 +546,8 @@ func TestSelfHostedLogsDownloadFailureFallback(t *testing.T) {
 	defer ts.Close()
 
 	origFn := downloadLogsFn
-	downloadLogsFn = func(url string) ([]string, error) {
-		return downloadSelfHostedLogs(ts.URL)
+	downloadLogsFn = func(ctx context.Context, url string) ([]string, error) {
+		return downloadSelfHostedLogs(ctx, ts.URL)
 	}
 	defer func() { downloadLogsFn = origFn }()
 
@@ -626,8 +626,8 @@ func TestSelfHostedLogsEmptyDownloadFallback(t *testing.T) {
 	defer ts.Close()
 
 	origFn := downloadLogsFn
-	downloadLogsFn = func(url string) ([]string, error) {
-		return downloadSelfHostedLogs(ts.URL)
+	downloadLogsFn = func(ctx context.Context, url string) ([]string, error) {
+		return downloadSelfHostedLogs(ctx, ts.URL)
 	}
 	defer func() { downloadLogsFn = origFn }()
 
@@ -780,8 +780,8 @@ func TestSelfHostedLogsPagination(t *testing.T) {
 			defer ts.Close()
 
 			origFn := downloadLogsFn
-			downloadLogsFn = func(url string) ([]string, error) {
-				return downloadSelfHostedLogs(ts.URL)
+			downloadLogsFn = func(ctx context.Context, url string) ([]string, error) {
+				return downloadSelfHostedLogs(ctx, ts.URL)
 			}
 			defer func() { downloadLogsFn = origFn }()
 
@@ -862,6 +862,8 @@ func TestSelfHostedLogsPagination(t *testing.T) {
 }
 
 func TestDownloadSelfHostedLogs(t *testing.T) {
+	ctx := context.Background()
+
 	t.Run("validResponse", func(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			resp := logResponse{
@@ -875,7 +877,7 @@ func TestDownloadSelfHostedLogs(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		lines, err := downloadSelfHostedLogs(ts.URL)
+		lines, err := downloadSelfHostedLogs(ctx, ts.URL)
 		if err != nil {
 			toFail(t, "unexpected error: %v", err)
 		}
@@ -895,7 +897,7 @@ func TestDownloadSelfHostedLogs(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		lines, err := downloadSelfHostedLogs(ts.URL)
+		lines, err := downloadSelfHostedLogs(ctx, ts.URL)
 		if err != nil {
 			toFail(t, "unexpected error: %v", err)
 		}
@@ -910,7 +912,7 @@ func TestDownloadSelfHostedLogs(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		lines, err := downloadSelfHostedLogs(ts.URL)
+		lines, err := downloadSelfHostedLogs(ctx, ts.URL)
 		if err == nil {
 			toFail(t, "expected error for 500 status, got lines: %v", lines)
 		}
@@ -925,12 +927,36 @@ func TestDownloadSelfHostedLogs(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		lines, err := downloadSelfHostedLogs(ts.URL)
+		lines, err := downloadSelfHostedLogs(ctx, ts.URL)
 		if err == nil {
 			toFail(t, "expected error for invalid JSON, got lines: %v", lines)
 		}
 		if !strings.Contains(err.Error(), "parse log response JSON") {
 			toFail(t, "expected JSON parse error, got: %v", err)
+		}
+	})
+
+	t.Run("responseTooLarge", func(t *testing.T) {
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			// Write a response that exceeds maxLogDownloadBytes.
+			// Start with valid JSON prefix, then pad to exceed the limit.
+			w.Write([]byte(`{"events":[{"output":"`))
+			padding := make([]byte, maxLogDownloadBytes)
+			for i := range padding {
+				padding[i] = 'x'
+			}
+			w.Write(padding)
+			w.Write([]byte(`"}]}`))
+		}))
+		defer ts.Close()
+
+		lines, err := downloadSelfHostedLogs(ctx, ts.URL)
+		if err == nil {
+			toFail(t, "expected error for oversized response, got lines: %v", lines)
+		}
+		if err != errLogResponseTooLarge {
+			toFail(t, "expected errLogResponseTooLarge, got: %v", err)
 		}
 	})
 }
