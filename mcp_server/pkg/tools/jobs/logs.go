@@ -2,9 +2,13 @@ package jobs
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -28,6 +32,7 @@ const (
 	maxLogPreviewLines   = 200
 	errLoghubMissing     = "loghub gRPC endpoint is not configured"
 	errLoghub2Missing    = "loghub2 gRPC endpoint is not configured"
+	maxLogDownloadBytes  = 10 << 20 // 10 MiB safety cap for HTTP log downloads
 )
 
 func logsFullDescription() string {
@@ -36,8 +41,8 @@ func logsFullDescription() string {
 Use this after jobs_describe indicates a failure or long-running job.
 
 Outputs:
-- Hosted jobs: returns a preview of the most recent log lines (up to 200) and a nextCursor for pagination.
-- Self-hosted jobs: returns a temporary log token (300s TTL) and instructions for downloading full logs.
+- Returns a preview of the most recent log lines (up to 200) and a nextCursor for pagination.
+- For self-hosted jobs, a temporary log token (300s TTL) and download URL are also included.
 
 Examples:
 1. Fetch latest job logs:
@@ -46,14 +51,10 @@ Examples:
 2. Paginate through more logs:
    jobs_logs(job_id="...", cursor="next-page-token")
 
-3. Get logs for self-hosted job:
-   jobs_logs(job_id="...")
-
 Typical workflow:
 1. jobs_describe(job_id="...") → identify failing job
 2. jobs_logs(job_id="...") → view latest log lines
 3. If more logs needed, call again with cursor from the previous response.
-4. For self-hosted jobs, use the returned token in a follow-up HTTPS request.
 `
 }
 
@@ -158,7 +159,7 @@ Troubleshooting:
 					WithError(err).
 					Warn("failed to resolve org username for logs URL")
 			}
-			result, callErr = fetchSelfHostedLogs(ctx, api, jobID, orgUsername)
+			result, callErr = fetchSelfHostedLogs(ctx, api, jobID, orgUsername, startingLine)
 		} else {
 			result, callErr = fetchHostedLogs(ctx, api, jobID, startingLine)
 		}
@@ -166,9 +167,8 @@ Troubleshooting:
 			return result, callErr
 		}
 		if result != nil && !result.IsError {
-			// For self-hosted jobs, also verify that a token was actually generated
 			if job.GetSelfHosted() {
-				if structured, ok := result.StructuredContent.(logsResult); ok && structured.Token != "" {
+				if structured, ok := result.StructuredContent.(logsResult); ok && (len(structured.Preview) > 0 || structured.Token != "") {
 					tracker.MarkSuccess()
 				}
 			} else {
@@ -298,7 +298,22 @@ func fetchHostedLogs(ctx context.Context, api internalapi.Provider, jobID string
 	}, nil
 }
 
-func fetchSelfHostedLogs(ctx context.Context, api internalapi.Provider, jobID, orgUsername string) (*mcp.CallToolResult, error) {
+// downloadLogsFn is the function used to download self-hosted logs from
+// the logs URL. It is a package-level variable to allow overriding in tests.
+var downloadLogsFn func(ctx context.Context, url string) ([]string, error) = downloadSelfHostedLogs
+
+// errLogResponseTooLarge is returned when the log response exceeds maxLogDownloadBytes.
+var errLogResponseTooLarge = fmt.Errorf("log response exceeded %d bytes size limit", maxLogDownloadBytes)
+
+type logEvent struct {
+	Output string `json:"output"`
+}
+
+type logResponse struct {
+	Events []logEvent `json:"events"`
+}
+
+func fetchSelfHostedLogs(ctx context.Context, api internalapi.Provider, jobID, orgUsername string, startingLine int) (*mcp.CallToolResult, error) {
 	client := api.Loghub2()
 	if client == nil {
 		return mcp.NewToolResultError(errLoghub2Missing), nil
@@ -336,6 +351,18 @@ func fetchSelfHostedLogs(ctx context.Context, api internalapi.Provider, jobID, o
 		LogsURL:         logsURL,
 	}
 
+	if logsURL != "" {
+		lines, dlErr := downloadLogsFn(ctx, logsURL)
+		if dlErr != nil {
+			logging.ForComponent("tools").
+				WithField("jobId", jobID).
+				WithError(dlErr).
+				Warn("failed to download self-hosted job logs, falling back to token/URL")
+		} else if len(lines) > 0 {
+			paginateSelfHostedLines(&result, lines, startingLine)
+		}
+	}
+
 	markdown := formatSelfHostedLogsMarkdown(result)
 	markdown = shared.TruncateResponse(markdown, shared.MaxResponseChars)
 
@@ -345,6 +372,102 @@ func fetchSelfHostedLogs(ctx context.Context, api internalapi.Provider, jobID, o
 		},
 		StructuredContent: result,
 	}, nil
+}
+
+func downloadSelfHostedLogs(ctx context.Context, logsURL string) ([]string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, logsURL, nil) // #nosec G107 -- URL is constructed from trusted internal sources
+	if err != nil {
+		return nil, fmt.Errorf("failed to create log download request: %w", err)
+	}
+
+	client := &http.Client{Timeout: 30 * time.Second}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to download logs: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("log download returned HTTP %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxLogDownloadBytes))
+	if err != nil {
+		return nil, fmt.Errorf("failed to read log response body: %w", err)
+	}
+
+	if int64(len(body)) >= maxLogDownloadBytes {
+		return nil, errLogResponseTooLarge
+	}
+
+	var logResp logResponse
+	if err := json.Unmarshal(body, &logResp); err != nil {
+		return nil, fmt.Errorf("failed to parse log response JSON: %w", err)
+	}
+
+	var outputs []string
+	for _, event := range logResp.Events {
+		outputs = append(outputs, event.Output)
+	}
+
+	combined := strings.Join(outputs, "")
+	if combined == "" {
+		return nil, nil
+	}
+
+	lines := strings.Split(combined, "\n")
+	if len(lines) > 0 && lines[len(lines)-1] == "" {
+		lines = lines[:len(lines)-1]
+	}
+
+	return lines, nil
+}
+
+func paginateSelfHostedLines(result *logsResult, lines []string, startingLine int) {
+	totalLines := len(lines)
+	displayStartLine := 0
+	truncated := false
+	relativeStart := 0
+	relativeEnd := totalLines
+
+	if startingLine < 0 {
+		if totalLines > maxLogPreviewLines {
+			displayStartLine = totalLines - maxLogPreviewLines
+			relativeStart = displayStartLine
+			truncated = true
+		}
+	} else {
+		displayStartLine = startingLine
+		relativeStart = startingLine
+		truncated = true
+		relativeEnd = startingLine + maxLogPreviewLines
+		if relativeEnd > totalLines {
+			relativeEnd = totalLines
+		}
+	}
+
+	if relativeStart < 0 {
+		relativeStart = 0
+	}
+	if relativeEnd > totalLines {
+		relativeEnd = totalLines
+	}
+	if relativeStart > relativeEnd {
+		relativeStart = relativeEnd
+	}
+
+	result.Preview = lines[relativeStart:relativeEnd]
+	result.StartLine = displayStartLine
+	result.PreviewTruncated = truncated
+
+	if displayStartLine > 0 {
+		prev := displayStartLine - maxLogPreviewLines
+		if prev < 0 {
+			prev = 0
+		}
+		result.NextCursor = strconv.Itoa(prev)
+	}
 }
 
 func formatHostedLogsMarkdown(result logsResult) string {
@@ -390,29 +513,52 @@ func formatSelfHostedLogsMarkdown(result logsResult) string {
 	mb := shared.NewMarkdownBuilder()
 
 	mb.H1(fmt.Sprintf("Self-Hosted Logs for Job %s", result.JobID))
-	mb.Paragraph("This job ran on a self-hosted agent. Logs are available via a short-lived token.")
 
-	mb.KeyValue("Token Type", strings.ToUpper(result.TokenType))
-	mb.KeyValue("Expires In", fmt.Sprintf("%d seconds", result.TokenTtlSeconds))
+	if len(result.Preview) > 0 {
+		start := result.StartLine
+		end := result.StartLine + len(result.Preview) - 1
+		if start <= 0 {
+			start = 0
+		}
 
-	if result.Token != "" && result.LogsURL != "" {
-		mb.KeyValue("Logs URL", fmt.Sprintf("`%s`", result.LogsURL))
-		mb.Paragraph("To retrieve logs, use the following command:")
-		mb.Raw("```bash\n")
-		mb.Raw(fmt.Sprintf("curl \"%s\"", result.LogsURL))
-		mb.Raw("\n```\n")
-	} else if result.Token != "" {
-		mb.Paragraph("Use the following JWT within the TTL to stream logs:")
+		mb.Paragraph(fmt.Sprintf("Showing log lines %d-%d.", start, end))
 		mb.Raw("```\n")
-		mb.Raw(result.Token)
+		mb.Raw(strings.Join(result.Preview, "\n"))
 		mb.Raw("\n```\n")
-		mb.Paragraph("⚠️ Could not construct a full logs URL. Use the token above with your workspace URL.")
+
+		if result.PreviewTruncated {
+			if result.NextCursor != "" {
+				mb.Paragraph(fmt.Sprintf("⚠️ Preview is truncated. If you want to see the full log, paginate using `cursor=\"%s\"` to retrieve additional lines.", result.NextCursor))
+			} else {
+				mb.Paragraph("⚠️ Preview is truncated. No further logs are available at this time.")
+			}
+		}
 	} else {
-		mb.Paragraph("⚠️ No token was returned. Retry the request or contact support if the problem persists.")
+		mb.Paragraph("This job ran on a self-hosted agent. Logs are available via a short-lived token.")
+
+		mb.KeyValue("Token Type", strings.ToUpper(result.TokenType))
+		mb.KeyValue("Expires In", fmt.Sprintf("%d seconds", result.TokenTtlSeconds))
+
+		if result.Token != "" && result.LogsURL != "" {
+			mb.KeyValue("Logs URL", fmt.Sprintf("`%s`", result.LogsURL))
+			mb.Paragraph("To retrieve logs, use the following command:")
+			mb.Raw("```bash\n")
+			mb.Raw(fmt.Sprintf("curl \"%s\"", result.LogsURL))
+			mb.Raw("\n```\n")
+		} else if result.Token != "" {
+			mb.Paragraph("Use the following JWT within the TTL to stream logs:")
+			mb.Raw("```\n")
+			mb.Raw(result.Token)
+			mb.Raw("\n```\n")
+			mb.Paragraph("⚠️ Could not construct a full logs URL. Use the token above with your workspace URL.")
+		} else {
+			mb.Paragraph("⚠️ No token was returned. Retry the request or contact support if the problem persists.")
+		}
+
+		mb.Paragraph("Remember to rotate tokens promptly and never store them in persistent logs.")
 	}
 
 	mb.Line()
-	mb.Paragraph("Remember to rotate tokens promptly and never store them in persistent logs.")
 
 	return mb.String()
 }
