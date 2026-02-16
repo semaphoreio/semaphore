@@ -302,6 +302,10 @@ func fetchHostedLogs(ctx context.Context, api internalapi.Provider, jobID string
 	events := append([]string(nil), resp.GetEvents()...)
 	totalEvents := len(events)
 
+	// Loghub returns a window of events starting at request.StartingLine,
+	// so events[0] corresponds to logical line startingLine. We map into
+	// the computePaginationWindow coordinate space by treating the full
+	// log as virtualTotal lines and offsetting the slice accordingly.
 	virtualTotal := totalEvents
 	sliceOffset := 0
 	if startingLine >= 0 {
@@ -606,7 +610,11 @@ func formatHostedLogsMarkdown(result logsResult) string {
 	mb.H1(fmt.Sprintf("Hosted Logs Preview for Job %s", result.JobID))
 
 	if len(result.Preview) == 0 {
-		mb.Paragraph("No log lines were returned. The job may not have produced output yet, or all logs have been consumed.")
+		if result.NextCursor != "" {
+			mb.Paragraph(fmt.Sprintf("Cursor is past the end of available logs. Use `cursor=\"%s\"` to view from an earlier position.", result.NextCursor))
+		} else {
+			mb.Paragraph("No log lines were returned. The job may not have produced output yet, or all logs have been consumed.")
+		}
 	} else {
 		writePreviewMarkdown(mb, result)
 	}
@@ -633,6 +641,8 @@ func formatSelfHostedLogsMarkdown(result logsResult) string {
 	// for programmatic access by MCP clients if needed.
 	if len(result.Preview) > 0 {
 		writePreviewMarkdown(mb, result)
+	} else if result.NextCursor != "" {
+		mb.Paragraph(fmt.Sprintf("Cursor is past the end of available logs. Use `cursor=\"%s\"` to view from an earlier position.", result.NextCursor))
 	} else if result.DownloadEmpty {
 		mb.Paragraph("The job has not produced log output yet. Retry shortly — logs will appear once the job starts writing output.")
 	} else {

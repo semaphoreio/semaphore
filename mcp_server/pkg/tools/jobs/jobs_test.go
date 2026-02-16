@@ -548,6 +548,18 @@ func TestFetchHostedLogsPagination(t *testing.T) {
 			if result.PreviewTruncated != tc.truncated {
 				toFail(t, "expected truncated=%v, got %v", tc.truncated, result.PreviewTruncated)
 			}
+
+			// Verify cursor-beyond-end renders an appropriate markdown message
+			// instead of the misleading "no output yet" text.
+			if tc.name == "cursorBeyondEndReturnsEmptyPreview" {
+				text, ok := res.Content[0].(mcp.TextContent)
+				if !ok {
+					toFail(t, "expected text content, got %T", res.Content[0])
+				}
+				if !strings.Contains(text.Text, "Cursor is past the end") {
+					toFail(t, "expected cursor-past-end message, got %q", text.Text)
+				}
+			}
 		})
 	}
 }
@@ -728,7 +740,7 @@ func TestSelfHostedLogsPagination(t *testing.T) {
 			if tc.cursor != "" {
 				args["cursor"] = tc.cursor
 			}
-			_, result := callLogsHandler(t, env.Handler, args)
+			res, result := callLogsHandler(t, env.Handler, args)
 
 			if result.StartLine != tc.expectedStart {
 				toFail(t, "expected start line %d, got %d", tc.expectedStart, result.StartLine)
@@ -749,6 +761,18 @@ func TestSelfHostedLogsPagination(t *testing.T) {
 			}
 			if result.PreviewTruncated != tc.truncated {
 				toFail(t, "expected truncated=%v, got %v", tc.truncated, result.PreviewTruncated)
+			}
+
+			// Verify cursor-beyond-end renders an appropriate markdown message
+			// instead of falling through to token/URL instructions.
+			if tc.name == "cursorBeyondEndReturnsEmptyPreview" {
+				text, ok := res.Content[0].(mcp.TextContent)
+				if !ok {
+					toFail(t, "expected text content, got %T", res.Content[0])
+				}
+				if !strings.Contains(text.Text, "Cursor is past the end") {
+					toFail(t, "expected cursor-past-end message, got %q", text.Text)
+				}
 			}
 		})
 	}
