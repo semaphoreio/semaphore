@@ -709,7 +709,7 @@ func TestSelfHostedLogsPagination(t *testing.T) {
 			lineCount:      50,
 			expectedStart:  9999,
 			expectedLen:    0,
-			expectedCursor: "9799",
+			expectedCursor: "0",
 			truncated:      true,
 		},
 	}

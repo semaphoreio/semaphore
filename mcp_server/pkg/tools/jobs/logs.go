@@ -3,6 +3,7 @@ package jobs
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -240,7 +241,14 @@ func computePaginationWindow(totalLines, startingLine, maxLines int) paginationW
 	w.Start = start
 	w.End = end
 
-	if w.DisplayLine > 0 {
+	if start >= totalLines && totalLines > 0 {
+		// Cursor is past all data; redirect to the last real page.
+		lastPageStart := totalLines - maxLines
+		if lastPageStart < 0 {
+			lastPageStart = 0
+		}
+		w.NextCursor = strconv.Itoa(lastPageStart)
+	} else if w.DisplayLine > 0 {
 		prev := w.DisplayLine - maxLines
 		if prev < 0 {
 			prev = 0
@@ -327,7 +335,7 @@ func fetchHostedLogs(ctx context.Context, api internalapi.Provider, jobID string
 }
 
 // errLogResponseTooLarge is returned when the log response exceeds maxLogDownloadBytes.
-var errLogResponseTooLarge = fmt.Errorf("log response exceeded %d bytes size limit", maxLogDownloadBytes)
+var errLogResponseTooLarge = errors.New("log response exceeded 10485760 bytes size limit")
 
 type logEvent struct {
 	Output string `json:"output"`
@@ -422,22 +430,24 @@ func fetchSelfHostedLogs(ctx context.Context, api internalapi.Provider, download
 	// not the remaining lifetime. Since the cache TTL (60s) is well within
 	// the token TTL (300s), the token is still valid but callers should not
 	// treat tokenTtlSeconds as an exact countdown.
-	if cached, ok := getCachedLogLines(jobID); ok && len(cached.lines) > 0 {
-		result := logsResult{
-			JobID:           jobID,
-			Source:          loghub2Source,
-			Token:           cached.token,
-			TokenType:       cached.tokenType,
-			TokenTtlSeconds: cached.tokenTtlSeconds,
-			LogsURL:         cached.logsURL,
+	if jobFinished {
+		if cached, ok := getCachedLogLines(jobID); ok && len(cached.lines) > 0 {
+			result := logsResult{
+				JobID:           jobID,
+				Source:          loghub2Source,
+				Token:           cached.token,
+				TokenType:       cached.tokenType,
+				TokenTtlSeconds: cached.tokenTtlSeconds,
+				LogsURL:         cached.logsURL,
+			}
+			paginateSelfHostedLines(&result, cached.lines, startingLine)
+			markdown := formatSelfHostedLogsMarkdown(result)
+			markdown = shared.TruncateResponse(markdown, shared.MaxResponseChars)
+			return &mcp.CallToolResult{
+				Content:           []mcp.Content{mcp.NewTextContent(markdown)},
+				StructuredContent: result,
+			}, nil
 		}
-		paginateSelfHostedLines(&result, cached.lines, startingLine)
-		markdown := formatSelfHostedLogsMarkdown(result)
-		markdown = shared.TruncateResponse(markdown, shared.MaxResponseChars)
-		return &mcp.CallToolResult{
-			Content:           []mcp.Content{mcp.NewTextContent(markdown)},
-			StructuredContent: result,
-		}, nil
 	}
 
 	client := api.Loghub2()
@@ -564,6 +574,32 @@ func paginateSelfHostedLines(result *logsResult, lines []string, startingLine in
 	result.NextCursor = w.NextCursor
 }
 
+// writePreviewMarkdown renders the shared log preview block (line range,
+// code fence, and truncation/pagination hints) used by both hosted and
+// self-hosted formatters. It is a no-op when result.Preview is empty.
+func writePreviewMarkdown(mb *shared.MarkdownBuilder, result logsResult) {
+	if len(result.Preview) == 0 {
+		return
+	}
+
+	end := result.StartLine + len(result.Preview) - 1
+
+	mb.Paragraph(fmt.Sprintf("Showing log lines %d-%d.", result.StartLine, end))
+	mb.Raw("```\n")
+	mb.Raw(strings.Join(result.Preview, "\n"))
+	mb.Raw("\n```\n")
+
+	if result.PreviewTruncated {
+		if result.NextCursor != "" {
+			mb.Paragraph(fmt.Sprintf("⚠️ Preview is truncated. If you want to see the full log, paginate using `cursor=\"%s\"` to retrieve additional lines.", result.NextCursor))
+		} else if result.StartLine == 0 {
+			mb.Paragraph("This is the beginning of the log. More recent output was shown in previous responses.")
+		} else {
+			mb.Paragraph("⚠️ Preview is truncated. No further logs are available at this time.")
+		}
+	}
+}
+
 func formatHostedLogsMarkdown(result logsResult) string {
 	mb := shared.NewMarkdownBuilder()
 
@@ -572,20 +608,7 @@ func formatHostedLogsMarkdown(result logsResult) string {
 	if len(result.Preview) == 0 {
 		mb.Paragraph("No log lines were returned. The job may not have produced output yet, or all logs have been consumed.")
 	} else {
-		end := result.StartLine + len(result.Preview) - 1
-
-		mb.Paragraph(fmt.Sprintf("Showing log lines %d-%d.", result.StartLine, end))
-		mb.Raw("```\n")
-		mb.Raw(strings.Join(result.Preview, "\n"))
-		mb.Raw("\n```\n")
-
-		if result.PreviewTruncated {
-			if result.NextCursor != "" {
-				mb.Paragraph(fmt.Sprintf("⚠️ Preview is truncated. If you want to see the full log, paginate using `cursor=\"%s\"` to retrieve additional lines.", result.NextCursor))
-			} else {
-				mb.Paragraph("⚠️ Preview is truncated. No further logs are available at this time.")
-			}
-		}
+		writePreviewMarkdown(mb, result)
 	}
 
 	if result.Final {
@@ -609,22 +632,7 @@ func formatSelfHostedLogsMarkdown(result logsResult) string {
 	// markdown. The token is still present in the structured content (logsResult)
 	// for programmatic access by MCP clients if needed.
 	if len(result.Preview) > 0 {
-		end := result.StartLine + len(result.Preview) - 1
-
-		mb.Paragraph(fmt.Sprintf("Showing log lines %d-%d.", result.StartLine, end))
-		mb.Raw("```\n")
-		mb.Raw(strings.Join(result.Preview, "\n"))
-		mb.Raw("\n```\n")
-
-		if result.PreviewTruncated {
-			if result.NextCursor != "" {
-				mb.Paragraph(fmt.Sprintf("⚠️ Preview is truncated. If you want to see the full log, paginate using `cursor=\"%s\"` to retrieve additional lines.", result.NextCursor))
-			} else if result.StartLine == 0 {
-				mb.Paragraph("This is the beginning of the log. More recent output was shown in previous responses.")
-			} else {
-				mb.Paragraph("⚠️ Preview is truncated. No further logs are available at this time.")
-			}
-		}
+		writePreviewMarkdown(mb, result)
 	} else if result.DownloadEmpty {
 		mb.Paragraph("The job has not produced log output yet. Retry shortly — logs will appear once the job starts writing output.")
 	} else {
