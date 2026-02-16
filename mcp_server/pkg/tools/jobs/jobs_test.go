@@ -43,7 +43,8 @@ type selfHostedTestEnv struct {
 
 // newSelfHostedTestEnv creates a standard self-hosted logs test environment
 // with an httptest server, test log downloader, and all required stubs.
-func newSelfHostedTestEnv(t *testing.T, httpHandler http.HandlerFunc) selfHostedTestEnv {
+// By default the job state is FINISHED; pass opts to override.
+func newSelfHostedTestEnv(t *testing.T, httpHandler http.HandlerFunc, opts ...selfHostedTestOpt) selfHostedTestEnv {
 	t.Helper()
 	ts := httptest.NewServer(httpHandler)
 	t.Cleanup(ts.Close)
@@ -51,7 +52,11 @@ func newSelfHostedTestEnv(t *testing.T, httpHandler http.HandlerFunc) selfHosted
 	resetLogCache()
 	t.Cleanup(resetLogCache)
 
+	expectedLogsURL := fmt.Sprintf("https://acme.semaphoreci.com/api/v1/logs/%s?jwt=token", selfHostedTestJobID)
 	testDownloader := func(ctx context.Context, url string) ([]string, error) {
+		if url != expectedLogsURL {
+			t.Errorf("downloader received unexpected URL %q, want %q", url, expectedLogsURL)
+		}
 		return downloadSelfHostedLogs(ctx, ts.URL)
 	}
 
@@ -68,6 +73,13 @@ func newSelfHostedTestEnv(t *testing.T, httpHandler http.HandlerFunc) selfHosted
 		},
 	}
 
+	jobState := jobpb.Job_FINISHED
+	for _, o := range opts {
+		if o.jobState != 0 {
+			jobState = o.jobState
+		}
+	}
+
 	provider := &support.MockProvider{
 		JobClient: &jobClientStub{
 			describeResp: &jobpb.DescribeResponse{
@@ -77,6 +89,7 @@ func newSelfHostedTestEnv(t *testing.T, httpHandler http.HandlerFunc) selfHosted
 					ProjectId:      testProjectUUID,
 					OrganizationId: selfHostedTestOrgID,
 					SelfHosted:     true,
+					State:          jobState,
 				},
 			},
 		},
@@ -91,6 +104,10 @@ func newSelfHostedTestEnv(t *testing.T, httpHandler http.HandlerFunc) selfHosted
 		Loghub2Client: loghub2Client,
 		OrgClient:     orgClient,
 	}
+}
+
+type selfHostedTestOpt struct {
+	jobState jobpb.Job_State
 }
 
 // callLogsHandler invokes the handler with the given arguments and a standard
@@ -605,6 +622,9 @@ func TestSelfHostedLogsEmptyDownloadFallback(t *testing.T) {
 	if len(result.Preview) != 0 {
 		toFail(t, "expected no preview lines for empty events, got %d", len(result.Preview))
 	}
+	if !result.DownloadEmpty {
+		toFail(t, "expected DownloadEmpty=true for empty events")
+	}
 	if result.Token != "token" {
 		toFail(t, "expected token in fallback, got %q", result.Token)
 	}
@@ -616,8 +636,8 @@ func TestSelfHostedLogsEmptyDownloadFallback(t *testing.T) {
 	if !ok {
 		toFail(t, "expected text content, got %T", res.Content[0])
 	}
-	if !strings.Contains(text.Text, "short-lived token") {
-		toFail(t, "expected fallback markdown with token instructions, got %q", text.Text)
+	if !strings.Contains(text.Text, "has not produced log output yet") {
+		toFail(t, "expected empty-download message, got %q", text.Text)
 	}
 }
 
@@ -870,6 +890,36 @@ func TestSelfHostedLogsCacheAvoidsDuplicateDownload(t *testing.T) {
 	expectedURL := fmt.Sprintf("https://acme.semaphoreci.com/api/v1/logs/%s?jwt=token", selfHostedTestJobID)
 	if result2.LogsURL != expectedURL {
 		toFail(t, "expected LogsURL %q in cached response, got %q", expectedURL, result2.LogsURL)
+	}
+}
+
+func TestSelfHostedRunningJobSkipsCache(t *testing.T) {
+	var downloadCount atomic.Int32
+	env := newSelfHostedTestEnv(t, func(w http.ResponseWriter, r *http.Request) {
+		downloadCount.Add(1)
+		resp := logResponse{
+			Events: []logEvent{{Output: "running-line-1\nrunning-line-2\n"}},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}, selfHostedTestOpt{jobState: jobpb.Job_STARTED})
+
+	// First call: should download but NOT cache (job is still running).
+	_, result1 := callLogsHandler(t, env.Handler, map[string]any{"job_id": selfHostedTestJobID})
+	if len(result1.Preview) != 2 {
+		toFail(t, "expected 2 preview lines on first call, got %d", len(result1.Preview))
+	}
+	if downloadCount.Load() != 1 {
+		toFail(t, "expected 1 download on first call, got %d", downloadCount.Load())
+	}
+
+	// Second call: should download again because running jobs are not cached.
+	_, result2 := callLogsHandler(t, env.Handler, map[string]any{"job_id": selfHostedTestJobID})
+	if len(result2.Preview) != 2 {
+		toFail(t, "expected 2 preview lines on second call, got %d", len(result2.Preview))
+	}
+	if downloadCount.Load() != 2 {
+		toFail(t, "expected 2 downloads for running job (no cache), got %d", downloadCount.Load())
 	}
 }
 

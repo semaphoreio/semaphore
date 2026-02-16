@@ -19,6 +19,7 @@ import (
 	loghubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub"
 	loghub2pb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub2"
 	orgpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/organization"
+	jobpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/server_farm.job"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/logging"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/internal/shared"
@@ -73,6 +74,7 @@ type logsResult struct {
 	TokenType        string   `json:"tokenType,omitempty"`
 	TokenTtlSeconds  uint32   `json:"tokenTtlSeconds,omitempty"`
 	LogsURL          string   `json:"logsUrl,omitempty"`
+	DownloadEmpty    bool     `json:"downloadEmpty,omitempty"`
 }
 
 func newLogsTool(name, description string) mcp.Tool {
@@ -166,7 +168,8 @@ Troubleshooting:
 					WithError(err).
 					Warn("failed to resolve org username for logs URL")
 			}
-			result, callErr = fetchSelfHostedLogs(ctx, api, downloader, jobID, orgUsername, startingLine)
+			jobFinished := job.GetState() == jobpb.Job_FINISHED
+			result, callErr = fetchSelfHostedLogs(ctx, api, downloader, jobID, orgUsername, startingLine, jobFinished)
 		} else {
 			result, callErr = fetchHostedLogs(ctx, api, jobID, startingLine)
 		}
@@ -409,7 +412,7 @@ func resetLogCache() {
 	logCache = map[string]*cachedLogLines{}
 }
 
-func fetchSelfHostedLogs(ctx context.Context, api internalapi.Provider, downloader logDownloader, jobID, orgUsername string, startingLine int) (*mcp.CallToolResult, error) {
+func fetchSelfHostedLogs(ctx context.Context, api internalapi.Provider, downloader logDownloader, jobID, orgUsername string, startingLine int, jobFinished bool) (*mcp.CallToolResult, error) {
 	// Check cache first to avoid unnecessary gRPC token generation on
 	// paginated calls. The token from the initial (cache-miss) call has
 	// a 300s TTL (> 60s cache TTL) and is available in that response's
@@ -464,12 +467,13 @@ func fetchSelfHostedLogs(ctx context.Context, api internalapi.Provider, download
 	}
 
 	logsURL := buildLogsURL(api.BaseURL(), orgUsername, jobID, resp.GetToken())
+	tokenType := tokenTypeToString(resp.GetType())
 
 	result := logsResult{
 		JobID:           jobID,
 		Source:          loghub2Source,
 		Token:           resp.GetToken(),
-		TokenType:       tokenTypeToString(resp.GetType()),
+		TokenType:       tokenType,
 		TokenTtlSeconds: loghub2TokenDuration,
 		LogsURL:         logsURL,
 	}
@@ -482,10 +486,14 @@ func fetchSelfHostedLogs(ctx context.Context, api internalapi.Provider, download
 				WithError(dlErr).
 				Warn("failed to download self-hosted job logs, falling back to token/URL")
 		} else if len(lines) > 0 {
-			// Only cache non-empty results so that jobs still starting up
-			// (returning empty events) are re-checked on subsequent calls.
-			cacheLogLines(jobID, lines, resp.GetToken(), tokenTypeToString(resp.GetType()), loghub2TokenDuration, logsURL)
+			// Only cache finished jobs — running jobs may produce more
+			// output, so their logs should be re-downloaded on each call.
+			if jobFinished {
+				cacheLogLines(jobID, lines, resp.GetToken(), tokenType, loghub2TokenDuration, logsURL)
+			}
 			paginateSelfHostedLines(&result, lines, startingLine)
+		} else {
+			result.DownloadEmpty = true
 		}
 	}
 
@@ -617,6 +625,8 @@ func formatSelfHostedLogsMarkdown(result logsResult) string {
 				mb.Paragraph("⚠️ Preview is truncated. No further logs are available at this time.")
 			}
 		}
+	} else if result.DownloadEmpty {
+		mb.Paragraph("The job has not produced log output yet. Retry shortly — logs will appear once the job starts writing output.")
 	} else {
 		mb.Paragraph("This job ran on a self-hosted agent. Logs are available via a short-lived token.")
 
