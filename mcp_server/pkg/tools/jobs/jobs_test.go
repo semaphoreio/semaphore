@@ -43,6 +43,9 @@ type selfHostedTestEnv struct {
 // newSelfHostedTestEnv creates a standard self-hosted logs test environment
 // with an httptest server, downloadLogsFn override, and all required stubs.
 // The returned cleanup function must be deferred.
+//
+// WARNING: This function mutates the package-level downloadLogsFn variable
+// without synchronization. Tests using this helper must NOT call t.Parallel().
 func newSelfHostedTestEnv(t *testing.T, httpHandler http.HandlerFunc) (selfHostedTestEnv, func()) {
 	t.Helper()
 	ts := httptest.NewServer(httpHandler)

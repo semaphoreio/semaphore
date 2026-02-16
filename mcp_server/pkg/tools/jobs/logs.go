@@ -35,6 +35,7 @@ const (
 	errLoghub2Missing    = "loghub2 gRPC endpoint is not configured"
 	maxLogDownloadBytes  = 10 << 20 // 10 MiB safety cap for HTTP log downloads
 	logCacheTTL          = 60 * time.Second
+	maxCacheEntries      = 10
 )
 
 func logsFullDescription() string {
@@ -353,6 +354,18 @@ func cacheLogLines(jobID string, lines []string) {
 			delete(logCache, k)
 		}
 	}
+	// Evict the entry closest to expiry if at capacity.
+	if len(logCache) >= maxCacheEntries {
+		var oldestKey string
+		var oldestExpiry time.Time
+		for k, v := range logCache {
+			if oldestKey == "" || v.expiresAt.Before(oldestExpiry) {
+				oldestKey = k
+				oldestExpiry = v.expiresAt
+			}
+		}
+		delete(logCache, oldestKey)
+	}
 	logCache[jobID] = &cachedLogLines{
 		lines:     lines,
 		expiresAt: now.Add(logCacheTTL),
@@ -366,6 +379,24 @@ func resetLogCache() {
 }
 
 func fetchSelfHostedLogs(ctx context.Context, api internalapi.Provider, jobID, orgUsername string, startingLine int) (*mcp.CallToolResult, error) {
+	// Check cache first to avoid unnecessary gRPC token generation on
+	// paginated calls. The token from the initial (cache-miss) call has
+	// a 300s TTL (> 60s cache TTL) and is available in that response's
+	// structured content for programmatic MCP clients.
+	if lines, ok := getCachedLogLines(jobID); ok && len(lines) > 0 {
+		result := logsResult{
+			JobID:  jobID,
+			Source: loghub2Source,
+		}
+		paginateSelfHostedLines(&result, lines, startingLine)
+		markdown := formatSelfHostedLogsMarkdown(result)
+		markdown = shared.TruncateResponse(markdown, shared.MaxResponseChars)
+		return &mcp.CallToolResult{
+			Content:           []mcp.Content{mcp.NewTextContent(markdown)},
+			StructuredContent: result,
+		}, nil
+	}
+
 	client := api.Loghub2()
 	if client == nil {
 		return mcp.NewToolResultError(errLoghub2Missing), nil
@@ -404,20 +435,16 @@ func fetchSelfHostedLogs(ctx context.Context, api internalapi.Provider, jobID, o
 	}
 
 	if logsURL != "" {
-		lines, cached := getCachedLogLines(jobID)
-		if !cached {
-			var dlErr error
-			lines, dlErr = downloadLogsFn(ctx, logsURL)
-			if dlErr != nil {
-				logging.ForComponent("tools").
-					WithField("jobId", jobID).
-					WithError(dlErr).
-					Warn("failed to download self-hosted job logs, falling back to token/URL")
-			} else if len(lines) > 0 {
-				cacheLogLines(jobID, lines)
-			}
-		}
-		if len(lines) > 0 {
+		lines, dlErr := downloadLogsFn(ctx, logsURL)
+		if dlErr != nil {
+			logging.ForComponent("tools").
+				WithField("jobId", jobID).
+				WithError(dlErr).
+				Warn("failed to download self-hosted job logs, falling back to token/URL")
+		} else if len(lines) > 0 {
+			// Only cache non-empty results so that jobs still starting up
+			// (returning empty events) are re-checked on subsequent calls.
+			cacheLogLines(jobID, lines)
 			paginateSelfHostedLines(&result, lines, startingLine)
 		}
 	}
@@ -497,6 +524,10 @@ func paginateSelfHostedLines(result *logsResult, lines []string, startingLine in
 	} else {
 		displayStartLine = startingLine
 		relativeStart = startingLine
+		// When an explicit cursor is provided, mark as truncated even if the
+		// window happens to cover all remaining lines. This is consistent with
+		// hosted pagination behavior and correct in practice: users only reach
+		// a specific cursor value via pagination from a later page.
 		truncated = true
 		relativeEnd = startingLine + maxLogPreviewLines
 		if relativeEnd > totalLines {
