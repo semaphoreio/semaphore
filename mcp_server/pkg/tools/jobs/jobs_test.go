@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -834,9 +835,9 @@ func TestDownloadSelfHostedLogs(t *testing.T) {
 }
 
 func TestSelfHostedLogsCacheAvoidsDuplicateDownload(t *testing.T) {
-	downloadCount := 0
+	var downloadCount atomic.Int32
 	env := newSelfHostedTestEnv(t, func(w http.ResponseWriter, r *http.Request) {
-		downloadCount++
+		downloadCount.Add(1)
 		resp := logResponse{
 			Events: []logEvent{{Output: "cached-line-1\ncached-line-2\n"}},
 		}
@@ -849,8 +850,8 @@ func TestSelfHostedLogsCacheAvoidsDuplicateDownload(t *testing.T) {
 	if len(result1.Preview) != 2 {
 		toFail(t, "expected 2 preview lines on first call, got %d", len(result1.Preview))
 	}
-	if downloadCount != 1 {
-		toFail(t, "expected 1 download on first call, got %d", downloadCount)
+	if downloadCount.Load() != 1 {
+		toFail(t, "expected 1 download on first call, got %d", downloadCount.Load())
 	}
 
 	// Second call: should use cached lines without hitting the server.
@@ -858,8 +859,8 @@ func TestSelfHostedLogsCacheAvoidsDuplicateDownload(t *testing.T) {
 	if len(result2.Preview) != 2 {
 		toFail(t, "expected 2 preview lines on second call, got %d", len(result2.Preview))
 	}
-	if downloadCount != 1 {
-		toFail(t, "expected still 1 download after cache hit, got %d", downloadCount)
+	if downloadCount.Load() != 1 {
+		toFail(t, "expected still 1 download after cache hit, got %d", downloadCount.Load())
 	}
 
 	// Verify cached response includes token metadata (Issue 5).

@@ -218,12 +218,10 @@ func computePaginationWindow(totalLines, startingLine, maxLines int) paginationW
 		if totalLines > maxLines {
 			w.DisplayLine = totalLines - maxLines
 			start = w.DisplayLine
-			w.Truncated = true
 		}
 	} else {
 		w.DisplayLine = startingLine
 		start = startingLine
-		w.Truncated = true
 		end = startingLine + maxLines
 		if end > totalLines {
 			end = totalLines
@@ -233,6 +231,8 @@ func computePaginationWindow(totalLines, startingLine, maxLines int) paginationW
 	if start > end {
 		start = end
 	}
+
+	w.Truncated = start > 0 || end < totalLines
 
 	w.Start = start
 	w.End = end
@@ -414,6 +414,11 @@ func fetchSelfHostedLogs(ctx context.Context, api internalapi.Provider, download
 	// paginated calls. The token from the initial (cache-miss) call has
 	// a 300s TTL (> 60s cache TTL) and is available in that response's
 	// structured content for programmatic MCP clients.
+	//
+	// Note: the cached tokenTtlSeconds reflects the original TTL at issuance,
+	// not the remaining lifetime. Since the cache TTL (60s) is well within
+	// the token TTL (300s), the token is still valid but callers should not
+	// treat tokenTtlSeconds as an exact countdown.
 	if cached, ok := getCachedLogLines(jobID); ok && len(cached.lines) > 0 {
 		result := logsResult{
 			JobID:           jobID,
