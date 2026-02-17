@@ -3,6 +3,7 @@ package pipelines
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -527,6 +528,223 @@ func TestPipelineJobsScopeMismatchProjectMissing(t *testing.T) {
 	}
 }
 
+func TestPipelineJobsWithAfterPipeline(t *testing.T) {
+	pipelineID := "11111111-2222-3333-4444-555555555555"
+	client := &pipelineClientStub{
+		describeResp: &pipelinepb.DescribeResponse{
+			Pipeline: &pipelinepb.Pipeline{
+				PplId:          pipelineID,
+				Name:           "Build",
+				WfId:           "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+				ProjectId:      "proj-1",
+				OrganizationId: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+				State:          pipelinepb.Pipeline_DONE,
+				Result:         pipelinepb.Pipeline_PASSED,
+				WithAfterTask:  true,
+				AfterTaskId:    "after-task-1",
+			},
+			Blocks: []*pipelinepb.Block{
+				{
+					BlockId: "block-1",
+					Name:    "Tests",
+					State:   pipelinepb.Block_DONE,
+					Result:  pipelinepb.Block_PASSED,
+					Jobs: []*pipelinepb.Block_Job{
+						{Name: "unit", JobId: "job-1", Index: 0, Status: "finished", Result: "passed"},
+					},
+				},
+			},
+		},
+		topologyResp: &pipelinepb.DescribeTopologyResponse{
+			AfterPipeline: &pipelinepb.DescribeTopologyResponse_AfterPipeline{
+				Jobs: []string{"after-job-1", "after-job-2"},
+			},
+		},
+	}
+
+	provider := &support.MockProvider{PipelineClient: client, Timeout: time.Second, RBACClient: newRBACStub("project.view")}
+	handler := jobsHandler(provider)
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"pipeline_id":     pipelineID,
+		"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+	}}}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
+	req.Header = header
+
+	res, err := handler(context.Background(), req)
+	if err != nil {
+		toFail(t, "handler error: %v", err)
+	}
+
+	result, ok := res.StructuredContent.(jobsListResult)
+	if !ok {
+		toFail(t, "unexpected structured content type: %T", res.StructuredContent)
+	}
+	if result.JobCount != 1 {
+		toFail(t, "expected 1 block job, got %d", result.JobCount)
+	}
+	if result.AfterPipelineJobCount != 2 {
+		toFail(t, "expected 2 after-pipeline jobs, got %d", result.AfterPipelineJobCount)
+	}
+	if len(result.AfterPipelineJobIDs) != 2 {
+		toFail(t, "expected 2 after-pipeline job IDs, got %d", len(result.AfterPipelineJobIDs))
+	}
+	if result.AfterPipelineJobIDs[0] != "after-job-1" || result.AfterPipelineJobIDs[1] != "after-job-2" {
+		toFail(t, "unexpected after-pipeline job IDs: %v", result.AfterPipelineJobIDs)
+	}
+	if client.lastTopology == nil || client.lastTopology.GetPplId() != pipelineID {
+		toFail(t, "expected topology request for pipeline, got %+v", client.lastTopology)
+	}
+
+	// Verify markdown contains the after-pipeline section
+	text, ok := res.Content[0].(mcp.TextContent)
+	if !ok {
+		toFail(t, "expected text content, got %T", res.Content[0])
+	}
+	if !strings.Contains(text.Text, "After Pipeline") {
+		toFail(t, "expected markdown to contain 'After Pipeline' section, got:\n%s", text.Text)
+	}
+	if !strings.Contains(text.Text, "after-job-1") || !strings.Contains(text.Text, "after-job-2") {
+		toFail(t, "expected markdown to contain after-pipeline job IDs, got:\n%s", text.Text)
+	}
+	if !strings.Contains(text.Text, "Use `jobs_describe` or `jobs_logs` to inspect these jobs.") {
+		toFail(t, "expected markdown to contain jobs_describe hint, got:\n%s", text.Text)
+	}
+}
+
+func TestPipelineJobsWithoutAfterTask(t *testing.T) {
+	pipelineID := "11111111-2222-3333-4444-555555555555"
+	client := &pipelineClientStub{
+		describeResp: &pipelinepb.DescribeResponse{
+			Pipeline: &pipelinepb.Pipeline{
+				PplId:          pipelineID,
+				Name:           "Build",
+				WfId:           "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+				ProjectId:      "proj-1",
+				OrganizationId: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+				State:          pipelinepb.Pipeline_DONE,
+				Result:         pipelinepb.Pipeline_PASSED,
+				WithAfterTask:  false,
+			},
+			Blocks: []*pipelinepb.Block{
+				{
+					BlockId: "block-1",
+					Name:    "Tests",
+					State:   pipelinepb.Block_DONE,
+					Result:  pipelinepb.Block_PASSED,
+					Jobs: []*pipelinepb.Block_Job{
+						{Name: "unit", JobId: "job-1", Index: 0, Status: "finished", Result: "passed"},
+					},
+				},
+			},
+		},
+	}
+
+	provider := &support.MockProvider{PipelineClient: client, Timeout: time.Second, RBACClient: newRBACStub("project.view")}
+	handler := jobsHandler(provider)
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"pipeline_id":     pipelineID,
+		"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+	}}}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
+	req.Header = header
+
+	res, err := handler(context.Background(), req)
+	if err != nil {
+		toFail(t, "handler error: %v", err)
+	}
+
+	result, ok := res.StructuredContent.(jobsListResult)
+	if !ok {
+		toFail(t, "unexpected structured content type: %T", res.StructuredContent)
+	}
+	if result.JobCount != 1 {
+		toFail(t, "expected 1 job, got %d", result.JobCount)
+	}
+	if len(result.AfterPipelineJobIDs) != 0 {
+		toFail(t, "expected no after-pipeline job IDs, got %v", result.AfterPipelineJobIDs)
+	}
+	if client.lastTopology != nil {
+		toFail(t, "expected no topology request when WithAfterTask is false, got %+v", client.lastTopology)
+	}
+}
+
+func TestPipelineJobsTopologyFailureGraceful(t *testing.T) {
+	pipelineID := "11111111-2222-3333-4444-555555555555"
+	client := &pipelineClientStub{
+		describeResp: &pipelinepb.DescribeResponse{
+			Pipeline: &pipelinepb.Pipeline{
+				PplId:          pipelineID,
+				Name:           "Build",
+				WfId:           "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+				ProjectId:      "proj-1",
+				OrganizationId: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+				State:          pipelinepb.Pipeline_DONE,
+				Result:         pipelinepb.Pipeline_PASSED,
+				WithAfterTask:  true,
+				AfterTaskId:    "after-task-1",
+			},
+			Blocks: []*pipelinepb.Block{
+				{
+					BlockId: "block-1",
+					Name:    "Tests",
+					State:   pipelinepb.Block_DONE,
+					Result:  pipelinepb.Block_PASSED,
+					Jobs: []*pipelinepb.Block_Job{
+						{Name: "unit", JobId: "job-1", Index: 0, Status: "finished", Result: "passed"},
+					},
+				},
+			},
+		},
+		topologyErr: fmt.Errorf("connection refused"),
+	}
+
+	provider := &support.MockProvider{PipelineClient: client, Timeout: time.Second, RBACClient: newRBACStub("project.view")}
+	handler := jobsHandler(provider)
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"pipeline_id":     pipelineID,
+		"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+	}}}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
+	req.Header = header
+
+	res, err := handler(context.Background(), req)
+	if err != nil {
+		toFail(t, "handler error: %v", err)
+	}
+
+	result, ok := res.StructuredContent.(jobsListResult)
+	if !ok {
+		toFail(t, "unexpected structured content type: %T", res.StructuredContent)
+	}
+	// Block jobs should still be returned despite topology failure
+	if result.JobCount != 1 {
+		toFail(t, "expected 1 block job, got %d", result.JobCount)
+	}
+	if len(result.AfterPipelineJobIDs) != 0 {
+		toFail(t, "expected no after-pipeline job IDs on topology failure, got %v", result.AfterPipelineJobIDs)
+	}
+	if result.AfterPipelineJobCount != 0 {
+		toFail(t, "expected 0 after-pipeline job count on topology failure, got %d", result.AfterPipelineJobCount)
+	}
+	// Topology should still have been attempted
+	if client.lastTopology == nil || client.lastTopology.GetPplId() != pipelineID {
+		toFail(t, "expected topology request for pipeline, got %+v", client.lastTopology)
+	}
+
+	// Markdown should not contain After Pipeline section
+	text, ok := res.Content[0].(mcp.TextContent)
+	if !ok {
+		toFail(t, "expected text content, got %T", res.Content[0])
+	}
+	if strings.Contains(text.Text, "After Pipeline") {
+		toFail(t, "expected markdown to NOT contain 'After Pipeline' section on failure, got:\n%s", text.Text)
+	}
+}
+
 type pipelineClientStub struct {
 	pipelinepb.PipelineServiceClient
 	listResp     *pipelinepb.ListKeysetResponse
@@ -535,6 +753,9 @@ type pipelineClientStub struct {
 	describeResp *pipelinepb.DescribeResponse
 	describeErr  error
 	lastDescribe *pipelinepb.DescribeRequest
+	topologyResp *pipelinepb.DescribeTopologyResponse
+	topologyErr  error
+	lastTopology *pipelinepb.DescribeTopologyRequest
 }
 
 func (s *pipelineClientStub) Schedule(context.Context, *pipelinepb.ScheduleRequest, ...grpc.CallOption) (*pipelinepb.ScheduleResponse, error) {
@@ -545,8 +766,15 @@ func (s *pipelineClientStub) DescribeMany(context.Context, *pipelinepb.DescribeM
 	panic("not implemented")
 }
 
-func (s *pipelineClientStub) DescribeTopology(context.Context, *pipelinepb.DescribeTopologyRequest, ...grpc.CallOption) (*pipelinepb.DescribeTopologyResponse, error) {
-	panic("not implemented")
+func (s *pipelineClientStub) DescribeTopology(_ context.Context, in *pipelinepb.DescribeTopologyRequest, _ ...grpc.CallOption) (*pipelinepb.DescribeTopologyResponse, error) {
+	s.lastTopology = in
+	if s.topologyErr != nil {
+		return nil, s.topologyErr
+	}
+	if s.topologyResp == nil {
+		return &pipelinepb.DescribeTopologyResponse{}, nil
+	}
+	return s.topologyResp, nil
 }
 
 func (s *pipelineClientStub) Terminate(context.Context, *pipelinepb.TerminateRequest, ...grpc.CallOption) (*pipelinepb.TerminateResponse, error) {
