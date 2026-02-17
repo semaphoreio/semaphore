@@ -155,7 +155,7 @@ defmodule Guard.InviteesTest do
          end}
       ]) do
         assert Invitees.inject_provider_uid(invitee, @inviter_id) ==
-                 {:error, "error finding unknown331123: 404"}
+                 {:error, "Login unknown331123 cannot be found. Please check the login and try again or contact support if the problem persists."}
       end
     end
   end
