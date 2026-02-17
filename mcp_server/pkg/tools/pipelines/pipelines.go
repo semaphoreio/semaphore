@@ -220,10 +220,11 @@ type blockJobGroup struct {
 }
 
 type jobsListResult struct {
-	Pipeline pipelineSummary    `json:"pipeline"`
-	Blocks   []blockJobGroup    `json:"blocks"`
-	Jobs     []pipelineJobEntry `json:"jobs"`
-	JobCount int                `json:"jobCount"`
+	Pipeline            pipelineSummary    `json:"pipeline"`
+	Blocks              []blockJobGroup    `json:"blocks"`
+	Jobs                []pipelineJobEntry `json:"jobs"`
+	AfterPipelineJobIDs []string           `json:"afterPipelineJobIds,omitempty"`
+	JobCount            int                `json:"jobCount"`
 }
 
 func listHandler(api internalapi.Provider) server.ToolHandlerFunc {
@@ -568,11 +569,28 @@ Troubleshooting:
 			blocks = append(blocks, group)
 		}
 
+		var afterPipelineJobIDs []string
+		if pipeline.WithAfterTask {
+			topoResp, err := clients.DescribePipelineTopology(ctx, api, pipelineID)
+			if err != nil {
+				logging.ForComponent("tools").
+					WithFields(logrus.Fields{
+						"tool":       jobsToolName,
+						"pipelineId": pipelineID,
+					}).
+					WithError(err).
+					Warn("failed to fetch after-pipeline topology, continuing without after-pipeline jobs")
+			} else if ap := topoResp.GetAfterPipeline(); ap != nil {
+				afterPipelineJobIDs = ap.GetJobs()
+			}
+		}
+
 		result := jobsListResult{
-			Pipeline: pipeline,
-			Blocks:   blocks,
-			Jobs:     jobs,
-			JobCount: len(jobs),
+			Pipeline:            pipeline,
+			Blocks:              blocks,
+			Jobs:                jobs,
+			AfterPipelineJobIDs: afterPipelineJobIDs,
+			JobCount:            len(jobs) + len(afterPipelineJobIDs),
 		}
 
 		markdown := formatPipelineJobsMarkdown(result, mode, orgID)
@@ -848,6 +866,14 @@ func formatPipelineJobsMarkdown(result jobsListResult, mode, orgID string) strin
 				}
 			}
 			mb.ListItem(strings.Join(statusParts, " • "))
+		}
+	}
+
+	if len(result.AfterPipelineJobIDs) > 0 {
+		mb.Line()
+		mb.H2("After Pipeline")
+		for _, jobID := range result.AfterPipelineJobIDs {
+			mb.ListItem(fmt.Sprintf("`%s`", jobID))
 		}
 	}
 
