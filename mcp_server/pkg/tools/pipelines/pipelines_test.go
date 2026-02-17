@@ -3,7 +3,6 @@ package pipelines
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -698,7 +697,7 @@ func TestPipelineJobsTopologyFailureGraceful(t *testing.T) {
 				},
 			},
 		},
-		topologyErr: fmt.Errorf("connection refused"),
+		topologyErr: errors.New("connection refused"),
 	}
 
 	provider := &support.MockProvider{PipelineClient: client, Timeout: time.Second, RBACClient: newRBACStub("project.view")}
