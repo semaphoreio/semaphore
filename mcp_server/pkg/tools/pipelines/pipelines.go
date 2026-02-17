@@ -220,11 +220,12 @@ type blockJobGroup struct {
 }
 
 type jobsListResult struct {
-	Pipeline            pipelineSummary    `json:"pipeline"`
-	Blocks              []blockJobGroup    `json:"blocks"`
-	Jobs                []pipelineJobEntry `json:"jobs"`
-	AfterPipelineJobIDs []string           `json:"afterPipelineJobIds,omitempty"`
-	JobCount            int                `json:"jobCount"`
+	Pipeline              pipelineSummary    `json:"pipeline"`
+	Blocks                []blockJobGroup    `json:"blocks"`
+	Jobs                  []pipelineJobEntry `json:"jobs"`
+	JobCount              int                `json:"jobCount"`
+	AfterPipelineJobIDs   []string           `json:"afterPipelineJobIds,omitempty"`
+	AfterPipelineJobCount int                `json:"afterPipelineJobCount,omitempty"`
 }
 
 func listHandler(api internalapi.Provider) server.ToolHandlerFunc {
@@ -586,11 +587,12 @@ Troubleshooting:
 		}
 
 		result := jobsListResult{
-			Pipeline:            pipeline,
-			Blocks:              blocks,
-			Jobs:                jobs,
-			AfterPipelineJobIDs: afterPipelineJobIDs,
-			JobCount:            len(jobs) + len(afterPipelineJobIDs),
+			Pipeline:              pipeline,
+			Blocks:                blocks,
+			Jobs:                  jobs,
+			JobCount:              len(jobs),
+			AfterPipelineJobIDs:   afterPipelineJobIDs,
+			AfterPipelineJobCount: len(afterPipelineJobIDs),
 		}
 
 		markdown := formatPipelineJobsMarkdown(result, mode, orgID)
@@ -875,6 +877,8 @@ func formatPipelineJobsMarkdown(result jobsListResult, mode, orgID string) strin
 		for _, jobID := range result.AfterPipelineJobIDs {
 			mb.ListItem(fmt.Sprintf("`%s`", jobID))
 		}
+		mb.Line()
+		mb.Paragraph("Use `jobs_describe` or `jobs_logs` to inspect these jobs.")
 	}
 
 	return mb.String()
