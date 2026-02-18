@@ -150,7 +150,7 @@ defmodule Auth do
   #
   # Routes for <org-name>.<domain>/okta/auth request.
   # The POST /okta/auth is a public endpoint which takes auth requests coming from Okta.
-  # The Auth procedure is handled by the SAML handler in the Guard service.
+  # Authentication is handled by Guard's SAML handler.
   #
   post "/exauth/okta/auth" do
     org_name = org_from_host(conn)
@@ -166,9 +166,8 @@ defmodule Auth do
 
   #
   # Routes for <org-name>.<domain>/okta/scim/* request.
-  # The /okta/scim endpoints are verified by Guard based on the Authorization Bearer token
-  # that Semaphore creates and pushes down to Okta. There is no need to do any authorization
-  # for these requests, because it is handled downstream in the Guard.Okta.Scim API Handler.
+  # Guard validates /okta/scim requests using the Authorization Bearer token
+  # that Semaphore provisions in Okta.
   #
   match "/exauth/okta/scim/:path" do
     org_name = org_from_host(conn)
@@ -216,7 +215,7 @@ defmodule Auth do
 
     log_request(conn, "#{org_name}.#{Application.fetch_env!(:auth, :domain)}/api")
 
-    if Auth.Cli.is_call_from_deprecated_cli?(conn) do
+    if Auth.Cli.call_from_deprecated_cli?(conn) do
       Auth.Cli.reject_cli_client(conn)
     else
       case set_org_and_user_headers(conn, org_name, allow_cookie: false) do
@@ -225,6 +224,78 @@ defmodule Auth do
         {:error, :unauthorized_ip, conn} -> send_resp(conn, 404, blocked_ip_response(conn))
         {:error, _, conn} -> send_resp(conn, 401, "Unauthorized")
       end
+    end
+  end
+
+  #
+  # MCP OAuth Authorization - requires browser session
+  # User must be logged in before authorizing MCP clients
+  # These routes must come BEFORE the catch-all /mcp route below
+  #
+  match "/exauth/mcp/oauth/authorize", host: "mcp." do
+    log_request(conn, "mcp.#{Application.fetch_env!(:auth, :domain)}/mcp/oauth/authorize")
+
+    case set_user_headers(conn, allow_token: false) do
+      {:ok, conn_with_headers} -> send_resp(conn_with_headers, 200, "")
+      {:error, conn} -> redirect_or_unauthorized(conn, backurl: true)
+    end
+  end
+
+  match "/exauth/mcp/oauth/grant-selection", host: "mcp." do
+    log_request(conn, "mcp.#{Application.fetch_env!(:auth, :domain)}/mcp/oauth/grant-selection")
+
+    case set_user_headers(conn, allow_token: false) do
+      {:ok, conn_with_headers} -> send_resp(conn_with_headers, 200, "")
+      {:error, conn} -> redirect_or_unauthorized(conn, backurl: true)
+    end
+  end
+
+  #
+  # Routes for mcp.{domain}/mcp requests - OAuth 2.1 JWT validation
+  #
+  match "/exauth/mcp:path/*rest", host: "mcp." do
+    log_request(conn, "mcp.#{Application.fetch_env!(:auth, :domain)}/mcp")
+
+    case parse_auth_header(conn.req_headers) do
+      nil ->
+        # No token provided - return 401 with WWW-Authenticate header per MCP spec
+        domain = Application.fetch_env!(:auth, :domain)
+        resource_metadata = "https://mcp.#{domain}/.well-known/oauth-protected-resource"
+
+        error_body =
+          Jason.encode!(%{
+            "error" => "unauthorized",
+            "error_description" => "Bearer token or oauth2 required"
+          })
+
+        conn
+        |> put_resp_content_type("application/json")
+        |> put_resp_header(
+          "www-authenticate",
+          ~s(Bearer resource_metadata="#{resource_metadata}")
+        )
+        |> send_resp(401, error_body)
+
+      {_scheme, token} ->
+        case authenticate_mcp_token(token) do
+          {:ok, user_id} ->
+            conn
+            |> put_resp_header("x-semaphore-user-id", user_id)
+            |> send_resp(200, "")
+
+          {:error, reason} ->
+            Logger.warning("[Auth] MCP token validation failed: #{inspect(reason)}")
+
+            error_body =
+              Jason.encode!(%{
+                "error" => "invalid_token",
+                "error_description" => "The access token is invalid or expired"
+              })
+
+            conn
+            |> put_resp_content_type("application/json")
+            |> send_resp(401, error_body)
+        end
     end
   end
 
@@ -306,12 +377,13 @@ defmodule Auth do
     end
   end
 
+  # sobelow_skip ["XSS.SendResp"]
   def redirect(conn, location) do
     Logger.debug(fn -> "Redirect to: #{location}" end)
 
     conn
     |> put_resp_header("location", location)
-    |> send_resp(302, "Redirected to #{location}")
+    |> send_resp(302, "Redirected to #{Plug.HTML.html_escape(location)}")
   end
 
   def set_public_headers(conn, org_name, params \\ []) do
@@ -527,6 +599,39 @@ defmodule Auth do
     end
   end
 
+  defp parse_auth_header(headers) do
+    # note: Plug downcases all headers
+
+    case List.keyfind(headers, "authorization", 0) do
+      {_, auth_header} ->
+        case String.split(auth_header, " ", parts: 2) do
+          [scheme, token] -> {String.downcase(scheme), token}
+          _ -> nil
+        end
+
+      _ ->
+        nil
+    end
+  end
+
+  defp authenticate_mcp_token(token) do
+    case Auth.JWT.validate_mcp_token(token) do
+      {:ok, user_id, _claims} ->
+        {:ok, user_id}
+
+      {:error, reason} ->
+        # Fall back to legacy API token validation for existing MCP clients.
+        case authenticate_based_on_token(token) do
+          {:ok, %{id: user_id}} ->
+            Logger.info("[Auth] MCP token validated via legacy API token")
+            {:ok, user_id}
+
+          {:error, auth_error} ->
+            {:error, {:jwt_invalid, reason, auth_error}}
+        end
+    end
+  end
+
   def authenticate_based_on_cookie(session_cookie, conn) do
     # cache key needs to be short and simple, constructing one from md5 of the
     # session cookie
@@ -540,11 +645,10 @@ defmodule Auth do
       Auth.Cache.fetch!("authentication-based-on-cookie-#{cache_key}", :timer.minutes(5), fn ->
         stub = InternalApi.Auth.Authentication.Stub
 
-        req =
-          InternalApi.Auth.AuthenticateWithCookieRequest.new(
-            cookie: session_cookie,
-            remember_user_token: ""
-          )
+        req = %InternalApi.Auth.AuthenticateWithCookieRequest{
+          cookie: session_cookie,
+          remember_user_token: ""
+        }
 
         endpoint = Application.fetch_env!(:auth, :authentication_grpc_endpoint)
         opts = [timeout: 30_000]
@@ -609,7 +713,7 @@ defmodule Auth do
     Watchman.benchmark("authenticate_with_token.duration", fn ->
       Auth.Cache.fetch!("authentication-based-on-token-#{token}", :timer.minutes(5), fn ->
         stub = InternalApi.Auth.Authentication.Stub
-        req = InternalApi.Auth.AuthenticateRequest.new(token: token)
+        req = %InternalApi.Auth.AuthenticateRequest{token: token}
         endpoint = Application.fetch_env!(:auth, :authentication_grpc_endpoint)
         opts = [timeout: 30_000]
 
@@ -628,7 +732,7 @@ defmodule Auth do
     Watchman.benchmark("find_org.duration", fn ->
       Auth.Cache.fetch!("find-org-#{username}", :timer.minutes(5), fn ->
         stub = InternalApi.Organization.OrganizationService.Stub
-        req = InternalApi.Organization.DescribeRequest.new(org_username: username)
+        req = %InternalApi.Organization.DescribeRequest{org_username: username}
         endpoint = Application.fetch_env!(:auth, :organization_grpc_endpoint)
         opts = [timeout: 30_000]
 
