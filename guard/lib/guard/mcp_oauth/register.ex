@@ -87,8 +87,6 @@ defmodule Guard.McpOAuth.Register do
   end
 
   defp build_response(client) do
-    domain = Application.fetch_env!(:guard, :base_domain)
-
     %{
       "client_id" => client.client_id,
       "client_name" => client.client_name,
@@ -96,8 +94,7 @@ defmodule Guard.McpOAuth.Register do
       "grant_types" => ["authorization_code"],
       "response_types" => ["code"],
       "token_endpoint_auth_method" => "none",
-      "scope" => "mcp",
-      "registration_client_uri" => "https://mcp.#{domain}/mcp/oauth/register/#{client.client_id}"
+      "scope" => "mcp"
     }
   end
 
