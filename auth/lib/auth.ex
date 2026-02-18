@@ -127,12 +127,6 @@ defmodule Auth do
   end
 
   #
-  # NOTE: Authorization Server Metadata for mcp.* subdomain is now served by Guard
-  # (Guard.McpOAuth.Server handles /.well-known/oauth-authorization-server)
-  # The old Keycloak proxy endpoints have been removed.
-  #
-
-  #
   # Routes for <org-name>.<domain>/.well-known requests.
   # The well-known endpoints are a fully public endpoint that advertises our public
   # OpenID Connect keys. Once this request goes throught Auth, it will hit
@@ -156,7 +150,7 @@ defmodule Auth do
   #
   # Routes for <org-name>.<domain>/okta/auth request.
   # The POST /okta/auth is a public endpoint which takes auth requests coming from Okta.
-  # The Auth procedure is handled by the SAML handler in the Guard service.
+  # Authentication is handled by Guard's SAML handler.
   #
   post "/exauth/okta/auth" do
     org_name = org_from_host(conn)
@@ -172,9 +166,8 @@ defmodule Auth do
 
   #
   # Routes for <org-name>.<domain>/okta/scim/* request.
-  # The /okta/scim endpoints are verified by Guard based on the Authorization Bearer token
-  # that Semaphore creates and pushes down to Okta. There is no need to do any authorization
-  # for these requests, because it is handled downstream in the Guard.Okta.Scim API Handler.
+  # Guard validates /okta/scim requests using the Authorization Bearer token
+  # that Semaphore provisions in Okta.
   #
   match "/exauth/okta/scim/:path" do
     org_name = org_from_host(conn)
@@ -233,12 +226,6 @@ defmodule Auth do
       end
     end
   end
-
-  #
-  # NOTE: Dynamic Client Registration (DCR) for MCP is now handled by Guard
-  # (Guard.McpOAuth.Server handles /mcp/oauth/register)
-  # The old Keycloak DCR proxy has been removed.
-  #
 
   #
   # MCP OAuth Authorization - requires browser session
