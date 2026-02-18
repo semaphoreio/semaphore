@@ -106,11 +106,12 @@ const sidebars = {
         },
         collapsed: true,
         items: [
-          'using-semaphore/connect-github',
-          'using-semaphore/connect-github-oauth',
-          'using-semaphore/connect-bitbucket',
-          'using-semaphore/insights',
-          'using-semaphore/monorepo',
+            'using-semaphore/connect-github',
+            'using-semaphore/connect-gitlab',
+            'using-semaphore/connect-github-oauth',
+            'using-semaphore/connect-bitbucket',
+            'using-semaphore/insights',
+            'using-semaphore/monorepo',
         ]
       },
 
