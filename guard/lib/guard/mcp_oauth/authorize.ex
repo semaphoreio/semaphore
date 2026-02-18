@@ -57,8 +57,7 @@ defmodule Guard.McpOAuth.Authorize do
 
     params = if state, do: params ++ [{"state", state}], else: params
 
-    query = URI.encode_query(params)
-    "#{redirect_uri}?#{query}"
+    append_query_params(redirect_uri, params)
   end
 
   @doc """
@@ -69,8 +68,7 @@ defmodule Guard.McpOAuth.Authorize do
     params = [{"code", code}]
     params = if state, do: params ++ [{"state", state}], else: params
 
-    query = URI.encode_query(params)
-    "#{redirect_uri}?#{query}"
+    append_query_params(redirect_uri, params)
   end
 
   # Private functions
@@ -150,5 +148,21 @@ defmodule Guard.McpOAuth.Authorize do
       error: error,
       error_description: description
     }
+  end
+
+  defp append_query_params(redirect_uri, params) do
+    uri = URI.parse(redirect_uri)
+
+    existing_params =
+      case uri.query do
+        nil -> %{}
+        query -> URI.decode_query(query)
+      end
+
+    merged_params = Map.merge(existing_params, Map.new(params))
+
+    uri
+    |> Map.put(:query, URI.encode_query(merged_params))
+    |> URI.to_string()
   end
 end
