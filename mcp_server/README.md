@@ -50,7 +50,7 @@ Refer to [`AGENTS.md`](AGENTS.md) for repository guidelines, project structure, 
 
 ## Requirements
 
-- Go 1.25 (toolchain `go1.25.2` is configured in `go.mod` and `Dockerfile`).
+- Go 1.25 (Docker build toolchain is pinned to `go1.25.7` in `Dockerfile`).
 - SSH access to `renderedtext/internal_api` for protobuf generation.
 
 ## Generating protobuf stubs
