@@ -80,7 +80,7 @@ defmodule FrontWeb.JobController do
 
     fetch_workflow = Async.run(fn -> find_workflow(pipeline.workflow_id) end)
     fetch_hook = Async.run(fn -> find_hook(pipeline.hook_id) end)
-    fetch_artifact_logs_url = Async.run(fn -> find_artifact_logs_url(project.id, job_id) end)
+    fetch_artifact_logs = Async.run(fn -> find_artifact_logs(project.id, job_id) end)
     create_token = Async.run(fn -> generate_token(job_id, self_hosted) end)
 
     {:ok, organization} = Async.await(fetch_organization)
@@ -89,7 +89,7 @@ defmodule FrontWeb.JobController do
     {:ok, user} = Async.await(fetch_user)
     {:ok, token} = Async.await(create_token)
     {:ok, {:ok, can_debug}} = Async.await(fetch_debug_permission)
-    {:ok, {:ok, artifact_logs_url}} = Async.await(fetch_artifact_logs_url)
+    {:ok, {:ok, artifact_logs}} = Async.await(fetch_artifact_logs)
 
     block = extract_block(pipeline.blocks, job_id)
 
@@ -140,7 +140,8 @@ defmodule FrontWeb.JobController do
         can_debug: can_debug,
         self_hosted: self_hosted,
         permissions: conn.assigns.permissions,
-        artifact_logs_url: artifact_logs_url,
+        artifact_logs_url: artifact_logs.url,
+        artifact_logs_compressed: artifact_logs.compressed,
         notice: conn |> get_flash(:notice),
         alert: conn |> get_flash(:error)
       }
@@ -394,8 +395,39 @@ defmodule FrontWeb.JobController do
     Models.Workflow.find(wf_id, nil)
   end
 
-  defp find_artifact_logs_url(project_id, job_id) do
-    Models.Artifacthub.signed_url(project_id, "jobs", job_id, "agent/job_logs.txt", "HEAD")
+  defp find_artifact_logs(project_id, job_id) do
+    {path, compressed} =
+      case find_artifact_logs_path(project_id, job_id) do
+        "agent/job_logs.txt.gz" -> {"agent/job_logs.txt.gz", true}
+        "agent/job_logs.txt" -> {"agent/job_logs.txt", false}
+        _ -> {"agent/job_logs.txt", false}
+      end
+
+    with {:ok, url} <- Models.Artifacthub.signed_url(project_id, "jobs", job_id, path, "HEAD") do
+      {:ok, %{url: url, compressed: compressed}}
+    end
+  end
+
+  defp find_artifact_logs_path(project_id, job_id) do
+    case Models.Artifacthub.list(project_id, "jobs", job_id, "agent") do
+      {:ok, artifacts} ->
+        cond do
+          Enum.any?(artifacts, &(&1.path == "agent/job_logs.txt.gz")) ->
+            "agent/job_logs.txt.gz"
+
+          Enum.any?(artifacts, &(&1.path == "agent/job_logs.txt")) ->
+            "agent/job_logs.txt"
+
+          true ->
+            nil
+        end
+
+      {:error, :non_existent_path} ->
+        nil
+
+      _ ->
+        nil
+    end
   end
 
   defp find_hook(hook_id) do

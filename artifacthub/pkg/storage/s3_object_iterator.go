@@ -1,10 +1,12 @@
 package storage
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
 )
 
@@ -58,6 +60,11 @@ func (i *S3PathIterator) fetch() error {
 	})
 
 	if err != nil {
+		var aerr awserr.Error
+		if errors.As(err, &aerr) && aerr.Code() == s3.ErrCodeNoSuchBucket {
+			i.IsDone = true
+			return ErrMissingBucket
+		}
 		return err
 	}
 

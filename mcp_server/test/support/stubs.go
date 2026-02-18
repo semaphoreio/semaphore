@@ -63,6 +63,8 @@ type provider struct {
 
 func (p *provider) CallTimeout() time.Duration { return p.timeout }
 
+func (p *provider) BaseURL() string { return "semaphoreci.com" }
+
 func (p *provider) Workflow() workflowpb.WorkflowServiceClient { return p.workflows }
 
 func (p *provider) Organizations() orgpb.OrganizationServiceClient { return p.organizations }

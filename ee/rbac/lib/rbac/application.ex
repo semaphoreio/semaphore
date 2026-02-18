@@ -100,7 +100,9 @@ defmodule Rbac.Application do
     select_active([
       %{
         worker: {Rbac.Refresh.Worker, []},
-        active: System.get_env("START_RBAC_WORKERS") == "true"
+        active:
+          System.get_env("START_RBAC_WORKERS") == "true" and
+            System.get_env("IGNORE_REFRESH_REQUESTS") != "true"
       },
       %{
         worker: {Rbac.Workers.RefreshAllPermissions, []},

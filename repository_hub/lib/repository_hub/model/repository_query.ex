@@ -94,6 +94,22 @@ defmodule RepositoryHub.Model.RepositoryQuery do
   end
 
   @doc """
+  Locks next connected GitHub repository without remote_id.
+  Must be called within a transaction.
+  """
+  def lock_next_github_without_remote_id do
+    from(repository in Repositories,
+      where: repository.integration_type in ["github_app", "github_oauth_token"],
+      where: repository.connected == true,
+      where: is_nil(repository.remote_id) or repository.remote_id == "",
+      order_by: [asc: repository.inserted_at],
+      limit: 1,
+      lock: "FOR UPDATE SKIP LOCKED"
+    )
+    |> Repo.one()
+  end
+
+  @doc """
   List all repositories
   """
   def list_by_project(project_id) do
@@ -104,6 +120,14 @@ defmodule RepositoryHub.Model.RepositoryQuery do
     from(Repositories)
     |> filter_by(filters)
     |> Repo.all()
+  end
+
+  @doc """
+  Sets the repository as not connected by updating the connected field to false.
+  """
+  def set_not_connected(repository_id) do
+    from(r in Repositories, where: r.id == ^repository_id)
+    |> Repo.update_all(set: [connected: false, updated_at: DateTime.utc_now()])
   end
 
   defp filter_by(query, filters) do

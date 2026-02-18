@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -121,6 +122,9 @@ func (b *GcsBucket) DeletePath(ctx context.Context, name string) error {
 	return retry.OnFailure(ctx, "Deleting Bucket path", func() error {
 		isFile, err := b.IsFile(ctx, name)
 		if err != nil {
+			if errors.Is(err, gcsstorage.ErrBucketNotExist) {
+				return ErrMissingBucket
+			}
 			return err
 		}
 
@@ -128,13 +132,22 @@ func (b *GcsBucket) DeletePath(ctx context.Context, name string) error {
 			return b.DeleteFile(ctx, name)
 		}
 
-		return b.DeleteDir(ctx, name)
+		err = b.DeleteDir(ctx, name)
+		if err != nil {
+			if errors.Is(err, gcsstorage.ErrBucketNotExist) {
+				return ErrMissingBucket
+			}
+		}
+		return err
 	})
 }
 
 func (b *GcsBucket) DeleteDir(ctx context.Context, dir string) error {
 	iterator, err := b.ListPath(ListOptions{Path: dir})
 	if err != nil {
+		if errors.Is(err, gcsstorage.ErrBucketNotExist) {
+			return ErrMissingBucket
+		}
 		return err
 	}
 
@@ -145,6 +158,9 @@ func (b *GcsBucket) DeleteDir(ctx context.Context, dir string) error {
 		}
 
 		if err != nil {
+			if errors.Is(err, gcsstorage.ErrBucketNotExist) {
+				return ErrMissingBucket
+			}
 			return err
 		}
 

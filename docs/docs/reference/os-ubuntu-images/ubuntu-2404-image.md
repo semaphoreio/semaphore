@@ -45,9 +45,9 @@ The image comes with the following [toolbox utilities](../toolbox) preinstalled:
 
 Following version control tools are pre-installed:
 
-- Git 2.51.0
-- Git LFS (Git Large File Storage) 3.7.0
-- GitHub CLI 2.80.0
+- Git 2.52.0
+- Git LFS (Git Large File Storage) 3.7.1
+- GitHub CLI 2.85.0
 - Mercurial 6.1.1
 - Svn 1.14.1
 
@@ -55,8 +55,8 @@ Following version control tools are pre-installed:
 
 - Firefox 102.11.0 (`102`, `default`, `esr`)
 - Geckodriver 0.36.0
-- Google Chrome 140.0.7339.207
-- ChromeDriver 140.0.7339.207
+- Google Chrome 144.0.7559.59
+- ChromeDriver 144.0.7559.59
 - Xvfb (X Virtual Framebuffer)
 - Phantomjs 2.1.1
 
@@ -68,29 +68,29 @@ Refer to the documentation of associated libraries when configuring your project
 
  Docker toolset is installed and the following versions are available:
 
-- Docker 28.4.0
+- Docker 29.1.4
 - Docker-compose 1.29.2 (used as `docker-compose --version`)
-- Docker-compose 2.39.4 (used as `docker compose version`)
-- Docker-buildx 0.28.0
+- Docker-compose 5.0.1 (used as `docker compose version`)
+- Docker-buildx 0.30.1
 - Docker-machine 0.16.2
-- Dockerize 0.9.6
+- Dockerize 0.9.9
 - Buildah 1.33.7
 - Podman 4.9.3
 - Skopeo 1.13.3
 
 ### Cloud CLIs
 
-- Aws-cli v2 (used as `aws`) 2.31.1
-- Azure-cli 2.77.0
+- Aws-cli v2 (used as `aws`) 2.33.1
+- Azure-cli 2.82.0
 - Ecs-cli 1.21.0
-- Doctl 1.142.0
-- Gcloud 540.0.0
-- Gke-gcloud-auth-plugin 540.0.0
+- Doctl 1.148.0
+- Gcloud 552.0.0
+- Gke-gcloud-auth-plugin 552.0.0
 - Kubectl 1.29.1
-- Heroku 10.13.2
-- Terraform 1.13.3
-- Helm 3.19.0
-- Helmfile 1.1.7
+- Heroku 10.16.0
+- Terraform 1.14.3
+- Helm 4.0.5
+- Helmfile 1.2.3
 
 ### Network utilities
 
@@ -109,8 +109,8 @@ Refer to the documentation of associated libraries when configuring your project
 Erlang versions are installed and managed via [kerl](https://github.com/kerl/kerl).
 Elixir versions are installed with [kiex](https://github.com/taylor/kiex).
 
-- Erlang: 24.3, 25.0, 25.1, 25.2, 25.3, 26.0, 26.1, 26.2, 27.0 (default), 27.1, 27.2, 27.3
-- Elixir: 1.12.x, 1.13.x, 1.14.x, 1.15.x, 1.16.x, 1.17.x (1.17.3 as default), 1.18.x
+- Erlang: 24.3, 25.x, 26.x, 27.x (27.0 as default), 28.x
+- Elixir: 1.12.x, 1.13.x, 1.14.x, 1.15.x, 1.16.x, 1.17.x (1.17.3 as default), 1.18.x, 1.19.x
 
 Additional libraries:
 
@@ -133,23 +133,24 @@ Versions:
 - 1.20.x
 - 1.21.x
 - 1.22.x
+- 1.23.x
 - 1.24.x
 - 1.25.x
 
-The default installed Go version is 1.25.1.
+The default installed Go version is 1.25.6.
 
 ### Java and JVM languages
 
-- Java: 11.0.28, 17.0.16 (default), 21.0.8
+- Java: 11.0.29, 17.0.17 (default), 21.0.9
 - Scala: 3.2.2
 - Leiningen: 2.12.0 (Clojure)
-- Sbt 1.11.6
+- Sbt 1.12.0
 
 ### Additional Java build tools
 
-- Maven: 3.9.11
-- Gradle: 9.1
-- Bazel: 8.4.1
+- Maven: 3.9.12
+- Gradle: 9.3.0
+- Bazel: 9.0.0
 
 ### JavaScript via Node.js
 
@@ -157,10 +158,11 @@ Node.js versions are managed by [nvm](https://github.com/nvm-sh/nvm).
 You can install any version you need with `nvm install [version]`.
 Installed version:
 
-- 22.19.0 (set as default, with alias 22.19), includes npm 10.9.3
+- 24.13.0 (set as default, with alias 24.13), includes npm 11.6.2
 
 ### Additional JS tools
 
+- Bun: 1.3.6
 - Yarn: 1.22.22
 
 ### PHP
@@ -171,8 +173,10 @@ Available versions:
 - 8.1.x
 - 8.2.x
 - 8.3.x
+- 8.4.x
+- 8.5.x
 
-The default installed PHP version is 8.1.32.
+The default installed PHP version is 8.1.34.
 
 ### Additional PHP libraries
 
@@ -183,15 +187,15 @@ PHPUnit: 9.5.28
 Python versions are installed and managed by
 [virtualenv](https://virtualenv.pypa.io/en/stable/). Installed versions:
 
-- 3.10.18 (default)
-- 3.11.13
+- 3.10.19 (default)
+- 3.11.14
 - 3.12.9
 
 Supporting libraries:
 
 - pypy3: 7.3.19
-- pip: 25.2
-- virtualenv: 20.34.0
+- pip: 25.3
+- virtualenv: 20.36.1
 
 ### Ruby
 
@@ -202,17 +206,18 @@ Available versions:
 - 3.2.x
 - 3.3.x
 - 3.4.x
+- 4.0.x
 - jruby-9.4.1.0
 
-The default installed Ruby version is 3.4.5.
+The default installed Ruby version is 3.4.8.
 
 ### Rust
 
-- 1.90.0
+- 1.93.0
 
 ### Swiftly
 
-- 1.0.1
+- 1.1.1
 
 ## See also
 

@@ -5,11 +5,14 @@ defmodule Zebra.Workers.JobRequestFactory.Machine do
         validate_self_hosted_type(org_id, job.machine_type)
 
       Zebra.Machines.Brownout.os_image_in_brownout?(
-        Zebra.Machines.BrownoutSchedule.macosxcode14(),
         DateTime.utc_now(),
         job.organization_id,
         job.machine_os_image
       ) ->
+        Watchman.increment(
+          {"brownout.job_stopped", [job.machine_os_image, job.organization_id, job.project_id]}
+        )
+
         {
           :stop_job_processing,
           "OS image '#{job.machine_os_image}' for machine type '#{job.machine_type}' is currently in a brownout phase. Please use another OS image."

@@ -51,6 +51,10 @@ if config_env() == :prod do
 
   config :repository_hub, RepositoryHub.WebhookSecretEncryptor,
     module: {RepositoryHub.GRPCEncryptor, url: System.get_env("ENCRYPTOR_URL")}
+
+  config :repository_hub, RepositoryHub.RemoteIdSyncWorker,
+    enabled: System.get_env("REMOTE_ID_SYNC_ENABLED") != "false",
+    rate_limit_per_minute: String.to_integer(System.get_env("REMOTE_ID_SYNC_RATE_LIMIT_PER_MINUTE") || "10")
 end
 
 on_prem? = if(System.get_env("ON_PREM") == "true", do: true, else: false)

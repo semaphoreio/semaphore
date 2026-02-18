@@ -13,6 +13,7 @@ import (
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/authz"
 	loghubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub"
 	loghub2pb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub2"
+	orgpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/organization"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/logging"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/internal/shared"
@@ -67,6 +68,7 @@ type logsResult struct {
 	Token            string   `json:"token,omitempty"`
 	TokenType        string   `json:"tokenType,omitempty"`
 	TokenTtlSeconds  uint32   `json:"tokenTtlSeconds,omitempty"`
+	LogsURL          string   `json:"logsUrl,omitempty"`
 }
 
 func newLogsTool(name, description string) mcp.Tool {
@@ -149,7 +151,14 @@ Troubleshooting:
 		)
 
 		if job.GetSelfHosted() {
-			result, callErr = fetchSelfHostedLogs(ctx, api, jobID)
+			orgUsername, err := fetchOrgUsername(ctx, api, jobOrg)
+			if err != nil {
+				logging.ForComponent("tools").
+					WithField("orgId", jobOrg).
+					WithError(err).
+					Warn("failed to resolve org username for logs URL")
+			}
+			result, callErr = fetchSelfHostedLogs(ctx, api, jobID, orgUsername)
 		} else {
 			result, callErr = fetchHostedLogs(ctx, api, jobID, startingLine)
 		}
@@ -289,7 +298,7 @@ func fetchHostedLogs(ctx context.Context, api internalapi.Provider, jobID string
 	}, nil
 }
 
-func fetchSelfHostedLogs(ctx context.Context, api internalapi.Provider, jobID string) (*mcp.CallToolResult, error) {
+func fetchSelfHostedLogs(ctx context.Context, api internalapi.Provider, jobID, orgUsername string) (*mcp.CallToolResult, error) {
 	client := api.Loghub2()
 	if client == nil {
 		return mcp.NewToolResultError(errLoghub2Missing), nil
@@ -316,12 +325,15 @@ func fetchSelfHostedLogs(ctx context.Context, api internalapi.Provider, jobID st
 		return mcp.NewToolResultError(fmt.Sprintf("loghub2 RPC failed: %v", err)), nil
 	}
 
+	logsURL := buildLogsURL(api.BaseURL(), orgUsername, jobID, resp.GetToken())
+
 	result := logsResult{
 		JobID:           jobID,
 		Source:          loghub2Source,
 		Token:           resp.GetToken(),
 		TokenType:       tokenTypeToString(resp.GetType()),
 		TokenTtlSeconds: loghub2TokenDuration,
+		LogsURL:         logsURL,
 	}
 
 	markdown := formatSelfHostedLogsMarkdown(result)
@@ -383,12 +395,18 @@ func formatSelfHostedLogsMarkdown(result logsResult) string {
 	mb.KeyValue("Token Type", strings.ToUpper(result.TokenType))
 	mb.KeyValue("Expires In", fmt.Sprintf("%d seconds", result.TokenTtlSeconds))
 
-	if result.Token != "" {
+	if result.Token != "" && result.LogsURL != "" {
+		mb.KeyValue("Logs URL", fmt.Sprintf("`%s`", result.LogsURL))
+		mb.Paragraph("To retrieve logs, use the following command:")
+		mb.Raw("```bash\n")
+		mb.Raw(fmt.Sprintf("curl \"%s\"", result.LogsURL))
+		mb.Raw("\n```\n")
+	} else if result.Token != "" {
 		mb.Paragraph("Use the following JWT within the TTL to stream logs:")
 		mb.Raw("```\n")
 		mb.Raw(result.Token)
 		mb.Raw("\n```\n")
-		mb.Paragraph("Example:\n`curl \"https://<your-workspace>/api/v1/logs/" + result.JobID + "?jwt=<TOKEN>\"`\n")
+		mb.Paragraph("⚠️ Could not construct a full logs URL. Use the token above with your workspace URL.")
 	} else {
 		mb.Paragraph("⚠️ No token was returned. Retry the request or contact support if the problem persists.")
 	}
@@ -404,4 +422,32 @@ func tokenTypeToString(tokenType loghub2pb.TokenType) string {
 		return strings.ToLower(name)
 	}
 	return "unknown"
+}
+
+func fetchOrgUsername(ctx context.Context, api internalapi.Provider, orgID string) (string, error) {
+	client := api.Organizations()
+	if client == nil {
+		return "", fmt.Errorf("organization service not configured")
+	}
+
+	callCtx, cancel := context.WithTimeout(ctx, api.CallTimeout())
+	defer cancel()
+
+	resp, err := client.Describe(callCtx, &orgpb.DescribeRequest{OrgId: orgID})
+	if err != nil {
+		return "", err
+	}
+
+	if resp.GetOrganization() == nil {
+		return "", fmt.Errorf("organization not found")
+	}
+
+	return resp.GetOrganization().GetOrgUsername(), nil
+}
+
+func buildLogsURL(baseURL, orgUsername, jobID, token string) string {
+	if orgUsername == "" || token == "" {
+		return ""
+	}
+	return fmt.Sprintf("https://%s.%s/api/v1/logs/%s?jwt=%s", orgUsername, baseURL, jobID, token)
 }

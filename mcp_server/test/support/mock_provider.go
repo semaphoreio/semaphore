@@ -40,6 +40,8 @@ func (m *MockProvider) CallTimeout() time.Duration {
 	return m.Timeout
 }
 
+func (m *MockProvider) BaseURL() string { return "semaphoreci.com" }
+
 func (m *MockProvider) Workflow() workflowpb.WorkflowServiceClient { return m.WorkflowClient }
 
 func (m *MockProvider) Organizations() orgpb.OrganizationServiceClient {

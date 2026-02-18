@@ -182,6 +182,119 @@ defmodule Rbac.GrpcServers.OktaServer.Test do
       end
     end
 
+    test "updating only session expiration does not reset scim token" do
+      {:ok, cert} = Support.Okta.Saml.PayloadBuilder.test_cert()
+
+      org_id = Ecto.UUID.generate()
+
+      request = %InternalApi.Okta.SetUpRequest{
+        org_id: org_id,
+        creator_id: Ecto.UUID.generate(),
+        idempotency_token: Ecto.UUID.generate(),
+        saml_issuer: "https://okta.example/issuer",
+        saml_certificate: cert,
+        session_expiration_minutes: 60
+      }
+
+      update_request = %InternalApi.Okta.SetUpRequest{
+        org_id: org_id,
+        creator_id: Ecto.UUID.generate(),
+        idempotency_token: Ecto.UUID.generate(),
+        session_expiration_minutes: 30
+      }
+
+      org_without_okta = %{
+        org_id: org_id,
+        allowed_id_providers: ["github"]
+      }
+
+      with_mocks([
+        {Rbac.Store.UserPermissions, [],
+         [read_user_permissions: fn _ -> "organization.okta.manage" end]},
+        {Rbac.Api.Organization, [],
+         [
+           find_by_id: fn ^org_id -> {:ok, org_without_okta} end,
+           update: fn org ->
+             assert "okta" in org.allowed_id_providers
+             {:ok, org}
+           end
+         ]}
+      ]) do
+        assert {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+        assert {:ok, res} = InternalApi.Okta.Okta.Stub.set_up(channel, request)
+
+        generate_req = %InternalApi.Okta.GenerateScimTokenRequest{
+          integration_id: res.integration.id
+        }
+
+        assert {:ok, _} = InternalApi.Okta.Okta.Stub.generate_scim_token(channel, generate_req)
+
+        integration = Rbac.Repo.get(Rbac.Repo.OktaIntegration, res.integration.id)
+        assert integration.session_expiration_minutes == 60
+        assert integration.scim_token_hash != ""
+
+        assert {:ok, _} = InternalApi.Okta.Okta.Stub.set_up(channel, update_request)
+
+        updated = Rbac.Repo.get(Rbac.Repo.OktaIntegration, res.integration.id)
+        assert updated.session_expiration_minutes == 30
+        assert updated.scim_token_hash == integration.scim_token_hash
+      end
+    end
+
+    test "editing integration keeps session expiration unchanged" do
+      {:ok, cert} = Support.Okta.Saml.PayloadBuilder.test_cert()
+
+      org_id = Ecto.UUID.generate()
+
+      request = %InternalApi.Okta.SetUpRequest{
+        org_id: org_id,
+        creator_id: Ecto.UUID.generate(),
+        idempotency_token: Ecto.UUID.generate(),
+        saml_issuer: "https://okta.example/issuer",
+        saml_certificate: cert,
+        session_expiration_minutes: 60
+      }
+
+      update_request = %InternalApi.Okta.SetUpRequest{
+        org_id: org_id,
+        creator_id: Ecto.UUID.generate(),
+        idempotency_token: Ecto.UUID.generate(),
+        saml_issuer: "https://okta.example/new-issuer",
+        saml_certificate: cert,
+        session_expiration_minutes: 15
+      }
+
+      org_without_okta = %{
+        org_id: org_id,
+        allowed_id_providers: ["github"]
+      }
+
+      with_mocks([
+        {Rbac.Store.UserPermissions, [],
+         [read_user_permissions: fn _ -> "organization.okta.manage" end]},
+        {Rbac.Api.Organization, [],
+         [
+           find_by_id: fn ^org_id -> {:ok, org_without_okta} end,
+           update: fn org ->
+             assert "okta" in org.allowed_id_providers
+             {:ok, org}
+           end
+         ]}
+      ]) do
+        assert {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+        assert {:ok, res} = InternalApi.Okta.Okta.Stub.set_up(channel, request)
+
+        integration = Rbac.Repo.get(Rbac.Repo.OktaIntegration, res.integration.id)
+        assert integration.session_expiration_minutes == 60
+
+        assert {:ok, _} = InternalApi.Okta.Okta.Stub.set_up(channel, update_request)
+
+        updated = Rbac.Repo.get(Rbac.Repo.OktaIntegration, res.integration.id)
+        assert updated.session_expiration_minutes == 60
+        assert updated.saml_issuer == "https://okta.example/new-issuer"
+      end
+    end
+
     test "Integration is not created if updating allowed_id_providers fails" do
       import ExUnit.CaptureLog
 

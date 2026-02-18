@@ -490,7 +490,7 @@ test-results <command> [flags]
 
 The available commands are:
 
-- `combine`: combines multiples JSON report files into one file summary
+- `combine`: combines multiple JSON report files into one file summary
 - `compile`: parses JUnit XML files to a well-defined JSON report file
 - `gen-pipeline-report`: fetches and combines workflow-level JUnit report and combines them
 - `publish`: parses XML JUnit file to a well-defined JSON schema and publishes results to artifacts storage
@@ -504,9 +504,17 @@ The available flags are:
 - `--parser <name>` or `-p <name>`: override the parser used. Defaults to "auto"
 - `--suite-prefix <name>` or `-S <name>`: add a prefix for the test suite name
 - `--trace`: provide trace logging
+- `--trim-output-to <number>`: keeps the last `<number>` amount of characters
+- `--no-trim-output`: does not trim the output
 - `--generate-mcp-summary`: generates a JSON error summary optimized for AI agent consumption. Works with the `compile`, `publish`, and `gen-pipeline-report` commands
 
 The test-results CLI is open-sourced and available on [semaphoreci/test-results](https://github.com/semaphoreci/test-results). You can access the source code, contribute, and report issues there.
+
+:::note
+
+By default, the CLI trims stdout/stderr fields to the last 1000 characters. You can change the limit or disable trimming entirely by using the flags above.
+
+:::
 
 ### Merging test results {#test-result-merge}
 
