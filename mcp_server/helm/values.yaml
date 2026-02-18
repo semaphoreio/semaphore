@@ -1,0 +1,26 @@
+enabled: true
+
+image: mcp_server
+imageTag: latest
+imagePullSecrets: []
+replicas: 1
+
+logging:
+  level: info
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 300m
+    memory: 256Mi
+
+statsd:
+  resources:
+    limits:
+      cpu: "20m"
+      memory: "50Mi"
+    requests:
+      cpu: "5m"
+      memory: "25Mi"
