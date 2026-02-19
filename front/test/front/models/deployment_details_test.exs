@@ -214,11 +214,12 @@ defmodule Front.Models.DeploymentDetailsTest do
 
       fake_old_pipeline_id = UUID.uuid4()
 
-      Support.Stubs.Deployments.add_deployment(ctx.deployment_target, ctx.user, ctx.switch, %{
-        pipeline_id: fake_old_pipeline_id,
-        state: :STARTED,
-        triggered_at: old_timestamp
-      })
+      deployment_target =
+        Support.Stubs.Deployments.add_deployment(ctx.deployment_target, ctx.user, ctx.switch, %{
+          pipeline_id: fake_old_pipeline_id,
+          state: :STARTED,
+          triggered_at: old_timestamp
+        })
 
       new_pipeline =
         Stubs.Pipeline.create(ctx.workflow,
@@ -228,7 +229,7 @@ defmodule Front.Models.DeploymentDetailsTest do
         )
         |> then(&Stubs.Pipeline.change_state(&1.id, :passed))
 
-      Support.Stubs.Deployments.add_deployment(ctx.deployment_target, ctx.user, ctx.switch, %{
+      Support.Stubs.Deployments.add_deployment(deployment_target, ctx.user, ctx.switch, %{
         pipeline_id: new_pipeline.id,
         state: :STARTED
       })
