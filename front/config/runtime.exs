@@ -8,7 +8,9 @@ config :front,
   okta_session_expiration_default_minutes:
     String.to_integer(System.get_env("OKTA_SESSION_EXPIRATION_DEFAULT_MINUTES") || "20160"),
   okta_session_expiration_max_minutes:
-    String.to_integer(System.get_env("OKTA_SESSION_EXPIRATION_MAX_MINUTES") || "43200")
+    String.to_integer(System.get_env("OKTA_SESSION_EXPIRATION_MAX_MINUTES") || "43200"),
+  pipeline_data_retention_days:
+    String.to_integer(System.get_env("PIPELINE_DATA_RETENTION_DAYS") || "400")
 
 if System.get_env("TZDATA_DATA_DIRECTORY") != nil do
   config :tzdata, :data_dir, System.get_env("TZDATA_DATA_DIRECTORY")

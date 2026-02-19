@@ -187,6 +187,71 @@ defmodule Front.Models.DeploymentDetailsTest do
       assert Enum.all?(details.history_page.deployments, &match?(%Details.Deployment{}, &1))
       assert Enum.all?(details.history_page.deployments, &(&1.author_name == "Jane"))
     end
+
+    test "keeps history item when deployment references a missing pipeline", ctx do
+      fake_pipeline_id = UUID.uuid4()
+
+      Support.Stubs.Deployments.add_deployment(ctx.deployment_target, ctx.user, ctx.switch, %{
+        pipeline_id: fake_pipeline_id,
+        state: :STARTED
+      })
+
+      assert {:ok, target} = Deployments.fetch_target(ctx.deployment_target.id)
+      assert {:ok, deployments} = Deployments.fetch_history(ctx.deployment_target.id)
+      assert history_page = %HistoryPage{} = HistoryPage.construct(deployments)
+      assert details = Details.load(target, history_page)
+
+      assert deployment =
+               Enum.find(details.history_page.deployments, &(&1.pipeline_id == fake_pipeline_id))
+
+      assert %Details.Deployment{} = deployment
+      assert is_nil(deployment.pipeline)
+      assert is_nil(deployment.hook)
+    end
+
+    test "preloads recent pipeline details even when old deployments are out of retention", ctx do
+      old_timestamp = %{seconds: DateTime.utc_now() |> DateTime.add(-3 * 24 * 60 * 60, :second) |> DateTime.to_unix()}
+
+      fake_old_pipeline_id = UUID.uuid4()
+
+      Support.Stubs.Deployments.add_deployment(ctx.deployment_target, ctx.user, ctx.switch, %{
+        pipeline_id: fake_old_pipeline_id,
+        state: :STARTED,
+        triggered_at: old_timestamp
+      })
+
+      new_pipeline =
+        Stubs.Pipeline.create(ctx.workflow,
+          name: "Deploy to #{ctx.deployment_target.name}",
+          promotion_of: ctx.pipeline.id,
+          commit_message: ctx.hook.api_model.commit_message
+        )
+        |> then(&Stubs.Pipeline.change_state(&1.id, :passed))
+
+      Support.Stubs.Deployments.add_deployment(ctx.deployment_target, ctx.user, ctx.switch, %{
+        pipeline_id: new_pipeline.id,
+        state: :STARTED
+      })
+
+      previous_retention = Application.get_env(:front, :pipeline_data_retention_days, 400)
+      Application.put_env(:front, :pipeline_data_retention_days, 1)
+      on_exit(fn -> Application.put_env(:front, :pipeline_data_retention_days, previous_retention) end)
+
+      assert {:ok, target} = Deployments.fetch_target(ctx.deployment_target.id)
+      assert {:ok, deployments} = Deployments.fetch_history(ctx.deployment_target.id)
+      assert history_page = %HistoryPage{} = HistoryPage.construct(deployments)
+      assert details = Details.load(target, history_page)
+
+      assert recent_deployment =
+               Enum.find(details.history_page.deployments, &(&1.pipeline_id == new_pipeline.id))
+
+      assert %Pipeline{} = recent_deployment.pipeline
+
+      assert old_deployment =
+               Enum.find(details.history_page.deployments, &(&1.pipeline_id == fake_old_pipeline_id))
+
+      assert is_nil(old_deployment.pipeline)
+    end
   end
 
   describe "preload_pipelines/1" do
@@ -240,6 +305,61 @@ defmodule Front.Models.DeploymentDetailsTest do
       assert staging = Enum.find(target_details, &(&1.name == "staging"))
       assert %Details.Deployment{} = staging.last_deployment
       assert %Pipeline{} = staging.last_deployment.pipeline
+    end
+
+    test "when last deployment references a missing pipeline then do not preload pipeline", ctx do
+      ctx = create_deployment_target(ctx, "production")
+      fake_pipeline_id = UUID.uuid4()
+
+      Support.Stubs.Deployments.put_last_deployment(ctx.deployment_target, ctx.user, ctx.switch, %{
+        pipeline_id: fake_pipeline_id,
+        state: :STARTED
+      })
+
+      assert {:ok, targets} = Deployments.fetch_targets(ctx.project.id)
+      assert [target_details] = targets |> Details.construct() |> Details.preload_pipelines()
+
+      assert %Details.Deployment{} = target_details.last_deployment
+      assert target_details.last_deployment.pipeline_id == fake_pipeline_id
+      assert is_nil(target_details.last_deployment.pipeline)
+    end
+
+    test "keeps recent target pipeline preloaded when another target's last deployment is out of retention",
+         ctx do
+      old_timestamp = %{seconds: DateTime.utc_now() |> DateTime.add(-3 * 24 * 60 * 60, :second) |> DateTime.to_unix()}
+      fake_old_pipeline_id = UUID.uuid4()
+
+      old_target_ctx = create_deployment_target(ctx, "old-target")
+
+      Support.Stubs.Deployments.put_last_deployment(
+        old_target_ctx.deployment_target,
+        old_target_ctx.user,
+        old_target_ctx.switch,
+        %{
+          pipeline_id: fake_old_pipeline_id,
+          state: :STARTED,
+          triggered_at: old_timestamp
+        }
+      )
+
+      recent_target_ctx =
+        create_deployment_target(ctx, "recent-target")
+        |> put_last_deployment(:STARTED, :passed)
+
+      previous_retention = Application.get_env(:front, :pipeline_data_retention_days, 400)
+      Application.put_env(:front, :pipeline_data_retention_days, 1)
+      on_exit(fn -> Application.put_env(:front, :pipeline_data_retention_days, previous_retention) end)
+
+      assert {:ok, targets} = Deployments.fetch_targets(ctx.project.id)
+      assert target_details = targets |> Details.construct() |> Details.preload_pipelines()
+
+      assert old_target = Enum.find(target_details, &(&1.name == old_target_ctx.deployment_target.name))
+      assert is_nil(old_target.last_deployment.pipeline)
+
+      assert recent_target =
+               Enum.find(target_details, &(&1.name == recent_target_ctx.deployment_target.name))
+
+      assert %Pipeline{} = recent_target.last_deployment.pipeline
     end
   end
 
