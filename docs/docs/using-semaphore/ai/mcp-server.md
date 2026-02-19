@@ -46,15 +46,38 @@ See [example prompts](#examples) to see a bit of what's possible.
 
 ## Configure your AI Agent or IDE
 
-Access to the MCP Server is controlled via an API Token. You can obtain your API token in two ways:
+Semaphore MCP supports two authentication methods:
 
-- [Personal API Token](../user-management#profile-token): if you don't know your personal API token, you can reset it and obtain a new one
-- [Service Account](../service-accounts): create a service account with *Member* role and use its API token
+- **OAuth 2.1 (recommended):** clients that support MCP OAuth can sign in via browser and grant access without manually managing API tokens.
+- **API token:** personal or service account token via `Authorization: Bearer <token>`.
 
-Both types of tokens are used to communicate with the Semaphore MCP Server endpoint: `https://mcp.semaphoreci.com/mcp`
+Both methods use the same endpoint: `https://mcp.semaphoreci.com/mcp`.
+
+### Connect with OAuth (recommended)
+
+If your MCP client supports OAuth for remote MCP servers:
+
+1. Add `https://mcp.semaphoreci.com/mcp` as the MCP server URL.
+2. Start the connection flow in your client.
+3. Complete browser sign-in and grant access to the MCP client.
+
+OAuth-capable clients use discovery and dynamic client registration automatically.
+
+### Connect with an API token
+
+If your client does not support OAuth yet, use an API token instead.
+
+You can obtain an API token in two ways:
+
+- [Personal API Token](../user-management#profile-token): if you don't know your personal API token, you can reset it and obtain a new one.
+- [Service Account](../service-accounts): create a service account with *Member* role and use its API token.
 
 If you have problems connecting to the MCP Server, see [troubleshooting](#troubleshooting).
 
+
+### API token setup examples
+
+The client configurations below use API token authentication and continue to work for clients that do not support OAuth yet.
 
 ### Claude Code {#claude-code}
 
@@ -309,7 +332,5 @@ Client error: HTTP status client error (401 Unauthorized) for url (https://mcp.s
 - [MCP Usage Examples](./mcp-usage-examples)
 - [Self-healing CI](./self-healing-ci)
 - [Copilot Cloud Integration](./copilot-agent-cloud)
-
-
 
 

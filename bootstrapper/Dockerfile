@@ -1,6 +1,6 @@
-ARG GO_VERSION=1.23
+ARG GO_VERSION=1.25.7
 ARG UBUNTU_VERSION=3.17.7
-ARG ALPINE_VERSION=3.20.3
+ARG ALPINE_VERSION=3.20.6
 ARG BUILDER_IMAGE="golang:${GO_VERSION}"
 ARG RUNNER_IMAGE="alpine:${ALPINE_VERSION}"
 
@@ -31,8 +31,8 @@ RUN curl -sL https://github.com/google/protobuf/releases/download/v28.0/protoc-2
 WORKDIR /app
 RUN go install github.com/mgechev/revive@v1.7.0
 RUN go install gotest.tools/gotestsum@v1.12.1
-RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.0
+RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1
 RUN export PATH="$PATH:$(go env GOPATH)/bin"
 RUN . ~/.bashrc
 
@@ -51,7 +51,7 @@ LABEL org.opencontainers.image.source https://github.com/semaphoreio/semaphore
 # are intended to run in Kubernetes pods, which have probes.
 HEALTHCHECK NONE
 
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat && apk upgrade --no-cache --available libcrypto3 libssl3
 
 WORKDIR /app
 RUN chown nobody /app
