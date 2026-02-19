@@ -164,7 +164,9 @@ defmodule Front.Models.DeploymentDetails do
     end
 
     defp pipeline_ids_for_preload(deployments) do
-      retention_cutoff = DateTime.utc_now() |> DateTime.add(-pipeline_retention_seconds(), :second)
+      retention_cutoff =
+        DateTime.utc_now() |> DateTime.add(-pipeline_retention_seconds(), :second)
+
       retention_cutoff_unix = DateTime.to_unix(retention_cutoff)
 
       deployments
@@ -184,7 +186,11 @@ defmodule Front.Models.DeploymentDetails do
 
     defp pipeline_retention_seconds,
       do:
-        Application.get_env(:front, :pipeline_data_retention_days, @default_pipeline_data_retention_days) *
+        Application.get_env(
+          :front,
+          :pipeline_data_retention_days,
+          @default_pipeline_data_retention_days
+        ) *
           24 * 60 * 60
   end
 
@@ -403,5 +409,10 @@ defmodule Front.Models.DeploymentDetails do
   defp valid_pipeline_id?(_), do: false
 
   defp pipeline_retention_seconds,
-    do: Application.get_env(:front, :pipeline_data_retention_days, @default_pipeline_data_retention_days) * 24 * 60 * 60
+    do:
+      Application.get_env(
+        :front,
+        :pipeline_data_retention_days,
+        @default_pipeline_data_retention_days
+      ) * 24 * 60 * 60
 end

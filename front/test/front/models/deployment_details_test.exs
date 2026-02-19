@@ -210,7 +210,10 @@ defmodule Front.Models.DeploymentDetailsTest do
     end
 
     test "preloads recent pipeline details even when old deployments are out of retention", ctx do
-      old_timestamp = %{seconds: DateTime.utc_now() |> DateTime.add(-3 * 24 * 60 * 60, :second) |> DateTime.to_unix()}
+      old_timestamp = %{
+        seconds:
+          DateTime.utc_now() |> DateTime.add(-3 * 24 * 60 * 60, :second) |> DateTime.to_unix()
+      }
 
       fake_old_pipeline_id = UUID.uuid4()
 
@@ -236,7 +239,10 @@ defmodule Front.Models.DeploymentDetailsTest do
 
       previous_retention = Application.get_env(:front, :pipeline_data_retention_days, 400)
       Application.put_env(:front, :pipeline_data_retention_days, 1)
-      on_exit(fn -> Application.put_env(:front, :pipeline_data_retention_days, previous_retention) end)
+
+      on_exit(fn ->
+        Application.put_env(:front, :pipeline_data_retention_days, previous_retention)
+      end)
 
       assert {:ok, target} = Deployments.fetch_target(ctx.deployment_target.id)
       assert {:ok, deployments} = Deployments.fetch_history(ctx.deployment_target.id)
@@ -249,7 +255,10 @@ defmodule Front.Models.DeploymentDetailsTest do
       assert %Pipeline{} = recent_deployment.pipeline
 
       assert old_deployment =
-               Enum.find(details.history_page.deployments, &(&1.pipeline_id == fake_old_pipeline_id))
+               Enum.find(
+                 details.history_page.deployments,
+                 &(&1.pipeline_id == fake_old_pipeline_id)
+               )
 
       assert is_nil(old_deployment.pipeline)
     end
@@ -312,10 +321,15 @@ defmodule Front.Models.DeploymentDetailsTest do
       ctx = create_deployment_target(ctx, "production")
       fake_pipeline_id = UUID.uuid4()
 
-      Support.Stubs.Deployments.put_last_deployment(ctx.deployment_target, ctx.user, ctx.switch, %{
-        pipeline_id: fake_pipeline_id,
-        state: :STARTED
-      })
+      Support.Stubs.Deployments.put_last_deployment(
+        ctx.deployment_target,
+        ctx.user,
+        ctx.switch,
+        %{
+          pipeline_id: fake_pipeline_id,
+          state: :STARTED
+        }
+      )
 
       assert {:ok, targets} = Deployments.fetch_targets(ctx.project.id)
       assert [target_details] = targets |> Details.construct() |> Details.preload_pipelines()
@@ -327,7 +341,11 @@ defmodule Front.Models.DeploymentDetailsTest do
 
     test "keeps recent target pipeline preloaded when another target's last deployment is out of retention",
          ctx do
-      old_timestamp = %{seconds: DateTime.utc_now() |> DateTime.add(-3 * 24 * 60 * 60, :second) |> DateTime.to_unix()}
+      old_timestamp = %{
+        seconds:
+          DateTime.utc_now() |> DateTime.add(-3 * 24 * 60 * 60, :second) |> DateTime.to_unix()
+      }
+
       fake_old_pipeline_id = UUID.uuid4()
 
       old_target_ctx = create_deployment_target(ctx, "old-target")
@@ -349,12 +367,17 @@ defmodule Front.Models.DeploymentDetailsTest do
 
       previous_retention = Application.get_env(:front, :pipeline_data_retention_days, 400)
       Application.put_env(:front, :pipeline_data_retention_days, 1)
-      on_exit(fn -> Application.put_env(:front, :pipeline_data_retention_days, previous_retention) end)
+
+      on_exit(fn ->
+        Application.put_env(:front, :pipeline_data_retention_days, previous_retention)
+      end)
 
       assert {:ok, targets} = Deployments.fetch_targets(ctx.project.id)
       assert target_details = targets |> Details.construct() |> Details.preload_pipelines()
 
-      assert old_target = Enum.find(target_details, &(&1.name == old_target_ctx.deployment_target.name))
+      assert old_target =
+               Enum.find(target_details, &(&1.name == old_target_ctx.deployment_target.name))
+
       assert is_nil(old_target.last_deployment.pipeline)
 
       assert recent_target =
