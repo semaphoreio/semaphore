@@ -99,7 +99,7 @@ export const PreviewPanel = ({ template }: PreviewPanelProps) => {
         <toolbox.Asset path={`images/${template.icon}`} style={{ width: `28px` }} className="mb2"/>
       </div>
 
-      <div className="flex items-center justify-between mb2" style="margin-top: -1rem; position: relative; z-index: 1;">
+      <div className="flex items-center justify-between mb2" style={{ position: `relative`, zIndex: 1 }}>
         <div className="flex button-group ml-auto">
           <button
             className={`btn btn-small material-symbols-outlined f5 b ${activeTab === `visual` ? `btn-primary` : `btn-secondary`}`}
@@ -122,8 +122,8 @@ export const PreviewPanel = ({ template }: PreviewPanelProps) => {
         </div>
       </div>
 
-      <div className={`tab-content pa3 shadow-1 flex flex-column items-center justify-center ${activeTab !== `visual` ? `dn` : ``}`} style="min-height: 50vh; margin-top: -2rem;">
-        <div id="blocks-container">
+      <div className={`tab-content pa3 shadow-1 flex flex-column ${activeTab !== `visual` ? `dn` : ``}`} style={{ height: `28rem` }}>
+        <div id="blocks-container" className="w-100 flex-auto">
           <PipelinePreview yamlContent={getTemplateContent()} previewVisible={activeTab == `visual`}/>
         </div>
         <p className="pt3 mb0">
@@ -131,7 +131,7 @@ export const PreviewPanel = ({ template }: PreviewPanelProps) => {
         </p>
       </div>
 
-      <div className={`tab-content pv3 shadow-1 ${activeTab !== `yaml` ? `dn` : ``}`} style="height: 50vh; margin-top: -2rem;">
+      <div className={`tab-content pv3 shadow-1 ${activeTab !== `yaml` ? `dn` : ``}`} style={{ height: `28rem` }}>
         <Editor
           height="100%"
           defaultLanguage="yaml"
