@@ -123,7 +123,7 @@ export const PreviewPanel = ({ template }: PreviewPanelProps) => {
       </div>
 
       <div className={`tab-content pa3 shadow-1 flex flex-column ${activeTab !== `visual` ? `dn` : ``}`} style={{ height: `28rem` }}>
-        <div id="blocks-container" className="w-100 flex-auto">
+        <div id="blocks-container" className="w-100 flex-auto overflow-auto" style={{ minHeight: 0 }}>
           <PipelinePreview yamlContent={getTemplateContent()} previewVisible={activeTab == `visual`}/>
         </div>
         <p className="pt3 mb0">
