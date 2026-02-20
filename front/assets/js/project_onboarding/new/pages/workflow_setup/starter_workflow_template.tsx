@@ -259,8 +259,8 @@ export const StarterWorkflowTemplate = () => {
         <div className="relative mw9 center">
           <div className="flex-l">
             {/* <!-- LEFT SIDE --> */}
-            <div className="w-25 bg-white shadow-1 br3 mr2" style="position: relative; overflow: hidden;">
-              <div className="f6 mb3 mb0-m pa3 br-m b--black-10 bb bb-0-m overflow-auto" style="position: absolute; top: 0; bottom: 0; left: 0; right: 0;">
+            <div className="w-100 w-third-l mb3 mb0-l">
+              <div className="f6 pa3 bg-white shadow-1 br3 overflow-auto" style={{ maxHeight: `calc(100vh - 280px)` }}>
                 <div className="pb3 mb3 bb b--black-10">
                   <div className="flex justify-between items-center">
                     <div>
@@ -292,8 +292,10 @@ export const StarterWorkflowTemplate = () => {
               </div>
             </div>
             {/* <!-- RIGHT SIDE --> */}
-            <div className="w-75 bg-white shadow-1 pa4 br3 ml2">
-              <PreviewPanel template={selectedTemplate}/>
+            <div className="w-100 w-two-thirds-l pl0 pl3-l">
+              <div className="bg-white shadow-1 pa4 br3">
+                <PreviewPanel template={selectedTemplate}/>
+              </div>
             </div>
           </div>
           <div className="tr">

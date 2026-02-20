@@ -116,11 +116,14 @@ export const PipelinePreview = ({ yamlContent, previewVisible }: PipelinePreview
         const width = Math.max(bbox.width, g.graph().width as number);
         const height = Math.max(bbox.height, g.graph().height as number);
         svg
-          .attr(`width`, width)
-          .attr(`height`, height)
           .attr(`viewBox`, `0 0 ${width} ${height}`)
+          .attr(`preserveAspectRatio`, `xMinYMin meet`)
+          .attr(`width`, `100%`)
+          .attr(`height`, `100%`)
           .style(`max-width`, `100%`)
-          .style(`min-width`, `800px`);
+          .style(`width`, `100%`)
+          .style(`height`, `100%`)
+          .style(`min-width`, `0`);
       }
 
       // Style fixes
@@ -139,7 +142,7 @@ export const PipelinePreview = ({ yamlContent, previewVisible }: PipelinePreview
   };
 
   return (
-    <div className="dib v-top bg-washed-gray pa3 br3 ba b--black-075 mt-auto mb-auto" style={{ overflow: `auto`, maxWidth: `100%` }} ref={diagramRef}>
+    <div className="db w-100 h-100 v-top bg-washed-gray pa3 br3 ba b--black-075 mt-auto mb-auto" style={{ overflow: `auto`, maxWidth: `100%` }} ref={diagramRef}>
       <div className="mb2 pb1 nt1">
         <h3 className="f4 normal gray mb0 pr3">{pipelineName}</h3>
       </div>
