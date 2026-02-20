@@ -3,7 +3,7 @@ require "jwt"
 
 class Semaphore::GithubApp::Token
   def self.organization_token(organisation_name)
-    installation = GithubAppInstallation.find_for_organization!(organisation_name)
+    installation = GithubAppInstallation.find_by_organization_name!(organisation_name)
 
     installation_token(installation.installation_id)
   rescue ActiveRecord::RecordNotFound
@@ -13,7 +13,7 @@ class Semaphore::GithubApp::Token
   end
 
   def self.repository_token(repository_slug)
-    installation = GithubAppInstallation.find_for_repository!(repository_slug)
+    installation = GithubAppInstallation.find_by_repository_slug!(repository_slug)
 
     installation_token(installation.installation_id)
   rescue ActiveRecord::RecordNotFound
