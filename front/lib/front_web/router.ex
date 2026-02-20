@@ -368,6 +368,18 @@ defmodule FrontWeb.Router do
         :skip_onboarding
       )
 
+      post(
+        "/projects/:name_or_id/ai_onboarding",
+        ProjectOnboardingController,
+        :start_ai_onboarding
+      )
+
+      get(
+        "/projects/:name_or_id/ai_onboarding_status",
+        ProjectOnboardingController,
+        :ai_onboarding_status
+      )
+
       get("/projects/:name_or_id/onboarding", ProjectOnboardingController, :onboarding_index)
 
       get(
@@ -787,6 +799,11 @@ defmodule FrontWeb.Router do
 
     scope "/organization_health", as: :organization_health do
       get("/", OrganizationHealthController, :index, as: :index)
+    end
+
+    scope "/ci_assistant", as: :ci_assistant do
+      get("/", CiAssistantController, :index, as: :index)
+      get("/*path", CiAssistantController, :index, as: :index)
     end
 
     get("/*path", PageController, :status404)

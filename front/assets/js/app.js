@@ -63,6 +63,7 @@ import { default as FlakyTests } from "./flaky_tests/index";
 import { default as OrganizationOnboarding } from "./organization_onboarding"
 import { default as GetStarted } from "./get_started"
 import { default as Agents} from "./agents";
+import { default as CiAssistant } from "./ci_assistant";
 import { default as AddPeople } from "./people/add_people";
 import { default as EditPerson } from "./people/edit_person";
 import { default as SyncPeople } from "./people/sync_people";
@@ -95,6 +96,12 @@ export var App = {
     Agents({
       dom: document.getElementById("agents-app"),
       config: InjectedDataByBackend.AgentsConfig,
+    })
+  },
+  ciAssistant: function () {
+    CiAssistant({
+      dom: document.getElementById("ci-assistant-app"),
+      config: InjectedDataByBackend.CiAssistantConfig,
     })
   },
   activity_monitor: function () {
