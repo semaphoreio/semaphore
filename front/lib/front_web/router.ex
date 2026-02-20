@@ -789,6 +789,12 @@ defmodule FrontWeb.Router do
       get("/", OrganizationHealthController, :index, as: :index)
     end
 
+    scope "/ci_assistant", as: :ci_assistant do
+      get("/", CiAssistantController, :index, as: :index)
+      get("/api/token", CiAssistantController, :token, as: :token)
+      get("/*path", CiAssistantController, :index, as: :index)
+    end
+
     get("/*path", PageController, :status404)
   end
 end
