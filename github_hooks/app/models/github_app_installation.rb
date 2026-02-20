@@ -94,6 +94,92 @@ class GithubAppInstallation < ActiveRecord::Base
   end
 
   def replace_repositories!(repositories)
+    with_lock do
+      replace_repositories_without_lock!(repositories)
+    end
+  end
+
+  def add_repositories!(repositories)
+    normalized_repositories = self.class.normalize_repositories(repositories)
+    return if normalized_repositories.empty?
+
+    with_lock do
+      repositories_by_canonical_slug = installation_repositories.index_by do |repository|
+        self.class.canonical_slug(repository.slug)
+      end
+      repositories_by_remote_id = installation_repositories.index_by(&:remote_id)
+
+      normalized_repositories.each do |repository|
+        canonical_slug = self.class.canonical_slug(repository["slug"])
+        remote_id = repository["id"].to_i
+
+        current_repository = repositories_by_canonical_slug[canonical_slug]
+        current_repository ||= repositories_by_remote_id[remote_id] if current_repository.nil? && remote_id.positive?
+
+        if current_repository
+          next if current_repository.remote_id.to_i == remote_id && current_repository.slug == repository["slug"]
+
+          # rubocop:disable Rails/SkipsModelValidations
+          current_repository.update_columns(
+            :remote_id => remote_id,
+            :slug => repository["slug"]
+          )
+          # rubocop:enable Rails/SkipsModelValidations
+        else
+          current_repository = installation_repositories.create!(
+            :installation_id => installation_id,
+            :remote_id => remote_id,
+            :slug => repository["slug"]
+          )
+        end
+
+        repositories_by_canonical_slug[self.class.canonical_slug(current_repository.slug)] = current_repository
+        repositories_by_remote_id[current_repository.remote_id] = current_repository if current_repository.remote_id.to_i.positive?
+      end
+
+      sync_repositories_column_without_callbacks!
+    end
+  end
+
+  def remove_repositories_by_slug!(slugs)
+    normalized_slugs = Array(slugs).filter_map { |slug| self.class.normalize_slug(slug) }.map { |slug| self.class.canonical_slug(slug) }
+    return if normalized_slugs.empty?
+
+    with_lock do
+      installation_repositories
+        .where("LOWER(github_app_installation_repositories.slug) IN (?)", normalized_slugs)
+        .delete_all
+
+      sync_repositories_column_without_callbacks!
+    end
+  end
+
+  def update_repository_ids!(repositories)
+    with_lock do
+      updates_by_slug = self.class.normalize_repositories(repositories).index_by do |repository|
+        self.class.canonical_slug(repository["slug"])
+      end
+
+      installation_repositories.each do |repository|
+        update = updates_by_slug[self.class.canonical_slug(repository.slug)]
+        next unless update
+        next if repository.remote_id.to_i == update["id"].to_i && repository.slug == update["slug"]
+
+        # rubocop:disable Rails/SkipsModelValidations
+        repository.update_columns(
+          :remote_id => update["id"],
+          :slug => update["slug"]
+        )
+        # rubocop:enable Rails/SkipsModelValidations
+      end
+
+      sync_repositories_column_without_callbacks!
+    end
+  end
+
+  private
+
+  def replace_repositories_without_lock!(repositories)
     normalized_repositories = self.class.normalize_repositories(repositories)
     repositories_by_slug = normalized_repositories.index_by do |repository|
       self.class.canonical_slug(repository["slug"])
@@ -102,81 +188,40 @@ class GithubAppInstallation < ActiveRecord::Base
       self.class.canonical_slug(repository.slug)
     end
 
-    transaction do
-      # rubocop:disable Rails/SkipsModelValidations
-      # Keep this write callback-free to avoid triggering sync_repositories_to_table recursively.
-      update_columns(:repositories => repositories_by_slug.values.map { |repository| repository["slug"] })
-      # rubocop:enable Rails/SkipsModelValidations
-      repositories_to_keep = repositories_by_slug.keys.map { |slug| current_repositories[slug]&.id }.compact
-      installation_repositories.where.not(:id => repositories_to_keep).delete_all
+    # rubocop:disable Rails/SkipsModelValidations
+    # Keep this write callback-free to avoid triggering sync_repositories_to_table recursively.
+    update_columns(:repositories => repositories_by_slug.values.map { |repository| repository["slug"] })
+    # rubocop:enable Rails/SkipsModelValidations
+    repositories_to_keep = repositories_by_slug.keys.map { |slug| current_repositories[slug]&.id }.compact
+    installation_repositories.where.not(:id => repositories_to_keep).delete_all
 
-      repositories_by_slug.each do |slug, repository|
-        current_repository = current_repositories[slug]
-        if current_repository
-          next if current_repository.remote_id.to_i == repository["id"].to_i && current_repository.slug == repository["slug"]
+    repositories_by_slug.each do |slug, repository|
+      current_repository = current_repositories[slug]
+      if current_repository
+        next if current_repository.remote_id.to_i == repository["id"].to_i && current_repository.slug == repository["slug"]
 
-          # rubocop:disable Rails/SkipsModelValidations
-          # Update slug and remote_id directly to preserve API-provided casing without callbacks.
-          current_repository.update_columns(
-            :remote_id => repository["id"],
-            :slug => repository["slug"]
-          )
-          # rubocop:enable Rails/SkipsModelValidations
-        else
-          installation_repositories.create!(
-            :installation_id => installation_id,
-            :remote_id => repository["id"],
-            :slug => repository["slug"]
-          )
-        end
+        # rubocop:disable Rails/SkipsModelValidations
+        # Update slug and remote_id directly to preserve API-provided casing without callbacks.
+        current_repository.update_columns(
+          :remote_id => repository["id"],
+          :slug => repository["slug"]
+        )
+        # rubocop:enable Rails/SkipsModelValidations
+      else
+        installation_repositories.create!(
+          :installation_id => installation_id,
+          :remote_id => repository["id"],
+          :slug => repository["slug"]
+        )
       end
     end
   end
 
-  def add_repositories!(repositories)
-    normalized_repositories = self.class.normalize_repositories(repositories)
-    return if normalized_repositories.empty?
-
-    incoming_remote_ids = normalized_repositories.each_with_object({}) do |repository, remote_ids|
-      remote_id = repository["id"].to_i
-      remote_ids[remote_id] = true if remote_id.positive?
-    end
-
-    merged_repositories = self.repositories.reject do |repository|
-      incoming_remote_ids.key?(repository["id"].to_i)
-    end
-
-    replace_repositories!(merged_repositories + normalized_repositories)
+  def sync_repositories_column_without_callbacks!
+    # rubocop:disable Rails/SkipsModelValidations
+    update_columns(:repositories => installation_repositories.order(:created_at, :id).pluck(:slug))
+    # rubocop:enable Rails/SkipsModelValidations
   end
-
-  def remove_repositories_by_slug!(slugs)
-    normalized_slugs = Array(slugs).filter_map { |slug| self.class.normalize_slug(slug) }.map { |slug| self.class.canonical_slug(slug) }
-    return if normalized_slugs.empty?
-
-    remaining_repositories = repositories.reject do |repository|
-      normalized_slugs.include?(self.class.canonical_slug(repository["slug"]))
-    end
-    replace_repositories!(remaining_repositories)
-  end
-
-  def update_repository_ids!(repositories)
-    updates_by_slug = self.class.normalize_repositories(repositories).index_by do |repository|
-      self.class.canonical_slug(repository["slug"])
-    end
-    updated_repositories = self.repositories.map do |repository|
-      update = updates_by_slug[self.class.canonical_slug(repository["slug"])]
-      next repository unless update
-
-      {
-        "id" => update["id"],
-        "slug" => update["slug"]
-      }
-    end
-
-    replace_repositories!(updated_repositories)
-  end
-
-  private
 
   def sync_repositories_to_table
     return if @repositories_to_sync.nil?

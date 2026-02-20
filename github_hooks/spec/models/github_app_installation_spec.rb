@@ -33,6 +33,7 @@ RSpec.describe GithubAppInstallation, :type => :model do
   end
 
   describe "#replace_repositories!" do
+    let(:initial_repositories) { [{ "id" => 1, "slug" => "acme/original" }] }
     let(:installation) { FactoryBot.create(:github_app_installation, :installation_id => 999_001, :repositories => initial_repositories) }
 
     context "when first refresh updates ids from 0 to remote ids" do
@@ -135,6 +136,27 @@ RSpec.describe GithubAppInstallation, :type => :model do
         expect(installation[:repositories]).to eq(["Acme/Ok"])
       end
     end
+
+    it "serializes replacement under installation row lock" do
+      expect(installation).to receive(:with_lock).and_call_original
+
+      installation.replace_repositories!([{ "id" => 101, "slug" => "acme/locked" }])
+      installation.reload
+
+      expect(installation.repository_slugs).to eq(["acme/locked"])
+    end
+
+    xit "demonstrates lost updates when two stale full replacements are applied" do
+      stale_snapshot = installation.repositories
+      first_replacement = stale_snapshot + [{ "id" => 2, "slug" => "acme/first" }]
+      second_replacement = stale_snapshot + [{ "id" => 3, "slug" => "acme/second" }]
+
+      installation.replace_repositories!(first_replacement)
+      installation.replace_repositories!(second_replacement)
+      installation.reload
+
+      expect(installation.repository_slugs).to match_array(["acme/original", "acme/first", "acme/second"])
+    end
   end
 
   describe "#add_repositories!" do
@@ -153,6 +175,28 @@ RSpec.describe GithubAppInstallation, :type => :model do
       expect(installation.repositories).to eq([{ "id" => 404, "slug" => "acme/new-name" }])
       expect(installation.repository_slugs).to eq(["acme/new-name"])
       expect(installation.installation_repositories.where(:remote_id => 404).count).to eq(1)
+    end
+
+    it "keeps existing repositories when adding a new repository" do
+      installation.add_repositories!([{ "id" => 405, "slug" => "acme/new-repo" }])
+      installation.reload
+
+      expect(installation.repositories).to eq([
+        { "id" => 404, "slug" => "acme/old-name" },
+        { "id" => 405, "slug" => "acme/new-repo" }
+      ])
+    end
+
+    it "composes overlapping add events without dropping earlier additions" do
+      installation.add_repositories!([{ "id" => 405, "slug" => "acme/first" }])
+      installation.add_repositories!([{ "id" => 406, "slug" => "acme/second" }])
+      installation.reload
+
+      expect(installation.repositories).to eq([
+        { "id" => 404, "slug" => "acme/old-name" },
+        { "id" => 405, "slug" => "acme/first" },
+        { "id" => 406, "slug" => "acme/second" }
+      ])
     end
   end
 
