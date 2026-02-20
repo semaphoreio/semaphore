@@ -44,6 +44,20 @@ module Semaphore::GithubApp
         expect(Semaphore::GithubApp::Hook).to have_received(:update_repository_ids).with(installation_id, satisfy { |repositories| repositories.size == 1800 })
         expect(Semaphore::GithubApp::Hook).to have_received(:remove_repositories).with(installation_id, satisfy { |repositories| repositories.size == 200 })
       end
+
+      context "when a repository slug differs only by letter case" do
+        let(:current_repositories) { [{ "id" => 42, "slug" => "Acme/Repo" }] }
+        let(:remote_repositories) { [{ "id" => 42, "slug" => "acme/repo" }] }
+
+        it "does not schedule add or remove but schedules update to reflect github casing" do
+          result = described_class.refresh(installation_id)
+
+          expect(result).to eq(:ok)
+          expect(Semaphore::GithubApp::Hook).to have_received(:add_repositories).with(installation_id, [])
+          expect(Semaphore::GithubApp::Hook).to have_received(:update_repository_ids).with(installation_id, remote_repositories)
+          expect(Semaphore::GithubApp::Hook).to have_received(:remove_repositories).with(installation_id, [])
+        end
+      end
     end
   end
 end

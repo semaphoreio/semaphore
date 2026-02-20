@@ -33,20 +33,21 @@ module Semaphore::GithubApp
 
     def repositories_to_add
       remote_repositories.select do |repository|
-        current_repositories_by_slug[repository["slug"]].nil?
+        current_repositories_by_slug[canonical_slug(repository["slug"])].nil?
       end
     end
 
     def repositories_to_remove
       current_repositories.reject do |repository|
-        remote_repositories_by_slug.key?(repository["slug"])
+        remote_repositories_by_slug.key?(canonical_slug(repository["slug"]))
       end
     end
 
     def repositories_to_update_ids
       remote_repositories.select do |repository|
-        current = current_repositories_by_slug[repository["slug"]]
-        current.present? && current["id"].to_i != repository["id"].to_i
+        current = current_repositories_by_slug[canonical_slug(repository["slug"])]
+        current.present? &&
+          (current["id"].to_i != repository["id"].to_i || current["slug"] != repository["slug"])
       end
     end
 
@@ -92,11 +93,15 @@ module Semaphore::GithubApp
     end
 
     def current_repositories_by_slug
-      @current_repositories_by_slug ||= current_repositories.index_by { |repository| repository["slug"] }
+      @current_repositories_by_slug ||= current_repositories.index_by { |repository| canonical_slug(repository["slug"]) }
     end
 
     def remote_repositories_by_slug
-      @remote_repositories_by_slug ||= remote_repositories.index_by { |repository| repository["slug"] }
+      @remote_repositories_by_slug ||= remote_repositories.index_by { |repository| canonical_slug(repository["slug"]) }
+    end
+
+    def canonical_slug(slug)
+      GithubAppInstallation.canonical_slug(slug)
     end
 
     def token
