@@ -140,6 +140,7 @@ module Semaphore::GithubApp
       installation = get_installation(installation_id)
       repositories = GithubAppInstallation.normalize_repositories(repositories)
       return if repositories.empty?
+
       installation.update_repository_ids!(repositories)
     end
 

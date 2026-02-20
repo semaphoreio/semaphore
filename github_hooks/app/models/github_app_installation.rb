@@ -23,13 +23,6 @@ class GithubAppInstallation < ActiveRecord::Base
       .first
   end
 
-  class << self
-    alias_method :find_for_repository!, :find_by_repository_slug!
-    alias_method :find_for_repository, :find_by_repository_slug
-    alias_method :find_for_organization!, :find_by_organization_name!
-    alias_method :find_for_organization, :find_by_organization_name
-  end
-
   def self.find_by_remote_id!(remote_id)
     joins(:installation_repositories).where(:github_app_installation_repositories => { :remote_id => remote_id.to_i }).first!
   end
@@ -69,7 +62,7 @@ class GithubAppInstallation < ActiveRecord::Base
   def self.normalize_slug(slug)
     normalized_slug = slug.to_s.strip.sub(/\A,+/, "")
     return if normalized_slug.blank?
-    return unless normalized_slug.match?(/\A[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\z/)
+    return unless normalized_slug.match?(%r{\A[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\z})
 
     normalized_slug
   end
@@ -96,7 +89,10 @@ class GithubAppInstallation < ActiveRecord::Base
     current_repositories = installation_repositories.index_by(&:slug)
 
     transaction do
+      # rubocop:disable Rails/SkipsModelValidations
+      # Keep this write callback-free to avoid triggering sync_repositories_to_table recursively.
       update_columns(:repositories => normalized_repositories.map { |repository| repository["slug"] })
+      # rubocop:enable Rails/SkipsModelValidations
       installation_repositories.where.not(:slug => repositories_by_slug.keys).delete_all
 
       repositories_by_slug.each do |slug, repository|
@@ -104,7 +100,10 @@ class GithubAppInstallation < ActiveRecord::Base
         if current_repository
           next if current_repository.remote_id.to_i == repository["id"].to_i
 
+          # rubocop:disable Rails/SkipsModelValidations
+          # Updating only remote_id directly keeps synchronization idempotent and callback-free.
           current_repository.update_columns(:remote_id => repository["id"])
+          # rubocop:enable Rails/SkipsModelValidations
         else
           installation_repositories.create!(
             :installation_id => installation_id,
