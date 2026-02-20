@@ -7,9 +7,9 @@ module Semaphore::GithubApp
       action = payload["action"]
 
       installation_id = payload["installation"]["id"]
-      repositories = map_repositories_name(payload["repositories"])
-      repositories_added = map_repositories_name(payload["repositories_added"])
-      repositories_removed = map_repositories_name(payload["repositories_removed"])
+      repositories = map_repositories(payload["repositories"])
+      repositories_added = map_repositories(payload["repositories_added"])
+      repositories_removed = map_repositories(payload["repositories_removed"])
 
       return create(installation_id, repositories) if action == "created"
       return delete(installation_id) if action == "deleted"
@@ -38,14 +38,26 @@ module Semaphore::GithubApp
       true
     end
 
-    def self.map_repositories_name(repositories)
-      Array(repositories).map { |repo| repo["full_name"] }
+    def self.map_repositories(repositories)
+      Array(repositories).map { |repo| { "id" => repo["id"], "slug" => repo["full_name"] } }
     end
 
     def self.create(installation_id, repositories)
-      installation = GithubAppInstallation.create(:installation_id => installation_id, :repositories => repositories)
+      installation = GithubAppInstallation.find_by(:installation_id => installation_id)
+      installation ||= begin
+        GithubAppInstallation.create!(
+          :installation_id => installation_id,
+          :repositories => repositories.map { |repository| repository["slug"] }
+        )
+      rescue ActiveRecord::RecordNotUnique
+        GithubAppInstallation.find_by!(:installation_id => installation_id)
+      end
+      installation.replace_repositories!(repositories)
 
-      installation.repositories.each do |slug|
+      repositories.each do |repository|
+        slug = repository["slug"]
+        next if slug.blank?
+
         Semaphore::GithubApp::Collaborators::Worker.perform_in(10, slug)
         ::Repository.connect_github_app_by_slug(slug)
       end
@@ -53,33 +65,36 @@ module Semaphore::GithubApp
 
     def self.delete(installation_id)
       installation = get_installation(installation_id)
+      repositories = installation.installation_repositories.select(:slug).to_a
       installation.destroy
 
-      installation.repositories.each do |slug|
-        Semaphore::GithubApp::Collaborators::Worker.perform_in(10, slug)
-        ::Repository.disconnect_github_app_by_slug(slug)
+      repositories.each do |repository|
+        Semaphore::GithubApp::Collaborators::Worker.perform_in(10, repository.slug)
+        ::Repository.disconnect_github_app_by_slug(repository.slug)
       end
     end
 
     def self.suspend(installation_id)
       installation = get_installation(installation_id)
+      repositories = installation.installation_repositories.select(:slug).to_a
       installation.suspended_at = Time.zone.now
       installation.save
 
-      installation.repositories.each do |slug|
-        Semaphore::GithubApp::Collaborators::Worker.perform_in(10, slug)
-        ::Repository.disconnect_github_app_by_slug(slug)
+      repositories.each do |repository|
+        Semaphore::GithubApp::Collaborators::Worker.perform_in(10, repository.slug)
+        ::Repository.disconnect_github_app_by_slug(repository.slug)
       end
     end
 
     def self.unsuspend(installation_id)
       installation = get_installation(installation_id)
+      repositories = installation.installation_repositories.select(:slug).to_a
       installation.suspended_at = nil
       installation.save
 
-      installation.repositories.each do |slug|
-        Semaphore::GithubApp::Collaborators::Worker.perform_in(10, slug)
-        ::Repository.connect_github_app_by_slug(slug)
+      repositories.each do |repository|
+        Semaphore::GithubApp::Collaborators::Worker.perform_in(10, repository.slug)
+        ::Repository.connect_github_app_by_slug(repository.slug)
       end
     end
 
@@ -90,15 +105,12 @@ module Semaphore::GithubApp
     end
 
     def self.add_repositories(installation_id, repositories)
-      sql = <<-SQL
-      UPDATE github_app_installations
-      SET repositories = (SELECT to_jsonb(array_agg(DISTINCT b)) FROM (SELECT jsonb_array_elements_text(repositories || $1::jsonb) AS b FROM github_app_installations WHERE installation_id = $2 ) AS c )
-      WHERE installation_id = $2
-      SQL
+      installation = get_installation(installation_id)
+      installation.add_repositories!(repositories)
 
-      GithubAppInstallation.connection.exec_update(sql, "Adds GitHub App repositories", [repositories.to_json, installation_id])
+      repositories.each do |repo|
+        slug = repo["slug"]
 
-      repositories.each do |slug|
         # GitHub sends us a webhook before API is ready to admit that changes took place.
         Semaphore::GithubApp::Collaborators::Worker.perform_in(10, slug)
         ::Repository.connect_github_app_by_slug(slug)
@@ -106,15 +118,13 @@ module Semaphore::GithubApp
     end
 
     def self.remove_repositories(installation_id, repositories)
-      sql = <<-SQL
-      UPDATE github_app_installations
-      SET repositories = to_jsonb(array_diff((SELECT array_agg(trim(JsonString::text, '"')) FROM jsonb_array_elements(repositories) JsonString), $2::text[]))
-      WHERE installation_id = $1
-      SQL
+      installation = get_installation(installation_id)
+      slugs_to_remove = repositories.map { |repository| repository["slug"] }
+      installation.remove_repositories_by_slug!(slugs_to_remove)
 
-      GithubAppInstallation.connection.exec_update(sql, "Removes GitHub App repositories", [installation_id, "{#{repositories.join(",")}}"])
+      repositories.each do |repo|
+        slug = repo["slug"]
 
-      repositories.each do |slug|
         # GitHub sends us a webhook before API is ready to admit that changes took place.
         Semaphore::GithubApp::Collaborators::Worker.perform_in(10, slug)
         ::Repository.disconnect_github_app_by_slug(slug)
