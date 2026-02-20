@@ -27,7 +27,7 @@ module Semaphore::GithubApp
     def self.add_collaborators(repository_slug, github_uids, github_collaborators)
       return unless github_uids.any?
 
-      installation = GithubAppInstallation.find_for_repository!(repository_slug)
+      installation = GithubAppInstallation.find_by_repository_slug!(repository_slug)
 
       github_uids.each do |github_uid|
         collaborator = github_collaborators.find { |gc| gc["id"] == github_uid }
