@@ -33,7 +33,12 @@ module Semaphore::GithubApp
 
           expect(installation.suspended_at).to be_nil
           expect(installation.permissions_accepted_at).to be_nil
-          expect(installation.repositories).to eq(["renderedtext/guard", "semaphoreio/semaphore"])
+          expect(repositories_from_table(installation)).to eq(
+            [
+              { "id" => 137368312, "slug" => "renderedtext/guard" },
+              { "id" => 217099396, "slug" => "semaphoreio/semaphore" }
+            ]
+          )
           expect(project.repository.reload.connected).to be(true)
 
           expect(Tackle).to have_received(:publish).with(
@@ -173,12 +178,17 @@ module Semaphore::GithubApp
       context "add repositories" do
         let(:event) { "installation_repositories" }
         let(:payload) { JSON.parse(RepoHost::Github::Responses::Payload.installation_repositories_added) }
-        let(:repositories) { ["renderedtext/foo"] }
-        let(:new_repositories) { ["renderedtext/foo", "semaphoreio/semaphore"] }
+        let(:repositories) { [{ "id" => 0, "slug" => "renderedtext/foo" }] }
+        let(:new_repositories) do
+          [
+            { "id" => 0, "slug" => "renderedtext/foo" },
+            { "id" => 217099396, "slug" => "semaphoreio/semaphore" }
+          ]
+        end
 
         before do
           FactoryBot.create(:github_app_installation, :installation_id => SecureRandom.uuid,
-                                                      :repositories => ["foo/bar"])
+                                                      :repositories => [{ "id" => 0, "slug" => "foo/bar" }])
           FactoryBot.create(:github_app_installation, :installation_id => installation_id,
                                                       :repositories => repositories)
         end
@@ -186,7 +196,7 @@ module Semaphore::GithubApp
         it "add repositories to installation" do
           installation = find_installation(installation_id)
 
-          expect(installation.repositories).to eq(repositories)
+          expect(repositories_from_table(installation)).to eq(repositories)
           expect(Semaphore::GithubApp::Collaborators::Worker).to receive(:perform_in).once
 
           project = FactoryBot.create(:project)
@@ -201,7 +211,7 @@ module Semaphore::GithubApp
           described_class.process(event, payload)
 
           installation.reload
-          expect(installation.repositories.sort).to eq(new_repositories.sort)
+          expect(repositories_from_table(installation)).to match_array(new_repositories)
           expect(project.repository.reload.connected).to be(true)
           expect(Tackle).to have_received(:publish).with(
             anything, hash_including(:exchange => "project_exchange", :routing_key => "updated")
@@ -212,8 +222,13 @@ module Semaphore::GithubApp
       context "remove repositories" do
         let(:event) { "installation_repositories" }
         let(:payload) { JSON.parse(RepoHost::Github::Responses::Payload.installation_repositories_removed) }
-        let(:repositories) { ["renderedtext/foo", "semaphoreio/semaphore"] }
-        let(:new_repositories) { ["renderedtext/foo"] }
+        let(:repositories) do
+          [
+            { "id" => 0, "slug" => "renderedtext/foo" },
+            { "id" => 0, "slug" => "semaphoreio/semaphore" }
+          ]
+        end
+        let(:new_repositories) { [{ "id" => 0, "slug" => "renderedtext/foo" }] }
 
         before do
           FactoryBot.create(:github_app_installation, :installation_id => installation_id,
@@ -223,7 +238,7 @@ module Semaphore::GithubApp
         it "remove repositories from installation" do
           installation = find_installation(installation_id)
 
-          expect(installation.repositories).to eq(repositories)
+          expect(repositories_from_table(installation)).to eq(repositories)
           expect(Semaphore::GithubApp::Collaborators::Worker).to receive(:perform_in).once
 
           project = FactoryBot.create(:project)
@@ -238,7 +253,7 @@ module Semaphore::GithubApp
           described_class.process(event, payload)
 
           installation.reload
-          expect(installation.repositories).to eq(new_repositories)
+          expect(repositories_from_table(installation)).to eq(new_repositories)
           expect(project.repository.reload.connected).to be(false)
           expect(Tackle).to have_received(:publish).with(
             anything, hash_including(:exchange => "project_exchange", :routing_key => "updated")
