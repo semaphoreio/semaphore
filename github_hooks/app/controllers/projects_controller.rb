@@ -160,10 +160,11 @@ class ProjectsController < ApplicationController
       names = repository["name"]
     else
       installation = GithubAppInstallation.find_by(:installation_id => installation_id)
-      return [] if installation.nil? || installation.repositories.empty?
+      repository_slugs = Array(installation&.[](:repositories)).map(&:to_s).map(&:strip).reject(&:blank?)
+      return [] if repository_slugs.empty?
 
-      owner = installation.repositories.first.split("/").first
-      names = installation.repositories.map { |repo| repo.split("/").last }
+      owner = repository_slugs.first.split("/").first
+      names = repository_slugs.map { |repo| repo.split("/").last }
     end
 
     Repository.includes(:project).where(
