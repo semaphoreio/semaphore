@@ -45,6 +45,8 @@ class CreateGithubAppInstallationRepositories < ActiveRecord::Migration[5.1]
     end
 
     flush_rows(rows, quoted_now)
+    deduplicate_by_slug!
+    deduplicate_by_remote_id!
 
     add_index :github_app_installation_repositories, :installation_id
     add_index :github_app_installation_repositories, :remote_id
@@ -96,6 +98,48 @@ class CreateGithubAppInstallationRepositories < ActiveRecord::Migration[5.1]
     SQL
 
     rows.clear
+  end
+
+  def deduplicate_by_slug!
+    execute <<~SQL
+      DELETE FROM github_app_installation_repositories
+      WHERE id IN (
+        SELECT id
+        FROM (
+          SELECT
+            id,
+            ROW_NUMBER() OVER (
+              PARTITION BY slug
+              ORDER BY
+                CASE WHEN remote_id > 0 THEN 0 ELSE 1 END,
+                created_at,
+                id
+            ) AS row_num
+          FROM github_app_installation_repositories
+        ) duplicated
+        WHERE duplicated.row_num > 1
+      )
+    SQL
+  end
+
+  def deduplicate_by_remote_id!
+    execute <<~SQL
+      DELETE FROM github_app_installation_repositories
+      WHERE id IN (
+        SELECT id
+        FROM (
+          SELECT
+            id,
+            ROW_NUMBER() OVER (
+              PARTITION BY remote_id
+              ORDER BY created_at, id
+            ) AS row_num
+          FROM github_app_installation_repositories
+          WHERE remote_id > 0
+        ) duplicated
+        WHERE duplicated.row_num > 1
+      )
+    SQL
   end
 
   def quote(value)
