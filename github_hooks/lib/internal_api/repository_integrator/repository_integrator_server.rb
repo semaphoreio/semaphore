@@ -66,7 +66,7 @@ module InternalApi
 
       define_rpc :github_installation_info do |req|
         project = ::Project.find(req.project_id)
-        installation = ::GithubAppInstallation.find_for_repository(project.repo_owner_and_name)
+        installation = ::GithubAppInstallation.find_by_repository_slug(project.repo_owner_and_name)
 
         InternalApi::RepositoryIntegrator::GithubInstallationInfoResponse.new(
           :installation_id => installation ? installation.installation_id : 0,
@@ -87,7 +87,7 @@ module InternalApi
         project = ::Project.find(req.project_id)
 
         if project.repository.integration_type == "github_app"
-          installation = ::GithubAppInstallation.find_for_repository(project.repo_owner_and_name)
+          installation = ::GithubAppInstallation.find_by_repository_slug(project.repo_owner_and_name)
           valid = installation.present?
 
           if installation.present?
