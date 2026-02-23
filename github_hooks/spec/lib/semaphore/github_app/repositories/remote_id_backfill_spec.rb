@@ -21,7 +21,7 @@ module Semaphore::GithubApp
 
           allow(Semaphore::GithubApp::Token).to receive(:installation_token).with(installation_id).and_return([token, 1.hour.from_now.iso8601])
           allow(RepoHost::Github::Client).to receive(:new).with(token).and_return(client)
-          allow_any_instance_of(described_class).to receive(:get_remote_repositories).and_return(
+          allow_any_instance_of(described_class).to receive(:remote_repositories_from_github).and_return(
             [
               { "id" => 111, "slug" => "acme/repo-1" },
               { "id" => 222, "slug" => "Acme/Repo-2" },
@@ -56,7 +56,7 @@ module Semaphore::GithubApp
 
           allow(Semaphore::GithubApp::Token).to receive(:installation_token).and_return([token, 1.hour.from_now.iso8601])
           allow(RepoHost::Github::Client).to receive(:new).with(token).and_return(client)
-          allow_any_instance_of(described_class).to receive(:get_remote_repositories).and_return(
+          allow_any_instance_of(described_class).to receive(:remote_repositories_from_github).and_return(
             [
               { "id" => 111, "slug" => "acme/repo-1" },
               { "id" => 222, "slug" => "acme/repo-2" }
@@ -69,7 +69,7 @@ module Semaphore::GithubApp
 
           expect(result[:status]).to eq(:ok)
           expect(result[:installation_id]).to eq(1001)
-          expect(result[:remaining_installations]).to eq(true)
+          expect(result[:remaining_installations]).to be(true)
 
           first_remote_id = GithubAppInstallationRepository.find_by!(:installation_id => 1001, :slug => "acme/repo-1").remote_id
           second_remote_id = GithubAppInstallationRepository.find_by!(:installation_id => 1002, :slug => "acme/repo-2").remote_id

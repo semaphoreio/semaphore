@@ -29,7 +29,7 @@ module Semaphore::GithubApp
 
         refresh_locked_installation(installation_id)
       ensure
-        release_lock(installation_id) if installation_id.to_i > 0
+        release_lock(installation_id) if installation_id.to_i.positive?
       end
 
       private
@@ -55,7 +55,7 @@ module Semaphore::GithubApp
         @current_installation_id = installation_id
 
         return token_not_found(installation_id) unless client(installation_id)
-        return low_rate_limit(installation_id) if client(installation_id).rate_limit_remaining() < App.collaborators_api_rate_limit
+        return low_rate_limit(installation_id) if client(installation_id).rate_limit_remaining < App.collaborators_api_rate_limit
 
         pending_repositories_by_slug = pending_repositories_for_installation(installation_id)
         return ok_result(installation_id, 0) if pending_repositories_by_slug.empty?
@@ -98,16 +98,20 @@ module Semaphore::GithubApp
         connection = GithubAppInstallationRepository.connection
 
         updates.each_slice(QUERY_BATCH_SIZE) do |batch|
-          ids = batch.map { |id, _| id }
-          case_sql = batch.map do |id, remote_id|
-            "WHEN #{connection.quote(id)} THEN #{remote_id}"
-          end.join(" ")
+          values_sql = batch.map do |id, remote_id|
+            "(#{connection.quote(id)}, #{remote_id.to_i})"
+          end.join(", ")
 
-          # rubocop:disable Rails/SkipsModelValidations
-          GithubAppInstallationRepository
-            .where(:id => ids, :remote_id => 0)
-            .update_all("remote_id = CASE id #{case_sql} ELSE remote_id END, updated_at = NOW()")
-          # rubocop:enable Rails/SkipsModelValidations
+          sql = <<~SQL
+            UPDATE github_app_installation_repositories AS repositories
+            SET remote_id = updates.remote_id,
+                updated_at = NOW()
+            FROM (VALUES #{values_sql}) AS updates(id, remote_id)
+            WHERE repositories.id = updates.id::uuid
+              AND repositories.remote_id = 0
+          SQL
+
+          connection.execute(sql)
         end
       end
 
@@ -137,10 +141,10 @@ module Semaphore::GithubApp
       end
 
       def remote_repositories
-        @remote_repositories ||= get_remote_repositories
+        @remote_repositories ||= remote_repositories_from_github
       end
 
-      def get_remote_repositories
+      def remote_repositories_from_github
         github_repos = []
         page = 1
         per_page = 100
