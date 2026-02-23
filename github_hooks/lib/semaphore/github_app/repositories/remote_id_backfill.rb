@@ -54,8 +54,14 @@ module Semaphore::GithubApp
       def refresh_locked_installation(installation_id)
         @current_installation_id = installation_id
 
-        return token_not_found(installation_id) unless client(installation_id)
-        return low_rate_limit(installation_id) if client(installation_id).rate_limit_remaining < App.collaborators_api_rate_limit
+        unless client(installation_id)
+          touch_pending_repositories(installation_id)
+          return token_not_found(installation_id)
+        end
+        if client(installation_id).rate_limit_remaining < App.collaborators_api_rate_limit
+          touch_pending_repositories(installation_id)
+          return low_rate_limit(installation_id)
+        end
 
         pending_repositories_by_slug = pending_repositories_for_installation(installation_id)
         return ok_result(installation_id, 0) if pending_repositories_by_slug.empty?
@@ -66,6 +72,7 @@ module Semaphore::GithubApp
 
         ok_result(installation_id, updates.length)
       rescue ActiveRecord::RecordNotFound
+        touch_pending_repositories(installation_id)
         { :status => :no_installation, :installation_id => installation_id }
       end
 

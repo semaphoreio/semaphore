@@ -78,6 +78,43 @@ module Semaphore::GithubApp
           expect(second_remote_id).to eq(0)
         end
       end
+
+      describe "fair scheduling for unresolved installations" do
+        it "deprioritizes installation when token is missing" do
+          installation = FactoryBot.create(
+            :github_app_installation,
+            :installation_id => 9011,
+            :repositories => [{ "id" => 0, "slug" => "acme/repo-1" }]
+          )
+          repository = installation.installation_repositories.first
+          previous_updated_at = repository.updated_at
+
+          allow(Semaphore::GithubApp::Token).to receive(:installation_token).with(9011).and_return([nil, nil])
+
+          result = described_class.refresh_installation(9011)
+
+          expect(result[:status]).to eq(:no_token)
+          expect(repository.reload.updated_at).to be > previous_updated_at
+        end
+
+        it "deprioritizes orphaned installation rows when installation does not exist" do
+          orphaned_repository = GithubAppInstallationRepository.create!(
+            :installation_id => 9022,
+            :remote_id => 0,
+            :slug => "acme/repo-2"
+          )
+          previous_updated_at = orphaned_repository.updated_at
+          client = instance_double(RepoHost::Github::Client, :rate_limit_remaining => 10_000)
+
+          allow(Semaphore::GithubApp::Token).to receive(:installation_token).with(9022).and_return(["token", 1.hour.from_now.iso8601])
+          allow(RepoHost::Github::Client).to receive(:new).with("token").and_return(client)
+
+          result = described_class.refresh_installation(9022)
+
+          expect(result[:status]).to eq(:no_installation)
+          expect(orphaned_repository.reload.updated_at).to be > previous_updated_at
+        end
+      end
     end
   end
 end
