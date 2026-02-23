@@ -87,7 +87,8 @@ module Semaphore::GithubApp
             :repositories => [{ "id" => 0, "slug" => "acme/repo-1" }]
           )
           repository = installation.installation_repositories.first
-          previous_updated_at = repository.updated_at
+          previous_updated_at = 2.hours.ago
+          repository.update_column(:updated_at, previous_updated_at) # rubocop:disable Rails/SkipsModelValidations
 
           allow(Semaphore::GithubApp::Token).to receive(:installation_token).with(9011).and_return([nil, nil])
 
@@ -103,7 +104,8 @@ module Semaphore::GithubApp
             :remote_id => 0,
             :slug => "acme/repo-2"
           )
-          previous_updated_at = orphaned_repository.updated_at
+          previous_updated_at = 2.hours.ago
+          orphaned_repository.update_column(:updated_at, previous_updated_at) # rubocop:disable Rails/SkipsModelValidations
           client = instance_double(RepoHost::Github::Client, :rate_limit_remaining => 10_000)
 
           allow(Semaphore::GithubApp::Token).to receive(:installation_token).with(9022).and_return(["token", 1.hour.from_now.iso8601])
