@@ -43,6 +43,7 @@ gem "rt-tackle", :require => "tackle"
 group :development do
   gem "spring", "~> 4.1"
   gem "spring-commands-rspec"
+  gem 'brakeman', require: false
 end
 
 group :test, :development do
