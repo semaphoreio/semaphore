@@ -378,7 +378,7 @@ defmodule Front.Models.Workflow do
     requester_ids =
       workflows
       |> Enum.filter(fn workflow ->
-        workflow.requester == nil and workflow.requester_id != ""
+        workflow.requester == nil and workflow.requester_id not in [nil, ""]
       end)
       |> Enum.map(& &1.requester_id)
 
