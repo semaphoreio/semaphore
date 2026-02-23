@@ -98,20 +98,23 @@ module Semaphore::GithubApp
         connection = GithubAppInstallationRepository.connection
 
         updates.each_slice(QUERY_BATCH_SIZE) do |batch|
-          values_sql = batch.map do |id, remote_id|
-            "(#{connection.quote(id)}, #{remote_id.to_i})"
-          end.join(", ")
+          payload = batch.map { |id, remote_id| { :id => id, :remote_id => remote_id.to_i } }.to_json
+          bind = ActiveRecord::Relation::QueryAttribute.new(
+            "updates_payload",
+            payload,
+            ActiveRecord::Type::Value.new
+          )
 
-          sql = <<~SQL
+          sql = <<~SQL.squish
             UPDATE github_app_installation_repositories AS repositories
             SET remote_id = updates.remote_id,
                 updated_at = NOW()
-            FROM (VALUES #{values_sql}) AS updates(id, remote_id)
-            WHERE repositories.id = updates.id::uuid
+            FROM jsonb_to_recordset($1::jsonb) AS updates(id uuid, remote_id bigint)
+            WHERE repositories.id = updates.id
               AND repositories.remote_id = 0
           SQL
 
-          connection.execute(sql)
+          connection.exec_update(sql, "GitHub App RemoteId Backfill", [bind])
         end
       end
 
