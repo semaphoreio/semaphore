@@ -1,0 +1,4 @@
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+  window.InjectedDataByBackend.CiAssistantConfig = <%= raw json_config(@conn) %>
+</script>
+<div id="ci-assistant-app"></div>

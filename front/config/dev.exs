@@ -36,8 +36,8 @@ config :front,
 config :front, domain: System.get_env("BASE_DOMAIN") || "semaphoredev.dev"
 config :front, me_host: nil, me_path: "/me"
 config :front, docs_domain: "docs.semaphoredev.dev"
-config :front, guard_grpc_timeout: 1_000
-config :front, permission_patrol_timeout: 1_000
+config :front, guard_grpc_timeout: 15_000
+config :front, permission_patrol_timeout: 15_000
 config :front, :connect_github_app_url, "http://localhost:4004/github_app_manifest"
 
 # Support Client tokens
