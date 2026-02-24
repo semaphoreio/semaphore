@@ -42,7 +42,7 @@ defmodule FrontWeb.Plugs.CacheControl do
         )
 
       conn ->
-        Logger.warn("Invalid #{__MODULE__} header option: #{inspect(option)}")
+        Logger.warning("Invalid #{__MODULE__} header option: #{inspect(option)}")
 
         conn
     end

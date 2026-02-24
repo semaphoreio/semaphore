@@ -49,7 +49,7 @@ defmodule FrontWeb.DeploymentsController do
         render_page(conn, "show.html", target_details, %{page_args: page_args})
       else
         {:exit, {%GRPC.RPCError{status: @grpc_not_found}, _stacktrace}} ->
-          Logger.warn("[DT] Target not found: target_id=#{target_id}")
+          Logger.warning("[DT] Target not found: target_id=#{target_id}")
           render_404(conn)
       end
     end)
@@ -75,7 +75,7 @@ defmodule FrontWeb.DeploymentsController do
         render_page(conn, "edit.html", changeset, resources)
       else
         {:exit, {%GRPC.RPCError{status: @grpc_not_found}, _stacktrace}} ->
-          Logger.warn("[DT] Target not found: target_id=#{target_id}")
+          Logger.warning("[DT] Target not found: target_id=#{target_id}")
           render_404(conn)
       end
     end)
@@ -142,7 +142,7 @@ defmodule FrontWeb.DeploymentsController do
             |> render_page("edit.html", changeset, resources)
 
           {:error, %GRPC.RPCError{status: @grpc_not_found}} ->
-            Logger.warn("[DT] Target not found: target_id=#{target_id}")
+            Logger.warning("[DT] Target not found: target_id=#{target_id}")
 
             conn
             |> put_flash(:alert, "Failure: deployment target was not found")
@@ -186,11 +186,11 @@ defmodule FrontWeb.DeploymentsController do
         |> redirect(to: deployments_path(conn, :index, project_name))
       else
         {:exit, {%GRPC.RPCError{status: @grpc_not_found}, _stacktrace}} ->
-          Logger.warn("[DT] Target not found: target_id=#{target_id}")
+          Logger.warning("[DT] Target not found: target_id=#{target_id}")
           render_404(conn)
 
         {:error, %GRPC.RPCError{status: @grpc_not_found}} ->
-          Logger.warn("[DT] Target not found: target_id=#{target_id}")
+          Logger.warning("[DT] Target not found: target_id=#{target_id}")
 
           conn
           |> put_flash(:alert, "Failure: deployment target was not found")
@@ -220,7 +220,7 @@ defmodule FrontWeb.DeploymentsController do
         |> redirect(to: deployments_path(conn, :index, project_name))
       else
         {:exit, {%GRPC.RPCError{status: @grpc_not_found}, _stacktrace}} ->
-          Logger.warn("[DT] Target not found: target_id=#{target_id}")
+          Logger.warning("[DT] Target not found: target_id=#{target_id}")
           render_404(conn)
 
         {:error, reason} ->

@@ -208,7 +208,7 @@ defmodule Front.RBAC.RoleManagement do
             InternalApi.RBAC.SubjectType.value(:USER)
 
           _ ->
-            Logger.warn("Unrecognized subject type: #{subject_type}, defaulting to user")
+            Logger.warning("Unrecognized subject type: #{subject_type}, defaulting to user")
             InternalApi.RBAC.SubjectType.value(:USER)
         end
 
