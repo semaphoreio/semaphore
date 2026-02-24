@@ -7,6 +7,27 @@
 - `test/` mirrors `lib/` with ExUnit suites, Wallaby browser specs in `test/browser`, and fixtures under `test/fixture`.
 - `priv/` serves runtime assets, and `workflow_templates/` supplies seeded YAML pipelines consumed by the UI.
 
+## Environment: Nix + direnv
+
+This repo uses **Nix flakes** with **direnv** for development environments. The `flake.nix` and `.envrc` configure Elixir 1.15, Erlang 26, and Node 22.
+
+### Running commands
+
+Shell tools like `mix`, `elixir`, `node`, etc. are only available inside the Nix dev shell. To run commands:
+
+```bash
+# Option 1: Use direnv (loads automatically when you cd into the directory)
+cd front && direnv allow && mix compile
+
+# Option 2: Use nix develop directly
+nix develop front/ -c mix compile
+
+# Option 3: Prefix with direnv exec
+direnv exec front mix compile
+```
+
+**Important:** Do not run `mix`, `elixir`, or other app-specific tools from the repo root — they won't be on PATH. Always `cd` into the app directory or use `direnv exec`.
+
 ## Build, Test, and Development Commands
 - First-time setup: `mix deps.get` and `npm install --prefix assets`.
 - `make dev.server` (Docker) launches Phoenix with Redis, RabbitMQ, and demo data preloaded.

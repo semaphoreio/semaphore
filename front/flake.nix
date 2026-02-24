@@ -11,16 +11,17 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
 
-        erlang = pkgs.beam.packages.erlang_25;
-        elixir = erlang.elixir_1_14;
+        erlang = pkgs.beam.packages.erlang_26;
+        elixir = erlang.elixir_1_15;
       in
       {
         devShells.default = pkgs.mkShell {
           packages = [
             elixir
-            pkgs.erlang_25
+            pkgs.erlang_26
             pkgs.nodejs_22
             pkgs.gnumake
+            pkgs.chromedriver
           ];
 
           shellHook = ''
