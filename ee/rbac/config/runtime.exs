@@ -1,6 +1,6 @@
 import Config
 
-config :logger, level: (System.get_env("LOG_LEVEL") || "debug") |> String.to_atom()
+config :logger, level: (System.get_env("LOG_LEVEL") || "info") |> String.to_atom()
 
 config :rbac, Rbac.Repo,
   adapter: Ecto.Adapters.Postgres,
