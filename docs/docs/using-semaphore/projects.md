@@ -1,36 +1,35 @@
 ---
-description: Connect Git repos to Semaphore (Cloud)
+description: Connect Git repositories to Semaphore (Cloud)
 ---
 
 # Projects
 
-Projects are codebases developed and managed through Semaphore [Continuous Integration](https://semaphore.io/continuous-integration). A project links your Git repository with Semaphore, so it can run [jobs](./jobs) to test, build, or deploy your application. 
+A project links your Git repository with Semaphore, so it can run [jobs](./jobs) to test, build, or deploy your application. 
 
-This page explains how to set up projects and what settings are available.
+This page explains how to create projects hosted on public Git hosting services such as [GitHub](./connect-github) or [Bitbucket](./connect-bitbucket).
 
 ## Create a project {#create-project}
-
-<VideoTutorial title="Create a Project" src="https://www.youtube.com/embed/Y4Ac5EJpzEc?si=INZVrNw4LTWg3l6k"/>
 
 To create a Semaphore project you need:
 
 - A [Semaphore](https://semaphore.io) account with an [organization](./organizations.md)
 - A repository with at least one commit
-- A GitHub or Bitbucket account. For more information, see the connection guides
+- If you are using public Git hosting, you must set up the connection with Semaphore first:
   - [How to connect to GitHub](./connect-github)
   - [How to connect to Bitbucket](./connect-bitbucket)
+  - [How to connect to GitLab](./connect-gitlab)
+
 
 <Tabs groupId="ui-cli">
 <TabItem value="ui" label="UI">
 
-Go to Semaphore, press **+Create New** and then press **Choose repository**
+Go to Semaphore, press **+ Create New** and choose from the options based on where your repository is hosted.
 
 ![Creating a new project](./img/create-project-1.jpg)
 
 <Steps>
 
-1. Select the GitHub or BitBucket tab. You may need to press the **Connect account** button if this is the first time
-2. Select the repository from the list and press on **Choose**
+1. Select the repository from the list and press on **Choose**
 
     <details>
     <summary>Show me</summary>
@@ -39,21 +38,30 @@ Go to Semaphore, press **+Create New** and then press **Choose repository**
     </div>
     </details>
 
-3. Optionally, [add people](./user-management#people) to the project. Press **Continue**
+2. Optionally, you might change the default name of the project. Press the **blue check button** and wait for the project to be deployed. Press **Continue**
 
     <details>
     <summary>Show me</summary>
     <div>
-    ![Add people](./img/create-project-3.jpg)
+    ![Deploy project](./img/create-project-3.jpg)
     </div>
     </details>
 
-4. Select a started workflow. If in doubt, select **Single Job** and **Start**
+3. You can now select a default agent to be used in the project, and specify the  pipeline configuration location.
 
     <details>
     <summary>Show me</summary>
     <div>
-    ![Add people](./img/create-project-4.jpg)
+    ![Select default agent and pipeline configuration path](./img/create-project-4.png)
+    </div>
+    </details>
+
+3. You will be given options to start from a template, based on your machine type.
+
+    <details>
+    <summary>Show me</summary>
+    <div>
+    ![Select starter workflow](./img/create-project-5.png)
     </div>
     </details>
 
@@ -76,7 +84,7 @@ After installing and connecting the [Semaphore command line](../reference/semaph
  
     ```shell title="Push pipeline to the repository
     git add .semaphore
-    git commit "Initalize Semaphore"
+    git commit "Initialize Semaphore"
     git push origin main
     ```
 
@@ -84,20 +92,30 @@ After installing and connecting the [Semaphore command line](../reference/semaph
 
 </Steps>
 
-You can override the project name and URL by using [additional options](../reference/semaphore-cli#sem-edit)
+You can override the project name and URL by using [additional options](../reference/semaphore-cli#sem-edit):
 
 ```shell
 sem init --project-name <project_name> --project-url <project_url>
 ```
 
 If you get permission or not find error message, double check the connection between Semaphore and your Git provider:
+
 - [How to connect to GitHub](./connect-github)
 - [How to connect to Bitbucket](./connect-bitbucket)
 
 </TabItem>
 </Tabs>
 
+
 ## View projects {#view-projects}
+
+You can find your projects in Semaphore by pressing on the **Projects** tab and searching by project name.
+
+![Searching for projects](./img/find-project.jpg)
+
+Semaphore shows the latest activity in the last few days when logging in. 
+
+![Project activity](./img/project-activity.jpg)
 
 <Tabs groupId="ui-cli">
 <TabItem value="ui" label="UI">
@@ -113,21 +131,14 @@ Semaphore shows the latest activity in the last few days when logging in.
 </TabItem>
 <TabItem value="cli" label="CLI">
 
-To get the list of the projects in your organization:
+To get the list of the projects in your organization, run [sem get](../reference/semaphore-cli) to list your projects:
 
-<Steps>
-
-1. If needed, [switch the context](./organizations#org-selection) to your organization
-2. Run [sem get](../reference/semaphore-cli) to list your projects
-
-    ```shell
-    $ sem get project
-    NAME                                 REPOSITORY
-    semaphore-demo-flutter               git@github.com:semaphoreci-demos/semaphore-demo-flutter.git
-    hello-semaphore                      git@github.com:semaphoreci-demos/hello-semaphore.git
-    ```
-
-</Steps>
+```shell
+$ sem get project
+NAME                                 REPOSITORY
+semaphore-demo-flutter               git@github.com:semaphoreci-demos/semaphore-demo-flutter.git
+hello-semaphore                      git@github.com:semaphoreci-demos/hello-semaphore.git
+```
 
 </TabItem>
 </Tabs>
@@ -178,24 +189,14 @@ Project members can view or manage the following project elements:
 
 ## How to manage access to projects {#people}
 
+
 Semaphore periodically syncs users from GitHub. You can add and remove people from the project by inviting or removing them from the related repository.
 
 Users with [Admin](./rbac#org-admin) or [Owner](./rbac#org-owner) roles can access every project in their organizations — even if they don't have access to the related repository.
 
-### About project permissions {#about}
-
-Users can be granted access and permissions on a project by different means:
-
-- **Repository-level access**: Semaphore automatically syncs user permissions from GitHub. See [project roles](./rbac#project) to learn how repository permissions are mapped to project permissions
-- **Direct access**: users can be [directly added to and removed from the project](#manual). Their permissions are managed with [project roles](./rbac#project)
-- **Role access**: users with [Admin](./rbac#org-admin) or [Owner](./rbac#org-owner) roles can access every project in their organizations
-- **Group access**: [groups](./rbac#org-groups) can grant their members access to projects, provided the group itself has been given access to those projects
-
 ### How to manually add/remove members to projects {#manual}
 
-<Available plans={['Enterprise']}/>
-
-Enterprise plan users can manually add and remove people from a project. To manage users, open your project and go to the **People** tab
+To manually add or remove people from a project:
 
 <Steps>
 
@@ -204,15 +205,16 @@ Enterprise plan users can manually add and remove people from a project. To mana
 3. Select the role
 4. Press **Add Selected**
 
-    ![Adding a member to the project](./img/add-user-2.jpg)
+  ![Adding a member to the project](./img/add-user-2.jpg)
+
+To remove a user, press the **X** button next to their name.
 
 </Steps>
 
-See [project roles](./rbac#project) for more information on what actions can each role perform.
+See [project roles](./rbac#project) for more information on what actions each role can perform.
+
 
 ### How to change permissions {#people-roles}
-
-<Available plans={['Enterprise']}/>
 
 Open your project and go to the **People** tab
 
@@ -221,9 +223,10 @@ Open your project and go to the **People** tab
 1. Press the **Change role** next to the project member
 2. Select the new role
 
-    ![Changing a members role](./img/change-role.jpg)
+  ![Changing a member's role](./img/change-role.jpg)
 
 </Steps>
+
 
 ### How to view pre-defined roles {#project-roles}
 
@@ -231,9 +234,9 @@ Semaphore provides pre-defined roles for projects. You can see what actions each
 
 <Steps>
 
-1. Open the Organization **Settings** menu
+1. Open the **Settings** menu
 2. Select **Roles**
-    ![Settings Role location](./img/settings-roles.jpg)
+  ![Settings Role location](./img/settings-roles.jpg)
 3. Scroll down to **Project roles**
 4. Press the eye button next to the role you want to examine
 
@@ -241,34 +244,36 @@ Semaphore provides pre-defined roles for projects. You can see what actions each
 
 The actions with enabled checkbox are allowed for that role.
 
-### How to create custom roles {#custom-roles}
 
-<Available plans={['Enterprise']}/>
+### How to create custom roles {#custom-roles}
 
 Create custom roles to give your users the precise permissions they need. 
 
 <Steps>
 
-1. Open the Organization **Settings** menu
+1. Open the **Settings** menu
 2. Select **Roles**
 3. On the **Project Roles** section, press **New Role**
-4. Give a name a description to the new role
+4. Give a name and description to the new role
 5. Enable the permissions allowed to the role. You can use the search box to narrow down options
 6. Press **Save changes**
 
-    ![Creating a project custom role](./img/project-custom-roles1.jpg)
+  ![Creating a project custom role](./img/project-custom-roles1.jpg)
 
 </Steps>
 
 ### How to change the project's owner {#owner-change}
 
+
 Open the [project settings](#settings), under **Project Owner** type the username and press **Change**. The user must already have been [invited to the organization](./user-management#add-people).
 
 ![Changing project owner](./img/change-project-owner.jpg)
 
+
 After project ownership has been transferred, you need to push a new commit. Re-running old builds no longer works once the ownership of a project has changed.
 
 :::note
+
 
 Transferring ownership does not automatically grant [project roles](./rbac#project) on the project. You must still manually grant the [admin role](./rbac#project-admin) to allow the new owner manage the project.
 
@@ -445,7 +450,7 @@ This setting overrides the [organization-wide initialization agent](./organizati
 
 ## How to configure status checks {#status-checks}
 
-Semaphore sends status checks to your GitHub or BitBucket repositories. Status checks show the latest Semaphore activity right in your repository.
+Semaphore sends status checks to your repositories. Status checks show the latest Semaphore activity right in your repository.
 
 Status checks appear in the commit messages.
 
@@ -482,7 +487,7 @@ To add status checks on other non-initial pipelines, follow these steps:
         
         spec:
           repository:
-            url: "git@{github|bitbucket}.com:renderedtext/example.git"
+            url: "git@{github|bitbucket|gitlab}.com:renderedtext/example.git"
             run: true
             run_on:
               - branches
@@ -526,12 +531,12 @@ To add status checks on other non-initial pipelines, follow these steps:
 
 ## Troubleshooting guide
 
-If your repositories aren't showing in Semaphore or changes are not triggering new workflows, check the connection between GitHub and Semaphore.
+If your repositories aren't showing in Semaphore or changes are not triggering new workflows, check the connection between your repos and Semaphore.
 
 <Steps>
 
 1. Navigate to your [Semaphore account](https://me.semaphoreci.com/account)
-2. Read the status next to GitHub
+2. Read the status next to your repository host
     ![Connection status green](./img/account-gh-bb-access.jpg)
 3. If the status is disconnected, click on **Grant public access** or **Grant private access**
 
@@ -585,18 +590,18 @@ To verify the status of a webhook:
 
 </Steps>
 
-To fix the broken webhook, click on **Regenerate**. This should generate a new webhook and repair the connection between Semaphore and GitHub.
+To fix the broken webhook, click on **Regenerate**. This should generate a new webhook and repair the connection between Semaphore and your repository host.
 
 ### Reconnecting moved or renamed projects
 
-There are several actions that can break the connection between GitHub and Semaphore. For example:
+There are several actions that can break the connection between your repositories and Semaphore. For example:
 
 - moving the repository to a different location
 - renaming the repository
-- renaming the GitHub user account
-- renaming the GitHub organization
+- renaming the GitHub / Bitbucket / GitLab user account
+- renaming the GitHub / Bitbucket / GitLab organization
 
-When this happens, please email Semaphore at [support@semaphoreci.com](mailto:support@semaphore.io) providing the following details:
+When this happens, please email Semaphore at [support@semaphore.io](mailto:support@semaphore.io) providing the following details:
 
 - Previous repository name and URL
 - New repository name and URL
