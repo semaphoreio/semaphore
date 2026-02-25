@@ -3,6 +3,8 @@ module Semaphore::GithubApp
     class RemoteIdBackfill
       MAX_NUMBER_OF_REPOSITORIES = Semaphore::GithubApp::Repositories::MAX_NUMBER_OF_REPOSITORIES
       QUERY_BATCH_SIZE = 500
+      # Arbitrary but stable namespace for this job's advisory locks. It only needs to be unique
+      # among other lock namespaces in the app so installation_id can be used as the lock key.
       ADVISORY_LOCK_NAMESPACE = 71_104
 
       def self.refresh_next_installation
