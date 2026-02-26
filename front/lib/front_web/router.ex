@@ -698,6 +698,7 @@ defmodule FrontWeb.Router do
     end
 
     # Support Page
+    get("/support/pylon", SupportController, :pylon)
     get("/support", SupportController, :new)
 
     post("/support", SupportController, :submit)
