@@ -124,6 +124,7 @@
             card_description: "Semaphore 2.0 documentation",
             tooltip: false %>
       <%= contact_support_card(@conn, @layout_model) %>
+      <%= pylon_contact_support_card(@conn, @layout_model) %>
       <%= support_requests_card(@conn, @layout_model) %>
       <%= render FrontWeb.LayoutView, "page_header/_menu_card.html",
             options: [target: "_blank", rel: "noopener"],
