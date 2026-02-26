@@ -486,6 +486,41 @@ defmodule FrontWeb.SharedHelpers do
     end
   end
 
+  @spec pylon_contact_support_card(Plug.Conn.t(), LayoutModel.t()) :: renderable()
+  def pylon_contact_support_card(conn, layout_model) do
+    org_id = conn.assigns[:organization_id]
+    valid_permissions? = layout_model.permissions["organization.contact_support"]
+
+    with_pylon_support? = FeatureProvider.feature_enabled?(:pylon_support, param: org_id)
+
+    organization_restricted? =
+      FeatureProvider.feature_enabled?(:restricted_support, param: org_id)
+
+    cond do
+      not with_pylon_support? ->
+        nil
+
+      organization_restricted? and not valid_permissions? ->
+        Phoenix.View.render(FrontWeb.LayoutView, "page_header/_menu_card.html",
+          options: [disabled: true],
+          card_url: "#",
+          card_title: "Contact Support (Experimental)",
+          card_description: "Pylon knowledge base and support",
+          tooltip:
+            "Your access to Semaphore support has been limited. Please contact your organization's Admin for more information."
+        )
+
+      true ->
+        Phoenix.View.render(FrontWeb.LayoutView, "page_header/_menu_card.html",
+          options: [target: "_blank", rel: "noopener"],
+          card_url: RouteHelper.support_path(conn, :pylon),
+          card_title: "Contact Support (Experimental)",
+          card_description: "Pylon knowledge base and support",
+          tooltip: false
+        )
+    end
+  end
+
   @spec support_requests_card(Plug.Conn.t(), LayoutModel.t()) :: renderable()
   def support_requests_card(conn, layout_model) do
     org_id = conn.assigns[:organization_id]
