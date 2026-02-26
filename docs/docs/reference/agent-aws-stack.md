@@ -20,7 +20,7 @@ The AWS Autoscaler Stack accepts configuration settings in two ways:
     {
     "SEMAPHORE_AGENT_STACK_NAME": "<your-stack-name>",
     "SEMAPHORE_AGENT_TOKEN_PARAMETER_NAME": "<your-ssm-parameter-name>",
-    "SEMAPHORE_AGENT_TOKEN_KMS_KEY": "<your-ssm-parameter-name>",
+    "SEMAPHORE_AGENT_TOKEN_KMS_KEY": "<your-kms-key-id>",
     "SEMAPHORE_ENDPOINT": "<organization-url>.semaphoreci.com"
     }
     ```
