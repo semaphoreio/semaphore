@@ -718,33 +718,21 @@ defmodule InternalApi.PlumberWF.CreateRequest do
   use Protobuf, syntax: :proto3
 
   @type t :: %__MODULE__{
-          service: integer,
           project_id: String.t(),
           label: String.t(),
+          hook_id: String.t(),
           request_token: String.t(),
-          definition_key: String.t(),
-          requester_id: String.t(),
-          organization_id: String.t()
+          definition_file: String.t(),
+          requester_id: String.t()
         }
-  defstruct [:service, :project_id, :label, :request_token, :definition_key, :requester_id, :organization_id]
+  defstruct [:project_id, :label, :hook_id, :request_token, :definition_file, :requester_id]
 
-  field :service, 1, type: InternalApi.PlumberWF.CreateRequest.ServiceType, enum: true
-  field :project_id, 2, type: :string
-  field :label, 3, type: :string
+  field :project_id, 1, type: :string
+  field :label, 2, type: :string
+  field :hook_id, 3, type: :string
   field :request_token, 4, type: :string
-  field :definition_key, 5, type: :string
+  field :definition_file, 5, type: :string
   field :requester_id, 6, type: :string
-  field :organization_id, 7, type: :string
-end
-
-defmodule InternalApi.PlumberWF.CreateRequest.ServiceType do
-  @moduledoc false
-  use Protobuf, enum: true, syntax: :proto3
-
-  field :GIT_HUB_DEPRECATED, 0
-  field :LOCAL, 1
-  field :SNAPSHOT_DEPRECATED, 2
-  field :LISTENER_PROXY, 3
 end
 
 defmodule InternalApi.PlumberWF.CreateResponse do
@@ -761,6 +749,26 @@ defmodule InternalApi.PlumberWF.CreateResponse do
   field :wf_id, 1, type: :string
   field :status, 2, type: InternalApi.Status
   field :ppl_id, 3, type: :string
+end
+
+defmodule InternalApi.PlumberWF.WorkflowDeleted do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          workflow_id: String.t(),
+          organization_id: String.t(),
+          project_id: String.t(),
+          artifact_store_id: String.t(),
+          deleted_at: Google.Protobuf.Timestamp.t()
+        }
+  defstruct [:workflow_id, :organization_id, :project_id, :artifact_store_id, :deleted_at]
+
+  field :workflow_id, 1, type: :string
+  field :organization_id, 2, type: :string
+  field :project_id, 3, type: :string
+  field :artifact_store_id, 4, type: :string
+  field :deleted_at, 5, type: Google.Protobuf.Timestamp
 end
 
 defmodule InternalApi.PlumberWF.TriggeredBy do
