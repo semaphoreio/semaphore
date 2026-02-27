@@ -38,7 +38,8 @@ defmodule Front.CiAssistant.Client do
          yaml_content: response.yaml_content,
          commit_sha: response.commit_sha,
          branch: response.branch,
-         error: response.error
+         error: response.error,
+         tool_log: response.tool_log || []
        }}
     else
       {:error, reason} ->

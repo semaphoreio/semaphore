@@ -47,15 +47,17 @@ defmodule InternalApi.CiAssistant.GetOnboardingStatusResponse do
           yaml_content: String.t(),
           commit_sha: String.t(),
           branch: String.t(),
-          error: String.t()
+          error: String.t(),
+          tool_log: [String.t()]
         }
-  defstruct [:status, :yaml_content, :commit_sha, :branch, :error]
+  defstruct [:status, :yaml_content, :commit_sha, :branch, :error, tool_log: []]
 
   field(:status, 1, type: :string)
   field(:yaml_content, 2, type: :string)
   field(:commit_sha, 3, type: :string)
   field(:branch, 4, type: :string)
   field(:error, 5, type: :string)
+  field(:tool_log, 6, repeated: true, type: :string)
 end
 
 defmodule InternalApi.CiAssistant.Gateway.Service do
