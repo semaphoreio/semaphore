@@ -32,7 +32,11 @@ defmodule FrontWeb.ProjectOnboardingView do
         project_onboarding_path(conn, :commit_starter_template, conn.assigns.project.name),
       "workflowBuilderUrl" =>
         x_workflow_builder_path(conn, :x_workflow_builder, conn.assigns.project.name),
-      "createSelfHostedAgentUrl" => agents_index_path(conn, :index, ["self_hosted", "new"], [])
+      "createSelfHostedAgentUrl" => agents_index_path(conn, :index, ["self_hosted", "new"], []),
+      "aiOnboardingUrl" =>
+        project_onboarding_path(conn, :start_ai_onboarding, conn.assigns.project.name),
+      "aiOnboardingStatusUrl" =>
+        project_onboarding_path(conn, :ai_onboarding_status, conn.assigns.project.name)
     }
     |> Poison.encode!()
   end
