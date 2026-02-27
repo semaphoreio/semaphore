@@ -3,6 +3,10 @@ defmodule FrontWeb.Endpoint do
 
   use Phoenix.Endpoint, otp_app: :front
 
+  socket "/ci_assistant_socket", FrontWeb.CiAssistantSocket,
+    websocket: [timeout: :infinity],
+    longpoll: false
+
   plug(
     Plug.Static,
     at: "/projects",
