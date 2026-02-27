@@ -1,32 +1,17 @@
 
-import { useContext } from "preact/hooks";
-import * as stores from "../stores";
+import { NavLink } from "react-router-dom";
 
 interface IntegrationStarterProps {
   connectButtonUrl: string;
 }
-export const IntegrationStarter = (props: IntegrationStarterProps) => {
-  const config = useContext(stores.Config.Context);
-  const submitManifest = (e: Event) => {
-    e.preventDefault();
 
-    const urlWithToken = new URL(props.connectButtonUrl);
-    urlWithToken.searchParams.append(`org_id`, config.orgId);
-
-    window.location.href = urlWithToken.toString();
-  };
-
+export const IntegrationStarter = (_props: IntegrationStarterProps) => {
   return (
-    <form
-      className="d-flex flex-items-center"
-      onSubmit={submitManifest}
-      method="post"
+    <NavLink
+      className="btn btn-primary btn-small"
+      to="/github_app/setup"
     >
-      <button
-        className="btn btn-primary btn-small"
-      >
-        Connect
-      </button>
-    </form>
+      Connect
+    </NavLink>
   );
 };
