@@ -146,7 +146,7 @@ defmodule Front.Models.ServiceAccount do
     end)
     |> Enum.map(fn
       {member, nil} ->
-        Logger.warn("Service account #{member.id} not found in service accounts list")
+        Logger.warning("Service account #{member.id} not found in service accounts list")
         nil
 
       {member, service_account} ->

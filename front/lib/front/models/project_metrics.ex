@@ -175,7 +175,7 @@ defmodule Front.Models.ProjectMetrics do
         API.MetricAggregation.value(:RANGE)
 
       _ ->
-        Logger.warn("Unknown aggregate: '#{value}', defaulting to range")
+        Logger.warning("Unknown aggregate: '#{value}', defaulting to range")
         API.MetricAggregation.value(:RANGE)
     end
   end

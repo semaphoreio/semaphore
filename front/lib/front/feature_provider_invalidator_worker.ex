@@ -1,59 +1,97 @@
 defmodule Front.FeatureProviderInvalidatorWorker do
+  use Broadway
+
   require Logger
 
-  @doc """
-  This module consumes RabbitMQ feature and machine state change events
-  and invalidates features and machines caches.
-  """
+  @routing_keys ~w(
+    machines_changed
+    organization_machines_changed
+    features_changed
+    organization_features_changed
+  )
 
-  use Tackle.Multiconsumer,
-    url: Application.get_env(:front, :amqp_url),
-    service: "front",
-    routes: [
-      {"feature_exchange", "machines_changed", :machines_changed},
-      {"feature_exchange", "organization_machines_changed", :organization_machines_changed},
-      {"feature_exchange", "features_changed", :features_changed},
-      {"feature_exchange", "organization_features_changed", :organization_features_changed}
-    ],
-    # This queue is used to consume events from the feature exchange.
-    # It is declared as non-durable, auto-delete and exclusive.
-    # This means that the queue will be deleted when the consumer disconnects.
-    # This is the desired behavior, because these events are used to invalidate pod-level caches.
-    queue: :dynamic,
-    queue_opts: [
-      durable: false,
-      auto_delete: true,
-      exclusive: true
-    ],
-    connection_id: Front.FeatureProviderInvalidatorWorker
+  def start_link(_opts) do
+    Broadway.start_link(__MODULE__,
+      name: __MODULE__,
+      producer: [
+        module:
+          {BroadwayRabbitMQ.Producer,
+           queue: "",
+           connection: amqp_url(),
+           after_connect: fn channel ->
+             AMQP.Exchange.declare(channel, "feature_exchange", :direct, durable: true)
+           end,
+           declare: [
+             durable: false,
+             auto_delete: true,
+             exclusive: true
+           ],
+           bindings:
+             Enum.map(@routing_keys, fn rk ->
+               {"feature_exchange", routing_key: rk}
+             end),
+           on_failure: :reject,
+           metadata: [:routing_key]},
+        concurrency: 1
+      ],
+      processors: [
+        default: [
+          concurrency: 1,
+          max_demand: 1
+        ]
+      ]
+    )
+  end
 
-  def machines_changed(_message) do
+  @impl true
+  def handle_message(_processor, message, _context) do
+    case message.metadata.routing_key do
+      "machines_changed" ->
+        handle_machines_changed(message.data)
+
+      "organization_machines_changed" ->
+        handle_organization_machines_changed(message.data)
+
+      "features_changed" ->
+        handle_features_changed(message.data)
+
+      "organization_features_changed" ->
+        handle_organization_features_changed(message.data)
+
+      unknown ->
+        Logger.warning("[FEATURE PROVIDER INVALIDATOR WORKER] unknown routing key: #{unknown}")
+    end
+
+    message
+  end
+
+  defp handle_machines_changed(_payload) do
     log("invalidating machines")
     {:ok, _} = FeatureProvider.list_machines(reload: true)
-    :ok
   end
 
-  def organization_machines_changed(message) do
-    event = InternalApi.Feature.OrganizationMachinesChanged.decode(message)
+  defp handle_organization_machines_changed(payload) do
+    event = InternalApi.Feature.OrganizationMachinesChanged.decode(payload)
     log("invalidating machines for org #{event.org_id}")
     {:ok, _} = FeatureProvider.list_machines(reload: true, param: event.org_id)
-    :ok
   end
 
-  def features_changed(_message) do
+  defp handle_features_changed(_payload) do
     log("invalidating features")
     {:ok, _} = FeatureProvider.list_features(reload: true)
-    :ok
   end
 
-  def organization_features_changed(message) do
-    event = InternalApi.Feature.OrganizationFeaturesChanged.decode(message)
+  defp handle_organization_features_changed(payload) do
+    event = InternalApi.Feature.OrganizationFeaturesChanged.decode(payload)
     log("invalidating features for org #{event.org_id}")
     {:ok, _} = FeatureProvider.list_features(reload: true, param: event.org_id)
-    :ok
   end
 
   defp log(message) do
     Logger.info("[FEATURE PROVIDER INVALIDATOR WORKER] #{message}")
+  end
+
+  defp amqp_url do
+    Application.get_env(:front, :amqp_url)
   end
 end

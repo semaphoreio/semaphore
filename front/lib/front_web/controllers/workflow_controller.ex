@@ -224,11 +224,11 @@ defmodule FrontWeb.WorkflowController do
         {:error, workflow_files_error_message(error, hook)}
 
       {:ok, {:error, reason}} ->
-        Logger.warn("[workflow.edit] Unable to start fetching job: #{inspect(reason)}")
+        Logger.warning("[workflow.edit] Unable to start fetching job: #{inspect(reason)}")
         {:error, workflow_files_error_message(reason, hook)}
 
       {:exit, reason} ->
-        Logger.warn("[workflow.edit] Fetching job crashed: #{inspect(reason)}")
+        Logger.warning("[workflow.edit] Fetching job crashed: #{inspect(reason)}")
         {:error, workflow_files_error_message(reason, hook)}
     end
   end
@@ -243,11 +243,11 @@ defmodule FrontWeb.WorkflowController do
         {:error, workflow_files_error_message(error, hook)}
 
       {:ok, {:error, reason}} ->
-        Logger.warn("[workflow.edit] Unable to load workflow files: #{inspect(reason)}")
+        Logger.warning("[workflow.edit] Unable to load workflow files: #{inspect(reason)}")
         {:error, workflow_files_error_message(reason, hook)}
 
       {:exit, reason} ->
-        Logger.warn("[workflow.edit] Fetching workflow files crashed: #{inspect(reason)}")
+        Logger.warning("[workflow.edit] Fetching workflow files crashed: #{inspect(reason)}")
         {:error, workflow_files_error_message(reason, hook)}
     end
   end
