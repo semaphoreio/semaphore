@@ -129,7 +129,18 @@ if config_env() == :prod do
     support_app_secret: System.get_env("HELPSCOUT_APP_SECRET")
 end
 
+pylon_jwt_ttl_seconds =
+  case Integer.parse(System.get_env("PYLON_JWT_TTL_SECONDS") || "300") do
+    {value, _} -> value
+    :error -> 300
+  end
+
 config :front,
+  pylon_org_slug: System.get_env("PYLON_ORG_SLUG"),
+  pylon_jwt_secret: System.get_env("PYLON_JWT_SECRET"),
+  pylon_jwt_issuer: System.get_env("PYLON_JWT_ISSUER"),
+  pylon_jwt_callback_url: System.get_env("PYLON_JWT_CALLBACK_URL"),
+  pylon_jwt_ttl_seconds: pylon_jwt_ttl_seconds,
   zendesk_support_url: System.get_env("ZENDESK_SUPPORT_URL") || "http://support.semaphoreci.test",
   zendesk_jwt_url: System.get_env("ZENDESK_JWT_URL") || "http://support.semaphoreci.test",
   zendesk_jwt_secret: System.get_env("ZENDESK_JWT_SECRET") || "secret",

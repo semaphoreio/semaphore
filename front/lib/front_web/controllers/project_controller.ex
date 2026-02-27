@@ -155,7 +155,9 @@ defmodule FrontWeb.ProjectController do
           if Models.Project.file_exists?(project.id, project.initial_pipeline_file) do
             render_default_branch(conn)
           else
-            if FeatureProvider.feature_enabled?(:new_project_onboarding, param: project.org_id) do
+            if FeatureProvider.feature_enabled?(:new_project_onboarding,
+                 param: project.organization_id
+               ) do
               redirect(conn, to: project_onboarding_path(conn, :onboarding_index, project.name))
             else
               redirect(conn, to: project_onboarding_path(conn, :template, project.name))
