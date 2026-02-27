@@ -32,6 +32,7 @@ export const WorkflowSetupApp = () => {
             }/>
             <Route path="/existing_configuration" element={<pages.WorkflowSetup.ExistingConfiguration/>}/>
             <Route path="/environment" element={<pages.WorkflowSetup.Projectenvironment/>}/>
+            <Route path="/ai_setup" element={<pages.WorkflowSetup.AiSetup/>}/>
             <Route path="/starter_template" element={<pages.WorkflowSetup.StarterWorkflowTemplate/>}/>
           </Routes>
         </div>
