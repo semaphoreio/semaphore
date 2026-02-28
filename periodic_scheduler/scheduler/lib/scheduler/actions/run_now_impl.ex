@@ -113,6 +113,9 @@ defmodule Scheduler.Actions.RunNowImpl do
       {:error, {:describe_project, _project_id}} ->
         "Project assigned to periodic was not found." |> ToTuple.error(:FAILED_PRECONDITION)
 
+      {:error, {:unavailable, message}} ->
+        message |> ToTuple.error(:UNAVAILABLE)
+
       {:error, {:describe_revision, _revision_args}} ->
         "Cannot find git reference #{revision_args[:reference]}."
         |> ToTuple.error(:FAILED_PRECONDITION)
@@ -128,8 +131,14 @@ defmodule Scheduler.Actions.RunNowImpl do
 
   defp fetch_branch_revision(repository_id, revision_args) do
     case RepositoryClient.describe_revision(repository_id, revision_args) do
-      {:ok, commit} -> {:ok, commit}
-      _ -> {:error, {:describe_revision, revision_args}}
+      {:ok, commit} ->
+        {:ok, commit}
+
+      {:error, %GRPC.RPCError{status: 14, message: message}} ->
+        {:error, {:unavailable, message}}
+
+      _ ->
+        {:error, {:describe_revision, revision_args}}
     end
   end
 end
