@@ -759,7 +759,7 @@ defmodule RepositoryHub.GithubClient do
       Tentacat.References.find(client, owner, repo, "tags/#{tag_name}")
       |> case do
         {200, payload, _} ->
-          resolve_tag_commit(payload, client, owner, repo)
+          resolve_tag_commit(payload, client, owner, repo, tag_name)
 
         {404, _, _response} ->
           fail_with(:not_found, "Tag not found.")
@@ -782,19 +782,30 @@ defmodule RepositoryHub.GithubClient do
     end)
   end
 
-  defp resolve_tag_commit(%{"object" => %{"type" => "commit", "sha" => sha}}, _client, _owner, _repo) do
+  defp resolve_tag_commit(%{"object" => %{"type" => "commit", "sha" => sha}}, _client, _owner, _repo, _tag_name) do
     %{type: "tag", sha: sha} |> wrap
   end
 
-  defp resolve_tag_commit(%{"object" => %{"type" => "tag", "sha" => tag_sha}}, client, owner, repo) do
+  defp resolve_tag_commit(%{"object" => %{"type" => "tag", "sha" => tag_sha}}, client, owner, repo, tag_name) do
     Tentacat.get("repos/#{owner}/#{repo}/git/tags/#{tag_sha}", client, [], pagination: :none)
     |> case do
       {200, %{"object" => %{"type" => "commit", "sha" => commit_sha}}, _} ->
         %{type: "tag", sha: commit_sha} |> wrap
 
+      {200, body, _} ->
+        log_error([
+          "dereferencing annotated tag #{owner}/#{repo} : #{tag_name} (sha: #{tag_sha})",
+          "expected dereferenced object type 'commit', got '#{inspect(get_in(body, ["object", "type"]))}'"
+        ])
+
+        fail_with(
+          :precondition,
+          "Unexpected dereferenced object type for annotated tag #{owner}/#{repo} : #{tag_name}."
+        )
+
       {status, _, response} ->
         log_error([
-          "dereferencing annotated tag #{owner}/#{repo} : #{tag_sha}",
+          "dereferencing annotated tag #{owner}/#{repo} : #{tag_name} (sha: #{tag_sha})",
           "status: #{status}",
           "response: #{inspect_response(response)}"
         ])
@@ -806,10 +817,15 @@ defmodule RepositoryHub.GithubClient do
     end
   end
 
-  defp resolve_tag_commit(payload, _client, _owner, _repo) do
+  defp resolve_tag_commit(payload, _client, owner, repo, tag_name) do
+    log_error([
+      "unexpected tag reference object type for #{owner}/#{repo} : #{tag_name}",
+      "object type: #{inspect(get_in(payload, ["object", "type"]))}"
+    ])
+
     fail_with(
       :precondition,
-      "Unexpected tag reference object type: #{inspect(get_in(payload, ["object", "type"]))}."
+      "Unexpected tag reference object type for #{owner}/#{repo} : #{tag_name}: #{inspect(get_in(payload, ["object", "type"]))}."
     )
   end
 

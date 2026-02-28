@@ -111,7 +111,7 @@ defmodule RepositoryHub.GithubClientTest do
         |> GithubClient.get_tag(token: "foobar")
 
       assert {:ok, result} = response
-      assert %{type: "tag", sha: _} = result
+      assert %{type: "tag", sha: "f0bb5942f47193d153a205dc089cbbf38299dd1a"} = result
     end
 
     test "get_tag with missing" do
@@ -129,6 +129,24 @@ defmodule RepositoryHub.GithubClientTest do
 
       assert {:ok, result} = response
       assert %{type: "tag", sha: "abc123_annotated_commit_sha"} = result
+    end
+
+    test "get_tag with annotated tag dereference failure" do
+      response =
+        get_tag_params(tag_name: "v3.0.0")
+        |> GithubClient.get_tag(token: "foobar")
+
+      assert {:error, %{message: message}} = response
+      assert message =~ "dereferencing annotated tag"
+    end
+
+    test "get_tag with unexpected object type" do
+      response =
+        get_tag_params(tag_name: "v4.0.0")
+        |> GithubClient.get_tag(token: "foobar")
+
+      assert {:error, %{message: message}} = response
+      assert message =~ "Unexpected tag reference object type"
     end
 
     test "get_commit" do

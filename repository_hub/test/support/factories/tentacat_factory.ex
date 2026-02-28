@@ -6,6 +6,8 @@ defmodule RepositoryHub.TentacatFactory do
 
   def mocks do
     [
+      # Two `get:` entries at different arities: the first (arity 2) handles
+      # rate_limit checks, the second (arity 4) handles tag dereference calls.
       {Tentacat, [],
        [
          get: fn "rate_limit", _ -> {200, %{"rate" => %{"remaining" => 15_000}}, nil} end,
@@ -35,25 +37,45 @@ defmodule RepositoryHub.TentacatFactory do
     {200, %{"rate" => %{"remaining" => 15_000}}, nil}
   end
 
-  def tentacat_get_mock("repos/" <> _rest, _client, _params, _options) do
-    response_body = %{
-      "sha" => "annotated_tag_object_sha",
-      "tag" => "v2.0.0",
-      "object" => %{
-        "type" => "commit",
-        "sha" => "abc123_annotated_commit_sha"
-      }
-    }
+  def tentacat_get_mock("repos/" <> rest, _client, _params, _options) do
+    cond do
+      String.contains?(rest, "annotated_tag_object_sha") ->
+        response_body = %{
+          "sha" => "annotated_tag_object_sha",
+          "tag" => "v2.0.0",
+          "object" => %{
+            "type" => "commit",
+            "sha" => "abc123_annotated_commit_sha"
+          }
+        }
 
-    status_code = 200
+        status_code = 200
 
-    response = %HTTPoison.Response{
-      status_code: status_code,
-      body: Jason.encode!(response_body),
-      headers: []
-    }
+        response = %HTTPoison.Response{
+          status_code: status_code,
+          body: Jason.encode!(response_body),
+          headers: []
+        }
 
-    {status_code, response_body, response}
+        {status_code, response_body, response}
+
+      String.contains?(rest, "dereference_fail_sha") ->
+        response_body = %{
+          "message" => "Not Found",
+          "documentation_url" => "https://docs.github.com/rest"
+        }
+
+        status_code = 404
+
+        response = %HTTPoison.Response{
+          status_code: status_code,
+          body: Jason.encode!(response_body),
+          headers: [],
+          request: %HTTPoison.Request{headers: [], url: ""}
+        }
+
+        {status_code, response_body, response}
+    end
   end
 
   def create_build_status_mock(_, _, _, _, _) do
@@ -321,6 +343,52 @@ defmodule RepositoryHub.TentacatFactory do
         "object" => %{
           "sha" => "annotated_tag_object_sha",
           "type" => "tag"
+        }
+      }
+
+    status_code = 200
+
+    response = %HTTPoison.Response{
+      status_code: status_code,
+      body: Jason.encode!(response_body),
+      headers: []
+    }
+
+    {status_code, response_body, response}
+  end
+
+  def find_reference(_client, _owner, _repo, "tags/v3.0.0") do
+    response_body =
+      %{
+        "ref" => "refs/tags/v3.0.0",
+        "node_id" => "mock_node_id",
+        "url" => "https://api.github.com/repos/dummy/repository/git/refs/tags/v3.0.0",
+        "object" => %{
+          "sha" => "dereference_fail_sha",
+          "type" => "tag"
+        }
+      }
+
+    status_code = 200
+
+    response = %HTTPoison.Response{
+      status_code: status_code,
+      body: Jason.encode!(response_body),
+      headers: []
+    }
+
+    {status_code, response_body, response}
+  end
+
+  def find_reference(_client, _owner, _repo, "tags/v4.0.0") do
+    response_body =
+      %{
+        "ref" => "refs/tags/v4.0.0",
+        "node_id" => "mock_node_id",
+        "url" => "https://api.github.com/repos/dummy/repository/git/refs/tags/v4.0.0",
+        "object" => %{
+          "sha" => "blob_object_sha",
+          "type" => "blob"
         }
       }
 
