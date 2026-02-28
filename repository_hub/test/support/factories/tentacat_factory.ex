@@ -6,7 +6,11 @@ defmodule RepositoryHub.TentacatFactory do
 
   def mocks do
     [
-      {Tentacat, [], get: fn "rate_limit", _ -> {200, %{"rate" => %{"remaining" => 15_000}}, nil} end},
+      {Tentacat, [],
+       [
+         get: fn "rate_limit", _ -> {200, %{"rate" => %{"remaining" => 15_000}}, nil} end,
+         get: &tentacat_get_mock/4
+       ]},
       {Tentacat.Repositories, [], repo_get: &repo_get_mock/3, list_mine: &list_mine_mock/2},
       {Tentacat.Repositories.Statuses, [], create: &create_build_status_mock/5},
       {Tentacat.Repositories.Collaborators, [], list: &list_mock/4},
@@ -25,6 +29,31 @@ defmodule RepositoryHub.TentacatFactory do
       {Tentacat.References, [], find: &find_reference/4},
       {Tentacat.Commits, [], find: &get_commit/4}
     ]
+  end
+
+  def tentacat_get_mock("rate_limit", _client, _params, _options) do
+    {200, %{"rate" => %{"remaining" => 15_000}}, nil}
+  end
+
+  def tentacat_get_mock("repos/" <> _rest, _client, _params, _options) do
+    response_body = %{
+      "sha" => "annotated_tag_object_sha",
+      "tag" => "v2.0.0",
+      "object" => %{
+        "type" => "commit",
+        "sha" => "abc123_annotated_commit_sha"
+      }
+    }
+
+    status_code = 200
+
+    response = %HTTPoison.Response{
+      status_code: status_code,
+      body: Jason.encode!(response_body),
+      headers: []
+    }
+
+    {status_code, response_body, response}
   end
 
   def create_build_status_mock(_, _, _, _, _) do
@@ -269,6 +298,29 @@ defmodule RepositoryHub.TentacatFactory do
         "object" => %{
           "sha" => "f0bb5942f47193d153a205dc089cbbf38299dd1a",
           "type" => "commit"
+        }
+      }
+
+    status_code = 200
+
+    response = %HTTPoison.Response{
+      status_code: status_code,
+      body: Jason.encode!(response_body),
+      headers: []
+    }
+
+    {status_code, response_body, response}
+  end
+
+  def find_reference(_client, _owner, _repo, "tags/v2.0.0") do
+    response_body =
+      %{
+        "ref" => "refs/tags/v2.0.0",
+        "node_id" => "mock_node_id",
+        "url" => "https://api.github.com/repos/dummy/repository/git/refs/tags/v2.0.0",
+        "object" => %{
+          "sha" => "annotated_tag_object_sha",
+          "type" => "tag"
         }
       }
 

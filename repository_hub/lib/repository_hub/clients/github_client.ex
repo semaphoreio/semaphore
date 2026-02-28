@@ -765,7 +765,7 @@ defmodule RepositoryHub.GithubClient do
           fail_with(:not_found, "Tag not found.")
 
         {422, _, response} ->
-          fail_with(:not_found, "Validation failed. #{fetch_status_message(response)}")
+          fail_with(:precondition, "Validation failed. #{fetch_status_message(response)}")
 
         {status, _, response} ->
           log_error([
@@ -776,7 +776,7 @@ defmodule RepositoryHub.GithubClient do
 
           fail_with(
             :precondition,
-            "Error while looking up repository #{owner}/#{repo}. #{fetch_status_message(response)}"
+            "Error while looking up tag #{owner}/#{repo} : #{tag_name}. #{fetch_status_message(response)}"
           )
       end
     end)
@@ -789,7 +789,7 @@ defmodule RepositoryHub.GithubClient do
   defp resolve_tag_commit(%{"object" => %{"type" => "tag", "sha" => tag_sha}}, client, owner, repo) do
     Tentacat.get("repos/#{owner}/#{repo}/git/tags/#{tag_sha}", client, [], pagination: :none)
     |> case do
-      {200, %{"object" => %{"sha" => commit_sha}}, _} ->
+      {200, %{"object" => %{"type" => "commit", "sha" => commit_sha}}, _} ->
         %{type: "tag", sha: commit_sha} |> wrap
 
       {status, _, response} ->
@@ -804,6 +804,13 @@ defmodule RepositoryHub.GithubClient do
           "Error while dereferencing annotated tag in #{owner}/#{repo}. #{fetch_status_message(response)}"
         )
     end
+  end
+
+  defp resolve_tag_commit(payload, _client, _owner, _repo) do
+    fail_with(
+      :precondition,
+      "Unexpected tag reference object type: #{inspect(get_in(payload, ["object", "type"]))}."
+    )
   end
 
   @doc """
