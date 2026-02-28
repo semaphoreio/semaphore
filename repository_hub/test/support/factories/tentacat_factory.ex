@@ -22,7 +22,7 @@ defmodule RepositoryHub.TentacatFactory do
          remove: &remove_deploy_key_mock/4
        ]},
       {Tentacat.Repositories.Branches, [], find: &get_branch/4},
-      {Tentacat.Repositories.Tags, [], list: &list_tags/3},
+      {Tentacat.References, [], find: &find_reference/4},
       {Tentacat.Commits, [], find: &get_commit/4}
     ]
   end
@@ -260,29 +260,17 @@ defmodule RepositoryHub.TentacatFactory do
     {status_code, Jason.decode!(response_body), response}
   end
 
-  def list_tags(_client, _owner, _repo) do
+  def find_reference(_client, _owner, _repo, "tags/v1.0.0") do
     response_body =
-      [
-        %{
-          name: "v1.0.0",
-          commit: %{
-            sha: "f0bb5942f47193d153a205dc089cbbf38299dd1a",
-            commit: %{
-              message: "Commit message"
-            }
-          }
-        },
-        %{
-          name: "v1.0.1",
-          commit: %{
-            sha: "48038c4d189536a0862a2c20ed832dc34bd1c8b2",
-            commit: %{
-              message: "Commit message"
-            }
-          }
+      %{
+        "ref" => "refs/tags/v1.0.0",
+        "node_id" => "mock_node_id",
+        "url" => "https://api.github.com/repos/dummy/repository/git/refs/tags/v1.0.0",
+        "object" => %{
+          "sha" => "f0bb5942f47193d153a205dc089cbbf38299dd1a",
+          "type" => "commit"
         }
-      ]
-      |> Jason.encode!()
+      }
 
     status_code = 200
 
@@ -292,7 +280,24 @@ defmodule RepositoryHub.TentacatFactory do
       headers: []
     }
 
-    {status_code, Jason.decode!(response_body), response}
+    {status_code, response_body, response}
+  end
+
+  def find_reference(_client, _owner, _repo, "tags/" <> _tag_name) do
+    response_body = %{
+      "message" => "Not Found",
+      "documentation_url" => "https://docs.github.com/rest"
+    }
+
+    status_code = 404
+
+    response = %HTTPoison.Response{
+      status_code: status_code,
+      body: Jason.encode!(response_body),
+      headers: []
+    }
+
+    {status_code, response_body, response}
   end
 
   def get_commit(_client, _sha, _owner, "chmura") do
