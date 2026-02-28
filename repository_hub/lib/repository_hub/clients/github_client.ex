@@ -733,6 +733,18 @@ defmodule RepositoryHub.GithubClient do
         {404, _, _response} ->
           fail_with(:not_found, "Branch not found.")
 
+        {status, _, response} when status == 429 or status >= 500 ->
+          log_error([
+            "getting branch #{owner}/#{repo} : #{branch_name}}",
+            "status: #{status}",
+            "response: #{inspect_response(response)}"
+          ])
+
+          fail_with(
+            :unavailable,
+            "GitHub API temporarily unavailable while looking up branch #{owner}/#{repo} : #{branch_name}."
+          )
+
         {status, _, response} ->
           log_error([
             "getting branch #{owner}/#{repo} : #{branch_name}}",
@@ -776,6 +788,18 @@ defmodule RepositoryHub.GithubClient do
 
         {422, _, response} ->
           fail_with(:not_found, "Validation failed. #{fetch_status_message(response)}")
+
+        {status, _, response} when status == 429 or status >= 500 ->
+          log_error([
+            "fetching tag #{params.repo_owner}/#{params.repo_name} : #{params.tag_name}",
+            "status: #{status}",
+            "response: #{inspect_response(response)}"
+          ])
+
+          fail_with(
+            :unavailable,
+            "GitHub API temporarily unavailable while looking up tag #{owner}/#{repo} : #{tag_name}."
+          )
 
         {status, _, response} ->
           log_error([
@@ -822,6 +846,18 @@ defmodule RepositoryHub.GithubClient do
               author_avatar_url: get_in(payload, ["author", "avatar_url"]) || ""
             }
             |> wrap()
+
+          {status, _, response} when status == 429 or status >= 500 ->
+            log_error([
+              "fetching tag #{params.repo_owner}/#{params.repo_name} : #{params.tag_name}",
+              "status: #{status}",
+              "response: #{inspect_response(response)}"
+            ])
+
+            fail_with(
+              :unavailable,
+              "GitHub API temporarily unavailable while looking up commit #{owner}/#{repo} : #{commit_sha}."
+            )
 
           {status, _, response} ->
             log_error([

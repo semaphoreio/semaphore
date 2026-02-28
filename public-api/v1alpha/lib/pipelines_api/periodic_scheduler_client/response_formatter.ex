@@ -139,6 +139,9 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.ResponseFormatter do
       :RESOURCE_EXHAUSTED ->
         proto_response.status |> Map.get(:message) |> ToTuple.user_error()
 
+      :UNAVAILABLE ->
+        {:error, {:service_unavailable, proto_response.status |> Map.get(:message)}}
+
       _ ->
         log_invalid_response(proto_response, "run_now")
     end
