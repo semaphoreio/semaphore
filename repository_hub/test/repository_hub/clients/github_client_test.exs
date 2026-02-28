@@ -122,6 +122,15 @@ defmodule RepositoryHub.GithubClientTest do
       assert {:error, %{message: "Tag not found.", status: 5}} = response
     end
 
+    test "get_tag with annotated tag" do
+      response =
+        get_tag_params(tag_name: "v2.0.0")
+        |> GithubClient.get_tag(token: "foobar")
+
+      assert {:ok, result} = response
+      assert %{type: "tag", sha: "abc123_annotated_commit_sha"} = result
+    end
+
     test "get_commit" do
       response =
         get_commit_params()
