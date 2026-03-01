@@ -12,6 +12,8 @@ defmodule Scheduler.Actions.RunNowImpl do
   alias Scheduler.Utils.GitReference
   alias Util.ToTuple
 
+  @grpc_unavailable GRPC.Status.unavailable()
+
   def run_now(params) do
     with {:ok, periodic} <- get_periodic(params),
          {:ok, params} <- validate_params(periodic, params),
@@ -134,7 +136,7 @@ defmodule Scheduler.Actions.RunNowImpl do
       {:ok, commit} ->
         {:ok, commit}
 
-      {:error, %GRPC.RPCError{status: 14, message: message}} ->
+      {:error, %GRPC.RPCError{status: @grpc_unavailable, message: message}} ->
         {:error, {:unavailable, message}}
 
       _ ->

@@ -166,6 +166,20 @@ defmodule RepositoryHub.GithubClientTest do
       end
     end
 
+    test "get_tag returns unavailable on GitHub 429" do
+      with_mock Tentacat.Repositories.Tags,
+        list: fn _client, _owner, _repo ->
+          {429, nil, error_response(429)}
+        end do
+        response =
+          get_tag_params()
+          |> GithubClient.get_tag(token: "foobar")
+
+        assert {:error, %{status: status}} = response
+        assert status == GRPC.Status.unavailable()
+      end
+    end
+
     test "get_commit" do
       response =
         get_commit_params()
@@ -200,6 +214,20 @@ defmodule RepositoryHub.GithubClientTest do
         assert {:error, %{status: status, message: message}} = response
         assert status == GRPC.Status.unavailable()
         assert message =~ "GitHub API temporarily unavailable"
+      end
+    end
+
+    test "get_commit returns unavailable on GitHub 429" do
+      with_mock Tentacat.Commits,
+        find: fn _client, _sha, _owner, _repo ->
+          {429, nil, error_response(429)}
+        end do
+        response =
+          get_commit_params()
+          |> GithubClient.get_commit(token: "foobar")
+
+        assert {:error, %{status: status}} = response
+        assert status == GRPC.Status.unavailable()
       end
     end
   end

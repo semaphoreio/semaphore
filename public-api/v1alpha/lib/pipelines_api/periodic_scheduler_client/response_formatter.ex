@@ -23,6 +23,9 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.ResponseFormatter do
       :FAILED_PRECONDITION ->
         apply_response.status |> Map.get(:message) |> ToTuple.user_error()
 
+      :UNAVAILABLE ->
+        {:error, {:service_unavailable, apply_response.status |> Map.get(:message)}}
+
       _ ->
         log_invalid_response(apply_response, "apply")
     end
@@ -42,6 +45,9 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.ResponseFormatter do
 
       :NOT_FOUND ->
         proto_response.status |> Map.get(:message) |> ToTuple.user_error()
+
+      :UNAVAILABLE ->
+        {:error, {:service_unavailable, proto_response.status |> Map.get(:message)}}
 
       _ ->
         log_invalid_response(proto_response, "get_project_id")
@@ -68,6 +74,9 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.ResponseFormatter do
       :NOT_FOUND ->
         proto_response.status |> Map.get(:message) |> ToTuple.user_error()
 
+      :UNAVAILABLE ->
+        {:error, {:service_unavailable, proto_response.status |> Map.get(:message)}}
+
       _ ->
         log_invalid_response(proto_response, "describe")
     end
@@ -87,6 +96,9 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.ResponseFormatter do
 
       :NOT_FOUND ->
         proto_response.status |> Map.get(:message) |> ToTuple.user_error()
+
+      :UNAVAILABLE ->
+        {:error, {:service_unavailable, proto_response.status |> Map.get(:message)}}
 
       _ ->
         log_invalid_response(proto_response, "delete")
@@ -109,6 +121,9 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.ResponseFormatter do
     else
       :INVALID_ARGUMENT ->
         proto_response.status |> Map.get(:message) |> ToTuple.user_error()
+
+      :UNAVAILABLE ->
+        {:error, {:service_unavailable, proto_response.status |> Map.get(:message)}}
 
       _ ->
         log_invalid_response(proto_response, "list")
