@@ -105,6 +105,35 @@ defmodule RepositoryHub.GithubClientTest do
       assert %{type: "branch", sha: _} = result
     end
 
+    test "get_branch returns unavailable on GitHub 500" do
+      with_mock Tentacat.Repositories.Branches,
+        find: fn _client, _owner, _repo, _branch ->
+          {500, nil, error_response(500)}
+        end do
+        response =
+          get_branch_params()
+          |> GithubClient.get_branch(token: "foobar")
+
+        assert {:error, %{status: status, message: message}} = response
+        assert status == GRPC.Status.unavailable()
+        assert message =~ "GitHub API temporarily unavailable"
+      end
+    end
+
+    test "get_branch returns unavailable on GitHub 429" do
+      with_mock Tentacat.Repositories.Branches,
+        find: fn _client, _owner, _repo, _branch ->
+          {429, nil, error_response(429)}
+        end do
+        response =
+          get_branch_params()
+          |> GithubClient.get_branch(token: "foobar")
+
+        assert {:error, %{status: status}} = response
+        assert status == GRPC.Status.unavailable()
+      end
+    end
+
     test "get_tag" do
       response =
         get_tag_params()
@@ -120,6 +149,21 @@ defmodule RepositoryHub.GithubClientTest do
         |> GithubClient.get_tag(token: "foobar")
 
       assert {:error, %{message: "Tag not found.", status: 5}} = response
+    end
+
+    test "get_tag returns unavailable on GitHub 500" do
+      with_mock Tentacat.Repositories.Tags,
+        list: fn _client, _owner, _repo ->
+          {500, nil, error_response(500)}
+        end do
+        response =
+          get_tag_params()
+          |> GithubClient.get_tag(token: "foobar")
+
+        assert {:error, %{status: status, message: message}} = response
+        assert status == GRPC.Status.unavailable()
+        assert message =~ "GitHub API temporarily unavailable"
+      end
     end
 
     test "get_commit" do
@@ -142,6 +186,21 @@ defmodule RepositoryHub.GithubClientTest do
 
       assert MapSet.new(~w(sha message author_name author_uuid author_avatar_url)a) ==
                MapSet.new(result, &elem(&1, 0))
+    end
+
+    test "get_commit returns unavailable on GitHub 500" do
+      with_mock Tentacat.Commits,
+        find: fn _client, _sha, _owner, _repo ->
+          {500, nil, error_response(500)}
+        end do
+        response =
+          get_commit_params()
+          |> GithubClient.get_commit(token: "foobar")
+
+        assert {:error, %{status: status, message: message}} = response
+        assert status == GRPC.Status.unavailable()
+        assert message =~ "GitHub API temporarily unavailable"
+      end
     end
   end
 
@@ -281,5 +340,14 @@ defmodule RepositoryHub.GithubClientTest do
       commit_sha: "48038c4d189536a0862a2c20ed832dc34bd1c8b2"
     )
     |> Enum.into(%{})
+  end
+
+  defp error_response(status_code) do
+    %HTTPoison.Response{
+      status_code: status_code,
+      body: %{"message" => "Server Error"},
+      headers: [],
+      request: %HTTPoison.Request{headers: [], url: "https://api.github.com"}
+    }
   end
 end

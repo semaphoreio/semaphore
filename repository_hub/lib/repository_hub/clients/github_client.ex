@@ -849,7 +849,7 @@ defmodule RepositoryHub.GithubClient do
 
           {status, _, response} when status == 429 or status >= 500 ->
             log_error([
-              "fetching tag #{params.repo_owner}/#{params.repo_name} : #{params.tag_name}",
+              "fetching commit #{params.repo_owner}/#{params.repo_name} : #{params.commit_sha}",
               "status: #{status}",
               "response: #{inspect_response(response)}"
             ])
@@ -861,7 +861,7 @@ defmodule RepositoryHub.GithubClient do
 
           {status, _, response} ->
             log_error([
-              "fetching tag #{params.repo_owner}/#{params.repo_name} : #{params.tag_name}",
+              "fetching commit #{params.repo_owner}/#{params.repo_name} : #{params.commit_sha}",
               "status: #{status}",
               "response: #{inspect_response(response)}"
             ])
