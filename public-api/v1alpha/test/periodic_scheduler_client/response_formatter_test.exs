@@ -333,6 +333,15 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.ResponseFormatter.Test do
     assert message == "RESOURCE_EXHAUSTED message from server"
   end
 
+  test "process_run_now_response() returns service_unavailable when server returns UNAVAILABLE" do
+    response = run_now_response(:UNAVAILABLE, "GitHub API temporarily unavailable")
+
+    assert {:error, {:service_unavailable, message}} =
+             ResponseFormatter.process_run_now_response(response)
+
+    assert message == "GitHub API temporarily unavailable"
+  end
+
   test "process_run_now_response() returns internal error when it receives {:ok, invalid_data}" do
     assert {:error, {:internal, "Internal error"}} =
              ResponseFormatter.process_run_now_response({:ok, "123"})

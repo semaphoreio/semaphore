@@ -42,10 +42,13 @@ defmodule HooksProcessor.Hooks.Grpc.Server do
            {:ok, hook} <- process_hook(rpc, hook_type, hook, project.repository, user.id) do
         form_response(rpc, hook)
       else
+        {:error, %GRPC.RPCError{status: 14} = rpc_error} ->
+          raise rpc_error
+
         error ->
           raise GRPC.RPCError,
             status: GRPC.Status.invalid_argument(),
-            message: error
+            message: inspect(error)
       end
     end)
   end
