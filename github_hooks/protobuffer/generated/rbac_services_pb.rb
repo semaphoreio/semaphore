@@ -2,7 +2,7 @@
 # Source: rbac.proto for package 'InternalApi.RBAC'
 
 require 'grpc'
-require_relative 'rbac_pb'
+require 'rbac_pb'
 
 module InternalApi
   module RBAC
@@ -100,6 +100,10 @@ module InternalApi
         # The operation is asynchronous.
         #
         rpc :RefreshCollaborators, ::InternalApi::RBAC::RefreshCollaboratorsRequest, ::InternalApi::RBAC::RefreshCollaboratorsResponse
+        #
+        # Fetches information about given subjects
+        #
+        rpc :ListSubjects, ::InternalApi::RBAC::ListSubjectsRequest, ::InternalApi::RBAC::ListSubjectsResponse
       end
 
       Stub = Service.rpc_stub_class

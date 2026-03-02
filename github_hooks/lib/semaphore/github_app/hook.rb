@@ -69,43 +69,43 @@ module Semaphore::GithubApp
         slug = repository["slug"]
         next if slug.blank?
 
-        Semaphore::GithubApp::Collaborators::Worker.perform_in(10, slug)
-        ::Repository.connect_github_app_by_slug(slug)
+        Semaphore::GithubApp::Collaborators::Worker.perform_in(10, repository["slug"], repository["id"])
+        ::Repository.connect_github_app(repository_slug: slug, repository_remote_id: repository["id"])
       end
     end
 
     def self.delete(installation_id)
       installation = get_installation(installation_id)
-      repositories = installation.installation_repositories.select(:slug).to_a
+      repositories = installation.installation_repositories.select(:slug, :remote_id).to_a
       installation.destroy
 
       repositories.each do |repository|
-        Semaphore::GithubApp::Collaborators::Worker.perform_in(10, repository.slug)
-        ::Repository.disconnect_github_app_by_slug(repository.slug)
+        Semaphore::GithubApp::Collaborators::Worker.perform_in(10, repository.slug, repository.remote_id)
+        ::Repository.disconnect_github_app(repository_slug: repository.slug, repository_remote_id: repository.remote_id)
       end
     end
 
     def self.suspend(installation_id)
       installation = get_installation(installation_id)
-      repositories = installation.installation_repositories.select(:slug).to_a
+      repositories = installation.installation_repositories.select(:slug, :remote_id).to_a
       installation.suspended_at = Time.zone.now
       installation.save
 
       repositories.each do |repository|
-        Semaphore::GithubApp::Collaborators::Worker.perform_in(10, repository.slug)
-        ::Repository.disconnect_github_app_by_slug(repository.slug)
+        Semaphore::GithubApp::Collaborators::Worker.perform_in(10, repository.slug, repository.remote_id)
+        ::Repository.disconnect_github_app(repository_slug: repository.slug, repository_remote_id: repository.remote_id)
       end
     end
 
     def self.unsuspend(installation_id)
       installation = get_installation(installation_id)
-      repositories = installation.installation_repositories.select(:slug).to_a
+      repositories = installation.installation_repositories.select(:slug, :remote_id).to_a
       installation.suspended_at = nil
       installation.save
 
       repositories.each do |repository|
-        Semaphore::GithubApp::Collaborators::Worker.perform_in(10, repository.slug)
-        ::Repository.connect_github_app_by_slug(repository.slug)
+        Semaphore::GithubApp::Collaborators::Worker.perform_in(10, repository.slug, repository.remote_id)
+        ::Repository.connect_github_app(repository_slug: repository.slug, repository_remote_id: repository.remote_id)
       end
     end
 
@@ -123,8 +123,8 @@ module Semaphore::GithubApp
         slug = repo["slug"]
 
         # GitHub sends us a webhook before API is ready to admit that changes took place.
-        Semaphore::GithubApp::Collaborators::Worker.perform_in(10, slug)
-        ::Repository.connect_github_app_by_slug(slug)
+        Semaphore::GithubApp::Collaborators::Worker.perform_in(10, slug, repo["id"])
+        ::Repository.connect_github_app(repository_slug: slug, repository_remote_id: repo["id"])
       end
     end
 
@@ -137,8 +137,8 @@ module Semaphore::GithubApp
         slug = repo["slug"]
 
         # GitHub sends us a webhook before API is ready to admit that changes took place.
-        Semaphore::GithubApp::Collaborators::Worker.perform_in(10, slug)
-        ::Repository.disconnect_github_app_by_slug(slug)
+        Semaphore::GithubApp::Collaborators::Worker.perform_in(10, slug, repo["id"])
+        ::Repository.disconnect_github_app(repository_slug: slug, repository_remote_id: repo["id"])
       end
     end
 

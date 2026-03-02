@@ -309,7 +309,7 @@ RSpec.describe ProjectsController, :type => :controller do
         end
 
         it "publish event" do
-          repository = double("Repository", :id => "repo-123")
+          repository = double("Repository", :id => "repo-123", :remote_id => "")
           project = double(Project, :id => "96b0a57c-d9ae-453f-b56f-3b154eb10cda", :organization => @organization,
                                     :repo_owner_and_name => "foo/bar", :repository => repository)
           expect(Project).to receive(:find_by).and_return(project)
@@ -377,7 +377,7 @@ RSpec.describe ProjectsController, :type => :controller do
         end
 
         it "publish event" do
-          repository = double(Repository, :id => "repo-123")
+          repository = double(Repository, :id => "repo-123", :remote_id => "")
           project = double(Project, :id => "96b0a57c-d9ae-453f-b56f-3b154eb10cda", :organization => @organization,
                                     :repo_owner => "foo", :repository => repository)
           expect(Project).to receive(:find_by).and_return(project)
@@ -419,7 +419,7 @@ RSpec.describe ProjectsController, :type => :controller do
         end
 
         it "publish event" do
-          repository = double(Repository, :id => "repo-123")
+          repository = double(Repository, :id => "repo-123", :remote_id => "")
           project = double(Project, :id => "96b0a57c-d9ae-453f-b56f-3b154eb10cda", :organization => @organization,
                                     :repo_owner_and_name => "foo/bar", :repository => repository)
           expect(Project).to receive(:find_by).and_return(project)
@@ -438,7 +438,7 @@ RSpec.describe ProjectsController, :type => :controller do
         end
 
         it "does not publish event when signature is invalid" do
-          repository = double("Repository", :id => "repo-123")
+          repository = double("Repository", :id => "repo-123", :remote_id => "")
           project = double(Project, :id => "96b0a57c-d9ae-453f-b56f-3b154eb10cda", :organization => @organization,
                                     :repo_owner_and_name => "foo/bar", :repository => repository)
           expect(Project).to receive(:find_by).and_return(project)
