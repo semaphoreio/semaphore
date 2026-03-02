@@ -82,7 +82,7 @@ defmodule Rbac.Repo.SamlJitUser do
       integration_id: integration.id,
       org_id: integration.org_id,
       attributes: attributes,
-      email: email,
+      email: String.downcase(email),
       state: :pending
     }
   end
