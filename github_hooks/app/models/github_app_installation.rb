@@ -16,6 +16,12 @@ class GithubAppInstallation < ActiveRecord::Base
       .first
   end
 
+  def self.find_for_remote_id(repository_remote_id)
+    joins(:installation_repositories)
+      .where("github_app_installation_repositories.remote_id = ?", repository_remote_id.to_i)
+      .first
+  end
+
   def self.find_for_organization!(organization_name)
     prefix = organization_slug_prefix_pattern(organization_name)
     joins(:installation_repositories)

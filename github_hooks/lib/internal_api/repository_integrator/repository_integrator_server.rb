@@ -233,8 +233,14 @@ module InternalApi
           return token_service.bitbucket_oauth_token(user)
         end
 
-        if req.integration_type == :GITHUB_APP and req.repository_slug.present?
-          return token_service.github_app_token(req.repository_slug)
+        repository_remote_id = req.repository_remote_id.presence
+        repository_slug = req.repository_slug
+
+        if req.integration_type == :GITHUB_APP and (repository_remote_id.present? or repository_slug.present?)
+          return token_service.github_app_token(
+            :repository_slug => repository_slug,
+            :repository_remote_id => repository_remote_id
+          )
         end
 
         if req.project_id.present?

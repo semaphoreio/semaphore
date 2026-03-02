@@ -146,7 +146,10 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
 
     context "fetching app token with repositry slug" do
       before do
-        allow_any_instance_of(::Semaphore::ProjectIntegrationToken).to receive(:github_app_token).with(repository_slug) {
+        allow_any_instance_of(::Semaphore::ProjectIntegrationToken).to receive(:github_app_token).with(
+          :repository_slug => repository_slug,
+          :repository_remote_id => nil
+        ) {
                                                                          [token, expires_at]
                                                                        }
 
