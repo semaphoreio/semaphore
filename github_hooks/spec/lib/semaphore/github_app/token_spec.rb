@@ -38,6 +38,30 @@ RSpec.describe Semaphore::GithubApp::Token do
       it "returns nil for an invalid repository" do
         expect(described_class.repository_token("semaphoreio/semaphore")).to be_nil
       end
+
+      it "uses repository_remote_id when provided" do
+        FactoryBot.create(
+          :github_app_installation,
+          :installation_id => 13545124,
+          :repositories => [{ "id" => 42, "slug" => "renderedtext/other" }]
+        )
+
+        allow(described_class).to receive(:installation_token).with(13545124).and_return(["token", "2020-12-11T11:41:52Z"])
+
+        expect(described_class.repository_token("renderedtext/guard", :repository_remote_id => 42)).to eq(["token", "2020-12-11T11:41:52Z"])
+      end
+
+      it "falls back to repository_slug when repository_remote_id is not found" do
+        allow(described_class).to receive(:installation_token).with(13545123).and_return(["token", "2020-12-11T11:41:52Z"])
+
+        expect(described_class.repository_token("renderedtext/guard", :repository_remote_id => 999_999)).to eq(["token", "2020-12-11T11:41:52Z"])
+      end
+
+      it "does not use repository_remote_id lookup for zero value" do
+        allow(described_class).to receive(:installation_token).with(13545123).and_return(["token", "2020-12-11T11:41:52Z"])
+
+        expect(described_class.repository_token("renderedtext/guard", :repository_remote_id => 0)).to eq(["token", "2020-12-11T11:41:52Z"])
+      end
     end
   end
 end
