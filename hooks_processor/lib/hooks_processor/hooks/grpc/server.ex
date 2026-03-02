@@ -11,6 +11,8 @@ defmodule HooksProcessor.Hooks.Grpc.Server do
   alias HooksProcessor.Clients.{UserClient, ProjectHubClient, BranchClient, WorkflowClient, RepositoryClient}
   alias InternalApi.RepoProxy.{CreateResponse, CreateBlankResponse}
 
+  @grpc_unavailable GRPC.Status.unavailable()
+
   def describe(_, _) do
     raise GRPC.RPCError, status: GRPC.Status.unimplemented(), message: "Not yet implemented!"
   end
@@ -42,7 +44,7 @@ defmodule HooksProcessor.Hooks.Grpc.Server do
            {:ok, hook} <- process_hook(rpc, hook_type, hook, project.repository, user.id) do
         form_response(rpc, hook)
       else
-        {:error, %GRPC.RPCError{status: 14} = rpc_error} ->
+        {:error, %GRPC.RPCError{status: @grpc_unavailable} = rpc_error} ->
           raise rpc_error
 
         error ->
