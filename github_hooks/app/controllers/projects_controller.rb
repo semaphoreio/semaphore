@@ -105,7 +105,8 @@ class ProjectsController < ApplicationController
           logger.info("Member Webhook")
 
           Semaphore::Events::ProjectCollaboratorsChanged.emit(project.id)
-          Semaphore::GithubApp::Collaborators::Worker.perform_async(project.repo_owner_and_name)
+          repository_remote_id = project.repository.respond_to?(:remote_id) ? project.repository.remote_id : nil
+          Semaphore::GithubApp::Collaborators::Worker.perform_async(project.repo_owner_and_name, repository_remote_id)
 
           next
         end

@@ -14,7 +14,7 @@ RSpec.describe Semaphore::ProjectIntegrationToken do
 
   describe "#github_app_token" do
     it "returns github app token for an repository" do
-      allow(Semaphore::GithubApp::Token).to receive(:repository_token).with("renderedtext/guard").and_return("foo")
+      allow(Semaphore::GithubApp::Token).to receive(:repository_token).with("renderedtext/guard", :repository_remote_id => nil).and_return("foo")
 
       expect(described_class.new.github_app_token("renderedtext/guard")).to eq("foo")
     end
@@ -43,7 +43,8 @@ RSpec.describe Semaphore::ProjectIntegrationToken do
       end
 
       it "returns github_app token" do
-        allow(Semaphore::GithubApp::Token).to receive(:repository_token).with(@project.repo_owner_and_name).and_return("foo")
+        allow(Semaphore::GithubApp::Token).to receive(:repository_token)
+          .with(@project.repo_owner_and_name, :repository_remote_id => @project.repository.remote_id).and_return("foo")
 
         expect(described_class.new.project_token(@project)).to eq("foo")
       end
