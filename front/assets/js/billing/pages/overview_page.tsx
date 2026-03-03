@@ -664,34 +664,38 @@ const TotalSpendingsDiscounted = ({ summary }: { summary: types.Spendings.Summar
               <div className="flex-ns items-center">
                 <div className="w-60-ns flex-ns items-center">
                   <span className="pr1">Total spending</span>
-                  {
-                    <toolbox.Tooltip
-                      stickable={true}
-                      anchor={
-                        <span className="pointer material-symbols-outlined" style="font-size: 1em;" aria-expanded="false">
-                          help
-                        </span>
-                      }
-                      content={
-                        <div className="f7">
-                          <div className="f6 b pb1">Discount</div>
-                          <div className="pb1">
-                            <div className="flex justify-between">
-                              <div className="b pr2">You have a discount of:</div>
-                              <div>{summary?.discount}%</div>
-                            </div>
-                            <div className="flex justify-between">
-                              <div className="b pr2">Discounted from the original price:</div>
-                              <div>-{summary?.discountAmount}</div>
-                            </div>
-                          </div>
-                        </div>
-                      }
-                    />
-                  }
+                  <toolbox.Tooltip
+                    stickable={true}
+                    anchor={
+                      <span className="pointer material-symbols-outlined" style="font-size: 1em;" aria-expanded="false">
+                        help
+                      </span>
+                    }
+                    content={
+                      <div className="f7">
+                        <div className="f6 b pb1">Discount</div>
+                        <div>Your plan includes a {summary?.discount}% discount</div>
+                      </div>
+                    }
+                  />
+                </div>
+                <div className="w-40-ns tr-ns tnum">{summary?.usageTotal}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="bb b--black-075 hover-bg-washed-gray">
+        <div className="ph3 pv2">
+          <div className="flex items-center-ns">
+            <div className="w-100">
+              <div className="flex-ns items-center">
+                <div className="w-60-ns flex-ns items-center">
+                  <span className="pr1">Spend after discount</span>
                 </div>
                 <div className="w-40-ns tr-ns tnum">
-                  <span className="f6 gray ml1">({summary?.discount}%) </span> {summary?.usageTotal}
+                  <span className="f6 gray mr1">(-{summary?.discountAmount})</span>
+                  {summary?.discountedTotal()}
                 </div>
               </div>
             </div>
