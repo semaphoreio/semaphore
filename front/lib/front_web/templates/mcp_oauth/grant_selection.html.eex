@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Authorize MCP Access</title>
+    <style>
+      :root {
+        --bg: #f4f6f8;
+        --panel: #ffffff;
+        --ink: #1f2937;
+        --muted: #4b5563;
+        --line: #dbe1e8;
+        --accent: #0f766e;
+        --accent-hover: #0d625b;
+        --danger: #b42318;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: radial-gradient(circle at top right, #e8f2ff 0, var(--bg) 45%);
+        color: var(--ink);
+        font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      .wrap {
+        max-width: 900px;
+        margin: 2.5rem auto;
+        padding: 0 1rem;
+      }
+
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+        overflow: hidden;
+      }
+
+      .head {
+        padding: 1.5rem;
+        border-bottom: 1px solid var(--line);
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 1.6rem;
+      }
+
+      .meta {
+        margin-top: 0.75rem;
+        color: var(--muted);
+        line-height: 1.45;
+      }
+
+      .notice {
+        margin-top: 0.9rem;
+        padding: 0.75rem 0.9rem;
+        border: 1px solid #f0d5a1;
+        background: #fff9ee;
+        border-radius: 8px;
+        color: #7a4b08;
+        font-size: 0.95rem;
+      }
+
+      .section {
+        padding: 1.25rem 1.5rem;
+      }
+
+      .section + .section {
+        border-top: 1px solid var(--line);
+      }
+
+      h2 {
+        margin: 0 0 0.75rem;
+        font-size: 1.05rem;
+      }
+
+      .help {
+        margin: 0 0 1rem;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+
+      .row {
+        padding: 0.85rem 0;
+        border-top: 1px solid #edf1f5;
+      }
+
+      .row:first-child {
+        border-top: 0;
+      }
+
+      .name {
+        font-weight: 600;
+        margin-bottom: 0.45rem;
+      }
+
+      .permissions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.9rem;
+      }
+
+      .perm {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+
+      .empty {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        justify-content: flex-end;
+      }
+
+      .btn {
+        border: 1px solid transparent;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        padding: 0.65rem 1rem;
+        cursor: pointer;
+      }
+
+      .btn-cancel {
+        background: #fff;
+        border-color: #d8dee6;
+        color: var(--danger);
+      }
+
+      .btn-approve {
+        background: var(--accent);
+        color: #fff;
+      }
+
+      .btn-approve:hover {
+        background: var(--accent-hover);
+      }
+
+      @media (max-width: 640px) {
+        .wrap {
+          margin: 1rem auto;
+        }
+
+        .head,
+        .section {
+          padding: 1rem;
+        }
+
+        .actions {
+          justify-content: stretch;
+        }
+
+        .btn {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <article class="card">
+        <header class="head">
+          <h1>Authorize MCP Access</h1>
+          <p class="meta">
+            Signed in as <strong><%= display_user_name(@user, @user_id) %></strong>.<br />
+            <strong><%= @challenge.client_name %></strong> is requesting access to Semaphore via MCP.
+          </p>
+          <p class="meta">
+            Requested scope: <code><%= @challenge.requested_scope %></code>
+          </p>
+          <%= if @found_existing_grant do %>
+            <p class="notice">
+              You already have an active grant for this client. Submitting this form creates a fresh grant with
+              the selected permissions.
+            </p>
+          <% end %>
+        </header>
+
+        <%= form_for @conn, mcp_oauth_path(@conn, :submit_grant_selection), [method: :post], fn _f -> %>
+          <input type="hidden" name="consent_challenge" value="<%= @challenge_id %>" />
+
+          <section class="section">
+            <h2>Organization Permissions</h2>
+            <p class="help">Choose organization-level permissions this MCP client can use.</p>
+
+            <%= if Enum.empty?(@available_organizations) do %>
+              <p class="empty">No organization permissions are available for your account.</p>
+            <% else %>
+              <%= for org <- @available_organizations do %>
+                <div class="row">
+                  <div class="name"><%= org.org_name %></div>
+                  <div class="permissions">
+                    <label class="perm">
+                      <input
+                        type="checkbox"
+                        name="selection[org_grants][<%= org.org_id %>][can_view]"
+                        value="true"
+                        <%= if org.can_view and preselected_org_permission?(@default_org_grants, org.org_id, :can_view), do: "checked" %>
+                        <%= if !org.can_view, do: "disabled" %>
+                      />
+                      View organization
+                    </label>
+
+                    <label class="perm">
+                      <input
+                        type="checkbox"
+                        name="selection[org_grants][<%= org.org_id %>][can_run_workflows]"
+                        value="true"
+                        <%= if org.can_run_workflows and preselected_org_permission?(@default_org_grants, org.org_id, :can_run_workflows), do: "checked" %>
+                        <%= if !org.can_run_workflows, do: "disabled" %>
+                      />
+                      Run workflows
+                    </label>
+                  </div>
+                </div>
+              <% end %>
+            <% end %>
+          </section>
+
+          <section class="section">
+            <h2>Project Permissions</h2>
+            <p class="help">Choose project-level permissions this MCP client can use.</p>
+
+            <%= if Enum.empty?(@available_projects) do %>
+              <p class="empty">No project permissions are available for your account.</p>
+            <% else %>
+              <%= for project <- @available_projects do %>
+                <div class="row">
+                  <div class="name"><%= project.org_name %> / <%= project.project_name %></div>
+                  <div class="permissions">
+                    <label class="perm">
+                      <input
+                        type="checkbox"
+                        name="selection[project_grants][<%= project.project_id %>][can_view]"
+                        value="true"
+                        <%= if project.can_view and preselected_project_permission?(@default_project_grants, project.project_id, :can_view), do: "checked" %>
+                        <%= if !project.can_view, do: "disabled" %>
+                      />
+                      View project
+                    </label>
+
+                    <label class="perm">
+                      <input
+                        type="checkbox"
+                        name="selection[project_grants][<%= project.project_id %>][can_run_workflows]"
+                        value="true"
+                        <%= if project.can_run_workflows and preselected_project_permission?(@default_project_grants, project.project_id, :can_run_workflows), do: "checked" %>
+                        <%= if !project.can_run_workflows, do: "disabled" %>
+                      />
+                      Run workflows
+                    </label>
+
+                    <label class="perm">
+                      <input
+                        type="checkbox"
+                        name="selection[project_grants][<%= project.project_id %>][can_view_logs]"
+                        value="true"
+                        <%= if project.can_view_logs and preselected_project_permission?(@default_project_grants, project.project_id, :can_view_logs), do: "checked" %>
+                        <%= if !project.can_view_logs, do: "disabled" %>
+                      />
+                      View logs
+                    </label>
+                  </div>
+                </div>
+              <% end %>
+            <% end %>
+          </section>
+
+          <section class="section actions">
+            <button type="submit" name="decision" value="deny" class="btn btn-cancel">Cancel</button>
+            <button type="submit" name="decision" value="approve" class="btn btn-approve">Authorize</button>
+          </section>
+        <% end %>
+      </article>
+    </main>
+  </body>
+</html>

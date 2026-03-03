@@ -5,7 +5,8 @@ auth
 feature
 rbac
 repository_integrator
-organization'
+organization
+mcp_grant'
 
 for element in $list;do
   echo "$element"

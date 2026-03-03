@@ -121,7 +121,7 @@ defmodule Guard.McpOAuth.Token do
   end
 
   defp create_token(auth_code) do
-    JWT.create_token(%{user_id: auth_code.user_id})
+    JWT.create_token(%{user_id: auth_code.user_id, grant_id: auth_code.grant_id})
   end
 
   defp build_response(token) do

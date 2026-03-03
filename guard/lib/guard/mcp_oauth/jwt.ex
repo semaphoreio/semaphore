@@ -7,6 +7,7 @@ defmodule Guard.McpOAuth.JWT do
   - aud: Resource server (https://mcp.{domain})
   - sub: User ID
   - semaphore_user_id: Semaphore user UUID
+  - grant_id: MCP grant UUID (optional, when available)
   - scope: "mcp"
   - exp: Expiration time
   - iat: Issued at time
@@ -46,6 +47,15 @@ defmodule Guard.McpOAuth.JWT do
         "exp" => now + ttl,
         "jti" => Ecto.UUID.generate()
       }
+
+      claims =
+        case Map.get(params, :grant_id) do
+          grant_id when is_binary(grant_id) and grant_id != "" ->
+            Map.put(claims, "grant_id", grant_id)
+
+          _ ->
+            claims
+        end
 
       token = Joken.generate_and_sign!(%{}, claims, signer)
       {:ok, token}

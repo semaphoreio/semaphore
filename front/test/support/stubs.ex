@@ -46,6 +46,7 @@ defmodule Support.Stubs do
     Support.Stubs.InstanceConfig.init()
     Support.Stubs.Switch.init()
     Support.Stubs.Secrethub.init()
+    Support.Stubs.McpGrant.init()
 
     :ok
   end
@@ -85,6 +86,7 @@ defmodule Support.Stubs do
     Support.Stubs.InstanceConfig.Grpc.init()
     Support.Stubs.Switch.Grpc.init()
     Support.Stubs.Secrethub.Grpc.init()
+    Support.Stubs.McpGrant.Grpc.init()
 
     :ok
   end

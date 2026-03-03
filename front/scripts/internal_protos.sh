@@ -41,6 +41,7 @@ instance_config
 usage
 scouter
 license
+mcp_grant
 service_account'
 
 for element in $list;do

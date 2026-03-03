@@ -8,7 +8,7 @@ defmodule Guard.McpOAuth.Server do
   - /register (RFC 7591 - Dynamic Client Registration)
   - /authorize (Authorization endpoint)
   - /token (Token endpoint)
-  - /grant-selection (Consent UI)
+  - /grant-selection (legacy fallback; consent UI is served by Front)
 
   Guard acts as the OAuth Authorization Server, minting JWTs with HS256.
   """
@@ -18,7 +18,7 @@ defmodule Guard.McpOAuth.Server do
   use Plug.Router
 
   alias Guard.McpOAuth.{Authorize, Metadata, Register, Token}
-  alias Guard.Store.{McpOAuthAuthCode, McpOAuthClient}
+  alias Guard.Store.McpOAuthConsentChallenge
 
   # Note: Plug.Parsers is NOT used here because Guard.Id.Api already parses
   # the body before forwarding to this router. Adding Plug.Parsers here
@@ -27,7 +27,7 @@ defmodule Guard.McpOAuth.Server do
   plug(:match)
   plug(:dispatch)
 
-  @auth_code_ttl_seconds 600
+  @consent_ttl_seconds 600
 
   # ====================
   # Protected Resource Metadata (RFC 9728)
@@ -170,8 +170,9 @@ defmodule Guard.McpOAuth.Server do
         # Check if user is authenticated (has session)
         case get_authenticated_user(conn) do
           {:ok, user} ->
-            # User is authenticated, show consent UI
-            render_grant_selection(conn, validated_params, user)
+            # User is authenticated, create one-time consent challenge and
+            # redirect browser flow to Front consent UI.
+            redirect_to_grant_selection(conn, validated_params, user.id)
 
           {:error, :not_authenticated} ->
             # User not authenticated, redirect to login
@@ -211,14 +212,15 @@ defmodule Guard.McpOAuth.Server do
   # ====================
 
   get "/grant-selection" do
-    # This is called after login redirect returns to /authorize
-    # which then redirects here with OAuth params in session
+    # Guard no longer renders or processes browser consent forms.
+    # Front owns the consent page and submission handling.
     render_grant_selection_form(conn)
   end
 
   post "/grant-selection" do
-    # Process consent form submission
-    handle_grant_selection(conn)
+    # Guard no longer renders or processes browser consent forms.
+    # Front owns the consent page and submission handling.
+    render_grant_selection_form(conn)
   end
 
   # ====================
@@ -286,154 +288,61 @@ defmodule Guard.McpOAuth.Server do
     end
   end
 
-  # sobelow_skip ["XSS.SendResp"]
-  defp render_grant_selection(conn, validated_params, user) do
-    # Render consent UI
-    html_response = """
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>Authorize MCP Access</title>
-      <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 40px; background: #f5f5f5; }
-        .container { max-width: 500px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        h1 { color: #333; margin-top: 0; font-size: 24px; }
-        .client-info { background: #f8f9fa; padding: 15px; border-radius: 4px; margin: 20px 0; }
-        .client-name { font-weight: bold; color: #333; }
-        .scope-info { margin: 20px 0; }
-        .scope-item { padding: 8px 0; border-bottom: 1px solid #eee; }
-        .scope-item:last-child { border-bottom: none; }
-        .user-info { color: #666; font-size: 14px; margin-bottom: 20px; }
-        .buttons { display: flex; gap: 10px; margin-top: 20px; }
-        .buttons button, .buttons a { display: inline-flex; align-items: center; justify-content: center; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; text-decoration: none; }
-        .authorize-btn { background: #4CAF50; color: white; flex: 1; }
-        .authorize-btn:hover { background: #45a049; }
-        .cancel-btn { background: #f5f5f5; color: #666; }
-        .cancel-btn:hover { background: #e0e0e0; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <h1>Authorize MCP Access</h1>
-        <p class="user-info">Logged in as: #{html_escape(user.name || user.id)}</p>
-        <div class="client-info">
-          <span class="client-name">#{html_escape(validated_params.client_name)}</span>
-          <p>wants to access your Semaphore account via MCP.</p>
-        </div>
-        <div class="scope-info">
-          <strong>Requested permissions:</strong>
-          <div class="scope-item">Access to MCP tools based on your permissions</div>
-        </div>
-        <form action="/mcp/oauth/grant-selection" method="post">
-          <input type="hidden" name="client_id" value="#{html_escape(validated_params.client_id)}" />
-          <input type="hidden" name="redirect_uri" value="#{html_escape(validated_params.redirect_uri)}" />
-          <input type="hidden" name="code_challenge" value="#{html_escape(validated_params.code_challenge)}" />
-          <input type="hidden" name="state" value="#{html_escape(validated_params.state || "")}" />
-          <input type="hidden" name="scope" value="#{html_escape(validated_params.scope)}" />
-          <input type="hidden" name="_csrf_token" value="#{Plug.CSRFProtection.get_csrf_token()}" />
-          <div class="buttons">
-            <a class="cancel-btn" href="#{html_escape(Authorize.build_error_redirect(validated_params.redirect_uri, "access_denied", "User denied access", validated_params.state))}">Cancel</a>
-            <button type="submit" class="authorize-btn">Authorize</button>
-          </div>
-        </form>
-      </div>
-    </body>
-    </html>
-    """
-
-    conn
-    |> put_resp_content_type("text/html")
-    |> send_resp(200, html_response)
-  end
-
   defp render_grant_selection_form(conn) do
-    # Fallback for direct access to grant-selection
+    # Safe fallback: consent UI moved to Front and must start from /authorize.
     conn
-    |> put_resp_content_type("text/html")
-    |> send_resp(400, "Please start OAuth flow from /authorize endpoint")
+    |> put_resp_content_type("text/plain")
+    |> send_resp(410, "Consent UI moved to Front. Restart OAuth flow at /mcp/oauth/authorize.")
   end
 
-  defp handle_grant_selection(conn) do
-    case get_authenticated_user(conn) do
-      {:ok, user} ->
-        do_handle_grant_selection(conn, user.id)
+  defp redirect_to_grant_selection(conn, validated_params, user_id) do
+    expires_at =
+      DateTime.utc_now()
+      |> DateTime.add(@consent_ttl_seconds, :second)
+      |> DateTime.truncate(:second)
 
-      {:error, :not_authenticated} ->
+    challenge_attrs = %{
+      user_id: user_id,
+      client_id: validated_params.client_id,
+      client_name: validated_params.client_name,
+      redirect_uri: validated_params.redirect_uri,
+      code_challenge: validated_params.code_challenge,
+      code_challenge_method: "S256",
+      state: validated_params.state,
+      requested_scope: validated_params.scope,
+      expires_at: expires_at
+    }
+
+    case McpOAuthConsentChallenge.create(challenge_attrs) do
+      {:ok, challenge} ->
+        grant_selection_url = build_front_grant_selection_url(challenge.id)
+
         conn
-        |> put_resp_content_type("application/json")
-        |> send_resp(
-          401,
-          Jason.encode!(%{error: "unauthorized", error_description: "User not authenticated"})
-        )
+        |> put_resp_header("location", grant_selection_url)
+        |> send_resp(302, "")
+
+      {:error, reason} ->
+        Logger.error("[McpOAuth.Server] Failed to create consent challenge: #{inspect(reason)}")
+
+        error_url =
+          Authorize.build_error_redirect(
+            validated_params.redirect_uri,
+            "server_error",
+            "Failed to initialize consent challenge",
+            validated_params.state
+          )
+
+        conn
+        |> put_resp_header("location", error_url)
+        |> send_resp(302, "")
     end
   end
 
-  defp do_handle_grant_selection(conn, user_id) do
-    params = conn.body_params
+  defp build_front_grant_selection_url(challenge_id) do
+    base_domain = Application.fetch_env!(:guard, :base_domain)
 
-    client_id = params["client_id"]
-    redirect_uri = params["redirect_uri"]
-    code_challenge = params["code_challenge"]
-    state = params["state"]
-
-    Logger.debug("[McpOAuth.Server] Grant selection: client=#{client_id}, user=#{user_id}")
-
-    # Validate the client and redirect_uri again
-    case McpOAuthClient.find_by_client_id(client_id) do
-      {:ok, client} ->
-        if McpOAuthClient.valid_redirect_uri?(client, redirect_uri) do
-          # Generate authorization code
-          code = McpOAuthAuthCode.generate_code()
-
-          expires_at =
-            DateTime.utc_now()
-            |> DateTime.add(@auth_code_ttl_seconds, :second)
-            |> DateTime.truncate(:second)
-
-          auth_code_params = %{
-            code: code,
-            client_id: client_id,
-            user_id: user_id,
-            redirect_uri: redirect_uri,
-            code_challenge: code_challenge,
-            expires_at: expires_at
-          }
-
-          case McpOAuthAuthCode.create(auth_code_params) do
-            {:ok, _auth_code} ->
-              # Redirect back to client with authorization code
-              success_url = Authorize.build_success_redirect(redirect_uri, code, state)
-
-              conn
-              |> put_resp_header("location", success_url)
-              |> send_resp(302, "")
-
-            {:error, reason} ->
-              Logger.error("[McpOAuth.Server] Failed to create auth code: #{inspect(reason)}")
-
-              error_url =
-                Authorize.build_error_redirect(
-                  redirect_uri,
-                  "server_error",
-                  "Failed to create authorization code",
-                  state
-                )
-
-              conn
-              |> put_resp_header("location", error_url)
-              |> send_resp(302, "")
-          end
-        else
-          conn
-          |> put_resp_content_type("text/html")
-          |> send_resp(400, "Invalid redirect_uri")
-        end
-
-      {:error, :not_found} ->
-        conn
-        |> put_resp_content_type("text/html")
-        |> send_resp(400, "Invalid client_id")
-    end
+    "https://mcp.#{base_domain}/mcp/oauth/grant-selection?" <>
+      URI.encode_query(%{"consent_challenge" => challenge_id})
   end
 
   defp redirect_to_login(conn, validated_params) do
@@ -455,16 +364,5 @@ defmodule Guard.McpOAuth.Server do
     conn
     |> put_resp_header("location", login_url)
     |> send_resp(302, "")
-  end
-
-  defp html_escape(nil), do: ""
-
-  defp html_escape(string) when is_binary(string) do
-    string
-    |> String.replace("&", "&amp;")
-    |> String.replace("<", "&lt;")
-    |> String.replace(">", "&gt;")
-    |> String.replace("\"", "&quot;")
-    |> String.replace("'", "&#39;")
   end
 end

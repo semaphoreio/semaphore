@@ -22,6 +22,7 @@ defmodule Support.FakeServices do
     GrpcMock.defmock(RepositoryMock, for: InternalApi.Repository.RepositoryService.Service)
     GrpcMock.defmock(SelfHostedAgentsMock, for: InternalApi.SelfHosted.SelfHostedAgents.Service)
     GrpcMock.defmock(GuardMock, for: InternalApi.Guard.Guard.Service)
+    GrpcMock.defmock(McpGrantMock, for: InternalApi.McpGrant.McpGrantService.Service)
     GrpcMock.defmock(RBACMock, for: InternalApi.RBAC.RBAC.Service)
     GrpcMock.defmock(GroupsMock, for: InternalApi.Groups.Groups.Service)
 
@@ -109,6 +110,7 @@ defmodule Support.FakeServices do
         UserMock,
         SelfHostedAgentsMock,
         GuardMock,
+        McpGrantMock,
         RBACMock,
         GroupsMock,
         PermissionPatrolMock,

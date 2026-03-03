@@ -88,6 +88,9 @@ defmodule FrontWeb.Router do
   scope "/", FrontWeb do
     pipe_through(:browser)
 
+    get("/mcp/oauth/grant-selection", McpOAuthController, :grant_selection)
+    post("/mcp/oauth/grant-selection", McpOAuthController, :submit_grant_selection)
+
     post("/sidebar/star", SidebarController, :star)
     post("/sidebar/unstar", SidebarController, :unstar)
 

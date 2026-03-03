@@ -615,7 +615,7 @@ spec:
   host_regex: true
   prefix: /mcp/oauth/grant-selection
   rewrite: /mcp/oauth/grant-selection
-  service: guard-id-http-api.{{ .Release.Namespace }}:80
+  service: project-page.{{ .Release.Namespace }}:80
   bypass_auth: false
   precedence: 210
   timeout_ms: 30000
