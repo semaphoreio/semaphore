@@ -24,11 +24,12 @@ defmodule RepositoryHub.RepositoryIntegratorClient do
   """
   @spec get_token(RepositoryIntegrator.IntegrationType.t(), String.t(), opts()) ::
           Toolkit.tupled_result(GetTokenResponse.t())
-  def get_token(integration_type, repository_slug, opts \\ []) do
+  def get_token(integration_type, repository_slug, repository_remote_id, opts \\ []) do
     opts = with_defaults(opts, timeout: 10_000)
 
     request = %GetTokenRequest{
       repository_slug: repository_slug,
+      repository_remote_id: repository_remote_id,
       integration_type: integration_type
     }
 
