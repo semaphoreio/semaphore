@@ -2,6 +2,22 @@ class GithubAppInstallation < ActiveRecord::Base
   has_many :installation_repositories, :class_name => "GithubAppInstallationRepository", :inverse_of => :installation, :dependent => :delete_all, :primary_key => :installation_id, :foreign_key => :installation_id
   has_many :contributors, :class_name => "GithubAppCollaborator", :inverse_of => :installation, :dependent => :delete_all, :primary_key => :installation_id, :foreign_key => :installation_id
 
+  def self.get(repository_slug: nil, repository_remote_id: nil)
+    installation = nil
+    if repository_remote_id.present? && repository_remote_id.to_i.positive?
+      installation = find_for_remote_id(repository_remote_id)
+    end
+    installation || find_for_repository(repository_slug)
+  end
+
+  def self.get!(repository_slug: nil, repository_remote_id: nil)
+    installation = nil
+    if repository_remote_id.present? && repository_remote_id.to_i.positive?
+      installation = find_for_remote_id(repository_remote_id)
+    end
+    installation || find_for_repository!(repository_slug)
+  end
+
   def self.find_for_repository!(repository_slug)
     normalized_slug = canonical_slug(normalize_slug(repository_slug).to_s)
     joins(:installation_repositories)

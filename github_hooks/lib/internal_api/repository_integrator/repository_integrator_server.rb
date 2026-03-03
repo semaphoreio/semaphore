@@ -87,7 +87,7 @@ module InternalApi
         project = ::Project.find(req.project_id)
 
         if project.repository.integration_type == "github_app"
-          installation = ::GithubAppInstallation.find_for_repository(project.repo_owner_and_name)
+          installation = ::GithubAppInstallation.get(repository_slug: project.repo_owner_and_name, repository_remote_id: project.repository.remote_id)
           valid = installation.present?
 
           if installation.present?

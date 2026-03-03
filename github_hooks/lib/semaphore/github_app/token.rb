@@ -14,11 +14,7 @@ class Semaphore::GithubApp::Token
 
   def self.repository_token(repository_slug: nil, repository_remote_id: nil)
     repository_slug ||= ""
-    installation = nil
-    if repository_remote_id.present? && repository_remote_id.to_i.positive?
-      installation = GithubAppInstallation.find_for_remote_id(repository_remote_id)
-    end
-    installation ||= GithubAppInstallation.find_for_repository!(repository_slug)
+    installation = GithubAppInstallation.get!(repository_slug: repository_slug, repository_remote_id: repository_remote_id)
 
     installation_token(installation.installation_id)
   rescue ActiveRecord::RecordNotFound

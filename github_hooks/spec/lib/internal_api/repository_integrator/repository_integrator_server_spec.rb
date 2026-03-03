@@ -326,6 +326,23 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
           expect(response.integration_scope).to eq(:FULL_CONNECTION)
         end
       end
+
+      context "when repository slug does not match but repository remote id does" do
+        before do
+          @project.repository.update!(:remote_id => "42")
+          FactoryBot.create(
+            :github_app_installation,
+            :repositories => [{ "id" => 42, "slug" => "acme/another-repository" }]
+          )
+        end
+
+        it "returns as valid with full connection" do
+          response = server.check_token(@req, call)
+
+          expect(response.valid).to be(true)
+          expect(response.integration_scope).to eq(:FULL_CONNECTION)
+        end
+      end
     end
 
     context "for github app integration" do
