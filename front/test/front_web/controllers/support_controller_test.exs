@@ -80,6 +80,72 @@ defmodule FrontWeb.SupportControllerTest do
       end
     end
 
+    test "redirects to pylon support URL when support is restricted and user has contact support permission",
+         %{
+           conn: conn,
+           organization: organization
+         } do
+      org_id = organization.id
+
+      with_mocks([
+        {FeatureProvider, [],
+         [
+           feature_enabled?: fn
+             :pylon_support, [param: ^org_id] -> true
+             :restricted_support, [param: ^org_id] -> true
+             _, _ -> false
+           end
+         ]},
+        {Front.Pylon, [],
+         [
+           new_ticket_location: fn _, ^org_id ->
+             {:ok, "https://pylon-support.test"}
+           end
+         ]}
+      ]) do
+        conn =
+          conn
+          |> get("/support/pylon")
+
+        assert redirected_to(conn) == "https://pylon-support.test"
+      end
+    end
+
+    test "shows alert when support is restricted and user lacks contact support permission", %{
+      conn: conn,
+      organization: organization,
+      user: user
+    } do
+      org_id = organization.id
+      Support.Stubs.PermissionPatrol.remove_all_permissions()
+
+      Support.Stubs.PermissionPatrol.allow_everything_except(
+        org_id,
+        user.id,
+        "organization.contact_support"
+      )
+
+      with_mocks([
+        {FeatureProvider, [],
+         [
+           feature_enabled?: fn
+             :pylon_support, [param: ^org_id] -> true
+             :restricted_support, [param: ^org_id] -> true
+             _, _ -> false
+           end
+         ]}
+      ]) do
+        conn =
+          conn
+          |> get("/support/pylon")
+
+        assert redirected_to(conn) == "/"
+
+        assert get_flash(conn, :alert) ==
+                 "Your access to Semaphore support has been limited. Please contact your organization's Admin for more information."
+      end
+    end
+
     test "shows alert when feature is disabled", %{conn: conn} do
       with_mocks([
         {FeatureProvider, [],
