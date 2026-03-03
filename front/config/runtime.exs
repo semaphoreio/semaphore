@@ -138,11 +138,13 @@ pylon_jwt_ttl_seconds =
   end
 
 config :front,
-  pylon_org_slug: System.get_env("PYLON_ORG_SLUG"),
+  pylon_org_slug: System.get_env("PYLON_ORG_SLUG", "semaphore"),
   pylon_jwt_secret: System.get_env("PYLON_JWT_SECRET"),
   pylon_jwt_issuer: System.get_env("PYLON_JWT_ISSUER"),
   pylon_jwt_callback_url: System.get_env("PYLON_JWT_CALLBACK_URL"),
   pylon_jwt_ttl_seconds: pylon_jwt_ttl_seconds,
+  pylon_chat_app_id: System.get_env("PYLON_CHAT_APP_ID"),
+  pylon_chat_identity_secret: System.get_env("PYLON_CHAT_IDENTITY_SECRET"),
   zendesk_support_url: System.get_env("ZENDESK_SUPPORT_URL") || "http://support.semaphoreci.test",
   zendesk_jwt_url: System.get_env("ZENDESK_JWT_URL") || "http://support.semaphoreci.test",
   zendesk_jwt_secret: System.get_env("ZENDESK_JWT_SECRET") || "secret",
