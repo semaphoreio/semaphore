@@ -32,13 +32,94 @@ defmodule FrontWeb.SharedHelpers do
 
   @spec livechat_enabled?(Conn.t()) :: {boolean, String.t()}
   def livechat_enabled?(conn) do
-    feature_enabled? =
+    zendesk_live_chat_enabled? =
       FeatureProvider.feature_enabled?(:zendesk_live_chat, param: conn.assigns[:organization_id])
 
     zendesk_snippet_id = Application.get_env(:front, :zendesk_snippet_id, "")
 
-    enabled? = feature_enabled? && zendesk_snippet_id != ""
+    # Pylon chat takes precedence over Zendesk live chat.
+    enabled? =
+      zendesk_live_chat_enabled? && zendesk_snippet_id != "" && not pylon_chat_enabled?(conn)
+
     {enabled?, zendesk_snippet_id}
+  end
+
+  @spec pylon_chat_widget_settings(Conn.t()) :: map() | nil
+  def pylon_chat_widget_settings(conn) do
+    org_id = conn.assigns[:organization_id]
+
+    user =
+      conn.assigns
+      |> Map.get(:layout_model, %{})
+      |> Map.get(:user)
+
+    with true <- pylon_chat_enabled?(conn),
+         %{email: email} <- user,
+         true <- is_binary(email) and email != "",
+         {:ok, app_id} <- pylon_chat_app_id(),
+         {:ok, email_hash} <- pylon_chat_email_hash(email) do
+      %{
+        "app_id" => app_id,
+        "email" => email,
+        "name" => Map.get(user, :name, ""),
+        "email_hash" => email_hash,
+        "account_external_id" => org_id
+      }
+      |> maybe_put_avatar_url(Map.get(user, :avatar_url))
+    else
+      _ -> nil
+    end
+  end
+
+  @spec pylon_chat_enabled?(Conn.t()) :: boolean()
+  def pylon_chat_enabled?(conn) do
+    org_id = conn.assigns[:organization_id]
+
+    conn.assigns[:authorization] == :member and is_binary(org_id) and org_id != "" and
+      FeatureProvider.feature_enabled?(:pylon_chat, param: org_id)
+  end
+
+  @spec pylon_chat_settings_json(map()) :: String.t()
+  def pylon_chat_settings_json(settings), do: Poison.encode!(settings)
+
+  @spec pylon_chat_script_url(String.t()) :: String.t()
+  def pylon_chat_script_url(app_id), do: "https://widget.usepylon.com/widget/#{app_id}"
+
+  defp maybe_put_avatar_url(settings, avatar_url)
+       when is_binary(avatar_url) and avatar_url != "" do
+    Map.put(settings, "avatar_url", avatar_url)
+  end
+
+  defp maybe_put_avatar_url(settings, _), do: settings
+
+  defp pylon_chat_app_id do
+    case Application.get_env(:front, :pylon_chat_app_id) do
+      value when is_binary(value) and value != "" -> {:ok, value}
+      _ -> {:error, :missing_pylon_chat_app_id}
+    end
+  end
+
+  defp pylon_chat_email_hash(email) do
+    with {:ok, secret} <- pylon_chat_identity_secret(),
+         {:ok, secret_bytes} <- decode_hex(secret) do
+      {:ok,
+       :crypto.mac(:hmac, :sha256, secret_bytes, email)
+       |> Base.encode16(case: :lower)}
+    end
+  end
+
+  defp pylon_chat_identity_secret do
+    case Application.get_env(:front, :pylon_chat_identity_secret) do
+      value when is_binary(value) and value != "" -> {:ok, value}
+      _ -> {:error, :missing_pylon_chat_identity_secret}
+    end
+  end
+
+  defp decode_hex(value) do
+    case Base.decode16(value, case: :mixed) do
+      {:ok, decoded} -> {:ok, decoded}
+      :error -> {:error, :invalid_pylon_chat_identity_secret}
+    end
   end
 
   @spec gtag_enabled?(Conn.t()) :: {boolean, String.t()}
@@ -457,11 +538,15 @@ defmodule FrontWeb.SharedHelpers do
     valid_permissions? = layout_model.permissions["organization.contact_support"]
 
     with_zendesk_support? = FeatureProvider.feature_enabled?(:zendesk_support, param: org_id)
+    with_pylon_help_dashboard? = pylon_help_dashboard_enabled_for_org?(org_id)
 
     organization_restricted? =
       FeatureProvider.feature_enabled?(:restricted_support, param: org_id)
 
     cond do
+      with_pylon_help_dashboard? ->
+        nil
+
       not with_zendesk_support? ->
         nil
 
@@ -491,20 +576,20 @@ defmodule FrontWeb.SharedHelpers do
     org_id = conn.assigns[:organization_id]
     valid_permissions? = layout_model.permissions["organization.contact_support"]
 
-    with_pylon_support? = FeatureProvider.feature_enabled?(:pylon_support, param: org_id)
+    with_pylon_help_dashboard? = pylon_help_dashboard_enabled_for_org?(org_id)
 
     organization_restricted? =
       FeatureProvider.feature_enabled?(:restricted_support, param: org_id)
 
     cond do
-      not with_pylon_support? ->
+      not with_pylon_help_dashboard? ->
         nil
 
       organization_restricted? and not valid_permissions? ->
         Phoenix.View.render(FrontWeb.LayoutView, "page_header/_menu_card.html",
           options: [disabled: true],
           card_url: "#",
-          card_title: "Contact Support (Experimental)",
+          card_title: "Support Portal",
           card_description: "Pylon knowledge base and support",
           tooltip:
             "Your access to Semaphore support has been limited. Please contact your organization's Admin for more information."
@@ -514,7 +599,7 @@ defmodule FrontWeb.SharedHelpers do
         Phoenix.View.render(FrontWeb.LayoutView, "page_header/_menu_card.html",
           options: [target: "_blank", rel: "noopener"],
           card_url: RouteHelper.support_path(conn, :pylon),
-          card_title: "Contact Support (Experimental)",
+          card_title: "Support Portal",
           card_description: "Pylon knowledge base and support",
           tooltip: false
         )
@@ -526,41 +611,14 @@ defmodule FrontWeb.SharedHelpers do
     org_id = conn.assigns[:organization_id]
     valid_permissions? = layout_model.permissions["organization.contact_support"]
 
-    with_zendesk_support? = FeatureProvider.feature_enabled?(:zendesk_support, param: org_id)
-
-    organization_restricted? =
-      FeatureProvider.feature_enabled?(:restricted_support, param: org_id)
-
-    on_premium_support? = FeatureProvider.feature_enabled?(:premium_support, param: org_id)
-    on_advanced_support? = FeatureProvider.feature_enabled?(:advanced_support, param: org_id)
-
-    cond do
-      not with_zendesk_support? ->
-        nil
-
-      organization_restricted? and not valid_permissions? ->
-        nil
-
-      organization_restricted? and valid_permissions? ->
-        Phoenix.View.render(FrontWeb.LayoutView, "page_header/_menu_card.html",
-          options: [target: "_blank", rel: "noopener"],
-          card_url: Front.Zendesk.my_tickets_location(),
-          card_title: "My support requests",
-          card_description: "Tickets you have previously opened",
-          tooltip: false
-        )
-
-      on_premium_support? or on_advanced_support? ->
-        Phoenix.View.render(FrontWeb.LayoutView, "page_header/_menu_card.html",
-          options: [target: "_blank", rel: "noopener"],
-          card_url: Front.Zendesk.my_tickets_location(),
-          card_title: "My support requests",
-          card_description: "Tickets you have previously opened",
-          tooltip: false
-        )
-
-      true ->
-        nil
+    if show_support_requests_card?(org_id, valid_permissions?) do
+      Phoenix.View.render(FrontWeb.LayoutView, "page_header/_menu_card.html",
+        options: [target: "_blank", rel: "noopener"],
+        card_url: Front.Zendesk.my_tickets_location(),
+        card_title: "My support requests",
+        card_description: "Tickets you have previously opened",
+        tooltip: false
+      )
     end
   end
 
@@ -604,6 +662,40 @@ defmodule FrontWeb.SharedHelpers do
     else
       support_work_hours()
     end
+  end
+
+  @spec pylon_help_dashboard_enabled?(Conn.t()) :: boolean()
+  def pylon_help_dashboard_enabled?(conn) do
+    org_id = conn.assigns[:organization_id]
+    pylon_help_dashboard_enabled_for_org?(org_id)
+  end
+
+  defp pylon_help_dashboard_enabled_for_org?(org_id) do
+    feature_enabled_any?(org_id, [
+      :advanced_support,
+      :premium_support,
+      :"support-tier-3",
+      :"support-tier-4"
+    ])
+  end
+
+  defp show_support_requests_card?(org_id, valid_permissions?) do
+    with_zendesk_support? = FeatureProvider.feature_enabled?(:zendesk_support, param: org_id)
+    with_pylon_help_dashboard? = pylon_help_dashboard_enabled_for_org?(org_id)
+
+    organization_restricted? =
+      FeatureProvider.feature_enabled?(:restricted_support, param: org_id)
+
+    premium_or_advanced? = feature_enabled_any?(org_id, [:premium_support, :advanced_support])
+
+    with_zendesk_support? and not with_pylon_help_dashboard? and
+      ((organization_restricted? and valid_permissions?) or
+         (not organization_restricted? and premium_or_advanced?))
+  end
+
+  defp feature_enabled_any?(org_id, features) do
+    features
+    |> Enum.any?(&FeatureProvider.feature_enabled?(&1, param: org_id))
   end
 
   def pluralize(string, count) do
