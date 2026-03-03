@@ -65,21 +65,15 @@ defmodule Front.Pylon do
   end
 
   def new_ticket_location(user, org_id) do
-    with {:ok, token} <- JWT.generate(user, org_id),
-         {:ok, org_slug} <- org_slug() do
+    with {:ok, token} <- JWT.generate(user, org_id) do
       location =
-        "#{callback_url()}?orgSlug=#{URI.encode_www_form(org_slug)}&access_token=#{URI.encode_www_form(token)}"
+        "#{callback_url()}?orgSlug=#{URI.encode_www_form(org_slug())}&access_token=#{URI.encode_www_form(token)}"
 
       {:ok, location}
     end
   end
 
-  defp org_slug do
-    case Application.get_env(:front, :pylon_org_slug) do
-      value when is_binary(value) and value != "" -> {:ok, value}
-      _ -> {:error, :missing_pylon_org_slug}
-    end
-  end
+  defp org_slug, do: Application.get_env(:front, :pylon_org_slug, "semaphore")
 
   defp callback_url do
     case Application.get_env(:front, :pylon_jwt_callback_url) do
