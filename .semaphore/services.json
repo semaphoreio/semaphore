@@ -145,6 +145,12 @@
         "component": "loghub2"
       }
     ],
+    "MCP Server": [
+      {
+        "path": "mcp_server",
+        "component": "mcp-server"
+      }
+    ],
     "Zebra": [
       {
         "path": "zebra",

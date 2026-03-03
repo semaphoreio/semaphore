@@ -16,7 +16,7 @@ defmodule Front.Browser.WorkflowPage.FaviconTest do
     {:ok, context}
   end
 
-  test "when pipeline is running favicon is in running state", params do
+  browser_test "when pipeline is running favicon is in running state", params do
     Support.Stubs.Pipeline.change_state(params.pipeline.id, :running)
     page = open(params)
 
@@ -26,7 +26,7 @@ defmodule Front.Browser.WorkflowPage.FaviconTest do
     assert Page.current_favicon(page) == "/images/favicon-running.svg"
   end
 
-  test "when pipeline is running favicon is in passed state", params do
+  browser_test "when pipeline is running favicon is in passed state", params do
     Support.Stubs.Pipeline.change_state(params.pipeline.id, :passed)
     page = open(params)
 
@@ -36,7 +36,7 @@ defmodule Front.Browser.WorkflowPage.FaviconTest do
     assert Page.current_favicon(page) == "/images/favicon-passed.svg"
   end
 
-  test "when pipeline is running favicon is in failed state", params do
+  browser_test "when pipeline is running favicon is in failed state", params do
     Support.Stubs.Pipeline.change_state(params.pipeline.id, :failed)
     page = open(params)
 
@@ -46,7 +46,7 @@ defmodule Front.Browser.WorkflowPage.FaviconTest do
     assert Page.current_favicon(page) == "/images/favicon-failed.svg"
   end
 
-  test "when pipeline is running favicon is in stopping state", params do
+  browser_test "when pipeline is running favicon is in stopping state", params do
     Support.Stubs.Pipeline.change_state(params.pipeline.id, :stopping)
     page = open(params)
 
@@ -56,7 +56,7 @@ defmodule Front.Browser.WorkflowPage.FaviconTest do
     assert Page.current_favicon(page) == "/images/favicon-stopped.svg"
   end
 
-  test "when pipeline is running favicon is in stopped state", params do
+  browser_test "when pipeline is running favicon is in stopped state", params do
     Support.Stubs.Pipeline.change_state(params.pipeline.id, :stopped)
     page = open(params)
 
@@ -66,7 +66,7 @@ defmodule Front.Browser.WorkflowPage.FaviconTest do
     assert Page.current_favicon(page) == "/images/favicon-stopped.svg"
   end
 
-  test "when pipeline is running favicon is in pending state", params do
+  browser_test "when pipeline is running favicon is in pending state", params do
     Support.Stubs.Pipeline.change_state(params.pipeline.id, :pending)
     page = open(params)
 
@@ -76,7 +76,7 @@ defmodule Front.Browser.WorkflowPage.FaviconTest do
     assert Page.current_favicon(page) == "/images/favicon-queued.svg"
   end
 
-  test "when pipeline is running favicon is in canceled state", params do
+  browser_test "when pipeline is running favicon is in canceled state", params do
     Support.Stubs.Pipeline.change_state(params.pipeline.id, :canceled)
     page = open(params)
 
@@ -86,7 +86,7 @@ defmodule Front.Browser.WorkflowPage.FaviconTest do
     assert Page.current_favicon(page) == "/images/favicon-not-completed.svg"
   end
 
-  test "pipeline state change", params do
+  browser_test "pipeline state change", params do
     page = open(params)
 
     Process.sleep(@pipeline_status_response_limit)

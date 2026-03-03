@@ -32,6 +32,7 @@ defmodule Front.Mixfile do
   defp deps do
     [
       {:plug_cowboy, "~> 2.5"},
+      {:etag_plug, "~> 1.0"},
       {:phoenix, "~> 1.6.0", override: true},
       {:phoenix_html, "~> 3.0.0", override: true},
       {:phoenix_ecto, "~> 4.0"},
@@ -51,7 +52,7 @@ defmodule Front.Mixfile do
       {:tentacat, github: "renderedtext/tentacat"},
       {:httpoison, ">= 0.0.0"},
       {:uuid, "~> 1.1"},
-      {:wallaby, "~> 0.23.0", runtime: false, only: [:dev, :test]},
+      {:wallaby, "~> 0.30", runtime: false, only: [:dev, :test]},
       {:fun_registry, github: "renderedtext/fun-registry", only: [:dev, :test]},
       {:grpc_mock, github: "renderedtext/grpc-mock", only: [:dev, :test]},
       {:yaml_elixir, "~> 2.4"},

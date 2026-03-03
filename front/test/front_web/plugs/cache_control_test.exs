@@ -16,5 +16,13 @@ defmodule FrontWeb.Plugs.CacheControlTest do
                "no-cache, private, must-revalidate"
              ]
     end
+
+    test "can be set to use etag-friendly caching", %{conn: conn} do
+      conn = CacheControl.call(conn, :etag_cache)
+
+      assert Plug.Conn.get_resp_header(conn, "cache-control") == [
+               "private, max-age=0, must-revalidate"
+             ]
+    end
   end
 end

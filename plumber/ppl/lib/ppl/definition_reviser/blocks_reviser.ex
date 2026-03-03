@@ -28,6 +28,7 @@ defmodule Ppl.DefinitionReviser.BlocksReviser do
   @workflow_triggered_by "SEMAPHORE_WORKFLOW_TRIGGERED_BY"
   @git_commit_author "SEMAPHORE_GIT_COMMIT_AUTHOR"
   @git_committer "SEMAPHORE_GIT_COMMITTER"
+  @organization_id "SEMAPHORE_ORGANIZATION_ID"
 
   def revise_blocks_definition(definition, ppl_req) do
     with {:ok, definition} <- do_revise_blocks_definition(definition, ppl_req, "blocks"),
@@ -259,6 +260,7 @@ defmodule Ppl.DefinitionReviser.BlocksReviser do
   defp basic_env_vars(ppl_req, ppl_def, ppl, promoter, triggerer, block_def) do
     snapshot_id = get_snapshot_id(ppl_req.request_args)
     block_name = get_block_name(block_def)
+    organization_id = get_organization_id(ppl_req.request_args)
 
     [
      %{"name" => @workflow_id_env_var_name, "value" => "#{ppl_req.wf_id}"},
@@ -279,6 +281,7 @@ defmodule Ppl.DefinitionReviser.BlocksReviser do
      %{"name" => @workflow_triggered_by, "value" => triggerer},
      %{"name" => @git_commit_author, "value" => commit_author(ppl_req.source_args)},
      %{"name" => @git_committer, "value" => committer(ppl_req.source_args)},
+     %{"name" => @organization_id, "value" => organization_id},
     ]
     |> Enum.concat(snapshot_id_env_var(snapshot_id))
   end
@@ -310,6 +313,8 @@ defmodule Ppl.DefinitionReviser.BlocksReviser do
     do: [%{"name" => @snapshot_id_env_var_name, "value" => "#{snapshot_id}"}]
 
   defp get_snapshot_id(request_args), do: Map.get(request_args, "snapshot_id", "")
+
+  defp get_organization_id(request_args), do: Map.get(request_args, "organization_id", "")
 
   defp commit_author(source_args) when is_map(source_args),
     do: Map.get(source_args, "commit_author", "")

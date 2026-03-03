@@ -24,7 +24,7 @@ test.bench: build
 #
 
 INTERNAL_API_BRANCH ?= master
-INTERNAL_API_MODULES ?= include/internal_api/response_status,loghub2,server_farm.mq.job_state_exchange
+INTERNAL_API_MODULES ?= include/internal_api/response_status,loghub2,server_farm.mq.job_state_exchange,server_farm.job
 pb.gen:
 	rm -rf /tmp/internal_api
 	git clone git@github.com:renderedtext/internal_api.git /tmp/internal_api && (cd /tmp/internal_api && git checkout $(INTERNAL_API_BRANCH) && cd -)

@@ -1,0 +1,12 @@
+root = "."
+tmp_dir = "tmp/dev"
+
+[build]
+cmd = "go build -o ./tmp/dev/mcp_server ./cmd/mcp_server"
+bin = "./tmp/dev/mcp_server"
+args = ["-http", ":3001"]
+include_ext = ["go"]
+exclude_dir = ["tmp", "vendor"]
+
+[env]
+MCP_USE_STUBS = "true"

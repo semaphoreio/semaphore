@@ -201,3 +201,15 @@ func (s *S3Storage) ReadFileAsReader(ctx context.Context, fileName string) (io.R
 
 	return response.Body, nil
 }
+
+func (s *S3Storage) DeleteFile(ctx context.Context, fileName string) error {
+	defer watchman.Benchmark(time.Now(), "s3.delete")
+
+	input := s3.DeleteObjectInput{
+		Bucket: &s.Bucket,
+		Key:    &fileName,
+	}
+
+	_, err := s.Client.DeleteObject(ctx, &input)
+	return err
+}

@@ -50,6 +50,12 @@ This will allow a connection to a private remote registry using the provided cer
 
 ## Git, GitHub, BitBucket, and GitLab
 
+### I am getting the error "Error while setting deploy keys on GitHub". How do I fix it?
+
+This can happen if your GitHub organization has deploy keys disabled.
+
+To enable deploy keys, see the [GitHub deploy keys page](../using-semaphore/connect-github#deploy-keys).
+
 ### Can I build a project with git submodules?
 
 Yes. To do that, follow these steps:

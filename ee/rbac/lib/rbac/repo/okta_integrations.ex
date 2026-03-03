@@ -10,12 +10,15 @@ defmodule Rbac.Repo.OktaIntegration do
     :saml_certificate_fingerprint
   ]
 
+  alias Rbac.Okta.SessionExpiration
+
   @updatable_fields [
     :saml_issuer,
     :saml_certificate_fingerprint,
     :scim_token_hash,
     :sso_url,
-    :jit_provisioning_enabled
+    :jit_provisioning_enabled,
+    :session_expiration_minutes
   ]
 
   schema "okta_integrations" do
@@ -28,6 +31,7 @@ defmodule Rbac.Repo.OktaIntegration do
     field(:saml_certificate_fingerprint, :string)
     field(:scim_token_hash, :string)
     field(:jit_provisioning_enabled, :boolean, default: false)
+    field(:session_expiration_minutes, :integer)
 
     timestamps()
   end
@@ -44,14 +48,33 @@ defmodule Rbac.Repo.OktaIntegration do
       name: "okta_integrations_idempotency_token_index",
       message: "Idempotent Request"
     )
+    |> validate_number(:session_expiration_minutes,
+      greater_than: 0,
+      less_than_or_equal_to: SessionExpiration.max_minutes()
+    )
   end
 
-  def insert_or_update(fields \\ []) do
-    # Each time you want to make any change to the integration, token will be reset
-    fields = Keyword.put(fields, :scim_token_hash, "")
+  def insert_or_update(fields \\ [], opts \\ []) do
+    reset_scim_token = Keyword.get(opts, :reset_scim_token, true)
+
+    fields =
+      if reset_scim_token do
+        # Reset SCIM token only when integration credentials change.
+        Keyword.put(fields, :scim_token_hash, "")
+      else
+        fields
+      end
+
     integration = struct(__MODULE__, fields)
 
     changeset = Rbac.Repo.OktaIntegration.changeset(integration)
+
+    conflict_excluded =
+      if reset_scim_token do
+        [:id, :org_id, :inserted_at]
+      else
+        [:id, :org_id, :inserted_at, :scim_token_hash]
+      end
 
     case find_idempotent_record(fields[:org_id], fields[:idempotency_token]) do
       {:ok, integration} ->
@@ -60,7 +83,7 @@ defmodule Rbac.Repo.OktaIntegration do
       {:error, :not_found} ->
         Rbac.Repo.insert(changeset,
           returning: true,
-          on_conflict: {:replace_all_except, [:id, :org_id, :inserted_at]},
+          on_conflict: {:replace_all_except, conflict_excluded},
           conflict_target: :org_id
         )
     end

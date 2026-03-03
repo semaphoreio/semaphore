@@ -27,6 +27,12 @@ Before you can view your tests in the Test tabs, you need to perform a one-time 
 
 Once test reports are configured, [flaky test detection](../tests/flaky-tests) feature is automatically enabled.
 
+### Generating reports optimized for AI {#ai}
+
+In addition to JUnit reports, you can generate reports optimized for AI consumption. To enable this feature add `--generate-mcp-summary` to the [publish](#step2) and [merge](#step3) commands.
+
+This option generates a `mcp-summary.json` artifact that's optimized for AI agent consumption.
+
 ### Step 1 - Format {#step1}
 
 The JUnit XML format was created by the [JUnit Project](https://junit.org/junit5/) for Java but has been so popular that many other frameworks in diverse languages have implemented it. 

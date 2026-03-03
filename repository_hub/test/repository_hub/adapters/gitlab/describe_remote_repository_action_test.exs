@@ -31,6 +31,20 @@ defmodule RepositoryHub.Server.GitLab.DescribeRemoteRepositoryActionTest do
       assert response.remote_repository.full_name == "repositoryhub/semaphoreci"
     end
 
+    test "should describe repository in subgroup namespace", %{gitlab_adapter: adapter} do
+      request =
+        InternalApiFactory.describe_remote_repository_request(
+          url: "https://gitlab.com/testorg/testgroup/testrepo",
+          integration_type: :GITLAB
+        )
+
+      assert {:ok, %DescribeRemoteRepositoryResponse{} = response} =
+               DescribeRemoteRepositoryAction.execute(adapter, request)
+
+      assert response.remote_repository.name == "testrepo"
+      assert response.remote_repository.full_name == "testorg/testgroup/testrepo"
+    end
+
     test "should fail with invalid repository url", %{gitlab_adapter: adapter} do
       request =
         InternalApiFactory.describe_remote_repository_request(

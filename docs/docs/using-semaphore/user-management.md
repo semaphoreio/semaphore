@@ -56,7 +56,7 @@ To change your Semaphore email address, follow these steps:
 
 </Steps>
 
-### How to reset your access token {#profile-token}
+### How to reset your personal API token {#profile-token}
 
 :::warning
 
@@ -64,7 +64,7 @@ Changing your access token will revoke access to the [Semaphore API](../referenc
 
 :::
 
-To reset your Semaphore access token, follow these steps:
+To reset your Semaphore API token, follow these steps:
 
 <Steps>
 
@@ -73,7 +73,7 @@ To reset your Semaphore access token, follow these steps:
 
     ![Profile menu](./img/profile-menu.jpg)
 
-3. Under **API Tokek** press **Reset API Token**
+3. Under **API Token** press **Reset API Token**
 
     ![User profile page](./img/user-profile-page.jpg)
 
@@ -100,7 +100,7 @@ To invite a user to your organization, press the **Add people** button:
 1. Select one of the available tabs
 
     - Type the user's handle, e.g. `TomFern`, or select the user from the list. Usernames are case-sensitive and all characters are considered. Ensure the handle is entered accurately to avoid errors.
-    - If you don't see the user in the list. Ensure they have repository access in **GitHub** or **BitBucket** for at least one project in your organization
+    - If you don't see the user in the list. Ensure they have repository access in **GitHub** or **BitBucket** for at least one project in your organization.
 
     ![Invite users](./img/invite-users.jpg)
 
@@ -110,13 +110,12 @@ To invite a user to your organization, press the **Add people** button:
 
 </Steps>
 
-:::info
+In case you run into a 401 error when adding a user, please attempt the following steps:
 
-If you see an error with the message "error finding USERNAME: 401", it's likely that the your Semaphore account, as the inviter, is no longer linked to GitHub or BitBucket.
+1. Go to your [Semaphore account page](https://me.semaphoreci.com/account) and ensure the GitHub status of your account is marked as "connected". This will ensure you have the ability to send invitations. In case it's marked as "Not connected" here's how you can correct it: [Connect GitHub: Troubleshooting guide](https://docs.semaphore.io/using-semaphore/connect-github#troubleshooting-guide)
+2. Ensure the user has repository access in **GitHub** or **BitBucket** for at least one project in your organization and then click on the "re-sync" button located in the People page.
+3. Wait 2-5min and then try to invite the user again.
 
-To fix the issue, reconnect your account by granting access again via [GitHub](./connect-github-oauth#connect-oauth) or [Bitbucket](./connect-bitbucket#grant-bb). This should restore your ability to send invitations.
-
-:::
 
 ### How to remove users {#remove-users}
 
@@ -140,6 +139,29 @@ Upon removal, access to all projects in the organization are revoked.
 Only an Admins, Owner, or dedicated [custom roles](./rbac#custom-roles) can remove users from the organization.
 
 :::
+
+### How to download list of users as CSV {#csv-users}
+
+Organization owners and admins can export a list of all users in their Semaphore organization.
+
+To download the list, follow these steps:
+
+<Steps>
+
+1. In the **People** section, press **Download .csv**
+
+    ![Download .csv button location](./img/csv-users.jpg)
+
+2. Semaphore will generate a .csv file containing the following user details:
+
+    - Semaphore account name
+    - Email address
+    - GitHub username
+    - Bitbucket username
+    - GitLab username
+
+</Steps>
+
 
 ### How to change user roles {#roles-people}
 

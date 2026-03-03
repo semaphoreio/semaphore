@@ -1,4 +1,15 @@
 <style>
+#chooseSelect select optgroup {
+  color: #999;
+  font-style: normal;
+  font-weight: normal;
+}
+
+#chooseSelect select option {
+  color: #000;
+  font-weight: normal;
+}
+
 .project-jumpto {
   position: relative;
 }
@@ -48,19 +59,31 @@
 <div class="f6 mb2">Showing most recent </div>
 <div class="flex item-start items-center-m mb3">
   <div class="flex-auto">
-    <div id="chooseSelect" class="flex-m items-center mb2">
-      <select data-key="type" class="db form-control mb3 mb0-m mr3">
-        <optgroup label="Show everything">
-          <option value="" <%= if @type == "", do: "selected" %>>Branches, PRs and Tags</option>
+    <div id="chooseSelect" class="flex-m items-center mb2 flex-wrap">
+      <select data-key="listing_requester" class="db form-control mb3 mb0-m mr3">
+        <optgroup label="Show all workflows">
+          <option value="all_pipelines" <%= if @listing_requester == "all_pipelines", do: "selected" %>>Everyone's workflows</option>
+          <option value="all_by_me" <%= if @listing_requester == "all_by_me", do: "selected" %>>My workflows</option>
         </optgroup>
-        <optgroup label="Filter per type">
-          <option value="branch" <%= if @type == "branch", do: "selected" %>>Branches only</option>
-          <option value="pr" <%= if @type == "pr", do: "selected" %>>Pull Requests only</option>
-          <option value="tag" <%= if @type == "tag", do: "selected" %>>Tags only</option>
+        <optgroup label="Show latest workflows per branch, PR, or tag">
+          <option value="latest_per_branch" <%= if @listing_requester == "latest_per_branch", do: "selected" %>>Latest workflows</option>
+        </optgroup>
       </select>
-      <div class="project-jumpto">
-        <input type="text" class="form-control" placeholder="Find…">
-        <div class="jumpto-results"></div>
+      <div class="flex items-center">
+        <select data-key="type" class="db form-control mb3 mb0-m mr3">
+          <optgroup label="Show everything">
+            <option value="" <%= if @type == "", do: "selected" %>>Branches, PRs and Tags</option>
+          </optgroup>
+          <optgroup label="Filter per type">
+            <option value="branch" <%= if @type == "branch", do: "selected" %>>Branches only</option>
+            <option value="pr" <%= if @type == "pr", do: "selected" %>>Pull Requests only</option>
+            <option value="tag" <%= if @type == "tag", do: "selected" %>>Tags only</option>
+          </optgroup>
+        </select>
+        <div class="project-jumpto">
+          <input type="text" class="form-control" placeholder="Find…">
+          <div class="jumpto-results"></div>
+        </div>
       </div>
     </div>
   </div>

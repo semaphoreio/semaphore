@@ -98,6 +98,7 @@ defmodule Secrethub.KeyVault do
     with {:ok, private_key} <- load_private_key(encrypted.key_id),
          {:ok, init_vector} <- decrypt_rsa(encrypted.init_vector, private_key),
          {:ok, aes256_key} <- decrypt_rsa(encrypted.aes256_key, private_key),
+         :ok <- validate_aes_material(aes256_key, init_vector),
          {:ok, payload} <- decode_payload(encrypted.payload),
          {:ok, payload} <- decrypt_aes(payload, aes256_key, init_vector) do
       {:ok, API.Secret.Data.decode(payload)}
@@ -122,8 +123,33 @@ defmodule Secrethub.KeyVault do
 
   defp decrypt_aes(payload, aes256_key, init_vector) do
     case ExCrypto.decrypt(aes256_key, init_vector, payload) do
-      {:ok, result} -> {:ok, result}
-      {:error, reason} -> wrap_error(:decrypt_aes, reason)
+      {:ok, result} ->
+        {:ok, result}
+
+      {:error, reason, _stacktrace} ->
+        wrap_error(:decrypt_aes, reason)
+
+      {:error, reason} ->
+        wrap_error(:decrypt_aes, reason)
+
+      {kind, reason, _stacktrace} when kind in [:error, :exit] ->
+        wrap_error(:decrypt_aes, reason)
+
+      unexpected ->
+        wrap_error(:decrypt_aes, unexpected)
+    end
+  end
+
+  defp validate_aes_material(aes256_key, init_vector) do
+    cond do
+      byte_size(init_vector) != 16 ->
+        wrap_error(:decrypt_rsa, %ErlangError{original: :decrypt_failed})
+
+      byte_size(aes256_key) not in [16, 24, 32] ->
+        wrap_error(:decrypt_rsa, %ErlangError{original: :decrypt_failed})
+
+      true ->
+        :ok
     end
   end
 

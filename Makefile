@@ -42,7 +42,7 @@ endif
 # Locally we want to bind volumes we're working on.
 # On CI environment this is not necessary and would only slow us down. The data is already on the host.
 #
-DOCKER_COMPOSE_OPTS=-f docker-compose.yml
+DOCKER_COMPOSE_OPTS :=
 ifeq ($(CI),)
 	VOLUME_BIND?=--volume $(PWD):/app
 	export BUILDKIT_INLINE_CACHE=0
@@ -304,7 +304,7 @@ configure.sign:
 		--credential-source-file=/tmp/oidc_token \
 		--credential-source-type="text" && \
 	export GOOGLE_APPLICATION_CREDENTIALS=/home/semaphore/creds.json && \
-	pip install google-cloud-iam && \
+	pip install packaging google-cloud-iam && \
 	$(ROOT_MAKEFILE_PATH)/get_id_token.py $$GOOGLE_PROJECT_NAME ci-image-signer > /tmp/sigstore-token
 
 registry.push:

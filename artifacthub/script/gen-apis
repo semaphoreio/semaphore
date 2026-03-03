@@ -2,6 +2,21 @@ export PATH="$PATH:$(go env GOPATH)/bin"
 
 rm -rf pkg/api/descriptors/*
 
+# response_status
+
+mkdir -p pkg/api/descriptors/include/internal_api/response_status
+sed --in-place '/go_package/d' tmp/internal_api/include/internal_api/response_status.proto
+echo 'option go_package = "github.com/semaphoreio/semaphore/artifacthub/pkg/api/descriptors/include/internal_api/response_status";' >> tmp/internal_api/include/internal_api/response_status.proto
+
+protoc \
+       --proto_path tmp/internal_api/include/internal_api \
+       --go_out=pkg/api/descriptors/include/internal_api/response_status \
+       --go_opt=paths=source_relative \
+       --go-grpc_out=pkg/api/descriptors/include/internal_api/response_status \
+       --go-grpc_opt=paths=source_relative \
+       --go-grpc_opt=require_unimplemented_servers=false \
+       tmp/internal_api/include/internal_api/response_status.proto
+
 # internal api
 
 mkdir -p pkg/api/descriptors/artifacthub
@@ -18,6 +33,23 @@ protoc \
        --go-grpc_opt=paths=source_relative \
        --go-grpc_opt=require_unimplemented_servers=false \
        tmp/internal_api/artifacthub.proto
+
+# server_farm.job
+
+mkdir -p pkg/api/descriptors/server_farm.job
+sed --in-place '/go_package/d' tmp/internal_api/server_farm.job.proto
+echo 'option go_package = "github.com/semaphoreio/semaphore/artifacthub/pkg/api/descriptors/server_farm.job";' >> tmp/internal_api/server_farm.job.proto
+
+protoc \
+       --proto_path tmp/internal_api \
+       --proto_path tmp/internal_api/include \
+       --proto_path tmp/internal_api/include/internal_api \
+       --go_out=pkg/api/descriptors/server_farm.job \
+       --go_opt=paths=source_relative \
+       --go-grpc_out=pkg/api/descriptors/server_farm.job \
+       --go-grpc_opt=paths=source_relative \
+       --go-grpc_opt=require_unimplemented_servers=false \
+       tmp/internal_api/server_farm.job.proto
 
 # public api
 

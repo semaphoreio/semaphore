@@ -164,6 +164,12 @@ After that, you’ll be able to remove the old credit card.
 
 ## Git, GitHub and BitBucket
 
+### I am getting the error "Error while setting deploy keys on GitHub". How do I fix it?
+
+This can happen if your GitHub organization has deploy keys disabled.
+
+To enable deploy keys, see the [GitHub deploy keys page](../using-semaphore/connect-github#deploy-keys).
+
 ### Can I build a project with git submodules?
 
 Yes. To do that, follow these steps:
@@ -235,6 +241,16 @@ There are two other indicators you can use:
 
 - **Block Chomping Indicator**: The chomping indicator controls what should happen with new lines at the end of the string. The default, clip, puts a single newline at the end of the string. To remove all new lines, strip them by putting a minus sign `-` after the style indicator. Both clip and strip ignore how many new lines are actually at the end of the block; to keep them all put a plus sign `+` after the style indicator.
 
+### How long my workflow history is kept?
+
+Workflows and artifacts in the [workflow and job namespace](../using-semaphore/artifacts#namespaces) older than 400 days are automatically deleted.
+
+### Some of my artifacts are missing. Why?
+
+First, there is a hard-limit of 400 days for artifacts. Artifacts older than this limit are automatically deleted.
+
+Second, check if you have an [artifact retention policy](../using-semaphore/artifacts#retention) in place. If you have configured a retention policy incorrectly, it might have unexpectedly deleted some of your artifacts.
+
 ### Can I use different agents in the same pipeline?
 
 Yes. Use the [agent override](../using-semaphore/jobs#agent-override) in a block to use a different agent.
@@ -251,7 +267,7 @@ name: Aliases test
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
   - name: Block 1
     task:

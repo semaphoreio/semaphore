@@ -530,3 +530,42 @@ func seedObjects() []SeedObject {
 		{Name: "artifacts/third/file1.txt", Content: "hello"},
 	}
 }
+
+func Test__SpecialCharactersInPath(t *testing.T) {
+	RunTestForAllBackends(t, func(backend string, client Client) {
+		bucketName, err := client.CreateBucket(context.TODO())
+		assert.Nil(t, err)
+
+		bucket := client.GetBucket(BucketOptions{
+			Name:       bucketName,
+			PathPrefix: TestBucketPathPrefix,
+		})
+
+		t.Run(backend+" plus sign in filename", func(t *testing.T) {
+			path := "artifacts/special/file+with+plus.txt"
+			assert.Nil(t, SeedBucket(bucket, []SeedObject{
+				{Name: path, Content: "content with plus"},
+			}))
+
+			isFile, err := bucket.IsFile(context.Background(), path)
+			assert.Nil(t, err)
+			assert.True(t, isFile)
+
+			isDir, err := bucket.IsDir(context.Background(), "artifacts/special")
+			assert.Nil(t, err)
+			assert.True(t, isDir)
+
+			iterator, err := bucket.ListPath(ListOptions{Path: "artifacts/special/"})
+			assert.Nil(t, err)
+			objects := collectItems(iterator)
+			if assert.Len(t, objects, 1) {
+				assert.Equal(t, path, objects[0].Path)
+			}
+		})
+
+		assert.Nil(t, client.DestroyBucket(context.TODO(), BucketOptions{
+			Name:       bucketName,
+			PathPrefix: TestBucketPathPrefix,
+		}))
+	})
+}

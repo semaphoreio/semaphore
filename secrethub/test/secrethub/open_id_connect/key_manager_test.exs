@@ -41,7 +41,12 @@ defmodule Secrethub.OpenIDConnect.KeyManagerTest do
       # to a kubernetes volume.
       #
       # 1. create a new temporary directory to hold pem files
-      dir = System.tmp_dir!()
+      dir =
+        System.tmp_dir!()
+        |> Path.join("oidc_keys_test_#{System.unique_integer([:positive])}")
+
+      File.mkdir_p!(dir)
+      on_exit(fn -> File.rm_rf!(dir) end)
 
       # 2. add some actual pem files
       File.ls!("priv/openid_keys_in_tests")

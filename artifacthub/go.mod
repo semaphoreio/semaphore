@@ -1,8 +1,6 @@
 module github.com/semaphoreio/semaphore/artifacthub
 
-go 1.23.0
-
-toolchain go1.23.8
+go 1.24.0
 
 require (
 	cloud.google.com/go/storage v1.36.0

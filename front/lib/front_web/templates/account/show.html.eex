@@ -46,6 +46,10 @@
                     <%= link "Grant public access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :public]), method: :post %>
                     <%= link "Grant private access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :private]), method: :post %>
                   </div>
+                <% else %>
+                  <div>
+                    <%= link "Connect…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :email]), method: :post %>
+                  </div>
                 <% end %>
               <% {:EMAIL, _} -> %>
                 <span class="green">Connected</span>
@@ -58,7 +62,7 @@
                     <%= link "Grant public access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :public]), method: :post %>
                     <%= link "Grant private access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :private]), method: :post %>
                   </div>
-                  <% end %>
+                <% end %>
               <% {:PUBLIC, _} -> %>
                 <span class="green">Connected</span>
                   ·

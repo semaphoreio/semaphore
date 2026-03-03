@@ -43,7 +43,7 @@ defmodule Zebra.Models.Job do
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
   @required_fields ~w(name organization_id project_id aasm_state created_at updated_at machine_type spec)a
-  @optional_fields ~w(build_id priority execution_time_limit deployment_target_id repository_id enqueued_at scheduled_at started_at finished_at request index port name machine_os_image failure_reason result agent_id agent_name agent_ip_address agent_ctrl_port agent_auth_token private_ssh_key)a
+  @optional_fields ~w(build_id priority execution_time_limit deployment_target_id repository_id enqueued_at scheduled_at started_at finished_at request index port name machine_os_image failure_reason result agent_id agent_name agent_ip_address agent_ctrl_port agent_auth_token private_ssh_key expires_at)a
 
   schema "jobs" do
     belongs_to(:task, Zebra.Models.Task, foreign_key: :build_id)
@@ -79,6 +79,7 @@ defmodule Zebra.Models.Job do
     field(:scheduled_at, :utc_datetime)
     field(:started_at, :utc_datetime)
     field(:finished_at, :utc_datetime)
+    field(:expires_at, :utc_datetime)
   end
 
   def create(params) do
@@ -356,6 +357,157 @@ defmodule Zebra.Models.Job do
     )
   end
 
+  def unmark_jobs_for_deletion(org_id, cutoff_date, limit) do
+    import Ecto.Query, only: [from: 2, subquery: 1]
+
+    unmark_ids =
+      from(j in Zebra.Models.Job,
+        where:
+          not is_nil(j.expires_at) and
+            j.organization_id == ^org_id and
+            j.created_at > ^cutoff_date,
+        limit: ^limit,
+        select: j.id
+      )
+
+    unmark_query = from(j in Zebra.Models.Job, where: j.id in subquery(unmark_ids))
+
+    Zebra.LegacyRepo.update_all(unmark_query, set: [expires_at: nil])
+  end
+
+  def mark_jobs_for_deletion(org_id, cutoff_date, deletion_days, limit) do
+    import Ecto.Query, only: [from: 2, subquery: 1]
+
+    expires_at =
+      DateTime.utc_now()
+      |> DateTime.add(deletion_days * 86_400, :second)
+      |> DateTime.truncate(:second)
+
+    mark_ids =
+      from(j in Zebra.Models.Job,
+        where:
+          is_nil(j.expires_at) and
+            j.organization_id == ^org_id and
+            j.created_at <= ^cutoff_date,
+        limit: ^limit,
+        select: j.id
+      )
+
+    mark_query = from(j in Zebra.Models.Job, where: j.id in subquery(mark_ids))
+
+    Zebra.LegacyRepo.update_all(mark_query,
+      set: [expires_at: expires_at]
+    )
+  end
+
+  def delete_job_stop_requests(job_ids) do
+    import Ecto.Query,
+      only: [from: 2, where: 3, limit: 2, order_by: 2]
+
+    query =
+      from(j in Zebra.Models.JobStopRequest,
+        where: j.job_id in ^job_ids
+      )
+
+    {deleted_count, _} = Zebra.LegacyRepo.delete_all(query)
+
+    {:ok, deleted_count}
+  end
+
+  def delete_jobs(job_ids) do
+    import Ecto.Query, only: [from: 2]
+
+    query =
+      from(j in Zebra.Models.Job,
+        where: j.id in ^job_ids
+      )
+
+    {deleted_count, _} = Zebra.LegacyRepo.delete_all(query)
+
+    {:ok, deleted_count}
+  end
+
+  def claim_and_delete_expired_jobs(limit) do
+    Zebra.LegacyRepo.transaction(fn ->
+      jobs = claim_expired_jobs(limit)
+
+      if Enum.empty?(jobs) do
+        {0, 0}
+      else
+        delete_claimed_jobs(jobs)
+      end
+    end)
+    |> case do
+      {:ok, {deleted_stop_requests, deleted_jobs}} ->
+        {:ok, deleted_stop_requests, deleted_jobs}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp claim_expired_jobs(limit) do
+    import Ecto.Query, only: [from: 2, lock: 2]
+
+    from(j in __MODULE__,
+      where: not is_nil(j.expires_at) and j.expires_at <= fragment("CURRENT_TIMESTAMP"),
+      order_by: [asc: j.expires_at],
+      limit: ^limit,
+      select: {j.id, j.organization_id, j.project_id}
+    )
+    |> lock("FOR UPDATE SKIP LOCKED")
+    |> Zebra.LegacyRepo.all()
+  end
+
+  defp delete_claimed_jobs(jobs) do
+    jobs_with_artifacts = enrich_jobs_with_artifact_store_ids(jobs)
+    job_ids = Enum.map(jobs, fn {id, _, _} -> id end)
+
+    Logger.info("Claimed #{length(job_ids)} expired jobs for deletion: #{inspect(job_ids)}")
+
+    case publish_job_deletion_events(jobs_with_artifacts) do
+      :ok ->
+        {:ok, deleted_stop_requests} = delete_job_stop_requests(job_ids)
+        {:ok, deleted_jobs} = delete_jobs(job_ids)
+        {deleted_stop_requests, deleted_jobs}
+
+      {:error, reason} ->
+        Logger.error("Failed to publish deletion events: #{reason}")
+        Zebra.LegacyRepo.rollback({:error, reason})
+    end
+  end
+
+  defp enrich_jobs_with_artifact_store_ids(jobs) do
+    artifact_store_map = fetch_artifact_store_ids(jobs)
+
+    Enum.map(jobs, fn {id, org_id, project_id} ->
+      {id, org_id, project_id, Map.get(artifact_store_map, project_id)}
+    end)
+  end
+
+  defp fetch_artifact_store_ids(jobs) do
+    import Ecto.Query, only: [from: 2]
+
+    project_ids =
+      jobs
+      |> Enum.map(fn {_, _, project_id} -> project_id end)
+      |> Enum.uniq()
+      |> Enum.flat_map(fn id ->
+        case Ecto.UUID.dump(id) do
+          {:ok, binary} -> [binary]
+          :error -> []
+        end
+      end)
+
+    from(p in "projects",
+      where: p.id in ^project_ids,
+      select: {p.id, p.artifact_store_id}
+    )
+    |> Zebra.LegacyRepo.all()
+    |> Enum.map(fn {id, artifact_store_id} -> {Ecto.UUID.cast!(id), artifact_store_id} end)
+    |> Map.new()
+  end
+
   def wait_for_agent(job) do
     if valid_transition?(job.aasm_state, state_waiting_for_agent()) do
       update(job, %{aasm_state: state_waiting_for_agent()})
@@ -520,6 +672,88 @@ defmodule Zebra.Models.Job do
 
     Tackle.Exchange.create(channel, exchange_name)
     :ok = Tackle.Exchange.publish(channel, exchange_name, message, routing_key)
+  end
+
+  def publish_job_deletion_events(jobs_metadata) when is_list(jobs_metadata) do
+    exchange_name = "zebra.job_deletion_exchange"
+    routing_key = "deleted"
+
+    case AMQP.Application.get_channel(:job_deletion) do
+      {:ok, channel} ->
+        Tackle.Exchange.create(channel, exchange_name)
+
+        results =
+          Enum.map(jobs_metadata, fn job_meta ->
+            publish_single_job_deletion(channel, exchange_name, routing_key, job_meta)
+          end)
+
+        failures = Enum.filter(results, fn result -> result != :ok end)
+
+        if Enum.empty?(failures) do
+          :ok
+        else
+          {:error,
+           "Failed to publish #{length(failures)} of #{length(jobs_metadata)} deletion events"}
+        end
+
+      {:error, reason} ->
+        Logger.error("Failed to get AMQP channel for job deletion: #{inspect(reason)}")
+        {:error, "AMQP channel unavailable"}
+    end
+  rescue
+    error ->
+      Logger.error("Exception in publish_job_deletion_events: #{inspect(error)}")
+      {:error, "Publishing failed with exception"}
+  end
+
+  defp publish_single_job_deletion(channel, exchange_name, routing_key, job_meta) do
+    {id, organization_id, project_id, artifact_store_id} = job_meta
+
+    artifact_store_id_str =
+      case Ecto.UUID.load(artifact_store_id) do
+        {:ok, uuid_str} -> uuid_str
+        :error -> ""
+      end
+
+    project_id_str = project_id || ""
+
+    now = DateTime.utc_now()
+
+    message =
+      InternalApi.ServerFarm.Job.JobDeleted.new(
+        job_id: id,
+        organization_id: organization_id,
+        project_id: project_id_str,
+        artifact_store_id: artifact_store_id_str,
+        deleted_at:
+          Google.Protobuf.Timestamp.new(
+            seconds: DateTime.to_unix(now),
+            nanos: 0
+          )
+      )
+      |> InternalApi.ServerFarm.Job.JobDeleted.encode()
+
+    # Publish to exchange
+    case Tackle.Exchange.publish(channel, exchange_name, message, routing_key) do
+      :ok ->
+        Logger.info(
+          "Published deletion event for job #{id} #{organization_id}/#{project_id} #{artifact_store_id}"
+        )
+
+        :ok
+
+      error ->
+        Logger.error(
+          "Failed to publish deletion event for job #{id} #{organization_id}/#{project_id} #{artifact_store_id}: #{inspect(error)}"
+        )
+
+        {:error, error}
+    end
+  rescue
+    error ->
+      Logger.error("Exception publishing deletion event for job: #{inspect(error)}")
+
+      {:error, error}
   end
 
   ##

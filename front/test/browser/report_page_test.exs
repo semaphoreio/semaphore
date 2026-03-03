@@ -25,7 +25,7 @@ defmodule Front.Browser.ReportPageTest do
       %{session: session, workflow: context.workflow, org: context.org, project: context.project}
     end
 
-    test "does not display a report tab on worklfow page", %{
+    browser_test "does not display a report tab on worklfow page", %{
       session: session,
       workflow: workflow
     } do
@@ -34,7 +34,7 @@ defmodule Front.Browser.ReportPageTest do
       |> refute_has(Query.text("Report"))
     end
 
-    test "does not display a report tab on a job page", %{
+    browser_test "does not display a report tab on a job page", %{
       session: session
     } do
       job_id =
@@ -46,7 +46,7 @@ defmodule Front.Browser.ReportPageTest do
       |> refute_has(Query.text("Report"))
     end
 
-    test "does not display a report tab on a project page", %{
+    browser_test "does not display a report tab on a project page", %{
       session: session
     } do
       project_name =
@@ -73,7 +73,7 @@ defmodule Front.Browser.ReportPageTest do
       %{session: session, workflow: context.workflow, org: context.org, project: context.project}
     end
 
-    test "displays a report tab on a workflow page", %{
+    browser_test "displays a report tab on a workflow page", %{
       session: session,
       workflow: workflow
     } do
@@ -82,7 +82,7 @@ defmodule Front.Browser.ReportPageTest do
       |> assert_has(Query.text("Report"))
     end
 
-    test "displays a report tab on a job page", %{
+    browser_test "displays a report tab on a job page", %{
       session: session
     } do
       job_id =
@@ -94,7 +94,7 @@ defmodule Front.Browser.ReportPageTest do
       |> assert_has(Query.text("Report"))
     end
 
-    test "displays a report tab on a project page", %{
+    browser_test "displays a report tab on a project page", %{
       session: session
     } do
       project_name =

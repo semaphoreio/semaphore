@@ -19,16 +19,16 @@ defmodule Front.Browser.PeopleTest do
   describe "organization people" do
     setup [:setup_organization]
 
-    test "remove user", ctx do
+    browser_test "remove user", ctx do
       test_remove_user(ctx)
     end
 
-    test "change role", ctx do
+    browser_test "change role", ctx do
       test_change_role(ctx, "Member", "Admin")
     end
 
-    test "load more", ctx do
-      # this test works only if there is one member
+    browser_test "load more", ctx do
+      # this browser_testworks only if there is one member
       org = Support.Stubs.Organization.default()
       user = Support.Stubs.User.default()
 
@@ -40,7 +40,7 @@ defmodule Front.Browser.PeopleTest do
       test_load_more(ctx)
     end
 
-    test "when user has multiple roles, show multiple labels", ctx do
+    browser_test "when user has multiple roles, show multiple labels", ctx do
       assign_role("Jacob Bannon", "Admin", ctx.org_id)
       assign_role("Jacob Bannon", "Member", ctx.org_id)
       {:ok, session} = Wallaby.start_session()
@@ -64,7 +64,7 @@ defmodule Front.Browser.PeopleTest do
   describe "project people" do
     setup [:setup_project]
 
-    test "adding people", ctx do
+    browser_test "adding people", ctx do
       with_mocks([
         {
           Front.Models.User,
@@ -88,21 +88,21 @@ defmodule Front.Browser.PeopleTest do
       end
     end
 
-    test "remove user", ctx do
+    browser_test "remove user", ctx do
       test_remove_user(ctx)
     end
 
-    test "change role", ctx do
+    browser_test "change role", ctx do
       test_change_role(ctx, "Admin", "Contributor")
     end
 
-    test "load more", ctx do
+    browser_test "load more", ctx do
       # Adding another user to the projcet as well
       assign_role("Dimitri Minakakis", "Admin", ctx.stubs.org.id, ctx.stubs.project.id)
       test_load_more(ctx)
     end
 
-    test "when flag isn't enable, dont show remove button", ctx do
+    browser_test "when flag isn't enable, dont show remove button", ctx do
       Support.Stubs.Feature.disable_feature(ctx.stubs.org.id, :rbac__project_roles)
       Cachex.clear!(:feature_provider_cache)
 

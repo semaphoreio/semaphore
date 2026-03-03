@@ -162,18 +162,38 @@ defmodule FrontWeb.PeopleView do
     Timex.format!(Timex.from_unix(seconds), "%b %d, %Y, %I:%M%p", :strftime)
   end
 
+  def people_management_permissions?(org_scope?, permissions) do
+    (org_scope? && permissions["organization.people.manage"]) ||
+      (!org_scope? && permissions["project.access.manage"])
+  end
+
   def show_people_management_buttons?(conn, org_scope?, permissions) do
     org_id = conn.assigns[:organization_id]
 
-    user_has_permissions? =
-      (org_scope? && permissions["organization.people.manage"]) ||
-        (!org_scope? && permissions["project.access.manage"])
+    user_has_permissions? = people_management_permissions?(org_scope?, permissions)
 
     feature_enabled? =
       org_scope? || FeatureProvider.feature_enabled?(:rbac__project_roles, param: org_id) ||
         Front.ce?()
 
     user_has_permissions? and feature_enabled?
+  end
+
+  def show_service_account_management_buttons?(conn, org_scope?, permissions) do
+    # Service accounts bypass the rbac__project_roles feature flag at project level
+    if org_scope? do
+      show_people_management_buttons?(conn, org_scope?, permissions)
+    else
+      people_management_permissions?(org_scope?, permissions)
+    end
+  end
+
+  def show_member_management_buttons?(conn, org_scope?, permissions, member_type) do
+    if member_type == :service_account do
+      show_service_account_management_buttons?(conn, org_scope?, permissions)
+    else
+      show_people_management_buttons?(conn, org_scope?, permissions)
+    end
   end
 
   def roles_action_message do

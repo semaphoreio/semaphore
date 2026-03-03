@@ -3,7 +3,7 @@ name: Generate Certificate - ${{parameters.CLOUD_TEST_ENV_PREFIX}}
 agent:
   machine:
     type: f1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
   - name: Generate Certificate
     dependencies: []

@@ -379,6 +379,58 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
         end.to raise_error(GRPC::NotFound, /Couldn't find Project/)
       end
     end
+
+    context "when user does not have github connection" do
+      let(:user) { FactoryBot.create(:user, name: "No GitHub User") }
+
+      let(:req) do
+        InternalApi::RepoProxy::CreateBlankRequest.new(
+          project_id: project.id,
+          requester_id: user.id,
+          pipeline_id: "pipeline-id",
+          wf_id: "workflow-id",
+          git: git
+        )
+      end
+
+      it "creates a blank hook using synthetic repo host account" do
+        allow(payload_hash).to receive(:pull_request?).and_return(false)
+        allow(workflow).to receive(:payload).and_return(payload_hash)
+        expect(workflow).to receive(:update).with(state: Workflow::STATE_LAUNCHING)
+
+        result = server.create_blank(req, call)
+
+        expect(result).to be_a(InternalApi::RepoProxy::CreateBlankResponse)
+        expect(result.hook_id).to eq(workflow.id)
+        expect(result.wf_id).to eq(req.wf_id)
+        expect(result.pipeline_id).to eq(req.pipeline_id)
+        expect(result.branch_id).to eq(branch.id)
+
+        repo = result.repo
+        expect(repo.owner).to eq(repository.owner)
+        expect(repo.repo_name).to eq(repository.name)
+        expect(repo.branch_name).to eq(branch.name)
+        expect(repo.commit_sha).to eq(workflow.commit_sha)
+        expect(repo.repository_id).to eq(repository.id)
+      end
+
+      it "uses synthetic account for payload generation" do
+        allow(payload_hash).to receive(:pull_request?).and_return(false)
+        allow(workflow).to receive(:payload).and_return(payload_hash)
+
+        synthetic_account = user.github_repo_host_account
+        expect(synthetic_account).to be_a(User::SyntheticRepoHostAccount)
+        expect(synthetic_account.name).to eq("No GitHub User")
+        expect(synthetic_account.login).to eq(synthetic_account.github_uid)
+        expect(synthetic_account.github_uid).to eq("user_#{user.id}".hash.abs.to_s)
+        expect(synthetic_account.repo_host).to eq(::Repository::GITHUB_PROVIDER)
+
+        result = server.create_blank(req, call)
+
+        expect(result).to be_a(InternalApi::RepoProxy::CreateBlankResponse)
+        expect(result.hook_id).to eq(workflow.id)
+      end
+    end
   end
 
   describe "#create" do

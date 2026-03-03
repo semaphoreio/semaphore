@@ -14,7 +14,7 @@ defmodule Front.Browser.WorkflowPage.ErrorTest do
     {:ok, context}
   end
 
-  test "generic structured error", context do
+  browser_test "generic structured error", context do
     err = """
       {
         "message": "Initialization step failed, see logs for more details.",
@@ -29,13 +29,12 @@ defmodule Front.Browser.WorkflowPage.ErrorTest do
     Support.Stubs.Pipeline.set_error(context.pipeline.id, err)
 
     page = open(context)
-    take_screenshot(page)
 
     assert has_text?(page, "We couldn't run your pipeline")
     assert has_text?(page, "Initialization failed. See logs for more details.")
   end
 
-  test "when language error", context do
+  browser_test "when language error", context do
     err = """
       {
         "location":{
@@ -50,14 +49,13 @@ defmodule Front.Browser.WorkflowPage.ErrorTest do
     Support.Stubs.Pipeline.set_error(context.pipeline.id, err)
 
     page = open(context)
-    take_screenshot(page)
 
     assert has_text?(page, "We couldn't run your pipeline")
     assert has_text?(page, "Invalid when expression detected")
     assert has_text?(page, "Invalid expression on the left of")
   end
 
-  test "missing branch in change_in expression", context do
+  browser_test "missing branch in change_in expression", context do
     err = """
       {
         "type": "ErrorChangeInMissingBranch",
@@ -72,7 +70,6 @@ defmodule Front.Browser.WorkflowPage.ErrorTest do
     Support.Stubs.Pipeline.set_error(context.pipeline.id, err)
 
     page = open(context)
-    take_screenshot(page)
 
     assert has_text?(page, "We couldn't run your pipeline")
     assert has_text?(page, "Unknown branch referenced")
@@ -85,7 +82,7 @@ defmodule Front.Browser.WorkflowPage.ErrorTest do
     assert has_text?(page, msg)
   end
 
-  test "pipeline YAML has tabs", context do
+  browser_test "pipeline YAML has tabs", context do
     err = """
       Error: {{:throw, {:yamerl_exception, [{:yamerl_parsing_error, :error,
       'Block mapping value not allowed here', 12, 9,
@@ -96,13 +93,12 @@ defmodule Front.Browser.WorkflowPage.ErrorTest do
     Support.Stubs.Pipeline.set_error(context.pipeline.id, err)
 
     page = open(context)
-    take_screenshot(page)
 
     assert has_text?(page, "We couldn't run your pipeline")
     assert has_text?(page, "Unprocessable YAML file.")
   end
 
-  test "unknown error", context do
+  browser_test "unknown error", context do
     err = """
       Error: {{:throw, {:, [{:, :error,
       'Block mapping value not allowed here', 12, 9,}}}}
@@ -111,7 +107,6 @@ defmodule Front.Browser.WorkflowPage.ErrorTest do
     Support.Stubs.Pipeline.set_error(context.pipeline.id, err)
 
     page = open(context)
-    take_screenshot(page)
 
     assert has_text?(page, "We couldn't run your pipeline")
     assert has_text?(page, "Error")

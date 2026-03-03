@@ -60,7 +60,7 @@
             <div class="b">Service Accounts</div>
           </div>
         </div>
-        <%= if !@org_scope? && show_people_management_buttons?(@conn, @org_scope?, @permissions) do %>
+        <%= if !@org_scope? && people_management_permissions?(@org_scope?, @permissions) do %>
           <%= render "members/_add_service_account_button.html", conn: @conn, org_scope?: @org_scope?, permissions: @permissions %>
         <% end %>
       </div>

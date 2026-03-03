@@ -144,6 +144,7 @@ Supports the following properties:
 - [`endpoint`](#endpoint-in-webhook)
 - [`action`](#action-in-webhook)
 - [`timeout`](#timeout-in-webhook)
+- [`retries`](#retries-in-webhook)
 - [`secret`](#secret-in-webhook)
 
 ### endpoint {#endpoint-in-webhook}
@@ -160,9 +161,17 @@ This property is optional and defaults to `POST`.
 
 ### timeout {#timeout-in-webhook}
 
-Defines the timeout for the notification request expressed in milliseconds. The value must be between 1 and 1000.
+Defines the response timeout for the notification request expressed in milliseconds. The maximum value is 15000 (15 seconds).
 
 This property is optional and defaults to `500`.
+
+### retries {#retries-in-webhook}
+
+Defines the number of retry attempts on timeout errors. The value must be between 0 and 5.
+
+This property is optional and defaults to `0` (no retries).
+
+When retries are enabled, Semaphore uses exponential backoff with increasing timeouts on each attempt. The `X-Semaphore-Webhook-Id` header remains the same across all retry attempts, allowing your endpoint to deduplicate notifications.
 
 ### secret {#secret-in-webhook}
 
@@ -216,6 +225,8 @@ spec:
     notify:
       webhook:
         endpoint: https://example.org/postreceiver
+        timeout: 1000
+        retries: 3
         secret: docs-notification-secret
 ```
 

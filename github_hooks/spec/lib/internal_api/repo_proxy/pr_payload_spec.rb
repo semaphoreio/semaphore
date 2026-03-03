@@ -1,10 +1,12 @@
 require "spec_helper"
 
-GitAuthor = Struct.new(:name, :email, :login)
-GitCommitData = Struct.new(:message, :author)
-GitCommit = Struct.new(:sha, :html_url, :commit, :author) do
-  def [](key)
-    html_url if key == :html_url
+GitAuthor = Struct.new(:name, :email, :login) unless defined?(GitAuthor)
+GitCommitData = Struct.new(:message, :author) unless defined?(GitCommitData)
+unless defined?(GitCommit)
+  GitCommit = Struct.new(:sha, :html_url, :commit, :author) do
+    def [](key)
+      html_url if key == :html_url
+    end
   end
 end
 
@@ -81,6 +83,32 @@ RSpec.describe InternalApi::RepoProxy::PrPayload do
       expect(commit["author"]["username"]).to eq("alice")
       expect(commit["id"]).to eq("abc123")
       expect(commit["message"]).to eq("PR commit")
+    end
+  end
+
+  describe "#call with user without github connection" do
+    subject(:payload) { described_class.new(ref, number).call(project, user_without_connection) }
+
+    let(:synthetic_account) do
+      Struct.new(:name, :github_uid, :login)
+            .new("Bob", "12345678", "12345678")
+    end
+    let(:user_without_connection) do
+      Struct.new(:github_repo_host_account, :email)
+            .new(synthetic_account, "bob@example.com")
+    end
+
+    before do
+      allow(Semaphore::RepoHost::Hooks::Handler)
+        .to receive(:update_pr_data)
+        .and_return([:ok, meta, ""])
+    end
+
+    it "returns a payload hash with synthetic user data" do
+      expect(payload["pusher"]["name"]).to eq("Bob")
+      expect(payload["pusher"]["email"]).to eq("bob@example.com")
+      expect(payload["sender"]["id"]).to eq("12345678")
+      expect(payload["sender"]["login"]).to eq("Bob")
     end
   end
 

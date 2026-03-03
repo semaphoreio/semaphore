@@ -51,8 +51,38 @@ defmodule Ppl.Application do
   def children_ do
     [
       Ppl.Sup.STM,
-      worker(Ppl.OrgEventsConsumer, []),
+      worker(Ppl.OrgEventsConsumer, [])
     ]
+    |> maybe_add_retention_consumer()
+    |> maybe_add_retention_deleter()
+  end
+
+  defp maybe_add_retention_consumer(children) do
+    if retention_consumer_enabled?() do
+      children ++ [worker(Ppl.Retention.PolicyConsumer, [])]
+    else
+      Logger.info("[Retention] PolicyConsumer disabled via config")
+      children
+    end
+  end
+
+  defp maybe_add_retention_deleter(children) do
+    if retention_deleter_enabled?() do
+      children ++ [worker(Ppl.Retention.RecordDeleter, [])]
+    else
+      Logger.info("[Retention] RecordDeleter disabled via config")
+      children
+    end
+  end
+
+  defp retention_consumer_enabled? do
+    config = Application.get_env(:ppl, Ppl.Retention.PolicyConsumer, [])
+    Keyword.get(config, :enabled, false)
+  end
+
+  defp retention_deleter_enabled? do
+    config = Application.get_env(:ppl, Ppl.Retention.RecordDeleter, [])
+    Keyword.get(config, :enabled, false)
   end
 
   defp get_env, do: Application.get_env(:ppl, :environment)

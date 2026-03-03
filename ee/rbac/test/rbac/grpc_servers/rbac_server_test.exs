@@ -616,8 +616,7 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
 
       1..3
       |> Enum.each(fn i ->
-        {:ok, rbac_user} =
-          Support.Factories.RbacUser.insert(UUID.generate(), "John Doe #{i}")
+        {:ok, rbac_user} = Support.Factories.RbacUser.insert(UUID.generate(), "John Doe #{i}")
 
         Support.Rbac.assign_org_role_by_name(@org_id, rbac_user.id, Enum.at(roles, i - 1))
       end)

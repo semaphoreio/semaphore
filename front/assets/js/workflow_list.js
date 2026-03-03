@@ -7,7 +7,7 @@ export var WorkflowList = {
   pagination: null,
   pollmanList: null,
   container: null,
-  queryParams: ['page_token', 'direction', 'date_from', 'date_to', 'author'],
+  queryParams: ['page_token', 'direction', 'date_from', 'date_to', 'author', 'listing', 'requester'],
 
   init: function() {
     if(this.initiated === true) { return; }

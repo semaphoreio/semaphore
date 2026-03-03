@@ -2,7 +2,7 @@ defmodule Projecthub.Events.ProjectRestored do
   @exchange "project_exchange"
   @routing_key "restored"
 
-  def publish(project, opts \\ []) do
+  def publish(project, _opts \\ []) do
     timestamp = DateTime.utc_now() |> DateTime.to_unix()
 
     event =

@@ -3,7 +3,8 @@
 </script>
 
 <%= render "_style.html" %>
-<%= if show_people_management_buttons?(@conn, @org_scope?, @permissions) do %>
+<%= if show_people_management_buttons?(@conn, @org_scope?, @permissions) ||
+       show_service_account_management_buttons?(@conn, @org_scope?, @permissions) do %>
   <%= render "add_to_project/_popup_window.html", conn: @conn, roles: @roles%>
 <% end %>
 

@@ -149,3 +149,9 @@ func (s *GCSStorage) ReadFileAsReader(ctx context.Context, fileName string) (io.
 
 	return reader, nil
 }
+
+func (s *GCSStorage) DeleteFile(ctx context.Context, fileName string) error {
+	defer watchman.Benchmark(time.Now(), "gcs.delete")
+
+	return s.Client.Bucket(s.Bucket).Object(fileName).Delete(ctx)
+}

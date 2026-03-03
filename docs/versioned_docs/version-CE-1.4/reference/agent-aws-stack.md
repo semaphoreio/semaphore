@@ -278,7 +278,7 @@ For example: `Name:Something,Category:SomethingElse`.
 - **Parameter name**: `SEMAPHORE_AGENT_USE_PRE_SIGNED_URL`
 - **default value**: `false`
 
-If true, use a pre-signed AWS STS GetCallerIdentity URL for agent registration.
+If true, use a pre-signed AWS STS GetCallerIdentity URL for agent registration. Default is `false`, so set this to `true` when the agent type requires AWS STS name assignment.
 
 See [agent type configuration](../using-semaphore/self-hosted-install#name-sts) to learn how to configure this security feature.
 

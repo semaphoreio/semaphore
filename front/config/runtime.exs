@@ -4,6 +4,14 @@ config :front, FrontWeb.Endpoint, server: true, secret_key_base: System.get_env(
 
 config :front, :signing_salt, System.get_env("SESSION_SIGNING_SALT")
 
+config :front,
+  okta_session_expiration_default_minutes:
+    String.to_integer(System.get_env("OKTA_SESSION_EXPIRATION_DEFAULT_MINUTES") || "20160"),
+  okta_session_expiration_max_minutes:
+    String.to_integer(System.get_env("OKTA_SESSION_EXPIRATION_MAX_MINUTES") || "43200"),
+  pipeline_data_retention_days:
+    String.to_integer(System.get_env("PIPELINE_DATA_RETENTION_DAYS") || "400")
+
 if System.get_env("TZDATA_DATA_DIRECTORY") != nil do
   config :tzdata, :data_dir, System.get_env("TZDATA_DATA_DIRECTORY")
 else
@@ -123,7 +131,20 @@ if config_env() == :prod do
     support_app_secret: System.get_env("HELPSCOUT_APP_SECRET")
 end
 
+pylon_jwt_ttl_seconds =
+  case Integer.parse(System.get_env("PYLON_JWT_TTL_SECONDS") || "300") do
+    {value, _} -> value
+    :error -> 300
+  end
+
 config :front,
+  pylon_org_slug: System.get_env("PYLON_ORG_SLUG", "semaphore"),
+  pylon_jwt_secret: System.get_env("PYLON_JWT_SECRET"),
+  pylon_jwt_issuer: System.get_env("PYLON_JWT_ISSUER"),
+  pylon_jwt_callback_url: System.get_env("PYLON_JWT_CALLBACK_URL"),
+  pylon_jwt_ttl_seconds: pylon_jwt_ttl_seconds,
+  pylon_chat_app_id: System.get_env("PYLON_CHAT_APP_ID"),
+  pylon_chat_identity_secret: System.get_env("PYLON_CHAT_IDENTITY_SECRET"),
   zendesk_support_url: System.get_env("ZENDESK_SUPPORT_URL") || "http://support.semaphoreci.test",
   zendesk_jwt_url: System.get_env("ZENDESK_JWT_URL") || "http://support.semaphoreci.test",
   zendesk_jwt_secret: System.get_env("ZENDESK_JWT_SECRET") || "secret",
@@ -131,7 +152,7 @@ config :front,
   google_gtag: System.get_env("GOOGLE_GTAG")
 
 edition = System.get_env("EDITION", "") |> String.trim() |> String.downcase()
-is_saas? = !(edition in ["ce", "ee"])
+is_saas? = !(edition in ["ce", "ee", "onprem"])
 
 if is_saas? do
   config :front,
@@ -187,3 +208,12 @@ config :front, :edition, edition
 config :front,
        :status_page_url,
        System.get_env("STATUS_PAGE_URL") || "https://status.semaphore.io/"
+
+# Configure additional domains allowed in Content-Security-Policy connect-src directive
+# Format: comma-separated list of domains, e.g. "*.example.com,*.example2.com"
+csp_additional_domains =
+  System.get_env("CSP_ADDITIONAL_CONNECT_DOMAINS", "")
+  |> String.split(",", trim: true)
+  |> Enum.map(&String.trim/1)
+
+config :front, :csp_additional_connect_domains, csp_additional_domains

@@ -104,6 +104,128 @@ defmodule FrontWeb.WorkflowControllerTest do
 
       assert job.job_spec == expected_spec(project, workflow)
     end
+
+    test "redirects to project page when workflow files reference a missing branch", %{
+      conn: conn,
+      project: project,
+      workflow: workflow
+    } do
+      message =
+        "err: fatal: couldn't find remote ref refs/heads/#{workflow.api_model.branch_name}: exit status 128"
+
+      GrpcMock.stub(RepositoryMock, :get_files, fn _req, _stream ->
+        raise GRPC.RPCError, status: 2, message: message
+      end)
+
+      conn = conn |> get("/workflows/#{workflow.id}/edit")
+
+      assert redirected_to(conn, 302) =~ "/projects/#{project.name}"
+
+      assert get_flash(conn, :alert) ==
+               "We couldn't load workflow files because the branch \"#{workflow.api_model.branch_name}\" no longer exists."
+    end
+
+    test "redirects to project page when fetching job creation fails", %{
+      conn: conn,
+      organization: organization,
+      project: project,
+      workflow: workflow
+    } do
+      Support.Stubs.Feature.enable_feature(organization.id, :wf_editor_via_jobs)
+
+      Support.Stubs.Organization.put_settings(organization, %{
+        "plan_machine_type" => "e2-standard-2",
+        "plan_os_image" => "ubuntu2004"
+      })
+
+      error_user = Support.Stubs.User.create(id: "error_response")
+      PermissionPatrol.allow_everything(organization.id, error_user.id)
+
+      conn =
+        conn
+        |> put_req_header("x-semaphore-user-id", error_user.id)
+        |> get("/workflows/#{workflow.id}/edit")
+
+      assert redirected_to(conn, 302) =~ "/projects/#{project.name}"
+      assert get_flash(conn, :alert) == "We couldn't load workflow files. Please try again."
+    end
+
+    test "returns 200 with default template and alert when no semaphore files are found", %{
+      conn: conn,
+      workflow: workflow
+    } do
+      GrpcMock.stub(RepositoryMock, :get_files, fn _req, _stream ->
+        InternalApi.Repository.GetFilesResponse.new(files: [])
+      end)
+
+      conn = conn |> get("/workflows/#{workflow.id}/edit")
+
+      assert html_response(conn, 200)
+
+      assert get_flash(conn, :alert) ==
+               "We couldn't find any semaphore files for this workflow. So we are starting with an empty template."
+    end
+
+    test "redirects to project page when fetching files returns generic GRPC error", %{
+      conn: conn,
+      project: project,
+      workflow: workflow
+    } do
+      GrpcMock.stub(RepositoryMock, :get_files, fn _req, _stream ->
+        raise GRPC.RPCError, status: 2, message: "Internal server error"
+      end)
+
+      conn = conn |> get("/workflows/#{workflow.id}/edit")
+
+      assert redirected_to(conn, 302) =~ "/projects/#{project.name}"
+      assert get_flash(conn, :alert) == "We couldn't load workflow files. Please try again."
+    end
+
+    test "redirects to project page when fetching job returns GRPC error", %{
+      conn: conn,
+      organization: organization,
+      project: project,
+      workflow: workflow
+    } do
+      Support.Stubs.Feature.enable_feature(organization.id, :wf_editor_via_jobs)
+
+      Support.Stubs.Organization.put_settings(organization, %{
+        "plan_machine_type" => "e2-standard-2",
+        "plan_os_image" => "ubuntu2004"
+      })
+
+      raise_user = Support.Stubs.User.create(id: "raise_response")
+      PermissionPatrol.allow_everything(organization.id, raise_user.id)
+
+      conn =
+        conn
+        |> put_req_header("x-semaphore-user-id", raise_user.id)
+        |> get("/workflows/#{workflow.id}/edit")
+
+      assert redirected_to(conn, 302) =~ "/projects/#{project.name}"
+      assert get_flash(conn, :alert) == "We couldn't load workflow files. Please try again."
+    end
+
+    test "returns 200 without alert when workflow files are successfully fetched", %{
+      conn: conn,
+      workflow: workflow
+    } do
+      GrpcMock.stub(RepositoryMock, :get_files, fn _req, _stream ->
+        InternalApi.Repository.GetFilesResponse.new(
+          files: [
+            InternalApi.Repository.File.new(
+              path: ".semaphore/semaphore.yml",
+              content: "version: v1.0\nname: Test"
+            )
+          ]
+        )
+      end)
+
+      conn = conn |> get("/workflows/#{workflow.id}/edit")
+
+      assert html_response(conn, 200)
+      refute get_flash(conn, :alert)
+    end
   end
 
   defp expected_spec(project, workflow) do

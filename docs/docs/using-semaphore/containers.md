@@ -63,7 +63,7 @@ name: Initial Pipeline
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
   # highlight-start
   containers:
     - name: main

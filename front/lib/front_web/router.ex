@@ -47,7 +47,7 @@ defmodule FrontWeb.Router do
     plug(FrontWeb.Plugs.LicenseVerifier)
     plug(Traceman.Plug.TraceHeaders)
     plug(Front.Tracing.TracingPlug)
-    plug(FrontWeb.Plugs.CacheControl, :private_cache)
+    plug(FrontWeb.Plugs.CacheControl, :etag_cache)
   end
 
   scope "/is_alive", FrontWeb do
@@ -125,6 +125,8 @@ defmodule FrontWeb.Router do
     post("/settings", SettingsController, :update)
 
     get("/settings/confirm_delete", SettingsController, :confirm_delete)
+
+    post("/settings/confirm_enforce", SettingsController, :confirm_enforce_workflow)
 
     delete("/settings", SettingsController, :destroy)
 
@@ -696,6 +698,7 @@ defmodule FrontWeb.Router do
     end
 
     # Support Page
+    get("/support/pylon", SupportController, :pylon)
     get("/support", SupportController, :new)
 
     post("/support", SupportController, :submit)

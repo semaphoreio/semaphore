@@ -6,4 +6,8 @@ defmodule Support.FakeServices.FeatureService do
   def list_organization_features(req, stream) do
     FunRegistry.run!(__MODULE__, :list_organization_features, [req, stream])
   end
+
+  def list_features(req, stream) do
+    FunRegistry.run!(__MODULE__, :list_features, [req, stream])
+  end
 end

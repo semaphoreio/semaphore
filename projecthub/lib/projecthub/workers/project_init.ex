@@ -303,7 +303,7 @@ defmodule Projecthub.Workers.ProjectInit do
     end
   end
 
-  defp analyze_repository(project, repository) do
+  defp analyze_repository(_project, _repository) do
     :ok
   end
 

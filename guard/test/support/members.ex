@@ -36,7 +36,9 @@ defmodule Support.Members do
       id: id,
       name: "",
       email: "#{id}@example.com",
-      authentication_token: id
+      authentication_token: id,
+      single_org_user: false,
+      creation_source: nil
     ]
 
     params = default |> Keyword.merge(params)

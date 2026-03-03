@@ -5,7 +5,7 @@ defmodule Front.Browser.AuditLogsTest do
 
   import Wallaby.Query, only: [link: 1]
 
-  test "viewing audit logs that have project details", %{session: session} do
+  browser_test "viewing audit logs that have project details", %{session: session} do
     user = Stubs.User.create_default()
     org = Stubs.Organization.create_default()
     Support.Stubs.Feature.enable_feature(org.id, :audit_logs)
@@ -83,7 +83,7 @@ defmodule Front.Browser.AuditLogsTest do
        }}
     end
 
-    test "project link is displayed", %{session: session, project: project} do
+    browser_test "project link is displayed", %{session: session, project: project} do
       page = open(session)
 
       assert_text(page, "Project:")
@@ -94,7 +94,7 @@ defmodule Front.Browser.AuditLogsTest do
       assert Wallaby.Browser.current_path(page) == "/projects/#{project.name}"
     end
 
-    test "branch link is displayed", %{session: session, branch: branch} do
+    browser_test "branch link is displayed", %{session: session, branch: branch} do
       page = open(session)
 
       assert_text(page, "Branch:")
@@ -105,7 +105,7 @@ defmodule Front.Browser.AuditLogsTest do
       assert Wallaby.Browser.current_path(page) == "/branches/#{branch.id}"
     end
 
-    test "workflow link is displayed", %{session: session, workflow: workflow, hook: hook} do
+    browser_test "workflow link is displayed", %{session: session, workflow: workflow, hook: hook} do
       page = open(session)
 
       assert_text(page, "Workflow:")
@@ -116,7 +116,11 @@ defmodule Front.Browser.AuditLogsTest do
       assert Wallaby.Browser.current_path(page) == "/workflows/#{workflow.id}"
     end
 
-    test "pipeline link is displayed", %{session: session, workflow: workflow, pipeline: pipeline} do
+    browser_test "pipeline link is displayed", %{
+      session: session,
+      workflow: workflow,
+      pipeline: pipeline
+    } do
       page = open(session)
 
       assert_text(page, "Pipeline:")
@@ -127,13 +131,13 @@ defmodule Front.Browser.AuditLogsTest do
       assert Wallaby.Browser.current_path(page) == "/workflows/#{workflow.id}"
     end
 
-    test "event description is visible", %{session: session} do
+    browser_test "event description is visible", %{session: session} do
       page = open(session)
 
       assert_text(page, "Triggered a promotion to Production")
     end
 
-    test "agent name and IP address is visible", %{session: session} do
+    browser_test "agent name and IP address is visible", %{session: session} do
       page = open(session)
 
       assert_text(page, "s1-local-testing")

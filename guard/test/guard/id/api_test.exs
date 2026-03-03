@@ -5,9 +5,7 @@ defmodule Guard.Id.Api.Test do
   doctest Guard.Id.Api, import: true
 
   use Plug.Test
-
-  @port 4003
-  @host "http://localhost:#{@port}"
+  import Support.ApiTestHelpers
 
   setup do
     FunRegistry.clear!()
@@ -1245,21 +1243,6 @@ defmodule Guard.Id.Api.Test do
       %{"state" => state} -> {:ok, state}
     end
   end
-
-  defp send_login_request(params \\ []) do
-    query_string = parse_query_params(params[:query])
-    path = params[:path] || "/login"
-
-    headers =
-      (params[:headers] || []) ++ [{"x-forwarded-proto", "https"}, {"user-agent", "test-agent"}]
-
-    "#{@host}/#{path}#{query_string}"
-    |> URI.encode()
-    |> HTTPoison.get(headers)
-  end
-
-  defp parse_query_params(nil), do: ""
-  defp parse_query_params(params), do: "?#{URI.encode_query(params)}"
 
   defp domain, do: Application.get_env(:guard, :base_domain)
 end

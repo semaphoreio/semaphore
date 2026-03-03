@@ -37,6 +37,12 @@ defmodule Guard.Session do
         #
         domain: ".#{Application.get_env(:guard, :base_domain)}",
         secure: true,
+        #
+        # If `same_site` is set to `Strict` then the cookie will not be sent on
+        # cross-site navigations (e.g. clicking a link from GitHub to Semaphore).
+        # `Lax` allows the cookie to be sent on top-level navigations.
+        #
+        same_site: "Lax",
         signing_with_salt: true,
         encrypt: true,
         key_iterations: 1000,
@@ -84,10 +90,11 @@ defmodule Guard.Session do
         id_provider = Map.get(values, "id_provider", "")
         ip_address = Map.get(values, "ip_address", "")
         user_agent = Map.get(values, "user_agent", "")
+        expires_at = Map.get(values, "expires_at")
 
         {:ok,
          {id_provider, %{id: user_id, salt: user_salt}, %{},
-          %{ip_address: ip_address, user_agent: user_agent}}}
+          %{ip_address: ip_address, user_agent: user_agent, expires_at: expires_at}}}
 
       true ->
         Logger.error("Inalid session cookie values: #{inspect(values)}")

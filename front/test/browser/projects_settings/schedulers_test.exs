@@ -12,21 +12,21 @@ defmodule Front.Browser.ProjectSettings.SchedulersTest do
       {:ok, context}
     end
 
-    test "renders tasks' index page",
-         %{session: session, project: project, periodic: _periodic} do
+    browser_test "renders tasks' index page",
+                 %{session: session, project: project, periodic: _periodic} do
       page = visit(session, "/projects/#{project.name}/schedulers")
       message = "Define tasks to trigger workflows according to your preference."
       page |> assert_has(Query.text(message))
     end
 
-    test "renders tasks' new page",
-         %{session: session, project: project, periodic: _periodic} do
+    browser_test "renders tasks' new page",
+                 %{session: session, project: project, periodic: _periodic} do
       page = visit(session, "/projects/#{project.name}/schedulers/new")
       page |> assert_has(Query.text("New Task"))
     end
 
-    test "renders tasks' edit page",
-         %{session: session, project: project, periodic: periodic} do
+    browser_test "renders tasks' edit page",
+                 %{session: session, project: project, periodic: periodic} do
       page = visit(session, "/projects/#{project.name}/schedulers/#{periodic.id}/edit")
       page |> assert_has(Query.text("Edit Task"))
     end

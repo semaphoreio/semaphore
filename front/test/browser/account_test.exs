@@ -19,13 +19,13 @@ defmodule Front.Browser.AccountTest do
   end
 
   describe "Okta welcome page" do
-    test "it welcomes the customer to semaphore", %{page_url: page_url, session: session} do
+    browser_test "it welcomes the customer to semaphore", %{page_url: page_url, session: session} do
       page = visit(session, page_url)
 
       assert_text(page, "Welcome")
     end
 
-    test "it asks the customer to connect to a git provider account", %{
+    browser_test "it asks the customer to connect to a git provider account", %{
       page_url: page_url,
       session: session
     } do

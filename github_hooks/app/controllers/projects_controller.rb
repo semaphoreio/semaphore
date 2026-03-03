@@ -70,6 +70,13 @@ class ProjectsController < ApplicationController
       projects.each do |project|
         organization = project.organization
 
+        if organization.nil?
+          logger.add(:project_id => project.id)
+          logger.error("Organization not found for project")
+
+          next
+        end
+
         logger.add(:project_id => project.id, :organization_id => organization.id)
 
         if organization.suspended
@@ -97,7 +104,7 @@ class ProjectsController < ApplicationController
           Watchman.increment("repo_host_post_commit_hooks.controller.member_webhook")
           logger.info("Member Webhook")
 
-          Semaphore::Events::ProjectCollaboratorsChanged.emit(project)
+          Semaphore::Events::ProjectCollaboratorsChanged.emit(project.id)
           Semaphore::GithubApp::Collaborators::Worker.perform_async(project.repo_owner_and_name)
 
           next
@@ -111,7 +118,7 @@ class ProjectsController < ApplicationController
           else
             Watchman.increment("repo_host_post_commit_hooks.controller.repository_webhook")
 
-            Semaphore::Events::RemoteRepositoryChanged.emit(webhook_filter.repository)
+            Semaphore::Events::RemoteRepositoryChanged.emit(project.repository.id)
           end
 
           next
@@ -129,6 +136,14 @@ class ProjectsController < ApplicationController
           workflow.update_attribute(:result, Workflow::RESULT_BAD_REQUEST)
 
           next
+        end
+
+        repository_comparator = RepoHost::Github::RepositoryComparator.new(project.repository, webhook_filter.repository)
+        if repository_comparator.different?
+          logger.info("Repository Changed", :changes => repository_comparator.changes)
+          Watchman.increment("repo_host_post_commit_hooks.controller.repository_changed")
+
+          Semaphore::Events::RemoteRepositoryChanged.emit(project.repository.id)
         end
 
         workflow.update_attribute(:result, Workflow::RESULT_OK)
@@ -152,10 +167,13 @@ class ProjectsController < ApplicationController
       names = repository["name"]
     else
       installation = GithubAppInstallation.find_by(:installation_id => installation_id)
-      return [] if installation.nil? || installation.repositories.empty?
+      return [] if installation.nil?
 
-      owner = installation.repositories.first.split("/").first
-      names = installation.repositories.map { |repo| repo.split("/").last }
+      repository_slugs = installation.installation_repositories.pluck(:slug)
+      return [] if repository_slugs.empty?
+
+      owner = repository_slugs.first.split("/").first
+      names = repository_slugs.map { |repo| repo.split("/").last }
     end
 
     Repository.includes(:project).where(

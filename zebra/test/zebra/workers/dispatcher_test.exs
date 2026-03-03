@@ -231,6 +231,136 @@ defmodule Zebra.Workers.DispatcherTest do
       # a NOT_FOUND response from chmura, and stopped trying to occupy agents.
       assert Zebra.Workers.DispatcherTest.Counter.value() == 10
     end
+
+    test "isolates dispatching by both machine_type and os_image" do
+      System.put_env("DISPATCH_SELF_HOSTED_ONLY", "false")
+      System.put_env("DISPATCH_CLOUD_ONLY", "false")
+
+      # we need to have at least 20 for each os_image to ensure that we
+      # don't stop batching when we receive a NOT_FOUND response from chmura
+      # and stop trying to occupy agents.
+
+      ubuntu2404_jobs =
+        Enum.map(1..20, fn _ ->
+          {:ok, job} =
+            Support.Factories.Job.create(:scheduled, %{
+              machine_type: "e1-standard-2",
+              machine_os_image: "ubuntu2404"
+            })
+
+          job
+        end)
+
+      # Create jobs with same machine_type but different os_images
+      ubuntu1804_jobs =
+        Enum.map(1..20, fn _ ->
+          {:ok, job} =
+            Support.Factories.Job.create(:scheduled, %{
+              machine_type: "e1-standard-2",
+              machine_os_image: "ubuntu1804"
+            })
+
+          job
+        end)
+
+      ubuntu2004_jobs =
+        Enum.map(1..20, fn _ ->
+          {:ok, job} =
+            Support.Factories.Job.create(:scheduled, %{
+              machine_type: "e1-standard-2",
+              machine_os_image: "ubuntu2004"
+            })
+
+          job
+        end)
+
+      # Track which os_images were requested
+      agent_requests = Agent.start_link(fn -> [] end)
+
+      GrpcMock.stub(Support.FakeServers.ChmuraApi, :occupy_agent, fn req, _ ->
+        Agent.update(elem(agent_requests, 1), fn list ->
+          [req.machine.os_image | list]
+        end)
+
+        if req.machine.os_image == "ubuntu2404" do
+          raise GRPC.RPCError, status: GRPC.Status.not_found(), message: "No suitable agent found"
+        else
+          %InternalApi.Chmura.OccupyAgentResponse{
+            agent: %InternalApi.Chmura.Agent{
+              id: Ecto.UUID.generate(),
+              ip_address: "1.2.3.4",
+              ssh_port: 80,
+              ctrl_port: 80,
+              auth_token: "asdas"
+            }
+          }
+        end
+      end)
+
+      with_stubbed_http_calls(fn ->
+        Worker.init() |> Zebra.Workers.DbWorker.tick()
+      end)
+
+      # ubuntu1804 and ubuntu2004 jobs should be started
+      (ubuntu1804_jobs ++ ubuntu2004_jobs)
+      |> Enum.each(fn job ->
+        job = Job.reload(job)
+        assert Job.started?(job) == true
+      end)
+
+      # ubuntu2404 jobs should remain scheduled (no agents available)
+      ubuntu2404_jobs
+      |> Enum.each(fn job ->
+        job = Job.reload(job)
+        assert Job.scheduled?(job) == true
+      end)
+
+      # Verify that requests were made with the correct os_images
+      requested_os_images = Agent.get(elem(agent_requests, 1), & &1)
+      assert length(requested_os_images) == 50
+      assert Enum.count(requested_os_images, &(&1 == "ubuntu1804")) == 20
+      assert Enum.count(requested_os_images, &(&1 == "ubuntu2004")) == 20
+      # only one batch requested
+      assert Enum.count(requested_os_images, &(&1 == "ubuntu2404")) == 10
+    end
+
+    test "dispatches self-hosted jobs when os_image is blank or nil" do
+      System.put_env("DISPATCH_SELF_HOSTED_ONLY", "false")
+      System.put_env("DISPATCH_CLOUD_ONLY", "false")
+
+      {:ok, blank_image_job} =
+        Support.Factories.Job.create(:scheduled, %{
+          machine_type: "s1-local-testing",
+          machine_os_image: ""
+        })
+
+      {:ok, nil_image_job} =
+        Support.Factories.Job.create(:scheduled, %{
+          machine_type: "s1-local-testing",
+          machine_os_image: nil
+        })
+
+      response = %InternalApi.SelfHosted.OccupyAgentResponse{
+        agent_id: @agent_id,
+        agent_name: "self-hosted-agent"
+      }
+
+      GrpcMock.stub(Support.FakeServers.SelfHosted, :occupy_agent, fn _, _ -> response end)
+
+      with_stubbed_http_calls(fn ->
+        Worker.init() |> Zebra.Workers.DbWorker.tick()
+      end)
+
+      blank_image_job = Job.reload(blank_image_job)
+      nil_image_job = Job.reload(nil_image_job)
+
+      assert Job.started?(blank_image_job)
+      assert Job.started?(nil_image_job)
+      assert blank_image_job.agent_id == @agent_id
+      assert nil_image_job.agent_id == @agent_id
+      assert blank_image_job.machine_os_image == ""
+      assert nil_image_job.machine_os_image in [nil, ""]
+    end
   end
 
   describe ".process" do

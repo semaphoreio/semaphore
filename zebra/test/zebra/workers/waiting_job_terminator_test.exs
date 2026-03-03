@@ -3,9 +3,10 @@ defmodule Zebra.Workers.WaitingJobTerminatorTest do
 
   test "jobs in waiting-for-agent state that exceed max scheduled time are terminated" do
     days_ago = DateTime.utc_now() |> DateTime.add(-86_400 * 2, :second)
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
 
     {:ok, job1} = Support.Factories.Job.create(:"waiting-for-agent", %{scheduled_at: days_ago})
-    {:ok, job2} = Support.Factories.Job.create(:"waiting-for-agent")
+    {:ok, job2} = Support.Factories.Job.create(:"waiting-for-agent", %{scheduled_at: now})
     {:ok, job3} = Support.Factories.Job.create(:started)
 
     #
@@ -40,9 +41,10 @@ defmodule Zebra.Workers.WaitingJobTerminatorTest do
 
   test "jobs in scheduled state that exceed max scheduled time are terminated" do
     days_ago = DateTime.utc_now() |> DateTime.add(-86_400 * 2, :second)
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
 
     {:ok, job1} = Support.Factories.Job.create(:scheduled, %{scheduled_at: days_ago})
-    {:ok, job2} = Support.Factories.Job.create(:scheduled)
+    {:ok, job2} = Support.Factories.Job.create(:scheduled, %{scheduled_at: now})
     {:ok, job3} = Support.Factories.Job.create(:started)
 
     #

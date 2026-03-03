@@ -17,7 +17,7 @@ defmodule FrontWeb.SupportController do
 
   plug(
     FrontWeb.Plugs.Header
-    when action in [:new, :thanks, :submit]
+    when action in [:new, :thanks, :submit, :pylon]
   )
 
   def thanks(conn, _params) do
@@ -32,6 +32,42 @@ defmodule FrontWeb.SupportController do
 
   def new(conn, _params) do
     redirect(conn, external: Front.Zendesk.new_ticket_location())
+  end
+
+  def pylon(conn, _params) do
+    org_id = conn.assigns.organization_id
+
+    cond do
+      not pylon_support_enabled?(org_id) ->
+        conn
+        |> put_flash(:alert, "Pylon support is not enabled for this organization.")
+        |> redirect(to: dashboard_path(conn, :index))
+
+      restricted_support_enabled?(org_id) and not contact_support_permission?(conn) ->
+        conn
+        |> put_flash(
+          :alert,
+          "Your access to Semaphore support has been limited. Please contact your organization's Admin for more information."
+        )
+        |> redirect(to: dashboard_path(conn, :index))
+
+      true ->
+        user = conn.assigns.user_id |> User.find()
+
+        case Front.Pylon.new_ticket_location(user, org_id) do
+          {:ok, location} ->
+            redirect(conn, external: location)
+
+          {:error, reason} ->
+            Logger.warning(
+              "Pylon support redirect failed for org_id=#{org_id}: #{inspect(reason)}"
+            )
+
+            conn
+            |> put_flash(:alert, "Unable to open Pylon support right now. Please try again.")
+            |> redirect(to: dashboard_path(conn, :index))
+        end
+    end
   end
 
   def submit(conn, params) do
@@ -143,5 +179,29 @@ defmodule FrontWeb.SupportController do
 
   defp billing_url(org) do
     "https://billing.#{Application.get_env(:front, :domain)}/?organization=#{org.username}"
+  end
+
+  defp pylon_support_enabled?(org_id) when is_binary(org_id) and org_id != "" do
+    FeatureProvider.feature_enabled?(:pylon_support, param: org_id)
+  rescue
+    _ -> false
+  end
+
+  defp pylon_support_enabled?(_), do: false
+
+  defp restricted_support_enabled?(org_id) when is_binary(org_id) and org_id != "" do
+    FeatureProvider.feature_enabled?(:restricted_support, param: org_id)
+  rescue
+    _ -> false
+  end
+
+  defp restricted_support_enabled?(_), do: false
+
+  defp contact_support_permission?(conn) do
+    Front.RBAC.Permissions.has?(
+      conn.assigns.user_id,
+      conn.assigns.organization_id,
+      "organization.contact_support"
+    )
   end
 end

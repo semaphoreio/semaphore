@@ -28,7 +28,7 @@ name: Initial Pipeline
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
   - name: Build
     task:
@@ -216,7 +216,7 @@ name: Initial Pipeline
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 # highlight-end
 blocks:
   - name: 'Block #1'
@@ -225,7 +225,7 @@ blocks:
       agent:
         machine:
           type: e1-standard-2
-          os_image: ubuntu2004
+          os_image: ubuntu2404
       jobs:
         - name: 'Job #1'
           commands:
@@ -258,7 +258,7 @@ name: Initial Pipeline
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 # highlight-start
 global_job_config:
   prologue:
@@ -305,7 +305,7 @@ name: Initial Pipeline
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 # highlight-start
 global_job_config:
   epilogue:
@@ -358,7 +358,7 @@ name: Initial Pipeline
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 # highlight-start
 execution_time_limit:
   hours: 2
@@ -413,7 +413,7 @@ name: Initial Pipeline
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 # highlight-start
 fail_fast:
   stop:
@@ -471,7 +471,7 @@ name: Initial Pipeline
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 # highlight-start
 auto_cancel:
   running:
@@ -516,7 +516,7 @@ name: Deploy
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
   - name: 'Block #1'
     task:
@@ -569,7 +569,7 @@ name: Initial Pipeline
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 blocks:
   - name: 'Block #1'
     dependencies: []
@@ -577,7 +577,7 @@ blocks:
       agent:
         machine:
           type: e1-standard-2
-          os_image: ubuntu2004
+          os_image: ubuntu2404
       jobs:
         - name: 'Job #1'
           commands:
@@ -647,7 +647,7 @@ name: Production deployment
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 # highlight-start
 queue:
   name: Deployment queue
@@ -669,7 +669,7 @@ name: Project A deployment
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 # highlight-start
 queue:
   name: Shared deployment queue
@@ -705,7 +705,7 @@ name: Tests
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 # highlight-start
 queue:
   processing: parallel
@@ -734,7 +734,7 @@ name: Example project
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 # highlight-start
 queue:
   - when: "branch = 'master'"
@@ -817,7 +817,7 @@ name: Pipeline using execution_time_limit
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2404
 # highlight-start
 execution_time_limit:
   hours: 3

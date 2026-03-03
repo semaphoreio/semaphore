@@ -33,7 +33,7 @@ defmodule Front.Browser.WorkflowEditor.CodeEditorTest do
     {:ok, %{page: page}}
   end
 
-  test "YAML validation errors in code editor", %{page: page} do
+  browser_test "YAML validation errors in code editor", %{page: page} do
     page
     |> Editor.change_code_in_editor("semaphore.yml", @broken_yaml)
     |> assert_has(css(".CodeMirror-lint-marker-error"))
@@ -41,7 +41,7 @@ defmodule Front.Browser.WorkflowEditor.CodeEditorTest do
     |> refute_has(css(".CodeMirror-lint-marker-error"))
   end
 
-  test "YAML validation errors on diagram", %{page: page} do
+  browser_test "YAML validation errors on diagram", %{page: page} do
     error_message = "bad indentation of a mapping entry"
     error_title = "Invalid YAML syntax in .semaphore/semaphore.yml"
 
