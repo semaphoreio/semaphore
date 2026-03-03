@@ -664,35 +664,31 @@ const TotalSpendingsDiscounted = ({ summary }: { summary: types.Spendings.Summar
               <div className="flex-ns items-center">
                 <div className="w-60-ns flex-ns items-center">
                   <span className="pr1">Total spending</span>
-                  {
-                    <toolbox.Tooltip
-                      stickable={true}
-                      anchor={
-                        <span className="pointer material-symbols-outlined" style="font-size: 1em;" aria-expanded="false">
-                          help
-                        </span>
-                      }
-                      content={
-                        <div className="f7">
-                          <div className="f6 b pb1">Discount</div>
-                          <div className="pb1">
-                            <div className="flex justify-between">
-                              <div className="b pr2">You have a discount of:</div>
-                              <div>{summary?.discount}%</div>
-                            </div>
-                            <div className="flex justify-between">
-                              <div className="b pr2">Discounted from the original price:</div>
-                              <div>-{summary?.discountAmount}</div>
-                            </div>
+                  <toolbox.Tooltip
+                    stickable={true}
+                    anchor={
+                      <span className="pointer material-symbols-outlined" style="font-size: 1em;" aria-expanded="false">
+                        help
+                      </span>
+                    }
+                    content={
+                      <div className="f7">
+                        <div className="f6 b pb1">Discount</div>
+                        <div className="pb1">
+                          <div className="flex justify-between">
+                            <div className="b pr2">Spending before discount:</div>
+                            <div>{summary?.usageTotal}</div>
+                          </div>
+                          <div className="flex justify-between">
+                            <div className="b pr2">Discount ({summary?.discount}%):</div>
+                            <div>-{summary?.discountAmount}</div>
                           </div>
                         </div>
-                      }
-                    />
-                  }
+                      </div>
+                    }
+                  />
                 </div>
-                <div className="w-40-ns tr-ns tnum">
-                  <span className="f6 gray ml1">({summary?.discount}%) </span> {summary?.usageTotal}
-                </div>
+                <div className="w-40-ns tr-ns tnum">{summary?.discountedTotal()}</div>
               </div>
             </div>
           </div>
