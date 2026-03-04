@@ -50,7 +50,7 @@ defmodule FrontWeb.SupportControllerTest do
   end
 
   describe "GET pylon" do
-    test "redirects to pylon support URL when feature is enabled", %{
+    test "renders pylon SSO post page when feature is enabled", %{
       conn: conn,
       organization: organization
     } do
@@ -68,7 +68,7 @@ defmodule FrontWeb.SupportControllerTest do
          [
            new_ticket_location: fn %{email: email}, ^org_id ->
              assert is_binary(email) and email != ""
-             {:ok, "https://pylon-support.test"}
+             {:ok, %{post_url: "https://pylon-support.test", jwt: "jwt-token"}}
            end
          ]}
       ]) do
@@ -76,11 +76,14 @@ defmodule FrontWeb.SupportControllerTest do
           conn
           |> get("/support/pylon")
 
-        assert redirected_to(conn) == "https://pylon-support.test"
+        body = html_response(conn, 200)
+        assert body =~ ~s(action="https://pylon-support.test")
+        assert body =~ ~s(name="jwt")
+        assert body =~ ~s(value="jwt-token")
       end
     end
 
-    test "redirects to pylon support URL when support is restricted and user has contact support permission",
+    test "renders pylon SSO post page when support is restricted and user has contact support permission",
          %{
            conn: conn,
            organization: organization
@@ -99,7 +102,7 @@ defmodule FrontWeb.SupportControllerTest do
         {Front.Pylon, [],
          [
            new_ticket_location: fn _, ^org_id ->
-             {:ok, "https://pylon-support.test"}
+             {:ok, %{post_url: "https://pylon-support.test", jwt: "jwt-token"}}
            end
          ]}
       ]) do
@@ -107,7 +110,10 @@ defmodule FrontWeb.SupportControllerTest do
           conn
           |> get("/support/pylon")
 
-        assert redirected_to(conn) == "https://pylon-support.test"
+        body = html_response(conn, 200)
+        assert body =~ ~s(action="https://pylon-support.test")
+        assert body =~ ~s(name="jwt")
+        assert body =~ ~s(value="jwt-token")
       end
     end
 
