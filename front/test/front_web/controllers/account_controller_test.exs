@@ -52,12 +52,12 @@ defmodule FrontWeb.AccountControllerTest do
   end
 
   describe "POST delete_with_owned_orgs" do
-    test "deletes account and redirects to id page", %{conn: conn} do
+    test "deletes account and redirects to destroyed account page", %{conn: conn} do
       conn =
         conn
         |> post("/account/delete_with_owned_orgs")
 
-      assert redirected_to(conn) == "https://id.semaphoretest.test"
+      assert redirected_to(conn) == "https://id.semaphoretest.test/destroyed_account"
     end
 
     test "when deletion fails => redirects back to account with alert", %{conn: conn} do

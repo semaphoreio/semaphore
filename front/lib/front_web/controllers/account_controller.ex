@@ -203,7 +203,7 @@ defmodule FrontWeb.AccountController do
       case Models.User.delete_with_owned_orgs(user_id, tracing_headers) do
         {:ok, _user} ->
           conn
-          |> redirect(external: id_page_url())
+          |> redirect(external: destroyed_account_redirect_url(conn))
 
         {:error, error_message} ->
           conn
@@ -245,8 +245,8 @@ defmodule FrontWeb.AccountController do
     Regex.match?(email_regex, email)
   end
 
-  defp id_page_url do
+  defp destroyed_account_redirect_url(_conn) do
     domain = Application.get_env(:front, :domain)
-    "https://id.#{domain}"
+    "https://id.#{domain}/destroyed_account"
   end
 end
