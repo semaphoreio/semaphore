@@ -195,6 +195,24 @@ defmodule FrontWeb.AccountController do
     end)
   end
 
+  def delete_with_owned_orgs(conn, _params) do
+    Watchman.benchmark("account.delete_with_owned_orgs.duration", fn ->
+      user_id = conn.assigns.user_id
+      tracing_headers = conn.assigns.tracing_headers
+
+      case Models.User.delete_with_owned_orgs(user_id, tracing_headers) do
+        {:ok, _user} ->
+          conn
+          |> redirect(external: logout_redirect_url(conn))
+
+        {:error, error_message} ->
+          conn
+          |> put_flash(:alert, error_message)
+          |> redirect(to: account_path(conn, :show))
+      end
+    end)
+  end
+
   defp render_show(conn, user_id, errors \\ nil)
 
   defp render_show(conn, user_id, errors) when is_binary(user_id) do
@@ -225,5 +243,19 @@ defmodule FrontWeb.AccountController do
   defp valid_email_format?(email) do
     email_regex = ~r/^[^\s@]+@[^\s@]+\.[^\s@]+$/
     Regex.match?(email_regex, email)
+  end
+
+  defp logout_redirect_url(conn) do
+    domain = Application.get_env(:front, :domain)
+    me_host = Application.get_env(:front, :me_host)
+
+    back_url =
+      if me_host do
+        "https://#{String.trim_trailing(me_host, ".")}.#{domain}"
+      else
+        me_path(conn, :show)
+      end
+
+    "https://id.#{domain}/logout?back_url=#{URI.encode_www_form(back_url)}"
   end
 end

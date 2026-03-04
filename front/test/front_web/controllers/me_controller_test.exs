@@ -35,8 +35,6 @@ defmodule FrontWeb.MeControllerTest do
         |> get("/")
 
       assert html_response(conn, 200) =~ "Select one of your organizations to continue:"
-      assert html_response(conn, 200) =~ "Danger Zone"
-      assert html_response(conn, 200) =~ "Delete account and owned organizations"
       refute html_response(conn, 200) =~ "signup"
       assert html_response(conn, 200) =~ "new organization"
     end
@@ -71,28 +69,6 @@ defmodule FrontWeb.MeControllerTest do
 
       refute html_response(conn, 200) =~ "new organization"
       Application.put_env(:front, :single_tenant, false)
-    end
-  end
-
-  describe "POST delete_with_owned_orgs" do
-    test "deletes account and redirects to logout", %{conn: conn} do
-      conn =
-        conn
-        |> post("/delete_with_owned_orgs")
-
-      assert redirected_to(conn) ==
-               "https://id.semaphoretest.test/logout?back_url=https%3A%2F%2Fme.semaphoretest.test"
-    end
-
-    test "when deletion fails => redirects to me with alert", %{conn: conn, user: user} do
-      Support.Stubs.User.delete(user.id)
-
-      conn =
-        conn
-        |> post("/delete_with_owned_orgs")
-
-      assert redirected_to(conn) == "/"
-      assert get_flash(conn, :alert) == "Failed to delete account."
     end
   end
 

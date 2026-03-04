@@ -59,7 +59,6 @@ defmodule FrontWeb.Router do
     pipe_through(:browser)
 
     get("/", MeController, :show)
-    post("/delete_with_owned_orgs", MeController, :delete_with_owned_orgs)
     get("/permissions_initialized", MeController, :permissions_initialized)
     get("/github_app_installation", MeController, :github_app_installation)
 
@@ -72,6 +71,7 @@ defmodule FrontWeb.Router do
     post("/account/change_email", AccountController, :change_my_email)
     post("/account/reset_my_password", AccountController, :reset_my_password)
     post("/account/update_repo_scope/:provider", AccountController, :update_repo_scope)
+    post("/account/delete_with_owned_orgs", AccountController, :delete_with_owned_orgs)
 
     get("/sso/zendesk", SSOController, :zendesk)
 
