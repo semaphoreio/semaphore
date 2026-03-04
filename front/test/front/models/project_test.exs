@@ -499,4 +499,94 @@ defmodule Front.Models.ProjectTest do
       {:error, _} = Project.count("123")
     end
   end
+
+  describe ".file_exists?" do
+    test "returns true when file is found" do
+      project = %Project{
+        id: "project-123",
+        repo_id: "repo-456",
+        repo_default_branch: "main"
+      }
+
+      GrpcMock.stub(RepositoryMock, :get_file, fn req, _ ->
+        assert req.repository_id == "repo-456"
+        assert req.commit_sha == "main"
+        assert req.path == ".semaphore/semaphore.yml"
+
+        InternalApi.Repository.GetFileResponse.new(
+          file: InternalApi.Repository.File.new(path: req.path, content: "")
+        )
+      end)
+
+      assert Project.file_exists?(project, ".semaphore/semaphore.yml") == true
+    end
+
+    test "returns false when file is not found" do
+      project = %Project{
+        id: "project-123",
+        repo_id: "repo-456",
+        repo_default_branch: "main"
+      }
+
+      GrpcMock.stub(RepositoryMock, :get_file, fn _req, _ ->
+        raise GRPC.RPCError, status: GRPC.Status.not_found(), message: "File not found"
+      end)
+
+      assert Project.file_exists?(project, ".semaphore/semaphore.yml") == false
+    end
+
+    test "falls back to 'main' when repo_default_branch is nil" do
+      project = %Project{
+        id: "project-123",
+        repo_id: "repo-456",
+        repo_default_branch: nil
+      }
+
+      GrpcMock.stub(RepositoryMock, :get_file, fn req, _ ->
+        assert req.commit_sha == "main"
+
+        InternalApi.Repository.GetFileResponse.new(
+          file: InternalApi.Repository.File.new(path: req.path, content: "")
+        )
+      end)
+
+      assert Project.file_exists?(project, ".semaphore/semaphore.yml") == true
+    end
+
+    test "falls back to 'main' when repo_default_branch is empty string" do
+      project = %Project{
+        id: "project-123",
+        repo_id: "repo-456",
+        repo_default_branch: ""
+      }
+
+      GrpcMock.stub(RepositoryMock, :get_file, fn req, _ ->
+        assert req.commit_sha == "main"
+
+        InternalApi.Repository.GetFileResponse.new(
+          file: InternalApi.Repository.File.new(path: req.path, content: "")
+        )
+      end)
+
+      assert Project.file_exists?(project, ".semaphore/semaphore.yml") == true
+    end
+
+    test "uses repo_default_branch when set" do
+      project = %Project{
+        id: "project-123",
+        repo_id: "repo-456",
+        repo_default_branch: "develop"
+      }
+
+      GrpcMock.stub(RepositoryMock, :get_file, fn req, _ ->
+        assert req.commit_sha == "develop"
+
+        InternalApi.Repository.GetFileResponse.new(
+          file: InternalApi.Repository.File.new(path: req.path, content: "")
+        )
+      end)
+
+      assert Project.file_exists?(project, ".semaphore/semaphore.yml") == true
+    end
+  end
 end
