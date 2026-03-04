@@ -5,7 +5,7 @@ module Semaphore::GithubApp
 
       sidekiq_options :queue => :github_app
 
-      def perform(slug)
+      def perform(slug, remote_id = nil)
         log(slug, "Start")
 
         if slug.blank?
@@ -13,7 +13,7 @@ module Semaphore::GithubApp
           return
         end
 
-        result = Semaphore::GithubApp::Collaborators.refresh(slug)
+        result = Semaphore::GithubApp::Collaborators.refresh(slug, remote_id)
 
         case result
         when :ok
@@ -24,7 +24,7 @@ module Semaphore::GithubApp
           log(slug, "Repository not found on GitHub")
         when :low_rate_limit
           log(slug, "Low Rate Limit")
-          Semaphore::GithubApp::Collaborators::Worker.perform_in(15.minutes, slug)
+          Semaphore::GithubApp::Collaborators::Worker.perform_in(15.minutes, slug, remote_id)
         else
           log(slug, "Unknown result: #{result.inspect}")
         end
