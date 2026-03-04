@@ -33,4 +33,22 @@
     <% end %>
   <% end %>
 </div>
+
+<div class="mt4 pt3 bt b--light-gray">
+  <h2 class="f4 dark-red mb2">Danger Zone</h2>
+  <div class="bg-washed-red ba b--red br3 pa3">
+    <p class="b dark-red mt0 mb2">Delete account permanently</p>
+    <p class="mb2">
+      This action permanently deletes your account and cannot be undone.
+    </p>
+    <p class="mb3">
+      Every organization where you are the sole owner will also be permanently deleted.
+    </p>
+    <%= form_for @conn, me_path(@conn, :delete_with_owned_orgs), [class: "mb0"], fn _f -> %>
+      <%= submit "Delete account and owned organizations",
+        class: "btn btn-danger",
+        data: [confirm: "This will permanently delete your account and all organizations where you are the sole owner. This action cannot be undone. Continue?"] %>
+    <% end %>
+  </div>
+</div>
 </div>

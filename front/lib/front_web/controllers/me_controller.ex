@@ -83,6 +83,24 @@ defmodule FrontWeb.MeController do
     conn |> json(response)
   end
 
+  def delete_with_owned_orgs(conn, _params) do
+    Watchman.benchmark("me.delete_with_owned_orgs.duration", fn ->
+      user_id = conn.assigns.user_id
+      tracing_headers = conn.assigns.tracing_headers
+
+      case Models.User.delete_with_owned_orgs(user_id, tracing_headers) do
+        {:ok, _user} ->
+          conn
+          |> redirect(external: logout_redirect_url(conn))
+
+        {:error, error_message} ->
+          conn
+          |> put_flash(:alert, error_message)
+          |> redirect(to: me_path(conn, :show))
+      end
+    end)
+  end
+
   defp extract_state(state) when not is_binary(state), do: nil
 
   defp extract_state(state) do
@@ -181,5 +199,19 @@ defmodule FrontWeb.MeController do
       signup: signup,
       notice: notice
     )
+  end
+
+  defp logout_redirect_url(conn) do
+    domain = Application.get_env(:front, :domain)
+    me_host = Application.get_env(:front, :me_host)
+
+    back_url =
+      if me_host do
+        "https://#{String.trim_trailing(me_host, ".")}.#{domain}"
+      else
+        me_path(conn, :show)
+      end
+
+    "https://id.#{domain}/logout?back_url=#{URI.encode_www_form(back_url)}"
   end
 end
