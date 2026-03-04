@@ -41,7 +41,24 @@ defmodule Front.FeatureHubProvider do
   end
 
   @impl FeatureProvider.Provider
-  def provide_machines(org_id, _opts \\ []) do
+  def provide_machines(org_id, opts \\ [])
+
+  def provide_machines(nil, _opts) do
+    %InternalApi.Feature.ListMachinesRequest{}
+    |> FeatureClient.list_machines()
+    |> unwrap(fn response ->
+      machines =
+        response.machines
+        |> Enum.map(&(%OrganizationMachine{machine: &1, availability: &1.availability}))
+        |> Enum.map(&machine_from_grpc/1)
+        |> Enum.filter(&FeatureProvider.Machine.enabled?/1)
+        |> order_by_machine_type()
+
+      ok(machines)
+    end)
+  end
+
+  def provide_machines(org_id, _opts) do
     FeatureClient.list_organization_machines(%{org_id: org_id})
     |> unwrap(fn response ->
       machines =
