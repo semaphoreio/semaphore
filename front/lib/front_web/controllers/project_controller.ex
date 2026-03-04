@@ -152,7 +152,7 @@ defmodule FrontWeb.ProjectController do
 
       case branches do
         [] ->
-          if Models.Project.file_exists?(project.id, project.initial_pipeline_file) do
+          if Models.Project.file_exists?(project, project.initial_pipeline_file) do
             render_default_branch(conn)
           else
             if FeatureProvider.feature_enabled?(:new_project_onboarding,
