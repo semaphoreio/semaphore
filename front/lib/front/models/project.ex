@@ -264,7 +264,7 @@ defmodule Front.Models.Project do
     req =
       GetFileRequest.new(
         repository_id: project.repo_id,
-        commit_sha: project.repo_default_branch || "main",
+        commit_sha: default_branch(project),
         path: path
       )
 
@@ -282,6 +282,12 @@ defmodule Front.Models.Project do
         false
     end
   end
+
+  defp default_branch(%__MODULE__{repo_default_branch: branch})
+       when branch in [nil, ""],
+       do: "main"
+
+  defp default_branch(%__MODULE__{repo_default_branch: branch}), do: branch
 
   def destroy(project_id, user_id, org_id, metadata \\ nil) do
     alias InternalApi.ResponseStatus.Code
