@@ -163,6 +163,8 @@ defmodule FrontWeb.PeopleControllerTest do
       assert html_response(conn, 200) =~ "Save changes"
       assert html_response(conn, 200) =~ "Reset Password"
       assert html_response(conn, 200) =~ "Reset API Token"
+      assert html_response(conn, 200) =~ "Danger Zone"
+      assert html_response(conn, 200) =~ "Delete account and owned organizations"
     end
 
     test "user with manage people permission looking for profile of non member => returns 404", %{
@@ -560,6 +562,30 @@ defmodule FrontWeb.PeopleControllerTest do
         |> post("/people/#{non_member.id}/update_repo_scope/github")
 
       assert html_response(conn, 404) =~ "404"
+    end
+  end
+
+  describe "POST delete_with_owned_orgs" do
+    test "user on own page deletes account and is redirected to destroyed account page", %{
+      conn: conn,
+      user: user
+    } do
+      conn =
+        conn
+        |> post("/people/#{user.id}/delete_with_owned_orgs")
+
+      assert redirected_to(conn) == "https://id.semaphoretest.test/destroyed_account"
+    end
+
+    test "when deletion fails => user is redirected back with flash", %{conn: conn, user: user} do
+      Support.Stubs.User.delete(user.id)
+
+      conn =
+        conn
+        |> post("/people/#{user.id}/delete_with_owned_orgs")
+
+      assert redirected_to(conn) == "/people/#{user.id}"
+      assert get_flash(conn, :alert) == "Failed to delete account."
     end
   end
 
