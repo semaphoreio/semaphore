@@ -203,7 +203,7 @@ defmodule FrontWeb.AccountController do
       case Models.User.delete_with_owned_orgs(user_id, tracing_headers) do
         {:ok, _user} ->
           conn
-          |> redirect(external: logout_redirect_url(conn))
+          |> redirect(external: id_page_url())
 
         {:error, error_message} ->
           conn
@@ -245,17 +245,8 @@ defmodule FrontWeb.AccountController do
     Regex.match?(email_regex, email)
   end
 
-  defp logout_redirect_url(conn) do
+  defp id_page_url do
     domain = Application.get_env(:front, :domain)
-    me_host = Application.get_env(:front, :me_host)
-
-    back_url =
-      if me_host do
-        "https://#{String.trim_trailing(me_host, ".")}.#{domain}"
-      else
-        me_path(conn, :show)
-      end
-
-    "https://id.#{domain}/logout?back_url=#{URI.encode_www_form(back_url)}"
+    "https://id.#{domain}"
   end
 end

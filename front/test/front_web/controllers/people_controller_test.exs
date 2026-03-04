@@ -566,13 +566,15 @@ defmodule FrontWeb.PeopleControllerTest do
   end
 
   describe "POST delete_with_owned_orgs" do
-    test "user on own page deletes account and gets logged out", %{conn: conn, user: user} do
+    test "user on own page deletes account and is redirected to id page", %{
+      conn: conn,
+      user: user
+    } do
       conn =
         conn
         |> post("/people/#{user.id}/delete_with_owned_orgs")
 
-      assert redirected_to(conn) ==
-               "https://id.semaphoretest.test/logout?back_url=https%3A%2F%2Fme.semaphoretest.test"
+      assert redirected_to(conn) == "https://id.semaphoretest.test"
     end
 
     test "when deletion fails => user is redirected back with flash", %{conn: conn, user: user} do
