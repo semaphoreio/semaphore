@@ -22,7 +22,7 @@ defmodule Front.PylonTest do
   end
 
   describe "new_ticket_location/2" do
-    test "returns callback URL with JWT token and required claims" do
+    test "returns callback POST URL and JWT token with required claims" do
       Application.put_env(:front, :pylon_org_slug, "semaphore")
       Application.put_env(:front, :pylon_jwt_secret, "secret")
       Application.put_env(:front, :pylon_jwt_issuer, "https://semaphoreci.com")
@@ -33,14 +33,13 @@ defmodule Front.PylonTest do
         "https://graph.usepylon.com/callback/jwt"
       )
 
-      assert {:ok, url} = Pylon.new_ticket_location(%{email: "foo@example.com"}, "org-123")
+      assert {:ok, %{post_url: post_url, jwt: token}} =
+               Pylon.new_ticket_location(%{email: "foo@example.com"}, "org-123")
 
-      query = url |> URI.parse() |> Map.fetch!(:query) |> URI.decode_query()
-      token = query["access_token"]
+      query = post_url |> URI.parse() |> Map.fetch!(:query) |> URI.decode_query()
 
       assert query["orgSlug"] == "semaphore"
-      assert is_binary(token)
-      assert token != ""
+      assert is_binary(token) and token != ""
 
       signer = Joken.Signer.create("HS256", "secret")
 
@@ -78,14 +77,8 @@ defmodule Front.PylonTest do
       Application.put_env(:front, :pylon_jwt_issuer, "https://semaphoreci.com")
       Application.delete_env(:front, :pylon_jwt_ttl_seconds)
 
-      assert {:ok, url} = Pylon.new_ticket_location(%{email: "foo@example.com"}, "org-123")
-
-      token =
-        url
-        |> URI.parse()
-        |> Map.fetch!(:query)
-        |> URI.decode_query()
-        |> Map.fetch!("access_token")
+      assert {:ok, %{jwt: token}} =
+               Pylon.new_ticket_location(%{email: "foo@example.com"}, "org-123")
 
       signer = Joken.Signer.create("HS256", "secret")
 

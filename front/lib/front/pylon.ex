@@ -66,10 +66,11 @@ defmodule Front.Pylon do
 
   def new_ticket_location(user, org_id) do
     with {:ok, token} <- JWT.generate(user, org_id) do
-      location =
-        "#{callback_url()}?orgSlug=#{URI.encode_www_form(org_slug())}&access_token=#{URI.encode_www_form(token)}"
-
-      {:ok, location}
+      {:ok,
+       %{
+         post_url: "#{callback_url()}?orgSlug=#{URI.encode_www_form(org_slug())}",
+         jwt: token
+       }}
     end
   end
 
