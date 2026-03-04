@@ -18,7 +18,7 @@ class Semaphore::GithubApp::Token
 
     installation_token(installation.installation_id)
   rescue ActiveRecord::RecordNotFound
-    Rails.logger.error("[Semaphore::GithubApp::Token] GithubAppInstallation not found for repository: #{repository_slug}")
+    Rails.logger.error("[Semaphore::GithubApp::Token] GithubAppInstallation not found for repository_slug: '#{repository_slug}' repository_remote_id: '#{repository_remote_id}'")
 
     nil
   end
