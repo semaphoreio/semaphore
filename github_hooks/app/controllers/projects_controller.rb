@@ -70,6 +70,13 @@ class ProjectsController < ApplicationController
       projects.each do |project|
         organization = project.organization
 
+        if organization.nil?
+          logger.add(:project_id => project.id)
+          logger.error("Organization not found for project")
+
+          next
+        end
+
         logger.add(:project_id => project.id, :organization_id => organization.id)
 
         if organization.suspended
@@ -160,10 +167,13 @@ class ProjectsController < ApplicationController
       names = repository["name"]
     else
       installation = GithubAppInstallation.find_by(:installation_id => installation_id)
-      return [] if installation.nil? || installation.repositories.empty?
+      return [] if installation.nil?
 
-      owner = installation.repositories.first.split("/").first
-      names = installation.repositories.map { |repo| repo.split("/").last }
+      repository_slugs = installation.installation_repositories.pluck(:slug)
+      return [] if repository_slugs.empty?
+
+      owner = repository_slugs.first.split("/").first
+      names = repository_slugs.map { |repo| repo.split("/").last }
     end
 
     Repository.includes(:project).where(

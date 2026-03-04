@@ -21,6 +21,10 @@ defmodule FrontWeb.Plug.ContentSecurityPolicyTest do
       assert [header_value] = Conn.get_resp_header(result, "content-security-policy-report-only")
       assert header_value =~ "connect-src 'self'"
       assert header_value =~ "storage.googleapis.com"
+      assert header_value =~ "https://widget.usepylon.com"
+      assert header_value =~ "https://*.usepylon.com"
+      assert header_value =~ ~r/form-action[^;]*https:\/\/graph\.usepylon\.com/
+      assert header_value =~ "https://pylon-avatars.s3.us-west-1.amazonaws.com"
     end
 
     test "includes additional domains from config in Content-Security-Policy", %{conn: conn} do
