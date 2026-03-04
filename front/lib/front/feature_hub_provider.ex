@@ -49,7 +49,7 @@ defmodule Front.FeatureHubProvider do
     |> unwrap(fn response ->
       machines =
         response.machines
-        |> Enum.map(&(%OrganizationMachine{machine: &1, availability: &1.availability}))
+        |> Enum.map(&%OrganizationMachine{machine: &1, availability: &1.availability})
         |> Enum.map(&machine_from_grpc/1)
         |> Enum.filter(&FeatureProvider.Machine.enabled?/1)
         |> order_by_machine_type()
