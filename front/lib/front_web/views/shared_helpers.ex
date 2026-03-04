@@ -418,35 +418,35 @@ defmodule FrontWeb.SharedHelpers do
   def manage_error_message(:account_settings, validations, field) do
     if validations && validations.errors && validations.errors[field] do
       message = validations.errors[field]
-      Phoenix.HTML.raw('<div class="f5 mv1 red">#{message}</div>')
+      Phoenix.HTML.raw(~c"<div class=\"f5 mv1 red\">#{message}</div>")
     end
   end
 
   def manage_error_message(:project_delete, validations, field) do
     if validations && validations.errors && validations.errors[field] do
       message = validations.errors[field]
-      Phoenix.HTML.raw('<div class="f6 fw5 mt1 red">#{message}</div>')
+      Phoenix.HTML.raw(~c"<div class=\"f6 fw5 mt1 red\">#{message}</div>")
     end
   end
 
   def manage_error_message(:schedulers, validations, field) do
     if validations && validations.errors && validations.errors[field] do
       msg = validations.errors[field]
-      Phoenix.HTML.raw('<p class="f6 fw5 mt1 mb0 red">#{msg}</p>')
+      Phoenix.HTML.raw(~c"<p class=\"f6 fw5 mt1 mb0 red\">#{msg}</p>")
     end
   end
 
   def manage_error_message(:secrets, validations, field) do
     if validations && validations.errors && validations.errors[field] do
       msg = validations.errors[field]
-      Phoenix.HTML.raw('<p class="f6 fw5 mt1 mb0 red">#{msg}</p>')
+      Phoenix.HTML.raw(~c"<p class=\"f6 fw5 mt1 mb0 red\">#{msg}</p>")
     end
   end
 
   def manage_error_message(_form, validations, field) do
     if validations && validations.errors && validations.errors[field] do
       {msg, _opts} = validations.errors[field]
-      Phoenix.HTML.raw('<p class="f6 fw5 mt1 red">#{msg}</p>')
+      Phoenix.HTML.raw(~c"<p class=\"f6 fw5 mt1 red\">#{msg}</p>")
     end
   end
 

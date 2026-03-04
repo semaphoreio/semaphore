@@ -316,8 +316,8 @@ defmodule FrontWeb.PeopleView do
     <div role_id="#{role.id}" user_id="#{member.id}" member_type="#{member_type}" name="role_button" class="#{extrapolate_role_div_class(role_selected?, binding_source)}", style="#{extrapolate_role_div_style(binding_source)}">
       <div style="flex-direction: column; display: flex;">
         #{if role_selected?,
-      do: '<span class="material-symbols-outlined mr1">done</span>#{git_icon(binding_source)}',
-      else: '<span class="material-symbols-outlined mr1">&nbsp;</span>'}
+      do: ~c"<span class=\"material-symbols-outlined mr1\">done</span>#{git_icon(binding_source)}",
+      else: ~c"<span class=\"material-symbols-outlined mr1\">&nbsp;</span>"}
       </div>
       <div>
         <p class="b f5 mb0">#{escape_unsafe_string(role.name)}</p>

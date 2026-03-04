@@ -18,7 +18,10 @@ defmodule JobPage.Events do
         {:ok, events} ->
           events = limit_take(events, take)
 
-          Enum.join(['{ "events": [', Enum.join(recode_events(events.events), ","), "] }"], "")
+          Enum.join(
+            [~c"{ \"events\": [", Enum.join(recode_events(events.events), ","), "] }"],
+            ""
+          )
 
         {:error, message} ->
           %{message: message}
