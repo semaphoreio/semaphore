@@ -11,7 +11,7 @@ defmodule FrontWeb.PeopleController do
   @all_management_pages @old_management_pages ++ ~w(create_member)a
   @project_actions ~w(project fetch_project_non_members)a
   @person_manage_action ~w(reset_password change_email)a
-  @self_manage_action ~w(update reset_token update_repo_scope)a
+  @self_manage_action ~w(update reset_token update_repo_scope delete_with_owned_orgs)a
   @person_action @person_manage_action ++ @self_manage_action ++ ~w(show)a
 
   plug(FetchPermissions, [scope: "org"] when action in @all_management_pages)
@@ -737,6 +737,21 @@ defmodule FrontWeb.PeopleController do
     end)
   end
 
+  def delete_with_owned_orgs(conn, %{"user_id" => user_id}) do
+    Watchman.benchmark("people.delete_with_owned_orgs", fn ->
+      case Models.User.delete_with_owned_orgs(user_id, conn.assigns.tracing_headers) do
+        {:ok, _user} ->
+          conn
+          |> redirect(external: logout_redirect_url(conn))
+
+        {:error, error_message} ->
+          conn
+          |> put_flash(:alert, error_message)
+          |> redirect(to: people_path(conn, :show, user_id))
+      end
+    end)
+  end
+
   defp parse_provider_and_username(params, org_id) do
     gitlab_enabled = FeatureProvider.feature_enabled?(:gitlab, param: org_id)
 
@@ -1000,6 +1015,20 @@ defmodule FrontWeb.PeopleController do
       errors: errors,
       title: "Semaphore - Account"
     )
+  end
+
+  defp logout_redirect_url(conn) do
+    domain = Application.get_env(:front, :domain)
+    me_host = Application.get_env(:front, :me_host)
+
+    back_url =
+      if me_host do
+        "https://#{String.trim_trailing(me_host, ".")}.#{domain}"
+      else
+        me_path(conn, :show)
+      end
+
+    "https://id.#{domain}/logout?back_url=#{URI.encode_www_form(back_url)}"
   end
 
   ### -------------------------------------------------
