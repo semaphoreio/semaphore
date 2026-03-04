@@ -671,12 +671,13 @@ defmodule FrontWeb.SharedHelpers do
   end
 
   defp pylon_help_dashboard_enabled_for_org?(org_id) do
-    feature_enabled_any?(org_id, [
-      :advanced_support,
-      :premium_support,
-      :"support-tier-3",
-      :"support-tier-4"
-    ])
+    FeatureProvider.feature_enabled?(:pylon_support, param: org_id) and
+      feature_enabled_any?(org_id, [
+        :advanced_support,
+        :premium_support,
+        :"support-tier-3",
+        :"support-tier-4"
+      ])
   end
 
   defp show_support_requests_card?(org_id, valid_permissions?) do

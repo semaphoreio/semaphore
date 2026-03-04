@@ -51,6 +51,37 @@ func DescribePipeline(ctx context.Context, api internalapi.Provider, pipelineID 
 	return resp, nil
 }
 
+// DescribePipelineTopology fetches the topology for a pipeline, which includes
+// after-pipeline job IDs that are not available from the standard Describe RPC.
+func DescribePipelineTopology(ctx context.Context, api internalapi.Provider, pipelineID string) (*pipelinepb.DescribeTopologyResponse, error) {
+	client := api.Pipelines()
+	if client == nil {
+		return nil, fmt.Errorf("pipeline gRPC endpoint is not configured")
+	}
+	callCtx, cancel := context.WithTimeout(ctx, api.CallTimeout())
+	defer cancel()
+
+	resp, err := client.DescribeTopology(callCtx, &pipelinepb.DescribeTopologyRequest{PplId: pipelineID})
+	if err != nil {
+		logging.ForComponent("rpc").
+			WithFields(logrus.Fields{
+				"rpc":        "pipeline.DescribeTopology",
+				"pipelineId": pipelineID,
+			}).
+			WithError(err).
+			Error("pipeline describe topology RPC failed")
+		return nil, fmt.Errorf("pipeline describe topology RPC failed: %w", err)
+	}
+	if status := resp.GetStatus(); status != nil && status.GetCode() != pipelinepb.ResponseStatus_OK {
+		message := strings.TrimSpace(status.GetMessage())
+		if message == "" {
+			message = "pipeline describe topology returned non-OK status"
+		}
+		return nil, fmt.Errorf("pipeline describe topology failed: %s", message)
+	}
+	return resp, nil
+}
+
 // DescribeProject fetches project details with proper auth metadata.
 func DescribeProject(ctx context.Context, api internalapi.Provider, orgID, userID, projectID string) (*projecthubpb.Project, error) {
 	client := api.Projects()

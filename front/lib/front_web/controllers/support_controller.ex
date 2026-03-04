@@ -55,8 +55,13 @@ defmodule FrontWeb.SupportController do
         user = conn.assigns.user_id |> User.find()
 
         case Front.Pylon.new_ticket_location(user, org_id) do
-          {:ok, location} ->
-            redirect(conn, external: location)
+          {:ok, %{post_url: post_url, jwt: jwt}} ->
+            conn
+            |> put_layout(false)
+            |> render("pylon_sso_redirect.html",
+              post_url: post_url,
+              jwt: jwt
+            )
 
           {:error, reason} ->
             Logger.warning(

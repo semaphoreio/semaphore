@@ -102,6 +102,7 @@ defmodule FrontWeb.SharedHelpersTest do
 
       with_mock FeatureProvider,
         feature_enabled?: fn
+          :pylon_support, [param: "org-1"] -> true
           :"support-tier-2", [param: "org-1"] -> true
           :restricted_support, [param: "org-1"] -> false
           _, _ -> false
@@ -119,6 +120,7 @@ defmodule FrontWeb.SharedHelpersTest do
 
       with_mock FeatureProvider,
         feature_enabled?: fn
+          :pylon_support, [param: "org-1"] -> true
           :"support-tier-3", [param: "org-1"] -> true
           :restricted_support, [param: "org-1"] -> false
           _, _ -> false
@@ -144,6 +146,7 @@ defmodule FrontWeb.SharedHelpersTest do
 
       with_mock FeatureProvider,
         feature_enabled?: fn
+          :pylon_support, [param: "org-1"] -> true
           :"support-tier-3", [param: "org-1"] -> true
           :zendesk_support, [param: "org-1"] -> true
           :restricted_support, [param: "org-1"] -> false
@@ -162,6 +165,7 @@ defmodule FrontWeb.SharedHelpersTest do
 
       with_mock FeatureProvider,
         feature_enabled?: fn
+          :pylon_support, [param: "org-1"] -> true
           :premium_support, [param: "org-1"] -> true
           :zendesk_support, [param: "org-1"] -> true
           :restricted_support, [param: "org-1"] -> false
@@ -172,7 +176,7 @@ defmodule FrontWeb.SharedHelpersTest do
       end
     end
 
-    test "keeps old zendesk help menu when pylon tier is missing", %{conn: conn} do
+    test "keeps old zendesk help menu when pylon_support is disabled", %{conn: conn} do
       layout_model = %Front.Layout.Model{permissions: %{"organization.contact_support" => true}}
 
       conn =
@@ -181,10 +185,10 @@ defmodule FrontWeb.SharedHelpersTest do
 
       with_mock FeatureProvider,
         feature_enabled?: fn
-          :pylon_support, [param: "org-1"] -> true
+          :pylon_support, [param: "org-1"] -> false
           :zendesk_support, [param: "org-1"] -> true
           :restricted_support, [param: "org-1"] -> false
-          :premium_support, [param: "org-1"] -> false
+          :premium_support, [param: "org-1"] -> true
           :advanced_support, [param: "org-1"] -> false
           _, _ -> false
         end do
