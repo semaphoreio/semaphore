@@ -27,7 +27,7 @@ defimpl RepositoryHub.Server.GetFileAction, for: RepositoryHub.GitlabAdapter do
       all: [
         chain: [{:from!, :repository_id}, :is_uuid],
         chain: [{:from!, :path}, :is_string],
-        chain: [{:from!, :commit_sha}, :is_sha]
+        chain: [{:from!, :commit_sha}, any: [:is_sha, :is_not_empty]]
       ]
     )
   end
