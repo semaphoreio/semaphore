@@ -149,10 +149,10 @@
       </div>
 
       <!-- Password Management Section -->
+      <%= if FeatureProvider.feature_enabled?(:email_members, param: @conn.assigns[:organization_id]) or Front.ce?() do %>
       <div class="mt4 pv3 bt b--lighter-gray">
         <h2 class="f4 mb3">Password</h2>
 
-        <%= if FeatureProvider.feature_enabled?(:email_members, param: @conn.assigns[:organization_id]) or Front.ce?() do %>
           <div class="mb3">
             <p class="f6 gray mb3">Reset your password to receive a new temporary password via email.</p>
 
@@ -169,8 +169,8 @@
                   data: [confirm: "This will generate a new temporary password and send instructions to your email. Continue?"] %>
             <% end %>
           </div>
-        <% end %>
       </div>
+      <% end %>
 
       <div class="mt3 pv3 bt b--lighter-gray">
         <h2 class="f4 mb2">API Token</h2>
