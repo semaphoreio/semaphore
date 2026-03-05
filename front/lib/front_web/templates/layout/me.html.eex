@@ -33,14 +33,17 @@
         </div>
       </div>
 
-
-
     <div style="display: none;">
       <!-- Header Profile menu -->
       <div id="profileMenu">
         <div class="ph2 pv1">
           <div class="f6 ph2 mt2 o-80">Logged in as</div>
           <div class="b ph2 pb2 mb2 bb b--white-40"><%= @user.name %></div>
+          <%= render FrontWeb.LayoutView, "page_header/_menu_card.html",
+                 card_url: account_path(@conn, :show),
+                 card_title: "Profile Settings",
+                 card_description: "Account, Repo access, API token",
+                 tooltip: false %>
           <%= render FrontWeb.LayoutView, "page_header/_menu_card.html",
                  card_url: logout_url(@conn),
                  card_title: "Log Out",
