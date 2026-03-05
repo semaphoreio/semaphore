@@ -37,7 +37,7 @@ defimpl RepositoryHub.Server.GetFileAction, for: RepositoryHub.BitbucketAdapter 
     |> Validator.validate(
       all: [
         chain: [{:from!, :repository_id}, :is_uuid],
-        chain: [{:from!, :commit_sha}, :is_sha],
+        chain: [{:from!, :commit_sha}, any: [:is_sha, :is_not_empty]],
         chain: [{:from!, :path}, :is_file_path]
       ]
     )

@@ -256,15 +256,19 @@ defmodule Front.Models.Project do
       |> String.to_atom()
       |> InternalApi.RepositoryIntegrator.IntegrationType.value()
 
-  @spec file_exists?(String.t(), String.t()) :: boolean
-  def file_exists?(project_id, path) do
-    alias InternalApi.RepositoryIntegrator.GetFileRequest
-    alias InternalApi.RepositoryIntegrator.RepositoryIntegratorService.Stub
+  @spec file_exists?(t(), String.t()) :: boolean
+  def file_exists?(project = %__MODULE__{}, path) do
+    alias InternalApi.Repository.GetFileRequest
+    alias InternalApi.Repository.RepositoryService.Stub
 
-    req = GetFileRequest.new(project_id: project_id, path: path)
+    req =
+      GetFileRequest.new(
+        repository_id: project.repo_id,
+        commit_sha: default_branch(project),
+        path: path
+      )
 
-    {:ok, ch} =
-      GRPC.Stub.connect(Application.fetch_env!(:front, :repository_integrator_grpc_endpoint))
+    {:ok, ch} = GRPC.Stub.connect(Application.fetch_env!(:front, :repositoryhub_grpc_endpoint))
 
     case Stub.get_file(ch, req, options()) do
       {:ok, _} ->
@@ -272,12 +276,18 @@ defmodule Front.Models.Project do
 
       {:error, error} ->
         Logger.error(
-          "Looking for a file #{path} in project #{project_id} failed: #{inspect(error)}"
+          "Looking for a file #{path} in project #{project.id} failed: #{inspect(error)}"
         )
 
         false
     end
   end
+
+  defp default_branch(%__MODULE__{repo_default_branch: branch})
+       when branch in [nil, ""],
+       do: "main"
+
+  defp default_branch(%__MODULE__{repo_default_branch: branch}), do: branch
 
   def destroy(project_id, user_id, org_id, metadata \\ nil) do
     alias InternalApi.ResponseStatus.Code
