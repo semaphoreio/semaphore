@@ -308,8 +308,13 @@ configure.sign:
 	$(ROOT_MAKEFILE_PATH)/get_id_token.py $$GOOGLE_PROJECT_NAME ci-image-signer > /tmp/sigstore-token
 
 registry.push:
-	docker tag $(IMAGE):$(IMAGE_TAG) $(REGISTRY_HOST)/$(APP_NAME):$(RELEASE_TAG)
-	docker push $(REGISTRY_HOST)/$(APP_NAME):$(RELEASE_TAG)
+	@if [ "$(APP_NAME)" = "mcp_server" ]; then \
+		docker tag $(IMAGE):$(IMAGE_TAG) $(REGISTRY_HOST)/auth:mcp_$(RELEASE_TAG); \
+		docker push $(REGISTRY_HOST)/auth:mcp_$(RELEASE_TAG); \
+	else \
+		docker tag $(IMAGE):$(IMAGE_TAG) $(REGISTRY_HOST)/$(APP_NAME):$(RELEASE_TAG); \
+		docker push $(REGISTRY_HOST)/$(APP_NAME):$(RELEASE_TAG); \
+	fi
 
 registry.sign: cosign.install
 	cosign sign -y \

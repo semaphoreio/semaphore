@@ -2,7 +2,7 @@ module github.com/semaphoreio/semaphore/bootstrapper
 
 go 1.23.0
 
-toolchain go1.24.3
+toolchain go1.24.13
 
 require (
 	github.com/golang/protobuf v1.5.4
