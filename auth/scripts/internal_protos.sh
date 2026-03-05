@@ -1,7 +1,6 @@
 #!/usr/bin/env sh
 
-list='include/google/protobuf/timestamp
-include/internal_api/response_status
+list='include/internal_api/response_status
 auth
 feature
 rbac
