@@ -37,7 +37,7 @@ defmodule FrontWeb.Plug.ContentSecurityPolicy do
         connect_src: connect_src(),
         default_src: ~w('none'),
         form_action:
-          ~w('self' semaphoreci.zendesk.com bitbucket.org github.com gitlab.com) ++
+          ~w('self' semaphoreci.zendesk.com bitbucket.org github.com gitlab.com https://*.usepylon.com) ++
             ["*.#{base_domain}"],
         media_src: ~w(beacon-v2.helpscout.net),
         child_src: ~w('self'),

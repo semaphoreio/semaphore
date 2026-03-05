@@ -23,6 +23,7 @@ defmodule FrontWeb.Plug.ContentSecurityPolicyTest do
       assert header_value =~ "storage.googleapis.com"
       assert header_value =~ "https://widget.usepylon.com"
       assert header_value =~ "https://*.usepylon.com"
+      assert header_value =~ ~r/form-action[^;]*https:\/\/\*\.usepylon\.com/
       assert header_value =~ "https://pylon-avatars.s3.us-west-1.amazonaws.com"
     end
 

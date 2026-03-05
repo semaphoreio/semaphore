@@ -13,6 +13,7 @@ defmodule RepositoryHub.Model.GitRepositoryTest do
       assert url_parts.host == "github.com"
       assert url_parts.owner == "marvinwills"
       assert url_parts.repo == "base-app"
+      assert url_parts.remote_id == ""
     end
 
     test "SSH URL from root => no errors" do
@@ -57,6 +58,18 @@ defmodule RepositoryHub.Model.GitRepositoryTest do
       assert url_parts.host == "github.com"
       assert url_parts.owner == "shiroyasha"
       assert url_parts.repo == "base-app"
+    end
+
+    test "URL with repository remote_id => no errors" do
+      url = "https://github.com/shiroyasha/base-app"
+
+      {:ok, url_parts} = GitRepository.new(url, "remote-id-123")
+
+      assert url_parts.protocol == "https://"
+      assert url_parts.host == "github.com"
+      assert url_parts.owner == "shiroyasha"
+      assert url_parts.repo == "base-app"
+      assert url_parts.remote_id == "remote-id-123"
     end
 
     test "HTTP URL with .git sufix => no errors" do
