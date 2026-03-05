@@ -11,27 +11,37 @@ defmodule Guard.Store.McpOAuthAuthCode do
   alias Guard.Repo.McpOAuthAuthCode
 
   @doc """
-  Atomically find and consume an authorization code.
-  Uses UPDATE ... WHERE used_at IS NULL to prevent TOCTOU race conditions.
-  Only one concurrent request can successfully consume a given code.
+  Lock a valid, unused authorization code within a transaction using SELECT FOR UPDATE.
+  Must be called inside a Repo.transaction. Returns the auth code without marking it as used.
   """
-  @spec consume_code(String.t(), String.t()) ::
+  @spec lock_code(String.t(), String.t()) ::
           {:ok, McpOAuthAuthCode.t()} | {:error, :invalid_or_used}
-  def consume_code(code, client_id) when is_binary(code) and is_binary(client_id) do
+  def lock_code(code, client_id) when is_binary(code) and is_binary(client_id) do
     now = DateTime.utc_now() |> DateTime.truncate(:second)
 
     query =
-      from(ac in McpOAuthAuthCode,
-        where:
-          ac.code == ^code and is_nil(ac.used_at) and ac.expires_at > ^now and
-            ac.client_id == ^client_id,
-        select: ac
-      )
+      McpOAuthAuthCode
+      |> where([ac], ac.code == ^code and ac.client_id == ^client_id)
+      |> where([ac], is_nil(ac.used_at) and ac.expires_at > ^now)
+      |> lock("FOR UPDATE")
 
-    case Repo.update_all(query, set: [used_at: now]) do
-      {1, [auth_code]} -> {:ok, auth_code}
-      {0, _} -> {:error, :invalid_or_used}
+    case Repo.one(query) do
+      nil -> {:error, :invalid_or_used}
+      auth_code -> {:ok, auth_code}
     end
+  end
+
+  @doc """
+  Mark a previously locked authorization code as used.
+  Must be called inside the same transaction as lock_code/2.
+  """
+  @spec mark_code_used(McpOAuthAuthCode.t()) :: {:ok, McpOAuthAuthCode.t()}
+  def mark_code_used(%McpOAuthAuthCode{} = auth_code) do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    auth_code
+    |> Ecto.Changeset.change(used_at: now)
+    |> Repo.update()
   end
 
   @doc """
@@ -97,9 +107,8 @@ defmodule Guard.Store.McpOAuthAuthCode do
   def cleanup_expired do
     now = DateTime.utc_now() |> DateTime.truncate(:second)
 
-    from(ac in McpOAuthAuthCode,
-      where: ac.expires_at < ^now
-    )
+    McpOAuthAuthCode
+    |> where([ac], ac.expires_at < ^now)
     |> Repo.delete_all()
   end
 end

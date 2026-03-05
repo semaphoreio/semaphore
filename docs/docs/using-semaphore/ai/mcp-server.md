@@ -70,7 +70,7 @@ If your client does not support OAuth yet, use an API token instead.
 You can obtain an API token in two ways:
 
 - [Personal API Token](../user-management#profile-token): if you don't know your personal API token, you can reset it and obtain a new one.
-- [Service Account](../service-accounts): create a service account with *Member* role and use its API token.
+- [Service Account](../service-accounts): create a service account with *Member* role, add it to projects that you want to access via the MCP server, and use its API token.
 
 If you have problems connecting to the MCP Server, see [troubleshooting](#troubleshooting).
 

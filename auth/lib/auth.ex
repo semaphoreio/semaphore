@@ -623,7 +623,6 @@ defmodule Auth do
         # Fall back to legacy API token validation for existing MCP clients.
         case authenticate_based_on_token(token) do
           {:ok, %{id: user_id}} ->
-            Logger.info("[Auth] MCP token validated via legacy API token")
             {:ok, user_id}
 
           {:error, auth_error} ->

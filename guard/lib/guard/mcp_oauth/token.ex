@@ -7,6 +7,7 @@ defmodule Guard.McpOAuth.Token do
 
   require Logger
 
+  alias Guard.Repo
   alias Guard.Store.McpOAuthAuthCode
   alias Guard.McpOAuth.{JWT, PKCE}
 
@@ -28,12 +29,23 @@ defmodule Guard.McpOAuth.Token do
   @spec exchange(map()) :: {:ok, map()} | {:error, map()}
   def exchange(params) do
     with :ok <- validate_grant_type(params),
-         {:ok, auth_code} <- validate_and_consume_code(params),
-         :ok <- validate_pkce(auth_code, params),
-         :ok <- validate_redirect_uri(auth_code, params),
-         {:ok, token} <- create_token(auth_code) do
-      {:ok, build_response(token)}
+         {:ok, response} <- exchange_in_transaction(params) do
+      {:ok, response}
     end
+  end
+
+  defp exchange_in_transaction(params) do
+    Repo.transaction(fn ->
+      with {:ok, auth_code} <- lock_code(params),
+           :ok <- validate_pkce(auth_code, params),
+           :ok <- validate_redirect_uri(auth_code, params),
+           {:ok, _} <- McpOAuthAuthCode.mark_code_used(auth_code),
+           {:ok, token} <- create_token(auth_code) do
+        build_response(token)
+      else
+        {:error, error_map} -> Repo.rollback(error_map)
+      end
+    end)
   end
 
   # Private functions
@@ -55,7 +67,7 @@ defmodule Guard.McpOAuth.Token do
     end
   end
 
-  defp validate_and_consume_code(params) do
+  defp lock_code(params) do
     code = params["code"]
     client_id = params["client_id"]
 
@@ -67,7 +79,7 @@ defmodule Guard.McpOAuth.Token do
         {:error, error_response("invalid_request", "client_id is required")}
 
       true ->
-        case McpOAuthAuthCode.consume_code(code, client_id) do
+        case McpOAuthAuthCode.lock_code(code, client_id) do
           {:ok, auth_code} ->
             {:ok, auth_code}
 
