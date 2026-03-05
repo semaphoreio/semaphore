@@ -34,6 +34,10 @@ _Note_: Due to current limitations of Codex extension for VS Code, if you start 
 
 Refer to [`AGENTS.md`](AGENTS.md) for repository guidelines, project structure, and development workflows.
 
+## Additional docs
+
+- [`MCP OAuth Guide`](OAUTH_FLOW.md) - architecture, sequence flow, endpoint access model, security, and rollout checklist.
+
 ## Exposed tools
 
 | Tool | Description |
