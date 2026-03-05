@@ -41,7 +41,11 @@ defmodule Rbac.Repo.SamlJitUser do
 
   def find_by_email(integration, email) do
     __MODULE__
-    |> where([u], u.integration_id == ^integration.id and u.email == ^email)
+    |> where(
+      [u],
+      u.integration_id == ^integration.id and
+        fragment("LOWER(?) = LOWER(?)", u.email, ^email)
+    )
     |> Repo.one()
     |> case do
       nil -> {:error, :not_found}
