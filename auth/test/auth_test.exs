@@ -1346,6 +1346,115 @@ defmodule AuthTest do
     end
   end
 
+  describe "MCP authentication (mcp.*/exauth/mcp*)" do
+    @mcp_secret "test-mcp-secret-key-for-jwt"
+
+    setup do
+      System.put_env("MCP_OAUTH_JWT_KEYS", @mcp_secret)
+
+      on_exit(fn ->
+        System.delete_env("MCP_OAUTH_JWT_KEYS")
+      end)
+    end
+
+    test "no Authorization header returns 401 with WWW-Authenticate" do
+      conn = conn(:get, "https://mcp.semaphoretest.test/exauth/mcp/v1/tools")
+      conn = Auth.call(conn, [])
+
+      {status, headers, body} = sent_resp(conn)
+
+      assert status == 401
+      assert %{"www-authenticate" => www_auth} = Enum.into(headers, %{})
+      assert www_auth =~ "Bearer"
+      assert www_auth =~ "resource_metadata"
+      assert %{"error" => "unauthorized"} = Jason.decode!(body)
+    end
+
+    test "valid JWT token returns 200 with x-semaphore-user-id" do
+      token = build_mcp_jwt(@mcp_secret)
+
+      conn = conn(:get, "https://mcp.semaphoretest.test/exauth/mcp/v1/tools")
+      conn = conn |> put_req_header("authorization", "Bearer #{token}")
+      conn = Auth.call(conn, [])
+
+      {status, headers, _body} = sent_resp(conn)
+
+      assert status == 200
+      assert %{"x-semaphore-user-id" => @user_id} = Enum.into(headers, %{})
+    end
+
+    test "expired JWT token returns 401" do
+      token = build_mcp_jwt(@mcp_secret, %{"exp" => DateTime.utc_now() |> DateTime.to_unix() |> Kernel.-(3600)})
+
+      conn = conn(:get, "https://mcp.semaphoretest.test/exauth/mcp/v1/tools")
+      conn = conn |> put_req_header("authorization", "Bearer #{token}")
+      conn = Auth.call(conn, [])
+
+      {status, _headers, body} = sent_resp(conn)
+
+      assert status == 401
+      assert %{"error" => "invalid_token"} = Jason.decode!(body)
+    end
+
+    test "invalid JWT signature falls back to legacy API token" do
+      conn = conn(:get, "https://mcp.semaphoretest.test/exauth/mcp/v1/tools")
+      conn = conn |> put_req_header("authorization", "Bearer #{@valid_token}")
+      conn = Auth.call(conn, [])
+
+      {status, headers, _body} = sent_resp(conn)
+
+      assert status == 200
+      assert %{"x-semaphore-user-id" => @user_id} = Enum.into(headers, %{})
+    end
+
+    test "JWT missing semaphore_user_id claim returns 401" do
+      domain = Application.fetch_env!(:auth, :domain)
+
+      claims = %{
+        "iss" => "https://mcp.#{domain}/mcp/oauth",
+        "aud" => "https://mcp.#{domain}",
+        "exp" => DateTime.utc_now() |> DateTime.to_unix() |> Kernel.+(3600),
+        "scope" => "mcp"
+      }
+
+      signer = Joken.Signer.create("HS256", @mcp_secret)
+      {:ok, token, _} = Joken.encode_and_sign(claims, signer)
+
+      conn = conn(:get, "https://mcp.semaphoretest.test/exauth/mcp/v1/tools")
+      conn = conn |> put_req_header("authorization", "Bearer #{token}")
+      conn = Auth.call(conn, [])
+
+      {status, _headers, body} = sent_resp(conn)
+
+      assert status == 401
+      assert %{"error" => "invalid_token"} = Jason.decode!(body)
+    end
+
+    test "JWT with wrong issuer returns 401" do
+      token = build_mcp_jwt(@mcp_secret, %{"iss" => "https://evil.example.com"})
+
+      conn = conn(:get, "https://mcp.semaphoretest.test/exauth/mcp/v1/tools")
+      conn = conn |> put_req_header("authorization", "Bearer #{token}")
+      conn = Auth.call(conn, [])
+
+      {status, _headers, body} = sent_resp(conn)
+
+      assert status == 401
+      assert %{"error" => "invalid_token"} = Jason.decode!(body)
+    end
+
+    test "garbage token with invalid legacy token returns 401" do
+      conn = conn(:get, "https://mcp.semaphoretest.test/exauth/mcp/v1/tools")
+      conn = conn |> put_req_header("authorization", "Bearer garbage")
+      conn = Auth.call(conn, [])
+
+      {status, _headers, body} = sent_resp(conn)
+
+      assert status == 401
+      assert %{"error" => "invalid_token"} = Jason.decode!(body)
+    end
+  end
+
   ###
   ### Helper functions
   ###
@@ -1368,5 +1477,23 @@ defmodule AuthTest do
     Enum.reduce(headers, conn, fn {header_name, header_value}, conn ->
       conn |> put_req_header(Atom.to_string(header_name), header_value)
     end)
+  end
+
+  defp build_mcp_jwt(secret, overrides \\ %{}) do
+    domain = Application.fetch_env!(:auth, :domain)
+
+    claims =
+      %{
+        "iss" => "https://mcp.#{domain}/mcp/oauth",
+        "aud" => "https://mcp.#{domain}",
+        "exp" => DateTime.utc_now() |> DateTime.to_unix() |> Kernel.+(3600),
+        "scope" => "mcp",
+        "semaphore_user_id" => @user_id
+      }
+      |> Map.merge(overrides)
+
+    signer = Joken.Signer.create("HS256", secret)
+    {:ok, token, _} = Joken.encode_and_sign(claims, signer)
+    token
   end
 end
