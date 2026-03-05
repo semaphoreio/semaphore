@@ -1384,7 +1384,10 @@ defmodule AuthTest do
     end
 
     test "expired JWT token returns 401" do
-      token = build_mcp_jwt(@mcp_secret, %{"exp" => DateTime.utc_now() |> DateTime.to_unix() |> Kernel.-(3600)})
+      token =
+        build_mcp_jwt(@mcp_secret, %{
+          "exp" => DateTime.utc_now() |> DateTime.to_unix() |> Kernel.-(3600)
+        })
 
       conn = conn(:get, "https://mcp.semaphoretest.test/exauth/mcp/v1/tools")
       conn = conn |> put_req_header("authorization", "Bearer #{token}")

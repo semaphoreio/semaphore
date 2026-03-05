@@ -28,9 +28,8 @@ defmodule Guard.McpOAuth.Token do
   """
   @spec exchange(map()) :: {:ok, map()} | {:error, map()}
   def exchange(params) do
-    with :ok <- validate_grant_type(params),
-         {:ok, response} <- exchange_in_transaction(params) do
-      {:ok, response}
+    with :ok <- validate_grant_type(params) do
+      exchange_in_transaction(params)
     end
   end
 
