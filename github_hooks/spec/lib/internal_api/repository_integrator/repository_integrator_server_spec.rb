@@ -146,7 +146,10 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
 
     context "fetching app token with repositry slug" do
       before do
-        allow_any_instance_of(::Semaphore::ProjectIntegrationToken).to receive(:github_app_token).with(repository_slug) {
+        allow_any_instance_of(::Semaphore::ProjectIntegrationToken).to receive(:github_app_token).with(
+          :repository_slug => repository_slug,
+          :repository_remote_id => nil
+        ) {
                                                                          [token, expires_at]
                                                                        }
 
@@ -314,6 +317,23 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
       context "when there is an app instalation for a repository" do
         before do
           FactoryBot.create(:github_app_installation, :repositories => [@project.repo_owner_and_name])
+        end
+
+        it "returns as valid with full connection" do
+          response = server.check_token(@req, call)
+
+          expect(response.valid).to be(true)
+          expect(response.integration_scope).to eq(:FULL_CONNECTION)
+        end
+      end
+
+      context "when repository slug does not match but repository remote id does" do
+        before do
+          @project.repository.update!(:remote_id => "42")
+          FactoryBot.create(
+            :github_app_installation,
+            :repositories => [{ "id" => 42, "slug" => "acme/another-repository" }]
+          )
         end
 
         it "returns as valid with full connection" do

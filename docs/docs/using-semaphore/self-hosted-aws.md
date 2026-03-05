@@ -148,7 +148,7 @@ Follow these steps to deploy self-hosted agents in AWS.
     {
         "SEMAPHORE_AGENT_STACK_NAME": "<stack-name>",
         "SEMAPHORE_AGENT_TOKEN_PARAMETER_NAME": "<ssm-parameter-name>",
-        "SEMAPHORE_AGENT_TOKEN_KMS_KEY": "<ssm-parameter-name>",
+        "SEMAPHORE_AGENT_TOKEN_KMS_KEY": "<ssm-parameter-kms-key-alias>",
         "SEMAPHORE_ENDPOINT": "<organization-url>.semaphoreci.com"
     }
     ```
@@ -164,7 +164,7 @@ Follow these steps to deploy self-hosted agents in AWS.
     {
         "SEMAPHORE_AGENT_STACK_NAME": "<stack-name>",
         "SEMAPHORE_AGENT_TOKEN_PARAMETER_NAME": "<ssm-parameter-name>",
-        "SEMAPHORE_AGENT_TOKEN_KMS_KEY": "<ssm-parameter-name>",
+        "SEMAPHORE_AGENT_TOKEN_KMS_KEY": "<ssm-parameter-kms-key-alias>",
         "SEMAPHORE_ENDPOINT": "<organization-url>.semaphoreci.com",
         "SEMAPHORE_AGENT_OS": "windows"
     }
@@ -181,7 +181,7 @@ Follow these steps to deploy self-hosted agents in AWS.
     {
         "SEMAPHORE_AGENT_STACK_NAME": "<stack-name>",
         "SEMAPHORE_AGENT_TOKEN_PARAMETER_NAME": "<ssm-parameter-name>",
-        "SEMAPHORE_AGENT_TOKEN_KMS_KEY": "<ssm-parameter-name>",
+        "SEMAPHORE_AGENT_TOKEN_KMS_KEY": "<ssm-parameter-kms-key-alias>",
         "SEMAPHORE_ENDPOINT": "<organization-url>.semaphoreci.com",
         "SEMAPHORE_AGENT_OS": "macos",
         "SEMAPHORE_AGENT_DISCONNECT_AFTER_IDLE_TIMEOUT": "86400",
