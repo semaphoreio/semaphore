@@ -58,7 +58,7 @@ defmodule RepositoryHub.GithubAdapter do
         fetch_token_by_user_id(adapter, user_id)
 
       "github_app" ->
-        fetch_token_by_slug(adapter, slug)
+        fetch_token_for_github_app(adapter, slug, git_repository.remote_id)
 
       integration ->
         """
@@ -83,10 +83,10 @@ defmodule RepositoryHub.GithubAdapter do
 
   defp validate_not_service_account(_user, _provider_name), do: :ok
 
-  def fetch_token_by_slug(adapter, slug) do
+  defp fetch_token_for_github_app(adapter, repository_slug, repository_remote_id) do
     adapter.integration_type
     |> to_integration_type
-    |> RepositoryIntegratorClient.get_token(slug)
+    |> RepositoryIntegratorClient.get_token(repository_slug, repository_remote_id)
   end
 
   @spec to_integration_type(binary) :: 0 | 1 | 2
