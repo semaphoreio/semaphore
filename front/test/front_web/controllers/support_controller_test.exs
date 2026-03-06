@@ -61,6 +61,7 @@ defmodule FrontWeb.SupportControllerTest do
          [
            feature_enabled?: fn
              :pylon_support, [param: ^org_id] -> true
+             :premium_support, [param: ^org_id] -> true
              _, _ -> false
            end
          ]},
@@ -95,6 +96,7 @@ defmodule FrontWeb.SupportControllerTest do
          [
            feature_enabled?: fn
              :pylon_support, [param: ^org_id] -> true
+             :premium_support, [param: ^org_id] -> true
              :restricted_support, [param: ^org_id] -> true
              _, _ -> false
            end
@@ -136,6 +138,7 @@ defmodule FrontWeb.SupportControllerTest do
          [
            feature_enabled?: fn
              :pylon_support, [param: ^org_id] -> true
+             :premium_support, [param: ^org_id] -> true
              :restricted_support, [param: ^org_id] -> true
              _, _ -> false
            end
@@ -171,12 +174,36 @@ defmodule FrontWeb.SupportControllerTest do
       end
     end
 
+    test "shows alert when pylon_support is enabled but no support tier is enabled", %{conn: conn} do
+      with_mocks([
+        {FeatureProvider, [],
+         [
+           feature_enabled?: fn
+             :pylon_support, [param: _org_id] -> true
+             :advanced_support, [param: _org_id] -> false
+             :premium_support, [param: _org_id] -> false
+             :"support-tier-3", [param: _org_id] -> false
+             :"support-tier-4", [param: _org_id] -> false
+             _, _ -> false
+           end
+         ]}
+      ]) do
+        conn =
+          conn
+          |> get("/support/pylon")
+
+        assert redirected_to(conn) == "/"
+        assert get_flash(conn, :alert) == "Pylon support is not enabled for this organization."
+      end
+    end
+
     test "shows alert when pylon URL generation fails", %{conn: conn} do
       with_mocks([
         {FeatureProvider, [],
          [
            feature_enabled?: fn
              :pylon_support, [param: _org_id] -> true
+             :advanced_support, [param: _org_id] -> true
              _, _ -> false
            end
          ]},
