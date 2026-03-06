@@ -26,6 +26,18 @@ class App < Configurable # :nodoc:
   ]
   config.always_filter_skip_ci = (SemaphoreConfig.always_filter_skip_ci || "false") == "true"
   config.collaborators_api_rate_limit = (SemaphoreConfig.collaborators_api_rate_limit || 4000).to_i
+  config.github_app_refresh_max_retry_attempts = (
+    SemaphoreConfig.github_app_refresh_max_retry_attempts.presence || 10
+  ).to_i
+  config.github_app_refresh_retry_base_seconds = (
+    SemaphoreConfig.github_app_refresh_retry_base_seconds.presence || 15.minutes
+  ).to_i
+  config.github_app_refresh_retry_max_seconds = (
+    SemaphoreConfig.github_app_refresh_retry_max_seconds.presence || 2.hours
+  ).to_i
+  config.github_app_refresh_retry_jitter_seconds = (
+    SemaphoreConfig.github_app_refresh_retry_jitter_seconds.presence || 5.minutes
+  ).to_i
   config.semaphore_edition = (SemaphoreConfig.semaphore_edition || "").downcase
 
   def self.ee?

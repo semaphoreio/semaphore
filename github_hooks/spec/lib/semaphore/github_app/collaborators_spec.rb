@@ -92,6 +92,34 @@ module Semaphore::GithubApp
           expect(result).to eq(:low_rate_limit)
         end
       end
+
+      context "rate limit threshold" do
+        let(:repository_slug) { "acme/repo" }
+        let(:remaining_calls) { 100 }
+        let(:client) { instance_double(RepoHost::Github::Client, :rate_limit_remaining => remaining_calls) }
+
+        before do
+          allow(described_class).to receive(:new_client).with(repository_slug, nil).and_return(client)
+          allow(described_class).to receive(:fetch_collaborators).with(client, repository_slug).and_return([])
+        end
+
+        it "returns ok when remaining calls are above the configured threshold" do
+          allow(App).to receive(:collaborators_api_rate_limit).and_return(50)
+
+          result = described_class.refresh(repository_slug)
+
+          expect(result).to eq(:ok)
+        end
+
+        it "returns low rate limit when remaining calls are below the configured threshold" do
+          allow(App).to receive(:collaborators_api_rate_limit).and_return(101)
+
+          result = described_class.refresh(repository_slug)
+
+          expect(result).to eq(:low_rate_limit)
+          expect(described_class).not_to have_received(:fetch_collaborators)
+        end
+      end
     end
   end
 end

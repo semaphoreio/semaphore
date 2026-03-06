@@ -55,6 +55,31 @@ module Semaphore::GithubApp
           expect(Semaphore::GithubApp::Hook).to have_received(:remove_repositories).with(installation_id, [])
         end
       end
+
+      context "rate limit threshold" do
+        before do
+          allow(App).to receive(:collaborators_api_rate_limit).and_return(50)
+        end
+
+        it "returns ok when remaining calls are above the configured threshold" do
+          allow(client).to receive(:rate_limit_remaining).and_return(100)
+
+          result = described_class.refresh(installation_id)
+
+          expect(result).to eq(:ok)
+        end
+
+        it "returns low rate limit when remaining calls are below the configured threshold" do
+          allow(App).to receive(:collaborators_api_rate_limit).and_return(101)
+          allow(client).to receive(:rate_limit_remaining).and_return(49)
+
+          result = described_class.refresh(installation_id)
+
+          expect(result).to eq(:low_rate_limit)
+          expect(Semaphore::GithubApp::Hook).not_to have_received(:add_repositories)
+          expect(Semaphore::GithubApp::Hook).not_to have_received(:remove_repositories)
+        end
+      end
     end
   end
 end
