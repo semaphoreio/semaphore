@@ -73,21 +73,6 @@
         <script nonce="<%= @conn.assigns[:script_src_nonce] %>">
           (function(){var e=window;var t=document;var n=function(){n.e(arguments)};n.q=[];n.e=function(e){n.q.push(e)};e.Pylon=n;var r=function(){var e=t.createElement("script");e.setAttribute("type","text/javascript");e.setAttribute("async","true");e.setAttribute("src","<%= pylon_chat_script_url(pylon_chat_settings["app_id"]) %>");var n=t.getElementsByTagName("script")[0];n.parentNode.insertBefore(e,n)};if(t.readyState==="complete"){r()}else if(e.addEventListener){e.addEventListener("load",r,false)}})();
         </script>
-        <style nonce="<%= @conn.assigns[:script_src_nonce] %>">
-          .PylonChat-bubbleFrameContainer--visible {
-            height: 65px !important;
-            width: 65px !important;
-          }
-
-          .PylonChat-bubbleFrameContainer {
-            overflow: visible !important;
-          }
-
-          .PylonChat-bubbleFrameContainer--visible iframe {
-            transform: scale(1.44) !important;
-            transform-origin: bottom right !important;
-          }
-        </style>
       <% end %>
     <% end %>
     <% {livechat_enabled?, key} = livechat_enabled?(@conn) %>
