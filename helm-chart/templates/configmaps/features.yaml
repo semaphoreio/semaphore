@@ -110,6 +110,8 @@ data:
       enabled: true
     ui_agent_page:
       enabled: true
+    ui_account_email_change:
+      enabled: true
     ui_show_refresh_collaborators:
       enabled: false
     ui_monaco_workflow_code_editor:
@@ -225,6 +227,8 @@ data:
     get_started:
       enabled: true
     ui_agent_page:
+      enabled: true
+    ui_account_email_change:
       enabled: true
     ui_show_refresh_collaborators:
       enabled: true
