@@ -4,6 +4,7 @@ defmodule FrontWeb.SupportController do
 
   alias Front.{Async, Auth, Support}
   alias Front.Clients.Billing
+  alias Front.Support.PylonAccess
 
   alias Front.Models.{
     Organization,
@@ -36,14 +37,15 @@ defmodule FrontWeb.SupportController do
 
   def pylon(conn, _params) do
     org_id = conn.assigns.organization_id
+    has_contact_support_permission? = contact_support_permission?(conn)
 
     cond do
-      not pylon_support_enabled?(org_id) ->
+      not PylonAccess.enabled_for_org?(org_id) ->
         conn
         |> put_flash(:alert, "Pylon support is not enabled for this organization.")
         |> redirect(to: dashboard_path(conn, :index))
 
-      restricted_support_enabled?(org_id) and not contact_support_permission?(conn) ->
+      not PylonAccess.visible_for_org?(org_id, has_contact_support_permission?) ->
         conn
         |> put_flash(
           :alert,
@@ -185,22 +187,6 @@ defmodule FrontWeb.SupportController do
   defp billing_url(org) do
     "https://billing.#{Application.get_env(:front, :domain)}/?organization=#{org.username}"
   end
-
-  defp pylon_support_enabled?(org_id) when is_binary(org_id) and org_id != "" do
-    FeatureProvider.feature_enabled?(:pylon_support, param: org_id)
-  rescue
-    _ -> false
-  end
-
-  defp pylon_support_enabled?(_), do: false
-
-  defp restricted_support_enabled?(org_id) when is_binary(org_id) and org_id != "" do
-    FeatureProvider.feature_enabled?(:restricted_support, param: org_id)
-  rescue
-    _ -> false
-  end
-
-  defp restricted_support_enabled?(_), do: false
 
   defp contact_support_permission?(conn) do
     Front.RBAC.Permissions.has?(
