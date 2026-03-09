@@ -49,6 +49,19 @@ defmodule FrontWeb.AccountControllerTest do
 
       Support.Stubs.Feature.setup_feature("bitbucket", state: :ENABLED, quantity: 1)
     end
+
+    test "when email_members feature is disabled => hides update email form", %{
+      conn: conn
+    } do
+      Support.Stubs.Feature.setup_feature("email_members", state: :HIDDEN, quantity: 0)
+
+      conn =
+        conn
+        |> get("/account")
+
+      refute html_response(conn, 200) =~ "id=\"email-form\""
+      refute html_response(conn, 200) =~ "Update Email"
+    end
   end
 
   describe "POST delete_with_owned_orgs" do
@@ -116,6 +129,14 @@ defmodule FrontWeb.AccountControllerTest do
 
       assert redirected_to(conn, 302) == "/account"
       assert get_flash(conn, :alert) =~ "Failed to update email:"
+    end
+
+    test "returns 404 when feature is disabled", %{conn: conn} do
+      Support.Stubs.Feature.setup_feature("email_members", state: :HIDDEN, quantity: 0)
+
+      conn = post(conn, "/account/change_email", %{"email" => "new@example.com"})
+
+      assert response(conn, 404)
     end
   end
 
