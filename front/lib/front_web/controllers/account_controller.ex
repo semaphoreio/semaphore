@@ -138,33 +138,41 @@ defmodule FrontWeb.AccountController do
 
   def change_my_email(conn, %{"email" => email}) do
     Watchman.benchmark("account.change_my_email.duration", fn ->
-      user_id = conn.assigns.user_id
-      email = String.trim(email)
+      if FeatureProvider.feature_enabled?(:ui_account_email_change,
+           param: conn.assigns.organization_id
+         ) do
+        user_id = conn.assigns.user_id
+        email = String.trim(email)
 
-      # Basic validation
-      cond do
-        email == "" ->
-          conn
-          |> put_flash(:alert, "Email address cannot be empty.")
-          |> redirect(to: account_path(conn, :show))
+        # Basic validation
+        cond do
+          email == "" ->
+            conn
+            |> put_flash(:alert, "Email address cannot be empty.")
+            |> redirect(to: account_path(conn, :show))
 
-        not valid_email_format?(email) ->
-          conn
-          |> put_flash(:alert, "Please enter a valid email address.")
-          |> redirect(to: account_path(conn, :show))
+          not valid_email_format?(email) ->
+            conn
+            |> put_flash(:alert, "Please enter a valid email address.")
+            |> redirect(to: account_path(conn, :show))
 
-        true ->
-          case Models.Member.change_email(user_id, user_id, email) do
-            {:ok, %{msg: msg}} ->
-              conn
-              |> put_flash(:notice, msg)
-              |> redirect(to: account_path(conn, :show))
+          true ->
+            case Models.Member.change_email(user_id, user_id, email) do
+              {:ok, %{msg: msg}} ->
+                conn
+                |> put_flash(:notice, msg)
+                |> redirect(to: account_path(conn, :show))
 
-            {:error, error_msg} ->
-              conn
-              |> put_flash(:alert, "Failed to update email: #{error_msg}")
-              |> redirect(to: account_path(conn, :show))
-          end
+              {:error, error_msg} ->
+                conn
+                |> put_flash(:alert, "Failed to update email: #{error_msg}")
+                |> redirect(to: account_path(conn, :show))
+            end
+        end
+      else
+        conn
+        |> FrontWeb.PageController.status404(%{})
+        |> Plug.Conn.halt()
       end
     end)
   end
