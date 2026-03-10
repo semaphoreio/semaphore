@@ -1,6 +1,7 @@
 defmodule FrontWeb.SharedHelpers do
   alias Front.Auth
   alias Front.Layout.Model, as: LayoutModel
+  alias Front.Support.PylonAccess
   alias FrontWeb.Router.Helpers, as: RouteHelper
   require Logger
 
@@ -538,15 +539,11 @@ defmodule FrontWeb.SharedHelpers do
     valid_permissions? = layout_model.permissions["organization.contact_support"]
 
     with_zendesk_support? = FeatureProvider.feature_enabled?(:zendesk_support, param: org_id)
-    with_pylon_help_dashboard? = pylon_help_dashboard_enabled_for_org?(org_id)
 
     organization_restricted? =
       FeatureProvider.feature_enabled?(:restricted_support, param: org_id)
 
     cond do
-      with_pylon_help_dashboard? ->
-        nil
-
       not with_zendesk_support? ->
         nil
 
@@ -566,41 +563,6 @@ defmodule FrontWeb.SharedHelpers do
           card_url: Front.Zendesk.new_ticket_location(),
           card_title: "Contact Support",
           card_description: support_card_subtitle(org_id),
-          tooltip: false
-        )
-    end
-  end
-
-  @spec pylon_contact_support_card(Plug.Conn.t(), LayoutModel.t()) :: renderable()
-  def pylon_contact_support_card(conn, layout_model) do
-    org_id = conn.assigns[:organization_id]
-    valid_permissions? = layout_model.permissions["organization.contact_support"]
-
-    with_pylon_help_dashboard? = pylon_help_dashboard_enabled_for_org?(org_id)
-
-    organization_restricted? =
-      FeatureProvider.feature_enabled?(:restricted_support, param: org_id)
-
-    cond do
-      not with_pylon_help_dashboard? ->
-        nil
-
-      organization_restricted? and not valid_permissions? ->
-        Phoenix.View.render(FrontWeb.LayoutView, "page_header/_menu_card.html",
-          options: [disabled: true],
-          card_url: "#",
-          card_title: "Support Portal",
-          card_description: "Pylon knowledge base and support",
-          tooltip:
-            "Your access to Semaphore support has been limited. Please contact your organization's Admin for more information."
-        )
-
-      true ->
-        Phoenix.View.render(FrontWeb.LayoutView, "page_header/_menu_card.html",
-          options: [target: "_blank", rel: "noopener"],
-          card_url: RouteHelper.support_path(conn, :pylon),
-          card_title: "Support Portal",
-          card_description: "Pylon knowledge base and support",
           tooltip: false
         )
     end
@@ -664,17 +626,28 @@ defmodule FrontWeb.SharedHelpers do
     end
   end
 
-  @spec pylon_help_dashboard_enabled?(Conn.t()) :: boolean()
-  def pylon_help_dashboard_enabled?(conn) do
+  @spec pylon_support_enabled?(Conn.t()) :: boolean()
+  def pylon_support_enabled?(conn) do
     org_id = conn.assigns[:organization_id]
-    pylon_help_dashboard_enabled_for_org?(org_id)
+    PylonAccess.enabled_for_org?(org_id)
   end
 
-  defp pylon_help_dashboard_enabled_for_org?(org_id) do
-    FeatureProvider.feature_enabled?(:pylon_support, param: org_id) and
-      feature_enabled_any?(org_id, [
-        :advanced_support,
-        :premium_support,
+  @spec pylon_support_visible?(Conn.t(), LayoutModel.t()) :: boolean()
+  def pylon_support_visible?(conn, layout_model) do
+    org_id = conn.assigns[:organization_id]
+    valid_permissions? = contact_support_permission_enabled?(layout_model)
+
+    PylonAccess.visible_for_org?(org_id, valid_permissions?)
+  end
+
+  @spec help_enabled?(Conn.t()) :: boolean()
+  def help_enabled?(conn) do
+    org_id = conn.assigns[:organization_id]
+
+    not PylonAccess.enabled_for_org?(org_id) and
+      not feature_enabled_any?(org_id, [
+        :"support-tier-1",
+        :"support-tier-2",
         :"support-tier-3",
         :"support-tier-4"
       ])
@@ -682,14 +655,14 @@ defmodule FrontWeb.SharedHelpers do
 
   defp show_support_requests_card?(org_id, valid_permissions?) do
     with_zendesk_support? = FeatureProvider.feature_enabled?(:zendesk_support, param: org_id)
-    with_pylon_help_dashboard? = pylon_help_dashboard_enabled_for_org?(org_id)
+    with_pylon_support_visible? = PylonAccess.visible_for_org?(org_id, valid_permissions?)
 
     organization_restricted? =
       FeatureProvider.feature_enabled?(:restricted_support, param: org_id)
 
     premium_or_advanced? = feature_enabled_any?(org_id, [:premium_support, :advanced_support])
 
-    with_zendesk_support? and not with_pylon_help_dashboard? and
+    with_zendesk_support? and not with_pylon_support_visible? and
       ((organization_restricted? and valid_permissions?) or
          (not organization_restricted? and premium_or_advanced?))
   end
@@ -698,6 +671,13 @@ defmodule FrontWeb.SharedHelpers do
     features
     |> Enum.any?(&FeatureProvider.feature_enabled?(&1, param: org_id))
   end
+
+  defp contact_support_permission_enabled?(%{permissions: permissions})
+       when is_map(permissions) do
+    Map.get(permissions, "organization.contact_support", false)
+  end
+
+  defp contact_support_permission_enabled?(_), do: false
 
   def pluralize(string, count) do
     count
