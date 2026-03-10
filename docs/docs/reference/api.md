@@ -491,7 +491,7 @@ curl -i -X PATCH  -H "Authorization: Token {api_token}" \
      "https://<organization-url>.semaphoreci.com/api/v1alpha/pipelines/:pipeline_id"
 ```
 
-### Rebuild a pipeline
+### Rebuild failed blocks in a pipeline
 
 ```text
 POST <organization-url>.semaphoreci.com/api/v1alpha/pipelines/:pipeline_id/partial_rebuild
@@ -508,8 +508,13 @@ Headers:
 
 Response:
 
-```text
+```json
 HTTP status: 200
+
+{
+  "pipeline_id":"79b53ff9-c005-4ff0-81a9-479a82324f6b",
+  "message:":""
+}
 ```
 
 Example:
