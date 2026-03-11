@@ -36,6 +36,15 @@
     "@iconify-icon/react": "^2.1.0",
     "markdownlint-cli2": "^0.13.0"
   },
+  "overrides": {
+    "tar-fs@^3.0.0": "3.1.1",
+    "tar-fs@^2.0.0": "2.1.4",
+    "tar-fs@^1.0.0": "1.16.6"
+  },
+  "resolutions": {
+    "prebuild-install/tar-fs": "2.1.4",
+    "sharp/tar-fs": "3.1.1"
+  },
   "browserslist": {
     "production": [
       ">0.5%",
