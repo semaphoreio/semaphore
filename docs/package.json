@@ -36,6 +36,12 @@
     "@iconify-icon/react": "^2.1.0",
     "markdownlint-cli2": "^0.13.0"
   },
+  "overrides": {
+    "node-forge": "1.3.2"
+  },
+  "resolutions": {
+    "node-forge": "1.3.2"
+  },
   "browserslist": {
     "production": [
       ">0.5%",
