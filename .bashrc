@@ -1,0 +1,1 @@
+export PATH=/workspace/.node/node-v20.11.1-linux-x64/bin:/openhands/micromamba/envs/openhands/bin:/usr/bin:/bin:/usr/sbin:/sbin:/openhands/micromamba/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH
