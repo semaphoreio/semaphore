@@ -63,6 +63,18 @@
     <%= if show_backend_badge?() do %>
       <%= render(FrontWeb.LayoutView, "_performance_badge.html", conn: @conn) %>
     <% end %>
+    <%= if pylon_chat_enabled?(@conn) do %>
+      <% pylon_chat_settings = pylon_chat_widget_settings(@conn) %>
+      <%= if pylon_chat_settings do %>
+        <script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+          window.pylon = window.pylon || {};
+          window.pylon.chat_settings = <%= raw pylon_chat_settings_json(pylon_chat_settings) %>;
+        </script>
+        <script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+          (function(){var e=window;var t=document;var n=function(){n.e(arguments)};n.q=[];n.e=function(e){n.q.push(e)};e.Pylon=n;var r=function(){var e=t.createElement("script");e.setAttribute("type","text/javascript");e.setAttribute("async","true");e.setAttribute("src","<%= pylon_chat_script_url(pylon_chat_settings["app_id"]) %>");var n=t.getElementsByTagName("script")[0];n.parentNode.insertBefore(e,n)};if(t.readyState==="complete"){r()}else if(e.addEventListener){e.addEventListener("load",r,false)}})();
+        </script>
+      <% end %>
+    <% end %>
     <% {livechat_enabled?, key} = livechat_enabled?(@conn) %>
     <%= if livechat_enabled? do %>
       <script nonce="<%= @conn.assigns[:script_src_nonce] %>" id="ze-snippet" src="https://static.zdassets.com/ekr/snippet.js?key=<%= key %>"></script>

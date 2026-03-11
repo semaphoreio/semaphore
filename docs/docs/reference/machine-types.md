@@ -49,6 +49,7 @@ The E1 generation is presented in the following types:
 
 E1 Generation machine types can be paired with:
 
+- [`ubuntu2204`](../reference/os-ubuntu-images/ubuntu-2204-image)
 - [`ubuntu2404`](../reference/os-ubuntu-images/ubuntu-2404-image)
 - [Docker-based environment](../using-semaphore/pipelines#docker-environments).
 

@@ -163,6 +163,23 @@ defmodule FrontWeb.PeopleControllerTest do
       assert html_response(conn, 200) =~ "Save changes"
       assert html_response(conn, 200) =~ "Reset Password"
       assert html_response(conn, 200) =~ "Reset API Token"
+      assert html_response(conn, 200) =~ "Danger Zone"
+      assert html_response(conn, 200) =~ "Delete account and owned organizations"
+    end
+
+    test "user on own page when email_members is disabled => hides update email form", %{
+      conn: conn,
+      organization: organization,
+      user: user
+    } do
+      Support.Stubs.Feature.disable_feature(organization.id, :email_members)
+
+      conn =
+        conn
+        |> get("/people/#{user.id}")
+
+      refute html_response(conn, 200) =~ "id=\"email-form\""
+      refute html_response(conn, 200) =~ "Update Email"
     end
 
     test "user with manage people permission looking for profile of non member => returns 404", %{
@@ -488,6 +505,20 @@ defmodule FrontWeb.PeopleControllerTest do
 
       assert html_response(conn, 404) =~ "404"
     end
+
+    test "when email_members is disabled => returns 404", %{
+      conn: conn,
+      organization: organization,
+      user: user
+    } do
+      Support.Stubs.Feature.disable_feature(organization.id, :email_members)
+
+      conn =
+        conn
+        |> post("/people/#{user.id}/change_email", %{"email" => "new@example.com"})
+
+      assert html_response(conn, 404) =~ "404"
+    end
   end
 
   describe "POST update_repo_scope" do
@@ -560,6 +591,30 @@ defmodule FrontWeb.PeopleControllerTest do
         |> post("/people/#{non_member.id}/update_repo_scope/github")
 
       assert html_response(conn, 404) =~ "404"
+    end
+  end
+
+  describe "POST delete_with_owned_orgs" do
+    test "user on own page deletes account and is redirected to destroyed account page", %{
+      conn: conn,
+      user: user
+    } do
+      conn =
+        conn
+        |> post("/people/#{user.id}/delete_with_owned_orgs")
+
+      assert redirected_to(conn) == "https://id.semaphoretest.test/destroyed_account"
+    end
+
+    test "when deletion fails => user is redirected back with flash", %{conn: conn, user: user} do
+      Support.Stubs.User.delete(user.id)
+
+      conn =
+        conn
+        |> post("/people/#{user.id}/delete_with_owned_orgs")
+
+      assert redirected_to(conn) == "/people/#{user.id}"
+      assert get_flash(conn, :alert) == "Failed to delete account."
     end
   end
 

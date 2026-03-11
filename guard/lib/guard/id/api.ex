@@ -533,6 +533,16 @@ defmodule Guard.Id.Api do
     end
   end
 
+  get "/destroyed_account" do
+    case conn |> get_session("id_provider") do
+      "OIDC" ->
+        handle_oidc_logout(conn)
+
+      _ ->
+        logout_redirect(conn)
+    end
+  end
+
   defp handle_oidc_logout(conn) do
     oidc_session_id = get_session(conn, "oidc_session_id")
 
