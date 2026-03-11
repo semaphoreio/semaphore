@@ -14,7 +14,7 @@ module Semaphore::GithubApp
         delay = App.worker_base_delay * (2**count)
         jitter = rand(0..App.worker_jitter_max)
 
-        delay + jitter
+        [delay + jitter, App.worker_max_delay].min
       end
 
       def perform(slug, remote_id = nil)

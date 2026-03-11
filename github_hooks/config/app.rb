@@ -32,6 +32,7 @@ class App < Configurable # :nodoc:
   config.worker_lock_ttl       = (SemaphoreConfig.worker_lock_ttl || 7200).to_i
   config.worker_base_delay     = (SemaphoreConfig.worker_base_delay || 900).to_i
   config.worker_jitter_max     = (SemaphoreConfig.worker_jitter_max || 300).to_i
+  config.worker_max_delay      = (SemaphoreConfig.worker_max_delay || 10_800).to_i
 
   def self.ee?
     config.semaphore_edition == "ee"

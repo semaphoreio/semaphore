@@ -70,6 +70,7 @@ module Semaphore::GithubApp
       it "computes increasing delays based on retry count" do
         retry_block = described_class.sidekiq_retry_in_block
         base = App.worker_base_delay
+        max_delay = App.worker_max_delay
 
         allow_any_instance_of(Object).to receive(:rand).and_return(0)
 
@@ -81,7 +82,7 @@ module Semaphore::GithubApp
           base * 4,  # attempt 2
           base * 8,  # attempt 3
           base * 16  # attempt 4
-        ]
+        ].map { |d| [d, max_delay].min }
 
         expect(delays).to eq(expected)
       end
@@ -95,6 +96,18 @@ module Semaphore::GithubApp
 
         expect(delays).to all(be_between(base, base + jitter_max))
         expect(delays.uniq.size).to be > 1
+      end
+
+      it "caps delay at App.worker_max_delay" do
+        retry_block = described_class.sidekiq_retry_in_block
+        max_delay = App.worker_max_delay
+
+        allow_any_instance_of(Object).to receive(:rand).and_return(0)
+
+        # Use a high retry count that would exceed max_delay without the cap
+        high_count_delay = retry_block.call(20, StandardError.new, {})
+
+        expect(high_count_delay).to eq(max_delay)
       end
     end
 
