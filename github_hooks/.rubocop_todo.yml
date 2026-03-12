@@ -392,6 +392,8 @@ Metrics/MethodLength:
 # Configuration parameters: CountComments, CountAsOne.
 Metrics/ModuleLength:
   Max: 262
+  Exclude:
+    - 'spec/**/*'
 
 # Offense count: 12
 # Configuration parameters: AllowedMethods, AllowedPatterns.
