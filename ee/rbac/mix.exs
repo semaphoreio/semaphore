@@ -39,7 +39,7 @@ defmodule Rbac.MixProject do
       {:yaml_elixir, "~> 2.11"},
       {:bypass, "~> 2.1", [only: :test]},
       {:jose, "~> 1.11"},
-      {:esaml, git: "https://github.com/dropbox/esaml", tag: "v4.2.0"},
+      {:esaml, "~> 4.2"},
       {:plug_cowboy, "~> 2.0"},
       {:cowboy, "~> 2.12.0", override: true},
       {:cowlib, "~> 2.13.0", override: true},
