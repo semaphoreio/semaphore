@@ -78,7 +78,7 @@ defmodule Ppl.TaskClient.CompilationTest do
     }
 
     with_mocks([
-      {TaskClient, [], [schedule: fn _ -> {:ok, {:ok, %{id: "task-id"}}} end]},
+      {TaskApiClient, [], [schedule: fn _, _, _ -> {:ok, %{id: "task-id"}} end]},
       {Watchman, [], [increment: fn _ -> :ok end]}
     ]) do
       assert {:ok, "task-id"} = TaskClient.Compilation.start(ppl_req, pfcs, settings)
