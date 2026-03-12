@@ -11,7 +11,7 @@ ENV MIX_ENV=$BUILD_ENV
 
 RUN echo "Build for $MIX_ENV environment started"
 
-RUN apk update && apk add --no-cache build-base git python3 curl openssh
+RUN apk update && apk upgrade --no-cache zlib && apk add --no-cache build-base git python3 curl openssh
 
 RUN mix local.hex --force && mix local.rebar --force
 
@@ -54,7 +54,7 @@ ARG BUILD_ENV=prod
 ENV MIX_ENV=$BUILD_ENV
 
 # install runtime dependencies
-RUN apk update && apk add --no-cache libstdc++ openssl ncurses-libs
+RUN apk update && apk upgrade --no-cache zlib && apk add --no-cache libstdc++ openssl ncurses-libs
 
 HEALTHCHECK NONE
 
