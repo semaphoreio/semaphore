@@ -35,11 +35,15 @@ defmodule Guard.Id.Api do
   plug(Ueberauth)
 
   plug(Plug.Parsers,
-    parsers: [:urlencoded],
-    pass: ["text/*"]
+    parsers: [:urlencoded, :json],
+    pass: ["text/*"],
+    json_decoder: Jason
   )
 
-  plug(Plug.CSRFProtection)
+  plug(Unplug,
+    if: {Unplug.Predicates.RequestPathNotIn, ["/mcp/oauth/register", "/mcp/oauth/token"]},
+    do: {Plug.CSRFProtection, []}
+  )
 
   plug(:match)
   plug(:dispatch)
@@ -53,6 +57,12 @@ defmodule Guard.Id.Api do
   get "/is_alive" do
     send_resp(conn, 200, "")
   end
+
+  #
+  # MCP OAuth Server (Authorization Server endpoints)
+  #
+
+  forward("/mcp/oauth", to: Guard.McpOAuth.Server)
 
   #
   # OAuth2
