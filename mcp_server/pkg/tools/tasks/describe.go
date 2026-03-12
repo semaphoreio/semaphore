@@ -26,6 +26,7 @@ Use this when you need to answer:
 - "What is the trigger history for this task?"
 
 - organization_id: identify which organization context (required)
+- project_id: identify which project the task belongs to (required)
 - task_id: the UUID of the task to describe (required)
 
 Response modes:
@@ -34,10 +35,10 @@ Response modes:
 
 Examples:
 1. Get task details:
-   tasks_describe(task_id="...", organization_id="...")
+   tasks_describe(task_id="...", project_id="...", organization_id="...")
 
 2. Get detailed trigger history:
-   tasks_describe(task_id="...", organization_id="...", mode="detailed")
+   tasks_describe(task_id="...", project_id="...", organization_id="...", mode="detailed")
 
 Next steps:
 - Call tasks_run(task_id="...") to trigger this task immediately
@@ -51,6 +52,11 @@ func newDescribeTool(name, description string) mcp.Tool {
 		mcp.WithString("task_id",
 			mcp.Required(),
 			mcp.Description("Task UUID to describe. Format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx."),
+			mcp.Pattern(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`),
+		),
+		mcp.WithString("project_id",
+			mcp.Required(),
+			mcp.Description("Project UUID containing the task. Format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx."),
 			mcp.Pattern(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`),
 		),
 		mcp.WithString("organization_id",
@@ -121,6 +127,15 @@ func describeHandler(api internalapi.Provider) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
+		projectIDRaw, err := req.RequireString("project_id")
+		if err != nil {
+			return mcp.NewToolResultError(`Missing required argument: project_id. Provide the project UUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx).`), nil
+		}
+		projectID := strings.TrimSpace(projectIDRaw)
+		if err := shared.ValidateUUID(projectID, "project_id"); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
 		orgIDRaw, err := req.RequireString("organization_id")
 		if err != nil {
 			return mcp.NewToolResultError(`Missing required argument: organization_id. Provide the organization UUID returned by organizations_list.`), nil
@@ -147,6 +162,10 @@ func describeHandler(api internalapi.Provider) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(fmt.Sprintf(`%v
 
 The authentication layer must inject the X-Semaphore-User-ID header so we can authorize task access.`, err)), nil
+		}
+
+		if err := authz.CheckProjectPermission(ctx, api, userID, orgID, projectID, schedulerViewPermission); err != nil {
+			return shared.ProjectAuthorizationError(err, orgID, projectID, schedulerViewPermission), nil
 		}
 
 		request := &schedulerpb.DescribeRequest{
@@ -192,15 +211,13 @@ Double-check that:
 
 		periodic := resp.GetPeriodic()
 		if periodic == nil {
-			return mcp.NewToolResultError("Task not found or access denied."), nil
-		}
-
-		// Check permission on the project that owns this task
-		projectID := periodic.GetProjectId()
-		if projectID != "" {
-			if err := authz.CheckProjectPermission(ctx, api, userID, orgID, projectID, schedulerViewPermission); err != nil {
-				return shared.ProjectAuthorizationError(err, orgID, projectID, schedulerViewPermission), nil
-			}
+			logging.ForComponent("rpc").
+				WithFields(logrus.Fields{
+					"rpc":    "scheduler.Describe",
+					"taskId": taskID,
+				}).
+				Warn("scheduler describe returned OK status but nil periodic")
+			return mcp.NewToolResultError("Task not found. Verify the task_id is correct and belongs to a project you have access to."), nil
 		}
 
 		// Build parameters list
@@ -231,25 +248,24 @@ Double-check that:
 			UpdatedAt:    shared.FormatTimestamp(periodic.GetUpdatedAt()),
 		}
 
-		// Build triggers list
-		var triggers []trigger
-		for _, t := range resp.GetTriggers() {
-			if t == nil {
-				continue
-			}
-			triggers = append(triggers, trigger{
-				TriggeredAt:  shared.FormatTimestamp(t.GetTriggeredAt()),
-				WorkflowID:   t.GetScheduledWorkflowId(),
-				Status:       t.GetSchedulingStatus(),
-				Branch:       t.GetReference(),
-				PipelineFile: t.GetPipelineFile(),
-				ErrorMessage: t.GetErrorDescription(),
-			})
+		result := describeResult{
+			Task: detail,
 		}
 
-		result := describeResult{
-			Task:           detail,
-			RecentTriggers: triggers,
+		if mode == "detailed" {
+			for _, t := range resp.GetTriggers() {
+				if t == nil {
+					continue
+				}
+				result.RecentTriggers = append(result.RecentTriggers, trigger{
+					TriggeredAt:  shared.FormatTimestamp(t.GetTriggeredAt()),
+					WorkflowID:   t.GetScheduledWorkflowId(),
+					Status:       t.GetSchedulingStatus(),
+					Branch:       t.GetReference(),
+					PipelineFile: t.GetPipelineFile(),
+					ErrorMessage: t.GetErrorDescription(),
+				})
+			}
 		}
 
 		markdown := formatTaskDescribeMarkdown(result, mode)

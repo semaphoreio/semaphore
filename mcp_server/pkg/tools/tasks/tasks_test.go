@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -169,6 +170,7 @@ func TestDescribeTask(t *testing.T) {
 		Params: mcp.CallToolParams{
 			Arguments: map[string]any{
 				"task_id":         taskID,
+				"project_id":      projectID,
 				"organization_id": orgID,
 				"mode":            "detailed",
 			},
@@ -345,6 +347,7 @@ func TestListTasks_MissingProjectID(t *testing.T) {
 func TestDescribeTask_InvalidTaskID(t *testing.T) {
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
 		"task_id":         "invalid-uuid",
+		"project_id":      "66666666-7777-8888-9999-aaaaaaaaaaaa",
 		"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
 	}}}
 	header := http.Header{}
@@ -415,7 +418,279 @@ func TestValidateParameterName(t *testing.T) {
 	}
 }
 
+// --- #3: permission denied tests ---
+
+func TestListTasks_PermissionDenied(t *testing.T) {
+	client := &support.SchedulerClientStub{}
+	provider := &support.MockProvider{
+		SchedulerClient: client,
+		Timeout:         time.Second,
+		RBACClient:      support.NewRBACStub(), // no permissions
+	}
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"project_id":      "11111111-2222-3333-4444-555555555555",
+		"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+	}}}
+	req.Header = authHeader()
+
+	res, err := listHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(strings.ToLower(msg), "permission") {
+		t.Fatalf("expected permission error, got %q", msg)
+	}
+	if client.LastList != nil {
+		t.Fatal("expected ListKeyset RPC to NOT be called when permission is denied")
+	}
+}
+
+func TestDescribeTask_PermissionDenied(t *testing.T) {
+	client := &support.SchedulerClientStub{}
+	provider := &support.MockProvider{
+		SchedulerClient: client,
+		Timeout:         time.Second,
+		RBACClient:      support.NewRBACStub(), // no permissions
+	}
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"task_id":         "11111111-2222-3333-4444-555555555555",
+		"project_id":      "66666666-7777-8888-9999-aaaaaaaaaaaa",
+		"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+	}}}
+	req.Header = authHeader()
+
+	res, err := describeHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(strings.ToLower(msg), "permission") {
+		t.Fatalf("expected permission error, got %q", msg)
+	}
+	if client.LastDescribe != nil {
+		t.Fatal("expected Describe RPC to NOT be called when permission is denied")
+	}
+}
+
+func TestRunTask_PermissionDenied(t *testing.T) {
+	client := &support.SchedulerClientStub{}
+	provider := &support.MockProvider{
+		SchedulerClient: client,
+		Timeout:         time.Second,
+		FeaturesService: support.FeatureClientStub{State: feature.Enabled},
+		RBACClient:      support.NewRBACStub(), // no permissions
+	}
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"task_id":         "11111111-2222-3333-4444-555555555555",
+		"project_id":      "66666666-7777-8888-9999-aaaaaaaaaaaa",
+		"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+	}}}
+	req.Header = authHeader()
+
+	res, err := runHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(strings.ToLower(msg), "permission") {
+		t.Fatalf("expected permission error, got %q", msg)
+	}
+	if client.LastRunNow != nil {
+		t.Fatal("expected RunNow RPC to NOT be called when permission is denied")
+	}
+}
+
+// --- #4: RPC error tests ---
+
+func TestListTasks_RPCError(t *testing.T) {
+	client := &support.SchedulerClientStub{
+		ListErr: fmt.Errorf("connection refused"),
+	}
+	provider := &support.MockProvider{
+		SchedulerClient: client,
+		Timeout:         time.Second,
+		RBACClient:      support.NewRBACStub("project.scheduler.view"),
+	}
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"project_id":      "11111111-2222-3333-4444-555555555555",
+		"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+	}}}
+	req.Header = authHeader()
+
+	res, err := listHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(msg, "connection refused") {
+		t.Fatalf("expected RPC error in message, got %q", msg)
+	}
+}
+
+func TestDescribeTask_RPCError(t *testing.T) {
+	client := &support.SchedulerClientStub{
+		DescribeErr: fmt.Errorf("connection refused"),
+	}
+	provider := &support.MockProvider{
+		SchedulerClient: client,
+		Timeout:         time.Second,
+		RBACClient:      support.NewRBACStub("project.scheduler.view"),
+	}
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"task_id":         "11111111-2222-3333-4444-555555555555",
+		"project_id":      "66666666-7777-8888-9999-aaaaaaaaaaaa",
+		"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+	}}}
+	req.Header = authHeader()
+
+	res, err := describeHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(msg, "connection refused") {
+		t.Fatalf("expected RPC error in message, got %q", msg)
+	}
+}
+
+func TestRunTask_RPCError(t *testing.T) {
+	client := &support.SchedulerClientStub{
+		RunNowErr: fmt.Errorf("connection refused"),
+	}
+	provider := &support.MockProvider{
+		SchedulerClient: client,
+		Timeout:         time.Second,
+		FeaturesService: support.FeatureClientStub{State: feature.Enabled},
+		RBACClient:      support.NewRBACStub("project.scheduler.run_manually"),
+	}
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"task_id":         "11111111-2222-3333-4444-555555555555",
+		"project_id":      "66666666-7777-8888-9999-aaaaaaaaaaaa",
+		"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+	}}}
+	req.Header = authHeader()
+
+	res, err := runHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(msg, "connection refused") {
+		t.Fatalf("expected RPC error in message, got %q", msg)
+	}
+}
+
+// --- #5: run with parameters test ---
+
+func TestRunTask_WithParameters(t *testing.T) {
+	taskID := "11111111-2222-3333-4444-555555555555"
+	projectID := "66666666-7777-8888-9999-aaaaaaaaaaaa"
+	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+
+	client := &support.SchedulerClientStub{}
+	provider := &support.MockProvider{
+		SchedulerClient: client,
+		Timeout:         time.Second,
+		FeaturesService: support.FeatureClientStub{State: feature.Enabled},
+		RBACClient:      support.NewRBACStub("project.scheduler.run_manually"),
+	}
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"task_id":         taskID,
+		"project_id":      projectID,
+		"organization_id": orgID,
+		"branch":          "develop",
+		"pipeline_file":   ".semaphore/deploy.yml",
+		"parameters":      map[string]any{"ENV": "staging", "VERBOSE": true},
+	}}}
+	req.Header = authHeader()
+
+	res, err := runHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+	if res.IsError {
+		msg := ""
+		if len(res.Content) > 0 {
+			if text, ok := res.Content[0].(mcp.TextContent); ok {
+				msg = text.Text
+			}
+		}
+		t.Fatalf("unexpected error result: %s", msg)
+	}
+
+	if client.LastRunNow == nil {
+		t.Fatal("expected RunNow request to be recorded")
+	}
+	if client.LastRunNow.GetReference() != "develop" {
+		t.Fatalf("expected branch 'develop', got %q", client.LastRunNow.GetReference())
+	}
+	if client.LastRunNow.GetPipelineFile() != ".semaphore/deploy.yml" {
+		t.Fatalf("expected pipeline file '.semaphore/deploy.yml', got %q", client.LastRunNow.GetPipelineFile())
+	}
+
+	params := client.LastRunNow.GetParameterValues()
+	if len(params) != 2 {
+		t.Fatalf("expected 2 parameters, got %d", len(params))
+	}
+	// Parameters are sorted alphabetically by buildParameters
+	paramMap := make(map[string]string)
+	for _, p := range params {
+		paramMap[p.GetName()] = p.GetValue()
+	}
+	if paramMap["ENV"] != "staging" {
+		t.Fatalf("expected ENV=staging, got %q", paramMap["ENV"])
+	}
+	if paramMap["VERBOSE"] != "true" {
+		t.Fatalf("expected VERBOSE=true, got %q", paramMap["VERBOSE"])
+	}
+}
+
+// --- #10: validatePipelineFile unit tests ---
+
+func TestValidatePipelineFile(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantErr bool
+	}{
+		{name: "empty is valid", input: "", wantErr: false},
+		{name: "normal path", input: ".semaphore/deploy.yml", wantErr: false},
+		{name: "nested path", input: "ci/pipelines/build.yml", wantErr: false},
+		{name: "path traversal", input: "../etc/passwd", wantErr: true},
+		{name: "path traversal mid", input: "ci/../../../etc/passwd", wantErr: true},
+		{name: "absolute path", input: "/etc/passwd", wantErr: true},
+		{name: "backslash", input: "ci\\build.yml", wantErr: true},
+		{name: "control char tab", input: "ci/\tbuild.yml", wantErr: true},
+		{name: "control char null", input: "ci/\x00build.yml", wantErr: true},
+		{name: "control char del", input: "ci/\x7fbuild.yml", wantErr: true},
+		{name: "too long", input: strings.Repeat("a", 513), wantErr: true},
+		{name: "max length", input: strings.Repeat("a", 512), wantErr: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validatePipelineFile(tt.input, "pipeline_file")
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validatePipelineFile(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
+			}
+		})
+	}
+}
+
 // --- test helpers ---
+
+func authHeader() http.Header {
+	h := http.Header{}
+	h.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
+	return h
+}
 
 func requireErrorText(t *testing.T, res *mcp.CallToolResult) string {
 	t.Helper()

@@ -14,7 +14,7 @@ const (
 	defaultLimit = 20
 	maxLimit     = 100
 
-	missingSchedulerError = "scheduler gRPC endpoint is not configured"
+	missingSchedulerError = "The scheduler service is not available. This is a server configuration issue — please contact your Semaphore administrator. Tasks tools (list, describe, run) require the scheduler gRPC endpoint (INTERNAL_API_URL_SCHEDULER or MCP_SCHEDULER_GRPC_ENDPOINT) to be configured."
 
 	schedulerViewPermission = "project.scheduler.view"
 	schedulerRunPermission  = "project.scheduler.run_manually"

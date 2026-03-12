@@ -85,6 +85,7 @@ func newRunTool(name, description string) mcp.Tool {
 				},
 			}),
 		),
+		mcp.WithReadOnlyHintAnnotation(false),
 		mcp.WithIdempotentHintAnnotation(false),
 	)
 }
@@ -113,13 +114,13 @@ func runHandler(api internalapi.Provider) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		tracker := shared.TrackToolExecution(ctx, runToolName, orgID)
-		defer tracker.Cleanup()
-
 		client := api.Scheduler()
 		if client == nil {
 			return mcp.NewToolResultError(missingSchedulerError), nil
 		}
+
+		tracker := shared.TrackToolExecution(ctx, runToolName, orgID)
+		defer tracker.Cleanup()
 
 		taskIDRaw, err := req.RequireString("task_id")
 		if err != nil {
@@ -147,6 +148,16 @@ The authentication layer must inject the X-Semaphore-User-ID header so we can au
 		}
 
 		if err := authz.CheckProjectPermission(ctx, api, userID, orgID, projectID, schedulerRunPermission); err != nil {
+			logging.ForComponent("authz").
+				WithFields(logrus.Fields{
+					"userId":     userID,
+					"orgId":      orgID,
+					"projectId":  projectID,
+					"taskId":     taskID,
+					"permission": schedulerRunPermission,
+				}).
+				WithError(err).
+				Warn("unauthorized task run attempt")
 			return shared.ProjectAuthorizationError(err, orgID, projectID, schedulerRunPermission), nil
 		}
 
@@ -201,11 +212,36 @@ Possible causes:
 		}
 
 		if err := shared.CheckStatus(resp.GetStatus()); err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("Task run failed: %v", err)), nil
+			logging.ForComponent("rpc").
+				WithFields(logrus.Fields{
+					"rpc":       "scheduler.RunNow",
+					"taskId":    taskID,
+					"projectId": projectID,
+					"orgId":     orgID,
+				}).
+				WithError(err).
+				Warn("scheduler RunNow returned non-OK status")
+			return mcp.NewToolResultError(fmt.Sprintf(`Task run failed: %v
+
+Double-check that:
+- task_id is correct and the task is not paused or suspended
+- You have permission to run this task
+- The organization is active and not suspended`, err)), nil
 		}
 
 		periodic := resp.GetPeriodic()
 		trig := resp.GetTrigger()
+
+		if periodic == nil || trig == nil {
+			logging.ForComponent("rpc").
+				WithFields(logrus.Fields{
+					"rpc":             "scheduler.RunNow",
+					"taskId":          taskID,
+					"hasPeriodicData": periodic != nil,
+					"hasTriggerData":  trig != nil,
+				}).
+				Warn("scheduler RunNow returned OK but response is incomplete")
+		}
 
 		result := runResult{
 			TaskID: taskID,

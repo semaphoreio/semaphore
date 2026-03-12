@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/logging"
 )
 
 const (
@@ -161,6 +163,12 @@ func (c Config) Validate() error {
 	if len(missing) > 0 {
 		return fmt.Errorf("missing required configuration: %s", strings.Join(missing, ", "))
 	}
+
+	// Warn about optional endpoints that are missing — tools will degrade gracefully.
+	if c.SchedulerEndpoint == "" {
+		logging.ForComponent("config").Warn("scheduler gRPC endpoint not configured — tasks tools (list, describe, run) will be unavailable")
+	}
+
 	return nil
 }
 
