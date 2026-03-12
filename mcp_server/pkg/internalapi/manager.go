@@ -11,6 +11,7 @@ import (
 	loghubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub"
 	loghub2pb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub2"
 	orgpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/organization"
+	schedulerpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/periodic_scheduler"
 	pipelinepb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber.pipeline"
 	workflowpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber_w_f.workflow"
 	projecthubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/projecthub"
@@ -37,6 +38,7 @@ type Provider interface {
 	Users() userpb.UserServiceClient
 	RBAC() rbacpb.RBACClient
 	Features() featuresvc.FeatureClient
+	Scheduler() schedulerpb.PeriodicSchedulerClient
 }
 
 // Manager owns gRPC connections to internal API services and exposes typed clients.
@@ -53,6 +55,7 @@ type Manager struct {
 	loghub2Conn      *grpc.ClientConn
 	userConn         *grpc.ClientConn
 	rbacConn         *grpc.ClientConn
+	schedulerConn    *grpc.ClientConn
 
 	workflowClient     workflowpb.WorkflowServiceClient
 	organizationClient orgpb.OrganizationServiceClient
@@ -64,6 +67,7 @@ type Manager struct {
 	loghub2Client      loghub2pb.Loghub2Client
 	userClient         userpb.UserServiceClient
 	rbacClient         rbacpb.RBACClient
+	schedulerClient    schedulerpb.PeriodicSchedulerClient
 	featuresService    featuresvc.FeatureClient
 }
 
@@ -132,6 +136,9 @@ func NewManager(ctx context.Context, cfg Config) (*Manager, error) {
 	if m.rbacConn, err = dial(cfg.RBACEndpoint); err != nil {
 		return nil, handleDialError("rbac", err)
 	}
+	if m.schedulerConn, err = dial(cfg.SchedulerEndpoint); err != nil {
+		return nil, handleDialError("scheduler", err)
+	}
 
 	if m.workflowConn != nil {
 		m.workflowClient = workflowpb.NewWorkflowServiceClient(m.workflowConn)
@@ -163,6 +170,9 @@ func NewManager(ctx context.Context, cfg Config) (*Manager, error) {
 	if m.rbacConn != nil {
 		m.rbacClient = rbacpb.NewRBACClient(m.rbacConn)
 	}
+	if m.schedulerConn != nil {
+		m.schedulerClient = schedulerpb.NewPeriodicSchedulerClient(m.schedulerConn)
+	}
 
 	cacheService := featuresvc.NewCacheService()
 
@@ -185,6 +195,7 @@ func (m *Manager) Close() error {
 		m.loghub2Conn,
 		m.userConn,
 		m.rbacConn,
+		m.schedulerConn,
 	}
 	for _, conn := range closers {
 		if conn == nil {
@@ -253,6 +264,10 @@ func (m *Manager) RBAC() rbacpb.RBACClient {
 
 func (m *Manager) Features() featuresvc.FeatureClient {
 	return m.featuresService
+}
+
+func (m *Manager) Scheduler() schedulerpb.PeriodicSchedulerClient {
+	return m.schedulerClient
 }
 
 func joinErrors(errs []error) error {
