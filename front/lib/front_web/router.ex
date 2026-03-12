@@ -778,6 +778,9 @@ defmodule FrontWeb.Router do
       get("/projects.json", BillingController, :projects, as: :projects)
       get("/top_projects.json", BillingController, :top_projects, as: :top_projects)
 
+      get("/addons.json", BillingController, :addons, as: :addons)
+      post("/update_addon.json", BillingController, :update_addon, as: :update_addon)
+
       get("/*path", BillingController, :index, as: :index)
     end
 
