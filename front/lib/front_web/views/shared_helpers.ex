@@ -644,7 +644,7 @@ defmodule FrontWeb.SharedHelpers do
   def help_enabled?(conn) do
     org_id = conn.assigns[:organization_id]
 
-    not PylonAccess.enabled_for_org?(org_id) and
+    not FeatureProvider.feature_enabled?(:pylon_support, param: org_id) and
       not feature_enabled_any?(org_id, [
         :"support-tier-1",
         :"support-tier-2",
