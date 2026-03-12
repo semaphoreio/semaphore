@@ -52,6 +52,7 @@ defmodule Zebra.Apis.InternalTaskApi.Schedule do
         |> Enum.each(fn {j, index} ->
           {:ok, job} = create_job(task.id, req, j, index)
 
+          compilation_job_metrics(job)
           onprem_metrics(job)
         end)
 
@@ -194,4 +195,11 @@ defmodule Zebra.Apis.InternalTaskApi.Schedule do
       Watchman.increment(external: {"new_jobs", tags})
     end
   end
+
+  defp compilation_job_metrics(job = %{name: "Compilation"}) do
+    tags = [job.machine_type || "", job.machine_os_image || ""]
+    Watchman.increment({"internal_task_api.schedule.compilation_jobs", tags})
+  end
+
+  defp compilation_job_metrics(_job), do: :ok
 end

@@ -130,6 +130,23 @@ defmodule Zebra.Apis.InternalTaskApi.ScheduleTest do
 
       assert task1.id == task2.id
     end
+
+    test "it emits compilation job metric tagged by machine type and image" do
+      token = Ecto.UUID.generate()
+      req = construct_example_schedule_request(token)
+      [job | _] = req.jobs
+      req = %{req | jobs: [%{job | name: "Compilation"}]}
+
+      with_mock Watchman, [:passthrough], increment: fn _ -> nil end do
+        assert {:ok, _task} = Schedule.schedule(req)
+
+        assert_called(
+          Watchman.increment(
+            {"internal_task_api.schedule.compilation_jobs", ["e1-standard-2", "ubuntu1804"]}
+          )
+        )
+      end
+    end
   end
 
   describe ".encode_fail_fast_strategy" do
