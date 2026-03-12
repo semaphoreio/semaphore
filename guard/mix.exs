@@ -50,7 +50,7 @@ defmodule Guard.Mixfile do
       {:junit_formatter, "~> 3.1", only: [:test]},
       {:util, github: "renderedtext/elixir-util"},
       {:x509, "~> 0.8.7"},
-      {:esaml, git: "https://github.com/dropbox/esaml", tag: "v4.2.0"},
+      {:esaml, git: "https://github.com/handnot2/esaml", tag: "v4.2.0"},
       {:plug_rails_cookie_session_store, "~> 2.0"},
       {:yaml_elixir, "~> 2.9"},
       {:mox, "~> 1.0", only: [:dev, :test]},
