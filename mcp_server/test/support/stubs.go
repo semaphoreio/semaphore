@@ -60,7 +60,7 @@ type provider struct {
 	loghub2       loghub2pb.Loghub2Client
 	users         userpb.UserServiceClient
 	rbac          rbacpb.RBACClient
-	scheduler     schedulerpb.PeriodicSchedulerClient
+	scheduler     schedulerpb.PeriodicServiceClient
 	features      featuresvc.FeatureClient
 }
 
@@ -88,7 +88,7 @@ func (p *provider) Users() userpb.UserServiceClient { return p.users }
 
 func (p *provider) RBAC() rbacpb.RBACClient { return p.rbac }
 
-func (p *provider) Scheduler() schedulerpb.PeriodicSchedulerClient { return p.scheduler }
+func (p *provider) Scheduler() schedulerpb.PeriodicServiceClient { return p.scheduler }
 
 func (p *provider) Features() featuresvc.FeatureClient { return p.features }
 
@@ -654,7 +654,7 @@ func (u *UserClientStub) DescribeByRepositoryProvider(ctx context.Context, in *u
 
 // SchedulerClientStub records scheduler RPC requests and returns configurable responses.
 type SchedulerClientStub struct {
-	schedulerpb.PeriodicSchedulerClient
+	schedulerpb.PeriodicServiceClient
 
 	ListResp     *schedulerpb.ListKeysetResponse
 	ListErr      error
@@ -684,12 +684,12 @@ func (s *SchedulerClientStub) ListKeyset(ctx context.Context, in *schedulerpb.Li
 				Description:    "Runs nightly builds",
 				ProjectId:      orDefault(in.GetProjectId(), "project-local"),
 				OrganizationId: orDefault(in.GetOrganizationId(), "org-local"),
-				Branch:         "main",
+				Reference:      "main",
 				PipelineFile:   ".semaphore/nightly.yml",
-				Schedule:       "0 0 * * *",
+				At:             "0 0 * * *",
 				Paused:         false,
 				Suspended:      false,
-				CreatedAt:      timestamppb.New(time.Unix(1_700_000_000, 0)),
+				InsertedAt:     timestamppb.New(time.Unix(1_700_000_000, 0)),
 				UpdatedAt:      timestamppb.New(time.Unix(1_700_000_000, 0)),
 			},
 		},
@@ -712,22 +712,22 @@ func (s *SchedulerClientStub) Describe(ctx context.Context, in *schedulerpb.Desc
 			Name:           "Nightly Build",
 			Description:    "Runs nightly builds",
 			ProjectId:      "project-local",
-			OrganizationId: orDefault(in.GetOrganizationId(), "org-local"),
-			Branch:         "main",
+			OrganizationId: "org-local",
+			Reference:      "main",
 			PipelineFile:   ".semaphore/nightly.yml",
-			Schedule:       "0 0 * * *",
+			At:             "0 0 * * *",
 			Paused:         false,
 			Suspended:      false,
-			CreatedAt:      timestamppb.New(time.Unix(1_700_000_000, 0)),
+			InsertedAt:     timestamppb.New(time.Unix(1_700_000_000, 0)),
 			UpdatedAt:      timestamppb.New(time.Unix(1_700_000_000, 0)),
 		},
-		RecentTriggers: []*schedulerpb.Trigger{
+		Triggers: []*schedulerpb.Trigger{
 			{
-				TriggeredAt:  timestamppb.New(time.Unix(1_700_000_000, 0)),
-				WorkflowId:   "wf-local",
-				Status:       schedulerpb.TriggerStatus_TRIGGER_STATUS_PASSED,
-				Branch:       "main",
-				PipelineFile: ".semaphore/nightly.yml",
+				TriggeredAt:         timestamppb.New(time.Unix(1_700_000_000, 0)),
+				ScheduledWorkflowId: "wf-local",
+				SchedulingStatus:    "passed",
+				Reference:           "main",
+				PipelineFile:        ".semaphore/nightly.yml",
 			},
 		},
 	}, nil
@@ -742,12 +742,16 @@ func (s *SchedulerClientStub) RunNow(ctx context.Context, in *schedulerpb.RunNow
 		return s.RunNowResp, nil
 	}
 	return &schedulerpb.RunNowResponse{
-		Status:       &statuspb.Status{Code: code.Code_OK},
-		WorkflowId:   "wf-triggered",
-		PeriodicId:   orDefault(in.GetId(), "task-local"),
-		PeriodicName: "Nightly Build",
-		Branch:       orDefault(in.GetBranch(), "main"),
-		PipelineFile: orDefault(in.GetPipelineFile(), ".semaphore/nightly.yml"),
-		TriggeredAt:  timestamppb.New(time.Now()),
+		Status: &statuspb.Status{Code: code.Code_OK},
+		Periodic: &schedulerpb.Periodic{
+			Id:           orDefault(in.GetId(), "task-local"),
+			Name:         "Nightly Build",
+			Reference:    orDefault(in.GetReference(), "main"),
+			PipelineFile: orDefault(in.GetPipelineFile(), ".semaphore/nightly.yml"),
+		},
+		Trigger: &schedulerpb.Trigger{
+			ScheduledWorkflowId: "wf-triggered",
+			TriggeredAt:         timestamppb.New(time.Now()),
+		},
 	}, nil
 }

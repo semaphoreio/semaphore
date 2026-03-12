@@ -30,7 +30,7 @@ type MockProvider struct {
 	Loghub2Client      loghub2pb.Loghub2Client
 	UserClient         userpb.UserServiceClient
 	RBACClient         rbacpb.RBACClient
-	SchedulerClient    schedulerpb.PeriodicSchedulerClient
+	SchedulerClient    schedulerpb.PeriodicServiceClient
 	FeaturesService    featuresvc.FeatureClient
 	Timeout            time.Duration
 }
@@ -68,7 +68,7 @@ func (m *MockProvider) Users() userpb.UserServiceClient { return m.UserClient }
 
 func (m *MockProvider) RBAC() rbacpb.RBACClient { return m.RBACClient }
 
-func (m *MockProvider) Scheduler() schedulerpb.PeriodicSchedulerClient { return m.SchedulerClient }
+func (m *MockProvider) Scheduler() schedulerpb.PeriodicServiceClient { return m.SchedulerClient }
 
 func (m *MockProvider) Features() featuresvc.FeatureClient {
 	if m.FeaturesService == nil {

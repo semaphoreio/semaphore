@@ -171,13 +171,11 @@ The authentication layer must inject the X-Semaphore-User-ID header so we can au
 		}
 
 		request := &schedulerpb.RunNowRequest{
-			Id:             taskID,
-			OrganizationId: orgID,
-			ProjectId:      projectID,
-			RequesterId:    userID,
-			Branch:         branch,
-			PipelineFile:   pipelineFile,
-			Parameters:     pbParams,
+			Id:              taskID,
+			Requester:       userID,
+			Reference:       branch,
+			PipelineFile:    pipelineFile,
+			ParameterValues: pbParams,
 		}
 
 		callCtx, cancel := context.WithTimeout(ctx, api.CallTimeout())
@@ -206,13 +204,20 @@ Possible causes:
 			return mcp.NewToolResultError(fmt.Sprintf("Task run failed: %v", err)), nil
 		}
 
+		periodic := resp.GetPeriodic()
+		trig := resp.GetTrigger()
+
 		result := runResult{
-			TaskID:       resp.GetPeriodicId(),
-			TaskName:     resp.GetPeriodicName(),
-			WorkflowID:   resp.GetWorkflowId(),
-			Branch:       resp.GetBranch(),
-			PipelineFile: resp.GetPipelineFile(),
-			TriggeredAt:  shared.FormatTimestamp(resp.GetTriggeredAt()),
+			TaskID: taskID,
+		}
+		if periodic != nil {
+			result.TaskName = periodic.GetName()
+			result.Branch = periodic.GetReference()
+			result.PipelineFile = periodic.GetPipelineFile()
+		}
+		if trig != nil {
+			result.WorkflowID = trig.GetScheduledWorkflowId()
+			result.TriggeredAt = shared.FormatTimestamp(trig.GetTriggeredAt())
 		}
 
 		markdown := formatRunMarkdown(result)
@@ -263,7 +268,7 @@ func extractParameters(raw any) (map[string]any, error) {
 	return params, nil
 }
 
-func buildParameters(params map[string]any) ([]*schedulerpb.Parameter, error) {
+func buildParameters(params map[string]any) ([]*schedulerpb.ParameterValue, error) {
 	if len(params) == 0 {
 		return nil, nil
 	}
@@ -272,7 +277,7 @@ func buildParameters(params map[string]any) ([]*schedulerpb.Parameter, error) {
 		names = append(names, name)
 	}
 	sort.Strings(names)
-	result := make([]*schedulerpb.Parameter, 0, len(names))
+	result := make([]*schedulerpb.ParameterValue, 0, len(names))
 	for _, name := range names {
 		clean := strings.TrimSpace(name)
 		if clean == "" {
@@ -285,7 +290,7 @@ func buildParameters(params map[string]any) ([]*schedulerpb.Parameter, error) {
 		if err != nil {
 			return nil, err
 		}
-		result = append(result, &schedulerpb.Parameter{Name: clean, Value: value})
+		result = append(result, &schedulerpb.ParameterValue{Name: clean, Value: value})
 	}
 	return result, nil
 }

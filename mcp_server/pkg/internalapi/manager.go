@@ -38,7 +38,7 @@ type Provider interface {
 	Users() userpb.UserServiceClient
 	RBAC() rbacpb.RBACClient
 	Features() featuresvc.FeatureClient
-	Scheduler() schedulerpb.PeriodicSchedulerClient
+	Scheduler() schedulerpb.PeriodicServiceClient
 }
 
 // Manager owns gRPC connections to internal API services and exposes typed clients.
@@ -67,7 +67,7 @@ type Manager struct {
 	loghub2Client      loghub2pb.Loghub2Client
 	userClient         userpb.UserServiceClient
 	rbacClient         rbacpb.RBACClient
-	schedulerClient    schedulerpb.PeriodicSchedulerClient
+	schedulerClient    schedulerpb.PeriodicServiceClient
 	featuresService    featuresvc.FeatureClient
 }
 
@@ -171,7 +171,7 @@ func NewManager(ctx context.Context, cfg Config) (*Manager, error) {
 		m.rbacClient = rbacpb.NewRBACClient(m.rbacConn)
 	}
 	if m.schedulerConn != nil {
-		m.schedulerClient = schedulerpb.NewPeriodicSchedulerClient(m.schedulerConn)
+		m.schedulerClient = schedulerpb.NewPeriodicServiceClient(m.schedulerConn)
 	}
 
 	cacheService := featuresvc.NewCacheService()
@@ -266,7 +266,7 @@ func (m *Manager) Features() featuresvc.FeatureClient {
 	return m.featuresService
 }
 
-func (m *Manager) Scheduler() schedulerpb.PeriodicSchedulerClient {
+func (m *Manager) Scheduler() schedulerpb.PeriodicServiceClient {
 	return m.schedulerClient
 }
 

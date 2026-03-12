@@ -57,9 +57,9 @@ func TestListTasks(t *testing.T) {
 					Description:    "Runs every night",
 					ProjectId:      projectID,
 					OrganizationId: orgID,
-					Branch:         "main",
+					Reference:      "main",
 					PipelineFile:   ".semaphore/nightly.yml",
-					Schedule:       "0 0 * * *",
+					At:             "0 0 * * *",
 					Paused:         false,
 					Suspended:      false,
 					UpdatedAt:      timestamppb.New(time.Unix(1700000000, 0)),
@@ -140,19 +140,19 @@ func TestDescribeTask(t *testing.T) {
 				Description:    "Runs every night",
 				ProjectId:      projectID,
 				OrganizationId: orgID,
-				Branch:         "main",
+				Reference:      "main",
 				PipelineFile:   ".semaphore/nightly.yml",
-				Schedule:       "0 0 * * *",
-				CreatedAt:      timestamppb.New(time.Unix(1700000000, 0)),
+				At:             "0 0 * * *",
+				InsertedAt:     timestamppb.New(time.Unix(1700000000, 0)),
 				UpdatedAt:      timestamppb.New(time.Unix(1700000000, 0)),
 			},
-			RecentTriggers: []*schedulerpb.Trigger{
+			Triggers: []*schedulerpb.Trigger{
 				{
-					TriggeredAt:  timestamppb.New(time.Unix(1700000000, 0)),
-					WorkflowId:   "wf-456",
-					Status:       schedulerpb.TriggerStatus_TRIGGER_STATUS_PASSED,
-					Branch:       "main",
-					PipelineFile: ".semaphore/nightly.yml",
+					TriggeredAt:         timestamppb.New(time.Unix(1700000000, 0)),
+					ScheduledWorkflowId: "wf-456",
+					SchedulingStatus:    "passed",
+					Reference:           "main",
+					PipelineFile:        ".semaphore/nightly.yml",
 				},
 			},
 		},
@@ -221,13 +221,17 @@ func TestRunTask(t *testing.T) {
 
 	client := &support.SchedulerClientStub{
 		RunNowResp: &schedulerpb.RunNowResponse{
-			Status:       &statuspb.Status{Code: code.Code_OK},
-			WorkflowId:   "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
-			PeriodicId:   taskID,
-			PeriodicName: "Nightly Build",
-			Branch:       "main",
-			PipelineFile: ".semaphore/nightly.yml",
-			TriggeredAt:  timestamppb.New(time.Unix(1700000000, 0)),
+			Status: &statuspb.Status{Code: code.Code_OK},
+			Periodic: &schedulerpb.Periodic{
+				Id:           taskID,
+				Name:         "Nightly Build",
+				Reference:    "main",
+				PipelineFile: ".semaphore/nightly.yml",
+			},
+			Trigger: &schedulerpb.Trigger{
+				ScheduledWorkflowId: "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+				TriggeredAt:         timestamppb.New(time.Unix(1700000000, 0)),
+			},
 		},
 	}
 

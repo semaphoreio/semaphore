@@ -150,8 +150,7 @@ The authentication layer must inject the X-Semaphore-User-ID header so we can au
 		}
 
 		request := &schedulerpb.DescribeRequest{
-			Id:             taskID,
-			OrganizationId: orgID,
+			Id: taskID,
 		}
 
 		callCtx, cancel := context.WithTimeout(ctx, api.CallTimeout())
@@ -212,7 +211,6 @@ Double-check that:
 			}
 			params = append(params, taskParameter{
 				Name:        p.GetName(),
-				Value:       p.GetValue(),
 				Required:    p.GetRequired(),
 				Description: p.GetDescription(),
 			})
@@ -223,29 +221,29 @@ Double-check that:
 			Name:         periodic.GetName(),
 			Description:  periodic.GetDescription(),
 			ProjectID:    periodic.GetProjectId(),
-			Branch:       periodic.GetBranch(),
+			Branch:       periodic.GetReference(),
 			PipelineFile: periodic.GetPipelineFile(),
-			Schedule:     periodic.GetSchedule(),
+			Schedule:     periodic.GetAt(),
 			Parameters:   params,
 			Paused:       periodic.GetPaused(),
 			Suspended:    periodic.GetSuspended(),
-			CreatedAt:    shared.FormatTimestamp(periodic.GetCreatedAt()),
+			CreatedAt:    shared.FormatTimestamp(periodic.GetInsertedAt()),
 			UpdatedAt:    shared.FormatTimestamp(periodic.GetUpdatedAt()),
 		}
 
 		// Build triggers list
 		var triggers []trigger
-		for _, t := range resp.GetRecentTriggers() {
+		for _, t := range resp.GetTriggers() {
 			if t == nil {
 				continue
 			}
 			triggers = append(triggers, trigger{
 				TriggeredAt:  shared.FormatTimestamp(t.GetTriggeredAt()),
-				WorkflowID:   t.GetWorkflowId(),
-				Status:       triggerStatusToString(t.GetStatus()),
-				Branch:       t.GetBranch(),
+				WorkflowID:   t.GetScheduledWorkflowId(),
+				Status:       t.GetSchedulingStatus(),
+				Branch:       t.GetReference(),
 				PipelineFile: t.GetPipelineFile(),
-				ErrorMessage: t.GetErrorMessage(),
+				ErrorMessage: t.GetErrorDescription(),
 			})
 		}
 
@@ -267,22 +265,6 @@ Double-check that:
 	}
 }
 
-func triggerStatusToString(status schedulerpb.TriggerStatus) string {
-	switch status {
-	case schedulerpb.TriggerStatus_TRIGGER_STATUS_SCHEDULED:
-		return "scheduled"
-	case schedulerpb.TriggerStatus_TRIGGER_STATUS_RUNNING:
-		return "running"
-	case schedulerpb.TriggerStatus_TRIGGER_STATUS_PASSED:
-		return "passed"
-	case schedulerpb.TriggerStatus_TRIGGER_STATUS_FAILED:
-		return "failed"
-	case schedulerpb.TriggerStatus_TRIGGER_STATUS_STOPPED:
-		return "stopped"
-	default:
-		return "unknown"
-	}
-}
 
 func formatTaskDescribeMarkdown(result describeResult, mode string) string {
 	mb := shared.NewMarkdownBuilder()
