@@ -2,19 +2,27 @@ module Semaphore::GithubApp
   class Collaborators
     class Worker
       include Sidekiq::Worker
+      include Semaphore::GithubApp::UniqueLockManagement
 
       sidekiq_options :queue => :github_app,
                       :lock => :until_expired,
                       :lock_args_method => ->(args) { [args.first] },
                       :on_conflict => { :client => :log, :server => :reject },
                       :lock_ttl => App.worker_lock_ttl,
-                      :retry => App.worker_max_retries
+                      :retry => App.worker_max_retries,
+                      :dead => false
 
       sidekiq_retry_in do |count, _exception, _jobhash|
         delay = App.worker_base_delay * (2**count)
         jitter = rand(0..App.worker_jitter_max)
 
         [delay + jitter, App.worker_max_delay].min
+      end
+
+      sidekiq_retries_exhausted do |job, exception|
+        slug = job["args"].first
+        Rails.logger.error("[Repository Collaborators Refresh] #{slug}: Retries exhausted — #{exception.class}: #{exception.message}")
+        new.delete_unique_lock([slug])
       end
 
       def perform(slug, remote_id = nil)
@@ -50,15 +58,6 @@ module Semaphore::GithubApp
 
       def log(slug, message)
         Rails.logger.info("[Repository Collaborators Refresh] #{slug}: #{message}")
-      end
-
-      def delete_unique_lock(lock_args)
-        item = { "class" => self.class.to_s, "queue" => "github_app", "lock_args" => lock_args,
-                 "lock_prefix" => SidekiqUniqueJobs.config.lock_prefix }
-        digest = SidekiqUniqueJobs::LockDigest.new(item).lock_digest
-        SidekiqUniqueJobs::Digests.new.delete_by_digest(digest)
-      rescue StandardError => e
-        log(lock_args.first, "Failed to release unique lock: #{e.message}")
       end
     end
   end

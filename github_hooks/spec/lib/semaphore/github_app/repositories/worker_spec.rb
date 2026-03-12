@@ -66,6 +66,21 @@ module Semaphore::GithubApp
       end
     end
 
+    describe "sidekiq_retries_exhausted" do
+      it "logs an error and releases the unique lock" do
+        job = { "args" => [installation_id], "class" => described_class.to_s }
+        exception = LowRateLimitError.new("rate limit too low")
+
+        expect(Rails.logger).to receive(:error).with(/#{installation_id}: Retries exhausted.*LowRateLimitError/)
+
+        worker_instance = instance_double(described_class)
+        allow(described_class).to receive(:new).and_return(worker_instance)
+        expect(worker_instance).to receive(:delete_unique_lock).with([installation_id])
+
+        described_class.sidekiq_retries_exhausted_block.call(job, exception)
+      end
+    end
+
     describe "exponential backoff" do
       it "computes increasing delays based on retry count" do
         retry_block = described_class.sidekiq_retry_in_block
