@@ -37,18 +37,19 @@ defmodule FrontWeb.Plug.ContentSecurityPolicy do
         connect_src: connect_src(),
         default_src: ~w('none'),
         form_action:
-          ~w('self' semaphoreci.zendesk.com bitbucket.org github.com gitlab.com) ++
+          ~w('self' semaphoreci.zendesk.com bitbucket.org github.com gitlab.com https://*.usepylon.com https://support.semaphore.io) ++
             ["*.#{base_domain}"],
         media_src: ~w(beacon-v2.helpscout.net),
         child_src: ~w('self'),
-        font_src: ~w('self' beacon-v2.helpscout.net fonts.gstatic.com cdn.jsdelivr.net),
+        font_src:
+          ~w('self' beacon-v2.helpscout.net fonts.gstatic.com cdn.jsdelivr.net https://*.usepylon.com),
         img_src:
-          ~w(data: 'self' *.posthog.com static.zdassets.com *.zendesk.com gravatar.com *.gravatar.com *.wp.com *.githubusercontent.com d12wqas9hcki3z.cloudfront.net bitbucket.org github.com gitlab.com beacon-v2.helpscout.net d33v4339jhl8k0.cloudfront.net chatapi-prod.s3.amazonaws.com/ bitbucket-assetroot.s3.amazonaws.com ui-avatars.com *.atl-paas.net *.sitesearch360.com storage.googleapis.com) ++
+          ~w(data: 'self' *.posthog.com static.zdassets.com *.zendesk.com gravatar.com *.gravatar.com *.wp.com *.githubusercontent.com d12wqas9hcki3z.cloudfront.net bitbucket.org github.com gitlab.com beacon-v2.helpscout.net d33v4339jhl8k0.cloudfront.net chatapi-prod.s3.amazonaws.com/ bitbucket-assetroot.s3.amazonaws.com ui-avatars.com *.atl-paas.net *.sitesearch360.com storage.googleapis.com https://*.usepylon.com https://pylon-avatars.s3.us-west-1.amazonaws.com https://d3vl36l12sfx26.cloudfront.net) ++
             ["docs.#{base_domain}"],
         script_src:
-          ~w(https: 'self' 'strict-dynamic' *.posthog.com static.zdassets.com beacon-v2.helpscout.net d12wqas9hcki3z.cloudfront.net d33v4339jhl8k0.cloudfront.net *.sitesearch360.com www.googletagmanager.com cdn.jsdeliver.net),
+          ~w(https: 'self' 'strict-dynamic' *.posthog.com static.zdassets.com beacon-v2.helpscout.net d12wqas9hcki3z.cloudfront.net d33v4339jhl8k0.cloudfront.net *.sitesearch360.com www.googletagmanager.com cdn.jsdeliver.net https://widget.usepylon.com),
         style_src:
-          ~w('self' 'unsafe-inline' *.posthog.com fonts.gstatic.com fonts.googleapis.com cdnjs.cloudflare.com beacon-v2.helpscout.net cdn.jsdelivr.net),
+          ~w('self' 'unsafe-inline' *.posthog.com fonts.gstatic.com fonts.googleapis.com cdnjs.cloudflare.com beacon-v2.helpscout.net cdn.jsdelivr.net https://*.usepylon.com),
         frame_src: ~w('self' beacon-v2.helpscout.net),
         object_src: ~w(beacon-v2.helpscout.net)
       }
@@ -72,7 +73,8 @@ defmodule FrontWeb.Plug.ContentSecurityPolicy do
       "wss://*.pusher.com",
       "*.sumologic.com",
       "www.google-analytics.com",
-      "*.sitesearch360.com"
+      "*.sitesearch360.com",
+      "https://*.usepylon.com"
     ] ++ additional_connect_domains()
   end
 
