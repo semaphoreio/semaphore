@@ -25,6 +25,9 @@ export interface State {
   peoplePageUrl: string;
   agentsPageUrl: string;
   contactSupportUrl: string;
+  pricingUrl: string;
+  addonsUrl?: string;
+  updateAddonUrl?: string;
 }
 
 export const Context = createContext<State>({
@@ -49,4 +52,5 @@ export const Context = createContext<State>({
   agentsPageUrl: ``,
   peoplePageUrl: ``,
   contactSupportUrl: ``,
+  pricingUrl: ``,
 });

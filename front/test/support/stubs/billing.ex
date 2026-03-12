@@ -51,7 +51,12 @@ defmodule Support.Stubs.Billing do
     SpendingSummary,
     SpendingType,
     UpgradePlanRequest,
-    UpgradePlanResponse
+    UpgradePlanResponse,
+    Addon,
+    AddonGroup,
+    AddonGroupType,
+    ListAddonsResponse,
+    UpdateAddonResponse
   }
 
   alias InternalApi.Usage.{
@@ -803,6 +808,21 @@ defmodule Support.Stubs.Billing do
     |> new_plan()
   end
 
+  def stub_plan(:the_plan, params) do
+    [
+      id: Ecto.UUID.generate(),
+      name: "The Plan",
+      slug: "the_plan",
+      details: [],
+      charging_type: :CHARGING_TYPE_NONE,
+      flags: [:SUBSCRIPTION_FLAG_ELIGIBLE_FOR_ADDONS],
+      subscription_starts_on: [seconds: ~D[2022-11-01] |> Timex.to_datetime() |> Timex.to_unix()],
+      subscription_ends_on: nil
+    ]
+    |> merge_with_defaults(params)
+    |> new_plan()
+  end
+
   defp new_plan(params) do
     params
     |> Enum.map(fn
@@ -1010,6 +1030,8 @@ defmodule Support.Stubs.Billing do
       GrpcMock.stub(BillingMock, :setup_organization, &__MODULE__.setup_organization/2)
       GrpcMock.stub(BillingMock, :can_setup_organization, &__MODULE__.can_setup_organization/2)
       GrpcMock.stub(BillingMock, :acknowledge_trial_end, &__MODULE__.acknowledge_trial_end/2)
+      GrpcMock.stub(BillingMock, :list_addons, &__MODULE__.list_addons/2)
+      GrpcMock.stub(BillingMock, :update_addon, &__MODULE__.update_addon/2)
     end
 
     def acknowledge_trial_end(_request, _) do
@@ -1085,6 +1107,97 @@ defmodule Support.Stubs.Billing do
 
     def setup_organization(_request, _) do
       SetupOrganizationResponse.new()
+    end
+
+    def list_addons(_request, _) do
+      ListAddonsResponse.new(
+        groups: [
+          AddonGroup.new(
+            name: "support",
+            display_name: "Support",
+            description: "Choose a support tier for your organization.",
+            type: AddonGroupType.value(:ADDON_GROUP_TYPE_EXCLUSIVE),
+            addons: [
+              Addon.new(
+                name: "support-tier-1",
+                display_name: "Community",
+                description: "Community support via forums and documentation.",
+                price: "$ 0.00",
+                enabled: true,
+                modifiable: true
+              ),
+              Addon.new(
+                name: "support-tier-2",
+                display_name: "Standard",
+                description: "Email support with 48h response time.",
+                price: "$ 49.00",
+                enabled: false,
+                modifiable: true
+              ),
+              Addon.new(
+                name: "support-tier-3",
+                display_name: "Premium",
+                description: "Priority email and chat support with 4h response time.",
+                price: "$ 199.00",
+                enabled: false,
+                modifiable: true
+              ),
+              Addon.new(
+                name: "support-tier-4",
+                display_name: "Enterprise",
+                description: "Dedicated support engineer with 1h response time and SLA.",
+                price: "$ 499.00",
+                enabled: false,
+                modifiable: false
+              )
+            ]
+          ),
+          AddonGroup.new(
+            name: "success",
+            display_name: "Success",
+            description: "Choose a success tier for your organization.",
+            type: AddonGroupType.value(:ADDON_GROUP_TYPE_EXCLUSIVE),
+            addons: [
+              Addon.new(
+                name: "success-tier-1",
+                display_name: "Self-serve",
+                description: "Access to documentation and guides.",
+                price: "$ 0.00",
+                enabled: false,
+                modifiable: true
+              ),
+              Addon.new(
+                name: "success-tier-2",
+                display_name: "Guided",
+                description: "Quarterly business reviews and onboarding assistance.",
+                price: "$ 99.00",
+                enabled: false,
+                modifiable: true
+              ),
+              Addon.new(
+                name: "success-tier-3",
+                display_name: "Managed",
+                description: "Dedicated success manager with monthly reviews.",
+                price: "$ 299.00",
+                enabled: false,
+                modifiable: true
+              ),
+              Addon.new(
+                name: "success-tier-4",
+                display_name: "Strategic",
+                description: "Strategic partnership with executive sponsorship.",
+                price: "$ 599.00",
+                enabled: false,
+                modifiable: false
+              )
+            ]
+          )
+        ]
+      )
+    end
+
+    def update_addon(_request, _) do
+      UpdateAddonResponse.new()
     end
   end
 end
