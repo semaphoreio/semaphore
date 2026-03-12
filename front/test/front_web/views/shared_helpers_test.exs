@@ -258,6 +258,24 @@ defmodule FrontWeb.SharedHelpersTest do
       end
     end
 
+    test "returns false when pylon support is enabled without support tiers", %{conn: conn} do
+      conn =
+        conn
+        |> assign(:organization_id, "org-1")
+
+      with_mock FeatureProvider,
+        feature_enabled?: fn
+          :pylon_support, [param: "org-1"] -> true
+          :"support-tier-1", [param: "org-1"] -> false
+          :"support-tier-2", [param: "org-1"] -> false
+          :"support-tier-3", [param: "org-1"] -> false
+          :"support-tier-4", [param: "org-1"] -> false
+          _, _ -> false
+        end do
+        refute FrontWeb.SharedHelpers.help_enabled?(conn)
+      end
+    end
+
     test "returns false when org is on support tier 1", %{conn: conn} do
       conn =
         conn
