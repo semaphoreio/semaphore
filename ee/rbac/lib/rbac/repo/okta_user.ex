@@ -62,7 +62,7 @@ defmodule Rbac.Repo.OktaUser do
         from(e in __MODULE__,
           where:
             e.integration_id == ^integration.id and
-              fragment("LOWER(?) = LOWER(?)", e.email, ^email),
+              fragment("LOWER(TRIM(?)) = LOWER(TRIM(?))", e.email, ^email),
           limit: 1
         )
       )
@@ -192,6 +192,8 @@ defmodule Rbac.Repo.OktaUser do
     user
     |> cast(params, @updatable_fields)
     |> validate_required(@required_fields)
+    |> unique_constraint(:email, name: :okta_users_integration_id_email_index)
+    |> unique_constraint(:email, name: :okta_users_integration_id_normalized_email_index)
   end
 
   defp apply_list_filters(query, []) do

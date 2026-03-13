@@ -32,6 +32,20 @@ defmodule Rbac.Repo.OktaUser.Test do
       assert found.id == user.id
     end
 
+    test "finds user when lookup email has leading and trailing spaces" do
+      {:ok, integration} = Support.Factories.OktaIntegration.insert()
+
+      {:ok, user} =
+        Support.Factories.OktaUser.insert(
+          integration_id: integration.id,
+          org_id: integration.org_id,
+          email: "User@Example.com"
+        )
+
+      assert {:ok, found} = OktaUser.find_by_email(integration, "  user@example.com  ")
+      assert found.id == user.id
+    end
+
     test "returns error when email does not exist" do
       {:ok, integration} = Support.Factories.OktaIntegration.insert()
 
