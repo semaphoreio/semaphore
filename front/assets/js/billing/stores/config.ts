@@ -20,12 +20,12 @@ export interface State {
   projectSpendings?: any;
   availablePlans?: types.Plans.Plan[];
   currentPlanType?: string;
+  isBasicPlan: boolean;
   peoplePageUrl: string;
   agentsPageUrl: string;
   contactSupportUrl: string;
   pricingUrl: string;
   addonsUrl?: string;
-  updateAddonUrl?: string;
 }
 
 export const Context = createContext<State>({
@@ -45,6 +45,7 @@ export const Context = createContext<State>({
   isBillingManager: false,
   availablePlans: [],
   currentPlanType: ``,
+  isBasicPlan: false,
   agentsPageUrl: ``,
   peoplePageUrl: ``,
   contactSupportUrl: ``,

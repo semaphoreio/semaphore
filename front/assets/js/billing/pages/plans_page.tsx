@@ -32,19 +32,19 @@ export const PlansPage = () => {
       )}
 
       {plans.map((plan) => (
-        <PlanCard key={plan.type} plan={plan} />
+        <PlanCard key={plan.type} plan={plan}/>
       ))}
     </Fragment>
   );
 };
 
-const PlanCard = ({ plan }: { plan: Plans.Plan }) => {
+const PlanCard = ({ plan }: { plan: Plans.Plan, }) => {
   const config = useContext(stores.Config.Context);
   const isCurrent = config.currentPlanType === plan.type;
   const [confirming, setConfirming] = useState(false);
 
   if (confirming) {
-    return <PlanConfirmation plan={plan} onCancel={() => setConfirming(false)} />;
+    return <PlanConfirmation plan={plan} onCancel={() => setConfirming(false)}/>;
   }
 
   return (
@@ -135,7 +135,7 @@ const PlanConfirmation = (props: PlanConfirmationProps) => {
 
         {isLoading.value && (
           <div className="flex pv3">
-            <toolbox.Asset path="images/spinner.svg" className="spinner" />
+            <toolbox.Asset path="images/spinner.svg" className="spinner"/>
           </div>
         )}
         {errors.value && (

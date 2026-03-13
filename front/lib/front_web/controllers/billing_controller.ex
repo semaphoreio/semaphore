@@ -282,18 +282,6 @@ defmodule FrontWeb.BillingController do
     })
   end
 
-  def update_addon(conn, %{"addon_name" => addon_name, "enabled" => enabled}) do
-    case BillingModel.update_addon(conn.assigns.organization_id, addon_name, enabled) do
-      :ok ->
-        conn |> json(%{ok: true})
-
-      {:error, error} ->
-        conn
-        |> put_status(422)
-        |> json(%{ok: false, error: inspect(error)})
-    end
-  end
-
   defp get_opts(conn) do
     if conn.params["force_cold_boot"] do
       [reload_cache?: true]
