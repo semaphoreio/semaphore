@@ -12,10 +12,12 @@ import { NavLink } from "react-router-dom";
 
 export const OverviewPage = () => {
   const spendings = useContext(stores.Spendings.Context);
+  const config = useContext(stores.Config.Context);
   const selectedSpending = spendings.state.selectedSpending;
   const summary = selectedSpending?.summary;
   const plan = selectedSpending?.plan;
   const currentPlan = spendings.state.currentSpending?.plan;
+  const isBasic = config.currentPlanType === `basic`;
 
   return (
     <Fragment>
@@ -24,7 +26,9 @@ export const OverviewPage = () => {
           <div>
             <div className="inline-flex items-center">
               <p className="mb0 b f3">
-                {plan.name} plan {plan.isTrial() ? `- trial` : ``} {plan.type == types.Spendings.PlanType.Prepaid ? `- prepaid` : ``}
+                {isBasic ? selectedSpending?.name : (
+                  <Fragment>{plan.name} plan {plan.isTrial() ? `- trial` : ``} {plan.type == types.Spendings.PlanType.Prepaid ? `- prepaid` : ``}</Fragment>
+                )}
               </p>
             </div>
             <div className="gray mb3 measure flex items-center">
@@ -123,10 +127,35 @@ const Payments = ({ plan }: { plan: types.Spendings.Plan, }) => {
   }, []);
 
   const isPrepaid = plan.type == types.Spendings.PlanType.Prepaid;
+  const isBasic = config.currentPlanType === `basic`;
   const withPaymentDetails = plan.withPaymentDetails();
 
-  if (!withPaymentDetails && !isPrepaid) {
+  if (!withPaymentDetails && !isPrepaid && !isBasic) {
     return <Fragment></Fragment>;
+  }
+
+  if (isBasic && !withPaymentDetails) {
+    return (
+      <div className="ml3 bb b--black-075 w-100 mb3 br3 shadow-3 bg-white">
+        <div className="flex items-center justify-between ph3 pv2 bb bw1 b--black-075 br3 br--top">
+          <div className="flex items-center">
+            <span className="material-symbols-outlined pr2">credit_card</span>
+            <div className="b">Payment method</div>
+          </div>
+        </div>
+        <div className="ph3 pv3">
+          <div className="gray mb2">Add a payment method to remove usage limits.</div>
+          {config.isBillingManager && plan.hasPaymentMethodUrl() && (
+            <a href={plan.paymentMethodUrl} target="_blank" rel="noreferrer" className="btn btn-primary">
+              Add payment method ↗
+            </a>
+          )}
+          {!config.isBillingManager && (
+            <div className="f6 gray">Contact your organization owner to add a payment method.</div>
+          )}
+        </div>
+      </div>
+    );
   }
 
   return (
