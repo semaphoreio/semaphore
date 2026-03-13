@@ -7,6 +7,8 @@ APP_NAME=$(shell grep 'app:' mix.exs | cut -d ':' -f3 | cut -d ',' -f1)-grpc
 PROTOC_TAG=1.12.1-3.20.3-0.11.0
 TMP_REPO_DIR?=/tmp/internal_api
 INTERNAL_API_BRANCH ?= master
+INTERNAL_API_LOCAL_PATH ?=
+INTERNAL_API_SOURCE_DIR=$(if $(INTERNAL_API_LOCAL_PATH),$(INTERNAL_API_LOCAL_PATH),$(TMP_REPO_DIR))
 
 #
 # Environment variables required for app to run
@@ -39,10 +41,14 @@ else
 endif
 
 pb.gen:
+ifeq ($(INTERNAL_API_LOCAL_PATH),)
 	rm -rf $(TMP_REPO_DIR)
 	git clone git@github.com:renderedtext/internal_api.git $(TMP_REPO_DIR) && (cd $(TMP_REPO_DIR) && git checkout $(INTERNAL_API_BRANCH) && cd -)
+endif
 	rm -rf lib/internal_api
 	mkdir -p lib/internal_api
-	docker run --rm -v $(PWD):/home/protoc/code -v $(TMP_REPO_DIR):/home/protoc/source -t renderedtext/protoc:$(PROTOC_TAG) sh -c /home/protoc/code/scripts/internal_protos.sh
+	docker run --rm -v $(PWD):/home/protoc/code -v $(INTERNAL_API_SOURCE_DIR):/home/protoc/source -t renderedtext/protoc:$(PROTOC_TAG) sh -c /home/protoc/code/scripts/internal_protos.sh
+ifeq ($(INTERNAL_API_LOCAL_PATH),)
 	rm -rf $(TMP_REPO_DIR)
+endif
 	docker-compose run --rm app mix format
