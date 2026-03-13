@@ -46,6 +46,20 @@ defmodule Rbac.Store.RbacUser.Test do
     end
   end
 
+  describe "fetch_by_email/1" do
+    test "finds user with different case than stored email" do
+      {:ok, user} =
+        Factories.RbacUser.insert(Ecto.UUID.generate(), "Test User", "User@Example.com")
+
+      assert {:ok, found} = RbacUser.fetch_by_email("user@example.com")
+      assert found.id == user.id
+    end
+
+    test "returns error when email does not exist" do
+      assert {:error, :not_found} = RbacUser.fetch_by_email("nonexistent@example.com")
+    end
+  end
+
   describe "fetch/1" do
     test "when user exists" do
       name = "Hrafnkell"
