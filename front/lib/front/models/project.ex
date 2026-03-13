@@ -261,10 +261,12 @@ defmodule Front.Models.Project do
     alias InternalApi.Repository.GetFileRequest
     alias InternalApi.Repository.RepositoryService.Stub
 
+    # commit_sha also accepts branch names or empty string — each git provider
+    # handles the empty case by defaulting to the repository's default branch.
     req =
       GetFileRequest.new(
         repository_id: project.repo_id,
-        commit_sha: default_branch(project),
+        commit_sha: project.repo_default_branch || "",
         path: path
       )
 
@@ -282,12 +284,6 @@ defmodule Front.Models.Project do
         false
     end
   end
-
-  defp default_branch(%__MODULE__{repo_default_branch: branch})
-       when branch in [nil, ""],
-       do: "main"
-
-  defp default_branch(%__MODULE__{repo_default_branch: branch}), do: branch
 
   def destroy(project_id, user_id, org_id, metadata \\ nil) do
     alias InternalApi.ResponseStatus.Code
