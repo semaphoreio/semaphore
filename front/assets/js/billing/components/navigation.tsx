@@ -37,6 +37,11 @@ export const Navigation = () => {
           Change Plan
         </NavLink>
       )}
+      {config.addonsUrl && (
+        <NavLink to={`/addons${search}`} className={className}>
+          Add-ons
+        </NavLink>
+      )}
       <div className="f7 gray mb2 mt3">DETAILED BREAKDOWN</div>
       <NavLink to={`/spending${search}`} className={className}>
         Spending
@@ -54,11 +59,6 @@ export const Navigation = () => {
       {displayCredits && (
         <NavLink to={`/credits${search}`} className={className}>
           Credits
-        </NavLink>
-      )}
-      {config.addonsUrl && (
-        <NavLink to={`/addons${search}`} className={className}>
-          Add-ons
         </NavLink>
       )}
     </div>

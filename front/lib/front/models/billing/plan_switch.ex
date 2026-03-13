@@ -160,8 +160,7 @@ defmodule Front.Models.Billing.PlanSwitch do
       Billing.PlanSwitch.AvailablePlan.new(
         name: "The Plan",
         type: :basic,
-        description:
-          "Credit-based plan with monthly allowance.",
+        description: "Credit-based plan with monthly allowance.",
         features: [
           parallelism: -1,
           max_users: -1,
