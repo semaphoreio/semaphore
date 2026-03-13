@@ -242,7 +242,7 @@ defmodule FrontWeb.ProjectOnboardingController do
     {:ok, {:ok, collaborators}} = Async.await(fetch_collaborators)
 
     next_page_href =
-      if Models.Project.file_exists?(project.id, project.initial_pipeline_file) do
+      if Models.Project.file_exists?(project, project.initial_pipeline_file) do
         project_onboarding_path(conn, :existing_configuration, project.name)
       else
         project_onboarding_path(conn, :template, project.name)
@@ -577,7 +577,7 @@ defmodule FrontWeb.ProjectOnboardingController do
     maybe_self_hosted_agents = Async.run(fn -> Front.SelfHostedAgents.AgentType.list(org_id) end)
 
     fetch_has_pipeline =
-      Async.run(fn -> Models.Project.file_exists?(project.id, project.initial_pipeline_file) end)
+      Async.run(fn -> Models.Project.file_exists?(project, project.initial_pipeline_file) end)
 
     with {:ok, user} <- Async.await(fetch_user),
          {:ok, {:ok, cloud_agents}} <- Async.await(maybe_cloud_agents),
@@ -635,7 +635,7 @@ defmodule FrontWeb.ProjectOnboardingController do
         if Front.saas?() do
           project_onboarding_path(conn, :invite_collaborators, project.name)
         else
-          if Models.Project.file_exists?(project.id, project.initial_pipeline_file) do
+          if Models.Project.file_exists?(project, project.initial_pipeline_file) do
             project_onboarding_path(conn, :existing_configuration, project.name)
           else
             project_onboarding_path(conn, :template, project.name)
