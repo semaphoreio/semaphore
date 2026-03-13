@@ -11,7 +11,7 @@ defmodule Front.Models.Billing.PlanSwitch do
           | :free
           | :open_source
           | :scaleup
-          | :the_plan
+          | :basic
 
   @type validation_error :: [{key :: atom(), message :: String.t()}]
 
@@ -29,7 +29,7 @@ defmodule Front.Models.Billing.PlanSwitch do
       "open_source" -> :open_source
       "scaleup" -> :scaleup
       "scaleup_hybrid" -> :scaleup
-      slug when slug == the_plan_slug() -> :the_plan
+      "basic" -> :basic
       _ -> :unknown
     end
   end
@@ -42,7 +42,7 @@ defmodule Front.Models.Billing.PlanSwitch do
       "startup_cloud" -> "paid"
       "startup_hybrid" -> "startup_hybrid"
       "free" -> "free"
-      "the_plan" -> the_plan_slug()
+      "basic" -> "basic"
       _ -> ""
     end
   end
@@ -154,14 +154,12 @@ defmodule Front.Models.Billing.PlanSwitch do
     end
   end
 
-  defp the_plan_slug, do: System.get_env("THE_PLAN_SLUG", "basic")
-
   @spec available_plans() :: [Billing.PlanSwitch.AvailablePlan.t()]
   defp available_plans do
     [
       Billing.PlanSwitch.AvailablePlan.new(
         name: "The Plan",
-        type: :the_plan,
+        type: :basic,
         description:
           "Credit-based plan with monthly allowance.",
         features: [

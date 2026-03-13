@@ -12,7 +12,7 @@ export const Navigation = () => {
   const displayCredits = state.currentSpending?.plan.withCreditsPage();
 
   const displayProjects = config.projectSpendings;
-  const hasPlans = config.availablePlans.length > 0 && config.currentPlanType !== `the_plan`;
+  const hasPlans = config.availablePlans.length > 0 && config.currentPlanType !== `basic`;
 
   const className = ({ isActive }: { isActive: boolean, }) => {
     return (

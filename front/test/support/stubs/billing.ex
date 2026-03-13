@@ -808,11 +808,11 @@ defmodule Support.Stubs.Billing do
     |> new_plan()
   end
 
-  def stub_plan(:the_plan, params) do
+  def stub_plan(:basic, params) do
     [
       id: Ecto.UUID.generate(),
       name: "The Plan",
-      slug: "the_plan",
+      slug: "basic",
       details: [],
       charging_type: :CHARGING_TYPE_NONE,
       flags: [:SUBSCRIPTION_FLAG_ELIGIBLE_FOR_ADDONS],
