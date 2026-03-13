@@ -456,12 +456,12 @@ defmodule FrontWeb.WorkflowController do
 
     %{
       agent_types: combined,
-      # We want new pipelines constructed through the Workflow Editor to use ubuntu2004
+      # We want new pipelines constructed through the Workflow Editor to use ubuntu2204
       # as the default OS image for Linux. However, to avoid breaking builds, Zebra still
       # uses ubuntu1804 as the default one if you don't specify anything in your YAML.
       # Once we deprecate the Ubuntu 18.04 image, we should be able to remove this hardcoded
       # value from here and use hosted_agent_types.default_linux_os_image again.
-      default_linux_os_image: "ubuntu2004",
+      default_linux_os_image: "ubuntu2204",
       default_mac_os_image: hosted_agent_types.default_mac_os_image
     }
   end
