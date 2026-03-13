@@ -85,7 +85,7 @@ const ClassicLayout = () => {
 const RegularLayout = () => {
   const config = useContext(stores.Config.Context);
 
-  const hasPlans = config.availablePlans.length > 1;
+  const hasPlans = config.availablePlans.length > 0 && config.currentPlanType !== `the_plan`;
 
   return (
     <Fragment>
@@ -109,6 +109,9 @@ const RegularLayout = () => {
             />
           )}
           <Route path="/credits" element={<pages.CreditsPage/>}/>
+          {config.addonsUrl && (
+            <Route path="/addons" element={<pages.AddonsPage/>}/>
+          )}
           <Route path="*" element={<Navigate to="/overview"/>}/>
         </Routes>
       </div>
