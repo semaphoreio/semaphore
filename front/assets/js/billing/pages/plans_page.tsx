@@ -1,7 +1,7 @@
 import { Fragment } from "preact";
 import * as toolbox from "js/toolbox";
-import { useContext, useEffect, useState } from "preact/hooks";
-import { Plans } from "../types";
+import { useContext, useState } from "preact/hooks";
+import { Plans, Spendings } from "../types";
 import * as stores from "../stores";
 import { useSignal } from "@preact/signals";
 import { useNavigate } from "react-router-dom";
@@ -20,6 +20,16 @@ export const PlansPage = () => {
           Select a plan that works best for you and your team.
         </div>
       </div>
+
+      {config.pricingUrl && (
+        <toolbox.Box type="warning" className="mb3">
+          Before switching plans, verify that your currently used machine types and OS images are
+          {` `}
+          <a href={config.pricingUrl} target="_blank" rel="noreferrer" className="link b">
+            compatible with the new plan
+          </a>.
+        </toolbox.Box>
+      )}
 
       {plans.map((plan) => (
         <PlanCard key={plan.type} plan={plan} />
@@ -76,11 +86,11 @@ interface PlanConfirmationProps {
 const PlanConfirmation = (props: PlanConfirmationProps) => {
   const plan = props.plan;
   const config = useContext(stores.Config.Context);
+  const { state: spendingsState } = useContext(stores.Spendings.Context);
+  const chargingType = spendingsState.currentSpending?.plan?.type;
   const navigate = useNavigate();
   const errors = useSignal<string | null>(null);
   const isLoading = useSignal(false);
-  const [allowed, setAllowed] = useState(false);
-
   const onPlanConfirmed = async () => {
     errors.value = null;
     isLoading.value = true;
@@ -117,7 +127,11 @@ const PlanConfirmation = (props: PlanConfirmationProps) => {
         </div>
         <div className="f5 gray mb3">{plan.description}</div>
 
-        <VerifyPlanUpgrade setAllowed={setAllowed} planType={plan.type} />
+        {(chargingType === Spendings.PlanType.Postpaid || chargingType === Spendings.PlanType.Prepaid) && (
+          <toolbox.Box type="info" className="mb3">
+            You will be charged today and the switch will happen immediately.
+          </toolbox.Box>
+        )}
 
         {isLoading.value && (
           <div className="flex pv3">
@@ -133,7 +147,7 @@ const PlanConfirmation = (props: PlanConfirmationProps) => {
         <div className="flex mt3" style={{ gap: `8px` }}>
           <button
             className="btn btn-primary"
-            disabled={!allowed || isLoading.value}
+            disabled={isLoading.value}
             onClick={() => void onPlanConfirmed()}
           >
             Confirm
@@ -150,92 +164,3 @@ const PlanConfirmation = (props: PlanConfirmationProps) => {
   );
 };
 
-interface VerifyPlanUpgradeProps {
-  planType: string;
-  setAllowed: (allowed: boolean) => void;
-}
-
-const VerifyPlanUpgrade = (props: VerifyPlanUpgradeProps) => {
-  const config = useContext(stores.Config.Context);
-  const isLoading = useSignal(false);
-  const [errs, setErrors] = useState<Map<string, string[]>>(new Map());
-
-  const checkPlanUpgrade = async (planType: string) => {
-    interface Response {
-      allowed: boolean;
-      errors: Map<string, string[]>;
-    }
-    isLoading.value = true;
-    const url = new URL(config.canUpgradeUrl, location.origin);
-    url.searchParams.append(`plan_type`, planType);
-
-    const { data, error } = await toolbox.APIRequest.get<Response>(
-      url,
-      { plan_type: planType },
-      {},
-      (data) => {
-        const myErrors = new Map<string, string[]>();
-        for (const key in data.errors) {
-          myErrors.set(key, data.errors[key] as string[]);
-        }
-        return { allowed: data.allowed, errors: myErrors };
-      }
-    );
-    isLoading.value = false;
-    if (error) {
-      setErrors(data.errors);
-    } else {
-      props.setAllowed(data.allowed);
-    }
-  };
-
-  useEffect(() => {
-    void checkPlanUpgrade(props.planType);
-  }, []);
-
-  const errorsEl: preact.VNode[] = [];
-  for (const [key, value] of errs.entries()) {
-    for (const err of value) {
-      switch (key) {
-        case `users`:
-          errorsEl.push(
-            <li key={err}>
-              {err}{` `}
-              <a href={config.peoplePageUrl} target="_blank" className="link" rel="noreferrer">
-                Manage people
-              </a>
-            </li>
-          );
-          break;
-        case `agents`:
-          errorsEl.push(
-            <li key={err}>
-              {err}{` `}
-              <a href={config.agentsPageUrl} target="_blank" className="link" rel="noreferrer">
-                Manage agents
-              </a>
-            </li>
-          );
-          break;
-        default:
-          errorsEl.push(<li key={err}>{err}</li>);
-          break;
-      }
-    }
-  }
-
-  return (
-    <Fragment>
-      {isLoading.value && (
-        <div className="flex pv2">
-          <toolbox.Asset path="images/spinner.svg" className="spinner" />
-        </div>
-      )}
-      {errorsEl.length > 0 && (
-        <div className="f6 red pv2">
-          <ul className="list pl0">{errorsEl}</ul>
-        </div>
-      )}
-    </Fragment>
-  );
-};

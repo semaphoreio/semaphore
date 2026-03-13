@@ -43,7 +43,7 @@ defmodule FrontWeb.BillingController.AddonsTest do
 
       enterprise_addon = List.last(support_group["addons"])
       assert enterprise_addon["name"] == "support-tier-4"
-      assert enterprise_addon["modifiable"] == false
+      assert enterprise_addon["modifiable"] == true
     end
 
     test "returns success group", %{conn: conn} do

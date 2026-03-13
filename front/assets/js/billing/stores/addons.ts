@@ -1,4 +1,3 @@
-import { createContext } from "preact";
 import * as types from "../types";
 import Addons = types.Addons;
 
@@ -16,7 +15,6 @@ export type Action =
   ;
 
 export interface State {
-  url: string;
   status: Status;
   groups: Addons.AddonGroup[];
   updating: string | null;
@@ -36,13 +34,7 @@ export const Reducer = (state: State, action: Action): State => {
 };
 
 export const EmptyState: State = {
-  url: ``,
   status: Status.Empty,
   groups: [],
   updating: null,
 };
-
-export const Context = createContext<{ state: State; dispatch: (a: Action) => void }>({
-  state: EmptyState,
-  dispatch: () => undefined,
-});

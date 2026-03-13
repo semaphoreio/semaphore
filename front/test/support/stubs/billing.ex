@@ -81,7 +81,7 @@ defmodule Support.Stubs.Billing do
 
     spendings = [
       stub_spending(
-        plan_summary: stub_plan(:startup_hybrid),
+        plan_summary: stub_plan(:startup_hybrid, flags: [:SUBSCRIPTION_FLAG_ELIGIBLE_FOR_ADDONS]),
         display_name: "Hybrid #{formatted_from} - #{formated_to}",
         from_date: [seconds: from_date |> Timex.to_unix()],
         to_date: [seconds: to_date |> Timex.to_unix()],
@@ -1024,7 +1024,7 @@ defmodule Support.Stubs.Billing do
       GrpcMock.stub(BillingMock, :get_budget, &__MODULE__.find/2)
       GrpcMock.stub(BillingMock, :credits_usage, &__MODULE__.find/2)
       GrpcMock.stub(BillingMock, :can_upgrade_plan, &__MODULE__.can_upgrade_plan/2)
-      GrpcMock.stub(BillingMock, :upgrade_plan, &__MODULE__.find/2)
+      GrpcMock.stub(BillingMock, :upgrade_plan, &__MODULE__.upgrade_plan/2)
       GrpcMock.stub(BillingMock, :list_projects, &__MODULE__.find/2)
       GrpcMock.stub(BillingMock, :describe_project, &__MODULE__.find/2)
       GrpcMock.stub(BillingMock, :setup_organization, &__MODULE__.setup_organization/2)
@@ -1101,6 +1101,10 @@ defmodule Support.Stubs.Billing do
       CanUpgradePlanResponse.new(allowed: true, errors: [])
     end
 
+    def upgrade_plan(_request, _) do
+      UpgradePlanResponse.new(errors: [], spending_id: "", payment_method_url: "")
+    end
+
     def can_setup_organization(_request, _) do
       CanSetupOrganizationResponse.new(allowed: true, errors: [])
     end
@@ -1148,7 +1152,7 @@ defmodule Support.Stubs.Billing do
                 description: "Dedicated support engineer with 1h response time and SLA.",
                 price: "$ 499.00",
                 enabled: false,
-                modifiable: false
+                modifiable: true
               )
             ]
           ),
@@ -1188,7 +1192,7 @@ defmodule Support.Stubs.Billing do
                 description: "Strategic partnership with executive sponsorship.",
                 price: "$ 599.00",
                 enabled: false,
-                modifiable: false
+                modifiable: true
               )
             ]
           )

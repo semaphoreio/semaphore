@@ -6,10 +6,7 @@ import * as types from "../types";
 
 export const AddonsPage = () => {
   const config = useContext(stores.Config.Context);
-  const [state, dispatch] = useReducer(stores.Addons.Reducer, {
-    ...stores.Addons.EmptyState,
-    url: config.addonsUrl || ``,
-  });
+  const [state, dispatch] = useReducer(stores.Addons.Reducer, stores.Addons.EmptyState);
 
   const fetchGroups = () => {
     if (!config.addonsUrl) return;
@@ -68,7 +65,7 @@ export const AddonsPage = () => {
       <div className="mb3">
         <p className="mb0 b f3">Add-ons</p>
         <div className="gray measure">
-          Manage your support and success tiers. Changes may affect your billing.
+          Manage your support and success tiers.
         </div>
       </div>
 
@@ -83,14 +80,19 @@ export const AddonsPage = () => {
       )}
 
       {state.status === stores.Addons.Status.Loaded &&
-        state.groups.map((group) => (
-          <components.TierSelector
-            key={group.name}
-            group={group}
-            updating={state.updating}
-            onUpdate={handleUpdate}
-          />
-        ))}
+        state.groups.length > 0 && (
+          <div className="flex" style={{ gap: `24px` }}>
+            {state.groups.map((group) => (
+              <div key={group.name} style={{ flex: `1 1 0%`, minWidth: 0 }}>
+                <components.TierSelector
+                  group={group}
+                  updating={state.updating}
+                  onUpdate={handleUpdate}
+                />
+              </div>
+            ))}
+          </div>
+        )}
 
       {state.status === stores.Addons.Status.Loaded &&
         state.groups.length === 0 && (

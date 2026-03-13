@@ -161,7 +161,7 @@ defmodule Front.Models.Billing.PlanSwitch do
         name: "The Plan",
         type: :the_plan,
         description:
-          "Credit-based plan with monthly allowance. Add a payment method to remove limits.",
+          "Credit-based plan with monthly allowance.",
         features: [
           parallelism: -1,
           max_users: -1,
