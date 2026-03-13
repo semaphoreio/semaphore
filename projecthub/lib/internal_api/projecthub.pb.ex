@@ -149,6 +149,13 @@ defmodule InternalApi.Projecthub.Project.Spec.Repository.ForkedPullRequests do
 
   field(:allowed_secrets, 1, repeated: true, type: :string, json_name: "allowedSecrets")
   field(:allowed_contributors, 2, repeated: true, type: :string, json_name: "allowedContributors")
+
+  field(:allow_sem_approve_include_secrets, 3,
+    type: :bool,
+    json_name: "allowSemApproveIncludeSecrets"
+  )
+
+  field(:allow_sem_approve_include_cache, 4, type: :bool, json_name: "allowSemApproveIncludeCache")
 end
 
 defmodule InternalApi.Projecthub.Project.Spec.Repository.Status.PipelineFile do

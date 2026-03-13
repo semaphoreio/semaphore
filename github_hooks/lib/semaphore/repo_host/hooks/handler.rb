@@ -69,6 +69,10 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
       # run and be visible by the outside contributor trying to run it.
       logger.info("pr-approval")
       workflow.update(:state => Workflow::STATE_PR_APPROVAL)
+      include_secrets_requested = workflow.payload.respond_to?(:pr_approval_include_secrets?) &&
+                                  workflow.payload.pr_approval_include_secrets?
+      include_cache_requested = workflow.payload.respond_to?(:pr_approval_include_cache?) &&
+                                workflow.payload.pr_approval_include_cache?
 
       requestor = workflow.payload.comment_author
 
@@ -81,6 +85,12 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
         .recent(1).first
 
       return unless workflow
+
+      mark_workflow_with_pr_approval_options(
+        workflow,
+        :include_secrets => include_secrets_requested && approval_option_enabled?(workflow.project, :allow_sem_approve_include_secrets),
+        :include_cache => include_cache_requested && approval_option_enabled?(workflow.project, :allow_sem_approve_include_cache)
+      )
     elsif workflow.payload.pull_request_within_repo?
       # Check if project members can run pull-request workflows for this organization.
       # Note that we do not need to check if non-members can run pull-request workflows,
@@ -306,6 +316,26 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
     repo_host.reference(repo_slug, ref.delete_prefix("refs/"))
   rescue ::RepoHost::RemoteException::NotFound
     repo_host.create_ref(repo_slug, ref, sha)
+  end
+
+  def self.mark_workflow_with_pr_approval_options(workflow, include_secrets: false, include_cache: false)
+    return unless include_secrets || include_cache
+
+    payload = JSON.parse(workflow.request["payload"])
+    payload["semaphore_approval_include_secrets"] = true if include_secrets
+    payload["semaphore_approval_include_cache"] = true if include_cache
+
+    request = workflow.request
+    request["payload"] = payload.to_json
+
+    workflow.update(:request => request)
+  rescue JSON::ParserError
+    # Keep default behavior if payload cannot be modified for any reason.
+    nil
+  end
+
+  def self.approval_option_enabled?(project, option)
+    project.respond_to?(option) && project.public_send(option) == true
   end
 
   def self.forked_pr_allowed?(requestor, project)

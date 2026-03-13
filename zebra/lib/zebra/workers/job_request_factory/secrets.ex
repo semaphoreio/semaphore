@@ -265,7 +265,12 @@ defmodule Zebra.Workers.JobRequestFactory.Secrets do
 
   defp forked_pr?(repo_proxy) do
     InternalApi.RepoProxy.Hook.Type.key(repo_proxy.git_ref_type) == :PR and
-      repo_proxy.pr_slug != repo_proxy.repo_slug
+      repo_proxy.pr_slug != repo_proxy.repo_slug and
+      !approval_include_secrets?(repo_proxy)
+  end
+
+  defp approval_include_secrets?(repo_proxy) do
+    Map.get(repo_proxy, :approval_include_secrets, false)
   end
 
   defp prepare_checkout_metadata(job_id, spec, repo_proxy) do

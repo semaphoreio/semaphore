@@ -246,6 +246,22 @@ Selecting **Run on** allows you to configure what triggers are enabled for the p
 
 Blocked pull requests can be manually approved by adding a comment containing `/sem-approve` string in the PR conversation. Anyone who can run a forked pull request can also approve one.
 
+By default, `/sem-approve` keeps forked pull request protections in place:
+
+- secrets are filtered according to the forked PR allow list
+- cache is disabled for forked pull requests
+
+Project maintainers can allow extra `/sem-approve` options in **Project settings > General > Forked pull requests**:
+
+- **Allow `/sem-approve --include-secrets`**: enables approved runs to include secrets according to your secret configuration
+- **Allow `/sem-approve --include-cache`**: enables approved runs to use cache
+
+When these settings are enabled, trusted contributors can approve with:
+
+- `/sem-approve --include-secrets`
+- `/sem-approve --include-cache`
+- `/sem-approve --include-secrets --include-cache`
+
 Approving forked pull requests is limited to new comments only and does not work with comment edits. Due to security concerns, `/sem-approve` will work only once. Subsequent pushes to the forked pull request must be approved again.
 
 ## How to skip commits {#skip}

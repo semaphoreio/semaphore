@@ -10,6 +10,9 @@ module RepoHost::Github
     PULL_REQUEST_CLOSED = "closed"
     PULL_REQUEST_COMMIT = "synchronize"
     PULL_REQUEST_READY_FOR_REVIEW = "ready_for_review"
+    PR_APPROVE_COMMAND = "/sem-approve"
+    PR_INCLUDE_SECRETS_OPTION = "--include-secrets"
+    PR_INCLUDE_CACHE_OPTION = "--include-cache"
 
     def initialize(payload)
       @data = JSON.parse(payload)
@@ -38,7 +41,17 @@ module RepoHost::Github
     def pr_approval?
       return false unless pr_comment?
 
-      @data["comment"]["body"].include?("/sem-approve")
+      pr_approval_command?
+    end
+
+    def pr_approval_include_secrets?
+      @data["semaphore_approval_include_secrets"] == true ||
+        pr_approval_option?(PR_INCLUDE_SECRETS_OPTION)
+    end
+
+    def pr_approval_include_cache?
+      @data["semaphore_approval_include_cache"] == true ||
+        pr_approval_option?(PR_INCLUDE_CACHE_OPTION)
     end
 
     def comment_author
@@ -375,6 +388,18 @@ module RepoHost::Github
       return nil unless username.present?
 
       "https://avatars.githubusercontent.com/#{username}?v=4"
+    end
+
+    def pr_approval_command?
+      pr_comment_body.include?(PR_APPROVE_COMMAND)
+    end
+
+    def pr_approval_option?(option)
+      pr_approval_command? && pr_comment_body.include?(option)
+    end
+
+    def pr_comment_body
+      @data.dig("comment", "body").to_s
     end
   end
 end

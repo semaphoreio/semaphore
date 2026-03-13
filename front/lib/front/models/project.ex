@@ -45,6 +45,8 @@ defmodule Front.Models.Project do
     field(:allowed_secrets, :string)
     field(:filter_contributors, :boolean)
     field(:allowed_contributors, :string)
+    field(:allow_sem_approve_include_secrets, :boolean, default: false)
+    field(:allow_sem_approve_include_cache, :boolean, default: false)
     field(:initial_pipeline_file, :string)
     field(:public, :boolean)
 
@@ -100,6 +102,8 @@ defmodule Front.Models.Project do
     :allowed_secrets,
     :filter_contributors,
     :allowed_contributors,
+    :allow_sem_approve_include_secrets,
+    :allow_sem_approve_include_cache,
     :whitelist_branches,
     :branch_whitelist,
     :whitelist_tags,
@@ -319,6 +323,22 @@ defmodule Front.Models.Project do
       attach_permissions = extract_attach_permissions(project_data)
       run = run_on |> Enum.any?()
 
+      forked_pull_requests =
+        ForkedPullRequests.new(
+          allowed_secrets: allowed_secrets,
+          allowed_contributors: allowed_contributors
+        )
+        |> put_forked_pr_option(
+          :allow_sem_approve_include_secrets,
+          project_data.run && project_data.build_forked_prs &&
+            project_data.allow_sem_approve_include_secrets
+        )
+        |> put_forked_pr_option(
+          :allow_sem_approve_include_cache,
+          project_data.run && project_data.build_forked_prs &&
+            project_data.allow_sem_approve_include_cache
+        )
+
       project_update =
         ProjectReq.new(
           metadata:
@@ -334,11 +354,7 @@ defmodule Front.Models.Project do
                   url: project_data.repo_url,
                   run_on: run_on,
                   run_present: {:run, run},
-                  forked_pull_requests:
-                    ForkedPullRequests.new(
-                      allowed_secrets: allowed_secrets,
-                      allowed_contributors: allowed_contributors
-                    ),
+                  forked_pull_requests: forked_pull_requests,
                   status: project_data.commit_status,
                   pipeline_file: project_data.initial_pipeline_file,
                   whitelist:
@@ -784,6 +800,18 @@ defmodule Front.Models.Project do
         options -> options.allowed_contributors |> Enum.join(", ")
       end
 
+    allow_sem_approve_include_secrets =
+      case project.spec.repository.forked_pull_requests do
+        nil -> false
+        options -> Map.get(options, :allow_sem_approve_include_secrets, false)
+      end
+
+    allow_sem_approve_include_cache =
+      case project.spec.repository.forked_pull_requests do
+        nil -> false
+        options -> Map.get(options, :allow_sem_approve_include_cache, false)
+      end
+
     {branch_whitelist, tag_whitelist} =
       case project.spec.repository.whitelist do
         nil ->
@@ -845,6 +873,8 @@ defmodule Front.Models.Project do
       :allowed_secrets => allowed_secrets,
       :filter_contributors => allowed_contributors != "",
       :allowed_contributors => allowed_contributors,
+      :allow_sem_approve_include_secrets => allow_sem_approve_include_secrets,
+      :allow_sem_approve_include_cache => allow_sem_approve_include_cache,
       :initial_pipeline_file => project.spec.repository.pipeline_file,
       :public => project.spec.visibility == Visibility.value(:PUBLIC),
       :state => State.key(project.status.state),
@@ -1118,6 +1148,14 @@ defmodule Front.Models.Project do
       data.tag_whitelist |> Front.Utils.regexp_split()
     else
       []
+    end
+  end
+
+  defp put_forked_pr_option(forked_pull_requests, option, value) do
+    if Map.has_key?(forked_pull_requests, option) do
+      Map.put(forked_pull_requests, option, value == true)
+    else
+      forked_pull_requests
     end
   end
 

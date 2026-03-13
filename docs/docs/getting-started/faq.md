@@ -510,6 +510,13 @@ This can happen in self-hosted versions of Semaphore. The problem is that the ag
 
 If you are using a [filter for contributors](../using-semaphore/workflows#project-triggers), you can still review and approve blocked pull requests by commenting with a `/sem-approve` message. Anyone who can run a forked pull request can also approve one.
 
+You can also allow extra options for approved runs in **Project settings > General > Forked pull requests**:
+
+- `/sem-approve --include-secrets`
+- `/sem-approve --include-cache`
+
+These options work only when the corresponding project settings are enabled.
+
 Approving forked pull requests is limited to new comments only and is not possible for comment edits. Due to security concerns, `/sem-approve` will work only once. Subsequent pushes to the forked pull request must be approved again.
 
 ### How do I fix the error "Revision: COMMIT_SHA not found. Exiting"

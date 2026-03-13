@@ -9,6 +9,9 @@ module RepoHost::Bitbucket
     PULL_REQUEST_REOPENED = "reopened"
     PULL_REQUEST_CLOSED = "closed"
     PULL_REQUEST_COMMIT = "synchronize"
+    PR_APPROVE_COMMAND = "/sem-approve"
+    PR_INCLUDE_SECRETS_OPTION = "--include-secrets"
+    PR_INCLUDE_CACHE_OPTION = "--include-cache"
 
     def initialize(data)
       @data = data
@@ -38,7 +41,17 @@ module RepoHost::Bitbucket
     def pr_approval?
       return false unless pr_comment?
 
-      @data["comment"]["body"].include?("/sem-approve")
+      pr_approval_command?
+    end
+
+    def pr_approval_include_secrets?
+      @data["semaphore_approval_include_secrets"] == true ||
+        pr_approval_option?(PR_INCLUDE_SECRETS_OPTION)
+    end
+
+    def pr_approval_include_cache?
+      @data["semaphore_approval_include_cache"] == true ||
+        pr_approval_option?(PR_INCLUDE_CACHE_OPTION)
     end
 
     # ❌
@@ -405,6 +418,18 @@ module RepoHost::Bitbucket
 
     def head_commit
       pull_request.dig("destination", "commit")
+    end
+
+    def pr_approval_command?
+      pr_comment_body.include?(PR_APPROVE_COMMAND)
+    end
+
+    def pr_approval_option?(option)
+      pr_approval_command? && pr_comment_body.include?(option)
+    end
+
+    def pr_comment_body
+      @data.dig("comment", "body").to_s
     end
 
     # def first_commit
