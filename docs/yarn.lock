@@ -8381,6 +8381,13 @@ minimalistic-assert@^1.0.0:
   resolved "https://registry.npmjs.org/minimalistic-assert/-/minimalistic-assert-1.0.1.tgz"
   integrity sha512-UtJcAD4yEaGtjPezWuO9wC4nwUnVH/8/Im3yEHQP4b67cXlD/Qr9hdITCU1xDbSEXg2XKNaP8jsReV7vQd00/A==
 
+minimatch@^3.1.1:
+  version "9.0.7"
+  resolved "https://registry.npmjs.org/minimatch/-/minimatch-9.0.7.tgz"
+  integrity sha512-MOwgjc8tfrpn5QQEvjijjmDVtMw2oL88ugTevzxQnzRLm6l3fVEF2gzU0kYeYYKD8C66+IdGX6peJ4MyUlUnPg==
+  dependencies:
+    brace-expansion "^5.0.2"
+
 minimatch@3.1.4:
   version "3.1.4"
   resolved "https://registry.npmjs.org/minimatch/-/minimatch-3.1.4.tgz"
