@@ -44,7 +44,7 @@ defmodule Rbac.Repo.SamlJitUser do
     |> where(
       [u],
       u.integration_id == ^integration.id and
-        fragment("LOWER(?) = LOWER(?)", u.email, ^email)
+        fragment("LOWER(TRIM(?)) = LOWER(TRIM(?))", u.email, ^email)
     )
     |> Repo.one()
     |> case do
@@ -95,6 +95,8 @@ defmodule Rbac.Repo.SamlJitUser do
     user
     |> cast(params, @updatable_fields)
     |> validate_required(@required_fields)
+    |> unique_constraint(:email, name: :saml_jit_users_integration_id_email_index)
+    |> unique_constraint(:email, name: :saml_jit_users_integration_id_normalized_email_index)
   end
 
   defp extract_attribute(%__MODULE__{} = user, name) do

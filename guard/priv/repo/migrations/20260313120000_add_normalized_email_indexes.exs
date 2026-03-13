@@ -1,4 +1,4 @@
-defmodule Rbac.Repo.Migrations.AddCaseInsensitiveEmailIndexes do
+defmodule Guard.Repo.Migrations.AddNormalizedEmailIndexes do
   use Ecto.Migration
 
   def up do

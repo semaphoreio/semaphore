@@ -23,7 +23,7 @@ defmodule Rbac.Store.RbacUser do
   @spec fetch_by_email(String.t()) :: {:ok, RbacUser.t()} | {:error, :not_found}
   def fetch_by_email(email) do
     RbacUser
-    |> where([u], fragment("LOWER(?) = LOWER(?)", u.email, ^email))
+    |> where([u], fragment("LOWER(TRIM(?)) = LOWER(TRIM(?))", u.email, ^email))
     |> join(:inner, [u], s in assoc(u, :subject))
     |> select([u, s], %{u | name: s.name})
     |> Rbac.Repo.one()
