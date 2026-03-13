@@ -15,16 +15,17 @@ export interface State {
   budgetUrl: string;
   upgradeUrl: string;
   newOrganizationUrl: string;
-  canUpgradeUrl: string;
   budget?: any;
   isBillingManager: boolean;
-  forceColdBoot?: boolean;
   projectSpendings?: any;
   availablePlans?: types.Plans.Plan[];
   currentPlanType?: string;
   peoplePageUrl: string;
   agentsPageUrl: string;
   contactSupportUrl: string;
+  pricingUrl: string;
+  addonsUrl?: string;
+  updateAddonUrl?: string;
 }
 
 export const Context = createContext<State>({
@@ -41,12 +42,11 @@ export const Context = createContext<State>({
   budgetUrl: ``,
   upgradeUrl: ``,
   newOrganizationUrl: ``,
-  canUpgradeUrl: ``,
   isBillingManager: false,
-  forceColdBoot: false,
   availablePlans: [],
   currentPlanType: ``,
   agentsPageUrl: ``,
   peoplePageUrl: ``,
   contactSupportUrl: ``,
+  pricingUrl: ``,
 });

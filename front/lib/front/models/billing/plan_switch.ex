@@ -5,7 +5,13 @@ defmodule Front.Models.Billing.PlanSwitch do
   alias Front.Models.Billing
 
   @type plan_type ::
-          :unknown | :startup_cloud | :startup_hybrid | :free | :open_source | :scaleup
+          :unknown
+          | :startup_cloud
+          | :startup_hybrid
+          | :free
+          | :open_source
+          | :scaleup
+          | :the_plan
 
   @type validation_error :: [{key :: atom(), message :: String.t()}]
 
@@ -23,6 +29,7 @@ defmodule Front.Models.Billing.PlanSwitch do
       "open_source" -> :open_source
       "scaleup" -> :scaleup
       "scaleup_hybrid" -> :scaleup
+      slug when slug == the_plan_slug() -> :the_plan
       _ -> :unknown
     end
   end
@@ -35,6 +42,7 @@ defmodule Front.Models.Billing.PlanSwitch do
       "startup_cloud" -> "paid"
       "startup_hybrid" -> "startup_hybrid"
       "free" -> "free"
+      "the_plan" -> the_plan_slug()
       _ -> ""
     end
   end
@@ -146,49 +154,24 @@ defmodule Front.Models.Billing.PlanSwitch do
     end
   end
 
+  defp the_plan_slug, do: System.get_env("THE_PLAN_SLUG", "basic")
+
   @spec available_plans() :: [Billing.PlanSwitch.AvailablePlan.t()]
   defp available_plans do
     [
       Billing.PlanSwitch.AvailablePlan.new(
-        name: "Cloud",
-        type: :startup_cloud,
-        description: "Pay only for used machine time, no seat costs.",
-        features: [
-          parallelism: -1,
-          max_users: -1,
-          max_self_hosted_agents: 0,
-          cloud_minutes: -1,
-          seat_cost: 0,
-          large_resource_types: true,
-          priority_support: true
-        ]
-      ),
-      Billing.PlanSwitch.AvailablePlan.new(
-        name: "Hybrid",
-        type: :startup_hybrid,
-        description: "Run jobs on your own infrastructure.",
+        name: "The Plan",
+        type: :the_plan,
+        description:
+          "Credit-based plan with monthly allowance.",
         features: [
           parallelism: -1,
           max_users: -1,
           max_self_hosted_agents: -1,
           cloud_minutes: -1,
-          seat_cost: 9,
+          seat_cost: 0,
           large_resource_types: true,
           priority_support: true
-        ]
-      ),
-      Billing.PlanSwitch.AvailablePlan.new(
-        name: "Free",
-        type: :free,
-        description: "Good for smaller teams self-end occasional use.",
-        features: [
-          parallelism: 40,
-          max_users: 5,
-          max_self_hosted_agents: 5,
-          cloud_minutes: 7000,
-          seat_cost: 0,
-          large_resource_types: false,
-          priority_support: false
         ]
       )
     ]
