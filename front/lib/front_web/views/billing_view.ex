@@ -58,6 +58,11 @@ defmodule FrontWeb.BillingView do
       peoplePageUrl: people_path(conn, :organization, []),
       agentsPageUrl: self_hosted_agent_path(conn, :index),
       contactSupportUrl: Front.Zendesk.new_ticket_location(),
+      pricingUrl:
+        System.get_env(
+          "PRICING_URL",
+          "https://#{Application.fetch_env!(:front, :domain)}/pricing"
+        ),
       acknowledgePlanChangeUrl:
         billing_acknowledge_plan_change_path(conn, :acknowledge_plan_change, [])
     }
@@ -71,6 +76,16 @@ defmodule FrontWeb.BillingView do
         }
 
         Map.put(params, :projectSpendings, project_spendings)
+      else
+        params
+      end
+    end)
+    |> then(fn params ->
+      if match?(%{plan: _}, conn.assigns.current_spending) and
+           Billing.Plan.eligible_for_addons?(conn.assigns.current_spending.plan) do
+        params
+        |> Map.put(:addonsUrl, billing_addons_path(conn, :addons, url_opts))
+        |> Map.put(:updateAddonUrl, billing_update_addon_path(conn, :update_addon, []))
       else
         params
       end
