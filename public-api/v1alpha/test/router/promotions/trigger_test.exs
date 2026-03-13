@@ -2,6 +2,7 @@ defmodule Router.Promotions.TriggerTest do
   use ExUnit.Case
 
   setup do
+    Support.Stubs.init()
     Support.Stubs.grant_all_permissions()
 
     org = Support.Stubs.Organization.create_default()
@@ -80,6 +81,34 @@ defmodule Router.Promotions.TriggerTest do
 
     assert message = post_promotion(params, 200)
     assert message == "Promotion successfully triggered."
+  end
+
+  test "POST /promotions - returns REFUSED code and message when Gofer rejects trigger", ctx do
+    GrpcMock.stub(GoferMock, :trigger, fn _, _ ->
+      InternalApi.Gofer.TriggerResponse.new(
+        response_status:
+          InternalApi.Gofer.ResponseStatus.new(
+            code: InternalApi.Gofer.ResponseStatus.ResponseCode.value(:REFUSED),
+            message:
+              "Too many pending promotions for target 'Staging' (50/50). Please retry later."
+          )
+      )
+    end)
+
+    params = %{
+      "pipeline_id" => ctx.ppl_id,
+      "name" => "Staging",
+      "override" => true,
+      "request_token" => UUID.uuid4()
+    }
+
+    assert response = post_promotion(params, 409)
+
+    assert response == %{
+             "code" => "REFUSED",
+             "message" =>
+               "Too many pending promotions for target 'Staging' (50/50). Please retry later."
+           }
   end
 
   def post_promotion(args, expected_status_code, decode? \\ true) when is_map(args) do
