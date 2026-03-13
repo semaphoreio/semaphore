@@ -12,7 +12,7 @@ export const Navigation = () => {
   const displayCredits = state.currentSpending?.plan.withCreditsPage();
 
   const displayProjects = config.projectSpendings;
-  const hasPlans = config.availablePlans.length > 0;
+  const hasPlans = config.availablePlans.length > 0 && config.currentPlanType !== `basic`;
 
   const className = ({ isActive }: { isActive: boolean, }) => {
     return (
@@ -54,6 +54,11 @@ export const Navigation = () => {
       {displayCredits && (
         <NavLink to={`/credits${search}`} className={className}>
           Credits
+        </NavLink>
+      )}
+      {config.addonsUrl && (
+        <NavLink to={`/addons${search}`} className={className}>
+          Add-ons
         </NavLink>
       )}
     </div>
