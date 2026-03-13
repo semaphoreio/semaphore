@@ -29,7 +29,7 @@ defmodule Front.Models.Billing.PlanSwitch do
       "open_source" -> :open_source
       "scaleup" -> :scaleup
       "scaleup_hybrid" -> :scaleup
-      "the_plan" -> :the_plan
+      slug when slug == the_plan_slug() -> :the_plan
       _ -> :unknown
     end
   end
@@ -42,7 +42,7 @@ defmodule Front.Models.Billing.PlanSwitch do
       "startup_cloud" -> "paid"
       "startup_hybrid" -> "startup_hybrid"
       "free" -> "free"
-      "the_plan" -> "the_plan"
+      "the_plan" -> the_plan_slug()
       _ -> ""
     end
   end
@@ -153,6 +153,8 @@ defmodule Front.Models.Billing.PlanSwitch do
         {:error, [generic: "Failed to fetch agents."]}
     end
   end
+
+  defp the_plan_slug, do: System.get_env("THE_PLAN_SLUG", "basic")
 
   @spec available_plans() :: [Billing.PlanSwitch.AvailablePlan.t()]
   defp available_plans do
