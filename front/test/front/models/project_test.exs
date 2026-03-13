@@ -535,7 +535,7 @@ defmodule Front.Models.ProjectTest do
       assert Project.file_exists?(project, ".semaphore/semaphore.yml") == false
     end
 
-    test "falls back to 'main' when repo_default_branch is nil" do
+    test "passes empty string when repo_default_branch is nil" do
       project = %Project{
         id: "project-123",
         repo_id: "repo-456",
@@ -543,7 +543,7 @@ defmodule Front.Models.ProjectTest do
       }
 
       GrpcMock.stub(RepositoryMock, :get_file, fn req, _ ->
-        assert req.commit_sha == "main"
+        assert req.commit_sha == ""
 
         InternalApi.Repository.GetFileResponse.new(
           file: InternalApi.Repository.File.new(path: req.path, content: "")
@@ -553,7 +553,7 @@ defmodule Front.Models.ProjectTest do
       assert Project.file_exists?(project, ".semaphore/semaphore.yml") == true
     end
 
-    test "falls back to 'main' when repo_default_branch is empty string" do
+    test "passes empty string when repo_default_branch is empty string" do
       project = %Project{
         id: "project-123",
         repo_id: "repo-456",
@@ -561,7 +561,7 @@ defmodule Front.Models.ProjectTest do
       }
 
       GrpcMock.stub(RepositoryMock, :get_file, fn req, _ ->
-        assert req.commit_sha == "main"
+        assert req.commit_sha == ""
 
         InternalApi.Repository.GetFileResponse.new(
           file: InternalApi.Repository.File.new(path: req.path, content: "")
