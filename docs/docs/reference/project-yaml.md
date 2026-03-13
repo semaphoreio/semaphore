@@ -172,15 +172,29 @@ When modifying the initial pipeline file it is necessary to also update the corr
 This property is used for holding the following properties:
 
 - [`allowed_secrets`](#allowed-secrets-in-forked-pull-requests) 
-- [`allowed_contributors`](#allowed-secrets-in-forked-pull-requests)
+- [`allowed_contributors`](#allowed-contributors-in-forked-pull-requests)
+- [`allow_sem_approve_include_secrets`](#allow-sem-approve-include-secrets-in-forked-pull-requests)
+- [`allow_sem_approve_include_cache`](#allow-sem-approve-include-cache-in-forked-pull-requests)
 
 ### allowed_secrets {#allowed-secrets-in-forked-pull-requests}
 
 Specifies the array of secrets' names that are allowed to be exported into jobs triggered by `forked-pull-requests`. If the array is empty, no secrets will be exported.
 
-### allowed_contributors {#allowed-secrets-in-forked-pull-requests}
+### allowed_contributors {#allowed-contributors-in-forked-pull-requests}
 
 Specifies an array of secrets (i.e. their names) that are allowed to be exported into jobs triggered by `forked-pull-requests`. If the array is empty, no secrets will be exported.
+
+### allow_sem_approve_include_secrets {#allow-sem-approve-include-secrets-in-forked-pull-requests}
+
+Enables `/sem-approve --include-secrets` for forked pull requests. When set to `true`, approved forked pull request runs can include secrets according to your forked pull request secret rules.
+
+Default value is `false`.
+
+### allow_sem_approve_include_cache {#allow-sem-approve-include-cache-in-forked-pull-requests}
+
+Enables `/sem-approve --include-cache` for forked pull requests. When set to `true`, approved forked pull request runs can use cache.
+
+Default value is `false`.
 
 
 ## status {#status-in-repository}
@@ -332,4 +346,3 @@ spec:
 - [Agents YAML reference](./agent-yaml)
 - [Notifications YAML reference](./notifications-yaml)
 - [Semaphore Command Line reference](./semaphore-cli)
-

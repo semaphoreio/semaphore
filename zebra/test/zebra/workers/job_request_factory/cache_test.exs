@@ -3,6 +3,7 @@ defmodule Zebra.Workers.JobRequestFactory.CacheTest do
   use Zebra.DataCase
 
   alias Zebra.Workers.JobRequestFactory.Cache
+  alias InternalApi.ResponseStatus
 
   @org_id Ecto.UUID.generate()
   @cache_id Ecto.UUID.generate()
@@ -50,6 +51,41 @@ defmodule Zebra.Workers.JobRequestFactory.CacheTest do
     end
   end
 
+  describe ".find" do
+    test "forked PR with disable_forked_pr_cache enabled skips cache loading" do
+      enable_feature("disable_forked_pr_cache")
+
+      GrpcMock.stub(Support.FakeServers.CacheApi, :describe, fn _, _ ->
+        raise "cache should not be queried for forked pull requests"
+      end)
+
+      repo = %{pr_slug: "contributor/repo", repo_slug: "org/repo"}
+
+      assert Cache.find(@cache_id, repo, @org_id) == {:ok, nil}
+    end
+
+    test "approval include-cache bypasses forked PR cache restriction" do
+      enable_feature("disable_forked_pr_cache")
+
+      GrpcMock.stub(Support.FakeServers.CacheApi, :describe, fn req, _ ->
+        InternalApi.Cache.DescribeResponse.new(
+          status: ResponseStatus.new(code: ResponseStatus.Code.value(:OK)),
+          cache:
+            InternalApi.Cache.Cache.new(
+              id: req.cache_id,
+              credential: "--BEGIN....lalalala...cache_key...END---",
+              url: "localhost:29920"
+            )
+        )
+      end)
+
+      repo = %{pr_slug: "contributor/repo", repo_slug: "org/repo", approval_include_cache: true}
+
+      assert {:ok, cache} = Cache.find(@cache_id, repo, @org_id)
+      assert cache.id == @cache_id
+    end
+  end
+
   defp expected_envs(new_method_enabled) do
     vars = [
       %{
@@ -85,5 +121,20 @@ defmodule Zebra.Workers.JobRequestFactory.CacheTest do
     else
       vars
     end
+  end
+
+  defp enable_feature(type) do
+    Mox.stub(Support.MockedProvider, :provide_features, fn _, _ ->
+      features =
+        Support.StubbedProvider.provide_features()
+        |> case do
+          {:ok, features} -> features
+          {:error, _} -> []
+        end
+
+      extra_feature = Support.StubbedProvider.feature(type, [:enabled])
+
+      {:ok, [extra_feature | features]}
+    end)
   end
 end
