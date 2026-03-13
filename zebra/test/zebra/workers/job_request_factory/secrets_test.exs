@@ -571,6 +571,79 @@ defmodule Zebra.Workers.JobRequestFactory.SecretsTest do
                 }}
     end
 
+    test "approval include-secrets bypasses forked PR secret filtering" do
+      job_spec =
+        Semaphore.Jobs.V1alpha.Job.Spec.new(
+          agent:
+            Semaphore.Jobs.V1alpha.Job.Spec.Agent.new(
+              machine:
+                Semaphore.Jobs.V1alpha.Job.Spec.Agent.Machine.new(
+                  type: "e1-standard-2",
+                  os_image: "ubuntu1804"
+                ),
+              containers: [
+                Semaphore.Jobs.V1alpha.Job.Spec.Agent.Container.new(
+                  name: "ruby",
+                  secrets: [
+                    Semaphore.Jobs.V1alpha.Job.Spec.Secret.new(name: "aws-secrets"),
+                    Semaphore.Jobs.V1alpha.Job.Spec.Secret.new(name: "secret-secrets")
+                  ]
+                )
+              ],
+              image_pull_secrets: [
+                Semaphore.Jobs.V1alpha.Job.Spec.Secret.new(name: "aws-secrets"),
+                Semaphore.Jobs.V1alpha.Job.Spec.Secret.new(name: "secret-secrets")
+              ]
+            ),
+          secrets: [
+            Semaphore.Jobs.V1alpha.Job.Spec.Secret.new(name: "aws-secrets"),
+            Semaphore.Jobs.V1alpha.Job.Spec.Secret.new(name: "secret-secrets")
+          ]
+        )
+
+      hook =
+        InternalApi.RepoProxy.Hook.new(
+          git_ref_type: InternalApi.RepoProxy.Hook.Type.value(:PR),
+          pr_slug: "foo/bar",
+          repo_slug: "bar/bar"
+        )
+        |> Map.put(:approval_include_secrets, true)
+
+      api_project =
+        InternalApi.Projecthub.Project.new(
+          metadata: InternalApi.Projecthub.Project.Metadata.new(),
+          spec:
+            InternalApi.Projecthub.Project.Spec.new(
+              repository:
+                InternalApi.Projecthub.Project.Spec.Repository.new(
+                  forked_pull_requests:
+                    InternalApi.Projecthub.Project.Spec.Repository.ForkedPullRequests.new(
+                      allowed_secrets: []
+                    )
+                )
+            )
+        )
+
+      project = Zebra.Models.Project.from_api(api_project)
+
+      assert {:ok, secrets} = Secrets.load(@org_id, @job_id, job_spec, project, hook)
+
+      assert Enum.map(secrets.job_secrets, & &1.name) |> Enum.sort() == [
+               "aws-secrets",
+               "secret-secrets"
+             ]
+
+      assert Enum.map(secrets.image_pull_secrets, & &1.name) |> Enum.sort() == [
+               "aws-secrets",
+               "secret-secrets"
+             ]
+
+      assert Enum.map(hd(secrets.container_secrets), & &1.name) |> Enum.sort() == [
+               "aws-secrets",
+               "secret-secrets"
+             ]
+    end
+
     test "when secrets are not found" do
       job_spec =
         Semaphore.Jobs.V1alpha.Job.Spec.new(

@@ -73,6 +73,25 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
       end
     end
 
+    context "when hook is forked pull request" do
+      before do
+        payload = JSON.parse(RepoHost::Github::Responses::Payload.post_receive_hook_pull_request)
+
+        @hook = FactoryBot.create(
+          :workflow,
+          :request => ActionController::Parameters.new("payload" => payload.to_json)
+        )
+        @req = InternalApi::RepoProxy::DescribeRequest.new(:hook_id => @hook.id)
+      end
+
+      it "keeps pull request slug untouched" do
+        response = server.describe(@req, call)
+
+        expect(response.hook.git_ref_type).to eq(:PR)
+        expect(response.hook.pr_slug).not_to eq(response.hook.repo_slug)
+      end
+    end
+
     context "when hook doesn't exists" do
       before do
         @hook_id = SecureRandom.uuid

@@ -82,7 +82,9 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
       JobRequest.env_var("SEMAPHORE_CACHE_URL", cache.url)
     ]
 
-    if FeatureProvider.feature_enabled?(:cache_cli_parallel_archive_method, param: organization_id) do
+    if FeatureProvider.feature_enabled?(:cache_cli_parallel_archive_method,
+         param: organization_id
+       ) do
       {:ok,
        vars ++
          [
@@ -97,8 +99,16 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
   defp forked_pr?(nil), do: false
 
   defp forked_pr?(repo) do
-    [pr_repo | _rest] = repo.pr_slug |> String.split("/")
-    [base_repo | _rest] = repo.repo_slug |> String.split("/")
-    pr_repo != base_repo
+    if approval_include_cache?(repo) do
+      false
+    else
+      [pr_repo | _rest] = repo.pr_slug |> String.split("/")
+      [base_repo | _rest] = repo.repo_slug |> String.split("/")
+      pr_repo != base_repo
+    end
+  end
+
+  defp approval_include_cache?(repo) do
+    Map.get(repo, :approval_include_cache, false)
   end
 end

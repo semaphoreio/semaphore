@@ -954,10 +954,17 @@ defmodule Projecthub.Api.GrpcServer do
     if forked_pull_requests do
       %{
         allowed_secrets: Enum.join(forked_pull_requests.allowed_secrets, ","),
-        allowed_contributors: Enum.join(forked_pull_requests.allowed_contributors, ",")
+        allowed_contributors: Enum.join(forked_pull_requests.allowed_contributors, ","),
+        allow_sem_approve_include_secrets: Map.get(forked_pull_requests, :allow_sem_approve_include_secrets, false),
+        allow_sem_approve_include_cache: Map.get(forked_pull_requests, :allow_sem_approve_include_cache, false)
       }
     else
-      %{allowed_secrets: "", allowed_contributors: ""}
+      %{
+        allowed_secrets: "",
+        allowed_contributors: "",
+        allow_sem_approve_include_secrets: false,
+        allow_sem_approve_include_cache: false
+      }
     end
   end
 
@@ -1242,6 +1249,16 @@ defmodule Projecthub.Api.GrpcServer do
       allowed_secrets: String.split(project.allowed_secrets, ",", trim: true),
       allowed_contributors: String.split(project.allowed_contributors, ",", trim: true)
     )
+    |> put_forked_pr_option(:allow_sem_approve_include_secrets, project.allow_sem_approve_include_secrets)
+    |> put_forked_pr_option(:allow_sem_approve_include_cache, project.allow_sem_approve_include_cache)
+  end
+
+  defp put_forked_pr_option(forked_pull_requests, option, value) do
+    if Map.has_key?(forked_pull_requests, option) do
+      Map.put(forked_pull_requests, option, value == true)
+    else
+      forked_pull_requests
+    end
   end
 
   defp project_schedulers([]), do: []

@@ -107,6 +107,44 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
         described_class.run(@workflow, @logger)
       end
 
+      it "marks blocked workflow payload with approval include options" do
+        workflow = FactoryBot.create(
+          :workflow,
+          :project_id => @workflow.project_id,
+          :state => Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR,
+          :request => ActionController::Parameters.new(
+            "payload" => RepoHost::Github::Responses::Payload.post_receive_hook_pull_request
+          )
+        )
+        workflow.update(:git_ref => "refs/pull/1/merge")
+
+        allow(@workflow.payload).to receive_messages(
+          issue_number: 1,
+          pr_approval?: true,
+          pr_approval_include_secrets?: true,
+          pr_approval_include_cache?: true
+        )
+        update_pr_data_result = [
+          :ok,
+          { :mergeable => true, :commit_author => "octocat", :merge_commit_sha => workflow.commit_sha, :ref => workflow.git_ref },
+          nil
+        ]
+        allow(described_class).to receive_messages(
+          approval_option_enabled?: true,
+          update_pr_data: update_pr_data_result
+        )
+
+        expect(described_class).to receive(:launch_pipeline).with(kind_of(Branch), workflow, @logger)
+
+        allow(Semaphore::RepoHost::Hooks::Handler).to receive(:forked_pr_allowed?).and_return(true)
+
+        described_class.run(@workflow, @logger)
+
+        payload = JSON.parse(workflow.reload.request["payload"])
+        expect(payload["semaphore_approval_include_secrets"]).to be(true)
+        expect(payload["semaphore_approval_include_cache"]).to be(true)
+      end
+
       it "does not launch workflow if marked as not allowed user" do
         workflow = FactoryBot.create(
           :workflow,

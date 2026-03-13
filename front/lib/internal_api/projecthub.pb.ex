@@ -261,12 +261,21 @@ defmodule InternalApi.Projecthub.Project.Spec.Repository.ForkedPullRequests do
 
   @type t :: %__MODULE__{
           allowed_secrets: [String.t()],
-          allowed_contributors: [String.t()]
+          allowed_contributors: [String.t()],
+          allow_sem_approve_include_secrets: boolean,
+          allow_sem_approve_include_cache: boolean
         }
-  defstruct [:allowed_secrets, :allowed_contributors]
+  defstruct [
+    :allowed_secrets,
+    :allowed_contributors,
+    :allow_sem_approve_include_secrets,
+    :allow_sem_approve_include_cache
+  ]
 
   field(:allowed_secrets, 1, repeated: true, type: :string)
   field(:allowed_contributors, 2, repeated: true, type: :string)
+  field(:allow_sem_approve_include_secrets, 3, type: :bool)
+  field(:allow_sem_approve_include_cache, 4, type: :bool)
 end
 
 defmodule InternalApi.Projecthub.Project.Spec.Repository.Status do

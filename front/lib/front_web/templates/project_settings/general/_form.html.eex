@@ -121,6 +121,35 @@
               <% end %>
               <p class="f6 mt1 mb0">Whitelist the GitHub logins you trust to run workflows. Comma separates multiple values.</p>
             </div>
+            <p class="f5 b mv1">Allow extra /sem-approve options?</p>
+            <div class="flex items-center">
+              <%= checkbox f, :allow_sem_approve_include_secrets, disabled: !@permissions["project.general_settings.manage"] %>
+              <%= label f, :allow_sem_approve_include_secrets, "Allow /sem-approve --include-secrets", class: "ml2" %>
+              <%= sem_tooltip(
+                img_tag(
+                  "#{assets_path()}/images/icn-info-15.svg",
+                  class: "v-mid ml1",
+                  style: "transform: translateY(-.1em);",
+                  alt: ""
+                )
+              ) do %>
+                Allows trusted approvals to include forked PR secrets.
+              <% end %>
+            </div>
+            <div class="flex items-center">
+              <%= checkbox f, :allow_sem_approve_include_cache, disabled: !@permissions["project.general_settings.manage"] %>
+              <%= label f, :allow_sem_approve_include_cache, "Allow /sem-approve --include-cache", class: "ml2" %>
+              <%= sem_tooltip(
+                img_tag(
+                  "#{assets_path()}/images/icn-info-15.svg",
+                  class: "v-mid ml1",
+                  style: "transform: translateY(-.1em);",
+                  alt: ""
+                )
+              ) do %>
+                Allows trusted approvals to use cache for forked PR runs.
+              <% end %>
+            </div>
           </div>
         <% end %>
         <div class="mt3 pt3 bt b--lighter-gray">

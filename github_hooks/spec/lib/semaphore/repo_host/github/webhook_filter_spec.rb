@@ -55,7 +55,7 @@ RSpec.describe Semaphore::RepoHost::Github::WebhookFilter do
         end
       end
 
-      context "pr comment with unsupported command" do
+      context "pr comment with unsupported command only" do
         let(:payload) { '{"issue": {"pull_request": {"url": ""}}, "comment": {"body": "/foo"}}' }
 
         it "returns true" do
@@ -65,6 +65,22 @@ RSpec.describe Semaphore::RepoHost::Github::WebhookFilter do
 
       context "pr comment with supported command" do
         let(:payload) { '{"issue": {"pull_request": {"url": ""}}, "comment": {"body": "asd\r\n\r\n/sem-approve"}}' }
+
+        it "returns false" do
+          expect(filter.unsupported_webhook?).to eql(false)
+        end
+      end
+
+      context "pr comment with unsupported command in multiline body" do
+        let(:payload) { '{"issue": {"pull_request": {"url": ""}}, "comment": {"body": "asd\r\n\r\n/sem-unknown"}}' }
+
+        it "returns true" do
+          expect(filter.unsupported_webhook?).to eql(true)
+        end
+      end
+
+      context "pr comment with sem-approve options" do
+        let(:payload) { '{"issue": {"pull_request": {"url": ""}}, "comment": {"body": "asd\r\n\r\n/sem-approve --include-secrets --include-cache"}}' }
 
         it "returns false" do
           expect(filter.unsupported_webhook?).to eql(false)
