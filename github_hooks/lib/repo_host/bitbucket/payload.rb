@@ -12,6 +12,7 @@ module RepoHost::Bitbucket
     PR_APPROVE_COMMAND = "/sem-approve"
     PR_INCLUDE_SECRETS_OPTION = "--include-secrets"
     PR_INCLUDE_CACHE_OPTION = "--include-cache"
+    PR_APPROVAL_OPTIONS = [PR_INCLUDE_SECRETS_OPTION, PR_INCLUDE_CACHE_OPTION].freeze
 
     def initialize(data)
       @data = data
@@ -421,15 +422,34 @@ module RepoHost::Bitbucket
     end
 
     def pr_approval_command?
-      pr_comment_body.include?(PR_APPROVE_COMMAND)
+      pr_approval_tokens.present?
     end
 
     def pr_approval_option?(option)
-      pr_approval_command? && pr_comment_body.include?(option)
+      pr_approval_tokens.include?(option)
     end
 
     def pr_comment_body
       @data.dig("comment", "body").to_s
+    end
+
+    def pr_approval_tokens
+      @pr_approval_tokens ||= begin
+        pr_comment_body
+          .split(/\r?\n/)
+          .map { |line| pr_approval_tokens_from_line(line) }
+          .find(&:present?) || []
+      end
+    end
+
+    def pr_approval_tokens_from_line(line)
+      return nil unless line.match?(/\A[ \t]*#{Regexp.escape(PR_APPROVE_COMMAND)}(?:[ \t]+--[a-z-]+)*[ \t]*\z/)
+
+      tokens = line.strip.split(/[ \t]+/)
+      return nil unless tokens.first == PR_APPROVE_COMMAND
+      return nil unless (tokens.drop(1) - PR_APPROVAL_OPTIONS).empty?
+
+      tokens
     end
 
     # def first_commit
