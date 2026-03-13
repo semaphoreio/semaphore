@@ -46,6 +46,8 @@ export interface Config {
   workflowBuilderUrl?: string;
   createSelfHostedAgentUrl?: string;
   checkWorkflowUrl?: string;
+  aiOnboardingUrl?: string;
+  aiOnboardingStatusUrl?: string;
 }
 
 export interface ConfigContextType {

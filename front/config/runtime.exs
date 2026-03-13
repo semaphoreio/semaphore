@@ -217,3 +217,9 @@ csp_additional_domains =
   |> Enum.map(&String.trim/1)
 
 config :front, :csp_additional_connect_domains, csp_additional_domains
+
+# CI Assistant
+config :front,
+  ci_assistant_hmac_secret: System.get_env("CI_ASSISTANT_HMAC_SECRET", "dev-secret-change-me"),
+  ci_assistant_gateway_ws_url: System.get_env("CI_ASSISTANT_GATEWAY_WS_URL", "ws://localhost:8080/ws"),
+  ci_assistant_grpc_endpoint: System.get_env("CI_ASSISTANT_GRPC_ENDPOINT", "localhost:50051")

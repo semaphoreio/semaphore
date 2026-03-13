@@ -120,6 +120,8 @@ defmodule FrontWeb.Plugs.ProjectAuthorization do
     do: Auth.private(conn, :ManageProjectSettings)
 
   defp authorize(PO, :skip_onboarding, conn), do: Auth.private(conn, :AddProject)
+  defp authorize(PO, :start_ai_onboarding, conn), do: Auth.private(conn, :AddProject)
+  defp authorize(PO, :ai_onboarding_status, conn), do: Auth.private(conn, :AddProject)
 
   defp authorize(PO, :update_project_initial_pipeline_file, conn),
     do: Auth.private(conn, :ManageProjectSettings)
