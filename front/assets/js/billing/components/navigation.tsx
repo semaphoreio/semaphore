@@ -12,7 +12,7 @@ export const Navigation = () => {
   const displayCredits = state.currentSpending?.plan.withCreditsPage();
 
   const displayProjects = config.projectSpendings;
-  const hasPlans = config.availablePlans.length > 0;
+  const hasPlans = config.availablePlans.length > 0 && config.currentPlanType !== `basic`;
 
   const className = ({ isActive }: { isActive: boolean, }) => {
     return (
@@ -35,6 +35,11 @@ export const Navigation = () => {
       {hasPlans && (
         <NavLink to={`/plans${search}`} className={className}>
           Change Plan
+        </NavLink>
+      )}
+      {config.addonsUrl && (
+        <NavLink to={`/addons${search}`} className={className}>
+          Add-ons
         </NavLink>
       )}
       <div className="f7 gray mb2 mt3">DETAILED BREAKDOWN</div>
