@@ -15,23 +15,20 @@ defmodule Front.Models.Billing.PlanSwitch do
 
   @type validation_error :: [{key :: atom(), message :: String.t()}]
 
-  @doc """
-  Maps the current plan to a plan type.
-  """
+  @slug_to_plan_type %{
+    "paid" => :startup_cloud,
+    "startup" => :startup_cloud,
+    "startup_hybrid" => :startup_hybrid,
+    "free" => :free,
+    "open_source" => :open_source,
+    "scaleup" => :scaleup,
+    "scaleup_hybrid" => :scaleup,
+    "basic" => :basic
+  }
+
   @spec current_plan_type(Billing.Plan.t()) :: plan_type()
   def current_plan_type(plan) do
-    plan.slug
-    |> case do
-      "paid" -> :startup_cloud
-      "startup" -> :startup_cloud
-      "startup_hybrid" -> :startup_hybrid
-      "free" -> :free
-      "open_source" -> :open_source
-      "scaleup" -> :scaleup
-      "scaleup_hybrid" -> :scaleup
-      "basic" -> :basic
-      _ -> :unknown
-    end
+    Map.get(@slug_to_plan_type, plan.slug, :unknown)
   end
 
   @spec plan_type_to_slug(plan_type() | String.t()) :: String.t()

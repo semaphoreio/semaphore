@@ -54,6 +54,9 @@ defmodule FrontWeb.BillingView do
       isBillingManager: Front.Auth.can?(conn, :ManageBilling),
       availablePlans: available_plans,
       currentPlanType: Billing.PlanSwitch.current_plan_type(conn.assigns.current_spending.plan),
+      isBasicPlan:
+        "#{Billing.PlanSwitch.current_plan_type(conn.assigns.current_spending.plan)}" ==
+          System.get_env("BASIC_PLAN_SLUG", "basic"),
       canUpgradeUrl: billing_can_upgrade_path(conn, :can_upgrade, []),
       peoplePageUrl: people_path(conn, :organization, []),
       agentsPageUrl: self_hosted_agent_path(conn, :index),
@@ -83,9 +86,7 @@ defmodule FrontWeb.BillingView do
     |> then(fn params ->
       if match?(%{plan: _}, conn.assigns.current_spending) and
            Billing.Plan.eligible_for_addons?(conn.assigns.current_spending.plan) do
-        params
-        |> Map.put(:addonsUrl, billing_addons_path(conn, :addons, url_opts))
-        |> Map.put(:updateAddonUrl, billing_update_addon_path(conn, :update_addon, []))
+        Map.put(params, :addonsUrl, billing_addons_path(conn, :addons, url_opts))
       else
         params
       end

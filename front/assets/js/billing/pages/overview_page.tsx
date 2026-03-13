@@ -17,7 +17,7 @@ export const OverviewPage = () => {
   const summary = selectedSpending?.summary;
   const plan = selectedSpending?.plan;
   const currentPlan = spendings.state.currentSpending?.plan;
-  const isBasic = config.currentPlanType === `basic`;
+  const isBasic = config.isBasicPlan;
 
   return (
     <Fragment>
@@ -127,7 +127,7 @@ const Payments = ({ plan }: { plan: types.Spendings.Plan, }) => {
   }, []);
 
   const isPrepaid = plan.type == types.Spendings.PlanType.Prepaid;
-  const isBasic = config.currentPlanType === `basic`;
+  const isBasic = config.isBasicPlan;
   const withPaymentDetails = plan.withPaymentDetails();
 
   if (!withPaymentDetails && !isPrepaid && !isBasic) {
