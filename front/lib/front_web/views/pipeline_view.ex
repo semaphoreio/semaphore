@@ -313,7 +313,7 @@ defmodule FrontWeb.PipelineView do
     Map.get(pipeline, :triggerer, :none)
     |> case do
       :none ->
-        Logger.warn("Pipeline #{pipeline.id} has no triggerer")
+        Logger.warning("Pipeline #{pipeline.id} has no triggerer")
         action_string(conn, workflow, pipeline)
 
       triggerer ->

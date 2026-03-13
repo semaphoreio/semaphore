@@ -1,4 +1,4 @@
-version: '3.6'
+version: "3.6"
 
 services:
   app:
@@ -69,5 +69,8 @@ services:
 
   rabbitmq:
     image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
     environment:
       RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbit log_levels [{connection,error}]"

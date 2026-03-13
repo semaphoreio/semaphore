@@ -177,7 +177,7 @@ defmodule FrontWeb.SecretsController do
           }
 
           require Logger
-          Logger.warn("validation errors: #{inspect(validation_errors)}")
+          Logger.warning("validation errors: #{inspect(validation_errors)}")
 
           conn
           |> put_flash(:alert, compose_alert_message(validation_errors))

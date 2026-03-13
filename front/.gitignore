@@ -43,3 +43,8 @@ cover/
 lcov*
 
 docker-compose.override.yml
+
+# Nix
+.nix-mix
+.nix-hex
+.direnv
