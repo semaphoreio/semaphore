@@ -11,13 +11,11 @@ export enum Status {
 export type Action =
   | { type: `SET_GROUPS`; groups: Addons.AddonGroup[] }
   | { type: `SET_STATUS`; value: Status }
-  | { type: `SET_UPDATING`; value: string | null }
   ;
 
 export interface State {
   status: Status;
   groups: Addons.AddonGroup[];
-  updating: string | null;
 }
 
 export const Reducer = (state: State, action: Action): State => {
@@ -26,8 +24,6 @@ export const Reducer = (state: State, action: Action): State => {
       return { ...state, groups: action.groups };
     case `SET_STATUS`:
       return { ...state, status: action.value };
-    case `SET_UPDATING`:
-      return { ...state, updating: action.value };
     default:
       return state;
   }
@@ -36,5 +32,4 @@ export const Reducer = (state: State, action: Action): State => {
 export const EmptyState: State = {
   status: Status.Empty,
   groups: [],
-  updating: null,
 };

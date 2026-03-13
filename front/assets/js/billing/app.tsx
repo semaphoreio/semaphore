@@ -85,7 +85,7 @@ const ClassicLayout = () => {
 const RegularLayout = () => {
   const config = useContext(stores.Config.Context);
 
-  const hasPlans = config.availablePlans.length > 0 && config.currentPlanType !== `basic`;
+  const hasPlans = config.availablePlans.length > 0 && !config.isBasicPlan;
 
   return (
     <Fragment>
