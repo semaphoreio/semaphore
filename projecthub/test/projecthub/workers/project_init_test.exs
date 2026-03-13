@@ -6,6 +6,7 @@ defmodule Projecthub.Workers.ProjectInitTest do
   describe ".lock_and_process" do
     setup do
       stub_user_api()
+      stub_feature_api()
       stub_cache_api()
       stub_artifact_api()
       stub_repohub_api()
@@ -249,6 +250,18 @@ defmodule Projecthub.Workers.ProjectInitTest do
       )
 
     FunRegistry.set!(Support.FakeServices.UserService, :describe, user_response)
+  end
+
+  def stub_feature_api do
+    FunRegistry.set!(Support.FakeServices.FeatureService, :list_organization_features, fn _req, _ ->
+      availability = InternalApi.Feature.Availability.new(state: :ENABLED, quantity: 10)
+
+      InternalApi.Feature.ListOrganizationFeaturesResponse.new(
+        organization_features: [
+          [feature: %{type: "max_projects_in_org"}, availability: availability]
+        ]
+      )
+    end)
   end
 
   def stub_cache_api do
