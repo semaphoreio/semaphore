@@ -11,17 +11,17 @@ defmodule PipelinesAPI.Logs.Authorize do
 
   def authorize_job(conn, _opts) do
     job = conn.params.job
-    authorize(job.project_id, "project.view", conn)
+    authorize(job.project_id, required_permissions(conn), conn)
   end
 
-  defp authorize(project_id, permission, conn) do
+  defp authorize(project_id, required_permissions, conn) do
     user_id = Conn.get_req_header(conn, "x-semaphore-user-id") |> Enum.at(0, "")
     org_id = Conn.get_req_header(conn, "x-semaphore-org-id") |> Enum.at(0, "")
 
     with params <- %{user_id: user_id, org_id: org_id, project_id: project_id},
          :ok <- PipelinesAPI.Util.Auth.project_belongs_to_org(org_id, project_id),
          {:ok, permissions} <- RBACClient.list_user_permissions(params) do
-      authorize_or_halt(permissions, permission, conn)
+      authorize_or_halt(permissions, required_permissions, conn)
     else
       {:error, {:internal, _}} = error ->
         LT.error(error, "Logs.Authorize")
@@ -33,13 +33,34 @@ defmodule PipelinesAPI.Logs.Authorize do
     end
   end
 
-  defp authorize_or_halt(permissions, permission, conn) do
-    if Enum.member?(permissions, permission) do
+  defp authorize_or_halt(permissions, required_permissions, conn) do
+    if Enum.all?(required_permissions, &Enum.member?(permissions, &1)) do
       conn
     else
       conn |> authorization_failed(:unathorized, "Permission denied")
     end
   end
+
+  defp required_permissions(conn) do
+    base_permissions = ["project.view"]
+
+    if full_logs_requested?(conn.params) do
+      base_permissions ++ ["project.artifacts.view"]
+    else
+      base_permissions
+    end
+  end
+
+  defp full_logs_requested?(params) do
+    params
+    |> Map.get("full", "")
+    |> full_logs_value?()
+  end
+
+  defp full_logs_value?(value) when is_binary(value),
+    do: value |> String.downcase() |> Kernel.in(["1", "true", "yes"])
+
+  defp full_logs_value?(_value), do: false
 
   defp authorization_failed(conn, :unathorized, msg), do: conn |> resp(401, msg) |> halt
   defp authorization_failed(conn, :internal), do: conn |> resp(500, "Internal error") |> halt
