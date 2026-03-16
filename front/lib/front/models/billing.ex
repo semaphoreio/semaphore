@@ -250,10 +250,10 @@ defmodule Front.Models.Billing do
   def list_addons(organization_id, opts \\ []) do
     opts = parse_opts(opts, cache_ttl: :timer.hours(1))
 
-    {:ok, response} = Front.Clients.Billing.list_addons(%{org_id: organization_id}, opts)
-
-    response.groups
-    |> Enum.map(&AddonGroup.from_grpc/1)
+    case Front.Clients.Billing.list_addons(%{org_id: organization_id}, opts) do
+      {:ok, response} -> Enum.map(response.groups, &AddonGroup.from_grpc/1)
+      {:error, _} -> []
+    end
   end
 
   @spec update_addon(String.t(), String.t(), boolean(), billing_opts()) :: :ok | {:error, term()}
