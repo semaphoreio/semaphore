@@ -5,26 +5,30 @@ defmodule Front.Models.Billing.PlanSwitch do
   alias Front.Models.Billing
 
   @type plan_type ::
-          :unknown | :startup_cloud | :startup_hybrid | :free | :open_source | :scaleup
+          :unknown
+          | :startup_cloud
+          | :startup_hybrid
+          | :free
+          | :open_source
+          | :scaleup
+          | :basic
 
   @type validation_error :: [{key :: atom(), message :: String.t()}]
 
-  @doc """
-  Maps the current plan to a plan type.
-  """
+  @slug_to_plan_type %{
+    "paid" => :startup_cloud,
+    "startup" => :startup_cloud,
+    "startup_hybrid" => :startup_hybrid,
+    "free" => :free,
+    "open_source" => :open_source,
+    "scaleup" => :scaleup,
+    "scaleup_hybrid" => :scaleup,
+    "basic" => :basic
+  }
+
   @spec current_plan_type(Billing.Plan.t()) :: plan_type()
   def current_plan_type(plan) do
-    plan.slug
-    |> case do
-      "paid" -> :startup_cloud
-      "startup" -> :startup_cloud
-      "startup_hybrid" -> :startup_hybrid
-      "free" -> :free
-      "open_source" -> :open_source
-      "scaleup" -> :scaleup
-      "scaleup_hybrid" -> :scaleup
-      _ -> :unknown
-    end
+    Map.get(@slug_to_plan_type, plan.slug, :unknown)
   end
 
   @spec plan_type_to_slug(plan_type() | String.t()) :: String.t()
@@ -35,6 +39,7 @@ defmodule Front.Models.Billing.PlanSwitch do
       "startup_cloud" -> "paid"
       "startup_hybrid" -> "startup_hybrid"
       "free" -> "free"
+      "basic" -> "basic"
       _ -> ""
     end
   end
@@ -150,45 +155,17 @@ defmodule Front.Models.Billing.PlanSwitch do
   defp available_plans do
     [
       Billing.PlanSwitch.AvailablePlan.new(
-        name: "Cloud",
-        type: :startup_cloud,
-        description: "Pay only for used machine time, no seat costs.",
-        features: [
-          parallelism: -1,
-          max_users: -1,
-          max_self_hosted_agents: 0,
-          cloud_minutes: -1,
-          seat_cost: 0,
-          large_resource_types: true,
-          priority_support: true
-        ]
-      ),
-      Billing.PlanSwitch.AvailablePlan.new(
-        name: "Hybrid",
-        type: :startup_hybrid,
-        description: "Run jobs on your own infrastructure.",
+        name: "The Plan",
+        type: :basic,
+        description: "Credit-based plan with monthly allowance.",
         features: [
           parallelism: -1,
           max_users: -1,
           max_self_hosted_agents: -1,
           cloud_minutes: -1,
-          seat_cost: 9,
+          seat_cost: 0,
           large_resource_types: true,
           priority_support: true
-        ]
-      ),
-      Billing.PlanSwitch.AvailablePlan.new(
-        name: "Free",
-        type: :free,
-        description: "Good for smaller teams self-end occasional use.",
-        features: [
-          parallelism: 40,
-          max_users: 5,
-          max_self_hosted_agents: 5,
-          cloud_minutes: 7000,
-          seat_cost: 0,
-          large_resource_types: false,
-          priority_support: false
         ]
       )
     ]
