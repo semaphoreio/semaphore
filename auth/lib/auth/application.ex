@@ -14,6 +14,7 @@ defmodule Auth.Application do
 
     children =
       [
+        {GRPC.Client.Supervisor, []},
         Plug.Cowboy.child_spec(scheme: :http, plug: Auth, options: [port: port]),
         %{id: Cachex, start: {Cachex, :start_link, [:grpc_api_cache, []]}},
         %{
