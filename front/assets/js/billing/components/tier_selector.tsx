@@ -23,12 +23,10 @@ export const TierSelector = ({ group, updating, onUpdate }: Props) => {
   const handleSave = () => {
     if (!hasChanged) return;
 
-    if (currentAddon && selected !== currentAddon.name) {
-      onUpdate(currentAddon.name, false);
-    }
-
     if (selected) {
       onUpdate(selected, true);
+    } else if (currentAddon) {
+      onUpdate(currentAddon.name, false);
     }
   };
 
