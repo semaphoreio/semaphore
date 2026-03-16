@@ -1,3 +1,4 @@
+import * as Addons from "./addons";
 import * as Spendings from "./spendings";
 import * as Seats from "./seats";
 import * as Fetch from "./fetch";
@@ -8,6 +9,7 @@ import { RequestStatus } from "./request_status";
 import * as Plans from "./plans";
 
 export {
+  Addons,
   Spendings,
   Seats,
   Fetch,
