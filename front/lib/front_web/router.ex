@@ -780,6 +780,8 @@ defmodule FrontWeb.Router do
       get("/projects.json", BillingController, :projects, as: :projects)
       get("/top_projects.json", BillingController, :top_projects, as: :top_projects)
 
+      get("/addons.json", BillingController, :addons, as: :addons)
+
       get("/*path", BillingController, :index, as: :index)
     end
 

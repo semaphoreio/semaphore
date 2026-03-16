@@ -45,11 +45,9 @@ defmodule Front.Models.Billing.Spending do
       |> Enum.map(&SpendingGroup.from_grpc(&1))
       |> Enum.filter(fn
         spending_group when spending_group.type == :addons ->
-          # If plan is eligible for addons - show addons group
-          Plan.eligible_for_addons?(spending.plan) or not Enum.empty?(spending_group.items)
+          true
 
         spending_group ->
-          # Hide groups that don't have any items
           not Enum.empty?(spending_group.items)
       end)
 
