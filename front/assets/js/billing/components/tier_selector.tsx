@@ -77,7 +77,7 @@ export const TierSelector = ({ group, updating, onUpdate }: Props) => {
               )}
             </div>
             <div className="f6 gray mt1">
-              No {group.displayName.toLowerCase()} add-on selected.
+              No {group.name} add-on selected.
             </div>
           </div>
         </label>
