@@ -20,14 +20,14 @@ defmodule Audit.Application do
 
     children = [
       {{Audit.Repo, []}, true},
+      {{Cachex, [name: Audit.Cache]}, true},
+      {Supervisor.child_spec({Cachex, :feature_provider_cache}, id: :feature_provider_cache),
+       true},
+      {provider, System.get_env("FEATURE_YAML_PATH") != nil},
       {{Audit.Consumer, []}, enabled?("START_CONSUMER")},
       {{GRPC.Server.Supervisor, grpc_options}, enabled?("START_GRPC_API")},
       {{Audit.Streamer.Scheduler, []}, enabled?("START_STREAMER")},
-      {{Cachex, [name: Audit.Cache]}, true},
-      {provider, System.get_env("FEATURE_YAML_PATH") != nil},
-      {{Audit.FeatureProviderInvalidatorWorker, []}, true},
-      {Supervisor.child_spec({Cachex, :feature_provider_cache}, id: :feature_provider_cache),
-       true}
+      {{Audit.FeatureProviderInvalidatorWorker, []}, true}
     ]
 
     children = filter_enabled_children(children)

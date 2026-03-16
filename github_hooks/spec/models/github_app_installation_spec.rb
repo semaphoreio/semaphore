@@ -43,6 +43,79 @@ RSpec.describe GithubAppInstallation, :type => :model do
     end
   end
 
+  describe ".get" do
+    let!(:slug_installation) do
+      FactoryBot.create(
+        :github_app_installation,
+        :installation_id => 999_103,
+        :repositories => [{ "id" => 13, "slug" => "Acme/Repo-From-Slug" }]
+      )
+    end
+
+    let!(:remote_id_installation) do
+      FactoryBot.create(
+        :github_app_installation,
+        :installation_id => 999_104,
+        :repositories => [{ "id" => 42, "slug" => "Acme/Repo-From-Remote" }]
+      )
+    end
+
+    it "prefers repository_remote_id when it matches an installation" do
+      installation = described_class.get(
+        :repository_slug => "Acme/Repo-From-Slug",
+        :repository_remote_id => 42
+      )
+
+      expect(installation).to eq(remote_id_installation)
+    end
+
+    it "falls back to repository_slug when repository_remote_id is not found" do
+      installation = described_class.get(
+        :repository_slug => "Acme/Repo-From-Slug",
+        :repository_remote_id => 777_777
+      )
+
+      expect(installation).to eq(slug_installation)
+    end
+
+    it "ignores non-positive repository_remote_id and uses repository_slug" do
+      installation = described_class.get(
+        :repository_slug => "Acme/Repo-From-Slug",
+        :repository_remote_id => 0
+      )
+
+      expect(installation).to eq(slug_installation)
+    end
+  end
+
+  describe ".get!" do
+    let!(:remote_id_installation) do
+      FactoryBot.create(
+        :github_app_installation,
+        :installation_id => 999_106,
+        :repositories => [{ "id" => 43, "slug" => "Acme/Bang-From-Remote" }]
+      )
+    end
+
+    it "returns installation resolved by repository_remote_id when present" do
+      installation = described_class.get!(
+        :repository_slug => "Acme/Bang-From-Slug",
+        :repository_remote_id => 43
+      )
+
+      expect(installation).to eq(remote_id_installation)
+    end
+
+    it "raises when neither repository_remote_id nor repository_slug can resolve an installation" do
+      expect do
+        described_class.get!(
+          :repository_slug => "Acme/Does-Not-Exist",
+          :repository_remote_id => 999_999
+        )
+      end.to raise_error(ActiveRecord::RecordNotFound)
+    end
+  end
+
   describe ".find_for_organization" do
     let!(:installation) do
       FactoryBot.create(

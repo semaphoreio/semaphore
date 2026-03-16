@@ -138,33 +138,41 @@ defmodule FrontWeb.AccountController do
 
   def change_my_email(conn, %{"email" => email}) do
     Watchman.benchmark("account.change_my_email.duration", fn ->
-      user_id = conn.assigns.user_id
-      email = String.trim(email)
+      if FeatureProvider.feature_enabled?(:email_members,
+           param: conn.assigns.organization_id
+         ) do
+        user_id = conn.assigns.user_id
+        email = String.trim(email)
 
-      # Basic validation
-      cond do
-        email == "" ->
-          conn
-          |> put_flash(:alert, "Email address cannot be empty.")
-          |> redirect(to: account_path(conn, :show))
+        # Basic validation
+        cond do
+          email == "" ->
+            conn
+            |> put_flash(:alert, "Email address cannot be empty.")
+            |> redirect(to: account_path(conn, :show))
 
-        not valid_email_format?(email) ->
-          conn
-          |> put_flash(:alert, "Please enter a valid email address.")
-          |> redirect(to: account_path(conn, :show))
+          not valid_email_format?(email) ->
+            conn
+            |> put_flash(:alert, "Please enter a valid email address.")
+            |> redirect(to: account_path(conn, :show))
 
-        true ->
-          case Models.Member.change_email(user_id, user_id, email) do
-            {:ok, %{msg: msg}} ->
-              conn
-              |> put_flash(:notice, msg)
-              |> redirect(to: account_path(conn, :show))
+          true ->
+            case Models.Member.change_email(user_id, user_id, email) do
+              {:ok, %{msg: msg}} ->
+                conn
+                |> put_flash(:notice, msg)
+                |> redirect(to: account_path(conn, :show))
 
-            {:error, error_msg} ->
-              conn
-              |> put_flash(:alert, "Failed to update email: #{error_msg}")
-              |> redirect(to: account_path(conn, :show))
-          end
+              {:error, error_msg} ->
+                conn
+                |> put_flash(:alert, "Failed to update email: #{error_msg}")
+                |> redirect(to: account_path(conn, :show))
+            end
+        end
+      else
+        conn
+        |> FrontWeb.PageController.status404(%{})
+        |> Plug.Conn.halt()
       end
     end)
   end
@@ -191,6 +199,24 @@ defmodule FrontWeb.AccountController do
         conn
         |> put_flash(:alert, "Password changes are not enabled for your organization.")
         |> render_show(user_id)
+      end
+    end)
+  end
+
+  def delete_with_owned_orgs(conn, _params) do
+    Watchman.benchmark("account.delete_with_owned_orgs.duration", fn ->
+      user_id = conn.assigns.user_id
+      tracing_headers = conn.assigns.tracing_headers
+
+      case Models.User.delete_with_owned_orgs(user_id, tracing_headers) do
+        {:ok, _user} ->
+          conn
+          |> redirect(external: destroyed_account_redirect_url(conn))
+
+        {:error, error_message} ->
+          conn
+          |> put_flash(:alert, error_message)
+          |> redirect(to: account_path(conn, :show))
       end
     end)
   end
@@ -225,5 +251,10 @@ defmodule FrontWeb.AccountController do
   defp valid_email_format?(email) do
     email_regex = ~r/^[^\s@]+@[^\s@]+\.[^\s@]+$/
     Regex.match?(email_regex, email)
+  end
+
+  defp destroyed_account_redirect_url(_conn) do
+    domain = Application.get_env(:front, :domain)
+    "https://id.#{domain}/destroyed_account"
   end
 end

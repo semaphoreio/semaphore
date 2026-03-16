@@ -5,7 +5,7 @@ defmodule RepositoryHub.Model.GitRepository do
 
   import Toolkit
 
-  defstruct [:protocol, :username, :host, :owner, :repo, :ssh_git_url]
+  defstruct [:protocol, :username, :host, :owner, :repo, :ssh_git_url, :remote_id]
 
   @type t :: %GitRepository{}
 
@@ -17,9 +17,11 @@ defmodule RepositoryHub.Model.GitRepository do
   @doc """
   Validates the git url string and returns a struct with some data about the repository.
   """
-  @spec new(String.t()) :: Toolkit.tupled_result(t(), String.t())
-  def new(url) do
-    dissect(url)
+  @spec new(String.t(), String.t() | nil) :: Toolkit.tupled_result(t(), String.t())
+  def new(url, remote_id \\ nil) do
+    with {:ok, repo} <- dissect(url) do
+      {:ok, %{repo | remote_id: remote_id || ""}}
+    end
   end
 
   @spec from_github(String.t()) :: Toolkit.tupled_result(t(), String.t())
@@ -58,7 +60,8 @@ defmodule RepositoryHub.Model.GitRepository do
           host: captures["host"],
           owner: captures["owner"],
           repo: captures["repo"],
-          ssh_git_url: url
+          ssh_git_url: url,
+          remote_id: ""
         }
         |> wrap()
     end
@@ -133,7 +136,8 @@ defmodule RepositoryHub.Model.GitRepository do
               host: captures["host"],
               owner: owner,
               repo: repo,
-              ssh_git_url: "git@#{captures["host"]}:#{owner}/#{repo}.git"
+              ssh_git_url: "git@#{captures["host"]}:#{owner}/#{repo}.git",
+              remote_id: ""
             }
             |> wrap()
         end
@@ -151,7 +155,8 @@ defmodule RepositoryHub.Model.GitRepository do
       host: host,
       owner: owner,
       repo: repo,
-      ssh_git_url: "git@#{host}:#{owner}/#{repo}.git"
+      ssh_git_url: "git@#{host}:#{owner}/#{repo}.git",
+      remote_id: ""
     }
   end
 

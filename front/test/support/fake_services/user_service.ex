@@ -15,6 +15,10 @@ defmodule Support.FakeServices.UserService do
     FunRegistry.run!(__MODULE__, :update, [req, stream])
   end
 
+  def delete_with_owned_orgs(req, stream) do
+    FunRegistry.run!(__MODULE__, :delete_with_owned_orgs, [req, stream])
+  end
+
   def regenerate_token(req, stream) do
     FunRegistry.run!(__MODULE__, :regenerate_token, [req, stream])
   end
