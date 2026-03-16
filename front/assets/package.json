@@ -113,5 +113,10 @@
     "typescript": "^5.7.3",
     "typescript-xunit-xml": "^1.1.0",
     "uglify-js-brunch": "2.10.0"
+  },
+  "overrides": {
+    "dagre-d3": {
+      "d3-color": "3.1.0"
+    }
   }
 }
