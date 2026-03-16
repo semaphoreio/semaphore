@@ -48,8 +48,10 @@ defmodule Front.FeatureProviderInvalidatorWorker do
 
   def organization_features_changed(message) do
     event = InternalApi.Feature.OrganizationFeaturesChanged.decode(message)
-    log("invalidating features for org #{event.org_id}")
+    log("invalidating features and billing cache for org #{event.org_id}")
     {:ok, _} = FeatureProvider.list_features(reload: true, param: event.org_id)
+    Front.Clients.Billing.invalidate_cache(:current_spending, %{org_id: event.org_id})
+    Front.Clients.Billing.invalidate_cache(:list_spendings, %{org_id: event.org_id})
     :ok
   end
 
