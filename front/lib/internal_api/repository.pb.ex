@@ -870,11 +870,13 @@ defmodule InternalApi.Repository.RemoteRepositoryChanged do
 
   @type t :: %__MODULE__{
           remote_id: String.t(),
+          repository_id: String.t(),
           timestamp: Google.Protobuf.Timestamp.t()
         }
-  defstruct [:remote_id, :timestamp]
+  defstruct [:remote_id, :repository_id, :timestamp]
 
   field(:remote_id, 1, type: :string)
+  field(:repository_id, 2, type: :string)
   field(:timestamp, 3, type: Google.Protobuf.Timestamp)
 end
 
