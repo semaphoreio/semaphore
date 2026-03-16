@@ -131,6 +131,10 @@ const PlanConfirmation = (props: PlanConfirmationProps) => {
         </div>
         <div className="f5 gray mb3">{plan.description}</div>
 
+        <toolbox.Box type="warning" className="mb3">
+          This action cannot be undone. You will not be able to switch back to your previous plan.
+        </toolbox.Box>
+
         {(chargingType === Spendings.PlanType.Postpaid || chargingType === Spendings.PlanType.Prepaid) && (
           <toolbox.Box type="info" className="mb3">
             You will be charged today and the switch will happen immediately.

@@ -66,6 +66,14 @@ export const AddonsPage = () => {
         <p className="mb0 b f3">Add-ons</p>
         <div className="gray measure">
           Manage your support and success tiers. Changes may affect your billing.
+          {config.pricingUrl && (
+            <Fragment>
+              {` `}
+              <a href={config.pricingUrl} target="_blank" rel="noreferrer" className="link b">
+                See pricing details
+              </a>
+            </Fragment>
+          )}
         </div>
       </div>
 
