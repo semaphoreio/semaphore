@@ -59,11 +59,7 @@ defmodule FrontWeb.BillingView do
       peoplePageUrl: people_path(conn, :organization, []),
       agentsPageUrl: self_hosted_agent_path(conn, :index),
       contactSupportUrl: Front.Zendesk.new_ticket_location(),
-      pricingUrl:
-        System.get_env(
-          "PRICING_URL",
-          "https://#{Application.fetch_env!(:front, :domain)}/pricing"
-        ),
+      pricingUrl: Application.get_env(:front, :pricing_url, ""),
       acknowledgePlanChangeUrl:
         billing_acknowledge_plan_change_path(conn, :acknowledge_plan_change, [])
     }
