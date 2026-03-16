@@ -253,6 +253,12 @@ defmodule Front.Clients.Billing do
         |> then(&cache_key(operation, &1))
         |> Front.Cache.unset()
 
+      :list_addons ->
+        params
+        |> decorate(ListAddonsRequest)
+        |> then(&cache_key(operation, &1))
+        |> Front.Cache.unset()
+
       _ ->
         Logger.info("Invalidating cache for operation #{inspect(operation)} is not supported")
     end

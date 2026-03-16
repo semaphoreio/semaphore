@@ -284,12 +284,17 @@ defmodule FrontWeb.BillingController do
   end
 
   def update_addon(conn, %{"addon_name" => addon_name, "enabled" => enabled}) do
-    case BillingModel.update_addon(conn.assigns.organization_id, addon_name, enabled) do
+    org_id = conn.assigns.organization_id
+
+    case BillingModel.update_addon(org_id, addon_name, enabled) do
       :ok ->
+        Front.Clients.Billing.invalidate_cache(:list_addons, %{org_id: org_id})
         conn |> json(%{ok: true})
 
       {:error, error} ->
-        Logger.error("Failed to update addon: #{inspect(error)}")
+        Logger.error(
+          "Failed to update addon: #{inspect(error)} [org_id=#{org_id}] [addon=#{addon_name}] [enabled=#{enabled}]"
+        )
 
         conn
         |> put_status(422)
