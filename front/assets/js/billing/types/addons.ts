@@ -1,3 +1,9 @@
+export enum GroupType {
+  Unspecified = `unspecified`,
+  Exclusive = `exclusive`,
+  Regular = `regular`,
+}
+
 export class Addon {
   name: string;
   displayName: string;
@@ -22,6 +28,7 @@ export class AddonGroup {
   name: string;
   displayName: string;
   description: string;
+  type: GroupType;
   addons: Addon[];
 
   static fromJSON(json: any): AddonGroup {
@@ -29,7 +36,19 @@ export class AddonGroup {
     group.name = json.name as string;
     group.displayName = json.display_name as string;
     group.description = json.description as string;
+    group.type = parseType(json.type as string);
     group.addons = (json.addons || []).map(Addon.fromJSON);
     return group;
   }
 }
+
+const parseType = (type: string): GroupType => {
+  switch (type) {
+    case `exclusive`:
+      return GroupType.Exclusive;
+    case `regular`:
+      return GroupType.Regular;
+    default:
+      return GroupType.Unspecified;
+  }
+};

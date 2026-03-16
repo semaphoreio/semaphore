@@ -84,7 +84,9 @@ defmodule FrontWeb.BillingView do
     |> then(fn params ->
       if match?(%{plan: _}, conn.assigns.current_spending) and
            Billing.Plan.eligible_for_addons?(conn.assigns.current_spending.plan) do
-        Map.put(params, :addonsUrl, billing_addons_path(conn, :addons, url_opts))
+        params
+        |> Map.put(:addonsUrl, billing_addons_path(conn, :addons, url_opts))
+        |> Map.put(:updateAddonUrl, billing_update_addon_path(conn, :update_addon, []))
       else
         params
       end

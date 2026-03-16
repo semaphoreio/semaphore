@@ -34,12 +34,38 @@ export const AddonsPage = () => {
     fetchGroups();
   }, []);
 
+  const handleUpdate = (addonName: string, enabled: boolean) => {
+    if (!config.updateAddonUrl) return;
+
+    dispatch({ type: `SET_UPDATING`, value: addonName });
+
+    fetch(config.updateAddonUrl, {
+      method: `POST`,
+      credentials: `same-origin`,
+      headers: {
+        "Content-Type": `application/json`,
+        "x-csrf-token": getCSRFToken(),
+      },
+      body: JSON.stringify({ addon_name: addonName, enabled }),
+    })
+      .then((response) => response.json())
+      .then((json) => {
+        dispatch({ type: `SET_UPDATING`, value: null });
+        if (json.ok) {
+          fetchGroups();
+        }
+      })
+      .catch(() => {
+        dispatch({ type: `SET_UPDATING`, value: null });
+      });
+  };
+
   return (
     <Fragment>
       <div className="mb3">
         <p className="mb0 b f3">Add-ons</p>
         <div className="gray measure">
-          Overview of your active support and success tiers.
+          Manage your support and success tiers. Changes may affect your billing.
         </div>
       </div>
 
@@ -58,48 +84,12 @@ export const AddonsPage = () => {
         <div className="flex" style={{ gap: `24px` }}>
           {state.groups.map((group) => (
             <div key={group.name} style={{ flex: `1 1 0%`, minWidth: 0 }}>
-              <div className="bb b--black-075 br3 shadow-3 bg-white">
-                <div className="ph3 pv3 bb bw1 b--black-075 br3 br--top">
-                  <div className="f4 b">{group.displayName}</div>
-                  {group.description && (
-                    <div className="f5 gray mt1">{group.description}</div>
-                  )}
-                </div>
-
-                {group.addons.map((addon, idx) => {
-                  const isLast = idx === group.addons.length - 1;
-
-                  return (
-                    <div
-                      key={addon.name}
-                      className={
-                        `flex items-center ph3 pv3 ` +
-                          (!isLast ? `bb b--black-10 ` : ``) +
-                          (addon.enabled ? `bg-lightest-green ` : ``)
-                      }
-                    >
-                      <div className="flex-auto">
-                        <div className="flex items-center">
-                          <span className="b">{addon.displayName}</span>
-                          {addon.price && (
-                            <span className="ml2 f6 gray">{addon.price}</span>
-                          )}
-                          {addon.enabled && (
-                            <span className="ml2 f7 fw6 ph2 pv1 br2 bg-green white">Active</span>
-                          )}
-                        </div>
-                        {addon.description && (
-                          <div className="f6 gray mt1">{addon.description}</div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {group.addons.every((a) => !a.enabled) && (
-                  <div className="ph3 pv3 gray f6">No add-on active for this group.</div>
-                )}
-              </div>
+              <components.TierSelector
+                key={group.name}
+                group={group}
+                updating={state.updating}
+                onUpdate={handleUpdate}
+              />
             </div>
           ))}
         </div>
@@ -113,4 +103,9 @@ export const AddonsPage = () => {
       )}
     </Fragment>
   );
+};
+
+const getCSRFToken = (): string => {
+  const meta = document.querySelector(`meta[name="csrf-token"]`);
+  return meta ? (meta as HTMLMetaElement).content : ``;
 };

@@ -77,4 +77,80 @@ defmodule FrontWeb.BillingController.AddonsTest do
       assert json_response(conn, 200) == %{}
     end
   end
+
+  describe "POST /billing/update_addon.json" do
+    test "enables an addon", %{conn: conn} do
+      conn =
+        conn
+        |> put_req_header("content-type", "application/json")
+        |> post("/billing/update_addon.json", %{
+          addon_name: "support-tier-2",
+          enabled: true
+        })
+
+      response = json_response(conn, 200)
+      assert response["ok"] == true
+    end
+
+    test "disables an addon", %{conn: conn} do
+      conn =
+        conn
+        |> put_req_header("content-type", "application/json")
+        |> post("/billing/update_addon.json", %{
+          addon_name: "support-tier-1",
+          enabled: false
+        })
+
+      response = json_response(conn, 200)
+      assert response["ok"] == true
+    end
+
+    test "returns empty json when user lacks billing view permission", %{
+      conn: conn,
+      org_id: org_id,
+      user_id: user_id
+    } do
+      Support.Stubs.PermissionPatrol.remove_all_permissions()
+
+      Support.Stubs.PermissionPatrol.add_permissions(
+        org_id,
+        user_id,
+        "organization.view"
+      )
+
+      conn =
+        conn
+        |> put_req_header("content-type", "application/json")
+        |> post("/billing/update_addon.json", %{
+          addon_name: "support-tier-2",
+          enabled: true
+        })
+
+      assert json_response(conn, 200) == %{}
+    end
+
+    test "returns 403 when user has view but not manage permission", %{
+      conn: conn,
+      org_id: org_id,
+      user_id: user_id
+    } do
+      Support.Stubs.PermissionPatrol.remove_all_permissions()
+
+      Support.Stubs.PermissionPatrol.add_permissions(
+        org_id,
+        user_id,
+        ["organization.view", "organization.plans_and_billing.view"]
+      )
+
+      conn =
+        conn
+        |> put_req_header("content-type", "application/json")
+        |> post("/billing/update_addon.json", %{
+          addon_name: "support-tier-2",
+          enabled: true
+        })
+
+      assert conn.status in [403, 404]
+    end
+  end
 end

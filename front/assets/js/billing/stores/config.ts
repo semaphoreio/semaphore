@@ -26,6 +26,7 @@ export interface State {
   contactSupportUrl: string;
   pricingUrl: string;
   addonsUrl?: string;
+  updateAddonUrl?: string;
 }
 
 export const Context = createContext<State>({
