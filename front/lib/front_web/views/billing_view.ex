@@ -35,6 +35,7 @@ defmodule FrontWeb.BillingView do
       end
 
     available_plans = Billing.PlanSwitch.list_plans(conn.assigns.organization_id)
+    current_plan_type = Billing.PlanSwitch.current_plan_type(conn.assigns.current_spending.plan)
 
     %{
       baseUrl: billing_index_path(conn, :index, []),
@@ -53,11 +54,8 @@ defmodule FrontWeb.BillingView do
       selectedSpendingId: conn.assigns.spending.id,
       isBillingManager: Front.Auth.can?(conn, :ManageBilling),
       availablePlans: available_plans,
-      currentPlanType: Billing.PlanSwitch.current_plan_type(conn.assigns.current_spending.plan),
-      isBasicPlan:
-        "#{Billing.PlanSwitch.current_plan_type(conn.assigns.current_spending.plan)}" ==
-          System.get_env("BASIC_PLAN_SLUG", "basic"),
-      canUpgradeUrl: billing_can_upgrade_path(conn, :can_upgrade, []),
+      currentPlanType: current_plan_type,
+      isBasicPlan: "#{current_plan_type}" == System.get_env("BASIC_PLAN_SLUG", "basic"),
       peoplePageUrl: people_path(conn, :organization, []),
       agentsPageUrl: self_hosted_agent_path(conn, :index),
       contactSupportUrl: Front.Zendesk.new_ticket_location(),

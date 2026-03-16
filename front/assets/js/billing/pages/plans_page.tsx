@@ -54,10 +54,14 @@ const PlanCard = ({ plan }: { plan: Plans.Plan, }) => {
           <div className="f3 b">{plan.name}</div>
           <div className="f5 gray mt1">
             {plan.description}
-            {` `}
-            <a href={config.pricingUrl} target="_blank" rel="noreferrer" className="link">
-              See pricing details
-            </a>
+            {config.pricingUrl && (
+              <Fragment>
+                {` `}
+                <a href={config.pricingUrl} target="_blank" rel="noreferrer" className="link">
+                  See pricing details
+                </a>
+              </Fragment>
+            )}
           </div>
         </div>
         <div>
