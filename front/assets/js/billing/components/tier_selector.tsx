@@ -40,7 +40,10 @@ export const TierSelector = ({ group, updating, onUpdate }: Props) => {
           <div className="f5 gray mt1">{group.description}</div>
         )}
         {onCooldown && (
-          <div className="f6 orange mt1">Selection locked for 24 hours. You can still disable the current add-on.</div>
+          <div className="f6 orange mt1">
+            Selection locked for 24 hours. You can still disable the current
+            add-on.
+          </div>
         )}
       </div>
 
@@ -50,7 +53,11 @@ export const TierSelector = ({ group, updating, onUpdate }: Props) => {
             `flex items-center ph3 pv3 bb b--black-10 pointer ` +
             (!currentValue ? `bg-lightest-green ` : ``)
           }
-          style={hasChanged && !selected ? { border: selectedBorder, borderRadius: `4px`, margin: `-2px` } : undefined}
+          style={
+            hasChanged && !selected
+              ? { border: selectedBorder, borderRadius: `4px`, margin: `-2px` }
+              : undefined
+          }
         >
           <input
             type="radio"
@@ -66,10 +73,14 @@ export const TierSelector = ({ group, updating, onUpdate }: Props) => {
               <span className="b">Disabled</span>
               <span className="ml2 f6 gray">$ 0.00</span>
               {!currentValue && (
-                <span className="ml2 f7 fw6 ph2 pv1 br2 bg-green white">Current</span>
+                <span className="ml2 f7 fw6 ph2 pv1 br2 bg-green white">
+                  Current
+                </span>
               )}
             </div>
-            <div className="f6 gray mt1">No {group.displayName.toLowerCase()} add-on selected.</div>
+            <div className="f6 gray mt1">
+              No {group.displayName.toLowerCase()} add-on selected.
+            </div>
           </div>
         </label>
 
@@ -77,7 +88,7 @@ export const TierSelector = ({ group, updating, onUpdate }: Props) => {
           const isLast = idx === group.addons.length - 1;
           const isCurrent = addon.enabled;
           const isSelected = selected === addon.name;
-          const locked = onCooldown && !addon.enabled;
+          const locked = !addon.modifiable || (onCooldown && !addon.enabled);
 
           return (
             <label
@@ -90,7 +101,13 @@ export const TierSelector = ({ group, updating, onUpdate }: Props) => {
               }
               style={{
                 ...(locked ? { pointerEvents: `none` } : {}),
-                ...(hasChanged && isSelected ? { border: selectedBorder, borderRadius: `4px`, margin: `-2px` } : {}),
+                ...(hasChanged && isSelected
+                  ? {
+                    border: selectedBorder,
+                    borderRadius: `4px`,
+                    margin: `-2px`,
+                  }
+                  : {}),
               }}
             >
               <input
@@ -110,7 +127,9 @@ export const TierSelector = ({ group, updating, onUpdate }: Props) => {
                     <span className="ml2 f6 gray">{addon.price}</span>
                   )}
                   {isCurrent && (
-                    <span className="ml2 f7 fw6 ph2 pv1 br2 bg-green white">Current</span>
+                    <span className="ml2 f7 fw6 ph2 pv1 br2 bg-green white">
+                      Current
+                    </span>
                   )}
                 </div>
                 {addon.description && (
@@ -129,12 +148,17 @@ export const TierSelector = ({ group, updating, onUpdate }: Props) => {
               {isDisabling ? (
                 <span>
                   Disable <span className="b">{currentAddon.displayName}</span>?
-                  <span className="ml1 gray">You wont be able to select an add-on for the next 24 hours.</span>
+                  <span className="ml1 gray">
+                    You wont be able to select an add-on for the next 24 hours.
+                  </span>
                 </span>
               ) : (
                 <span>
-                  Switch to <span className="b">{selectedAddon?.displayName}</span>?
-                  <span className="ml1 gray">This may affect your billing.</span>
+                  Switch to{` `}
+                  <span className="b">{selectedAddon?.displayName}</span>?
+                  <span className="ml1 gray">
+                    This may affect your billing.
+                  </span>
                 </span>
               )}
             </div>

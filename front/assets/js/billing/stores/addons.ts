@@ -9,10 +9,9 @@ export enum Status {
 }
 
 export type Action =
-  | { type: `SET_GROUPS`; groups: Addons.AddonGroup[] }
-  | { type: `SET_STATUS`; value: Status }
-  | { type: `SET_UPDATING`; value: string | null }
-  ;
+  | { type: `SET_GROUPS`, groups: Addons.AddonGroup[], }
+  | { type: `SET_STATUS`, value: Status, }
+  | { type: `SET_UPDATING`, value: string | null, };
 
 export interface State {
   status: Status;

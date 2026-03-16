@@ -43,12 +43,8 @@ defmodule Front.Models.Billing.Spending do
     groups =
       grpc_spending.groups
       |> Enum.map(&SpendingGroup.from_grpc(&1))
-      |> Enum.filter(fn
-        spending_group when spending_group.type == :addons ->
-          true
-
-        spending_group ->
-          not Enum.empty?(spending_group.items)
+      |> Enum.filter(fn spending_group ->
+        not Enum.empty?(spending_group.items)
       end)
 
     %{spending | groups: groups}
