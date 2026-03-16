@@ -11,7 +11,8 @@ defmodule FrontWeb.BillingController do
 
   plug(
     PageAccess,
-    [permissions: "organization.plans_and_billing.manage"] when action == :set_budget
+    [permissions: "organization.plans_and_billing.manage"]
+    when action in [:set_budget, :update_addon]
   )
 
   plug(
@@ -271,6 +272,29 @@ defmodule FrontWeb.BillingController do
 
     conn
     |> json(%{})
+  end
+
+  def addons(conn, _params) do
+    groups = BillingModel.list_addons(conn.assigns.organization_id, get_opts(conn))
+
+    conn
+    |> json(%{
+      groups: Enum.map(groups, &Front.Models.Billing.AddonGroup.to_json/1)
+    })
+  end
+
+  def update_addon(conn, %{"addon_name" => addon_name, "enabled" => enabled}) do
+    case BillingModel.update_addon(conn.assigns.organization_id, addon_name, enabled) do
+      :ok ->
+        conn |> json(%{ok: true})
+
+      {:error, error} ->
+        Logger.error("Failed to update addon: #{inspect(error)}")
+
+        conn
+        |> put_status(422)
+        |> json(%{ok: false, error: "Failed to update addon."})
+    end
   end
 
   defp get_opts(conn) do
