@@ -9,8 +9,11 @@ defmodule PipelinesAPI.Logs.Get do
   alias PipelinesAPI.Pipelines.Common, as: RespCommon
   alias PipelinesAPI.Util.{Metrics}
   alias PipelinesAPI.JobsClient
+  alias PipelinesAPI.ProjectClient
+  alias PipelinesAPI.ArtifactHubClient
   alias PipelinesAPI.LoghubClient
   alias PipelinesAPI.Loghub2Client
+  alias PipelinesAPI.Util.ToTuple
 
   import PipelinesAPI.Logs.Authorize, only: [authorize_job: 2]
 
@@ -39,8 +42,11 @@ defmodule PipelinesAPI.Logs.Get do
     Metrics.benchmark("PipelinesAPI.router", ["get_logs"], fn ->
       job = conn.params.job
 
-      conn
-      |> get_logs(job.id, job.self_hosted)
+      if full_logs_requested?(conn.params) do
+        conn |> get_full_logs(job)
+      else
+        conn |> get_logs(job.id, job.self_hosted)
+      end
     end)
   end
 
@@ -72,6 +78,57 @@ defmodule PipelinesAPI.Logs.Get do
       RespCommon.respond(e, conn)
   end
 
+  defp get_full_logs(conn, job) do
+    with {:ok, project} <- ProjectClient.describe(job.project_id),
+         artifact_store_id <- project.spec.artifact_store_id,
+         {:ok, artifacts} <-
+           ArtifactHubClient.list_path(%{
+             artifact_store_id: artifact_store_id,
+             scope: "jobs",
+             scope_id: job.id,
+             path: "agent"
+           }),
+         {:ok, artifact_path} <- pick_job_logs_path(artifacts),
+         {:ok, %{url: signed_url}} <-
+           ArtifactHubClient.get_signed_url(%{
+             artifact_store_id: artifact_store_id,
+             scope: "jobs",
+             scope_id: job.id,
+             path: artifact_path,
+             method: "GET"
+           }) do
+      conn
+      |> put_resp_header("location", signed_url)
+      |> send_resp(conn.status || 302, "")
+    else
+      {:error, {:not_found, _message}} ->
+        Metrics.increment("PipelinesAPI.router", ["full_logs_artifact_lookup_failed"])
+        RespCommon.respond(ToTuple.not_found_error("Full log artifact not found"), conn)
+
+      error ->
+        Metrics.increment("PipelinesAPI.router", ["full_logs_artifact_lookup_failed"])
+        RespCommon.respond(error, conn)
+    end
+  rescue
+    e ->
+      Metrics.increment("PipelinesAPI.router", ["full_logs_artifact_lookup_failed"])
+      Logger.error("Error getting full logs for #{job.id}: #{inspect(e)}")
+      RespCommon.respond(ToTuple.internal_error("Internal error"), conn)
+  end
+
+  defp pick_job_logs_path(artifacts) do
+    cond do
+      Enum.any?(artifacts, &(&1.path == "agent/job_logs.txt.gz")) ->
+        {:ok, "agent/job_logs.txt.gz"}
+
+      Enum.any?(artifacts, &(&1.path == "agent/job_logs.txt")) ->
+        {:ok, "agent/job_logs.txt"}
+
+      true ->
+        ToTuple.not_found_error("Full log artifact not found")
+    end
+  end
+
   defp prepare_response(events) do
     Enum.join(['{ "events": [', Enum.join(events, ","), "] }"], "")
   end
@@ -79,4 +136,15 @@ defmodule PipelinesAPI.Logs.Get do
   defp build_loghub2_url(conn, job_id, token) do
     "https://#{conn.host}/api/v1/logs/#{job_id}?jwt=#{token}"
   end
+
+  defp full_logs_requested?(params) do
+    params
+    |> Map.get("full", "")
+    |> full_logs_value?()
+  end
+
+  defp full_logs_value?(value) when is_binary(value),
+    do: value |> String.downcase() |> Kernel.in(["1", "true", "yes"])
+
+  defp full_logs_value?(_value), do: false
 end
