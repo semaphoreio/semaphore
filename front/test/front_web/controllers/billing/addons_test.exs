@@ -1,8 +1,6 @@
 defmodule FrontWeb.BillingController.AddonsTest do
   use FrontWeb.ConnCase
 
-  alias Support.Stubs.DB
-
   setup %{conn: conn} do
     Support.Stubs.build_shared_factories()
 
