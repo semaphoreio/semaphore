@@ -1,0 +1,308 @@
+defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
+  use ExUnit.Case
+
+  alias Support.Stubs.{Job, Pipeline, Workflow}
+
+  @job_artifact_url "https://localhost:9000/agent/job_logs.txt.gz"
+  @workflow_artifact_url "https://localhost:9000/debug/workflow_logs.txt"
+  @project_artifact_url "https://localhost:9000/releases/build.tar.gz"
+
+  setup do
+    Support.Stubs.reset()
+    Support.Stubs.grant_all_permissions()
+
+    org = Support.Stubs.Organization.create_default()
+    user = Support.Stubs.User.create_default()
+    project = Support.Stubs.Project.create(org, user)
+    build_req_id = UUID.uuid4()
+    hook = %{id: UUID.uuid4(), project_id: project.id, branch_id: UUID.uuid4()}
+
+    workflow = Workflow.create(hook, user.id, organization_id: org.id)
+    pipeline = Pipeline.create_initial(workflow)
+
+    _block =
+      Pipeline.add_block(pipeline, %{
+        name: "Block #1",
+        dependencies: [],
+        job_names: ["First job"],
+        build_req_id: build_req_id
+      })
+
+    job = Job.create(pipeline.id, build_req_id, project_id: project.id)
+
+    Support.Stubs.Artifacthub.create(job.api_model.id,
+      scope: "jobs",
+      path: "agent/job_logs.txt.gz",
+      url: @job_artifact_url
+    )
+
+    Support.Stubs.Artifacthub.create(workflow.api_model.wf_id,
+      scope: "workflows",
+      path: "debug/workflow_logs.txt",
+      url: @workflow_artifact_url
+    )
+
+    Support.Stubs.Artifacthub.create(project.id,
+      scope: "projects",
+      path: "releases/build.tar.gz",
+      url: @project_artifact_url
+    )
+
+    {:ok,
+     %{org: org, user: user, project: project, workflow: workflow.api_model, job: job.api_model}}
+  end
+
+  describe "GET /artifacts/signed_url" do
+    test "returns 200 and a signed URL for job artifact", ctx do
+      assert {200, response} =
+               signed_url(
+                 %{
+                   "project_id" => ctx.project.id,
+                   "scope" => "jobs",
+                   "scope_id" => ctx.job.id,
+                   "path" => "agent/job_logs.txt.gz"
+                 },
+                 ctx.user.id
+               )
+
+      assert response == %{"url" => @job_artifact_url}
+    end
+
+    test "returns 200 and a signed URL for workflow artifact", ctx do
+      assert {200, response} =
+               signed_url(
+                 %{
+                   "project_id" => ctx.project.id,
+                   "scope" => "workflows",
+                   "scope_id" => ctx.workflow.wf_id,
+                   "path" => "debug/workflow_logs.txt"
+                 },
+                 ctx.user.id
+               )
+
+      assert response == %{"url" => @workflow_artifact_url}
+    end
+
+    test "returns 200 and a signed URL for project artifact", ctx do
+      assert {200, response} =
+               signed_url(
+                 %{
+                   "project_id" => ctx.project.id,
+                   "scope" => "projects",
+                   "scope_id" => ctx.project.id,
+                   "path" => "releases/build.tar.gz"
+                 },
+                 ctx.user.id
+               )
+
+      assert response == %{"url" => @project_artifact_url}
+    end
+
+    test "returns 200 and accepts HEAD method", ctx do
+      assert {200, response} =
+               signed_url(
+                 %{
+                   "project_id" => ctx.project.id,
+                   "scope" => "jobs",
+                   "scope_id" => ctx.job.id,
+                   "path" => "agent/job_logs.txt.gz",
+                   "method" => "HEAD"
+                 },
+                 ctx.user.id
+               )
+
+      assert response == %{"url" => @job_artifact_url}
+    end
+
+    test "returns 404 when project scope_id belongs to a different project", ctx do
+      other_project = Support.Stubs.Project.create(ctx.org, ctx.user)
+
+      Support.Stubs.Artifacthub.create(other_project.id,
+        scope: "projects",
+        path: "other/releases.tar.gz",
+        url: "https://localhost:9000/other/releases.tar.gz"
+      )
+
+      assert {404, "Not found"} =
+               signed_url(
+                 %{
+                   "project_id" => ctx.project.id,
+                   "scope" => "projects",
+                   "scope_id" => other_project.id,
+                   "path" => "other/releases.tar.gz"
+                 },
+                 ctx.user.id,
+                 false
+               )
+    end
+
+    test "returns 404 when job scope_id belongs to a different project", ctx do
+      other_project = Support.Stubs.Project.create(ctx.org, ctx.user)
+      {_workflow, other_job} = create_workflow_and_job(other_project, ctx.user.id, ctx.org.id)
+
+      Support.Stubs.Artifacthub.create(other_job.id,
+        scope: "jobs",
+        path: "agent/other_job_logs.txt.gz",
+        url: "https://localhost:9000/agent/other_job_logs.txt.gz"
+      )
+
+      assert {404, "Not found"} =
+               signed_url(
+                 %{
+                   "project_id" => ctx.project.id,
+                   "scope" => "jobs",
+                   "scope_id" => other_job.id,
+                   "path" => "agent/other_job_logs.txt.gz"
+                 },
+                 ctx.user.id,
+                 false
+               )
+    end
+
+    test "returns 404 when workflow scope_id belongs to a different project", ctx do
+      other_project = Support.Stubs.Project.create(ctx.org, ctx.user)
+      {other_workflow, _job} = create_workflow_and_job(other_project, ctx.user.id, ctx.org.id)
+
+      Support.Stubs.Artifacthub.create(other_workflow.wf_id,
+        scope: "workflows",
+        path: "debug/other_workflow_logs.txt",
+        url: "https://localhost:9000/debug/other_workflow_logs.txt"
+      )
+
+      assert {404, "Not found"} =
+               signed_url(
+                 %{
+                   "project_id" => ctx.project.id,
+                   "scope" => "workflows",
+                   "scope_id" => other_workflow.wf_id,
+                   "path" => "debug/other_workflow_logs.txt"
+                 },
+                 ctx.user.id,
+                 false
+               )
+    end
+
+    test "returns 400 when path is missing", ctx do
+      assert {400, "path must be present"} =
+               signed_url(
+                 %{
+                   "project_id" => ctx.project.id,
+                   "scope" => "jobs",
+                   "scope_id" => ctx.job.id
+                 },
+                 ctx.user.id,
+                 false
+               )
+    end
+
+    test "returns 400 when scope is invalid even if scope_id is an existing job", ctx do
+      assert {400, "scope must be one of: projects, workflows, jobs"} =
+               signed_url(
+                 %{
+                   "project_id" => ctx.project.id,
+                   "scope" => "pipelines",
+                   "scope_id" => ctx.job.id,
+                   "path" => "agent/job_logs.txt.gz"
+                 },
+                 ctx.user.id,
+                 false
+               )
+    end
+
+    test "returns 400 when method is invalid", ctx do
+      assert {400, "method must be one of: GET, HEAD"} =
+               signed_url(
+                 %{
+                   "project_id" => ctx.project.id,
+                   "scope" => "jobs",
+                   "scope_id" => ctx.job.id,
+                   "path" => "agent/job_logs.txt.gz",
+                   "method" => "DELETE"
+                 },
+                 ctx.user.id,
+                 false
+               )
+    end
+
+    test "returns 400 when method has invalid type", ctx do
+      base_query =
+        URI.encode_query(%{
+          "project_id" => ctx.project.id,
+          "scope" => "jobs",
+          "scope_id" => ctx.job.id,
+          "path" => "agent/job_logs.txt.gz"
+        })
+
+      assert {400, "method must be one of: GET, HEAD"} =
+               signed_url_raw(base_query <> "&method[]=GET", ctx.user.id, false)
+    end
+
+    test "returns 401 when user has no artifact permission", ctx do
+      GrpcMock.stub(RBACMock, :list_user_permissions, fn _, _ ->
+        InternalApi.RBAC.ListUserPermissionsResponse.new(
+          permissions: Support.Stubs.all_permissions_except("project.artifacts.view")
+        )
+      end)
+
+      assert {401, "Permission denied"} =
+               signed_url(
+                 %{
+                   "project_id" => ctx.project.id,
+                   "scope" => "jobs",
+                   "scope_id" => ctx.job.id,
+                   "path" => "agent/job_logs.txt.gz"
+                 },
+                 ctx.user.id,
+                 false
+               )
+    end
+  end
+
+  defp signed_url(params, user_id, decode? \\ true) do
+    params
+    |> URI.encode_query()
+    |> signed_url_raw(user_id, decode?)
+  end
+
+  defp signed_url_raw(query, user_id, decode?) do
+    url = "localhost:4004/artifacts/signed_url?" <> query
+
+    {:ok, response} = HTTPoison.get(url, headers(user_id))
+    %{body: body, status_code: status_code} = response
+
+    body =
+      case decode? do
+        true -> Poison.decode!(body)
+        false -> body
+      end
+
+    {status_code, body}
+  end
+
+  defp headers(user_id),
+    do: [
+      {"Content-type", "application/json"},
+      {"x-semaphore-user-id", user_id},
+      {"x-semaphore-org-id", Support.Stubs.Organization.default_org_id()}
+    ]
+
+  defp create_workflow_and_job(project, user_id, org_id) do
+    build_req_id = UUID.uuid4()
+    hook = %{id: UUID.uuid4(), project_id: project.id, branch_id: UUID.uuid4()}
+
+    workflow = Workflow.create(hook, user_id, organization_id: org_id)
+    pipeline = Pipeline.create_initial(workflow)
+
+    _block =
+      Pipeline.add_block(pipeline, %{
+        name: "Block #1",
+        dependencies: [],
+        job_names: ["First job"],
+        build_req_id: build_req_id
+      })
+
+    job = Job.create(pipeline.id, build_req_id, project_id: project.id)
+
+    {workflow.api_model, job.api_model}
+  end
+end
