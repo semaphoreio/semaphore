@@ -37,7 +37,7 @@ In addition to subscription cost, your monthly bill is determined by your usage 
 
 - **Machine Time** - the cost of using Semaphore Cloud machines (calculated by the minute)
 - **Storage and Egress** - the cost of storing and downloading your build artifacts
-- **Add-ons** - additional features or services offered by Semaphore Cloud (e.g. priority support, a dedicated cache server)
+- **Add-ons** - additional features or services offered by Semaphore Cloud (e.g. SLA Premium support, a dedicated cache server)
 
 You can monitor your monthly spending at any time on the [Plans & Billing](#spending) page within the app. Please note that spending data may take up to 24 hours to update.
 
@@ -55,15 +55,15 @@ Semaphore charges you based on the machine type used and the amount of time spen
 
 Each cloud machine type has its own **price per minute**, listed in the table below:
 
-| Generation | 2 vCPU (standard-2) | 4 vCPU (standard-4) | 8 vCPU (standard-8) |
-| :--------: | :-----------------: | :-----------------: | :-----------------: |
-| E1 (Linux) |       $0.0075       |       $0.015        |        $0.03        |
-| E2 (Linux) |        $0.01        |        $0.02        |          /          |
-| F1 (Linux) |       $0.0075        |        $0.015        |          /          |
-| A1 (MacOS ARM64) |        $0.003       |        $0.006       |          /          |
-| A2 (MacOS Silicon) |          /          |        $0.09        |          /          |
+| Generation | 2 vCPU (standard-2) | 4 vCPU (standard-4) | 
+| :--------: | :-----------------: | :-----------------: | 
+| F1 (Linux) |       $0.0075       |       $0.015        | 
+| R1 (ARM) |        $0.003        |        $0.006        |  
+| A2 (MacOS Silicon) |          /          |        $0.09        | 
 
 With the new pricing model, **f1 machines become the primary compute option and are available at significantly reduced per-minute pricing, replacing the e1 and e2 machines**, which will no longer be available under the new plan.
+
+You can find detailed pricing on [Semaphore's pricing page](https://semaphore.io/pricing).
 
 ## Self-hosted agents rates
 
@@ -78,6 +78,8 @@ Under the new pricing model, [Self-hosted agents](./self-hosted) are now billed 
 Self-hosted usage will be priced at **$0.0025 per minute.**
 
 This change aligns pricing with actual infrastructure usage, ensuring teams pay proportionally for the compute they run while maintaining the flexibility of running pipelines on their own infrastructure.
+
+You can find detailed pricing on [Semaphore's pricing page](https://semaphore.io/pricing).
 
 ## Support and Success plans
 
@@ -109,6 +111,8 @@ Teams can choose from the following support tiers:
 
 For teams running production workloads, SLA-based support ensures predictable response times and operational reliability.
 
+You can find detailed pricing on [Semaphore's pricing page](https://semaphore.io/pricing).
+
 ### New Success Add-on
 
 While support focuses on resolving issues, success plans help teams optimize performance and adoption.
@@ -130,6 +134,8 @@ Success plans are designed to help teams:
 
 For larger organizations, these plans also enable closer collaboration with Semaphore’s product and engineering teams.
 
+You can find detailed pricing on [Semaphore's pricing page](https://semaphore.io/pricing).
+
 ### Engineering Support On Demand
 
 Some teams occasionally need deeper technical guidance, for tasks such as:
@@ -140,6 +146,8 @@ Some teams occasionally need deeper technical guidance, for tasks such as:
 - Deployment automation improvements
 
 For these scenarios, **Solutions Engineering hours** can be purchased separately, giving teams access to expert assistance when needed.
+
+You can find detailed pricing on [Semaphore's pricing page](https://semaphore.io/pricing).
 
 ## See also
 
