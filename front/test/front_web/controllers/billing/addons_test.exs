@@ -105,7 +105,7 @@ defmodule FrontWeb.BillingController.AddonsTest do
       assert response["ok"] == true
     end
 
-    test "returns empty json when user lacks billing view permission", %{
+    test "returns 404 when user lacks billing view permission", %{
       conn: conn,
       org_id: org_id,
       user_id: user_id
@@ -126,7 +126,7 @@ defmodule FrontWeb.BillingController.AddonsTest do
           enabled: true
         })
 
-      assert json_response(conn, 200) == %{}
+      assert conn.status == 404
     end
 
     test "returns 403 when user has view but not manage permission", %{
