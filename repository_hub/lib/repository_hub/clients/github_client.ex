@@ -825,7 +825,7 @@ defmodule RepositoryHub.GithubClient do
 
     fail_with(
       :precondition,
-      "Unexpected tag reference object type for #{owner}/#{repo} : #{tag_name}: #{inspect(get_in(payload, ["object", "type"]))}."
+      "Unexpected tag reference object type for #{owner}/#{repo} : #{tag_name}."
     )
   end
 
