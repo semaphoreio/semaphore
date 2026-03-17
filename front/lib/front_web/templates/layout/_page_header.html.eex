@@ -94,34 +94,33 @@
           </a>
         </div>
       <% end %>
-      <%= if FeatureProvider.feature_enabled?(:help, param: @conn.assigns[:organization_id]) do %>
-        <% help_enabled? = help_enabled?(@conn) %>
-        <% pylon_support? = pylon_support_enabled?(@conn) %>
-        <% pylon_help_dashboard? = pylon_support_visible?(@conn, @layout_model) %>
-        <!-- Help Menu -->
-        <%= if pylon_support? do %>
-          <div class="pr1 pr2-ns mr2-ns br-ns b--black-10">
-            <%= if pylon_help_dashboard? do %>
-              <a href="<%= support_path(@conn, :pylon) %>" target="_blank" rel="noopener" class="link dark-gray b pointer flex flex-shrink-0 items-center pv1 ph1 ph2-ns br3 hover-bg-washed-brown">
-                <%= icon("icn-help", class: "db o-80", width: "24", height: "24") %>
-                <span class="dn db-m ml2 b">Support Portal</span>
-              </a>
-            <% else %>
-              <span class="dark-gray b pointer flex flex-shrink-0 items-center pv1 ph1 ph2-ns br3 hover-bg-washed-brown o-60" data-tippy-content="Your access to Semaphore support has been limited. Please contact your organization's Admin for more information.">
-                <%= icon("icn-help", class: "db o-80", width: "24", height: "24") %>
-                <span class="dn db-m ml2 b">Support Portal</span>
-              </span>
-            <% end %>
-          </div>
-        <% else %>
-          <%= if help_enabled? do %>
-            <div class="pr1 pr2-ns mr2-ns br-ns b--black-10">
-              <div class="flex flex-shrink-0 pv1 ph1 ph2-ns br3 pointer hover-bg-washed-brown js-dropdown-color-trigger" data-template="helpMenu">
-                <%= icon("icn-help", class: "db o-80", width: "24", height: "24") %>
-                <span class="dn db-m ml2 b">Help</span>
-              </div>
-            </div>
+      <% help_flag? = FeatureProvider.feature_enabled?(:help, param: @conn.assigns[:organization_id]) %>
+      <% pylon_support? = pylon_support_enabled?(@conn) %>
+      <% pylon_portal? = FeatureProvider.feature_enabled?(:pylon_support_portal, param: @conn.assigns[:organization_id]) %>
+      <%= if pylon_support? and (help_flag? or pylon_portal?) do %>
+        <!-- Support Portal (pylon_support_portal bypasses :help flag) -->
+        <div class="pr1 pr2-ns mr2-ns br-ns b--black-10">
+          <%= if pylon_support_visible?(@conn, @layout_model) do %>
+            <a href="<%= support_path(@conn, :pylon) %>" target="_blank" rel="noopener" class="link dark-gray b pointer flex flex-shrink-0 items-center pv1 ph1 ph2-ns br3 hover-bg-washed-brown">
+              <%= icon("icn-help", class: "db o-80", width: "24", height: "24") %>
+              <span class="dn db-m ml2 b">Support Portal</span>
+            </a>
+          <% else %>
+            <span class="dark-gray b pointer flex flex-shrink-0 items-center pv1 ph1 ph2-ns br3 hover-bg-washed-brown o-60" data-tippy-content="Your access to Semaphore support has been limited. Please contact your organization's Admin for more information.">
+              <%= icon("icn-help", class: "db o-80", width: "24", height: "24") %>
+              <span class="dn db-m ml2 b">Support Portal</span>
+            </span>
           <% end %>
+        </div>
+      <% else %>
+        <%= if help_flag? and help_enabled?(@conn) do %>
+          <!-- Help Menu -->
+          <div class="pr1 pr2-ns mr2-ns br-ns b--black-10">
+            <div class="flex flex-shrink-0 pv1 ph1 ph2-ns br3 pointer hover-bg-washed-brown js-dropdown-color-trigger" data-template="helpMenu">
+              <%= icon("icn-help", class: "db o-80", width: "24", height: "24") %>
+              <span class="dn db-m ml2 b">Help</span>
+            </div>
+          </div>
         <% end %>
       <% end %>
       <div class="flex-shrink-0 pa1 ma1 pointer bg-animate hover-bg-washed-brown br-100 js-dropdown-color-trigger" data-template="profileMenu">
