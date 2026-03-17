@@ -4,7 +4,6 @@ require "sidekiq_unique_jobs/testing"
 module Semaphore::GithubApp
   RSpec.describe Collaborators::Worker do
     let(:slug) { "org/my-repo" }
-    let(:remote_id) { 12345 }
 
     describe "sidekiq_options" do
       it "uses the github_app queue" do
@@ -33,9 +32,9 @@ module Semaphore::GithubApp
     end
 
     describe "lock_args" do
-      it "uses only the slug for uniqueness (ignores remote_id)" do
+      it "uses only the slug for uniqueness" do
         lock_args_method = described_class.get_sidekiq_options["lock_args_method"]
-        result = lock_args_method.call([slug, remote_id])
+        result = lock_args_method.call([slug])
 
         expect(result).to eq([slug])
       end
@@ -43,12 +42,12 @@ module Semaphore::GithubApp
 
     describe "#perform" do
       it "calls Collaborators.refresh and logs Finish on success" do
-        allow(Collaborators).to receive(:refresh).with(slug, remote_id).and_return(:ok)
+        allow(Collaborators).to receive(:refresh).with(slug).and_return(:ok)
 
         expect(Rails.logger).to receive(:info).with(/#{slug}: Start/)
         expect(Rails.logger).to receive(:info).with(/#{slug}: Finish/)
 
-        described_class.new.perform(slug, remote_id)
+        described_class.new.perform(slug)
       end
 
       it "returns early for blank slug" do
@@ -56,7 +55,7 @@ module Semaphore::GithubApp
         allow(Rails.logger).to receive(:info)
         expect(Rails.logger).to receive(:info).with(/: Empty/)
 
-        described_class.new.perform("", nil)
+        described_class.new.perform("")
       end
 
       it "logs 'Token not found' when result is :no_token" do
@@ -64,7 +63,7 @@ module Semaphore::GithubApp
         expect(Rails.logger).to receive(:info).with(/Start/)
         expect(Rails.logger).to receive(:info).with(/Token not found/)
 
-        described_class.new.perform(slug, remote_id)
+        described_class.new.perform(slug)
       end
 
       it "logs 'Repository not found' when result is :no_repository" do
@@ -72,21 +71,21 @@ module Semaphore::GithubApp
         expect(Rails.logger).to receive(:info).with(/Start/)
         expect(Rails.logger).to receive(:info).with(/Repository not found/)
 
-        described_class.new.perform(slug, remote_id)
+        described_class.new.perform(slug)
       end
 
       it "raises LowRateLimitError when result is :low_rate_limit" do
         allow(Collaborators).to receive(:refresh).and_return(:low_rate_limit)
 
         expect do
-          described_class.new.perform(slug, remote_id)
+          described_class.new.perform(slug)
         end.to raise_error(LowRateLimitError, /rate limit too low/i)
       end
     end
 
     describe "sidekiq_retries_exhausted" do
       it "logs an error and releases the unique lock" do
-        job = { "args" => [slug, remote_id], "class" => described_class.to_s }
+        job = { "args" => [slug], "class" => described_class.to_s }
         exception = LowRateLimitError.new("rate limit too low")
 
         expect(Rails.logger).to receive(:error).with(/#{slug}: Retries exhausted.*LowRateLimitError/)
@@ -158,7 +157,7 @@ module Semaphore::GithubApp
 
       it "allows enqueueing a job for a new slug" do
         SidekiqUniqueJobs.use_config(enabled: true) do
-          jid = described_class.perform_async(slug, remote_id)
+          jid = described_class.perform_async(slug)
 
           expect(jid).not_to be_nil
         end
@@ -166,18 +165,8 @@ module Semaphore::GithubApp
 
       it "rejects a duplicate job for the same slug" do
         SidekiqUniqueJobs.use_config(enabled: true) do
-          first_jid = described_class.perform_async(slug, remote_id)
-          second_jid = described_class.perform_async(slug, remote_id)
-
-          expect(first_jid).not_to be_nil
-          expect(second_jid).to be_nil
-        end
-      end
-
-      it "rejects a duplicate even when remote_id differs (lock_args uses slug only)" do
-        SidekiqUniqueJobs.use_config(enabled: true) do
-          first_jid = described_class.perform_async(slug, 111)
-          second_jid = described_class.perform_async(slug, 222)
+          first_jid = described_class.perform_async(slug)
+          second_jid = described_class.perform_async(slug)
 
           expect(first_jid).not_to be_nil
           expect(second_jid).to be_nil
@@ -186,8 +175,8 @@ module Semaphore::GithubApp
 
       it "allows jobs for different slugs" do
         SidekiqUniqueJobs.use_config(enabled: true) do
-          first_jid = described_class.perform_async("org/repo-a", remote_id)
-          second_jid = described_class.perform_async("org/repo-b", remote_id)
+          first_jid = described_class.perform_async("org/repo-a")
+          second_jid = described_class.perform_async("org/repo-b")
 
           expect(first_jid).not_to be_nil
           expect(second_jid).not_to be_nil
@@ -196,8 +185,8 @@ module Semaphore::GithubApp
 
       it "rejects a duplicate scheduled job for the same slug" do
         SidekiqUniqueJobs.use_config(enabled: true) do
-          first_jid = described_class.perform_in(10, slug, remote_id)
-          second_jid = described_class.perform_in(20, slug, remote_id)
+          first_jid = described_class.perform_in(10, slug)
+          second_jid = described_class.perform_in(20, slug)
 
           expect(first_jid).not_to be_nil
           expect(second_jid).to be_nil
@@ -206,8 +195,8 @@ module Semaphore::GithubApp
 
       it "rejects enqueueing when a scheduled job already exists for the same slug" do
         SidekiqUniqueJobs.use_config(enabled: true) do
-          scheduled_jid = described_class.perform_in(10.minutes, slug, remote_id)
-          async_jid = described_class.perform_async(slug, remote_id)
+          scheduled_jid = described_class.perform_in(10.minutes, slug)
+          async_jid = described_class.perform_async(slug)
 
           expect(scheduled_jid).not_to be_nil
           expect(async_jid).to be_nil
@@ -229,7 +218,7 @@ module Semaphore::GithubApp
           allow(Rails.logger).to receive(:info)
 
           # 1. Job is enqueued
-          jid = described_class.perform_async(slug, remote_id)
+          jid = described_class.perform_async(slug)
           expect(jid).not_to be_nil
 
           # Retrieve the job item from the queue for middleware processing
@@ -241,23 +230,23 @@ module Semaphore::GithubApp
           middleware = SidekiqUniqueJobs::Middleware::Server.new
           expect do
             middleware.call(described_class.new, item, "github_app") do
-              described_class.new.perform(slug, remote_id)
+              described_class.new.perform(slug)
             end
           end.to raise_error(LowRateLimitError)
 
           # 3. Another job with same slug tries to enqueue — rejected
-          dup_jid = described_class.perform_async(slug, remote_id)
+          dup_jid = described_class.perform_async(slug)
           expect(dup_jid).to be_nil
 
           # 4. Failed job is retried and now passes — lock is released
           allow(Collaborators).to receive(:refresh).and_return(:ok)
 
           middleware.call(described_class.new, item, "github_app") do
-            described_class.new.perform(slug, remote_id)
+            described_class.new.perform(slug)
           end
 
           # New job can now be enqueued for the same slug
-          new_jid = described_class.perform_async(slug, remote_id)
+          new_jid = described_class.perform_async(slug)
           expect(new_jid).not_to be_nil
         end
       end
@@ -277,17 +266,17 @@ module Semaphore::GithubApp
           allow(Rails.logger).to receive(:info)
           allow(Collaborators).to receive(:refresh).and_return(:no_token)
 
-          jid = described_class.perform_async(slug, remote_id)
+          jid = described_class.perform_async(slug)
           expect(jid).not_to be_nil
 
           item = Sidekiq::Queue.new("github_app").first.item
           middleware = SidekiqUniqueJobs::Middleware::Server.new
 
           middleware.call(described_class.new, item, "github_app") do
-            described_class.new.perform(slug, remote_id)
+            described_class.new.perform(slug)
           end
 
-          new_jid = described_class.perform_async(slug, remote_id)
+          new_jid = described_class.perform_async(slug)
           expect(new_jid).not_to be_nil
         end
       end
@@ -297,17 +286,17 @@ module Semaphore::GithubApp
           allow(Rails.logger).to receive(:info)
           allow(Collaborators).to receive(:refresh).and_return(:no_repository)
 
-          jid = described_class.perform_async(slug, remote_id)
+          jid = described_class.perform_async(slug)
           expect(jid).not_to be_nil
 
           item = Sidekiq::Queue.new("github_app").first.item
           middleware = SidekiqUniqueJobs::Middleware::Server.new
 
           middleware.call(described_class.new, item, "github_app") do
-            described_class.new.perform(slug, remote_id)
+            described_class.new.perform(slug)
           end
 
-          new_jid = described_class.perform_async(slug, remote_id)
+          new_jid = described_class.perform_async(slug)
           expect(new_jid).not_to be_nil
         end
       end
@@ -317,17 +306,17 @@ module Semaphore::GithubApp
           allow(Rails.logger).to receive(:info)
           allow(Collaborators).to receive(:refresh).and_return(:unexpected_result)
 
-          jid = described_class.perform_async(slug, remote_id)
+          jid = described_class.perform_async(slug)
           expect(jid).not_to be_nil
 
           item = Sidekiq::Queue.new("github_app").first.item
           middleware = SidekiqUniqueJobs::Middleware::Server.new
 
           middleware.call(described_class.new, item, "github_app") do
-            described_class.new.perform(slug, remote_id)
+            described_class.new.perform(slug)
           end
 
-          new_jid = described_class.perform_async(slug, remote_id)
+          new_jid = described_class.perform_async(slug)
           expect(new_jid).not_to be_nil
         end
       end
@@ -337,7 +326,7 @@ module Semaphore::GithubApp
           allow(Rails.logger).to receive(:info)
           allow(Collaborators).to receive(:refresh).and_return(:low_rate_limit)
 
-          jid = described_class.perform_async(slug, remote_id)
+          jid = described_class.perform_async(slug)
           expect(jid).not_to be_nil
 
           item = Sidekiq::Queue.new("github_app").first.item
@@ -345,11 +334,11 @@ module Semaphore::GithubApp
 
           expect do
             middleware.call(described_class.new, item, "github_app") do
-              described_class.new.perform(slug, remote_id)
+              described_class.new.perform(slug)
             end
           end.to raise_error(LowRateLimitError)
 
-          dup_jid = described_class.perform_async(slug, remote_id)
+          dup_jid = described_class.perform_async(slug)
           expect(dup_jid).to be_nil
         end
       end
