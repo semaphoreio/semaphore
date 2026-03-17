@@ -424,17 +424,9 @@ defmodule Guard.McpOAuth.Server do
               |> send_resp(302, "")
           end
         else
-          error_url =
-            Authorize.build_error_redirect(
-              redirect_uri,
-              "invalid_request",
-              "Invalid redirect_uri",
-              state
-            )
-
           conn
-          |> put_resp_header("location", error_url)
-          |> send_resp(302, "")
+          |> put_resp_content_type("text/html")
+          |> send_resp(400, "Invalid redirect_uri")
         end
 
       {:error, :not_found} ->
