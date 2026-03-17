@@ -114,6 +114,48 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
       assert response == %{"url" => @job_artifact_url}
     end
 
+    test "returns 200 and infers project_id for job scope when omitted", ctx do
+      assert {200, response} =
+               signed_url(
+                 %{
+                   "scope" => "jobs",
+                   "scope_id" => ctx.job.id,
+                   "path" => "agent/job_logs.txt.gz"
+                 },
+                 ctx.user.id
+               )
+
+      assert response == %{"url" => @job_artifact_url}
+    end
+
+    test "returns 200 and infers project_id for workflow scope when omitted", ctx do
+      assert {200, response} =
+               signed_url(
+                 %{
+                   "scope" => "workflows",
+                   "scope_id" => ctx.workflow.wf_id,
+                   "path" => "debug/workflow_logs.txt"
+                 },
+                 ctx.user.id
+               )
+
+      assert response == %{"url" => @workflow_artifact_url}
+    end
+
+    test "returns 200 and infers project_id for project scope when omitted", ctx do
+      assert {200, response} =
+               signed_url(
+                 %{
+                   "scope" => "projects",
+                   "scope_id" => ctx.project.id,
+                   "path" => "releases/build.tar.gz"
+                 },
+                 ctx.user.id
+               )
+
+      assert response == %{"url" => @project_artifact_url}
+    end
+
     test "returns 404 when project scope_id belongs to a different project", ctx do
       other_project = Support.Stubs.Project.create(ctx.org, ctx.user)
 
@@ -130,6 +172,22 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
                    "scope" => "projects",
                    "scope_id" => other_project.id,
                    "path" => "other/releases.tar.gz"
+                 },
+                 ctx.user.id,
+                 false
+               )
+    end
+
+    test "returns 404 when provided project_id differs from project scope_id", ctx do
+      other_project = Support.Stubs.Project.create(ctx.org, ctx.user)
+
+      assert {404, "Not found"} =
+               signed_url(
+                 %{
+                   "project_id" => other_project.id,
+                   "scope" => "projects",
+                   "scope_id" => ctx.project.id,
+                   "path" => "releases/build.tar.gz"
                  },
                  ctx.user.id,
                  false
@@ -159,6 +217,22 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
                )
     end
 
+    test "returns 404 when provided project_id differs from job scope_id owner", ctx do
+      other_project = Support.Stubs.Project.create(ctx.org, ctx.user)
+
+      assert {404, "Not found"} =
+               signed_url(
+                 %{
+                   "project_id" => other_project.id,
+                   "scope" => "jobs",
+                   "scope_id" => ctx.job.id,
+                   "path" => "agent/job_logs.txt.gz"
+                 },
+                 ctx.user.id,
+                 false
+               )
+    end
+
     test "returns 404 when workflow scope_id belongs to a different project", ctx do
       other_project = Support.Stubs.Project.create(ctx.org, ctx.user)
       {other_workflow, _job} = create_workflow_and_job(other_project, ctx.user.id, ctx.org.id)
@@ -176,6 +250,22 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
                    "scope" => "workflows",
                    "scope_id" => other_workflow.wf_id,
                    "path" => "debug/other_workflow_logs.txt"
+                 },
+                 ctx.user.id,
+                 false
+               )
+    end
+
+    test "returns 404 when provided project_id differs from workflow scope_id owner", ctx do
+      other_project = Support.Stubs.Project.create(ctx.org, ctx.user)
+
+      assert {404, "Not found"} =
+               signed_url(
+                 %{
+                   "project_id" => other_project.id,
+                   "scope" => "workflows",
+                   "scope_id" => ctx.workflow.wf_id,
+                   "path" => "debug/workflow_logs.txt"
                  },
                  ctx.user.id,
                  false
