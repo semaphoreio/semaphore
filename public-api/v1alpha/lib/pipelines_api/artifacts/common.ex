@@ -43,14 +43,8 @@ defmodule PipelinesAPI.Artifacts.Common do
     with {:ok, method} <- normalize_method(conn.params["method"], validate_method?),
          {:ok, normalized_path} <- sanitize_relative_path(conn.params["path"], require_path?) do
       result =
-        VD.verify(
-          VD.is_present_string?(conn.params["project_id"]),
-          "project_id must be present"
-        )
-        |> VD.verify(
-          VD.is_valid_uuid?(conn.params["project_id"]),
-          "project id must be a valid UUID"
-        )
+        VD.verify(:ok, true, "")
+        |> maybe_verify_project_id(conn.params["project_id"])
         |> VD.verify(
           VD.is_present_string?(conn.params["scope"]),
           "scope must be present"
@@ -80,6 +74,50 @@ defmodule PipelinesAPI.Artifacts.Common do
         conn |> resp(400, message) |> halt()
     end
   end
+
+  def project_id_from_scope(%{"scope" => "projects", "scope_id" => scope_id}), do: {:ok, scope_id}
+
+  def project_id_from_scope(%{"scope" => "jobs", "scope_id" => scope_id}) do
+    with {:ok, job} <- JobsClient.describe(%{"job_id" => scope_id}),
+         true <- is_binary(job.project_id) and job.project_id != "" do
+      {:ok, job.project_id}
+    else
+      false ->
+        ToTuple.internal_error("Internal error")
+
+      {:error, {:internal, _}} = error ->
+        error
+
+      {:error, _} ->
+        ToTuple.not_found_error("Not found")
+
+      _ ->
+        ToTuple.internal_error("Internal error")
+    end
+  end
+
+  def project_id_from_scope(%{"scope" => "workflows", "scope_id" => scope_id}) do
+    with {:ok, response} <-
+           scope_id |> WFRequestFormatter.form_describe_request() |> WFGrpcClient.describe(),
+         {:ok, workflow} <- workflow_from_response(response),
+         true <- is_binary(workflow.project_id) and workflow.project_id != "" do
+      {:ok, workflow.project_id}
+    else
+      false ->
+        ToTuple.internal_error("Internal error")
+
+      {:error, {:internal, _}} = error ->
+        error
+
+      {:error, _} ->
+        ToTuple.not_found_error("Not found")
+
+      _ ->
+        ToTuple.internal_error("Internal error")
+    end
+  end
+
+  def project_id_from_scope(_params), do: ToTuple.not_found_error("Not found")
 
   def sanitize_relative_path(path, required? \\ false)
 
@@ -123,6 +161,13 @@ defmodule PipelinesAPI.Artifacts.Common do
   defp normalize_method(_method, true), do: {:error, "method must be one of: GET, HEAD"}
 
   defp maybe_verify_method(result, false, _method), do: result
+
+  defp maybe_verify_project_id(result, nil), do: result
+  defp maybe_verify_project_id(result, ""), do: result
+
+  defp maybe_verify_project_id(result, project_id) do
+    VD.verify(result, VD.is_valid_uuid?(project_id), "project id must be a valid UUID")
+  end
 
   defp maybe_verify_method(result, true, method) do
     VD.verify(
@@ -194,46 +239,9 @@ defmodule PipelinesAPI.Artifacts.Common do
 
   defp scope_ownership_endpoint(_conn), do: "artifacts"
 
-  defp scope_belongs_to_project(%{
-         "scope" => "projects",
-         "scope_id" => scope_id,
-         "project_id" => project_id
-       }) do
-    if scope_id == project_id, do: :ok, else: ToTuple.not_found_error("Not found")
-  end
-
-  defp scope_belongs_to_project(%{
-         "scope" => "jobs",
-         "scope_id" => scope_id,
-         "project_id" => project_id
-       }) do
-    with {:ok, job} <- JobsClient.describe(%{"job_id" => scope_id}),
-         true <- job.project_id == project_id do
-      :ok
-    else
-      false ->
-        ToTuple.not_found_error("Not found")
-
-      {:error, {:internal, _}} = error ->
-        error
-
-      {:error, _} ->
-        ToTuple.not_found_error("Not found")
-
-      _ ->
-        ToTuple.internal_error("Internal error")
-    end
-  end
-
-  defp scope_belongs_to_project(%{
-         "scope" => "workflows",
-         "scope_id" => scope_id,
-         "project_id" => project_id
-       }) do
-    with {:ok, response} <-
-           scope_id |> WFRequestFormatter.form_describe_request() |> WFGrpcClient.describe(),
-         {:ok, workflow} <- workflow_from_response(response),
-         true <- workflow.project_id == project_id do
+  defp scope_belongs_to_project(params = %{"project_id" => project_id}) do
+    with {:ok, resolved_project_id} <- project_id_from_scope(params),
+         true <- resolved_project_id == project_id do
       :ok
     else
       false ->

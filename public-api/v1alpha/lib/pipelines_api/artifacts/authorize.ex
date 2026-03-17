@@ -5,14 +5,23 @@ defmodule PipelinesAPI.Artifacts.Authorize do
 
   use Plug.Builder
 
+  alias PipelinesAPI.Artifacts.Common, as: ArtifactsCommon
   alias PipelinesAPI.RBACClient
   alias LogTee, as: LT
   alias Plug.Conn
 
   def authorize_view(conn, _opts) do
-    case conn.params["project_id"] do
-      nil -> conn |> resp(400, "Bad Request: missing project_id parameter") |> halt()
-      project_id -> authorize(project_id, "project.artifacts.view", conn)
+    with {:ok, project_id} <- get_project_id(conn),
+         conn <- put_project_id(conn, project_id) do
+      authorize(project_id, "project.artifacts.view", conn)
+    else
+      {:error, {:internal, _}} = error ->
+        LT.error(error, "Artifacts.Authorize")
+        conn |> authorization_failed(:internal)
+
+      error ->
+        LT.error(error, "Artifacts.Authorize")
+        conn |> authorization_failed(:user)
     end
   end
 
@@ -33,6 +42,20 @@ defmodule PipelinesAPI.Artifacts.Authorize do
         LT.error(error, "Artifacts.Authorize")
         conn |> authorization_failed(:user)
     end
+  end
+
+  defp get_project_id(%{params: %{"project_id" => project_id}})
+       when is_binary(project_id) and project_id != "" do
+    {:ok, project_id}
+  end
+
+  defp get_project_id(conn) do
+    ArtifactsCommon.project_id_from_scope(conn.params)
+  end
+
+  defp put_project_id(conn, project_id) do
+    conn
+    |> Map.put(:params, Map.put(conn.params, "project_id", project_id))
   end
 
   defp authorize_or_halt(permissions, permission, conn) do
