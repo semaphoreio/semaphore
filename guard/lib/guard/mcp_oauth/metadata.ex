@@ -49,7 +49,7 @@ defmodule Guard.McpOAuth.Metadata do
     domain = Application.fetch_env!(:guard, :base_domain)
 
     %{
-      resource: "https://mcp.#{domain}",
+      resource: "https://mcp.#{domain}/mcp",
       authorization_servers: ["https://mcp.#{domain}/mcp/oauth"],
       scopes_supported: ["mcp"],
       bearer_methods_supported: ["header"],
