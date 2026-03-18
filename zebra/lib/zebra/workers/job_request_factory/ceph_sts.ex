@@ -96,17 +96,19 @@ defmodule Zebra.Workers.JobRequestFactory.CephSts do
   defp signed_http_request(config, method, url, creds, headers, body) do
     headers = maybe_add_host_header(headers, url)
 
-    case apply(signer_module(), :sign_v4, [
-           creds.access_key,
-           creds.secret_key,
-           config.region,
-           "sts",
-           :calendar.universal_time(),
-           method |> to_string() |> String.upcase(),
-           url,
-           normalize_signing_headers(headers),
-           body
-         ]) do
+    signing_input = %{
+      access_key: creds.access_key,
+      secret_key: creds.secret_key,
+      region: config.region,
+      service: "sts",
+      request_datetime: :calendar.universal_time(),
+      request_method: method |> to_string() |> String.upcase(),
+      request_url: url,
+      request_headers: normalize_signing_headers(headers),
+      request_body: body
+    }
+
+    case sign_v4(signer_module(), signing_input) do
       signed_headers when is_list(signed_headers) ->
         do_http_request(config, method, url, signed_headers, body)
 
@@ -124,17 +126,35 @@ defmodule Zebra.Workers.JobRequestFactory.CephSts do
       {:error, {:signing_error, error}}
   end
 
+  defp sign_v4(module, input) do
+    cond do
+      function_exported?(module, :sign_v4, 1) ->
+        module.sign_v4(input)
+
+      function_exported?(module, :sign_v4, 9) ->
+        module.sign_v4(
+          input.access_key,
+          input.secret_key,
+          input.region,
+          input.service,
+          input.request_datetime,
+          input.request_method,
+          input.request_url,
+          input.request_headers,
+          input.request_body
+        )
+
+      true ->
+        {:error, {:unsupported_signer_module, module}}
+    end
+  end
+
   defp do_http_request(config, method, url, headers, body) do
     request =
       {String.to_charlist(url), to_httpc_headers(headers), 'application/x-www-form-urlencoded',
        body}
 
-    case apply(http_client_module(), :request, [
-           method,
-           request,
-           http_options(config),
-           [body_format: :binary]
-         ]) do
+    case http_client_module().request(method, request, http_options(config), [body_format: :binary]) do
       {:ok, {{_http_version, status, _reason_phrase}, _response_headers, response_body}} ->
         {:ok, %{status: status, body: response_body}}
 

@@ -4,7 +4,7 @@ defmodule Zebra.Workers.JobRequestFactory.CephStsTest do
   alias Zebra.Workers.JobRequestFactory.CephSts
 
   defmodule SignerMock do
-    def sign_v4(_ak, _sk, _region, _service, _time, _method, _url, headers, _body) do
+    def sign_v4(%{request_headers: headers}) do
       send(self(), {:sign_called, headers})
       [{"authorization", "AWS4-HMAC-SHA256 test"} | headers]
     end
