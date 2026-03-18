@@ -47,6 +47,8 @@ Refer to [`AGENTS.md`](AGENTS.md) for repository guidelines, project structure, 
 | `pipeline_jobs` | List jobs belonging to a specific pipeline. |
 | `jobs_describe` | Describes a job, surfacing agent details and lifecycle timestamps. |
 | `jobs_logs` | Fetches job logs. Hosted jobs stream loghub events; self-hosted jobs return a URL to fetch logs. |
+| `artifacts_list` | Lists artifacts for project/workflow/job scopes with permission checks and safe path handling. |
+| `artifacts_signed_url` | Returns a signed URL for a scoped artifact path after validating scope ownership and permissions. |
 
 ## Requirements
 
@@ -73,6 +75,7 @@ The server dials internal gRPC services based on environment variables. Deployme
 | Workflow gRPC endpoint | `INTERNAL_API_URL_PLUMBER`, `MCP_WORKFLOW_GRPC_ENDPOINT`, `WF_GRPC_URL` |
 | Pipeline gRPC endpoint | `INTERNAL_API_URL_PLUMBER`, `MCP_PIPELINE_GRPC_ENDPOINT`, `PPL_GRPC_URL` |
 | Job gRPC endpoint | `INTERNAL_API_URL_JOB`, `MCP_JOB_GRPC_ENDPOINT`, `JOBS_API_URL` |
+| Artifacthub gRPC endpoint | `INTERNAL_API_URL_ARTIFACTHUB`, `MCP_ARTIFACTHUB_GRPC_ENDPOINT` |
 | Loghub gRPC endpoint (hosted logs) | `INTERNAL_API_URL_LOGHUB`, `MCP_LOGHUB_GRPC_ENDPOINT`, `LOGHUB_API_URL` |
 | Loghub2 gRPC endpoint (self-hosted logs) | `INTERNAL_API_URL_LOGHUB2`, `MCP_LOGHUB2_GRPC_ENDPOINT`, `LOGHUB2_API_URL` |
 | RBAC gRPC endpoint | `INTERNAL_API_URL_RBAC`, `MCP_RBAC_GRPC_ENDPOINT` |
