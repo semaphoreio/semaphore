@@ -160,7 +160,8 @@ defmodule Zebra.Workers.JobRequestFactory.CacheTest do
   end
 
   test "session_name_for_job normalizes disallowed chars and limits length" do
-    session_name = Cache.session_name_for_job("ABC/123:weird*chars-#{String.duplicate("x", 80)}", true)
+    session_name =
+      Cache.session_name_for_job("ABC/123:weird*chars-#{String.duplicate("x", 80)}", true)
 
     assert byte_size(session_name) <= 64
     assert session_name =~ ~r/^[a-z0-9+=,.@-]+$/

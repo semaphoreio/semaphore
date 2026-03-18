@@ -140,7 +140,9 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
         JobRequest.env_var("AWS_SESSION_TOKEN", credentials.session_token)
       ]
 
-      if FeatureProvider.feature_enabled?(:cache_cli_parallel_archive_method, param: organization_id) do
+      if FeatureProvider.feature_enabled?(:cache_cli_parallel_archive_method,
+           param: organization_id
+         ) do
         {:ok,
          vars ++
            [

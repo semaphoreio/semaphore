@@ -11,11 +11,11 @@ defmodule InternalApi.Cache.CreateRequest do
         }
   defstruct [:organization_id, :project_id, :organization_name, :project_name, :backend]
 
-  field :organization_id, 1, type: :string
-  field :project_id, 2, type: :string
-  field :organization_name, 3, type: :string
-  field :project_name, 4, type: :string
-  field :backend, 5, type: InternalApi.Cache.Backend, enum: true
+  field(:organization_id, 1, type: :string)
+  field(:project_id, 2, type: :string)
+  field(:organization_name, 3, type: :string)
+  field(:project_name, 4, type: :string)
+  field(:backend, 5, type: InternalApi.Cache.Backend, enum: true)
 end
 
 defmodule InternalApi.Cache.CreateResponse do
@@ -28,8 +28,8 @@ defmodule InternalApi.Cache.CreateResponse do
         }
   defstruct [:cache_id, :status]
 
-  field :cache_id, 1, type: :string
-  field :status, 2, type: InternalApi.ResponseStatus
+  field(:cache_id, 1, type: :string)
+  field(:status, 2, type: InternalApi.ResponseStatus)
 end
 
 defmodule InternalApi.Cache.DescribeRequest do
@@ -41,7 +41,7 @@ defmodule InternalApi.Cache.DescribeRequest do
         }
   defstruct [:cache_id]
 
-  field :cache_id, 1, type: :string
+  field(:cache_id, 1, type: :string)
 end
 
 defmodule InternalApi.Cache.DescribeResponse do
@@ -54,8 +54,8 @@ defmodule InternalApi.Cache.DescribeResponse do
         }
   defstruct [:cache, :status]
 
-  field :cache, 1, type: InternalApi.Cache.Cache
-  field :status, 2, type: InternalApi.ResponseStatus
+  field(:cache, 1, type: InternalApi.Cache.Cache)
+  field(:status, 2, type: InternalApi.ResponseStatus)
 end
 
 defmodule InternalApi.Cache.DestroyRequest do
@@ -67,7 +67,7 @@ defmodule InternalApi.Cache.DestroyRequest do
         }
   defstruct [:cache_id]
 
-  field :cache_id, 1, type: :string
+  field(:cache_id, 1, type: :string)
 end
 
 defmodule InternalApi.Cache.DestroyResponse do
@@ -79,7 +79,7 @@ defmodule InternalApi.Cache.DestroyResponse do
         }
   defstruct [:status]
 
-  field :status, 2, type: InternalApi.ResponseStatus
+  field(:status, 2, type: InternalApi.ResponseStatus)
 end
 
 defmodule InternalApi.Cache.UpdateRequest do
@@ -91,7 +91,7 @@ defmodule InternalApi.Cache.UpdateRequest do
         }
   defstruct [:cache]
 
-  field :cache, 1, type: InternalApi.Cache.Cache
+  field(:cache, 1, type: InternalApi.Cache.Cache)
 end
 
 defmodule InternalApi.Cache.UpdateResponse do
@@ -104,8 +104,8 @@ defmodule InternalApi.Cache.UpdateResponse do
         }
   defstruct [:cache, :status]
 
-  field :cache, 1, type: InternalApi.Cache.Cache
-  field :status, 2, type: InternalApi.ResponseStatus
+  field(:cache, 1, type: InternalApi.Cache.Cache)
+  field(:status, 2, type: InternalApi.ResponseStatus)
 end
 
 defmodule InternalApi.Cache.UpdateCacheQuotaRequest do
@@ -119,9 +119,9 @@ defmodule InternalApi.Cache.UpdateCacheQuotaRequest do
         }
   defstruct [:cache_id, :max_size_bytes, :max_objects]
 
-  field :cache_id, 1, type: :string
-  field :max_size_bytes, 2, type: :int64
-  field :max_objects, 3, type: :int64
+  field(:cache_id, 1, type: :string)
+  field(:max_size_bytes, 2, type: :int64)
+  field(:max_objects, 3, type: :int64)
 end
 
 defmodule InternalApi.Cache.UpdateCacheQuotaResponse do
@@ -134,8 +134,8 @@ defmodule InternalApi.Cache.UpdateCacheQuotaResponse do
         }
   defstruct [:cache, :status]
 
-  field :cache, 1, type: InternalApi.Cache.Cache
-  field :status, 2, type: InternalApi.ResponseStatus
+  field(:cache, 1, type: InternalApi.Cache.Cache)
+  field(:status, 2, type: InternalApi.ResponseStatus)
 end
 
 defmodule InternalApi.Cache.ProvisionCephCacheRequest do
@@ -151,11 +151,11 @@ defmodule InternalApi.Cache.ProvisionCephCacheRequest do
         }
   defstruct [:cache_id, :organization_id, :project_id, :organization_name, :project_name]
 
-  field :cache_id, 1, type: :string
-  field :organization_id, 2, type: :string
-  field :project_id, 3, type: :string
-  field :organization_name, 4, type: :string
-  field :project_name, 5, type: :string
+  field(:cache_id, 1, type: :string)
+  field(:organization_id, 2, type: :string)
+  field(:project_id, 3, type: :string)
+  field(:organization_name, 4, type: :string)
+  field(:project_name, 5, type: :string)
 end
 
 defmodule InternalApi.Cache.ProvisionCephCacheResponse do
@@ -168,8 +168,8 @@ defmodule InternalApi.Cache.ProvisionCephCacheResponse do
         }
   defstruct [:cache, :status]
 
-  field :cache, 1, type: InternalApi.Cache.Cache
-  field :status, 2, type: InternalApi.ResponseStatus
+  field(:cache, 1, type: InternalApi.Cache.Cache)
+  field(:status, 2, type: InternalApi.ResponseStatus)
 end
 
 defmodule InternalApi.Cache.Cache do
@@ -201,55 +201,59 @@ defmodule InternalApi.Cache.Cache do
     :backend
   ]
 
-  field :id, 1, type: :string
-  field :credential, 2, type: :string
-  field :url, 3, type: :string
-  field :bucket, 4, type: :string
-  field :ro_role_arn, 5, type: :string
-  field :rw_role_arn, 6, type: :string
-  field :state, 7, type: InternalApi.Cache.CacheState, enum: true
-  field :quota_max_size_bytes, 8, type: :int64
-  field :quota_max_objects, 9, type: :int64
-  field :backend, 10, type: InternalApi.Cache.Backend, enum: true
+  field(:id, 1, type: :string)
+  field(:credential, 2, type: :string)
+  field(:url, 3, type: :string)
+  field(:bucket, 4, type: :string)
+  field(:ro_role_arn, 5, type: :string)
+  field(:rw_role_arn, 6, type: :string)
+  field(:state, 7, type: InternalApi.Cache.CacheState, enum: true)
+  field(:quota_max_size_bytes, 8, type: :int64)
+  field(:quota_max_objects, 9, type: :int64)
+  field(:backend, 10, type: InternalApi.Cache.Backend, enum: true)
 end
 
 defmodule InternalApi.Cache.CacheState do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :CACHE_STATE_UNSPECIFIED, 0
-  field :PROVISIONING, 1
-  field :READY, 2
-  field :FAILED, 3
-  field :UNAVAILABLE, 4
-  field :DELETING, 5
+  field(:CACHE_STATE_UNSPECIFIED, 0)
+  field(:PROVISIONING, 1)
+  field(:READY, 2)
+  field(:FAILED, 3)
+  field(:UNAVAILABLE, 4)
+  field(:DELETING, 5)
 end
 
 defmodule InternalApi.Cache.Backend do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :BACKEND_UNSPECIFIED, 0
-  field :SFTP, 1
-  field :CEPH, 2
+  field(:BACKEND_UNSPECIFIED, 0)
+  field(:SFTP, 1)
+  field(:CEPH, 2)
 end
 
 defmodule InternalApi.Cache.CacheService.Service do
   @moduledoc false
   use GRPC.Service, name: "InternalApi.Cache.CacheService"
 
-  rpc :Create, InternalApi.Cache.CreateRequest, InternalApi.Cache.CreateResponse
-  rpc :Describe, InternalApi.Cache.DescribeRequest, InternalApi.Cache.DescribeResponse
-  rpc :Destroy, InternalApi.Cache.DestroyRequest, InternalApi.Cache.DestroyResponse
-  rpc :Update, InternalApi.Cache.UpdateRequest, InternalApi.Cache.UpdateResponse
+  rpc(:Create, InternalApi.Cache.CreateRequest, InternalApi.Cache.CreateResponse)
+  rpc(:Describe, InternalApi.Cache.DescribeRequest, InternalApi.Cache.DescribeResponse)
+  rpc(:Destroy, InternalApi.Cache.DestroyRequest, InternalApi.Cache.DestroyResponse)
+  rpc(:Update, InternalApi.Cache.UpdateRequest, InternalApi.Cache.UpdateResponse)
 
-  rpc :UpdateCacheQuota,
-      InternalApi.Cache.UpdateCacheQuotaRequest,
-      InternalApi.Cache.UpdateCacheQuotaResponse
+  rpc(
+    :UpdateCacheQuota,
+    InternalApi.Cache.UpdateCacheQuotaRequest,
+    InternalApi.Cache.UpdateCacheQuotaResponse
+  )
 
-  rpc :ProvisionCephCache,
-      InternalApi.Cache.ProvisionCephCacheRequest,
-      InternalApi.Cache.ProvisionCephCacheResponse
+  rpc(
+    :ProvisionCephCache,
+    InternalApi.Cache.ProvisionCephCacheRequest,
+    InternalApi.Cache.ProvisionCephCacheResponse
+  )
 end
 
 defmodule InternalApi.Cache.CacheService.Stub do

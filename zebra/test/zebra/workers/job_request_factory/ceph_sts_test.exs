@@ -12,18 +12,17 @@ defmodule Zebra.Workers.JobRequestFactory.CephStsTest do
 
   defmodule HttpClientSuccessMock do
     def request(:post, _request, _opts, _http_opts) do
-      body =
-        """
-        <AssumeRoleResponse>
-          <AssumeRoleResult>
-            <Credentials>
-              <AccessKeyId>TMP_ACCESS</AccessKeyId>
-              <SecretAccessKey>TMP_SECRET</SecretAccessKey>
-              <SessionToken>TMP_TOKEN</SessionToken>
-            </Credentials>
-          </AssumeRoleResult>
-        </AssumeRoleResponse>
-        """
+      body = """
+      <AssumeRoleResponse>
+        <AssumeRoleResult>
+          <Credentials>
+            <AccessKeyId>TMP_ACCESS</AccessKeyId>
+            <SecretAccessKey>TMP_SECRET</SecretAccessKey>
+            <SessionToken>TMP_TOKEN</SessionToken>
+          </Credentials>
+        </AssumeRoleResult>
+      </AssumeRoleResponse>
+      """
 
       {:ok, {{'HTTP/1.1', 200, 'OK'}, [], body}}
     end
@@ -31,15 +30,14 @@ defmodule Zebra.Workers.JobRequestFactory.CephStsTest do
 
   defmodule HttpClientErrorMock do
     def request(:post, _request, _opts, _http_opts) do
-      body =
-        """
-        <ErrorResponse>
-          <Error>
-            <Code>AccessDenied</Code>
-            <Message>Denied</Message>
-          </Error>
-        </ErrorResponse>
-        """
+      body = """
+      <ErrorResponse>
+        <Error>
+          <Code>AccessDenied</Code>
+          <Message>Denied</Message>
+        </Error>
+      </ErrorResponse>
+      """
 
       {:ok, {{'HTTP/1.1', 403, 'Forbidden'}, [], body}}
     end
@@ -67,8 +65,11 @@ defmodule Zebra.Workers.JobRequestFactory.CephStsTest do
     Application.put_env(:zebra, :ceph_sts_http_client_module, HttpClientSuccessMock)
 
     assert {:ok,
-            %{access_key_id: "TMP_ACCESS", secret_access_key: "TMP_SECRET", session_token: "TMP_TOKEN"}} =
-             CephSts.assume_role("arn:aws:iam::acc:role/project-rw", "zebra-rw-job", 3600)
+            %{
+              access_key_id: "TMP_ACCESS",
+              secret_access_key: "TMP_SECRET",
+              session_token: "TMP_TOKEN"
+            }} = CephSts.assume_role("arn:aws:iam::acc:role/project-rw", "zebra-rw-job", 3600)
 
     assert_receive {:sign_called, headers}
     assert Enum.any?(headers, fn {name, _} -> name == "host" end)
