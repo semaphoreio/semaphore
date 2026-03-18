@@ -154,7 +154,7 @@ defmodule Zebra.Workers.JobRequestFactory.CephSts do
       {String.to_charlist(url), to_httpc_headers(headers), 'application/x-www-form-urlencoded',
        body}
 
-    case http_client_module().request(method, request, http_options(config), [body_format: :binary]) do
+    case http_client_module().request(method, request, http_options(config), body_format: :binary) do
       {:ok, {{_http_version, status, _reason_phrase}, _response_headers, response_body}} ->
         {:ok, %{status: status, body: response_body}}
 
