@@ -197,6 +197,42 @@ describe(`DecompressGzipJson`, () => {
         expect((error as Error).message).to.include(`Payload is missing testResults array`);
       }
     });
+
+    it(`should reject gzipped payload missing testResults via streaming path`, async () => {
+      const blob = makeGzipBlob({ error: `forbidden` });
+
+      try {
+        await DecompressGzipJson(blob, { forceStreaming: true });
+        expect.fail(`Expected schema validation to fail`);
+      } catch (error) {
+        expect(error).to.be.an(`error`);
+        expect((error as Error).message).to.include(`Payload is missing testResults array`);
+      }
+    });
+
+    it(`should reject gzipped payload with non-array testResults via streaming path`, async () => {
+      const blob = makeGzipBlob({ testResults: {} });
+
+      try {
+        await DecompressGzipJson(blob, { forceStreaming: true });
+        expect.fail(`Expected schema validation to fail`);
+      } catch (error) {
+        expect(error).to.be.an(`error`);
+        expect((error as Error).message).to.include(`Payload is missing testResults array`);
+      }
+    });
+
+    it(`should reject gzipped payload with string testResults via streaming path`, async () => {
+      const blob = makeGzipBlob({ testResults: `not an array` });
+
+      try {
+        await DecompressGzipJson(blob, { forceStreaming: true });
+        expect.fail(`Expected schema validation to fail`);
+      } catch (error) {
+        expect(error).to.be.an(`error`);
+        expect((error as Error).message).to.include(`Payload is missing testResults array`);
+      }
+    });
   });
 
   describe(`IsGzipBlob`, () => {

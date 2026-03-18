@@ -1,5 +1,5 @@
 import { inflate, Inflate } from 'pako';
-import { JSONParser, type JSONParserOptions } from '@streamparser/json';
+import { JSONParser, type JSONParserOptions, TokenType } from '@streamparser/json';
 
 interface ReadableStreamWithPipeThrough<R = Uint8Array> extends ReadableStream<R> {
   pipeThrough<T>(
@@ -127,7 +127,60 @@ const decodeChunksToPayload = async (
   const reports: unknown[] = [];
   let bytesRead = 0;
 
+  // Track whether the root JSON object contains a "testResults" key whose
+  // value is an array.  Without this the streaming path silently returns
+  // { testResults: [] } for payloads that lack the key entirely.
+  let foundTestResultsArray = false;
+  let depth = 0;
+  let expectKey = false;
+  let awaitTestResultsValue = false;
+
   const parser = new JSONParser(STREAM_PARSER_OPTIONS);
+
+  parser.onToken = ({ token, value }) => {
+    if (token === TokenType.LEFT_BRACE || token === TokenType.LEFT_BRACKET) {
+      if (awaitTestResultsValue && token === TokenType.LEFT_BRACKET) {
+        foundTestResultsArray = true;
+      }
+
+      awaitTestResultsValue = false;
+      depth++;
+
+      if (token === TokenType.LEFT_BRACE && depth === 1) {
+        expectKey = true;
+      }
+
+      return;
+    }
+
+    if (token === TokenType.RIGHT_BRACE || token === TokenType.RIGHT_BRACKET) {
+      depth--;
+      awaitTestResultsValue = false;
+      return;
+    }
+
+    if (depth !== 1) {
+      return;
+    }
+
+    if (token === TokenType.COLON) {
+      return;
+    }
+
+    if (token === TokenType.COMMA) {
+      expectKey = true;
+      awaitTestResultsValue = false;
+      return;
+    }
+
+    if (expectKey && token === TokenType.STRING) {
+      awaitTestResultsValue = value === `testResults`;
+      expectKey = false;
+      return;
+    }
+
+    awaitTestResultsValue = false;
+  };
 
   parser.onValue = ({ value, key }) => {
     if (typeof key !== `number` || value === undefined) {
@@ -159,6 +212,10 @@ const decodeChunksToPayload = async (
   });
 
   parser.end();
+
+  if (bytesRead > 0 && !foundTestResultsArray) {
+    throw new SchemaValidationError(`Payload is missing testResults array`);
+  }
 
   return {
     payload: { testResults: reports },
@@ -257,6 +314,10 @@ const decompressStreaming = async (blob: Blob): Promise<TestResultsPayload> => {
     try {
       return await streamWithNativeDecompression(blob);
     } catch (error) {
+      if (error instanceof SchemaValidationError) {
+        throw error;
+      }
+
       logError(`Native streaming failed, falling back to pako`, error, {
         blobSize: blob.size,
       });
