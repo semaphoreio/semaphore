@@ -20,7 +20,7 @@ defmodule Zebra.Mixfile do
   def application do
     [
       mod: {Zebra.Application, []},
-      extra_applications: [:logger, :runtime_tools]
+      extra_applications: [:logger, :runtime_tools, :inets, :ssl]
     ]
   end
 
@@ -43,6 +43,7 @@ defmodule Zebra.Mixfile do
       {:telemetry, "~> 0.4", override: true},
       {:quantum, "~> 2.3"},
       {:httpoison, "~> 1.0"},
+      {:aws_signature, "~> 0.3"},
       {:ecto_sql, "~> 3.7.1"},
       {:postgrex, ">= 0.15.13"},
       {:gettext, "~> 0.11"},

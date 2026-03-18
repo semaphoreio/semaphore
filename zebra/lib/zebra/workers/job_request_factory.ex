@@ -87,7 +87,7 @@ defmodule Zebra.Workers.JobRequestFactory do
          {:ok, organization} <- Task.await(find_org),
          {:ok, cache} <- Task.await(find_cache),
          {:ok, cache_files} <- Cache.files(job, cache),
-         {:ok, cache_env_vars} <- Cache.env_vars(job, cache, org_id),
+         {:ok, cache_env_vars} <- Cache.env_vars(job, cache, org_id, repo_proxy, job_type),
          {:ok, all_secrets} <- Task.await(find_secrets),
          {:ok, artifact_env_var} <- Task.await(find_artifact_token),
          {:ok, loghub2_token} <- Task.await(generate_token),
