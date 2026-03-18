@@ -129,6 +129,13 @@ defmodule Gofer.TargetTrigger.Engine.TargetTriggerProcess.Test do
   end
 
   test "TTP exits with \"Deadline reached\" even if there are older unprocessed triggers", ctx do
+    previous_ttl = Application.get_env(:gofer, :target_trigger_ttl_ms)
+    Application.put_env(:gofer, :target_trigger_ttl_ms, 50)
+
+    on_exit(fn ->
+      Application.put_env(:gofer, :target_trigger_ttl_ms, previous_ttl)
+    end)
+
     use_test_plumber_service()
     test_plumber_service_schedule_response("valid")
 
@@ -152,7 +159,7 @@ defmodule Gofer.TargetTrigger.Engine.TargetTriggerProcess.Test do
 
     assert {:ok, _new_targ_tg} = TargetTriggerQueries.insert(params)
 
-    :timer.sleep(40_000)
+    :timer.sleep(100)
 
     # second one does not wait for first but is canceld because of deadline
     state = %{switch_trigger_id: new_sw_tg.id, target_name: "stg"}
@@ -410,10 +417,17 @@ defmodule Gofer.TargetTrigger.Engine.TargetTriggerProcess.Test do
 
   test "TTP exits and storres \"Deadline reached\" error in db when time_to_live is reached",
        ctx do
+    previous_ttl = Application.get_env(:gofer, :target_trigger_ttl_ms)
+    Application.put_env(:gofer, :target_trigger_ttl_ms, 50)
+
+    on_exit(fn ->
+      Application.put_env(:gofer, :target_trigger_ttl_ms, previous_ttl)
+    end)
+
     use_test_plumber_service()
     test_plumber_service_schedule_response("timeout")
 
-    :timer.sleep(40_000)
+    :timer.sleep(100)
 
     state = %{switch_trigger_id: ctx.switch_trigger.id, target_name: "stg"}
     assert {:stop, :normal, state} == TTP.handle_info(:schedule_pipeline, state)
