@@ -21,16 +21,6 @@ export const PlansPage = () => {
         </div>
       </div>
 
-      {config.pricingUrl && (
-        <toolbox.Box type="warning" className="mb3">
-          Before switching plans, verify that your currently used machine types and OS images are
-          {` `}
-          <a href={config.pricingUrl} target="_blank" rel="noreferrer" className="link b">
-            compatible with the new plan
-          </a>.
-        </toolbox.Box>
-      )}
-
       {plans.map((plan) => (
         <PlanCard key={plan.type} plan={plan}/>
       ))}
@@ -131,11 +121,22 @@ const PlanConfirmation = (props: PlanConfirmationProps) => {
         </div>
         <div className="f5 gray mb3">{plan.description}</div>
 
-        {(chargingType === Spendings.PlanType.Postpaid || chargingType === Spendings.PlanType.Prepaid) && (
-          <toolbox.Box type="info" className="mb3">
-            You will be charged today and the switch will happen immediately.
-          </toolbox.Box>
-        )}
+        <toolbox.Box type="warning" className="mb3">
+          <ul className="list pl0 ma0">
+            <li>This action cannot be undone. You will not be able to switch back to your previous plan.</li>
+            {(chargingType === Spendings.PlanType.Postpaid || chargingType === Spendings.PlanType.Prepaid) && (
+              <li className="mt2">You will be charged today and the switch will happen immediately.</li>
+            )}
+            {config.pricingUrl && (
+              <li className="mt2">
+                Verify that your currently used machine types and OS images are{` `}
+                <a href={config.pricingUrl} target="_blank" rel="noreferrer" className="link b">
+                  compatible with the new plan
+                </a>.
+              </li>
+            )}
+          </ul>
+        </toolbox.Box>
 
         {isLoading.value && (
           <div className="flex pv3">

@@ -12,7 +12,7 @@ defmodule FrontWeb.BillingController do
   plug(
     PageAccess,
     [permissions: "organization.plans_and_billing.manage"]
-    when action in [:set_budget, :update_addon]
+    when action in [:set_budget, :update_addon, :upgrade, :can_upgrade]
   )
 
   plug(
