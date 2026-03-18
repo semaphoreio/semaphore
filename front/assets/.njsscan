@@ -21,7 +21,11 @@
   ignore-paths:
   - node_modules
 
-  ignore-rules: []
+  # node_timing_attack flags all === comparisons as potential timing side-channels.
+  # This frontend codebase has no secret-comparison code; all flagged sites compare
+  # numeric enum values (JSON parser token types) with no network-observable timing.
+  ignore-rules:
+  - node_timing_attack
 
   severity-filter:
   - WARNING
