@@ -138,48 +138,53 @@ const decodeChunksToPayload = async (
   const parser = new JSONParser(STREAM_PARSER_OPTIONS);
 
   parser.onToken = ({ token, value }) => {
-    if (token === TokenType.LEFT_BRACE || token === TokenType.LEFT_BRACKET) {
-      if (awaitTestResultsValue && token === TokenType.LEFT_BRACKET) {
-        foundTestResultsArray = true;
-      }
+    switch (token) {
+      case TokenType.LEFT_BRACE:
+      case TokenType.LEFT_BRACKET:
+        if (awaitTestResultsValue && token === TokenType.LEFT_BRACKET) {
+          foundTestResultsArray = true;
+        }
 
-      awaitTestResultsValue = false;
-      depth++;
+        awaitTestResultsValue = false;
+        depth++;
 
-      if (token === TokenType.LEFT_BRACE && depth === 1) {
-        expectKey = true;
-      }
+        if (token === TokenType.LEFT_BRACE && depth === 1) {
+          expectKey = true;
+        }
 
-      return;
+        break;
+
+      case TokenType.RIGHT_BRACE:
+      case TokenType.RIGHT_BRACKET:
+        depth--;
+        awaitTestResultsValue = false;
+        break;
+
+      case TokenType.COLON:
+        break;
+
+      case TokenType.COMMA:
+        if (depth === 1) {
+          expectKey = true;
+          awaitTestResultsValue = false;
+        }
+
+        break;
+
+      default:
+        if (depth !== 1) {
+          break;
+        }
+
+        if (expectKey && token === TokenType.STRING) {
+          awaitTestResultsValue = value === `testResults`;
+          expectKey = false;
+        } else {
+          awaitTestResultsValue = false;
+        }
+
+        break;
     }
-
-    if (token === TokenType.RIGHT_BRACE || token === TokenType.RIGHT_BRACKET) {
-      depth--;
-      awaitTestResultsValue = false;
-      return;
-    }
-
-    if (depth !== 1) {
-      return;
-    }
-
-    if (token === TokenType.COLON) {
-      return;
-    }
-
-    if (token === TokenType.COMMA) {
-      expectKey = true;
-      awaitTestResultsValue = false;
-      return;
-    }
-
-    if (expectKey && token === TokenType.STRING) {
-      awaitTestResultsValue = value === `testResults`;
-      expectKey = false;
-      return;
-    }
-
-    awaitTestResultsValue = false;
   };
 
   parser.onValue = ({ value, key }) => {
