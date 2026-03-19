@@ -45,9 +45,9 @@ defmodule Front.DashboardPage.CacheInvalidator do
   def pipeline_event(msg) do
     Watchman.benchmark({@metric_name, ["pipeline_event"]}, fn ->
       event = InternalApi.Plumber.PipelineEvent.decode(msg)
-      measure_queue_time(event, "pipeline_event")
 
       invalidate_with_pipeline_id(event.pipeline_id)
+      measure_queue_time(event, "pipeline_event")
 
       Logger.info(
         "#{@log_prefix} [PIPELINE EVENT] [pipeline_id=#{event.pipeline_id}] Processing finished"
@@ -63,9 +63,9 @@ defmodule Front.DashboardPage.CacheInvalidator do
   def pipeline_summary_event(msg) do
     Watchman.benchmark({@metric_name, ["pipeline_summary_event"]}, fn ->
       event = InternalApi.Velocity.PipelineSummaryAvailableEvent.decode(msg)
-      measure_queue_time(event, "pipeline_summary_event")
 
       invalidate_with_pipeline_id(event.pipeline_id)
+      measure_queue_time(event, "pipeline_summary_event")
 
       Logger.info(
         "#{@log_prefix} [PIPELINE SUMMARY EVENT] [pipeline_id=#{event.pipeline_id}] Processing finished"
@@ -80,9 +80,10 @@ defmodule Front.DashboardPage.CacheInvalidator do
 
   # Private
 
-  defp measure_queue_time(event, tag) do
+  defp measure_queue_time(%{timestamp: %{seconds: seconds, nanos: nanos}}, tag)
+       when is_integer(seconds) and is_integer(nanos) do
     fetched_for_processing_at = :os.system_time(:millisecond)
-    emitted_at = event.timestamp.seconds * 1000 + div(event.timestamp.nanos, 1_000_000)
+    emitted_at = seconds * 1000 + div(nanos, 1_000_000)
     queue_duration = fetched_for_processing_at - emitted_at
 
     Watchman.submit(
@@ -92,9 +93,27 @@ defmodule Front.DashboardPage.CacheInvalidator do
     )
   end
 
+  defp measure_queue_time(_, _), do: :ok
+
   defp invalidate_with_pipeline_id(pipeline_id) do
-    pipeline = Models.Pipeline.find_metadata(pipeline_id)
-    project = Models.Project.find_by_id(pipeline.project_id)
-    DashboardPage.Model.invalidate_org(project.organization_id)
+    with pipeline when is_map(pipeline) <- Models.Pipeline.find_metadata(pipeline_id),
+         organization_id when is_binary(organization_id) and organization_id != "" <-
+           Map.get(pipeline, :organization_id) do
+      DashboardPage.Model.invalidate_org(organization_id)
+    else
+      reason ->
+        Logger.warn(
+          "#{@log_prefix} [PIPELINE INVALIDATION SKIPPED] [pipeline_id=#{pipeline_id}] reason=#{inspect(reason)}"
+        )
+
+        :ok
+    end
+  rescue
+    exception ->
+      Logger.error(
+        "#{@log_prefix} [PIPELINE INVALIDATION FAILED] [pipeline_id=#{pipeline_id}] error=#{inspect(exception)}"
+      )
+
+      :ok
   end
 end

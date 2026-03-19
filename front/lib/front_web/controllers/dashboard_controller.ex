@@ -14,7 +14,6 @@ defmodule FrontWeb.DashboardController do
 
   @workflow_timeout_error_message "Loading workflows timed out. Please try again in a moment."
   @workflow_fetch_error_message "We couldn't load workflows right now. Please try again in a moment."
-
   def index(conn, params) do
     Watchman.benchmark("dashboard_controller.index", fn ->
       dashboard = conn |> extract_preferred_dashboard
@@ -116,6 +115,7 @@ defmodule FrontWeb.DashboardController do
   def workflows(conn, params) do
     user_id = conn.assigns.user_id
     org_id = conn.assigns.organization_id
+    force_cold_boot = force_cold_boot(conn, params)
     page_token = params["page_token"] || ""
     direction = params["direction"] || ""
     requester = params["requester"] == "true"
@@ -124,8 +124,12 @@ defmodule FrontWeb.DashboardController do
 
     filters = %{requester: requester}
     params = params(conn, page_token, direction, filters, project_ids, org_id)
-    cache_params = dashboard_page_load_params(org_id, user_id, requester, page_token, direction)
-    workflow_data = workflow_data(params, cache_params)
+
+    cache_params =
+      dashboard_page_load_params(org_id, user_id, requester, page_token, direction, project_ids)
+
+    cache_opts = [force_cold_boot: force_cold_boot]
+    workflow_data = workflow_data(params, cache_params, cache_opts)
 
     pagination =
       build_pagination(
@@ -436,8 +440,8 @@ defmodule FrontWeb.DashboardController do
     end)
   end
 
-  defp load_workflows(params, cache_params) do
-    case DashboardPage.Model.get(cache_params, fn -> list_workflows(params) end) do
+  defp load_workflows(params, cache_params, cache_opts) do
+    case DashboardPage.Model.get(cache_params, fn -> list_workflows(params) end, cache_opts) do
       {:ok, {workflows, next_page_token, previous_page_token}, _source} ->
         {:ok, workflows, next_page_token, previous_page_token}
 
@@ -446,15 +450,34 @@ defmodule FrontWeb.DashboardController do
     end
   end
 
-  defp dashboard_page_load_params(org_id, user_id, requester, page_token, direction) do
+  defp dashboard_page_load_params(
+         org_id,
+         user_id,
+         requester,
+         page_token,
+         direction,
+         project_ids
+       ) do
     struct!(DashboardPage.Model.LoadParams,
       organization_id: org_id,
       user_id: user_id,
       requester: requester,
+      project_ids_fingerprint: project_ids_fingerprint(project_ids),
       page_token: page_token,
       direction: direction
     )
   end
+
+  defp project_ids_fingerprint(project_ids) when is_list(project_ids) do
+    project_ids
+    |> Enum.uniq()
+    |> Enum.sort()
+    |> Enum.join(",")
+    |> then(&:crypto.hash(:sha256, &1))
+    |> Base.encode16(case: :lower)
+  end
+
+  defp project_ids_fingerprint(_), do: ""
 
   defp do_list_workflows(params) do
     case Watchman.benchmark("home_page.list_keyset", fn ->
@@ -503,8 +526,8 @@ defmodule FrontWeb.DashboardController do
   defp workflow_error_message(%MatchError{term: term}), do: inspect(term)
   defp workflow_error_message(error), do: inspect(error)
 
-  defp workflow_data(params, cache_params) do
-    case load_workflows(params, cache_params) do
+  defp workflow_data(params, cache_params, cache_opts) do
+    case load_workflows(params, cache_params, cache_opts) do
       {:ok, workflows, next_page_token, previous_page_token} ->
         %{
           workflows: workflows,
@@ -549,6 +572,8 @@ defmodule FrontWeb.DashboardController do
       ]
     }
   end
+
+  defp force_cold_boot(_conn, params), do: params["force_cold_boot"]
 
   defp render_org_health_page(conn, params) do
     Watchman.increment("velocity.organization_health_page.hit")
@@ -608,6 +633,7 @@ defmodule FrontWeb.DashboardController do
     organization = conn.assigns.layout_model.current_organization
 
     dashboard = conn |> extract_preferred_dashboard
+    force_cold_boot = force_cold_boot(conn, params)
     page_token = params["page_token"] || ""
     direction = params["direction"] || ""
     starred_items = conn.assigns.layout_model.starred_items
@@ -627,9 +653,17 @@ defmodule FrontWeb.DashboardController do
     params = params(conn, page_token, direction, filters, project_ids, org_id)
 
     cache_params =
-      dashboard_page_load_params(org_id, user_id, filters.requester, page_token, direction)
+      dashboard_page_load_params(
+        org_id,
+        user_id,
+        filters.requester,
+        page_token,
+        direction,
+        project_ids
+      )
 
-    workflow_data = workflow_data(params, cache_params)
+    cache_opts = [force_cold_boot: force_cold_boot]
+    workflow_data = workflow_data(params, cache_params, cache_opts)
 
     pagination =
       build_pagination(

@@ -235,7 +235,7 @@ defmodule Front.Models.Workflow do
              response.previous_page_token}
 
           _ ->
-            response
+            {:error, {:unexpected_status, response.status}}
         end
 
       error ->
