@@ -113,7 +113,7 @@ defmodule Zebra.Workers.JobRequestFactory.CacheTest do
       repo_proxy = %{repo_slug: "org/repo", pr_slug: ""}
       {:ok, envs} = Cache.env_vars(job, @ceph_cache, @org_id, repo_proxy, :pipeline_job)
 
-      assert_receive {:assume_role_called, "arn:aws:iam::acc:role/project-rw", _session, 87_300}
+      assert_receive {:assume_role_called, "arn:aws:iam::acc:role/project-rw", _session, 42_900}
 
       assert envs == [
                %{"name" => "SEMAPHORE_CACHE_BACKEND", "value" => Base.encode64("s3")},
@@ -137,7 +137,7 @@ defmodule Zebra.Workers.JobRequestFactory.CacheTest do
       repo_proxy = %{repo_slug: "base/repo", pr_slug: "fork/repo"}
       {:ok, _envs} = Cache.env_vars(job, @ceph_cache, @org_id, repo_proxy, :pipeline_job)
 
-      assert_receive {:assume_role_called, "arn:aws:iam::acc:role/project-ro", _session, 87_300}
+      assert_receive {:assume_role_called, "arn:aws:iam::acc:role/project-ro", _session, 42_900}
     end
 
     test "forked PR debug job => uses RO role and debug STS duration" do
