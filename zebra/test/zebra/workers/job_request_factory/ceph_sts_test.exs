@@ -28,6 +28,26 @@ defmodule Zebra.Workers.JobRequestFactory.CephStsTest do
     end
   end
 
+  defmodule HttpClientInspectRequestMock do
+    def request(:post, request, _opts, _http_opts) do
+      send(self(), {:http_request, request})
+
+      body = """
+      <AssumeRoleResponse>
+        <AssumeRoleResult>
+          <Credentials>
+            <AccessKeyId>TMP_ACCESS</AccessKeyId>
+            <SecretAccessKey>TMP_SECRET</SecretAccessKey>
+            <SessionToken>TMP_TOKEN</SessionToken>
+          </Credentials>
+        </AssumeRoleResult>
+      </AssumeRoleResponse>
+      """
+
+      {:ok, {{'HTTP/1.1', 200, 'OK'}, [], body}}
+    end
+  end
+
   defmodule HttpClientErrorMock do
     def request(:post, _request, _opts, _http_opts) do
       body = """
@@ -73,6 +93,16 @@ defmodule Zebra.Workers.JobRequestFactory.CephStsTest do
 
     assert_receive {:sign_called, headers}
     assert Enum.any?(headers, fn {name, _} -> name == "host" end)
+  end
+
+  test "assume_role sends request using the same signed content-type" do
+    Application.put_env(:zebra, :ceph_sts_http_client_module, HttpClientInspectRequestMock)
+
+    assert {:ok, _creds} =
+             CephSts.assume_role("arn:aws:iam::acc:role/project-rw", "zebra-rw-job", 3600)
+
+    assert_receive {:http_request, {_url, _headers, content_type, _body}}
+    assert to_string(content_type) == "application/x-www-form-urlencoded; charset=utf-8"
   end
 
   test "assume_role returns sts_error when STS returns XML error" do

@@ -150,9 +150,10 @@ defmodule Zebra.Workers.JobRequestFactory.CephSts do
   end
 
   defp do_http_request(config, method, url, headers, body) do
+    content_type = header_value(headers, "content-type", "application/octet-stream")
+
     request =
-      {String.to_charlist(url), to_httpc_headers(headers), 'application/x-www-form-urlencoded',
-       body}
+      {String.to_charlist(url), to_httpc_headers(headers), to_charlist(content_type), body}
 
     case http_client_module().request(method, request, http_options(config), body_format: :binary) do
       {:ok, {{_http_version, status, _reason_phrase}, _response_headers, response_body}} ->
@@ -207,6 +208,15 @@ defmodule Zebra.Workers.JobRequestFactory.CephSts do
         end
 
       [{"host", host} | headers]
+    end
+  end
+
+  defp header_value(headers, key, default) do
+    downcased = String.downcase(key)
+
+    case Enum.find(headers, fn {name, _} -> String.downcase(to_string(name)) == downcased end) do
+      {_, value} -> to_string(value)
+      nil -> default
     end
   end
 
