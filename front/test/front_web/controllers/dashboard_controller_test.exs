@@ -117,6 +117,24 @@ defmodule FrontWeb.DashboardControllerTest do
       end
     end
 
+    test "returns 200 and renders timeout error when workflow grpc connection fails", %{
+      conn: conn,
+      project: project
+    } do
+      with_mocks [
+        {Front.RBAC.Members, [:passthrough],
+         [list_accessible_projects: fn _org_id, _user_id -> {:ok, [project.id]} end]},
+        {Front.Clients.Workflow, [:passthrough],
+         [list_keyset: fn _request -> {:error, "Error when opening connection: :timeout"} end]}
+      ] do
+        conn =
+          conn
+          |> get("/?dashboard=everyones-activity")
+
+        assert html_response(conn, 200) =~ "Loading workflows timed out"
+      end
+    end
+
     test "uses cached workflows when backend times out", %{conn: conn, project: project} do
       with_mocks [
         {Front.RBAC.Members, [:passthrough],
