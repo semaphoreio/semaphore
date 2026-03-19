@@ -8,6 +8,10 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
   alias Zebra.Workers.JobRequestFactory.Machine
 
   @max_role_session_name_length 64
+  # 1 hour and 10 minutes, a bit more than the max duration of debug jobs to avoid unnecessary refreshes
+  @max_debug_job_duration_seconds 4_200
+  # 11 hours and 55 minutes, which is just under the 12 hour max session duration for Ceph
+  @max_regular_job_duration_seconds 42_900
 
   #
   # If cache_id is nil, we skip injecting cache information,
@@ -222,8 +226,8 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
     end
   end
 
-  defp assume_role_duration_seconds(:debug_job), do: 4_200
-  defp assume_role_duration_seconds(_job_type), do: 87_300
+  defp assume_role_duration_seconds(:debug_job), do: @max_debug_job_duration_seconds
+  defp assume_role_duration_seconds(_job_type), do: @max_regular_job_duration_seconds
 
   defp blank?(value), do: value in [nil, "", " "]
 
