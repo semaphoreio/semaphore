@@ -15,6 +15,7 @@ defmodule FrontWeb.DashboardControllerTest do
     dashboard = DB.first(:dashboards)
     workflow = DB.first(:workflows)
     pipeline = DB.first(:pipelines)
+    project = DB.first(:projects)
 
     Support.Stubs.Feature.disable_feature(organization.id, :get_started)
 
@@ -28,6 +29,7 @@ defmodule FrontWeb.DashboardControllerTest do
       dashboard: dashboard,
       workflow: workflow,
       pipeline: pipeline,
+      project: project,
       organization: organization,
       user: user
     ]
@@ -96,6 +98,51 @@ defmodule FrontWeb.DashboardControllerTest do
 
       assert html_response(conn, 302) =~ "get_started"
     end
+
+    test "returns 200 and renders timeout error when workflow fetch fails", %{
+      conn: conn,
+      project: project
+    } do
+      with_mocks [
+        {Front.RBAC.Members, [:passthrough],
+         [list_accessible_projects: fn _org_id, _user_id -> {:ok, [project.id]} end]},
+        {Front.Models.Workflow, [:passthrough],
+         [list_keyset: fn _params -> {:error, :timeout} end]}
+      ] do
+        conn =
+          conn
+          |> get("/")
+
+        assert html_response(conn, 200) =~ "Loading workflows timed out"
+      end
+    end
+
+    test "uses cached workflows when backend times out", %{conn: conn, project: project} do
+      with_mocks [
+        {Front.RBAC.Members, [:passthrough],
+         [list_accessible_projects: fn _org_id, _user_id -> {:ok, [project.id]} end]}
+      ] do
+        conn =
+          conn
+          |> get("/")
+
+        assert html_response(conn, 200)
+      end
+
+      with_mocks [
+        {Front.RBAC.Members, [:passthrough],
+         [list_accessible_projects: fn _org_id, _user_id -> {:ok, [project.id]} end]},
+        {Front.Models.Workflow, [:passthrough],
+         [list_keyset: fn _params -> {:error, :timeout} end]}
+      ] do
+        conn =
+          conn
+          |> get("/")
+
+        assert html_response(conn, 200)
+        refute html_response(conn, 200) =~ "Loading workflows timed out"
+      end
+    end
   end
 
   describe "GET show" do
@@ -146,6 +193,24 @@ defmodule FrontWeb.DashboardControllerTest do
         |> get("/workflows")
 
       assert html_response(conn, 200)
+    end
+
+    test "returns 200 and renders timeout error when workflow fetch fails", %{
+      conn: conn,
+      project: project
+    } do
+      with_mocks [
+        {Front.RBAC.Members, [:passthrough],
+         [list_accessible_projects: fn _org_id, _user_id -> {:ok, [project.id]} end]},
+        {Front.Models.Workflow, [:passthrough],
+         [list_keyset: fn _params -> {:error, :timeout} end]}
+      ] do
+        conn =
+          conn
+          |> get("/workflows")
+
+        assert html_response(conn, 200) =~ "Loading workflows timed out"
+      end
     end
   end
 

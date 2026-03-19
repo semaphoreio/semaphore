@@ -4,12 +4,16 @@ defmodule FrontWeb.DashboardController do
 
   alias Front.{
     Async,
+    DashboardPage,
     Models,
     Widgets
   }
 
   plug(FrontWeb.Plugs.OrganizationAuthorization)
   plug(FrontWeb.Plugs.Header when action in [:index, :show])
+
+  @workflow_timeout_error_message "Loading workflows timed out. Please try again in a moment."
+  @workflow_fetch_error_message "We couldn't load workflows right now. Please try again in a moment."
 
   def index(conn, params) do
     Watchman.benchmark("dashboard_controller.index", fn ->
@@ -120,40 +124,27 @@ defmodule FrontWeb.DashboardController do
 
     filters = %{requester: requester}
     params = params(conn, page_token, direction, filters, project_ids, org_id)
+    cache_params = dashboard_page_load_params(org_id, user_id, requester, page_token, direction)
+    workflow_data = workflow_data(params, cache_params)
 
-    {workflows, next_page_token, previous_page_token} = list_workflows(params)
+    pagination =
+      build_pagination(
+        page_token,
+        workflow_data.next_page_token,
+        workflow_data.previous_page_token
+      )
 
-    previous = if previous_page_token != "", do: previous_page_token, else: nil
-    next = if next_page_token != "", do: next_page_token, else: nil
-    newest = if page_token == "", do: false, else: true
-    visible = if previous != nil or next != nil, do: true, else: false
-
-    pagination = %{
-      visible: visible,
-      newest: newest,
-      previous: previous,
-      next: next
-    }
-
-    pollman = %{
-      state: "poll",
-      href: "/workflows",
-      params: [
-        page_token: page_token,
-        direction: direction,
-        requester: requester,
-        organization_id: org_id
-      ]
-    }
+    pollman = build_pollman(org_id, page_token, direction, requester)
 
     conn
     |> put_layout(false)
     |> render(
       "partials/_workflows.html",
-      workflows: workflows,
+      workflows: workflow_data.workflows,
       pagination: pagination,
       pollman: pollman,
-      page: :dashboard
+      page: :dashboard,
+      workflow_fetch_error: workflow_data.workflow_fetch_error
     )
   end
 
@@ -436,21 +427,127 @@ defmodule FrontWeb.DashboardController do
   end
 
   defp list_workflows(params) do
-    if params[:project_ids] == [] do
-      {[], "", ""}
-    else
-      {wfs, next_page_token, previous_page_token} =
-        Watchman.benchmark("home_page.list_keyset", fn ->
-          Models.Workflow.list_keyset(params)
-        end)
+    Watchman.benchmark("home_page.list_workflows", fn ->
+      if params[:project_ids] == [] do
+        {:ok, [], "", ""}
+      else
+        do_list_workflows(params)
+      end
+    end)
+  end
 
-      workflows =
-        Watchman.benchmark("home_page.decorate_workflows", fn ->
-          Front.Decorators.Workflow.decorate_many(wfs)
-        end)
+  defp load_workflows(params, cache_params) do
+    case DashboardPage.Model.get(cache_params, fn -> list_workflows(params) end) do
+      {:ok, {workflows, next_page_token, previous_page_token}, _source} ->
+        {:ok, workflows, next_page_token, previous_page_token}
 
-      {workflows, next_page_token, previous_page_token}
+      {:error, reason} ->
+        {:error, reason}
     end
+  end
+
+  defp dashboard_page_load_params(org_id, user_id, requester, page_token, direction) do
+    struct!(DashboardPage.Model.LoadParams,
+      organization_id: org_id,
+      user_id: user_id,
+      requester: requester,
+      page_token: page_token,
+      direction: direction
+    )
+  end
+
+  defp do_list_workflows(params) do
+    case Watchman.benchmark("home_page.list_keyset", fn ->
+           Models.Workflow.list_keyset(params)
+         end) do
+      {wfs, next_page_token, previous_page_token} when is_list(wfs) ->
+        workflows =
+          Watchman.benchmark("home_page.decorate_workflows", fn ->
+            Front.Decorators.Workflow.decorate_many(wfs)
+          end)
+
+        {:ok, workflows, next_page_token, previous_page_token}
+
+      {:error, reason} ->
+        Logger.error("Dashboard workflow fetch failed: #{inspect(reason)}")
+        {:error, reason}
+
+      unexpected ->
+        Logger.error(
+          "Dashboard workflow fetch returned unexpected response: #{inspect(unexpected)}"
+        )
+
+        {:error, unexpected}
+    end
+  end
+
+  defp workflow_fetch_error_message(error) do
+    if workflow_timeout_error?(error) do
+      @workflow_timeout_error_message
+    else
+      @workflow_fetch_error_message
+    end
+  end
+
+  defp workflow_timeout_error?(error) do
+    error
+    |> workflow_error_message()
+    |> String.downcase()
+    |> then(fn message ->
+      String.contains?(message, "deadline") or
+        String.contains?(message, "timeout") or
+        String.contains?(message, "timed out")
+    end)
+  end
+
+  defp workflow_error_message(%MatchError{term: term}), do: inspect(term)
+  defp workflow_error_message(error), do: inspect(error)
+
+  defp workflow_data(params, cache_params) do
+    case load_workflows(params, cache_params) do
+      {:ok, workflows, next_page_token, previous_page_token} ->
+        %{
+          workflows: workflows,
+          next_page_token: next_page_token,
+          previous_page_token: previous_page_token,
+          workflow_fetch_error: nil
+        }
+
+      {:error, reason} ->
+        %{
+          workflows: [],
+          next_page_token: "",
+          previous_page_token: "",
+          workflow_fetch_error: workflow_fetch_error_message(reason)
+        }
+    end
+  end
+
+  defp build_pagination(page_token, next_page_token, previous_page_token) do
+    previous = if previous_page_token != "", do: previous_page_token, else: nil
+    next = if next_page_token != "", do: next_page_token, else: nil
+    newest = if page_token == "", do: false, else: true
+    visible = previous != nil or next != nil
+
+    %{
+      visible: visible,
+      newest: newest,
+      previous: previous,
+      next: next
+    }
+  end
+
+  defp build_pollman(org_id, page_token, direction, requester) do
+    %{
+      state: "poll",
+      href: "/workflows",
+      params: [
+        page_token: page_token,
+        direction: direction,
+        requester: requester,
+        organization_id: org_id
+      ]
+    }
   end
 
   defp render_org_health_page(conn, params) do
@@ -529,33 +626,19 @@ defmodule FrontWeb.DashboardController do
 
     params = params(conn, page_token, direction, filters, project_ids, org_id)
 
-    {workflows, next_page_token, previous_page_token} =
-      Watchman.benchmark("home_page.list_workflows", fn ->
-        list_workflows(params)
-      end)
+    cache_params =
+      dashboard_page_load_params(org_id, user_id, filters.requester, page_token, direction)
 
-    previous = if previous_page_token != "", do: previous_page_token, else: nil
-    next = if next_page_token != "", do: next_page_token, else: nil
-    newest = if page_token == "", do: false, else: true
-    visible = if previous != nil or next != nil, do: true, else: false
+    workflow_data = workflow_data(params, cache_params)
 
-    pagination = %{
-      visible: visible,
-      newest: newest,
-      previous: previous,
-      next: next
-    }
+    pagination =
+      build_pagination(
+        page_token,
+        workflow_data.next_page_token,
+        workflow_data.previous_page_token
+      )
 
-    pollman = %{
-      state: "poll",
-      href: "/workflows",
-      params: [
-        page_token: page_token,
-        direction: direction,
-        requester: filters.requester,
-        organization_id: org_id
-      ]
-    }
+    pollman = build_pollman(org_id, page_token, direction, filters.requester)
 
     conn
     |> put_resp_cookie("home-page-dashboard", dashboard, secure: true)
@@ -567,9 +650,10 @@ defmodule FrontWeb.DashboardController do
       starred_items: starred_items,
       title: "Semaphore・#{organization.name}",
       social_metatags: true,
-      workflows: workflows,
+      workflows: workflow_data.workflows,
       pagination: pagination,
       pollman: pollman,
+      workflow_fetch_error: workflow_data.workflow_fetch_error,
       signup: signup,
       notice: notice,
       dashboard: dashboard,

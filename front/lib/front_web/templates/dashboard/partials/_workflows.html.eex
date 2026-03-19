@@ -10,13 +10,23 @@
      <% end) %>
      >
 
-  <%= if Enum.empty?(@workflows) do %>
-    <%= render FrontWeb.DashboardView, "partials/_empty_state.html", conn: @conn, page: @page %>
-  <% else %>
-    <%= @workflows |> Enum.map(fn(workflow) -> %>
-      <%= render FrontWeb.DashboardView, "partials/_workflow.html", conn: @conn, page: @page, workflow: workflow %>
-    <% end) %>
+  <% workflow_fetch_error = Map.get(assigns, :workflow_fetch_error) %>
 
-    <%= render FrontWeb.DashboardView, "partials/_pagination.html", pagination: @pagination %>
+  <%= if workflow_fetch_error do %>
+    <div class="pa3 mb3 br3 ba b--light-red bg-washed-red dark-red">
+      <%= workflow_fetch_error %>
+    </div>
+  <% end %>
+
+  <%= cond do %>
+    <% Enum.empty?(@workflows) and workflow_fetch_error -> %>
+    <% Enum.empty?(@workflows) -> %>
+      <%= render FrontWeb.DashboardView, "partials/_empty_state.html", conn: @conn, page: @page %>
+    <% true -> %>
+      <%= @workflows |> Enum.map(fn(workflow) -> %>
+        <%= render FrontWeb.DashboardView, "partials/_workflow.html", conn: @conn, page: @page, workflow: workflow %>
+      <% end) %>
+
+      <%= render FrontWeb.DashboardView, "partials/_pagination.html", pagination: @pagination %>
   <% end %>
 </div>
