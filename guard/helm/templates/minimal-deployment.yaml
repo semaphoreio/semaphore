@@ -114,6 +114,8 @@ spec:
               value: "true"
             - name: START_GRPC_USER_API
               value: "true"
+            - name: START_MCP_AUTH_CODE_CLEANER
+              value: "true"
             - name: MIGRATIONS_PATH
               value: "/app/instance_config_repo/migrations"
             - name: OIDC_DISCOVERY_URL
