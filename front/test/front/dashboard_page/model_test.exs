@@ -4,6 +4,20 @@ defmodule Front.DashboardPage.ModelTest do
   alias Front.DashboardPage.Model
   alias Front.DashboardPage.Model.LoadParams
 
+  @payload_without_index_script """
+  local payload_exists = redis.call('EXISTS', KEYS[1])
+  if payload_exists == 0 then
+    return 0
+  end
+
+  local tracked = redis.call('SISMEMBER', KEYS[2], ARGV[1])
+  if tracked == 1 then
+    return 0
+  end
+
+  return 1
+  """
+
   setup do
     Cacheman.clear(:front)
     :ok
@@ -428,12 +442,98 @@ defmodule Front.DashboardPage.ModelTest do
     end
   end
 
+  describe "atomic cache_and_track (race condition regression)" do
+    test "never exposes payload key without org index membership under concurrent load" do
+      org_id = "org-write-atomic"
+
+      params_list =
+        Enum.map(1..20, fn i ->
+          struct!(LoadParams,
+            organization_id: org_id,
+            user_id: "user-#{i}",
+            requester: false,
+            project_ids_fingerprint: "fp-#{i}"
+          )
+        end)
+
+      keys = Enum.map(params_list, &Model.cache_key/1)
+      org_set_key = "#{Model.cache_prefix()}/#{Model.cache_version()}/index/org=#{org_id}"
+      parent = self()
+
+      auditor =
+        Task.async(fn ->
+          Enum.each(1..250, fn _ ->
+            Enum.each(keys, fn key ->
+              if redis_payload_without_index?(org_set_key, key) do
+                send(parent, {:payload_without_index, key})
+              end
+            end)
+
+            Process.sleep(2)
+          end)
+        end)
+
+      writer_tasks =
+        Enum.map(0..3, fn offset ->
+          Task.async(fn ->
+            Enum.each(1..120, fn iter ->
+              params = Enum.at(params_list, rem(iter + offset, length(params_list)))
+
+              assert {:ok, {_workflows, "", ""}, :from_api} =
+                       Model.get(
+                         params,
+                         fn -> {:ok, [:"w#{offset}_#{iter}"], "", ""} end,
+                         force_cold_boot: true
+                       )
+            end)
+          end)
+        end)
+
+      invalidator =
+        Task.async(fn ->
+          Enum.each(1..90, fn _ ->
+            :ok = Model.invalidate_org(org_id)
+            Process.sleep(1)
+          end)
+        end)
+
+      Task.await_many(writer_tasks ++ [invalidator, auditor], :timer.seconds(20))
+
+      refute_received {:payload_without_index, _}
+
+      Enum.each(keys, fn key ->
+        refute redis_payload_without_index?(org_set_key, key),
+               "payload key exists without org index: #{key}"
+      end)
+    end
+  end
+
   defp redis_ttl(key) do
     state = :sys.get_state(Cacheman.full_process_name(:front))
 
     :poolboy.transaction(state.backend_pid, fn conn ->
       {:ok, ttl} = Redix.command(conn, ["TTL", state.prefix <> key])
       ttl
+    end)
+  end
+
+  defp redis_payload_without_index?(org_set_key, payload_key) do
+    state = :sys.get_state(Cacheman.full_process_name(:front))
+
+    :poolboy.transaction(state.backend_pid, fn conn ->
+      command = [
+        "EVAL",
+        @payload_without_index_script,
+        "2",
+        state.prefix <> payload_key,
+        state.prefix <> org_set_key,
+        payload_key
+      ]
+
+      case Redix.command(conn, command) do
+        {:ok, 1} -> true
+        _ -> false
+      end
     end)
   end
 end

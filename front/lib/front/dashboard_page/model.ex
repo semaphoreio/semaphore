@@ -6,6 +6,15 @@ defmodule Front.DashboardPage.Model do
   @cache_ttl Application.compile_env(:front, :dashboard_page_cache_ttl, :timer.minutes(15))
   @index_ttl_seconds div(@cache_ttl * 2, 1000)
 
+  @cache_and_track_script """
+  redis.call('SET', KEYS[1], ARGV[1], 'PX', ARGV[2])
+  redis.call('SADD', KEYS[2], ARGV[3])
+  redis.call('EXPIRE', KEYS[2], ARGV[4])
+  redis.call('SADD', KEYS[3], ARGV[5])
+  redis.call('EXPIRE', KEYS[3], ARGV[4])
+  return 1
+  """
+
   @invalidate_org_script """
   local members = redis.call('SMEMBERS', KEYS[1])
   for _, member in ipairs(members) do
@@ -122,8 +131,7 @@ defmodule Front.DashboardPage.Model do
         payload = {workflows, next_page_token, previous_page_token}
 
         if cacheable?(params) do
-          Cacheman.put(:front, cache_key(params), encode(payload), ttl: @cache_ttl)
-          track_cache_key(params.organization_id, cache_key(params))
+          cache_and_track(params, encode(payload))
         end
 
         {:ok, payload, :from_api}
@@ -136,11 +144,28 @@ defmodule Front.DashboardPage.Model do
   defp cacheable?(params), do: (params.page_token || "") == ""
   defp force_cold_boot?(opts), do: opts[:force_cold_boot] in [true, "true"]
 
-  defp track_cache_key(org_id, cache_key) do
-    sadd(org_key_set_key(org_id), cache_key)
-    expire(org_key_set_key(org_id), @index_ttl_seconds)
-    sadd(all_orgs_set_key(), org_id)
-    expire(all_orgs_set_key(), @index_ttl_seconds)
+  defp cache_and_track(params, encoded_payload) do
+    case cacheman_state() do
+      %{backend_pid: backend_pid, prefix: prefix} ->
+        key = cache_key(params)
+
+        redis_command(backend_pid, [
+          "EVAL",
+          @cache_and_track_script,
+          "3",
+          prefix <> key,
+          prefix <> org_key_set_key(params.organization_id),
+          prefix <> all_orgs_set_key(),
+          encoded_payload,
+          to_string(@cache_ttl),
+          key,
+          to_string(@index_ttl_seconds),
+          params.organization_id
+        ])
+
+      _ ->
+        :ok
+    end
   end
 
   defp org_key_set_key(org_id) do
@@ -149,16 +174,6 @@ defmodule Front.DashboardPage.Model do
 
   defp all_orgs_set_key do
     "#{cache_prefix()}/#{cache_version()}/index/all_orgs"
-  end
-
-  defp sadd(set_key, member) do
-    case cacheman_state() do
-      %{backend_pid: backend_pid, prefix: prefix} ->
-        redis_command(backend_pid, ["SADD", prefix <> set_key, member])
-
-      _ ->
-        :ok
-    end
   end
 
   defp smembers(set_key) do
@@ -171,16 +186,6 @@ defmodule Front.DashboardPage.Model do
 
       _ ->
         []
-    end
-  end
-
-  defp expire(set_key, ttl_seconds) do
-    case cacheman_state() do
-      %{backend_pid: backend_pid, prefix: prefix} ->
-        redis_command(backend_pid, ["EXPIRE", prefix <> set_key, to_string(ttl_seconds)])
-
-      _ ->
-        :ok
     end
   end
 
