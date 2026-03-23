@@ -12,13 +12,17 @@ defmodule PipelinesAPI.Artifacts.GetSignedURL do
   import PipelinesAPI.Artifacts.Authorize, only: [authorize_view: 2]
 
   import PipelinesAPI.Artifacts.Common,
-    only: [get_artifact_store_id: 2, validate_request_params: 3, verify_scope_ownership: 2]
+    only: [
+      get_artifact_store_id: 2,
+      validate_request_params: 3,
+      resolve_project_id_from_scope: 2
+    ]
 
-  @enabled_fields ~w(project_id scope scope_id path method)
+  @enabled_fields ~w(scope scope_id path method)
 
   plug(:verify_params)
+  plug(:resolve_project_id_from_scope)
   plug(:authorize_view)
-  plug(:verify_scope_ownership)
   plug(:get_artifact_store_id)
   plug(:get_signed_url)
 

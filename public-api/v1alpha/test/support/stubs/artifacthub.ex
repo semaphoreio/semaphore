@@ -163,7 +163,7 @@ defmodule Support.Stubs.Artifacthub do
       api_model =
         InternalApi.Artifacthub.ListItem.new(%{name: Path.join(file_path), is_directory: false})
 
-      url =
+      urls =
         base_paths
         |> Enum.take(3)
         |> case do
@@ -171,12 +171,14 @@ defmodule Support.Stubs.Artifacthub do
             DB.filter(:artifacts, scope: scope, scope_id: scope_id, api_model: api_model)
             |> DB.extract(:url)
         end
-        |> case do
-          [] -> "http://localhost:9000/non_existent_file"
-          [url] -> url
-        end
 
-      Api.GetSignedURLResponse.new(url: url)
+      case urls do
+        [] ->
+          raise GRPC.RPCError, status: :not_found, message: "artifact path not found"
+
+        [url] ->
+          Api.GetSignedURLResponse.new(url: url)
+      end
     end
 
     def update_retention_policy(req, _) do

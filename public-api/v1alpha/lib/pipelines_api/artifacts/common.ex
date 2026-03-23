@@ -26,9 +26,9 @@ defmodule PipelinesAPI.Artifacts.Common do
     |> process_response(conn)
   end
 
-  def verify_scope_ownership(conn, _opts) do
+  def resolve_project_id_from_scope(conn, _opts) do
     conn.params
-    |> scope_belongs_to_project()
+    |> project_id_from_scope()
     |> continue_or_halt(conn)
   end
 
@@ -43,9 +43,7 @@ defmodule PipelinesAPI.Artifacts.Common do
     with {:ok, method} <- normalize_method(conn.params["method"], validate_method?),
          {:ok, normalized_path} <- sanitize_relative_path(conn.params["path"], require_path?) do
       result =
-        VD.verify(:ok, true, "")
-        |> maybe_verify_project_id(conn.params["project_id"])
-        |> VD.verify(
+        VD.verify(
           VD.is_present_string?(conn.params["scope"]),
           "scope must be present"
         )
@@ -74,50 +72,6 @@ defmodule PipelinesAPI.Artifacts.Common do
         conn |> resp(400, message) |> halt()
     end
   end
-
-  def project_id_from_scope(%{"scope" => "projects", "scope_id" => scope_id}), do: {:ok, scope_id}
-
-  def project_id_from_scope(%{"scope" => "jobs", "scope_id" => scope_id}) do
-    with {:ok, job} <- JobsClient.describe(%{"job_id" => scope_id}),
-         true <- is_binary(job.project_id) and job.project_id != "" do
-      {:ok, job.project_id}
-    else
-      false ->
-        ToTuple.internal_error("Internal error")
-
-      {:error, {:internal, _}} = error ->
-        error
-
-      {:error, _} ->
-        ToTuple.not_found_error("Not found")
-
-      _ ->
-        ToTuple.internal_error("Internal error")
-    end
-  end
-
-  def project_id_from_scope(%{"scope" => "workflows", "scope_id" => scope_id}) do
-    with {:ok, response} <-
-           scope_id |> WFRequestFormatter.form_describe_request() |> WFGrpcClient.describe(),
-         {:ok, workflow} <- workflow_from_response(response),
-         true <- is_binary(workflow.project_id) and workflow.project_id != "" do
-      {:ok, workflow.project_id}
-    else
-      false ->
-        ToTuple.internal_error("Internal error")
-
-      {:error, {:internal, _}} = error ->
-        error
-
-      {:error, _} ->
-        ToTuple.not_found_error("Not found")
-
-      _ ->
-        ToTuple.internal_error("Internal error")
-    end
-  end
-
-  def project_id_from_scope(_params), do: ToTuple.not_found_error("Not found")
 
   def sanitize_relative_path(path, required? \\ false)
 
@@ -162,13 +116,6 @@ defmodule PipelinesAPI.Artifacts.Common do
 
   defp maybe_verify_method(result, false, _method), do: result
 
-  defp maybe_verify_project_id(result, nil), do: result
-  defp maybe_verify_project_id(result, ""), do: result
-
-  defp maybe_verify_project_id(result, project_id) do
-    VD.verify(result, VD.is_valid_uuid?(project_id), "project id must be a valid UUID")
-  end
-
   defp maybe_verify_method(result, true, method) do
     VD.verify(
       result,
@@ -195,12 +142,22 @@ defmodule PipelinesAPI.Artifacts.Common do
   end
 
   defp process_response({:ok, project}, conn) do
-    art_store_id = project.spec.artifact_store_id
-    conn |> Map.put(:params, Map.put(conn.params, "artifact_store_id", art_store_id))
+    case artifact_store_id_from_project(project) do
+      {:ok, artifact_store_id} ->
+        conn |> Map.put(:params, Map.put(conn.params, "artifact_store_id", artifact_store_id))
+
+      error ->
+        process_response(error, conn)
+    end
   end
 
   defp process_response(error, conn) do
     error |> Common.respond(conn) |> halt()
+  end
+
+  defp continue_or_halt({:ok, project_id}, conn) do
+    conn
+    |> Map.put(:params, Map.put(conn.params, "project_id", project_id))
   end
 
   defp continue_or_halt(:ok, conn), do: conn
@@ -239,14 +196,15 @@ defmodule PipelinesAPI.Artifacts.Common do
 
   defp scope_ownership_endpoint(_conn), do: "artifacts"
 
-  defp scope_belongs_to_project(params = %{"project_id" => project_id}) do
-    with {:ok, resolved_project_id} <- project_id_from_scope(params),
-         true <- resolved_project_id == project_id do
-      :ok
-    else
-      false ->
-        ToTuple.not_found_error("Not found")
+  defp project_id_from_scope(%{"scope" => "projects", "scope_id" => scope_id}) do
+    {:ok, scope_id}
+  end
 
+  defp project_id_from_scope(%{"scope" => "jobs", "scope_id" => scope_id}) do
+    with {:ok, %{project_id: project_id}} <- JobsClient.describe(%{"job_id" => scope_id}),
+         {:ok, project_id} <- extract_project_id(project_id) do
+      {:ok, project_id}
+    else
       {:error, {:internal, _}} = error ->
         error
 
@@ -258,7 +216,37 @@ defmodule PipelinesAPI.Artifacts.Common do
     end
   end
 
-  defp scope_belongs_to_project(_params), do: ToTuple.not_found_error("Not found")
+  defp project_id_from_scope(%{"scope" => "workflows", "scope_id" => scope_id}) do
+    with {:ok, response} <-
+           scope_id |> WFRequestFormatter.form_describe_request() |> WFGrpcClient.describe(),
+         {:ok, workflow} <- workflow_from_response(response),
+         {:ok, project_id} <- extract_project_id(workflow.project_id) do
+      {:ok, project_id}
+    else
+      {:error, {:internal, _}} = error ->
+        error
+
+      {:error, _} ->
+        ToTuple.not_found_error("Not found")
+
+      _ ->
+        ToTuple.internal_error("Internal error")
+    end
+  end
+
+  defp project_id_from_scope(_params), do: ToTuple.not_found_error("Not found")
+
+  defp extract_project_id(project_id) when is_binary(project_id) and project_id != "",
+    do: {:ok, project_id}
+
+  defp extract_project_id(_), do: ToTuple.internal_error("Internal error")
+
+  defp artifact_store_id_from_project(%{spec: %{artifact_store_id: artifact_store_id}})
+       when is_binary(artifact_store_id) and artifact_store_id != "",
+       do: {:ok, artifact_store_id}
+
+  defp artifact_store_id_from_project(_project),
+    do: ToTuple.internal_error("Artifact store is not configured")
 
   defp workflow_from_response(%{status: %{code: code}, workflow: workflow})
        when not is_nil(workflow) do

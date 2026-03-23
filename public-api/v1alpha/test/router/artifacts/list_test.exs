@@ -57,7 +57,6 @@ defmodule PipelinesAPI.Artifacts.ListTest do
       assert {200, response} =
                list_artifacts(
                  %{
-                   "project_id" => ctx.project.id,
                    "scope" => "jobs",
                    "scope_id" => ctx.job.id
                  },
@@ -78,7 +77,6 @@ defmodule PipelinesAPI.Artifacts.ListTest do
       assert {200, response} =
                list_artifacts(
                  %{
-                   "project_id" => ctx.project.id,
                    "scope" => "workflows",
                    "scope_id" => ctx.workflow.wf_id
                  },
@@ -96,67 +94,6 @@ defmodule PipelinesAPI.Artifacts.ListTest do
     end
 
     test "returns 200 and project artifacts root listing", ctx do
-      assert {200, response} =
-               list_artifacts(
-                 %{
-                   "project_id" => ctx.project.id,
-                   "scope" => "projects",
-                   "scope_id" => ctx.project.id
-                 },
-                 ctx.user.id
-               )
-
-      assert response["artifacts"] == [
-               %{
-                 "is_directory" => true,
-                 "name" => "releases",
-                 "path" => "releases",
-                 "size" => 0
-               }
-             ]
-    end
-
-    test "returns 200 and infers project_id for job scope when omitted", ctx do
-      assert {200, response} =
-               list_artifacts(
-                 %{
-                   "scope" => "jobs",
-                   "scope_id" => ctx.job.id
-                 },
-                 ctx.user.id
-               )
-
-      assert response["artifacts"] == [
-               %{
-                 "is_directory" => true,
-                 "name" => "agent",
-                 "path" => "agent",
-                 "size" => 0
-               }
-             ]
-    end
-
-    test "returns 200 and infers project_id for workflow scope when omitted", ctx do
-      assert {200, response} =
-               list_artifacts(
-                 %{
-                   "scope" => "workflows",
-                   "scope_id" => ctx.workflow.wf_id
-                 },
-                 ctx.user.id
-               )
-
-      assert response["artifacts"] == [
-               %{
-                 "is_directory" => true,
-                 "name" => "debug",
-                 "path" => "debug",
-                 "size" => 0
-               }
-             ]
-    end
-
-    test "returns 200 and infers project_id for project scope when omitted", ctx do
       assert {200, response} =
                list_artifacts(
                  %{
@@ -180,7 +117,6 @@ defmodule PipelinesAPI.Artifacts.ListTest do
       assert {200, response} =
                list_artifacts(
                  %{
-                   "project_id" => ctx.project.id,
                    "scope" => "jobs",
                    "scope_id" => ctx.job.id,
                    "path" => "agent"
@@ -208,7 +144,6 @@ defmodule PipelinesAPI.Artifacts.ListTest do
       assert {200, response} =
                list_artifacts(
                  %{
-                   "project_id" => ctx.project.id,
                    "scope" => "jobs",
                    "scope_id" => ctx.job.id,
                    "path" => "agent",
@@ -227,11 +162,51 @@ defmodule PipelinesAPI.Artifacts.ListTest do
              }
     end
 
+    test "sorts artifacts deterministically before truncating with limit", ctx do
+      Support.Stubs.Artifacthub.create(ctx.job.id,
+        scope: "jobs",
+        path: "agent/z.log",
+        url: "https://localhost:9000/agent/z.log"
+      )
+
+      Support.Stubs.Artifacthub.create(ctx.job.id,
+        scope: "jobs",
+        path: "agent/a.log",
+        url: "https://localhost:9000/agent/a.log"
+      )
+
+      assert {200, response} =
+               list_artifacts(
+                 %{
+                   "scope" => "jobs",
+                   "scope_id" => ctx.job.id,
+                   "path" => "agent",
+                   "limit" => "1"
+                 },
+                 ctx.user.id
+               )
+
+      assert response["artifacts"] == [
+               %{
+                 "is_directory" => false,
+                 "name" => "a.log",
+                 "path" => "agent/a.log",
+                 "size" => 0
+               }
+             ]
+
+      assert response["page"] == %{
+               "limit" => 1,
+               "returned" => 1,
+               "total" => 3,
+               "truncated" => true
+             }
+    end
+
     test "returns 400 for invalid limit", ctx do
       assert {400, "limit must be an integer between 1 and 1000"} =
                list_artifacts(
                  %{
-                   "project_id" => ctx.project.id,
                    "scope" => "jobs",
                    "scope_id" => ctx.job.id,
                    "limit" => "0"
@@ -241,43 +216,8 @@ defmodule PipelinesAPI.Artifacts.ListTest do
                )
     end
 
-    test "returns 404 when project scope_id belongs to a different project", ctx do
-      other_project = Support.Stubs.Project.create(ctx.org, ctx.user)
-
-      Support.Stubs.Artifacthub.create(other_project.id,
-        scope: "projects",
-        path: "other/releases.tar.gz",
-        url: "https://localhost:9000/other/releases.tar.gz"
-      )
-
-      assert {404, "Not found"} =
-               list_artifacts(
-                 %{
-                   "project_id" => ctx.project.id,
-                   "scope" => "projects",
-                   "scope_id" => other_project.id
-                 },
-                 ctx.user.id,
-                 false
-               )
-    end
-
-    test "returns 404 when provided project_id differs from project scope_id", ctx do
-      other_project = Support.Stubs.Project.create(ctx.org, ctx.user)
-
-      assert {404, "Not found"} =
-               list_artifacts(
-                 %{
-                   "project_id" => other_project.id,
-                   "scope" => "projects",
-                   "scope_id" => ctx.project.id
-                 },
-                 ctx.user.id,
-                 false
-               )
-    end
-
-    test "returns 404 when job scope_id belongs to a different project", ctx do
+    test "resolves project_id from job scope_id even when request includes another project_id",
+         ctx do
       other_project = Support.Stubs.Project.create(ctx.org, ctx.user)
       {_workflow, other_job} = create_workflow_and_job(other_project, ctx.user.id, ctx.org.id)
 
@@ -287,7 +227,7 @@ defmodule PipelinesAPI.Artifacts.ListTest do
         url: "https://localhost:9000/agent/other_job_logs.txt.gz"
       )
 
-      assert {404, "Not found"} =
+      assert {200, response} =
                list_artifacts(
                  %{
                    "project_id" => ctx.project.id,
@@ -295,28 +235,25 @@ defmodule PipelinesAPI.Artifacts.ListTest do
                    "scope_id" => other_job.id
                  },
                  ctx.user.id,
-                 false
+                 true
                )
+
+      assert response["artifacts"] == [
+               %{
+                 "is_directory" => true,
+                 "name" => "agent",
+                 "path" => "agent",
+                 "size" => 0
+               }
+             ]
     end
 
-    test "returns 404 when provided project_id differs from job scope_id owner", ctx do
+    test "resolves project_id from workflow scope_id even when request includes another project_id",
+         ctx do
       other_project = Support.Stubs.Project.create(ctx.org, ctx.user)
 
-      assert {404, "Not found"} =
-               list_artifacts(
-                 %{
-                   "project_id" => other_project.id,
-                   "scope" => "jobs",
-                   "scope_id" => ctx.job.id
-                 },
-                 ctx.user.id,
-                 false
-               )
-    end
-
-    test "returns 404 when workflow scope_id belongs to a different project", ctx do
-      other_project = Support.Stubs.Project.create(ctx.org, ctx.user)
-      {other_workflow, _job} = create_workflow_and_job(other_project, ctx.user.id, ctx.org.id)
+      {other_workflow, _other_job} =
+        create_workflow_and_job(other_project, ctx.user.id, ctx.org.id)
 
       Support.Stubs.Artifacthub.create(other_workflow.wf_id,
         scope: "workflows",
@@ -324,7 +261,7 @@ defmodule PipelinesAPI.Artifacts.ListTest do
         url: "https://localhost:9000/debug/other_workflow_logs.txt"
       )
 
-      assert {404, "Not found"} =
+      assert {200, response} =
                list_artifacts(
                  %{
                    "project_id" => ctx.project.id,
@@ -332,30 +269,54 @@ defmodule PipelinesAPI.Artifacts.ListTest do
                    "scope_id" => other_workflow.wf_id
                  },
                  ctx.user.id,
-                 false
+                 true
                )
+
+      assert response["artifacts"] == [
+               %{
+                 "is_directory" => true,
+                 "name" => "debug",
+                 "path" => "debug",
+                 "size" => 0
+               }
+             ]
     end
 
-    test "returns 404 when provided project_id differs from workflow scope_id owner", ctx do
+    test "resolves project_id from project scope_id even when request includes another project_id",
+         ctx do
       other_project = Support.Stubs.Project.create(ctx.org, ctx.user)
 
-      assert {404, "Not found"} =
+      Support.Stubs.Artifacthub.create(other_project.id,
+        scope: "projects",
+        path: "other/releases.tar.gz",
+        url: "https://localhost:9000/other/releases.tar.gz"
+      )
+
+      assert {200, response} =
                list_artifacts(
                  %{
-                   "project_id" => other_project.id,
-                   "scope" => "workflows",
-                   "scope_id" => ctx.workflow.wf_id
+                   "project_id" => ctx.project.id,
+                   "scope" => "projects",
+                   "scope_id" => other_project.id
                  },
                  ctx.user.id,
-                 false
+                 true
                )
+
+      assert response["artifacts"] == [
+               %{
+                 "is_directory" => true,
+                 "name" => "other",
+                 "path" => "other",
+                 "size" => 0
+               }
+             ]
     end
 
     test "returns 400 for invalid scope", ctx do
       assert {400, "scope must be one of: projects, workflows, jobs"} =
                list_artifacts(
                  %{
-                   "project_id" => ctx.project.id,
                    "scope" => "invalid",
                    "scope_id" => ctx.job.id
                  },
@@ -368,7 +329,6 @@ defmodule PipelinesAPI.Artifacts.ListTest do
       assert {400, "path traversal is not allowed"} =
                list_artifacts(
                  %{
-                   "project_id" => ctx.project.id,
                    "scope" => "jobs",
                    "scope_id" => ctx.job.id,
                    "path" => "../agent"
@@ -388,7 +348,6 @@ defmodule PipelinesAPI.Artifacts.ListTest do
       assert {401, "Permission denied"} =
                list_artifacts(
                  %{
-                   "project_id" => ctx.project.id,
                    "scope" => "jobs",
                    "scope_id" => ctx.job.id
                  },
@@ -400,17 +359,33 @@ defmodule PipelinesAPI.Artifacts.ListTest do
     test "returns 404 on project/org mismatch", ctx do
       org = Support.Stubs.Organization.create(name: "RT2", org_username: "rt2")
       project = Support.Stubs.Project.create(org, ctx.user)
+      {_workflow, other_job} = create_workflow_and_job(project, ctx.user.id, org.id)
 
       assert {404, "Not found"} =
                list_artifacts(
                  %{
-                   "project_id" => project.id,
+                   "scope" => "jobs",
+                   "scope_id" => other_job.id
+                 },
+                 ctx.user.id,
+                 false
+               )
+    end
+
+    test "returns 500 when artifact store is not configured", ctx do
+      set_project_artifact_store_id(ctx.project, "")
+
+      assert {500, response} =
+               list_artifacts(
+                 %{
                    "scope" => "jobs",
                    "scope_id" => ctx.job.id
                  },
                  ctx.user.id,
                  false
                )
+
+      assert response =~ "Artifact store is not configured"
     end
   end
 
@@ -454,5 +429,17 @@ defmodule PipelinesAPI.Artifacts.ListTest do
     job = Job.create(pipeline.id, build_req_id, project_id: project.id)
 
     {workflow.api_model, job.api_model}
+  end
+
+  defp set_project_artifact_store_id(project, artifact_store_id) do
+    updated_project = %{
+      project
+      | api_model: %{
+          project.api_model
+          | spec: %{project.api_model.spec | artifact_store_id: artifact_store_id}
+        }
+    }
+
+    Support.Stubs.DB.update(:projects, updated_project)
   end
 end

@@ -13,15 +13,19 @@ defmodule PipelinesAPI.Artifacts.List do
   import PipelinesAPI.Artifacts.Authorize, only: [authorize_view: 2]
 
   import PipelinesAPI.Artifacts.Common,
-    only: [get_artifact_store_id: 2, validate_request_params: 3, verify_scope_ownership: 2]
+    only: [
+      get_artifact_store_id: 2,
+      validate_request_params: 3,
+      resolve_project_id_from_scope: 2
+    ]
 
   @default_limit 200
   @max_limit 1000
-  @enabled_fields ~w(project_id scope scope_id path limit)
+  @enabled_fields ~w(scope scope_id path limit)
 
   plug(:verify_params)
+  plug(:resolve_project_id_from_scope)
   plug(:authorize_view)
-  plug(:verify_scope_ownership)
   plug(:get_artifact_store_id)
   plug(:list_artifacts)
 
@@ -69,9 +73,10 @@ defmodule PipelinesAPI.Artifacts.List do
   defp parse_limit(_), do: {:error, "limit must be an integer between 1 and #{@max_limit}"}
 
   defp format_response({:ok, artifacts}, %{"limit" => limit}) when is_integer(limit) do
-    limited_artifacts = Enum.take(artifacts, limit)
+    sorted_artifacts = sort_artifacts(artifacts)
+    limited_artifacts = Enum.take(sorted_artifacts, limit)
     returned = length(limited_artifacts)
-    total = length(artifacts)
+    total = length(sorted_artifacts)
 
     {:ok,
      %{
@@ -86,6 +91,14 @@ defmodule PipelinesAPI.Artifacts.List do
   end
 
   defp format_response(error, _params), do: error
+
+  defp sort_artifacts(artifacts) do
+    Enum.sort_by(artifacts, fn artifact ->
+      artifact
+      |> Map.get(:path, "")
+      |> to_string()
+    end)
+  end
 
   defp maybe_track_lookup_failure({:error, _}) do
     Metrics.increment("PipelinesAPI.router", ["artifacts_list_lookup_failed"])
