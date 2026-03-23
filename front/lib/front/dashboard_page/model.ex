@@ -6,6 +6,16 @@ defmodule Front.DashboardPage.Model do
   @cache_ttl Application.compile_env(:front, :dashboard_page_cache_ttl, :timer.minutes(15))
   @index_ttl_seconds div(@cache_ttl * 2, 1000)
 
+  @invalidate_org_script """
+  local members = redis.call('SMEMBERS', KEYS[1])
+  for _, member in ipairs(members) do
+    redis.call('DEL', ARGV[2] .. member)
+  end
+  redis.call('DEL', KEYS[1])
+  redis.call('SREM', KEYS[2], ARGV[1])
+  return #members
+  """
+
   defmodule LoadParams do
     use TypedStruct
 
@@ -72,14 +82,25 @@ defmodule Front.DashboardPage.Model do
 
   @spec invalidate_org(String.t()) :: :ok
   def invalidate_org(org_id) when is_binary(org_id) do
-    org_set = org_key_set_key(org_id)
+    case cacheman_state() do
+      %{backend_pid: backend_pid, prefix: prefix} ->
+        org_set = prefix <> org_key_set_key(org_id)
+        all_orgs = prefix <> all_orgs_set_key()
 
-    org_set
-    |> smembers()
-    |> Enum.each(fn key -> Cacheman.delete(:front, key) end)
+        redis_command(backend_pid, [
+          "EVAL",
+          @invalidate_org_script,
+          "2",
+          org_set,
+          all_orgs,
+          org_id,
+          prefix
+        ])
 
-    delete_redis_key(org_set)
-    srem(all_orgs_set_key(), org_id)
+      _ ->
+        :ok
+    end
+
     :ok
   end
 
@@ -150,16 +171,6 @@ defmodule Front.DashboardPage.Model do
 
       _ ->
         []
-    end
-  end
-
-  defp srem(set_key, member) do
-    case cacheman_state() do
-      %{backend_pid: backend_pid, prefix: prefix} ->
-        redis_command(backend_pid, ["SREM", prefix <> set_key, member])
-
-      _ ->
-        :ok
     end
   end
 

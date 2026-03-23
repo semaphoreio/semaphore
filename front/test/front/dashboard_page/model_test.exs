@@ -275,6 +275,159 @@ defmodule Front.DashboardPage.ModelTest do
     end
   end
 
+  describe "atomic invalidation (race condition regression)" do
+    test "keys written concurrently with invalidation are not orphaned" do
+      # Regression: non-atomic SMEMBERS → DEL keys → DEL set could orphan a key
+      # written between SMEMBERS and DEL set, leaving it unreachable by future
+      # invalidations. With atomic Lua-based invalidation this cannot happen:
+      # any surviving key must remain tracked so a follow-up invalidation removes it.
+      org_id = "org-race"
+
+      Enum.each(1..5, fn i ->
+        params =
+          struct!(LoadParams,
+            organization_id: org_id,
+            user_id: "user-pre-#{i}",
+            requester: false
+          )
+
+        Model.get(params, fn -> {:ok, [:"pre_#{i}"], "", ""} end)
+      end)
+
+      # Fire invalidation + new writes concurrently
+      tasks =
+        [Task.async(fn -> Model.invalidate_org(org_id) end)] ++
+          Enum.map(1..10, fn i ->
+            Task.async(fn ->
+              params =
+                struct!(LoadParams,
+                  organization_id: org_id,
+                  user_id: "user-race-#{i}",
+                  requester: false
+                )
+
+              Model.get(params, fn -> {:ok, [:"race_#{i}"], "", ""} end)
+            end)
+          end)
+
+      Task.await_many(tasks, :timer.seconds(5))
+
+      # A second invalidation must be able to clean up every surviving entry.
+      # Under the old non-atomic code, orphaned keys would escape this.
+      :ok = Model.invalidate_org(org_id)
+
+      all_params =
+        Enum.map(1..5, fn i ->
+          struct!(LoadParams,
+            organization_id: org_id,
+            user_id: "user-pre-#{i}",
+            requester: false
+          )
+        end) ++
+          Enum.map(1..10, fn i ->
+            struct!(LoadParams,
+              organization_id: org_id,
+              user_id: "user-race-#{i}",
+              requester: false
+            )
+          end)
+
+      Enum.each(all_params, fn params ->
+        refute Cacheman.exists?(:front, Model.cache_key(params)),
+               "orphaned key: #{Model.cache_key(params)}"
+      end)
+    end
+
+    test "repeated concurrent write/invalidation cycles leave no stale entries" do
+      org_id = "org-stress"
+
+      # Run 20 cycles of concurrent writes + invalidation to exercise timing
+      Enum.each(1..20, fn cycle ->
+        writer_tasks =
+          Enum.map(1..5, fn i ->
+            Task.async(fn ->
+              params =
+                struct!(LoadParams,
+                  organization_id: org_id,
+                  user_id: "user-#{cycle}-#{i}",
+                  requester: false
+                )
+
+              Model.get(params, fn -> {:ok, [:"c#{cycle}_#{i}"], "", ""} end)
+            end)
+          end)
+
+        invalidator = Task.async(fn -> Model.invalidate_org(org_id) end)
+
+        Task.await_many([invalidator | writer_tasks], :timer.seconds(5))
+      end)
+
+      # Final invalidation must reach every surviving key
+      :ok = Model.invalidate_org(org_id)
+
+      all_params =
+        for cycle <- 1..20, i <- 1..5 do
+          struct!(LoadParams,
+            organization_id: org_id,
+            user_id: "user-#{cycle}-#{i}",
+            requester: false
+          )
+        end
+
+      Enum.each(all_params, fn params ->
+        refute Cacheman.exists?(:front, Model.cache_key(params)),
+               "stale key after stress cycles: #{Model.cache_key(params)}"
+      end)
+    end
+
+    test "surviving key from concurrent write is reachable by next invalidation" do
+      org_id = "org-survive"
+
+      # Write a key that we'll check individually
+      target_params =
+        struct!(LoadParams,
+          organization_id: org_id,
+          user_id: "user-target",
+          requester: false
+        )
+
+      # Run invalidation while simultaneously writing the target key, many times
+      # to increase the chance of hitting the interleaving window
+      Enum.each(1..30, fn _ ->
+        # Seed an initial entry so the org set exists
+        seed_params =
+          struct!(LoadParams,
+            organization_id: org_id,
+            user_id: "user-seed",
+            requester: false
+          )
+
+        Model.get(seed_params, fn -> {:ok, [:seed], "", ""} end)
+
+        tasks = [
+          Task.async(fn -> Model.invalidate_org(org_id) end),
+          Task.async(fn ->
+            Model.get(target_params, fn -> {:ok, [:target], "", ""} end)
+          end)
+        ]
+
+        Task.await_many(tasks, :timer.seconds(5))
+
+        # If target's cache entry survived the concurrent invalidation,
+        # it MUST be removable by a follow-up invalidation
+        if Cacheman.exists?(:front, Model.cache_key(target_params)) do
+          :ok = Model.invalidate_org(org_id)
+
+          refute Cacheman.exists?(:front, Model.cache_key(target_params)),
+                 "orphaned key survived follow-up invalidation"
+        end
+
+        # Clean up for next iteration
+        Model.invalidate_org(org_id)
+      end)
+    end
+  end
+
   defp redis_ttl(key) do
     state = :sys.get_state(Cacheman.full_process_name(:front))
 
