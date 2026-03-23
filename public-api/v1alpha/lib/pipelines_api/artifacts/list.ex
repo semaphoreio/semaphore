@@ -10,7 +10,7 @@ defmodule PipelinesAPI.Artifacts.List do
   alias PipelinesAPI.Util.Metrics
 
   import Plug.Conn, only: [resp: 3, halt: 1]
-  import PipelinesAPI.Artifacts.Authorize, only: [authorize_view: 2]
+  import PipelinesAPI.Artifacts.Authorize, only: [authorize_list: 2]
 
   import PipelinesAPI.Artifacts.Common,
     only: [
@@ -25,7 +25,7 @@ defmodule PipelinesAPI.Artifacts.List do
 
   plug(:verify_params)
   plug(:resolve_project_id_from_scope)
-  plug(:authorize_view)
+  plug(:authorize_list)
   plug(:get_artifact_store_id)
   plug(:list_artifacts)
 

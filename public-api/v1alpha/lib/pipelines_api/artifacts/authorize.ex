@@ -9,10 +9,21 @@ defmodule PipelinesAPI.Artifacts.Authorize do
   alias LogTee, as: LT
   alias Plug.Conn
 
-  def authorize_view(conn, _opts) do
+  @list_permissions ["project.view", "project.artifacts.view"]
+  @signed_url_permissions ["project.view", "project.artifacts.view"]
+
+  def authorize_list(conn, _opts) do
+    authorize_with_permissions(conn, @list_permissions)
+  end
+
+  def authorize_signed_url(conn, _opts) do
+    authorize_with_permissions(conn, @signed_url_permissions)
+  end
+
+  defp authorize_with_permissions(conn, required_permissions) do
     case conn.params["project_id"] do
       project_id when is_binary(project_id) and project_id != "" ->
-        authorize(project_id, "project.artifacts.view", conn)
+        authorize(project_id, required_permissions, conn)
 
       _ ->
         LT.error("project_id missing in artifacts authorization params", "Artifacts.Authorize")
@@ -20,14 +31,14 @@ defmodule PipelinesAPI.Artifacts.Authorize do
     end
   end
 
-  defp authorize(project_id, permission, conn) do
+  defp authorize(project_id, required_permissions, conn) do
     user_id = Conn.get_req_header(conn, "x-semaphore-user-id") |> Enum.at(0, "")
     org_id = Conn.get_req_header(conn, "x-semaphore-org-id") |> Enum.at(0, "")
 
     with params <- %{user_id: user_id, org_id: org_id, project_id: project_id},
          :ok <- PipelinesAPI.Util.Auth.project_belongs_to_org(org_id, project_id),
          {:ok, permissions} <- RBACClient.list_user_permissions(params) do
-      authorize_or_halt(permissions, permission, conn)
+      authorize_or_halt(permissions, required_permissions, conn)
     else
       {:error, {:internal, _}} = error ->
         LT.error(error, "Artifacts.Authorize")
@@ -39,8 +50,8 @@ defmodule PipelinesAPI.Artifacts.Authorize do
     end
   end
 
-  defp authorize_or_halt(permissions, permission, conn) do
-    if Enum.member?(permissions, permission) do
+  defp authorize_or_halt(permissions, required_permissions, conn) do
+    if Enum.all?(required_permissions, &Enum.member?(permissions, &1)) do
       conn
     else
       conn |> authorization_failed(:unathorized, "Permission denied")
