@@ -57,7 +57,6 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
       assert {200, response} =
                signed_url(
                  %{
-                   "project_id" => ctx.project.id,
                    "scope" => "jobs",
                    "scope_id" => ctx.job.id,
                    "path" => "agent/job_logs.txt.gz"
@@ -72,7 +71,6 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
       assert {200, response} =
                signed_url(
                  %{
-                   "project_id" => ctx.project.id,
                    "scope" => "workflows",
                    "scope_id" => ctx.workflow.wf_id,
                    "path" => "debug/workflow_logs.txt"
@@ -87,7 +85,6 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
       assert {200, response} =
                signed_url(
                  %{
-                   "project_id" => ctx.project.id,
                    "scope" => "projects",
                    "scope_id" => ctx.project.id,
                    "path" => "releases/build.tar.gz"
@@ -102,7 +99,6 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
       assert {200, response} =
                signed_url(
                  %{
-                   "project_id" => ctx.project.id,
                    "scope" => "jobs",
                    "scope_id" => ctx.job.id,
                    "path" => "agent/job_logs.txt.gz",
@@ -114,49 +110,62 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
       assert response == %{"url" => @job_artifact_url}
     end
 
-    test "returns 200 and infers project_id for job scope when omitted", ctx do
+    test "resolves project_id from job scope_id even when request includes another project_id",
+         ctx do
+      other_project = Support.Stubs.Project.create(ctx.org, ctx.user)
+      {_workflow, other_job} = create_workflow_and_job(other_project, ctx.user.id, ctx.org.id)
+
+      Support.Stubs.Artifacthub.create(other_job.id,
+        scope: "jobs",
+        path: "agent/other_job_logs.txt.gz",
+        url: "https://localhost:9000/agent/other_job_logs.txt.gz"
+      )
+
       assert {200, response} =
                signed_url(
                  %{
+                   "project_id" => ctx.project.id,
                    "scope" => "jobs",
-                   "scope_id" => ctx.job.id,
-                   "path" => "agent/job_logs.txt.gz"
+                   "scope_id" => other_job.id,
+                   "path" => "agent/other_job_logs.txt.gz"
                  },
-                 ctx.user.id
+                 ctx.user.id,
+                 true
                )
 
-      assert response == %{"url" => @job_artifact_url}
+      assert response == %{"url" => "https://localhost:9000/agent/other_job_logs.txt.gz"}
     end
 
-    test "returns 200 and infers project_id for workflow scope when omitted", ctx do
+    test "resolves project_id from workflow scope_id even when request includes another project_id",
+         ctx do
+      other_project = Support.Stubs.Project.create(ctx.org, ctx.user)
+
+      {other_workflow, _other_job} =
+        create_workflow_and_job(other_project, ctx.user.id, ctx.org.id)
+
+      Support.Stubs.Artifacthub.create(other_workflow.wf_id,
+        scope: "workflows",
+        path: "debug/other_workflow_logs.txt",
+        url: "https://localhost:9000/debug/other_workflow_logs.txt"
+      )
+
       assert {200, response} =
                signed_url(
                  %{
+                   "project_id" => ctx.project.id,
                    "scope" => "workflows",
-                   "scope_id" => ctx.workflow.wf_id,
-                   "path" => "debug/workflow_logs.txt"
+                   "scope_id" => other_workflow.wf_id,
+                   "path" => "debug/other_workflow_logs.txt"
                  },
-                 ctx.user.id
+                 ctx.user.id,
+                 true
                )
 
-      assert response == %{"url" => @workflow_artifact_url}
+      assert response == %{"url" => "https://localhost:9000/debug/other_workflow_logs.txt"}
     end
 
-    test "returns 200 and infers project_id for project scope when omitted", ctx do
-      assert {200, response} =
-               signed_url(
-                 %{
-                   "scope" => "projects",
-                   "scope_id" => ctx.project.id,
-                   "path" => "releases/build.tar.gz"
-                 },
-                 ctx.user.id
-               )
-
-      assert response == %{"url" => @project_artifact_url}
-    end
-
-    test "returns 404 when project scope_id belongs to a different project", ctx do
+    test "resolves project_id from project scope_id even when request includes another project_id",
+         ctx do
       other_project = Support.Stubs.Project.create(ctx.org, ctx.user)
 
       Support.Stubs.Artifacthub.create(other_project.id,
@@ -165,7 +174,7 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
         url: "https://localhost:9000/other/releases.tar.gz"
       )
 
-      assert {404, "Not found"} =
+      assert {200, response} =
                signed_url(
                  %{
                    "project_id" => ctx.project.id,
@@ -174,29 +183,16 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
                    "path" => "other/releases.tar.gz"
                  },
                  ctx.user.id,
-                 false
+                 true
                )
+
+      assert response == %{"url" => "https://localhost:9000/other/releases.tar.gz"}
     end
 
-    test "returns 404 when provided project_id differs from project scope_id", ctx do
-      other_project = Support.Stubs.Project.create(ctx.org, ctx.user)
-
-      assert {404, "Not found"} =
-               signed_url(
-                 %{
-                   "project_id" => other_project.id,
-                   "scope" => "projects",
-                   "scope_id" => ctx.project.id,
-                   "path" => "releases/build.tar.gz"
-                 },
-                 ctx.user.id,
-                 false
-               )
-    end
-
-    test "returns 404 when job scope_id belongs to a different project", ctx do
-      other_project = Support.Stubs.Project.create(ctx.org, ctx.user)
-      {_workflow, other_job} = create_workflow_and_job(other_project, ctx.user.id, ctx.org.id)
+    test "returns 404 on project/org mismatch", ctx do
+      org = Support.Stubs.Organization.create(name: "RT2", org_username: "rt2")
+      project = Support.Stubs.Project.create(org, ctx.user)
+      {_workflow, other_job} = create_workflow_and_job(project, ctx.user.id, org.id)
 
       Support.Stubs.Artifacthub.create(other_job.id,
         scope: "jobs",
@@ -207,7 +203,6 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
       assert {404, "Not found"} =
                signed_url(
                  %{
-                   "project_id" => ctx.project.id,
                    "scope" => "jobs",
                    "scope_id" => other_job.id,
                    "path" => "agent/other_job_logs.txt.gz"
@@ -217,66 +212,24 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
                )
     end
 
-    test "returns 404 when provided project_id differs from job scope_id owner", ctx do
-      other_project = Support.Stubs.Project.create(ctx.org, ctx.user)
-
-      assert {404, "Not found"} =
+    test "returns 404 when signed URL path does not exist", ctx do
+      assert {404, response} =
                signed_url(
                  %{
-                   "project_id" => other_project.id,
                    "scope" => "jobs",
                    "scope_id" => ctx.job.id,
-                   "path" => "agent/job_logs.txt.gz"
+                   "path" => "agent/missing.log"
                  },
-                 ctx.user.id,
-                 false
+                 ctx.user.id
                )
-    end
 
-    test "returns 404 when workflow scope_id belongs to a different project", ctx do
-      other_project = Support.Stubs.Project.create(ctx.org, ctx.user)
-      {other_workflow, _job} = create_workflow_and_job(other_project, ctx.user.id, ctx.org.id)
-
-      Support.Stubs.Artifacthub.create(other_workflow.wf_id,
-        scope: "workflows",
-        path: "debug/other_workflow_logs.txt",
-        url: "https://localhost:9000/debug/other_workflow_logs.txt"
-      )
-
-      assert {404, "Not found"} =
-               signed_url(
-                 %{
-                   "project_id" => ctx.project.id,
-                   "scope" => "workflows",
-                   "scope_id" => other_workflow.wf_id,
-                   "path" => "debug/other_workflow_logs.txt"
-                 },
-                 ctx.user.id,
-                 false
-               )
-    end
-
-    test "returns 404 when provided project_id differs from workflow scope_id owner", ctx do
-      other_project = Support.Stubs.Project.create(ctx.org, ctx.user)
-
-      assert {404, "Not found"} =
-               signed_url(
-                 %{
-                   "project_id" => other_project.id,
-                   "scope" => "workflows",
-                   "scope_id" => ctx.workflow.wf_id,
-                   "path" => "debug/workflow_logs.txt"
-                 },
-                 ctx.user.id,
-                 false
-               )
+      assert response == "Artifact not found"
     end
 
     test "returns 400 when path is missing", ctx do
       assert {400, "path must be present"} =
                signed_url(
                  %{
-                   "project_id" => ctx.project.id,
                    "scope" => "jobs",
                    "scope_id" => ctx.job.id
                  },
@@ -289,7 +242,6 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
       assert {400, "scope must be one of: projects, workflows, jobs"} =
                signed_url(
                  %{
-                   "project_id" => ctx.project.id,
                    "scope" => "pipelines",
                    "scope_id" => ctx.job.id,
                    "path" => "agent/job_logs.txt.gz"
@@ -303,7 +255,6 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
       assert {400, "method must be one of: GET, HEAD"} =
                signed_url(
                  %{
-                   "project_id" => ctx.project.id,
                    "scope" => "jobs",
                    "scope_id" => ctx.job.id,
                    "path" => "agent/job_logs.txt.gz",
@@ -317,7 +268,6 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
     test "returns 400 when method has invalid type", ctx do
       base_query =
         URI.encode_query(%{
-          "project_id" => ctx.project.id,
           "scope" => "jobs",
           "scope_id" => ctx.job.id,
           "path" => "agent/job_logs.txt.gz"
@@ -337,7 +287,6 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
       assert {401, "Permission denied"} =
                signed_url(
                  %{
-                   "project_id" => ctx.project.id,
                    "scope" => "jobs",
                    "scope_id" => ctx.job.id,
                    "path" => "agent/job_logs.txt.gz"
@@ -345,6 +294,22 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
                  ctx.user.id,
                  false
                )
+    end
+
+    test "returns 500 when artifact store is not configured", ctx do
+      set_project_artifact_store_id(ctx.project, "")
+
+      assert {500, response} =
+               signed_url(
+                 %{
+                   "scope" => "jobs",
+                   "scope_id" => ctx.job.id,
+                   "path" => "agent/job_logs.txt.gz"
+                 },
+                 ctx.user.id
+               )
+
+      assert response =~ "Artifact store is not configured"
     end
   end
 
@@ -394,5 +359,17 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
     job = Job.create(pipeline.id, build_req_id, project_id: project.id)
 
     {workflow.api_model, job.api_model}
+  end
+
+  defp set_project_artifact_store_id(project, artifact_store_id) do
+    updated_project = %{
+      project
+      | api_model: %{
+          project.api_model
+          | spec: %{project.api_model.spec | artifact_store_id: artifact_store_id}
+        }
+    }
+
+    Support.Stubs.DB.update(:projects, updated_project)
   end
 end

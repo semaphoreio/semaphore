@@ -210,6 +210,29 @@ defmodule PipelinesAPI.Logs.Get.Test do
       assert {401, _, _} = get_logs(ctx.cloud_job.id, ctx.user_id, false, %{"full" => "true"})
     end
 
+    test "returns self-hosted logs token when full logs are requested for self-hosted job", ctx do
+      GrpcMock.stub(RBACMock, :list_user_permissions, fn _, _ ->
+        InternalApi.RBAC.ListUserPermissionsResponse.new(
+          permissions: Support.Stubs.all_permissions_except("project.artifacts.view")
+        )
+      end)
+
+      GrpcMock.stub(Loghub2Mock, :generate_token, fn _, _ ->
+        %InternalApi.Loghub2.GenerateTokenResponse{
+          type: InternalApi.Loghub2.TokenType.value(:PULL),
+          token: @token
+        }
+      end)
+
+      assert {302, headers, _} =
+               get_logs(ctx.self_hosted_job.id, ctx.user_id, false, %{"full" => "true"})
+
+      location = "https://localhost/api/v1/logs/#{ctx.self_hosted_job.id}?jwt=#{@token}"
+
+      assert Enum.find(headers, fn {name, _} -> name == "location" end) ==
+               {"location", location}
+    end
+
     test "ignores malformed full query value type", ctx do
       GrpcMock.stub(LoghubMock, :get_log_events, fn _, _ ->
         %InternalApi.Loghub.GetLogEventsResponse{

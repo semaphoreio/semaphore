@@ -5,13 +5,14 @@ defmodule PipelinesAPI.Logs.Authorize do
 
   use Plug.Builder
 
+  alias PipelinesAPI.Logs.Params, as: LogsParams
   alias PipelinesAPI.RBACClient
   alias LogTee, as: LT
   alias Plug.Conn
 
   def authorize_job(conn, _opts) do
     job = conn.params.job
-    authorize(job.project_id, required_permissions(conn), conn)
+    authorize(job.project_id, required_permissions(conn.params, job), conn)
   end
 
   defp authorize(project_id, required_permissions, conn) do
@@ -41,26 +42,15 @@ defmodule PipelinesAPI.Logs.Authorize do
     end
   end
 
-  defp required_permissions(conn) do
+  defp required_permissions(params, job) do
     base_permissions = ["project.view"]
 
-    if full_logs_requested?(conn.params) do
+    if LogsParams.full_logs_requested_for_job?(params, job) do
       base_permissions ++ ["project.artifacts.view"]
     else
       base_permissions
     end
   end
-
-  defp full_logs_requested?(params) do
-    params
-    |> Map.get("full", "")
-    |> full_logs_value?()
-  end
-
-  defp full_logs_value?(value) when is_binary(value),
-    do: value |> String.downcase() |> Kernel.in(["1", "true", "yes"])
-
-  defp full_logs_value?(_value), do: false
 
   defp authorization_failed(conn, :unathorized, msg), do: conn |> resp(401, msg) |> halt
   defp authorization_failed(conn, :internal), do: conn |> resp(500, "Internal error") |> halt
