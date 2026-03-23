@@ -480,6 +480,9 @@ defmodule FrontWeb.DashboardController do
   defp project_ids_fingerprint(_), do: ""
 
   defp do_list_workflows(params) do
+    org_id = params[:organization_id]
+    user_id = params[:requester_id]
+
     case Watchman.benchmark("home_page.list_keyset", fn ->
            Models.Workflow.list_keyset(params)
          end) do
@@ -492,12 +495,15 @@ defmodule FrontWeb.DashboardController do
         {:ok, workflows, next_page_token, previous_page_token}
 
       {:error, reason} ->
-        Logger.error("Dashboard workflow fetch failed: #{inspect(reason)}")
+        Logger.error(
+          "Dashboard workflow fetch failed for org_id=#{org_id} user_id=#{user_id}: #{inspect(reason)}"
+        )
+
         {:error, reason}
 
       unexpected ->
         Logger.error(
-          "Dashboard workflow fetch returned unexpected response: #{inspect(unexpected)}"
+          "Dashboard workflow fetch returned unexpected response for org_id=#{org_id} user_id=#{user_id}: #{inspect(unexpected)}"
         )
 
         {:error, unexpected}
