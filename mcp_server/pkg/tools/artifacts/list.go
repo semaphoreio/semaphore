@@ -22,10 +22,12 @@ type artifactListItem struct {
 }
 
 type artifactListPage struct {
-	Limit     int  `json:"limit"`
-	Returned  int  `json:"returned"`
-	Total     int  `json:"total"`
-	Truncated bool `json:"truncated"`
+	Limit               int    `json:"limit"`
+	Returned            int    `json:"returned"`
+	Total               int    `json:"total"`
+	Truncated           bool   `json:"truncated"`
+	PaginationAvailable bool   `json:"paginationAvailable"`
+	PaginationNote      string `json:"paginationNote,omitempty"`
 }
 
 type artifactListResult struct {
@@ -37,6 +39,8 @@ type artifactListResult struct {
 	Artifacts      []artifactListItem `json:"artifacts"`
 	Page           artifactListPage   `json:"page"`
 }
+
+const paginationUnavailableNote = "Pagination beyond the first page is currently unavailable because Artifacthub ListPath requires full directory fetches per request. Narrow path and retry."
 
 func listFullDescription() string {
 	return `List artifacts for a project, workflow, or job scope.
@@ -56,7 +60,13 @@ Inputs:
 
 Output:
 - artifacts: File and directory entries with relative paths and sizes
-- page: Pagination metadata (limit, returned, total, truncated)
+- page: Pagination metadata (limit, returned, total, truncated, paginationAvailable, paginationNote)
+
+Note:
+- The current Artifacthub ListPath API returns full directory listings.
+- This tool returns up to limit entries from the start of that listing.
+- If a directory exceeds 5000 entries, the tool aborts and asks you to narrow the path.
+- Additional pages are currently unavailable to avoid repeated full-fetch load.
 
 Examples:
 1. List root artifacts for a job:
@@ -127,16 +137,7 @@ func listHandler(api internalapi.Provider) server.ToolHandlerFunc {
 		tracker := shared.TrackToolExecution(ctx, listToolName, orgID)
 		defer tracker.Cleanup()
 
-		if err := shared.EnsureReadToolsFeature(ctx, api, orgID); err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
-		}
-
-		scope, scopeID, err := requireScopeAndID(req)
-		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
-		}
-
-		providedProjectID, err := optionalProjectID(req)
+		params, err := resolveCommonRequestParams(req, "listing artifacts")
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -151,44 +152,67 @@ func listHandler(api internalapi.Provider) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		userID, err := extractUserID(req, "listing artifacts")
-		if err != nil {
+		if err := shared.EnsureReadToolsFeature(ctx, api, orgID); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		access, authErr := resolveArtifactAccess(ctx, api, listToolName, userID, orgID, scope, scopeID, providedProjectID)
+		access, authErr := resolveArtifactAccess(
+			ctx,
+			api,
+			listToolName,
+			params.UserID,
+			orgID,
+			params.Scope,
+			params.ScopeID,
+			params.ProvidedProjectID,
+			artifactsListPermission,
+		)
 		if authErr != nil {
 			return authErr, nil
 		}
 
-		requestPath := artifactPath(scope, scopeID, relativePath)
+		requestPath := artifactPath(params.Scope, params.ScopeID, relativePath)
 		items, err := listPath(ctx, api, access.ArtifactStoreID, requestPath)
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		artifacts := serializeListItems(items, scope, scopeID)
+		artifacts := serializeListItems(items, params.Scope, params.ScopeID)
 		if len(artifacts) == 0 && relativePath != "" {
 			return mcp.NewToolResultError("Artifact path not found"), nil
 		}
 
 		total := len(artifacts)
-		if total > limit {
-			artifacts = artifacts[:limit]
+		if total > maxListItems {
+			return mcp.NewToolResultError(
+				fmt.Sprintf("Artifact directory listing contains %d entries, which exceeds the safe client-side paging limit of %d. Narrow the path and retry.", total, maxListItems),
+			), nil
 		}
+		start := 0
+		if start > total {
+			start = total
+		}
+		end := start + limit
+		if end > total {
+			end = total
+		}
+		pagedArtifacts := artifacts[start:end]
+		truncated := end < total
 
 		result := artifactListResult{
 			OrganizationID: orgID,
 			ProjectID:      access.ProjectID,
-			Scope:          scope,
-			ScopeID:        scopeID,
+			Scope:          params.Scope,
+			ScopeID:        params.ScopeID,
 			Path:           relativePath,
-			Artifacts:      artifacts,
+			Artifacts:      pagedArtifacts,
 			Page: artifactListPage{
-				Limit:     limit,
-				Returned:  len(artifacts),
-				Total:     total,
-				Truncated: total > len(artifacts),
+				Limit:               limit,
+				Returned:            len(pagedArtifacts),
+				Total:               total,
+				Truncated:           truncated,
+				PaginationAvailable: false,
+				PaginationNote:      paginationUnavailableNote,
 			},
 		}
 
@@ -210,7 +234,7 @@ func serializeListItems(items []*artifacthubpb.ListItem, scope, scopeID string) 
 			continue
 		}
 
-		relative := strings.Trim(strings.TrimSpace(toRelativeArtifactPath(item.GetName(), scope, scopeID)), "/")
+		relative := strings.Trim(toRelativeArtifactPath(item.GetName(), scope, scopeID), "/")
 		if relative == "" {
 			continue
 		}
@@ -242,13 +266,17 @@ func formatListMarkdown(result artifactListResult) string {
 	}
 	mb.KeyValue(
 		"Page",
-		fmt.Sprintf("limit=%d, returned=%d, total=%d, truncated=%t",
+		fmt.Sprintf("limit=%d, returned=%d, total=%d, truncated=%t, paginationAvailable=%t",
 			result.Page.Limit,
 			result.Page.Returned,
 			result.Page.Total,
 			result.Page.Truncated,
+			result.Page.PaginationAvailable,
 		),
 	)
+	if result.Page.PaginationNote != "" {
+		mb.KeyValue("Pagination Note", result.Page.PaginationNote)
+	}
 
 	if len(result.Artifacts) == 0 {
 		mb.Line()

@@ -110,16 +110,7 @@ func signedURLHandler(api internalapi.Provider) server.ToolHandlerFunc {
 		tracker := shared.TrackToolExecution(ctx, signedURLToolName, orgID)
 		defer tracker.Cleanup()
 
-		if err := shared.EnsureReadToolsFeature(ctx, api, orgID); err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
-		}
-
-		scope, scopeID, err := requireScopeAndID(req)
-		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
-		}
-
-		providedProjectID, err := optionalProjectID(req)
+		params, err := resolveCommonRequestParams(req, "generating artifact signed URLs")
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -134,17 +125,26 @@ func signedURLHandler(api internalapi.Provider) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		userID, err := extractUserID(req, "generating artifact signed URLs")
-		if err != nil {
+		if err := shared.EnsureReadToolsFeature(ctx, api, orgID); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		access, authErr := resolveArtifactAccess(ctx, api, signedURLToolName, userID, orgID, scope, scopeID, providedProjectID)
+		access, authErr := resolveArtifactAccess(
+			ctx,
+			api,
+			signedURLToolName,
+			params.UserID,
+			orgID,
+			params.Scope,
+			params.ScopeID,
+			params.ProvidedProjectID,
+			artifactsDownloadPermission,
+		)
 		if authErr != nil {
 			return authErr, nil
 		}
 
-		requestPath := artifactPath(scope, scopeID, relativePath)
+		requestPath := artifactPath(params.Scope, params.ScopeID, relativePath)
 		url, err := getSignedURL(ctx, api, access.ArtifactStoreID, requestPath, method)
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
@@ -153,8 +153,8 @@ func signedURLHandler(api internalapi.Provider) server.ToolHandlerFunc {
 		result := signedURLResult{
 			OrganizationID: orgID,
 			ProjectID:      access.ProjectID,
-			Scope:          scope,
-			ScopeID:        scopeID,
+			Scope:          params.Scope,
+			ScopeID:        params.ScopeID,
 			Path:           relativePath,
 			Method:         method,
 			URL:            url,

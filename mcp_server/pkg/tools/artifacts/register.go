@@ -12,8 +12,15 @@ const (
 
 	defaultListLimit = 200
 	maxListLimit     = 1000
+	maxListItems     = 5000
 
-	artifactsViewPermission = "project.artifacts.view"
+	// artifactsListPermission mirrors the front controller: browsing/listing
+	// artifact entries only requires "project.view" (same as the UI endpoints).
+	artifactsListPermission = "project.view"
+
+	// artifactsDownloadPermission mirrors the front controller: downloading
+	// artifacts (signed URL generation) requires "project.artifacts.view".
+	artifactsDownloadPermission = "project.artifacts.view"
 )
 
 // Register wires artifact tools into the MCP server.

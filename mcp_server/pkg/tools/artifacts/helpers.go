@@ -3,6 +3,8 @@ package artifacts
 import (
 	"context"
 	"fmt"
+	"net/url"
+	"path"
 	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -32,6 +34,13 @@ type accessContext struct {
 	OrganizationID  string
 	ProjectID       string
 	ArtifactStoreID string
+}
+
+type commonRequestParams struct {
+	UserID            string
+	Scope             string
+	ScopeID           string
+	ProvidedProjectID string
 }
 
 func requireOrganizationID(req mcp.CallToolRequest) (string, error) {
@@ -95,6 +104,30 @@ Troubleshooting:
 	return userID, nil
 }
 
+func resolveCommonRequestParams(req mcp.CallToolRequest, action string) (commonRequestParams, error) {
+	userID, err := extractUserID(req, action)
+	if err != nil {
+		return commonRequestParams{}, err
+	}
+
+	scope, scopeID, err := requireScopeAndID(req)
+	if err != nil {
+		return commonRequestParams{}, err
+	}
+
+	providedProjectID, err := optionalProjectID(req)
+	if err != nil {
+		return commonRequestParams{}, err
+	}
+
+	return commonRequestParams{
+		UserID:            userID,
+		Scope:             scope,
+		ScopeID:           scopeID,
+		ProvidedProjectID: providedProjectID,
+	}, nil
+}
+
 func normalizeScope(raw string) (string, error) {
 	scope := strings.ToLower(strings.TrimSpace(raw))
 	switch scope {
@@ -117,12 +150,18 @@ func normalizeMethod(raw string) (string, error) {
 }
 
 func sanitizeRelativePath(raw string, required bool) (string, error) {
-	value := strings.TrimSpace(raw)
+	value := raw
+	if value != strings.TrimSpace(value) {
+		return "", fmt.Errorf("path must not contain leading or trailing whitespace")
+	}
 	if value == "" {
 		if required {
 			return "", fmt.Errorf("path must be present")
 		}
 		return "", nil
+	}
+	if containsControlRune(value) {
+		return "", fmt.Errorf("path contains control characters")
 	}
 
 	if strings.HasPrefix(value, "/") {
@@ -131,11 +170,20 @@ func sanitizeRelativePath(raw string, required bool) (string, error) {
 	if strings.Contains(value, `\`) {
 		return "", fmt.Errorf("invalid path")
 	}
+	if containsEncodedPathSeparatorOrControl(value) {
+		return "", fmt.Errorf("encoded path separators are not allowed")
+	}
+
+	if err := validateEncodedPathStructure(value); err != nil {
+		return "", err
+	}
 
 	segments := strings.Split(value, "/")
 	cleaned := make([]string, 0, len(segments))
 	for _, seg := range segments {
-		seg = strings.TrimSpace(seg)
+		if seg != strings.TrimSpace(seg) {
+			return "", fmt.Errorf("path segments must not contain leading or trailing whitespace")
+		}
 		if seg == "" {
 			continue
 		}
@@ -152,7 +200,22 @@ func sanitizeRelativePath(raw string, required bool) (string, error) {
 		return "", nil
 	}
 
-	return strings.Join(cleaned, "/"), nil
+	cleanedPath := strings.Join(cleaned, "/")
+	normalized := strings.TrimPrefix(path.Clean("/"+cleanedPath), "/")
+	if normalized == "." {
+		normalized = ""
+	}
+	if normalized == "" {
+		if required {
+			return "", fmt.Errorf("path must be present")
+		}
+		return "", nil
+	}
+	if normalized != cleanedPath {
+		return "", fmt.Errorf("path traversal is not allowed")
+	}
+
+	return normalized, nil
 }
 
 func parseLimit(req mcp.CallToolRequest) (int, error) {
@@ -172,25 +235,16 @@ func artifactPath(scope, scopeID, relativePath string) string {
 }
 
 func toRelativeArtifactPath(fullPath, scope, scopeID string) string {
-	name := strings.TrimSpace(strings.TrimPrefix(fullPath, "/"))
+	name := strings.TrimPrefix(fullPath, "/")
 	if name == "" {
 		return ""
 	}
 
 	prefix := fmt.Sprintf("artifacts/%s/%s/", scope, scopeID)
-	if strings.HasPrefix(name, prefix) {
-		return strings.TrimPrefix(name, prefix)
-	}
-
-	trimmedPrefix := strings.TrimSuffix(prefix, "/")
-	if name == trimmedPrefix {
+	if !strings.HasPrefix(name, prefix) {
 		return ""
 	}
-	if strings.HasPrefix(name, trimmedPrefix+"/") {
-		return strings.TrimPrefix(name, trimmedPrefix+"/")
-	}
-
-	return name
+	return strings.TrimPrefix(name, prefix)
 }
 
 func sameID(a, b string) bool {
@@ -287,6 +341,7 @@ func resolveArtifactAccess(
 	scope string,
 	scopeID string,
 	providedProjectID string,
+	permission string,
 ) (accessContext, *mcp.CallToolResult) {
 	resolved, err := resolveScope(ctx, api, scope, scopeID)
 	if err != nil {
@@ -323,8 +378,8 @@ func resolveArtifactAccess(
 		projectID = providedProjectID
 	}
 
-	if err := authz.CheckProjectPermission(ctx, api, userID, orgID, projectID, artifactsViewPermission); err != nil {
-		return accessContext{}, shared.ProjectAuthorizationError(err, orgID, projectID, artifactsViewPermission)
+	if err := authz.CheckProjectPermission(ctx, api, userID, orgID, projectID, permission); err != nil {
+		return accessContext{}, shared.ProjectAuthorizationError(err, orgID, projectID, permission)
 	}
 
 	project, err := clients.DescribeProject(ctx, api, orgID, userID, projectID)
@@ -455,4 +510,126 @@ func scopeSingular(scope string) string {
 	default:
 		return "resource"
 	}
+}
+
+func containsControlRune(value string) bool {
+	for _, r := range value {
+		if r < 32 || r == 127 {
+			return true
+		}
+	}
+	return false
+}
+
+func containsEncodedPathSeparatorOrControl(value string) bool {
+	lower := strings.ToLower(value)
+	for _, token := range []string{"%00", "%2f", "%5c"} {
+		if strings.Contains(lower, token) {
+			return true
+		}
+	}
+	return false
+}
+
+func validateEncodedPathStructure(value string) error {
+	if !strings.Contains(value, "%") {
+		return nil
+	}
+
+	const maxDecodePasses = 3
+	decoded := value
+	for pass := 0; pass < maxDecodePasses; pass++ {
+		prepared := normalizeLiteralPercents(decoded)
+		next, err := url.PathUnescape(prepared)
+		if err != nil {
+			return fmt.Errorf("path contains invalid percent-encoding")
+		}
+		if next == decoded {
+			return nil
+		}
+		if containsEncodedPathSeparatorOrControl(next) {
+			return fmt.Errorf("encoded path separators are not allowed")
+		}
+		if err := validateRelativePathStructure(next); err != nil {
+			return err
+		}
+		decoded = next
+	}
+
+	if hasEscapablePercentTriplet(decoded) {
+		return fmt.Errorf("path contains excessively nested percent-encoding")
+	}
+
+	return nil
+}
+
+func normalizeLiteralPercents(value string) string {
+	if !strings.Contains(value, "%") {
+		return value
+	}
+
+	var out strings.Builder
+	out.Grow(len(value) + 8)
+
+	for i := 0; i < len(value); i++ {
+		if value[i] == '%' && i+2 < len(value) && isHexByte(value[i+1]) && isHexByte(value[i+2]) {
+			out.WriteByte('%')
+			out.WriteByte(value[i+1])
+			out.WriteByte(value[i+2])
+			i += 2
+			continue
+		}
+		if value[i] == '%' {
+			out.WriteString("%25")
+			continue
+		}
+		out.WriteByte(value[i])
+	}
+
+	return out.String()
+}
+
+func hasEscapablePercentTriplet(value string) bool {
+	for i := 0; i+2 < len(value); i++ {
+		if value[i] == '%' && isHexByte(value[i+1]) && isHexByte(value[i+2]) {
+			return true
+		}
+	}
+	return false
+}
+
+func isHexByte(b byte) bool {
+	return (b >= '0' && b <= '9') ||
+		(b >= 'a' && b <= 'f') ||
+		(b >= 'A' && b <= 'F')
+}
+
+func validateRelativePathStructure(value string) error {
+	if value != strings.TrimSpace(value) {
+		return fmt.Errorf("path must not contain leading or trailing whitespace")
+	}
+	if containsControlRune(value) {
+		return fmt.Errorf("path contains control characters")
+	}
+	if strings.HasPrefix(value, "/") {
+		return fmt.Errorf("absolute paths are not allowed")
+	}
+	if strings.Contains(value, `\`) {
+		return fmt.Errorf("invalid path")
+	}
+
+	segments := strings.Split(value, "/")
+	for _, seg := range segments {
+		if seg != strings.TrimSpace(seg) {
+			return fmt.Errorf("path segments must not contain leading or trailing whitespace")
+		}
+		if seg == "" {
+			continue
+		}
+		if seg == "." || seg == ".." {
+			return fmt.Errorf("path traversal is not allowed")
+		}
+	}
+
+	return nil
 }

@@ -2,6 +2,7 @@ package artifacts
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -9,6 +10,8 @@ import (
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/mark3labs/mcp-go/server"
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/feature"
 	artifacthubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/artifacthub"
 	workflowpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber_w_f.workflow"
 	projecthubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/projecthub"
@@ -43,7 +46,7 @@ func TestArtifactsListSuccessJobScope(t *testing.T) {
 		},
 	}
 
-	rbac := support.NewRBACStub(artifactsViewPermission)
+	rbac := support.NewRBACStub(artifactsListPermission)
 	provider := &support.MockProvider{
 		Timeout:           time.Second,
 		ArtifacthubClient: artifactClient,
@@ -120,7 +123,7 @@ func TestArtifactsListSuccessWorkflowScopeWithoutProjectID(t *testing.T) {
 			},
 		},
 	}
-	rbac := support.NewRBACStub(artifactsViewPermission)
+	rbac := support.NewRBACStub(artifactsListPermission)
 	provider := &support.MockProvider{
 		Timeout:           time.Second,
 		WorkflowClient:    workflowClient,
@@ -157,6 +160,54 @@ func TestArtifactsListSuccessWorkflowScopeWithoutProjectID(t *testing.T) {
 	}
 }
 
+func TestArtifactsListPreservesEncodedSpaceAndPlusInArtifactPaths(t *testing.T) {
+	artifactClient := &artifacthubClientStub{
+		listResp: &artifacthubpb.ListPathResponse{
+			Items: []*artifacthubpb.ListItem{
+				{Name: fmt.Sprintf("artifacts/projects/%s/reports/build log+v1%%23.txt", testProjectID), IsDirectory: false, Size: 11},
+				{Name: fmt.Sprintf("artifacts/projects/%s/reports/report%%2ejson", testProjectID), IsDirectory: false, Size: 22},
+			},
+		},
+	}
+	provider := &support.MockProvider{
+		Timeout:           time.Second,
+		ArtifacthubClient: artifactClient,
+		ProjectClient: &support.ProjectClientStub{
+			Response: newProjectDescribeResponse(testOrgID, testProjectID, testArtifactStore),
+		},
+		RBACClient: support.NewRBACStub(artifactsListPermission),
+	}
+
+	req := callRequest(map[string]any{
+		"organization_id": testOrgID,
+		"scope":           scopeProjects,
+		"scope_id":        testProjectID,
+	}, true)
+
+	res, err := listHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+	if res == nil || res.IsError {
+		t.Fatalf("expected successful response, got: %#v", res)
+	}
+
+	result, ok := res.StructuredContent.(artifactListResult)
+	if !ok {
+		t.Fatalf("unexpected structured content type: %T", res.StructuredContent)
+	}
+	if len(result.Artifacts) != 2 {
+		t.Fatalf("expected 2 artifacts, got %d", len(result.Artifacts))
+	}
+
+	if result.Artifacts[0].Path != "reports/build log+v1%23.txt" {
+		t.Fatalf("unexpected first artifact path: %q", result.Artifacts[0].Path)
+	}
+	if result.Artifacts[1].Path != "reports/report%2ejson" {
+		t.Fatalf("unexpected second artifact path: %q", result.Artifacts[1].Path)
+	}
+}
+
 func TestArtifactsListSuccessProjectScopeWithoutProjectID(t *testing.T) {
 	artifactClient := &artifacthubClientStub{
 		listResp: &artifacthubpb.ListPathResponse{
@@ -165,7 +216,7 @@ func TestArtifactsListSuccessProjectScopeWithoutProjectID(t *testing.T) {
 			},
 		},
 	}
-	rbac := support.NewRBACStub(artifactsViewPermission)
+	rbac := support.NewRBACStub(artifactsListPermission)
 	provider := &support.MockProvider{
 		Timeout:           time.Second,
 		ArtifacthubClient: artifactClient,
@@ -205,7 +256,7 @@ func TestArtifactsListSuccessProjectScopeWithoutProjectID(t *testing.T) {
 }
 
 func TestArtifactsListProjectIDMismatchReturnsScopeError(t *testing.T) {
-	rbac := support.NewRBACStub(artifactsViewPermission)
+	rbac := support.NewRBACStub(artifactsListPermission)
 	provider := &support.MockProvider{
 		Timeout:    time.Second,
 		JobClient:  &jobClientStub{orgID: testOrgID, projectID: testProjectID},
@@ -234,7 +285,7 @@ func TestArtifactsListProjectIDMismatchReturnsScopeError(t *testing.T) {
 }
 
 func TestArtifactsListWorkflowScopeProjectMismatchRejected(t *testing.T) {
-	rbac := support.NewRBACStub(artifactsViewPermission)
+	rbac := support.NewRBACStub(artifactsListPermission)
 	workflowClient := &support.WorkflowClientStub{
 		DescribeResp: &workflowpb.DescribeResponse{
 			Status: &statuspb.Status{Code: code.Code_OK},
@@ -273,7 +324,7 @@ func TestArtifactsListWorkflowScopeProjectMismatchRejected(t *testing.T) {
 }
 
 func TestArtifactsListProjectScopeProjectMismatchRejected(t *testing.T) {
-	rbac := support.NewRBACStub(artifactsViewPermission)
+	rbac := support.NewRBACStub(artifactsListPermission)
 	provider := &support.MockProvider{
 		Timeout:    time.Second,
 		RBACClient: rbac,
@@ -301,7 +352,7 @@ func TestArtifactsListProjectScopeProjectMismatchRejected(t *testing.T) {
 }
 
 func TestArtifactsListOrgMismatchReturnsScopeError(t *testing.T) {
-	rbac := support.NewRBACStub(artifactsViewPermission)
+	rbac := support.NewRBACStub(artifactsListPermission)
 	provider := &support.MockProvider{
 		Timeout:    time.Second,
 		JobClient:  &jobClientStub{orgID: testOtherOrgID, projectID: testProjectID},
@@ -347,7 +398,7 @@ func TestArtifactsListInvalidScopeRejected(t *testing.T) {
 }
 
 func TestArtifactsListInvalidRBACPermissions(t *testing.T) {
-	rbac := support.NewRBACStub("project.view")
+	rbac := support.NewRBACStub("organization.view")
 	provider := &support.MockProvider{
 		Timeout:   time.Second,
 		JobClient: &jobClientStub{orgID: testOrgID, projectID: testProjectID},
@@ -390,7 +441,7 @@ func TestArtifactsListInvalidRBACPermissionsWorkflowScope(t *testing.T) {
 		Response: newProjectDescribeResponse(testOrgID, testProjectID, testArtifactStore),
 	}
 	artifactClient := &artifacthubClientStub{}
-	rbac := support.NewRBACStub("project.view")
+	rbac := support.NewRBACStub("organization.view")
 	provider := &support.MockProvider{
 		Timeout:           time.Second,
 		WorkflowClient:    workflowClient,
@@ -445,7 +496,7 @@ func TestArtifactsSignedURLSuccessWorkflowScope(t *testing.T) {
 			},
 		},
 	}
-	rbac := support.NewRBACStub(artifactsViewPermission)
+	rbac := support.NewRBACStub(artifactsDownloadPermission)
 	provider := &support.MockProvider{
 		Timeout:           time.Second,
 		WorkflowClient:    workflowClient,
@@ -502,7 +553,7 @@ func TestArtifactsSignedURLSuccessJobScopeWithoutProjectID(t *testing.T) {
 	artifactClient := &artifacthubClientStub{
 		signedURL: "https://example.com/job-signed",
 	}
-	rbac := support.NewRBACStub(artifactsViewPermission)
+	rbac := support.NewRBACStub(artifactsDownloadPermission)
 	provider := &support.MockProvider{
 		Timeout:           time.Second,
 		JobClient:         &jobClientStub{orgID: testOrgID, projectID: testProjectID},
@@ -544,7 +595,7 @@ func TestArtifactsSignedURLSuccessProjectScopeWithoutProjectID(t *testing.T) {
 	artifactClient := &artifacthubClientStub{
 		signedURL: "https://example.com/project-signed",
 	}
-	rbac := support.NewRBACStub(artifactsViewPermission)
+	rbac := support.NewRBACStub(artifactsDownloadPermission)
 	provider := &support.MockProvider{
 		Timeout:           time.Second,
 		ArtifacthubClient: artifactClient,
@@ -575,6 +626,112 @@ func TestArtifactsSignedURLSuccessProjectScopeWithoutProjectID(t *testing.T) {
 	}
 	if result.ProjectID != testProjectID {
 		t.Fatalf("expected project_id %s, got %s", testProjectID, result.ProjectID)
+	}
+}
+
+func TestArtifactsSignedURLAllowsEncodedSpaceAndPlusPath(t *testing.T) {
+	artifactClient := &artifacthubClientStub{
+		signedURL: "https://example.com/encoded",
+	}
+	provider := &support.MockProvider{
+		Timeout:           time.Second,
+		ArtifacthubClient: artifactClient,
+		ProjectClient: &support.ProjectClientStub{
+			Response: newProjectDescribeResponse(testOrgID, testProjectID, testArtifactStore),
+		},
+		RBACClient: support.NewRBACStub(artifactsDownloadPermission),
+	}
+
+	relativePath := "reports/build log+v1%23.txt"
+	req := callRequest(map[string]any{
+		"organization_id": testOrgID,
+		"scope":           scopeProjects,
+		"scope_id":        testProjectID,
+		"path":            relativePath,
+	}, true)
+
+	res, err := signedURLHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+	if res == nil || res.IsError {
+		t.Fatalf("expected successful response, got: %#v", res)
+	}
+
+	if artifactClient.lastSigned == nil {
+		t.Fatalf("expected GetSignedURL request to be recorded")
+	}
+	expectedPath := fmt.Sprintf("artifacts/projects/%s/%s", testProjectID, relativePath)
+	if artifactClient.lastSigned.GetPath() != expectedPath {
+		t.Fatalf("expected signed path %s, got %s", expectedPath, artifactClient.lastSigned.GetPath())
+	}
+}
+
+func TestArtifactsListToSignedURLFlowAllowsLiteralPercentPath(t *testing.T) {
+	artifactClient := &artifacthubClientStub{
+		listResp: &artifacthubpb.ListPathResponse{
+			Items: []*artifacthubpb.ListItem{
+				{Name: fmt.Sprintf("artifacts/projects/%s/reports/foo%%bar.txt", testProjectID), IsDirectory: false, Size: 42},
+			},
+		},
+		signedURL: "https://example.com/literal-percent",
+	}
+	provider := &support.MockProvider{
+		Timeout:           time.Second,
+		ArtifacthubClient: artifactClient,
+		ProjectClient: &support.ProjectClientStub{
+			Response: newProjectDescribeResponse(testOrgID, testProjectID, testArtifactStore),
+		},
+		RBACClient: support.NewRBACStub(artifactsListPermission, artifactsDownloadPermission),
+	}
+
+	listReq := callRequest(map[string]any{
+		"organization_id": testOrgID,
+		"scope":           scopeProjects,
+		"scope_id":        testProjectID,
+	}, true)
+
+	listRes, err := listHandler(provider)(context.Background(), listReq)
+	if err != nil {
+		t.Fatalf("list handler error: %v", err)
+	}
+	if listRes == nil || listRes.IsError {
+		t.Fatalf("expected successful list response, got: %#v", listRes)
+	}
+
+	listResult, ok := listRes.StructuredContent.(artifactListResult)
+	if !ok {
+		t.Fatalf("unexpected structured content type: %T", listRes.StructuredContent)
+	}
+	if len(listResult.Artifacts) != 1 {
+		t.Fatalf("expected one artifact from list, got %d", len(listResult.Artifacts))
+	}
+	relativePath := listResult.Artifacts[0].Path
+	if relativePath != "reports/foo%bar.txt" {
+		t.Fatalf("expected literal percent path, got %q", relativePath)
+	}
+
+	signedReq := callRequest(map[string]any{
+		"organization_id": testOrgID,
+		"scope":           scopeProjects,
+		"scope_id":        testProjectID,
+		"path":            relativePath,
+	}, true)
+
+	signedRes, err := signedURLHandler(provider)(context.Background(), signedReq)
+	if err != nil {
+		t.Fatalf("signed handler error: %v", err)
+	}
+	if signedRes == nil || signedRes.IsError {
+		t.Fatalf("expected successful signed-url response, got: %#v", signedRes)
+	}
+
+	if artifactClient.lastSigned == nil {
+		t.Fatalf("expected GetSignedURL request to be recorded")
+	}
+	expectedPath := fmt.Sprintf("artifacts/projects/%s/%s", testProjectID, relativePath)
+	if artifactClient.lastSigned.GetPath() != expectedPath {
+		t.Fatalf("expected signed path %s, got %s", expectedPath, artifactClient.lastSigned.GetPath())
 	}
 }
 
@@ -615,7 +772,7 @@ func TestArtifactsSignedURLInvalidRBACPermissions(t *testing.T) {
 			Response: newProjectDescribeResponse(testOrgID, testProjectID, testArtifactStore),
 		},
 		ArtifacthubClient: &artifacthubClientStub{signedURL: "https://example.com/ignored"},
-		RBACClient:        support.NewRBACStub("project.view"),
+		RBACClient:        support.NewRBACStub("organization.view"),
 	}
 
 	req := callRequest(map[string]any{
@@ -651,7 +808,7 @@ func TestArtifactsSignedURLInvalidRBACPermissionsWorkflowScope(t *testing.T) {
 		Response: newProjectDescribeResponse(testOrgID, testProjectID, testArtifactStore),
 	}
 	artifactClient := &artifacthubClientStub{signedURL: "https://example.com/ignored"}
-	rbac := support.NewRBACStub("project.view")
+	rbac := support.NewRBACStub("organization.view")
 	provider := &support.MockProvider{
 		Timeout:           time.Second,
 		WorkflowClient:    workflowClient,
@@ -694,7 +851,7 @@ func TestArtifactsSignedURLInvalidRBACPermissionsWorkflowScope(t *testing.T) {
 }
 
 func TestArtifactsSignedURLProjectScopeMismatchRejected(t *testing.T) {
-	rbac := support.NewRBACStub(artifactsViewPermission)
+	rbac := support.NewRBACStub(artifactsDownloadPermission)
 	provider := &support.MockProvider{
 		Timeout:    time.Second,
 		RBACClient: rbac,
@@ -723,7 +880,7 @@ func TestArtifactsSignedURLProjectScopeMismatchRejected(t *testing.T) {
 }
 
 func TestArtifactsSignedURLWorkflowScopeProjectMismatchRejected(t *testing.T) {
-	rbac := support.NewRBACStub(artifactsViewPermission)
+	rbac := support.NewRBACStub(artifactsDownloadPermission)
 	workflowClient := &support.WorkflowClientStub{
 		DescribeResp: &workflowpb.DescribeResponse{
 			Status: &statuspb.Status{Code: code.Code_OK},
@@ -763,7 +920,7 @@ func TestArtifactsSignedURLWorkflowScopeProjectMismatchRejected(t *testing.T) {
 }
 
 func TestArtifactsSignedURLJobScopeProjectMismatchRejected(t *testing.T) {
-	rbac := support.NewRBACStub(artifactsViewPermission)
+	rbac := support.NewRBACStub(artifactsDownloadPermission)
 	provider := &support.MockProvider{
 		Timeout:    time.Second,
 		JobClient:  &jobClientStub{orgID: testOrgID, projectID: testProjectID},
@@ -789,6 +946,68 @@ func TestArtifactsSignedURLJobScopeProjectMismatchRejected(t *testing.T) {
 	}
 	if len(rbac.LastRequests) != 0 {
 		t.Fatalf("expected no RBAC request on scope mismatch, got %d", len(rbac.LastRequests))
+	}
+}
+
+func TestArtifactsSignedURLWorkflowScopeOrgMismatchRejected(t *testing.T) {
+	rbac := support.NewRBACStub(artifactsDownloadPermission)
+	workflowClient := &support.WorkflowClientStub{
+		DescribeResp: &workflowpb.DescribeResponse{
+			Status: &statuspb.Status{Code: code.Code_OK},
+			Workflow: &workflowpb.WorkflowDetails{
+				WfId:           testWorkflowID,
+				OrganizationId: testOtherOrgID,
+				ProjectId:      testProjectID,
+			},
+		},
+	}
+	provider := &support.MockProvider{
+		Timeout:        time.Second,
+		WorkflowClient: workflowClient,
+		RBACClient:     rbac,
+	}
+
+	req := callRequest(map[string]any{
+		"organization_id": testOrgID,
+		"scope":           scopeWorkflows,
+		"scope_id":        testWorkflowID,
+		"path":            "debug/workflow_logs.txt",
+	}, true)
+
+	res, err := signedURLHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+
+	msg := requireErrorText(t, res)
+	if !strings.Contains(msg, "outside the authorized organization scope") {
+		t.Fatalf("expected organization scope mismatch error, got %q", msg)
+	}
+	if len(rbac.LastRequests) != 0 {
+		t.Fatalf("expected no RBAC request on org mismatch, got %d", len(rbac.LastRequests))
+	}
+}
+
+func TestArtifactsSignedURLWorkflowDescribeError(t *testing.T) {
+	provider := &support.MockProvider{
+		Timeout:        time.Second,
+		WorkflowClient: &support.WorkflowClientStub{DescribeErr: errors.New("workflow down")},
+	}
+
+	req := callRequest(map[string]any{
+		"organization_id": testOrgID,
+		"scope":           scopeWorkflows,
+		"scope_id":        testWorkflowID,
+		"path":            "debug/workflow_logs.txt",
+	}, true)
+
+	res, err := signedURLHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(msg, "workflow describe RPC failed") {
+		t.Fatalf("expected workflow describe failure, got %q", msg)
 	}
 }
 
@@ -826,6 +1045,596 @@ func TestArtifactsListMissingUserHeaderRejected(t *testing.T) {
 	msg := requireErrorText(t, res)
 	if !strings.Contains(msg, "X-Semaphore-User-ID") {
 		t.Fatalf("expected missing header error, got %q", msg)
+	}
+}
+
+func TestArtifactsListLimitAndPaginationMetadata(t *testing.T) {
+	artifactClient := &artifacthubClientStub{
+		listResp: &artifacthubpb.ListPathResponse{
+			Items: []*artifacthubpb.ListItem{
+				{Name: fmt.Sprintf("artifacts/projects/%s/a.txt", testProjectID), IsDirectory: false, Size: 1},
+				{Name: fmt.Sprintf("artifacts/projects/%s/b.txt", testProjectID), IsDirectory: false, Size: 2},
+				{Name: fmt.Sprintf("artifacts/projects/%s/c.txt", testProjectID), IsDirectory: false, Size: 3},
+				{Name: fmt.Sprintf("artifacts/projects/%s/d.txt", testProjectID), IsDirectory: false, Size: 4},
+			},
+		},
+	}
+	provider := &support.MockProvider{
+		Timeout:           time.Second,
+		ArtifacthubClient: artifactClient,
+		ProjectClient: &support.ProjectClientStub{
+			Response: newProjectDescribeResponse(testOrgID, testProjectID, testArtifactStore),
+		},
+		RBACClient: support.NewRBACStub(artifactsListPermission),
+	}
+
+	req := callRequest(map[string]any{
+		"organization_id": testOrgID,
+		"scope":           scopeProjects,
+		"scope_id":        testProjectID,
+		"limit":           2,
+	}, true)
+
+	res, err := listHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+	if res == nil || res.IsError {
+		t.Fatalf("expected successful response, got: %#v", res)
+	}
+
+	result, ok := res.StructuredContent.(artifactListResult)
+	if !ok {
+		t.Fatalf("unexpected structured content type: %T", res.StructuredContent)
+	}
+
+	if len(result.Artifacts) != 2 {
+		t.Fatalf("expected 2 artifacts, got %d", len(result.Artifacts))
+	}
+	if result.Artifacts[0].Path != "a.txt" || result.Artifacts[1].Path != "b.txt" {
+		t.Fatalf("unexpected paged artifacts: %#v", result.Artifacts)
+	}
+	if result.Page.Limit != 2 {
+		t.Fatalf("expected limit 2, got %d", result.Page.Limit)
+	}
+	if result.Page.Total != 4 {
+		t.Fatalf("expected total 4, got %d", result.Page.Total)
+	}
+	if result.Page.Returned != 2 {
+		t.Fatalf("expected returned 2, got %d", result.Page.Returned)
+	}
+	if !result.Page.Truncated {
+		t.Fatalf("expected truncated=true, got false")
+	}
+	if result.Page.PaginationAvailable {
+		t.Fatalf("expected paginationAvailable=false")
+	}
+	if result.Page.PaginationNote == "" {
+		t.Fatalf("expected pagination note to be populated")
+	}
+}
+
+func TestArtifactsListRejectsOversizedClientSideListing(t *testing.T) {
+	items := make([]*artifacthubpb.ListItem, 0, maxListItems+1)
+	for i := 0; i < maxListItems+1; i++ {
+		items = append(items, &artifacthubpb.ListItem{
+			Name:        fmt.Sprintf("artifacts/projects/%s/file-%d.txt", testProjectID, i),
+			IsDirectory: false,
+			Size:        int64(i + 1),
+		})
+	}
+
+	provider := &support.MockProvider{
+		Timeout:           time.Second,
+		ArtifacthubClient: &artifacthubClientStub{listResp: &artifacthubpb.ListPathResponse{Items: items}},
+		ProjectClient: &support.ProjectClientStub{
+			Response: newProjectDescribeResponse(testOrgID, testProjectID, testArtifactStore),
+		},
+		RBACClient: support.NewRBACStub(artifactsListPermission),
+	}
+
+	req := callRequest(map[string]any{
+		"organization_id": testOrgID,
+		"scope":           scopeProjects,
+		"scope_id":        testProjectID,
+	}, true)
+
+	res, err := listHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(msg, "safe client-side paging limit") {
+		t.Fatalf("expected oversized listing guardrail error, got %q", msg)
+	}
+}
+
+func TestArtifactsListLargeFirstPageMarksPaginationUnavailable(t *testing.T) {
+	items := make([]*artifacthubpb.ListItem, 0, 1200)
+	for i := 0; i < 1200; i++ {
+		items = append(items, &artifacthubpb.ListItem{
+			Name:        fmt.Sprintf("artifacts/projects/%s/file-%d.txt", testProjectID, i),
+			IsDirectory: false,
+			Size:        int64(i + 1),
+		})
+	}
+
+	provider := &support.MockProvider{
+		Timeout:           time.Second,
+		ArtifacthubClient: &artifacthubClientStub{listResp: &artifacthubpb.ListPathResponse{Items: items}},
+		ProjectClient: &support.ProjectClientStub{
+			Response: newProjectDescribeResponse(testOrgID, testProjectID, testArtifactStore),
+		},
+		RBACClient: support.NewRBACStub(artifactsListPermission),
+	}
+
+	req := callRequest(map[string]any{
+		"organization_id": testOrgID,
+		"scope":           scopeProjects,
+		"scope_id":        testProjectID,
+		"limit":           200,
+	}, true)
+
+	res, err := listHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+	if res == nil || res.IsError {
+		t.Fatalf("expected successful response, got: %#v", res)
+	}
+
+	result, ok := res.StructuredContent.(artifactListResult)
+	if !ok {
+		t.Fatalf("unexpected structured content type: %T", res.StructuredContent)
+	}
+	if !result.Page.Truncated {
+		t.Fatalf("expected truncated=true for first page")
+	}
+	if result.Page.PaginationAvailable {
+		t.Fatalf("expected paginationAvailable=false")
+	}
+	if !strings.Contains(result.Page.PaginationNote, "Pagination beyond the first page is currently unavailable") {
+		t.Fatalf("unexpected pagination note: %q", result.Page.PaginationNote)
+	}
+}
+
+func TestArtifactsListRootEmptyReturnsSuccess(t *testing.T) {
+	provider := &support.MockProvider{
+		Timeout:           time.Second,
+		ArtifacthubClient: &artifacthubClientStub{listResp: &artifacthubpb.ListPathResponse{}},
+		ProjectClient: &support.ProjectClientStub{
+			Response: newProjectDescribeResponse(testOrgID, testProjectID, testArtifactStore),
+		},
+		RBACClient: support.NewRBACStub(artifactsListPermission),
+	}
+
+	req := callRequest(map[string]any{
+		"organization_id": testOrgID,
+		"scope":           scopeProjects,
+		"scope_id":        testProjectID,
+	}, true)
+
+	res, err := listHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+	if res == nil || res.IsError {
+		t.Fatalf("expected successful response, got: %#v", res)
+	}
+
+	result, ok := res.StructuredContent.(artifactListResult)
+	if !ok {
+		t.Fatalf("unexpected structured content type: %T", res.StructuredContent)
+	}
+	if len(result.Artifacts) != 0 {
+		t.Fatalf("expected empty artifacts list, got %d", len(result.Artifacts))
+	}
+	if result.Page.Total != 0 || result.Page.Returned != 0 || result.Page.Truncated {
+		t.Fatalf("unexpected page metadata: %#v", result.Page)
+	}
+}
+
+func TestArtifactsListMissingArtifactStoreID(t *testing.T) {
+	provider := &support.MockProvider{
+		Timeout: time.Second,
+		ProjectClient: &support.ProjectClientStub{
+			Response: newProjectDescribeResponse(testOrgID, testProjectID, ""),
+		},
+		RBACClient: support.NewRBACStub(artifactsListPermission),
+	}
+
+	req := callRequest(map[string]any{
+		"organization_id": testOrgID,
+		"scope":           scopeProjects,
+		"scope_id":        testProjectID,
+	}, true)
+
+	res, err := listHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(msg, "project is missing an artifact_store_id") {
+		t.Fatalf("expected missing artifact_store_id error, got %q", msg)
+	}
+}
+
+func TestArtifactsListArtifacthubRPCError(t *testing.T) {
+	provider := &support.MockProvider{
+		Timeout:           time.Second,
+		ArtifacthubClient: &artifacthubClientStub{listErr: errors.New("list boom")},
+		JobClient:         &jobClientStub{orgID: testOrgID, projectID: testProjectID},
+		ProjectClient: &support.ProjectClientStub{
+			Response: newProjectDescribeResponse(testOrgID, testProjectID, testArtifactStore),
+		},
+		RBACClient: support.NewRBACStub(artifactsListPermission),
+	}
+
+	req := callRequest(map[string]any{
+		"organization_id": testOrgID,
+		"scope":           scopeJobs,
+		"scope_id":        testJobID,
+	}, true)
+
+	res, err := listHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(msg, "artifacthub ListPath failed") {
+		t.Fatalf("expected artifacthub list failure, got %q", msg)
+	}
+}
+
+func TestArtifactsSignedURLArtifacthubRPCError(t *testing.T) {
+	provider := &support.MockProvider{
+		Timeout:           time.Second,
+		ArtifacthubClient: &artifacthubClientStub{signedErr: errors.New("signed boom")},
+		JobClient:         &jobClientStub{orgID: testOrgID, projectID: testProjectID},
+		ProjectClient: &support.ProjectClientStub{
+			Response: newProjectDescribeResponse(testOrgID, testProjectID, testArtifactStore),
+		},
+		RBACClient: support.NewRBACStub(artifactsDownloadPermission),
+	}
+
+	req := callRequest(map[string]any{
+		"organization_id": testOrgID,
+		"scope":           scopeJobs,
+		"scope_id":        testJobID,
+		"path":            "agent/job_logs.txt.gz",
+	}, true)
+
+	res, err := signedURLHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(msg, "artifacthub GetSignedURL failed") {
+		t.Fatalf("expected artifacthub signed URL failure, got %q", msg)
+	}
+}
+
+func TestArtifactsListWorkflowDescribeError(t *testing.T) {
+	provider := &support.MockProvider{
+		Timeout:        time.Second,
+		WorkflowClient: &support.WorkflowClientStub{DescribeErr: errors.New("workflow down")},
+	}
+
+	req := callRequest(map[string]any{
+		"organization_id": testOrgID,
+		"scope":           scopeWorkflows,
+		"scope_id":        testWorkflowID,
+	}, true)
+
+	res, err := listHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(msg, "workflow describe RPC failed") {
+		t.Fatalf("expected workflow describe failure, got %q", msg)
+	}
+}
+
+func TestArtifactsListJobDescribeError(t *testing.T) {
+	provider := &support.MockProvider{
+		Timeout:   time.Second,
+		JobClient: &jobClientStub{describeErr: errors.New("job down")},
+	}
+
+	req := callRequest(map[string]any{
+		"organization_id": testOrgID,
+		"scope":           scopeJobs,
+		"scope_id":        testJobID,
+	}, true)
+
+	res, err := listHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(msg, "describe job RPC failed") {
+		t.Fatalf("expected job describe failure, got %q", msg)
+	}
+}
+
+func TestArtifactsListProjectDescribeError(t *testing.T) {
+	provider := &support.MockProvider{
+		Timeout: time.Second,
+		ProjectClient: &support.ProjectClientStub{
+			Err: errors.New("project down"),
+		},
+		RBACClient: support.NewRBACStub(artifactsListPermission),
+	}
+
+	req := callRequest(map[string]any{
+		"organization_id": testOrgID,
+		"scope":           scopeProjects,
+		"scope_id":        testProjectID,
+	}, true)
+
+	res, err := listHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(msg, "describe project RPC failed") {
+		t.Fatalf("expected project describe failure, got %q", msg)
+	}
+}
+
+func TestArtifactsSignedURLMissingPathRejected(t *testing.T) {
+	req := callRequest(map[string]any{
+		"organization_id": testOrgID,
+		"scope":           scopeProjects,
+		"scope_id":        testProjectID,
+	}, true)
+
+	res, err := signedURLHandler(&support.MockProvider{Timeout: time.Second})(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(msg, "path must be present") {
+		t.Fatalf("expected missing path error, got %q", msg)
+	}
+}
+
+func TestNormalizeMethodDefaultsToGET(t *testing.T) {
+	got, err := normalizeMethod("")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if got != "GET" {
+		t.Fatalf("expected GET, got %q", got)
+	}
+}
+
+func TestSanitizeRelativePathRejectsControlAndEncodedTraversal(t *testing.T) {
+	testCases := []struct {
+		name    string
+		path    string
+		message string
+	}{
+		{name: "control rune", path: "foo\x00bar", message: "control characters"},
+		{name: "encoded parent", path: "foo/%2e%2e/bar", message: "path traversal"},
+		{name: "encoded slash", path: "foo/%2Fbar", message: "encoded path separators"},
+		{name: "double encoded parent", path: "foo/%252e%252e/bar", message: "path traversal"},
+		{name: "backslash", path: `foo\bar`, message: "invalid path"},
+		{name: "nested parent", path: "foo/../../secret.txt", message: "path traversal"},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := sanitizeRelativePath(tc.path, true)
+			if err == nil {
+				t.Fatalf("expected error for path %q", tc.path)
+			}
+			if !strings.Contains(err.Error(), tc.message) {
+				t.Fatalf("expected %q in error, got %q", tc.message, err.Error())
+			}
+		})
+	}
+}
+
+func TestSanitizeRelativePathRejectsLeadingTrailingWhitespace(t *testing.T) {
+	testCases := []struct {
+		name    string
+		path    string
+		message string
+	}{
+		{name: "path leading whitespace", path: " reports/a.txt", message: "leading or trailing whitespace"},
+		{name: "path trailing whitespace", path: "reports/a.txt ", message: "leading or trailing whitespace"},
+		{name: "segment trailing whitespace", path: "reports /a.txt", message: "segments must not contain leading or trailing whitespace"},
+		{name: "segment leading whitespace", path: "reports/ a.txt", message: "segments must not contain leading or trailing whitespace"},
+		{name: "encoded segment leading whitespace", path: "reports/%20a.txt", message: "segments must not contain leading or trailing whitespace"},
+		{name: "encoded segment trailing whitespace", path: "reports/a.txt%20", message: "leading or trailing whitespace"},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := sanitizeRelativePath(tc.path, true)
+			if err == nil {
+				t.Fatalf("expected error for path %q", tc.path)
+			}
+			if !strings.Contains(err.Error(), tc.message) {
+				t.Fatalf("expected %q in error, got %q", tc.message, err.Error())
+			}
+		})
+	}
+}
+
+func TestSanitizeRelativePathAllowsSafeEncodedLookingName(t *testing.T) {
+	got, err := sanitizeRelativePath("reports/report%2ejson", true)
+	if err != nil {
+		t.Fatalf("expected encoded-looking safe path to be allowed, got error: %v", err)
+	}
+	if got != "reports/report%2ejson" {
+		t.Fatalf("expected path to be preserved, got %q", got)
+	}
+}
+
+func TestSanitizeRelativePathAllowsLiteralPercentCharacters(t *testing.T) {
+	testCases := []string{
+		"reports/foo%bar.txt",
+		"reports/foo%zz.txt",
+	}
+
+	for _, tc := range testCases {
+		got, err := sanitizeRelativePath(tc, true)
+		if err != nil {
+			t.Fatalf("expected literal percent path %q to be allowed, got error: %v", tc, err)
+		}
+		if got != tc {
+			t.Fatalf("expected path %q to be preserved, got %q", tc, got)
+		}
+	}
+}
+
+func TestSanitizeRelativePathAllowsInternalWhitespace(t *testing.T) {
+	got, err := sanitizeRelativePath("reports/build log.txt", true)
+	if err != nil {
+		t.Fatalf("expected internal whitespace path to be allowed, got error: %v", err)
+	}
+	if got != "reports/build log.txt" {
+		t.Fatalf("expected path to be preserved, got %q", got)
+	}
+}
+
+func TestSerializeListItemsSkipsUnexpectedPrefixes(t *testing.T) {
+	items := []*artifacthubpb.ListItem{
+		{Name: fmt.Sprintf("artifacts/projects/%s/reports/junit.xml", testProjectID), IsDirectory: false, Size: 10},
+		{Name: fmt.Sprintf("artifacts/workflows/%s/reports/junit.xml", testWorkflowID), IsDirectory: false, Size: 20},
+		{Name: "unexpected/path/file.txt", IsDirectory: false, Size: 30},
+	}
+
+	result := serializeListItems(items, scopeProjects, testProjectID)
+	if len(result) != 1 {
+		t.Fatalf("expected 1 matching item, got %d: %#v", len(result), result)
+	}
+	if result[0].Path != "reports/junit.xml" {
+		t.Fatalf("expected relative path reports/junit.xml, got %s", result[0].Path)
+	}
+}
+
+func TestArtifactsListMissingUserHeaderCheckedBeforeFeatureFlag(t *testing.T) {
+	provider := &support.MockProvider{
+		Timeout:         time.Second,
+		FeaturesService: support.FeatureClientStub{State: feature.Hidden},
+	}
+
+	req := callRequest(map[string]any{
+		"organization_id": testOrgID,
+		"scope":           scopeProjects,
+		"scope_id":        testProjectID,
+	}, false)
+
+	res, err := listHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(msg, "X-Semaphore-User-ID") {
+		t.Fatalf("expected auth header error, got %q", msg)
+	}
+	if strings.Contains(msg, "read tools are disabled") {
+		t.Fatalf("expected header error before feature gate, got %q", msg)
+	}
+}
+
+func TestArtifactsSignedURLMissingUserHeaderCheckedBeforeFeatureFlag(t *testing.T) {
+	provider := &support.MockProvider{
+		Timeout:         time.Second,
+		FeaturesService: support.FeatureClientStub{State: feature.Hidden},
+	}
+
+	req := callRequest(map[string]any{
+		"organization_id": testOrgID,
+		"scope":           scopeProjects,
+		"scope_id":        testProjectID,
+		"path":            "releases/build.tar.gz",
+	}, false)
+
+	res, err := signedURLHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(msg, "X-Semaphore-User-ID") {
+		t.Fatalf("expected auth header error, got %q", msg)
+	}
+	if strings.Contains(msg, "read tools are disabled") {
+		t.Fatalf("expected header error before feature gate, got %q", msg)
+	}
+}
+
+func TestArtifactsListProjectViewPermissionAccepted(t *testing.T) {
+	provider := &support.MockProvider{
+		Timeout:           time.Second,
+		ArtifacthubClient: &artifacthubClientStub{},
+		JobClient:         &jobClientStub{orgID: testOrgID, projectID: testProjectID},
+		ProjectClient: &support.ProjectClientStub{
+			Response: newProjectDescribeResponse(testOrgID, testProjectID, testArtifactStore),
+		},
+		RBACClient: support.NewRBACStub(artifactsListPermission),
+	}
+
+	req := callRequest(map[string]any{
+		"organization_id": testOrgID,
+		"scope":           scopeJobs,
+		"scope_id":        testJobID,
+	}, true)
+
+	res, err := listHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+	if res == nil || res.IsError {
+		t.Fatalf("expected successful response with project.view permission, got %#v", res)
+	}
+}
+
+func TestArtifactsSignedURLProjectViewOnlyIsDenied(t *testing.T) {
+	provider := &support.MockProvider{
+		Timeout:           time.Second,
+		ArtifacthubClient: &artifacthubClientStub{signedURL: "https://example.com/ignored"},
+		JobClient:         &jobClientStub{orgID: testOrgID, projectID: testProjectID},
+		ProjectClient: &support.ProjectClientStub{
+			Response: newProjectDescribeResponse(testOrgID, testProjectID, testArtifactStore),
+		},
+		RBACClient: support.NewRBACStub("project.view"),
+	}
+
+	req := callRequest(map[string]any{
+		"organization_id": testOrgID,
+		"scope":           scopeJobs,
+		"scope_id":        testJobID,
+		"path":            "agent/job_logs.txt.gz",
+	}, true)
+
+	res, err := signedURLHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+
+	msg := requireErrorText(t, res)
+	if !strings.Contains(msg, "Permission denied while accessing project") {
+		t.Fatalf("expected permission denied error for project.view-only user, got %q", msg)
+	}
+}
+
+func TestRegisterAddsBothArtifactTools(t *testing.T) {
+	srv := server.NewMCPServer("test-server", "0.0.1")
+	Register(srv, &support.MockProvider{Timeout: time.Second})
+
+	registered := srv.ListTools()
+	if _, ok := registered[listToolName]; !ok {
+		t.Fatalf("expected %s to be registered", listToolName)
+	}
+	if _, ok := registered[signedURLToolName]; !ok {
+		t.Fatalf("expected %s to be registered", signedURLToolName)
 	}
 }
 
