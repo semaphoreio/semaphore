@@ -296,6 +296,25 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
                )
     end
 
+    test "returns 401 when user has no project.view permission", ctx do
+      GrpcMock.stub(RBACMock, :list_user_permissions, fn _, _ ->
+        InternalApi.RBAC.ListUserPermissionsResponse.new(
+          permissions: Support.Stubs.all_permissions_except("project.view")
+        )
+      end)
+
+      assert {401, "Permission denied"} =
+               signed_url(
+                 %{
+                   "scope" => "jobs",
+                   "scope_id" => ctx.job.id,
+                   "path" => "agent/job_logs.txt.gz"
+                 },
+                 ctx.user.id,
+                 false
+               )
+    end
+
     test "returns 500 when artifact store is not configured", ctx do
       set_project_artifact_store_id(ctx.project, "")
 

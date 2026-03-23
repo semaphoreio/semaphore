@@ -338,7 +338,25 @@ defmodule PipelinesAPI.Artifacts.ListTest do
                )
     end
 
-    test "returns 401 when user has no artifact permission", ctx do
+    test "returns 401 when user has no project.view permission", ctx do
+      GrpcMock.stub(RBACMock, :list_user_permissions, fn _, _ ->
+        InternalApi.RBAC.ListUserPermissionsResponse.new(
+          permissions: Support.Stubs.all_permissions_except("project.view")
+        )
+      end)
+
+      assert {401, "Permission denied"} =
+               list_artifacts(
+                 %{
+                   "scope" => "jobs",
+                   "scope_id" => ctx.job.id
+                 },
+                 ctx.user.id,
+                 false
+               )
+    end
+
+    test "returns 401 when user has no project.artifacts.view permission", ctx do
       GrpcMock.stub(RBACMock, :list_user_permissions, fn _, _ ->
         InternalApi.RBAC.ListUserPermissionsResponse.new(
           permissions: Support.Stubs.all_permissions_except("project.artifacts.view")

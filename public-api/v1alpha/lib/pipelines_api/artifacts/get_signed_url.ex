@@ -9,7 +9,7 @@ defmodule PipelinesAPI.Artifacts.GetSignedURL do
   alias PipelinesAPI.Pipelines.Common, as: RespCommon
   alias PipelinesAPI.Util.Metrics
 
-  import PipelinesAPI.Artifacts.Authorize, only: [authorize_view: 2]
+  import PipelinesAPI.Artifacts.Authorize, only: [authorize_signed_url: 2]
 
   import PipelinesAPI.Artifacts.Common,
     only: [
@@ -22,7 +22,7 @@ defmodule PipelinesAPI.Artifacts.GetSignedURL do
 
   plug(:verify_params)
   plug(:resolve_project_id_from_scope)
-  plug(:authorize_view)
+  plug(:authorize_signed_url)
   plug(:get_artifact_store_id)
   plug(:get_signed_url)
 
