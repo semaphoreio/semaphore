@@ -80,65 +80,88 @@ defmodule FrontWeb.SharedHelpersTest do
     end
   end
 
-  describe "pylon_contact_support_card/2" do
-    test "returns nil when support portal features are disabled", %{conn: conn} do
-      layout_model = %Front.Layout.Model{permissions: %{"organization.contact_support" => true}}
+  describe "pylon_support_enabled?/1" do
+    test "returns true when pylon_support and support tier features are enabled", %{conn: conn} do
+      conn =
+        conn
+        |> assign(:organization_id, "org-1")
 
+      with_mock FeatureProvider,
+        feature_enabled?: fn
+          :pylon_support, [param: "org-1"] -> true
+          :premium_support, [param: "org-1"] -> true
+          _, _ -> false
+        end do
+        assert FrontWeb.SharedHelpers.pylon_support_enabled?(conn)
+      end
+    end
+
+    test "returns false when support tier feature is enabled but pylon_support is disabled", %{
+      conn: conn
+    } do
+      conn =
+        conn
+        |> assign(:organization_id, "org-1")
+
+      with_mock FeatureProvider,
+        feature_enabled?: fn
+          :pylon_support, [param: "org-1"] -> false
+          :advanced_support, [param: "org-1"] -> true
+          _, _ -> false
+        end do
+        refute FrontWeb.SharedHelpers.pylon_support_enabled?(conn)
+      end
+    end
+
+    test "returns false when pylon_support is enabled but support tier is disabled", %{conn: conn} do
+      conn =
+        conn
+        |> assign(:organization_id, "org-1")
+
+      with_mock FeatureProvider,
+        feature_enabled?: fn
+          :pylon_support, [param: "org-1"] -> true
+          :advanced_support, [param: "org-1"] -> false
+          :premium_support, [param: "org-1"] -> false
+          :"support-tier-3", [param: "org-1"] -> false
+          :"support-tier-4", [param: "org-1"] -> false
+          _, _ -> false
+        end do
+        refute FrontWeb.SharedHelpers.pylon_support_enabled?(conn)
+      end
+    end
+
+    test "returns false when neither pylon_support nor support tier features are enabled", %{
+      conn: conn
+    } do
       conn =
         conn
         |> assign(:organization_id, "org-1")
 
       with_mock FeatureProvider, feature_enabled?: fn _, _ -> false end do
-        assert FrontWeb.SharedHelpers.pylon_contact_support_card(conn, layout_model) == nil
+        refute FrontWeb.SharedHelpers.pylon_support_enabled?(conn)
       end
     end
 
-    test "returns nil when unsupported support tier is enabled", %{conn: conn} do
-      layout_model = %Front.Layout.Model{permissions: %{"organization.contact_support" => true}}
-
+    test "returns true when only pylon_support_portal is enabled (no tier flags)", %{conn: conn} do
       conn =
         conn
         |> assign(:organization_id, "org-1")
 
       with_mock FeatureProvider,
         feature_enabled?: fn
-          :pylon_support, [param: "org-1"] -> true
-          :"support-tier-2", [param: "org-1"] -> true
-          :restricted_support, [param: "org-1"] -> false
+          :pylon_support_portal, [param: "org-1"] -> true
           _, _ -> false
         end do
-        assert FrontWeb.SharedHelpers.pylon_contact_support_card(conn, layout_model) == nil
-      end
-    end
-
-    test "returns support portal card when tier 3 is enabled", %{conn: conn} do
-      layout_model = %Front.Layout.Model{permissions: %{"organization.contact_support" => true}}
-
-      conn =
-        conn
-        |> assign(:organization_id, "org-1")
-
-      with_mock FeatureProvider,
-        feature_enabled?: fn
-          :pylon_support, [param: "org-1"] -> true
-          :"support-tier-3", [param: "org-1"] -> true
-          :restricted_support, [param: "org-1"] -> false
-          _, _ -> false
-        end do
-        card_html =
-          conn
-          |> FrontWeb.SharedHelpers.pylon_contact_support_card(layout_model)
-          |> Phoenix.HTML.safe_to_string()
-
-        assert card_html =~ "Support Portal"
-        assert card_html =~ "href=\"/support/pylon\""
+        assert FrontWeb.SharedHelpers.pylon_support_enabled?(conn)
       end
     end
   end
 
-  describe "help menu card interplay with pylon tiers" do
-    test "hides zendesk contact support card when support portal mode is active", %{conn: conn} do
-      layout_model = %Front.Layout.Model{permissions: %{"organization.contact_support" => true}}
+  describe "pylon_support_visible?/2" do
+    test "returns true when pylon support and support tier are enabled and org is not restricted",
+         %{conn: conn} do
+      layout_model = %Front.Layout.Model{permissions: %{"organization.contact_support" => false}}
 
       conn =
         conn
@@ -147,16 +170,17 @@ defmodule FrontWeb.SharedHelpersTest do
       with_mock FeatureProvider,
         feature_enabled?: fn
           :pylon_support, [param: "org-1"] -> true
-          :"support-tier-3", [param: "org-1"] -> true
-          :zendesk_support, [param: "org-1"] -> true
+          :advanced_support, [param: "org-1"] -> true
           :restricted_support, [param: "org-1"] -> false
           _, _ -> false
         end do
-        assert FrontWeb.SharedHelpers.contact_support_card(conn, layout_model) == nil
+        assert FrontWeb.SharedHelpers.pylon_support_visible?(conn, layout_model)
       end
     end
 
-    test "hides zendesk support requests card when support portal mode is active", %{conn: conn} do
+    test "returns true when org is restricted and user has contact support permission", %{
+      conn: conn
+    } do
       layout_model = %Front.Layout.Model{permissions: %{"organization.contact_support" => true}}
 
       conn =
@@ -167,9 +191,208 @@ defmodule FrontWeb.SharedHelpersTest do
         feature_enabled?: fn
           :pylon_support, [param: "org-1"] -> true
           :premium_support, [param: "org-1"] -> true
+          :restricted_support, [param: "org-1"] -> true
+          _, _ -> false
+        end do
+        assert FrontWeb.SharedHelpers.pylon_support_visible?(conn, layout_model)
+      end
+    end
+
+    test "returns false when org is restricted and user lacks contact support permission", %{
+      conn: conn
+    } do
+      layout_model = %Front.Layout.Model{permissions: %{"organization.contact_support" => false}}
+
+      conn =
+        conn
+        |> assign(:organization_id, "org-1")
+
+      with_mock FeatureProvider,
+        feature_enabled?: fn
+          :pylon_support, [param: "org-1"] -> true
+          :premium_support, [param: "org-1"] -> true
+          :restricted_support, [param: "org-1"] -> true
+          _, _ -> false
+        end do
+        refute FrontWeb.SharedHelpers.pylon_support_visible?(conn, layout_model)
+      end
+    end
+
+    test "returns false when pylon support is disabled", %{conn: conn} do
+      layout_model = %Front.Layout.Model{permissions: %{"organization.contact_support" => true}}
+
+      conn =
+        conn
+        |> assign(:organization_id, "org-1")
+
+      with_mock FeatureProvider,
+        feature_enabled?: fn
+          :pylon_support, [param: "org-1"] -> false
+          :restricted_support, [param: "org-1"] -> false
+          _, _ -> false
+        end do
+        refute FrontWeb.SharedHelpers.pylon_support_visible?(conn, layout_model)
+      end
+    end
+  end
+
+  describe "help_enabled?/1" do
+    test "returns true when pylon support is disabled and org is not on support tier 1 or 2", %{
+      conn: conn
+    } do
+      conn =
+        conn
+        |> assign(:organization_id, "org-1")
+
+      with_mock FeatureProvider,
+        feature_enabled?: fn
+          :pylon_support, [param: "org-1"] -> false
+          :"support-tier-1", [param: "org-1"] -> false
+          :"support-tier-2", [param: "org-1"] -> false
+          _, _ -> false
+        end do
+        assert FrontWeb.SharedHelpers.help_enabled?(conn)
+      end
+    end
+
+    test "returns false when pylon support is enabled with a support tier", %{conn: conn} do
+      conn =
+        conn
+        |> assign(:organization_id, "org-1")
+
+      with_mock FeatureProvider,
+        feature_enabled?: fn
+          :pylon_support, [param: "org-1"] -> true
+          :premium_support, [param: "org-1"] -> true
+          :"support-tier-1", [param: "org-1"] -> false
+          :"support-tier-2", [param: "org-1"] -> false
+          _, _ -> false
+        end do
+        refute FrontWeb.SharedHelpers.help_enabled?(conn)
+      end
+    end
+
+    test "returns false when pylon support is enabled without support tiers", %{conn: conn} do
+      conn =
+        conn
+        |> assign(:organization_id, "org-1")
+
+      with_mock FeatureProvider,
+        feature_enabled?: fn
+          :pylon_support, [param: "org-1"] -> true
+          :"support-tier-1", [param: "org-1"] -> false
+          :"support-tier-2", [param: "org-1"] -> false
+          :"support-tier-3", [param: "org-1"] -> false
+          :"support-tier-4", [param: "org-1"] -> false
+          _, _ -> false
+        end do
+        refute FrontWeb.SharedHelpers.help_enabled?(conn)
+      end
+    end
+
+    test "returns false when org is on support tier 1", %{conn: conn} do
+      conn =
+        conn
+        |> assign(:organization_id, "org-1")
+
+      with_mock FeatureProvider,
+        feature_enabled?: fn
+          :pylon_support, [param: "org-1"] -> false
+          :"support-tier-1", [param: "org-1"] -> true
+          :"support-tier-2", [param: "org-1"] -> false
+          _, _ -> false
+        end do
+        refute FrontWeb.SharedHelpers.help_enabled?(conn)
+      end
+    end
+
+    test "returns false when org is on support tier 2", %{conn: conn} do
+      conn =
+        conn
+        |> assign(:organization_id, "org-1")
+
+      with_mock FeatureProvider,
+        feature_enabled?: fn
+          :pylon_support, [param: "org-1"] -> false
+          :"support-tier-1", [param: "org-1"] -> false
+          :"support-tier-2", [param: "org-1"] -> true
+          _, _ -> false
+        end do
+        refute FrontWeb.SharedHelpers.help_enabled?(conn)
+      end
+    end
+
+    test "returns false when org is on support tier 3", %{conn: conn} do
+      conn =
+        conn
+        |> assign(:organization_id, "org-1")
+
+      with_mock FeatureProvider,
+        feature_enabled?: fn
+          :pylon_support, [param: "org-1"] -> false
+          :"support-tier-1", [param: "org-1"] -> false
+          :"support-tier-2", [param: "org-1"] -> false
+          :"support-tier-3", [param: "org-1"] -> true
+          _, _ -> false
+        end do
+        refute FrontWeb.SharedHelpers.help_enabled?(conn)
+      end
+    end
+
+    test "returns false when org is on support tier 4", %{conn: conn} do
+      conn =
+        conn
+        |> assign(:organization_id, "org-1")
+
+      with_mock FeatureProvider,
+        feature_enabled?: fn
+          :pylon_support, [param: "org-1"] -> false
+          :"support-tier-1", [param: "org-1"] -> false
+          :"support-tier-2", [param: "org-1"] -> false
+          :"support-tier-4", [param: "org-1"] -> true
+          _, _ -> false
+        end do
+        refute FrontWeb.SharedHelpers.help_enabled?(conn)
+      end
+    end
+  end
+
+  describe "help menu card interplay with pylon support" do
+    test "shows zendesk contact support card when zendesk support is active", %{conn: conn} do
+      layout_model = %Front.Layout.Model{permissions: %{"organization.contact_support" => true}}
+
+      conn =
+        conn
+        |> assign(:organization_id, "org-1")
+
+      with_mock FeatureProvider,
+        feature_enabled?: fn
+          :pylon_support, [param: "org-1"] -> true
           :zendesk_support, [param: "org-1"] -> true
           :restricted_support, [param: "org-1"] -> false
-          :advanced_support, [param: "org-1"] -> false
+          _, _ -> false
+        end do
+        card_html =
+          conn
+          |> FrontWeb.SharedHelpers.contact_support_card(layout_model)
+          |> Phoenix.HTML.safe_to_string()
+
+        assert card_html =~ "Contact Support"
+      end
+    end
+
+    test "hides zendesk support requests card when pylon support is active", %{conn: conn} do
+      layout_model = %Front.Layout.Model{permissions: %{"organization.contact_support" => true}}
+
+      conn =
+        conn
+        |> assign(:organization_id, "org-1")
+
+      with_mock FeatureProvider,
+        feature_enabled?: fn
+          :pylon_support, [param: "org-1"] -> true
+          :zendesk_support, [param: "org-1"] -> true
+          :restricted_support, [param: "org-1"] -> false
           _, _ -> false
         end do
         assert FrontWeb.SharedHelpers.support_requests_card(conn, layout_model) == nil

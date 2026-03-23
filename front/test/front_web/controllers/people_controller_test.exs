@@ -167,6 +167,21 @@ defmodule FrontWeb.PeopleControllerTest do
       assert html_response(conn, 200) =~ "Delete account and owned organizations"
     end
 
+    test "user on own page when email_members is disabled => hides update email form", %{
+      conn: conn,
+      organization: organization,
+      user: user
+    } do
+      Support.Stubs.Feature.disable_feature(organization.id, :email_members)
+
+      conn =
+        conn
+        |> get("/people/#{user.id}")
+
+      refute html_response(conn, 200) =~ "id=\"email-form\""
+      refute html_response(conn, 200) =~ "Update Email"
+    end
+
     test "user with manage people permission looking for profile of non member => returns 404", %{
       conn: conn,
       non_member: non_member
@@ -487,6 +502,20 @@ defmodule FrontWeb.PeopleControllerTest do
       conn =
         conn
         |> post("/people/#{non_member.id}/change_email", %{"email" => "new@example.com"})
+
+      assert html_response(conn, 404) =~ "404"
+    end
+
+    test "when email_members is disabled => returns 404", %{
+      conn: conn,
+      organization: organization,
+      user: user
+    } do
+      Support.Stubs.Feature.disable_feature(organization.id, :email_members)
+
+      conn =
+        conn
+        |> post("/people/#{user.id}/change_email", %{"email" => "new@example.com"})
 
       assert html_response(conn, 404) =~ "404"
     end

@@ -823,39 +823,45 @@ defmodule FrontWeb.PeopleController do
 
   def change_email(conn, %{"user_id" => user_id, "email" => email}) do
     Watchman.benchmark("people.change_email.form", fn ->
-      email = String.trim(email)
+      if email_members_supported?(conn.assigns.organization_id) || Front.ce?() do
+        email = String.trim(email)
 
-      with :ok <- validate_user_ownership(user_id, conn.assigns.user_id),
-           :ok <- validate_email_not_empty(email),
-           :ok <- validate_email_format(email),
-           {:ok, %{message: message}} <- change_user_email(conn, user_id, email) do
-        conn
-        |> put_flash(:notice, message)
-        |> redirect(to: people_path(conn, :show, user_id))
+        with :ok <- validate_user_ownership(user_id, conn.assigns.user_id),
+             :ok <- validate_email_not_empty(email),
+             :ok <- validate_email_format(email),
+             {:ok, %{message: message}} <- change_user_email(conn, user_id, email) do
+          conn
+          |> put_flash(:notice, message)
+          |> redirect(to: people_path(conn, :show, user_id))
+        else
+          {:error, :empty_email} ->
+            conn
+            |> put_flash(:alert, "Email address cannot be empty.")
+            |> redirect(to: people_path(conn, :show, user_id))
+
+          {:error, :invalid_email} ->
+            conn
+            |> put_flash(:alert, "Please enter a valid email address.")
+            |> redirect(to: people_path(conn, :show, user_id))
+
+          {:error, :unauthorized} ->
+            conn
+            |> put_flash(:error, "You can not update this user's email.")
+            |> redirect(to: people_path(conn, :show, user_id))
+
+          {:error, :render_404} ->
+            conn
+            |> render_404()
+
+          {:error, error_msg} ->
+            conn
+            |> put_flash(:alert, "Failed to update email: #{error_msg}")
+            |> redirect(to: people_path(conn, :show, user_id))
+        end
       else
-        {:error, :empty_email} ->
-          conn
-          |> put_flash(:alert, "Email address cannot be empty.")
-          |> redirect(to: people_path(conn, :show, user_id))
-
-        {:error, :invalid_email} ->
-          conn
-          |> put_flash(:alert, "Please enter a valid email address.")
-          |> redirect(to: people_path(conn, :show, user_id))
-
-        {:error, :unauthorized} ->
-          conn
-          |> put_flash(:error, "You can not update this user's email.")
-          |> redirect(to: people_path(conn, :show, user_id))
-
-        {:error, :render_404} ->
-          conn
-          |> render_404()
-
-        {:error, error_msg} ->
-          conn
-          |> put_flash(:alert, "Failed to update email: #{error_msg}")
-          |> redirect(to: people_path(conn, :show, user_id))
+        conn
+        |> FrontWeb.PageController.status404(%{})
+        |> Plug.Conn.halt()
       end
     end)
   end
