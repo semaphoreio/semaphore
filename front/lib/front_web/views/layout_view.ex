@@ -156,10 +156,12 @@ defmodule FrontWeb.LayoutView do
 
     cond do
       :VIOLATION_OF_TOS in suspensions ->
-        {:error, "Our abuse detector has flagged your organization. All processing is blocked. If you think this is a mistake, please contact support."}
+        {:error,
+         "Our abuse detector has flagged your organization. All processing is blocked. If you think this is a mistake, please contact support."}
 
       :REPEATED_FAILED_CHARGES in suspensions ->
-        {:error, "Due to the number of repeated failed charges on your subscriptions, your organization was blocked. Please review/update your payment method and contact Support."}
+        {:error,
+         "Due to the number of repeated failed charges on your subscriptions, your organization was blocked. Please review/update your payment method and contact Support."}
 
       true ->
         nil
