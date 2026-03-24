@@ -77,6 +77,7 @@ EX_CATCH_WARRNINGS_FLAG=--warnings-as-errors
 CHECK_DEPS_EXTRA_OPTS?=-w feature_provider,grpc_health_check,tentacat,util,watchman,fun_registry,sentry_grpc,traceman,cacheman,log_tee,spec,proto,sys2app,looper,job_matrix,definition_validator,gofer_client,open_api_spex,when,uuid,esaml,openid_connect,block
 ROOT_MAKEFILE_PATH := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 SCAN_RESULT_DIR?=out
+SECURITY_TOOLBOX_RUBY_IMAGE?=registry.semaphoreci.com/ruby:3
 
 #
 # Security checks
@@ -107,16 +108,14 @@ check.js.code:
 	$(MAKE) check.code LANGUAGE=js
 
 check.deps:
-ifeq ($(CI),)
 	docker run -it \
 		-v $$(pwd):/app \
 		-v $(ROOT_MAKEFILE_PATH)/security-toolbox:$(SECURITY_TOOLBOX_TMP_DIR) \
-		registry.semaphoreci.com/ruby:3 \
-		bash -c 'cd $(APP_DIRECTORY) && $(SECURITY_TOOLBOX_TMP_DIR)/dependencies --language $(LANGUAGE) -d --output-dir $(SCAN_RESULT_DIR) $(CHECK_DEPS_OPTS)'
-else
-	# ruby version is set in prologue
-	cd $(APP_DIRECTORY) && $(ROOT_MAKEFILE_PATH)/security-toolbox/dependencies --language $(LANGUAGE) -d --output-dir $(SCAN_RESULT_DIR) $(CHECK_DEPS_OPTS)
-endif
+		-w /app \
+		-e TRIVY_DB_REPOSITORY \
+		-e TRIVY_JAVA_DB_REPOSITORY \
+		$(SECURITY_TOOLBOX_RUBY_IMAGE) \
+		bash -c '$(SECURITY_TOOLBOX_TMP_DIR)/dependencies --language $(LANGUAGE) -d --output-dir $(SCAN_RESULT_DIR) $(CHECK_DEPS_OPTS)'
 
 check.ex.deps:
 	$(MAKE) check.deps LANGUAGE=elixir CHECK_DEPS_OPTS="-i hackney $(CHECK_DEPS_EXTRA_OPTS)"
@@ -128,17 +127,17 @@ check.js.deps:
 	$(MAKE) check.deps LANGUAGE=js
 
 check.docker:
-ifeq ($(CI),)
+	docker save $(IMAGE):$(IMAGE_TAG) -o /tmp/trivy-image-scan.tar
 	docker run -it \
 		-v $$(pwd):/app \
 		-v $(ROOT_MAKEFILE_PATH)/security-toolbox:$(SECURITY_TOOLBOX_TMP_DIR) \
-		-v $(XDG_RUNTIME_DIR)/docker.sock:/var/run/docker.sock \
-		registry.semaphoreci.com/ruby:3 \
-		bash -c 'cd $(APP_DIRECTORY); $(SECURITY_TOOLBOX_TMP_DIR)/docker -d --image $(IMAGE):$(IMAGE_TAG) -s CRITICAL $(CHECK_DOCKER_OPTS)'
-else
-	# ruby version is set in prologue
-	cd $(APP_DIRECTORY) && $(ROOT_MAKEFILE_PATH)/security-toolbox/docker -d --image $(IMAGE):$(IMAGE_TAG) -s CRITICAL $(CHECK_DOCKER_OPTS)
-endif
+		-v /tmp/trivy-image-scan.tar:/tmp/trivy-image-scan.tar:ro \
+		-w /app \
+		-e TRIVY_DB_REPOSITORY \
+		-e TRIVY_JAVA_DB_REPOSITORY \
+		$(SECURITY_TOOLBOX_RUBY_IMAGE) \
+		bash -c '$(SECURITY_TOOLBOX_TMP_DIR)/docker -d --image /tmp/trivy-image-scan.tar -s CRITICAL $(CHECK_DOCKER_OPTS)'; \
+	EXIT_CODE=$$?; rm -f /tmp/trivy-image-scan.tar; exit $$EXIT_CODE
 
 check.generate-report:
 ifeq ($(CI),)
