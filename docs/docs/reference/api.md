@@ -1698,6 +1698,129 @@ curl -i -H "Authorization: Token {api_token}" \
      "https://<organization-url>.semaphoreci.com/api/v1alpha/deployment_targets/:target_id/history"
 ```
 
+## Artifacts
+
+### List artifacts
+
+This API endpoint lists artifacts stored under a project, workflow, or job scope.
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1alpha/artifacts?scope=:scope&scope_id=:scope_id&path=:path&limit=:limit
+```
+
+Parameters:
+
+- `scope` (**required**) - scope namespace. Valid values: `projects`, `workflows`, `jobs`.
+- `scope_id` (**required**) - UUID of the selected scope object.
+- `path` (*optional*) - relative path inside the selected scope. If omitted, the root directory is listed.
+- `limit` (*optional*) - maximum number of returned artifacts (1-1000). Defaults to `200`.
+
+Validation notes:
+
+- `path` must be a relative path.
+- Absolute paths (starting with `/`) are not allowed.
+- Path traversal segments (`.` and `..`) are not allowed.
+- Backslashes (`\`) are not allowed.
+
+Authorization notes:
+
+- The endpoint requires both `project.view` and `project.artifacts.view` permissions on the project that owns the selected scope.
+- `project_id` is resolved from `scope` and `scope_id`; if sent explicitly, it is ignored.
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "artifacts": [
+    {
+      "is_directory": false,
+      "name": "job_logs.txt.gz",
+      "path": "agent/job_logs.txt.gz",
+      "size": 0
+    },
+    {
+      "is_directory": false,
+      "name": "extra.log",
+      "path": "agent/extra.log",
+      "size": 0
+    }
+  ],
+  "page": {
+    "limit": 200,
+    "returned": 2,
+    "total": 2,
+    "truncated": false
+  }
+}
+```
+
+Possible error responses:
+
+- `400` for invalid request parameters.
+- `401` when the user is missing one or both required permissions.
+- `404` when the scoped object or requested path does not exist (or is not visible to the user).
+- `500` for internal errors.
+
+Example:
+
+```shell
+curl -i -H "Authorization: Token {api_token}" \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/artifacts?scope=jobs&scope_id=:job_id&path=agent&limit=100"
+```
+
+### Get artifact signed URL
+
+This API endpoint returns a signed URL for downloading a specific artifact.
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1alpha/artifacts/signed_url?scope=:scope&scope_id=:scope_id&path=:path&method=:method
+```
+
+Parameters:
+
+- `scope` (**required**) - scope namespace. Valid values: `projects`, `workflows`, `jobs`.
+- `scope_id` (**required**) - UUID of the selected scope object.
+- `path` (**required**) - relative path of the artifact inside the selected scope.
+- `method` (*optional*) - HTTP method for the signed URL. Valid values: `GET`, `HEAD`. Defaults to `GET`.
+
+Validation notes:
+
+- `path` must be a relative path.
+- Absolute paths (starting with `/`) are not allowed.
+- Path traversal segments (`.` and `..`) are not allowed.
+- Backslashes (`\`) are not allowed.
+
+Authorization notes:
+
+- The endpoint requires both `project.view` and `project.artifacts.view` permissions on the project that owns the selected scope.
+- `project_id` is resolved from `scope` and `scope_id`; if sent explicitly, it is ignored.
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "url": "https://<signed-url>"
+}
+```
+
+Possible error responses:
+
+- `400` for invalid request parameters.
+- `401` when the user is missing one or both required permissions.
+- `404` when the scoped object or artifact does not exist (or is not visible to the user).
+- `500` for internal errors.
+
+Example:
+
+```shell
+curl -i -H "Authorization: Token {api_token}" \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/artifacts/signed_url?scope=jobs&scope_id=:job_id&path=agent/job_logs.txt.gz&method=GET"
+```
+
 ## Artifact retention policies
 
 ### Configure retention policy
@@ -1817,5 +1940,3 @@ Example:
 curl -i -H "Authorization: Token {api_token}" \
      "https://<organization-url>.semaphoreci.com/api/v1alpha/artifacts_retention_policies/:project_id"
 ```
-
-
