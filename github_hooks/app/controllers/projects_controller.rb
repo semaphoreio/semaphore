@@ -70,6 +70,13 @@ class ProjectsController < ApplicationController
       projects.each do |project|
         organization = project.organization
 
+        if organization.nil?
+          logger.add(:project_id => project.id)
+          logger.error("Organization not found for project")
+
+          next
+        end
+
         logger.add(:project_id => project.id, :organization_id => organization.id)
 
         if organization.suspended
