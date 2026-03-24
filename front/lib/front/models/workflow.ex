@@ -227,14 +227,19 @@ defmodule Front.Models.Workflow do
       |> Keyword.merge(git_ref_types: ref_types)
       |> ListKeysetRequest.new()
 
-    {:ok, response} = Clients.Workflow.list_keyset(req)
+    case Clients.Workflow.list_keyset(req) do
+      {:ok, response} ->
+        case Code.key(response.status.code) do
+          :OK ->
+            {construct(response.workflows), response.next_page_token,
+             response.previous_page_token}
 
-    case Code.key(response.status.code) do
-      :OK ->
-        {construct(response.workflows), response.next_page_token, response.previous_page_token}
+          _ ->
+            {:error, {:unexpected_status, response.status}}
+        end
 
-      _ ->
-        response
+      error ->
+        error
     end
   end
 
