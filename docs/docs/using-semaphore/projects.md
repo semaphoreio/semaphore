@@ -594,19 +594,32 @@ To fix the broken webhook, click on **Regenerate**. This should generate a new w
 
 ### Reconnecting moved or renamed projects
 
-There are several actions that can break the connection between your repositories and Semaphore. For example:
+Certain actions in GitHub can change the repository URL associated with your Semaphore project, such as:
 
-- moving the repository to a different location
-- renaming the repository
-- renaming the GitHub / Bitbucket / GitLab user account
-- renaming the GitHub / Bitbucket / GitLab organization
+- Moving the repository to a different location
+- Renaming the repository
+- Renaming the GitHub user account
+- Renaming the GitHub organization
 
-When this happens, please email Semaphore at [support@semaphore.io](mailto:support@semaphore.io) providing the following details:
+#### Scenario 1: Repository moved or renamed
 
-- Previous repository name and URL
-- New repository name and URL
+If the repository URL changes due to a move or rename, no manual action is required in Semaphore.
 
-The Semaphore support team will relink the project to the new repository.
+Once the change is made on GitHub, simply push a commit from the updated repository. Semaphore will automatically detect the new repository URL and update the connection with the project.
+
+#### Scenario 2: Switching a project to a different repository
+
+If you want to connect your project to a different repository (e.g., switching to a fork), you can update the repository URL manually.
+To change the repository associated with a project:
+
+1. Open your Project Settings
+1. Navigate to Repository
+1. Enter the new repository URL
+1. Click Change
+
+<img width="1774" height="1166" alt="image" src="https://github.com/user-attachments/assets/9ea3a849-17dc-4895-afb9-7c539226b92c" />
+
+After changing the repository URL, verify that the **deploy key** and **webhook** are still correctly configured.
 
 ## See also
 
