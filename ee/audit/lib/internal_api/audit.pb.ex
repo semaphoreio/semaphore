@@ -72,6 +72,7 @@ defmodule InternalApi.Audit.Event.Resource do
           | :Okta
           | :FlakyTests
           | :RBACRole
+          | :ServiceAccount
 
   field(:Project, 0)
 
@@ -112,6 +113,8 @@ defmodule InternalApi.Audit.Event.Resource do
   field(:FlakyTests, 18)
 
   field(:RBACRole, 19)
+
+  field(:ServiceAccount, 20)
 end
 
 defmodule InternalApi.Audit.Event.Operation do
