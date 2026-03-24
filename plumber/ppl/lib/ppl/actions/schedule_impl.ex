@@ -39,6 +39,14 @@ defmodule Ppl.Actions.ScheduleImpl do
     end
   end
 
+  def form_params(message_map = %{"hook_id" => _}) when not is_map_key(message_map, "service") do
+    message_map
+    |> Map.put("branch_name", message_map["label"])
+    |> Map.delete("label")
+    |> Map.put("wf_id", UUID.uuid4())
+    |> ToTuple.ok()
+  end
+
   def form_params(message_map) do
     with  {:ok, map} <- extract_values_into_self(message_map, "repo"),
           {:ok, map} <- add_wf_id(map),
