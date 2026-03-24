@@ -79,9 +79,6 @@ ROOT_MAKEFILE_PATH := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 SCAN_RESULT_DIR?=out
 SECURITY_TOOLBOX_RUBY_IMAGE?=registry.semaphoreci.com/ruby:3
 
-# Prefer rootless Docker socket when available, otherwise use the default host socket.
-DOCKER_SOCKET?=$(shell if [ -n "$$XDG_RUNTIME_DIR" ] && [ -S "$$XDG_RUNTIME_DIR/docker.sock" ]; then echo "$$XDG_RUNTIME_DIR/docker.sock"; elif [ -S /var/run/docker.sock ]; then echo /var/run/docker.sock; else echo /var/run/docker.sock; fi)
-
 #
 # Security checks
 #
@@ -130,15 +127,17 @@ check.js.deps:
 	$(MAKE) check.deps LANGUAGE=js
 
 check.docker:
+	docker save $(IMAGE):$(IMAGE_TAG) -o /tmp/trivy-image-scan.tar
 	docker run -it \
 		-v $$(pwd):/app \
 		-v $(ROOT_MAKEFILE_PATH)/security-toolbox:$(SECURITY_TOOLBOX_TMP_DIR) \
-		-v $(DOCKER_SOCKET):/var/run/docker.sock \
+		-v /tmp/trivy-image-scan.tar:/tmp/trivy-image-scan.tar:ro \
 		-w /app \
 		-e TRIVY_DB_REPOSITORY \
 		-e TRIVY_JAVA_DB_REPOSITORY \
 		$(SECURITY_TOOLBOX_RUBY_IMAGE) \
-		bash -c '$(SECURITY_TOOLBOX_TMP_DIR)/docker -d --image $(IMAGE):$(IMAGE_TAG) -s CRITICAL $(CHECK_DOCKER_OPTS)'
+		bash -c '$(SECURITY_TOOLBOX_TMP_DIR)/docker -d --image /tmp/trivy-image-scan.tar -s CRITICAL $(CHECK_DOCKER_OPTS)'; \
+	EXIT_CODE=$$?; rm -f /tmp/trivy-image-scan.tar; exit $$EXIT_CODE
 
 check.generate-report:
 ifeq ($(CI),)
