@@ -151,8 +151,21 @@ defmodule FrontWeb.LayoutView do
     end
   end
 
-  def tos_violation_suspension?(suspensions) do
-    suspensions != nil && Enum.member?(suspensions, :VIOLATION_OF_TOS)
+  def suspension_banner(assigns) do
+    suspensions = assigns.layout_model.suspensions || []
+
+    cond do
+      :VIOLATION_OF_TOS in suspensions ->
+        {:error,
+         "Our abuse detector has flagged your organization. All processing is blocked. If you think this is a mistake, please contact support."}
+
+      :REPEATED_FAILED_CHARGES in suspensions ->
+        {:error,
+         "Due to the number of repeated failed charges on your subscriptions, your organization was blocked. Please review/update your payment method and contact Support."}
+
+      true ->
+        nil
+    end
   end
 
   ### Project Layout
