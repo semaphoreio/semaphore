@@ -4,9 +4,7 @@ defmodule Front.Clients.Workflow do
 
   def channel do
     endpoint = Application.fetch_env!(:front, :workflow_api_grpc_endpoint)
-
-    {:ok, channel} = endpoint |> GRPC.Stub.connect()
-    channel
+    endpoint |> GRPC.Stub.connect()
   end
 
   def timeout do
@@ -20,8 +18,9 @@ defmodule Front.Clients.Workflow do
   def describe(request) do
     Watchman.benchmark("workflow.describe.duration", fn ->
       response =
-        channel()
-        |> Stub.describe(request, metadata: metadata(), timeout: timeout())
+        with {:ok, channel} <- channel() do
+          Stub.describe(channel, request, metadata: metadata(), timeout: timeout())
+        end
 
       case response do
         {:ok, _} -> Watchman.increment("workflow.describe.success")
@@ -44,8 +43,9 @@ defmodule Front.Clients.Workflow do
   def describe_many(request) do
     Watchman.benchmark("workflow.describe_many.duration", fn ->
       response =
-        channel()
-        |> Stub.describe_many(request, metadata: metadata(), timeout: timeout())
+        with {:ok, channel} <- channel() do
+          Stub.describe_many(channel, request, metadata: metadata(), timeout: timeout())
+        end
 
       case response do
         {:ok, _} -> Watchman.increment("workflow.describe_many.success")
@@ -68,8 +68,9 @@ defmodule Front.Clients.Workflow do
   def list(request) do
     Watchman.benchmark("workflow.list.duration", fn ->
       response =
-        channel()
-        |> Stub.list(request, metadata: metadata(), timeout: timeout())
+        with {:ok, channel} <- channel() do
+          Stub.list(channel, request, metadata: metadata(), timeout: timeout())
+        end
 
       case response do
         {:ok, _} -> Watchman.increment("workflow.list.success")
@@ -92,8 +93,9 @@ defmodule Front.Clients.Workflow do
   def list_keyset(request) do
     Watchman.benchmark("workflow.list_keyset.duration", fn ->
       response =
-        channel()
-        |> Stub.list_keyset(request, metadata: metadata(), timeout: timeout())
+        with {:ok, channel} <- channel() do
+          Stub.list_keyset(channel, request, metadata: metadata(), timeout: timeout())
+        end
 
       case response do
         {:ok, _} ->
@@ -123,8 +125,9 @@ defmodule Front.Clients.Workflow do
   def list_latest_workflows(request) do
     Watchman.benchmark({"workflow.list_latest_workflows.duration", [request.project_id]}, fn ->
       response =
-        channel()
-        |> Stub.list_latest_workflows(request, metadata: metadata(), timeout: timeout())
+        with {:ok, channel} <- channel() do
+          Stub.list_latest_workflows(channel, request, metadata: metadata(), timeout: timeout())
+        end
 
       case response do
         {:ok, _} -> Watchman.increment("workflow.list_latest_workflows.success")
@@ -147,8 +150,9 @@ defmodule Front.Clients.Workflow do
   def reschedule(request) do
     Watchman.benchmark("workflow.reschedule.duration", fn ->
       response =
-        channel()
-        |> Stub.reschedule(request, metadata: metadata(), timeout: timeout())
+        with {:ok, channel} <- channel() do
+          Stub.reschedule(channel, request, metadata: metadata(), timeout: timeout())
+        end
 
       case response do
         {:ok, _} -> Watchman.increment("workflow.reschedule.success")
@@ -171,8 +175,9 @@ defmodule Front.Clients.Workflow do
   def get_path(request) do
     Watchman.benchmark("workflow.get_path.duration", fn ->
       response =
-        channel()
-        |> Stub.get_path(request, metadata: metadata(), timeout: timeout())
+        with {:ok, channel} <- channel() do
+          Stub.get_path(channel, request, metadata: metadata(), timeout: timeout())
+        end
 
       case response do
         {:ok, _} -> Watchman.increment("workflow.get_path.success")
