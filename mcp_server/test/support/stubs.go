@@ -20,6 +20,7 @@ import (
 	responsepb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/response_status"
 	jobpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/server_farm.job"
 	statuspb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/status"
+	taskpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/task"
 	userpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/user"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
 	featuresvc "github.com/semaphoreio/semaphore/mcp_server/pkg/service"
@@ -37,6 +38,7 @@ func New() internalapi.Provider {
 		organizations: &organizationStub{},
 		projects:      &ProjectClientStub{},
 		pipelines:     &pipelineStub{},
+		task:          &taskStub{},
 		jobs:          &jobStub{},
 		loghub:        &loghubStub{},
 		loghub2:       &loghub2Stub{},
@@ -52,6 +54,7 @@ type provider struct {
 	organizations orgpb.OrganizationServiceClient
 	projects      projecthubpb.ProjectServiceClient
 	pipelines     pipelinepb.PipelineServiceClient
+	task          taskpb.TaskServiceClient
 	jobs          jobpb.JobServiceClient
 	artifacthub   artifacthubpb.ArtifactServiceClient
 	loghub        loghubpb.LoghubClient
@@ -72,6 +75,8 @@ func (p *provider) Organizations() orgpb.OrganizationServiceClient { return p.or
 func (p *provider) Projects() projecthubpb.ProjectServiceClient { return p.projects }
 
 func (p *provider) Pipelines() pipelinepb.PipelineServiceClient { return p.pipelines }
+
+func (p *provider) Task() taskpb.TaskServiceClient { return p.task }
 
 func (p *provider) Jobs() jobpb.JobServiceClient { return p.jobs }
 
@@ -161,6 +166,28 @@ func (j *jobStub) Describe(ctx context.Context, in *jobpb.DescribeRequest, opts 
 			},
 		},
 	}, nil
+}
+
+// --- task stub ---
+
+type taskStub struct {
+	taskpb.TaskServiceClient
+}
+
+func (t *taskStub) DescribeMany(ctx context.Context, in *taskpb.DescribeManyRequest, opts ...grpc.CallOption) (*taskpb.DescribeManyResponse, error) {
+	tasks := make([]*taskpb.Task, 0, len(in.GetTaskIds()))
+	for _, id := range in.GetTaskIds() {
+		if strings.TrimSpace(id) == "" {
+			continue
+		}
+		tasks = append(tasks, &taskpb.Task{
+			Id: id,
+			Jobs: []*taskpb.Task_Job{
+				{Id: "after-task-job-local", Name: "after-task-job-local"},
+			},
+		})
+	}
+	return &taskpb.DescribeManyResponse{Tasks: tasks}, nil
 }
 
 // --- loghub stub ---
