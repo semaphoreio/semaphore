@@ -615,6 +615,8 @@ defmodule InternalApi.Organization.Suspension.Reason do
   field(:ACCOUNT_AT_RISK, 1)
 
   field(:VIOLATION_OF_TOS, 2)
+
+  field(:REPEATED_FAILED_CHARGES, 3)
 end
 
 defmodule InternalApi.Organization.Member do
