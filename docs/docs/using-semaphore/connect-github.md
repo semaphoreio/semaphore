@@ -182,7 +182,7 @@ To verify the status of a webhook:
 
 To fix the broken webhook, click on **Regenerate**. This should generate a new webhook and repair the connection between Semaphore and GitHub.
 
-### Reconnecting moved or renamed projects
+### Reconnecting moved or renamed projects {#reconnect}
 
 Certain actions in GitHub can change the repository URL associated with your Semaphore project, such as:
 
