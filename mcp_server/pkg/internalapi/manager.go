@@ -16,6 +16,7 @@ import (
 	projecthubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/projecthub"
 	rbacpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/rbac"
 	jobpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/server_farm.job"
+	taskpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/task"
 	userpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/user"
 	featuresvc "github.com/semaphoreio/semaphore/mcp_server/pkg/service"
 	"google.golang.org/grpc"
@@ -30,6 +31,7 @@ type Provider interface {
 	Organizations() orgpb.OrganizationServiceClient
 	Projects() projecthubpb.ProjectServiceClient
 	Pipelines() pipelinepb.PipelineServiceClient
+	Task() taskpb.TaskServiceClient
 	Jobs() jobpb.JobServiceClient
 	Artifacthub() artifacthubpb.ArtifactServiceClient
 	Loghub() loghubpb.LoghubClient
@@ -47,6 +49,7 @@ type Manager struct {
 	organizationConn *grpc.ClientConn
 	projectConn      *grpc.ClientConn
 	pipelineConn     *grpc.ClientConn
+	taskConn         *grpc.ClientConn
 	jobConn          *grpc.ClientConn
 	artifacthubConn  *grpc.ClientConn
 	loghubConn       *grpc.ClientConn
@@ -58,6 +61,7 @@ type Manager struct {
 	organizationClient orgpb.OrganizationServiceClient
 	projectClient      projecthubpb.ProjectServiceClient
 	pipelineClient     pipelinepb.PipelineServiceClient
+	taskClient         taskpb.TaskServiceClient
 	jobClient          jobpb.JobServiceClient
 	artifacthubClient  artifacthubpb.ArtifactServiceClient
 	loghubClient       loghubpb.LoghubClient
@@ -114,6 +118,9 @@ func NewManager(ctx context.Context, cfg Config) (*Manager, error) {
 	if m.pipelineConn, err = dial(cfg.PipelineEndpoint); err != nil {
 		return nil, handleDialError("pipeline", err)
 	}
+	if m.taskConn, err = dial(cfg.TaskEndpoint); err != nil {
+		return nil, handleDialError("task", err)
+	}
 	if m.jobConn, err = dial(cfg.JobEndpoint); err != nil {
 		return nil, handleDialError("job", err)
 	}
@@ -144,6 +151,9 @@ func NewManager(ctx context.Context, cfg Config) (*Manager, error) {
 	}
 	if m.pipelineConn != nil {
 		m.pipelineClient = pipelinepb.NewPipelineServiceClient(m.pipelineConn)
+	}
+	if m.taskConn != nil {
+		m.taskClient = taskpb.NewTaskServiceClient(m.taskConn)
 	}
 	if m.jobConn != nil {
 		m.jobClient = jobpb.NewJobServiceClient(m.jobConn)
@@ -179,6 +189,7 @@ func (m *Manager) Close() error {
 		m.organizationConn,
 		m.projectConn,
 		m.pipelineConn,
+		m.taskConn,
 		m.jobConn,
 		m.artifacthubConn,
 		m.loghubConn,
@@ -225,6 +236,10 @@ func (m *Manager) Projects() projecthubpb.ProjectServiceClient {
 
 func (m *Manager) Pipelines() pipelinepb.PipelineServiceClient {
 	return m.pipelineClient
+}
+
+func (m *Manager) Task() taskpb.TaskServiceClient {
+	return m.taskClient
 }
 
 func (m *Manager) Jobs() jobpb.JobServiceClient {
