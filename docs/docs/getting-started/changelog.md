@@ -8,6 +8,19 @@ Thank you for using Semaphore!
 We continuously deploy changes that improve our product for our customers.
 This page is updated on a weekly basis.
 
+### Week of March 23 2026
+
+**(Improved) Ubuntu 24.04 image update**
+
+**(New)** New packages:
+
+- .NET: 10.0.104
+- PowerShell: 7.6.0
+- Edge: 146.0.3856.72
+- EdgeDriver: 146.0.3856.72
+
+To learn more about this image, check our [Ubuntu 24.04 page](https://docs.semaphoreci.com/reference/os-ubuntu-images/ubuntu-2404-image/).
+
 ### Week of February 9 2026
 
 **(Improved) Ubuntu 24.04 image update**
