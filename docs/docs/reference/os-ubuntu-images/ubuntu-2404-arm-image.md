@@ -48,6 +48,12 @@ The image comes with the following [toolbox utilities](../toolbox) preinstalled:
 
 - [sem-version](../toolbox#sem-version): manage language versions on Linux
 
+:::note
+
+Please note that `sem-service` is not available on R1 images.
+
+:::
+
 ## Version control
 
 Following version control tools are pre-installed:
