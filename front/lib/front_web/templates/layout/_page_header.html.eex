@@ -25,7 +25,7 @@
   }
 </style>
 
-<% case suspension_banner(assigns) do %>
+<%= case suspension_banner(assigns) do %>
   <% {:error, message} -> %>
     <div class="fixed bottom-0 left-0 z-5">
       <a href="<%= support_path(@conn, :new) %>" class="db link white f6 lh-title ph2 ph3-ns pv1 pointer bg-red hover-bg-dark-red">
