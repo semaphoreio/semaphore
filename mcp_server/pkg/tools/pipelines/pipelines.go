@@ -12,6 +12,7 @@ import (
 
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/authz"
 	pipelinepb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber.pipeline"
+	taskpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/task"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/logging"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/internal/clients"
@@ -225,7 +226,13 @@ type jobsListResult struct {
 	Jobs                  []pipelineJobEntry `json:"jobs"`
 	JobCount              int                `json:"jobCount"`
 	AfterPipelineJobIDs   []string           `json:"afterPipelineJobIds,omitempty"`
+	AfterPipelineJobNames []string           `json:"afterPipelineJobNames,omitempty"`
 	AfterPipelineJobCount int                `json:"afterPipelineJobCount,omitempty"`
+}
+
+type afterPipelineResolution struct {
+	JobIDs   []string
+	JobNames []string
 }
 
 func listHandler(api internalapi.Provider) server.ToolHandlerFunc {
@@ -570,29 +577,16 @@ Troubleshooting:
 			blocks = append(blocks, group)
 		}
 
-		var afterPipelineJobIDs []string
-		if pipeline.WithAfterTask {
-			topoResp, err := clients.DescribePipelineTopology(ctx, api, pipelineID)
-			if err != nil {
-				logging.ForComponent("tools").
-					WithFields(logrus.Fields{
-						"tool":       jobsToolName,
-						"pipelineId": pipelineID,
-					}).
-					WithError(err).
-					Warn("failed to fetch after-pipeline topology, continuing without after-pipeline jobs")
-			} else if ap := topoResp.GetAfterPipeline(); ap != nil {
-				afterPipelineJobIDs = ap.GetJobs()
-			}
-		}
+		afterPipeline := resolveAfterPipelineJobs(ctx, api, pipelineID, pipeline.WithAfterTask, pipeline.AfterTaskID)
 
 		result := jobsListResult{
 			Pipeline:              pipeline,
 			Blocks:                blocks,
 			Jobs:                  jobs,
 			JobCount:              len(jobs),
-			AfterPipelineJobIDs:   afterPipelineJobIDs,
-			AfterPipelineJobCount: len(afterPipelineJobIDs),
+			AfterPipelineJobIDs:   afterPipeline.JobIDs,
+			AfterPipelineJobNames: afterPipeline.JobNames,
+			AfterPipelineJobCount: len(afterPipeline.JobIDs),
 		}
 
 		markdown := formatPipelineJobsMarkdown(result, mode, orgID)
@@ -606,6 +600,170 @@ Troubleshooting:
 			StructuredContent: result,
 		}, nil
 	}
+}
+
+func resolveAfterPipelineJobs(
+	ctx context.Context,
+	api internalapi.Provider,
+	pipelineID string,
+	withAfterTask bool,
+	afterTaskID string,
+) afterPipelineResolution {
+	if !withAfterTask {
+		return afterPipelineResolution{}
+	}
+
+	topoResp, err := clients.DescribePipelineTopology(ctx, api, pipelineID)
+	if err != nil {
+		logging.ForComponent("tools").
+			WithFields(logrus.Fields{
+				"tool":       jobsToolName,
+				"pipelineId": pipelineID,
+			}).
+			WithError(err).
+			Warn("failed to fetch after-pipeline topology, continuing without after-pipeline jobs")
+		return afterPipelineResolution{}
+	}
+
+	afterPipeline := topoResp.GetAfterPipeline()
+	if afterPipeline == nil {
+		return afterPipelineResolution{}
+	}
+	afterPipelineJobNames := afterPipeline.GetJobs()
+	if len(afterPipelineJobNames) == 0 {
+		return afterPipelineResolution{}
+	}
+
+	fallback := afterPipelineResolution{
+		JobNames: afterPipelineJobNames,
+	}
+
+	afterTaskID = strings.TrimSpace(afterTaskID)
+	if afterTaskID == "" {
+		logging.ForComponent("tools").
+			WithFields(logrus.Fields{
+				"tool":       jobsToolName,
+				"pipelineId": pipelineID,
+			}).
+			Warn("pipeline reports withAfterTask=true but afterTaskID is empty")
+		return fallback
+	}
+
+	tasks, err := clients.DescribeTasks(ctx, api, []string{afterTaskID})
+	if err != nil {
+		logging.ForComponent("tools").
+			WithFields(logrus.Fields{
+				"tool":        jobsToolName,
+				"pipelineId":  pipelineID,
+				"afterTaskId": afterTaskID,
+			}).
+			WithError(err).
+			Warn("failed to fetch after-pipeline task, continuing without after-pipeline jobs")
+		return fallback
+	}
+
+	var afterTask *taskpb.Task
+	for _, task := range tasks {
+		if task == nil {
+			continue
+		}
+		if strings.TrimSpace(task.GetId()) == afterTaskID {
+			afterTask = task
+			break
+		}
+	}
+	if afterTask == nil {
+		logging.ForComponent("tools").
+			WithFields(logrus.Fields{
+				"tool":        jobsToolName,
+				"pipelineId":  pipelineID,
+				"afterTaskId": afterTaskID,
+			}).
+			Warn("after-task not found in task DescribeMany response")
+		return fallback
+	}
+
+	afterPipelineJobIDs, unresolvedJobNames := matchAfterPipelineJobsToIDs(afterPipelineJobNames, afterTask.GetJobs())
+	if len(unresolvedJobNames) > 0 {
+		logging.ForComponent("tools").
+			WithFields(logrus.Fields{
+				"tool":            jobsToolName,
+				"pipelineId":      pipelineID,
+				"afterTaskId":     afterTaskID,
+				"resolvedCount":   len(afterPipelineJobIDs),
+				"unresolvedCount": len(unresolvedJobNames),
+			}).
+			Warn("could not resolve all after-pipeline job IDs from task jobs")
+		return afterPipelineResolution{
+			JobIDs:   afterPipelineJobIDs,
+			JobNames: unresolvedJobNames,
+		}
+	}
+
+	return afterPipelineResolution{
+		JobIDs: afterPipelineJobIDs,
+	}
+}
+
+func matchAfterPipelineJobsToIDs(
+	afterPipelineJobNames []string,
+	taskJobs []*taskpb.Task_Job,
+) ([]string, []string) {
+	nameToID := make(map[string]string, len(taskJobs))
+	ambiguousNames := make(map[string]struct{})
+
+	for _, taskJob := range taskJobs {
+		if taskJob == nil {
+			continue
+		}
+		name := taskJob.GetName()
+		jobID := strings.TrimSpace(taskJob.GetId())
+		if jobID == "" {
+			continue
+		}
+
+		if _, alreadyAmbiguous := ambiguousNames[name]; alreadyAmbiguous {
+			continue
+		}
+
+		if existingID, exists := nameToID[name]; exists {
+			if existingID != jobID {
+				delete(nameToID, name)
+				ambiguousNames[name] = struct{}{}
+			}
+			continue
+		}
+
+		nameToID[name] = jobID
+	}
+
+	afterPipelineJobIDs := make([]string, 0, len(afterPipelineJobNames))
+	unresolvedJobNames := make([]string, 0)
+	seenAfterPipelineNames := make(map[string]struct{}, len(afterPipelineJobNames))
+
+	for _, jobName := range afterPipelineJobNames {
+		name := jobName
+
+		if _, seen := seenAfterPipelineNames[name]; seen {
+			unresolvedJobNames = append(unresolvedJobNames, name)
+			continue
+		}
+		seenAfterPipelineNames[name] = struct{}{}
+
+		if _, ambiguous := ambiguousNames[name]; ambiguous {
+			unresolvedJobNames = append(unresolvedJobNames, name)
+			continue
+		}
+
+		jobID, ok := nameToID[name]
+		if !ok {
+			unresolvedJobNames = append(unresolvedJobNames, name)
+			continue
+		}
+		afterPipelineJobIDs = append(afterPipelineJobIDs, jobID)
+	}
+
+	return afterPipelineJobIDs, unresolvedJobNames
 }
 
 func summarizePipeline(ppl *pipelinepb.Pipeline) pipelineSummary {
@@ -818,7 +976,7 @@ func formatPipelineJobsMarkdown(result jobsListResult, mode, orgID string) strin
 	}
 	mb.Paragraph(fmt.Sprintf("Organization: `%s` • Jobs discovered: %d", orgID, result.JobCount))
 
-	if result.JobCount == 0 {
+	if result.JobCount == 0 && len(result.AfterPipelineJobIDs) == 0 && len(result.AfterPipelineJobNames) == 0 {
 		mb.Paragraph("No jobs found for this pipeline. The pipeline may not have started yet or it may only include manual blocks.")
 		return mb.String()
 	}
@@ -877,8 +1035,16 @@ func formatPipelineJobsMarkdown(result jobsListResult, mode, orgID string) strin
 		for _, jobID := range result.AfterPipelineJobIDs {
 			mb.ListItem(fmt.Sprintf("`%s`", jobID))
 		}
-		mb.Line()
 		mb.Paragraph("Use `jobs_describe` or `jobs_logs` to inspect these jobs.")
+	}
+
+	if len(result.AfterPipelineJobNames) > 0 {
+		mb.Line()
+		mb.H2("After Pipeline (IDs unavailable)")
+		for _, jobName := range result.AfterPipelineJobNames {
+			mb.ListItem(fmt.Sprintf("`%s`", jobName))
+		}
+		mb.Paragraph("Job IDs could not be resolved from Task API. Retry later.")
 	}
 
 	return mb.String()
