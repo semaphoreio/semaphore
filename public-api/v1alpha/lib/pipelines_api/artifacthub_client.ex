@@ -265,7 +265,7 @@ defmodule PipelinesAPI.ArtifactHubClient do
           map_get(params, "scope_id"),
           map_get(params, "path") || ""
         ),
-      unwrap_directories: false
+      unwrap_directories: map_get(params, "unwrap_directories") || false
     }
     |> ListPathRequest.new()
     |> ToTuple.ok()
@@ -433,4 +433,7 @@ defmodule PipelinesAPI.ArtifactHubClient do
 
   defp map_get(map, "method") when is_map(map),
     do: Map.get(map, "method") || Map.get(map, :method)
+
+  defp map_get(map, "unwrap_directories") when is_map(map),
+    do: Map.get(map, "unwrap_directories") || Map.get(map, :unwrap_directories)
 end

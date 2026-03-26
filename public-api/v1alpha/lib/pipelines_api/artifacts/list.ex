@@ -9,18 +9,18 @@ defmodule PipelinesAPI.Artifacts.List do
   alias PipelinesAPI.Pipelines.Common, as: RespCommon
   alias PipelinesAPI.Util.Metrics
 
-  import Plug.Conn, only: [resp: 3, halt: 1]
   import PipelinesAPI.Artifacts.Authorize, only: [authorize_list: 2]
 
   import PipelinesAPI.Artifacts.Common,
     only: [
+      apply_optional_limit: 2,
+      build_page: 3,
       get_artifact_store_id: 2,
+      normalize_optional_limit: 1,
       validate_request_params: 3,
       resolve_project_id_from_scope: 2
     ]
 
-  @default_limit 200
-  @max_limit 1000
   @enabled_fields ~w(scope scope_id path limit)
 
   plug(:verify_params)
@@ -44,49 +44,20 @@ defmodule PipelinesAPI.Artifacts.List do
   def verify_params(conn, _opts) do
     conn
     |> validate_request_params(@enabled_fields, [])
-    |> validate_limit()
+    |> normalize_optional_limit()
   end
 
-  defp validate_limit(conn = %{halted: true}), do: conn
-
-  defp validate_limit(conn) do
-    case parse_limit(conn.params["limit"]) do
-      {:ok, limit} ->
-        conn
-        |> Map.put(:params, Map.put(conn.params, "limit", limit))
-
-      {:error, message} ->
-        conn |> resp(400, message) |> halt()
-    end
-  end
-
-  defp parse_limit(nil), do: {:ok, @default_limit}
-  defp parse_limit(""), do: {:ok, @default_limit}
-
-  defp parse_limit(limit) when is_binary(limit) do
-    case Integer.parse(limit) do
-      {value, ""} when value >= 1 and value <= @max_limit -> {:ok, value}
-      _ -> {:error, "limit must be an integer between 1 and #{@max_limit}"}
-    end
-  end
-
-  defp parse_limit(_), do: {:error, "limit must be an integer between 1 and #{@max_limit}"}
-
-  defp format_response({:ok, artifacts}, %{"limit" => limit}) when is_integer(limit) do
+  defp format_response({:ok, artifacts}, params) do
+    limit = Map.get(params, "limit")
     sorted_artifacts = sort_artifacts(artifacts)
-    limited_artifacts = Enum.take(sorted_artifacts, limit)
+    limited_artifacts = apply_optional_limit(sorted_artifacts, limit)
     returned = length(limited_artifacts)
     total = length(sorted_artifacts)
 
     {:ok,
      %{
        artifacts: limited_artifacts,
-       page: %{
-         limit: limit,
-         returned: returned,
-         total: total,
-         truncated: total > returned
-       }
+       page: build_page(limit, returned, total)
      }}
   end
 

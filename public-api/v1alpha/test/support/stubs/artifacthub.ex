@@ -136,18 +136,7 @@ defmodule Support.Stubs.Artifacthub do
             DB.filter(:artifacts, scope: scope, scope_id: scope_id)
             |> DB.extract(:api_model)
             |> Enum.filter(fn artifact ->
-              file_path
-              |> case do
-                file_path when file_path == [] ->
-                  path_length = Path.split(artifact.name) |> length()
-                  path_length == 1
-
-                file_path ->
-                  file = Path.join(file_path)
-
-                  length((artifact.name |> Path.split()) -- file_path) == 1 and
-                    String.starts_with?(artifact.name, file <> "/")
-              end
+              artifact_matches_path?(artifact, file_path, req.unwrap_directories)
             end)
             |> Enum.uniq()
         end
@@ -210,6 +199,33 @@ defmodule Support.Stubs.Artifacthub do
       path
       |> Path.split()
       |> Enum.split(3)
+    end
+
+    defp artifact_matches_path?(artifact, file_path, true) do
+      cond do
+        artifact.is_directory ->
+          false
+
+        file_path == [] ->
+          true
+
+        true ->
+          String.starts_with?(artifact.name, Path.join(file_path) <> "/")
+      end
+    end
+
+    defp artifact_matches_path?(artifact, file_path, false) do
+      case file_path do
+        [] ->
+          path_length = Path.split(artifact.name) |> length()
+          path_length == 1
+
+        _ ->
+          file = Path.join(file_path)
+
+          length((artifact.name |> Path.split()) -- file_path) == 1 and
+            String.starts_with?(artifact.name, file <> "/")
+      end
     end
   end
 end
