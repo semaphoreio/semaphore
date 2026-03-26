@@ -23,7 +23,7 @@ If your organization is currently using a legacy plan, you can switch to the new
 1. In the left-side menu, select **Change plan**.
 1. Click **Switch to The Plan**
 
-    <img alt="image" src="https://github.com/user-attachments/assets/2b9d5a02-e08b-4d1d-8e60-4cce0773711e" />
+    ![Switch to a new plan](./img/switch-new-plan.png)
 
 1. Review the warning message and click **Confirm**.
 
@@ -45,7 +45,7 @@ To see your spending:
 1. Select **Plans & Billing**
 1. The **Overview** tab shows your monthly spending
 
-    <img alt="image" src="https://github.com/user-attachments/assets/26735617-8ad1-429f-a1de-86d2b65a004a" />
+    ![Current spending](./img/current-spending.png)
 
 
 1. You can view detailed breakdowns in two ways
@@ -186,7 +186,7 @@ Add-ons allow you to enable additional services for your organization and are on
 Enabling Add-ons may affect your billing. After clicking on save, you cannot select another add-on in the same column for 24 hours, but you can still [disable the current add-on](#disable-add-on).
 :::
 
-<img alt="image" src="https://github.com/user-attachments/assets/fb3f73dc-a7b6-493f-be11-a387b6892d8b" />
+![Enable add-on](./img/enable-add-on.png)
 
 ### How to disable Add-ons {#disable-add-on}
 
@@ -199,7 +199,7 @@ Enabling Add-ons may affect your billing. After clicking on save, you cannot sel
 You won't be able to select another add-on in the same column for 24 hours.
 :::
 
-<img alt="image" src="https://github.com/user-attachments/assets/484e51dd-f501-4e62-ae66-c6c0cf98bd81" />
+![Disable add-on](./img/disable-add-on.png)
 
 
 ## See also
