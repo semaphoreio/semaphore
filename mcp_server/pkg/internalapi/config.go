@@ -33,6 +33,10 @@ var (
 		"MCP_PIPELINE_GRPC_ENDPOINT",
 		"PPL_GRPC_URL",
 	}
+	taskEndpointEnvs = []string{
+		"INTERNAL_API_URL_TASK",
+		"MCP_TASK_GRPC_ENDPOINT",
+	}
 	jobEndpointEnvs = []string{
 		"INTERNAL_API_URL_JOB",
 		"MCP_JOB_GRPC_ENDPOINT",
@@ -72,6 +76,7 @@ type Config struct {
 	OrganizationEndpoint string
 	ProjectEndpoint      string
 	PipelineEndpoint     string
+	TaskEndpoint         string
 	JobEndpoint          string
 	ArtifacthubEndpoint  string
 	LoghubEndpoint       string
@@ -102,6 +107,7 @@ func LoadConfig() (Config, error) {
 		OrganizationEndpoint: endpointFromEnv(organizationEndpointEnvs...),
 		ProjectEndpoint:      endpointFromEnv(projectEndpointEnvs...),
 		PipelineEndpoint:     endpointFromEnv(pipelineEndpointEnvs...),
+		TaskEndpoint:         endpointFromEnv(taskEndpointEnvs...),
 		JobEndpoint:          endpointFromEnv(jobEndpointEnvs...),
 		ArtifacthubEndpoint:  endpointFromEnv(artifacthubEndpointEnvs...),
 		LoghubEndpoint:       endpointFromEnv(loghubEndpointEnvs...),

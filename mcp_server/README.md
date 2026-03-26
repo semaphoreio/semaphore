@@ -72,6 +72,7 @@ The server dials internal gRPC services based on environment variables. Deployme
 | ------- | -------------------------------------------- |
 | Workflow gRPC endpoint | `INTERNAL_API_URL_PLUMBER`, `MCP_WORKFLOW_GRPC_ENDPOINT`, `WF_GRPC_URL` |
 | Pipeline gRPC endpoint | `INTERNAL_API_URL_PLUMBER`, `MCP_PIPELINE_GRPC_ENDPOINT`, `PPL_GRPC_URL` |
+| Task gRPC endpoint | `INTERNAL_API_URL_TASK`, `MCP_TASK_GRPC_ENDPOINT` |
 | Job gRPC endpoint | `INTERNAL_API_URL_JOB`, `MCP_JOB_GRPC_ENDPOINT`, `JOBS_API_URL` |
 | Loghub gRPC endpoint (hosted logs) | `INTERNAL_API_URL_LOGHUB`, `MCP_LOGHUB_GRPC_ENDPOINT`, `LOGHUB_API_URL` |
 | Loghub2 gRPC endpoint (self-hosted logs) | `INTERNAL_API_URL_LOGHUB2`, `MCP_LOGHUB2_GRPC_ENDPOINT`, `LOGHUB2_API_URL` |
@@ -122,6 +123,7 @@ Run it locally (listening on port 3001):
 ```bash
 docker run --rm -p 3001:3001 \
   -e INTERNAL_API_URL_PLUMBER=ppl:50053 \
+  -e INTERNAL_API_URL_TASK=zebra-task-api:50051 \
   -e INTERNAL_API_URL_JOB=semaphore-job-api:50051 \
   -e INTERNAL_API_URL_LOGHUB=loghub:50051 \
   -e INTERNAL_API_URL_LOGHUB2=loghub2-internal-api:50051 \

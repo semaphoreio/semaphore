@@ -10,7 +10,7 @@ INTERACTIVE_SESSION=\
           -e HOME=$(HOME_DIR) \
           -e MIX_ENV=test \
           --workdir=$(WORKDIR)/proto \
-          -it renderedtext/elixir-dev:1.6.5-v2 \
+          -it elixir:1.11-alpine \
 
 INTERNAL_API_BRANCH?=master
 TMP_INTERNAL_REPO_DIR?=/tmp/internal_api
@@ -52,7 +52,7 @@ endif
 	rm -rf $(TMP_INTERNAL_REPO_DIR)
 
 console:
-	docker run $(INTERACTIVE_SESSION) /bin/bash
+	docker run $(INTERACTIVE_SESSION) /bin/ash
 
 test:
 	docker run --user=$(USER) $(INTERACTIVE_SESSION) \

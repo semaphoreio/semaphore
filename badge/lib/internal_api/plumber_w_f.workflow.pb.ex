@@ -162,7 +162,9 @@ defmodule InternalApi.PlumberWF.ScheduleRequest do
           label: String.t(),
           triggered_by: InternalApi.PlumberWF.TriggeredBy.t(),
           scheduler_task_id: String.t(),
-          env_vars: [InternalApi.PlumberWF.ScheduleRequest.EnvVar.t()]
+          env_vars: [InternalApi.PlumberWF.ScheduleRequest.EnvVar.t()],
+          start_in_conceived_state: boolean,
+          git_reference: String.t()
         }
 
   defstruct [
@@ -179,7 +181,9 @@ defmodule InternalApi.PlumberWF.ScheduleRequest do
     :label,
     :triggered_by,
     :scheduler_task_id,
-    :env_vars
+    :env_vars,
+    :start_in_conceived_state,
+    :git_reference
   ]
 
   field(:service, 2, type: InternalApi.PlumberWF.ScheduleRequest.ServiceType, enum: true)
@@ -196,6 +200,8 @@ defmodule InternalApi.PlumberWF.ScheduleRequest do
   field(:triggered_by, 15, type: InternalApi.PlumberWF.TriggeredBy, enum: true)
   field(:scheduler_task_id, 16, type: :string)
   field(:env_vars, 17, repeated: true, type: InternalApi.PlumberWF.ScheduleRequest.EnvVar)
+  field(:start_in_conceived_state, 18, type: :bool)
+  field(:git_reference, 19, type: :string)
 end
 
 defmodule InternalApi.PlumberWF.ScheduleResponse do
@@ -781,44 +787,25 @@ defmodule InternalApi.PlumberWF.GetProjectIdResponse do
   field(:project_id, 2, type: :string)
 end
 
-defmodule InternalApi.PlumberWF.CreateRequest do
+defmodule InternalApi.PlumberWF.WorkflowDeleted do
   @moduledoc false
   use Protobuf, syntax: :proto3
 
   @type t :: %__MODULE__{
+          workflow_id: String.t(),
+          organization_id: String.t(),
           project_id: String.t(),
-          label: String.t(),
-          hook_id: String.t(),
-          request_token: String.t(),
-          definition_file: String.t(),
-          requester_id: String.t()
+          artifact_store_id: String.t(),
+          deleted_at: Google.Protobuf.Timestamp.t() | nil
         }
 
-  defstruct [:project_id, :label, :hook_id, :request_token, :definition_file, :requester_id]
+  defstruct [:workflow_id, :organization_id, :project_id, :artifact_store_id, :deleted_at]
 
-  field(:project_id, 1, type: :string)
-  field(:label, 2, type: :string)
-  field(:hook_id, 3, type: :string)
-  field(:request_token, 4, type: :string)
-  field(:definition_file, 5, type: :string)
-  field(:requester_id, 6, type: :string)
-end
-
-defmodule InternalApi.PlumberWF.CreateResponse do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          wf_id: String.t(),
-          status: InternalApi.Status.t() | nil,
-          ppl_id: String.t()
-        }
-
-  defstruct [:wf_id, :status, :ppl_id]
-
-  field(:wf_id, 1, type: :string)
-  field(:status, 2, type: InternalApi.Status)
-  field(:ppl_id, 3, type: :string)
+  field(:workflow_id, 1, type: :string)
+  field(:organization_id, 2, type: :string)
+  field(:project_id, 3, type: :string)
+  field(:artifact_store_id, 4, type: :string)
+  field(:deleted_at, 5, type: Google.Protobuf.Timestamp)
 end
 
 defmodule InternalApi.PlumberWF.WorkflowService.Service do
@@ -882,8 +869,6 @@ defmodule InternalApi.PlumberWF.WorkflowService.Service do
     InternalApi.PlumberWF.GetProjectIdRequest,
     InternalApi.PlumberWF.GetProjectIdResponse
   )
-
-  rpc(:Create, InternalApi.PlumberWF.CreateRequest, InternalApi.PlumberWF.CreateResponse)
 end
 
 defmodule InternalApi.PlumberWF.WorkflowService.Stub do
