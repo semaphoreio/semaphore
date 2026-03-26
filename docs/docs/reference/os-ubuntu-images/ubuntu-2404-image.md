@@ -221,9 +221,9 @@ The default installed Ruby version is 3.4.8.
 
 - 1.1.1
 
-### Microsoft .NET and PowerShell
+### Microsoft .NET SDK and PowerShell
 
-- .NET: 10.0.104
+- .NET SDK: 10.0.104
 - PowerShell: 7.6.0
 
 ## See also

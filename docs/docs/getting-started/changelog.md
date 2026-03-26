@@ -14,7 +14,7 @@ This page is updated on a weekly basis.
 
 **(New)** New packages:
 
-- .NET: 10.0.104
+- .NET SDK: 10.0.104
 - PowerShell: 7.6.0
 - Edge: 146.0.3856.72
 - EdgeDriver: 146.0.3856.72
