@@ -1713,7 +1713,7 @@ Parameters:
 - `scope` (**required**) - scope namespace. Valid values: `projects`, `workflows`, `jobs`.
 - `scope_id` (**required**) - UUID of the selected scope object.
 - `path` (*optional*) - relative path inside the selected scope. If omitted, the root directory is listed.
-- `limit` (*optional*) - maximum number of returned artifacts (1-1000). Defaults to `200`.
+- `limit` (*optional*) - maximum number of returned artifacts. Must be a positive integer. If omitted, all results are returned.
 
 Validation notes:
 
@@ -1748,13 +1748,19 @@ HTTP status: 200
     }
   ],
   "page": {
-    "limit": 200,
+    "limit": null,
     "returned": 2,
     "total": 2,
     "truncated": false
   }
 }
 ```
+
+Pagination notes:
+
+- The endpoint currently does not support cursor/page-number pagination.
+- `page.limit` is `null` when no `limit` is provided.
+- `page.truncated` is `true` when `limit` is provided and results exceed that limit.
 
 Possible error responses:
 
@@ -1767,15 +1773,18 @@ Example:
 
 ```shell
 curl -i -H "Authorization: Token {api_token}" \
-     "https://<organization-url>.semaphoreci.com/api/v1alpha/artifacts?scope=jobs&scope_id=:job_id&path=agent&limit=100"
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/artifacts?scope=jobs&scope_id=:job_id&path=agent"
 ```
 
 ### Get artifact signed URL
 
-This API endpoint returns a signed URL for downloading a specific artifact.
+This API endpoint returns signed URLs for artifacts.
+
+- If `path` points to a file, the response contains one signed URL.
+- If `path` points to a directory, the response contains signed URLs for all files under that directory (recursively, including subdirectories).
 
 ```text
-GET <organization-url>.semaphoreci.com/api/v1alpha/artifacts/signed_url?scope=:scope&scope_id=:scope_id&path=:path&method=:method
+GET <organization-url>.semaphoreci.com/api/v1alpha/artifacts/signed_url?scope=:scope&scope_id=:scope_id&path=:path&method=:method&limit=:limit
 ```
 
 Parameters:
@@ -1784,6 +1793,7 @@ Parameters:
 - `scope_id` (**required**) - UUID of the selected scope object.
 - `path` (**required**) - relative path of the artifact inside the selected scope.
 - `method` (*optional*) - HTTP method for the signed URL. Valid values: `GET`, `HEAD`. Defaults to `GET`.
+- `limit` (*optional*) - maximum number of returned signed URLs when `path` is a directory. Must be a positive integer. If omitted, all matching files are returned.
 
 Validation notes:
 
@@ -1791,6 +1801,7 @@ Validation notes:
 - Absolute paths (starting with `/`) are not allowed.
 - Path traversal segments (`.` and `..`) are not allowed.
 - Backslashes (`\`) are not allowed.
+- If `path` resolves to a directory, `method` must be `GET`.
 
 Authorization notes:
 
@@ -1803,7 +1814,43 @@ Response:
 HTTP status: 200
 
 {
-  "url": "https://<signed-url>"
+  "items": [
+    {
+      "path": "agent/job_logs.txt.gz",
+      "url": "https://<signed-url>"
+    }
+  ],
+  "page": {
+    "limit": null,
+    "returned": 1,
+    "total": 1,
+    "truncated": false
+  }
+}
+```
+
+Example response for directory path with `limit=2`:
+
+```json
+HTTP status: 200
+
+{
+  "items": [
+    {
+      "path": "agent/a.log",
+      "url": "https://<signed-url-1>"
+    },
+    {
+      "path": "agent/job_logs.txt.gz",
+      "url": "https://<signed-url-2>"
+    }
+  ],
+  "page": {
+    "limit": 2,
+    "returned": 2,
+    "total": 3,
+    "truncated": true
+  }
 }
 ```
 
@@ -1819,6 +1866,13 @@ Example:
 ```shell
 curl -i -H "Authorization: Token {api_token}" \
      "https://<organization-url>.semaphoreci.com/api/v1alpha/artifacts/signed_url?scope=jobs&scope_id=:job_id&path=agent/job_logs.txt.gz&method=GET"
+```
+
+Directory example:
+
+```shell
+curl -i -H "Authorization: Token {api_token}" \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/artifacts/signed_url?scope=jobs&scope_id=:job_id&path=agent&limit=100"
 ```
 
 ## Artifact retention policies

@@ -64,7 +64,7 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
                  ctx.user.id
                )
 
-      assert response == %{"url" => @job_artifact_url}
+      assert_single_item_response(response, "agent/job_logs.txt.gz", @job_artifact_url)
     end
 
     test "returns 200 and a signed URL for workflow artifact", ctx do
@@ -78,7 +78,7 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
                  ctx.user.id
                )
 
-      assert response == %{"url" => @workflow_artifact_url}
+      assert_single_item_response(response, "debug/workflow_logs.txt", @workflow_artifact_url)
     end
 
     test "returns 200 and a signed URL for project artifact", ctx do
@@ -92,7 +92,7 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
                  ctx.user.id
                )
 
-      assert response == %{"url" => @project_artifact_url}
+      assert_single_item_response(response, "releases/build.tar.gz", @project_artifact_url)
     end
 
     test "returns 200 and accepts HEAD method", ctx do
@@ -107,7 +107,101 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
                  ctx.user.id
                )
 
-      assert response == %{"url" => @job_artifact_url}
+      assert_single_item_response(response, "agent/job_logs.txt.gz", @job_artifact_url)
+    end
+
+    test "returns recursively signed URLs for a directory", ctx do
+      Support.Stubs.Artifacthub.create(ctx.job.id,
+        scope: "jobs",
+        path: "logs/a.log",
+        url: "https://localhost:9000/logs/a.log"
+      )
+
+      Support.Stubs.Artifacthub.create(ctx.job.id,
+        scope: "jobs",
+        path: "logs/sub/b.log",
+        url: "https://localhost:9000/logs/sub/b.log"
+      )
+
+      assert {200, response} =
+               signed_url(
+                 %{
+                   "scope" => "jobs",
+                   "scope_id" => ctx.job.id,
+                   "path" => "logs"
+                 },
+                 ctx.user.id
+               )
+
+      assert response == %{
+               "items" => [
+                 %{"path" => "logs/a.log", "url" => "https://localhost:9000/logs/a.log"},
+                 %{"path" => "logs/sub/b.log", "url" => "https://localhost:9000/logs/sub/b.log"}
+               ],
+               "page" => %{
+                 "limit" => nil,
+                 "returned" => 2,
+                 "total" => 2,
+                 "truncated" => false
+               }
+             }
+    end
+
+    test "returns limited signed URL list for directory", ctx do
+      Support.Stubs.Artifacthub.create(ctx.job.id,
+        scope: "jobs",
+        path: "logs/a.log",
+        url: "https://localhost:9000/logs/a.log"
+      )
+
+      Support.Stubs.Artifacthub.create(ctx.job.id,
+        scope: "jobs",
+        path: "logs/sub/b.log",
+        url: "https://localhost:9000/logs/sub/b.log"
+      )
+
+      Support.Stubs.Artifacthub.create(ctx.job.id,
+        scope: "jobs",
+        path: "logs/c.log",
+        url: "https://localhost:9000/logs/c.log"
+      )
+
+      assert {200, response} =
+               signed_url(
+                 %{
+                   "scope" => "jobs",
+                   "scope_id" => ctx.job.id,
+                   "path" => "logs",
+                   "limit" => "2"
+                 },
+                 ctx.user.id
+               )
+
+      assert response == %{
+               "items" => [
+                 %{"path" => "logs/a.log", "url" => "https://localhost:9000/logs/a.log"},
+                 %{"path" => "logs/c.log", "url" => "https://localhost:9000/logs/c.log"}
+               ],
+               "page" => %{
+                 "limit" => 2,
+                 "returned" => 2,
+                 "total" => 3,
+                 "truncated" => true
+               }
+             }
+    end
+
+    test "returns 400 when HEAD method is used for a directory", ctx do
+      assert {400, "method must be GET when path points to a directory"} =
+               signed_url(
+                 %{
+                   "scope" => "jobs",
+                   "scope_id" => ctx.job.id,
+                   "path" => "agent",
+                   "method" => "HEAD"
+                 },
+                 ctx.user.id
+               )
     end
 
     test "resolves project_id from job scope_id even when request includes another project_id",
@@ -133,7 +227,11 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
                  true
                )
 
-      assert response == %{"url" => "https://localhost:9000/agent/other_job_logs.txt.gz"}
+      assert_single_item_response(
+        response,
+        "agent/other_job_logs.txt.gz",
+        "https://localhost:9000/agent/other_job_logs.txt.gz"
+      )
     end
 
     test "resolves project_id from workflow scope_id even when request includes another project_id",
@@ -161,7 +259,11 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
                  true
                )
 
-      assert response == %{"url" => "https://localhost:9000/debug/other_workflow_logs.txt"}
+      assert_single_item_response(
+        response,
+        "debug/other_workflow_logs.txt",
+        "https://localhost:9000/debug/other_workflow_logs.txt"
+      )
     end
 
     test "resolves project_id from project scope_id even when request includes another project_id",
@@ -186,7 +288,11 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
                  true
                )
 
-      assert response == %{"url" => "https://localhost:9000/other/releases.tar.gz"}
+      assert_single_item_response(
+        response,
+        "other/releases.tar.gz",
+        "https://localhost:9000/other/releases.tar.gz"
+      )
     end
 
     test "returns 404 on project/org mismatch", ctx do
@@ -277,6 +383,20 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
                signed_url_raw(base_query <> "&method[]=GET", ctx.user.id, false)
     end
 
+    test "returns 400 for invalid limit", ctx do
+      assert {400, "limit must be a positive integer"} =
+               signed_url(
+                 %{
+                   "scope" => "jobs",
+                   "scope_id" => ctx.job.id,
+                   "path" => "agent/job_logs.txt.gz",
+                   "limit" => "0"
+                 },
+                 ctx.user.id,
+                 false
+               )
+    end
+
     test "returns 401 when user has no artifact permission", ctx do
       GrpcMock.stub(RBACMock, :list_user_permissions, fn _, _ ->
         InternalApi.RBAC.ListUserPermissionsResponse.new(
@@ -359,6 +479,20 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
       {"x-semaphore-user-id", user_id},
       {"x-semaphore-org-id", Support.Stubs.Organization.default_org_id()}
     ]
+
+  defp assert_single_item_response(response, path, url) do
+    assert response == %{
+             "items" => [
+               %{"path" => path, "url" => url}
+             ],
+             "page" => %{
+               "limit" => nil,
+               "returned" => 1,
+               "total" => 1,
+               "truncated" => false
+             }
+           }
+  end
 
   defp create_workflow_and_job(project, user_id, org_id) do
     build_req_id = UUID.uuid4()

@@ -18,6 +18,7 @@ defmodule PipelinesAPI.Artifacts.Common do
 
   @valid_scopes ~w(projects workflows jobs)
   @valid_methods ~w(GET HEAD)
+  @limit_error_message "limit must be a positive integer"
 
   def get_artifact_store_id(conn, _opts) do
     conn.params
@@ -109,10 +110,48 @@ defmodule PipelinesAPI.Artifacts.Common do
 
   def sanitize_relative_path(_, _), do: {:error, "invalid path"}
 
+  def normalize_optional_limit(conn = %{halted: true}), do: conn
+
+  def normalize_optional_limit(conn) do
+    case parse_optional_limit(conn.params["limit"]) do
+      {:ok, limit} ->
+        conn
+        |> Map.put(:params, Map.put(conn.params, "limit", limit))
+
+      {:error, message} ->
+        conn |> resp(400, message) |> halt()
+    end
+  end
+
+  def apply_optional_limit(items, limit) when is_integer(limit), do: Enum.take(items, limit)
+  def apply_optional_limit(items, nil), do: items
+
+  def build_page(limit, returned, total) do
+    %{
+      limit: limit,
+      returned: returned,
+      total: total,
+      truncated: total > returned
+    }
+  end
+
   defp normalize_method(_method, false), do: {:ok, "GET"}
   defp normalize_method(nil, true), do: {:ok, "GET"}
   defp normalize_method(method, true) when is_binary(method), do: {:ok, String.upcase(method)}
   defp normalize_method(_method, true), do: {:error, "method must be one of: GET, HEAD"}
+
+  defp parse_optional_limit(nil), do: {:ok, nil}
+  defp parse_optional_limit(""), do: {:ok, nil}
+  defp parse_optional_limit(limit) when is_integer(limit) and limit >= 1, do: {:ok, limit}
+
+  defp parse_optional_limit(limit) when is_binary(limit) do
+    case Integer.parse(limit) do
+      {value, ""} when value >= 1 -> {:ok, value}
+      _ -> {:error, @limit_error_message}
+    end
+  end
+
+  defp parse_optional_limit(_), do: {:error, @limit_error_message}
 
   defp maybe_verify_method(result, false, _method), do: result
 

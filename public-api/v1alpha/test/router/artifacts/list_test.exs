@@ -162,6 +162,33 @@ defmodule PipelinesAPI.Artifacts.ListTest do
              }
     end
 
+    test "returns all artifacts by default when limit is omitted", ctx do
+      Support.Stubs.Artifacthub.create(ctx.job.id,
+        scope: "jobs",
+        path: "agent/extra.log",
+        url: "https://localhost:9000/agent/extra.log"
+      )
+
+      assert {200, response} =
+               list_artifacts(
+                 %{
+                   "scope" => "jobs",
+                   "scope_id" => ctx.job.id,
+                   "path" => "agent"
+                 },
+                 ctx.user.id
+               )
+
+      assert length(response["artifacts"]) == 2
+
+      assert response["page"] == %{
+               "limit" => nil,
+               "returned" => 2,
+               "total" => 2,
+               "truncated" => false
+             }
+    end
+
     test "sorts artifacts deterministically before truncating with limit", ctx do
       Support.Stubs.Artifacthub.create(ctx.job.id,
         scope: "jobs",
@@ -204,7 +231,7 @@ defmodule PipelinesAPI.Artifacts.ListTest do
     end
 
     test "returns 400 for invalid limit", ctx do
-      assert {400, "limit must be an integer between 1 and 1000"} =
+      assert {400, "limit must be a positive integer"} =
                list_artifacts(
                  %{
                    "scope" => "jobs",
