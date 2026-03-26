@@ -189,8 +189,10 @@ The authentication layer must inject the X-Semaphore-User-ID header so we can au
 		if err != nil {
 			logging.ForComponent("rpc").
 				WithFields(logrus.Fields{
-					"rpc":    "scheduler.Describe",
-					"taskId": taskID,
+					"rpc":       "scheduler.Describe",
+					"taskId":    taskID,
+					"projectId": projectID,
+					"orgId":     orgID,
 				}).
 				WithError(err).
 				Error("scheduler describe RPC failed during run scope check")

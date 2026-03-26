@@ -32,7 +32,7 @@ Use this when you need to answer:
 
 Response modes:
 - summary (default): task ID, name, branch, schedule, paused/suspended status
-- detailed: adds description, pipeline file, parameters, timestamps
+- detailed: adds description, pipeline file, and timestamps
 
 Examples:
 1. List all tasks for a project:
@@ -183,6 +183,7 @@ Troubleshooting:
 				WithFields(logrus.Fields{
 					"rpc":       "scheduler.ListKeyset",
 					"projectId": projectID,
+					"orgId":     orgID,
 					"limit":     limit,
 					"cursor":    cursor,
 					"mode":      mode,
@@ -204,6 +205,7 @@ Try reducing the limit or removing filters to see if results return.`, err)), ni
 				WithFields(logrus.Fields{
 					"rpc":       "scheduler.ListKeyset",
 					"projectId": projectID,
+					"orgId":     orgID,
 				}).
 				WithError(err).
 				Warn("scheduler list returned non-OK status")
@@ -223,6 +225,22 @@ Double-check that:
 					Warn("scheduler list returned nil periodic entry")
 				continue
 			}
+
+			pOrgID := strings.TrimSpace(p.GetOrganizationId())
+			pProjectID := strings.TrimSpace(p.GetProjectId())
+			if !strings.EqualFold(pOrgID, orgID) || !strings.EqualFold(pProjectID, projectID) {
+				shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
+					Tool:              listToolName,
+					ResourceType:      "task",
+					ResourceID:        p.GetId(),
+					RequestOrgID:      orgID,
+					ResourceOrgID:     pOrgID,
+					RequestProjectID:  projectID,
+					ResourceProjectID: pProjectID,
+				})
+				continue
+			}
+
 			tasks = append(tasks, taskSummary{
 				ID:           p.GetId(),
 				Name:         p.GetName(),

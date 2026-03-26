@@ -507,6 +507,9 @@ func TestRunTask_PermissionDenied(t *testing.T) {
 	if client.LastRunNow != nil {
 		t.Fatal("expected RunNow RPC to NOT be called when permission is denied")
 	}
+	if client.LastDescribe != nil {
+		t.Fatal("expected Describe RPC to NOT be called when permission is denied")
+	}
 }
 
 // --- scope mismatch tests ---
@@ -656,6 +659,67 @@ func TestRunTask_ProjectScopeMismatch(t *testing.T) {
 	}
 	if client.LastRunNow != nil {
 		t.Fatal("expected RunNow RPC to NOT be called when scope mismatches")
+	}
+}
+
+func TestListTasks_ScopeMismatchFiltered(t *testing.T) {
+	projectID := "11111111-2222-3333-4444-555555555555"
+	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	differentOrgID := "ffffffff-ffff-ffff-ffff-ffffffffffff"
+
+	client := &support.SchedulerClientStub{
+		ListResp: &schedulerpb.ListKeysetResponse{
+			Status: &statuspb.Status{Code: code.Code_OK},
+			Periodics: []*schedulerpb.Periodic{
+				{
+					Id:             "task-good",
+					Name:           "Good Task",
+					ProjectId:      projectID,
+					OrganizationId: orgID,
+					Reference:      "main",
+					PipelineFile:   ".semaphore/good.yml",
+				},
+				{
+					Id:             "task-bad",
+					Name:           "Wrong Org Task",
+					ProjectId:      projectID,
+					OrganizationId: differentOrgID,
+					Reference:      "main",
+					PipelineFile:   ".semaphore/bad.yml",
+				},
+			},
+		},
+	}
+	provider := &support.MockProvider{
+		SchedulerClient: client,
+		Timeout:         time.Second,
+		RBACClient:      support.NewRBACStub("project.scheduler.view"),
+	}
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"project_id":      projectID,
+		"organization_id": orgID,
+	}}}
+	req.Header = authHeader()
+
+	res, err := listHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res.IsError {
+		t.Fatalf("expected success result")
+	}
+
+	result, ok := res.StructuredContent.(listResult)
+	if !ok {
+		t.Fatalf("unexpected structured content type: %T", res.StructuredContent)
+	}
+
+	if len(result.Tasks) != 1 {
+		t.Fatalf("expected 1 task after scope filtering, got %d", len(result.Tasks))
+	}
+	if result.Tasks[0].ID != "task-good" {
+		t.Fatalf("expected task-good, got %q", result.Tasks[0].ID)
 	}
 }
 

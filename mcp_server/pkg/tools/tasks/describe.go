@@ -31,7 +31,7 @@ Use this when you need to answer:
 
 Response modes:
 - summary (default): task details, status, schedule
-- detailed: adds recent trigger history and parameters
+- detailed: adds timestamps, parameters, and recent trigger history
 
 Examples:
 1. Get task details:
