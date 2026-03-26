@@ -1,6 +1,6 @@
 module github.com/semaphoreio/semaphore/velocity
 
-go 1.25.0
+go 1.25
 
 require (
 	github.com/allegro/bigcache/v3 v3.1.0
