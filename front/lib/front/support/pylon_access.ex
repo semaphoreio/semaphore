@@ -8,8 +8,9 @@ defmodule Front.Support.PylonAccess do
 
   @spec enabled_for_org?(String.t() | nil) :: boolean()
   def enabled_for_org?(org_id) when is_binary(org_id) and org_id != "" do
-    feature_enabled?(:pylon_support, org_id) and
-      feature_enabled_any?(org_id, @support_tier_features)
+    feature_enabled?(:pylon_support_portal, org_id) or
+      (feature_enabled?(:pylon_support, org_id) and
+         feature_enabled_any?(org_id, @support_tier_features))
   end
 
   def enabled_for_org?(_), do: false

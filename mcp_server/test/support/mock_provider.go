@@ -14,6 +14,7 @@ import (
 	projecthubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/projecthub"
 	rbacpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/rbac"
 	jobpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/server_farm.job"
+	taskpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/task"
 	userpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/user"
 	featuresvc "github.com/semaphoreio/semaphore/mcp_server/pkg/service"
 )
@@ -24,6 +25,7 @@ type MockProvider struct {
 	OrganizationClient orgpb.OrganizationServiceClient
 	ProjectClient      projecthubpb.ProjectServiceClient
 	PipelineClient     pipelinepb.PipelineServiceClient
+	TaskClient         taskpb.TaskServiceClient
 	JobClient          jobpb.JobServiceClient
 	ArtifacthubClient  artifacthubpb.ArtifactServiceClient
 	LoghubClient       loghubpb.LoghubClient
@@ -53,6 +55,8 @@ func (m *MockProvider) Organizations() orgpb.OrganizationServiceClient {
 func (m *MockProvider) Projects() projecthubpb.ProjectServiceClient { return m.ProjectClient }
 
 func (m *MockProvider) Pipelines() pipelinepb.PipelineServiceClient { return m.PipelineClient }
+
+func (m *MockProvider) Task() taskpb.TaskServiceClient { return m.TaskClient }
 
 func (m *MockProvider) Jobs() jobpb.JobServiceClient { return m.JobClient }
 
