@@ -632,16 +632,77 @@ HTTP status: 200
 
 [
   {
-    "yaml_file_name": "semaphore.yml",
+    "done_at": {
+      "seconds": 1749559101,
+      "nanos": 804987000
+    },
+    "ppl_id": "f3d0c573-fd44-4085-a594-bbfd835adf60",
+    "terminated_by": "",
     "working_directory": ".semaphore",
-    "wf_id": "484e263a-424a-4820-bff0-bba436c54042",
+    "branch_id": "e1e9fb6e-04bc-4daa-96d6-8943c111c371",
     "state": "DONE",
-    "result": "FAILED",
-    "name": "Pipeline",
-    "branch_name": "ms/another-test-branch",
+    "partially_rerun_by": "",
+    "queuing_at": {
+      "seconds": 1749559096,
+      "nanos": 706749000
+    },
+    "after_task_id": "",
+    "commit_sha": "80c9e6ced6b4e82c6a3663512be71f45092dd64c",
+    "env_vars": [],
+    "running_at": {
+      "seconds": 1749559096,
+      "nanos": 735053000
+    },
+    "stopping_at": {
+      "seconds": 0,
+      "nanos": 0
+    },
     "created_at": {
-      "seconds": 1571076843,
-      "nanos": 537730000
+      "seconds": 1749559086,
+      "nanos": 695161000
+    },
+    "result": "PASSED",
+    "partial_rerun_of": "",
+    "queue": {
+      "type": "IMPLICIT",
+      "scope": "project",
+      "queue_id": "20b9561d-fca9-4f60-9848-b3c4ef6ab8dd",
+      "project_id": "ad59a1a9-0e70-4bb1-91be-03859c1815a1",
+      "organization_id": "6af96e24-1502-4e37-a68e-ce72436d7a2b",
+      "name": "master-.semaphore/semaphore.yml"
+    },
+    "promotion_of": "",
+    "compile_task_id": "dcf0562b-f631-45c1-b322-3b205a2bf53b",
+    "pending_at": {
+      "seconds": 1749559096,
+      "nanos": 688449000
+    },
+    "with_after_task": false,
+    "switch_id": "",
+    "name": "Initial Pipeline",
+    "error_description": "",
+    "hook_id": "c65b7b84-ada7-459c-b9b6-5b4e969d085d",
+    "repository_id": "d0c61348-e540-40cd-aa46-1395cc142bf9",
+    "yaml_file_name": "semaphore.yml",
+    "organization_id": "6af96e24-1502-4e37-a68e-ce72436d7a2b",
+    "project_id": "ad59a1a9-0e70-4bb1-91be-03859c1815a1",
+    "branch_name": "master",
+    "result_reason": "TEST",
+    "commit_message": "Update Semaphore configuration",
+    "terminate_request": "",
+    "wf_id": "27fdf71a-7e5d-48ac-9b37-9f04b5a8ad0a",
+    "snapshot_id": "",
+    "triggerer": {
+      "workflow_rerun_of": "",
+      "wf_triggerer_user_id": "e3730319-3040-4e0b-a26d-818a3656985c",
+      "wf_triggerer_provider_uid": "30660198",
+      "wf_triggerer_provider_login": "mateuscap",
+      "wf_triggerer_provider_avatar": "https://avatars.githubusercontent.com/mateuscap?v=4",
+      "wf_triggerer_id": "c65b7b84-ada7-459c-b9b6-5b4e969d085d",
+      "wf_triggered_by": "HOOK",
+      "ppl_triggerer_user_id": "e3730319-3040-4e0b-a26d-818a3656985c",
+      "ppl_triggerer_id": "27fdf71a-7e5d-48ac-9b37-9f04b5a8ad0a",
+      "ppl_triggered_by": "WORKFLOW"
     }
   }
 ]
