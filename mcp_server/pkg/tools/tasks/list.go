@@ -218,6 +218,9 @@ Double-check that:
 		tasks := make([]taskSummary, 0, len(resp.GetPeriodics()))
 		for _, p := range resp.GetPeriodics() {
 			if p == nil {
+				logging.ForComponent("rpc").
+					WithField("projectId", projectID).
+					Warn("scheduler list returned nil periodic entry")
 				continue
 			}
 			tasks = append(tasks, taskSummary{

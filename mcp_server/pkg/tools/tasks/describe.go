@@ -76,10 +76,10 @@ func newDescribeTool(name, description string) mcp.Tool {
 }
 
 type taskParameter struct {
-	Name        string `json:"name"`
-	Value       string `json:"value,omitempty"`
-	Required    bool   `json:"required"`
-	Description string `json:"description,omitempty"`
+	Name         string `json:"name"`
+	DefaultValue string `json:"default_value,omitempty"`
+	Required     bool   `json:"required"`
+	Description  string `json:"description,omitempty"`
 }
 
 type taskDetail struct {
@@ -179,9 +179,11 @@ The authentication layer must inject the X-Semaphore-User-ID header so we can au
 		if err != nil {
 			logging.ForComponent("rpc").
 				WithFields(logrus.Fields{
-					"rpc":    "scheduler.Describe",
-					"taskId": taskID,
-					"mode":   mode,
+					"rpc":       "scheduler.Describe",
+					"taskId":    taskID,
+					"projectId": projectID,
+					"orgId":     orgID,
+					"mode":      mode,
 				}).
 				WithError(err).
 				Error("scheduler describe RPC failed")
@@ -196,8 +198,10 @@ Possible causes:
 		if err := shared.CheckStatus(resp.GetStatus()); err != nil {
 			logging.ForComponent("rpc").
 				WithFields(logrus.Fields{
-					"rpc":    "scheduler.Describe",
-					"taskId": taskID,
+					"rpc":       "scheduler.Describe",
+					"taskId":    taskID,
+					"projectId": projectID,
+					"orgId":     orgID,
 				}).
 				WithError(err).
 				Warn("scheduler describe returned non-OK status")
@@ -220,16 +224,49 @@ Double-check that:
 			return mcp.NewToolResultError("Task not found. Verify the task_id is correct and belongs to a project you have access to."), nil
 		}
 
+		// Verify the task belongs to the org/project the user claimed.
+		taskOrgID := strings.TrimSpace(periodic.GetOrganizationId())
+		if taskOrgID == "" || !strings.EqualFold(taskOrgID, orgID) {
+			shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
+				Tool:              describeToolName,
+				ResourceType:      "task",
+				ResourceID:        taskID,
+				RequestOrgID:      orgID,
+				ResourceOrgID:     periodic.GetOrganizationId(),
+				RequestProjectID:  projectID,
+				ResourceProjectID: periodic.GetProjectId(),
+			})
+			return shared.ScopeMismatchError(describeToolName, "organization"), nil
+		}
+
+		taskProjectID := strings.TrimSpace(periodic.GetProjectId())
+		if taskProjectID == "" || !strings.EqualFold(taskProjectID, projectID) {
+			shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
+				Tool:              describeToolName,
+				ResourceType:      "task",
+				ResourceID:        taskID,
+				RequestOrgID:      orgID,
+				ResourceOrgID:     taskOrgID,
+				RequestProjectID:  projectID,
+				ResourceProjectID: periodic.GetProjectId(),
+			})
+			return shared.ScopeMismatchError(describeToolName, "project"), nil
+		}
+
 		// Build parameters list
 		var params []taskParameter
 		for _, p := range periodic.GetParameters() {
 			if p == nil {
+				logging.ForComponent("rpc").
+					WithField("taskId", taskID).
+					Warn("scheduler describe returned nil parameter entry")
 				continue
 			}
 			params = append(params, taskParameter{
-				Name:        p.GetName(),
-				Required:    p.GetRequired(),
-				Description: p.GetDescription(),
+				Name:         p.GetName(),
+				DefaultValue: p.GetDefaultValue(),
+				Required:     p.GetRequired(),
+				Description:  p.GetDescription(),
 			})
 		}
 
@@ -255,6 +292,9 @@ Double-check that:
 		if mode == "detailed" {
 			for _, t := range resp.GetTriggers() {
 				if t == nil {
+					logging.ForComponent("rpc").
+						WithField("taskId", taskID).
+						Warn("scheduler describe returned nil trigger entry")
 					continue
 				}
 				result.RecentTriggers = append(result.RecentTriggers, trigger{

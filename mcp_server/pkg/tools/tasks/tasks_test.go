@@ -127,36 +127,40 @@ func TestListTasks(t *testing.T) {
 	}
 }
 
+func newDescribeResponse(taskID, projectID, orgID string) *schedulerpb.DescribeResponse {
+	return &schedulerpb.DescribeResponse{
+		Status: &statuspb.Status{Code: code.Code_OK},
+		Periodic: &schedulerpb.Periodic{
+			Id:             taskID,
+			Name:           "Nightly Build",
+			Description:    "Runs every night",
+			ProjectId:      projectID,
+			OrganizationId: orgID,
+			Reference:      "main",
+			PipelineFile:   ".semaphore/nightly.yml",
+			At:             "0 0 * * *",
+			InsertedAt:     timestamppb.New(time.Unix(1700000000, 0)),
+			UpdatedAt:      timestamppb.New(time.Unix(1700000000, 0)),
+		},
+		Triggers: []*schedulerpb.Trigger{
+			{
+				TriggeredAt:         timestamppb.New(time.Unix(1700000000, 0)),
+				ScheduledWorkflowId: "wf-456",
+				SchedulingStatus:    "passed",
+				Reference:           "main",
+				PipelineFile:        ".semaphore/nightly.yml",
+			},
+		},
+	}
+}
+
 func TestDescribeTask(t *testing.T) {
 	taskID := "11111111-2222-3333-4444-555555555555"
 	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 	projectID := "66666666-7777-8888-9999-aaaaaaaaaaaa"
 
 	client := &support.SchedulerClientStub{
-		DescribeResp: &schedulerpb.DescribeResponse{
-			Status: &statuspb.Status{Code: code.Code_OK},
-			Periodic: &schedulerpb.Periodic{
-				Id:             taskID,
-				Name:           "Nightly Build",
-				Description:    "Runs every night",
-				ProjectId:      projectID,
-				OrganizationId: orgID,
-				Reference:      "main",
-				PipelineFile:   ".semaphore/nightly.yml",
-				At:             "0 0 * * *",
-				InsertedAt:     timestamppb.New(time.Unix(1700000000, 0)),
-				UpdatedAt:      timestamppb.New(time.Unix(1700000000, 0)),
-			},
-			Triggers: []*schedulerpb.Trigger{
-				{
-					TriggeredAt:         timestamppb.New(time.Unix(1700000000, 0)),
-					ScheduledWorkflowId: "wf-456",
-					SchedulingStatus:    "passed",
-					Reference:           "main",
-					PipelineFile:        ".semaphore/nightly.yml",
-				},
-			},
-		},
+		DescribeResp: newDescribeResponse(taskID, projectID, orgID),
 	}
 
 	provider := &support.MockProvider{
@@ -222,6 +226,7 @@ func TestRunTask(t *testing.T) {
 	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 
 	client := &support.SchedulerClientStub{
+		DescribeResp: newDescribeResponse(taskID, projectID, orgID),
 		RunNowResp: &schedulerpb.RunNowResponse{
 			Status: &statuspb.Status{Code: code.Code_OK},
 			Periodic: &schedulerpb.Periodic{
@@ -504,6 +509,156 @@ func TestRunTask_PermissionDenied(t *testing.T) {
 	}
 }
 
+// --- scope mismatch tests ---
+
+func TestDescribeTask_OrgScopeMismatch(t *testing.T) {
+	taskID := "11111111-2222-3333-4444-555555555555"
+	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	projectID := "66666666-7777-8888-9999-aaaaaaaaaaaa"
+	differentOrgID := "ffffffff-ffff-ffff-ffff-ffffffffffff"
+
+	client := &support.SchedulerClientStub{
+		DescribeResp: newDescribeResponse(taskID, projectID, differentOrgID),
+	}
+	provider := &support.MockProvider{
+		SchedulerClient: client,
+		Timeout:         time.Second,
+		RBACClient:      support.NewRBACStub("project.scheduler.view"),
+	}
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"task_id":         taskID,
+		"project_id":      projectID,
+		"organization_id": orgID,
+	}}}
+	req.Header = authHeader()
+
+	res, err := describeHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(strings.ToLower(msg), "permission denied") {
+		t.Fatalf("expected scope mismatch error, got %q", msg)
+	}
+	if !strings.Contains(strings.ToLower(msg), "organization") {
+		t.Fatalf("expected organization scope error, got %q", msg)
+	}
+}
+
+func TestDescribeTask_ProjectScopeMismatch(t *testing.T) {
+	taskID := "11111111-2222-3333-4444-555555555555"
+	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	projectID := "66666666-7777-8888-9999-aaaaaaaaaaaa"
+	differentProjectID := "ffffffff-ffff-ffff-ffff-ffffffffffff"
+
+	client := &support.SchedulerClientStub{
+		DescribeResp: newDescribeResponse(taskID, differentProjectID, orgID),
+	}
+	provider := &support.MockProvider{
+		SchedulerClient: client,
+		Timeout:         time.Second,
+		RBACClient:      support.NewRBACStub("project.scheduler.view"),
+	}
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"task_id":         taskID,
+		"project_id":      projectID,
+		"organization_id": orgID,
+	}}}
+	req.Header = authHeader()
+
+	res, err := describeHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(strings.ToLower(msg), "permission denied") {
+		t.Fatalf("expected scope mismatch error, got %q", msg)
+	}
+	if !strings.Contains(strings.ToLower(msg), "project") {
+		t.Fatalf("expected project scope error, got %q", msg)
+	}
+}
+
+func TestRunTask_OrgScopeMismatch(t *testing.T) {
+	taskID := "11111111-2222-3333-4444-555555555555"
+	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	projectID := "66666666-7777-8888-9999-aaaaaaaaaaaa"
+	differentOrgID := "ffffffff-ffff-ffff-ffff-ffffffffffff"
+
+	client := &support.SchedulerClientStub{
+		DescribeResp: newDescribeResponse(taskID, projectID, differentOrgID),
+	}
+	provider := &support.MockProvider{
+		SchedulerClient: client,
+		Timeout:         time.Second,
+		FeaturesService: support.FeatureClientStub{State: feature.Enabled},
+		RBACClient:      support.NewRBACStub("project.scheduler.run_manually"),
+	}
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"task_id":         taskID,
+		"project_id":      projectID,
+		"organization_id": orgID,
+	}}}
+	req.Header = authHeader()
+
+	res, err := runHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(strings.ToLower(msg), "permission denied") {
+		t.Fatalf("expected scope mismatch error, got %q", msg)
+	}
+	if !strings.Contains(strings.ToLower(msg), "organization") {
+		t.Fatalf("expected organization scope error, got %q", msg)
+	}
+	if client.LastRunNow != nil {
+		t.Fatal("expected RunNow RPC to NOT be called when scope mismatches")
+	}
+}
+
+func TestRunTask_ProjectScopeMismatch(t *testing.T) {
+	taskID := "11111111-2222-3333-4444-555555555555"
+	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	projectID := "66666666-7777-8888-9999-aaaaaaaaaaaa"
+	differentProjectID := "ffffffff-ffff-ffff-ffff-ffffffffffff"
+
+	client := &support.SchedulerClientStub{
+		DescribeResp: newDescribeResponse(taskID, differentProjectID, orgID),
+	}
+	provider := &support.MockProvider{
+		SchedulerClient: client,
+		Timeout:         time.Second,
+		FeaturesService: support.FeatureClientStub{State: feature.Enabled},
+		RBACClient:      support.NewRBACStub("project.scheduler.run_manually"),
+	}
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"task_id":         taskID,
+		"project_id":      projectID,
+		"organization_id": orgID,
+	}}}
+	req.Header = authHeader()
+
+	res, err := runHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(strings.ToLower(msg), "permission denied") {
+		t.Fatalf("expected scope mismatch error, got %q", msg)
+	}
+	if !strings.Contains(strings.ToLower(msg), "project") {
+		t.Fatalf("expected project scope error, got %q", msg)
+	}
+	if client.LastRunNow != nil {
+		t.Fatal("expected RunNow RPC to NOT be called when scope mismatches")
+	}
+}
+
 // --- #4: RPC error tests ---
 
 func TestListTasks_RPCError(t *testing.T) {
@@ -560,8 +715,13 @@ func TestDescribeTask_RPCError(t *testing.T) {
 }
 
 func TestRunTask_RPCError(t *testing.T) {
+	taskID := "11111111-2222-3333-4444-555555555555"
+	projectID := "66666666-7777-8888-9999-aaaaaaaaaaaa"
+	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+
 	client := &support.SchedulerClientStub{
-		RunNowErr: fmt.Errorf("connection refused"),
+		DescribeResp: newDescribeResponse(taskID, projectID, orgID),
+		RunNowErr:    fmt.Errorf("connection refused"),
 	}
 	provider := &support.MockProvider{
 		SchedulerClient: client,
@@ -594,7 +754,9 @@ func TestRunTask_WithParameters(t *testing.T) {
 	projectID := "66666666-7777-8888-9999-aaaaaaaaaaaa"
 	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 
-	client := &support.SchedulerClientStub{}
+	client := &support.SchedulerClientStub{
+		DescribeResp: newDescribeResponse(taskID, projectID, orgID),
+	}
 	provider := &support.MockProvider{
 		SchedulerClient: client,
 		Timeout:         time.Second,
@@ -682,6 +844,332 @@ func TestValidatePipelineFile(t *testing.T) {
 			}
 		})
 	}
+}
+
+// --- missing user ID header tests ---
+
+func TestListTasks_MissingUserHeader(t *testing.T) {
+	provider := &support.MockProvider{
+		SchedulerClient: &support.SchedulerClientStub{},
+		Timeout:         time.Second,
+		RBACClient:      support.NewRBACStub("project.scheduler.view"),
+	}
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"project_id":      "11111111-2222-3333-4444-555555555555",
+		"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+	}}}
+	// No X-Semaphore-User-ID header set
+
+	res, err := listHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(strings.ToLower(msg), "x-semaphore-user-id") {
+		t.Fatalf("expected error mentioning user ID header, got %q", msg)
+	}
+}
+
+func TestDescribeTask_MissingUserHeader(t *testing.T) {
+	provider := &support.MockProvider{
+		SchedulerClient: &support.SchedulerClientStub{},
+		Timeout:         time.Second,
+		RBACClient:      support.NewRBACStub("project.scheduler.view"),
+	}
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"task_id":         "11111111-2222-3333-4444-555555555555",
+		"project_id":      "66666666-7777-8888-9999-aaaaaaaaaaaa",
+		"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+	}}}
+
+	res, err := describeHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(strings.ToLower(msg), "x-semaphore-user-id") {
+		t.Fatalf("expected error mentioning user ID header, got %q", msg)
+	}
+}
+
+func TestRunTask_MissingUserHeader(t *testing.T) {
+	provider := &support.MockProvider{
+		SchedulerClient: &support.SchedulerClientStub{},
+		Timeout:         time.Second,
+		FeaturesService: support.FeatureClientStub{State: feature.Enabled},
+		RBACClient:      support.NewRBACStub("project.scheduler.run_manually"),
+	}
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"task_id":         "11111111-2222-3333-4444-555555555555",
+		"project_id":      "66666666-7777-8888-9999-aaaaaaaaaaaa",
+		"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+	}}}
+
+	res, err := runHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(strings.ToLower(msg), "x-semaphore-user-id") {
+		t.Fatalf("expected error mentioning user ID header, got %q", msg)
+	}
+}
+
+// --- run scope-check describe failure tests ---
+
+func TestRunTask_ScopeCheckDescribeRPCError(t *testing.T) {
+	provider := &support.MockProvider{
+		SchedulerClient: &support.SchedulerClientStub{
+			DescribeErr: fmt.Errorf("connection refused"),
+		},
+		Timeout:         time.Second,
+		FeaturesService: support.FeatureClientStub{State: feature.Enabled},
+		RBACClient:      support.NewRBACStub("project.scheduler.run_manually"),
+	}
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"task_id":         "11111111-2222-3333-4444-555555555555",
+		"project_id":      "66666666-7777-8888-9999-aaaaaaaaaaaa",
+		"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+	}}}
+	req.Header = authHeader()
+
+	res, err := runHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(msg, "scope verification") {
+		t.Fatalf("expected scope verification error, got %q", msg)
+	}
+	if provider.SchedulerClient.(*support.SchedulerClientStub).LastRunNow != nil {
+		t.Fatal("expected RunNow RPC to NOT be called when scope-check Describe fails")
+	}
+}
+
+func TestRunTask_ScopeCheckDescribeNonOKStatus(t *testing.T) {
+	provider := &support.MockProvider{
+		SchedulerClient: &support.SchedulerClientStub{
+			DescribeResp: &schedulerpb.DescribeResponse{
+				Status: &statuspb.Status{Code: code.Code_NOT_FOUND},
+			},
+		},
+		Timeout:         time.Second,
+		FeaturesService: support.FeatureClientStub{State: feature.Enabled},
+		RBACClient:      support.NewRBACStub("project.scheduler.run_manually"),
+	}
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"task_id":         "11111111-2222-3333-4444-555555555555",
+		"project_id":      "66666666-7777-8888-9999-aaaaaaaaaaaa",
+		"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+	}}}
+	req.Header = authHeader()
+
+	res, err := runHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(msg, "scope verification") {
+		t.Fatalf("expected scope verification error, got %q", msg)
+	}
+}
+
+func TestRunTask_ScopeCheckDescribeNilPeriodic(t *testing.T) {
+	provider := &support.MockProvider{
+		SchedulerClient: &support.SchedulerClientStub{
+			DescribeResp: &schedulerpb.DescribeResponse{
+				Status: &statuspb.Status{Code: code.Code_OK},
+			},
+		},
+		Timeout:         time.Second,
+		FeaturesService: support.FeatureClientStub{State: feature.Enabled},
+		RBACClient:      support.NewRBACStub("project.scheduler.run_manually"),
+	}
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"task_id":         "11111111-2222-3333-4444-555555555555",
+		"project_id":      "66666666-7777-8888-9999-aaaaaaaaaaaa",
+		"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+	}}}
+	req.Header = authHeader()
+
+	res, err := runHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(strings.ToLower(msg), "task not found") {
+		t.Fatalf("expected task not found error, got %q", msg)
+	}
+}
+
+// --- incomplete RunNow response test ---
+
+func TestRunTask_IncompleteResponse(t *testing.T) {
+	taskID := "11111111-2222-3333-4444-555555555555"
+	projectID := "66666666-7777-8888-9999-aaaaaaaaaaaa"
+	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+
+	client := &support.SchedulerClientStub{
+		DescribeResp: newDescribeResponse(taskID, projectID, orgID),
+		RunNowResp: &schedulerpb.RunNowResponse{
+			Status:   &statuspb.Status{Code: code.Code_OK},
+			Periodic: nil,
+			Trigger:  nil,
+		},
+	}
+	provider := &support.MockProvider{
+		SchedulerClient: client,
+		Timeout:         time.Second,
+		FeaturesService: support.FeatureClientStub{State: feature.Enabled},
+		RBACClient:      support.NewRBACStub("project.scheduler.run_manually"),
+	}
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"task_id":         taskID,
+		"project_id":      projectID,
+		"organization_id": orgID,
+	}}}
+	req.Header = authHeader()
+
+	res, err := runHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(strings.ToLower(msg), "incomplete response") {
+		t.Fatalf("expected incomplete response error, got %q", msg)
+	}
+}
+
+// --- nil scheduler client tests ---
+
+func TestListTasks_NilSchedulerClient(t *testing.T) {
+	provider := &support.MockProvider{
+		SchedulerClient: nil,
+		Timeout:         time.Second,
+		RBACClient:      support.NewRBACStub("project.scheduler.view"),
+	}
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"project_id":      "11111111-2222-3333-4444-555555555555",
+		"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+	}}}
+	req.Header = authHeader()
+
+	res, err := listHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(strings.ToLower(msg), "scheduler") {
+		t.Fatalf("expected scheduler not configured error, got %q", msg)
+	}
+}
+
+func TestDescribeTask_NilSchedulerClient(t *testing.T) {
+	provider := &support.MockProvider{
+		SchedulerClient: nil,
+		Timeout:         time.Second,
+		RBACClient:      support.NewRBACStub("project.scheduler.view"),
+	}
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"task_id":         "11111111-2222-3333-4444-555555555555",
+		"project_id":      "66666666-7777-8888-9999-aaaaaaaaaaaa",
+		"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+	}}}
+	req.Header = authHeader()
+
+	res, err := describeHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(strings.ToLower(msg), "scheduler") {
+		t.Fatalf("expected scheduler not configured error, got %q", msg)
+	}
+}
+
+func TestRunTask_NilSchedulerClient(t *testing.T) {
+	provider := &support.MockProvider{
+		SchedulerClient: nil,
+		Timeout:         time.Second,
+		FeaturesService: support.FeatureClientStub{State: feature.Enabled},
+		RBACClient:      support.NewRBACStub("project.scheduler.run_manually"),
+	}
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"task_id":         "11111111-2222-3333-4444-555555555555",
+		"project_id":      "66666666-7777-8888-9999-aaaaaaaaaaaa",
+		"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+	}}}
+	req.Header = authHeader()
+
+	res, err := runHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(strings.ToLower(msg), "scheduler") {
+		t.Fatalf("expected scheduler not configured error, got %q", msg)
+	}
+}
+
+// --- non-OK status tests ---
+
+func TestDescribeTask_NonOKStatus(t *testing.T) {
+	provider := &support.MockProvider{
+		SchedulerClient: &support.SchedulerClientStub{
+			DescribeResp: &schedulerpb.DescribeResponse{
+				Status: &statuspb.Status{Code: code.Code_NOT_FOUND},
+			},
+		},
+		Timeout:    time.Second,
+		RBACClient: support.NewRBACStub("project.scheduler.view"),
+	}
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"task_id":         "11111111-2222-3333-4444-555555555555",
+		"project_id":      "66666666-7777-8888-9999-aaaaaaaaaaaa",
+		"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+	}}}
+	req.Header = authHeader()
+
+	res, err := describeHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	requireErrorText(t, res)
+}
+
+func TestListTasks_NonOKStatus(t *testing.T) {
+	provider := &support.MockProvider{
+		SchedulerClient: &support.SchedulerClientStub{
+			ListResp: &schedulerpb.ListKeysetResponse{
+				Status: &statuspb.Status{Code: code.Code_INTERNAL},
+			},
+		},
+		Timeout:    time.Second,
+		RBACClient: support.NewRBACStub("project.scheduler.view"),
+	}
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"project_id":      "11111111-2222-3333-4444-555555555555",
+		"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+	}}}
+	req.Header = authHeader()
+
+	res, err := listHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	requireErrorText(t, res)
 }
 
 // --- test helpers ---

@@ -92,11 +92,11 @@ func newRunTool(name, description string) mcp.Tool {
 
 type runResult struct {
 	TaskID       string `json:"task_id"`
-	TaskName     string `json:"task_name"`
-	WorkflowID   string `json:"workflow_id"`
-	Branch       string `json:"branch"`
-	PipelineFile string `json:"pipeline_file"`
-	TriggeredAt  string `json:"triggered_at"`
+	TaskName     string `json:"task_name,omitempty"`
+	WorkflowID   string `json:"workflow_id,omitempty"`
+	Branch       string `json:"branch,omitempty"`
+	PipelineFile string `json:"pipeline_file,omitempty"`
+	TriggeredAt  string `json:"triggered_at,omitempty"`
 }
 
 func runHandler(api internalapi.Provider) server.ToolHandlerFunc {
@@ -181,6 +181,82 @@ The authentication layer must inject the X-Semaphore-User-ID header so we can au
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
+		// Verify the task belongs to the claimed org/project before running.
+		describeCtx, describeCancel := context.WithTimeout(ctx, api.CallTimeout())
+		defer describeCancel()
+
+		descResp, err := client.Describe(describeCtx, &schedulerpb.DescribeRequest{Id: taskID})
+		if err != nil {
+			logging.ForComponent("rpc").
+				WithFields(logrus.Fields{
+					"rpc":    "scheduler.Describe",
+					"taskId": taskID,
+				}).
+				WithError(err).
+				Error("scheduler describe RPC failed during run scope check")
+			return mcp.NewToolResultError(fmt.Sprintf(`Task describe failed during scope verification: %v
+
+Possible causes:
+- Task does not exist or you lack access rights
+- Internal scheduler service is unavailable (retry shortly)`, err)), nil
+		}
+
+		if err := shared.CheckStatus(descResp.GetStatus()); err != nil {
+			logging.ForComponent("rpc").
+				WithFields(logrus.Fields{
+					"rpc":       "scheduler.Describe",
+					"taskId":    taskID,
+					"projectId": projectID,
+					"orgId":     orgID,
+				}).
+				WithError(err).
+				Warn("scheduler describe returned non-OK status during run scope check")
+			return mcp.NewToolResultError(fmt.Sprintf(`Task describe failed during scope verification: %v
+
+Double-check that task_id is correct and that you have permission to view this task.`, err)), nil
+		}
+
+		descPeriodic := descResp.GetPeriodic()
+		if descPeriodic == nil {
+			logging.ForComponent("rpc").
+				WithFields(logrus.Fields{
+					"rpc":       "scheduler.Describe",
+					"taskId":    taskID,
+					"projectId": projectID,
+					"orgId":     orgID,
+				}).
+				Warn("scheduler describe returned OK status but nil periodic during run scope check")
+			return mcp.NewToolResultError("Task not found. Verify the task_id is correct and belongs to a project you have access to."), nil
+		}
+
+		taskOrgID := strings.TrimSpace(descPeriodic.GetOrganizationId())
+		if taskOrgID == "" || !strings.EqualFold(taskOrgID, orgID) {
+			shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
+				Tool:              runToolName,
+				ResourceType:      "task",
+				ResourceID:        taskID,
+				RequestOrgID:      orgID,
+				ResourceOrgID:     descPeriodic.GetOrganizationId(),
+				RequestProjectID:  projectID,
+				ResourceProjectID: descPeriodic.GetProjectId(),
+			})
+			return shared.ScopeMismatchError(runToolName, "organization"), nil
+		}
+
+		taskProjectID := strings.TrimSpace(descPeriodic.GetProjectId())
+		if taskProjectID == "" || !strings.EqualFold(taskProjectID, projectID) {
+			shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
+				Tool:              runToolName,
+				ResourceType:      "task",
+				ResourceID:        taskID,
+				RequestOrgID:      orgID,
+				ResourceOrgID:     taskOrgID,
+				RequestProjectID:  projectID,
+				ResourceProjectID: descPeriodic.GetProjectId(),
+			})
+			return shared.ScopeMismatchError(runToolName, "project"), nil
+		}
+
 		request := &schedulerpb.RunNowRequest{
 			Id:              taskID,
 			Requester:       userID,
@@ -237,23 +313,24 @@ Double-check that:
 				WithFields(logrus.Fields{
 					"rpc":             "scheduler.RunNow",
 					"taskId":          taskID,
+					"projectId":       projectID,
+					"orgId":           orgID,
 					"hasPeriodicData": periodic != nil,
 					"hasTriggerData":  trig != nil,
 				}).
 				Warn("scheduler RunNow returned OK but response is incomplete")
+			return mcp.NewToolResultError(fmt.Sprintf(`Task %s may have been triggered, but the scheduler returned an incomplete response. `+
+				`Check the project's workflow list or use tasks_describe to verify. `+
+				`Contact your administrator if this persists.`, taskID)), nil
 		}
 
 		result := runResult{
-			TaskID: taskID,
-		}
-		if periodic != nil {
-			result.TaskName = periodic.GetName()
-			result.Branch = periodic.GetReference()
-			result.PipelineFile = periodic.GetPipelineFile()
-		}
-		if trig != nil {
-			result.WorkflowID = trig.GetScheduledWorkflowId()
-			result.TriggeredAt = shared.FormatTimestamp(trig.GetTriggeredAt())
+			TaskID:       taskID,
+			TaskName:     periodic.GetName(),
+			Branch:       periodic.GetReference(),
+			PipelineFile: periodic.GetPipelineFile(),
+			WorkflowID:   trig.GetScheduledWorkflowId(),
+			TriggeredAt:  shared.FormatTimestamp(trig.GetTriggeredAt()),
 		}
 
 		markdown := formatRunMarkdown(result)
@@ -340,9 +417,8 @@ func validateParameterName(name string) error {
 			return fmt.Errorf("parameter %q contains control characters", name)
 		}
 	}
-	// Parameter names should start with a letter or underscore
-	if len(name) > 0 {
-		first, _ := utf8.DecodeRuneInString(name)
+	first, _ := utf8.DecodeRuneInString(name)
+	if first != 0 {
 		if !((first >= 'a' && first <= 'z') || (first >= 'A' && first <= 'Z') || first == '_') {
 			return fmt.Errorf("parameter %q must start with a letter or underscore", name)
 		}
