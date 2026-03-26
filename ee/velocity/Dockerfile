@@ -1,4 +1,4 @@
-ARG GO_VERSION=1.24
+ARG GO_VERSION=1.25.8
 ARG UBUNTU_VERSION=22.04
 ARG BUILDER_IMAGE="golang:${GO_VERSION}"
 ARG RUNNER_IMAGE="ubuntu:${UBUNTU_VERSION}"
@@ -14,7 +14,7 @@ RUN apt-get update -y && apt-get install --no-install-recommends -y ca-certifica
     && apt-get clean && rm -f /var/lib/apt/lists/*_*
 
 WORKDIR /tmp
-RUN curl -L https://github.com/golang-migrate/migrate/releases/download/v4.18.1/migrate.linux-amd64.tar.gz | tar xvz && \
+RUN curl -L https://github.com/golang-migrate/migrate/releases/download/v4.19.1/migrate.linux-amd64.tar.gz | tar xvz && \
     mv /tmp/migrate /usr/bin/migrate && \
     chmod +x /usr/bin/migrate
 
@@ -39,7 +39,7 @@ RUN curl -sL https://github.com/google/protobuf/releases/download/v3.20.0/protoc
 
 WORKDIR /app
 RUN go install github.com/mgechev/revive@v1.7.0
-RUN go install gotest.tools/gotestsum@v1.12.1
+RUN go install gotest.tools/gotestsum@v1.13.0
 RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.26.0
 RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.3.0
 
@@ -52,7 +52,7 @@ RUN rm -rf build && go build -o build/${APP_NAME} cmd/server/main.go
 FROM ${RUNNER_IMAGE} AS runner
 
 # This is needed to connect the GitHub Container Registry package with our repository.
-LABEL org.opencontainers.image.source https://github.com/semaphoreio/semaphore
+LABEL org.opencontainers.image.source=https://github.com/semaphoreio/semaphore
 
 # postgresql-client needs to be installed here too,
 # otherwise the createdb command won't work.
