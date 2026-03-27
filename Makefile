@@ -112,10 +112,12 @@ check.deps:
 		-v $$(pwd):/app \
 		-v $(ROOT_MAKEFILE_PATH)/security-toolbox:$(SECURITY_TOOLBOX_TMP_DIR) \
 		-w /app \
+		-e HOST_UID=$$(id -u) \
+		-e HOST_GID=$$(id -g) \
 		-e TRIVY_DB_REPOSITORY \
 		-e TRIVY_JAVA_DB_REPOSITORY \
 		$(SECURITY_TOOLBOX_RUBY_IMAGE) \
-		bash -c '$(SECURITY_TOOLBOX_TMP_DIR)/dependencies --language $(LANGUAGE) -d --output-dir $(SCAN_RESULT_DIR) $(CHECK_DEPS_OPTS)'
+		bash -c 'cd $(APP_DIRECTORY) && $(SECURITY_TOOLBOX_TMP_DIR)/dependencies --language $(LANGUAGE) -d --output-dir $(SCAN_RESULT_DIR) $(CHECK_DEPS_OPTS); EXIT_CODE=$$?; chown -R "$$HOST_UID:$$HOST_GID" $(SCAN_RESULT_DIR) 2>/dev/null || true; exit $$EXIT_CODE'
 
 check.ex.deps:
 	$(MAKE) check.deps LANGUAGE=elixir CHECK_DEPS_OPTS="-i hackney $(CHECK_DEPS_EXTRA_OPTS)"
@@ -133,10 +135,12 @@ check.docker:
 		-v $(ROOT_MAKEFILE_PATH)/security-toolbox:$(SECURITY_TOOLBOX_TMP_DIR) \
 		-v /tmp/trivy-image-scan.tar:/tmp/trivy-image-scan.tar:ro \
 		-w /app \
+		-e HOST_UID=$$(id -u) \
+		-e HOST_GID=$$(id -g) \
 		-e TRIVY_DB_REPOSITORY \
 		-e TRIVY_JAVA_DB_REPOSITORY \
 		$(SECURITY_TOOLBOX_RUBY_IMAGE) \
-		bash -c '$(SECURITY_TOOLBOX_TMP_DIR)/docker -d --image /tmp/trivy-image-scan.tar -s CRITICAL $(CHECK_DOCKER_OPTS)'; \
+		bash -c 'cd $(APP_DIRECTORY) && $(SECURITY_TOOLBOX_TMP_DIR)/docker -d --image /tmp/trivy-image-scan.tar -s CRITICAL $(CHECK_DOCKER_OPTS); EXIT_CODE=$$?; chown -R "$$HOST_UID:$$HOST_GID" out 2>/dev/null || true; exit $$EXIT_CODE'; \
 	EXIT_CODE=$$?; rm -f /tmp/trivy-image-scan.tar; exit $$EXIT_CODE
 
 check.generate-report:
