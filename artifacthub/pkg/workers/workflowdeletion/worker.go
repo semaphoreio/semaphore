@@ -2,6 +2,7 @@ package workflowdeletion
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -51,7 +52,7 @@ func workerConnName() string {
 	if hostname == "" {
 		return "artifacthub.workflowdeletion.worker"
 	}
-	return hostname
+	return fmt.Sprintf("%s.workflowdeletion", hostname)
 }
 
 func (w *Worker) Start() {
@@ -114,7 +115,7 @@ func (w *Worker) handleMessage(delivery tackle.Delivery) error {
 	})
 
 	err = bucket.DeletePath(context.Background(), workflowPath)
-	if err != nil {
+	if err != nil && !errors.Is(err, storage.ErrMissingBucket) {
 		log.Printf("WorkflowDeletion Worker: Error deleting artifacts at path %s: %v", workflowPath, err)
 		return err
 	}

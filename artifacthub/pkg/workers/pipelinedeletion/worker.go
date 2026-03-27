@@ -2,6 +2,7 @@ package pipelinedeletion
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -51,7 +52,7 @@ func workerConnName() string {
 	if hostname == "" {
 		return "artifacthub.pipelinedeletion.worker"
 	}
-	return hostname
+	return fmt.Sprintf("%s.pipelinedeletion", hostname)
 }
 
 func (w *Worker) Start() {
@@ -114,7 +115,7 @@ func (w *Worker) handleMessage(delivery tackle.Delivery) error {
 	})
 
 	err = bucket.DeletePath(context.Background(), pipelinePath)
-	if err != nil {
+	if err != nil && !errors.Is(err, storage.ErrMissingBucket) {
 		log.Printf("PipelineDeletion Worker: Error deleting artifacts at path %s: %v", pipelinePath, err)
 		return err
 	}
