@@ -62,8 +62,12 @@ defmodule Ppl.Retention.Deleter.Queries do
       {org_id, project_id, artifact_store_id} = extract_ids(request_args)
 
       case Events.publish_pipeline_deleted(pipeline_id, workflow_id, org_id, project_id, artifact_store_id) do
-        :ok -> :ok
-        {:error, reason} -> Logger.error("[Retention] Failed to publish pipeline deleted: #{inspect(reason)}")
+        :ok ->
+          Watchman.increment({"retention.ppl_deleted.success", [org_id, pipeline_id]})
+          :ok
+        {:error, reason} ->
+          Watchman.increment({"retention.ppl_deleted.failure", [org_id, pipeline_id]})
+          Logger.error("[Retention] ppl_id=#{pipeline_id} Failed to publish pipeline deleted: #{inspect(reason)}")
       end
     end)
   end
@@ -82,15 +86,20 @@ defmodule Ppl.Retention.Deleter.Queries do
         {org_id, project_id, artifact_store_id} = extract_ids(request_args)
 
         case Events.publish_workflow_deleted(workflow_id, org_id, project_id, artifact_store_id) do
-          :ok -> :ok
-          {:error, reason} -> Logger.error("[Retention] Failed to publish workflow deleted: #{inspect(reason)}")
+          :ok ->
+            Watchman.increment({"retention.wf_deleted.success", [org_id, workflow_id]})
+            :ok
+          {:error, reason} ->
+            Watchman.increment({"retention.wf_deleted.failure", [org_id, workflow_id]})
+            Logger.error("[Retention] wf_id=#{workflow_id} Failed to publish workflow deleted: #{inspect(reason)}")
         end
 
       {:ok, _} ->
         :ok
 
       {:error, reason} ->
-        Logger.error("[Retention] Failed to count pipelines for workflow: #{inspect(reason)}")
+        Watchman.increment({"retention.wf_deleted.error"})
+        Logger.error("[Retention] wf_id=#{workflow_id} Failed to count pipelines for workflow: #{inspect(reason)}")
     end
   end
 
