@@ -79,6 +79,29 @@ defmodule Ppl.Retention.Deleter.QueriesTest do
       assert get_pipeline(non_expired.id) != nil
     end
 
+    test "concurrent workers emit workflow deleted event when all pipelines in workflow are deleted" do
+      org_id = UUID.uuid4()
+      wf_id = UUID.uuid4()
+      Enum.each(1..6, fn _ -> insert_pipeline(org_id, expired_at(), wf_id) end)
+
+      test_pid = self()
+
+      with_mock Ppl.Retention.Events,
+        publish_pipeline_deleted: fn _, _, _, _, _ -> :ok end,
+        publish_workflow_deleted: fn wf_id, _, _, _ ->
+          send(test_pid, {:workflow_deleted, wf_id})
+          :ok
+        end do
+        tasks = Enum.map(1..3, fn _ ->
+          Task.async(fn -> Queries.delete_expired_batch(2) end)
+        end)
+
+        Enum.each(tasks, &Task.await/1)
+
+        assert_received {:workflow_deleted, ^wf_id}
+      end
+    end
+
     test "concurrent workers do not process the same records" do
       org_id = UUID.uuid4()
       Enum.each(1..10, fn _ -> insert_pipeline(org_id, expired_at()) end)
