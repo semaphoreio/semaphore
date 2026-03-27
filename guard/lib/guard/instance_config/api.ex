@@ -111,17 +111,29 @@ defmodule Guard.InstanceConfig.Api do
   get "/github_app_manifest" do
     org_id = conn.assigns[:org_id]
 
-    manifest = Guard.InstanceConfig.GithubApp.manifest(conn.assigns[:org_username])
+    # Extract is_public parameter (defaults to false)
+    is_public =
+      case conn.query_params["is_public"] do
+        "true" -> true
+        _ -> false
+      end
+
+    # Extract organization parameter for GitHub URL
+    organization = conn.query_params["organization"]
+
+    manifest = Guard.InstanceConfig.GithubApp.manifest(conn.assigns[:org_username], is_public)
 
     with integration <- Guard.InstanceConfig.Store.get(:CONFIG_TYPE_GITHUB_APP),
          {:does_not_exist, true} <- {:does_not_exist, is_nil(integration)},
          token <- Guard.InstanceConfig.Token.encode(org_id),
          {:ok, manifest_json} <- Jason.encode(manifest) do
+      github_url = github_app_install_url(organization)
+
       conn
       |> put_resp_cookie(@state_cookie_key, token)
       |> render_manifest_page(
         manifest: manifest_json |> html_escape(),
-        url: github_app_install_url() <> "?state=#{token}"
+        url: github_url <> "?state=#{token}"
       )
     else
       {:does_not_exist, false} ->
@@ -213,7 +225,15 @@ defmodule Guard.InstanceConfig.Api do
 
   defp dynamic_plug_session(conn, opts), do: Guard.Session.setup(conn, opts)
 
-  defp github_app_install_url, do: Application.get_env(:guard, :github_app_install_url)
+  defp github_app_install_url(org) when is_binary(org) and byte_size(org) > 0 do
+    base_url = Application.get_env(:guard, :github_app_base_url, "https://github.com")
+    "#{base_url}/organizations/#{URI.encode(org)}/settings/apps/new"
+  end
+
+  defp github_app_install_url(_) do
+    base_url = Application.get_env(:guard, :github_app_base_url, "https://github.com")
+    "#{base_url}/settings/apps/new"
+  end
 
   defp plug_fetch_query_params(conn, _opts) do
     conn |> fetch_query_params()
