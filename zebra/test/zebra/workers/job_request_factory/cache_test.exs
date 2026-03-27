@@ -84,6 +84,37 @@ defmodule Zebra.Workers.JobRequestFactory.CacheTest do
       assert {:ok, cache} = Cache.find(@cache_id, repo, @org_id)
       assert cache.id == @cache_id
     end
+
+    test "debug job on forked PR skips cache even when approval enable-cache is set" do
+      enable_feature("disable_forked_pr_cache")
+
+      GrpcMock.stub(Support.FakeServers.CacheApi, :describe, fn _, _ ->
+        raise "cache should not be queried for debug jobs on forked pull requests"
+      end)
+
+      repo = %{pr_slug: "contributor/repo", repo_slug: "org/repo", approval_enable_cache: true}
+
+      assert Cache.find(@cache_id, repo, @org_id, :debug_job) == {:ok, nil}
+    end
+
+    test "debug job on forked PR uses cache when disable_forked_pr_cache is disabled" do
+      GrpcMock.stub(Support.FakeServers.CacheApi, :describe, fn req, _ ->
+        InternalApi.Cache.DescribeResponse.new(
+          status: ResponseStatus.new(code: ResponseStatus.Code.value(:OK)),
+          cache:
+            InternalApi.Cache.Cache.new(
+              id: req.cache_id,
+              credential: "--BEGIN....lalalala...cache_key...END---",
+              url: "localhost:29920"
+            )
+        )
+      end)
+
+      repo = %{pr_slug: "contributor/repo", repo_slug: "org/repo", approval_enable_cache: true}
+
+      assert {:ok, cache} = Cache.find(@cache_id, repo, @org_id, :debug_job)
+      assert cache.id == @cache_id
+    end
   end
 
   defp expected_envs(new_method_enabled) do
