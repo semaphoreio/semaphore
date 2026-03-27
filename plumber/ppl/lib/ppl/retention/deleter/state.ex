@@ -37,10 +37,10 @@ defmodule Ppl.Retention.Deleter.State do
 
   def resume(state), do: %{state | paused_until: nil}
 
-  def check_pause(%{paused_until: nil} = state), do: {:running, state}
-  def check_pause(%{paused_until: :infinity} = state), do: {:paused, state}
+  def check_pause(state = %{paused_until: nil}), do: {:running, state}
+  def check_pause(state = %{paused_until: :infinity}), do: {:paused, state}
 
-  def check_pause(%{paused_until: paused_until} = state) do
+  def check_pause(state = %{paused_until: paused_until}) do
     if System.monotonic_time(:millisecond) >= paused_until do
       {:running, %{state | paused_until: nil}}
     else
