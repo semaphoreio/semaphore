@@ -21,14 +21,20 @@ defmodule Ppl.Retention.Deleter.Queries do
   """
   @spec delete_expired_batch(pos_integer()) :: {:ok, non_neg_integer()} | {:error, term()}
   def delete_expired_batch(limit) do
+    with {:ok, records} <- fetch_and_delete(limit) do
+      publish_events(records)
+      {:ok, length(records)}
+    end
+  rescue
+    e -> {:error, e}
+  end
+
+  defp fetch_and_delete(limit) do
     EctoRepo.transaction(fn ->
       records = fetch_expired_records(limit)
       delete_records(records)
-      publish_events(records)
-      length(records)
+      records
     end)
-  rescue
-    e -> {:error, e}
   end
 
   defp fetch_expired_records(limit) do
