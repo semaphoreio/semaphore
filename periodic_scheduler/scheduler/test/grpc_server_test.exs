@@ -1929,6 +1929,7 @@ defmodule Scheduler.GrpcServer.Test do
              list_keyset_grpc(params, :OK)
 
     assert list_result_contains?(periodics, results)
+    assert Enum.all?(periodics, fn periodic -> periodic.organization_id == ctx.ids.org_id end)
   end
 
   test "gRPC list_keyset() - valid response when listing by project_id", ctx do
@@ -1943,6 +1944,7 @@ defmodule Scheduler.GrpcServer.Test do
              list_keyset_grpc(params, :OK)
 
     assert list_result_contains?(periodics, results)
+    assert Enum.all?(periodics, fn periodic -> periodic.organization_id == ctx.ids.org_id end)
   end
 
   test "gRPC list_keyset() - valid response when listing ordered by creation date", ctx do
