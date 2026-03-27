@@ -57,6 +57,8 @@ Following version control tools are pre-installed:
 - Geckodriver 0.36.0
 - Google Chrome 144.0.7559.59
 - ChromeDriver 144.0.7559.59
+- Microsoft Edge: 146.0.3856.72
+- EdgeDriver: 146.0.3856.72
 - Xvfb (X Virtual Framebuffer)
 - Phantomjs 2.1.1
 
@@ -218,6 +220,11 @@ The default installed Ruby version is 3.4.8.
 ### Swiftly
 
 - 1.1.1
+
+### Microsoft .NET SDK and PowerShell
+
+- .NET SDK: 10.0.104
+- PowerShell: 7.6.0
 
 ## See also
 
