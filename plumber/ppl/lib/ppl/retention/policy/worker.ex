@@ -70,6 +70,19 @@ defmodule Ppl.Retention.Policy.Worker do
     process_message(message)
   end
 
+  defp wait_until_running do
+    state = StateAgent.get_state(__MODULE__)
+
+    case State.check_pause(state) do
+      {:running, new_state} ->
+        StateAgent.put_state(__MODULE__, new_state)
+
+      {:paused, _} ->
+        Process.sleep(state.sleep_ms)
+        wait_until_running()
+    end
+  end
+
   defp process_message(message) do
     with {:ok, event} <- decode(message),
          {:ok, cutoff} <- parse_cutoff(event.cutoff_date),
@@ -105,16 +118,4 @@ defmodule Ppl.Retention.Policy.Worker do
   defp validate_org_id(""), do: {:error, :missing_org_id}
   defp validate_org_id(org_id), do: {:ok, org_id}
 
-  defp wait_until_running do
-    state = StateAgent.get_state(__MODULE__)
-
-    case State.check_pause(state) do
-      {:running, new_state} ->
-        StateAgent.put_state(__MODULE__, new_state)
-
-      {:paused, _} ->
-        Process.sleep(state.sleep_ms)
-        wait_until_running()
-    end
-  end
 end

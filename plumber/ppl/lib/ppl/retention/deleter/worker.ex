@@ -81,15 +81,13 @@ defmodule Ppl.Retention.Deleter.Worker do
 
   @impl true
   def handle_info(:tick, _genserver_state) do
-    run_if_not_paused()
     state = StateAgent.get_state(__MODULE__)
+    run_if_not_paused(state)
     schedule(state.interval_ms)
     {:noreply, nil}
   end
 
-  defp run_if_not_paused do
-    state = StateAgent.get_state(__MODULE__)
-
+  defp run_if_not_paused(state) do
     case State.check_pause(state) do
       {:paused, _} ->
         :ok
