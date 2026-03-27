@@ -94,6 +94,8 @@ spec:
               value: "false"
             - name: START_FEATURE_PROVIDER
               value: "true"
+            - name: START_MCP_AUTH_CODE_CLEANER
+              value: "true"
             - name: OIDC_DISCOVERY_URL
               value: "$(KC_ROOT_URL)/realms/$(KC_REALM)/.well-known/openid-configuration"
             - name: OIDC_MANAGE_URL
