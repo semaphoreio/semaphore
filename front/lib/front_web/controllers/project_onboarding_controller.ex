@@ -681,6 +681,36 @@ defmodule FrontWeb.ProjectOnboardingController do
     end
   end
 
+  def start_ai_onboarding(conn, _params) do
+    project = conn.assigns.project
+
+    case Front.CiAssistant.Client.start_onboarding(
+           conn.assigns.organization_id,
+           conn.assigns.user_id,
+           project.id
+         ) do
+      {:ok, session_key} ->
+        json(conn, %{session_key: session_key})
+
+      {:error, reason} ->
+        conn
+        |> put_status(500)
+        |> json(%{error: "Failed to start AI onboarding: #{inspect(reason)}"})
+    end
+  end
+
+  def ai_onboarding_status(conn, %{"session_key" => session_key}) do
+    case Front.CiAssistant.Client.get_onboarding_status(session_key) do
+      {:ok, status} ->
+        json(conn, status)
+
+      {:error, reason} ->
+        conn
+        |> put_status(500)
+        |> json(%{error: "Failed to get onboarding status: #{inspect(reason)}"})
+    end
+  end
+
   # this is just a trick to get rid of sobelow Config.CSRFRoute
   def x_workflow_builder(conn, params) do
     workflow_builder(conn, params)
