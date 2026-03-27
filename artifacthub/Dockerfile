@@ -1,4 +1,4 @@
-ARG GO_VERSION=1.24
+ARG GO_VERSION=1.25
 ARG UBUNTU_VERSION=22.04
 ARG BUILDER_IMAGE="golang:${GO_VERSION}"
 ARG RUNNER_IMAGE="ubuntu:${UBUNTU_VERSION}"
@@ -32,9 +32,9 @@ FROM base AS dev
 WORKDIR /tmp
 ARG TARGETARCH
 RUN case "${TARGETARCH}" in \
-    amd64) PROTOC_ARCH="linux-x86_64" ;; \
-    arm64) PROTOC_ARCH="linux-aarch_64" ;; \
-    *) echo "unsupported TARGETARCH=${TARGETARCH}" && exit 1 ;; \
+  amd64) PROTOC_ARCH="linux-x86_64" ;; \
+  arm64) PROTOC_ARCH="linux-aarch_64" ;; \
+  *) echo "unsupported TARGETARCH=${TARGETARCH}" && exit 1 ;; \
   esac && \
   curl -sL "https://github.com/google/protobuf/releases/download/v3.20.0/protoc-3.20.0-${PROTOC_ARCH}.zip" -o protoc && \
   unzip protoc && \
@@ -42,7 +42,7 @@ RUN case "${TARGETARCH}" in \
 
 WORKDIR /app
 RUN go install github.com/mgechev/revive@v1.7.0
-RUN go install gotest.tools/gotestsum@v1.12.1
+RUN go install gotest.tools/gotestsum@v1.13.0
 RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.10
 RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1
 
