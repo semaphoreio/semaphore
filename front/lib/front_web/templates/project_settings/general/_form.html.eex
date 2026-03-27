@@ -123,8 +123,8 @@
             </div>
             <p class="f5 b mv1">Allow extra /sem-approve options?</p>
             <div class="flex items-center">
-              <%= checkbox f, :allow_sem_approve_include_secrets, disabled: !@permissions["project.general_settings.manage"] %>
-              <%= label f, :allow_sem_approve_include_secrets, "Allow /sem-approve --include-secrets", class: "ml2" %>
+              <%= checkbox f, :allow_sem_approve_enable_secrets, disabled: !@permissions["project.general_settings.manage"] %>
+              <%= label f, :allow_sem_approve_enable_secrets, "Allow /sem-approve --enable-secrets", class: "ml2" %>
               <%= sem_tooltip(
                 img_tag(
                   "#{assets_path()}/images/icn-info-15.svg",
@@ -137,8 +137,8 @@
               <% end %>
             </div>
             <div class="flex items-center">
-              <%= checkbox f, :allow_sem_approve_include_cache, disabled: !@permissions["project.general_settings.manage"] %>
-              <%= label f, :allow_sem_approve_include_cache, "Allow /sem-approve --include-cache", class: "ml2" %>
+              <%= checkbox f, :allow_sem_approve_enable_cache, disabled: !@permissions["project.general_settings.manage"] %>
+              <%= label f, :allow_sem_approve_enable_cache, "Allow /sem-approve --enable-cache", class: "ml2" %>
               <%= sem_tooltip(
                 img_tag(
                   "#{assets_path()}/images/icn-info-15.svg",

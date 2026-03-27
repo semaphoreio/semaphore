@@ -7,7 +7,7 @@ module Semaphore::RepoHost::Github
     SUPPORTED_GITHUB_WEBHOOK_EVENTS = ["push", "pull_request", "member", "issue_comment", "installation", "installation_repositories", "team", "membership", "repository"]
     SUPPORTED_GITHUB_PULL_REQUEST_ACTIONS = ["opened", "synchronize", "closed", "reopened", "ready_for_review"]
     SUPPORTED_PR_COMMANDS = ["/sem-approve"]
-    SUPPORTED_PR_OPTIONS = ["--include-secrets", "--include-cache"].freeze
+    SUPPORTED_PR_OPTIONS = ["--enable-secrets", "--enable-cache"].freeze
 
     def initialize(request, payload)
       @request = request
@@ -135,7 +135,7 @@ module Semaphore::RepoHost::Github
     end
 
     def pr_command_tokens(line)
-      return nil unless line.match?(/\A[ \t]*\/sem-approve(?:[ \t]+--[a-z-]+)*[ \t]*\z/)
+      return nil unless line.match?(%r{\A[ \t]*/sem-approve(?:[ \t]+--[a-z-]+)*[ \t]*\z})
 
       tokens = line.strip.split(/[ \t]+/)
       return nil unless (tokens.drop(1) - SUPPORTED_PR_OPTIONS).empty?

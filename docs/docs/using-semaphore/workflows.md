@@ -253,14 +253,14 @@ By default, `/sem-approve` keeps forked pull request protections in place:
 
 Project maintainers can allow extra `/sem-approve` options in **Project settings > General > Forked pull requests**:
 
-- **Allow `/sem-approve --include-secrets`**: enables approved runs to include secrets according to your secret configuration
-- **Allow `/sem-approve --include-cache`**: enables approved runs to use cache
+- **Allow `/sem-approve --enable-secrets`**: enables approved runs to include secrets according to your secret configuration
+- **Allow `/sem-approve --enable-cache`**: enables approved runs to use cache
 
 When these settings are enabled, trusted contributors can approve with:
 
-- `/sem-approve --include-secrets`
-- `/sem-approve --include-cache`
-- `/sem-approve --include-secrets --include-cache`
+- `/sem-approve --enable-secrets`
+- `/sem-approve --enable-cache`
+- `/sem-approve --enable-secrets --enable-cache`
 
 Approving forked pull requests is limited to new comments only and does not work with comment edits. Due to security concerns, `/sem-approve` will work only once. Subsequent pushes to the forked pull request must be approved again.
 

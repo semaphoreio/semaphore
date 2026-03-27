@@ -194,34 +194,35 @@ defmodule Front.Models.WorkflowTest do
   end
 
   defp sample_hook do
-    %InternalApi.RepoProxy.DescribeResponse{
-      hook: %InternalApi.RepoProxy.Hook{
-        branch_name: "ms/describing-preloading-commit-data",
-        commit_message: "wip",
-        commit_author: "radwo",
-        commit_range:
-          "e2f9050bddc171648cdb62ed187d74f03641c3f8...2d3e89c103a72ef950f1e5866c6df8917a747fdb",
-        git_ref: "refs/heads/ms/describing-preloading-commit-data",
-        git_ref_type: 0,
-        head_commit_sha: "2d3e89c103a72ef950f1e5866c6df8917a747fdb",
-        hook_id: @hook_id,
-        pr_mergeable: false,
-        pr_name: "",
-        pr_branch_name: "master",
-        pr_number: "",
-        pr_sha: "",
-        pr_slug: "",
-        repo_host_avatar_url: "https://avatars3.githubusercontent.com/u/0?v=4",
-        repo_host_email: "octocat@github.com",
-        repo_host_url: "https://github.com/octocat/front",
-        repo_host_username: "octocat",
-        repo_slug: "octocat/front",
-        repo_host_uid: "",
-        semaphore_email: "",
-        tag_name: "",
-        user_id: "test"
-      },
-      status: %InternalApi.ResponseStatus{code: 0, message: ""}
-    }
+    InternalApi.RepoProxy.DescribeResponse.new(
+      hook:
+        InternalApi.RepoProxy.Hook.new(
+          branch_name: "ms/describing-preloading-commit-data",
+          commit_message: "wip",
+          commit_author: "radwo",
+          commit_range:
+            "e2f9050bddc171648cdb62ed187d74f03641c3f8...2d3e89c103a72ef950f1e5866c6df8917a747fdb",
+          git_ref: "refs/heads/ms/describing-preloading-commit-data",
+          git_ref_type: 0,
+          head_commit_sha: "2d3e89c103a72ef950f1e5866c6df8917a747fdb",
+          hook_id: @hook_id,
+          pr_mergeable: false,
+          pr_name: "",
+          pr_branch_name: "master",
+          pr_number: "",
+          pr_sha: "",
+          pr_slug: "",
+          repo_host_avatar_url: "https://avatars3.githubusercontent.com/u/0?v=4",
+          repo_host_email: "octocat@github.com",
+          repo_host_url: "https://github.com/octocat/front",
+          repo_host_username: "octocat",
+          repo_slug: "octocat/front",
+          repo_host_uid: "",
+          semaphore_email: "",
+          tag_name: "",
+          user_id: "test"
+        ),
+      status: InternalApi.ResponseStatus.new(code: 0, message: "")
+    )
   end
 end

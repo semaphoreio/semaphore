@@ -173,8 +173,8 @@ This property is used for holding the following properties:
 
 - [`allowed_secrets`](#allowed-secrets-in-forked-pull-requests) 
 - [`allowed_contributors`](#allowed-contributors-in-forked-pull-requests)
-- [`allow_sem_approve_include_secrets`](#allow-sem-approve-include-secrets-in-forked-pull-requests)
-- [`allow_sem_approve_include_cache`](#allow-sem-approve-include-cache-in-forked-pull-requests)
+- [`allow_sem_approve_enable_secrets`](#allow-sem-approve-enable-secrets-in-forked-pull-requests)
+- [`allow_sem_approve_enable_cache`](#allow-sem-approve-enable-cache-in-forked-pull-requests)
 
 ### allowed_secrets {#allowed-secrets-in-forked-pull-requests}
 
@@ -184,15 +184,15 @@ Specifies the array of secrets' names that are allowed to be exported into jobs 
 
 Specifies an array of secrets (i.e. their names) that are allowed to be exported into jobs triggered by `forked-pull-requests`. If the array is empty, no secrets will be exported.
 
-### allow_sem_approve_include_secrets {#allow-sem-approve-include-secrets-in-forked-pull-requests}
+### allow_sem_approve_enable_secrets {#allow-sem-approve-enable-secrets-in-forked-pull-requests}
 
-Enables `/sem-approve --include-secrets` for forked pull requests. When set to `true`, approved forked pull request runs can include secrets according to your forked pull request secret rules.
+Enables `/sem-approve --enable-secrets` for forked pull requests. When set to `true`, approved forked pull request runs can include secrets according to your forked pull request secret rules.
 
 Default value is `false`.
 
-### allow_sem_approve_include_cache {#allow-sem-approve-include-cache-in-forked-pull-requests}
+### allow_sem_approve_enable_cache {#allow-sem-approve-enable-cache-in-forked-pull-requests}
 
-Enables `/sem-approve --include-cache` for forked pull requests. When set to `true`, approved forked pull request runs can use cache.
+Enables `/sem-approve --enable-cache` for forked pull requests. When set to `true`, approved forked pull request runs can use cache.
 
 Default value is `false`.
 

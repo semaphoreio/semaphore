@@ -300,8 +300,8 @@ module InternalApi
           data[:user_id] = user.id
           data[:semaphore_email] = user.email
         end
-        data[:approval_include_secrets] = true if add_approval_include_secrets?(hook)
-        data[:approval_include_cache] = true if add_approval_include_cache?(hook)
+        data[:approval_enable_secrets] = true if pr_approval_option_enabled?(hook, :pr_approval_enable_secrets?)
+        data[:approval_enable_cache] = true if pr_approval_option_enabled?(hook, :pr_approval_enable_cache?)
 
         ::InternalApi::RepoProxy::Hook.new(data)
       end
@@ -332,26 +332,11 @@ module InternalApi
         hook.payload.pull_request_name.presence || hook.commit_message.to_s
       end
 
-      def add_approval_include_secrets?(hook)
-        add_pr_approval_option?(hook, :pr_approval_include_secrets?, :approval_include_secrets)
-      end
-
-      def add_approval_include_cache?(hook)
-        add_pr_approval_option?(hook, :pr_approval_include_cache?, :approval_include_cache)
-      end
-
-      def add_pr_approval_option?(hook, payload_method, hook_field)
+      def pr_approval_option_enabled?(hook, payload_method)
         return false unless hook.payload.pull_request?
         return false unless hook.payload.respond_to?(payload_method)
-        return false unless hook.payload.public_send(payload_method)
 
-        # Keep compatibility while services roll out regenerated protobuf stubs.
-        begin
-          ::InternalApi::RepoProxy::Hook.new(hook_field => true)
-          true
-        rescue StandardError
-          false
-        end
+        hook.payload.public_send(payload_method)
       end
     end
   end

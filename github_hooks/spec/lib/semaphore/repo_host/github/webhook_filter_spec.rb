@@ -80,7 +80,7 @@ RSpec.describe Semaphore::RepoHost::Github::WebhookFilter do
       end
 
       context "pr comment with sem-approve options" do
-        let(:payload) { '{"issue": {"pull_request": {"url": ""}}, "comment": {"body": "asd\r\n\r\n/sem-approve --include-secrets --include-cache"}}' }
+        let(:payload) { '{"issue": {"pull_request": {"url": ""}}, "comment": {"body": "asd\r\n\r\n/sem-approve --enable-secrets --enable-cache"}}' }
 
         it "returns false" do
           expect(filter.unsupported_webhook?).to eql(false)
@@ -88,7 +88,7 @@ RSpec.describe Semaphore::RepoHost::Github::WebhookFilter do
       end
 
       context "pr comment with sem-approve options in reverse order" do
-        let(:payload) { '{"issue": {"pull_request": {"url": ""}}, "comment": {"body": "asd\r\n\r\n/sem-approve --include-cache --include-secrets"}}' }
+        let(:payload) { '{"issue": {"pull_request": {"url": ""}}, "comment": {"body": "asd\r\n\r\n/sem-approve --enable-cache --enable-secrets"}}' }
 
         it "returns false" do
           expect(filter.unsupported_webhook?).to eql(false)
@@ -96,7 +96,7 @@ RSpec.describe Semaphore::RepoHost::Github::WebhookFilter do
       end
 
       context "pr comment with sem-approve options separated by tabs" do
-        let(:payload) { '{"issue": {"pull_request": {"url": ""}}, "comment": {"body": "asd\r\n\r\n/sem-approve\t--include-secrets"}}' }
+        let(:payload) { '{"issue": {"pull_request": {"url": ""}}, "comment": {"body": "asd\r\n\r\n/sem-approve\t--enable-secrets"}}' }
 
         it "returns false" do
           expect(filter.unsupported_webhook?).to eql(false)
@@ -104,7 +104,7 @@ RSpec.describe Semaphore::RepoHost::Github::WebhookFilter do
       end
 
       context "pr comment with multiple sem-approve options separated by tabs" do
-        let(:payload) { '{"issue": {"pull_request": {"url": ""}}, "comment": {"body": "asd\r\n\r\n/sem-approve\t--include-secrets\t--include-cache"}}' }
+        let(:payload) { '{"issue": {"pull_request": {"url": ""}}, "comment": {"body": "asd\r\n\r\n/sem-approve\t--enable-secrets\t--enable-cache"}}' }
 
         it "returns false" do
           expect(filter.unsupported_webhook?).to eql(false)
@@ -112,7 +112,7 @@ RSpec.describe Semaphore::RepoHost::Github::WebhookFilter do
       end
 
       context "pr comment with sem-approve options separated by punctuation" do
-        let(:payload) { '{"issue": {"pull_request": {"url": ""}}, "comment": {"body": "asd\r\n\r\n/sem-approve,--include-secrets"}}' }
+        let(:payload) { '{"issue": {"pull_request": {"url": ""}}, "comment": {"body": "asd\r\n\r\n/sem-approve,--enable-secrets"}}' }
 
         it "returns true" do
           expect(filter.unsupported_webhook?).to eql(true)

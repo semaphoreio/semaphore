@@ -64,7 +64,7 @@ defmodule Zebra.Workers.JobRequestFactory.CacheTest do
       assert Cache.find(@cache_id, repo, @org_id) == {:ok, nil}
     end
 
-    test "approval include-cache bypasses forked PR cache restriction" do
+    test "approval enable-cache bypasses forked PR cache restriction" do
       enable_feature("disable_forked_pr_cache")
 
       GrpcMock.stub(Support.FakeServers.CacheApi, :describe, fn req, _ ->
@@ -79,7 +79,7 @@ defmodule Zebra.Workers.JobRequestFactory.CacheTest do
         )
       end)
 
-      repo = %{pr_slug: "contributor/repo", repo_slug: "org/repo", approval_include_cache: true}
+      repo = %{pr_slug: "contributor/repo", repo_slug: "org/repo", approval_enable_cache: true}
 
       assert {:ok, cache} = Cache.find(@cache_id, repo, @org_id)
       assert cache.id == @cache_id
