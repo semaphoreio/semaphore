@@ -46,7 +46,7 @@ defmodule Ppl.Retention.Policy.Queries do
     update_query = from(pr in PplRequests, where: pr.id in subquery(ids_subquery))
     {count, _} = EctoRepo.update_all(update_query, set: [expires_at: expires_at])
 
-    Watchman.submit({"retention.marked", [org_id]}, count, :count)
+    Watchman.submit({"retention.ppl_marked.success", [org_id]}, count, :count)
 
     case count do
       0 -> acc
@@ -67,7 +67,7 @@ defmodule Ppl.Retention.Policy.Queries do
     update_query = from(pr in PplRequests, where: pr.id in subquery(ids_subquery))
     {count, _} = EctoRepo.update_all(update_query, set: [expires_at: nil])
 
-    Watchman.submit({"retention.unmarked", [org_id]}, count, :count)
+    Watchman.submit({"retention.ppl_unmarked.success", [org_id]}, count, :count)
 
     case count do
       0 -> acc
