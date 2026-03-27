@@ -5,12 +5,12 @@ default ignore = false
 ignore {
 	deny_vulnerability_ids := {
 		#
-		# Trivy still complains about this in the /usr/bin/migrate binary.
+		# Trivy complains about this in the /usr/bin/migrate binary.
 		# Nothing we can about it until the maintainer updates that dependency on their end.
-		# See: https://github.com/golang-migrate/migrate/issues/1211
+		# See: https://github.com/golang-migrate/migrate/issues/1357
 		#
-		"CVE-2024-45337",
-		"CVE-2024-45338"
+		"CVE-2026-33186",
+		"CVE-2025-68121"
 	}
 
 	input.VulnerabilityID = deny_vulnerability_ids[_]
