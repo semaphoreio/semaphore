@@ -91,12 +91,6 @@ module InternalApi
         # Operation is synchronous.
         #
         rpc :GetProjectId, ::InternalApi::PlumberWF::GetProjectIdRequest, ::InternalApi::PlumberWF::GetProjectIdResponse
-        #
-        # This is early stage prototype.
-        # This call is intended to replace Schedule. It creates workflow.
-        # This operation is called by listener_proxy.
-        # Operation is asynchronous and idempotent.
-        rpc :Create, ::InternalApi::PlumberWF::CreateRequest, ::InternalApi::PlumberWF::CreateResponse
       end
 
       Stub = Service.rpc_stub_class
