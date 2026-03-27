@@ -99,7 +99,7 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
   defp forked_pr?(nil), do: false
 
   defp forked_pr?(repo) do
-    if approval_include_cache?(repo) do
+    if approval_enable_cache?(repo) do
       false
     else
       [pr_repo | _rest] = repo.pr_slug |> String.split("/")
@@ -108,7 +108,7 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
     end
   end
 
-  defp approval_include_cache?(repo) do
-    Map.get(repo, :approval_include_cache, false)
+  defp approval_enable_cache?(repo) do
+    Map.get(repo, :approval_enable_cache, false)
   end
 end

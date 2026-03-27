@@ -955,15 +955,15 @@ defmodule Projecthub.Api.GrpcServer do
       %{
         allowed_secrets: Enum.join(forked_pull_requests.allowed_secrets, ","),
         allowed_contributors: Enum.join(forked_pull_requests.allowed_contributors, ","),
-        allow_sem_approve_include_secrets: Map.get(forked_pull_requests, :allow_sem_approve_include_secrets, false),
-        allow_sem_approve_include_cache: Map.get(forked_pull_requests, :allow_sem_approve_include_cache, false)
+        allow_sem_approve_enable_secrets: Map.get(forked_pull_requests, :allow_sem_approve_enable_secrets, false),
+        allow_sem_approve_enable_cache: Map.get(forked_pull_requests, :allow_sem_approve_enable_cache, false)
       }
     else
       %{
         allowed_secrets: "",
         allowed_contributors: "",
-        allow_sem_approve_include_secrets: false,
-        allow_sem_approve_include_cache: false
+        allow_sem_approve_enable_secrets: false,
+        allow_sem_approve_enable_cache: false
       }
     end
   end
@@ -1249,8 +1249,8 @@ defmodule Projecthub.Api.GrpcServer do
       allowed_secrets: String.split(project.allowed_secrets, ",", trim: true),
       allowed_contributors: String.split(project.allowed_contributors, ",", trim: true)
     )
-    |> put_forked_pr_option(:allow_sem_approve_include_secrets, project.allow_sem_approve_include_secrets)
-    |> put_forked_pr_option(:allow_sem_approve_include_cache, project.allow_sem_approve_include_cache)
+    |> put_forked_pr_option(:allow_sem_approve_enable_secrets, project.allow_sem_approve_enable_secrets)
+    |> put_forked_pr_option(:allow_sem_approve_enable_cache, project.allow_sem_approve_enable_cache)
   end
 
   defp put_forked_pr_option(forked_pull_requests, option, value) do

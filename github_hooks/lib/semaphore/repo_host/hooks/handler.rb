@@ -69,10 +69,10 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
       # run and be visible by the outside contributor trying to run it.
       logger.info("pr-approval")
       workflow.update(:state => Workflow::STATE_PR_APPROVAL)
-      include_secrets_requested = workflow.payload.respond_to?(:pr_approval_include_secrets?) &&
-                                  workflow.payload.pr_approval_include_secrets?
-      include_cache_requested = workflow.payload.respond_to?(:pr_approval_include_cache?) &&
-                                workflow.payload.pr_approval_include_cache?
+      enable_secrets_requested = workflow.payload.respond_to?(:pr_approval_enable_secrets?) &&
+                                 workflow.payload.pr_approval_enable_secrets?
+      enable_cache_requested = workflow.payload.respond_to?(:pr_approval_enable_cache?) &&
+                               workflow.payload.pr_approval_enable_cache?
 
       requestor = workflow.payload.comment_author
 
@@ -88,8 +88,8 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
 
       mark_workflow_with_pr_approval_options(
         workflow,
-        :include_secrets => include_secrets_requested && approval_option_enabled?(workflow.project, :allow_sem_approve_include_secrets),
-        :include_cache => include_cache_requested && approval_option_enabled?(workflow.project, :allow_sem_approve_include_cache)
+        :enable_secrets => enable_secrets_requested && approval_option_enabled?(workflow.project, :allow_sem_approve_enable_secrets),
+        :enable_cache => enable_cache_requested && approval_option_enabled?(workflow.project, :allow_sem_approve_enable_cache)
       )
     elsif workflow.payload.pull_request_within_repo?
       # Check if project members can run pull-request workflows for this organization.
@@ -318,12 +318,12 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
     repo_host.create_ref(repo_slug, ref, sha)
   end
 
-  def self.mark_workflow_with_pr_approval_options(workflow, include_secrets: false, include_cache: false)
-    return unless include_secrets || include_cache
+  def self.mark_workflow_with_pr_approval_options(workflow, enable_secrets: false, enable_cache: false)
+    return unless enable_secrets || enable_cache
 
     payload = JSON.parse(workflow.request["payload"])
-    payload["semaphore_approval_include_secrets"] = true if include_secrets
-    payload["semaphore_approval_include_cache"] = true if include_cache
+    payload["semaphore_approval_enable_secrets"] = true if enable_secrets
+    payload["semaphore_approval_enable_cache"] = true if enable_cache
 
     request = workflow.request
     request["payload"] = payload.to_json

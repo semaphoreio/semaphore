@@ -40,8 +40,8 @@ defmodule Projecthub.Models.Project do
 
     field(:allowed_secrets, :string, default: "")
     field(:allowed_contributors, :string, default: "")
-    field(:allow_sem_approve_include_secrets, :boolean, default: false)
-    field(:allow_sem_approve_include_cache, :boolean, default: false)
+    field(:allow_sem_approve_enable_secrets, :boolean, default: false)
+    field(:allow_sem_approve_enable_cache, :boolean, default: false)
 
     field(:public, :boolean, default: false)
     field(:request_id, :binary_id)
@@ -230,8 +230,8 @@ defmodule Projecthub.Models.Project do
       :build_draft_pr,
       :allowed_secrets,
       :allowed_contributors,
-      :allow_sem_approve_include_secrets,
-      :allow_sem_approve_include_cache,
+      :allow_sem_approve_enable_secrets,
+      :allow_sem_approve_enable_cache,
       :public,
       :request_id,
       :state,
