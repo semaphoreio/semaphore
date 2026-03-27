@@ -2,7 +2,7 @@
 description: Manage organization plans and billing
 ---
 
-# Plans and Billing
+# Plans and Billing 
 
 <VideoTutorial title="How to view billing and spending" src="https://www.youtube.com/embed/hf_3tTHSRiM" />
 
