@@ -72,9 +72,19 @@ defmodule PipelinesAPI.GoferClient.ResponseFormatter do
          :OK <- response.response_status.code do
       {:ok, "Promotion successfully triggered."}
     else
-      :NOT_FOUND -> trigger_response.response_status |> Map.get(:message) |> ToTuple.user_error()
-      :REFUSED -> trigger_response.response_status |> Map.get(:message) |> ToTuple.user_error()
-      _ -> log_invalid_response(trigger_response, "trigger")
+      :NOT_FOUND ->
+        trigger_response.response_status |> Map.get(:message) |> ToTuple.user_error()
+
+      :REFUSED ->
+        message =
+          trigger_response.response_status
+          |> Map.get(:message)
+          |> refused_message()
+
+        %{code: "REFUSED", message: message} |> ToTuple.refused_error()
+
+      _ ->
+        log_invalid_response(trigger_response, "trigger")
     end
   end
 
@@ -86,4 +96,7 @@ defmodule PipelinesAPI.GoferClient.ResponseFormatter do
 
     ToTuple.internal_error("Internal error")
   end
+
+  defp refused_message(message) when is_binary(message) and message != "", do: message
+  defp refused_message(_), do: "Promotion request was refused."
 end

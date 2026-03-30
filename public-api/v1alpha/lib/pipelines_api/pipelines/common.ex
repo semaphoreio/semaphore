@@ -13,6 +13,15 @@ defmodule PipelinesAPI.Pipelines.Common do
     respond_(conn, 400, message, encode?)
   end
 
+  def respond({:error, {:refused, %{code: _, message: _} = response}}, conn, encode?) do
+    respond_(conn, 409, response, encode?)
+  end
+
+  def respond({:error, {:refused, message}}, conn, encode?) do
+    response = %{code: "REFUSED", message: message}
+    respond_(conn, 409, response, encode?)
+  end
+
   def respond({:error, {:not_found, message}}, conn, encode?) do
     respond_(conn, 404, message, encode?)
   end
