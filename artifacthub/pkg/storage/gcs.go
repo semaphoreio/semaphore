@@ -20,6 +20,7 @@ import (
 	"google.golang.org/api/option"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"strconv"
 )
 
 const SignedURLExpireInMinutes = 20
@@ -146,6 +147,39 @@ func (c *Gcs) GetBucket(options BucketOptions) Bucket {
 	}
 }
 
+func artifactLifecycle() gcsstorage.Lifecycle {
+	days := artifactRetentionDays()
+	if days <= 0 {
+		return gcsstorage.Lifecycle{}
+	}
+
+	return gcsstorage.Lifecycle{
+		Rules: []gcsstorage.LifecycleRule{
+			{
+				Action: gcsstorage.LifecycleAction{Type: "Delete"},
+				Condition: gcsstorage.LifecycleCondition{
+					AgeInDays:     days,
+					MatchesPrefix: []string{"artifacts/workflows/", "artifacts/jobs/", "artifacts/pipelines/"},
+				},
+			},
+		},
+	}
+}
+
+func artifactRetentionDays() int64 {
+	val := os.Getenv("ARTIFACT_RETENTION_DAYS")
+	if val == "" {
+		return 0
+	}
+
+	days, err := strconv.ParseInt(val, 10, 64)
+	if err != nil || days <= 0 {
+		return 0
+	}
+
+	return days
+}
+
 func (c *Gcs) createBucket(ctx context.Context) (string, error) {
 	var randomBucketName string
 
@@ -163,6 +197,7 @@ func (c *Gcs) createBucket(ctx context.Context) (string, error) {
 			Location:     "europe-west3",
 			StorageClass: "REGIONAL",
 			CORS:         cors,
+			Lifecycle:    artifactLifecycle(),
 		}
 
 		return bucket.Create(ctx, c.Credentials.ProjectID, attrs)
