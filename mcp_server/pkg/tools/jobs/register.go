@@ -11,6 +11,6 @@ func Register(s *server.MCPServer, api internalapi.Provider) {
 	descH := describeHandler(api)
 	s.AddTool(newDescribeTool(describeToolName, describeFullDescription()), descH)
 
-	logsH := logsHandler(api)
+	logsH := logsHandler(api, downloadSelfHostedLogs)
 	s.AddTool(newLogsTool(logsToolName, logsFullDescription()), logsH)
 }
