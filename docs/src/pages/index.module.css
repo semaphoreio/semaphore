@@ -73,7 +73,8 @@ main {
 /* Wraps all buttons in a row and centers them horizontally. */
 .buttonsWrapper {
   display: flex;
-  justify-content: center; 
+  justify-content: center;
+  align-items: center;
   gap: 2rem; /* spacing between each button container */
   flex-wrap: wrap; /* optional: allows wrapping on smaller screens */
 }

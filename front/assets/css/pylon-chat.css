@@ -1,0 +1,13 @@
+.PylonChat-bubbleFrameContainer--visible {
+  height: 65px !important;
+  width: 65px !important;
+}
+
+.PylonChat-bubbleFrameContainer {
+  overflow: visible !important;
+}
+
+.PylonChat-bubbleFrameContainer--visible iframe {
+  transform: scale(1.44) !important;
+  transform-origin: bottom right !important;
+}

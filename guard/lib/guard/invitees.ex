@@ -120,8 +120,19 @@ defmodule Guard.Invitees do
     Guard.FrontRepo.RepoHostAccount.get_uid_by_login(login, provider)
   end
 
-  defp http_call(resource, token, "github") when is_binary(token) and token != "" do
-    HTTPoison.get(resource, [{"Authorization", "Token #{token}"}])
+  defp http_call(resource, token, provider)
+       when provider == "github" and is_binary(token) and token != "" do
+    case HTTPoison.get(resource, [{"Authorization", "Token #{token}"}]) do
+      {:ok, %{status_code: 401}} ->
+        Logger.warning(
+          "[Invitees] User not found with token, falling back to unauthenticated call for #{resource}"
+        )
+
+        http_call(resource, nil, provider)
+
+      rsp ->
+        rsp
+    end
   end
 
   defp http_call(resource, _, _), do: HTTPoison.get(resource, [])
@@ -132,8 +143,15 @@ defmodule Guard.Invitees do
          do: id |> Integer.to_string() |> return_ok_tuple()
   end
 
+  defp extract_uid(login, %{status_code: 404}, _),
+    do:
+      {:error,
+       "Login #{login} cannot be found. Please check the login and try again or contact support if the problem persists."}
+
   defp extract_uid(login, %{status_code: status_code}, _),
-    do: {:error, "error finding #{login}: #{status_code}"}
+    do:
+      {:error,
+       "error finding #{login}: #{status_code}. Try again later or contact support if the problem persists."}
 
   defp fetch_id(%{"id" => id}), do: {:ok, id}
 

@@ -491,6 +491,44 @@ curl -i -X PATCH  -H "Authorization: Token {api_token}" \
      "https://<organization-url>.semaphoreci.com/api/v1alpha/pipelines/:pipeline_id"
 ```
 
+### Rebuild failed blocks in a pipeline
+
+```text
+POST <organization-url>.semaphoreci.com/api/v1alpha/pipelines/:pipeline_id/partial_rebuild
+```
+
+Parameters:
+
+- `pipeline_id` (**required**) - ID of a pipeline.
+- `request_token` (**required**) - Idempotency token (typically a UUID).
+
+Headers:
+
+- `x-semaphore-user-id` (*optional*) - The user ID triggering the rebuild.
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "pipeline_id":"79b53ff9-c005-4ff0-81a9-479a82324f6b",
+  "message:":""
+}
+```
+
+Example:
+
+```shell
+curl -i -X POST \
+  -H "Authorization: Token {api_token}" \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -H "x-semaphore-user-id: {your_user_id}" \
+  --data '{"request_token":"'"$(uuidgen | tr '[:upper:]' '[:lower:]')"'"}' \
+  "https://<organization-url>.semaphoreci.com/api/v1alpha/pipelines/{pipeline_id}/partial_rebuild"
+```
+
 ### Validate a pipeline YAML
 
 ```text
