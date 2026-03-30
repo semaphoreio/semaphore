@@ -147,27 +147,39 @@ func (c *Gcs) GetBucket(options BucketOptions) Bucket {
 	}
 }
 
-func artifactLifecycle() gcsstorage.Lifecycle {
-	days := artifactRetentionDays()
-	if days <= 0 {
-		return gcsstorage.Lifecycle{}
-	}
-
-	return gcsstorage.Lifecycle{
-		Rules: []gcsstorage.LifecycleRule{
-			{
-				Action: gcsstorage.LifecycleAction{Type: "Delete"},
-				Condition: gcsstorage.LifecycleCondition{
-					AgeInDays:     days,
-					MatchesPrefix: []string{"artifacts/workflows/", "artifacts/jobs/", "artifacts/pipelines/"},
-				},
-			},
-		},
-	}
+var artifactPrefixRetentionEnvVars = []struct {
+	prefix string
+	envVar string
+}{
+	{"artifacts/workflows/", "ARTIFACT_WF_RETENTION_DAYS"},
+	{"artifacts/jobs/", "ARTIFACT_JOB_RETENTION_DAYS"},
+	{"artifacts/pipelines/", "ARTIFACT_PPL_RETENTION_DAYS"},
+	{"artifacts/projects/", "ARTIFACT_PROJECT_RETENTION_DAYS"},
 }
 
-func artifactRetentionDays() int64 {
-	val := os.Getenv("ARTIFACT_RETENTION_DAYS")
+func artifactLifecycle() gcsstorage.Lifecycle {
+	var rules []gcsstorage.LifecycleRule
+
+	for _, entry := range artifactPrefixRetentionEnvVars {
+		days := retentionDaysFromEnv(entry.envVar)
+		if days <= 0 {
+			continue
+		}
+
+		rules = append(rules, gcsstorage.LifecycleRule{
+			Action: gcsstorage.LifecycleAction{Type: "Delete"},
+			Condition: gcsstorage.LifecycleCondition{
+				AgeInDays:     days,
+				MatchesPrefix: []string{entry.prefix},
+			},
+		})
+	}
+
+	return gcsstorage.Lifecycle{Rules: rules}
+}
+
+func retentionDaysFromEnv(envVar string) int64 {
+	val := os.Getenv(envVar)
 	if val == "" {
 		return 0
 	}
