@@ -6,7 +6,51 @@ import { Features } from "../../features"
 export class Agent {
   // injected when the Editor app starts
   static setValidAgentTypes(agentTypes) {
-    this._validAgentTypes = agentTypes
+    const normalizedAgentTypes = Agent.normalizeAgentTypesPayload(agentTypes)
+    const allAgentTypes = normalizedAgentTypes.agent_types
+    const filteredAgentTypes = allAgentTypes.filter((agentType) => {
+      if (agentType.platform !== "LINUX") {
+        return true
+      }
+
+      return !Agent.DEPRECATED_LINUX_OS_IMAGES.includes(agentType.os_image)
+    })
+
+    const availableLinuxOSImages = _.uniq(
+      filteredAgentTypes
+        .filter((agentType) => agentType.platform === "LINUX")
+        .map((agentType) => agentType.os_image)
+    )
+
+    const defaultLinuxOSImage = Agent.normalizeDefaultLinuxOSImage(
+      normalizedAgentTypes.default_linux_os_image,
+      availableLinuxOSImages
+    )
+
+    this._validAgentTypes = {
+      ...normalizedAgentTypes,
+      agent_types: filteredAgentTypes,
+      default_linux_os_image: defaultLinuxOSImage
+    }
+  }
+
+  static normalizeAgentTypesPayload(agentTypes) {
+    if (Array.isArray(agentTypes)) {
+      return {
+        agent_types: agentTypes,
+        default_linux_os_image: "",
+        default_mac_os_image: ""
+      }
+    }
+
+    const payload = (agentTypes && typeof agentTypes === "object") ? agentTypes : {}
+
+    return {
+      ...payload,
+      agent_types: payload.agent_types || [],
+      default_linux_os_image: payload.default_linux_os_image || "",
+      default_mac_os_image: payload.default_mac_os_image || ""
+    }
   }
 
   static setupTestNoAgentTypes() {
@@ -31,6 +75,18 @@ export class Agent {
           platform: "LINUX"
         },
         {
+          type: "e1-standard-2",
+          spec: "2 vCPU, 4 GB ram",
+          os_image: "ubuntu2204",
+          platform: "LINUX"
+        },
+        {
+          type: "e1-standard-2",
+          spec: "2 vCPU, 4 GB ram",
+          os_image: "ubuntu2404",
+          platform: "LINUX"
+        },
+        {
           type: "e1-standard-4",
           spec: "4 vCPU, 8 GB ram",
           os_image: "ubuntu1804",
@@ -43,6 +99,18 @@ export class Agent {
           platform: "LINUX"
         },
         {
+          type: "e1-standard-4",
+          spec: "4 vCPU, 8 GB ram",
+          os_image: "ubuntu2204",
+          platform: "LINUX"
+        },
+        {
+          type: "e1-standard-4",
+          spec: "4 vCPU, 8 GB ram",
+          os_image: "ubuntu2404",
+          platform: "LINUX"
+        },
+        {
           type: "e1-standard-8",
           spec: "8 vCPU, 16 GB ram",
           os_image: "ubuntu1804",
@@ -52,6 +120,18 @@ export class Agent {
           type: "e1-standard-8",
           spec: "8 vCPU, 16 GB ram",
           os_image: "ubuntu2004",
+          platform: "LINUX"
+        },
+        {
+          type: "e1-standard-8",
+          spec: "8 vCPU, 16 GB ram",
+          os_image: "ubuntu2204",
+          platform: "LINUX"
+        },
+        {
+          type: "e1-standard-8",
+          spec: "8 vCPU, 16 GB ram",
+          os_image: "ubuntu2404",
           platform: "LINUX"
         },
         {
@@ -88,6 +168,22 @@ export class Agent {
       default_linux_os_image: "ubuntu2004",
       default_mac_os_image: "macos-xcode13"
     })
+  }
+
+  static get DEPRECATED_LINUX_OS_IMAGES() { return ["ubuntu1804", "ubuntu2004"] }
+  static get PREFERRED_LINUX_OS_IMAGES()  { return ["ubuntu2404", "ubuntu2204"] }
+
+  static normalizeDefaultLinuxOSImage(defaultLinuxOSImage, availableLinuxOSImages) {
+    const isDeprecated = Agent.DEPRECATED_LINUX_OS_IMAGES.includes(defaultLinuxOSImage)
+    const isAvailable = availableLinuxOSImages.includes(defaultLinuxOSImage)
+
+    if (!isDeprecated && isAvailable) {
+      return defaultLinuxOSImage
+    }
+
+    return Agent.PREFERRED_LINUX_OS_IMAGES.find((osImage) => {
+      return availableLinuxOSImages.includes(osImage)
+    }) || availableLinuxOSImages[0] || ""
   }
 
   static get ENVIRONMENT_TYPE_DOCKER()      { return "docker";   }
@@ -198,11 +294,23 @@ export class Agent {
 
   defaultOSImage(type) {
     if (_.includes(this.availableMachineTypes("MAC"), type)) {
-      return Agent._validAgentTypes.default_mac_os_image
+      const defaultMacOSImage = Agent._validAgentTypes.default_mac_os_image
+
+      if (_.includes(this.availableOSImages(type), defaultMacOSImage)) {
+        return defaultMacOSImage
+      }
+
+      return this.availableOSImages(type)[0] || ""
     }
 
     if (_.includes(this.availableMachineTypes("LINUX"), type)) {
-      return Agent._validAgentTypes.default_linux_os_image
+      const defaultLinuxOSImage = Agent._validAgentTypes.default_linux_os_image
+
+      if (_.includes(this.availableOSImages(type), defaultLinuxOSImage)) {
+        return defaultLinuxOSImage
+      }
+
+      return this.availableOSImages(type)[0] || ""
     }
 
     return ""
