@@ -46,8 +46,8 @@ module Semaphore::GithubApp
           log(installation_id, "Unknown result: #{result.inspect}")
           delete_unique_lock([installation_id])
         end
-      rescue Semaphore::GithubApp::Repositories::IncompleteRepositoryListError => exception
-        log(installation_id, "Incomplete repository list — raising to trigger retry with backoff: #{exception.message}")
+      rescue Semaphore::GithubApp::Repositories::IncompleteRepositoryListError => e
+        log(installation_id, "Incomplete repository list — raising to trigger retry with backoff: #{e.message}")
         raise
       end
 
