@@ -66,6 +66,27 @@ defmodule FrontWeb.ProjectControllerTest do
   end
 
   describe "GET edit_workflow" do
+    test "populates sanitized agent types for workflow editor", %{
+      conn: conn,
+      project: project,
+      organization: organization,
+      user: user
+    } do
+      DB.clear(:workflows)
+      DB.clear(:branches)
+      Support.Stubs.PermissionPatrol.allow_everything(organization.id, user.id)
+
+      with_mock Front.Models.AgentType,
+        list: fn _org_id -> {:ok, hosted_agent_types_fixture()} end do
+        conn =
+          conn
+          |> get("/projects/#{project.name}/edit_workflow")
+
+        assert html_response(conn, 200) =~ "workflow-editor-tabs"
+        assert_sanitized_agent_types(conn.assigns.agent_types)
+      end
+    end
+
     test "when project doesn't have branches, it redirects to the onboarding template page",
          %{conn: conn, project: project, organization: organization, user: user} do
       DB.clear(:workflows)
@@ -139,6 +160,59 @@ defmodule FrontWeb.ProjectControllerTest do
       epilogue_on_fail_commands: [],
       priority: 95,
       execution_time_limit: 10
+    }
+  end
+
+  defp assert_sanitized_agent_types(agent_types) do
+    assert %{agent_types: listed_agent_types, default_linux_os_image: default_linux_os_image} =
+             agent_types
+
+    linux_os_images =
+      listed_agent_types
+      |> Enum.filter(&(&1.platform == "LINUX"))
+      |> Enum.map(& &1.os_image)
+      |> Enum.uniq()
+
+    refute "ubuntu1804" in linux_os_images
+    refute "ubuntu2004" in linux_os_images
+    assert default_linux_os_image in ["ubuntu2404", "ubuntu2204"]
+    assert default_linux_os_image in linux_os_images
+  end
+
+  defp hosted_agent_types_fixture do
+    %{
+      agent_types: [
+        %{
+          type: "e1-standard-2",
+          platform: "LINUX",
+          specs: "2 vCPU, 4 GB RAM",
+          os_image: "ubuntu2004",
+          state: "ENABLED"
+        },
+        %{
+          type: "e1-standard-2",
+          platform: "LINUX",
+          specs: "2 vCPU, 4 GB RAM",
+          os_image: "ubuntu2204",
+          state: "ENABLED"
+        },
+        %{
+          type: "e1-standard-2",
+          platform: "LINUX",
+          specs: "2 vCPU, 4 GB RAM",
+          os_image: "ubuntu2404",
+          state: "ENABLED"
+        },
+        %{
+          type: "a1-standard-4",
+          platform: "MAC",
+          specs: "4 vCPU, 8 GB RAM",
+          os_image: "macos-xcode13",
+          state: "ENABLED"
+        }
+      ],
+      default_linux_os_image: "ubuntu2004",
+      default_mac_os_image: "macos-xcode13"
     }
   end
 
