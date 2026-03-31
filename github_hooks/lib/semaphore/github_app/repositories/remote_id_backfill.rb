@@ -158,27 +158,40 @@ module Semaphore::GithubApp
 
       def remote_repositories_from_github
         github_repos = []
-        page = 1
-        per_page = 100
+        expected_total_count = nil
+        next_page_url = "https://api.github.com/installation/repositories?per_page=#{Repositories::PER_PAGE}&page=1"
 
-        loop do
+        while next_page_url
           response = Excon.get(
-            "https://api.github.com/installation/repositories?per_page=#{per_page}&page=#{page}",
+            next_page_url,
             :headers => {
               "User-Agent" => "Monolith-GitHubApp-RepositoryRemoteIdBackfill",
               "Authorization" => "token #{token(@current_installation_id)}",
               "Accept" => "application/vnd.github.v3+json"
-            }
+            },
+            :idempotent => true,
+            :retry_limit => Repositories::EXCON_RETRY_LIMIT,
+            :expects => [200]
           )
 
           body = JSON.parse(response.data[:body])
+          repositories = body["repositories"]
+          raise Repositories::InvalidRepositoryListResponseError, "Missing repositories in GitHub App installation repositories response" unless repositories.is_a?(Array)
+
           total_count = [body["total_count"].to_i, MAX_NUMBER_OF_REPOSITORIES].min
+          expected_total_count ||= total_count
+          raise Repositories::IncompleteRepositoryListError, "GitHub App installation repository count changed during pagination" if total_count != expected_total_count
 
-          github_repos.concat(Semaphore::GithubApp::Hook.map_repositories(body["repositories"]))
-          break if page * per_page >= total_count
+          remaining_slots = expected_total_count - github_repos.size
+          github_repos.concat(Semaphore::GithubApp::Hook.map_repositories(repositories.first(remaining_slots)))
 
-          page += 1
-          sleep 1
+          break if github_repos.size >= expected_total_count
+
+          next_page_url = next_page_url(response.headers)
+        end
+
+        if expected_total_count.nil? || github_repos.size != expected_total_count
+          raise Repositories::IncompleteRepositoryListError, "Fetched #{github_repos.size} repositories, expected #{expected_total_count || 0}"
         end
 
         github_repos
@@ -200,6 +213,18 @@ module Semaphore::GithubApp
 
       def canonical_slug(slug)
         GithubAppInstallation.canonical_slug(slug)
+      end
+
+      def next_page_url(headers)
+        link_header = headers["Link"] || headers["link"]
+        return if link_header.to_s.empty?
+
+        link_header.split(",").each do |link|
+          url, rel = link.split(";").map(&:strip)
+          return url.delete_prefix("<").delete_suffix(">") if rel == 'rel="next"'
+        end
+
+        nil
       end
 
       def try_lock(installation_id)
