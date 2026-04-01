@@ -154,7 +154,6 @@ var artifactPrefixRetentionEnvVars = []struct {
 	{"artifacts/workflows/", "ARTIFACT_WF_RETENTION_DAYS"},
 	{"artifacts/jobs/", "ARTIFACT_JOB_RETENTION_DAYS"},
 	{"artifacts/pipelines/", "ARTIFACT_PPL_RETENTION_DAYS"},
-	{"artifacts/projects/", "ARTIFACT_PROJECT_RETENTION_DAYS"},
 }
 
 func ArtifactLifecycle() gcsstorage.Lifecycle {
