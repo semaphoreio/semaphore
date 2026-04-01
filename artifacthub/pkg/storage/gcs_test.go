@@ -12,7 +12,7 @@ func Test__ArtifactLifecycle_NoEnvVarsSet(t *testing.T) {
 	t.Setenv("ARTIFACT_PPL_RETENTION_DAYS", "")
 	t.Setenv("ARTIFACT_PROJECT_RETENTION_DAYS", "")
 
-	lifecycle := artifactLifecycle()
+	lifecycle := ArtifactLifecycle()
 
 	assert.Empty(t, lifecycle.Rules)
 }
@@ -23,7 +23,7 @@ func Test__ArtifactLifecycle_AllEnvVarsSet(t *testing.T) {
 	t.Setenv("ARTIFACT_PPL_RETENTION_DAYS", "400")
 	t.Setenv("ARTIFACT_PROJECT_RETENTION_DAYS", "400")
 
-	lifecycle := artifactLifecycle()
+	lifecycle := ArtifactLifecycle()
 
 	assert.Len(t, lifecycle.Rules, 4)
 }
@@ -34,7 +34,7 @@ func Test__ArtifactLifecycle_OnlyJobAndPplSet(t *testing.T) {
 	t.Setenv("ARTIFACT_PPL_RETENTION_DAYS", "400")
 	t.Setenv("ARTIFACT_PROJECT_RETENTION_DAYS", "")
 
-	lifecycle := artifactLifecycle()
+	lifecycle := ArtifactLifecycle()
 
 	if assert.Len(t, lifecycle.Rules, 2) {
 		assert.Equal(t, []string{"artifacts/jobs/"}, lifecycle.Rules[0].Condition.MatchesPrefix)
@@ -48,7 +48,7 @@ func Test__ArtifactLifecycle_ProjectNotSetByDefault(t *testing.T) {
 	t.Setenv("ARTIFACT_PPL_RETENTION_DAYS", "400")
 	t.Setenv("ARTIFACT_PROJECT_RETENTION_DAYS", "")
 
-	lifecycle := artifactLifecycle()
+	lifecycle := ArtifactLifecycle()
 
 	if assert.Len(t, lifecycle.Rules, 3) {
 		for _, rule := range lifecycle.Rules {
