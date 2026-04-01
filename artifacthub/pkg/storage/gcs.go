@@ -157,7 +157,7 @@ var artifactPrefixRetentionEnvVars = []struct {
 	{"artifacts/projects/", "ARTIFACT_PROJECT_RETENTION_DAYS"},
 }
 
-func artifactLifecycle() gcsstorage.Lifecycle {
+func ArtifactLifecycle() gcsstorage.Lifecycle {
 	var rules []gcsstorage.LifecycleRule
 
 	for _, entry := range artifactPrefixRetentionEnvVars {
@@ -209,7 +209,7 @@ func (c *Gcs) createBucket(ctx context.Context) (string, error) {
 			Location:     "europe-west3",
 			StorageClass: "REGIONAL",
 			CORS:         cors,
-			Lifecycle:    artifactLifecycle(),
+			Lifecycle:    ArtifactLifecycle(),
 		}
 
 		return bucket.Create(ctx, c.Credentials.ProjectID, attrs)

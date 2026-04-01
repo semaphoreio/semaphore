@@ -53,7 +53,8 @@ FROM base AS builder
 
 RUN rm -rf build && go build -o build/${APP_NAME}/server cmd/server/main.go && \
   go build -o build/${APP_NAME}/client cmd/client/main.go && \
-  go build -o build/${APP_NAME}/healthcheck cmd/healthcheck/healthcheck.go
+  go build -o build/${APP_NAME}/healthcheck cmd/healthcheck/healthcheck.go && \
+  go build -o build/${APP_NAME}/migrate-lifecycle cmd/migrate-lifecycle/main.go
 
 FROM ${RUNNER_IMAGE} AS runner
 
