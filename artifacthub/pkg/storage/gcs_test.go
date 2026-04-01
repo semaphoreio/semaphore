@@ -10,7 +10,6 @@ func Test__ArtifactLifecycle_NoEnvVarsSet(t *testing.T) {
 	t.Setenv("ARTIFACT_WF_RETENTION_DAYS", "")
 	t.Setenv("ARTIFACT_JOB_RETENTION_DAYS", "")
 	t.Setenv("ARTIFACT_PPL_RETENTION_DAYS", "")
-	t.Setenv("ARTIFACT_PROJECT_RETENTION_DAYS", "")
 
 	lifecycle := ArtifactLifecycle()
 
@@ -21,18 +20,16 @@ func Test__ArtifactLifecycle_AllEnvVarsSet(t *testing.T) {
 	t.Setenv("ARTIFACT_WF_RETENTION_DAYS", "400")
 	t.Setenv("ARTIFACT_JOB_RETENTION_DAYS", "400")
 	t.Setenv("ARTIFACT_PPL_RETENTION_DAYS", "400")
-	t.Setenv("ARTIFACT_PROJECT_RETENTION_DAYS", "400")
 
 	lifecycle := ArtifactLifecycle()
 
-	assert.Len(t, lifecycle.Rules, 4)
+	assert.Len(t, lifecycle.Rules, 3)
 }
 
 func Test__ArtifactLifecycle_OnlyJobAndPplSet(t *testing.T) {
 	t.Setenv("ARTIFACT_WF_RETENTION_DAYS", "")
 	t.Setenv("ARTIFACT_JOB_RETENTION_DAYS", "400")
 	t.Setenv("ARTIFACT_PPL_RETENTION_DAYS", "400")
-	t.Setenv("ARTIFACT_PROJECT_RETENTION_DAYS", "")
 
 	lifecycle := ArtifactLifecycle()
 
@@ -42,11 +39,10 @@ func Test__ArtifactLifecycle_OnlyJobAndPplSet(t *testing.T) {
 	}
 }
 
-func Test__ArtifactLifecycle_ProjectNotSetByDefault(t *testing.T) {
+func Test__ArtifactLifecycle_ProjectNotIncluded(t *testing.T) {
 	t.Setenv("ARTIFACT_WF_RETENTION_DAYS", "400")
 	t.Setenv("ARTIFACT_JOB_RETENTION_DAYS", "400")
 	t.Setenv("ARTIFACT_PPL_RETENTION_DAYS", "400")
-	t.Setenv("ARTIFACT_PROJECT_RETENTION_DAYS", "")
 
 	lifecycle := ArtifactLifecycle()
 

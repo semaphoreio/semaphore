@@ -4,14 +4,29 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"sync/atomic"
 
 	gcsstorage "cloud.google.com/go/storage"
+	"github.com/semaphoreio/semaphore/artifacthub/pkg/db"
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/models"
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/storage"
 )
 
 func main() {
+	if os.Getenv("DB_HOST") == "" {
+		fmt.Println("DB_HOST is not set. Required env vars: DB_HOST, DB_PORT, DB_NAME, DB_USERNAME, DB_PASSWORD")
+		os.Exit(1)
+	}
+
+	sqlDB, err := db.Conn().DB()
+	if err != nil {
+		fmt.Printf("Failed to get database connection: %v\n", err)
+		os.Exit(1)
+	}
+	if err = sqlDB.Ping(); err != nil {
+		fmt.Printf("Failed to connect to database: %v\n", err)
+		os.Exit(1)
+	}
+
 	gcsClient, err := storage.NewGcsClient(os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"))
 	if err != nil {
 		fmt.Printf("Failed to create GCS client: %v\n", err)
@@ -30,10 +45,10 @@ func main() {
 	}
 	fmt.Println()
 
-	var total, updated, failed int64
+	var total, updated, failed int
 
 	err = models.IterAllBuckets(func(bucketName string) {
-		atomic.AddInt64(&total, 1)
+		total++
 		ctx := context.Background()
 
 		_, err := gcsClient.Client.Bucket(bucketName).Update(ctx, gcsstorage.BucketAttrsToUpdate{
@@ -41,12 +56,12 @@ func main() {
 		})
 
 		if err != nil {
-			atomic.AddInt64(&failed, 1)
+			failed++
 			fmt.Printf("FAIL %s: %v\n", bucketName, err)
 			return
 		}
 
-		atomic.AddInt64(&updated, 1)
+		updated++
 		if updated%100 == 0 {
 			fmt.Printf("... updated %d buckets so far\n", updated)
 		}
