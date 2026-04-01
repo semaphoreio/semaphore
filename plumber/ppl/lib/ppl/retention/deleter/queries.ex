@@ -17,12 +17,18 @@ defmodule Ppl.Retention.Deleter.Queries do
   @doc """
   Deletes up to `limit` expired records and emits deletion events.
 
+  Fetch and delete happen in a single transaction with FOR UPDATE SKIP LOCKED
+  to prevent concurrent workers from processing the same records. Events are
+  published after the transaction commits so that count_pipelines_in_workflow
+  sees the records as gone.
+
   Returns `{:ok, count}` where count is the number of deleted records.
   """
   @spec delete_expired_batch(pos_integer()) :: {:ok, non_neg_integer()} | {:error, term()}
   def delete_expired_batch(limit) do
     with {:ok, records} <- fetch_and_delete(limit) do
-      publish_events(records)
+      publish_pipeline_events(records)
+      publish_workflow_events(records)
       {:ok, length(records)}
     end
   rescue
@@ -56,11 +62,6 @@ defmodule Ppl.Retention.Deleter.Queries do
     Enum.each(ids, &Block.delete_blocks_from_ppl/1)
     from(pr in PplRequests, where: pr.id in ^ids) |> EctoRepo.delete_all()
     :ok
-  end
-
-  defp publish_events(records) do
-    publish_pipeline_events(records)
-    publish_workflow_events(records)
   end
 
   defp publish_pipeline_events(records) do
