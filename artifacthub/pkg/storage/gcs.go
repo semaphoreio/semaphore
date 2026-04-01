@@ -20,6 +20,7 @@ import (
 	"google.golang.org/api/option"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"strconv"
 )
 
 const SignedURLExpireInMinutes = 20
@@ -146,6 +147,51 @@ func (c *Gcs) GetBucket(options BucketOptions) Bucket {
 	}
 }
 
+var artifactPrefixRetentionEnvVars = []struct {
+	prefix string
+	envVar string
+}{
+	{"artifacts/workflows/", "ARTIFACT_WF_RETENTION_DAYS"},
+	{"artifacts/jobs/", "ARTIFACT_JOB_RETENTION_DAYS"},
+	{"artifacts/pipelines/", "ARTIFACT_PPL_RETENTION_DAYS"},
+	{"artifacts/projects/", "ARTIFACT_PROJECT_RETENTION_DAYS"},
+}
+
+func ArtifactLifecycle() gcsstorage.Lifecycle {
+	var rules []gcsstorage.LifecycleRule
+
+	for _, entry := range artifactPrefixRetentionEnvVars {
+		days := retentionDaysFromEnv(entry.envVar)
+		if days <= 0 {
+			continue
+		}
+
+		rules = append(rules, gcsstorage.LifecycleRule{
+			Action: gcsstorage.LifecycleAction{Type: "Delete"},
+			Condition: gcsstorage.LifecycleCondition{
+				AgeInDays:     days,
+				MatchesPrefix: []string{entry.prefix},
+			},
+		})
+	}
+
+	return gcsstorage.Lifecycle{Rules: rules}
+}
+
+func retentionDaysFromEnv(envVar string) int64 {
+	val := os.Getenv(envVar)
+	if val == "" {
+		return 0
+	}
+
+	days, err := strconv.ParseInt(val, 10, 64)
+	if err != nil || days <= 0 {
+		return 0
+	}
+
+	return days
+}
+
 func (c *Gcs) createBucket(ctx context.Context) (string, error) {
 	var randomBucketName string
 
@@ -163,6 +209,7 @@ func (c *Gcs) createBucket(ctx context.Context) (string, error) {
 			Location:     "europe-west3",
 			StorageClass: "REGIONAL",
 			CORS:         cors,
+			Lifecycle:    ArtifactLifecycle(),
 		}
 
 		return bucket.Create(ctx, c.Credentials.ProjectID, attrs)
