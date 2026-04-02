@@ -68,6 +68,7 @@ import { default as EditPerson } from "./people/edit_person";
 import { default as SyncPeople } from "./people/sync_people";
 import { default as ServiceAccounts } from "./service_accounts";
 import { default as Report } from "./report";
+import { initPylonChatDraggable } from "./pylon_chat_draggable";
 
 import { InitializingScreen } from "./project_onboarding/initializing";
 import { AccountInitializingScreen } from "./me/initialization/initializing";
@@ -528,6 +529,8 @@ export var App = {
     for (const el of document.querySelectorAll('[data-hotkey]')) {
       install(el);
     }
+
+    window.addEventListener("load", initPylonChatDraggable, { once: true });
   }
 };
 
