@@ -11,3 +11,30 @@
   transform: scale(1.44) !important;
   transform-origin: bottom right !important;
 }
+
+.PylonChat-bubbleFrameContainer--draggable {
+  user-select: none;
+}
+
+.PylonChat-bubbleFrameContainer--draggable.PylonChat-bubbleFrameContainer--dragging {
+  cursor: grabbing !important;
+}
+
+.PylonChat-bubbleFrameContainer--dragging iframe {
+  pointer-events: none !important;
+}
+
+.PylonChat-dragOverlay {
+  position: absolute;
+  top: -30px;
+  left: -30px;
+  width: calc(100% + 30px);
+  height: calc(100% + 30px);
+  cursor: grab;
+  background: transparent;
+  z-index: 2;
+}
+
+.PylonChat-bubbleFrameContainer--dragging .PylonChat-dragOverlay {
+  cursor: grabbing;
+}
