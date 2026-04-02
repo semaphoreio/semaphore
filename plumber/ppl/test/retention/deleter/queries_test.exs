@@ -187,11 +187,14 @@ defmodule Ppl.Retention.Deleter.QueriesTest do
         {Ppl.Retention.Events, [],
           publish_pipeline_deleted: fn _, _, _, _, _ -> :ok end,
           publish_workflow_deleted: fn _, _, _, _ -> :ok end},
-        {Watchman, [:passthrough],
-          increment: fn
-            {name, tags} -> send(test_pid, {:metric, name, tags})
-            {name} -> send(test_pid, {:metric, name, []})
-          end}
+        {Watchman, [],
+          increment: fn arg ->
+            case arg do
+              {name, tags} -> send(test_pid, {:metric, name, tags})
+              {name} -> send(test_pid, {:metric, name, []})
+            end
+          end,
+          submit: fn _, _, _ -> :ok end}
       ] do
         {:ok, 1} = Queries.delete_expired_batch(100)
       end
