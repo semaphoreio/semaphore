@@ -116,6 +116,7 @@
     "uglify-js-brunch": "2.10.0"
   },
   "overrides": {
+    "lodash-es": "4.18.1",
     "dagre-d3": {
       "d3-color": "3.1.0"
     }
