@@ -14,7 +14,7 @@ RUN apt-get update -y && apt-get install --no-install-recommends -y ca-certifica
   && apt-get clean && rm -f /var/lib/apt/lists/*_*
 
 WORKDIR /tmp
-RUN curl -L https://github.com/golang-migrate/migrate/releases/download/v4.18.2/migrate.linux-amd64.tar.gz | tar xvz && \
+RUN curl -L https://github.com/golang-migrate/migrate/releases/download/v4.19.1/migrate.linux-amd64.tar.gz | tar xvz && \
   mv /tmp/migrate /usr/bin/migrate && \
   chmod +x /usr/bin/migrate
 
