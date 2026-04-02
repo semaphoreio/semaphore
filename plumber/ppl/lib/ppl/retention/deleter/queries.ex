@@ -8,6 +8,7 @@ defmodule Ppl.Retention.Deleter.Queries do
   require Logger
 
   alias Ppl.EctoRepo
+  alias Ppl.LatestWfs.Model.LatestWfs
   alias Ppl.PplRequests.Model.PplRequests
   alias Ppl.PplRequests.Model.PplRequestsQueries
   alias Ppl.Retention.Events
@@ -91,6 +92,7 @@ defmodule Ppl.Retention.Deleter.Queries do
     case PplRequestsQueries.count_pipelines_in_workflow(workflow_id) do
       {:ok, 0} ->
         {org_id, project_id, artifact_store_id} = extract_ids(request_args)
+        delete_latest_workflow(workflow_id)
 
         case Events.publish_workflow_deleted(workflow_id, org_id, project_id, artifact_store_id) do
           :ok ->
@@ -108,6 +110,11 @@ defmodule Ppl.Retention.Deleter.Queries do
         Watchman.increment({"retention.wf_deleted.error"})
         Logger.error("[Retention] wf_id=#{workflow_id} Failed to count pipelines for workflow: #{inspect(reason)}")
     end
+  end
+
+  defp delete_latest_workflow(workflow_id) do
+    from(lw in LatestWfs, where: lw.wf_id == ^workflow_id)
+    |> EctoRepo.delete_all()
   end
 
   defp unique_workflows(records) do
