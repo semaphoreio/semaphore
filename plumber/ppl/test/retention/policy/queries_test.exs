@@ -170,10 +170,73 @@ defmodule Ppl.Retention.Policy.QueriesTest do
   end
 
   defp assert_expires_at_approximately_15_days_from_now(expires_at) do
+    assert_expires_at_approximately_n_days_from_now(expires_at, 15)
+  end
+
+  defp assert_expires_at_approximately_n_days_from_now(expires_at, days) do
     now = NaiveDateTime.utc_now()
-    fifteen_days_in_seconds = 15 * 24 * 60 * 60
-    expected = NaiveDateTime.add(now, fifteen_days_in_seconds, :second)
+    expected = NaiveDateTime.add(now, days * 24 * 60 * 60, :second)
     diff_seconds = NaiveDateTime.diff(expires_at, expected, :second) |> abs()
-    assert diff_seconds < 60, "Expected expires_at to be ~15 days from now, got #{expires_at}"
+    assert diff_seconds < 60, "Expected expires_at to be ~#{days} days from now, got #{expires_at}"
+  end
+
+  describe "config" do
+    test "honors custom grace_period_days from Policy.Queries config" do
+      Application.put_env(:ppl, Ppl.Retention.Policy.Queries, grace_period_days: 30)
+      on_exit(fn -> Application.delete_env(:ppl, Ppl.Retention.Policy.Queries) end)
+
+      org_id = UUID.uuid4()
+      cutoff = ~N[2025-06-01 12:00:00.000000]
+      pipeline = insert_pipeline(org_id, ~N[2025-05-01 10:00:00.000000])
+
+      {1, 0} = Queries.mark_expiring(org_id, cutoff)
+
+      expires_at = get_expires_at(pipeline.id)
+      assert_expires_at_approximately_n_days_from_now(expires_at, 30)
+    end
+
+    test "honors custom batch_size from Policy.Queries config" do
+      Application.put_env(:ppl, Ppl.Retention.Policy.Queries, batch_size: 2)
+      on_exit(fn -> Application.delete_env(:ppl, Ppl.Retention.Policy.Queries) end)
+
+      org_id = UUID.uuid4()
+      cutoff = ~N[2025-06-01 12:00:00.000000]
+
+      Enum.each(1..5, fn _ ->
+        insert_pipeline(org_id, ~N[2025-05-01 10:00:00.000000])
+      end)
+
+      {marked, 0} = Queries.mark_expiring(org_id, cutoff)
+
+      assert marked == 5
+    end
+
+    test "old PolicyApplier config key does not affect behavior" do
+      Application.put_env(:ppl, Ppl.Retention.PolicyApplier, grace_period_days: 90)
+      on_exit(fn -> Application.delete_env(:ppl, Ppl.Retention.PolicyApplier) end)
+
+      org_id = UUID.uuid4()
+      cutoff = ~N[2025-06-01 12:00:00.000000]
+      pipeline = insert_pipeline(org_id, ~N[2025-05-01 10:00:00.000000])
+
+      {1, 0} = Queries.mark_expiring(org_id, cutoff)
+
+      expires_at = get_expires_at(pipeline.id)
+      assert_expires_at_approximately_n_days_from_now(expires_at, 15)
+    end
+
+    test "enforces minimum grace period of 7 days" do
+      Application.put_env(:ppl, Ppl.Retention.Policy.Queries, grace_period_days: 1)
+      on_exit(fn -> Application.delete_env(:ppl, Ppl.Retention.Policy.Queries) end)
+
+      org_id = UUID.uuid4()
+      cutoff = ~N[2025-06-01 12:00:00.000000]
+      pipeline = insert_pipeline(org_id, ~N[2025-05-01 10:00:00.000000])
+
+      {1, 0} = Queries.mark_expiring(org_id, cutoff)
+
+      expires_at = get_expires_at(pipeline.id)
+      assert_expires_at_approximately_n_days_from_now(expires_at, 7)
+    end
   end
 end
