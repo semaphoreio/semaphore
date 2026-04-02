@@ -534,7 +534,7 @@ func downloadSelfHostedLogs(ctx context.Context, logsURL string) ([]string, erro
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		io.Copy(io.Discard, resp.Body) // drain body so the connection can be reused
+		_, _ = io.Copy(io.Discard, resp.Body) // drain body so the connection can be reused
 		return nil, fmt.Errorf("log download returned HTTP %d", resp.StatusCode)
 	}
 
