@@ -177,6 +177,33 @@ defmodule Ppl.Retention.Deleter.QueriesTest do
       end
     end
 
+    test "metric tags do not include pipeline_id or workflow_id" do
+      org_id = UUID.uuid4()
+      insert_pipeline(org_id, expired_at())
+
+      test_pid = self()
+
+      with_mocks [
+        {Ppl.Retention.Events, [],
+          publish_pipeline_deleted: fn _, _, _, _, _ -> :ok end,
+          publish_workflow_deleted: fn _, _, _, _ -> :ok end},
+        {Watchman, [:passthrough],
+          increment: fn {name, tags} ->
+            send(test_pid, {:metric, name, tags})
+          end}
+      ] do
+        {:ok, 1} = Queries.delete_expired_batch(100)
+      end
+
+      assert_received {:metric, "retention.ppl_deleted.success", tags}
+      assert length(tags) == 1
+      assert hd(tags) == org_id
+
+      assert_received {:metric, "retention.wf_deleted.success", tags}
+      assert length(tags) == 1
+      assert hd(tags) == org_id
+    end
+
     test "publishing failures do not block deletion" do
       org_id = UUID.uuid4()
       pipeline = insert_pipeline(org_id, expired_at())
