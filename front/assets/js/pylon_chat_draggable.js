@@ -1,11 +1,11 @@
 const PYLON_CHAT_CONTAINER_SELECTOR = ".PylonChat-bubbleFrameContainer";
+const PYLON_CHAT_WINDOW_SELECTOR = "#pylon-chat-window";
 const DRAGGABLE_CLASS = "PylonChat-bubbleFrameContainer--draggable";
 const DRAGGING_CLASS = "PylonChat-bubbleFrameContainer--dragging";
 const DRAG_OVERLAY_CLASS = "PylonChat-dragOverlay";
 const STORAGE_KEY = "pylon_chat_bubble_position";
 const VIEWPORT_MARGIN = 8;
 const DRAG_THRESHOLD_PX = 3;
-let pylonChatVisible = false;
 
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
@@ -63,17 +63,42 @@ function isPylonReady() {
   return typeof window.Pylon === "function";
 }
 
+function isElementVisible(element) {
+  if (!element) return false;
+
+  if (typeof window.getComputedStyle === "function") {
+    const computedStyle = window.getComputedStyle(element);
+    if (
+      computedStyle.display === "none" ||
+      computedStyle.visibility === "hidden" ||
+      computedStyle.opacity === "0"
+    ) {
+      return false;
+    }
+  }
+
+  if (typeof element.getBoundingClientRect === "function") {
+    const rect = element.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return false;
+  }
+
+  return true;
+}
+
+function isPylonChatWindowVisible() {
+  const chatWindow = document.querySelector(PYLON_CHAT_WINDOW_SELECTOR);
+  return isElementVisible(chatWindow);
+}
+
 function togglePylonChat() {
   if (!isPylonReady()) return;
 
-  const nextVisibleState = !pylonChatVisible;
+  const shouldHideChat = isPylonChatWindowVisible();
   try {
-    window.Pylon(nextVisibleState ? "show" : "hide");
-    pylonChatVisible = nextVisibleState;
+    window.Pylon(shouldHideChat ? "hide" : "show");
   } catch {
     // If toggle fails, prefer opening over doing nothing.
     window.Pylon("show");
-    pylonChatVisible = true;
   }
 }
 
@@ -149,14 +174,27 @@ function makeContainerDraggable(container) {
 export function initPylonChatDraggable() {
   if (!document.body || !window.pylon || !window.pylon.chat_settings) return;
 
-  const initializeVisibleContainers = () => {
-    document.querySelectorAll(PYLON_CHAT_CONTAINER_SELECTOR).forEach(makeContainerDraggable);
+  const initializeContainerTree = (rootNode) => {
+    if (rootNode.nodeType !== Node.ELEMENT_NODE) return;
+
+    const rootElement = rootNode;
+    if (rootElement.matches(PYLON_CHAT_CONTAINER_SELECTOR)) {
+      makeContainerDraggable(rootElement);
+    }
+
+    rootElement
+      .querySelectorAll(PYLON_CHAT_CONTAINER_SELECTOR)
+      .forEach(makeContainerDraggable);
   };
 
-  initializeVisibleContainers();
+  document
+    .querySelectorAll(PYLON_CHAT_CONTAINER_SELECTOR)
+    .forEach(makeContainerDraggable);
 
-  const observer = new MutationObserver(() => {
-    initializeVisibleContainers();
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      mutation.addedNodes.forEach(initializeContainerTree);
+    });
   });
 
   observer.observe(document.body, { childList: true, subtree: true });
