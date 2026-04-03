@@ -66,6 +66,15 @@ function isPylonReady() {
 function isElementVisible(element) {
   if (!element) return false;
 
+  if (
+    element.style &&
+    (element.style.display === "none" ||
+      element.style.visibility === "hidden" ||
+      element.style.opacity === "0")
+  ) {
+    return false;
+  }
+
   if (typeof window.getComputedStyle === "function") {
     const computedStyle = window.getComputedStyle(element);
     if (
@@ -198,5 +207,8 @@ export function initPylonChatDraggable() {
   });
 
   observer.observe(document.body, { childList: true, subtree: true });
-  window.addEventListener("beforeunload", () => observer.disconnect(), { once: true });
+
+  if (typeof window.addEventListener === "function") {
+    window.addEventListener("beforeunload", () => observer.disconnect(), { once: true });
+  }
 }

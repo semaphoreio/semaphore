@@ -72,16 +72,65 @@ function createContainer({
   return container;
 }
 
+function createMouseEvent(type, { x, y, button = 0 } = {}) {
+  const mouseEventInit = {
+    bubbles: true,
+    cancelable: true,
+    clientX: x,
+    clientY: y,
+    button
+  };
+
+  if (typeof window.MouseEvent === "function") {
+    return new window.MouseEvent(type, mouseEventInit);
+  }
+
+  if (typeof MouseEvent === "function") {
+    return new MouseEvent(type, mouseEventInit);
+  }
+
+  if (typeof document.createEvent === "function") {
+    const legacyMouseEvent = document.createEvent("MouseEvents");
+    if (typeof legacyMouseEvent.initMouseEvent === "function") {
+      legacyMouseEvent.initMouseEvent(
+        type,
+        true,
+        true,
+        window,
+        0,
+        0,
+        0,
+        x || 0,
+        y || 0,
+        false,
+        false,
+        false,
+        false,
+        button,
+        null
+      );
+      return legacyMouseEvent;
+    }
+  }
+
+  const fallbackEvent =
+    typeof window.Event === "function"
+      ? new window.Event(type, { bubbles: true, cancelable: true })
+      : (() => {
+          const event = document.createEvent("Event");
+          event.initEvent(type, true, true);
+          return event;
+        })();
+
+  Object.defineProperty(fallbackEvent, "clientX", { value: x || 0 });
+  Object.defineProperty(fallbackEvent, "clientY", { value: y || 0 });
+  Object.defineProperty(fallbackEvent, "button", { value: button });
+
+  return fallbackEvent;
+}
+
 function dispatchMouseEvent(target, type, { x, y, button = 0 } = {}) {
-  target.dispatchEvent(
-    new window.MouseEvent(type, {
-      bubbles: true,
-      cancelable: true,
-      clientX: x,
-      clientY: y,
-      button
-    })
-  );
+  target.dispatchEvent(createMouseEvent(type, { x, y, button }));
 }
 
 function clickOverlay(overlay, x = 100, y = 100) {
@@ -162,11 +211,21 @@ describe("initPylonChatDraggable", () => {
   });
 
   afterEach(() => {
-    window.dispatchEvent(new window.Event("beforeunload"));
+    if (
+      typeof window.dispatchEvent === "function" &&
+      typeof window.Event === "function"
+    ) {
+      window.dispatchEvent(new window.Event("beforeunload"));
+    }
+
     sandbox.restore();
     delete window.pylon;
     delete window.Pylon;
-    Object.defineProperty(window, "localStorage", originalLocalStorageDescriptor);
+    if (originalLocalStorageDescriptor) {
+      Object.defineProperty(window, "localStorage", originalLocalStorageDescriptor);
+    } else {
+      delete window.localStorage;
+    }
     window.MutationObserver = originalMutationObserver;
     globalThis.MutationObserver = originalMutationObserver;
     document.body.innerHTML = "";
