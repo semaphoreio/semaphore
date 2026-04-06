@@ -89,7 +89,7 @@ blocks:
       jobs:
         - name: 'Job #1'
           commands:
-            - echo "hello, world!"'
+            - echo "hello, world!"
             - echo "add as many commands as you like"
 ```
 
