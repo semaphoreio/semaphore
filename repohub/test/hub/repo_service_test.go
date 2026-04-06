@@ -3,6 +3,7 @@ package hub_test
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -55,6 +56,10 @@ func Test__List(t *testing.T) {
 }
 
 func Test__GetChangedFilePaths__HeadToHead(t *testing.T) {
+	if os.Getenv("REPOHUB_TEST_GH_TOKEN") == "" {
+		t.Skip("Skipping: REPOHUB_TEST_GH_TOKEN is not set")
+	}
+
 	support.PurgeDB()
 
 	repo := support.CreateRepository()
@@ -68,7 +73,12 @@ func Test__GetChangedFilePaths__HeadToHead(t *testing.T) {
 	}
 
 	res, err := client.GetChangedFilePaths(context.Background(), &req)
-	assert.Nil(t, err)
+	if err != nil {
+		if strings.Contains(err.Error(), "authentication failed") {
+			t.Skip("Skipping: GitHub authentication failed (token may be expired)")
+		}
+		t.Fatalf("GetChangedFilePaths failed: %v", err)
+	}
 
 	assert.Equal(t, 2, len(res.ChangedFilePaths))
 	assert.Equal(t, "README.md", res.ChangedFilePaths[0])
