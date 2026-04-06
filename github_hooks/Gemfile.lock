@@ -283,7 +283,7 @@ GEM
       nio4r (~> 2.0)
     raabro (1.4.0)
     racc (1.8.1)
-    rack (2.2.22)
+    rack (2.2.23)
     rack-session (1.0.2)
       rack (< 3)
     rack-test (2.2.0)
