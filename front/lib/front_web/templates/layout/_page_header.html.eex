@@ -24,17 +24,21 @@
     background-attachment: local, local, scroll, scroll;
   }
 </style>
-<%= if tos_violation_suspension?(@layout_model.suspensions) do %>
-  <div class="fixed bottom-0 left-0 z-5">
-    <a href="<%= support_path(@conn, :new) %>" class="db link white f6 lh-title ph2 ph3-ns pv1 pointer bg-red hover-bg-dark-red">
-      Our abuse detector has flagged your organization. All processing is blocked. If you think this is a mistake, please contact support.
-    </a>
-  </div>
-<% else %>
-  <%= if FeatureProvider.feature_enabled?(:billing, param: @conn.assigns[:organization_id]) do %>
-    <%= FrontWeb.BillingView.badge(@conn) %>
-  <% end %>
+
+<%= case suspension_banner(assigns) do %>
+  <% {:error, message} -> %>
+    <div class="fixed bottom-0 left-0 z-5">
+      <a href="<%= support_path(@conn, :new) %>" class="db link white f6 lh-title ph2 ph3-ns pv1 pointer bg-red hover-bg-dark-red">
+        <%= message %>
+      </a>
+    </div>
+
+  <% nil -> %>
+    <%= if FeatureProvider.feature_enabled?(:billing, param: @conn.assigns[:organization_id]) do %>
+      <%= FrontWeb.BillingView.badge(@conn) %>
+    <% end %>
 <% end %>
+
 <div class="header" id="global-page-header">
   <div class="flex items-center justify-between w-100 ph2 ph3-ns pv2">
     <div class="flex items-center">
