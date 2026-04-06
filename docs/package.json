@@ -55,6 +55,9 @@
     "node-forge": "1.4.0",
     "path-to-regexp": "0.1.13",
     "picomatch": "2.3.2",
+    "minimatch": "3.1.4",
+    "lodash": "4.18.1",
+    "lodash-es": "4.18.1",
     "serve-handler": {
       "minimatch": "3.1.4"
     },
@@ -72,6 +75,9 @@
     "node-forge": "1.4.0",
     "path-to-regexp": "0.1.13",
     "picomatch": "2.3.2",
+    "minimatch": "3.1.4",
+    "lodash": "4.18.1",
+    "lodash-es": "4.18.1",
     "@redocly/openapi-core/minimatch": "5.1.8",
     "sucrase/glob/minimatch": "9.0.7",
     "serve-handler/minimatch": "3.1.4",
