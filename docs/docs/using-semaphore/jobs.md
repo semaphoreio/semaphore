@@ -102,7 +102,7 @@ Semaphore automatically starts the job when the file is saved. Click the running
 
 :::tip
 
-Do not use `exit` in the job commands. Doing so terminates the terminal session and marks the job as failed. If you want to force a non-zero exit status, use a failing command such as `false` instead.
+Do not use `exit` in the job commands. Doing so terminates the terminal session and marks the job as failed. If you want force a non-exit status code use `return <int>` instead.
 
 :::
 

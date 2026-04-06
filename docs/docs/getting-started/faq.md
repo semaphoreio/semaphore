@@ -518,6 +518,28 @@ This happens when the repository receives pushed while Semaphore is still proces
 
 You can prevent this error by enabling the [auto-cancel](../using-semaphore/pipelines#auto-cancel) option in the pipeline.
 
+### How do I fix the error "Type mismatch. Expected String but got Boolean."
+
+This usually happens when a YAML value inside a `commands:` list is interpreted as a boolean instead of a shell command string.
+
+For example, this is invalid:
+
+```yaml
+commands:
+  - false
+```
+
+YAML parses `false` as a boolean value, but Semaphore expects each item in `commands:` to be a string.
+
+Use quotes instead:
+
+```yaml
+commands:
+  - "false"
+```
+
+This tells YAML to treat `false` as the shell command name rather than a boolean literal.
+
 ### Why are my workflows not running in parallel?
 
 Git pushes to the same branch are [queued](../using-semaphore/pipelines#pipeline-queues) by default. Pushes to different branches do run in parallel. You can use [named queues in your pipelines](../using-semaphore/pipelines#named-queues) to better control how workflows are parallelized or activate [auto-cancel](../using-semaphore/pipelines#auto-cancel) to stop running pipelines when new pushes arrive to the queue.
