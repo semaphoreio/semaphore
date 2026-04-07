@@ -1,4 +1,4 @@
-ARG GO_VERSION=1.23
+ARG GO_VERSION=1.24
 ARG UBUNTU_VERSION=22.04
 ARG BUILDER_IMAGE="golang:${GO_VERSION}"
 ARG RUNNER_IMAGE="ubuntu:${UBUNTU_VERSION}"
@@ -13,10 +13,9 @@ RUN echo "Build of $APP_NAME started"
 RUN apt-get update -y && apt-get install --no-install-recommends -y ca-certificates unzip curl postgresql-client libc-bin libc6 \
     && apt-get clean && rm -f /var/lib/apt/lists/*_*
 
-WORKDIR /tmp
-RUN curl -L https://github.com/golang-migrate/migrate/releases/download/v4.18.2/migrate.linux-amd64.tar.gz | tar xvz && \
-    mv /tmp/migrate /usr/bin/migrate && \
-    chmod +x /usr/bin/migrate
+# Build migrate from source to ensure it uses the current Go version and patched dependencies
+RUN CGO_ENABLED=0 go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@v4.19.1 \
+    && mv /go/bin/migrate /usr/bin/migrate
 
 WORKDIR /app
 COPY pkg pkg
