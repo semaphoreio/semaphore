@@ -9,6 +9,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 
 	"github.com/semaphoreio/semaphore/repohub/pkg/config"
@@ -60,7 +61,7 @@ func (s *TokenStore) FindRepoToken(r *models.Repository) (string, error) {
 }
 
 func (s *TokenStore) FindUser(userID string) (*ia_user.DescribeResponse, error) {
-	conn, err := grpc.Dial(config.UserAPIEndpoint(), grpc.WithInsecure())
+	conn, err := grpc.NewClient(config.UserAPIEndpoint(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +81,7 @@ func (s *TokenStore) FindUser(userID string) (*ia_user.DescribeResponse, error) 
 	if res.Status.Code != ia_response_status.ResponseStatus_OK {
 		log.Printf("User lookup failed %s", res.Status.Message)
 
-		return nil, fmt.Errorf(res.Status.Message)
+		return nil, fmt.Errorf("%s", res.Status.Message)
 	}
 
 	return res, nil
@@ -91,7 +92,7 @@ func (s *TokenStore) findIntegrationToken(projectID string, integrationType stri
 		return s.fetchRepositoryToken(userID, ia_repository_integrator.IntegrationType(ia_repository_integrator.IntegrationType_value[integrationType]))
 	}
 
-	conn, err := grpc.Dial(config.RepositoryIntegratorAPIEndpoint(), grpc.WithInsecure())
+	conn, err := grpc.NewClient(config.RepositoryIntegratorAPIEndpoint(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return "", err
 	}
@@ -117,7 +118,7 @@ func (s *TokenStore) findIntegrationToken(projectID string, integrationType stri
 }
 
 func (s *TokenStore) fetchRepositoryToken(userID string, integrationType ia_repository_integrator.IntegrationType) (string, error) {
-	conn, err := grpc.Dial(config.UserAPIEndpoint(), grpc.WithInsecure())
+	conn, err := grpc.NewClient(config.UserAPIEndpoint(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return "", err
 	}
@@ -138,7 +139,7 @@ func (s *TokenStore) fetchRepositoryToken(userID string, integrationType ia_repo
 }
 
 func (s *TokenStore) findProject(projectID string) (*ia_projecthub.Project, error) {
-	conn, err := grpc.Dial(config.ProjectAPIEndpoint(), grpc.WithInsecure())
+	conn, err := grpc.NewClient(config.ProjectAPIEndpoint(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}
