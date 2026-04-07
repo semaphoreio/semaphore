@@ -45,7 +45,7 @@ defmodule Front.Models.Project do
     field(:allowed_secrets, :string)
     field(:filter_contributors, :boolean)
     field(:allowed_contributors, :string)
-    field(:allow_sem_approve_enable_secrets, :boolean, default: false)
+    field(:allow_sem_approve_include_secrets, :boolean, default: false)
     field(:allow_sem_approve_enable_cache, :boolean, default: false)
     field(:initial_pipeline_file, :string)
     field(:public, :boolean)
@@ -102,7 +102,7 @@ defmodule Front.Models.Project do
     :allowed_secrets,
     :filter_contributors,
     :allowed_contributors,
-    :allow_sem_approve_enable_secrets,
+    :allow_sem_approve_include_secrets,
     :allow_sem_approve_enable_cache,
     :whitelist_branches,
     :branch_whitelist,
@@ -335,9 +335,9 @@ defmodule Front.Models.Project do
           allowed_contributors: allowed_contributors
         )
         |> put_forked_pr_option(
-          :allow_sem_approve_enable_secrets,
+          :allow_sem_approve_include_secrets,
           project_data.run && project_data.build_forked_prs &&
-            project_data.allow_sem_approve_enable_secrets
+            project_data.allow_sem_approve_include_secrets
         )
         |> put_forked_pr_option(
           :allow_sem_approve_enable_cache,
@@ -794,8 +794,14 @@ defmodule Front.Models.Project do
     alias InternalApi.Projecthub.Project.Status.State
     alias InternalApi.RepositoryIntegrator.IntegrationType
 
-    forked_pr_options = extract_forked_pr_options(project.spec.repository.forked_pull_requests)
-    {branch_whitelist, tag_whitelist} = extract_whitelists(project.spec.repository.whitelist)
+    {
+      allowed_secrets,
+      allowed_contributors,
+      allow_sem_approve_include_secrets,
+      allow_sem_approve_enable_cache
+    } = forked_pull_request_settings(project.spec.repository.forked_pull_requests)
+
+    {branch_whitelist, tag_whitelist} = whitelist_settings(project.spec.repository.whitelist)
 
     %__MODULE__{
       :id => project.metadata.id,
@@ -845,12 +851,12 @@ defmodule Front.Models.Project do
         |> Enum.member?(PermissionType.value(:FORKED_PULL_REQUEST)),
       :allow_attach_tag =>
         project.spec.attach_permissions |> Enum.member?(PermissionType.value(:TAG)),
-      :expose_secrets => forked_pr_options.allowed_secrets != "",
-      :allowed_secrets => forked_pr_options.allowed_secrets,
-      :filter_contributors => forked_pr_options.allowed_contributors != "",
-      :allowed_contributors => forked_pr_options.allowed_contributors,
-      :allow_sem_approve_enable_secrets => forked_pr_options.allow_sem_approve_enable_secrets,
-      :allow_sem_approve_enable_cache => forked_pr_options.allow_sem_approve_enable_cache,
+      :expose_secrets => allowed_secrets != "",
+      :allowed_secrets => allowed_secrets,
+      :filter_contributors => allowed_contributors != "",
+      :allowed_contributors => allowed_contributors,
+      :allow_sem_approve_include_secrets => allow_sem_approve_include_secrets,
+      :allow_sem_approve_enable_cache => allow_sem_approve_enable_cache,
       :initial_pipeline_file => project.spec.repository.pipeline_file,
       :public => project.spec.visibility == Visibility.value(:PUBLIC),
       :state => State.key(project.status.state),
@@ -869,29 +875,24 @@ defmodule Front.Models.Project do
     }
   end
 
-  defp extract_forked_pr_options(nil) do
-    %{
-      allowed_secrets: "",
-      allowed_contributors: "",
-      allow_sem_approve_enable_secrets: false,
-      allow_sem_approve_enable_cache: false
+  defp forked_pull_request_settings(nil), do: {"", "", false, false}
+
+  defp forked_pull_request_settings(options) do
+    {
+      Enum.join(options.allowed_secrets, ", "),
+      Enum.join(options.allowed_contributors, ", "),
+      Map.get(options, :allow_sem_approve_include_secrets, false),
+      Map.get(options, :allow_sem_approve_enable_cache, false)
     }
   end
 
-  defp extract_forked_pr_options(options) do
-    %{
-      allowed_secrets: Enum.join(options.allowed_secrets, ", "),
-      allowed_contributors: Enum.join(options.allowed_contributors, ", "),
-      allow_sem_approve_enable_secrets:
-        Map.get(options, :allow_sem_approve_enable_secrets, false),
-      allow_sem_approve_enable_cache: Map.get(options, :allow_sem_approve_enable_cache, false)
+  defp whitelist_settings(nil), do: {"", ""}
+
+  defp whitelist_settings(whitelist) do
+    {
+      Enum.join(whitelist.branches, ", "),
+      Enum.join(whitelist.tags, ", ")
     }
-  end
-
-  defp extract_whitelists(nil), do: {"", ""}
-
-  defp extract_whitelists(whitelist) do
-    {Enum.join(whitelist.branches, ", "), Enum.join(whitelist.tags, ", ")}
   end
 
   def find_by_id(id, org_id \\ "")

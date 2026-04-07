@@ -300,8 +300,8 @@ module InternalApi
           data[:user_id] = user.id
           data[:semaphore_email] = user.email
         end
-        data[:approval_enable_secrets] = true if pr_approval_option_enabled?(hook, :pr_approval_enable_secrets?)
-        data[:approval_enable_cache] = true if pr_approval_option_enabled?(hook, :pr_approval_enable_cache?)
+        data[:approval_include_secrets] = true if add_approval_include_secrets?(hook)
+        add_approval_enable_cache!(data, hook)
 
         ::InternalApi::RepoProxy::Hook.new(data)
       end
@@ -332,11 +332,46 @@ module InternalApi
         hook.payload.pull_request_name.presence || hook.commit_message.to_s
       end
 
-      def pr_approval_option_enabled?(hook, payload_method)
-        return false unless hook.payload.pull_request?
-        return false unless hook.payload.respond_to?(payload_method)
+      def add_approval_include_secrets?(hook)
+        approval_option_field(
+          hook,
+          [:pr_approval_include_secrets?],
+          [:approval_include_secrets]
+        ).present?
+      end
 
-        hook.payload.public_send(payload_method)
+      def add_approval_enable_cache!(data, hook)
+        hook_field =
+          approval_option_field(
+            hook,
+            [:pr_approval_enable_cache?],
+            [:approval_enable_cache]
+          )
+
+        data[hook_field] = true if hook_field
+      end
+
+      def approval_option_field(hook, payload_methods, hook_fields)
+        return nil unless hook.payload.pull_request?
+        return nil unless payload_option_enabled?(hook.payload, payload_methods)
+
+        first_supported_hook_field(hook_fields)
+      end
+
+      def payload_option_enabled?(payload, methods)
+        methods.any? do |method|
+          payload.respond_to?(method) && payload.public_send(method)
+        end
+      end
+
+      def first_supported_hook_field(fields)
+        fields.find do |field|
+          # Keep compatibility while services roll out regenerated protobuf stubs.
+          ::InternalApi::RepoProxy::Hook.new(field => true)
+          true
+        rescue StandardError
+          false
+        end
       end
     end
   end

@@ -121,7 +121,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
         allow(@workflow.payload).to receive_messages(
           issue_number: 1,
           pr_approval?: true,
-          pr_approval_enable_secrets?: true,
+          pr_approval_include_secrets?: true,
           pr_approval_enable_cache?: true
         )
         update_pr_data_result = [
@@ -141,7 +141,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
         described_class.run(@workflow, @logger)
 
         payload = JSON.parse(workflow.reload.request["payload"])
-        expect(payload["semaphore_approval_enable_secrets"]).to be(true)
+        expect(payload["semaphore_approval_include_secrets"]).to be(true)
         expect(payload["semaphore_approval_enable_cache"]).to be(true)
       end
 

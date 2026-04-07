@@ -512,7 +512,7 @@ If you are using a [filter for contributors](../using-semaphore/workflows#projec
 
 You can also allow extra options for approved runs in **Project settings > General > Forked pull requests**:
 
-- `/sem-approve --enable-secrets`
+- `/sem-approve --include-secrets`
 - `/sem-approve --enable-cache`
 
 These options work only when the corresponding project settings are enabled.

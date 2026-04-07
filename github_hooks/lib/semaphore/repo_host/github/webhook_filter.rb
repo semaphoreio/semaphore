@@ -7,7 +7,7 @@ module Semaphore::RepoHost::Github
     SUPPORTED_GITHUB_WEBHOOK_EVENTS = ["push", "pull_request", "member", "issue_comment", "installation", "installation_repositories", "team", "membership", "repository"]
     SUPPORTED_GITHUB_PULL_REQUEST_ACTIONS = ["opened", "synchronize", "closed", "reopened", "ready_for_review"]
     SUPPORTED_PR_COMMANDS = ["/sem-approve"]
-    SUPPORTED_PR_OPTIONS = ["--enable-secrets", "--enable-cache"].freeze
+    SUPPORTED_PR_OPTIONS = ["--include-secrets", "--enable-cache"].freeze
 
     def initialize(request, payload)
       @request = request

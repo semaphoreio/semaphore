@@ -571,7 +571,7 @@ defmodule Zebra.Workers.JobRequestFactory.SecretsTest do
                 }}
     end
 
-    test "approval enable-secrets bypasses forked PR secret filtering for pipeline jobs" do
+    test "approval include-secrets bypasses forked PR secret filtering for pipeline jobs" do
       job_spec =
         Semaphore.Jobs.V1alpha.Job.Spec.new(
           agent:
@@ -607,7 +607,7 @@ defmodule Zebra.Workers.JobRequestFactory.SecretsTest do
           pr_slug: "foo/bar",
           repo_slug: "bar/bar"
         )
-        |> Map.put(:approval_enable_secrets, true)
+        |> Map.put(:approval_include_secrets, true)
 
       api_project =
         InternalApi.Projecthub.Project.new(
@@ -644,7 +644,7 @@ defmodule Zebra.Workers.JobRequestFactory.SecretsTest do
              ]
     end
 
-    test "approval enable-secrets still respects forked PR secret filtering for debug jobs" do
+    test "approval include-secrets still respects forked PR secret filtering for debug jobs" do
       job_spec =
         Semaphore.Jobs.V1alpha.Job.Spec.new(
           agent:
@@ -680,7 +680,7 @@ defmodule Zebra.Workers.JobRequestFactory.SecretsTest do
           pr_slug: "foo/bar",
           repo_slug: "bar/bar"
         )
-        |> Map.put(:approval_enable_secrets, true)
+        |> Map.put(:approval_include_secrets, true)
 
       api_project =
         InternalApi.Projecthub.Project.new(

@@ -2747,7 +2747,7 @@ defmodule Projecthub.Api.GrpcServerTest do
       _project_params = %{
         allowed_secrets: "",
         allow_sem_approve_enable_cache: false,
-        allow_sem_approve_enable_secrets: false,
+        allow_sem_approve_include_secrets: false,
         build_branch: false,
         build_forked_pr: false,
         build_pr: true,
@@ -2822,7 +2822,7 @@ defmodule Projecthub.Api.GrpcServerTest do
       project_params = %{
         allowed_secrets: "",
         allow_sem_approve_enable_cache: false,
-        allow_sem_approve_enable_secrets: false,
+        allow_sem_approve_include_secrets: false,
         build_branch: false,
         build_forked_pr: false,
         build_pr: true,
@@ -3118,7 +3118,7 @@ defmodule Projecthub.Api.GrpcServerTest do
           allowed_contributors: "",
           allowed_secrets: "",
           allow_sem_approve_enable_cache: false,
-          allow_sem_approve_enable_secrets: false,
+          allow_sem_approve_include_secrets: false,
           build_branch: true,
           build_forked_pr: false,
           build_pr: false,

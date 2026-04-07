@@ -10,9 +10,9 @@ module RepoHost::Bitbucket
     PULL_REQUEST_CLOSED = "closed"
     PULL_REQUEST_COMMIT = "synchronize"
     PR_APPROVE_COMMAND = "/sem-approve"
-    PR_ENABLE_SECRETS_OPTION = "--enable-secrets"
+    PR_INCLUDE_SECRETS_OPTION = "--include-secrets"
     PR_ENABLE_CACHE_OPTION = "--enable-cache"
-    PR_APPROVAL_OPTIONS = [PR_ENABLE_SECRETS_OPTION, PR_ENABLE_CACHE_OPTION].freeze
+    PR_APPROVAL_OPTIONS = [PR_INCLUDE_SECRETS_OPTION, PR_ENABLE_CACHE_OPTION].freeze
 
     def initialize(data)
       @data = data
@@ -45,9 +45,9 @@ module RepoHost::Bitbucket
       pr_approval_command?
     end
 
-    def pr_approval_enable_secrets?
-      @data["semaphore_approval_enable_secrets"] == true ||
-        pr_approval_option?(PR_ENABLE_SECRETS_OPTION)
+    def pr_approval_include_secrets?
+      @data["semaphore_approval_include_secrets"] == true ||
+        pr_approval_option?(PR_INCLUDE_SECRETS_OPTION)
     end
 
     def pr_approval_enable_cache?
@@ -434,10 +434,11 @@ module RepoHost::Bitbucket
     end
 
     def pr_approval_tokens
-      @pr_approval_tokens ||= pr_comment_body
-                              .split(/\r?\n/)
-                              .map { |line| pr_approval_tokens_from_line(line) }
-                              .find(&:present?) || []
+      @pr_approval_tokens ||=
+        pr_comment_body
+        .split(/\r?\n/)
+        .map { |line| pr_approval_tokens_from_line(line) }
+        .find(&:present?) || []
     end
 
     def pr_approval_tokens_from_line(line)

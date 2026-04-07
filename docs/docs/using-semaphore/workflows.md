@@ -239,7 +239,7 @@ Selecting **Run on** allows you to configure what triggers are enabled for the p
 
 - Enabling **Pull requests** option allows Semaphore to run workflows on pull requests originating in the same repository
 - The **Forked pull request** works the same for pull requests originating from forked pull requests. [To prevent security leaks](#pr), you can configure a list of allowed secrets and GitHub/BitBucket/GitLab usernames that can trigger workflows in this way
-  
+
 ![Pull request triggers](./img/project-general-settings-3.jpg)
 
 ### Approving PRs with `/sem-approve` {#sem-approve}
@@ -253,14 +253,14 @@ By default, `/sem-approve` keeps forked pull request protections in place:
 
 Project maintainers can allow extra `/sem-approve` options in **Project settings > General > Forked pull requests**:
 
-- **Allow `/sem-approve --enable-secrets`**: enables approved runs to include secrets according to your secret configuration
+- **Allow `/sem-approve --include-secrets`**: enables approved runs to include secrets according to your secret configuration
 - **Allow `/sem-approve --enable-cache`**: enables approved runs to use cache
 
 When these settings are enabled, trusted contributors can approve with:
 
-- `/sem-approve --enable-secrets`
+- `/sem-approve --include-secrets`
 - `/sem-approve --enable-cache`
-- `/sem-approve --enable-secrets --enable-cache`
+- `/sem-approve --include-secrets --enable-cache`
 
 Approving forked pull requests is limited to new comments only and does not work with comment edits. Due to security concerns, `/sem-approve` will work only once. Subsequent pushes to the forked pull request must be approved again.
 

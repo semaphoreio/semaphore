@@ -11,20 +11,20 @@ RSpec.describe RepoHost::Github::Payload do
       )
 
       expect(payload.pr_approval?).to be(true)
-      expect(payload.pr_approval_enable_secrets?).to be(false)
+      expect(payload.pr_approval_include_secrets?).to be(false)
       expect(payload.pr_approval_enable_cache?).to be(false)
     end
 
-    it "recognizes /sem-approve --enable-secrets option" do
+    it "recognizes /sem-approve --include-secrets option" do
       payload = described_class.new(
         {
           "issue" => { "number" => 45, "pull_request" => { "url" => "https://example.test/pr/45" } },
-          "comment" => { "body" => "/sem-approve --enable-secrets", "user" => { "login" => "octocat" } }
+          "comment" => { "body" => "/sem-approve --include-secrets", "user" => { "login" => "octocat" } }
         }.to_json
       )
 
       expect(payload.pr_approval?).to be(true)
-      expect(payload.pr_approval_enable_secrets?).to be(true)
+      expect(payload.pr_approval_include_secrets?).to be(true)
       expect(payload.pr_approval_enable_cache?).to be(false)
     end
 
@@ -37,7 +37,7 @@ RSpec.describe RepoHost::Github::Payload do
       )
 
       expect(payload.pr_approval?).to be(true)
-      expect(payload.pr_approval_enable_secrets?).to be(false)
+      expect(payload.pr_approval_include_secrets?).to be(false)
       expect(payload.pr_approval_enable_cache?).to be(true)
     end
 
@@ -45,12 +45,12 @@ RSpec.describe RepoHost::Github::Payload do
       payload = described_class.new(
         {
           "issue" => { "number" => 45, "pull_request" => { "url" => "https://example.test/pr/45" } },
-          "comment" => { "body" => "/sem-approve --enable-secrets --enable-cache", "user" => { "login" => "octocat" } }
+          "comment" => { "body" => "/sem-approve --include-secrets --enable-cache", "user" => { "login" => "octocat" } }
         }.to_json
       )
 
       expect(payload.pr_approval?).to be(true)
-      expect(payload.pr_approval_enable_secrets?).to be(true)
+      expect(payload.pr_approval_include_secrets?).to be(true)
       expect(payload.pr_approval_enable_cache?).to be(true)
     end
 
@@ -58,12 +58,12 @@ RSpec.describe RepoHost::Github::Payload do
       payload = described_class.new(
         {
           "issue" => { "number" => 45, "pull_request" => { "url" => "https://example.test/pr/45" } },
-          "comment" => { "body" => "/sem-approve --enable-cache --enable-secrets", "user" => { "login" => "octocat" } }
+          "comment" => { "body" => "/sem-approve --enable-cache --include-secrets", "user" => { "login" => "octocat" } }
         }.to_json
       )
 
       expect(payload.pr_approval?).to be(true)
-      expect(payload.pr_approval_enable_secrets?).to be(true)
+      expect(payload.pr_approval_include_secrets?).to be(true)
       expect(payload.pr_approval_enable_cache?).to be(true)
     end
 
@@ -71,12 +71,12 @@ RSpec.describe RepoHost::Github::Payload do
       payload = described_class.new(
         {
           "issue" => { "number" => 45, "pull_request" => { "url" => "https://example.test/pr/45" } },
-          "comment" => { "body" => "/sem-approve\t--enable-secrets", "user" => { "login" => "octocat" } }
+          "comment" => { "body" => "/sem-approve\t--include-secrets", "user" => { "login" => "octocat" } }
         }.to_json
       )
 
       expect(payload.pr_approval?).to be(true)
-      expect(payload.pr_approval_enable_secrets?).to be(true)
+      expect(payload.pr_approval_include_secrets?).to be(true)
       expect(payload.pr_approval_enable_cache?).to be(false)
     end
 
@@ -84,12 +84,12 @@ RSpec.describe RepoHost::Github::Payload do
       payload = described_class.new(
         {
           "issue" => { "number" => 45, "pull_request" => { "url" => "https://example.test/pr/45" } },
-          "comment" => { "body" => "/sem-approve\t--enable-secrets\t--enable-cache", "user" => { "login" => "octocat" } }
+          "comment" => { "body" => "/sem-approve\t--include-secrets\t--enable-cache", "user" => { "login" => "octocat" } }
         }.to_json
       )
 
       expect(payload.pr_approval?).to be(true)
-      expect(payload.pr_approval_enable_secrets?).to be(true)
+      expect(payload.pr_approval_include_secrets?).to be(true)
       expect(payload.pr_approval_enable_cache?).to be(true)
     end
 
@@ -97,12 +97,12 @@ RSpec.describe RepoHost::Github::Payload do
       payload = described_class.new(
         {
           "issue" => { "number" => 45, "pull_request" => { "url" => "https://example.test/pr/45" } },
-          "comment" => { "body" => "/sem-approve,--enable-secrets", "user" => { "login" => "octocat" } }
+          "comment" => { "body" => "/sem-approve,--include-secrets", "user" => { "login" => "octocat" } }
         }.to_json
       )
 
       expect(payload.pr_approval?).to be(false)
-      expect(payload.pr_approval_enable_secrets?).to be(false)
+      expect(payload.pr_approval_include_secrets?).to be(false)
       expect(payload.pr_approval_enable_cache?).to be(false)
     end
 
@@ -110,12 +110,12 @@ RSpec.describe RepoHost::Github::Payload do
       payload = described_class.new(
         {
           "issue" => { "number" => 45, "pull_request" => { "url" => "https://example.test/pr/45" } },
-          "comment" => { "body" => "/sem-approve --enable-secrets\n--enable-cache", "user" => { "login" => "octocat" } }
+          "comment" => { "body" => "/sem-approve --include-secrets\n--enable-cache", "user" => { "login" => "octocat" } }
         }.to_json
       )
 
       expect(payload.pr_approval?).to be(true)
-      expect(payload.pr_approval_enable_secrets?).to be(true)
+      expect(payload.pr_approval_include_secrets?).to be(true)
       expect(payload.pr_approval_enable_cache?).to be(false)
     end
 
@@ -128,18 +128,18 @@ RSpec.describe RepoHost::Github::Payload do
       )
 
       expect(payload.pr_approval?).to be(false)
-      expect(payload.pr_approval_enable_secrets?).to be(false)
+      expect(payload.pr_approval_include_secrets?).to be(false)
       expect(payload.pr_approval_enable_cache?).to be(false)
     end
 
     it "recognizes persisted enable option markers on pull request payload" do
       pr_payload = JSON.parse(RepoHost::Github::Responses::Payload.post_receive_hook_pull_request)
-      pr_payload["semaphore_approval_enable_secrets"] = true
+      pr_payload["semaphore_approval_include_secrets"] = true
       pr_payload["semaphore_approval_enable_cache"] = true
 
       payload = described_class.new(pr_payload.to_json)
 
-      expect(payload.pr_approval_enable_secrets?).to be(true)
+      expect(payload.pr_approval_include_secrets?).to be(true)
       expect(payload.pr_approval_enable_cache?).to be(true)
     end
 
@@ -152,7 +152,7 @@ RSpec.describe RepoHost::Github::Payload do
       )
 
       expect(payload.pr_approval?).to be(false)
-      expect(payload.pr_approval_enable_secrets?).to be(false)
+      expect(payload.pr_approval_include_secrets?).to be(false)
       expect(payload.pr_approval_enable_cache?).to be(false)
     end
   end

@@ -264,7 +264,7 @@ defmodule Zebra.Workers.JobRequestFactory.Secrets do
   end
 
   defp should_filter_forked_pr_secrets?(repo_proxy, job_type) do
-    forked_pr?(repo_proxy) and (job_type == :debug_job or !approval_enable_secrets?(repo_proxy))
+    forked_pr?(repo_proxy) and (job_type == :debug_job or !approval_include_secrets?(repo_proxy))
   end
 
   defp forked_pr?(repo_proxy) do
@@ -272,8 +272,8 @@ defmodule Zebra.Workers.JobRequestFactory.Secrets do
       repo_proxy.pr_slug != repo_proxy.repo_slug
   end
 
-  defp approval_enable_secrets?(repo_proxy) do
-    Map.get(repo_proxy, :approval_enable_secrets, false)
+  defp approval_include_secrets?(repo_proxy) do
+    Map.get(repo_proxy, :approval_include_secrets, false)
   end
 
   defp prepare_checkout_metadata(job_id, spec, repo_proxy) do
