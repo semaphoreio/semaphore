@@ -174,6 +174,15 @@ defmodule Scheduler.Actions.RunNowImpl.Test do
                )
     end
 
+    test "when repository service returns unavailable then returns UNAVAILABLE error", ctx do
+      mock_repository_service_response("unavailable")
+
+      assert {:ok, periodics} = insert_periodics(ctx.ids)
+
+      assert {:error, {:UNAVAILABLE, "GitHub API temporarily unavailable"}} =
+               RunNowImpl.run_now(run_now_params(periodics))
+    end
+
     test "when periodic is started with run_now then requester_id and triggered_by are properly set",
          ctx do
       alias Scheduler.Actions.ScheduleWfImpl
