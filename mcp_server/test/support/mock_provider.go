@@ -8,11 +8,13 @@ import (
 	loghubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub"
 	loghub2pb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub2"
 	orgpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/organization"
+	schedulerpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/periodic_scheduler"
 	pipelinepb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber.pipeline"
 	workflowpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber_w_f.workflow"
 	projecthubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/projecthub"
 	rbacpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/rbac"
 	jobpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/server_farm.job"
+	taskpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/task"
 	userpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/user"
 	featuresvc "github.com/semaphoreio/semaphore/mcp_server/pkg/service"
 )
@@ -23,12 +25,14 @@ type MockProvider struct {
 	OrganizationClient orgpb.OrganizationServiceClient
 	ProjectClient      projecthubpb.ProjectServiceClient
 	PipelineClient     pipelinepb.PipelineServiceClient
+	TaskClient         taskpb.TaskServiceClient
 	JobClient          jobpb.JobServiceClient
 	ArtifacthubClient  artifacthubpb.ArtifactServiceClient
 	LoghubClient       loghubpb.LoghubClient
 	Loghub2Client      loghub2pb.Loghub2Client
 	UserClient         userpb.UserServiceClient
 	RBACClient         rbacpb.RBACClient
+	SchedulerClient    schedulerpb.PeriodicServiceClient
 	FeaturesService    featuresvc.FeatureClient
 	Timeout            time.Duration
 }
@@ -52,6 +56,8 @@ func (m *MockProvider) Projects() projecthubpb.ProjectServiceClient { return m.P
 
 func (m *MockProvider) Pipelines() pipelinepb.PipelineServiceClient { return m.PipelineClient }
 
+func (m *MockProvider) Task() taskpb.TaskServiceClient { return m.TaskClient }
+
 func (m *MockProvider) Jobs() jobpb.JobServiceClient { return m.JobClient }
 
 func (m *MockProvider) Artifacthub() artifacthubpb.ArtifactServiceClient {
@@ -65,6 +71,8 @@ func (m *MockProvider) Loghub2() loghub2pb.Loghub2Client { return m.Loghub2Clien
 func (m *MockProvider) Users() userpb.UserServiceClient { return m.UserClient }
 
 func (m *MockProvider) RBAC() rbacpb.RBACClient { return m.RBACClient }
+
+func (m *MockProvider) Scheduler() schedulerpb.PeriodicServiceClient { return m.SchedulerClient }
 
 func (m *MockProvider) Features() featuresvc.FeatureClient {
 	if m.FeaturesService == nil {

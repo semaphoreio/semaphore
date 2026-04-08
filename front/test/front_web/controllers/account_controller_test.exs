@@ -29,6 +29,8 @@ defmodule FrontWeb.AccountControllerTest do
         |> get("/account")
 
       assert get_req_header(conn, "x-semaphore-org-id") == []
+      assert html_response(conn, 200) =~ "Danger Zone"
+      assert html_response(conn, 200) =~ "Delete account and owned organizations"
       assert html_response(conn, 200) =~ "/account/update_repo_scope/bitbucket"
       refute html_response(conn, 200) =~ "/account/update_repo_scope/github"
     end
@@ -46,6 +48,41 @@ defmodule FrontWeb.AccountControllerTest do
       assert html_response(conn, 200) =~ "GitHub"
 
       Support.Stubs.Feature.setup_feature("bitbucket", state: :ENABLED, quantity: 1)
+    end
+
+    test "when email_members feature is disabled => hides update email form", %{
+      conn: conn
+    } do
+      Support.Stubs.Feature.setup_feature("email_members", state: :HIDDEN, quantity: 0)
+
+      conn =
+        conn
+        |> get("/account")
+
+      refute html_response(conn, 200) =~ "id=\"email-form\""
+      refute html_response(conn, 200) =~ "Update Email"
+    end
+  end
+
+  describe "POST delete_with_owned_orgs" do
+    test "deletes account and redirects to destroyed account page", %{conn: conn} do
+      conn =
+        conn
+        |> post("/account/delete_with_owned_orgs")
+
+      assert redirected_to(conn) == "https://id.semaphoretest.test/destroyed_account"
+    end
+
+    test "when deletion fails => redirects back to account with alert", %{conn: conn} do
+      user = Support.Stubs.User.default()
+      Support.Stubs.User.delete(user.id)
+
+      conn =
+        conn
+        |> post("/account/delete_with_owned_orgs")
+
+      assert redirected_to(conn) == "/account"
+      assert get_flash(conn, :alert) == "Failed to delete account."
     end
   end
 
@@ -92,6 +129,14 @@ defmodule FrontWeb.AccountControllerTest do
 
       assert redirected_to(conn, 302) == "/account"
       assert get_flash(conn, :alert) =~ "Failed to update email:"
+    end
+
+    test "returns 404 when feature is disabled", %{conn: conn} do
+      Support.Stubs.Feature.setup_feature("email_members", state: :HIDDEN, quantity: 0)
+
+      conn = post(conn, "/account/change_email", %{"email" => "new@example.com"})
+
+      assert response(conn, 404)
     end
   end
 

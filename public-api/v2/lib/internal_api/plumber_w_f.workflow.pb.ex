@@ -495,27 +495,16 @@ defmodule InternalApi.PlumberWF.GetProjectIdResponse do
   field(:project_id, 2, type: :string, json_name: "projectId")
 end
 
-defmodule InternalApi.PlumberWF.CreateRequest do
+defmodule InternalApi.PlumberWF.WorkflowDeleted do
   @moduledoc false
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:project_id, 1, type: :string, json_name: "projectId")
-  field(:label, 2, type: :string)
-  field(:hook_id, 3, type: :string, json_name: "hookId")
-  field(:request_token, 4, type: :string, json_name: "requestToken")
-  field(:definition_file, 5, type: :string, json_name: "definitionFile")
-  field(:requester_id, 6, type: :string, json_name: "requesterId")
-end
-
-defmodule InternalApi.PlumberWF.CreateResponse do
-  @moduledoc false
-
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
-
-  field(:wf_id, 1, type: :string, json_name: "wfId")
-  field(:status, 2, type: InternalApi.Status)
-  field(:ppl_id, 3, type: :string, json_name: "pplId")
+  field(:workflow_id, 1, type: :string, json_name: "workflowId")
+  field(:organization_id, 2, type: :string, json_name: "organizationId")
+  field(:project_id, 3, type: :string, json_name: "projectId")
+  field(:artifact_store_id, 4, type: :string, json_name: "artifactStoreId")
+  field(:deleted_at, 5, type: Google.Protobuf.Timestamp, json_name: "deletedAt")
 end
 
 defmodule InternalApi.PlumberWF.WorkflowService.Service do
@@ -582,8 +571,6 @@ defmodule InternalApi.PlumberWF.WorkflowService.Service do
     InternalApi.PlumberWF.GetProjectIdRequest,
     InternalApi.PlumberWF.GetProjectIdResponse
   )
-
-  rpc(:Create, InternalApi.PlumberWF.CreateRequest, InternalApi.PlumberWF.CreateResponse)
 end
 
 defmodule InternalApi.PlumberWF.WorkflowService.Stub do
