@@ -285,7 +285,7 @@ GEM
       nio4r (~> 2.0)
     raabro (1.4.0)
     racc (1.8.1)
-    rack (2.2.22)
+    rack (2.2.23)
     rack-session (1.0.2)
       rack (< 3)
     rack-test (2.2.0)
@@ -530,8 +530,8 @@ DEPENDENCIES
   pg (~> 1.1)
   pry-byebug (~> 3.10, >= 3.10.1)
   puma
-  rack (~> 2.2.20)
-  rails (>= 8.0.2.1, < 8.1)
+  rack (~> 2.2.23)
+  rails (>= 8.0.4.1, < 8.1)
   retryable
   rspec-benchmark
   rspec-its
@@ -567,4 +567,4 @@ DEPENDENCIES
   xmlrpc
 
 BUNDLED WITH
-   2.5.23
+   2.6.2
