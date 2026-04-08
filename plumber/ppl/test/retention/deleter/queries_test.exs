@@ -5,6 +5,7 @@ defmodule Ppl.Retention.Deleter.QueriesTest do
 
   alias Ppl.Actions
   alias Ppl.EctoRepo
+  alias Ppl.LatestWfs.Model.LatestWfs
   alias Ppl.PplRequests.Model.PplRequests
   alias Ppl.PplRequests.Model.PplRequestsQueries
   alias Ppl.Ppls.Model.PplsQueries
@@ -202,15 +203,18 @@ defmodule Ppl.Retention.Deleter.QueriesTest do
     {:ok, _ppl} = Test.Helpers.wait_for_ppl_state(ppl_id, "done", 10_000)
     Test.Helpers.stop_all_loopers(loopers)
 
+    {:ok, ppl_req} = PplRequestsQueries.get_by_id(ppl_id)
+    wf_id = ppl_req.wf_id
+
     {:ok, ppl_blk_0} = PplBlocksQueries.get_by_id_and_index(ppl_id, 0)
     {:ok, ppl_blk_1} = PplBlocksQueries.get_by_id_and_index(ppl_id, 1)
 
-    assert {:ok, _} = PplRequestsQueries.get_by_id(ppl_id)
     assert {:ok, _} = PplsQueries.get_by_id(ppl_id)
     assert {:ok, _} = PplSubInitsQueries.get_by_id(ppl_id)
     assert {:ok, _} = PplTracesQueries.get_by_id(ppl_id)
     assert {:ok, _} = Block.describe(ppl_blk_0.block_id)
     assert {:ok, _} = Block.describe(ppl_blk_1.block_id)
+    assert latest_workflow_exists?(wf_id)
 
     set_expired(ppl_id)
 
@@ -223,6 +227,7 @@ defmodule Ppl.Retention.Deleter.QueriesTest do
     assert {:error, _} = PplRequestsQueries.get_by_id(ppl_id)
     assert {:error, _} = Block.describe(ppl_blk_0.block_id)
     assert {:error, _} = Block.describe(ppl_blk_1.block_id)
+    refute latest_workflow_exists?(wf_id)
   end
 
   # Helpers
@@ -274,5 +279,10 @@ defmodule Ppl.Retention.Deleter.QueriesTest do
       "UPDATE pipeline_requests SET expires_at = $1 WHERE id = $2",
       [expired_at(), binary_id]
     )
+  end
+
+  defp latest_workflow_exists?(wf_id) do
+    import Ecto.Query
+    from(lw in LatestWfs, where: lw.wf_id == ^wf_id) |> EctoRepo.exists?()
   end
 end
