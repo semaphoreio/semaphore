@@ -178,7 +178,7 @@ module Semaphore::GithubApp
           repositories = body["repositories"]
           raise Repositories::InvalidRepositoryListResponseError, "Missing repositories in GitHub App installation repositories response" unless repositories.is_a?(Array)
 
-          total_count = [body["total_count"].to_i, MAX_NUMBER_OF_REPOSITORIES].min
+          total_count = Repositories.parse_total_count!(body, :installation_id => @current_installation_id)
           expected_total_count ||= total_count
           raise Repositories::IncompleteRepositoryListError, "GitHub App installation repository count changed during pagination" if total_count != expected_total_count
 

@@ -80,6 +80,48 @@ module Semaphore::GithubApp
           repositories.send(:get_remote_repositories)
         end.to raise_error(described_class::IncompleteRepositoryListError, /Fetched 200 repositories, expected 399/)
       end
+
+      it "raises when total_count is missing" do
+        allow(Excon).to receive(:get).and_return(
+          instance_double(
+            Excon::Response,
+            :data => { :body => JSON.generate({ "repositories" => [{ "id" => 1, "full_name" => "acme/repo-1" }] }) },
+            :headers => {}
+          )
+        )
+
+        expect do
+          repositories.send(:get_remote_repositories)
+        end.to raise_error(described_class::InvalidRepositoryListResponseError, /installation_id=13609976/)
+      end
+
+      it "raises when total_count is not an integer" do
+        allow(Excon).to receive(:get).and_return(
+          instance_double(
+            Excon::Response,
+            :data => { :body => JSON.generate({ "total_count" => "not-a-number", "repositories" => [{ "id" => 1, "full_name" => "acme/repo-1" }] }) },
+            :headers => {}
+          )
+        )
+
+        expect do
+          repositories.send(:get_remote_repositories)
+        end.to raise_error(described_class::InvalidRepositoryListResponseError, /installation_id=13609976/)
+      end
+
+      it "raises when total_count is negative" do
+        allow(Excon).to receive(:get).and_return(
+          instance_double(
+            Excon::Response,
+            :data => { :body => JSON.generate({ "total_count" => -1, "repositories" => [{ "id" => 1, "full_name" => "acme/repo-1" }] }) },
+            :headers => {}
+          )
+        )
+
+        expect do
+          repositories.send(:get_remote_repositories)
+        end.to raise_error(described_class::InvalidRepositoryListResponseError, /installation_id=13609976/)
+      end
     end
 
     describe ".refresh" do

@@ -7,6 +7,19 @@ module Semaphore::GithubApp
     PER_PAGE = 100
     EXCON_RETRY_LIMIT = 4
 
+    def self.parse_total_count!(body, installation_id:)
+      total_count = Integer(body.fetch("total_count"))
+      if total_count.negative?
+        raise InvalidRepositoryListResponseError,
+              "Invalid total_count in GitHub App installation repositories response for installation_id=#{installation_id}"
+      end
+
+      [total_count, MAX_NUMBER_OF_REPOSITORIES].min
+    rescue KeyError, TypeError, ArgumentError
+      raise InvalidRepositoryListResponseError,
+            "Invalid total_count in GitHub App installation repositories response for installation_id=#{installation_id}"
+    end
+
     def self.refresh_by_name(organization_name)
       installation = GithubAppInstallation.find_for_organization(organization_name)
 
@@ -83,7 +96,7 @@ module Semaphore::GithubApp
         repositories = body["repositories"]
         raise InvalidRepositoryListResponseError, "Missing repositories in GitHub App installation repositories response" unless repositories.is_a?(Array)
 
-        total_count = [body["total_count"].to_i, MAX_NUMBER_OF_REPOSITORIES].min
+        total_count = self.class.parse_total_count!(body, :installation_id => installation_id)
         expected_total_count ||= total_count
         raise IncompleteRepositoryListError, "GitHub App installation repository count changed during pagination" if total_count != expected_total_count
 
