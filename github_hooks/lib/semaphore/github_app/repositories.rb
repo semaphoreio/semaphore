@@ -1,6 +1,24 @@
 module Semaphore::GithubApp
   class Repositories
+    class IncompleteRepositoryListError < StandardError; end
+    class InvalidRepositoryListResponseError < StandardError; end
+
     MAX_NUMBER_OF_REPOSITORIES = 10000
+    PER_PAGE = 100
+    EXCON_RETRY_LIMIT = 4
+
+    def self.parse_total_count!(body, installation_id:)
+      total_count = Integer(body.fetch("total_count"))
+      if total_count.negative?
+        raise InvalidRepositoryListResponseError,
+              "Invalid total_count in GitHub App installation repositories response for installation_id=#{installation_id}"
+      end
+
+      [total_count, MAX_NUMBER_OF_REPOSITORIES].min
+    rescue KeyError, TypeError, ArgumentError
+      raise InvalidRepositoryListResponseError,
+            "Invalid total_count in GitHub App installation repositories response for installation_id=#{installation_id}"
+    end
 
     def self.refresh_by_name(organization_name)
       installation = GithubAppInstallation.find_for_organization(organization_name)
@@ -62,24 +80,36 @@ module Semaphore::GithubApp
 
     def get_remote_repositories
       github_repos = []
-      page = 1
-      per_page = 100
+      expected_total_count = nil
+      next_page_url = "https://api.github.com/installation/repositories?per_page=#{PER_PAGE}&page=1"
 
-      loop do
+      while next_page_url
         response = Excon.get(
-          "https://api.github.com/installation/repositories?per_page=#{per_page}&page=#{page}",
-          :headers => {
-            "User-Agent" => "Monolith-GitHubApp-Repositories",
-            "Authorization" => "token #{token}",
-            "Accept" => "application/vnd.github.v3+json"
-          })
-        body = JSON.parse(response.data[:body])
-        total_count = [body["total_count"].to_i, MAX_NUMBER_OF_REPOSITORIES].min
+          next_page_url,
+          :headers => github_api_headers,
+          :idempotent => true,
+          :retry_limit => EXCON_RETRY_LIMIT,
+          :expects => [200]
+        )
 
-        github_repos.concat(Semaphore::GithubApp::Hook.map_repositories(body["repositories"]))
-        break if page * per_page >= total_count
-        page += 1
-        sleep 1
+        body = JSON.parse(response.data[:body])
+        repositories = body["repositories"]
+        raise InvalidRepositoryListResponseError, "Missing repositories in GitHub App installation repositories response" unless repositories.is_a?(Array)
+
+        total_count = self.class.parse_total_count!(body, :installation_id => installation_id)
+        expected_total_count ||= total_count
+        raise IncompleteRepositoryListError, "GitHub App installation repository count changed during pagination" if total_count != expected_total_count
+
+        remaining_slots = expected_total_count - github_repos.size
+        github_repos.concat(Semaphore::GithubApp::Hook.map_repositories(repositories.first(remaining_slots)))
+
+        break if github_repos.size >= expected_total_count
+
+        next_page_url = next_page_url(response.headers)
+      end
+
+      if expected_total_count.nil? || github_repos.size != expected_total_count
+        raise IncompleteRepositoryListError, "Fetched #{github_repos.size} repositories, expected #{expected_total_count || 0}"
       end
 
       github_repos
@@ -101,6 +131,14 @@ module Semaphore::GithubApp
       @token ||= get_token
     end
 
+    def github_api_headers
+      {
+        "User-Agent" => "Monolith-GitHubApp-Repositories",
+        "Authorization" => "token #{token}",
+        "Accept" => "application/vnd.github.v3+json"
+      }
+    end
+
     def client
       return unless token
 
@@ -111,6 +149,18 @@ module Semaphore::GithubApp
       token, _ = Semaphore::GithubApp::Token.installation_token(installation_id)
 
       token
+    end
+
+    def next_page_url(headers)
+      link_header = headers["Link"] || headers["link"]
+      return if link_header.to_s.empty?
+
+      link_header.split(",").each do |link|
+        url, rel = link.split(";").map(&:strip)
+        return url.delete_prefix("<").delete_suffix(">") if rel == 'rel="next"'
+      end
+
+      nil
     end
   end
 end
