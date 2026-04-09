@@ -291,7 +291,9 @@ defmodule Front.Models.Deployments do
     end
   end
 
+  @grpc_timeout 20_000
+
   defp grpc_send(channel, func, request),
-    do: func.(channel, request),
+    do: func.(channel, request, timeout: @grpc_timeout),
     after: GRPC.Stub.disconnect(channel)
 end
