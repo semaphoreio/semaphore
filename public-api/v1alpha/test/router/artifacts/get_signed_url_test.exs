@@ -191,8 +191,90 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
              }
     end
 
-    test "returns 400 when HEAD method is used for a directory", ctx do
-      assert {400, "method must be GET when path points to a directory"} =
+    test "relays backend response for directory path", ctx do
+      Support.Stubs.Artifacthub.create(ctx.job.id,
+        scope: "jobs",
+        path: "logs/a.log",
+        url: "https://localhost:9000/logs/a.log"
+      )
+
+      Support.Stubs.Artifacthub.create(ctx.job.id,
+        scope: "jobs",
+        path: "logs/sub/b.log",
+        url: "https://localhost:9000/logs/sub/b.log"
+      )
+
+      GrpcMock.stub(ArtifacthubMock, :get_signed_urls, fn req, _ ->
+        InternalApi.Artifacthub.GetSignedURLSResponse.new(
+          urls: [
+            InternalApi.Artifacthub.SignedURL.new(
+              url: "https://localhost:9000/" <> Path.basename(req.path),
+              method: 1
+            )
+          ]
+        )
+      end)
+
+      assert {200, response} =
+               signed_url(
+                 %{
+                   "scope" => "jobs",
+                   "scope_id" => ctx.job.id,
+                   "path" => "logs"
+                 },
+                 ctx.user.id
+               )
+
+      assert response == %{
+               "items" => [
+                 %{"path" => "logs", "url" => "https://localhost:9000/logs"}
+               ],
+               "page" => %{
+                 "limit" => nil,
+                 "returned" => 1,
+                 "total" => 1,
+                 "truncated" => false
+               }
+             }
+    end
+
+    test "relays backend response even when path would not exist in local listing", ctx do
+      Support.Stubs.Artifacthub.create(ctx.job.id,
+        scope: "jobs",
+        path: "logs/a.log",
+        url: "https://localhost:9000/logs/a.log"
+      )
+
+      GrpcMock.stub(ArtifacthubMock, :get_signed_urls, fn req, _ ->
+        InternalApi.Artifacthub.GetSignedURLSResponse.new(
+          urls: [
+            InternalApi.Artifacthub.SignedURL.new(
+              url: "https://localhost:9000/" <> Path.basename(req.path),
+              method: 1
+            )
+          ]
+        )
+      end)
+
+      assert {200, response} =
+               signed_url(
+                 %{
+                   "scope" => "jobs",
+                   "scope_id" => ctx.job.id,
+                   "path" => "logs/missing.log"
+                 },
+                 ctx.user.id
+               )
+
+      assert_single_item_response(
+        response,
+        "logs/missing.log",
+        "https://localhost:9000/missing.log"
+      )
+    end
+
+    test "passes HEAD method through to backend for directories", ctx do
+      assert {200, response} =
                signed_url(
                  %{
                    "scope" => "jobs",
@@ -202,6 +284,8 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
                  },
                  ctx.user.id
                )
+
+      assert_single_item_response(response, "agent/job_logs.txt.gz", @job_artifact_url)
     end
 
     test "resolves project_id from job scope_id even when request includes another project_id",

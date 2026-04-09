@@ -181,6 +181,22 @@ func (s *Server) GetSignedURL(ctx context.Context,
 	return response, nil
 }
 
+// GetSignedURLS returns signed URLs for a given object/file path or all files under a directory.
+func (s *Server) GetSignedURLS(ctx context.Context,
+	request *artifacthub.GetSignedURLSRequest) (*artifacthub.GetSignedURLSResponse, error) {
+	log.Debug("[GetSignedURLS] Received", zap.Reflect("request", request))
+
+	response := &artifacthub.GetSignedURLSResponse{}
+	urls, err := privateapi.GetSignedURLS(ctx, s.StorageClient, request.ArtifactId, request.Path, request.Method)
+	if err != nil {
+		return nil, err
+	}
+	response.Urls = urls
+
+	log.Debug("[GetSignedURLS] Sending response")
+	return response, nil
+}
+
 // ListBuckets returns (artifact store ID, bucket name) map for the list of artifact store IDs.
 func (s *Server) ListBuckets(ctx context.Context,
 	request *artifacthub.ListBucketsRequest) (*artifacthub.ListBucketsResponse, error) {

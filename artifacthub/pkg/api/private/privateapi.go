@@ -2,9 +2,13 @@ package privateapi
 
 import (
 	"context"
+	"errors"
+	"net/http"
 	"time"
 
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/api/descriptors/artifacthub"
+	artifacts "github.com/semaphoreio/semaphore/artifacthub/pkg/api/descriptors/artifacts"
+	publicapi "github.com/semaphoreio/semaphore/artifacthub/pkg/api/public"
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/db"
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/models"
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/storage"
@@ -13,6 +17,7 @@ import (
 	pathutil "github.com/semaphoreio/semaphore/artifacthub/pkg/util/path"
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/util/retry"
 	"go.uber.org/zap"
+	"google.golang.org/grpc/codes"
 	"gorm.io/gorm"
 )
 
@@ -184,21 +189,75 @@ func ListArtifactPath(ctx context.Context, client storage.Client, artifactID, p 
 }
 
 func GetSignedURL(ctx context.Context, client storage.Client, artifactID, p, m string) (string, error) {
-	a, err := models.FindArtifactByID(artifactID)
+	artifact, method, err := resolveArtifactAndMethod(artifactID, m)
 	if err != nil {
 		return "", err
 	}
 
-	method := "GET"
+	return client.SignURL(ctx, storage.SignURLOptions{
+		BucketName:         artifact.BucketName,
+		Method:             method,
+		Path:               p,
+		PathPrefix:         artifact.IdempotencyToken,
+		IncludeContentType: true,
+	})
+}
+
+// GetSignedURLS returns one or more signed URLs for a file or a directory path.
+// The generation logic is shared with the public artifact API (pull/yank directory behavior).
+func GetSignedURLS(ctx context.Context, client storage.Client, artifactID, p, m string) ([]*artifacthub.SignedURL, error) {
+	artifact, method, err := resolveArtifactAndMethod(artifactID, m)
+	if err != nil {
+		return nil, err
+	}
+
+	signedURLs, err := publicapi.GenerateSignedURLsList(ctx, client, artifact, p, method)
+	if err != nil {
+		if errors.Is(err, publicapi.ErrArtifactNotFound) {
+			return nil, log.ErrorCode(codes.NotFound, "artifact path not found", err)
+		}
+
+		return nil, err
+	}
+
+	return serializeSignedURLs(signedURLs), nil
+}
+
+func resolveArtifactAndMethod(artifactID, m string) (*models.Artifact, string, error) {
+	artifact, err := models.FindArtifactByID(artifactID)
+	if err != nil {
+		return nil, "", err
+	}
+
+	method := http.MethodGet
 	if m != "" {
 		method = m
 	}
 
-	return client.SignURL(ctx, storage.SignURLOptions{
-		BucketName:         a.BucketName,
-		Method:             method,
-		Path:               p,
-		PathPrefix:         a.IdempotencyToken,
-		IncludeContentType: true,
-	})
+	return artifact, method, nil
+}
+
+func serializeSignedURLs(signedURLs []*artifacts.SignedURL) []*artifacthub.SignedURL {
+	result := make([]*artifacthub.SignedURL, 0, len(signedURLs))
+	for _, signedURL := range signedURLs {
+		if signedURL == nil {
+			continue
+		}
+
+		result = append(result, &artifacthub.SignedURL{
+			Url:    signedURL.URL,
+			Method: convertSignedURLMethod(signedURL.Method),
+		})
+	}
+
+	return result
+}
+
+func convertSignedURLMethod(method artifacts.SignedURL_Method) artifacthub.SignedURL_Method {
+	methodValue, ok := artifacthub.SignedURL_Method_value[method.String()]
+	if !ok {
+		return artifacthub.SignedURL_GET
+	}
+
+	return artifacthub.SignedURL_Method(methodValue)
 }

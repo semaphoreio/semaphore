@@ -55,81 +55,83 @@ defmodule PipelinesAPI.Artifacts.GetSignedURL do
   defp maybe_track_lookup_failure(_result), do: :ok
 
   defp gather_signed_urls(params) do
-    case ArtifactHubClient.get_signed_url(params) do
-      {:ok, %{url: url}} ->
-        {:ok, %{items: [%{path: params["path"], url: url}], total: 1}}
-
-      {:error, {:not_found, _}} ->
-        gather_directory_signed_urls(params)
-
-      error ->
-        error
-    end
-  end
-
-  defp gather_directory_signed_urls(%{"method" => method}) when method != "GET" do
-    ToTuple.user_error("method must be GET when path points to a directory")
-  end
-
-  defp gather_directory_signed_urls(params) do
-    with {:ok, artifacts} <- list_directory_files(params),
-         total <- length(artifacts),
-         limited_artifacts <- apply_optional_limit(artifacts, params["limit"]),
-         {:ok, signed_items} <- sign_directory_files(limited_artifacts, params) do
-      {:ok, %{items: signed_items, total: total}}
-    end
-  end
-
-  defp list_directory_files(params) do
     params
-    |> Map.put("unwrap_directories", true)
-    |> ArtifactHubClient.list_path()
-    |> convert_directory_not_found()
-    |> extract_file_artifacts()
+    |> ArtifactHubClient.get_signed_urls()
+    |> process_signed_urls(params)
   end
 
-  defp convert_directory_not_found({:error, {:not_found, _}}) do
+  defp process_signed_urls({:ok, %{urls: []}}, _params) do
     ToTuple.not_found_error("Artifact not found")
   end
 
-  defp convert_directory_not_found(result), do: result
+  defp process_signed_urls({:ok, %{urls: urls}}, params) do
+    items =
+      urls
+      |> Enum.map(&signed_item(&1, params))
+      |> sort_items()
 
-  defp extract_file_artifacts({:ok, artifacts}) do
-    artifacts
-    |> Enum.reject(&Map.get(&1, :is_directory, false))
-    |> sort_artifacts()
-    |> ToTuple.ok()
+    total = length(items)
+    limited_items = apply_optional_limit(items, params["limit"])
+
+    {:ok, %{items: limited_items, total: total}}
   end
 
-  defp extract_file_artifacts(error), do: error
-
-  defp sign_directory_files(artifacts, params) do
-    artifacts
-    |> Enum.reduce_while({:ok, []}, fn artifact, {:ok, signed_items} ->
-      case sign_single_file(artifact.path, params) do
-        {:ok, signed_item} ->
-          {:cont, {:ok, [signed_item | signed_items]}}
-
-        error ->
-          {:halt, error}
-      end
-    end)
-    |> reverse_signed_items()
+  defp process_signed_urls({:error, {:not_found, _}}, _params) do
+    ToTuple.not_found_error("Artifact not found")
   end
 
-  defp sign_single_file(path, params) do
-    params
-    |> Map.put("path", path)
-    |> Map.put("method", "GET")
-    |> ArtifactHubClient.get_signed_url()
-    |> to_signed_item(path)
+  defp process_signed_urls(error, _params), do: error
+
+  defp signed_item(%{url: url}, params) do
+    %{
+      path: path_from_signed_url(url, params),
+      url: url
+    }
   end
 
-  defp to_signed_item({:ok, %{url: url}}, path), do: {:ok, %{path: path, url: url}}
-  defp to_signed_item(error, _path), do: error
+  defp path_from_signed_url(url, params) do
+    scope = Map.get(params, "scope", "")
+    scope_id = Map.get(params, "scope_id", "")
+    requested_path = Map.get(params, "path", "")
+    marker = "artifacts/#{scope}/#{scope_id}/"
 
-  defp reverse_signed_items({:ok, signed_items}), do: {:ok, Enum.reverse(signed_items)}
-  defp reverse_signed_items(error), do: error
+    url
+    |> URI.parse()
+    |> Map.get(:path, "")
+    |> to_string()
+    |> URI.decode()
+    |> String.trim_leading("/")
+    |> extract_relative_path(marker)
+    |> case do
+      nil -> requested_path
+      parsed_path -> normalize_parsed_path(parsed_path, requested_path)
+    end
+  end
+
+  defp extract_relative_path("", _marker), do: nil
+
+  defp extract_relative_path(path, marker) do
+    case String.split(path, marker, parts: 2) do
+      [_prefix, relative_path] when relative_path != "" -> relative_path
+      _ -> path
+    end
+  end
+
+  defp normalize_parsed_path(parsed_path, requested_path) do
+    cond do
+      parsed_path == "" ->
+        requested_path
+
+      String.contains?(parsed_path, "/") ->
+        parsed_path
+
+      String.contains?(requested_path, "/") ->
+        requested_path
+
+      true ->
+        parsed_path
+    end
+  end
 
   defp format_response({:ok, %{items: items, total: total}}, params) do
     limit = Map.get(params, "limit")
@@ -144,11 +146,5 @@ defmodule PipelinesAPI.Artifacts.GetSignedURL do
 
   defp format_response(error, _params), do: error
 
-  defp sort_artifacts(artifacts) do
-    Enum.sort_by(artifacts, fn artifact ->
-      artifact
-      |> Map.get(:path, "")
-      |> to_string()
-    end)
-  end
+  defp sort_items(items), do: Enum.sort_by(items, & &1.path)
 end

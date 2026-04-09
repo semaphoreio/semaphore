@@ -90,14 +90,15 @@ defmodule PipelinesAPI.Logs.Get do
              path: "agent"
            }),
          {:ok, artifact_path} <- pick_job_logs_path(artifacts),
-         {:ok, %{url: signed_url}} <-
-           ArtifactHubClient.get_signed_url(%{
+         {:ok, %{urls: signed_urls}} <-
+           ArtifactHubClient.get_signed_urls(%{
              artifact_store_id: artifact_store_id,
              scope: "jobs",
              scope_id: job.id,
              path: artifact_path,
              method: "GET"
-           }) do
+           }),
+         {:ok, signed_url} <- pick_signed_url(signed_urls) do
       conn
       |> put_resp_header("location", signed_url)
       |> send_resp(conn.status || 302, "")
@@ -129,6 +130,9 @@ defmodule PipelinesAPI.Logs.Get do
         ToTuple.not_found_error("Full log artifact not found")
     end
   end
+
+  defp pick_signed_url([%{url: url} | _]), do: {:ok, url}
+  defp pick_signed_url(_), do: ToTuple.not_found_error("Full log artifact not found")
 
   defp prepare_response(events) do
     Enum.join(['{ "events": [', Enum.join(events, ","), "] }"], "")

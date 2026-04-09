@@ -83,7 +83,7 @@ defmodule Support.Stubs.Artifacthub do
       GrpcMock.stub(ArtifacthubMock, :describe, &__MODULE__.describe/2)
       GrpcMock.stub(ArtifacthubMock, :list_path, &__MODULE__.list_path/2)
       GrpcMock.stub(ArtifacthubMock, :delete_path, &__MODULE__.delete_path/2)
-      GrpcMock.stub(ArtifacthubMock, :get_signed_url, &__MODULE__.get_signed_url/2)
+      GrpcMock.stub(ArtifacthubMock, :get_signed_urls, &__MODULE__.get_signed_urls/2)
 
       GrpcMock.stub(
         ArtifacthubMock,
@@ -144,29 +144,39 @@ defmodule Support.Stubs.Artifacthub do
       Api.ListPathResponse.new(items: items)
     end
 
-    def get_signed_url(req, _) do
+    def get_signed_urls(req, _) do
       alias InternalApi.Artifacthub, as: Api
 
       {base_paths, file_path} = split_path(req.path)
-
-      api_model =
-        InternalApi.Artifacthub.ListItem.new(%{name: Path.join(file_path), is_directory: false})
 
       urls =
         base_paths
         |> Enum.take(3)
         |> case do
           ["artifacts", scope, scope_id] ->
-            DB.filter(:artifacts, scope: scope, scope_id: scope_id, api_model: api_model)
+            DB.filter(:artifacts, scope: scope, scope_id: scope_id)
+            |> Enum.filter(fn artifact ->
+              signed_url_matches_path?(artifact.api_model, file_path)
+            end)
             |> DB.extract(:url)
+            |> Enum.reject(&is_nil/1)
+
+          _ ->
+            []
         end
 
       case urls do
         [] ->
           raise GRPC.RPCError, status: :not_found, message: "artifact path not found"
 
-        [url] ->
-          Api.GetSignedURLResponse.new(url: url)
+        _ ->
+          signed_urls =
+            urls
+            |> Enum.map(fn url ->
+              Api.SignedURL.new(url: url, method: signed_url_method(req.method))
+            end)
+
+          Api.GetSignedURLSResponse.new(urls: signed_urls)
       end
     end
 
@@ -225,6 +235,31 @@ defmodule Support.Stubs.Artifacthub do
 
           length((artifact.name |> Path.split()) -- file_path) == 1 and
             String.starts_with?(artifact.name, file <> "/")
+      end
+    end
+
+    defp signed_url_matches_path?(artifact, file_path) do
+      cond do
+        artifact.is_directory ->
+          false
+
+        file_path == [] ->
+          true
+
+        true ->
+          path = Path.join(file_path)
+          artifact.name == path or String.starts_with?(artifact.name, path <> "/")
+      end
+    end
+
+    defp signed_url_method(method) do
+      case method |> to_string() |> String.upcase() do
+        "DELETE" -> 0
+        "GET" -> 1
+        "HEAD" -> 2
+        "PUT" -> 3
+        "POST" -> 4
+        _ -> 1
       end
     end
   end
