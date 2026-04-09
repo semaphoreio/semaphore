@@ -137,57 +137,47 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
                "items" => [
                  %{"path" => "logs/a.log", "url" => "https://localhost:9000/logs/a.log"},
                  %{"path" => "logs/sub/b.log", "url" => "https://localhost:9000/logs/sub/b.log"}
-               ],
-               "page" => %{
-                 "limit" => nil,
-                 "returned" => 2,
-                 "total" => 2,
-                 "truncated" => false
-               }
+               ]
              }
     end
 
-    test "returns limited signed URL list for directory", ctx do
-      Support.Stubs.Artifacthub.create(ctx.job.id,
-        scope: "jobs",
-        path: "logs/a.log",
-        url: "https://localhost:9000/logs/a.log"
-      )
-
-      Support.Stubs.Artifacthub.create(ctx.job.id,
-        scope: "jobs",
-        path: "logs/sub/b.log",
-        url: "https://localhost:9000/logs/sub/b.log"
-      )
-
-      Support.Stubs.Artifacthub.create(ctx.job.id,
-        scope: "jobs",
-        path: "logs/c.log",
-        url: "https://localhost:9000/logs/c.log"
-      )
+    test "preserves backend order for directory signed URLs", ctx do
+      GrpcMock.stub(ArtifacthubMock, :get_signed_urls, fn _req, _ ->
+        InternalApi.Artifacthub.GetSignedURLSResponse.new(
+          urls: [
+            InternalApi.Artifacthub.SignedURL.new(
+              url: "https://localhost:9000/artifacts/jobs/#{ctx.job.id}/logs/z.log",
+              method: 1
+            ),
+            InternalApi.Artifacthub.SignedURL.new(
+              url: "https://localhost:9000/artifacts/jobs/#{ctx.job.id}/logs/a.log",
+              method: 1
+            )
+          ]
+        )
+      end)
 
       assert {200, response} =
                signed_url(
                  %{
                    "scope" => "jobs",
                    "scope_id" => ctx.job.id,
-                   "path" => "logs",
-                   "limit" => "2"
+                   "path" => "logs"
                  },
                  ctx.user.id
                )
 
       assert response == %{
                "items" => [
-                 %{"path" => "logs/a.log", "url" => "https://localhost:9000/logs/a.log"},
-                 %{"path" => "logs/c.log", "url" => "https://localhost:9000/logs/c.log"}
-               ],
-               "page" => %{
-                 "limit" => 2,
-                 "returned" => 2,
-                 "total" => 3,
-                 "truncated" => true
-               }
+                 %{
+                   "path" => "logs/z.log",
+                   "url" => "https://localhost:9000/artifacts/jobs/#{ctx.job.id}/logs/z.log"
+                 },
+                 %{
+                   "path" => "logs/a.log",
+                   "url" => "https://localhost:9000/artifacts/jobs/#{ctx.job.id}/logs/a.log"
+                 }
+               ]
              }
     end
 
@@ -228,13 +218,7 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
       assert response == %{
                "items" => [
                  %{"path" => "logs", "url" => "https://localhost:9000/logs"}
-               ],
-               "page" => %{
-                 "limit" => nil,
-                 "returned" => 1,
-                 "total" => 1,
-                 "truncated" => false
-               }
+               ]
              }
     end
 
@@ -467,20 +451,6 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
                signed_url_raw(base_query <> "&method[]=GET", ctx.user.id, false)
     end
 
-    test "returns 400 for invalid limit", ctx do
-      assert {400, "limit must be a positive integer"} =
-               signed_url(
-                 %{
-                   "scope" => "jobs",
-                   "scope_id" => ctx.job.id,
-                   "path" => "agent/job_logs.txt.gz",
-                   "limit" => "0"
-                 },
-                 ctx.user.id,
-                 false
-               )
-    end
-
     test "returns 401 when user has no artifact permission", ctx do
       GrpcMock.stub(RBACMock, :list_user_permissions, fn _, _ ->
         InternalApi.RBAC.ListUserPermissionsResponse.new(
@@ -568,13 +538,7 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
     assert response == %{
              "items" => [
                %{"path" => path, "url" => url}
-             ],
-             "page" => %{
-               "limit" => nil,
-               "returned" => 1,
-               "total" => 1,
-               "truncated" => false
-             }
+             ]
            }
   end
 

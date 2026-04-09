@@ -134,35 +134,7 @@ defmodule PipelinesAPI.Artifacts.ListTest do
              ]
     end
 
-    test "returns paginated response using limit parameter", ctx do
-      Support.Stubs.Artifacthub.create(ctx.job.id,
-        scope: "jobs",
-        path: "agent/extra.log",
-        url: "https://localhost:9000/agent/extra.log"
-      )
-
-      assert {200, response} =
-               list_artifacts(
-                 %{
-                   "scope" => "jobs",
-                   "scope_id" => ctx.job.id,
-                   "path" => "agent",
-                   "limit" => "1"
-                 },
-                 ctx.user.id
-               )
-
-      assert length(response["artifacts"]) == 1
-
-      assert response["page"] == %{
-               "limit" => 1,
-               "returned" => 1,
-               "total" => 2,
-               "truncated" => true
-             }
-    end
-
-    test "returns all artifacts by default when limit is omitted", ctx do
+    test "returns all artifacts in the selected path", ctx do
       Support.Stubs.Artifacthub.create(ctx.job.id,
         scope: "jobs",
         path: "agent/extra.log",
@@ -180,35 +152,37 @@ defmodule PipelinesAPI.Artifacts.ListTest do
                )
 
       assert length(response["artifacts"]) == 2
-
-      assert response["page"] == %{
-               "limit" => nil,
-               "returned" => 2,
-               "total" => 2,
-               "truncated" => false
-             }
     end
 
-    test "sorts artifacts deterministically before truncating with limit", ctx do
-      Support.Stubs.Artifacthub.create(ctx.job.id,
-        scope: "jobs",
-        path: "agent/z.log",
-        url: "https://localhost:9000/agent/z.log"
-      )
-
-      Support.Stubs.Artifacthub.create(ctx.job.id,
-        scope: "jobs",
-        path: "agent/a.log",
-        url: "https://localhost:9000/agent/a.log"
-      )
+    test "preserves backend artifact order", ctx do
+      GrpcMock.stub(ArtifacthubMock, :list_path, fn _req, _ ->
+        InternalApi.Artifacthub.ListPathResponse.new(
+          items: [
+            InternalApi.Artifacthub.ListItem.new(
+              name: "artifacts/jobs/#{ctx.job.id}/agent/z.log",
+              is_directory: false,
+              size: 0
+            ),
+            InternalApi.Artifacthub.ListItem.new(
+              name: "artifacts/jobs/#{ctx.job.id}/agent/a.log",
+              is_directory: false,
+              size: 0
+            ),
+            InternalApi.Artifacthub.ListItem.new(
+              name: "artifacts/jobs/#{ctx.job.id}/agent/job_logs.txt.gz",
+              is_directory: false,
+              size: 0
+            )
+          ]
+        )
+      end)
 
       assert {200, response} =
                list_artifacts(
                  %{
                    "scope" => "jobs",
                    "scope_id" => ctx.job.id,
-                   "path" => "agent",
-                   "limit" => "1"
+                   "path" => "agent"
                  },
                  ctx.user.id
                )
@@ -216,31 +190,23 @@ defmodule PipelinesAPI.Artifacts.ListTest do
       assert response["artifacts"] == [
                %{
                  "is_directory" => false,
+                 "name" => "z.log",
+                 "path" => "agent/z.log",
+                 "size" => 0
+               },
+               %{
+                 "is_directory" => false,
                  "name" => "a.log",
                  "path" => "agent/a.log",
                  "size" => 0
+               },
+               %{
+                 "is_directory" => false,
+                 "name" => "job_logs.txt.gz",
+                 "path" => "agent/job_logs.txt.gz",
+                 "size" => 0
                }
              ]
-
-      assert response["page"] == %{
-               "limit" => 1,
-               "returned" => 1,
-               "total" => 3,
-               "truncated" => true
-             }
-    end
-
-    test "returns 400 for invalid limit", ctx do
-      assert {400, "limit must be a positive integer"} =
-               list_artifacts(
-                 %{
-                   "scope" => "jobs",
-                   "scope_id" => ctx.job.id,
-                   "limit" => "0"
-                 },
-                 ctx.user.id,
-                 false
-               )
     end
 
     test "resolves project_id from job scope_id even when request includes another project_id",

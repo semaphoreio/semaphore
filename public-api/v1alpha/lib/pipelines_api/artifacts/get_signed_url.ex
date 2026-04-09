@@ -14,15 +14,12 @@ defmodule PipelinesAPI.Artifacts.GetSignedURL do
 
   import PipelinesAPI.Artifacts.Common,
     only: [
-      apply_optional_limit: 2,
-      build_page: 3,
       get_artifact_store_id: 2,
-      normalize_optional_limit: 1,
       validate_request_params: 3,
       resolve_project_id_from_scope: 2
     ]
 
-  @enabled_fields ~w(scope scope_id path method limit)
+  @enabled_fields ~w(scope scope_id path method)
 
   plug(:verify_params)
   plug(:resolve_project_id_from_scope)
@@ -45,7 +42,6 @@ defmodule PipelinesAPI.Artifacts.GetSignedURL do
   def verify_params(conn, _opts) do
     conn
     |> validate_request_params(@enabled_fields, require_path: true, validate_method: true)
-    |> normalize_optional_limit()
   end
 
   defp maybe_track_lookup_failure({:error, _}) do
@@ -68,12 +64,8 @@ defmodule PipelinesAPI.Artifacts.GetSignedURL do
     items =
       urls
       |> Enum.map(&signed_item(&1, params))
-      |> sort_items()
 
-    total = length(items)
-    limited_items = apply_optional_limit(items, params["limit"])
-
-    {:ok, %{items: limited_items, total: total}}
+    {:ok, %{items: items}}
   end
 
   defp process_signed_urls({:error, {:not_found, _}}, _params) do
@@ -133,18 +125,7 @@ defmodule PipelinesAPI.Artifacts.GetSignedURL do
     end
   end
 
-  defp format_response({:ok, %{items: items, total: total}}, params) do
-    limit = Map.get(params, "limit")
-    returned = length(items)
-
-    {:ok,
-     %{
-       items: items,
-       page: build_page(limit, returned, total)
-     }}
-  end
+  defp format_response({:ok, %{items: items}}, _params), do: {:ok, %{items: items}}
 
   defp format_response(error, _params), do: error
-
-  defp sort_items(items), do: Enum.sort_by(items, & &1.path)
 end

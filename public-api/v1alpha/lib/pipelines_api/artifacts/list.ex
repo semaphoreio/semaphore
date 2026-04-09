@@ -13,15 +13,12 @@ defmodule PipelinesAPI.Artifacts.List do
 
   import PipelinesAPI.Artifacts.Common,
     only: [
-      apply_optional_limit: 2,
-      build_page: 3,
       get_artifact_store_id: 2,
-      normalize_optional_limit: 1,
       validate_request_params: 3,
       resolve_project_id_from_scope: 2
     ]
 
-  @enabled_fields ~w(scope scope_id path limit)
+  @enabled_fields ~w(scope scope_id path)
 
   plug(:verify_params)
   plug(:resolve_project_id_from_scope)
@@ -44,32 +41,16 @@ defmodule PipelinesAPI.Artifacts.List do
   def verify_params(conn, _opts) do
     conn
     |> validate_request_params(@enabled_fields, [])
-    |> normalize_optional_limit()
   end
 
-  defp format_response({:ok, artifacts}, params) do
-    limit = Map.get(params, "limit")
-    sorted_artifacts = sort_artifacts(artifacts)
-    limited_artifacts = apply_optional_limit(sorted_artifacts, limit)
-    returned = length(limited_artifacts)
-    total = length(sorted_artifacts)
-
+  defp format_response({:ok, artifacts}, _params) do
     {:ok,
      %{
-       artifacts: limited_artifacts,
-       page: build_page(limit, returned, total)
+       artifacts: artifacts
      }}
   end
 
   defp format_response(error, _params), do: error
-
-  defp sort_artifacts(artifacts) do
-    Enum.sort_by(artifacts, fn artifact ->
-      artifact
-      |> Map.get(:path, "")
-      |> to_string()
-    end)
-  end
 
   defp maybe_track_lookup_failure({:error, _}) do
     Metrics.increment("PipelinesAPI.router", ["artifacts_list_lookup_failed"])
