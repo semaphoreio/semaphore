@@ -301,7 +301,7 @@ describe("Block", () => {
           "task": {
             "agent": {
               "machine": {
-                "os_image": "ubuntu2004",
+                "os_image": "ubuntu2404",
                 "type": "e1-standard-2"
               }
             },

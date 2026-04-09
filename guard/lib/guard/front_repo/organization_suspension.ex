@@ -8,7 +8,7 @@ defmodule Guard.FrontRepo.OrganizationSuspension do
   alias InternalApi.Organization.Suspension.Reason
 
   schema "organization_suspensions" do
-    field(:reason, Ecto.Enum, values: [Reason.key(0), Reason.key(1), Reason.key(2)])
+    field(:reason, Ecto.Enum, values: [Reason.key(0), Reason.key(1), Reason.key(2), Reason.key(3)])
 
     field(:origin, :string)
     field(:description, :string)

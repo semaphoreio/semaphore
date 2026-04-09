@@ -8,6 +8,44 @@ Thank you for using Semaphore!
 We continuously deploy changes that improve our product for our customers.
 This page is updated on a weekly basis.
 
+### Week of April 6 2026
+
+**(Improved) macos_xcode26 image update**
+
+- Name: macos-xcode26
+- Availability: a2-standard-4 agent type
+
+**(New)** New packages:
+
+- Xcode 26.4
+- iOS simulator 26.4
+
+**(Updated)** Updated packages:
+- macOS 26 BuildVersion  25C56 -> 26.4
+- (System) Ruby          3.4.8 -> 4.0.2
+- Flutter                3.38.5 -> 3.41.6
+- Homebrew               5.0.6 -> 5.1.1
+- Fastlane               2.30.0 -> 2.232.2
+- Postgres               14.20 -> 18.3
+- NodeJS                 24.11.0 -> 24.14.1 
+
+**(Removed)** Removed packages:
+- Simulator versions below 26.3
+
+
+### Week of March 23 2026
+
+**(Improved) Ubuntu 24.04 image update**
+
+**(New)** New packages:
+
+- .NET SDK: 10.0.104
+- PowerShell: 7.6.0
+- Edge: 146.0.3856.72
+- EdgeDriver: 146.0.3856.72
+
+To learn more about this image, check our [Ubuntu 24.04 page](https://docs.semaphoreci.com/reference/os-ubuntu-images/ubuntu-2404-image/).
+
 ### Week of February 9 2026
 
 **(Improved) Ubuntu 24.04 image update**

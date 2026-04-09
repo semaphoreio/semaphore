@@ -64,6 +64,18 @@ module Semaphore::GithubApp
           described_class.new.perform(installation_id)
         end.to raise_error(LowRateLimitError, /rate limit too low/i)
       end
+
+      it "logs and reraises incomplete repository list errors" do
+        error = Repositories::IncompleteRepositoryListError.new("Fetched 300 repositories, expected 399")
+        allow(Repositories).to receive(:refresh).with(installation_id).and_raise(error)
+
+        expect(Rails.logger).to receive(:info).with(/#{installation_id}: Start/)
+        expect(Rails.logger).to receive(:info).with(/#{installation_id}: Incomplete repository list .*Fetched 300 repositories, expected 399/)
+
+        expect do
+          described_class.new.perform(installation_id)
+        end.to raise_error(Repositories::IncompleteRepositoryListError, /Fetched 300 repositories, expected 399/)
+      end
     end
 
     describe "sidekiq_retries_exhausted" do
