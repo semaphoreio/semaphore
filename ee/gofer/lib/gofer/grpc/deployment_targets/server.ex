@@ -276,7 +276,8 @@ defmodule Gofer.Grpc.DeploymentTargets.Server do
     end
   end
 
-  defp warm_roles_cache(targets, requester_id) when is_binary(requester_id) and requester_id != "" do
+  defp warm_roles_cache(targets, requester_id)
+       when is_binary(requester_id) and requester_id != "" do
     role_ids =
       targets
       |> Enum.flat_map(fn %{deployment: d} -> d.subject_rules end)
