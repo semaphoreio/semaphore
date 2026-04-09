@@ -93,10 +93,14 @@ defmodule Front.Models.Deployments do
       |> grpc_send()
     end
 
+    @grpc_timeout 20_000
+
     defp grpc_send(request) do
       endpoint = Application.fetch_env!(:front, :gofer_grpc_endpoint)
 
-      case Front.Models.Deployments.send(endpoint, request_to_func(request), request) do
+      case Front.Models.Deployments.send(endpoint, request_to_func(request), request,
+             timeout: @grpc_timeout
+           ) do
         {:ok, %{targets: targets}} -> {:ok, targets}
         {:ok, %{target: target}} -> {:ok, target}
         {:ok, %{target_id: target_id}} -> {:ok, target_id}
@@ -282,16 +286,20 @@ defmodule Front.Models.Deployments do
 
   # gRPC client
 
-  def send(endpoint, func, request) do
+  def send(endpoint, func, request, opts \\ []) do
     with {:ok, channel} <- GRPC.Stub.connect(endpoint),
-         {:ok, response} <- grpc_send(channel, func, request) do
+         {:ok, response} <- do_grpc_send(channel, func, request, opts) do
       Util.Proto.to_map(response)
     else
       {:error, _reason} = error -> error
     end
   end
 
-  defp grpc_send(channel, func, request),
+  defp do_grpc_send(channel, func, request, []),
     do: func.(channel, request),
+    after: GRPC.Stub.disconnect(channel)
+
+  defp do_grpc_send(channel, func, request, opts),
+    do: func.(channel, request, opts),
     after: GRPC.Stub.disconnect(channel)
 end
