@@ -21,6 +21,7 @@ config :guard, :restricted_org_usernames, System.get_env("RESTRICTED_ORG_USERNAM
 
 config :guard, Guard.Repo,
   adapter: Ecto.Adapters.Postgres,
+  prepare: :unnamed,
   database: System.get_env("POSTGRES_DB_NAME") || "guard",
   username: System.get_env("POSTGRES_DB_USER") || "postgres",
   password: System.get_env("POSTGRES_DB_PASSWORD") || "the-cake-is-a-lie",
@@ -30,6 +31,7 @@ config :guard, Guard.Repo,
 
 config :guard, Guard.FrontRepo,
   adapter: Ecto.Adapters.Postgres,
+  prepare: :unnamed,
   database: System.get_env("POSTGRES_FRONT_DB_NAME") || "front",
   username: System.get_env("POSTGRES_DB_USER") || "postgres",
   password: System.get_env("POSTGRES_DB_PASSWORD") || "the-cake-is-a-lie",
@@ -40,6 +42,7 @@ config :guard, Guard.FrontRepo,
 if System.get_env("START_INSTANCE_CONFIG") == "true" do
   config :guard, Guard.InstanceConfigRepo,
     adapter: Ecto.Adapters.Postgres,
+    prepare: :unnamed,
     database: System.get_env("POSTGRES_GIT_INTEGRATION_DB_NAME") || "integration_configurations",
     username: System.get_env("POSTGRES_DB_USER") || "postgres",
     password: System.get_env("POSTGRES_DB_PASSWORD") || "the-cake-is-a-lie",
