@@ -1,6 +1,6 @@
 module github.com/semaphoreio/semaphore/artifacthub
 
-go 1.24.0
+go 1.25
 
 require (
 	cloud.google.com/go/storage v1.36.0
@@ -17,6 +17,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	go.uber.org/zap v1.25.0
 	google.golang.org/api v0.160.0
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217
 	google.golang.org/grpc v1.79.3
 	google.golang.org/protobuf v1.36.10
 	gorm.io/driver/postgres v1.5.2
@@ -65,7 +66,6 @@ require (
 	golang.org/x/time v0.5.0 // indirect
 	google.golang.org/genproto v0.0.0-20240205150955-31a09d347014 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20251202230838-ff82c1b0f217 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217 // indirect
 	gopkg.in/alexcesaro/statsd.v2 v2.0.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
