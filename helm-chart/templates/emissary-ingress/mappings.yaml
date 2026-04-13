@@ -233,6 +233,7 @@ spec:
   rewrite: ""
   service: rbac-okta-scim-http-api.{{ .Release.Namespace }}:4002
   precedence: 100
+  timeout_ms: 30000
 ---
 {{- end }}
 apiVersion: getambassador.io/v3alpha1
