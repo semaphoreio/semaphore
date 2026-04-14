@@ -3,6 +3,8 @@ defmodule PipelinesAPI.UserApiClient do
     Module is used for communication with user API service over gRPC.
   """
 
+  require Logger
+
   alias InternalApi.User.DescribeManyRequest
   alias InternalApi.User.DescribeByEmailRequest
   alias InternalApi.User.UserService.Stub
