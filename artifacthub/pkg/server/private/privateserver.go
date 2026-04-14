@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	recovery "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
@@ -134,7 +135,14 @@ func (s *Server) ListPath(ctx context.Context,
 	log.Debug("[ListPath] Received", zap.Reflect("request", request))
 
 	response := &artifacthub.ListPathResponse{}
-	is, err := privateapi.ListArtifactPath(ctx, s.StorageClient, request.ArtifactId, request.Path, !request.UnwrapDirectories)
+	is, err := privateapi.ListArtifactPath(
+		ctx,
+		s.StorageClient,
+		request.ArtifactId,
+		request.Path,
+		!request.UnwrapDirectories,
+		request.Limit,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -178,6 +186,37 @@ func (s *Server) GetSignedURL(ctx context.Context,
 	response.Url = url
 
 	log.Debug("[GetSignedURL] Sending response")
+	return response, nil
+}
+
+// GetSignedURLS returns signed URLs for a given object/file path or all files under a directory.
+func (s *Server) GetSignedURLS(ctx context.Context,
+	request *artifacthub.GetSignedURLSRequest) (*artifacthub.GetSignedURLSResponse, error) {
+	log.Debug("[GetSignedURLS] Received", zap.Reflect("request", request))
+
+	path := strings.TrimSpace(request.GetPath())
+	if path == "" {
+		return nil, log.ErrorCode(codes.InvalidArgument, "artifact path is required", nil)
+	}
+	if strings.HasPrefix(path, "/") {
+		return nil, log.ErrorCode(codes.InvalidArgument, "absolute artifact paths are not allowed", nil)
+	}
+
+	response := &artifacthub.GetSignedURLSResponse{}
+	urls, err := privateapi.GetSignedURLS(
+		ctx,
+		s.StorageClient,
+		request.ArtifactId,
+		path,
+		request.Method,
+		request.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	response.Urls = urls
+
+	log.Debug("[GetSignedURLS] Sending response")
 	return response, nil
 }
 
