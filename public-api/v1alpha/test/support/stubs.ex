@@ -81,6 +81,7 @@ defmodule Support.Stubs do
       "project.scheduler.manage",
       "project.scheduler.run_manually",
       "project.scheduler.view",
+      "project.artifacts.view",
       "project.deployment_targets.view",
       "project.deployment_targets.manage"
     ]
