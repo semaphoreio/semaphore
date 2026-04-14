@@ -83,7 +83,7 @@ defmodule Support.Stubs.Artifacthub do
       GrpcMock.stub(ArtifacthubMock, :describe, &__MODULE__.describe/2)
       GrpcMock.stub(ArtifacthubMock, :list_path, &__MODULE__.list_path/2)
       GrpcMock.stub(ArtifacthubMock, :delete_path, &__MODULE__.delete_path/2)
-      GrpcMock.stub(ArtifacthubMock, :get_signed_url, &__MODULE__.get_signed_url/2)
+      GrpcMock.stub(ArtifacthubMock, :get_signed_urls, &__MODULE__.get_signed_urls/2)
 
       GrpcMock.stub(
         ArtifacthubMock,
@@ -136,47 +136,53 @@ defmodule Support.Stubs.Artifacthub do
             DB.filter(:artifacts, scope: scope, scope_id: scope_id)
             |> DB.extract(:api_model)
             |> Enum.filter(fn artifact ->
-              file_path
-              |> case do
-                file_path when file_path == [] ->
-                  path_length = Path.split(artifact.name) |> length()
-                  path_length == 1
-
-                file_path ->
-                  file = Path.join(file_path)
-
-                  length((artifact.name |> Path.split()) -- file_path) == 1 and
-                    String.starts_with?(artifact.name, file <> "/")
-              end
+              artifact_matches_path?(artifact, file_path, req.unwrap_directories)
+            end)
+            |> Enum.map(fn artifact ->
+              with_scope_item_name(artifact, scope, scope_id)
             end)
             |> Enum.uniq()
         end
+        |> enforce_limit!(req.limit)
 
       Api.ListPathResponse.new(items: items)
     end
 
-    def get_signed_url(req, _) do
+    def get_signed_urls(req, _) do
       alias InternalApi.Artifacthub, as: Api
 
       {base_paths, file_path} = split_path(req.path)
 
-      api_model =
-        InternalApi.Artifacthub.ListItem.new(%{name: Path.join(file_path), is_directory: false})
-
-      url =
+      urls =
         base_paths
         |> Enum.take(3)
         |> case do
           ["artifacts", scope, scope_id] ->
-            DB.filter(:artifacts, scope: scope, scope_id: scope_id, api_model: api_model)
+            DB.filter(:artifacts, scope: scope, scope_id: scope_id)
+            |> Enum.filter(fn artifact ->
+              signed_url_matches_path?(artifact.api_model, file_path)
+            end)
             |> DB.extract(:url)
-        end
-        |> case do
-          [] -> "http://localhost:9000/non_existent_file"
-          [url] -> url
-        end
+            |> Enum.reject(&is_nil/1)
 
-      Api.GetSignedURLResponse.new(url: url)
+          _ ->
+            []
+        end
+        |> enforce_limit!(req.limit)
+
+      case urls do
+        [] ->
+          raise GRPC.RPCError, status: :not_found, message: "artifact path not found"
+
+        _ ->
+          signed_urls =
+            urls
+            |> Enum.map(fn url ->
+              Api.SignedURL.new(url: url, method: signed_url_method(req.method))
+            end)
+
+          Api.GetSignedURLSResponse.new(urls: signed_urls)
+      end
     end
 
     def update_retention_policy(req, _) do
@@ -208,6 +214,79 @@ defmodule Support.Stubs.Artifacthub do
       path
       |> Path.split()
       |> Enum.split(3)
+    end
+
+    defp artifact_matches_path?(artifact, file_path, true) do
+      cond do
+        artifact.is_directory ->
+          false
+
+        file_path == [] ->
+          true
+
+        true ->
+          String.starts_with?(artifact.name, Path.join(file_path) <> "/")
+      end
+    end
+
+    defp artifact_matches_path?(artifact, file_path, false) do
+      case file_path do
+        [] ->
+          path_length = Path.split(artifact.name) |> length()
+          path_length == 1
+
+        _ ->
+          file = Path.join(file_path)
+
+          length((artifact.name |> Path.split()) -- file_path) == 1 and
+            String.starts_with?(artifact.name, file <> "/")
+      end
+    end
+
+    defp signed_url_matches_path?(artifact, file_path) do
+      cond do
+        artifact.is_directory ->
+          false
+
+        file_path == [] ->
+          true
+
+        true ->
+          path = Path.join(file_path)
+          artifact.name == path or String.starts_with?(artifact.name, path <> "/")
+      end
+    end
+
+    defp signed_url_method(method) do
+      case method |> to_string() |> String.upcase() do
+        "GET" -> InternalApi.Artifacthub.SignedURL.Method.value(:GET)
+        "DELETE" -> InternalApi.Artifacthub.SignedURL.Method.value(:DELETE)
+        "HEAD" -> InternalApi.Artifacthub.SignedURL.Method.value(:HEAD)
+        "PUT" -> InternalApi.Artifacthub.SignedURL.Method.value(:PUT)
+        "POST" -> InternalApi.Artifacthub.SignedURL.Method.value(:POST)
+        _ -> InternalApi.Artifacthub.SignedURL.Method.value(:GET)
+      end
+    end
+
+    defp enforce_limit!(items, limit)
+         when is_integer(limit) and limit > 0 and is_list(items) and length(items) > limit do
+      raise GRPC.RPCError,
+        status: :failed_precondition,
+        message: "path resolves to too many files; narrow the path"
+    end
+
+    defp enforce_limit!(items, _limit), do: items
+
+    defp with_scope_item_name(artifact, scope, scope_id) do
+      scoped_name =
+        Path.join([
+          "artifacts",
+          scope,
+          scope_id,
+          artifact.name |> to_string() |> String.trim_leading("/")
+        ])
+
+      %{artifact | name: scoped_name}
     end
   end
 end

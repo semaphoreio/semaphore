@@ -9,7 +9,9 @@ defmodule PipelinesAPI.ArtifactHubClient do
     ArtifactService,
     UpdateRetentionPolicyRequest,
     RetentionPolicy,
-    DescribeRequest
+    DescribeRequest,
+    ListPathRequest,
+    GetSignedURLSRequest
   }
 
   alias Util.Proto
@@ -20,8 +22,12 @@ defmodule PipelinesAPI.ArtifactHubClient do
   @one_week 7 * 24 * 3600
   @one_month 30 * 24 * 3600
   @one_year 365 * 24 * 3600
+  @max_items 1000
+
+  def max_items, do: @max_items
 
   defp url(), do: System.get_env("ARTIFACTS_HUB_URL")
+
   defp opts(), do: [{:timeout, Application.get_env(:pipelines_api, :grpc_timeout)}]
 
   # Describe
@@ -230,4 +236,273 @@ defmodule PipelinesAPI.ArtifactHubClient do
     Logger.error("Error on #{action}: #{inspect(error)}")
     error |> Log.internal_error(action, "ArtifactHub")
   end
+
+  # List Path
+
+  def list_path(params) do
+    Metrics.benchmark("PipelinesAPI.artifacts_hub_client", ["list_path"], fn ->
+      params
+      |> form_list_path_request()
+      |> resolve_list_path(params)
+    end)
+  end
+
+  defp resolve_list_path({:ok, req}, params) do
+    req
+    |> do_list_path()
+    |> finalize_list_path_response(params)
+  end
+
+  defp resolve_list_path(error, _params), do: error
+
+  defp finalize_list_path_response({:ok, response}, params),
+    do: serialize_list_response(response, params)
+
+  defp finalize_list_path_response(error, _params), do: error
+
+  defp form_list_path_request(params) do
+    %{
+      artifact_id: map_get(params, "artifact_store_id"),
+      path:
+        request_path(
+          map_get(params, "scope"),
+          map_get(params, "scope_id"),
+          map_get(params, "path") || ""
+        ),
+      unwrap_directories: false,
+      limit: @max_items
+    }
+    |> ListPathRequest.new()
+    |> ToTuple.ok()
+  catch
+    error -> error
+  end
+
+  defp do_list_path(request) do
+    result =
+      Wormhole.capture(__MODULE__, :list_path_, [request], stacktrace: true, skip_log: true)
+
+    case result do
+      {:ok, result} -> process_simple_response(result, "list_path")
+      {:error, reason} -> process_simple_response({:error, reason}, "list_path")
+    end
+  end
+
+  def list_path_(list_path_request) do
+    {:ok, channel} = GRPC.Stub.connect(url())
+
+    Metrics.benchmark("PipelinesAPI.artifacts_hub_client.grpc_client", ["list_path"], fn ->
+      channel
+      |> ArtifactService.Stub.list_path(list_path_request, opts())
+    end)
+  end
+
+  defp serialize_list_response(response, params) do
+    scope = map_get(params, "scope")
+    scope_id = map_get(params, "scope_id")
+    relative_path = map_get(params, "path") || ""
+
+    case serialize_list_items(response.items, scope, scope_id) do
+      {:ok, items} ->
+        if items == [] and relative_path != "" do
+          ToTuple.not_found_error("Artifact path not found")
+        else
+          ToTuple.ok(items)
+        end
+
+      error ->
+        error
+    end
+  end
+
+  # Signed URLs
+
+  def get_signed_urls(params) do
+    Metrics.benchmark("PipelinesAPI.artifacts_hub_client", ["get_signed_urls"], fn ->
+      params
+      |> form_get_signed_urls_request()
+      |> resolve_get_signed_urls()
+    end)
+  end
+
+  defp resolve_get_signed_urls({:ok, req}) do
+    req
+    |> do_get_signed_urls()
+    |> finalize_get_signed_urls_response()
+  end
+
+  defp resolve_get_signed_urls(error), do: error
+
+  defp finalize_get_signed_urls_response({:ok, response}) do
+    urls =
+      response.urls
+      |> Enum.map(fn signed_url ->
+        %{url: signed_url.url, method: signed_url.method}
+      end)
+
+    {:ok, %{urls: urls}}
+  end
+
+  defp finalize_get_signed_urls_response(error), do: error
+
+  defp form_get_signed_urls_request(params) do
+    %{
+      artifact_id: map_get(params, "artifact_store_id"),
+      path:
+        request_path(
+          map_get(params, "scope"),
+          map_get(params, "scope_id"),
+          map_get(params, "path") || ""
+        ),
+      method: map_get(params, "method") || "GET",
+      limit: @max_items
+    }
+    |> GetSignedURLSRequest.new()
+    |> ToTuple.ok()
+  catch
+    error -> error
+  end
+
+  defp do_get_signed_urls(request) do
+    result =
+      Wormhole.capture(__MODULE__, :get_signed_urls_, [request], stacktrace: true, skip_log: true)
+
+    case result do
+      {:ok, result} -> process_simple_response(result, "get_signed_urls")
+      {:error, reason} -> process_simple_response({:error, reason}, "get_signed_urls")
+    end
+  end
+
+  def get_signed_urls_(signed_urls_request) do
+    {:ok, channel} = GRPC.Stub.connect(url())
+
+    Metrics.benchmark("PipelinesAPI.artifacts_hub_client.grpc_client", ["get_signed_urls"], fn ->
+      channel
+      |> ArtifactService.Stub.get_signed_urls(signed_urls_request, opts())
+    end)
+  end
+
+  # Utility
+
+  defp process_simple_response({:ok, response}, _action), do: {:ok, response}
+
+  defp process_simple_response(
+         {:error, _error = %GRPC.RPCError{message: message, status: status}},
+         action
+       ) do
+    cond do
+      status == 9 ->
+        ToTuple.user_error(message)
+
+      status == 3 ->
+        ToTuple.user_error(message)
+
+      status == 5 ->
+        ToTuple.not_found_error("Artifact not found")
+
+      true ->
+        Log.internal_error(message, action, "ArtifactHub")
+    end
+  end
+
+  defp process_simple_response({:error, error}, action) do
+    Logger.error("Error on #{action}: #{inspect(error)}")
+    error |> Log.internal_error(action, "ArtifactHub")
+  end
+
+  defp process_simple_response(error, action) do
+    Logger.error("Error on #{action}: #{inspect(error)}")
+    error |> Log.internal_error(action, "ArtifactHub")
+  end
+
+  defp request_path(scope, scope_id, relative_path) do
+    relative_path = relative_path |> to_string() |> String.trim_leading("/")
+    base_path = "artifacts/#{scope}/#{scope_id}/"
+
+    if relative_path == "" do
+      base_path
+    else
+      base_path <> relative_path
+    end
+  end
+
+  defp serialize_list_items(items, scope, scope_id) do
+    result =
+      items
+      |> Enum.reduce_while({:ok, []}, fn item, {:ok, acc} ->
+        case validate_relative_path(item.name, scope, scope_id) do
+          {:ok, path} ->
+            {:cont,
+             {:ok,
+              [
+                %{
+                  name: path_basename(path),
+                  path: path,
+                  is_directory: item.is_directory,
+                  size: item.size
+                }
+                | acc
+              ]}}
+
+          {:error, reason} ->
+            Metrics.increment("PipelinesAPI.artifacts_hub_client", [
+              "list_path_invalid_item",
+              list_item_invalid_reason(reason)
+            ])
+
+            {:halt, ToTuple.internal_error("Internal error")}
+        end
+      end)
+
+    case result do
+      {:ok, entries} -> {:ok, Enum.reverse(entries)}
+      error -> error
+    end
+  end
+
+  defp validate_relative_path(full_path, scope, scope_id) when is_binary(full_path) do
+    prefix = "artifacts/#{scope}/#{scope_id}/"
+
+    if String.starts_with?(full_path, prefix) do
+      full_path
+      |> String.replace_prefix(prefix, "")
+      |> normalize_relative_path()
+      |> case do
+        "" -> {:error, :empty_relative_path}
+        path -> {:ok, path}
+      end
+    else
+      {:error, :invalid_scope_prefix}
+    end
+  end
+
+  defp validate_relative_path(_full_path, _scope, _scope_id), do: {:error, :invalid_name}
+
+  defp normalize_relative_path(path) when is_binary(path), do: String.trim(path, "/")
+  defp normalize_relative_path(_path), do: ""
+
+  defp path_basename(path) when is_binary(path) do
+    path
+    |> String.split("/", trim: true)
+    |> List.last()
+    |> Kernel.||("")
+  end
+
+  defp list_item_invalid_reason(reason) when is_atom(reason), do: Atom.to_string(reason)
+  defp list_item_invalid_reason(reason), do: inspect(reason)
+
+  defp map_get(map, "artifact_store_id") when is_map(map),
+    do: Map.get(map, "artifact_store_id") || Map.get(map, :artifact_store_id)
+
+  defp map_get(map, "scope") when is_map(map),
+    do: Map.get(map, "scope") || Map.get(map, :scope)
+
+  defp map_get(map, "scope_id") when is_map(map),
+    do: Map.get(map, "scope_id") || Map.get(map, :scope_id)
+
+  defp map_get(map, "path") when is_map(map),
+    do: Map.get(map, "path") || Map.get(map, :path)
+
+  defp map_get(map, "method") when is_map(map),
+    do: Map.get(map, "method") || Map.get(map, :method)
 end
