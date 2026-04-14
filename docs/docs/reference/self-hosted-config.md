@@ -155,7 +155,7 @@ This setting controls if the job logs are to be uploaded to the [job artifact st
 - `when-trimmed`: job logs are only uploaded if they were trimmed for exceeding the 16MB limit
 - `always`: job logs are always uploaded
 
-The logs are uploaded to the path `agent/job_logs.txt` in the job artifact storage. Newer agent versions upload compressed logs (when compression applies) to `agent/job_logs.txt.gz`.
+When enabled, CI agents upload these logs only after the job finishes. The logs are uploaded to the path `agent/job_logs.txt` in the job artifact storage. Newer agent versions upload compressed logs (when compression applies) to `agent/job_logs.txt.gz`.
 
 The agent uses the [artifact CLI](./toolbox#artifact) to upload the logs to Semaphore. If the artifact CLI is not available to the agent, nothing will be uploaded.
 
