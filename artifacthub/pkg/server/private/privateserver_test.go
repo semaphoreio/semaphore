@@ -323,7 +323,126 @@ func Test__ListPath(t *testing.T) {
 				{Name: "artifacts/projects/first/file1.txt", IsDirectory: false, Size: 5},
 			}, response.Items)
 		})
+
+		t.Run(backend+" fails with failed precondition when list path exceeds limit", func(t *testing.T) {
+			request := &artifacthub.ListPathRequest{
+				ArtifactId: artifactId,
+				Path:       "artifacts/projects/first/",
+				Limit:      1,
+			}
+
+			_, err := server.ListPath(context.TODO(), request)
+			require.Error(t, err)
+			assert.Equal(t, codes.FailedPrecondition, status.Code(err))
+		})
 	})
+}
+
+func Test__GetSignedURLS(t *testing.T) {
+	storage.RunTestForAllBackends(t, func(backend string, client storage.Client) {
+		models.PrepareDatabaseForTests()
+		server := Server{StorageClient: client}
+
+		idempotencyToken := "request-token-1"
+		createResponse, err := server.Create(context.TODO(), &artifacthub.CreateRequest{RequestToken: idempotencyToken})
+		require.NoError(t, err)
+
+		err = storage.SeedBucket(client.GetBucket(storage.BucketOptions{
+			Name:       createResponse.Artifact.BucketName,
+			PathPrefix: idempotencyToken,
+		}), seedObjects())
+		require.NoError(t, err)
+
+		artifactID := createResponse.Artifact.Id
+
+		t.Run(backend+" signs a single file", func(t *testing.T) {
+			request := &artifacthub.GetSignedURLSRequest{
+				ArtifactId: artifactID,
+				Path:       "artifacts/projects/first/file1.txt",
+				Method:     "GET",
+			}
+
+			response, err := server.GetSignedURLS(context.TODO(), request)
+			require.NoError(t, err)
+			require.Len(t, response.Urls, 1)
+			assert.Equal(t, artifacthub.SignedURL_GET, response.Urls[0].Method)
+			assert.Contains(t, response.Urls[0].Url, request.Path)
+		})
+
+		t.Run(backend+" signs all files in a directory recursively", func(t *testing.T) {
+			request := &artifacthub.GetSignedURLSRequest{
+				ArtifactId: artifactID,
+				Path:       "artifacts/projects/first/",
+				Method:     "HEAD",
+			}
+
+			response, err := server.GetSignedURLS(context.TODO(), request)
+			require.NoError(t, err)
+			require.Len(t, response.Urls, 3)
+
+			for _, signedURL := range response.Urls {
+				assert.Equal(t, artifacthub.SignedURL_HEAD, signedURL.Method)
+			}
+
+			assertAnySignedURLContainsPath(t, response.Urls, "artifacts/projects/first/file1.txt")
+			assertAnySignedURLContainsPath(t, response.Urls, "artifacts/projects/first/dir/subfile1.txt")
+			assertAnySignedURLContainsPath(t, response.Urls, "artifacts/projects/first/dir/subfile2.txt")
+		})
+
+		t.Run(backend+" defaults method to GET", func(t *testing.T) {
+			request := &artifacthub.GetSignedURLSRequest{
+				ArtifactId: artifactID,
+				Path:       "artifacts/projects/first/file1.txt",
+			}
+
+			response, err := server.GetSignedURLS(context.TODO(), request)
+			require.NoError(t, err)
+			require.Len(t, response.Urls, 1)
+			assert.Equal(t, artifacthub.SignedURL_GET, response.Urls[0].Method)
+		})
+
+		t.Run(backend+" returns not found for missing path", func(t *testing.T) {
+			request := &artifacthub.GetSignedURLSRequest{
+				ArtifactId: artifactID,
+				Path:       "artifacts/projects/not_found/",
+				Method:     "GET",
+			}
+
+			_, err := server.GetSignedURLS(context.TODO(), request)
+			require.Error(t, err)
+			assert.Equal(t, codes.NotFound, status.Code(err))
+		})
+
+		t.Run(backend+" returns not found for missing artifact store", func(t *testing.T) {
+			request := &artifacthub.GetSignedURLSRequest{
+				ArtifactId: uuid.NewV4().String(),
+				Path:       "artifacts/projects/first/file1.txt",
+				Method:     "GET",
+			}
+
+			_, err := server.GetSignedURLS(context.TODO(), request)
+			require.Error(t, err)
+			assert.Equal(t, codes.NotFound, status.Code(err))
+		})
+
+		t.Run(backend+" fails with failed precondition when signed URL path exceeds limit", func(t *testing.T) {
+			request := &artifacthub.GetSignedURLSRequest{
+				ArtifactId: artifactID,
+				Path:       "artifacts/projects/first/",
+				Method:     "GET",
+				Limit:      2,
+			}
+
+			_, err := server.GetSignedURLS(context.TODO(), request)
+			require.Error(t, err)
+			assert.Equal(t, codes.FailedPrecondition, status.Code(err))
+		})
+	})
+}
+
+func Test__SignedURL_default_method_is_GET(t *testing.T) {
+	signedURL := &artifacthub.SignedURL{}
+	assert.Equal(t, artifacthub.SignedURL_GET, signedURL.GetMethod())
 }
 
 func Test__Describe(t *testing.T) {
@@ -694,4 +813,16 @@ func seedObjects() []storage.SeedObject {
 		{Name: "artifacts/jobs/first/dir/subdir/subfile2.txt", Content: "hello"},
 		{Name: "artifacts/jobs/second/dir/subfile1.txt", Content: "hello"},
 	}
+}
+
+func assertAnySignedURLContainsPath(t *testing.T, signedURLs []*artifacthub.SignedURL, path string) {
+	t.Helper()
+
+	for _, signedURL := range signedURLs {
+		if strings.Contains(signedURL.Url, path) {
+			return
+		}
+	}
+
+	assert.Fail(t, "expected signed URL for path not found", "path=%s urls=%v", path, signedURLs)
 }
