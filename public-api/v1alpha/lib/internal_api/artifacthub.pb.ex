@@ -176,13 +176,15 @@ defmodule InternalApi.Artifacthub.ListPathRequest do
   @type t :: %__MODULE__{
           artifact_id: String.t(),
           path: String.t(),
-          unwrap_directories: boolean
+          unwrap_directories: boolean,
+          limit: integer
         }
-  defstruct [:artifact_id, :path, :unwrap_directories]
+  defstruct [:artifact_id, :path, :unwrap_directories, :limit]
 
   field(:artifact_id, 1, type: :string)
   field(:path, 2, type: :string)
   field(:unwrap_directories, 3, type: :bool)
+  field(:limit, 4, type: :int32)
 end
 
 defmodule InternalApi.Artifacthub.ListPathResponse do
@@ -258,6 +260,61 @@ defmodule InternalApi.Artifacthub.GetSignedURLResponse do
   defstruct [:url]
 
   field(:url, 1, type: :string)
+end
+
+defmodule InternalApi.Artifacthub.GetSignedURLSRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          artifact_id: String.t(),
+          path: String.t(),
+          method: String.t(),
+          limit: integer
+        }
+  defstruct [:artifact_id, :path, :method, :limit]
+
+  field(:artifact_id, 1, type: :string)
+  field(:path, 2, type: :string)
+  field(:method, 3, type: :string)
+  field(:limit, 4, type: :int32)
+end
+
+defmodule InternalApi.Artifacthub.GetSignedURLSResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          urls: [InternalApi.Artifacthub.SignedURL.t()]
+        }
+  defstruct [:urls]
+
+  field(:urls, 1, repeated: true, type: InternalApi.Artifacthub.SignedURL)
+end
+
+defmodule InternalApi.Artifacthub.SignedURL do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          url: String.t(),
+          method: integer
+        }
+  defstruct [:url, :method]
+
+  field(:url, 1, type: :string)
+  field(:method, 2, type: InternalApi.Artifacthub.SignedURL.Method, enum: true)
+end
+
+defmodule InternalApi.Artifacthub.SignedURL.Method do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+
+  field(:GET, 0)
+  field(:DELETE, 1)
+  field(:HEAD, 2)
+  field(:PUT, 3)
+  field(:POST, 4)
 end
 
 defmodule InternalApi.Artifacthub.ListBucketsRequest do
@@ -496,6 +553,12 @@ defmodule InternalApi.Artifacthub.ArtifactService.Service do
     :GetSignedURL,
     InternalApi.Artifacthub.GetSignedURLRequest,
     InternalApi.Artifacthub.GetSignedURLResponse
+  )
+
+  rpc(
+    :GetSignedURLS,
+    InternalApi.Artifacthub.GetSignedURLSRequest,
+    InternalApi.Artifacthub.GetSignedURLSResponse
   )
 
   rpc(
