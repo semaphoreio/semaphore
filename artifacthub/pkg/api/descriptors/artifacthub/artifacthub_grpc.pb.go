@@ -29,6 +29,7 @@ const (
 	ArtifactService_GenerateToken_FullMethodName         = "/InternalApi.Artifacthub.ArtifactService/GenerateToken"
 	ArtifactService_Cleanup_FullMethodName               = "/InternalApi.Artifacthub.ArtifactService/Cleanup"
 	ArtifactService_GetSignedURL_FullMethodName          = "/InternalApi.Artifacthub.ArtifactService/GetSignedURL"
+	ArtifactService_GetSignedURLS_FullMethodName         = "/InternalApi.Artifacthub.ArtifactService/GetSignedURLS"
 	ArtifactService_ListBuckets_FullMethodName           = "/InternalApi.Artifacthub.ArtifactService/ListBuckets"
 	ArtifactService_CountArtifacts_FullMethodName        = "/InternalApi.Artifacthub.ArtifactService/CountArtifacts"
 	ArtifactService_CountBuckets_FullMethodName          = "/InternalApi.Artifacthub.ArtifactService/CountBuckets"
@@ -56,6 +57,7 @@ type ArtifactServiceClient interface {
 	// if the cleanup result has errors, that does NOT mean it has been failed: it means that there were errors
 	Cleanup(ctx context.Context, in *CleanupRequest, opts ...grpc.CallOption) (*CleanupResponse, error)
 	GetSignedURL(ctx context.Context, in *GetSignedURLRequest, opts ...grpc.CallOption) (*GetSignedURLResponse, error)
+	GetSignedURLS(ctx context.Context, in *GetSignedURLSRequest, opts ...grpc.CallOption) (*GetSignedURLSResponse, error)
 	// if the list buckets result has errors, that does NOT mean it has been failed: it means that there were buckets that has already been deleted
 	ListBuckets(ctx context.Context, in *ListBucketsRequest, opts ...grpc.CallOption) (*ListBucketsResponse, error)
 	// returns the number of artifacts for a project, a worflow or a job
@@ -174,6 +176,16 @@ func (c *artifactServiceClient) GetSignedURL(ctx context.Context, in *GetSignedU
 	return out, nil
 }
 
+func (c *artifactServiceClient) GetSignedURLS(ctx context.Context, in *GetSignedURLSRequest, opts ...grpc.CallOption) (*GetSignedURLSResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetSignedURLSResponse)
+	err := c.cc.Invoke(ctx, ArtifactService_GetSignedURLS_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *artifactServiceClient) ListBuckets(ctx context.Context, in *ListBucketsRequest, opts ...grpc.CallOption) (*ListBucketsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListBucketsResponse)
@@ -235,6 +247,7 @@ type ArtifactServiceServer interface {
 	// if the cleanup result has errors, that does NOT mean it has been failed: it means that there were errors
 	Cleanup(context.Context, *CleanupRequest) (*CleanupResponse, error)
 	GetSignedURL(context.Context, *GetSignedURLRequest) (*GetSignedURLResponse, error)
+	GetSignedURLS(context.Context, *GetSignedURLSRequest) (*GetSignedURLSResponse, error)
 	// if the list buckets result has errors, that does NOT mean it has been failed: it means that there were buckets that has already been deleted
 	ListBuckets(context.Context, *ListBucketsRequest) (*ListBucketsResponse, error)
 	// returns the number of artifacts for a project, a worflow or a job
@@ -281,6 +294,9 @@ func (UnimplementedArtifactServiceServer) Cleanup(context.Context, *CleanupReque
 }
 func (UnimplementedArtifactServiceServer) GetSignedURL(context.Context, *GetSignedURLRequest) (*GetSignedURLResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSignedURL not implemented")
+}
+func (UnimplementedArtifactServiceServer) GetSignedURLS(context.Context, *GetSignedURLSRequest) (*GetSignedURLSResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetSignedURLS not implemented")
 }
 func (UnimplementedArtifactServiceServer) ListBuckets(context.Context, *ListBucketsRequest) (*ListBucketsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListBuckets not implemented")
@@ -494,6 +510,24 @@ func _ArtifactService_GetSignedURL_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ArtifactService_GetSignedURLS_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSignedURLSRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ArtifactServiceServer).GetSignedURLS(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ArtifactService_GetSignedURLS_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ArtifactServiceServer).GetSignedURLS(ctx, req.(*GetSignedURLSRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ArtifactService_ListBuckets_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListBucketsRequest)
 	if err := dec(in); err != nil {
@@ -612,6 +646,10 @@ var ArtifactService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetSignedURL",
 			Handler:    _ArtifactService_GetSignedURL_Handler,
+		},
+		{
+			MethodName: "GetSignedURLS",
+			Handler:    _ArtifactService_GetSignedURLS_Handler,
 		},
 		{
 			MethodName: "ListBuckets",
