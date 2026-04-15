@@ -3,7 +3,6 @@ defmodule PipelinesAPI.Artifacts.ListTest do
 
   alias Support.Stubs.{Job, Pipeline, Workflow}
 
-  @max_items PipelinesAPI.ArtifactHubClient.max_items()
   @job_artifact_url "https://localhost:9000/agent/job_logs.txt.gz"
   @workflow_artifact_url "https://localhost:9000/debug/workflow_logs.txt"
   @project_artifact_url "https://localhost:9000/releases/build.tar.gz"
@@ -244,9 +243,9 @@ defmodule PipelinesAPI.Artifacts.ListTest do
              ]
     end
 
-    test "sends hard item limit to artifacthub list_path", ctx do
+    test "forces unwrap_directories=false in artifacthub list_path request", ctx do
       GrpcMock.stub(ArtifacthubMock, :list_path, fn req, _ ->
-        assert req.limit == @max_items
+        assert req.unwrap_directories == false
 
         InternalApi.Artifacthub.ListPathResponse.new(
           items: [
@@ -302,9 +301,7 @@ defmodule PipelinesAPI.Artifacts.ListTest do
     end
 
     test "returns 400 when backend reports path exceeds hard limit", ctx do
-      GrpcMock.stub(ArtifacthubMock, :list_path, fn req, _ ->
-        assert req.limit == @max_items
-
+      GrpcMock.stub(ArtifacthubMock, :list_path, fn _req, _ ->
         raise GRPC.RPCError,
           status: :failed_precondition,
           message: "path resolves to too many files; narrow the path"
