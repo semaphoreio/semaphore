@@ -121,23 +121,23 @@ defmodule PipelinesAPI.Logs.Get do
   end
 
   defp signed_url_for_artifact_path(artifact_store_id, job_id, path) do
-    case ArtifactHubClient.get_signed_urls(%{
+    case ArtifactHubClient.get_signed_url(%{
            artifact_store_id: artifact_store_id,
            scope: "jobs",
            scope_id: job_id,
            path: path,
            method: "GET"
          }) do
-      {:ok, %{urls: signed_urls}} ->
-        pick_signed_url(signed_urls)
+      {:ok, %{url: url}} when is_binary(url) and url != "" ->
+        {:ok, url}
+
+      {:ok, _response} ->
+        ToTuple.not_found_error("Full log artifact not found")
 
       error ->
         error
     end
   end
-
-  defp pick_signed_url([%{url: url} | _]), do: {:ok, url}
-  defp pick_signed_url(_), do: ToTuple.not_found_error("Full log artifact not found")
 
   defp prepare_response(events) do
     Enum.join(['{ "events": [', Enum.join(events, ","), "] }"], "")
