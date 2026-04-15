@@ -83,6 +83,7 @@ defmodule Support.Stubs.Artifacthub do
       GrpcMock.stub(ArtifacthubMock, :describe, &__MODULE__.describe/2)
       GrpcMock.stub(ArtifacthubMock, :list_path, &__MODULE__.list_path/2)
       GrpcMock.stub(ArtifacthubMock, :delete_path, &__MODULE__.delete_path/2)
+      GrpcMock.stub(ArtifacthubMock, :get_signed_url, &__MODULE__.get_signed_url/2)
       GrpcMock.stub(ArtifacthubMock, :get_signed_urls, &__MODULE__.get_signed_urls/2)
 
       GrpcMock.stub(
@@ -185,6 +186,39 @@ defmodule Support.Stubs.Artifacthub do
       end
     end
 
+    def get_signed_url(req, _) do
+      alias InternalApi.Artifacthub, as: Api
+
+      {base_paths, file_path} = split_path(req.path)
+      requested_path = if file_path == [], do: "", else: Path.join(file_path)
+
+      url =
+        base_paths
+        |> Enum.take(3)
+        |> case do
+          ["artifacts", scope, scope_id] ->
+            DB.filter(:artifacts, scope: scope, scope_id: scope_id)
+            |> Enum.find_value(fn artifact ->
+              if signed_url_matches_exact_file_path?(artifact.api_model, requested_path) do
+                artifact.url
+              else
+                nil
+              end
+            end)
+
+          _ ->
+            nil
+        end
+
+      case url do
+        nil ->
+          raise GRPC.RPCError, status: :not_found, message: "artifact path not found"
+
+        _ ->
+          Api.GetSignedURLResponse.new(url: url)
+      end
+    end
+
     def update_retention_policy(req, _) do
       if req.artifact_id == "FailedPrecondition" do
         msg = "Invalid age field value."
@@ -255,6 +289,10 @@ defmodule Support.Stubs.Artifacthub do
           path = Path.join(file_path)
           artifact.name == path or String.starts_with?(artifact.name, path <> "/")
       end
+    end
+
+    defp signed_url_matches_exact_file_path?(artifact, requested_path) do
+      not artifact.is_directory and artifact.name == requested_path
     end
 
     defp signed_url_method(method) do
