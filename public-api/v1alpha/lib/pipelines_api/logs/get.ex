@@ -124,20 +124,47 @@ defmodule PipelinesAPI.Logs.Get do
   end
 
   defp fetch_signed_full_log_url(job_id, artifact_store_id) do
-    @full_log_paths
-    |> Enum.reduce_while(ToTuple.not_found_error("Full log artifact not found"), fn path, _acc ->
-      case signed_url_for_artifact_path(artifact_store_id, job_id, path) do
-        {:ok, url} ->
-          {:halt, {:ok, url}}
-
-        {:error, {:not_found, _}} ->
-          {:cont, ToTuple.not_found_error("Full log artifact not found")}
-
-        error ->
-          {:halt, error}
-      end
-    end)
+    with {:ok, path} <- resolve_full_log_artifact_path(job_id, artifact_store_id) do
+      signed_url_for_artifact_path(artifact_store_id, job_id, path)
+    end
   end
+
+  defp resolve_full_log_artifact_path(job_id, artifact_store_id) do
+    case ArtifactHubClient.list_path(%{
+           artifact_store_id: artifact_store_id,
+           scope: "jobs",
+           scope_id: job_id,
+           path: "agent"
+         }) do
+      {:ok, items} ->
+        pick_preferred_full_log_path(items)
+
+      {:error, {:not_found, _}} ->
+        ToTuple.not_found_error("Full log artifact not found")
+
+      error ->
+        error
+    end
+  end
+
+  defp pick_preferred_full_log_path(items) when is_list(items) do
+    available_paths =
+      items
+      |> Enum.flat_map(fn
+        %{is_directory: false, path: path} when is_binary(path) -> [path]
+        _ -> []
+      end)
+
+    @full_log_paths
+    |> Enum.find(&(&1 in available_paths))
+    |> case do
+      nil -> ToTuple.not_found_error("Full log artifact not found")
+      path -> {:ok, path}
+    end
+  end
+
+  defp pick_preferred_full_log_path(_items),
+    do: ToTuple.not_found_error("Full log artifact not found")
 
   defp signed_url_for_artifact_path(artifact_store_id, job_id, path) do
     case ArtifactHubClient.get_signed_url(%{
