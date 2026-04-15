@@ -115,7 +115,7 @@ GEM
       ffi (~> 1.0, >= 1.0.11)
     coderay (1.1.3)
     concurrent-ruby (1.3.6)
-    connection_pool (3.0.2)
+    connection_pool (2.5.5)
     crack (1.0.0)
       bigdecimal
       rexml
@@ -510,6 +510,7 @@ DEPENDENCIES
   bullet
   bundler (>= 1.8.4)
   bunny
+  connection_pool (< 3)
   database_cleaner
   dotenv (~> 3.0)
   excon (~> 0.81.0)
