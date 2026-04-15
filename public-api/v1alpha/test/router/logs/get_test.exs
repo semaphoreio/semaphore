@@ -18,6 +18,8 @@ defmodule PipelinesAPI.Logs.Get.Test do
     Support.Stubs.grant_all_permissions()
 
     org = Support.Stubs.Organization.create_default()
+    Support.Stubs.Feature.set_org_defaults(org.id)
+    Support.Stubs.Feature.enable_feature(org.id, :artifacts_api)
     user = Support.Stubs.User.create_default()
     project = Support.Stubs.Project.create(org, user)
     user_id = user.id
@@ -45,6 +47,7 @@ defmodule PipelinesAPI.Logs.Get.Test do
       )
 
     %{
+      org: org,
       user: user,
       user_id: user_id,
       cloud_job: cloud_job.api_model,
@@ -269,6 +272,26 @@ defmodule PipelinesAPI.Logs.Get.Test do
 
       assert {401, _, _} =
                get_logs(ctx.self_hosted_job.id, ctx.user_id, false, %{"full" => "true"})
+    end
+
+    test "returns 403 when full logs are requested and artifacts api feature is disabled", ctx do
+      Support.Stubs.Feature.disable_feature(ctx.org.id, :artifacts_api)
+
+      assert {403, _, response} =
+               get_logs(ctx.cloud_job.id, ctx.user_id, false, %{"full" => "true"})
+
+      assert response ==
+               "The artifacts api feature is not enabled for your organization. Please contact support"
+    end
+
+    test "returns 403 when full logs are requested and artifacts feature is disabled", ctx do
+      Support.Stubs.Feature.disable_feature(ctx.org.id, :artifacts)
+
+      assert {403, _, response} =
+               get_logs(ctx.cloud_job.id, ctx.user_id, false, %{"full" => "true"})
+
+      assert response ==
+               "The artifacts api feature is not enabled for your organization. Please contact support"
     end
 
     test "returns full logs artifact URL for self-hosted jobs when available", ctx do
