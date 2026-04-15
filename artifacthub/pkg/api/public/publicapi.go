@@ -17,7 +17,6 @@ import (
 
 var (
 	ErrArtifactNotFound = errors.New("artifact not found")
-	ErrTooManyArtifacts = errors.New("path resolves to too many files; narrow the path")
 )
 
 // signURL signs a given path with the given method, and returns it in a grpc encoded way.
@@ -67,7 +66,7 @@ func GenerateSignedURLPush(ctx context.Context, client storage.Client, artifact 
 	return urls, nil
 }
 
-func generateSignedURLsList(ctx context.Context, client storage.Client, artifact *models.Artifact, p, method string, limit int) ([]*artifacts.SignedURL, error) {
+func generateSignedURLsList(ctx context.Context, client storage.Client, artifact *models.Artifact, p, method string) ([]*artifacts.SignedURL, error) {
 	bucket := client.GetBucket(storage.BucketOptions{
 		Name:       artifact.BucketName,
 		PathPrefix: artifact.IdempotencyToken,
@@ -102,10 +101,7 @@ func generateSignedURLsList(ctx context.Context, client storage.Client, artifact
 	// Path points to a directory, so we generate signed URLs
 	// for all files inside that directory
 	urls := make([]*artifacts.SignedURL, 0)
-	limitExceeded := false
-
 	err = retry.OnFailure(ctx, "Listing Bucket path", func() error {
-		attemptURLs := make([]*artifacts.SignedURL, 0)
 		iterator, err := bucket.ListPath(storage.ListOptions{Path: p})
 		if err != nil {
 			return err
@@ -121,36 +117,23 @@ func generateSignedURLsList(ctx context.Context, client storage.Client, artifact
 				return err
 			}
 
-			if limit > 0 && len(attemptURLs) >= limit {
-				limitExceeded = true
-				return nil
-			}
-
 			url, err := signURL(ctx, client, artifact, o.Path, method)
 			if err != nil {
 				return err
 			}
 
-			attemptURLs = append(attemptURLs, url)
-		}
-
-		if !limitExceeded {
-			urls = attemptURLs
+			urls = append(urls, url)
 		}
 
 		return nil
 	})
 
-	if limitExceeded {
-		return nil, ErrTooManyArtifacts
-	}
-
 	return urls, err
 }
 
 // GenerateSignedURLsList wraps signing URLs list with error logging.
-func GenerateSignedURLsList(ctx context.Context, client storage.Client, artifact *models.Artifact, p, method string, limit int) ([]*artifacts.SignedURL, error) {
-	us, err := generateSignedURLsList(ctx, client, artifact, p, method, limit)
+func GenerateSignedURLsList(ctx context.Context, client storage.Client, artifact *models.Artifact, p, method string) ([]*artifacts.SignedURL, error) {
+	us, err := generateSignedURLsList(ctx, client, artifact, p, method)
 	if err != nil {
 		return nil, err
 	}
@@ -161,12 +144,12 @@ func GenerateSignedURLsList(ctx context.Context, client storage.Client, artifact
 func GenerateSignedURLPull(ctx context.Context, client storage.Client, artifact *models.Artifact, p string) ([]*artifacts.SignedURL, error) {
 	l := ctxutil.Logger(ctx)
 	l.Debug("GenerateSignedURLPull", zap.String("path", p))
-	return GenerateSignedURLsList(ctx, client, artifact, p, http.MethodGet, 0)
+	return GenerateSignedURLsList(ctx, client, artifact, p, http.MethodGet)
 }
 
 // GenerateSignedURLYank creates signed URLs for yanking from the artifact storage.
 func GenerateSignedURLYank(ctx context.Context, client storage.Client, artifact *models.Artifact, p string) ([]*artifacts.SignedURL, error) {
 	l := ctxutil.Logger(ctx)
 	l.Debug("GenerateSignedURLYank", zap.String("path", p))
-	return GenerateSignedURLsList(ctx, client, artifact, p, http.MethodDelete, 0)
+	return GenerateSignedURLsList(ctx, client, artifact, p, http.MethodDelete)
 }
