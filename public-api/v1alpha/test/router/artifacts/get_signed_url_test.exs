@@ -10,6 +10,8 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
     Support.Stubs.grant_all_permissions()
 
     org = Support.Stubs.Organization.create_default()
+    Support.Stubs.Feature.set_org_defaults(org.id)
+    Support.Stubs.Feature.enable_feature(org.id, :artifacts_api)
     user = Support.Stubs.User.create_default()
     project = Support.Stubs.Project.create(org, user)
     build_req_id = UUID.uuid4()
@@ -591,18 +593,67 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
 
       assert response =~ "Artifact store is not configured"
     end
+
+    test "returns 403 when artifacts api feature is disabled", ctx do
+      org_id_without_feature = UUID.uuid4()
+      Support.Stubs.Feature.set_org_defaults(org_id_without_feature)
+      Support.Stubs.Feature.disable_feature(org_id_without_feature, :artifacts_api)
+
+      assert {403,
+              "The artifacts api feature is not enabled for your organization. Please contact support"} =
+               signed_url(
+                 %{
+                   "scope" => "jobs",
+                   "scope_id" => ctx.job.id,
+                   "path" => "agent/job_logs.txt.gz"
+                 },
+                 ctx.user.id,
+                 false,
+                 org_id_without_feature
+               )
+    end
+
+    test "returns 403 when artifacts feature is disabled", ctx do
+      org_id_without_artifacts = UUID.uuid4()
+      Support.Stubs.Feature.set_org_defaults(org_id_without_artifacts)
+      Support.Stubs.Feature.enable_feature(org_id_without_artifacts, :artifacts_api)
+      Support.Stubs.Feature.disable_feature(org_id_without_artifacts, :artifacts)
+
+      assert {403,
+              "The artifacts api feature is not enabled for your organization. Please contact support"} =
+               signed_url(
+                 %{
+                   "scope" => "jobs",
+                   "scope_id" => ctx.job.id,
+                   "path" => "agent/job_logs.txt.gz"
+                 },
+                 ctx.user.id,
+                 false,
+                 org_id_without_artifacts
+               )
+    end
   end
 
-  defp signed_url(params, user_id, decode? \\ true) do
+  defp signed_url(
+         params,
+         user_id,
+         decode? \\ true,
+         org_id \\ Support.Stubs.Organization.default_org_id()
+       ) do
     params
     |> URI.encode_query()
-    |> signed_url_raw(user_id, decode?)
+    |> signed_url_raw(user_id, decode?, org_id)
   end
 
-  defp signed_url_raw(query, user_id, decode?) do
+  defp signed_url_raw(
+         query,
+         user_id,
+         decode?,
+         org_id \\ Support.Stubs.Organization.default_org_id()
+       ) do
     url = "localhost:4004/artifacts/signed_url?" <> query
 
-    {:ok, response} = HTTPoison.get(url, headers(user_id))
+    {:ok, response} = HTTPoison.get(url, headers(user_id, org_id))
     %{body: body, status_code: status_code} = response
 
     body =
@@ -614,11 +665,11 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
     {status_code, body}
   end
 
-  defp headers(user_id),
+  defp headers(user_id, org_id),
     do: [
       {"Content-type", "application/json"},
       {"x-semaphore-user-id", user_id},
-      {"x-semaphore-org-id", Support.Stubs.Organization.default_org_id()}
+      {"x-semaphore-org-id", org_id}
     ]
 
   defp assert_single_item_response(response, path, url) do
