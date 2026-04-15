@@ -15,8 +15,10 @@ defmodule PipelinesAPI.Logs.Get do
   alias PipelinesAPI.Loghub2Client
   alias PipelinesAPI.Logs.Params, as: LogsParams
   alias PipelinesAPI.Util.ToTuple
+  alias Plug.Conn
 
   @full_log_paths ["agent/job_logs.txt", "agent/job_logs.txt.gz"]
+  @artifacts_api_disabled_message "The artifacts api feature is not enabled for your organization. Please contact support"
 
   import PipelinesAPI.Logs.Authorize, only: [authorize_job: 2]
 
@@ -82,13 +84,19 @@ defmodule PipelinesAPI.Logs.Get do
   end
 
   defp get_full_logs(conn, job) do
-    with {:ok, project} <- ProjectClient.describe(job.project_id),
+    with :ok <- ensure_artifacts_api_enabled(conn),
+         {:ok, project} <- ProjectClient.describe(job.project_id),
          {:ok, artifact_store_id} <- artifact_store_id_from_project(project),
          {:ok, signed_url} <- fetch_signed_full_log_url(job.id, artifact_store_id) do
       conn
       |> put_resp_header("location", signed_url)
       |> send_resp(302, "")
     else
+      {:error, :artifacts_api_disabled} ->
+        conn
+        |> put_resp_content_type("text/plain")
+        |> send_resp(403, @artifacts_api_disabled_message)
+
       {:error, {:not_found, _message}} ->
         Metrics.increment("PipelinesAPI.router", ["full_logs_artifact_lookup_failed"])
         RespCommon.respond(ToTuple.not_found_error("Full log artifact not found"), conn)
@@ -102,6 +110,17 @@ defmodule PipelinesAPI.Logs.Get do
       Metrics.increment("PipelinesAPI.router", ["full_logs_artifact_lookup_failed"])
       Logger.error("Error getting full logs for #{job.id}: #{inspect(e)}")
       RespCommon.respond(ToTuple.internal_error("Internal error"), conn)
+  end
+
+  defp ensure_artifacts_api_enabled(conn) do
+    with org_id when is_binary(org_id) and org_id != "" <-
+           Conn.get_req_header(conn, "x-semaphore-org-id") |> Enum.at(0),
+         true <- FeatureProvider.feature_enabled?(:artifacts, param: org_id),
+         true <- FeatureProvider.feature_enabled?(:artifacts_api, param: org_id) do
+      :ok
+    else
+      _ -> {:error, :artifacts_api_disabled}
+    end
   end
 
   defp fetch_signed_full_log_url(job_id, artifact_store_id) do
