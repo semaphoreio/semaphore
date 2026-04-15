@@ -752,6 +752,26 @@ defmodule InternalApi.PlumberWF.CreateResponse do
   field(:ppl_id, 3, type: :string)
 end
 
+defmodule InternalApi.PlumberWF.WorkflowDeleted do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          workflow_id: String.t(),
+          organization_id: String.t(),
+          project_id: String.t(),
+          artifact_store_id: String.t(),
+          deleted_at: Google.Protobuf.Timestamp.t()
+        }
+  defstruct [:workflow_id, :organization_id, :project_id, :artifact_store_id, :deleted_at]
+
+  field(:workflow_id, 1, type: :string)
+  field(:organization_id, 2, type: :string)
+  field(:project_id, 3, type: :string)
+  field(:artifact_store_id, 4, type: :string)
+  field(:deleted_at, 5, type: Google.Protobuf.Timestamp)
+end
+
 defmodule InternalApi.PlumberWF.TriggeredBy do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
