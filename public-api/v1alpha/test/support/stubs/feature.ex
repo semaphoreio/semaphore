@@ -310,6 +310,7 @@ defmodule Support.Stubs.Feature do
       {"max_projects_in_org", state: :ENABLED, quantity: 500},
       {"self_hosted_agents", state: :HIDDEN, quantity: 0},
       {"artifacts", state: :ENABLED, quantity: 1},
+      {"artifacts_api", state: :HIDDEN, quantity: 0},
       {"audit_logs", state: :HIDDEN, quantity: 0},
       {"audit_streaming", state: :HIDDEN, quantity: 0},
       {"badges", state: :ENABLED, quantity: 1},
