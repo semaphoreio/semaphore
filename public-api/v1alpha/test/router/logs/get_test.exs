@@ -221,7 +221,7 @@ defmodule PipelinesAPI.Logs.Get.Test do
                {"location", txt_url}
     end
 
-    test "returns 302 for full logs even when list_path would fail with hard limit", ctx do
+    test "returns 400 when full logs listing fails with hard limit", ctx do
       parent = self()
 
       Support.Stubs.Artifacthub.create(ctx.cloud_job.id,
@@ -238,13 +238,40 @@ defmodule PipelinesAPI.Logs.Get.Test do
           message: "path resolves to too many files; narrow the path"
       end)
 
+      assert {400, _, response} =
+               get_logs(ctx.cloud_job.id, ctx.user_id, true, %{"full" => "true"})
+
+      assert response == "path resolves to too many files; narrow the path"
+      assert_received :list_path_called
+    end
+
+    test "uses listed file path when signing full logs (prevents guessed txt fallback for gz-only)",
+         ctx do
+      parent = self()
+
+      Support.Stubs.Artifacthub.create(ctx.cloud_job.id,
+        scope: "jobs",
+        path: "agent/job_logs.txt.gz",
+        url: @full_logs_url
+      )
+
+      GrpcMock.stub(ArtifacthubMock, :get_signed_url, fn req, _ ->
+        send(parent, {:signed_path, req.path})
+
+        InternalApi.Artifacthub.GetSignedURLResponse.new(
+          url: "https://localhost:9000/" <> req.path
+        )
+      end)
+
       assert {302, headers, _response} =
                get_logs(ctx.cloud_job.id, ctx.user_id, false, %{"full" => "true"})
 
-      assert Enum.find(headers, fn {name, _} -> name == "location" end) ==
-               {"location", "https://localhost:9000/agent/job_logs.txt"}
+      assert_received {:signed_path, signed_path}
+      assert signed_path == "artifacts/jobs/#{ctx.cloud_job.id}/agent/job_logs.txt.gz"
 
-      refute_received :list_path_called
+      assert Enum.find(headers, fn {name, _} -> name == "location" end) ==
+               {"location",
+                "https://localhost:9000/artifacts/jobs/#{ctx.cloud_job.id}/agent/job_logs.txt.gz"}
     end
 
     test "returns 404 when full logs are requested and artifact is missing", ctx do
@@ -267,6 +294,28 @@ defmodule PipelinesAPI.Logs.Get.Test do
       GrpcMock.stub(RBACMock, :list_user_permissions, fn _, _ ->
         InternalApi.RBAC.ListUserPermissionsResponse.new(
           permissions: Support.Stubs.all_permissions_except("project.artifacts.view")
+        )
+      end)
+
+      assert {401, _, _} =
+               get_logs(ctx.self_hosted_job.id, ctx.user_id, false, %{"full" => "true"})
+    end
+
+    test "returns 401 when full logs are requested without project.view permission", ctx do
+      GrpcMock.stub(RBACMock, :list_user_permissions, fn _, _ ->
+        InternalApi.RBAC.ListUserPermissionsResponse.new(
+          permissions: Support.Stubs.all_permissions_except("project.view")
+        )
+      end)
+
+      assert {401, _, _} = get_logs(ctx.cloud_job.id, ctx.user_id, false, %{"full" => "true"})
+    end
+
+    test "returns 401 when full logs are requested for self-hosted job without project.view permission",
+         ctx do
+      GrpcMock.stub(RBACMock, :list_user_permissions, fn _, _ ->
+        InternalApi.RBAC.ListUserPermissionsResponse.new(
+          permissions: Support.Stubs.all_permissions_except("project.view")
         )
       end)
 
