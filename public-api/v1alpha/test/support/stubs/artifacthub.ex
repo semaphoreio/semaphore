@@ -136,18 +136,10 @@ defmodule Support.Stubs.Artifacthub do
             DB.filter(:artifacts, scope: scope, scope_id: scope_id)
             |> DB.extract(:api_model)
             |> Enum.filter(fn artifact ->
-              file_path
-              |> case do
-                file_path when file_path == [] ->
-                  path_length = Path.split(artifact.name) |> length()
-                  path_length == 1
-
-                file_path ->
-                  file = Path.join(file_path)
-
-                  length((artifact.name |> Path.split()) -- file_path) == 1 and
-                    String.starts_with?(artifact.name, file <> "/")
-              end
+              artifact_matches_path?(artifact, file_path, req.unwrap_directories)
+            end)
+            |> Enum.map(fn artifact ->
+              with_scope_item_name(artifact, scope, scope_id)
             end)
             |> Enum.uniq()
         end
@@ -159,24 +151,33 @@ defmodule Support.Stubs.Artifacthub do
       alias InternalApi.Artifacthub, as: Api
 
       {base_paths, file_path} = split_path(req.path)
-
-      api_model =
-        InternalApi.Artifacthub.ListItem.new(%{name: Path.join(file_path), is_directory: false})
+      requested_path = if file_path == [], do: "", else: Path.join(file_path)
 
       url =
         base_paths
         |> Enum.take(3)
         |> case do
           ["artifacts", scope, scope_id] ->
-            DB.filter(:artifacts, scope: scope, scope_id: scope_id, api_model: api_model)
-            |> DB.extract(:url)
-        end
-        |> case do
-          [] -> "http://localhost:9000/non_existent_file"
-          [url] -> url
+            DB.filter(:artifacts, scope: scope, scope_id: scope_id)
+            |> Enum.find_value(fn artifact ->
+              if signed_url_matches_exact_file_path?(artifact.api_model, requested_path) do
+                artifact.url
+              else
+                nil
+              end
+            end)
+
+          _ ->
+            nil
         end
 
-      Api.GetSignedURLResponse.new(url: url)
+      case url do
+        nil ->
+          raise GRPC.RPCError, status: :not_found, message: "artifact path not found"
+
+        _ ->
+          Api.GetSignedURLResponse.new(url: url)
+      end
     end
 
     def update_retention_policy(req, _) do
@@ -208,6 +209,49 @@ defmodule Support.Stubs.Artifacthub do
       path
       |> Path.split()
       |> Enum.split(3)
+    end
+
+    defp artifact_matches_path?(artifact, file_path, true) do
+      cond do
+        artifact.is_directory ->
+          false
+
+        file_path == [] ->
+          true
+
+        true ->
+          String.starts_with?(artifact.name, Path.join(file_path) <> "/")
+      end
+    end
+
+    defp artifact_matches_path?(artifact, file_path, false) do
+      case file_path do
+        [] ->
+          path_length = Path.split(artifact.name) |> length()
+          path_length == 1
+
+        _ ->
+          file = Path.join(file_path)
+
+          length((artifact.name |> Path.split()) -- file_path) == 1 and
+            String.starts_with?(artifact.name, file <> "/")
+      end
+    end
+
+    defp signed_url_matches_exact_file_path?(artifact, requested_path) do
+      not artifact.is_directory and artifact.name == requested_path
+    end
+
+    defp with_scope_item_name(artifact, scope, scope_id) do
+      scoped_name =
+        Path.join([
+          "artifacts",
+          scope,
+          scope_id,
+          artifact.name |> to_string() |> String.trim_leading("/")
+        ])
+
+      %{artifact | name: scoped_name}
     end
   end
 end
