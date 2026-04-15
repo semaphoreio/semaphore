@@ -11,6 +11,7 @@ defmodule PipelinesAPI.ArtifactHubClient do
     RetentionPolicy,
     DescribeRequest,
     ListPathRequest,
+    GetSignedURLRequest,
     GetSignedURLSRequest
   }
 
@@ -313,6 +314,66 @@ defmodule PipelinesAPI.ArtifactHubClient do
       error ->
         error
     end
+  end
+
+  # Signed URL
+
+  def get_signed_url(params) do
+    Metrics.benchmark("PipelinesAPI.artifacts_hub_client", ["get_signed_url"], fn ->
+      params
+      |> form_get_signed_url_request()
+      |> resolve_get_signed_url()
+    end)
+  end
+
+  defp resolve_get_signed_url({:ok, req}) do
+    req
+    |> do_get_signed_url()
+    |> finalize_get_signed_url_response()
+  end
+
+  defp resolve_get_signed_url(error), do: error
+
+  defp finalize_get_signed_url_response({:ok, response}) do
+    {:ok, %{url: response.url}}
+  end
+
+  defp finalize_get_signed_url_response(error), do: error
+
+  defp form_get_signed_url_request(params) do
+    %{
+      artifact_id: map_get(params, "artifact_store_id"),
+      path:
+        request_path(
+          map_get(params, "scope"),
+          map_get(params, "scope_id"),
+          map_get(params, "path") || ""
+        ),
+      method: map_get(params, "method") || "GET"
+    }
+    |> GetSignedURLRequest.new()
+    |> ToTuple.ok()
+  catch
+    error -> error
+  end
+
+  defp do_get_signed_url(request) do
+    result =
+      Wormhole.capture(__MODULE__, :get_signed_url_, [request], stacktrace: true, skip_log: true)
+
+    case result do
+      {:ok, result} -> process_simple_response(result, "get_signed_url")
+      {:error, reason} -> process_simple_response({:error, reason}, "get_signed_url")
+    end
+  end
+
+  def get_signed_url_(signed_url_request) do
+    {:ok, channel} = GRPC.Stub.connect(url())
+
+    Metrics.benchmark("PipelinesAPI.artifacts_hub_client.grpc_client", ["get_signed_url"], fn ->
+      channel
+      |> ArtifactService.Stub.get_signed_url(signed_url_request, opts())
+    end)
   end
 
   # Signed URLs

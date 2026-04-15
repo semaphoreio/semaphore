@@ -33,7 +33,7 @@ defmodule PipelinesAPI.Artifacts.GetSignedURL do
     Metrics.benchmark("PipelinesAPI.router", ["artifacts_signed_url"], fn ->
       result =
         conn.params
-        |> gather_signed_urls()
+        |> gather_signed_url()
         |> format_response(conn.params)
 
       maybe_track_lookup_failure(result)
@@ -52,46 +52,32 @@ defmodule PipelinesAPI.Artifacts.GetSignedURL do
 
   defp maybe_track_lookup_failure(_result), do: :ok
 
-  defp gather_signed_urls(params) do
+  defp gather_signed_url(params) do
     params
-    |> ArtifactHubClient.get_signed_urls()
-    |> process_signed_urls(params)
+    |> ArtifactHubClient.get_signed_url()
+    |> process_signed_url(params)
   end
 
-  defp process_signed_urls({:ok, %{urls: []}}, _params) do
+  defp process_signed_url({:ok, %{url: ""}}, _params) do
     ToTuple.not_found_error("Artifact not found")
   end
 
-  defp process_signed_urls({:ok, %{urls: urls}}, params) do
-    urls
-    |> build_signed_items(params)
-    |> case do
-      {:ok, items} -> {:ok, %{items: items}}
+  defp process_signed_url({:ok, %{url: url}}, params) do
+    case signed_item(%{url: url}, params) do
+      {:ok, item} -> {:ok, %{items: [item]}}
       error -> error
     end
   end
 
-  defp process_signed_urls({:error, {:not_found, _}}, _params) do
+  defp process_signed_url({:ok, _response}, _params) do
     ToTuple.not_found_error("Artifact not found")
   end
 
-  defp process_signed_urls(error, _params), do: error
-
-  defp build_signed_items(urls, params) do
-    result =
-      urls
-      |> Enum.reduce_while({:ok, []}, fn signed_url, {:ok, items} ->
-        case signed_item(signed_url, params) do
-          {:ok, item} -> {:cont, {:ok, [item | items]}}
-          error -> {:halt, error}
-        end
-      end)
-
-    case result do
-      {:ok, items} -> {:ok, Enum.reverse(items)}
-      error -> error
-    end
+  defp process_signed_url({:error, {:not_found, _}}, _params) do
+    ToTuple.not_found_error("Artifact not found")
   end
+
+  defp process_signed_url(error, _params), do: error
 
   defp signed_item(%{url: url}, params) do
     case path_from_signed_url(url, params) do
