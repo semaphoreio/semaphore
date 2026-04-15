@@ -16,7 +16,7 @@
       <% end %>
     </div>
   </div>
-  <div id="diagram" class="overflow-x-scroll overflow-y-none nowrap pl3 pl4-m pt4 pr6 pb6 nh3 nh4-m bt b--lighter-gray">
+  <div id="diagram" class="overflow-x-scroll overflow-y-auto nowrap pl3 pl4-m pt4 pr6 pb6 nh3 nh4-m bt b--lighter-gray" style="max-height: 100vh;">
     <div id="diagram-container" class="flex">
       <div
         class="dib v-top"
