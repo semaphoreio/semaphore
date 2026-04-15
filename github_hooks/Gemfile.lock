@@ -433,12 +433,12 @@ GEM
       activesupport (>= 4.2.0)
     show_me_the_cookies (6.0.0)
       capybara (>= 2, < 4)
-    sidekiq (7.3.9)
+    sidekiq (7.3.10)
       base64
-      connection_pool (>= 2.3.0)
+      connection_pool (>= 2.3.0, < 3)
       logger
-      rack (>= 2.2.4)
-      redis-client (>= 0.22.2)
+      rack (>= 2.2.4, < 3.3)
+      redis-client (>= 0.23.0, < 1)
     sidekiq-scheduler (6.0.1)
       rufus-scheduler (~> 3.2)
       sidekiq (>= 7.3, < 9)
@@ -553,7 +553,7 @@ DEPENDENCIES
   shoulda (~> 4.0)
   shoulda-matchers
   show_me_the_cookies
-  sidekiq (< 8)
+  sidekiq (= 7.3.10)
   sidekiq-scheduler
   sidekiq-unique-jobs (~> 8.0)
   spring (~> 4.1)
