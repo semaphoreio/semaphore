@@ -23,6 +23,7 @@ import { TriggerEvent } from "./workflow_view/trigger_event";
 import { Diagram } from "./workflow_view/diagram";
 import { ForkExplanation } from "./workflow_view/fork_explanation";
 import { FaviconUpdater } from "./workflow_view/favicon_updater";
+import { DiagramDrag } from "./workflow_view/diagram_drag";
 import { WorkflowEditor } from "./workflow_editor/editor.js";
 import { JobLogs } from "./job_logs/logs.js";
 import { GeneralSettings } from "./project_settings/general.js";
@@ -195,6 +196,7 @@ export var App = {
     TriggerEvent.init();
     WorkflowTips.init();
     ForkExplanation.init();
+    DiagramDrag.init();
   },
   new_project: function () {
     Fork.init(window.InjectedDataByBackend.Fork.DefaultProvider);
