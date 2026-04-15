@@ -3,8 +3,6 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
 
   alias Support.Stubs.{Job, Pipeline, Workflow}
 
-  @max_items PipelinesAPI.ArtifactHubClient.max_items()
-
   setup do
     Support.Stubs.reset()
     Support.Stubs.grant_all_permissions()
@@ -126,7 +124,7 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
       )
     end
 
-    test "returns recursively signed URLs for a directory", ctx do
+    test "returns 404 when path points to a directory", ctx do
       Support.Stubs.Artifacthub.create(ctx.job.id,
         scope: "jobs",
         path: "logs/a.log",
@@ -139,7 +137,7 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
         url: artifact_url("jobs", ctx.job.id, "logs/sub/b.log")
       )
 
-      assert {200, response} =
+      assert {404, "Artifact not found"} =
                signed_url(
                  %{
                    "scope" => "jobs",
@@ -148,72 +146,15 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
                  },
                  ctx.user.id
                )
-
-      assert response == %{
-               "items" => [
-                 %{
-                   "path" => "logs/a.log",
-                   "url" => artifact_url("jobs", ctx.job.id, "logs/a.log")
-                 },
-                 %{
-                   "path" => "logs/sub/b.log",
-                   "url" => artifact_url("jobs", ctx.job.id, "logs/sub/b.log")
-                 }
-               ]
-             }
     end
 
-    test "preserves backend order for directory signed URLs", ctx do
-      GrpcMock.stub(ArtifacthubMock, :get_signed_urls, fn _req, _ ->
-        InternalApi.Artifacthub.GetSignedURLSResponse.new(
-          urls: [
-            InternalApi.Artifacthub.SignedURL.new(
-              url: "https://localhost:9000/artifacts/jobs/#{ctx.job.id}/logs/z.log",
-              method: InternalApi.Artifacthub.SignedURL.Method.value(:GET)
-            ),
-            InternalApi.Artifacthub.SignedURL.new(
-              url: "https://localhost:9000/artifacts/jobs/#{ctx.job.id}/logs/a.log",
-              method: InternalApi.Artifacthub.SignedURL.Method.value(:GET)
-            )
-          ]
-        )
-      end)
+    test "sends exact file path to backend", ctx do
+      GrpcMock.stub(ArtifacthubMock, :get_signed_url, fn req, _ ->
+        assert req.path == "artifacts/jobs/#{ctx.job.id}/agent/job_logs.txt.gz"
+        assert req.method == "GET"
 
-      assert {200, response} =
-               signed_url(
-                 %{
-                   "scope" => "jobs",
-                   "scope_id" => ctx.job.id,
-                   "path" => "logs"
-                 },
-                 ctx.user.id
-               )
-
-      assert response == %{
-               "items" => [
-                 %{
-                   "path" => "logs/z.log",
-                   "url" => "https://localhost:9000/artifacts/jobs/#{ctx.job.id}/logs/z.log"
-                 },
-                 %{
-                   "path" => "logs/a.log",
-                   "url" => "https://localhost:9000/artifacts/jobs/#{ctx.job.id}/logs/a.log"
-                 }
-               ]
-             }
-    end
-
-    test "sends hard item limit to backend", ctx do
-      GrpcMock.stub(ArtifacthubMock, :get_signed_urls, fn req, _ ->
-        assert req.limit == @max_items
-
-        InternalApi.Artifacthub.GetSignedURLSResponse.new(
-          urls: [
-            InternalApi.Artifacthub.SignedURL.new(
-              url: "https://localhost:9000/artifacts/jobs/#{ctx.job.id}/agent/job_logs.txt.gz",
-              method: InternalApi.Artifacthub.SignedURL.Method.value(:GET)
-            )
-          ]
+        InternalApi.Artifacthub.GetSignedURLResponse.new(
+          url: artifact_url("jobs", ctx.job.id, "agent/job_logs.txt.gz")
         )
       end)
 
@@ -234,28 +175,10 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
       )
     end
 
-    test "returns 500 when backend directory URL does not contain expected artifact marker",
-         ctx do
-      Support.Stubs.Artifacthub.create(ctx.job.id,
-        scope: "jobs",
-        path: "logs/a.log",
-        url: artifact_url("jobs", ctx.job.id, "logs/a.log")
-      )
-
-      Support.Stubs.Artifacthub.create(ctx.job.id,
-        scope: "jobs",
-        path: "logs/sub/b.log",
-        url: artifact_url("jobs", ctx.job.id, "logs/sub/b.log")
-      )
-
-      GrpcMock.stub(ArtifacthubMock, :get_signed_urls, fn req, _ ->
-        InternalApi.Artifacthub.GetSignedURLSResponse.new(
-          urls: [
-            InternalApi.Artifacthub.SignedURL.new(
-              url: "https://localhost:9000/" <> Path.basename(req.path),
-              method: InternalApi.Artifacthub.SignedURL.Method.value(:GET)
-            )
-          ]
+    test "returns 500 when backend URL does not contain expected artifact marker", ctx do
+      GrpcMock.stub(ArtifacthubMock, :get_signed_url, fn req, _ ->
+        InternalApi.Artifacthub.GetSignedURLResponse.new(
+          url: "https://localhost:9000/" <> Path.basename(req.path)
         )
       end)
 
@@ -264,7 +187,7 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
                  %{
                    "scope" => "jobs",
                    "scope_id" => ctx.job.id,
-                   "path" => "logs"
+                   "path" => "agent/job_logs.txt.gz"
                  },
                  ctx.user.id
                )
@@ -277,14 +200,9 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
         url: artifact_url("jobs", ctx.job.id, "logs/a.log")
       )
 
-      GrpcMock.stub(ArtifacthubMock, :get_signed_urls, fn req, _ ->
-        InternalApi.Artifacthub.GetSignedURLSResponse.new(
-          urls: [
-            InternalApi.Artifacthub.SignedURL.new(
-              url: "https://localhost:9000/" <> Path.basename(req.path),
-              method: InternalApi.Artifacthub.SignedURL.Method.value(:GET)
-            )
-          ]
+      GrpcMock.stub(ArtifacthubMock, :get_signed_url, fn req, _ ->
+        InternalApi.Artifacthub.GetSignedURLResponse.new(
+          url: "https://localhost:9000/" <> Path.basename(req.path)
         )
       end)
 
@@ -300,14 +218,9 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
     end
 
     test "returns 404 when backend signed URL path resolves to scope root", ctx do
-      GrpcMock.stub(ArtifacthubMock, :get_signed_urls, fn _req, _ ->
-        InternalApi.Artifacthub.GetSignedURLSResponse.new(
-          urls: [
-            InternalApi.Artifacthub.SignedURL.new(
-              url: "https://localhost:9000/artifacts/jobs/#{ctx.job.id}/",
-              method: InternalApi.Artifacthub.SignedURL.Method.value(:GET)
-            )
-          ]
+      GrpcMock.stub(ArtifacthubMock, :get_signed_url, fn _req, _ ->
+        InternalApi.Artifacthub.GetSignedURLResponse.new(
+          url: "https://localhost:9000/artifacts/jobs/#{ctx.job.id}/"
         )
       end)
 
@@ -316,19 +229,28 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
                  %{
                    "scope" => "jobs",
                    "scope_id" => ctx.job.id,
-                   "path" => "logs"
+                   "path" => "agent/job_logs.txt.gz"
                  },
                  ctx.user.id
                )
     end
 
-    test "passes HEAD method through to backend for directories", ctx do
+    test "passes HEAD method through to backend for single file", ctx do
+      GrpcMock.stub(ArtifacthubMock, :get_signed_url, fn req, _ ->
+        assert req.path == "artifacts/jobs/#{ctx.job.id}/agent/job_logs.txt.gz"
+        assert req.method == "HEAD"
+
+        InternalApi.Artifacthub.GetSignedURLResponse.new(
+          url: artifact_url("jobs", ctx.job.id, "agent/job_logs.txt.gz")
+        )
+      end)
+
       assert {200, response} =
                signed_url(
                  %{
                    "scope" => "jobs",
                    "scope_id" => ctx.job.id,
-                   "path" => "agent",
+                   "path" => "agent/job_logs.txt.gz",
                    "method" => "HEAD"
                  },
                  ctx.user.id
@@ -520,21 +442,19 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
                signed_url_raw(base_query <> "&method[]=GET", ctx.user.id, false)
     end
 
-    test "returns 400 when backend reports path exceeds hard limit", ctx do
-      GrpcMock.stub(ArtifacthubMock, :get_signed_urls, fn req, _ ->
-        assert req.limit == @max_items
-
+    test "returns 400 when backend reports invalid file path", ctx do
+      GrpcMock.stub(ArtifacthubMock, :get_signed_url, fn _req, _ ->
         raise GRPC.RPCError,
           status: :failed_precondition,
-          message: "path resolves to too many files; narrow the path"
+          message: "path must reference a file"
       end)
 
-      assert {400, "path resolves to too many files; narrow the path"} =
+      assert {400, "path must reference a file"} =
                signed_url(
                  %{
                    "scope" => "jobs",
                    "scope_id" => ctx.job.id,
-                   "path" => "agent"
+                   "path" => "agent/job_logs.txt.gz"
                  },
                  ctx.user.id
                )
