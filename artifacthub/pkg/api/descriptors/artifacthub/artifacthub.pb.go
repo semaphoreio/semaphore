@@ -22,61 +22,6 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type SignedURL_Method int32
-
-const (
-	SignedURL_GET    SignedURL_Method = 0
-	SignedURL_DELETE SignedURL_Method = 1
-	SignedURL_HEAD   SignedURL_Method = 2
-	SignedURL_PUT    SignedURL_Method = 3
-	SignedURL_POST   SignedURL_Method = 4
-)
-
-// Enum value maps for SignedURL_Method.
-var (
-	SignedURL_Method_name = map[int32]string{
-		0: "GET",
-		1: "DELETE",
-		2: "HEAD",
-		3: "PUT",
-		4: "POST",
-	}
-	SignedURL_Method_value = map[string]int32{
-		"GET":    0,
-		"DELETE": 1,
-		"HEAD":   2,
-		"PUT":    3,
-		"POST":   4,
-	}
-)
-
-func (x SignedURL_Method) Enum() *SignedURL_Method {
-	p := new(SignedURL_Method)
-	*p = x
-	return p
-}
-
-func (x SignedURL_Method) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (SignedURL_Method) Descriptor() protoreflect.EnumDescriptor {
-	return file_artifacthub_proto_enumTypes[0].Descriptor()
-}
-
-func (SignedURL_Method) Type() protoreflect.EnumType {
-	return &file_artifacthub_proto_enumTypes[0]
-}
-
-func (x SignedURL_Method) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use SignedURL_Method.Descriptor instead.
-func (SignedURL_Method) EnumDescriptor() ([]byte, []int) {
-	return file_artifacthub_proto_rawDescGZIP(), []int{21, 0}
-}
-
 type CountArtifactsRequest_Category int32
 
 const (
@@ -110,11 +55,11 @@ func (x CountArtifactsRequest_Category) String() string {
 }
 
 func (CountArtifactsRequest_Category) Descriptor() protoreflect.EnumDescriptor {
-	return file_artifacthub_proto_enumTypes[1].Descriptor()
+	return file_artifacthub_proto_enumTypes[0].Descriptor()
 }
 
 func (CountArtifactsRequest_Category) Type() protoreflect.EnumType {
-	return &file_artifacthub_proto_enumTypes[1]
+	return &file_artifacthub_proto_enumTypes[0]
 }
 
 func (x CountArtifactsRequest_Category) Number() protoreflect.EnumNumber {
@@ -123,7 +68,7 @@ func (x CountArtifactsRequest_Category) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use CountArtifactsRequest_Category.Descriptor instead.
 func (CountArtifactsRequest_Category) EnumDescriptor() ([]byte, []int) {
-	return file_artifacthub_proto_rawDescGZIP(), []int{24, 0}
+	return file_artifacthub_proto_rawDescGZIP(), []int{21, 0}
 }
 
 // Request for HealthCheck
@@ -674,10 +619,8 @@ type ListPathRequest struct {
 	// and only the subdirectory itself is returned in an item with is_directory=true.
 	// If you want to list the files under subdirectories too, use unwrap_directories=true.
 	UnwrapDirectories bool `protobuf:"varint,3,opt,name=unwrap_directories,json=unwrapDirectories,proto3" json:"unwrap_directories,omitempty"`
-	// Maximum number of items to return. Values <= 0 mean "no limit".
-	Limit         int32 `protobuf:"varint,4,opt,name=limit,proto3" json:"limit,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *ListPathRequest) Reset() {
@@ -729,13 +672,6 @@ func (x *ListPathRequest) GetUnwrapDirectories() bool {
 		return x.UnwrapDirectories
 	}
 	return false
-}
-
-func (x *ListPathRequest) GetLimit() int32 {
-	if x != nil {
-		return x.Limit
-	}
-	return 0
 }
 
 // Response for List a Bucket directory
@@ -1055,172 +991,6 @@ func (x *GetSignedURLResponse) GetUrl() string {
 	return ""
 }
 
-type GetSignedURLSRequest struct {
-	state      protoimpl.MessageState `protogen:"open.v1"`
-	ArtifactId string                 `protobuf:"bytes,1,opt,name=artifact_id,json=artifactId,proto3" json:"artifact_id,omitempty"`
-	Path       string                 `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
-	Method     string                 `protobuf:"bytes,3,opt,name=method,proto3" json:"method,omitempty"`
-	// Maximum number of signed URLs to return for directory paths.
-	// Values <= 0 mean "no limit".
-	Limit         int32 `protobuf:"varint,4,opt,name=limit,proto3" json:"limit,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetSignedURLSRequest) Reset() {
-	*x = GetSignedURLSRequest{}
-	mi := &file_artifacthub_proto_msgTypes[19]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetSignedURLSRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetSignedURLSRequest) ProtoMessage() {}
-
-func (x *GetSignedURLSRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_artifacthub_proto_msgTypes[19]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetSignedURLSRequest.ProtoReflect.Descriptor instead.
-func (*GetSignedURLSRequest) Descriptor() ([]byte, []int) {
-	return file_artifacthub_proto_rawDescGZIP(), []int{19}
-}
-
-func (x *GetSignedURLSRequest) GetArtifactId() string {
-	if x != nil {
-		return x.ArtifactId
-	}
-	return ""
-}
-
-func (x *GetSignedURLSRequest) GetPath() string {
-	if x != nil {
-		return x.Path
-	}
-	return ""
-}
-
-func (x *GetSignedURLSRequest) GetMethod() string {
-	if x != nil {
-		return x.Method
-	}
-	return ""
-}
-
-func (x *GetSignedURLSRequest) GetLimit() int32 {
-	if x != nil {
-		return x.Limit
-	}
-	return 0
-}
-
-type GetSignedURLSResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Urls          []*SignedURL           `protobuf:"bytes,1,rep,name=urls,proto3" json:"urls,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetSignedURLSResponse) Reset() {
-	*x = GetSignedURLSResponse{}
-	mi := &file_artifacthub_proto_msgTypes[20]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetSignedURLSResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetSignedURLSResponse) ProtoMessage() {}
-
-func (x *GetSignedURLSResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_artifacthub_proto_msgTypes[20]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetSignedURLSResponse.ProtoReflect.Descriptor instead.
-func (*GetSignedURLSResponse) Descriptor() ([]byte, []int) {
-	return file_artifacthub_proto_rawDescGZIP(), []int{20}
-}
-
-func (x *GetSignedURLSResponse) GetUrls() []*SignedURL {
-	if x != nil {
-		return x.Urls
-	}
-	return nil
-}
-
-type SignedURL struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Url           string                 `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
-	Method        SignedURL_Method       `protobuf:"varint,2,opt,name=method,proto3,enum=InternalApi.Artifacthub.SignedURL_Method" json:"method,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *SignedURL) Reset() {
-	*x = SignedURL{}
-	mi := &file_artifacthub_proto_msgTypes[21]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SignedURL) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SignedURL) ProtoMessage() {}
-
-func (x *SignedURL) ProtoReflect() protoreflect.Message {
-	mi := &file_artifacthub_proto_msgTypes[21]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SignedURL.ProtoReflect.Descriptor instead.
-func (*SignedURL) Descriptor() ([]byte, []int) {
-	return file_artifacthub_proto_rawDescGZIP(), []int{21}
-}
-
-func (x *SignedURL) GetUrl() string {
-	if x != nil {
-		return x.Url
-	}
-	return ""
-}
-
-func (x *SignedURL) GetMethod() SignedURL_Method {
-	if x != nil {
-		return x.Method
-	}
-	return SignedURL_GET
-}
-
 type ListBucketsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Ids           []string               `protobuf:"bytes,1,rep,name=ids,proto3" json:"ids,omitempty"`
@@ -1230,7 +1000,7 @@ type ListBucketsRequest struct {
 
 func (x *ListBucketsRequest) Reset() {
 	*x = ListBucketsRequest{}
-	mi := &file_artifacthub_proto_msgTypes[22]
+	mi := &file_artifacthub_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1242,7 +1012,7 @@ func (x *ListBucketsRequest) String() string {
 func (*ListBucketsRequest) ProtoMessage() {}
 
 func (x *ListBucketsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_artifacthub_proto_msgTypes[22]
+	mi := &file_artifacthub_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1255,7 +1025,7 @@ func (x *ListBucketsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListBucketsRequest.ProtoReflect.Descriptor instead.
 func (*ListBucketsRequest) Descriptor() ([]byte, []int) {
-	return file_artifacthub_proto_rawDescGZIP(), []int{22}
+	return file_artifacthub_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *ListBucketsRequest) GetIds() []string {
@@ -1274,7 +1044,7 @@ type ListBucketsResponse struct {
 
 func (x *ListBucketsResponse) Reset() {
 	*x = ListBucketsResponse{}
-	mi := &file_artifacthub_proto_msgTypes[23]
+	mi := &file_artifacthub_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1286,7 +1056,7 @@ func (x *ListBucketsResponse) String() string {
 func (*ListBucketsResponse) ProtoMessage() {}
 
 func (x *ListBucketsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_artifacthub_proto_msgTypes[23]
+	mi := &file_artifacthub_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1299,7 +1069,7 @@ func (x *ListBucketsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListBucketsResponse.ProtoReflect.Descriptor instead.
 func (*ListBucketsResponse) Descriptor() ([]byte, []int) {
-	return file_artifacthub_proto_rawDescGZIP(), []int{23}
+	return file_artifacthub_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *ListBucketsResponse) GetBucketNamesForIds() map[string]string {
@@ -1321,7 +1091,7 @@ type CountArtifactsRequest struct {
 
 func (x *CountArtifactsRequest) Reset() {
 	*x = CountArtifactsRequest{}
-	mi := &file_artifacthub_proto_msgTypes[24]
+	mi := &file_artifacthub_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1333,7 +1103,7 @@ func (x *CountArtifactsRequest) String() string {
 func (*CountArtifactsRequest) ProtoMessage() {}
 
 func (x *CountArtifactsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_artifacthub_proto_msgTypes[24]
+	mi := &file_artifacthub_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1346,7 +1116,7 @@ func (x *CountArtifactsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CountArtifactsRequest.ProtoReflect.Descriptor instead.
 func (*CountArtifactsRequest) Descriptor() ([]byte, []int) {
-	return file_artifacthub_proto_rawDescGZIP(), []int{24}
+	return file_artifacthub_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *CountArtifactsRequest) GetCategory() CountArtifactsRequest_Category {
@@ -1379,7 +1149,7 @@ type CountArtifactsResponse struct {
 
 func (x *CountArtifactsResponse) Reset() {
 	*x = CountArtifactsResponse{}
-	mi := &file_artifacthub_proto_msgTypes[25]
+	mi := &file_artifacthub_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1391,7 +1161,7 @@ func (x *CountArtifactsResponse) String() string {
 func (*CountArtifactsResponse) ProtoMessage() {}
 
 func (x *CountArtifactsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_artifacthub_proto_msgTypes[25]
+	mi := &file_artifacthub_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1404,7 +1174,7 @@ func (x *CountArtifactsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CountArtifactsResponse.ProtoReflect.Descriptor instead.
 func (*CountArtifactsResponse) Descriptor() ([]byte, []int) {
-	return file_artifacthub_proto_rawDescGZIP(), []int{25}
+	return file_artifacthub_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *CountArtifactsResponse) GetArtifactCount() int32 {
@@ -1422,7 +1192,7 @@ type CountBucketsRequest struct {
 
 func (x *CountBucketsRequest) Reset() {
 	*x = CountBucketsRequest{}
-	mi := &file_artifacthub_proto_msgTypes[26]
+	mi := &file_artifacthub_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1434,7 +1204,7 @@ func (x *CountBucketsRequest) String() string {
 func (*CountBucketsRequest) ProtoMessage() {}
 
 func (x *CountBucketsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_artifacthub_proto_msgTypes[26]
+	mi := &file_artifacthub_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1447,7 +1217,7 @@ func (x *CountBucketsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CountBucketsRequest.ProtoReflect.Descriptor instead.
 func (*CountBucketsRequest) Descriptor() ([]byte, []int) {
-	return file_artifacthub_proto_rawDescGZIP(), []int{26}
+	return file_artifacthub_proto_rawDescGZIP(), []int{23}
 }
 
 type CountBucketsResponse struct {
@@ -1459,7 +1229,7 @@ type CountBucketsResponse struct {
 
 func (x *CountBucketsResponse) Reset() {
 	*x = CountBucketsResponse{}
-	mi := &file_artifacthub_proto_msgTypes[27]
+	mi := &file_artifacthub_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1471,7 +1241,7 @@ func (x *CountBucketsResponse) String() string {
 func (*CountBucketsResponse) ProtoMessage() {}
 
 func (x *CountBucketsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_artifacthub_proto_msgTypes[27]
+	mi := &file_artifacthub_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1484,7 +1254,7 @@ func (x *CountBucketsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CountBucketsResponse.ProtoReflect.Descriptor instead.
 func (*CountBucketsResponse) Descriptor() ([]byte, []int) {
-	return file_artifacthub_proto_rawDescGZIP(), []int{27}
+	return file_artifacthub_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *CountBucketsResponse) GetBucketCount() int32 {
@@ -1503,7 +1273,7 @@ type UpdateCORSRequest struct {
 
 func (x *UpdateCORSRequest) Reset() {
 	*x = UpdateCORSRequest{}
-	mi := &file_artifacthub_proto_msgTypes[28]
+	mi := &file_artifacthub_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1515,7 +1285,7 @@ func (x *UpdateCORSRequest) String() string {
 func (*UpdateCORSRequest) ProtoMessage() {}
 
 func (x *UpdateCORSRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_artifacthub_proto_msgTypes[28]
+	mi := &file_artifacthub_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1528,7 +1298,7 @@ func (x *UpdateCORSRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateCORSRequest.ProtoReflect.Descriptor instead.
 func (*UpdateCORSRequest) Descriptor() ([]byte, []int) {
-	return file_artifacthub_proto_rawDescGZIP(), []int{28}
+	return file_artifacthub_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *UpdateCORSRequest) GetBucketName() string {
@@ -1547,7 +1317,7 @@ type UpdateCORSResponse struct {
 
 func (x *UpdateCORSResponse) Reset() {
 	*x = UpdateCORSResponse{}
-	mi := &file_artifacthub_proto_msgTypes[29]
+	mi := &file_artifacthub_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1559,7 +1329,7 @@ func (x *UpdateCORSResponse) String() string {
 func (*UpdateCORSResponse) ProtoMessage() {}
 
 func (x *UpdateCORSResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_artifacthub_proto_msgTypes[29]
+	mi := &file_artifacthub_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1572,7 +1342,7 @@ func (x *UpdateCORSResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateCORSResponse.ProtoReflect.Descriptor instead.
 func (*UpdateCORSResponse) Descriptor() ([]byte, []int) {
-	return file_artifacthub_proto_rawDescGZIP(), []int{29}
+	return file_artifacthub_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *UpdateCORSResponse) GetNextBucketName() string {
@@ -1593,7 +1363,7 @@ type ListItem struct {
 
 func (x *ListItem) Reset() {
 	*x = ListItem{}
-	mi := &file_artifacthub_proto_msgTypes[30]
+	mi := &file_artifacthub_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1605,7 +1375,7 @@ func (x *ListItem) String() string {
 func (*ListItem) ProtoMessage() {}
 
 func (x *ListItem) ProtoReflect() protoreflect.Message {
-	mi := &file_artifacthub_proto_msgTypes[30]
+	mi := &file_artifacthub_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1618,7 +1388,7 @@ func (x *ListItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListItem.ProtoReflect.Descriptor instead.
 func (*ListItem) Descriptor() ([]byte, []int) {
-	return file_artifacthub_proto_rawDescGZIP(), []int{30}
+	return file_artifacthub_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *ListItem) GetName() string {
@@ -1653,7 +1423,7 @@ type Artifact struct {
 
 func (x *Artifact) Reset() {
 	*x = Artifact{}
-	mi := &file_artifacthub_proto_msgTypes[31]
+	mi := &file_artifacthub_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1665,7 +1435,7 @@ func (x *Artifact) String() string {
 func (*Artifact) ProtoMessage() {}
 
 func (x *Artifact) ProtoReflect() protoreflect.Message {
-	mi := &file_artifacthub_proto_msgTypes[31]
+	mi := &file_artifacthub_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1678,7 +1448,7 @@ func (x *Artifact) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Artifact.ProtoReflect.Descriptor instead.
 func (*Artifact) Descriptor() ([]byte, []int) {
-	return file_artifacthub_proto_rawDescGZIP(), []int{31}
+	return file_artifacthub_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *Artifact) GetId() string {
@@ -1721,7 +1491,7 @@ type GenerateTokenRequest struct {
 
 func (x *GenerateTokenRequest) Reset() {
 	*x = GenerateTokenRequest{}
-	mi := &file_artifacthub_proto_msgTypes[32]
+	mi := &file_artifacthub_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1733,7 +1503,7 @@ func (x *GenerateTokenRequest) String() string {
 func (*GenerateTokenRequest) ProtoMessage() {}
 
 func (x *GenerateTokenRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_artifacthub_proto_msgTypes[32]
+	mi := &file_artifacthub_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1746,7 +1516,7 @@ func (x *GenerateTokenRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GenerateTokenRequest.ProtoReflect.Descriptor instead.
 func (*GenerateTokenRequest) Descriptor() ([]byte, []int) {
-	return file_artifacthub_proto_rawDescGZIP(), []int{32}
+	return file_artifacthub_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *GenerateTokenRequest) GetArtifactId() string {
@@ -1795,7 +1565,7 @@ type GenerateTokenResponse struct {
 
 func (x *GenerateTokenResponse) Reset() {
 	*x = GenerateTokenResponse{}
-	mi := &file_artifacthub_proto_msgTypes[33]
+	mi := &file_artifacthub_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1807,7 +1577,7 @@ func (x *GenerateTokenResponse) String() string {
 func (*GenerateTokenResponse) ProtoMessage() {}
 
 func (x *GenerateTokenResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_artifacthub_proto_msgTypes[33]
+	mi := &file_artifacthub_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1820,7 +1590,7 @@ func (x *GenerateTokenResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GenerateTokenResponse.ProtoReflect.Descriptor instead.
 func (*GenerateTokenResponse) Descriptor() ([]byte, []int) {
-	return file_artifacthub_proto_rawDescGZIP(), []int{33}
+	return file_artifacthub_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *GenerateTokenResponse) GetToken() string {
@@ -1851,7 +1621,7 @@ type RetentionPolicy_RetentionPolicyRule struct {
 
 func (x *RetentionPolicy_RetentionPolicyRule) Reset() {
 	*x = RetentionPolicy_RetentionPolicyRule{}
-	mi := &file_artifacthub_proto_msgTypes[34]
+	mi := &file_artifacthub_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1863,7 +1633,7 @@ func (x *RetentionPolicy_RetentionPolicyRule) String() string {
 func (*RetentionPolicy_RetentionPolicyRule) ProtoMessage() {}
 
 func (x *RetentionPolicy_RetentionPolicyRule) ProtoReflect() protoreflect.Message {
-	mi := &file_artifacthub_proto_msgTypes[34]
+	mi := &file_artifacthub_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1930,13 +1700,12 @@ const file_artifacthub_proto_rawDesc = "" +
 	"\x0eDestroyRequest\x12\x1f\n" +
 	"\vartifact_id\x18\x01 \x01(\tR\n" +
 	"artifactId\"\x11\n" +
-	"\x0fDestroyResponse\"\x8b\x01\n" +
+	"\x0fDestroyResponse\"u\n" +
 	"\x0fListPathRequest\x12\x1f\n" +
 	"\vartifact_id\x18\x01 \x01(\tR\n" +
 	"artifactId\x12\x12\n" +
 	"\x04path\x18\x02 \x01(\tR\x04path\x12-\n" +
-	"\x12unwrap_directories\x18\x03 \x01(\bR\x11unwrapDirectories\x12\x14\n" +
-	"\x05limit\x18\x04 \x01(\x05R\x05limit\"K\n" +
+	"\x12unwrap_directories\x18\x03 \x01(\bR\x11unwrapDirectories\"K\n" +
 	"\x10ListPathResponse\x127\n" +
 	"\x05items\x18\x01 \x03(\v2!.InternalApi.Artifacthub.ListItemR\x05items\"H\n" +
 	"\x11DeletePathRequest\x12\x1f\n" +
@@ -1952,25 +1721,7 @@ const file_artifacthub_proto_rawDesc = "" +
 	"\x04path\x18\x02 \x01(\tR\x04path\x12\x16\n" +
 	"\x06method\x18\x03 \x01(\tR\x06method\"(\n" +
 	"\x14GetSignedURLResponse\x12\x10\n" +
-	"\x03url\x18\x01 \x01(\tR\x03url\"y\n" +
-	"\x14GetSignedURLSRequest\x12\x1f\n" +
-	"\vartifact_id\x18\x01 \x01(\tR\n" +
-	"artifactId\x12\x12\n" +
-	"\x04path\x18\x02 \x01(\tR\x04path\x12\x16\n" +
-	"\x06method\x18\x03 \x01(\tR\x06method\x12\x14\n" +
-	"\x05limit\x18\x04 \x01(\x05R\x05limit\"O\n" +
-	"\x15GetSignedURLSResponse\x126\n" +
-	"\x04urls\x18\x01 \x03(\v2\".InternalApi.Artifacthub.SignedURLR\x04urls\"\x9c\x01\n" +
-	"\tSignedURL\x12\x10\n" +
-	"\x03url\x18\x01 \x01(\tR\x03url\x12A\n" +
-	"\x06method\x18\x02 \x01(\x0e2).InternalApi.Artifacthub.SignedURL.MethodR\x06method\":\n" +
-	"\x06Method\x12\a\n" +
-	"\x03GET\x10\x00\x12\n" +
-	"\n" +
-	"\x06DELETE\x10\x01\x12\b\n" +
-	"\x04HEAD\x10\x02\x12\a\n" +
-	"\x03PUT\x10\x03\x12\b\n" +
-	"\x04POST\x10\x04\"&\n" +
+	"\x03url\x18\x01 \x01(\tR\x03url\"&\n" +
 	"\x12ListBucketsRequest\x12\x10\n" +
 	"\x03ids\x18\x01 \x03(\tR\x03ids\"\xd1\x01\n" +
 	"\x13ListBucketsResponse\x12t\n" +
@@ -2017,7 +1768,7 @@ const file_artifacthub_proto_rawDesc = "" +
 	"project_id\x18\x04 \x01(\tR\tprojectId\x12\x1a\n" +
 	"\bduration\x18\x05 \x01(\rR\bduration\"-\n" +
 	"\x15GenerateTokenResponse\x12\x14\n" +
-	"\x05token\x18\x01 \x01(\tR\x05token2\xc2\f\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token2\xd2\v\n" +
 	"\x0fArtifactService\x12h\n" +
 	"\vHealthCheck\x12+.InternalApi.Artifacthub.HealthCheckRequest\x1a,.InternalApi.Artifacthub.HealthCheckResponse\x12Y\n" +
 	"\x06Create\x12&.InternalApi.Artifacthub.CreateRequest\x1a'.InternalApi.Artifacthub.CreateResponse\x12_\n" +
@@ -2029,8 +1780,7 @@ const file_artifacthub_proto_rawDesc = "" +
 	"\x15UpdateRetentionPolicy\x125.InternalApi.Artifacthub.UpdateRetentionPolicyRequest\x1a6.InternalApi.Artifacthub.UpdateRetentionPolicyResponse\x12n\n" +
 	"\rGenerateToken\x12-.InternalApi.Artifacthub.GenerateTokenRequest\x1a..InternalApi.Artifacthub.GenerateTokenResponse\x12\\\n" +
 	"\aCleanup\x12'.InternalApi.Artifacthub.CleanupRequest\x1a(.InternalApi.Artifacthub.CleanupResponse\x12k\n" +
-	"\fGetSignedURL\x12,.InternalApi.Artifacthub.GetSignedURLRequest\x1a-.InternalApi.Artifacthub.GetSignedURLResponse\x12n\n" +
-	"\rGetSignedURLS\x12-.InternalApi.Artifacthub.GetSignedURLSRequest\x1a..InternalApi.Artifacthub.GetSignedURLSResponse\x12h\n" +
+	"\fGetSignedURL\x12,.InternalApi.Artifacthub.GetSignedURLRequest\x1a-.InternalApi.Artifacthub.GetSignedURLResponse\x12h\n" +
 	"\vListBuckets\x12+.InternalApi.Artifacthub.ListBucketsRequest\x1a,.InternalApi.Artifacthub.ListBucketsResponse\x12q\n" +
 	"\x0eCountArtifacts\x12..InternalApi.Artifacthub.CountArtifactsRequest\x1a/.InternalApi.Artifacthub.CountArtifactsResponse\x12k\n" +
 	"\fCountBuckets\x12,.InternalApi.Artifacthub.CountBucketsRequest\x1a-.InternalApi.Artifacthub.CountBucketsResponse\x12e\n" +
@@ -2049,101 +1799,93 @@ func file_artifacthub_proto_rawDescGZIP() []byte {
 	return file_artifacthub_proto_rawDescData
 }
 
-var file_artifacthub_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_artifacthub_proto_msgTypes = make([]protoimpl.MessageInfo, 36)
+var file_artifacthub_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_artifacthub_proto_msgTypes = make([]protoimpl.MessageInfo, 33)
 var file_artifacthub_proto_goTypes = []any{
-	(SignedURL_Method)(0),                       // 0: InternalApi.Artifacthub.SignedURL.Method
-	(CountArtifactsRequest_Category)(0),         // 1: InternalApi.Artifacthub.CountArtifactsRequest.Category
-	(*HealthCheckRequest)(nil),                  // 2: InternalApi.Artifacthub.HealthCheckRequest
-	(*HealthCheckResponse)(nil),                 // 3: InternalApi.Artifacthub.HealthCheckResponse
-	(*RetentionPolicy)(nil),                     // 4: InternalApi.Artifacthub.RetentionPolicy
-	(*UpdateRetentionPolicyRequest)(nil),        // 5: InternalApi.Artifacthub.UpdateRetentionPolicyRequest
-	(*UpdateRetentionPolicyResponse)(nil),       // 6: InternalApi.Artifacthub.UpdateRetentionPolicyResponse
-	(*CreateRequest)(nil),                       // 7: InternalApi.Artifacthub.CreateRequest
-	(*CreateResponse)(nil),                      // 8: InternalApi.Artifacthub.CreateResponse
-	(*DescribeRequest)(nil),                     // 9: InternalApi.Artifacthub.DescribeRequest
-	(*DescribeResponse)(nil),                    // 10: InternalApi.Artifacthub.DescribeResponse
-	(*DestroyRequest)(nil),                      // 11: InternalApi.Artifacthub.DestroyRequest
-	(*DestroyResponse)(nil),                     // 12: InternalApi.Artifacthub.DestroyResponse
-	(*ListPathRequest)(nil),                     // 13: InternalApi.Artifacthub.ListPathRequest
-	(*ListPathResponse)(nil),                    // 14: InternalApi.Artifacthub.ListPathResponse
-	(*DeletePathRequest)(nil),                   // 15: InternalApi.Artifacthub.DeletePathRequest
-	(*DeletePathResponse)(nil),                  // 16: InternalApi.Artifacthub.DeletePathResponse
-	(*CleanupRequest)(nil),                      // 17: InternalApi.Artifacthub.CleanupRequest
-	(*CleanupResponse)(nil),                     // 18: InternalApi.Artifacthub.CleanupResponse
-	(*GetSignedURLRequest)(nil),                 // 19: InternalApi.Artifacthub.GetSignedURLRequest
-	(*GetSignedURLResponse)(nil),                // 20: InternalApi.Artifacthub.GetSignedURLResponse
-	(*GetSignedURLSRequest)(nil),                // 21: InternalApi.Artifacthub.GetSignedURLSRequest
-	(*GetSignedURLSResponse)(nil),               // 22: InternalApi.Artifacthub.GetSignedURLSResponse
-	(*SignedURL)(nil),                           // 23: InternalApi.Artifacthub.SignedURL
-	(*ListBucketsRequest)(nil),                  // 24: InternalApi.Artifacthub.ListBucketsRequest
-	(*ListBucketsResponse)(nil),                 // 25: InternalApi.Artifacthub.ListBucketsResponse
-	(*CountArtifactsRequest)(nil),               // 26: InternalApi.Artifacthub.CountArtifactsRequest
-	(*CountArtifactsResponse)(nil),              // 27: InternalApi.Artifacthub.CountArtifactsResponse
-	(*CountBucketsRequest)(nil),                 // 28: InternalApi.Artifacthub.CountBucketsRequest
-	(*CountBucketsResponse)(nil),                // 29: InternalApi.Artifacthub.CountBucketsResponse
-	(*UpdateCORSRequest)(nil),                   // 30: InternalApi.Artifacthub.UpdateCORSRequest
-	(*UpdateCORSResponse)(nil),                  // 31: InternalApi.Artifacthub.UpdateCORSResponse
-	(*ListItem)(nil),                            // 32: InternalApi.Artifacthub.ListItem
-	(*Artifact)(nil),                            // 33: InternalApi.Artifacthub.Artifact
-	(*GenerateTokenRequest)(nil),                // 34: InternalApi.Artifacthub.GenerateTokenRequest
-	(*GenerateTokenResponse)(nil),               // 35: InternalApi.Artifacthub.GenerateTokenResponse
-	(*RetentionPolicy_RetentionPolicyRule)(nil), // 36: InternalApi.Artifacthub.RetentionPolicy.RetentionPolicyRule
-	nil,                         // 37: InternalApi.Artifacthub.ListBucketsResponse.BucketNamesForIdsEntry
-	(*timestamp.Timestamp)(nil), // 38: google.protobuf.Timestamp
+	(CountArtifactsRequest_Category)(0),         // 0: InternalApi.Artifacthub.CountArtifactsRequest.Category
+	(*HealthCheckRequest)(nil),                  // 1: InternalApi.Artifacthub.HealthCheckRequest
+	(*HealthCheckResponse)(nil),                 // 2: InternalApi.Artifacthub.HealthCheckResponse
+	(*RetentionPolicy)(nil),                     // 3: InternalApi.Artifacthub.RetentionPolicy
+	(*UpdateRetentionPolicyRequest)(nil),        // 4: InternalApi.Artifacthub.UpdateRetentionPolicyRequest
+	(*UpdateRetentionPolicyResponse)(nil),       // 5: InternalApi.Artifacthub.UpdateRetentionPolicyResponse
+	(*CreateRequest)(nil),                       // 6: InternalApi.Artifacthub.CreateRequest
+	(*CreateResponse)(nil),                      // 7: InternalApi.Artifacthub.CreateResponse
+	(*DescribeRequest)(nil),                     // 8: InternalApi.Artifacthub.DescribeRequest
+	(*DescribeResponse)(nil),                    // 9: InternalApi.Artifacthub.DescribeResponse
+	(*DestroyRequest)(nil),                      // 10: InternalApi.Artifacthub.DestroyRequest
+	(*DestroyResponse)(nil),                     // 11: InternalApi.Artifacthub.DestroyResponse
+	(*ListPathRequest)(nil),                     // 12: InternalApi.Artifacthub.ListPathRequest
+	(*ListPathResponse)(nil),                    // 13: InternalApi.Artifacthub.ListPathResponse
+	(*DeletePathRequest)(nil),                   // 14: InternalApi.Artifacthub.DeletePathRequest
+	(*DeletePathResponse)(nil),                  // 15: InternalApi.Artifacthub.DeletePathResponse
+	(*CleanupRequest)(nil),                      // 16: InternalApi.Artifacthub.CleanupRequest
+	(*CleanupResponse)(nil),                     // 17: InternalApi.Artifacthub.CleanupResponse
+	(*GetSignedURLRequest)(nil),                 // 18: InternalApi.Artifacthub.GetSignedURLRequest
+	(*GetSignedURLResponse)(nil),                // 19: InternalApi.Artifacthub.GetSignedURLResponse
+	(*ListBucketsRequest)(nil),                  // 20: InternalApi.Artifacthub.ListBucketsRequest
+	(*ListBucketsResponse)(nil),                 // 21: InternalApi.Artifacthub.ListBucketsResponse
+	(*CountArtifactsRequest)(nil),               // 22: InternalApi.Artifacthub.CountArtifactsRequest
+	(*CountArtifactsResponse)(nil),              // 23: InternalApi.Artifacthub.CountArtifactsResponse
+	(*CountBucketsRequest)(nil),                 // 24: InternalApi.Artifacthub.CountBucketsRequest
+	(*CountBucketsResponse)(nil),                // 25: InternalApi.Artifacthub.CountBucketsResponse
+	(*UpdateCORSRequest)(nil),                   // 26: InternalApi.Artifacthub.UpdateCORSRequest
+	(*UpdateCORSResponse)(nil),                  // 27: InternalApi.Artifacthub.UpdateCORSResponse
+	(*ListItem)(nil),                            // 28: InternalApi.Artifacthub.ListItem
+	(*Artifact)(nil),                            // 29: InternalApi.Artifacthub.Artifact
+	(*GenerateTokenRequest)(nil),                // 30: InternalApi.Artifacthub.GenerateTokenRequest
+	(*GenerateTokenResponse)(nil),               // 31: InternalApi.Artifacthub.GenerateTokenResponse
+	(*RetentionPolicy_RetentionPolicyRule)(nil), // 32: InternalApi.Artifacthub.RetentionPolicy.RetentionPolicyRule
+	nil,                         // 33: InternalApi.Artifacthub.ListBucketsResponse.BucketNamesForIdsEntry
+	(*timestamp.Timestamp)(nil), // 34: google.protobuf.Timestamp
 }
 var file_artifacthub_proto_depIdxs = []int32{
-	36, // 0: InternalApi.Artifacthub.RetentionPolicy.project_level_retention_policies:type_name -> InternalApi.Artifacthub.RetentionPolicy.RetentionPolicyRule
-	36, // 1: InternalApi.Artifacthub.RetentionPolicy.workflow_level_retention_policies:type_name -> InternalApi.Artifacthub.RetentionPolicy.RetentionPolicyRule
-	36, // 2: InternalApi.Artifacthub.RetentionPolicy.job_level_retention_policies:type_name -> InternalApi.Artifacthub.RetentionPolicy.RetentionPolicyRule
-	38, // 3: InternalApi.Artifacthub.RetentionPolicy.scheduled_for_cleaning_at:type_name -> google.protobuf.Timestamp
-	38, // 4: InternalApi.Artifacthub.RetentionPolicy.last_cleaned_at:type_name -> google.protobuf.Timestamp
-	4,  // 5: InternalApi.Artifacthub.UpdateRetentionPolicyRequest.retention_policy:type_name -> InternalApi.Artifacthub.RetentionPolicy
-	4,  // 6: InternalApi.Artifacthub.UpdateRetentionPolicyResponse.retention_policy:type_name -> InternalApi.Artifacthub.RetentionPolicy
-	4,  // 7: InternalApi.Artifacthub.CreateRequest.retention_policy:type_name -> InternalApi.Artifacthub.RetentionPolicy
-	33, // 8: InternalApi.Artifacthub.CreateResponse.artifact:type_name -> InternalApi.Artifacthub.Artifact
-	33, // 9: InternalApi.Artifacthub.DescribeResponse.artifact:type_name -> InternalApi.Artifacthub.Artifact
-	4,  // 10: InternalApi.Artifacthub.DescribeResponse.retention_policy:type_name -> InternalApi.Artifacthub.RetentionPolicy
-	32, // 11: InternalApi.Artifacthub.ListPathResponse.items:type_name -> InternalApi.Artifacthub.ListItem
-	23, // 12: InternalApi.Artifacthub.GetSignedURLSResponse.urls:type_name -> InternalApi.Artifacthub.SignedURL
-	0,  // 13: InternalApi.Artifacthub.SignedURL.method:type_name -> InternalApi.Artifacthub.SignedURL.Method
-	37, // 14: InternalApi.Artifacthub.ListBucketsResponse.bucket_names_for_ids:type_name -> InternalApi.Artifacthub.ListBucketsResponse.BucketNamesForIdsEntry
-	1,  // 15: InternalApi.Artifacthub.CountArtifactsRequest.category:type_name -> InternalApi.Artifacthub.CountArtifactsRequest.Category
-	2,  // 16: InternalApi.Artifacthub.ArtifactService.HealthCheck:input_type -> InternalApi.Artifacthub.HealthCheckRequest
-	7,  // 17: InternalApi.Artifacthub.ArtifactService.Create:input_type -> InternalApi.Artifacthub.CreateRequest
-	9,  // 18: InternalApi.Artifacthub.ArtifactService.Describe:input_type -> InternalApi.Artifacthub.DescribeRequest
-	11, // 19: InternalApi.Artifacthub.ArtifactService.Destroy:input_type -> InternalApi.Artifacthub.DestroyRequest
-	13, // 20: InternalApi.Artifacthub.ArtifactService.ListPath:input_type -> InternalApi.Artifacthub.ListPathRequest
-	15, // 21: InternalApi.Artifacthub.ArtifactService.DeletePath:input_type -> InternalApi.Artifacthub.DeletePathRequest
-	5,  // 22: InternalApi.Artifacthub.ArtifactService.UpdateRetentionPolicy:input_type -> InternalApi.Artifacthub.UpdateRetentionPolicyRequest
-	34, // 23: InternalApi.Artifacthub.ArtifactService.GenerateToken:input_type -> InternalApi.Artifacthub.GenerateTokenRequest
-	17, // 24: InternalApi.Artifacthub.ArtifactService.Cleanup:input_type -> InternalApi.Artifacthub.CleanupRequest
-	19, // 25: InternalApi.Artifacthub.ArtifactService.GetSignedURL:input_type -> InternalApi.Artifacthub.GetSignedURLRequest
-	21, // 26: InternalApi.Artifacthub.ArtifactService.GetSignedURLS:input_type -> InternalApi.Artifacthub.GetSignedURLSRequest
-	24, // 27: InternalApi.Artifacthub.ArtifactService.ListBuckets:input_type -> InternalApi.Artifacthub.ListBucketsRequest
-	26, // 28: InternalApi.Artifacthub.ArtifactService.CountArtifacts:input_type -> InternalApi.Artifacthub.CountArtifactsRequest
-	28, // 29: InternalApi.Artifacthub.ArtifactService.CountBuckets:input_type -> InternalApi.Artifacthub.CountBucketsRequest
-	30, // 30: InternalApi.Artifacthub.ArtifactService.UpdateCORS:input_type -> InternalApi.Artifacthub.UpdateCORSRequest
-	3,  // 31: InternalApi.Artifacthub.ArtifactService.HealthCheck:output_type -> InternalApi.Artifacthub.HealthCheckResponse
-	8,  // 32: InternalApi.Artifacthub.ArtifactService.Create:output_type -> InternalApi.Artifacthub.CreateResponse
-	10, // 33: InternalApi.Artifacthub.ArtifactService.Describe:output_type -> InternalApi.Artifacthub.DescribeResponse
-	12, // 34: InternalApi.Artifacthub.ArtifactService.Destroy:output_type -> InternalApi.Artifacthub.DestroyResponse
-	14, // 35: InternalApi.Artifacthub.ArtifactService.ListPath:output_type -> InternalApi.Artifacthub.ListPathResponse
-	16, // 36: InternalApi.Artifacthub.ArtifactService.DeletePath:output_type -> InternalApi.Artifacthub.DeletePathResponse
-	6,  // 37: InternalApi.Artifacthub.ArtifactService.UpdateRetentionPolicy:output_type -> InternalApi.Artifacthub.UpdateRetentionPolicyResponse
-	35, // 38: InternalApi.Artifacthub.ArtifactService.GenerateToken:output_type -> InternalApi.Artifacthub.GenerateTokenResponse
-	18, // 39: InternalApi.Artifacthub.ArtifactService.Cleanup:output_type -> InternalApi.Artifacthub.CleanupResponse
-	20, // 40: InternalApi.Artifacthub.ArtifactService.GetSignedURL:output_type -> InternalApi.Artifacthub.GetSignedURLResponse
-	22, // 41: InternalApi.Artifacthub.ArtifactService.GetSignedURLS:output_type -> InternalApi.Artifacthub.GetSignedURLSResponse
-	25, // 42: InternalApi.Artifacthub.ArtifactService.ListBuckets:output_type -> InternalApi.Artifacthub.ListBucketsResponse
-	27, // 43: InternalApi.Artifacthub.ArtifactService.CountArtifacts:output_type -> InternalApi.Artifacthub.CountArtifactsResponse
-	29, // 44: InternalApi.Artifacthub.ArtifactService.CountBuckets:output_type -> InternalApi.Artifacthub.CountBucketsResponse
-	31, // 45: InternalApi.Artifacthub.ArtifactService.UpdateCORS:output_type -> InternalApi.Artifacthub.UpdateCORSResponse
-	31, // [31:46] is the sub-list for method output_type
-	16, // [16:31] is the sub-list for method input_type
-	16, // [16:16] is the sub-list for extension type_name
-	16, // [16:16] is the sub-list for extension extendee
-	0,  // [0:16] is the sub-list for field type_name
+	32, // 0: InternalApi.Artifacthub.RetentionPolicy.project_level_retention_policies:type_name -> InternalApi.Artifacthub.RetentionPolicy.RetentionPolicyRule
+	32, // 1: InternalApi.Artifacthub.RetentionPolicy.workflow_level_retention_policies:type_name -> InternalApi.Artifacthub.RetentionPolicy.RetentionPolicyRule
+	32, // 2: InternalApi.Artifacthub.RetentionPolicy.job_level_retention_policies:type_name -> InternalApi.Artifacthub.RetentionPolicy.RetentionPolicyRule
+	34, // 3: InternalApi.Artifacthub.RetentionPolicy.scheduled_for_cleaning_at:type_name -> google.protobuf.Timestamp
+	34, // 4: InternalApi.Artifacthub.RetentionPolicy.last_cleaned_at:type_name -> google.protobuf.Timestamp
+	3,  // 5: InternalApi.Artifacthub.UpdateRetentionPolicyRequest.retention_policy:type_name -> InternalApi.Artifacthub.RetentionPolicy
+	3,  // 6: InternalApi.Artifacthub.UpdateRetentionPolicyResponse.retention_policy:type_name -> InternalApi.Artifacthub.RetentionPolicy
+	3,  // 7: InternalApi.Artifacthub.CreateRequest.retention_policy:type_name -> InternalApi.Artifacthub.RetentionPolicy
+	29, // 8: InternalApi.Artifacthub.CreateResponse.artifact:type_name -> InternalApi.Artifacthub.Artifact
+	29, // 9: InternalApi.Artifacthub.DescribeResponse.artifact:type_name -> InternalApi.Artifacthub.Artifact
+	3,  // 10: InternalApi.Artifacthub.DescribeResponse.retention_policy:type_name -> InternalApi.Artifacthub.RetentionPolicy
+	28, // 11: InternalApi.Artifacthub.ListPathResponse.items:type_name -> InternalApi.Artifacthub.ListItem
+	33, // 12: InternalApi.Artifacthub.ListBucketsResponse.bucket_names_for_ids:type_name -> InternalApi.Artifacthub.ListBucketsResponse.BucketNamesForIdsEntry
+	0,  // 13: InternalApi.Artifacthub.CountArtifactsRequest.category:type_name -> InternalApi.Artifacthub.CountArtifactsRequest.Category
+	1,  // 14: InternalApi.Artifacthub.ArtifactService.HealthCheck:input_type -> InternalApi.Artifacthub.HealthCheckRequest
+	6,  // 15: InternalApi.Artifacthub.ArtifactService.Create:input_type -> InternalApi.Artifacthub.CreateRequest
+	8,  // 16: InternalApi.Artifacthub.ArtifactService.Describe:input_type -> InternalApi.Artifacthub.DescribeRequest
+	10, // 17: InternalApi.Artifacthub.ArtifactService.Destroy:input_type -> InternalApi.Artifacthub.DestroyRequest
+	12, // 18: InternalApi.Artifacthub.ArtifactService.ListPath:input_type -> InternalApi.Artifacthub.ListPathRequest
+	14, // 19: InternalApi.Artifacthub.ArtifactService.DeletePath:input_type -> InternalApi.Artifacthub.DeletePathRequest
+	4,  // 20: InternalApi.Artifacthub.ArtifactService.UpdateRetentionPolicy:input_type -> InternalApi.Artifacthub.UpdateRetentionPolicyRequest
+	30, // 21: InternalApi.Artifacthub.ArtifactService.GenerateToken:input_type -> InternalApi.Artifacthub.GenerateTokenRequest
+	16, // 22: InternalApi.Artifacthub.ArtifactService.Cleanup:input_type -> InternalApi.Artifacthub.CleanupRequest
+	18, // 23: InternalApi.Artifacthub.ArtifactService.GetSignedURL:input_type -> InternalApi.Artifacthub.GetSignedURLRequest
+	20, // 24: InternalApi.Artifacthub.ArtifactService.ListBuckets:input_type -> InternalApi.Artifacthub.ListBucketsRequest
+	22, // 25: InternalApi.Artifacthub.ArtifactService.CountArtifacts:input_type -> InternalApi.Artifacthub.CountArtifactsRequest
+	24, // 26: InternalApi.Artifacthub.ArtifactService.CountBuckets:input_type -> InternalApi.Artifacthub.CountBucketsRequest
+	26, // 27: InternalApi.Artifacthub.ArtifactService.UpdateCORS:input_type -> InternalApi.Artifacthub.UpdateCORSRequest
+	2,  // 28: InternalApi.Artifacthub.ArtifactService.HealthCheck:output_type -> InternalApi.Artifacthub.HealthCheckResponse
+	7,  // 29: InternalApi.Artifacthub.ArtifactService.Create:output_type -> InternalApi.Artifacthub.CreateResponse
+	9,  // 30: InternalApi.Artifacthub.ArtifactService.Describe:output_type -> InternalApi.Artifacthub.DescribeResponse
+	11, // 31: InternalApi.Artifacthub.ArtifactService.Destroy:output_type -> InternalApi.Artifacthub.DestroyResponse
+	13, // 32: InternalApi.Artifacthub.ArtifactService.ListPath:output_type -> InternalApi.Artifacthub.ListPathResponse
+	15, // 33: InternalApi.Artifacthub.ArtifactService.DeletePath:output_type -> InternalApi.Artifacthub.DeletePathResponse
+	5,  // 34: InternalApi.Artifacthub.ArtifactService.UpdateRetentionPolicy:output_type -> InternalApi.Artifacthub.UpdateRetentionPolicyResponse
+	31, // 35: InternalApi.Artifacthub.ArtifactService.GenerateToken:output_type -> InternalApi.Artifacthub.GenerateTokenResponse
+	17, // 36: InternalApi.Artifacthub.ArtifactService.Cleanup:output_type -> InternalApi.Artifacthub.CleanupResponse
+	19, // 37: InternalApi.Artifacthub.ArtifactService.GetSignedURL:output_type -> InternalApi.Artifacthub.GetSignedURLResponse
+	21, // 38: InternalApi.Artifacthub.ArtifactService.ListBuckets:output_type -> InternalApi.Artifacthub.ListBucketsResponse
+	23, // 39: InternalApi.Artifacthub.ArtifactService.CountArtifacts:output_type -> InternalApi.Artifacthub.CountArtifactsResponse
+	25, // 40: InternalApi.Artifacthub.ArtifactService.CountBuckets:output_type -> InternalApi.Artifacthub.CountBucketsResponse
+	27, // 41: InternalApi.Artifacthub.ArtifactService.UpdateCORS:output_type -> InternalApi.Artifacthub.UpdateCORSResponse
+	28, // [28:42] is the sub-list for method output_type
+	14, // [14:28] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_artifacthub_proto_init() }
@@ -2156,8 +1898,8 @@ func file_artifacthub_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_artifacthub_proto_rawDesc), len(file_artifacthub_proto_rawDesc)),
-			NumEnums:      2,
-			NumMessages:   36,
+			NumEnums:      1,
+			NumMessages:   33,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
