@@ -2,13 +2,9 @@ package privateapi
 
 import (
 	"context"
-	"errors"
-	"net/http"
 	"time"
 
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/api/descriptors/artifacthub"
-	artifacts "github.com/semaphoreio/semaphore/artifacthub/pkg/api/descriptors/artifacts"
-	publicapi "github.com/semaphoreio/semaphore/artifacthub/pkg/api/public"
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/db"
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/models"
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/storage"
@@ -17,11 +13,8 @@ import (
 	pathutil "github.com/semaphoreio/semaphore/artifacthub/pkg/util/path"
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/util/retry"
 	"go.uber.org/zap"
-	"google.golang.org/grpc/codes"
 	"gorm.io/gorm"
 )
-
-const MaxPathItems int32 = 1000
 
 // CreateArtifact creates a new artifact with a bucket, service account. If the same idempotency token
 // has already entered to the database, it returns that row instead of creating a new one.
@@ -103,29 +96,16 @@ func DeleteArtifactPath(ctx context.Context, client storage.Client, artifactID, 
 	return DeleteTransferPath(ctx, client, a, path)
 }
 
-// ListTransferPath returns bucket contents for a given directory prefix and transfer type.
-// This wrapper keeps backward compatibility for existing callers that do not pass a limit.
+// ListTransferPath returns bucket contents for a given directory prefix, and transfer type.
 func ListTransferPath(ctx context.Context, client storage.Client, artifact *models.Artifact, path string, wrapDirectories bool) ([]*artifacthub.ListItem, error) {
-	return listTransferPath(ctx, client, artifact, path, wrapDirectories, 0)
-}
-
-// ListTransferPathWithLimit returns bucket contents for a given directory prefix and transfer type,
-// enforcing a hard maximum number of returned items when limit > 0.
-func ListTransferPathWithLimit(ctx context.Context, client storage.Client, artifact *models.Artifact, path string, wrapDirectories bool, limit int) ([]*artifacthub.ListItem, error) {
-	return listTransferPath(ctx, client, artifact, path, wrapDirectories, limit)
-}
-
-func listTransferPath(ctx context.Context, client storage.Client, artifact *models.Artifact, path string, wrapDirectories bool, limit int) ([]*artifacthub.ListItem, error) {
 	bucket := client.GetBucket(storage.BucketOptions{
 		Name:       artifact.BucketName,
 		PathPrefix: artifact.IdempotencyToken,
 	})
 
 	result := make([]*artifacthub.ListItem, 0)
-	limitExceeded := false
 
 	err := retry.OnFailure(ctx, "Listing Bucket path", func() error {
-		attemptResult := make([]*artifacthub.ListItem, 0)
 		iterator, err := bucket.ListPath(storage.ListOptions{Path: path, WrapSubDirectories: wrapDirectories})
 		if err != nil {
 			return err
@@ -141,24 +121,11 @@ func listTransferPath(ctx context.Context, client storage.Client, artifact *mode
 				return err
 			}
 
-			if limit > 0 && len(attemptResult) >= limit {
-				limitExceeded = true
-				return nil
-			}
-
-			attemptResult = append(attemptResult, &artifacthub.ListItem{Name: item.Path, IsDirectory: item.IsDirectory, Size: item.Size})
-		}
-
-		if !limitExceeded {
-			result = attemptResult
+			result = append(result, &artifacthub.ListItem{Name: item.Path, IsDirectory: item.IsDirectory, Size: item.Size})
 		}
 
 		return nil
 	})
-
-	if limitExceeded {
-		return nil, publicapi.ErrTooManyArtifacts
-	}
 
 	return result, err
 }
@@ -206,107 +173,32 @@ func CountCategoryPath(ctx context.Context, client storage.Client, category arti
 }
 
 // ListArtifactPath returns bucket contents for a given directory prefix.
-func ListArtifactPath(ctx context.Context, client storage.Client, artifactID, p string, wrapDirectories bool, limit int32) ([]*artifacthub.ListItem, error) {
+func ListArtifactPath(ctx context.Context, client storage.Client, artifactID, p string, wrapDirectories bool) ([]*artifacthub.ListItem, error) {
 	a, err := models.FindArtifactByID(artifactID)
 	if err != nil {
 		return nil, err
 	}
 
 	ctx, _ = ctxutil.SetBucketName(ctx, a.BucketName)
-	items, err := ListTransferPathWithLimit(ctx, client, a, p, wrapDirectories, normalizePathLimit(limit))
-	if errors.Is(err, publicapi.ErrTooManyArtifacts) {
-		return nil, log.ErrorCode(codes.FailedPrecondition, publicapi.ErrTooManyArtifacts.Error(), err)
-	}
-
-	return items, err
+	return ListTransferPath(ctx, client, a, p, wrapDirectories)
 }
 
 func GetSignedURL(ctx context.Context, client storage.Client, artifactID, p, m string) (string, error) {
-	artifact, method, err := resolveArtifactAndMethod(artifactID, m)
+	a, err := models.FindArtifactByID(artifactID)
 	if err != nil {
 		return "", err
 	}
 
-	return client.SignURL(ctx, storage.SignURLOptions{
-		BucketName:         artifact.BucketName,
-		Method:             method,
-		Path:               p,
-		PathPrefix:         artifact.IdempotencyToken,
-		IncludeContentType: true,
-	})
-}
-
-// GetSignedURLS returns one or more signed URLs for a file or a directory path.
-// The generation logic is shared with the public artifact API (pull/yank directory behavior).
-func GetSignedURLS(ctx context.Context, client storage.Client, artifactID, p, m string, limit int32) ([]*artifacthub.SignedURL, error) {
-	artifact, method, err := resolveArtifactAndMethod(artifactID, m)
-	if err != nil {
-		return nil, err
-	}
-
-	signedURLs, err := publicapi.GenerateSignedURLsList(ctx, client, artifact, p, method, normalizePathLimit(limit))
-	if err != nil {
-		if errors.Is(err, publicapi.ErrArtifactNotFound) {
-			return nil, log.ErrorCode(codes.NotFound, "artifact path not found", err)
-		}
-
-		if errors.Is(err, publicapi.ErrTooManyArtifacts) {
-			return nil, log.ErrorCode(codes.FailedPrecondition, publicapi.ErrTooManyArtifacts.Error(), err)
-		}
-
-		return nil, err
-	}
-
-	return serializeSignedURLs(signedURLs), nil
-}
-
-func resolveArtifactAndMethod(artifactID, m string) (*models.Artifact, string, error) {
-	artifact, err := models.FindArtifactByID(artifactID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, "", log.ErrorCode(codes.NotFound, "artifact store not found", err)
-		}
-
-		return nil, "", err
-	}
-
-	method := http.MethodGet
+	method := "GET"
 	if m != "" {
 		method = m
 	}
 
-	return artifact, method, nil
-}
-
-func serializeSignedURLs(signedURLs []*artifacts.SignedURL) []*artifacthub.SignedURL {
-	result := make([]*artifacthub.SignedURL, 0, len(signedURLs))
-	for _, signedURL := range signedURLs {
-		if signedURL == nil {
-			continue
-		}
-
-		result = append(result, &artifacthub.SignedURL{
-			Url:    signedURL.URL,
-			Method: convertSignedURLMethod(signedURL.Method),
-		})
-	}
-
-	return result
-}
-
-func convertSignedURLMethod(method artifacts.SignedURL_Method) artifacthub.SignedURL_Method {
-	methodValue, ok := artifacthub.SignedURL_Method_value[method.String()]
-	if !ok {
-		return artifacthub.SignedURL_GET
-	}
-
-	return artifacthub.SignedURL_Method(methodValue)
-}
-
-func normalizePathLimit(limit int32) int {
-	if limit <= 0 || limit > MaxPathItems {
-		return int(MaxPathItems)
-	}
-
-	return int(limit)
+	return client.SignURL(ctx, storage.SignURLOptions{
+		BucketName:         a.BucketName,
+		Method:             method,
+		Path:               p,
+		PathPrefix:         a.IdempotencyToken,
+		IncludeContentType: true,
+	})
 }
