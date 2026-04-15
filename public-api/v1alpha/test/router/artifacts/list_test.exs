@@ -13,6 +13,8 @@ defmodule PipelinesAPI.Artifacts.ListTest do
     Support.Stubs.grant_all_permissions()
 
     org = Support.Stubs.Organization.create_default()
+    Support.Stubs.Feature.set_org_defaults(org.id)
+    Support.Stubs.Feature.enable_feature(org.id, :artifacts_api)
     user = Support.Stubs.User.create_default()
     project = Support.Stubs.Project.create(org, user)
     build_req_id = UUID.uuid4()
@@ -528,12 +530,54 @@ defmodule PipelinesAPI.Artifacts.ListTest do
 
       assert response =~ "Artifact store is not configured"
     end
+
+    test "returns 403 when artifacts api feature is disabled", ctx do
+      org_id_without_feature = UUID.uuid4()
+      Support.Stubs.Feature.set_org_defaults(org_id_without_feature)
+      Support.Stubs.Feature.disable_feature(org_id_without_feature, :artifacts_api)
+
+      assert {403,
+              "The artifacts api feature is not enabled for your organization. Please contact support"} =
+               list_artifacts(
+                 %{
+                   "scope" => "jobs",
+                   "scope_id" => ctx.job.id
+                 },
+                 ctx.user.id,
+                 false,
+                 org_id_without_feature
+               )
+    end
+
+    test "returns 403 when artifacts feature is disabled", ctx do
+      org_id_without_artifacts = UUID.uuid4()
+      Support.Stubs.Feature.set_org_defaults(org_id_without_artifacts)
+      Support.Stubs.Feature.enable_feature(org_id_without_artifacts, :artifacts_api)
+      Support.Stubs.Feature.disable_feature(org_id_without_artifacts, :artifacts)
+
+      assert {403,
+              "The artifacts api feature is not enabled for your organization. Please contact support"} =
+               list_artifacts(
+                 %{
+                   "scope" => "jobs",
+                   "scope_id" => ctx.job.id
+                 },
+                 ctx.user.id,
+                 false,
+                 org_id_without_artifacts
+               )
+    end
   end
 
-  defp list_artifacts(params, user_id, decode? \\ true) do
+  defp list_artifacts(
+         params,
+         user_id,
+         decode? \\ true,
+         org_id \\ Support.Stubs.Organization.default_org_id()
+       ) do
     url = "localhost:4004/artifacts?" <> URI.encode_query(params)
 
-    {:ok, response} = HTTPoison.get(url, headers(user_id))
+    {:ok, response} = HTTPoison.get(url, headers(user_id, org_id))
     %{body: body, status_code: status_code} = response
 
     body =
@@ -545,11 +589,11 @@ defmodule PipelinesAPI.Artifacts.ListTest do
     {status_code, body}
   end
 
-  defp headers(user_id),
+  defp headers(user_id, org_id),
     do: [
       {"Content-type", "application/json"},
       {"x-semaphore-user-id", user_id},
-      {"x-semaphore-org-id", Support.Stubs.Organization.default_org_id()}
+      {"x-semaphore-org-id", org_id}
     ]
 
   defp create_workflow_and_job(project, user_id, org_id) do
