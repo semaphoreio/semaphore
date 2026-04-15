@@ -13,8 +13,9 @@ defmodule PipelinesAPI.Artifacts.Common do
   alias PipelinesAPI.Util.ToTuple
   alias PipelinesAPI.Util.VerifyData, as: VD
   alias PipelinesAPI.WorkflowClient.{WFGrpcClient, WFRequestFormatter}
+  alias Plug.Conn
 
-  import Plug.Conn, only: [resp: 3, halt: 1]
+  import Plug.Conn, only: [resp: 3, halt: 1, put_resp_content_type: 2]
 
   @valid_scopes ~w(projects workflows jobs)
   @valid_methods ~w(GET HEAD)
@@ -30,6 +31,23 @@ defmodule PipelinesAPI.Artifacts.Common do
     conn.params
     |> project_id_from_scope()
     |> continue_or_halt(conn)
+  end
+
+  def has_artifacts_api_enabled(conn, _opts) do
+    with org_id <- Conn.get_req_header(conn, "x-semaphore-org-id") |> Enum.at(0),
+         true <- FeatureProvider.feature_enabled?(:artifacts, param: org_id),
+         true <- FeatureProvider.feature_enabled?(:artifacts_api, param: org_id) do
+      conn
+    else
+      _ ->
+        conn
+        |> put_resp_content_type("text/plain")
+        |> resp(
+          403,
+          "The artifacts api feature is not enabled for your organization. Please contact support"
+        )
+        |> halt()
+    end
   end
 
   def scope_valid?(scope), do: scope in @valid_scopes

@@ -13,6 +13,7 @@ defmodule PipelinesAPI.Artifacts.List do
 
   import PipelinesAPI.Artifacts.Common,
     only: [
+      has_artifacts_api_enabled: 2,
       get_artifact_store_id: 2,
       validate_request_params: 3,
       resolve_project_id_from_scope: 2
@@ -21,6 +22,7 @@ defmodule PipelinesAPI.Artifacts.List do
   @enabled_fields ~w(scope scope_id path)
 
   plug(:verify_params)
+  plug(:has_artifacts_api_enabled)
   plug(:resolve_project_id_from_scope)
   plug(:authorize_list)
   plug(:get_artifact_store_id)
