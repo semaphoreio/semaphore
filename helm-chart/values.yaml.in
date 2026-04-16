@@ -263,3 +263,6 @@ controller:
         envFrom:
           - secretRef:
               name: job-extra-environment
+
+mcp-server:
+  enabled: true

@@ -4,8 +4,8 @@ git_source(:github) { |repo_name| "https://github.com/#{repo_name}.git" }
 gem "bundler", ">= 1.8.4"
 
 gem "pg", "~> 1.1"
-gem "rails", ">= 8.0.2.1", "< 8.1"
-gem "rack", "~> 2.2.20"
+gem "rails", ">= 8.0.4.1", "< 8.1"
+gem "rack", "~> 2.2.23"
 gem "sprockets-rails"
 
 gem "excon", "~> 0.81.0"
@@ -22,7 +22,8 @@ gem "kaminari", "~> 1.2.2"
 gem "lograge"
 gem "octokit"
 gem "retryable"
-gem "sidekiq", "< 8"
+gem "sidekiq", "7.3.10"
+gem "connection_pool", "< 3" # Sidekiq 7 scheduler uses positional TimedStack#pop API
 gem "sidekiq-scheduler"
 gem "sidekiq-unique-jobs", "~> 8.0"
 gem "puma"
