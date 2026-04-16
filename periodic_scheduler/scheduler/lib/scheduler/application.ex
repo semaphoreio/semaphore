@@ -13,7 +13,7 @@ defmodule Scheduler.Application do
     provider = Application.fetch_env!(:scheduler, :feature_provider)
     FeatureProvider.init(provider)
 
-    opts = [strategy: :one_for_one, name: Scheduler.Supervisor]
+    opts = [strategy: :one_for_one, name: Scheduler.Supervisor, max_restarts: 1000]
     get_env() |> children() |> Supervisor.start_link(opts)
   end
 
