@@ -294,8 +294,13 @@ defmodule Gofer.Grpc.DeploymentTargets.Server do
         triggerer: requester_id
       }
 
-      RBAC.check_roles(subject, role_ids, cached?: true)
+      case RBAC.check_roles(subject, role_ids, cached?: true) do
+        {:ok, _} -> :ok
+        {:error, reason} -> Logger.warning("[DT] Failed to warm roles cache: #{inspect(reason)}")
+      end
     end
+  rescue
+    e -> Logger.warning("[DT] Failed to warm roles cache: #{inspect(e)}")
   end
 
   defp warm_roles_cache(_targets, _requester_id), do: :ok

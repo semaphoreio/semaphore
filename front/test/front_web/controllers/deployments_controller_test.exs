@@ -113,6 +113,17 @@ defmodule FrontWeb.DeploymentsControllerTest do
       html = html_response(call_index(conn, project_id), 200)
       refute html =~ "Delete</a>"
     end
+
+    test "renders empty list with flash on gRPC failure",
+         %{conn: conn, project_id: project_id} do
+      Deployments.Grpc.expect(:list, fn ->
+        raise GRPC.RPCError, status: :deadline_exceeded, message: "Deadline expired"
+      end)
+
+      conn = call_index(conn, project_id)
+      assert html_response(conn, 200)
+      assert get_flash(conn, :alert) == "Failure: unable to load deployment targets"
+    end
   end
 
   describe "GET /project/:project/deployments/new" do
