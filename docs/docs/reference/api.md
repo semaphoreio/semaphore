@@ -726,7 +726,7 @@ Behavior notes:
 
 - `full=true` responds with `302` redirect to a signed job-artifact URL when full logs are present in artifact storage.
 - Full logs are uploaded by the CI agent at the end of the job. Availability depends on the agent upload setting (`upload-job-logs` / `SEMAPHORE_AGENT_UPLOAD_JOB_LOGS`) described in [self-hosted agent config](./self-hosted-config#upload-job-logs).
-- The API checks `agent/job_logs.txt` first, then falls back to `agent/job_logs.txt.gz`.
+- The API prioritizes `agent/job_logs.txt` and falls back to `agent/job_logs.txt.gz` only when `.txt` is not available.
 - `full=true` requires both `project.view` and `project.artifacts.view`.
 
 Response:
@@ -1737,6 +1737,7 @@ Authorization notes:
 - The endpoint requires both `project.view` and `project.artifacts.view` permissions on the project that owns the selected scope.
 - `project_id` is resolved from `scope` and `scope_id`; if sent explicitly, it is ignored.
 - Results are capped to at most `1000` items per request.
+- Listing is non-recursive: only direct children of the requested path are returned.
 
 Response:
 
@@ -1778,10 +1779,7 @@ curl -i -H "Authorization: Token {api_token}" \
 
 ### Get artifact signed URL
 
-This API endpoint returns signed URLs for artifacts.
-
-- If `path` points to a file, the response contains one signed URL.
-- If `path` points to a directory, the response contains signed URLs for all files under that directory (recursively, including subdirectories).
+This API endpoint returns a signed URL for a single artifact file.
 
 ```text
 GET <organization-url>.semaphoreci.com/api/v1alpha/artifacts/signed_url?scope=:scope&scope_id=:scope_id&path=:path&method=:method
@@ -1800,12 +1798,13 @@ Validation notes:
 - Absolute paths (starting with `/`) are not allowed.
 - Path traversal segments (`.` and `..`) are not allowed.
 - Backslashes (`\`) are not allowed.
+- `path` must point to a single file.
 
 Authorization notes:
 
 - The endpoint requires both `project.view` and `project.artifacts.view` permissions on the project that owns the selected scope.
 - `project_id` is resolved from `scope` and `scope_id`; if sent explicitly, it is ignored.
-- Results are capped to at most `1000` items per request.
+- Directory signing and recursive signing are not supported.
 
 Response:
 
@@ -1822,29 +1821,9 @@ HTTP status: 200
 }
 ```
 
-Example response for a directory path:
-
-```json
-HTTP status: 200
-
-{
-  "items": [
-    {
-      "path": "agent/a.log",
-      "url": "https://<signed-url-1>"
-    },
-    {
-      "path": "agent/job_logs.txt.gz",
-      "url": "https://<signed-url-2>"
-    }
-  ]
-}
-```
-
 Possible error responses:
 
 - `400` for invalid request parameters.
-- `400` when the requested path resolves to more than `1000` files.
 - `401` when the user is missing one or both required permissions.
 - `404` when the scoped object or artifact does not exist (or is not visible to the user).
 - `500` for internal errors.
@@ -1854,13 +1833,6 @@ Example:
 ```shell
 curl -i -H "Authorization: Token {api_token}" \
      "https://<organization-url>.semaphoreci.com/api/v1alpha/artifacts/signed_url?scope=jobs&scope_id=:job_id&path=agent/job_logs.txt.gz&method=GET"
-```
-
-Directory example:
-
-```shell
-curl -i -H "Authorization: Token {api_token}" \
-     "https://<organization-url>.semaphoreci.com/api/v1alpha/artifacts/signed_url?scope=jobs&scope_id=:job_id&path=agent"
 ```
 
 ## Artifact retention policies
