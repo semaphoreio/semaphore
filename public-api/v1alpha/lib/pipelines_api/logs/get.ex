@@ -7,14 +7,13 @@ defmodule PipelinesAPI.Logs.Get do
 
   require Logger
   alias PipelinesAPI.Pipelines.Common, as: RespCommon
-  alias PipelinesAPI.Util.{Metrics}
   alias PipelinesAPI.JobsClient
   alias PipelinesAPI.ProjectClient
   alias PipelinesAPI.ArtifactHubClient
   alias PipelinesAPI.LoghubClient
   alias PipelinesAPI.Loghub2Client
   alias PipelinesAPI.Logs.Params, as: LogsParams
-  alias PipelinesAPI.Util.ToTuple
+  alias PipelinesAPI.Util.{Metrics, RequestMetrics, ToTuple}
   alias Plug.Conn
 
   @full_log_paths ["agent/job_logs.txt", "agent/job_logs.txt.gz"]
@@ -22,9 +21,20 @@ defmodule PipelinesAPI.Logs.Get do
 
   import PipelinesAPI.Logs.Authorize, only: [authorize_job: 2]
 
+  plug(:track_full_logs_metrics)
   plug(:describe_job)
   plug(:authorize_job)
   plug(:prepare_response)
+
+  def track_full_logs_metrics(conn, _opts) do
+    conn = Conn.fetch_query_params(conn)
+
+    if LogsParams.full_logs_requested?(conn.query_params) do
+      RequestMetrics.track_request(conn, "full_logs_api_request")
+    else
+      conn
+    end
+  end
 
   def describe_job(conn, _opts) do
     Metrics.benchmark("PipelinesAPI.router", ["describe_job"], fn ->
@@ -124,8 +134,9 @@ defmodule PipelinesAPI.Logs.Get do
   end
 
   defp fetch_signed_full_log_url(job_id, artifact_store_id) do
-    with {:ok, path} <- resolve_full_log_artifact_path(job_id, artifact_store_id) do
-      signed_url_for_artifact_path(artifact_store_id, job_id, path)
+    case resolve_full_log_artifact_path(job_id, artifact_store_id) do
+      {:ok, path} -> signed_url_for_artifact_path(artifact_store_id, job_id, path)
+      error -> error
     end
   end
 
