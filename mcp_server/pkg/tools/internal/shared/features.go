@@ -11,6 +11,7 @@ import (
 const (
 	readToolsFeatureFlag  = "mcp_server_read_tools"
 	writeToolsFeatureFlag = "mcp_server_write_tools"
+	artifactsAPIFeature   = "artifacts_api"
 )
 
 // EnsureReadToolsFeature verifies that the organization has the AI read tools feature enabled.
@@ -46,6 +47,25 @@ func EnsureWriteToolsFeature(ctx context.Context, api internalapi.Provider, orgI
 
 	if state != feature.Enabled {
 		return fmt.Errorf("Semaphore MCP write tools are disabled for this organization. Please contact support if you believe this is an error.")
+	}
+
+	return nil
+}
+
+// EnsureArtifactsAPIFeature verifies that the organization has the artifacts API feature enabled.
+func EnsureArtifactsAPIFeature(ctx context.Context, api internalapi.Provider, orgID string) error {
+	featureClient := api.Features()
+	if featureClient == nil {
+		return fmt.Errorf("Semaphore MCP tools are temporarily unavailable. Please try again later.")
+	}
+
+	state, err := featureClient.FeatureState(orgID, artifactsAPIFeature)
+	if err != nil {
+		return fmt.Errorf("We couldn't verify access to artifact operations right now. Please try again in a few moments.")
+	}
+
+	if state != feature.Enabled {
+		return fmt.Errorf("Semaphore artifact operations are disabled for this organization. Please contact support if you believe this is an error.")
 	}
 
 	return nil
