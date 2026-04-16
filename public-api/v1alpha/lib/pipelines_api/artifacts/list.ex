@@ -7,7 +7,7 @@ defmodule PipelinesAPI.Artifacts.List do
 
   alias PipelinesAPI.ArtifactHubClient
   alias PipelinesAPI.Pipelines.Common, as: RespCommon
-  alias PipelinesAPI.Util.Metrics
+  alias PipelinesAPI.Util.{Metrics, RequestMetrics}
 
   import PipelinesAPI.Artifacts.Authorize, only: [authorize_list: 2]
 
@@ -21,12 +21,17 @@ defmodule PipelinesAPI.Artifacts.List do
 
   @enabled_fields ~w(scope scope_id path)
 
+  plug(:track_request_metrics)
   plug(:verify_params)
   plug(:has_artifacts_api_enabled)
   plug(:resolve_project_id_from_scope)
   plug(:authorize_list)
   plug(:get_artifact_store_id)
   plug(:list_artifacts)
+
+  def track_request_metrics(conn, _opts) do
+    RequestMetrics.track_request(conn, "artifacts_list_api_request")
+  end
 
   def list_artifacts(conn, _opts) do
     Metrics.benchmark("PipelinesAPI.router", ["artifacts_list"], fn ->
