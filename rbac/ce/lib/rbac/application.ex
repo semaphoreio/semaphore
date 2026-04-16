@@ -15,7 +15,7 @@ defmodule Rbac.Application do
       |> add_grpc_service()
       |> add_rabbit_consumers()
 
-    opts = [strategy: :one_for_one, name: Rbac.Supervisor]
+    opts = [strategy: :one_for_one, name: Rbac.Supervisor, max_restarts: 1000]
     Supervisor.start_link(children, opts)
   end
 
