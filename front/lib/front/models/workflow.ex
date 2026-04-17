@@ -258,8 +258,16 @@ defmodule Front.Models.Workflow do
       |> Keyword.merge(git_ref_types: ref_types, direction: direction)
       |> ListLatestWorkflowsRequest.new()
 
-    {:ok, response} = Clients.Workflow.list_latest_workflows(req)
-    {construct(response.workflows), response.next_page_token, response.previous_page_token}
+    case Clients.Workflow.list_latest_workflows(req) do
+      {:ok, %InternalApi.PlumberWF.ListLatestWorkflowsResponse{} = response} ->
+        {construct(response.workflows), response.next_page_token, response.previous_page_token}
+
+      {:ok, unexpected_response} ->
+        {:error, {:unexpected_response, unexpected_response}}
+
+      error ->
+        error
+    end
   end
 
   defp request_stream(req, tracing_headers, override \\ nil) do
