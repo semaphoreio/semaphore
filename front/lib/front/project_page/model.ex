@@ -12,6 +12,7 @@ defmodule Front.ProjectPage.Model do
     field(:user_page?, boolean())
     field(:ref_types, String.t())
     field(:workflows, [Front.Model.Workflow.t()], enforce: true)
+    field(:workflow_fetch_error, String.t())
     field(:branches, [Front.Model.Branch.t()])
     field(:organization, Front.Model.Organization.t())
     field(:pagination, Front.ProjectPage.Model.Pagination.t())
@@ -45,6 +46,8 @@ defmodule Front.ProjectPage.Model do
 
   @cache_prefix "project_page_model"
   @cache_version :crypto.hash(:md5, File.read(__ENV__.file) |> elem(1)) |> Base.encode64()
+  @workflow_timeout_error_message "Loading workflows timed out. Please try again in a moment."
+  @workflow_fetch_error_message "We couldn't load workflows right now. Please try again in a moment."
   # Used to update the model cache version, when there is no change in the model file
   # @cache_hidden_version = "2"
 
@@ -93,7 +96,9 @@ defmodule Front.ProjectPage.Model do
     load_from_api(params)
     |> case do
       {:ok, data, _} ->
-        Cacheman.put(:front, cache_key(params), encode(data))
+        if is_nil(data.workflow_fetch_error) do
+          Cacheman.put(:front, cache_key(params), encode(data))
+        end
 
         {:ok, data, :from_api}
 
@@ -149,7 +154,11 @@ defmodule Front.ProjectPage.Model do
           end)
         end)
 
-      {:ok, {workflows, next_page_token, previous_page_token}} = Async.await(fetch_workflows)
+      {workflows, next_page_token, previous_page_token, workflow_fetch_error} =
+        fetch_workflows
+        |> Async.await()
+        |> workflow_data(params)
+
       {:ok, organization} = Async.await(fetch_organization)
       {:ok, project} = Async.await(fetch_project)
 
@@ -175,6 +184,7 @@ defmodule Front.ProjectPage.Model do
           user_page?: params.user_page?,
           ref_types: params.ref_types,
           workflows: workflows,
+          workflow_fetch_error: workflow_fetch_error,
           branches: [],
           organization: organization,
           pagination: pagination
@@ -218,17 +228,26 @@ defmodule Front.ProjectPage.Model do
         "project_page_model_list_latest_workflows"
       end
 
-    {wfs, next_page_token, previous_page_token} =
+    workflow_response =
       Watchman.benchmark(workflow_api_metric_name, fn ->
         Models.Workflow.list_latest_workflows(list_params)
       end)
 
-    workflows =
-      Watchman.benchmark("project_page_model_decorate_workflows", fn ->
-        Decorators.Workflow.decorate_many(wfs)
-      end)
+    case workflow_response do
+      {wfs, next_page_token, previous_page_token} when is_list(wfs) ->
+        workflows =
+          Watchman.benchmark("project_page_model_decorate_workflows", fn ->
+            Decorators.Workflow.decorate_many(wfs)
+          end)
 
-    {workflows, next_page_token, previous_page_token}
+        {:ok, {workflows, next_page_token, previous_page_token}}
+
+      {:error, reason} ->
+        {:error, reason}
+
+      unexpected ->
+        {:error, {:unexpected_workflow_response, unexpected}}
+    end
   end
 
   defp list_workflows_keyset(params) do
@@ -252,17 +271,26 @@ defmodule Front.ProjectPage.Model do
         "project_page_model_list_keyset"
       end
 
-    {wfs, next_page_token, previous_page_token} =
+    workflow_response =
       Watchman.benchmark(workflow_api_metric_name, fn ->
         Models.Workflow.list_keyset(list_params)
       end)
 
-    workflows =
-      Watchman.benchmark("project_page_model_decorate_workflows", fn ->
-        Decorators.Workflow.decorate_many(wfs)
-      end)
+    case workflow_response do
+      {wfs, next_page_token, previous_page_token} when is_list(wfs) ->
+        workflows =
+          Watchman.benchmark("project_page_model_decorate_workflows", fn ->
+            Decorators.Workflow.decorate_many(wfs)
+          end)
 
-    {workflows, next_page_token, previous_page_token}
+        {:ok, {workflows, next_page_token, previous_page_token}}
+
+      {:error, reason} ->
+        {:error, reason}
+
+      unexpected ->
+        {:error, {:unexpected_workflow_response, unexpected}}
+    end
   end
 
   defp maybe_put_requester(list_params, true, requester_id),
@@ -273,4 +301,50 @@ defmodule Front.ProjectPage.Model do
   defp keyset_direction("next"), do: KeysetDirection.value(:NEXT)
   defp keyset_direction("previous"), do: KeysetDirection.value(:PREVIOUS)
   defp keyset_direction(_), do: nil
+
+  defp workflow_data({:ok, {:ok, {workflows, next_page_token, previous_page_token}}}, _params),
+    do: {workflows, next_page_token, previous_page_token, nil}
+
+  defp workflow_data({:ok, {workflows, next_page_token, previous_page_token}}, _params)
+       when is_list(workflows),
+       do: {workflows, next_page_token, previous_page_token, nil}
+
+  defp workflow_data({:ok, {:error, reason}}, params),
+    do: workflow_fetch_error_payload(reason, params)
+
+  defp workflow_data({:exit, reason}, params), do: workflow_fetch_error_payload(reason, params)
+  defp workflow_data({:error, reason}, params), do: workflow_fetch_error_payload(reason, params)
+
+  defp workflow_data(unexpected, params),
+    do: workflow_fetch_error_payload({:unexpected_async_response, unexpected}, params)
+
+  defp workflow_fetch_error_payload(reason, params) do
+    Logger.error(
+      "[PROJECT PAGE MODEL] Workflow fetch failed for org_id=#{params.organization_id} project_id=#{params.project_id} user_id=#{params.user_id}: #{inspect(reason)}"
+    )
+
+    {[], "", "", workflow_fetch_error_message(reason)}
+  end
+
+  defp workflow_fetch_error_message(error) do
+    if workflow_timeout_error?(error) do
+      @workflow_timeout_error_message
+    else
+      @workflow_fetch_error_message
+    end
+  end
+
+  defp workflow_timeout_error?(error) do
+    error
+    |> workflow_error_message()
+    |> String.downcase()
+    |> then(fn message ->
+      String.contains?(message, "deadline") or
+        String.contains?(message, "timeout") or
+        String.contains?(message, "timed out")
+    end)
+  end
+
+  defp workflow_error_message(%MatchError{term: term}), do: inspect(term)
+  defp workflow_error_message(error), do: inspect(error)
 end
