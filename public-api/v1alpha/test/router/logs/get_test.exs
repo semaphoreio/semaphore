@@ -323,8 +323,9 @@ defmodule PipelinesAPI.Logs.Get.Test do
                get_logs(ctx.self_hosted_job.id, ctx.user_id, false, %{"full" => "true"})
     end
 
-    test "returns 403 when full logs are requested and artifacts api feature is disabled", ctx do
+    test "returns 403 when full logs are requested and neither feature is enabled", ctx do
       Support.Stubs.Feature.disable_feature(ctx.org.id, :artifacts_api)
+      Support.Stubs.Feature.disable_feature(ctx.org.id, :artifacts_job_logs)
 
       assert {403, _, response} =
                get_logs(ctx.cloud_job.id, ctx.user_id, false, %{"full" => "true"})
@@ -333,14 +334,38 @@ defmodule PipelinesAPI.Logs.Get.Test do
                "The artifacts api feature is not enabled for your organization. Please contact support"
     end
 
-    test "returns 403 when full logs are requested and artifacts feature is disabled", ctx do
-      Support.Stubs.Feature.disable_feature(ctx.org.id, :artifacts)
+    test "returns 302 when full logs are requested and only artifacts_job_logs feature is enabled",
+         ctx do
+      Support.Stubs.Feature.disable_feature(ctx.org.id, :artifacts_api)
+      Support.Stubs.Feature.enable_feature(ctx.org.id, :artifacts_job_logs)
 
-      assert {403, _, response} =
+      Support.Stubs.Artifacthub.create(ctx.cloud_job.id,
+        scope: "jobs",
+        path: "agent/job_logs.txt.gz",
+        url: @full_logs_url
+      )
+
+      assert {302, headers, _response} =
                get_logs(ctx.cloud_job.id, ctx.user_id, false, %{"full" => "true"})
 
-      assert response ==
-               "The artifacts api feature is not enabled for your organization. Please contact support"
+      assert Enum.find(headers, fn {name, _} -> name == "location" end) ==
+               {"location", @full_logs_url}
+    end
+
+    test "returns 302 when full logs are requested and artifacts feature is disabled", ctx do
+      Support.Stubs.Feature.disable_feature(ctx.org.id, :artifacts)
+
+      Support.Stubs.Artifacthub.create(ctx.cloud_job.id,
+        scope: "jobs",
+        path: "agent/job_logs.txt.gz",
+        url: @full_logs_url
+      )
+
+      assert {302, headers, _response} =
+               get_logs(ctx.cloud_job.id, ctx.user_id, false, %{"full" => "true"})
+
+      assert Enum.find(headers, fn {name, _} -> name == "location" end) ==
+               {"location", @full_logs_url}
     end
 
     test "returns full logs artifact URL for self-hosted jobs when available", ctx do

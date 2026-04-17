@@ -94,7 +94,7 @@ defmodule PipelinesAPI.Logs.Get do
   end
 
   defp get_full_logs(conn, job) do
-    with :ok <- ensure_artifacts_api_enabled(conn),
+    with :ok <- ensure_full_logs_feature_enabled(conn),
          {:ok, project} <- ProjectClient.describe(job.project_id),
          {:ok, artifact_store_id} <- artifact_store_id_from_project(project),
          {:ok, signed_url} <- fetch_signed_full_log_url(job.id, artifact_store_id) do
@@ -102,7 +102,7 @@ defmodule PipelinesAPI.Logs.Get do
       |> put_resp_header("location", signed_url)
       |> send_resp(302, "")
     else
-      {:error, :artifacts_api_disabled} ->
+      {:error, :full_logs_feature_disabled} ->
         conn
         |> put_resp_content_type("text/plain")
         |> send_resp(403, @artifacts_api_disabled_message)
@@ -122,15 +122,19 @@ defmodule PipelinesAPI.Logs.Get do
       RespCommon.respond(ToTuple.internal_error("Internal error"), conn)
   end
 
-  defp ensure_artifacts_api_enabled(conn) do
+  defp ensure_full_logs_feature_enabled(conn) do
     with org_id when is_binary(org_id) and org_id != "" <-
            Conn.get_req_header(conn, "x-semaphore-org-id") |> Enum.at(0),
-         true <- FeatureProvider.feature_enabled?(:artifacts, param: org_id),
-         true <- FeatureProvider.feature_enabled?(:artifacts_api, param: org_id) do
+         true <- full_logs_feature_enabled?(org_id) do
       :ok
     else
-      _ -> {:error, :artifacts_api_disabled}
+      _ -> {:error, :full_logs_feature_disabled}
     end
+  end
+
+  defp full_logs_feature_enabled?(org_id) do
+    FeatureProvider.feature_enabled?(:artifacts_api, param: org_id) ||
+      FeatureProvider.feature_enabled?(:artifacts_job_logs, param: org_id)
   end
 
   defp fetch_signed_full_log_url(job_id, artifact_store_id) do
