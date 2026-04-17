@@ -14,9 +14,11 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/feature"
+	artifacthubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/artifacthub"
 	loghubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub"
 	loghub2pb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub2"
 	orgpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/organization"
+	projecthubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/projecthub"
 	rbacpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/rbac"
 	responsepb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/response_status"
 	jobpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/server_farm.job"
@@ -561,6 +563,209 @@ func TestFetchHostedLogsPagination(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestJobFullLogsReturnsSignedURLWithTxtPriority(t *testing.T) {
+	const orgID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	const jobID = "99999999-aaaa-bbbb-cccc-dddddddddddd"
+	const artifactStoreID = "88888888-7777-6666-5555-444444444444"
+
+	jobClient := &jobClientStub{
+		describeResp: &jobpb.DescribeResponse{
+			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
+			Job: &jobpb.Job{
+				Id:             jobID,
+				ProjectId:      testProjectUUID,
+				OrganizationId: orgID,
+				SelfHosted:     false,
+			},
+		},
+	}
+	artifactClient := &artifacthubClientStub{
+		listResp: &artifacthubpb.ListPathResponse{
+			Items: []*artifacthubpb.ListItem{
+				{Name: fmt.Sprintf("artifacts/jobs/%s/agent/job_logs.txt.gz", jobID), IsDirectory: false},
+				{Name: fmt.Sprintf("artifacts/jobs/%s/agent/job_logs.txt", jobID), IsDirectory: false},
+			},
+		},
+		signedURL: "https://example.com/full-logs.txt",
+	}
+	projectClient := &support.ProjectClientStub{
+		Response: newProjectDescribeResponseWithArtifactStore(orgID, testProjectUUID, artifactStoreID),
+	}
+
+	provider := &support.MockProvider{
+		JobClient:         jobClient,
+		ArtifacthubClient: artifactClient,
+		ProjectClient:     projectClient,
+		RBACClient:        newRBACStub("project.view", "project.artifacts.view"),
+		FeaturesService: support.FeatureClientStub{
+			States: map[string]feature.State{
+				"mcp_server_read_tools":      feature.Enabled,
+				"mcp_server_artifacts_tools": feature.Enabled,
+				"artifacts_job_logs":         feature.Hidden,
+			},
+		},
+		Timeout: time.Second,
+	}
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"job_id": jobID,
+	}}}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", selfHostedTestUser)
+	req.Header = header
+
+	res, err := fullLogsHandler(provider)(context.Background(), req)
+	if err != nil {
+		toFail(t, "handler error: %v", err)
+	}
+	if res == nil || res.IsError {
+		toFail(t, "expected success response, got %#v", res)
+	}
+
+	result, ok := res.StructuredContent.(fullLogsResult)
+	if !ok {
+		toFail(t, "unexpected structured content type: %T", res.StructuredContent)
+	}
+	if result.Source != fullLogsSource {
+		toFail(t, "expected source %s, got %s", fullLogsSource, result.Source)
+	}
+	if result.Path != "agent/job_logs.txt" {
+		toFail(t, "expected txt path priority, got %s", result.Path)
+	}
+	if result.URL != "https://example.com/full-logs.txt" {
+		toFail(t, "unexpected signed URL: %s", result.URL)
+	}
+	if artifactClient.lastSigned == nil || !strings.HasSuffix(artifactClient.lastSigned.GetPath(), "agent/job_logs.txt") {
+		toFail(t, "unexpected signed URL request: %+v", artifactClient.lastSigned)
+	}
+}
+
+func TestJobFullLogsReturnsSignedURLWithGzipFallback(t *testing.T) {
+	const orgID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	const jobID = "99999999-aaaa-bbbb-cccc-dddddddddddd"
+	const artifactStoreID = "88888888-7777-6666-5555-444444444444"
+
+	jobClient := &jobClientStub{
+		describeResp: &jobpb.DescribeResponse{
+			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
+			Job: &jobpb.Job{
+				Id:             jobID,
+				ProjectId:      testProjectUUID,
+				OrganizationId: orgID,
+				SelfHosted:     false,
+			},
+		},
+	}
+	artifactClient := &artifacthubClientStub{
+		listResp: &artifacthubpb.ListPathResponse{
+			Items: []*artifacthubpb.ListItem{
+				{Name: fmt.Sprintf("artifacts/jobs/%s/agent/job_logs.txt.gz", jobID), IsDirectory: false},
+			},
+		},
+		signedURL: "https://example.com/full-logs.txt.gz",
+	}
+	projectClient := &support.ProjectClientStub{
+		Response: newProjectDescribeResponseWithArtifactStore(orgID, testProjectUUID, artifactStoreID),
+	}
+
+	provider := &support.MockProvider{
+		JobClient:         jobClient,
+		ArtifacthubClient: artifactClient,
+		ProjectClient:     projectClient,
+		RBACClient:        newRBACStub("project.view", "project.artifacts.view"),
+		FeaturesService: support.FeatureClientStub{
+			States: map[string]feature.State{
+				"mcp_server_read_tools":      feature.Enabled,
+				"mcp_server_artifacts_tools": feature.Hidden,
+				"artifacts_job_logs":         feature.Enabled,
+			},
+		},
+		Timeout: time.Second,
+	}
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"job_id": jobID,
+	}}}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", selfHostedTestUser)
+	req.Header = header
+
+	res, err := fullLogsHandler(provider)(context.Background(), req)
+	if err != nil {
+		toFail(t, "handler error: %v", err)
+	}
+	if res == nil || res.IsError {
+		toFail(t, "expected success response, got %#v", res)
+	}
+
+	result, ok := res.StructuredContent.(fullLogsResult)
+	if !ok {
+		toFail(t, "unexpected structured content type: %T", res.StructuredContent)
+	}
+	if result.Path != "agent/job_logs.txt.gz" {
+		toFail(t, "expected gzip fallback path, got %s", result.Path)
+	}
+	if artifactClient.lastSigned == nil || !strings.HasSuffix(artifactClient.lastSigned.GetPath(), "agent/job_logs.txt.gz") {
+		toFail(t, "unexpected signed URL request: %+v", artifactClient.lastSigned)
+	}
+}
+
+func TestJobFullLogsFeatureDisabled(t *testing.T) {
+	const orgID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	const jobID = "99999999-aaaa-bbbb-cccc-dddddddddddd"
+	const artifactStoreID = "88888888-7777-6666-5555-444444444444"
+
+	jobClient := &jobClientStub{
+		describeResp: &jobpb.DescribeResponse{
+			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
+			Job: &jobpb.Job{
+				Id:             jobID,
+				ProjectId:      testProjectUUID,
+				OrganizationId: orgID,
+				SelfHosted:     false,
+			},
+		},
+	}
+	artifactClient := &artifacthubClientStub{}
+	projectClient := &support.ProjectClientStub{
+		Response: newProjectDescribeResponseWithArtifactStore(orgID, testProjectUUID, artifactStoreID),
+	}
+	provider := &support.MockProvider{
+		JobClient:         jobClient,
+		ArtifacthubClient: artifactClient,
+		ProjectClient:     projectClient,
+		RBACClient:        newRBACStub("project.view", "project.artifacts.view"),
+		FeaturesService: support.FeatureClientStub{
+			States: map[string]feature.State{
+				"mcp_server_read_tools":      feature.Enabled,
+				"mcp_server_artifacts_tools": feature.Hidden,
+				"artifacts_job_logs":         feature.Hidden,
+			},
+		},
+		Timeout: time.Second,
+	}
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"job_id": jobID,
+	}}}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", selfHostedTestUser)
+	req.Header = header
+
+	res, err := fullLogsHandler(provider)(context.Background(), req)
+	if err != nil {
+		toFail(t, "handler error: %v", err)
+	}
+
+	msg := requireErrorText(t, res)
+	if !strings.Contains(strings.ToLower(msg), "enable mcp_server_artifacts_tools or artifacts_job_logs") {
+		toFail(t, "expected both-features-disabled error, got %q", msg)
+	}
+	if artifactClient.lastList != nil || artifactClient.lastSigned != nil {
+		toFail(t, "expected no artifact calls when both feature flags are disabled")
 	}
 }
 
@@ -1201,6 +1406,52 @@ func (s *orgClientStub) Describe(ctx context.Context, in *orgpb.DescribeRequest,
 		return nil, s.err
 	}
 	return s.resp, nil
+}
+
+func newProjectDescribeResponseWithArtifactStore(orgID, projectID, artifactStoreID string) *projecthubpb.DescribeResponse {
+	return &projecthubpb.DescribeResponse{
+		Metadata: &projecthubpb.ResponseMeta{
+			Status: &projecthubpb.ResponseMeta_Status{Code: projecthubpb.ResponseMeta_OK},
+		},
+		Project: &projecthubpb.Project{
+			Metadata: &projecthubpb.Project_Metadata{
+				Id:    projectID,
+				OrgId: orgID,
+			},
+			Spec: &projecthubpb.Project_Spec{
+				ArtifactStoreId: artifactStoreID,
+			},
+		},
+	}
+}
+
+type artifacthubClientStub struct {
+	artifacthubpb.ArtifactServiceClient
+	listResp   *artifacthubpb.ListPathResponse
+	listErr    error
+	lastList   *artifacthubpb.ListPathRequest
+	signedURL  string
+	signedErr  error
+	lastSigned *artifacthubpb.GetSignedURLRequest
+}
+
+func (s *artifacthubClientStub) ListPath(ctx context.Context, in *artifacthubpb.ListPathRequest, opts ...grpc.CallOption) (*artifacthubpb.ListPathResponse, error) {
+	s.lastList = in
+	if s.listErr != nil {
+		return nil, s.listErr
+	}
+	if s.listResp != nil {
+		return s.listResp, nil
+	}
+	return &artifacthubpb.ListPathResponse{}, nil
+}
+
+func (s *artifacthubClientStub) GetSignedURL(ctx context.Context, in *artifacthubpb.GetSignedURLRequest, opts ...grpc.CallOption) (*artifacthubpb.GetSignedURLResponse, error) {
+	s.lastSigned = in
+	if s.signedErr != nil {
+		return nil, s.signedErr
+	}
+	return &artifacthubpb.GetSignedURLResponse{Url: s.signedURL}, nil
 }
 
 func requireErrorText(t *testing.T, res *mcp.CallToolResult) string {
