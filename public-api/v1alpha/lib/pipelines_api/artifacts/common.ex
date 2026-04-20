@@ -19,6 +19,7 @@ defmodule PipelinesAPI.Artifacts.Common do
 
   @valid_scopes ~w(projects workflows jobs)
   @valid_methods ~w(GET HEAD)
+  @path_decode_iteration_limit 5
 
   def get_artifact_store_id(conn, _opts) do
     conn.params
@@ -34,7 +35,8 @@ defmodule PipelinesAPI.Artifacts.Common do
   end
 
   def has_artifacts_api_enabled(conn, _opts) do
-    with org_id <- Conn.get_req_header(conn, "x-semaphore-org-id") |> Enum.at(0),
+    with org_id when is_binary(org_id) and org_id != "" <-
+           Conn.get_req_header(conn, "x-semaphore-org-id") |> Enum.at(0),
          true <- FeatureProvider.feature_enabled?(:artifacts, param: org_id),
          true <- FeatureProvider.feature_enabled?(:artifacts_api, param: org_id) do
       conn
@@ -108,14 +110,48 @@ defmodule PipelinesAPI.Artifacts.Common do
       trimmed_path == "" ->
         {:ok, ""}
 
-      String.starts_with?(trimmed_path, "/") ->
+      true ->
+        with {:ok, decoded_path} <-
+               decode_path_until_stable(trimmed_path, @path_decode_iteration_limit) do
+          sanitize_decoded_relative_path(decoded_path, required?)
+        end
+    end
+  end
+
+  def sanitize_relative_path(_, _), do: {:error, "invalid path"}
+
+  defp decode_path_until_stable(_path, 0), do: {:error, "invalid path"}
+
+  defp decode_path_until_stable(path, remaining_iterations) when is_binary(path) do
+    decoded_path = URI.decode(path)
+
+    if decoded_path == path do
+      {:ok, decoded_path}
+    else
+      decode_path_until_stable(decoded_path, remaining_iterations - 1)
+    end
+  rescue
+    _ -> {:error, "invalid path"}
+  end
+
+  defp sanitize_decoded_relative_path(path, required?) when is_binary(path) do
+    normalized_input = String.trim(path)
+
+    cond do
+      normalized_input == "" and required? ->
+        {:error, "path must be present"}
+
+      normalized_input == "" ->
+        {:ok, ""}
+
+      String.starts_with?(normalized_input, "/") ->
         {:error, "absolute paths are not allowed"}
 
-      String.contains?(trimmed_path, "\\") ->
+      String.contains?(normalized_input, "\\") ->
         {:error, "invalid path"}
 
       true ->
-        segments = String.split(trimmed_path, "/", trim: true)
+        segments = String.split(normalized_input, "/", trim: true)
 
         if Enum.any?(segments, &(&1 in [".", ".."])) do
           {:error, "path traversal is not allowed"}
@@ -124,8 +160,6 @@ defmodule PipelinesAPI.Artifacts.Common do
         end
     end
   end
-
-  def sanitize_relative_path(_, _), do: {:error, "invalid path"}
 
   defp normalize_method(_method, false), do: {:ok, "GET"}
   defp normalize_method(nil, true), do: {:ok, "GET"}

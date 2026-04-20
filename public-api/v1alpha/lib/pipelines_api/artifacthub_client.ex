@@ -439,7 +439,7 @@ defmodule PipelinesAPI.ArtifactHubClient do
               list_item_invalid_reason(reason)
             ])
 
-            {:halt, ToTuple.internal_error("Internal error")}
+            {:halt, ToTuple.not_found_error("Artifact path not found")}
         end
       end)
 
@@ -452,16 +452,14 @@ defmodule PipelinesAPI.ArtifactHubClient do
   defp validate_relative_path(full_path, scope, scope_id) when is_binary(full_path) do
     prefix = "artifacts/#{scope}/#{scope_id}/"
 
-    if String.starts_with?(full_path, prefix) do
-      full_path
-      |> String.replace_prefix(prefix, "")
-      |> normalize_relative_path()
-      |> case do
-        "" -> {:error, :empty_relative_path}
-        path -> {:ok, path}
-      end
+    with true <- String.starts_with?(full_path, prefix),
+         relative_path <-
+           full_path |> String.replace_prefix(prefix, "") |> normalize_relative_path(),
+         {:ok, path} <- validate_normalized_relative_path(relative_path) do
+      {:ok, path}
     else
-      {:error, :invalid_scope_prefix}
+      false -> {:error, :invalid_scope_prefix}
+      {:error, _} = error -> error
     end
   end
 
@@ -469,6 +467,23 @@ defmodule PipelinesAPI.ArtifactHubClient do
 
   defp normalize_relative_path(path) when is_binary(path), do: String.trim(path, "/")
   defp normalize_relative_path(_path), do: ""
+
+  defp validate_normalized_relative_path(""), do: {:error, :empty_relative_path}
+
+  defp validate_normalized_relative_path(path) when is_binary(path) do
+    if invalid_relative_path?(path) do
+      {:error, :invalid_relative_path}
+    else
+      {:ok, path}
+    end
+  end
+
+  defp invalid_relative_path?(path) when is_binary(path) do
+    String.contains?(path, "\\") ||
+      Enum.any?(String.split(path, "/", trim: true), &invalid_relative_segment?/1)
+  end
+
+  defp invalid_relative_segment?(segment), do: segment in [".", ".."]
 
   defp path_basename(path) when is_binary(path) do
     path

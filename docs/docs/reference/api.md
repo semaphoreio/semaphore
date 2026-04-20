@@ -1731,6 +1731,7 @@ Validation notes:
 - Absolute paths (starting with `/`) are not allowed.
 - Path traversal segments (`.` and `..`) are not allowed.
 - Backslashes (`\`) are not allowed.
+- URL-encoded traversal and backslash variants are rejected after path normalization.
 
 Authorization notes:
 
@@ -1798,6 +1799,7 @@ Validation notes:
 - Absolute paths (starting with `/`) are not allowed.
 - Path traversal segments (`.` and `..`) are not allowed.
 - Backslashes (`\`) are not allowed.
+- URL-encoded traversal and backslash variants are rejected after path normalization.
 - `path` must point to a single file.
 
 Authorization notes:
