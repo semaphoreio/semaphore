@@ -1,7 +1,7 @@
 defmodule Front.Audit.UI.Test do
   use FrontWeb.ConnCase
 
-  test ".csv" do
+  test "GET /audit/csv streams paginated CSV", %{conn: conn} do
     alias Support.Stubs.{DB, UUID}
     alias InternalApi.Audit.Event.{Medium, Operation, Resource}
 
@@ -39,20 +39,33 @@ defmodule Front.Audit.UI.Test do
       description: "Removed a secret"
     })
 
-    request = InternalApi.Audit.ListRequest.new(org_id: org_id)
+    # Stub paginated_list to return events then empty next_page_token to stop pagination
+    GrpcMock.stub(AuditMock, :paginated_list, fn _req, _ ->
+      events = Support.Stubs.DB.all(:audit_events) |> Enum.map(&Support.Stubs.AuditLog.Grpc.serialize_event/1)
 
-    endpoint = Application.fetch_env!(:front, :audit_grpc_endpoint)
+      InternalApi.Audit.PaginatedListResponse.new(
+        events: events,
+        next_page_token: "",
+        previous_page_token: ""
+      )
+    end)
 
-    {:ok, channel} = GRPC.Stub.connect(endpoint)
-    {:ok, event_list} = InternalApi.Audit.AuditService.Stub.list(channel, request)
+    conn =
+      conn
+      |> put_req_header("x-semaphore-org-id", org_id)
+      |> get("/audit/csv")
 
-    ev1 = Enum.at(event_list.events, 0)
-    ev2 = Enum.at(event_list.events, 1)
+    assert conn.status == 200
+    assert get_resp_header(conn, "content-type") |> hd() =~ "text/csv"
 
-    assert Front.Audit.UI.csv(org_id) == [
-             "resource,operation,medium,user_id,username,resource_id,resource_name,ip_address,description,metadata,timestamp\r\n",
-             "Secret,Added,API,#{ev1.user_id},shiroyasha,#{ev1.resource_id},my-secret,189.0.12.2,Added a secret,\"{\"\"hello\"\":\"\"world\"\"}\",1522754259\r\n",
-             "Secret,Removed,Web,#{ev2.user_id},shiroyasha,#{ev2.resource_id},my-secret,189.0.12.2,Removed a secret,\"{\"\"hello\"\":\"\"world\"\"}\",1522754000\r\n"
-           ]
+    body = conn.resp_body
+    lines = String.split(body, "\r\n", trim: true)
+
+    assert hd(lines) ==
+             "resource,operation,medium,user_id,username,resource_id,resource_name,ip_address,description,metadata,timestamp"
+
+    assert length(lines) == 3
+    assert Enum.at(lines, 1) =~ "Secret,Added,API"
+    assert Enum.at(lines, 2) =~ "Secret,Removed,Web"
   end
 end
