@@ -1741,22 +1741,29 @@ Authorization notes:
 
 Response:
 
+- `size` is included for files (in bytes) and omitted for directories.
+
 ```json
 HTTP status: 200
 
 {
   "artifacts": [
     {
+      "is_directory": true,
+      "name": "agent",
+      "path": "agent"
+    },
+    {
       "is_directory": false,
       "name": "job_logs.txt.gz",
-      "path": "agent/job_logs.txt.gz",
-      "size": 0
+      "path": "job_logs.txt.gz",
+      "size": 24576
     },
     {
       "is_directory": false,
       "name": "extra.log",
-      "path": "agent/extra.log",
-      "size": 0
+      "path": "extra.log",
+      "size": 5120
     }
   ]
 }

@@ -69,8 +69,7 @@ defmodule PipelinesAPI.Artifacts.ListTest do
                %{
                  "is_directory" => true,
                  "name" => "agent",
-                 "path" => "agent",
-                 "size" => 0
+                 "path" => "agent"
                }
              ]
     end
@@ -89,8 +88,7 @@ defmodule PipelinesAPI.Artifacts.ListTest do
                %{
                  "is_directory" => true,
                  "name" => "debug",
-                 "path" => "debug",
-                 "size" => 0
+                 "path" => "debug"
                }
              ]
     end
@@ -109,13 +107,24 @@ defmodule PipelinesAPI.Artifacts.ListTest do
                %{
                  "is_directory" => true,
                  "name" => "releases",
-                 "path" => "releases",
-                 "size" => 0
+                 "path" => "releases"
                }
              ]
     end
 
     test "returns 200 and nested listing for a specific path", ctx do
+      GrpcMock.stub(ArtifacthubMock, :list_path, fn _req, _ ->
+        InternalApi.Artifacthub.ListPathResponse.new(
+          items: [
+            InternalApi.Artifacthub.ListItem.new(
+              name: "artifacts/jobs/#{ctx.job.id}/agent/job_logs.txt.gz",
+              is_directory: false,
+              size: 2048
+            )
+          ]
+        )
+      end)
+
       assert {200, response} =
                list_artifacts(
                  %{
@@ -131,7 +140,7 @@ defmodule PipelinesAPI.Artifacts.ListTest do
                  "is_directory" => false,
                  "name" => "job_logs.txt.gz",
                  "path" => "agent/job_logs.txt.gz",
-                 "size" => 0
+                 "size" => 2048
                }
              ]
     end
@@ -163,17 +172,17 @@ defmodule PipelinesAPI.Artifacts.ListTest do
             InternalApi.Artifacthub.ListItem.new(
               name: "artifacts/jobs/#{ctx.job.id}/agent/z.log",
               is_directory: false,
-              size: 0
+              size: 128
             ),
             InternalApi.Artifacthub.ListItem.new(
               name: "artifacts/jobs/#{ctx.job.id}/agent/a.log",
               is_directory: false,
-              size: 0
+              size: 256
             ),
             InternalApi.Artifacthub.ListItem.new(
               name: "artifacts/jobs/#{ctx.job.id}/agent/job_logs.txt.gz",
               is_directory: false,
-              size: 0
+              size: 1024
             )
           ]
         )
@@ -194,19 +203,19 @@ defmodule PipelinesAPI.Artifacts.ListTest do
                  "is_directory" => false,
                  "name" => "z.log",
                  "path" => "agent/z.log",
-                 "size" => 0
+                 "size" => 128
                },
                %{
                  "is_directory" => false,
                  "name" => "a.log",
                  "path" => "agent/a.log",
-                 "size" => 0
+                 "size" => 256
                },
                %{
                  "is_directory" => false,
                  "name" => "job_logs.txt.gz",
                  "path" => "agent/job_logs.txt.gz",
-                 "size" => 0
+                 "size" => 1024
                }
              ]
     end
@@ -237,8 +246,7 @@ defmodule PipelinesAPI.Artifacts.ListTest do
                %{
                  "is_directory" => true,
                  "name" => "agent",
-                 "path" => "agent",
-                 "size" => 0
+                 "path" => "agent"
                }
              ]
     end
@@ -271,8 +279,7 @@ defmodule PipelinesAPI.Artifacts.ListTest do
                %{
                  "is_directory" => true,
                  "name" => "agent",
-                 "path" => "agent",
-                 "size" => 0
+                 "path" => "agent"
                }
              ]
     end
@@ -355,8 +362,7 @@ defmodule PipelinesAPI.Artifacts.ListTest do
                %{
                  "is_directory" => true,
                  "name" => "agent",
-                 "path" => "agent",
-                 "size" => 0
+                 "path" => "agent"
                }
              ]
     end
@@ -387,8 +393,7 @@ defmodule PipelinesAPI.Artifacts.ListTest do
                %{
                  "is_directory" => true,
                  "name" => "agent",
-                 "path" => "agent",
-                 "size" => 0
+                 "path" => "agent"
                }
              ]
     end
@@ -421,8 +426,7 @@ defmodule PipelinesAPI.Artifacts.ListTest do
                %{
                  "is_directory" => true,
                  "name" => "debug",
-                 "path" => "debug",
-                 "size" => 0
+                 "path" => "debug"
                }
              ]
     end
@@ -452,8 +456,7 @@ defmodule PipelinesAPI.Artifacts.ListTest do
                %{
                  "is_directory" => true,
                  "name" => "other",
-                 "path" => "other",
-                 "size" => 0
+                 "path" => "other"
                }
              ]
     end

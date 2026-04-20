@@ -421,17 +421,9 @@ defmodule PipelinesAPI.ArtifactHubClient do
       |> Enum.reduce_while({:ok, []}, fn item, {:ok, acc} ->
         case validate_relative_path(item.name, scope, scope_id) do
           {:ok, path} ->
-            {:cont,
-             {:ok,
-              [
-                %{
-                  name: path_basename(path),
-                  path: path,
-                  is_directory: item.is_directory,
-                  size: item.size
-                }
-                | acc
-              ]}}
+            entry = build_list_item_entry(path, item)
+
+            {:cont, {:ok, [entry | acc]}}
 
           {:error, reason} ->
             Metrics.increment("PipelinesAPI.artifacts_hub_client", [
@@ -484,6 +476,20 @@ defmodule PipelinesAPI.ArtifactHubClient do
   end
 
   defp invalid_relative_segment?(segment), do: segment in [".", ".."]
+
+  defp build_list_item_entry(path, item) do
+    base_entry = %{
+      name: path_basename(path),
+      path: path,
+      is_directory: item.is_directory
+    }
+
+    if item.is_directory do
+      base_entry
+    else
+      Map.put(base_entry, :size, item.size)
+    end
+  end
 
   defp path_basename(path) when is_binary(path) do
     path
