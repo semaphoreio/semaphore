@@ -410,9 +410,13 @@ defmodule FrontWeb.AuditController do
 
   def csv(conn, _params) do
     Watchman.benchmark("audit.csv.duration", fn ->
-      data = Front.Audit.UI.csv(conn.assigns.organization_id)
+      conn =
+        conn
+        |> put_resp_content_type("text/csv")
+        |> put_resp_header("content-disposition", ~s(attachment; filename="audit.csv"))
+        |> send_chunked(200)
 
-      conn |> send_download({:binary, data}, filename: "audit.csv")
+      Front.Audit.UI.stream_csv(conn, conn.assigns.organization_id)
     end)
   end
 
