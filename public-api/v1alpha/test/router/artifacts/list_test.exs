@@ -277,7 +277,7 @@ defmodule PipelinesAPI.Artifacts.ListTest do
              ]
     end
 
-    test "returns 500 when backend list contains out-of-scope path", ctx do
+    test "returns 404 when backend list contains out-of-scope path", ctx do
       GrpcMock.stub(ArtifacthubMock, :list_path, fn _req, _ ->
         InternalApi.Artifacthub.ListPathResponse.new(
           items: [
@@ -290,7 +290,30 @@ defmodule PipelinesAPI.Artifacts.ListTest do
         )
       end)
 
-      assert {500, "Internal error"} =
+      assert {404, "Artifact path not found"} =
+               list_artifacts(
+                 %{
+                   "scope" => "jobs",
+                   "scope_id" => ctx.job.id
+                 },
+                 ctx.user.id
+               )
+    end
+
+    test "returns 404 when backend list contains traversal segments under valid scope", ctx do
+      GrpcMock.stub(ArtifacthubMock, :list_path, fn _req, _ ->
+        InternalApi.Artifacthub.ListPathResponse.new(
+          items: [
+            InternalApi.Artifacthub.ListItem.new(
+              name: "artifacts/jobs/#{ctx.job.id}/agent/../secret.txt",
+              is_directory: false,
+              size: 123
+            )
+          ]
+        )
+      end)
+
+      assert {404, "Artifact path not found"} =
                list_artifacts(
                  %{
                    "scope" => "jobs",
@@ -460,6 +483,21 @@ defmodule PipelinesAPI.Artifacts.ListTest do
                )
     end
 
+    test "returns 400 for double-encoded traversal in raw query path", ctx do
+      query =
+        "scope=jobs&scope_id=#{ctx.job.id}&path=%252e%252e%252fprojects%252f#{ctx.project.id}%252fsecret.txt"
+
+      assert {400, "path traversal is not allowed"} =
+               list_artifacts_raw(query, ctx.user.id, false)
+    end
+
+    test "returns 400 for double-encoded backslash traversal in raw query path", ctx do
+      query = "scope=jobs&scope_id=#{ctx.job.id}&path=agent%255c..%255csecret.txt"
+
+      assert {400, body} = list_artifacts_raw(query, ctx.user.id, false)
+      assert body in ["invalid path", "path traversal is not allowed"]
+    end
+
     test "returns 401 when user has no project.view permission", ctx do
       GrpcMock.stub(RBACMock, :list_user_permissions, fn _, _ ->
         InternalApi.RBAC.ListUserPermissionsResponse.new(
@@ -564,6 +602,20 @@ defmodule PipelinesAPI.Artifacts.ListTest do
                  org_id_without_artifacts
                )
     end
+
+    test "returns 403 when org header is missing", ctx do
+      assert {403,
+              "The artifacts api feature is not enabled for your organization. Please contact support"} =
+               list_artifacts_raw(
+                 URI.encode_query(%{
+                   "scope" => "jobs",
+                   "scope_id" => ctx.job.id
+                 }),
+                 ctx.user.id,
+                 false,
+                 headers_without_org(ctx.user.id)
+               )
+    end
   end
 
   defp list_artifacts(
@@ -572,9 +624,35 @@ defmodule PipelinesAPI.Artifacts.ListTest do
          decode? \\ true,
          org_id \\ Support.Stubs.Organization.default_org_id()
        ) do
-    url = "localhost:4004/artifacts?" <> URI.encode_query(params)
+    params
+    |> URI.encode_query()
+    |> list_artifacts_raw(user_id, decode?, headers(user_id, org_id))
+  end
 
-    {:ok, response} = HTTPoison.get(url, headers(user_id, org_id))
+  defp headers(user_id, org_id),
+    do: [
+      {"Content-type", "application/json"},
+      {"x-semaphore-user-id", user_id},
+      {"x-semaphore-org-id", org_id}
+    ]
+
+  defp headers_without_org(user_id),
+    do: [
+      {"Content-type", "application/json"},
+      {"x-semaphore-user-id", user_id}
+    ]
+
+  defp list_artifacts_raw(query, user_id, decode?) do
+    list_artifacts_raw(query, user_id, decode?, nil)
+  end
+
+  defp list_artifacts_raw(query, user_id, decode?, request_headers) do
+    request_headers =
+      request_headers || headers(user_id, Support.Stubs.Organization.default_org_id())
+
+    url = "localhost:4004/artifacts?" <> query
+
+    {:ok, response} = HTTPoison.get(url, request_headers)
     %{body: body, status_code: status_code} = response
 
     body =
@@ -585,13 +663,6 @@ defmodule PipelinesAPI.Artifacts.ListTest do
 
     {status_code, body}
   end
-
-  defp headers(user_id, org_id),
-    do: [
-      {"Content-type", "application/json"},
-      {"x-semaphore-user-id", user_id},
-      {"x-semaphore-org-id", org_id}
-    ]
 
   defp create_workflow_and_job(project, user_id, org_id) do
     build_req_id = UUID.uuid4()
