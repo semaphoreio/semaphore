@@ -1737,7 +1737,6 @@ Authorization notes:
 
 - The endpoint requires both `project.view` and `project.artifacts.view` permissions on the project that owns the selected scope.
 - `project_id` is resolved from `scope` and `scope_id`; if sent explicitly, it is ignored.
-- Results are capped to at most `1000` items per request.
 - Listing is non-recursive: only direct children of the requested path are returned.
 
 Response:
@@ -1766,7 +1765,6 @@ HTTP status: 200
 Possible error responses:
 
 - `400` for invalid request parameters.
-- `400` when the requested path resolves to more than `1000` items.
 - `401` when the user is missing one or both required permissions.
 - `404` when the scoped object or requested path does not exist (or is not visible to the user).
 - `500` for internal errors.
