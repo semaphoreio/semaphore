@@ -305,10 +305,6 @@ defmodule Front.ProjectPage.Model do
   defp workflow_data({:ok, {:ok, {workflows, next_page_token, previous_page_token}}}, _params),
     do: {workflows, next_page_token, previous_page_token, nil}
 
-  defp workflow_data({:ok, {workflows, next_page_token, previous_page_token}}, _params)
-       when is_list(workflows),
-       do: {workflows, next_page_token, previous_page_token, nil}
-
   defp workflow_data({:ok, {:error, reason}}, params),
     do: workflow_fetch_error_payload(reason, params)
 
