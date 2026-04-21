@@ -288,6 +288,44 @@ defmodule FrontWeb.ProjectControllerTest do
 
       assert html_response(conn, 200)
     end
+
+    test "returns 200 with timeout message when workflow fetch times out", %{
+      conn: conn,
+      project: project
+    } do
+      with_mock Front.Models.Workflow, [:passthrough],
+        list_latest_workflows: fn _ -> {:error, :timeout} end do
+        conn =
+          conn
+          |> get("/projects/#{project.name}/workflows?force_cold_boot=true")
+
+        assert html_response(conn, 200) =~ "Loading workflows timed out"
+      end
+    end
+
+    test "returns 200 with fallback message when keyset workflow fetch fails", %{
+      conn: conn,
+      project: project,
+      organization: organization
+    } do
+      rpc_error = %GRPC.RPCError{status: 2, message: "Internal Server Error"}
+
+      Support.Stubs.Feature.setup_feature("project_page_all_pipelines",
+        state: :ENABLED,
+        quantity: 1
+      )
+
+      Support.Stubs.Feature.enable_feature(organization.id, :project_page_all_pipelines)
+
+      with_mock Front.Models.Workflow, [:passthrough],
+        list_keyset: fn _ -> {:error, rpc_error} end do
+        conn =
+          conn
+          |> get("/projects/#{project.name}/workflows?force_cold_boot=true&listing=all_pipelines")
+
+        assert html_response(conn, 200) =~ "load workflows right now"
+      end
+    end
   end
 
   describe "GET check_commit_job" do
