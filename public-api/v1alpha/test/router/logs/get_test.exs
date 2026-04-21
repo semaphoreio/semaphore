@@ -184,7 +184,7 @@ defmodule PipelinesAPI.Logs.Get.Test do
       assert {500, _headers, "Internal error"} = get_logs(ctx.self_hosted_job.id, ctx.user_id)
     end
 
-    test "returns 302 and location for full logs when compressed artifact exists", ctx do
+    test "returns 302 and location for artifact job logs when compressed artifact exists", ctx do
       Support.Stubs.Artifacthub.create(ctx.cloud_job.id,
         scope: "jobs",
         path: "agent/job_logs.txt.gz",
@@ -192,13 +192,13 @@ defmodule PipelinesAPI.Logs.Get.Test do
       )
 
       assert {302, headers, _response} =
-               get_logs(ctx.cloud_job.id, ctx.user_id, false, %{"full" => "true"})
+               get_logs(ctx.cloud_job.id, ctx.user_id, false, %{"artifact_job_logs" => "true"})
 
       assert Enum.find(headers, fn {name, _} -> name == "location" end) ==
                {"location", @full_logs_url}
     end
 
-    test "prefers uncompressed full logs when both variants exist", ctx do
+    test "prefers uncompressed artifact job logs when both variants exist", ctx do
       txt_url = "https://localhost:9000/agent/job_logs.txt"
       gz_url = "https://localhost:9000/agent/job_logs.txt.gz"
 
@@ -215,13 +215,13 @@ defmodule PipelinesAPI.Logs.Get.Test do
       )
 
       assert {302, headers, _response} =
-               get_logs(ctx.cloud_job.id, ctx.user_id, false, %{"full" => "true"})
+               get_logs(ctx.cloud_job.id, ctx.user_id, false, %{"artifact_job_logs" => "true"})
 
       assert Enum.find(headers, fn {name, _} -> name == "location" end) ==
                {"location", txt_url}
     end
 
-    test "returns 400 when full logs listing fails with hard limit", ctx do
+    test "returns 400 when artifact job logs listing fails with hard limit", ctx do
       parent = self()
 
       Support.Stubs.Artifacthub.create(ctx.cloud_job.id,
@@ -239,13 +239,13 @@ defmodule PipelinesAPI.Logs.Get.Test do
       end)
 
       assert {400, _, response} =
-               get_logs(ctx.cloud_job.id, ctx.user_id, true, %{"full" => "true"})
+               get_logs(ctx.cloud_job.id, ctx.user_id, true, %{"artifact_job_logs" => "true"})
 
       assert response == "path resolves to too many files; narrow the path"
       assert_received :list_path_called
     end
 
-    test "uses listed file path when signing full logs (prevents guessed txt fallback for gz-only)",
+    test "uses listed file path when signing artifact job logs (prevents guessed txt fallback for gz-only)",
          ctx do
       parent = self()
 
@@ -264,7 +264,7 @@ defmodule PipelinesAPI.Logs.Get.Test do
       end)
 
       assert {302, headers, _response} =
-               get_logs(ctx.cloud_job.id, ctx.user_id, false, %{"full" => "true"})
+               get_logs(ctx.cloud_job.id, ctx.user_id, false, %{"artifact_job_logs" => "true"})
 
       assert_received {:signed_path, signed_path}
       assert signed_path == "artifacts/jobs/#{ctx.cloud_job.id}/agent/job_logs.txt.gz"
@@ -274,22 +274,25 @@ defmodule PipelinesAPI.Logs.Get.Test do
                 "https://localhost:9000/artifacts/jobs/#{ctx.cloud_job.id}/agent/job_logs.txt.gz"}
     end
 
-    test "returns 404 when full logs are requested and artifact is missing", ctx do
-      assert {404, _, response} = get_logs(ctx.cloud_job.id, ctx.user_id, true, %{"full" => "1"})
-      assert response == "Full log artifact not found"
+    test "returns 404 when artifact job logs are requested and artifact is missing", ctx do
+      assert {404, _, response} =
+               get_logs(ctx.cloud_job.id, ctx.user_id, true, %{"artifact_job_logs" => "1"})
+
+      assert response == "Artifact job logs not found"
     end
 
-    test "returns 401 when full logs are requested without artifact permission", ctx do
+    test "returns 401 when artifact job logs are requested without artifact permission", ctx do
       GrpcMock.stub(RBACMock, :list_user_permissions, fn _, _ ->
         InternalApi.RBAC.ListUserPermissionsResponse.new(
           permissions: Support.Stubs.all_permissions_except("project.artifacts.view")
         )
       end)
 
-      assert {401, _, _} = get_logs(ctx.cloud_job.id, ctx.user_id, false, %{"full" => "true"})
+      assert {401, _, _} =
+               get_logs(ctx.cloud_job.id, ctx.user_id, false, %{"artifact_job_logs" => "true"})
     end
 
-    test "returns 401 when full logs are requested for self-hosted job without artifact permission",
+    test "returns 401 when artifact job logs are requested for self-hosted job without artifact permission",
          ctx do
       GrpcMock.stub(RBACMock, :list_user_permissions, fn _, _ ->
         InternalApi.RBAC.ListUserPermissionsResponse.new(
@@ -298,20 +301,12 @@ defmodule PipelinesAPI.Logs.Get.Test do
       end)
 
       assert {401, _, _} =
-               get_logs(ctx.self_hosted_job.id, ctx.user_id, false, %{"full" => "true"})
+               get_logs(ctx.self_hosted_job.id, ctx.user_id, false, %{
+                 "artifact_job_logs" => "true"
+               })
     end
 
-    test "returns 401 when full logs are requested without project.view permission", ctx do
-      GrpcMock.stub(RBACMock, :list_user_permissions, fn _, _ ->
-        InternalApi.RBAC.ListUserPermissionsResponse.new(
-          permissions: Support.Stubs.all_permissions_except("project.view")
-        )
-      end)
-
-      assert {401, _, _} = get_logs(ctx.cloud_job.id, ctx.user_id, false, %{"full" => "true"})
-    end
-
-    test "returns 401 when full logs are requested for self-hosted job without project.view permission",
+    test "returns 401 when artifact job logs are requested without project.view permission",
          ctx do
       GrpcMock.stub(RBACMock, :list_user_permissions, fn _, _ ->
         InternalApi.RBAC.ListUserPermissionsResponse.new(
@@ -320,21 +315,35 @@ defmodule PipelinesAPI.Logs.Get.Test do
       end)
 
       assert {401, _, _} =
-               get_logs(ctx.self_hosted_job.id, ctx.user_id, false, %{"full" => "true"})
+               get_logs(ctx.cloud_job.id, ctx.user_id, false, %{"artifact_job_logs" => "true"})
     end
 
-    test "returns 403 when full logs are requested and neither feature is enabled", ctx do
+    test "returns 401 when artifact job logs are requested for self-hosted job without project.view permission",
+         ctx do
+      GrpcMock.stub(RBACMock, :list_user_permissions, fn _, _ ->
+        InternalApi.RBAC.ListUserPermissionsResponse.new(
+          permissions: Support.Stubs.all_permissions_except("project.view")
+        )
+      end)
+
+      assert {401, _, _} =
+               get_logs(ctx.self_hosted_job.id, ctx.user_id, false, %{
+                 "artifact_job_logs" => "true"
+               })
+    end
+
+    test "returns 403 when artifact job logs are requested and neither feature is enabled", ctx do
       Support.Stubs.Feature.disable_feature(ctx.org.id, :artifacts_api)
       Support.Stubs.Feature.disable_feature(ctx.org.id, :artifacts_job_logs)
 
       assert {403, _, response} =
-               get_logs(ctx.cloud_job.id, ctx.user_id, false, %{"full" => "true"})
+               get_logs(ctx.cloud_job.id, ctx.user_id, false, %{"artifact_job_logs" => "true"})
 
       assert response ==
                "The artifacts api feature is not enabled for your organization. Please contact support"
     end
 
-    test "returns 302 when full logs are requested and only artifacts_job_logs feature is enabled",
+    test "returns 302 when artifact job logs are requested and only artifacts_job_logs feature is enabled",
          ctx do
       Support.Stubs.Feature.disable_feature(ctx.org.id, :artifacts_api)
       Support.Stubs.Feature.enable_feature(ctx.org.id, :artifacts_job_logs)
@@ -346,13 +355,14 @@ defmodule PipelinesAPI.Logs.Get.Test do
       )
 
       assert {302, headers, _response} =
-               get_logs(ctx.cloud_job.id, ctx.user_id, false, %{"full" => "true"})
+               get_logs(ctx.cloud_job.id, ctx.user_id, false, %{"artifact_job_logs" => "true"})
 
       assert Enum.find(headers, fn {name, _} -> name == "location" end) ==
                {"location", @full_logs_url}
     end
 
-    test "returns 302 when full logs are requested and artifacts feature is disabled", ctx do
+    test "returns 302 when artifact job logs are requested and artifacts feature is disabled",
+         ctx do
       Support.Stubs.Feature.disable_feature(ctx.org.id, :artifacts)
 
       Support.Stubs.Artifacthub.create(ctx.cloud_job.id,
@@ -362,13 +372,13 @@ defmodule PipelinesAPI.Logs.Get.Test do
       )
 
       assert {302, headers, _response} =
-               get_logs(ctx.cloud_job.id, ctx.user_id, false, %{"full" => "true"})
+               get_logs(ctx.cloud_job.id, ctx.user_id, false, %{"artifact_job_logs" => "true"})
 
       assert Enum.find(headers, fn {name, _} -> name == "location" end) ==
                {"location", @full_logs_url}
     end
 
-    test "returns full logs artifact URL for self-hosted jobs when available", ctx do
+    test "returns artifact job logs artifact URL for self-hosted jobs when available", ctx do
       self_hosted_full_logs_url = "https://localhost:9000/agent/job_logs.txt"
 
       Support.Stubs.Artifacthub.create(ctx.self_hosted_job.id,
@@ -378,13 +388,15 @@ defmodule PipelinesAPI.Logs.Get.Test do
       )
 
       assert {302, headers, _response} =
-               get_logs(ctx.self_hosted_job.id, ctx.user_id, false, %{"full" => "true"})
+               get_logs(ctx.self_hosted_job.id, ctx.user_id, false, %{
+                 "artifact_job_logs" => "true"
+               })
 
       assert Enum.find(headers, fn {name, _} -> name == "location" end) ==
                {"location", self_hosted_full_logs_url}
     end
 
-    test "ignores malformed full query value type", ctx do
+    test "ignores malformed artifact_job_logs query value type", ctx do
       GrpcMock.stub(LoghubMock, :get_log_events, fn _, _ ->
         %InternalApi.Loghub.GetLogEventsResponse{
           final: true,
@@ -396,7 +408,9 @@ defmodule PipelinesAPI.Logs.Get.Test do
         }
       end)
 
-      assert {200, _, response} = get_logs_raw_query(ctx.cloud_job.id, ctx.user_id, "full[]=true")
+      assert {200, _, response} =
+               get_logs_raw_query(ctx.cloud_job.id, ctx.user_id, "artifact_job_logs[]=true")
+
       assert response["events"] |> length() == length(@events)
     end
 

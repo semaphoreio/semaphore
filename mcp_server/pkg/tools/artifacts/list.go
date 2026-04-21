@@ -69,7 +69,8 @@ Examples:
 
 Typical workflow:
 1. Call artifacts_list(...) to discover available paths.
-2. Call artifacts_signed_url(...) with the selected file path to retrieve a signed URL.`
+2. Call artifacts_signed_url(...) with the selected file path to retrieve a signed URL.
+3. Use the returned signed URL to download the requested file locally.`
 }
 
 func newListTool(name, description string) mcp.Tool {

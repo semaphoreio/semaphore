@@ -566,7 +566,7 @@ func TestFetchHostedLogsPagination(t *testing.T) {
 	}
 }
 
-func TestJobFullLogsReturnsSignedURLWithTxtPriority(t *testing.T) {
+func TestArtifactJobLogsReturnsSignedURLWithTxtPriority(t *testing.T) {
 	const orgID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 	const jobID = "99999999-aaaa-bbbb-cccc-dddddddddddd"
 	const artifactStoreID = "88888888-7777-6666-5555-444444444444"
@@ -617,7 +617,7 @@ func TestJobFullLogsReturnsSignedURLWithTxtPriority(t *testing.T) {
 	header.Set("X-Semaphore-User-ID", selfHostedTestUser)
 	req.Header = header
 
-	res, err := fullLogsHandler(provider)(context.Background(), req)
+	res, err := artifactJobLogsHandler(provider)(context.Background(), req)
 	if err != nil {
 		toFail(t, "handler error: %v", err)
 	}
@@ -625,12 +625,12 @@ func TestJobFullLogsReturnsSignedURLWithTxtPriority(t *testing.T) {
 		toFail(t, "expected success response, got %#v", res)
 	}
 
-	result, ok := res.StructuredContent.(fullLogsResult)
+	result, ok := res.StructuredContent.(artifactJobLogsResult)
 	if !ok {
 		toFail(t, "unexpected structured content type: %T", res.StructuredContent)
 	}
-	if result.Source != fullLogsSource {
-		toFail(t, "expected source %s, got %s", fullLogsSource, result.Source)
+	if result.Source != artifactJobLogsSource {
+		toFail(t, "expected source %s, got %s", artifactJobLogsSource, result.Source)
 	}
 	if result.Path != "agent/job_logs.txt" {
 		toFail(t, "expected txt path priority, got %s", result.Path)
@@ -643,7 +643,7 @@ func TestJobFullLogsReturnsSignedURLWithTxtPriority(t *testing.T) {
 	}
 }
 
-func TestJobFullLogsReturnsSignedURLWithGzipFallback(t *testing.T) {
+func TestArtifactJobLogsReturnsSignedURLWithGzipFallback(t *testing.T) {
 	const orgID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 	const jobID = "99999999-aaaa-bbbb-cccc-dddddddddddd"
 	const artifactStoreID = "88888888-7777-6666-5555-444444444444"
@@ -693,7 +693,7 @@ func TestJobFullLogsReturnsSignedURLWithGzipFallback(t *testing.T) {
 	header.Set("X-Semaphore-User-ID", selfHostedTestUser)
 	req.Header = header
 
-	res, err := fullLogsHandler(provider)(context.Background(), req)
+	res, err := artifactJobLogsHandler(provider)(context.Background(), req)
 	if err != nil {
 		toFail(t, "handler error: %v", err)
 	}
@@ -701,7 +701,7 @@ func TestJobFullLogsReturnsSignedURLWithGzipFallback(t *testing.T) {
 		toFail(t, "expected success response, got %#v", res)
 	}
 
-	result, ok := res.StructuredContent.(fullLogsResult)
+	result, ok := res.StructuredContent.(artifactJobLogsResult)
 	if !ok {
 		toFail(t, "unexpected structured content type: %T", res.StructuredContent)
 	}
@@ -713,7 +713,7 @@ func TestJobFullLogsReturnsSignedURLWithGzipFallback(t *testing.T) {
 	}
 }
 
-func TestJobFullLogsFeatureDisabled(t *testing.T) {
+func TestArtifactJobLogsFeatureDisabled(t *testing.T) {
 	const orgID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 	const jobID = "99999999-aaaa-bbbb-cccc-dddddddddddd"
 	const artifactStoreID = "88888888-7777-6666-5555-444444444444"
@@ -755,7 +755,7 @@ func TestJobFullLogsFeatureDisabled(t *testing.T) {
 	header.Set("X-Semaphore-User-ID", selfHostedTestUser)
 	req.Header = header
 
-	res, err := fullLogsHandler(provider)(context.Background(), req)
+	res, err := artifactJobLogsHandler(provider)(context.Background(), req)
 	if err != nil {
 		toFail(t, "handler error: %v", err)
 	}

@@ -51,7 +51,7 @@ Refer to [`AGENTS.md`](AGENTS.md) for repository guidelines, project structure, 
 | `pipeline_jobs` | List jobs belonging to a specific pipeline. |
 | `jobs_describe` | Describes a job, surfacing agent details and lifecycle timestamps. |
 | `jobs_logs` | Fetches job logs. Hosted jobs stream loghub events; self-hosted jobs return a URL to fetch logs. |
-| `jobs_full_logs` | Returns a signed URL for uploaded full logs (`agent/job_logs.txt` or `.gz`) when artifact-backed full logs are enabled. |
+| `artifact_job_logs` | Returns a signed URL for uploaded artifact job logs (`agent/job_logs.txt` or `.gz`) when artifact-backed job logs are enabled. |
 | `tasks_list` | List scheduled tasks (periodics) for a project. |
 | `tasks_describe` | Get detailed information about a scheduled task including recent trigger history. |
 | `tasks_run` | Trigger a scheduled task to run immediately. |

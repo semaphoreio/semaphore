@@ -20,19 +20,19 @@ import (
 )
 
 const (
-	fullLogsToolName = "jobs_full_logs"
-	fullLogsSource   = "artifacthub"
+	artifactJobLogsToolName = "artifact_job_logs"
+	artifactJobLogsSource   = "artifacthub"
 )
 
 var (
-	uploadedFullLogCandidates = []string{
+	uploadedArtifactJobLogCandidates = []string{
 		"agent/job_logs.txt",
 		"agent/job_logs.txt.gz",
 	}
-	errUploadedFullLogsNotFound = errors.New("uploaded full logs artifact not found")
+	errUploadedArtifactJobLogsNotFound = errors.New("uploaded artifact job logs not found")
 )
 
-type fullLogsResult struct {
+type artifactJobLogsResult struct {
 	JobID          string `json:"jobId"`
 	OrganizationID string `json:"organizationId"`
 	ProjectID      string `json:"projectId"`
@@ -42,10 +42,10 @@ type fullLogsResult struct {
 	URL            string `json:"url"`
 }
 
-func fullLogsFullDescription() string {
-	return `Fetch a signed URL for full job logs uploaded as artifacts.
+func artifactJobLogsFullDescription() string {
+	return `Fetch a signed URL for artifact job logs uploaded by agents.
 
-Use this when the default logs stream is not enough (for example very large logs).
+Use this when you explicitly need artifact-uploaded job logs (for example when live logs were trimmed).
 
 Requirements:
 - The organization must have at least one feature enabled: mcp_server_artifacts_tools or artifacts_job_logs.
@@ -58,19 +58,19 @@ Behavior:
 - Returns a signed GET URL for the selected file.
 
 Example:
-1. Get full logs signed URL:
-   jobs_full_logs(job_id="...")
+1. Get artifact job logs signed URL:
+   artifact_job_logs(job_id="...")
 `
 }
 
-func newFullLogsTool(name, description string) mcp.Tool {
+func newArtifactJobLogsTool(name, description string) mcp.Tool {
 	return mcp.NewTool(
 		name,
 		mcp.WithDescription(description),
 		mcp.WithString(
 			"job_id",
 			mcp.Required(),
-			mcp.Description("Job UUID to fetch full logs for (format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)."),
+			mcp.Description("Job UUID to fetch artifact job logs for (format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)."),
 			mcp.Pattern(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`),
 		),
 		mcp.WithReadOnlyHintAnnotation(true),
@@ -79,7 +79,7 @@ func newFullLogsTool(name, description string) mcp.Tool {
 	)
 }
 
-func fullLogsHandler(api internalapi.Provider) server.ToolHandlerFunc {
+func artifactJobLogsHandler(api internalapi.Provider) server.ToolHandlerFunc {
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		jobIDRaw, err := req.RequireString("job_id")
 		if err != nil {
@@ -95,7 +95,7 @@ func fullLogsHandler(api internalapi.Provider) server.ToolHandlerFunc {
 		if err := shared.ValidateUUID(userID, "x-semaphore-user-id header"); err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf(`%v
 
-The authentication layer must inject the X-Semaphore-User-ID header so we can enforce project permissions before generating full logs URLs.
+The authentication layer must inject the X-Semaphore-User-ID header so we can enforce project permissions before generating artifact job logs URLs.
 
 Troubleshooting:
 - Ensure requests pass through the authenticated proxy
@@ -117,7 +117,7 @@ Troubleshooting:
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		tracker := shared.TrackToolExecution(ctx, fullLogsToolName, jobOrg)
+		tracker := shared.TrackToolExecution(ctx, artifactJobLogsToolName, jobOrg)
 		defer tracker.Cleanup()
 
 		if err := shared.EnsureReadToolsFeature(ctx, api, jobOrg); err != nil {
@@ -134,39 +134,39 @@ Troubleshooting:
 			return shared.ProjectAuthorizationError(err, jobOrg, jobProjectID, projectArtifactsViewPermission), nil
 		}
 
-		artifactStoreID, err := fetchProjectArtifactStoreIDForFullLogs(ctx, api, jobOrg, userID, jobProjectID)
+		artifactStoreID, err := fetchProjectArtifactStoreIDForArtifactJobLogs(ctx, api, jobOrg, userID, jobProjectID)
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 		if artifactStoreID == "" {
-			return mcp.NewToolResultError("project is missing an artifact_store_id; cannot retrieve uploaded full logs"), nil
+			return mcp.NewToolResultError("project is missing an artifact_store_id; cannot retrieve artifact job logs"), nil
 		}
 
-		resolvedPath, err := resolveUploadedJobFullLogPath(ctx, api, artifactStoreID, jobID)
+		resolvedPath, err := resolveUploadedArtifactJobLogsPath(ctx, api, artifactStoreID, jobID)
 		if err != nil {
-			if errors.Is(err, errUploadedFullLogsNotFound) {
-				return mcp.NewToolResultError("uploaded full logs artifact not found in agent/ (expected job_logs.txt or job_logs.txt.gz)"), nil
+			if errors.Is(err, errUploadedArtifactJobLogsNotFound) {
+				return mcp.NewToolResultError("uploaded artifact job logs not found in agent/ (expected job_logs.txt or job_logs.txt.gz)"), nil
 			}
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
 		requestPath := uploadedJobArtifactPath(jobID, resolvedPath)
-		signedURL, err := getUploadedJobLogSignedURL(ctx, api, artifactStoreID, requestPath)
+		signedURL, err := getUploadedArtifactJobLogsSignedURL(ctx, api, artifactStoreID, requestPath)
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		result := fullLogsResult{
+		result := artifactJobLogsResult{
 			JobID:          jobID,
 			OrganizationID: jobOrg,
 			ProjectID:      jobProjectID,
-			Source:         fullLogsSource,
+			Source:         artifactJobLogsSource,
 			Path:           resolvedPath,
 			Method:         http.MethodGet,
 			URL:            signedURL,
 		}
 
-		markdown := formatFullLogsMarkdown(result)
+		markdown := formatArtifactJobLogsMarkdown(result)
 		markdown = shared.TruncateResponse(markdown, shared.MaxResponseChars)
 
 		tracker.MarkSuccess()
@@ -177,7 +177,7 @@ Troubleshooting:
 	}
 }
 
-func fetchProjectArtifactStoreIDForFullLogs(
+func fetchProjectArtifactStoreIDForArtifactJobLogs(
 	ctx context.Context,
 	api internalapi.Provider,
 	orgID string,
@@ -205,7 +205,7 @@ func fetchProjectArtifactStoreIDForFullLogs(
 	return strings.TrimSpace(spec.GetArtifactStoreId()), nil
 }
 
-func resolveUploadedJobFullLogPath(
+func resolveUploadedArtifactJobLogsPath(
 	ctx context.Context,
 	api internalapi.Provider,
 	artifactStoreID string,
@@ -250,16 +250,16 @@ func resolveUploadedJobFullLogPath(
 		available[relative] = struct{}{}
 	}
 
-	for _, candidate := range uploadedFullLogCandidates {
+	for _, candidate := range uploadedArtifactJobLogCandidates {
 		if _, ok := available[candidate]; ok {
 			return candidate, nil
 		}
 	}
 
-	return "", errUploadedFullLogsNotFound
+	return "", errUploadedArtifactJobLogsNotFound
 }
 
-func getUploadedJobLogSignedURL(ctx context.Context, api internalapi.Provider, artifactStoreID, path string) (string, error) {
+func getUploadedArtifactJobLogsSignedURL(ctx context.Context, api internalapi.Provider, artifactStoreID, path string) (string, error) {
 	client := api.Artifacthub()
 	if client == nil {
 		return "", fmt.Errorf("artifacthub gRPC endpoint is not configured")
@@ -313,9 +313,9 @@ func relativeJobArtifactPath(name, jobID string) string {
 	return trimmed
 }
 
-func formatFullLogsMarkdown(result fullLogsResult) string {
+func formatArtifactJobLogsMarkdown(result artifactJobLogsResult) string {
 	mb := shared.NewMarkdownBuilder()
-	mb.H1(fmt.Sprintf("Full Logs URL for Job %s", result.JobID))
+	mb.H1(fmt.Sprintf("Artifact Job Logs URL for Job %s", result.JobID))
 	mb.KeyValue("Organization ID", fmt.Sprintf("`%s`", result.OrganizationID))
 	mb.KeyValue("Project ID", fmt.Sprintf("`%s`", result.ProjectID))
 	mb.KeyValue("Source", result.Source)
@@ -323,6 +323,6 @@ func formatFullLogsMarkdown(result fullLogsResult) string {
 	mb.KeyValue("Method", result.Method)
 	mb.KeyValue("Signed URL", result.URL)
 	mb.Line()
-	mb.Paragraph("Use the signed URL to download the full uploaded logs directly.")
+	mb.Paragraph("Use the signed URL to download the artifact job logs directly.")
 	return mb.String()
 }
