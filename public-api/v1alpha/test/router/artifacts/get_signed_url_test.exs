@@ -1,5 +1,6 @@
 defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
   use ExUnit.Case
+  import ExUnit.CaptureLog
 
   alias Support.Stubs.{Job, Pipeline, Workflow}
 
@@ -51,6 +52,25 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
   end
 
   describe "GET /artifacts/signed_url" do
+    test "emits audit log for artifact download through API", ctx do
+      log =
+        capture_log(fn ->
+          assert {200, _response} =
+                   signed_url(
+                     %{
+                       "scope" => "jobs",
+                       "scope_id" => ctx.job.id,
+                       "path" => "agent/job_logs.txt.gz"
+                     },
+                     ctx.user.id
+                   )
+        end)
+
+      assert log =~ "AuditLog"
+      assert log =~ ctx.user.id
+      assert log =~ ctx.org.id
+    end
+
     test "returns 200 and a signed URL for job artifact", ctx do
       assert {200, response} =
                signed_url(

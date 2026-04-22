@@ -5,6 +5,7 @@ defmodule PipelinesAPI.Artifacts.GetSignedURL do
 
   use Plug.Builder
 
+  alias PipelinesAPI.Audit
   alias PipelinesAPI.ArtifactHubClient
   alias PipelinesAPI.Pipelines.Common, as: RespCommon
   alias PipelinesAPI.Util.{Metrics, RequestMetrics, ToTuple}
@@ -26,6 +27,7 @@ defmodule PipelinesAPI.Artifacts.GetSignedURL do
   plug(:has_artifacts_api_enabled)
   plug(:resolve_project_id_from_scope)
   plug(:authorize_signed_url)
+  plug(:log_audit_download)
   plug(:get_artifact_store_id)
   plug(:get_signed_url)
 
@@ -48,6 +50,11 @@ defmodule PipelinesAPI.Artifacts.GetSignedURL do
   def verify_params(conn, _opts) do
     conn
     |> validate_request_params(@enabled_fields, require_path: true, validate_method: true)
+  end
+
+  def log_audit_download(conn, _opts) do
+    Audit.log_artifact_download(conn, conn.params)
+    conn
   end
 
   defp maybe_track_lookup_failure({:error, _}) do
