@@ -59,7 +59,7 @@ Behavior:
 
 Example:
 1. Get artifact job logs signed URL:
-   artifact_job_logs(job_id="...")
+   artifact_job_logs(organization_id="...", job_id="...")
 `
 }
 
@@ -67,6 +67,12 @@ func newArtifactJobLogsTool(name, description string) mcp.Tool {
 	return mcp.NewTool(
 		name,
 		mcp.WithDescription(description),
+		mcp.WithString(
+			"organization_id",
+			mcp.Required(),
+			mcp.Description("Organization UUID context for this job (format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx). Use the ID returned by semaphore_organizations_list."),
+			mcp.Pattern(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`),
+		),
 		mcp.WithString(
 			"job_id",
 			mcp.Required(),
@@ -81,6 +87,18 @@ func newArtifactJobLogsTool(name, description string) mcp.Tool {
 
 func artifactJobLogsHandler(api internalapi.Provider) server.ToolHandlerFunc {
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		orgIDRaw, err := req.RequireString("organization_id")
+		if err != nil {
+			return mcp.NewToolResultError("organization_id is required. Use organizations_list to capture the correct organization ID before fetching artifact job logs."), nil
+		}
+		orgID := strings.TrimSpace(orgIDRaw)
+		if err := shared.ValidateUUID(orgID, "organization_id"); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		tracker := shared.TrackToolExecution(ctx, artifactJobLogsToolName, orgID)
+		defer tracker.Cleanup()
+
 		jobIDRaw, err := req.RequireString("job_id")
 		if err != nil {
 			return mcp.NewToolResultError("job_id is required. Provide the job UUID shown by jobs_describe."), nil
@@ -110,6 +128,30 @@ Troubleshooting:
 
 		jobOrg := strings.TrimSpace(job.GetOrganizationId())
 		jobProjectID := strings.TrimSpace(job.GetProjectId())
+		if jobOrg == "" || !strings.EqualFold(jobOrg, orgID) {
+			shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
+				Tool:              artifactJobLogsToolName,
+				ResourceType:      "job",
+				ResourceID:        jobID,
+				RequestOrgID:      orgID,
+				ResourceOrgID:     job.GetOrganizationId(),
+				RequestProjectID:  "",
+				ResourceProjectID: jobProjectID,
+			})
+			return shared.ScopeMismatchError(artifactJobLogsToolName, "organization"), nil
+		}
+		if jobProjectID == "" {
+			shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
+				Tool:              artifactJobLogsToolName,
+				ResourceType:      "job",
+				ResourceID:        jobID,
+				RequestOrgID:      orgID,
+				ResourceOrgID:     jobOrg,
+				RequestProjectID:  "",
+				ResourceProjectID: jobProjectID,
+			})
+			return shared.ScopeMismatchError(artifactJobLogsToolName, "project"), nil
+		}
 		if err := shared.ValidateUUID(jobOrg, "job organization_id"); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -117,26 +159,30 @@ Troubleshooting:
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		tracker := shared.TrackToolExecution(ctx, artifactJobLogsToolName, jobOrg)
-		defer tracker.Cleanup()
-
-		if err := shared.EnsureReadToolsFeature(ctx, api, jobOrg); err != nil {
+		if err := shared.EnsureReadToolsFeature(ctx, api, orgID); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
-		if err := shared.EnsureArtifactsToolsOrJobLogsFeature(ctx, api, jobOrg); err != nil {
+		if err := shared.EnsureArtifactsToolsOrJobLogsFeature(ctx, api, orgID); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		if err := authz.CheckProjectPermission(ctx, api, userID, jobOrg, jobProjectID, projectViewPermission); err != nil {
-			return shared.ProjectAuthorizationError(err, jobOrg, jobProjectID, projectViewPermission), nil
+		if err := authz.CheckProjectPermission(ctx, api, userID, orgID, jobProjectID, projectViewPermission); err != nil {
+			return shared.ProjectAuthorizationError(err, orgID, jobProjectID, projectViewPermission), nil
 		}
-		if err := authz.CheckProjectPermission(ctx, api, userID, jobOrg, jobProjectID, projectArtifactsViewPermission); err != nil {
-			return shared.ProjectAuthorizationError(err, jobOrg, jobProjectID, projectArtifactsViewPermission), nil
+		if err := authz.CheckProjectPermission(ctx, api, userID, orgID, jobProjectID, projectArtifactsViewPermission); err != nil {
+			return shared.ProjectAuthorizationError(err, orgID, jobProjectID, projectArtifactsViewPermission), nil
 		}
 
-		artifactStoreID, err := fetchProjectArtifactStoreIDForArtifactJobLogs(ctx, api, jobOrg, userID, jobProjectID)
-		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
+		artifactStoreID, toolErr := fetchProjectArtifactStoreIDForArtifactJobLogs(
+			ctx,
+			api,
+			artifactJobLogsToolName,
+			orgID,
+			userID,
+			jobProjectID,
+		)
+		if toolErr != nil {
+			return toolErr, nil
 		}
 		if artifactStoreID == "" {
 			return mcp.NewToolResultError("project is missing an artifact_store_id; cannot retrieve artifact job logs"), nil
@@ -180,22 +226,45 @@ Troubleshooting:
 func fetchProjectArtifactStoreIDForArtifactJobLogs(
 	ctx context.Context,
 	api internalapi.Provider,
+	toolName string,
 	orgID string,
 	userID string,
 	projectID string,
-) (string, error) {
+) (string, *mcp.CallToolResult) {
 	project, err := clients.DescribeProject(ctx, api, orgID, userID, projectID)
 	if err != nil {
-		return "", err
+		return "", mcp.NewToolResultError(err.Error())
 	}
 
 	meta := project.GetMetadata()
 	if meta == nil {
-		return "", fmt.Errorf("describe project returned no metadata")
+		return "", mcp.NewToolResultError("describe project returned no metadata")
 	}
 	projectOrgID := strings.TrimSpace(meta.GetOrgId())
+	projectMetaID := strings.TrimSpace(meta.GetId())
 	if projectOrgID == "" || !strings.EqualFold(projectOrgID, orgID) {
-		return "", fmt.Errorf("project belongs to a different organization")
+		shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
+			Tool:              toolName,
+			ResourceType:      "project",
+			ResourceID:        projectID,
+			RequestOrgID:      orgID,
+			ResourceOrgID:     projectOrgID,
+			RequestProjectID:  projectID,
+			ResourceProjectID: projectMetaID,
+		})
+		return "", shared.ScopeMismatchError(toolName, "organization")
+	}
+	if projectMetaID != "" && !strings.EqualFold(projectMetaID, projectID) {
+		shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
+			Tool:              toolName,
+			ResourceType:      "project",
+			ResourceID:        projectMetaID,
+			RequestOrgID:      orgID,
+			ResourceOrgID:     projectOrgID,
+			RequestProjectID:  projectID,
+			ResourceProjectID: projectMetaID,
+		})
+		return "", shared.ScopeMismatchError(toolName, "project")
 	}
 
 	spec := project.GetSpec()

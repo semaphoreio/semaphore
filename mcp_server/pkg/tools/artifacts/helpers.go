@@ -374,24 +374,19 @@ func resolveArtifactAccess(
 			})
 			return accessContext{}, shared.ScopeMismatchError(toolName, "project")
 		}
-		projectID = providedProjectID
 	}
 
 	var (
-		project        *projecthubpb.Project
 		projectStoreID string
+		projectLoaded  bool
 		toolErr        *mcp.CallToolResult
 	)
 	if scope == scopeProjects {
-		project, err = clients.DescribeProject(ctx, api, orgID, userID, projectID)
-		if err != nil {
-			return accessContext{}, mcp.NewToolResultError(err.Error())
-		}
-
-		projectStoreID, toolErr = validateProjectDescribe(toolName, orgID, projectID, project)
+		projectStoreID, toolErr = describeAndValidateProject(ctx, api, toolName, orgID, userID, projectID)
 		if toolErr != nil {
 			return accessContext{}, toolErr
 		}
+		projectLoaded = true
 	}
 
 	for _, permission := range permissions {
@@ -400,13 +395,8 @@ func resolveArtifactAccess(
 		}
 	}
 
-	if project == nil {
-		project, err = clients.DescribeProject(ctx, api, orgID, userID, projectID)
-		if err != nil {
-			return accessContext{}, mcp.NewToolResultError(err.Error())
-		}
-
-		projectStoreID, toolErr = validateProjectDescribe(toolName, orgID, projectID, project)
+	if !projectLoaded {
+		projectStoreID, toolErr = describeAndValidateProject(ctx, api, toolName, orgID, userID, projectID)
 		if toolErr != nil {
 			return accessContext{}, toolErr
 		}
@@ -417,6 +407,22 @@ func resolveArtifactAccess(
 		ProjectID:       projectID,
 		ArtifactStoreID: projectStoreID,
 	}, nil
+}
+
+func describeAndValidateProject(
+	ctx context.Context,
+	api internalapi.Provider,
+	toolName string,
+	orgID string,
+	userID string,
+	projectID string,
+) (string, *mcp.CallToolResult) {
+	project, err := clients.DescribeProject(ctx, api, orgID, userID, projectID)
+	if err != nil {
+		return "", mcp.NewToolResultError(err.Error())
+	}
+
+	return validateProjectDescribe(toolName, orgID, projectID, project)
 }
 
 func validateProjectDescribe(toolName, orgID, projectID string, project *projecthubpb.Project) (string, *mcp.CallToolResult) {

@@ -611,7 +611,8 @@ func TestArtifactJobLogsReturnsSignedURLWithTxtPriority(t *testing.T) {
 	}
 
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
-		"job_id": jobID,
+		"organization_id": orgID,
+		"job_id":          jobID,
 	}}}
 	header := http.Header{}
 	header.Set("X-Semaphore-User-ID", selfHostedTestUser)
@@ -687,7 +688,8 @@ func TestArtifactJobLogsReturnsSignedURLWithGzipFallback(t *testing.T) {
 	}
 
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
-		"job_id": jobID,
+		"organization_id": orgID,
+		"job_id":          jobID,
 	}}}
 	header := http.Header{}
 	header.Set("X-Semaphore-User-ID", selfHostedTestUser)
@@ -749,7 +751,8 @@ func TestArtifactJobLogsFeatureDisabled(t *testing.T) {
 	}
 
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
-		"job_id": jobID,
+		"organization_id": orgID,
+		"job_id":          jobID,
 	}}}
 	header := http.Header{}
 	header.Set("X-Semaphore-User-ID", selfHostedTestUser)
@@ -766,6 +769,136 @@ func TestArtifactJobLogsFeatureDisabled(t *testing.T) {
 	}
 	if artifactClient.lastList != nil || artifactClient.lastSigned != nil {
 		toFail(t, "expected no artifact calls when both feature flags are disabled")
+	}
+}
+
+func TestArtifactJobLogsScopeMismatchOrganization(t *testing.T) {
+	const requestOrgID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	const foreignOrgID = "bbbbbbbb-cccc-dddd-eeee-ffffffffffff"
+	const foreignProjectID = "44444444-5555-6666-7777-888888888888"
+	const jobID = "99999999-aaaa-bbbb-cccc-dddddddddddd"
+
+	jobClient := &jobClientStub{
+		describeResp: &jobpb.DescribeResponse{
+			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
+			Job: &jobpb.Job{
+				Id:             jobID,
+				ProjectId:      foreignProjectID,
+				OrganizationId: foreignOrgID,
+				SelfHosted:     false,
+			},
+		},
+	}
+	artifactClient := &artifacthubClientStub{}
+	projectClient := &support.ProjectClientStub{}
+	rbac := newRBACStub("project.view", "project.artifacts.view")
+
+	provider := &support.MockProvider{
+		JobClient:         jobClient,
+		ArtifacthubClient: artifactClient,
+		ProjectClient:     projectClient,
+		RBACClient:        rbac,
+		Timeout:           time.Second,
+	}
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"organization_id": requestOrgID,
+		"job_id":          jobID,
+	}}}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", selfHostedTestUser)
+	req.Header = header
+
+	res, err := artifactJobLogsHandler(provider)(context.Background(), req)
+	if err != nil {
+		toFail(t, "handler error: %v", err)
+	}
+
+	msg := requireErrorText(t, res)
+	if !strings.Contains(msg, "outside the authorized organization scope") {
+		toFail(t, "expected organization scope mismatch message, got %q", msg)
+	}
+	if strings.Contains(msg, foreignOrgID) || strings.Contains(msg, foreignProjectID) {
+		toFail(t, "scope mismatch should not disclose foreign IDs, got %q", msg)
+	}
+	if len(rbac.lastRequests) != 0 {
+		toFail(t, "expected no RBAC calls, got %d", len(rbac.lastRequests))
+	}
+	if projectClient.LastDescribe != nil {
+		toFail(t, "expected no project describe call on organization scope mismatch")
+	}
+	if artifactClient.lastList != nil || artifactClient.lastSigned != nil {
+		toFail(t, "expected no artifacthub calls on organization scope mismatch")
+	}
+}
+
+func TestArtifactJobLogsProjectDescribeScopeMismatch(t *testing.T) {
+	const orgID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	const jobID = "99999999-aaaa-bbbb-cccc-dddddddddddd"
+	const mismatchProjectID = "44444444-5555-6666-7777-888888888888"
+	const artifactStoreID = "88888888-7777-6666-5555-444444444444"
+
+	jobClient := &jobClientStub{
+		describeResp: &jobpb.DescribeResponse{
+			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
+			Job: &jobpb.Job{
+				Id:             jobID,
+				ProjectId:      testProjectUUID,
+				OrganizationId: orgID,
+				SelfHosted:     false,
+			},
+		},
+	}
+	artifactClient := &artifacthubClientStub{
+		listResp: &artifacthubpb.ListPathResponse{
+			Items: []*artifacthubpb.ListItem{
+				{Name: fmt.Sprintf("artifacts/jobs/%s/agent/job_logs.txt", jobID), IsDirectory: false},
+			},
+		},
+		signedURL: "https://example.com/full-logs.txt",
+	}
+	projectClient := &support.ProjectClientStub{
+		Response: newProjectDescribeResponseWithArtifactStore(orgID, mismatchProjectID, artifactStoreID),
+	}
+	rbac := newRBACStub("project.view", "project.artifacts.view")
+
+	provider := &support.MockProvider{
+		JobClient:         jobClient,
+		ArtifacthubClient: artifactClient,
+		ProjectClient:     projectClient,
+		RBACClient:        rbac,
+		FeaturesService: support.FeatureClientStub{
+			States: map[string]feature.State{
+				"mcp_server_read_tools":      feature.Enabled,
+				"mcp_server_artifacts_tools": feature.Enabled,
+				"artifacts_job_logs":         feature.Hidden,
+			},
+		},
+		Timeout: time.Second,
+	}
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"organization_id": orgID,
+		"job_id":          jobID,
+	}}}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", selfHostedTestUser)
+	req.Header = header
+
+	res, err := artifactJobLogsHandler(provider)(context.Background(), req)
+	if err != nil {
+		toFail(t, "handler error: %v", err)
+	}
+
+	msg := requireErrorText(t, res)
+	if !strings.Contains(msg, "outside the authorized project scope") {
+		toFail(t, "expected project scope mismatch message, got %q", msg)
+	}
+	if projectClient.LastDescribe == nil {
+		toFail(t, "expected project describe call before scope mismatch")
+	}
+	if artifactClient.lastList != nil || artifactClient.lastSigned != nil {
+		toFail(t, "expected no artifacthub calls when project metadata mismatches request")
 	}
 }
 
