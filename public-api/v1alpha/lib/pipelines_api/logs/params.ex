@@ -7,7 +7,7 @@ defmodule PipelinesAPI.Logs.Params do
 
   def artifact_job_logs_requested?(params) when is_map(params) do
     params
-    |> Map.get("artifact_job_logs", Map.get(params, "full", ""))
+    |> Map.get("artifact_job_logs", "")
     |> artifact_job_logs_value?()
   end
 
