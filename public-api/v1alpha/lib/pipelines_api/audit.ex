@@ -94,7 +94,7 @@ defmodule PipelinesAPI.Audit do
 
   defp publish_audit_log(message) do
     with {:ok, channel} <- AMQP.Application.get_channel(@audit_channel),
-         :ok <- Tackle.Exchange.create(channel, @exchange_name),
+         _exchange <- Tackle.Exchange.create(channel, @exchange_name),
          :ok <- Tackle.Exchange.publish(channel, @exchange_name, message, @routing_key) do
       :ok
     else
