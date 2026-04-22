@@ -19,7 +19,7 @@ defmodule PipelinesAPI.Util.RequestMetricsTest do
   end
 
   test "uses unknown placeholders for missing status and headers" do
-    conn = Test.conn(:get, "/api/v1alpha/logs/job-id?full=true")
+    conn = Test.conn(:get, "/api/v1alpha/logs/job-id?artifact_job_logs=true")
 
     assert RequestMetrics.metric_tags(conn) == ["unknown", "unknown", "unknown"]
   end

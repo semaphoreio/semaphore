@@ -45,7 +45,7 @@ defmodule PipelinesAPI.Logs.Authorize do
   defp required_permissions(params, job) do
     base_permissions = ["project.view"]
 
-    if LogsParams.full_logs_requested_for_job?(params, job) do
+    if LogsParams.artifact_job_logs_requested_for_job?(params, job) do
       base_permissions ++ ["project.artifacts.view"]
     else
       base_permissions

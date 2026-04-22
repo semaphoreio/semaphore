@@ -16,20 +16,20 @@ defmodule PipelinesAPI.Logs.Get do
   alias PipelinesAPI.Util.{Metrics, RequestMetrics, ToTuple}
   alias Plug.Conn
 
-  @full_log_paths ["agent/job_logs.txt", "agent/job_logs.txt.gz"]
+  @artifact_job_log_paths ["agent/job_logs.txt", "agent/job_logs.txt.gz"]
   @artifacts_api_disabled_message "The artifacts api feature is not enabled for your organization. Please contact support"
 
   import PipelinesAPI.Logs.Authorize, only: [authorize_job: 2]
 
-  plug(:track_full_logs_metrics)
+  plug(:track_artifact_job_logs_metrics)
   plug(:describe_job)
   plug(:authorize_job)
   plug(:prepare_response)
 
-  def track_full_logs_metrics(conn, _opts) do
+  def track_artifact_job_logs_metrics(conn, _opts) do
     conn = Conn.fetch_query_params(conn)
 
-    if LogsParams.full_logs_requested?(conn.query_params) do
+    if LogsParams.artifact_job_logs_requested?(conn.query_params) do
       RequestMetrics.track_request(conn, "full_logs_api_request")
     else
       conn
@@ -57,8 +57,8 @@ defmodule PipelinesAPI.Logs.Get do
     Metrics.benchmark("PipelinesAPI.router", ["get_logs"], fn ->
       job = conn.params.job
 
-      if LogsParams.full_logs_requested_for_job?(conn.params, job) do
-        conn |> get_full_logs(job)
+      if LogsParams.artifact_job_logs_requested_for_job?(conn.params, job) do
+        conn |> get_artifact_job_logs(job)
       else
         conn |> get_logs(job.id, job.self_hosted)
       end
@@ -93,23 +93,23 @@ defmodule PipelinesAPI.Logs.Get do
       RespCommon.respond(e, conn)
   end
 
-  defp get_full_logs(conn, job) do
-    with :ok <- ensure_full_logs_feature_enabled(conn),
+  defp get_artifact_job_logs(conn, job) do
+    with :ok <- ensure_artifact_job_logs_feature_enabled(conn),
          {:ok, project} <- ProjectClient.describe(job.project_id),
          {:ok, artifact_store_id} <- artifact_store_id_from_project(project),
-         {:ok, signed_url} <- fetch_signed_full_log_url(job.id, artifact_store_id) do
+         {:ok, signed_url} <- fetch_signed_artifact_job_logs_url(job.id, artifact_store_id) do
       conn
       |> put_resp_header("location", signed_url)
       |> send_resp(302, "")
     else
-      {:error, :full_logs_feature_disabled} ->
+      {:error, :artifact_job_logs_feature_disabled} ->
         conn
         |> put_resp_content_type("text/plain")
         |> send_resp(403, @artifacts_api_disabled_message)
 
       {:error, {:not_found, _message}} ->
         Metrics.increment("PipelinesAPI.router", ["full_logs_artifact_lookup_failed"])
-        RespCommon.respond(ToTuple.not_found_error("Full log artifact not found"), conn)
+        RespCommon.respond(ToTuple.not_found_error("Artifact job logs not found"), conn)
 
       error ->
         Metrics.increment("PipelinesAPI.router", ["full_logs_artifact_lookup_failed"])
@@ -118,33 +118,33 @@ defmodule PipelinesAPI.Logs.Get do
   rescue
     e ->
       Metrics.increment("PipelinesAPI.router", ["full_logs_artifact_lookup_failed"])
-      Logger.error("Error getting full logs for #{job.id}: #{inspect(e)}")
+      Logger.error("Error getting artifact job logs for #{job.id}: #{inspect(e)}")
       RespCommon.respond(ToTuple.internal_error("Internal error"), conn)
   end
 
-  defp ensure_full_logs_feature_enabled(conn) do
+  defp ensure_artifact_job_logs_feature_enabled(conn) do
     with org_id when is_binary(org_id) and org_id != "" <-
            Conn.get_req_header(conn, "x-semaphore-org-id") |> Enum.at(0),
-         true <- full_logs_feature_enabled?(org_id) do
+         true <- artifact_job_logs_feature_enabled?(org_id) do
       :ok
     else
-      _ -> {:error, :full_logs_feature_disabled}
+      _ -> {:error, :artifact_job_logs_feature_disabled}
     end
   end
 
-  defp full_logs_feature_enabled?(org_id) do
+  defp artifact_job_logs_feature_enabled?(org_id) do
     FeatureProvider.feature_enabled?(:artifacts_api, param: org_id) ||
       FeatureProvider.feature_enabled?(:artifacts_job_logs, param: org_id)
   end
 
-  defp fetch_signed_full_log_url(job_id, artifact_store_id) do
-    case resolve_full_log_artifact_path(job_id, artifact_store_id) do
+  defp fetch_signed_artifact_job_logs_url(job_id, artifact_store_id) do
+    case resolve_artifact_job_logs_path(job_id, artifact_store_id) do
       {:ok, path} -> signed_url_for_artifact_path(artifact_store_id, job_id, path)
       error -> error
     end
   end
 
-  defp resolve_full_log_artifact_path(job_id, artifact_store_id) do
+  defp resolve_artifact_job_logs_path(job_id, artifact_store_id) do
     case ArtifactHubClient.list_path(%{
            artifact_store_id: artifact_store_id,
            scope: "jobs",
@@ -152,17 +152,17 @@ defmodule PipelinesAPI.Logs.Get do
            path: "agent"
          }) do
       {:ok, items} ->
-        pick_preferred_full_log_path(items)
+        pick_preferred_artifact_job_logs_path(items)
 
       {:error, {:not_found, _}} ->
-        ToTuple.not_found_error("Full log artifact not found")
+        ToTuple.not_found_error("Artifact job logs not found")
 
       error ->
         error
     end
   end
 
-  defp pick_preferred_full_log_path(items) when is_list(items) do
+  defp pick_preferred_artifact_job_logs_path(items) when is_list(items) do
     available_paths =
       items
       |> Enum.flat_map(fn
@@ -170,16 +170,16 @@ defmodule PipelinesAPI.Logs.Get do
         _ -> []
       end)
 
-    @full_log_paths
+    @artifact_job_log_paths
     |> Enum.find(&(&1 in available_paths))
     |> case do
-      nil -> ToTuple.not_found_error("Full log artifact not found")
+      nil -> ToTuple.not_found_error("Artifact job logs not found")
       path -> {:ok, path}
     end
   end
 
-  defp pick_preferred_full_log_path(_items),
-    do: ToTuple.not_found_error("Full log artifact not found")
+  defp pick_preferred_artifact_job_logs_path(_items),
+    do: ToTuple.not_found_error("Artifact job logs not found")
 
   defp signed_url_for_artifact_path(artifact_store_id, job_id, path) do
     case ArtifactHubClient.get_signed_url(%{
@@ -193,7 +193,7 @@ defmodule PipelinesAPI.Logs.Get do
         {:ok, url}
 
       {:ok, _response} ->
-        ToTuple.not_found_error("Full log artifact not found")
+        ToTuple.not_found_error("Artifact job logs not found")
 
       error ->
         error
