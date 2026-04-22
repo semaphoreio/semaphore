@@ -67,4 +67,10 @@ config :rbac, base_domain: System.get_env("BASE_DOMAIN")
 config :rbac, session_secret_key_base: System.get_env("SESSION_SECRET_KEY_BASE")
 config :rbac, session_key: System.get_env("SESSION_COOKIE_NAME")
 
+config :rbac,
+  okta_session_expiration_default_minutes:
+    String.to_integer(System.get_env("OKTA_SESSION_EXPIRATION_DEFAULT_MINUTES") || "20160"),
+  okta_session_expiration_max_minutes:
+    String.to_integer(System.get_env("OKTA_SESSION_EXPIRATION_MAX_MINUTES") || "43200")
+
 config :rbac, ignore_refresh_requests: System.get_env("IGNORE_REFRESH_REQUESTS") == "true"

@@ -23,6 +23,16 @@
         <%= label f, :jit_provisioning_enabled, "I don't have SCIM, I am using JIT provisioning", class: "ml2" %>
     </div>
 
+    <%= if is_nil(@changeset.data.id) do %>
+        <%= label f, :session_expiration_minutes, "Session expiration (days)", class: "db b mt3" %>
+        <%= render FrontWeb.OrganizationOktaView, "_error.html", form: f, field: :session_expiration_minutes, name: "Session expiration (days)" %>
+        <%= number_input f, :session_expiration_days,
+          class: "form-control w-100",
+          min: "1",
+          max: FrontWeb.OrganizationOktaView.session_expiration_days_max(),
+          value: FrontWeb.OrganizationOktaView.session_expiration_days_value(f) %>
+    <% end %>
+
     <p class="mt2">
         <a href="https://docs.semaphoreci.com/security/okta/installation/" target="_blank">Docs: How to find SAML Issuer and Certificate?</a>
     </p>

@@ -43,7 +43,7 @@ func Test__HandleMessage(t *testing.T) {
 	models.PrepareDatabaseForTests()
 
 	t.Run("invalid protobuf returns error", func(t *testing.T) {
-		worker, _ := NewWorker("", storage.NewInMemoryStorage())
+		worker, _ := NewWorker("", storage.NewInMemoryStorage(), 0)
 		delivery := &mockDelivery{body: []byte("invalid")}
 
 		err := worker.handleMessage(delivery)
@@ -52,7 +52,7 @@ func Test__HandleMessage(t *testing.T) {
 	})
 
 	t.Run("artifact store not found returns error", func(t *testing.T) {
-		worker, _ := NewWorker("", storage.NewInMemoryStorage())
+		worker, _ := NewWorker("", storage.NewInMemoryStorage(), 0)
 
 		event := &server_farm_job.JobDeleted{
 			JobId:           uuid.NewV4().String(),
@@ -69,7 +69,7 @@ func Test__HandleMessage(t *testing.T) {
 
 	t.Run("deletes artifacts successfully", func(t *testing.T) {
 		storageClient := storage.NewInMemoryStorage()
-		worker, _ := NewWorker("", storageClient)
+		worker, _ := NewWorker("", storageClient, 0)
 
 		artifact, _ := models.CreateArtifact(uuid.NewV4().String(), uuid.NewV4().String())
 		jobID := uuid.NewV4().String()

@@ -46,15 +46,38 @@ See [example prompts](#examples) to see a bit of what's possible.
 
 ## Configure your AI Agent or IDE
 
-Access to the MCP Server is controlled via an API Token. You can obtain your API token in two ways:
+Semaphore MCP supports two authentication methods:
 
-- [Personal API Token](../user-management#profile-token): if you don't know your personal API token, you can reset it and obtain a new one
-- [Service Account](../service-accounts): create a service account with *Member* role and use its API token
+- **OAuth 2.1 (recommended):** clients that support MCP OAuth can sign in via browser and grant access without manually managing API tokens.
+- **API token:** personal or service account token via `Authorization: Bearer <token>`.
 
-Both types of tokens are used to communicate with the Semaphore MCP Server endpoint: `https://mcp.semaphoreci.com/mcp`
+Both methods use the same endpoint: `https://mcp.semaphoreci.com/mcp`.
+
+### Connect with OAuth (recommended)
+
+If your MCP client supports OAuth for remote MCP servers:
+
+1. Add `https://mcp.semaphoreci.com/mcp` as the MCP server URL.
+2. Start the connection flow in your client.
+3. Complete browser sign-in and grant access to the MCP client.
+
+OAuth-capable clients use discovery and dynamic client registration automatically.
+
+### Connect with an API token
+
+If your client does not support OAuth yet, use an API token instead.
+
+You can obtain an API token in two ways:
+
+- [Personal API Token](../user-management#profile-token): if you don't know your personal API token, you can reset it and obtain a new one.
+- [Service Account](../service-accounts): create a service account with *Member* role, add it to projects that you want to access via the MCP server, and use its API token.
 
 If you have problems connecting to the MCP Server, see [troubleshooting](#troubleshooting).
 
+
+### API token setup examples
+
+The client configurations below use API token authentication and continue to work for clients that do not support OAuth yet.
 
 ### Claude Code {#claude-code}
 
@@ -168,6 +191,115 @@ If you have problems connecting to the MCP Server, see [troubleshooting](#troubl
 
 </Steps>
 
+### GitHub Copilot {#copilot}
+
+<Steps>
+
+1. Export an environment variable with your API token
+
+    ```shell
+    export SEMAPHORE_API_TOKEN=my-token
+    ```
+
+    :::note
+    Consider adding this line to your `.bashrc`, `.zshrc`, or equivalent shell configuration file so that it persists across terminal sessions.
+    :::
+
+2. Open the GitHub Copilot MCP configuration file
+
+    In Visual Studio Code, open the Command Palette (`Cmd+Shift+P`) and run:
+
+    ```text
+    MCP: Open User Configuration
+    ```
+
+    This opens the `mcp.json` file where you can define external MCP servers.
+
+3. Add the Semaphore MCP Server to the configuration
+
+    ```json title="Semaphore MCP Configuration for GitHub Copilot"
+    {
+      "servers": {
+        "semaphore": {
+          "type": "sse",
+          "url": "https://mcp.semaphoreci.com/mcp",
+          "headers": {
+            "Authorization": "Bearer ${env:SEMAPHORE_API_TOKEN}"
+          }
+        }
+      }
+    }
+    ```
+
+    :::note
+    This configuration uses `${env:SEMAPHORE_API_TOKEN}` to dynamically load your token from the environment each time the server is started.
+    :::
+
+4. Start VS Code from your terminal session
+
+    You must launch VS Code from the same terminal session where the `SEMAPHORE_API_TOKEN` variable is set so that the MCP server can authenticate properly.
+
+    ```shell
+    code path/to/project
+    ```
+
+5. Start the Semaphore MCP server
+
+    In the Command Palette, run:
+
+    ```text
+    MCP: Start Server
+    ```
+
+    Select `semaphore` from the list. Once the server starts successfully, you should see a message like:
+
+    ```text
+    Discovered 12 tools
+    ```
+
+    :::note
+    If the server fails with a `401 Unauthorized` error, confirm that your API token is valid and that your environment variable is properly set before launching VS Code.
+    :::
+
+6. Open GitHub Copilot Chat in Agent mode
+
+    In the Command Palette, run:
+
+    ```text
+    Chat: Open Chat (Agent)
+    ```
+
+    This opens the Copilot Chat panel with Agent mode enabled. Ensure the dropdown at the bottom of the panel is set to:
+
+    ```text
+    Agent | Auto | ...
+    ```
+
+7. Test the integration
+
+    To verify the setup, enter the following in Copilot Chat:
+
+    ```text
+    #echo Hello Semaphore
+    ```
+
+    If the integration is working correctly, you should see the following response:
+
+    ```text
+    Hello Semaphore
+    ```
+
+    You can also try more advanced commands like:
+
+    ```text
+    #list organizations
+    ```
+
+    This confirms that GitHub Copilot is communicating with the Semaphore MCP Server and has access to your organization's tools.
+
+</Steps>
+
+
 ## Example Prompts {#examples}
 
 See the [MCP Usage Examples](./mcp-usage-examples) for example use cases for the MCP server with a complete explanation of internals.
@@ -200,7 +332,5 @@ Client error: HTTP status client error (401 Unauthorized) for url (https://mcp.s
 - [MCP Usage Examples](./mcp-usage-examples)
 - [Self-healing CI](./self-healing-ci)
 - [Copilot Cloud Integration](./copilot-agent-cloud)
-
-
 
 

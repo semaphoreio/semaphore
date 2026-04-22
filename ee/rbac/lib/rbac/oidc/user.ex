@@ -49,10 +49,11 @@ defmodule Rbac.OIDC.User do
 
   def create_with_oidc_data(%{oidc_user_id: oidc_user_id}) do
     with {:ok, oidc_user} <- get_oidc_user(oidc_user_id),
-         {:ok, github} <- get_github_data(oidc_user.github_id),
-         {:ok, bitbucket} <- get_bitbucket_data(oidc_user.bitbucket_id),
+         {:ok, github} <- get_github_data(oidc_user.github),
+         {:ok, bitbucket} <- get_bitbucket_data(oidc_user.bitbucket),
+         {:ok, gitlab} <- get_gitlab_data(oidc_user.gitlab),
          {:ok, user} <- create_user(oidc_user_id, oidc_user.email, oidc_user.name),
-         _ <- sync_repo_host_acccount_connection(user, github, bitbucket) do
+         _ <- sync_repo_host_acccount_connection(user, github, bitbucket, gitlab) do
       tmp_sync_new_user_with_rbac(user.id)
       {:ok, user}
     else
@@ -62,8 +63,8 @@ defmodule Rbac.OIDC.User do
 
   defp get_github_data(nil), do: {:ok, %{id: nil, login: nil}}
 
-  defp get_github_data(github_id) do
-    case Rbac.Api.Github.user(github_id) do
+  defp get_github_data(github) do
+    case Rbac.Api.Github.user(github.id) do
       {:ok, github} -> {:ok, github}
       {:error, error} -> {:error, error}
     end
@@ -71,11 +72,18 @@ defmodule Rbac.OIDC.User do
 
   defp get_bitbucket_data(nil), do: {:ok, %{id: nil, login: nil}}
 
-  defp get_bitbucket_data(bitbucket_id) do
-    case Rbac.Api.Bitbucket.user(bitbucket_id) do
+  defp get_bitbucket_data(bitbucket) do
+    case Rbac.Api.Bitbucket.user(bitbucket.id) do
       {:ok, bitbucket} -> {:ok, bitbucket}
       {:error, error} -> {:error, error}
     end
+  end
+
+  defp get_gitlab_data(nil), do: {:ok, %{id: nil, username: nil}}
+
+  # GitLab username comes directly from the OIDC user federated identity response
+  defp get_gitlab_data(gitlab) do
+    {:ok, %{id: gitlab.id, username: gitlab.username}}
   end
 
   defp get_oidc_user(oidc_user_id) do
@@ -94,7 +102,7 @@ defmodule Rbac.OIDC.User do
     end)
   end
 
-  defp sync_repo_host_acccount_connection(user, github, bitbucket) do
+  defp sync_repo_host_acccount_connection(user, github, bitbucket, gitlab) do
     alias Rbac.FrontRepo.RepoHostAccount
 
     common = %{
@@ -115,6 +123,13 @@ defmodule Rbac.OIDC.User do
       user.id,
       :bitbucket,
       %{github_uid: bitbucket.id, login: bitbucket.login} |> Map.merge(common),
+      reset: true
+    )
+
+    RepoHostAccount.update_repo_host_account(
+      user.id,
+      :gitlab,
+      %{github_uid: gitlab.id, login: gitlab.username} |> Map.merge(common),
       reset: true
     )
 

@@ -2,7 +2,7 @@
 # Source: projecthub.proto for package 'InternalApi.Projecthub'
 
 require 'grpc'
-require_relative 'projecthub_pb'
+require 'projecthub_pb'
 
 module InternalApi
   module Projecthub

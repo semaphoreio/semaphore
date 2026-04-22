@@ -4,6 +4,13 @@ defmodule Guard.Api.GitlabTest do
   alias Guard.Api.Gitlab
 
   setup do
+    include_instance_config = Application.get_env(:guard, :include_instance_config)
+    Application.put_env(:guard, :include_instance_config, false)
+
+    on_exit(fn ->
+      Application.put_env(:guard, :include_instance_config, include_instance_config)
+    end)
+
     {:ok, user} = Support.Factories.RbacUser.insert()
     {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user.id)
 

@@ -155,25 +155,30 @@ defmodule Projecthub.Models.PeriodicTaskTest do
 
     test "maps periodic task to yml before applying to gRPC service", ctx do
       FunRegistry.set!(PeriodicService, :apply, fn request, _stream ->
-        assert request.yml_definition ==
-                 """
-                 apiVersion: v1.2
-                 kind: Schedule
-                 metadata:
-                   name: "task"
-                   id: "periodic_id"
-                   description: "test description"
-                 spec:
-                   project: "project_name"
-                   recurring: true
-                   paused: false
-                   at: "0 0 * * *"
-                   reference:
-                     type: BRANCH
-                     name: "master"
-                   pipeline_file: "pipeline.yml"
-                 """
+        {:ok, actual} = YamlElixir.read_from_string(request.yml_definition)
 
+        expected = %{
+          "apiVersion" => "v1.2",
+          "kind" => "Schedule",
+          "metadata" => %{
+            "name" => "task",
+            "id" => "periodic_id",
+            "description" => "test description"
+          },
+          "spec" => %{
+            "project" => "project_name",
+            "recurring" => true,
+            "paused" => false,
+            "at" => "0 0 * * *",
+            "reference" => %{
+              "type" => "BRANCH",
+              "name" => "master"
+            },
+            "pipeline_file" => "pipeline.yml"
+          }
+        }
+
+        assert actual == expected
         assert request.organization_id == "organization_id"
         assert request.requester_id == "requester_id"
 
