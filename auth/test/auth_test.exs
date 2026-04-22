@@ -71,7 +71,7 @@ defmodule AuthTest do
 
   setup do
     FunRegistry.set!(Fake.RbacService, :list_user_permissions, fn _, _ ->
-      InternalApi.RBAC.ListUserPermissionsResponse.new(permissions: ["organization.view"])
+      %InternalApi.RBAC.ListUserPermissionsResponse{permissions: ["organization.view"]}
     end)
 
     FunRegistry.set!(Fake.FeatureService, :list_organization_features, fn _req, _stream ->
@@ -97,18 +97,16 @@ defmodule AuthTest do
         |> Enum.find(fn org -> org.name == req.org_username end)
 
       if org do
-        InternalApi.Organization.DescribeResponse.new(
-          status:
-            InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
-          organization:
-            InternalApi.Organization.Organization.new(
-              org_id: org.id,
-              org_username: org.name,
-              restricted: org.restricted,
-              ip_allow_list: org.ip_allow_list,
-              allowed_id_providers: org.allowed_id_providers
-            )
-        )
+        %InternalApi.Organization.DescribeResponse{
+          status: %InternalApi.ResponseStatus{code: InternalApi.ResponseStatus.Code.value(:OK)},
+          organization: %InternalApi.Organization.Organization{
+            org_id: org.id,
+            org_username: org.name,
+            restricted: org.restricted,
+            ip_allow_list: org.ip_allow_list,
+            allowed_id_providers: org.allowed_id_providers
+          }
+        }
       else
         raise GRPC.RPCError, status: :not_found, message: "not found"
       end
@@ -117,42 +115,42 @@ defmodule AuthTest do
     FunRegistry.set!(Fake.AuthenticationService, :authenticate, fn req, _stream ->
       case req.token do
         @valid_token ->
-          AuthenticateResponse.new(
+          %AuthenticateResponse{
             authenticated: true,
-            username: "test-user",
+            name: "test-user",
             user_id: @user_id,
             id_provider: InternalApi.Auth.IdProvider.value(:ID_PROVIDER_API_TOKEN)
-          )
+          }
 
         _ ->
-          InternalApi.Auth.AuthenticateResponse.new(authenticated: false)
+          %InternalApi.Auth.AuthenticateResponse{authenticated: false}
       end
     end)
 
     FunRegistry.set!(Fake.AuthenticationService, :authenticate_with_cookie, fn req, _stream ->
       case req.cookie do
         @valid_cookie ->
-          AuthenticateResponse.new(
+          %AuthenticateResponse{
             authenticated: true,
-            username: "test-user",
+            name: "test-user",
             user_id: @user_id,
             ip_address: @random_ip,
             user_agent: "test-agent",
             id_provider: InternalApi.Auth.IdProvider.value(:ID_PROVIDER_OKTA)
-          )
+          }
 
         @valid_cookie2 ->
-          AuthenticateResponse.new(
+          %AuthenticateResponse{
             authenticated: true,
-            username: "test-user-2",
+            name: "test-user-2",
             user_id: @user_id2,
             ip_address: @closed_restricted_org_ip,
             user_agent: "test-agent",
             id_provider: InternalApi.Auth.IdProvider.value(:ID_PROVIDER_GITHUB)
-          )
+          }
 
         _ ->
-          InternalApi.Auth.AuthenticateResponse.new(authenticated: false)
+          %InternalApi.Auth.AuthenticateResponse{authenticated: false}
       end
     end)
 
@@ -555,7 +553,7 @@ defmodule AuthTest do
       body =
         Enum.join(
           [
-            "{\"message\": \"Call rejected because the client is outdated. ",
+            "{\"message\":\"Call rejected because the client is outdated. ",
             "To continue, upgrade Semaphore CLI with ",
             "'curl https://storage.googleapis.com/sem-cli-releases/get.sh | bash'.",
             "\"}"
@@ -765,7 +763,7 @@ defmodule AuthTest do
       end)
 
       cookie = "#{Application.get_env(:auth, :cookie_name)}=#{@valid_cookie}"
-      new_ip_in_same_subnet = String.slice(@random_ip, 0..-3) <> "11"
+      new_ip_in_same_subnet = String.slice(@random_ip, 0..-3//1) <> "11"
 
       conn = conn(:get, "https://rt.semaphoretest.test/exauth/somepath")
 
@@ -817,7 +815,7 @@ defmodule AuthTest do
                     "https://id.semaphoretest.test/login?org_id=#{@other_org_id}&redirect_to=https%3A%2F%2Fsemaphore.semaphoretest.test%2Fsomepath"
                   }
                 ],
-                "Redirected to https://id.semaphoretest.test/login?org_id=#{@other_org_id}&redirect_to=https%3A%2F%2Fsemaphore.semaphoretest.test%2Fsomepath"}
+                "Redirected to https://id.semaphoretest.test/login?org_id=#{@other_org_id}&amp;redirect_to=https%3A%2F%2Fsemaphore.semaphoretest.test%2Fsomepath"}
     end
 
     test "when a user has a valid session cookie, but tries to use it from a different user-agent" do
@@ -1348,6 +1346,118 @@ defmodule AuthTest do
     end
   end
 
+  describe "MCP authentication (mcp.*/exauth/mcp*)" do
+    @mcp_secret "test-mcp-secret-key-for-jwt"
+
+    setup do
+      System.put_env("MCP_OAUTH_JWT_KEYS", @mcp_secret)
+
+      on_exit(fn ->
+        System.delete_env("MCP_OAUTH_JWT_KEYS")
+      end)
+    end
+
+    test "no Authorization header returns 401 with WWW-Authenticate" do
+      conn = conn(:get, "https://mcp.semaphoretest.test/exauth/mcp/v1/tools")
+      conn = Auth.call(conn, [])
+
+      {status, headers, body} = sent_resp(conn)
+
+      assert status == 401
+      assert %{"www-authenticate" => www_auth} = Enum.into(headers, %{})
+      assert www_auth =~ "Bearer"
+      assert www_auth =~ "resource_metadata"
+      assert %{"error" => "unauthorized"} = Jason.decode!(body)
+    end
+
+    test "valid JWT token returns 200 with x-semaphore-user-id" do
+      token = build_mcp_jwt(@mcp_secret)
+
+      conn = conn(:get, "https://mcp.semaphoretest.test/exauth/mcp/v1/tools")
+      conn = conn |> put_req_header("authorization", "Bearer #{token}")
+      conn = Auth.call(conn, [])
+
+      {status, headers, _body} = sent_resp(conn)
+
+      assert status == 200
+      assert %{"x-semaphore-user-id" => @user_id} = Enum.into(headers, %{})
+    end
+
+    test "expired JWT token returns 401" do
+      token =
+        build_mcp_jwt(@mcp_secret, %{
+          "exp" => DateTime.utc_now() |> DateTime.to_unix() |> Kernel.-(3600)
+        })
+
+      conn = conn(:get, "https://mcp.semaphoretest.test/exauth/mcp/v1/tools")
+      conn = conn |> put_req_header("authorization", "Bearer #{token}")
+      conn = Auth.call(conn, [])
+
+      {status, _headers, body} = sent_resp(conn)
+
+      assert status == 401
+      assert %{"error" => "invalid_token"} = Jason.decode!(body)
+    end
+
+    test "invalid JWT signature falls back to legacy API token" do
+      conn = conn(:get, "https://mcp.semaphoretest.test/exauth/mcp/v1/tools")
+      conn = conn |> put_req_header("authorization", "Bearer #{@valid_token}")
+      conn = Auth.call(conn, [])
+
+      {status, headers, _body} = sent_resp(conn)
+
+      assert status == 200
+      assert %{"x-semaphore-user-id" => @user_id} = Enum.into(headers, %{})
+    end
+
+    test "JWT missing semaphore_user_id claim returns 401" do
+      domain = Application.fetch_env!(:auth, :domain)
+
+      claims = %{
+        "iss" => "https://mcp.#{domain}/mcp/oauth",
+        "aud" => "https://mcp.#{domain}",
+        "exp" => DateTime.utc_now() |> DateTime.to_unix() |> Kernel.+(3600),
+        "scope" => "mcp"
+      }
+
+      signer = Joken.Signer.create("HS256", @mcp_secret)
+      {:ok, token, _} = Joken.encode_and_sign(claims, signer)
+
+      conn = conn(:get, "https://mcp.semaphoretest.test/exauth/mcp/v1/tools")
+      conn = conn |> put_req_header("authorization", "Bearer #{token}")
+      conn = Auth.call(conn, [])
+
+      {status, _headers, body} = sent_resp(conn)
+
+      assert status == 401
+      assert %{"error" => "invalid_token"} = Jason.decode!(body)
+    end
+
+    test "JWT with wrong issuer returns 401" do
+      token = build_mcp_jwt(@mcp_secret, %{"iss" => "https://evil.example.com"})
+
+      conn = conn(:get, "https://mcp.semaphoretest.test/exauth/mcp/v1/tools")
+      conn = conn |> put_req_header("authorization", "Bearer #{token}")
+      conn = Auth.call(conn, [])
+
+      {status, _headers, body} = sent_resp(conn)
+
+      assert status == 401
+      assert %{"error" => "invalid_token"} = Jason.decode!(body)
+    end
+
+    test "garbage token with invalid legacy token returns 401" do
+      conn = conn(:get, "https://mcp.semaphoretest.test/exauth/mcp/v1/tools")
+      conn = conn |> put_req_header("authorization", "Bearer garbage")
+      conn = Auth.call(conn, [])
+
+      {status, _headers, body} = sent_resp(conn)
+
+      assert status == 401
+      assert %{"error" => "invalid_token"} = Jason.decode!(body)
+    end
+  end
+
   ###
   ### Helper functions
   ###
@@ -1370,5 +1480,23 @@ defmodule AuthTest do
     Enum.reduce(headers, conn, fn {header_name, header_value}, conn ->
       conn |> put_req_header(Atom.to_string(header_name), header_value)
     end)
+  end
+
+  defp build_mcp_jwt(secret, overrides \\ %{}) do
+    domain = Application.fetch_env!(:auth, :domain)
+
+    claims =
+      %{
+        "iss" => "https://mcp.#{domain}/mcp/oauth",
+        "aud" => "https://mcp.#{domain}",
+        "exp" => DateTime.utc_now() |> DateTime.to_unix() |> Kernel.+(3600),
+        "scope" => "mcp",
+        "semaphore_user_id" => @user_id
+      }
+      |> Map.merge(overrides)
+
+    signer = Joken.Signer.create("HS256", secret)
+    {:ok, token, _} = Joken.encode_and_sign(claims, signer)
+    token
   end
 end

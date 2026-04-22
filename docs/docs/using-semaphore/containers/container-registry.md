@@ -299,6 +299,41 @@ Ruby images come in two variants:
 | ruby:3.2.3-node-browsers | `registry.semaphoreci.com/ruby:3.2.3-node-browsers` |  
 | ruby:3.3.0 | `registry.semaphoreci.com/ruby:3.3.0` |  
 | ruby:3.3.0-node-browsers | `registry.semaphoreci.com/ruby:3.3.0-node-browsers` |  
+| ruby:3.3.1 | `registry.semaphoreci.com/ruby:3.3.1` |
+| ruby:3.3.2 | `registry.semaphoreci.com/ruby:3.3.2` |
+| ruby:3.3.3 | `registry.semaphoreci.com/ruby:3.3.3` |
+| ruby:3.3.4 | `registry.semaphoreci.com/ruby:3.3.4` |
+| ruby:3.3.4-node-browsers | `registry.semaphoreci.com/ruby:3.3.4-node-browsers` |
+| ruby:3.3.5 | `registry.semaphoreci.com/ruby:3.3.5` |
+| ruby:3.3.5-node-browsers | `registry.semaphoreci.com/ruby:3.3.5-node-browsers` |
+| ruby:3.3.6 | `registry.semaphoreci.com/ruby:3.3.6` |
+| ruby:3.3.6-node-browsers | `registry.semaphoreci.com/ruby:3.3.6-node-browsers` |
+| ruby:3.3.7 | `registry.semaphoreci.com/ruby:3.3.7` |
+| ruby:3.3.7-node-browsers | `registry.semaphoreci.com/ruby:3.3.7-node-browsers` |
+| ruby:3.3.8 | `registry.semaphoreci.com/ruby:3.3.8` |
+| ruby:3.3.8-node-browsers | `registry.semaphoreci.com/ruby:3.3.8-node-browsers` |
+| ruby:3.3.9 | `registry.semaphoreci.com/ruby:3.3.9` |
+| ruby:3.3.10 | `registry.semaphoreci.com/ruby:3.3.10` |
+| ruby:3.3.11 | `registry.semaphoreci.com/ruby:3.3.11` |
+| ruby:3.4 | `registry.semaphoreci.com/ruby:3.4` |
+| ruby:3.4-node-browsers | `registry.semaphoreci.com/ruby:3.4-node-browsers` |
+| ruby:3.4.1 | `registry.semaphoreci.com/ruby:3.4.1` |
+| ruby:3.4.1-node-browsers | `registry.semaphoreci.com/ruby:3.4.1-node-browsers` |
+| ruby:3.4.2 | `registry.semaphoreci.com/ruby:3.4.2` |
+| ruby:3.4.3 | `registry.semaphoreci.com/ruby:3.4.3` |
+| ruby:3.4.3-node-browsers | `registry.semaphoreci.com/ruby:3.4.3-node-browsers` |
+| ruby:3.4.4 | `registry.semaphoreci.com/ruby:3.4.4` |
+| ruby:3.4.4-node-browsers | `registry.semaphoreci.com/ruby:3.4.4-node-browsers` |
+| ruby:3.4.5 | `registry.semaphoreci.com/ruby:3.4.5` |
+| ruby:3.4.7 | `registry.semaphoreci.com/ruby:3.4.7` |
+| ruby:3.4.8 | `registry.semaphoreci.com/ruby:3.4.8` |
+| ruby:3.4.9 | `registry.semaphoreci.com/ruby:3.4.9` |
+| ruby:4.0 | `registry.semaphoreci.com/ruby:4.0` |
+| ruby:4.0.0 | `registry.semaphoreci.com/ruby:4.0.0` |
+| ruby:4.0.1 | `registry.semaphoreci.com/ruby:4.0.1` |
+| ruby:4.0.2 | `registry.semaphoreci.com/ruby:4.0.2` |
+
+
 
 </div>
 </details>
