@@ -1,5 +1,6 @@
 #!/usr/bin/env sh
 list='artifacthub
+audit
 branch
 feature
 gofer.dt
