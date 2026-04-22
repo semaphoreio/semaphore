@@ -2465,23 +2465,107 @@ curl -i -H "Authorization: Token {api_token}" \
 
 ## Artifacts
 
-### Generate signed artifact URLs
+### List artifacts
+
+This API endpoint lists artifacts stored under a project, workflow, or job scope.
 
 ```text
-POST <organization-url>.semaphoreci.com/api/v1/artifacts
+GET <organization-url>.semaphoreci.com/api/v1alpha/artifacts?scope=:scope&scope_id=:scope_id&path=:path
 ```
-
-Authorization:
-
-This endpoint expects an artifact-scoped token, for example the `SEMAPHORE_ARTIFACT_TOKEN` available inside Semaphore jobs. A personal API token sent as `Authorization: Token {api_token}` does not work for signed URL generation.
 
 Parameters:
 
-- `paths` (**required**) - Array of artifact storage paths. Valid path prefixes are:
-  - `artifacts/projects/:project_id/:path`
-  - `artifacts/workflows/:workflow_id/:path`
-  - `artifacts/jobs/:job_id/:path`
-- `type` (**required**) - Requested action. Supported values are `PUSH`, `PUSHFORCE`, `PULL`, and `YANK`.
+- `scope` (**required**) - scope namespace. Valid values: `projects`, `workflows`, `jobs`.
+- `scope_id` (**required**) - UUID of the selected scope object.
+- `path` (*optional*) - relative path inside the selected scope. If omitted, the root directory is listed.
+
+Validation notes:
+
+- `path` must be a relative path.
+- Absolute paths (starting with `/`) are not allowed.
+- Path traversal segments (`.` and `..`) are not allowed.
+- Backslashes (`\`) are not allowed.
+- URL-encoded traversal and backslash variants are rejected after path normalization.
+
+Authorization notes:
+
+- The endpoint requires both `project.view` and `project.artifacts.view` permissions on the project that owns the selected scope.
+- `project_id` is resolved from `scope` and `scope_id`; if sent explicitly, it is ignored.
+- Listing is non-recursive: only direct children of the requested path are returned.
+
+Response:
+
+- `size` is included for files (in bytes) and omitted for directories.
+
+```json
+HTTP status: 200
+
+{
+  "artifacts": [
+    {
+      "is_directory": true,
+      "name": "agent",
+      "path": "agent"
+    },
+    {
+      "is_directory": false,
+      "name": "job_logs.txt.gz",
+      "path": "job_logs.txt.gz",
+      "size": 24576
+    },
+    {
+      "is_directory": false,
+      "name": "extra.log",
+      "path": "extra.log",
+      "size": 5120
+    }
+  ]
+}
+```
+
+Possible error responses:
+
+- `400` for invalid request parameters.
+- `401` when the user is missing one or both required permissions.
+- `404` when the scoped object or requested path does not exist (or is not visible to the user).
+- `500` for internal errors.
+
+Example:
+
+```shell
+curl -i -H "Authorization: Token {api_token}" \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/artifacts?scope=jobs&scope_id=:job_id&path=agent"
+```
+
+### Get artifact signed URL
+
+This API endpoint returns a signed URL for a single artifact file.
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1alpha/artifacts/signed_url?scope=:scope&scope_id=:scope_id&path=:path&method=:method
+```
+
+Parameters:
+
+- `scope` (**required**) - scope namespace. Valid values: `projects`, `workflows`, `jobs`.
+- `scope_id` (**required**) - UUID of the selected scope object.
+- `path` (**required**) - relative path of the artifact inside the selected scope.
+- `method` (*optional*) - HTTP method for the signed URL. Valid values: `GET`, `HEAD`. Defaults to `GET`.
+
+Validation notes:
+
+- `path` must be a relative path.
+- Absolute paths (starting with `/`) are not allowed.
+- Path traversal segments (`.` and `..`) are not allowed.
+- Backslashes (`\`) are not allowed.
+- URL-encoded traversal and backslash variants are rejected after path normalization.
+- `path` must point to a single file.
+
+Authorization notes:
+
+- The endpoint requires both `project.view` and `project.artifacts.view` permissions on the project that owns the selected scope.
+- `project_id` is resolved from `scope` and `scope_id`; if sent explicitly, it is ignored.
+- Directory signing and recursive signing are not supported.
 
 Response:
 
@@ -2489,50 +2573,27 @@ Response:
 HTTP status: 200
 
 {
-  "URLs": [
+  "items": [
     {
-      "URL": "https://storage.googleapis.com/...",
-      "method": "GET"
+      "path": "agent/job_logs.txt.gz",
+      "url": "https://<signed-url>"
     }
   ]
 }
 ```
 
-Invalid path example:
+Possible error responses:
 
-```json
-HTTP status: 400
-
-{
-  "code": 3,
-  "message": "invalid path /tmp/example.txt",
-  "details": []
-}
-```
-
-Invalid token example:
-
-```json
-HTTP status: 403
-
-{
-  "code": 7,
-  "message": "token is malformed: token contains an invalid number of segments",
-  "details": []
-}
-```
+- `400` for invalid request parameters.
+- `401` when the user is missing one or both required permissions.
+- `404` when the scoped object or artifact does not exist (or is not visible to the user).
+- `500` for internal errors.
 
 Example:
 
 ```shell
-curl -i -X POST \
-     -H "Authorization: {artifact_token}" \
-     -H "Content-Type: application/json" \
-     -d '{
-       "paths": ["artifacts/projects/:project_id/build/output.tgz"],
-       "type": "PULL"
-     }' \
-     "https://<organization-url>.semaphoreci.com/api/v1/artifacts"
+curl -i -H "Authorization: Token {api_token}" \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/artifacts/signed_url?scope=jobs&scope_id=:job_id&path=agent/job_logs.txt.gz&method=GET"
 ```
 
 ## Artifact retention policies
