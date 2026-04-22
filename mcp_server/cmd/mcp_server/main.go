@@ -21,6 +21,7 @@ import (
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/logging"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/prompts"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools"
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/artifacts"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/jobs"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/organizations"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/pipelines"
@@ -113,6 +114,7 @@ func main() {
 	workflows.Register(srv, provider)
 	pipelines.Register(srv, provider)
 	jobs.Register(srv, provider)
+	artifacts.Register(srv, provider)
 	testresults.Register(srv, provider)
 	tasks.Register(srv, provider)
 

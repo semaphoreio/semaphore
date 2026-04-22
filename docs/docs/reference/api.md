@@ -682,14 +682,14 @@ GET https://<organization-url>.semaphoreci.com/api/v1alpha/logs/:job_id
 
 Parameters:
 
-- `full` (*optional*) - when set to `1` or `true`, returns full job logs.
+- `artifact_job_logs` (*optional*) - when set to `1` or `true`, returns artifact job logs uploaded by agents.
 
 Behavior notes:
 
-- `full=true` responds with `302` redirect to a signed job-artifact URL when full logs are present in artifact storage.
-- Full logs are uploaded by the CI agent at the end of the job. Availability depends on the agent upload setting (`upload-job-logs` / `SEMAPHORE_AGENT_UPLOAD_JOB_LOGS`) described in [self-hosted agent config](./self-hosted-config#upload-job-logs).
+- `artifact_job_logs=true` responds with `302` redirect to a signed job-artifact URL when artifact job logs are present in artifact storage.
+- Artifact job logs are uploaded by the CI agent at the end of the job. Availability depends on the agent upload setting (`upload-job-logs` / `SEMAPHORE_AGENT_UPLOAD_JOB_LOGS`) described in [self-hosted agent config](./self-hosted-config#upload-job-logs).
 - The API prioritizes `agent/job_logs.txt` and falls back to `agent/job_logs.txt.gz` only when `.txt` is not available.
-- `full=true` requires both `project.view` and `project.artifacts.view`.
+- `artifact_job_logs=true` requires both `project.view` and `project.artifacts.view`.
 
 Response:
 
