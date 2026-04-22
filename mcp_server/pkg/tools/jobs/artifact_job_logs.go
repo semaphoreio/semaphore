@@ -43,9 +43,14 @@ type artifactJobLogsResult struct {
 }
 
 func artifactJobLogsFullDescription() string {
-	return `Fetch a signed URL for artifact job logs uploaded by agents.
+	return `Fetch a signed URL for full artifact-backed job logs uploaded by agents.
 
-Use this when you explicitly need artifact-uploaded job logs (for example when live logs were trimmed).
+Use this as a fallback when jobs_logs is incomplete or unavailable, for example when:
+- jobs_logs returns only a short preview (latest lines only)
+- jobs_logs returns only a short-lived URL/token and direct download fails
+- jobs_logs fails with live-log source errors (for example Loghub internal errors)
+
+This tool is intended to retrieve complete uploaded log files when they exist in artifact storage.
 
 Requirements:
 - The organization must have at least one feature enabled: mcp_server_artifacts_tools or artifacts_job_logs.
