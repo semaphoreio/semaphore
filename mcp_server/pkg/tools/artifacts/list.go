@@ -167,9 +167,6 @@ func listHandler(api internalapi.Provider) server.ToolHandlerFunc {
 			artifacts = artifacts[:artifactListMaxItems]
 			truncated = true
 		}
-		if len(artifacts) == 0 && relativePath != "" {
-			return mcp.NewToolResultError(errArtifactPathNotFound.Error()), nil
-		}
 
 		result := artifactListResult{
 			OrganizationID: orgID,
