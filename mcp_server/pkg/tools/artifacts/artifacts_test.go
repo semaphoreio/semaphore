@@ -532,6 +532,48 @@ func TestArtifactsListInvalidRBACPermissionsWorkflowScope(t *testing.T) {
 	}
 }
 
+func TestArtifactsListProjectScopePermissionDenied(t *testing.T) {
+	artifactClient := &artifacthubClientStub{}
+	projectClient := &support.ProjectClientStub{
+		Response: newProjectDescribeResponse(testOrgID, testProjectID, testArtifactStore),
+	}
+	rbac := support.NewRBACStub("organization.view")
+	provider := &support.MockProvider{
+		Timeout:           time.Second,
+		ProjectClient:     projectClient,
+		ArtifacthubClient: artifactClient,
+		RBACClient:        rbac,
+	}
+
+	req := callRequest(map[string]any{
+		"organization_id": testOrgID,
+		"scope":           scopeProjects,
+		"scope_id":        testProjectID,
+	}, true)
+
+	res, err := listHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+
+	msg := requireErrorText(t, res)
+	if !strings.Contains(msg, "Permission denied while accessing project") {
+		t.Fatalf("expected permission denied error, got %q", msg)
+	}
+	if projectClient.LastDescribe == nil {
+		t.Fatalf("expected project describe to run before RBAC for project scope")
+	}
+	if len(rbac.LastRequests) != 1 {
+		t.Fatalf("expected 1 RBAC request, got %d", len(rbac.LastRequests))
+	}
+	if got := rbac.LastRequests[0].GetProjectId(); got != testProjectID {
+		t.Fatalf("expected RBAC project %s, got %s", testProjectID, got)
+	}
+	if artifactClient.lastList != nil {
+		t.Fatalf("expected artifacthub list not to be called on RBAC deny")
+	}
+}
+
 func TestArtifactsSignedURLSuccessWorkflowScope(t *testing.T) {
 	artifactClient := &artifacthubClientStub{
 		signedURL: "https://example.com/signed",
@@ -1347,6 +1389,60 @@ func TestArtifactsListRootEmptyReturnsSuccess(t *testing.T) {
 	}
 	if result.Page.Truncated {
 		t.Fatalf("expected non-truncated page metadata")
+	}
+}
+
+func TestArtifactsListNonRootEmptyDirectoryReturnsSuccess(t *testing.T) {
+	artifactClient := &artifacthubClientStub{
+		listRespByPath: map[string]*artifacthubpb.ListPathResponse{
+			fmt.Sprintf("artifacts/projects/%s/empty-dir", testProjectID): {},
+		},
+	}
+	provider := &support.MockProvider{
+		Timeout:           time.Second,
+		ArtifacthubClient: artifactClient,
+		ProjectClient: &support.ProjectClientStub{
+			Response: newProjectDescribeResponse(testOrgID, testProjectID, testArtifactStore),
+		},
+		RBACClient: support.NewRBACStub(artifactsRequiredPermissions...),
+	}
+
+	req := callRequest(map[string]any{
+		"organization_id": testOrgID,
+		"scope":           scopeProjects,
+		"scope_id":        testProjectID,
+		"path":            "empty-dir",
+	}, true)
+
+	res, err := listHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+	if res == nil || res.IsError {
+		t.Fatalf("expected successful response for empty non-root path, got %#v", res)
+	}
+
+	result, ok := res.StructuredContent.(artifactListResult)
+	if !ok {
+		t.Fatalf("unexpected structured content type: %T", res.StructuredContent)
+	}
+	if result.Path != "empty-dir" {
+		t.Fatalf("expected path empty-dir, got %q", result.Path)
+	}
+	if len(result.Artifacts) != 0 {
+		t.Fatalf("expected empty artifacts list, got %d", len(result.Artifacts))
+	}
+	if result.Page.Returned != 0 {
+		t.Fatalf("expected returned 0, got %d", result.Page.Returned)
+	}
+	if result.Page.Truncated {
+		t.Fatalf("expected non-truncated page metadata")
+	}
+	if artifactClient.lastList == nil {
+		t.Fatalf("expected ListPath request to be recorded")
+	}
+	if artifactClient.lastList.GetPath() != fmt.Sprintf("artifacts/projects/%s/empty-dir", testProjectID) {
+		t.Fatalf("unexpected list path: %q", artifactClient.lastList.GetPath())
 	}
 }
 

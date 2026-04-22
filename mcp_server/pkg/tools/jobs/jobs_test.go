@@ -802,6 +802,71 @@ func TestArtifactJobLogsFeatureDisabled(t *testing.T) {
 	}
 }
 
+func TestArtifactJobLogsPermissionDenied(t *testing.T) {
+	const orgID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	const jobID = "99999999-aaaa-bbbb-cccc-dddddddddddd"
+	const artifactStoreID = "88888888-7777-6666-5555-444444444444"
+
+	jobClient := &jobClientStub{
+		describeResp: &jobpb.DescribeResponse{
+			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
+			Job: &jobpb.Job{
+				Id:             jobID,
+				ProjectId:      testProjectUUID,
+				OrganizationId: orgID,
+				SelfHosted:     false,
+			},
+		},
+	}
+	artifactClient := &artifacthubClientStub{}
+	projectClient := &support.ProjectClientStub{
+		Response: newProjectDescribeResponseWithArtifactStore(orgID, testProjectUUID, artifactStoreID),
+	}
+	rbac := newRBACStub("project.view")
+
+	provider := &support.MockProvider{
+		JobClient:         jobClient,
+		ArtifacthubClient: artifactClient,
+		ProjectClient:     projectClient,
+		RBACClient:        rbac,
+		FeaturesService: support.FeatureClientStub{
+			States: map[string]feature.State{
+				"mcp_server_read_tools":      feature.Enabled,
+				"mcp_server_artifacts_tools": feature.Enabled,
+				"artifacts_job_logs":         feature.Hidden,
+			},
+		},
+		Timeout: time.Second,
+	}
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"organization_id": orgID,
+		"job_id":          jobID,
+	}}}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", selfHostedTestUser)
+	req.Header = header
+
+	res, err := artifactJobLogsHandler(provider)(context.Background(), req)
+	if err != nil {
+		toFail(t, "handler error: %v", err)
+	}
+
+	msg := requireErrorText(t, res)
+	if !strings.Contains(msg, "Permission denied while accessing project") {
+		toFail(t, "expected permission denied error, got %q", msg)
+	}
+	if len(rbac.lastRequests) != 1 {
+		toFail(t, "expected one RBAC request, got %d", len(rbac.lastRequests))
+	}
+	if projectClient.LastDescribe != nil {
+		toFail(t, "expected project describe not to run on RBAC deny")
+	}
+	if artifactClient.lastList != nil || artifactClient.lastSigned != nil {
+		toFail(t, "expected no artifacthub calls on RBAC deny")
+	}
+}
+
 func TestArtifactJobLogsScopeMismatchOrganization(t *testing.T) {
 	const requestOrgID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 	const foreignOrgID = "bbbbbbbb-cccc-dddd-eeee-ffffffffffff"
