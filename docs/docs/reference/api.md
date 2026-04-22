@@ -19,7 +19,6 @@ Every API request and response must satisfy the following constraints:
   - Unixtime Epoch time: `"create_time": "1571083003"`
   - Unixtime Epoch time with nanoseconds: `"created_at": {"seconds": 1571063401, "nanos": 559492000}`
   - Custom format: `YYYY-MM-DD HH:MM:SS.ffffffZ`, e.g.,`"2019-10-14 12:11:47.824128Z"`
-  - All API requests must set the User-Agent to `SemaphoreCI v2.0 Client`.
 
 ### Authentication
 
@@ -84,6 +83,186 @@ May have a larger impact and effort will be made to provide migration paths as n
 
 - May have larger impact, but is unavoidable due to legal compliance, security vulnerabilities, or violation of specification.
 
+## Projects
+
+### Create a project
+
+Request:
+
+```text
+POST <organization-url>.semaphoreci.com/api/v1alpha/projects
+```
+
+Request payload:
+
+```json
+{
+  "apiVersion": "v1alpha",
+  "kind": "Project",
+  "metadata": {
+    "name": "my-new-project"
+  },
+  "spec": {
+    "repository": {
+      "url": "git@github.com:tbogosavljevic/support-public.git",
+      "run_on": [
+        "branches",
+        "tags"
+      ],
+      "forked_pull_requests": {},
+      "pipeline_file": ".semaphore/semaphore.yml",
+      "status": {
+        "pipeline_files": [
+          {
+            "path": ".semaphore/semaphore.yml",
+            "level": "pipeline"
+          }
+        ]
+      },
+      "whitelist": {},
+      "integration_type": ""
+    }
+  }
+}
+```
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "apiVersion": "v1alpha",
+  "kind": "Project",
+  "metadata": {
+    "owner_id": "4438c208-c04c-4b90-b0e4-326e98492949",
+    "org_id": "bed2576e-101f-4e4d-a6f8-71ef77d4dc49",
+    "name": "my-new-project",
+    "id": "be2340e7-6a91-4666-9ba9-df41b1687abc",
+    "description": ""
+  },
+  "spec": {
+    "visibility": "private",
+    "tasks": [],
+    "schedulers": [],
+    "repository": {
+      "whitelist": {
+        "tags": [],
+        "branches": []
+      },
+      "url": "git@github.com:tbogosavljevic/support-public.git",
+      "status": {
+        "pipeline_files": [
+          {
+            "path": ".semaphore/semaphore.yml",
+            "level": "pipeline"
+          }
+        ]
+      },
+      "run_on": [
+        "tags",
+        "branches"
+      ],
+      "pipeline_file": ".semaphore/semaphore.yml",
+      "owner": "tbogosavljevic",
+      "name": "support-public",
+      "integration_type": "github_token",
+      "forked_pull_requests": {
+        "allowed_secrets": [],
+        "allowed_contributors": []
+      }
+    }
+  }
+}
+```
+
+Example request:
+
+```shell
+curl -i -X POST \
+     -H "Authorization: Token {api_token}" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "apiVersion": "v1alpha",
+       "kind": "Project",
+       "metadata": {
+         "name": "my-new-project"
+       },
+       "spec": {
+         "repository": {
+           "url": "git@github.com:tbogosavljevic/support-public.git",
+           "run_on": ["branches", "tags"],
+           "forked_pull_requests": {},
+           "pipeline_file": ".semaphore/semaphore.yml",
+           "status": {
+             "pipeline_files": [
+               {
+                 "path": ".semaphore/semaphore.yml",
+                 "level": "pipeline"
+               }
+             ]
+           },
+           "whitelist": {},
+           "integration_type": ""
+         }
+       }
+     }' \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/projects"
+```
+
+### List projects
+
+Request:
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1alpha/projects
+```
+
+Response:
+
+```json
+HTTP status: 200
+
+[
+  {
+    "metadata": {
+      "name": "my-project",
+      "id": "15e0ad7f-0af6-4c72-b752-1f810fbd7de3",
+      "description": "",
+      "create_time": "1725267343",
+      "update_time": "1725267469"
+    },
+    "spec": {
+      "visibility": "private",
+      "repository": {
+        "url": "git@github.com:my-org/my-project.git",
+        "name": "my-project",
+        "owner": "my-org",
+        "pipeline_file": ".semaphore/semaphore.yml",
+        "integration_type": "github_app",
+        "status": {
+          "pipeline_files": [
+            {
+              "path": ".semaphore/semaphore.yml",
+              "level": "pipeline"
+            }
+          ]
+        }
+      },
+      "tasks": [],
+      "schedulers": []
+    }
+  }
+]
+```
+
+Example:
+
+```shell
+curl -i -H "Authorization: Token {api_token}" \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/projects"
+```
+
 ## Workflows
 
 ### Run workflow
@@ -122,7 +301,7 @@ curl -X POST --location "https://<organization-url>.semaphoreci.com/api/v1alpha/
     -d $'{
     "project_id": "my_project_id",
     "reference": "refs/heads/master",
-    "pipeline_file": "/.semaphore/deploy.yml",
+    "pipeline_file": ".semaphore/semaphore.yml",
     "parameters": {
         "PARAM_NAME": "PARAM_VALUE",
         "PARAM_NAME_2": "PARAM_VALUE_2"
@@ -252,6 +431,10 @@ Parameters:
 - `workflow_id` (**required**) - ID of the workflow that you want to rerun.
 - `request_token` (**required**) - Idempotency token (can be any string).
 
+Request body:
+
+Send an empty JSON object, e.g. `{}`.
+
 Response:
 
 ```json
@@ -267,6 +450,8 @@ Example:
 
 ```shell
 curl -i -X POST -H "Authorization: Token {api_token}" \
+        -H "Content-Type: application/json" \
+        -d '{}' \
         "https://<organization-url>.semaphoreci.com/api/v1alpha/plumber-workflows/:workflow_id/reschedule\?request_token\=:request_token"
 ```
 
@@ -284,12 +469,16 @@ Response:
 
 ```text
 HTTP status: 200
+
+"Termination started for 0 pipelines."
 ```
 
 Example:
 
 ```shell
 curl -i -X POST -H "Authorization: Token {api_token}" \
+        -H "Content-Type: application/json" \
+        -d '{}' \
         "https://<organization-url>.semaphoreci.com/api/v1alpha/plumber-workflows/:workflow_id/terminate"
 ```
 
@@ -443,16 +632,77 @@ HTTP status: 200
 
 [
   {
-    "yaml_file_name": "semaphore.yml",
+    "done_at": {
+      "seconds": 1749559101,
+      "nanos": 804987000
+    },
+    "ppl_id": "f3d0c573-fd44-4085-a594-bbfd835adf60",
+    "terminated_by": "",
     "working_directory": ".semaphore",
-    "wf_id": "484e263a-424a-4820-bff0-bba436c54042",
+    "branch_id": "e1e9fb6e-04bc-4daa-96d6-8943c111c371",
     "state": "DONE",
-    "result": "FAILED",
-    "name": "Pipeline",
-    "branch_name": "ms/another-test-branch",
+    "partially_rerun_by": "",
+    "queuing_at": {
+      "seconds": 1749559096,
+      "nanos": 706749000
+    },
+    "after_task_id": "",
+    "commit_sha": "80c9e6ced6b4e82c6a3663512be71f45092dd64c",
+    "env_vars": [],
+    "running_at": {
+      "seconds": 1749559096,
+      "nanos": 735053000
+    },
+    "stopping_at": {
+      "seconds": 0,
+      "nanos": 0
+    },
     "created_at": {
-      "seconds": 1571076843,
-      "nanos": 537730000
+      "seconds": 1749559086,
+      "nanos": 695161000
+    },
+    "result": "PASSED",
+    "partial_rerun_of": "",
+    "queue": {
+      "type": "IMPLICIT",
+      "scope": "project",
+      "queue_id": "20b9561d-fca9-4f60-9848-b3c4ef6ab8dd",
+      "project_id": "ad59a1a9-0e70-4bb1-91be-03859c1815a1",
+      "organization_id": "6af96e24-1502-4e37-a68e-ce72436d7a2b",
+      "name": "master-.semaphore/semaphore.yml"
+    },
+    "promotion_of": "",
+    "compile_task_id": "dcf0562b-f631-45c1-b322-3b205a2bf53b",
+    "pending_at": {
+      "seconds": 1749559096,
+      "nanos": 688449000
+    },
+    "with_after_task": false,
+    "switch_id": "",
+    "name": "Initial Pipeline",
+    "error_description": "",
+    "hook_id": "c65b7b84-ada7-459c-b9b6-5b4e969d085d",
+    "repository_id": "d0c61348-e540-40cd-aa46-1395cc142bf9",
+    "yaml_file_name": "semaphore.yml",
+    "organization_id": "6af96e24-1502-4e37-a68e-ce72436d7a2b",
+    "project_id": "ad59a1a9-0e70-4bb1-91be-03859c1815a1",
+    "branch_name": "master",
+    "result_reason": "TEST",
+    "commit_message": "Update Semaphore configuration",
+    "terminate_request": "",
+    "wf_id": "27fdf71a-7e5d-48ac-9b37-9f04b5a8ad0a",
+    "snapshot_id": "",
+    "triggerer": {
+      "workflow_rerun_of": "",
+      "wf_triggerer_user_id": "e3730319-3040-4e0b-a26d-818a3656985c",
+      "wf_triggerer_provider_uid": "30660198",
+      "wf_triggerer_provider_login": "mateuscap",
+      "wf_triggerer_provider_avatar": "https://avatars.githubusercontent.com/mateuscap?v=4",
+      "wf_triggerer_id": "c65b7b84-ada7-459c-b9b6-5b4e969d085d",
+      "wf_triggered_by": "HOOK",
+      "ppl_triggerer_user_id": "e3730319-3040-4e0b-a26d-818a3656985c",
+      "ppl_triggerer_id": "27fdf71a-7e5d-48ac-9b37-9f04b5a8ad0a",
+      "ppl_triggered_by": "WORKFLOW"
     }
   }
 ]
@@ -480,6 +730,8 @@ Response:
 
 ```text
 HTTP status: 200
+
+"Pipeline termination started."
 ```
 
 Example:
@@ -513,7 +765,7 @@ HTTP status: 200
 
 {
   "pipeline_id":"79b53ff9-c005-4ff0-81a9-479a82324f6b",
-  "message:":""
+  "message":""
 }
 ```
 
@@ -549,11 +801,12 @@ HTTP status: 200
 Example:
 
 ```shell
+jq -Rs '{yaml_definition: .}' .semaphore/semaphore.yml | \
 curl -i -X POST \
-        -H "Authorization: Token {api_token}" \
-        -H "Content-Type: application/json" \
-        --data "{\"yaml_definition\": \"$(cat .semaphore/semaphore.yml | sed 's/\"/\\\"/g')\"}" \
-        "https://<organization-url>.semaphoreci.com/api/v1alpha/yaml"
+  -H "Authorization: Token {api_token}" \
+  -H "Content-Type: application/json" \
+  --data-binary @- \
+  "https://<organization-url>.semaphoreci.com/api/v1alpha/yaml"
 ```
 
 ## Promotions
@@ -654,6 +907,68 @@ curl -X POST --location "https://<organization-url>.semaphoreci.com/api/v1alpha/
 
 ## Jobs
 
+### List jobs
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1alpha/jobs
+```
+
+Parameters:
+
+- `page_size` (*optional*) - Maximum number of jobs returned.
+- `page_token` (*optional*) - Pagination token from a previous response.
+- `states` (*optional, repeatable*) - Filter by job state such as `PENDING`, `RUNNING`, or `FINISHED`.
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "jobs": [
+    {
+      "metadata": {
+        "name": "Build and Push",
+        "id": "4e56e666-9583-4aa0-9825-24bb609f796d",
+        "create_time": "1772016789",
+        "update_time": "1772016790",
+        "start_time": "0",
+        "finish_time": "1772016790"
+      },
+      "spec": {
+        "project_id": "1846c573-e55b-4f96-8a36-4741332e6890",
+        "agent": {
+          "machine": {
+            "type": "e2-standard-2",
+            "os_image": "ubuntu2404"
+          },
+          "containers": [
+            {
+              "name": "main",
+              "image": "registry.semaphoreci.com/node:20"
+            }
+          ],
+          "image_pull_secrets": []
+        }
+      },
+      "status": {
+        "result": "FAILED",
+        "state": "FINISHED",
+        "agent": null
+      }
+    }
+  ],
+  "next_page_token": ""
+}
+```
+
+Example:
+
+```shell
+curl -i -H "Authorization: Token {api_token}" \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/jobs?states=FINISHED&page_size=5"
+```
+
 ### Describe a job
 
 ```text
@@ -667,14 +982,37 @@ HTTP status: 200
 
 {
   "metadata": {
-    "name": "Job #1",
-    "id": "bc8826bd-dbb2-4d28-8c90-7f370ce478fe",
-    "create_time": "1571083003",
-    "start_time": "1571083006",
-    "finish_time": "1571083507"
+    "name": "pip",
+    "id": "b007b1c7-1562-4482-ade4-b121d965305e",
+    "create_time": "1745798446",
+    "update_time": "1745798456",
+    "start_time": "1745798454",
+    "finish_time": "1745798456"
+  },
+  "spec": {
+    "project_id": "15e0ad7f-0af6-4c72-b752-1f810fbd7de3",
+    "agent": {
+      "machine": {
+        "type": "f1-standard-2",
+        "os_image": "ubuntu2204"
+      },
+      "containers": [],
+      "image_pull_secrets": []
+    },
+    "secrets": [],
+    "env_vars": [
+      {
+        "name": "SEMAPHORE_WORKFLOW_ID",
+        "value": "b32a4b9e-d02f-4deb-b9b3-3eeefcca4457"
+      }
+    ],
+    "files": [],
+    "commands": [
+      "pip install -r requirements.txt"
+    ]
   },
   "status": {
-    "result": "STOPPED",
+    "result": "FAILED",
     "state": "FINISHED"
   }
 }
@@ -697,13 +1035,91 @@ Response:
 
 ```json
 HTTP status: 200
+
+{}
 ```
 
 Example:
 
 ```shell
 curl -i -X POST -H "Authorization: Token {api_token}" \
+     -H "Content-Type: application/json" \
+     -d '{}' \
      "https://<organization-url>.semaphoreci.com/api/v1alpha/jobs/:job_id/stop"
+```
+
+### Get job debug SSH key
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1alpha/jobs/:job_id/debug_ssh_key
+```
+
+The key is only available while the debug job is running. When the job is not running, the API returns a `400` response.
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA..."
+}
+```
+
+Failed response example:
+
+```json
+HTTP status: 400
+
+{
+  "code": 9,
+  "message": "Job's debug SSH is only available while the job is running",
+  "details": []
+}
+```
+
+### Start a debug job
+
+```text
+POST <organization-url>.semaphoreci.com/api/v1alpha/jobs/:job_id/debug
+```
+
+Parameters:
+
+- `duration` (*optional*) - Duration of the debug session in minutes. When omitted or set to `0`, Semaphore uses the default duration.
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "metadata": {
+    "name": "Debug Session for Job b007b1c7-1562-4482-ade4-b121d965305e",
+    "id": "4df5808c-aaaf-4e63-aae4-ea1a9b37b534",
+    "create_time": "1774007677",
+    "update_time": "1774007677",
+    "start_time": "0",
+    "finish_time": "0"
+  },
+  "spec": {
+    "project_id": "15e0ad7f-0af6-4c72-b752-1f810fbd7de3",
+    "agent": {
+      "machine": {
+        "type": "f1-standard-2",
+        "os_image": "ubuntu2204"
+      }
+    },
+    "commands": [
+      "sleep 3600"
+    ]
+  },
+  "status": {
+    "result": "NONE",
+    "state": "PENDING",
+    "agent": null
+  }
+}
 ```
 
 ### Get job logs
@@ -784,6 +1200,327 @@ curl -H "Authorization: Token {api_token}" \
      "https://<organization-url>.semaphoreci.com/api/v1alpha/logs/:job_id"
 ```
 
+## Dashboards
+
+### List dashboards
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1alpha/dashboards
+```
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "dashboards": [
+    {
+      "metadata": {
+        "name": "support-dashboard",
+        "id": "214fea20-0b82-446a-aa73-05af03a1ac0a",
+        "title": "Support Dashboard",
+        "create_time": "1725267343",
+        "update_time": "1725267469"
+      },
+      "spec": {
+        "widgets": [
+          {
+            "name": "Deploys to production",
+            "type": "list_pipelines",
+            "filters": {
+              "project_id": "8781bf53-d0d9-4836-8379-32d3e02b9d3c",
+              "pipeline_file": ".semaphore/semaphore.yml"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "next_page_token": "",
+  "total_size": 0
+}
+```
+
+### Describe a dashboard
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1alpha/dashboards/:id_or_name
+```
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "metadata": {
+    "name": "support-dashboard",
+    "id": "214fea20-0b82-446a-aa73-05af03a1ac0a",
+    "title": "Support Dashboard",
+    "create_time": "1725267343",
+    "update_time": "1725267469"
+  },
+  "spec": {
+    "widgets": [
+      {
+        "name": "Deploys to production",
+        "type": "list_pipelines",
+        "filters": {
+          "project_id": "8781bf53-d0d9-4836-8379-32d3e02b9d3c",
+          "pipeline_file": ".semaphore/semaphore.yml"
+        }
+      }
+    ]
+  }
+}
+```
+
+## Notifications
+
+### List notifications
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1alpha/notifications
+```
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "notifications": [
+    {
+      "metadata": {
+        "name": "support webhook",
+        "id": "0c813596-52fd-4f48-977a-d20c3ecf0296",
+        "create_time": "1732705209",
+        "update_time": "1769521598",
+        "creator_id": "4438c208-c04c-4b90-b0e4-326e98492949"
+      },
+      "spec": {
+        "rules": [
+          {
+            "name": "",
+            "filter": {
+              "projects": [
+                "support"
+              ],
+              "branches": [
+                "master",
+                "main"
+              ]
+            },
+            "notify": {
+              "webhook": {
+                "status": "ACTIVE"
+              }
+            }
+          }
+        ]
+      },
+      "status": {
+        "failures": []
+      }
+    }
+  ],
+  "next_page_token": ""
+}
+```
+
+### Describe a notification
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1alpha/notifications/:notification_id_or_name
+```
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "metadata": {
+    "name": "support webhook",
+    "id": "0c813596-52fd-4f48-977a-d20c3ecf0296",
+    "create_time": "1732705209",
+    "update_time": "1769521598",
+    "creator_id": "4438c208-c04c-4b90-b0e4-326e98492949"
+  },
+  "spec": {
+    "rules": [
+      {
+        "name": "",
+        "filter": {
+          "projects": [
+            "support",
+            "blabla"
+          ],
+          "branches": [
+            "master",
+            "main"
+          ],
+          "pipelines": [],
+          "blocks": [],
+          "states": [],
+          "results": [],
+          "tags": []
+        },
+        "notify": {
+          "slack": {
+            "status": "ACTIVE"
+          },
+          "email": {
+            "status": "ACTIVE"
+          },
+          "webhook": {
+            "status": "ACTIVE"
+          }
+        }
+      }
+    ]
+  },
+  "status": {
+    "failures": []
+  }
+}
+```
+
+## Secrets
+
+### List organization secrets
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1beta/secrets
+```
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "secrets": [
+    {
+      "metadata": {
+        "name": "hello-world",
+        "id": "ea3a54d2-c7af-44e7-9e71-bc9932363555",
+        "create_time": "1736515926",
+        "update_time": "1736515926",
+        "checkout_at": "1741002631",
+        "content_included": false
+      },
+      "data": {
+        "env_vars": [],
+        "files": [
+          {
+            "path": "/home/semaphore/.keystore",
+            "content": ""
+          }
+        ]
+      },
+      "org_config": null
+    }
+  ],
+  "next_page_token": ""
+}
+```
+
+### Describe an organization secret
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1beta/secrets/:secret_id_or_name
+```
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "metadata": {
+    "name": "hello-world",
+    "id": "ea3a54d2-c7af-44e7-9e71-bc9932363555",
+    "create_time": "1736515926",
+    "update_time": "1736515926",
+    "checkout_at": "1741002631",
+    "content_included": false
+  },
+  "data": {
+    "env_vars": [],
+    "files": [
+      {
+        "path": "/home/semaphore/.keystore",
+        "content": ""
+      }
+    ]
+  },
+  "org_config": null
+}
+```
+
+### List project secrets
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1/projects/:project_id_or_name/secrets
+```
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "secrets": [
+    {
+      "metadata": {
+        "name": "111",
+        "id": "af79f57f-c742-4450-8a0c-3f5b31d15908",
+        "create_time": "1721202863",
+        "update_time": "1721202863",
+        "checkout_at": "0",
+        "project_id_or_name": "15e0ad7f-0af6-4c72-b752-1f810fbd7de3",
+        "content_included": false
+      },
+      "data": {
+        "env_vars": [],
+        "files": []
+      }
+    }
+  ],
+  "next_page_token": ""
+}
+```
+
+### Describe a project secret
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1/projects/:project_id_or_name/secrets/:secret_id_or_name
+```
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "metadata": {
+    "name": "111",
+    "id": "af79f57f-c742-4450-8a0c-3f5b31d15908",
+    "create_time": "1721202863",
+    "update_time": "1721202863",
+    "checkout_at": "0",
+    "project_id_or_name": "15e0ad7f-0af6-4c72-b752-1f810fbd7de3",
+    "content_included": false
+  },
+  "data": {
+    "env_vars": [],
+    "files": []
+  }
+}
+```
+
 
 
 ## Self-hosted agent types
@@ -860,10 +1597,21 @@ POST <organization-url>.semaphoreci.com/api/v1alpha/self_hosted_agent_types
 Parameters:
 
 - `metadata.name` (**required**) - the name of the agent type to be created.
+  The name must match `^s1-[a-zA-Z0-9-_]+$`.
 - `spec.agent_name_settings.assignment_origin` (*optional*) - the origin of the agent name assignment during its registration. The possible values are: `assignment_origin_agent` (*default*) and `assignment_origin_aws_sts`.
 - `spec.agent_name_settings.release_after` (*optional*) - how long to hold the agent name after its disconnection, not allowing other agents to register with its name. By default, this is 0.
 - `spec.agent_name_settings.aws.account_id` (**required** if `assignment_origin_aws_sts` is used).
 - `spec.agent_name_settings.aws.role_name_patterns` (**required** if `assignment_origin_aws_sts` is used) - comma-separated list of AWS role names. Wildcards (*) can be used too.
+
+Organizations without self-hosted agents enabled can receive a `400` response such as:
+
+```json
+HTTP status: 400
+
+{
+  "message": "self-hosted agents are not available for your organization"
+}
+```
 
 Response:
 
@@ -1460,7 +2208,10 @@ curl -i -X POST -H "Authorization: Token {api_token}" \
 ```
 
 ```shell
-curl -XPOST <organization-url>.semaphoreci.com/api/v1alpha/deployment_targets?project_id=a426b4db-1919-483d-926d-06ba1320b209 -H "Authorization: Token {api_token}" -H "Content-Type: application/json" --data '{ "name": "testTarget", "description": "Target description", "url": "www.myurl.zyx","bookmark_parameter1": "my book 1", "unique_token": "6063dd03-ecfb-11ed-b539-0045e2f582b7",  "env_vars": [ {"name": "env1","value": "val1" }  ],  "files": [ {"path": "/etc/my.conf","content": "'"$(base64 -w 0 /home/pc/proj/someconf.conf)"'" }  ]}'
+curl -X POST "https://<organization-url>.semaphoreci.com/api/v1alpha/deployment_targets?project_id=a426b4db-1919-483d-926d-06ba1320b209" \
+     -H "Authorization: Token {api_token}" \
+     -H "Content-Type: application/json" \
+     -d '{"name": "testTarget", "description": "Target description", "url": "https://www.myurl.zyx", "bookmark_parameter1": "my book 1", "unique_token": "6063dd03-ecfb-11ed-b539-0045e2f582b7"}'
 ```
 
 ### Update a target
@@ -1477,7 +2228,10 @@ Parameters:
 
 Request Body:
 
-The request body should be a JSON object, encapsulating details about the deployment target to be updated. The available fields are the same as those for creating a target. The difference here is that all fields are optional.
+The request body should be a JSON object, encapsulating details about the deployment target to be updated.
+
+- `unique_token` (**required**) - Idempotency UUID token for the update request.
+- All other fields are optional and use the same structure as the target creation request.
 
 Response:
 
@@ -1538,10 +2292,10 @@ curl -i -X PATCH -H "Authorization: Token {api_token}"  \
 ```
 
 ```shell
-curl -X PATCH https://<organization-url>.semaphoreci.com/deployment_targets/3a9196d7-f740-4451-b8f2-9d19b10a4520 \
+curl -X PATCH "https://<organization-url>.semaphoreci.com/api/v1alpha/deployment_targets/3a9196d7-f740-4451-b8f2-9d19b10a4520" \
      -H "Authorization: Token {api_token}" \
-     -d'{"name": "testTargetChanged", "description": "Target description changed", "url": "www.myurl2.zyx","bookmark_parameter1": "my book 1c", "unique_token": "6063dd03-ecfb-11ed-b539-0045e2f582b8",  "env_vars": [ {"name": "env1","value": "val2" }  ],  "files": [ {"path": "/etc/my.conf","content": "'"$(base64 -w 0 /home/pc/proje/updated.conf)"'" }]}' \
-     -H "Content-Type: application/json"
+     -H "Content-Type: application/json" \
+     -d '{"name": "testTargetChanged", "description": "Target description changed", "url": "www.myurl2.zyx","bookmark_parameter1": "my book 1c", "unique_token": "6063dd03-ecfb-11ed-b539-0045e2f582b8", "env_vars": [{"name": "env1","value": "val2"}]}'
 ```
 
 ### Delete a target
@@ -1711,107 +2465,23 @@ curl -i -H "Authorization: Token {api_token}" \
 
 ## Artifacts
 
-### List artifacts
-
-This API endpoint lists artifacts stored under a project, workflow, or job scope.
+### Generate signed artifact URLs
 
 ```text
-GET <organization-url>.semaphoreci.com/api/v1alpha/artifacts?scope=:scope&scope_id=:scope_id&path=:path
+POST <organization-url>.semaphoreci.com/api/v1/artifacts
 ```
+
+Authorization:
+
+This endpoint expects an artifact-scoped token, for example the `SEMAPHORE_ARTIFACT_TOKEN` available inside Semaphore jobs. A personal API token sent as `Authorization: Token {api_token}` does not work for signed URL generation.
 
 Parameters:
 
-- `scope` (**required**) - scope namespace. Valid values: `projects`, `workflows`, `jobs`.
-- `scope_id` (**required**) - UUID of the selected scope object.
-- `path` (*optional*) - relative path inside the selected scope. If omitted, the root directory is listed.
-
-Validation notes:
-
-- `path` must be a relative path.
-- Absolute paths (starting with `/`) are not allowed.
-- Path traversal segments (`.` and `..`) are not allowed.
-- Backslashes (`\`) are not allowed.
-- URL-encoded traversal and backslash variants are rejected after path normalization.
-
-Authorization notes:
-
-- The endpoint requires both `project.view` and `project.artifacts.view` permissions on the project that owns the selected scope.
-- `project_id` is resolved from `scope` and `scope_id`; if sent explicitly, it is ignored.
-- Listing is non-recursive: only direct children of the requested path are returned.
-
-Response:
-
-- `size` is included for files (in bytes) and omitted for directories.
-
-```json
-HTTP status: 200
-
-{
-  "artifacts": [
-    {
-      "is_directory": true,
-      "name": "agent",
-      "path": "agent"
-    },
-    {
-      "is_directory": false,
-      "name": "job_logs.txt.gz",
-      "path": "job_logs.txt.gz",
-      "size": 24576
-    },
-    {
-      "is_directory": false,
-      "name": "extra.log",
-      "path": "extra.log",
-      "size": 5120
-    }
-  ]
-}
-```
-
-Possible error responses:
-
-- `400` for invalid request parameters.
-- `401` when the user is missing one or both required permissions.
-- `404` when the scoped object or requested path does not exist (or is not visible to the user).
-- `500` for internal errors.
-
-Example:
-
-```shell
-curl -i -H "Authorization: Token {api_token}" \
-     "https://<organization-url>.semaphoreci.com/api/v1alpha/artifacts?scope=jobs&scope_id=:job_id&path=agent"
-```
-
-### Get artifact signed URL
-
-This API endpoint returns a signed URL for a single artifact file.
-
-```text
-GET <organization-url>.semaphoreci.com/api/v1alpha/artifacts/signed_url?scope=:scope&scope_id=:scope_id&path=:path&method=:method
-```
-
-Parameters:
-
-- `scope` (**required**) - scope namespace. Valid values: `projects`, `workflows`, `jobs`.
-- `scope_id` (**required**) - UUID of the selected scope object.
-- `path` (**required**) - relative path of the artifact inside the selected scope.
-- `method` (*optional*) - HTTP method for the signed URL. Valid values: `GET`, `HEAD`. Defaults to `GET`.
-
-Validation notes:
-
-- `path` must be a relative path.
-- Absolute paths (starting with `/`) are not allowed.
-- Path traversal segments (`.` and `..`) are not allowed.
-- Backslashes (`\`) are not allowed.
-- URL-encoded traversal and backslash variants are rejected after path normalization.
-- `path` must point to a single file.
-
-Authorization notes:
-
-- The endpoint requires both `project.view` and `project.artifacts.view` permissions on the project that owns the selected scope.
-- `project_id` is resolved from `scope` and `scope_id`; if sent explicitly, it is ignored.
-- Directory signing and recursive signing are not supported.
+- `paths` (**required**) - Array of artifact storage paths. Valid path prefixes are:
+  - `artifacts/projects/:project_id/:path`
+  - `artifacts/workflows/:workflow_id/:path`
+  - `artifacts/jobs/:job_id/:path`
+- `type` (**required**) - Requested action. Supported values are `PUSH`, `PUSHFORCE`, `PULL`, and `YANK`.
 
 Response:
 
@@ -1819,27 +2489,50 @@ Response:
 HTTP status: 200
 
 {
-  "items": [
+  "URLs": [
     {
-      "path": "agent/job_logs.txt.gz",
-      "url": "https://<signed-url>"
+      "URL": "https://storage.googleapis.com/...",
+      "method": "GET"
     }
   ]
 }
 ```
 
-Possible error responses:
+Invalid path example:
 
-- `400` for invalid request parameters.
-- `401` when the user is missing one or both required permissions.
-- `404` when the scoped object or artifact does not exist (or is not visible to the user).
-- `500` for internal errors.
+```json
+HTTP status: 400
+
+{
+  "code": 3,
+  "message": "invalid path /tmp/example.txt",
+  "details": []
+}
+```
+
+Invalid token example:
+
+```json
+HTTP status: 403
+
+{
+  "code": 7,
+  "message": "token is malformed: token contains an invalid number of segments",
+  "details": []
+}
+```
 
 Example:
 
 ```shell
-curl -i -H "Authorization: Token {api_token}" \
-     "https://<organization-url>.semaphoreci.com/api/v1alpha/artifacts/signed_url?scope=jobs&scope_id=:job_id&path=agent/job_logs.txt.gz&method=GET"
+curl -i -X POST \
+     -H "Authorization: {artifact_token}" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "paths": ["artifacts/projects/:project_id/build/output.tgz"],
+       "type": "PULL"
+     }' \
+     "https://<organization-url>.semaphoreci.com/api/v1/artifacts"
 ```
 
 ## Artifact retention policies
