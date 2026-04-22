@@ -65,6 +65,8 @@ defmodule InternalApi.Notifications.Notification.Rule.Filter do
     type: InternalApi.Notifications.Notification.Rule.Filter.Results,
     enum: true
   )
+
+  field(:tags, 7, repeated: true, type: :string)
 end
 
 defmodule InternalApi.Notifications.Notification.Rule.Notify.Slack do

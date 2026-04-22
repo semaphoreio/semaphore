@@ -58,6 +58,8 @@ defmodule Rbac.Okta.Saml.Api.Test do
         assert response.body == "User provisioning started, try again in a minute"
       end
 
+      wait_for_saml_jit_user_processed(ctx.integration, "denis@example.com")
+
       {:ok, response} = post("/okta/auth", saml_payload("denis@example.com"))
       location = Enum.find(response.headers, fn h -> elem(h, 0) == "location" end)
       assert response.status_code == 302
@@ -144,25 +146,41 @@ defmodule Rbac.Okta.Saml.Api.Test do
       assert Enum.at(cookie_parts, 4) == "HttpOnly"
     end
 
-    test "redirect links work when present in cookie", ctx do
+    test "on login it embeds expires_at based on integration session minutes", ctx do
+      ctx.integration
+      |> Rbac.Repo.OktaIntegration.changeset(%{session_expiration_minutes: 5})
+      |> Rbac.Repo.update!()
+
       assert {:ok, okta_user} = create_okta_user(ctx.integration, "denis@example.com")
       assert :ok = create_user(okta_user)
 
-      okta_user = reload_okta_user(okta_user.id)
-      {:ok, _} = create_github_connection(okta_user)
+      started_at = DateTime.utc_now()
 
-      with_mocks([
-        {Rbac.Utils.Http, [:passthrough],
-         [fetch_redirect_value: fn _, _ -> "#{@host}/settings" end]}
-      ]) do
-        {:ok, response} = post("/okta/auth", saml_payload("denis@example.com"))
+      {:ok, response} = post("/okta/auth", saml_payload("denis@example.com"))
 
-        assert response.status_code == 302
+      cookie = Enum.find(response.headers, fn h -> elem(h, 0) == "set-cookie" end)
+      cookie_value = elem(cookie, 1)
 
-        location = Enum.find(response.headers, fn h -> elem(h, 0) == "location" end)
+      session_cookie =
+        cookie_value
+        |> String.split(";")
+        |> List.first()
+        |> String.split("=", parts: 2)
+        |> List.last()
 
-        assert location == {"location", "#{@host}/settings"}
-      end
+      values = Rbac.Session.decrypt_cookie(session_cookie)
+      expires_at = normalize_expires_at(values["expires_at"])
+
+      expected = DateTime.to_unix(started_at) + 5 * 60
+      assert abs(expires_at - expected) <= 10
+    end
+
+    test "redirect links work when present in cookie", ctx do
+      assert_redirect_to_settings(ctx, with_repo_host_account: true)
+    end
+
+    test "redirect links work when present in cookie without repo host account", ctx do
+      assert_redirect_to_settings(ctx, with_repo_host_account: false)
     end
   end
 
@@ -182,6 +200,31 @@ defmodule Rbac.Okta.Saml.Api.Test do
     user
   end
 
+  defp assert_redirect_to_settings(ctx, opts) do
+    with_repo_host_account = Keyword.get(opts, :with_repo_host_account, false)
+
+    assert {:ok, okta_user} = create_okta_user(ctx.integration, "denis@example.com")
+    assert :ok = create_user(okta_user)
+
+    if with_repo_host_account do
+      okta_user = reload_okta_user(okta_user.id)
+      {:ok, _} = create_github_connection(okta_user)
+    end
+
+    with_mocks([
+      {Rbac.Utils.Http, [:passthrough],
+       [fetch_redirect_value: fn _, _ -> "#{@host}/settings" end]}
+    ]) do
+      {:ok, response} = post("/okta/auth", saml_payload("denis@example.com"))
+
+      assert response.status_code == 302
+
+      location = Enum.find(response.headers, fn h -> elem(h, 0) == "location" end)
+
+      assert location == {"location", "#{@host}/settings"}
+    end
+  end
+
   defp create_okta_user(integration, email) do
     Rbac.Repo.OktaUser.create(integration, %{
       "active" => true,
@@ -199,11 +242,35 @@ defmodule Rbac.Okta.Saml.Api.Test do
   defp create_user(okta_user) do
     Rbac.Okta.Scim.Provisioner.perform_now(okta_user.id)
 
-    Support.Wait.run("Waiting for #{okta_user.id} to be processed", fn ->
-      Rbac.Repo.get(Rbac.Repo.OktaUser, okta_user.id).user_id != nil
-    end)
+    wait_for_okta_user_processed(okta_user.id)
 
     :ok
+  end
+
+  defp wait_for_okta_user_processed(okta_user_id) do
+    Support.Wait.run("Waiting for #{okta_user_id} to be processed", 30, 200, fn ->
+      case Rbac.Repo.get(Rbac.Repo.OktaUser, okta_user_id) do
+        nil ->
+          false
+
+        okta_user ->
+          okta_user.user_id != nil and okta_user.state == :processed and
+            Rbac.FrontRepo.get(Rbac.FrontRepo.User, okta_user.user_id) != nil
+      end
+    end)
+  end
+
+  defp wait_for_saml_jit_user_processed(integration, email) do
+    Support.Wait.run("Waiting for JIT user #{email} to be processed", 30, 200, fn ->
+      case Rbac.Repo.SamlJitUser.find_by_email(integration, email) do
+        {:ok, saml_user} ->
+          saml_user.user_id != nil and saml_user.state == :processed and
+            Rbac.FrontRepo.get(Rbac.FrontRepo.User, saml_user.user_id) != nil
+
+        {:error, :not_found} ->
+          false
+      end
+    end)
   end
 
   defp load_user(user_id) do
@@ -244,5 +311,12 @@ defmodule Rbac.Okta.Saml.Api.Test do
 
   defp reload_okta_user(okta_user_id) do
     Rbac.Repo.get(Rbac.Repo.OktaUser, okta_user_id)
+  end
+
+  defp normalize_expires_at(value) when is_integer(value), do: value
+
+  defp normalize_expires_at(value) when is_binary(value) do
+    {parsed, _} = Integer.parse(value)
+    parsed
   end
 end

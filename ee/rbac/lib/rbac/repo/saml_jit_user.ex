@@ -41,7 +41,11 @@ defmodule Rbac.Repo.SamlJitUser do
 
   def find_by_email(integration, email) do
     __MODULE__
-    |> where([u], u.integration_id == ^integration.id and u.email == ^email)
+    |> where(
+      [u],
+      u.integration_id == ^integration.id and
+        fragment("LOWER(TRIM(?)) = LOWER(TRIM(?))", u.email, ^email)
+    )
     |> Repo.one()
     |> case do
       nil -> {:error, :not_found}
@@ -82,7 +86,7 @@ defmodule Rbac.Repo.SamlJitUser do
       integration_id: integration.id,
       org_id: integration.org_id,
       attributes: attributes,
-      email: email,
+      email: String.downcase(email),
       state: :pending
     }
   end
@@ -91,6 +95,8 @@ defmodule Rbac.Repo.SamlJitUser do
     user
     |> cast(params, @updatable_fields)
     |> validate_required(@required_fields)
+    |> unique_constraint(:email, name: :saml_jit_users_integration_id_email_index)
+    |> unique_constraint(:email, name: :saml_jit_users_integration_id_normalized_email_index)
   end
 
   defp extract_attribute(%__MODULE__{} = user, name) do

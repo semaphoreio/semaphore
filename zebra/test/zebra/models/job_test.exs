@@ -591,4 +591,57 @@ defmodule Zebra.Models.JobTest do
       assert Job.detect_type(job) == :project_debug_job
     end
   end
+
+  describe ".claim_and_delete_expired_jobs" do
+    test "claims and deletes expired jobs in a transaction" do
+      now = DateTime.utc_now() |> DateTime.truncate(:second)
+      past = DateTime.add(now, -3600, :second)
+
+      project_id = Ecto.UUID.generate()
+      artifact_store_id = Ecto.UUID.generate()
+
+      Ecto.Adapters.SQL.query!(
+        Zebra.LegacyRepo,
+        "INSERT INTO projects (id, artifact_store_id) VALUES ($1, $2)",
+        [Ecto.UUID.dump!(project_id), Ecto.UUID.dump!(artifact_store_id)]
+      )
+
+      {:ok, job} =
+        Support.Factories.Job.create(:finished, %{
+          project_id: project_id,
+          expires_at: past
+        })
+
+      {:ok, _deleted_stop_requests, deleted_jobs} = Job.claim_and_delete_expired_jobs(10)
+
+      assert deleted_jobs >= 1
+
+      # Verify the job is actually deleted
+      assert Zebra.LegacyRepo.get(Zebra.Models.Job, job.id) == nil
+    end
+
+    test "returns 0 counts when no expired jobs exist" do
+      {:ok, deleted_stop_requests, deleted_jobs} = Job.claim_and_delete_expired_jobs(10)
+
+      assert deleted_stop_requests == 0
+      assert deleted_jobs == 0
+    end
+
+    test "does not claim jobs with future expires_at" do
+      now = DateTime.utc_now() |> DateTime.truncate(:second)
+      future = DateTime.add(now, 3600, :second)
+
+      {:ok, job} =
+        Support.Factories.Job.create(:finished, %{
+          expires_at: future
+        })
+
+      {:ok, _deleted_stop_requests, deleted_jobs} = Job.claim_and_delete_expired_jobs(10)
+
+      assert deleted_jobs == 0
+
+      # Verify the job still exists
+      assert Zebra.LegacyRepo.get(Zebra.Models.Job, job.id) != nil
+    end
+  end
 end

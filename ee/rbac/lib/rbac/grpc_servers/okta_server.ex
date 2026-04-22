@@ -33,7 +33,8 @@ defmodule Rbac.GrpcServers.OktaServer do
           req.saml_issuer,
           req.saml_certificate,
           req.jit_provisioning_enabled,
-          req.idempotency_token
+          req.idempotency_token,
+          req.session_expiration_minutes
         )
 
       case result do
@@ -230,7 +231,8 @@ defmodule Rbac.GrpcServers.OktaServer do
       saml_issuer: integration.saml_issuer,
       idempotency_token: integration.idempotency_token,
       sso_url: integration.sso_url,
-      jit_provisioning_enabled: integration.jit_provisioning_enabled
+      jit_provisioning_enabled: integration.jit_provisioning_enabled,
+      session_expiration_minutes: integration.session_expiration_minutes
     }
   end
 

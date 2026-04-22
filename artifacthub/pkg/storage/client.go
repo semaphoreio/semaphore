@@ -74,3 +74,4 @@ type ObjectPager interface {
 }
 
 var ErrNoMoreObjects = fmt.Errorf("no more objects in the storage")
+var ErrMissingBucket = fmt.Errorf("storage: bucket doesn't exist")

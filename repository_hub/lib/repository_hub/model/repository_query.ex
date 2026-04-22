@@ -122,6 +122,14 @@ defmodule RepositoryHub.Model.RepositoryQuery do
     |> Repo.all()
   end
 
+  @doc """
+  Sets the repository as not connected by updating the connected field to false.
+  """
+  def set_not_connected(repository_id) do
+    from(r in Repositories, where: r.id == ^repository_id)
+    |> Repo.update_all(set: [connected: false, updated_at: DateTime.utc_now()])
+  end
+
   defp filter_by(query, filters) do
     filters
     |> Enum.reduce(query, fn

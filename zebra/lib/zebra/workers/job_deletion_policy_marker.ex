@@ -104,7 +104,7 @@ defmodule Zebra.Workers.JobDeletionPolicyMarker do
   defp validate_policy_days do
     case Application.fetch_env(:zebra, __MODULE__) do
       {:ok, config} ->
-        case Keyword.fetch(config, :days) do
+        case Keyword.fetch(config, :grace_period_days) do
           {:ok, days} when is_integer(days) and days >= @min_grace_period_days ->
             {:ok, days}
 

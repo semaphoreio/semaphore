@@ -43,10 +43,15 @@ window.InjectedDataByBackend.EventsToken = "<%= raw @token %>"
       <p class="measure-wide mb0"><%= job_pending_message(@job) %></p>
     </div>
     <div id="job-log-info-message" class="f6 pv1 ph2 dn">
-      <% link_url = artifacts_path(@conn, :jobs_download, @job.id, "agent/job_logs.txt") %>
+      <% log_path = if @artifact_logs_compressed, do: "agent/job_logs.txt.gz", else: "agent/job_logs.txt" %>
+      <% link_url = artifacts_path(@conn, :jobs_download, @job.id, log_path) %>
       <p class="measure-wide mb0">
         The logs for this job were trimmed due to its size.<br/>
-        You can download the <a href="<%= raw link_url %>">full logs</a> from the artifact store.
+        You can download the <a href="<%= raw link_url %>">full logs</a>
+        <%= if @artifact_logs_compressed do %>
+          <span class="ml1">(compressed .gz)</span>
+        <% end %>
+        from the artifact store.
       </p>
     </div>
     <div id="job-log" class="job-log-loading dn"></div>

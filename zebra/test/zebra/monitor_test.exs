@@ -3,6 +3,21 @@ defmodule Zebra.MonitorTest do
 
   alias Zebra.Monitor
 
+  setup do
+    GrpcMock.stub(Support.FakeServers.OrganizationApi, :describe, fn _, _ ->
+      InternalApi.Organization.DescribeResponse.new(
+        status: InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
+        organization:
+          InternalApi.Organization.Organization.new(
+            org_username: "test-org",
+            suspended: false
+          )
+      )
+    end)
+
+    :ok
+  end
+
   describe ".stop_jobs_on_suspended_orgs" do
     test "stop job for suspended orgs" do
       stub_org(true)
@@ -370,8 +385,10 @@ defmodule Zebra.MonitorTest do
   test "count_inconsistent_jobs" do
     alias Support.Factories.Job
 
-    {:ok, _} = Job.create(:finished, %{result: nil})
-    {:ok, _} = Job.create(:started, %{result: "stopped"})
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    {:ok, _} = Job.create(:finished, %{result: nil, created_at: now})
+    {:ok, _} = Job.create(:started, %{result: "stopped", created_at: now})
 
     assert Monitor.count_inconsistent_jobs() == 1
   end

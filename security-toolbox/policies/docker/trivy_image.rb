@@ -48,7 +48,11 @@ class Policy::TrivyImage < Policy
       command << "--skip-dirs #{skip_dir}"
     end
 
-    command << "#{@image}"
+    if File.exist?(@image)
+      command << "--input #{@image}"
+    else
+      command << "#{@image}"
+    end
 
     @output = `#{command.join(" ")}`
     $?.success?

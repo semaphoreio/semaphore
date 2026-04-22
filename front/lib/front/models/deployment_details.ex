@@ -2,6 +2,7 @@ defmodule Front.Models.DeploymentDetails do
   alias Front.Models.Pipeline
   alias Front.Models.RepoProxy
   alias Front.Models.User
+  @default_pipeline_data_retention_days 400
 
   defmodule Deployment do
     use TypedStruct
@@ -47,9 +48,13 @@ defmodule Front.Models.DeploymentDetails do
       %__MODULE__{deployment | pipeline: pipeline}
     end
 
+    def preload_pipeline(deployment = %__MODULE__{}, nil), do: deployment
+
     def preload_hook(deployment = %__MODULE__{}, hook = %RepoProxy{}) do
       %__MODULE__{deployment | hook: hook}
     end
+
+    def preload_hook(deployment = %__MODULE__{}, nil), do: deployment
 
     def preload_triggerer(deployment = %__MODULE__{triggered_by: "Pipeline Done request"}, nil) do
       avatar_url = "#{FrontWeb.SharedHelpers.assets_path()}/images/profile-bot.svg"
@@ -71,6 +76,7 @@ defmodule Front.Models.DeploymentDetails do
 
   defmodule HistoryPage do
     use TypedStruct
+    @default_pipeline_data_retention_days 400
 
     typedstruct do
       field(:deployments, [Deployments.t()])
@@ -99,9 +105,10 @@ defmodule Front.Models.DeploymentDetails do
     defp preload_pipelines(page = %__MODULE__{}) do
       pipelines =
         page.deployments
-        |> Stream.map(& &1.pipeline_id)
+        |> pipeline_ids_for_preload()
         |> Enum.to_list()
         |> Front.Models.Pipeline.find_many()
+        |> Kernel.||([])
         |> Map.new(&{&1.id, &1})
 
       deployments =
@@ -121,13 +128,18 @@ defmodule Front.Models.DeploymentDetails do
         |> Stream.map(& &1.pipeline.hook_id)
         |> Enum.to_list()
         |> Front.Models.RepoProxy.find()
+        |> Kernel.||([])
         |> Map.new(&{&1.id, &1})
 
       deployments =
         page.deployments
         |> Enum.into([], fn deployment ->
-          hook = Map.get(hooks, deployment.pipeline.hook_id)
-          Deployment.preload_hook(deployment, hook)
+          if deployment.pipeline do
+            hook = Map.get(hooks, deployment.pipeline.hook_id)
+            Deployment.preload_hook(deployment, hook)
+          else
+            deployment
+          end
         end)
 
       %__MODULE__{page | deployments: deployments}
@@ -150,6 +162,36 @@ defmodule Front.Models.DeploymentDetails do
 
       %__MODULE__{page | deployments: deployments}
     end
+
+    defp pipeline_ids_for_preload(deployments) do
+      retention_cutoff =
+        DateTime.utc_now() |> DateTime.add(-pipeline_retention_seconds(), :second)
+
+      retention_cutoff_unix = DateTime.to_unix(retention_cutoff)
+
+      deployments
+      |> Stream.filter(&(&1.triggered_at >= retention_cutoff_unix))
+      |> Stream.map(& &1.pipeline_id)
+      |> Stream.filter(&valid_pipeline_id?/1)
+    end
+
+    defp valid_pipeline_id?(pipeline_id) when is_binary(pipeline_id) do
+      case UUID.info(pipeline_id) do
+        {:ok, _} -> true
+        _ -> false
+      end
+    end
+
+    defp valid_pipeline_id?(_), do: false
+
+    defp pipeline_retention_seconds,
+      do:
+        Application.get_env(
+          :front,
+          :pipeline_data_retention_days,
+          @default_pipeline_data_retention_days
+        ) *
+          24 * 60 * 60
   end
 
   use TypedStruct
@@ -265,10 +307,12 @@ defmodule Front.Models.DeploymentDetails do
   def preload_pipelines(targets) when is_list(targets) do
     pipelines =
       targets
-      |> Stream.filter(& &1.last_deployment)
-      |> Stream.map(& &1.last_deployment.pipeline_id)
+      |> Stream.map(& &1.last_deployment)
+      |> Stream.filter(& &1)
+      |> pipeline_ids_for_preload()
       |> Enum.to_list()
       |> Front.Models.Pipeline.find_many()
+      |> Kernel.||([])
       |> Map.new(&{&1.id, &1})
 
     Enum.into(targets, [], fn target ->
@@ -303,6 +347,7 @@ defmodule Front.Models.DeploymentDetails do
       |> Stream.map(& &1.last_deployment.pipeline.hook_id)
       |> Enum.to_list()
       |> Front.Models.RepoProxy.find()
+      |> Kernel.||([])
       |> Map.new(&{&1.id, &1})
 
     Enum.into(targets, [], fn target ->
@@ -343,4 +388,31 @@ defmodule Front.Models.DeploymentDetails do
       %{target | updator: updator, members: members, last_deployment: last_deployment}
     end)
   end
+
+  defp pipeline_ids_for_preload(deployments) do
+    retention_cutoff = DateTime.utc_now() |> DateTime.add(-pipeline_retention_seconds(), :second)
+    retention_cutoff_unix = DateTime.to_unix(retention_cutoff)
+
+    deployments
+    |> Stream.filter(&(&1.triggered_at >= retention_cutoff_unix))
+    |> Stream.map(& &1.pipeline_id)
+    |> Stream.filter(&valid_pipeline_id?/1)
+  end
+
+  defp valid_pipeline_id?(pipeline_id) when is_binary(pipeline_id) do
+    case UUID.info(pipeline_id) do
+      {:ok, _} -> true
+      _ -> false
+    end
+  end
+
+  defp valid_pipeline_id?(_), do: false
+
+  defp pipeline_retention_seconds,
+    do:
+      Application.get_env(
+        :front,
+        :pipeline_data_retention_days,
+        @default_pipeline_data_retention_days
+      ) * 24 * 60 * 60
 end
