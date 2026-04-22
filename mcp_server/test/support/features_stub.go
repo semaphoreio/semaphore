@@ -7,6 +7,7 @@ type FeatureClientStub struct {
 	State      feature.State
 	StateError error
 	Features   []feature.OrganizationFeature
+	States     map[string]feature.State
 }
 
 func (f FeatureClientStub) ListOrganizationFeatures(string) ([]feature.OrganizationFeature, error) {
@@ -16,9 +17,14 @@ func (f FeatureClientStub) ListOrganizationFeatures(string) ([]feature.Organizat
 	return append([]feature.OrganizationFeature(nil), f.Features...), nil
 }
 
-func (f FeatureClientStub) FeatureState(string, string) (feature.State, error) {
+func (f FeatureClientStub) FeatureState(_ string, featureName string) (feature.State, error) {
 	if f.StateError != nil {
 		return feature.Hidden, f.StateError
+	}
+	if len(f.States) > 0 {
+		if state, ok := f.States[featureName]; ok {
+			return state, nil
+		}
 	}
 	return f.State, nil
 }
