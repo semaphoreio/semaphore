@@ -128,6 +128,12 @@ Troubleshooting:
 
 		jobOrg := strings.TrimSpace(job.GetOrganizationId())
 		jobProjectID := strings.TrimSpace(job.GetProjectId())
+		if err := shared.ValidateUUID(jobOrg, "job organization_id"); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+		if err := shared.ValidateUUID(jobProjectID, "job project_id"); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 		if jobOrg == "" || !strings.EqualFold(jobOrg, orgID) {
 			shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
 				Tool:              artifactJobLogsToolName,
@@ -152,12 +158,6 @@ Troubleshooting:
 			})
 			return shared.ScopeMismatchError(artifactJobLogsToolName, "project"), nil
 		}
-		if err := shared.ValidateUUID(jobOrg, "job organization_id"); err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
-		}
-		if err := shared.ValidateUUID(jobProjectID, "job project_id"); err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
-		}
 
 		if err := shared.EnsureReadToolsFeature(ctx, api, orgID); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
@@ -166,11 +166,9 @@ Troubleshooting:
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		if err := authz.CheckProjectPermission(ctx, api, userID, orgID, jobProjectID, projectViewPermission); err != nil {
-			return shared.ProjectAuthorizationError(err, orgID, jobProjectID, projectViewPermission), nil
-		}
-		if err := authz.CheckProjectPermission(ctx, api, userID, orgID, jobProjectID, projectArtifactsViewPermission); err != nil {
-			return shared.ProjectAuthorizationError(err, orgID, jobProjectID, projectArtifactsViewPermission), nil
+		requiredPermissions := []string{projectViewPermission, projectArtifactsViewPermission}
+		if err := authz.CheckProjectPermission(ctx, api, userID, orgID, jobProjectID, requiredPermissions...); err != nil {
+			return shared.ProjectAuthorizationError(err, orgID, jobProjectID, strings.Join(requiredPermissions, ", ")), nil
 		}
 
 		artifactStoreID, toolErr := fetchProjectArtifactStoreIDForArtifactJobLogs(
@@ -374,12 +372,11 @@ func relativeJobArtifactPath(name, jobID string) string {
 	}
 
 	prefix := fmt.Sprintf("artifacts/jobs/%s/", strings.TrimSpace(jobID))
-	if strings.HasPrefix(trimmed, prefix) {
-		trimmed = strings.TrimPrefix(trimmed, prefix)
-		trimmed = strings.Trim(trimmed, "/")
+	if !strings.HasPrefix(trimmed, prefix) {
+		return ""
 	}
 
-	return trimmed
+	return strings.Trim(strings.TrimPrefix(trimmed, prefix), "/")
 }
 
 func formatArtifactJobLogsMarkdown(result artifactJobLogsResult) string {

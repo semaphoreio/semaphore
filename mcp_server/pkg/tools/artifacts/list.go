@@ -22,7 +22,8 @@ type artifactListItem struct {
 }
 
 type artifactListPage struct {
-	Returned int `json:"returned"`
+	Returned  int  `json:"returned"`
+	Truncated bool `json:"truncated"`
 }
 
 type artifactListResult struct {
@@ -34,6 +35,8 @@ type artifactListResult struct {
 	Artifacts      []artifactListItem `json:"artifacts"`
 	Page           artifactListPage   `json:"page"`
 }
+
+const artifactListMaxItems = 1000
 
 func listFullDescription() string {
 	return `List artifacts for a project, workflow, or job scope.
@@ -52,7 +55,7 @@ Inputs:
 
 Output:
 - artifacts: File and directory entries with relative paths and sizes
-- page: Returned count metadata
+- page: Returned count metadata (includes truncation flag when capped)
 
 Note:
 - Cursor pagination is not exposed in this first implementation.
@@ -159,6 +162,11 @@ func listHandler(api internalapi.Provider) server.ToolHandlerFunc {
 		}
 
 		artifacts := serializeListItems(items, params.Scope, params.ScopeID)
+		truncated := false
+		if len(artifacts) > artifactListMaxItems {
+			artifacts = artifacts[:artifactListMaxItems]
+			truncated = true
+		}
 		if len(artifacts) == 0 && relativePath != "" {
 			return mcp.NewToolResultError(errArtifactPathNotFound.Error()), nil
 		}
@@ -171,7 +179,8 @@ func listHandler(api internalapi.Provider) server.ToolHandlerFunc {
 			Path:           relativePath,
 			Artifacts:      artifacts,
 			Page: artifactListPage{
-				Returned: len(artifacts),
+				Returned:  len(artifacts),
+				Truncated: truncated,
 			},
 		}
 
@@ -225,7 +234,7 @@ func formatListMarkdown(result artifactListResult) string {
 	}
 	mb.KeyValue(
 		"Page",
-		fmt.Sprintf("returned=%d", result.Page.Returned),
+		fmt.Sprintf("returned=%d, truncated=%t", result.Page.Returned, result.Page.Truncated),
 	)
 
 	if len(result.Artifacts) == 0 {

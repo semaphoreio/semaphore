@@ -715,6 +715,36 @@ func TestArtifactJobLogsReturnsSignedURLWithGzipFallback(t *testing.T) {
 	}
 }
 
+func TestResolveUploadedArtifactJobLogsPathIgnoresForeignJobPrefix(t *testing.T) {
+	const jobID = "99999999-aaaa-bbbb-cccc-dddddddddddd"
+	const otherJobID = "11111111-2222-3333-4444-555555555555"
+	const artifactStoreID = "88888888-7777-6666-5555-444444444444"
+
+	artifactClient := &artifacthubClientStub{
+		listResp: &artifacthubpb.ListPathResponse{
+			Items: []*artifacthubpb.ListItem{
+				{
+					Name:        fmt.Sprintf("artifacts/jobs/%s/agent/job_logs.txt", otherJobID),
+					IsDirectory: false,
+				},
+			},
+		},
+	}
+
+	provider := &support.MockProvider{
+		ArtifacthubClient: artifactClient,
+		Timeout:           time.Second,
+	}
+
+	resolved, err := resolveUploadedArtifactJobLogsPath(context.Background(), provider, artifactStoreID, jobID)
+	if err != errUploadedArtifactJobLogsNotFound {
+		toFail(t, "expected errUploadedArtifactJobLogsNotFound, got resolved=%q err=%v", resolved, err)
+	}
+	if resolved != "" {
+		toFail(t, "expected empty resolved path, got %q", resolved)
+	}
+}
+
 func TestArtifactJobLogsFeatureDisabled(t *testing.T) {
 	const orgID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 	const jobID = "99999999-aaaa-bbbb-cccc-dddddddddddd"

@@ -101,8 +101,8 @@ func TestArtifactsListSuccessJobScope(t *testing.T) {
 	if artifactClient.lastList.GetUnwrapDirectories() {
 		t.Fatalf("expected unwrap_directories=false")
 	}
-	if len(rbac.LastRequests) != 2 {
-		t.Fatalf("expected 2 RBAC requests, got %d", len(rbac.LastRequests))
+	if len(rbac.LastRequests) != 1 {
+		t.Fatalf("expected 1 RBAC request, got %d", len(rbac.LastRequests))
 	}
 	if got := rbac.LastRequests[0].GetProjectId(); got != testProjectID {
 		t.Fatalf("expected RBAC project %s, got %s", testProjectID, got)
@@ -257,8 +257,8 @@ func TestArtifactsListSuccessProjectScopeWithoutProjectID(t *testing.T) {
 	if result.ProjectID != testProjectID {
 		t.Fatalf("expected project_id %s, got %s", testProjectID, result.ProjectID)
 	}
-	if len(rbac.LastRequests) != 2 {
-		t.Fatalf("expected 2 RBAC requests, got %d", len(rbac.LastRequests))
+	if len(rbac.LastRequests) != 1 {
+		t.Fatalf("expected 1 RBAC request, got %d", len(rbac.LastRequests))
 	}
 	if got := rbac.LastRequests[0].GetProjectId(); got != testProjectID {
 		t.Fatalf("expected RBAC project %s, got %s", testProjectID, got)
@@ -1246,8 +1246,68 @@ func TestArtifactsListReturnedMetadata(t *testing.T) {
 	if result.Page.Returned != 2 {
 		t.Fatalf("expected returned 2, got %d", result.Page.Returned)
 	}
+	if result.Page.Truncated {
+		t.Fatalf("expected non-truncated page metadata")
+	}
 	if artifactClient.lastList == nil {
 		t.Fatalf("expected ListPath request to be recorded")
+	}
+}
+
+func TestArtifactsListStructuredContentCapped(t *testing.T) {
+	items := make([]*artifacthubpb.ListItem, 0, 1500)
+	for i := 0; i < 1500; i++ {
+		items = append(items, &artifacthubpb.ListItem{
+			Name:        fmt.Sprintf("artifacts/projects/%s/file-%04d.txt", testProjectID, i),
+			IsDirectory: false,
+			Size:        int64(i + 1),
+		})
+	}
+
+	artifactClient := &artifacthubClientStub{
+		listResp: &artifacthubpb.ListPathResponse{Items: items},
+	}
+	provider := &support.MockProvider{
+		Timeout:           time.Second,
+		ArtifacthubClient: artifactClient,
+		ProjectClient: &support.ProjectClientStub{
+			Response: newProjectDescribeResponse(testOrgID, testProjectID, testArtifactStore),
+		},
+		RBACClient: support.NewRBACStub(artifactsRequiredPermissions...),
+	}
+
+	req := callRequest(map[string]any{
+		"organization_id": testOrgID,
+		"scope":           scopeProjects,
+		"scope_id":        testProjectID,
+	}, true)
+
+	res, err := listHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+	if res == nil || res.IsError {
+		t.Fatalf("expected successful response, got: %#v", res)
+	}
+
+	result, ok := res.StructuredContent.(artifactListResult)
+	if !ok {
+		t.Fatalf("unexpected structured content type: %T", res.StructuredContent)
+	}
+	if len(result.Artifacts) != artifactListMaxItems {
+		t.Fatalf("expected %d artifacts after capping, got %d", artifactListMaxItems, len(result.Artifacts))
+	}
+	if result.Page.Returned != artifactListMaxItems {
+		t.Fatalf("expected returned %d, got %d", artifactListMaxItems, result.Page.Returned)
+	}
+	if !result.Page.Truncated {
+		t.Fatalf("expected truncated page metadata")
+	}
+	if result.Artifacts[0].Path != "file-0000.txt" {
+		t.Fatalf("unexpected first artifact path: %s", result.Artifacts[0].Path)
+	}
+	if result.Artifacts[artifactListMaxItems-1].Path != "file-0999.txt" {
+		t.Fatalf("unexpected last artifact path: %s", result.Artifacts[artifactListMaxItems-1].Path)
 	}
 }
 
@@ -1284,6 +1344,9 @@ func TestArtifactsListRootEmptyReturnsSuccess(t *testing.T) {
 	}
 	if result.Page.Returned != 0 {
 		t.Fatalf("unexpected page metadata: %#v", result.Page)
+	}
+	if result.Page.Truncated {
+		t.Fatalf("expected non-truncated page metadata")
 	}
 }
 

@@ -56,7 +56,10 @@ Examples:
 Typical workflow:
 1. Call artifacts_list(...) to discover available artifact paths.
 2. Call artifacts_signed_url(...) for a file path.
-3. Download once and reuse the local file for analysis.`
+3. Download once and reuse the local file for analysis.
+
+Note:
+- For job-scope paths matching job_logs.txt variants, the server auto-resolves to the best available full log file (prefers txt over gz).`
 }
 
 func newSignedURLTool(name, description string) mcp.Tool {

@@ -389,10 +389,8 @@ func resolveArtifactAccess(
 		projectLoaded = true
 	}
 
-	for _, permission := range permissions {
-		if err := authz.CheckProjectPermission(ctx, api, userID, orgID, projectID, permission); err != nil {
-			return accessContext{}, shared.ProjectAuthorizationError(err, orgID, projectID, permission)
-		}
+	if err := authz.CheckProjectPermission(ctx, api, userID, orgID, projectID, permissions...); err != nil {
+		return accessContext{}, shared.ProjectAuthorizationError(err, orgID, projectID, strings.Join(permissions, ", "))
 	}
 
 	if !projectLoaded {
