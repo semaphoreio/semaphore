@@ -9,7 +9,11 @@
         <% {:FINISHED, :FAILED} -> %>
           <svg class="mr2" height="16" width="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><title>icn-failed</title><g fill="none" fill-rule="evenodd"><circle cx="8" cy="8" fill="#e53935" r="8"/><g fill="#fff" fill-rule="nonzero"><path d="M5.293 6.707l4 4a1 1 0 101.414-1.414l-4-4a1 1 0 00-1.414 1.414z"/><path d="M5.293 9.293l4-4a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414-1.414z"/></g></g></svg>
         <% {:FINISHED, :STOPPED} -> %>
-          <svg class="mr2" height="16" width="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><title>icn-stopped</title><g fill="none" fill-rule="evenodd"><circle cx="8.011" cy="8" fill="#667979" r="8"/><path d="M5.994 9l4.023.023a1 1 0 00.011-2L6.006 7a1 1 0 00-.012 2z" fill="#fff" fill-rule="nonzero"/></g></svg>
+          <%= if assigns[:block_result_reason] == :TIMEOUT do %>
+            <svg class="mr2" height="16" width="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><title>icn-timed-out</title><g fill="none" fill-rule="evenodd"><circle cx="8" cy="8" fill="#667979" r="8"/><g fill="#fff"><rect x="7.25" y="3.5" width="1.5" height="5" rx="0.75"/><rect x="7.25" y="7.75" width="4" height="1.5" rx="0.75"/></g></g></svg>
+          <% else %>
+            <svg class="mr2" height="16" width="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><title>icn-stopped</title><g fill="none" fill-rule="evenodd"><circle cx="8.011" cy="8" fill="#667979" r="8"/><path d="M5.994 9l4.023.023a1 1 0 00.011-2L6.006 7a1 1 0 00-.012 2z" fill="#fff" fill-rule="nonzero"/></g></svg>
+          <% end %>
         <% {:RUNNING, _} -> %>
           <svg class="mr2" height="16" width="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><title>icn-running</title><g fill="none" fill-rule="evenodd"><circle cx="8" cy="8" fill="#1570ff" r="8"/><g fill="#fff"><circle cx="5" cy="8" r="1"/><circle cx="8" cy="8" r="1"/><circle cx="11" cy="8" r="1"/></g></g></svg>
       <% end %>
