@@ -114,6 +114,13 @@ defmodule Guard.Id.Api do
   end
 
   defp extract_repo_host_data(auth) do
+    token_expires_at =
+      case auth.credentials.expires_at do
+        nil -> nil
+        expires_at when is_integer(expires_at) -> DateTime.from_unix!(expires_at, :second)
+        %DateTime{} = dt -> dt
+      end
+
     {
       auth.provider,
       %{
@@ -122,7 +129,8 @@ defmodule Guard.Id.Api do
         name: auth.info.name || auth.info.nickname,
         permission_scope: auth.credentials.scopes |> Enum.join(","),
         token: auth.credentials.token,
-        refresh_token: auth.credentials.refresh_token
+        refresh_token: auth.credentials.refresh_token,
+        token_expires_at: token_expires_at
       }
     }
   end

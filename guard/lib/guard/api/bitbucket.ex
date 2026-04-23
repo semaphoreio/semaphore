@@ -45,18 +45,23 @@ defmodule Guard.Api.Bitbucket do
   def validate_token(token) do
     client = build_validate_token_client()
 
-    case Tesla.get(client, "/repositories?access_token=#{token}") do
+    case Tesla.get(client, "/repositories",
+           headers: [{"authorization", "Bearer #{token}"}]
+         ) do
       {:ok, res} ->
         {:ok, res.status in 200..299}
 
       {:error, error} ->
-        Logger.error("Error validating token: #{inspect(error)}")
+        Logger.error("Error validating Bitbucket token: #{inspect(error)}")
         {:error, :network_error}
     end
   end
 
-  defp fetch_token(%{refresh_token: refresh_token}) when refresh_token in [nil, ""] do
-    Logger.warning("No refresh token found for Bitbucket repo host account, account is revoked")
+  defp fetch_token(%{refresh_token: refresh_token, id: id}) when refresh_token in [nil, ""] do
+    Logger.warning(
+      "No refresh token found for Bitbucket repo_host_account #{id}, marking as revoked"
+    )
+
     {:error, :revoked}
   end
 
@@ -72,11 +77,20 @@ defmodule Guard.Api.Bitbucket do
       {:ok, %Tesla.Env{status: status, body: body}} when status in 200..299 ->
         OAuth.handle_ok_token_response(repo_host_account, body)
 
-      {:ok, %Tesla.Env{status: status}} when status in 400..499 ->
-        Logger.warn("Failed to refresh token, account might be revoked")
+      {:ok, %Tesla.Env{status: status, body: body}} when status in 400..499 ->
+        Logger.warning(
+          "Failed to refresh Bitbucket token (HTTP #{status}): #{inspect(body)}. " <>
+            "User repo_host_account id: #{repo_host_account.id}"
+        )
+
         {:error, :revoked}
 
-      {:ok, %Tesla.Env{status: _status}} ->
+      {:ok, %Tesla.Env{status: status, body: body}} ->
+        Logger.error(
+          "Unexpected response refreshing Bitbucket token (HTTP #{status}): #{inspect(body)}. " <>
+            "User repo_host_account id: #{repo_host_account.id}"
+        )
+
         {:error, :failed}
 
       {:error, error} ->
