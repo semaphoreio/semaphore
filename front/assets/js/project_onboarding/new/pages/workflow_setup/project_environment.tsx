@@ -226,20 +226,29 @@ export const Projectenvironment = () => {
                     skip onboarding
                   </a>
                 </div>
-                <Tippy
-                  placement="top"
-                  content="Select an agent type to continue"
-                  visible={envState.selectedAgentType ? false : true}>
-                  <div>
-                    <button
-                      onClick={() => void handleContinue()}
-                      className={`btn ${envState.selectedAgentType ? `btn-primary` : `btn-disabled`}`}
-                      disabled={!envState.selectedAgentType}
-                    >
-                    Continue
-                    </button>
-                  </div>
-                </Tippy>
+                <div className="flex items-center" style="gap: 0.5rem;">
+                  <Tippy
+                    placement="top"
+                    content="Select an agent type to continue"
+                    visible={envState.selectedAgentType ? false : true}>
+                    <div>
+                      <button
+                        onClick={() => navigate(`/ai_setup`)}
+                        className={`btn ${envState.selectedAgentType ? `btn-primary` : `btn-disabled`}`}
+                        disabled={!envState.selectedAgentType}
+                      >
+                        Auto-setup with AI
+                      </button>
+                    </div>
+                  </Tippy>
+                  <button
+                    onClick={() => void handleContinue()}
+                    className={`btn ${envState.selectedAgentType ? `` : `btn-disabled`}`}
+                    disabled={!envState.selectedAgentType}
+                  >
+                    Choose template manually
+                  </button>
+                </div>
               </div>
             </div>
           </div>
