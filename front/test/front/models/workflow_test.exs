@@ -193,6 +193,16 @@ defmodule Front.Models.WorkflowTest do
     end
   end
 
+  describe ".list_latest_workflows" do
+    test "returns client error when list_latest_workflows fails" do
+      with_mock Front.Clients.Workflow, [:passthrough],
+        list_latest_workflows: fn _ -> {:error, "Error when opening connection: :timeout"} end do
+        assert {:error, "Error when opening connection: :timeout"} =
+                 Workflow.list_latest_workflows()
+      end
+    end
+  end
+
   defp sample_hook do
     %InternalApi.RepoProxy.DescribeResponse{
       hook: %InternalApi.RepoProxy.Hook{
