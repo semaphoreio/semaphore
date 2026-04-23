@@ -55,7 +55,7 @@ window.InjectedDataByBackend.EventsToken = "<%= raw @token %>"
     </div>
   </div>
 
-  <%= render FrontWeb.JobView, "_state.html", conn: @conn, pollman: @pollman, job: @job, can_debug: @can_debug, debug_action: @debug_action, self_hosted: @self_hosted, project: @project %>
+  <%= render FrontWeb.JobView, "_state.html", conn: @conn, pollman: @pollman, job: @job, can_debug: @can_debug, debug_action: @debug_action, self_hosted: @self_hosted, project: @project, block_result_reason: @block_result_reason %>
 </div>
 
 <div class="relative">

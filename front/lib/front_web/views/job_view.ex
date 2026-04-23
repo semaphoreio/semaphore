@@ -63,6 +63,32 @@ defmodule FrontWeb.JobView do
     end
   end
 
+  def stop_reason_label(block_result_reason) do
+    case block_result_reason do
+      :TIMEOUT -> "Execution time limit exceeded"
+      :STUCK -> "Job was stuck and automatically stopped"
+      :FAST_FAILING -> "Stopped due to fail-fast policy"
+      :STRATEGY -> "Stopped by pipeline strategy"
+      :USER -> "Manually stopped by user"
+      :DELETED -> "Stopped because pipeline was deleted"
+      :INTERNAL -> "Stopped due to internal error"
+      _ -> "Stopped"
+    end
+  end
+
+  def stop_reason_short(block_result_reason) do
+    case block_result_reason do
+      :TIMEOUT -> "Timed out"
+      :STUCK -> "Stuck"
+      :FAST_FAILING -> "Fail-fast"
+      :STRATEGY -> "Strategy"
+      :USER -> "User stopped"
+      :DELETED -> "Deleted"
+      :INTERNAL -> "Internal error"
+      _ -> "Stopped"
+    end
+  end
+
   defp job_state_color("pending"), do: "bg-orange"
   defp job_state_color("running"), do: "bg-indigo"
   defp job_state_color("passed"), do: "bg-green"
