@@ -205,7 +205,8 @@ defmodule Guard.Id.Api do
     assigns =
       Keyword.merge(assigns,
         posthog_api_key: Application.get_env(:guard, :posthog_api_key, ""),
-        posthog_host: Application.get_env(:guard, :posthog_host, "https://app.posthog.com")
+        posthog_host: Application.get_env(:guard, :posthog_host, "https://app.posthog.com"),
+        google_gtm_id: Application.get_env(:guard, :google_gtm_id, "")
       )
 
     html_content = Guard.TemplateRenderer.render_template([assigns: assigns], "signup.html")
@@ -375,7 +376,8 @@ defmodule Guard.Id.Api do
     assigns =
       Keyword.merge(assigns,
         posthog_api_key: Application.get_env(:guard, :posthog_api_key, ""),
-        posthog_host: Application.get_env(:guard, :posthog_host, "https://app.posthog.com")
+        posthog_host: Application.get_env(:guard, :posthog_host, "https://app.posthog.com"),
+        google_gtm_id: Application.get_env(:guard, :google_gtm_id, "")
       )
 
     html_content = Guard.TemplateRenderer.render_template([assigns: assigns], "login.html")
