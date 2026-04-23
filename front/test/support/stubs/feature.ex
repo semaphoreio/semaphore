@@ -105,6 +105,7 @@ defmodule Support.Stubs.Feature do
       {"test_results", state: :HIDDEN, quantity: 0},
       {"ip_allow_list", state: :HIDDEN, quantity: 0},
       {"superjerry_tests", state: :HIDDEN, quantity: 1},
+      {"rbac__groups", state: :HIDDEN, quantity: 0},
 
       # features enabled only in CE
       {"instance_git_integration", state: :ENABLED, quantity: 1}
