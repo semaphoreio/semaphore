@@ -70,7 +70,8 @@ defmodule Guard.FrontRepo.RepoHostAccount do
         :name,
         :permission_scope,
         :token,
-        :refresh_token
+        :refresh_token,
+        :token_expires_at
       ])
       |> Ecto.Changeset.validate_required([
         :login,
@@ -281,7 +282,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
 
   defp drop_if_skip_credentials(data, permission_scope) do
     if skip_credentials?(permission_scope, Map.get(data, :permission_scope)) do
-      Map.drop(data, [:permission_scope, :token, :refresh_token, :revoked])
+      Map.drop(data, [:permission_scope, :token, :refresh_token, :token_expires_at, :revoked])
     else
       data
     end
@@ -366,6 +367,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
           :revoked,
           :token,
           :refresh_token,
+          :token_expires_at,
           :permission_scope
         ]
       )
