@@ -58,20 +58,22 @@ window.InjectedDataByBackend.EventsToken = "<%= raw @token %>"
   </div>
 </div>
 
-<%= if @job.state == "stopped" and @block_result_reason do %>
-  <div class="mt3 bg-white br3 shadow-1 pa3">
-    <details>
-      <summary class="pointer f6 fw6 dark-gray">
-        Job State Details
-        <span class="fw4 ml2 gray">
-          <%= FrontWeb.JobView.stop_reason_short(@block_result_reason) %>
-        </span>
-      </summary>
-      <div class="mt2 f6 gray">
-        <div class="flex items-center pv2 bb b--black-10">
-          <span class="fw6 w4">Status</span>
-          <span>Stopped</span>
-        </div>
+<div class="mt3 bg-white br3 shadow-1 pa3">
+  <details>
+    <summary class="pointer f6 fw6 dark-gray">
+      Job Details
+      <span class="fw4 ml2 f6 ph2 pv1 br2 <%= FrontWeb.JobView.job_state_badge_class(@job.state) %>"><%= FrontWeb.JobView.job_state_label(@job.state) %></span>
+      <%= if @job.state == "stopped" and @block_result_reason do %>
+        <span class="fw4 ml1 f6 ph2 pv1 br2 bg-light-gray dark-gray"><%= FrontWeb.JobView.stop_reason_short(@block_result_reason) %></span>
+      <% end %>
+    </summary>
+    <div class="mt2 f6 gray">
+      <div class="flex items-center pv2 bb b--black-10">
+        <span class="fw6 w4">Status</span>
+        <span><%= FrontWeb.JobView.job_state_label(@job.state) %></span>
+      </div>
+
+      <%= if @job.state == "stopped" and @block_result_reason do %>
         <div class="flex items-center pv2 bb b--black-10">
           <span class="fw6 w4">Reason</span>
           <span><%= FrontWeb.JobView.stop_reason_label(@block_result_reason) %></span>
@@ -82,14 +84,59 @@ window.InjectedDataByBackend.EventsToken = "<%= raw @token %>"
             <span>The job exceeded its configured execution time limit and was automatically stopped.</span>
           </div>
         <% end %>
-        <div class="flex items-center pv2">
-          <span class="fw6 w4">Block</span>
-          <span><%= if @block, do: @block.name, else: "Unknown" %></span>
+      <% end %>
+
+      <%= if @job.failure_reason != nil and @job.failure_reason != "" do %>
+        <div class="flex items-center pv2 bb b--black-10">
+          <span class="fw6 w4">Failure</span>
+          <span><%= @job.failure_reason %></span>
         </div>
+      <% end %>
+
+      <div class="flex items-center pv2 bb b--black-10">
+        <span class="fw6 w4">Machine</span>
+        <span class="code f6"><%= @job.machine_type %></span>
+        <%= if @job.self_hosted do %>
+          <span class="ml2 f7 ph1 br1 bg-washed-blue dark-blue">self-hosted</span>
+        <% end %>
       </div>
-    </details>
-  </div>
-<% end %>
+
+      <%= if @job.self_hosted and @job.agent_name != "" do %>
+        <div class="flex items-center pv2 bb b--black-10">
+          <span class="fw6 w4">Agent</span>
+          <span class="code f6"><%= @job.agent_name %></span>
+        </div>
+      <% end %>
+
+      <% queue = FrontWeb.JobView.queue_time(@job.timeline) %>
+      <% exec = FrontWeb.JobView.execution_time(@job.timeline) %>
+
+      <%= if queue do %>
+        <div class="flex items-center pv2 bb b--black-10">
+          <span class="fw6 w4">Queue time</span>
+          <span class="code f6"><%= queue %></span>
+        </div>
+      <% end %>
+
+      <%= if exec do %>
+        <div class="flex items-center pv2 bb b--black-10">
+          <span class="fw6 w4">Exec time</span>
+          <span class="code f6"><%= exec %></span>
+        </div>
+      <% end %>
+
+      <div class="flex items-center pv2 bb b--black-10">
+        <span class="fw6 w4">Block</span>
+        <span><%= if @block, do: @block.name, else: "Unknown" %></span>
+      </div>
+
+      <div class="flex items-center pv2">
+        <span class="fw6 w4">Job ID</span>
+        <span class="code f6"><%= @job.id %></span>
+      </div>
+    </div>
+  </details>
+</div>
 
 <%= render "_ssh_self_hosted_popup.html", conn: @conn %>
 <%= render "_ssh_disabled_popup.html", conn: @conn, project: @project %>
