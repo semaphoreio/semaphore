@@ -5,10 +5,7 @@ defmodule PipelinesAPI.Application do
 
   use Application
 
-  import Supervisor.Spec, warn: false
-
   alias PipelinesAPI.Util.Config
-  alias Support
 
   def start(_type, _args) do
     "K8S_NAMESPACE" |> Config.set_watchman_prefix("ppl-api") |> Config.restart_app()
@@ -19,8 +16,14 @@ defmodule PipelinesAPI.Application do
     children =
       [
         {Plug.Cowboy, scheme: :http, plug: PipelinesAPI.Router, options: [port: 4004]},
-        worker(Cachex, [:feature_provider_cache, []], id: :feature_provider_cache),
-        worker(Cachex, [:project_api_cache, []], id: :project_api_cache)
+        %{
+          id: :feature_provider_cache,
+          start: {Cachex, :start_link, [:feature_provider_cache, []]}
+        },
+        %{
+          id: :project_api_cache,
+          start: {Cachex, :start_link, [:project_api_cache, []]}
+        }
       ] ++ if Application.fetch_env!(:pipelines_api, :on_prem?), do: [provider], else: []
 
     # See http://elixir-lang.org/docs/stable/elixir/Supervisor.html

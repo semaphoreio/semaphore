@@ -23,11 +23,27 @@ Pipelines API is the public HTTP façade for Semaphore’s Pipelines domain. It 
 - Response pagination goes through `Scrivener.Headers`, which rewrites paths to `/api/<API_VERSION>/…` before responses leave the service.
 
 ## Development & Diagnostics Workflow
-- `make console` launches the Docker dev container with dependencies and shares `_build`/`deps` for fast recompiles.
+- `make console.ex` (or `make console.bash`) launches the Docker dev container with dependencies and shares `_build`/`deps` for fast recompiles.
 - From inside the container: start the API via `iex -S mix`. Health probes hit `/` or `/health_check/ping`.
 - Format and lint with `mix format` and `mix credo --strict`. Optional type checks come from `mix dialyzer` once PLTs are cached.
-- Run suites with `make unit-test` or `mix test --cover`. The custom ExUnit formatter writes JUnit XML reports under `./out/test-reports.xml`.
+- Run suites with `make test.ex` (docker-compose) or `mix test --cover` inside the container. The custom ExUnit formatter writes JUnit XML reports under `./out/test-reports.xml`.
+- Build the release image with `make build MIX_ENV=prod`. In non-TTY environments, add `DOCKER_BUILD_PROGRESS=plain`. If cache imports fail for local tags, add `NO_BUILD_CACHE=true`.
 - To inspect gRPC traffic locally, tail logs produced by `PipelinesAPI.Util.Log` or enable DEBUG by exporting `LOG_LEVEL=debug` before boot.
+
+## Container Image & Security Scans
+- Base image version for plumber-public (public-api v1alpha) is controlled by `ALPINE_VERSION` in `public-api/v1alpha/Dockerfile` and applies to builder and runner stages.
+- Image tags default to `plumber-public/<branch>:prod` based on `IMAGE`/`IMAGE_TAG` in the root `Makefile`.
+- Run the container scan with `make check.docker MIX_ENV=prod`; reports are written to `public-api/v1alpha/out/docker-scan-trivy.json` and `public-api/v1alpha/out/docker-scan-junit.xml`.
+- If `make check.docker` fails with `the input device is not a TTY`, run the scan without `-it`:
+
+```bash
+docker run --rm \
+  -v "$(pwd):/app" \
+  -v "$(git rev-parse --show-toplevel)/security-toolbox:/tmp/security-toolbox" \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  registry.semaphoreci.com/ruby:3 \
+  bash -c 'cd /app; /tmp/security-toolbox/docker -d --image plumber-public/<branch>:prod -s CRITICAL'
+```
 
 ## Testing Infrastructure
 - Tests rely heavily on support factories (`test/support/stubs.ex`, `test/support/factories.ex`) to fabricate workflows, pipelines, and users.
