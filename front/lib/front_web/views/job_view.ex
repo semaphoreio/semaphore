@@ -63,6 +63,59 @@ defmodule FrontWeb.JobView do
     end
   end
 
+  def format_duration(nil, _), do: nil
+  def format_duration(_, nil), do: nil
+  def format_duration(from, to) when to > from, do: Front.DurationFormatter.format(to - from)
+  def format_duration(_, _), do: nil
+
+  def queue_time(%{created_at: nil}), do: nil
+  def queue_time(%{created_at: _, started_at: nil}), do: nil
+  def queue_time(%{created_at: created, started_at: started}), do: format_duration(created, started)
+
+  def execution_time(%{started_at: nil}), do: nil
+  def execution_time(%{started_at: _, finished_at: nil}), do: nil
+  def execution_time(%{started_at: started, finished_at: finished}), do: format_duration(started, finished)
+
+  def job_state_label("pending"), do: "Pending"
+  def job_state_label("running"), do: "Running"
+  def job_state_label("passed"), do: "Passed"
+  def job_state_label("failed"), do: "Failed"
+  def job_state_label("stopped"), do: "Stopped"
+  def job_state_label(_), do: "Unknown"
+
+  def job_state_badge_class("pending"), do: "bg-washed-yellow dark-yellow"
+  def job_state_badge_class("running"), do: "bg-washed-blue dark-blue"
+  def job_state_badge_class("passed"), do: "bg-washed-green dark-green"
+  def job_state_badge_class("failed"), do: "bg-washed-red dark-red"
+  def job_state_badge_class("stopped"), do: "bg-light-gray dark-gray"
+  def job_state_badge_class(_), do: "bg-light-gray dark-gray"
+
+  def stop_reason_label(block_result_reason) do
+    case block_result_reason do
+      :TIMEOUT -> "Execution time limit exceeded"
+      :STUCK -> "Job was stuck and automatically stopped"
+      :FAST_FAILING -> "Stopped due to fail-fast policy"
+      :STRATEGY -> "Stopped by pipeline strategy"
+      :USER -> "Manually stopped by user"
+      :DELETED -> "Stopped because pipeline was deleted"
+      :INTERNAL -> "Stopped due to internal error"
+      _ -> "Stopped"
+    end
+  end
+
+  def stop_reason_short(block_result_reason) do
+    case block_result_reason do
+      :TIMEOUT -> "Timed out"
+      :STUCK -> "Stuck"
+      :FAST_FAILING -> "Fail-fast"
+      :STRATEGY -> "Strategy"
+      :USER -> "User stopped"
+      :DELETED -> "Deleted"
+      :INTERNAL -> "Internal error"
+      _ -> "Stopped"
+    end
+  end
+
   defp job_state_color("pending"), do: "bg-orange"
   defp job_state_color("running"), do: "bg-indigo"
   defp job_state_color("passed"), do: "bg-green"
