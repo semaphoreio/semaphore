@@ -117,7 +117,7 @@ The r1 generation is presented in the following types:
 |--|--|--|--|
 | `r1-standard-2` | 2 | 4 | 50 |
 | `r1-standard-4` | 4 | 8 | 65 |
-| `r1-standard-4` | 8 | 16 | 75 |
+| `r1-standard-8` | 8 | 16 | 75 |
 
 R1 Generation machine types can only be paired with:
 
