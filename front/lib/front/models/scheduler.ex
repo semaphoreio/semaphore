@@ -334,17 +334,23 @@ defmodule Front.Models.Scheduler do
 
         {:error, {:resource_exhausted, msg}}
 
-      {:ok, response} ->
+      {:ok, response = %RunNowResponse{status: %Status{message: msg}}} ->
         Watchman.increment("scheduler.run_now.failed")
         Logger.error("Scheduler run_now failed: #{id}, #{inspect(response.status)}")
 
-        {:error, :grpc_req_failed}
+        {:error, {:grpc_req_failed, run_now_error_message(msg)}}
+
+      {:ok, response} ->
+        Watchman.increment("scheduler.run_now.failed")
+        Logger.error("Scheduler run_now failed: #{id}, #{inspect(response)}")
+
+        {:error, {:grpc_req_failed, run_now_error_message(response)}}
 
       {:error, message} ->
         Watchman.increment("scheduler.run_now.failed")
         Logger.error("Scheduler run_now failed: #{id}, #{inspect(message)}")
 
-        {:error, :grpc_req_failed}
+        {:error, {:grpc_req_failed, run_now_error_message(message)}}
     end
   end
 
@@ -638,6 +644,13 @@ defmodule Front.Models.Scheduler do
         %{errors: %{other: msg}}
     end
   end
+
+  defp run_now_error_message(message) when is_binary(message) and message != "", do: message
+
+  defp run_now_error_message(%{message: message}) when is_binary(message) and message != "",
+    do: message
+
+  defp run_now_error_message(message), do: inspect(message)
 
   def parse_git_reference(nil), do: {"branch", ""}
   def parse_git_reference(""), do: {"branch", ""}
