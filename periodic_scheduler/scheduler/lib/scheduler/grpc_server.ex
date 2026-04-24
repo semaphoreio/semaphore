@@ -2,6 +2,7 @@ defmodule Scheduler.Grpc.Server do
   @moduledoc false
 
   use GRPC.Server, service: InternalApi.PeriodicScheduler.PeriodicService.Service
+  require Logger
 
   alias Util.{Metrics, Proto}
   alias Scheduler.Actions
@@ -96,22 +97,36 @@ defmodule Scheduler.Grpc.Server do
 
   def run_now(request, _stream) do
     Metrics.benchmark("PeriodicSch.run_now", __MODULE__, fn ->
-      with {:ok, params} <- Proto.to_map(request),
-           {:ok, desc} <- Actions.run_now(params) do
-        desc
-        |> Map.merge(%{status: %{code: :OK}})
-        |> Proto.deep_new!(
-          RunNowResponse,
-          transformations: %{Timestamp => {__MODULE__, :date_time_to_timestamps}}
-        )
-      else
-        {:error, {code, message}} ->
-          %{status: %{code: code, message: to_str(message)}}
-          |> Proto.deep_new!(RunNowResponse)
+      try do
+        with {:ok, params} <- Proto.to_map(request),
+             {:ok, desc} <- Actions.run_now(params) do
+          desc
+          |> Map.merge(%{status: %{code: :OK}})
+          |> Proto.deep_new!(
+            RunNowResponse,
+            transformations: %{Timestamp => {__MODULE__, :date_time_to_timestamps}}
+          )
+        else
+          {:error, {code, message}} ->
+            run_now_error_response(code, message)
 
-        {:error, %{code: code, message: message}} ->
-          %{status: %{code: code, message: to_str(message)}}
-          |> Proto.deep_new!(RunNowResponse)
+          {:error, %{code: code, message: message}} ->
+            run_now_error_response(code, message)
+        end
+      rescue
+        error ->
+          Logger.error(
+            "PeriodicSch.run_now crashed: #{Exception.format(:error, error, __STACKTRACE__)}"
+          )
+
+          run_now_error_response(:INTERNAL, Exception.message(error))
+      catch
+        kind, reason ->
+          Logger.error(
+            "PeriodicSch.run_now crashed: #{Exception.format(kind, reason, __STACKTRACE__)}"
+          )
+
+          run_now_error_response(:INTERNAL, reason)
       end
     end)
   end
@@ -291,6 +306,11 @@ defmodule Scheduler.Grpc.Server do
     %{}
     |> Map.put(:seconds, DateTime.to_unix(date_time, :second))
     |> Map.put(:nanos, elem(date_time.microsecond, 0) * 1_000)
+  end
+
+  defp run_now_error_response(code, message) do
+    %{status: %{code: code, message: to_str(message)}}
+    |> Proto.deep_new!(RunNowResponse)
   end
 
   defp to_str(val) when is_binary(val), do: val

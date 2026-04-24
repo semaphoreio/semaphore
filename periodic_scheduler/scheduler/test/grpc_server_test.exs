@@ -1261,7 +1261,7 @@ defmodule Scheduler.GrpcServer.Test do
     use_mock_project_service()
     use_mock_repository_service()
 
-    mock_project_service_response("failed_precondition")
+    mock_project_service_response("not_found")
     mock_repository_service_response("ok")
 
     reset_mock_feature_service()
