@@ -70,11 +70,15 @@ defmodule FrontWeb.JobView do
 
   def queue_time(%{created_at: nil}), do: nil
   def queue_time(%{created_at: _, started_at: nil}), do: nil
-  def queue_time(%{created_at: created, started_at: started}), do: format_duration(created, started)
+
+  def queue_time(%{created_at: created, started_at: started}),
+    do: format_duration(created, started)
 
   def execution_time(%{started_at: nil}), do: nil
   def execution_time(%{started_at: _, finished_at: nil}), do: nil
-  def execution_time(%{started_at: started, finished_at: finished}), do: format_duration(started, finished)
+
+  def execution_time(%{started_at: started, finished_at: finished}),
+    do: format_duration(started, finished)
 
   def job_state_label("pending"), do: "Pending"
   def job_state_label("running"), do: "Running"
