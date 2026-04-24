@@ -168,6 +168,7 @@ config :guard,
 
 config :guard, :posthog_api_key, System.get_env("POSTHOG_API_KEY")
 config :guard, :posthog_host, System.get_env("POSTHOG_HOST") || "https://app.posthog.com"
+config :guard, :google_gtm_id, System.get_env("GOOGLE_GTM_ID")
 
 if System.get_env("AMQP_URL") != nil do
   config :amqp,
