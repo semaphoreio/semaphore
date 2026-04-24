@@ -50,7 +50,7 @@ defmodule FrontWeb.Plug.ContentSecurityPolicy do
           ~w(https: 'self' 'strict-dynamic' *.posthog.com static.zdassets.com beacon-v2.helpscout.net d12wqas9hcki3z.cloudfront.net d33v4339jhl8k0.cloudfront.net *.sitesearch360.com www.googletagmanager.com cdn.jsdeliver.net https://widget.usepylon.com),
         style_src:
           ~w('self' 'unsafe-inline' *.posthog.com fonts.gstatic.com fonts.googleapis.com cdnjs.cloudflare.com beacon-v2.helpscout.net cdn.jsdelivr.net https://*.usepylon.com),
-        frame_src: ~w('self' beacon-v2.helpscout.net),
+        frame_src: ~w('self' beacon-v2.helpscout.net www.googletagmanager.com),
         object_src: ~w(beacon-v2.helpscout.net)
       }
     ]

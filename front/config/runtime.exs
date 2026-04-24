@@ -150,7 +150,8 @@ config :front,
   zendesk_jwt_url: System.get_env("ZENDESK_JWT_URL") || "http://support.semaphoreci.test",
   zendesk_jwt_secret: System.get_env("ZENDESK_JWT_SECRET") || "secret",
   zendesk_snippet_id: System.get_env("ZENDESK_SNIPPET_ID"),
-  google_gtag: System.get_env("GOOGLE_GTAG")
+  google_gtag: System.get_env("GOOGLE_GTAG"),
+  google_gtm_id: System.get_env("GOOGLE_GTM_ID")
 
 edition = System.get_env("EDITION", "") |> String.trim() |> String.downcase()
 is_saas? = !(edition in ["ce", "ee", "onprem"])
