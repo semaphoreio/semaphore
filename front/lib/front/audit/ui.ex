@@ -69,8 +69,25 @@ defmodule Front.Audit.UI do
 
       {:error, reason} ->
         Logger.error("Audit CSV export failed during pagination: #{inspect(reason)}")
-        error_row = [["ERROR", "Export failed - audit data may be incomplete", "", "", "", "", "", "", "", "", ""]]
+
+        error_row = [
+          [
+            "ERROR",
+            "Export failed - audit data may be incomplete",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ]
+        ]
+
         error_csv = error_row |> CSV.encode() |> Enum.to_list()
+
         send_chunks(conn, error_csv)
         |> elem(1)
     end
