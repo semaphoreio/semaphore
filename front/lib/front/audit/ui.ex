@@ -56,10 +56,10 @@ defmodule Front.Audit.UI do
 
         case send_chunks(conn, csv_rows) do
           {:ok, conn} ->
-            if res.next_page_token not in ["", nil] do
-              stream_csv_pages(conn, channel, org_id, res.next_page_token)
-            else
+            if res.next_page_token in ["", nil] do
               conn
+            else
+              stream_csv_pages(conn, channel, org_id, res.next_page_token)
             end
 
           {:error, conn} ->
