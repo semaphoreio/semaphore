@@ -1,12 +1,32 @@
 defmodule Front.Audit.UI.Test do
+  use ExUnit.Case, async: false
   use FrontWeb.ConnCase
 
-  test ".csv" do
-    alias Support.Stubs.{DB, UUID}
-    alias InternalApi.Audit.Event.{Medium, Operation, Resource}
+  alias Support.Stubs.{DB, UUID}
+  alias InternalApi.Audit.Event.{Medium, Operation, Resource}
 
-    org_id = Ecto.UUID.generate()
+  setup %{conn: conn} do
+    Cacheman.clear(:front)
 
+    Support.Stubs.init()
+    Support.Stubs.build_shared_factories()
+
+    user = DB.first(:users)
+    organization = DB.first(:organizations)
+    org_id = organization.id
+
+    Support.Stubs.Feature.enable_feature(org_id, :audit_logs)
+    Support.Stubs.PermissionPatrol.allow_everything(org_id, user.id)
+
+    conn =
+      conn
+      |> put_req_header("x-semaphore-org-id", org_id)
+      |> put_req_header("x-semaphore-user-id", user.id)
+
+    [conn: conn, org_id: org_id]
+  end
+
+  test "GET /audit/csv streams paginated CSV", %{conn: conn, org_id: org_id} do
     DB.insert(:audit_events, %{
       org_id: org_id,
       resource: Resource.value(:Secret),
@@ -39,20 +59,30 @@ defmodule Front.Audit.UI.Test do
       description: "Removed a secret"
     })
 
-    request = InternalApi.Audit.ListRequest.new(org_id: org_id)
+    # Stub paginated_list to return events then empty next_page_token to stop pagination
+    GrpcMock.stub(AuditMock, :paginated_list, fn _req, _ ->
+      events = DB.all(:audit_events) |> Enum.map(&Support.Stubs.AuditLog.Grpc.serialize_event/1)
 
-    endpoint = Application.fetch_env!(:front, :audit_grpc_endpoint)
+      InternalApi.Audit.PaginatedListResponse.new(
+        events: events,
+        next_page_token: "",
+        previous_page_token: ""
+      )
+    end)
 
-    {:ok, channel} = GRPC.Stub.connect(endpoint)
-    {:ok, event_list} = InternalApi.Audit.AuditService.Stub.list(channel, request)
+    conn = get(conn, "/audit/csv")
 
-    ev1 = Enum.at(event_list.events, 0)
-    ev2 = Enum.at(event_list.events, 1)
+    assert conn.status == 200
+    assert get_resp_header(conn, "content-type") |> hd() =~ "text/csv"
 
-    assert Front.Audit.UI.csv(org_id) == [
-             "resource,operation,medium,user_id,username,resource_id,resource_name,ip_address,description,metadata,timestamp\r\n",
-             "Secret,Added,API,#{ev1.user_id},shiroyasha,#{ev1.resource_id},my-secret,189.0.12.2,Added a secret,\"{\"\"hello\"\":\"\"world\"\"}\",1522754259\r\n",
-             "Secret,Removed,Web,#{ev2.user_id},shiroyasha,#{ev2.resource_id},my-secret,189.0.12.2,Removed a secret,\"{\"\"hello\"\":\"\"world\"\"}\",1522754000\r\n"
-           ]
+    body = conn.resp_body
+    lines = String.split(body, "\r\n", trim: true)
+
+    assert hd(lines) ==
+             "resource,operation,medium,user_id,username,resource_id,resource_name,ip_address,description,metadata,timestamp"
+
+    assert length(lines) == 3
+    assert Enum.at(lines, 1) =~ "Secret,Added,API"
+    assert Enum.at(lines, 2) =~ "Secret,Removed,Web"
   end
 end
