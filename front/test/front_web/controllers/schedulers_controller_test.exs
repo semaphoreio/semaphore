@@ -988,6 +988,39 @@ defmodule FrontWeb.SchedulersControllerTest do
       end
     end
 
+    test "when request fails with scheduler service message it redirects with the upstream error",
+         %{conn: conn} do
+      scheduler =
+        prepare_scheduler_for_just_run(
+          reference: "refs/heads/master",
+          pipeline_file: "pipeline.yml"
+        )
+
+      with_mocks([
+        {
+          InternalApi.PeriodicScheduler.PeriodicService.Stub,
+          [:passthrough],
+          [
+            run_now: fn _, _, _ ->
+              {:ok,
+               %InternalApi.PeriodicScheduler.RunNowResponse{
+                 status: %InternalApi.Status{
+                   code: Google.Rpc.Code.value(:INTERNAL),
+                   message:
+                     "Projecthub describe failed: Failed to list tasks: Internal Server Error"
+                 }
+               }}
+            end
+          ]
+        }
+      ]) do
+        conn = trigger_just_run(conn, scheduler)
+
+        assert get_flash(conn, :alert) ==
+                 "Starting workflow failed: Projecthub describe failed: Failed to list tasks: Internal Server Error"
+      end
+    end
+
     test "correctly passes parameters to the request",
          %{conn: conn, project_name: project_name} do
       scheduler =
