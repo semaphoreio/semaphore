@@ -58,18 +58,18 @@ Please note that `sem-service` is not available on R1 images.
 
 Following version control tools are pre-installed:
 
-- Git 2.52.0
+- Git 2.54.0
 - Git LFS (Git Large File Storage) 3.7.1
-- GitHub CLI 2.85.0
+- GitHub CLI 2.90.0
 - Mercurial 6.7.2
 - Svn 1.14.3
 
 ### Browsers and Headless Browser Testing
 
-- Firefox 140.4.0esr
+- Firefox 140.9.1
 - Geckodriver 0.36.0
-- Chromium 142
-- Chromium Driver 142
+- Chromium 147.0.7727.101
+- Chromium Driver 147.0.7727.101
 - Xvfb (X Virtual Framebuffer)
 
 Chrome and Firefox both support headless mode. You shouldn't need to do more
@@ -80,28 +80,28 @@ Refer to the documentation of associated libraries when configuring your project
 
 Docker toolset is installed and the following versions are available:
 
-- Docker 29.1.4
-- Docker-compose 5.0.1 (used as `docker compose version`)
-- Docker-buildx 0.30.1
+- Docker 29.4.1
+- Docker-compose 5.1.3 (used as `docker compose version`)
+- Docker-buildx 0.33.0
 - Docker-machine 0.16.2
-- Dockerize 0.9.9
+- Dockerize 0.11.0
 - Buildah 1.33.7
 - Podman 4.9.3
 - Skopeo 1.13.3
 
 ### Cloud CLIs
 
-- Aws-cli v2 (used as `aws`) 2.33.1
-- Azure-cli 2.82.0
+- Aws-cli v2 (used as `aws`) 2.34.34
+- Azure-cli 2.85.0
 - Eb-cli 3.25
 - Ecs-cli 1.21.0
-- Doctl 1.148.0
-- Gcloud 552.0.0
-- Gke-gcloud-auth-plugin 552.0.0
+- Doctl 1.155.0
+- Gcloud 565.0.0
+- Gke-gcloud-auth-plugin 565.0.0
 - Kubectl 1.29.1
-- Terraform 1.14.3
-- Helm 4.0.5
-- Helmfile 1.2.3
+- Terraform 1.14.9
+- Helm 4.1.4
+- Helmfile 1.4.4
 
 ### Network utilities
 
@@ -138,20 +138,21 @@ Versions:
 - 1.23.x
 - 1.24.x
 - 1.25.x
+- 1.26.x
 
-The default installed Go version is 1.25.6.
+The default installed Go version is 1.26.2.
 
 ### Java and JVM languages
 
-- Java: 11.0.29, 17.0.17 (default), 21.0.9
+- Java: 11.0.30, 17.0.18 (default), 21.0.10
 - Scala: 3.2.2
 - Leiningen: 2.12.0 (Clojure)
-- Sbt 1.12.0
+- Sbt 1.12.9
 
 ### Additional Java build tools
 
-- Maven: 3.9.12
-- Gradle: 9.3.0
+- Maven: 3.9.15
+- Gradle: 9.4.1
 
 ### JavaScript via Node.js
 
@@ -159,10 +160,11 @@ Node.js versions are managed by [nvm](https://github.com/nvm-sh/nvm).
 You can install any version you need with `nvm install [version]`.
 Installed version:
 
-- 24.13.0 (set as default, with alias 24.13), includes npm 11.6.2
+- 24.15.0 (set as default, with alias 24.15), includes npm 11.12.1
 
 ### Additional JS tools
 
+- Bun: 1.3.13
 - Yarn: 1.22.22
 
 ### PHP
@@ -187,15 +189,15 @@ PHPUnit: 9.5.28
 Python versions are installed and managed by
 [virtualenv](https://virtualenv.pypa.io/en/stable/). Installed versions:
 
-- 3.10.18
-- 3.11.13
+- 3.10.20
+- 3.11.15
 - 3.12.9 (default)
 
 Supporting libraries:
 
-- pypy3: 7.3.19
-- pip: 25.3
-- virtualenv: 20.36.1
+- pypy3: 7.3.21
+- pip: 26.0.1
+- virtualenv: 21.2.4
 
 ### Ruby
 
@@ -206,11 +208,11 @@ Available versions:
 - 3.4.x
 - 4.0.x
 
-The default installed Ruby version is 3.4.8.
+The default installed Ruby version is 3.4.9.
 
 ### Rust
 
-- 1.93.0
+- 1.95.0
 
 ### Swiftly
 
