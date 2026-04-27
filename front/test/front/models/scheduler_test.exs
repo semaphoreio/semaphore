@@ -569,7 +569,8 @@ defmodule Front.Models.SchedulerTest do
         )
 
       with_mock Stub, run_now: fn _c, _r, _o -> {:ok, response} end do
-        assert Subject.run_now(@scheduler_id, @user_id) == {:error, :grpc_req_failed}
+        assert Subject.run_now(@scheduler_id, @user_id) ==
+                 {:error, {:grpc_req_failed, "Internal error message"}}
       end
     end
 

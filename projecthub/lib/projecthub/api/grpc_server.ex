@@ -42,10 +42,22 @@ defmodule Projecthub.Api.GrpcServer do
       find_project(request, request.soft_deleted)
       |> case do
         {:ok, project} ->
-          DescribeResponse.new(
-            metadata: status_ok(request),
-            project: serialize(project, request.detailed)
-          )
+          case serialize(project, request.detailed) do
+            {:ok, serialized_project} ->
+              DescribeResponse.new(
+                metadata: status_ok(request),
+                project: serialized_project
+              )
+
+            {:error, reason} ->
+              DescribeResponse.new(metadata: status_failed_precondition(request, serialize_error_message(reason)))
+
+            serialized_project ->
+              DescribeResponse.new(
+                metadata: status_ok(request),
+                project: serialized_project
+              )
+          end
 
         _ ->
           DescribeResponse.new(metadata: status_not_found(request))
@@ -212,10 +224,16 @@ defmodule Projecthub.Api.GrpcServer do
 
         Watchman.increment({"repository.integration_type", ["#{integration_type}"]})
 
-        ForkAndCreateResponse.new(
-          metadata: status_ok(req),
-          project: serialize(project)
-        )
+        case serialize(project) do
+          {:ok, serialized_project} ->
+            ForkAndCreateResponse.new(
+              metadata: status_ok(req),
+              project: serialized_project
+            )
+
+          {:error, reason} ->
+            error_create_response(req, serialize_error_message(reason))
+        end
       else
         {:error, messages} when is_list(messages) ->
           Logger.info("ForkAndCreate failed. Error: #{messages |> Enum.join(", ")} Request: #{inspect(req)}")
@@ -276,10 +294,16 @@ defmodule Projecthub.Api.GrpcServer do
              ) do
         Logger.info("Create finished successfully. Request: #{inspect(req)}")
 
-        CreateResponse.new(
-          metadata: status_ok(req),
-          project: serialize(project)
-        )
+        case serialize(project) do
+          {:ok, serialized_project} ->
+            CreateResponse.new(
+              metadata: status_ok(req),
+              project: serialized_project
+            )
+
+          {:error, reason} ->
+            error_create_response(req, serialize_error_message(reason))
+        end
       else
         {:error, messages} when is_list(messages) ->
           error_create_response(req, messages |> Enum.join(", "))
@@ -864,10 +888,16 @@ defmodule Projecthub.Api.GrpcServer do
            req.omit_schedulers_and_tasks
          ) do
       {:ok, updated_project} ->
-        UpdateResponse.new(
-          metadata: status_ok(req),
-          project: serialize(updated_project)
-        )
+        case serialize(updated_project) do
+          {:ok, serialized_project} ->
+            UpdateResponse.new(
+              metadata: status_ok(req),
+              project: serialized_project
+            )
+
+          {:error, reason} ->
+            UpdateResponse.new(metadata: status_failed_precondition(req, serialize_error_message(reason)))
+        end
 
       {:error, messages} when is_list(messages) ->
         UpdateResponse.new(
@@ -1024,24 +1054,54 @@ defmodule Projecthub.Api.GrpcServer do
   end
 
   defp serialize_detailed_with_schedulers(project) do
-    {:ok, schedulers} = Scheduler.list(project)
+    case Scheduler.list(project) do
+      {:ok, schedulers} ->
+        {:ok,
+         InternalApi.Projecthub.Project.new(
+           metadata: project_metadata(project),
+           spec: project_spec(project, schedulers, []),
+           status: project_status(project)
+         )}
 
-    InternalApi.Projecthub.Project.new(
-      metadata: project_metadata(project),
-      spec: project_spec(project, schedulers, []),
-      status: project_status(project)
-    )
+      {:error, reason} ->
+        Logger.error("Failed to serialize project #{project.id} with schedulers: #{inspect(reason)}")
+        {:error, {:schedulers, reason}}
+    end
   end
 
   defp serialize_detailed_with_tasks(project) do
-    {:ok, tasks} = PeriodicTask.list(project)
+    case PeriodicTask.list(project) do
+      {:ok, tasks} ->
+        {:ok,
+         InternalApi.Projecthub.Project.new(
+           metadata: project_metadata(project),
+           spec: project_spec(project, [], tasks),
+           status: project_status(project)
+         )}
 
-    InternalApi.Projecthub.Project.new(
-      metadata: project_metadata(project),
-      spec: project_spec(project, [], tasks),
-      status: project_status(project)
-    )
+      {:error, reason} ->
+        Logger.error("Failed to serialize project #{project.id} with tasks: #{inspect(reason)}")
+        {:error, {:tasks, reason}}
+    end
   end
+
+  defp serialize_error_message({:schedulers, reason}),
+    do: "Failed to list schedulers: #{error_reason_message(reason)}"
+
+  defp serialize_error_message({:tasks, reason}),
+    do: "Failed to list tasks: #{error_reason_message(reason)}"
+
+  defp serialize_error_message(reason), do: error_reason_message(reason)
+
+  defp error_reason_message(%GRPC.RPCError{message: message}) when is_binary(message) and message != "",
+    do: message
+
+  defp error_reason_message(%{message: message}) when is_binary(message) and message != "",
+    do: message
+
+  defp error_reason_message(reason) when is_binary(reason) and reason != "", do: reason
+
+  defp error_reason_message(reason), do: inspect(reason)
 
   defp project_metadata(project) do
     InternalApi.Projecthub.Project.Metadata.new(
