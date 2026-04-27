@@ -232,24 +232,24 @@ defmodule Projecthub.Api.GrpcServer do
             )
 
           {:error, reason} ->
-            error_create_response(req, serialize_error_message(reason))
+            error_fork_and_create_response(req, serialize_error_message(reason))
         end
       else
         {:error, messages} when is_list(messages) ->
           Logger.info("ForkAndCreate failed. Error: #{messages |> Enum.join(", ")} Request: #{inspect(req)}")
 
-          error_create_response(req, messages |> Enum.join(", "))
+          error_fork_and_create_response(req, messages |> Enum.join(", "))
 
         {:error, %{message: message}} ->
-          error_create_response(req, message)
+          error_fork_and_create_response(req, message)
 
         {:error, message} ->
           Logger.info("ForkAndCreate failed. Error: #{message} Request: #{inspect(req)}")
-          error_create_response(req, message)
+          error_fork_and_create_response(req, message)
 
         error ->
           Logger.info("ForkAndCreate failed. Error: #{error} Request: #{inspect(req)}")
-          error_create_response(req, "Something went wrong. Please try again.")
+          error_fork_and_create_response(req, "Something went wrong. Please try again.")
       end
     end)
   end
@@ -322,6 +322,10 @@ defmodule Projecthub.Api.GrpcServer do
 
   defp error_create_response(req, message) do
     CreateResponse.new(metadata: status_failed_precondition(req, message))
+  end
+
+  defp error_fork_and_create_response(req, message) do
+    ForkAndCreateResponse.new(metadata: status_failed_precondition(req, message))
   end
 
   def update(req, _) do
