@@ -66,10 +66,10 @@ Following version control tools are pre-installed:
 
 ### Browsers and Headless Browser Testing
 
-- Firefox 140.4.0esr
+- Firefox 140.9.1
 - Geckodriver 0.36.0
-- Chromium 142
-- Chromium Driver 142
+- Chromium 147.0.7727.101
+- Chromium Driver 147.0.7727.101
 - Xvfb (X Virtual Framebuffer)
 
 Chrome and Firefox both support headless mode. You shouldn't need to do more
