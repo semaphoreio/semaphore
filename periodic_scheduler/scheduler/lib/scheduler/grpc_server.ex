@@ -119,14 +119,14 @@ defmodule Scheduler.Grpc.Server do
             "PeriodicSch.run_now crashed: #{Exception.format(:error, error, __STACKTRACE__)}"
           )
 
-          run_now_error_response(:INTERNAL, Exception.message(error))
+          run_now_error_response(:INTERNAL, internal_run_now_error_message())
       catch
         kind, reason ->
           Logger.error(
             "PeriodicSch.run_now crashed: #{Exception.format(kind, reason, __STACKTRACE__)}"
           )
 
-          run_now_error_response(:INTERNAL, reason)
+          run_now_error_response(:INTERNAL, internal_run_now_error_message())
       end
     end)
   end
@@ -312,6 +312,8 @@ defmodule Scheduler.Grpc.Server do
     %{status: %{code: code, message: to_str(message)}}
     |> Proto.deep_new!(RunNowResponse)
   end
+
+  defp internal_run_now_error_message, do: "Internal error while starting workflow."
 
   defp to_str(val) when is_binary(val), do: val
   defp to_str(val), do: "#{inspect(val)}"

@@ -1218,6 +1218,13 @@ defmodule Scheduler.GrpcServer.Test do
 
   # RunNow
 
+  test "gRPC run_now() - returns a public INTERNAL message when request handling crashes" do
+    response = Scheduler.Grpc.Server.run_now(nil, nil)
+
+    assert response.status.code == Google.Rpc.Code.value(:INTERNAL)
+    assert response.status.message == "Internal error while starting workflow."
+  end
+
   test "gRPC run_now() - returns INVALID_ARGUMENT when id or requester is empty string" do
     request = %{id: "", requester: "user_1"} |> Proto.deep_new!(RunNowRequest)
 

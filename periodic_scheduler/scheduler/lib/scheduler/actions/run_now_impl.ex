@@ -4,6 +4,8 @@ defmodule Scheduler.Actions.RunNowImpl do
   periodic.
   """
 
+  require Logger
+
   alias Scheduler.PeriodicsTriggers.Model.PeriodicsTriggersQueries
   alias Scheduler.Periodics.Model.PeriodicsQueries
   alias Scheduler.Periodics.Model.Periodics
@@ -138,17 +140,24 @@ defmodule Scheduler.Actions.RunNowImpl do
   defp describe_project_error(%{code: :NOT_FOUND}, _project_id),
     do: "Project assigned to periodic was not found."
 
-  defp describe_project_error(%{message: message}, _project_id)
-       when is_binary(message) and message != "",
-       do: "Projecthub describe failed: #{message}"
+  defp describe_project_error(reason = {:timeout, _timeout}, project_id) do
+    projecthub_describe_error(
+      project_id,
+      reason,
+      "Project lookup timed out while starting workflow."
+    )
+  end
 
-  defp describe_project_error({:timeout, timeout}, _project_id),
-    do: "Projecthub describe timed out after #{timeout}ms."
+  defp describe_project_error(reason, project_id) do
+    projecthub_describe_error(
+      project_id,
+      reason,
+      "Project lookup failed while starting workflow."
+    )
+  end
 
-  defp describe_project_error(%GRPC.RPCError{message: message}, _project_id)
-       when is_binary(message) and message != "",
-       do: "Projecthub describe failed: #{message}"
-
-  defp describe_project_error(reason, project_id),
-    do: "Projecthub describe failed for project #{project_id}: #{inspect(reason)}"
+  defp projecthub_describe_error(project_id, reason, public_message) do
+    Logger.error("Projecthub describe failed for project #{project_id}: #{inspect(reason)}")
+    public_message
+  end
 end

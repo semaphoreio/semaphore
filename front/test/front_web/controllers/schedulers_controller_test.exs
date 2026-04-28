@@ -988,7 +988,7 @@ defmodule FrontWeb.SchedulersControllerTest do
       end
     end
 
-    test "when request fails with scheduler service message it redirects with the upstream error",
+    test "when request fails with an internal scheduler service message it redirects with a public error",
          %{conn: conn} do
       scheduler =
         prepare_scheduler_for_just_run(
@@ -1017,7 +1017,7 @@ defmodule FrontWeb.SchedulersControllerTest do
         conn = trigger_just_run(conn, scheduler)
 
         assert get_flash(conn, :alert) ==
-                 "Starting workflow failed: Projecthub describe failed: Failed to list tasks: Internal Server Error"
+                 "Starting workflow failed: Internal error while starting workflow."
       end
     end
 

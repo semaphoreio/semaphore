@@ -153,14 +153,14 @@ defmodule Scheduler.Actions.RunNowImpl.Test do
                )
     end
 
-    test "when project service returns failed precondition with JustRun enabled then preserves the message",
+    test "when project service returns failed precondition with JustRun enabled then returns a public message",
          ctx do
       mock_feature_response("just_run")
       mock_project_service_response("failed_precondition")
 
       assert {:ok, periodics} = insert_periodics(ctx.ids)
 
-      assert {:error, {:FAILED_PRECONDITION, "Projecthub describe failed: Failed precondition"}} =
+      assert {:error, {:FAILED_PRECONDITION, "Project lookup failed while starting workflow."}} =
                RunNowImpl.run_now(run_now_params(periodics))
     end
 
