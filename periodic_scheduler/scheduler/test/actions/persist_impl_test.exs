@@ -57,7 +57,9 @@ defmodule Test.Actions.PersistImpl.Test do
                description: "Exemplary parameter",
                required: true,
                default_value: "option1",
-               options: ["option1", "option2", "option3"]
+               options: ["option1", "option2", "option3"],
+               regex_pattern: nil,
+               validate_input_format: false
              }
            ]
 
@@ -146,7 +148,9 @@ defmodule Test.Actions.PersistImpl.Test do
                description: "Exemplary parameter",
                required: true,
                default_value: "option1",
-               options: ["option1", "option2", "option3"]
+               options: ["option1", "option2", "option3"],
+               regex_pattern: nil,
+               validate_input_format: false
              }
            ]
 

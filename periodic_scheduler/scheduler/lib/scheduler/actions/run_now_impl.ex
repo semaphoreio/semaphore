@@ -66,17 +66,41 @@ defmodule Scheduler.Actions.RunNowImpl do
       |> Enum.filter(&(String.length(elem(&1, 1)) > 0))
       |> Map.new()
 
-    to_error = &("Parameter '#{&1.name}' is required." |> ToTuple.error(:INVALID_ARGUMENT))
+    to_required_error =
+      &("Parameter '#{&1.name}' is required." |> ToTuple.error(:INVALID_ARGUMENT))
 
     Enum.reduce_while(parameters, {:ok, []}, fn parameter, {:ok, acc_values} ->
       value = Map.get(request_values, parameter.name, parameter.default_value || "")
 
       case {String.equivalent?(value, ""), parameter.required} do
-        {true, true} -> {:halt, to_error.(parameter)}
-        {true, false} -> {:cont, {:ok, acc_values}}
-        {false, _} -> {:cont, {:ok, acc_values ++ [%{name: parameter.name, value: value}]}}
+        {true, true} ->
+          {:halt, to_required_error.(parameter)}
+
+        {true, false} ->
+          {:cont, {:ok, acc_values}}
+
+        {false, _} ->
+          case validate_value_format(parameter, value) do
+            :ok -> {:cont, {:ok, acc_values ++ [%{name: parameter.name, value: value}]}}
+            {:error, _} = err -> {:halt, err}
+          end
       end
     end)
+  end
+
+  defp validate_value_format(parameter, value) do
+    validate_input_format? = Map.get(parameter, :validate_input_format, false)
+    pattern = Map.get(parameter, :regex_pattern)
+
+    with true <- validate_input_format?,
+         true <- is_binary(pattern) and pattern != "",
+         {:ok, regex} <- Regex.compile(pattern),
+         false <- Regex.match?(regex, value) do
+      "Parameter '#{parameter.name}' value does not match required format."
+      |> ToTuple.error(:INVALID_ARGUMENT)
+    else
+      _ -> :ok
+    end
   end
 
   defp suspended?(%{suspended: true}),
