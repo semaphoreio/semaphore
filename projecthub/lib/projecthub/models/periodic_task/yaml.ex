@@ -72,6 +72,8 @@ defmodule Projecthub.Models.PeriodicTask.YAML do
     |> maybe_add("description", param[:description])
     |> maybe_add("default_value", param[:default_value])
     |> maybe_add_list("options", param[:options])
+    |> maybe_add("regex_pattern", param[:regex_pattern])
+    |> maybe_add_bool("validate_input_format", param[:validate_input_format])
   end
 
   defp maybe_add(map, _key, nil), do: map
@@ -81,6 +83,10 @@ defmodule Projecthub.Models.PeriodicTask.YAML do
   defp maybe_add_list(map, _key, nil), do: map
   defp maybe_add_list(map, _key, []), do: map
   defp maybe_add_list(map, key, values), do: Map.put(map, key, values)
+
+  defp maybe_add_bool(map, _key, nil), do: map
+  defp maybe_add_bool(map, _key, false), do: map
+  defp maybe_add_bool(map, key, true), do: Map.put(map, key, true)
 
   # Parse different reference formats to type and name
   defp parse_reference("refs/heads/" <> branch_name), do: {"BRANCH", branch_name}
