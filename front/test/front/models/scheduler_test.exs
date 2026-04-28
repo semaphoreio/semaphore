@@ -618,7 +618,24 @@ defmodule Front.Models.SchedulerTest do
         )
 
       with_mock Stub, run_now: fn _c, _r, _o -> {:ok, response} end do
-        assert Subject.run_now(@scheduler_id, @user_id) == {:error, :grpc_req_failed}
+        assert Subject.run_now(@scheduler_id, @user_id) ==
+                 {:error, {:grpc_req_failed, "Internal error while starting workflow."}}
+      end
+    end
+
+    test "when run_now request fails with an empty message, it returns a generic error" do
+      response =
+        RunNowResponse.new(
+          status:
+            InternalApi.Status.new(
+              code: Google.Rpc.Code.value(:FAILED_PRECONDITION),
+              message: "   "
+            )
+        )
+
+      with_mock Stub, run_now: fn _c, _r, _o -> {:ok, response} end do
+        assert Subject.run_now(@scheduler_id, @user_id) ==
+                 {:error, {:grpc_req_failed, "Internal error while starting workflow."}}
       end
     end
 

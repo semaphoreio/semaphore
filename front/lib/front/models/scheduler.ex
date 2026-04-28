@@ -334,17 +334,23 @@ defmodule Front.Models.Scheduler do
 
         {:error, {:resource_exhausted, msg}}
 
-      {:ok, response} ->
+      {:ok, response = %RunNowResponse{status: status = %Status{}}} ->
         Watchman.increment("scheduler.run_now.failed")
         Logger.error("Scheduler run_now failed: #{id}, #{inspect(response.status)}")
 
-        {:error, :grpc_req_failed}
+        {:error, {:grpc_req_failed, run_now_error_message(status)}}
+
+      {:ok, response} ->
+        Watchman.increment("scheduler.run_now.failed")
+        Logger.error("Scheduler run_now failed: #{id}, #{inspect(response)}")
+
+        {:error, {:grpc_req_failed, run_now_error_message(response)}}
 
       {:error, message} ->
         Watchman.increment("scheduler.run_now.failed")
         Logger.error("Scheduler run_now failed: #{id}, #{inspect(message)}")
 
-        {:error, :grpc_req_failed}
+        {:error, {:grpc_req_failed, run_now_error_message(message)}}
     end
   end
 
@@ -645,6 +651,26 @@ defmodule Front.Models.Scheduler do
         %{errors: %{other: msg}}
     end
   end
+
+  defp run_now_error_message(%Status{code: code})
+       when code in [13, :INTERNAL],
+       do: internal_run_now_error_message()
+
+  defp run_now_error_message(%Status{message: message}), do: run_now_error_message(message)
+
+  defp run_now_error_message(%{message: message}) when is_binary(message),
+    do: run_now_error_message(message)
+
+  defp run_now_error_message(message) when is_binary(message) do
+    case String.trim(message) do
+      "" -> internal_run_now_error_message()
+      message -> message
+    end
+  end
+
+  defp run_now_error_message(_message), do: internal_run_now_error_message()
+
+  defp internal_run_now_error_message, do: "Internal error while starting workflow."
 
   def parse_git_reference(nil), do: {"branch", ""}
   def parse_git_reference(""), do: {"branch", ""}
