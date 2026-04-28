@@ -21,7 +21,7 @@ defmodule Notifications.Application do
         Notifications.Workers.Destroyer
       ] ++ grpc_services()
 
-    opts = [strategy: :one_for_one, name: Notifications.Supervisor]
+    opts = [strategy: :one_for_one, name: Notifications.Supervisor, max_restarts: 1000]
 
     unless env() in [:dev, :test] do
       {:ok, _} = Logger.add_backend(Sentry.LoggerBackend)
