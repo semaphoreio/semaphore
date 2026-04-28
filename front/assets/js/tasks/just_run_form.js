@@ -18,7 +18,8 @@ export default class JustRunForm {
       new Rule((v) => v.length < 1, 'cannot be empty')
     ])
     this.parameterValidators = new Map(params.parameters.map(parameter => [parameter.name, new Validator(parameter.name, parameter.value, [
-      new Rule((v) => parameter.required && (!v || v.length < 1), 'cannot be empty')
+      new Rule((v) => parameter.required && (!v || v.length < 1), 'cannot be empty'),
+      new Rule((v) => regexMismatch(parameter, v), 'value does not match required format')
     ])]))
 
     this.currentReferenceType = referenceType
@@ -124,5 +125,17 @@ export default class JustRunForm {
 
   initializeParameterSelects() {
     TargetParams.init('[data-parameter-select]')
+  }
+}
+
+function regexMismatch(parameter, value) {
+  if (!parameter.validate_input_format) { return false }
+  if (!parameter.regex_pattern) { return false }
+  if (!value || value.length < 1) { return false }
+
+  try {
+    return !(new RegExp(parameter.regex_pattern).test(value))
+  } catch (_err) {
+    return false
   }
 }
