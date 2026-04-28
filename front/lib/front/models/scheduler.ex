@@ -583,7 +583,14 @@ defmodule Front.Models.Scheduler do
   end
 
   defp construct_parameters(parameters) do
-    Enum.into(parameters, [], &Map.take(&1, ~w(name required description default_value options)a))
+    Enum.into(
+      parameters,
+      [],
+      &Map.take(
+        &1,
+        ~w(name required description default_value options regex_pattern validate_input_format)a
+      )
+    )
   end
 
   defp options(metadata) do
