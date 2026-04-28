@@ -20,7 +20,6 @@ defmodule Front.Audit.UI do
   ]
 
   @csv_page_size 500
-  @csv_max_pages 10_000
 
   def start_csv_stream(org_id) do
     endpoint = Application.fetch_env!(:front, :audit_grpc_endpoint)
@@ -37,7 +36,7 @@ defmodule Front.Audit.UI do
     with {:ok, conn} <- send_chunks(conn, header_row),
          {:ok, conn} <- send_page_rows(conn, first_page) do
       if continue?(first_page) do
-        stream_csv_pages(conn, channel, org_id, first_page.next_page_token, 1)
+        stream_csv_pages(conn, channel, org_id, first_page.next_page_token)
       else
         conn
       end
@@ -48,13 +47,7 @@ defmodule Front.Audit.UI do
     end
   end
 
-  defp stream_csv_pages(_conn, _channel, _org_id, _page_token, page_count)
-       when page_count >= @csv_max_pages do
-    Logger.error("Audit CSV export aborted: reached max page limit (#{@csv_max_pages})")
-    raise "audit_csv_export_max_pages_exceeded"
-  end
-
-  defp stream_csv_pages(conn, channel, org_id, page_token, page_count) do
+  defp stream_csv_pages(conn, channel, org_id, page_token) do
     case fetch_page(channel, org_id, page_token) do
       {:ok, response} ->
         if response.next_page_token == page_token do
@@ -68,7 +61,7 @@ defmodule Front.Audit.UI do
         case send_page_rows(conn, response) do
           {:ok, conn} ->
             if continue?(response) do
-              stream_csv_pages(conn, channel, org_id, response.next_page_token, page_count + 1)
+              stream_csv_pages(conn, channel, org_id, response.next_page_token)
             else
               conn
             end
