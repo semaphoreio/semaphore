@@ -20,46 +20,57 @@ defmodule Front.Audit.UI do
   ]
 
   @csv_page_size 500
+  @csv_max_pages 10_000
 
-  def stream_csv(conn, org_id) do
+  def start_csv_stream(org_id) do
     endpoint = Application.fetch_env!(:front, :audit_grpc_endpoint)
-    {:ok, channel} = GRPC.Stub.connect(endpoint)
 
+    with {:ok, channel} <- GRPC.Stub.connect(endpoint),
+         {:ok, response} <- fetch_page(channel, org_id, "") do
+      {:ok, channel, response}
+    end
+  end
+
+  def stream_csv(conn, channel, first_page, org_id) do
     header_row = [@csv_headers] |> CSV.encode() |> Enum.to_list()
 
-    case send_chunks(conn, header_row) do
-      {:ok, conn} ->
-        stream_csv_pages(conn, channel, org_id, "")
-
+    with {:ok, conn} <- send_chunks(conn, header_row),
+         {:ok, conn} <- send_page_rows(conn, first_page) do
+      if continue?(first_page) do
+        stream_csv_pages(conn, channel, org_id, first_page.next_page_token, 1)
+      else
+        conn
+      end
+    else
       {:error, conn} ->
-        Logger.error("Audit CSV export failed: client disconnected during header send")
+        Logger.error("Audit CSV export failed: client disconnected during initial send")
         conn
     end
   end
 
-  defp stream_csv_pages(conn, channel, org_id, page_token) do
-    request =
-      InternalApi.Audit.PaginatedListRequest.new(
-        org_id: org_id,
-        page_size: @csv_page_size,
-        page_token: page_token,
-        direction: Direction.value(:NEXT)
-      )
+  defp stream_csv_pages(_conn, _channel, _org_id, _page_token, page_count)
+       when page_count >= @csv_max_pages do
+    Logger.error("Audit CSV export aborted: reached max page limit (#{@csv_max_pages})")
+    raise "audit_csv_export_max_pages_exceeded"
+  end
 
-    case InternalApi.Audit.AuditService.Stub.paginated_list(channel, request) do
-      {:ok, res} ->
-        csv_rows =
-          res.events
-          |> Enum.map(&event_to_csv_row/1)
-          |> CSV.encode()
-          |> Enum.to_list()
+  defp stream_csv_pages(conn, channel, org_id, page_token, page_count) do
+    case fetch_page(channel, org_id, page_token) do
+      {:ok, response} ->
+        if response.next_page_token == page_token do
+          Logger.error(
+            "Audit CSV export aborted: pagination did not advance (token=#{inspect(page_token)})"
+          )
 
-        case send_chunks(conn, csv_rows) do
+          raise "audit_csv_export_pagination_stalled"
+        end
+
+        case send_page_rows(conn, response) do
           {:ok, conn} ->
-            if res.next_page_token in ["", nil] do
-              conn
+            if continue?(response) do
+              stream_csv_pages(conn, channel, org_id, response.next_page_token, page_count + 1)
             else
-              stream_csv_pages(conn, channel, org_id, res.next_page_token)
+              conn
             end
 
           {:error, conn} ->
@@ -68,30 +79,35 @@ defmodule Front.Audit.UI do
         end
 
       {:error, reason} ->
-        Logger.error("Audit CSV export failed during pagination: #{inspect(reason)}")
-
-        error_row = [
-          [
-            "ERROR",
-            "Export failed - audit data may be incomplete",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            ""
-          ]
-        ]
-
-        error_csv = error_row |> CSV.encode() |> Enum.to_list()
-
-        send_chunks(conn, error_csv)
-        |> elem(1)
+        Logger.error("Audit CSV export failed mid-stream: #{inspect(reason)}")
+        raise "audit_csv_export_upstream_failed"
     end
   end
+
+  defp fetch_page(channel, org_id, page_token) do
+    request =
+      InternalApi.Audit.PaginatedListRequest.new(
+        org_id: org_id,
+        page_size: @csv_page_size,
+        page_token: page_token,
+        direction: Direction.value(:NEXT)
+      )
+
+    InternalApi.Audit.AuditService.Stub.paginated_list(channel, request)
+  end
+
+  defp send_page_rows(conn, response) do
+    csv_rows =
+      response.events
+      |> Enum.map(&event_to_csv_row/1)
+      |> CSV.encode()
+      |> Enum.to_list()
+
+    send_chunks(conn, csv_rows)
+  end
+
+  defp continue?(%{next_page_token: token}) when token in ["", nil], do: false
+  defp continue?(_), do: true
 
   defp send_chunks(conn, chunks) do
     Enum.reduce_while(chunks, {:ok, conn}, fn chunk, {:ok, acc} ->
