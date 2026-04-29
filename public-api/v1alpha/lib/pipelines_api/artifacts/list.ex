@@ -5,6 +5,7 @@ defmodule PipelinesAPI.Artifacts.List do
 
   use Plug.Builder
 
+  alias PipelinesAPI.Audit
   alias PipelinesAPI.ArtifactHubClient
   alias PipelinesAPI.Pipelines.Common, as: RespCommon
   alias PipelinesAPI.Util.{Metrics, RequestMetrics}
@@ -35,6 +36,8 @@ defmodule PipelinesAPI.Artifacts.List do
 
   def list_artifacts(conn, _opts) do
     Metrics.benchmark("PipelinesAPI.router", ["artifacts_list"], fn ->
+      Audit.log_artifact_list(conn, conn.params)
+
       result =
         conn.params
         |> ArtifactHubClient.list_path()
