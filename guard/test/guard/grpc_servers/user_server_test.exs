@@ -1168,7 +1168,7 @@ defmodule Guard.GrpcServers.UserServerTest do
         case env do
           %{
             method: :get,
-            url: "https://api.bitbucket.org/2.0/repositories?access_token=mock_token"
+            url: "https://api.bitbucket.org/2.0/repositories"
           } ->
             {:ok, %Tesla.Env{status: 200, body: %{}}}
 
