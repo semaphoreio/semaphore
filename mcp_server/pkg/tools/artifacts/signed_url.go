@@ -7,6 +7,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/audit"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/internal/shared"
 )
@@ -164,6 +165,24 @@ func signedURLHandler(api internalapi.Provider) server.ToolHandlerFunc {
 		)
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		auditEnabled, err := shared.AuditLogsFeatureEnabled(ctx, api, orgID)
+		if err != nil {
+			return mcp.NewToolResultError("Unable to verify audit logging availability. Please try again."), nil
+		}
+
+		if err := audit.LogArtifactDownload(ctx, req.Header, audit.ArtifactDownloadParams{
+			UserID:       params.UserID,
+			OrgID:        orgID,
+			ResourceName: artifactPath(params.Scope, params.ScopeID, resolvedPath),
+			SourceKind:   params.Scope,
+			SourceID:     params.ScopeID,
+			ProjectID:    access.ProjectID,
+			Method:       method,
+			AuditEnabled: auditEnabled,
+		}); err != nil {
+			return mcp.NewToolResultError("Audit logging failed for this artifact operation. Please try again."), nil
 		}
 
 		url, err := getSignedURL(ctx, api, orgID, access.ArtifactStoreID, requestPath, method)

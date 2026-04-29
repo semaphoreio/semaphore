@@ -1,7 +1,9 @@
 package artifacts
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -11,14 +13,17 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	auditlog "github.com/semaphoreio/semaphore/mcp_server/pkg/audit"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/feature"
 	artifacthubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/artifacthub"
+	auditpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/audit"
 	workflowpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber_w_f.workflow"
 	projecthubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/projecthub"
 	rbacpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/rbac"
 	responsepb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/response_status"
 	jobpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/server_farm.job"
 	statuspb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/status"
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/logging"
 	support "github.com/semaphoreio/semaphore/mcp_server/test/support"
 
 	code "google.golang.org/genproto/googleapis/rpc/code"
@@ -106,6 +111,61 @@ func TestArtifactsListSuccessJobScope(t *testing.T) {
 	}
 	if got := rbac.LastRequests[0].GetProjectId(); got != testProjectID {
 		t.Fatalf("expected RBAC project %s, got %s", testProjectID, got)
+	}
+}
+
+func TestArtifactsListLogsStdoutAuditOperation(t *testing.T) {
+	artifactClient := &artifacthubClientStub{
+		listResp: &artifacthubpb.ListPathResponse{
+			Items: []*artifacthubpb.ListItem{
+				{Name: fmt.Sprintf("artifacts/jobs/%s/agent/job_logs.txt.gz", testJobID), IsDirectory: false, Size: 123},
+			},
+		},
+	}
+
+	provider := &support.MockProvider{
+		Timeout:           time.Second,
+		ArtifacthubClient: artifactClient,
+		JobClient:         &jobClientStub{orgID: testOrgID, projectID: testProjectID},
+		ProjectClient: &support.ProjectClientStub{
+			Response: newProjectDescribeResponse(testOrgID, testProjectID, testArtifactStore),
+		},
+		RBACClient: support.NewRBACStub(artifactsRequiredPermissions...),
+	}
+
+	logs := captureLoggerOutput(t)
+
+	req := callRequest(map[string]any{
+		"organization_id": testOrgID,
+		"scope":           scopeJobs,
+		"scope_id":        testJobID,
+		"path":            "agent",
+	}, true)
+
+	res, err := listHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+	if res == nil || res.IsError {
+		t.Fatalf("expected successful response, got: %#v", res)
+	}
+
+	expectedResourceName := fmt.Sprintf("artifacts/jobs/%s/agent", testJobID)
+	output := logs.String()
+	if !strings.Contains(output, "AuditLog") {
+		t.Fatalf("expected stdout audit log, got %q", output)
+	}
+	if !strings.Contains(output, `"operation":"List"`) {
+		t.Fatalf("expected stdout audit log to include List operation, got %q", output)
+	}
+	if !strings.Contains(output, testUserID) {
+		t.Fatalf("expected stdout audit log to include user_id %s, got %q", testUserID, output)
+	}
+	if !strings.Contains(output, testOrgID) {
+		t.Fatalf("expected stdout audit log to include org_id %s, got %q", testOrgID, output)
+	}
+	if !strings.Contains(output, expectedResourceName) {
+		t.Fatalf("expected stdout audit log to include resource_name %s, got %q", expectedResourceName, output)
 	}
 }
 
@@ -695,6 +755,269 @@ func TestArtifactsSignedURLSuccessJobScopeWithoutProjectID(t *testing.T) {
 	}
 	if len(result.URLs) != 1 {
 		t.Fatalf("expected single signed URL entry, got %d", len(result.URLs))
+	}
+}
+
+func TestArtifactsSignedURLEmitsAuditEventWithFullResourcePath(t *testing.T) {
+	artifactClient := &artifacthubClientStub{
+		listRespByPath: map[string]*artifacthubpb.ListPathResponse{
+			fmt.Sprintf("artifacts/jobs/%s/agent/", testJobID): {
+				Items: []*artifacthubpb.ListItem{
+					{
+						Name:        fmt.Sprintf("artifacts/jobs/%s/agent/job_logs.txt", testJobID),
+						IsDirectory: false,
+						Size:        123,
+					},
+				},
+			},
+		},
+		signedURL: "https://example.com/job-signed",
+	}
+	provider := &support.MockProvider{
+		Timeout:           time.Second,
+		JobClient:         &jobClientStub{orgID: testOrgID, projectID: testProjectID},
+		ArtifacthubClient: artifactClient,
+		ProjectClient: &support.ProjectClientStub{
+			Response: newProjectDescribeResponse(testOrgID, testProjectID, testArtifactStore),
+		},
+		RBACClient: support.NewRBACStub(artifactsRequiredPermissions...),
+		FeaturesService: support.FeatureClientStub{
+			State: feature.Hidden,
+			States: map[string]feature.State{
+				"mcp_server_read_tools":      feature.Enabled,
+				"mcp_server_artifacts_tools": feature.Enabled,
+				"audit_logs":                 feature.Enabled,
+			},
+		},
+	}
+
+	publisher := &auditPublisherStub{}
+	restore := auditlog.SetPublisherForTests(publisher)
+	defer restore()
+
+	req := callRequest(map[string]any{
+		"organization_id": testOrgID,
+		"scope":           scopeJobs,
+		"scope_id":        testJobID,
+		"path":            "agent/job_logs.txt.gz",
+		"method":          "HEAD",
+	}, true)
+
+	res, err := signedURLHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+	if res == nil || res.IsError {
+		t.Fatalf("expected successful response, got: %#v", res)
+	}
+
+	if len(publisher.events) != 1 {
+		t.Fatalf("expected one audit event, got %d", len(publisher.events))
+	}
+
+	event := publisher.events[0]
+	if event.GetResource() != auditpb.Event_Artifact {
+		t.Fatalf("expected Artifact resource, got %v", event.GetResource())
+	}
+	if event.GetOperation() != auditpb.Event_Download {
+		t.Fatalf("expected Download operation, got %v", event.GetOperation())
+	}
+	if event.GetUserId() != testUserID {
+		t.Fatalf("expected user_id %s, got %s", testUserID, event.GetUserId())
+	}
+	if event.GetOrgId() != testOrgID {
+		t.Fatalf("expected org_id %s, got %s", testOrgID, event.GetOrgId())
+	}
+	expectedResourceName := fmt.Sprintf("artifacts/jobs/%s/agent/job_logs.txt", testJobID)
+	if event.GetResourceName() != expectedResourceName {
+		t.Fatalf("expected resource_name %s, got %s", expectedResourceName, event.GetResourceName())
+	}
+	if event.GetResourceId() != testJobID {
+		t.Fatalf("expected resource_id %s, got %s", testJobID, event.GetResourceId())
+	}
+
+	if artifactClient.lastSingleSigned == nil {
+		t.Fatalf("expected GetSignedURL request to be recorded")
+	}
+	expectedSignedURLPath := fmt.Sprintf("artifacts/jobs/%s/agent/job_logs.txt", testJobID)
+	if artifactClient.lastSingleSigned.GetPath() != expectedSignedURLPath {
+		t.Fatalf("expected resolved signed URL path %s, got %s", expectedSignedURLPath, artifactClient.lastSingleSigned.GetPath())
+	}
+
+	meta := map[string]string{}
+	if err := json.Unmarshal([]byte(event.GetMetadata()), &meta); err != nil {
+		t.Fatalf("failed to decode metadata JSON: %v", err)
+	}
+	if meta["source_kind"] != scopeJobs {
+		t.Fatalf("expected source_kind %s, got %s", scopeJobs, meta["source_kind"])
+	}
+	if meta["source_id"] != testJobID {
+		t.Fatalf("expected source_id %s, got %s", testJobID, meta["source_id"])
+	}
+	if meta["project_id"] != testProjectID {
+		t.Fatalf("expected project_id %s, got %s", testProjectID, meta["project_id"])
+	}
+	if meta["request_method"] != "HEAD" {
+		t.Fatalf("expected request_method HEAD, got %s", meta["request_method"])
+	}
+}
+
+func TestArtifactsSignedURLFailsWhenAuditPublishFails(t *testing.T) {
+	artifactClient := &artifacthubClientStub{
+		signedURL: "https://example.com/job-signed",
+	}
+	provider := &support.MockProvider{
+		Timeout:           time.Second,
+		JobClient:         &jobClientStub{orgID: testOrgID, projectID: testProjectID},
+		ArtifacthubClient: artifactClient,
+		ProjectClient: &support.ProjectClientStub{
+			Response: newProjectDescribeResponse(testOrgID, testProjectID, testArtifactStore),
+		},
+		RBACClient: support.NewRBACStub(artifactsRequiredPermissions...),
+		FeaturesService: support.FeatureClientStub{
+			States: map[string]feature.State{
+				"mcp_server_read_tools":      feature.Enabled,
+				"mcp_server_artifacts_tools": feature.Enabled,
+				"audit_logs":                 feature.Enabled,
+			},
+		},
+	}
+
+	publisher := &auditPublisherStub{err: errors.New("amqp down")}
+	restore := auditlog.SetPublisherForTests(publisher)
+	defer restore()
+
+	req := callRequest(map[string]any{
+		"organization_id": testOrgID,
+		"scope":           scopeJobs,
+		"scope_id":        testJobID,
+		"path":            "agent/output.log",
+		"method":          "GET",
+	}, true)
+
+	res, err := signedURLHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+
+	msg := requireErrorText(t, res)
+	if !strings.Contains(msg, "Audit logging failed") {
+		t.Fatalf("expected audit failure message, got %q", msg)
+	}
+
+	if artifactClient.lastSingleSigned != nil {
+		t.Fatalf("expected signed URL backend call to be skipped when audit publish fails")
+	}
+}
+
+func TestArtifactsSignedURLFailsWhenAuditFeatureCheckFails(t *testing.T) {
+	artifactClient := &artifacthubClientStub{
+		signedURL: "https://example.com/job-signed",
+	}
+	provider := &support.MockProvider{
+		Timeout:           time.Second,
+		JobClient:         &jobClientStub{orgID: testOrgID, projectID: testProjectID},
+		ArtifacthubClient: artifactClient,
+		ProjectClient: &support.ProjectClientStub{
+			Response: newProjectDescribeResponse(testOrgID, testProjectID, testArtifactStore),
+		},
+		RBACClient: support.NewRBACStub(artifactsRequiredPermissions...),
+		FeaturesService: support.FeatureClientStub{
+			States: map[string]feature.State{
+				"mcp_server_read_tools":      feature.Enabled,
+				"mcp_server_artifacts_tools": feature.Enabled,
+				"audit_logs":                 feature.Enabled,
+			},
+			StateErrors: map[string]error{
+				"audit_logs": errors.New("feature service timeout"),
+			},
+		},
+	}
+
+	req := callRequest(map[string]any{
+		"organization_id": testOrgID,
+		"scope":           scopeJobs,
+		"scope_id":        testJobID,
+		"path":            "agent/output.log",
+		"method":          "GET",
+	}, true)
+
+	res, err := signedURLHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+
+	msg := requireErrorText(t, res)
+	if !strings.Contains(msg, "Unable to verify audit logging availability") {
+		t.Fatalf("expected audit feature check failure message, got %q", msg)
+	}
+
+	if artifactClient.lastSingleSigned != nil {
+		t.Fatalf("expected signed URL backend call to be skipped when audit feature check fails")
+	}
+}
+
+func TestArtifactsSignedURLSkipsAuditPublishWhenAuditLogsFeatureDisabled(t *testing.T) {
+	artifactClient := &artifacthubClientStub{
+		signedURL: "https://example.com/job-signed",
+	}
+	provider := &support.MockProvider{
+		Timeout:           time.Second,
+		JobClient:         &jobClientStub{orgID: testOrgID, projectID: testProjectID},
+		ArtifacthubClient: artifactClient,
+		ProjectClient: &support.ProjectClientStub{
+			Response: newProjectDescribeResponse(testOrgID, testProjectID, testArtifactStore),
+		},
+		RBACClient: support.NewRBACStub(artifactsRequiredPermissions...),
+		FeaturesService: support.FeatureClientStub{
+			State: feature.Hidden,
+			States: map[string]feature.State{
+				"mcp_server_read_tools":      feature.Enabled,
+				"mcp_server_artifacts_tools": feature.Enabled,
+				"audit_logs":                 feature.Hidden,
+			},
+		},
+	}
+
+	publisher := &auditPublisherStub{}
+	restore := auditlog.SetPublisherForTests(publisher)
+	defer restore()
+
+	logs := captureLoggerOutput(t)
+
+	req := callRequest(map[string]any{
+		"organization_id": testOrgID,
+		"scope":           scopeJobs,
+		"scope_id":        testJobID,
+		"path":            "agent/output.log",
+		"method":          "HEAD",
+	}, true)
+
+	res, err := signedURLHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+	if res == nil || res.IsError {
+		t.Fatalf("expected successful response, got: %#v", res)
+	}
+
+	if len(publisher.events) != 0 {
+		t.Fatalf("expected no published audit events, got %d", len(publisher.events))
+	}
+
+	expectedResourceName := fmt.Sprintf("artifacts/jobs/%s/agent/output.log", testJobID)
+	output := logs.String()
+	if !strings.Contains(output, "AuditLog") {
+		t.Fatalf("expected stdout audit log, got %q", output)
+	}
+	if !strings.Contains(output, testUserID) {
+		t.Fatalf("expected stdout audit log to include user_id %s, got %q", testUserID, output)
+	}
+	if !strings.Contains(output, testOrgID) {
+		t.Fatalf("expected stdout audit log to include org_id %s, got %q", testOrgID, output)
+	}
+	if !strings.Contains(output, expectedResourceName) {
+		t.Fatalf("expected stdout audit log to include resource_name %s, got %q", expectedResourceName, output)
 	}
 }
 
@@ -1488,6 +1811,8 @@ func TestArtifactsListArtifacthubRPCError(t *testing.T) {
 		"scope_id":        testJobID,
 	}, true)
 
+	logs := captureLoggerOutput(t)
+
 	res, err := listHandler(provider)(context.Background(), req)
 	if err != nil {
 		t.Fatalf("handler error: %v", err)
@@ -1495,6 +1820,14 @@ func TestArtifactsListArtifacthubRPCError(t *testing.T) {
 	msg := requireErrorText(t, res)
 	if !strings.Contains(msg, "artifacthub ListPath failed") {
 		t.Fatalf("expected artifacthub list failure, got %q", msg)
+	}
+
+	output := logs.String()
+	if !strings.Contains(output, "AuditLog") {
+		t.Fatalf("expected stdout audit log even on list failure, got %q", output)
+	}
+	if !strings.Contains(output, `"operation":"List"`) {
+		t.Fatalf("expected List operation in stdout audit log, got %q", output)
 	}
 }
 
@@ -1568,6 +1901,10 @@ func TestArtifactsSignedURLArtifacthubRPCError(t *testing.T) {
 		RBACClient: support.NewRBACStub(artifactsRequiredPermissions...),
 	}
 
+	publisher := &auditPublisherStub{}
+	restore := auditlog.SetPublisherForTests(publisher)
+	defer restore()
+
 	req := callRequest(map[string]any{
 		"organization_id": testOrgID,
 		"scope":           scopeJobs,
@@ -1582,6 +1919,10 @@ func TestArtifactsSignedURLArtifacthubRPCError(t *testing.T) {
 	msg := requireErrorText(t, res)
 	if !strings.Contains(msg, "artifacthub GetSignedURL failed") {
 		t.Fatalf("expected artifacthub signed URL failure, got %q", msg)
+	}
+
+	if len(publisher.events) != 1 {
+		t.Fatalf("expected one audit event before signed URL failure, got %d", len(publisher.events))
 	}
 }
 
@@ -2296,6 +2637,30 @@ func callRequest(args map[string]any, includeUser bool) mcp.CallToolRequest {
 		req.Header = header
 	}
 	return req
+}
+
+func captureLoggerOutput(t *testing.T) *bytes.Buffer {
+	t.Helper()
+
+	logger := logging.Logger()
+	var buf bytes.Buffer
+	previous := logger.Out
+	logger.SetOutput(&buf)
+	t.Cleanup(func() {
+		logger.SetOutput(previous)
+	})
+
+	return &buf
+}
+
+type auditPublisherStub struct {
+	events []*auditpb.Event
+	err    error
+}
+
+func (s *auditPublisherStub) Publish(_ context.Context, event *auditpb.Event) error {
+	s.events = append(s.events, event)
+	return s.err
 }
 
 func requireErrorText(t *testing.T, res *mcp.CallToolResult) string {

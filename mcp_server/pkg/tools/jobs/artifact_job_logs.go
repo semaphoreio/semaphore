@@ -11,6 +11,7 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/sirupsen/logrus"
 
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/audit"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/authz"
 	artifacthubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/artifacthub"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
@@ -200,6 +201,24 @@ Troubleshooting:
 		}
 
 		requestPath := uploadedJobArtifactPath(jobID, resolvedPath)
+		auditEnabled, err := shared.AuditLogsFeatureEnabled(ctx, api, orgID)
+		if err != nil {
+			return mcp.NewToolResultError("Unable to verify audit logging availability. Please try again."), nil
+		}
+
+		if err := audit.LogArtifactDownload(ctx, req.Header, audit.ArtifactDownloadParams{
+			UserID:       userID,
+			OrgID:        jobOrg,
+			ResourceName: uploadedJobArtifactPath(jobID, resolvedPath),
+			SourceKind:   "jobs",
+			SourceID:     jobID,
+			ProjectID:    jobProjectID,
+			Method:       http.MethodGet,
+			AuditEnabled: auditEnabled,
+		}); err != nil {
+			return mcp.NewToolResultError("Audit logging failed for this artifact operation. Please try again."), nil
+		}
+
 		signedURL, err := getUploadedArtifactJobLogsSignedURL(ctx, api, artifactStoreID, requestPath)
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
