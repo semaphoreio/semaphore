@@ -77,7 +77,9 @@ defmodule Guard.Api.Bitbucket do
 
       {:ok, %Tesla.Env{status: status, body: body}} when status in 400..499 ->
         Logger.warning(
-          "Failed to refresh Bitbucket token (HTTP #{status}): #{inspect(body)}. " <>
+          "Failed to refresh Bitbucket token (HTTP #{status}): " <>
+            "error=#{inspect(safe_oauth_error(body))} " <>
+            "error_description=#{inspect(safe_oauth_error_description(body))}. " <>
             "User repo_host_account id: #{repo_host_account.id}"
         )
 
@@ -85,7 +87,9 @@ defmodule Guard.Api.Bitbucket do
 
       {:ok, %Tesla.Env{status: status, body: body}} ->
         Logger.error(
-          "Unexpected response refreshing Bitbucket token (HTTP #{status}): #{inspect(body)}. " <>
+          "Unexpected response refreshing Bitbucket token (HTTP #{status}): " <>
+            "error=#{inspect(safe_oauth_error(body))} " <>
+            "error_description=#{inspect(safe_oauth_error_description(body))}. " <>
             "User repo_host_account id: #{repo_host_account.id}"
         )
 
@@ -96,6 +100,14 @@ defmodule Guard.Api.Bitbucket do
         {:error, :network_error}
     end
   end
+
+  defp safe_oauth_error(body) when is_map(body), do: Map.get(body, "error")
+  defp safe_oauth_error(_), do: nil
+
+  defp safe_oauth_error_description(body) when is_map(body),
+    do: Map.get(body, "error_description")
+
+  defp safe_oauth_error_description(_), do: nil
 
   defp build_token_client do
     {:ok, {client_id, client_secret}} = Guard.GitProviderCredentials.get(:bitbucket)
