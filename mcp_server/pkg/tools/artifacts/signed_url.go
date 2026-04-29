@@ -9,6 +9,7 @@ import (
 
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/audit"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/logging"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/internal/shared"
 )
 
@@ -167,9 +168,15 @@ func signedURLHandler(api internalapi.Provider) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		auditEnabled, err := shared.AuditLogsFeatureEnabled(ctx, api, orgID)
-		if err != nil {
-			return mcp.NewToolResultError("Unable to verify audit logging availability. Please try again."), nil
+		auditEnabled := false
+		if enabled, featureErr := shared.AuditLogsFeatureEnabled(ctx, api, orgID); featureErr != nil {
+			logging.ForComponent("audit").
+				WithError(featureErr).
+				WithField("organization_id", orgID).
+				WithField("tool", signedURLToolName).
+				Warn("audit_logs feature check failed; proceeding with AMQP publish disabled")
+		} else {
+			auditEnabled = enabled
 		}
 
 		if err := audit.LogArtifactDownload(ctx, req.Header, audit.ArtifactDownloadParams{

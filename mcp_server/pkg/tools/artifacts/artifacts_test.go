@@ -910,7 +910,7 @@ func TestArtifactsSignedURLFailsWhenAuditPublishFails(t *testing.T) {
 	}
 }
 
-func TestArtifactsSignedURLFailsWhenAuditFeatureCheckFails(t *testing.T) {
+func TestArtifactsSignedURLContinuesWhenAuditFeatureCheckFails(t *testing.T) {
 	artifactClient := &artifacthubClientStub{
 		signedURL: "https://example.com/job-signed",
 	}
@@ -934,6 +934,12 @@ func TestArtifactsSignedURLFailsWhenAuditFeatureCheckFails(t *testing.T) {
 		},
 	}
 
+	publisher := &auditPublisherStub{}
+	restore := auditlog.SetPublisherForTests(publisher)
+	defer restore()
+
+	logs := captureLoggerOutput(t)
+
 	req := callRequest(map[string]any{
 		"organization_id": testOrgID,
 		"scope":           scopeJobs,
@@ -947,13 +953,18 @@ func TestArtifactsSignedURLFailsWhenAuditFeatureCheckFails(t *testing.T) {
 		t.Fatalf("handler error: %v", err)
 	}
 
-	msg := requireErrorText(t, res)
-	if !strings.Contains(msg, "Unable to verify audit logging availability") {
-		t.Fatalf("expected audit feature check failure message, got %q", msg)
+	if res == nil || res.IsError {
+		t.Fatalf("expected successful response, got: %#v", res)
 	}
 
-	if artifactClient.lastSingleSigned != nil {
-		t.Fatalf("expected signed URL backend call to be skipped when audit feature check fails")
+	if artifactClient.lastSingleSigned == nil {
+		t.Fatalf("expected signed URL backend call to proceed when audit feature check fails")
+	}
+	if len(publisher.events) != 0 {
+		t.Fatalf("expected no AMQP audit publish when audit feature check fails, got %d events", len(publisher.events))
+	}
+	if !strings.Contains(logs.String(), "audit_logs feature check failed; proceeding with AMQP publish disabled") {
+		t.Fatalf("expected warning log when audit feature check fails, got %q", logs.String())
 	}
 }
 

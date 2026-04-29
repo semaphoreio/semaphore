@@ -112,9 +112,15 @@ The authentication layer must inject the X-Semaphore-User-ID header so we can au
 			return shared.ProjectAuthorizationError(err, orgID, projectID, projectRunPermission), nil
 		}
 
-		auditEnabled, err := shared.AuditLogsFeatureEnabled(ctx, api, orgID)
-		if err != nil {
-			return mcp.NewToolResultError("Unable to verify audit logging availability. Please try again."), nil
+		auditEnabled := false
+		if enabled, featureErr := shared.AuditLogsFeatureEnabled(ctx, api, orgID); featureErr != nil {
+			logging.ForComponent("audit").
+				WithError(featureErr).
+				WithField("organization_id", orgID).
+				WithField("tool", rerunToolName).
+				Warn("audit_logs feature check failed; proceeding with AMQP publish disabled")
+		} else {
+			auditEnabled = enabled
 		}
 
 		if err := audit.LogWorkflowRebuild(ctx, req.Header, audit.WorkflowRebuildParams{

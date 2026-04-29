@@ -201,9 +201,15 @@ Troubleshooting:
 		}
 
 		requestPath := uploadedJobArtifactPath(jobID, resolvedPath)
-		auditEnabled, err := shared.AuditLogsFeatureEnabled(ctx, api, orgID)
-		if err != nil {
-			return mcp.NewToolResultError("Unable to verify audit logging availability. Please try again."), nil
+		auditEnabled := false
+		if enabled, featureErr := shared.AuditLogsFeatureEnabled(ctx, api, orgID); featureErr != nil {
+			logging.ForComponent("audit").
+				WithError(featureErr).
+				WithField("organization_id", orgID).
+				WithField("tool", artifactJobLogsToolName).
+				Warn("audit_logs feature check failed; proceeding with AMQP publish disabled")
+		} else {
+			auditEnabled = enabled
 		}
 
 		if err := audit.LogArtifactDownload(ctx, req.Header, audit.ArtifactDownloadParams{

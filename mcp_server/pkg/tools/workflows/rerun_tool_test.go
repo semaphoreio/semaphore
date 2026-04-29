@@ -336,7 +336,7 @@ func TestRerunWorkflowFailsWhenAuditPublishFails(t *testing.T) {
 	}
 }
 
-func TestRerunWorkflowFailsWhenAuditFeatureCheckFails(t *testing.T) {
+func TestRerunWorkflowContinuesWhenAuditFeatureCheckFails(t *testing.T) {
 	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 	projectID := "11111111-2222-3333-4444-555555555555"
 	workflowID := "wf-123"
@@ -376,6 +376,12 @@ func TestRerunWorkflowFailsWhenAuditFeatureCheckFails(t *testing.T) {
 		},
 	}
 
+	publisher := &auditPublisherStub{}
+	restore := auditlog.SetPublisherForTests(publisher)
+	defer restore()
+
+	logs := captureLoggerOutput(t)
+
 	req := mcp.CallToolRequest{
 		Params: mcp.CallToolParams{
 			Arguments: map[string]any{
@@ -392,12 +398,17 @@ func TestRerunWorkflowFailsWhenAuditFeatureCheckFails(t *testing.T) {
 		toFail(t, "handler error: %v", err)
 	}
 
-	msg := requireErrorText(t, res)
-	if !strings.Contains(msg, "Unable to verify audit logging availability") {
-		toFail(t, "expected audit feature check failure message, got %q", msg)
+	if res == nil || res.IsError {
+		toFail(t, "expected successful response, got %#v", res)
 	}
-	if workflowStub.LastReschedule != nil {
-		toFail(t, "expected rerun to stop before reschedule when audit feature check fails")
+	if workflowStub.LastReschedule == nil {
+		toFail(t, "expected rerun to proceed when audit feature check fails")
+	}
+	if len(publisher.events) != 0 {
+		toFail(t, "expected no AMQP audit publish when audit feature check fails, got %d events", len(publisher.events))
+	}
+	if !strings.Contains(logs.String(), "audit_logs feature check failed; proceeding with AMQP publish disabled") {
+		toFail(t, "expected warning log when audit feature check fails, got %q", logs.String())
 	}
 }
 

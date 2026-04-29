@@ -890,7 +890,7 @@ func TestArtifactJobLogsFailsWhenAuditPublishFails(t *testing.T) {
 	}
 }
 
-func TestArtifactJobLogsFailsWhenAuditFeatureCheckFails(t *testing.T) {
+func TestArtifactJobLogsContinuesWhenAuditFeatureCheckFails(t *testing.T) {
 	const orgID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 	const jobID = "99999999-aaaa-bbbb-cccc-dddddddddddd"
 	const artifactStoreID = "88888888-7777-6666-5555-444444444444"
@@ -937,6 +937,12 @@ func TestArtifactJobLogsFailsWhenAuditFeatureCheckFails(t *testing.T) {
 		Timeout: time.Second,
 	}
 
+	publisher := &auditPublisherStub{}
+	restore := auditlog.SetPublisherForTests(publisher)
+	defer restore()
+
+	logs := captureLoggerOutput(t)
+
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
 		"organization_id": orgID,
 		"job_id":          jobID,
@@ -950,12 +956,17 @@ func TestArtifactJobLogsFailsWhenAuditFeatureCheckFails(t *testing.T) {
 		toFail(t, "handler error: %v", err)
 	}
 
-	msg := requireErrorText(t, res)
-	if !strings.Contains(msg, "Unable to verify audit logging availability") {
-		toFail(t, "expected audit feature check failure message, got %q", msg)
+	if res == nil || res.IsError {
+		toFail(t, "expected successful response, got %#v", res)
 	}
-	if artifactClient.lastSigned != nil {
-		toFail(t, "expected signed URL backend call to be skipped when audit feature check fails")
+	if artifactClient.lastSigned == nil {
+		toFail(t, "expected signed URL backend call to proceed when audit feature check fails")
+	}
+	if len(publisher.events) != 0 {
+		toFail(t, "expected no AMQP audit publish when audit feature check fails, got %d events", len(publisher.events))
+	}
+	if !strings.Contains(logs.String(), "audit_logs feature check failed; proceeding with AMQP publish disabled") {
+		toFail(t, "expected warning log when audit feature check fails, got %q", logs.String())
 	}
 }
 
