@@ -1,5 +1,6 @@
 defmodule PipelinesAPI.Artifacts.ListTest do
   use ExUnit.Case
+  import ExUnit.CaptureLog
 
   alias Support.Stubs.{Job, Pipeline, Workflow}
 
@@ -143,6 +144,61 @@ defmodule PipelinesAPI.Artifacts.ListTest do
                  "size" => 2048
                }
              ]
+    end
+
+    test "emits stdout audit log for artifact list operation", ctx do
+      expected_resource_name = "artifacts/jobs/#{ctx.job.id}/agent"
+
+      log =
+        capture_log(fn ->
+          assert {200, _response} =
+                   list_artifacts(
+                     %{
+                       "scope" => "jobs",
+                       "scope_id" => ctx.job.id,
+                       "path" => "agent"
+                     },
+                     ctx.user.id
+                   )
+        end)
+
+      assert log =~ "AuditLog"
+      assert log =~ "operation: \"List\""
+      assert log =~ ctx.user.id
+      assert log =~ ctx.org.id
+      assert log =~ expected_resource_name
+    end
+
+    test "emits stdout audit log for artifact list operation even when backend list fails", ctx do
+      expected_resource_name = "artifacts/jobs/#{ctx.job.id}/agent"
+
+      GrpcMock.stub(ArtifacthubMock, :list_path, fn _req, _stream ->
+        raise GRPC.RPCError, status: GRPC.Status.internal(), message: "Internal error"
+      end)
+
+      on_exit(fn ->
+        GrpcMock.stub(ArtifacthubMock, :list_path, &Support.Stubs.Artifacthub.Grpc.list_path/2)
+      end)
+
+      log =
+        capture_log(fn ->
+          assert {500, _response} =
+                   list_artifacts(
+                     %{
+                       "scope" => "jobs",
+                       "scope_id" => ctx.job.id,
+                       "path" => "agent"
+                     },
+                     ctx.user.id,
+                     false
+                   )
+        end)
+
+      assert log =~ "AuditLog"
+      assert log =~ "operation: \"List\""
+      assert log =~ ctx.user.id
+      assert log =~ ctx.org.id
+      assert log =~ expected_resource_name
     end
 
     test "returns all artifacts in the selected path", ctx do

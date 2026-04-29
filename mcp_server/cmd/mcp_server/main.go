@@ -17,6 +17,7 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/sirupsen/logrus"
 
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/audit"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/config"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/logging"
@@ -112,6 +113,11 @@ func main() {
 	// Configure organization name resolver for metrics tagging.
 	// This must be called once before registering tools that emit metrics.
 	tools.ConfigureMetrics(provider)
+	auditCleanup, err := audit.ConfigureFromEnv()
+	if err != nil {
+		bootstrapLog.WithError(err).Fatal("failed to configure audit publisher")
+	}
+	defer auditCleanup()
 
 	organizations.Register(srv, provider)
 	projects.Register(srv, provider)
