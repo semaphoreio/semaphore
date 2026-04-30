@@ -4,6 +4,7 @@ defmodule PipelinesAPI.ArtifactHubClient do
   """
 
   alias PipelinesAPI.Util.{Log, Metrics, ToTuple}
+  alias PipelinesAPI.Util.Map, as: MapUtil
 
   alias InternalApi.Artifacthub.{
     ArtifactService,
@@ -259,12 +260,12 @@ defmodule PipelinesAPI.ArtifactHubClient do
 
   defp form_list_path_request(params) do
     %{
-      artifact_id: map_get(params, "artifact_store_id"),
+      artifact_id: MapUtil.get(params, "artifact_store_id"),
       path:
         request_path(
-          map_get(params, "scope"),
-          map_get(params, "scope_id"),
-          map_get(params, "path") || ""
+          MapUtil.get(params, "scope"),
+          MapUtil.get(params, "scope_id"),
+          MapUtil.get(params, "path") || ""
         ),
       unwrap_directories: false
     }
@@ -294,9 +295,9 @@ defmodule PipelinesAPI.ArtifactHubClient do
   end
 
   defp serialize_list_response(response, params) do
-    scope = map_get(params, "scope")
-    scope_id = map_get(params, "scope_id")
-    relative_path = map_get(params, "path") || ""
+    scope = MapUtil.get(params, "scope")
+    scope_id = MapUtil.get(params, "scope_id")
+    relative_path = MapUtil.get(params, "path") || ""
 
     case serialize_list_items(response.items, scope, scope_id) do
       {:ok, items} ->
@@ -337,14 +338,14 @@ defmodule PipelinesAPI.ArtifactHubClient do
 
   defp form_get_signed_url_request(params) do
     %{
-      artifact_id: map_get(params, "artifact_store_id"),
+      artifact_id: MapUtil.get(params, "artifact_store_id"),
       path:
         request_path(
-          map_get(params, "scope"),
-          map_get(params, "scope_id"),
-          map_get(params, "path") || ""
+          MapUtil.get(params, "scope"),
+          MapUtil.get(params, "scope_id"),
+          MapUtil.get(params, "path") || ""
         ),
-      method: map_get(params, "method") || "GET"
+      method: MapUtil.get(params, "method") || "GET"
     }
     |> GetSignedURLRequest.new()
     |> ToTuple.ok()
@@ -500,19 +501,4 @@ defmodule PipelinesAPI.ArtifactHubClient do
 
   defp list_item_invalid_reason(reason) when is_atom(reason), do: Atom.to_string(reason)
   defp list_item_invalid_reason(reason), do: inspect(reason)
-
-  defp map_get(map, "artifact_store_id") when is_map(map),
-    do: Map.get(map, "artifact_store_id") || Map.get(map, :artifact_store_id)
-
-  defp map_get(map, "scope") when is_map(map),
-    do: Map.get(map, "scope") || Map.get(map, :scope)
-
-  defp map_get(map, "scope_id") when is_map(map),
-    do: Map.get(map, "scope_id") || Map.get(map, :scope_id)
-
-  defp map_get(map, "path") when is_map(map),
-    do: Map.get(map, "path") || Map.get(map, :path)
-
-  defp map_get(map, "method") when is_map(map),
-    do: Map.get(map, "method") || Map.get(map, :method)
 end

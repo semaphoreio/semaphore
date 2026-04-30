@@ -1,0 +1,38 @@
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: mcp_server/Dockerfile
+      target: dev
+      args:
+        APP_NAME: mcp_server
+        BUILD_ENV: ${BUILD_ENV:-dev}
+    working_dir: /app
+    environment:
+      AMQP_URL: ${AMQP_URL:-amqp://semaphore:semaphore@rabbitmq:5672}
+      AUDIT_LOGGING: ${AUDIT_LOGGING:-true}
+      MCP_USE_STUBS: "true"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - go-mod-cache:/go/pkg/mod
+      - go-build-cache:/root/.cache/go-build
+    tty: true
+    command: ["sh", "-lc", "while sleep 1000; do :; done"]
+
+  rabbitmq:
+    image: rabbitmq:3.11.18-management
+    environment:
+      RABBITMQ_DEFAULT_USER: semaphore
+      RABBITMQ_DEFAULT_PASS: semaphore
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  go-mod-cache:
+  go-build-cache:
