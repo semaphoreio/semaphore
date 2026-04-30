@@ -46,7 +46,7 @@ defmodule Front.DashboardPage.Model do
 
   @spec get(
           LoadParams.t(),
-          (() -> {:ok, list(), String.t(), String.t()} | {:error, any()}),
+          (-> {:ok, list(), String.t(), String.t()} | {:error, any()}),
           keyword()
         ) ::
           {:ok, {list(), String.t(), String.t()}, :from_cache | :from_api} | {:error, any()}

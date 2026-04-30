@@ -413,27 +413,15 @@ defmodule InternalApi.Projecthub.Project.Spec.Task.Parameter do
           required: boolean,
           description: String.t(),
           default_value: String.t(),
-          options: [String.t()],
-          regex_pattern: String.t(),
-          validate_input_format: boolean
+          options: [String.t()]
         }
-  defstruct [
-    :name,
-    :required,
-    :description,
-    :default_value,
-    :options,
-    :regex_pattern,
-    :validate_input_format
-  ]
+  defstruct [:name, :required, :description, :default_value, :options]
 
   field(:name, 1, type: :string)
   field(:required, 2, type: :bool)
   field(:description, 3, type: :string)
   field(:default_value, 4, type: :string)
   field(:options, 5, repeated: true, type: :string)
-  field(:regex_pattern, 6, type: :string)
-  field(:validate_input_format, 7, type: :bool)
 end
 
 defmodule InternalApi.Projecthub.Project.Spec.Task.Status do
