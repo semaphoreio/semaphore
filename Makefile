@@ -280,10 +280,11 @@ endif
 INTERNAL_API_BRANCH?=master
 TMP_INTERNAL_REPO_DIR?=/tmp/internal_api
 RELATIVE_INTERNAL_PB_OUTPUT_DIR=lib/internal_api
+INTERNAL_API_REPOSITORY?=git@github.com:renderedtext/internal_api.git
 
 pb.clone:
 	rm -rf $(TMP_INTERNAL_REPO_DIR)
-	git clone git@github.com:renderedtext/internal_api.git $(TMP_INTERNAL_REPO_DIR) && (cd $(TMP_INTERNAL_REPO_DIR) && git checkout $(INTERNAL_API_BRANCH) && cd -)
+	git clone $(INTERNAL_API_REPOSITOR) $(TMP_INTERNAL_REPO_DIR) && (cd $(TMP_INTERNAL_REPO_DIR) && git checkout $(INTERNAL_API_BRANCH) && cd -)
 
 #
 # In CI, we run tests outside of docker compose,
