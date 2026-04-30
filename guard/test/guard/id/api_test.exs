@@ -24,6 +24,31 @@ defmodule Guard.Id.Api.Test do
     end
   end
 
+  describe "parse_expires_at/1" do
+    test "returns nil for nil input" do
+      assert Guard.Id.Api.parse_expires_at(nil) == nil
+    end
+
+    test "converts integer unix seconds to DateTime" do
+      assert %DateTime{} = dt = Guard.Id.Api.parse_expires_at(1_700_000_000)
+      assert DateTime.to_unix(dt) == 1_700_000_000
+    end
+
+    test "passes through DateTime unchanged" do
+      now = DateTime.utc_now() |> DateTime.truncate(:second)
+      assert Guard.Id.Api.parse_expires_at(now) == now
+    end
+
+    test "returns nil instead of raising on out-of-range integer" do
+      assert Guard.Id.Api.parse_expires_at(999_999_999_999_999_999) == nil
+    end
+
+    test "returns nil for unexpected shapes" do
+      assert Guard.Id.Api.parse_expires_at("2024-01-01T00:00:00Z") == nil
+      assert Guard.Id.Api.parse_expires_at(1.5) == nil
+    end
+  end
+
   describe "/oauth/:provider" do
     test "404 for non existing provider" do
       {:ok, response} = send_login_request(path: "/oauth/foo")
