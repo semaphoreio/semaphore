@@ -10,6 +10,8 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/mark3labs/mcp-go v0.41.1
+	github.com/rabbitmq/amqp091-go v1.9.0
+	github.com/renderedtext/go-tackle v0.0.0-20231226193542-c913a4af4f94
 	github.com/renderedtext/go-watchman v0.0.0-20221222100224-451a6f3c8d92
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.10.0
