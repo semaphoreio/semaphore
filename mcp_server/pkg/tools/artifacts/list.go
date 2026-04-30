@@ -9,6 +9,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/audit"
 	artifacthubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/artifacthub"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/internal/shared"
@@ -156,6 +157,16 @@ func listHandler(api internalapi.Provider) server.ToolHandlerFunc {
 		}
 
 		requestPath := artifactPath(params.Scope, params.ScopeID, relativePath)
+
+		audit.LogArtifactList(req.Header, audit.ArtifactListParams{
+			UserID:       params.UserID,
+			OrgID:        orgID,
+			ResourceName: requestPath,
+			SourceKind:   params.Scope,
+			SourceID:     params.ScopeID,
+			ProjectID:    access.ProjectID,
+		})
+
 		items, err := listPath(ctx, api, orgID, access.ArtifactStoreID, requestPath)
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil

@@ -91,6 +91,8 @@ The server dials internal gRPC services based on environment variables. Deployme
 | Users gRPC endpoint | `INTERNAL_API_URL_USER`, `MCP_USER_GRPC_ENDPOINT` |
 | Featurehub gRPC endpoint | `INTERNAL_API_URL_FEATURE`, `MCP_FEATURE_GRPC_ENDPOINT` |
 | Scheduler gRPC endpoint | `INTERNAL_API_URL_SCHEDULER`, `MCP_SCHEDULER_GRPC_ENDPOINT` |
+| AMQP endpoint for audit publishing | `AMQP_URL` |
+| Audit event publishing toggle | `AUDIT_LOGGING` (default `true`) |
 | Dial timeout | `MCP_GRPC_DIAL_TIMEOUT` (default `5s`) |
 | Call timeout | `MCP_GRPC_CALL_TIMEOUT` (default `15s`) |
 
@@ -140,4 +142,15 @@ docker run --rm -p 3001:3001 \
   -e INTERNAL_API_URL_LOGHUB=loghub:50051 \
   -e INTERNAL_API_URL_LOGHUB2=loghub2-internal-api:50051 \
   semaphore-mcp-server
+```
+
+## Docker Compose (with RabbitMQ)
+
+Use the local compose stack when you want real AMQP audit publishing during tests.
+
+```bash
+cd mcp_server
+docker compose up -d rabbitmq app
+docker compose exec app sh -lc "/usr/local/go/bin/go test -tags=integration ./pkg/tools/artifacts -run TestArtifactsSignedURLPublishesAuditEventToRabbitMQ -v"
+docker compose down -v
 ```
