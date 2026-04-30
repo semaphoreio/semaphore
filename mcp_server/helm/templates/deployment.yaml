@@ -1,3 +1,19 @@
+{{- if and (eq .Values.global.edition "ee") .Values.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Chart.Name }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: ClusterIP
+  selector:
+    app: {{ .Chart.Name }}
+  ports:
+    - name: http
+      port: 3001
+      targetPort: 3001
+      protocol: TCP
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -6,26 +22,29 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app: "{{ .Chart.Name }}"
+      app: {{ .Chart.Name }}
   replicas: {{ .Values.replicas }}
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxSurge: 25%
-      maxUnavailable: 0
   template:
     metadata:
       name: {{ .Chart.Name }}
+      namespace: {{ .Release.Namespace }}
       labels:
         app: {{ .Chart.Name }}
         product: semaphoreci
     spec:
+{{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{- range .Values.imagePullSecrets }}
+        - name: {{ . }}
+{{- end }}
+{{- end }}
       automountServiceAccountToken: false
       containers:
         - name: {{ .Chart.Name }}
-          image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
+          image: "{{ .Values.global.image.registry }}/auth:mcp_{{ .Values.imageTag }}"
           ports:
-            - containerPort: 4004
+            - name: http
+              containerPort: 3001
           securityContext:
             privileged: false
             allowPrivilegeEscalation: false
@@ -34,14 +53,8 @@ spec:
               drop:
                 - ALL
           env:
-            - name: K8S_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
             - name: LOG_LEVEL
-              value: {{ .Values.logging }}
-            - name: API_VERSION
-              value: "v1alpha"
+              value: {{ .Values.logging.level }}
             - name: PPL_GRPC_URL
               valueFrom:
                 configMapKeyRef:
@@ -52,66 +65,46 @@ spec:
                 configMapKeyRef:
                   name: {{ .Values.global.internalApi.configMapName }}
                   key: INTERNAL_API_URL_PLUMBER
+            - name: INTERNAL_API_URL_ORGANIZATION
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.internalApi.configMapName }}
+                  key: INTERNAL_API_URL_ORGANIZATION
+            - name: INTERNAL_API_URL_PROJECT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.internalApi.configMapName }}
+                  key: INTERNAL_API_URL_PROJECT
+            - name: INTERNAL_API_URL_JOB
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.internalApi.configMapName }}
+                  key: INTERNAL_API_URL_JOB
+            - name: INTERNAL_API_URL_ARTIFACTHUB
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.internalApi.configMapName }}
+                  key: INTERNAL_API_URL_ARTIFACTHUB
             - name: INTERNAL_API_URL_RBAC
               valueFrom:
                 configMapKeyRef:
                   name: {{ .Values.global.internalApi.configMapName }}
                   key: INTERNAL_API_URL_RBAC
-            - name: GOFER_GRPC_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ .Values.global.internalApi.configMapName }}
-                  key: INTERNAL_API_URL_GOFER
-            - name: PERIODIC_SCHEDULER_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ .Values.global.internalApi.configMapName }}
-                  key: INTERNAL_API_URL_SCHEDULER
-            - name: REPO_PROXY_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ .Values.global.internalApi.configMapName }}
-                  key: INTERNAL_API_URL_REPO_PROXY
-            - name: SELF_HOSTED_HUB_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ .Values.global.internalApi.configMapName }}
-                  key: INTERNAL_API_URL_AGENTHUB
-            - name: JOBS_API_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ .Values.global.internalApi.configMapName }}
-                  key: INTERNAL_API_URL_JOB
-            - name: SECRETHUB_GRPC_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ .Values.global.internalApi.configMapName }}
-                  key: INTERNAL_API_URL_SECRETHUB
-            - name: FEATURE_GRPC_URL
+            - name: INTERNAL_API_URL_FEATURE
               valueFrom:
                 configMapKeyRef:
                   name: {{ .Values.global.internalApi.configMapName }}
                   key: INTERNAL_API_URL_FEATURE
-            - name: PROJECTHUB_API_GRPC_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ .Values.global.internalApi.configMapName }}
-                  key: INTERNAL_API_URL_PROJECT
-            - name: ARTIFACTS_HUB_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ .Values.global.internalApi.configMapName }}
-                  key: INTERNAL_API_URL_ARTIFACTHUB
-            - name: USER_API_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ .Values.global.internalApi.configMapName }}
-                  key: INTERNAL_API_URL_USER
-            - name: LOGHUB2_API_URL
+            - name: INTERNAL_API_URL_LOGHUB2
               valueFrom:
                 configMapKeyRef:
                   name: {{ .Values.global.internalApi.configMapName }}
                   key: INTERNAL_API_URL_LOGHUB2
+            - name: INTERNAL_API_URL_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.internalApi.configMapName }}
+                  key: INTERNAL_API_URL_USER
             - name: AMQP_URL
               valueFrom:
                 secretKeyRef:
@@ -132,17 +125,19 @@ spec:
           resources:
 {{ toYaml .Values.resources | indent 12 }}
 {{- end }}
-          startupProbe:
-            httpGet:
-              path: /health_check/ping
-              port: 4004
-            periodSeconds: 10
-            timeoutSeconds: 3
-            failureThreshold: 30
           livenessProbe:
             httpGet:
-              path: /health_check/ping
-              port: 4004
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 5
             periodSeconds: 5
             timeoutSeconds: 3
             failureThreshold: 3
@@ -154,10 +149,6 @@ spec:
               value: "60000"
             - name: GRAPHITE_HOST
               value: {{ .Values.global.statsd.graphiteHost }}
-{{- if .Values.statsd.resources }}
-          resources:
-{{ toYaml .Values.statsd.resources | indent 13 }}
-{{- end }}
           securityContext:
             privileged: false
             allowPrivilegeEscalation: false
@@ -165,4 +156,9 @@ spec:
             capabilities:
               drop:
                 - ALL
+{{- if .Values.statsd.resources }}
+          resources:
+{{ toYaml .Values.statsd.resources | indent 12 }}
+{{- end }}
+{{- end }}
 {{- end }}
