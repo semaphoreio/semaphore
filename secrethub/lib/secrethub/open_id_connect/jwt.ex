@@ -107,6 +107,14 @@ defmodule Secrethub.OpenIDConnect.JWT do
 
   defp build_oidc_claims(req) do
     domain = Application.fetch_env!(:secrethub, :domain)
+    default_aud = "https://#{req.org_username}.#{domain}"
+
+    aud =
+      case Map.get(req, :audience, []) do
+        [] -> default_aud
+        [single] -> single
+        list when is_list(list) -> list
+      end
 
     common_claims = %{
       "org" => req.org_username,
@@ -126,7 +134,7 @@ defmodule Secrethub.OpenIDConnect.JWT do
       "sub" => req.subject,
       "sub127" => build_subject_127(req),
       "iss" => "https://#{req.org_username}.#{domain}",
-      "aud" => "https://#{req.org_username}.#{domain}",
+      "aud" => aud,
       "job_type" => req.job_type,
       "pr_branch" => req.git_pull_request_branch,
       "repo_slug" => req.repo_slug,
