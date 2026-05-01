@@ -14,6 +14,8 @@ defmodule Scheduler.Actions.RunNowImpl do
   alias Scheduler.Utils.GitReference
   alias Util.ToTuple
 
+  @grpc_unavailable GRPC.Status.unavailable()
+
   def run_now(params) do
     with {:ok, periodic} <- get_periodic(params),
          {:ok, params} <- validate_params(periodic, params),
@@ -117,6 +119,9 @@ defmodule Scheduler.Actions.RunNowImpl do
         |> describe_project_error(project_id)
         |> ToTuple.error(:FAILED_PRECONDITION)
 
+      {:error, {:unavailable, message}} ->
+        message |> ToTuple.error(:UNAVAILABLE)
+
       {:error, {:describe_revision, _revision_args}} ->
         "Cannot find git reference #{revision_args[:reference]}."
         |> ToTuple.error(:FAILED_PRECONDITION)
@@ -132,8 +137,14 @@ defmodule Scheduler.Actions.RunNowImpl do
 
   defp fetch_branch_revision(repository_id, revision_args) do
     case RepositoryClient.describe_revision(repository_id, revision_args) do
-      {:ok, commit} -> {:ok, commit}
-      _ -> {:error, {:describe_revision, revision_args}}
+      {:ok, commit} ->
+        {:ok, commit}
+
+      {:error, %GRPC.RPCError{status: @grpc_unavailable, message: message}} ->
+        {:error, {:unavailable, message}}
+
+      _ ->
+        {:error, {:describe_revision, revision_args}}
     end
   end
 
