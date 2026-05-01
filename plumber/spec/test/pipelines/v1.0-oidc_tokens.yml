@@ -1,0 +1,22 @@
+version: "v1.0"
+name: OIDC tokens test
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1604-minimal
+blocks:
+  - name: Test
+    task:
+      jobs:
+        - name: Single audience (string)
+          oidc_tokens:
+            PYPI_OIDC_TOKEN:
+              aud: pypi
+          commands:
+            - echo "$PYPI_OIDC_TOKEN"
+        - name: Multiple audiences (list)
+          oidc_tokens:
+            NPM_TOKEN:
+              aud: ["npm-prod", "npm-staging"]
+          commands:
+            - echo "$NPM_TOKEN"
