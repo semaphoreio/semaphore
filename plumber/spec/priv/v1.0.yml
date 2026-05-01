@@ -222,6 +222,8 @@ definitions:
         $ref: "#/definitions/env_vars"
       execution_time_limit:
         $ref: "#/definitions/execution_time_limit"
+      oidc_tokens:
+        $ref: "#/definitions/oidc_tokens"
     additionalProperties: false
     not:
       anyOf:
@@ -241,6 +243,26 @@ definitions:
     additionalProperties: false
     anyOf:
       - required: [type, job_count]
+  oidc_tokens:
+    type: object
+    patternProperties:
+      "^[A-Z_][A-Z0-9_]*$":
+        $ref: "#/definitions/oidc_token_spec"
+    additionalProperties: false
+  oidc_token_spec:
+    type: object
+    properties:
+      aud:
+        oneOf:
+          - type: string
+            minLength: 1
+          - type: array
+            minItems: 1
+            items:
+              type: string
+              minLength: 1
+    additionalProperties: false
+    required: [aud]
   secrets:
     type: array
     items:
