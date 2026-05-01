@@ -11,14 +11,20 @@ defmodule Projecthub.Models.Scheduler do
         page_size: 500
       )
 
-    {:ok, res} = InternalApi.PeriodicScheduler.PeriodicService.Stub.list(channel(), req, options(metadata))
+    case InternalApi.PeriodicScheduler.PeriodicService.Stub.list(channel(), req, options(metadata)) do
+      {:ok, res} ->
+        if res.status.code == status_ok() do
+          {:ok, construct_list(res.periodics)}
+        else
+          Logger.error("Failed to list schedulers for project #{project.id} with status: #{inspect(res.status)}")
 
-    if res.status.code == status_ok() do
-      {:ok, construct_list(res.periodics)}
-    else
-      Logger.error("Failed to list schedulers for project #{project.id} with status: #{inspect(res.status)}")
+          {:error, res.status.message}
+        end
 
-      {:error, res.status.message}
+      {:error, reason} ->
+        Logger.error("Failed to list schedulers for project #{project.id}: #{inspect(reason)}")
+
+        {:error, reason}
     end
   end
 

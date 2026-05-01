@@ -8,6 +8,141 @@ Thank you for using Semaphore!
 We continuously deploy changes that improve our product for our customers.
 This page is updated on a weekly basis.
 
+### Week of May 4 2026
+
+**(Improved) Ubuntu 24.04 image update**
+
+**(Updated)** Updated packages:
+
+- Kernel: 6.8.0-90.91 -> 6.8.0-110.110
+- Git: 2.52.0 -> 2.54.0
+- Gh: 2.85.0 -> 2.90.0
+- Chrome: 144.0.7559.59 -> 147.0.7727.101
+- Chromedriver: 144.0.7559.59 -> 147.0.7727.101
+- Docker: 29.1.4 -> 29.4.1
+- Docker compose v2: 5.0.1 -> 5.1.3
+- Dockerize: 0.9.9 -> 0.11.0
+- Docker buildx: 0.30.1 -> 0.33.0
+- Containerd.io: 2.2.1 -> 2.2.3
+- Runc: 1.3.4 -> 1.3.5
+- Aws v2: 2.33.1 -> 2.34.34
+- Azure: 2.82.0 -> 2.85.0
+- Doctl: 1.148.0 -> 1.155.0
+- Gcloud: 552.0.0 -> 565.0.0
+- Heroku: 10.16.0 -> 11.3.0
+- Terraform: 1.14.3 -> 1.14.9
+- Helm: 4.0.5 -> 4.1.4
+- Helmfile: 1.2.3 -> 1.4.4
+- Go: 1.25.6 -> 1.26.2
+- Java 11: 11.0.29 -> 11.0.30
+- Java 17: 17.0.17 -> 17.0.18
+- Java 21: 21.0.9 -> 21.0.10
+- Maven: 3.9.12 -> 3.9.15
+- Gradle: 9.3.0 -> 9.4.1
+- Bazel: 9.0.0 -> 9.1.0
+- Nodejs: 24.13.0 -> 24.15.0
+- Npm: 11.6.2 -> 11.12.1
+- Nvm: 0.40.3 -> 0.40.4
+- Bun: 1.3.6 -> 1.3.13
+- Python3.10: 3.10.19 -> 3.10.20
+- Python3.11: 3.11.14 -> 3.11.15
+- Pip: 25.3 -> 26.0.1
+- Pypy3: 7.3.19 -> 7.3.21
+- Virtualenv: 20.36.1 -> 21.2.4
+- Ruby: 3.4.8 -> 3.4.9
+- Gem: 4.0.2 -> 4.0.8
+- Bundler: 4.0.2 -> 4.0.8
+- Sbt: 1.12.0 -> 1.12.9
+- Yq: 4.50.1 -> 4.53.2
+- Rust: 1.93.0 -> 1.95.0
+- .NET: 10.0.104 -> 10.0.106
+
+To learn more about this image, check our [Ubuntu 24.04 page](https://docs.semaphoreci.com/reference/os-ubuntu-images/ubuntu-2404-image/).
+
+**(Improved) Ubuntu 24.04 ARM image update**
+
+**(Updated)** Updated packages:
+
+- Kernel: 6.8.0-90.91 -> 6.8.0-110.110
+- Git: 2.52.0 -> 2.54.0
+- Gh: 2.85.0 -> 2.90.0
+- Chromium: 143.0.7499.192 -> 147.0.7727.101
+- Firefox: 140.7.0 -> 140.9.1
+- Docker: 29.1.4 -> 29.4.1
+- Docker compose v2: 5.0.1 -> 5.1.3
+- Dockerize: 0.9.9 -> 0.11.0
+- Docker buildx: 0.30.1 -> 0.33.0
+- Containerd.io: 2.2.1 -> 2.2.3
+- Runc: 1.3.4 -> 1.3.5
+- Aws v2: 2.33.1 -> 2.34.34
+- Azure: 2.82.0 -> 2.85.0
+- Doctl: 1.148.0 -> 1.155.0
+- Gcloud: 552.0.0 -> 565.0.0
+- Terraform: 1.14.3 -> 1.14.9
+- Helm: 4.0.5 -> 4.1.4
+- Helmfile: 1.2.3 -> 1.4.4
+- Go: 1.25.6 -> 1.26.2
+- Java 11: 11.0.29 -> 11.0.30
+- Java 17: 17.0.17 -> 17.0.18
+- Java 21: 21.0.9 -> 21.0.10
+- Maven: 3.9.12 -> 3.9.15
+- Gradle: 9.3.0 -> 9.4.1
+- Nodejs: 24.13.0 -> 24.15.0
+- Npm: 11.6.2 -> 11.12.1
+- Nvm: 0.40.3 -> 0.40.4
+- Bun: 1.3.6 -> 1.3.13
+- Python3.10: 3.10.19 -> 3.10.20
+- Python3.11: 3.11.14 -> 3.11.15
+- Pip: 25.3 -> 26.0.1
+- Pypy3: 7.3.19 -> 7.3.21
+- Virtualenv: 20.36.1 -> 21.2.4
+- Ruby: 3.4.8 -> 3.4.9
+- Gem: 4.0.2 -> 4.0.8
+- Bundler: 4.0.2 -> 4.0.8
+- Sbt: 1.12.0 -> 1.12.9
+- Yq: 4.50.1 -> 4.53.2
+- Rust: 1.93.0 -> 1.95.0
+
+To learn more about this image, check our [Ubuntu 24.04 ARM page](https://docs.semaphoreci.com/reference/os-ubuntu-images/ubuntu-2404-arm-image/).
+
+### Week of April 6 2026
+
+**(Improved) macos_xcode26 image update**
+
+- Name: macos-xcode26
+- Availability: a2-standard-4 agent type
+
+**(New)** New packages:
+
+- Xcode 26.4
+- iOS simulator 26.4
+
+**(Updated)** Updated packages:
+- macOS 26 BuildVersion  25C56 -> 26.4
+- (System) Ruby          3.4.8 -> 4.0.2
+- Flutter                3.38.5 -> 3.41.6
+- Homebrew               5.0.6 -> 5.1.1
+- Fastlane               2.30.0 -> 2.232.2
+- Postgres               14.20 -> 18.3
+- NodeJS                 24.11.0 -> 24.14.1 
+
+**(Removed)** Removed packages:
+- Simulator versions below 26.3
+
+
+### Week of March 23 2026
+
+**(Improved) Ubuntu 24.04 image update**
+
+**(New)** New packages:
+
+- .NET SDK: 10.0.104
+- PowerShell: 7.6.0
+- Edge: 146.0.3856.72
+- EdgeDriver: 146.0.3856.72
+
+To learn more about this image, check our [Ubuntu 24.04 page](https://docs.semaphoreci.com/reference/os-ubuntu-images/ubuntu-2404-image/).
+
 ### Week of February 9 2026
 
 **(Improved) Ubuntu 24.04 image update**

@@ -49,7 +49,7 @@ defmodule Secrethub.Application do
         openid_connect_services() ++
         openid_key_manager() ++ workers() ++ feature_provider(provider)
 
-    opts = [strategy: :one_for_one, name: Secrets.Supervisor]
+    opts = [strategy: :one_for_one, name: Secrets.Supervisor, max_restarts: 1000]
     Supervisor.start_link(children, opts)
   end
 

@@ -252,16 +252,10 @@ Where the flag is one of the following:
 You can supply multiple packages with their versions in the same invocation:
 
 ```shell
- install-package install mongodb-clients=3.6.8 mysql-client=8.0.36-0ubuntu0.20.04.1
+ install-package mongodb-clients=3.6.8 mysql-client=8.0.36-0ubuntu0.20.04.1
 ```
 
 The tool integrates with the [Semaphore cache](../using-semaphore/cache) to save, retrieve, and update the Deb packages as needed.
-
-You can reinstall the packages in a different job within the same project with:
-
-```shell title="Installing packages from the cache in other jobs"
-install-package install
-```
 
 ## retry {#retry}
 

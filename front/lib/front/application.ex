@@ -82,6 +82,7 @@ defmodule Front.Application do
   def reactor do
     if Application.get_env(:front, :start_reactor) == "true" do
       [
+        Front.DashboardPage.CacheInvalidator,
         Front.BranchPage.CacheInvalidator,
         Front.ProjectPage.CacheInvalidator,
         Front.Layout.CacheInvalidator,

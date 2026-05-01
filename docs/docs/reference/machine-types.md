@@ -18,16 +18,12 @@ Linux machines are provided in four generations. The following table shows what 
 
 | Generation | Arch | OS Supported | Docker environments |
 |--|--|--|--|
-| [E1](#e1) | Intel x86_64 | [Ubuntu 20.04](./os-ubuntu-images/ubuntu-2004-image) <br/> [Ubuntu 22.04](./os-ubuntu-images/ubuntu-2204-image)<br/>[Ubuntu 24.04](./os-ubuntu-images/ubuntu-2404-image) |  Yes |
-| [E2](#e2) | Intel x86_64 | [Ubuntu 20.04](./os-ubuntu-images/ubuntu-2004-image) <br/> [Ubuntu 22.04](./os-ubuntu-images/ubuntu-2204-image)<br/>[Ubuntu 24.04](./os-ubuntu-images/ubuntu-2404-image) | Yes |
-| [F1](#f1) | Intel x86_64 | [Ubuntu 20.04](./os-ubuntu-images/ubuntu-2004-image) <br/> [Ubuntu 22.04](./os-ubuntu-images/ubuntu-2204-image)<br/>[Ubuntu 24.04](./os-ubuntu-images/ubuntu-2404-image) | Yes |
+| [E1](#e1) | Intel x86_64 | [Ubuntu 22.04](./os-ubuntu-images/ubuntu-2204-image)<br/>[Ubuntu 24.04](./os-ubuntu-images/ubuntu-2404-image) |  Yes |
+| [E2](#e2) | Intel x86_64 | [Ubuntu 22.04](./os-ubuntu-images/ubuntu-2204-image)<br/>[Ubuntu 24.04](./os-ubuntu-images/ubuntu-2404-image) | Yes |
+| [F1](#f1) | Intel x86_64 | [Ubuntu 22.04](./os-ubuntu-images/ubuntu-2204-image)<br/>[Ubuntu 24.04](./os-ubuntu-images/ubuntu-2404-image) | Yes |
 | [R1](#r1) | ARM | [Ubuntu 24.04 ARM](./os-ubuntu-images/ubuntu-2404-arm-image) | No |
 
-:::warning
 
-The Ubuntu 20.04 image will be phased out by March 2026
-
-:::
 
 ### E1 generation {#e1}
 
@@ -49,6 +45,7 @@ The E1 generation is presented in the following types:
 
 E1 Generation machine types can be paired with:
 
+- [`ubuntu2204`](../reference/os-ubuntu-images/ubuntu-2204-image)
 - [`ubuntu2404`](../reference/os-ubuntu-images/ubuntu-2404-image)
 - [Docker-based environment](../using-semaphore/pipelines#docker-environments).
 
@@ -71,7 +68,6 @@ The E2 generation is presented in the following types:
 
 E2 machines can also be paired with:
 
-- [`ubuntu2004`](../reference/os-ubuntu-images/ubuntu-2004-image)
 - [`ubuntu2204`](../reference/os-ubuntu-images/ubuntu-2204-image)
 - [`ubuntu2404`](../reference/os-ubuntu-images/ubuntu-2404-image)
 - [Docker-based environments](../using-semaphore/pipelines#docker-environments).
@@ -95,7 +91,6 @@ The F1 generation is presented in the following types:
 
 F1 machines can be paired with:
 
-- [`ubuntu2004`](../reference/os-ubuntu-images/ubuntu-2004-image)
 - [`ubuntu2204`](../reference/os-ubuntu-images/ubuntu-2204-image)
 - [`ubuntu2404`](../reference/os-ubuntu-images/ubuntu-2404-image)
 - [Docker-based environments](../using-semaphore/pipelines#docker-environments).
@@ -114,8 +109,9 @@ The r1 generation is presented in the following types:
 
 | Type | Virtual CPUs | Memory (GB) | Disk (GB) |
 |--|--|--|--|
-| `r1-standard-2` | 2 | 4 | 55 |
+| `r1-standard-2` | 2 | 4 | 50 |
 | `r1-standard-4` | 4 | 8 | 65 |
+| `r1-standard-8` | 8 | 16 | 75 |
 
 R1 Generation machine types can only be paired with:
 

@@ -1218,6 +1218,13 @@ defmodule Scheduler.GrpcServer.Test do
 
   # RunNow
 
+  test "gRPC run_now() - returns a public INTERNAL message when request handling crashes" do
+    response = Scheduler.Grpc.Server.run_now(nil, nil)
+
+    assert response.status.code == Google.Rpc.Code.value(:INTERNAL)
+    assert response.status.message == "Internal error while starting workflow."
+  end
+
   test "gRPC run_now() - returns INVALID_ARGUMENT when id or requester is empty string" do
     request = %{id: "", requester: "user_1"} |> Proto.deep_new!(RunNowRequest)
 
@@ -1261,7 +1268,7 @@ defmodule Scheduler.GrpcServer.Test do
     use_mock_project_service()
     use_mock_repository_service()
 
-    mock_project_service_response("failed_precondition")
+    mock_project_service_response("not_found")
     mock_repository_service_response("ok")
 
     reset_mock_feature_service()
@@ -1922,6 +1929,7 @@ defmodule Scheduler.GrpcServer.Test do
              list_keyset_grpc(params, :OK)
 
     assert list_result_contains?(periodics, results)
+    assert Enum.all?(periodics, fn periodic -> periodic.organization_id == ctx.ids.org_id end)
   end
 
   test "gRPC list_keyset() - valid response when listing by project_id", ctx do
@@ -1936,6 +1944,7 @@ defmodule Scheduler.GrpcServer.Test do
              list_keyset_grpc(params, :OK)
 
     assert list_result_contains?(periodics, results)
+    assert Enum.all?(periodics, fn periodic -> periodic.organization_id == ctx.ids.org_id end)
   end
 
   test "gRPC list_keyset() - valid response when listing ordered by creation date", ctx do

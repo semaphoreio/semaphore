@@ -15,7 +15,7 @@ defmodule Zebra.Workers.JobRequestFactory.Machine do
 
         {
           :stop_job_processing,
-          "OS image '#{job.machine_os_image}' for machine type '#{job.machine_type}' is currently in a brownout phase. Please use another OS image."
+          "OS image '#{job.machine_os_image}' for machine type '#{job.machine_type}' is currently in a brownout phase. Please use another OS image and make sure the initialization jobs are updated as well."
         }
 
       Zebra.Machines.registered?(job.organization_id, job.machine_type, job.machine_os_image) ->
