@@ -249,6 +249,7 @@ definitions:
       "^[A-Z_][A-Z0-9_]*$":
         $ref: "#/definitions/oidc_token_spec"
     additionalProperties: false
+    maxProperties: 16
   oidc_token_spec:
     type: object
     properties:
@@ -256,11 +257,14 @@ definitions:
         oneOf:
           - type: string
             minLength: 1
+            maxLength: 256
           - type: array
             minItems: 1
+            maxItems: 8
             items:
               type: string
               minLength: 1
+              maxLength: 256
     additionalProperties: false
     required: [aud]
   secrets:
