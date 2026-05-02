@@ -31,8 +31,8 @@ defmodule Ppl.DefinitionReviser.BlocksReviser.GlobalJobConfig.Test do
     Test.Support.GrpcServerHelper.setup_service_url(@url_env_name_2, project_port)
 
     on_exit(fn ->
-      System.put_env(@url_env_name, old_artifact_url)
-      System.put_env(@url_env_name_2, old_project_url)
+      restore_env(@url_env_name, old_artifact_url)
+      restore_env(@url_env_name_2, old_project_url)
     end)
 
     Test.Helpers.truncate_db()
@@ -133,4 +133,7 @@ defmodule Ppl.DefinitionReviser.BlocksReviser.GlobalJobConfig.Test do
       }
     }
   end
+
+  defp restore_env(name, nil), do: System.delete_env(name)
+  defp restore_env(name, value), do: System.put_env(name, value)
 end
