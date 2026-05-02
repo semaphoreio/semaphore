@@ -143,13 +143,18 @@ defmodule Secrethub.OpenIDConnect.JWTTest do
       end
     end
 
-    test "strips audience override when aud is not allowlisted" do
+    test "user audience override is not present when aud is not allowlisted" do
       req = base_req(%{audience: ["pypi"]})
 
-      # Allowlist excludes `aud`. The filter strips any non-allowlisted claim
-      # unconditionally (see JWTFilter._filter_claims/3), so even though the
-      # user requested a custom audience, `aud` is dropped from the signed
-      # token.
+      # Allowlist excludes `aud`. JWTFilter._filter_claims/3 strips any
+      # non-allowlisted claim unconditionally, so the user's "pypi" override
+      # is dropped from the claims map before signing.
+      #
+      # Note: Joken's default config injects its own placeholder `aud` value
+      # ("Joken") when the claims map lacks one, so the final JWT will still
+      # have an `aud` field — but it will *not* be the user-supplied "pypi".
+      # The security-relevant property is "user override is suppressed", not
+      # "aud key is absent."
       with_mock(JWTConfiguration, [],
         get_org_config: fn _org_id ->
           {:ok,
@@ -167,7 +172,7 @@ defmodule Secrethub.OpenIDConnect.JWTTest do
         assert {:ok, token} = JWT.generate_and_sign(req)
         assert {true, jwt, _} = JWT.verify(token)
 
-        refute Map.has_key?(jwt.fields, "aud")
+        refute Map.get(jwt.fields, "aud") == "pypi"
       end
     end
   end
