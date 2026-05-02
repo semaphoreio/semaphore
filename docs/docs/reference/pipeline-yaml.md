@@ -1213,6 +1213,22 @@ It is not possible to have both `parallelism` and [`matrix`](#matrix-in-jobs) pr
 
 :::
 
+### oidc_tokens {#oidc-tokens-in-jobs}
+
+The `oidc_tokens` property declares additional [OpenID Connect (OIDC) tokens](./openid#oidc_tokens-block) with custom audiences, exposed as named environment variables in the job. This is required for token consumers (like PyPI's trusted publishers) that strictly verify a specific `aud` claim value.
+
+```yaml title="Example"
+jobs:
+  - name: Publish to PyPI
+    oidc_tokens:
+      PYPI_OIDC_TOKEN:
+        aud: pypi
+    commands:
+      - echo "$PYPI_OIDC_TOKEN"
+```
+
+See the [`oidc_tokens` block reference](./openid#oidc_tokens-block) for the full schema, validation rules, and limits.
+
 ## after_pipeline {#after_pipeline}
 
 Defines a set of jobs to execute when the pipeline is finished. The `after_pipeline` property is most commonly used for sending notifications, collecting test results, and submitting metrics.
