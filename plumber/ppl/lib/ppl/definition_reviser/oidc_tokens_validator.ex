@@ -15,6 +15,10 @@ defmodule Ppl.DefinitionReviser.OIDCTokensValidator do
 
   @reserved_token_names ~w(SEMAPHORE_OIDC_TOKEN)
 
+  @type definition :: map()
+  @type error :: {:error, {:malformed, String.t()}}
+
+  @spec validate(definition) :: {:ok, definition} | error
   def validate(definition) do
     with {:ok, definition} <- do_validate(definition, "blocks"),
          {:ok, definition} <- do_validate(definition, "after_pipeline") do

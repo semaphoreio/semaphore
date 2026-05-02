@@ -420,8 +420,8 @@ blocks:
 ### How it works
 
 - Each entry in `oidc_tokens` produces one additional minted token with the requested `aud`. The token is exposed as the named environment variable (the yaml key).
-- The default `SEMAPHORE_OIDC_TOKEN` is **always** still injected with the org-URL audience — your existing AWS / Vault flows continue to work unchanged.
-- All tokens (default + `oidc_tokens` entries) share the same TTL (24h) and the same claim set, except for `aud` (per the request) and `jti` (always unique per token).
+- The default `SEMAPHORE_OIDC_TOKEN` is still injected with the org-URL audience whenever the OIDC feature is enabled for the organization — your existing AWS / Vault flows continue to work unchanged.
+- All tokens (default + `oidc_tokens` entries) share the same TTL and the same claim set, except for `aud` (per the request) and `jti` (always unique per token).
 
 ### Validation rules
 

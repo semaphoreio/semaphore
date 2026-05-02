@@ -14,8 +14,6 @@ Semaphore generates a unique OIDC token for every job. The token is injected int
 
 The token consists of a JWT token signed by Semaphore and contains the following claims.
 
-Sure, here is the reordered list presented in a table with three columns: Claim, Description, Example.
-
 | Claim       | Description                                               | Example                              |
 |-------------|-----------------------------------------------------------|--------------------------------------|
 | iss         | The issuer of the token. The full URL of the organization | `https://<org-name>.semaphoreci.com` |
