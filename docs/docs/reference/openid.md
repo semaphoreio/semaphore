@@ -50,6 +50,12 @@ If the cloud provider is configured to accept OIDC tokens, it will receive the t
 
 ## `oidc_tokens` block
 
+:::caution Coming soon
+
+The `oidc_tokens` block is being added in stages. The yaml schema and validation are available now; runtime injection of the named environment variables is part of a follow-up release. Pipelines using `oidc_tokens` will pass validation, but the env vars will not yet be populated until the runtime wiring lands.
+
+:::
+
 Jobs can declare additional OIDC tokens with custom audiences using a per-job `oidc_tokens:` block. This is needed for consumers that strictly verify a specific `aud` value (such as [PyPI's trusted publishers](https://docs.pypi.org/trusted-publishers/), which requires `aud="pypi"`).
 
 ```yaml
@@ -67,7 +73,7 @@ jobs:
 | Field | Required | Type | Description |
 |---|---|---|---|
 | `<ENV_VAR_NAME>` (the yaml key) | yes | string | Name of the environment variable. Must match `^[A-Z_][A-Z0-9_]*$`. The reserved name `SEMAPHORE_OIDC_TOKEN` is not allowed (it's the auto-injected default). |
-| `aud` | yes | string OR non-empty list of strings | Value of the JWT `aud` claim. A string becomes JWT `"aud": "<value>"`; a list becomes JWT `"aud": [<values>]` per [RFC 7519 §4.1.3](https://www.rfc-editor.org/rfc/rfc7519#section-4.1.3). Up to 8 audiences allowed; each up to 256 characters. |
+| `aud` | yes | string OR non-empty list of strings | Value of the JWT `aud` claim. A string becomes JWT `"aud": "<value>"`; a list of two or more strings becomes JWT `"aud": [<values>]` per [RFC 7519 §4.1.3](https://www.rfc-editor.org/rfc/rfc7519#section-4.1.3). A single-element list (e.g. `aud: ["pypi"]`) is normalized to a string in the JWT, per RFC 7519's convention for the single-audience case — required for consumers like PyPI that strictly verify `aud` as a string. Up to 8 audiences allowed; each up to 256 characters. |
 
 A job may declare up to 16 entries.
 
@@ -82,7 +88,7 @@ A job may declare up to 16 entries.
 | Error | Cause |
 |---|---|
 | Schema validation failure on `oidc_tokens` | Yaml key doesn't match the env var name regex, `aud` is missing or wrong shape, or extra unknown properties present |
-| `'SEMAPHORE_OIDC_TOKEN' is reserved; use a different env var name` | Reserved key used as a custom token name |
+| Reserved name `SEMAPHORE_OIDC_TOKEN` used as a custom token key | Reserved key used as a custom token name |
 
 See the [Custom audiences](../using-semaphore/openid#custom-audiences) section of the OIDC guide for usage examples.
 

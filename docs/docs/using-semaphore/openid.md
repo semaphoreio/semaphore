@@ -379,6 +379,12 @@ vault kv get -field=value secret/data/production/my-secret
 
 ## Custom audiences with `oidc_tokens` {#custom-audiences}
 
+:::caution Coming soon
+
+The `oidc_tokens` block is being added in stages. The yaml schema and validation are available now; runtime injection of the named environment variables is part of a follow-up release. Pipelines using `oidc_tokens` will pass validation, but the env vars will not yet be populated until the runtime wiring lands.
+
+:::
+
 By default, Semaphore injects `SEMAPHORE_OIDC_TOKEN` into every job with the `aud` claim set to your organization URL (`https://<org-name>.semaphoreci.com`). This works for cloud providers like AWS, Google Cloud, and HashiCorp Vault that accept any audience matching the configured identity provider.
 
 Some token consumers — including [PyPI's trusted publishers](https://docs.pypi.org/trusted-publishers/), npm trusted publishing, and other registries — require the OIDC token to carry a specific audience string (e.g. `aud: pypi`). For these cases, declare additional tokens in a per-job `oidc_tokens:` block.
@@ -424,9 +430,11 @@ The yaml key (the env var name) must match `^[A-Z_][A-Z0-9_]*$`. The reserved na
 `aud` is required and must be either:
 
 - a string (becomes JWT `"aud": "<value>"`), or
-- a non-empty list of strings (becomes JWT `"aud": [<values>]`, per [RFC 7519 §4.1.3](https://www.rfc-editor.org/rfc/rfc7519#section-4.1.3)).
+- a list of two or more strings (becomes JWT `"aud": [<values>]`, per [RFC 7519 §4.1.3](https://www.rfc-editor.org/rfc/rfc7519#section-4.1.3)). A single-element list (e.g., `aud: ["pypi"]`) is normalized to a string in the JWT, per RFC 7519's convention for the single-audience case — this is necessary for consumers like PyPI that strictly verify `aud` as a string.
 
 A pipeline that omits `aud`, uses an invalid env var name, or collides with `SEMAPHORE_OIDC_TOKEN` is rejected at submission time.
+
+The schema enforces these limits: up to 16 entries per job, each with an `aud` of up to 8 audiences, each audience up to 256 characters. Pipelines exceeding these limits are rejected at validation time.
 
 ### Multiple consumers in one job
 
