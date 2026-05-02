@@ -46,7 +46,7 @@ A token with the above claims is exported into jobs as the `SEMAPHORE_OIDC_TOKEN
 
 If the cloud provider is configured to accept OIDC tokens, it will receive the token, verify its signature by connecting back to `<org-url>.semaphoreci.com.well-known/jwts`, and if the token is valid, it will respond with a short-lived token for this specific job that can be used to fetch and modify cloud resources.
 
-## `oidc_tokens` block
+## `oidc_tokens` block {#oidc_tokens-block}
 
 :::caution Coming soon
 
