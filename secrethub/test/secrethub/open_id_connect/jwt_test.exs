@@ -1,7 +1,9 @@
 defmodule Secrethub.OpenIDConnect.JWTTest do
   use Secrethub.DataCase
 
-  alias Secrethub.OpenIDConnect.JWT
+  import Mock
+
+  alias Secrethub.OpenIDConnect.{JWT, JWTConfiguration}
   alias Support.FakeServices
 
   defp base_req(extra \\ %{}) do
@@ -46,6 +48,18 @@ defmodule Secrethub.OpenIDConnect.JWTTest do
     test "defaults to org URL when audience is absent" do
       req = base_req()
       domain = Application.fetch_env!(:secrethub, :domain)
+      expected_iss = "https://#{req.org_username}.#{domain}"
+
+      assert {:ok, token} = JWT.generate_and_sign(req)
+      assert {true, jwt, _} = JWT.verify(token)
+
+      assert Map.get(jwt.fields, "aud") == "https://#{req.org_username}.#{domain}"
+      assert Map.get(jwt.fields, "iss") == expected_iss
+    end
+
+    test "defaults to org URL when audience is an empty list" do
+      req = base_req(%{audience: []})
+      domain = Application.fetch_env!(:secrethub, :domain)
 
       assert {:ok, token} = JWT.generate_and_sign(req)
       assert {true, jwt, _} = JWT.verify(token)
@@ -53,8 +67,8 @@ defmodule Secrethub.OpenIDConnect.JWTTest do
       assert Map.get(jwt.fields, "aud") == "https://#{req.org_username}.#{domain}"
     end
 
-    test "defaults to org URL when audience is an empty list" do
-      req = base_req(%{audience: []})
+    test "uses default org URL when audience is nil" do
+      req = base_req() |> Map.put(:audience, nil)
       domain = Application.fetch_env!(:secrethub, :domain)
 
       assert {:ok, token} = JWT.generate_and_sign(req)
@@ -74,11 +88,50 @@ defmodule Secrethub.OpenIDConnect.JWTTest do
 
     test "uses JSON array when audience is a multi-element list" do
       req = base_req(%{audience: ["pypi", "https://other.example"]})
+      domain = Application.fetch_env!(:secrethub, :domain)
+      expected_iss = "https://#{req.org_username}.#{domain}"
 
       assert {:ok, token} = JWT.generate_and_sign(req)
       assert {true, jwt, _} = JWT.verify(token)
 
       assert Map.get(jwt.fields, "aud") == ["pypi", "https://other.example"]
+      assert Map.get(jwt.fields, "iss") == expected_iss
+    end
+  end
+
+  describe "generate_and_sign/1 with :open_id_connect_filter enabled" do
+    setup do
+      FakeServices.enable_features(["open_id_connect_filter"])
+      :ok
+    end
+
+    test "preserves audience override when aud is allowlisted" do
+      req = base_req(%{audience: ["pypi"]})
+
+      # Configure the JWT filter to allowlist `aud` (and the other claims used
+      # by build_oidc_claims that we want surfaced for the test). When the
+      # :open_id_connect_filter feature flag is enabled, only allowlisted
+      # claims survive into the signed token.
+      with_mock(JWTConfiguration, [],
+        get_org_config: fn _org_id ->
+          {:ok,
+           %{
+             claims: [
+               %{"name" => "aud", "is_active" => true},
+               %{"name" => "iss", "is_active" => true},
+               %{"name" => "sub", "is_active" => true},
+               %{"name" => "exp", "is_active" => true},
+               %{"name" => "iat", "is_active" => true},
+               %{"name" => "nbf", "is_active" => true}
+             ]
+           }}
+        end
+      ) do
+        assert {:ok, token} = JWT.generate_and_sign(req)
+        assert {true, jwt, _} = JWT.verify(token)
+
+        assert Map.get(jwt.fields, "aud") == "pypi"
+      end
     end
   end
 end

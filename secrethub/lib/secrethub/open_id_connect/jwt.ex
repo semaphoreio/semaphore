@@ -111,6 +111,7 @@ defmodule Secrethub.OpenIDConnect.JWT do
 
     aud =
       case Map.get(req, :audience, []) do
+        nil -> default_aud
         [] -> default_aud
         [single] -> single
         list when is_list(list) -> list
