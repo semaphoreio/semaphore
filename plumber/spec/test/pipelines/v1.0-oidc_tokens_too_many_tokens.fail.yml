@@ -1,0 +1,48 @@
+version: "v1.0"
+name: OIDC tokens too many tokens
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1604-minimal
+blocks:
+  - name: Test
+    task:
+      jobs:
+        - name: Too many tokens
+          oidc_tokens:
+            T1:
+              aud: pypi
+            T2:
+              aud: pypi
+            T3:
+              aud: pypi
+            T4:
+              aud: pypi
+            T5:
+              aud: pypi
+            T6:
+              aud: pypi
+            T7:
+              aud: pypi
+            T8:
+              aud: pypi
+            T9:
+              aud: pypi
+            T10:
+              aud: pypi
+            T11:
+              aud: pypi
+            T12:
+              aud: pypi
+            T13:
+              aud: pypi
+            T14:
+              aud: pypi
+            T15:
+              aud: pypi
+            T16:
+              aud: pypi
+            T17:
+              aud: pypi
+          commands:
+            - echo hi
