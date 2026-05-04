@@ -22,8 +22,28 @@ defmodule Scheduler.Periodics.Model.PeriodicsParam do
     param
     |> Ecto.Changeset.cast(params, @all_fields)
     |> Ecto.Changeset.validate_required(@required_fields)
+    |> validate_regex_pattern_length()
     |> validate_regex_pattern()
     |> validate_default_value_format()
+  end
+
+  # Cap stored regex_pattern length unconditionally — even when
+  # validate_input_format is false. Prevents an attacker from persisting
+  # an arbitrarily large pattern that becomes a runtime hazard the
+  # moment the toggle flips on.
+  defp validate_regex_pattern_length(changeset) do
+    pattern = Ecto.Changeset.get_field(changeset, :regex_pattern)
+    max = Scheduler.SafeRegex.max_pattern_length()
+
+    if is_binary(pattern) and byte_size(pattern) > max do
+      Ecto.Changeset.add_error(
+        changeset,
+        :regex_pattern,
+        "is too long (max #{max} bytes)"
+      )
+    else
+      changeset
+    end
   end
 
   defp validate_regex_pattern(changeset) do
@@ -41,12 +61,18 @@ defmodule Scheduler.Periodics.Model.PeriodicsParam do
           "can't be blank when validate_input_format is true"
         )
 
+      Keyword.has_key?(changeset.errors, :regex_pattern) ->
+        # Length validator already raised; do not pile on.
+        changeset
+
       true ->
         case Scheduler.SafeRegex.validate_pattern(pattern) do
           :ok ->
             changeset
 
           {:error, :pattern_too_long} ->
+            # Defensive — should be unreachable because validate_regex_pattern_length
+            # already runs unconditionally.
             Ecto.Changeset.add_error(
               changeset,
               :regex_pattern,
