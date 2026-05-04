@@ -8,7 +8,13 @@ defmodule Scheduler.SafeRegex do
   - a maximum value length (#{4096} bytes),
   - PCRE `match_limit` and `match_limit_recursion` caps,
   - a wall-clock timeout via `Task.async/Task.shutdown`.
+
+  > **Note:** `Front.SafeRegex` (in the `front` umbrella) is a near-byte-for-byte
+  > copy of this module. Keep the constants and behavior in sync; both
+  > services share the same trust boundary.
   """
+
+  require Logger
 
   @max_pattern_length 512
   @max_value_length 4_096
@@ -22,6 +28,7 @@ defmodule Scheduler.SafeRegex do
           | :invalid_pattern
           | :match_limit_exceeded
           | :timeout
+          | :crash
 
   @spec max_pattern_length() :: pos_integer()
   def max_pattern_length, do: @max_pattern_length
@@ -79,15 +86,25 @@ defmodule Scheduler.SafeRegex do
   defp bounded_match(pattern, value) do
     task = Task.async(fn -> safe_run(pattern, value) end)
 
-    case Task.yield(task, @timeout_ms) || Task.shutdown(task, :brutal_kill) do
+    case Task.yield(task, @timeout_ms) do
       {:ok, result} ->
         result
 
       nil ->
-        {:error, :timeout}
+        case Task.shutdown(task, :brutal_kill) do
+          {:ok, result} ->
+            result
 
-      {:exit, _reason} ->
-        {:error, :timeout}
+          nil ->
+            {:error, :timeout}
+
+          {:exit, reason} ->
+            Logger.warning(
+              "Scheduler.SafeRegex match crashed pattern=#{inspect(pattern)} reason=#{inspect(reason)}"
+            )
+
+            {:error, :crash}
+        end
     end
   end
 
