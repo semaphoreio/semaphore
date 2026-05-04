@@ -36,7 +36,11 @@ defmodule Projecthub.Models.PeriodicTask do
   defp construct_status(_periodic_or_task), do: :STATUS_UNSPECIFIED
 
   defp construct_parameter(parameter),
-    do: Map.take(parameter, ~w(name description required default_value options)a)
+    do:
+      Map.take(
+        parameter,
+        ~w(name description required default_value options regex_pattern validate_input_format)a
+      )
 
   def list(project) do
     case GRPC.list(project.id) do

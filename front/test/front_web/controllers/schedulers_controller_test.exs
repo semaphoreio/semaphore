@@ -614,6 +614,45 @@ defmodule FrontWeb.SchedulersControllerTest do
         refute html_response(conn, 422) =~ "Blazing-fast build and deploy!"
       end
     end
+
+    test "passes regex_pattern and validate_input_format through to Scheduler.persist",
+         %{project_name: project_name} do
+      params_with_validation =
+        Map.put(@raw_scheduler_form_params, :parameters, %{
+          "0" => %{
+            "name" => "VERSION",
+            "description" => "Release version",
+            "default_value" => "1.0.0",
+            "options" => "",
+            "required" => "on",
+            "validate_input_format" => "on",
+            "regex_pattern" => "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+          }
+        })
+
+      with_mocks([
+        {
+          Front.Models.Scheduler,
+          [:passthrough],
+          [persist: fn parsed, _ctx -> send(self(), {:persist, parsed}); {:ok, "id"} end]
+        }
+      ]) do
+        build_conn()
+        |> post(
+          schedulers_path(build_conn(), :create, project_name),
+          params_with_validation
+        )
+
+        assert_received {:persist, parsed}
+
+        assert [param] = parsed.parameters
+        assert param.name == "VERSION"
+        assert param.required == true
+        assert param.default_value == "1.0.0"
+        assert param.validate_input_format == true
+        assert param.regex_pattern == "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+      end
+    end
   end
 
   describe "GET edit" do
@@ -1146,6 +1185,58 @@ defmodule FrontWeb.SchedulersControllerTest do
 
       assert html_response(conn, 200) =~ "Run"
       assert get_flash(conn, :alert) == "Unable to start workflow, please provide correct data."
+    end
+
+    test "fails when submitted value exceeds the SafeRegex length cap",
+         %{conn: conn, project_name: _project_name} do
+      scheduler =
+        prepare_scheduler_for_just_run(
+          reference: "refs/heads/master",
+          pipeline_file: "pipeline.yml",
+          parameters: [
+            %{
+              name: "VERSION",
+              required: true,
+              regex_pattern: "^[a]+$",
+              validate_input_format: true
+            }
+          ]
+        )
+
+      oversized = String.duplicate("a", Front.SafeRegex.max_value_length() + 1)
+
+      conn =
+        trigger_just_run(conn, scheduler, %{
+          "parameters" => %{"0" => %{"name" => "VERSION", "value" => oversized}}
+        })
+
+      assert html_response(conn, 200) =~ "Run"
+      assert get_flash(conn, :alert) == "Unable to start workflow, please provide correct data."
+      assert DB.find_all_by(:triggers, :periodic_id, scheduler.id) == []
+    end
+
+    test "fails when default_value does not match regex_pattern",
+         %{conn: conn, project_name: _project_name} do
+      scheduler =
+        prepare_scheduler_for_just_run(
+          reference: "refs/heads/master",
+          pipeline_file: "pipeline.yml",
+          parameters: [
+            %{
+              name: "VERSION",
+              required: false,
+              default_value: "abc",
+              regex_pattern: "^[0-9]+$",
+              validate_input_format: true
+            }
+          ]
+        )
+
+      conn = trigger_just_run(conn, scheduler, %{})
+
+      assert html_response(conn, 200) =~ "Run"
+      assert get_flash(conn, :alert) == "Unable to start workflow, please provide correct data."
+      assert DB.find_all_by(:triggers, :periodic_id, scheduler.id) == []
     end
   end
 
