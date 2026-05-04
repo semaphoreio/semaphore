@@ -411,7 +411,10 @@ defmodule InternalApi.PeriodicScheduler.HistoryRequest do
 
   field(:periodic_id, 1, type: :string)
 
-  field(:cursor_type, 2, type: InternalApi.PeriodicScheduler.HistoryRequest.CursorType, enum: true)
+  field(:cursor_type, 2,
+    type: InternalApi.PeriodicScheduler.HistoryRequest.CursorType,
+    enum: true
+  )
 
   field(:cursor_value, 3, type: :uint64)
   field(:filters, 4, type: InternalApi.PeriodicScheduler.HistoryRequest.Filters)
@@ -526,7 +529,10 @@ defmodule InternalApi.PeriodicScheduler.ListKeysetRequest do
   field(:page_token, 3, type: :string)
   field(:page_size, 4, type: :int32)
 
-  field(:direction, 5, type: InternalApi.PeriodicScheduler.ListKeysetRequest.Direction, enum: true)
+  field(:direction, 5,
+    type: InternalApi.PeriodicScheduler.ListKeysetRequest.Direction,
+    enum: true
+  )
 
   field(:order, 6, type: InternalApi.PeriodicScheduler.ListOrder, enum: true)
   field(:query, 7, type: :string)
