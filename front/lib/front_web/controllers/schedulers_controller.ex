@@ -735,32 +735,83 @@ defmodule FrontWeb.SchedulersController do
       do: %{field: :parameters, name: pv.name, message: "This parameter is required"}
   end
 
+  # Validates the effective parameter value (submitted value or default fallback)
+  # against the configured regex. Mirrors the server-side merge_values/2 check
+  # so a non-JS submit cannot bypass UI-side validation.
   defp regex_param_error(pv) do
-    with true <- Map.get(pv, :validate_input_format, false),
-         pattern when is_binary(pattern) and pattern != "" <- Map.get(pv, :regex_pattern),
-         value when is_binary(value) and value != "" <- pv.value do
-      case Front.SafeRegex.match(pattern, value) do
-        {:ok, true} ->
-          nil
+    cond do
+      Map.get(pv, :validate_input_format) != true ->
+        nil
 
-        {:ok, false} ->
-          %{field: :parameters, name: pv.name, message: "Value does not match required format"}
+      not is_binary(Map.get(pv, :regex_pattern)) or Map.get(pv, :regex_pattern) == "" ->
+        nil
 
-        {:error, :value_too_long} ->
-          %{
-            field: :parameters,
-            name: pv.name,
-            message:
-              "Value exceeds maximum length of #{Front.SafeRegex.max_value_length()} bytes"
-          }
-
-        {:error, _reason} ->
-          %{field: :parameters, name: pv.name, message: "Value does not match required format"}
-      end
-    else
-      _ -> nil
+      true ->
+        run_regex_param_check(pv)
     end
   end
+
+  defp run_regex_param_check(pv) do
+    pattern = Map.get(pv, :regex_pattern)
+    {effective_value, source} = effective_value_for_check(pv)
+
+    case effective_value do
+      "" ->
+        nil
+
+      value ->
+        evaluate_regex_match(pv, pattern, value, source)
+    end
+  end
+
+  defp effective_value_for_check(pv) do
+    cond do
+      is_binary(pv.value) and pv.value != "" ->
+        {pv.value, :submitted}
+
+      is_binary(Map.get(pv, :default_value)) and Map.get(pv, :default_value) != "" ->
+        {pv.default_value, :default}
+
+      true ->
+        {"", :empty}
+    end
+  end
+
+  defp evaluate_regex_match(pv, pattern, value, source) do
+    case Front.SafeRegex.match(pattern, value) do
+      {:ok, true} ->
+        nil
+
+      {:ok, false} ->
+        %{field: :parameters, name: pv.name, message: format_message(source, :mismatch)}
+
+      {:error, :value_too_long} ->
+        Logger.warning(
+          "regex_param_error value_too_long parameter=#{inspect(pv.name)}"
+        )
+
+        %{
+          field: :parameters,
+          name: pv.name,
+          message:
+            "Value exceeds maximum length of #{Front.SafeRegex.max_value_length()} bytes"
+        }
+
+      {:error, reason} ->
+        Logger.warning(
+          "regex_param_error parameter=#{inspect(pv.name)} reason=#{inspect(reason)}"
+        )
+
+        %{field: :parameters, name: pv.name, message: format_message(source, :mismatch)}
+    end
+  end
+
+  defp format_message(:default, :mismatch),
+    do:
+      "Default value does not match required format. Provide an explicit value or fix the default."
+
+  defp format_message(_source, :mismatch),
+    do: "Value does not match required format"
 
   defp empty?(nil), do: true
   defp empty?(""), do: true
@@ -804,6 +855,11 @@ defmodule FrontWeb.SchedulersController do
     parameters |> Map.values() |> Enum.map(&parse_form_input_parameter/1)
   end
 
+  # `regex_pattern` is persisted as-is whenever the form provides it, even
+  # when `validate_input_format` is unchecked. This mirrors how
+  # `default_value` and `options` are persisted regardless of the
+  # `required` checkbox: the user can keep a pattern around and re-enable
+  # the toggle later without losing the value.
   defp parse_form_input_parameter(parameter) do
     %{
       name: parameter["name"],
