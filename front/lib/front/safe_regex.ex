@@ -1,8 +1,14 @@
 defmodule Front.SafeRegex do
   @moduledoc """
   Bounded regex matching used by parameter input format validation in
-  the front-end controller. Mitigates ReDoS attacks via length caps,
-  PCRE match limits, and a wall-clock timeout.
+  the front-end controller.
+
+  Mitigates ReDoS attacks by enforcing:
+
+  - a maximum pattern length (#{512} bytes),
+  - a maximum value length (#{4096} bytes),
+  - PCRE's built-in `match_limit` (default 10,000,000) — a runaway
+    match returns `:nomatch` instead of consuming unbounded CPU.
 
   > **Note:** `Scheduler.SafeRegex` (in the `periodic_scheduler` umbrella)
   > is the canonical copy. Keep this module's constants and behavior in
@@ -10,21 +16,13 @@ defmodule Front.SafeRegex do
   > patterns reach this app already validated by the scheduler.
   """
 
-  require Logger
-
   @max_pattern_length 512
   @max_value_length 4_096
-  @match_limit 100_000
-  @match_limit_recursion 5_000
-  @timeout_ms 100
 
   @type match_error ::
           :pattern_too_long
           | :value_too_long
           | :invalid_pattern
-          | :match_limit_exceeded
-          | :timeout
-          | :crash
 
   @spec max_pattern_length() :: pos_integer()
   def max_pattern_length, do: @max_pattern_length
@@ -33,7 +31,7 @@ defmodule Front.SafeRegex do
   def max_value_length, do: @max_value_length
 
   @doc """
-  Matches `value` against `pattern` under bounded execution.
+  Matches `value` against `pattern` under length-bounded execution.
 
   Returns `{:ok, boolean}` or `{:error, reason}`. Callers should treat
   any error as "value does not match" (fail-closed).
@@ -52,57 +50,20 @@ defmodule Front.SafeRegex do
         {:error, :value_too_long}
 
       true ->
-        bounded_match(pattern, value)
+        run(pattern, value)
     end
   end
 
-  defp bounded_match(pattern, value) do
-    task = Task.async(fn -> safe_run(pattern, value) end)
-
-    case Task.yield(task, @timeout_ms) do
-      {:ok, result} ->
-        result
-
-      nil ->
-        case Task.shutdown(task, :brutal_kill) do
-          {:ok, result} ->
-            result
-
-          nil ->
-            {:error, :timeout}
-
-          {:exit, reason} ->
-            Logger.warning(
-              "Front.SafeRegex match crashed pattern=#{inspect(pattern)} reason=#{inspect(reason)}"
-            )
-
-            {:error, :crash}
-        end
-    end
-  end
-
-  defp safe_run(pattern, value) do
+  defp run(pattern, value) do
     case :re.compile(pattern) do
-      {:ok, compiled} -> run_compiled(compiled, value)
-      {:error, _reason} -> {:error, :invalid_pattern}
-    end
-  end
+      {:ok, compiled} ->
+        case :re.run(value, compiled) do
+          {:match, _captures} -> {:ok, true}
+          :nomatch -> {:ok, false}
+        end
 
-  # `:report_errors` is required for the engine to surface `{:error,
-  # :match_limit}` / `{:error, :match_limit_recursion}` instead of
-  # silently returning `:nomatch` when the bound is exhausted.
-  # See https://www.erlang.org/doc/apps/stdlib/re.html#run/3.
-  defp run_compiled(compiled, value) do
-    case :re.run(value, compiled, [
-           {:match_limit, @match_limit},
-           {:match_limit_recursion, @match_limit_recursion},
-           :report_errors
-         ]) do
-      {:match, _captures} -> {:ok, true}
-      :nomatch -> {:ok, false}
-      {:error, :match_limit} -> {:error, :match_limit_exceeded}
-      {:error, :match_limit_recursion} -> {:error, :match_limit_exceeded}
-      {:error, _reason} -> {:error, :match_limit_exceeded}
+      {:error, _reason} ->
+        {:error, :invalid_pattern}
     end
   end
 end
