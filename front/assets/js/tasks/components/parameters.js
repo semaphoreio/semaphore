@@ -4,6 +4,9 @@ export default {
   }
 }
 
+export const MAX_REGEX_PATTERN_LENGTH = 512
+export const MAX_PARAM_VALUE_LENGTH = 4096
+
 export class Parameter {
   static empty_values() {
     return {
@@ -50,6 +53,9 @@ export class Parameter {
     if (!this.regex_pattern || this.regex_pattern.length < 1) {
       return 'Pattern can\'t be blank when "Validate input format" is enabled'
     }
+    if (this.regex_pattern.length > MAX_REGEX_PATTERN_LENGTH) {
+      return `Pattern is too long (max ${MAX_REGEX_PATTERN_LENGTH} characters)`
+    }
     try {
       new RegExp(this.regex_pattern)
     } catch (err) {
@@ -60,7 +66,11 @@ export class Parameter {
   defaultValueValidationMsg() {
     if (!this.validate_input_format) { return }
     if (!this.regex_pattern || this.regex_pattern.length < 1) { return }
+    if (this.regex_pattern.length > MAX_REGEX_PATTERN_LENGTH) { return }
     if (!this.default_value || this.default_value.length < 1) { return }
+    if (this.default_value.length > MAX_PARAM_VALUE_LENGTH) {
+      return `Default value is too long (max ${MAX_PARAM_VALUE_LENGTH} characters)`
+    }
     try {
       if (!new RegExp(this.regex_pattern).test(this.default_value)) {
         return 'Default value does not match the regex pattern'

@@ -1,5 +1,9 @@
 import { expect } from "chai"
-import { Parameter } from "./parameters"
+import {
+  MAX_PARAM_VALUE_LENGTH,
+  MAX_REGEX_PATTERN_LENGTH,
+  Parameter,
+} from "./parameters"
 
 describe("Parameter", () => {
   describe("validate", () => {
@@ -58,6 +62,15 @@ describe("Parameter", () => {
       })
       expect(p.regexPatternValidationMsg()).to.be.undefined
     })
+
+    it("rejects regex pattern over the length cap", () => {
+      const p = new Parameter({
+        name: "PARAM",
+        validate_input_format: true,
+        regex_pattern: "a".repeat(MAX_REGEX_PATTERN_LENGTH + 1)
+      })
+      expect(p.regexPatternValidationMsg()).to.match(/too long/)
+    })
   })
 
   describe("defaultValueValidationMsg", () => {
@@ -99,6 +112,16 @@ describe("Parameter", () => {
         default_value: ""
       })
       expect(p.defaultValueValidationMsg()).to.be.undefined
+    })
+
+    it("rejects default_value over the length cap", () => {
+      const p = new Parameter({
+        name: "PARAM",
+        validate_input_format: true,
+        regex_pattern: "^[a]+$",
+        default_value: "a".repeat(MAX_PARAM_VALUE_LENGTH + 1)
+      })
+      expect(p.defaultValueValidationMsg()).to.match(/too long/)
     })
   })
 

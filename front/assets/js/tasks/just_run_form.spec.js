@@ -1,5 +1,9 @@
 import { expect } from "chai"
-import { regexMismatch } from "./just_run_form"
+import {
+  MAX_PARAM_VALUE_LENGTH,
+  MAX_REGEX_PATTERN_LENGTH,
+  regexMismatch,
+} from "./just_run_form"
 
 describe("regexMismatch", () => {
   it("returns false when validate_input_format is disabled", () => {
@@ -36,5 +40,19 @@ describe("regexMismatch", () => {
   it("returns false when regex_pattern is invalid (defensive)", () => {
     const param = { validate_input_format: true, regex_pattern: "[" }
     expect(regexMismatch(param, "anything")).to.equal(false)
+  })
+
+  it("rejects pattern over the length cap (treats as mismatch)", () => {
+    const param = {
+      validate_input_format: true,
+      regex_pattern: "a".repeat(MAX_REGEX_PATTERN_LENGTH + 1)
+    }
+    expect(regexMismatch(param, "anything")).to.equal(true)
+  })
+
+  it("rejects value over the length cap (treats as mismatch)", () => {
+    const param = { validate_input_format: true, regex_pattern: "^a+$" }
+    const value = "a".repeat(MAX_PARAM_VALUE_LENGTH + 1)
+    expect(regexMismatch(param, value)).to.equal(true)
   })
 })
