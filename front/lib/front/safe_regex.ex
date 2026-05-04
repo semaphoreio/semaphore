@@ -82,19 +82,27 @@ defmodule Front.SafeRegex do
   end
 
   defp safe_run(pattern, value) do
-    with {:ok, compiled} <- :re.compile(pattern),
-         result <-
-           :re.run(value, compiled,
-             match_limit: @match_limit,
-             match_limit_recursion: @match_limit_recursion
-           ) do
-      case result do
-        {:match, _captures} -> {:ok, true}
-        :nomatch -> {:ok, false}
-        {:error, _reason} -> {:error, :match_limit_exceeded}
-      end
-    else
+    case :re.compile(pattern) do
+      {:ok, compiled} -> run_compiled(compiled, value)
       {:error, _reason} -> {:error, :invalid_pattern}
+    end
+  end
+
+  # `:report_errors` is required for the engine to surface `{:error,
+  # :match_limit}` / `{:error, :match_limit_recursion}` instead of
+  # silently returning `:nomatch` when the bound is exhausted.
+  # See https://www.erlang.org/doc/apps/stdlib/re.html#run/3.
+  defp run_compiled(compiled, value) do
+    case :re.run(value, compiled, [
+           {:match_limit, @match_limit},
+           {:match_limit_recursion, @match_limit_recursion},
+           :report_errors
+         ]) do
+      {:match, _captures} -> {:ok, true}
+      :nomatch -> {:ok, false}
+      {:error, :match_limit} -> {:error, :match_limit_exceeded}
+      {:error, :match_limit_recursion} -> {:error, :match_limit_exceeded}
+      {:error, _reason} -> {:error, :match_limit_exceeded}
     end
   end
 end
