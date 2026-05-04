@@ -319,7 +319,10 @@ defmodule Scheduler.Periodics.Model.PeriodicsQueries do
   defp convert_parameters_to_maps(result), do: result
 
   defp convert_parameter_to_map(parameter) do
-    parameter |> Map.take(~w(name required description default_value options)a)
+    Map.take(
+      parameter,
+      ~w(name required description default_value options regex_pattern validate_input_format)a
+    )
   end
 
   defp preprocess_reference_field(params, "v1.0") do
