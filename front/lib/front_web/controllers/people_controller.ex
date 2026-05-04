@@ -667,7 +667,9 @@ defmodule FrontWeb.PeopleController do
       fetch_members = Async.run(fn -> Members.list_project_members(org_id, project.id) end)
 
       fetch_groups =
-        Async.run(fn -> Members.list_project_members(org_id, project.id, member_type: "group") end)
+        Async.run(fn ->
+          Members.list_project_members(org_id, project.id, member_type: "group")
+        end)
 
       fetch_service_accounts =
         async_fetch_members(org_id, project.id, member_type: "service_account")

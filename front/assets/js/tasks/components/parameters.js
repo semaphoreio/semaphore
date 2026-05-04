@@ -4,7 +4,7 @@ export default {
   }
 }
 
-class Parameter {
+export class Parameter {
   static empty_values() {
     return {
       name: "",
@@ -12,6 +12,8 @@ class Parameter {
       default_value: "",
       options: [],
       required: false,
+      validate_input_format: false,
+      regex_pattern: "",
       validations: []
     }
   }
@@ -23,9 +25,13 @@ class Parameter {
 
   validate() {
     const nameMsg = this.nameValidationMsg()
+    const regexMsg = this.regexPatternValidationMsg()
+    const defaultValueMsg = this.defaultValueValidationMsg()
 
     this.validations = []
     if (nameMsg) { this.validations.push({ field: 'name', message: nameMsg }) }
+    if (regexMsg) { this.validations.push({ field: 'regex_pattern', message: regexMsg }) }
+    if (defaultValueMsg) { this.validations.push({ field: 'default_value', message: defaultValueMsg }) }
   }
 
   isValid() {
@@ -37,6 +43,31 @@ class Parameter {
     const envVarNameRegex = /^[A-Z_]{1,}[A-Z0-9_]*$/g
     if (!this.name || this.name.length < 1) { return 'Name can\'t be blank' }
     if (!this.name.match(envVarNameRegex)) { return 'Name must be a valid environment variable name' }
+  }
+
+  regexPatternValidationMsg() {
+    if (!this.validate_input_format) { return }
+    if (!this.regex_pattern || this.regex_pattern.length < 1) {
+      return 'Pattern can\'t be blank when "Validate input format" is enabled'
+    }
+    try {
+      new RegExp(this.regex_pattern)
+    } catch (err) {
+      return `Invalid regex pattern: ${err.message}`
+    }
+  }
+
+  defaultValueValidationMsg() {
+    if (!this.validate_input_format) { return }
+    if (!this.regex_pattern || this.regex_pattern.length < 1) { return }
+    if (!this.default_value || this.default_value.length < 1) { return }
+    try {
+      if (!new RegExp(this.regex_pattern).test(this.default_value)) {
+        return 'Default value does not match the regex pattern'
+      }
+    } catch (_err) {
+      return
+    }
   }
 }
 
@@ -72,6 +103,10 @@ class ParametersComponent {
 
   changeParameterRequired(index, value) {
     this.parameters[index]['required'] = value
+  }
+
+  toggleValidateInputFormat(index, value) {
+    this.parameters[index]['validate_input_format'] = value
   }
 
   deleteParameter(index) {
@@ -123,6 +158,14 @@ class ParametersComponent {
           this.renderValidations()
         })
       })
+
+    container.querySelectorAll('[data-action=toggleValidateInputFormat]')
+      .forEach((element) => {
+        element.addEventListener('change', (event) => {
+          this.toggleValidateInputFormat(element.dataset.index, event.target.checked)
+          this.renderParameters(showValidations)
+        })
+      })
   }
 }
 
@@ -147,6 +190,7 @@ function renderParameter(parameter, index) {
 
           ${renderRequired(parameter, index)}
           ${renderDefaultValue(parameter, index)}
+          ${renderValidateInputFormat(parameter, index)}
         </div>
 
         <div data-action="deleteParameter" data-index="${index}"
@@ -263,6 +307,46 @@ function renderRequired(parameter, index) {
           <label class="f6 gray">This is a required parameter</label>
           <div class="f5 mv1 red" data-validation-message="required"></div>
         </div>
+      </div>
+    `;
+}
+
+function renderValidateInputFormat(parameter, index) {
+  const regexFieldHtml = parameter.validate_input_format ? `
+        <div class="mt2">
+          <div>
+            <label class="f6 gray">Regex Pattern <small class=f7>(applied to submitted values)</small></label>
+          </div>
+          <div>
+            <input data-action="updateParameter"
+                   data-field="regex_pattern"
+                   data-index=${index}
+                   autocomplete="off"
+                   type="text"
+                   id="parameter_${index}_regex_pattern"
+                   name="parameters[${index}][regex_pattern]"
+                   value="${escapeHtml(parameter.regex_pattern) || ""}"
+                   class="form-control form-control-small w-100 code"
+                   placeholder="e.g. ^[0-9]+\\.[0-9]+\\.[0-9]+$">
+            <div class="f5 mv1 red" data-validation-message="regex_pattern"></div>
+          </div>
+        </div>
+  ` : "";
+
+  return `
+      <div class="mt2">
+        <div>
+          <input data-action="toggleValidateInputFormat"
+                 data-field="validate_input_format"
+                 type="checkbox"
+                 data-index=${index}
+                 id="parameter_${index}_validate_input_format"
+                 name="parameters[${index}][validate_input_format]"
+                 ${parameter.validate_input_format ? 'checked=true' : ""}>
+          <label class="f6 gray">Validate input format</label>
+          <div class="f5 mv1 red" data-validation-message="validate_input_format"></div>
+        </div>
+        ${regexFieldHtml}
       </div>
     `;
 }

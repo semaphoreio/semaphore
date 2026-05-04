@@ -732,12 +732,31 @@ defmodule FrontWeb.SchedulersController do
 
   defp validate_run_now_parameter_values(errors, parameters) do
     validation_errors =
-      Enum.map(parameters.parameters, fn pv ->
-        if empty?(pv.value) and pv.required,
-          do: %{field: :parameters, name: pv.name, message: "This parameter is required"}
+      Enum.flat_map(parameters.parameters, fn pv ->
+        [
+          required_param_error(pv),
+          regex_param_error(pv)
+        ]
       end)
 
     validation_errors |> Enum.reject(&is_nil/1) |> Enum.concat(errors)
+  end
+
+  defp required_param_error(pv) do
+    if empty?(pv.value) and pv.required,
+      do: %{field: :parameters, name: pv.name, message: "This parameter is required"}
+  end
+
+  defp regex_param_error(pv) do
+    with true <- Map.get(pv, :validate_input_format, false),
+         pattern when is_binary(pattern) and pattern != "" <- Map.get(pv, :regex_pattern),
+         value when is_binary(value) and value != "" <- pv.value,
+         {:ok, regex} <- Regex.compile(pattern),
+         false <- Regex.match?(regex, value) do
+      %{field: :parameters, name: pv.name, message: "Value does not match required format"}
+    else
+      _ -> nil
+    end
   end
 
   defp empty?(nil), do: true
@@ -788,7 +807,9 @@ defmodule FrontWeb.SchedulersController do
       description: parameter["description"] || "",
       required: parameter["required"] == "on",
       default_value: parameter["default_value"] || "",
-      options: parse_form_input_parameter_options(parameter["options"])
+      options: parse_form_input_parameter_options(parameter["options"]),
+      validate_input_format: parameter["validate_input_format"] == "on",
+      regex_pattern: parameter["regex_pattern"] || ""
     }
   end
 
