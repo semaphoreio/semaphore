@@ -28,11 +28,15 @@ In terminal export the env var called MY_MCP_TOKEN with the value of the API tok
 
 You can then use Semaphore MCP in codex CLI by starting it in that same terminal session, or in VS Code codex extension by starting the VS Code from that terminal session with `code <path-to-working-directory>` command.
 
-_Note_: Due to current limitations of Codex extension for VS Code, if you start VS Code in any other way except from the terminal session where MY_MCP_TOKEN env var has correct value, the Semaphore MCP server will not work. 
+_Note_: Due to current limitations of Codex extension for VS Code, if you start VS Code in any other way except from the terminal session where MY_MCP_TOKEN env var has correct value, the Semaphore MCP server will not work.
 
 ## Contributor Guide
 
 Refer to [`AGENTS.md`](AGENTS.md) for repository guidelines, project structure, and development workflows.
+
+## Additional docs
+
+- [`MCP OAuth Guide`](OAUTH_FLOW.md) - architecture, sequence flow, endpoint access model, security, and rollout checklist.
 
 ## Exposed tools
 
@@ -47,6 +51,12 @@ Refer to [`AGENTS.md`](AGENTS.md) for repository guidelines, project structure, 
 | `pipeline_jobs` | List jobs belonging to a specific pipeline. |
 | `jobs_describe` | Describes a job, surfacing agent details and lifecycle timestamps. |
 | `jobs_logs` | Fetches job logs. Hosted jobs stream loghub events; self-hosted jobs return a URL to fetch logs. |
+| `artifact_job_logs` | Returns a signed URL for uploaded artifact job logs (`agent/job_logs.txt` or `.gz`) when artifact-backed job logs are enabled. |
+| `tasks_list` | List scheduled tasks (periodics) for a project. |
+| `tasks_describe` | Get detailed information about a scheduled task including recent trigger history. |
+| `tasks_run` | Trigger a scheduled task to run immediately. |
+| `artifacts_list` | Lists artifacts for project/workflow/job scopes with scope/permission checks and safe path handling. |
+| `artifacts_signed_url` | Returns a signed URL for a single scoped artifact file path after validating scope ownership and permissions. |
 
 ## Requirements
 
@@ -72,12 +82,17 @@ The server dials internal gRPC services based on environment variables. Deployme
 | ------- | -------------------------------------------- |
 | Workflow gRPC endpoint | `INTERNAL_API_URL_PLUMBER`, `MCP_WORKFLOW_GRPC_ENDPOINT`, `WF_GRPC_URL` |
 | Pipeline gRPC endpoint | `INTERNAL_API_URL_PLUMBER`, `MCP_PIPELINE_GRPC_ENDPOINT`, `PPL_GRPC_URL` |
+| Task gRPC endpoint | `INTERNAL_API_URL_TASK`, `MCP_TASK_GRPC_ENDPOINT` |
 | Job gRPC endpoint | `INTERNAL_API_URL_JOB`, `MCP_JOB_GRPC_ENDPOINT`, `JOBS_API_URL` |
+| Artifacthub gRPC endpoint | `INTERNAL_API_URL_ARTIFACTHUB`, `MCP_ARTIFACTHUB_GRPC_ENDPOINT` |
 | Loghub gRPC endpoint (hosted logs) | `INTERNAL_API_URL_LOGHUB`, `MCP_LOGHUB_GRPC_ENDPOINT`, `LOGHUB_API_URL` |
 | Loghub2 gRPC endpoint (self-hosted logs) | `INTERNAL_API_URL_LOGHUB2`, `MCP_LOGHUB2_GRPC_ENDPOINT`, `LOGHUB2_API_URL` |
 | RBAC gRPC endpoint | `INTERNAL_API_URL_RBAC`, `MCP_RBAC_GRPC_ENDPOINT` |
 | Users gRPC endpoint | `INTERNAL_API_URL_USER`, `MCP_USER_GRPC_ENDPOINT` |
 | Featurehub gRPC endpoint | `INTERNAL_API_URL_FEATURE`, `MCP_FEATURE_GRPC_ENDPOINT` |
+| Scheduler gRPC endpoint | `INTERNAL_API_URL_SCHEDULER`, `MCP_SCHEDULER_GRPC_ENDPOINT` |
+| AMQP endpoint for audit publishing | `AMQP_URL` |
+| Audit event publishing toggle | `AUDIT_LOGGING` (default `true`) |
 | Dial timeout | `MCP_GRPC_DIAL_TIMEOUT` (default `5s`) |
 | Call timeout | `MCP_GRPC_CALL_TIMEOUT` (default `15s`) |
 
@@ -122,8 +137,20 @@ Run it locally (listening on port 3001):
 ```bash
 docker run --rm -p 3001:3001 \
   -e INTERNAL_API_URL_PLUMBER=ppl:50053 \
+  -e INTERNAL_API_URL_TASK=zebra-task-api:50051 \
   -e INTERNAL_API_URL_JOB=semaphore-job-api:50051 \
   -e INTERNAL_API_URL_LOGHUB=loghub:50051 \
   -e INTERNAL_API_URL_LOGHUB2=loghub2-internal-api:50051 \
   semaphore-mcp-server
+```
+
+## Docker Compose (with RabbitMQ)
+
+Use the local compose stack when you want real AMQP audit publishing during tests.
+
+```bash
+cd mcp_server
+docker compose up -d rabbitmq app
+docker compose exec app sh -lc "/usr/local/go/bin/go test -tags=integration ./pkg/tools/artifacts -run TestArtifactsSignedURLPublishesAuditEventToRabbitMQ -v"
+docker compose down -v
 ```

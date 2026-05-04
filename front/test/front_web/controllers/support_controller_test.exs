@@ -50,7 +50,7 @@ defmodule FrontWeb.SupportControllerTest do
   end
 
   describe "GET pylon" do
-    test "redirects to pylon support URL when feature is enabled", %{
+    test "renders pylon SSO post page when feature is enabled", %{
       conn: conn,
       organization: organization
     } do
@@ -61,6 +61,7 @@ defmodule FrontWeb.SupportControllerTest do
          [
            feature_enabled?: fn
              :pylon_support, [param: ^org_id] -> true
+             :premium_support, [param: ^org_id] -> true
              _, _ -> false
            end
          ]},
@@ -68,7 +69,7 @@ defmodule FrontWeb.SupportControllerTest do
          [
            new_ticket_location: fn %{email: email}, ^org_id ->
              assert is_binary(email) and email != ""
-             {:ok, "https://pylon-support.test"}
+             {:ok, %{post_url: "https://pylon-support.test", jwt: "jwt-token"}}
            end
          ]}
       ]) do
@@ -76,7 +77,81 @@ defmodule FrontWeb.SupportControllerTest do
           conn
           |> get("/support/pylon")
 
-        assert redirected_to(conn) == "https://pylon-support.test"
+        body = html_response(conn, 200)
+        assert body =~ ~s(action="https://pylon-support.test")
+        assert body =~ ~s(name="jwt")
+        assert body =~ ~s(value="jwt-token")
+      end
+    end
+
+    test "renders pylon SSO post page when support is restricted and user has contact support permission",
+         %{
+           conn: conn,
+           organization: organization
+         } do
+      org_id = organization.id
+
+      with_mocks([
+        {FeatureProvider, [],
+         [
+           feature_enabled?: fn
+             :pylon_support, [param: ^org_id] -> true
+             :premium_support, [param: ^org_id] -> true
+             :restricted_support, [param: ^org_id] -> true
+             _, _ -> false
+           end
+         ]},
+        {Front.Pylon, [],
+         [
+           new_ticket_location: fn _, ^org_id ->
+             {:ok, %{post_url: "https://pylon-support.test", jwt: "jwt-token"}}
+           end
+         ]}
+      ]) do
+        conn =
+          conn
+          |> get("/support/pylon")
+
+        body = html_response(conn, 200)
+        assert body =~ ~s(action="https://pylon-support.test")
+        assert body =~ ~s(name="jwt")
+        assert body =~ ~s(value="jwt-token")
+      end
+    end
+
+    test "shows alert when support is restricted and user lacks contact support permission", %{
+      conn: conn,
+      organization: organization,
+      user: user
+    } do
+      org_id = organization.id
+      Support.Stubs.PermissionPatrol.remove_all_permissions()
+
+      Support.Stubs.PermissionPatrol.allow_everything_except(
+        org_id,
+        user.id,
+        "organization.contact_support"
+      )
+
+      with_mocks([
+        {FeatureProvider, [],
+         [
+           feature_enabled?: fn
+             :pylon_support, [param: ^org_id] -> true
+             :premium_support, [param: ^org_id] -> true
+             :restricted_support, [param: ^org_id] -> true
+             _, _ -> false
+           end
+         ]}
+      ]) do
+        conn =
+          conn
+          |> get("/support/pylon")
+
+        assert redirected_to(conn) == "/"
+
+        assert get_flash(conn, :alert) ==
+                 "Your access to Semaphore support has been limited. Please contact your organization's Admin for more information."
       end
     end
 
@@ -99,12 +174,36 @@ defmodule FrontWeb.SupportControllerTest do
       end
     end
 
+    test "shows alert when pylon_support is enabled but no support tier is enabled", %{conn: conn} do
+      with_mocks([
+        {FeatureProvider, [],
+         [
+           feature_enabled?: fn
+             :pylon_support, [param: _org_id] -> true
+             :advanced_support, [param: _org_id] -> false
+             :premium_support, [param: _org_id] -> false
+             :"support-tier-3", [param: _org_id] -> false
+             :"support-tier-4", [param: _org_id] -> false
+             _, _ -> false
+           end
+         ]}
+      ]) do
+        conn =
+          conn
+          |> get("/support/pylon")
+
+        assert redirected_to(conn) == "/"
+        assert get_flash(conn, :alert) == "Pylon support is not enabled for this organization."
+      end
+    end
+
     test "shows alert when pylon URL generation fails", %{conn: conn} do
       with_mocks([
         {FeatureProvider, [],
          [
            feature_enabled?: fn
              :pylon_support, [param: _org_id] -> true
+             :advanced_support, [param: _org_id] -> true
              _, _ -> false
            end
          ]},

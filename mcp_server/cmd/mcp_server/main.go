@@ -17,16 +17,19 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/sirupsen/logrus"
 
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/audit"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/config"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/logging"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/prompts"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools"
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/artifacts"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/docs"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/jobs"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/organizations"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/pipelines"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/projects"
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/tasks"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/testresults"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/workflows"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/watchman"
@@ -110,13 +113,20 @@ func main() {
 	// Configure organization name resolver for metrics tagging.
 	// This must be called once before registering tools that emit metrics.
 	tools.ConfigureMetrics(provider)
+	auditCleanup, err := audit.ConfigureFromEnv()
+	if err != nil {
+		bootstrapLog.WithError(err).Fatal("failed to configure audit publisher")
+	}
+	defer auditCleanup()
 
 	organizations.Register(srv, provider)
 	projects.Register(srv, provider)
 	workflows.Register(srv, provider)
 	pipelines.Register(srv, provider)
 	jobs.Register(srv, provider)
+	artifacts.Register(srv, provider)
 	testresults.Register(srv, provider)
+	tasks.Register(srv, provider)
 
 	// Register prompts for agent configuration guidance
 	prompts.Register(srv)

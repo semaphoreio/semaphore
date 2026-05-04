@@ -2,6 +2,128 @@ require "spec_helper"
 
 module Semaphore::GithubApp
   RSpec.describe Repositories do
+    describe "#get_remote_repositories" do
+      let(:installation_id) { 13609976 }
+      let(:token) { "token" }
+      let(:repositories) { described_class.new(installation_id) }
+
+      before do
+        allow(Semaphore::GithubApp::Token).to receive(:installation_token).with(installation_id).and_return([token, 1.hour.from_now.iso8601])
+      end
+
+      it "follows the Link header and returns the full list" do
+        page_1_repos = (1..100).map { |i| { "id" => i, "full_name" => "acme/repo-#{i}" } }
+        page_2_repos = (101..200).map { |i| { "id" => i, "full_name" => "acme/repo-#{i}" } }
+        page_3_repos = (201..300).map { |i| { "id" => i, "full_name" => "acme/repo-#{i}" } }
+        page_4_repos = (301..399).map { |i| { "id" => i, "full_name" => "acme/repo-#{i}" } }
+
+        allow(Excon).to receive(:get).and_return(
+          instance_double(
+            Excon::Response,
+            :data => { :body => JSON.generate({ "total_count" => 399, "repositories" => page_1_repos }) },
+            :headers => { "Link" => '<https://api.github.com/installation/repositories?per_page=100&page=2>; rel="next"' }
+          ),
+          instance_double(
+            Excon::Response,
+            :data => { :body => JSON.generate({ "total_count" => 399, "repositories" => page_2_repos }) },
+            :headers => { "Link" => '<https://api.github.com/installation/repositories?per_page=100&page=3>; rel="next"' }
+          ),
+          instance_double(
+            Excon::Response,
+            :data => { :body => JSON.generate({ "total_count" => 399, "repositories" => page_3_repos }) },
+            :headers => { "Link" => '<https://api.github.com/installation/repositories?per_page=100&page=4>; rel="next"' }
+          ),
+          instance_double(
+            Excon::Response,
+            :data => { :body => JSON.generate({ "total_count" => 399, "repositories" => page_4_repos }) },
+            :headers => {}
+          )
+        )
+
+        result = repositories.send(:get_remote_repositories)
+
+        expect(result.size).to eq(399)
+        expect(result.first).to eq({ "id" => 1, "slug" => "acme/repo-1" })
+        expect(result.last).to eq({ "id" => 399, "slug" => "acme/repo-399" })
+        expect(Excon).to have_received(:get).with(
+          "https://api.github.com/installation/repositories?per_page=100&page=1",
+          hash_including(
+            :headers => hash_including(
+              "Authorization" => "token #{token}",
+              "Accept" => "application/vnd.github.v3+json"
+            ),
+            :idempotent => true,
+            :retry_limit => described_class::EXCON_RETRY_LIMIT,
+            :expects => [200]
+          )
+        )
+      end
+
+      it "raises when pagination stops before the advertised total_count is fetched" do
+        page_1_repos = (1..100).map { |i| { "id" => i, "full_name" => "acme/repo-#{i}" } }
+        page_2_repos = (101..200).map { |i| { "id" => i, "full_name" => "acme/repo-#{i}" } }
+
+        allow(Excon).to receive(:get).and_return(
+          instance_double(
+            Excon::Response,
+            :data => { :body => JSON.generate({ "total_count" => 399, "repositories" => page_1_repos }) },
+            :headers => { "Link" => '<https://api.github.com/installation/repositories?per_page=100&page=2>; rel="next"' }
+          ),
+          instance_double(
+            Excon::Response,
+            :data => { :body => JSON.generate({ "total_count" => 399, "repositories" => page_2_repos }) },
+            :headers => {}
+          )
+        )
+
+        expect do
+          repositories.send(:get_remote_repositories)
+        end.to raise_error(described_class::IncompleteRepositoryListError, /Fetched 200 repositories, expected 399/)
+      end
+
+      it "raises when total_count is missing" do
+        allow(Excon).to receive(:get).and_return(
+          instance_double(
+            Excon::Response,
+            :data => { :body => JSON.generate({ "repositories" => [{ "id" => 1, "full_name" => "acme/repo-1" }] }) },
+            :headers => {}
+          )
+        )
+
+        expect do
+          repositories.send(:get_remote_repositories)
+        end.to raise_error(described_class::InvalidRepositoryListResponseError, /installation_id=13609976/)
+      end
+
+      it "raises when total_count is not an integer" do
+        allow(Excon).to receive(:get).and_return(
+          instance_double(
+            Excon::Response,
+            :data => { :body => JSON.generate({ "total_count" => "not-a-number", "repositories" => [{ "id" => 1, "full_name" => "acme/repo-1" }] }) },
+            :headers => {}
+          )
+        )
+
+        expect do
+          repositories.send(:get_remote_repositories)
+        end.to raise_error(described_class::InvalidRepositoryListResponseError, /installation_id=13609976/)
+      end
+
+      it "raises when total_count is negative" do
+        allow(Excon).to receive(:get).and_return(
+          instance_double(
+            Excon::Response,
+            :data => { :body => JSON.generate({ "total_count" => -1, "repositories" => [{ "id" => 1, "full_name" => "acme/repo-1" }] }) },
+            :headers => {}
+          )
+        )
+
+        expect do
+          repositories.send(:get_remote_repositories)
+        end.to raise_error(described_class::InvalidRepositoryListResponseError, /installation_id=13609976/)
+      end
+    end
+
     describe ".refresh" do
       let(:installation_id) { 13609976 }
       let(:token) { "token" }

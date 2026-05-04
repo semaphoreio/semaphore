@@ -8,7 +8,9 @@ config :front,
   okta_session_expiration_default_minutes:
     String.to_integer(System.get_env("OKTA_SESSION_EXPIRATION_DEFAULT_MINUTES") || "20160"),
   okta_session_expiration_max_minutes:
-    String.to_integer(System.get_env("OKTA_SESSION_EXPIRATION_MAX_MINUTES") || "43200")
+    String.to_integer(System.get_env("OKTA_SESSION_EXPIRATION_MAX_MINUTES") || "43200"),
+  pipeline_data_retention_days:
+    String.to_integer(System.get_env("PIPELINE_DATA_RETENTION_DAYS") || "400")
 
 if System.get_env("TZDATA_DATA_DIRECTORY") != nil do
   config :tzdata, :data_dir, System.get_env("TZDATA_DATA_DIRECTORY")
@@ -115,6 +117,7 @@ if config_env() == :prod do
   config :logger, level: (System.get_env("LOG_LEVEL") || "info") |> String.to_atom()
   config :front, docs_domain: System.get_env("DOCS_DOMAIN", "docs.semaphoreci.com")
   config :front, domain: System.get_env("BASE_DOMAIN")
+  config :front, :pricing_url, System.get_env("PRICING_URL", "https://semaphore.io/pricing")
   config :front, :posthog_api_key, System.get_env("POSTHOG_API_KEY")
   config :front, :posthog_host, System.get_env("POSTHOG_HOST") || "https://app.posthog.com"
   config :front, :get_started_path, System.get_env("GETTING_STARTED_YAML_PATH")
@@ -136,16 +139,19 @@ pylon_jwt_ttl_seconds =
   end
 
 config :front,
-  pylon_org_slug: System.get_env("PYLON_ORG_SLUG"),
+  pylon_org_slug: System.get_env("PYLON_ORG_SLUG", "semaphore"),
   pylon_jwt_secret: System.get_env("PYLON_JWT_SECRET"),
   pylon_jwt_issuer: System.get_env("PYLON_JWT_ISSUER"),
   pylon_jwt_callback_url: System.get_env("PYLON_JWT_CALLBACK_URL"),
   pylon_jwt_ttl_seconds: pylon_jwt_ttl_seconds,
+  pylon_chat_app_id: System.get_env("PYLON_CHAT_APP_ID"),
+  pylon_chat_identity_secret: System.get_env("PYLON_CHAT_IDENTITY_SECRET"),
   zendesk_support_url: System.get_env("ZENDESK_SUPPORT_URL") || "http://support.semaphoreci.test",
   zendesk_jwt_url: System.get_env("ZENDESK_JWT_URL") || "http://support.semaphoreci.test",
   zendesk_jwt_secret: System.get_env("ZENDESK_JWT_SECRET") || "secret",
   zendesk_snippet_id: System.get_env("ZENDESK_SNIPPET_ID"),
-  google_gtag: System.get_env("GOOGLE_GTAG")
+  google_gtag: System.get_env("GOOGLE_GTAG"),
+  google_gtm_id: System.get_env("GOOGLE_GTM_ID")
 
 edition = System.get_env("EDITION", "") |> String.trim() |> String.downcase()
 is_saas? = !(edition in ["ce", "ee", "onprem"])

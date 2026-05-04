@@ -11,7 +11,7 @@ defmodule FrontWeb.PeopleController do
   @all_management_pages @old_management_pages ++ ~w(create_member)a
   @project_actions ~w(project fetch_project_non_members)a
   @person_manage_action ~w(reset_password change_email)a
-  @self_manage_action ~w(update reset_token update_repo_scope)a
+  @self_manage_action ~w(update reset_token update_repo_scope delete_with_owned_orgs)a
   @person_action @person_manage_action ++ @self_manage_action ++ ~w(show)a
 
   plug(FetchPermissions, [scope: "org"] when action in @all_management_pages)
@@ -737,6 +737,21 @@ defmodule FrontWeb.PeopleController do
     end)
   end
 
+  def delete_with_owned_orgs(conn, %{"user_id" => user_id}) do
+    Watchman.benchmark("people.delete_with_owned_orgs", fn ->
+      case Models.User.delete_with_owned_orgs(user_id, conn.assigns.tracing_headers) do
+        {:ok, _user} ->
+          conn
+          |> redirect(external: destroyed_account_redirect_url(conn))
+
+        {:error, error_message} ->
+          conn
+          |> put_flash(:alert, error_message)
+          |> redirect(to: people_path(conn, :show, user_id))
+      end
+    end)
+  end
+
   defp parse_provider_and_username(params, org_id) do
     gitlab_enabled = FeatureProvider.feature_enabled?(:gitlab, param: org_id)
 
@@ -808,39 +823,45 @@ defmodule FrontWeb.PeopleController do
 
   def change_email(conn, %{"user_id" => user_id, "email" => email}) do
     Watchman.benchmark("people.change_email.form", fn ->
-      email = String.trim(email)
+      if email_members_supported?(conn.assigns.organization_id) || Front.ce?() do
+        email = String.trim(email)
 
-      with :ok <- validate_user_ownership(user_id, conn.assigns.user_id),
-           :ok <- validate_email_not_empty(email),
-           :ok <- validate_email_format(email),
-           {:ok, %{message: message}} <- change_user_email(conn, user_id, email) do
-        conn
-        |> put_flash(:notice, message)
-        |> redirect(to: people_path(conn, :show, user_id))
+        with :ok <- validate_user_ownership(user_id, conn.assigns.user_id),
+             :ok <- validate_email_not_empty(email),
+             :ok <- validate_email_format(email),
+             {:ok, %{message: message}} <- change_user_email(conn, user_id, email) do
+          conn
+          |> put_flash(:notice, message)
+          |> redirect(to: people_path(conn, :show, user_id))
+        else
+          {:error, :empty_email} ->
+            conn
+            |> put_flash(:alert, "Email address cannot be empty.")
+            |> redirect(to: people_path(conn, :show, user_id))
+
+          {:error, :invalid_email} ->
+            conn
+            |> put_flash(:alert, "Please enter a valid email address.")
+            |> redirect(to: people_path(conn, :show, user_id))
+
+          {:error, :unauthorized} ->
+            conn
+            |> put_flash(:error, "You can not update this user's email.")
+            |> redirect(to: people_path(conn, :show, user_id))
+
+          {:error, :render_404} ->
+            conn
+            |> render_404()
+
+          {:error, error_msg} ->
+            conn
+            |> put_flash(:alert, "Failed to update email: #{error_msg}")
+            |> redirect(to: people_path(conn, :show, user_id))
+        end
       else
-        {:error, :empty_email} ->
-          conn
-          |> put_flash(:alert, "Email address cannot be empty.")
-          |> redirect(to: people_path(conn, :show, user_id))
-
-        {:error, :invalid_email} ->
-          conn
-          |> put_flash(:alert, "Please enter a valid email address.")
-          |> redirect(to: people_path(conn, :show, user_id))
-
-        {:error, :unauthorized} ->
-          conn
-          |> put_flash(:error, "You can not update this user's email.")
-          |> redirect(to: people_path(conn, :show, user_id))
-
-        {:error, :render_404} ->
-          conn
-          |> render_404()
-
-        {:error, error_msg} ->
-          conn
-          |> put_flash(:alert, "Failed to update email: #{error_msg}")
-          |> redirect(to: people_path(conn, :show, user_id))
+        conn
+        |> FrontWeb.PageController.status404(%{})
+        |> Plug.Conn.halt()
       end
     end)
   end
@@ -1000,6 +1021,11 @@ defmodule FrontWeb.PeopleController do
       errors: errors,
       title: "Semaphore - Account"
     )
+  end
+
+  defp destroyed_account_redirect_url(_conn) do
+    domain = Application.get_env(:front, :domain)
+    "https://id.#{domain}/destroyed_account"
   end
 
   ### -------------------------------------------------

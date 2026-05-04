@@ -4,6 +4,7 @@ defmodule FrontWeb.SupportController do
 
   alias Front.{Async, Auth, Support}
   alias Front.Clients.Billing
+  alias Front.Support.PylonAccess
 
   alias Front.Models.{
     Organization,
@@ -36,25 +37,43 @@ defmodule FrontWeb.SupportController do
 
   def pylon(conn, _params) do
     org_id = conn.assigns.organization_id
+    has_contact_support_permission? = contact_support_permission?(conn)
 
-    if pylon_support_enabled?(org_id) do
-      user = conn.assigns.user_id |> User.find()
+    cond do
+      not PylonAccess.enabled_for_org?(org_id) ->
+        conn
+        |> put_flash(:alert, "Pylon support is not enabled for this organization.")
+        |> redirect(to: dashboard_path(conn, :index))
 
-      case Front.Pylon.new_ticket_location(user, org_id) do
-        {:ok, location} ->
-          redirect(conn, external: location)
+      not PylonAccess.visible_for_org?(org_id, has_contact_support_permission?) ->
+        conn
+        |> put_flash(
+          :alert,
+          "Your access to Semaphore support has been limited. Please contact your organization's Admin for more information."
+        )
+        |> redirect(to: dashboard_path(conn, :index))
 
-        {:error, reason} ->
-          Logger.warning("Pylon support redirect failed for org_id=#{org_id}: #{inspect(reason)}")
+      true ->
+        user = conn.assigns.user_id |> User.find()
 
-          conn
-          |> put_flash(:alert, "Unable to open Pylon support right now. Please try again.")
-          |> redirect(to: dashboard_path(conn, :index))
-      end
-    else
-      conn
-      |> put_flash(:alert, "Pylon support is not enabled for this organization.")
-      |> redirect(to: dashboard_path(conn, :index))
+        case Front.Pylon.new_ticket_location(user, org_id) do
+          {:ok, %{post_url: post_url, jwt: jwt}} ->
+            conn
+            |> put_layout(false)
+            |> render("pylon_sso_redirect.html",
+              post_url: post_url,
+              jwt: jwt
+            )
+
+          {:error, reason} ->
+            Logger.warning(
+              "Pylon support redirect failed for org_id=#{org_id}: #{inspect(reason)}"
+            )
+
+            conn
+            |> put_flash(:alert, "Unable to open Pylon support right now. Please try again.")
+            |> redirect(to: dashboard_path(conn, :index))
+        end
     end
   end
 
@@ -169,11 +188,11 @@ defmodule FrontWeb.SupportController do
     "https://billing.#{Application.get_env(:front, :domain)}/?organization=#{org.username}"
   end
 
-  defp pylon_support_enabled?(org_id) when is_binary(org_id) and org_id != "" do
-    FeatureProvider.feature_enabled?(:pylon_support, param: org_id)
-  rescue
-    _ -> false
+  defp contact_support_permission?(conn) do
+    Front.RBAC.Permissions.has?(
+      conn.assigns.user_id,
+      conn.assigns.organization_id,
+      "organization.contact_support"
+    )
   end
-
-  defp pylon_support_enabled?(_), do: false
 end

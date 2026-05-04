@@ -72,6 +72,7 @@ defmodule InternalApi.Audit.Event.Resource do
           | :Okta
           | :FlakyTests
           | :RBACRole
+          | :ServiceAccount
 
   field(:Project, 0)
 
@@ -112,6 +113,8 @@ defmodule InternalApi.Audit.Event.Resource do
   field(:FlakyTests, 18)
 
   field(:RBACRole, 19)
+
+  field(:ServiceAccount, 20)
 end
 
 defmodule InternalApi.Audit.Event.Operation do
@@ -155,13 +158,15 @@ end
 defmodule InternalApi.Audit.Event.Medium do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
-  @type t :: integer | :Web | :API | :CLI
+  @type t :: integer | :Web | :API | :CLI | :MCP
 
   field(:Web, 0)
 
   field(:API, 1)
 
   field(:CLI, 2)
+
+  field(:MCP, 3)
 end
 
 defmodule InternalApi.Audit.ListRequest do

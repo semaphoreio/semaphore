@@ -1,3 +1,4 @@
+import { AddonsPage } from "./addons_page";
 import { OverviewPage } from "./overview_page";
 import { SeatsPage } from "./seats_page";
 import { SpendingsPage } from "./spendings_page";
@@ -10,6 +11,7 @@ import { ProjectPage } from "./project_page";
 import { PlansPage } from "./plans_page";
 
 export {
+  AddonsPage,
   OverviewPage,
   SeatsPage,
   SpendingsPage,
