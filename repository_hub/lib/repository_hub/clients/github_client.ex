@@ -749,47 +749,84 @@ defmodule RepositoryHub.GithubClient do
   end
 
   @doc """
-  https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#list-repository-tags
+  https://docs.github.com/en/rest/git/refs?apiVersion=2022-11-28#get-a-reference
   """
   @impl true
   def get_tag(params, opts \\ []) do
     {owner, repo, tag_name} = {params.repo_owner, params.repo_name, params.tag_name}
 
     with_client(opts[:token], owner, :get_tag, fn client ->
-      Tentacat.Repositories.Tags.list(client, owner, repo)
+      Tentacat.References.find(client, owner, repo, "tags/#{tag_name}")
       |> case do
         {200, payload, _} ->
-          response_tag = Enum.find(payload, fn tag -> tag["name"] == tag_name end)
-
-          if response_tag do
-            %{
-              type: "tag",
-              sha: response_tag["commit"]["sha"]
-            }
-            |> wrap
-          else
-            fail_with(:not_found, "Tag not found.")
-          end
+          resolve_tag_commit(payload, client, owner, repo, tag_name)
 
         {404, _, _response} ->
-          fail_with(:not_found, "Commit not found.")
+          fail_with(:not_found, "Tag not found.")
 
         {422, _, response} ->
-          fail_with(:not_found, "Validation failed. #{fetch_status_message(response)}")
+          fail_with(:precondition, "Validation failed. #{fetch_status_message(response)}")
 
         {status, _, response} ->
           log_error([
-            "fetching tag #{params.repo_owner}/#{params.repo_name} : #{params.tag_name}",
+            "fetching tag #{owner}/#{repo} : #{tag_name}",
             "status: #{status}",
             "response: #{inspect_response(response)}"
           ])
 
           fail_with(
             :precondition,
-            "Error while looking up repository #{owner}/#{repo}. #{fetch_status_message(response)}"
+            "Error while looking up tag #{owner}/#{repo} : #{tag_name}. #{fetch_status_message(response)}"
           )
       end
     end)
+  end
+
+  defp resolve_tag_commit(%{"object" => %{"type" => "commit", "sha" => sha}}, _client, _owner, _repo, _tag_name) do
+    %{type: "tag", sha: sha} |> wrap
+  end
+
+  defp resolve_tag_commit(%{"object" => %{"type" => "tag", "sha" => tag_sha}}, client, owner, repo, tag_name) do
+    Tentacat.get("repos/#{owner}/#{repo}/git/tags/#{tag_sha}", client, [], pagination: :none)
+    |> case do
+      {200, %{"object" => %{"type" => "commit", "sha" => commit_sha}}, _} ->
+        %{type: "tag", sha: commit_sha} |> wrap
+
+      {200, body, _} ->
+        log_error([
+          "dereferencing annotated tag #{owner}/#{repo} : #{tag_name} (sha: #{tag_sha})",
+          "expected dereferenced object type 'commit', got '#{inspect(get_in(body, ["object", "type"]))}'"
+        ])
+
+        fail_with(
+          :precondition,
+          "Unexpected dereferenced object type for annotated tag #{owner}/#{repo} : #{tag_name}."
+        )
+
+      {status, _, response} ->
+        log_error([
+          "dereferencing annotated tag #{owner}/#{repo} : #{tag_name} (sha: #{tag_sha})",
+          "status: #{status}",
+          "response: #{inspect_response(response)}"
+        ])
+
+        fail_with(
+          :precondition,
+          "Error while dereferencing annotated tag in #{owner}/#{repo}. #{fetch_status_message(response)}"
+        )
+    end
+  end
+
+  defp resolve_tag_commit(payload, _client, owner, repo, tag_name) do
+    log_error([
+      "unexpected tag reference object type for #{owner}/#{repo} : #{tag_name}",
+      "object type: #{inspect(get_in(payload, ["object", "type"]))}"
+    ])
+
+    fail_with(
+      :precondition,
+      "Unexpected tag reference object type for #{owner}/#{repo} : #{tag_name}."
+    )
   end
 
   @doc """
