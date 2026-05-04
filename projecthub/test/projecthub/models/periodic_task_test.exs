@@ -75,21 +75,58 @@ defmodule Projecthub.Models.PeriodicTaskTest do
                  description: "",
                  required: true,
                  default_value: "default",
-                 options: []
+                 options: [],
+                 regex_pattern: "",
+                 validate_input_format: false
                },
                %{
                  name: "param2",
                  description: "",
                  required: false,
                  default_value: "default",
-                 options: []
+                 options: [],
+                 regex_pattern: "",
+                 validate_input_format: false
                },
                %{
                  name: "param3",
                  description: "",
                  required: false,
                  default_value: "",
-                 options: ["op1", "op2"]
+                 options: ["op1", "op2"],
+                 regex_pattern: "",
+                 validate_input_format: false
+               }
+             ]
+    end
+
+    test "preserves regex_pattern and validate_input_format when set" do
+      periodic =
+        periodic_from_grpc(%{
+          id: "x",
+          name: "task",
+          parameters: [
+            %{
+              name: "VERSION",
+              required: true,
+              default_value: "1.0.0",
+              regex_pattern: "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+              validate_input_format: true
+            }
+          ]
+        })
+
+      assert task = PeriodicTask.construct(periodic, "project_name")
+
+      assert task.parameters == [
+               %{
+                 name: "VERSION",
+                 description: "",
+                 required: true,
+                 default_value: "1.0.0",
+                 options: [],
+                 regex_pattern: "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+                 validate_input_format: true
                }
              ]
     end
