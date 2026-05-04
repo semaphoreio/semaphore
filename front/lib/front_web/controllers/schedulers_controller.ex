@@ -798,15 +798,12 @@ defmodule FrontWeb.SchedulersController do
         %{field: :parameters, name: pv.name, message: format_message(source, :mismatch)}
 
       {:error, :value_too_long} ->
-        Logger.warning(
-          "regex_param_error value_too_long parameter=#{inspect(pv.name)}"
-        )
+        Logger.warning("regex_param_error value_too_long parameter=#{inspect(pv.name)}")
 
         %{
           field: :parameters,
           name: pv.name,
-          message:
-            "Value exceeds maximum length of #{Front.SafeRegex.max_value_length()} bytes"
+          message: "Value exceeds maximum length of #{Front.SafeRegex.max_value_length()} bytes"
         }
 
       {:error, reason} ->
