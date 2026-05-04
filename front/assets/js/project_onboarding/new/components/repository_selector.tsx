@@ -58,11 +58,7 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
     setIsLoading(true);
 
     try {
-      const response = await fetch(url, {
-        headers: {
-          Accept: `application/json`,
-        },
-      });
+      const response = await fetch(url);
 
       const contentType = response.headers.get(`content-type`) || ``;
       if (!response.ok || !contentType.includes(`application/json`)) {
