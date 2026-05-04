@@ -131,6 +131,20 @@ defmodule Scheduler.Periodics.Model.PeriodicsParamTest do
       assert msg =~ "too long"
     end
 
+    test "with regex_pattern over the length cap is invalid even when validate_input_format is false" do
+      pattern = String.duplicate("a", Scheduler.SafeRegex.max_pattern_length() + 1)
+
+      assert [regex_pattern: {msg, _}] =
+               assert_invalid(%{
+                 name: "VERSION",
+                 required: true,
+                 validate_input_format: false,
+                 regex_pattern: pattern
+               })
+
+      assert msg =~ "too long"
+    end
+
     test "without validate_input_format ignores regex_pattern checks" do
       assert_valid(%{
         name: "VERSION",
