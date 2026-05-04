@@ -634,7 +634,12 @@ defmodule FrontWeb.SchedulersControllerTest do
         {
           Front.Models.Scheduler,
           [:passthrough],
-          [persist: fn parsed, _ctx -> send(self(), {:persist, parsed}); {:ok, "id"} end]
+          [
+            persist: fn parsed, _ctx ->
+              send(self(), {:persist, parsed})
+              {:ok, "id"}
+            end
+          ]
         }
       ]) do
         build_conn()
