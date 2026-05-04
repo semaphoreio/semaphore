@@ -53,7 +53,7 @@ defmodule Guard.Api.BitbucketTest do
 
         %{
           method: :get,
-          url: "https://api.bitbucket.org/2.0/repositories"
+          url: "https://api.bitbucket.org/2.0/user/workspaces"
         } ->
           {:ok, %Tesla.Env{status: 404, body: %{}}}
       end)

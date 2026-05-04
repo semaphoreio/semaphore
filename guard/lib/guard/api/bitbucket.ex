@@ -45,7 +45,12 @@ defmodule Guard.Api.Bitbucket do
   def validate_token(token) do
     client = build_validate_token_client()
 
-    case Tesla.get(client, "/repositories", headers: [{"authorization", "Bearer #{token}"}]) do
+    case Tesla.get(
+           client,
+           "/user/workspaces",
+           query: [pagelen: 1],
+           headers: [{"authorization", "Bearer #{token}"}]
+         ) do
       {:ok, res} ->
         {:ok, res.status in 200..299}
 

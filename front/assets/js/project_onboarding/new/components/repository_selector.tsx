@@ -58,8 +58,26 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
     setIsLoading(true);
 
     try {
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        headers: {
+          Accept: `application/json`,
+        },
+      });
+
+      const contentType = response.headers.get(`content-type`) || ``;
+      if (!response.ok || !contentType.includes(`application/json`)) {
+        const responseBody = await response.text();
+        const responsePreview = responseBody.replace(/\s+/g, ` `).trim().slice(0, 200);
+        const details = responsePreview ? `: ${responsePreview}` : ``;
+
+        throw new Error(`Failed to load repositories (HTTP ${response.status})${details}`);
+      }
+
       const json: ApiResponse = await response.json();
+      if (!json || !Array.isArray(json.repos)) {
+        throw new Error(`Failed to load repositories: invalid response payload`);
+      }
+
       const repos = json.repos;
 
       setRepositories(prev => [...prev, ... repos]);
