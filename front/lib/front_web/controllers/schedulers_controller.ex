@@ -738,10 +738,25 @@ defmodule FrontWeb.SchedulersController do
   defp regex_param_error(pv) do
     with true <- Map.get(pv, :validate_input_format, false),
          pattern when is_binary(pattern) and pattern != "" <- Map.get(pv, :regex_pattern),
-         value when is_binary(value) and value != "" <- pv.value,
-         {:ok, regex} <- Regex.compile(pattern),
-         false <- Regex.match?(regex, value) do
-      %{field: :parameters, name: pv.name, message: "Value does not match required format"}
+         value when is_binary(value) and value != "" <- pv.value do
+      case Front.SafeRegex.match(pattern, value) do
+        {:ok, true} ->
+          nil
+
+        {:ok, false} ->
+          %{field: :parameters, name: pv.name, message: "Value does not match required format"}
+
+        {:error, :value_too_long} ->
+          %{
+            field: :parameters,
+            name: pv.name,
+            message:
+              "Value exceeds maximum length of #{Front.SafeRegex.max_value_length()} bytes"
+          }
+
+        {:error, _reason} ->
+          %{field: :parameters, name: pv.name, message: "Value does not match required format"}
+      end
     else
       _ -> nil
     end
