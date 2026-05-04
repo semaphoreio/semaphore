@@ -335,10 +335,33 @@ defmodule Scheduler.Actions.RunNowImpl.Test do
         }
       ]
 
-      assert {:error,
-              {:INVALID_ARGUMENT,
-               "Parameter 'VERSION' value does not match required format."}} =
+      assert {:error, {:INVALID_ARGUMENT, message}} =
                RunNowImpl.merge_values(parameters, [])
+
+      assert message =~ "Parameter 'VERSION'"
+      assert message =~ "default value"
+    end
+
+    test "when value exceeds the SafeRegex length cap then error mentions length" do
+      parameters = [
+        %{
+          name: "VERSION",
+          required: true,
+          default_value: "",
+          validate_input_format: true,
+          regex_pattern: "^[a]+$"
+        }
+      ]
+
+      max_len = Scheduler.SafeRegex.max_value_length()
+      oversized = String.duplicate("a", max_len + 1)
+      request_values = [%{name: "VERSION", value: oversized}]
+
+      assert {:error, {:INVALID_ARGUMENT, message}} =
+               RunNowImpl.merge_values(parameters, request_values)
+
+      assert message =~ "Parameter 'VERSION'"
+      assert message =~ "exceeds maximum length"
     end
 
     test "when validate_input_format is off then regex_pattern is ignored" do
