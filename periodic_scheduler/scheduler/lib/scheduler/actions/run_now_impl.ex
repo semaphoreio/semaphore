@@ -72,7 +72,11 @@ defmodule Scheduler.Actions.RunNowImpl do
       &("Parameter '#{&1.name}' is required." |> ToTuple.error(:INVALID_ARGUMENT))
 
     Enum.reduce_while(parameters, {:ok, []}, fn parameter, {:ok, acc_values} ->
-      value = Map.get(request_values, parameter.name, parameter.default_value || "")
+      {value, source} =
+        case Map.fetch(request_values, parameter.name) do
+          {:ok, submitted} -> {submitted, :submitted}
+          :error -> {parameter.default_value || "", :default}
+        end
 
       case {String.equivalent?(value, ""), parameter.required} do
         {true, true} ->
@@ -82,7 +86,7 @@ defmodule Scheduler.Actions.RunNowImpl do
           {:cont, {:ok, acc_values}}
 
         {false, _} ->
-          case validate_value_format(parameter, value) do
+          case validate_value_format(parameter, value, source) do
             :ok -> {:cont, {:ok, acc_values ++ [%{name: parameter.name, value: value}]}}
             {:error, _} = err -> {:halt, err}
           end
@@ -90,7 +94,7 @@ defmodule Scheduler.Actions.RunNowImpl do
     end)
   end
 
-  defp validate_value_format(parameter, value) do
+  defp validate_value_format(parameter, value, source) do
     validate_input_format? = Map.get(parameter, :validate_input_format, false)
     pattern = Map.get(parameter, :regex_pattern)
 
@@ -100,7 +104,7 @@ defmodule Scheduler.Actions.RunNowImpl do
           :ok
 
         {:ok, false} ->
-          format_error(parameter, "value does not match required format")
+          format_error(parameter, mismatch_message(source))
 
         {:error, :value_too_long} ->
           format_error(
@@ -115,6 +119,12 @@ defmodule Scheduler.Actions.RunNowImpl do
       :ok
     end
   end
+
+  defp mismatch_message(:default),
+    do:
+      "default value does not match required format; provide an explicit value or fix the default"
+
+  defp mismatch_message(_), do: "value does not match required format"
 
   defp format_error(parameter, message) do
     "Parameter '#{parameter.name}' #{message}." |> ToTuple.error(:INVALID_ARGUMENT)

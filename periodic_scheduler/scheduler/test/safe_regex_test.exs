@@ -57,8 +57,9 @@ defmodule Scheduler.SafeRegexTest do
       {elapsed_us, result} = :timer.tc(fn -> SafeRegex.match(pattern, value) end)
 
       # Whether match_limit catches this depends on the PCRE build, but
-      # the wall-clock guard must keep it well under one second.
-      assert elapsed_us < 1_000_000
+      # the wall-clock guard must keep it well under the 100ms bound
+      # plus a small CI-jitter margin.
+      assert elapsed_us < 500_000
 
       case result do
         {:ok, false} -> :ok
