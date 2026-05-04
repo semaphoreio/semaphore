@@ -42,17 +42,17 @@ describe("regexMismatch", () => {
     expect(regexMismatch(param, "anything")).to.equal(false)
   })
 
-  it("rejects pattern over the length cap (treats as mismatch)", () => {
+  it("does not flag mismatch when pattern is over the length cap (handled by dedicated rule)", () => {
     const param = {
       validate_input_format: true,
       regex_pattern: "a".repeat(MAX_REGEX_PATTERN_LENGTH + 1)
     }
-    expect(regexMismatch(param, "anything")).to.equal(true)
+    expect(regexMismatch(param, "anything")).to.equal(false)
   })
 
-  it("rejects value over the length cap (treats as mismatch)", () => {
+  it("does not flag mismatch when value is over the length cap (handled by dedicated rule)", () => {
     const param = { validate_input_format: true, regex_pattern: "^a+$" }
     const value = "a".repeat(MAX_PARAM_VALUE_LENGTH + 1)
-    expect(regexMismatch(param, value)).to.equal(true)
+    expect(regexMismatch(param, value)).to.equal(false)
   })
 })

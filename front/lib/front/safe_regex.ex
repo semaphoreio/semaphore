@@ -3,7 +3,14 @@ defmodule Front.SafeRegex do
   Bounded regex matching used by parameter input format validation in
   the front-end controller. Mitigates ReDoS attacks via length caps,
   PCRE match limits, and a wall-clock timeout.
+
+  > **Note:** `Scheduler.SafeRegex` (in the `periodic_scheduler` umbrella)
+  > is the canonical copy. Keep this module's constants and behavior in
+  > sync. Front does not currently expose `validate_pattern/1` because
+  > patterns reach this app already validated by the scheduler.
   """
+
+  require Logger
 
   @max_pattern_length 512
   @max_value_length 4_096
@@ -17,6 +24,7 @@ defmodule Front.SafeRegex do
           | :invalid_pattern
           | :match_limit_exceeded
           | :timeout
+          | :crash
 
   @spec max_pattern_length() :: pos_integer()
   def max_pattern_length, do: @max_pattern_length
@@ -51,15 +59,25 @@ defmodule Front.SafeRegex do
   defp bounded_match(pattern, value) do
     task = Task.async(fn -> safe_run(pattern, value) end)
 
-    case Task.yield(task, @timeout_ms) || Task.shutdown(task, :brutal_kill) do
+    case Task.yield(task, @timeout_ms) do
       {:ok, result} ->
         result
 
       nil ->
-        {:error, :timeout}
+        case Task.shutdown(task, :brutal_kill) do
+          {:ok, result} ->
+            result
 
-      {:exit, _reason} ->
-        {:error, :timeout}
+          nil ->
+            {:error, :timeout}
+
+          {:exit, reason} ->
+            Logger.warning(
+              "Front.SafeRegex match crashed pattern=#{inspect(pattern)} reason=#{inspect(reason)}"
+            )
+
+            {:error, :crash}
+        end
     end
   end
 

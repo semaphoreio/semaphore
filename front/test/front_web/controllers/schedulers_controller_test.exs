@@ -1186,6 +1186,58 @@ defmodule FrontWeb.SchedulersControllerTest do
       assert html_response(conn, 200) =~ "Run"
       assert get_flash(conn, :alert) == "Unable to start workflow, please provide correct data."
     end
+
+    test "fails when submitted value exceeds the SafeRegex length cap",
+         %{conn: conn, project_name: _project_name} do
+      scheduler =
+        prepare_scheduler_for_just_run(
+          reference: "refs/heads/master",
+          pipeline_file: "pipeline.yml",
+          parameters: [
+            %{
+              name: "VERSION",
+              required: true,
+              regex_pattern: "^[a]+$",
+              validate_input_format: true
+            }
+          ]
+        )
+
+      oversized = String.duplicate("a", Front.SafeRegex.max_value_length() + 1)
+
+      conn =
+        trigger_just_run(conn, scheduler, %{
+          "parameters" => %{"0" => %{"name" => "VERSION", "value" => oversized}}
+        })
+
+      assert html_response(conn, 200) =~ "Run"
+      assert get_flash(conn, :alert) == "Unable to start workflow, please provide correct data."
+      assert DB.find_all_by(:triggers, :periodic_id, scheduler.id) == []
+    end
+
+    test "fails when default_value does not match regex_pattern",
+         %{conn: conn, project_name: _project_name} do
+      scheduler =
+        prepare_scheduler_for_just_run(
+          reference: "refs/heads/master",
+          pipeline_file: "pipeline.yml",
+          parameters: [
+            %{
+              name: "VERSION",
+              required: false,
+              default_value: "abc",
+              regex_pattern: "^[0-9]+$",
+              validate_input_format: true
+            }
+          ]
+        )
+
+      conn = trigger_just_run(conn, scheduler, %{})
+
+      assert html_response(conn, 200) =~ "Run"
+      assert get_flash(conn, :alert) == "Unable to start workflow, please provide correct data."
+      assert DB.find_all_by(:triggers, :periodic_id, scheduler.id) == []
+    end
   end
 
   defp prepare_scheduler_for_just_run(params \\ []) do
