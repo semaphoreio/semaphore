@@ -188,7 +188,9 @@ defmodule Front.Models.SchedulerTest do
                        required: true,
                        description: "",
                        options: ["value1", "value2"],
-                       default_value: "value1"
+                       default_value: "value1",
+                       regex_pattern: "",
+                       validate_input_format: false
                      }
                    ],
                    triggerer_avatar_url: "/projects/assets/images/profile-bot.svg",
