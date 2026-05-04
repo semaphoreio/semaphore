@@ -128,10 +128,15 @@ export default class JustRunForm {
   }
 }
 
+export const MAX_REGEX_PATTERN_LENGTH = 512
+export const MAX_PARAM_VALUE_LENGTH = 4096
+
 export function regexMismatch(parameter, value) {
   if (!parameter.validate_input_format) { return false }
   if (!parameter.regex_pattern) { return false }
+  if (parameter.regex_pattern.length > MAX_REGEX_PATTERN_LENGTH) { return true }
   if (!value || value.length < 1) { return false }
+  if (value.length > MAX_PARAM_VALUE_LENGTH) { return true }
 
   try {
     return !(new RegExp(parameter.regex_pattern).test(value))
