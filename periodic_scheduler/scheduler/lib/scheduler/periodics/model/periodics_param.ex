@@ -42,16 +42,19 @@ defmodule Scheduler.Periodics.Model.PeriodicsParam do
         )
 
       true ->
-        case Regex.compile(pattern) do
-          {:ok, _regex} ->
+        case Scheduler.SafeRegex.validate_pattern(pattern) do
+          :ok ->
             changeset
 
-          {:error, {reason, _pos}} ->
+          {:error, :pattern_too_long} ->
             Ecto.Changeset.add_error(
               changeset,
               :regex_pattern,
-              "is not a valid regex: #{inspect(reason)}"
+              "is too long (max #{Scheduler.SafeRegex.max_pattern_length()} bytes)"
             )
+
+          {:error, :invalid_pattern} ->
+            Ecto.Changeset.add_error(changeset, :regex_pattern, "is not a valid regex")
         end
     end
   end
@@ -61,18 +64,42 @@ defmodule Scheduler.Periodics.Model.PeriodicsParam do
     pattern = Ecto.Changeset.get_field(changeset, :regex_pattern)
     default_value = Ecto.Changeset.get_field(changeset, :default_value)
 
-    with true <- validate_input_format?,
-         true <- is_binary(pattern) and pattern != "",
-         true <- is_binary(default_value) and default_value != "",
-         {:ok, regex} <- Regex.compile(pattern),
-         false <- Regex.match?(regex, default_value) do
-      Ecto.Changeset.add_error(
-        changeset,
-        :default_value,
-        "does not match regex_pattern"
-      )
-    else
-      _ -> changeset
+    cond do
+      not validate_input_format? ->
+        changeset
+
+      not (is_binary(pattern) and pattern != "") ->
+        changeset
+
+      not (is_binary(default_value) and default_value != "") ->
+        changeset
+
+      true ->
+        case Scheduler.SafeRegex.match(pattern, default_value) do
+          {:ok, true} ->
+            changeset
+
+          {:ok, false} ->
+            Ecto.Changeset.add_error(
+              changeset,
+              :default_value,
+              "does not match regex_pattern"
+            )
+
+          {:error, :value_too_long} ->
+            Ecto.Changeset.add_error(
+              changeset,
+              :default_value,
+              "is too long (max #{Scheduler.SafeRegex.max_value_length()} bytes)"
+            )
+
+          {:error, _reason} ->
+            Ecto.Changeset.add_error(
+              changeset,
+              :default_value,
+              "could not be validated against regex_pattern"
+            )
+        end
     end
   end
 end

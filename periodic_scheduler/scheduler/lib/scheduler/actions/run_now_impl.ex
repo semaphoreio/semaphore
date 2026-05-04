@@ -94,15 +94,30 @@ defmodule Scheduler.Actions.RunNowImpl do
     validate_input_format? = Map.get(parameter, :validate_input_format, false)
     pattern = Map.get(parameter, :regex_pattern)
 
-    with true <- validate_input_format?,
-         true <- is_binary(pattern) and pattern != "",
-         {:ok, regex} <- Regex.compile(pattern),
-         false <- Regex.match?(regex, value) do
-      "Parameter '#{parameter.name}' value does not match required format."
-      |> ToTuple.error(:INVALID_ARGUMENT)
+    if validate_input_format? and is_binary(pattern) and pattern != "" do
+      case Scheduler.SafeRegex.match(pattern, value) do
+        {:ok, true} ->
+          :ok
+
+        {:ok, false} ->
+          format_error(parameter, "value does not match required format")
+
+        {:error, :value_too_long} ->
+          format_error(
+            parameter,
+            "value exceeds maximum length of #{Scheduler.SafeRegex.max_value_length()} bytes"
+          )
+
+        {:error, _reason} ->
+          format_error(parameter, "value could not be validated against regex_pattern")
+      end
     else
-      _ -> :ok
+      :ok
     end
+  end
+
+  defp format_error(parameter, message) do
+    "Parameter '#{parameter.name}' #{message}." |> ToTuple.error(:INVALID_ARGUMENT)
   end
 
   defp suspended?(%{suspended: true}),
