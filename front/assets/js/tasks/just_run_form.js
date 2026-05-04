@@ -128,7 +128,7 @@ export default class JustRunForm {
   }
 }
 
-function regexMismatch(parameter, value) {
+export function regexMismatch(parameter, value) {
   if (!parameter.validate_input_format) { return false }
   if (!parameter.regex_pattern) { return false }
   if (!value || value.length < 1) { return false }

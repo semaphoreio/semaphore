@@ -4,7 +4,7 @@ export default {
   }
 }
 
-class Parameter {
+export class Parameter {
   static empty_values() {
     return {
       name: "",
