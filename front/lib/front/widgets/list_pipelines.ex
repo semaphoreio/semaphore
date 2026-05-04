@@ -113,7 +113,9 @@ defmodule Front.Widgets.ListPipelines do
 
   defp pmap(elements, callback) do
     elements
-    |> Enum.map(fn el -> Task.Supervisor.async_nolink(TaskSupervisor, fn -> callback.(el) end) end)
+    |> Enum.map(fn el ->
+      Task.Supervisor.async_nolink(TaskSupervisor, fn -> callback.(el) end)
+    end)
     |> Enum.map(fn el ->
       {:ok, element} = Task.yield(el)
       element

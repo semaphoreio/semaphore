@@ -281,6 +281,33 @@ defmodule Scheduler.Periodics.Model.PeriodicsQueries.Test do
     assert NaiveDateTime.compare(ts_before, periodic.inserted_at) == :lt
   end
 
+  test "insert new periodic with regex_pattern and validate_input_format - api version v1.1" do
+    params =
+      insert_params("v1.1")
+      |> Map.put(:parameters, [
+        %{
+          name: "VERSION",
+          required: true,
+          default_value: "1.0.0",
+          regex_pattern: "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+          validate_input_format: true
+        }
+      ])
+
+    assert {:ok, periodic} = PeriodicsQueries.insert(params, "v1.1")
+
+    assert periodic.parameters == [
+             %PeriodicsParam{
+               name: "VERSION",
+               required: true,
+               default_value: "1.0.0",
+               options: [],
+               regex_pattern: "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+               validate_input_format: true
+             }
+           ]
+  end
+
   defp insert_params(_api_version = "v1.0") do
     %{
       requester_id: "usr_1",
