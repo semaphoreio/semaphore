@@ -614,6 +614,45 @@ defmodule FrontWeb.SchedulersControllerTest do
         refute html_response(conn, 422) =~ "Blazing-fast build and deploy!"
       end
     end
+
+    test "passes regex_pattern and validate_input_format through to Scheduler.persist",
+         %{project_name: project_name} do
+      params_with_validation =
+        Map.put(@raw_scheduler_form_params, :parameters, %{
+          "0" => %{
+            "name" => "VERSION",
+            "description" => "Release version",
+            "default_value" => "1.0.0",
+            "options" => "",
+            "required" => "on",
+            "validate_input_format" => "on",
+            "regex_pattern" => "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+          }
+        })
+
+      with_mocks([
+        {
+          Front.Models.Scheduler,
+          [:passthrough],
+          [persist: fn parsed, _ctx -> send(self(), {:persist, parsed}); {:ok, "id"} end]
+        }
+      ]) do
+        build_conn()
+        |> post(
+          schedulers_path(build_conn(), :create, project_name),
+          params_with_validation
+        )
+
+        assert_received {:persist, parsed}
+
+        assert [param] = parsed.parameters
+        assert param.name == "VERSION"
+        assert param.required == true
+        assert param.default_value == "1.0.0"
+        assert param.validate_input_format == true
+        assert param.regex_pattern == "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+      end
+    end
   end
 
   describe "GET edit" do
