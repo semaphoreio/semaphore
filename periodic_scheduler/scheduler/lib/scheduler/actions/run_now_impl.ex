@@ -79,19 +79,18 @@ defmodule Scheduler.Actions.RunNowImpl do
         end
 
       case {String.equivalent?(value, ""), parameter.required} do
-        {true, true} ->
-          {:halt, to_required_error.(parameter)}
-
-        {true, false} ->
-          {:cont, {:ok, acc_values}}
-
-        {false, _} ->
-          case validate_value_format(parameter, value, source) do
-            :ok -> {:cont, {:ok, acc_values ++ [%{name: parameter.name, value: value}]}}
-            {:error, _} = err -> {:halt, err}
-          end
+        {true, true} -> {:halt, to_required_error.(parameter)}
+        {true, false} -> {:cont, {:ok, acc_values}}
+        {false, _} -> validated_step(parameter, value, source, acc_values)
       end
     end)
+  end
+
+  defp validated_step(parameter, value, source, acc_values) do
+    case validate_value_format(parameter, value, source) do
+      :ok -> {:cont, {:ok, acc_values ++ [%{name: parameter.name, value: value}]}}
+      {:error, _} = err -> {:halt, err}
+    end
   end
 
   defp validate_value_format(parameter, value, source) do
