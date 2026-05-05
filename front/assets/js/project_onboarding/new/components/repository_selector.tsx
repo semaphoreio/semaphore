@@ -23,6 +23,11 @@ interface ApiResponse {
   next_page_token?: string;
 }
 
+interface ApiErrorResponse {
+  error?: string;
+  message?: string;
+}
+
 interface RepositorySelectorProps {
   repositoriesUrl: string;
   githubInstallUrl?: string;
@@ -53,13 +58,50 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
     [repositories, searchQuery]
   );
 
+  const parseErrorMessage = (payload: unknown): string | null => {
+    if (!payload || typeof payload !== `object`) return null;
+
+    const message =
+      `message` in payload && typeof payload.message === `string` ? payload.message : null;
+    const code = `error` in payload && typeof payload.error === `string` ? payload.error : null;
+
+    if (message && code) return `${message} (${code})`;
+    if (message) return message;
+    if (code) return code;
+
+    return null;
+  };
+
   const loadRepositories = async (url: string) => {
     if (!url || isLoading) return;
     setIsLoading(true);
 
     try {
       const response = await fetch(url);
-      const json: ApiResponse = await response.json();
+      const contentType = response.headers.get(`content-type`) || ``;
+      const isJson = contentType.includes(`application/json`);
+
+      if (!isJson) {
+        const responseBody = await response.text();
+        const responsePreview = responseBody.replace(/\s+/g, ` `).trim().slice(0, 200);
+        const details = responsePreview ? `: ${responsePreview}` : ``;
+
+        throw new Error(`Failed to load repositories (HTTP ${response.status})${details}`);
+      }
+
+      const payload: ApiResponse | ApiErrorResponse = await response.json();
+
+      if (!response.ok) {
+        const message = parseErrorMessage(payload);
+        throw new Error(message || `Failed to load repositories (HTTP ${response.status})`);
+      }
+
+      const json = payload as ApiResponse;
+      if (!json || !Array.isArray(json.repos)) {
+        const message = parseErrorMessage(payload);
+        throw new Error(message || `Failed to load repositories: invalid response payload`);
+      }
+
       const repos = json.repos;
 
       setRepositories(prev => [...prev, ... repos]);
@@ -71,7 +113,8 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
         void loadRepositories(nextUrl);
       }
     } catch (error) {
-      Notice.error(`Error loading repositories: ${String(error)}`);
+      const message = error instanceof Error ? error.message : String(error);
+      Notice.error(`Error loading repositories: ${message}`);
     } finally {
       setIsLoading(false);
     }
