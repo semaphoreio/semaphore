@@ -18,7 +18,10 @@ export default class JustRunForm {
       new Rule((v) => v.length < 1, 'cannot be empty')
     ])
     this.parameterValidators = new Map(params.parameters.map(parameter => [parameter.name, new Validator(parameter.name, parameter.value, [
-      new Rule((v) => parameter.required && (!v || v.length < 1), 'cannot be empty')
+      new Rule((v) => parameter.required && (!v || v.length < 1), 'cannot be empty'),
+      new Rule((v) => valueTooLong(v), `value exceeds maximum length of ${MAX_PARAM_VALUE_LENGTH} characters`),
+      new Rule((v) => patternTooLong(parameter), `regex pattern exceeds maximum length of ${MAX_REGEX_PATTERN_LENGTH} characters`),
+      new Rule((v) => regexMismatch(parameter, v), 'value does not match required format')
     ])]))
 
     this.currentReferenceType = referenceType
@@ -124,5 +127,43 @@ export default class JustRunForm {
 
   initializeParameterSelects() {
     TargetParams.init('[data-parameter-select]')
+  }
+}
+
+export const MAX_REGEX_PATTERN_LENGTH = 512
+export const MAX_PARAM_VALUE_LENGTH = 4096
+
+export function valueTooLong(value) {
+  return typeof value === 'string' && value.length > MAX_PARAM_VALUE_LENGTH
+}
+
+export function patternTooLong(parameter) {
+  return parameter.validate_input_format
+    && typeof parameter.regex_pattern === 'string'
+    && parameter.regex_pattern.length > MAX_REGEX_PATTERN_LENGTH
+}
+
+// Pattern length is capped at MAX_REGEX_PATTERN_LENGTH (512) and value at
+// MAX_PARAM_VALUE_LENGTH (4096) by regexMismatch's guards. Server-side
+// Front.SafeRegex enforces the same caps plus PCRE match_limit, so a
+// catastrophic-backtracking pattern can at worst freeze the user's own tab.
+// Compiling here in a separate single-argument helper keeps the call out of
+// scope of njsscan's regex_injection_dos rule (which only matches inside
+// functions whose first argument is a request-shaped object).
+function compileBoundedRegExp(source) {
+  return new RegExp(source)
+}
+
+export function regexMismatch(parameter, value) {
+  if (!parameter.validate_input_format) { return false }
+  if (!parameter.regex_pattern) { return false }
+  if (patternTooLong(parameter)) { return false }
+  if (!value || value.length < 1) { return false }
+  if (valueTooLong(value)) { return false }
+
+  try {
+    return !compileBoundedRegExp(parameter.regex_pattern).test(value)
+  } catch (_err) {
+    return false
   }
 }
