@@ -166,7 +166,7 @@ defmodule RepositoryHub.BitbucketClientTest do
       end
     end
 
-    test "list_repositories keeps entries without repository uuid/full_name when deduplicating" do
+    test "list_repositories filters entries without repository identity when deduplicating" do
       with_mock(HTTPoison, [],
         get: fn url, _headers, _opts ->
           body =
@@ -181,6 +181,14 @@ defmodule RepositoryHub.BitbucketClientTest do
               "https://api.bitbucket.org/2.0/user/workspaces/example-workspace/permissions/repositories" ->
                 Jason.encode!(%{
                   "values" => [
+                    %{
+                      "permission" => "admin",
+                      "repository" => %{
+                        "uuid" => "{repo-1}",
+                        "full_name" => "example-workspace/repo-1",
+                        "name" => "repo-1"
+                      }
+                    },
                     %{
                       "permission" => "admin",
                       "repository" => %{"name" => "repo-1"}
@@ -211,7 +219,71 @@ defmodule RepositoryHub.BitbucketClientTest do
         response = BitbucketClient.list_repositories(params, token: "foobar")
 
         assert {:ok, %{"values" => values}} = response
-        assert length(values) == 2
+        assert length(values) == 1
+        assert get_in(hd(values), ["repository", "full_name"]) == "example-workspace/repo-1"
+      end
+    end
+
+    test "list_repositories skips failed workspace and keeps successful workspace results" do
+      with_mock(HTTPoison, [],
+        get: fn url, _headers, _opts ->
+          response =
+            case url do
+              "https://api.bitbucket.org/2.0/user/workspaces" ->
+                %HTTPoison.Response{
+                  status_code: 200,
+                  body:
+                    Jason.encode!(%{
+                      "values" => [
+                        %{"workspace" => %{"slug" => "workspace-1"}},
+                        %{"workspace" => %{"slug" => "workspace-2"}}
+                      ]
+                    }),
+                  headers: [],
+                  request_url: url,
+                  request: nil
+                }
+
+              "https://api.bitbucket.org/2.0/user/workspaces/workspace-1/permissions/repositories" ->
+                %HTTPoison.Response{
+                  status_code: 200,
+                  body:
+                    Jason.encode!(%{
+                      "values" => [
+                        %{
+                          "permission" => "admin",
+                          "repository" => %{
+                            "uuid" => "{repo-1}",
+                            "full_name" => "workspace-1/repo-1",
+                            "name" => "repo-1"
+                          }
+                        }
+                      ]
+                    }),
+                  headers: [],
+                  request_url: url,
+                  request: nil
+                }
+
+              "https://api.bitbucket.org/2.0/user/workspaces/workspace-2/permissions/repositories" ->
+                %HTTPoison.Response{
+                  status_code: 503,
+                  body: "service unavailable",
+                  headers: [],
+                  request_url: url,
+                  request: nil
+                }
+            end
+
+          {:ok, response}
+        end
+      ) do
+        params = BitbucketClientFactory.list_repositories_params(page_token: "", query: "")
+        response = BitbucketClient.list_repositories(params, token: "foobar")
+
+        assert {:ok, %{"values" => values}} = response
+        assert length(values) == 1
+        assert get_in(hd(values), ["repository", "full_name"]) == "workspace-1/repo-1"
       end
     end
 

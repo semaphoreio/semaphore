@@ -337,10 +337,19 @@ defmodule RepositoryHub.BitbucketClient do
   end
 
   defp append_workspace_permissions(workspace, acc, params, token) do
-    with {:ok, repository_permissions} <- wrap(acc),
-         {:ok, workspace_permissions} <- list_repositories_for_workspace(workspace, params, token) do
-      (repository_permissions ++ workspace_permissions)
-      |> wrap()
+    with {:ok, repository_permissions} <- wrap(acc) do
+      case list_repositories_for_workspace(workspace, params, token) do
+        {:ok, workspace_permissions} ->
+          (repository_permissions ++ workspace_permissions)
+          |> wrap()
+
+        {:error, reason} ->
+          "Skipping Bitbucket workspace #{workspace} due to error: #{inspect(reason)}"
+          |> log(level: :warning)
+
+          repository_permissions
+          |> wrap()
+      end
     end
   end
 
@@ -596,13 +605,13 @@ defmodule RepositoryHub.BitbucketClient do
 
   defp dedupe_repository_permissions(repository_permissions) do
     repository_permissions
-    |> Enum.with_index()
-    |> Enum.uniq_by(fn {permission, index} ->
-      get_in(permission, ["repository", "uuid"]) ||
-        get_in(permission, ["repository", "full_name"]) ||
-        {:missing_repository_identity, index}
+    |> Enum.reject(fn permission ->
+      nil_or_empty?(get_in(permission, ["repository", "uuid"])) and
+        nil_or_empty?(get_in(permission, ["repository", "full_name"]))
     end)
-    |> Enum.map(&elem(&1, 0))
+    |> Enum.uniq_by(fn permission ->
+      get_in(permission, ["repository", "uuid"]) || get_in(permission, ["repository", "full_name"])
+    end)
   end
 
   defp nil_or_empty?(nil), do: true
