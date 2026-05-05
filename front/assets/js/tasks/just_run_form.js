@@ -1,6 +1,13 @@
 
 import { Validator, Rule } from "./components/validation"
 import { TargetParams } from '../workflow_view/target_params'
+import {
+  MAX_PARAM_VALUE_LENGTH,
+  MAX_REGEX_PATTERN_LENGTH,
+  byteLength,
+} from "./limits"
+
+export { MAX_PARAM_VALUE_LENGTH, MAX_REGEX_PATTERN_LENGTH }
 
 export default class JustRunForm {
   static init(params) {
@@ -18,7 +25,10 @@ export default class JustRunForm {
       new Rule((v) => v.length < 1, 'cannot be empty')
     ])
     this.parameterValidators = new Map(params.parameters.map(parameter => [parameter.name, new Validator(parameter.name, parameter.value, [
-      new Rule((v) => parameter.required && (!v || v.length < 1), 'cannot be empty')
+      new Rule((v) => parameter.required && (!v || v.length < 1), 'cannot be empty'),
+      new Rule((v) => valueTooLong(v), `value exceeds maximum length of ${MAX_PARAM_VALUE_LENGTH} bytes`),
+      new Rule(() => patternTooLong(parameter), `regex pattern exceeds maximum length of ${MAX_REGEX_PATTERN_LENGTH} bytes`),
+      new Rule((v) => regexMismatch(parameter, v), 'value does not match required format')
     ])]))
 
     this.currentReferenceType = referenceType
@@ -114,10 +124,10 @@ export default class JustRunForm {
     if (!submitButton) { return; }
 
     submitButton.addEventListener('click', () => {
+      this.renderAll()
+
       if (this.validateForm()) {
         document.forms[0].submit()
-      } else {
-        this.renderAll()
       }
     })
   }
@@ -125,4 +135,31 @@ export default class JustRunForm {
   initializeParameterSelects() {
     TargetParams.init('[data-parameter-select]')
   }
+}
+
+export function valueTooLong(value) {
+  return typeof value === 'string' && byteLength(value) > MAX_PARAM_VALUE_LENGTH
+}
+
+export function patternTooLong(parameter) {
+  return parameter.validate_input_format
+    && typeof parameter.regex_pattern === 'string'
+    && byteLength(parameter.regex_pattern) > MAX_REGEX_PATTERN_LENGTH
+}
+
+export function regexMismatch(parameter, value) {
+  if (!parameter) { return false }
+  if (!parameter.validate_input_format) { return false }
+  if (!parameter.regex_pattern) { return false }
+  if (patternTooLong(parameter)) { return false }
+  if (!value || value.length < 1) { return false }
+  if (valueTooLong(value)) { return false }
+
+  let regex
+  try {
+    regex = new RegExp(parameter.regex_pattern)
+  } catch (_err) {
+    return false
+  }
+  return !regex.test(value)
 }
