@@ -1,6 +1,14 @@
 
 import { Validator, Rule } from "./components/validation"
 import { TargetParams } from '../workflow_view/target_params'
+import { regexMatchWithTimeout } from "./safe_regex"
+import {
+  MAX_PARAM_VALUE_LENGTH,
+  MAX_REGEX_PATTERN_LENGTH,
+  byteLength,
+} from "./limits"
+
+export { MAX_PARAM_VALUE_LENGTH, MAX_REGEX_PATTERN_LENGTH }
 
 export default class JustRunForm {
   static init(params) {
@@ -17,8 +25,11 @@ export default class JustRunForm {
     this.pipelineFileValidator = new Validator('pipelineFile', params.pipelineFile, [
       new Rule((v) => v.length < 1, 'cannot be empty')
     ])
+    this.parametersByName = new Map(params.parameters.map(parameter => [parameter.name, parameter]))
     this.parameterValidators = new Map(params.parameters.map(parameter => [parameter.name, new Validator(parameter.name, parameter.value, [
-      new Rule((v) => parameter.required && (!v || v.length < 1), 'cannot be empty')
+      new Rule((v) => parameter.required && (!v || v.length < 1), 'cannot be empty'),
+      new Rule((v) => valueTooLong(v), `value exceeds maximum length of ${MAX_PARAM_VALUE_LENGTH} bytes`),
+      new Rule(() => patternTooLong(parameter), `regex pattern exceeds maximum length of ${MAX_REGEX_PATTERN_LENGTH} bytes`)
     ])]))
 
     this.currentReferenceType = referenceType
@@ -101,7 +112,7 @@ export default class JustRunForm {
     parameterValidator.render()
   }
 
-  validateForm() {
+  syncFormValid() {
     const parameterValidators = Array.from(this.parameterValidators.values())
 
     return this.referenceNameValidator.isValid() &&
@@ -109,15 +120,42 @@ export default class JustRunForm {
       parameterValidators.every(parameterValidator => parameterValidator.isValid())
   }
 
+  async validateForm() {
+    return this.syncFormValid() && await this.renderRegexValidations()
+  }
+
+  async renderRegexValidations() {
+    const validations = await Promise.all(
+      Array
+        .from(this.parameterValidators.entries())
+        .map(async ([parameterName, validator]) => {
+          const parameter = this.parametersByName.get(parameterName)
+          const message = await regexValidationMessage(parameter, validator.getValue())
+
+          return { parameterName, message }
+        })
+    )
+
+    validations.forEach(({ parameterName, message }) => {
+      if (message) {
+        showParameterValidationMessage(parameterName, message)
+      } else {
+        hideParameterValidationMessage(parameterName)
+      }
+    })
+
+    return validations.every(({ message }) => !message)
+  }
+
   handleSubmitButton() {
     const submitButton = document.querySelector('[data-action="submit-form"]')
     if (!submitButton) { return; }
 
-    submitButton.addEventListener('click', () => {
-      if (this.validateForm()) {
+    submitButton.addEventListener('click', async () => {
+      this.renderAll()
+
+      if (await this.validateForm()) {
         document.forms[0].submit()
-      } else {
-        this.renderAll()
       }
     })
   }
@@ -125,4 +163,69 @@ export default class JustRunForm {
   initializeParameterSelects() {
     TargetParams.init('[data-parameter-select]')
   }
+}
+
+export function valueTooLong(value) {
+  return typeof value === 'string' && byteLength(value) > MAX_PARAM_VALUE_LENGTH
+}
+
+export function patternTooLong(parameter) {
+  return parameter.validate_input_format
+    && typeof parameter.regex_pattern === 'string'
+    && byteLength(parameter.regex_pattern) > MAX_REGEX_PATTERN_LENGTH
+}
+
+export function regexMismatch(parameter, value, options = {}) {
+  return regexResult(parameter, value, options).then(result => result.status === 'mismatch')
+}
+
+export function regexValidationMessage(parameter, value, options = {}) {
+  return regexResult(parameter, value, options).then((result) => {
+    if (result.status === 'mismatch') { return 'value does not match required format' }
+    if (result.status === 'timeout') { return 'value could not be validated quickly enough' }
+    return ''
+  })
+}
+
+function showParameterValidationMessage(fieldName, message) {
+  const validationContext = document.querySelector(`[data-validation="${fieldName}"]`)
+  if (!validationContext) { return }
+
+  const validationInput = validationContext.querySelector(`[data-validation-input="${fieldName}"]`)
+  const validationMessage = validationContext.querySelector(`[data-validation-message="${fieldName}"]`)
+  if (!validationInput || !validationMessage) { return }
+
+  validationInput.classList.add('bg-washed-red', 'red')
+  validationMessage.innerHTML = message
+  validationMessage.classList.remove('dn')
+}
+
+function hideParameterValidationMessage(fieldName) {
+  const validationContext = document.querySelector(`[data-validation="${fieldName}"]`)
+  if (!validationContext) { return }
+
+  const validationInput = validationContext.querySelector(`[data-validation-input="${fieldName}"]`)
+  const validationMessage = validationContext.querySelector(`[data-validation-message="${fieldName}"]`)
+  if (!validationInput || !validationMessage) { return }
+
+  validationInput.classList.remove('bg-washed-red', 'red')
+  validationMessage.innerHTML = ''
+  validationMessage.classList.add('dn')
+}
+
+function skippedRegexResult() {
+  return Promise.resolve({ status: 'skipped' })
+}
+
+function regexResult(parameter, value, options = {}) {
+  if (!parameter) { return skippedRegexResult() }
+  if (!parameter.validate_input_format) { return skippedRegexResult() }
+  if (!parameter.regex_pattern) { return skippedRegexResult() }
+  if (patternTooLong(parameter)) { return skippedRegexResult() }
+  if (!value || value.length < 1) { return skippedRegexResult() }
+  if (valueTooLong(value)) { return skippedRegexResult() }
+
+  const { matchFn = regexMatchWithTimeout, ...matchOptions } = options
+
+  return matchFn(parameter.regex_pattern, value, matchOptions)
 }
