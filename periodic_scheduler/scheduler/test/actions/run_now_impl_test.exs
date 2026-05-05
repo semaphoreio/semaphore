@@ -319,8 +319,7 @@ defmodule Scheduler.Actions.RunNowImpl.Test do
       request_values = [%{name: "VERSION", value: "not-a-version"}]
 
       assert {:error,
-              {:INVALID_ARGUMENT,
-               "Parameter 'VERSION' value does not match required format."}} =
+              {:INVALID_ARGUMENT, "Parameter 'VERSION' value does not match required format."}} =
                RunNowImpl.merge_values(parameters, request_values)
     end
 
@@ -335,8 +334,7 @@ defmodule Scheduler.Actions.RunNowImpl.Test do
         }
       ]
 
-      assert {:error, {:INVALID_ARGUMENT, message}} =
-               RunNowImpl.merge_values(parameters, [])
+      assert {:error, {:INVALID_ARGUMENT, message}} = RunNowImpl.merge_values(parameters, [])
 
       assert message =~ "Parameter 'VERSION'"
       assert message =~ "default value"
