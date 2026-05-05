@@ -6,6 +6,28 @@ import {
 } from "./parameters"
 
 describe("Parameter", () => {
+  describe("empty_values", () => {
+    it("returns regex_pattern '' and validate_input_format false by default", () => {
+      const defaults = Parameter.empty_values()
+      expect(defaults.regex_pattern).to.equal("")
+      expect(defaults.validate_input_format).to.equal(false)
+    })
+  })
+
+  describe("constructor", () => {
+    it("merges kwargs over empty_values", () => {
+      const p = new Parameter({
+        name: "VERSION",
+        validate_input_format: true,
+        regex_pattern: "^[0-9]+$"
+      })
+      expect(p.name).to.equal("VERSION")
+      expect(p.validate_input_format).to.equal(true)
+      expect(p.regex_pattern).to.equal("^[0-9]+$")
+      expect(p.required).to.equal(false)
+    })
+  })
+
   describe("validate", () => {
     it("requires non-blank name", () => {
       const p = new Parameter({ name: "" })
