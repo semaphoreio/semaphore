@@ -9,6 +9,7 @@ defmodule RepositoryHub.BitbucketClient do
 
   @type request_options :: [token: String.t()]
   @type http_response :: {:ok, HTTPoison.Response.t() | HTTPoison.AsyncResponse.t()} | {:error, HTTPoison.Error.t()}
+  @max_pagination_pages 20
 
   @doc """
   https://developer.atlassian.com/cloud/bitbucket/rest/api-group-commit-statuses/#api-repositories-workspace-repo-slug-commit-commit-statuses-build-post
@@ -310,20 +311,46 @@ defmodule RepositoryHub.BitbucketClient do
   end
 
   @doc """
-  https://developer.atlassian.com/cloud/bitbucket/rest/api-group-repositories/#api-user-permissions-repositories-get
+  https://developer.atlassian.com/cloud/bitbucket/rest/api-group-repositories/#api-user-workspaces-workspace-permissions-repositories-get
+
+  Bitbucket repository loading is currently aggregated across all user workspaces.
+  `params.page_token` is accepted for interface compatibility, but this path returns a
+  fully materialized repository set and does not emit a `"next"` token.
   """
   @impl true
   def list_repositories(params, opts \\ []) do
     token = fetch_token(opts)
 
-    "https://api.bitbucket.org/2.0/user/permissions/repositories"
-    |> paged_resource(params.page_token)
-    |> http_get(token, %{
-      pagelen: 100,
-      sort: "repository.created_on",
-      q: params.query
-    })
-    |> process_response()
+    list_user_workspaces(token)
+    |> unwrap(fn workspaces ->
+      workspaces
+      |> Enum.reduce(wrap([]), fn workspace, acc ->
+        append_workspace_permissions(workspace, acc, params, token)
+      end)
+    end)
+    |> unwrap(fn repository_permissions ->
+      %{
+        "values" => dedupe_repository_permissions(repository_permissions)
+      }
+      |> wrap()
+    end)
+  end
+
+  defp append_workspace_permissions(workspace, acc, params, token) do
+    with {:ok, repository_permissions} <- wrap(acc) do
+      case list_repositories_for_workspace(workspace, params, token) do
+        {:ok, workspace_permissions} ->
+          (repository_permissions ++ workspace_permissions)
+          |> wrap()
+
+        {:error, reason} ->
+          "Skipping Bitbucket workspace #{workspace} due to error: #{inspect(reason)}"
+          |> log(level: :warning)
+
+          repository_permissions
+          |> wrap()
+      end
+    end
   end
 
   @impl true
@@ -513,6 +540,83 @@ defmodule RepositoryHub.BitbucketClient do
       encoded_resource_url -> Base.decode64!(encoded_resource_url)
     end
   end
+
+  defp list_user_workspaces(token) do
+    "https://api.bitbucket.org/2.0/user/workspaces"
+    |> fetch_paginated_values(token, %{
+      pagelen: 100
+    })
+    |> unwrap(fn workspaces ->
+      workspaces
+      |> Enum.map(&get_in(&1, ["workspace", "slug"]))
+      |> Enum.reject(&nil_or_empty?/1)
+      |> Enum.uniq()
+      |> wrap()
+    end)
+  end
+
+  defp list_repositories_for_workspace(workspace, params, token) do
+    "https://api.bitbucket.org/2.0/user/workspaces/#{workspace}/permissions/repositories"
+    |> fetch_paginated_values(token, %{
+      pagelen: 100,
+      q: params.query
+    })
+  end
+
+  defp fetch_paginated_values(
+         url,
+         token,
+         query_params,
+         acc \\ [],
+         pages_left \\ @max_pagination_pages
+       )
+
+  defp fetch_paginated_values(_url, _token, _query_params, acc, 0) do
+    "Bitbucket pagination limit reached, returning partial results"
+    |> log(level: :warning)
+
+    acc
+    |> Enum.reverse()
+    |> List.flatten()
+    |> wrap()
+  end
+
+  defp fetch_paginated_values(url, token, query_params, acc, pages_left) do
+    url
+    |> http_get(token, query_params)
+    |> process_response()
+    |> unwrap(fn page ->
+      values = Map.get(page, "values", [])
+      next_url = Map.get(page, "next")
+      acc = [values | acc]
+
+      case next_url do
+        next_url when is_binary(next_url) and next_url != "" ->
+          fetch_paginated_values(next_url, token, %{}, acc, pages_left - 1)
+
+        _ ->
+          acc
+          |> Enum.reverse()
+          |> List.flatten()
+          |> wrap()
+      end
+    end)
+  end
+
+  defp dedupe_repository_permissions(repository_permissions) do
+    repository_permissions
+    |> Enum.reject(fn permission ->
+      nil_or_empty?(get_in(permission, ["repository", "uuid"])) and
+        nil_or_empty?(get_in(permission, ["repository", "full_name"]))
+    end)
+    |> Enum.uniq_by(fn permission ->
+      get_in(permission, ["repository", "uuid"]) || get_in(permission, ["repository", "full_name"])
+    end)
+  end
+
+  defp nil_or_empty?(nil), do: true
+  defp nil_or_empty?(""), do: true
+  defp nil_or_empty?(_), do: false
 
   defp request_headers(token) do
     [{"Authorization", "Bearer #{token}"}, {"Content-Type", "application/json"}]
