@@ -45,13 +45,29 @@ defmodule Guard.Api.Bitbucket do
   def validate_token(token) do
     client = build_validate_token_client()
 
-    case Tesla.get(client, "/repositories?access_token=#{token}") do
+    case Tesla.get(
+           client,
+           "/user/workspaces",
+           query: [pagelen: 1],
+           headers: [{"authorization", "Bearer #{token}"}]
+         ) do
+      {:ok, res} when res.status in 200..299 ->
+        {:ok, true}
+
+      {:ok, res} when res.status in [401, 403] ->
+        {:ok, false}
+
+      {:ok, res} when res.status == 429 or res.status in 500..599 ->
+        Logger.warning("Transient Bitbucket token validation failure (HTTP #{res.status})")
+        {:error, :transient}
+
       {:ok, res} ->
-        {:ok, res.status in 200..299}
+        Logger.warning("Unexpected Bitbucket token validation response (HTTP #{res.status})")
+        {:error, :transient}
 
       {:error, error} ->
-        Logger.error("Error validating token: #{inspect(error)}")
-        {:error, :network_error}
+        Logger.error("Error validating Bitbucket token: #{inspect(error)}")
+        {:error, :transient}
     end
   end
 

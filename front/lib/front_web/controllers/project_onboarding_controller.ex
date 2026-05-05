@@ -510,15 +510,20 @@ defmodule FrontWeb.ProjectOnboardingController do
     fetch_organization = Async.run(fn -> Models.Organization.find(org_id) end)
     {:ok, organization} = Async.await(fetch_organization)
 
-    repositories =
-      Models.Repository.list_repositories(
-        user_id,
-        integration_type,
-        page_token,
-        organization.open_source
-      )
+    case Models.Repository.list_repositories(
+           user_id,
+           integration_type,
+           page_token,
+           organization.open_source
+         ) do
+      {:ok, repositories} ->
+        json(conn, repositories)
 
-    json(conn, repositories)
+      {:error, error_response} ->
+        conn
+        |> put_status(:service_unavailable)
+        |> json(error_response)
+    end
   end
 
   def project_repository_status(conn, params) do

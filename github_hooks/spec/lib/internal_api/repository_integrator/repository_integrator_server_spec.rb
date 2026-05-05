@@ -447,6 +447,46 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
     end
   end
 
+  describe "#update_revoke_status" do
+    let(:bitbucket_account) { FactoryBot.create(:bitbucket_account, :revoked => revoked) }
+    let(:revoked) { false }
+
+    before do
+      allow(Semaphore::Bitbucket::Token).to receive(:user_token).with(bitbucket_account).and_return(["token", nil])
+      allow(Semaphore::Bitbucket::Token).to receive(:validation_state).with("token").and_return(validation_state)
+    end
+
+    context "when token is valid" do
+      let(:revoked) { true }
+      let(:validation_state) { :valid }
+
+      it "marks connection as not revoked" do
+        server.send(:update_revoke_status, bitbucket_account)
+        expect(bitbucket_account.reload.revoked).to be(false)
+      end
+    end
+
+    context "when token is invalid" do
+      let(:revoked) { false }
+      let(:validation_state) { :invalid }
+
+      it "marks connection as revoked" do
+        server.send(:update_revoke_status, bitbucket_account)
+        expect(bitbucket_account.reload.revoked).to be(true)
+      end
+    end
+
+    context "when token check is transient" do
+      let(:revoked) { false }
+      let(:validation_state) { :transient }
+
+      it "keeps the existing revoked status" do
+        server.send(:update_revoke_status, bitbucket_account)
+        expect(bitbucket_account.reload.revoked).to be(false)
+      end
+    end
+  end
+
   describe "#github_installation_info" do
     before do
       Semaphore::GithubApp::Credentials.instance_variable_set(:@github_application_url, nil)
