@@ -1,6 +1,21 @@
 
 import { Validator, Rule } from "./components/validation"
 import { TargetParams } from '../workflow_view/target_params'
+import {
+  MAX_PARAM_VALUE_LENGTH,
+  MAX_REGEX_PATTERN_LENGTH,
+  patternTooLong,
+  regexMismatch,
+  valueTooLong,
+} from "./limits"
+
+export {
+  MAX_PARAM_VALUE_LENGTH,
+  MAX_REGEX_PATTERN_LENGTH,
+  patternTooLong,
+  regexMismatch,
+  valueTooLong,
+}
 
 export default class JustRunForm {
   static init(params) {
@@ -18,7 +33,10 @@ export default class JustRunForm {
       new Rule((v) => v.length < 1, 'cannot be empty')
     ])
     this.parameterValidators = new Map(params.parameters.map(parameter => [parameter.name, new Validator(parameter.name, parameter.value, [
-      new Rule((v) => parameter.required && (!v || v.length < 1), 'cannot be empty')
+      new Rule((v) => parameter.required && (!v || v.length < 1), 'cannot be empty'),
+      new Rule((v) => valueTooLong(v), `value exceeds maximum length of ${MAX_PARAM_VALUE_LENGTH} bytes`),
+      new Rule(() => patternTooLong(parameter), `regex pattern exceeds maximum length of ${MAX_REGEX_PATTERN_LENGTH} bytes`),
+      new Rule((v) => regexMismatch(parameter, v), 'value does not match required format')
     ])]))
 
     this.currentReferenceType = referenceType
@@ -114,10 +132,10 @@ export default class JustRunForm {
     if (!submitButton) { return; }
 
     submitButton.addEventListener('click', () => {
+      this.renderAll()
+
       if (this.validateForm()) {
         document.forms[0].submit()
-      } else {
-        this.renderAll()
       }
     })
   }
