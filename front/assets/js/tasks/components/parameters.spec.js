@@ -74,24 +74,60 @@ describe("Parameter", () => {
   })
 
   describe("defaultValueValidationMsg", () => {
-    it("rejects default_value not matching regex_pattern", () => {
+    it("does not run regex matching synchronously", () => {
       const p = new Parameter({
         name: "PARAM",
         validate_input_format: true,
         regex_pattern: "^[0-9]+$",
         default_value: "abc"
       })
-      expect(p.defaultValueValidationMsg()).to.match(/does not match/)
+
+      expect(p.defaultValueValidationMsg()).to.be.undefined
     })
 
-    it("accepts default_value matching regex_pattern", () => {
+    it("rejects default_value not matching regex_pattern asynchronously", async () => {
+      const p = new Parameter({
+        name: "PARAM",
+        validate_input_format: true,
+        regex_pattern: "^[0-9]+$",
+        default_value: "abc"
+      })
+
+      const message = await p.defaultValueRegexValidationMsg({
+        matchFn: async () => ({ status: "mismatch" })
+      })
+
+      expect(message).to.match(/does not match/)
+    })
+
+    it("accepts default_value matching regex_pattern asynchronously", async () => {
       const p = new Parameter({
         name: "PARAM",
         validate_input_format: true,
         regex_pattern: "^[0-9]+$",
         default_value: "123"
       })
-      expect(p.defaultValueValidationMsg()).to.be.undefined
+
+      const message = await p.defaultValueRegexValidationMsg({
+        matchFn: async () => ({ status: "match" })
+      })
+
+      expect(message).to.be.undefined
+    })
+
+    it("rejects default_value when regex matching times out", async () => {
+      const p = new Parameter({
+        name: "PARAM",
+        validate_input_format: true,
+        regex_pattern: "^(a+)+$",
+        default_value: "aaaaaaaaaaaaaaaa!"
+      })
+
+      const message = await p.defaultValueRegexValidationMsg({
+        matchFn: async () => ({ status: "timeout" })
+      })
+
+      expect(message).to.match(/could not be validated/)
     })
 
     it("ignores default_value when validate_input_format is false", () => {

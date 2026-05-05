@@ -1,3 +1,5 @@
+import { regexMatchWithTimeout } from "../safe_regex"
+
 export default {
   init(parameters) {
     return new ParametersComponent(parameters)
@@ -71,34 +73,76 @@ export class Parameter {
     if (this.default_value.length > MAX_PARAM_VALUE_LENGTH) {
       return `Default value is too long (max ${MAX_PARAM_VALUE_LENGTH} characters)`
     }
-    try {
-      if (!new RegExp(this.regex_pattern).test(this.default_value)) {
-        return 'Default value does not match the regex pattern'
-      }
-    } catch (_err) {
-      return
+  }
+
+  async defaultValueRegexValidationMsg(options = {}) {
+    if (!this.validate_input_format) { return }
+    if (!this.regex_pattern || this.regex_pattern.length < 1) { return }
+    if (this.regex_pattern.length > MAX_REGEX_PATTERN_LENGTH) { return }
+    if (!this.default_value || this.default_value.length < 1) { return }
+    if (this.default_value.length > MAX_PARAM_VALUE_LENGTH) { return }
+
+    const { matchFn = regexMatchWithTimeout, ...matchOptions } = options
+    const result = await matchFn(this.regex_pattern, this.default_value, matchOptions)
+
+    if (result.status === 'mismatch') {
+      return 'Default value does not match the regex pattern'
     }
+    if (result.status === 'timeout') {
+      return 'Default value could not be validated quickly enough'
+    }
+  }
+
+  asyncValidations(options = {}) {
+    return this.defaultValueRegexValidationMsg(options).then((message) => {
+      if (message) { return [{ field: 'default_value', message }] }
+      return []
+    })
   }
 }
 
 class ParametersComponent {
   constructor(parameters) {
     this.parameters = parameters.map(parameter => new Parameter(parameter))
+    this.asyncValidationsByIndex = new Map()
 
     this.handleAddNewButton()
     this.renderParameters()
   }
 
   isValid() {
-    return this.parameters.every(parameter => parameter.isValid())
+    return this.parameters.every(parameter => parameter.isValid()) &&
+      this.asyncValidationsByIndex.size === 0
   }
 
   renderValidations() {
     clearParameterValidations()
+    this.asyncValidationsByIndex = new Map()
     this.parameters.forEach(parameter => parameter.validate())
     this.parameters.forEach((parameter, index) => {
       if (parameter.validations.length > 0) {
         renderParameterValidations(parameter.validations, index)
+      }
+    })
+  }
+
+  async renderAsyncValidations() {
+    const validations = await Promise.all(
+      this.parameters.map(async (parameter, index) => {
+        const parameterValidations = await parameter.asyncValidations()
+        return { index, validations: parameterValidations }
+      })
+    )
+
+    this.asyncValidationsByIndex = new Map(
+      validations
+        .filter(({ validations }) => validations.length > 0)
+        .map(({ index, validations }) => [index, validations])
+    )
+
+    validations.forEach(({ index, validations }) => {
+      if (validations.length > 0) {
+        renderParameterValidations(validations, index)
       }
     })
   }
@@ -133,11 +177,6 @@ class ParametersComponent {
       }))
   }
 
-  validateForm() {
-    allSections.forEach(sectionName => this.components[sectionName].renderValidations())
-    return allSections.every(sectionName => this.components[sectionName].isValid())
-  }
-
   renderParameters(showValidations = false) {
     const container = document.querySelector('[data-target=parameters]')
     if (!container) return
@@ -154,7 +193,7 @@ class ParametersComponent {
 
     container.querySelectorAll('[data-action=updateParameter]')
       .forEach((element) => {
-        element.addEventListener('input', (event) => {
+        element.addEventListener('input', () => {
           this.updateParameter(element.dataset.index, element.dataset.field, element.value)
           this.renderValidations()
         })
@@ -177,11 +216,6 @@ class ParametersComponent {
         })
       })
   }
-}
-
-function getValue(index, field) {
-  const element = document.getElementById(`parameter_${index}_${field}`)
-  return element ? element.value : ""
 }
 
 function renderParameters(parameters, showValidation = false) {
