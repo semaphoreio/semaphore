@@ -381,7 +381,7 @@ defmodule FrontWeb.LayoutView do
   def license_soon_expiry?(%{valid: true, expires_at: expires_at}) when not is_nil(expires_at) do
     dt = protobuf_timestamp_to_datetime(expires_at)
 
-    dt && DateTime.diff(dt, DateTime.now!("Etc/UTC"), :day) < 10 and
+    (dt && DateTime.diff(dt, DateTime.now!("Etc/UTC"), :day) < 10) and
       DateTime.diff(dt, DateTime.now!("Etc/UTC"), :day) >= 0
   end
 
