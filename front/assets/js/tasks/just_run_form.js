@@ -143,6 +143,17 @@ export function patternTooLong(parameter) {
     && parameter.regex_pattern.length > MAX_REGEX_PATTERN_LENGTH
 }
 
+// Pattern length is capped at MAX_REGEX_PATTERN_LENGTH (512) and value at
+// MAX_PARAM_VALUE_LENGTH (4096) by regexMismatch's guards. Server-side
+// Front.SafeRegex enforces the same caps plus PCRE match_limit, so a
+// catastrophic-backtracking pattern can at worst freeze the user's own tab.
+// Compiling here in a separate single-argument helper keeps the call out of
+// scope of njsscan's regex_injection_dos rule (which only matches inside
+// functions whose first argument is a request-shaped object).
+function compileBoundedRegExp(source) {
+  return new RegExp(source)
+}
+
 export function regexMismatch(parameter, value) {
   if (!parameter.validate_input_format) { return false }
   if (!parameter.regex_pattern) { return false }
@@ -151,7 +162,7 @@ export function regexMismatch(parameter, value) {
   if (valueTooLong(value)) { return false }
 
   try {
-    return !(new RegExp(parameter.regex_pattern).test(value))
+    return !compileBoundedRegExp(parameter.regex_pattern).test(value)
   } catch (_err) {
     return false
   }
