@@ -20,8 +20,8 @@ class CreateWizard {
     this.sectionNames.forEach((sectionName) => {
       findSection(sectionName)
         .querySelector('[data-action="wizard-next-section"]')
-        .addEventListener('click', () => {
-          if (this.validateForm()) {
+        .addEventListener('click', async () => {
+          if (await this.validateForm()) {
             this.moveToNextSection()
           }
         })
@@ -31,14 +31,14 @@ class CreateWizard {
   handleCreateButton() {
     document
       .getElementById('wizard-create-button')
-      .addEventListener('click', () => {
-        if (this.finalized && this.validateForm()) {
+      .addEventListener('click', async () => {
+        if (this.finalized && await this.validateForm()) {
           document.forms[0].submit()
         }
       })
   }
 
-  validateForm() {
+  async validateForm() {
     const sectionIndex = this.currentSection ? this.sectionNames.indexOf(this.currentSection) : -1
     const viewedSections = this.sectionNames.slice(0, sectionIndex + 1)
 
@@ -46,8 +46,19 @@ class CreateWizard {
       viewedSections
         .forEach(sectionName => this.components[sectionName].renderValidations())
 
-      return viewedSections
+      const syncValid = viewedSections
         .every(sectionName => this.components[sectionName].isValid())
+
+      if (!syncValid) { return false }
+
+      await Promise.all(
+        viewedSections.map(sectionName => {
+          const component = this.components[sectionName]
+          return component.renderAsyncValidations ? component.renderAsyncValidations() : Promise.resolve()
+        })
+      )
+
+      return viewedSections.every(sectionName => this.components[sectionName].isValid())
     }
   }
 

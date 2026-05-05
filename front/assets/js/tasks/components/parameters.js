@@ -1,10 +1,15 @@
+import { regexMatchWithTimeout } from "../safe_regex"
+
 export default {
   init(parameters) {
     return new ParametersComponent(parameters)
   }
 }
 
-class Parameter {
+export const MAX_REGEX_PATTERN_LENGTH = 512
+export const MAX_PARAM_VALUE_LENGTH = 4096
+
+export class Parameter {
   static empty_values() {
     return {
       name: "",
@@ -12,6 +17,8 @@ class Parameter {
       default_value: "",
       options: [],
       required: false,
+      validate_input_format: false,
+      regex_pattern: "",
       validations: []
     }
   }
@@ -23,9 +30,13 @@ class Parameter {
 
   validate() {
     const nameMsg = this.nameValidationMsg()
+    const regexMsg = this.regexPatternValidationMsg()
+    const defaultValueMsg = this.defaultValueValidationMsg()
 
     this.validations = []
     if (nameMsg) { this.validations.push({ field: 'name', message: nameMsg }) }
+    if (regexMsg) { this.validations.push({ field: 'regex_pattern', message: regexMsg }) }
+    if (defaultValueMsg) { this.validations.push({ field: 'default_value', message: defaultValueMsg }) }
   }
 
   isValid() {
@@ -38,26 +49,100 @@ class Parameter {
     if (!this.name || this.name.length < 1) { return 'Name can\'t be blank' }
     if (!this.name.match(envVarNameRegex)) { return 'Name must be a valid environment variable name' }
   }
+
+  regexPatternValidationMsg() {
+    if (!this.validate_input_format) { return }
+    if (!this.regex_pattern || this.regex_pattern.length < 1) {
+      return 'Pattern can\'t be blank when "Validate input format" is enabled'
+    }
+    if (this.regex_pattern.length > MAX_REGEX_PATTERN_LENGTH) {
+      return `Pattern is too long (max ${MAX_REGEX_PATTERN_LENGTH} characters)`
+    }
+    try {
+      new RegExp(this.regex_pattern)
+    } catch (err) {
+      return `Invalid regex pattern: ${err.message}`
+    }
+  }
+
+  defaultValueValidationMsg() {
+    if (!this.validate_input_format) { return }
+    if (!this.regex_pattern || this.regex_pattern.length < 1) { return }
+    if (this.regex_pattern.length > MAX_REGEX_PATTERN_LENGTH) { return }
+    if (!this.default_value || this.default_value.length < 1) { return }
+    if (this.default_value.length > MAX_PARAM_VALUE_LENGTH) {
+      return `Default value is too long (max ${MAX_PARAM_VALUE_LENGTH} characters)`
+    }
+  }
+
+  async defaultValueRegexValidationMsg(options = {}) {
+    if (!this.validate_input_format) { return }
+    if (!this.regex_pattern || this.regex_pattern.length < 1) { return }
+    if (this.regex_pattern.length > MAX_REGEX_PATTERN_LENGTH) { return }
+    if (!this.default_value || this.default_value.length < 1) { return }
+    if (this.default_value.length > MAX_PARAM_VALUE_LENGTH) { return }
+
+    const { matchFn = regexMatchWithTimeout, ...matchOptions } = options
+    const result = await matchFn(this.regex_pattern, this.default_value, matchOptions)
+
+    if (result.status === 'mismatch') {
+      return 'Default value does not match the regex pattern'
+    }
+    if (result.status === 'timeout') {
+      return 'Default value could not be validated quickly enough'
+    }
+  }
+
+  asyncValidations(options = {}) {
+    return this.defaultValueRegexValidationMsg(options).then((message) => {
+      if (message) { return [{ field: 'default_value', message }] }
+      return []
+    })
+  }
 }
 
 class ParametersComponent {
   constructor(parameters) {
     this.parameters = parameters.map(parameter => new Parameter(parameter))
+    this.asyncValidationsByIndex = new Map()
 
     this.handleAddNewButton()
     this.renderParameters()
   }
 
   isValid() {
-    return this.parameters.every(parameter => parameter.isValid())
+    return this.parameters.every(parameter => parameter.isValid()) &&
+      this.asyncValidationsByIndex.size === 0
   }
 
   renderValidations() {
     clearParameterValidations()
+    this.asyncValidationsByIndex = new Map()
     this.parameters.forEach(parameter => parameter.validate())
     this.parameters.forEach((parameter, index) => {
       if (parameter.validations.length > 0) {
         renderParameterValidations(parameter.validations, index)
+      }
+    })
+  }
+
+  async renderAsyncValidations() {
+    const validations = await Promise.all(
+      this.parameters.map(async (parameter, index) => {
+        const parameterValidations = await parameter.asyncValidations()
+        return { index, validations: parameterValidations }
+      })
+    )
+
+    this.asyncValidationsByIndex = new Map(
+      validations
+        .filter(({ validations }) => validations.length > 0)
+        .map(({ index, validations }) => [index, validations])
+    )
+
+    validations.forEach(({ index, validations }) => {
+      if (validations.length > 0) {
+        renderParameterValidations(validations, index)
       }
     })
   }
@@ -74,6 +159,10 @@ class ParametersComponent {
     this.parameters[index]['required'] = value
   }
 
+  toggleValidateInputFormat(index, value) {
+    this.parameters[index]['validate_input_format'] = value
+  }
+
   deleteParameter(index) {
     this.parameters.splice(index, 1)
   }
@@ -86,11 +175,6 @@ class ParametersComponent {
         this.addNewParameter()
         this.renderParameters()
       }))
-  }
-
-  validateForm() {
-    allSections.forEach(sectionName => this.components[sectionName].renderValidations())
-    return allSections.every(sectionName => this.components[sectionName].isValid())
   }
 
   renderParameters(showValidations = false) {
@@ -109,7 +193,7 @@ class ParametersComponent {
 
     container.querySelectorAll('[data-action=updateParameter]')
       .forEach((element) => {
-        element.addEventListener('input', (event) => {
+        element.addEventListener('input', () => {
           this.updateParameter(element.dataset.index, element.dataset.field, element.value)
           this.renderValidations()
         })
@@ -123,12 +207,15 @@ class ParametersComponent {
           this.renderValidations()
         })
       })
-  }
-}
 
-function getValue(index, field) {
-  const element = document.getElementById(`parameter_${index}_${field}`)
-  return element ? element.value : ""
+    container.querySelectorAll('[data-action=toggleValidateInputFormat]')
+      .forEach((element) => {
+        element.addEventListener('change', (event) => {
+          this.toggleValidateInputFormat(element.dataset.index, event.target.checked)
+          this.renderParameters(showValidations)
+        })
+      })
+  }
 }
 
 function renderParameters(parameters, showValidation = false) {
@@ -147,6 +234,7 @@ function renderParameter(parameter, index) {
 
           ${renderRequired(parameter, index)}
           ${renderDefaultValue(parameter, index)}
+          ${renderValidateInputFormat(parameter, index)}
         </div>
 
         <div data-action="deleteParameter" data-index="${index}"
@@ -263,6 +351,46 @@ function renderRequired(parameter, index) {
           <label class="f6 gray">This is a required parameter</label>
           <div class="f5 mv1 red" data-validation-message="required"></div>
         </div>
+      </div>
+    `;
+}
+
+function renderValidateInputFormat(parameter, index) {
+  const regexFieldHtml = parameter.validate_input_format ? `
+        <div class="mt2">
+          <div>
+            <label class="f6 gray">Regex Pattern <small class=f7>(applied to submitted values)</small></label>
+          </div>
+          <div>
+            <input data-action="updateParameter"
+                   data-field="regex_pattern"
+                   data-index=${index}
+                   autocomplete="off"
+                   type="text"
+                   id="parameter_${index}_regex_pattern"
+                   name="parameters[${index}][regex_pattern]"
+                   value="${escapeHtml(parameter.regex_pattern) || ""}"
+                   class="form-control form-control-small w-100 code"
+                   placeholder="e.g. ^[0-9]+\\.[0-9]+\\.[0-9]+$">
+            <div class="f5 mv1 red" data-validation-message="regex_pattern"></div>
+          </div>
+        </div>
+  ` : "";
+
+  return `
+      <div class="mt2">
+        <div>
+          <input data-action="toggleValidateInputFormat"
+                 data-field="validate_input_format"
+                 type="checkbox"
+                 data-index=${index}
+                 id="parameter_${index}_validate_input_format"
+                 name="parameters[${index}][validate_input_format]"
+                 ${parameter.validate_input_format ? 'checked=true' : ""}>
+          <label class="f6 gray">Validate input format</label>
+          <div class="f5 mv1 red" data-validation-message="validate_input_format"></div>
+        </div>
+        ${regexFieldHtml}
       </div>
     `;
 }
