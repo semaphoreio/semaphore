@@ -482,7 +482,7 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
 
       it "marks connection as not revoked" do
         server.send(:update_revoke_status, bitbucket_account)
-        expect(bitbucket_account.reload.revoked).to eq(false)
+        expect(bitbucket_account.reload.revoked).to be(false)
       end
     end
 
@@ -492,7 +492,7 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
 
       it "marks connection as revoked" do
         server.send(:update_revoke_status, bitbucket_account)
-        expect(bitbucket_account.reload.revoked).to eq(true)
+        expect(bitbucket_account.reload.revoked).to be(true)
       end
     end
 
@@ -502,7 +502,7 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
 
       it "keeps the existing revoked status" do
         server.send(:update_revoke_status, bitbucket_account)
-        expect(bitbucket_account.reload.revoked).to eq(false)
+        expect(bitbucket_account.reload.revoked).to be(false)
       end
     end
   end

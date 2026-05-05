@@ -39,13 +39,13 @@ RSpec.describe Semaphore::Bitbucket::Token do
   describe ".valid?" do
     it "returns true only for :valid validation state" do
       allow(described_class).to receive(:validation_state).with("token").and_return(:valid)
-      expect(described_class.valid?("token")).to eq(true)
+      expect(described_class.valid?("token")).to be(true)
 
       allow(described_class).to receive(:validation_state).with("token").and_return(:invalid)
-      expect(described_class.valid?("token")).to eq(false)
+      expect(described_class.valid?("token")).to be(false)
 
       allow(described_class).to receive(:validation_state).with("token").and_return(:transient)
-      expect(described_class.valid?("token")).to eq(false)
+      expect(described_class.valid?("token")).to be(false)
     end
   end
 end
