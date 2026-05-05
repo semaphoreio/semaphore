@@ -589,7 +589,14 @@ defmodule Front.Models.Scheduler do
   end
 
   defp construct_parameters(parameters) do
-    Enum.into(parameters, [], &Map.take(&1, ~w(name required description default_value options)a))
+    Enum.into(
+      parameters,
+      [],
+      &Map.take(
+        &1,
+        ~w(name required description default_value options regex_pattern validate_input_format)a
+      )
+    )
   end
 
   defp options(metadata) do
@@ -619,7 +626,7 @@ defmodule Front.Models.Scheduler do
 
   defp parse_error_response_message(msg) do
     cond do
-      msg =~ "parameters" ->
+      msg =~ ~r/parameter/i ->
         %{errors: %{parameters: msg}}
 
       msg =~ "name" ->

@@ -15,15 +15,26 @@ class EditWizard {
   handleEditButton() {
     document
       .getElementById('wizard-edit-button')
-      .addEventListener('click', (event) => {
-        if (this.validateForm()) {
+      .addEventListener('click', async () => {
+        if (await this.validateForm()) {
           document.forms[0].submit()
         }
       })
   }
 
-  validateForm() {
+  async validateForm() {
     this.sectionNames.forEach(sectionName => this.components[sectionName].renderValidations())
+
+    const syncValid = this.sectionNames.every(sectionName => this.components[sectionName].isValid())
+    if (!syncValid) { return false }
+
+    await Promise.all(
+      this.sectionNames.map(sectionName => {
+        const component = this.components[sectionName]
+        return component.renderAsyncValidations ? component.renderAsyncValidations() : Promise.resolve()
+      })
+    )
+
     return this.sectionNames.every(sectionName => this.components[sectionName].isValid())
   }
 }
