@@ -38,15 +38,13 @@ defmodule Scheduler.SafeRegex do
   def validate_pattern(""), do: {:error, :invalid_pattern}
 
   def validate_pattern(pattern) when is_binary(pattern) do
-    cond do
-      byte_size(pattern) > @max_pattern_length ->
-        {:error, :pattern_too_long}
-
-      true ->
-        case :re.compile(pattern) do
-          {:ok, _compiled} -> :ok
-          {:error, _reason} -> {:error, :invalid_pattern}
-        end
+    if byte_size(pattern) > @max_pattern_length do
+      {:error, :pattern_too_long}
+    else
+      case :re.compile(pattern) do
+        {:ok, _compiled} -> :ok
+        {:error, _reason} -> {:error, :invalid_pattern}
+      end
     end
   end
 
