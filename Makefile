@@ -284,7 +284,7 @@ INTERNAL_API_REPOSITORY?=git@github.com:renderedtext/internal_api.git
 
 pb.clone:
 	rm -rf $(TMP_INTERNAL_REPO_DIR)
-	git clone $(INTERNAL_API_REPOSITOR) $(TMP_INTERNAL_REPO_DIR) && (cd $(TMP_INTERNAL_REPO_DIR) && git checkout $(INTERNAL_API_BRANCH) && cd -)
+	git clone $(INTERNAL_API_REPOSITORY) $(TMP_INTERNAL_REPO_DIR) && (cd $(TMP_INTERNAL_REPO_DIR) && git checkout $(INTERNAL_API_BRANCH) && cd -)
 
 #
 # In CI, we run tests outside of docker compose,
