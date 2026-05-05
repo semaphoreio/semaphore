@@ -417,6 +417,13 @@ defmodule Guard.GrpcServers.UserServer do
 
         FrontRepo.RepoHostAccount.update_revoke_status(repo_account, not is_valid)
 
+      {:error, :transient} ->
+        Logger.warning(
+          "Transient token validation failure for #{user.id}; keeping existing revoke status."
+        )
+
+        {:ok, repo_account}
+
       {:error, _} ->
         grpc_error!(:internal, "Error while validating token for #{user.id}.")
     end
