@@ -3,7 +3,11 @@ module Semaphore::Bitbucket
     def self.valid?(token)
       return false unless token.present?
 
-      response = Excon.get("https://api.bitbucket.org/2.0/repositories?access_token=#{token}")
+      response =
+        Excon.get(
+          "https://api.bitbucket.org/2.0/user/workspaces?pagelen=1",
+          :headers => { "Authorization" => "Bearer #{token}" }
+        )
 
       response.status <= 299
     end
