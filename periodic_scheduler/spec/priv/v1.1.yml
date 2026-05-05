@@ -32,6 +32,10 @@ properties:
           type: string
         description:
           type: string
+        regex_pattern:
+          type: string
+        validate_input_format:
+          type: boolean
       additionalProperties: false
       required: [name, required]
 additionalProperties: false
