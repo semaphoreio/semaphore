@@ -130,6 +130,13 @@ defmodule FrontWeb.SharedHelpers do
     {gtag != "", gtag}
   end
 
+  @spec gtm_enabled?() :: {boolean, String.t()}
+  def gtm_enabled? do
+    gtm_id = Application.get_env(:front, :google_gtm_id, "") || ""
+
+    {gtm_id != "", gtm_id}
+  end
+
   def commit_message(hook) do
     hook.commit_message |> String.split("\n") |> List.first()
   end

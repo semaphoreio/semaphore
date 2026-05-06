@@ -124,7 +124,8 @@ defmodule FrontWeb.ProjectController do
         workflows: model.workflows,
         pagination: model.pagination,
         pollman: pollman(conn, model),
-        page: :project
+        page: :project,
+        workflow_fetch_error: model.workflow_fetch_error
       )
     end)
   end

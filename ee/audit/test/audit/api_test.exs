@@ -169,6 +169,31 @@ defmodule Audit.ApiTest do
     assert serialized.medium == Medium.value(:CLI)
   end
 
+  test ".serialize_event with MCP medium" do
+    org_id = Ecto.UUID.generate()
+    user_id = Ecto.UUID.generate()
+
+    {:ok, event} =
+      Audit.Event.create(%{
+        resource: Resource.value(:Secret),
+        operation: Operation.value(:Added),
+        org_id: org_id,
+        user_id: user_id,
+        username: "hello",
+        ip_address: "1.2.3.4",
+        operation_id: Ecto.UUID.generate(),
+        timestamp: DateTime.from_unix!(0),
+        resource_id: Ecto.UUID.generate(),
+        resource_name: "my-secret",
+        metadata: %{"hello" => "world"},
+        medium: Medium.value(:MCP)
+      })
+
+    serialized = Audit.Api.serialize_event(event)
+
+    assert serialized.medium == Medium.value(:MCP)
+  end
+
   test "create export stream without user_id" do
     org_id = Ecto.UUID.generate()
 

@@ -37,6 +37,14 @@ Changing your user profile email address can revoke access to integrations such 
 
 :::
 
+To change your Semaphore email address, please contact support@semaphore.io from the primary email linked to your GitHub, Bitbucket, or GitLab account used to log in to Semaphore, and include your new email address.
+
+<!--
+
+## Temporary disabled section
+
+These instructions are currently hidden until we deploy this improvement: https://github.com/renderedtext/tasks/issues/9439
+
 To change your Semaphore email address, follow these steps:
 
 <Steps>
@@ -55,6 +63,8 @@ To change your Semaphore email address, follow these steps:
 5. Confirm the change
 
 </Steps>
+
+-->
 
 ### How to reset your personal API token {#profile-token}
 

@@ -24,6 +24,31 @@ defmodule Guard.Id.Api.Test do
     end
   end
 
+  describe "parse_expires_at/1" do
+    test "returns nil for nil input" do
+      assert Guard.Id.Api.parse_expires_at(nil) == nil
+    end
+
+    test "converts integer unix seconds to DateTime" do
+      assert %DateTime{} = dt = Guard.Id.Api.parse_expires_at(1_700_000_000)
+      assert DateTime.to_unix(dt) == 1_700_000_000
+    end
+
+    test "passes through DateTime unchanged" do
+      now = DateTime.utc_now() |> DateTime.truncate(:second)
+      assert Guard.Id.Api.parse_expires_at(now) == now
+    end
+
+    test "returns nil instead of raising on out-of-range integer" do
+      assert Guard.Id.Api.parse_expires_at(999_999_999_999_999_999) == nil
+    end
+
+    test "returns nil for unexpected shapes" do
+      assert Guard.Id.Api.parse_expires_at("2024-01-01T00:00:00Z") == nil
+      assert Guard.Id.Api.parse_expires_at(1.5) == nil
+    end
+  end
+
   describe "/oauth/:provider" do
     test "404 for non existing provider" do
       {:ok, response} = send_login_request(path: "/oauth/foo")
@@ -105,6 +130,54 @@ defmodule Guard.Id.Api.Test do
                "https://github.com/login/oauth/authorize?client_id=github_app_client_id"
 
       cleanup_integration()
+    end
+
+    defp bitbucket_user_payload(uuid) do
+      %{
+        "uuid" => uuid,
+        "nickname" => "kjhdda",
+        "display_name" => "Foo Bar",
+        "links" => %{
+          "followers" => %{"href" => "https://bitbucket.org/kjhdda/followers"},
+          "avatar" => %{"href" => "https://bitbucket.org/kjhdda/avatar"},
+          "html" => %{"href" => "https://bitbucket.org/kjhdda"},
+          "repositories" => %{"href" => "https://bitbucket.org/kjhdda/repos"}
+        }
+      }
+    end
+
+    defp run_bitbucket_oauth_round_trip(user_id) do
+      {:ok, response} =
+        send_login_request(
+          path: "/oauth/bitbucket",
+          query: %{redirect_to: "https://me.#{domain()}/foo/bar"},
+          headers: [{"x-semaphore-user-id", user_id}]
+        )
+
+      {_, location} = Enum.find(response.headers, fn h -> elem(h, 0) == "location" end)
+
+      cookies =
+        Enum.filter(response.headers, fn h -> elem(h, 0) == "set-cookie" end)
+        |> Enum.map(fn {_, cookie} -> {"cookie", cookie} end)
+
+      schema = URI.parse(location)
+      authorize_query = URI.decode_query(schema.query)
+
+      {:ok, response} =
+        send_login_request(
+          path: "/oauth/bitbucket/callback",
+          query: %{state: authorize_query["state"], code: "code"},
+          headers:
+            [
+              {"x-semaphore-user-id", user_id}
+            ]
+            |> Enum.concat(cookies)
+        )
+
+      assert response.status_code == 302
+      {_, location} = Enum.find(response.headers, fn h -> elem(h, 0) == "location" end)
+      schema = URI.parse(location)
+      URI.decode_query(schema.query)
     end
 
     defp setup_integration do
@@ -257,6 +330,79 @@ defmodule Guard.Id.Api.Test do
       assert schema.host == "me.#{domain()}"
       assert schema.path == "/foo/bar"
       assert query["status"] == "success"
+    end
+
+    test "callback for bitbucket persists token_expires_at", %{user_id: user_id} do
+      bitbucket_uuid = "{" <> Ecto.UUID.generate() <> "}"
+      expires_in = 7200
+
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
+          json(%{
+            "access_token" => "bitbucket-token",
+            "refresh_token" => "bitbucket-refresh",
+            "expires_in" => expires_in,
+            "token_type" => "bearer",
+            "scopes" => "account"
+          })
+
+        %{method: :get, url: "https://api.bitbucket.org/2.0/user"} ->
+          json(bitbucket_user_payload(bitbucket_uuid))
+
+        %{method: :get, url: "https://api.bitbucket.org/2.0/user/emails"} ->
+          json(%{"values" => [%{"email" => "kjhdda@example.com", "is_primary" => true}]})
+      end)
+
+      lower_bound =
+        DateTime.utc_now()
+        |> DateTime.add(expires_in - 120, :second)
+        |> DateTime.truncate(:second)
+
+      query = run_bitbucket_oauth_round_trip(user_id)
+
+      assert query["status"] == "success"
+
+      {:ok, account} =
+        Guard.FrontRepo.RepoHostAccount.get_for_user_by_repo_host(user_id, "bitbucket")
+
+      assert %DateTime{} = account.token_expires_at
+      assert DateTime.compare(account.token_expires_at, lower_bound) in [:gt, :eq]
+      assert account.token == "bitbucket-token"
+      assert account.refresh_token == "bitbucket-refresh"
+    end
+
+    test "callback for bitbucket survives out-of-range expires_at without 500", %{
+      user_id: user_id
+    } do
+      bitbucket_uuid = "{" <> Ecto.UUID.generate() <> "}"
+
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
+          json(%{
+            "access_token" => "bitbucket-token",
+            "refresh_token" => "bitbucket-refresh",
+            "expires_in" => 999_999_999_999_999,
+            "token_type" => "bearer",
+            "scopes" => "account"
+          })
+
+        %{method: :get, url: "https://api.bitbucket.org/2.0/user"} ->
+          json(bitbucket_user_payload(bitbucket_uuid))
+
+        %{method: :get, url: "https://api.bitbucket.org/2.0/user/emails"} ->
+          json(%{"values" => []})
+      end)
+
+      query = run_bitbucket_oauth_round_trip(user_id)
+
+      assert query["status"] == "success"
+
+      {:ok, account} =
+        Guard.FrontRepo.RepoHostAccount.get_for_user_by_repo_host(user_id, "bitbucket")
+
+      assert account.token_expires_at == nil
+      assert account.token == "bitbucket-token"
+      assert account.refresh_token == "bitbucket-refresh"
     end
 
     test "success when callback pass for gitlab", %{user_id: user_id} do

@@ -567,6 +567,13 @@ defmodule FrontWeb.SchedulersController do
           |> put_flash(:alert, "Unable to start workflow, pipeline queue limit reached.")
           |> redirect(to: schedulers_path(conn, :form_just_run, project.name, scheduler_id))
 
+        {:error, {:grpc_req_failed, msg}} ->
+          Logger.error("Starting JustRun workflow failed: #{inspect({:grpc_req_failed, msg})}")
+
+          conn
+          |> put_flash(:alert, starting_workflow_failed_message(msg))
+          |> redirect(to: schedulers_path(conn, :form_just_run, project.name, scheduler_id))
+
         error ->
           Logger.error("Starting JustRun workflow failed: #{inspect(error)}")
 
@@ -576,6 +583,11 @@ defmodule FrontWeb.SchedulersController do
       end
     end)
   end
+
+  defp starting_workflow_failed_message(message) when is_binary(message) and message != "",
+    do: "Starting workflow failed: #{message}"
+
+  defp starting_workflow_failed_message(_message), do: "Starting workflow failed."
 
   defp render_just_run(conn, _params, scheduler, just_run_params) do
     project = conn.assigns.project
