@@ -222,7 +222,7 @@ defmodule Front.ActivityMonitor.Repo do
     end)
   end
 
-  defp extract_debugs_page(%{status: %{code: :OK}, debug_sessions: debugs} = payload),
+  defp extract_debugs_page(payload = %{status: %{code: :OK}, debug_sessions: debugs}),
     do: {:ok, debugs, Map.get(payload, :next_page_token, "")}
 
   defp extract_debugs_page(%{status: %{message: msg}}), do: {:error, msg}
@@ -329,7 +329,7 @@ defmodule Front.ActivityMonitor.Repo do
     ts_date_time
   end
 
-  defp extract_jobs_page(%{status: %{code: :OK}, jobs: jobs} = payload),
+  defp extract_jobs_page(payload = %{status: %{code: :OK}, jobs: jobs}),
     do: {:ok, jobs, Map.get(payload, :next_page_token, "")}
 
   defp extract_jobs_page(%{status: %{message: msg}}), do: {:error, msg}
@@ -340,48 +340,79 @@ defmodule Front.ActivityMonitor.Repo do
   end
 
   defp list_all_pages(fetch_page, page_token, seen_tokens, pages, page_count) do
-    cond do
-      page_count >= @max_activity_monitor_pages ->
-        Logger.error(
-          "Activity monitor pagination aborted: reached max page limit (max_pages=#{@max_activity_monitor_pages})"
-        )
+    case pagination_stop_reason(page_token, seen_tokens, page_count) do
+      nil ->
+        fetch_pagination_page(fetch_page, page_token, seen_tokens, pages, page_count)
 
-        {:ok, pages |> Enum.reverse() |> List.flatten()}
-
-      page_token != "" and MapSet.member?(seen_tokens, page_token) ->
-        Logger.error(
-          "Activity monitor pagination aborted: pagination did not advance (token=#{inspect(page_token)})"
-        )
-
-        {:ok, pages |> Enum.reverse() |> List.flatten()}
-
-      true ->
-        seen_tokens = MapSet.put(seen_tokens, page_token)
-
-        case fetch_page.(page_token) do
-          {:ok, records, next_page_token} ->
-            pages = [records | pages]
-            next_page_token = next_page_token || ""
-
-            cond do
-              next_page_token == "" ->
-                {:ok, pages |> Enum.reverse() |> List.flatten()}
-
-              next_page_token == page_token ->
-                Logger.error(
-                  "Activity monitor pagination aborted: pagination token did not change (token=#{inspect(next_page_token)})"
-                )
-
-                {:ok, pages |> Enum.reverse() |> List.flatten()}
-
-              true ->
-                list_all_pages(fetch_page, next_page_token, seen_tokens, pages, page_count + 1)
-            end
-
-          {:error, _} = error ->
-            error
-        end
+      reason ->
+        log_pagination_stop(reason, page_token)
+        finalize_pages(pages)
     end
+  end
+
+  defp pagination_stop_reason(_page_token, _seen_tokens, page_count)
+       when page_count >= @max_activity_monitor_pages,
+       do: :max_pages
+
+  defp pagination_stop_reason(page_token, seen_tokens, _page_count) do
+    if page_token != "" and MapSet.member?(seen_tokens, page_token) do
+      :token_repeated
+    else
+      nil
+    end
+  end
+
+  defp fetch_pagination_page(fetch_page, page_token, seen_tokens, pages, page_count) do
+    seen_tokens = MapSet.put(seen_tokens, page_token)
+
+    case fetch_page.(page_token) do
+      {:ok, records, next_page_token} ->
+        continue_pagination(
+          fetch_page,
+          page_token,
+          next_page_token || "",
+          seen_tokens,
+          [records | pages],
+          page_count
+        )
+
+      {:error, _} = error ->
+        error
+    end
+  end
+
+  defp continue_pagination(_fetch_page, _page_token, "", _seen_tokens, pages, _page_count),
+    do: finalize_pages(pages)
+
+  defp continue_pagination(fetch_page, page_token, page_token, _seen_tokens, pages, _page_count) do
+    log_pagination_stop(:token_unchanged, page_token)
+    finalize_pages(pages)
+  end
+
+  defp continue_pagination(fetch_page, _page_token, next_page_token, seen_tokens, pages, page_count) do
+    list_all_pages(fetch_page, next_page_token, seen_tokens, pages, page_count + 1)
+  end
+
+  defp log_pagination_stop(:max_pages, _page_token) do
+    Logger.error(
+      "Activity monitor pagination aborted: reached max page limit (max_pages=#{@max_activity_monitor_pages})"
+    )
+  end
+
+  defp log_pagination_stop(:token_repeated, page_token) do
+    Logger.error(
+      "Activity monitor pagination aborted: pagination did not advance (token=#{inspect(page_token)})"
+    )
+  end
+
+  defp log_pagination_stop(:token_unchanged, page_token) do
+    Logger.error(
+      "Activity monitor pagination aborted: pagination token did not change (token=#{inspect(page_token)})"
+    )
+  end
+
+  defp finalize_pages(pages) do
+    {:ok, pages |> Enum.reverse() |> List.flatten()}
   end
 
   # Stop Job
