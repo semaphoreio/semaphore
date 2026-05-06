@@ -119,8 +119,10 @@ check.deps:
 		$(SECURITY_TOOLBOX_RUBY_IMAGE) \
 		bash -c 'cd $(APP_DIRECTORY) && $(SECURITY_TOOLBOX_TMP_DIR)/dependencies --language $(LANGUAGE) -d --output-dir $(SCAN_RESULT_DIR) $(CHECK_DEPS_OPTS); EXIT_CODE=$$?; chown -R "$$HOST_UID:$$HOST_GID" $(SCAN_RESULT_DIR) 2>/dev/null || true; exit $$EXIT_CODE'
 
+CHECK_DEPS_IGNORES?=hackney
+
 check.ex.deps:
-	$(MAKE) check.deps LANGUAGE=elixir CHECK_DEPS_OPTS="-i hackney $(CHECK_DEPS_EXTRA_OPTS)"
+	$(MAKE) check.deps LANGUAGE=elixir CHECK_DEPS_OPTS="-i $(CHECK_DEPS_IGNORES) $(CHECK_DEPS_EXTRA_OPTS)"
 
 check.go.deps:
 	$(MAKE) check.deps LANGUAGE=go
@@ -280,10 +282,11 @@ endif
 INTERNAL_API_BRANCH?=master
 TMP_INTERNAL_REPO_DIR?=/tmp/internal_api
 RELATIVE_INTERNAL_PB_OUTPUT_DIR=lib/internal_api
+INTERNAL_API_REPOSITORY?=git@github.com:renderedtext/internal_api.git
 
 pb.clone:
 	rm -rf $(TMP_INTERNAL_REPO_DIR)
-	git clone git@github.com:renderedtext/internal_api.git $(TMP_INTERNAL_REPO_DIR) && (cd $(TMP_INTERNAL_REPO_DIR) && git checkout $(INTERNAL_API_BRANCH) && cd -)
+	git clone $(INTERNAL_API_REPOSITORY) $(TMP_INTERNAL_REPO_DIR) && (cd $(TMP_INTERNAL_REPO_DIR) && git checkout $(INTERNAL_API_BRANCH) && cd -)
 
 #
 # In CI, we run tests outside of docker compose,
