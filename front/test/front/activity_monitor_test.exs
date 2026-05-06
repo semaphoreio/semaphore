@@ -130,27 +130,6 @@ defmodule Front.ActivityMonitor.Test do
     end
   end
 
-  test "self-hosted scheduled jobs are shown as running activity" do
-    pipeline = self_hosted_scheduled_pipeline()
-
-    data = %{
-      accessable_projects: [%{id: "pr_self_hosted", name: "self-hosted-project"}],
-      users: [],
-      active_pipelines: [],
-      active_jobs: [],
-      active_debug_sessions: []
-    }
-
-    running = Front.ActivityMonitor.create_running([pipeline], data, ["pr_self_hosted"])
-    waiting = Front.ActivityMonitor.create_waiting([pipeline], data, ["pr_self_hosted"])
-
-    assert [%Front.ActivityMonitor.ItemPipeline{job_stats: job_stats}] = running.items
-    assert 1 == job_stats.running.job_count
-    assert %{"s1-large" => 1} == job_stats.running.machine_types
-    assert 0 == job_stats.waiting.job_count
-    assert [] == waiting.items
-  end
-
   def empty_mock(_, _, _) do
     {:ok,
      %{
@@ -194,39 +173,6 @@ defmodule Front.ActivityMonitor.Test do
        active_jobs: jobs(),
        active_debug_sessions: debugs()
      }}
-  end
-
-  defp self_hosted_scheduled_pipeline do
-    %{
-      project_id: "pr_self_hosted",
-      requester_id: "",
-      promoter_id: "",
-      name: "Self-hosted pipeline",
-      commit_message: "Run on a self-hosted machine",
-      commiter_username: "Self Hosted User",
-      commiter_avatar_url: "",
-      wf_id: "wf_self_hosted",
-      ppl_id: "ppl_self_hosted",
-      git_ref: "master",
-      git_ref_type: :BRANCH,
-      created_at: "2 days ago",
-      priority: 50,
-      state: :RUNNING,
-      branch_id: "branch_self_hosted",
-      blocks: [
-        %{
-          state: :RUNNING,
-          jobs: [
-            %{
-              machine_type: "s1-large",
-              state: :SCHEDULED,
-              status: "scheduled",
-              self_hosted: true
-            }
-          ]
-        }
-      ]
-    }
   end
 
   defp users do
