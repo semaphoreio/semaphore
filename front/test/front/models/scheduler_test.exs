@@ -188,7 +188,9 @@ defmodule Front.Models.SchedulerTest do
                        required: true,
                        description: "",
                        options: ["value1", "value2"],
-                       default_value: "value1"
+                       default_value: "value1",
+                       regex_pattern: "",
+                       validate_input_format: false
                      }
                    ],
                    triggerer_avatar_url: "/projects/assets/images/profile-bot.svg",
@@ -384,10 +386,57 @@ defmodule Front.Models.SchedulerTest do
                        required: true,
                        description: "",
                        options: ["value1", "value2"],
-                       default_value: "value1"
+                       default_value: "value1",
+                       regex_pattern: "",
+                       validate_input_format: false
                      }
                    ]
                  )
+      end
+    end
+
+    test "find action surfaces regex_pattern and validate_input_format on parameters" do
+      response =
+        DescribeResponse.new(
+          status:
+            InternalApi.Status.new(
+              code: Google.Rpc.Code.value(:OK),
+              message: ""
+            ),
+          periodic:
+            scheduler_desc(1,
+              recurring: false,
+              at: "",
+              reference: "refs/heads/master",
+              pipeline_file: "",
+              parameters: [
+                %{
+                  name: "VERSION",
+                  options: [],
+                  required: true,
+                  default_value: "1.0.0",
+                  regex_pattern: "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+                  validate_input_format: true
+                }
+              ]
+            ),
+          triggers: [trigger_desc(1)]
+        )
+
+      with_mock Stub, describe: fn _c, _r, _o -> {:ok, response} end do
+        assert {:ok, scheduler} = Subject.find(@scheduler_id)
+
+        assert [parameter] = scheduler.parameters
+
+        assert parameter == %{
+                 name: "VERSION",
+                 required: true,
+                 description: "",
+                 options: [],
+                 default_value: "1.0.0",
+                 regex_pattern: "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+                 validate_input_format: true
+               }
       end
     end
 
@@ -720,6 +769,27 @@ defmodule Front.Models.SchedulerTest do
       with_mock GRPC.Stub, connect: fn _ -> {:error, "failed"} end do
         assert Subject.persist(@form_data, @context_data) ==
                  {:error, :grpc_req_failed}
+      end
+    end
+
+    test "surfaces parameter regex_pattern errors as a parameters error" do
+      response =
+        PersistResponse.new(
+          status:
+            InternalApi.Status.new(
+              code: Google.Rpc.Code.value(:INVALID_ARGUMENT),
+              message: "Parameter 'VERSION' regex_pattern is not a valid regex."
+            )
+        )
+
+      with_mock Stub, persist: fn _, _, _ -> {:ok, response} end do
+        assert Subject.persist(@form_data, @context_data) ==
+                 {:error,
+                  %{
+                    errors: %{
+                      parameters: "Parameter 'VERSION' regex_pattern is not a valid regex."
+                    }
+                  }}
       end
     end
   end

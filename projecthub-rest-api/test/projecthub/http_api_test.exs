@@ -619,7 +619,9 @@ defmodule Projecthub.HttpApi.Test do
                          "description" => "description1",
                          "name" => "param1",
                          "options" => ["option1", "option2"],
-                         "required" => true
+                         "required" => true,
+                         "regex_pattern" => "",
+                         "validate_input_format" => false
                        }
                      ],
                      "pipeline_file" => ".semaphore/semaphore.yml",
@@ -907,7 +909,9 @@ defmodule Projecthub.HttpApi.Test do
                     "description" => "description1",
                     "name" => "param1",
                     "options" => ["option1", "option2"],
-                    "required" => true
+                    "required" => true,
+                    "regex_pattern" => "",
+                    "validate_input_format" => false
                   }
                 ],
                 "pipeline_file" => ".semaphore/semaphore.yml",
@@ -971,7 +975,9 @@ defmodule Projecthub.HttpApi.Test do
                          "description" => "description1",
                          "name" => "param1",
                          "options" => ["option1", "option2"],
-                         "required" => true
+                         "required" => true,
+                         "regex_pattern" => "",
+                         "validate_input_format" => false
                        }
                      ],
                      "pipeline_file" => ".semaphore/semaphore.yml",
@@ -1276,14 +1282,18 @@ defmodule Projecthub.HttpApi.Test do
                          "description" => "",
                          "required" => false,
                          "default_value" => "",
-                         "options" => ["op1", "op2"]
+                         "options" => ["op1", "op2"],
+                         "regex_pattern" => "",
+                         "validate_input_format" => false
                        },
                        %{
                          "name" => "parameter",
                          "description" => "desc",
                          "required" => true,
                          "default_value" => "default",
-                         "options" => []
+                         "options" => [],
+                         "regex_pattern" => "",
+                         "validate_input_format" => false
                        }
                      ]
                    }
