@@ -334,7 +334,7 @@ defmodule Front.ActivityMonitor do
   defp scheduled_jobs_in_block_started?(jobs) do
     jobs
     |> Enum.reduce_while(true, fn job, _ ->
-      if Map.get(job, :state) == :STARTED or
+      if job_running?(job) or
            (Map.get(job, :status) == "scheduled" and job |> Map.get(:state) |> is_nil) do
         {:cont, true}
       else
@@ -476,7 +476,7 @@ defmodule Front.ActivityMonitor do
               waiting: stats.waiting
             )
 
-          Map.get(job, :state) == :STARTED ->
+          job_running?(job) ->
             struct!(JobStats,
               left: stats.left,
               running: update_stats(running, job, JobStatsRunning),
@@ -495,6 +495,11 @@ defmodule Front.ActivityMonitor do
         end
       end)
     end)
+  end
+
+  defp job_running?(job) do
+    Map.get(job, :state) == :STARTED or
+      (Map.get(job, :state) == :SCHEDULED and Map.get(job, :self_hosted, false))
   end
 
   defp update_stats(%{job_count: count, machine_types: types}, job, struct) do
