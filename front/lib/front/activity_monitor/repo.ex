@@ -5,6 +5,8 @@ defmodule Front.ActivityMonitor.Repo do
   alias Front.Models.User
   alias Util.{Proto, ToTuple}
 
+  @max_activity_monitor_pages 10
+
   defmodule Data do
     use TypedStruct
 
@@ -334,42 +336,51 @@ defmodule Front.ActivityMonitor.Repo do
   defp extract_jobs_page(error), do: {:error, error}
 
   defp list_all_pages(fetch_page) do
-    list_all_pages(fetch_page, "", MapSet.new(), [])
+    list_all_pages(fetch_page, "", MapSet.new(), [], 0)
   end
 
-  defp list_all_pages(fetch_page, page_token, seen_tokens, pages) do
-    if page_token != "" and MapSet.member?(seen_tokens, page_token) do
-      Logger.error(
-        "Activity monitor pagination aborted: pagination did not advance (token=#{inspect(page_token)})"
-      )
+  defp list_all_pages(fetch_page, page_token, seen_tokens, pages, page_count) do
+    cond do
+      page_count >= @max_activity_monitor_pages ->
+        Logger.error(
+          "Activity monitor pagination aborted: reached max page limit (max_pages=#{@max_activity_monitor_pages})"
+        )
 
-      {:ok, pages |> Enum.reverse() |> List.flatten()}
-    else
-      seen_tokens = MapSet.put(seen_tokens, page_token)
+        {:ok, pages |> Enum.reverse() |> List.flatten()}
 
-      case fetch_page.(page_token) do
-        {:ok, records, next_page_token} ->
-          pages = [records | pages]
-          next_page_token = next_page_token || ""
+      page_token != "" and MapSet.member?(seen_tokens, page_token) ->
+        Logger.error(
+          "Activity monitor pagination aborted: pagination did not advance (token=#{inspect(page_token)})"
+        )
 
-          cond do
-            next_page_token == "" ->
-              {:ok, pages |> Enum.reverse() |> List.flatten()}
+        {:ok, pages |> Enum.reverse() |> List.flatten()}
 
-            next_page_token == page_token ->
-              Logger.error(
-                "Activity monitor pagination aborted: pagination token did not change (token=#{inspect(next_page_token)})"
-              )
+      true ->
+        seen_tokens = MapSet.put(seen_tokens, page_token)
 
-              {:ok, pages |> Enum.reverse() |> List.flatten()}
+        case fetch_page.(page_token) do
+          {:ok, records, next_page_token} ->
+            pages = [records | pages]
+            next_page_token = next_page_token || ""
 
-            true ->
-              list_all_pages(fetch_page, next_page_token, seen_tokens, pages)
-          end
+            cond do
+              next_page_token == "" ->
+                {:ok, pages |> Enum.reverse() |> List.flatten()}
 
-        {:error, _} = error ->
-          error
-      end
+              next_page_token == page_token ->
+                Logger.error(
+                  "Activity monitor pagination aborted: pagination token did not change (token=#{inspect(next_page_token)})"
+                )
+
+                {:ok, pages |> Enum.reverse() |> List.flatten()}
+
+              true ->
+                list_all_pages(fetch_page, next_page_token, seen_tokens, pages, page_count + 1)
+            end
+
+          {:error, _} = error ->
+            error
+        end
     end
   end
 
