@@ -50,9 +50,6 @@ defmodule Scheduler.SafeRegexTest do
     end
 
     test "bounded execution of an adversarial pattern terminates" do
-      # Classic ReDoS shape: nested quantifiers + tail that forces backtracking.
-      # PCRE's built-in match_limit (10M) keeps this from running unbounded;
-      # we rely on its default to short-circuit catastrophic backtracking.
       pattern = "^([a-zA-Z]+)*$"
       value = String.duplicate("a", 50) <> "1"
 
