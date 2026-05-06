@@ -86,14 +86,16 @@ defmodule Front.ActivityMonitor.Repo.Test do
       case req.page_token do
         "" ->
           InternalApi.ServerFarm.Job.ListDebugSessionsResponse.new(
-            status: InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
+            status:
+              InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
             debug_sessions: [Support.Factories.debug_session()],
             next_page_token: "page_2"
           )
 
         "page_2" ->
           InternalApi.ServerFarm.Job.ListDebugSessionsResponse.new(
-            status: InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
+            status:
+              InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
             debug_sessions: [Support.Factories.debug_session()],
             next_page_token: ""
           )
@@ -180,14 +182,16 @@ defmodule Front.ActivityMonitor.Repo.Test do
       case req.page_token do
         "" ->
           InternalApi.ServerFarm.Job.ListResponse.new(
-            status: InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
+            status:
+              InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
             jobs: [Support.Factories.job()],
             next_page_token: "page_2"
           )
 
         "page_2" ->
           InternalApi.ServerFarm.Job.ListResponse.new(
-            status: InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
+            status:
+              InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
             jobs: [Support.Factories.job()],
             next_page_token: ""
           )
@@ -196,6 +200,25 @@ defmodule Front.ActivityMonitor.Repo.Test do
 
     assert {:ok, jobs} = Repo.list_active_jobs(%{}, "org_1", ["ppl_1"])
     assert 2 == length(jobs)
+  end
+
+  test "list_active_jobs() stops at max page limit" do
+    GrpcMock.stub(InternalJobMock, :list, fn req, _stream ->
+      page_number =
+        case req.page_token do
+          "" -> 1
+          "page_" <> n -> String.to_integer(n)
+        end
+
+      InternalApi.ServerFarm.Job.ListResponse.new(
+        status: InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
+        jobs: [Support.Factories.job()],
+        next_page_token: "page_#{page_number + 1}"
+      )
+    end)
+
+    assert {:ok, jobs} = Repo.list_active_jobs(%{}, "org_1", ["ppl_1"])
+    assert 10 == length(jobs)
   end
 
   test "stop_job() returns response from the server" do
