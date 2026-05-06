@@ -132,10 +132,10 @@ export default class JustRunForm {
     if (!submitButton) { return; }
 
     submitButton.addEventListener('click', () => {
-      this.renderAll()
-
       if (this.validateForm()) {
         document.forms[0].submit()
+      } else {
+        this.renderAll()
       }
     })
   }
