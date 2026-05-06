@@ -384,7 +384,7 @@ defmodule Front.ActivityMonitor.Repo do
   defp continue_pagination(_fetch_page, _page_token, "", _seen_tokens, pages, _page_count),
     do: finalize_pages(pages)
 
-  defp continue_pagination(fetch_page, page_token, page_token, _seen_tokens, pages, _page_count) do
+  defp continue_pagination(_fetch_page, page_token, page_token, _seen_tokens, pages, _page_count) do
     log_pagination_stop(:token_unchanged, page_token)
     finalize_pages(pages)
   end
