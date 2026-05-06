@@ -119,8 +119,10 @@ check.deps:
 		$(SECURITY_TOOLBOX_RUBY_IMAGE) \
 		bash -c 'cd $(APP_DIRECTORY) && $(SECURITY_TOOLBOX_TMP_DIR)/dependencies --language $(LANGUAGE) -d --output-dir $(SCAN_RESULT_DIR) $(CHECK_DEPS_OPTS); EXIT_CODE=$$?; chown -R "$$HOST_UID:$$HOST_GID" $(SCAN_RESULT_DIR) 2>/dev/null || true; exit $$EXIT_CODE'
 
+CHECK_DEPS_IGNORES?=hackney
+
 check.ex.deps:
-	$(MAKE) check.deps LANGUAGE=elixir CHECK_DEPS_OPTS="-i hackney $(CHECK_DEPS_EXTRA_OPTS)"
+	$(MAKE) check.deps LANGUAGE=elixir CHECK_DEPS_OPTS="-i $(CHECK_DEPS_IGNORES) $(CHECK_DEPS_EXTRA_OPTS)"
 
 check.go.deps:
 	$(MAKE) check.deps LANGUAGE=go
