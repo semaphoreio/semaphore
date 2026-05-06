@@ -1,7 +1,5 @@
 defmodule Router.Deployments.CreateTest do
   use PublicAPI.Case
-  import Plug.Test
-  import Plug.Conn
 
   require Logger
 
