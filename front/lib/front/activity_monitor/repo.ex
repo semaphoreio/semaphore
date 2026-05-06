@@ -389,7 +389,14 @@ defmodule Front.ActivityMonitor.Repo do
     finalize_pages(pages)
   end
 
-  defp continue_pagination(fetch_page, _page_token, next_page_token, seen_tokens, pages, page_count) do
+  defp continue_pagination(
+         fetch_page,
+         _page_token,
+         next_page_token,
+         seen_tokens,
+         pages,
+         page_count
+       ) do
     list_all_pages(fetch_page, next_page_token, seen_tokens, pages, page_count + 1)
   end
 
