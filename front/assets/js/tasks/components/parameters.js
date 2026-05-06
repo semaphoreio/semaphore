@@ -135,6 +135,11 @@ class ParametersComponent {
       }))
   }
 
+  validateForm() {
+    allSections.forEach(sectionName => this.components[sectionName].renderValidations())
+    return allSections.every(sectionName => this.components[sectionName].isValid())
+  }
+
   renderParameters(showValidations = false) {
     const container = document.querySelector('[data-target=parameters]')
     if (!container) return
@@ -151,7 +156,7 @@ class ParametersComponent {
 
     container.querySelectorAll('[data-action=updateParameter]')
       .forEach((element) => {
-        element.addEventListener('input', () => {
+        element.addEventListener('input', (event) => {
           this.updateParameter(element.dataset.index, element.dataset.field, element.value)
           this.renderValidations()
         })
@@ -174,6 +179,11 @@ class ParametersComponent {
         })
       })
   }
+}
+
+function getValue(index, field) {
+  const element = document.getElementById(`parameter_${index}_${field}`)
+  return element ? element.value : ""
 }
 
 function renderParameters(parameters, showValidation = false) {
