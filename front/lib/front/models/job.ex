@@ -56,10 +56,7 @@ defmodule Front.Models.Job do
          request <-
            GenerateTokenRequest.new(job_id: id, type: TokenType.value(:PULL), duration: duration),
          {:ok, response} <-
-           Loghub2Stub.generate_token(channel, request,
-             metadata: tracing_headers,
-             timeout: 30_000
-           ) do
+           Loghub2Stub.generate_token(channel, request, metadata: tracing_headers, timeout: 30_000) do
       response.token
     else
       e ->
