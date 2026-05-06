@@ -15,7 +15,7 @@ class EditWizard {
   handleEditButton() {
     document
       .getElementById('wizard-edit-button')
-      .addEventListener('click', () => {
+      .addEventListener('click', (event) => {
         if (this.validateForm()) {
           document.forms[0].submit()
         }
