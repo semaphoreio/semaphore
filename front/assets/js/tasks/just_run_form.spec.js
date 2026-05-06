@@ -23,7 +23,6 @@ describe("valueTooLong", () => {
   })
 
   it("counts bytes, not chars, so multi-byte values cross the cap sooner", () => {
-    // each "ñ" is 2 bytes in UTF-8, half as many chars as the byte cap
     const value = "ñ".repeat(MAX_PARAM_VALUE_LENGTH / 2 + 1)
     expect(value.length).to.be.below(MAX_PARAM_VALUE_LENGTH)
     expect(valueTooLong(value)).to.equal(true)
