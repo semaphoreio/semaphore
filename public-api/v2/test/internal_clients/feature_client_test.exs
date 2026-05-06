@@ -1,9 +1,6 @@
 defmodule InternalClients.Feature.Test do
   use ExUnit.Case
 
-  import Plug.Test
-  import Plug.Conn
-
   alias InternalClients.Feature, as: FeatureClient
 
   setup do
