@@ -5,6 +5,8 @@ defmodule Front.ActivityMonitor.Repo do
   alias Front.Models.User
   alias Util.{Proto, ToTuple}
 
+  @max_activity_monitor_pages 10
+
   defmodule Data do
     use TypedStruct
 
@@ -158,27 +160,28 @@ defmodule Front.ActivityMonitor.Repo do
       url = Application.fetch_env!(:front, :pipeline_api_grpc_endpoint)
       {:ok, channel} = GRPC.Stub.connect(url)
 
-      request =
-        Req.new(
-          page_size: 300,
-          page_token: "",
-          order: Req.Order.value(:BY_CREATION_TIME_DESC),
-          direction: Req.Direction.value(:NEXT),
-          organization_id: org_id
-        )
-
       options = [timeout: 30_000, metadata: tracing_headers]
 
-      case PipelineService.Stub.list_activity(channel, request, options) do
-        {:ok, response} ->
-          response
-          |> Proto.to_map!(transformations: tf_map())
-          |> Map.get(:pipelines)
-          |> ToTuple.ok()
+      list_all_pages(fn page_token ->
+        request =
+          Req.new(
+            page_size: 300,
+            page_token: page_token,
+            order: Req.Order.value(:BY_CREATION_TIME_DESC),
+            direction: Req.Direction.value(:NEXT),
+            organization_id: org_id
+          )
 
-        {:error, error} ->
-          {:error, error}
-      end
+        case PipelineService.Stub.list_activity(channel, request, options) do
+          {:ok, response} ->
+            page = Proto.to_map!(response, transformations: tf_map())
+
+            {:ok, Map.get(page, :pipelines, []), Map.get(page, :next_page_token, "")}
+
+          {:error, error} ->
+            {:error, error}
+        end
+      end)
     end)
   end
 
@@ -192,32 +195,38 @@ defmodule Front.ActivityMonitor.Repo do
       url = Application.fetch_env!(:front, :job_api_grpc_endpoint)
       {:ok, channel} = GRPC.Stub.connect(url)
 
-      request =
-        %{
-          page_size: 500,
-          page_token: "",
-          order: :BY_CREATION_TIME_DESC,
-          debug_session_states: [:PENDING, :ENQUEUED, :SCHEDULED, :STARTED],
-          types: [:JOB],
-          organization_id: org_id
-        }
-        |> Proto.deep_new!(ListDebugSessionsRequest)
-
       options = [timeout: 30_000, metadata: tracing_headers]
 
-      case JobService.Stub.list_debug_sessions(channel, request, options) do
-        {:ok, response} ->
-          response |> Proto.to_map(transformations: tf_map()) |> extract_debugs()
+      list_all_pages(fn page_token ->
+        request =
+          %{
+            page_size: 500,
+            page_token: page_token,
+            order: :BY_CREATION_TIME_DESC,
+            debug_session_states: [:PENDING, :ENQUEUED, :SCHEDULED, :STARTED],
+            types: [:JOB],
+            organization_id: org_id
+          }
+          |> Proto.deep_new!(ListDebugSessionsRequest)
 
-        {:error, error} ->
-          {:error, error}
-      end
+        case JobService.Stub.list_debug_sessions(channel, request, options) do
+          {:ok, response} ->
+            response
+            |> Proto.to_map!(transformations: tf_map())
+            |> extract_debugs_page()
+
+          {:error, error} ->
+            {:error, error}
+        end
+      end)
     end)
   end
 
-  defp extract_debugs({:ok, %{status: %{code: :OK}, debug_sessions: debugs}}), do: {:ok, debugs}
-  defp extract_debugs({:ok, %{status: %{message: msg}}}), do: {:error, msg}
-  defp extract_debugs(error), do: error
+  defp extract_debugs_page(payload = %{status: %{code: :OK}, debug_sessions: debugs}),
+    do: {:ok, debugs, Map.get(payload, :next_page_token, "")}
+
+  defp extract_debugs_page(%{status: %{message: msg}}), do: {:error, msg}
+  defp extract_debugs_page(error), do: {:error, error}
 
   # Describe_many pipelines which jobs are being debugged
 
@@ -282,27 +291,31 @@ defmodule Front.ActivityMonitor.Repo do
       url = Application.fetch_env!(:front, :job_api_grpc_endpoint)
       {:ok, channel} = GRPC.Stub.connect(url)
 
-      request =
-        %{
-          page_size: 500,
-          page_token: "",
-          order: :BY_CREATION_TIME_DESC,
-          organization_id: org_id,
-          ppl_ids: ppl_ids,
-          only_debug_jobs: false,
-          job_states: [:PENDING, :ENQUEUED, :SCHEDULED, :STARTED]
-        }
-        |> Proto.deep_new!(ListRequest)
-
       options = [timeout: 30_000, metadata: tracing_headers]
 
-      case JobService.Stub.list(channel, request, options) do
-        {:ok, response} ->
-          response |> Proto.to_map(transformations: tf_map()) |> extract_jobs()
+      list_all_pages(fn page_token ->
+        request =
+          %{
+            page_size: 500,
+            page_token: page_token,
+            order: :BY_CREATION_TIME_DESC,
+            organization_id: org_id,
+            ppl_ids: ppl_ids,
+            only_debug_jobs: false,
+            job_states: [:PENDING, :ENQUEUED, :SCHEDULED, :STARTED]
+          }
+          |> Proto.deep_new!(ListRequest)
 
-        {:error, error} ->
-          {:error, error}
-      end
+        case JobService.Stub.list(channel, request, options) do
+          {:ok, response} ->
+            response
+            |> Proto.to_map!(transformations: tf_map())
+            |> extract_jobs_page()
+
+          {:error, error} ->
+            {:error, error}
+        end
+      end)
     end)
   end
 
@@ -316,9 +329,91 @@ defmodule Front.ActivityMonitor.Repo do
     ts_date_time
   end
 
-  defp extract_jobs({:ok, %{status: %{code: :OK}, jobs: jobs}}), do: {:ok, jobs}
-  defp extract_jobs({:ok, %{status: %{message: msg}}}), do: {:error, msg}
-  defp extract_jobs(error), do: error
+  defp extract_jobs_page(payload = %{status: %{code: :OK}, jobs: jobs}),
+    do: {:ok, jobs, Map.get(payload, :next_page_token, "")}
+
+  defp extract_jobs_page(%{status: %{message: msg}}), do: {:error, msg}
+  defp extract_jobs_page(error), do: {:error, error}
+
+  defp list_all_pages(fetch_page) do
+    list_all_pages(fetch_page, "", MapSet.new(), [], 0)
+  end
+
+  defp list_all_pages(fetch_page, page_token, seen_tokens, pages, page_count) do
+    case pagination_stop_reason(page_token, seen_tokens, page_count) do
+      nil ->
+        fetch_pagination_page(fetch_page, page_token, seen_tokens, pages, page_count)
+
+      reason ->
+        log_pagination_stop(reason, page_token)
+        finalize_pages(pages)
+    end
+  end
+
+  defp pagination_stop_reason(_page_token, _seen_tokens, page_count)
+       when page_count >= @max_activity_monitor_pages,
+       do: :max_pages
+
+  defp pagination_stop_reason(page_token, seen_tokens, _page_count) do
+    if page_token != "" and MapSet.member?(seen_tokens, page_token) do
+      :token_repeated
+    else
+      nil
+    end
+  end
+
+  defp fetch_pagination_page(fetch_page, page_token, seen_tokens, pages, page_count) do
+    seen_tokens = MapSet.put(seen_tokens, page_token)
+
+    case fetch_page.(page_token) do
+      {:ok, records, next_page_token} ->
+        continue_pagination(
+          fetch_page,
+          page_token,
+          next_page_token || "",
+          seen_tokens,
+          [records | pages],
+          page_count
+        )
+
+      {:error, _} = error ->
+        error
+    end
+  end
+
+  defp continue_pagination(_fetch_page, _page_token, "", _seen_tokens, pages, _page_count),
+    do: finalize_pages(pages)
+
+  defp continue_pagination(_fetch_page, page_token, page_token, _seen_tokens, pages, _page_count) do
+    log_pagination_stop(:token_unchanged, page_token)
+    finalize_pages(pages)
+  end
+
+  defp continue_pagination(fetch_page, _page_token, next_page_token, seen_tokens, pages, page_count) do
+    list_all_pages(fetch_page, next_page_token, seen_tokens, pages, page_count + 1)
+  end
+
+  defp log_pagination_stop(:max_pages, _page_token) do
+    Logger.error(
+      "Activity monitor pagination aborted: reached max page limit (max_pages=#{@max_activity_monitor_pages})"
+    )
+  end
+
+  defp log_pagination_stop(:token_repeated, page_token) do
+    Logger.error(
+      "Activity monitor pagination aborted: pagination did not advance (token=#{inspect(page_token)})"
+    )
+  end
+
+  defp log_pagination_stop(:token_unchanged, page_token) do
+    Logger.error(
+      "Activity monitor pagination aborted: pagination token did not change (token=#{inspect(page_token)})"
+    )
+  end
+
+  defp finalize_pages(pages) do
+    {:ok, pages |> Enum.reverse() |> List.flatten()}
+  end
 
   # Stop Job
 
