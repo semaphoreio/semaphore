@@ -15,7 +15,7 @@ defmodule Scheduler.Actions.PersistImpl do
          found? <- PeriodicsQueries.get_by_id(request.id),
          {:ok, periodic_id} <- create_or_update(found?, request),
          {:ok, periodic} <- PeriodicsQueries.get_by_id(periodic_id) do
-      parameters = Enum.into(periodic.parameters, [], &parameter_struct_to_map/1)
+      parameters = Enum.into(periodic.parameters, [], &Map.from_struct/1)
       {:ok, periodic |> Map.from_struct() |> Map.put(:parameters, parameters)}
     else
       {:error, msg = "Project with ID" <> _rest} ->
@@ -125,14 +125,6 @@ defmodule Scheduler.Actions.PersistImpl do
   defp convert_parameter_to_map(parameter) do
     Map.take(
       parameter,
-      ~w(name required description default_value options regex_pattern validate_input_format)a
-    )
-  end
-
-  defp parameter_struct_to_map(parameter) do
-    parameter
-    |> Map.from_struct()
-    |> Map.take(
       ~w(name required description default_value options regex_pattern validate_input_format)a
     )
   end

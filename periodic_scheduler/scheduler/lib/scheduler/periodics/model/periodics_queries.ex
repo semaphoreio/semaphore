@@ -66,9 +66,6 @@ defmodule Scheduler.Periodics.Model.PeriodicsQueries do
     end
   end
 
-  # Surface the first invalid parameter changeset error so callers (and the UI)
-  # see the actual validation failure (e.g. regex_pattern is too long, default
-  # value does not match) instead of a generic catch-all message.
   defp extract_first_parameter_error(%{parameters: param_changesets})
        when is_list(param_changesets) do
     case Enum.find(param_changesets, &(not &1.valid?)) do
