@@ -112,6 +112,18 @@ spec:
                 configMapKeyRef:
                   name: {{ .Values.global.internalApi.configMapName }}
                   key: INTERNAL_API_URL_LOGHUB2
+            - name: AMQP_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.rabbitmq.secretName }}
+                  key: amqp-url
+{{- if eq .Values.global.edition "ee" }}
+            - name: AUDIT_LOGGING
+              value: "true"
+{{- else }}
+            - name: AUDIT_LOGGING
+              value: "false"
+{{- end }}
 {{- if .Values.global.statsd.enabled }}
             - name: METRICS_NAMESPACE
               value: {{ .Values.global.statsd.metricsNamespace }}

@@ -19,6 +19,8 @@ config :watchman,
   port: 8125,
   prefix: "ppl-api.env-missing"
 
+config :pipelines_api, :audit_logging, false
+
 config :pipelines_api,
        :feature_api_endpoint,
        System.get_env("FEATURE_GRPC_URL") || "localhost:50051"

@@ -1,5 +1,6 @@
 defmodule PipelinesAPI.Logs.Get.Test do
   use ExUnit.Case
+  import ExUnit.CaptureLog
 
   alias Support.Stubs.{Job, Pipeline, Workflow}
 
@@ -14,6 +15,13 @@ defmodule PipelinesAPI.Logs.Get.Test do
   ]
 
   setup do
+    previous_audit_logging = Application.get_env(:pipelines_api, :audit_logging)
+    Application.put_env(:pipelines_api, :audit_logging, false)
+
+    on_exit(fn ->
+      Application.put_env(:pipelines_api, :audit_logging, previous_audit_logging)
+    end)
+
     Support.Stubs.reset()
     Support.Stubs.grant_all_permissions()
 
@@ -196,6 +204,58 @@ defmodule PipelinesAPI.Logs.Get.Test do
 
       assert Enum.find(headers, fn {name, _} -> name == "location" end) ==
                {"location", @full_logs_url}
+    end
+
+    test "emits audit log for artifact job logs with full artifact resource path", ctx do
+      Support.Stubs.Artifacthub.create(ctx.cloud_job.id,
+        scope: "jobs",
+        path: "agent/job_logs.txt.gz",
+        url: @full_logs_url
+      )
+
+      expected_resource_name = "artifacts/jobs/#{ctx.cloud_job.id}/agent/job_logs.txt.gz"
+
+      log =
+        capture_log(fn ->
+          assert {302, _headers, _response} =
+                   get_logs(ctx.cloud_job.id, ctx.user_id, false, %{"artifact_job_logs" => "true"})
+        end)
+
+      assert log =~ "AuditLog"
+      assert log =~ ctx.user_id
+      assert log =~ ctx.org.id
+      assert log =~ expected_resource_name
+    end
+
+    test "returns 500 and does not call signed_url backend when artifact job logs audit publish fails",
+         ctx do
+      Application.put_env(:pipelines_api, :audit_logging, true)
+      Support.Stubs.Feature.enable_feature(ctx.org.id, :audit_logs)
+
+      Support.Stubs.Artifacthub.create(ctx.cloud_job.id,
+        scope: "jobs",
+        path: "agent/job_logs.txt.gz",
+        url: @full_logs_url
+      )
+
+      parent = self()
+
+      GrpcMock.stub(ArtifacthubMock, :get_signed_url, fn req, _ ->
+        send(parent, {:signed_path, req.path})
+
+        InternalApi.Artifacthub.GetSignedURLResponse.new(
+          url: "https://localhost:9000/" <> req.path
+        )
+      end)
+
+      with_broken_audit_channel(fn ->
+        assert {500, _headers, body} =
+                 get_logs(ctx.cloud_job.id, ctx.user_id, false, %{"artifact_job_logs" => "true"})
+
+        assert body in ["Internal error", "\"Internal error\""]
+
+        refute_received {:signed_path, _}
+      end)
     end
 
     test "prefers uncompressed artifact job logs when both variants exist", ctx do
@@ -471,4 +531,18 @@ defmodule PipelinesAPI.Logs.Get.Test do
       {"x-semaphore-user-id", user_id},
       {"x-semaphore-org-id", Support.Stubs.Organization.default_org_id()}
     ]
+
+  defp with_broken_audit_channel(fun) when is_function(fun, 0) do
+    previous_publish_fun = Application.get_env(:pipelines_api, :audit_publish_fun)
+
+    Application.put_env(:pipelines_api, :audit_publish_fun, fn _message ->
+      {:error, :forced_failure}
+    end)
+
+    try do
+      fun.()
+    after
+      Application.put_env(:pipelines_api, :audit_publish_fun, previous_publish_fun)
+    end
+  end
 end

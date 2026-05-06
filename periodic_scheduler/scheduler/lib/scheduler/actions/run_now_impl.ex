@@ -4,6 +4,8 @@ defmodule Scheduler.Actions.RunNowImpl do
   periodic.
   """
 
+  require Logger
+
   alias Scheduler.PeriodicsTriggers.Model.PeriodicsTriggersQueries
   alias Scheduler.Periodics.Model.PeriodicsQueries
   alias Scheduler.Periodics.Model.Periodics
@@ -110,8 +112,10 @@ defmodule Scheduler.Actions.RunNowImpl do
          {:ok, commit} <- fetch_branch_revision(repository_id, revision_args) do
       {:ok, commit}
     else
-      {:error, {:describe_project, _project_id}} ->
-        "Project assigned to periodic was not found." |> ToTuple.error(:FAILED_PRECONDITION)
+      {:error, {:describe_project, project_id, reason}} ->
+        reason
+        |> describe_project_error(project_id)
+        |> ToTuple.error(:FAILED_PRECONDITION)
 
       {:error, {:describe_revision, _revision_args}} ->
         "Cannot find git reference #{revision_args[:reference]}."
@@ -122,7 +126,7 @@ defmodule Scheduler.Actions.RunNowImpl do
   defp fetch_project_repository_id(project_id) do
     case ProjecthubClient.describe(project_id) do
       {:ok, project} -> {:ok, project.spec.repository.id}
-      _ -> {:error, {:describe_project, project_id}}
+      {:error, reason} -> {:error, {:describe_project, project_id, reason}}
     end
   end
 
@@ -131,5 +135,29 @@ defmodule Scheduler.Actions.RunNowImpl do
       {:ok, commit} -> {:ok, commit}
       _ -> {:error, {:describe_revision, revision_args}}
     end
+  end
+
+  defp describe_project_error(%{code: :NOT_FOUND}, _project_id),
+    do: "Project assigned to periodic was not found."
+
+  defp describe_project_error(reason = {:timeout, _timeout}, project_id) do
+    projecthub_describe_error(
+      project_id,
+      reason,
+      "Project lookup timed out while starting workflow."
+    )
+  end
+
+  defp describe_project_error(reason, project_id) do
+    projecthub_describe_error(
+      project_id,
+      reason,
+      "Project lookup failed while starting workflow."
+    )
+  end
+
+  defp projecthub_describe_error(project_id, reason, public_message) do
+    Logger.error("Projecthub describe failed for project #{project_id}: #{inspect(reason)}")
+    public_message
   end
 end
