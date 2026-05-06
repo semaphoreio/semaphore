@@ -69,7 +69,7 @@ defmodule Front.ActivityMonitor.Repo.Test do
       InternalApi.ServerFarm.Job.ListDebugSessionsResponse.new(
         status: InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
         debug_sessions: [Support.Factories.debug_session(), Support.Factories.debug_session()],
-        next_page_token: "123"
+        next_page_token: ""
       )
 
     GrpcMock.stub(InternalJobMock, :list_debug_sessions, debugs_list_resp)
@@ -79,6 +79,29 @@ defmodule Front.ActivityMonitor.Repo.Test do
               %{debug_user_id: "user_id", debug_session: %{id: "debug_session_id"}},
               %{debug_user_id: "user_id", debug_session: %{id: "debug_session_id"}}
             ]} = Repo.list_active_debugs("org_1", %{})
+  end
+
+  test "list_active_debugs() collects all pages" do
+    GrpcMock.stub(InternalJobMock, :list_debug_sessions, fn req, _stream ->
+      case req.page_token do
+        "" ->
+          InternalApi.ServerFarm.Job.ListDebugSessionsResponse.new(
+            status: InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
+            debug_sessions: [Support.Factories.debug_session()],
+            next_page_token: "page_2"
+          )
+
+        "page_2" ->
+          InternalApi.ServerFarm.Job.ListDebugSessionsResponse.new(
+            status: InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
+            debug_sessions: [Support.Factories.debug_session()],
+            next_page_token: ""
+          )
+      end
+    end)
+
+    assert {:ok, debugs} = Repo.list_active_debugs("org_1", %{})
+    assert 2 == length(debugs)
   end
 
   test "list_authors_of() returns users that are requesters or promoters of given pipelines" do
@@ -143,13 +166,36 @@ defmodule Front.ActivityMonitor.Repo.Test do
       InternalApi.ServerFarm.Job.ListResponse.new(
         status: InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
         jobs: [Support.Factories.job(), Support.Factories.job()],
-        next_page_token: "123"
+        next_page_token: ""
       )
 
     GrpcMock.stub(InternalJobMock, :list, job_list_resp)
 
     assert {:ok, [%{name: "RSpec 342/708"}, %{name: "RSpec 342/708"}]} =
              Repo.list_active_jobs(%{}, "org_1", ["ppl_1"])
+  end
+
+  test "list_active_jobs() collects all pages" do
+    GrpcMock.stub(InternalJobMock, :list, fn req, _stream ->
+      case req.page_token do
+        "" ->
+          InternalApi.ServerFarm.Job.ListResponse.new(
+            status: InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
+            jobs: [Support.Factories.job()],
+            next_page_token: "page_2"
+          )
+
+        "page_2" ->
+          InternalApi.ServerFarm.Job.ListResponse.new(
+            status: InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
+            jobs: [Support.Factories.job()],
+            next_page_token: ""
+          )
+      end
+    end)
+
+    assert {:ok, jobs} = Repo.list_active_jobs(%{}, "org_1", ["ppl_1"])
+    assert 2 == length(jobs)
   end
 
   test "stop_job() returns response from the server" do
@@ -179,6 +225,31 @@ defmodule Front.ActivityMonitor.Repo.Test do
               %{ppl_id: "ppl_1", created_at: ^timestamp},
               %{ppl_id: "ppl_2", created_at: ^timestamp}
             ]} = Repo.list_pipeline_activity("org_1", %{})
+  end
+
+  test "list_pipeline_activity() collects all pages" do
+    GrpcMock.stub(PipelineMock, :list_activity, fn req, _stream ->
+      case req.page_token do
+        "" ->
+          %{
+            next_page_token: "page_2",
+            previous_page_token: "",
+            pipelines: [pipeline(1)]
+          }
+          |> Util.Proto.deep_new!(InternalApi.Plumber.ListActivityResponse)
+
+        "page_2" ->
+          %{
+            next_page_token: "",
+            previous_page_token: "",
+            pipelines: [pipeline(2)]
+          }
+          |> Util.Proto.deep_new!(InternalApi.Plumber.ListActivityResponse)
+      end
+    end)
+
+    assert {:ok, pipelines} = Repo.list_pipeline_activity("org_1", %{})
+    assert Enum.map(pipelines, & &1.ppl_id) == ["ppl_1", "ppl_2"]
   end
 
   test "when list_pipeline_activity() returns empty set Repo returns empty Data struct" do
@@ -219,7 +290,7 @@ defmodule Front.ActivityMonitor.Repo.Test do
     # Pipelines
 
     GrpcMock.stub(PipelineMock, :list_activity, fn _, _stream ->
-      %{next_page_token: "token_1", previous_page_token: "", pipelines: []}
+      %{next_page_token: "", previous_page_token: "", pipelines: []}
       |> Util.Proto.deep_new!(InternalApi.Plumber.ListActivityResponse)
     end)
 
@@ -227,7 +298,7 @@ defmodule Front.ActivityMonitor.Repo.Test do
       InternalApi.ServerFarm.Job.ListDebugSessionsResponse.new(
         status: InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
         debug_sessions: [],
-        next_page_token: "123"
+        next_page_token: ""
       )
 
     GrpcMock.stub(InternalJobMock, :list_debug_sessions, debugs_list_resp)
@@ -251,7 +322,7 @@ defmodule Front.ActivityMonitor.Repo.Test do
   end
 
   defp mock_responses do
-    %{next_page_token: "token_1", previous_page_token: "", pipelines: [pipeline(1), pipeline(2)]}
+    %{next_page_token: "", previous_page_token: "", pipelines: [pipeline(1), pipeline(2)]}
     |> Util.Proto.deep_new!(InternalApi.Plumber.ListActivityResponse)
   end
 
