@@ -14,11 +14,8 @@ describe("byteLength", () => {
   })
 
   it("counts UTF-8 bytes for multi-byte characters", () => {
-    // "ñ" = 2 bytes in UTF-8 (matches Elixir byte_size/1)
     expect(byteLength("ñ")).to.equal(2)
-    // "✓" = 3 bytes
     expect(byteLength("✓")).to.equal(3)
-    // emoji on supplementary plane = 4 bytes
     expect(byteLength("😀")).to.equal(4)
   })
 })
