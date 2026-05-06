@@ -72,45 +72,19 @@ function createContainer({
   return container;
 }
 
-function createMouseEvent(type, { x, y, button = 0 } = {}) {
-  const mouseEventInit = {
+function createPointerEvent(type, { x, y, button = 0, pointerId = 1, pointerType = "mouse" } = {}) {
+  const pointerEventInit = {
     bubbles: true,
     cancelable: true,
     clientX: x,
     clientY: y,
-    button
+    button,
+    pointerId,
+    pointerType
   };
 
-  if (typeof window.MouseEvent === "function") {
-    return new window.MouseEvent(type, mouseEventInit);
-  }
-
-  if (typeof MouseEvent === "function") {
-    return new MouseEvent(type, mouseEventInit);
-  }
-
-  if (typeof document.createEvent === "function") {
-    const legacyMouseEvent = document.createEvent("MouseEvents");
-    if (typeof legacyMouseEvent.initMouseEvent === "function") {
-      legacyMouseEvent.initMouseEvent(
-        type,
-        true,
-        true,
-        window,
-        0,
-        0,
-        0,
-        x || 0,
-        y || 0,
-        false,
-        false,
-        false,
-        false,
-        button,
-        null
-      );
-      return legacyMouseEvent;
-    }
+  if (typeof window.PointerEvent === "function") {
+    return new window.PointerEvent(type, pointerEventInit);
   }
 
   const fallbackEvent =
@@ -125,17 +99,19 @@ function createMouseEvent(type, { x, y, button = 0 } = {}) {
   Object.defineProperty(fallbackEvent, "clientX", { value: x || 0 });
   Object.defineProperty(fallbackEvent, "clientY", { value: y || 0 });
   Object.defineProperty(fallbackEvent, "button", { value: button });
+  Object.defineProperty(fallbackEvent, "pointerId", { value: pointerId });
+  Object.defineProperty(fallbackEvent, "pointerType", { value: pointerType });
 
   return fallbackEvent;
 }
 
-function dispatchMouseEvent(target, type, { x, y, button = 0 } = {}) {
-  target.dispatchEvent(createMouseEvent(type, { x, y, button }));
+function dispatchPointerEvent(target, type, { x, y, button = 0, pointerId = 1, pointerType = "mouse" } = {}) {
+  target.dispatchEvent(createPointerEvent(type, { x, y, button, pointerId, pointerType }));
 }
 
 function clickOverlay(overlay, x = 100, y = 100) {
-  dispatchMouseEvent(overlay, "mousedown", { x, y });
-  dispatchMouseEvent(document, "mouseup", { x, y });
+  dispatchPointerEvent(overlay, "pointerdown", { x, y });
+  dispatchPointerEvent(overlay, "pointerup", { x, y });
 }
 
 function createChatWindow({
@@ -265,18 +241,18 @@ describe("initPylonChatDraggable", () => {
     initPylonChatDraggable();
     const overlay = container.querySelector(`.${OVERLAY_CLASS}`);
 
-    dispatchMouseEvent(overlay, "mousedown", { x: 100, y: 100 });
-    dispatchMouseEvent(document, "mousemove", { x: 103, y: 103 });
-    dispatchMouseEvent(document, "mouseup", { x: 103, y: 103 });
+    dispatchPointerEvent(overlay, "pointerdown", { x: 100, y: 100 });
+    dispatchPointerEvent(overlay, "pointermove", { x: 103, y: 103 });
+    dispatchPointerEvent(overlay, "pointerup", { x: 103, y: 103 });
 
     expect(window.Pylon.calledOnce).to.equal(true);
     expect(window.localStorage.getItem(STORAGE_KEY)).to.equal(null);
 
     window.Pylon.resetHistory();
 
-    dispatchMouseEvent(overlay, "mousedown", { x: 100, y: 100 });
-    dispatchMouseEvent(document, "mousemove", { x: 106, y: 106 });
-    dispatchMouseEvent(document, "mouseup", { x: 106, y: 106 });
+    dispatchPointerEvent(overlay, "pointerdown", { x: 100, y: 100 });
+    dispatchPointerEvent(overlay, "pointermove", { x: 106, y: 106 });
+    dispatchPointerEvent(overlay, "pointerup", { x: 106, y: 106 });
 
     expect(window.Pylon.called).to.equal(false);
 
