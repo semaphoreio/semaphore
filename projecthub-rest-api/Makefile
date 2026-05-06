@@ -7,7 +7,7 @@ APP_NAME=projecthub-rest-api
 # plug_cowboy 2.0.1 transitive vuln (GHSA-q8x4-x7mp-5vg2, fixed in 2.8.1).
 # Bumping requires updating grpc 0.3.1 -> 0.5+ and cowboy 2.5 -> 2.7+,
 # which is out of scope here. Revisit when the gRPC stack is modernized.
-CHECK_DEPS_EXTRA_OPTS := -i plug_cowboy $(CHECK_DEPS_EXTRA_OPTS)
+CHECK_DEPS_IGNORES=hackney,plug_cowboy
 
 TMP_REPO_DIR?=/tmp/internal_api
 INTERNAL_API_BRANCH ?=master
