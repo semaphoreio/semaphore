@@ -76,10 +76,12 @@ func newDescribeTool(name, description string) mcp.Tool {
 }
 
 type taskParameter struct {
-	Name         string `json:"name"`
-	DefaultValue string `json:"default_value,omitempty"`
-	Required     bool   `json:"required"`
-	Description  string `json:"description,omitempty"`
+	Name                string `json:"name"`
+	DefaultValue        string `json:"default_value,omitempty"`
+	Required            bool   `json:"required"`
+	Description         string `json:"description,omitempty"`
+	RegexPattern        string `json:"regex_pattern,omitempty"`
+	ValidateInputFormat bool   `json:"validate_input_format,omitempty"`
 }
 
 type taskDetail struct {
@@ -263,10 +265,12 @@ Double-check that:
 				continue
 			}
 			params = append(params, taskParameter{
-				Name:         p.GetName(),
-				DefaultValue: p.GetDefaultValue(),
-				Required:     p.GetRequired(),
-				Description:  p.GetDescription(),
+				Name:                p.GetName(),
+				DefaultValue:        p.GetDefaultValue(),
+				Required:            p.GetRequired(),
+				Description:         p.GetDescription(),
+				RegexPattern:        p.GetRegexPattern(),
+				ValidateInputFormat: p.GetValidateInputFormat(),
 			})
 		}
 
@@ -377,6 +381,13 @@ func formatTaskDescribeMarkdown(result describeResult, mode string) string {
 					mb.ListItem(fmt.Sprintf("`%s`%s: %s", p.Name, reqStr, p.Description))
 				} else {
 					mb.ListItem(fmt.Sprintf("`%s`%s", p.Name, reqStr))
+				}
+				if p.RegexPattern != "" {
+					enforced := ""
+					if p.ValidateInputFormat {
+						enforced = " (enforced)"
+					}
+					mb.ListItem(fmt.Sprintf("  pattern%s: `%s`", enforced, p.RegexPattern))
 				}
 			}
 		}
