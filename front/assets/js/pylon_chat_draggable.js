@@ -122,8 +122,23 @@ function makeContainerDraggable(container) {
   const overlay = ensureDragOverlay(container);
   let dragState = null;
 
-  const onMouseMove = (event) => {
+  const finishDrag = () => {
     if (!dragState) return;
+
+    container.classList.remove(DRAGGING_CLASS);
+
+    if (dragState.didMove) {
+      const finalRect = container.getBoundingClientRect();
+      safeWritePosition({ x: finalRect.left, y: finalRect.top });
+    } else {
+      togglePylonChat();
+    }
+
+    dragState = null;
+  };
+
+  const onPointerMove = (event) => {
+    if (!dragState || event.pointerId !== dragState.pointerId) return;
 
     if (!dragState.didMove) {
       const deltaX = Math.abs(event.clientX - dragState.startClientX);
@@ -143,28 +158,23 @@ function makeContainerDraggable(container) {
     }
   };
 
-  const onMouseUp = () => {
-    if (!dragState) return;
-
-    document.removeEventListener("mousemove", onMouseMove);
-    document.removeEventListener("mouseup", onMouseUp);
-    container.classList.remove(DRAGGING_CLASS);
-
-    if (dragState.didMove) {
-      const finalRect = container.getBoundingClientRect();
-      safeWritePosition({ x: finalRect.left, y: finalRect.top });
-    } else {
-      togglePylonChat();
-    }
-
-    dragState = null;
+  const onPointerUp = (event) => {
+    if (!dragState || event.pointerId !== dragState.pointerId) return;
+    finishDrag();
   };
 
-  const onMouseDown = (event) => {
-    if (event.button !== 0 || dragState) return;
+  const onPointerCancel = (event) => {
+    if (!dragState || event.pointerId !== dragState.pointerId) return;
+    finishDrag();
+  };
+
+  const onPointerDown = (event) => {
+    if (dragState) return;
+    if (event.pointerType === "mouse" && event.button !== 0) return;
 
     const rect = container.getBoundingClientRect();
     dragState = {
+      pointerId: event.pointerId,
       pointerOffsetX: event.clientX - rect.left,
       pointerOffsetY: event.clientY - rect.top,
       startClientX: event.clientX,
@@ -172,12 +182,21 @@ function makeContainerDraggable(container) {
       didMove: false
     };
 
-    document.addEventListener("mousemove", onMouseMove);
-    document.addEventListener("mouseup", onMouseUp);
+    if (typeof overlay.setPointerCapture === "function") {
+      try {
+        overlay.setPointerCapture(event.pointerId);
+      } catch {
+        // Not supported on all browsers
+      }
+    }
+
     event.preventDefault();
   };
 
-  overlay.addEventListener("mousedown", onMouseDown);
+  overlay.addEventListener("pointerdown", onPointerDown);
+  overlay.addEventListener("pointermove", onPointerMove);
+  overlay.addEventListener("pointerup", onPointerUp);
+  overlay.addEventListener("pointercancel", onPointerCancel);
 }
 
 export function initPylonChatDraggable() {
