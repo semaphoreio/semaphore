@@ -92,6 +92,7 @@ defmodule FrontWeb.JobController do
     {:ok, {:ok, artifact_logs}} = Async.await(fetch_artifact_logs)
 
     block = extract_block(pipeline.blocks, job_id)
+    block_result_reason = if block, do: block.result_reason, else: nil
 
     take = extract_take(params)
     pollman_state = extract_state(conn.assigns.job.state)
@@ -134,6 +135,7 @@ defmodule FrontWeb.JobController do
         pipeline: pipeline,
         hook: hook,
         block: block,
+        block_result_reason: block_result_reason,
         user: user,
         js: :logs,
         debug_action: debug_action,
@@ -183,7 +185,8 @@ defmodule FrontWeb.JobController do
           debug_action: debug_action,
           can_debug: can_debug,
           self_hosted: self_hosted,
-          pollman: pollman
+          pollman: pollman,
+          block_result_reason: nil
         ]
         |> inject_nonce(params)
 
