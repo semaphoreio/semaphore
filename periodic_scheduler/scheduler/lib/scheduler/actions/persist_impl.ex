@@ -123,7 +123,10 @@ defmodule Scheduler.Actions.PersistImpl do
       })
 
   defp convert_parameter_to_map(parameter) do
-    parameter |> Map.take(~w(name required description default_value options)a)
+    Map.take(
+      parameter,
+      ~w(name required description default_value options regex_pattern validate_input_format)a
+    )
   end
 
   defp start_or_stop_periodic_job(periodic = %{paused: true}) do
