@@ -6,6 +6,9 @@
     data-poll-href="<%= @pollman.href %>">
     <div class="flex items-center">
         <span class="mr1">Total Time:</span><%= raw job_timer(@job) %>
+        <%= if @job.state == "stopped" and assigns[:block_result_reason] do %>
+          <span class="ml2 f6 fw6 ph2 pv1 br2 bg-light-gray dark-gray"><%= FrontWeb.JobView.stop_reason_short(@block_result_reason) %></span>
+        <% end %>
 
         <%= if @job.state == "pending" || @job.state == "running" do %>
             <%= render FrontWeb.JobView, "_running_job_actions.html", conn: @conn, job: @job %>
