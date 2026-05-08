@@ -110,7 +110,7 @@ To permanently delete your user account, follow these steps:
 
 3. Under **Delete account permanently** press **Delete account and owned organizations**
 
-    ![Delete user account](./img/delete-user-account.jpg)
+    ![Delete user account](./img/delete-user-account.jpg) 
 
 4. Confirm the change.
 
