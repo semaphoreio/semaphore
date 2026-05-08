@@ -118,7 +118,7 @@ defmodule Scheduler.Periodics.Model.PeriodicsParamTest do
     end
 
     test "with regex_pattern over the length cap is invalid" do
-      pattern = String.duplicate("a", Scheduler.SafeRegex.max_pattern_length() + 1)
+      pattern = String.duplicate("a", Util.SafeRegex.max_pattern_length() + 1)
 
       assert [regex_pattern: {msg, _}] =
                assert_invalid(%{
@@ -132,7 +132,7 @@ defmodule Scheduler.Periodics.Model.PeriodicsParamTest do
     end
 
     test "with regex_pattern over the length cap is invalid even when validate_input_format is false" do
-      pattern = String.duplicate("a", Scheduler.SafeRegex.max_pattern_length() + 1)
+      pattern = String.duplicate("a", Util.SafeRegex.max_pattern_length() + 1)
 
       assert [regex_pattern: {msg, _}] =
                assert_invalid(%{
