@@ -767,7 +767,7 @@ defmodule FrontWeb.SchedulersController do
   end
 
   defp check_regex_match(pv, pattern, value, source) do
-    case Front.SafeRegex.match(pattern, value) do
+    case Util.SafeRegex.match(pattern, value) do
       {:ok, true} ->
         nil
 
@@ -779,7 +779,7 @@ defmodule FrontWeb.SchedulersController do
 
         regex_error(
           pv,
-          "Value exceeds maximum length of #{Front.SafeRegex.max_value_length()} bytes"
+          "Value exceeds maximum length of #{Util.SafeRegex.max_value_length()} bytes"
         )
 
       {:error, reason} ->
