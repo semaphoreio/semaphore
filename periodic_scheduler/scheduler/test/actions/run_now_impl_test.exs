@@ -351,7 +351,7 @@ defmodule Scheduler.Actions.RunNowImpl.Test do
         }
       ]
 
-      max_len = Scheduler.SafeRegex.max_value_length()
+      max_len = Util.SafeRegex.max_value_length()
       oversized = String.duplicate("a", max_len + 1)
       request_values = [%{name: "VERSION", value: oversized}]
 
