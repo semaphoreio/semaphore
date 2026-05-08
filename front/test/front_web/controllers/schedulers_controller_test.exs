@@ -1208,7 +1208,7 @@ defmodule FrontWeb.SchedulersControllerTest do
           ]
         )
 
-      oversized = String.duplicate("a", Front.SafeRegex.max_value_length() + 1)
+      oversized = String.duplicate("a", Util.SafeRegex.max_value_length() + 1)
 
       conn =
         trigger_just_run(conn, scheduler, %{
