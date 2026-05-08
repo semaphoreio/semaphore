@@ -91,6 +91,35 @@ To reset your Semaphore API token, follow these steps:
 
 </Steps>
 
+### How to delete your user account
+
+:::danger
+
+Deleted user accounts cannot be restored. There is no undo for this operation.
+
+:::
+
+To permanently delete your user account, follow these steps:
+
+<Steps>
+
+1. Open your user menu on the top-right corner
+2. Select **Profile settings**
+
+    ![Profile menu](./img/profile-menu.jpg)
+
+3. Under **Delete account permanently** press **Delete account and owned organizations**
+
+4. Confirm the change.
+
+:::note
+
+In case you lose access to your Semaphore account, you can send an email to support@semaphore.io from the primary email address associated with your GitHub, Bitbucket, or Gitlab account used to log into Semaphore, confirming you'd like to delete your user account. 
+
+:::
+
+</Steps>
+
 ## Managing Semaphore users {#people}
 
 Semaphore users a [Role Based Access Control](./rbac) model to manage permissions at the organization and project level.
