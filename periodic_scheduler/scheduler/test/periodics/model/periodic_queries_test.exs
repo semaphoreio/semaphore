@@ -300,7 +300,7 @@ defmodule Scheduler.Periodics.Model.PeriodicsQueries.Test do
   end
 
   test "insert surfaces oversized regex_pattern error from parameter changeset" do
-    pattern = String.duplicate("a", Scheduler.SafeRegex.max_pattern_length() + 1)
+    pattern = String.duplicate("a", Util.SafeRegex.max_pattern_length() + 1)
 
     params =
       insert_params("v1.1")

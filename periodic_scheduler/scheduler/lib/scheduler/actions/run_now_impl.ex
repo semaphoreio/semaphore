@@ -98,7 +98,7 @@ defmodule Scheduler.Actions.RunNowImpl do
     pattern = Map.get(parameter, :regex_pattern)
 
     if validate_input_format? and is_binary(pattern) and pattern != "" do
-      case Scheduler.SafeRegex.match(pattern, value) do
+      case Util.SafeRegex.match(pattern, value) do
         {:ok, true} ->
           :ok
 
@@ -108,7 +108,7 @@ defmodule Scheduler.Actions.RunNowImpl do
         {:error, :value_too_long} ->
           format_error(
             parameter,
-            "value exceeds maximum length of #{Scheduler.SafeRegex.max_value_length()} bytes"
+            "value exceeds maximum length of #{Util.SafeRegex.max_value_length()} bytes"
           )
 
         {:error, _reason} ->
