@@ -31,7 +31,7 @@ defmodule Scheduler.Periodics.Model.PeriodicsParam do
   # runtime hazard if `validate_input_format` is flipped on later.
   defp validate_regex_pattern_length(changeset) do
     pattern = Ecto.Changeset.get_field(changeset, :regex_pattern)
-    max = Scheduler.SafeRegex.max_pattern_length()
+    max = Util.SafeRegex.max_pattern_length()
 
     if is_binary(pattern) and byte_size(pattern) > max do
       Ecto.Changeset.add_error(
@@ -63,7 +63,7 @@ defmodule Scheduler.Periodics.Model.PeriodicsParam do
         changeset
 
       true ->
-        case Scheduler.SafeRegex.validate_pattern(pattern) do
+        case Util.SafeRegex.validate_pattern(pattern) do
           :ok ->
             changeset
 
@@ -71,7 +71,7 @@ defmodule Scheduler.Periodics.Model.PeriodicsParam do
             Ecto.Changeset.add_error(
               changeset,
               :regex_pattern,
-              "is too long (max #{Scheduler.SafeRegex.max_pattern_length()} bytes)"
+              "is too long (max #{Util.SafeRegex.max_pattern_length()} bytes)"
             )
 
           {:error, :invalid_pattern} ->
@@ -99,7 +99,7 @@ defmodule Scheduler.Periodics.Model.PeriodicsParam do
   end
 
   defp apply_default_value_match(changeset, pattern, default_value) do
-    case Scheduler.SafeRegex.match(pattern, default_value) do
+    case Util.SafeRegex.match(pattern, default_value) do
       {:ok, true} ->
         changeset
 
@@ -110,7 +110,7 @@ defmodule Scheduler.Periodics.Model.PeriodicsParam do
         Ecto.Changeset.add_error(
           changeset,
           :default_value,
-          "is too long (max #{Scheduler.SafeRegex.max_value_length()} bytes)"
+          "is too long (max #{Util.SafeRegex.max_value_length()} bytes)"
         )
 
       {:error, _reason} ->
