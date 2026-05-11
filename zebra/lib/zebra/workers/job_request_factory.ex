@@ -74,10 +74,10 @@ defmodule Zebra.Workers.JobRequestFactory do
            Task.async(fn ->
              if Job.self_hosted?(job.machine_type),
                do: {:ok, nil},
-               else: Cache.find(project.cache_id, repo_proxy, org_id)
+               else: Cache.find(project.cache_id, repo_proxy, org_id, job_type)
            end),
          find_secrets <-
-           Task.async(fn -> Secrets.load(org_id, job.id, spec, project, repo_proxy) end),
+           Task.async(fn -> Secrets.load(org_id, job.id, spec, project, repo_proxy, job_type) end),
          {:ok, repository, private_git_key} <- Task.await(find_repository),
          {:ok, repo_files} <- Repository.files(private_git_key),
          {:ok, repo_env_vars} <- Repository.env_vars(repository, repo_proxy, job_type),

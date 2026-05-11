@@ -86,6 +86,7 @@ defmodule Projecthub.HttpApi do
     if Auth.has_permissions?(org_id, user_id, "organization.projects.create") do
       spec = conn.body_params["spec"]
       repository = spec["repository"]
+      forked_pull_requests = repository["forked_pull_requests"] || %{}
 
       {schedulers, tasks} = construct_schedulers_and_tasks(conn.body_params)
 
@@ -106,10 +107,13 @@ defmodule Projecthub.HttpApi do
                       url: repository["url"],
                       forked_pull_requests:
                         Repository.ForkedPullRequests.new(
-                          allowed_secrets:
-                            repository["forked_pull_requests"]["allowed_secrets"] || [],
+                          allowed_secrets: forked_pull_requests["allowed_secrets"] || [],
                           allowed_contributors:
-                            repository["forked_pull_requests"]["allowed_contributors"] || []
+                            forked_pull_requests["allowed_contributors"] || [],
+                          allow_sem_approve_include_secrets:
+                            forked_pull_requests["allow_sem_approve_include_secrets"] || false,
+                          allow_sem_approve_enable_cache:
+                            forked_pull_requests["allow_sem_approve_enable_cache"] || false
                         ),
                       run_on: run_on_map(repository["run_on"]),
                       pipeline_file: repository["pipeline_file"] || "",
@@ -166,6 +170,7 @@ defmodule Projecthub.HttpApi do
       metadata = conn.body_params["metadata"]
       spec = conn.body_params["spec"]
       repository = spec["repository"]
+      forked_pull_requests = repository["forked_pull_requests"] || %{}
 
       {schedulers, tasks} = construct_schedulers_and_tasks(conn.body_params)
 
@@ -187,10 +192,13 @@ defmodule Projecthub.HttpApi do
                       url: repository["url"],
                       forked_pull_requests:
                         Repository.ForkedPullRequests.new(
-                          allowed_secrets:
-                            repository["forked_pull_requests"]["allowed_secrets"] || [],
+                          allowed_secrets: forked_pull_requests["allowed_secrets"] || [],
                           allowed_contributors:
-                            repository["forked_pull_requests"]["allowed_contributors"] || []
+                            forked_pull_requests["allowed_contributors"] || [],
+                          allow_sem_approve_include_secrets:
+                            forked_pull_requests["allow_sem_approve_include_secrets"] || false,
+                          allow_sem_approve_enable_cache:
+                            forked_pull_requests["allow_sem_approve_enable_cache"] || false
                         ),
                       run_on: run_on_map(repository["run_on"]),
                       pipeline_file:
@@ -458,10 +466,8 @@ defmodule Projecthub.HttpApi do
         "name" => p.spec.repository.name,
         "owner" => p.spec.repository.owner,
         "url" => p.spec.repository.url,
-        "forked_pull_requests" => %{
-          "allowed_secrets" => p.spec.repository.forked_pull_requests.allowed_secrets,
-          "allowed_contributors" => p.spec.repository.forked_pull_requests.allowed_contributors
-        },
+        "forked_pull_requests" =>
+          encode_forked_pull_requests(p.spec.repository.forked_pull_requests),
         "run_on" => map_run_types(p.spec.repository.run_on),
         "pipeline_file" => p.spec.repository.pipeline_file,
         "status" => encode_status(p.spec.repository.status),
@@ -497,6 +503,31 @@ defmodule Projecthub.HttpApi do
       "tags" => whitelist.tags
     }
   end
+
+  defp encode_forked_pull_requests(nil) do
+    %{
+      "allowed_secrets" => [],
+      "allowed_contributors" => []
+    }
+  end
+
+  defp encode_forked_pull_requests(forked_pull_requests) do
+    %{
+      "allowed_secrets" => forked_pull_requests.allowed_secrets,
+      "allowed_contributors" => forked_pull_requests.allowed_contributors
+    }
+    |> maybe_put_true(
+      "allow_sem_approve_include_secrets",
+      forked_pull_requests.allow_sem_approve_include_secrets
+    )
+    |> maybe_put_true(
+      "allow_sem_approve_enable_cache",
+      forked_pull_requests.allow_sem_approve_enable_cache
+    )
+  end
+
+  defp maybe_put_true(map, _key, value) when value in [nil, false], do: map
+  defp maybe_put_true(map, key, value), do: Map.put(map, key, value)
 
   @unspecified_status InternalApi.Projecthub.Project.Spec.Scheduler.Status.value(
                         :STATUS_UNSPECIFIED

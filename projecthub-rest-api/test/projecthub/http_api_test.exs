@@ -1081,6 +1081,63 @@ defmodule Projecthub.HttpApi.Test do
                }
              }
     end
+
+    test "when sem-approve forked PR options are provided => forwards and returns them" do
+      FunRegistry.set!(FakeServices.ProjectService, :create, fn req, _ ->
+        alias InternalApi.Projecthub, as: PH
+
+        assert req.project.spec.repository.forked_pull_requests.allow_sem_approve_include_secrets ==
+                 true
+
+        assert req.project.spec.repository.forked_pull_requests.allow_sem_approve_enable_cache ==
+                 true
+
+        PH.CreateResponse.new(
+          metadata:
+            PH.ResponseMeta.new(
+              status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:OK))
+            ),
+          project:
+            PH.Project.new(
+              metadata: PH.Project.Metadata.new(id: @project_id, name: req.project.metadata.name),
+              spec: req.project.spec
+            )
+        )
+      end)
+
+      resource =
+        Poison.encode!(%{
+          "metadata" => %{"name" => "trello"},
+          "spec" => %{
+            "repository" => %{
+              "url" => "git@github.com/shiroyasha/test.git",
+              "run_on" => ["tags"],
+              "pipeline_file" => ".semaphore/semaphore.yml",
+              "forked_pull_requests" => %{
+                "allowed_secrets" => [],
+                "allowed_contributors" => [],
+                "allow_sem_approve_include_secrets" => true,
+                "allow_sem_approve_enable_cache" => true
+              }
+            }
+          }
+        })
+
+      {:ok, response} =
+        HTTPoison.post("http://localhost:#{@port}/api/#{@version}/projects", resource, @headers)
+
+      assert response.status_code == 200
+
+      assert get_in(
+               Poison.decode!(response.body),
+               ["spec", "repository", "forked_pull_requests", "allow_sem_approve_include_secrets"]
+             ) == true
+
+      assert get_in(
+               Poison.decode!(response.body),
+               ["spec", "repository", "forked_pull_requests", "allow_sem_approve_enable_cache"]
+             ) == true
+    end
   end
 
   describe "POST /api/<version>/projects with unauthorized user" do
@@ -1819,6 +1876,77 @@ defmodule Projecthub.HttpApi.Test do
                  "attach_permissions" => []
                }
              }
+    end
+
+    test "when sem-approve forked PR options are provided => forwards and returns them" do
+      FunRegistry.set!(FakeServices.ProjectService, :update, fn req, _ ->
+        alias InternalApi.Projecthub, as: PH
+
+        assert req.project.spec.repository.forked_pull_requests.allow_sem_approve_include_secrets ==
+                 true
+
+        assert req.project.spec.repository.forked_pull_requests.allow_sem_approve_enable_cache ==
+                 true
+
+        PH.UpdateResponse.new(
+          metadata:
+            PH.ResponseMeta.new(
+              status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:OK))
+            ),
+          project:
+            PH.Project.new(
+              metadata:
+                PH.Project.Metadata.new(
+                  id: @project_id,
+                  name: req.project.metadata.name,
+                  owner_id: @owner_id,
+                  org_id: @org_id,
+                  description: ""
+                ),
+              spec: req.project.spec
+            )
+        )
+      end)
+
+      resource =
+        Poison.encode!(%{
+          "metadata" => %{
+            "name" => "trello",
+            "id" => @project_id
+          },
+          "spec" => %{
+            "repository" => %{
+              "url" => "git@github.com/shiroyasha/test.git",
+              "run_on" => ["tags"],
+              "pipeline_file" => ".semaphore/semaphore.yml",
+              "forked_pull_requests" => %{
+                "allowed_secrets" => [],
+                "allowed_contributors" => [],
+                "allow_sem_approve_include_secrets" => true,
+                "allow_sem_approve_enable_cache" => true
+              }
+            }
+          }
+        })
+
+      {:ok, response} =
+        HTTPoison.patch(
+          "http://localhost:#{@port}/api/#{@version}/projects/#{@project_id}",
+          resource,
+          @headers
+        )
+
+      assert response.status_code == 200
+
+      assert get_in(
+               Poison.decode!(response.body),
+               ["spec", "repository", "forked_pull_requests", "allow_sem_approve_include_secrets"]
+             ) == true
+
+      assert get_in(
+               Poison.decode!(response.body),
+               ["spec", "repository", "forked_pull_requests", "allow_sem_approve_enable_cache"]
+             ) == true
     end
   end
 

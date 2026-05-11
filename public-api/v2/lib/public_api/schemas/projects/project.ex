@@ -87,6 +87,18 @@ defmodule PublicAPI.Schemas.Projects.Project do
                     example: [],
                     description:
                       "List of contributors that can create workflows from forked PRs. Empty list means that everyone can."
+                  },
+                  allow_sem_approve_include_secrets: %Schema{
+                    type: :boolean,
+                    default: false,
+                    description:
+                      "Allows project members to use `/sem-approve --include-secrets` when approving forked pull request workflows."
+                  },
+                  allow_sem_approve_enable_cache: %Schema{
+                    type: :boolean,
+                    default: false,
+                    description:
+                      "Allows project members to use `/sem-approve --enable-cache` when approving forked pull request workflows."
                   }
                 }
               },
