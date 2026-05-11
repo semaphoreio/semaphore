@@ -17,6 +17,7 @@ defmodule PublicAPI.Schemas.Tasks.Parameter do
       regex_pattern: %Schema{
         type: :string,
         example: "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+        maxLength: 512,
         description: "Regex applied to parameter value when validate_input_format is true."
       },
       validate_input_format: %Schema{
