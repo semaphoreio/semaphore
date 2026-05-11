@@ -121,6 +121,40 @@
               <% end %>
               <p class="f6 mt1 mb0">Whitelist the GitHub logins you trust to run workflows. Comma separates multiple values.</p>
             </div>
+            <div id="sem-approve-options" class="mt2">
+              <p class="f5 b mv1">Allow extra /sem-approve options?</p>
+              <p class="f6 mt1 mb2">
+                These options are available only when workflows are restricted to trusted contributors. Only project members can activate them in /sem-approve comments.
+              </p>
+              <div class="flex items-center">
+                <%= checkbox f, :allow_sem_approve_include_secrets, disabled: !@permissions["project.general_settings.manage"] %>
+                <%= label f, :allow_sem_approve_include_secrets, "Allow /sem-approve --include-secrets", class: "ml2" %>
+                <%= sem_tooltip(
+                  img_tag(
+                    "#{assets_path()}/images/icn-info-15.svg",
+                    class: "v-mid ml1",
+                    style: "transform: translateY(-.1em);",
+                    alt: ""
+                  )
+                ) do %>
+                  Allows project-member approvals to include forked PR secrets.
+                <% end %>
+              </div>
+              <div class="flex items-center">
+                <%= checkbox f, :allow_sem_approve_enable_cache, disabled: !@permissions["project.general_settings.manage"] %>
+                <%= label f, :allow_sem_approve_enable_cache, "Allow /sem-approve --enable-cache", class: "ml2" %>
+                <%= sem_tooltip(
+                  img_tag(
+                    "#{assets_path()}/images/icn-info-15.svg",
+                    class: "v-mid ml1",
+                    style: "transform: translateY(-.1em);",
+                    alt: ""
+                  )
+                ) do %>
+                  Allows project-member approvals to use cache for forked PR runs.
+                <% end %>
+              </div>
+            </div>
           </div>
         <% end %>
         <div class="mt3 pt3 bt b--lighter-gray">

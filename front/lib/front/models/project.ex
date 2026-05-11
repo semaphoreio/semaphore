@@ -45,6 +45,8 @@ defmodule Front.Models.Project do
     field(:allowed_secrets, :string)
     field(:filter_contributors, :boolean)
     field(:allowed_contributors, :string)
+    field(:allow_sem_approve_include_secrets, :boolean, default: false)
+    field(:allow_sem_approve_enable_cache, :boolean, default: false)
     field(:initial_pipeline_file, :string)
     field(:public, :boolean)
 
@@ -100,6 +102,8 @@ defmodule Front.Models.Project do
     :allowed_secrets,
     :filter_contributors,
     :allowed_contributors,
+    :allow_sem_approve_include_secrets,
+    :allow_sem_approve_enable_cache,
     :whitelist_branches,
     :branch_whitelist,
     :whitelist_tags,
@@ -325,6 +329,22 @@ defmodule Front.Models.Project do
       attach_permissions = extract_attach_permissions(project_data)
       run = run_on |> Enum.any?()
 
+      forked_pull_requests =
+        ForkedPullRequests.new(
+          allowed_secrets: allowed_secrets,
+          allowed_contributors: allowed_contributors
+        )
+        |> put_forked_pr_option(
+          :allow_sem_approve_include_secrets,
+          project_data.run && project_data.build_forked_prs && project_data.filter_contributors &&
+            project_data.allow_sem_approve_include_secrets
+        )
+        |> put_forked_pr_option(
+          :allow_sem_approve_enable_cache,
+          project_data.run && project_data.build_forked_prs && project_data.filter_contributors &&
+            project_data.allow_sem_approve_enable_cache
+        )
+
       project_update =
         ProjectReq.new(
           metadata:
@@ -340,11 +360,7 @@ defmodule Front.Models.Project do
                   url: project_data.repo_url,
                   run_on: run_on,
                   run_present: {:run, run},
-                  forked_pull_requests:
-                    ForkedPullRequests.new(
-                      allowed_secrets: allowed_secrets,
-                      allowed_contributors: allowed_contributors
-                    ),
+                  forked_pull_requests: forked_pull_requests,
                   status: project_data.commit_status,
                   pipeline_file: project_data.initial_pipeline_file,
                   whitelist:
@@ -778,26 +794,14 @@ defmodule Front.Models.Project do
     alias InternalApi.Projecthub.Project.Status.State
     alias InternalApi.RepositoryIntegrator.IntegrationType
 
-    allowed_secrets =
-      case project.spec.repository.forked_pull_requests do
-        nil -> ""
-        options -> options.allowed_secrets |> Enum.join(", ")
-      end
+    {
+      allowed_secrets,
+      allowed_contributors,
+      allow_sem_approve_include_secrets,
+      allow_sem_approve_enable_cache
+    } = forked_pull_request_settings(project.spec.repository.forked_pull_requests)
 
-    allowed_contributors =
-      case project.spec.repository.forked_pull_requests do
-        nil -> ""
-        options -> options.allowed_contributors |> Enum.join(", ")
-      end
-
-    {branch_whitelist, tag_whitelist} =
-      case project.spec.repository.whitelist do
-        nil ->
-          {"", ""}
-
-        whitelist ->
-          {whitelist.branches |> Enum.join(", "), whitelist.tags |> Enum.join(", ")}
-      end
+    {branch_whitelist, tag_whitelist} = whitelist_settings(project.spec.repository.whitelist)
 
     %__MODULE__{
       :id => project.metadata.id,
@@ -851,6 +855,8 @@ defmodule Front.Models.Project do
       :allowed_secrets => allowed_secrets,
       :filter_contributors => allowed_contributors != "",
       :allowed_contributors => allowed_contributors,
+      :allow_sem_approve_include_secrets => allow_sem_approve_include_secrets,
+      :allow_sem_approve_enable_cache => allow_sem_approve_enable_cache,
       :initial_pipeline_file => project.spec.repository.pipeline_file,
       :public => project.spec.visibility == Visibility.value(:PUBLIC),
       :state => State.key(project.status.state),
@@ -866,6 +872,26 @@ defmodule Front.Models.Project do
       :repo_id => project.spec.repository.id,
       :cache_id => project.spec.cache_id,
       :artifact_store_id => project.spec.artifact_store_id
+    }
+  end
+
+  defp forked_pull_request_settings(nil), do: {"", "", false, false}
+
+  defp forked_pull_request_settings(options) do
+    {
+      Enum.join(options.allowed_secrets, ", "),
+      Enum.join(options.allowed_contributors, ", "),
+      Map.get(options, :allow_sem_approve_include_secrets, false),
+      Map.get(options, :allow_sem_approve_enable_cache, false)
+    }
+  end
+
+  defp whitelist_settings(nil), do: {"", ""}
+
+  defp whitelist_settings(whitelist) do
+    {
+      Enum.join(whitelist.branches, ", "),
+      Enum.join(whitelist.tags, ", ")
     }
   end
 
@@ -1124,6 +1150,14 @@ defmodule Front.Models.Project do
       data.tag_whitelist |> Front.Utils.regexp_split()
     else
       []
+    end
+  end
+
+  defp put_forked_pr_option(forked_pull_requests, option, value) do
+    if Map.has_key?(forked_pull_requests, option) do
+      Map.put(forked_pull_requests, option, value == true)
+    else
+      forked_pull_requests
     end
   end
 
