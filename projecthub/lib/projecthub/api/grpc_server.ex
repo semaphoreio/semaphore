@@ -174,6 +174,9 @@ defmodule Projecthub.Api.GrpcServer do
 
   defp validate_repo_url(_), do: {:ok, nil}
 
+  defp params_checker_spec(project_spec, true), do: Map.put(project_spec, :visibility, :PUBLIC)
+  defp params_checker_spec(project_spec, _), do: project_spec
+
   def fork_and_create(req, _) do
     Watchman.benchmark("projecthub_api.fork_and_create.duration", fn ->
       alias Projecthub.ParamsChecker
@@ -201,6 +204,7 @@ defmodule Projecthub.Api.GrpcServer do
 
       with {:ok, user} <- Task.yield(fetch_user),
            {:ok, org} <- Task.yield(fetch_org),
+           :ok <- ParamsChecker.run(params_checker_spec(project_spec, org.open_source), org.open_source),
            {:ok, response} <-
              RepositoryHubClient.fork(%{
                user_id: user.id,
@@ -281,6 +285,7 @@ defmodule Projecthub.Api.GrpcServer do
 
       with {:ok, user} <- Task.yield(fetch_user),
            {:ok, org} <- Task.yield(fetch_org),
+           :ok <- ParamsChecker.run(params_checker_spec(project_spec, org.open_source), org.open_source),
            {:ok, project} <-
              attempt_creation(
                user,
@@ -988,10 +993,17 @@ defmodule Projecthub.Api.GrpcServer do
     if forked_pull_requests do
       %{
         allowed_secrets: Enum.join(forked_pull_requests.allowed_secrets, ","),
-        allowed_contributors: Enum.join(forked_pull_requests.allowed_contributors, ",")
+        allowed_contributors: Enum.join(forked_pull_requests.allowed_contributors, ","),
+        allow_sem_approve_include_secrets: Map.get(forked_pull_requests, :allow_sem_approve_include_secrets, false),
+        allow_sem_approve_enable_cache: Map.get(forked_pull_requests, :allow_sem_approve_enable_cache, false)
       }
     else
-      %{allowed_secrets: "", allowed_contributors: ""}
+      %{
+        allowed_secrets: "",
+        allowed_contributors: "",
+        allow_sem_approve_include_secrets: false,
+        allow_sem_approve_enable_cache: false
+      }
     end
   end
 
@@ -1306,6 +1318,16 @@ defmodule Projecthub.Api.GrpcServer do
       allowed_secrets: String.split(project.allowed_secrets, ",", trim: true),
       allowed_contributors: String.split(project.allowed_contributors, ",", trim: true)
     )
+    |> put_forked_pr_option(:allow_sem_approve_include_secrets, project.allow_sem_approve_include_secrets)
+    |> put_forked_pr_option(:allow_sem_approve_enable_cache, project.allow_sem_approve_enable_cache)
+  end
+
+  defp put_forked_pr_option(forked_pull_requests, option, value) do
+    if Map.has_key?(forked_pull_requests, option) do
+      Map.put(forked_pull_requests, option, value == true)
+    else
+      forked_pull_requests
+    end
   end
 
   defp project_schedulers([]), do: []
