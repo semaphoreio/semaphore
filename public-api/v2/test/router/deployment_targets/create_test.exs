@@ -1,6 +1,5 @@
 defmodule Router.Deployments.CreateTest do
   use PublicAPI.Case
-  use Plug.Test
 
   require Logger
 
