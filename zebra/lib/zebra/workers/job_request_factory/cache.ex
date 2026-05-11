@@ -13,18 +13,18 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
   # Overall, if cache system is down, we ignore every issue.
   #
 
-  def find(nil, _repo_proxy, _org_id) do
+  def find(cache_id, repo_proxy, org_id, job_type \\ :pipeline_job)
+
+  def find(nil, _repo_proxy, _org_id, _job_type) do
     skipped(:no_cache_id)
     {:ok, nil}
   end
 
-  def find(cache_id, repo_proxy, org_id) do
+  def find(cache_id, repo_proxy, org_id, job_type) do
     Watchman.benchmark("external.cachehub.describe", fn ->
       req = Request.new(cache_id: cache_id)
 
-      with false <-
-             forked_pr?(repo_proxy) and
-               FeatureProvider.feature_enabled?(:disable_forked_pr_cache, param: org_id),
+      with false <- skip_cache?(repo_proxy, org_id, job_type),
            {:ok, endpoint} <- Application.fetch_env(:zebra, :cachehub_api_endpoint),
            {:ok, channel} <- GRPC.Stub.connect(endpoint),
            {:ok, response} <- grpc_describe(channel, req) do
@@ -112,7 +112,9 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
       JobRequest.env_var("SEMAPHORE_CACHE_URL", cache.url)
     ]
 
-    if FeatureProvider.feature_enabled?(:cache_cli_parallel_archive_method, param: organization_id) do
+    if FeatureProvider.feature_enabled?(:cache_cli_parallel_archive_method,
+         param: organization_id
+       ) do
       {:ok,
        vars ++
          [
@@ -126,9 +128,36 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
   def forked_pr?(_repo = %{pr_slug: ""}), do: false
   def forked_pr?(nil), do: false
 
-  def forked_pr?(repo) do
+  defp forked_pr?(repo) do
+    if approval_enable_cache?(repo) do
+      false
+    else
+      forked_pr_without_approval_override?(repo)
+    end
+  end
+
+  defp forked_pr_without_approval_override?(_repo = %{pr_slug: ""}), do: false
+  defp forked_pr_without_approval_override?(nil), do: false
+
+  defp forked_pr_without_approval_override?(repo) do
     [pr_repo | _rest] = repo.pr_slug |> String.split("/")
     [base_repo | _rest] = repo.repo_slug |> String.split("/")
     pr_repo != base_repo
+  end
+
+  defp skip_cache?(repo_proxy, org_id, :debug_job) do
+    forked_pr_without_approval_override?(repo_proxy) and
+      FeatureProvider.feature_enabled?(:disable_forked_pr_cache, param: org_id)
+  end
+
+  defp skip_cache?(repo_proxy, org_id, _job_type) do
+    forked_pr?(repo_proxy) and
+      FeatureProvider.feature_enabled?(:disable_forked_pr_cache, param: org_id)
+  end
+
+  defp approval_enable_cache?(nil), do: false
+
+  defp approval_enable_cache?(repo) do
+    Map.get(repo, :approval_enable_cache, false)
   end
 end
