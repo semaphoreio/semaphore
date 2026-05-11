@@ -622,7 +622,7 @@ defmodule Front.Models.Scheduler do
 
   defp parse_error_response_message(msg) do
     cond do
-      msg =~ ~r/parameter/i ->
+      msg =~ ~r/^Parameter / ->
         %{errors: %{parameters: msg}}
 
       msg =~ "name" ->
