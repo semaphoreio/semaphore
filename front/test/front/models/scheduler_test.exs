@@ -792,6 +792,90 @@ defmodule Front.Models.SchedulerTest do
                   }}
       end
     end
+
+    test "routes \"The 'name' parameter\" errors to the name field" do
+      response =
+        PersistResponse.new(
+          status:
+            InternalApi.Status.new(
+              code: Google.Rpc.Code.value(:INVALID_ARGUMENT),
+              message: "The 'name' parameter can not be empty string."
+            )
+        )
+
+      with_mock Stub, persist: fn _, _, _ -> {:ok, response} end do
+        assert Subject.persist(@form_data, @context_data) ==
+                 {:error,
+                  %{
+                    errors: %{
+                      name: "The 'name' parameter can not be empty string."
+                    }
+                  }}
+      end
+    end
+
+    test "routes \"The 'reference' parameter\" errors to the reference field" do
+      response =
+        PersistResponse.new(
+          status:
+            InternalApi.Status.new(
+              code: Google.Rpc.Code.value(:INVALID_ARGUMENT),
+              message: "The 'reference' parameter can not be empty string."
+            )
+        )
+
+      with_mock Stub, persist: fn _, _, _ -> {:ok, response} end do
+        assert Subject.persist(@form_data, @context_data) ==
+                 {:error,
+                  %{
+                    errors: %{
+                      reference: "The 'reference' parameter can not be empty string."
+                    }
+                  }}
+      end
+    end
+
+    test "routes \"Parameter 'name' is required.\" to the parameters bucket" do
+      response =
+        PersistResponse.new(
+          status:
+            InternalApi.Status.new(
+              code: Google.Rpc.Code.value(:INVALID_ARGUMENT),
+              message: "Parameter 'name' is required."
+            )
+        )
+
+      with_mock Stub, persist: fn _, _, _ -> {:ok, response} end do
+        assert Subject.persist(@form_data, @context_data) ==
+                 {:error,
+                  %{
+                    errors: %{
+                      parameters: "Parameter 'name' is required."
+                    }
+                  }}
+      end
+    end
+
+    test "routes \"Parameter 'foo' name can't be blank.\" to the parameters bucket" do
+      response =
+        PersistResponse.new(
+          status:
+            InternalApi.Status.new(
+              code: Google.Rpc.Code.value(:INVALID_ARGUMENT),
+              message: "Parameter 'foo' name can't be blank."
+            )
+        )
+
+      with_mock Stub, persist: fn _, _, _ -> {:ok, response} end do
+        assert Subject.persist(@form_data, @context_data) ==
+                 {:error,
+                  %{
+                    errors: %{
+                      parameters: "Parameter 'foo' name can't be blank."
+                    }
+                  }}
+      end
+    end
   end
 
   describe "HistoryPage" do
