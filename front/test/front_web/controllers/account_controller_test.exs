@@ -62,6 +62,35 @@ defmodule FrontWeb.AccountControllerTest do
       refute html_response(conn, 200) =~ "id=\"email-form\""
       refute html_response(conn, 200) =~ "Update Email"
     end
+
+    test "when status=error and message present => sets :alert flash with message", %{conn: conn} do
+      conn = get(conn, "/account", %{"status" => "error", "message" => "GitHub thing broke"})
+
+      assert html_response(conn, 200)
+      assert get_flash(conn, :alert) == "GitHub thing broke"
+    end
+
+    test "when status=error but message blank => no flash set", %{conn: conn} do
+      conn = get(conn, "/account", %{"status" => "error", "message" => ""})
+
+      assert html_response(conn, 200)
+      assert get_flash(conn, :alert) == nil
+    end
+
+    test "when status=success => sets :notice flash", %{conn: conn} do
+      conn = get(conn, "/account", %{"status" => "success"})
+
+      assert html_response(conn, 200)
+      assert get_flash(conn, :notice) == "Repository account connected."
+    end
+
+    test "when no status param => no flash set from oauth path", %{conn: conn} do
+      conn = get(conn, "/account")
+
+      assert html_response(conn, 200)
+      assert get_flash(conn, :alert) == nil
+      assert get_flash(conn, :notice) == nil
+    end
   end
 
   describe "POST delete_with_owned_orgs" do
