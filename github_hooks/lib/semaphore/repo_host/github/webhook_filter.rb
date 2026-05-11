@@ -7,6 +7,7 @@ module Semaphore::RepoHost::Github
     SUPPORTED_GITHUB_WEBHOOK_EVENTS = ["push", "pull_request", "member", "issue_comment", "installation", "installation_repositories", "team", "membership", "repository"]
     SUPPORTED_GITHUB_PULL_REQUEST_ACTIONS = ["opened", "synchronize", "closed", "reopened", "ready_for_review"]
     SUPPORTED_PR_COMMANDS = ["/sem-approve"]
+    SUPPORTED_PR_OPTIONS = ["--include-secrets", "--enable-cache"].freeze
 
     def initialize(request, payload)
       @request = request
@@ -81,7 +82,9 @@ module Semaphore::RepoHost::Github
 
     def supported_pr_command?
       payload_data["issue"]["pull_request"].present? &&
-        SUPPORTED_PR_COMMANDS.any? { |cmd| pull_request_command.include?(cmd) }
+        pr_command_lines.any? do |tokens|
+          SUPPORTED_PR_COMMANDS.include?(tokens.first)
+        end
     end
 
     def supported_membership_scope?
@@ -121,7 +124,26 @@ module Semaphore::RepoHost::Github
     end
 
     def pull_request_command
-      payload_data["comment"]["body"]
+      payload_data.dig("comment", "body").to_s
+    end
+
+    def pr_command_lines
+      pull_request_command
+        .split(/\r?\n/)
+        .map { |line| pr_command_tokens(line) }
+        .compact
+    end
+
+    def pr_command_tokens(line)
+      tokens = line.strip.split(/[ \t]+/)
+      command_index = tokens.index(SUPPORTED_PR_COMMANDS.first)
+      return nil unless command_index
+
+      parsed_tokens = [SUPPORTED_PR_COMMANDS.first]
+      options = tokens.drop(command_index + 1)
+      parsed_tokens.concat(options) if (options - SUPPORTED_PR_OPTIONS).empty?
+
+      parsed_tokens
     end
 
     def payload_data
