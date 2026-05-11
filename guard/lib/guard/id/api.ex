@@ -87,8 +87,8 @@ defmodule Guard.Id.Api do
         conn
         |> redirect(:noop, %{
           status: "error",
-          message:
-            "We're sorry, but your connection attempt was unsuccessful. Please try again. If you continue to experience issues, please contact our support team for assistance."
+          code: "auth_failed",
+          provider: to_string(fails.provider)
         })
 
       %{assigns: %{user_id: user_id, ueberauth_auth: auth}} ->
@@ -107,8 +107,17 @@ defmodule Guard.Id.Api do
               status: "success"
             })
 
-          {:error, _} ->
-            conn |> redirect(:noop)
+          {:error, reason} ->
+            Logger.error(
+              "Failed to update RepoHostAccount for user #{user_id} provider=#{repo_host}: #{inspect(reason)}"
+            )
+
+            conn
+            |> redirect(:noop, %{
+              status: "error",
+              code: Guard.Id.OAuthErrorCode.from_reason(reason),
+              provider: to_string(repo_host)
+            })
         end
     end
   end
@@ -505,7 +514,7 @@ defmodule Guard.Id.Api do
           conn
           |> redirect(:noop, %{
             status: "error",
-            message: message || "Login not allowed. Please contact your administrator."
+            code: "login_not_allowed"
           })
 
         {:error, :user_blocked, user} ->
