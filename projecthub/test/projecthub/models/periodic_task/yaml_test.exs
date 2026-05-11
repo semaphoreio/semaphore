@@ -326,6 +326,66 @@ defmodule Projecthub.Models.PeriodicTask.YamlTest do
                ["{\"opt1\": \"val1\"}", "{\"opt2\": \"val2\"}"]
     end
 
+    test "includes regex_pattern and validate_input_format when present" do
+      result =
+        Projecthub.Models.PeriodicTask.YAML.compose(
+          %PeriodicTask{
+            id: "id",
+            name: "task",
+            description: "",
+            project_name: "project_name",
+            recurring: false,
+            branch: "master",
+            pipeline_file: "semaphore.yml",
+            parameters: [
+              %{
+                name: "VERSION",
+                required: true,
+                default_value: "1.0.0",
+                regex_pattern: "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+                validate_input_format: true
+              }
+            ]
+          },
+          %Project{name: "project_name"}
+        )
+
+      assert {:ok, parsed} = YamlElixir.read_from_string(result)
+      param = hd(parsed["spec"]["parameters"])
+      assert param["regex_pattern"] == "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+      assert param["validate_input_format"] == true
+    end
+
+    test "omits regex_pattern and validate_input_format when blank/false" do
+      result =
+        Projecthub.Models.PeriodicTask.YAML.compose(
+          %PeriodicTask{
+            id: "id",
+            name: "task",
+            description: "",
+            project_name: "project_name",
+            recurring: false,
+            branch: "master",
+            pipeline_file: "semaphore.yml",
+            parameters: [
+              %{
+                name: "PARAM",
+                required: false,
+                default_value: "",
+                regex_pattern: "",
+                validate_input_format: false
+              }
+            ]
+          },
+          %Project{name: "project_name"}
+        )
+
+      assert {:ok, parsed} = YamlElixir.read_from_string(result)
+      param = hd(parsed["spec"]["parameters"])
+      refute Map.has_key?(param, "regex_pattern")
+      refute Map.has_key?(param, "validate_input_format")
+    end
+
     test "escapes backslashes in values" do
       # Ensure backslashes are also escaped to prevent YAML parsing issues
       result =
