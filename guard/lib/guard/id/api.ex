@@ -87,8 +87,7 @@ defmodule Guard.Id.Api do
         conn
         |> redirect(:noop, %{
           status: "error",
-          message:
-            "We're sorry, but your connection attempt was unsuccessful. Please try again. If you continue to experience issues, please contact our support team for assistance."
+          message: generic_connection_error()
         })
 
       %{assigns: %{user_id: user_id, ueberauth_auth: auth}} ->
@@ -107,11 +106,59 @@ defmodule Guard.Id.Api do
               status: "success"
             })
 
-          {:error, _} ->
-            conn |> redirect(:noop)
+          {:error, reason} ->
+            Logger.error(
+              "Failed to update RepoHostAccount for user #{user_id} provider=#{repo_host}: #{inspect(reason)}"
+            )
+
+            conn
+            |> redirect(:noop, %{
+              status: "error",
+              message: humanize_repo_host_error(reason, repo_host)
+            })
         end
     end
   end
+
+  @doc false
+  def humanize_repo_host_error(:invalid_data, repo_host) do
+    "Your #{provider_label(repo_host)} account did not return the required profile data (username or user ID). " <>
+      "Please verify your account is fully set up and try again."
+  end
+
+  def humanize_repo_host_error(%Ecto.Changeset{} = changeset, repo_host) do
+    errors = Ecto.Changeset.traverse_errors(changeset, fn {msg, _opts} -> msg end)
+
+    cond do
+      blank_error?(errors[:name]) ->
+        "Your #{provider_label(repo_host)} profile is missing a display name. " <>
+          "Please set a name in your #{provider_label(repo_host)} account settings and try connecting again."
+
+      blank_error?(errors[:login]) ->
+        "Your #{provider_label(repo_host)} profile is missing a username."
+
+      true ->
+        generic_connection_error()
+    end
+  end
+
+  def humanize_repo_host_error(_other, _repo_host), do: generic_connection_error()
+
+  defp blank_error?(errors) when is_list(errors),
+    do: Enum.any?(errors, &(&1 == "can't be blank"))
+
+  defp blank_error?(_), do: false
+
+  @doc false
+  def generic_connection_error do
+    "We're sorry, but your connection attempt was unsuccessful. Please try again. " <>
+      "If you continue to experience issues, please contact our support team for assistance."
+  end
+
+  defp provider_label(:github), do: "GitHub"
+  defp provider_label(:bitbucket), do: "Bitbucket"
+  defp provider_label(:gitlab), do: "GitLab"
+  defp provider_label(other), do: to_string(other)
 
   @doc false
   def parse_expires_at(nil), do: nil

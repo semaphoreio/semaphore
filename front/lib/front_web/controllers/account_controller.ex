@@ -26,9 +26,22 @@ defmodule FrontWeb.AccountController do
 
   def show(conn, params) do
     Watchman.benchmark("account.show.duration", fn ->
-      render_show(conn, conn.assigns.user_id, params["errors"])
+      conn
+      |> maybe_put_oauth_flash(params)
+      |> render_show(conn.assigns.user_id, params["errors"])
     end)
   end
+
+  defp maybe_put_oauth_flash(conn, %{"status" => "error", "message" => msg})
+       when is_binary(msg) and msg != "" do
+    put_flash(conn, :alert, msg)
+  end
+
+  defp maybe_put_oauth_flash(conn, %{"status" => "success"}) do
+    put_flash(conn, :notice, "Repository account connected.")
+  end
+
+  defp maybe_put_oauth_flash(conn, _params), do: conn
 
   def update(conn, params) do
     Watchman.benchmark("account.update.duration", fn ->
