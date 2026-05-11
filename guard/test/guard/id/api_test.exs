@@ -49,6 +49,59 @@ defmodule Guard.Id.Api.Test do
     end
   end
 
+  describe "humanize_repo_host_error/2" do
+    test "returns provider-specific message for :invalid_data" do
+      msg = Guard.Id.Api.humanize_repo_host_error(:invalid_data, :github)
+
+      assert msg =~ "GitHub"
+      assert msg =~ "did not return the required profile data"
+    end
+
+    test "labels provider correctly for bitbucket and gitlab" do
+      assert Guard.Id.Api.humanize_repo_host_error(:invalid_data, :bitbucket) =~ "Bitbucket"
+      assert Guard.Id.Api.humanize_repo_host_error(:invalid_data, :gitlab) =~ "GitLab"
+    end
+
+    test "returns name-blank message when changeset has :name can't be blank" do
+      changeset =
+        %Guard.FrontRepo.RepoHostAccount{}
+        |> Ecto.Changeset.cast(%{}, [:name, :login])
+        |> Ecto.Changeset.validate_required([:name])
+
+      msg = Guard.Id.Api.humanize_repo_host_error(changeset, :github)
+
+      assert msg =~ "missing a display name"
+      assert msg =~ "GitHub"
+    end
+
+    test "returns login-blank message when changeset has :login can't be blank" do
+      changeset =
+        %Guard.FrontRepo.RepoHostAccount{}
+        |> Ecto.Changeset.cast(%{}, [:name, :login])
+        |> Ecto.Changeset.validate_required([:login])
+
+      msg = Guard.Id.Api.humanize_repo_host_error(changeset, :github)
+
+      assert msg =~ "missing a username"
+    end
+
+    test "returns generic message when changeset error is unknown field" do
+      changeset =
+        %Guard.FrontRepo.RepoHostAccount{}
+        |> Ecto.Changeset.cast(%{}, [:permission_scope])
+        |> Ecto.Changeset.validate_required([:permission_scope])
+
+      msg = Guard.Id.Api.humanize_repo_host_error(changeset, :github)
+
+      assert msg == Guard.Id.Api.generic_connection_error()
+    end
+
+    test "returns generic message for any other reason" do
+      assert Guard.Id.Api.humanize_repo_host_error(:something_else, :github) ==
+               Guard.Id.Api.generic_connection_error()
+    end
+  end
+
   describe "/oauth/:provider" do
     test "404 for non existing provider" do
       {:ok, response} = send_login_request(path: "/oauth/foo")
@@ -147,9 +200,17 @@ defmodule Guard.Id.Api.Test do
     end
 
     defp run_bitbucket_oauth_round_trip(user_id) do
+      run_oauth_round_trip(user_id, "bitbucket")
+    end
+
+    defp run_github_oauth_round_trip(user_id) do
+      run_oauth_round_trip(user_id, "github")
+    end
+
+    defp run_oauth_round_trip(user_id, provider) do
       {:ok, response} =
         send_login_request(
-          path: "/oauth/bitbucket",
+          path: "/oauth/#{provider}",
           query: %{redirect_to: "https://me.#{domain()}/foo/bar"},
           headers: [{"x-semaphore-user-id", user_id}]
         )
@@ -165,7 +226,7 @@ defmodule Guard.Id.Api.Test do
 
       {:ok, response} =
         send_login_request(
-          path: "/oauth/bitbucket/callback",
+          path: "/oauth/#{provider}/callback",
           query: %{state: authorize_query["state"], code: "code"},
           headers:
             [
@@ -330,6 +391,61 @@ defmodule Guard.Id.Api.Test do
       assert schema.host == "me.#{domain()}"
       assert schema.path == "/foo/bar"
       assert query["status"] == "success"
+    end
+
+    test "callback for github surfaces specific message when provider omits user id", %{
+      user_id: user_id
+    } do
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://github.com/login/oauth/access_token"} ->
+          json(%{"access_token" => "token"})
+
+        %{method: :get, url: "https://api.github.com/user"} ->
+          json(%{"login" => "kjhdda", "name" => "Foo Bar"})
+
+        %{method: :get, url: "https://api.github.com/user/emails"} ->
+          json([
+            %{
+              "email" => "kjhdda@example.com",
+              "verified" => true,
+              "primary" => true,
+              "visibility" => "public"
+            }
+          ])
+      end)
+
+      query = run_github_oauth_round_trip(user_id)
+
+      assert query["status"] == "error"
+      assert query["message"] =~ "did not return the required profile data"
+    end
+
+    test "callback for github surfaces name-missing message when profile has blank name", %{
+      user_id: user_id,
+      gh_uid: gh_uid
+    } do
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://github.com/login/oauth/access_token"} ->
+          json(%{"access_token" => "token"})
+
+        %{method: :get, url: "https://api.github.com/user"} ->
+          json(%{"login" => "kjhdda", "name" => "", "id" => gh_uid})
+
+        %{method: :get, url: "https://api.github.com/user/emails"} ->
+          json([
+            %{
+              "email" => "kjhdda@example.com",
+              "verified" => true,
+              "primary" => true,
+              "visibility" => "public"
+            }
+          ])
+      end)
+
+      query = run_github_oauth_round_trip(user_id)
+
+      assert query["status"] == "error"
+      assert query["message"] =~ "missing a display name"
     end
 
     test "callback for bitbucket persists token_expires_at", %{user_id: user_id} do
