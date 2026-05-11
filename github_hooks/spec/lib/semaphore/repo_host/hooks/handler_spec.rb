@@ -107,6 +107,152 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
         described_class.run(@workflow, @logger)
       end
 
+      it "marks blocked workflow payload with approval include options" do
+        workflow = FactoryBot.create(
+          :workflow,
+          :project_id => @workflow.project_id,
+          :state => Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR,
+          :request => ActionController::Parameters.new(
+            "payload" => RepoHost::Github::Responses::Payload.post_receive_hook_pull_request
+          )
+        )
+        workflow.update(:git_ref => "refs/pull/1/merge")
+
+        allow(@workflow.payload).to receive_messages(
+          issue_number: 1,
+          pr_approval?: true,
+          pr_approval_include_secrets?: true,
+          pr_approval_enable_cache?: true
+        )
+        update_pr_data_result = [
+          :ok,
+          { :mergeable => true, :commit_author => "octocat", :merge_commit_sha => workflow.commit_sha, :ref => workflow.git_ref },
+          nil
+        ]
+        allow(described_class).to receive_messages(
+          approval_option_enabled?: true,
+          project_member?: true,
+          update_pr_data: update_pr_data_result
+        )
+
+        expect(described_class).to receive(:launch_pipeline).with(kind_of(Branch), workflow, @logger)
+
+        allow(Semaphore::RepoHost::Hooks::Handler).to receive(:forked_pr_allowed?).and_return(true)
+
+        described_class.run(@workflow, @logger)
+
+        payload = JSON.parse(Workflow.find(workflow.id).request["payload"])
+        expect(payload["semaphore_approval_include_secrets"]).to be(true)
+        expect(payload["semaphore_approval_enable_cache"]).to be(true)
+      end
+
+      it "drops sem-approve options for non-project-members" do
+        workflow = FactoryBot.create(
+          :workflow,
+          :project_id => @workflow.project_id,
+          :state => Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR,
+          :request => ActionController::Parameters.new(
+            "payload" => RepoHost::Github::Responses::Payload.post_receive_hook_pull_request
+          )
+        )
+        workflow.update(:git_ref => "refs/pull/1/merge")
+
+        allow(@workflow.payload).to receive_messages(
+          issue_number: 1,
+          pr_approval?: true,
+          pr_approval_include_secrets?: true,
+          pr_approval_enable_cache?: true
+        )
+        update_pr_data_result = [
+          :ok,
+          { :mergeable => true, :commit_author => "octocat", :merge_commit_sha => workflow.commit_sha, :ref => workflow.git_ref },
+          nil
+        ]
+        allow(described_class).to receive_messages(
+          approval_option_enabled?: true,
+          project_member?: false,
+          update_pr_data: update_pr_data_result
+        )
+
+        expect(described_class).to receive(:launch_pipeline).with(kind_of(Branch), workflow, @logger)
+        allow(Semaphore::RepoHost::Hooks::Handler).to receive(:forked_pr_allowed?).and_return(true)
+
+        described_class.run(@workflow, @logger)
+
+        payload = JSON.parse(Workflow.find(workflow.id).request["payload"])
+        expect(payload["semaphore_approval_include_secrets"]).to be_nil
+        expect(payload["semaphore_approval_enable_cache"]).to be_nil
+      end
+
+      it "drops sem-approve options and still launches when member check fails" do
+        workflow = FactoryBot.create(
+          :workflow,
+          :project_id => @workflow.project_id,
+          :state => Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR,
+          :request => ActionController::Parameters.new(
+            "payload" => RepoHost::Github::Responses::Payload.post_receive_hook_pull_request
+          )
+        )
+        workflow.update(:git_ref => "refs/pull/1/merge")
+
+        allow(@workflow.payload).to receive_messages(
+          issue_number: 1,
+          pr_approval?: true,
+          pr_approval_include_secrets?: true,
+          comment_author: "octocat"
+        )
+        update_pr_data_result = [
+          :ok,
+          { :mergeable => true, :commit_author => "octocat", :merge_commit_sha => workflow.commit_sha, :ref => workflow.git_ref },
+          nil
+        ]
+        allow(described_class).to receive_messages(
+          approval_option_enabled?: true,
+          update_pr_data: update_pr_data_result
+        )
+        allow(described_class).to receive(:project_member?).and_raise(StandardError.new("rbac unavailable"))
+        allow(Semaphore::RepoHost::Hooks::Handler).to receive(:forked_pr_allowed?).and_return(true)
+        allow(Watchman).to receive(:increment)
+
+        expect(@logger).to receive(:error).with(
+          "pr-approval-option-membership-check-failed",
+          hash_including(:error => "rbac unavailable", :requestor => "octocat", :project_id => workflow.project_id)
+        )
+        expect(Watchman).to receive(:increment).with("hooks.pr_approval.option_membership_check_failed")
+        expect(described_class).to receive(:launch_pipeline).with(kind_of(Branch), workflow, @logger)
+
+        described_class.run(@workflow, @logger)
+
+        payload = JSON.parse(Workflow.find(workflow.id).request["payload"])
+        expect(payload["semaphore_approval_include_secrets"]).to be_nil
+        expect(payload["semaphore_approval_enable_cache"]).to be_nil
+      end
+
+      it "does not launch workflow when option persistence fails" do
+        workflow = FactoryBot.create(
+          :workflow,
+          :project_id => @workflow.project_id,
+          :state => Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR
+        )
+        workflow.update(:git_ref => "refs/pull/1/merge")
+        workflow.update(:request => ActionController::Parameters.new("payload" => "{invalid-json"))
+
+        allow(@workflow.payload).to receive_messages(
+          issue_number: 1,
+          pr_approval?: true,
+          pr_approval_include_secrets?: true
+        )
+        allow(described_class).to receive_messages(
+          approval_option_enabled?: true,
+          project_member?: true
+        )
+        allow(Semaphore::RepoHost::Hooks::Handler).to receive(:forked_pr_allowed?).and_return(true)
+
+        expect(described_class).not_to receive(:launch_pipeline)
+
+        described_class.run(@workflow, @logger)
+      end
+
       it "does not launch workflow if marked as not allowed user" do
         workflow = FactoryBot.create(
           :workflow,
@@ -414,6 +560,47 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
           end
         end
       end
+    end
+  end
+
+  describe ".approved_sem_approve_option" do
+    it "records dropped options when the project setting is disabled" do
+      expect(@logger).to receive(:info).with(
+        "pr-approval-option-dropped",
+        :option => "--include-secrets",
+        :reason => "project_option_disabled"
+      )
+      expect(Watchman).to receive(:increment).with(
+        "hooks.pr_approval.option_dropped",
+        :tags => %w[include-secrets project_option_disabled]
+      )
+
+      result = described_class.approved_sem_approve_option(
+        :requested => true,
+        :enabled => false,
+        :requestor_is_project_member => true,
+        :option => "--include-secrets",
+        :logger => @logger
+      )
+
+      expect(result).to be(false)
+    end
+
+    it "handles a nil logger when requester is not a project member" do
+      expect(Watchman).to receive(:increment).with(
+        "hooks.pr_approval.option_dropped",
+        :tags => %w[enable-cache requestor_not_project_member]
+      )
+
+      result = described_class.approved_sem_approve_option(
+        :requested => true,
+        :enabled => true,
+        :requestor_is_project_member => false,
+        :option => "--enable-cache",
+        :logger => nil
+      )
+
+      expect(result).to be(false)
     end
   end
 
