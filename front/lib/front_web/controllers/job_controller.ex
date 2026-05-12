@@ -238,6 +238,7 @@ defmodule FrontWeb.JobController do
   def logs(conn, params) do
     Watchman.benchmark({"logs.duration", ["#{conn.assigns.job.id}"]}, fn ->
       job = conn.assigns.job
+
       case missing_logs_message(job) do
         nil ->
           token = params |> Map.get("token", "0") |> Integer.parse() |> elem(0)
@@ -286,6 +287,7 @@ defmodule FrontWeb.JobController do
   def plain_logs(conn, params) do
     Watchman.benchmark("raw_output.duration", fn ->
       job = conn.assigns.job
+
       case missing_logs_message(job) do
         nil ->
           starting_event = params |> Map.get("starting_event", "0") |> Integer.parse() |> elem(0)
@@ -322,6 +324,7 @@ defmodule FrontWeb.JobController do
   def events(conn, params) do
     Watchman.benchmark("events.duration", fn ->
       job = conn.assigns.job
+
       case missing_logs_message(job) do
         nil ->
           starting_event = params |> Map.get("starting_event", "0") |> Integer.parse() |> elem(0)
