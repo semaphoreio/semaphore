@@ -57,6 +57,19 @@ defmodule Projecthub.Models.ProjectTest do
 
     FunRegistry.set!(Support.FakeServices.PeriodicSchedulerService, :list, list_response)
 
+    bulk_upsert_response =
+      InternalApi.PeriodicScheduler.BulkUpsertAndPruneResponse.new(
+        status: InternalApi.Status.new(code: Google.Rpc.Code.value(:OK)),
+        upserted: [],
+        deleted_ids: []
+      )
+
+    FunRegistry.set!(
+      Support.FakeServices.PeriodicSchedulerService,
+      :bulk_upsert_and_prune,
+      bulk_upsert_response
+    )
+
     FunRegistry.set!(Support.FakeServices.FeatureService, :list_organization_features, fn _req, _ ->
       availability = InternalApi.Feature.Availability.new(state: :HIDDEN, quantity: 0)
 
