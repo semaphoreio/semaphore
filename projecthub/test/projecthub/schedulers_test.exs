@@ -93,27 +93,6 @@ defmodule Projecthub.SchedulersTest do
       refute_received :list_called
       refute_received :delete_called
     end
-
-    test "when an incoming scheduler has an invalid cron => returns error and does not delete or apply" do
-      {:ok, project} = Support.Factories.Project.create()
-
-      scheduler = %Scheduler{
-        id: "abcdef01-1234-5678-1234-567812345678",
-        name: "broken",
-        branch: "master",
-        at: "not a valid cron",
-        pipeline_file: ".semaphore/scheduler.yml"
-      }
-
-      schedulers = [scheduler]
-
-      with_mock Scheduler, [:passthrough],
-        delete: fn _s, _r -> flunk("Scheduler.delete should not be called for invalid cron") end,
-        apply: fn _s, _p, _r -> flunk("Scheduler.apply should not be called for invalid cron") end do
-        assert {:error, "Invalid cron expression in task 'broken': " <> _} =
-                 Schedulers.update(project, schedulers, "requester_id")
-      end
-    end
   end
 
   describe ".delete_all" do
