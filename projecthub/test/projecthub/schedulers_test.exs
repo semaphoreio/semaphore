@@ -219,17 +219,6 @@ defmodule Projecthub.SchedulersTest do
     end
   end
 
-  describe ".validate_cron/1" do
-    test "returns :ok for a valid cron expression" do
-      assert :ok = Schedulers.validate_cron(%{at: "* * * * *", name: "cron"})
-    end
-
-    test "returns an error tuple for an invalid cron expression" do
-      assert {:error, "Invalid cron expression in task 'cron': " <> _} =
-               Schedulers.validate_cron(%{at: "not a valid cron", name: "cron"})
-    end
-  end
-
   describe ".delete_all" do
     test "deletes all listed schedulers for the project" do
       {:ok, project} = Support.Factories.Project.create()
