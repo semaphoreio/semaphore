@@ -1,5 +1,10 @@
 defmodule Projecthub.Schedulers do
   alias Projecthub.Models.Scheduler
+  alias Projecthub.PeriodicValidators
+
+  @validators [
+    &PeriodicValidators.validate_cron/1
+  ]
 
   def update(project, schedulers, requester_id) do
     if System.get_env("SKIP_SCHEDULERS") == "true" do
@@ -10,31 +15,33 @@ defmodule Projecthub.Schedulers do
   end
 
   defp do_update(project, schedulers, requester_id) do
-    {:ok, existing_schedulers} = Scheduler.list(project)
+    with :ok <- PeriodicValidators.validate_all(schedulers, @validators),
+         {:ok, existing_schedulers} <- Scheduler.list(project) do
+      {to_delete, to_apply} = triage_for_update(schedulers, existing_schedulers)
 
-    {schedulers_to_delete, schedulers_to_update_or_create} = triage_for_update(schedulers, existing_schedulers)
-
-    with :ok <-
-           schedulers_to_delete
-           |> Enum.reduce_while(:ok, fn scheduler, _acc ->
-             case Scheduler.delete(scheduler, requester_id) do
-               {:ok, _} -> {:cont, :ok}
-               err -> {:halt, err}
-             end
-           end),
-         :ok <-
-           schedulers_to_update_or_create
-           |> Enum.reduce_while(:ok, fn scheduler, _acc ->
-             case Scheduler.apply(scheduler, project, requester_id) do
-               {:ok, _} -> {:cont, :ok}
-               err -> {:halt, err}
-             end
-           end) do
-      {:ok, nil}
-    else
-      err ->
-        err
+      with :ok <- delete_each(to_delete, requester_id),
+           :ok <- apply_each(to_apply, project, requester_id) do
+        {:ok, nil}
+      end
     end
+  end
+
+  defp delete_each(schedulers, requester_id) do
+    Enum.reduce_while(schedulers, :ok, fn scheduler, _acc ->
+      case Scheduler.delete(scheduler, requester_id) do
+        {:ok, _} -> {:cont, :ok}
+        err -> {:halt, err}
+      end
+    end)
+  end
+
+  defp apply_each(schedulers, project, requester_id) do
+    Enum.reduce_while(schedulers, :ok, fn scheduler, _acc ->
+      case Scheduler.apply(scheduler, project, requester_id) do
+        {:ok, _} -> {:cont, :ok}
+        err -> {:halt, err}
+      end
+    end)
   end
 
   def delete_all(project, requester_id) do
