@@ -15,6 +15,7 @@ defmodule Scheduler.Actions.BulkUpsertAndPruneImpl do
   are idempotent.
   """
 
+  require Logger
   import Ecto.Query
 
   alias Crontab.CronExpression.Parser
@@ -39,6 +40,7 @@ defmodule Scheduler.Actions.BulkUpsertAndPruneImpl do
          :ok <- pre_validate(periodics),
          {:ok, %{upserts: upserts, pruned: pruned}} <- reconcile(params, project_name, periodics) do
       apply_side_effects(upserts, pruned)
+      log_summary(params, upserts, pruned)
 
       {:ok,
        %{upserted: Enum.map(upserts, &to_response_map/1), deleted_ids: Enum.map(pruned, & &1.id)}}
@@ -205,9 +207,8 @@ defmodule Scheduler.Actions.BulkUpsertAndPruneImpl do
   end
 
   defp inject_paused(params, :UNCHANGED, _requester_id), do: params
-  defp inject_paused(params, 0, _requester_id), do: params
 
-  defp inject_paused(params, state, requester_id) when state in [:ACTIVE, 1] do
+  defp inject_paused(params, :ACTIVE, requester_id) do
     Map.merge(params, %{
       paused: false,
       pause_toggled_by: requester_id,
@@ -215,7 +216,7 @@ defmodule Scheduler.Actions.BulkUpsertAndPruneImpl do
     })
   end
 
-  defp inject_paused(params, state, requester_id) when state in [:PAUSED, 2] do
+  defp inject_paused(params, :PAUSED, requester_id) do
     Map.merge(params, %{
       paused: true,
       pause_toggled_by: requester_id,
@@ -247,6 +248,13 @@ defmodule Scheduler.Actions.BulkUpsertAndPruneImpl do
     Enum.each(upserts, &start_or_stop_periodic_job/1)
     Enum.each(pruned, fn periodic -> delete_quantum_job(periodic.id) end)
     :ok
+  end
+
+  defp log_summary(params, upserts, pruned) do
+    Logger.info(
+      "bulk_upsert_and_prune committed: project_id=#{params.project_id} " <>
+        "requester_id=#{params.requester_id} upserted=#{length(upserts)} pruned=#{length(pruned)}"
+    )
   end
 
   defp start_or_stop_periodic_job(periodic = %{paused: true}), do: stop_periodic_job(periodic)

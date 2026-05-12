@@ -1,5 +1,5 @@
 defmodule Projecthub.Models.PeriodicTask do
-  alias Projecthub.Models.PeriodicTask.{GRPC, YAML}
+  alias Projecthub.Models.PeriodicTask.{Definition, GRPC, YAML}
   alias Projecthub.Models.Project
   require Logger
 
@@ -79,7 +79,12 @@ defmodule Projecthub.Models.PeriodicTask do
   def update_all(%Project{} = project, new_tasks, requester_id) do
     definitions = Enum.map(new_tasks, &to_periodic_definition/1)
 
-    case GRPC.bulk_upsert_and_prune(project.id, project.organization_id, requester_id, definitions) do
+    case GRPC.bulk_upsert_and_prune(
+           project.id,
+           project.organization_id,
+           requester_id,
+           definitions
+         ) do
       {:ok, %{upserted: upserted, deleted: deleted}} ->
         Logger.debug("Successfully updated all tasks for project #{project.id}")
         {:ok, upserted: upserted, deleted: deleted}
@@ -108,29 +113,18 @@ defmodule Projecthub.Models.PeriodicTask do
       name: task.name || "",
       description: task.description || "",
       recurring: task.recurring,
-      reference: format_branch_as_reference(task.branch),
+      reference: Definition.format_branch_as_reference(task.branch),
       at: task.at || "",
       pipeline_file: task.pipeline_file || "",
       parameters: task.parameters || [],
-      state: status_to_state(task.status)
+      state: Definition.status_to_state(task.status)
     }
   end
 
-  defp status_to_state(:STATUS_ACTIVE), do: :ACTIVE
-  defp status_to_state(:STATUS_INACTIVE), do: :PAUSED
-  defp status_to_state(_), do: :UNCHANGED
-
-  defp format_branch_as_reference("refs/tags/" <> _ = tag), do: tag
-  defp format_branch_as_reference("refs/pull/" <> _ = pr), do: pr
-
-  defp format_branch_as_reference(branch_name) when is_binary(branch_name) and branch_name != "",
-    do: "refs/heads/#{branch_name}"
-
-  defp format_branch_as_reference(_), do: "refs/heads/master"
-
   # Helper function to extract branch name from reference or fall back to branch field
   # This handles the transition from gRPC "branch" field to "reference" field
-  defp extract_branch_from_reference_or_branch(%{reference: reference}) when is_binary(reference) do
+  defp extract_branch_from_reference_or_branch(%{reference: reference})
+       when is_binary(reference) do
     extract_branch_name(reference)
   end
 
