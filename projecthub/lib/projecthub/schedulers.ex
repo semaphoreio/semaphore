@@ -1,9 +1,9 @@
 defmodule Projecthub.Schedulers do
   alias Projecthub.Models.Scheduler
-  alias Crontab.CronExpression.Parser
+  alias Projecthub.PeriodicValidators
 
   @validators [
-    &__MODULE__.validate_cron/1
+    &PeriodicValidators.validate_cron/1
   ]
 
   def update(project, schedulers, requester_id) do
@@ -15,7 +15,7 @@ defmodule Projecthub.Schedulers do
   end
 
   defp do_update(project, schedulers, requester_id) do
-    with :ok <- validate_schedulers(schedulers),
+    with :ok <- PeriodicValidators.validate_all(schedulers, @validators),
          {:ok, existing_schedulers} <- Scheduler.list(project) do
       {to_delete, to_apply} = triage_for_update(schedulers, existing_schedulers)
 
@@ -42,34 +42,6 @@ defmodule Projecthub.Schedulers do
         err -> {:halt, err}
       end
     end)
-  end
-
-  defp validate_schedulers(schedulers) do
-    Enum.reduce_while(schedulers, :ok, fn scheduler, _acc ->
-      case run_validators(scheduler, @validators) do
-        :ok -> {:cont, :ok}
-        err -> {:halt, err}
-      end
-    end)
-  end
-
-  defp run_validators(scheduler, validators) do
-    Enum.reduce_while(validators, :ok, fn validator, _acc ->
-      case validator.(scheduler) do
-        :ok -> {:cont, :ok}
-        err -> {:halt, err}
-      end
-    end)
-  end
-
-  def validate_cron(%{at: at, name: name}) do
-    case Parser.parse(at) do
-      {:ok, _} ->
-        :ok
-
-      {:error, reason} ->
-        {:error, "Invalid cron expression in task '#{name}': #{inspect(reason)}"}
-    end
   end
 
   def delete_all(project, requester_id) do
