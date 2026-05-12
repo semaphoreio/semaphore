@@ -81,49 +81,57 @@ defmodule Projecthub.Models.PeriodicTask do
     end
   end
 
-  def update_all(project, new_tasks, requester_id) do
-    with :ok <- PeriodicValidators.validate_all(new_tasks, @validators),
-         {:ok, old_tasks} <- list(project),
-         {tasks_to_upsert, tasks_to_delete} <-
-           triage(old_tasks, new_tasks),
-         {:ok, deleted_task_ids} <-
-           apply_each(tasks_to_delete, &delete(&1, requester_id)),
-         {:ok, upserted_task_ids} <-
-           apply_each(tasks_to_upsert, &upsert(&1, project, requester_id)) do
-      Logger.debug("Successfully updated all tasks for project #{project.id}")
-      {:ok, upserted: upserted_task_ids, deleted: deleted_task_ids}
-    else
+  def update_all(%Project{} = project, new_tasks, requester_id) do
+    definitions = Enum.map(new_tasks, &to_periodic_definition/1)
+
+    case GRPC.bulk_upsert_and_prune(project.id, project.organization_id, requester_id, definitions) do
+      {:ok, %{upserted: upserted, deleted: deleted}} ->
+        Logger.debug("Successfully updated all tasks for project #{project.id}")
+        {:ok, upserted: upserted, deleted: deleted}
+
       {:error, reason} ->
-        Logger.error("Failed updating tasks for project #{project.id}: #{inspect(reason)}}")
+        Logger.error("Failed updating tasks for project #{project.id}: #{inspect(reason)}")
         {:error, reason}
     end
   end
 
-  defp triage(old_tasks, new_tasks) do
-    new_task_ids = MapSet.new(new_tasks, & &1.id)
-    {new_tasks, Enum.reject(old_tasks, &MapSet.member?(new_task_ids, &1.id))}
-  end
+  def delete_all(%Project{} = project, requester_id) do
+    case GRPC.bulk_upsert_and_prune(project.id, project.organization_id, requester_id, []) do
+      {:ok, %{deleted: deleted}} ->
+        Logger.debug("Successfully deleted all tasks for project #{project.id}")
+        {:ok, deleted}
 
-  def delete_all(project, requester_id) do
-    with {:ok, tasks} <- list(project),
-         {:ok, task_ids} <- apply_each(tasks, &delete(&1, requester_id)) do
-      Logger.debug("Successfully deleted all tasks for project #{project.id}")
-      {:ok, task_ids}
-    else
       {:error, reason} ->
-        Logger.error("Failed deleting tasks for project #{project.id}: #{inspect(reason)}}")
+        Logger.error("Failed deleting tasks for project #{project.id}: #{inspect(reason)}")
         {:error, reason}
     end
   end
 
-  defp apply_each(tasks, func) do
-    Enum.reduce_while(tasks, {:ok, []}, fn task, {:ok, acc_ids} ->
-      case func.(task) do
-        {:ok, task_id} -> {:cont, {:ok, [task_id | acc_ids]}}
-        {:error, reason} -> {:halt, {:error, reason}}
-      end
-    end)
+  defp to_periodic_definition(%__MODULE__{} = task) do
+    %{
+      id: task.id || "",
+      name: task.name || "",
+      description: task.description || "",
+      recurring: task.recurring,
+      reference: format_branch_as_reference(task.branch),
+      at: task.at || "",
+      pipeline_file: task.pipeline_file || "",
+      parameters: task.parameters || [],
+      state: status_to_state(task.status)
+    }
   end
+
+  defp status_to_state(:STATUS_ACTIVE), do: :ACTIVE
+  defp status_to_state(:STATUS_INACTIVE), do: :PAUSED
+  defp status_to_state(_), do: :UNCHANGED
+
+  defp format_branch_as_reference("refs/tags/" <> _ = tag), do: tag
+  defp format_branch_as_reference("refs/pull/" <> _ = pr), do: pr
+
+  defp format_branch_as_reference(branch_name) when is_binary(branch_name) and branch_name != "",
+    do: "refs/heads/#{branch_name}"
+
+  defp format_branch_as_reference(_), do: "refs/heads/master"
 
   # Helper function to extract branch name from reference or fall back to branch field
   # This handles the transition from gRPC "branch" field to "reference" field
