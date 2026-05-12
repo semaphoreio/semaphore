@@ -96,17 +96,68 @@ defmodule Projecthub.SchedulersTest do
   end
 
   describe ".delete_all" do
-    test "deletes all schedulers via the bulk RPC" do
+    test "lists existing schedulers and deletes each one" do
       {:ok, project} = Support.Factories.Project.create()
 
-      FunRegistry.set!(PeriodicService, :bulk_upsert_and_prune, fn req, _stream ->
-        assert req.periodics == []
-        assert req.project_id == project.id
-
-        API.BulkUpsertAndPruneResponse.new(
+      list_response =
+        InternalApi.PeriodicScheduler.ListResponse.new(
           status: Status.new(),
-          upserted: [],
-          deleted_ids: ["12345678-1234-5678-1234-567812345678"]
+          periodics: [
+            InternalApi.PeriodicScheduler.Periodic.new(
+              id: "12345678-1234-5678-1234-567812345678",
+              name: "cron",
+              project_id: project.id,
+              reference: "refs/heads/master",
+              at: "*",
+              pipeline_file: ".semaphore/cron.yml"
+            )
+          ],
+          page_size: 1,
+          page_number: 1,
+          total_entries: 1,
+          total_pages: 1
+        )
+
+      FunRegistry.set!(PeriodicService, :list, list_response)
+
+      test_pid = self()
+
+      FunRegistry.set!(PeriodicService, :delete, fn req, _stream ->
+        send(test_pid, {:delete_called, req.id})
+        InternalApi.PeriodicScheduler.DeleteResponse.new(status: Status.new())
+      end)
+
+      assert {:ok, nil} = Schedulers.delete_all(project, "requester_id")
+      assert_received {:delete_called, "12345678-1234-5678-1234-567812345678"}
+    end
+
+    test "swallows individual delete errors and still returns ok" do
+      {:ok, project} = Support.Factories.Project.create()
+
+      list_response =
+        InternalApi.PeriodicScheduler.ListResponse.new(
+          status: Status.new(),
+          periodics: [
+            InternalApi.PeriodicScheduler.Periodic.new(
+              id: "12345678-1234-5678-1234-567812345678",
+              name: "cron",
+              project_id: project.id,
+              reference: "refs/heads/master",
+              at: "*",
+              pipeline_file: ".semaphore/cron.yml"
+            )
+          ],
+          page_size: 1,
+          page_number: 1,
+          total_entries: 1,
+          total_pages: 1
+        )
+
+      FunRegistry.set!(PeriodicService, :list, list_response)
+
+      FunRegistry.set!(PeriodicService, :delete, fn _req, _stream ->
+        InternalApi.PeriodicScheduler.DeleteResponse.new(
+          status: Status.new(code: :INVALID_ARGUMENT, message: "boom")
         )
       end)
 
