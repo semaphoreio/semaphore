@@ -20,7 +20,8 @@ defmodule Scheduler.Grpc.Server do
     GetProjectIdResponse,
     HistoryResponse,
     PersistResponse,
-    ListKeysetResponse
+    ListKeysetResponse,
+    BulkUpsertAndPruneResponse
   }
 
   alias Google.Protobuf.Timestamp
@@ -269,6 +270,26 @@ defmodule Scheduler.Grpc.Server do
         {:error, {code, message}} ->
           %{status: %{code: code, message: to_str(message)}}
           |> Proto.deep_new!(GetProjectIdResponse)
+      end
+    end)
+  end
+
+  # BulkUpsertAndPrune
+
+  def bulk_upsert_and_prune(request, _stream) do
+    Metrics.benchmark("PeriodicSch.bulk_upsert_and_prune", __MODULE__, fn ->
+      with {:ok, params} <- Proto.to_map(request),
+           {:ok, result} <- Actions.bulk_upsert_and_prune(params) do
+        result
+        |> Map.merge(%{status: %{code: :OK}})
+        |> Proto.deep_new!(
+          BulkUpsertAndPruneResponse,
+          transformations: %{Timestamp => {__MODULE__, :date_time_to_timestamps}}
+        )
+      else
+        {:error, {code, message}} ->
+          %{status: %{code: code, message: to_str(message)}}
+          |> Proto.deep_new!(BulkUpsertAndPruneResponse)
       end
     end)
   end
