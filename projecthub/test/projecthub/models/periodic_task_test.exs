@@ -323,6 +323,41 @@ defmodule Projecthub.Models.PeriodicTaskTest do
       assert {:error, %GRPC.RPCError{message: "Invalid argument"}} =
                PeriodicTask.update_all(ctx.project, [periodic_task(id: "1")], "requester_id")
     end
+
+    test "when a new task has an invalid cron => returns error and does not delete or upsert", ctx do
+      FunRegistry.set!(PeriodicService, :list, fn _req, _stream ->
+        API.ListResponse.new(
+          status: Status.new(),
+          periodics: [ctx.periodic1, ctx.periodic2]
+        )
+      end)
+
+      FunRegistry.set!(PeriodicService, :apply, fn _req, _stream ->
+        flunk("PeriodicService.apply should not be called when input has invalid cron")
+      end)
+
+      FunRegistry.set!(PeriodicService, :delete, fn _req, _stream ->
+        flunk("PeriodicService.delete should not be called when input has invalid cron")
+      end)
+
+      new_tasks = [
+        periodic_task(id: "fresh-id-1", name: "broken", recurring: true, at: "not a valid cron")
+      ]
+
+      assert {:error, "Invalid cron expression in task 'broken': " <> _} =
+               PeriodicTask.update_all(ctx.project, new_tasks, "requester_id")
+    end
+
+    test "skips cron validation for non-recurring tasks (allows empty at)", ctx do
+      FunRegistry.set!(PeriodicService, :list, fn _req, _stream ->
+        API.ListResponse.new(status: Status.new(), periodics: [])
+      end)
+
+      new_tasks = [periodic_task(id: "1", recurring: false, at: "")]
+
+      assert {:ok, upserted: ["1"], deleted: []} =
+               PeriodicTask.update_all(ctx.project, new_tasks, "requester_id")
+    end
   end
 
   describe "delete_all/2" do
