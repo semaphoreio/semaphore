@@ -1,10 +1,5 @@
 defmodule Projecthub.Schedulers do
-  alias Projecthub.Models.Scheduler
-  alias Projecthub.PeriodicValidators
-
-  @validators [
-    &PeriodicValidators.validate_cron/1
-  ]
+  alias Projecthub.Models.PeriodicTask.GRPC, as: PeriodicSchedulerClient
 
   def update(project, schedulers, requester_id) do
     if System.get_env("SKIP_SCHEDULERS") == "true" do
@@ -15,14 +10,16 @@ defmodule Projecthub.Schedulers do
   end
 
   defp do_update(project, schedulers, requester_id) do
-    with :ok <- PeriodicValidators.validate_all(schedulers, @validators),
-         {:ok, existing_schedulers} <- Scheduler.list(project) do
-      {to_delete, to_apply} = triage_for_update(schedulers, existing_schedulers)
+    definitions = Enum.map(schedulers, &to_periodic_definition/1)
 
-      with :ok <- delete_each(to_delete, requester_id),
-           :ok <- apply_each(to_apply, project, requester_id) do
-        {:ok, nil}
-      end
+    case PeriodicSchedulerClient.bulk_upsert_and_prune(
+           project.id,
+           project.organization_id,
+           requester_id,
+           definitions
+         ) do
+      {:ok, _} -> {:ok, nil}
+      err -> err
     end
   end
 
@@ -45,27 +42,40 @@ defmodule Projecthub.Schedulers do
   end
 
   def delete_all(project, requester_id) do
-    {:ok, existing_schedulers} = Scheduler.list(project)
-
-    existing_schedulers
-    |> Enum.each(fn scheduler ->
-      Scheduler.delete(scheduler, requester_id)
-    end)
-
-    {:ok, nil}
+    case PeriodicSchedulerClient.bulk_upsert_and_prune(
+           project.id,
+           project.organization_id,
+           requester_id,
+           []
+         ) do
+      {:ok, _} -> {:ok, nil}
+      err -> err
+    end
   end
 
-  # we apply changes to all schedulers, no matter if there
-  # is a change, should check if there is a change to update
-  defp triage_for_update(schedulers, existing_schedulers) do
-    schedulers_to_delete =
-      existing_schedulers
-      |> Enum.filter(fn existing_scheduler ->
-        !Enum.any?(schedulers, fn scheduler ->
-          scheduler.id == existing_scheduler.id
-        end)
-      end)
-
-    {schedulers_to_delete, schedulers}
+  defp to_periodic_definition(scheduler) do
+    %{
+      id: scheduler.id || "",
+      name: scheduler.name || "",
+      description: "",
+      recurring: true,
+      reference: format_branch_as_reference(scheduler.branch),
+      at: scheduler.at || "",
+      pipeline_file: scheduler.pipeline_file || "",
+      parameters: [],
+      state: status_to_state(scheduler.status)
+    }
   end
+
+  defp status_to_state(:STATUS_ACTIVE), do: :ACTIVE
+  defp status_to_state(:STATUS_INACTIVE), do: :PAUSED
+  defp status_to_state(_), do: :UNCHANGED
+
+  defp format_branch_as_reference("refs/tags/" <> _ = tag), do: tag
+  defp format_branch_as_reference("refs/pull/" <> _ = pr), do: pr
+
+  defp format_branch_as_reference(branch_name) when is_binary(branch_name) and branch_name != "",
+    do: "refs/heads/#{branch_name}"
+
+  defp format_branch_as_reference(_), do: "refs/heads/master"
 end
