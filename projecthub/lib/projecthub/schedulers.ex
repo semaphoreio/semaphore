@@ -1,5 +1,6 @@
 defmodule Projecthub.Schedulers do
   alias Projecthub.Models.PeriodicTask.GRPC, as: PeriodicSchedulerClient
+  alias Projecthub.Models.Scheduler
 
   def update(project, schedulers, requester_id) do
     if System.get_env("SKIP_SCHEDULERS") == "true" do
@@ -23,34 +24,14 @@ defmodule Projecthub.Schedulers do
     end
   end
 
-  defp delete_each(schedulers, requester_id) do
-    Enum.reduce_while(schedulers, :ok, fn scheduler, _acc ->
-      case Scheduler.delete(scheduler, requester_id) do
-        {:ok, _} -> {:cont, :ok}
-        err -> {:halt, err}
-      end
-    end)
-  end
-
-  defp apply_each(schedulers, project, requester_id) do
-    Enum.reduce_while(schedulers, :ok, fn scheduler, _acc ->
-      case Scheduler.apply(scheduler, project, requester_id) do
-        {:ok, _} -> {:cont, :ok}
-        err -> {:halt, err}
-      end
-    end)
-  end
-
   def delete_all(project, requester_id) do
-    case PeriodicSchedulerClient.bulk_upsert_and_prune(
-           project.id,
-           project.organization_id,
-           requester_id,
-           []
-         ) do
-      {:ok, _} -> {:ok, nil}
-      err -> err
-    end
+    {:ok, existing_schedulers} = Scheduler.list(project)
+
+    Enum.each(existing_schedulers, fn scheduler ->
+      Scheduler.delete(scheduler, requester_id)
+    end)
+
+    {:ok, nil}
   end
 
   defp to_periodic_definition(scheduler) do
