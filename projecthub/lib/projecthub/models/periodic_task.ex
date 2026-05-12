@@ -1,16 +1,11 @@
 defmodule Projecthub.Models.PeriodicTask do
   alias Projecthub.Models.PeriodicTask.{GRPC, YAML}
   alias Projecthub.Models.Project
-  alias Projecthub.PeriodicValidators
   require Logger
 
   @fields ~w(id name description status recurring project_name
              branch pipeline_file at parameters)a
   defstruct @fields
-
-  @validators [
-    &PeriodicValidators.validate_cron/1
-  ]
 
   def construct(periodics_or_tasks, project_name) when is_list(periodics_or_tasks) do
     Enum.into(periodics_or_tasks, [], &construct(&1, project_name))
