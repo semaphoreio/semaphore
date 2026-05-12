@@ -174,9 +174,7 @@ defmodule Guard.Id.OIDCSamlLoginTest do
       query = URI.decode_query(schema.query)
 
       assert query["status"] == "error"
-
-      assert query["message"] =~
-               "Login is not allowed when using SAML as the default authentication method"
+      assert query["code"] == "login_not_allowed"
 
       # Verify no session cookie is set (there may be cleanup cookies, but no _sxtesting_session cookie)
       session_cookie =
@@ -233,9 +231,7 @@ defmodule Guard.Id.OIDCSamlLoginTest do
       query = URI.decode_query(schema.query)
 
       assert query["status"] == "error"
-
-      assert query["message"] =~
-               "Login is not allowed when using SAML as the default authentication method"
+      assert query["code"] == "login_not_allowed"
     end
   end
 
