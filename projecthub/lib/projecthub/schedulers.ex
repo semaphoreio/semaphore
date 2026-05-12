@@ -1,4 +1,5 @@
 defmodule Projecthub.Schedulers do
+  alias Projecthub.Models.PeriodicTask.Definition
   alias Projecthub.Models.PeriodicTask.GRPC, as: PeriodicSchedulerClient
   alias Projecthub.Models.Scheduler
 
@@ -40,23 +41,11 @@ defmodule Projecthub.Schedulers do
       name: scheduler.name || "",
       description: "",
       recurring: true,
-      reference: format_branch_as_reference(scheduler.branch),
+      reference: Definition.format_branch_as_reference(scheduler.branch),
       at: scheduler.at || "",
       pipeline_file: scheduler.pipeline_file || "",
       parameters: [],
-      state: status_to_state(scheduler.status)
+      state: Definition.status_to_state(scheduler.status)
     }
   end
-
-  defp status_to_state(:STATUS_ACTIVE), do: :ACTIVE
-  defp status_to_state(:STATUS_INACTIVE), do: :PAUSED
-  defp status_to_state(_), do: :UNCHANGED
-
-  defp format_branch_as_reference("refs/tags/" <> _ = tag), do: tag
-  defp format_branch_as_reference("refs/pull/" <> _ = pr), do: pr
-
-  defp format_branch_as_reference(branch_name) when is_binary(branch_name) and branch_name != "",
-    do: "refs/heads/#{branch_name}"
-
-  defp format_branch_as_reference(_), do: "refs/heads/master"
 end
