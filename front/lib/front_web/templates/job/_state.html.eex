@@ -25,12 +25,14 @@
             </div>
         <% end %>
 
-        <div class="flex items-center ph2">
-            <a href="<%= job_path(@conn, :plain_logs, @job.id) %>" class="link gray hover-dark-gray flex items-center" target="_blank">
-                <img src="<%= assets_path() %>/images/icn-arrowtopright-15.svg" width="16px" height="16px" alt="arrow pointing top-right" class="db ml1 mr2">
-                Raw
-            </a>
-        </div>
+        <%= if logs_available?(@job) do %>
+          <div class="flex items-center ph2">
+              <a href="<%= job_path(@conn, :plain_logs, @job.id) %>" class="link gray hover-dark-gray flex items-center" target="_blank">
+                  <img src="<%= assets_path() %>/images/icn-arrowtopright-15.svg" width="16px" height="16px" alt="arrow pointing top-right" class="db ml1 mr2">
+                  Raw
+              </a>
+          </div>
+        <% end %>
 
         <%= if @conn.assigns.authorization == :member do %>
           <div class="flex items-center ph2">

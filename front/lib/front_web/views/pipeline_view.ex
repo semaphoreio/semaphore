@@ -691,6 +691,20 @@ defmodule FrontWeb.PipelineView do
     end
   end
 
+  def job_timer_placeholder?(job) do
+    job.state == :FINISHED && is_nil(job.started_at)
+  end
+
+  def job_timer_label(job) do
+    if job_timer_placeholder?(job) do
+      "--:--"
+    else
+      job
+      |> job_total_time()
+      |> Front.DurationFormatter.format()
+    end
+  end
+
   def job_data(job, conn) do
     if conn.assigns.organization_id in [] || Application.get_env(:front, :environment) == :dev do
       [action: "triggerJobModal", id: job.id]
