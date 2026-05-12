@@ -1,6 +1,7 @@
 defmodule PublicAPI.Plugs.AuditLoggerTest do
   use ExUnit.Case
-  use Plug.Test
+  import Plug.Test
+  import Plug.Conn
   import ExUnit.CaptureLog
   alias Support.Stubs.PermissionPatrol
 
