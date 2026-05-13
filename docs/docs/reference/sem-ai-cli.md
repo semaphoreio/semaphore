@@ -21,7 +21,7 @@ sem-ai provides full control over your Semaphore CI/CD from the terminal or from
 ### From source
 
 ```shell
-git clone https://github.com/semaphoreci/sem-ai.git
+git clone https://github.com/semaphoreio/sem-ai.git
 cd sem-ai
 make install
 ```
@@ -29,7 +29,7 @@ make install
 ### Using Go
 
 ```shell
-go install github.com/semaphoreci/sem-ai@latest
+go install github.com/semaphoreio/sem-ai@latest
 ```
 
 ## Setup {#setup}
