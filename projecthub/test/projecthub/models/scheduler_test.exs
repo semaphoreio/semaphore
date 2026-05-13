@@ -167,6 +167,5 @@ defmodule Projecthub.Models.SchedulerTest do
 
       assert scheduler.branch == "refs/pull/42/head"
     end
-
   end
 end
