@@ -1,8 +1,8 @@
 defmodule Scheduler.Actions.CronValidator do
   @moduledoc """
-  Shared cron-expression parsing used by Apply, Persist, and BulkUpsertAndPrune
-  action handlers. Wraps `Crontab.CronExpression.Parser.parse/1` via Wormhole so
-  raises are turned into `{:error, reason}` tuples rather than process exits.
+  Parses cron expressions. Wraps `Crontab.CronExpression.Parser.parse/1` via
+  Wormhole so raises are turned into `{:error, reason}` tuples rather than
+  process exits.
   """
 
   alias Crontab.CronExpression.Parser
