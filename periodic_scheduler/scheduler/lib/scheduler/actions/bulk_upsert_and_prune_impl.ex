@@ -31,9 +31,7 @@ defmodule Scheduler.Actions.BulkUpsertAndPruneImpl do
   @api_version "v1.2"
 
   def bulk_upsert_and_prune(params) do
-    with {:org, true} <- {:org, present?(params[:organization_id])},
-         {:project, true} <- {:project, present?(params[:project_id])},
-         {:requester, true} <- {:requester, present?(params[:requester_id])},
+    with :ok <- validate_presence(params),
          {:ok, project_name} <-
            FrontDBQueries.get_project_name(params.organization_id, params.project_id),
          periodics <- normalize_periodics(params[:periodics]),
@@ -45,14 +43,8 @@ defmodule Scheduler.Actions.BulkUpsertAndPruneImpl do
       {:ok,
        %{upserted: Enum.map(upserts, &to_response_map/1), deleted_ids: Enum.map(pruned, & &1.id)}}
     else
-      {:org, _} ->
-        ToTuple.error("Organization ID is empty", :INVALID_ARGUMENT)
-
-      {:project, _} ->
-        ToTuple.error("Project ID is empty", :INVALID_ARGUMENT)
-
-      {:requester, _} ->
-        ToTuple.error("Requester ID is empty", :INVALID_ARGUMENT)
+      {:error, {:missing, msg}} ->
+        ToTuple.error(msg, :INVALID_ARGUMENT)
 
       {:error, msg = "Project with ID" <> _rest} ->
         ToTuple.error(msg, :FAILED_PRECONDITION)
@@ -68,6 +60,22 @@ defmodule Scheduler.Actions.BulkUpsertAndPruneImpl do
 
       error ->
         ToTuple.error(error, :INVALID_ARGUMENT)
+    end
+  end
+
+  defp validate_presence(params) do
+    cond do
+      not present?(params[:organization_id]) ->
+        {:error, {:missing, "Organization ID is empty"}}
+
+      not present?(params[:project_id]) ->
+        {:error, {:missing, "Project ID is empty"}}
+
+      not present?(params[:requester_id]) ->
+        {:error, {:missing, "Requester ID is empty"}}
+
+      true ->
+        :ok
     end
   end
 
