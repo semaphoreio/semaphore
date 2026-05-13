@@ -15,7 +15,8 @@ defmodule Scheduler.GrpcServer.Test do
     RunNowRequest,
     LatestTriggersRequest,
     HistoryRequest,
-    PersistRequest
+    PersistRequest,
+    BulkUpsertAndPruneRequest
   }
 
   alias Scheduler.Periodics.Model.PeriodicsQueries
@@ -2330,4 +2331,36 @@ defmodule Scheduler.GrpcServer.Test do
 
   defp mock_repository_service_response(value),
     do: Application.put_env(:scheduler, :mock_repository_service_response, value)
+
+  # Regression: a BulkUpsertAndPruneRequest carrying state: :UNCHANGED (atom)
+  # used to crash `Proto.to_map/1` with a `FunctionClauseError` from
+  # `ScheduleState.key/1`, surfacing to projecthub as an opaque "Internal
+  # Server Error" with status 2. The server must atomize the integer wire
+  # form back to `:UNCHANGED` before reaching the handler.
+  test "gRPC bulk_upsert_and_prune() handles state: :UNCHANGED without crashing", ctx do
+    request =
+      BulkUpsertAndPruneRequest.new(
+        organization_id: ctx.ids.org_id,
+        project_id: ctx.ids.pr_id,
+        requester_id: ctx.ids.usr_id,
+        periodics: [
+          BulkUpsertAndPruneRequest.PeriodicDefinition.new(
+            id: "",
+            name: "regression-state-atom",
+            description: "",
+            recurring: true,
+            reference: "refs/heads/master",
+            at: "0 0 * * *",
+            pipeline_file: ".semaphore/cron.yml",
+            parameters: [],
+            state: :UNCHANGED
+          )
+        ]
+      )
+
+    {:ok, channel} = GRPC.Stub.connect("localhost:50050")
+    assert {:ok, response} = PeriodicService.Stub.bulk_upsert_and_prune(channel, request)
+    assert response.status.code == :OK
+    assert length(response.upserted) == 1
+  end
 end
