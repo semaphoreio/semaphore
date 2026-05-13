@@ -18,8 +18,8 @@ defmodule Scheduler.Actions.BulkUpsertAndPruneImpl do
   require Logger
   import Ecto.Query
 
-  alias Crontab.CronExpression.Parser
   alias Ecto.Multi
+  alias Scheduler.Actions.CronValidator
   alias Scheduler.DeleteRequests.Model.DeleteRequestsQueries
   alias Scheduler.FrontDB.Model.FrontDBQueries
   alias Scheduler.Periodics.Model.Periodics
@@ -31,11 +31,7 @@ defmodule Scheduler.Actions.BulkUpsertAndPruneImpl do
   @api_version "v1.2"
 
   def bulk_upsert_and_prune(params) do
-    log_request(params)
-
-    with {:org, true} <- {:org, present?(params[:organization_id])},
-         {:project, true} <- {:project, present?(params[:project_id])},
-         {:requester, true} <- {:requester, present?(params[:requester_id])},
+    with :ok <- validate_presence(params),
          {:ok, project_name} <-
            FrontDBQueries.get_project_name(params.organization_id, params.project_id),
          periodics <- normalize_periodics(params[:periodics]),
@@ -47,64 +43,30 @@ defmodule Scheduler.Actions.BulkUpsertAndPruneImpl do
       {:ok,
        %{upserted: Enum.map(upserts, &to_response_map/1), deleted_ids: Enum.map(pruned, & &1.id)}}
     else
-      {:org, _} ->
-        Logger.info("bulk_upsert_and_prune rejected: organization_id is empty")
-        ToTuple.error("Organization ID is empty", :INVALID_ARGUMENT)
-
-      {:project, _} ->
-        Logger.info("bulk_upsert_and_prune rejected: project_id is empty")
-        ToTuple.error("Project ID is empty", :INVALID_ARGUMENT)
-
-      {:requester, _} ->
-        Logger.info("bulk_upsert_and_prune rejected: requester_id is empty")
-        ToTuple.error("Requester ID is empty", :INVALID_ARGUMENT)
-
       {:error, msg = "Project with ID" <> _rest} ->
-        Logger.info(
-          "bulk_upsert_and_prune rejected: project_id=#{params[:project_id]} not found in front DB"
-        )
-
         ToTuple.error(msg, :FAILED_PRECONDITION)
 
       {:error, {:cron, name, msg}} ->
-        Logger.info(
-          "bulk_upsert_and_prune rejected: project_id=#{params[:project_id]} invalid cron " <>
-            "for periodic '#{name}': #{inspect(msg)}"
-        )
-
         ToTuple.error(format_cron_error(name, msg), :INVALID_ARGUMENT)
 
-      {:error, {:tx, op, value, _changes}} ->
-        Logger.info(
-          "bulk_upsert_and_prune rolled back: project_id=#{params[:project_id]} " <>
-            "failed_op=#{inspect(op)} value=#{inspect(value)}"
-        )
-
+      {:error, {:tx, _op, value, _changes}} ->
         ToTuple.error(format_tx_error(value), :INVALID_ARGUMENT)
 
       {:error, msg} when is_binary(msg) ->
-        Logger.info(
-          "bulk_upsert_and_prune rejected: project_id=#{params[:project_id]} reason=#{msg}"
-        )
-
         ToTuple.error(msg, :INVALID_ARGUMENT)
 
       error ->
-        Logger.info(
-          "bulk_upsert_and_prune rejected: project_id=#{params[:project_id]} " <>
-            "unexpected=#{inspect(error)}"
-        )
-
         ToTuple.error(error, :INVALID_ARGUMENT)
     end
   end
 
-  defp log_request(params) do
-    Logger.info(
-      "bulk_upsert_and_prune received: project_id=#{params[:project_id]} " <>
-        "organization_id=#{params[:organization_id]} requester_id=#{params[:requester_id]} " <>
-        "periodics=#{length(normalize_periodics(params[:periodics]))}"
-    )
+  defp validate_presence(params) do
+    cond do
+      not present?(params[:organization_id]) -> {:error, "Organization ID is empty"}
+      not present?(params[:project_id]) -> {:error, "Project ID is empty"}
+      not present?(params[:requester_id]) -> {:error, "Requester ID is empty"}
+      true -> :ok
+    end
   end
 
   defp present?(v) when is_binary(v) and v != "", do: true
@@ -114,27 +76,14 @@ defmodule Scheduler.Actions.BulkUpsertAndPruneImpl do
   defp normalize_periodics(list) when is_list(list), do: list
 
   defp pre_validate(periodics) do
-    Enum.reduce_while(periodics, :ok, fn periodic, _acc ->
-      case validate_cron(periodic) do
-        :ok -> {:cont, :ok}
-        {:error, _} = err -> {:halt, err}
+    periodics
+    |> Enum.filter(&Map.get(&1, :recurring, false))
+    |> Enum.find_value(:ok, fn periodic ->
+      case CronValidator.parse(Map.get(periodic, :at, "")) do
+        {:ok, _} -> nil
+        {:error, msg} -> {:error, {:cron, Map.get(periodic, :name, ""), msg}}
       end
     end)
-  end
-
-  defp validate_cron(periodic) do
-    if Map.get(periodic, :recurring, false) do
-      parse_cron(Map.get(periodic, :at, ""), Map.get(periodic, :name, ""))
-    else
-      :ok
-    end
-  end
-
-  defp parse_cron(expression, name) do
-    case Wormhole.capture(Parser, :parse, [expression], skip_log: true, ok_tuple: true) do
-      {:ok, _} -> :ok
-      {:error, msg} -> {:error, {:cron, name, msg}}
-    end
   end
 
   defp reconcile(params, project_name, periodics) do
@@ -144,9 +93,8 @@ defmodule Scheduler.Actions.BulkUpsertAndPruneImpl do
       |> Enum.reject(&(&1 in [nil, ""]))
 
     prune_query =
-      from(p in Periodics,
-        where: p.project_id == ^params.project_id and p.id not in ^input_ids
-      )
+      Periodics
+      |> where([p], p.project_id == ^params.project_id and p.id not in ^input_ids)
 
     multi =
       Multi.new()
@@ -158,9 +106,8 @@ defmodule Scheduler.Actions.BulkUpsertAndPruneImpl do
         ids = Enum.map(targets, & &1.id)
 
         {n, _} =
-          from(p in Periodics,
-            where: p.project_id == ^params.project_id and p.id in ^ids
-          )
+          Periodics
+          |> where([p], p.project_id == ^params.project_id and p.id in ^ids)
           |> Repo.delete_all()
 
         {:ok, n}
