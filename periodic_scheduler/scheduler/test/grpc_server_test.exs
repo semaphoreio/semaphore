@@ -95,7 +95,9 @@ defmodule Scheduler.GrpcServer.Test do
              description: nil,
              required: true,
              options: ["production", "staging"],
-             default_value: "staging"
+             default_value: "staging",
+             regex_pattern: nil,
+             validate_input_format: false
            }
 
     assert jobs = QuantumScheduler.jobs()
@@ -140,7 +142,9 @@ defmodule Scheduler.GrpcServer.Test do
              description: nil,
              required: true,
              options: ["production", "staging"],
-             default_value: "staging"
+             default_value: "staging",
+             regex_pattern: nil,
+             validate_input_format: false
            }
 
     assert nil == id |> String.to_atom() |> QuantumScheduler.find_job()
@@ -690,7 +694,9 @@ defmodule Scheduler.GrpcServer.Test do
              description: nil,
              required: true,
              options: ["production", "staging"],
-             default_value: "staging"
+             default_value: "staging",
+             regex_pattern: nil,
+             validate_input_format: false
            }
 
     assert jobs = QuantumScheduler.jobs()
@@ -732,7 +738,9 @@ defmodule Scheduler.GrpcServer.Test do
              description: nil,
              required: true,
              options: ["production", "staging"],
-             default_value: "staging"
+             default_value: "staging",
+             regex_pattern: nil,
+             validate_input_format: false
            }
 
     assert nil == periodic.id |> String.to_atom() |> QuantumScheduler.find_job()
@@ -771,7 +779,9 @@ defmodule Scheduler.GrpcServer.Test do
              description: nil,
              required: true,
              options: ["production", "staging"],
-             default_value: "staging"
+             default_value: "staging",
+             regex_pattern: nil,
+             validate_input_format: false
            }
 
     assert nil == periodic.id |> String.to_atom() |> QuantumScheduler.find_job()
