@@ -259,6 +259,29 @@ defmodule Projecthub.Models.PeriodicTaskTest do
       assert {:ok, _} = PeriodicTask.update_all(ctx.project, [periodic_task(id: "1")], "requester_id")
     end
 
+    test "task status maps to PeriodicDefinition.state on the wire", ctx do
+      FunRegistry.set!(PeriodicService, :bulk_upsert_and_prune, fn req, _stream ->
+        [active, paused, unspecified] = req.periodics
+        assert active.state == :ACTIVE
+        assert paused.state == :PAUSED
+        assert unspecified.state == :UNCHANGED
+
+        API.BulkUpsertAndPruneResponse.new(
+          status: Status.new(),
+          upserted: Enum.map(req.periodics, &API.Periodic.new(id: &1.id)),
+          deleted_ids: []
+        )
+      end)
+
+      tasks = [
+        periodic_task(id: "1", status: :STATUS_ACTIVE),
+        periodic_task(id: "2", status: :STATUS_INACTIVE),
+        periodic_task(id: "3", status: :STATUS_UNSPECIFIED)
+      ]
+
+      assert {:ok, _} = PeriodicTask.update_all(ctx.project, tasks, "requester_id")
+    end
+
     test "an empty desired set deletes all tasks", ctx do
       FunRegistry.set!(PeriodicService, :bulk_upsert_and_prune, fn req, _stream ->
         assert req.periodics == []

@@ -77,7 +77,8 @@ defmodule Projecthub.Models.PeriodicTask.GRPC do
       reference: Map.get(definition, :reference) || "",
       at: Map.get(definition, :at) || "",
       pipeline_file: Map.get(definition, :pipeline_file) || "",
-      parameters: Enum.map(Map.get(definition, :parameters) || [], &build_parameter/1)
+      parameters: Enum.map(Map.get(definition, :parameters) || [], &build_parameter/1),
+      state: Map.get(definition, :state, :UNCHANGED)
     )
   end
 
@@ -117,10 +118,17 @@ defmodule Projecthub.Models.PeriodicTask.GRPC do
   defp stub_func(%API.DeleteRequest{}), do: &Stub.delete/3
   defp stub_func(%API.BulkUpsertAndPruneRequest{}), do: &Stub.bulk_upsert_and_prune/3
 
-  defp parse_response(%{code: :OK}, _request, %API.ListResponse{} = response), do: {:ok, response.periodics}
-  defp parse_response(%{code: :OK}, _request, %API.ApplyResponse{} = response), do: {:ok, response.id}
-  defp parse_response(%{code: :OK}, _request, %API.PersistResponse{} = response), do: {:ok, response.periodic.id}
-  defp parse_response(%{code: :OK}, %API.DeleteRequest{} = request, _response), do: {:ok, request.id}
+  defp parse_response(%{code: :OK}, _request, %API.ListResponse{} = response),
+    do: {:ok, response.periodics}
+
+  defp parse_response(%{code: :OK}, _request, %API.ApplyResponse{} = response),
+    do: {:ok, response.id}
+
+  defp parse_response(%{code: :OK}, _request, %API.PersistResponse{} = response),
+    do: {:ok, response.periodic.id}
+
+  defp parse_response(%{code: :OK}, %API.DeleteRequest{} = request, _response),
+    do: {:ok, request.id}
 
   defp parse_response(%{code: :OK}, _request, %API.BulkUpsertAndPruneResponse{} = response),
     do: {:ok, %{upserted: Enum.map(response.upserted, & &1.id), deleted: response.deleted_ids}}
