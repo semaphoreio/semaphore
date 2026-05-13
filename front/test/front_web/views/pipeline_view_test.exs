@@ -382,4 +382,42 @@ defmodule FrontWeb.PipelineViewTest do
       assert PipelineView.pipeline_rebuildable?(pipeline) == false
     end
   end
+
+  describe ".job_timer_placeholder?/1" do
+    test "returns true for a finished pipeline job that never started" do
+      job = %{
+        state: :FINISHED,
+        started_at: nil,
+        finished_at: 1_715_000_000
+      }
+
+      assert PipelineView.job_timer_placeholder?(job)
+      assert PipelineView.job_timer_label(job) == "--:--"
+    end
+
+    test "returns true for an after-pipeline job that is done but has no state key" do
+      job = %{
+        id: "431255a4-140c-4542-97d6-adda565d1516",
+        name: "Generate workflow markdown report",
+        done?: true,
+        failed?: true,
+        started_at: nil,
+        done_at: 1_773_846_018
+      }
+
+      assert PipelineView.job_timer_placeholder?(job)
+      assert PipelineView.job_timer_label(job) == "--:--"
+    end
+
+    test "returns false and formats duration when execution actually started" do
+      job = %{
+        state: :FINISHED,
+        started_at: %{seconds: 1_714_999_900},
+        finished_at: %{seconds: 1_715_000_000}
+      }
+
+      refute PipelineView.job_timer_placeholder?(job)
+      assert PipelineView.job_timer_label(job) == "01:40"
+    end
+  end
 end
