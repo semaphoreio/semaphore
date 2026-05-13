@@ -148,9 +148,28 @@ defmodule Scheduler.Actions.BulkUpsertAndPruneImpl do
         where: p.project_id == ^params.project_id and p.id not in ^input_ids
       )
 
+    # Order matters: prune the obsolete periodics BEFORE running any upserts.
+    # Otherwise, a new periodic that reuses the name of one we're about to
+    # prune would hit the (project_id, name) unique constraint during insert
+    # and fail. Everything still runs inside one transaction so a later
+    # upsert failure rolls the prune back too — no cross-service data loss.
     multi =
       Multi.new()
       |> Multi.run(:prune_targets, fn _repo, _ -> {:ok, Repo.all(prune_query)} end)
+      |> Multi.run(:audit_log, fn _repo, %{prune_targets: targets} ->
+        insert_audit_rows(targets, params.requester_id)
+      end)
+      |> Multi.run(:prune, fn _repo, %{prune_targets: targets} ->
+        ids = Enum.map(targets, & &1.id)
+
+        {n, _} =
+          from(p in Periodics,
+            where: p.project_id == ^params.project_id and p.id in ^ids
+          )
+          |> Repo.delete_all()
+
+        {:ok, n}
+      end)
 
     multi =
       periodics
@@ -159,17 +178,6 @@ defmodule Scheduler.Actions.BulkUpsertAndPruneImpl do
         Multi.run(m, {:upsert, idx}, fn _repo, _ ->
           upsert_one(definition, params, project_name)
         end)
-      end)
-
-    multi =
-      multi
-      |> Multi.run(:audit_log, fn _repo, %{prune_targets: targets} ->
-        insert_audit_rows(targets, params.requester_id)
-      end)
-      |> Multi.run(:prune, fn _repo, %{prune_targets: targets} ->
-        ids = Enum.map(targets, & &1.id)
-        {n, _} = from(p in Periodics, where: p.id in ^ids) |> Repo.delete_all()
-        {:ok, n}
       end)
 
     case Repo.transaction(multi) do
