@@ -42,6 +42,7 @@ defmodule Audit.MixProject do
       {:poison, "~> 3.1"},
       {:watchman, github: "renderedtext/ex-watchman"},
       {:jason, "~> 1.1"},
+      {:decimal, "~> 3.0", override: true},
       {:sentry, "~> 8.0"},
       {:hackney, "~> 1.8"},
       {:sentry_grpc, github: "renderedtext/sentry_grpc"},
