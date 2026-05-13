@@ -156,9 +156,7 @@ defmodule Projecthub.SchedulersTest do
       FunRegistry.set!(PeriodicService, :list, list_response)
 
       FunRegistry.set!(PeriodicService, :delete, fn _req, _stream ->
-        InternalApi.PeriodicScheduler.DeleteResponse.new(
-          status: Status.new(code: :INVALID_ARGUMENT, message: "boom")
-        )
+        InternalApi.PeriodicScheduler.DeleteResponse.new(status: Status.new(code: :INVALID_ARGUMENT, message: "boom"))
       end)
 
       assert {:ok, nil} = Schedulers.delete_all(project, "requester_id")
