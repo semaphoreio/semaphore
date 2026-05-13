@@ -148,11 +148,6 @@ defmodule Scheduler.Actions.BulkUpsertAndPruneImpl do
         where: p.project_id == ^params.project_id and p.id not in ^input_ids
       )
 
-    # Order matters: prune the obsolete periodics BEFORE running any upserts.
-    # Otherwise, a new periodic that reuses the name of one we're about to
-    # prune would hit the (project_id, name) unique constraint during insert
-    # and fail. Everything still runs inside one transaction so a later
-    # upsert failure rolls the prune back too — no cross-service data loss.
     multi =
       Multi.new()
       |> Multi.run(:prune_targets, fn _repo, _ -> {:ok, Repo.all(prune_query)} end)
