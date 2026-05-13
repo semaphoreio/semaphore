@@ -20,7 +20,8 @@ defmodule Scheduler.Grpc.Server do
     GetProjectIdResponse,
     HistoryResponse,
     PersistResponse,
-    ListKeysetResponse
+    ListKeysetResponse,
+    BulkUpsertAndPruneResponse
   }
 
   alias Google.Protobuf.Timestamp
@@ -272,6 +273,52 @@ defmodule Scheduler.Grpc.Server do
       end
     end)
   end
+
+  # BulkUpsertAndPrune
+
+  def bulk_upsert_and_prune(request, _stream) do
+    Metrics.benchmark("PeriodicSch.bulk_upsert_and_prune", __MODULE__, fn ->
+      request = normalize_periodic_states(request)
+
+      with {:ok, params} <- Proto.to_map(request),
+           {:ok, result} <- Actions.bulk_upsert_and_prune(params) do
+        result
+        |> Map.merge(%{status: %{code: :OK}})
+        |> Proto.deep_new!(
+          BulkUpsertAndPruneResponse,
+          transformations: %{Timestamp => {__MODULE__, :date_time_to_timestamps}}
+        )
+      else
+        {:error, {code, message}} ->
+          %{status: %{code: code, message: to_str(message)}}
+          |> Proto.deep_new!(BulkUpsertAndPruneResponse)
+      end
+    end)
+  end
+
+  # Proto.to_map/1 walks nested protobuf structs and calls
+  # `ScheduleState.key(integer)` on enum fields to atomize them. After decode
+  # the state field is already an atom (`:UNCHANGED`/`:ACTIVE`/`:PAUSED`), and
+  # `key/1` only has integer clauses, so the conversion crashes with
+  # FunctionClauseError. Pre-convert each PeriodicDefinition.state to its
+  # integer wire value (mirroring the same trick `persist/2` does for its
+  # top-level state field) so Proto.to_map round-trips it back to an atom.
+  defp normalize_periodic_states(%{periodics: periodics} = request) when is_list(periodics) do
+    %{request | periodics: Enum.map(periodics, &normalize_definition_state/1)}
+  end
+
+  defp normalize_periodic_states(request), do: request
+
+  defp normalize_definition_state(%{state: state} = definition) when is_atom(state) do
+    %{
+      definition
+      | state: InternalApi.PeriodicScheduler.PersistRequest.ScheduleState.value(state)
+    }
+  rescue
+    FunctionClauseError -> %{definition | state: 0}
+  end
+
+  defp normalize_definition_state(definition), do: definition
 
   # Version
 
