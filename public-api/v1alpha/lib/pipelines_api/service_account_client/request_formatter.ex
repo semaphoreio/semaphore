@@ -1,0 +1,126 @@
+defmodule PipelinesAPI.ServiceAccountClient.RequestFormatter do
+  @moduledoc false
+  alias Plug.Conn
+  alias PipelinesAPI.Util.ToTuple
+
+  alias InternalApi.ServiceAccount.{
+    CreateRequest,
+    ListRequest,
+    DescribeRequest,
+    UpdateRequest,
+    DestroyRequest,
+    DeactivateRequest,
+    ReactivateRequest,
+    RegenerateTokenRequest
+  }
+
+  def form_create_request(params, conn) when is_map(params) do
+    org_id = Conn.get_req_header(conn, "x-semaphore-org-id") |> Enum.at(0, "")
+    creator_id = Conn.get_req_header(conn, "x-semaphore-user-id") |> Enum.at(0, "")
+    name = Map.get(params, "name", "")
+    description = Map.get(params, "description", "")
+
+    if name == "" do
+      ToTuple.user_error("Name must be provided")
+    else
+      CreateRequest.new(
+        org_id: org_id,
+        name: name,
+        description: description,
+        creator_id: creator_id
+      )
+      |> ToTuple.ok()
+    end
+  catch
+    error -> error
+  end
+
+  def form_create_request(_, _), do: ToTuple.internal_error("Internal error")
+
+  def form_list_request(params, conn) when is_map(params) do
+    org_id = Conn.get_req_header(conn, "x-semaphore-org-id") |> Enum.at(0, "")
+
+    ListRequest.new(
+      org_id: org_id,
+      page_size: params |> Map.get("page_size", 100) |> to_int("page_size"),
+      page_token: params |> Map.get("page_token", "")
+    )
+    |> ToTuple.ok()
+  catch
+    error -> error
+  end
+
+  def form_list_request(_, _), do: ToTuple.internal_error("Internal error")
+
+  def form_describe_request(params, _conn) when is_map(params) do
+    DescribeRequest.new(service_account_id: Map.get(params, "id", ""))
+    |> ToTuple.ok()
+  catch
+    error -> error
+  end
+
+  def form_describe_request(_, _), do: ToTuple.internal_error("Internal error")
+
+  def form_update_request(params, _conn) when is_map(params) do
+    UpdateRequest.new(
+      service_account_id: Map.get(params, "id", ""),
+      name: Map.get(params, "name", ""),
+      description: Map.get(params, "description", "")
+    )
+    |> ToTuple.ok()
+  catch
+    error -> error
+  end
+
+  def form_update_request(_, _), do: ToTuple.internal_error("Internal error")
+
+  def form_destroy_request(params, _conn) when is_map(params) do
+    DestroyRequest.new(service_account_id: Map.get(params, "id", ""))
+    |> ToTuple.ok()
+  catch
+    error -> error
+  end
+
+  def form_destroy_request(_, _), do: ToTuple.internal_error("Internal error")
+
+  def form_deactivate_request(params, _conn) when is_map(params) do
+    DeactivateRequest.new(service_account_id: Map.get(params, "id", ""))
+    |> ToTuple.ok()
+  catch
+    error -> error
+  end
+
+  def form_deactivate_request(_, _), do: ToTuple.internal_error("Internal error")
+
+  def form_reactivate_request(params, _conn) when is_map(params) do
+    ReactivateRequest.new(service_account_id: Map.get(params, "id", ""))
+    |> ToTuple.ok()
+  catch
+    error -> error
+  end
+
+  def form_reactivate_request(_, _), do: ToTuple.internal_error("Internal error")
+
+  def form_regenerate_token_request(params, _conn) when is_map(params) do
+    RegenerateTokenRequest.new(service_account_id: Map.get(params, "id", ""))
+    |> ToTuple.ok()
+  catch
+    error -> error
+  end
+
+  def form_regenerate_token_request(_, _), do: ToTuple.internal_error("Internal error")
+
+  defp to_int(val, _field) when is_integer(val), do: val
+
+  defp to_int(val, field) do
+    case Integer.parse(val) do
+      {n, ""} ->
+        n
+
+      _ ->
+        "Invalid value of '#{field}' param: #{inspect(val)} - needs to be integer."
+        |> ToTuple.user_error()
+        |> throw()
+    end
+  end
+end
