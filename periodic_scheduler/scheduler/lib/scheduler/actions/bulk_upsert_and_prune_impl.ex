@@ -43,9 +43,6 @@ defmodule Scheduler.Actions.BulkUpsertAndPruneImpl do
       {:ok,
        %{upserted: Enum.map(upserts, &to_response_map/1), deleted_ids: Enum.map(pruned, & &1.id)}}
     else
-      {:error, {:missing, msg}} ->
-        ToTuple.error(msg, :INVALID_ARGUMENT)
-
       {:error, msg = "Project with ID" <> _rest} ->
         ToTuple.error(msg, :FAILED_PRECONDITION)
 
@@ -65,17 +62,10 @@ defmodule Scheduler.Actions.BulkUpsertAndPruneImpl do
 
   defp validate_presence(params) do
     cond do
-      not present?(params[:organization_id]) ->
-        {:error, {:missing, "Organization ID is empty"}}
-
-      not present?(params[:project_id]) ->
-        {:error, {:missing, "Project ID is empty"}}
-
-      not present?(params[:requester_id]) ->
-        {:error, {:missing, "Requester ID is empty"}}
-
-      true ->
-        :ok
+      not present?(params[:organization_id]) -> {:error, "Organization ID is empty"}
+      not present?(params[:project_id]) -> {:error, "Project ID is empty"}
+      not present?(params[:requester_id]) -> {:error, "Requester ID is empty"}
+      true -> :ok
     end
   end
 
