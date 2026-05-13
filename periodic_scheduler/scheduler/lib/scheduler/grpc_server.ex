@@ -20,7 +20,8 @@ defmodule Scheduler.Grpc.Server do
     GetProjectIdResponse,
     HistoryResponse,
     PersistResponse,
-    ListKeysetResponse
+    ListKeysetResponse,
+    BulkUpsertAndPruneResponse
   }
 
   alias Google.Protobuf.Timestamp
@@ -271,6 +272,37 @@ defmodule Scheduler.Grpc.Server do
           |> Proto.deep_new!(GetProjectIdResponse)
       end
     end)
+  end
+
+  # BulkUpsertAndPrune
+
+  def bulk_upsert_and_prune(request, _stream) do
+    Metrics.benchmark("PeriodicSch.bulk_upsert_and_prune", __MODULE__, fn ->
+      request = %{request | periodics: Enum.map(request.periodics, &normalize_state/1)}
+
+      with {:ok, params} <- Proto.to_map(request),
+           {:ok, result} <- Actions.bulk_upsert_and_prune(params) do
+        result
+        |> Map.merge(%{status: %{code: :OK}})
+        |> Proto.deep_new!(
+          BulkUpsertAndPruneResponse,
+          transformations: %{Timestamp => {__MODULE__, :date_time_to_timestamps}}
+        )
+      else
+        {:error, {code, message}} ->
+          %{status: %{code: code, message: to_str(message)}}
+          |> Proto.deep_new!(BulkUpsertAndPruneResponse)
+      end
+    end)
+  end
+
+  # Mirrors the persist/2 trick: each PeriodicDefinition.state arrives as an
+  # atom after wire decode, but Util.Proto.to_map/1 calls ScheduleState.key/1
+  # (integer clauses only) when walking the struct, so an atom there raises
+  # FunctionClauseError and Proto.to_map returns {:error, ...}. Pre-convert
+  # atom -> integer per periodic so to_map can round-trip it back to an atom.
+  defp normalize_state(periodic = %{state: state}) do
+    %{periodic | state: InternalApi.PeriodicScheduler.PersistRequest.ScheduleState.value(state)}
   end
 
   # Version
