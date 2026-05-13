@@ -23,6 +23,38 @@ defmodule Router.Projects.CreateTest do
       check_response(created_project)
     end
 
+    test "create a project with sem-approve forked PR flags", ctx do
+      project =
+        construct_project()
+        |> put_in(
+          [:spec, :repository, :forked_pull_requests, :allow_sem_approve_include_secrets],
+          true
+        )
+        |> put_in(
+          [:spec, :repository, :forked_pull_requests, :allow_sem_approve_enable_cache],
+          true
+        )
+
+      {:ok, response} = create_project(ctx, project)
+      created_project = Jason.decode!(response.body)
+
+      assert 200 == response.status_code
+
+      assert get_in(created_project, [
+               "spec",
+               "repository",
+               "forked_pull_requests",
+               "allow_sem_approve_include_secrets"
+             ]) == true
+
+      assert get_in(created_project, [
+               "spec",
+               "repository",
+               "forked_pull_requests",
+               "allow_sem_approve_enable_cache"
+             ]) == true
+    end
+
     test "without specified name in spec => fail", ctx do
       default_project = construct_project()
 
