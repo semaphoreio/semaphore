@@ -79,6 +79,11 @@ defmodule Projecthub.Models.PeriodicTask do
   def update_all(%Project{} = project, new_tasks, requester_id) do
     definitions = Enum.map(new_tasks, &to_periodic_definition/1)
 
+    Logger.info(
+      "PeriodicTask.update_all dispatching to bulk_upsert_and_prune: " <>
+        "project_id=#{project.id} requester_id=#{requester_id} tasks=#{length(definitions)}"
+    )
+
     case GRPC.bulk_upsert_and_prune(
            project.id,
            project.organization_id,
@@ -86,7 +91,11 @@ defmodule Projecthub.Models.PeriodicTask do
            definitions
          ) do
       {:ok, %{upserted: upserted, deleted: deleted}} ->
-        Logger.debug("Successfully updated all tasks for project #{project.id}")
+        Logger.info(
+          "PeriodicTask.update_all succeeded: project_id=#{project.id} " <>
+            "upserted=#{length(upserted)} deleted=#{length(deleted)}"
+        )
+
         {:ok, upserted: upserted, deleted: deleted}
 
       {:error, reason} ->
@@ -96,9 +105,12 @@ defmodule Projecthub.Models.PeriodicTask do
   end
 
   def delete_all(%Project{} = project, requester_id) do
+    Logger.info("PeriodicTask.delete_all dispatching: project_id=#{project.id} requester_id=#{requester_id}")
+
     case GRPC.bulk_upsert_and_prune(project.id, project.organization_id, requester_id, []) do
       {:ok, %{deleted: deleted}} ->
-        Logger.debug("Successfully deleted all tasks for project #{project.id}")
+        Logger.info("PeriodicTask.delete_all succeeded: project_id=#{project.id} deleted=#{length(deleted)}")
+
         {:ok, deleted}
 
       {:error, reason} ->

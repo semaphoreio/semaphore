@@ -31,6 +31,8 @@ defmodule Scheduler.Actions.BulkUpsertAndPruneImpl do
   @api_version "v1.2"
 
   def bulk_upsert_and_prune(params) do
+    log_request(params)
+
     with {:org, true} <- {:org, present?(params[:organization_id])},
          {:project, true} <- {:project, present?(params[:project_id])},
          {:requester, true} <- {:requester, present?(params[:requester_id])},
@@ -46,29 +48,63 @@ defmodule Scheduler.Actions.BulkUpsertAndPruneImpl do
        %{upserted: Enum.map(upserts, &to_response_map/1), deleted_ids: Enum.map(pruned, & &1.id)}}
     else
       {:org, _} ->
+        Logger.info("bulk_upsert_and_prune rejected: organization_id is empty")
         ToTuple.error("Organization ID is empty", :INVALID_ARGUMENT)
 
       {:project, _} ->
+        Logger.info("bulk_upsert_and_prune rejected: project_id is empty")
         ToTuple.error("Project ID is empty", :INVALID_ARGUMENT)
 
       {:requester, _} ->
+        Logger.info("bulk_upsert_and_prune rejected: requester_id is empty")
         ToTuple.error("Requester ID is empty", :INVALID_ARGUMENT)
 
       {:error, msg = "Project with ID" <> _rest} ->
+        Logger.info(
+          "bulk_upsert_and_prune rejected: project_id=#{params[:project_id]} not found in front DB"
+        )
+
         ToTuple.error(msg, :FAILED_PRECONDITION)
 
       {:error, {:cron, name, msg}} ->
+        Logger.info(
+          "bulk_upsert_and_prune rejected: project_id=#{params[:project_id]} invalid cron " <>
+            "for periodic '#{name}': #{inspect(msg)}"
+        )
+
         ToTuple.error(format_cron_error(name, msg), :INVALID_ARGUMENT)
 
-      {:error, {:tx, _op, value, _changes}} ->
+      {:error, {:tx, op, value, _changes}} ->
+        Logger.info(
+          "bulk_upsert_and_prune rolled back: project_id=#{params[:project_id]} " <>
+            "failed_op=#{inspect(op)} value=#{inspect(value)}"
+        )
+
         ToTuple.error(format_tx_error(value), :INVALID_ARGUMENT)
 
       {:error, msg} when is_binary(msg) ->
+        Logger.info(
+          "bulk_upsert_and_prune rejected: project_id=#{params[:project_id]} reason=#{msg}"
+        )
+
         ToTuple.error(msg, :INVALID_ARGUMENT)
 
       error ->
+        Logger.info(
+          "bulk_upsert_and_prune rejected: project_id=#{params[:project_id]} " <>
+            "unexpected=#{inspect(error)}"
+        )
+
         ToTuple.error(error, :INVALID_ARGUMENT)
     end
+  end
+
+  defp log_request(params) do
+    Logger.info(
+      "bulk_upsert_and_prune received: project_id=#{params[:project_id]} " <>
+        "organization_id=#{params[:organization_id]} requester_id=#{params[:requester_id]} " <>
+        "periodics=#{length(normalize_periodics(params[:periodics]))}"
+    )
   end
 
   defp present?(v) when is_binary(v) and v != "", do: true
