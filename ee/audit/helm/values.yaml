@@ -7,6 +7,13 @@ logging: info
 api:
   replicas: 1
   dbPoolSize: 2
+  retention:
+    consumerEnabled: true
+    gracePeriodDays: 15
+    applierBatchSize: 1000
+    deleterEnabled: true
+    deleterSleepPeriodSec: 30
+    deleterBatchSize: 100
   resources:
     limits:
       cpu: "0.2"
