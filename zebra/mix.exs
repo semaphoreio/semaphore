@@ -41,6 +41,7 @@ defmodule Zebra.Mixfile do
       {:cowboy, "~> 2.9.0", override: true},
       {:cowlib, "~> 2.11.0", override: true},
       {:telemetry, "~> 0.4", override: true},
+      {:hackney, "~> 1.24", override: true},
       {:quantum, "~> 2.3"},
       {:httpoison, "~> 1.0"},
       {:ecto_sql, "~> 3.7.1"},
