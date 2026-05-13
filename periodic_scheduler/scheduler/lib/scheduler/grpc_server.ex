@@ -301,7 +301,7 @@ defmodule Scheduler.Grpc.Server do
   # (integer clauses only) when walking the struct, so an atom there raises
   # FunctionClauseError and Proto.to_map returns {:error, ...}. Pre-convert
   # atom -> integer per periodic so to_map can round-trip it back to an atom.
-  defp normalize_state(%{state: state} = periodic) do
+  defp normalize_state(periodic = %{state: state}) do
     %{periodic | state: InternalApi.PeriodicScheduler.PersistRequest.ScheduleState.value(state)}
   end
 

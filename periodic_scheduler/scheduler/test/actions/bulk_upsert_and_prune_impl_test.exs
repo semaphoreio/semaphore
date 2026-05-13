@@ -109,6 +109,28 @@ defmodule Test.Actions.BulkUpsertAndPruneImpl.Test do
       refute gone1.id |> String.to_atom() |> QuantumScheduler.find_job()
     end
 
+    test "new periodic can reuse the name of a pruned one (prune runs before upsert)", ctx do
+      {:ok, periodic: _old} =
+        Factory.setup_periodic(ctx,
+          organization_id: ctx.org_id,
+          project_id: ctx.pr_id,
+          requester_id: ctx.usr_id,
+          name: "rubocop"
+        )
+
+      params = base_params(ctx, [definition("rubocop", "0 0 * * *")])
+
+      assert {:ok, %{upserted: [upserted], deleted_ids: deleted}} =
+               BulkUpsertAndPruneImpl.bulk_upsert_and_prune(params)
+
+      assert length(deleted) == 1
+      assert upserted.name == "rubocop"
+
+      persisted = list_periodics_for(ctx.pr_id)
+      assert length(persisted) == 1
+      assert hd(persisted).name == "rubocop"
+    end
+
     test "an empty batch deletes every periodic on the project", ctx do
       {:ok, periodic: _} =
         Factory.setup_periodic(ctx,
