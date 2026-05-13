@@ -12,6 +12,11 @@ APP_NAME=plumber-public
 PROTOC_TAG=1.6.6-3.3.0-0.5.4
 API_VERSION=v1alpha
 
+# plug_cowboy 2.0.0 transitive vuln (GHSA-q8x4-x7mp-5vg2, fixed in 2.8.1).
+# Bumping requires updating grpc 0.3.1 -> 0.5+ and cowboy 2.5 -> 2.7+,
+# which is out of scope here. Revisit when the gRPC stack is modernized.
+CHECK_DEPS_IGNORES=hackney,plug_cowboy
+
 IN_DOCKER?="true"
 LOGHUB_API_URL?=127.0.0.1:50052
 LOGHUB2_API_URL?=127.0.0.1:50052
