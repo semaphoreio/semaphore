@@ -2332,11 +2332,6 @@ defmodule Scheduler.GrpcServer.Test do
   defp mock_repository_service_response(value),
     do: Application.put_env(:scheduler, :mock_repository_service_response, value)
 
-  # Regression: a BulkUpsertAndPruneRequest carrying state: :UNCHANGED (atom)
-  # used to crash `Proto.to_map/1` with a `FunctionClauseError` from
-  # `ScheduleState.key/1`, surfacing to projecthub as an opaque "Internal
-  # Server Error" with status 2. The server must atomize the integer wire
-  # form back to `:UNCHANGED` before reaching the handler.
   test "gRPC bulk_upsert_and_prune() handles state: :UNCHANGED without crashing", ctx do
     request =
       BulkUpsertAndPruneRequest.new(
