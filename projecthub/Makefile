@@ -28,7 +28,7 @@ CONTAINER_ENV_VARS= \
 	-e CI=$(CI) \
 	-e MIX_ENV=$(MIX_ENV)
 
-CHECK_DEPS_EXTRA_OPTS=-i decimal -w feature_provider,grpc_health_check,tentacat,util,watchman,fun_registry,sentry_grpc,traceman,cacheman,log_tee,spec,proto,sys2app,looper,job_matrix,definition_validator,gofer_client,open_api_spex,when,uuid,esaml,openid_connect,block
+CHECK_DEPS_EXTRA_OPTS=-i hackney,plug_cowboy,decimal -w feature_provider,grpc_health_check,tentacat,util,watchman,fun_registry,sentry_grpc,traceman,cacheman,log_tee,spec,proto,sys2app,looper,job_matrix,definition_validator,gofer_client,open_api_spex,when,uuid,esaml,openid_connect,block
 
 test.ex.setup: export MIX_ENV=test
 test.ex.setup: build
