@@ -487,6 +487,87 @@ spec:
 apiVersion: getambassador.io/v3alpha1
 kind: Mapping
 metadata:
+  name: plumber-public-service-accounts-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: "*"
+  prefix: /api/v1alpha/service_accounts
+  rewrite: "/service_accounts"
+  service: plumber-public.{{ .Release.Namespace }}:4004
+  timeout_ms: 5000
+  precedence: 100
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: plumber-public-members-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: "*"
+  prefix: /api/v1alpha/members
+  rewrite: "/members"
+  service: plumber-public.{{ .Release.Namespace }}:4004
+  timeout_ms: 5000
+  precedence: 100
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: plumber-public-roles-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: "*"
+  prefix: /api/v1alpha/roles
+  rewrite: "/roles"
+  service: plumber-public.{{ .Release.Namespace }}:4004
+  timeout_ms: 5000
+  precedence: 100
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: plumber-public-permissions-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: "*"
+  prefix: /api/v1alpha/permissions
+  rewrite: "/permissions"
+  service: plumber-public.{{ .Release.Namespace }}:4004
+  timeout_ms: 5000
+  precedence: 100
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: plumber-public-groups-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: "*"
+  prefix: /api/v1alpha/groups
+  rewrite: "/groups"
+  service: plumber-public.{{ .Release.Namespace }}:4004
+  timeout_ms: 5000
+  precedence: 100
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: plumber-public-project-members-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: "*"
+  prefix: "/api/v1alpha/projects/.+/members"
+  prefix_regex: true
+  regex_rewrite:
+    pattern: "/api/v1alpha/(.*)"
+    substitution: "/\\1"
+  service: plumber-public.{{ .Release.Namespace }}:4004
+  timeout_ms: 5000
+  precedence: 200
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
   name: projecthub-public-mapping
   namespace: {{ .Release.Namespace }}
 spec:
