@@ -1,4 +1,6 @@
 defmodule Projecthub.Schedulers do
+  alias Projecthub.Models.PeriodicTask.Definition
+  alias Projecthub.Models.PeriodicTask.GRPC, as: PeriodicSchedulerClient
   alias Projecthub.Models.Scheduler
 
   def update(project, schedulers, requester_id) do
@@ -10,55 +12,40 @@ defmodule Projecthub.Schedulers do
   end
 
   defp do_update(project, schedulers, requester_id) do
-    {:ok, existing_schedulers} = Scheduler.list(project)
+    definitions = Enum.map(schedulers, &to_periodic_definition/1)
 
-    {schedulers_to_delete, schedulers_to_update_or_create} = triage_for_update(schedulers, existing_schedulers)
-
-    with :ok <-
-           schedulers_to_delete
-           |> Enum.reduce_while(:ok, fn scheduler, _acc ->
-             case Scheduler.delete(scheduler, requester_id) do
-               {:ok, _} -> {:cont, :ok}
-               err -> {:halt, err}
-             end
-           end),
-         :ok <-
-           schedulers_to_update_or_create
-           |> Enum.reduce_while(:ok, fn scheduler, _acc ->
-             case Scheduler.apply(scheduler, project, requester_id) do
-               {:ok, _} -> {:cont, :ok}
-               err -> {:halt, err}
-             end
-           end) do
-      {:ok, nil}
-    else
-      err ->
-        err
+    case PeriodicSchedulerClient.bulk_upsert_and_prune(
+           project.id,
+           project.organization_id,
+           requester_id,
+           definitions
+         ) do
+      {:ok, _} -> {:ok, nil}
+      err -> err
     end
   end
 
   def delete_all(project, requester_id) do
     {:ok, existing_schedulers} = Scheduler.list(project)
 
-    existing_schedulers
-    |> Enum.each(fn scheduler ->
+    Enum.each(existing_schedulers, fn scheduler ->
       Scheduler.delete(scheduler, requester_id)
     end)
 
     {:ok, nil}
   end
 
-  # we apply changes to all schedulers, no matter if there
-  # is a change, should check if there is a change to update
-  defp triage_for_update(schedulers, existing_schedulers) do
-    schedulers_to_delete =
-      existing_schedulers
-      |> Enum.filter(fn existing_scheduler ->
-        !Enum.any?(schedulers, fn scheduler ->
-          scheduler.id == existing_scheduler.id
-        end)
-      end)
-
-    {schedulers_to_delete, schedulers}
+  defp to_periodic_definition(scheduler) do
+    %{
+      id: scheduler.id || "",
+      name: scheduler.name || "",
+      description: "",
+      recurring: true,
+      reference: Definition.format_branch_as_reference(scheduler.branch),
+      at: scheduler.at || "",
+      pipeline_file: scheduler.pipeline_file || "",
+      parameters: [],
+      state: Definition.status_to_state(scheduler.status)
+    }
   end
 end
