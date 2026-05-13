@@ -113,4 +113,124 @@ defmodule PipelinesAPI.RBACClient.RequestFormatter do
 
   def form_retract_role_request(_),
     do: ToTuple.user_error("Bad retract role request")
+
+  def form_retract_project_role_request(%{
+        user_id: user_id,
+        org_id: org_id,
+        project_id: project_id,
+        requester_id: requester_id
+      }) do
+    ToTuple.ok(
+      RBAC.RetractRoleRequest.new(
+        role_assignment:
+          RBAC.RoleAssignment.new(
+            subject: RBAC.Subject.new(subject_id: user_id),
+            org_id: org_id,
+            project_id: project_id
+          ),
+        requester_id: requester_id
+      )
+    )
+  end
+
+  def form_retract_project_role_request(_),
+    do: ToTuple.user_error("Bad retract project role request")
+
+  def form_list_org_members_request(%{org_id: org_id, page_no: page_no, page_size: page_size}) do
+    ToTuple.ok(
+      RBAC.ListMembersRequest.new(
+        org_id: org_id,
+        project_id: "",
+        member_name_contains: "",
+        member_has_role: "",
+        page: RBAC.ListMembersRequest.Page.new(page_no: page_no, page_size: page_size),
+        member_type: RBAC.SubjectType.value(:USER)
+      )
+    )
+  end
+
+  def form_list_org_members_request(%{org_id: org_id}) do
+    ToTuple.ok(
+      RBAC.ListMembersRequest.new(
+        org_id: org_id,
+        project_id: "",
+        member_name_contains: "",
+        member_has_role: "",
+        page: RBAC.ListMembersRequest.Page.new(page_no: 0, page_size: @total_page_size),
+        member_type: RBAC.SubjectType.value(:USER)
+      )
+    )
+  end
+
+  def form_list_org_members_request(_),
+    do: ToTuple.user_error("organization id is required")
+
+  def form_list_org_roles_request(%{org_id: org_id}) do
+    ToTuple.ok(
+      RBAC.ListRolesRequest.new(
+        org_id: org_id,
+        scope: RBAC.Scope.value(:SCOPE_ORG)
+      )
+    )
+  end
+
+  def form_list_org_roles_request(_),
+    do: ToTuple.user_error("organization id is required")
+
+  def form_describe_role_request(%{role_id: role_id, org_id: org_id}) do
+    ToTuple.ok(
+      RBAC.DescribeRoleRequest.new(
+        role_id: role_id,
+        org_id: org_id
+      )
+    )
+  end
+
+  def form_describe_role_request(_),
+    do: ToTuple.user_error("role_id and org_id are required")
+
+  def form_modify_role_request(%{role: role}) do
+    ToTuple.ok(RBAC.ModifyRoleRequest.new(role: role))
+  end
+
+  def form_modify_role_request(_),
+    do: ToTuple.user_error("role is required")
+
+  def form_destroy_role_request(%{role_id: role_id, org_id: org_id}) do
+    ToTuple.ok(RBAC.DestroyRoleRequest.new(role_id: role_id, org_id: org_id))
+  end
+
+  def form_destroy_role_request(_),
+    do: ToTuple.user_error("role_id and org_id are required")
+
+  def form_assign_role_request(%{
+        role_id: role_id,
+        org_id: org_id,
+        project_id: project_id,
+        subject_id: subject_id,
+        requester_id: requester_id
+      }) do
+    ToTuple.ok(
+      RBAC.AssignRoleRequest.new(
+        role_assignment:
+          RBAC.RoleAssignment.new(
+            role_id: role_id,
+            subject: RBAC.Subject.new(subject_id: subject_id),
+            org_id: org_id,
+            project_id: project_id || ""
+          ),
+        requester_id: requester_id
+      )
+    )
+  end
+
+  def form_assign_role_request(_),
+    do: ToTuple.user_error("role_id, org_id, subject_id, and requester_id are required")
+
+  def form_list_existing_permissions_request(%{scope: scope}) do
+    ToTuple.ok(RBAC.ListExistingPermissionsRequest.new(scope: scope))
+  end
+
+  def form_list_existing_permissions_request(_),
+    do: ToTuple.user_error("scope is required")
 end

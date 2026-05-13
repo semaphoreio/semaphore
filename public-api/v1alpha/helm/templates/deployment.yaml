@@ -57,6 +57,16 @@ spec:
                 configMapKeyRef:
                   name: {{ .Values.global.internalApi.configMapName }}
                   key: INTERNAL_API_URL_RBAC
+            - name: INTERNAL_API_URL_GROUPS
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.internalApi.configMapName }}
+                  key: INTERNAL_API_URL_GROUPS
+            - name: INTERNAL_API_URL_SERVICE_ACCOUNT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.internalApi.configMapName }}
+                  key: INTERNAL_API_URL_SERVICE_ACCOUNT
             - name: GOFER_GRPC_URL
               valueFrom:
                 configMapKeyRef:

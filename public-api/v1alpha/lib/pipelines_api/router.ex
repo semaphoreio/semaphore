@@ -51,6 +51,30 @@ defmodule PipelinesAPI.Router do
   alias PipelinesAPI.Insights.Performance, as: InsightsPerformance
   alias PipelinesAPI.Insights.Reliability, as: InsightsReliability
   alias PipelinesAPI.Insights.Frequency, as: InsightsFrequency
+  alias PipelinesAPI.Members.List, as: ListMembers
+  alias PipelinesAPI.Members.ListProject, as: ListProjectMembers
+  alias PipelinesAPI.Roles.List, as: ListRoles
+  alias PipelinesAPI.Roles.Describe, as: DescribeRole
+  alias PipelinesAPI.Roles.Create, as: CreateRole
+  alias PipelinesAPI.Roles.Update, as: UpdateRole
+  alias PipelinesAPI.Roles.Destroy, as: DestroyRole
+  alias PipelinesAPI.Permissions.List, as: ListPermissions
+  alias PipelinesAPI.RoleAssignments.AssignOrg, as: AssignOrgRole
+  alias PipelinesAPI.RoleAssignments.RetractOrg, as: RetractOrgRole
+  alias PipelinesAPI.RoleAssignments.AssignProject, as: AssignProjectRole
+  alias PipelinesAPI.RoleAssignments.RetractProject, as: RetractProjectRole
+  alias PipelinesAPI.Groups.List, as: ListGroups
+  alias PipelinesAPI.Groups.Create, as: CreateGroup
+  alias PipelinesAPI.Groups.Modify, as: ModifyGroup
+  alias PipelinesAPI.Groups.Destroy, as: DestroyGroup
+  alias PipelinesAPI.ServiceAccounts.List, as: ListServiceAccounts
+  alias PipelinesAPI.ServiceAccounts.Create, as: CreateServiceAccount
+  alias PipelinesAPI.ServiceAccounts.Describe, as: DescribeServiceAccount
+  alias PipelinesAPI.ServiceAccounts.Update, as: UpdateServiceAccount
+  alias PipelinesAPI.ServiceAccounts.Destroy, as: DestroyServiceAccount
+  alias PipelinesAPI.ServiceAccounts.Deactivate, as: DeactivateServiceAccount
+  alias PipelinesAPI.ServiceAccounts.Reactivate, as: ReactivateServiceAccount
+  alias PipelinesAPI.ServiceAccounts.RegenerateToken, as: RegenerateTokenServiceAccount
 
   plug(PipelinesAPI.Plug.Logger)
   plug(PipelinesAPI.Plug.ClientMetrics)
@@ -167,6 +191,7 @@ defmodule PipelinesAPI.Router do
   match("/artifacts", via: :get, to: ListArtifacts)
   match("/artifacts/signed_url", via: :get, to: GetArtifactSignedURL)
 
+<<<<<<< HEAD
   match("/projects/:project_id/test_results/flaky_tests", via: :get, to: ListFlakyTests)
 
   match("/projects/:project_id/test_results/flaky_tests/:test_id/disruptions",
@@ -189,6 +214,36 @@ defmodule PipelinesAPI.Router do
   match("/projects/:project_id/insights/performance", via: :get, to: InsightsPerformance)
   match("/projects/:project_id/insights/reliability", via: :get, to: InsightsReliability)
   match("/projects/:project_id/insights/frequency", via: :get, to: InsightsFrequency)
+
+  match("/members", via: :get, to: ListMembers)
+  match("/members/:subject_id/roles", via: :post, to: AssignOrgRole)
+  match("/members/:subject_id/roles", via: :delete, to: RetractOrgRole)
+
+  match("/projects/:project_id/members", via: :get, to: ListProjectMembers)
+  match("/projects/:project_id/members/:subject_id/roles", via: :post, to: AssignProjectRole)
+  match("/projects/:project_id/members/:subject_id/roles", via: :delete, to: RetractProjectRole)
+
+  match("/roles", via: :get, to: ListRoles)
+  match("/roles", via: :post, to: CreateRole)
+  match("/roles/:id", via: :get, to: DescribeRole)
+  match("/roles/:id", via: :patch, to: UpdateRole)
+  match("/roles/:id", via: :delete, to: DestroyRole)
+
+  match("/permissions", via: :get, to: ListPermissions)
+
+  match("/groups", via: :get, to: ListGroups)
+  match("/groups", via: :post, to: CreateGroup)
+  match("/groups/:id", via: :patch, to: ModifyGroup)
+  match("/groups/:id", via: :delete, to: DestroyGroup)
+
+  match("/service_accounts", via: :get, to: ListServiceAccounts)
+  match("/service_accounts", via: :post, to: CreateServiceAccount)
+  match("/service_accounts/:id", via: :get, to: DescribeServiceAccount)
+  match("/service_accounts/:id", via: :patch, to: UpdateServiceAccount)
+  match("/service_accounts/:id", via: :delete, to: DestroyServiceAccount)
+  match("/service_accounts/:id/deactivate", via: :post, to: DeactivateServiceAccount)
+  match("/service_accounts/:id/reactivate", via: :post, to: ReactivateServiceAccount)
+  match("/service_accounts/:id/regenerate_token", via: :post, to: RegenerateTokenServiceAccount)
 
   match("/logs/:job_id", via: :get, to: PipelinesAPI.Logs.Get)
 
