@@ -692,7 +692,9 @@ defmodule FrontWeb.PipelineView do
   end
 
   def job_timer_placeholder?(job) do
-    job.state == :FINISHED && is_nil(job.started_at)
+    finished? = Map.get(job, :state) == :FINISHED || Map.get(job, :done?, false)
+
+    finished? && is_nil(Map.get(job, :started_at))
   end
 
   def job_timer_label(job) do
