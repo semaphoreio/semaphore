@@ -129,6 +129,7 @@ defmodule Scheduler.Actions.BulkUpsertAndPruneImpl do
           |> Enum.filter(fn {key, _} -> match?({:upsert, _}, key) end)
           |> Enum.sort_by(fn {{:upsert, idx}, _} -> idx end)
           |> Enum.map(fn {_, value} -> value end)
+          |> Enum.reject(&(&1 == :skipped))
 
         {:ok, %{upserts: upserts, pruned: changes.prune_targets}}
 
@@ -138,7 +139,7 @@ defmodule Scheduler.Actions.BulkUpsertAndPruneImpl do
   end
 
   defp upsert_one(definition, params, project_name) do
-    case lookup(Map.get(definition, :id)) do
+    case lookup(params.project_id, Map.get(definition, :id)) do
       :create ->
         PeriodicsQueries.insert(
           build_create_params(definition, params, project_name),
@@ -148,17 +149,20 @@ defmodule Scheduler.Actions.BulkUpsertAndPruneImpl do
       {:ok, periodic} ->
         PeriodicsQueries.update(periodic, build_update_params(definition, params), @api_version)
 
-      {:error, "Periodic with id:" <> _} ->
-        PeriodicsQueries.insert(
-          build_create_params(definition, params, project_name),
-          @api_version
-        )
+      {:error, {:foreign_id, _id}} ->
+        {:ok, :skipped}
     end
   end
 
-  defp lookup(nil), do: :create
-  defp lookup(""), do: :create
-  defp lookup(id), do: PeriodicsQueries.get_by_id(id)
+  defp lookup(_project_id, nil), do: :create
+  defp lookup(_project_id, ""), do: :create
+
+  defp lookup(project_id, id) do
+    case Repo.get_by(Periodics, id: id, project_id: project_id) do
+      nil -> {:error, {:foreign_id, id}}
+      periodic -> {:ok, periodic}
+    end
+  end
 
   defp build_create_params(definition, params, project_name) do
     %{
@@ -182,7 +186,6 @@ defmodule Scheduler.Actions.BulkUpsertAndPruneImpl do
       name: Map.get(definition, :name),
       description: Map.get(definition, :description, ""),
       recurring: Map.get(definition, :recurring, false),
-      organization_id: params.organization_id,
       requester_id: params.requester_id,
       reference: Map.get(definition, :reference, ""),
       pipeline_file: Map.get(definition, :pipeline_file, ""),

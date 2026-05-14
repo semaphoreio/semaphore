@@ -216,6 +216,74 @@ defmodule Test.Actions.BulkUpsertAndPruneImpl.Test do
     assert {:error, {:INVALID_ARGUMENT, _}} = BulkUpsertAndPruneImpl.bulk_upsert_and_prune(params)
   end
 
+  test "update path cannot mutate organization_id or project_id", ctx do
+    original_org = ctx.org_id
+    original_project = ctx.pr_id
+
+    {:ok, periodic: existing} =
+      Factory.setup_periodic(ctx,
+        organization_id: original_org,
+        project_id: original_project,
+        requester_id: ctx.usr_id,
+        name: "stable",
+        at: "0 0 * * *"
+      )
+
+    params = base_params(ctx, [definition("stable", "30 0 * * *", id: existing.id)])
+
+    assert {:ok, %{upserted: [updated], deleted_ids: []}} =
+             BulkUpsertAndPruneImpl.bulk_upsert_and_prune(params)
+
+    assert updated.id == existing.id
+    assert updated.organization_id == original_org
+    assert updated.project_id == original_project
+
+    [reloaded] = list_periodics_for(original_project)
+    assert reloaded.organization_id == original_org
+    assert reloaded.project_id == original_project
+  end
+
+  test "skips definitions whose id belongs to another project", ctx do
+    foreign_project_id = UUID.uuid4()
+    foreign_org_id = UUID.uuid4()
+
+    {:ok, periodic: foreign} =
+      Factory.setup_periodic(ctx,
+        organization_id: foreign_org_id,
+        project_id: foreign_project_id,
+        requester_id: ctx.usr_id,
+        name: "foreign",
+        at: "0 0 * * *",
+        pipeline_file: "foreign.yml",
+        reference: "refs/heads/foreign"
+      )
+
+    params =
+      base_params(ctx, [
+        definition("hijacked", "30 0 * * *", id: foreign.id),
+        definition("valid-new", "0 0 * * *")
+      ])
+
+    assert {:ok, %{upserted: upserted, deleted_ids: []}} =
+             BulkUpsertAndPruneImpl.bulk_upsert_and_prune(params)
+
+    assert length(upserted) == 1
+    assert hd(upserted).name == "valid-new"
+
+    [reloaded_foreign] = list_periodics_for(foreign_project_id)
+    assert reloaded_foreign.id == foreign.id
+    assert reloaded_foreign.name == foreign.name
+    assert reloaded_foreign.at == foreign.at
+    assert reloaded_foreign.pipeline_file == foreign.pipeline_file
+    assert reloaded_foreign.reference == foreign.reference
+    assert reloaded_foreign.organization_id == foreign_org_id
+    assert reloaded_foreign.project_id == foreign_project_id
+
+    own = list_periodics_for(ctx.pr_id)
+    assert length(own) == 1
+    assert hd(own).name == "valid-new"
+  end
+
   defp base_params(ctx, periodics) do
     %{
       organization_id: ctx.org_id,
