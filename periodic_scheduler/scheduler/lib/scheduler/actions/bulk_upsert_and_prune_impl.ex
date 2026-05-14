@@ -234,7 +234,14 @@ defmodule Scheduler.Actions.BulkUpsertAndPruneImpl do
 
   defp insert_audit_rows(targets, requester_id) do
     Enum.reduce_while(targets, {:ok, []}, fn target, {:ok, acc} ->
-      case DeleteRequestsQueries.insert(%{id: target.id, requester: requester_id}) do
+      audit_params = %{
+        id: target.id,
+        periodic_name: target.name,
+        organization_id: target.organization_id,
+        requester: requester_id
+      }
+
+      case DeleteRequestsQueries.insert(audit_params) do
         {:ok, row} -> {:cont, {:ok, [row | acc]}}
         error -> {:halt, error}
       end
