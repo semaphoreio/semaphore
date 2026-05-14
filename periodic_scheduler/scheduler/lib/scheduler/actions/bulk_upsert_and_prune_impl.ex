@@ -72,8 +72,7 @@ defmodule Scheduler.Actions.BulkUpsertAndPruneImpl do
   defp present?(v) when is_binary(v) and v != "", do: true
   defp present?(_), do: false
 
-  defp normalize_periodics(nil), do: []
-  defp normalize_periodics(list) when is_list(list), do: list
+  defp normalize_periodics(list), do: List.wrap(list)
 
   defp pre_validate(periodics) do
     periodics
