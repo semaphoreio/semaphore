@@ -284,6 +284,34 @@ defmodule Test.Actions.BulkUpsertAndPruneImpl.Test do
     assert hd(own).name == "valid-new"
   end
 
+  describe "when quantum side-effects fail" do
+    setup do
+      previous = Application.get_env(:scheduler, :quantum_scheduler)
+      Application.put_env(:scheduler, :quantum_scheduler, FailingQuantumStub)
+
+      on_exit(fn ->
+        if is_nil(previous) do
+          Application.delete_env(:scheduler, :quantum_scheduler)
+        else
+          Application.put_env(:scheduler, :quantum_scheduler, previous)
+        end
+      end)
+
+      :ok
+    end
+
+    test "returns INTERNAL and leaves DB state committed", ctx do
+      params = base_params(ctx, [definition("alpha", "0 0 * * *")])
+
+      assert {:error, {:INTERNAL, message}} = BulkUpsertAndPruneImpl.bulk_upsert_and_prune(params)
+
+      assert message =~ "Schedule registration failed"
+
+      [persisted] = list_periodics_for(ctx.pr_id)
+      assert persisted.name == "alpha"
+    end
+  end
+
   defp base_params(ctx, periodics) do
     %{
       organization_id: ctx.org_id,
@@ -324,4 +352,9 @@ defmodule Test.Actions.BulkUpsertAndPruneImpl.Test do
     |> where([d], d.periodic_id not in ^periodic_ids)
     |> PeriodicsRepo.one()
   end
+end
+
+defmodule FailingQuantumStub do
+  def start_periodic_job(_periodic), do: {:error, :stub_failure}
+  def delete_job(_atom), do: :ok
 end

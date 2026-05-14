@@ -37,11 +37,20 @@ defmodule Scheduler.Actions.BulkUpsertAndPruneImpl do
          periodics <- normalize_periodics(params[:periodics]),
          :ok <- pre_validate(periodics),
          {:ok, %{upserts: upserts, pruned: pruned}} <- reconcile(params, project_name, periodics) do
-      apply_side_effects(upserts, pruned)
-      log_summary(params, upserts, pruned)
+      case apply_side_effects(upserts, pruned) do
+        [] ->
+          log_summary(params, upserts, pruned)
 
-      {:ok,
-       %{upserted: Enum.map(upserts, &to_response_map/1), deleted_ids: Enum.map(pruned, & &1.id)}}
+          {:ok,
+           %{
+             upserted: Enum.map(upserts, &to_response_map/1),
+             deleted_ids: Enum.map(pruned, & &1.id)
+           }}
+
+        failures ->
+          report_side_effect_failures(params, failures)
+          ToTuple.error(format_side_effect_failures(failures), :INTERNAL)
+      end
     else
       {:error, msg = "Project with ID" <> _rest} ->
         ToTuple.error(msg, :FAILED_PRECONDITION)
@@ -233,9 +242,46 @@ defmodule Scheduler.Actions.BulkUpsertAndPruneImpl do
   end
 
   defp apply_side_effects(upserts, pruned) do
-    Enum.each(upserts, &start_or_stop_periodic_job/1)
-    Enum.each(pruned, fn periodic -> delete_quantum_job(periodic.id) end)
-    :ok
+    upsert_failures = run_side_effects(upserts, &start_or_stop_periodic_job/1, :upsert)
+    prune_failures = run_side_effects(pruned, &prune_quantum_job/1, :prune)
+    upsert_failures ++ prune_failures
+  end
+
+  defp run_side_effects(items, fun, kind) do
+    Enum.reduce(items, [], fn item, acc ->
+      try do
+        case fun.(item) do
+          {:ok, _} -> acc
+          :ok -> acc
+          {:error, reason} -> [{kind, item.id, reason} | acc]
+          other -> [{kind, item.id, {:unexpected, other}} | acc]
+        end
+      rescue
+        e -> [{kind, item.id, e} | acc]
+      catch
+        kind_caught, value -> [{kind, item.id, {kind_caught, value}} | acc]
+      end
+    end)
+  end
+
+  defp prune_quantum_job(periodic), do: delete_quantum_job(periodic.id)
+
+  defp report_side_effect_failures(params, failures) do
+    Enum.each(failures, fn {kind, id, reason} ->
+      Logger.error(
+        "bulk_upsert_and_prune side-effect failure: kind=#{kind} " <>
+          "periodic_id=#{id} project_id=#{params.project_id} " <>
+          "requester_id=#{params.requester_id} reason=#{inspect(reason)}"
+      )
+
+      Watchman.increment({"PeriodicSch.bulk_upsert_and_prune.quantum_failure", [to_string(kind)]})
+    end)
+  end
+
+  defp format_side_effect_failures(failures) do
+    ids = failures |> Enum.map(fn {_, id, _} -> id end) |> Enum.uniq()
+
+    "Schedule registration failed for #{length(failures)} periodic(s): #{Enum.join(ids, ", ")}"
   end
 
   defp log_summary(params, upserts, pruned) do
@@ -253,14 +299,21 @@ defmodule Scheduler.Actions.BulkUpsertAndPruneImpl do
        when suspended or paused or not recurring,
        do: {:ok, :skip}
 
-  defp start_periodic_job(periodic), do: QuantumScheduler.start_periodic_job(periodic)
+  defp start_periodic_job(periodic), do: quantum_scheduler().start_periodic_job(periodic)
 
   defp stop_periodic_job(periodic) do
-    delete_quantum_job(periodic.id)
-    {:ok, :stopped}
+    case delete_quantum_job(periodic.id) do
+      :ok -> {:ok, :stopped}
+      {:ok, _} -> {:ok, :stopped}
+      other -> other
+    end
   end
 
-  defp delete_quantum_job(id), do: id |> String.to_atom() |> QuantumScheduler.delete_job()
+  defp delete_quantum_job(id), do: id |> String.to_atom() |> quantum_scheduler().delete_job()
+
+  defp quantum_scheduler do
+    Application.get_env(:scheduler, :quantum_scheduler, QuantumScheduler)
+  end
 
   defp to_response_map(periodic) do
     parameters = Enum.into(periodic.parameters, [], &Map.from_struct/1)
