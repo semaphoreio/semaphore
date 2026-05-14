@@ -14,7 +14,7 @@ defmodule Projecthub.Models.PeriodicTask.Definition do
   def format_branch_as_reference(branch_name) when is_binary(branch_name) and branch_name != "",
     do: "refs/heads/#{branch_name}"
 
-  def format_branch_as_reference(_), do: "refs/heads/main"
+  def format_branch_as_reference(_), do: "refs/heads/master"
 
   @spec status_to_state(atom() | any()) :: :ACTIVE | :PAUSED | :UNCHANGED
   def status_to_state(:STATUS_ACTIVE), do: :ACTIVE
