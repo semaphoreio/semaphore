@@ -107,6 +107,31 @@ defmodule Test.Actions.BulkUpsertAndPruneImpl.Test do
     refute gone1.id |> String.to_atom() |> QuantumScheduler.find_job()
   end
 
+  test "pruned periodics record full audit trail in delete_requests", ctx do
+    {:ok, periodic: gone} =
+      Factory.setup_periodic(ctx,
+        organization_id: ctx.org_id,
+        project_id: ctx.pr_id,
+        requester_id: ctx.usr_id,
+        name: "gone-named"
+      )
+
+    params = base_params(ctx, [])
+
+    assert {:ok, %{upserted: [], deleted_ids: [_]}} =
+             BulkUpsertAndPruneImpl.bulk_upsert_and_prune(params)
+
+    [row] =
+      DeleteRequests
+      |> where([d], d.periodic_id == ^gone.id)
+      |> PeriodicsRepo.all()
+
+    assert row.periodic_id == gone.id
+    assert row.periodic_name == "gone-named"
+    assert row.organization_id == ctx.org_id
+    assert row.requester == ctx.usr_id
+  end
+
   test "new periodic can reuse the name of a pruned one (prune runs before upsert)", ctx do
     {:ok, periodic: _old} =
       Factory.setup_periodic(ctx,
