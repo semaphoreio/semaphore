@@ -205,6 +205,65 @@ defmodule Test.Actions.BulkUpsertAndPruneImpl.Test do
     assert hd(persisted).id == existing.id
   end
 
+  test "rejects definition with empty name and leaves DB unchanged", ctx do
+    {:ok, periodic: existing} =
+      Factory.setup_periodic(ctx,
+        organization_id: ctx.org_id,
+        project_id: ctx.pr_id,
+        requester_id: ctx.usr_id,
+        name: "keep"
+      )
+
+    params = base_params(ctx, [definition("", "0 0 * * *")])
+
+    assert {:error, {:INVALID_ARGUMENT, message}} =
+             BulkUpsertAndPruneImpl.bulk_upsert_and_prune(params)
+
+    assert message =~ "name"
+
+    persisted = list_periodics_for(ctx.pr_id)
+    assert length(persisted) == 1
+    assert hd(persisted).id == existing.id
+  end
+
+  test "rejects definition with empty reference and leaves DB unchanged", ctx do
+    params = base_params(ctx, [definition("alpha", "0 0 * * *", reference: "")])
+
+    assert {:error, {:INVALID_ARGUMENT, message}} =
+             BulkUpsertAndPruneImpl.bulk_upsert_and_prune(params)
+
+    assert message =~ "reference"
+    assert list_periodics_for(ctx.pr_id) == []
+  end
+
+  test "rejects definition with empty pipeline_file and leaves DB unchanged", ctx do
+    params = base_params(ctx, [definition("alpha", "0 0 * * *", pipeline_file: "")])
+
+    assert {:error, {:INVALID_ARGUMENT, message}} =
+             BulkUpsertAndPruneImpl.bulk_upsert_and_prune(params)
+
+    assert message =~ "pipeline_file"
+    assert list_periodics_for(ctx.pr_id) == []
+  end
+
+  test "update with empty reference does not wipe the existing periodic", ctx do
+    {:ok, periodic: existing} =
+      Factory.setup_periodic(ctx,
+        organization_id: ctx.org_id,
+        project_id: ctx.pr_id,
+        requester_id: ctx.usr_id,
+        name: "stable",
+        reference: "refs/heads/develop"
+      )
+
+    params = base_params(ctx, [definition("stable", "0 0 * * *", id: existing.id, reference: "")])
+
+    assert {:error, {:INVALID_ARGUMENT, _}} = BulkUpsertAndPruneImpl.bulk_upsert_and_prune(params)
+
+    [reloaded] = list_periodics_for(ctx.pr_id)
+    assert reloaded.reference == "refs/heads/develop"
+  end
+
   test "duplicate names within the batch roll back all inserts", ctx do
     {:ok, periodic: existing} =
       Factory.setup_periodic(ctx,
