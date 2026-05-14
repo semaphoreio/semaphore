@@ -259,6 +259,36 @@ defmodule Projecthub.Models.PeriodicTaskTest do
       assert {:ok, _} = PeriodicTask.update_all(ctx.project, [periodic_task(id: "1")], "requester_id")
     end
 
+    test "empty branch falls back to refs/heads/master on the wire", ctx do
+      FunRegistry.set!(PeriodicService, :bulk_upsert_and_prune, fn req, _stream ->
+        [first | _] = req.periodics
+        assert first.reference == "refs/heads/master"
+
+        API.BulkUpsertAndPruneResponse.new(
+          status: Status.new(),
+          upserted: [API.Periodic.new(id: first.id)],
+          deleted_ids: []
+        )
+      end)
+
+      assert {:ok, _} = PeriodicTask.update_all(ctx.project, [periodic_task(id: "1", branch: "")], "requester_id")
+    end
+
+    test "nil branch falls back to refs/heads/master on the wire", ctx do
+      FunRegistry.set!(PeriodicService, :bulk_upsert_and_prune, fn req, _stream ->
+        [first | _] = req.periodics
+        assert first.reference == "refs/heads/master"
+
+        API.BulkUpsertAndPruneResponse.new(
+          status: Status.new(),
+          upserted: [API.Periodic.new(id: first.id)],
+          deleted_ids: []
+        )
+      end)
+
+      assert {:ok, _} = PeriodicTask.update_all(ctx.project, [periodic_task(id: "1", branch: nil)], "requester_id")
+    end
+
     test "task status maps to PeriodicDefinition.state on the wire", ctx do
       FunRegistry.set!(PeriodicService, :bulk_upsert_and_prune, fn req, _stream ->
         [active, paused, unspecified] = req.periodics
