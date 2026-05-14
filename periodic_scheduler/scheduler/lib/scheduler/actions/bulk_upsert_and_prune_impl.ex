@@ -58,6 +58,9 @@ defmodule Scheduler.Actions.BulkUpsertAndPruneImpl do
       {:error, {:cron, name, msg}} ->
         ToTuple.error(format_cron_error(name, msg), :INVALID_ARGUMENT)
 
+      {:error, {:field, idx, field, msg}} ->
+        ToTuple.error("Periodic at index #{idx}: '#{field}' #{msg}.", :INVALID_ARGUMENT)
+
       {:error, {:tx, _op, value, _changes}} ->
         ToTuple.error(format_tx_error(value), :INVALID_ARGUMENT)
 
@@ -85,14 +88,38 @@ defmodule Scheduler.Actions.BulkUpsertAndPruneImpl do
 
   defp pre_validate(periodics) do
     periodics
-    |> Enum.filter(&Map.get(&1, :recurring, false))
-    |> Enum.find_value(:ok, fn periodic ->
-      case CronValidator.parse(Map.get(periodic, :at, "")) do
-        {:ok, _} -> nil
-        {:error, msg} -> {:error, {:cron, Map.get(periodic, :name, ""), msg}}
+    |> Enum.with_index()
+    |> Enum.reduce_while(:ok, fn {definition, idx}, _acc ->
+      case validate_definition(definition, idx) do
+        :ok -> {:cont, :ok}
+        error -> {:halt, error}
       end
     end)
   end
+
+  defp validate_definition(definition, idx) do
+    cond do
+      blank?(Map.get(definition, :name)) ->
+        {:error, {:field, idx, :name, "must be a non-empty string"}}
+
+      blank?(Map.get(definition, :reference)) ->
+        {:error, {:field, idx, :reference, "must be a non-empty string"}}
+
+      blank?(Map.get(definition, :pipeline_file)) ->
+        {:error, {:field, idx, :pipeline_file, "must be a non-empty string"}}
+
+      Map.get(definition, :recurring, false) ->
+        case CronValidator.parse(Map.get(definition, :at, "")) do
+          {:ok, _} -> :ok
+          {:error, msg} -> {:error, {:cron, Map.get(definition, :name, ""), msg}}
+        end
+
+      true ->
+        :ok
+    end
+  end
+
+  defp blank?(v), do: not (is_binary(v) and v != "")
 
   defp reconcile(params, project_name, periodics) do
     input_ids =
