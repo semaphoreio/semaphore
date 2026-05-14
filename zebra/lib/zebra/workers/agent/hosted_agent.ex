@@ -8,11 +8,11 @@ defmodule Zebra.Workers.Agent.HostedAgent do
   def http_options,
     do: [
       hackney: [
-        :insecure,
         connect_timeout: 2_000,
         recv_timeout: 3_000
       ],
       ssl: [
+        verify: :verify_none,
         server_name_indication: :disable
       ]
     ]
