@@ -20,12 +20,16 @@
       <%= @job.name %>
     </div>
 
-    <span
-      timer <%= if @job.state == :RUNNING, do: "run" %>
-      class="f5 code <%= FrontWeb.PipelineView.job_status_color(@job) %>"
-      seconds="<%= job_total_time(@job) %>">
-      <%= job_total_time(@job) |> Front.DurationFormatter.format() %>
-    </span>
+    <%= if job_timer_placeholder?(@job) do %>
+      <span class="f5 code gray">--:--</span>
+    <% else %>
+      <span
+        timer <%= if @job.state == :RUNNING, do: "run" %>
+        class="f5 code <%= FrontWeb.PipelineView.job_status_color(@job) %>"
+        seconds="<%= job_total_time(@job) %>">
+        <%= job_timer_label(@job) %>
+      </span>
+    <% end %>
   <% end %>
 <% else %>
   <div style="font-weight: normal;" class="link dark-gray flex items-center justify-between pv1 nh2 ph2 bt b--black-15 hover-bg-washed-gray">
