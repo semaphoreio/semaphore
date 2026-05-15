@@ -7,7 +7,7 @@ defmodule Scheduler.Actions.PersistImpl do
   alias Util.ToTuple
   alias Scheduler.Periodics.Model.PeriodicsQueries
   alias Scheduler.FrontDB.Model.FrontDBQueries
-  alias Crontab.CronExpression.Parser
+  alias Scheduler.Actions.CronValidator
   alias Scheduler.Workers.QuantumScheduler
 
   def persist(request) do
@@ -35,7 +35,7 @@ defmodule Scheduler.Actions.PersistImpl do
 
   defp validate_cron_expression(request) do
     if request.recurring do
-      {:cron, Wormhole.capture(Parser, :parse, [request.at], skip_log: true, ok_tuple: true)}
+      {:cron, CronValidator.parse(request.at)}
     else
       {:cron, {:ok, %Crontab.CronExpression{}}}
     end
