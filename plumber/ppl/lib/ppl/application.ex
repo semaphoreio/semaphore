@@ -17,7 +17,7 @@ defmodule Ppl.Application do
 
     # See http://elixir-lang.org/docs/stable/elixir/Supervisor.html
     # for other strategies and supported options
-    opts = [strategy: :one_for_one, name: Ppl.Supervisor]
+    opts = [strategy: :one_for_one, name: Ppl.Supervisor, max_restarts: 1000]
     (children(get_env()) ++ grpc_supervisor(get_env())) |> Supervisor.start_link(opts)
   end
 
