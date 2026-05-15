@@ -1,6 +1,7 @@
 package jobs
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -13,13 +14,18 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	auditlog "github.com/semaphoreio/semaphore/mcp_server/pkg/audit"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/feature"
+	artifacthubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/artifacthub"
+	auditpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/audit"
 	loghubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub"
 	loghub2pb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub2"
 	orgpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/organization"
+	projecthubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/projecthub"
 	rbacpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/rbac"
 	responsepb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/response_status"
 	jobpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/server_farm.job"
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/logging"
 	support "github.com/semaphoreio/semaphore/mcp_server/test/support"
 
 	"google.golang.org/grpc"
@@ -561,6 +567,775 @@ func TestFetchHostedLogsPagination(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestArtifactJobLogsReturnsSignedURLWithTxtPriority(t *testing.T) {
+	const orgID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	const jobID = "99999999-aaaa-bbbb-cccc-dddddddddddd"
+	const artifactStoreID = "88888888-7777-6666-5555-444444444444"
+
+	jobClient := &jobClientStub{
+		describeResp: &jobpb.DescribeResponse{
+			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
+			Job: &jobpb.Job{
+				Id:             jobID,
+				ProjectId:      testProjectUUID,
+				OrganizationId: orgID,
+				SelfHosted:     false,
+			},
+		},
+	}
+	artifactClient := &artifacthubClientStub{
+		listResp: &artifacthubpb.ListPathResponse{
+			Items: []*artifacthubpb.ListItem{
+				{Name: fmt.Sprintf("artifacts/jobs/%s/agent/job_logs.txt.gz", jobID), IsDirectory: false},
+				{Name: fmt.Sprintf("artifacts/jobs/%s/agent/job_logs.txt", jobID), IsDirectory: false},
+			},
+		},
+		signedURL: "https://example.com/full-logs.txt",
+	}
+	projectClient := &support.ProjectClientStub{
+		Response: newProjectDescribeResponseWithArtifactStore(orgID, testProjectUUID, artifactStoreID),
+	}
+
+	provider := &support.MockProvider{
+		JobClient:         jobClient,
+		ArtifacthubClient: artifactClient,
+		ProjectClient:     projectClient,
+		RBACClient:        newRBACStub("project.view", "project.artifacts.view"),
+		FeaturesService: support.FeatureClientStub{
+			States: map[string]feature.State{
+				"mcp_server_read_tools":      feature.Enabled,
+				"mcp_server_artifacts_tools": feature.Enabled,
+				"artifacts_job_logs":         feature.Hidden,
+			},
+		},
+		Timeout: time.Second,
+	}
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"organization_id": orgID,
+		"job_id":          jobID,
+	}}}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", selfHostedTestUser)
+	req.Header = header
+
+	res, err := artifactJobLogsHandler(provider)(context.Background(), req)
+	if err != nil {
+		toFail(t, "handler error: %v", err)
+	}
+	if res == nil || res.IsError {
+		toFail(t, "expected success response, got %#v", res)
+	}
+
+	result, ok := res.StructuredContent.(artifactJobLogsResult)
+	if !ok {
+		toFail(t, "unexpected structured content type: %T", res.StructuredContent)
+	}
+	if result.Source != artifactJobLogsSource {
+		toFail(t, "expected source %s, got %s", artifactJobLogsSource, result.Source)
+	}
+	if result.Path != "agent/job_logs.txt" {
+		toFail(t, "expected txt path priority, got %s", result.Path)
+	}
+	if result.URL != "https://example.com/full-logs.txt" {
+		toFail(t, "unexpected signed URL: %s", result.URL)
+	}
+	if artifactClient.lastSigned == nil || !strings.HasSuffix(artifactClient.lastSigned.GetPath(), "agent/job_logs.txt") {
+		toFail(t, "unexpected signed URL request: %+v", artifactClient.lastSigned)
+	}
+}
+
+func TestArtifactJobLogsReturnsSignedURLWithGzipFallback(t *testing.T) {
+	const orgID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	const jobID = "99999999-aaaa-bbbb-cccc-dddddddddddd"
+	const artifactStoreID = "88888888-7777-6666-5555-444444444444"
+
+	jobClient := &jobClientStub{
+		describeResp: &jobpb.DescribeResponse{
+			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
+			Job: &jobpb.Job{
+				Id:             jobID,
+				ProjectId:      testProjectUUID,
+				OrganizationId: orgID,
+				SelfHosted:     false,
+			},
+		},
+	}
+	artifactClient := &artifacthubClientStub{
+		listResp: &artifacthubpb.ListPathResponse{
+			Items: []*artifacthubpb.ListItem{
+				{Name: fmt.Sprintf("artifacts/jobs/%s/agent/job_logs.txt.gz", jobID), IsDirectory: false},
+			},
+		},
+		signedURL: "https://example.com/full-logs.txt.gz",
+	}
+	projectClient := &support.ProjectClientStub{
+		Response: newProjectDescribeResponseWithArtifactStore(orgID, testProjectUUID, artifactStoreID),
+	}
+
+	provider := &support.MockProvider{
+		JobClient:         jobClient,
+		ArtifacthubClient: artifactClient,
+		ProjectClient:     projectClient,
+		RBACClient:        newRBACStub("project.view", "project.artifacts.view"),
+		FeaturesService: support.FeatureClientStub{
+			States: map[string]feature.State{
+				"mcp_server_read_tools":      feature.Enabled,
+				"mcp_server_artifacts_tools": feature.Hidden,
+				"artifacts_job_logs":         feature.Enabled,
+			},
+		},
+		Timeout: time.Second,
+	}
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"organization_id": orgID,
+		"job_id":          jobID,
+	}}}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", selfHostedTestUser)
+	req.Header = header
+
+	res, err := artifactJobLogsHandler(provider)(context.Background(), req)
+	if err != nil {
+		toFail(t, "handler error: %v", err)
+	}
+	if res == nil || res.IsError {
+		toFail(t, "expected success response, got %#v", res)
+	}
+
+	result, ok := res.StructuredContent.(artifactJobLogsResult)
+	if !ok {
+		toFail(t, "unexpected structured content type: %T", res.StructuredContent)
+	}
+	if result.Path != "agent/job_logs.txt.gz" {
+		toFail(t, "expected gzip fallback path, got %s", result.Path)
+	}
+	if artifactClient.lastSigned == nil || !strings.HasSuffix(artifactClient.lastSigned.GetPath(), "agent/job_logs.txt.gz") {
+		toFail(t, "unexpected signed URL request: %+v", artifactClient.lastSigned)
+	}
+}
+
+func TestArtifactJobLogsEmitsAuditEventWithFullResourcePath(t *testing.T) {
+	const orgID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	const jobID = "99999999-aaaa-bbbb-cccc-dddddddddddd"
+	const artifactStoreID = "88888888-7777-6666-5555-444444444444"
+
+	jobClient := &jobClientStub{
+		describeResp: &jobpb.DescribeResponse{
+			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
+			Job: &jobpb.Job{
+				Id:             jobID,
+				ProjectId:      testProjectUUID,
+				OrganizationId: orgID,
+				SelfHosted:     false,
+			},
+		},
+	}
+	artifactClient := &artifacthubClientStub{
+		listResp: &artifacthubpb.ListPathResponse{
+			Items: []*artifacthubpb.ListItem{
+				{Name: fmt.Sprintf("artifacts/jobs/%s/agent/job_logs.txt", jobID), IsDirectory: false},
+			},
+		},
+		signedURL: "https://example.com/full-logs.txt",
+	}
+	projectClient := &support.ProjectClientStub{
+		Response: newProjectDescribeResponseWithArtifactStore(orgID, testProjectUUID, artifactStoreID),
+	}
+
+	provider := &support.MockProvider{
+		JobClient:         jobClient,
+		ArtifacthubClient: artifactClient,
+		ProjectClient:     projectClient,
+		RBACClient:        newRBACStub("project.view", "project.artifacts.view"),
+		FeaturesService: support.FeatureClientStub{
+			States: map[string]feature.State{
+				"mcp_server_read_tools":      feature.Enabled,
+				"mcp_server_artifacts_tools": feature.Enabled,
+				"artifacts_job_logs":         feature.Hidden,
+				"audit_logs":                 feature.Enabled,
+			},
+		},
+		Timeout: time.Second,
+	}
+
+	publisher := &auditPublisherStub{}
+	restore := auditlog.SetPublisherForTests(publisher)
+	defer restore()
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"organization_id": orgID,
+		"job_id":          jobID,
+	}}}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", selfHostedTestUser)
+	req.Header = header
+
+	_, err := artifactJobLogsHandler(provider)(context.Background(), req)
+	if err != nil {
+		toFail(t, "handler error: %v", err)
+	}
+
+	if len(publisher.events) != 1 {
+		toFail(t, "expected one audit event, got %d", len(publisher.events))
+	}
+
+	event := publisher.events[0]
+	if event.GetResource() != auditpb.Event_Artifact {
+		toFail(t, "expected Artifact resource, got %v", event.GetResource())
+	}
+	if event.GetOperation() != auditpb.Event_Download {
+		toFail(t, "expected Download operation, got %v", event.GetOperation())
+	}
+	if event.GetUserId() != selfHostedTestUser {
+		toFail(t, "expected user_id %s, got %s", selfHostedTestUser, event.GetUserId())
+	}
+	if event.GetOrgId() != orgID {
+		toFail(t, "expected org_id %s, got %s", orgID, event.GetOrgId())
+	}
+	expectedResourceName := fmt.Sprintf("artifacts/jobs/%s/agent/job_logs.txt", jobID)
+	if event.GetResourceName() != expectedResourceName {
+		toFail(t, "expected resource_name %s, got %s", expectedResourceName, event.GetResourceName())
+	}
+
+	meta := map[string]string{}
+	if err := json.Unmarshal([]byte(event.GetMetadata()), &meta); err != nil {
+		toFail(t, "failed to decode metadata JSON: %v", err)
+	}
+	if meta["source_kind"] != "jobs" {
+		toFail(t, "expected source_kind jobs, got %s", meta["source_kind"])
+	}
+	if meta["source_id"] != jobID {
+		toFail(t, "expected source_id %s, got %s", jobID, meta["source_id"])
+	}
+	if meta["project_id"] != testProjectUUID {
+		toFail(t, "expected project_id %s, got %s", testProjectUUID, meta["project_id"])
+	}
+	if meta["request_method"] != "GET" {
+		toFail(t, "expected request_method GET, got %s", meta["request_method"])
+	}
+}
+
+func TestArtifactJobLogsFailsWhenAuditPublishFails(t *testing.T) {
+	const orgID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	const jobID = "99999999-aaaa-bbbb-cccc-dddddddddddd"
+	const artifactStoreID = "88888888-7777-6666-5555-444444444444"
+
+	jobClient := &jobClientStub{
+		describeResp: &jobpb.DescribeResponse{
+			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
+			Job: &jobpb.Job{
+				Id:             jobID,
+				ProjectId:      testProjectUUID,
+				OrganizationId: orgID,
+				SelfHosted:     false,
+			},
+		},
+	}
+	artifactClient := &artifacthubClientStub{
+		listResp: &artifacthubpb.ListPathResponse{
+			Items: []*artifacthubpb.ListItem{
+				{Name: fmt.Sprintf("artifacts/jobs/%s/agent/job_logs.txt", jobID), IsDirectory: false},
+			},
+		},
+		signedURL: "https://example.com/full-logs.txt",
+	}
+	projectClient := &support.ProjectClientStub{
+		Response: newProjectDescribeResponseWithArtifactStore(orgID, testProjectUUID, artifactStoreID),
+	}
+
+	provider := &support.MockProvider{
+		JobClient:         jobClient,
+		ArtifacthubClient: artifactClient,
+		ProjectClient:     projectClient,
+		RBACClient:        newRBACStub("project.view", "project.artifacts.view"),
+		FeaturesService: support.FeatureClientStub{
+			States: map[string]feature.State{
+				"mcp_server_read_tools":      feature.Enabled,
+				"mcp_server_artifacts_tools": feature.Enabled,
+				"artifacts_job_logs":         feature.Hidden,
+				"audit_logs":                 feature.Enabled,
+			},
+		},
+		Timeout: time.Second,
+	}
+
+	publisher := &auditPublisherStub{err: fmt.Errorf("amqp down")}
+	restore := auditlog.SetPublisherForTests(publisher)
+	defer restore()
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"organization_id": orgID,
+		"job_id":          jobID,
+	}}}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", selfHostedTestUser)
+	req.Header = header
+
+	res, err := artifactJobLogsHandler(provider)(context.Background(), req)
+	if err != nil {
+		toFail(t, "handler error: %v", err)
+	}
+
+	msg := requireErrorText(t, res)
+	if !strings.Contains(msg, "Audit logging failed") {
+		toFail(t, "expected audit failure message, got %q", msg)
+	}
+	if artifactClient.lastSigned != nil {
+		toFail(t, "expected signed URL backend call to be skipped when audit publish fails")
+	}
+}
+
+func TestArtifactJobLogsContinuesWhenAuditFeatureCheckFails(t *testing.T) {
+	const orgID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	const jobID = "99999999-aaaa-bbbb-cccc-dddddddddddd"
+	const artifactStoreID = "88888888-7777-6666-5555-444444444444"
+
+	jobClient := &jobClientStub{
+		describeResp: &jobpb.DescribeResponse{
+			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
+			Job: &jobpb.Job{
+				Id:             jobID,
+				ProjectId:      testProjectUUID,
+				OrganizationId: orgID,
+				SelfHosted:     false,
+			},
+		},
+	}
+	artifactClient := &artifacthubClientStub{
+		listResp: &artifacthubpb.ListPathResponse{
+			Items: []*artifacthubpb.ListItem{
+				{Name: fmt.Sprintf("artifacts/jobs/%s/agent/job_logs.txt", jobID), IsDirectory: false},
+			},
+		},
+		signedURL: "https://example.com/full-logs.txt",
+	}
+	projectClient := &support.ProjectClientStub{
+		Response: newProjectDescribeResponseWithArtifactStore(orgID, testProjectUUID, artifactStoreID),
+	}
+
+	provider := &support.MockProvider{
+		JobClient:         jobClient,
+		ArtifacthubClient: artifactClient,
+		ProjectClient:     projectClient,
+		RBACClient:        newRBACStub("project.view", "project.artifacts.view"),
+		FeaturesService: support.FeatureClientStub{
+			States: map[string]feature.State{
+				"mcp_server_read_tools":      feature.Enabled,
+				"mcp_server_artifacts_tools": feature.Enabled,
+				"artifacts_job_logs":         feature.Hidden,
+				"audit_logs":                 feature.Enabled,
+			},
+			StateErrors: map[string]error{
+				"audit_logs": fmt.Errorf("feature service timeout"),
+			},
+		},
+		Timeout: time.Second,
+	}
+
+	publisher := &auditPublisherStub{}
+	restore := auditlog.SetPublisherForTests(publisher)
+	defer restore()
+
+	logs := captureLoggerOutput(t)
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"organization_id": orgID,
+		"job_id":          jobID,
+	}}}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", selfHostedTestUser)
+	req.Header = header
+
+	res, err := artifactJobLogsHandler(provider)(context.Background(), req)
+	if err != nil {
+		toFail(t, "handler error: %v", err)
+	}
+
+	if res == nil || res.IsError {
+		toFail(t, "expected successful response, got %#v", res)
+	}
+	if artifactClient.lastSigned == nil {
+		toFail(t, "expected signed URL backend call to proceed when audit feature check fails")
+	}
+	if len(publisher.events) != 0 {
+		toFail(t, "expected no AMQP audit publish when audit feature check fails, got %d events", len(publisher.events))
+	}
+	if !strings.Contains(logs.String(), "audit_logs feature check failed; proceeding with AMQP publish disabled") {
+		toFail(t, "expected warning log when audit feature check fails, got %q", logs.String())
+	}
+}
+
+func TestArtifactJobLogsSkipsAuditPublishWhenAuditLogsFeatureDisabled(t *testing.T) {
+	const orgID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	const jobID = "99999999-aaaa-bbbb-cccc-dddddddddddd"
+	const artifactStoreID = "88888888-7777-6666-5555-444444444444"
+
+	jobClient := &jobClientStub{
+		describeResp: &jobpb.DescribeResponse{
+			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
+			Job: &jobpb.Job{
+				Id:             jobID,
+				ProjectId:      testProjectUUID,
+				OrganizationId: orgID,
+				SelfHosted:     false,
+			},
+		},
+	}
+	artifactClient := &artifacthubClientStub{
+		listResp: &artifacthubpb.ListPathResponse{
+			Items: []*artifacthubpb.ListItem{
+				{Name: fmt.Sprintf("artifacts/jobs/%s/agent/job_logs.txt", jobID), IsDirectory: false},
+			},
+		},
+		signedURL: "https://example.com/full-logs.txt",
+	}
+	projectClient := &support.ProjectClientStub{
+		Response: newProjectDescribeResponseWithArtifactStore(orgID, testProjectUUID, artifactStoreID),
+	}
+
+	provider := &support.MockProvider{
+		JobClient:         jobClient,
+		ArtifacthubClient: artifactClient,
+		ProjectClient:     projectClient,
+		RBACClient:        newRBACStub("project.view", "project.artifacts.view"),
+		FeaturesService: support.FeatureClientStub{
+			State: feature.Hidden,
+			States: map[string]feature.State{
+				"mcp_server_read_tools":      feature.Enabled,
+				"mcp_server_artifacts_tools": feature.Enabled,
+				"artifacts_job_logs":         feature.Hidden,
+				"audit_logs":                 feature.Hidden,
+			},
+		},
+		Timeout: time.Second,
+	}
+
+	publisher := &auditPublisherStub{}
+	restore := auditlog.SetPublisherForTests(publisher)
+	defer restore()
+
+	logs := captureLoggerOutput(t)
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"organization_id": orgID,
+		"job_id":          jobID,
+	}}}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", selfHostedTestUser)
+	req.Header = header
+
+	res, err := artifactJobLogsHandler(provider)(context.Background(), req)
+	if err != nil {
+		toFail(t, "handler error: %v", err)
+	}
+	if res == nil || res.IsError {
+		toFail(t, "expected success response, got %#v", res)
+	}
+
+	if len(publisher.events) != 0 {
+		toFail(t, "expected no published audit events, got %d", len(publisher.events))
+	}
+
+	expectedResourceName := fmt.Sprintf("artifacts/jobs/%s/agent/job_logs.txt", jobID)
+	output := logs.String()
+	if !strings.Contains(output, "AuditLog") {
+		toFail(t, "expected stdout audit log, got %q", output)
+	}
+	if !strings.Contains(output, selfHostedTestUser) {
+		toFail(t, "expected stdout audit log to include user_id %s, got %q", selfHostedTestUser, output)
+	}
+	if !strings.Contains(output, orgID) {
+		toFail(t, "expected stdout audit log to include org_id %s, got %q", orgID, output)
+	}
+	if !strings.Contains(output, expectedResourceName) {
+		toFail(t, "expected stdout audit log to include resource_name %s, got %q", expectedResourceName, output)
+	}
+}
+
+func TestResolveUploadedArtifactJobLogsPathIgnoresForeignJobPrefix(t *testing.T) {
+	const jobID = "99999999-aaaa-bbbb-cccc-dddddddddddd"
+	const otherJobID = "11111111-2222-3333-4444-555555555555"
+	const artifactStoreID = "88888888-7777-6666-5555-444444444444"
+
+	artifactClient := &artifacthubClientStub{
+		listResp: &artifacthubpb.ListPathResponse{
+			Items: []*artifacthubpb.ListItem{
+				{
+					Name:        fmt.Sprintf("artifacts/jobs/%s/agent/job_logs.txt", otherJobID),
+					IsDirectory: false,
+				},
+			},
+		},
+	}
+
+	provider := &support.MockProvider{
+		ArtifacthubClient: artifactClient,
+		Timeout:           time.Second,
+	}
+
+	resolved, err := resolveUploadedArtifactJobLogsPath(context.Background(), provider, artifactStoreID, jobID)
+	if err != errUploadedArtifactJobLogsNotFound {
+		toFail(t, "expected errUploadedArtifactJobLogsNotFound, got resolved=%q err=%v", resolved, err)
+	}
+	if resolved != "" {
+		toFail(t, "expected empty resolved path, got %q", resolved)
+	}
+}
+
+func TestArtifactJobLogsFeatureDisabled(t *testing.T) {
+	const orgID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	const jobID = "99999999-aaaa-bbbb-cccc-dddddddddddd"
+	const artifactStoreID = "88888888-7777-6666-5555-444444444444"
+
+	jobClient := &jobClientStub{
+		describeResp: &jobpb.DescribeResponse{
+			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
+			Job: &jobpb.Job{
+				Id:             jobID,
+				ProjectId:      testProjectUUID,
+				OrganizationId: orgID,
+				SelfHosted:     false,
+			},
+		},
+	}
+	artifactClient := &artifacthubClientStub{}
+	projectClient := &support.ProjectClientStub{
+		Response: newProjectDescribeResponseWithArtifactStore(orgID, testProjectUUID, artifactStoreID),
+	}
+	provider := &support.MockProvider{
+		JobClient:         jobClient,
+		ArtifacthubClient: artifactClient,
+		ProjectClient:     projectClient,
+		RBACClient:        newRBACStub("project.view", "project.artifacts.view"),
+		FeaturesService: support.FeatureClientStub{
+			States: map[string]feature.State{
+				"mcp_server_read_tools":      feature.Enabled,
+				"mcp_server_artifacts_tools": feature.Hidden,
+				"artifacts_job_logs":         feature.Hidden,
+			},
+		},
+		Timeout: time.Second,
+	}
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"organization_id": orgID,
+		"job_id":          jobID,
+	}}}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", selfHostedTestUser)
+	req.Header = header
+
+	res, err := artifactJobLogsHandler(provider)(context.Background(), req)
+	if err != nil {
+		toFail(t, "handler error: %v", err)
+	}
+
+	msg := requireErrorText(t, res)
+	if !strings.Contains(strings.ToLower(msg), "enable mcp_server_artifacts_tools or artifacts_job_logs") {
+		toFail(t, "expected both-features-disabled error, got %q", msg)
+	}
+	if artifactClient.lastList != nil || artifactClient.lastSigned != nil {
+		toFail(t, "expected no artifact calls when both feature flags are disabled")
+	}
+}
+
+func TestArtifactJobLogsPermissionDenied(t *testing.T) {
+	const orgID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	const jobID = "99999999-aaaa-bbbb-cccc-dddddddddddd"
+	const artifactStoreID = "88888888-7777-6666-5555-444444444444"
+
+	jobClient := &jobClientStub{
+		describeResp: &jobpb.DescribeResponse{
+			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
+			Job: &jobpb.Job{
+				Id:             jobID,
+				ProjectId:      testProjectUUID,
+				OrganizationId: orgID,
+				SelfHosted:     false,
+			},
+		},
+	}
+	artifactClient := &artifacthubClientStub{}
+	projectClient := &support.ProjectClientStub{
+		Response: newProjectDescribeResponseWithArtifactStore(orgID, testProjectUUID, artifactStoreID),
+	}
+	rbac := newRBACStub("project.view")
+
+	provider := &support.MockProvider{
+		JobClient:         jobClient,
+		ArtifacthubClient: artifactClient,
+		ProjectClient:     projectClient,
+		RBACClient:        rbac,
+		FeaturesService: support.FeatureClientStub{
+			States: map[string]feature.State{
+				"mcp_server_read_tools":      feature.Enabled,
+				"mcp_server_artifacts_tools": feature.Enabled,
+				"artifacts_job_logs":         feature.Hidden,
+			},
+		},
+		Timeout: time.Second,
+	}
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"organization_id": orgID,
+		"job_id":          jobID,
+	}}}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", selfHostedTestUser)
+	req.Header = header
+
+	res, err := artifactJobLogsHandler(provider)(context.Background(), req)
+	if err != nil {
+		toFail(t, "handler error: %v", err)
+	}
+
+	msg := requireErrorText(t, res)
+	if !strings.Contains(msg, "Permission denied while accessing project") {
+		toFail(t, "expected permission denied error, got %q", msg)
+	}
+	if len(rbac.lastRequests) != 1 {
+		toFail(t, "expected one RBAC request, got %d", len(rbac.lastRequests))
+	}
+	if projectClient.LastDescribe != nil {
+		toFail(t, "expected project describe not to run on RBAC deny")
+	}
+	if artifactClient.lastList != nil || artifactClient.lastSigned != nil {
+		toFail(t, "expected no artifacthub calls on RBAC deny")
+	}
+}
+
+func TestArtifactJobLogsScopeMismatchOrganization(t *testing.T) {
+	const requestOrgID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	const foreignOrgID = "bbbbbbbb-cccc-dddd-eeee-ffffffffffff"
+	const foreignProjectID = "44444444-5555-6666-7777-888888888888"
+	const jobID = "99999999-aaaa-bbbb-cccc-dddddddddddd"
+
+	jobClient := &jobClientStub{
+		describeResp: &jobpb.DescribeResponse{
+			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
+			Job: &jobpb.Job{
+				Id:             jobID,
+				ProjectId:      foreignProjectID,
+				OrganizationId: foreignOrgID,
+				SelfHosted:     false,
+			},
+		},
+	}
+	artifactClient := &artifacthubClientStub{}
+	projectClient := &support.ProjectClientStub{}
+	rbac := newRBACStub("project.view", "project.artifacts.view")
+
+	provider := &support.MockProvider{
+		JobClient:         jobClient,
+		ArtifacthubClient: artifactClient,
+		ProjectClient:     projectClient,
+		RBACClient:        rbac,
+		Timeout:           time.Second,
+	}
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"organization_id": requestOrgID,
+		"job_id":          jobID,
+	}}}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", selfHostedTestUser)
+	req.Header = header
+
+	res, err := artifactJobLogsHandler(provider)(context.Background(), req)
+	if err != nil {
+		toFail(t, "handler error: %v", err)
+	}
+
+	msg := requireErrorText(t, res)
+	if !strings.Contains(msg, "outside the authorized organization scope") {
+		toFail(t, "expected organization scope mismatch message, got %q", msg)
+	}
+	if strings.Contains(msg, foreignOrgID) || strings.Contains(msg, foreignProjectID) {
+		toFail(t, "scope mismatch should not disclose foreign IDs, got %q", msg)
+	}
+	if len(rbac.lastRequests) != 0 {
+		toFail(t, "expected no RBAC calls, got %d", len(rbac.lastRequests))
+	}
+	if projectClient.LastDescribe != nil {
+		toFail(t, "expected no project describe call on organization scope mismatch")
+	}
+	if artifactClient.lastList != nil || artifactClient.lastSigned != nil {
+		toFail(t, "expected no artifacthub calls on organization scope mismatch")
+	}
+}
+
+func TestArtifactJobLogsProjectDescribeScopeMismatch(t *testing.T) {
+	const orgID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	const jobID = "99999999-aaaa-bbbb-cccc-dddddddddddd"
+	const mismatchProjectID = "44444444-5555-6666-7777-888888888888"
+	const artifactStoreID = "88888888-7777-6666-5555-444444444444"
+
+	jobClient := &jobClientStub{
+		describeResp: &jobpb.DescribeResponse{
+			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
+			Job: &jobpb.Job{
+				Id:             jobID,
+				ProjectId:      testProjectUUID,
+				OrganizationId: orgID,
+				SelfHosted:     false,
+			},
+		},
+	}
+	artifactClient := &artifacthubClientStub{
+		listResp: &artifacthubpb.ListPathResponse{
+			Items: []*artifacthubpb.ListItem{
+				{Name: fmt.Sprintf("artifacts/jobs/%s/agent/job_logs.txt", jobID), IsDirectory: false},
+			},
+		},
+		signedURL: "https://example.com/full-logs.txt",
+	}
+	projectClient := &support.ProjectClientStub{
+		Response: newProjectDescribeResponseWithArtifactStore(orgID, mismatchProjectID, artifactStoreID),
+	}
+	rbac := newRBACStub("project.view", "project.artifacts.view")
+
+	provider := &support.MockProvider{
+		JobClient:         jobClient,
+		ArtifacthubClient: artifactClient,
+		ProjectClient:     projectClient,
+		RBACClient:        rbac,
+		FeaturesService: support.FeatureClientStub{
+			States: map[string]feature.State{
+				"mcp_server_read_tools":      feature.Enabled,
+				"mcp_server_artifacts_tools": feature.Enabled,
+				"artifacts_job_logs":         feature.Hidden,
+			},
+		},
+		Timeout: time.Second,
+	}
+
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"organization_id": orgID,
+		"job_id":          jobID,
+	}}}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", selfHostedTestUser)
+	req.Header = header
+
+	res, err := artifactJobLogsHandler(provider)(context.Background(), req)
+	if err != nil {
+		toFail(t, "handler error: %v", err)
+	}
+
+	msg := requireErrorText(t, res)
+	if !strings.Contains(msg, "outside the authorized project scope") {
+		toFail(t, "expected project scope mismatch message, got %q", msg)
+	}
+	if projectClient.LastDescribe == nil {
+		toFail(t, "expected project describe call before scope mismatch")
+	}
+	if artifactClient.lastList != nil || artifactClient.lastSigned != nil {
+		toFail(t, "expected no artifacthub calls when project metadata mismatches request")
 	}
 }
 
@@ -1201,6 +1976,76 @@ func (s *orgClientStub) Describe(ctx context.Context, in *orgpb.DescribeRequest,
 		return nil, s.err
 	}
 	return s.resp, nil
+}
+
+func newProjectDescribeResponseWithArtifactStore(orgID, projectID, artifactStoreID string) *projecthubpb.DescribeResponse {
+	return &projecthubpb.DescribeResponse{
+		Metadata: &projecthubpb.ResponseMeta{
+			Status: &projecthubpb.ResponseMeta_Status{Code: projecthubpb.ResponseMeta_OK},
+		},
+		Project: &projecthubpb.Project{
+			Metadata: &projecthubpb.Project_Metadata{
+				Id:    projectID,
+				OrgId: orgID,
+			},
+			Spec: &projecthubpb.Project_Spec{
+				ArtifactStoreId: artifactStoreID,
+			},
+		},
+	}
+}
+
+type artifacthubClientStub struct {
+	artifacthubpb.ArtifactServiceClient
+	listResp   *artifacthubpb.ListPathResponse
+	listErr    error
+	lastList   *artifacthubpb.ListPathRequest
+	signedURL  string
+	signedErr  error
+	lastSigned *artifacthubpb.GetSignedURLRequest
+}
+
+func (s *artifacthubClientStub) ListPath(ctx context.Context, in *artifacthubpb.ListPathRequest, opts ...grpc.CallOption) (*artifacthubpb.ListPathResponse, error) {
+	s.lastList = in
+	if s.listErr != nil {
+		return nil, s.listErr
+	}
+	if s.listResp != nil {
+		return s.listResp, nil
+	}
+	return &artifacthubpb.ListPathResponse{}, nil
+}
+
+func (s *artifacthubClientStub) GetSignedURL(ctx context.Context, in *artifacthubpb.GetSignedURLRequest, opts ...grpc.CallOption) (*artifacthubpb.GetSignedURLResponse, error) {
+	s.lastSigned = in
+	if s.signedErr != nil {
+		return nil, s.signedErr
+	}
+	return &artifacthubpb.GetSignedURLResponse{Url: s.signedURL}, nil
+}
+
+type auditPublisherStub struct {
+	events []*auditpb.Event
+	err    error
+}
+
+func (s *auditPublisherStub) Publish(_ context.Context, event *auditpb.Event) error {
+	s.events = append(s.events, event)
+	return s.err
+}
+
+func captureLoggerOutput(t *testing.T) *bytes.Buffer {
+	t.Helper()
+
+	logger := logging.Logger()
+	var buf bytes.Buffer
+	previous := logger.Out
+	logger.SetOutput(&buf)
+	t.Cleanup(func() {
+		logger.SetOutput(previous)
+	})
+
+	return &buf
 }
 
 func requireErrorText(t *testing.T, res *mcp.CallToolResult) string {

@@ -120,7 +120,7 @@ check.deps:
 		bash -c 'cd $(APP_DIRECTORY) && $(SECURITY_TOOLBOX_TMP_DIR)/dependencies --language $(LANGUAGE) -d --output-dir $(SCAN_RESULT_DIR) $(CHECK_DEPS_OPTS); EXIT_CODE=$$?; chown -R "$$HOST_UID:$$HOST_GID" $(SCAN_RESULT_DIR) 2>/dev/null || true; exit $$EXIT_CODE'
 
 check.ex.deps:
-	$(MAKE) check.deps LANGUAGE=elixir CHECK_DEPS_OPTS="-i hackney $(CHECK_DEPS_EXTRA_OPTS)"
+	$(MAKE) check.deps LANGUAGE=elixir CHECK_DEPS_OPTS="-i hackney -i plug_cowboy $(CHECK_DEPS_EXTRA_OPTS)"
 
 check.go.deps:
 	$(MAKE) check.deps LANGUAGE=go
@@ -311,13 +311,8 @@ configure.sign:
 	$(ROOT_MAKEFILE_PATH)/get_id_token.py $$GOOGLE_PROJECT_NAME ci-image-signer > /tmp/sigstore-token
 
 registry.push:
-	@if [ "$(APP_NAME)" = "mcp_server" ]; then \
-		docker tag $(IMAGE):$(IMAGE_TAG) $(REGISTRY_HOST)/auth:mcp_$(RELEASE_TAG); \
-		docker push $(REGISTRY_HOST)/auth:mcp_$(RELEASE_TAG); \
-	else \
-		docker tag $(IMAGE):$(IMAGE_TAG) $(REGISTRY_HOST)/$(APP_NAME):$(RELEASE_TAG); \
-		docker push $(REGISTRY_HOST)/$(APP_NAME):$(RELEASE_TAG); \
-	fi
+	docker tag $(IMAGE):$(IMAGE_TAG) $(REGISTRY_HOST)/$(APP_NAME):$(RELEASE_TAG)
+	docker push $(REGISTRY_HOST)/$(APP_NAME):$(RELEASE_TAG)
 
 registry.sign: cosign.install
 	cosign sign -y \

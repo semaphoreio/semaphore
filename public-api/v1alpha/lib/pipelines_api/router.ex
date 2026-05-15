@@ -41,6 +41,8 @@ defmodule PipelinesAPI.Router do
   alias PipelinesAPI.Troubleshoot.Job, as: TroubleshootJob
   alias PipelinesAPI.ArtifactsRetentionPolicy.Update, as: UpdateArtifactsRetentionPolicy
   alias PipelinesAPI.ArtifactsRetentionPolicy.Describe, as: DescribeArtifactsRetentionPolicy
+  alias PipelinesAPI.Artifacts.List, as: ListArtifacts
+  alias PipelinesAPI.Artifacts.GetSignedURL, as: GetArtifactSignedURL
 
   plug(PipelinesAPI.Plug.Logger)
 
@@ -152,6 +154,9 @@ defmodule PipelinesAPI.Router do
     via: :get,
     to: DescribeArtifactsRetentionPolicy
   )
+
+  match("/artifacts", via: :get, to: ListArtifacts)
+  match("/artifacts/signed_url", via: :get, to: GetArtifactSignedURL)
 
   match("/logs/:job_id", via: :get, to: PipelinesAPI.Logs.Get)
 

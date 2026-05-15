@@ -70,7 +70,8 @@ defmodule Guard.FrontRepo.RepoHostAccount do
         :name,
         :permission_scope,
         :token,
-        :refresh_token
+        :refresh_token,
+        :token_expires_at
       ])
       |> Ecto.Changeset.validate_required([
         :login,
@@ -213,9 +214,11 @@ defmodule Guard.FrontRepo.RepoHostAccount do
   @spec update_repo_host_account(String.t(), repo_host, map(), Keyword.t()) ::
           {:ok, Guard.FrontRepo.RepoHostAccount.t()}
           | {:error, :invalid_data | Ecto.Changeset.t()}
-  def update_repo_host_account(user_id, _, %{github_uid: uid, login: login} = data, _opts)
+  def update_repo_host_account(user_id, _, %{github_uid: uid, login: login}, _opts)
       when is_nil(uid) or is_nil(login) do
-    Logger.error("Cannot update RepoHostAccount for #{user_id} with data #{inspect(data)}")
+    Logger.error(
+      "Cannot update RepoHostAccount for #{user_id}: missing required fields (login_present=#{not is_nil(login)}, uid_present=#{not is_nil(uid)})"
+    )
 
     {:error, :invalid_data}
   end
@@ -224,9 +227,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     data = data |> adjust_scope(user_id)
     repo_host = repo_host |> Atom.to_string()
 
-    Logger.debug(
-      "Updating RepoHostAccount for #{user_id} with data #{inspect(data)} and opts #{inspect(opts)} #{inspect(repo_host)}"
-    )
+    Logger.debug("Updating RepoHostAccount for #{user_id} repo_host=#{repo_host}")
 
     case get_for_user_by_repo_host(user_id, repo_host) do
       {:ok, account} ->
@@ -281,7 +282,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
 
   defp drop_if_skip_credentials(data, permission_scope) do
     if skip_credentials?(permission_scope, Map.get(data, :permission_scope)) do
-      Map.drop(data, [:permission_scope, :token, :refresh_token, :revoked])
+      Map.drop(data, [:permission_scope, :token, :refresh_token, :token_expires_at, :revoked])
     else
       data
     end
@@ -331,14 +332,14 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     case result do
       {:ok, account} ->
         Logger.info(
-          "Successfully updated RepoHostAccount for #{account.user_id} from #{inspect(account)} to #{inspect(data)}"
+          "Successfully updated RepoHostAccount for #{account.user_id} #{account.repo_host} login=#{account.login}"
         )
 
         {:ok, account}
 
       {:error, error} ->
         Logger.error(
-          "Failed to update RepoHostAccount for #{account.user_id} from #{inspect(account)} to #{inspect(data)} #{inspect(error)}"
+          "Failed to update RepoHostAccount for #{account.user_id} #{account.repo_host} login=#{account.login} errors=#{inspect(error)}"
         )
 
         {:error, error}
@@ -348,7 +349,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
   defp reset_account(account, data, reset: reset)
        when account.github_uid == data.github_uid or reset == false do
     Logger.debug(
-      "Skipping reset account for #{account.user_id} from #{inspect(account)} to #{inspect(data)}"
+      "Skipping reset account for #{account.user_id} #{account.repo_host} reset=#{reset}"
     )
 
     {:ok, account}
@@ -366,6 +367,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
           :revoked,
           :token,
           :refresh_token,
+          :token_expires_at,
           :permission_scope
         ]
       )
@@ -375,14 +377,14 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     case result do
       {:ok, account} ->
         Logger.warning(
-          "Successfully reset RepoHostAccount for #{account.user_id} from #{inspect(account)} to #{inspect(data)}"
+          "Successfully reset RepoHostAccount for #{account.user_id} #{account.repo_host} login=#{account.login}"
         )
 
         {:ok, account}
 
       {:error, error} ->
         Logger.error(
-          "Failed to reset RepoHostAccount for #{account.user_id} from #{inspect(account)} to #{inspect(data)} #{inspect(error)}"
+          "Failed to reset RepoHostAccount for #{account.user_id} #{account.repo_host} login=#{account.login} errors=#{inspect(error)}"
         )
 
         {:error, error}

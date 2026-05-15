@@ -4,6 +4,8 @@
   <body class="bg-lightest-brown">
 
       <%= if @signup do %>
+        <%= render FrontWeb.SharedView, "_gtm.html", conn: @conn %>
+        <%= render FrontWeb.SharedView, "_gtm_noscript.html", conn: @conn %>
         <%= render FrontWeb.SharedView, "_gtag.html", conn: @conn %>
       <% end %>
 

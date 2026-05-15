@@ -37,6 +37,7 @@ defmodule Support.Stubs do
   def reset do
     Support.Stubs.DB.reset()
     Support.Stubs.Time.reset()
+    if Process.whereis(:feature_provider_cache), do: Cachex.clear(:feature_provider_cache)
     Support.Stubs.User.Grpc.init()
     Support.Stubs.Organization.Grpc.init()
     Support.Stubs.Secret.Grpc.init()
@@ -81,6 +82,7 @@ defmodule Support.Stubs do
       "project.scheduler.manage",
       "project.scheduler.run_manually",
       "project.scheduler.view",
+      "project.artifacts.view",
       "project.deployment_targets.view",
       "project.deployment_targets.manage"
     ]

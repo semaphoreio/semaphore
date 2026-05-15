@@ -42,6 +42,7 @@ defmodule Front.Mixfile do
       {:grpc, "0.5.0-beta.1", override: true},
       {:cowboy, "~> 2.9.0", override: true},
       {:cowlib, "~> 2.11.0", override: true},
+      {:decimal, "~> 3.0", override: true},
       {:watchman, github: "renderedtext/ex-watchman"},
       {:traceman, github: "renderedtext/traceman"},
       {:cacheman, github: "renderedtext/ex-cacheman"},

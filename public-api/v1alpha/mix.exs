@@ -64,6 +64,8 @@ defmodule PipelinesAPI.Mixfile do
       {:dialyxir, "~> 1.1", only: [:dev], runtime: false},
       {:junit_formatter, "~> 3.1", only: [:test]},
       {:cachex, "~> 3.2"},
+      {:amqp_client, "~> 3.9.27"},
+      {:tackle, github: "renderedtext/ex-tackle", tag: "v0.2.3"},
       {:feature_provider, path: "../../feature_provider"}
     ]
   end
