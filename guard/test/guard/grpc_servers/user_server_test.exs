@@ -1168,7 +1168,7 @@ defmodule Guard.GrpcServers.UserServerTest do
         case env do
           %{
             method: :get,
-            url: "https://api.bitbucket.org/2.0/repositories"
+            url: "https://api.bitbucket.org/2.0/user/workspaces"
           } ->
             {:ok, %Tesla.Env{status: 200, body: %{}}}
 
@@ -1222,6 +1222,102 @@ defmodule Guard.GrpcServers.UserServerTest do
                  uid: repo_host_account.github_uid
                }
              } == response
+    end
+
+    test "refresh_repository_provider marks bitbucket account revoked for 401 responses",
+         %{grpc_channel: channel} do
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.bitbucket.org/2.0/user/workspaces"} ->
+          {:ok, %Tesla.Env{status: 401, body: %{}}}
+      end)
+
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user.id)
+
+      {:ok, _} =
+        Support.Members.insert_user(
+          id: user.id,
+          email: user.email,
+          name: user.name
+        )
+
+      {:ok, repo_host_account} =
+        Support.Members.insert_repo_host_account(
+          login: "radwo",
+          name: "radwo",
+          repo_host: "bitbucket",
+          refresh_token: "example_refresh_token",
+          token_expires_at: Support.Members.valid_expires_at(),
+          user_id: user.id,
+          token: "token",
+          revoked: false,
+          permission_scope: "repo"
+        )
+
+      request =
+        User.RefreshRepositoryProviderRequest.new(
+          user_id: user.id,
+          type: User.RepositoryProvider.Type.value(:BITBUCKET)
+        )
+
+      {:ok, response} =
+        channel
+        |> Stub.refresh_repository_provider(request)
+
+      assert response.repository_provider.scope == User.RepositoryProvider.Scope.value(:NONE)
+
+      updated_account =
+        Guard.FrontRepo.get!(Guard.FrontRepo.RepoHostAccount, repo_host_account.id)
+
+      assert updated_account.revoked == true
+    end
+
+    test "refresh_repository_provider keeps revoke status unchanged for transient bitbucket failures",
+         %{grpc_channel: channel} do
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.bitbucket.org/2.0/user/workspaces"} ->
+          {:ok, %Tesla.Env{status: 503, body: %{}}}
+      end)
+
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user.id)
+
+      {:ok, _} =
+        Support.Members.insert_user(
+          id: user.id,
+          email: user.email,
+          name: user.name
+        )
+
+      {:ok, repo_host_account} =
+        Support.Members.insert_repo_host_account(
+          login: "radwo",
+          name: "radwo",
+          repo_host: "bitbucket",
+          refresh_token: "example_refresh_token",
+          token_expires_at: Support.Members.valid_expires_at(),
+          user_id: user.id,
+          token: "token",
+          revoked: false,
+          permission_scope: "repo"
+        )
+
+      request =
+        User.RefreshRepositoryProviderRequest.new(
+          user_id: user.id,
+          type: User.RepositoryProvider.Type.value(:BITBUCKET)
+        )
+
+      {:ok, response} =
+        channel
+        |> Stub.refresh_repository_provider(request)
+
+      assert response.repository_provider.scope == User.RepositoryProvider.Scope.value(:PRIVATE)
+
+      updated_account =
+        Guard.FrontRepo.get!(Guard.FrontRepo.RepoHostAccount, repo_host_account.id)
+
+      assert updated_account.revoked == false
     end
 
     test "refresh_repository_provider should refresh repository provider details for a valid user with gitlab",

@@ -8,6 +8,24 @@ Thank you for using Semaphore!
 We continuously deploy changes that improve our product for our customers.
 This page is updated on a weekly basis.
 
+### Week of May 25, 2026
+
+**(Improved) macos-xcode26 image update**
+
+**(New)**
+
+- Xcode26.5
+- iOS 26.5
+
+**(Updated)** :
+
+- Container 0.10.0 -> 0.12.3
+- Fastlane 2.232.2 -> 2.234.0
+- Flutter 3.41.6 -> 3.41.9
+- Homebrew 5.1.1 -> 5.1.11
+- Ruby 4.0.2 -> 4.0.4
+
+
 ### Week of May 4 2026
 
 **(Improved) Ubuntu 24.04 image update**
