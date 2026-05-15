@@ -28,6 +28,24 @@ defmodule FrontWeb.JobView do
     end
   end
 
+  def logs_available?(job), do: !finished_without_execution?(job)
+
+  def missing_logs_message(job) do
+    cond do
+      failed_to_start?(job) ->
+        job.failure_reason
+
+      finished_without_execution?(job) and job.state == "stopped" ->
+        "This job was stopped before it started, so no logs were produced."
+
+      finished_without_execution?(job) ->
+        "This job never started, so no logs were produced."
+
+      true ->
+        nil
+    end
+  end
+
   def job_timer(job), do: job_timer(job.state, job.timeline)
 
   def job_timer("pending", timeline) do
@@ -50,6 +68,10 @@ defmodule FrontWeb.JobView do
     "<span class='f5 code'>#{FrontWeb.SharedView.total_time(timeline.started_at, timeline.finished_at)}</span>"
   end
 
+  def job_timer("stopped", %{started_at: nil}) do
+    "<span class='f5 code'>--:--</span>"
+  end
+
   def job_timer("stopped", timeline) do
     "<span class='f5 code'>#{FrontWeb.SharedView.total_time(timeline.started_at, timeline.finished_at)}</span>"
   end
@@ -68,4 +90,8 @@ defmodule FrontWeb.JobView do
   defp job_state_color("passed"), do: "bg-green"
   defp job_state_color("failed"), do: "bg-red"
   defp job_state_color("stopped"), do: "bg-gray"
+
+  defp finished_without_execution?(job) do
+    job.timeline.started_at == nil && job.state not in ["pending", "running"]
+  end
 end

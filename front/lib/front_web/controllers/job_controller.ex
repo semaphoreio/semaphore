@@ -95,7 +95,8 @@ defmodule FrontWeb.JobController do
 
     take = extract_take(params)
     pollman_state = extract_state(conn.assigns.job.state)
-    fetching = if failed_to_start?(conn.assigns.job), do: "dont_start", else: "ready"
+    missing_logs_message = missing_logs_message(conn.assigns.job)
+    fetching = if is_nil(missing_logs_message), do: "ready", else: "dont_start"
     finished_job = finished_job(conn.assigns.job.state)
 
     pollman = %{
@@ -116,7 +117,7 @@ defmodule FrontWeb.JobController do
       timestamps: memory["logTimestamps"],
       state: conn.assigns.job.state,
       fetching: fetching,
-      failure_msg: conn.assigns.job.failure_reason
+      failure_msg: missing_logs_message
     }
 
     assigns =
@@ -235,20 +236,28 @@ defmodule FrontWeb.JobController do
     Watchman.benchmark({"logs.duration", ["#{conn.assigns.job.id}"]}, fn ->
       job = conn.assigns.job
 
-      token = params |> Map.get("token", "0") |> Integer.parse() |> elem(0)
+      case missing_logs_message(job) do
+        nil ->
+          token = params |> Map.get("token", "0") |> Integer.parse() |> elem(0)
 
-      case JobPage.Events.fetch_events(job.id, token) do
-        {:ok, events} ->
-          conn
-          |> put_resp_content_type("application/json")
-          |> send_chunked(200)
-          |> send_first_chunk(events.next)
-          |> send_events_in_chunks(events.events, per_chunk: 10_000)
-          |> send_last_chunk()
+          case JobPage.Events.fetch_events(job.id, token) do
+            {:ok, events} ->
+              conn
+              |> put_resp_content_type("application/json")
+              |> send_chunked(200)
+              |> send_first_chunk(events.next)
+              |> send_events_in_chunks(events.events, per_chunk: 10_000)
+              |> send_last_chunk()
 
-        {:error, message} ->
+            {:error, message} ->
+              conn
+              |> put_status(500)
+              |> json(%{error: message})
+          end
+
+        message ->
           conn
-          |> put_status(500)
+          |> put_status(409)
           |> json(%{error: message})
       end
     end)
@@ -276,27 +285,35 @@ defmodule FrontWeb.JobController do
     Watchman.benchmark("raw_output.duration", fn ->
       job = conn.assigns.job
 
-      starting_event = params |> Map.get("starting_event", "0") |> Integer.parse() |> elem(0)
-      take = params |> Map.get("take", "0") |> Integer.parse() |> elem(0)
+      case missing_logs_message(job) do
+        nil ->
+          starting_event = params |> Map.get("starting_event", "0") |> Integer.parse() |> elem(0)
+          take = params |> Map.get("take", "0") |> Integer.parse() |> elem(0)
 
-      if job.self_hosted do
-        # The generated token should be valid for 1 minute only
-        case Models.Job.generate_token(job.id, 60) do
-          "" ->
-            conn
-            |> put_flash(:alert, "There was a problem finding the raw logs.")
-            |> redirect(to: job_path(conn, :show, job.id))
+          if job.self_hosted do
+            # The generated token should be valid for 1 minute only
+            case Models.Job.generate_token(job.id, 60) do
+              "" ->
+                conn
+                |> put_flash(:alert, "There was a problem finding the raw logs.")
+                |> redirect(to: job_path(conn, :show, job.id))
 
-          token ->
+              token ->
+                conn
+                |> put_status(:temporary_redirect)
+                |> redirect(
+                  external: "https://#{conn.host}/api/v1/logs/#{job.id}?jwt=#{token}&raw=true"
+                )
+            end
+          else
             conn
-            |> put_status(:temporary_redirect)
-            |> redirect(
-              external: "https://#{conn.host}/api/v1/logs/#{job.id}?jwt=#{token}&raw=true"
-            )
-        end
-      else
-        conn
-        |> text(JobPage.Events.raw_logs(job.id, starting_event, take))
+            |> text(JobPage.Events.raw_logs(job.id, starting_event, take))
+          end
+
+        message ->
+          conn
+          |> put_flash(:alert, message)
+          |> redirect(to: job_path(conn, :show, job.id))
       end
     end)
   end
@@ -305,12 +322,20 @@ defmodule FrontWeb.JobController do
     Watchman.benchmark("events.duration", fn ->
       job = conn.assigns.job
 
-      starting_event = params |> Map.get("starting_event", "0") |> Integer.parse() |> elem(0)
-      take = params |> Map.get("take", "0") |> Integer.parse() |> elem(0)
+      case missing_logs_message(job) do
+        nil ->
+          starting_event = params |> Map.get("starting_event", "0") |> Integer.parse() |> elem(0)
+          take = params |> Map.get("take", "0") |> Integer.parse() |> elem(0)
 
-      conn
-      |> put_resp_content_type("application/json")
-      |> send_resp(200, JobPage.Events.raw_events(job.id, starting_event, take))
+          conn
+          |> put_resp_content_type("application/json")
+          |> send_resp(200, JobPage.Events.raw_events(job.id, starting_event, take))
+
+        message ->
+          conn
+          |> put_status(409)
+          |> json(%{error: message})
+      end
     end)
   end
 
@@ -463,9 +488,7 @@ defmodule FrontWeb.JobController do
   defp finished_job("running"), do: false
   defp finished_job(_), do: true
 
-  defp failed_to_start?(job) do
-    job.timeline.started_at == nil && job.failure_reason != ""
-  end
+  defp missing_logs_message(job), do: FrontWeb.JobView.missing_logs_message(job)
 
   defp debug_or_attach(job_state)
   defp debug_or_attach("pending"), do: "debug"
