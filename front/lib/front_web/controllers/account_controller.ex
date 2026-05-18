@@ -44,14 +44,6 @@ defmodule FrontWeb.AccountController do
 
   defp maybe_put_oauth_flash(conn, _params), do: conn
 
-  # Canonical OAuth error codes this controller knows how to render.
-  # Mirror of `Guard.Id.OAuthErrorCode.codes/0` minus the "generic" fallback.
-  # If a new code is emitted by guard, add it here AND in `oauth_error_text/2`.
-  @oauth_error_codes ~w(invalid_uid missing_name missing_login auth_failed login_not_allowed)
-
-  @doc false
-  def oauth_error_codes, do: @oauth_error_codes
-
   defp oauth_provider_label("github"), do: "GitHub"
   defp oauth_provider_label("bitbucket"), do: "Bitbucket"
   defp oauth_provider_label("gitlab"), do: "GitLab"

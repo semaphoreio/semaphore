@@ -1,6 +1,12 @@
 defmodule FrontWeb.AccountControllerTest do
   use FrontWeb.ConnCase
 
+  # Canonical OAuth error codes the controller is expected to render.
+  # Mirror of `Guard.Id.OAuthErrorCode.codes/0` minus the "generic" fallback.
+  # If a new code is emitted by guard, add it here AND add an
+  # `oauth_error_text/2` clause in FrontWeb.AccountController.
+  @oauth_error_codes ~w(invalid_uid missing_name missing_login auth_failed login_not_allowed)
+
   setup do
     Cacheman.clear(:front)
 
@@ -174,7 +180,7 @@ defmodule FrontWeb.AccountControllerTest do
         "We're sorry, but your connection attempt was unsuccessful. Please try again. " <>
           "If you continue to experience issues, please contact our support team for assistance."
 
-      for code <- FrontWeb.AccountController.oauth_error_codes() do
+      for code <- @oauth_error_codes do
         conn =
           get(conn, "/account", %{
             "status" => "error",
