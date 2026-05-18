@@ -87,8 +87,8 @@ defmodule Guard.Id.Api do
         conn
         |> redirect(:noop, %{
           status: "error",
-          message:
-            "We're sorry, but your connection attempt was unsuccessful. Please try again. If you continue to experience issues, please contact our support team for assistance."
+          code: "auth_failed",
+          provider: to_string(fails.provider)
         })
 
       %{assigns: %{user_id: user_id, ueberauth_auth: auth}} ->
@@ -107,11 +107,33 @@ defmodule Guard.Id.Api do
               status: "success"
             })
 
-          {:error, _} ->
-            conn |> redirect(:noop)
+          {:error, reason} ->
+            code = Guard.Id.OAuthErrorCode.from_reason(reason)
+
+            Logger.error(
+              "Failed to update RepoHostAccount user_id=#{user_id} provider=#{repo_host} " <>
+                "code=#{code} kind=#{repo_host_error_kind(reason)}"
+            )
+
+            conn
+            |> redirect(:noop, %{
+              status: "error",
+              code: code,
+              provider: to_string(repo_host)
+            })
         end
     end
   end
+
+  # Shape-only classifier for log output. Never inspect the raw reason — Ecto
+  # changesets carry user tokens in their `changes` map and would leak via logs.
+  defp repo_host_error_kind(:invalid_data), do: "invalid_data"
+
+  defp repo_host_error_kind(%Ecto.Changeset{errors: errors}) do
+    "changeset:" <> (errors |> Keyword.keys() |> Enum.map_join(",", &to_string/1))
+  end
+
+  defp repo_host_error_kind(_), do: "other"
 
   @doc false
   def parse_expires_at(nil), do: nil
@@ -505,7 +527,7 @@ defmodule Guard.Id.Api do
           conn
           |> redirect(:noop, %{
             status: "error",
-            message: message || "Login not allowed. Please contact your administrator."
+            code: "login_not_allowed"
           })
 
         {:error, :user_blocked, user} ->
@@ -725,7 +747,7 @@ defmodule Guard.Id.Api do
   end
 
   defp verify_oidc_user_login_allowed_on_saml(user) do
-    if user != nil and user.creation_source == nil && !user.single_org_user do
+    if (user != nil and user.creation_source == nil) && !user.single_org_user do
       {:ok, true, nil}
     else
       Logger.warning("OIDC login not allowed for this user")

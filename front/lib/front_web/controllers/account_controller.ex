@@ -26,9 +26,66 @@ defmodule FrontWeb.AccountController do
 
   def show(conn, params) do
     Watchman.benchmark("account.show.duration", fn ->
-      render_show(conn, conn.assigns.user_id, params["errors"])
+      conn
+      |> maybe_put_oauth_flash(params)
+      |> render_show(conn.assigns.user_id, params["errors"])
     end)
   end
+
+  defp maybe_put_oauth_flash(conn, params = %{"status" => "error"}) do
+    code = params["code"]
+    provider = oauth_provider_label(params["provider"])
+    put_flash(conn, :alert, oauth_error_text(code, provider))
+  end
+
+  defp maybe_put_oauth_flash(conn, %{"status" => "success"}) do
+    put_flash(conn, :notice, "Repository account connected.")
+  end
+
+  defp maybe_put_oauth_flash(conn, _params), do: conn
+
+  # Canonical OAuth error codes this controller knows how to render.
+  # Mirror of `Guard.Id.OAuthErrorCode.codes/0` minus the "generic" fallback.
+  # If a new code is emitted by guard, add it here AND in `oauth_error_text/2`.
+  @oauth_error_codes ~w(invalid_uid missing_name missing_login auth_failed login_not_allowed)
+
+  @doc false
+  def oauth_error_codes, do: @oauth_error_codes
+
+  defp oauth_provider_label("github"), do: "GitHub"
+  defp oauth_provider_label("bitbucket"), do: "Bitbucket"
+  defp oauth_provider_label("gitlab"), do: "GitLab"
+  defp oauth_provider_label(_), do: "repository"
+
+  defp oauth_error_text("invalid_uid", provider),
+    do:
+      "Your #{provider} account did not return the required profile data (username or user ID). " <>
+        "Please verify your account is fully set up and try again."
+
+  defp oauth_error_text("missing_name", provider),
+    do:
+      "Your #{provider} profile is missing a display name. " <>
+        "Please set a name in your #{provider} account settings and try connecting again."
+
+  defp oauth_error_text("missing_login", provider),
+    do: "Your #{provider} profile is missing a username."
+
+  defp oauth_error_text("login_not_allowed", _provider),
+    do:
+      "Login is not allowed when using SAML as the default authentication method. " <>
+        "Please contact your administrator."
+
+  defp oauth_error_text("auth_failed", provider),
+    do:
+      "We couldn't authenticate with #{provider}. Please try again. " <>
+        "If the problem persists, contact our support team."
+
+  defp oauth_error_text(_code, _provider), do: generic_oauth_error()
+
+  defp generic_oauth_error,
+    do:
+      "We're sorry, but your connection attempt was unsuccessful. Please try again. " <>
+        "If you continue to experience issues, please contact our support team for assistance."
 
   def update(conn, params) do
     Watchman.benchmark("account.update.duration", fn ->
