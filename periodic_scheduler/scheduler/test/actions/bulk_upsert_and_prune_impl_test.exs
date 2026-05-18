@@ -63,6 +63,34 @@ defmodule Test.Actions.BulkUpsertAndPruneImpl.Test do
     assert alpha.at == "30 0 * * *"
   end
 
+  test "persists regex_pattern and validate_input_format on parameters", ctx do
+    parameters = [
+      %{
+        name: "VERSION",
+        required: true,
+        description: "release tag",
+        default_value: "v1",
+        options: [],
+        regex_pattern: "^v[0-9]+$",
+        validate_input_format: true
+      }
+    ]
+
+    params = base_params(ctx, [definition("with-regex", "0 0 * * *", parameters: parameters)])
+
+    assert {:ok, %{upserted: [upserted], deleted_ids: []}} =
+             BulkUpsertAndPruneImpl.bulk_upsert_and_prune(params)
+
+    assert [returned_param] = upserted.parameters
+    assert returned_param.regex_pattern == "^v[0-9]+$"
+    assert returned_param.validate_input_format == true
+
+    [persisted] = list_periodics_for(ctx.pr_id)
+    assert [persisted_param] = persisted.parameters
+    assert persisted_param.regex_pattern == "^v[0-9]+$"
+    assert persisted_param.validate_input_format == true
+  end
+
   test "prunes existing periodics that are not in the desired set", ctx do
     {:ok, periodic: keep} =
       Factory.setup_periodic(ctx,

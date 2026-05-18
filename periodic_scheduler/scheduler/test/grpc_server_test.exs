@@ -2368,4 +2368,46 @@ defmodule Scheduler.GrpcServer.Test do
     assert response.status.code == :OK
     assert length(response.upserted) == 1
   end
+
+  test "gRPC bulk_upsert_and_prune() round-trips regex_pattern and validate_input_format",
+       ctx do
+    parameter =
+      InternalApi.PeriodicScheduler.Periodic.Parameter.new(
+        name: "VERSION",
+        required: true,
+        description: "",
+        default_value: "v1",
+        options: [],
+        regex_pattern: "^v[0-9]+$",
+        validate_input_format: true
+      )
+
+    request =
+      BulkUpsertAndPruneRequest.new(
+        organization_id: ctx.ids.org_id,
+        project_id: ctx.ids.pr_id,
+        requester_id: ctx.ids.usr_id,
+        periodics: [
+          BulkUpsertAndPruneRequest.PeriodicDefinition.new(
+            id: "",
+            name: "regression-regex-wire",
+            description: "",
+            recurring: true,
+            reference: "refs/heads/master",
+            at: "0 0 * * *",
+            pipeline_file: ".semaphore/cron.yml",
+            parameters: [parameter],
+            state: :UNCHANGED
+          )
+        ]
+      )
+
+    {:ok, channel} = GRPC.Stub.connect("localhost:50050")
+    assert {:ok, response} = PeriodicService.Stub.bulk_upsert_and_prune(channel, request)
+    assert response.status.code == :OK
+    assert [periodic] = response.upserted
+    assert [returned] = periodic.parameters
+    assert returned.regex_pattern == "^v[0-9]+$"
+    assert returned.validate_input_format == true
+  end
 end
