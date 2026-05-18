@@ -370,7 +370,7 @@ defmodule Guard.Id.Api.Test do
       refute Map.has_key?(query, "message")
     end
 
-    test "callback for github surfaces missing_name code when profile has blank name", %{
+    test "callback for github falls back to nickname when profile name is empty string", %{
       user_id: user_id,
       gh_uid: gh_uid
     } do
@@ -382,14 +382,58 @@ defmodule Guard.Id.Api.Test do
           json(%{"login" => "kjhdda", "name" => "", "id" => gh_uid})
 
         %{method: :get, url: "https://api.github.com/user/emails"} ->
-          json([
-            %{
-              "email" => "kjhdda@example.com",
-              "verified" => true,
-              "primary" => true,
-              "visibility" => "public"
-            }
-          ])
+          json([])
+      end)
+
+      query = run_github_oauth_round_trip(user_id)
+
+      assert query["status"] == "success"
+
+      {:ok, account} =
+        Guard.FrontRepo.RepoHostAccount.get_for_user_by_repo_host(user_id, "github")
+
+      assert account.name == "kjhdda"
+      assert account.login == "kjhdda"
+    end
+
+    test "callback for github falls back to nickname when profile omits name field", %{
+      user_id: user_id,
+      gh_uid: gh_uid
+    } do
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://github.com/login/oauth/access_token"} ->
+          json(%{"access_token" => "token"})
+
+        %{method: :get, url: "https://api.github.com/user"} ->
+          json(%{"login" => "kjhdda", "id" => gh_uid})
+
+        %{method: :get, url: "https://api.github.com/user/emails"} ->
+          json([])
+      end)
+
+      query = run_github_oauth_round_trip(user_id)
+
+      assert query["status"] == "success"
+
+      {:ok, account} =
+        Guard.FrontRepo.RepoHostAccount.get_for_user_by_repo_host(user_id, "github")
+
+      assert account.name == "kjhdda"
+    end
+
+    test "callback for github surfaces missing_name code when both login and name are blank", %{
+      user_id: user_id,
+      gh_uid: gh_uid
+    } do
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://github.com/login/oauth/access_token"} ->
+          json(%{"access_token" => "token"})
+
+        %{method: :get, url: "https://api.github.com/user"} ->
+          json(%{"login" => "", "name" => "", "id" => gh_uid})
+
+        %{method: :get, url: "https://api.github.com/user/emails"} ->
+          json([])
       end)
 
       query = run_github_oauth_round_trip(user_id)
@@ -415,19 +459,12 @@ defmodule Guard.Id.Api.Test do
           })
 
         %{method: :get, url: "https://api.github.com/user"} ->
-          # Blank name + valid uid triggers a changeset validation error.
-          # The changeset's `changes` map then contains both tokens — making
-          # `inspect/1` on the reason a token-leak vector.
-          json(%{"login" => "kjhdda", "name" => "", "id" => gh_uid})
+          json(%{"login" => "", "name" => "", "id" => gh_uid})
 
         %{method: :get, url: "https://api.github.com/user/emails"} ->
           json([])
       end)
 
-      # Capture at :info so OAuth2 library's :debug request/response logs
-      # (which include bearer tokens by design) are filtered out — these are
-      # also off by default in production (LOG_LEVEL=info). We're asserting
-      # that *our* error logs don't leak secrets.
       log =
         capture_log([level: :info], fn ->
           query = run_github_oauth_round_trip(user_id)
@@ -436,7 +473,6 @@ defmodule Guard.Id.Api.Test do
 
       refute log =~ secret_access_token
       refute log =~ secret_refresh_token
-      # Sanity: structured fields are present.
       assert log =~ "code=missing_name"
       assert log =~ "provider=github"
       assert log =~ "kind=changeset:"

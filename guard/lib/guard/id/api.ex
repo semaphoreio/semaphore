@@ -166,7 +166,7 @@ defmodule Guard.Id.Api do
       %{
         github_uid: auth.uid |> map_uid_to_string(),
         login: auth.info.nickname,
-        name: auth.info.name || auth.info.nickname,
+        name: pick_name(auth.info.name, auth.info.nickname),
         permission_scope: auth.credentials.scopes |> Enum.join(","),
         token: auth.credentials.token,
         refresh_token: auth.credentials.refresh_token,
@@ -174,6 +174,9 @@ defmodule Guard.Id.Api do
       }
     }
   end
+
+  defp pick_name(name, nickname) when name in [nil, ""], do: nickname
+  defp pick_name(name, _nickname), do: name
 
   defp map_uid_to_string(uid) when is_integer(uid), do: uid |> Integer.to_string()
   defp map_uid_to_string(uid), do: uid
@@ -747,7 +750,7 @@ defmodule Guard.Id.Api do
   end
 
   defp verify_oidc_user_login_allowed_on_saml(user) do
-    if (user != nil and user.creation_source == nil) && !user.single_org_user do
+    if user != nil and user.creation_source == nil && !user.single_org_user do
       {:ok, true, nil}
     else
       Logger.warning("OIDC login not allowed for this user")
