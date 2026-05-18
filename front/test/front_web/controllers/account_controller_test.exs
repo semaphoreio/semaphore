@@ -62,6 +62,134 @@ defmodule FrontWeb.AccountControllerTest do
       refute html_response(conn, 200) =~ "id=\"email-form\""
       refute html_response(conn, 200) =~ "Update Email"
     end
+
+    test "when status=error with invalid_uid code => sets :alert flash with mapped text", %{
+      conn: conn
+    } do
+      conn =
+        get(conn, "/account", %{
+          "status" => "error",
+          "code" => "invalid_uid",
+          "provider" => "github"
+        })
+
+      assert html_response(conn, 200)
+      assert get_flash(conn, :alert) =~ "GitHub account did not return the required profile data"
+    end
+
+    test "when status=error with missing_name code => sets :alert flash with mapped text", %{
+      conn: conn
+    } do
+      conn =
+        get(conn, "/account", %{
+          "status" => "error",
+          "code" => "missing_name",
+          "provider" => "bitbucket"
+        })
+
+      assert html_response(conn, 200)
+      assert get_flash(conn, :alert) =~ "Bitbucket profile is missing a display name"
+    end
+
+    test "when status=error with missing_login code => sets :alert flash with mapped text", %{
+      conn: conn
+    } do
+      conn =
+        get(conn, "/account", %{
+          "status" => "error",
+          "code" => "missing_login",
+          "provider" => "gitlab"
+        })
+
+      assert html_response(conn, 200)
+      assert get_flash(conn, :alert) =~ "GitLab profile is missing a username"
+    end
+
+    test "when status=error with unknown code => sets generic :alert flash", %{conn: conn} do
+      conn =
+        get(conn, "/account", %{
+          "status" => "error",
+          "code" => "bogus",
+          "provider" => "github"
+        })
+
+      assert html_response(conn, 200)
+      assert get_flash(conn, :alert) =~ "connection attempt was unsuccessful"
+    end
+
+    test "when status=error with attacker text in code => still falls to generic, no reflection",
+         %{conn: conn} do
+      conn =
+        get(conn, "/account", %{
+          "status" => "error",
+          "code" => "<script>alert(1)</script>",
+          "provider" => "github"
+        })
+
+      assert html_response(conn, 200)
+      assert get_flash(conn, :alert) =~ "connection attempt was unsuccessful"
+      refute get_flash(conn, :alert) =~ "<script>"
+    end
+
+    test "when status=error with attacker text in provider => provider falls to generic label", %{
+      conn: conn
+    } do
+      conn =
+        get(conn, "/account", %{
+          "status" => "error",
+          "code" => "invalid_uid",
+          "provider" => "<script>alert(1)</script>"
+        })
+
+      assert html_response(conn, 200)
+      assert get_flash(conn, :alert) =~ "Your repository account did not return"
+      refute get_flash(conn, :alert) =~ "<script>"
+    end
+
+    test "when status=error without code => sets generic :alert flash", %{conn: conn} do
+      conn = get(conn, "/account", %{"status" => "error"})
+
+      assert html_response(conn, 200)
+      assert get_flash(conn, :alert) =~ "connection attempt was unsuccessful"
+    end
+
+    test "when status=success => sets :notice flash", %{conn: conn} do
+      conn = get(conn, "/account", %{"status" => "success"})
+
+      assert html_response(conn, 200)
+      assert get_flash(conn, :notice) == "Repository account connected."
+    end
+
+    test "when no status param => no flash set from oauth path", %{conn: conn} do
+      conn = get(conn, "/account")
+
+      assert html_response(conn, 200)
+      assert get_flash(conn, :alert) == nil
+      assert get_flash(conn, :notice) == nil
+    end
+
+    test "every declared oauth error code maps to a non-generic flash message",
+         %{conn: conn} do
+      generic =
+        "We're sorry, but your connection attempt was unsuccessful. Please try again. " <>
+          "If you continue to experience issues, please contact our support team for assistance."
+
+      for code <- FrontWeb.AccountController.oauth_error_codes() do
+        conn =
+          get(conn, "/account", %{
+            "status" => "error",
+            "code" => code,
+            "provider" => "github"
+          })
+
+        flash = get_flash(conn, :alert)
+
+        assert is_binary(flash), "code #{inspect(code)} produced no :alert flash"
+
+        refute flash == generic,
+               "code #{inspect(code)} fell through to generic copy — add an oauth_error_text/2 clause"
+      end
+    end
   end
 
   describe "POST delete_with_owned_orgs" do
