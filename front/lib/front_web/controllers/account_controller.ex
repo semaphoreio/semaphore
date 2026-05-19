@@ -26,9 +26,54 @@ defmodule FrontWeb.AccountController do
 
   def show(conn, params) do
     Watchman.benchmark("account.show.duration", fn ->
-      render_show(conn, conn.assigns.user_id, params["errors"])
+      conn
+      |> maybe_put_oauth_flash(params)
+      |> render_show(conn.assigns.user_id, params["errors"])
     end)
   end
+
+  defp maybe_put_oauth_flash(conn, %{"status" => "error", "code" => code}) do
+    put_flash(conn, :alert, oauth_error_text(code))
+  end
+
+  defp maybe_put_oauth_flash(conn, %{"status" => "error"}) do
+    put_flash(conn, :alert, generic_oauth_error())
+  end
+
+  defp maybe_put_oauth_flash(conn, %{"status" => "success"}) do
+    put_flash(conn, :notice, "Repository account connected.")
+  end
+
+  defp maybe_put_oauth_flash(conn, _params), do: conn
+
+  defp oauth_error_text("invalid_uid"),
+    do:
+      "Your account did not return the required profile data (username or user ID). " <>
+        "Please verify your account is fully set up and try again."
+
+  defp oauth_error_text("missing_name"),
+    do:
+      "Your profile is missing a display name. " <>
+        "Please set a name in your account settings and try connecting again."
+
+  defp oauth_error_text("missing_login"), do: "Your profile is missing a username."
+
+  defp oauth_error_text("login_not_allowed"),
+    do:
+      "Login is not allowed when using SAML as the default authentication method. " <>
+        "Please contact your administrator."
+
+  defp oauth_error_text("auth_failed"),
+    do:
+      "We couldn't authenticate. Please try again. " <>
+        "If the problem persists, contact our support team."
+
+  defp oauth_error_text(_code), do: generic_oauth_error()
+
+  defp generic_oauth_error,
+    do:
+      "We're sorry, but your connection attempt was unsuccessful. Please try again. " <>
+        "If you continue to experience issues, please contact our support team for assistance."
 
   def update(conn, params) do
     Watchman.benchmark("account.update.duration", fn ->
