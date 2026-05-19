@@ -29,4 +29,15 @@ config :logger, level: :info
 # for debugging queries
 # config :logger, level: :debug
 
+config :logger, :console,
+  metadata: [
+    :event,
+    :periodic_id,
+    :parameter_name,
+    :pattern_byte_size,
+    :pattern_excerpt,
+    :reason,
+    :source
+  ]
+
 import_config "#{Mix.env()}.exs"
