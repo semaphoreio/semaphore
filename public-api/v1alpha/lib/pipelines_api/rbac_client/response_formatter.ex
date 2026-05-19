@@ -38,24 +38,7 @@ defmodule PipelinesAPI.RBACClient.ResponseFormatter do
   def process_retract_role_response(error = {:error, _}), do: error
 
   def process_list_members_response({:ok, %{members: members, total_pages: total_pages}}) do
-    serialized =
-      Enum.map(members, fn m ->
-        %{
-          id: m.subject.subject_id,
-          subject_type: subject_type_to_string(m.subject.subject_type),
-          name: m.subject.display_name,
-          roles:
-            Enum.map(m.subject_role_bindings, fn rb ->
-              %{
-                role_id: rb.role.id,
-                role_name: rb.role.name,
-                source: source_to_string(rb.source)
-              }
-            end)
-        }
-      end)
-
-    ToTuple.ok(%{members: serialized, total_pages: total_pages})
+    ToTuple.ok(%{members: serialize_members(members), total_pages: total_pages})
   end
 
   def process_list_members_response({:ok, _}),
@@ -63,23 +46,14 @@ defmodule PipelinesAPI.RBACClient.ResponseFormatter do
 
   def process_list_members_response(error), do: error
 
-  def process_describe_role_response({:ok, %{role: role}}) do
-    ToTuple.ok(serialize_role(role))
-  end
+  def process_describe_role_response({:ok, %{role: role}}), do: ToTuple.ok(serialize_role(role))
 
   def process_describe_role_response({:ok, _}),
     do: ToTuple.error({:internal_error, "internal error"})
 
   def process_describe_role_response(error), do: error
 
-  def process_modify_role_response({:ok, %{role: role}}) do
-    ToTuple.ok(serialize_role(role))
-  end
-
-  def process_modify_role_response({:ok, _}),
-    do: ToTuple.error({:internal_error, "internal error"})
-
-  def process_modify_role_response(error), do: error
+  def process_modify_role_response(result), do: process_describe_role_response(result)
 
   def process_destroy_role_response({:ok, _response}), do: ToTuple.ok(%{status: "deleted"})
   def process_destroy_role_response(error = {:error, _}), do: error
