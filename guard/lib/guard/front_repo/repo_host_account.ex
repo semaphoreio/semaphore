@@ -92,7 +92,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
 
       {:error, error} ->
         Logger.error(
-          "Failed to create RepoHostAccount for #{data.user_id} #{data.repo_host} with login #{data.login} and github_uid #{data.github_uid} #{inspect(error)}"
+          "Failed to create RepoHostAccount for #{data.user_id} #{data.repo_host} with login #{data.login} and github_uid #{data.github_uid} errors=#{changeset_error_fields(error)}"
         )
 
         {:error, error}
@@ -338,7 +338,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
 
       {:error, error} ->
         Logger.error(
-          "Failed to update RepoHostAccount for #{account.user_id} from #{inspect(account)} to #{inspect(data)} #{inspect(error)}"
+          "Failed to update RepoHostAccount for #{account.user_id} #{account.repo_host} login=#{account.login} errors=#{changeset_error_fields(error)}"
         )
 
         {:error, error}
@@ -382,7 +382,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
 
       {:error, error} ->
         Logger.error(
-          "Failed to reset RepoHostAccount for #{account.user_id} from #{inspect(account)} to #{inspect(data)} #{inspect(error)}"
+          "Failed to reset RepoHostAccount for #{account.user_id} #{account.repo_host} login=#{account.login} errors=#{changeset_error_fields(error)}"
         )
 
         {:error, error}
@@ -397,4 +397,11 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     order_index = fn scope -> Enum.find_index(@scopes_in_order, &(&1 == to_string(scope))) end
     order_index.(from) > order_index.(to)
   end
+
+  defp changeset_error_fields(%Ecto.Changeset{errors: errors}) do
+    Enum.map_join(errors, ",", fn {field, {msg, _opts}} -> "#{field}:#{msg}" end)
+  end
+
+  defp changeset_error_fields(atom) when is_atom(atom), do: "#{atom}"
+  defp changeset_error_fields(_other), do: "opaque"
 end
