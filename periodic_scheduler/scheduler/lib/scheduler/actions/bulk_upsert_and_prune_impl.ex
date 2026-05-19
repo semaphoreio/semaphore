@@ -61,6 +61,9 @@ defmodule Scheduler.Actions.BulkUpsertAndPruneImpl do
       {:error, {:field, idx, field, msg}} ->
         ToTuple.error("Periodic at index #{idx}: '#{field}' #{msg}.", :INVALID_ARGUMENT)
 
+      {:error, {:tx, {:upsert, _idx}, {:foreign_id, id}, _changes}} ->
+        ToTuple.error("Periodic task with ID '#{id}' not found in project", :NOT_FOUND)
+
       {:error, {:tx, _op, value, _changes}} ->
         ToTuple.error(format_tx_error(value), :INVALID_ARGUMENT)
 
@@ -164,7 +167,6 @@ defmodule Scheduler.Actions.BulkUpsertAndPruneImpl do
           |> Enum.filter(fn {key, _} -> match?({:upsert, _}, key) end)
           |> Enum.sort_by(fn {{:upsert, idx}, _} -> idx end)
           |> Enum.map(fn {_, value} -> value end)
-          |> Enum.reject(&(&1 == :skipped))
 
         {:ok, %{upserts: upserts, pruned: changes.prune_targets}}
 
@@ -184,8 +186,8 @@ defmodule Scheduler.Actions.BulkUpsertAndPruneImpl do
       {:ok, periodic} ->
         PeriodicsQueries.update(periodic, build_update_params(definition, params), @api_version)
 
-      {:error, {:foreign_id, _id}} ->
-        {:ok, :skipped}
+      {:error, {:foreign_id, _id}} = error ->
+        error
     end
   end
 

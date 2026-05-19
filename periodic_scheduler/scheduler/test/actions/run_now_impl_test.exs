@@ -1,6 +1,8 @@
 defmodule Scheduler.Actions.RunNowImpl.Test do
   use ExUnit.Case, async: false
 
+  import ExUnit.CaptureLog
+
   alias Scheduler.Actions.RunNowImpl
 
   alias Scheduler.Periodics.Model.PeriodicsQueries, as: PQueries
@@ -286,6 +288,144 @@ defmodule Scheduler.Actions.RunNowImpl.Test do
 
       assert {:error, {:INVALID_ARGUMENT, "Parameter 'param3' is required."}} =
                RunNowImpl.merge_values(parameters, request_values)
+    end
+
+    test "when validate_input_format is on and value matches regex_pattern then value is accepted" do
+      parameters = [
+        %{
+          name: "VERSION",
+          required: true,
+          default_value: "",
+          validate_input_format: true,
+          regex_pattern: "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        }
+      ]
+
+      request_values = [%{name: "VERSION", value: "1.2.3"}]
+
+      assert {:ok, [%{name: "VERSION", value: "1.2.3"}]} =
+               RunNowImpl.merge_values(parameters, request_values)
+    end
+
+    test "when validate_input_format is on and value does not match regex_pattern then error is returned" do
+      parameters = [
+        %{
+          name: "VERSION",
+          required: true,
+          default_value: "",
+          validate_input_format: true,
+          regex_pattern: "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        }
+      ]
+
+      request_values = [%{name: "VERSION", value: "not-a-version"}]
+
+      assert {:error,
+              {:INVALID_ARGUMENT, "Parameter 'VERSION' value does not match required format."}} =
+               RunNowImpl.merge_values(parameters, request_values)
+    end
+
+    test "when validate_input_format is on and default_value does not match regex_pattern then error is returned" do
+      parameters = [
+        %{
+          name: "VERSION",
+          required: false,
+          default_value: "abc",
+          validate_input_format: true,
+          regex_pattern: "^[0-9]+$"
+        }
+      ]
+
+      assert {:error, {:INVALID_ARGUMENT, message}} = RunNowImpl.merge_values(parameters, [])
+
+      assert message =~ "Parameter 'VERSION'"
+      assert message =~ "default value"
+    end
+
+    test "when value exceeds the SafeRegex length cap then error mentions length" do
+      parameters = [
+        %{
+          name: "VERSION",
+          required: true,
+          default_value: "",
+          validate_input_format: true,
+          regex_pattern: "^[a]+$"
+        }
+      ]
+
+      max_len = Util.SafeRegex.max_value_length()
+      oversized = String.duplicate("a", max_len + 1)
+      request_values = [%{name: "VERSION", value: oversized}]
+
+      assert {:error, {:INVALID_ARGUMENT, message}} =
+               RunNowImpl.merge_values(parameters, request_values)
+
+      assert message =~ "Parameter 'VERSION'"
+      assert message =~ "exceeds maximum length"
+    end
+
+    test "when validate_input_format is off then regex_pattern is ignored" do
+      parameters = [
+        %{
+          name: "VERSION",
+          required: true,
+          default_value: "",
+          validate_input_format: false,
+          regex_pattern: "^[0-9]+$"
+        }
+      ]
+
+      request_values = [%{name: "VERSION", value: "abc"}]
+
+      assert {:ok, [%{name: "VERSION", value: "abc"}]} =
+               RunNowImpl.merge_values(parameters, request_values)
+    end
+
+    test "when stored regex_pattern fails to compile at run-now then a triage warning is logged" do
+      parameters = [
+        %{
+          name: "VERSION",
+          required: true,
+          default_value: "",
+          validate_input_format: true,
+          regex_pattern: "["
+        }
+      ]
+
+      request_values = [%{name: "VERSION", value: "anything"}]
+
+      log =
+        capture_log(fn ->
+          assert {:error, {:INVALID_ARGUMENT, message}} =
+                   RunNowImpl.merge_values(parameters, request_values, "periodic-uuid-123")
+
+          assert message =~ "could not be validated"
+        end)
+
+      assert log =~ "Stored regex_pattern rejected at run-now"
+    end
+
+    test "value_too_long does not trigger the regex_pattern triage warning" do
+      parameters = [
+        %{
+          name: "VERSION",
+          required: true,
+          default_value: "",
+          validate_input_format: true,
+          regex_pattern: "^[a]+$"
+        }
+      ]
+
+      oversized = String.duplicate("a", Util.SafeRegex.max_value_length() + 1)
+      request_values = [%{name: "VERSION", value: oversized}]
+
+      log =
+        capture_log(fn ->
+          assert {:error, {:INVALID_ARGUMENT, _}} =
+                   RunNowImpl.merge_values(parameters, request_values, "periodic-uuid-123")
+        end)
+
+      refute log =~ "Stored regex_pattern rejected at run-now"
     end
   end
 

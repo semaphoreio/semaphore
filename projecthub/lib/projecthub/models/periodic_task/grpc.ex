@@ -88,7 +88,9 @@ defmodule Projecthub.Models.PeriodicTask.GRPC do
       required: Map.get(parameter, :required, false),
       description: Map.get(parameter, :description) || "",
       default_value: Map.get(parameter, :default_value) || "",
-      options: Map.get(parameter, :options) || []
+      options: Map.get(parameter, :options) || [],
+      regex_pattern: Map.get(parameter, :regex_pattern) || "",
+      validate_input_format: Map.get(parameter, :validate_input_format, false)
     )
   end
 
