@@ -68,52 +68,32 @@ defmodule FrontWeb.AccountControllerTest do
     test "when status=error with invalid_uid code => sets :alert flash with mapped text", %{
       conn: conn
     } do
-      conn =
-        get(conn, "/account", %{
-          "status" => "error",
-          "code" => "invalid_uid",
-          "provider" => "github"
-        })
+      conn = get(conn, "/account", %{"status" => "error", "code" => "invalid_uid"})
 
       assert html_response(conn, 200)
-      assert get_flash(conn, :alert) =~ "GitHub account did not return the required profile data"
+      assert get_flash(conn, :alert) =~ "did not return the required profile data"
     end
 
     test "when status=error with missing_name code => sets :alert flash with mapped text", %{
       conn: conn
     } do
-      conn =
-        get(conn, "/account", %{
-          "status" => "error",
-          "code" => "missing_name",
-          "provider" => "bitbucket"
-        })
+      conn = get(conn, "/account", %{"status" => "error", "code" => "missing_name"})
 
       assert html_response(conn, 200)
-      assert get_flash(conn, :alert) =~ "Bitbucket profile is missing a display name"
+      assert get_flash(conn, :alert) =~ "profile is missing a display name"
     end
 
     test "when status=error with missing_login code => sets :alert flash with mapped text", %{
       conn: conn
     } do
-      conn =
-        get(conn, "/account", %{
-          "status" => "error",
-          "code" => "missing_login",
-          "provider" => "gitlab"
-        })
+      conn = get(conn, "/account", %{"status" => "error", "code" => "missing_login"})
 
       assert html_response(conn, 200)
-      assert get_flash(conn, :alert) =~ "GitLab profile is missing a username"
+      assert get_flash(conn, :alert) =~ "profile is missing a username"
     end
 
     test "when status=error with unknown code => sets generic :alert flash", %{conn: conn} do
-      conn =
-        get(conn, "/account", %{
-          "status" => "error",
-          "code" => "bogus",
-          "provider" => "github"
-        })
+      conn = get(conn, "/account", %{"status" => "error", "code" => "bogus"})
 
       assert html_response(conn, 200)
       assert get_flash(conn, :alert) =~ "connection attempt was unsuccessful"
@@ -124,27 +104,11 @@ defmodule FrontWeb.AccountControllerTest do
       conn =
         get(conn, "/account", %{
           "status" => "error",
-          "code" => "<script>alert(1)</script>",
-          "provider" => "github"
+          "code" => "<script>alert(1)</script>"
         })
 
       assert html_response(conn, 200)
       assert get_flash(conn, :alert) =~ "connection attempt was unsuccessful"
-      refute get_flash(conn, :alert) =~ "<script>"
-    end
-
-    test "when status=error with attacker text in provider => provider falls to generic label", %{
-      conn: conn
-    } do
-      conn =
-        get(conn, "/account", %{
-          "status" => "error",
-          "code" => "invalid_uid",
-          "provider" => "<script>alert(1)</script>"
-        })
-
-      assert html_response(conn, 200)
-      assert get_flash(conn, :alert) =~ "Your repository account did not return"
       refute get_flash(conn, :alert) =~ "<script>"
     end
 
@@ -177,19 +141,14 @@ defmodule FrontWeb.AccountControllerTest do
           "If you continue to experience issues, please contact our support team for assistance."
 
       for code <- @oauth_error_codes do
-        conn =
-          get(conn, "/account", %{
-            "status" => "error",
-            "code" => code,
-            "provider" => "github"
-          })
+        conn = get(conn, "/account", %{"status" => "error", "code" => code})
 
         flash = get_flash(conn, :alert)
 
         assert is_binary(flash), "code #{inspect(code)} produced no :alert flash"
 
         refute flash == generic,
-               "code #{inspect(code)} fell through to generic copy — add an oauth_error_text/2 clause"
+               "code #{inspect(code)} fell through to generic copy — add an oauth_error_text/1 clause"
       end
     end
   end
