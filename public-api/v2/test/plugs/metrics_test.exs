@@ -1,6 +1,6 @@
 defmodule PublicAPI.Plugs.MetricsTest do
   use ExUnit.Case
-  import Plug.Test
+  use Plug.Test
   import Mock
 
   defmodule FastTestPlug do

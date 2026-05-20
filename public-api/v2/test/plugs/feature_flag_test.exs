@@ -1,7 +1,6 @@
 defmodule PublicAPI.Plugs.FeatureFlagTest do
   use ExUnit.Case
-  import Plug.Test
-  import Plug.Conn
+  use Plug.Test
 
   alias Support.Stubs.Feature
 

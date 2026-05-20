@@ -15,3 +15,6 @@ GHSA-vq52-99r9-h5pw
 
 # decimal 2.1.1 — unbounded exponent DoS in Decimal.new (transitive via ecto/jason/logger_json/poison; service has no Ecto repo; default decoders do not call Decimal.new)
 GHSA-rhv4-8758-jx7v
+
+# plug_cowboy 2.7.2 — transitive cowboy vuln, fixed in 2.8.1
+GHSA-q8x4-x7mp-5vg2
