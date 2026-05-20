@@ -138,10 +138,12 @@ defmodule Zebra.Apis.InternalTaskApi.Schedule do
   end
 
   defp find_max_and_default_job_time_limits(org_id) do
-    if org_verified?(org_id) do
+    {max_limit, default_limit} = find_feature_based_job_time_limits(org_id)
+
+    if org_verified?(org_id) and max_limit < @max_job_execution_time_limit do
       {@max_job_execution_time_limit, @default_job_execution_time_limit}
     else
-      find_feature_based_job_time_limits(org_id)
+      {max_limit, default_limit}
     end
   end
 
