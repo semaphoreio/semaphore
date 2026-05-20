@@ -18,3 +18,11 @@ GHSA-rhv4-8758-jx7v
 
 # plug_cowboy 2.7.2 — transitive cowboy vuln, fixed in 2.8.1
 GHSA-q8x4-x7mp-5vg2
+
+# cowboy 2.12.0 — multipart header parsing DoS, fixed in 2.15.0. Reachable: public_api/router.ex
+# loads Plug.Parsers with {:multipart, length: 150_000_000}. Mitigated at cluster ingress L7 body
+# limits; real fix tracked for the plug_cowboy dep-bump branch.
+GHSA-jfc2-q6qh-g5x8
+
+# cowlib 2.13.0 — SPDY decompression bomb in cow_spdy:inflate/2 (unreachable; cowboy 2.x does not serve SPDY)
+GHSA-84f2-rp86-235p
