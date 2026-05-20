@@ -9,6 +9,7 @@ end
 config :logger, level: (System.get_env("LOG_LEVEL") || "info") |> String.to_atom()
 
 config :projecthub, Projecthub.Repo,
+  prepare: :unnamed,
   database: System.get_env("POSTGRES_DB_NAME") || "projecthub",
   username: System.get_env("POSTGRES_DB_USER") || "postgres",
   password: System.get_env("POSTGRES_DB_PASSWORD") || "the-cake-is-a-lie",
