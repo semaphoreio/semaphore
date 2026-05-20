@@ -59,6 +59,8 @@ To create a task, open your project and follow these steps. You can create tasks
 
     ![Task creation step 3: parameters](./img/task-create-3.jpg)
 
+    Each parameter accepts a name, a *required* flag, a default value, and an optional list of allowed options. You can also tick **Validate input format** and provide a regex pattern; Semaphore then rejects the task trigger up front if the supplied value does not match the pattern, so the job is never queued with an invalid input. The pattern is bounded to 512 bytes.
+
 8. Define the schedule using [crontab syntax](https://crontab.guru/). The example below is running Check the option "Unscheduled" if you want to only run the task manually
 
     ![Task creation step 4: schedule](./img/task-create-4.jpg)
@@ -87,9 +89,10 @@ You can add tasks by editing the project using the [Semaphore command line tool]
     # ...
     ```
 
-3. Add a `task` section. Each item in the list is a task. The example below shows two tasks:
+3. Add a `task` section. Each item in the list is a task. The example below shows three tasks:
    - Task "nightly-deploys" runs the `nighthly-deploys.yml` on "master" branch pipeline at 12:15 am every day.
-   - Task "canary-setup" runs the same pipeline in "develop" branch with [parameters](./promotions#parameters)
+   - Task "canary-setup" runs the same pipeline in "develop" branch with [parameters](./promotions#parameters). The `CANARY_VERSION` parameter is pre-validated against a regex pattern so a malformed value is rejected on the task creation or update.
+   - Task "release-deploy" runs the `deploy.yml` pipeline against the `v1.0.0` tag.
 
     ```yaml title="sem edit project hello-semaphore"
     # ...
@@ -109,6 +112,10 @@ You can add tasks by editing the project using the [Semaphore command line tool]
               - name: CANARY_VERSION
                 required: true
                 default_value: "1.0.0"
+                # Reject the task if the supplied value does not
+                # match the pattern. Pattern is capped at 512 bytes.
+                validate_input_format: true
+                regex_pattern: "^[0-9]+\\.[0-9]+\\.[0-9]+$"
     # task 3 with tag
         - name: release-deploy
           reference: 

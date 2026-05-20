@@ -1,0 +1,22 @@
+# cowlib 2.6.0 — cow_http_te DoS via excessive allocation (HTTP/1.1 reachable; gateway expected to normalize Transfer-Encoding before backend; bump blocked by grpc 0.3.1 / cowboy 2.5)
+GHSA-32p9-57cr-4x65
+
+# cowlib 2.6.0 — CRLF injection in header field values (reachable via /logs/:job_id Location redirect; auth-gated self-target; track code-level job_id sanitization separately)
+GHSA-hv23-4qp7-8c8r
+
+# hackney 1.18.1 — connection pool leak (operational only; outbound bounded to Sentry DSN + tzdata IANA URL)
+GHSA-9fm9-hp7p-53mf
+
+# hackney 1.18.1 — SSRF via redirect target (no user-controlled URL fed to hackney; HTTPoison not called from lib/)
+GHSA-vq52-99r9-h5pw
+
+# decimal 2.1.1 — unbounded exponent DoS in Decimal.new (transitive via ecto/jason; service has no Ecto repo; Jason default decoder does not call Decimal.new)
+GHSA-rhv4-8758-jx7v
+
+# cowboy 2.5.0 — multipart header parsing DoS, fixed in 2.15.0. Reachable: pipelines_api/router.ex
+# loads Plug.Parsers with {:multipart, length: 150_000_000}. Mitigated at cluster ingress L7 body
+# limits; bump blocked by grpc 0.3.1 / cowboy 2.5 — real fix tracked for the dep-bump branch.
+GHSA-jfc2-q6qh-g5x8
+
+# cowlib 2.6.0 — SPDY decompression bomb in cow_spdy:inflate/2 (unreachable; cowboy 2.x does not serve SPDY)
+GHSA-84f2-rp86-235p
