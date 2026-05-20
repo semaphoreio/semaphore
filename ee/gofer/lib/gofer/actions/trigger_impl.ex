@@ -4,6 +4,7 @@ defmodule Gofer.Actions.TriggerImpl do
   """
   alias Gofer.Switch.Model.SwitchQueries
   alias Gofer.Target.Model.TargetQueries
+  alias Gofer.TargetTrigger.Model.TargetTriggerQueries
   alias Gofer.SwitchTrigger.Engine.SwitchTriggerSupervisor
   alias Util.ToTuple
   alias LogTee, as: LT
@@ -39,7 +40,8 @@ defmodule Gofer.Actions.TriggerImpl do
     with {:ok, switch} <- SwitchQueries.get_by_id(request.switch_id),
          {:ok, target} <-
            TargetQueries.get_by_id_and_name(request.switch_id, request.target_name),
-         :ok <- override_if_ppl_not_passed?(switch.ppl_result, request.override) do
+         :ok <- override_if_ppl_not_passed?(switch.ppl_result, request.override),
+         :ok <- check_queue_limit(request.switch_id, request.target_name) do
       start_trigger(switch, target, request)
     else
       resp = {:error, {:REFUSED, _message}} -> resp
@@ -190,6 +192,27 @@ defmodule Gofer.Actions.TriggerImpl do
 
   defp handle_deployment_trigger_error({:error, {:BANNED_OBJECT, meta}}, metadata),
     do: {:error, {:REFUSED, error_message("object not allowed", Keyword.merge(metadata, meta))}}
+
+  defp check_queue_limit(switch_id, target_name) do
+    case Application.get_env(:gofer, :target_trigger_queue_limit, 50) do
+      queue_limit when is_integer(queue_limit) and queue_limit > 0 ->
+        case TargetTriggerQueries.get_unprocessed_triggers_count(switch_id, target_name) do
+          {:ok, pending_count} when pending_count >= queue_limit ->
+            {:error,
+             {:REFUSED,
+              "Too many pending promotions for target '#{target_name}' (#{pending_count}/#{queue_limit}). Please retry later."}}
+
+          {:ok, _pending_count} ->
+            :ok
+
+          error ->
+            error
+        end
+
+      _ ->
+        :ok
+    end
+  end
 
   defp error_message(message, metadata) do
     full_message =

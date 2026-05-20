@@ -44,6 +44,9 @@
               <img src=<%= image_source("icn-not-complete.svg") %> class="mr2" width="16" height="16" />
               <div class="gray">
                 Failed to promote
+                <%= if event.error_response && event.error_response != "" do %>
+                  · <%= event.error_response %>
+                <% end %>
                 <span class="gray">
                   <%= if event.author do %>
                     · by <%= event.author.name %>, <time-ago datetime="<%= FrontWeb.SwitchView.triggered_at(event) %>"></time-ago>
