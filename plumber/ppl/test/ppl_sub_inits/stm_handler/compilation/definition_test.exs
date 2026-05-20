@@ -524,7 +524,18 @@ defmodule Ppl.PplSubInits.STMHandler.Compilation.Definition.Test do
     }
 
     assert {:ok, definition} = Definition.form_definition(ppl_req, :undefined, settings, :prod)
-    assert list = Map.get(definition, "jobs") |> Enum.at(0) |> Map.get("env_vars")
+    assert job = Map.get(definition, "jobs") |> Enum.at(0)
+    assert Map.get(job, "commands") == [
+             "export GIT_LFS_SKIP_SMUDGE=1",
+             "retry --times 3 \"timeout 180 bash -lc 'source ~/.toolbox/toolbox; checkout'\"",
+             "export INPUT_FILE=\"$SEMAPHORE_YAML_FILE_PATH\"",
+             "export OUTPUT_FILE=\"${SEMAPHORE_YAML_FILE_PATH}.output.yml\"",
+             "export LOGS_FILE=\"${SEMAPHORE_YAML_FILE_PATH}.logs.jsonl\"",
+             "cat $INPUT_FILE",
+             "echo \"Compiling $INPUT_FILE into $OUTPUT_FILE and storing logs to $LOGS_FILE\"",
+             "spc compile --input $INPUT_FILE --output $OUTPUT_FILE --logs $LOGS_FILE"
+           ]
+    assert list = Map.get(job, "env_vars")
     assert is_list(list)
     assert Enum.count(list) == 21
 

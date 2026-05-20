@@ -128,7 +128,7 @@ defmodule Ppl.PplSubInits.STMHandler.Compilation.Definition do
   defp default_commands() do
     [
       ~s[export GIT_LFS_SKIP_SMUDGE=1],
-      ~s[checkout],
+      ~s[retry --times 3 "timeout 180 bash -lc 'source ~/.toolbox/toolbox; checkout'"],
       ~s[export INPUT_FILE="$SEMAPHORE_YAML_FILE_PATH"],
       ~s[export OUTPUT_FILE="${SEMAPHORE_YAML_FILE_PATH}.output.yml"],
       ~s[export LOGS_FILE="${SEMAPHORE_YAML_FILE_PATH}.logs.jsonl"],
