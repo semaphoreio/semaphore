@@ -528,6 +528,7 @@ defmodule Ppl.PplSubInits.STMHandler.Compilation.Definition.Test do
     assert Map.get(job, "commands") == [
              "export GIT_LFS_SKIP_SMUDGE=1",
              "retry --times 3 \"timeout 180 bash -lc 'source ~/.toolbox/toolbox; checkout'\"",
+             "cd \"$SEMAPHORE_GIT_DIR\"",
              "export INPUT_FILE=\"$SEMAPHORE_YAML_FILE_PATH\"",
              "export OUTPUT_FILE=\"${SEMAPHORE_YAML_FILE_PATH}.output.yml\"",
              "export LOGS_FILE=\"${SEMAPHORE_YAML_FILE_PATH}.logs.jsonl\"",
