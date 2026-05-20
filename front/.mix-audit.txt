@@ -6,3 +6,6 @@ GHSA-g2wm-735q-3f56
 
 # cowlib 2.11.0 — SSE CRLF injection (front does not expose SSE)
 GHSA-hv23-4qp7-8c8r
+
+# plug_cowboy 2.7.4 — transitive cowboy vuln, fixed in 2.8.1
+GHSA-q8x4-x7mp-5vg2

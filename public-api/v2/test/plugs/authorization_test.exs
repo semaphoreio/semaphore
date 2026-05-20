@@ -1,7 +1,6 @@
 defmodule PublicAPI.Plugs.AuthorizationTest do
   use ExUnit.Case
-  import Plug.Test
-  import Plug.Conn
+  use Plug.Test
   # import Mock
   alias Support.Stubs.PermissionPatrol
 
