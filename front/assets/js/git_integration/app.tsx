@@ -23,6 +23,7 @@ export const App = () => {
       <stores.Config.Context.Provider value={{ ...config, redirectToAfterSetup: redirectToAfterSetup }}>
         <Routes>
           <Route path="/" element={<pages.HomePage/>}/>
+          <Route path="/github_app/setup" element={<pages.GithubAppSetup/>}/>
           <Route path="/:type" element={<pages.IntegrationPage/>}/>
           <Route path="*" element={<Navigate to="/"/>}/>
         </Routes>
