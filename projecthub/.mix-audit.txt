@@ -1,0 +1,8 @@
+# cowlib 2.11.0 — cow_http_te DoS via excessive allocation (gRPC over HTTP/2, cow_http_te unreachable)
+GHSA-32p9-57cr-4x65
+
+# cowlib 2.11.0 — cookie header injection in cow_cookie:cookie/1 (projecthub does not set cookies)
+GHSA-g2wm-735q-3f56
+
+# cowlib 2.11.0 — SSE CRLF injection (projecthub does not expose SSE)
+GHSA-hv23-4qp7-8c8r
