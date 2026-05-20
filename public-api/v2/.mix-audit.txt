@@ -1,0 +1,20 @@
+# cowlib 2.13.0 — cow_http_te DoS via excessive allocation (HTTP/1.1 reachable; gateway expected to normalize Transfer-Encoding before backend)
+GHSA-32p9-57cr-4x65
+
+# cowlib 2.13.0 — cow_cookie:cookie/1 outbound Cookie injection (service makes no outbound HTTP via cowboy/gun/cowlib path; gRPC clients do not build Cookie headers)
+GHSA-g2wm-735q-3f56
+
+# cowlib 2.13.0 — CRLF injection in header field values (plug 1.19.1 validates put_resp_header values; no user-tainted string reaches a response header)
+GHSA-hv23-4qp7-8c8r
+
+# hackney 1.20.1 — connection pool leak (no direct HTTPoison/hackney/Tesla call in lib/; pulled transitively only)
+GHSA-9fm9-hp7p-53mf
+
+# hackney 1.20.1 — SSRF via redirect target (no user-controlled URL fed to hackney; transitive dep only)
+GHSA-vq52-99r9-h5pw
+
+# decimal 2.1.1 — unbounded exponent DoS in Decimal.new (transitive via ecto/jason/logger_json/poison; service has no Ecto repo; default decoders do not call Decimal.new)
+GHSA-rhv4-8758-jx7v
+
+# plug_cowboy 2.7.2 — transitive cowboy vuln, fixed in 2.8.1
+GHSA-q8x4-x7mp-5vg2
