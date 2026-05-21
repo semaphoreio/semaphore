@@ -677,7 +677,9 @@ defmodule Projecthub.HttpApi do
           required: task_parameter["required"],
           description: task_parameter["description"] || "",
           default_value: task_parameter["default_value"] || "",
-          options: task_parameter["options"] || []
+          options: task_parameter["options"] || [],
+          regex_pattern: task_parameter["regex_pattern"] || "",
+          validate_input_format: task_parameter["validate_input_format"] || false
         )
       end)
     else
