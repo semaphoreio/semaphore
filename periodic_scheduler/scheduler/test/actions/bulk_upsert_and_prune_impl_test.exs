@@ -63,6 +63,34 @@ defmodule Test.Actions.BulkUpsertAndPruneImpl.Test do
     assert alpha.at == "30 0 * * *"
   end
 
+  test "persists regex_pattern and validate_input_format on parameters", ctx do
+    parameters = [
+      %{
+        name: "VERSION",
+        required: true,
+        description: "release tag",
+        default_value: "v1",
+        options: [],
+        regex_pattern: "^v[0-9]+$",
+        validate_input_format: true
+      }
+    ]
+
+    params = base_params(ctx, [definition("with-regex", "0 0 * * *", parameters: parameters)])
+
+    assert {:ok, %{upserted: [upserted], deleted_ids: []}} =
+             BulkUpsertAndPruneImpl.bulk_upsert_and_prune(params)
+
+    assert [returned_param] = upserted.parameters
+    assert returned_param.regex_pattern == "^v[0-9]+$"
+    assert returned_param.validate_input_format == true
+
+    [persisted] = list_periodics_for(ctx.pr_id)
+    assert [persisted_param] = persisted.parameters
+    assert persisted_param.regex_pattern == "^v[0-9]+$"
+    assert persisted_param.validate_input_format == true
+  end
+
   test "prunes existing periodics that are not in the desired set", ctx do
     {:ok, periodic: keep} =
       Factory.setup_periodic(ctx,
@@ -327,7 +355,7 @@ defmodule Test.Actions.BulkUpsertAndPruneImpl.Test do
     assert reloaded.project_id == original_project
   end
 
-  test "skips definitions whose id belongs to another project", ctx do
+  test "fails with NOT_FOUND when a definition id belongs to another project", ctx do
     foreign_project_id = UUID.uuid4()
     foreign_org_id = UUID.uuid4()
 
@@ -348,11 +376,11 @@ defmodule Test.Actions.BulkUpsertAndPruneImpl.Test do
         definition("valid-new", "0 0 * * *")
       ])
 
-    assert {:ok, %{upserted: upserted, deleted_ids: []}} =
+    assert {:error, {:NOT_FOUND, message}} =
              BulkUpsertAndPruneImpl.bulk_upsert_and_prune(params)
 
-    assert length(upserted) == 1
-    assert hd(upserted).name == "valid-new"
+    assert message =~ foreign.id
+    assert message =~ "not found in project"
 
     [reloaded_foreign] = list_periodics_for(foreign_project_id)
     assert reloaded_foreign.id == foreign.id
@@ -363,9 +391,53 @@ defmodule Test.Actions.BulkUpsertAndPruneImpl.Test do
     assert reloaded_foreign.organization_id == foreign_org_id
     assert reloaded_foreign.project_id == foreign_project_id
 
-    own = list_periodics_for(ctx.pr_id)
-    assert length(own) == 1
-    assert hd(own).name == "valid-new"
+    assert list_periodics_for(ctx.pr_id) == []
+  end
+
+  test "fails with NOT_FOUND when a definition id does not exist anywhere", ctx do
+    unknown_id = UUID.uuid4()
+
+    params = base_params(ctx, [definition("ghost", "0 0 * * *", id: unknown_id)])
+
+    assert {:error, {:NOT_FOUND, message}} =
+             BulkUpsertAndPruneImpl.bulk_upsert_and_prune(params)
+
+    assert message =~ unknown_id
+    assert message =~ "not found in project"
+
+    assert list_periodics_for(ctx.pr_id) == []
+  end
+
+  test "does not prune existing periodics when a foreign_id triggers rollback", ctx do
+    {:ok, periodic: existing_a} =
+      Factory.setup_periodic(ctx,
+        organization_id: ctx.org_id,
+        project_id: ctx.pr_id,
+        requester_id: ctx.usr_id,
+        name: "keep-a"
+      )
+
+    {:ok, periodic: existing_b} =
+      Factory.setup_periodic(ctx,
+        organization_id: ctx.org_id,
+        project_id: ctx.pr_id,
+        requester_id: ctx.usr_id,
+        name: "keep-b"
+      )
+
+    unknown_id = UUID.uuid4()
+
+    params = base_params(ctx, [definition("ghost", "0 0 * * *", id: unknown_id)])
+
+    assert {:error, {:NOT_FOUND, _}} = BulkUpsertAndPruneImpl.bulk_upsert_and_prune(params)
+
+    persisted_ids =
+      ctx.pr_id
+      |> list_periodics_for()
+      |> Enum.map(& &1.id)
+      |> MapSet.new()
+
+    assert persisted_ids == MapSet.new([existing_a.id, existing_b.id])
   end
 
   describe "when quantum side-effects fail" do
