@@ -75,21 +75,58 @@ defmodule Projecthub.Models.PeriodicTaskTest do
                  description: "",
                  required: true,
                  default_value: "default",
-                 options: []
+                 options: [],
+                 regex_pattern: "",
+                 validate_input_format: false
                },
                %{
                  name: "param2",
                  description: "",
                  required: false,
                  default_value: "default",
-                 options: []
+                 options: [],
+                 regex_pattern: "",
+                 validate_input_format: false
                },
                %{
                  name: "param3",
                  description: "",
                  required: false,
                  default_value: "",
-                 options: ["op1", "op2"]
+                 options: ["op1", "op2"],
+                 regex_pattern: "",
+                 validate_input_format: false
+               }
+             ]
+    end
+
+    test "preserves regex_pattern and validate_input_format when set" do
+      periodic =
+        periodic_from_grpc(%{
+          id: "x",
+          name: "task",
+          parameters: [
+            %{
+              name: "VERSION",
+              required: true,
+              default_value: "1.0.0",
+              regex_pattern: "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+              validate_input_format: true
+            }
+          ]
+        })
+
+      assert task = PeriodicTask.construct(periodic, "project_name")
+
+      assert task.parameters == [
+               %{
+                 name: "VERSION",
+                 description: "",
+                 required: true,
+                 default_value: "1.0.0",
+                 options: [],
+                 regex_pattern: "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+                 validate_input_format: true
                }
              ]
     end
@@ -259,6 +296,38 @@ defmodule Projecthub.Models.PeriodicTaskTest do
       assert {:ok, _} = PeriodicTask.update_all(ctx.project, [periodic_task(id: "1")], "requester_id")
     end
 
+    test "forwards regex_pattern and validate_input_format on parameters", ctx do
+      FunRegistry.set!(PeriodicService, :bulk_upsert_and_prune, fn req, _stream ->
+        [first | _] = req.periodics
+        [param | _] = first.parameters
+        assert param.name == "VERSION"
+        assert param.regex_pattern == "^v[0-9]+$"
+        assert param.validate_input_format == true
+
+        API.BulkUpsertAndPruneResponse.new(
+          status: Status.new(),
+          upserted: [API.Periodic.new(id: first.id)],
+          deleted_ids: []
+        )
+      end)
+
+      task =
+        periodic_task(
+          id: "1",
+          parameters: [
+            %{
+              name: "VERSION",
+              required: true,
+              default_value: "v1",
+              regex_pattern: "^v[0-9]+$",
+              validate_input_format: true
+            }
+          ]
+        )
+
+      assert {:ok, _} = PeriodicTask.update_all(ctx.project, [task], "requester_id")
+    end
+
     test "empty branch falls back to refs/heads/master on the wire", ctx do
       FunRegistry.set!(PeriodicService, :bulk_upsert_and_prune, fn req, _stream ->
         [first | _] = req.periodics
@@ -398,7 +467,10 @@ defmodule Projecthub.Models.PeriodicTaskTest do
     parameters =
       Enum.map(
         get_in(params, [:parameters]) || [],
-        &Map.take(&1, ~w(name description required default_value options)a)
+        &Map.take(
+          &1,
+          ~w(name description required default_value options regex_pattern validate_input_format)a
+        )
       )
 
     struct(PeriodicTask, defaults() |> Map.merge(params) |> Map.put(:parameters, parameters))

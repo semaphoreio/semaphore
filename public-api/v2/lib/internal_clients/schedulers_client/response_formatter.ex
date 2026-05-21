@@ -127,7 +127,9 @@ defmodule InternalClients.Schedulers.ResponseFormatter do
       description: parameter.description,
       required: parameter.required,
       default_value: parameter.default_value,
-      options: parameter.options
+      options: parameter.options,
+      regex_pattern: parameter.regex_pattern,
+      validate_input_format: parameter.validate_input_format
     }
   end
 
