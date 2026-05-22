@@ -17,24 +17,33 @@ defmodule Rbac.GrpcServers.RbacServer do
       [req.user_id, req.org_id] |> validate_uuid!()
       if req.project_id != "", do: validate_uuid!(req.project_id)
 
-      {:ok, rbi} =
-        RBI.new(
+      if req.project_id != "" and not project_belongs_to_org?(req.project_id, req.org_id) do
+        %RBAC.ListUserPermissionsResponse{
           user_id: req.user_id,
           org_id: req.org_id,
-          project_id: if(req.project_id != "", do: req.project_id, else: :is_nil)
-        )
+          project_id: req.project_id,
+          permissions: []
+        }
+      else
+        {:ok, rbi} =
+          RBI.new(
+            user_id: req.user_id,
+            org_id: req.org_id,
+            project_id: if(req.project_id != "", do: req.project_id, else: :is_nil)
+          )
 
-      all_user_permissions =
-        UserPermissions.read_user_permissions(rbi)
-        |> String.split(",")
-        |> Enum.filter(&(&1 != ""))
+        all_user_permissions =
+          UserPermissions.read_user_permissions(rbi)
+          |> String.split(",")
+          |> Enum.filter(&(&1 != ""))
 
-      %RBAC.ListUserPermissionsResponse{
-        user_id: req.user_id,
-        org_id: req.org_id,
-        project_id: req.project_id,
-        permissions: all_user_permissions
-      }
+        %RBAC.ListUserPermissionsResponse{
+          user_id: req.user_id,
+          org_id: req.org_id,
+          project_id: req.project_id,
+          permissions: all_user_permissions
+        }
+      end
     end)
   end
 
@@ -356,6 +365,21 @@ defmodule Rbac.GrpcServers.RbacServer do
           :failed_precondition,
           "Role you are trying to assign must belong to the org given in the request."
         )
+  end
+
+  defp project_belongs_to_org?(project_id, org_id) do
+    case Rbac.Models.Project.find(project_id) do
+      {:ok, project} ->
+        project.org_id == org_id
+
+      {:error, reason} ->
+        Logger.warning(
+          "[RBAC] project_belongs_to_org? lookup failed for project_id=#{project_id} " <>
+            "org_id=#{org_id} reason=#{inspect(reason)}"
+        )
+
+        false
+    end
   end
 
   defp validate_project!(project_id, org_id) do
