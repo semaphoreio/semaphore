@@ -39,6 +39,18 @@ sem-ai connect <your-org>.semaphoreci.com YOUR_API_TOKEN
 
 `sem-ai` writes credentials to `~/.sem.yaml`, the same file used by the legacy [`sem` CLI](https://github.com/semaphoreci/cli), so existing contexts and tokens are reused.
 
+:::tip Prefer a service account token for CI/automation
+
+For shared CI/CD usage, scheduled jobs, and any setup where the token survives a single developer leaving the project, use a per-project [service account](../service-accounts) token instead of a personal API token:
+
+- **Rotation** — service-account tokens are decoupled from a human user. You can rotate the token (or revoke a compromised one) without touching anyone's login session, and without losing access when the original creator leaves the org.
+- **Managed access** — service accounts created with the org-level Member role do not get any project access by default. Add the service account to each project's People page that the agent is allowed to touch, and `sem-ai` calls outside that scope return `404 Not Found`. This makes "what can this token reach" auditable in one place.
+- **Fine-grained permissions** — if your plan includes [RBAC](../rbac), assign a project role that matches what the agent actually needs (e.g. read-only for a status / diagnose bot, contributor for a deploy bot). Avoid handing it Admin "just in case".
+
+Service accounts are an opt-in org feature — contact `support@semaphore.io` if it is not yet enabled for your organization.
+
+:::
+
 Verify with:
 
 ```shell
