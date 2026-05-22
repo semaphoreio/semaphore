@@ -11,7 +11,33 @@ This page explains how to install and use `sem-ai`, an agent-first CLI for Semap
 
 `sem-ai` is a single binary that wraps the Semaphore APIs in a shape AI agents work well with: structured JSON output by default, self-describing commands, and compound operations that chain workflow → pipeline → failed jobs → logs → parsed test results into one call.
 
-When installed locally, `sem-ai` runs its own MCP server (`sem-ai mcp`). You do **not** need the organization-level [hosted MCP Server](./mcp-server) feature enabled to use it — `sem-ai` talks to the public Semaphore API directly with your personal API token. Use the hosted MCP Server when you want a managed, OAuth-friendly remote endpoint; use `sem-ai` when you want a local CLI plus agent tooling that any team member can install today.
+### Why it exists
+
+Agents driving Semaphore from a developer's machine need three things that a remote MCP server cannot provide on its own: a full write-surface to manage projects, secrets, deploy targets, and YAML; in-context **skills** that teach the agent Semaphore's conventions (block dependencies, the `epilogue` rule for test reports, toolbox CLIs, sharding cost-benefit, …) so it does not invent wrong defaults; and a deterministic entry point for repetitive set-up tasks like translating GitHub Actions or bootstrapping a fresh project.
+
+`sem-ai` packages all three: the CLI exposes the full Semaphore API surface, the Claude Code / Codex plugin ships [Agent Skills](https://agentskills.io) covering each Semaphore concept, and the `/sem-ai:init` slash command orchestrates project bootstrap end to end (detect repo state → translate or draft → validate → wire secrets → open a PR).
+
+### What it helps with
+
+- **Bootstrap a project on Semaphore from a single prompt** — `/sem-ai:init` covers translating an existing `.github/workflows/*` or drafting a greenfield `.semaphore/semaphore.yml`, applying Semaphore-side defaults (machine type, `checkout` in prologue, `sem-version` for languages, cache keyed on lockfile, `test-results publish` in epilogue, …).
+- **Debug a failing pipeline without leaving the terminal** — `sem-ai diagnose` composes workflow → pipeline → failed jobs → logs → parsed JUnit into one call; `sem-ai test summary` parses published reports in under a second instead of patching reporters to print to stdout.
+- **Operate full CI/CD from an agent** — manage projects, secrets, notifications, deploy targets, scheduled tasks, and promotions; validate YAML before pushing; run commands against a real Semaphore agent via `sem-ai testbox` to iterate on CI fixes before committing.
+
+### sem-ai vs the hosted MCP Server
+
+Both let AI agents talk to Semaphore. They are complementary, and you can use them at the same time. Use this table to pick.
+
+| | [Hosted MCP Server](./mcp-server) | sem-ai |
+|---|---|---|
+| **Where it runs** | Semaphore-managed endpoint at `mcp.semaphoreci.com` | Local binary on the developer's machine |
+| **Setup** | Opt-in per org — contact `support@semaphore.io` | Install the binary; no feature flag required |
+| **Auth** | OAuth 2.1 (browser) or personal API token | Personal API token (or [service account](../service-accounts) for shared/headless setups) |
+| **Scope** | A focused MCP tool set: orgs, projects, workflows, pipelines, jobs, logs, test results, doc lookup, workflow run/rerun | The full Semaphore API surface — projects, secrets, deploy targets, notifications, scheduled tasks, agents, artifacts, YAML validation, testbox, plus the same read/diagnose tools |
+| **Skills** | Tool descriptions only | 15 [Agent Skills](https://agentskills.io) covering blocks, promotions, toolbox CLIs, test-results, GHA translation, debugging, deploys, manage-infra, testbox, etc |
+| **Slash commands** | None | `/sem-ai:init` (bootstrap a project), `/sem-ai:gha-to-semaphore` (translate workflows) |
+| **Best for** | Any MCP-aware agent that should reach into Semaphore from the web — Claude desktop, Cursor, VS Code, internal copilots — without each user installing a CLI | Driving Semaphore from a terminal-attached agent (Claude Code, Codex), bootstrapping CI on new projects, fixing failing pipelines on a developer laptop, automating Semaphore from non-Semaphore CI |
+
+In short: the hosted MCP Server is the remote, managed access path; `sem-ai` is the local, fully-featured agent toolkit that ships with opinionated Semaphore knowledge.
 
 Full command reference: [sem-ai Command Line](../../reference/sem-ai-cli). Source: [github.com/semaphoreio/sem-ai](https://github.com/semaphoreio/sem-ai).
 
