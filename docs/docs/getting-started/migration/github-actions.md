@@ -15,6 +15,12 @@ GitHub Actions uses a YAML-based syntax to define pipelines and actions. With Se
 
 Semaphore provides [top-of-market machines](../../reference/machine-types) for faster build times, along with extra features like fully customizable [Role Based Access Control](../../using-semaphore/rbac), [parameterized promotions](../../using-semaphore/promotions#parameters), and [SSH debugging](../../using-semaphore/jobs#ssh-into-agent).
 
+:::tip AI-assisted migration
+
+The [`sem-ai` CLI](../../using-semaphore/ai/sem-ai) ships a Claude Code / Codex plugin that can translate `.github/workflows/*` into a Semaphore pipeline for you. After installing the plugin, run `/sem-ai:gha-to-semaphore` from the repo and the agent inventories your workflows, drafts `.semaphore/semaphore.yml`, validates it with `sem-ai yaml validate`, and opens a PR. Use the rest of this page as the reference for what each construct maps to — and to review the agent's output.
+
+:::
+
 ## GitHub Actions vs Semaphore
 
 This section describes how to implement common GitHub Actions functionalities on Semaphore.
