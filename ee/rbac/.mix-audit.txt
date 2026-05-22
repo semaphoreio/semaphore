@@ -1,0 +1,37 @@
+# Pre-existing transitive CVE advisories already failing on main. Tracked separately;
+# RBAC is internal-only (gRPC server, no HTTP ingress), so the reachability surface
+# differs from edge services. Bumps are coordinated platform-wide.
+
+# postgrex 0.19.3 — channel-name SQL injection in Postgrex.Notifications.listen/3.
+# RBAC does not call Notifications.listen/3.
+GHSA-r73h-97w8-m54h
+
+# plug 1.16.1 — unbounded buffer accumulation in multipart header parsing (DoS).
+# RBAC exposes gRPC only; no Plug multipart entrypoint.
+GHSA-468c-vq7p-gh64
+
+# cowlib 2.13.0 — cow_http_te uncontrolled resource consumption (DoS).
+# RBAC has no public HTTP transfer-encoding entrypoint.
+GHSA-32p9-57cr-4x65
+
+# cowlib 2.13.0 — cow_spdy:inflate/2 decompression bomb. RBAC does not serve SPDY.
+GHSA-84f2-rp86-235p
+
+# cowlib 2.13.0 — cow_cookie:cookie/1 header injection. RBAC does not emit cookies.
+GHSA-g2wm-735q-3f56
+
+# cowlib 2.13.0 — SSE CRLF injection. RBAC does not expose SSE.
+GHSA-hv23-4qp7-8c8r
+
+# decimal 2.3.0 — unbounded exponent in Decimal.new (unauthenticated DoS).
+# RBAC does not parse user-supplied Decimal values.
+GHSA-rhv4-8758-jx7v
+
+# hackney 1.20.1 — connection pool leak.
+GHSA-9fm9-hp7p-53mf
+
+# hackney 1.20.1 — SSRF in request URL handling. RBAC does not issue user-driven HTTP.
+GHSA-vq52-99r9-h5pw
+
+# cowboy 2.12.0 — multipart header parsing DoS. RBAC has no Cowboy multipart entrypoint.
+GHSA-jfc2-q6qh-g5x8
