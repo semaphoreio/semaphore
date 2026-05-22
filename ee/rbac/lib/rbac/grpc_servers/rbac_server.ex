@@ -15,35 +15,26 @@ defmodule Rbac.GrpcServers.RbacServer do
 
     Watchman.benchmark("list_user_permissions.duration", fn ->
       [req.user_id, req.org_id] |> validate_uuid!()
-      if req.project_id != "", do: validate_uuid!(req.project_id)
+      if req.project_id != "", do: validate_project!(req.project_id, req.org_id)
 
-      if req.project_id != "" and not project_belongs_to_org?(req.project_id, req.org_id) do
-        %RBAC.ListUserPermissionsResponse{
+      {:ok, rbi} =
+        RBI.new(
           user_id: req.user_id,
           org_id: req.org_id,
-          project_id: req.project_id,
-          permissions: []
-        }
-      else
-        {:ok, rbi} =
-          RBI.new(
-            user_id: req.user_id,
-            org_id: req.org_id,
-            project_id: if(req.project_id != "", do: req.project_id, else: :is_nil)
-          )
+          project_id: if(req.project_id != "", do: req.project_id, else: :is_nil)
+        )
 
-        all_user_permissions =
-          UserPermissions.read_user_permissions(rbi)
-          |> String.split(",")
-          |> Enum.filter(&(&1 != ""))
+      all_user_permissions =
+        UserPermissions.read_user_permissions(rbi)
+        |> String.split(",")
+        |> Enum.filter(&(&1 != ""))
 
-        %RBAC.ListUserPermissionsResponse{
-          user_id: req.user_id,
-          org_id: req.org_id,
-          project_id: req.project_id,
-          permissions: all_user_permissions
-        }
-      end
+      %RBAC.ListUserPermissionsResponse{
+        user_id: req.user_id,
+        org_id: req.org_id,
+        project_id: req.project_id,
+        permissions: all_user_permissions
+      }
     end)
   end
 
@@ -367,35 +358,36 @@ defmodule Rbac.GrpcServers.RbacServer do
         )
   end
 
-  defp project_belongs_to_org?(project_id, org_id) do
-    case Rbac.Models.Project.find(project_id) do
-      {:ok, project} ->
-        project.org_id == org_id
+  defp validate_project!(project_id, org_id, opts \\ []) do
+    validate_uuid!(project_id)
+    source = Keyword.get(opts, :source, :store)
+    do_validate_project!(project_id, org_id, source)
+  end
 
-      {:error, reason} ->
-        Logger.warning(
-          "[RBAC] project_belongs_to_org? lookup failed for project_id=#{project_id} " <>
-            "org_id=#{org_id} reason=#{inspect(reason)}"
-        )
+  defp do_validate_project!(project_id, org_id, :store) do
+    case Rbac.Store.Project.find(project_id) do
+      {:ok, %{org_id: ^org_id}} ->
+        :ok
 
-        false
+      {:ok, _other_org_project} ->
+        grpc_error!(:failed_precondition, "Project does not belong to the organization")
+
+      {:error, :project_not_found} ->
+        do_validate_project!(project_id, org_id, :api)
     end
   end
 
-  defp validate_project!(project_id, org_id) do
-    validate_uuid!(project_id)
+  defp do_validate_project!(project_id, org_id, :api) do
+    case Rbac.Models.Project.find(project_id) do
+      {:ok, %{org_id: ^org_id}} ->
+        :ok
 
-    project =
-      case Rbac.Models.Project.find(project_id) do
-        {:error, :project_not_found} ->
-          grpc_error!(:failed_precondition, "Project does not exist #{project_id}")
+      {:ok, _other_org_project} ->
+        grpc_error!(:failed_precondition, "Project does not belong to the organization")
 
-        {:ok, project} ->
-          project
-      end
-
-    if project.org_id != org_id,
-      do: grpc_error!(:failed_precondition, "Project does not belong to the organization")
+      {:error, :project_not_found} ->
+        grpc_error!(:failed_precondition, "Project does not exist #{project_id}")
+    end
   end
 
   ###
