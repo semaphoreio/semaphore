@@ -102,15 +102,6 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
       Support.Rbac.assign_org_role_by_name(@org_id, @user_id, "Admin")
       Support.Rbac.assign_project_role_by_name(@org_id, @user_id, @project_id, "Reader")
 
-      GrpcMock.stub(ProjecthubMock, :describe, fn _, _ ->
-        %InternalApi.Projecthub.DescribeResponse{
-          project: Support.Factories.project(id: @project_id, org_id: @org_id),
-          metadata: %InternalApi.Projecthub.ResponseMeta{
-            status: %InternalApi.Projecthub.ResponseMeta.Status{code: :OK}
-          }
-        }
-      end)
-
       req = %Request{user_id: @user_id, org_id: @org_id, project_id: @project_id}
       {:ok, %{permissions: permissions}} = state.grpc_channel |> Stub.list_user_permissions(req)
 
@@ -118,25 +109,36 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
                Enum.sort(@org_admin_permissions ++ @proj_reader_permissions)
     end
 
-    test "no project permissions returned when project belongs to a different organization",
-         state do
+    test "error returned when project from Store belongs to a different organization", state do
       Support.Rbac.assign_org_role_by_name(@org_id, @user_id, "Admin")
 
       other_org_project_id = UUID.generate()
+      Support.Projects.insert(project_id: other_org_project_id, org_id: UUID.generate())
+
+      req = %Request{user_id: @user_id, org_id: @org_id, project_id: other_org_project_id}
+      {:error, grpc_error} = state.grpc_channel |> Stub.list_user_permissions(req)
+
+      assert grpc_error.message =~ "Project does not belong to the organization"
+    end
+
+    test "falls back to projecthub when project is not in the Store cache", state do
+      Support.Rbac.assign_org_role_by_name(@org_id, @user_id, "Admin")
+
+      uncached_project_id = UUID.generate()
 
       GrpcMock.stub(ProjecthubMock, :describe, fn _, _ ->
         %InternalApi.Projecthub.DescribeResponse{
-          project: Support.Factories.project(id: other_org_project_id, org_id: UUID.generate()),
+          project: Support.Factories.project(id: uncached_project_id, org_id: UUID.generate()),
           metadata: %InternalApi.Projecthub.ResponseMeta{
             status: %InternalApi.Projecthub.ResponseMeta.Status{code: :OK}
           }
         }
       end)
 
-      req = %Request{user_id: @user_id, org_id: @org_id, project_id: other_org_project_id}
-      {:ok, %{permissions: permissions}} = state.grpc_channel |> Stub.list_user_permissions(req)
+      req = %Request{user_id: @user_id, org_id: @org_id, project_id: uncached_project_id}
+      {:error, grpc_error} = state.grpc_channel |> Stub.list_user_permissions(req)
 
-      assert permissions == []
+      assert grpc_error.message =~ "Project does not belong to the organization"
     end
   end
 
