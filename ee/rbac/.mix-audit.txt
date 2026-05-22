@@ -1,0 +1,2 @@
+# cowlib — no patched version published upstream
+GHSA-g2wm-735q-3f56
