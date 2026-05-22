@@ -28,7 +28,7 @@ defmodule Rbac.MixProject do
       {:protobuf, "~> 0.13.0"},
       {:mix_test_watch, "~> 1.2.0", only: :dev},
       {:watchman, github: "renderedtext/ex-watchman"},
-      {:postgrex, ">= 0.19.2"},
+      {:postgrex, ">= 0.22.2"},
       {:ecto_sql, "~> 3.12.1"},
       {:mock, "~> 0.3.8", only: :test},
       {:jason, "~> 1.4.4"},
@@ -38,8 +38,8 @@ defmodule Rbac.MixProject do
       {:credo, "~> 1.7.10", only: [:dev, :test], runtime: false},
       {:tackle, github: "renderedtext/ex-tackle"},
       {:rabbit_common, "~> 3.13.4", override: true},
-      {:cowboy, "~> 2.12.0", override: true},
-      {:cowlib, "~> 2.13.0", override: true},
+      {:cowboy, "~> 2.15.0", override: true},
+      {:cowlib, "~> 2.16.0", override: true},
       {:ranch, "~> 1.8.0", override: true}
     ]
   end
