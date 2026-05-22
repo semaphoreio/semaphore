@@ -101,14 +101,14 @@ The plugin bundles Semaphore skills, an embedded MCP server, and a SessionStart 
 
 From inside Claude Code or Codex:
 
-```
+```text
 /plugin marketplace add semaphoreio/sem-ai
 /plugin install sem-ai@semaphoreio
 ```
 
 The marketplace is published with `autoUpdate: true`, so the host refreshes the catalog at session start and pulls new skill versions automatically. To force an immediate refresh:
 
-```
+```text
 /plugin marketplace update semaphoreio
 /reload-plugins
 ```
