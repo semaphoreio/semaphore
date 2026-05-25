@@ -55,7 +55,7 @@ RSpec.describe Semaphore::RepoHost::Github::WebhookFilter do
         end
       end
 
-      context "pr comment with unsupported command" do
+      context "pr comment with unsupported command only" do
         let(:payload) { '{"issue": {"pull_request": {"url": ""}}, "comment": {"body": "/foo"}}' }
 
         it "returns true" do
@@ -65,6 +65,78 @@ RSpec.describe Semaphore::RepoHost::Github::WebhookFilter do
 
       context "pr comment with supported command" do
         let(:payload) { '{"issue": {"pull_request": {"url": ""}}, "comment": {"body": "asd\r\n\r\n/sem-approve"}}' }
+
+        it "returns false" do
+          expect(filter.unsupported_webhook?).to eql(false)
+        end
+      end
+
+      context "pr comment with inline sem-approve command" do
+        let(:payload) { '{"issue": {"pull_request": {"url": ""}}, "comment": {"body": "LGTM /sem-approve"}}' }
+
+        it "returns false" do
+          expect(filter.unsupported_webhook?).to eql(false)
+        end
+      end
+
+      context "pr comment with sem-approve and trailing text" do
+        let(:payload) { '{"issue": {"pull_request": {"url": ""}}, "comment": {"body": "/sem-approve please rerun"}}' }
+
+        it "returns false" do
+          expect(filter.unsupported_webhook?).to eql(false)
+        end
+      end
+
+      context "pr comment with unsupported command in multiline body" do
+        let(:payload) { '{"issue": {"pull_request": {"url": ""}}, "comment": {"body": "asd\r\n\r\n/sem-unknown"}}' }
+
+        it "returns true" do
+          expect(filter.unsupported_webhook?).to eql(true)
+        end
+      end
+
+      context "pr comment with sem-approve options" do
+        let(:payload) { '{"issue": {"pull_request": {"url": ""}}, "comment": {"body": "asd\r\n\r\n/sem-approve --include-secrets --enable-cache"}}' }
+
+        it "returns false" do
+          expect(filter.unsupported_webhook?).to eql(false)
+        end
+      end
+
+      context "pr comment with sem-approve options in reverse order" do
+        let(:payload) { '{"issue": {"pull_request": {"url": ""}}, "comment": {"body": "asd\r\n\r\n/sem-approve --enable-cache --include-secrets"}}' }
+
+        it "returns false" do
+          expect(filter.unsupported_webhook?).to eql(false)
+        end
+      end
+
+      context "pr comment with sem-approve options separated by tabs" do
+        let(:payload) { '{"issue": {"pull_request": {"url": ""}}, "comment": {"body": "asd\r\n\r\n/sem-approve\t--include-secrets"}}' }
+
+        it "returns false" do
+          expect(filter.unsupported_webhook?).to eql(false)
+        end
+      end
+
+      context "pr comment with multiple sem-approve options separated by tabs" do
+        let(:payload) { '{"issue": {"pull_request": {"url": ""}}, "comment": {"body": "asd\r\n\r\n/sem-approve\t--include-secrets\t--enable-cache"}}' }
+
+        it "returns false" do
+          expect(filter.unsupported_webhook?).to eql(false)
+        end
+      end
+
+      context "pr comment with sem-approve options separated by punctuation" do
+        let(:payload) { '{"issue": {"pull_request": {"url": ""}}, "comment": {"body": "asd\r\n\r\n/sem-approve,--include-secrets"}}' }
+
+        it "returns true" do
+          expect(filter.unsupported_webhook?).to eql(true)
+        end
+      end
+
+      context "pr comment with sem-approve and unsupported option" do
+        let(:payload) { '{"issue": {"pull_request": {"url": ""}}, "comment": {"body": "/sem-approve --unsupported-option"}}' }
 
         it "returns false" do
           expect(filter.unsupported_webhook?).to eql(false)
