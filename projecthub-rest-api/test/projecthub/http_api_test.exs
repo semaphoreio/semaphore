@@ -619,7 +619,9 @@ defmodule Projecthub.HttpApi.Test do
                          "description" => "description1",
                          "name" => "param1",
                          "options" => ["option1", "option2"],
-                         "required" => true
+                         "required" => true,
+                         "regex_pattern" => "",
+                         "validate_input_format" => false
                        }
                      ],
                      "pipeline_file" => ".semaphore/semaphore.yml",
@@ -907,7 +909,9 @@ defmodule Projecthub.HttpApi.Test do
                     "description" => "description1",
                     "name" => "param1",
                     "options" => ["option1", "option2"],
-                    "required" => true
+                    "required" => true,
+                    "regex_pattern" => "",
+                    "validate_input_format" => false
                   }
                 ],
                 "pipeline_file" => ".semaphore/semaphore.yml",
@@ -971,7 +975,9 @@ defmodule Projecthub.HttpApi.Test do
                          "description" => "description1",
                          "name" => "param1",
                          "options" => ["option1", "option2"],
-                         "required" => true
+                         "required" => true,
+                         "regex_pattern" => "",
+                         "validate_input_format" => false
                        }
                      ],
                      "pipeline_file" => ".semaphore/semaphore.yml",
@@ -1276,14 +1282,18 @@ defmodule Projecthub.HttpApi.Test do
                          "description" => "",
                          "required" => false,
                          "default_value" => "",
-                         "options" => ["op1", "op2"]
+                         "options" => ["op1", "op2"],
+                         "regex_pattern" => "",
+                         "validate_input_format" => false
                        },
                        %{
                          "name" => "parameter",
                          "description" => "desc",
                          "required" => true,
                          "default_value" => "default",
-                         "options" => []
+                         "options" => [],
+                         "regex_pattern" => "",
+                         "validate_input_format" => false
                        }
                      ]
                    }
@@ -1293,6 +1303,99 @@ defmodule Projecthub.HttpApi.Test do
                  "debug_permissions" => ["empty"],
                  "attach_permissions" => []
                }
+             }
+    end
+
+    test "when task parameters include regex_pattern and validate_input_format => fields are forwarded to projecthub and returned in the response" do
+      FunRegistry.set!(FakeServices.ProjectService, :update, fn req, _ ->
+        alias InternalApi.Projecthub, as: PH
+
+        PH.UpdateResponse.new(
+          metadata:
+            PH.ResponseMeta.new(
+              status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:OK))
+            ),
+          project:
+            PH.Project.new(
+              metadata:
+                PH.Project.Metadata.new(
+                  id: @project_id,
+                  name: req.project.metadata.name,
+                  owner_id: @owner_id,
+                  org_id: @org_id,
+                  description: "A new description"
+                ),
+              spec: req.project.spec
+            )
+        )
+      end)
+
+      restrict_org!()
+
+      resource =
+        Poison.encode!(%{
+          "metadata" => %{
+            "name" => "trello",
+            "id" => @project_id,
+            "owner_id" => @owner_id,
+            "org_id" => @org_id,
+            "description" => "Some description"
+          },
+          "spec" => %{
+            "repository" => %{
+              "url" => "git@github.com/shiroyasha/test.git",
+              "forked_pull_requests" => %{
+                "allowed_secrets" => [],
+                "allowed_contributors" => []
+              },
+              "pipeline_file" => ""
+            },
+            "tasks" => [
+              %{
+                "name" => "Rubocop",
+                "id" => @task_id,
+                "scheduled" => false,
+                "branch" => "main",
+                "pipeline_file" => ".semaphore/rubocop.yml",
+                "status" => "INACTIVE",
+                "parameters" => [
+                  %{
+                    "name" => "RUBOCOP_CONFIG",
+                    "required" => true,
+                    "default_value" => "",
+                    "options" => [],
+                    "regex_pattern" => "^[a-zA-Z.]+\\.yml",
+                    "validate_input_format" => true
+                  }
+                ]
+              }
+            ],
+            "visibility" => "private"
+          }
+        })
+
+      {:ok, response} =
+        HTTPoison.patch(
+          "http://localhost:#{@port}/api/#{@version}/projects/#{@project_id}",
+          resource,
+          @headers
+        )
+
+      assert response.status_code == 200
+
+      decoded = Poison.decode!(response.body)
+
+      assert [task] = decoded["spec"]["tasks"]
+      assert [parameter] = task["parameters"]
+
+      assert parameter == %{
+               "name" => "RUBOCOP_CONFIG",
+               "description" => "",
+               "required" => true,
+               "default_value" => "",
+               "options" => [],
+               "regex_pattern" => "^[a-zA-Z.]+\\.yml",
+               "validate_input_format" => true
              }
     end
 
