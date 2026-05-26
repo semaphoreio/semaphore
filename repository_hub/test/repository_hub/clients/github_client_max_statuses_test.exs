@@ -50,13 +50,13 @@ defmodule RepositoryHub.GithubClientMaxStatusesTest do
 
   defp params do
     %{
-      repo_owner: "confluentinc",
-      repo_name: "semaphore-test",
-      commit_sha: "5b048357141306568fd7ce5c9c17b6225a240c8d",
+      repo_owner: "owner",
+      repo_name: "repo",
+      commit_sha: "abc1234567890abcdef1234567890abcdef12345",
       status: "pending",
       url: "https://semaphore.example/wf/x",
       description: "The build is pending on Semaphore 2.0.",
-      context: "ci/semaphoreci-staging/push: semaphore-test"
+      context: "ci/semaphoreci/push: repo"
     }
   end
 
