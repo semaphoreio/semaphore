@@ -116,6 +116,21 @@ defmodule RepositoryHub.GithubClient do
 
   @impl true
   def create_build_status(params, opts \\ []) do
+    if RepositoryHub.MaxStatusesCache.maxed?(
+         params.repo_owner,
+         params.repo_name,
+         params.commit_sha,
+         params.context
+       ) do
+      # GitHub already rejected this (sha, context) for hitting the 1000-status
+      # limit. Skip the POST — it would 422 and still cost a rate-limit unit.
+      wrap(%{})
+    else
+      do_create_build_status(params, opts)
+    end
+  end
+
+  defp do_create_build_status(params, opts) do
     with_client(opts[:token], params.repo_owner, :create_build_status, fn client ->
       Tentacat.Repositories.Statuses.create(
         client,
@@ -142,7 +157,13 @@ defmodule RepositoryHub.GithubClient do
           ])
 
           if is_max_statuses_response?(response) do
-            # We're good.
+            RepositoryHub.MaxStatusesCache.mark_maxed(
+              params.repo_owner,
+              params.repo_name,
+              params.commit_sha,
+              params.context
+            )
+
             wrap(%{})
           else
             fail_with(:precondition, "Can't create a commit status on GitHub. #{fetch_status_message(response)}")
@@ -160,14 +181,30 @@ defmodule RepositoryHub.GithubClient do
     end)
   end
 
+  # GitHub returns the per-SHA-per-context max-statuses error in two formats:
+  #   errors: [%{"message" => "This SHA and context has reached..."}]   (older)
+  #   errors: "Validation failed: This SHA and context has reached..." (current)
+  # Match on the canonical substring so we are robust to either shape.
   defp is_max_statuses_response?(response) do
-    with ["Validation Failed"] <- fetch_message(response),
-         ["This SHA and context has reached the maximum number of statuses."] <- fetch_errors(response) do
-      true
-    else
-      _ -> false
-    end
+    fetch_message(response) == ["Validation Failed"] and
+      response
+      |> errors_as_text()
+      |> String.contains?("maximum number of statuses")
   end
+
+  defp errors_as_text(%{body: %{"errors" => errors}}) when is_binary(errors), do: errors
+
+  defp errors_as_text(%{body: %{"errors" => errors}}) when is_list(errors) do
+    errors
+    |> Enum.map(fn
+      %{"message" => message} when is_binary(message) -> message
+      message when is_binary(message) -> message
+      _ -> ""
+    end)
+    |> Enum.join(" ")
+  end
+
+  defp errors_as_text(_), do: ""
 
   @impl true
   def list_repository_collaborators(params, opts \\ []) do
