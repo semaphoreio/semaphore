@@ -94,6 +94,8 @@ defmodule Zebra.Workers.JobRequestFactory do
          {:ok, open_id_token_env_vars} <-
            OpenIDConnect.load(job, repo_env_vars, organization, project, job_type, spec_env_vars),
          {:ok, callback_token} <- CallbackToken.generate(job) do
+      log_dropped_cache_vars(job, project, cache_env_vars)
+
       org_url = "https://#{organization.org_username}.#{Application.get_env(:zebra, :domain)}"
 
       env_vars =
@@ -191,6 +193,15 @@ defmodule Zebra.Workers.JobRequestFactory do
       ] ++ common_vars
     else
       common_vars
+    end
+  end
+
+  defp log_dropped_cache_vars(job, project, cache_env_vars) do
+    if cache_env_vars == [] and not Job.self_hosted?(job.machine_type) and
+         not is_nil(project.cache_id) do
+      Logger.warning(
+        "Cache env vars not injected into job. job_id=#{job.id} project_id=#{project.id} cache_id=#{project.cache_id}"
+      )
     end
   end
 end

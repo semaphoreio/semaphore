@@ -14,10 +14,7 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
   #
 
   def find(nil, _repo_proxy, _org_id) do
-    # We don't fail any jobs due to a missing cache connection,
-    # but we should make sure we are aware of any issues in this area.
-    Watchman.increment("external.cachehub.describe.failed")
-
+    skipped(:no_cache_id)
     {:ok, nil}
   end
 
@@ -31,30 +28,60 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
            {:ok, endpoint} <- Application.fetch_env(:zebra, :cachehub_api_endpoint),
            {:ok, channel} <- GRPC.Stub.connect(endpoint),
            {:ok, response} <- Stub.describe(channel, req, timeout: 30_000) do
-        if response.status.code == InternalApi.ResponseStatus.Code.value(:OK) do
-          if response.cache && response.cache.credential != " " do
-            {:ok, response.cache}
-          else
-            {:ok, nil}
-          end
-        else
-          {:ok, nil}
-        end
+        handle_describe_response(response, cache_id)
       else
         true ->
           Logger.info(
             "Skipping fetching of the cache as the job is part of Forked PR build. Cache id #{inspect(cache_id)}"
           )
 
+          skipped(:forked_pr)
           {:ok, nil}
 
         e ->
-          Watchman.increment("external.cachehub.describe.failed")
-          Logger.info("Failed to fetch info from cachehub #{cache_id}, #{inspect(e)}")
+          Logger.warning(
+            "Failed to fetch info from cachehub. cache_id=#{cache_id} error=#{inspect(e)}"
+          )
 
+          failed(:grpc_error)
           {:ok, nil}
       end
     end)
+  end
+
+  defp handle_describe_response(response, cache_id) do
+    ok_code = InternalApi.ResponseStatus.Code.value(:OK)
+
+    cond do
+      response.status.code != ok_code ->
+        Logger.warning(
+          "Cachehub describe returned non-OK status. cache_id=#{cache_id} status_code=#{inspect(response.status.code)}"
+        )
+
+        failed(:non_ok_response)
+        {:ok, nil}
+
+      is_nil(response.cache) or response.cache.credential == " " ->
+        Logger.warning("Cachehub describe returned blank credential. cache_id=#{cache_id}")
+
+        failed(:blank_credential)
+        {:ok, nil}
+
+      true ->
+        {:ok, response.cache}
+    end
+  end
+
+  defp failed(reason) do
+    Watchman.increment(
+      external: {"external.cachehub.describe.failed", [reason: to_string(reason)]}
+    )
+  end
+
+  defp skipped(reason) do
+    Watchman.increment(
+      external: {"external.cachehub.describe.skipped", [reason: to_string(reason)]}
+    )
   end
 
   def files(_, nil), do: {:ok, []}
