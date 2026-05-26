@@ -66,6 +66,39 @@ defmodule Rbac.Okta.Saml.Api.Test do
       assert location == {"location", "https://me.localhost/account/welcome/okta"}
     end
 
+    test "valid SAML re-adds an existing JIT user who is no longer part of the organization", ctx do
+      alias Rbac.Events.UserJoinedOrganization
+
+      enable_jit_provisioning(ctx.integration)
+
+      with_mocks [{UserJoinedOrganization, [], [publish: fn _, _ -> :ok end]}] do
+        {:ok, saml_jit_user} =
+          Rbac.Repo.SamlJitUser.create(ctx.integration, "denis@example.com", %{
+            "firstName" => ["Denis"],
+            "lastName" => ["Tapia"]
+          })
+
+        {:ok, saml_jit_user} = Rbac.Okta.Saml.JitProvisioner.AddUser.run(saml_jit_user)
+
+        {:ok, rbi} =
+          Rbac.RoleBindingIdentification.new(
+            user_id: saml_jit_user.user_id,
+            org_id: @org_id,
+            project_id: :is_nil
+          )
+
+        {:ok, nil} = Rbac.RoleManagement.retract_roles(rbi)
+
+        refute Rbac.RoleManagement.user_part_of_org?(saml_jit_user.user_id, @org_id)
+
+        {:ok, response} = post("/okta/auth", saml_payload("denis@example.com"))
+
+        assert response.status_code == 302
+        assert Rbac.RoleManagement.user_part_of_org?(saml_jit_user.user_id, @org_id)
+        assert_called_exactly(UserJoinedOrganization.publish(saml_jit_user.user_id, @org_id), 2)
+      end
+    end
+
     test "valid SAML, okta user exists, but semaphore user does not", ctx do
       assert {:ok, _} = create_okta_user(ctx.integration, "denis@example.com")
 
