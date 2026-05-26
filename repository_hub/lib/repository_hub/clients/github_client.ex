@@ -124,6 +124,12 @@ defmodule RepositoryHub.GithubClient do
        ) do
       # GitHub already rejected this (sha, context) for hitting the 1000-status
       # limit. Skip the POST — it would 422 and still cost a rate-limit unit.
+      Watchman.increment("github_api.create_build_status.max_statuses_cache_hit")
+
+      log_debug(
+        "skipping create_build_status: cached as maxed for #{params.repo_owner}/#{params.repo_name}@#{params.commit_sha} ctx=#{params.context}"
+      )
+
       wrap(%{})
     else
       do_create_build_status(params, opts)
@@ -149,30 +155,24 @@ defmodule RepositoryHub.GithubClient do
           payload
           |> wrap()
 
-        {status_code, _, response} when status_code in [307, 404, 403, 422] ->
+        {422, _, response} ->
+          handle_422_create_build_status(params, response)
+
+        {status_code, _, response} when status_code in [307, 404, 403] ->
           log_error([
             "creating build status",
             "status: #{status_code}",
+            "#{params.repo_owner}/#{params.repo_name}@#{params.commit_sha} ctx=#{params.context}",
             "response: #{inspect_response(response)}"
           ])
 
-          if is_max_statuses_response?(response) do
-            RepositoryHub.MaxStatusesCache.mark_maxed(
-              params.repo_owner,
-              params.repo_name,
-              params.commit_sha,
-              params.context
-            )
-
-            wrap(%{})
-          else
-            fail_with(:precondition, "Can't create a commit status on GitHub. #{fetch_status_message(response)}")
-          end
+          fail_with(:precondition, "Can't create a commit status on GitHub. #{fetch_status_message(response)}")
 
         {status_code, _, response} ->
           log_error([
             "creating build status",
             "status: #{status_code}",
+            "#{params.repo_owner}/#{params.repo_name}@#{params.commit_sha} ctx=#{params.context}",
             "response: #{inspect_response(response)}"
           ])
 
@@ -181,16 +181,57 @@ defmodule RepositoryHub.GithubClient do
     end)
   end
 
-  # GitHub returns the per-SHA-per-context max-statuses error in two formats:
-  #   errors: [%{"message" => "This SHA and context has reached..."}]   (older)
-  #   errors: "Validation failed: This SHA and context has reached..." (current)
-  # Match on the canonical substring so we are robust to either shape.
+  defp handle_422_create_build_status(params, response) do
+    log_error([
+      "creating build status",
+      "status: 422",
+      "#{params.repo_owner}/#{params.repo_name}@#{params.commit_sha} ctx=#{params.context}",
+      "response: #{inspect_response(response)}"
+    ])
+
+    cond do
+      is_max_statuses_response?(response) ->
+        RepositoryHub.MaxStatusesCache.mark_maxed(
+          params.repo_owner,
+          params.repo_name,
+          params.commit_sha,
+          params.context
+        )
+
+        wrap(%{})
+
+      validation_failed?(response) ->
+        # A "Validation Failed" 422 that does NOT contain the canonical
+        # max-statuses substring is a canary for GitHub having reworded the
+        # error message. Surface it loudly so we can update the matcher
+        # before the rate-limit drain bug silently regresses.
+        log_warn([
+          "422 Validation Failed not recognised as max-statuses — matcher may be stale",
+          "errors: #{inspect(errors_as_text(response))}"
+        ])
+
+        fail_with(:precondition, "Can't create a commit status on GitHub. #{fetch_status_message(response)}")
+
+      true ->
+        fail_with(:precondition, "Can't create a commit status on GitHub. #{fetch_status_message(response)}")
+    end
+  end
+
+  # GitHub has been observed to return the per-SHA-per-context max-statuses
+  # error in two shapes:
+  #   errors: [%{"message" => "This SHA and context has reached..."}]
+  #   errors: "Validation failed: This SHA and context has reached..."
+  # We gate on the top-level message being "Validation Failed" AND match on
+  # the canonical substring inside `errors` so we accept either shape
+  # without false-positiving on unrelated 422s.
   defp is_max_statuses_response?(response) do
-    fetch_message(response) == ["Validation Failed"] and
+    validation_failed?(response) and
       response
       |> errors_as_text()
       |> String.contains?("maximum number of statuses")
   end
+
+  defp validation_failed?(response), do: fetch_message(response) == ["Validation Failed"]
 
   defp errors_as_text(%{body: %{"errors" => errors}}) when is_binary(errors), do: errors
 
