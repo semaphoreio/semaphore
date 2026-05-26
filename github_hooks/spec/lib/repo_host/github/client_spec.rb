@@ -138,6 +138,41 @@ RSpec.describe RepoHost::Github::Client do
         end.to raise_error(RepoHost::RemoteException::HookExistsOnRepository)
       end
     end
+
+    context "when create_ref encounters 'Reference already exists' (idempotent)" do
+      before do
+        allow_any_instance_of(Octokit::Client).to receive(:create_ref)
+          .and_raise(
+            Octokit::UnprocessableEntity.new(
+              :status => 422,
+              :body => "Reference already exists"
+            )
+          )
+      end
+
+      it "swallows the error and returns nil so callers can use create_ref idempotently" do
+        expect { @client.create_ref("repo", "refs/semaphoreci/abc", "abc") }.not_to raise_error
+        expect(@client.create_ref("repo", "refs/semaphoreci/abc", "abc")).to be_nil
+      end
+    end
+
+    context "when create_ref encounters an unrelated 422" do
+      before do
+        allow_any_instance_of(Octokit::Client).to receive(:create_ref)
+          .and_raise(
+            Octokit::UnprocessableEntity.new(
+              :status => 422,
+              :body => "Invalid object SHA"
+            )
+          )
+      end
+
+      it "raises RepoHost::RemoteException::Unknown so the caller sees the failure" do
+        expect do
+          @client.create_ref("repo", "refs/semaphoreci/abc", "abc")
+        end.to raise_error(RepoHost::RemoteException::Unknown)
+      end
+    end
   end
 
   describe "#token_valid?" do
