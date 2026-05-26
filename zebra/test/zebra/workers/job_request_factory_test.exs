@@ -2,6 +2,8 @@ defmodule Zebra.Workers.JobRequestFactoryTest do
   alias Support.Factories
   use Zebra.DataCase
 
+  import ExUnit.CaptureLog
+
   alias Zebra.Models.Job
   alias Zebra.Workers.JobRequestFactory, as: Worker
 
@@ -1386,6 +1388,27 @@ defmodule Zebra.Workers.JobRequestFactoryTest do
     refute Enum.find(job.request["commands"], fn c ->
              c["directive"] == "ssh-add /home/semaphore/.ssh/semaphore_cache_key"
            end)
+  end
+
+  test "when cache env vars dropped despite project having cache_id => logs warning at factory level" do
+    GrpcMock.stub(Support.FakeServers.CacheApi, :describe, fn _, _ ->
+      InternalApi.Cache.DescribeResponse.new(
+        status: InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
+        cache: InternalApi.Cache.Cache.new(credential: " ")
+      )
+    end)
+
+    {:ok, task} = Support.Factories.Task.create()
+    {:ok, job} = Support.Factories.Job.create(:pending, %{spec: @job_spec, build_id: task.id})
+
+    log =
+      capture_log(fn ->
+        assert {:ok, _job} = Worker.process(job)
+      end)
+
+    assert log =~ "Cache env vars not injected into job"
+    assert log =~ job.id
+    assert log =~ @cache_id
   end
 
   test "when we can't connect to repo_proxy api => doesn't process the job" do
