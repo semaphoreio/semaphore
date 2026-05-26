@@ -73,15 +73,11 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
   end
 
   defp failed(reason) do
-    Watchman.increment(
-      external: {"external.cachehub.describe.failed", [reason: to_string(reason)]}
-    )
+    Watchman.increment({"external.cachehub.describe.failed", [to_string(reason)]})
   end
 
   defp skipped(reason) do
-    Watchman.increment(
-      external: {"external.cachehub.describe.skipped", [reason: to_string(reason)]}
-    )
+    Watchman.increment({"external.cachehub.describe.skipped", [to_string(reason)]})
   end
 
   def files(_, nil), do: {:ok, []}
