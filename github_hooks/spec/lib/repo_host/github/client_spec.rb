@@ -150,9 +150,32 @@ RSpec.describe RepoHost::Github::Client do
           )
       end
 
-      it "swallows the error and returns nil so callers can use create_ref idempotently" do
-        expect { @client.create_ref("repo", "refs/semaphoreci/abc", "abc") }.not_to raise_error
-        expect(@client.create_ref("repo", "refs/semaphoreci/abc", "abc")).to be_nil
+      it "raises RepoHost::RemoteException::ReferenceAlreadyExists so callers can handle the idempotent case explicitly" do
+        expect do
+          @client.create_ref("repo", "refs/semaphoreci/abc", "abc")
+        end.to raise_error(RepoHost::RemoteException::ReferenceAlreadyExists)
+      end
+    end
+
+    context "when create_ref encounters 'Reference already exists' wrapped in Octokit's full message format" do
+      # Real Octokit constructs the exception message by prefixing the request
+      # method/URL and HTTP status before the API body. This test guards
+      # against the matcher silently breaking if `:body =>` and the real
+      # `.message` ever diverge.
+      before do
+        allow_any_instance_of(Octokit::Client).to receive(:create_ref)
+          .and_raise(
+            Octokit::UnprocessableEntity.new(
+              :status => 422,
+              :body => "POST https://api.github.com/repos/owner/repo/git/refs: 422 - Reference already exists // See: https://docs.github.com/rest"
+            )
+          )
+      end
+
+      it "still raises ReferenceAlreadyExists" do
+        expect do
+          @client.create_ref("repo", "refs/semaphoreci/abc", "abc")
+        end.to raise_error(RepoHost::RemoteException::ReferenceAlreadyExists)
       end
     end
 
@@ -171,6 +194,19 @@ RSpec.describe RepoHost::Github::Client do
         expect do
           @client.create_ref("repo", "refs/semaphoreci/abc", "abc")
         end.to raise_error(RepoHost::RemoteException::Unknown)
+      end
+    end
+
+    context "when create_ref encounters TooManyRequests" do
+      before do
+        allow_any_instance_of(Octokit::Client).to receive(:create_ref)
+          .and_raise(Octokit::TooManyRequests)
+      end
+
+      it "propagates as RepoHost::RemoteException::TooManyRequests rather than swallowing" do
+        expect do
+          @client.create_ref("repo", "refs/semaphoreci/abc", "abc")
+        end.to raise_error(RepoHost::RemoteException::TooManyRequests)
       end
     end
   end

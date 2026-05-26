@@ -303,11 +303,18 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
   end
 
   def self.ensure_ref(repo_host, repo_slug, ref, sha)
-    # `create_ref` is idempotent at the client layer — a 422 "Reference
-    # already exists" response is swallowed. Calling it unconditionally
-    # instead of probing with `reference` first saves one GitHub API
-    # request (and its rate-limit cost) per PR processed.
+    # Try to create the ref directly. If GitHub reports the ref already
+    # exists (422 "Reference already exists" → ReferenceAlreadyExists),
+    # treat that as success — the post-condition (the ref is present
+    # for this SHA) is satisfied either way.
+    #
+    # Skipping the probe `repo_host.reference(...)` saves one GitHub API
+    # request per PR processed. Do not re-introduce a pre-check GET here.
     repo_host.create_ref(repo_slug, ref, sha)
+  rescue ::RepoHost::RemoteException::ReferenceAlreadyExists
+    Watchman.increment("github_hooks.ensure_ref.ref_already_exists")
+    Logman.info("github_hooks.ensure_ref ref_already_exists repo=#{repo_slug} ref=#{ref} sha=#{sha}")
+    nil
   end
 
   def self.forked_pr_allowed?(requestor, project)
