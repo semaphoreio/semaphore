@@ -303,8 +303,10 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
   end
 
   def self.ensure_ref(repo_host, repo_slug, ref, sha)
-    repo_host.reference(repo_slug, ref.delete_prefix("refs/"))
-  rescue ::RepoHost::RemoteException::NotFound
+    # `create_ref` is idempotent at the client layer — a 422 "Reference
+    # already exists" response is swallowed. Calling it unconditionally
+    # instead of probing with `reference` first saves one GitHub API
+    # request (and its rate-limit cost) per PR processed.
     repo_host.create_ref(repo_slug, ref, sha)
   end
 

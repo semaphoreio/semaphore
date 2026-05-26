@@ -186,6 +186,12 @@ module RepoHost::Github
     def create_ref(repo, ref, sha)
       user_client.create_ref(repo, ref, sha)
     rescue *GITHUB_EXCEPTION => exception
+      # Idempotent semantics: GitHub returns 422 "Reference already exists"
+      # if the ref is already present. Treat that as success so callers
+      # can use create_ref as a "ensure ref exists" primitive without
+      # paying for a prior GET to check.
+      return nil if ref_already_exists?(exception)
+
       handle_octokit_exceptions(exception)
     end
 
@@ -257,6 +263,11 @@ module RepoHost::Github
     def hook_exists?(exception)
       exception.instance_of?(Octokit::UnprocessableEntity) &&
         exception.message =~ /Hook already exists on this repository/
+    end
+
+    def ref_already_exists?(exception)
+      exception.instance_of?(Octokit::UnprocessableEntity) &&
+        exception.message =~ /Reference already exists/
     end
 
     def repositories_for_owner_type(owner_type)

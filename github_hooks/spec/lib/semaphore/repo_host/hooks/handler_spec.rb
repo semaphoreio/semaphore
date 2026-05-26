@@ -266,11 +266,36 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
           end
 
           it "creates ref on github" do
-            allow(repo_host).to receive(:reference).with("renderedtext/plakatt",
-                                                         "semaphoreci/foo").and_raise(::RepoHost::RemoteException::NotFound)
+            # `ensure_ref` is now create-only; `reference` should never be
+            # consulted on the happy path.
+            expect(repo_host).not_to receive(:reference)
+            expect(repo_host).to receive(:create_ref).with("renderedtext/plakatt", "refs/semaphoreci/foo", "foo")
 
-            allow(repo_host).to receive(:create_ref).with("renderedtext/plakatt", "refs/semaphoreci/foo", "foo")
+            allow(repo_host).to receive(:commit).with("renderedtext/plakatt",
+                                                      "97114836a47ff614e70e863df819f908877ee1c9").and_return(RepoHost::Github::Responses::Commit.commit)
 
+            expect(described_class.run(@workflow, @logger)).to be_nil
+          end
+
+          it "treats 'Reference already exists' as success and still proceeds" do
+            # When the ref already exists in GitHub, `create_ref` returns
+            # nil (the client layer swallows the 422). The handler should
+            # treat that as success and continue to the commit lookup.
+            expect(repo_host).not_to receive(:reference)
+            expect(repo_host).to receive(:create_ref)
+              .with("renderedtext/plakatt", "refs/semaphoreci/foo", "foo")
+              .and_return(nil)
+            allow(repo_host).to receive(:commit).with("renderedtext/plakatt",
+                                                      "97114836a47ff614e70e863df819f908877ee1c9").and_return(RepoHost::Github::Responses::Commit.commit)
+
+            expect(described_class.run(@workflow, @logger)).to be_nil
+          end
+
+          it "falls back to :without_reference when create_ref fails with Unauthorized" do
+            expect(repo_host).not_to receive(:reference)
+            allow(repo_host).to receive(:create_ref)
+              .with("renderedtext/plakatt", "refs/semaphoreci/foo", "foo")
+              .and_raise(::RepoHost::RemoteException::Unauthorized, "no token")
             allow(repo_host).to receive(:commit).with("renderedtext/plakatt",
                                                       "97114836a47ff614e70e863df819f908877ee1c9").and_return(RepoHost::Github::Responses::Commit.commit)
 
