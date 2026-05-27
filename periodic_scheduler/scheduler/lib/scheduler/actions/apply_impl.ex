@@ -7,7 +7,7 @@ defmodule Scheduler.Actions.ApplyImpl do
   alias Util.ToTuple
   alias Scheduler.Periodics.Model.PeriodicsQueries
   alias Scheduler.FrontDB.Model.FrontDBQueries
-  alias Crontab.CronExpression.Parser
+  alias Scheduler.Actions.CronValidator
   alias Scheduler.Workers.QuantumScheduler
   alias Scheduler.Utils.GitReference
 
@@ -49,7 +49,7 @@ defmodule Scheduler.Actions.ApplyImpl do
     cron_exp = definition |> Map.get("spec", %{}) |> Map.get("at", "")
 
     if recurring,
-      do: {:cron, Wormhole.capture(Parser, :parse, [cron_exp], skip_log: true, ok_tuple: true)},
+      do: {:cron, CronValidator.parse(cron_exp)},
       else: {:cron, {:ok, %Crontab.CronExpression{}}}
   end
 
@@ -58,10 +58,7 @@ defmodule Scheduler.Actions.ApplyImpl do
 
   defp validate_cron_expression(definition, _version_1_0) do
     cron_exp = definition |> Map.get("spec", %{}) |> Map.get("at", "")
-
-    case Wormhole.capture(Parser, :parse, [cron_exp], skip_log: true, ok_tuple: true) do
-      result -> {:cron, result}
-    end
+    {:cron, CronValidator.parse(cron_exp)}
   end
 
   defp find_project_id(request, definition) do
