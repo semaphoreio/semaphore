@@ -123,7 +123,8 @@ defmodule Rbac.Okta.Saml.Api do
     {:ok, email, attributes} = PayloadParser.parse(integration, params, consume_uri, metadata_uri)
 
     with {:ok, scim_saml_user} <- find_scim_or_saml_user(integration, email),
-         {:ok, scim_saml_user} <- maybe_provision_existing_saml_jit_user(integration, scim_saml_user),
+         {:ok, scim_saml_user} <-
+           maybe_provision_existing_saml_jit_user(integration, scim_saml_user),
          {:ok, user} <- find_user(scim_saml_user),
          {:ok, user} <- FrontRepo.User.set_remember_timestamp(user) do
       Watchman.increment("saml_login.success")
