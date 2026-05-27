@@ -248,6 +248,79 @@ defmodule FrontWeb.AccountController do
     end)
   end
 
+  @refresh_github_cooldown_seconds 60
+
+  def refresh_github(conn, _params) do
+    Watchman.benchmark("account.refresh_github.duration", fn ->
+      user_id = conn.assigns.user_id
+
+      cond do
+        not FeatureProvider.feature_enabled?(:ui_show_refresh_github_profile,
+          param: conn.assigns.organization_id
+        ) ->
+          conn
+          |> FrontWeb.PageController.status404(%{})
+          |> Plug.Conn.halt()
+
+        within_cooldown?(user_id) ->
+          conn
+          |> put_flash(
+            :alert,
+            "Please wait a moment before refreshing GitHub data again."
+          )
+          |> redirect(to: account_path(conn, :show))
+
+        true ->
+          mark_cooldown!(user_id)
+          do_refresh_github(conn, user_id)
+      end
+    end)
+  end
+
+  defp do_refresh_github(conn, user_id) do
+    case Models.User.refresh_github_profile(user_id) do
+      {:ok, :updated, new_login} ->
+        Logger.info("Refreshed GitHub login for #{user_id} -> #{new_login}")
+
+        conn
+        |> put_flash(:notice, "GitHub username updated to #{new_login}.")
+        |> redirect(to: account_path(conn, :show))
+
+      {:ok, :no_change, _login} ->
+        conn
+        |> put_flash(:notice, "GitHub data is already up to date.")
+        |> redirect(to: account_path(conn, :show))
+
+      {:error, error} ->
+        Logger.error("Error refreshing GitHub profile #{user_id}: #{inspect(error)}")
+
+        conn
+        |> put_flash(
+          :alert,
+          "Could not refresh GitHub data. Please try again later or reconnect GitHub."
+        )
+        |> redirect(to: account_path(conn, :show))
+    end
+  end
+
+  defp cooldown_cache_key(user_id),
+    do: "account:refresh_github:#{user_id}"
+
+  defp within_cooldown?(user_id) do
+    case Front.Cache.get(cooldown_cache_key(user_id)) do
+      {:ok, _} -> true
+      _ -> false
+    end
+  end
+
+  defp mark_cooldown!(user_id) do
+    Front.Cache.set(
+      cooldown_cache_key(user_id),
+      "1",
+      @refresh_github_cooldown_seconds
+    )
+  end
+
   def delete_with_owned_orgs(conn, _params) do
     Watchman.benchmark("account.delete_with_owned_orgs.duration", fn ->
       user_id = conn.assigns.user_id
