@@ -66,7 +66,8 @@ defmodule Rbac.Okta.Saml.Api.Test do
       assert location == {"location", "https://me.localhost/account/welcome/okta"}
     end
 
-    test "valid SAML re-adds an existing JIT user who is no longer part of the organization", ctx do
+    test "valid SAML re-adds an existing JIT user who is no longer part of the organization",
+         ctx do
       alias Rbac.Events.UserJoinedOrganization
 
       enable_jit_provisioning(ctx.integration)
