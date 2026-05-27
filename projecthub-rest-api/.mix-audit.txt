@@ -1,0 +1,21 @@
+# cowlib 2.6.0 — cow_http_te DoS via excessive allocation (service behind auth gateway, lateral-only DoS; not externally exploitable)
+GHSA-32p9-57cr-4x65
+
+# cowlib 2.6.0 — CRLF injection in header field values (no user-controlled response headers; no SSE endpoint)
+GHSA-hv23-4qp7-8c8r
+
+# hackney 1.17.4 — connection pool leak (operational only; outbound bounded to Sentry DSN + tzdata IANA URL)
+GHSA-9fm9-hp7p-53mf
+
+# hackney 1.17.4 — SSRF via redirect target (no user-controlled URL fed to hackney; HTTPoison not called from lib/)
+GHSA-vq52-99r9-h5pw
+
+# cowboy 2.5.0 — multipart header parsing DoS, fixed in 2.15.0 (unreachable; Plug.Parsers declares parsers: [:json] only, no multipart endpoints)
+GHSA-jfc2-q6qh-g5x8
+
+# cowlib 2.6.0 — SPDY decompression bomb in cow_spdy:inflate/2 (unreachable; cowboy 2.x does not serve SPDY)
+GHSA-84f2-rp86-235p
+
+# plug 1.7.1 — unbounded buffer accumulation in multipart header parsing, fixed in 1.15.4 (unreachable;
+# Plug.Parsers declares parsers: [:json] only, no multipart endpoints)
+GHSA-468c-vq7p-gh64
