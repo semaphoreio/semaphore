@@ -26,7 +26,7 @@ defmodule RepositoryHub.Application do
         {{RepositoryHub.RemoteIdSyncWorker, remote_id_sync_worker_opts}, remote_id_sync_worker_enabled}
       ])
 
-    opts = [strategy: :one_for_one, name: RepositoryHub.Supervisor]
+    opts = [strategy: :one_for_one, name: RepositoryHub.Supervisor, max_restarts: 1000]
 
     Supervisor.start_link(children, opts)
   end

@@ -32,7 +32,7 @@ defmodule Front.Application do
         feature_provider(provider) ++
         clients()
 
-    opts = [strategy: :one_for_one, name: Front.Supervisor]
+    opts = [strategy: :one_for_one, name: Front.Supervisor, max_restarts: 1000]
 
     unless Application.get_env(:front, :environment) in [:dev, :test] do
       {:ok, _} = Logger.add_backend(Sentry.LoggerBackend)
