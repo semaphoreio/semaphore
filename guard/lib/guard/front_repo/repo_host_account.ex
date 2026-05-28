@@ -242,6 +242,18 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     update_account(%{revoked: revoked}, rha)
   end
 
+  @doc """
+  Update only the `login` field on an existing RepoHostAccount.
+
+  Used when a fresh value is observed from the upstream provider (e.g. when
+  validating the user's OAuth token surfaces a renamed GitHub login).
+  """
+  @spec update_login(t(), String.t()) :: {:ok, t()} | {:error, Ecto.Changeset.t()}
+  def update_login(%__MODULE__{} = rha, new_login)
+      when is_binary(new_login) and new_login != "" do
+    update_account(%{login: new_login}, rha)
+  end
+
   defp adjust_scope(%{permission_scope: scope} = data, _) when scope in @scopes_in_order, do: data
 
   defp adjust_scope(data, user_id) when is_binary(user_id) and user_id != "",

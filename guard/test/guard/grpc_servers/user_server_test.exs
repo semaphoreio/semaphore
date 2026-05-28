@@ -6,7 +6,6 @@ defmodule Guard.GrpcServers.UserServerTest do
   alias InternalApi.User.UserService.Stub
 
   import Mock
-  import Tesla.Mock
 
   setup do
     {:ok, user} = Support.Factories.RbacUser.insert()
@@ -1006,8 +1005,8 @@ defmodule Guard.GrpcServers.UserServerTest do
           {:ok,
            %Tesla.Env{status: 200, body: %{"access_token" => "mock_token", "expires_in" => 3600}}}
 
-        %{method: :get, url: "https://api.github.com"} ->
-          {:ok, %Tesla.Env{status: 200, body: %{}}}
+        %{method: :get, url: "https://api.github.com/user"} ->
+          {:ok, %Tesla.Env{status: 200, body: %{"login" => "radwo", "id" => 184_065}}}
       end)
 
       request =
@@ -1134,9 +1133,9 @@ defmodule Guard.GrpcServers.UserServerTest do
       Tesla.Mock.mock_global(fn
         %{
           method: :get,
-          url: "https://api.github.com"
+          url: "https://api.github.com/user"
         } ->
-          json(%{"valid" => "valid"})
+          {:ok, %Tesla.Env{status: 200, body: %{"login" => "radwo", "id" => 184_065}}}
       end)
 
       request =
@@ -1158,6 +1157,79 @@ defmodule Guard.GrpcServers.UserServerTest do
                  uid: "184065"
                }
              } == response
+    end
+
+    test "refresh_repository_provider syncs the github login when it changed upstream",
+         %{grpc_channel: channel, user: user, repo_host_account: repo_host_account} do
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com/user"} ->
+          {:ok, %Tesla.Env{status: 200, body: %{"login" => "radwo-renamed", "id" => 184_065}}}
+      end)
+
+      request =
+        User.RefreshRepositoryProviderRequest.new(
+          user_id: user.id,
+          type: User.RepositoryProvider.Type.value(:GITHUB)
+        )
+
+      {:ok, response} = channel |> Stub.refresh_repository_provider(request)
+
+      assert response.repository_provider.login == "radwo-renamed"
+
+      updated_account =
+        Guard.FrontRepo.get!(Guard.FrontRepo.RepoHostAccount, repo_host_account.id)
+
+      assert updated_account.login == "radwo-renamed"
+      assert updated_account.revoked == false
+    end
+
+    test "refresh_repository_provider leaves the login untouched when github reports the same value",
+         %{grpc_channel: channel, user: user, repo_host_account: repo_host_account} do
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com/user"} ->
+          {:ok, %Tesla.Env{status: 200, body: %{"login" => "radwo", "id" => 184_065}}}
+      end)
+
+      original_updated_at = repo_host_account.updated_at
+
+      request =
+        User.RefreshRepositoryProviderRequest.new(
+          user_id: user.id,
+          type: User.RepositoryProvider.Type.value(:GITHUB)
+        )
+
+      {:ok, _response} = channel |> Stub.refresh_repository_provider(request)
+
+      updated_account =
+        Guard.FrontRepo.get!(Guard.FrontRepo.RepoHostAccount, repo_host_account.id)
+
+      assert updated_account.login == "radwo"
+      # update_revoke_status is a no-op when nothing changed, so updated_at stays put.
+      assert updated_account.updated_at == original_updated_at
+    end
+
+    test "refresh_repository_provider marks github account revoked when token is rejected",
+         %{grpc_channel: channel, user: user, repo_host_account: repo_host_account} do
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com/user"} ->
+          {:ok, %Tesla.Env{status: 401, body: %{}}}
+
+        %{method: :post, url: "https://github.com/login/oauth/access_token"} ->
+          {:ok, %Tesla.Env{status: 401, body: %{}}}
+      end)
+
+      request =
+        User.RefreshRepositoryProviderRequest.new(
+          user_id: user.id,
+          type: User.RepositoryProvider.Type.value(:GITHUB)
+        )
+
+      {:error, _response} = channel |> Stub.refresh_repository_provider(request)
+
+      updated_account =
+        Guard.FrontRepo.get!(Guard.FrontRepo.RepoHostAccount, repo_host_account.id)
+
+      assert updated_account.revoked == true
     end
 
     test "refresh_repository_provider should refresh repository provider details for a valid user with bitbucket",

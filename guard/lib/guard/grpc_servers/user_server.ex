@@ -400,10 +400,37 @@ defmodule Guard.GrpcServers.UserServer do
     )
   end
 
+  defp handle_validate_token(user, %{repo_host: "github"} = repo_account, token) do
+    case Guard.Api.Github.validate_token(token) do
+      {:ok, %{valid: valid?, login: fresh_login}} ->
+        Logger.info(
+          "Token for #{user.id} is #{if valid?, do: "valid", else: "invalid"}. Updating revoke status."
+        )
+
+        account_after_sync =
+          if valid? do
+            maybe_sync_github_login(repo_account, fresh_login, user.id)
+          else
+            repo_account
+          end
+
+        FrontRepo.RepoHostAccount.update_revoke_status(account_after_sync, not valid?)
+
+      {:error, :transient} ->
+        Logger.warning(
+          "Transient token validation failure for #{user.id}; keeping existing revoke status."
+        )
+
+        {:ok, repo_account}
+
+      {:error, _} ->
+        grpc_error!(:internal, "Error while validating token for #{user.id}.")
+    end
+  end
+
   defp handle_validate_token(user, repo_account, token) do
     validation_result =
       case repo_account.repo_host do
-        "github" -> Guard.Api.Github.validate_token(token)
         "bitbucket" -> Guard.Api.Bitbucket.validate_token(token)
         "gitlab" -> Guard.Api.Gitlab.validate_token(token)
         _ -> grpc_error!(:invalid_argument, "Invalid repository provider.")
@@ -426,6 +453,39 @@ defmodule Guard.GrpcServers.UserServer do
 
       {:error, _} ->
         grpc_error!(:internal, "Error while validating token for #{user.id}.")
+    end
+  end
+
+  # Sync the stored GitHub login when the upstream `/user` response reports a
+  # different value. No-op when the fresh value is blank or matches the
+  # existing record. Publishes `user_updated` so downstream services
+  # (ee/rbac, github_hooks) propagate the rename.
+  defp maybe_sync_github_login(repo_account, fresh_login, _user_id)
+       when is_nil(fresh_login) or fresh_login == "" do
+    repo_account
+  end
+
+  defp maybe_sync_github_login(%{login: login} = repo_account, fresh_login, _user_id)
+       when login == fresh_login do
+    repo_account
+  end
+
+  defp maybe_sync_github_login(repo_account, fresh_login, user_id) do
+    case FrontRepo.RepoHostAccount.update_login(repo_account, fresh_login) do
+      {:ok, updated} ->
+        Logger.info(
+          "GitHub login changed for user #{user_id}: " <>
+            "#{inspect(repo_account.login)} -> #{inspect(fresh_login)}"
+        )
+
+        Guard.Events.UserUpdated.publish(user_id, @user_exchange, @updated_routing_key)
+
+        updated
+
+      {:error, error} ->
+        Logger.error("Failed to sync GitHub login for #{user_id}: #{inspect(error)}")
+
+        repo_account
     end
   end
 
