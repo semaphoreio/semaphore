@@ -31,10 +31,10 @@ Both let AI agents talk to Semaphore. They are complementary, and you can use th
 |---|---|---|
 | **Where it runs** | Semaphore-managed endpoint at `mcp.semaphoreci.com` | Local binary on the developer's machine |
 | **Setup** | Opt-in per org — contact `support@semaphore.io` | Install the binary; no feature flag required |
-| **Auth** | OAuth 2.1 (browser) or personal API token | Personal API token (or [service account](../service-accounts) for shared/headless setups) |
+| **Auth** | OAuth 2.1 (browser), personal API token, or [service account](../service-accounts) API token | Personal API token (or [service account](../service-accounts) token for shared/headless setups) |
 | **Scope** | A focused MCP tool set: orgs, projects, workflows, pipelines, jobs, logs, test results, doc lookup, workflow run/rerun | The full Semaphore API surface — projects, secrets, deploy targets, notifications, scheduled tasks, agents, artifacts, YAML validation, testbox, plus the same read/diagnose tools |
-| **Skills** | Tool descriptions only | 15 [Agent Skills](https://agentskills.io) covering blocks, promotions, toolbox CLIs, test-results, GHA translation, debugging, deploys, manage-infra, testbox, etc |
-| **Slash commands** | None | `/sem-ai:init` (bootstrap a project), `/sem-ai:gha-to-semaphore` (translate workflows) |
+| **Skills** | Tool descriptions only | [Agent Skills](https://agentskills.io) covering blocks, promotions, toolbox CLIs, test-results, GHA translation, debugging, deploys, manage-infra, testbox, etc |
+| **Slash commands** | `/semaphore:mcp_setup` (auto-discover project and organization IDs — see [usage examples](./mcp-usage-examples)) | `/sem-ai:init` (bootstrap a project), `/sem-ai:gha-to-semaphore` (translate workflows) |
 | **Best for** | Any MCP-aware agent that should reach into Semaphore from the web — Claude desktop, Cursor, VS Code, internal copilots — without each user installing a CLI | Driving Semaphore from a terminal-attached agent (Claude Code, Codex), bootstrapping CI on new projects, fixing failing pipelines on a developer laptop, automating Semaphore from non-Semaphore CI |
 
 In short: the hosted MCP Server is the remote, managed access path; `sem-ai` is the local, fully-featured agent toolkit that ships with opinionated Semaphore knowledge.
@@ -130,25 +130,9 @@ Other skills load automatically when their description keywords match the user's
 
 ### What ships in the plugin
 
-Skills the plugin loads into your agent:
+Each skill teaches the agent one Semaphore concept (blocks, promotions, toolbox CLIs, test-results, GHA translation, testbox, deploys, manage-infra, …) and loads automatically when its description keywords match the user's prompt.
 
-| Skill | Purpose |
-|---|---|
-| `semaphore-ci` | Manage Semaphore CI/CD via `sem-ai` — status, failures, test results, deployments, secrets, notifications |
-| `semaphore-blocks` | Pipeline structure — blocks, tasks, jobs, dependencies, parallelism cost-benefit, `auto_cancel` |
-| `semaphore-promotions` | Promotion concepts, parameterized deploys, deployment-target gating |
-| `semaphore-test-results` | Publishing JUnit reports — epilogue rule, per-framework JUnit config |
-| `semaphore-toolbox` | Preinstalled toolbox CLIs — `cache`, `artifact`, `retry`, `sem-version`, `sem-service`, `checkout` |
-| `gha-to-semaphore` | Translate GitHub Actions workflows to Semaphore pipelines |
-| `init` | Orchestrator for `/sem-ai:init` |
-| `testbox` | Run CI commands against local changes in a real Semaphore environment |
-| `probe-agent-environment` | Discover what is preinstalled on a Semaphore agent via a short-lived testbox |
-| `test-intelligence` | Pull and analyze test results, detect flaky tests |
-| `debug-pipeline` | Step-by-step CI failure diagnosis |
-| `deploy` | Deploy via Semaphore promotions |
-| `manage-infra` | Manage secrets, notifications, agent types, scheduled tasks, artifacts |
-| `project-health` | Pass rates, recent failures, deployment trends |
-| `sem-ai-bootstrap` | Diagnose sem-ai plugin issues (binary missing, MCP not registering, …) |
+For the canonical inventory and per-skill documentation, browse [`assets/plugin/skills/`](https://github.com/semaphoreio/sem-ai/tree/main/assets/plugin/skills) in the sem-ai repository — that directory is the source of truth and updates as new skills land.
 
 ### Embedded MCP server
 
