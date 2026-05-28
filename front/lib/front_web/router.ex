@@ -71,7 +71,6 @@ defmodule FrontWeb.Router do
     post("/account/change_email", AccountController, :change_my_email)
     post("/account/reset_my_password", AccountController, :reset_my_password)
     post("/account/update_repo_scope/:provider", AccountController, :update_repo_scope)
-    post("/account/refresh_github", AccountController, :refresh_github)
     post("/account/delete_with_owned_orgs", AccountController, :delete_with_owned_orgs)
 
     get("/sso/zendesk", SSOController, :zendesk)
