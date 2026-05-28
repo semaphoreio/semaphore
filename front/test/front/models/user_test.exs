@@ -116,4 +116,34 @@ defmodule Front.Models.UserTest do
       assert error == %GRPC.RPCError{status: 3, message: "Invalid request."}
     end
   end
+
+  describe ".find_user_with_providers" do
+    test "auto-triggers refresh_github_profile RPC", %{user: user} do
+      test_pid = self()
+
+      GrpcMock.stub(UserMock, :refresh_github_profile, fn req, _ ->
+        send(test_pid, {:refresh_called, req.user_id})
+
+        InternalApi.User.RefreshGithubProfileResponse.new(
+          status: InternalApi.User.RefreshGithubProfileResponse.Status.value(:NO_CHANGE),
+          login: ""
+        )
+      end)
+
+      _ = User.find_user_with_providers(user.id)
+
+      assert_receive {:refresh_called, user_id}, 1_000
+      assert user_id == user.id
+    end
+
+    test "still returns the user even if refresh_github_profile fails", %{user: user} do
+      GrpcMock.stub(UserMock, :refresh_github_profile, fn _, _ ->
+        raise(GRPC.RPCError, status: GRPC.Status.internal(), message: "boom")
+      end)
+
+      result = User.find_user_with_providers(user.id)
+
+      assert result.id == user.id
+    end
+  end
 end

@@ -114,10 +114,16 @@ defmodule Front.Models.User do
 
     fetch_gitlab_provider = Async.run(fn -> refresh_repository_provider(user_id, "gitlab") end)
 
+    fetch_profile_refresh = Async.run(fn -> refresh_github_profile(user_id) end)
+
     {:ok, user} = Async.await(fetch_user)
     {:ok, github_provider} = Async.await(fetch_github_provider)
     {:ok, bitbucket_provider} = Async.await(fetch_bb_provider)
     {:ok, gitlab_provider} = Async.await(fetch_gitlab_provider)
+    # Fire-and-forget: Guard already persisted any login change and published
+    # `user_updated`. The current render may still show the old login; the next
+    # render will pick up the new value.
+    _ = Async.await(fetch_profile_refresh)
 
     user
     |> merge_provider(github_provider, "github")
