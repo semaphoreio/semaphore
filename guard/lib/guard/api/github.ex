@@ -11,8 +11,18 @@ defmodule Guard.Api.Github do
   plug(Tesla.Middleware.BaseUrl, "https://api.github.com")
   plug(Tesla.Middleware.JSON)
 
-  def user(id) do
-    case get("/user/" <> id) do
+  @doc """
+  Fetch a GitHub user by numeric UID.
+
+  When a non-nil/non-empty `token` is provided, the request is sent
+  authenticated (uses the per-user OAuth quota: 5000 req/hr). Otherwise the
+  unauthenticated client is used (60 req/hr per source IP).
+  """
+  def user(id, token \\ nil) do
+    opts =
+      if is_binary(token) and token != "", do: [headers: authorization_headers(token)], else: []
+
+    case get("/user/" <> id, opts) do
       {:ok, res} ->
         cond do
           res.status in 200..299 ->
