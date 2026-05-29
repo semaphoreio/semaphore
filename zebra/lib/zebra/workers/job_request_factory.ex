@@ -7,6 +7,7 @@ defmodule Zebra.Workers.JobRequestFactory do
     Artifacthub,
     Cache,
     CallbackToken,
+    GitCheckout,
     JobRequest,
     Loghub2,
     Machine,
@@ -102,6 +103,7 @@ defmodule Zebra.Workers.JobRequestFactory do
           cache_env_vars ++
           ToolboxInstall.env_vars(job) ++
           TestResults.env_vars(org_id) ++
+          GitCheckout.env_vars(job, org_id) ++
           open_id_token_env_vars ++
           repo_env_vars ++
           Enum.flat_map(all_secrets.job_secrets, & &1.env_vars) ++
