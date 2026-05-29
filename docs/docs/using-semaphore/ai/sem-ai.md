@@ -106,7 +106,7 @@ From inside Claude Code or Codex:
 /plugin install sem-ai@semaphoreio
 ```
 
-The marketplace is published with `autoUpdate: true`, so the host refreshes the catalog at session start and pulls new skill versions automatically. To force an immediate refresh:
+Claude Code refreshes the marketplace catalog at session start, so updates land automatically next time you open a session. To force an immediate refresh:
 
 ```text
 /plugin marketplace update semaphoreio
@@ -167,7 +167,7 @@ Flags:
 
 - `--name <name>` — project name. Defaults to the basename of the current working directory.
 - `--repo-url <url>` — repository URL. Auto-detected from the `origin` remote when omitted.
-- `--github-integration <type>` — one of `github_token` (default), `github_app`, `github_oauth_token`, `bitbucket`, `gitlab`.
+- `--github-integration <type>` — `github_token` (default) or `github_app`.
 - `--remote <name>` — which git remote to read the URL from. Defaults to `origin`.
 - `--skip-yaml` — skip writing `.semaphore/semaphore.yml`.
 
