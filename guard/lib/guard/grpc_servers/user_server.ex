@@ -287,68 +287,78 @@ defmodule Guard.GrpcServers.UserServer do
       %{user_id: user_id},
       fn ->
         validate_uuid!(user_id)
-
-        rha =
-          case FrontRepo.RepoHostAccount.get_for_github_user(user_id) do
-            {:ok, account} ->
-              account
-
-            {:error, :not_found} ->
-              grpc_error!(
-                :not_found,
-                "GitHub repo host account for user #{user_id} not found."
-              )
-          end
-
+        rha = load_github_rha!(user_id)
         {token, _expires_at} = get_token(rha, user_id: user_id)
 
-        case Guard.Api.Github.user(rha.github_uid, token) do
-          {:ok, %{login: new_login}} when new_login == rha.login ->
-            User.RefreshGithubProfileResponse.new(
-              status: User.RefreshGithubProfileResponse.Status.value(:NO_CHANGE),
-              login: rha.login
-            )
-
-          {:ok, %{login: new_login}} when is_binary(new_login) and new_login != "" ->
-            case FrontRepo.RepoHostAccount.update_login(rha, new_login) do
-              {:ok, _updated} ->
-                Logger.info(
-                  "GitHub login changed for user #{user_id}: " <>
-                    "#{inspect(rha.login)} -> #{inspect(new_login)}"
-                )
-
-                Guard.Events.UserUpdated.publish(
-                  user_id,
-                  @user_exchange,
-                  @updated_routing_key
-                )
-
-                User.RefreshGithubProfileResponse.new(
-                  status: User.RefreshGithubProfileResponse.Status.value(:UPDATED),
-                  login: new_login
-                )
-
-              {:error, error} ->
-                Logger.error(
-                  "Failed to update RepoHostAccount login for #{user_id}: #{inspect(error)}"
-                )
-
-                grpc_error!(:internal, "Failed to update GitHub login.")
-            end
-
-          {:ok, _} ->
-            grpc_error!(:internal, "GitHub returned an empty login.")
-
-          {:error, :not_found} ->
-            grpc_error!(:not_found, "GitHub user not found.")
-
-          {:error, reason} ->
-            Logger.error("Failed to fetch GitHub profile for #{user_id}: #{inspect(reason)}")
-
-            grpc_error!(:internal, "Failed to fetch GitHub profile.")
-        end
+        rha.github_uid
+        |> Guard.Api.Github.user(token)
+        |> handle_github_profile_result(rha, user_id)
       end
     )
+  end
+
+  defp load_github_rha!(user_id) do
+    case FrontRepo.RepoHostAccount.get_for_github_user(user_id) do
+      {:ok, account} ->
+        account
+
+      {:error, :not_found} ->
+        grpc_error!(
+          :not_found,
+          "GitHub repo host account for user #{user_id} not found."
+        )
+    end
+  end
+
+  defp handle_github_profile_result({:ok, %{login: login}}, %{login: login} = rha, _user_id) do
+    User.RefreshGithubProfileResponse.new(
+      status: User.RefreshGithubProfileResponse.Status.value(:NO_CHANGE),
+      login: rha.login
+    )
+  end
+
+  defp handle_github_profile_result({:ok, %{login: new_login}}, rha, user_id)
+       when is_binary(new_login) and new_login != "" do
+    apply_github_login_change(rha, new_login, user_id)
+  end
+
+  defp handle_github_profile_result({:ok, _}, _rha, _user_id) do
+    grpc_error!(:internal, "GitHub returned an empty login.")
+  end
+
+  defp handle_github_profile_result({:error, :not_found}, _rha, _user_id) do
+    grpc_error!(:not_found, "GitHub user not found.")
+  end
+
+  defp handle_github_profile_result({:error, reason}, _rha, user_id) do
+    Logger.error("Failed to fetch GitHub profile for #{user_id}: #{inspect(reason)}")
+    grpc_error!(:internal, "Failed to fetch GitHub profile.")
+  end
+
+  defp apply_github_login_change(rha, new_login, user_id) do
+    case FrontRepo.RepoHostAccount.update_login(rha, new_login) do
+      {:ok, _updated} ->
+        Logger.info(
+          "GitHub login changed for user #{user_id}: " <>
+            "#{inspect(rha.login)} -> #{inspect(new_login)}"
+        )
+
+        Guard.Events.UserUpdated.publish(
+          user_id,
+          @user_exchange,
+          @updated_routing_key
+        )
+
+        User.RefreshGithubProfileResponse.new(
+          status: User.RefreshGithubProfileResponse.Status.value(:UPDATED),
+          login: new_login
+        )
+
+      {:error, error} ->
+        Logger.error("Failed to update RepoHostAccount login for #{user_id}: #{inspect(error)}")
+
+        grpc_error!(:internal, "Failed to update GitHub login.")
+    end
   end
 
   @spec update(User.UpdateRequest.t(), GRPC.Server.Stream.t()) :: User.UpdateResponse.t()
