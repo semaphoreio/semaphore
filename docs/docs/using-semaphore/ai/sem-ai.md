@@ -20,7 +20,7 @@ Agents driving Semaphore from a developer's machine need three things that a rem
 ### What it helps with
 
 - **Bootstrap a project on Semaphore from a single prompt** — `/sem-ai:init` covers translating an existing `.github/workflows/*` or drafting a greenfield `.semaphore/semaphore.yml`, applying Semaphore-side defaults (machine type, `checkout` in prologue, `sem-version` for languages, cache keyed on lockfile, `test-results publish` in epilogue, …).
-- **Debug a failing pipeline without leaving the terminal** — `sem-ai diagnose` composes workflow → pipeline → failed jobs → logs → parsed JUnit into one call; `sem-ai test summary` parses published reports in under a second instead of patching reporters to print to stdout.
+- **Debug a failing pipeline without leaving the terminal** — `sem-ai diagnose` composes workflow → pipeline → failed jobs → logs → parsed test results into one call; `sem-ai test summary` parses published JUnit reports in under a second instead of patching reporters to print to stdout.
 - **Operate full CI/CD from an agent** — manage projects, secrets, notifications, deploy targets, scheduled tasks, and promotions; validate YAML before pushing; run commands against a real Semaphore agent via `sem-ai testbox` to iterate on CI fixes before committing.
 
 ### sem-ai vs the hosted MCP Server
@@ -47,7 +47,7 @@ Full command reference: [sem-ai Command Line](../../reference/sem-ai-cli). Sourc
 curl -fsSL https://raw.githubusercontent.com/semaphoreio/sem-ai/main/install.sh | sh
 ```
 
-The installer fetches the latest release for macOS or Linux (amd64 or arm64) and places the binary on your `PATH`. Re-running the same command upgrades to the newest release (and fast-paths if you are already on it).
+The installer fetches the latest release for macOS or Linux (amd64 or arm64). It installs to `~/.local/bin` when that directory is already on your `PATH`; otherwise it installs to `~/.semaphore-ai/bin` and prints a note asking you to add that directory to your `PATH`. Re-running the same command upgrades to the newest release (and fast-paths if you are already on it).
 
 To opt out of background update checks:
 
@@ -57,7 +57,7 @@ export SEM_AI_NO_UPDATE_CHECK=1
 
 ## Connect to your organization
 
-Get an API token from `https://<your-org>.semaphoreci.com/account` and run:
+Get an API token from `https://me.semaphoreci.com/account` and run:
 
 ```shell
 sem-ai connect <your-org>.semaphoreci.com YOUR_API_TOKEN
@@ -87,7 +87,7 @@ sem-ai health --project my-app
 # Validate a pipeline YAML before pushing
 sem-ai yaml validate --file .semaphore/semaphore.yml
 
-# Stream a workflow until it completes
+# Poll a workflow until it completes (default 30s interval)
 sem-ai watch <workflow-id>
 ```
 
@@ -106,14 +106,14 @@ From inside Claude Code or Codex:
 /plugin install sem-ai@semaphoreio
 ```
 
-Claude Code refreshes the marketplace catalog at session start, so updates land automatically next time you open a session. To force an immediate refresh:
+A third-party marketplace like this one does not auto-update by default — Claude Code refreshes its catalog only when you ask. To pull the latest skills:
 
 ```text
 /plugin marketplace update semaphoreio
 /reload-plugins
 ```
 
-There is no `/plugin update <plugin>` command — refresh the marketplace and let auto-update apply, or `uninstall` followed by `install` for a forced re-install.
+To keep it current automatically, enable auto-update for this marketplace from the plugin manager (`/plugin` → **Marketplaces** → **semaphoreio** → **Enable auto-update**); the catalog then refreshes between sessions on its own. You can also update an installed plugin directly with `/plugin update`, or `uninstall` followed by `install` for a forced re-install.
 
 The plugin requires the `sem-ai` binary to be on `PATH`. If you install the plugin before the binary, the SessionStart hook prints a one-line install hint in chat.
 
@@ -165,7 +165,7 @@ sem-ai project create \
 
 Flags:
 
-- `--name <name>` — project name. Defaults to the basename of the current working directory.
+- `--name <name>` — project name. Defaults to the repository name derived from the repo URL (e.g. `org/repo.git` → `repo`).
 - `--repo-url <url>` — repository URL. Auto-detected from the `origin` remote when omitted.
 - `--github-integration <type>` — `github_token` (default) or `github_app`.
 - `--remote <name>` — which git remote to read the URL from. Defaults to `origin`.
