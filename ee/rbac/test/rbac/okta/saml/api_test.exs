@@ -156,6 +156,57 @@ defmodule Rbac.Okta.Saml.Api.Test do
       end
     end
 
+    test "rapid re-add logins do not enqueue duplicate group add requests", ctx do
+      import Ecto.Query
+      alias Rbac.Events.UserJoinedOrganization
+
+      enable_jit_provisioning(ctx.integration)
+
+      {:ok, group1} = Support.Factories.Group.insert(organization_id: @org_id)
+      {:ok, member} = Rbac.Repo.RbacRole.get_role_by_name("Member", "org_scope", @org_id)
+
+      Support.Factories.IdpGroupMapping.insert(
+        organization_id: @org_id,
+        default_role_id: member.id,
+        group_mapping: [%{idp_group_id: "g1", semaphore_group_id: group1.id}]
+      )
+
+      with_mocks [{UserJoinedOrganization, [], [publish: fn _, _ -> :ok end]}] do
+        {:ok, saml_jit_user} =
+          Rbac.Repo.SamlJitUser.create(ctx.integration, "denis@example.com", %{"member" => ["g1"]})
+
+        # Initial provision queues exactly one :add_user request for the group.
+        {:ok, saml_jit_user} = Rbac.Okta.Saml.JitProvisioner.AddUser.run(saml_jit_user)
+
+        {:ok, rbi} =
+          Rbac.RoleBindingIdentification.new(
+            user_id: saml_jit_user.user_id,
+            org_id: @org_id,
+            project_id: :is_nil
+          )
+
+        {:ok, nil} = Rbac.RoleManagement.retract_roles(rbi)
+        refute Rbac.RoleManagement.user_part_of_org?(saml_jit_user.user_id, @org_id)
+
+        # Two rapid re-add logins must not pile on additional :add_user requests.
+        {:ok, r1} =
+          post("/okta/auth", saml_payload("denis@example.com", :okta, [{"member", "g1"}]))
+
+        {:ok, r2} =
+          post("/okta/auth", saml_payload("denis@example.com", :okta, [{"member", "g1"}]))
+
+        assert r1.status_code == 302
+        assert r2.status_code == 302
+
+        add_user_requests =
+          Rbac.Repo.GroupManagementRequest
+          |> where([r], r.user_id == ^saml_jit_user.user_id and r.action == :add_user)
+          |> Rbac.Repo.aggregate(:count)
+
+        assert add_user_requests == 1
+      end
+    end
+
     test "valid SAML, okta user exists, but semaphore user does not", ctx do
       assert {:ok, _} = create_okta_user(ctx.integration, "denis@example.com")
 
