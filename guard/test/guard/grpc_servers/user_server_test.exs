@@ -1419,6 +1419,9 @@ defmodule Guard.GrpcServers.UserServerTest do
     test "returns NO_CHANGE when GitHub returns the same login and does not publish",
          %{grpc_channel: channel, user: user, repo_host_account: rha} do
       Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          json(%{"valid" => "valid"})
+
         %{method: :get, url: "https://api.github.com/user/" <> _uid} ->
           json(%{"id" => 184_065, "login" => rha.login})
       end)
@@ -1451,6 +1454,9 @@ defmodule Guard.GrpcServers.UserServerTest do
       new_login = "#{rha.login}-renamed"
 
       Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          json(%{"valid" => "valid"})
+
         %{method: :get, url: "https://api.github.com/user/" <> _uid} ->
           json(%{"id" => 184_065, "login" => new_login})
       end)
@@ -1489,6 +1495,9 @@ defmodule Guard.GrpcServers.UserServerTest do
     test "returns INTERNAL when the GitHub API call fails",
          %{grpc_channel: channel, user: user} do
       Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          json(%{"valid" => "valid"})
+
         %{method: :get, url: "https://api.github.com/user/" <> _uid} ->
           {:ok, %Tesla.Env{status: 500, body: %{"message" => "boom"}}}
       end)
