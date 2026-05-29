@@ -452,6 +452,41 @@ defmodule InternalApi.User.RefreshRepositoryProviderResponse do
   field(:repository_provider, 2, type: InternalApi.User.RepositoryProvider)
 end
 
+defmodule InternalApi.User.RefreshGithubProfileRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          user_id: String.t()
+        }
+  defstruct [:user_id]
+
+  field(:user_id, 1, type: :string)
+end
+
+defmodule InternalApi.User.RefreshGithubProfileResponse.Status do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+
+  field(:NO_CHANGE, 0)
+
+  field(:UPDATED, 1)
+end
+
+defmodule InternalApi.User.RefreshGithubProfileResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          status: integer,
+          login: String.t()
+        }
+  defstruct [:status, :login]
+
+  field(:status, 1, type: InternalApi.User.RefreshGithubProfileResponse.Status, enum: true)
+  field(:login, 2, type: :string)
+end
+
 defmodule InternalApi.User.CreateRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3
@@ -755,6 +790,12 @@ defmodule InternalApi.User.UserService.Service do
     :RefreshRepositoryProvider,
     InternalApi.User.RefreshRepositoryProviderRequest,
     InternalApi.User.RefreshRepositoryProviderResponse
+  )
+
+  rpc(
+    :RefreshGithubProfile,
+    InternalApi.User.RefreshGithubProfileRequest,
+    InternalApi.User.RefreshGithubProfileResponse
   )
 
   rpc(:Create, InternalApi.User.CreateRequest, InternalApi.User.User)

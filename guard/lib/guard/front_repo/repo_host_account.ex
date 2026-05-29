@@ -196,6 +196,19 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     update_account(params, rha)
   end
 
+  @doc """
+  Persist a new `login` value for the given `RepoHostAccount` row.
+
+  Used by self-refresh flows that detect a renamed upstream account, where the
+  caller has already determined that the new login differs from the stored one.
+  """
+  @spec update_login(t(), String.t()) ::
+          {:ok, t()} | {:error, Ecto.Changeset.t()}
+  def update_login(%__MODULE__{} = rha, new_login)
+      when is_binary(new_login) and new_login != "" do
+    update_account(%{login: new_login}, rha)
+  end
+
   @spec get_uid_by_login(String.t(), String.t()) :: {:ok, String.t()} | {:error, :not_found}
   def get_uid_by_login(login, repo_host) do
     uid =
