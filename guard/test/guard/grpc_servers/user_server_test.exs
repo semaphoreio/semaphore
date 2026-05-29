@@ -1440,8 +1440,7 @@ defmodule Guard.GrpcServers.UserServerTest do
         assert login == rha.login
 
         # Reload row; login unchanged
-        {:ok, reloaded} =
-          Guard.FrontRepo.RepoHostAccount.get_for_github_user(user.id)
+        {:ok, reloaded} = Guard.FrontRepo.RepoHostAccount.get_for_github_user(user.id)
 
         assert reloaded.login == rha.login
 
@@ -1473,8 +1472,7 @@ defmodule Guard.GrpcServers.UserServerTest do
 
         assert status_value == User.RefreshGithubProfileResponse.Status.value(:UPDATED)
 
-        {:ok, reloaded} =
-          Guard.FrontRepo.RepoHostAccount.get_for_github_user(user.id)
+        {:ok, reloaded} = Guard.FrontRepo.RepoHostAccount.get_for_github_user(user.id)
 
         assert reloaded.login == new_login
 
