@@ -156,6 +156,12 @@ defmodule Support.Stubs.User do
         :refresh_repository_provider,
         &__MODULE__.refresh_repository_provider/2
       )
+
+      GrpcMock.stub(
+        UserMock,
+        :refresh_github_profile,
+        &__MODULE__.refresh_github_profile/2
+      )
     end
 
     def describe(req, _) do
@@ -295,6 +301,21 @@ defmodule Support.Stubs.User do
         user_id: user.id,
         repository_provider: provider
       )
+    end
+
+    def refresh_github_profile(req, _) do
+      user = DB.find(:users, req.user_id)
+
+      if user do
+        login = user.api_model.github_login || ""
+
+        InternalApi.User.RefreshGithubProfileResponse.new(
+          status: InternalApi.User.RefreshGithubProfileResponse.Status.value(:NO_CHANGE),
+          login: login
+        )
+      else
+        raise(GRPC.RPCError, status: GRPC.Status.not_found(), message: "User not found")
+      end
     end
 
     defp internal_status(code, message \\ "") do
