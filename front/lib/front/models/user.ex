@@ -114,10 +114,16 @@ defmodule Front.Models.User do
 
     fetch_gitlab_provider = Async.run(fn -> refresh_repository_provider(user_id, "gitlab") end)
 
+    fetch_profile_refresh = Async.run(fn -> refresh_github_profile(user_id) end)
+
     {:ok, user} = Async.await(fetch_user)
     {:ok, github_provider} = Async.await(fetch_github_provider)
     {:ok, bitbucket_provider} = Async.await(fetch_bb_provider)
     {:ok, gitlab_provider} = Async.await(fetch_gitlab_provider)
+    # Fire-and-forget: Guard already persisted any login change and published
+    # `user_updated`. The current render may still show the old login; the next
+    # render will pick up the new value.
+    _ = Async.await(fetch_profile_refresh)
 
     user
     |> merge_provider(github_provider, "github")
@@ -367,6 +373,39 @@ defmodule Front.Models.User do
 
         {:error, error} ->
           Logger.error("[User Model] Error while searching users: #{inspect(error)}")
+          {:error, error}
+      end
+    end)
+  end
+
+  @doc """
+  Trigger Guard to re-fetch the user's GitHub profile and update
+  `repo_host_accounts.login` if the upstream nickname changed. Returns
+  `{:ok, :updated, new_login}` when the stored login was changed,
+  `{:ok, :no_change, current_login}` when it was already current, or
+  `{:error, reason}` on failure.
+  """
+  @spec refresh_github_profile(String.t()) ::
+          {:ok, :updated | :no_change, String.t()} | {:error, term()}
+  def refresh_github_profile(user_id) do
+    Watchman.benchmark("refresh_github_profile.duration", fn ->
+      alias InternalApi.User.UserService.Stub
+      alias InternalApi.User.RefreshGithubProfileResponse.Status
+
+      req = InternalApi.User.RefreshGithubProfileRequest.new(user_id: user_id)
+
+      {:ok, channel} = channel()
+
+      case Stub.refresh_github_profile(channel, req, timeout: 30_000) do
+        {:ok, %{status: status_value, login: login}} ->
+          status_atom =
+            if status_value == Status.value(:UPDATED), do: :updated, else: :no_change
+
+          {:ok, status_atom, login}
+
+        {:error, error} ->
+          Logger.error("Refresh github profile failed for #{user_id}: #{inspect(error)}")
+
           {:error, error}
       end
     end)
