@@ -124,7 +124,7 @@ defmodule Rbac.Okta.Saml.Api do
 
     with {:ok, scim_saml_user} <- find_scim_or_saml_user(integration, email),
          {:ok, scim_saml_user} <-
-           maybe_provision_existing_saml_jit_user(integration, scim_saml_user),
+           maybe_provision_existing_saml_jit_user(integration, scim_saml_user, attributes),
          {:ok, user} <- find_user(scim_saml_user),
          {:ok, user} <- FrontRepo.User.set_remember_timestamp(user) do
       Watchman.increment("saml_login.success")
@@ -215,17 +215,19 @@ defmodule Rbac.Okta.Saml.Api do
 
   defp maybe_provision_existing_saml_jit_user(
          %{jit_provisioning_enabled: true},
-         %Rbac.Repo.SamlJitUser{} = saml_jit_user
+         %Rbac.Repo.SamlJitUser{} = saml_jit_user,
+         attributes
        ) do
     if saml_jit_user.user_id == nil or
          !Rbac.RoleManagement.user_part_of_org?(saml_jit_user.user_id, saml_jit_user.org_id) do
+      {:ok, saml_jit_user} = Rbac.Repo.SamlJitUser.update_attributes(saml_jit_user, attributes)
       Rbac.Okta.Saml.JitProvisioner.AddUser.run(saml_jit_user)
     else
       {:ok, saml_jit_user}
     end
   end
 
-  defp maybe_provision_existing_saml_jit_user(_integration, scim_saml_user) do
+  defp maybe_provision_existing_saml_jit_user(_integration, scim_saml_user, _attributes) do
     {:ok, scim_saml_user}
   end
 
