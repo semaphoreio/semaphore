@@ -71,10 +71,32 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
       assert reloaded.name == nil
     end
 
-    test "silently drops blank values (no clear-the-field semantics)", %{rha: rha} do
-      assert {:ok, ^rha} = RepoHostAccount.update_profile(rha, %{login: ""})
-      assert {:ok, ^rha} = RepoHostAccount.update_profile(rha, %{name: nil})
-      assert {:ok, ^rha} = RepoHostAccount.update_profile(rha, %{login: "", name: nil})
+    test "rejects blank values with a :required changeset error (strict writer)", %{rha: rha} do
+      assert {:error, %Ecto.Changeset{valid?: false, errors: errors}} =
+               RepoHostAccount.update_profile(rha, %{login: ""})
+
+      assert {"can't be blank", _} = errors[:login]
+
+      assert {:error, %Ecto.Changeset{valid?: false, errors: errors}} =
+               RepoHostAccount.update_profile(rha, %{name: nil})
+
+      assert {"can't be blank", _} = errors[:name]
+    end
+  end
+
+  describe "Inspect implementation" do
+    test "redacts :token and :refresh_token from inspect output" do
+      rha = %RepoHostAccount{
+        login: "octocat",
+        token: "ghp_super_secret_oauth_token",
+        refresh_token: "ghr_super_secret_refresh_token"
+      }
+
+      rendered = inspect(rha)
+
+      refute rendered =~ "ghp_super_secret_oauth_token"
+      refute rendered =~ "ghr_super_secret_refresh_token"
+      assert rendered =~ "octocat"
     end
   end
 end

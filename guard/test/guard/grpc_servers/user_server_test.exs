@@ -1407,6 +1407,45 @@ defmodule Guard.GrpcServers.UserServerTest do
       assert updated_account.login == rha.login
     end
 
+    test "refresh_repository_provider preserves revoke status on transient github validate_token 5xx",
+         %{grpc_channel: channel, user: user, repo_host_account: rha} do
+      # Two calls to validate_token happen per refresh:
+      #   1) inside user_token (must succeed to yield a token)
+      #   2) inside handle_validate_token (we force 500 here)
+      # Use a per-test counter to differentiate.
+      {:ok, counter} = Agent.start_link(fn -> 0 end)
+
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          n = Agent.get_and_update(counter, &{&1 + 1, &1 + 1})
+
+          if n == 1 do
+            json(%{"valid" => "valid"})
+          else
+            {:ok, %Tesla.Env{status: 500, body: %{"message" => "boom"}}}
+          end
+
+        %{method: :get, url: "https://api.github.com/user/184065"} ->
+          json(%{"id" => 184_065, "login" => rha.login, "name" => rha.name})
+      end)
+
+      original_updated_at = rha.updated_at
+
+      request =
+        User.RefreshRepositoryProviderRequest.new(
+          user_id: user.id,
+          type: User.RepositoryProvider.Type.value(:GITHUB)
+        )
+
+      {:ok, _response} = channel |> Stub.refresh_repository_provider(request)
+
+      {:ok, reloaded} = Guard.FrontRepo.RepoHostAccount.get_for_github_user(user.id)
+      # Transient validate failure must NOT flip revoke status.
+      assert reloaded.revoked == false
+      # update_revoke_status was not invoked, so updated_at stays put.
+      assert reloaded.updated_at == original_updated_at
+    end
+
     test "refresh_repository_provider should refresh repository provider details for a valid user with bitbucket",
          %{
            grpc_channel: channel

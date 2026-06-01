@@ -98,7 +98,8 @@ defmodule Guard.User.GithubProfileSyncTest do
       end
     end
 
-    test "warns and bumps failure metric when github fetch returns 5xx", %{user: user, rha: rha} do
+    test "warns and bumps tagged failure metric when github fetch returns 5xx",
+         %{user: user, rha: rha} do
       mock_global(fn
         %{method: :get, url: "https://api.github.com/user/583231"} ->
           {:ok, %Tesla.Env{status: 500, body: %{"message" => "boom"}}}
@@ -117,29 +118,39 @@ defmodule Guard.User.GithubProfileSyncTest do
         assert log =~ "[warning]"
         assert log =~ "Skipping GitHub profile sync for #{user.id}"
         assert log =~ ":http"
-        assert called(Watchman.increment("guard.github_profile_sync.failure"))
+        assert called(Watchman.increment({"guard.github_profile_sync.failure", ["http_5xx"]}))
         refute called(Guard.Events.UserUpdated.publish(:_, :_, :_))
       end
     end
 
-    test "skips silently on 4xx (non-404) without warning or metric", %{user: user, rha: rha} do
-      mock_global(fn
-        %{method: :get, url: "https://api.github.com/user/583231"} ->
-          {:ok, %Tesla.Env{status: 403, body: %{"message" => "rate limited"}}}
-      end)
+    for status <- [401, 403, 429] do
+      test "warns and bumps tagged failure metric when github fetch returns #{status}",
+           %{user: user, rha: rha} do
+        status = unquote(status)
 
-      with_mocks([
-        {Guard.Events.UserUpdated, [], publish: fn _u, _e, _r -> :ok end},
-        {Watchman, [], increment: fn _ -> :ok end}
-      ]) do
-        warning_log =
-          capture_log([level: :warning], fn ->
-            assert {:ok, _} = GithubProfileSync.sync({:ok, rha}, user.id, "token")
-          end)
+        mock_global(fn
+          %{method: :get, url: "https://api.github.com/user/583231"} ->
+            {:ok, %Tesla.Env{status: status, body: %{"message" => "denied"}}}
+        end)
 
-        refute warning_log =~ "Skipping GitHub profile sync"
-        refute called(Watchman.increment(:_))
-        refute called(Guard.Events.UserUpdated.publish(:_, :_, :_))
+        with_mocks([
+          {Guard.Events.UserUpdated, [], publish: fn _u, _e, _r -> :ok end},
+          {Watchman, [], increment: fn _ -> :ok end}
+        ]) do
+          log =
+            capture_log([level: :warning], fn ->
+              assert {:ok, _} = GithubProfileSync.sync({:ok, rha}, user.id, "token")
+            end)
+
+          assert log =~ "GitHub profile sync auth/limit failure for #{user.id}"
+          assert log =~ ":http"
+
+          assert called(
+                   Watchman.increment({"guard.github_profile_sync.failure", ["http_#{status}"]})
+                 )
+
+          refute called(Guard.Events.UserUpdated.publish(:_, :_, :_))
+        end
       end
     end
 
@@ -186,7 +197,7 @@ defmodule Guard.User.GithubProfileSyncTest do
       end
     end
 
-    test "bumps failure metric and returns {:ok, account} when update_profile fails",
+    test "bumps tagged changeset failure metric and returns {:ok, account} when update_profile fails",
          %{user: user, rha: rha} do
       mock_global(fn
         %{method: :get, url: "https://api.github.com/user/583231"} ->
@@ -202,8 +213,80 @@ defmodule Guard.User.GithubProfileSyncTest do
       ]) do
         assert {:ok, returned} = GithubProfileSync.sync({:ok, rha}, user.id, "token")
         assert returned.id == rha.id
-        assert called(Watchman.increment("guard.github_profile_sync.failure"))
+        assert called(Watchman.increment({"guard.github_profile_sync.failure", ["changeset"]}))
         refute called(Guard.Events.UserUpdated.publish(:_, :_, :_))
+      end
+    end
+
+    test "bumps tagged success counter on changed write", %{user: user, rha: rha} do
+      mock_global(fn
+        %{method: :get, url: "https://api.github.com/user/583231"} ->
+          json(%{"id" => 583_231, "login" => "octocat-renamed", "name" => rha.name})
+      end)
+
+      with_mocks([
+        {Guard.Events.UserUpdated, [], publish: fn _u, _e, _r -> :ok end},
+        {Watchman, [], increment: fn _ -> :ok end}
+      ]) do
+        assert {:ok, _} = GithubProfileSync.sync({:ok, rha}, user.id, "token")
+        assert called(Watchman.increment({"guard.github_profile_sync.success", ["changed"]}))
+      end
+    end
+
+    test "bumps tagged success counter on no-change write", %{user: user, rha: rha} do
+      mock_global(fn
+        %{method: :get, url: "https://api.github.com/user/583231"} ->
+          json(%{"id" => 583_231, "login" => rha.login, "name" => rha.name})
+      end)
+
+      with_mocks([
+        {Guard.Events.UserUpdated, [], publish: fn _u, _e, _r -> :ok end},
+        {Watchman, [], increment: fn _ -> :ok end}
+      ]) do
+        assert {:ok, _} = GithubProfileSync.sync({:ok, rha}, user.id, "token")
+        assert called(Watchman.increment({"guard.github_profile_sync.success", ["no_change"]}))
+        refute called(Guard.Events.UserUpdated.publish(:_, :_, :_))
+      end
+    end
+
+    test "error log never contains the OAuth access or refresh token", %{user: user, rha: rha} do
+      secret_token = "ghp_TEST_OAUTH_ACCESS_TOKEN_VALUE"
+      secret_refresh = "ghr_TEST_OAUTH_REFRESH_TOKEN_VALUE"
+
+      {:ok, rha_with_secrets} =
+        rha
+        |> Ecto.Changeset.change(%{token: secret_token, refresh_token: secret_refresh})
+        |> Guard.FrontRepo.update(force: true)
+
+      mock_global(fn
+        %{method: :get, url: "https://api.github.com/user/583231"} ->
+          json(%{"id" => 583_231, "login" => "octocat-renamed", "name" => rha_with_secrets.name})
+      end)
+
+      # Build a *real* changeset whose `:data` is the rha — exercises the
+      # default-Inspect leak path that a forged %Ecto.Changeset{} would skip.
+      real_changeset_error =
+        {:error,
+         rha_with_secrets
+         |> Ecto.Changeset.change(%{login: "octocat-renamed"})
+         |> Ecto.Changeset.add_error(:login, "is invalid")
+         |> Map.put(:valid?, false)}
+
+      with_mocks([
+        {RepoHostAccount, [:passthrough], update_profile: fn _, _ -> real_changeset_error end},
+        {Guard.Events.UserUpdated, [], publish: fn _u, _e, _r -> :ok end},
+        {Watchman, [], increment: fn _ -> :ok end}
+      ]) do
+        log =
+          ExUnit.CaptureLog.capture_log([level: :error], fn ->
+            assert {:ok, _returned} =
+                     GithubProfileSync.sync({:ok, rha_with_secrets}, user.id, "tok")
+          end)
+
+        refute log =~ secret_token
+        refute log =~ secret_refresh
+        # Field/message from the changeset must still be logged for diagnostics.
+        assert log =~ "login:is invalid"
       end
     end
   end
