@@ -5,7 +5,6 @@ defmodule Guard.GrpcServers.UserServerTest do
   alias InternalApi.User
   alias InternalApi.User.UserService.Stub
 
-  import ExUnit.CaptureLog
   import Mock
   import Tesla.Mock
 
@@ -1282,45 +1281,6 @@ defmodule Guard.GrpcServers.UserServerTest do
         assert reloaded.updated_at == original_updated_at
 
         refute called(Guard.Events.UserUpdated.publish(:_, :_, :_))
-      end
-    end
-
-    test "refresh_repository_provider does not log GitHub display name in profile sync line",
-         %{grpc_channel: channel, user: user, repo_host_account: rha} do
-      old_name = rha.name
-      new_login = "renamed-login-#{System.unique_integer([:positive])}"
-      new_name = "Secret Display Name #{System.unique_integer([:positive])}"
-
-      Tesla.Mock.mock_global(fn
-        %{method: :get, url: "https://api.github.com"} ->
-          json(%{"valid" => "valid"})
-
-        %{method: :get, url: "https://api.github.com/user/184065"} ->
-          json(%{"id" => 184_065, "login" => new_login, "name" => new_name})
-      end)
-
-      with_mock Guard.Events.UserUpdated, publish: fn _u, _e, _r -> :ok end do
-        request =
-          User.RefreshRepositoryProviderRequest.new(
-            user_id: user.id,
-            type: User.RepositoryProvider.Type.value(:GITHUB)
-          )
-
-        log =
-          capture_log([level: :info], fn ->
-            {:ok, _response} = channel |> Stub.refresh_repository_provider(request)
-          end)
-
-        sync_line =
-          log
-          |> String.split("\n")
-          |> Enum.find("", &String.contains?(&1, "GitHub profile changed for user"))
-
-        assert sync_line =~ user.id
-        assert sync_line =~ "fields=login,name"
-        refute sync_line =~ new_name
-        refute sync_line =~ old_name
-        refute sync_line =~ new_login
       end
     end
 

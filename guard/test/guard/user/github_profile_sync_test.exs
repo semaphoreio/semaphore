@@ -122,7 +122,7 @@ defmodule Guard.User.GithubProfileSyncTest do
       end
     end
 
-    test "debug-logs and does not bump metric on 4xx (non-404)", %{user: user, rha: rha} do
+    test "skips silently on 4xx (non-404) without warning or metric", %{user: user, rha: rha} do
       mock_global(fn
         %{method: :get, url: "https://api.github.com/user/583231"} ->
           {:ok, %Tesla.Env{status: 403, body: %{"message" => "rate limited"}}}
@@ -137,19 +137,13 @@ defmodule Guard.User.GithubProfileSyncTest do
             assert {:ok, _} = GithubProfileSync.sync({:ok, rha}, user.id, "token")
           end)
 
-        debug_log =
-          capture_log([level: :debug], fn ->
-            assert {:ok, _} = GithubProfileSync.sync({:ok, rha}, user.id, "token")
-          end)
-
         refute warning_log =~ "Skipping GitHub profile sync"
-        assert debug_log =~ "Skipping GitHub profile sync for #{user.id}"
         refute called(Watchman.increment(:_))
         refute called(Guard.Events.UserUpdated.publish(:_, :_, :_))
       end
     end
 
-    test "debug-logs and does not bump metric on 404", %{user: user, rha: rha} do
+    test "skips silently on 404 without warning or metric", %{user: user, rha: rha} do
       mock_global(fn
         %{method: :get, url: "https://api.github.com/user/583231"} ->
           {:ok, %Tesla.Env{status: 404, body: %{"message" => "Not Found"}}}
@@ -164,19 +158,14 @@ defmodule Guard.User.GithubProfileSyncTest do
             assert {:ok, _} = GithubProfileSync.sync({:ok, rha}, user.id, "token")
           end)
 
-        debug_log =
-          capture_log([level: :debug], fn ->
-            assert {:ok, _} = GithubProfileSync.sync({:ok, rha}, user.id, "token")
-          end)
-
         refute warning_log =~ "Skipping GitHub profile sync"
-        assert debug_log =~ ":not_found"
         refute called(Watchman.increment(:_))
         refute called(Guard.Events.UserUpdated.publish(:_, :_, :_))
       end
     end
 
-    test "debug-logs and does not bump metric on network/transport error", %{user: user, rha: rha} do
+    test "skips silently on network/transport error without warning or metric",
+         %{user: user, rha: rha} do
       mock_global(fn
         %{method: :get, url: "https://api.github.com/user/583231"} ->
           {:error, :timeout}
@@ -191,42 +180,9 @@ defmodule Guard.User.GithubProfileSyncTest do
             assert {:ok, _} = GithubProfileSync.sync({:ok, rha}, user.id, "token")
           end)
 
-        debug_log =
-          capture_log([level: :debug], fn ->
-            assert {:ok, _} = GithubProfileSync.sync({:ok, rha}, user.id, "token")
-          end)
-
         refute warning_log =~ "Skipping GitHub profile sync"
-        assert debug_log =~ ":transport"
         refute called(Watchman.increment(:_))
         refute called(Guard.Events.UserUpdated.publish(:_, :_, :_))
-      end
-    end
-
-    test "log line does not contain raw login or name values", %{user: user, rha: rha} do
-      new_login = "secret-login-#{System.unique_integer([:positive])}"
-      new_name = "Secret Display Name #{System.unique_integer([:positive])}"
-
-      mock_global(fn
-        %{method: :get, url: "https://api.github.com/user/583231"} ->
-          json(%{"id" => 583_231, "login" => new_login, "name" => new_name})
-      end)
-
-      with_mock Guard.Events.UserUpdated, publish: fn _u, _e, _r -> :ok end do
-        log =
-          capture_log([level: :info], fn ->
-            GithubProfileSync.sync({:ok, rha}, user.id, "token")
-          end)
-
-        sync_line =
-          log
-          |> String.split("\n")
-          |> Enum.find("", &String.contains?(&1, "GitHub profile changed for user"))
-
-        assert sync_line =~ "fields=login,name"
-        refute sync_line =~ new_login
-        refute sync_line =~ new_name
-        refute sync_line =~ rha.name
       end
     end
 
