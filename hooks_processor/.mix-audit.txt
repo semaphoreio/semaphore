@@ -1,0 +1,10 @@
+# cowlib — cookie request header injection in cow_cookie:cookie/1 (no patched
+# version released upstream; cowlib 2.16.1 is the latest release and is still
+# flagged). hooks_processor does not generate Set-Cookie headers from
+# user-controlled input; cowlib is only pulled in transitively via plug_cowboy/grpc.
+GHSA-g2wm-735q-3f56
+
+# decimal — unbounded exponent DoS in Decimal.new, patched in 3.0.0 (transitive via
+# ecto/jason; bumping to 3.0 cascades into a postgrex/ecto bump out of scope for a
+# security patch. hooks_processor does not parse untrusted decimal strings).
+GHSA-rhv4-8758-jx7v

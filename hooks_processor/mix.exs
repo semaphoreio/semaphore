@@ -25,6 +25,9 @@ defmodule HooksProcessor.MixProject do
   defp deps do
     [
       {:plug_cowboy, "~> 2.0"},
+      {:cowboy, "~> 2.15.0", override: true},
+      {:cowlib, "~> 2.16.1", override: true},
+      {:hackney, "~> 1.25", override: true},
       {:httpoison, "~> 2.0"},
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
       {:log_tee, github: "renderedtext/log-tee"},
