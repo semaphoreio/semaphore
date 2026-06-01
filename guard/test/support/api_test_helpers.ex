@@ -31,7 +31,12 @@ defmodule Support.ApiTestHelpers do
 
     "#{@host}/#{path}#{query_string}"
     |> URI.encode()
-    |> HTTPoison.get(headers)
+    # `pool: false` disables hackney's connection pool. With the pool enabled,
+    # hackney does not return the response body of 3xx redirects served over a
+    # keep-alive connection (the body is left in the pooled socket), which makes
+    # assertions on redirect bodies see an empty string. A fresh connection per
+    # request avoids that.
+    |> HTTPoison.get(headers, hackney: [pool: false])
   end
 
   defp parse_query_params(nil), do: ""

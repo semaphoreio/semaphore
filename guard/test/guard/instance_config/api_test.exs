@@ -1,6 +1,5 @@
 defmodule Guard.InstanceConfig.ApiTest do
   use Guard.RepoCase, async: false
-  import Plug.Test
   require Logger
 
   @port 4004
