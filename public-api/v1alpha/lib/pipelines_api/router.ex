@@ -191,7 +191,6 @@ defmodule PipelinesAPI.Router do
   match("/artifacts", via: :get, to: ListArtifacts)
   match("/artifacts/signed_url", via: :get, to: GetArtifactSignedURL)
 
-<<<<<<< HEAD
   match("/projects/:project_id/test_results/flaky_tests", via: :get, to: ListFlakyTests)
 
   match("/projects/:project_id/test_results/flaky_tests/:test_id/disruptions",
