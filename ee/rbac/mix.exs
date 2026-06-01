@@ -40,7 +40,7 @@ defmodule Rbac.MixProject do
       {:bypass, "~> 2.1", [only: :test]},
       {:jose, "~> 1.11"},
       {:esaml, git: "https://github.com/handnot2/esaml", tag: "v4.2.0"},
-      {:plug_cowboy, "~> 2.0"},
+      {:plug_cowboy, "~> 2.8.1"},
       {:plug, "~> 1.15.4", override: true},
       {:cowboy, "~> 2.15", override: true},
       {:cowlib, "~> 2.16", override: true},
