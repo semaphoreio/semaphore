@@ -177,9 +177,10 @@ defmodule Guard.ServiceAccount.ActionsTest do
     end
   end
 
-  describe "update/2" do
+  describe "update/3" do
     test "updates service account successfully" do
       service_account_id = "sa-id"
+      org_id = "org-id"
       update_params = %{name: "Updated Name", description: "Updated Description"}
 
       expected_result = %{
@@ -189,12 +190,13 @@ defmodule Guard.ServiceAccount.ActionsTest do
       }
 
       with_mock ServiceAccount, [:passthrough],
-        update: fn id, params ->
+        update: fn id, scope_org_id, params ->
           assert id == service_account_id
+          assert scope_org_id == org_id
           assert params == update_params
           {:ok, expected_result}
         end do
-        {:ok, result} = Actions.update(service_account_id, update_params)
+        {:ok, result} = Actions.update(service_account_id, org_id, update_params)
 
         assert result == expected_result
       end
@@ -202,75 +204,128 @@ defmodule Guard.ServiceAccount.ActionsTest do
 
     test "handles update failure" do
       service_account_id = "sa-id"
+      org_id = "org-id"
       update_params = %{name: "Updated Name", description: "Updated Description"}
 
-      with_mock ServiceAccount, [:passthrough], update: fn _, _ -> {:error, :update_failed} end do
-        {:error, :update_failed} = Actions.update(service_account_id, update_params)
+      with_mock ServiceAccount, [:passthrough],
+        update: fn _, _, _ -> {:error, :update_failed} end do
+        {:error, :update_failed} = Actions.update(service_account_id, org_id, update_params)
+      end
+    end
+
+    test "returns not_found when service account belongs to a different org" do
+      service_account_id = "sa-id"
+      other_org_id = Ecto.UUID.generate()
+      update_params = %{name: "Updated Name", description: "Updated Description"}
+
+      with_mock ServiceAccount, [:passthrough],
+        update: fn id, scope_org_id, _params ->
+          assert id == service_account_id
+          assert scope_org_id == other_org_id
+          {:error, :not_found}
+        end do
+        {:error, :not_found} = Actions.update(service_account_id, other_org_id, update_params)
       end
     end
   end
 
-  describe "deactivate/1" do
+  describe "deactivate/2" do
     test "deactivates service account successfully" do
       service_account_id = "sa-id"
+      org_id = "org-id"
 
       with_mock ServiceAccount, [:passthrough],
-        deactivate: fn id ->
+        deactivate: fn id, scope_org_id ->
           assert id == service_account_id
+          assert scope_org_id == org_id
           {:ok, :deactivated}
         end do
-        {:ok, :deactivated} = Actions.deactivate(service_account_id)
+        {:ok, :deactivated} = Actions.deactivate(service_account_id, org_id)
       end
     end
 
     test "handles deactivate failure" do
       service_account_id = "sa-id"
+      org_id = "org-id"
 
       with_mock ServiceAccount, [:passthrough],
-        deactivate: fn _ -> {:error, :deactivate_failed} end do
-        {:error, :deactivate_failed} = Actions.deactivate(service_account_id)
+        deactivate: fn _, _ -> {:error, :deactivate_failed} end do
+        {:error, :deactivate_failed} = Actions.deactivate(service_account_id, org_id)
+      end
+    end
+
+    test "returns not_found when service account belongs to a different org" do
+      service_account_id = "sa-id"
+      other_org_id = Ecto.UUID.generate()
+
+      with_mock ServiceAccount, [:passthrough],
+        deactivate: fn id, scope_org_id ->
+          assert id == service_account_id
+          assert scope_org_id == other_org_id
+          {:error, :not_found}
+        end do
+        {:error, :not_found} = Actions.deactivate(service_account_id, other_org_id)
       end
     end
   end
 
-  describe "reactivate/1" do
+  describe "reactivate/2" do
     test "reactivates service account successfully" do
       service_account_id = "sa-id"
+      org_id = "org-id"
 
       with_mock ServiceAccount, [:passthrough],
-        reactivate: fn id ->
+        reactivate: fn id, scope_org_id ->
           assert id == service_account_id
+          assert scope_org_id == org_id
           {:ok, :reactivated}
         end do
-        {:ok, :reactivated} = Actions.reactivate(service_account_id)
+        {:ok, :reactivated} = Actions.reactivate(service_account_id, org_id)
       end
     end
 
     test "handles reactivate failure" do
       service_account_id = "sa-id"
+      org_id = "org-id"
 
       with_mock ServiceAccount, [:passthrough],
-        reactivate: fn _ -> {:error, :reactivate_failed} end do
-        {:error, :reactivate_failed} = Actions.reactivate(service_account_id)
+        reactivate: fn _, _ -> {:error, :reactivate_failed} end do
+        {:error, :reactivate_failed} = Actions.reactivate(service_account_id, org_id)
+      end
+    end
+
+    test "returns not_found when service account belongs to a different org" do
+      service_account_id = "sa-id"
+      other_org_id = Ecto.UUID.generate()
+
+      with_mock ServiceAccount, [:passthrough],
+        reactivate: fn id, scope_org_id ->
+          assert id == service_account_id
+          assert scope_org_id == other_org_id
+          {:error, :not_found}
+        end do
+        {:error, :not_found} = Actions.reactivate(service_account_id, other_org_id)
       end
     end
   end
 
-  describe "destroy/1" do
+  describe "destroy/2" do
     test "destroys service account successfully and publishes deletion event" do
       service_account_id = "sa-id"
+      org_id = "org-id"
 
       with_mocks [
         {ServiceAccount, [:passthrough],
          [
-           destroy: fn id ->
+           destroy: fn id, scope_org_id ->
              assert id == service_account_id
+             assert scope_org_id == org_id
              {:ok, :destroyed}
            end
          ]},
         {Guard.Events.UserDeleted, [:passthrough], [publish: fn _, _, _ -> :ok end]}
       ] do
-        {:ok, :destroyed} = Actions.destroy(service_account_id)
+        {:ok, :destroyed} = Actions.destroy(service_account_id, org_id)
 
         # Verify deletion event was published
         assert_called(
@@ -281,30 +336,55 @@ defmodule Guard.ServiceAccount.ActionsTest do
 
     test "handles destroy failure and does not publish event" do
       service_account_id = "sa-id"
+      org_id = "org-id"
 
       with_mocks [
-        {ServiceAccount, [:passthrough], [destroy: fn _ -> {:error, :destroy_failed} end]},
+        {ServiceAccount, [:passthrough], [destroy: fn _, _ -> {:error, :destroy_failed} end]},
         {Guard.Events.UserDeleted, [:passthrough], [publish: fn _, _, _ -> :ok end]}
       ] do
-        {:error, :destroy_failed} = Actions.destroy(service_account_id)
+        {:error, :destroy_failed} = Actions.destroy(service_account_id, org_id)
 
         # Verify deletion event was NOT published on failure
         refute called(Guard.Events.UserDeleted.publish(:_, :_, :_))
       end
     end
+
+    test "returns not_found and does not publish event for a different org" do
+      service_account_id = "sa-id"
+      other_org_id = Ecto.UUID.generate()
+
+      with_mocks [
+        {ServiceAccount, [:passthrough],
+         [
+           destroy: fn id, scope_org_id ->
+             assert id == service_account_id
+             assert scope_org_id == other_org_id
+             {:error, :not_found}
+           end
+         ]},
+        {Guard.Events.UserDeleted, [:passthrough], [publish: fn _, _, _ -> :ok end]}
+      ] do
+        {:error, :not_found} = Actions.destroy(service_account_id, other_org_id)
+
+        # no deletion event when the org does not match
+        refute called(Guard.Events.UserDeleted.publish(:_, :_, :_))
+      end
+    end
   end
 
-  describe "regenerate_token/1" do
+  describe "regenerate_token/2" do
     test "regenerates token successfully" do
       service_account_id = "sa-id"
+      org_id = "org-id"
       new_token = "new-token-123"
 
       with_mock ServiceAccount, [:passthrough],
-        regenerate_token: fn id ->
+        regenerate_token: fn id, scope_org_id ->
           assert id == service_account_id
+          assert scope_org_id == org_id
           {:ok, new_token}
         end do
-        {:ok, result} = Actions.regenerate_token(service_account_id)
+        {:ok, result} = Actions.regenerate_token(service_account_id, org_id)
 
         assert result == new_token
       end
@@ -312,10 +392,26 @@ defmodule Guard.ServiceAccount.ActionsTest do
 
     test "handles token regeneration failure" do
       service_account_id = "sa-id"
+      org_id = "org-id"
 
       with_mock ServiceAccount, [:passthrough],
-        regenerate_token: fn _ -> {:error, :token_regeneration_failed} end do
-        {:error, :token_regeneration_failed} = Actions.regenerate_token(service_account_id)
+        regenerate_token: fn _, _ -> {:error, :token_regeneration_failed} end do
+        {:error, :token_regeneration_failed} =
+          Actions.regenerate_token(service_account_id, org_id)
+      end
+    end
+
+    test "returns not_found when service account belongs to a different org" do
+      service_account_id = "sa-id"
+      other_org_id = Ecto.UUID.generate()
+
+      with_mock ServiceAccount, [:passthrough],
+        regenerate_token: fn id, scope_org_id ->
+          assert id == service_account_id
+          assert scope_org_id == other_org_id
+          {:error, :not_found}
+        end do
+        {:error, :not_found} = Actions.regenerate_token(service_account_id, other_org_id)
       end
     end
   end
@@ -429,13 +525,28 @@ defmodule Guard.ServiceAccount.ActionsTest do
         params = ServiceAccountFactory.build_params_with_creator(name: "Original Name")
         {:ok, %{service_account: service_account, api_token: _}} = Actions.create(params)
 
-        # Update it
+        # Update it within its own org
         update_params = %{name: "Updated Name", description: "Updated Description"}
-        {:ok, updated_sa} = Actions.update(service_account.id, update_params)
+        {:ok, updated_sa} = Actions.update(service_account.id, service_account.org_id, update_params)
 
         assert updated_sa.name == "Updated Name"
         assert updated_sa.description == "Updated Description"
         assert updated_sa.id == service_account.id
+      end
+    end
+
+    test "update flow returns not_found for a different org" do
+      with_mocks(setup_integration_mocks()) do
+        # Create service account in org A
+        params = ServiceAccountFactory.build_params_with_creator(name: "Original Name")
+        {:ok, %{service_account: service_account, api_token: _}} = Actions.create(params)
+
+        # Attempt to update it scoped to a different org
+        other_org_id = Ecto.UUID.generate()
+        update_params = %{name: "Updated Name", description: "Updated Description"}
+
+        assert {:error, :not_found} =
+                 Actions.update(service_account.id, other_org_id, update_params)
       end
     end
   end

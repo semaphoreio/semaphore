@@ -105,14 +105,21 @@ defmodule Guard.GrpcServers.ServiceAccountServer do
 
   @spec describe(ServiceAccountPB.DescribeRequest.t(), GRPC.Server.Stream.t()) ::
           ServiceAccountPB.DescribeResponse.t()
-  def describe(%ServiceAccountPB.DescribeRequest{service_account_id: service_account_id}, _stream) do
+  def describe(
+        %ServiceAccountPB.DescribeRequest{
+          service_account_id: service_account_id,
+          org_id: org_id
+        },
+        _stream
+      ) do
     observe_and_log(
       "grpc.service_account.describe",
-      %{service_account_id: service_account_id},
+      %{service_account_id: service_account_id, org_id: org_id},
       fn ->
         validate_uuid!(service_account_id)
+        validate_uuid!(org_id)
 
-        case ServiceAccount.find(service_account_id) do
+        case ServiceAccount.find(service_account_id, org_id) do
           {:ok, service_account} ->
             ServiceAccountPB.DescribeResponse.new(
               service_account: map_service_account(service_account)
@@ -134,15 +141,19 @@ defmodule Guard.GrpcServers.ServiceAccountServer do
 
   @spec describe_many(ServiceAccountPB.DescribeManyRequest.t(), GRPC.Server.Stream.t()) ::
           ServiceAccountPB.DescribeManyResponse.t()
-  def describe_many(%ServiceAccountPB.DescribeManyRequest{sa_ids: sa_ids}, _stream) do
+  def describe_many(
+        %ServiceAccountPB.DescribeManyRequest{sa_ids: sa_ids, org_id: org_id},
+        _stream
+      ) do
     observe_and_log(
       "grpc.service_account.describe_many",
-      %{sa_ids: sa_ids, count: length(sa_ids)},
+      %{sa_ids: sa_ids, count: length(sa_ids), org_id: org_id},
       fn ->
         # Validate all UUIDs
         Enum.each(sa_ids, &validate_uuid!/1)
+        validate_uuid!(org_id)
 
-        case ServiceAccount.find_many(sa_ids) do
+        case ServiceAccount.find_many(sa_ids, org_id) do
           {:ok, service_accounts} ->
             ServiceAccountPB.DescribeManyResponse.new(
               service_accounts: Enum.map(service_accounts, &map_service_account/1)
@@ -162,15 +173,17 @@ defmodule Guard.GrpcServers.ServiceAccountServer do
         %ServiceAccountPB.UpdateRequest{
           service_account_id: service_account_id,
           name: name,
-          description: description
+          description: description,
+          org_id: org_id
         },
         _stream
       ) do
     observe_and_log(
       "grpc.service_account.update",
-      %{service_account_id: service_account_id, name: name, description: description},
+      %{service_account_id: service_account_id, name: name, description: description, org_id: org_id},
       fn ->
         validate_uuid!(service_account_id)
+        validate_uuid!(org_id)
 
         if String.trim(name) == "" do
           grpc_error!(:invalid_argument, "Service account name cannot be empty")
@@ -181,7 +194,7 @@ defmodule Guard.GrpcServers.ServiceAccountServer do
           description: String.trim(description || "")
         }
 
-        case Guard.ServiceAccount.Actions.update(service_account_id, params) do
+        case Guard.ServiceAccount.Actions.update(service_account_id, org_id, params) do
           {:ok, service_account} ->
             ServiceAccountPB.UpdateResponse.new(
               service_account: map_service_account(service_account)
@@ -204,16 +217,20 @@ defmodule Guard.GrpcServers.ServiceAccountServer do
   @spec deactivate(ServiceAccountPB.DeactivateRequest.t(), GRPC.Server.Stream.t()) ::
           ServiceAccountPB.DeactivateResponse.t()
   def deactivate(
-        %ServiceAccountPB.DeactivateRequest{service_account_id: service_account_id},
+        %ServiceAccountPB.DeactivateRequest{
+          service_account_id: service_account_id,
+          org_id: org_id
+        },
         _stream
       ) do
     observe_and_log(
       "grpc.service_account.deactivate",
-      %{service_account_id: service_account_id},
+      %{service_account_id: service_account_id, org_id: org_id},
       fn ->
         validate_uuid!(service_account_id)
+        validate_uuid!(org_id)
 
-        case Guard.ServiceAccount.Actions.deactivate(service_account_id) do
+        case Guard.ServiceAccount.Actions.deactivate(service_account_id, org_id) do
           {:ok, :deactivated} ->
             ServiceAccountPB.DeactivateResponse.new()
 
@@ -234,16 +251,20 @@ defmodule Guard.GrpcServers.ServiceAccountServer do
   @spec reactivate(ServiceAccountPB.ReactivateRequest.t(), GRPC.Server.Stream.t()) ::
           ServiceAccountPB.ReactivateResponse.t()
   def reactivate(
-        %ServiceAccountPB.ReactivateRequest{service_account_id: service_account_id},
+        %ServiceAccountPB.ReactivateRequest{
+          service_account_id: service_account_id,
+          org_id: org_id
+        },
         _stream
       ) do
     observe_and_log(
       "grpc.service_account.reactivate",
-      %{service_account_id: service_account_id},
+      %{service_account_id: service_account_id, org_id: org_id},
       fn ->
         validate_uuid!(service_account_id)
+        validate_uuid!(org_id)
 
-        case Guard.ServiceAccount.Actions.reactivate(service_account_id) do
+        case Guard.ServiceAccount.Actions.reactivate(service_account_id, org_id) do
           {:ok, :reactivated} ->
             ServiceAccountPB.ReactivateResponse.new()
 
@@ -263,14 +284,18 @@ defmodule Guard.GrpcServers.ServiceAccountServer do
 
   @spec destroy(ServiceAccountPB.DestroyRequest.t(), GRPC.Server.Stream.t()) ::
           ServiceAccountPB.DestroyResponse.t()
-  def destroy(%ServiceAccountPB.DestroyRequest{service_account_id: service_account_id}, _stream) do
+  def destroy(
+        %ServiceAccountPB.DestroyRequest{service_account_id: service_account_id, org_id: org_id},
+        _stream
+      ) do
     observe_and_log(
       "grpc.service_account.destroy",
-      %{service_account_id: service_account_id},
+      %{service_account_id: service_account_id, org_id: org_id},
       fn ->
         validate_uuid!(service_account_id)
+        validate_uuid!(org_id)
 
-        case Guard.ServiceAccount.Actions.destroy(service_account_id) do
+        case Guard.ServiceAccount.Actions.destroy(service_account_id, org_id) do
           {:ok, :destroyed} ->
             ServiceAccountPB.DestroyResponse.new()
 
@@ -291,16 +316,20 @@ defmodule Guard.GrpcServers.ServiceAccountServer do
   @spec regenerate_token(ServiceAccountPB.RegenerateTokenRequest.t(), GRPC.Server.Stream.t()) ::
           ServiceAccountPB.RegenerateTokenResponse.t()
   def regenerate_token(
-        %ServiceAccountPB.RegenerateTokenRequest{service_account_id: service_account_id},
+        %ServiceAccountPB.RegenerateTokenRequest{
+          service_account_id: service_account_id,
+          org_id: org_id
+        },
         _stream
       ) do
     observe_and_log(
       "grpc.service_account.regenerate_token",
-      %{service_account_id: service_account_id},
+      %{service_account_id: service_account_id, org_id: org_id},
       fn ->
         validate_uuid!(service_account_id)
+        validate_uuid!(org_id)
 
-        case Guard.ServiceAccount.Actions.regenerate_token(service_account_id) do
+        case Guard.ServiceAccount.Actions.regenerate_token(service_account_id, org_id) do
           {:ok, api_token} ->
             ServiceAccountPB.RegenerateTokenResponse.new(api_token: api_token)
 

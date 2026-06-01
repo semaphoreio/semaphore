@@ -52,8 +52,10 @@ defmodule PipelinesAPI.ServiceAccountClient.RequestFormatter do
 
   def form_list_request(_, _), do: ToTuple.internal_error("Internal error")
 
-  def form_describe_request(params, _conn) when is_map(params) do
-    DescribeRequest.new(service_account_id: Map.get(params, "id", ""))
+  def form_describe_request(params, conn) when is_map(params) do
+    org_id = Conn.get_req_header(conn, "x-semaphore-org-id") |> Enum.at(0, "")
+
+    DescribeRequest.new(service_account_id: Map.get(params, "id", ""), org_id: org_id)
     |> ToTuple.ok()
   catch
     error -> error
@@ -61,11 +63,14 @@ defmodule PipelinesAPI.ServiceAccountClient.RequestFormatter do
 
   def form_describe_request(_, _), do: ToTuple.internal_error("Internal error")
 
-  def form_update_request(params, _conn) when is_map(params) do
+  def form_update_request(params, conn) when is_map(params) do
+    org_id = Conn.get_req_header(conn, "x-semaphore-org-id") |> Enum.at(0, "")
+
     UpdateRequest.new(
       service_account_id: Map.get(params, "id", ""),
       name: Map.get(params, "name", ""),
-      description: Map.get(params, "description", "")
+      description: Map.get(params, "description", ""),
+      org_id: org_id
     )
     |> ToTuple.ok()
   catch
@@ -74,8 +79,10 @@ defmodule PipelinesAPI.ServiceAccountClient.RequestFormatter do
 
   def form_update_request(_, _), do: ToTuple.internal_error("Internal error")
 
-  def form_destroy_request(params, _conn) when is_map(params) do
-    DestroyRequest.new(service_account_id: Map.get(params, "id", ""))
+  def form_destroy_request(params, conn) when is_map(params) do
+    org_id = Conn.get_req_header(conn, "x-semaphore-org-id") |> Enum.at(0, "")
+
+    DestroyRequest.new(service_account_id: Map.get(params, "id", ""), org_id: org_id)
     |> ToTuple.ok()
   catch
     error -> error
@@ -83,8 +90,10 @@ defmodule PipelinesAPI.ServiceAccountClient.RequestFormatter do
 
   def form_destroy_request(_, _), do: ToTuple.internal_error("Internal error")
 
-  def form_deactivate_request(params, _conn) when is_map(params) do
-    DeactivateRequest.new(service_account_id: Map.get(params, "id", ""))
+  def form_deactivate_request(params, conn) when is_map(params) do
+    org_id = Conn.get_req_header(conn, "x-semaphore-org-id") |> Enum.at(0, "")
+
+    DeactivateRequest.new(service_account_id: Map.get(params, "id", ""), org_id: org_id)
     |> ToTuple.ok()
   catch
     error -> error
@@ -92,8 +101,10 @@ defmodule PipelinesAPI.ServiceAccountClient.RequestFormatter do
 
   def form_deactivate_request(_, _), do: ToTuple.internal_error("Internal error")
 
-  def form_reactivate_request(params, _conn) when is_map(params) do
-    ReactivateRequest.new(service_account_id: Map.get(params, "id", ""))
+  def form_reactivate_request(params, conn) when is_map(params) do
+    org_id = Conn.get_req_header(conn, "x-semaphore-org-id") |> Enum.at(0, "")
+
+    ReactivateRequest.new(service_account_id: Map.get(params, "id", ""), org_id: org_id)
     |> ToTuple.ok()
   catch
     error -> error
@@ -101,8 +112,10 @@ defmodule PipelinesAPI.ServiceAccountClient.RequestFormatter do
 
   def form_reactivate_request(_, _), do: ToTuple.internal_error("Internal error")
 
-  def form_regenerate_token_request(params, _conn) when is_map(params) do
-    RegenerateTokenRequest.new(service_account_id: Map.get(params, "id", ""))
+  def form_regenerate_token_request(params, conn) when is_map(params) do
+    org_id = Conn.get_req_header(conn, "x-semaphore-org-id") |> Enum.at(0, "")
+
+    RegenerateTokenRequest.new(service_account_id: Map.get(params, "id", ""), org_id: org_id)
     |> ToTuple.ok()
   catch
     error -> error

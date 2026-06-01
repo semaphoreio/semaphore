@@ -61,10 +61,10 @@ defmodule Guard.ServiceAccount.Actions do
 
   Updates are applied to both the user record (for name) and service_account record (for description).
   """
-  @spec update(String.t(), %{name: String.t(), description: String.t()}) ::
+  @spec update(String.t(), String.t(), %{name: String.t(), description: String.t()}) ::
           {:ok, map()} | {:error, atom() | list()}
-  def update(service_account_id, %{name: name, description: description}) do
-    case ServiceAccount.update(service_account_id, %{name: name, description: description}) do
+  def update(service_account_id, org_id, %{name: name, description: description}) do
+    case ServiceAccount.update(service_account_id, org_id, %{name: name, description: description}) do
       {:ok, service_account} ->
         {:ok, service_account}
 
@@ -79,9 +79,9 @@ defmodule Guard.ServiceAccount.Actions do
   This marks the user as deactivated rather than physically deleting records,
   allowing for audit trails and potential recovery.
   """
-  @spec deactivate(String.t()) :: {:ok, :deactivated} | {:error, atom()}
-  def deactivate(service_account_id) do
-    case ServiceAccount.deactivate(service_account_id) do
+  @spec deactivate(String.t(), String.t()) :: {:ok, :deactivated} | {:error, atom()}
+  def deactivate(service_account_id, org_id) do
+    case ServiceAccount.deactivate(service_account_id, org_id) do
       {:ok, :deactivated} ->
         {:ok, :deactivated}
 
@@ -96,9 +96,9 @@ defmodule Guard.ServiceAccount.Actions do
   This sets the user's deactivated flag to false, allowing the service account
   to be used again.
   """
-  @spec reactivate(String.t()) :: {:ok, :reactivated} | {:error, atom()}
-  def reactivate(service_account_id) do
-    case ServiceAccount.reactivate(service_account_id) do
+  @spec reactivate(String.t(), String.t()) :: {:ok, :reactivated} | {:error, atom()}
+  def reactivate(service_account_id, org_id) do
+    case ServiceAccount.reactivate(service_account_id, org_id) do
       {:ok, :reactivated} ->
         {:ok, :reactivated}
 
@@ -113,9 +113,9 @@ defmodule Guard.ServiceAccount.Actions do
   This physically deletes the service account and user records from the database.
   This action cannot be undone and should be used with caution.
   """
-  @spec destroy(String.t()) :: {:ok, :destroyed} | {:error, atom()}
-  def destroy(service_account_id) do
-    case ServiceAccount.destroy(service_account_id) do
+  @spec destroy(String.t(), String.t()) :: {:ok, :destroyed} | {:error, atom()}
+  def destroy(service_account_id, org_id) do
+    case ServiceAccount.destroy(service_account_id, org_id) do
       {:ok, :destroyed} ->
         # Publish deletion event - let event handlers clean up RBAC roles and associated data
         Guard.Events.UserDeleted.publish(service_account_id, @user_exchange, @deleted_routing_key)
@@ -134,9 +134,9 @@ defmodule Guard.ServiceAccount.Actions do
   Generates a new authentication token and invalidates the old one.
   Returns the new plain text token.
   """
-  @spec regenerate_token(String.t()) :: {:ok, String.t()} | {:error, atom()}
-  def regenerate_token(service_account_id) do
-    case ServiceAccount.regenerate_token(service_account_id) do
+  @spec regenerate_token(String.t(), String.t()) :: {:ok, String.t()} | {:error, atom()}
+  def regenerate_token(service_account_id, org_id) do
+    case ServiceAccount.regenerate_token(service_account_id, org_id) do
       {:ok, new_token} ->
         {:ok, new_token}
 
