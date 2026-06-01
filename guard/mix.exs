@@ -26,9 +26,9 @@ defmodule Guard.Mixfile do
   defp deps do
     [
       {:grpc, "0.5.0-beta.1", override: true},
-      {:cowboy, "~> 2.9.0", override: true},
-      {:cowlib, "~> 2.11.0", override: true},
-      {:plug_cowboy, "~> 2.3"},
+      {:cowboy, "~> 2.15.0", override: true},
+      {:cowlib, "~> 2.16.1", override: true},
+      {:plug_cowboy, "~> 2.8.1"},
       {:httpoison, "~> 1.8"},
       {:gen_retry, "~> 1.4.0"},
       {:mix_test_watch, "~> 1.0", only: :dev},
@@ -71,7 +71,7 @@ defmodule Guard.Mixfile do
       {:tesla, "~> 1.11.0"},
       {:castore, "~> 0.1.22"},
       {:joken, "~> 2.5"},
-      {:hackney, "~> 1.20"},
+      {:hackney, "~> 1.24"},
       {:argon2_elixir, "~> 4.0"},
       {:quantum, "~> 3.0"}
     ]
