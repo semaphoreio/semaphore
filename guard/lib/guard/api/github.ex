@@ -11,12 +11,27 @@ defmodule Guard.Api.Github do
   plug(Tesla.Middleware.BaseUrl, "https://api.github.com")
   plug(Tesla.Middleware.JSON)
 
-  def user(id) do
-    case get("/user/" <> id) do
+  @doc """
+  Fetch a GitHub user by numeric UID.
+
+  When a non-nil/non-empty `token` is provided, the request is sent
+  authenticated (uses the per-user OAuth quota: 5000 req/hr). Otherwise the
+  unauthenticated client is used (60 req/hr per source IP).
+  """
+  def user(id, token \\ nil) do
+    opts =
+      if is_binary(token) and token != "", do: [headers: authorization_headers(token)], else: []
+
+    case get("/user/" <> id, opts) do
       {:ok, res} ->
         cond do
           res.status in 200..299 ->
-            {:ok, %{id: res.body["id"] |> Integer.to_string(), login: res.body["login"]}}
+            {:ok,
+             %{
+               id: res.body["id"] |> Integer.to_string(),
+               login: res.body["login"],
+               name: res.body["name"]
+             }}
 
           res.status == 404 ->
             Logger.debug("Error fetching user: #{inspect(res.body)}")
@@ -24,13 +39,13 @@ defmodule Guard.Api.Github do
             {:error, :not_found}
 
           true ->
-            Logger.debug("Error fetching user: #{inspect(res.body)}")
+            Logger.debug("Error fetching user (HTTP #{res.status}): #{inspect(res.body)}")
 
-            {:error, "#{res.body["message"]}. #{res.body["documentation_url"]}"}
+            {:error, {:http, res.status}}
         end
 
       {:error, error} ->
-        {:error, error}
+        {:error, {:transport, error}}
     end
   end
 
@@ -90,30 +105,36 @@ defmodule Guard.Api.Github do
     ])
   end
 
-  def validate_token(""), do: false
+  def validate_token(""), do: {:ok, false}
 
   def validate_token(token) do
     case get("", headers: authorization_headers(token)) do
-      {:ok, res} ->
-        is_valid = res.status in 200..299
+      {:ok, %{status: status}} when status in 200..299 ->
+        {:ok, true}
 
-        unless is_valid do
-          Logger.error(
-            "Token validation failed. status: #{res.status} body: #{inspect(res.body)}"
-          )
-        end
+      {:ok, %{status: status}} when status in [401, 403] ->
+        {:ok, false}
 
-        {:ok, is_valid}
+      {:ok, %{status: status}} when status == 429 or status in 500..599 ->
+        Logger.warning("Transient GitHub token validation failure (HTTP #{status})")
+        {:error, :transient}
+
+      {:ok, %{status: status, body: body}} ->
+        Logger.warning(
+          "Unexpected GitHub token validation response (HTTP #{status}): #{inspect(body)}"
+        )
+
+        {:error, :transient}
 
       {:error, error} ->
-        Logger.error("Error validating token: #{inspect(error)}")
-        {:error, :network_error}
+        Logger.error("Error validating GitHub token: #{inspect(error)}")
+        {:error, :transient}
     end
   end
 
   defp authorization_headers(token) do
     [
-      {"Authorization", "token #{token}"}
+      {"Authorization", "Bearer #{token}"}
     ]
   end
 end
