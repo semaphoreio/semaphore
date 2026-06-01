@@ -197,14 +197,48 @@ defmodule Guard.FrontRepo.RepoHostAccount do
   end
 
   @doc """
-  Persist a partial profile diff (currently `:login` and/or `:name`) on the
-  given `RepoHostAccount`. Caller is responsible for filtering out unchanged
-  or blank fields — this function just applies the supplied map. No-op if the
-  map is empty.
+  Persist a partial profile diff on the given `RepoHostAccount`.
+
+  Contract:
+  - Only `:login` and `:name` are writable here; any other key in `attrs` is
+    silently dropped by the changeset's cast whitelist.
+  - Empty map (after cast) is a no-op: returns `{:ok, rha}` without touching
+    the DB.
+  - `validate_required` is scoped to the fields actually being changed, so a
+    login-only sync still succeeds when a legacy row has `name = nil`
+    (pre-dating the broader `validate_required` in `update_account/2`).
+  - Returns `{:error, %Ecto.Changeset{}}` if a written field is blank.
   """
   @spec update_profile(t(), map()) :: {:ok, t()} | {:error, Ecto.Changeset.t()}
   def update_profile(%__MODULE__{} = rha, attrs) when is_map(attrs) do
-    update_account(Map.take(attrs, [:login, :name]), rha)
+    changeset = Ecto.Changeset.cast(rha, attrs, [:login, :name])
+
+    if changeset.changes == %{} do
+      {:ok, rha}
+    else
+      result =
+        changeset
+        |> Ecto.Changeset.validate_required(Map.keys(changeset.changes))
+        |> FrontRepo.update()
+
+      case result do
+        {:ok, account} ->
+          Logger.info(
+            "Successfully updated RepoHostAccount profile for #{account.user_id} " <>
+              "#{account.repo_host} fields=#{changeset.changes |> Map.keys() |> Enum.sort() |> Enum.join(",")}"
+          )
+
+          {:ok, account}
+
+        {:error, error} ->
+          Logger.error(
+            "Failed to update RepoHostAccount profile for #{rha.user_id} #{rha.repo_host} " <>
+              "errors=#{changeset_error_fields(error)}"
+          )
+
+          {:error, error}
+      end
+    end
   end
 
   @spec get_uid_by_login(String.t(), String.t()) :: {:ok, String.t()} | {:error, :not_found}
