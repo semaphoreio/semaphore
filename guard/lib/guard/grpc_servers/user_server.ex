@@ -382,7 +382,7 @@ defmodule Guard.GrpcServers.UserServer do
     account_update_result =
       user
       |> handle_validate_token(account, token)
-      |> maybe_sync_github_profile(user.id, token)
+      |> Guard.User.GithubProfileSync.sync(user.id, token)
 
     repository_provider =
       case account_update_result do
@@ -401,70 +401,6 @@ defmodule Guard.GrpcServers.UserServer do
       user_id: user.id,
       repository_provider: repository_provider
     )
-  end
-
-  @github_profile_fields [:login, :name]
-
-  defp maybe_sync_github_profile(
-         {:ok, %{repo_host: "github", revoked: false} = account},
-         user_id,
-         token
-       ) do
-    case Guard.Api.Github.user(account.github_uid, token) do
-      {:ok, profile} ->
-        apply_github_profile_diff(account, profile, user_id)
-
-      {:error, reason} ->
-        Logger.warning(
-          "Skipping GitHub profile sync for #{user_id}: profile fetch failed (#{inspect(reason)})"
-        )
-
-        {:ok, account}
-    end
-  end
-
-  defp maybe_sync_github_profile(result, _user_id, _token), do: result
-
-  defp apply_github_profile_diff(account, profile, user_id) do
-    diff =
-      Enum.reduce(@github_profile_fields, %{}, fn field, acc ->
-        fresh = Map.get(profile, field)
-        stored = Map.get(account, field)
-
-        if is_binary(fresh) and fresh != "" and fresh != stored do
-          Map.put(acc, field, fresh)
-        else
-          acc
-        end
-      end)
-
-    if diff == %{} do
-      {:ok, account}
-    else
-      case FrontRepo.RepoHostAccount.update_profile(account, diff) do
-        {:ok, updated} ->
-          Logger.info(
-            "GitHub profile changed for user #{user_id}: " <>
-              describe_profile_diff(account, diff)
-          )
-
-          Guard.Events.UserUpdated.publish(user_id, @user_exchange, @updated_routing_key)
-
-          {:ok, updated}
-
-        {:error, error} ->
-          Logger.error("Failed to sync GitHub profile for #{user_id}: #{inspect(error)}")
-          {:ok, account}
-      end
-    end
-  end
-
-  defp describe_profile_diff(account, diff) do
-    diff
-    |> Enum.map(fn {field, new_value} ->
-      "#{field} #{inspect(Map.get(account, field))} -> #{inspect(new_value)}"
-    end)
-    |> Enum.join(", ")
   end
 
   defp handle_validate_token(user, repo_account, token) do
