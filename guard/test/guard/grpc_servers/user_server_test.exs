@@ -1382,15 +1382,17 @@ defmodule Guard.GrpcServers.UserServerTest do
       end
     end
 
-    test "refresh_repository_provider skips github profile fetch when token is rejected",
+    test "refresh_repository_provider revokes account when refresh_token is missing and token is invalid",
          %{grpc_channel: channel, user: user, repo_host_account: rha} do
-      # No mock for https://api.github.com/user/184065 — if the sync step
-      # mistakenly tries to fetch it, Tesla.Mock will raise and fail the test.
+      # Fixture rha has no refresh_token. Flow proven by this test:
+      #   get_token → user_token → validate_token → 401
+      #   → handle_fetch_token (refresh_token in [nil, ""]) → {:error, :revoked}
+      #   → get_token raises grpc_error!(:not_found, ...)
+      # handle_validate_token and GithubProfileSync.sync never run.
+      # No mock for /user/<uid> — if sync mistakenly tried to fetch, Tesla.Mock
+      # would raise and fail the test.
       Tesla.Mock.mock_global(fn
         %{method: :get, url: "https://api.github.com"} ->
-          {:ok, %Tesla.Env{status: 401, body: %{}}}
-
-        %{method: :post, url: "https://github.com/login/oauth/access_token"} ->
           {:ok, %Tesla.Env{status: 401, body: %{}}}
       end)
 
@@ -1405,6 +1407,61 @@ defmodule Guard.GrpcServers.UserServerTest do
       updated_account = Guard.FrontRepo.get!(Guard.FrontRepo.RepoHostAccount, rha.id)
       assert updated_account.revoked == true
       assert updated_account.login == rha.login
+    end
+
+    test "refresh_repository_provider revokes account and skips profile fetch when refreshed token is rejected by validate",
+         %{grpc_channel: channel} do
+      # Distinct from the test above: here user_token's *refresh* path succeeds
+      # (refresh_token is present, /login/oauth/access_token returns 200 with a
+      # new token). Then handle_validate_token validates the NEW token,
+      # api.github.com still returns 401 → {:ok, false} → update_revoke_status
+      # writes revoked: true. GithubProfileSync.sync sees revoked: true and
+      # passes through — /user/<uid> must NEVER be called (no mock).
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user.id)
+
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      {:ok, _rha} =
+        Support.Members.insert_repo_host_account(
+          login: "radwo",
+          name: "radwo",
+          github_uid: "184065",
+          repo_host: "github",
+          refresh_token: "old_refresh",
+          user_id: user.id,
+          token: "old_token",
+          revoked: false,
+          permission_scope: "repo"
+        )
+
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          {:ok, %Tesla.Env{status: 401, body: %{}}}
+
+        %{method: :post, url: "https://github.com/login/oauth/access_token"} ->
+          {:ok,
+           %Tesla.Env{
+             status: 200,
+             body: %{"access_token" => "new_token", "expires_in" => 3600}
+           }}
+      end)
+
+      request =
+        User.RefreshRepositoryProviderRequest.new(
+          user_id: user.id,
+          type: User.RepositoryProvider.Type.value(:GITHUB)
+        )
+
+      {:ok, _response} = channel |> Stub.refresh_repository_provider(request)
+
+      {:ok, reloaded} = Guard.FrontRepo.RepoHostAccount.get_for_github_user(user.id)
+      # Proves user_token's refresh path was actually exercised (the new token
+      # is persisted from /login/oauth/access_token's response).
+      assert reloaded.token == "new_token"
+      # Proves handle_validate_token saw {:ok, false} on the new token and
+      # called update_revoke_status(_, true).
+      assert reloaded.revoked == true
     end
 
     test "refresh_repository_provider preserves revoke status on transient github validate_token 5xx",
