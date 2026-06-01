@@ -5,6 +5,7 @@ defmodule Guard.GrpcServers.UserServerTest do
   alias InternalApi.User
   alias InternalApi.User.UserService.Stub
 
+  import ExUnit.CaptureLog
   import Mock
   import Tesla.Mock
 
@@ -1279,6 +1280,143 @@ defmodule Guard.GrpcServers.UserServerTest do
         assert reloaded.name == rha.name
         # update_revoke_status was a no-op (status unchanged) so updated_at stays put.
         assert reloaded.updated_at == original_updated_at
+
+        refute called(Guard.Events.UserUpdated.publish(:_, :_, :_))
+      end
+    end
+
+    test "refresh_repository_provider does not log GitHub display name in profile sync line",
+         %{grpc_channel: channel, user: user, repo_host_account: rha} do
+      old_name = rha.name
+      new_login = "renamed-login-#{System.unique_integer([:positive])}"
+      new_name = "Secret Display Name #{System.unique_integer([:positive])}"
+
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          json(%{"valid" => "valid"})
+
+        %{method: :get, url: "https://api.github.com/user/184065"} ->
+          json(%{"id" => 184_065, "login" => new_login, "name" => new_name})
+      end)
+
+      with_mock Guard.Events.UserUpdated, publish: fn _u, _e, _r -> :ok end do
+        request =
+          User.RefreshRepositoryProviderRequest.new(
+            user_id: user.id,
+            type: User.RepositoryProvider.Type.value(:GITHUB)
+          )
+
+        log =
+          capture_log([level: :info], fn ->
+            {:ok, _response} = channel |> Stub.refresh_repository_provider(request)
+          end)
+
+        sync_line =
+          log
+          |> String.split("\n")
+          |> Enum.find("", &String.contains?(&1, "GitHub profile changed for user"))
+
+        assert sync_line =~ user.id
+        assert sync_line =~ "fields=login,name"
+        refute sync_line =~ new_name
+        refute sync_line =~ old_name
+        refute sync_line =~ new_login
+      end
+    end
+
+    test "refresh_repository_provider is a no-op when github user fetch returns 500",
+         %{grpc_channel: channel, user: user, repo_host_account: rha} do
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          json(%{"valid" => "valid"})
+
+        %{method: :get, url: "https://api.github.com/user/184065"} ->
+          {:ok, %Tesla.Env{status: 500, body: %{"message" => "boom"}}}
+      end)
+
+      with_mock Guard.Events.UserUpdated, publish: fn _u, _e, _r -> :ok end do
+        request =
+          User.RefreshRepositoryProviderRequest.new(
+            user_id: user.id,
+            type: User.RepositoryProvider.Type.value(:GITHUB)
+          )
+
+        {:ok, response} = channel |> Stub.refresh_repository_provider(request)
+
+        assert response.repository_provider.login == rha.login
+
+        {:ok, reloaded} = Guard.FrontRepo.RepoHostAccount.get_for_github_user(user.id)
+        assert reloaded.login == rha.login
+        assert reloaded.name == rha.name
+        assert reloaded.revoked == false
+
+        refute called(Guard.Events.UserUpdated.publish(:_, :_, :_))
+      end
+    end
+
+    test "refresh_repository_provider does not clobber stored name when github returns null name",
+         %{grpc_channel: channel, user: user, repo_host_account: rha} do
+      new_login = "#{rha.login}-renamed"
+
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          json(%{"valid" => "valid"})
+
+        %{method: :get, url: "https://api.github.com/user/184065"} ->
+          json(%{"id" => 184_065, "login" => new_login, "name" => nil})
+      end)
+
+      with_mock Guard.Events.UserUpdated, publish: fn _u, _e, _r -> :ok end do
+        request =
+          User.RefreshRepositoryProviderRequest.new(
+            user_id: user.id,
+            type: User.RepositoryProvider.Type.value(:GITHUB)
+          )
+
+        {:ok, response} = channel |> Stub.refresh_repository_provider(request)
+
+        assert response.repository_provider.login == new_login
+
+        {:ok, reloaded} = Guard.FrontRepo.RepoHostAccount.get_for_github_user(user.id)
+        assert reloaded.login == new_login
+        assert reloaded.name == rha.name
+
+        assert called(Guard.Events.UserUpdated.publish(user.id, "user_exchange", "updated"))
+      end
+    end
+
+    test "refresh_repository_provider does not crash and skips event when update_profile fails",
+         %{grpc_channel: channel, user: user, repo_host_account: rha} do
+      new_login = "#{rha.login}-renamed"
+
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          json(%{"valid" => "valid"})
+
+        %{method: :get, url: "https://api.github.com/user/184065"} ->
+          json(%{"id" => 184_065, "login" => new_login, "name" => rha.name})
+      end)
+
+      forced_error = {:error, %Ecto.Changeset{errors: [login: {"is invalid", []}], valid?: false}}
+
+      with_mocks([
+        {Guard.FrontRepo.RepoHostAccount, [:passthrough],
+         update_profile: fn _, _ -> forced_error end},
+        {Guard.Events.UserUpdated, [], publish: fn _u, _e, _r -> :ok end}
+      ]) do
+        request =
+          User.RefreshRepositoryProviderRequest.new(
+            user_id: user.id,
+            type: User.RepositoryProvider.Type.value(:GITHUB)
+          )
+
+        {:ok, response} = channel |> Stub.refresh_repository_provider(request)
+
+        assert response.repository_provider.login == rha.login
+
+        {:ok, reloaded} = Guard.FrontRepo.RepoHostAccount.get_for_github_user(user.id)
+        assert reloaded.login == rha.login
+        assert reloaded.name == rha.name
 
         refute called(Guard.Events.UserUpdated.publish(:_, :_, :_))
       end
