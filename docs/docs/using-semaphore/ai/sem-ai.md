@@ -5,25 +5,25 @@ sidebar_position: 5
 
 # sem-ai CLI
 
-This page explains how to install and use `sem-ai`, an agent-first CLI for Semaphore. It pairs with the official Claude Code / Codex plugin that ships Semaphore skills and an embedded MCP server.
+`sem-ai` is an agent-first command line tool for Semaphore, paired with an optional Claude Code / Codex plugin. This page explains the pieces, how to install them, and when to reach for each.
 
 ## Overview
 
-`sem-ai` is a single binary that wraps the Semaphore APIs in a shape AI agents work well with: structured JSON output by default, self-describing commands, and compound operations that chain workflow → pipeline → failed jobs → logs → parsed test results into one call.
+`sem-ai` is **one binary** with **two artifacts and three ways to use it**:
 
-### Why it exists
+1. **CLI binary** — direct terminal and API access. Structured JSON output by default, self-describing commands, and compound operations that chain workflow → pipeline → failed jobs → logs → parsed test results into a single call (`diagnose`, `status`, `health`, `yaml validate`, `project create`, …).
+2. **Embedded MCP server** — the same binary, run as `sem-ai mcp`, exposes every command as a native tool to any MCP-aware agent. This is a mode of the binary, not a separate download.
+3. **Claude Code / Codex plugin** — an optional bundle that installs Semaphore [Agent Skills](https://agentskills.io), namespaced slash commands (`/sem-ai:init`, `/sem-ai:gha-to-semaphore`), and a `SessionStart` update hook — and registers the embedded MCP server with the host automatically.
 
-Agents driving Semaphore from a developer's machine need three things that a remote MCP server cannot provide on its own: a full write-surface to manage projects, secrets, deploy targets, and YAML; in-context **skills** that teach the agent Semaphore's conventions (block dependencies, the `epilogue` rule for test reports, toolbox CLIs, sharding cost-benefit, …) so it does not invent wrong defaults; and a deterministic entry point for repetitive set-up tasks like translating GitHub Actions or bootstrapping a fresh project.
+The CLI works on its own for terminal and API workflows; **you do not need the plugin**. The plugin is what gives an AI agent Semaphore skills, slash-command entry points, and automatic MCP registration.
 
-`sem-ai` packages all three: the CLI exposes the full Semaphore API surface, the Claude Code / Codex plugin ships [Agent Skills](https://agentskills.io) covering each Semaphore concept, and the `/sem-ai:init` slash command orchestrates project bootstrap end to end (detect repo state → translate or draft → validate → wire secrets → open a PR).
+### What you can do with it
 
-### What it helps with
-
-- **Bootstrap a project on Semaphore from a single prompt** — `/sem-ai:init` covers translating an existing `.github/workflows/*` or drafting a greenfield `.semaphore/semaphore.yml`, applying Semaphore-side defaults (machine type, `checkout` in prologue, `sem-version` for languages, cache keyed on lockfile, `test-results publish` in epilogue, …).
+- **Bootstrap a project on Semaphore from a single prompt** — `/sem-ai:init` translates an existing `.github/workflows/*` or drafts a greenfield `.semaphore/semaphore.yml`, applying Semaphore-side defaults (machine type, `checkout` in prologue, `sem-version` for languages, cache keyed on lockfile, `test-results publish` in epilogue, …).
 - **Debug a failing pipeline without leaving the terminal** — `sem-ai diagnose` composes workflow → pipeline → failed jobs → logs → parsed test results into one call; `sem-ai test summary` parses published JUnit reports in under a second instead of patching reporters to print to stdout.
 - **Operate full CI/CD from an agent** — manage projects, secrets, notifications, deploy targets, scheduled tasks, and promotions; validate YAML before pushing; run commands against a real Semaphore agent via `sem-ai testbox` to iterate on CI fixes before committing.
 
-### sem-ai vs the hosted MCP Server
+## When to use sem-ai vs the hosted MCP Server
 
 Both let AI agents talk to Semaphore. They are complementary, and you can use them at the same time. Use this table to pick.
 
@@ -39,23 +39,19 @@ Both let AI agents talk to Semaphore. They are complementary, and you can use th
 
 In short: the hosted MCP Server is the remote, managed access path; `sem-ai` is the local, fully-featured agent toolkit that ships with opinionated Semaphore knowledge.
 
-Full command reference: [sem-ai Command Line](../../reference/sem-ai-cli). Source: [github.com/semaphoreio/sem-ai](https://github.com/semaphoreio/sem-ai).
+## Install and set up
 
-## Install
+The flow is: install the CLI binary → connect to your organization → (optionally) install the plugin.
+
+### 1. Install the CLI binary
 
 ```shell
 curl -fsSL https://raw.githubusercontent.com/semaphoreio/sem-ai/main/install.sh | sh
 ```
 
-The installer fetches the latest release for macOS or Linux (amd64 or arm64). It installs to `~/.local/bin` when that directory is already on your `PATH`; otherwise it installs to `~/.semaphore-ai/bin` and prints a note asking you to add that directory to your `PATH`. Re-running the same command upgrades to the newest release (and fast-paths if you are already on it).
+The installer fetches the latest release for macOS or Linux (amd64 or arm64). It installs to `~/.local/bin` when that directory is already on your `PATH`; otherwise it installs to `~/.semaphore-ai/bin` and prints a note asking you to add that directory to your `PATH`.
 
-To opt out of background update checks:
-
-```shell
-export SEM_AI_NO_UPDATE_CHECK=1
-```
-
-## Connect to your organization
+### 2. Connect to your organization
 
 Get an API token from `https://me.semaphoreci.com/account` and run:
 
@@ -73,7 +69,27 @@ Verify with:
 sem-ai status --project <project> --branch main
 ```
 
-## Quick start
+At this point the CLI is fully usable on its own. Install the plugin only if you want the agent ergonomics described below.
+
+### 3. (Optional) Install the Claude Code / Codex plugin
+
+The plugin requires the `sem-ai` binary to be on your `PATH` — install it first (step 1). If you install the plugin before the binary, the `SessionStart` hook prints a one-line install hint in chat.
+
+From inside Claude Code or Codex:
+
+```text
+/plugin marketplace add semaphoreio/sem-ai
+/plugin install sem-ai@semaphoreio
+```
+
+### Staying up to date
+
+There are two independent things to keep current:
+
+- **The CLI binary.** Re-run the install script to upgrade — it fast-paths if you are already on the latest release. A background check notifies you when a newer release exists; force a check from a shell with `sem-ai version --check`, or opt out with `export SEM_AI_NO_UPDATE_CHECK=1`. Inside the plugin, a `SessionStart` hook surfaces the same upgrade banner in chat (at most once every 6 hours).
+- **The plugin skills.** These come from the marketplace catalog, not the binary. A third-party marketplace like this one does not auto-update by default — refresh it on demand with `/plugin marketplace update semaphoreio` followed by `/reload-plugins`. To keep it current automatically, enable auto-update for the marketplace (`/plugin` → **Marketplaces** → **semaphoreio** → **Enable auto-update**). You can also update an installed plugin directly with `/plugin update`, or `uninstall` then `install` for a forced re-install.
+
+## Common CLI commands
 
 A few representative commands — every command also supports `--examples` for inline usage:
 
@@ -91,33 +107,24 @@ sem-ai yaml validate --file .semaphore/semaphore.yml
 sem-ai watch <workflow-id>
 ```
 
-`sem-ai discover` returns the full capability map.
+`sem-ai discover` returns the full capability map. For the complete command list, see the [sem-ai Command Line reference](../../reference/sem-ai-cli).
 
-## Claude Code / Codex plugin
+## Plugin capabilities
 
-The plugin bundles Semaphore skills, an embedded MCP server, and a SessionStart hook that surfaces update notices in chat. Skills follow the [Agent Skills](https://agentskills.io) standard so the same bundle works in Claude Code, Codex, and any compliant host.
+The plugin bundles four things and works in Claude Code, Codex, and any [Agent Skills](https://agentskills.io)-compliant host:
 
-### Install the plugin
+- **Skills** — in-context Semaphore knowledge the agent loads on demand.
+- **Slash commands** — explicit entry points for the most common workflows.
+- **Embedded MCP server** — automatic registration of `sem-ai mcp` with the host.
+- **`SessionStart` hook** — surfaces CLI upgrade banners (see [Staying up to date](#staying-up-to-date)).
 
-From inside Claude Code or Codex:
+### Skills
 
-```text
-/plugin marketplace add semaphoreio/sem-ai
-/plugin install sem-ai@semaphoreio
-```
+Each skill teaches the agent one Semaphore concept (blocks, promotions, toolbox CLIs, test-results, GHA translation, testbox, deploys, manage-infra, …) and loads automatically when its description keywords match the user's prompt.
 
-A third-party marketplace like this one does not auto-update by default — Claude Code refreshes its catalog only when you ask. To pull the latest skills:
+For the canonical inventory and per-skill documentation, browse [`assets/plugin/skills/`](https://github.com/semaphoreio/sem-ai/tree/main/assets/plugin/skills) in the sem-ai repository — that directory is the source of truth and updates as new skills land.
 
-```text
-/plugin marketplace update semaphoreio
-/reload-plugins
-```
-
-To keep it current automatically, enable auto-update for this marketplace from the plugin manager (`/plugin` → **Marketplaces** → **semaphoreio** → **Enable auto-update**); the catalog then refreshes between sessions on its own. You can also update an installed plugin directly with `/plugin update`, or `uninstall` followed by `install` for a forced re-install.
-
-The plugin requires the `sem-ai` binary to be on `PATH`. If you install the plugin before the binary, the SessionStart hook prints a one-line install hint in chat.
-
-### Slash-command entry points
+### Slash commands
 
 User-invocable skills can be triggered directly with a namespaced slash command — useful when the activation keyword in a skill's description does not match your prompt verbatim:
 
@@ -127,12 +134,6 @@ User-invocable skills can be triggered directly with a namespaced slash command 
 | `/sem-ai:gha-to-semaphore` | Translate-only — same procedure as the `init` translate path, scoped to converting `.github/workflows/*` into a Semaphore pipeline. See also the [GitHub Actions migration page](../../getting-started/migration/github-actions). |
 
 Other skills load automatically when their description keywords match the user's prompt. The slash commands above are explicit triggers for the most common entry points.
-
-### What ships in the plugin
-
-Each skill teaches the agent one Semaphore concept (blocks, promotions, toolbox CLIs, test-results, GHA translation, testbox, deploys, manage-infra, …) and loads automatically when its description keywords match the user's prompt.
-
-For the canonical inventory and per-skill documentation, browse [`assets/plugin/skills/`](https://github.com/semaphoreio/sem-ai/tree/main/assets/plugin/skills) in the sem-ai repository — that directory is the source of truth and updates as new skills land.
 
 ### Embedded MCP server
 
@@ -153,9 +154,9 @@ To register `sem-ai mcp` manually in any MCP-aware client, add to `.mcp.json` in
 
 This is local: the MCP server runs on the same machine as the agent, using your `sem-ai connect` credentials. Long-running commands (`watch`, `promote-and-wait`) are excluded from the MCP surface to prevent blocking the agent.
 
-## Bootstrap a project from the CLI
+## Create a project from the CLI
 
-`sem-ai project create` registers a new Semaphore project and, when run from a git working directory, writes a starter `.semaphore/semaphore.yml`:
+If you prefer the CLI over the agent flow, `sem-ai project create` registers a new Semaphore project and, when run from a git working directory, writes a starter `.semaphore/semaphore.yml`:
 
 ```shell
 sem-ai project create \
@@ -173,19 +174,11 @@ Flags:
 
 For an AI-driven flow that wires secrets and translates GitHub Actions if present, use `/sem-ai:init` from the plugin instead.
 
-## Updates
-
-A `SessionStart` hook checks GitHub for new releases at most once every 6 hours and surfaces an upgrade banner in chat when one is available. To force a check from a shell:
-
-```shell
-sem-ai version --check
-```
-
-Upgrade by re-running the install script.
-
 ## See also
 
 - [MCP Server](./mcp-server) — Semaphore-hosted remote MCP endpoint (organization feature)
 - [GitHub Actions migration](../../getting-started/migration/github-actions) — uses `/sem-ai:gha-to-semaphore` as the recommended path
 - [Self-Healing CI](./self-healing-ci) — automated build-fix workflows
 - [Toolbox reference](../../reference/toolbox) — the CLIs the `semaphore-toolbox` skill teaches the agent about
+- [sem-ai Command Line reference](../../reference/sem-ai-cli) — full CLI command reference
+- Source: [github.com/semaphoreio/sem-ai](https://github.com/semaphoreio/sem-ai)
