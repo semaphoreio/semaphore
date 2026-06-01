@@ -196,6 +196,17 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     update_account(params, rha)
   end
 
+  @doc """
+  Persist a partial profile diff (currently `:login` and/or `:name`) on the
+  given `RepoHostAccount`. Caller is responsible for filtering out unchanged
+  or blank fields — this function just applies the supplied map. No-op if the
+  map is empty.
+  """
+  @spec update_profile(t(), map()) :: {:ok, t()} | {:error, Ecto.Changeset.t()}
+  def update_profile(%__MODULE__{} = rha, attrs) when is_map(attrs) do
+    update_account(Map.take(attrs, [:login, :name]), rha)
+  end
+
   @spec get_uid_by_login(String.t(), String.t()) :: {:ok, String.t()} | {:error, :not_found}
   def get_uid_by_login(login, repo_host) do
     uid =
