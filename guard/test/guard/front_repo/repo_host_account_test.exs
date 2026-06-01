@@ -6,21 +6,7 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
 
   describe "update_profile/2" do
     setup do
-      {:ok, user} = Support.Factories.RbacUser.insert()
-
-      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
-
-      {:ok, rha} =
-        Support.Members.insert_repo_host_account(
-          login: "octocat",
-          name: "The Octocat",
-          github_uid: "583231",
-          user_id: user.id,
-          token: "token",
-          revoked: false,
-          permission_scope: "repo"
-        )
-
+      {user, rha} = Support.Members.insert_user_with_github_account()
       {:ok, user: user, rha: rha}
     end
 

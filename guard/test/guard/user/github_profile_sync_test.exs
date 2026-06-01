@@ -9,21 +9,7 @@ defmodule Guard.User.GithubProfileSyncTest do
   alias Guard.User.GithubProfileSync
 
   setup do
-    {:ok, user} = Support.Factories.RbacUser.insert()
-
-    {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
-
-    {:ok, rha} =
-      Support.Members.insert_repo_host_account(
-        login: "octocat",
-        name: "The Octocat",
-        github_uid: "583231",
-        user_id: user.id,
-        token: "token",
-        revoked: false,
-        permission_scope: "repo"
-      )
-
+    {user, rha} = Support.Members.insert_user_with_github_account()
     {:ok, user: user, rha: rha}
   end
 
@@ -154,46 +140,34 @@ defmodule Guard.User.GithubProfileSyncTest do
       end
     end
 
-    test "skips silently on 404 without warning or metric", %{user: user, rha: rha} do
-      mock_global(fn
-        %{method: :get, url: "https://api.github.com/user/583231"} ->
-          {:ok, %Tesla.Env{status: 404, body: %{"message" => "Not Found"}}}
-      end)
+    silent_cases = [
+      {"404", {:ok, %Tesla.Env{status: 404, body: %{"message" => "Not Found"}}}},
+      {"network/transport error", {:error, :timeout}}
+    ]
 
-      with_mocks([
-        {Guard.Events.UserUpdated, [], publish: fn _u, _e, _r -> :ok end},
-        {Watchman, [], increment: fn _ -> :ok end}
-      ]) do
-        warning_log =
-          capture_log([level: :warning], fn ->
-            assert {:ok, _} = GithubProfileSync.sync({:ok, rha}, user.id, "token")
-          end)
+    for {desc, mock_response} <- silent_cases do
+      test "skips silently on #{desc} without warning or metric",
+           %{user: user, rha: rha} do
+        mock_response = unquote(Macro.escape(mock_response))
 
-        refute warning_log =~ "Skipping GitHub profile sync"
-        refute called(Watchman.increment(:_))
-        refute called(Guard.Events.UserUpdated.publish(:_, :_, :_))
-      end
-    end
+        mock_global(fn
+          %{method: :get, url: "https://api.github.com/user/583231"} ->
+            mock_response
+        end)
 
-    test "skips silently on network/transport error without warning or metric",
-         %{user: user, rha: rha} do
-      mock_global(fn
-        %{method: :get, url: "https://api.github.com/user/583231"} ->
-          {:error, :timeout}
-      end)
+        with_mocks([
+          {Guard.Events.UserUpdated, [], publish: fn _u, _e, _r -> :ok end},
+          {Watchman, [], increment: fn _ -> :ok end}
+        ]) do
+          warning_log =
+            capture_log([level: :warning], fn ->
+              assert {:ok, _} = GithubProfileSync.sync({:ok, rha}, user.id, "token")
+            end)
 
-      with_mocks([
-        {Guard.Events.UserUpdated, [], publish: fn _u, _e, _r -> :ok end},
-        {Watchman, [], increment: fn _ -> :ok end}
-      ]) do
-        warning_log =
-          capture_log([level: :warning], fn ->
-            assert {:ok, _} = GithubProfileSync.sync({:ok, rha}, user.id, "token")
-          end)
-
-        refute warning_log =~ "Skipping GitHub profile sync"
-        refute called(Watchman.increment(:_))
-        refute called(Guard.Events.UserUpdated.publish(:_, :_, :_))
+          refute warning_log =~ "Skipping GitHub profile sync"
+          refute called(Watchman.increment(:_))
+          refute called(Guard.Events.UserUpdated.publish(:_, :_, :_))
+        end
       end
     end
 
