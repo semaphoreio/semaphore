@@ -1,0 +1,16 @@
+# cowlib — cookie request header injection in cow_cookie:cookie/1 (no patched
+# version released upstream; cowlib 2.16.1 is the latest release and is still
+# flagged). notifications does not generate Set-Cookie headers from
+# user-controlled input; cowlib is only pulled in transitively via grpc.
+GHSA-g2wm-735q-3f56
+
+# postgrex — channel-name SQL injection in Postgrex.Notifications.listen/3.
+# notifications does not call Postgrex.Notifications anywhere (grep returns no hits);
+# it uses only standard Ecto queries. Bumping postgrex past the current line cascades
+# into an ecto/Elixir bump out of scope for a security patch.
+GHSA-r73h-97w8-m54h
+
+# decimal — unbounded exponent DoS in Decimal.new, patched in 3.0.0 (transitive via
+# ecto/jason; bumping to 3.0 cascades into a postgrex/ecto bump out of scope.
+# notifications does not parse untrusted decimal strings — no Decimal.new in lib/).
+GHSA-rhv4-8758-jx7v

@@ -27,7 +27,9 @@ defmodule Notifications.Mixfile do
   defp deps do
     [
       {:grpc, "0.5.0-beta.1", override: true},
-      {:cowlib, "~> 2.9", override: true},
+      {:cowlib, "~> 2.16.1", override: true},
+      {:cowboy, "~> 2.15.0", override: true},
+      {:ranch, "~> 1.8", override: true},
       {:amqp, "~> 1.3", override: true},
       {:watchman, github: "renderedtext/ex-watchman"},
       {:timex, "~> 3.1"},
@@ -42,7 +44,7 @@ defmodule Notifications.Mixfile do
       {:tackle, github: "renderedtext/ex-tackle"},
       {:util, github: "renderedtext/elixir-util", branch: "rw/string_enums"},
       {:sentry, "~> 8.0"},
-      {:hackney, "~> 1.8"},
+      {:hackney, "~> 1.25", override: true},
       {:sentry_grpc, github: "renderedtext/sentry_grpc"},
       {:jason, "~> 1.1"},
       {:junit_formatter, "~> 3.3", only: [:test]},
