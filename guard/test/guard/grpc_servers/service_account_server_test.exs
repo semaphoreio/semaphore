@@ -314,18 +314,22 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
   describe "describe/2" do
     test "describes service account successfully", %{grpc_channel: channel} do
       service_account_id = Ecto.UUID.generate()
+      org_id = Ecto.UUID.generate()
 
       with_mocks([
         {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
         {Guard.Store.ServiceAccount, [:passthrough],
          [
-           find: fn _ ->
+           find: fn id, requested_org_id ->
+             assert id == service_account_id
+             assert requested_org_id == org_id
+
              {:ok,
               %{
                 id: service_account_id,
                 name: "Test Service Account",
                 description: "Test Description",
-                org_id: "org-id",
+                org_id: org_id,
                 creator_id: "creator-id",
                 created_at: DateTime.utc_now(),
                 updated_at: DateTime.utc_now(),
@@ -334,7 +338,11 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
            end
          ]}
       ]) do
-        request = ServiceAccount.DescribeRequest.new(service_account_id: service_account_id)
+        request =
+          ServiceAccount.DescribeRequest.new(
+            service_account_id: service_account_id,
+            org_id: org_id
+          )
 
         {:ok, response} = channel |> Stub.describe(request)
 
@@ -345,17 +353,66 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
       end
     end
 
-    test "handles service account not found", %{grpc_channel: channel} do
+    test "returns not_found for a service account from a different org", %{grpc_channel: channel} do
       service_account_id = Ecto.UUID.generate()
+      owner_org_id = Ecto.UUID.generate()
+      other_org_id = Ecto.UUID.generate()
 
       with_mocks([
         {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
         {Guard.Store.ServiceAccount, [:passthrough],
          [
-           find: fn _ -> {:error, :not_found} end
+           find: fn id, requested_org_id ->
+             assert id == service_account_id
+             assert requested_org_id == other_org_id
+             # SA belongs to owner_org_id, not other_org_id -> not found
+             {:error, :not_found}
+           end
          ]}
       ]) do
-        request = ServiceAccount.DescribeRequest.new(service_account_id: service_account_id)
+        # SA created in owner_org_id, queried with a different org_id
+        _ = owner_org_id
+
+        request =
+          ServiceAccount.DescribeRequest.new(
+            service_account_id: service_account_id,
+            org_id: other_org_id
+          )
+
+        {:error, %GRPC.RPCError{status: 5, message: message}} = channel |> Stub.describe(request)
+
+        assert String.contains?(message, "Service account #{service_account_id} not found")
+      end
+    end
+
+    test "rejects empty org_id with invalid_argument", %{grpc_channel: channel} do
+      service_account_id = Ecto.UUID.generate()
+
+      request =
+        ServiceAccount.DescribeRequest.new(
+          service_account_id: service_account_id,
+          org_id: ""
+        )
+
+      {:error, %GRPC.RPCError{status: 3}} = channel |> Stub.describe(request)
+    end
+
+    test "handles service account not found", %{grpc_channel: channel} do
+      service_account_id = Ecto.UUID.generate()
+      org_id = Ecto.UUID.generate()
+
+      with_mocks([
+        {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
+        {Guard.Store.ServiceAccount, [:passthrough],
+         [
+           find: fn _, _ -> {:error, :not_found} end
+         ]}
+      ]) do
+        request =
+          ServiceAccount.DescribeRequest.new(
+            service_account_id: service_account_id,
+            org_id: org_id
+          )
 
         {:error, %GRPC.RPCError{status: 5, message: message}} = channel |> Stub.describe(request)
 
@@ -365,15 +422,20 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
 
     test "handles internal errors", %{grpc_channel: channel} do
       service_account_id = Ecto.UUID.generate()
+      org_id = Ecto.UUID.generate()
 
       with_mocks([
         {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
         {Guard.Store.ServiceAccount, [:passthrough],
          [
-           find: fn _ -> {:error, :database_error} end
+           find: fn _, _ -> {:error, :database_error} end
          ]}
       ]) do
-        request = ServiceAccount.DescribeRequest.new(service_account_id: service_account_id)
+        request =
+          ServiceAccount.DescribeRequest.new(
+            service_account_id: service_account_id,
+            org_id: org_id
+          )
 
         {:error, %GRPC.RPCError{status: 13, message: message}} = channel |> Stub.describe(request)
 
@@ -387,16 +449,18 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
       sa1_id = Ecto.UUID.generate()
       sa2_id = Ecto.UUID.generate()
       sa3_id = Ecto.UUID.generate()
+      org_id = Ecto.UUID.generate()
 
       with_mocks([
         {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
         {Guard.Store.ServiceAccount, [:passthrough],
          [
-           find_many: fn ids ->
+           find_many: fn ids, requested_org_id ->
              assert length(ids) == 3
              assert sa1_id in ids
              assert sa2_id in ids
              assert sa3_id in ids
+             assert requested_org_id == org_id
 
              {:ok,
               [
@@ -404,7 +468,7 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
                   id: sa1_id,
                   name: "Service Account 1",
                   description: "Description 1",
-                  org_id: "org-id-1",
+                  org_id: org_id,
                   creator_id: "creator-1",
                   created_at: DateTime.utc_now(),
                   updated_at: DateTime.utc_now(),
@@ -414,7 +478,7 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
                   id: sa2_id,
                   name: "Service Account 2",
                   description: "Description 2",
-                  org_id: "org-id-2",
+                  org_id: org_id,
                   creator_id: "creator-2",
                   created_at: DateTime.utc_now(),
                   updated_at: DateTime.utc_now(),
@@ -424,7 +488,7 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
                   id: sa3_id,
                   name: "Service Account 3",
                   description: nil,
-                  org_id: "org-id-3",
+                  org_id: org_id,
                   creator_id: nil,
                   created_at: DateTime.utc_now(),
                   updated_at: DateTime.utc_now(),
@@ -434,7 +498,8 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
            end
          ]}
       ]) do
-        request = ServiceAccount.DescribeManyRequest.new(sa_ids: [sa1_id, sa2_id, sa3_id])
+        request =
+          ServiceAccount.DescribeManyRequest.new(sa_ids: [sa1_id, sa2_id, sa3_id], org_id: org_id)
 
         {:ok, response} = channel |> Stub.describe_many(request)
 
@@ -444,7 +509,7 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
         sa1 = Enum.find(response.service_accounts, &(&1.id == sa1_id))
         assert sa1.name == "Service Account 1"
         assert sa1.description == "Description 1"
-        assert sa1.org_id == "org-id-1"
+        assert sa1.org_id == org_id
         assert sa1.creator_id == "creator-1"
         assert sa1.deactivated == false
 
@@ -462,21 +527,75 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
       end
     end
 
-    test "returns empty list when no service accounts found", %{grpc_channel: channel} do
-      sa1_id = Ecto.UUID.generate()
-      sa2_id = Ecto.UUID.generate()
+    test "excludes service accounts from a different org", %{grpc_channel: channel} do
+      owner_org_id = Ecto.UUID.generate()
+      other_org_id = Ecto.UUID.generate()
+      sa_in_owner_org = Ecto.UUID.generate()
+      sa_in_other_org = Ecto.UUID.generate()
 
       with_mocks([
         {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
         {Guard.Store.ServiceAccount, [:passthrough],
          [
-           find_many: fn ids ->
+           find_many: fn ids, requested_org_id ->
              assert length(ids) == 2
+             assert requested_org_id == other_org_id
+             # only the service account in the requested org is returned
+             {:ok,
+              [
+                %{
+                  id: sa_in_other_org,
+                  name: "Other Org SA",
+                  description: "Belongs to queried org",
+                  org_id: other_org_id,
+                  creator_id: "creator-id",
+                  created_at: DateTime.utc_now(),
+                  updated_at: DateTime.utc_now(),
+                  deactivated: false
+                }
+              ]}
+           end
+         ]}
+      ]) do
+        request =
+          ServiceAccount.DescribeManyRequest.new(
+            sa_ids: [sa_in_owner_org, sa_in_other_org],
+            org_id: other_org_id
+          )
+
+        {:ok, response} = channel |> Stub.describe_many(request)
+
+        assert length(response.service_accounts) == 1
+        assert hd(response.service_accounts).id == sa_in_other_org
+        assert hd(response.service_accounts).org_id == other_org_id
+      end
+    end
+
+    test "rejects empty org_id with invalid_argument", %{grpc_channel: channel} do
+      sa_id = Ecto.UUID.generate()
+
+      request = ServiceAccount.DescribeManyRequest.new(sa_ids: [sa_id], org_id: "")
+
+      {:error, %GRPC.RPCError{status: 3}} = channel |> Stub.describe_many(request)
+    end
+
+    test "returns empty list when no service accounts found", %{grpc_channel: channel} do
+      sa1_id = Ecto.UUID.generate()
+      sa2_id = Ecto.UUID.generate()
+      org_id = Ecto.UUID.generate()
+
+      with_mocks([
+        {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
+        {Guard.Store.ServiceAccount, [:passthrough],
+         [
+           find_many: fn ids, requested_org_id ->
+             assert length(ids) == 2
+             assert requested_org_id == org_id
              {:ok, []}
            end
          ]}
       ]) do
-        request = ServiceAccount.DescribeManyRequest.new(sa_ids: [sa1_id, sa2_id])
+        request = ServiceAccount.DescribeManyRequest.new(sa_ids: [sa1_id, sa2_id], org_id: org_id)
 
         {:ok, response} = channel |> Stub.describe_many(request)
 
@@ -487,15 +606,17 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
     test "handles partial matches correctly", %{grpc_channel: channel} do
       existing_id = Ecto.UUID.generate()
       non_existent_id = Ecto.UUID.generate()
+      org_id = Ecto.UUID.generate()
 
       with_mocks([
         {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
         {Guard.Store.ServiceAccount, [:passthrough],
          [
-           find_many: fn ids ->
+           find_many: fn ids, requested_org_id ->
              assert length(ids) == 2
              assert existing_id in ids
              assert non_existent_id in ids
+             assert requested_org_id == org_id
 
              # Return only the existing one
              {:ok,
@@ -504,7 +625,7 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
                   id: existing_id,
                   name: "Existing SA",
                   description: "Exists",
-                  org_id: "org-id",
+                  org_id: org_id,
                   creator_id: "creator-id",
                   created_at: DateTime.utc_now(),
                   updated_at: DateTime.utc_now(),
@@ -514,7 +635,11 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
            end
          ]}
       ]) do
-        request = ServiceAccount.DescribeManyRequest.new(sa_ids: [existing_id, non_existent_id])
+        request =
+          ServiceAccount.DescribeManyRequest.new(
+            sa_ids: [existing_id, non_existent_id],
+            org_id: org_id
+          )
 
         {:ok, response} = channel |> Stub.describe_many(request)
 
@@ -524,16 +649,20 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
     end
 
     test "handles empty input list", %{grpc_channel: channel} do
+      org_id = Ecto.UUID.generate()
+
       with_mocks([
+        {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
         {Guard.Store.ServiceAccount, [:passthrough],
          [
-           find_many: fn ids ->
+           find_many: fn ids, requested_org_id ->
              assert ids == []
+             assert requested_org_id == org_id
              {:ok, []}
            end
          ]}
       ]) do
-        request = ServiceAccount.DescribeManyRequest.new(sa_ids: [])
+        request = ServiceAccount.DescribeManyRequest.new(sa_ids: [], org_id: org_id)
 
         {:ok, response} = channel |> Stub.describe_many(request)
 
@@ -543,23 +672,29 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
 
     test "validates UUID format for all IDs", %{grpc_channel: channel} do
       valid_id = Ecto.UUID.generate()
+      org_id = Ecto.UUID.generate()
 
-      request = ServiceAccount.DescribeManyRequest.new(sa_ids: [valid_id, "invalid-uuid"])
+      request =
+        ServiceAccount.DescribeManyRequest.new(
+          sa_ids: [valid_id, "invalid-uuid"],
+          org_id: org_id
+        )
 
       {:error, %GRPC.RPCError{status: 3}} = channel |> Stub.describe_many(request)
     end
 
     test "handles internal errors", %{grpc_channel: channel} do
       sa_id = Ecto.UUID.generate()
+      org_id = Ecto.UUID.generate()
 
       with_mocks([
         {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
         {Guard.Store.ServiceAccount, [:passthrough],
          [
-           find_many: fn _ -> {:error, :database_error} end
+           find_many: fn _, _ -> {:error, :database_error} end
          ]}
       ]) do
-        request = ServiceAccount.DescribeManyRequest.new(sa_ids: [sa_id])
+        request = ServiceAccount.DescribeManyRequest.new(sa_ids: [sa_id], org_id: org_id)
 
         {:error, %GRPC.RPCError{status: 13, message: message}} =
           channel |> Stub.describe_many(request)
@@ -571,13 +706,15 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
     test "handles large number of IDs", %{grpc_channel: channel} do
       # Generate 50 IDs to test batch processing
       ids = for _ <- 1..50, do: Ecto.UUID.generate()
+      org_id = Ecto.UUID.generate()
 
       with_mocks([
         {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
         {Guard.Store.ServiceAccount, [:passthrough],
          [
-           find_many: fn received_ids ->
+           find_many: fn received_ids, requested_org_id ->
              assert length(received_ids) == 50
+             assert requested_org_id == org_id
              # Return only the first 10 to simulate partial results
              service_accounts =
                received_ids
@@ -599,7 +736,7 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
            end
          ]}
       ]) do
-        request = ServiceAccount.DescribeManyRequest.new(sa_ids: ids)
+        request = ServiceAccount.DescribeManyRequest.new(sa_ids: ids, org_id: org_id)
 
         {:ok, response} = channel |> Stub.describe_many(request)
 
@@ -611,13 +748,15 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
   describe "update/2" do
     test "updates service account successfully", %{grpc_channel: channel} do
       service_account_id = Ecto.UUID.generate()
+      org_id = Ecto.UUID.generate()
 
       with_mocks([
         {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
         {Guard.ServiceAccount.Actions, [:passthrough],
          [
-           update: fn id, params ->
+           update: fn id, requested_org_id, params ->
              assert id == service_account_id
+             assert requested_org_id == org_id
              assert params.name == "Updated Name"
              assert params.description == "Updated Description"
 
@@ -626,7 +765,7 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
                 id: service_account_id,
                 name: "Updated Name",
                 description: "Updated Description",
-                org_id: "org-id",
+                org_id: org_id,
                 creator_id: "creator-id",
                 created_at: DateTime.utc_now(),
                 updated_at: DateTime.utc_now(),
@@ -639,7 +778,8 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
           ServiceAccount.UpdateRequest.new(
             service_account_id: service_account_id,
             name: "Updated Name",
-            description: "Updated Description"
+            description: "Updated Description",
+            org_id: org_id
           )
 
         {:ok, response} = channel |> Stub.update(request)
@@ -649,15 +789,65 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
       end
     end
 
+    test "returns not_found when updating a service account from a different org",
+         %{grpc_channel: channel} do
+      service_account_id = Ecto.UUID.generate()
+      owner_org_id = Ecto.UUID.generate()
+      other_org_id = Ecto.UUID.generate()
+
+      with_mocks([
+        {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
+        {Guard.ServiceAccount.Actions, [:passthrough],
+         [
+           update: fn id, requested_org_id, _params ->
+             assert id == service_account_id
+             assert requested_org_id == other_org_id
+             # SA belongs to owner_org_id, not other_org_id -> not found
+             {:error, :not_found}
+           end
+         ]}
+      ]) do
+        _ = owner_org_id
+
+        request =
+          ServiceAccount.UpdateRequest.new(
+            service_account_id: service_account_id,
+            name: "Updated Name",
+            description: "Updated Description",
+            org_id: other_org_id
+          )
+
+        {:error, %GRPC.RPCError{status: 5, message: message}} = channel |> Stub.update(request)
+
+        assert String.contains?(message, "Service account #{service_account_id} not found")
+      end
+    end
+
+    test "rejects empty org_id with invalid_argument", %{grpc_channel: channel} do
+      service_account_id = Ecto.UUID.generate()
+
+      request =
+        ServiceAccount.UpdateRequest.new(
+          service_account_id: service_account_id,
+          name: "Updated Name",
+          description: "Updated Description",
+          org_id: ""
+        )
+
+      {:error, %GRPC.RPCError{status: 3}} = channel |> Stub.update(request)
+    end
+
     test "validates service account name is not empty", %{grpc_channel: channel} do
       service_account_id = Ecto.UUID.generate()
+      org_id = Ecto.UUID.generate()
 
       with_mock Guard.Utils, [:passthrough], validate_uuid!: fn _ -> :ok end do
         request =
           ServiceAccount.UpdateRequest.new(
             service_account_id: service_account_id,
             name: "   ",
-            description: "Updated Description"
+            description: "Updated Description",
+            org_id: org_id
           )
 
         {:error, %GRPC.RPCError{status: 3, message: message}} = channel |> Stub.update(request)
@@ -668,19 +858,21 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
 
     test "handles service account not found", %{grpc_channel: channel} do
       service_account_id = Ecto.UUID.generate()
+      org_id = Ecto.UUID.generate()
 
       with_mocks([
         {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
         {Guard.ServiceAccount.Actions, [:passthrough],
          [
-           update: fn _, _ -> {:error, :not_found} end
+           update: fn _, _, _ -> {:error, :not_found} end
          ]}
       ]) do
         request =
           ServiceAccount.UpdateRequest.new(
             service_account_id: service_account_id,
             name: "Updated Name",
-            description: "Updated Description"
+            description: "Updated Description",
+            org_id: org_id
           )
 
         {:error, %GRPC.RPCError{status: 5, message: message}} = channel |> Stub.update(request)
@@ -691,19 +883,21 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
 
     test "handles update failure", %{grpc_channel: channel} do
       service_account_id = Ecto.UUID.generate()
+      org_id = Ecto.UUID.generate()
 
       with_mocks([
         {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
         {Guard.ServiceAccount.Actions, [:passthrough],
          [
-           update: fn _, _ -> {:error, [:validation_error]} end
+           update: fn _, _, _ -> {:error, [:validation_error]} end
          ]}
       ]) do
         request =
           ServiceAccount.UpdateRequest.new(
             service_account_id: service_account_id,
             name: "Updated Name",
-            description: "Updated Description"
+            description: "Updated Description",
+            org_id: org_id
           )
 
         {:error, %GRPC.RPCError{status: 3, message: message}} = channel |> Stub.update(request)
@@ -716,34 +910,89 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
   describe "deactivate/2" do
     test "deactivates service account successfully", %{grpc_channel: channel} do
       service_account_id = Ecto.UUID.generate()
+      org_id = Ecto.UUID.generate()
 
       with_mocks([
         {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
         {Guard.ServiceAccount.Actions, [:passthrough],
          [
-           deactivate: fn id ->
+           deactivate: fn id, requested_org_id ->
              assert id == service_account_id
+             assert requested_org_id == org_id
              {:ok, :deactivated}
            end
          ]}
       ]) do
-        request = ServiceAccount.DeactivateRequest.new(service_account_id: service_account_id)
+        request =
+          ServiceAccount.DeactivateRequest.new(
+            service_account_id: service_account_id,
+            org_id: org_id
+          )
 
         {:ok, _response} = channel |> Stub.deactivate(request)
       end
     end
 
-    test "handles service account not found", %{grpc_channel: channel} do
+    test "returns not_found when deactivating a service account from a different org",
+         %{grpc_channel: channel} do
       service_account_id = Ecto.UUID.generate()
+      owner_org_id = Ecto.UUID.generate()
+      other_org_id = Ecto.UUID.generate()
 
       with_mocks([
         {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
         {Guard.ServiceAccount.Actions, [:passthrough],
          [
-           deactivate: fn _ -> {:error, :not_found} end
+           deactivate: fn id, requested_org_id ->
+             assert id == service_account_id
+             assert requested_org_id == other_org_id
+             {:error, :not_found}
+           end
          ]}
       ]) do
-        request = ServiceAccount.DeactivateRequest.new(service_account_id: service_account_id)
+        _ = owner_org_id
+
+        request =
+          ServiceAccount.DeactivateRequest.new(
+            service_account_id: service_account_id,
+            org_id: other_org_id
+          )
+
+        {:error, %GRPC.RPCError{status: 5, message: message}} =
+          channel |> Stub.deactivate(request)
+
+        assert String.contains?(message, "Service account #{service_account_id} not found")
+      end
+    end
+
+    test "rejects empty org_id with invalid_argument", %{grpc_channel: channel} do
+      service_account_id = Ecto.UUID.generate()
+
+      request =
+        ServiceAccount.DeactivateRequest.new(
+          service_account_id: service_account_id,
+          org_id: ""
+        )
+
+      {:error, %GRPC.RPCError{status: 3}} = channel |> Stub.deactivate(request)
+    end
+
+    test "handles service account not found", %{grpc_channel: channel} do
+      service_account_id = Ecto.UUID.generate()
+      org_id = Ecto.UUID.generate()
+
+      with_mocks([
+        {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
+        {Guard.ServiceAccount.Actions, [:passthrough],
+         [
+           deactivate: fn _, _ -> {:error, :not_found} end
+         ]}
+      ]) do
+        request =
+          ServiceAccount.DeactivateRequest.new(
+            service_account_id: service_account_id,
+            org_id: org_id
+          )
 
         {:error, %GRPC.RPCError{status: 5, message: message}} =
           channel |> Stub.deactivate(request)
@@ -754,15 +1003,20 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
 
     test "handles internal errors", %{grpc_channel: channel} do
       service_account_id = Ecto.UUID.generate()
+      org_id = Ecto.UUID.generate()
 
       with_mocks([
         {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
         {Guard.ServiceAccount.Actions, [:passthrough],
          [
-           deactivate: fn _ -> {:error, :database_error} end
+           deactivate: fn _, _ -> {:error, :database_error} end
          ]}
       ]) do
-        request = ServiceAccount.DeactivateRequest.new(service_account_id: service_account_id)
+        request =
+          ServiceAccount.DeactivateRequest.new(
+            service_account_id: service_account_id,
+            org_id: org_id
+          )
 
         {:error, %GRPC.RPCError{status: 13, message: message}} =
           channel |> Stub.deactivate(request)
@@ -775,34 +1029,89 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
   describe "reactivate/2" do
     test "reactivates service account successfully", %{grpc_channel: channel} do
       service_account_id = Ecto.UUID.generate()
+      org_id = Ecto.UUID.generate()
 
       with_mocks([
         {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
         {Guard.ServiceAccount.Actions, [:passthrough],
          [
-           reactivate: fn id ->
+           reactivate: fn id, requested_org_id ->
              assert id == service_account_id
+             assert requested_org_id == org_id
              {:ok, :reactivated}
            end
          ]}
       ]) do
-        request = ServiceAccount.ReactivateRequest.new(service_account_id: service_account_id)
+        request =
+          ServiceAccount.ReactivateRequest.new(
+            service_account_id: service_account_id,
+            org_id: org_id
+          )
 
         {:ok, _response} = channel |> Stub.reactivate(request)
       end
     end
 
-    test "handles service account not found", %{grpc_channel: channel} do
+    test "returns not_found when reactivating a service account from a different org",
+         %{grpc_channel: channel} do
       service_account_id = Ecto.UUID.generate()
+      owner_org_id = Ecto.UUID.generate()
+      other_org_id = Ecto.UUID.generate()
 
       with_mocks([
         {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
         {Guard.ServiceAccount.Actions, [:passthrough],
          [
-           reactivate: fn _ -> {:error, :not_found} end
+           reactivate: fn id, requested_org_id ->
+             assert id == service_account_id
+             assert requested_org_id == other_org_id
+             {:error, :not_found}
+           end
          ]}
       ]) do
-        request = ServiceAccount.ReactivateRequest.new(service_account_id: service_account_id)
+        _ = owner_org_id
+
+        request =
+          ServiceAccount.ReactivateRequest.new(
+            service_account_id: service_account_id,
+            org_id: other_org_id
+          )
+
+        {:error, %GRPC.RPCError{status: 5, message: message}} =
+          channel |> Stub.reactivate(request)
+
+        assert String.contains?(message, "Service account #{service_account_id} not found")
+      end
+    end
+
+    test "rejects empty org_id with invalid_argument", %{grpc_channel: channel} do
+      service_account_id = Ecto.UUID.generate()
+
+      request =
+        ServiceAccount.ReactivateRequest.new(
+          service_account_id: service_account_id,
+          org_id: ""
+        )
+
+      {:error, %GRPC.RPCError{status: 3}} = channel |> Stub.reactivate(request)
+    end
+
+    test "handles service account not found", %{grpc_channel: channel} do
+      service_account_id = Ecto.UUID.generate()
+      org_id = Ecto.UUID.generate()
+
+      with_mocks([
+        {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
+        {Guard.ServiceAccount.Actions, [:passthrough],
+         [
+           reactivate: fn _, _ -> {:error, :not_found} end
+         ]}
+      ]) do
+        request =
+          ServiceAccount.ReactivateRequest.new(
+            service_account_id: service_account_id,
+            org_id: org_id
+          )
 
         {:error, %GRPC.RPCError{status: 5, message: message}} =
           channel |> Stub.reactivate(request)
@@ -813,15 +1122,20 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
 
     test "handles internal errors", %{grpc_channel: channel} do
       service_account_id = Ecto.UUID.generate()
+      org_id = Ecto.UUID.generate()
 
       with_mocks([
         {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
         {Guard.ServiceAccount.Actions, [:passthrough],
          [
-           reactivate: fn _ -> {:error, :database_error} end
+           reactivate: fn _, _ -> {:error, :database_error} end
          ]}
       ]) do
-        request = ServiceAccount.ReactivateRequest.new(service_account_id: service_account_id)
+        request =
+          ServiceAccount.ReactivateRequest.new(
+            service_account_id: service_account_id,
+            org_id: org_id
+          )
 
         {:error, %GRPC.RPCError{status: 13, message: message}} =
           channel |> Stub.reactivate(request)
@@ -834,34 +1148,88 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
   describe "destroy/2" do
     test "destroys service account successfully", %{grpc_channel: channel} do
       service_account_id = Ecto.UUID.generate()
+      org_id = Ecto.UUID.generate()
 
       with_mocks([
         {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
         {Guard.ServiceAccount.Actions, [:passthrough],
          [
-           destroy: fn id ->
+           destroy: fn id, requested_org_id ->
              assert id == service_account_id
+             assert requested_org_id == org_id
              {:ok, :destroyed}
            end
          ]}
       ]) do
-        request = ServiceAccount.DestroyRequest.new(service_account_id: service_account_id)
+        request =
+          ServiceAccount.DestroyRequest.new(
+            service_account_id: service_account_id,
+            org_id: org_id
+          )
 
         {:ok, _response} = channel |> Stub.destroy(request)
       end
     end
 
-    test "handles service account not found", %{grpc_channel: channel} do
+    test "returns not_found when destroying a service account from a different org",
+         %{grpc_channel: channel} do
       service_account_id = Ecto.UUID.generate()
+      owner_org_id = Ecto.UUID.generate()
+      other_org_id = Ecto.UUID.generate()
 
       with_mocks([
         {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
         {Guard.ServiceAccount.Actions, [:passthrough],
          [
-           destroy: fn _ -> {:error, :not_found} end
+           destroy: fn id, requested_org_id ->
+             assert id == service_account_id
+             assert requested_org_id == other_org_id
+             {:error, :not_found}
+           end
          ]}
       ]) do
-        request = ServiceAccount.DestroyRequest.new(service_account_id: service_account_id)
+        _ = owner_org_id
+
+        request =
+          ServiceAccount.DestroyRequest.new(
+            service_account_id: service_account_id,
+            org_id: other_org_id
+          )
+
+        {:error, %GRPC.RPCError{status: 5, message: message}} = channel |> Stub.destroy(request)
+
+        assert String.contains?(message, "Service account #{service_account_id} not found")
+      end
+    end
+
+    test "rejects empty org_id with invalid_argument", %{grpc_channel: channel} do
+      service_account_id = Ecto.UUID.generate()
+
+      request =
+        ServiceAccount.DestroyRequest.new(
+          service_account_id: service_account_id,
+          org_id: ""
+        )
+
+      {:error, %GRPC.RPCError{status: 3}} = channel |> Stub.destroy(request)
+    end
+
+    test "handles service account not found", %{grpc_channel: channel} do
+      service_account_id = Ecto.UUID.generate()
+      org_id = Ecto.UUID.generate()
+
+      with_mocks([
+        {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
+        {Guard.ServiceAccount.Actions, [:passthrough],
+         [
+           destroy: fn _, _ -> {:error, :not_found} end
+         ]}
+      ]) do
+        request =
+          ServiceAccount.DestroyRequest.new(
+            service_account_id: service_account_id,
+            org_id: org_id
+          )
 
         {:error, %GRPC.RPCError{status: 5, message: message}} = channel |> Stub.destroy(request)
 
@@ -871,15 +1239,20 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
 
     test "handles internal errors", %{grpc_channel: channel} do
       service_account_id = Ecto.UUID.generate()
+      org_id = Ecto.UUID.generate()
 
       with_mocks([
         {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
         {Guard.ServiceAccount.Actions, [:passthrough],
          [
-           destroy: fn _ -> {:error, :database_error} end
+           destroy: fn _, _ -> {:error, :database_error} end
          ]}
       ]) do
-        request = ServiceAccount.DestroyRequest.new(service_account_id: service_account_id)
+        request =
+          ServiceAccount.DestroyRequest.new(
+            service_account_id: service_account_id,
+            org_id: org_id
+          )
 
         {:error, %GRPC.RPCError{status: 13, message: message}} = channel |> Stub.destroy(request)
 
@@ -891,19 +1264,24 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
   describe "regenerate_token/2" do
     test "regenerates token successfully", %{grpc_channel: channel} do
       service_account_id = Ecto.UUID.generate()
+      org_id = Ecto.UUID.generate()
 
       with_mocks([
         {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
         {Guard.ServiceAccount.Actions, [:passthrough],
          [
-           regenerate_token: fn id ->
+           regenerate_token: fn id, requested_org_id ->
              assert id == service_account_id
+             assert requested_org_id == org_id
              {:ok, "new-api-token"}
            end
          ]}
       ]) do
         request =
-          ServiceAccount.RegenerateTokenRequest.new(service_account_id: service_account_id)
+          ServiceAccount.RegenerateTokenRequest.new(
+            service_account_id: service_account_id,
+            org_id: org_id
+          )
 
         {:ok, response} = channel |> Stub.regenerate_token(request)
 
@@ -911,18 +1289,66 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
       end
     end
 
-    test "handles service account not found", %{grpc_channel: channel} do
+    test "returns not_found when regenerating token for a service account from a different org",
+         %{grpc_channel: channel} do
       service_account_id = Ecto.UUID.generate()
+      owner_org_id = Ecto.UUID.generate()
+      other_org_id = Ecto.UUID.generate()
 
       with_mocks([
         {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
         {Guard.ServiceAccount.Actions, [:passthrough],
          [
-           regenerate_token: fn _ -> {:error, :not_found} end
+           regenerate_token: fn id, requested_org_id ->
+             assert id == service_account_id
+             assert requested_org_id == other_org_id
+             {:error, :not_found}
+           end
+         ]}
+      ]) do
+        _ = owner_org_id
+
+        request =
+          ServiceAccount.RegenerateTokenRequest.new(
+            service_account_id: service_account_id,
+            org_id: other_org_id
+          )
+
+        {:error, %GRPC.RPCError{status: 5, message: message}} =
+          channel |> Stub.regenerate_token(request)
+
+        assert String.contains?(message, "Service account #{service_account_id} not found")
+      end
+    end
+
+    test "rejects empty org_id with invalid_argument", %{grpc_channel: channel} do
+      service_account_id = Ecto.UUID.generate()
+
+      request =
+        ServiceAccount.RegenerateTokenRequest.new(
+          service_account_id: service_account_id,
+          org_id: ""
+        )
+
+      {:error, %GRPC.RPCError{status: 3}} = channel |> Stub.regenerate_token(request)
+    end
+
+    test "handles service account not found", %{grpc_channel: channel} do
+      service_account_id = Ecto.UUID.generate()
+      org_id = Ecto.UUID.generate()
+
+      with_mocks([
+        {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
+        {Guard.ServiceAccount.Actions, [:passthrough],
+         [
+           regenerate_token: fn _, _ -> {:error, :not_found} end
          ]}
       ]) do
         request =
-          ServiceAccount.RegenerateTokenRequest.new(service_account_id: service_account_id)
+          ServiceAccount.RegenerateTokenRequest.new(
+            service_account_id: service_account_id,
+            org_id: org_id
+          )
 
         {:error, %GRPC.RPCError{status: 5, message: message}} =
           channel |> Stub.regenerate_token(request)
@@ -933,16 +1359,20 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
 
     test "handles internal errors", %{grpc_channel: channel} do
       service_account_id = Ecto.UUID.generate()
+      org_id = Ecto.UUID.generate()
 
       with_mocks([
         {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
         {Guard.ServiceAccount.Actions, [:passthrough],
          [
-           regenerate_token: fn _ -> {:error, :token_generation_error} end
+           regenerate_token: fn _, _ -> {:error, :token_generation_error} end
          ]}
       ]) do
         request =
-          ServiceAccount.RegenerateTokenRequest.new(service_account_id: service_account_id)
+          ServiceAccount.RegenerateTokenRequest.new(
+            service_account_id: service_account_id,
+            org_id: org_id
+          )
 
         {:error, %GRPC.RPCError{status: 13, message: message}} =
           channel |> Stub.regenerate_token(request)
