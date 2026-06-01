@@ -37,6 +37,8 @@ defmodule Guard.FrontRepo.RepoHostAccount do
 
   @primary_key {:id, :binary_id, autogenerate: true}
 
+  @derive {Inspect, except: [:token, :refresh_token]}
+
   schema "repo_host_accounts" do
     field(:login, :string)
     field(:github_uid, :string)
@@ -197,14 +199,15 @@ defmodule Guard.FrontRepo.RepoHostAccount do
   end
 
   @doc """
-  Write `:login` and/or `:name` only; other keys dropped. `nil`/`""` are
-  dropped (treated as "no opinion" rather than "clear the field"). Only
-  supplied fields are validated.
+  Write `:login` and/or `:name` only; other keys dropped. Strict writer:
+  any supplied key must carry a non-blank value or the changeset fails with
+  a `:required` error. Callers that want "drop nil/blank as no-opinion"
+  semantics must filter before calling.
   """
   @spec update_profile(t(), map()) :: {:ok, t()} | {:error, Ecto.Changeset.t()}
   def update_profile(%__MODULE__{} = rha, attrs) when is_map(attrs) do
     rha
-    |> Ecto.Changeset.cast(Map.reject(attrs, fn {_k, v} -> v in [nil, ""] end), [:login, :name])
+    |> Ecto.Changeset.cast(attrs, [:login, :name])
     |> then(&Ecto.Changeset.validate_required(&1, Map.keys(&1.changes)))
     |> FrontRepo.update()
   end

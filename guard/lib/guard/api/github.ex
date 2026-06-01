@@ -105,24 +105,30 @@ defmodule Guard.Api.Github do
     ])
   end
 
-  def validate_token(""), do: false
+  def validate_token(""), do: {:ok, false}
 
   def validate_token(token) do
     case get("", headers: authorization_headers(token)) do
-      {:ok, res} ->
-        is_valid = res.status in 200..299
+      {:ok, %{status: status}} when status in 200..299 ->
+        {:ok, true}
 
-        unless is_valid do
-          Logger.error(
-            "Token validation failed. status: #{res.status} body: #{inspect(res.body)}"
-          )
-        end
+      {:ok, %{status: status}} when status in [401, 403] ->
+        {:ok, false}
 
-        {:ok, is_valid}
+      {:ok, %{status: status}} when status == 429 or status in 500..599 ->
+        Logger.warning("Transient GitHub token validation failure (HTTP #{status})")
+        {:error, :transient}
+
+      {:ok, %{status: status, body: body}} ->
+        Logger.warning(
+          "Unexpected GitHub token validation response (HTTP #{status}): #{inspect(body)}"
+        )
+
+        {:error, :transient}
 
       {:error, error} ->
-        Logger.error("Error validating token: #{inspect(error)}")
-        {:error, :network_error}
+        Logger.error("Error validating GitHub token: #{inspect(error)}")
+        {:error, :transient}
     end
   end
 

@@ -60,4 +60,67 @@ defmodule Guard.Api.GithubTest do
       assert updated_rha.token == "new_token"
     end
   end
+
+  describe "validate_token/1" do
+    test "2xx returns {:ok, true}" do
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          {:ok, %Tesla.Env{status: 200, body: %{}}}
+      end)
+
+      assert {:ok, true} = Github.validate_token("token")
+    end
+
+    for status <- [401, 403] do
+      test "#{status} returns {:ok, false}" do
+        status = unquote(status)
+
+        Tesla.Mock.mock_global(fn
+          %{method: :get, url: "https://api.github.com"} ->
+            {:ok, %Tesla.Env{status: status, body: %{"message" => "denied"}}}
+        end)
+
+        assert {:ok, false} = Github.validate_token("token")
+      end
+    end
+
+    for status <- [429, 500, 502, 503] do
+      test "#{status} returns {:error, :transient}" do
+        status = unquote(status)
+
+        Tesla.Mock.mock_global(fn
+          %{method: :get, url: "https://api.github.com"} ->
+            {:ok, %Tesla.Env{status: status, body: %{"message" => "boom"}}}
+        end)
+
+        assert {:error, :transient} = Github.validate_token("token")
+      end
+    end
+
+    test "unexpected 4xx returns {:error, :transient}" do
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          {:ok, %Tesla.Env{status: 418, body: %{}}}
+      end)
+
+      assert {:error, :transient} = Github.validate_token("token")
+    end
+
+    test "network error returns {:error, :transient}" do
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          {:error, :timeout}
+      end)
+
+      assert {:error, :transient} = Github.validate_token("token")
+    end
+
+    test "empty token returns {:ok, false} without issuing HTTP request" do
+      Tesla.Mock.mock_global(fn _ ->
+        raise "unexpected HTTP call for validate_token(\"\")"
+      end)
+
+      assert {:ok, false} = Github.validate_token("")
+    end
+  end
 end
