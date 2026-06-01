@@ -14,11 +14,11 @@ defmodule Guard.Store.ServiceAccountTest do
     :ok
   end
 
-  describe "find/1" do
+  describe "find/2" do
     test "returns service account when found" do
-      {:ok, %{service_account: created_sa}} = ServiceAccountFactory.insert()
+      {:ok, %{service_account: created_sa, user: user}} = ServiceAccountFactory.insert()
 
-      {:ok, found_sa} = ServiceAccount.find(created_sa.id)
+      {:ok, found_sa} = ServiceAccount.find(created_sa.id, user.org_id)
 
       assert found_sa.id == created_sa.id
       assert found_sa.name == created_sa.user.name
@@ -28,8 +28,16 @@ defmodule Guard.Store.ServiceAccountTest do
 
     test "returns error when service account not found" do
       non_existent_id = Ecto.UUID.generate()
+      org_id = Ecto.UUID.generate()
 
-      assert {:error, :not_found} = ServiceAccount.find(non_existent_id)
+      assert {:error, :not_found} = ServiceAccount.find(non_existent_id, org_id)
+    end
+
+    test "returns not_found when service account belongs to a different org" do
+      {:ok, %{service_account: created_sa}} = ServiceAccountFactory.insert()
+      other_org_id = Ecto.UUID.generate()
+
+      assert {:error, :not_found} = ServiceAccount.find(created_sa.id, other_org_id)
     end
 
     test "returns deactivated service account" do
@@ -39,7 +47,7 @@ defmodule Guard.Store.ServiceAccountTest do
       User.changeset(user, %{deactivated: true, deactivated_at: DateTime.utc_now()})
       |> FrontRepo.update()
 
-      assert {:ok, %{deactivated: true}} = ServiceAccount.find(created_sa.id)
+      assert {:ok, %{deactivated: true}} = ServiceAccount.find(created_sa.id, user.org_id)
     end
 
     test "returns error when service account is blocked" do
@@ -49,22 +57,25 @@ defmodule Guard.Store.ServiceAccountTest do
       User.changeset(user, %{blocked_at: DateTime.utc_now()})
       |> FrontRepo.update()
 
-      assert {:error, :not_found} = ServiceAccount.find(created_sa.id)
+      assert {:error, :not_found} = ServiceAccount.find(created_sa.id, user.org_id)
     end
 
     test "returns error for invalid UUID" do
-      assert {:error, :not_found} = ServiceAccount.find("invalid-uuid")
+      org_id = Ecto.UUID.generate()
+
+      assert {:error, :not_found} = ServiceAccount.find("invalid-uuid", org_id)
     end
   end
 
-  describe "find_many/1" do
+  describe "find_many/2" do
     test "returns multiple service accounts when found" do
-      {:ok, %{service_account: sa1}} = ServiceAccountFactory.insert(name: "SA1")
-      {:ok, %{service_account: sa2}} = ServiceAccountFactory.insert(name: "SA2")
-      {:ok, %{service_account: sa3}} = ServiceAccountFactory.insert(name: "SA3")
+      org_id = Ecto.UUID.generate()
+      {:ok, %{service_account: sa1}} = ServiceAccountFactory.insert(org_id: org_id, name: "SA1")
+      {:ok, %{service_account: sa2}} = ServiceAccountFactory.insert(org_id: org_id, name: "SA2")
+      {:ok, %{service_account: sa3}} = ServiceAccountFactory.insert(org_id: org_id, name: "SA3")
 
       ids = [sa1.id, sa2.id, sa3.id]
-      {:ok, found_accounts} = ServiceAccount.find_many(ids)
+      {:ok, found_accounts} = ServiceAccount.find_many(ids, org_id)
 
       assert length(found_accounts) == 3
       found_ids = Enum.map(found_accounts, & &1.id) |> Enum.sort()
@@ -72,20 +83,43 @@ defmodule Guard.Store.ServiceAccountTest do
       assert found_ids == expected_ids
     end
 
+    test "excludes service accounts that belong to a different org" do
+      org_id = Ecto.UUID.generate()
+      other_org_id = Ecto.UUID.generate()
+
+      {:ok, %{service_account: sa1}} = ServiceAccountFactory.insert(org_id: org_id, name: "SA1")
+      {:ok, %{service_account: sa2}} = ServiceAccountFactory.insert(org_id: org_id, name: "SA2")
+
+      # Service account belonging to another org
+      {:ok, %{service_account: foreign_sa}} =
+        ServiceAccountFactory.insert(org_id: other_org_id, name: "Foreign")
+
+      ids = [sa1.id, sa2.id, foreign_sa.id]
+      {:ok, found_accounts} = ServiceAccount.find_many(ids, org_id)
+
+      assert length(found_accounts) == 2
+      found_ids = Enum.map(found_accounts, & &1.id) |> Enum.sort()
+      expected_ids = [sa1.id, sa2.id] |> Enum.sort()
+      assert found_ids == expected_ids
+      refute Enum.any?(found_accounts, &(&1.id == foreign_sa.id))
+    end
+
     test "returns empty list when no service accounts found" do
+      org_id = Ecto.UUID.generate()
       non_existent_ids = [Ecto.UUID.generate(), Ecto.UUID.generate()]
 
-      {:ok, found_accounts} = ServiceAccount.find_many(non_existent_ids)
+      {:ok, found_accounts} = ServiceAccount.find_many(non_existent_ids, org_id)
 
       assert found_accounts == []
     end
 
     test "filters out invalid UUIDs and returns valid ones" do
-      {:ok, %{service_account: sa1}} = ServiceAccountFactory.insert(name: "SA1")
-      {:ok, %{service_account: sa2}} = ServiceAccountFactory.insert(name: "SA2")
+      org_id = Ecto.UUID.generate()
+      {:ok, %{service_account: sa1}} = ServiceAccountFactory.insert(org_id: org_id, name: "SA1")
+      {:ok, %{service_account: sa2}} = ServiceAccountFactory.insert(org_id: org_id, name: "SA2")
 
       ids = [sa1.id, "invalid-uuid", sa2.id, "another-invalid"]
-      {:ok, found_accounts} = ServiceAccount.find_many(ids)
+      {:ok, found_accounts} = ServiceAccount.find_many(ids, org_id)
 
       assert length(found_accounts) == 2
       found_ids = Enum.map(found_accounts, & &1.id) |> Enum.sort()
@@ -94,30 +128,38 @@ defmodule Guard.Store.ServiceAccountTest do
     end
 
     test "excludes blocked service accounts" do
-      {:ok, %{service_account: sa1, user: user1}} = ServiceAccountFactory.insert(name: "SA1")
-      {:ok, %{service_account: sa2}} = ServiceAccountFactory.insert(name: "SA2")
+      org_id = Ecto.UUID.generate()
+
+      {:ok, %{service_account: sa1, user: user1}} =
+        ServiceAccountFactory.insert(org_id: org_id, name: "SA1")
+
+      {:ok, %{service_account: sa2}} = ServiceAccountFactory.insert(org_id: org_id, name: "SA2")
 
       # Block the first user
       User.changeset(user1, %{blocked_at: DateTime.utc_now()})
       |> FrontRepo.update()
 
       ids = [sa1.id, sa2.id]
-      {:ok, found_accounts} = ServiceAccount.find_many(ids)
+      {:ok, found_accounts} = ServiceAccount.find_many(ids, org_id)
 
       assert length(found_accounts) == 1
       assert hd(found_accounts).id == sa2.id
     end
 
     test "includes deactivated service accounts" do
-      {:ok, %{service_account: sa1, user: user1}} = ServiceAccountFactory.insert(name: "SA1")
-      {:ok, %{service_account: sa2}} = ServiceAccountFactory.insert(name: "SA2")
+      org_id = Ecto.UUID.generate()
+
+      {:ok, %{service_account: sa1, user: user1}} =
+        ServiceAccountFactory.insert(org_id: org_id, name: "SA1")
+
+      {:ok, %{service_account: sa2}} = ServiceAccountFactory.insert(org_id: org_id, name: "SA2")
 
       # Deactivate the first user
       User.changeset(user1, %{deactivated: true, deactivated_at: DateTime.utc_now()})
       |> FrontRepo.update()
 
       ids = [sa1.id, sa2.id]
-      {:ok, found_accounts} = ServiceAccount.find_many(ids)
+      {:ok, found_accounts} = ServiceAccount.find_many(ids, org_id)
 
       assert length(found_accounts) == 2
       deactivated_account = Enum.find(found_accounts, &(&1.id == sa1.id))
@@ -125,23 +167,26 @@ defmodule Guard.Store.ServiceAccountTest do
     end
 
     test "returns empty list for empty input" do
-      {:ok, found_accounts} = ServiceAccount.find_many([])
+      org_id = Ecto.UUID.generate()
+      {:ok, found_accounts} = ServiceAccount.find_many([], org_id)
 
       assert found_accounts == []
     end
 
     test "returns empty list for only invalid UUIDs" do
-      {:ok, found_accounts} = ServiceAccount.find_many(["invalid", "also-invalid"])
+      org_id = Ecto.UUID.generate()
+      {:ok, found_accounts} = ServiceAccount.find_many(["invalid", "also-invalid"], org_id)
 
       assert found_accounts == []
     end
 
     test "handles partial matches correctly" do
-      {:ok, %{service_account: sa1}} = ServiceAccountFactory.insert(name: "SA1")
+      org_id = Ecto.UUID.generate()
+      {:ok, %{service_account: sa1}} = ServiceAccountFactory.insert(org_id: org_id, name: "SA1")
       non_existent_id = Ecto.UUID.generate()
 
       ids = [sa1.id, non_existent_id]
-      {:ok, found_accounts} = ServiceAccount.find_many(ids)
+      {:ok, found_accounts} = ServiceAccount.find_many(ids, org_id)
 
       assert length(found_accounts) == 1
       assert hd(found_accounts).id == sa1.id
@@ -316,13 +361,13 @@ defmodule Guard.Store.ServiceAccountTest do
     end
   end
 
-  describe "update/2" do
+  describe "update/3" do
     test "updates service account name and description" do
-      {:ok, %{service_account: sa}} = ServiceAccountFactory.insert()
+      {:ok, %{service_account: sa, user: user}} = ServiceAccountFactory.insert()
 
       update_params = %{name: "Updated Name", description: "Updated Description"}
 
-      {:ok, updated_sa} = ServiceAccount.update(sa.id, update_params)
+      {:ok, updated_sa} = ServiceAccount.update(sa.id, user.org_id, update_params)
 
       assert updated_sa.user.name == "Updated Name"
       assert updated_sa.description == "Updated Description"
@@ -332,11 +377,11 @@ defmodule Guard.Store.ServiceAccountTest do
     test "updates synthetic email when name changes" do
       with_mock Guard.Api.Organization, [:passthrough],
         fetch: fn _ -> %InternalApi.Organization.Organization{org_username: "test-org"} end do
-        {:ok, %{service_account: sa}} = ServiceAccountFactory.insert()
+        {:ok, %{service_account: sa, user: user}} = ServiceAccountFactory.insert()
 
         update_params = %{name: "New Name"}
 
-        {:ok, updated_sa} = ServiceAccount.update(sa.id, update_params)
+        {:ok, updated_sa} = ServiceAccount.update(sa.id, user.org_id, update_params)
 
         assert updated_sa.user.name == "New Name"
 
@@ -353,7 +398,7 @@ defmodule Guard.Store.ServiceAccountTest do
 
       update_params = %{description: "New Description"}
 
-      {:ok, updated_sa} = ServiceAccount.update(sa.id, update_params)
+      {:ok, updated_sa} = ServiceAccount.update(sa.id, user.org_id, update_params)
 
       assert updated_sa.user.name == original_name
       assert updated_sa.description == "New Description"
@@ -361,29 +406,41 @@ defmodule Guard.Store.ServiceAccountTest do
 
     test "returns error when service account not found" do
       non_existent_id = Ecto.UUID.generate()
+      org_id = Ecto.UUID.generate()
 
-      {:error, :not_found} = ServiceAccount.update(non_existent_id, %{name: "New Name"})
+      {:error, :not_found} = ServiceAccount.update(non_existent_id, org_id, %{name: "New Name"})
+    end
+
+    test "returns not_found when service account belongs to a different org" do
+      {:ok, %{service_account: sa}} = ServiceAccountFactory.insert()
+      other_org_id = Ecto.UUID.generate()
+
+      assert {:error, :not_found} =
+               ServiceAccount.update(sa.id, other_org_id, %{name: "New Name"})
     end
 
     test "returns error for invalid UUID" do
-      assert {:error, :invalid_id} = ServiceAccount.update("invalid-uuid", %{name: "New Name"})
+      org_id = Ecto.UUID.generate()
+
+      assert {:error, :invalid_id} =
+               ServiceAccount.update("invalid-uuid", org_id, %{name: "New Name"})
     end
 
     test "handles database errors gracefully" do
-      {:ok, %{service_account: sa}} = ServiceAccountFactory.insert()
+      {:ok, %{service_account: sa, user: user}} = ServiceAccountFactory.insert()
 
       # Mock a database error
       with_mock FrontRepo, [:passthrough], update: fn _ -> {:error, %Ecto.Changeset{}} end do
-        assert {:error, []} = ServiceAccount.update(sa.id, %{name: "New Name"})
+        assert {:error, []} = ServiceAccount.update(sa.id, user.org_id, %{name: "New Name"})
       end
     end
   end
 
-  describe "deactivate/1" do
+  describe "deactivate/2" do
     test "soft deletes service account by deactivating user" do
-      {:ok, %{service_account: sa}} = ServiceAccountFactory.insert()
+      {:ok, %{service_account: sa, user: user}} = ServiceAccountFactory.insert()
 
-      {:ok, :deactivated} = ServiceAccount.deactivate(sa.id)
+      {:ok, :deactivated} = ServiceAccount.deactivate(sa.id, user.org_id)
 
       # Verify user is deactivated
       user = FrontRepo.get!(User, sa.id)
@@ -391,38 +448,48 @@ defmodule Guard.Store.ServiceAccountTest do
       assert user.deactivated_at != nil
 
       # Verify service account is no longer findable
-      assert {:ok, %{deactivated: true}} = ServiceAccount.find(sa.id)
+      assert {:ok, %{deactivated: true}} = ServiceAccount.find(sa.id, user.org_id)
     end
 
     test "returns error when service account not found" do
       non_existent_id = Ecto.UUID.generate()
+      org_id = Ecto.UUID.generate()
 
-      assert {:error, :not_found} = ServiceAccount.deactivate(non_existent_id)
+      assert {:error, :not_found} = ServiceAccount.deactivate(non_existent_id, org_id)
+    end
+
+    test "returns not_found when service account belongs to a different org" do
+      {:ok, %{service_account: sa}} = ServiceAccountFactory.insert()
+      other_org_id = Ecto.UUID.generate()
+
+      assert {:error, :not_found} = ServiceAccount.deactivate(sa.id, other_org_id)
     end
 
     test "returns error for invalid UUID" do
-      assert {:error, :invalid_id} = ServiceAccount.deactivate("invalid-uuid")
+      org_id = Ecto.UUID.generate()
+
+      assert {:error, :invalid_id} = ServiceAccount.deactivate("invalid-uuid", org_id)
     end
 
     test "handles database errors gracefully" do
-      {:ok, %{service_account: sa}} = ServiceAccountFactory.insert()
+      {:ok, %{service_account: sa, user: user}} = ServiceAccountFactory.insert()
 
       # Mock a database error
       with_mock FrontRepo, [:passthrough], update: fn _ -> {:error, %Ecto.Changeset{}} end do
-        assert {:error, :internal_error} = ServiceAccount.deactivate(sa.id)
+        assert {:error, :internal_error} = ServiceAccount.deactivate(sa.id, user.org_id)
       end
     end
   end
 
-  describe "reactivate/1" do
+  describe "reactivate/2" do
     test "reactivates a deactivated service account" do
-      {:ok, %{service_account: sa}} = ServiceAccountFactory.insert()
+      {:ok, %{service_account: sa, user: user}} = ServiceAccountFactory.insert()
 
       # First deactivate it
-      {:ok, :deactivated} = ServiceAccount.deactivate(sa.id)
+      {:ok, :deactivated} = ServiceAccount.deactivate(sa.id, user.org_id)
 
       # Then reactivate it
-      {:ok, :reactivated} = ServiceAccount.reactivate(sa.id)
+      {:ok, :reactivated} = ServiceAccount.reactivate(sa.id, user.org_id)
 
       # Verify user is reactivated
       user = FrontRepo.get!(User, sa.id)
@@ -430,35 +497,47 @@ defmodule Guard.Store.ServiceAccountTest do
       assert user.deactivated_at == nil
 
       # Verify service account is findable again
-      assert {:ok, found_sa} = ServiceAccount.find(sa.id)
+      assert {:ok, found_sa} = ServiceAccount.find(sa.id, user.org_id)
       assert found_sa.id == sa.id
     end
 
     test "returns error when service account not found" do
       non_existent_id = Ecto.UUID.generate()
+      org_id = Ecto.UUID.generate()
 
-      assert {:error, :not_found} = ServiceAccount.reactivate(non_existent_id)
+      assert {:error, :not_found} = ServiceAccount.reactivate(non_existent_id, org_id)
+    end
+
+    test "returns not_found when service account belongs to a different org" do
+      {:ok, %{service_account: sa, user: user}} = ServiceAccountFactory.insert()
+
+      # Deactivate it within its own org so reactivation is otherwise valid
+      {:ok, :deactivated} = ServiceAccount.deactivate(sa.id, user.org_id)
+
+      other_org_id = Ecto.UUID.generate()
+
+      assert {:error, :not_found} = ServiceAccount.reactivate(sa.id, other_org_id)
     end
 
     test "handles database errors gracefully" do
-      {:ok, %{service_account: sa}} = ServiceAccountFactory.insert()
+      {:ok, %{service_account: sa, user: user}} = ServiceAccountFactory.insert()
 
       # First deactivate it
-      {:ok, :deactivated} = ServiceAccount.deactivate(sa.id)
+      {:ok, :deactivated} = ServiceAccount.deactivate(sa.id, user.org_id)
 
       # Mock a database error
       with_mock FrontRepo, [:passthrough], update: fn _ -> {:error, %Ecto.Changeset{}} end do
-        assert {:error, :internal_error} = ServiceAccount.reactivate(sa.id)
+        assert {:error, :internal_error} = ServiceAccount.reactivate(sa.id, user.org_id)
       end
     end
   end
 
-  describe "destroy/1" do
+  describe "destroy/2" do
     test "permanently deletes service account and user records" do
-      {:ok, %{service_account: sa}} = ServiceAccountFactory.insert()
+      {:ok, %{service_account: sa, user: user}} = ServiceAccountFactory.insert()
       service_account_id = sa.id
 
-      {:ok, :destroyed} = ServiceAccount.destroy(service_account_id)
+      {:ok, :destroyed} = ServiceAccount.destroy(service_account_id, user.org_id)
 
       # Verify both records are deleted
       assert FrontRepo.get(User, service_account_id) == nil
@@ -466,14 +545,14 @@ defmodule Guard.Store.ServiceAccountTest do
     end
 
     test "can destroy deactivated service account" do
-      {:ok, %{service_account: sa}} = ServiceAccountFactory.insert()
+      {:ok, %{service_account: sa, user: user}} = ServiceAccountFactory.insert()
       service_account_id = sa.id
 
       # First deactivate it
-      {:ok, :deactivated} = ServiceAccount.deactivate(service_account_id)
+      {:ok, :deactivated} = ServiceAccount.deactivate(service_account_id, user.org_id)
 
       # Then destroy it
-      {:ok, :destroyed} = ServiceAccount.destroy(service_account_id)
+      {:ok, :destroyed} = ServiceAccount.destroy(service_account_id, user.org_id)
 
       # Verify both records are deleted
       assert FrontRepo.get(User, service_account_id) == nil
@@ -482,31 +561,46 @@ defmodule Guard.Store.ServiceAccountTest do
 
     test "returns error when service account not found" do
       non_existent_id = Ecto.UUID.generate()
+      org_id = Ecto.UUID.generate()
 
-      assert {:error, :not_found} = ServiceAccount.destroy(non_existent_id)
+      assert {:error, :not_found} = ServiceAccount.destroy(non_existent_id, org_id)
+    end
+
+    test "returns not_found when service account belongs to a different org" do
+      {:ok, %{service_account: sa}} = ServiceAccountFactory.insert()
+      service_account_id = sa.id
+      other_org_id = Ecto.UUID.generate()
+
+      assert {:error, :not_found} = ServiceAccount.destroy(service_account_id, other_org_id)
+
+      # records remain when the org does not match
+      assert FrontRepo.get(User, service_account_id) != nil
+      assert FrontRepo.get(Guard.FrontRepo.ServiceAccount, service_account_id) != nil
     end
 
     test "returns error for invalid UUID" do
-      assert {:error, :invalid_id} = ServiceAccount.destroy("invalid-uuid")
+      org_id = Ecto.UUID.generate()
+
+      assert {:error, :invalid_id} = ServiceAccount.destroy("invalid-uuid", org_id)
     end
 
     test "handles database errors gracefully" do
-      {:ok, %{service_account: sa}} = ServiceAccountFactory.insert()
+      {:ok, %{service_account: sa, user: user}} = ServiceAccountFactory.insert()
 
       # Mock a database error
       with_mock FrontRepo, [:passthrough], delete: fn _ -> {:error, %Ecto.Changeset{}} end do
-        assert {:error, :internal_error} = ServiceAccount.destroy(sa.id)
+        assert {:error, :internal_error} = ServiceAccount.destroy(sa.id, user.org_id)
       end
     end
   end
 
-  describe "regenerate_token/1" do
+  describe "regenerate_token/2" do
     test "regenerates token successfully" do
       with_mock Guard.FrontRepo.User, [:passthrough],
         reset_auth_token: fn _ -> {:ok, "new-token"} end do
-        {:ok, %{service_account: sa}} = ServiceAccountFactory.insert()
+        {:ok, %{service_account: sa, user: user}} = ServiceAccountFactory.insert()
 
-        {:ok, new_token} = ServiceAccount.regenerate_token(sa.id)
+        {:ok, new_token} = ServiceAccount.regenerate_token(sa.id, user.org_id)
 
         assert new_token == "new-token"
       end
@@ -514,25 +608,35 @@ defmodule Guard.Store.ServiceAccountTest do
 
     test "returns error when service account not found" do
       non_existent_id = Ecto.UUID.generate()
+      org_id = Ecto.UUID.generate()
 
-      assert {:error, :not_found} = ServiceAccount.regenerate_token(non_existent_id)
+      assert {:error, :not_found} = ServiceAccount.regenerate_token(non_existent_id, org_id)
+    end
+
+    test "returns not_found when service account belongs to a different org" do
+      {:ok, %{service_account: sa}} = ServiceAccountFactory.insert()
+      other_org_id = Ecto.UUID.generate()
+
+      assert {:error, :not_found} = ServiceAccount.regenerate_token(sa.id, other_org_id)
     end
 
     test "returns error for invalid UUID" do
-      assert {:error, :invalid_id} = ServiceAccount.regenerate_token("invalid-uuid")
+      org_id = Ecto.UUID.generate()
+
+      assert {:error, :invalid_id} = ServiceAccount.regenerate_token("invalid-uuid", org_id)
     end
 
     test "handles token generation failure" do
       with_mock Guard.FrontRepo.User, [:passthrough],
         reset_auth_token: fn _ -> {:error, :token_error} end do
-        {:ok, %{service_account: sa}} = ServiceAccountFactory.insert()
+        {:ok, %{service_account: sa, user: user}} = ServiceAccountFactory.insert()
 
-        {:error, :token_error} = ServiceAccount.regenerate_token(sa.id)
+        {:error, :token_error} = ServiceAccount.regenerate_token(sa.id, user.org_id)
       end
     end
 
     test "handles database errors gracefully" do
-      {:ok, %{service_account: sa}} = ServiceAccountFactory.insert()
+      {:ok, %{service_account: sa, user: user}} = ServiceAccountFactory.insert()
 
       # Mock a database error during token update
       with_mocks([
@@ -540,7 +644,7 @@ defmodule Guard.Store.ServiceAccountTest do
          [reset_auth_token: fn _ -> {:ok, "new-token"} end]},
         {FrontRepo, [:passthrough], [update: fn _ -> {:error, %Ecto.Changeset{}} end]}
       ]) do
-        assert {:error, []} = ServiceAccount.regenerate_token(sa.id)
+        assert {:error, []} = ServiceAccount.regenerate_token(sa.id, user.org_id)
       end
     end
   end
