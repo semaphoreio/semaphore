@@ -28,14 +28,18 @@ defmodule Projecthub.Mixfile do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:plug, "~> 1.7.1"},
-      {:plug_cowboy, "~> 2.0"},
-      {:grpc, "~> 0.3.1"},
+      {:plug, "~> 1.15.4"},
+      {:plug_cowboy, "~> 2.8.1"},
+      {:cowboy, "~> 2.15.0", override: true},
+      {:cowlib, "~> 2.16.1", override: true},
+      {:grpc, "0.5.0-beta.1", override: true},
+      {:protobuf, "~> 0.5.4", override: true},
       {:watchman, github: "renderedtext/ex-watchman"},
       {:timex, "~> 3.1"},
       {:cachex, "~> 3.0"},
       {:poison, "~> 3.1"},
       {:httpoison, "~> 0.11", only: [:dev, :test]},
+      {:hackney, "~> 1.24", override: true},
       {:fun_registry, github: "renderedtext/fun-registry", only: [:dev, :test]},
       {:sentry, "~> 7.0"},
       # sentry deps
