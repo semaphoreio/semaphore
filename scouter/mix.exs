@@ -56,6 +56,8 @@ defmodule Scouter.MixProject do
       {:watchman, github: "renderedtext/ex-watchman"},
       {:excoveralls, "~> 0.18", only: :test},
       {:grpc, "~> 0.6"},
+      {:cowboy, "~> 2.15.0", override: true},
+      {:cowlib, "~> 2.16.1", override: true},
       {:protobuf, "~> 0.11"},
       {:junit_formatter, "~> 3.1", only: [:test]}
     ]
