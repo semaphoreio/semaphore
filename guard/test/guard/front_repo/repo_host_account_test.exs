@@ -71,10 +71,10 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
       assert reloaded.name == nil
     end
 
-    test "returns changeset error when login is set to blank", %{rha: rha} do
-      assert {:error, %Ecto.Changeset{} = cs} = RepoHostAccount.update_profile(rha, %{login: ""})
-
-      assert {"can't be blank", _} = cs.errors[:login]
+    test "silently drops blank values (no clear-the-field semantics)", %{rha: rha} do
+      assert {:ok, ^rha} = RepoHostAccount.update_profile(rha, %{login: ""})
+      assert {:ok, ^rha} = RepoHostAccount.update_profile(rha, %{name: nil})
+      assert {:ok, ^rha} = RepoHostAccount.update_profile(rha, %{login: "", name: nil})
     end
   end
 end
