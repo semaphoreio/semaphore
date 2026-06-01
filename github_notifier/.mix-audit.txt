@@ -1,0 +1,5 @@
+# cowlib — cookie request header injection in cow_cookie:cookie/1 (no patched
+# version released upstream; cowlib 2.16.1 is the latest release and is still
+# flagged). github_notifier does not generate Set-Cookie headers from
+# user-controlled input; cowlib is only pulled in transitively via plug_cowboy/grpc.
+GHSA-g2wm-735q-3f56
