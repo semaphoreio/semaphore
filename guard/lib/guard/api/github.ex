@@ -39,13 +39,13 @@ defmodule Guard.Api.Github do
             {:error, :not_found}
 
           true ->
-            Logger.debug("Error fetching user: #{inspect(res.body)}")
+            Logger.debug("Error fetching user (HTTP #{res.status}): #{inspect(res.body)}")
 
-            {:error, "#{res.body["message"]}. #{res.body["documentation_url"]}"}
+            {:error, {:http, res.status}}
         end
 
       {:error, error} ->
-        {:error, error}
+        {:error, {:transport, error}}
     end
   end
 
@@ -128,7 +128,7 @@ defmodule Guard.Api.Github do
 
   defp authorization_headers(token) do
     [
-      {"Authorization", "token #{token}"}
+      {"Authorization", "Bearer #{token}"}
     ]
   end
 end
