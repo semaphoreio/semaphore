@@ -94,14 +94,26 @@ defmodule Secrethub.OpenIDConnect.CacheJWTTest do
                CacheJWT.generate_and_sign(request(%{project_id: ""}))
     end
 
-    test "defaults expires_in when unset and clamps to the maximum" do
+    test "defaults to 24h + 15m when expires_in is unset and clamps to that maximum" do
       now = Joken.current_time()
 
+      # Unset/zero -> default to the longest possible job (24h) + 15m buffer,
+      # so a token injected at job start outlives a 24h job.
       assert {:ok, _t, default_exp} = CacheJWT.generate_and_sign(request(%{expires_in: 0}))
-      assert_in_delta default_exp - now, 3_600, 5
+      assert_in_delta default_exp - now, 87_300, 5
 
-      assert {:ok, _t, capped_exp} = CacheJWT.generate_and_sign(request(%{expires_in: 10_000_000}))
-      assert_in_delta capped_exp - now, 90_000, 5
+      # Anything above the maximum is clamped to 24h + 15m.
+      assert {:ok, _t, capped_exp} =
+               CacheJWT.generate_and_sign(request(%{expires_in: 10_000_000}))
+
+      assert_in_delta capped_exp - now, 87_300, 5
+    end
+
+    test "honors a shorter explicitly requested TTL (e.g. debug jobs)" do
+      now = Joken.current_time()
+
+      assert {:ok, _t, exp} = CacheJWT.generate_and_sign(request(%{expires_in: 4_200}))
+      assert_in_delta exp - now, 4_200, 5
     end
   end
 end

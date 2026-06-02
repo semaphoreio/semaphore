@@ -29,12 +29,21 @@ defmodule Secrethub.OpenIDConnect.CacheJWT do
   @audience "ceph-cache"
   @cache_subdomain "cache"
 
-  # The cache token must outlive a single STS session so the job-side runtime
-  # can keep refreshing credentials. Regular jobs run up to 24h; we allow a
-  # small buffer on top.
-  @default_expires_in 3_600
+  # The cache token is injected into the job environment once, before the job
+  # starts, and cannot be regenerated from the job runtime. The job-side cache
+  # runtime uses it to repeatedly exchange for short-lived STS credentials
+  # (AssumeRoleWithWebIdentity) and refresh them as they expire. Therefore the
+  # token must stay valid for the entire job: Semaphore regular jobs run up to
+  # 24h, so the token lives 24h + a 15m buffer.
+  #
+  # The default equals the maximum so that a caller that omits expires_in still
+  # gets a token that survives the longest possible job. Callers (e.g. Zebra)
+  # may request a shorter TTL for short-lived job classes (e.g. debug jobs).
+  @max_job_duration_seconds 86_400
+  @ttl_buffer_seconds 900
+  @default_expires_in @max_job_duration_seconds + @ttl_buffer_seconds
+  @max_expires_in @max_job_duration_seconds + @ttl_buffer_seconds
   @min_expires_in 60
-  @max_expires_in 90_000
 
   @valid_access ["read_only", "read_write"]
 
