@@ -7,6 +7,7 @@ defmodule Secrethub.InternalGrpcApi do
     ListKeysetResponse,
     DestroyResponse,
     GenerateOpenIDConnectTokenResponse,
+    GenerateCacheOpenIDConnectTokenResponse,
     ResponseMeta,
     SecretService,
     UpdateResponse,
@@ -449,6 +450,31 @@ defmodule Secrethub.InternalGrpcApi do
       e ->
         Logger.error("Failed to generate a signed JWT token")
         raise GRPC.RPCError, status: :internal, message: inspect(e)
+    end
+  end
+
+  def generate_cache_open_id_connect_token(req, _),
+    do:
+      observe("generate_cache_open_id_connect_token", nil, fn ->
+        generate_cache_open_id_connect_token(req)
+      end)
+
+  defp generate_cache_open_id_connect_token(req) do
+    case Secrethub.OpenIDConnect.CacheJWT.generate_and_sign(req) do
+      {:ok, token, expires_at} ->
+        GenerateCacheOpenIDConnectTokenResponse.new(token: token, expires_at: expires_at)
+
+      {:error, {:missing_field, field}} ->
+        raise GRPC.RPCError, status: :invalid_argument, message: "#{field} is required"
+
+      {:error, :invalid_cache_access} ->
+        raise GRPC.RPCError,
+          status: :invalid_argument,
+          message: ~s(cache_access must be "read_only" or "read_write")
+
+      e ->
+        Logger.error("Failed to generate a signed cache JWT token: #{inspect(e)}")
+        raise GRPC.RPCError, status: :internal, message: "failed to generate cache token"
     end
   end
 

@@ -48,6 +48,9 @@ on_prem? = System.get_env("ON_PREM") == "true"
 
 config :secrethub, domain: System.get_env("BASE_DOMAIN")
 config :secrethub, openid_keys_path: System.get_env("OPENID_KEYS_PATH")
+# Dedicated keyset for cache-scoped OIDC tokens (CacheJWT). Isolated from the
+# customer-facing keyset. When unset, the cache key manager is not started.
+config :secrethub, cache_openid_keys_path: System.get_env("CACHE_OPENID_KEYS_PATH")
 
 if on_prem? do
   # in on-prem we cache the keys for 24 hours by default

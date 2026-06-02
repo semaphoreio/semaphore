@@ -46,13 +46,8 @@ defmodule Secrethub.OpenIDConnect.HTTPServer do
 
   get "/.well-known/openid-configuration" do
     Watchman.benchmark("ocid_well-known-configuration", fn ->
-      base_domain = Application.fetch_env!(:secrethub, :domain)
-      org_username = conn.assigns.org_username
-      org_id = conn.assigns.org_id
-
-      issuer = "https://#{org_username}.#{base_domain}"
-      jwks_uri = "https://#{org_username}.#{base_domain}/.well-known/jwks.json"
-      configuration = openid_configuration(issuer, jwks_uri, org_id)
+      {issuer, jwks_uri, claims_supported} = openid_endpoints(conn)
+      configuration = openid_configuration(issuer, jwks_uri, claims_supported)
 
       conn
       |> put_well_known_cache_control_header()
@@ -67,7 +62,7 @@ defmodule Secrethub.OpenIDConnect.HTTPServer do
   #
   # Utilities
   #
-  defp openid_configuration(issuer, jwks_uri, org_id) do
+  defp openid_configuration(issuer, jwks_uri, claims_supported) do
     %{
       "issuer" => issuer,
       "jwks_uri" => jwks_uri,
@@ -76,19 +71,42 @@ defmodule Secrethub.OpenIDConnect.HTTPServer do
         "pairwise"
       ],
       "response_types_supported" => ["id_token"],
-      "claims_supported" => Secrethub.OpenIDConnect.JWT.claims(org_id),
+      "claims_supported" => claims_supported,
       "id_token_signing_alg_values_supported" => ["RS256"],
       "scopes_supported" => ["openid"]
     }
   end
 
+  # Resolves the issuer/jwks_uri/claims for the request. The global cache issuer
+  # (host `cache.<base_domain>`) uses a dedicated keyset and claim set; every
+  # other host is treated as a per-organization issuer.
+  defp openid_endpoints(conn) do
+    if cache_request?(conn) do
+      issuer = Secrethub.OpenIDConnect.CacheJWT.issuer()
+
+      {issuer, "#{issuer}/.well-known/jwks.json", Secrethub.OpenIDConnect.CacheJWT.claims()}
+    else
+      base_domain = Application.fetch_env!(:secrethub, :domain)
+      org_username = conn.assigns.org_username
+      issuer = "https://#{org_username}.#{base_domain}"
+
+      {issuer, "#{issuer}/.well-known/jwks.json",
+       Secrethub.OpenIDConnect.JWT.claims(conn.assigns.org_id)}
+    end
+  end
+
   defp serve_jwks(conn) do
-    public_keys = Secrethub.OpenIDConnect.KeyManager.public_keys(:openid_keys)
+    keyset = if cache_request?(conn), do: :cache_openid_keys, else: :openid_keys
+    public_keys = Secrethub.OpenIDConnect.KeyManager.public_keys(keyset)
     Secrethub.OpenIDConnect.Utilization.submit_usage(conn.host)
 
     conn
     |> put_well_known_cache_control_header()
     |> json(200, %{"keys" => public_keys})
+  end
+
+  defp cache_request?(conn) do
+    conn.assigns.org_username == Secrethub.OpenIDConnect.CacheJWT.cache_subdomain()
   end
 
   # sobelow_skip ["XSS.SendResp"]

@@ -47,7 +47,8 @@ defmodule Secrethub.Application do
       children ++
         grpc_services() ++
         openid_connect_services() ++
-        openid_key_manager() ++ workers() ++ feature_provider(provider)
+        openid_key_manager() ++
+        cache_openid_key_manager() ++ workers() ++ feature_provider(provider)
 
     opts = [strategy: :one_for_one, name: Secrets.Supervisor, max_restarts: 1000]
     Supervisor.start_link(children, opts)
@@ -84,6 +85,26 @@ defmodule Secrethub.Application do
       ]
     else
       []
+    end
+  end
+
+  # The cache OIDC keyset is isolated from the customer-facing keyset and is
+  # only started when explicitly configured (CACHE_OPENID_KEYS_PATH). This keeps
+  # environments where the cache issuer is not yet provisioned from failing to
+  # boot, and lets tests start their own :cache_openid_keys agent.
+  defp cache_openid_key_manager do
+    case Application.get_env(:secrethub, :cache_openid_keys_path) do
+      keys_path when is_binary(keys_path) and keys_path != "" ->
+        [
+          {Secrethub.OpenIDConnect.KeyManager,
+           [
+             name: :cache_openid_keys,
+             keys_path: keys_path
+           ]}
+        ]
+
+      _ ->
+        []
     end
   end
 
