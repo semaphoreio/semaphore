@@ -11,16 +11,23 @@ defmodule PipelinesAPI.Util.ClientMetrics do
       tags = [source, command, version]
       name = "PipelinesAPI.router.client_request.<status>"
 
-  `source` is read from the `x-semaphore-client-*` headers sem-ai attaches and
+  `source` is read from the `x-client-*` headers sem-ai attaches and
   defaults to `"api"` for every other (header-less) caller. `command` and
   `version` are sanitised against a tight allow-list before they become tags so
   a malformed/spoofed header can't explode Graphite cardinality.
+
+  A second, deliberately generic counter — `api.client_usage`, tagged only by
+  `[source]` — is emitted per request. Its service-agnostic name lets every API
+  backend write the *same* measurement, so CLI-vs-MCP-vs-api usage aggregates
+  across all endpoints (group by `source`); the per-service `service` tag (from
+  each app's Watchman prefix) still gives the per-backend split when wanted.
   """
 
   alias PipelinesAPI.Util.Metrics
   alias Plug.Conn
 
   @metric "PipelinesAPI.router.client_request"
+  @usage_metric "api.client_usage"
   @na "na"
   @known_sources ~w(semai-cli semai-mcp)
   @command_regex ~r/\A[a-z0-9_]{1,50}\z/
@@ -32,11 +39,13 @@ defmodule PipelinesAPI.Util.ClientMetrics do
   def track_request(conn) do
     start = System.monotonic_time(:millisecond)
     tags = client_tags(conn)
+    [src | _] = tags
 
     Conn.register_before_send(conn, fn conn ->
       duration = System.monotonic_time(:millisecond) - start
       Watchman.submit({@metric, tags}, duration, :timing)
       Metrics.increment(metric_name(conn.status), tags)
+      Metrics.increment(@usage_metric, [src])
       conn
     end)
   end
@@ -48,6 +57,12 @@ defmodule PipelinesAPI.Util.ClientMetrics do
   @doc "Status-suffixed metric name, e.g. \"...client_request.ok\"."
   def metric_name(status), do: "#{@metric}.#{status_label(status)}"
 
+  @doc "Generic, service-agnostic usage-counter name (identical across all backends)."
+  def usage_metric, do: @usage_metric
+
+  @doc "Single-tag list for the generic usage counter: [source]."
+  def usage_tags(conn), do: [source(conn)]
+
   @doc "Header values rendered for the request log line."
   def log_fields(conn) do
     [src, cmd, ver] = client_tags(conn)
@@ -55,7 +70,7 @@ defmodule PipelinesAPI.Util.ClientMetrics do
   end
 
   def source(conn) do
-    case header(conn, "x-semaphore-client-source") do
+    case header(conn, "x-client-source") do
       src when src in @known_sources -> src
       _ -> "api"
     end
@@ -66,8 +81,8 @@ defmodule PipelinesAPI.Util.ClientMetrics do
   def status_label(status) when is_integer(status), do: "ok"
   def status_label(_status), do: "unknown"
 
-  defp command(conn), do: sanitize(header(conn, "x-semaphore-client-command"), @command_regex)
-  defp version(conn), do: sanitize(header(conn, "x-semaphore-client-version"), @version_regex)
+  defp command(conn), do: sanitize(header(conn, "x-client-command"), @command_regex)
+  defp version(conn), do: sanitize(header(conn, "x-client-version"), @version_regex)
 
   defp sanitize(value, regex) when is_binary(value) do
     if Regex.match?(regex, value), do: value, else: @na
