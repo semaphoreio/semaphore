@@ -50,9 +50,16 @@ defmodule PipelinesAPI.Util.ClientMetrics do
     end)
   end
 
-  @doc "Positional Watchman tags: [source, command, version]."
+  @doc """
+  Positional Watchman tags: [source, command, version].
+
+  Values are made graphite-safe — the carbon path separator `.` is replaced
+  with `_` — so a dotted version like `1.4.0` doesn't split into extra path
+  segments and corrupt the InfluxDB measurement name (it would otherwise shift
+  every later position and weld the leftover fragments into the measurement).
+  """
   def client_tags(conn),
-    do: [source(conn), command(conn), version(conn)]
+    do: [source(conn), command(conn), version(conn)] |> Enum.map(&graphite_safe/1)
 
   @doc "Status-suffixed metric name, e.g. \"...client_request.ok\"."
   def metric_name(status), do: "#{@metric}.#{status_label(status)}"
@@ -65,8 +72,7 @@ defmodule PipelinesAPI.Util.ClientMetrics do
 
   @doc "Header values rendered for the request log line."
   def log_fields(conn) do
-    [src, cmd, ver] = client_tags(conn)
-    [" - client=", src, " command=", cmd, " version=", ver]
+    [" - client=", source(conn), " command=", command(conn), " version=", version(conn)]
   end
 
   def source(conn) do
@@ -89,6 +95,11 @@ defmodule PipelinesAPI.Util.ClientMetrics do
   end
 
   defp sanitize(_value, _regex), do: @na
+
+  # Carbon (graphite) uses "." as the metric-path separator, so a tag VALUE
+  # containing "." (e.g. a semver version) splits into extra path segments and
+  # corrupts the measurement name. Neutralise it before it becomes a tag.
+  defp graphite_safe(value), do: String.replace(value, ".", "_")
 
   defp header(conn, name) do
     conn

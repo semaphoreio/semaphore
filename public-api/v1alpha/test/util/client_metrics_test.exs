@@ -18,7 +18,18 @@ defmodule PipelinesAPI.Util.ClientMetricsTest do
         {"x-client-version", "1.4.0"}
       ])
 
-    assert ClientMetrics.client_tags(conn) == ["semai-cli", "pipeline_list", "1.4.0"]
+    assert ClientMetrics.client_tags(conn) == ["semai-cli", "pipeline_list", "1_4_0"]
+  end
+
+  test "replaces dots in tag values so a version can't corrupt the graphite path" do
+    conn =
+      conn_with([
+        {"x-client-source", "semai-cli"},
+        {"x-client-command", "pipeline_list"},
+        {"x-client-version", "v0.1.19-3-ge20eb02"}
+      ])
+
+    assert ClientMetrics.client_tags(conn) == ["semai-cli", "pipeline_list", "v0_1_19-3-ge20eb02"]
   end
 
   test "defaults header-less (non sem-ai) traffic to source=api with na dimensions" do
