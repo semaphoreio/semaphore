@@ -25,6 +25,7 @@ self_hosted
 server_farm.job
 superjerry
 user
+velocity
 loghub
 loghub2
 '
