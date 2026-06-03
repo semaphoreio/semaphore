@@ -48,6 +48,9 @@ defmodule PipelinesAPI.Router do
   alias PipelinesAPI.TestResults.FlakyTestDisruptions
   alias PipelinesAPI.TestResults.FlakyHistory
   alias PipelinesAPI.TestResults.DisruptionHistory
+  alias PipelinesAPI.Insights.Performance, as: InsightsPerformance
+  alias PipelinesAPI.Insights.Reliability, as: InsightsReliability
+  alias PipelinesAPI.Insights.Frequency, as: InsightsFrequency
 
   plug(PipelinesAPI.Plug.Logger)
 
@@ -181,6 +184,10 @@ defmodule PipelinesAPI.Router do
     via: :get,
     to: DisruptionHistory
   )
+
+  match("/projects/:project_id/insights/performance", via: :get, to: InsightsPerformance)
+  match("/projects/:project_id/insights/reliability", via: :get, to: InsightsReliability)
+  match("/projects/:project_id/insights/frequency", via: :get, to: InsightsFrequency)
 
   match("/logs/:job_id", via: :get, to: PipelinesAPI.Logs.Get)
 

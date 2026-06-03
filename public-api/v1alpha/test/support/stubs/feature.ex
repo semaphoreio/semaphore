@@ -341,7 +341,8 @@ defmodule Support.Stubs.Feature do
       {"zendesk_support", state: :HIDDEN, quantity: 0},
       {"new_billing", state: :ENABLED, quantity: 1},
       {"organization_health", state: :ENABLED, quantity: 1},
-      {"superjerry_tests", state: :HIDDEN, quantity: 0}
+      {"superjerry_tests", state: :HIDDEN, quantity: 0},
+      {"velocity", state: :HIDDEN, quantity: 0}
     ]
     |> Enum.map(fn {feature_type, feature_opts} ->
       setup_feature(feature_type, feature_opts)
