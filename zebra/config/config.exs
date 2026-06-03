@@ -32,6 +32,7 @@ config :zebra, domain: "semaphore.#{Atom.to_string(config_env())}"
 
 config :zebra, artifacthub_api_endpoint: "localhost:50051"
 config :zebra, cachehub_api_endpoint: "localhost:50051"
+config :zebra, ceph_cache_s3_url: "https://ceph-cache.example.test"
 config :zebra, chmura_endpoint: "localhost:50051"
 config :zebra, dt_api_endpoint: "localhost:50051"
 config :zebra, feature_api_endpoint: "localhost:50051"
