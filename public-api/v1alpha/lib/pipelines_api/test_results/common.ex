@@ -10,8 +10,12 @@ defmodule PipelinesAPI.TestResults.Common do
     RequestMetrics.track_request(conn, "test_results_api_request")
   end
 
+  def get_org_id(conn) do
+    Conn.get_req_header(conn, "x-semaphore-org-id") |> Enum.at(0, "")
+  end
+
   def feature_enabled(conn, _opts) do
-    org_id = Conn.get_req_header(conn, "x-semaphore-org-id") |> Enum.at(0, "")
+    org_id = get_org_id(conn)
 
     if org_id != "" and FeatureProvider.feature_enabled?(:superjerry_tests, param: org_id) do
       conn

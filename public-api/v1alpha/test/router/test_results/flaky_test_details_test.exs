@@ -54,13 +54,15 @@ defmodule PipelinesAPI.Router.TestResults.FlakyTestDetailsTest do
   test "404 when feature is disabled", ctx do
     Support.Stubs.Feature.disable_feature(ctx.org.id, :superjerry_tests)
 
-    {status, _body} = get("/projects/#{ctx.project.id}/test_results/flaky_tests/t1", ctx.org.id, false)
+    {status, _body} =
+      get("/projects/#{ctx.project.id}/test_results/flaky_tests/t1", ctx.org.id, false)
 
     assert status == 404
   end
 
   defp get(path, org_id, decode? \\ true) do
     url = "localhost:4004#{path}"
+
     headers = [
       {"Content-type", "application/json"},
       {"x-semaphore-user-id", @default_user_id},

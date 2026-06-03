@@ -54,7 +54,8 @@ defmodule PipelinesAPI.Router.TestResults.HistoryTest do
       }
     end)
 
-    {status, body} = get("/projects/#{ctx.project.id}/test_results/disruption_history", ctx.org.id)
+    {status, body} =
+      get("/projects/#{ctx.project.id}/test_results/disruption_history", ctx.org.id)
 
     assert status == 200
     assert [%{"count" => 7}] = body
@@ -63,7 +64,8 @@ defmodule PipelinesAPI.Router.TestResults.HistoryTest do
   test "404 for flaky_history when feature is disabled", ctx do
     Support.Stubs.Feature.disable_feature(ctx.org.id, :superjerry_tests)
 
-    {status, _body} = get("/projects/#{ctx.project.id}/test_results/flaky_history", ctx.org.id, false)
+    {status, _body} =
+      get("/projects/#{ctx.project.id}/test_results/flaky_history", ctx.org.id, false)
 
     assert status == 404
   end
@@ -79,6 +81,7 @@ defmodule PipelinesAPI.Router.TestResults.HistoryTest do
 
   defp get(path, org_id, decode? \\ true) do
     url = "localhost:4004#{path}"
+
     headers = [
       {"Content-type", "application/json"},
       {"x-semaphore-user-id", @default_user_id},

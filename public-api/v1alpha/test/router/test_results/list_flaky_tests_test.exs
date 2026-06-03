@@ -49,7 +49,8 @@ defmodule PipelinesAPI.Router.TestResults.ListFlakyTestsTest do
   end
 
   test "200 lists flaky tests for an authorized project", ctx do
-    {status, body} = get("/projects/#{ctx.project.id}/test_results/flaky_tests?page=1&page_size=20", ctx.org.id)
+    {status, body} =
+      get("/projects/#{ctx.project.id}/test_results/flaky_tests?page=1&page_size=20", ctx.org.id)
 
     assert status == 200
     assert [%{"test_id" => "t1", "test_name" => "spec"}] = body
@@ -63,7 +64,8 @@ defmodule PipelinesAPI.Router.TestResults.ListFlakyTestsTest do
     Support.Stubs.Feature.enable_feature(other_org.id, :superjerry_tests)
 
     # Request uses the default org header — project belongs to other_org, so cross-org gate fires
-    {status, body} = get("/projects/#{other_project.id}/test_results/flaky_tests", ctx.org.id, false)
+    {status, body} =
+      get("/projects/#{other_project.id}/test_results/flaky_tests", ctx.org.id, false)
 
     assert status == 404
     assert body == "Not Found"
@@ -76,7 +78,8 @@ defmodule PipelinesAPI.Router.TestResults.ListFlakyTestsTest do
       )
     end)
 
-    {status, body} = get("/projects/#{ctx.project.id}/test_results/flaky_tests", ctx.org.id, false)
+    {status, body} =
+      get("/projects/#{ctx.project.id}/test_results/flaky_tests", ctx.org.id, false)
 
     assert status == 404
     assert body == "Not Found"
@@ -85,7 +88,8 @@ defmodule PipelinesAPI.Router.TestResults.ListFlakyTestsTest do
   test "404 when feature flag is disabled", ctx do
     Support.Stubs.Feature.disable_feature(ctx.org.id, :superjerry_tests)
 
-    {status, body} = get("/projects/#{ctx.project.id}/test_results/flaky_tests", ctx.org.id, false)
+    {status, body} =
+      get("/projects/#{ctx.project.id}/test_results/flaky_tests", ctx.org.id, false)
 
     assert status == 404
     assert body == "Not Found"
@@ -93,6 +97,7 @@ defmodule PipelinesAPI.Router.TestResults.ListFlakyTestsTest do
 
   defp get(path, org_id, decode? \\ true) do
     url = "localhost:4004#{path}"
+
     headers = [
       {"Content-type", "application/json"},
       {"x-semaphore-user-id", @default_user_id},

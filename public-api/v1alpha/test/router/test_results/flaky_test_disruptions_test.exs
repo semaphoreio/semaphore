@@ -56,6 +56,7 @@ defmodule PipelinesAPI.Router.TestResults.FlakyTestDisruptionsTest do
 
   defp get(path, org_id, decode? \\ true) do
     url = "localhost:4004#{path}"
+
     headers = [
       {"Content-type", "application/json"},
       {"x-semaphore-user-id", @default_user_id},
