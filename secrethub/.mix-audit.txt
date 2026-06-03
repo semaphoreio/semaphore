@@ -1,0 +1,19 @@
+# cowlib — cookie request header injection in cow_cookie:cookie/1 (no patched
+# version released upstream as of this bump; cowlib <= 2.16.1 is affected).
+# Secrethub does not generate Set-Cookie headers from user input — it exposes a
+# gRPC API plus a small internal Plug.Cowboy plane that serves only static OIDC
+# JWKS/discovery JSON, so cow_cookie:cookie/1 is never reached with user data.
+GHSA-g2wm-735q-3f56
+
+# postgrex — channel-name SQL injection in Postgrex.Notifications.listen/3.
+# Secrethub does not call Postgrex.Notifications anywhere (grep `Postgrex.Notifications`
+# in lib/ returns no hits). Bumping postgrex past 0.16.x would cascade into an
+# ecto/ecto_sql version bump that is out of scope for a security patch PR.
+GHSA-r73h-97w8-m54h
+
+# decimal — unbounded exponent in Decimal.new enables an unauthenticated DoS.
+# Patched in decimal 3.0.0, but ecto 3.8.4 requires `decimal ~> 1.6 or ~> 2.0`,
+# so adopting it forces an ecto major bump that is out of scope for a security
+# patch PR. Secrethub does not call Decimal anywhere in lib/ (no hits), so
+# Decimal.new is never invoked on untrusted input.
+GHSA-rhv4-8758-jx7v
