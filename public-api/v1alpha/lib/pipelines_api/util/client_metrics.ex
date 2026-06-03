@@ -101,11 +101,16 @@ defmodule PipelinesAPI.Util.ClientMetrics do
   @doc "Header values rendered for the request log line."
   def log_fields(conn) do
     [
-      " - client=", source(conn),
-      " command=", command(conn),
-      " version=", version(conn),
-      " org=", org_tag(conn) || @na,
-      " trace=", trace_id(conn) || @na
+      " - client=",
+      source(conn),
+      " command=",
+      command(conn),
+      " version=",
+      version(conn),
+      " org=",
+      org_tag(conn) || @na,
+      " trace=",
+      trace_id(conn) || @na
     ]
   end
 

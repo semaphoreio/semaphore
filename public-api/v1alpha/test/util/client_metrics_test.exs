@@ -90,8 +90,14 @@ defmodule PipelinesAPI.Util.ClientMetricsTest do
   end
 
   test "usage_tags carry source only, for cross-service cli-vs-mcp aggregation" do
-    assert ClientMetrics.usage_tags(conn_with([{"x-client-source", "semai-mcp"}])) == ["semai-mcp"]
-    assert ClientMetrics.usage_tags(conn_with([{"x-client-source", "semai-cli"}])) == ["semai-cli"]
+    assert ClientMetrics.usage_tags(conn_with([{"x-client-source", "semai-mcp"}])) == [
+             "semai-mcp"
+           ]
+
+    assert ClientMetrics.usage_tags(conn_with([{"x-client-source", "semai-cli"}])) == [
+             "semai-cli"
+           ]
+
     assert ClientMetrics.usage_tags(conn_with([])) == ["api"]
   end
 
@@ -108,7 +114,9 @@ defmodule PipelinesAPI.Util.ClientMetricsTest do
 
     assert ClientMetrics.org_tag(by_name) == "acme-inc"
 
-    assert ClientMetrics.org_tag(conn_with([{"x-semaphore-org-id", "1bdc0370-a347-4cd6-8a01-1228ae6c6c83"}])) ==
+    assert ClientMetrics.org_tag(
+             conn_with([{"x-semaphore-org-id", "1bdc0370-a347-4cd6-8a01-1228ae6c6c83"}])
+           ) ==
              "1bdc0370-a347-4cd6-8a01-1228ae6c6c83"
 
     assert ClientMetrics.org_tag(conn_with([])) == nil
