@@ -733,6 +733,42 @@ defmodule InternalApi.Secrethub.GenerateOpenIDConnectTokenResponse do
   field(:token, 1, type: :string)
 end
 
+defmodule InternalApi.Secrethub.GenerateCacheOpenIDConnectTokenRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          organization_id: String.t(),
+          project_id: String.t(),
+          job_id: String.t(),
+          job_type: String.t(),
+          cache_access: String.t(),
+          expires_in: integer
+        }
+  defstruct [:organization_id, :project_id, :job_id, :job_type, :cache_access, :expires_in]
+
+  field(:organization_id, 1, type: :string)
+  field(:project_id, 2, type: :string)
+  field(:job_id, 3, type: :string)
+  field(:job_type, 4, type: :string)
+  field(:cache_access, 5, type: :string)
+  field(:expires_in, 6, type: :int64)
+end
+
+defmodule InternalApi.Secrethub.GenerateCacheOpenIDConnectTokenResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          token: String.t(),
+          expires_at: integer
+        }
+  defstruct [:token, :expires_at]
+
+  field(:token, 1, type: :string)
+  field(:expires_at, 2, type: :int64)
+end
+
 defmodule InternalApi.Secrethub.GetKeyRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3
@@ -932,6 +968,12 @@ defmodule InternalApi.Secrethub.SecretService.Service do
     :GenerateOpenIDConnectToken,
     InternalApi.Secrethub.GenerateOpenIDConnectTokenRequest,
     InternalApi.Secrethub.GenerateOpenIDConnectTokenResponse
+  )
+
+  rpc(
+    :GenerateCacheOpenIDConnectToken,
+    InternalApi.Secrethub.GenerateCacheOpenIDConnectTokenRequest,
+    InternalApi.Secrethub.GenerateCacheOpenIDConnectTokenResponse
   )
 
   rpc(
