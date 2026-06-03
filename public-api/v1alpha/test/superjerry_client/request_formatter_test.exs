@@ -51,15 +51,12 @@ defmodule PipelinesAPI.SuperjerryClient.RequestFormatterTest do
     assert f =~ ~s(@git.branch:"feature branch")
   end
 
-  test "value containing embedded double-quote cannot inject a second @key clause" do
-    # A raw value like: main" @is.resolved:false x="
-    # Without hardening this would produce: @git.branch:main" @is.resolved:false x="
-    # which the Superjerry parser (no backslash escape) would read as two separate
-    # clauses — @git.branch:main and @is.resolved:false.
-    # encode_filter_value strips embedded " before quoting, so the whole value
-    # lands inside a single quoted token: @git.branch:"main @is.resolved:false x="
-    # The parser only starts a new key on @ while NOT inQuote, so the embedded
-    # text stays inside the current value — no second clause is produced.
+  test "value containing embedded double-quote and @ has both stripped" do
+    # Input: main" @is.resolved:false x="
+    # Both " and @ are injection vectors and are stripped before quoting.
+    # " without stripping would close the quote early; @ without stripping
+    # starts a new clause regardless of quote state (confirmed in Go parser).
+    # After stripping both: main is.resolved:false x=
     assert {:ok, %ListFlakyTestsRequest{filters: f}} =
              RF.form_list_flaky_tests_request(%{
                "org_id" => "o",
@@ -67,14 +64,16 @@ defmodule PipelinesAPI.SuperjerryClient.RequestFormatterTest do
                "branch" => ~s(main" @is.resolved:false x=")
              })
 
-    # The entire output must be the single safe quoted clause — if injection
-    # had succeeded there would be content after the closing quote.
-    assert f == ~s(@git.branch:"main @is.resolved:false x=")
+    assert f == ~s(@git.branch:"main is.resolved:false x=")
+    refute String.contains?(f, "@is.resolved")
   end
 
-  test "value containing @ and : is quoted and cannot open a new clause" do
-    # The parser starts a new key only when it sees @ outside a quoted value.
-    # Always-quoted encoding keeps @ inside the value token.
+  test "value containing @ has @ stripped so no second clause can be injected" do
+    # The Superjerry Go parser's @ case checks !inKey but NOT !inQuote, so a
+    # bare @ inside a quoted value DOES start a new filter clause. We strip @
+    # from the value before quoting to prevent this.
+    # Input branch="main @is.resolved:false" would inject a second clause
+    # without stripping. After stripping, it becomes "main is.resolved:false".
     assert {:ok, %ListFlakyTestsRequest{filters: f}} =
              RF.form_list_flaky_tests_request(%{
                "org_id" => "o",
@@ -82,7 +81,8 @@ defmodule PipelinesAPI.SuperjerryClient.RequestFormatterTest do
                "branch" => "main @is.resolved:false"
              })
 
-    assert f == ~s(@git.branch:"main @is.resolved:false")
+    assert f == ~s(@git.branch:"main is.resolved:false")
+    refute String.contains?(f, "@is.resolved")
   end
 
   test "value containing a space is quoted so the parser sees one token" do
@@ -94,5 +94,16 @@ defmodule PipelinesAPI.SuperjerryClient.RequestFormatterTest do
              })
 
     assert f == ~s(@test.name:"My Test Case")
+  end
+
+  test "page_size is capped at 100 regardless of caller input" do
+    assert {:ok, %ListFlakyTestsRequest{} = req} =
+             RF.form_list_flaky_tests_request(%{
+               "org_id" => "o",
+               "project_id" => "p",
+               "page_size" => "100000"
+             })
+
+    assert req.pagination.page_size == 100
   end
 end

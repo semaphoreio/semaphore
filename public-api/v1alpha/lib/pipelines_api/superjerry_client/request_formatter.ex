@@ -113,19 +113,22 @@ defmodule PipelinesAPI.SuperjerryClient.RequestFormatter do
     |> Enum.join(" ")
   end
 
-  # The Superjerry filter parser (parseFilterQuery in Go) uses `"` as a raw
-  # toggle — there is no backslash-escape mechanism. A literal `"` inside a
-  # quoted value would close the quote early and allow clause injection. Since
-  # escaping is not supported, we strip embedded `"` characters before quoting.
-  # We always wrap in double-quotes so that `@`, `:`, and space inside a value
-  # cannot be misread as a new clause delimiter.
+  # The Superjerry filter parser (parseFilterQuery in Go) has two injection risks:
+  # 1. `"` toggles inQuote with no escape mechanism — an embedded `"` closes the
+  #    quote early and the remainder is parsed raw.
+  # 2. `@` starts a new clause whenever !inKey, regardless of inQuote — so a `@`
+  #    inside a quoted value still opens a second filter clause.
+  # We strip both characters before quoting. `:` is harmless without a preceding
+  # `@` and appears legitimately in test names (e.g. Foo::Bar), so we leave it.
   defp encode_filter_value(v) do
-    safe = String.replace(v, ~s("), "")
+    safe = v |> String.replace(~s("), "") |> String.replace("@", "")
     ~s("#{safe}")
   end
 
   defp page(params), do: int_or_default(params["page"], 1)
-  defp page_size(params, default \\ 20), do: int_or_default(params["page_size"], default)
+
+  defp page_size(params, default \\ 20),
+    do: min(int_or_default(params["page_size"], default), 100)
 
   defp int_or_default(v, default) when is_binary(v) do
     case Integer.parse(v) do
@@ -137,5 +140,6 @@ defmodule PipelinesAPI.SuperjerryClient.RequestFormatter do
   defp int_or_default(_, default), do: default
 
   defp sort_dir(%{"sort_dir" => "asc"}), do: 0
+  defp sort_dir(%{"sort_dir" => "desc"}), do: 1
   defp sort_dir(_), do: 1
 end
