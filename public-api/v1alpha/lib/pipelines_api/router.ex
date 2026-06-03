@@ -43,6 +43,11 @@ defmodule PipelinesAPI.Router do
   alias PipelinesAPI.ArtifactsRetentionPolicy.Describe, as: DescribeArtifactsRetentionPolicy
   alias PipelinesAPI.Artifacts.List, as: ListArtifacts
   alias PipelinesAPI.Artifacts.GetSignedURL, as: GetArtifactSignedURL
+  alias PipelinesAPI.TestResults.ListFlakyTests
+  alias PipelinesAPI.TestResults.FlakyTestDetails
+  alias PipelinesAPI.TestResults.FlakyTestDisruptions
+  alias PipelinesAPI.TestResults.FlakyHistory
+  alias PipelinesAPI.TestResults.DisruptionHistory
 
   plug(PipelinesAPI.Plug.Logger)
 
@@ -157,6 +162,25 @@ defmodule PipelinesAPI.Router do
 
   match("/artifacts", via: :get, to: ListArtifacts)
   match("/artifacts/signed_url", via: :get, to: GetArtifactSignedURL)
+
+  match("/projects/:project_id/test_results/flaky_tests", via: :get, to: ListFlakyTests)
+
+  match("/projects/:project_id/test_results/flaky_tests/:test_id/disruptions",
+    via: :get,
+    to: FlakyTestDisruptions
+  )
+
+  match("/projects/:project_id/test_results/flaky_tests/:test_id",
+    via: :get,
+    to: FlakyTestDetails
+  )
+
+  match("/projects/:project_id/test_results/flaky_history", via: :get, to: FlakyHistory)
+
+  match("/projects/:project_id/test_results/disruption_history",
+    via: :get,
+    to: DisruptionHistory
+  )
 
   match("/logs/:job_id", via: :get, to: PipelinesAPI.Logs.Get)
 
