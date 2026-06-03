@@ -21,6 +21,12 @@ defmodule PipelinesAPI.Util.ClientMetrics do
   backend write the *same* measurement, so CLI-vs-MCP-vs-api usage aggregates
   across all endpoints (group by `source`); the per-service `service` tag (from
   each app's Watchman prefix) still gives the per-backend split when wanted.
+
+  A third counter — `api.org_usage`, tagged `[org, source]` — counts per-request
+  API volume per organization and client flavour. `org` comes from the auth-set
+  `x-semaphore-org-*` headers (trusted, so cardinality stays bounded by real
+  orgs). This is API-call *volume*, not deduped invocations — good enough to see
+  which org leans on sem-ai and in what flavour.
   """
 
   alias PipelinesAPI.Util.Metrics
@@ -28,6 +34,7 @@ defmodule PipelinesAPI.Util.ClientMetrics do
 
   @metric "PipelinesAPI.router.client_request"
   @usage_metric "api.client_usage"
+  @org_metric "api.org_usage"
   @na "na"
   @known_sources ~w(semai-cli semai-mcp)
   @command_regex ~r/\A[a-z0-9_]{1,50}\z/
@@ -46,6 +53,7 @@ defmodule PipelinesAPI.Util.ClientMetrics do
       Watchman.submit({@metric, tags}, duration, :timing)
       Metrics.increment(metric_name(conn.status), tags)
       Metrics.increment(@usage_metric, [src])
+      track_org_usage(conn, src)
       conn
     end)
   end
@@ -70,9 +78,54 @@ defmodule PipelinesAPI.Util.ClientMetrics do
   @doc "Single-tag list for the generic usage counter: [source]."
   def usage_tags(conn), do: [source(conn)]
 
+  @doc "Per-org volume counter name."
+  def org_usage_metric, do: @org_metric
+
+  @doc """
+  Org identity for the per-org volume counter, from the auth-set headers
+  (`x-semaphore-org-username` preferred for readability, else `x-semaphore-org-id`).
+  These are set by the auth service (trusted), not the client, so cardinality is
+  bounded by real orgs. Returns nil when unauthenticated (no org present).
+  """
+  def org_tag(conn) do
+    name = header(conn, "x-semaphore-org-username")
+    id = header(conn, "x-semaphore-org-id")
+
+    cond do
+      is_binary(name) and name != "" -> graphite_safe(name)
+      is_binary(id) and id != "" -> graphite_safe(id)
+      true -> nil
+    end
+  end
+
   @doc "Header values rendered for the request log line."
   def log_fields(conn) do
-    [" - client=", source(conn), " command=", command(conn), " version=", version(conn)]
+    [
+      " - client=", source(conn),
+      " command=", command(conn),
+      " version=", version(conn),
+      " org=", org_tag(conn) || @na,
+      " trace=", trace_id(conn) || @na
+    ]
+  end
+
+  @doc """
+  W3C trace-id from the `traceparent` header (`00-<trace-id>-<span-id>-<flags>`).
+  sem-ai sends one per command, so `count(distinct trace)` grouped by command in
+  the logs gives invocation counts — without paying the metric cardinality cost
+  of putting a request id in a tag.
+  """
+  def trace_id(conn) do
+    case header(conn, "traceparent") do
+      tp when is_binary(tp) ->
+        case String.split(tp, "-") do
+          [_v, tid, _span, _flags | _] when byte_size(tid) == 32 -> tid
+          _ -> nil
+        end
+
+      _ ->
+        nil
+    end
   end
 
   def source(conn) do
@@ -95,6 +148,16 @@ defmodule PipelinesAPI.Util.ClientMetrics do
   end
 
   defp sanitize(_value, _regex), do: @na
+
+  # api.org_usage [org, source] — per-request API volume per org and flavour.
+  # No dedup (this is volume, not invocation count); skipped when there is no
+  # org (unauthenticated request).
+  defp track_org_usage(conn, source) do
+    case org_tag(conn) do
+      nil -> :ok
+      org -> Metrics.increment(@org_metric, [org, source])
+    end
+  end
 
   # Carbon (graphite) uses "." as the metric-path separator, so a tag VALUE
   # containing "." (e.g. a semver version) splits into extra path segments and
