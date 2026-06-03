@@ -2,6 +2,7 @@ defmodule Scheduler.Grpc.Server do
   @moduledoc false
 
   use GRPC.Server, service: InternalApi.PeriodicScheduler.PeriodicService.Service
+  require Logger
 
   alias Util.{Metrics, Proto}
   alias Scheduler.Actions
@@ -19,7 +20,8 @@ defmodule Scheduler.Grpc.Server do
     GetProjectIdResponse,
     HistoryResponse,
     PersistResponse,
-    ListKeysetResponse
+    ListKeysetResponse,
+    BulkUpsertAndPruneResponse
   }
 
   alias Google.Protobuf.Timestamp
@@ -96,22 +98,36 @@ defmodule Scheduler.Grpc.Server do
 
   def run_now(request, _stream) do
     Metrics.benchmark("PeriodicSch.run_now", __MODULE__, fn ->
-      with {:ok, params} <- Proto.to_map(request),
-           {:ok, desc} <- Actions.run_now(params) do
-        desc
-        |> Map.merge(%{status: %{code: :OK}})
-        |> Proto.deep_new!(
-          RunNowResponse,
-          transformations: %{Timestamp => {__MODULE__, :date_time_to_timestamps}}
-        )
-      else
-        {:error, {code, message}} ->
-          %{status: %{code: code, message: to_str(message)}}
-          |> Proto.deep_new!(RunNowResponse)
+      try do
+        with {:ok, params} <- Proto.to_map(request),
+             {:ok, desc} <- Actions.run_now(params) do
+          desc
+          |> Map.merge(%{status: %{code: :OK}})
+          |> Proto.deep_new!(
+            RunNowResponse,
+            transformations: %{Timestamp => {__MODULE__, :date_time_to_timestamps}}
+          )
+        else
+          {:error, {code, message}} ->
+            run_now_error_response(code, message)
 
-        {:error, %{code: code, message: message}} ->
-          %{status: %{code: code, message: to_str(message)}}
-          |> Proto.deep_new!(RunNowResponse)
+          {:error, %{code: code, message: message}} ->
+            run_now_error_response(code, message)
+        end
+      rescue
+        error ->
+          Logger.error(
+            "PeriodicSch.run_now crashed: #{Exception.format(:error, error, __STACKTRACE__)}"
+          )
+
+          run_now_error_response(:INTERNAL, internal_run_now_error_message())
+      catch
+        kind, reason ->
+          Logger.error(
+            "PeriodicSch.run_now crashed: #{Exception.format(kind, reason, __STACKTRACE__)}"
+          )
+
+          run_now_error_response(:INTERNAL, internal_run_now_error_message())
       end
     end)
   end
@@ -258,6 +274,32 @@ defmodule Scheduler.Grpc.Server do
     end)
   end
 
+  # BulkUpsertAndPrune
+
+  def bulk_upsert_and_prune(request, _stream) do
+    Metrics.benchmark("PeriodicSch.bulk_upsert_and_prune", __MODULE__, fn ->
+      request = %{request | periodics: Enum.map(request.periodics, &normalize_state/1)}
+
+      with {:ok, params} <- Proto.to_map(request),
+           {:ok, result} <- Actions.bulk_upsert_and_prune(params) do
+        result
+        |> Map.merge(%{status: %{code: :OK}})
+        |> Proto.deep_new!(
+          BulkUpsertAndPruneResponse,
+          transformations: %{Timestamp => {__MODULE__, :date_time_to_timestamps}}
+        )
+      else
+        {:error, {code, message}} ->
+          %{status: %{code: code, message: to_str(message)}}
+          |> Proto.deep_new!(BulkUpsertAndPruneResponse)
+      end
+    end)
+  end
+
+  defp normalize_state(periodic = %{state: state}) do
+    %{periodic | state: InternalApi.PeriodicScheduler.PersistRequest.ScheduleState.value(state)}
+  end
+
   # Version
 
   def version(_, _stream) do
@@ -292,6 +334,13 @@ defmodule Scheduler.Grpc.Server do
     |> Map.put(:seconds, DateTime.to_unix(date_time, :second))
     |> Map.put(:nanos, elem(date_time.microsecond, 0) * 1_000)
   end
+
+  defp run_now_error_response(code, message) do
+    %{status: %{code: code, message: to_str(message)}}
+    |> Proto.deep_new!(RunNowResponse)
+  end
+
+  defp internal_run_now_error_message, do: "Internal error while starting workflow."
 
   defp to_str(val) when is_binary(val), do: val
   defp to_str(val), do: "#{inspect(val)}"

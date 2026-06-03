@@ -1,0 +1,24 @@
+# cowlib 2.11.0 — cow_http_te DoS via excessive allocation
+GHSA-32p9-57cr-4x65
+
+# cowlib 2.11.0 — cookie header injection in cow_cookie:cookie/1 (not used by front)
+GHSA-g2wm-735q-3f56
+
+# cowlib 2.11.0 — SSE CRLF injection (front does not expose SSE)
+GHSA-hv23-4qp7-8c8r
+
+# plug_cowboy 2.7.4 — transitive cowboy vuln, fixed in 2.8.1
+GHSA-q8x4-x7mp-5vg2
+
+# cowboy 2.9.0 — multipart header parsing DoS, fixed in 2.15.0. Reachable: Plug.Parsers
+# loads :multipart globally before auth, /support accepts file_input attachments. Mitigated at
+# cluster ingress L7 body limits; real fix tracked for the plug_cowboy dep-bump branch.
+GHSA-jfc2-q6qh-g5x8
+
+# cowlib 2.11.0 — SPDY decompression bomb in cow_spdy:inflate/2 (unreachable; front does not serve SPDY)
+GHSA-84f2-rp86-235p
+
+# plug 1.18.1 — unbounded buffer accumulation in multipart header parsing, fixed in 1.18.2. Reachable:
+# /support file_input loads Plug.Parsers multipart. Mitigated at cluster ingress L7 body limits;
+# real fix tracked for the plug dep-bump branch.
+GHSA-468c-vq7p-gh64

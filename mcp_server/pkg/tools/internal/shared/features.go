@@ -6,6 +6,7 @@ import (
 
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/feature"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/logging"
 )
 
 const (
@@ -13,6 +14,7 @@ const (
 	writeToolsFeatureFlag     = "mcp_server_write_tools"
 	artifactsToolsFeatureFlag = "mcp_server_artifacts_tools"
 	artifactsJobLogsFlag      = "artifacts_job_logs"
+	auditLogsFeatureFlag      = "audit_logs"
 )
 
 // EnsureReadToolsFeature verifies that the organization has the AI read tools feature enabled.
@@ -117,4 +119,39 @@ func EnsureArtifactsToolsOrJobLogsFeature(ctx context.Context, api internalapi.P
 	}
 
 	return fmt.Errorf("Semaphore full job logs are disabled for this organization. Enable mcp_server_artifacts_tools or artifacts_job_logs and try again.")
+}
+
+// AuditLogsFeatureEnabled returns true only when the organization has audit logs enabled.
+// Returns an error when the feature state cannot be determined.
+func AuditLogsFeatureEnabled(_ context.Context, api internalapi.Provider, orgID string) (bool, error) {
+	if api == nil {
+		err := fmt.Errorf("internal API provider is nil")
+		logging.ForComponent("features").
+			WithError(err).
+			WithField("organization_id", orgID).
+			Warn("audit logs feature check skipped: internal API provider is nil")
+		return false, err
+	}
+
+	featureClient := api.Features()
+	if featureClient == nil {
+		err := fmt.Errorf("feature client is nil")
+		logging.ForComponent("features").
+			WithError(err).
+			WithField("organization_id", orgID).
+			Warn("audit logs feature check skipped: feature client is nil")
+		return false, err
+	}
+
+	state, err := featureClient.FeatureState(orgID, auditLogsFeatureFlag)
+	if err != nil {
+		logging.ForComponent("features").
+			WithError(err).
+			WithField("organization_id", orgID).
+			WithField("feature", auditLogsFeatureFlag).
+			Warn("audit logs feature check failed")
+		return false, err
+	}
+
+	return state == feature.Enabled, nil
 }

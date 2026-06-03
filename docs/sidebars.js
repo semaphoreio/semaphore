@@ -236,6 +236,7 @@ const sidebars = {
         collapsed: true,
         items: [
           'reference/semaphore-cli',
+          'reference/sem-ai-cli',
           'reference/toolbox',
           'reference/api',
           'reference/env-vars',

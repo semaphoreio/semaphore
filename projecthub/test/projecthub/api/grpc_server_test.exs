@@ -627,6 +627,56 @@ defmodule Projecthub.Api.GrpcServerTest do
       assert response.project.spec.repository.owner == project.repository.owner
     end
 
+    test "when detailed scheduler serialization fails => returns a failed describe response" do
+      FunRegistry.set!(
+        Support.FakeServices.PeriodicSchedulerService,
+        :list,
+        InternalApi.PeriodicScheduler.ListResponse.new(
+          status:
+            InternalApi.Status.new(
+              code: Google.Rpc.Code.value(:INTERNAL),
+              message: "Internal Server Error"
+            )
+        )
+      )
+
+      {:ok, project} = Support.Factories.Project.create_with_repo()
+
+      {:ok, response} = describe_project(project, detailed: true)
+
+      assert response.metadata.status ==
+               InternalApi.Projecthub.ResponseMeta.Status.new(
+                 code: :FAILED_PRECONDITION,
+                 message: "Failed to list schedulers: Internal Server Error"
+               )
+    end
+
+    test "when detailed task serialization fails => returns a failed describe response" do
+      enable_just_run_feature()
+
+      FunRegistry.set!(
+        Support.FakeServices.PeriodicSchedulerService,
+        :list,
+        InternalApi.PeriodicScheduler.ListResponse.new(
+          status:
+            InternalApi.Status.new(
+              code: Google.Rpc.Code.value(:INTERNAL),
+              message: "Internal Server Error"
+            )
+        )
+      )
+
+      {:ok, project} = Support.Factories.Project.create_with_repo()
+
+      {:ok, response} = describe_project(project, detailed: true)
+
+      assert response.metadata.status ==
+               InternalApi.Projecthub.ResponseMeta.Status.new(
+                 code: :FAILED_PRECONDITION,
+                 message: "Failed to list tasks: Internal Server Error"
+               )
+    end
+
     test "when a soft_deleted project is requested by id and soft_deleted param is true => returns the project" do
       {:ok, project} = Support.Factories.Project.create_with_repo()
       {:ok, _} = Project.soft_destroy(project, %User{github_token: "token"})
@@ -3190,5 +3240,49 @@ defmodule Projecthub.Api.GrpcServerTest do
     DateTime.utc_now()
     |> DateTime.to_unix(:second)
     |> Integer.floor_div(1000)
+  end
+
+  defp describe_project(project, opts) do
+    {:ok, channel} =
+      GRPC.Stub.connect("localhost:50051",
+        interceptors: [
+          Projecthub.Util.GRPC.ClientRequestIdInterceptor,
+          Projecthub.Util.GRPC.ClientLoggerInterceptor,
+          Projecthub.Util.GRPC.ClientRunAsyncInterceptor
+        ]
+      )
+
+    request =
+      InternalApi.Projecthub.DescribeRequest.new(
+        metadata:
+          InternalApi.Projecthub.RequestMeta.new(
+            api_version: "",
+            kind: "",
+            req_id: "",
+            org_id: project.organization_id,
+            user_id: "12345678-1234-5678-1234-567812345678"
+          ),
+        id: project.id,
+        name: project.name,
+        detailed: Keyword.fetch!(opts, :detailed)
+      )
+
+    Stub.describe(channel, request)
+  end
+
+  defp enable_just_run_feature do
+    FunRegistry.set!(Support.FakeServices.FeatureService, :list_organization_features, fn _req, _ ->
+      availability = InternalApi.Feature.Availability.new(state: :ENABLED, quantity: 10)
+
+      InternalApi.Feature.ListOrganizationFeaturesResponse.new(
+        organization_features: [
+          [feature: %{type: "max_projects_in_org"}, availability: availability],
+          [
+            feature: %{type: "just_run"},
+            availability: InternalApi.Feature.Availability.new(state: :ENABLED, quantity: 1)
+          ]
+        ]
+      )
+    end)
   end
 end

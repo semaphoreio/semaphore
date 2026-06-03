@@ -188,7 +188,9 @@ defmodule Front.Models.SchedulerTest do
                        required: true,
                        description: "",
                        options: ["value1", "value2"],
-                       default_value: "value1"
+                       default_value: "value1",
+                       regex_pattern: "",
+                       validate_input_format: false
                      }
                    ],
                    triggerer_avatar_url: "/projects/assets/images/profile-bot.svg",
@@ -384,10 +386,57 @@ defmodule Front.Models.SchedulerTest do
                        required: true,
                        description: "",
                        options: ["value1", "value2"],
-                       default_value: "value1"
+                       default_value: "value1",
+                       regex_pattern: "",
+                       validate_input_format: false
                      }
                    ]
                  )
+      end
+    end
+
+    test "find action surfaces regex_pattern and validate_input_format on parameters" do
+      response =
+        DescribeResponse.new(
+          status:
+            InternalApi.Status.new(
+              code: Google.Rpc.Code.value(:OK),
+              message: ""
+            ),
+          periodic:
+            scheduler_desc(1,
+              recurring: false,
+              at: "",
+              reference: "refs/heads/master",
+              pipeline_file: "",
+              parameters: [
+                %{
+                  name: "VERSION",
+                  options: [],
+                  required: true,
+                  default_value: "1.0.0",
+                  regex_pattern: "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+                  validate_input_format: true
+                }
+              ]
+            ),
+          triggers: [trigger_desc(1)]
+        )
+
+      with_mock Stub, describe: fn _c, _r, _o -> {:ok, response} end do
+        assert {:ok, scheduler} = Subject.find(@scheduler_id)
+
+        assert [parameter] = scheduler.parameters
+
+        assert parameter == %{
+                 name: "VERSION",
+                 required: true,
+                 description: "",
+                 options: [],
+                 default_value: "1.0.0",
+                 regex_pattern: "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+                 validate_input_format: true
+               }
       end
     end
 
@@ -569,7 +618,24 @@ defmodule Front.Models.SchedulerTest do
         )
 
       with_mock Stub, run_now: fn _c, _r, _o -> {:ok, response} end do
-        assert Subject.run_now(@scheduler_id, @user_id) == {:error, :grpc_req_failed}
+        assert Subject.run_now(@scheduler_id, @user_id) ==
+                 {:error, {:grpc_req_failed, "Internal error while starting workflow."}}
+      end
+    end
+
+    test "when run_now request fails with an empty message, it returns a generic error" do
+      response =
+        RunNowResponse.new(
+          status:
+            InternalApi.Status.new(
+              code: Google.Rpc.Code.value(:FAILED_PRECONDITION),
+              message: "   "
+            )
+        )
+
+      with_mock Stub, run_now: fn _c, _r, _o -> {:ok, response} end do
+        assert Subject.run_now(@scheduler_id, @user_id) ==
+                 {:error, {:grpc_req_failed, "Internal error while starting workflow."}}
       end
     end
 
@@ -703,6 +769,111 @@ defmodule Front.Models.SchedulerTest do
       with_mock GRPC.Stub, connect: fn _ -> {:error, "failed"} end do
         assert Subject.persist(@form_data, @context_data) ==
                  {:error, :grpc_req_failed}
+      end
+    end
+
+    test "surfaces parameter regex_pattern errors as a parameters error" do
+      response =
+        PersistResponse.new(
+          status:
+            InternalApi.Status.new(
+              code: Google.Rpc.Code.value(:INVALID_ARGUMENT),
+              message: "Parameter 'VERSION' regex_pattern is not a valid regex."
+            )
+        )
+
+      with_mock Stub, persist: fn _, _, _ -> {:ok, response} end do
+        assert Subject.persist(@form_data, @context_data) ==
+                 {:error,
+                  %{
+                    errors: %{
+                      parameters: "Parameter 'VERSION' regex_pattern is not a valid regex."
+                    }
+                  }}
+      end
+    end
+
+    test "routes \"The 'name' parameter\" errors to the name field" do
+      response =
+        PersistResponse.new(
+          status:
+            InternalApi.Status.new(
+              code: Google.Rpc.Code.value(:INVALID_ARGUMENT),
+              message: "The 'name' parameter can not be empty string."
+            )
+        )
+
+      with_mock Stub, persist: fn _, _, _ -> {:ok, response} end do
+        assert Subject.persist(@form_data, @context_data) ==
+                 {:error,
+                  %{
+                    errors: %{
+                      name: "The 'name' parameter can not be empty string."
+                    }
+                  }}
+      end
+    end
+
+    test "routes \"The 'reference' parameter\" errors to the reference field" do
+      response =
+        PersistResponse.new(
+          status:
+            InternalApi.Status.new(
+              code: Google.Rpc.Code.value(:INVALID_ARGUMENT),
+              message: "The 'reference' parameter can not be empty string."
+            )
+        )
+
+      with_mock Stub, persist: fn _, _, _ -> {:ok, response} end do
+        assert Subject.persist(@form_data, @context_data) ==
+                 {:error,
+                  %{
+                    errors: %{
+                      reference: "The 'reference' parameter can not be empty string."
+                    }
+                  }}
+      end
+    end
+
+    test "routes \"Parameter 'name' is required.\" to the parameters bucket" do
+      response =
+        PersistResponse.new(
+          status:
+            InternalApi.Status.new(
+              code: Google.Rpc.Code.value(:INVALID_ARGUMENT),
+              message: "Parameter 'name' is required."
+            )
+        )
+
+      with_mock Stub, persist: fn _, _, _ -> {:ok, response} end do
+        assert Subject.persist(@form_data, @context_data) ==
+                 {:error,
+                  %{
+                    errors: %{
+                      parameters: "Parameter 'name' is required."
+                    }
+                  }}
+      end
+    end
+
+    test "routes \"Parameter 'foo' name can't be blank.\" to the parameters bucket" do
+      response =
+        PersistResponse.new(
+          status:
+            InternalApi.Status.new(
+              code: Google.Rpc.Code.value(:INVALID_ARGUMENT),
+              message: "Parameter 'foo' name can't be blank."
+            )
+        )
+
+      with_mock Stub, persist: fn _, _, _ -> {:ok, response} end do
+        assert Subject.persist(@form_data, @context_data) ==
+                 {:error,
+                  %{
+                    errors: %{
+                      parameters: "Parameter 'foo' name can't be blank."
+                    }
+                  }}
       end
     end
   end

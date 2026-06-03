@@ -4,7 +4,9 @@ defmodule PipelinesAPI.Artifacts.GetSignedURL do
   """
 
   use Plug.Builder
+  require Logger
 
+  alias PipelinesAPI.Audit
   alias PipelinesAPI.ArtifactHubClient
   alias PipelinesAPI.Pipelines.Common, as: RespCommon
   alias PipelinesAPI.Util.{Metrics, RequestMetrics, ToTuple}
@@ -27,6 +29,7 @@ defmodule PipelinesAPI.Artifacts.GetSignedURL do
   plug(:resolve_project_id_from_scope)
   plug(:authorize_signed_url)
   plug(:get_artifact_store_id)
+  plug(:log_audit_download)
   plug(:get_signed_url)
 
   def track_request_metrics(conn, _opts) do
@@ -48,6 +51,20 @@ defmodule PipelinesAPI.Artifacts.GetSignedURL do
   def verify_params(conn, _opts) do
     conn
     |> validate_request_params(@enabled_fields, require_path: true, validate_method: true)
+  end
+
+  def log_audit_download(conn, _opts) do
+    case Audit.log_artifact_download(conn, conn.params) do
+      {:ok, _audit} ->
+        conn
+
+      {:error, reason} ->
+        Metrics.increment("PipelinesAPI.router", ["artifacts_signed_url_audit_failed"])
+        Logger.error("Failed to audit artifacts signed URL request: #{inspect(reason)}")
+
+        RespCommon.respond(ToTuple.internal_error("Internal error"), conn)
+        |> Plug.Conn.halt()
+    end
   end
 
   defp maybe_track_lookup_failure({:error, _}) do

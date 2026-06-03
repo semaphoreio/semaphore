@@ -1,9 +1,17 @@
 defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
   use ExUnit.Case
+  import ExUnit.CaptureLog
 
   alias Support.Stubs.{Job, Pipeline, Workflow}
 
   setup do
+    previous_audit_logging = Application.get_env(:pipelines_api, :audit_logging)
+    Application.put_env(:pipelines_api, :audit_logging, false)
+
+    on_exit(fn ->
+      Application.put_env(:pipelines_api, :audit_logging, previous_audit_logging)
+    end)
+
     Support.Stubs.reset()
     Support.Stubs.grant_all_permissions()
 
@@ -51,6 +59,61 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
   end
 
   describe "GET /artifacts/signed_url" do
+    test "emits audit log for artifact download through API", ctx do
+      expected_resource_name = "artifacts/jobs/#{ctx.job.id}/agent/job_logs.txt.gz"
+
+      log =
+        capture_log(fn ->
+          assert {200, _response} =
+                   signed_url(
+                     %{
+                       "scope" => "jobs",
+                       "scope_id" => ctx.job.id,
+                       "path" => "agent/job_logs.txt.gz"
+                     },
+                     ctx.user.id
+                   )
+        end)
+
+      assert log =~ "AuditLog"
+      assert log =~ ctx.user.id
+      assert log =~ ctx.org.id
+      assert log =~ expected_resource_name
+    end
+
+    test "returns 500 and does not call backend when audit publish fails", ctx do
+      Application.put_env(:pipelines_api, :audit_logging, true)
+      Support.Stubs.Feature.enable_feature(ctx.org.id, :audit_logs)
+
+      with_broken_audit_channel(fn ->
+        parent = self()
+
+        GrpcMock.stub(ArtifacthubMock, :get_signed_url, fn _req, _ ->
+          send(parent, :artifacthub_signed_url_called)
+
+          InternalApi.Artifacthub.GetSignedURLResponse.new(
+            url: artifact_url("jobs", ctx.job.id, "agent/job_logs.txt.gz")
+          )
+        end)
+
+        assert {500, body} =
+                 signed_url(
+                   %{
+                     "scope" => "jobs",
+                     "scope_id" => ctx.job.id,
+                     "path" => "agent/job_logs.txt.gz"
+                   },
+                   ctx.user.id,
+                   false,
+                   ctx.org.id
+                 )
+
+        assert body in ["Internal error", "\"Internal error\""]
+
+        refute_received :artifacthub_signed_url_called
+      end)
+    end
+
     test "returns 200 and a signed URL for job artifact", ctx do
       assert {200, response} =
                signed_url(
@@ -528,6 +591,27 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
       assert response =~ "Artifact store is not configured"
     end
 
+    test "does not emit audit log when artifact store is not configured", ctx do
+      set_project_artifact_store_id(ctx.project, "")
+
+      log =
+        capture_log(fn ->
+          assert {500, response} =
+                   signed_url(
+                     %{
+                       "scope" => "jobs",
+                       "scope_id" => ctx.job.id,
+                       "path" => "agent/job_logs.txt.gz"
+                     },
+                     ctx.user.id
+                   )
+
+          assert response =~ "Artifact store is not configured"
+        end)
+
+      refute log =~ "AuditLog"
+    end
+
     test "returns 403 when artifacts api feature is disabled", ctx do
       org_id_without_feature = UUID.uuid4()
       Support.Stubs.Feature.set_org_defaults(org_id_without_feature)
@@ -670,5 +754,19 @@ defmodule PipelinesAPI.Artifacts.GetSignedURLTest do
 
   defp artifact_url(scope, scope_id, path) do
     "https://localhost:9000/artifacts/#{scope}/#{scope_id}/#{String.trim_leading(path, "/")}"
+  end
+
+  defp with_broken_audit_channel(fun) when is_function(fun, 0) do
+    previous_publish_fun = Application.get_env(:pipelines_api, :audit_publish_fun)
+
+    Application.put_env(:pipelines_api, :audit_publish_fun, fn _message ->
+      {:error, :forced_failure}
+    end)
+
+    try do
+      fun.()
+    after
+      Application.put_env(:pipelines_api, :audit_publish_fun, previous_publish_fun)
+    end
   end
 end

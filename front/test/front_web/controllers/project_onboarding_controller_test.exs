@@ -87,4 +87,34 @@ defmodule FrontWeb.ProjectOnboardingControllerTest do
       assert json["error"] == "Error from projecthub"
     end
   end
+
+  describe "GET repositories" do
+    test "returns repositories payload on success", %{conn: conn} do
+      conn =
+        conn
+        |> get("/repositories?integration_type=bitbucket&page_token=")
+
+      body = json_response(conn, 200)
+
+      assert is_list(body["repos"])
+      assert Map.has_key?(body, "next_page_token")
+    end
+
+    test "returns structured JSON error on repository service failure", %{conn: conn} do
+      GrpcMock.stub(RepositoryMock, :list_accessible_repositories, fn _, _ ->
+        raise GRPC.RPCError, status: GRPC.Status.unavailable(), message: "Repository service down"
+      end)
+
+      conn =
+        conn
+        |> get("/repositories?integration_type=bitbucket&page_token=")
+
+      body = json_response(conn, 503)
+
+      assert body == %{
+               "error" => "repository_service_unavailable",
+               "message" => "Failed to load repositories. Please retry."
+             }
+    end
+  end
 end

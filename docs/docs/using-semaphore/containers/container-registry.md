@@ -626,6 +626,22 @@ This is a PostgreSQL container extended with [PostGIS](https://postgis.net/).
 </div>
 </details>
 
+### OpenSearch
+
+<details>
+<summary>OpenSearch images</summary>
+<div>
+
+| Image | Link |
+|--------|--------|
+| opensearch:1.3.9 | `registry.semaphoreci.com/opensearch:1.3.9` |
+| opensearch:2.6.0 | `registry.semaphoreci.com/opensearch:2.6.0` |
+| opensearch:2.7.0 | `registry.semaphoreci.com/opensearch:2.7.0` |
+| opensearch:3.5.0 | `registry.semaphoreci.com/opensearch:3.5.0` |
+
+</div>
+</details>
+
 ### Memcached
 
 <details>

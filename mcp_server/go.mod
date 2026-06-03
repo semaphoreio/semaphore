@@ -11,6 +11,7 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/mark3labs/mcp-go v0.41.1
+	github.com/renderedtext/go-tackle v0.0.0-20231226193542-c913a4af4f94
 	github.com/renderedtext/go-watchman v0.0.0-20221222100224-451a6f3c8d92
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.10.0
@@ -59,6 +60,7 @@ require (
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.52.3 // indirect
 	github.com/prometheus/procfs v0.13.0 // indirect
+	github.com/rabbitmq/amqp091-go v1.9.0 // indirect
 	github.com/spf13/cast v1.7.1 // indirect
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect

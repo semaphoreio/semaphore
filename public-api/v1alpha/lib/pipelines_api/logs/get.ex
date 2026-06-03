@@ -7,6 +7,7 @@ defmodule PipelinesAPI.Logs.Get do
 
   require Logger
   alias PipelinesAPI.Pipelines.Common, as: RespCommon
+  alias PipelinesAPI.Audit
   alias PipelinesAPI.JobsClient
   alias PipelinesAPI.ProjectClient
   alias PipelinesAPI.ArtifactHubClient
@@ -97,7 +98,9 @@ defmodule PipelinesAPI.Logs.Get do
     with :ok <- ensure_artifact_job_logs_feature_enabled(conn),
          {:ok, project} <- ProjectClient.describe(job.project_id),
          {:ok, artifact_store_id} <- artifact_store_id_from_project(project),
-         {:ok, signed_url} <- fetch_signed_artifact_job_logs_url(job.id, artifact_store_id) do
+         {:ok, path} <- resolve_artifact_job_logs_path(job.id, artifact_store_id),
+         {:ok, _audit} <- log_artifact_job_logs_download(conn, job, path),
+         {:ok, signed_url} <- signed_url_for_artifact_path(artifact_store_id, job.id, path) do
       conn
       |> put_resp_header("location", signed_url)
       |> send_resp(302, "")
@@ -110,6 +113,11 @@ defmodule PipelinesAPI.Logs.Get do
       {:error, {:not_found, _message}} ->
         Metrics.increment("PipelinesAPI.router", ["full_logs_artifact_lookup_failed"])
         RespCommon.respond(ToTuple.not_found_error("Artifact job logs not found"), conn)
+
+      {:error, {:audit_failed, reason}} ->
+        Metrics.increment("PipelinesAPI.router", ["full_logs_artifact_audit_failed"])
+        Logger.error("Failed to audit artifact job logs download: #{inspect(reason)}")
+        RespCommon.respond(ToTuple.internal_error("Internal error"), conn)
 
       error ->
         Metrics.increment("PipelinesAPI.router", ["full_logs_artifact_lookup_failed"])
@@ -137,13 +145,6 @@ defmodule PipelinesAPI.Logs.Get do
       FeatureProvider.feature_enabled?(:artifacts_job_logs, param: org_id)
   end
 
-  defp fetch_signed_artifact_job_logs_url(job_id, artifact_store_id) do
-    case resolve_artifact_job_logs_path(job_id, artifact_store_id) do
-      {:ok, path} -> signed_url_for_artifact_path(artifact_store_id, job_id, path)
-      error -> error
-    end
-  end
-
   defp resolve_artifact_job_logs_path(job_id, artifact_store_id) do
     case ArtifactHubClient.list_path(%{
            artifact_store_id: artifact_store_id,
@@ -159,6 +160,19 @@ defmodule PipelinesAPI.Logs.Get do
 
       error ->
         error
+    end
+  end
+
+  defp log_artifact_job_logs_download(conn, job, path) do
+    case Audit.log_artifact_download(conn, %{
+           "scope" => "jobs",
+           "scope_id" => job.id,
+           "path" => path,
+           "project_id" => job.project_id,
+           "method" => "GET"
+         }) do
+      {:ok, _audit} = ok -> ok
+      {:error, reason} -> {:error, {:audit_failed, reason}}
     end
   end
 

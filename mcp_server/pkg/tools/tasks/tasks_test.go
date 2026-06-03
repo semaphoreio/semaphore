@@ -220,6 +220,109 @@ func TestDescribeTask(t *testing.T) {
 	}
 }
 
+func TestDescribeTask_SurfacesParameterRegexFields(t *testing.T) {
+	taskID := "11111111-2222-3333-4444-555555555555"
+	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	projectID := "66666666-7777-8888-9999-aaaaaaaaaaaa"
+
+	resp := newDescribeResponse(taskID, projectID, orgID)
+	resp.Periodic.Parameters = []*schedulerpb.Periodic_Parameter{
+		{
+			Name:                "RUBOCOP_CONFIG",
+			Required:            true,
+			DefaultValue:        "",
+			RegexPattern:        "^[a-zA-Z.]+\\.yml",
+			ValidateInputFormat: true,
+		},
+		{
+			Name:     "PLAIN_PARAM",
+			Required: false,
+		},
+		{
+			Name:                "INACTIVE_PATTERN",
+			Required:            false,
+			RegexPattern:        "^[0-9]+$",
+			ValidateInputFormat: false,
+		},
+	}
+
+	client := &support.SchedulerClientStub{DescribeResp: resp}
+
+	provider := &support.MockProvider{
+		SchedulerClient: client,
+		Timeout:         time.Second,
+		RBACClient:      support.NewRBACStub("project.scheduler.view"),
+	}
+
+	req := mcp.CallToolRequest{
+		Params: mcp.CallToolParams{
+			Arguments: map[string]any{
+				"task_id":         taskID,
+				"project_id":      projectID,
+				"organization_id": orgID,
+				"mode":            "detailed",
+			},
+		},
+	}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
+	req.Header = header
+
+	res, err := describeHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+	if res.IsError {
+		t.Fatalf("unexpected error result")
+	}
+
+	result, ok := res.StructuredContent.(describeResult)
+	if !ok {
+		t.Fatalf("unexpected structured content type: %T", res.StructuredContent)
+	}
+
+	if len(result.Task.Parameters) != 3 {
+		t.Fatalf("expected 3 parameters, got %d", len(result.Task.Parameters))
+	}
+
+	first := result.Task.Parameters[0]
+	if first.RegexPattern != "^[a-zA-Z.]+\\.yml" {
+		t.Errorf("expected regex_pattern preserved, got %q", first.RegexPattern)
+	}
+	if !first.ValidateInputFormat {
+		t.Errorf("expected validate_input_format=true")
+	}
+
+	second := result.Task.Parameters[1]
+	if second.RegexPattern != "" {
+		t.Errorf("expected empty regex_pattern, got %q", second.RegexPattern)
+	}
+	if second.ValidateInputFormat {
+		t.Errorf("expected validate_input_format=false")
+	}
+
+	third := result.Task.Parameters[2]
+	if third.RegexPattern != "" {
+		t.Errorf("expected regex_pattern cleared when validation off, got %q", third.RegexPattern)
+	}
+	if third.ValidateInputFormat {
+		t.Errorf("expected validate_input_format=false")
+	}
+
+	textOut := ""
+	if len(res.Content) > 0 {
+		if tc, ok := res.Content[0].(mcp.TextContent); ok {
+			textOut = tc.Text
+		}
+	}
+	if !strings.Contains(textOut, "pattern: `^[a-zA-Z.]+\\.yml`") {
+		t.Errorf("expected regex line in markdown, got:\n%s", textOut)
+	}
+	if strings.Contains(textOut, "^[0-9]+$") {
+		t.Errorf("expected unenforced pattern hidden from markdown, got:\n%s", textOut)
+	}
+}
+
 func TestRunTask(t *testing.T) {
 	taskID := "11111111-2222-3333-4444-555555555555"
 	projectID := "66666666-7777-8888-9999-aaaaaaaaaaaa"
