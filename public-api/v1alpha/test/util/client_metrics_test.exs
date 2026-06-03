@@ -64,16 +64,25 @@ defmodule PipelinesAPI.Util.ClientMetricsTest do
     assert ClientMetrics.metric_name(nil) == "PipelinesAPI.router.client_request.unknown"
   end
 
-  test "log_fields renders compact client context" do
+  test "log_fields renders compact client context incl org + trace" do
     conn =
       conn_with([
         {"x-client-source", "semai-mcp"},
         {"x-client-command", "diagnose"},
-        {"x-client-version", "1.4.0"}
+        {"x-client-version", "1.4.0"},
+        {"x-semaphore-org-username", "acme-inc"},
+        {"traceparent", "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01"}
       ])
 
     assert IO.iodata_to_binary(ClientMetrics.log_fields(conn)) ==
-             " - client=semai-mcp command=diagnose version=1.4.0"
+             " - client=semai-mcp command=diagnose version=1.4.0 org=acme-inc trace=0af7651916cd43dd8448eb211c80319c"
+  end
+
+  test "trace_id extracts the W3C trace-id, nil on missing/malformed" do
+    conn = conn_with([{"traceparent", "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01"}])
+    assert ClientMetrics.trace_id(conn) == "0af7651916cd43dd8448eb211c80319c"
+    assert ClientMetrics.trace_id(conn_with([])) == nil
+    assert ClientMetrics.trace_id(conn_with([{"traceparent", "garbage"}])) == nil
   end
 
   test "usage_metric is generic and service-agnostic (shared across backends)" do
@@ -84,5 +93,24 @@ defmodule PipelinesAPI.Util.ClientMetricsTest do
     assert ClientMetrics.usage_tags(conn_with([{"x-client-source", "semai-mcp"}])) == ["semai-mcp"]
     assert ClientMetrics.usage_tags(conn_with([{"x-client-source", "semai-cli"}])) == ["semai-cli"]
     assert ClientMetrics.usage_tags(conn_with([])) == ["api"]
+  end
+
+  test "org_usage_metric is the per-org volume counter name" do
+    assert ClientMetrics.org_usage_metric() == "api.org_usage"
+  end
+
+  test "org_tag prefers org-username, falls back to org-id, nil when absent" do
+    by_name =
+      conn_with([
+        {"x-semaphore-org-username", "acme-inc"},
+        {"x-semaphore-org-id", "1bdc0370-a347-4cd6-8a01-1228ae6c6c83"}
+      ])
+
+    assert ClientMetrics.org_tag(by_name) == "acme-inc"
+
+    assert ClientMetrics.org_tag(conn_with([{"x-semaphore-org-id", "1bdc0370-a347-4cd6-8a01-1228ae6c6c83"}])) ==
+             "1bdc0370-a347-4cd6-8a01-1228ae6c6c83"
+
+    assert ClientMetrics.org_tag(conn_with([])) == nil
   end
 end
