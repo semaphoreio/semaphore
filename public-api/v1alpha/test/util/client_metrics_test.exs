@@ -13,9 +13,9 @@ defmodule PipelinesAPI.Util.ClientMetricsTest do
   test "builds [source, command, version] tags from sem-ai headers" do
     conn =
       conn_with([
-        {"x-semaphore-client-source", "semai-cli"},
-        {"x-semaphore-client-command", "pipeline_list"},
-        {"x-semaphore-client-version", "1.4.0"}
+        {"x-client-source", "semai-cli"},
+        {"x-client-command", "pipeline_list"},
+        {"x-client-version", "1.4.0"}
       ])
 
     assert ClientMetrics.client_tags(conn) == ["semai-cli", "pipeline_list", "1.4.0"]
@@ -26,21 +26,21 @@ defmodule PipelinesAPI.Util.ClientMetricsTest do
   end
 
   test "accepts the mcp surface" do
-    conn = conn_with([{"x-semaphore-client-source", "semai-mcp"}])
+    conn = conn_with([{"x-client-source", "semai-mcp"}])
     assert ClientMetrics.source(conn) == "semai-mcp"
   end
 
   test "rejects an unknown source value, falling back to api" do
-    conn = conn_with([{"x-semaphore-client-source", "evil-client"}])
+    conn = conn_with([{"x-client-source", "evil-client"}])
     assert ClientMetrics.source(conn) == "api"
   end
 
   test "sanitises command and version to bound Graphite cardinality" do
     conn =
       conn_with([
-        {"x-semaphore-client-source", "semai-cli"},
-        {"x-semaphore-client-command", "DROP TABLE; rm -rf"},
-        {"x-semaphore-client-version", "$(curl evil)"}
+        {"x-client-source", "semai-cli"},
+        {"x-client-command", "DROP TABLE; rm -rf"},
+        {"x-client-version", "$(curl evil)"}
       ])
 
     assert ClientMetrics.client_tags(conn) == ["semai-cli", "na", "na"]
@@ -56,12 +56,22 @@ defmodule PipelinesAPI.Util.ClientMetricsTest do
   test "log_fields renders compact client context" do
     conn =
       conn_with([
-        {"x-semaphore-client-source", "semai-mcp"},
-        {"x-semaphore-client-command", "diagnose"},
-        {"x-semaphore-client-version", "1.4.0"}
+        {"x-client-source", "semai-mcp"},
+        {"x-client-command", "diagnose"},
+        {"x-client-version", "1.4.0"}
       ])
 
     assert IO.iodata_to_binary(ClientMetrics.log_fields(conn)) ==
              " - client=semai-mcp command=diagnose version=1.4.0"
+  end
+
+  test "usage_metric is generic and service-agnostic (shared across backends)" do
+    assert ClientMetrics.usage_metric() == "api.client_usage"
+  end
+
+  test "usage_tags carry source only, for cross-service cli-vs-mcp aggregation" do
+    assert ClientMetrics.usage_tags(conn_with([{"x-client-source", "semai-mcp"}])) == ["semai-mcp"]
+    assert ClientMetrics.usage_tags(conn_with([{"x-client-source", "semai-cli"}])) == ["semai-cli"]
+    assert ClientMetrics.usage_tags(conn_with([])) == ["api"]
   end
 end
