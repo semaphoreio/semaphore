@@ -105,7 +105,7 @@ defmodule PipelinesAPI.SuperjerryClient.RequestFormatter do
     @filter_map
     |> Enum.reduce([], fn {param, key}, acc ->
       case Map.get(params, param) do
-        v when is_binary(v) and v != "" -> ["#{key}:#{quote_if_needed(v)}" | acc]
+        v when is_binary(v) and v != "" -> ["#{key}:#{encode_filter_value(v)}" | acc]
         _ -> acc
       end
     end)
@@ -113,8 +113,15 @@ defmodule PipelinesAPI.SuperjerryClient.RequestFormatter do
     |> Enum.join(" ")
   end
 
-  defp quote_if_needed(v) do
-    if String.contains?(v, [" ", ","]), do: ~s("#{v}"), else: v
+  # The Superjerry filter parser (parseFilterQuery in Go) uses `"` as a raw
+  # toggle — there is no backslash-escape mechanism. A literal `"` inside a
+  # quoted value would close the quote early and allow clause injection. Since
+  # escaping is not supported, we strip embedded `"` characters before quoting.
+  # We always wrap in double-quotes so that `@`, `:`, and space inside a value
+  # cannot be misread as a new clause delimiter.
+  defp encode_filter_value(v) do
+    safe = String.replace(v, ~s("), "")
+    ~s("#{safe}")
   end
 
   defp page(params), do: int_or_default(params["page"], 1)

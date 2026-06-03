@@ -88,6 +88,36 @@ defmodule PipelinesAPI.SuperjerryClient.ResponseFormatterTest do
     assert [%{context: "c", hash: "h", run_id: "r"}] = entries
   end
 
+  test "disruptions page_size defaults to 10 when not specified" do
+    resp =
+      {:ok,
+       %FlakyTestDisruptionsResponse{
+         disruptions: [],
+         total_rows: 0,
+         total_pages: 1
+       }}
+
+    assert {:ok, %Scrivener.Page{page_size: page_size}} =
+             RF.process_flaky_test_disruptions_response(resp, %{})
+
+    assert page_size == 10
+  end
+
+  test "flaky list page_size defaults to 20 when not specified" do
+    resp =
+      {:ok,
+       %ListFlakyTestsResponse{
+         flaky_tests: [],
+         total_rows: 0,
+         total_pages: 1
+       }}
+
+    assert {:ok, %Scrivener.Page{page_size: page_size}} =
+             RF.process_list_flaky_tests_response(resp, %{})
+
+    assert page_size == 20
+  end
+
   test "history response -> list of {day, count}" do
     resp =
       {:ok,

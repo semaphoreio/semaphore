@@ -32,10 +32,10 @@ defmodule PipelinesAPI.SuperjerryClient.RequestFormatterTest do
                "bogus" => "drop-me"
              })
 
-    assert f =~ "@git.branch:main"
-    assert f =~ "@is.resolved:false"
-    assert f =~ "@metric.pass_rate:>=80"
-    assert f =~ "@label:\"flaky,slow\""
+    assert f =~ ~s(@git.branch:"main")
+    assert f =~ ~s(@is.resolved:"false")
+    assert f =~ ~s(@metric.pass_rate:">=80")
+    assert f =~ ~s(@label:"flaky,slow")
     refute f =~ "bogus"
   end
 
@@ -49,5 +49,50 @@ defmodule PipelinesAPI.SuperjerryClient.RequestFormatterTest do
              })
 
     assert f =~ ~s(@git.branch:"feature branch")
+  end
+
+  test "value containing embedded double-quote cannot inject a second @key clause" do
+    # A raw value like: main" @is.resolved:false x="
+    # Without hardening this would produce: @git.branch:main" @is.resolved:false x="
+    # which the Superjerry parser (no backslash escape) would read as two separate
+    # clauses — @git.branch:main and @is.resolved:false.
+    # encode_filter_value strips embedded " before quoting, so the whole value
+    # lands inside a single quoted token: @git.branch:"main @is.resolved:false x="
+    # The parser only starts a new key on @ while NOT inQuote, so the embedded
+    # text stays inside the current value — no second clause is produced.
+    assert {:ok, %ListFlakyTestsRequest{filters: f}} =
+             RF.form_list_flaky_tests_request(%{
+               "org_id" => "o",
+               "project_id" => "p",
+               "branch" => ~s(main" @is.resolved:false x=")
+             })
+
+    # The entire output must be the single safe quoted clause — if injection
+    # had succeeded there would be content after the closing quote.
+    assert f == ~s(@git.branch:"main @is.resolved:false x=")
+  end
+
+  test "value containing @ and : is quoted and cannot open a new clause" do
+    # The parser starts a new key only when it sees @ outside a quoted value.
+    # Always-quoted encoding keeps @ inside the value token.
+    assert {:ok, %ListFlakyTestsRequest{filters: f}} =
+             RF.form_list_flaky_tests_request(%{
+               "org_id" => "o",
+               "project_id" => "p",
+               "branch" => "main @is.resolved:false"
+             })
+
+    assert f == ~s(@git.branch:"main @is.resolved:false")
+  end
+
+  test "value containing a space is quoted so the parser sees one token" do
+    assert {:ok, %ListFlakyTestsRequest{filters: f}} =
+             RF.form_list_flaky_tests_request(%{
+               "org_id" => "o",
+               "project_id" => "p",
+               "test_name" => "My Test Case"
+             })
+
+    assert f == ~s(@test.name:"My Test Case")
   end
 end

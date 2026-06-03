@@ -3,6 +3,7 @@ defmodule PipelinesAPI.SuperjerryClient.ResponseFormatter do
 
   alias PipelinesAPI.Util.ToTuple
 
+  # total_count and disruption_timestamps on Flaky are intentionally NOT exposed — chosen field subset per design.
   @flaky_fields ~w(test_id test_name test_group test_runner test_file test_suite
                    pass_rate labels disruptions_count latest_disruption_hash
                    latest_disruption_run_id resolved scheduled ticket_url age)a
@@ -14,7 +15,7 @@ defmodule PipelinesAPI.SuperjerryClient.ResponseFormatter do
           {:ok, Scrivener.Page.t()} | {:error, any()}
   def process_list_flaky_tests_response({:ok, resp}, params) when is_map(resp) do
     entries = (resp.flaky_tests || []) |> Enum.reject(&is_nil/1) |> Enum.map(&flaky_to_map/1)
-    {:ok, to_page(entries, resp, params)}
+    {:ok, to_page(entries, resp, params, 20)}
   end
 
   def process_list_flaky_tests_response(error, _params), do: error
@@ -66,6 +67,7 @@ defmodule PipelinesAPI.SuperjerryClient.ResponseFormatter do
      }}
   end
 
+  # proto3: detail nil means the server found no record — treat as 404.
   def process_flaky_test_details_response({:ok, _}), do: ToTuple.not_found_error("Not found")
   def process_flaky_test_details_response(error), do: error
 
@@ -86,7 +88,7 @@ defmodule PipelinesAPI.SuperjerryClient.ResponseFormatter do
         }
       end)
 
-    {:ok, to_page(entries, resp, params)}
+    {:ok, to_page(entries, resp, params, 10)}
   end
 
   def process_flaky_test_disruptions_response(error, _params), do: error
@@ -114,11 +116,11 @@ defmodule PipelinesAPI.SuperjerryClient.ResponseFormatter do
 
   # ---- helpers ----
 
-  defp to_page(entries, resp, params) do
+  defp to_page(entries, resp, params, page_size_default) do
     struct(Scrivener.Page, %{
       entries: entries,
       page_number: page(params),
-      page_size: page_size(params),
+      page_size: page_size(params, page_size_default),
       total_entries: Map.get(resp, :total_rows, length(entries)),
       total_pages: Map.get(resp, :total_pages, 1)
     })
@@ -139,7 +141,7 @@ defmodule PipelinesAPI.SuperjerryClient.ResponseFormatter do
   defp ts_to_string(_), do: nil
 
   defp page(params), do: int_or(params["page"], 1)
-  defp page_size(params), do: int_or(params["page_size"], 20)
+  defp page_size(params, default), do: int_or(params["page_size"], default)
 
   defp int_or(v, d) when is_binary(v) do
     case Integer.parse(v) do
