@@ -29,13 +29,14 @@ defmodule Secrethub.Mixfile do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:plug, "~> 1.13.6"},
-      {:plug_cowboy, "~> 2.5"},
+      {:plug, "~> 1.15.4", override: true},
+      {:plug_cowboy, "~> 2.7"},
       {:grpc, "0.5.0-beta.1", override: true},
       {:grpc_health_check, github: "renderedtext/grpc_health_check", branch: "protobuf_0.7.1"},
       {:protobuf, "~> 0.7.1"},
-      {:cowboy, "~> 2.9.0", override: true},
-      {:cowlib, "~> 2.11.0", override: true},
+      {:cowboy, "~> 2.15", override: true},
+      {:cowlib, "~> 2.16", override: true},
+      {:ranch, "~> 1.8.0", override: true},
       {:watchman, github: "renderedtext/ex-watchman"},
       {:timex, "~> 3.1"},
       {:cachex, "~> 3.0"},
@@ -46,7 +47,7 @@ defmodule Secrethub.Mixfile do
       {:fun_registry, github: "renderedtext/fun-registry", only: [:dev, :test]},
       {:paginator, "~> 1.1.0"},
       {:sentry, "~> 8.0"},
-      {:hackney, "~> 1.8"},
+      {:hackney, "~> 1.24", override: true},
       {:sentry_grpc, github: "renderedtext/sentry_grpc"},
       {:jason, "~> 1.1"},
       {:joken, "~> 2.5"},
