@@ -88,4 +88,20 @@ defmodule Zebra.Machines.BrownoutTest do
                false
     end
   end
+
+  describe "applying brownout on default schedules" do
+    test "works for macos-xcode15" do
+      assert Brownout.os_image_in_brownout?(
+               ~U[2026-06-15 10:10:00Z],
+               "regular-org",
+               "macos-xcode15"
+             ) == true
+
+      assert Brownout.os_image_in_brownout?(
+               ~U[2026-06-15 10:15:01Z],
+               "regular-org",
+               "macos-xcode15"
+             ) == false
+    end
+  end
 end

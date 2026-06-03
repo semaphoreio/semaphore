@@ -18,7 +18,8 @@ defmodule Zebra.Machines.Brownout do
   """
   @spec schedules() :: brownout_schedules()
   def schedules do
-    BrownoutSchedule.ubuntu2004()
+    BrownoutSchedule.ubuntu2004() ++
+      BrownoutSchedule.macosxcode15()
   end
 
   @doc """
