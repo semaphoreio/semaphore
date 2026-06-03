@@ -37,7 +37,7 @@ defmodule PipelinesAPI.Util.ClientMetrics do
   @org_metric "api.org_usage"
   @na "na"
   @known_sources ~w(semai-cli semai-mcp)
-  @command_regex ~r/\A[a-z0-9_]{1,50}\z/
+  @command_regex ~r/\A[a-z0-9_-]{1,50}\z/
   @version_regex ~r/\A[A-Za-z0-9._+-]{1,30}\z/
 
   @doc """
