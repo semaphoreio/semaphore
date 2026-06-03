@@ -1960,6 +1960,7 @@ Example:
 ```shell
 curl -i -H "Authorization: Token {api_token}" \
      "https://<organization-url>.semaphoreci.com/api/v1alpha/artifacts_retention_policies/:project_id"
+```
 
 ## Test results (flaky tests)
 
@@ -2261,5 +2262,4 @@ Example:
 ```shell
 curl -H "Authorization: Token {api_token}" \
      "https://<organization-url>.semaphoreci.com/api/v1alpha/projects/{project_id}/insights/frequency?pipeline_file=.semaphore/semaphore.yml&branch=main"
-```
 ```
