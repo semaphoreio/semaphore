@@ -22,6 +22,7 @@ defmodule Support.FakeServices do
     GrpcMock.defmock(RBACMock, for: InternalApi.RBAC.RBAC.Service)
     GrpcMock.defmock(LoghubMock, for: InternalApi.Loghub.Loghub.Service)
     GrpcMock.defmock(Loghub2Mock, for: InternalApi.Loghub2.Loghub2.Service)
+    GrpcMock.defmock(SuperjerryMock, for: InternalApi.Superjerry.Superjerry.Service)
 
     services = [
       ArtifacthubMock,
@@ -40,7 +41,8 @@ defmodule Support.FakeServices do
       FeatureMock,
       RBACMock,
       LoghubMock,
-      Loghub2Mock
+      Loghub2Mock,
+      SuperjerryMock
     ]
 
     spawn(fn ->
