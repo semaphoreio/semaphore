@@ -32,6 +32,17 @@ defmodule PipelinesAPI.Util.ClientMetricsTest do
     assert ClientMetrics.client_tags(conn) == ["semai-cli", "pipeline_list", "v0_1_19-3-ge20eb02"]
   end
 
+  test "accepts hyphenated commands (critical-path, blast-radius, rerun-failed)" do
+    conn =
+      conn_with([
+        {"x-client-source", "semai-cli"},
+        {"x-client-command", "critical-path"},
+        {"x-client-version", "1.4.0"}
+      ])
+
+    assert ClientMetrics.client_tags(conn) == ["semai-cli", "critical-path", "1_4_0"]
+  end
+
   test "defaults header-less (non sem-ai) traffic to source=api with na dimensions" do
     assert ClientMetrics.client_tags(conn_with([])) == ["api", "na", "na"]
   end
