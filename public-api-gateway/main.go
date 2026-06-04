@@ -12,6 +12,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	watchman "github.com/renderedtext/go-watchman"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -59,6 +60,29 @@ func getMaxReceiveMessageSize() int {
 	return maxReceiveMsgSize
 }
 
+func metricsNamespace() string {
+	if ns := os.Getenv("METRICS_NAMESPACE"); ns != "" {
+		return ns
+	}
+
+	return "dev"
+}
+
+func configureMetrics() {
+	err := watchman.ConfigureWithOptions(watchman.Options{
+		Host:                  "0.0.0.0",
+		Port:                  "8125",
+		MetricsChannel:        watchman.InternalOnly,
+		BackendType:           watchman.BackendGraphite,
+		MetricPrefix:          "public-api-gateway." + metricsNamespace(),
+		ConnectionAttempts:    30,
+		ConnectionAttemptWait: 2 * time.Second,
+	})
+	if err != nil {
+		glog.Errorf("Failed to configure watchman: %v", err)
+	}
+}
+
 func run() error {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
@@ -71,8 +95,10 @@ func run() error {
 		return fmt.Errorf("failed to initialize audit client: %v", err)
 	}
 
+	go configureMetrics()
+
 	mux := runtime.NewServeMux(
-		runtime.WithMiddlewares(middleware.AuditMiddleware(auditClient)),
+		runtime.WithMiddlewares(middleware.AuditMiddleware(auditClient), middleware.ClientMetricsMiddleware()),
 		runtime.WithIncomingHeaderMatcher(headerMatcher),
 		runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.HTTPBodyMarshaler{
 			Marshaler: &runtime.JSONPb{
