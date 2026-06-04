@@ -18,6 +18,7 @@ gem "googleapis-common-protos-types", "~> 1.18.0"
 gem "httparty", "~> 0.24.0"
 gem "httpclient"
 gem "json"
+gem "erb", ">= 6.0.4" # CVE-2026-41316: @_init deserialization guard bypass
 gem "kaminari", "~> 1.2.2"
 gem "lograge"
 gem "octokit"
