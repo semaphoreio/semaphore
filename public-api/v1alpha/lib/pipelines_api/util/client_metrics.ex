@@ -3,7 +3,7 @@ defmodule PipelinesAPI.Util.ClientMetrics do
   Per-request metric describing which client issued the request, so sem-ai
   (CLI / MCP) traffic is distinguishable from generic API traffic in Grafana.
 
-  The SaaS statsd_graphite backend keeps only the first 3 positional tags
+  The statsd_graphite backend keeps only the first 3 positional tags
   (`Watchman.Server` pads with `no_tag` and `Enum.take(3)`), so the request
   status is encoded in the metric *name* suffix rather than a tag — that leaves
   all three tag slots for the client dimensions:
@@ -135,15 +135,12 @@ defmodule PipelinesAPI.Util.ClientMetrics do
   of putting a request id in a tag.
   """
   def trace_id(conn) do
-    case header(conn, "traceparent") do
-      tp when is_binary(tp) ->
-        case String.split(tp, "-") do
-          [_v, tid, _span, _flags | _] -> if Regex.match?(@trace_id_regex, tid), do: tid
-          _ -> nil
-        end
-
-      _ ->
-        nil
+    with tp when is_binary(tp) <- header(conn, "traceparent"),
+         [_v, tid, _span, _flags | _] <- String.split(tp, "-"),
+         true <- Regex.match?(@trace_id_regex, tid) do
+      tid
+    else
+      _ -> nil
     end
   end
 

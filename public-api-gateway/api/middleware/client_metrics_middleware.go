@@ -10,7 +10,7 @@ import (
 )
 
 // Client-attribution metrics for the gateway, implementing the same contract as
-// the Elixir plugs (ADR-0007): per-request metrics tagged by the client that
+// the Elixir plugs: per-request metrics tagged by the client that
 // issued the request, read from the x-client-* headers sem-ai attaches.
 // Header-less callers tag source=api, so the metric covers all traffic.
 const (

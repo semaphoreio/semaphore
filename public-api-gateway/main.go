@@ -95,7 +95,7 @@ func run() error {
 		return fmt.Errorf("failed to initialize audit client: %v", err)
 	}
 
-	configureMetrics()
+	go configureMetrics()
 
 	mux := runtime.NewServeMux(
 		runtime.WithMiddlewares(middleware.AuditMiddleware(auditClient), middleware.ClientMetricsMiddleware()),
