@@ -36,9 +36,13 @@ defmodule PipelinesAPI.Util.ClientMetrics do
   @usage_metric "api.client_usage"
   @org_metric "api.org_usage"
   @na "na"
+  # Allowlisted client surfaces; these become Watchman tag values, so they must
+  # stay graphite-safe (no "." / "+"). client_tags/1 and usage_tags/1 also run
+  # values through graphite_safe/1, enforcing the invariant for any future entry.
   @known_sources ~w(semai-cli semai-mcp)
   @command_regex ~r/\A[a-z0-9_-]{1,50}\z/
   @version_regex ~r/\A[A-Za-z0-9._+-]{1,30}\z/
+  @trace_id_regex ~r/\A[0-9a-f]{32}\z/
 
   @doc """
   Register a before_send hook that submits the timing + per-status counter.
@@ -75,8 +79,8 @@ defmodule PipelinesAPI.Util.ClientMetrics do
   @doc "Generic, service-agnostic usage-counter name (identical across all backends)."
   def usage_metric, do: @usage_metric
 
-  @doc "Single-tag list for the generic usage counter: [source]."
-  def usage_tags(conn), do: [source(conn)]
+  @doc "Single-tag list for the generic usage counter: [source] (graphite-safe)."
+  def usage_tags(conn), do: [graphite_safe(source(conn))]
 
   @doc "Per-org volume counter name."
   def org_usage_metric, do: @org_metric
@@ -98,7 +102,11 @@ defmodule PipelinesAPI.Util.ClientMetrics do
     end
   end
 
-  @doc "Header values rendered for the request log line."
+  @doc """
+  Header values rendered for the request log line. `version` here is the RAW
+  value (e.g. `1.4.0`) for log readability — the Watchman tag uses the
+  graphite-safe form (`1_4_0`), so log↔tag cross-referencing must account for it.
+  """
   def log_fields(conn) do
     [
       " - client=",
@@ -124,7 +132,7 @@ defmodule PipelinesAPI.Util.ClientMetrics do
     case header(conn, "traceparent") do
       tp when is_binary(tp) ->
         case String.split(tp, "-") do
-          [_v, tid, _span, _flags | _] when byte_size(tid) == 32 -> tid
+          [_v, tid, _span, _flags | _] -> if Regex.match?(@trace_id_regex, tid), do: tid
           _ -> nil
         end
 
@@ -166,8 +174,9 @@ defmodule PipelinesAPI.Util.ClientMetrics do
 
   # Carbon (graphite) uses "." as the metric-path separator, so a tag VALUE
   # containing "." (e.g. a semver version) splits into extra path segments and
-  # corrupts the measurement name. Neutralise it before it becomes a tag.
-  defp graphite_safe(value), do: String.replace(value, ".", "_")
+  # corrupts the measurement name. "+" (semver build metadata) is neutralised
+  # too, keeping tag values to a conservative charset. Both -> "_".
+  defp graphite_safe(value), do: String.replace(value, ~r/[.+]/, "_")
 
   defp header(conn, name) do
     conn
