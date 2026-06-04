@@ -92,6 +92,37 @@ defmodule Zebra.Workers.JobRequestFactory.CacheTest do
     end
   end
 
+  describe ".forked_pr?" do
+    test "true when PR slug org differs from repo slug org" do
+      repo =
+        InternalApi.RepoProxy.Hook.new(
+          repo_slug: "test-org/test-repo",
+          pr_slug: "fork-org/test-repo"
+        )
+
+      assert Cache.forked_pr?(repo)
+    end
+
+    test "false when PR slug org matches repo slug org" do
+      repo =
+        InternalApi.RepoProxy.Hook.new(
+          repo_slug: "test-org/test-repo",
+          pr_slug: "test-org/test-repo"
+        )
+
+      refute Cache.forked_pr?(repo)
+    end
+
+    test "false when there is no PR slug (not a PR build)" do
+      repo = InternalApi.RepoProxy.Hook.new(repo_slug: "test-org/test-repo", pr_slug: "")
+      refute Cache.forked_pr?(repo)
+    end
+
+    test "false when repo proxy is nil" do
+      refute Cache.forked_pr?(nil)
+    end
+  end
+
   describe ".env_vars" do
     test "cache_cli_parallel_archive_method is enabled => uses parallel archive method" do
       #
