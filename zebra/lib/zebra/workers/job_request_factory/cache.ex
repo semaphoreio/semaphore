@@ -61,7 +61,7 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
         failed(:non_ok_response)
         {:ok, nil}
 
-      is_nil(response.cache) or response.cache.credential == " " ->
+      is_nil(response.cache) or blank?(response.cache.credential) ->
         Logger.warning("Cachehub describe returned blank credential. cache_id=#{cache_id}")
 
         failed(:blank_credential)
@@ -71,6 +71,9 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
         {:ok, response.cache}
     end
   end
+
+  defp blank?(nil), do: true
+  defp blank?(credential), do: String.trim(credential) == ""
 
   defp failed(reason) do
     Watchman.increment({"external.cachehub.describe.failed", [to_string(reason)]})
@@ -116,10 +119,10 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
     end
   end
 
-  defp forked_pr?(_repo = %{pr_slug: ""}), do: false
-  defp forked_pr?(nil), do: false
+  def forked_pr?(_repo = %{pr_slug: ""}), do: false
+  def forked_pr?(nil), do: false
 
-  defp forked_pr?(repo) do
+  def forked_pr?(repo) do
     [pr_repo | _rest] = repo.pr_slug |> String.split("/")
     [base_repo | _rest] = repo.repo_slug |> String.split("/")
     pr_repo != base_repo
