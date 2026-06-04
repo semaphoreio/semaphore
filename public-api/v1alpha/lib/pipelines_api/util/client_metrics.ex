@@ -32,7 +32,13 @@ defmodule PipelinesAPI.Util.ClientMetrics do
   alias PipelinesAPI.Util.Metrics
   alias Plug.Conn
 
+  # Per-service rich metric — app-namespaced, distinct per backend (each app uses
+  # its own "<App>.router.client_request").
   @metric "PipelinesAPI.router.client_request"
+  # Generic, service-agnostic counters — EVERY backend emits these *same* names,
+  # so CLI-vs-MCP-vs-api volume (client_usage) and per-org volume (org_usage)
+  # aggregate across all services; the per-service `service` tag (Watchman
+  # prefix) splits them when wanted.
   @usage_metric "api.client_usage"
   @org_metric "api.org_usage"
   @na "na"
