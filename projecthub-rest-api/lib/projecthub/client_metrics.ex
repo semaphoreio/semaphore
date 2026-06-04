@@ -9,7 +9,7 @@ defmodule Projecthub.ClientMetrics do
 
     * `Projecthub.router.client_request` (timing) + `.<status>` (counter) — this
       app's per-service rich metric, tags `[source, command, version]`. Status is
-      in the metric NAME because the SaaS statsd_graphite backend keeps only 3
+      in the metric NAME because the statsd_graphite backend keeps only 3
       positional tags.
     * `api.client_usage` `[source]` and `api.org_usage` `[org, source]` — generic,
       service-agnostic counters emitted with the *same* names by every backend,
