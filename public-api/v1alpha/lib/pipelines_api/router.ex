@@ -45,6 +45,7 @@ defmodule PipelinesAPI.Router do
   alias PipelinesAPI.Artifacts.GetSignedURL, as: GetArtifactSignedURL
 
   plug(PipelinesAPI.Plug.Logger)
+  plug(PipelinesAPI.Plug.ClientMetrics)
 
   plug(Plug.Parsers,
     parsers: [
