@@ -32,6 +32,17 @@ defmodule PipelinesAPI.Util.ClientMetricsTest do
     assert ClientMetrics.client_tags(conn) == ["semai-cli", "pipeline_list", "v0_1_19-3-ge20eb02"]
   end
 
+  test "neutralises dots AND plus in tag values (carbon-path safe)" do
+    conn =
+      conn_with([
+        {"x-client-source", "semai-cli"},
+        {"x-client-command", "pipeline_list"},
+        {"x-client-version", "1.4.0+build.5"}
+      ])
+
+    assert ClientMetrics.client_tags(conn) == ["semai-cli", "pipeline_list", "1_4_0_build_5"]
+  end
+
   test "accepts hyphenated commands (critical-path, blast-radius, rerun-failed)" do
     conn =
       conn_with([
@@ -94,6 +105,10 @@ defmodule PipelinesAPI.Util.ClientMetricsTest do
     assert ClientMetrics.trace_id(conn) == "0af7651916cd43dd8448eb211c80319c"
     assert ClientMetrics.trace_id(conn_with([])) == nil
     assert ClientMetrics.trace_id(conn_with([{"traceparent", "garbage"}])) == nil
+
+    # right shape, 32 chars, but non-hex -> rejected (no log-field injection)
+    non_hex = "00-zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz-b7ad6b7169203331-01"
+    assert ClientMetrics.trace_id(conn_with([{"traceparent", non_hex}])) == nil
   end
 
   test "usage_metric is generic and service-agnostic (shared across backends)" do
