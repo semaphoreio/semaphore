@@ -41,7 +41,9 @@ defmodule Guard.Id.Api do
   )
 
   plug(Unplug,
-    if: {Unplug.Predicates.RequestPathNotIn, ["/mcp/oauth/register", "/mcp/oauth/token"]},
+    if:
+      {Unplug.Predicates.RequestPathNotIn,
+       ["/mcp/oauth/register", "/mcp/oauth/token", "/cli/token"]},
     do: {Plug.CSRFProtection, []}
   )
 
@@ -266,6 +268,85 @@ defmodule Guard.Id.Api do
   end
 
   #
+  # CLI signup (loopback + PKCE) — drives `sem-ai signup`. See Guard.CLIAuth.
+  # Reuses the normal OIDC web flow (which creates the account for a new user);
+  # the /oidc/callback below branches on the CLI state cookie to hand back a
+  # one-time code instead of a browser session.
+  #
+  get "/cli/signup" do
+    redirect_uri = conn.query_params["redirect_uri"] || ""
+    cli_state = conn.query_params["state"] || ""
+    code_challenge = conn.query_params["code_challenge"] || ""
+    method = conn.query_params["code_challenge_method"] || ""
+
+    cond do
+      not Guard.OIDC.enabled?() ->
+        conn |> error_login_page("OIDC configuration is missing")
+
+      not Guard.CLIAuth.loopback_redirect?(redirect_uri) ->
+        conn |> error_login_page("Invalid redirect_uri: must be a loopback address")
+
+      method != "S256" or code_challenge == "" ->
+        conn |> error_login_page("Invalid PKCE parameters")
+
+      true ->
+        oidc_callback = id_page("oidc/callback")
+
+        case Guard.OIDC.authorization_uri(oidc_callback) do
+          {:ok, {state, verifier, url}} ->
+            provider = conn.query_params["provider"]
+
+            url =
+              if provider in ["github", "bitbucket", "gitlab"],
+                do: "#{url}&kc_idp_hint=#{provider}",
+                else: url
+
+            # CLI context rides INSIDE the single OIDC state cookie (a 3-tuple),
+            # not a separate cookie — so it's per-flow, overwritten by any new
+            # login, and verified via state_match before we act on it.
+            cli_ctx = %{
+              redirect_uri: redirect_uri,
+              cli_state: cli_state,
+              code_challenge: code_challenge
+            }
+
+            conn
+            |> Guard.Utils.Http.put_state_value(@state_cookie_key, {state, verifier, cli_ctx})
+            |> Guard.Utils.Http.redirect_to_url(url)
+
+          {:error, error} ->
+            Logger.error("CLI login authorization_uri error: #{inspect(error)}")
+            conn |> error_login_page("Error occurred while fetching authorization uri")
+        end
+    end
+  end
+
+  #
+  # CLI token exchange — trade the one-time code + PKCE verifier for an API token.
+  # CSRF-exempt (see plug above); it's a direct CLI→guard call, not a browser form.
+  #
+  post "/cli/token" do
+    params = conn.body_params || %{}
+
+    with "authorization_code" <- params["grant_type"] || "",
+         {:ok, user_id} <- Guard.CLIAuth.exchange(params),
+         {:ok, token} <- Guard.CLIAuth.mint_or_rotate_token(user_id) do
+      # host is nil: a fresh signup has no org yet. The org (and its subdomain
+      # host) is created in a later step; the CLI stores token now, host pending.
+      cli_json(conn, 200, %{token: token, host: nil})
+    else
+      _ ->
+        cli_json(conn, 400, %{error: "invalid_grant"})
+    end
+  end
+
+  defp cli_json(conn, status, body) do
+    conn
+    |> put_resp_header("content-type", "application/json")
+    |> send_resp(status, Jason.encode!(body))
+  end
+
+  #
   # Login endpoint
   #
   get "/login" do
@@ -482,6 +563,66 @@ defmodule Guard.Id.Api do
   end
 
   get "/oidc/callback" do
+    if cli_flow?(conn) do
+      handle_cli_oidc_callback(conn)
+    else
+      handle_browser_oidc_callback(conn)
+    end
+  end
+
+  # A CLI flow is identified by the OIDC state cookie carrying a 3rd element (the
+  # CLI context). Branching on the cookie SHAPE (not a separate persistent cookie)
+  # means each flow is self-contained: a new login overwrites it, the callback
+  # consumes it, and state_match still gates it.
+  defp cli_flow?(conn) do
+    case Guard.Utils.Http.fetch_state_value(conn, @state_cookie_key) do
+      {:ok, {_state, _verifier, %{redirect_uri: _}}, _conn} -> true
+      _ -> false
+    end
+  end
+
+  defp handle_cli_oidc_callback(conn) do
+    oidc_callback = id_page("oidc/callback")
+    code = conn.query_params["code"] || ""
+    callback_state = conn.query_params["state"] || ""
+
+    {:ok, {state, verifier, cli_ctx}, conn} =
+      Guard.Utils.Http.fetch_state_value(conn, @state_cookie_key)
+
+    conn = Guard.Utils.Http.delete_state_value(conn, @state_cookie_key)
+
+    # Re-validate the redirect_uri is loopback before ANY redirect to it (it was
+    # validated at /cli/login, but never trust a stored value without rechecking).
+    if not Guard.CLIAuth.loopback_redirect?(cli_ctx.redirect_uri) do
+      Logger.warning("CLI callback: stored redirect_uri is not loopback, refusing")
+      conn |> error_login_page("Invalid redirect_uri")
+    else
+      with :ok <- Guard.OIDC.state_match?(state, callback_state),
+           {:ok, {user_data, _tokens}} <- Guard.OIDC.exchange_code(code, verifier, oidc_callback),
+           {:ok, allowed, error_message} <- verify_oidc_login_allowed(user_data),
+           true <- allowed || {:error, :login_not_allowed, error_message},
+           {:ok, user, _mode} <- find_or_create_user(user_data),
+           {:ok, auth_code} <-
+             Guard.CLIAuth.issue_code(user.id, cli_ctx.code_challenge, cli_ctx.redirect_uri) do
+        Logger.info("[ID] CLI auth code issued for user_id: #{user.id}")
+
+        conn
+        |> Guard.Utils.Http.redirect_to_url(cli_ctx.redirect_uri,
+          query: %{code: auth_code, state: cli_ctx.cli_state}
+        )
+      else
+        error ->
+          Logger.warning("CLI OIDC callback failed: #{inspect(error)}")
+
+          conn
+          |> Guard.Utils.Http.redirect_to_url(cli_ctx.redirect_uri,
+            query: %{error: "auth_failed", state: cli_ctx.cli_state}
+          )
+      end
+    end
+  end
+
+  defp handle_browser_oidc_callback(conn) do
     if Guard.OIDC.enabled?() do
       oidc_callback = id_page("oidc/callback")
 
