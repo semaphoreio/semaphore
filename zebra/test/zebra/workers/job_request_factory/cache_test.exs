@@ -59,6 +59,23 @@ defmodule Zebra.Workers.JobRequestFactory.CacheTest do
       refute log =~ @cache_url
     end
 
+    test "treats an empty-string credential as blank => returns {:ok, nil}" do
+      GrpcMock.stub(Support.FakeServers.CacheApi, :describe, fn _, _ ->
+        InternalApi.Cache.DescribeResponse.new(
+          status:
+            InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
+          cache: InternalApi.Cache.Cache.new(id: @cache_id, credential: "", url: @cache_url)
+        )
+      end)
+
+      log =
+        capture_log(fn ->
+          assert {:ok, nil} = Cache.find(@cache_id, nil, @org_id)
+        end)
+
+      assert log =~ "blank credential"
+    end
+
     test "logs warning and returns {:ok, nil} when cachehub raises" do
       GrpcMock.stub(Support.FakeServers.CacheApi, :describe, fn _, _ ->
         raise "boom"
