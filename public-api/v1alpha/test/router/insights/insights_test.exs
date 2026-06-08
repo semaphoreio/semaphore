@@ -22,7 +22,7 @@ defmodule PipelinesAPI.Router.InsightsTest do
     project = Support.Stubs.Project.create(org, user)
 
     Support.Stubs.Feature.set_org_defaults(org.id)
-    Support.Stubs.Feature.enable_feature(org.id, :velocity)
+    Support.Stubs.Feature.enable_feature(org.id, :pipeline_summaries)
 
     {:ok, %{org: org, project: project}}
   end
@@ -98,7 +98,7 @@ defmodule PipelinesAPI.Router.InsightsTest do
   end
 
   test "404 when feature flag is disabled", ctx do
-    Support.Stubs.Feature.disable_feature(ctx.org.id, :velocity)
+    Support.Stubs.Feature.disable_feature(ctx.org.id, :pipeline_summaries)
 
     {status, body} =
       get(
@@ -134,7 +134,7 @@ defmodule PipelinesAPI.Router.InsightsTest do
     other_project = Support.Stubs.Project.create(other_org, %{id: UUID.uuid4()})
 
     Support.Stubs.Feature.set_org_defaults(other_org.id)
-    Support.Stubs.Feature.enable_feature(other_org.id, :velocity)
+    Support.Stubs.Feature.enable_feature(other_org.id, :pipeline_summaries)
 
     {status, body} =
       get(

@@ -17,7 +17,7 @@ defmodule PipelinesAPI.Insights.Common do
   def feature_enabled(conn, _opts) do
     org_id = get_org_id(conn)
 
-    if org_id != "" and FeatureProvider.feature_enabled?(:velocity, param: org_id) do
+    if org_id != "" and FeatureProvider.feature_enabled?(:pipeline_summaries, param: org_id) do
       conn
     else
       conn |> resp(404, "Not Found") |> halt()
