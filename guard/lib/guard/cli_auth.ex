@@ -90,20 +90,26 @@ defmodule Guard.CLIAuth do
   def loopback_redirect?(_), do: false
 
   @doc """
-  Mint (or, for an existing account, ROTATE) the API token and return the plaintext.
-
-  NOTE: signup currently rotates the token even when one already exists. This is a
-  deliberate "for now / testing" choice — re-running signup must yield a usable
-  token, and we can't return an existing one (only its hash is stored). Rotation
-  invalidates any token already in use by other clients. Revisit once scoped /
-  per-device tokens land.
+  Mint the API token for a tokenless (new) account. An account that already has a
+  token is rejected with `:token_exists` — signup is for new accounts; an existing
+  account should authenticate with `sem-ai connect`. We can't return the existing
+  token anyway (only its hash is stored).
   """
-  @spec mint_or_rotate_token(String.t()) ::
-          {:ok, String.t()} | {:error, :user_not_found | String.t()}
-  def mint_or_rotate_token(user_id) do
+  @spec mint_token(String.t()) ::
+          {:ok, String.t()} | {:error, :token_exists | :user_not_found | String.t()}
+  def mint_token(user_id) do
     case Guard.Store.User.Front.find(user_id) do
-      {:ok, front_user} -> Guard.FrontRepo.User.reset_auth_token(front_user)
-      {:error, :not_found} -> {:error, :user_not_found}
+      {:ok, front_user} ->
+        case front_user.authentication_token do
+          token when is_nil(token) or token == "" ->
+            Guard.FrontRepo.User.reset_auth_token(front_user)
+
+          _ ->
+            {:error, :token_exists}
+        end
+
+      {:error, :not_found} ->
+        {:error, :user_not_found}
     end
   end
 end

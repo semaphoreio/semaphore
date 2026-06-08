@@ -330,11 +330,19 @@ defmodule Guard.Id.Api do
 
     with "authorization_code" <- params["grant_type"] || "",
          {:ok, user_id} <- Guard.CLIAuth.exchange(params),
-         {:ok, token} <- Guard.CLIAuth.mint_or_rotate_token(user_id) do
+         {:ok, token} <- Guard.CLIAuth.mint_token(user_id) do
       # host is nil: a fresh signup has no org yet. The org (and its subdomain
       # host) is created in a later step; the CLI stores token now, host pending.
       cli_json(conn, 200, %{token: token, host: nil})
     else
+      {:error, :token_exists} ->
+        cli_json(conn, 409, %{
+          error: "token_exists",
+          message:
+            "This account already exists. Run `sem-ai connect <host> <token>` " <>
+              "with a token from your Semaphore settings."
+        })
+
       _ ->
         cli_json(conn, 400, %{error: "invalid_grant"})
     end
@@ -592,7 +600,7 @@ defmodule Guard.Id.Api do
     conn = Guard.Utils.Http.delete_state_value(conn, @state_cookie_key)
 
     # Re-validate the redirect_uri is loopback before ANY redirect to it (it was
-    # validated at /cli/login, but never trust a stored value without rechecking).
+    # validated at /cli/signup, but never trust a stored value without rechecking).
     if not Guard.CLIAuth.loopback_redirect?(cli_ctx.redirect_uri) do
       Logger.warning("CLI callback: stored redirect_uri is not loopback, refusing")
       conn |> error_login_page("Invalid redirect_uri")
@@ -889,7 +897,7 @@ defmodule Guard.Id.Api do
   end
 
   defp verify_oidc_user_login_allowed_on_saml(user) do
-    if user != nil and user.creation_source == nil && !user.single_org_user do
+    if (user != nil and user.creation_source == nil) && !user.single_org_user do
       {:ok, true, nil}
     else
       Logger.warning("OIDC login not allowed for this user")
