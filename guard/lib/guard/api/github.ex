@@ -60,6 +60,7 @@ defmodule Guard.Api.Github do
   def user_token(repo_host_account) do
     case validate_token(repo_host_account.token) do
       {:ok, true} -> {:ok, {repo_host_account.token, nil}}
+      {:error, :transient} -> {:ok, {repo_host_account.token, nil}}
       _ -> handle_fetch_token(repo_host_account)
     end
   end
@@ -112,10 +113,10 @@ defmodule Guard.Api.Github do
       {:ok, %{status: status}} when status in 200..299 ->
         {:ok, true}
 
-      {:ok, %{status: status}} when status in [401, 403] ->
+      {:ok, %{status: 401}} ->
         {:ok, false}
 
-      {:ok, %{status: status}} when status == 429 or status in 500..599 ->
+      {:ok, %{status: status}} when status == 403 or status == 429 or status in 500..599 ->
         Logger.warning("Transient GitHub token validation failure (HTTP #{status})")
         {:error, :transient}
 
