@@ -210,28 +210,20 @@ defmodule Guard.FrontRepo.RepoHostAccount do
   """
   @spec update_profile(t(), map()) :: {:ok, t()} | {:error, Ecto.Changeset.t() | :stale}
   def update_profile(%__MODULE__{} = rha, attrs) when is_map(attrs) do
-    changeset =
-      rha
-      |> Ecto.Changeset.cast(attrs, [:login, :name])
-      |> then(&Ecto.Changeset.validate_required(&1, Map.keys(&1.changes)))
-
-    cond do
-      not changeset.valid? ->
-        FrontRepo.update(changeset)
-
-      changeset.changes == %{} ->
-        {:ok, rha}
-
-      true ->
-        try do
-          changeset
-          |> Ecto.Changeset.optimistic_lock(:updated_at, &bump_updated_at/1)
-          |> FrontRepo.update()
-        rescue
-          Ecto.StaleEntryError -> {:error, :stale}
-        end
-    end
+    rha
+    |> Ecto.Changeset.cast(attrs, [:login, :name])
+    |> then(&Ecto.Changeset.validate_required(&1, Map.keys(&1.changes)))
+    |> maybe_lock_on_updated_at()
+    |> FrontRepo.update()
+  rescue
+    Ecto.StaleEntryError -> {:error, :stale}
   end
+
+  defp maybe_lock_on_updated_at(%Ecto.Changeset{changes: changes} = cs) when changes == %{},
+    do: cs
+
+  defp maybe_lock_on_updated_at(cs),
+    do: Ecto.Changeset.optimistic_lock(cs, :updated_at, &bump_updated_at/1)
 
   # Force monotonic increment so the optimistic lock works even when two
   # writes land in the same wall-clock second. The `:utc_datetime` schema
