@@ -1503,6 +1503,70 @@ defmodule Guard.GrpcServers.UserServerTest do
       assert reloaded.updated_at == original_updated_at
     end
 
+    test "refresh_repository_provider preserves revoke status when first validate_token returns 5xx and no refresh_token",
+         %{grpc_channel: channel, user: user, repo_host_account: rha} do
+      # Guards against revoking a healthy account when the FIRST validate_token
+      # call (inside user_token/1) hits a transient failure. Fixture rha has no
+      # refresh_token; without the :transient short-circuit, user_token would
+      # fall through to handle_fetch_token → {:error, :revoked} → account
+      # revoked.
+      original_updated_at = rha.updated_at
+
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          {:ok, %Tesla.Env{status: 500, body: %{"message" => "boom"}}}
+
+        %{method: :get, url: "https://api.github.com/user/184065"} ->
+          json(%{"id" => 184_065, "login" => rha.login, "name" => rha.name})
+
+        %{method: :post, url: "https://github.com/login/oauth/access_token"} ->
+          raise "must not attempt refresh when validate is transient"
+      end)
+
+      request =
+        User.RefreshRepositoryProviderRequest.new(
+          user_id: user.id,
+          type: User.RepositoryProvider.Type.value(:GITHUB)
+        )
+
+      {:ok, _response} = channel |> Stub.refresh_repository_provider(request)
+
+      {:ok, reloaded} = Guard.FrontRepo.RepoHostAccount.get_for_github_user(user.id)
+      assert reloaded.revoked == false
+      assert reloaded.updated_at == original_updated_at
+    end
+
+    test "refresh_repository_provider preserves revoke status when first validate_token returns 403 and no refresh_token",
+         %{grpc_channel: channel, user: user, repo_host_account: rha} do
+      # 403 from GET https://api.github.com/ is overwhelmingly secondary
+      # rate-limit, not "token revoked". It must be treated as transient and
+      # leave the account untouched.
+      original_updated_at = rha.updated_at
+
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          {:ok, %Tesla.Env{status: 403, body: %{"message" => "rate limited"}}}
+
+        %{method: :get, url: "https://api.github.com/user/184065"} ->
+          json(%{"id" => 184_065, "login" => rha.login, "name" => rha.name})
+
+        %{method: :post, url: "https://github.com/login/oauth/access_token"} ->
+          raise "must not attempt refresh on 403"
+      end)
+
+      request =
+        User.RefreshRepositoryProviderRequest.new(
+          user_id: user.id,
+          type: User.RepositoryProvider.Type.value(:GITHUB)
+        )
+
+      {:ok, _response} = channel |> Stub.refresh_repository_provider(request)
+
+      {:ok, reloaded} = Guard.FrontRepo.RepoHostAccount.get_for_github_user(user.id)
+      assert reloaded.revoked == false
+      assert reloaded.updated_at == original_updated_at
+    end
+
     test "refresh_repository_provider should refresh repository provider details for a valid user with bitbucket",
          %{
            grpc_channel: channel

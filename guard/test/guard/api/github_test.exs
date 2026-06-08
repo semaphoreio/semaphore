@@ -59,6 +59,49 @@ defmodule Guard.Api.GithubTest do
 
       assert updated_rha.token == "new_token"
     end
+
+    test "returns current token on transient validate failure without refresh attempt",
+         %{repo_host_account: rha} do
+      rha = %{rha | refresh_token: nil}
+
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          {:ok, %Tesla.Env{status: 500, body: %{"message" => "boom"}}}
+
+        %{method: :post, url: "https://github.com/login/oauth/access_token"} ->
+          raise "must not attempt refresh on transient validate failure"
+      end)
+
+      assert {:ok, {"token", nil}} = Github.user_token(rha)
+    end
+
+    test "returns current token on transient validate failure even with refresh_token",
+         %{repo_host_account: rha} do
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          {:ok, %Tesla.Env{status: 503, body: %{}}}
+
+        %{method: :post, url: "https://github.com/login/oauth/access_token"} ->
+          raise "must not attempt refresh on transient validate failure"
+      end)
+
+      assert {:ok, {"token", nil}} = Github.user_token(rha)
+    end
+
+    test "returns :revoked when token is rejected and refresh_token is missing",
+         %{repo_host_account: rha} do
+      rha = %{rha | refresh_token: nil}
+
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          {:ok, %Tesla.Env{status: 401, body: %{}}}
+
+        %{method: :post, url: "https://github.com/login/oauth/access_token"} ->
+          raise "must not attempt refresh without refresh_token"
+      end)
+
+      assert {:error, :revoked} = Github.user_token(rha)
+    end
   end
 
   describe "validate_token/1" do
@@ -71,20 +114,16 @@ defmodule Guard.Api.GithubTest do
       assert {:ok, true} = Github.validate_token("token")
     end
 
-    for status <- [401, 403] do
-      test "#{status} returns {:ok, false}" do
-        status = unquote(status)
+    test "401 returns {:ok, false}" do
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          {:ok, %Tesla.Env{status: 401, body: %{"message" => "denied"}}}
+      end)
 
-        Tesla.Mock.mock_global(fn
-          %{method: :get, url: "https://api.github.com"} ->
-            {:ok, %Tesla.Env{status: status, body: %{"message" => "denied"}}}
-        end)
-
-        assert {:ok, false} = Github.validate_token("token")
-      end
+      assert {:ok, false} = Github.validate_token("token")
     end
 
-    for status <- [429, 500, 502, 503] do
+    for status <- [403, 429, 500, 502, 503] do
       test "#{status} returns {:error, :transient}" do
         status = unquote(status)
 
