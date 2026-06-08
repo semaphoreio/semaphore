@@ -82,6 +82,14 @@ defmodule Guard.User.GithubProfileSync do
         Watchman.increment({@success_metric, ["changed"]})
         {:ok, updated}
 
+      {:error, :stale} ->
+        Logger.info(
+          "Skipping GitHub profile publish for #{user_id}: concurrent writer already updated the row"
+        )
+
+        Watchman.increment({@success_metric, ["concurrent_skip"]})
+        {:ok, account}
+
       {:error, error} ->
         Logger.error(
           "Failed to sync GitHub profile for #{user_id}: #{format_update_error(error)}"

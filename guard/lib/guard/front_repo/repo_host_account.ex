@@ -203,13 +203,48 @@ defmodule Guard.FrontRepo.RepoHostAccount do
   any supplied key must carry a non-blank value or the changeset fails with
   a `:required` error. Callers that want "drop nil/blank as no-opinion"
   semantics must filter before calling.
+
+  Guards against concurrent writers via an optimistic lock on `:updated_at`.
+  When another writer commits between this caller's read and write, returns
+  `{:error, :stale}` instead of overwriting with the stale snapshot's view.
   """
-  @spec update_profile(t(), map()) :: {:ok, t()} | {:error, Ecto.Changeset.t()}
+  @spec update_profile(t(), map()) :: {:ok, t()} | {:error, Ecto.Changeset.t() | :stale}
   def update_profile(%__MODULE__{} = rha, attrs) when is_map(attrs) do
-    rha
-    |> Ecto.Changeset.cast(attrs, [:login, :name])
-    |> then(&Ecto.Changeset.validate_required(&1, Map.keys(&1.changes)))
-    |> FrontRepo.update()
+    changeset =
+      rha
+      |> Ecto.Changeset.cast(attrs, [:login, :name])
+      |> then(&Ecto.Changeset.validate_required(&1, Map.keys(&1.changes)))
+
+    cond do
+      not changeset.valid? ->
+        FrontRepo.update(changeset)
+
+      changeset.changes == %{} ->
+        {:ok, rha}
+
+      true ->
+        try do
+          changeset
+          |> Ecto.Changeset.optimistic_lock(:updated_at, &bump_updated_at/1)
+          |> FrontRepo.update()
+        rescue
+          Ecto.StaleEntryError -> {:error, :stale}
+        end
+    end
+  end
+
+  # Force monotonic increment so the optimistic lock works even when two
+  # writes land in the same wall-clock second. The `:utc_datetime` schema
+  # type stores second precision, so plain `now()` can match the stale
+  # snapshot's `updated_at` and let a second writer through.
+  defp bump_updated_at(current) do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    if DateTime.compare(now, current) == :gt do
+      now
+    else
+      DateTime.add(current, 1, :second)
+    end
   end
 
   @spec get_uid_by_login(String.t(), String.t()) :: {:ok, String.t()} | {:error, :not_found}

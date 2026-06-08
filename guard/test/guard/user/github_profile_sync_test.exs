@@ -207,6 +207,40 @@ defmodule Guard.User.GithubProfileSyncTest do
       end
     end
 
+    test "skips publish and bumps concurrent_skip metric when another writer updated the row first",
+         %{user: user, rha: rha} do
+      # Simulate the concurrent writer (T1) committing before this sync runs
+      # via the same locked writer (so the optimistic-lock bump fires and
+      # leaves the persisted updated_at strictly after the stale snapshot's).
+      # T2 still holds the pre-rename `rha` in memory, so its optimistic lock
+      # on :updated_at must reject the write.
+      {:ok, _winner} = RepoHostAccount.update_profile(rha, %{login: "concurrent-winner"})
+
+      mock_global(fn
+        %{method: :get, url: "https://api.github.com/user/583231"} ->
+          json(%{"id" => 583_231, "login" => "stale-loser", "name" => rha.name})
+      end)
+
+      with_mocks([
+        {Guard.Events.UserUpdated, [], publish: fn _u, _e, _r -> :ok end},
+        {Watchman, [], increment: fn _ -> :ok end}
+      ]) do
+        assert {:ok, returned} = GithubProfileSync.sync({:ok, rha}, user.id, "token")
+        assert returned.id == rha.id
+
+        assert called(
+                 Watchman.increment({"guard.github_profile_sync.success", ["concurrent_skip"]})
+               )
+
+        refute called(Guard.Events.UserUpdated.publish(:_, :_, :_))
+      end
+
+      # DB still reflects the concurrent winner — the stale writer did not
+      # clobber it.
+      {:ok, reloaded} = RepoHostAccount.get_for_github_user(rha.user_id)
+      assert reloaded.login == "concurrent-winner"
+    end
+
     test "bumps tagged success counter on no-change write", %{user: user, rha: rha} do
       mock_global(fn
         %{method: :get, url: "https://api.github.com/user/583231"} ->
