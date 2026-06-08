@@ -34,7 +34,7 @@ INTERNAL_API_URL_VELOCITY?=127.0.0.1:50052
 LOG_LEVEL?=debug
 API_VERSION?=v1alpha
 ON_PREM?="false"
-AMQP_URL?=amqp://rabbitmq:5672
+AMQP_URL?=amqp://0.0.0.0:5672
 AUDIT_LOGGING?=true
 
 CONTAINER_ENV_VARS= \
@@ -71,6 +71,7 @@ ifeq ($(CI),)
 # Localy we use database supplied by docker-compose
 	docker compose $(DOCKER_COMPOSE_OPTS) run -e MIX_ENV=$(MIX_ENV) --build app mix do deps.get
 else
+	sem-service start rabbitmq 3.8
 	docker run --network host -v $(PWD)/out:/app/out $(CONTAINER_ENV_VARS) $(IMAGE):$(IMAGE_TAG) sh
 endif
 
