@@ -10,9 +10,8 @@ defmodule PipelinesAPI.Organizations.Onboarding do
           {:ok, map()} | {:error, tuple()}
   def create_organization(name, username, user_id) do
     with :ok <- OrganizationsClient.is_valid(name, username, user_id),
-         :ok <- validate_billing(user_id),
-         {:ok, org} <- OrganizationsClient.create(user_id, name, username) do
-      {:ok, org}
+         :ok <- validate_billing(user_id) do
+      OrganizationsClient.create(user_id, name, username)
     end
   end
 
