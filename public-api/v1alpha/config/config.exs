@@ -39,7 +39,7 @@ feature_provider =
     {PipelinesAPI.FeatureHubProvider,
      [
        cache:
-         {FeatureProvider.CachexCache, name: :feature_provider_cache, ttl_ms: :timer.hours(6)}
+         {FeatureProvider.CachexCache, name: :feature_provider_cache, ttl_ms: :timer.minutes(10)}
      ]}
   end
 
