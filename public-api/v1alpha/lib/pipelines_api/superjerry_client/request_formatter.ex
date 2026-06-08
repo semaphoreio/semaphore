@@ -113,13 +113,6 @@ defmodule PipelinesAPI.SuperjerryClient.RequestFormatter do
     |> Enum.join(" ")
   end
 
-  # The Superjerry filter parser (parseFilterQuery in Go) has two injection risks:
-  # 1. `"` toggles inQuote with no escape mechanism — an embedded `"` closes the
-  #    quote early and the remainder is parsed raw.
-  # 2. `@` starts a new clause whenever !inKey, regardless of inQuote — so a `@`
-  #    inside a quoted value still opens a second filter clause.
-  # We strip both characters before quoting. `:` is harmless without a preceding
-  # `@` and appears legitimately in test names (e.g. Foo::Bar), so we leave it.
   defp encode_filter_value(v) do
     safe = v |> String.replace(~s("), "") |> String.replace("@", "")
     ~s("#{safe}")

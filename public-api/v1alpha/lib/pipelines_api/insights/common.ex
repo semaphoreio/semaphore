@@ -14,10 +14,6 @@ defmodule PipelinesAPI.Insights.Common do
     Conn.get_req_header(conn, "x-semaphore-org-id") |> Enum.at(0, "")
   end
 
-  # OPEN VERIFY: the front's insights controller uses no FeatureEnabled plug —
-  # it relies solely on ProjectAuthorization. No insights-specific flag atom was
-  # found in repos/semaphore/front. Defaulting to :velocity per the plan.
-  # Confirm the correct atom with the velocity team before shipping.
   def feature_enabled(conn, _opts) do
     org_id = get_org_id(conn)
 

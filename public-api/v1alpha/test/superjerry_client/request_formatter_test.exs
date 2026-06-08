@@ -52,11 +52,6 @@ defmodule PipelinesAPI.SuperjerryClient.RequestFormatterTest do
   end
 
   test "value containing embedded double-quote and @ has both stripped" do
-    # Input: main" @is.resolved:false x="
-    # Both " and @ are injection vectors and are stripped before quoting.
-    # " without stripping would close the quote early; @ without stripping
-    # starts a new clause regardless of quote state (confirmed in Go parser).
-    # After stripping both: main is.resolved:false x=
     assert {:ok, %ListFlakyTestsRequest{filters: f}} =
              RF.form_list_flaky_tests_request(%{
                "org_id" => "o",
@@ -69,11 +64,6 @@ defmodule PipelinesAPI.SuperjerryClient.RequestFormatterTest do
   end
 
   test "value containing @ has @ stripped so no second clause can be injected" do
-    # The Superjerry Go parser's @ case checks !inKey but NOT !inQuote, so a
-    # bare @ inside a quoted value DOES start a new filter clause. We strip @
-    # from the value before quoting to prevent this.
-    # Input branch="main @is.resolved:false" would inject a second clause
-    # without stripping. After stripping, it becomes "main is.resolved:false".
     assert {:ok, %ListFlakyTestsRequest{filters: f}} =
              RF.form_list_flaky_tests_request(%{
                "org_id" => "o",
