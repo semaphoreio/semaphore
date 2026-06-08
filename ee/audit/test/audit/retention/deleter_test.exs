@@ -9,7 +9,10 @@ defmodule Audit.Retention.DeleterTest do
   alias Support.RetentionFixtures
 
   test "deletes only expired events for org that received retention policy event" do
-    cutoff = DateTime.utc_now() |> DateTime.truncate(:second)
+    # Older than the 400-day retention floor so the policy cutoff is accepted.
+    cutoff =
+      DateTime.add(DateTime.utc_now(), -401 * 86_400, :second) |> DateTime.truncate(:second)
+
     org_with_policy = Ecto.UUID.generate()
     org_without_policy = Ecto.UUID.generate()
 
@@ -47,12 +50,50 @@ defmodule Audit.Retention.DeleterTest do
     force_expiration(old_event_with_policy.id)
 
     {:noreply, _state} =
-      Deleter.handle_info(:tick, %{batch_size: 100, interval_ms: 60_000, backlog_tick: 0})
+      Deleter.handle_info(:tick, %{
+        batch_size: 100,
+        idle_interval_ms: 60_000,
+        drain_interval_ms: 1_000,
+        backlog_tick: 0
+      })
 
     refute event_exists?(old_event_with_policy.id)
     assert event_exists?(new_event_with_policy.id)
     assert event_exists?(old_event_without_policy.id)
     assert event_exists?(new_event_without_policy.id)
+  end
+
+  test "drains quickly after a full batch and backs off once caught up" do
+    past = DateTime.utc_now() |> DateTime.add(-60, :second) |> DateTime.truncate(:second)
+
+    # handle_info schedules :tick to the caller; here that is the test process,
+    # so we can observe which cadence it picks via the timer.
+    RetentionFixtures.insert_event(%{expires_at: past})
+    RetentionFixtures.insert_event(%{expires_at: past})
+
+    # batch_size 1 with 2 expired rows -> first tick deletes a full batch ->
+    # short drain interval -> :tick arrives well within the window.
+    drain_state = %{
+      batch_size: 1,
+      idle_interval_ms: 60_000,
+      drain_interval_ms: 20,
+      backlog_tick: 0
+    }
+
+    {:noreply, _} = Deleter.handle_info(:tick, drain_state)
+    assert_receive :tick, 2_000
+
+    # One expired row left, batch_size 5 -> partial batch -> long idle interval ->
+    # no :tick within the window.
+    idle_state = %{
+      batch_size: 5,
+      idle_interval_ms: 60_000,
+      drain_interval_ms: 20,
+      backlog_tick: 0
+    }
+
+    {:noreply, _} = Deleter.handle_info(:tick, idle_state)
+    refute_receive :tick, 300
   end
 
   defp assert_marked(event_id) do
