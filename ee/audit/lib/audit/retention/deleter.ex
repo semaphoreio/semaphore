@@ -2,6 +2,13 @@ defmodule Audit.Retention.Deleter do
   @moduledoc """
   Periodic worker that deletes audit events whose `expires_at` has passed.
 
+  Uses an adaptive cadence (mirroring Zebra's `JobDeletionPolicyWorker`): when a
+  tick deletes a full batch there is likely more to clear, so the next tick is
+  scheduled after the short `drain` interval; once a tick deletes less than a
+  full batch the table is drained and the worker falls back to the longer `idle`
+  interval. This lets it clear a backlog (e.g. the initial 400-day sweep)
+  instead of being capped at `batch_size / idle_interval` rows per second.
+
   ## Configuration
 
   Via application config (typically set from env vars in runtime.exs):
@@ -9,13 +16,17 @@ defmodule Audit.Retention.Deleter do
       config :audit, Audit.Retention.Deleter,
         enabled: true,
         batch_size: 100,
-        sleep_period_sec: 30
+        sleep_period_sec: 30,
+        drain_period_sec: 1
 
   ## Environment Variables
 
   - `RETENTION_DELETER_ENABLED` - "true" to enable (default: "false")
   - `RETENTION_DELETER_BATCH_SIZE` - max events per tick (default: "100")
-  - `RETENTION_DELETER_SLEEP_PERIOD_SEC` - seconds between ticks (default: "30")
+  - `RETENTION_DELETER_SLEEP_PERIOD_SEC` - idle interval, seconds between ticks
+    when nothing is left to delete (default: "30")
+  - `RETENTION_DELETER_DRAIN_PERIOD_SEC` - drain interval, seconds between ticks
+    while a backlog is being cleared (default: "1")
   """
 
   use GenServer
@@ -25,9 +36,10 @@ defmodule Audit.Retention.Deleter do
   alias Audit.Retention.Queries
 
   @default_batch_size 100
-  @default_interval_ms 30_000
+  @default_idle_period_sec 30
+  @default_drain_period_sec 1
   @min_batch_size 1
-  @min_sleep_period_sec 1
+  @min_period_sec 1
   @backlog_submission_every_ticks 20
 
   def start_link(_opts \\ []) do
@@ -39,33 +51,45 @@ defmodule Audit.Retention.Deleter do
     config = load_config()
 
     Logger.info(
-      "[Retention] Deleter started batch_size=#{config.batch_size} interval_ms=#{config.interval_ms}"
+      "[Retention] Deleter started batch_size=#{config.batch_size} idle_ms=#{config.idle_interval_ms} drain_ms=#{config.drain_interval_ms}"
     )
 
-    schedule(config.interval_ms)
+    schedule(config.idle_interval_ms)
     {:ok, config}
   end
 
   @impl true
   def handle_info(:tick, state) do
-    delete_batch(state.batch_size)
+    deleted = delete_batch(state.batch_size)
     state = maybe_submit_backlog(state)
-    schedule(state.interval_ms)
+    schedule(next_interval(deleted, state))
     {:noreply, state}
+  end
+
+  # A full batch means the table likely still holds expired rows, so keep
+  # draining quickly; anything less means we have caught up for now.
+  defp next_interval(deleted, state) do
+    if deleted >= state.batch_size do
+      state.drain_interval_ms
+    else
+      state.idle_interval_ms
+    end
   end
 
   defp delete_batch(batch_size) do
     case Queries.delete_expired_batch(batch_size) do
       {:ok, 0} ->
-        :ok
+        0
 
       {:ok, count} ->
         Watchman.submit({"retention.deleted", []}, count, :count)
         Logger.info("[Retention] deleted=#{count}")
+        count
 
       {:error, reason} ->
         Watchman.increment("retention.delete.error")
         Logger.error("[Retention] delete error: #{inspect(reason)}")
+        0
     end
   end
 
@@ -99,25 +123,34 @@ defmodule Audit.Retention.Deleter do
   defp load_config do
     app_config = Application.get_env(:audit, __MODULE__, [])
 
-    sleep_period_sec =
-      validate_positive_integer(app_config, :sleep_period_sec, @min_sleep_period_sec)
+    batch_size =
+      validate_positive_integer(app_config, :batch_size, @default_batch_size, @min_batch_size)
 
-    batch_size = validate_positive_integer(app_config, :batch_size, @min_batch_size)
+    idle_sec =
+      validate_positive_integer(
+        app_config,
+        :sleep_period_sec,
+        @default_idle_period_sec,
+        @min_period_sec
+      )
+
+    drain_sec =
+      validate_positive_integer(
+        app_config,
+        :drain_period_sec,
+        @default_drain_period_sec,
+        @min_period_sec
+      )
 
     %{
       batch_size: batch_size,
-      interval_ms: sleep_period_sec * 1000,
+      idle_interval_ms: idle_sec * 1000,
+      drain_interval_ms: drain_sec * 1000,
       backlog_tick: @backlog_submission_every_ticks - 1
     }
   end
 
-  defp validate_positive_integer(config, key, min_value) do
-    default =
-      case key do
-        :batch_size -> @default_batch_size
-        :sleep_period_sec -> div(@default_interval_ms, 1000)
-      end
-
+  defp validate_positive_integer(config, key, default, min_value) do
     value = Keyword.get(config, key, default)
 
     if is_integer(value) and value >= min_value do
