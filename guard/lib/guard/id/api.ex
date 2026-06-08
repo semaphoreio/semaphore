@@ -348,6 +348,7 @@ defmodule Guard.Id.Api do
     end
   end
 
+  # sobelow_skip ["XSS.SendResp"]
   defp cli_json(conn, status, body) do
     conn
     |> put_resp_header("content-type", "application/json")
@@ -601,10 +602,7 @@ defmodule Guard.Id.Api do
 
     # Re-validate the redirect_uri is loopback before ANY redirect to it (it was
     # validated at /cli/signup, but never trust a stored value without rechecking).
-    if not Guard.CLIAuth.loopback_redirect?(cli_ctx.redirect_uri) do
-      Logger.warning("CLI callback: stored redirect_uri is not loopback, refusing")
-      conn |> error_login_page("Invalid redirect_uri")
-    else
+    if Guard.CLIAuth.loopback_redirect?(cli_ctx.redirect_uri) do
       with :ok <- Guard.OIDC.state_match?(state, callback_state),
            {:ok, {user_data, _tokens}} <- Guard.OIDC.exchange_code(code, verifier, oidc_callback),
            {:ok, allowed, error_message} <- verify_oidc_login_allowed(user_data),
@@ -627,6 +625,9 @@ defmodule Guard.Id.Api do
             query: %{error: "auth_failed", state: cli_ctx.cli_state}
           )
       end
+    else
+      Logger.warning("CLI callback: stored redirect_uri is not loopback, refusing")
+      conn |> error_login_page("Invalid redirect_uri")
     end
   end
 
