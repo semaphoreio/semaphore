@@ -86,6 +86,31 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
     end
   end
 
+  describe "update_revoke_status/2" do
+    setup do
+      {user, rha} = Support.Members.insert_user_with_github_account()
+      {:ok, user: user, rha: rha}
+    end
+
+    test "succeeds on a legacy row where :name is nil (only writes :revoked)", %{rha: rha} do
+      {:ok, legacy_rha} =
+        rha
+        |> Ecto.Changeset.change(%{name: nil})
+        |> FrontRepo.update(force: true)
+
+      assert legacy_rha.name == nil
+      assert legacy_rha.revoked == false
+
+      assert {:ok, updated} = RepoHostAccount.update_revoke_status(legacy_rha, true)
+      assert updated.revoked == true
+      assert updated.name == nil
+
+      {:ok, reloaded} = RepoHostAccount.get_for_github_user(rha.user_id)
+      assert reloaded.revoked == true
+      assert reloaded.name == nil
+    end
+  end
+
   describe "Inspect implementation" do
     test "redacts :token and :refresh_token from inspect output" do
       rha = %RepoHostAccount{
