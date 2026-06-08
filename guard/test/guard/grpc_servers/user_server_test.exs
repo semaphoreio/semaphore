@@ -1567,6 +1567,43 @@ defmodule Guard.GrpcServers.UserServerTest do
       assert reloaded.updated_at == original_updated_at
     end
 
+    test "refresh_repository_provider succeeds on a legacy github account with name == nil",
+         %{grpc_channel: channel, user: user, repo_host_account: rha} do
+      # Before narrowing update_account's validate_required, a row with
+      # name == nil would error out in update_revoke_status with a
+      # :required changeset error → grpc_error!(:internal). The new sync
+      # could backfill name, but never got the chance because the revoke
+      # write failed first.
+      {:ok, legacy_rha} =
+        rha
+        |> Ecto.Changeset.change(%{name: nil})
+        |> Guard.FrontRepo.update(force: true)
+
+      assert legacy_rha.name == nil
+
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          json(%{"login" => rha.login})
+
+        %{method: :get, url: "https://api.github.com/user/184065"} ->
+          json(%{"id" => 184_065, "login" => rha.login, "name" => "Backfilled Name"})
+      end)
+
+      request =
+        User.RefreshRepositoryProviderRequest.new(
+          user_id: user.id,
+          type: User.RepositoryProvider.Type.value(:GITHUB)
+        )
+
+      {:ok, _response} = channel |> Stub.refresh_repository_provider(request)
+
+      {:ok, reloaded} = Guard.FrontRepo.RepoHostAccount.get_for_github_user(user.id)
+      assert reloaded.revoked == false
+      # GithubProfileSync should have backfilled the name now that the
+      # revoke write no longer blocks the flow on a nil legacy field.
+      assert reloaded.name == "Backfilled Name"
+    end
+
     test "refresh_repository_provider should refresh repository provider details for a valid user with bitbucket",
          %{
            grpc_channel: channel

@@ -361,7 +361,15 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     {:ok, account}
   end
 
+  @required_on_write [:github_uid, :login, :name, :permission_scope]
+
   defp update_account(data, account) do
+    # Validate only the required-schema keys the caller is actually writing.
+    # The full @required_on_write list is checked at create/reset time; on a
+    # partial update (e.g., flipping :revoked) we must not refuse the write
+    # because an *untouched* legacy field happens to be nil.
+    required_now = Map.keys(data) |> Enum.filter(&(&1 in @required_on_write))
+
     result =
       account
       |> Ecto.Changeset.cast(
@@ -377,7 +385,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
           :permission_scope
         ]
       )
-      |> Ecto.Changeset.validate_required([:github_uid, :login, :name, :permission_scope])
+      |> Ecto.Changeset.validate_required(required_now)
       |> FrontRepo.update()
 
     case result do
