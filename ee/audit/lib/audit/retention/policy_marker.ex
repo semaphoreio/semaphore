@@ -7,6 +7,23 @@ defmodule Audit.Retention.PolicyMarker do
 
   1. Marks events with `timestamp < cutoff_date` → sets `expires_at = now + grace_period`
   2. Unmarks events with `timestamp >= cutoff_date` → clears `expires_at`
+
+  ## Safety floor
+
+  `cutoff_date` is computed by the upstream publisher, not this service. A
+  bad/too-recent cutoff would irreversibly delete recent audit logs, so any
+  cutoff newer than `now - min_retention_days` (default 400) is refused and
+  surfaced via the `retention.policy.cutoff_too_recent` metric.
+
+  ## Cleanup of existing organizations (upstream dependency)
+
+  This consumer is edge-triggered: an org's old events are only marked when a
+  `usage.apply_organization_policy` event arrives for it. Cleaning up
+  organizations that predate the rollout therefore relies on the upstream
+  publisher periodically *replaying* the policy for all orgs — the same
+  contract Zebra/Plumber already depend on. There is intentionally no
+  per-service backfill here; if the platform is purely edge-triggered, the
+  replay must be added upstream so all consumers benefit.
   """
 
   require Logger
@@ -15,7 +32,7 @@ defmodule Audit.Retention.PolicyMarker do
   alias InternalApi.Usage.OrganizationPolicyApply
   alias Audit.Retention.Queries
 
-  @max_future_cutoff_skew_sec 60
+  @default_min_retention_days 400
 
   use Tackle.Consumer,
     url: Application.get_env(:audit, :amqp_url),
@@ -31,6 +48,11 @@ defmodule Audit.Retention.PolicyMarker do
          {:ok, cutoff} <- parse_cutoff(event.cutoff_date) do
       apply_policy(org_id, cutoff)
     else
+      {:too_recent, reason} ->
+        Watchman.increment("retention.policy.cutoff_too_recent")
+        Logger.error("[Retention] Refusing too-recent cutoff: #{reason}")
+        :ok
+
       {:invalid, reason} ->
         Watchman.increment("retention.policy.invalid")
         Logger.warning("[Retention] Skipping invalid policy event: #{reason}")
@@ -97,16 +119,18 @@ defmodule Audit.Retention.PolicyMarker do
       |> DateTime.from_unix!(:nanosecond)
       |> DateTime.truncate(:second)
 
+    days = min_retention_days()
     now = DateTime.utc_now() |> DateTime.truncate(:second)
-    skew_seconds = DateTime.diff(cutoff, now, :second)
+    floor = DateTime.add(now, -days * 86_400, :second)
 
-    case skew_seconds do
-      sec when sec > @max_future_cutoff_skew_sec ->
-        {:invalid,
-         "cutoff_date cannot be more than #{@max_future_cutoff_skew_sec}s in the future"}
-
-      _ ->
-        {:ok, cutoff}
+    # Any cutoff newer than the floor would expire events younger than the
+    # minimum retention (and a future cutoff would expire everything). Refuse
+    # it rather than risk irreversible deletion of recent audit logs.
+    if DateTime.compare(cutoff, floor) == :gt do
+      {:too_recent,
+       "cutoff_date #{cutoff} is newer than the #{days}-day retention floor (#{floor})"}
+    else
+      {:ok, cutoff}
     end
   rescue
     error -> {:invalid, "failed to parse cutoff_date: #{inspect(error)}"}
@@ -114,4 +138,18 @@ defmodule Audit.Retention.PolicyMarker do
 
   defp parse_cutoff(invalid),
     do: {:invalid, "invalid cutoff_date format: #{inspect(invalid)}"}
+
+  # The 400-day policy is a *hard* floor: configuration may only make retention
+  # more conservative (a larger value), never weaken it. Any value below the
+  # policy — including a misconfigured 1 or a non-integer — falls back to the
+  # 400-day default, so production cannot be tricked into deleting recent audit
+  # logs by lowering this knob.
+  defp min_retention_days do
+    config = Application.get_env(:audit, __MODULE__, [])
+
+    case Keyword.get(config, :min_retention_days, @default_min_retention_days) do
+      days when is_integer(days) and days >= @default_min_retention_days -> days
+      _ -> @default_min_retention_days
+    end
+  end
 end

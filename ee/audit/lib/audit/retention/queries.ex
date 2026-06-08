@@ -38,11 +38,15 @@ defmodule Audit.Retention.Queries do
   end
 
   defp batch_mark(org_id, cutoff, expires_at, batch_size, acc) do
+    # `order_by: timestamp` lets the planner walk the
+    # (org_id, timestamp) WHERE expires_at IS NULL partial index instead of
+    # scanning the org's full retention window on every policy event.
     ids_subquery =
       from(e in Event,
         where: e.org_id == ^org_id,
         where: e.timestamp < ^cutoff,
         where: is_nil(e.expires_at),
+        order_by: [asc: e.timestamp],
         select: e.id,
         limit: ^batch_size
       )
@@ -50,7 +54,7 @@ defmodule Audit.Retention.Queries do
     update_query = from(e in Event, where: e.id in subquery(ids_subquery))
     {count, _} = Repo.update_all(update_query, set: [expires_at: expires_at])
 
-    Watchman.submit({"retention.marked", [org_id]}, count, :count)
+    Watchman.submit({"retention.marked", []}, count, :count)
 
     case count do
       0 -> acc
@@ -59,11 +63,15 @@ defmodule Audit.Retention.Queries do
   end
 
   defp batch_unmark(org_id, cutoff, batch_size, acc) do
+    # Mirrors batch_mark: ordering + the
+    # (org_id, timestamp) WHERE expires_at IS NOT NULL partial index keep this
+    # an index scan even when no rows match.
     base_query =
       from(e in Event,
         where: e.org_id == ^org_id,
         where: e.timestamp >= ^cutoff,
         where: not is_nil(e.expires_at),
+        order_by: [asc: e.timestamp],
         select: e.id,
         limit: ^batch_size
       )
@@ -71,7 +79,7 @@ defmodule Audit.Retention.Queries do
     update_query = from(e in Event, where: e.id in subquery(base_query))
     {count, _} = Repo.update_all(update_query, set: [expires_at: nil])
 
-    Watchman.submit({"retention.unmarked", [org_id]}, count, :count)
+    Watchman.submit({"retention.unmarked", []}, count, :count)
 
     case count do
       0 -> acc

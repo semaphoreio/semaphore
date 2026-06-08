@@ -3,7 +3,7 @@ defmodule Audit.Repo.Migrations.AddExpiresAtToEvents do
 
   def change do
     alter table(:events) do
-      add :expires_at, :utc_datetime
+      add_if_not_exists :expires_at, :utc_datetime
     end
   end
 end
