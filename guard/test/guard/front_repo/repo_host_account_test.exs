@@ -68,6 +68,22 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
 
       assert {"can't be blank", _} = errors[:name]
     end
+
+    test "returns {:error, :stale} when another writer updated the row first", %{rha: rha} do
+      # Simulate concurrent writer T1 via the same locked writer so the
+      # optimistic-lock bump fires (avoid Repo autogen-on-same-second pitfall).
+      {:ok, winner} = RepoHostAccount.update_profile(rha, %{login: "concurrent-winner"})
+
+      assert winner.updated_at != rha.updated_at
+
+      # T2 attempts a write with its stale snapshot — optimistic lock on
+      # :updated_at must reject and leave the persisted row untouched.
+      assert {:error, :stale} = RepoHostAccount.update_profile(rha, %{login: "stale-loser"})
+
+      {:ok, reloaded} = RepoHostAccount.get_for_github_user(rha.user_id)
+      assert reloaded.login == "concurrent-winner"
+      assert reloaded.updated_at == winner.updated_at
+    end
   end
 
   describe "Inspect implementation" do
