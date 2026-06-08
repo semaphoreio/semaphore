@@ -1,0 +1,17 @@
+# Advisories intentionally ignored for the audit service.
+# Everything patchable is fixed by version bumps in mix.exs (cowboy 2.15 /
+# cowlib 2.16 / decimal 3.x). The two below have no safe fix and are not
+# reachable from this service.
+
+# cowlib — cookie request-header injection in cow_cookie:cookie/1.
+# No patched version has been released upstream (affects <= 2.16.1, the latest).
+# audit is an internal gRPC/Plug.Cowboy service that does not build Set-Cookie
+# headers from user input.
+GHSA-g2wm-735q-3f56
+
+# postgrex — channel-name SQL injection in Postgrex.Notifications.listen/3.
+# audit never calls Postgrex.Notifications (grep `Postgrex.Notifications` in
+# lib/ returns no hits). The fix lands in postgrex 0.22.2, which would force an
+# ecto/ecto_sql major bump (current ecto_sql 3.8 caps postgrex at ~> 0.16) —
+# out of scope for a security patch. Matches zebra's stance.
+GHSA-r73h-97w8-m54h
