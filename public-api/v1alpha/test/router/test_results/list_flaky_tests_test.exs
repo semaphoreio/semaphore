@@ -92,7 +92,7 @@ defmodule PipelinesAPI.Router.TestResults.ListFlakyTestsTest do
       get("/projects/#{ctx.project.id}/test_results/flaky_tests", ctx.org.id, false)
 
     assert status == 404
-    assert body == "Not Found"
+    assert body == "Feature is not enabled for your organization"
   end
 
   defp get(path, org_id, decode? \\ true) do

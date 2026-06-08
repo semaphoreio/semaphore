@@ -20,7 +20,7 @@ defmodule PipelinesAPI.Insights.Common do
     if org_id != "" and FeatureProvider.feature_enabled?(:pipeline_summaries, param: org_id) do
       conn
     else
-      conn |> resp(404, "Not Found") |> halt()
+      conn |> resp(404, "Feature is not enabled for your organization") |> halt()
     end
   end
 end

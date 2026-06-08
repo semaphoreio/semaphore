@@ -108,7 +108,7 @@ defmodule PipelinesAPI.Router.InsightsTest do
       )
 
     assert status == 404
-    assert body == "Not Found"
+    assert body == "Feature is not enabled for your organization"
   end
 
   test "404 when caller lacks project.view", ctx do
