@@ -76,6 +76,8 @@ spec:
               value: "true"
             - name: RETENTION_CONSUMER_ENABLED
               value: {{ .Values.api.retention.consumerEnabled | quote }}
+            - name: RETENTION_MIN_RETENTION_DAYS
+              value: {{ .Values.api.retention.minRetentionDays | quote }}
             - name: RETENTION_GRACE_PERIOD_DAYS
               value: {{ .Values.api.retention.gracePeriodDays | quote }}
             - name: RETENTION_APPLIER_BATCH_SIZE
@@ -84,6 +86,8 @@ spec:
               value: {{ .Values.api.retention.deleterEnabled | quote }}
             - name: RETENTION_DELETER_SLEEP_PERIOD_SEC
               value: {{ .Values.api.retention.deleterSleepPeriodSec | quote }}
+            - name: RETENTION_DELETER_DRAIN_PERIOD_SEC
+              value: {{ .Values.api.retention.deleterDrainPeriodSec | quote }}
             - name: RETENTION_DELETER_BATCH_SIZE
               value: {{ .Values.api.retention.deleterBatchSize | quote }}
             - name: POSTGRES_DB_NAME
