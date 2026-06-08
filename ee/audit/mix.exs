@@ -32,7 +32,6 @@ defmodule Audit.MixProject do
   defp deps do
     [
       {:grpc, "0.5.0-beta.1", override: true},
-      {:cowlib, "~> 2.11.0", override: true},
       {:amqp, "~> 1.3", override: true},
       {:grpc_mock, github: "renderedtext/grpc-mock", only: [:dev, :test]},
       {:protobuf, "~> 0.7.1"},
@@ -43,6 +42,9 @@ defmodule Audit.MixProject do
       {:watchman, github: "renderedtext/ex-watchman"},
       {:jason, "~> 1.1"},
       {:decimal, "~> 3.0", override: true},
+      {:cowboy, "~> 2.15", override: true},
+      {:cowlib, "~> 2.16", override: true},
+      {:ranch, "~> 1.8", override: true},
       {:sentry, "~> 8.0"},
       {:hackney, "~> 1.8"},
       {:sentry_grpc, github: "renderedtext/sentry_grpc"},
