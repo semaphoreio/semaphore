@@ -898,7 +898,7 @@ defmodule Guard.Id.Api do
   end
 
   defp verify_oidc_user_login_allowed_on_saml(user) do
-    if (user != nil and user.creation_source == nil) && !user.single_org_user do
+    if user != nil and user.creation_source == nil && !user.single_org_user do
       {:ok, true, nil}
     else
       Logger.warning("OIDC login not allowed for this user")
