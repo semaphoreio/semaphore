@@ -43,6 +43,8 @@ defmodule Ppl.PplSubInits.STMHandler.Compilation.Definition do
   end
 
   defp form_defintion_jobs(ppl_req = %{request_args: req_args}, pfcs) do
+    pfc_cmds = pfc_commands(pfcs)
+
     [
       %{
         "name" => "Compilation",
@@ -50,7 +52,7 @@ defmodule Ppl.PplSubInits.STMHandler.Compilation.Definition do
         "priority" => [%{"value" => @default_priority, "when" => true}],
         "env_vars" => ppl_env_vars(ppl_req) ++ [sem_yaml_file_path_env_var(req_args)],
         "secrets" => secrets_definition(pfcs, req_args),
-        "commands" => commands(pfcs),
+        "commands" => default_commands(req_args, _optimize_checkout? = pfc_cmds == []) ++ pfc_cmds,
         "epilogue_always_cmds" => epilogue_always_commands()
       }
     ]
@@ -109,10 +111,6 @@ defmodule Ppl.PplSubInits.STMHandler.Compilation.Definition do
     test_commands(mix_env) ++ pfc_commands(pfcs)
   end
 
-  defp commands(pfcs) do
-    default_commands() ++ pfc_commands(pfcs)
-  end
-
   defp pfc_commands(%{"organization_pfc" => org_pfc, "project_pfc" => prj_pfc})
        when is_map(org_pfc) and is_map(prj_pfc),
        do: Map.get(org_pfc, "commands", []) ++ Map.get(prj_pfc, "commands", [])
@@ -125,9 +123,31 @@ defmodule Ppl.PplSubInits.STMHandler.Compilation.Definition do
 
   defp pfc_commands(_ppl_req), do: []
 
-  defp default_commands() do
+  # When there are no pre-flight checks, the initialization job only needs the
+  # pipeline YAML and the Git history (trees/commits, used by `change_in`), not
+  # the full repository working tree. In that case we instruct `checkout` to
+  # perform a blobless partial clone with a sparse working tree limited to the
+  # pipeline directory, which avoids downloading/materializing the whole repo.
+  #
+  # When pre-flight checks are configured, their custom commands run after the
+  # predefined ones and may rely on the full working tree being present, so we
+  # keep the standard full checkout.
+  @doc false
+  def default_commands(req_args, _optimize_checkout? = true) do
     [
       ~s[export GIT_LFS_SKIP_SMUDGE=1],
+      ~s[export SEMAPHORE_GIT_PARTIAL_CLONE_FILTER="blob:none"],
+      ~s[export SEMAPHORE_GIT_SPARSE_CHECKOUT_PATHS="#{sparse_checkout_path(req_args)}"]
+    ] ++ checkout_and_compile_commands()
+  end
+
+  @doc false
+  def default_commands(_req_args, _optimize_checkout? = false) do
+    [~s[export GIT_LFS_SKIP_SMUDGE=1]] ++ checkout_and_compile_commands()
+  end
+
+  defp checkout_and_compile_commands() do
+    [
       ~s[checkout],
       ~s[export INPUT_FILE="$SEMAPHORE_YAML_FILE_PATH"],
       ~s[export OUTPUT_FILE="${SEMAPHORE_YAML_FILE_PATH}.output.yml"],
@@ -136,6 +156,17 @@ defmodule Ppl.PplSubInits.STMHandler.Compilation.Definition do
       ~s[echo "Compiling $INPUT_FILE into $OUTPUT_FILE and storing logs to $LOGS_FILE"],
       ~s[spc compile --input $INPUT_FILE --output $OUTPUT_FILE --logs $LOGS_FILE]
     ]
+  end
+
+  # The pipeline lives in the working directory of the YAML file; sparse-checkout
+  # of that directory keeps the pipeline files available while skipping the rest
+  # of the repository. Falls back to the repository root when no working
+  # directory is set (no optimization, but always correct).
+  defp sparse_checkout_path(req_args) do
+    case (req_args["working_dir"] || "") |> String.trim() do
+      "" -> "."
+      working_dir -> working_dir
+    end
   end
 
   defp epilogue_always_commands() do

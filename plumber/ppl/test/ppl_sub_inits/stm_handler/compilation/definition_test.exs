@@ -491,6 +491,56 @@ defmodule Ppl.PplSubInits.STMHandler.Compilation.Definition.Test do
     end
   end
 
+  describe "default_commands/2" do
+    test "without pre-flight checks it uses a blobless + sparse checkout of the pipeline dir" do
+      req_args = %{"working_dir" => ".semaphore", "file_name" => "semaphore.yml"}
+
+      commands = Definition.default_commands(req_args, _optimize_checkout? = true)
+
+      assert "export GIT_LFS_SKIP_SMUDGE=1" in commands
+      assert ~s[export SEMAPHORE_GIT_PARTIAL_CLONE_FILTER="blob:none"] in commands
+      assert ~s[export SEMAPHORE_GIT_SPARSE_CHECKOUT_PATHS=".semaphore"] in commands
+      assert "checkout" in commands
+
+      # the optimization exports must come before checkout
+      filter_idx = Enum.find_index(commands, &(&1 =~ "SEMAPHORE_GIT_PARTIAL_CLONE_FILTER"))
+      sparse_idx = Enum.find_index(commands, &(&1 =~ "SEMAPHORE_GIT_SPARSE_CHECKOUT_PATHS"))
+      checkout_idx = Enum.find_index(commands, &(&1 == "checkout"))
+      assert filter_idx < checkout_idx
+      assert sparse_idx < checkout_idx
+
+      assert List.last(commands) ==
+               "spc compile --input $INPUT_FILE --output $OUTPUT_FILE --logs $LOGS_FILE"
+    end
+
+    test "with pre-flight checks it keeps the standard full checkout" do
+      req_args = %{"working_dir" => ".semaphore", "file_name" => "semaphore.yml"}
+
+      commands = Definition.default_commands(req_args, _optimize_checkout? = false)
+
+      assert "export GIT_LFS_SKIP_SMUDGE=1" in commands
+      assert "checkout" in commands
+      refute Enum.any?(commands, &(&1 =~ "SEMAPHORE_GIT_PARTIAL_CLONE_FILTER"))
+      refute Enum.any?(commands, &(&1 =~ "SEMAPHORE_GIT_SPARSE_CHECKOUT_PATHS"))
+    end
+
+    test "falls back to the repository root when the working dir is empty" do
+      req_args = %{"working_dir" => "  ", "file_name" => "semaphore.yml"}
+
+      commands = Definition.default_commands(req_args, _optimize_checkout? = true)
+
+      assert ~s[export SEMAPHORE_GIT_SPARSE_CHECKOUT_PATHS="."] in commands
+    end
+
+    test "uses a nested working dir as the sparse path" do
+      req_args = %{"working_dir" => ".semaphore/prod", "file_name" => "deploy.yml"}
+
+      commands = Definition.default_commands(req_args, _optimize_checkout? = true)
+
+      assert ~s[export SEMAPHORE_GIT_SPARSE_CHECKOUT_PATHS=".semaphore/prod"] in commands
+    end
+  end
+
   @tag :integration
   test "when in prod environment => return compilation definition with proper env vars set" do
     System.put_env("INTERNAL_API_URL_PFC", "localhost:50053")
@@ -530,6 +580,13 @@ defmodule Ppl.PplSubInits.STMHandler.Compilation.Definition.Test do
 
     yml_path_ev = Enum.find(list, fn map -> map["name"] == "SEMAPHORE_YAML_FILE_PATH" end)
     assert yml_path_ev["value"] == ".semaphore/semaphore.yml"
+
+    # With no pre-flight checks, the init job uses the optimized blobless +
+    # sparse checkout of the pipeline directory.
+    commands = Map.get(definition, "jobs") |> Enum.at(0) |> Map.get("commands")
+    assert ~s[export SEMAPHORE_GIT_PARTIAL_CLONE_FILTER="blob:none"] in commands
+    assert ~s[export SEMAPHORE_GIT_SPARSE_CHECKOUT_PATHS=".semaphore"] in commands
+    assert "checkout" in commands
 
     on_exit(fn ->
       GRPC.Server.stop(PFCServiceMock)
