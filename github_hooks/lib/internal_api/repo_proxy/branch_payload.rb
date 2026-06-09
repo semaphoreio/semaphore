@@ -10,10 +10,22 @@ module InternalApi::RepoProxy
     def call(project, user)
       repo_host = ::RepoHost::Factory.create_from_project(project)
 
-      encoded_ref = CGI.escape(ref.delete_prefix("refs/heads/"))
-      reference = repo_host.reference(project.repo_owner_and_name, "heads/#{encoded_ref}")
+      # When the caller already supplied a fully-resolved 40-char SHA, the
+      # `repo_host.reference(...)` lookup is gratuitous: `commit_sha` returns
+      # `sha` directly in that case, and `reference.ref` is just an echo of
+      # the input. Skipping the lookup avoids a wasted (and often 404-ing)
+      # GitHub `GET /repos/:repo/git/refs/heads/:branch` API call.
+      if SHA_REGEXP.match?(sha)
+        response_ref = ref
+        head_commit_sha = sha
+      else
+        encoded_ref = CGI.escape(ref.delete_prefix("refs/heads/"))
+        reference = repo_host.reference(project.repo_owner_and_name, "heads/#{encoded_ref}")
+        response_ref = reference.ref
+        head_commit_sha = commit_sha(sha, reference)
+      end
 
-      branch_commit = repo_host.commit(project.repo_owner_and_name, commit_sha(sha, reference))
+      branch_commit = repo_host.commit(project.repo_owner_and_name, head_commit_sha)
 
       repo_url = branch_commit[:html_url].split("/").first(5).join("/")
       author_name  = user.github_repo_host_account.name
@@ -34,7 +46,7 @@ module InternalApi::RepoProxy
       }
 
       {
-        "ref" => reference.ref,
+        "ref" => response_ref,
         "single" => true,
         "created" => true,
         "head_commit" => commit,
