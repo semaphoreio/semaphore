@@ -1,0 +1,9 @@
+# decimal — unbounded exponent in Decimal.new enables an unauthenticated DoS
+# (GHSA-rhv4-8758-jx7v, moderate). Patched in decimal 3.0.0, but this app's
+# ecto 3.10.3 (`decimal ~> 1.6 or ~> 2.0`), postgrex 0.17.3 (`decimal ~> 1.5
+# or ~> 2.0`) and jason 1.4.1 (`decimal ~> 1.0 or ~> 2.0`) all pin decimal to
+# < 3.0, so adopting it forces an out-of-scope ecto/postgrex major bump.
+# decimal is a transitive dependency and is not called anywhere in lib/ (grep
+# `Decimal.` returns no hits), so Decimal.new is never invoked on untrusted
+# input.
+GHSA-rhv4-8758-jx7v
