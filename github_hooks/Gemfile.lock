@@ -281,7 +281,7 @@ GEM
       date
       stringio
     public_suffix (6.0.2)
-    puma (6.6.1)
+    puma (7.2.1)
       nio4r (~> 2.0)
     raabro (1.4.0)
     racc (1.8.1)
@@ -531,7 +531,7 @@ DEPENDENCIES
   octokit
   pg (~> 1.1)
   pry-byebug (~> 3.10, >= 3.10.1)
-  puma
+  puma (~> 7.2.1)
   rack (~> 2.2.23)
   rails (>= 8.0.4.1, < 8.1)
   retryable
