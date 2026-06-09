@@ -117,7 +117,7 @@ RSpec.describe InternalApi::RepoProxy::BranchPayload do
     it "still fetches the commit by SHA" do
       expect(repo_host).to receive(:commit)
         .with("owner/repo", sha)
-        .and_return(branch_commit)
+        .and_call_original
       described_class.new(ref, sha).call(project, user)
     end
 
@@ -149,7 +149,7 @@ RSpec.describe InternalApi::RepoProxy::BranchPayload do
       ["nil (coerced to '')", nil],
       ["short hex",           "abc123"],
       ["uppercase 40-char",   "A" * 40],
-      ["mixed-case 40-char",  ("a" * 39) + "B"],
+      ["mixed-case 40-char",  "#{"a" * 39}B"],
       ["41 chars",            "a" * 41],
       ["non-hex 40-char",     "z" * 40]
     ].each do |label, bad_sha|
