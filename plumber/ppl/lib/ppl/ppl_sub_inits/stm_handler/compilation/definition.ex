@@ -6,7 +6,6 @@ defmodule Ppl.PplSubInits.STMHandler.Compilation.Definition do
   alias Util.ToTuple
   alias Ppl.DefinitionReviser.BlocksReviser
 
-
   @default_execution_limit_in_minutes 10
   @default_priority 95
 
@@ -44,6 +43,7 @@ defmodule Ppl.PplSubInits.STMHandler.Compilation.Definition do
 
   defp form_defintion_jobs(ppl_req = %{request_args: req_args}, pfcs) do
     pfc_cmds = pfc_commands(pfcs)
+    org_id = Map.get(req_args, "organization_id", "")
 
     [
       %{
@@ -52,10 +52,22 @@ defmodule Ppl.PplSubInits.STMHandler.Compilation.Definition do
         "priority" => [%{"value" => @default_priority, "when" => true}],
         "env_vars" => ppl_env_vars(ppl_req) ++ [sem_yaml_file_path_env_var(req_args)],
         "secrets" => secrets_definition(pfcs, req_args),
-        "commands" => default_commands(req_args, _optimize_checkout? = pfc_cmds == []) ++ pfc_cmds,
+        "commands" =>
+          default_commands(req_args, optimize_checkout?(org_id, pfc_cmds)) ++ pfc_cmds,
         "epilogue_always_cmds" => epilogue_always_commands()
       }
     ]
+  end
+
+  # The optimized blobless + sparse checkout is used only when both hold:
+  #   * there are no pre-flight checks (their custom commands may need the full
+  #     working tree), and
+  #   * the `sparse_checkout_init_job` feature is enabled for the organization.
+  # The feature check fails closed, so a missing org id or an unreachable
+  # Feature service keeps the standard full checkout.
+  @doc false
+  def optimize_checkout?(org_id, pfc_cmds) do
+    pfc_cmds == [] and Ppl.Features.sparse_checkout_init_job_enabled?(org_id)
   end
 
   defp agent_definition(pre_flight_checks, settings) when is_map(pre_flight_checks) do

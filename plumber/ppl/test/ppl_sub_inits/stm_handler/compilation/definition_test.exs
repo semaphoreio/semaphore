@@ -1,5 +1,6 @@
 defmodule Ppl.PplSubInits.STMHandler.Compilation.Definition.Test do
   use ExUnit.Case, async: false
+  import Mock
 
   alias Ppl.PplSubInits.STMHandler.Compilation.Definition
   alias Ppl.PplRequests.Model.PplRequestsQueries
@@ -541,10 +542,31 @@ defmodule Ppl.PplSubInits.STMHandler.Compilation.Definition.Test do
     end
   end
 
+  describe "optimize_checkout?/2" do
+    test "true when no pre-flight checks and the feature is enabled" do
+      with_mock Ppl.Features, sparse_checkout_init_job_enabled?: fn _ -> true end do
+        assert Definition.optimize_checkout?("org-1", []) == true
+      end
+    end
+
+    test "false when the feature is disabled, even without pre-flight checks" do
+      with_mock Ppl.Features, sparse_checkout_init_job_enabled?: fn _ -> false end do
+        assert Definition.optimize_checkout?("org-1", []) == false
+      end
+    end
+
+    test "false when pre-flight checks are present, even if the feature is enabled" do
+      with_mock Ppl.Features, sparse_checkout_init_job_enabled?: fn _ -> true end do
+        assert Definition.optimize_checkout?("org-1", ["./security_check.sh"]) == false
+      end
+    end
+  end
+
   @tag :integration
   test "when in prod environment => return compilation definition with proper env vars set" do
     System.put_env("INTERNAL_API_URL_PFC", "localhost:50053")
     System.put_env("INTERNAL_API_URL_USER", "localhost:50053")
+    System.put_env("INTERNAL_API_URL_FEATURE", "localhost:50053")
     System.put_env("INTERNAL_API_URL_ORGANIZATION", "localhost:50053")
 
     not_trimmed_file_name = "semaphore.yml  "
