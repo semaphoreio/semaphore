@@ -131,7 +131,7 @@ GEM
     dogstatsd-ruby (5.5.0)
     dotenv (3.1.8)
     drb (2.2.3)
-    erb (5.0.2)
+    erb (6.0.4)
     erubi (1.13.1)
     et-orbi (1.3.0)
       tzinfo
@@ -142,11 +142,11 @@ GEM
     factory_bot_rails (4.11.1)
       factory_bot (~> 4.11.1)
       railties (>= 3.0.0)
-    faraday (2.14.1)
+    faraday (2.14.2)
       faraday-net_http (>= 2.0, < 3.5)
       json
       logger
-    faraday-net_http (3.4.2)
+    faraday-net_http (3.4.3)
       net-http (~> 0.5)
     ffi (1.17.2-aarch64-linux-gnu)
     ffi (1.17.2-arm-linux-gnu)
@@ -186,8 +186,8 @@ GEM
       pp (>= 0.6.0)
       rdoc (>= 4.0.0)
       reline (>= 0.4.2)
-    json (2.13.2)
-    jwt (3.1.2)
+    json (2.19.7)
+    jwt (3.2.0)
       base64
     kaminari (1.2.2)
       activesupport (>= 4.1.0)
@@ -225,9 +225,9 @@ GEM
     multi_xml (0.8.1)
       bigdecimal (>= 3.1, < 5)
     mutex_m (0.3.0)
-    net-http (0.6.0)
-      uri
-    net-imap (0.5.9)
+    net-http (0.9.1)
+      uri (>= 0.11.1)
+    net-imap (0.5.14)
       date
       net-protocol
     net-pop (0.1.2)
@@ -236,16 +236,16 @@ GEM
       timeout
     net-smtp (0.5.1)
       net-protocol
-    nio4r (2.7.4)
-    nokogiri (1.19.1-aarch64-linux-gnu)
+    nio4r (2.7.5)
+    nokogiri (1.19.3-aarch64-linux-gnu)
       racc (~> 1.4)
-    nokogiri (1.19.1-arm-linux-gnu)
+    nokogiri (1.19.3-arm-linux-gnu)
       racc (~> 1.4)
-    nokogiri (1.19.1-arm-linux-musl)
+    nokogiri (1.19.3-arm-linux-musl)
       racc (~> 1.4)
-    nokogiri (1.19.1-arm64-darwin)
+    nokogiri (1.19.3-arm64-darwin)
       racc (~> 1.4)
-    nokogiri (1.19.1-x86_64-linux-gnu)
+    nokogiri (1.19.3-x86_64-linux-gnu)
       racc (~> 1.4)
     octokit (10.0.0)
       faraday (>= 1, < 3)
@@ -271,7 +271,7 @@ GEM
       date
       stringio
     public_suffix (6.0.2)
-    puma (6.6.1)
+    puma (7.2.1)
       nio4r (~> 2.0)
     raabro (1.4.0)
     racc (1.8.1)
@@ -497,6 +497,7 @@ DEPENDENCIES
   bunny
   database_cleaner
   dotenv (~> 3.0)
+  erb (>= 6.0.4)
   excon (~> 0.81.0)
   factory_bot_rails (< 5)
   googleapis-common-protos-types (~> 1.18.0)
@@ -514,9 +515,9 @@ DEPENDENCIES
   octokit
   pg (~> 1.1)
   pry-byebug (~> 3.10, >= 3.10.1)
-  puma
-  rack (~> 2.2.20)
-  rails (>= 8.0.2.1, < 8.1)
+  puma (~> 7.2.1)
+  rack (~> 2.2.23)
+  rails (>= 8.0.4.1, < 8.1)
   retryable
   rspec-benchmark
   rspec-its
