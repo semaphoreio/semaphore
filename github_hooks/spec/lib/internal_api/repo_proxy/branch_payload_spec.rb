@@ -103,6 +103,65 @@ RSpec.describe InternalApi::RepoProxy::BranchPayload do
     end
   end
 
+  describe "#call when the caller already supplied a 40-char SHA" do
+    # Pre-resolved SHAs come in from cron-driven periodic tasks etc. When
+    # present, we skip the GitHub `git/refs/heads/:branch` lookup since the
+    # result is unused.
+    let(:sha) { "a" * 40 }
+
+    it "does not call repo_host.reference" do
+      expect(repo_host).not_to receive(:reference)
+      described_class.new(ref, sha).call(project, user)
+    end
+
+    it "still fetches the commit by SHA" do
+      expect(repo_host).to receive(:commit)
+        .with("owner/repo", sha)
+        .and_call_original
+      described_class.new(ref, sha).call(project, user)
+    end
+
+    it "echoes the input ref into the payload" do
+      payload = described_class.new(ref, sha).call(project, user)
+      expect(payload["ref"]).to eq(ref)
+    end
+
+    it "still produces a well-formed payload" do
+      payload = described_class.new(ref, sha).call(project, user)
+      expect(payload).to include(
+        "ref" => ref,
+        "single" => true,
+        "created" => true,
+        "head_commit" => a_kind_of(Hash),
+        "commits" => [a_kind_of(Hash)]
+      )
+      expect(payload["commits"].last["id"]).to eq(sha)
+    end
+  end
+
+  describe "#call when sha does not match SHA_REGEXP" do
+    # Lock down the fall-through behavior: anything that isn't a lowercase
+    # 40-char hex SHA goes through the slow path that calls `repo_host.reference`.
+    # This documents and protects the current contract — in particular,
+    # uppercase or mixed-case SHAs are NOT short-circuited.
+    [
+      ["empty string",        ""],
+      ["nil (coerced to '')", nil],
+      ["short hex",           "abc123"],
+      ["uppercase 40-char",   "A" * 40],
+      ["mixed-case 40-char",  "#{"a" * 39}B"],
+      ["41 chars",            "a" * 41],
+      ["non-hex 40-char",     "z" * 40]
+    ].each do |label, bad_sha|
+      it "falls through to repo_host.reference for #{label}" do
+        expect(repo_host).to receive(:reference)
+          .with("owner/repo", anything)
+          .and_call_original
+        described_class.new(ref, bad_sha).call(project, user)
+      end
+    end
+  end
+
   describe "#commit_sha" do
     it "returns sha if it matches SHA_REGEXP" do
       obj = described_class.new(ref, sha)
