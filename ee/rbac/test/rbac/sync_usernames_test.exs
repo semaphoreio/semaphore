@@ -104,5 +104,63 @@ defmodule Rbac.SyncUsernamesTest do
       assert {:error, :user_not_found} =
                Rbac.SyncUsernames.propagate(Ecto.UUID.generate())
     end
+
+    test "does not touch any rows when the user only has a non-github provider" do
+      user_id = Ecto.UUID.generate()
+      uid = "bb-99"
+      project_id = Ecto.UUID.generate()
+
+      {:ok, _} = Support.Factories.FrontUser.insert(id: user_id, email: "user@example.com")
+      {:ok, _} = Support.Factories.RbacUser.insert(user_id, "User", "user@example.com")
+
+      {:ok, _} =
+        Support.Members.insert_repo_host_account(
+          login: "user-renamed",
+          name: "user-renamed",
+          github_uid: uid,
+          user_id: user_id,
+          repo_host: "bitbucket"
+        )
+
+      {:ok, collab} =
+        Support.Collaborators.insert(
+          project_id: project_id,
+          github_username: "user-old",
+          github_uid: uid
+        )
+
+      assert {:ok, 0} = Rbac.SyncUsernames.propagate(user_id)
+
+      assert %Collaborator{github_username: "user-old"} = Repo.get!(Collaborator, collab.id)
+    end
+
+    test "does not touch any rows when the provider has a blank login" do
+      user_id = Ecto.UUID.generate()
+      uid = "184065"
+      project_id = Ecto.UUID.generate()
+
+      {:ok, _} = Support.Factories.FrontUser.insert(id: user_id, email: "user@example.com")
+      {:ok, _} = Support.Factories.RbacUser.insert(user_id, "User", "user@example.com")
+
+      {:ok, _} =
+        Support.Members.insert_repo_host_account(
+          login: "",
+          name: "",
+          github_uid: uid,
+          user_id: user_id,
+          repo_host: "github"
+        )
+
+      {:ok, collab} =
+        Support.Collaborators.insert(
+          project_id: project_id,
+          github_username: "user-old",
+          github_uid: uid
+        )
+
+      assert {:ok, 0} = Rbac.SyncUsernames.propagate(user_id)
+
+      assert %Collaborator{github_username: "user-old"} = Repo.get!(Collaborator, collab.id)
+    end
   end
 end
