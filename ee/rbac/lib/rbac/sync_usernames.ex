@@ -14,7 +14,7 @@ defmodule Rbac.SyncUsernames do
   import Ecto.Query, only: [from: 2]
 
   alias Rbac.Repo
-  alias Rbac.Repo.Collaborator
+  alias Rbac.Repo.{Collaborator, Project}
 
   @doc """
   Loads the user's current repo host accounts and updates any `collaborators`
@@ -64,7 +64,12 @@ defmodule Rbac.SyncUsernames do
 
     {count, _} =
       from(c in Collaborator,
-        where: c.github_uid == ^uid and c.github_username != ^login
+        join: p in Project,
+        on: p.project_id == c.project_id,
+        where:
+          c.github_uid == ^uid and
+            c.github_username != ^login and
+            p.provider == ^provider_name
       )
       |> Repo.update_all(set: [github_username: login, updated_at: now()])
 
