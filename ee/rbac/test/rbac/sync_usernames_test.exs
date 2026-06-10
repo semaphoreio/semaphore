@@ -28,6 +28,8 @@ defmodule Rbac.SyncUsernamesTest do
           repo_host: "github"
         )
 
+      {:ok, _} = Support.Factories.Project.insert(id: project_id, provider: "github")
+
       {:ok, stale} =
         Support.Collaborators.insert(
           project_id: project_id,
@@ -56,6 +58,8 @@ defmodule Rbac.SyncUsernamesTest do
           user_id: user_id,
           repo_host: "github"
         )
+
+      {:ok, _} = Support.Factories.Project.insert(id: project_id, provider: "github")
 
       {:ok, untouched} =
         Support.Collaborators.insert(
@@ -87,6 +91,8 @@ defmodule Rbac.SyncUsernamesTest do
           user_id: user_id,
           repo_host: "github"
         )
+
+      {:ok, _} = Support.Factories.Project.insert(id: project_id, provider: "github")
 
       {:ok, other} =
         Support.Collaborators.insert(
@@ -122,6 +128,8 @@ defmodule Rbac.SyncUsernamesTest do
           repo_host: "bitbucket"
         )
 
+      {:ok, _} = Support.Factories.Project.insert(id: project_id, provider: "bitbucket")
+
       {:ok, collab} =
         Support.Collaborators.insert(
           project_id: project_id,
@@ -151,6 +159,8 @@ defmodule Rbac.SyncUsernamesTest do
           repo_host: "github"
         )
 
+      {:ok, _} = Support.Factories.Project.insert(id: project_id, provider: "github")
+
       {:ok, collab} =
         Support.Collaborators.insert(
           project_id: project_id,
@@ -161,6 +171,47 @@ defmodule Rbac.SyncUsernamesTest do
       assert {:ok, 0} = Rbac.SyncUsernames.propagate(user_id)
 
       assert %Collaborator{github_username: "user-old"} = Repo.get!(Collaborator, collab.id)
+    end
+
+    test "ignores rows whose project belongs to a different provider" do
+      user_id = Ecto.UUID.generate()
+      uid = "184065"
+      gh_project_id = Ecto.UUID.generate()
+      bb_project_id = Ecto.UUID.generate()
+
+      {:ok, _} = Support.Factories.FrontUser.insert(id: user_id, email: "user@example.com")
+      {:ok, _} = Support.Factories.RbacUser.insert(user_id, "User", "user@example.com")
+
+      {:ok, _} =
+        Support.Members.insert_repo_host_account(
+          login: "user-renamed",
+          name: "user-renamed",
+          github_uid: uid,
+          user_id: user_id,
+          repo_host: "github"
+        )
+
+      {:ok, _} = Support.Factories.Project.insert(id: gh_project_id, provider: "github")
+      {:ok, _} = Support.Factories.Project.insert(id: bb_project_id, provider: "bitbucket")
+
+      {:ok, gh_row} =
+        Support.Collaborators.insert(
+          project_id: gh_project_id,
+          github_username: "user-old",
+          github_uid: uid
+        )
+
+      {:ok, bb_row} =
+        Support.Collaborators.insert(
+          project_id: bb_project_id,
+          github_username: "user-old-bb",
+          github_uid: uid
+        )
+
+      assert {:ok, 1} = Rbac.SyncUsernames.propagate(user_id)
+
+      assert %Collaborator{github_username: "user-renamed"} = Repo.get!(Collaborator, gh_row.id)
+      assert %Collaborator{github_username: "user-old-bb"} = Repo.get!(Collaborator, bb_row.id)
     end
   end
 end
