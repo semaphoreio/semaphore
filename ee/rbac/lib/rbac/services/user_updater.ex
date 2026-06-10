@@ -27,13 +27,13 @@ defmodule Rbac.Services.UserUpdater do
       {:ok, rbi} = Rbac.RoleBindingIdentification.new(user_id: event.user_id)
       Rbac.RoleManagement.assign_project_roles_to_repo_collaborators(rbi)
 
-      # Propagate any repo host login changes (e.g. GitHub username rename) into
-      # cached collaborator rows so per-project listings/exports stay in sync.
-      Rbac.SyncUsernames.propagate(event.user_id)
-
       if Rbac.OIDC.enabled?() do
         handle_oidc_sync(event.user_id)
       end
+
+      # Propagate any repo host login changes (e.g. GitHub username rename) into
+      # cached collaborator rows so per-project listings/exports stay in sync.
+      Rbac.SyncUsernames.propagate(event.user_id)
 
       log(event.user_id, "Processing finished")
     end)
