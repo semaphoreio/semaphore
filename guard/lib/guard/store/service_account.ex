@@ -43,9 +43,10 @@ defmodule Guard.Store.ServiceAccount do
 
   Returns a list of service accounts for the given IDs.
   Invalid or non-existent IDs are filtered out.
+  When org_id is given, only service accounts from that organization are returned.
   """
-  @spec find_many([String.t()]) :: {:ok, [map()]} | {:error, term()}
-  def find_many(service_account_ids) when is_list(service_account_ids) do
+  @spec find_many([String.t()], String.t() | nil) :: {:ok, [map()]} | {:error, term()}
+  def find_many(service_account_ids, org_id \\ nil) when is_list(service_account_ids) do
     # Filter out invalid UUIDs
     valid_ids = Enum.filter(service_account_ids, &valid_uuid?/1)
 
@@ -54,6 +55,7 @@ defmodule Guard.Store.ServiceAccount do
         build_service_account_query()
         |> where([sa, u], sa.id in ^valid_ids)
         |> where([sa, u], is_nil(u.blocked_at))
+        |> filter_by_org(org_id)
         |> order_by([sa, u], asc: u.created_at, asc: sa.id)
 
       service_accounts = FrontRepo.all(query)
@@ -320,6 +322,9 @@ defmodule Guard.Store.ServiceAccount do
   end
 
   # Private helper functions
+
+  defp filter_by_org(query, org_id) when org_id in [nil, ""], do: query
+  defp filter_by_org(query, org_id), do: where(query, [sa, u], u.org_id == ^org_id)
 
   defp build_service_account_query do
     from(sa in ServiceAccount,
