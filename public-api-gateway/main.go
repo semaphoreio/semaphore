@@ -72,7 +72,7 @@ func run() error {
 	}
 
 	mux := runtime.NewServeMux(
-		runtime.WithMiddlewares(middleware.AuditMiddleware(auditClient)),
+		runtime.WithMiddlewares(middleware.AuditMiddleware(auditClient), middleware.ClientMetricsMiddleware()),
 		runtime.WithIncomingHeaderMatcher(headerMatcher),
 		runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.HTTPBodyMarshaler{
 			Marshaler: &runtime.JSONPb{
