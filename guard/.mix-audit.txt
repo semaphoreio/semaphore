@@ -18,3 +18,22 @@ GHSA-hv23-4qp7-8c8r
 
 # postgrex 0.20.0 — channel-name SQL injection in Notifications.listen/3 (not used by guard)
 GHSA-r73h-97w8-m54h
+
+# plug 1.16.1 — multipart header parsing DoS. Guard's only Plug.Parsers
+# config (lib/guard/id/api.ex) lists [:urlencoded, :json] — :multipart is
+# not registered. No Plug.Upload / read_part_headers calls anywhere in
+# guard/lib. Not exploitable. To be bumped to 1.16.3 in a follow-up PR.
+GHSA-468c-vq7p-gh64
+
+# cowboy 2.9.0 — multipart header parsing DoS. No guard handler calls
+# cowboy_req:read_part. HTTP listeners on 4003/4004 only parse
+# urlencoded/json; gRPC on 50051 uses length-prefixed protobuf over HTTP/2.
+# Not exploitable. To be bumped to 2.15.0 in a follow-up PR (needs grpc
+# 0.5.0-beta.1 compat check, override: true already in mix.exs).
+GHSA-jfc2-q6qh-g5x8
+
+# cowlib 2.11.0 — SPDY decompression bomb in cow_spdy:inflate/2. SPDY is
+# a dead protocol; cowboy 2.x speaks HTTP/1.1 + HTTP/2, never SPDY.
+# cow_spdy is unreachable from guard's request paths. Not exploitable.
+# To be bumped to 2.16.1 in a follow-up PR (within :gun's ~> 2.11 range).
+GHSA-84f2-rp86-235p
