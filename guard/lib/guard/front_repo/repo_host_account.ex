@@ -37,6 +37,8 @@ defmodule Guard.FrontRepo.RepoHostAccount do
 
   @primary_key {:id, :binary_id, autogenerate: true}
 
+  @derive {Inspect, except: [:token, :refresh_token]}
+
   schema "repo_host_accounts" do
     field(:login, :string)
     field(:github_uid, :string)
@@ -195,6 +197,47 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     update_account(params, rha)
   end
 
+  @doc """
+  Write `:login` and/or `:name` only; other keys dropped. Strict writer:
+  any supplied key must carry a non-blank value or the changeset fails with
+  a `:required` error. Callers that want "drop nil/blank as no-opinion"
+  semantics must filter before calling.
+
+  Guards against concurrent writers via an optimistic lock on `:updated_at`.
+  When another writer commits between this caller's read and write, returns
+  `{:error, :stale}` instead of overwriting with the stale snapshot's view.
+  """
+  @spec update_profile(t(), map()) :: {:ok, t()} | {:error, Ecto.Changeset.t() | :stale}
+  def update_profile(%__MODULE__{} = rha, attrs) when is_map(attrs) do
+    rha
+    |> Ecto.Changeset.cast(attrs, [:login, :name])
+    |> then(&Ecto.Changeset.validate_required(&1, Map.keys(&1.changes)))
+    |> maybe_lock_on_updated_at()
+    |> FrontRepo.update()
+  rescue
+    Ecto.StaleEntryError -> {:error, :stale}
+  end
+
+  defp maybe_lock_on_updated_at(%Ecto.Changeset{changes: changes} = cs) when changes == %{},
+    do: cs
+
+  defp maybe_lock_on_updated_at(cs),
+    do: Ecto.Changeset.optimistic_lock(cs, :updated_at, &bump_updated_at/1)
+
+  # Force monotonic increment so the optimistic lock works even when two
+  # writes land in the same wall-clock second. The `:utc_datetime` schema
+  # type stores second precision, so plain `now()` can match the stale
+  # snapshot's `updated_at` and let a second writer through.
+  defp bump_updated_at(current) do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    if DateTime.compare(now, current) == :gt do
+      now
+    else
+      DateTime.add(current, 1, :second)
+    end
+  end
+
   @spec get_uid_by_login(String.t(), String.t()) :: {:ok, String.t()} | {:error, :not_found}
   def get_uid_by_login(login, repo_host) do
     uid =
@@ -309,7 +352,15 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     {:ok, account}
   end
 
+  @required_on_write [:github_uid, :login, :name, :permission_scope]
+
   defp update_account(data, account) do
+    # Validate only the required-schema keys the caller is actually writing.
+    # The full @required_on_write list is checked at create/reset time; on a
+    # partial update (e.g., flipping :revoked) we must not refuse the write
+    # because an *untouched* legacy field happens to be nil.
+    required_now = Map.keys(data) |> Enum.filter(&(&1 in @required_on_write))
+
     result =
       account
       |> Ecto.Changeset.cast(
@@ -325,7 +376,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
           :permission_scope
         ]
       )
-      |> Ecto.Changeset.validate_required([:github_uid, :login, :name, :permission_scope])
+      |> Ecto.Changeset.validate_required(required_now)
       |> FrontRepo.update()
 
     case result do
