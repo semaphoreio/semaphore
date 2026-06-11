@@ -15,7 +15,7 @@ defmodule PipelinesAPI.Util.ClientMetricsTest do
   defp emit(conn, status \\ 200) do
     conn = ClientMetrics.track_request(conn)
     output = capture_io(fn -> Plug.Conn.send_resp(conn, status, "") end)
-    Jason.decode!(String.trim(output))
+    Poison.decode!(String.trim(output))
   end
 
   test "emits severity INFO and message client_request" do
