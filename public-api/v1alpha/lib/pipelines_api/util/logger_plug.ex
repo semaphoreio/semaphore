@@ -26,7 +26,7 @@ defmodule PipelinesAPI.Plug.Logger do
 
         [conn.host, " - "] ++
           [connection_type(conn), ?\s, status, " in ", formatted_diff(diff), " - "] ++
-          request_line ++ PipelinesAPI.Util.ClientMetrics.log_fields(conn)
+          request_line
       end)
 
       conn
