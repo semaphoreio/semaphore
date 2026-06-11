@@ -18,6 +18,7 @@ defmodule Projecthub.HttpApi do
   @version "v1alpha"
 
   plug(Plug.Logger, log: :debug)
+  plug(:track_client_metrics)
   plug(Plug.Parsers, parsers: [:json], json_decoder: Poison)
   plug(:match)
   plug(:dispatch)
@@ -405,6 +406,8 @@ defmodule Projecthub.HttpApi do
     end)
     |> Enum.reject(&is_nil/1)
   end
+
+  defp track_client_metrics(conn, _opts), do: Projecthub.ClientMetrics.track_request(conn)
 
   defp assign_req_id(conn, _) do
     assign(conn, :req_id, conn |> get_req_header("x-request-id") |> List.first())
