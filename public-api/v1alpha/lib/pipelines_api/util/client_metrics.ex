@@ -4,7 +4,7 @@ defmodule PipelinesAPI.Util.ClientMetrics do
   ingestion turns these into metrics — no statsd/Watchman involved.
 
   Event keys: severity, message, client_source, client_command, client_version,
-  client_org, client_trace, status, duration_ms.
+  client_org_id, client_trace, status, duration_ms.
   """
 
   alias Plug.Conn
@@ -32,7 +32,7 @@ defmodule PipelinesAPI.Util.ClientMetrics do
         client_source: source(conn),
         client_command: command(conn),
         client_version: version(conn),
-        client_org: org(conn),
+        client_org_id: org_id(conn),
         client_trace: trace_id(conn) || @na,
         status: conn.status,
         duration_ms: duration
@@ -66,15 +66,11 @@ defmodule PipelinesAPI.Util.ClientMetrics do
     end
   end
 
-  @spec org(Conn.t()) :: String.t()
-  def org(conn) do
-    name = header(conn, "x-semaphore-org-username")
-    id = header(conn, "x-semaphore-org-id")
-
-    cond do
-      is_binary(name) and name != "" -> name
-      is_binary(id) and id != "" -> id
-      true -> @na
+  @spec org_id(Conn.t()) :: String.t()
+  def org_id(conn) do
+    case header(conn, "x-semaphore-org-id") do
+      id when is_binary(id) and id != "" -> id
+      _ -> @na
     end
   end
 
