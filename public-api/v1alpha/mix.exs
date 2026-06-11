@@ -43,7 +43,6 @@ defmodule PipelinesAPI.Mixfile do
       {:grpc, "~> 0.3"},
       {:plug_cowboy, "~> 2.0"},
       {:poison, "~> 3.1"},
-      {:jason, "~> 1.1"},
       {:httpoison, "~> 1.3.0"},
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
       {:log_tee, github: "renderedtext/log-tee"},
