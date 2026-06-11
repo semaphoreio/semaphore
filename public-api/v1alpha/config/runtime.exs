@@ -11,6 +11,8 @@ config :pipelines_api,
 
 config :pipelines_api, :audit_logging, System.get_env("AUDIT_LOGGING") == "true"
 
+config :pipelines_api, :amqp_url, System.get_env("AMQP_URL")
+
 if System.get_env("AMQP_URL") != nil do
   config :amqp,
     connections: [
@@ -38,7 +40,7 @@ feature_provider =
     {PipelinesAPI.FeatureHubProvider,
      [
        cache:
-         {FeatureProvider.CachexCache, name: :feature_provider_cache, ttl_ms: :timer.hours(6)}
+         {FeatureProvider.CachexCache, name: :feature_provider_cache, ttl_ms: :timer.minutes(10)}
      ]}
   end
 
