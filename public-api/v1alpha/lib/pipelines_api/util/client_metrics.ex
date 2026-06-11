@@ -38,7 +38,7 @@ defmodule PipelinesAPI.Util.ClientMetrics do
         duration_ms: duration
       }
 
-      IO.puts(Jason.encode!(event))
+      IO.puts(Poison.encode!(event))
       conn
     end)
   end
