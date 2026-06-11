@@ -392,7 +392,7 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
         {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
         {Guard.Store.ServiceAccount, [:passthrough],
          [
-           find_many: fn ids ->
+           find_many: fn ids, _org_id ->
              assert length(ids) == 3
              assert sa1_id in ids
              assert sa2_id in ids
@@ -470,7 +470,7 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
         {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
         {Guard.Store.ServiceAccount, [:passthrough],
          [
-           find_many: fn ids ->
+           find_many: fn ids, _org_id ->
              assert length(ids) == 2
              {:ok, []}
            end
@@ -492,7 +492,7 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
         {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
         {Guard.Store.ServiceAccount, [:passthrough],
          [
-           find_many: fn ids ->
+           find_many: fn ids, _org_id ->
              assert length(ids) == 2
              assert existing_id in ids
              assert non_existent_id in ids
@@ -527,7 +527,7 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
       with_mocks([
         {Guard.Store.ServiceAccount, [:passthrough],
          [
-           find_many: fn ids ->
+           find_many: fn ids, _org_id ->
              assert ids == []
              {:ok, []}
            end
@@ -556,7 +556,7 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
         {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
         {Guard.Store.ServiceAccount, [:passthrough],
          [
-           find_many: fn _ -> {:error, :database_error} end
+           find_many: fn _, _org_id -> {:error, :database_error} end
          ]}
       ]) do
         request = ServiceAccount.DescribeManyRequest.new(sa_ids: [sa_id])
@@ -576,7 +576,7 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
         {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
         {Guard.Store.ServiceAccount, [:passthrough],
          [
-           find_many: fn received_ids ->
+           find_many: fn received_ids, _org_id ->
              assert length(received_ids) == 50
              # Return only the first 10 to simulate partial results
              service_accounts =
