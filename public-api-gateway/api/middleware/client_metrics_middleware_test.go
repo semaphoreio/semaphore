@@ -51,10 +51,10 @@ func captureEvent(t *testing.T, r *http.Request, status int) map[string]any {
 
 func TestClientMetricsMiddlewareEmitsEvent(t *testing.T) {
 	r := reqWith(map[string]string{
-		"x-client-source":          "semai-cli",
-		"x-client-command":         "pipeline-list",
-		"x-client-version":         "1.4.0",
-		"x-semaphore-org-username": "acme-inc",
+		"x-client-source":    "semai-cli",
+		"x-client-command":   "pipeline-list",
+		"x-client-version":   "1.4.0",
+		"x-semaphore-org-id": "1bdc0370-a347-4cd6-8a01-1228ae6c6c83",
 	})
 	event := captureEvent(t, r, http.StatusOK)
 
@@ -73,8 +73,8 @@ func TestClientMetricsMiddlewareEmitsEvent(t *testing.T) {
 	if got := event["client_version"]; got != "1.4.0" {
 		t.Errorf("client_version = %q, want 1.4.0", got)
 	}
-	if got := event["client_org"]; got != "acme-inc" {
-		t.Errorf("client_org = %q, want acme-inc", got)
+	if got := event["client_org_id"]; got != "1bdc0370-a347-4cd6-8a01-1228ae6c6c83" {
+		t.Errorf("client_org_id = %q, want the org id", got)
 	}
 	if got, ok := event["status"].(float64); !ok || int(got) != http.StatusOK {
 		t.Errorf("status = %v, want %d", event["status"], http.StatusOK)
@@ -123,25 +123,23 @@ func TestClientMetricsMiddlewareCommandSanitize(t *testing.T) {
 	}
 }
 
-func TestClientMetricsMiddlewareOrgFallback(t *testing.T) {
-	byName := reqWith(map[string]string{
-		"x-semaphore-org-username": "acme-inc",
-		"x-semaphore-org-id":       "1bdc0370-a347-4cd6-8a01-1228ae6c6c83",
-	})
-	if event := captureEvent(t, byName, 200); event["client_org"] != "acme-inc" {
-		t.Errorf("username preferred, got %q", event["client_org"])
-	}
-
-	byId := reqWith(map[string]string{
+func TestClientMetricsMiddlewareOrgID(t *testing.T) {
+	withID := reqWith(map[string]string{
 		"x-semaphore-org-id": "1bdc0370-a347-4cd6-8a01-1228ae6c6c83",
 	})
-	if event := captureEvent(t, byId, 200); event["client_org"] != "1bdc0370-a347-4cd6-8a01-1228ae6c6c83" {
-		t.Errorf("id fallback, got %q", event["client_org"])
+	if event := captureEvent(t, withID, 200); event["client_org_id"] != "1bdc0370-a347-4cd6-8a01-1228ae6c6c83" {
+		t.Errorf("org id, got %q", event["client_org_id"])
+	}
+
+	// username alone must NOT populate client_org_id; org id is the stable key
+	nameOnly := reqWith(map[string]string{"x-semaphore-org-username": "acme-inc"})
+	if event := captureEvent(t, nameOnly, 200); event["client_org_id"] != "na" {
+		t.Errorf("username must not set org id, got %q", event["client_org_id"])
 	}
 
 	absent := reqWith(nil)
-	if event := captureEvent(t, absent, 200); event["client_org"] != "na" {
-		t.Errorf("absent org should be na, got %q", event["client_org"])
+	if event := captureEvent(t, absent, 200); event["client_org_id"] != "na" {
+		t.Errorf("absent org should be na, got %q", event["client_org_id"])
 	}
 }
 

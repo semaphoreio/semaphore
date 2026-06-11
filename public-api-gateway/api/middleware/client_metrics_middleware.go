@@ -19,7 +19,7 @@ type clientRequestEvent struct {
 	ClientSource  string `json:"client_source"`
 	ClientCommand string `json:"client_command"`
 	ClientVersion string `json:"client_version"`
-	ClientOrg     string `json:"client_org"`
+	ClientOrgID   string `json:"client_org_id"`
 	Status        int    `json:"status"`
 	DurationMs    int64  `json:"duration_ms"`
 }
@@ -46,7 +46,7 @@ func ClientMetricsMiddleware() runtime.Middleware {
 				ClientSource:  clientSource(r),
 				ClientCommand: sanitize(r.Header.Get("x-client-command"), commandRegexp),
 				ClientVersion: sanitize(r.Header.Get("x-client-version"), versionRegexp),
-				ClientOrg:     clientOrg(r),
+				ClientOrgID:   clientOrgID(r),
 				Status:        rec.Status,
 				DurationMs:    time.Since(start).Milliseconds(),
 			}
@@ -64,13 +64,9 @@ func clientSource(r *http.Request) string {
 	return "api"
 }
 
-// clientOrg reads the auth-set org headers (trusted, never client-supplied).
-// Username is preferred for readability; org id is the fallback. Returns "na"
-// when unauthenticated.
-func clientOrg(r *http.Request) string {
-	if name := r.Header.Get("x-semaphore-org-username"); name != "" {
-		return name
-	}
+// clientOrgID reads the auth-set org id (trusted, stable, never client-supplied).
+// Returns "na" when unauthenticated.
+func clientOrgID(r *http.Request) string {
 	if id := r.Header.Get("x-semaphore-org-id"); id != "" {
 		return id
 	}
