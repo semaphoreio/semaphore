@@ -69,19 +69,19 @@ defmodule Projecthub.ClientMetricsTest do
     assert event["client_version"] == "na"
   end
 
-  test "org from x-semaphore-org-username" do
-    event = emit(conn_with([{"x-semaphore-org-username", "acme-inc"}]))
-    assert event["client_org"] == "acme-inc"
-  end
-
-  test "org falls back to x-semaphore-org-id when username absent" do
+  test "client_org_id from x-semaphore-org-id" do
     event = emit(conn_with([{"x-semaphore-org-id", "1bdc0370-a347-4cd6-8a01-1228ae6c6c83"}]))
-    assert event["client_org"] == "1bdc0370-a347-4cd6-8a01-1228ae6c6c83"
+    assert event["client_org_id"] == "1bdc0370-a347-4cd6-8a01-1228ae6c6c83"
   end
 
-  test "org is na when both headers absent" do
+  test "client_org_id ignores x-semaphore-org-username" do
+    event = emit(conn_with([{"x-semaphore-org-username", "acme-inc"}]))
+    assert event["client_org_id"] == "na"
+  end
+
+  test "client_org_id is na when org-id absent" do
     event = emit(conn_with([]))
-    assert event["client_org"] == "na"
+    assert event["client_org_id"] == "na"
   end
 
   test "no client_trace key emitted (projecthub does not track traces)" do
@@ -104,13 +104,13 @@ defmodule Projecthub.ClientMetricsTest do
     assert ClientMetrics.source(conn_with([{"x-client-source", "semai-cli"}])) == "semai-cli"
   end
 
-  test "org/1 prefers username over id" do
+  test "org_id/1 returns the org id, ignoring username" do
     conn =
       conn_with([
         {"x-semaphore-org-username", "acme"},
         {"x-semaphore-org-id", "1bdc0370-a347-4cd6-8a01-1228ae6c6c83"}
       ])
 
-    assert ClientMetrics.org(conn) == "acme"
+    assert ClientMetrics.org_id(conn) == "1bdc0370-a347-4cd6-8a01-1228ae6c6c83"
   end
 end
