@@ -1,9 +1,8 @@
 defmodule PipelinesAPI.Plug.ClientMetrics do
   @moduledoc """
-  Global router plug that records a per-client request metric for every v1alpha
-  endpoint served by this app. Reads the `x-client-*` headers sem-ai
-  attaches and submits via `PipelinesAPI.Util.ClientMetrics`. Header-less callers
-  are tagged `source=api`, so the metric covers all traffic, not only sem-ai.
+  Global router plug that emits a structured JSON log event for every v1alpha
+  request. Reads the `x-client-*` headers sem-ai attaches. Header-less callers
+  are attributed as source=api, so the event covers all traffic.
   """
 
   @behaviour Plug
