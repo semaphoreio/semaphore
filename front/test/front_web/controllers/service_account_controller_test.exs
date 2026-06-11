@@ -85,7 +85,7 @@ defmodule FrontWeb.ServiceAccountControllerTest do
         deactivated: false
       }
 
-      expect(ServiceAccountMock, :describe_many, fn ["sa_123"] ->
+      expect(ServiceAccountMock, :describe_many, fn ["sa_123"], ^org_id ->
         {:ok, [service_account_proto]}
       end)
 
@@ -129,7 +129,7 @@ defmodule FrontWeb.ServiceAccountControllerTest do
         response
       end)
 
-      expect(ServiceAccountMock, :describe_many, fn [] ->
+      expect(ServiceAccountMock, :describe_many, fn [], _org_id ->
         {:ok, []}
       end)
 
@@ -289,7 +289,7 @@ defmodule FrontWeb.ServiceAccountControllerTest do
     } do
       Support.Stubs.PermissionPatrol.add_permissions(org_id, user_id, ["organization.view"])
 
-      expect(ServiceAccountMock, :describe_many, fn members ->
+      expect(ServiceAccountMock, :describe_many, fn members, _org_id ->
         service_accounts =
           Enum.map(members, fn member_id ->
             %InternalApi.ServiceAccount.ServiceAccount{
@@ -348,7 +348,10 @@ defmodule FrontWeb.ServiceAccountControllerTest do
         deactivated: false
       }
 
-      expect(ServiceAccountMock, :update, fn "sa_123", "Updated Name", "Updated description" ->
+      expect(ServiceAccountMock, :update, fn "sa_123",
+                                             "Updated Name",
+                                             "Updated description",
+                                             ^org_id ->
         {:ok, updated_account_proto}
       end)
 
@@ -380,7 +383,7 @@ defmodule FrontWeb.ServiceAccountControllerTest do
     end
 
     test "handles update errors", %{conn: conn} do
-      expect(ServiceAccountMock, :update, fn "sa_123", "", "" ->
+      expect(ServiceAccountMock, :update, fn "sa_123", "", "", _org_id ->
         {:error, "Service account name cannot be empty"}
       end)
 
@@ -413,11 +416,11 @@ defmodule FrontWeb.ServiceAccountControllerTest do
         deactivated: false
       }
 
-      expect(ServiceAccountMock, :describe, fn "sa_123" ->
+      expect(ServiceAccountMock, :describe, fn "sa_123", _org_id ->
         {:ok, service_account_proto}
       end)
 
-      expect(ServiceAccountMock, :delete, fn "sa_123" ->
+      expect(ServiceAccountMock, :delete, fn "sa_123", _org_id ->
         :ok
       end)
 
@@ -427,7 +430,7 @@ defmodule FrontWeb.ServiceAccountControllerTest do
     end
 
     test "handles delete errors", %{conn: conn} do
-      expect(ServiceAccountMock, :describe, fn "sa_123" ->
+      expect(ServiceAccountMock, :describe, fn "sa_123", _org_id ->
         {:error, "Service account not found"}
       end)
 
@@ -458,11 +461,11 @@ defmodule FrontWeb.ServiceAccountControllerTest do
         deactivated: false
       }
 
-      expect(ServiceAccountMock, :describe, fn "sa_123" ->
+      expect(ServiceAccountMock, :describe, fn "sa_123", _org_id ->
         {:ok, service_account_proto}
       end)
 
-      expect(ServiceAccountMock, :regenerate_token, fn "sa_123" ->
+      expect(ServiceAccountMock, :regenerate_token, fn "sa_123", _org_id ->
         {:ok, "new_api_token_456"}
       end)
 
@@ -472,7 +475,7 @@ defmodule FrontWeb.ServiceAccountControllerTest do
     end
 
     test "handles regenerate errors", %{conn: conn} do
-      expect(ServiceAccountMock, :describe, fn "sa_123" ->
+      expect(ServiceAccountMock, :describe, fn "sa_123", _org_id ->
         {:error, "Service account not found"}
       end)
 
