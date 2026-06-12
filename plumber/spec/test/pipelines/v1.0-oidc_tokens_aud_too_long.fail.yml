@@ -1,0 +1,16 @@
+version: "v1.0"
+name: OIDC tokens aud too long
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1604-minimal
+blocks:
+  - name: Test
+    task:
+      jobs:
+        - name: Aud string exceeds maxLength 256
+          oidc_tokens:
+            PYPI_OIDC_TOKEN:
+              aud: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          commands:
+            - echo hi
