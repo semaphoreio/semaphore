@@ -129,4 +129,59 @@ defmodule PipelinesAPI.Util.ClientMetricsTest do
     conn = conn_with([{"traceparent", "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01"}])
     assert ClientMetrics.trace_id(conn) == "0af7651916cd43dd8448eb211c80319c"
   end
+
+  test "builds [source, command, version] tags from sem-ai headers" do
+    conn =
+      conn_with([
+        {"x-client-source", "semai-cli"},
+        {"x-client-command", "pipeline_list"},
+        {"x-client-version", "1.4.0"}
+      ])
+
+    assert ClientMetrics.client_tags(conn) == ["semai-cli", "pipeline_list", "1_4_0"]
+  end
+
+  test "replaces dots in tag values so a version can't corrupt the graphite path" do
+    conn =
+      conn_with([
+        {"x-client-source", "semai-cli"},
+        {"x-client-command", "pipeline_list"},
+        {"x-client-version", "v0.1.19-3-ge20eb02"}
+      ])
+
+    assert ClientMetrics.client_tags(conn) == ["semai-cli", "pipeline_list", "v0_1_19-3-ge20eb02"]
+  end
+
+  test "neutralises dots AND plus in tag values (carbon-path safe)" do
+    conn =
+      conn_with([
+        {"x-client-source", "semai-cli"},
+        {"x-client-command", "pipeline_list"},
+        {"x-client-version", "1.4.0+build.5"}
+      ])
+
+    assert ClientMetrics.client_tags(conn) == ["semai-cli", "pipeline_list", "1_4_0_build_5"]
+  end
+
+  test "defaults header-less (non sem-ai) traffic to source=api with na dimensions" do
+    assert ClientMetrics.client_tags(conn_with([])) == ["api", "na", "na"]
+  end
+
+  test "sanitises command and version tags to bound Graphite cardinality" do
+    conn =
+      conn_with([
+        {"x-client-source", "semai-cli"},
+        {"x-client-command", "DROP TABLE; rm -rf"},
+        {"x-client-version", "$(curl evil)"}
+      ])
+
+    assert ClientMetrics.client_tags(conn) == ["semai-cli", "na", "na"]
+  end
+
+  test "encodes status in the metric name suffix" do
+    assert ClientMetrics.metric_name(200) == "PipelinesAPI.router.client_request.ok"
+    assert ClientMetrics.metric_name(404) == "PipelinesAPI.router.client_request.client_error"
+    assert ClientMetrics.metric_name(503) == "PipelinesAPI.router.client_request.server_error"
+    assert ClientMetrics.metric_name(nil) == "PipelinesAPI.router.client_request.unknown"
+  end
 end

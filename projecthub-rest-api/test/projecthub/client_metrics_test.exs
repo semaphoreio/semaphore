@@ -113,4 +113,48 @@ defmodule Projecthub.ClientMetricsTest do
 
     assert ClientMetrics.org_id(conn) == "1bdc0370-a347-4cd6-8a01-1228ae6c6c83"
   end
+
+  test "builds [source, command, version] tags from sem-ai headers" do
+    conn =
+      conn_with([
+        {"x-client-source", "semai-cli"},
+        {"x-client-command", "project_list"},
+        {"x-client-version", "1.4.0"}
+      ])
+
+    assert ClientMetrics.client_tags(conn) == ["semai-cli", "project_list", "1_4_0"]
+  end
+
+  test "neutralises dots AND plus in tag values (carbon-path safe)" do
+    conn =
+      conn_with([
+        {"x-client-source", "semai-cli"},
+        {"x-client-command", "project_list"},
+        {"x-client-version", "v0.1.19+build.5"}
+      ])
+
+    assert ClientMetrics.client_tags(conn) == ["semai-cli", "project_list", "v0_1_19_build_5"]
+  end
+
+  test "defaults header-less (non sem-ai) traffic to source=api with na dimensions" do
+    assert ClientMetrics.client_tags(conn_with([])) == ["api", "na", "na"]
+  end
+
+  test "sanitises command and version tags to bound Graphite cardinality" do
+    conn =
+      conn_with([
+        {"x-client-source", "semai-cli"},
+        {"x-client-command", "DROP TABLE; rm -rf"},
+        {"x-client-version", "$(curl evil)"}
+      ])
+
+    assert ClientMetrics.client_tags(conn) == ["semai-cli", "na", "na"]
+  end
+
+  test "encodes status in the metric name suffix" do
+    assert ClientMetrics.metric_name(200) == "Projecthub.router.client_request.ok"
+    assert ClientMetrics.metric_name(404) == "Projecthub.router.client_request.client_error"
+    assert ClientMetrics.metric_name(503) == "Projecthub.router.client_request.server_error"
+    assert ClientMetrics.metric_name(nil) == "Projecthub.router.client_request.unknown"
+  end
 end
