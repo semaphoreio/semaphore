@@ -1,5 +1,3 @@
-// Keep in sync with @repository_slug_format in
-// lib/front_web/controllers/project_onboarding_controller.ex
 export const REPOSITORY_SLUG_REGEX = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/;
 
 export const parseRepositorySlug = (query: string): string | null => {
