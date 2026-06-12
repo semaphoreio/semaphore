@@ -24,6 +24,20 @@ defmodule PipelinesAPI.Util.ClientMetricsTest do
     assert event["message"] == "client_request"
   end
 
+  test "plug skips health-check / ingress-probe paths (no event, no hook)" do
+    for path <- ["/health_check/ping", "/"] do
+      conn = PipelinesAPI.Plug.ClientMetrics.call(Test.conn(:get, path), [])
+      output = capture_io(fn -> Plug.Conn.send_resp(conn, 200, "") end)
+      assert output == "", "expected no event for #{path}, got: #{output}"
+    end
+  end
+
+  test "plug tracks non-probe paths" do
+    conn = PipelinesAPI.Plug.ClientMetrics.call(Test.conn(:get, "/pipelines"), [])
+    output = capture_io(fn -> Plug.Conn.send_resp(conn, 200, "") end)
+    assert Poison.decode!(String.trim(output))["message"] == "client_request"
+  end
+
   test "known source semai-cli passes through" do
     event = emit(conn_with([{"x-client-source", "semai-cli"}]))
     assert event["client_source"] == "semai-cli"

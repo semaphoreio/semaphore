@@ -25,7 +25,8 @@ defmodule PipelinesAPI.Util.ClientMetrics do
 
   `source` is read from the `x-client-*` headers sem-ai attaches and defaults
   to `"api"` for every other (header-less) caller, so both outputs cover all
-  traffic.
+  traffic the plug routes here — health-check/probe paths are filtered at the
+  plug layer (see `PipelinesAPI.Plug.ClientMetrics`).
   """
 
   alias PipelinesAPI.Util.Metrics
