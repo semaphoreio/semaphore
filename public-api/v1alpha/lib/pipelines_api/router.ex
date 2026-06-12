@@ -53,6 +53,7 @@ defmodule PipelinesAPI.Router do
   alias PipelinesAPI.Insights.Frequency, as: InsightsFrequency
 
   plug(PipelinesAPI.Plug.Logger)
+  plug(PipelinesAPI.Plug.ClientMetrics)
 
   plug(Plug.Parsers,
     parsers: [
