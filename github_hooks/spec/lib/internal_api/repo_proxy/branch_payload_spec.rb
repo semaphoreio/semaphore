@@ -19,6 +19,8 @@ BranchRef = Struct.new(:ref, :object) do
   end
 end
 
+CompareResult = Struct.new(:base_commit) unless defined?(CompareResult)
+
 RepoHostBranchStub = Struct.new(:branch_commit) do
   def reference(*_args)
     BranchRef.new("heads/main", { sha: branch_commit.sha, type: "commit" })
@@ -26,6 +28,10 @@ RepoHostBranchStub = Struct.new(:branch_commit) do
 
   def commit(*_args)
     branch_commit
+  end
+
+  def compare(*_args)
+    CompareResult.new(branch_commit)
   end
 end
 
@@ -105,19 +111,17 @@ RSpec.describe InternalApi::RepoProxy::BranchPayload do
 
   describe "#call when the caller already supplied a 40-char SHA" do
     # Pre-resolved SHAs come in from cron-driven periodic tasks etc. When
-    # present, we skip the GitHub `git/refs/heads/:branch` lookup since the
-    # result is unused.
+    # present, a single `compare(sha, branch)` call replaces the separate
+    # `reference` + `commit` pair: it validates the branch still exists and
+    # carries the commit object back as `base_commit`.
     let(:sha) { "a" * 40 }
 
-    it "does not call repo_host.reference" do
-      expect(repo_host).not_to receive(:reference)
-      described_class.new(ref, sha).call(project, user)
-    end
-
-    it "still fetches the commit by SHA" do
-      expect(repo_host).to receive(:commit)
-        .with("owner/repo", sha)
+    it "resolves via a single compare call, not reference + commit" do
+      expect(repo_host).to receive(:compare)
+        .with("owner/repo", sha, "main")
         .and_call_original
+      expect(repo_host).not_to receive(:reference)
+      expect(repo_host).not_to receive(:commit)
       described_class.new(ref, sha).call(project, user)
     end
 
@@ -126,7 +130,7 @@ RSpec.describe InternalApi::RepoProxy::BranchPayload do
       expect(payload["ref"]).to eq(ref)
     end
 
-    it "still produces a well-formed payload" do
+    it "builds the payload from the compared commit" do
       payload = described_class.new(ref, sha).call(project, user)
       expect(payload).to include(
         "ref" => ref,

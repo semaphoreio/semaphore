@@ -9,23 +9,33 @@ module InternalApi::RepoProxy
 
     def call(project, user)
       repo_host = ::RepoHost::Factory.create_from_project(project)
+      repo = project.repo_owner_and_name
 
-      # When the caller already supplied a fully-resolved 40-char SHA, the
-      # `repo_host.reference(...)` lookup is gratuitous: `commit_sha` returns
-      # `sha` directly in that case, and `reference.ref` is just an echo of
-      # the input. Skipping the lookup avoids a wasted (and often 404-ing)
-      # GitHub `GET /repos/:repo/git/refs/heads/:branch` API call.
+      # When the caller already supplied a fully-resolved 40-char SHA (the
+      # common case for cron-driven periodic tasks), resolve everything with a
+      # single `compare(base: sha, head: branch)` call instead of the separate
+      # `reference` + `commit` pair:
+      #
+      #   * It still validates the branch exists — `compare` 404s on a missing
+      #     branch exactly like the old `git/refs/heads/:branch` lookup, so we
+      #     keep failing fast on typo'd/deleted branches.
+      #   * Its `base_commit` is the commit for `sha`, so we reuse it and skip
+      #     the dedicated `commit` call.
+      #
+      # Net: one GitHub API call instead of two. The branch/SHA divergence
+      # `status` is intentionally ignored — we only use `compare` for branch
+      # existence + the commit object, matching the prior contract (which never
+      # verified SHA-on-branch membership either).
       if SHA_REGEXP.match?(sha)
+        branch_name = ref.delete_prefix("refs/heads/")
         response_ref = ref
-        head_commit_sha = sha
+        branch_commit = repo_host.compare(repo, sha, branch_name).base_commit
       else
         encoded_ref = CGI.escape(ref.delete_prefix("refs/heads/"))
-        reference = repo_host.reference(project.repo_owner_and_name, "heads/#{encoded_ref}")
+        reference = repo_host.reference(repo, "heads/#{encoded_ref}")
         response_ref = reference.ref
-        head_commit_sha = commit_sha(sha, reference)
+        branch_commit = repo_host.commit(repo, commit_sha(sha, reference))
       end
-
-      branch_commit = repo_host.commit(project.repo_owner_and_name, head_commit_sha)
 
       repo_url = branch_commit[:html_url].split("/").first(5).join("/")
       author_name  = user.github_repo_host_account.name
@@ -55,7 +65,7 @@ module InternalApi::RepoProxy
         "before" => "",
         "repository" => {
           "html_url" => repo_url,
-          "full_name" => project.repo_owner_and_name
+          "full_name" => repo
         },
         "pusher" => {
           "name" => author_name,

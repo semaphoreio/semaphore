@@ -140,6 +140,26 @@ RSpec.describe RepoHost::Github::Client do
     end
   end
 
+  describe "#compare" do
+    it "delegates to the Octokit client" do
+      comparison = Object.new
+      allow_any_instance_of(Octokit::Client).to receive(:compare)
+        .with("owner/repo", "basesha", "main")
+        .and_return(comparison)
+
+      expect(@client.compare("owner/repo", "basesha", "main")).to eq(comparison)
+    end
+
+    it "translates a missing ref into RepoHost::RemoteException::NotFound" do
+      allow_any_instance_of(Octokit::Client).to receive(:compare)
+        .and_raise(Octokit::NotFound)
+
+      expect do
+        @client.compare("owner/repo", "basesha", "missing-branch")
+      end.to raise_error(RepoHost::RemoteException::NotFound)
+    end
+  end
+
   describe "#token_valid?" do
     before { @client = RepoHost::Github::Client.new("token") }
 
