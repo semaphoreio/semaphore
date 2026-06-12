@@ -60,7 +60,8 @@ defmodule RepositoryHub.MixProject do
       {:amqp, "~> 3.0", override: true},
       {:broadway_rabbitmq, "~> 0.7"},
       {:tesla, "~> 1.9"},
-      {:gun, "~> 2.0.0", override: true}
+      {:gun, "~> 2.0.0", override: true},
+      {:feature_provider, path: "../feature_provider"}
     ]
   end
 
