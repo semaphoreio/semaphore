@@ -52,8 +52,10 @@ var (
 
 // ClientMetricsMiddleware records a per-client request metric (timing + status
 // counter) plus the generic api.client_usage / api.org_usage counters, and
-// emits one structured JSON log line to stdout, for every gateway request,
-// including 4xx/5xx.
+// emits one structured JSON log line to stdout, for every request that reaches
+// a registered handler — including handler-produced 4xx/5xx. Routing-level
+// failures (unknown path 404, method-not-allowed 405) never enter mux
+// middlewares and are not recorded.
 func ClientMetricsMiddleware() runtime.Middleware {
 	return func(next runtime.HandlerFunc) runtime.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {

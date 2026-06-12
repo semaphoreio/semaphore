@@ -25,6 +25,9 @@ defmodule Projecthub.ClientMetrics do
      client_source, client_command, client_version, client_org_id, status,
      duration_ms. Carries the full-fidelity values (raw dotted version) that
      don't belong in metric tags.
+
+  Health-check / ingress-probe paths are skipped so kubelet probes don't
+  inflate the source=api counters or the log volume.
   """
 
   alias Plug.Conn

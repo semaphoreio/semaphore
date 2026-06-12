@@ -24,6 +24,13 @@ defmodule Projecthub.ClientMetricsTest do
     assert event["message"] == "client_request"
   end
 
+  test "http_api pipeline skips health-check / probe paths (no event)" do
+    for path <- ["/", "/is_alive"] do
+      output = capture_io(fn -> Projecthub.HttpApi.call(Test.conn(:get, path), []) end)
+      refute output =~ "client_request", "expected no event for #{path}"
+    end
+  end
+
   test "known source semai-cli passes through" do
     event = emit(conn_with([{"x-client-source", "semai-cli"}]))
     assert event["client_source"] == "semai-cli"
