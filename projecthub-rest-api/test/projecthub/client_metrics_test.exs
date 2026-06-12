@@ -31,6 +31,11 @@ defmodule Projecthub.ClientMetricsTest do
     end
   end
 
+  test "http_api pipeline tracks non-probe paths" do
+    output = capture_io(fn -> Projecthub.HttpApi.call(Test.conn(:get, "/nonexistent"), []) end)
+    assert output =~ "client_request"
+  end
+
   test "known source semai-cli passes through" do
     event = emit(conn_with([{"x-client-source", "semai-cli"}]))
     assert event["client_source"] == "semai-cli"
