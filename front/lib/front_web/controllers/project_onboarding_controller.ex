@@ -86,8 +86,6 @@ defmodule FrontWeb.ProjectOnboardingController do
                               60
                             )
 
-  # Keep in sync with REPOSITORY_SLUG_REGEX in
-  # assets/js/project_onboarding/new/utils/slug.ts
   @repository_slug_format ~r{\A[A-Za-z0-9][A-Za-z0-9\-]*/[A-Za-z0-9._\-]+\z}
 
   def refresh_cooldown_seconds, do: @refresh_cooldown_seconds
