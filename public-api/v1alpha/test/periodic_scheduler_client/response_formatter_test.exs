@@ -37,6 +37,15 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.ResponseFormatter.Test do
     assert message == "FAILED_PRECONDITION message from server"
   end
 
+  test "process_apply_response() returns service_unavailable when server returns UNAVAILABLE" do
+    response = apply_response(:UNAVAILABLE, "GitHub API temporarily unavailable")
+
+    assert {:error, {:service_unavailable, message}} =
+             ResponseFormatter.process_apply_response(response)
+
+    assert message == "GitHub API temporarily unavailable"
+  end
+
   test "process_apply_response() returns internal error when it receives {:ok, invalid_data}" do
     response = {:ok, "123"}
 
@@ -81,6 +90,15 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.ResponseFormatter.Test do
              ResponseFormatter.process_get_project_id_response(response)
 
     assert message == "NOT_FOUND message from server"
+  end
+
+  test "process_get_project_id_response() returns service_unavailable when server returns UNAVAILABLE" do
+    response = get_project_id_response(:UNAVAILABLE, "GitHub API temporarily unavailable")
+
+    assert {:error, {:service_unavailable, message}} =
+             ResponseFormatter.process_get_project_id_response(response)
+
+    assert message == "GitHub API temporarily unavailable"
   end
 
   test "process_get_project_id_response() returns internal error when it receives {:ok, invalid_data}" do
@@ -148,6 +166,15 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.ResponseFormatter.Test do
 
     assert {:error, {:user, message}} = ResponseFormatter.process_describe_response(response)
     assert message == "NOT_FOUND message from server"
+  end
+
+  test "process_describe_response() returns service_unavailable when server returns UNAVAILABLE" do
+    response = describe_response(:UNAVAILABLE, "GitHub API temporarily unavailable")
+
+    assert {:error, {:service_unavailable, message}} =
+             ResponseFormatter.process_describe_response(response)
+
+    assert message == "GitHub API temporarily unavailable"
   end
 
   test "process_describe_response() returns internal error when it receives {:ok, invalid_data}" do
@@ -218,6 +245,15 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.ResponseFormatter.Test do
     assert message == "NOT_FOUND message from server"
   end
 
+  test "process_delete_response() returns service_unavailable when server returns UNAVAILABLE" do
+    response = delete_response(:UNAVAILABLE, "GitHub API temporarily unavailable")
+
+    assert {:error, {:service_unavailable, message}} =
+             ResponseFormatter.process_delete_response(response)
+
+    assert message == "GitHub API temporarily unavailable"
+  end
+
   test "process_delete_response() returns internal error when it receives {:ok, invalid_data}" do
     response = {:ok, "123"}
 
@@ -263,6 +299,15 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.ResponseFormatter.Test do
 
     assert {:error, {:user, message}} = ResponseFormatter.process_list_response(response)
     assert message == "INVALID_ARGUMENT message from server"
+  end
+
+  test "process_list_response() returns service_unavailable when server returns UNAVAILABLE" do
+    response = list_response(:UNAVAILABLE, "GitHub API temporarily unavailable")
+
+    assert {:error, {:service_unavailable, message}} =
+             ResponseFormatter.process_list_response(response)
+
+    assert message == "GitHub API temporarily unavailable"
   end
 
   test "process_list_response() returns internal error when it receives {:ok, invalid_data}" do
@@ -331,6 +376,15 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.ResponseFormatter.Test do
 
     assert {:error, {:user, message}} = ResponseFormatter.process_run_now_response(response)
     assert message == "RESOURCE_EXHAUSTED message from server"
+  end
+
+  test "process_run_now_response() returns service_unavailable when server returns UNAVAILABLE" do
+    response = run_now_response(:UNAVAILABLE, "GitHub API temporarily unavailable")
+
+    assert {:error, {:service_unavailable, message}} =
+             ResponseFormatter.process_run_now_response(response)
+
+    assert message == "GitHub API temporarily unavailable"
   end
 
   test "process_run_now_response() returns internal error when it receives {:ok, invalid_data}" do
