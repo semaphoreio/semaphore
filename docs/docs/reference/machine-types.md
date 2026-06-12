@@ -12,6 +12,14 @@ A machine type defines what virtualized hardware to use in your [agents](../usin
 
 The machines described in this page only apply to Semaphore Cloud. You can add more types of machines using [self-hosted agents](../using-semaphore/self-hosted).
 
+## Performance baseline and resource availability
+
+Each Semaphore machine type is provisioned with a guaranteed baseline of virtual CPUs, memory, and disk as listed in the specifications below.
+
+Depending on host utilization at any given moment, a machine may temporarily receive additional CPU time, disk throughput, network bandwidth, and memory speed beyond its baseline specification. This happens when the physical host running your VM has spare capacity available — for example, during off-peak hours when fewer jobs are running concurrently.
+
+As a result, you may notice that identical jobs sometimes complete faster than previous runs, even when nothing in the job configuration has changed. This is not a sign of performance degradation — these faster runs are benefiting from additional resources temporarily available on the host, and performance may vary between runs.
+
 ## Linux machines {#linux}
 
 Linux machines are provided in four generations. The following table shows what operating systems each generation supports and if they support [Docker environments](../using-semaphore/pipelines#docker-environments).
