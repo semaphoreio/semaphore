@@ -116,6 +116,42 @@ defmodule DefinitionValidator.Test do
       """
   end
 
+  test "malformed definition - circular block dependencies" do
+    yaml_string = """
+    version: v1.0
+    agent:
+      machine:
+        type: foo
+        os_image: bar
+
+    blocks:
+      - name: A
+        dependencies: [C]
+        task:
+          jobs:
+            - name: single job
+              commands:
+                - echo foo
+      - name: B
+        dependencies: [A]
+        task:
+          jobs:
+            - name: single job
+              commands:
+                - echo bar
+      - name: C
+        dependencies: [B]
+        task:
+          jobs:
+            - name: single job
+              commands:
+                - echo baz
+    """
+    assert({:error, {:malformed, msg}} =
+      DefinitionValidator.validate_yaml_string(yaml_string))
+    assert msg =~ "Circular dependency between blocks detected:"
+  end
+
   test "empty definition" do
     assert {:error, {:malformed, reason}} = DefinitionValidator.validate_yaml_string("")
     assert String.contains?(reason, "version")
