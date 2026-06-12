@@ -4,10 +4,11 @@ defmodule PipelinesAPI.Plug.ClientMetrics do
   (Watchman metrics + structured JSON log event) — see
   `PipelinesAPI.Util.ClientMetrics` for what gets emitted. Reads the
   `x-client-*` headers sem-ai attaches; header-less callers are attributed as
-  source=api, so the hook covers all traffic.
+  source=api.
 
   Health-check / ingress-probe paths are skipped so kubelet probes don't
-  inflate the source=api counters or the log volume.
+  inflate the source=api counters or the log volume; everything else is
+  tracked.
   """
 
   @behaviour Plug

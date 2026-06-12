@@ -15,8 +15,8 @@ import (
 // Client-attribution for the gateway, implementing the same contract as the
 // Elixir plugs: per-request metrics plus one structured JSON log line, both
 // describing which client issued the request (read from the x-client-*
-// headers sem-ai attaches). Header-less callers tag source=api, so both
-// outputs cover all traffic.
+// headers sem-ai attaches). Header-less callers tag source=api. See the
+// ClientMetricsMiddleware doc for coverage limits (routing-level 404/405).
 const (
 	// Per-service rich metric (app-namespaced; status is in the NAME because the
 	// statsd_graphite backend keeps only 3 positional tags).
