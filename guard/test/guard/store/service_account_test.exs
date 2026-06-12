@@ -57,7 +57,7 @@ defmodule Guard.Store.ServiceAccountTest do
     end
   end
 
-  describe "find_many/1" do
+  describe "find_many/2" do
     test "returns multiple service accounts when found" do
       {:ok, %{service_account: sa1}} = ServiceAccountFactory.insert(name: "SA1")
       {:ok, %{service_account: sa2}} = ServiceAccountFactory.insert(name: "SA2")
@@ -145,6 +145,30 @@ defmodule Guard.Store.ServiceAccountTest do
 
       assert length(found_accounts) == 1
       assert hd(found_accounts).id == sa1.id
+    end
+
+    test "filters by org_id when provided" do
+      org1_id = Ecto.UUID.generate()
+      org2_id = Ecto.UUID.generate()
+
+      {:ok, %{service_account: sa1}} = ServiceAccountFactory.insert(org_id: org1_id, name: "SA1")
+      {:ok, %{service_account: sa2}} = ServiceAccountFactory.insert(org_id: org2_id, name: "SA2")
+
+      {:ok, found_accounts} = ServiceAccount.find_many([sa1.id, sa2.id], org1_id)
+
+      assert length(found_accounts) == 1
+      assert hd(found_accounts).id == sa1.id
+    end
+
+    test "returns empty list when org_id does not match any of the given ids" do
+      org1_id = Ecto.UUID.generate()
+      other_org_id = Ecto.UUID.generate()
+
+      {:ok, %{service_account: sa1}} = ServiceAccountFactory.insert(org_id: org1_id, name: "SA1")
+
+      {:ok, found_accounts} = ServiceAccount.find_many([sa1.id], other_org_id)
+
+      assert found_accounts == []
     end
   end
 
