@@ -127,31 +127,34 @@ defmodule Support.FakeClients.ServiceAccount do
         {:error, "Invalid service account ID format"}
 
       true ->
-        Agent.get_and_update(__MODULE__, fn state ->
-          case get_in(state, [:service_accounts, service_account_id]) do
-            nil ->
-              {{:error, "Service account not found"}, state}
+        Agent.get_and_update(
+          __MODULE__,
+          &update_account_in_state(&1, service_account_id, name, description, org_id)
+        )
+    end
+  end
 
-            service_account ->
-              case check_org(service_account, org_id) do
-                {:error, _} = error ->
-                  {error, state}
+  defp update_account_in_state(state, service_account_id, name, description, org_id) do
+    case get_in(state, [:service_accounts, service_account_id]) do
+      nil ->
+        {{:error, "Service account not found"}, state}
 
-                {:ok, _} ->
-                  updated_account = %{
-                    service_account
-                    | name: name,
-                      description: description,
-                      updated_at: now_proto_timestamp()
-                  }
+      service_account ->
+        case check_org(service_account, org_id) do
+          {:ok, _} ->
+            updated_account = %{
+              service_account
+              | name: name,
+                description: description,
+                updated_at: now_proto_timestamp()
+            }
 
-                  new_state =
-                    put_in(state, [:service_accounts, service_account_id], updated_account)
+            new_state = put_in(state, [:service_accounts, service_account_id], updated_account)
+            {{:ok, updated_account}, new_state}
 
-                  {{:ok, updated_account}, new_state}
-              end
-          end
-        end)
+          {:error, _} = error ->
+            {error, state}
+        end
     end
   end
 
@@ -204,7 +207,7 @@ defmodule Support.FakeClients.ServiceAccount do
   # a mismatched org_id behaves as if the service account does not exist.
   defp check_org(service_account, org_id) when org_id in [nil, ""], do: {:ok, service_account}
 
-  defp check_org(%{org_id: org_id} = service_account, org_id), do: {:ok, service_account}
+  defp check_org(service_account = %{org_id: org_id}, org_id), do: {:ok, service_account}
 
   defp check_org(_service_account, _org_id), do: {:error, "Service account not found"}
 
