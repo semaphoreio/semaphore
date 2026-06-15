@@ -275,6 +275,8 @@ module RepoHost::Github
         raise ::RepoHost::RemoteException::MaximumNumberOfStatuses, exception.message
       elsif hook_exists?(exception)
         raise ::RepoHost::RemoteException::HookExistsOnRepository, exception.message
+      elsif ref_already_exists?(exception)
+        raise ::RepoHost::RemoteException::ReferenceAlreadyExists, exception.message
       else
         raise ::RepoHost::RemoteException::Unknown, exception.message
       end
@@ -288,6 +290,11 @@ module RepoHost::Github
     def hook_exists?(exception)
       exception.instance_of?(Octokit::UnprocessableEntity) &&
         exception.message =~ /Hook already exists on this repository/
+    end
+
+    def ref_already_exists?(exception)
+      exception.instance_of?(Octokit::UnprocessableEntity) &&
+        exception.message =~ /Reference already exists/
     end
 
     def repositories_for_owner_type(owner_type)
