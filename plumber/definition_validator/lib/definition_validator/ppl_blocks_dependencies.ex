@@ -126,7 +126,13 @@ defmodule DefinitionValidator.PplBlocksDependencies do
   end
 
   defp cycle_error_msg(cycle) do
-    path = Enum.map_join(cycle, " → ", &"\"#{&1}\"")
+    # Render the cycle in the same direction the UI uses: the dependency first,
+    # then the block that depends on it (i.e. "B → A" when A depends on B). The
+    # detected path is in "depends-on" order, so reverse it before formatting.
+    path =
+      cycle
+      |> Enum.reverse()
+      |> Enum.map_join(" → ", &"'#{&1}'")
 
     "Circular dependency between blocks detected: #{path}. " <>
       "Blocks cannot depend on each other in a cycle."

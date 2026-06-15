@@ -41,11 +41,11 @@ defmodule DefinitionValidator.PplBlocksDependencies.Test do
 
       assert {:error, {:malformed, msg}} = Deps.validate_no_cycles(definition)
       assert msg =~ "Circular dependency between blocks detected:"
-      assert msg =~ "\"A\""
-      assert msg =~ "\"B\""
+      assert msg =~ "'A'"
+      assert msg =~ "'B'"
     end
 
-    test "detects a longer cycle A -> B -> C -> A" do
+    test "detects a longer cycle and renders it in dependency -> dependent order" do
       definition = %{
         "blocks" => [
           block("A", ["C"]),
@@ -56,13 +56,17 @@ defmodule DefinitionValidator.PplBlocksDependencies.Test do
 
       assert {:error, {:malformed, msg}} = Deps.validate_no_cycles(definition)
       assert msg =~ "Circular dependency between blocks detected:"
+      # A depends on C, C on B, B on A. The cycle is rendered in the UI's
+      # "dependency first" direction (matching how blocks list deps), not in
+      # "depends-on" order.
+      assert msg =~ "'A' → 'B' → 'C' → 'A'"
     end
 
     test "detects a self-dependency" do
       definition = %{"blocks" => [block("A", ["A"])]}
 
       assert {:error, {:malformed, msg}} = Deps.validate_no_cycles(definition)
-      assert msg =~ "\"A\" → \"A\""
+      assert msg =~ "'A' → 'A'"
     end
 
     test "passes for a valid DAG that also has a separate acyclic branch" do
