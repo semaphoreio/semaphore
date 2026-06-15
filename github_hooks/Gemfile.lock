@@ -236,7 +236,7 @@ GEM
     mutex_m (0.3.0)
     net-http (0.9.1)
       uri (>= 0.11.1)
-    net-imap (0.5.14)
+    net-imap (0.5.15)
       date
       net-protocol
     net-pop (0.1.2)
@@ -526,7 +526,7 @@ DEPENDENCIES
   kaminari (~> 1.2.2)
   lograge
   net-http
-  net-imap (~> 0.5.7)
+  net-imap (~> 0.5.15)
   nokogiri (~> 1.19.0)
   octokit
   pg (~> 1.1)

@@ -12,7 +12,7 @@ gem "excon", "~> 0.81.0"
 gem "app"
 gem "bunny"
 gem "net-http" # https://github.com/ruby/net-imap/issues/16#issuecomment-803086765
-gem 'net-imap', '~> 0.5.7'
+gem 'net-imap', '~> 0.5.15'
 gem "grpc", "~> 1.62.1"
 gem "googleapis-common-protos-types", "~> 1.18.0"
 gem "httparty", "~> 0.24.0"
