@@ -791,6 +791,20 @@ sem-ai install-skills codex
 
 Skills provide structured documentation that helps AI agents use sem-ai effectively without reading this reference.
 
+### npx skills {#npx-skills}
+
+You can also install the skill bundle with the cross-agent [`skills`](https://github.com/vercel-labs/skills) tool, which supports Claude Code, Cursor, Codex, OpenCode, and many other agents. It discovers sem-ai's skills from the plugin manifest, so no clone is required:
+
+```shell
+npx skills add semaphoreio/sem-ai --list             # list available skills
+npx skills add semaphoreio/sem-ai --all              # install all skills
+npx skills add semaphoreio/sem-ai --skill semaphore-ci --skill watch-after-push
+npx skills add semaphoreio/sem-ai --all -g           # user level (all repos)
+npx skills add semaphoreio/sem-ai --all --agent cursor opencode
+```
+
+This installs the skill instructions only — not the MCP server. The `sem-ai` binary must be [installed](#install) and [connected](#connect) first, since every skill calls it.
+
 ## Differences from sem CLI {#differences}
 
 | Feature | sem | sem-ai |
