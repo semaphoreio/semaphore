@@ -2,15 +2,126 @@
 defmodule Zebra.Workers.JobRequestFactory.CacheTest do
   use Zebra.DataCase
 
+  import ExUnit.CaptureLog
+
   alias Zebra.Workers.JobRequestFactory.Cache
 
   @org_id Ecto.UUID.generate()
   @cache_id Ecto.UUID.generate()
+  @cache_credential "--BEGIN....lalalala...cache_key...END---"
+  @cache_url "localhost:29920"
   @cache InternalApi.Cache.Cache.new(
            id: @cache_id,
-           credential: "--BEGIN....lalalala...cache_key...END---",
-           url: "localhost:29920"
+           credential: @cache_credential,
+           url: @cache_url
          )
+
+  describe ".find" do
+    test "with nil cache_id returns {:ok, nil} without contacting cachehub" do
+      assert {:ok, nil} = Cache.find(nil, nil, @org_id)
+    end
+
+    test "logs warning and returns {:ok, nil} when cachehub returns non-OK status" do
+      GrpcMock.stub(Support.FakeServers.CacheApi, :describe, fn _, _ ->
+        InternalApi.Cache.DescribeResponse.new(
+          status:
+            InternalApi.ResponseStatus.new(
+              code: InternalApi.ResponseStatus.Code.value(:BAD_PARAM)
+            )
+        )
+      end)
+
+      log =
+        capture_log(fn ->
+          assert {:ok, nil} = Cache.find(@cache_id, nil, @org_id)
+        end)
+
+      assert log =~ "non-OK status"
+      assert log =~ @cache_id
+    end
+
+    test "logs warning and returns {:ok, nil} when cachehub returns blank credential" do
+      GrpcMock.stub(Support.FakeServers.CacheApi, :describe, fn _, _ ->
+        InternalApi.Cache.DescribeResponse.new(
+          status:
+            InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
+          cache: InternalApi.Cache.Cache.new(id: @cache_id, credential: " ", url: @cache_url)
+        )
+      end)
+
+      log =
+        capture_log(fn ->
+          assert {:ok, nil} = Cache.find(@cache_id, nil, @org_id)
+        end)
+
+      assert log =~ "blank credential"
+      assert log =~ @cache_id
+      refute log =~ @cache_url
+    end
+
+    test "treats an empty-string credential as blank => returns {:ok, nil}" do
+      GrpcMock.stub(Support.FakeServers.CacheApi, :describe, fn _, _ ->
+        InternalApi.Cache.DescribeResponse.new(
+          status:
+            InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
+          cache: InternalApi.Cache.Cache.new(id: @cache_id, credential: "", url: @cache_url)
+        )
+      end)
+
+      log =
+        capture_log(fn ->
+          assert {:ok, nil} = Cache.find(@cache_id, nil, @org_id)
+        end)
+
+      assert log =~ "blank credential"
+    end
+
+    test "logs warning and returns {:ok, nil} when cachehub raises" do
+      GrpcMock.stub(Support.FakeServers.CacheApi, :describe, fn _, _ ->
+        raise "boom"
+      end)
+
+      log =
+        capture_log(fn ->
+          assert {:ok, nil} = Cache.find(@cache_id, nil, @org_id)
+        end)
+
+      assert log =~ "Failed to fetch info from cachehub"
+      assert log =~ @cache_id
+      refute log =~ @cache_credential
+    end
+  end
+
+  describe ".forked_pr?" do
+    test "true when PR slug org differs from repo slug org" do
+      repo =
+        InternalApi.RepoProxy.Hook.new(
+          repo_slug: "test-org/test-repo",
+          pr_slug: "fork-org/test-repo"
+        )
+
+      assert Cache.forked_pr?(repo)
+    end
+
+    test "false when PR slug org matches repo slug org" do
+      repo =
+        InternalApi.RepoProxy.Hook.new(
+          repo_slug: "test-org/test-repo",
+          pr_slug: "test-org/test-repo"
+        )
+
+      refute Cache.forked_pr?(repo)
+    end
+
+    test "false when there is no PR slug (not a PR build)" do
+      repo = InternalApi.RepoProxy.Hook.new(repo_slug: "test-org/test-repo", pr_slug: "")
+      refute Cache.forked_pr?(repo)
+    end
+
+    test "false when repo proxy is nil" do
+      refute Cache.forked_pr?(nil)
+    end
+  end
 
   describe ".env_vars" do
     test "cache_cli_parallel_archive_method is enabled => uses parallel archive method" do

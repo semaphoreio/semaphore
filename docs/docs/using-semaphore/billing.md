@@ -27,7 +27,7 @@ If your organization is currently using a legacy plan, you can switch to the new
 
 1. Review the warning message and click **Confirm**.
 
-:::Warning: 
+:::warning
 
 - **This action cannot be undone.** Once you switch to the new plan, you won’t be able to return to your previous legacy plan.
 - You will be **charged immediately for any spending until the time of the switch**, and the plan switch will take effect right away.
