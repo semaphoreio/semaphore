@@ -141,13 +141,28 @@ RSpec.describe RepoHost::Github::Client do
   end
 
   describe "#compare" do
-    it "delegates to the Octokit client" do
-      comparison = Object.new
-      allow_any_instance_of(Octokit::Client).to receive(:compare)
-        .with("owner/repo", "basesha", "main")
-        .and_return(comparison)
+    it "fetches the comparison through a non-paginating client" do
+      non_paginating = instance_double(Octokit::Client)
+      allow(Octokit::Client).to receive(:new)
+        .with(hash_including(:auto_paginate => false))
+        .and_return(non_paginating)
+      allow(non_paginating).to receive(:compare).and_return(:comparison)
 
-      expect(@client.compare("owner/repo", "basesha", "main")).to eq(comparison)
+      expect(@client.compare("owner/repo", "basesha", "main")).to eq(:comparison)
+      expect(non_paginating).to have_received(:compare).with("owner/repo", "basesha", "main")
+    end
+
+    it "escapes URL-significant ref characters, preserving namespace slashes" do
+      non_paginating = instance_double(Octokit::Client)
+      allow(Octokit::Client).to receive(:new)
+        .with(hash_including(:auto_paginate => false))
+        .and_return(non_paginating)
+      allow(non_paginating).to receive(:compare).and_return(:comparison)
+
+      @client.compare("owner/repo", "basesha", "release/feat#1")
+
+      expect(non_paginating).to have_received(:compare)
+        .with("owner/repo", "basesha", "release/feat%231")
     end
 
     it "translates a missing ref into RepoHost::RemoteException::NotFound" do
