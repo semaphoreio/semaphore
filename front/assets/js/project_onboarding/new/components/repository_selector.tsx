@@ -62,9 +62,13 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const reloadTimeoutRef = useRef<number | null>(null);
 
-  // When the user pastes a repository web/git URL, search by its owner/repo
-  // slug only; plain typing passes through unchanged.
-  const searchTerm = extractRepositorySearchTerm(searchQuery);
+  // When the user pastes a repository web/git URL, search by its project slug
+  // only; plain typing passes through unchanged. Provider-aware so GitLab
+  // nested-group paths are kept in full.
+  const searchTerm = extractRepositorySearchTerm(
+    searchQuery,
+    providerState.selectedProvider?.type
+  );
   const slugCandidate = parseRepositorySlug(searchTerm);
   const manualSlugValid = parseRepositorySlug(manualSlug);
 
