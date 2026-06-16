@@ -90,3 +90,47 @@ describe(`extractRepositorySearchTerm`, () => {
     expect(extractRepositorySearchTerm(``)).to.eq(``);
   });
 });
+
+describe(`extractRepositorySearchTerm (provider-aware)`, () => {
+  it(`keeps the full nested-group path for a GitLab web URL`, () => {
+    expect(
+      extractRepositorySearchTerm(`https://gitlab.com/group/subgroup/repo`, `gitlab`)
+    ).to.eq(`group/subgroup/repo`);
+  });
+
+  it(`drops GitLab "/-/" route sub-pages but keeps the project path`, () => {
+    expect(
+      extractRepositorySearchTerm(`https://gitlab.com/group/sub/repo/-/tree/main`, `gitlab`)
+    ).to.eq(`group/sub/repo`);
+  });
+
+  it(`handles a GitLab scp-like nested remote`, () => {
+    expect(
+      extractRepositorySearchTerm(`git@gitlab.com:group/sub/repo.git`, `gitlab`)
+    ).to.eq(`group/sub/repo`);
+  });
+
+  it(`handles a simple GitLab repository`, () => {
+    expect(extractRepositorySearchTerm(`https://gitlab.com/owner/repo`, `gitlab`)).to.eq(
+      `owner/repo`
+    );
+  });
+
+  it(`still caps GitHub deep browse URLs at owner/repo`, () => {
+    expect(
+      extractRepositorySearchTerm(`https://github.com/octo/repo/tree/main`, `github_app`)
+    ).to.eq(`octo/repo`);
+  });
+
+  it(`extracts a Bitbucket repository for the bitbucket provider`, () => {
+    expect(
+      extractRepositorySearchTerm(`https://bitbucket.org/team/svc`, `bitbucket`)
+    ).to.eq(`team/svc`);
+  });
+
+  it(`defaults to the two-segment cap when no provider is given`, () => {
+    expect(
+      extractRepositorySearchTerm(`https://gitlab.com/group/subgroup/repo`)
+    ).to.eq(`group/subgroup`);
+  });
+});
