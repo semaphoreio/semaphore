@@ -26,6 +26,13 @@ class App < Configurable # :nodoc:
   ]
   config.always_filter_skip_ci = (SemaphoreConfig.always_filter_skip_ci || "false") == "true"
   config.collaborators_api_rate_limit = (SemaphoreConfig.collaborators_api_rate_limit || 4000).to_i
+
+  # When DISABLE_REPOSITORY_WEBHOOK_SYNC is present (any non-empty value),
+  # GitHub App installation/repository webhooks that re-sync the installation's
+  # repository list are ignored. Default (unset) keeps the sync enabled.
+  # Presence-based: to re-enable, unset the variable — setting it to "false"
+  # still counts as present and disables the sync.
+  config.disable_repository_webhook_sync = SemaphoreConfig.disable_repository_webhook_sync.present?
   config.semaphore_edition = (SemaphoreConfig.semaphore_edition || "").downcase
 
   config.worker_max_retries    = (SemaphoreConfig.worker_max_retries || 10).to_i
