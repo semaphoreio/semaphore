@@ -338,5 +338,41 @@ module Semaphore::GithubApp
         end
       end
     end
+
+    describe "#unique_lock_exists?", :multithreaded do
+      before do
+        Sidekiq::Testing.disable!
+      end
+
+      after do
+        Sidekiq::Testing.fake!
+      end
+
+      it "is false when no job holds the lock" do
+        SidekiqUniqueJobs.use_config(enabled: true) do
+          expect(described_class.new.unique_lock_exists?([installation_id])).to be(false)
+        end
+      end
+
+      it "is true while an enqueued job holds the lock" do
+        SidekiqUniqueJobs.use_config(enabled: true) do
+          jid = described_class.perform_async(installation_id)
+          expect(jid).not_to be_nil
+
+          expect(described_class.new.unique_lock_exists?([installation_id])).to be(true)
+        end
+      end
+
+      it "is false again after the lock is deleted" do
+        SidekiqUniqueJobs.use_config(enabled: true) do
+          jid = described_class.perform_async(installation_id)
+          expect(jid).not_to be_nil
+
+          described_class.new.delete_unique_lock([installation_id])
+
+          expect(described_class.new.unique_lock_exists?([installation_id])).to be(false)
+        end
+      end
+    end
   end
 end

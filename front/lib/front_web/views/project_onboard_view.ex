@@ -94,6 +94,9 @@ defmodule FrontWeb.ProjectOnboardingView do
           redirect_to: project_onboarding_path(conn, :index, [])
         ),
       "repositoriesUrl" => project_onboarding_path(conn, :repositories),
+      "refreshRepositoriesUrl" => project_onboarding_path(conn, :refresh),
+      "repositoryRefreshCooldown" =>
+        FrontWeb.ProjectOnboardingController.refresh_cooldown_seconds(),
       "domain" => Application.get_env(:front, :domain)
     }
     |> Poison.encode!()

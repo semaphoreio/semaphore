@@ -79,6 +79,17 @@ defmodule FrontWeb.ProjectOnboardingController do
     GIT: :CONFIG_TYPE_UNSPECIFIED
   }
 
+  # Cooldown between full repository refreshes, per organization + user.
+  @refresh_cooldown_seconds Application.compile_env(
+                              :front,
+                              :repository_refresh_cooldown_seconds,
+                              60
+                            )
+
+  @repository_slug_format ~r{\A[A-Za-z0-9][A-Za-z0-9\-]*/[A-Za-z0-9._\-]+\z}
+
+  def refresh_cooldown_seconds, do: @refresh_cooldown_seconds
+
   defp get_agent_name(project) do
     Front.Models.CommitJob.get_agent(project)
     |> case do
@@ -524,6 +535,100 @@ defmodule FrontWeb.ProjectOnboardingController do
         |> put_status(:service_unavailable)
         |> json(error_response)
     end
+  end
+
+  @doc """
+  Manually re-syncs the cached GitHub App repository list.
+
+  Without a "repository_slug" param all installations are re-synced (rate
+  limited to one request per #{@refresh_cooldown_seconds}s per org + user);
+  with a slug only that repository's data is refreshed (cheap, not limited).
+  Integration types other than github_app fetch repository lists live from
+  the provider, so there is nothing to refresh for them.
+  """
+  def refresh(conn, params) do
+    user_id = conn.assigns.user_id
+    org_id = conn.assigns.organization_id
+    integration_type = Map.get(params, "integration_type", "")
+    slug = params |> Map.get("repository_slug", "") |> String.trim()
+
+    cond do
+      integration_type != "github_app" ->
+        json(conn, %{
+          state: "done",
+          message: "This repository list is always fetched live from the provider."
+        })
+
+      slug != "" and not Regex.match?(@repository_slug_format, slug) ->
+        conn
+        |> put_status(422)
+        |> json(%{state: "failed", message: "Use the owner/repository format."})
+
+      slug != "" ->
+        do_refresh(conn, user_id, slug)
+
+      true ->
+        case claim_refresh_cooldown(org_id, user_id) do
+          :ok ->
+            do_refresh(conn, user_id, "")
+
+          {:cooldown, seconds_left} ->
+            conn
+            |> put_status(429)
+            |> json(%{
+              state: "rate_limited",
+              retry_after: seconds_left,
+              message: "Refresh available again in #{seconds_left}s."
+            })
+        end
+    end
+  end
+
+  defp do_refresh(conn, user_id, slug) do
+    case Models.RepositoryIntegrator.refresh_repositories(user_id, slug) do
+      {:ok, %{state: state, message: message}}
+      when state in [:STARTED, :ALREADY_RUNNING, :DONE] ->
+        json(conn, %{state: state |> Atom.to_string() |> String.downcase(), message: message})
+
+      {:ok, %{message: message}} ->
+        conn
+        |> put_status(422)
+        |> json(%{state: "failed", message: message})
+
+      {:error, _} ->
+        # Don't burn the user's cooldown on a transient RPC failure.
+        if slug == "", do: release_refresh_cooldown(conn.assigns.organization_id, user_id)
+
+        conn
+        |> put_status(503)
+        |> json(%{state: "failed", message: "Could not refresh repositories. Please retry."})
+    end
+  end
+
+  defp refresh_cooldown_key(org_id, user_id),
+    do: "repository_refresh_cooldown/#{org_id}/#{user_id}"
+
+  defp claim_refresh_cooldown(org_id, user_id) do
+    key = refresh_cooldown_key(org_id, user_id)
+
+    case Front.Cache.get(key) do
+      {:ok, claimed_at} ->
+        elapsed = System.system_time(:second) - String.to_integer(claimed_at)
+        {:cooldown, max(@refresh_cooldown_seconds - elapsed, 1)}
+
+      {:not_cached, _} ->
+        Front.Cache.set(
+          key,
+          Integer.to_string(System.system_time(:second)),
+          :timer.seconds(@refresh_cooldown_seconds)
+        )
+
+        :ok
+    end
+  end
+
+  defp release_refresh_cooldown(org_id, user_id) do
+    Front.Cache.unset(refresh_cooldown_key(org_id, user_id))
   end
 
   def project_repository_status(conn, params) do
