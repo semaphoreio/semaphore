@@ -1,6 +1,16 @@
 if ENV["ENABLE_HEAP_DEBUG"] == "true"
   require "objspace"
 
+  begin
+    require "rbtrace"
+  rescue LoadError => e
+    warn("[zz_heap_debug] rbtrace unavailable: #{e.message}")
+  end
+
+  if ENV["ENABLE_ALLOC_TRACE"] == "true"
+    ObjectSpace.trace_object_allocations_start
+  end
+
   Signal.trap("USR2") do
     Thread.new do
       ts = Time.now.to_i
