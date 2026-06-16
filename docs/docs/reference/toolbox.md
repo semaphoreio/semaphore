@@ -403,7 +403,7 @@ The `<version>` argument depends on the kind of service being started. You can r
 
 When starting OpenSearch with `sem-service`, the service is exposed on port `9200` and uses the default admin user:
 
-For versions above 3:
+For versions 3 and above:
 - Username: `admin`
 - Password: `Semaphore123!`
 
