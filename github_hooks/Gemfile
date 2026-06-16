@@ -12,7 +12,7 @@ gem "excon", "~> 0.81.0"
 gem "app"
 gem "bunny"
 gem "net-http" # https://github.com/ruby/net-imap/issues/16#issuecomment-803086765
-gem 'net-imap', '~> 0.5.7'
+gem 'net-imap', '~> 0.5.15'
 gem "grpc", "~> 1.62.1"
 gem "googleapis-common-protos-types", "~> 1.18.0"
 gem "httparty", "~> 0.24.0"
@@ -42,6 +42,11 @@ gem "uri", "~> 1.0", ">= 1.0.4"
 gem "rt-watchman", :require => "watchman", :github => "renderedtext/watchman", :ref => "74530687a232aea678b6738114c82dfc163657cd"
 gem "rt-logman", :require => "logman"
 gem "rt-tackle", :require => "tackle"
+
+gem "rbtrace", :require => false
+gem "memory_profiler", :require => false
+gem "stackprof", :require => false
+gem "sigdump", :require => "sigdump/setup"
 
 group :development do
   gem "spring", "~> 4.1"
