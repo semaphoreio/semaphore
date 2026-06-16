@@ -9,7 +9,12 @@ defmodule Ppl.FeatureClient do
 
   @watchman_prefix_key "Ppl.FeatureClient"
   @url_env_var "INTERNAL_API_URL_FEATURE"
-  @timeout 3_000
+  # This call sits in the pipeline initialization hot path (the compile task is
+  # built and awaited inside a deadline-bounded looper step), so it must be
+  # tightly bounded and fail fast. @grpc_timeout is the per-call gRPC deadline;
+  # @timeout is a slightly larger Wormhole backstop covering connect hangs.
+  @grpc_timeout 1_000
+  @timeout 1_500
 
   alias InternalApi.Feature, as: API
   alias API.FeatureService.Stub
@@ -72,7 +77,7 @@ defmodule Ppl.FeatureClient do
       Watchman.increment("#{@watchman_prefix_key}.list_organization_features.connect")
 
       try do
-        Stub.list_organization_features(channel, request)
+        Stub.list_organization_features(channel, request, timeout: @grpc_timeout)
       after
         GRPC.Stub.disconnect(channel)
       end

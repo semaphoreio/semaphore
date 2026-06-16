@@ -4,6 +4,11 @@ defmodule Ppl.FeaturesTest do
   @url_env_var "INTERNAL_API_URL_FEATURE"
 
   setup do
+    # The result is memoized in :feature_cache; clear it so each test starts
+    # fresh (e.g. the "unreachable" case must not see a cached value from the
+    # "enabled" case for the same org id).
+    Cachex.clear(:feature_cache)
+
     original = System.get_env(@url_env_var)
     System.put_env(@url_env_var, "localhost:50053")
 
