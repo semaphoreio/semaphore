@@ -43,6 +43,11 @@ gem "rt-watchman", :require => "watchman", :github => "renderedtext/watchman", :
 gem "rt-logman", :require => "logman"
 gem "rt-tackle", :require => "tackle"
 
+gem "rbtrace", :require => false
+gem "memory_profiler", :require => false
+gem "stackprof", :require => false
+gem "sigdump", :require => "sigdump/setup"
+
 group :development do
   gem "spring", "~> 4.1"
   gem "spring-commands-rspec"
