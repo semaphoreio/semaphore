@@ -5,6 +5,10 @@ imagePullSecrets: []
 hooks:
   replicas: 1
   dbPoolSize: 2
+  # When true, injects DISABLE_REPOSITORY_WEBHOOK_SYNC so GitHub App
+  # installation/repository webhooks no longer trigger repository-list syncs.
+  # Presence-based: the env var is only set when this is true.
+  disableRepositoryWebhookSync: false
   resources:
     limits:
       cpu: 500m
