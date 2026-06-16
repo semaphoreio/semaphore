@@ -57,11 +57,13 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [cooldownLeft, setCooldownLeft] = useState(0);
+  const [manualSlug, setManualSlug] = useState(``);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const reloadTimeoutRef = useRef<number | null>(null);
 
   const slugCandidate = parseRepositorySlug(searchQuery);
+  const manualSlugValid = parseRepositorySlug(manualSlug);
 
   const filteredRepositories = useMemo(
     () =>
@@ -192,6 +194,12 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
     } finally {
       setIsRefreshing(false);
     }
+  };
+
+  const submitManualSlug = () => {
+    const slug = parseRepositorySlug(manualSlug);
+    if (!slug || isRefreshing) return;
+    void requestRefresh(slug);
   };
 
   useEffect(() => {
@@ -501,6 +509,54 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
                   </div>
                 </div>
               </button>
+            )}
+            {providerState.selectedProvider?.type === `github_app` &&
+              configState.refreshRepositoriesUrl && (
+              <div className="pv3 ph2 bt b--black-10">
+                <h3 className="f4 mb1">Repository not listed? Try refreshing it manually</h3>
+                <div className="flex items-center">
+                  <input
+                    type="text"
+                    className="form-control flex-auto ba b--black-20 br2 pa2 mr2"
+                    style={{ outline: `none`, boxShadow: `none` }}
+                    placeholder="organization/repository"
+                    value={manualSlug}
+                    onInput={(event) =>
+                      setManualSlug((event.target as HTMLInputElement).value)
+                    }
+                    onKeyDown={(event: KeyboardEvent) => {
+                      if (event.key === `Enter`) {
+                        event.preventDefault();
+                        submitManualSlug();
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    style={{
+                      cursor: !manualSlugValid || isRefreshing ? `default` : `pointer`,
+                    }}
+                    disabled={!manualSlugValid || isRefreshing}
+                    onClick={submitManualSlug}
+                  >
+                    {isRefreshing ? (
+                      <toolbox.Asset
+                        path="images/spinner-2.svg"
+                        alt="spinner"
+                        style={{ width: `16px`, height: `16px` }}
+                      />
+                    ) : (
+                      `Refresh`
+                    )}
+                  </button>
+                </div>
+                <p className="f6 black-60 mt1 mb0">
+                  {manualSlug.length > 0 && !manualSlugValid
+                    ? `Use the owner/repository format, e.g. organization/repository`
+                    : `Paste the repository in owner/repository format to sync just that repository.`}
+                </p>
+              </div>
             )}
           </div>
         )}
