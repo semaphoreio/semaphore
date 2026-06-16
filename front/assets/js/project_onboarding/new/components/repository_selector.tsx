@@ -2,7 +2,7 @@
 import { useEffect, useContext, useState, useRef, useMemo } from "preact/hooks";
 import * as stores from "../stores";
 import * as toolbox from "js/toolbox";
-import { parseRepositorySlug } from "../utils/slug";
+import { parseRepositorySlug, extractRepositorySearchTerm } from "../utils/slug";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { Notice } from "js/notice";
@@ -62,7 +62,10 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const reloadTimeoutRef = useRef<number | null>(null);
 
-  const slugCandidate = parseRepositorySlug(searchQuery);
+  // When the user pastes a repository web/git URL, search by its owner/repo
+  // slug only; plain typing passes through unchanged.
+  const searchTerm = extractRepositorySearchTerm(searchQuery);
+  const slugCandidate = parseRepositorySlug(searchTerm);
   const manualSlugValid = parseRepositorySlug(manualSlug);
 
   const filteredRepositories = useMemo(
@@ -70,10 +73,10 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
       repositories.filter((repo) => {
         const searchFields = [repo.full_name, repo.name, repo.url];
         return searchFields.some((field) =>
-          field?.toLowerCase().includes(searchQuery.toLowerCase())
+          field?.toLowerCase().includes(searchTerm.toLowerCase())
         );
       }),
-    [repositories, searchQuery]
+    [repositories, searchTerm]
   );
 
   const parseErrorMessage = (payload: unknown): string | null => {
@@ -384,7 +387,7 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
                   </div>
                   <div className="w-100">
                     <h3 className="f4 mb0 flex items-center justify-between">
-                      <span>{highlightMatch(repo.full_name, searchQuery)}</span>
+                      <span>{highlightMatch(repo.full_name, searchTerm)}</span>
                       <span className="f6 fw5">
                         {repo.addable ? (
                           <>
@@ -405,11 +408,11 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
                     </h3>
                     <p className="f4 measure black-60 mb0">
                       {repo.description
-                        ? highlightMatch(repo.description, searchQuery)
+                        ? highlightMatch(repo.description, searchTerm)
                         : ``}
                     </p>
                     <p className="f4 measure black-60 mb0">
-                      {repo.url ? highlightMatch(repo.url, searchQuery) : ``}
+                      {repo.url ? highlightMatch(repo.url, searchTerm) : ``}
                     </p>
                   </div>
                 </div>
