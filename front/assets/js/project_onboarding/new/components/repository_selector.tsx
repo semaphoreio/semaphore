@@ -180,15 +180,15 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
       }
 
       switch (data?.state) {
+        // Treat an in-progress sync the same as a freshly started one.
         case `started`:
-          Notice.notice(data.message || `Repository sync started.`);
+        case `already_running`:
+          Notice.notice(
+            (data.state === `started` && data.message) || `Repository sync started.`
+          );
           if (!slug) startCooldown();
           if (reloadTimeoutRef.current !== null) window.clearTimeout(reloadTimeoutRef.current);
           reloadTimeoutRef.current = window.setTimeout(reloadRepositories, REFRESH_RELOAD_DELAY_MS);
-          break;
-        case `already_running`:
-          Notice.notice(data.message || `A repository sync is already running.`);
-          if (!slug) startCooldown();
           break;
         case `done`:
           if (slug) {
