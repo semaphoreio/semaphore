@@ -27,7 +27,7 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
                FeatureProvider.feature_enabled?(:disable_forked_pr_cache, param: org_id),
            {:ok, endpoint} <- Application.fetch_env(:zebra, :cachehub_api_endpoint),
            {:ok, channel} <- GRPC.Stub.connect(endpoint),
-           {:ok, response} <- Stub.describe(channel, req, timeout: 30_000) do
+           {:ok, response} <- grpc_describe(channel, req) do
         handle_describe_response(response, cache_id)
       else
         true ->
@@ -48,6 +48,10 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
       end
     end)
   end
+
+  defp grpc_describe(channel, req),
+    do: Stub.describe(channel, req, timeout: 30_000),
+    after: GRPC.Stub.disconnect(channel)
 
   defp handle_describe_response(response, cache_id) do
     ok_code = InternalApi.ResponseStatus.Code.value(:OK)
