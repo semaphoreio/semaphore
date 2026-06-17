@@ -47,8 +47,7 @@ defmodule Secrethub.Application do
       children ++
         grpc_services() ++
         openid_connect_services() ++
-        openid_key_manager() ++
-        cache_openid_key_manager() ++ workers() ++ feature_provider(provider)
+        openid_key_manager_children() ++ workers() ++ feature_provider(provider)
 
     opts = [strategy: :one_for_one, name: Secrets.Supervisor, max_restarts: 1000]
     Supervisor.start_link(children, opts)
@@ -72,16 +71,27 @@ defmodule Secrethub.Application do
     end
   end
 
+  # Customer-facing and cache OIDC keysets run as separate KeyManager instances.
+  # They MUST carry distinct supervisor child ids (both default to the module
+  # name otherwise, which crashes boot with :duplicate_child_name once both are
+  # configured).
+  def openid_key_manager_children do
+    openid_key_manager() ++ cache_openid_key_manager()
+  end
+
   defp openid_key_manager do
     if start_openid_key_manager?() do
       keys_path = Application.fetch_env!(:secrethub, :openid_keys_path)
 
       [
-        {Secrethub.OpenIDConnect.KeyManager,
-         [
-           name: :openid_keys,
-           keys_path: keys_path
-         ]}
+        Supervisor.child_spec(
+          {Secrethub.OpenIDConnect.KeyManager,
+           [
+             name: :openid_keys,
+             keys_path: keys_path
+           ]},
+          id: :openid_keys
+        )
       ]
     else
       []
@@ -96,11 +106,14 @@ defmodule Secrethub.Application do
     case Application.get_env(:secrethub, :cache_openid_keys_path) do
       keys_path when is_binary(keys_path) and keys_path != "" ->
         [
-          {Secrethub.OpenIDConnect.KeyManager,
-           [
-             name: :cache_openid_keys,
-             keys_path: keys_path
-           ]}
+          Supervisor.child_spec(
+            {Secrethub.OpenIDConnect.KeyManager,
+             [
+               name: :cache_openid_keys,
+               keys_path: keys_path
+             ]},
+            id: :cache_openid_keys
+          )
         ]
 
       _ ->
