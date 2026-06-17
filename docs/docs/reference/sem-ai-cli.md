@@ -933,7 +933,7 @@ sem-ai ships its skills as a plugin for Claude Code and Codex. The plugin bundle
 
 **Claude Code:**
 
-```
+```text
 /plugin marketplace add semaphoreio/sem-ai
 /plugin install sem-ai@semaphoreio
 ```
