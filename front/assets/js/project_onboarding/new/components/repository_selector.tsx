@@ -35,9 +35,7 @@ interface RefreshResponse {
   retry_after?: number;
 }
 
-// Refreshed repositories are synced by background workers; give them a
-// moment before re-fetching the list.
-const REFRESH_RELOAD_DELAY_MS = 15000;
+const BACKGROUND_SYNC_RELOAD_DELAY_MS = 15000;
 
 interface RepositorySelectorProps {
   repositoriesUrl: string;
@@ -62,13 +60,8 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const reloadTimeoutRef = useRef<number | null>(null);
 
-  // When the user pastes a repository web/git URL, search by its project slug
-  // only; plain typing passes through unchanged. Provider-aware so GitLab
-  // nested-group paths are kept in full.
-  const searchTerm = extractRepositorySearchTerm(
-    searchQuery,
-    providerState.selectedProvider?.type
-  );
+  const selectedProviderType = providerState.selectedProvider?.type;
+  const searchTerm = extractRepositorySearchTerm(searchQuery, selectedProviderType);
   const slugCandidate = parseRepositorySlug(searchTerm);
   const manualSlugValid = parseRepositorySlug(manualSlug);
 
@@ -180,7 +173,6 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
       }
 
       switch (data?.state) {
-        // Treat an in-progress sync the same as a freshly started one.
         case `started`:
         case `already_running`:
           Notice.notice(
@@ -188,7 +180,10 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
           );
           if (!slug) startCooldown();
           if (reloadTimeoutRef.current !== null) window.clearTimeout(reloadTimeoutRef.current);
-          reloadTimeoutRef.current = window.setTimeout(reloadRepositories, REFRESH_RELOAD_DELAY_MS);
+          reloadTimeoutRef.current = window.setTimeout(
+            reloadRepositories,
+            BACKGROUND_SYNC_RELOAD_DELAY_MS
+          );
           break;
         case `done`:
           if (slug) {
