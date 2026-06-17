@@ -18,18 +18,20 @@ sem-ai provides full control over your Semaphore CI/CD from the terminal or from
 
 ## Installation {#install}
 
+```shell
+curl -fsSL https://raw.githubusercontent.com/semaphoreio/sem-ai/main/install.sh | sh
+```
+
+Installs the latest release for macOS / Linux on amd64 / arm64. The binary lands at `$HOME/.local/bin/sem-ai` (or `$HOME/.semaphore-ai/bin/sem-ai` if that's not on your `$PATH`). Re-run the same command to upgrade.
+
 ### From source
+
+Requires Go 1.25+.
 
 ```shell
 git clone https://github.com/semaphoreio/sem-ai.git
 cd sem-ai
 make install
-```
-
-### Using Go
-
-```shell
-go install github.com/semaphoreio/sem-ai@latest
 ```
 
 ## Setup {#setup}
@@ -116,6 +118,25 @@ Show project details:
 ```shell
 sem-ai project show <project-name>
 ```
+
+### sem-ai project create {#project-create}
+
+Create a project from a git repository. With no flags it uses the `origin` remote of the current directory and derives the name from the repo URL, then bootstraps an initial `.semaphore/semaphore.yml` (unless `--skip-yaml`). If a project with the same name already exists it returns the existing one, unless `--fail-on-exists` is set.
+
+```shell
+sem-ai project create
+sem-ai project create --repo-url git@github.com:org/repo.git
+sem-ai project create --name my-project --github-integration github_app
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--repo-url` | `origin` of cwd | git repository URL |
+| `--name` | derived from repo URL | project name |
+| `--github-integration` | `github_token` | GitHub integration: `github_token` or `github_app` |
+| `--remote` | `origin` | git remote to detect when `--repo-url` is not set |
+| `--skip-yaml` | `false` | don't generate `.semaphore/semaphore.yml` in cwd |
+| `--fail-on-exists` | `false` | exit non-zero if a project with the same name already exists |
 
 ### sem-ai project update {#project-update}
 
@@ -283,16 +304,29 @@ These commands compose multiple API calls into a single operation.
 
 ### sem-ai status {#status}
 
-Quick CI status for a branch:
+Quick CI status for the current branch, a pull request, or a project. When run inside a git checkout, project and branch are auto-detected from the remote and HEAD, and status prefers the workflow for the exact HEAD commit, falling back to the latest run on the branch.
 
 ```shell
-sem-ai status --project <project-name> --branch main
+sem-ai status                                    # current repo, branch, commit
+sem-ai status --branch main
+sem-ai status --pr 422                           # match a pull request's workflow (overrides --branch)
+sem-ai status --project <project-name> --branch feature-x
 ```
 
-When run inside a git repository, project and branch are auto-detected:
+If the git remote maps to several Semaphore projects that each ran the commit, status returns all of them rather than guessing — pass `--project` to disambiguate.
+
+With `--exit-code`, status sets a poll-friendly process exit code instead of requiring output parsing — useful for shell wait-loops:
+
+| Exit | Meaning |
+|------|---------|
+| `0` | passed |
+| `1` | failed |
+| `2` | ambiguous (multiple matching projects) |
+| `3` | no workflow found / project not detected |
+| `8` | pending / running |
 
 ```shell
-sem-ai status
+until sem-ai status --exit-code; do sleep 20; done   # wait until green
 ```
 
 ### sem-ai diagnose {#diagnose}
@@ -310,6 +344,7 @@ Returns structured output with:
 - Failed blocks and jobs
 - Log tails with failed commands highlighted
 - Parsed test results with file, line, and error message
+- `stop_reason` when a job was stopped by a signal rather than a test failure — exit `130` (SIGINT), `137` (SIGKILL / OOM), or `143` (SIGTERM). This is most useful for exit `130`, where the job shows up as `STOPPED` and failure notifications are suppressed, so the cause is otherwise easy to miss.
 
 ### sem-ai health {#health}
 
@@ -356,7 +391,10 @@ Print version information as JSON:
 
 ```shell
 sem-ai version
+sem-ai version --check          # also check GitHub for a newer release
 ```
+
+When sem-ai is installed via the Claude Code / Codex plugin, a `SessionStart` hook surfaces a one-line upgrade notice at most once every few hours. Opt out with `export SEM_AI_NO_UPDATE_CHECK=1`.
 
 ### sem-ai rerun-failed {#rerun-failed}
 
@@ -451,6 +489,45 @@ sem-ai analytics trend --project my-app --weeks 8 --branch main
 
 Returns an array of weekly buckets plus an overall `trend` field: `improving`, `degrading`, or `stable`.
 
+## Pipeline insights {#insights}
+
+Server-side pipeline insights, keyed by a specific pipeline YAML file. This is distinct from `analytics`, which sem-ai computes client-side from recent workflows: `insights` reads pre-aggregated metrics from Semaphore for one pipeline file.
+
+All `insights` subcommands share these flags:
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--project` | auto-detected | project name or ID |
+| `--pipeline-file` | — | pipeline YAML path, e.g. `.semaphore/semaphore.yml` (required) |
+| `--branch` | all branches | branch name |
+| `--from` | — | start date `YYYY-MM-DD` |
+| `--to` | — | end date `YYYY-MM-DD` |
+| `--aggregate` | `daily` | aggregation: `daily` or `range` |
+
+### sem-ai insights performance {#insights-performance}
+
+Pipeline duration metrics over time.
+
+```shell
+sem-ai insights performance --project my-app --pipeline-file .semaphore/semaphore.yml --branch main
+```
+
+### sem-ai insights reliability {#insights-reliability}
+
+Pipeline pass/fail rate over time.
+
+```shell
+sem-ai insights reliability --project my-app --pipeline-file .semaphore/semaphore.yml --branch main
+```
+
+### sem-ai insights frequency {#insights-frequency}
+
+Pipeline run frequency over time.
+
+```shell
+sem-ai insights frequency --project my-app --pipeline-file .semaphore/semaphore.yml --branch main
+```
+
 ## Test intelligence {#tests}
 
 ### sem-ai test summary {#test-summary}
@@ -478,6 +555,73 @@ sem-ai test flaky --project <project-name>
 sem-ai test flaky --project <project-name> --branch main --count 10
 ```
 
+## Flaky tests {#flaky}
+
+History-backed flaky-test signals for a project, sourced from Semaphore's flaky-test history (per-context pass rate, p95, disruption counts). This is distinct from [`test flaky`](#test-flaky), which is a quick single-pipeline snapshot computed from JUnit artifacts; the `flaky` command group reads the accumulated history instead.
+
+All `flaky` subcommands require `--project` (name or ID).
+
+### sem-ai flaky list {#flaky-list}
+
+List a project's flaky tests. The heavy per-test `disruption_history` histogram is omitted by default for compact output; pass `--full` to include it.
+
+```shell
+sem-ai flaky list --project my-app
+sem-ai flaky list --project my-app --sort-field pass_rate --sort-dir asc
+sem-ai flaky list --project my-app --full
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--page` | `1` | page number |
+| `--page-size` | `20` | results per page |
+| `--sort-field` | — | sort field, e.g. `total_disruptions_count`, `pass_rate` |
+| `--sort-dir` | — | sort direction (`asc` or `desc`) |
+| `--full` | `false` | include full `disruption_history` per test |
+
+### sem-ai flaky show {#flaky-show}
+
+Show details for a single flaky test (per-context pass rate, p95, disruptions). `test_id` is positional.
+
+```shell
+sem-ai flaky show <test_id> --project my-app
+```
+
+### sem-ai flaky disruptions {#flaky-disruptions}
+
+List the individual disruption occurrences for a flaky test.
+
+```shell
+sem-ai flaky disruptions <test_id> --project my-app --page-size 50
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--page` | `1` | page number |
+| `--page-size` | `10` | results per page |
+
+### sem-ai flaky failure {#flaky-failure}
+
+Show the real failure behind a flaky test: resolves its latest disruption's job, fetches that job's log, and extracts the failing assertion / message. Use `--run-id` to point at a specific job directly instead of resolving the latest disruption.
+
+```shell
+sem-ai flaky failure <test_id> --project my-app
+sem-ai flaky failure <test_id> --project my-app --run-id <job-id>
+```
+
+### sem-ai flaky trends {#flaky-trends}
+
+Project-level flaky / disruption count time series.
+
+```shell
+sem-ai flaky trends --project my-app
+sem-ai flaky trends --project my-app --metric disruptions
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--metric` | `flaky` | series: `flaky` or `disruptions` |
+
 ## Testbox {#testbox}
 
 Testbox lets you run commands in a real Semaphore CI environment before pushing. It creates a warm VM with your project's machine type and syncs your local code.
@@ -489,7 +633,10 @@ Start a testbox:
 ```shell
 sem-ai testbox warmup --project <project-name>
 sem-ai testbox warmup --project <project-name> --machine f1-standard-4 --duration 30m
+sem-ai testbox warmup --project <project-name> --os-image ubuntu2404
 ```
+
+Defaults: `--machine f1-standard-2`, `--os-image ubuntu2204`, `--duration 30m`.
 
 ### sem-ai testbox run {#testbox-run}
 
@@ -768,7 +915,7 @@ Add to your project's `.mcp.json`:
 ```json
 {
   "mcpServers": {
-    "semaphore": {
+    "sem-ai": {
       "command": "sem-ai",
       "args": ["mcp"]
     }
@@ -776,20 +923,29 @@ Add to your project's `.mcp.json`:
 }
 ```
 
-All commands become available as MCP tools (e.g., `project_list`, `diagnose`, `status`, `blast-radius`). The server starts once and handles all tool calls through the in-memory command tree.
+Most commands become available as MCP tools (e.g., `project_list`, `diagnose`, `status`, `blast-radius`). The long-running commands `watch` and `promote-and-wait` are excluded, since they would block the single in-memory command tree; use `status --exit-code` in a poll loop instead. The server starts once and handles all tool calls in-process — no new process per call.
 
 ## Agent skills {#skills}
 
-### sem-ai install-skills {#install-skills}
+sem-ai ships its skills as a plugin for Claude Code and Codex. The plugin bundles the skills, the MCP server, and a `SessionStart` hook (release-update check + Semaphore-repo awareness).
 
-Install sem-ai skill definitions for AI agents:
+### Claude Code / Codex plugin {#plugin}
 
-```shell
-sem-ai install-skills claude
-sem-ai install-skills codex
+**Claude Code:**
+
+```
+/plugin marketplace add semaphoreio/sem-ai
+/plugin install sem-ai@semaphoreio
 ```
 
-Skills provide structured documentation that helps AI agents use sem-ai effectively without reading this reference.
+**Codex CLI:**
+
+```shell
+codex plugin marketplace add semaphoreio/sem-ai
+codex plugin add sem-ai@semaphoreio
+```
+
+The bundle includes these skills: `debug-pipeline`, `deploy`, `fix-flaky`, `gha-to-semaphore`, `init`, `manage-infra`, `probe-agent-environment`, `project-health`, `sem-ai-bootstrap`, `semaphore-blocks`, `semaphore-ci`, `semaphore-promotions`, `semaphore-test-results`, `semaphore-toolbox`, `test-intelligence`, `testbox`, and `watch-after-push`. They give agents context on when and how to use each sem-ai command without reading this reference.
 
 ### npx skills {#npx-skills}
 
@@ -812,7 +968,7 @@ This installs the skill instructions only — not the MCP server. The `sem-ai` b
 | Output format | Human text | JSON (default), table, yaml |
 | Self-discovery | `--help` only | `discover` + `--examples` on every command |
 | Failure diagnosis | Manual (multiple commands) | `diagnose` (one command, full root cause) |
-| Test intelligence | None | `test summary`, `test flaky` |
+| Test intelligence | None | `test summary`, `test flaky`, `flaky` history, `insights` |
 | Pipeline topology | None | `topology`, `critical-path`, `blast-radius` |
 | Testbox | `sem debug` (limited) | `testbox warmup/run/ssh/stop` with file sync |
 | MCP server | None | `sem-ai mcp` |
