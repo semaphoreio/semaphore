@@ -167,12 +167,12 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
       );
 
       if (status === 429) {
-        setCooldownLeft(data?.retry_after ?? configState.repositoryRefreshCooldown ?? 60);
-        Notice.notice(data?.message || `Refresh was requested recently. Try again in a minute.`);
+        setCooldownLeft(data.retry_after ?? configState.repositoryRefreshCooldown ?? 60);
+        Notice.notice(data.message);
         return;
       }
 
-      switch (data?.state) {
+      switch (data.state) {
         case `started`:
         case `already_running`:
           Notice.notice(`Repository sync started.`);
