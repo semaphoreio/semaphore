@@ -175,9 +175,7 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
       switch (data?.state) {
         case `started`:
         case `already_running`:
-          Notice.notice(
-            (data.state === `started` && data.message) || `Repository sync started.`
-          );
+          Notice.notice(`Repository sync started.`);
           if (!slug) startCooldown();
           if (reloadTimeoutRef.current !== null) window.clearTimeout(reloadTimeoutRef.current);
           reloadTimeoutRef.current = window.setTimeout(
