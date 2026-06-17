@@ -63,7 +63,10 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
   const selectedProviderType = providerState.selectedProvider?.type;
   const searchTerm = extractRepositorySearchTerm(searchQuery, selectedProviderType);
   const slugCandidate = parseRepositorySlug(searchTerm);
-  const manualSlugValid = parseRepositorySlug(manualSlug);
+  // Manual field is shown for GitHub App only, so the slug is always owner/repo;
+  // a pasted repository URL is reduced to that slug before validating.
+  const manualSlugCandidate = extractRepositorySearchTerm(manualSlug, selectedProviderType);
+  const manualSlugValid = parseRepositorySlug(manualSlugCandidate);
 
   const filteredRepositories = useMemo(
     () =>
@@ -197,7 +200,7 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
   };
 
   const submitManualSlug = () => {
-    const slug = parseRepositorySlug(manualSlug);
+    const slug = parseRepositorySlug(manualSlugCandidate);
     if (!slug || isRefreshing) return;
     void requestRefresh(slug);
   };
@@ -519,7 +522,7 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
                     type="text"
                     className="form-control flex-auto ba b--black-20 br2 pa2 mr2"
                     style={{ outline: `none`, boxShadow: `none` }}
-                    placeholder="organization/repository"
+                    placeholder="organization/repository or repository URL"
                     value={manualSlug}
                     onInput={(event) =>
                       setManualSlug((event.target as HTMLInputElement).value)
@@ -554,7 +557,7 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
                 <p className="f6 black-60 mt1 mb0">
                   {manualSlug.length > 0 && !manualSlugValid
                     ? `Use the owner/repository format, e.g. organization/repository`
-                    : `Paste the repository in owner/repository format to sync just that repository.`}
+                    : `Paste the repository URL or owner/repository to sync just that repository.`}
                 </p>
               </div>
             )}
