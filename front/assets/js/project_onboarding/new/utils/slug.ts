@@ -7,6 +7,18 @@ export const parseRepositorySlug = (query: string): string | null => {
 
 const PATH_SEGMENT_REGEX = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
+// GitLab namespaces are variable depth; keep the whole path, dropping the "/-/"
+// route suffix. Returns null when the path isn't a valid project path.
+const gitlabProjectPath = (path: string): string | null => {
+  const segments = path.split(`/-/`)[0].replace(/\.git$/, ``).split(`/`).filter(Boolean);
+
+  if (segments.length >= 2 && segments.every((segment) => PATH_SEGMENT_REGEX.test(segment))) {
+    return segments.join(`/`);
+  }
+
+  return null;
+};
+
 // Reduces a pasted repo URL (web, git/ssh, or scp remote) to its slug; returns
 // non-URL input unchanged so plain typing still works.
 export const extractRepositorySearchTerm = (query: string, provider?: string): string => {
@@ -29,20 +41,8 @@ export const extractRepositorySearchTerm = (query: string, provider?: string): s
 
   path = path.split(/[?#]/)[0].replace(/\/+$/, ``);
 
-  // GitLab namespaces are variable depth; keep the whole path, dropping the
-  // "/-/" route suffix.
   if (provider === `gitlab`) {
-    const segments = path
-      .split(`/-/`)[0]
-      .replace(/\.git$/, ``)
-      .split(`/`)
-      .filter(Boolean);
-
-    if (segments.length >= 2 && segments.every((segment) => PATH_SEGMENT_REGEX.test(segment))) {
-      return segments.join(`/`);
-    }
-
-    return trimmed;
+    return gitlabProjectPath(path) ?? trimmed;
   }
 
   // Other providers are always owner/repo; cap at two segments so deep browse
