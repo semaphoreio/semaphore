@@ -167,6 +167,11 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
         }
       );
 
+      if (!data) {
+        Notice.error(error || `Could not refresh repositories.`);
+        return;
+      }
+
       if (status === 429) {
         setCooldownLeft(data.retry_after ?? configState.repositoryRefreshCooldown ?? 60);
         Notice.notice(data.message);
@@ -190,7 +195,7 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
           }
           break;
         default:
-          Notice.error(data?.message || error || `Could not refresh repositories.`);
+          Notice.error(data.message || error || `Could not refresh repositories.`);
       }
     } finally {
       setIsRefreshing(false);
