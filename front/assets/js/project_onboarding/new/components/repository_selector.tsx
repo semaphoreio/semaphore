@@ -154,8 +154,8 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
     setCooldownLeft(configState.repositoryRefreshCooldown ?? 60);
   };
 
-  const requestRefresh = async (slug?: string) => {
-    if (!configState.refreshRepositoriesUrl || isRefreshing) return;
+  const requestRefresh = async (slug?: string): Promise<boolean> => {
+    if (!configState.refreshRepositoriesUrl || isRefreshing) return false;
     setIsRefreshing(true);
 
     try {
@@ -169,13 +169,13 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
 
       if (!data) {
         Notice.error(error || `Could not refresh repositories.`);
-        return;
+        return false;
       }
 
       if (status === 429) {
         setCooldownLeft(data.retry_after ?? configState.repositoryRefreshCooldown ?? 60);
         Notice.notice(data.message);
-        return;
+        return false;
       }
 
       switch (data.state) {
@@ -188,24 +188,27 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
             reloadRepositories,
             BACKGROUND_SYNC_RELOAD_DELAY_MS
           );
-          break;
+          return true;
         case `done`:
           if (slug) {
             reloadRepositories();
           }
-          break;
+          return true;
         default:
           Notice.error(data.message || error || `Could not refresh repositories.`);
+          return false;
       }
     } finally {
       setIsRefreshing(false);
     }
   };
 
-  const submitManualSlug = () => {
+  const submitManualSlug = async () => {
     const slug = parseRepositorySlug(manualSlugCandidate);
     if (!slug || isRefreshing) return;
-    void requestRefresh(slug);
+    if (await requestRefresh(slug)) {
+      setManualSlug(``);
+    }
   };
 
   useEffect(() => {
@@ -560,7 +563,7 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
                     onKeyDown={(event: KeyboardEvent) => {
                       if (event.key === `Enter`) {
                         event.preventDefault();
-                        submitManualSlug();
+                        void submitManualSlug();
                       }
                     }}
                   />
@@ -571,7 +574,7 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
                       cursor: !manualSlugValid || isRefreshing ? `default` : `pointer`,
                     }}
                     disabled={!manualSlugValid || isRefreshing}
-                    onClick={submitManualSlug}
+                    onClick={() => void submitManualSlug()}
                   >
                     {isRefreshing ? (
                       <toolbox.Asset
