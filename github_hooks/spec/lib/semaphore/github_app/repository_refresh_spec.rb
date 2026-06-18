@@ -158,5 +158,22 @@ module Semaphore::GithubApp
         end
       end
     end
+
+    context "when DISABLE_REPOSITORY_WEBHOOK_SYNC is set" do
+      before do
+        allow(App).to receive(:disable_repository_webhook_sync).and_return(true)
+      end
+
+      it "still enqueues the workers — manual refresh is not gated by the env flag" do
+        installation = FactoryBot.create(:github_app_installation)
+
+        result = described_class.full
+
+        expect(result.state).to eq(:started)
+        expect(Repositories::Worker.jobs.map { |job| job["args"] })
+          .to eq([[installation.installation_id]])
+        expect(Collaborators::Worker.jobs).not_to be_empty
+      end
+    end
   end
 end
