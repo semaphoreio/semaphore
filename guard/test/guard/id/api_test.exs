@@ -5,7 +5,8 @@ defmodule Guard.Id.Api.Test do
   use Guard.RepoCase, async: false
   doctest Guard.Id.Api, import: true
 
-  use Plug.Test
+  import Plug.Test
+  import Plug.Conn
   import Support.ApiTestHelpers
 
   setup do
