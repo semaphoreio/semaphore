@@ -323,30 +323,91 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
     }
   };
 
+  const showRepositoryMenu =
+    selectedProviderType === `github_app` &&
+    !!configState.refreshRepositoriesUrl &&
+    !selectedRepo;
+
   return (
     <div>
-      <div className="relative">
-        <input
-          ref={inputRef}
-          type="text"
-          className="w-100 pa2 shadow-1 br3 br--top ba b--lightest-gray"
-          placeholder="Search repositories..."
-          value={selectedRepo ? selectedRepo.full_name : searchQuery}
-          onInput={handleSearch}
-          onFocus={handleFocus}
-          onKeyDown={handleKeyDown}
-          disabled={!!selectedRepo}
-        />
-        {selectedRepo && (
-          <button
-            onClick={handleClear}
-            className="absolute right-1 pa2 pr0 bg-transparent bn pointer"
-            aria-label="Clear selection"
-            style={{ marginTop: `2px` }}
-            disabled={repoState.isCreatingProject || repoState.projectCreationStatus.isComplete}
-          >
-            ×
-          </button>
+      <div className="flex items-start">
+        <div className="relative flex-auto">
+          <input
+            ref={inputRef}
+            type="text"
+            className="w-100 pa2 shadow-1 br3 br--top ba b--lightest-gray"
+            placeholder="Search repositories..."
+            value={selectedRepo ? selectedRepo.full_name : searchQuery}
+            onInput={handleSearch}
+            onFocus={handleFocus}
+            onKeyDown={handleKeyDown}
+            disabled={!!selectedRepo}
+          />
+          {selectedRepo && (
+            <button
+              onClick={handleClear}
+              className="absolute right-1 pa2 pr0 bg-transparent bn pointer"
+              aria-label="Clear selection"
+              style={{ marginTop: `2px` }}
+              disabled={repoState.isCreatingProject || repoState.projectCreationStatus.isComplete}
+            >
+              ×
+            </button>
+          )}
+        </div>
+        {showRepositoryMenu && (
+          <div className="flex-shrink-0 ml2">
+            <toolbox.Popover
+              placement="bottom-end"
+              maxWidth={320}
+              className="pa2"
+              anchor={
+                <button
+                  type="button"
+                  className="bg-transparent bn pa2 pointer flex items-center"
+                  aria-label="Repository options"
+                  data-tippy-content="Repository options"
+                >
+                  <toolbox.Asset
+                    path="images/icn-more.svg"
+                    alt="Repository options"
+                    style={{ width: `18px`, height: `18px` }}
+                  />
+                </button>
+              }
+              content={({ setVisible }) => (
+                <button
+                  type="button"
+                  className="w-100 tl bg-white db dark-gray pa2 br2 bn hover-bg-row-highlight"
+                  style={{ cursor: isRefreshing || cooldownLeft > 0 ? `default` : `pointer` }}
+                  disabled={isRefreshing || cooldownLeft > 0}
+                  onClick={() => {
+                    void requestRefresh();
+                    setVisible(false);
+                  }}
+                >
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0 mr2">
+                      <toolbox.Asset
+                        path={isRefreshing ? `images/spinner-2.svg` : `images/icn-refresh.svg`}
+                        style={{ width: `16px`, height: `16px` }}
+                      />
+                    </div>
+                    <div>
+                      <h3 className="f5 mb0">
+                        {cooldownLeft > 0
+                          ? `Refresh available in ${cooldownLeft}s`
+                          : `Refresh repository list`}
+                      </h3>
+                      <p className="f6 black-60 mb0">
+                          Re-sync the full list from GitHub — slower
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              )}
+            />
+          </div>
         )}
       </div>
       <div className="bg-white shadow-1 br3 br--bottom" style="overflow: hidden;">
@@ -486,36 +547,7 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
             )}
             {providerState.selectedProvider?.type === `github_app` &&
               configState.refreshRepositoriesUrl && (
-              <button
-                type="button"
-                className="w-100 tl bg-white db dark-gray pv3 ph2 bt b--black-10 hover-bg-row-highlight bn bt b--black-10"
-                style={{ cursor: isRefreshing || cooldownLeft > 0 ? `default` : `pointer` }}
-                disabled={isRefreshing || cooldownLeft > 0}
-                onClick={() => void requestRefresh()}
-              >
-                <div className="flex">
-                  <div className="flex-shrink-0 mt1 mr2">
-                    <toolbox.Asset
-                      path={isRefreshing ? `images/spinner-2.svg` : `images/icn-refresh.svg`}
-                      style={{ width: `16px`, height: `16px` }}
-                    />
-                  </div>
-                  <div className="w-100">
-                    <h3 className="f4 mb0">
-                      {cooldownLeft > 0
-                        ? `Refresh available in ${cooldownLeft}s`
-                        : `Refresh repository list`}
-                    </h3>
-                    <p className="f4 measure black-60 mb0">
-                        Repository list out of date? Re-sync it from GitHub
-                    </p>
-                  </div>
-                </div>
-              </button>
-            )}
-            {providerState.selectedProvider?.type === `github_app` &&
-              configState.refreshRepositoriesUrl && (
-              <div className="pv3 ph2 bt b--black-10">
+              <div className="pa3 bt b--black-10 bg-lightest-blue">
                 <h3 className="f4 mb1">Repository not listed? Try refreshing it manually</h3>
                 <div className="flex items-center">
                   <input
