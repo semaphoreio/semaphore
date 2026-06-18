@@ -63,8 +63,6 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
   const selectedProviderType = providerState.selectedProvider?.type;
   const searchTerm = extractRepositorySearchTerm(searchQuery, selectedProviderType);
   const slugCandidate = parseRepositorySlug(searchTerm);
-  // Manual field is shown for GitHub App only, so the slug is always owner/repo;
-  // a pasted repository URL is reduced to that slug before validating.
   const manualSlugCandidate = extractRepositorySearchTerm(manualSlug, selectedProviderType);
   const manualSlugValid = parseRepositorySlug(manualSlugCandidate);
 
