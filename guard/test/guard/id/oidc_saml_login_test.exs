@@ -2,7 +2,6 @@ defmodule Guard.Id.OIDCSamlLoginTest do
   use Guard.RepoCase, async: false
   doctest Guard.Id.Api, import: true
 
-  use Plug.Test
   import Support.ApiTestHelpers
 
   setup do
