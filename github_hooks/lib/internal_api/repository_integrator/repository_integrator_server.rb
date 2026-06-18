@@ -83,6 +83,26 @@ module InternalApi
         ::InternalApi::RepositoryIntegrator::InitGithubInstallationResponse.new
       end
 
+      define_rpc :refresh_repositories do |req, logger|
+        result =
+          if req.integration_type != :GITHUB_APP
+            ::Semaphore::GithubApp::RepositoryRefresh::Result.new(
+              :done, "This repository list is always fetched live from the provider."
+            )
+          elsif req.repository_slug.present?
+            ::Semaphore::GithubApp::RepositoryRefresh.targeted(req.repository_slug)
+          else
+            ::Semaphore::GithubApp::RepositoryRefresh.full(req.user_id)
+          end
+
+        logger.info("RefreshRepositories user_id=#{req.user_id} slug=#{req.repository_slug.inspect} -> #{result.state}")
+
+        InternalApi::RepositoryIntegrator::RefreshRepositoriesResponse.new(
+          :sync_state => result.state.to_s.upcase.to_sym,
+          :message => result.message
+        )
+      end
+
       define_rpc :check_token do |req|
         project = ::Project.find(req.project_id)
 
