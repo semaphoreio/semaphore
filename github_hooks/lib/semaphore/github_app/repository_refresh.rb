@@ -1,9 +1,6 @@
 module Semaphore::GithubApp
-  # Manual re-sync of the GitHub App repository/collaborator cache, triggered
-  # by users from the project onboarding UI when the cache went stale (e.g. a
-  # missed webhook). Reuses the same Sidekiq workers the webhook handlers
-  # enqueue, so unique locks and rate-limit backoff keep duplicate or abusive
-  # refreshes in check.
+  # Manual re-sync of the GitHub App repository/collaborator cache. Reuses the
+  # webhook Sidekiq workers, so their unique locks and rate-limit backoff apply.
   class RepositoryRefresh
     Result = Struct.new(:state, :message)
 
@@ -72,9 +69,7 @@ module Semaphore::GithubApp
     end
     private_class_method :refresh_cached_repository
 
-    # The repository is not in the cache (e.g. a missed "repositories added"
-    # webhook): re-sync the owner's installation repository list. Async — a
-    # full list sync can take hundreds of paginated GitHub API calls.
+    # Repo absent from the cache: re-sync the whole owner installation (async).
     def self.refresh_owner_installation(slug)
       owner = slug.split("/").first
       installation = GithubAppInstallation.find_for_organization(owner)
