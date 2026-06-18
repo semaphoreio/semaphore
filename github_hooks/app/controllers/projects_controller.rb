@@ -32,8 +32,6 @@ class ProjectsController < ApplicationController
         end
       end
 
-      head :ok and return if skip_repository_webhook_sync?(webhook_filter, logger)
-
       if webhook_filter.github_app_installation_webhook?
         Watchman.increment("repo_host_post_commit_hooks.controller.github_app_webhook")
         logger.info("Github App Webhook")
@@ -53,8 +51,7 @@ class ProjectsController < ApplicationController
           logger.info("GitHub APP Repository Webhook")
 
           Watchman.increment("repo_host_post_commit_hooks.controller.repository_webhook")
-
-          Semaphore::GithubApp::Repositories::Worker.perform_async(webhook_filter.installation_id)
+          enqueue_repository_list_sync(webhook_filter.installation_id, logger)
 
           head :ok and return
         end
@@ -164,16 +161,15 @@ class ProjectsController < ApplicationController
 
   private
 
-  # When DISABLE_REPOSITORY_WEBHOOK_SYNC is set, ignore the GitHub App
-  # installation/repository webhooks that re-sync the repository list.
-  def skip_repository_webhook_sync?(webhook_filter, logger)
-    return false unless App.disable_repository_webhook_sync
-    return false unless webhook_filter.github_app_installation_webhook? ||
-                        (webhook_filter.github_app_webhook? && webhook_filter.repository_webhook?)
-
-    Watchman.increment("repo_host_post_commit_hooks.controller.repository_webhook_sync_disabled")
-    logger.info("Repository webhook sync disabled via env; ignoring request")
-    true
+  # Re-syncs the installation's repository list, unless suppressed by
+  # DISABLE_REPOSITORY_WEBHOOK_SYNC.
+  def enqueue_repository_list_sync(installation_id, logger)
+    if App.disable_repository_webhook_sync
+      Watchman.increment("repo_host_post_commit_hooks.controller.repository_webhook_sync_disabled")
+      logger.info("Repository webhook sync disabled via env; skipping repository sync")
+    else
+      Semaphore::GithubApp::Repositories::Worker.perform_async(installation_id)
+    end
   end
 
   def find_github_app_projects(repository, installation_id)

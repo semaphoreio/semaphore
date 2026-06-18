@@ -537,8 +537,9 @@ RSpec.describe ProjectsController, :type => :controller do
           let(:event) { "installation_repositories" }
           let(:payload) { RepoHost::Github::Responses::Payload.installation_repositories_added }
 
-          it "does not process the installation hook and returns ok" do
-            expect(Semaphore::GithubApp::Hook).not_to receive(:process)
+          it "still processes the installation but enqueues no collaborator sync" do
+            expect(Semaphore::GithubApp::Hook).to receive(:process).and_call_original
+            expect(Semaphore::GithubApp::Collaborators::Worker).not_to receive(:perform_in)
 
             post_app_payload(payload)
 
@@ -550,8 +551,9 @@ RSpec.describe ProjectsController, :type => :controller do
           let(:event) { "installation" }
           let(:payload) { RepoHost::Github::Responses::Payload.installation_created }
 
-          it "does not process the installation hook and returns ok" do
-            expect(Semaphore::GithubApp::Hook).not_to receive(:process)
+          it "still processes the installation but enqueues no collaborator sync" do
+            expect(Semaphore::GithubApp::Hook).to receive(:process).and_call_original
+            expect(Semaphore::GithubApp::Collaborators::Worker).not_to receive(:perform_in)
 
             post_app_payload(payload)
 
