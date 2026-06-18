@@ -1,7 +1,7 @@
 require "spec_helper"
 
 module Semaphore::GithubApp
-  RSpec.describe RepositoryRefresh do
+  RSpec.describe RepositoryRefresh, :aggregate_failures do
     before do
       Sidekiq::Worker.clear_all
       allow_any_instance_of(Repositories::Worker).to receive(:unique_lock_exists?).and_return(false)
