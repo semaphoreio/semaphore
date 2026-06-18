@@ -7,17 +7,8 @@ export const parseRepositorySlug = (query: string): string | null => {
 
 const PATH_SEGMENT_REGEX = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
-// Reduces a pasted repository reference to the slug used to match the
-// repository list. Accepts web URLs (https://github.com/owner/repo), git/ssh
-// URLs (git://host/owner/repo.git, ssh://git@host/owner/repo.git) and scp-like
-// remotes (git@host:owner/repo.git), tolerating a trailing ".git", trailing
-// slash, query string or fragment. When the input is not a recognizable URL it
-// is returned trimmed and unchanged, so plain name typing keeps working.
-//
-// GitLab namespaces are variable depth (group/subgroup/repo), so for GitLab the
-// whole project path is kept — route sub-pages after the "/-/" marker are
-// dropped. Other providers cap at the first two segments (owner/repo), so deep
-// browse URLs like ".../tree/main" still resolve to the repository.
+// Reduces a pasted repo URL (web, git/ssh, or scp remote) to its slug; returns
+// non-URL input unchanged so plain typing still works.
 export const extractRepositorySearchTerm = (query: string, provider?: string): string => {
   const trimmed = query.trim();
   if (trimmed === ``) return ``;
@@ -38,6 +29,8 @@ export const extractRepositorySearchTerm = (query: string, provider?: string): s
 
   path = path.split(/[?#]/)[0].replace(/\/+$/, ``);
 
+  // GitLab namespaces are variable depth; keep the whole path, dropping the
+  // "/-/" route suffix.
   if (provider === `gitlab`) {
     const segments = path
       .split(`/-/`)[0]
@@ -52,6 +45,8 @@ export const extractRepositorySearchTerm = (query: string, provider?: string): s
     return trimmed;
   }
 
+  // Other providers are always owner/repo; cap at two segments so deep browse
+  // URLs (.../tree/main) still resolve.
   const segments = path.split(`/`).filter(Boolean);
 
   if (segments.length >= 2) {
