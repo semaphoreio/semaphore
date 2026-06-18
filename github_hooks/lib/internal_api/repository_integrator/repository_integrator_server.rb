@@ -92,7 +92,7 @@ module InternalApi
           elsif req.repository_slug.present?
             ::Semaphore::GithubApp::RepositoryRefresh.targeted(req.repository_slug)
           else
-            ::Semaphore::GithubApp::RepositoryRefresh.full
+            ::Semaphore::GithubApp::RepositoryRefresh.full(req.user_id)
           end
 
         logger.info("RefreshRepositories user_id=#{req.user_id} slug=#{req.repository_slug.inspect} -> #{result.state}")

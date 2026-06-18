@@ -6,11 +6,12 @@ module Semaphore::GithubApp
 
     COLLABORATORS_ENQUEUE_DELAY = 10.seconds
 
-    def self.full
-      installations = GithubAppInstallation.where(:suspended_at => nil)
+    def self.full(user_id)
+      installation_ids = GithubAppCollaborator.where(:c_id => github_uid_for(user_id)).distinct.pluck(:installation_id)
+      installations = GithubAppInstallation.where(:installation_id => installation_ids, :suspended_at => nil)
 
       if installations.empty?
-        return Result.new(:failed, "No active GitHub App installations found. Install the GitHub App first.")
+        return Result.new(:failed, "No GitHub App repositories to refresh. Install the GitHub App first.")
       end
 
       free = installations.reject do |installation|
@@ -86,5 +87,12 @@ module Semaphore::GithubApp
       Result.new(:started, "Re-syncing #{owner}'s repository list. Search again in a moment.")
     end
     private_class_method :refresh_owner_installation
+
+    def self.github_uid_for(user_id)
+      ::User.find(user_id).github_repo_host_account&.github_uid
+    rescue ActiveRecord::RecordNotFound
+      nil
+    end
+    private_class_method :github_uid_for
   end
 end
