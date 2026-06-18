@@ -7,8 +7,6 @@ export const parseRepositorySlug = (query: string): string | null => {
 
 const PATH_SEGMENT_REGEX = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
-// GitLab namespaces are variable depth; keep the whole path, dropping the "/-/"
-// route suffix. Returns null when the path isn't a valid project path.
 const gitlabProjectPath = (path: string): string | null => {
   const segments = path.split(`/-/`)[0].replace(/\.git$/, ``).split(`/`).filter(Boolean);
 
