@@ -37,4 +37,45 @@ defmodule Front.Models.RepositoryIntegrator do
       end
     end)
   end
+
+  @doc """
+  Triggers a re-sync of the cached GitHub App repository/collaborator data.
+
+  With an empty `repository_slug` all installations are re-synced; with an
+  "owner/repository" slug only that repository's data is refreshed.
+  """
+  def refresh_repositories(user_id, repository_slug \\ "") do
+    Watchman.benchmark("repository_integrator.refresh_repositories.duration", fn ->
+      req =
+        InternalApi.RepositoryIntegrator.RefreshRepositoriesRequest.new(
+          user_id: user_id,
+          integration_type: IntegrationType.value(:GITHUB_APP),
+          repository_slug: repository_slug
+        )
+
+      {:ok, channel} =
+        GRPC.Stub.connect(Application.fetch_env!(:front, :repository_integrator_grpc_endpoint))
+
+      case InternalApi.RepositoryIntegrator.RepositoryIntegratorService.Stub.refresh_repositories(
+             channel,
+             req,
+             timeout: 30_000
+           ) do
+        {:ok, res} ->
+          state =
+            InternalApi.RepositoryIntegrator.RefreshRepositoriesResponse.SyncState.key(
+              res.sync_state
+            )
+
+          {:ok, %{state: state, message: res.message}}
+
+        {:error, msg} ->
+          Logger.error(
+            "[RepositoryIntegrator model] Error while refreshing repositories #{inspect(msg)}"
+          )
+
+          {:error, msg}
+      end
+    end)
+  end
 end

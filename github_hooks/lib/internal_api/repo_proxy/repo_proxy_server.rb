@@ -6,6 +6,11 @@ module InternalApi
 
       rpc_metric_namespace "repo_proxys_api"
 
+      # Guards lazy creation of the long-lived upstream gRPC stubs (see
+      # #hooks_api_stub / #plumber_stub). The server is a single shared instance,
+      # so the stubs are built once and reused across all worker threads.
+      STUBS_MUTEX = Mutex.new
+
       define_rpc :describe do |req|
         hook = ::Workflow.find_by(:id => req.hook_id)
 
@@ -120,8 +125,7 @@ module InternalApi
       end
 
       def create_via_hooks_api(req)
-        client = InternalApi::RepoProxy::RepoProxyService::Stub.new(App.hooks_api_url, :this_channel_is_insecure)
-        client.create(req)
+        hooks_api_stub.create(req)
       end
 
       def create_for_github_project(req, logger)
@@ -160,7 +164,6 @@ module InternalApi
             workflow.branch_name
           end
 
-        client  = InternalApi::PlumberWF::WorkflowService::Stub.new(App.plumber_internal_url, :this_channel_is_insecure)
         request = InternalApi::PlumberWF::ScheduleRequest.new(
           :service => InternalApi::PlumberWF::ScheduleRequest::ServiceType::GIT_HUB,
           :repo => InternalApi::PlumberWF::ScheduleRequest::Repo.new(
@@ -181,7 +184,7 @@ module InternalApi
           :triggered_by => req.triggered_by
         )
 
-        response = client.schedule(request)
+        response = plumber_stub.schedule(request)
 
         if response.status.code == :OK
           #logger.info("Processing Hook #{workflow.id} => Plumber responded with #{response.status.code} code")
@@ -270,6 +273,24 @@ module InternalApi
       end
 
       private
+
+      # Reuse a single long-lived gRPC channel per upstream instead of opening a
+      # new Stub (channel + socket) on every request. A per-request Stub is only
+      # closed on GC finalization, which lags badly under load and leaks file
+      # descriptors + native memory — the root cause of the repo-proxy-api OOM.
+      # gRPC stubs are thread-safe and auto-reconnect, so one shared instance is
+      # the intended usage.
+      def hooks_api_stub
+        @hooks_api_stub || STUBS_MUTEX.synchronize do
+          @hooks_api_stub ||= InternalApi::RepoProxy::RepoProxyService::Stub.new(App.hooks_api_url, :this_channel_is_insecure)
+        end
+      end
+
+      def plumber_stub
+        @plumber_stub || STUBS_MUTEX.synchronize do
+          @plumber_stub ||= InternalApi::PlumberWF::WorkflowService::Stub.new(App.plumber_internal_url, :this_channel_is_insecure)
+        end
+      end
 
       def present_hook(hook, user)
         data = {
