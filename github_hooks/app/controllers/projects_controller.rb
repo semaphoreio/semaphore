@@ -165,9 +165,7 @@ class ProjectsController < ApplicationController
   private
 
   # When DISABLE_REPOSITORY_WEBHOOK_SYNC is set, ignore the GitHub App
-  # installation/repository webhooks that re-sync the installation's
-  # repository list. Other webhooks (members, non-App repository events,
-  # push/PR) are unaffected.
+  # installation/repository webhooks that re-sync the repository list.
   def skip_repository_webhook_sync?(webhook_filter, logger)
     return false unless App.disable_repository_webhook_sync
     return false unless webhook_filter.github_app_installation_webhook? ||
