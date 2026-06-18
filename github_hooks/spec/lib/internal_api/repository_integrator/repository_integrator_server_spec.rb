@@ -322,13 +322,14 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
         )
       end
 
-      it "dispatches to RepositoryRefresh.full and maps the result" do
+      it "dispatches to RepositoryRefresh.full with the requesting user and maps the result" do
         allow(Semaphore::GithubApp::RepositoryRefresh).to receive(:full).and_return(
           Semaphore::GithubApp::RepositoryRefresh::Result.new(:started, "Repository sync started.")
         )
 
         response = server.refresh_repositories(@req, call)
 
+        expect(Semaphore::GithubApp::RepositoryRefresh).to have_received(:full).with(user_id)
         expect(response.sync_state).to eq(:STARTED)
         expect(response.message).to eq("Repository sync started.")
       end
