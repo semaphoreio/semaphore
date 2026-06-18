@@ -538,13 +538,9 @@ defmodule FrontWeb.ProjectOnboardingController do
   end
 
   @doc """
-  Manually re-syncs the cached GitHub App repository list.
-
-  Without a "repository_slug" param all installations are re-synced (rate
-  limited to one request per #{@refresh_cooldown_seconds}s per org + user);
-  with a slug only that repository's data is refreshed (cheap, not limited).
-  Integration types other than github_app fetch repository lists live from
-  the provider, so there is nothing to refresh for them.
+  Re-syncs the cached GitHub App repository list: full refresh without a
+  "repository_slug" (cooldown-limited), or a single repo with one. Non-github_app
+  types are fetched live, so they no-op.
   """
   def refresh(conn, params) do
     user_id = conn.assigns.user_id
