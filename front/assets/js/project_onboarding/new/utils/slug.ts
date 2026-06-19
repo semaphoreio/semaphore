@@ -7,6 +7,23 @@ export const parseRepositorySlug = (query: string): string | null => {
 
 const PATH_SEGMENT_REGEX = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
+const PROVIDER_HOSTS: Record<string, readonly string[]> = {
+  github_app: [`github.com`],
+  github_oauth_token: [`github.com`],
+  bitbucket: [`bitbucket.org`],
+  gitlab: [`gitlab.com`],
+};
+
+// Whether a pasted URL's authority (which may include `user@` and `:port`)
+// belongs to the selected provider's host — so a non-provider domain like
+// www.randomdomain.com isn't reduced to an "owner/repo" slug. With no provider,
+// any known provider host is accepted.
+const hostMatchesProvider = (authority: string, provider?: string): boolean => {
+  const host = authority.split(`@`).pop()?.split(`:`)[0].toLowerCase().replace(/^www\./, ``) || ``;
+  const allowed = provider ? PROVIDER_HOSTS[provider] : Object.values(PROVIDER_HOSTS).flat();
+  return !!allowed && allowed.includes(host);
+};
+
 const gitlabProjectPath = (path: string): string | null => {
   const segments = path.split(`/-/`)[0].replace(/\.git$/, ``).split(`/`).filter(Boolean);
 
@@ -24,18 +41,25 @@ export const extractRepositorySearchTerm = (query: string, provider?: string): s
   if (trimmed === ``) return ``;
   if (REPOSITORY_SLUG_REGEX.test(trimmed)) return trimmed;
 
+  let authority: string | null = null;
   let path: string | null = null;
 
-  const scpMatch = trimmed.match(/^[^/@\s]+@[^/:\s]+:(.+)$/);
-  const schemeMatch = trimmed.match(/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\/[^/\s]+\/(.+)$/);
+  const scpMatch = trimmed.match(/^[^/@\s]+@([^/:\s]+):(.+)$/);
+  const schemeMatch = trimmed.match(/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\/([^/\s]+)\/(.+)$/);
 
   if (scpMatch) {
-    path = scpMatch[1];
+    authority = scpMatch[1];
+    path = scpMatch[2];
   } else if (schemeMatch) {
-    path = schemeMatch[1];
+    authority = schemeMatch[1];
+    path = schemeMatch[2];
   }
 
-  if (path === null) return trimmed;
+  if (path === null || authority === null) return trimmed;
+
+  // A URL only resolves to a slug when its host is the selected provider's;
+  // otherwise leave it as typed so it fails slug validation.
+  if (!hostMatchesProvider(authority, provider)) return trimmed;
 
   path = path.split(/[?#]/)[0].replace(/\/+$/, ``);
 
