@@ -32,6 +32,26 @@ module Semaphore::GithubApp
         end
       end
 
+      context "when the requesting user cannot be resolved" do
+        it "fails without issuing a query for a nil github uid" do
+          # github_repo_host_account falls back to a synthetic account for existing
+          # users, so a nil uid only happens when the user_id resolves to nothing.
+          # c_id is NOT NULL, so where(c_id: nil) would match nothing anyway — but
+          # we should not run the query at all.
+          ghost = FactoryBot.create(:user)
+          ghost_id = ghost.id
+          ghost.destroy
+
+          expect(GithubAppCollaborator).not_to receive(:where)
+
+          result = described_class.full(ghost_id)
+
+          expect(result.state).to eq(:failed)
+          expect(result.message).to match(/Install the GitHub App/)
+          expect(Repositories::Worker.jobs).to be_empty
+        end
+      end
+
       context "when the user's only installation is suspended" do
         before do
           installation = FactoryBot.create(:github_app_installation, :suspended_at => Time.zone.now)

@@ -5,7 +5,15 @@ module Semaphore::GithubApp
     Result = Struct.new(:state, :message)
 
     def self.full(user_id)
-      installation_ids = GithubAppCollaborator.where(:c_id => github_uid_for(user_id)).distinct.pluck(:installation_id)
+      github_uid = github_uid_for(user_id)
+
+      # No GitHub account ⇒ nothing to refresh. Guard here so we never issue a
+      # `c_id IS NULL` query (c_id is NOT NULL, so it would match nothing anyway).
+      unless github_uid
+        return Result.new(:failed, "No GitHub App repositories to refresh. Install the GitHub App first.")
+      end
+
+      installation_ids = GithubAppCollaborator.where(:c_id => github_uid).distinct.pluck(:installation_id)
       installations = GithubAppInstallation.where(:installation_id => installation_ids, :suspended_at => nil)
 
       if installations.empty?
