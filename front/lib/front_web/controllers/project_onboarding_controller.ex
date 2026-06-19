@@ -581,7 +581,10 @@ defmodule FrontWeb.ProjectOnboardingController do
   end
 
   defp do_refresh(conn, user_id, slug) do
-    case Models.RepositoryIntegrator.refresh_repositories(user_id, slug) do
+    result = Models.RepositoryIntegrator.refresh_repositories(user_id, slug)
+    audit_refresh(conn, slug, result)
+
+    case result do
       {:ok, %{state: state, message: message}}
       when state in [:STARTED, :ALREADY_RUNNING, :DONE] ->
         json(conn, %{state: state |> Atom.to_string() |> String.downcase(), message: message})
@@ -610,6 +613,32 @@ defmodule FrontWeb.ProjectOnboardingController do
   defp release_full_refresh_cooldown(conn, user_id, slug) do
     if slug == "", do: release_refresh_cooldown(conn.assigns.organization_id, user_id)
   end
+
+  # Audit every refresh that reaches the provider RPC, recording who triggered
+  # it, the scope (full vs a single repository), and the resulting state — so a
+  # refresh of another organization's repository leaves a trail.
+  defp audit_refresh(conn, slug, result) do
+    {scope, resource_name} =
+      if slug == "", do: {"full", "all repositories"}, else: {"targeted", slug}
+
+    conn
+    |> Audit.new(:Project, :Modified)
+    |> Audit.add(
+      description: "Refreshed the #{scope} GitHub App repository list",
+      resource_name: resource_name
+    )
+    |> Audit.metadata(
+      refresh_scope: scope,
+      repository_slug: slug,
+      result: refresh_result_state(result)
+    )
+    |> Audit.log()
+  end
+
+  defp refresh_result_state({:ok, %{state: state}}),
+    do: state |> Atom.to_string() |> String.downcase()
+
+  defp refresh_result_state(_), do: "error"
 
   defp refresh_cooldown_key(org_id, user_id),
     do: "repository_refresh_cooldown/#{org_id}/#{user_id}"

@@ -1,5 +1,6 @@
 defmodule FrontWeb.ProjectOnboardingControllerTest do
   use FrontWeb.ConnCase
+  import ExUnit.CaptureLog
   alias Support.Stubs.DB
 
   setup %{conn: conn} do
@@ -267,6 +268,34 @@ defmodule FrontWeb.ProjectOnboardingControllerTest do
       body = json_response(conn, 422)
       assert body["state"] == "failed"
       assert body["message"] =~ "no access"
+    end
+
+    test "writes an audit event when a refresh reaches the provider", %{conn: conn} do
+      log =
+        capture_log(fn ->
+          assert conn
+                 |> post("/x/repositories/refresh", %{
+                   integration_type: "github_app",
+                   repository_slug: "octo/repo"
+                 })
+                 |> json_response(200)
+        end)
+
+      assert log =~ "AuditLog"
+    end
+
+    test "does not write an audit event when the slug is rejected before the RPC", %{conn: conn} do
+      log =
+        capture_log(fn ->
+          assert conn
+                 |> post("/x/repositories/refresh", %{
+                   integration_type: "github_app",
+                   repository_slug: "not a slug"
+                 })
+                 |> json_response(422)
+        end)
+
+      refute log =~ "AuditLog"
     end
   end
 end
