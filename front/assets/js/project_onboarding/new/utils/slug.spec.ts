@@ -134,3 +134,47 @@ describe(`extractRepositorySearchTerm (provider-aware)`, () => {
     ).to.eq(`group/subgroup`);
   });
 });
+
+describe(`extractRepositorySearchTerm (domain validation)`, () => {
+  it(`does not treat a non-provider web URL as a repo`, () => {
+    const input = `https://www.randomdomain.com/foo/bar`;
+    const result = extractRepositorySearchTerm(input, `github_app`);
+
+    expect(result).to.eq(input);
+    expect(parseRepositorySlug(result)).to.be.null;
+  });
+
+  it(`does not treat a non-provider scp remote as a repo`, () => {
+    const input = `git@randomdomain.com:foo/bar.git`;
+    expect(extractRepositorySearchTerm(input, `github_app`)).to.eq(input);
+  });
+
+  it(`rejects a URL whose host belongs to a different provider`, () => {
+    const input = `https://gitlab.com/group/repo`;
+    expect(extractRepositorySearchTerm(input, `github_app`)).to.eq(input);
+  });
+
+  it(`rejects a GitHub Enterprise / custom host`, () => {
+    const input = `https://github.acme.com/octo/repo`;
+    expect(extractRepositorySearchTerm(input, `github_app`)).to.eq(input);
+  });
+
+  it(`accepts the provider's own host`, () => {
+    expect(extractRepositorySearchTerm(`https://github.com/octo/repo`, `github_app`)).to.eq(
+      `octo/repo`
+    );
+  });
+
+  it(`strips port and userinfo before checking the host`, () => {
+    expect(extractRepositorySearchTerm(`https://github.com:443/octo/repo`, `github_app`)).to.eq(
+      `octo/repo`
+    );
+    expect(extractRepositorySearchTerm(`ssh://git@github.com/octo/repo.git`, `github_app`)).to.eq(
+      `octo/repo`
+    );
+  });
+
+  it(`accepts any known provider host when no provider is given`, () => {
+    expect(extractRepositorySearchTerm(`https://github.com/octo/repo`)).to.eq(`octo/repo`);
+  });
+});
