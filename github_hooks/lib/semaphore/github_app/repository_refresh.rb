@@ -4,8 +4,6 @@ module Semaphore::GithubApp
   class RepositoryRefresh
     Result = Struct.new(:state, :message)
 
-    COLLABORATORS_ENQUEUE_DELAY = 10.seconds
-
     def self.full(user_id)
       installation_ids = GithubAppCollaborator.where(:c_id => github_uid_for(user_id)).distinct.pluck(:installation_id)
       installations = GithubAppInstallation.where(:installation_id => installation_ids, :suspended_at => nil)
@@ -40,12 +38,11 @@ module Semaphore::GithubApp
       end
     end
 
+    # Re-sync the installation's repository list. Repositories.refresh enqueues a
+    # collaborator sync for any repo it discovers as newly added, so a blanket
+    # per-repo fan-out here would only re-sync already-known repos.
     def self.refresh_installation(installation)
       Repositories::Worker.perform_async(installation.installation_id)
-
-      installation.installation_repositories.select(:slug, :remote_id).each do |repository|
-        Collaborators::Worker.perform_in(COLLABORATORS_ENQUEUE_DELAY, repository.slug, repository.remote_id)
-      end
     end
     private_class_method :refresh_installation
 
