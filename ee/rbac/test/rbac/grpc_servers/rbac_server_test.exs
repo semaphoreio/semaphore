@@ -108,6 +108,38 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
       assert Enum.sort(permissions) ==
                Enum.sort(@org_admin_permissions ++ @proj_reader_permissions)
     end
+
+    test "error returned when project from Store belongs to a different organization", state do
+      Support.Rbac.assign_org_role_by_name(@org_id, @user_id, "Admin")
+
+      other_org_project_id = UUID.generate()
+      Support.Projects.insert(project_id: other_org_project_id, org_id: UUID.generate())
+
+      req = %Request{user_id: @user_id, org_id: @org_id, project_id: other_org_project_id}
+      {:error, grpc_error} = state.grpc_channel |> Stub.list_user_permissions(req)
+
+      assert grpc_error.message =~ "Project does not belong to the organization"
+    end
+
+    test "falls back to projecthub when project is not in the Store cache", state do
+      Support.Rbac.assign_org_role_by_name(@org_id, @user_id, "Admin")
+
+      uncached_project_id = UUID.generate()
+
+      GrpcMock.stub(ProjecthubMock, :describe, fn _, _ ->
+        %InternalApi.Projecthub.DescribeResponse{
+          project: Support.Factories.project(id: uncached_project_id, org_id: UUID.generate()),
+          metadata: %InternalApi.Projecthub.ResponseMeta{
+            status: %InternalApi.Projecthub.ResponseMeta.Status{code: :OK}
+          }
+        }
+      end)
+
+      req = %Request{user_id: @user_id, org_id: @org_id, project_id: uncached_project_id}
+      {:error, grpc_error} = state.grpc_channel |> Stub.list_user_permissions(req)
+
+      assert grpc_error.message =~ "Project does not belong to the organization"
+    end
   end
 
   # The following values have been taken from the Support.Rbac module used for initializing data for the tests
@@ -490,6 +522,16 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
       assert UserPermissions.read_user_permissions(rbi) == ""
       assert ProjectAccess.get_list_of_projects(@user_id, @org_id) == []
     end
+
+    test "error returned when project belongs to a different organization", state do
+      other_org_project_id = UUID.generate()
+      Support.Projects.insert(project_id: other_org_project_id, org_id: UUID.generate())
+
+      req = gen_retract_role_req(@user_id, @org_id, other_org_project_id)
+      {:error, grpc_error} = state.grpc_channel |> Stub.retract_role(req)
+
+      assert grpc_error.message =~ "Project does not belong to the organization"
+    end
   end
 
   describe "list_members" do
@@ -605,6 +647,16 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
 
       assert inherited_role.subject_role_bindings |> hd() |> Map.get(:source) ==
                :ROLE_BINDING_SOURCE_INHERITED_FROM_ORG_ROLE
+    end
+
+    test "error returned when project belongs to a different organization", state do
+      other_org_project_id = UUID.generate()
+      Support.Projects.insert(project_id: other_org_project_id, org_id: UUID.generate())
+
+      req = %Request{org_id: @org_id, project_id: other_org_project_id}
+      {:error, grpc_error} = state.grpc_channel |> Stub.list_members(req)
+
+      assert grpc_error.message =~ "Project does not belong to the organization"
     end
   end
 
@@ -963,6 +1015,20 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
 
       assert response.has_roles |> length() == 1
       assert(response.has_roles |> Enum.at(0) |> Map.get(:has_role) == true)
+    end
+
+    test "error returned when project belongs to a different organization", state do
+      other_org_project_id = UUID.generate()
+      Support.Projects.insert(project_id: other_org_project_id, org_id: UUID.generate())
+
+      req = %Request{
+        role_assignments: [
+          gen_role_assignment(UUID.generate(), @user_id, @org_id, other_org_project_id)
+        ]
+      }
+
+      {:error, grpc_error} = state.grpc_channel |> Stub.subjects_have_roles(req)
+      assert grpc_error.message =~ "Project does not belong to the organization"
     end
   end
 
