@@ -587,13 +587,17 @@ defmodule FrontWeb.ProjectOnboardingController do
         json(conn, %{state: state |> Atom.to_string() |> String.downcase(), message: message})
 
       {:ok, %{message: message}} ->
+        # A business failure (e.g. nothing to refresh) did no work, so don't make
+        # the user sit out the cooldown for a no-op.
+        release_full_refresh_cooldown(conn, user_id, slug)
+
         conn
         |> put_status(422)
         |> json(%{state: "failed", message: message})
 
       {:error, _} ->
         # Don't burn the user's cooldown on a transient RPC failure.
-        if slug == "", do: release_refresh_cooldown(conn.assigns.organization_id, user_id)
+        release_full_refresh_cooldown(conn, user_id, slug)
 
         conn
         |> put_status(503)
@@ -601,9 +605,21 @@ defmodule FrontWeb.ProjectOnboardingController do
     end
   end
 
+  # The cooldown only guards full refreshes (empty slug); targeted refreshes
+  # never claim it, so there is nothing to release for them.
+  defp release_full_refresh_cooldown(conn, user_id, slug) do
+    if slug == "", do: release_refresh_cooldown(conn.assigns.organization_id, user_id)
+  end
+
   defp refresh_cooldown_key(org_id, user_id),
     do: "repository_refresh_cooldown/#{org_id}/#{user_id}"
 
+  # Claimed before the RPC so a rapid double-submit is rate-limited, and released
+  # again if the refresh does no work (see release_full_refresh_cooldown/3). The
+  # get-then-set is intentionally not atomic across replicas — Cacheman exposes no
+  # SET NX — but the cooldown is a soft UX/cost guard, not a lock: a racing
+  # duplicate is deduped downstream by the sync worker's unique lock, so the worst
+  # case is one redundant RPC.
   defp claim_refresh_cooldown(org_id, user_id) do
     key = refresh_cooldown_key(org_id, user_id)
 

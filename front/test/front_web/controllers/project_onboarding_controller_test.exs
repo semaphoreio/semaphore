@@ -236,6 +236,25 @@ defmodule FrontWeb.ProjectOnboardingControllerTest do
       assert json_response(conn, 200)["state"] == "started"
     end
 
+    test "a failed full refresh does not consume the cooldown", %{conn: conn} do
+      stub_refresh(
+        :FAILED,
+        "No GitHub App repositories to refresh. Install the GitHub App first."
+      )
+
+      assert conn
+             |> post("/x/repositories/refresh", %{integration_type: "github_app"})
+             |> json_response(422)
+             |> Map.fetch!("state") == "failed"
+
+      # The no-op failure released the cooldown, so an immediate retry is allowed
+      # rather than rate limited.
+      stub_refresh(:STARTED, "Repository sync started.")
+
+      conn = post(conn, "/x/repositories/refresh", %{integration_type: "github_app"})
+      assert json_response(conn, 200)["state"] == "started"
+    end
+
     test "maps a failed refresh to 422 with the server message", %{conn: conn} do
       stub_refresh(:FAILED, "The GitHub App has no access to octo/repo.")
 
