@@ -79,11 +79,12 @@ module Semaphore::GithubApp
             .to eq([[installation.installation_id]])
         end
 
-        it "enqueues a collaborator sync for every repository in the installation" do
+        it "enqueues no collaborator workers directly" do
           described_class.full(user.id)
 
-          enqueued = Collaborators::Worker.jobs.map { |job| job["args"] }
-          expect(enqueued).to contain_exactly(["renderedtext/guard", 0], ["semaphoreio/semaphore", 0])
+          expect(Collaborators::Worker.jobs).to be_empty
+          expect(Repositories::Worker.jobs.map { |job| job["args"] })
+            .to eq([[installation.installation_id]])
         end
       end
     end
@@ -185,7 +186,7 @@ module Semaphore::GithubApp
         allow(App).to receive(:disable_repository_webhook_sync).and_return(true)
       end
 
-      it "still enqueues the workers — manual refresh is not gated by the env flag" do
+      it "still enqueues the repository sync — manual refresh is not gated by the env flag" do
         user = FactoryBot.create(:user, :github_connection)
         installation = FactoryBot.create(:github_app_installation)
         GithubAppCollaborator.create!(
@@ -200,7 +201,6 @@ module Semaphore::GithubApp
         expect(result.state).to eq(:started)
         expect(Repositories::Worker.jobs.map { |job| job["args"] })
           .to eq([[installation.installation_id]])
-        expect(Collaborators::Worker.jobs).not_to be_empty
       end
     end
   end
