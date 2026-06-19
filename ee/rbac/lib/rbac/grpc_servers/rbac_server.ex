@@ -165,7 +165,7 @@ defmodule Rbac.GrpcServers.RbacServer do
   def list_members(%RBAC.ListMembersRequest{} = req, _stream) do
     Watchman.benchmark("list_members.duration", fn ->
       validate_uuid!(req.org_id)
-      if req.project_id != "", do: validate_uuid!(req.project_id)
+      if req.project_id != "", do: validate_project!(req.project_id, req.org_id)
 
       project_id = if req.project_id != "", do: req.project_id, else: :is_nil
       {:ok, rbi} = RBI.new(org_id: req.org_id, project_id: project_id)
@@ -316,7 +316,7 @@ defmodule Rbac.GrpcServers.RbacServer do
          project_id: project_id
        }) do
     [subject_id, org_id, role_id] |> validate_uuid!()
-    if project_id != "", do: validate_uuid!(project_id)
+    if project_id != "", do: validate_project!(project_id, org_id)
   end
 
   defp validate_role_assignment_arguments(arg) do

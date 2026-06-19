@@ -638,6 +638,16 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
       assert inherited_role.subject_role_bindings |> hd() |> Map.get(:source) ==
                :ROLE_BINDING_SOURCE_INHERITED_FROM_ORG_ROLE
     end
+
+    test "error returned when project belongs to a different organization", state do
+      other_org_project_id = UUID.generate()
+      Support.Projects.insert(project_id: other_org_project_id, org_id: UUID.generate())
+
+      req = %Request{org_id: @org_id, project_id: other_org_project_id}
+      {:error, grpc_error} = state.grpc_channel |> Stub.list_members(req)
+
+      assert grpc_error.message =~ "Project does not belong to the organization"
+    end
   end
 
   describe "count_members" do
@@ -995,6 +1005,20 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
 
       assert response.has_roles |> length() == 1
       assert(response.has_roles |> Enum.at(0) |> Map.get(:has_role) == true)
+    end
+
+    test "error returned when project belongs to a different organization", state do
+      other_org_project_id = UUID.generate()
+      Support.Projects.insert(project_id: other_org_project_id, org_id: UUID.generate())
+
+      req = %Request{
+        role_assignments: [
+          gen_role_assignment(UUID.generate(), @user_id, @org_id, other_org_project_id)
+        ]
+      }
+
+      {:error, grpc_error} = state.grpc_channel |> Stub.subjects_have_roles(req)
+      assert grpc_error.message =~ "Project does not belong to the organization"
     end
   end
 
