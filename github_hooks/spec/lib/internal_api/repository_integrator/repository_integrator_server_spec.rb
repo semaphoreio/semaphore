@@ -354,14 +354,14 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
         )
       end
 
-      it "dispatches to RepositoryRefresh.targeted with the slug" do
+      it "dispatches to RepositoryRefresh.targeted with the requesting user and slug" do
         allow(Semaphore::GithubApp::RepositoryRefresh).to receive(:targeted).and_return(
           Semaphore::GithubApp::RepositoryRefresh::Result.new(:done, "Repository renderedtext/guard refreshed.")
         )
 
         response = server.refresh_repositories(@req, call)
 
-        expect(Semaphore::GithubApp::RepositoryRefresh).to have_received(:targeted).with(repository_slug)
+        expect(Semaphore::GithubApp::RepositoryRefresh).to have_received(:targeted).with(user_id, repository_slug)
         expect(response.sync_state).to eq(:DONE)
         expect(response.message).to eq("Repository renderedtext/guard refreshed.")
       end
