@@ -53,28 +53,35 @@ defmodule Front.Models.RepositoryIntegrator do
           repository_slug: repository_slug
         )
 
-      {:ok, channel} =
-        GRPC.Stub.connect(Application.fetch_env!(:front, :repository_integrator_grpc_endpoint))
+      case GRPC.Stub.connect(Application.fetch_env!(:front, :repository_integrator_grpc_endpoint)) do
+        {:ok, channel} ->
+          case InternalApi.RepositoryIntegrator.RepositoryIntegratorService.Stub.refresh_repositories(
+                 channel,
+                 req,
+                 timeout: 30_000
+               ) do
+            {:ok, res} ->
+              state =
+                InternalApi.RepositoryIntegrator.RefreshRepositoriesResponse.SyncState.key(
+                  res.sync_state
+                )
 
-      case InternalApi.RepositoryIntegrator.RepositoryIntegratorService.Stub.refresh_repositories(
-             channel,
-             req,
-             timeout: 30_000
-           ) do
-        {:ok, res} ->
-          state =
-            InternalApi.RepositoryIntegrator.RefreshRepositoriesResponse.SyncState.key(
-              res.sync_state
-            )
+              {:ok, %{state: state, message: res.message}}
 
-          {:ok, %{state: state, message: res.message}}
+            {:error, msg} ->
+              Logger.error(
+                "[RepositoryIntegrator model] Error while refreshing repositories #{inspect(msg)}"
+              )
 
-        {:error, msg} ->
+              {:error, msg}
+          end
+
+        {:error, reason} ->
           Logger.error(
-            "[RepositoryIntegrator model] Error while refreshing repositories #{inspect(msg)}"
+            "[RepositoryIntegrator model] Error while connecting to refresh repositories #{inspect(reason)}"
           )
 
-          {:error, msg}
+          {:error, reason}
       end
     end)
   end
