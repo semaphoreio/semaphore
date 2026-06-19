@@ -12,16 +12,25 @@ defmodule PipelinesAPI.GoferClient.ResponseFormatter.Test do
     assert message == "Promotion successfully triggered."
   end
 
-  test "process_trigger_response() returns error and server message when server returns NOT_FOUND or REFUSED" do
+  test "process_trigger_response() returns user error when server returns NOT_FOUND" do
     response = trigger_response(:NOT_FOUND, "NOT_FOUND message from server")
 
     assert {:error, {:user, message}} = ResponseFormatter.process_trigger_response(response)
     assert message == "NOT_FOUND message from server"
+  end
 
+  test "process_trigger_response() returns refused payload when server returns REFUSED" do
     response = trigger_response(:REFUSED, "REFUSED message from server")
 
-    assert {:error, {:user, message}} = ResponseFormatter.process_trigger_response(response)
-    assert message == "REFUSED message from server"
+    assert {:error, {:refused, payload}} = ResponseFormatter.process_trigger_response(response)
+    assert payload == %{code: "REFUSED", message: "REFUSED message from server"}
+  end
+
+  test "process_trigger_response() falls back to default message for empty REFUSED message" do
+    response = trigger_response(:REFUSED, "")
+
+    assert {:error, {:refused, payload}} = ResponseFormatter.process_trigger_response(response)
+    assert payload == %{code: "REFUSED", message: "Promotion request was refused."}
   end
 
   test "process_trigger_response() returns internal error when it receives {:ok, invalid_data}" do

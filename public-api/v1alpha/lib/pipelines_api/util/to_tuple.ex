@@ -11,6 +11,10 @@ defmodule PipelinesAPI.Util.ToTuple do
   @spec user_error(any()) :: user_error_t
   def user_error(item), do: {:user, item} |> error()
 
+  @type refused_error_t :: {:error, {:refused, any()}}
+  @spec refused_error(any()) :: refused_error_t
+  def refused_error(item), do: {:refused, item} |> error()
+
   @type not_found_error_t :: {:error, {:not_found, any()}}
   @spec not_found_error(any()) :: not_found_error_t
   def not_found_error(item), do: {:not_found, item} |> error()

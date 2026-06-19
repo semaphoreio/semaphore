@@ -27,8 +27,15 @@ defmodule FrontWeb.TargetController do
         {:ok, _} ->
           text(conn, "Target '#{name}' triggered.")
 
+        {:error, code, msg} ->
+          conn
+          |> put_status(error_http_status(code))
+          |> json(%{code: to_string(code), message: error_message(code, msg)})
+
         {:error, msg} ->
-          conn |> put_status(500) |> text(msg)
+          conn
+          |> put_status(:internal_server_error)
+          |> json(%{code: "INTERNAL", message: error_message(:INTERNAL, msg)})
       end
     end)
   end
@@ -65,4 +72,18 @@ defmodule FrontWeb.TargetController do
       InternalApi.Gofer.EnvVariable.new(name: key, value: value)
     end)
   end
+
+  defp error_http_status(:REFUSED), do: :conflict
+  defp error_http_status(:NOT_FOUND), do: :not_found
+  defp error_http_status(:BAD_PARAM), do: :bad_request
+  defp error_http_status(:MALFORMED), do: :bad_request
+  defp error_http_status(_), do: :internal_server_error
+
+  defp error_message(_code, msg) when is_binary(msg) and msg != "", do: msg
+  defp error_message(:REFUSED, _), do: "Promotion request was refused."
+  defp error_message(:NOT_FOUND, _), do: "Promotion target was not found."
+  defp error_message(:BAD_PARAM, _), do: "Promotion request is invalid."
+  defp error_message(:MALFORMED, _), do: "Promotion request is malformed."
+  defp error_message(:INTERNAL, _), do: "Failed to trigger promotion."
+  defp error_message(_, _), do: "Failed to trigger promotion."
 end

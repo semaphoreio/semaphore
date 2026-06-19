@@ -105,7 +105,22 @@ defmodule Front.Models.SwitchTest do
       t1 = Enum.at(s.targets, 0)
 
       refute t1.deployment
-      assert Models.Switch.Target.trigger(t1, user.id) == {:error, ""}
+
+      assert Models.Switch.Target.trigger(t1, user.id) ==
+               {:error, :BAD_PARAM, "Promotion request is invalid."}
+    end
+
+    test "if triggering is refused => returns error code and message", %{
+      switch: switch,
+      user: user
+    } do
+      GrpcMock.stub(GoferMock, :trigger, Factories.Gofer.refused_trigger_response("Rate limited"))
+
+      s = Models.Switch.find(switch.id, "")
+      t1 = Enum.at(s.targets, 0)
+
+      refute t1.deployment
+      assert Models.Switch.Target.trigger(t1, user.id) == {:error, :REFUSED, "Rate limited"}
     end
 
     test "if deployment target allows => returns {:ok, nil}", %{switch: switch, user: user} do
@@ -137,7 +152,27 @@ defmodule Front.Models.SwitchTest do
       t1 = Enum.at(s.targets, 0)
 
       assert Models.Switch.Target.trigger(t1, user.id) ==
-               {:error, "Triggering promotion blocked by deployment target"}
+               {:error, :REFUSED, "Triggering promotion blocked by deployment target"}
+    end
+  end
+
+  describe "TriggerEvent.construct" do
+    test "maps error_response on failed trigger events" do
+      raw =
+        InternalApi.Gofer.TriggerEvent.new(
+          processing_result: InternalApi.Gofer.TriggerEvent.ProcessingResult.value(:FAILED),
+          triggered_by: "user-1",
+          triggered_at: Google.Protobuf.Timestamp.new(seconds: 1),
+          scheduled_pipeline_id: "",
+          processed: true,
+          auto_triggered: false,
+          error_response: "REFUSED: Too many pending promotions."
+        )
+
+      event = Models.Switch.TriggerEvent.construct(raw)
+
+      assert event.result == :FAILED
+      assert event.error_response == "REFUSED: Too many pending promotions."
     end
   end
 
