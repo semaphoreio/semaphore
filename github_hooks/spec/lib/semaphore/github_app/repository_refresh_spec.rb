@@ -94,13 +94,15 @@ module Semaphore::GithubApp
       let(:user) { FactoryBot.create(:user, :github_connection) }
       let(:github_uid) { user.github_repo_host_account.github_uid }
 
-      # A collaborator row in an installation is what authorizes a targeted
-      # refresh of repositories in that installation.
-      def authorize(user_uid, installation_record)
+      # Grant the caller installation-level access via a repo other than the one
+      # under test, so the cached-repo specs still reach the real collaborator
+      # re-sync. Listing them on the target repo would instead trigger the
+      # already-listed short-circuit.
+      def authorize(user_uid, installation_record, repo: "semaphoreio/semaphore")
         GithubAppCollaborator.create!(
           :c_id => user_uid,
           :c_name => "user",
-          :r_name => "renderedtext/guard",
+          :r_name => repo,
           :installation_id => installation_record.installation_id
         )
       end
@@ -112,6 +114,28 @@ module Semaphore::GithubApp
 
         expect(result.state).to eq(:failed)
         expect(result.message).to match(%r{owner/repository})
+      end
+
+      context "when the repository is already listed for the caller" do
+        before do
+          GithubAppCollaborator.create!(
+            :c_id => github_uid,
+            :c_name => "user",
+            :r_name => "renderedtext/guard",
+            :installation_id => installation.installation_id
+          )
+        end
+
+        it "short-circuits to done without calling GitHub or enqueuing a sync" do
+          allow(Collaborators).to receive(:refresh)
+
+          result = described_class.targeted(user.id, "RenderedText/Guard")
+
+          expect(result.state).to eq(:done)
+          expect(result.message).to match(/already in your list/)
+          expect(Collaborators).not_to have_received(:refresh)
+          expect(Repositories::Worker.jobs).to be_empty
+        end
       end
 
       context "when the repository is cached" do

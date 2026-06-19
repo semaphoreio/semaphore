@@ -37,6 +37,12 @@ module Semaphore::GithubApp
       github_uid = github_uid_for(user_id)
       return no_access unless github_uid
 
+      # Already listed for this user means they already have (push) access, so
+      # there is nothing to fetch. This is also the path most exposed to repeated
+      # manual refreshes, so short-circuiting it drops the unthrottled,
+      # synchronous GitHub collaborator re-sync entirely.
+      return Result.new(:done, "Repository #{slug} is already in your list.") if listed_for?(github_uid, slug)
+
       installation = GithubAppInstallation.find_for_repository(slug)
 
       if installation
@@ -96,6 +102,15 @@ module Semaphore::GithubApp
       Result.new(:started, "Re-syncing #{owner}'s repository list. Search again in a moment.")
     end
     private_class_method :refresh_owner_installation
+
+    # Whether the repository already shows up in this user's list — i.e. they
+    # hold a (push-access) collaborator row for it. Mirrors how #get_repositories
+    # builds the list, so "listed" here means exactly "listed in the UI".
+    def self.listed_for?(github_uid, slug)
+      canonical = GithubAppInstallation.canonical_slug(slug)
+      GithubAppCollaborator.where(:c_id => github_uid).where("LOWER(r_name) = ?", canonical).exists?
+    end
+    private_class_method :listed_for?
 
     # A user may refresh an installation they collaborate in — the same scope
     # .full grants. Installation-level (not per-repo) on purpose: .full already
