@@ -522,6 +522,16 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
       assert UserPermissions.read_user_permissions(rbi) == ""
       assert ProjectAccess.get_list_of_projects(@user_id, @org_id) == []
     end
+
+    test "error returned when project belongs to a different organization", state do
+      other_org_project_id = UUID.generate()
+      Support.Projects.insert(project_id: other_org_project_id, org_id: UUID.generate())
+
+      req = gen_retract_role_req(@user_id, @org_id, other_org_project_id)
+      {:error, grpc_error} = state.grpc_channel |> Stub.retract_role(req)
+
+      assert grpc_error.message =~ "Project does not belong to the organization"
+    end
   end
 
   describe "list_members" do

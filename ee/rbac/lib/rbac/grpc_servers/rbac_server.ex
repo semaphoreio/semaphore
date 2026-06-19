@@ -81,7 +81,7 @@ defmodule Rbac.GrpcServers.RbacServer do
         req.role_assignment
 
       [subject_id, org_id] |> validate_uuid!()
-      if project_id != "", do: validate_uuid!(project_id)
+      if project_id != "", do: validate_project!(project_id, org_id)
       if project_id == "", do: raise_error_if_user_is_owner(subject_id, org_id)
       authorize!(req.requester_id, org_id, project_id)
 
