@@ -135,6 +135,22 @@ module Semaphore::GithubApp
           expect(result.state).to eq(:failed)
           expect(result.message).to match(/rate limit/)
         end
+
+        it "fails without calling refresh when the cached row is gone" do
+          empty_installation = FactoryBot.create(
+            :github_app_installation,
+            :installation_id => 4242,
+            :repositories => ["other/repo"]
+          )
+          allow(GithubAppInstallation).to receive(:find_for_repository).and_return(empty_installation)
+          allow(Collaborators).to receive(:refresh)
+
+          result = described_class.targeted("renderedtext/guard")
+
+          expect(result.state).to eq(:failed)
+          expect(result.message).to match(/no longer available/)
+          expect(Collaborators).not_to have_received(:refresh)
+        end
       end
 
       context "when the repository is not cached" do

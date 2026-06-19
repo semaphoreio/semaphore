@@ -55,6 +55,8 @@ module Semaphore::GithubApp
       canonical = GithubAppInstallation.canonical_slug(slug)
       repository = installation.installation_repositories.where("LOWER(slug) = ?", canonical).first
 
+      return Result.new(:failed, "Repository #{slug} is no longer available. Try again.") if repository.nil?
+
       case Collaborators.refresh(repository.slug, repository.remote_id)
       when :ok
         Result.new(:done, "Repository #{repository.slug} refreshed.")
