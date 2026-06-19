@@ -90,7 +90,7 @@ module InternalApi
               :done, "This repository list is always fetched live from the provider."
             )
           elsif req.repository_slug.present?
-            ::Semaphore::GithubApp::RepositoryRefresh.targeted(req.repository_slug)
+            ::Semaphore::GithubApp::RepositoryRefresh.targeted(req.user_id, req.repository_slug)
           else
             ::Semaphore::GithubApp::RepositoryRefresh.full(req.user_id)
           end

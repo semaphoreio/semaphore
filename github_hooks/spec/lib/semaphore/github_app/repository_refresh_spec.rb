@@ -91,9 +91,24 @@ module Semaphore::GithubApp
 
     describe ".targeted" do
       let!(:installation) { FactoryBot.create(:github_app_installation) }
+      let(:user) { FactoryBot.create(:user, :github_connection) }
+      let(:github_uid) { user.github_repo_host_account.github_uid }
+
+      # A collaborator row in an installation is what authorizes a targeted
+      # refresh of repositories in that installation.
+      def authorize(user_uid, installation_record)
+        GithubAppCollaborator.create!(
+          :c_id => user_uid,
+          :c_name => "user",
+          :r_name => "renderedtext/guard",
+          :installation_id => installation_record.installation_id
+        )
+      end
+
+      before { authorize(github_uid, installation) }
 
       it "rejects input that is not an owner/repository slug" do
-        result = described_class.targeted("not a slug")
+        result = described_class.targeted(user.id, "not a slug")
 
         expect(result.state).to eq(:failed)
         expect(result.message).to match(%r{owner/repository})
@@ -103,7 +118,7 @@ module Semaphore::GithubApp
         it "refreshes collaborators with the stored slug and remote id" do
           allow(Collaborators).to receive(:refresh).and_return(:ok)
 
-          result = described_class.targeted("RenderedText/Guard")
+          result = described_class.targeted(user.id, "RenderedText/Guard")
 
           expect(Collaborators).to have_received(:refresh).with("renderedtext/guard", 0)
           expect(result.state).to eq(:done)
@@ -113,7 +128,7 @@ module Semaphore::GithubApp
         it "maps :no_token to a failure about app access" do
           allow(Collaborators).to receive(:refresh).and_return(:no_token)
 
-          result = described_class.targeted("renderedtext/guard")
+          result = described_class.targeted(user.id, "renderedtext/guard")
 
           expect(result.state).to eq(:failed)
           expect(result.message).to match(/no access/)
@@ -122,7 +137,7 @@ module Semaphore::GithubApp
         it "maps :no_repository to a failure about the repository" do
           allow(Collaborators).to receive(:refresh).and_return(:no_repository)
 
-          result = described_class.targeted("renderedtext/guard")
+          result = described_class.targeted(user.id, "renderedtext/guard")
 
           expect(result.state).to eq(:failed)
           expect(result.message).to match(/not found on GitHub/)
@@ -131,7 +146,7 @@ module Semaphore::GithubApp
         it "maps :low_rate_limit to a retry-later failure" do
           allow(Collaborators).to receive(:refresh).and_return(:low_rate_limit)
 
-          result = described_class.targeted("renderedtext/guard")
+          result = described_class.targeted(user.id, "renderedtext/guard")
 
           expect(result.state).to eq(:failed)
           expect(result.message).to match(/rate limit/)
@@ -143,10 +158,11 @@ module Semaphore::GithubApp
             :installation_id => 4242,
             :repositories => ["other/repo"]
           )
+          authorize(github_uid, empty_installation)
           allow(GithubAppInstallation).to receive(:find_for_repository).and_return(empty_installation)
           allow(Collaborators).to receive(:refresh)
 
-          result = described_class.targeted("renderedtext/guard")
+          result = described_class.targeted(user.id, "renderedtext/guard")
 
           expect(result.state).to eq(:failed)
           expect(result.message).to match(/no longer available/)
@@ -156,7 +172,7 @@ module Semaphore::GithubApp
 
       context "when the repository is not cached" do
         it "re-syncs the owner's installation repository list" do
-          result = described_class.targeted("renderedtext/brand-new-repo")
+          result = described_class.targeted(user.id, "renderedtext/brand-new-repo")
 
           expect(result.state).to eq(:started)
           expect(Repositories::Worker.jobs.map { |job| job["args"] })
@@ -166,17 +182,66 @@ module Semaphore::GithubApp
         it "reports an already running sync for the owner's installation" do
           allow_any_instance_of(Repositories::Worker).to receive(:unique_lock_exists?).and_return(true)
 
-          result = described_class.targeted("renderedtext/brand-new-repo")
+          result = described_class.targeted(user.id, "renderedtext/brand-new-repo")
 
           expect(result.state).to eq(:already_running)
           expect(Repositories::Worker.jobs).to be_empty
         end
 
         it "fails when no installation covers the owner" do
-          result = described_class.targeted("unknown-owner/repo")
+          result = described_class.targeted(user.id, "unknown-owner/repo")
 
           expect(result.state).to eq(:failed)
           expect(result.message).to match(/no access/)
+        end
+      end
+
+      # Regression for the cross-tenant authorization gap: a targeted refresh
+      # must be scoped to the requesting user, not to anyone who can reach the
+      # endpoint. Previously any logged-in user could trigger a collaborator
+      # re-sync of — and enumerate — repositories of other organizations.
+      context "when the caller does not collaborate in the installation" do
+        let(:outsider) { FactoryBot.create(:user, :github_connection) }
+
+        it "refuses to refresh a cached repository and never calls GitHub" do
+          allow(Collaborators).to receive(:refresh)
+
+          result = described_class.targeted(outsider.id, "renderedtext/guard")
+
+          expect(result.state).to eq(:failed)
+          expect(result.message).to match(/Grant access on GitHub first/)
+          expect(Collaborators).not_to have_received(:refresh)
+          expect(Repositories::Worker.jobs).to be_empty
+        end
+
+        it "refuses to re-sync the owner installation for an uncached repository" do
+          result = described_class.targeted(outsider.id, "renderedtext/brand-new-repo")
+
+          expect(result.state).to eq(:failed)
+          expect(result.message).to match(/Grant access on GitHub first/)
+          expect(Repositories::Worker.jobs).to be_empty
+        end
+
+        it "gives outsiders no signal that distinguishes a real repository from a missing one" do
+          real_repo = described_class.targeted(outsider.id, "renderedtext/guard")
+          missing_repo = described_class.targeted(outsider.id, "ghost-owner/ghost-repo")
+
+          expect(real_repo.state).to eq(:failed)
+          expect(real_repo.state).to eq(missing_repo.state)
+          expect(real_repo.message).to match(/Grant access on GitHub first/)
+          expect(missing_repo.message).to match(/Grant access on GitHub first/)
+        end
+      end
+
+      context "when the caller has no GitHub connection" do
+        let(:user_without_github) { FactoryBot.create(:user) }
+
+        it "is refused" do
+          result = described_class.targeted(user_without_github.id, "renderedtext/guard")
+
+          expect(result.state).to eq(:failed)
+          expect(result.message).to match(/Grant access on GitHub first/)
+          expect(Repositories::Worker.jobs).to be_empty
         end
       end
     end

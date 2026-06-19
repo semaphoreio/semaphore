@@ -25,16 +25,29 @@ module Semaphore::GithubApp
       Result.new(:started, "Repository sync started. This can take a few minutes.")
     end
 
-    def self.targeted(repository_slug)
+    def self.targeted(user_id, repository_slug)
       slug = GithubAppInstallation.normalize_slug(repository_slug)
       return Result.new(:failed, "Use the owner/repository format.") unless slug
+
+      # Identical opaque result whether the installation is missing or the caller
+      # simply has no claim to it, so this endpoint cannot be used to enumerate
+      # the repositories/installations of other organizations.
+      no_access = Result.new(:failed, "The GitHub App has no access to #{slug}. Grant access on GitHub first.")
+
+      github_uid = github_uid_for(user_id)
+      return no_access unless github_uid
 
       installation = GithubAppInstallation.find_for_repository(slug)
 
       if installation
+        return no_access unless user_collaborates_in?(github_uid, installation)
+
         refresh_cached_repository(installation, slug)
       else
-        refresh_owner_installation(slug)
+        installation = GithubAppInstallation.find_for_organization(slug.split("/").first)
+        return no_access unless installation && user_collaborates_in?(github_uid, installation)
+
+        refresh_owner_installation(installation, slug)
       end
     end
 
@@ -70,13 +83,10 @@ module Semaphore::GithubApp
     private_class_method :refresh_cached_repository
 
     # Repo absent from the cache: re-sync the whole owner installation (async).
-    def self.refresh_owner_installation(slug)
+    # The caller's claim to the installation is verified in .targeted before we
+    # reach here.
+    def self.refresh_owner_installation(installation, slug)
       owner = slug.split("/").first
-      installation = GithubAppInstallation.find_for_organization(owner)
-
-      unless installation
-        return Result.new(:failed, "The GitHub App has no access to #{slug}. Grant access on GitHub first.")
-      end
 
       if Repositories::Worker.new.unique_lock_exists?([installation.installation_id])
         return Result.new(:already_running, "A repository sync is already running. Results will appear shortly.")
@@ -86,6 +96,15 @@ module Semaphore::GithubApp
       Result.new(:started, "Re-syncing #{owner}'s repository list. Search again in a moment.")
     end
     private_class_method :refresh_owner_installation
+
+    # A user may refresh an installation they collaborate in — the same scope
+    # .full grants. Installation-level (not per-repo) on purpose: .full already
+    # lets such a user re-sync the installation's entire repository list, so a
+    # per-repo refresh within it is strictly narrower.
+    def self.user_collaborates_in?(github_uid, installation)
+      GithubAppCollaborator.exists?(:c_id => github_uid, :installation_id => installation.installation_id)
+    end
+    private_class_method :user_collaborates_in?
 
     def self.github_uid_for(user_id)
       ::User.find(user_id).github_repo_host_account&.github_uid
