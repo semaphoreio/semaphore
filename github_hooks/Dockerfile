@@ -24,7 +24,7 @@ ENV LANG=C.UTF-8 \
 
 RUN gem update --system 3.5.23
 RUN gem install bundler -v '2.6.2' --no-document
-RUN gem install net-imap -v '0.5.14' --no-document && \
+RUN gem install net-imap -v '0.5.15' --no-document && \
   rm -rf /usr/local/lib/ruby/gems/3.3.0/gems/net-imap-0.4.21 && \
   rm -f /usr/local/lib/ruby/gems/3.3.0/specifications/net-imap-0.4.21.gemspec \
     /usr/local/lib/ruby/gems/3.3.0/specifications/default/net-imap-0.4.21.gemspec
@@ -86,6 +86,13 @@ HEALTHCHECK NONE
 
 ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
 
+RUN apt-get update && apt-get install --no-install-recommends -y -qq \
+  libjemalloc-dev \
+  binutils \
+  graphviz \
+  procps \
+  && apt-get clean && rm -f /var/lib/apt/lists/*_*
+
 COPY --chown=nobody:root app app
 COPY --chown=nobody:root script script
 COPY --chown=nobody:root bin bin
@@ -99,6 +106,9 @@ COPY --chown=nobody:root sidekiq.ru sidekiq.ru
 COPY --chown=nobody:root Gemfile Gemfile
 COPY --chown=nobody:root Gemfile.lock Gemfile.lock
 COPY --from=production-builder --chown=nobody:root $BUNDLE_PATH $BUNDLE_PATH
+
+RUN gem install --no-document heapy
+ENV PATH="/app/vendor/bundle/bin:${PATH}"
 
 RUN mkdir -p /app/tmp && chown nobody:root /app/tmp
 

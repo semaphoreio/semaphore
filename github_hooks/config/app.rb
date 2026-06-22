@@ -15,6 +15,8 @@ class App < Configurable # :nodoc:
   config.plumber_internal_url    = SemaphoreConfig.internal_api_url_plumber
   config.repository_hub_url      = SemaphoreConfig.internal_api_url_repository
   config.hooks_api_url           = SemaphoreConfig.internal_api_url_hooks
+  config.plumber_internal_headless_url = SemaphoreConfig.internal_api_url_plumber_headless
+  config.hooks_api_headless_url        = SemaphoreConfig.internal_api_url_hooks_headless
   config.instance_config_url     = SemaphoreConfig.internal_api_url_instance_config
   config.encryptor_url           = SemaphoreConfig.encryptor_url
   config.license_checker_url     = SemaphoreConfig.license_checker_url || "license-checker:50051"
