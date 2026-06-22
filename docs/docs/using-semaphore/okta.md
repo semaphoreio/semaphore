@@ -161,7 +161,7 @@ To enable user management in Okta, open the Okta application you created earlier
 
 4. Fill in the following values:
 
-    - **SCIM connector base URL**: this is your [organization URL](./organizations#general-settings) followed by `/okta/scrim`. For example, if your organization URL is `https://my-org.semaphoreci.com`, the value for this field is `https://my-org.semaphoreci.com/okta/scim`
+    - **SCIM connector base URL**: this is your [organization URL](./organizations#general-settings) followed by `/okta/scim`. For example, if your organization URL is `https://my-org.semaphoreci.com`, the value for this field is `https://my-org.semaphoreci.com/okta/scim`
     - **Unique identifier field for users**: type the string "email"
     - **Supported provisioning actions**: select **Push New Users**, **Push Profile Updates**, and **Push Groups**
     - **Authentication Mode**: select **HTTP Header**

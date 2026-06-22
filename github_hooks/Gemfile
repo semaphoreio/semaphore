@@ -18,6 +18,7 @@ gem "googleapis-common-protos-types", "~> 1.18.0"
 gem "httparty", "~> 0.24.0"
 gem "httpclient"
 gem "json"
+gem "erb", ">= 6.0.4" # CVE-2026-41316: @_init deserialization guard bypass
 gem "kaminari", "~> 1.2.2"
 gem "lograge"
 gem "octokit"
@@ -26,7 +27,7 @@ gem "sidekiq", "7.3.10"
 gem "connection_pool", "< 3" # Sidekiq 7 scheduler uses positional TimedStack#pop API
 gem "sidekiq-scheduler"
 gem "sidekiq-unique-jobs", "~> 8.0"
-gem "puma"
+gem "puma", "~> 7.2.1"
 gem "xmlrpc" # Prior to ruby 2.4 this was bundled with ruby. Required by active-support.
 gem "jwt"
 

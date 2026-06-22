@@ -18,6 +18,7 @@ defmodule Projecthub.HttpApi do
   @version "v1alpha"
 
   plug(Plug.Logger, log: :debug)
+  plug(:track_client_metrics)
   plug(Plug.Parsers, parsers: [:json], json_decoder: Poison)
   plug(:match)
   plug(:dispatch)
@@ -406,6 +407,15 @@ defmodule Projecthub.HttpApi do
     |> Enum.reject(&is_nil/1)
   end
 
+  # Ingress / kubelet probe paths — no client attribution (metrics/log noise).
+  @skip_paths ~w(/ /is_alive)
+
+  defp track_client_metrics(%Plug.Conn{request_path: path} = conn, _opts)
+       when path in @skip_paths,
+       do: conn
+
+  defp track_client_metrics(conn, _opts), do: Projecthub.ClientMetrics.track_request(conn)
+
   defp assign_req_id(conn, _) do
     assign(conn, :req_id, conn |> get_req_header("x-request-id") |> List.first())
   end
@@ -677,7 +687,9 @@ defmodule Projecthub.HttpApi do
           required: task_parameter["required"],
           description: task_parameter["description"] || "",
           default_value: task_parameter["default_value"] || "",
-          options: task_parameter["options"] || []
+          options: task_parameter["options"] || [],
+          regex_pattern: task_parameter["regex_pattern"] || "",
+          validate_input_format: task_parameter["validate_input_format"] || false
         )
       end)
     else

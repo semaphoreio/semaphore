@@ -13,6 +13,11 @@ config :sentry,
     included_environments: ~w(prod pre-prod),
     environment_name: System.get_env("SENTRY_ENV") || "development"
 
+# Resolve the Watchman metric prefix at boot — config.exs is evaluated at build
+# time, where METRICS_NAMESPACE is unset, so the namespace must be read here.
+config :watchman,
+  prefix: "projecthub.#{System.get_env("METRICS_NAMESPACE") || "dev"}"
+
 if config_env() == :prod do
   config :projecthub,
     projecthub_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_PROJECT"),

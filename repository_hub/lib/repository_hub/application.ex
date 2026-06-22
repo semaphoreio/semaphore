@@ -21,6 +21,7 @@ defmodule RepositoryHub.Application do
       filter_enabled([
         {{Task.Supervisor, name: RepositoryHub.SentryEventSupervisor}, true},
         {{RepositoryHub.Repo, []}, true},
+        {{RepositoryHub.MaxStatusesCache, []}, true},
         {{GRPC.Server.Supervisor, endpoint: RepositoryHub.Server.Endpoint, port: grpc_port, start_server: true}, true},
         {{RepositoryHub.RemoteRepositoryChangedConsumer, []}, true},
         {{RepositoryHub.RemoteIdSyncWorker, remote_id_sync_worker_opts}, remote_id_sync_worker_enabled}

@@ -26,8 +26,8 @@ defmodule Guard.Mixfile do
   defp deps do
     [
       {:grpc, "0.5.0-beta.1", override: true},
-      {:cowboy, "~> 2.9.0", override: true},
-      {:cowlib, "~> 2.11.0", override: true},
+      {:cowboy, "~> 2.15", override: true},
+      {:cowlib, "~> 2.16", override: true},
       {:plug_cowboy, "~> 2.3"},
       {:httpoison, "~> 1.8"},
       {:gen_retry, "~> 1.4.0"},

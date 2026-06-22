@@ -2715,3 +2715,305 @@ Example:
 curl -i -H "Authorization: Token {api_token}" \
      "https://<organization-url>.semaphoreci.com/api/v1alpha/artifacts_retention_policies/:project_id"
 ```
+
+## Test results (flaky tests)
+
+These endpoints expose flaky test data collected from pipeline runs for a given project. All endpoints require a valid API token. Requests that fail authentication return `404 Not Found` rather than `401`.
+
+The base path for all test results endpoints is:
+
+```text
+/api/v1alpha/projects/{project_id}/test_results
+```
+
+### List flaky tests
+
+Returns a paginated list of flaky tests for the project. Pagination uses `Link` response headers (`first`, `next`, `prev`) and an `X-Total` header with the total count.
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1alpha/projects/{project_id}/test_results/flaky_tests
+```
+
+Query parameters (all optional):
+
+- `branch` - filter by branch name.
+- `commit_sha` - filter by commit SHA.
+- `test_name` - filter by test name (partial match).
+- `group` - filter by test group/class.
+- `file` - filter by source file path.
+- `suite` - filter by test suite name.
+- `runner` - filter by runner label.
+- `label` - comma-separated list of labels; tests must carry all specified labels.
+- `resolved` - `true` or `false`; filter by resolved status.
+- `scheduled` - `true` or `false`; filter by whether the run was a scheduled pipeline.
+- `age` - maximum age in days of the most recent flaky occurrence.
+- `pass_rate` - pass-rate threshold with a comparison operator, e.g. `>=80` or `<=50`. The value is a percentage (0–100).
+- `disruptions` - minimum number of disruptions, e.g. `>=5`.
+- `date_from` - include only occurrences on or after this date (`YYYY-MM-DD`).
+- `date_to` - include only occurrences on or before this date (`YYYY-MM-DD`).
+
+All parameter values are lowercase.
+
+Response:
+
+```json
+HTTP status: 200
+
+[
+  {
+    "id": "a1b2c3d4-...",
+    "test_name": "MyTest::should do the thing",
+    "group": "MyTest",
+    "file": "spec/my_test_spec.rb",
+    "suite": "unit",
+    "runner": "e2-standard-4",
+    "labels": ["critical"],
+    "pass_rate": 72.5,
+    "disruptions": 14,
+    "resolved": false,
+    "first_seen": "2025-01-10",
+    "last_seen": "2025-05-30"
+  }
+]
+```
+
+Example:
+
+```shell
+curl -H "Authorization: Token {api_token}" \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/projects/{project_id}/test_results/flaky_tests?branch=main&pass_rate=>=80"
+```
+
+### Get a flaky test
+
+Returns details for a single flaky test by its ID.
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1alpha/projects/{project_id}/test_results/flaky_tests/{id}
+```
+
+Parameters:
+
+- `project_id` (**required**) - UUID of the project.
+- `id` (**required**) - UUID of the flaky test record.
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "id": "a1b2c3d4-...",
+  "test_name": "MyTest::should do the thing",
+  "group": "MyTest",
+  "file": "spec/my_test_spec.rb",
+  "suite": "unit",
+  "runner": "e2-standard-4",
+  "labels": ["critical"],
+  "pass_rate": 72.5,
+  "disruptions": 14,
+  "resolved": false,
+  "first_seen": "2025-01-10",
+  "last_seen": "2025-05-30"
+}
+```
+
+### List disruptions for a flaky test
+
+Returns a paginated list of disruptions (pipeline runs that were disrupted by this test) for a specific flaky test. Pagination uses `Link` and `X-Total` headers.
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1alpha/projects/{project_id}/test_results/flaky_tests/{id}/disruptions
+```
+
+Query parameters (all optional): same filter set as [List flaky tests](#list-flaky-tests) (`branch`, `commit_sha`, `date_from`, `date_to`, `scheduled`).
+
+Response:
+
+```json
+HTTP status: 200
+
+[
+  {
+    "pipeline_id": "2abeb1a9-...",
+    "workflow_id": "32a689e0-...",
+    "branch": "main",
+    "commit_sha": "abc123",
+    "created_at": "2025-05-30T14:22:01Z"
+  }
+]
+```
+
+### List flaky test history
+
+Returns a time-series of flaky test counts grouped by date for the project.
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1alpha/projects/{project_id}/test_results/flaky_history
+```
+
+Query parameters (all optional): `branch`, `date_from`, `date_to`, `scheduled`.
+
+Response:
+
+```json
+HTTP status: 200
+
+[
+  { "date": "2025-05-28", "count": 3 },
+  { "date": "2025-05-29", "count": 7 },
+  { "date": "2025-05-30", "count": 2 }
+]
+```
+
+### List disruption history
+
+Returns a time-series of disruption counts grouped by date for the project.
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1alpha/projects/{project_id}/test_results/disruption_history
+```
+
+Query parameters (all optional): `branch`, `date_from`, `date_to`, `scheduled`.
+
+Response:
+
+```json
+HTTP status: 200
+
+[
+  { "date": "2025-05-28", "count": 12 },
+  { "date": "2025-05-29", "count": 19 },
+  { "date": "2025-05-30", "count": 8 }
+]
+```
+
+## Insights
+
+These endpoints return pipeline performance, reliability, and frequency metrics for a given project. All endpoints require a valid API token. Requests that fail authentication return `404 Not Found` rather than `401`.
+
+The base path for all insights endpoints is:
+
+```text
+/api/v1alpha/projects/{project_id}/insights
+```
+
+### Performance
+
+Returns time-series data for pipeline duration, broken down by overall, passed, and failed runs.
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1alpha/projects/{project_id}/insights/performance
+```
+
+Query parameters:
+
+- `pipeline_file` (**required**) - path to the pipeline YAML file within the repository, e.g. `.semaphore/semaphore.yml`.
+- `branch` (*optional*) - filter by branch name.
+- `from` (*optional*) - start date in `YYYY-MM-DD` format.
+- `to` (*optional*) - end date in `YYYY-MM-DD` format.
+- `aggregate` (*optional*) - aggregation window. Valid values: `daily` (default), `range`. All values are lowercase.
+
+Accuracy note: when `aggregate=range` is used, the returned value is the average of per-day averages, not a true mean across all runs in the period. Sparse days can skew the result.
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "performance": {
+    "all": [
+      { "date": "2025-05-28", "value_in_seconds": 310 },
+      { "date": "2025-05-29", "value_in_seconds": 295 }
+    ],
+    "passed": [
+      { "date": "2025-05-28", "value_in_seconds": 280 },
+      { "date": "2025-05-29", "value_in_seconds": 270 }
+    ],
+    "failed": [
+      { "date": "2025-05-28", "value_in_seconds": 420 },
+      { "date": "2025-05-29", "value_in_seconds": 390 }
+    ]
+  }
+}
+```
+
+Example:
+
+```shell
+curl -H "Authorization: Token {api_token}" \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/projects/{project_id}/insights/performance?pipeline_file=.semaphore/semaphore.yml&branch=main&aggregate=daily"
+```
+
+### Reliability
+
+Returns time-series data for the pipeline pass rate.
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1alpha/projects/{project_id}/insights/reliability
+```
+
+Query parameters: same as [Performance](#performance) (`pipeline_file` required, `branch`, `from`, `to`, `aggregate`).
+
+Accuracy note: `failed_count` includes pipelines that were STOPPED in addition to those that failed. This means the pass rate may appear lower than the true failure rate in projects that frequently cancel runs.
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "reliability": [
+    {
+      "date": "2025-05-28",
+      "passed_count": 18,
+      "failed_count": 2,
+      "pass_rate": 90.0
+    },
+    {
+      "date": "2025-05-29",
+      "passed_count": 22,
+      "failed_count": 3,
+      "pass_rate": 88.0
+    }
+  ]
+}
+```
+
+Example:
+
+```shell
+curl -H "Authorization: Token {api_token}" \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/projects/{project_id}/insights/reliability?pipeline_file=.semaphore/semaphore.yml&aggregate=range&from=2025-05-01&to=2025-05-31"
+```
+
+### Frequency
+
+Returns time-series data for how often the pipeline runs.
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1alpha/projects/{project_id}/insights/frequency
+```
+
+Query parameters: same as [Performance](#performance) (`pipeline_file` required, `branch`, `from`, `to`, `aggregate`).
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "frequency": [
+    { "date": "2025-05-28", "count": 20 },
+    { "date": "2025-05-29", "count": 25 }
+  ]
+}
+```
+
+Example:
+
+```shell
+curl -H "Authorization: Token {api_token}" \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/projects/{project_id}/insights/frequency?pipeline_file=.semaphore/semaphore.yml&branch=main"
+```
