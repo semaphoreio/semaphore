@@ -8,12 +8,15 @@ defmodule Audit.Retention.PolicyMarker do
   1. Marks events with `timestamp < cutoff_date` → sets `expires_at = now + grace_period`
   2. Unmarks events with `timestamp >= cutoff_date` → clears `expires_at`
 
-  ## Safety floor
+  ## Retention floor
 
-  `cutoff_date` is computed by the upstream publisher, not this service. A
-  bad/too-recent cutoff would irreversibly delete recent audit logs, so any
-  cutoff newer than `now - min_retention_days` (default 400) is refused and
-  surfaced via the `retention.policy.cutoff_too_recent` metric.
+  `cutoff_date` is computed by the upstream publisher, not this service. To
+  guarantee a minimum retention, any cutoff newer than
+  `now - min_retention_days` (default 400) is *clamped* back to that floor
+  rather than honored: a too-short window (or a future/misconfigured cutoff)
+  still deletes everything older than the floor instead of silently dropping
+  the event, but audit logs younger than the floor are never expired. Clamps
+  are surfaced via the `retention.policy.cutoff_clamped` metric.
 
   ## Cleanup of existing organizations (upstream dependency)
 
@@ -45,18 +48,31 @@ defmodule Audit.Retention.PolicyMarker do
   def handle_message(message) do
     with {:ok, event} <- decode(message),
          {:ok, org_id} <- validate_org_id(event.org_id),
-         {:ok, cutoff} <- parse_cutoff(event.cutoff_date) do
+         {:ok, cutoff} <- resolve_cutoff(event.cutoff_date) do
       apply_policy(org_id, cutoff)
     else
-      {:too_recent, reason} ->
-        Watchman.increment("retention.policy.cutoff_too_recent")
-        Logger.error("[Retention] Refusing too-recent cutoff: #{reason}")
-        :ok
-
       {:invalid, reason} ->
         Watchman.increment("retention.policy.invalid")
         Logger.warning("[Retention] Skipping invalid policy event: #{reason}")
         :ok
+    end
+  end
+
+  # A cutoff newer than the retention floor (a window shorter than the floor, a
+  # future date, or a misconfigured publisher) is clamped back to the floor
+  # instead of dropped, so we still delete everything older than the floor
+  # rather than silently doing nothing. Clamps are surfaced for monitoring.
+  defp resolve_cutoff(raw) do
+    case parse_cutoff(raw) do
+      {:clamped, floor} ->
+        Watchman.increment("retention.policy.cutoff_clamped")
+
+        Logger.warning("[Retention] cutoff newer than the retention floor; clamping to #{floor}")
+
+        {:ok, floor}
+
+      other ->
+        other
     end
   end
 
@@ -123,12 +139,12 @@ defmodule Audit.Retention.PolicyMarker do
     now = DateTime.utc_now() |> DateTime.truncate(:second)
     floor = DateTime.add(now, -days * 86_400, :second)
 
-    # Any cutoff newer than the floor would expire events younger than the
-    # minimum retention (and a future cutoff would expire everything). Refuse
-    # it rather than risk irreversible deletion of recent audit logs.
+    # The floor is a hard minimum retention. A cutoff newer than it (a window
+    # shorter than the floor, or a future/misconfigured date) is clamped back to
+    # the floor rather than honored — never expire audit logs younger than the
+    # floor, but still delete everything older than it.
     if DateTime.compare(cutoff, floor) == :gt do
-      {:too_recent,
-       "cutoff_date #{cutoff} is newer than the #{days}-day retention floor (#{floor})"}
+      {:clamped, floor}
     else
       {:ok, cutoff}
     end
