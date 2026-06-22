@@ -215,21 +215,61 @@ module Semaphore::GithubApp
       end
 
       context "when the repository is not cached" do
-        it "re-syncs the owner's installation repository list" do
-          result = described_class.targeted(user.id, "renderedtext/brand-new-repo")
-
-          expect(result.state).to eq(:started)
-          expect(Repositories::Worker.jobs.map { |job| job["args"] })
-            .to eq([[installation.installation_id]])
+        let(:remote_repository) do
+          Struct.new(:id, :full_name).new(555, "renderedtext/brand-new-repo")
         end
 
-        it "reports an already running sync for the owner's installation" do
-          allow_any_instance_of(Repositories::Worker).to receive(:unique_lock_exists?).and_return(true)
+        before do
+          allow(Semaphore::GithubApp::Token).to receive(:installation_token)
+            .and_return(["tok", Time.zone.now + 3600])
+          allow_any_instance_of(RepoHost::Github::Client).to receive(:rate_limit_remaining)
+            .and_return(1_000_000)
+        end
+
+        it "fetches the single repository, caches it, syncs collaborators, and returns done" do
+          allow_any_instance_of(RepoHost::Github::Client).to receive(:repository)
+            .with("renderedtext/brand-new-repo").and_return(remote_repository)
+          allow(Collaborators).to receive(:refresh).and_return(:ok)
 
           result = described_class.targeted(user.id, "renderedtext/brand-new-repo")
 
-          expect(result.state).to eq(:already_running)
+          expect(result.state).to eq(:done)
+          expect(Collaborators).to have_received(:refresh).with("renderedtext/brand-new-repo", 555)
+          expect(installation.installation_repositories.exists?(:slug => "renderedtext/brand-new-repo")).to be(true)
+        end
+
+        it "does not enqueue any background worker — the fetch is synchronous and single-repo" do
+          allow_any_instance_of(RepoHost::Github::Client).to receive(:repository)
+            .and_return(remote_repository)
+          allow(Collaborators).to receive(:refresh).and_return(:ok)
+
+          described_class.targeted(user.id, "renderedtext/brand-new-repo")
+
           expect(Repositories::Worker.jobs).to be_empty
+          expect(Collaborators::Worker.jobs).to be_empty
+        end
+
+        it "fails without caching when the installation cannot access the repository" do
+          allow_any_instance_of(RepoHost::Github::Client).to receive(:repository)
+            .and_raise(RepoHost::RemoteException::NotFound)
+          allow(Collaborators).to receive(:refresh)
+
+          result = described_class.targeted(user.id, "renderedtext/brand-new-repo")
+
+          expect(result.state).to eq(:failed)
+          expect(result.message).to match(/Grant access on GitHub first/)
+          expect(Collaborators).not_to have_received(:refresh)
+          expect(installation.installation_repositories.exists?(:slug => "renderedtext/brand-new-repo")).to be(false)
+        end
+
+        it "fails without calling GitHub when the rate limit is too low" do
+          allow_any_instance_of(RepoHost::Github::Client).to receive(:rate_limit_remaining).and_return(0)
+          expect_any_instance_of(RepoHost::Github::Client).not_to receive(:repository)
+
+          result = described_class.targeted(user.id, "renderedtext/brand-new-repo")
+
+          expect(result.state).to eq(:failed)
+          expect(result.message).to match(/rate limit/)
         end
 
         it "fails when no installation covers the owner" do
@@ -258,12 +298,14 @@ module Semaphore::GithubApp
           expect(Repositories::Worker.jobs).to be_empty
         end
 
-        it "refuses to re-sync the owner installation for an uncached repository" do
+        it "refuses to fetch an uncached repository and never calls GitHub" do
+          expect_any_instance_of(RepoHost::Github::Client).not_to receive(:repository)
+
           result = described_class.targeted(outsider.id, "renderedtext/brand-new-repo")
 
           expect(result.state).to eq(:failed)
           expect(result.message).to match(/Grant access on GitHub first/)
-          expect(Repositories::Worker.jobs).to be_empty
+          expect(installation.installation_repositories.exists?(:slug => "renderedtext/brand-new-repo")).to be(false)
         end
 
         it "gives outsiders no signal that distinguishes a real repository from a missing one" do
