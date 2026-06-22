@@ -61,7 +61,7 @@ module Semaphore::GithubApp
         installation = GithubAppInstallation.find_for_organization(slug.split("/").first)
         return no_access unless installation && user_collaborates_in?(github_uid, installation)
 
-        refresh_owner_installation(installation, slug)
+        refresh_uncached_repository(installation, slug)
       end
     end
 
@@ -96,20 +96,46 @@ module Semaphore::GithubApp
     end
     private_class_method :refresh_cached_repository
 
-    # Repo absent from the cache: re-sync the whole owner installation (async).
-    # The caller's claim to the installation is verified in .targeted before we
-    # reach here.
-    def self.refresh_owner_installation(installation, slug)
-      owner = slug.split("/").first
+    # Repo absent from the cache: fetch just this repository from GitHub (the
+    # specific-repo endpoint, scoped to the installation token), add it to the
+    # cache, then sync its collaborators inline. The caller's claim to the
+    # installation is verified in .targeted before we reach here.
+    def self.refresh_uncached_repository(installation, slug)
+      repository = fetch_remote_repository(installation.installation_id, slug)
+      return repository if repository.is_a?(Result)
 
-      if Repositories::Worker.new.unique_lock_exists?([installation.installation_id])
-        return Result.new(:already_running, "A repository sync is already running. Results will appear shortly.")
+      # Cache the single repo (additive upsert; keeps repositories_count correct)
+      # without the async collaborator worker — we sync collaborators inline below.
+      Hook.add_repositories(
+        installation.installation_id,
+        [{ "id" => repository.id, "slug" => repository.full_name }],
+        :sync_collaborators => false
+      )
+
+      refresh_cached_repository(installation, repository.full_name)
+    end
+    private_class_method :refresh_uncached_repository
+
+    # GET /repos/{owner}/{repo} with the installation token. Returns the GitHub
+    # repository on success, or a failed Result when the token is unavailable,
+    # the rate limit is too low, or the repo is not accessible to the
+    # installation — a repo-scoped token 404s for repositories it cannot see.
+    def self.fetch_remote_repository(installation_id, slug)
+      no_access = Result.new(:failed, "The GitHub App has no access to #{slug}. Grant access on GitHub first.")
+
+      token, _expires_at = Token.installation_token(installation_id)
+      return no_access unless token
+
+      client = RepoHost::Github::Client.new(token)
+      if client.rate_limit_remaining < App.collaborators_api_rate_limit
+        return Result.new(:failed, "GitHub API rate limit is too low right now. Try again later.")
       end
 
-      Repositories::Worker.perform_async(installation.installation_id)
-      Result.new(:started, "Re-syncing #{owner}'s repository list. Search again in a moment.")
+      client.repository(slug)
+    rescue RepoHost::RemoteException::NotFound
+      no_access
     end
-    private_class_method :refresh_owner_installation
+    private_class_method :fetch_remote_repository
 
     # Whether the repository already shows up in this user's list — i.e. they
     # hold a (push-access) collaborator row for it. Mirrors how #get_repositories
