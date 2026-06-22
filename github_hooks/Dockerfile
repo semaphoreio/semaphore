@@ -75,6 +75,21 @@ RUN bundle config set --local deployment true && \
     bundle install --jobs=${BUNDLE_JOBS} && \
     rm -rf $BUNDLE_PATH/ruby/3.3.0/cache/*
 
+FROM builder as production-builder-debug
+
+WORKDIR /app
+
+COPY Gemfile Gemfile.lock ./
+
+RUN set -e; \
+    sed -i 's|gem "grpc", "~> 1.81.1"|gem "grpc", "~> 1.81.1", force_ruby_platform: true|' Gemfile; \
+    grep -q 'force_ruby_platform: true' Gemfile || { echo "ERROR: grpc gem line not patched (version drift?) — debug build would ship a stripped grpc"; exit 1; }; \
+    bundle config set --local without 'development test'; \
+    bundle config set --local clean 'true'; \
+    bundle config set --local no-cache 'true'; \
+    GRPC_CONFIG=dbg bundle install --jobs=${BUNDLE_JOBS}; \
+    rm -rf $BUNDLE_PATH/ruby/3.3.0/cache/*
+
 FROM base as runner
 
 # This is needed to connect the GitHub Container Registry package with our repository.
@@ -93,6 +108,13 @@ RUN apt-get update && apt-get install --no-install-recommends -y -qq \
   procps \
   && apt-get clean && rm -f /var/lib/apt/lists/*_*
 
+ARG BUNDLE_SOURCE=production-builder
+RUN if [ "$BUNDLE_SOURCE" = "production-builder-debug" ]; then \
+      apt-get update && apt-get install --no-install-recommends -y -qq \
+        libjemalloc-dev binutils graphviz procps && \
+      apt-get clean && rm -f /var/lib/apt/lists/*_* ; \
+    fi
+
 COPY --chown=nobody:root app app
 COPY --chown=nobody:root script script
 COPY --chown=nobody:root bin bin
@@ -105,7 +127,7 @@ COPY --chown=nobody:root Rakefile Rakefile
 COPY --chown=nobody:root sidekiq.ru sidekiq.ru
 COPY --chown=nobody:root Gemfile Gemfile
 COPY --chown=nobody:root Gemfile.lock Gemfile.lock
-COPY --from=production-builder --chown=nobody:root $BUNDLE_PATH $BUNDLE_PATH
+COPY --from=${BUNDLE_SOURCE} --chown=nobody:root $BUNDLE_PATH $BUNDLE_PATH
 
 RUN gem install --no-document heapy
 ENV PATH="/app/vendor/bundle/bin:${PATH}"

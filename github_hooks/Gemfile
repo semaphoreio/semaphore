@@ -15,6 +15,9 @@ gem "net-http" # https://github.com/ruby/net-imap/issues/16#issuecomment-8030867
 gem 'net-imap', '~> 0.5.15'
 gem "grpc", "~> 1.81.1"
 gem "google-protobuf", "~> 3.25"
+gem 'net-imap', '~> 0.5.15'
+gem "grpc", "~> 1.81.1"
+gem "google-protobuf", "~> 3.25"
 gem "googleapis-common-protos-types", "~> 1.18.0"
 gem "httparty", "~> 0.24.0"
 gem "httpclient"
@@ -38,11 +41,17 @@ gem "sentry-sidekiq"
 
 gem "sprockets", "< 4"
 gem "nokogiri", "~> 1.19.0", ">= 1.19.4"
+gem "nokogiri", "~> 1.19.0", ">= 1.19.4"
 gem "uri", "~> 1.0", ">= 1.0.4"
 
 gem "rt-watchman", :require => "watchman", :github => "renderedtext/watchman", :ref => "74530687a232aea678b6738114c82dfc163657cd"
 gem "rt-logman", :require => "logman"
 gem "rt-tackle", :require => "tackle"
+
+gem "rbtrace", :require => false
+gem "memory_profiler", :require => false
+gem "stackprof", :require => false
+gem "sigdump", :require => "sigdump/setup"
 
 gem "rbtrace", :require => false
 gem "memory_profiler", :require => false
