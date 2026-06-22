@@ -73,56 +73,81 @@ defmodule Audit.Retention.PolicyMarkerTest do
     assert is_nil(get_event(old_event.id).expires_at)
   end
 
-  test "ignores policy event with future cutoff" do
+  test "clamps a future cutoff to the retention floor" do
     org_id = Ecto.UUID.generate()
     now = DateTime.utc_now() |> DateTime.truncate(:second)
+    future_cutoff = DateTime.add(now, 3_600, :second)
 
-    old_event =
+    # Older than the 400-day floor: still expired (clamped, not dropped).
+    beyond_floor =
+      RetentionFixtures.insert_event(%{
+        org_id: org_id,
+        timestamp: DateTime.add(now, -420 * 86_400, :second)
+      })
+
+    # Recent: never expired, even though the cutoff is in the future.
+    recent =
       RetentionFixtures.insert_event(%{
         org_id: org_id,
         timestamp: DateTime.add(now, -120, :second)
       })
 
-    future_cutoff = DateTime.add(now, 3_600, :second)
-
     assert :ok = PolicyMarker.handle_message(encode_policy_event(org_id, future_cutoff))
-    assert is_nil(get_event(old_event.id).expires_at)
+    refute is_nil(get_event(beyond_floor.id).expires_at)
+    assert is_nil(get_event(recent.id).expires_at)
   end
 
-  test "refuses cutoff more recent than the retention floor" do
+  test "clamps a too-recent cutoff to the retention floor" do
     org_id = Ecto.UUID.generate()
     now = DateTime.utc_now() |> DateTime.truncate(:second)
 
-    # A cutoff well inside the 400-day floor would expire recent audit logs.
+    # Publisher asks for a 10-day window — far inside the 400-day floor.
     too_recent_cutoff = DateTime.add(now, -10 * 86_400, :second)
 
-    old_event =
+    # Older than the floor: must still be marked (we clamp instead of dropping).
+    beyond_floor =
       RetentionFixtures.insert_event(%{
         org_id: org_id,
-        timestamp: DateTime.add(too_recent_cutoff, -120, :second)
+        timestamp: DateTime.add(now, -420 * 86_400, :second)
+      })
+
+    # Within the floor: kept, even though the requested 10-day window would
+    # have expired it.
+    within_floor =
+      RetentionFixtures.insert_event(%{
+        org_id: org_id,
+        timestamp: DateTime.add(now, -200 * 86_400, :second)
       })
 
     assert :ok = PolicyMarker.handle_message(encode_policy_event(org_id, too_recent_cutoff))
-    assert is_nil(get_event(old_event.id).expires_at)
+    refute is_nil(get_event(beyond_floor.id).expires_at)
+    assert is_nil(get_event(within_floor.id).expires_at)
   end
 
-  test "clamps a configured floor below the policy up to the 400-day minimum" do
+  test "a configured floor below the policy is clamped up to the 400-day minimum" do
     with_min_retention_days(30, fn ->
       org_id = Ecto.UUID.generate()
       now = DateTime.utc_now() |> DateTime.truncate(:second)
 
-      # 60 days old: would pass the requested 30-day floor, but the floor cannot
-      # be weakened below the 400-day policy, so it is refused.
+      # Both the publisher window (60d) and the configured floor (30d) are below
+      # the 400-day policy minimum, so retention still floors at 400 days.
       cutoff = DateTime.add(now, -60 * 86_400, :second)
 
-      old_event =
+      beyond_floor =
         RetentionFixtures.insert_event(%{
           org_id: org_id,
-          timestamp: DateTime.add(cutoff, -120, :second)
+          timestamp: DateTime.add(now, -420 * 86_400, :second)
+        })
+
+      within_floor =
+        RetentionFixtures.insert_event(%{
+          org_id: org_id,
+          timestamp: DateTime.add(now, -90 * 86_400, :second)
         })
 
       assert :ok = PolicyMarker.handle_message(encode_policy_event(org_id, cutoff))
-      assert is_nil(get_event(old_event.id).expires_at)
+      refute is_nil(get_event(beyond_floor.id).expires_at)
+      assert is_nil(get_event(within_floor.id).expires_at)
     end)
   end
 
@@ -131,18 +156,25 @@ defmodule Audit.Retention.PolicyMarkerTest do
       org_id = Ecto.UUID.generate()
       now = DateTime.utc_now() |> DateTime.truncate(:second)
 
-      # 500 days old: fine under the default 400-day floor, but refused under the
-      # configured stricter 800-day floor.
+      # 500-day window is fine under the default 400-day floor, but the stricter
+      # 800-day floor clamps it: 500-day-old events are kept, only 800d+ expire.
       cutoff = DateTime.add(now, -500 * 86_400, :second)
 
-      old_event =
+      beyond_floor =
         RetentionFixtures.insert_event(%{
           org_id: org_id,
-          timestamp: DateTime.add(cutoff, -120, :second)
+          timestamp: DateTime.add(now, -820 * 86_400, :second)
+        })
+
+      within_floor =
+        RetentionFixtures.insert_event(%{
+          org_id: org_id,
+          timestamp: DateTime.add(now, -500 * 86_400, :second)
         })
 
       assert :ok = PolicyMarker.handle_message(encode_policy_event(org_id, cutoff))
-      assert is_nil(get_event(old_event.id).expires_at)
+      refute is_nil(get_event(beyond_floor.id).expires_at)
+      assert is_nil(get_event(within_floor.id).expires_at)
     end)
   end
 
