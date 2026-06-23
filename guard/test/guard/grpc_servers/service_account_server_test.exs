@@ -355,7 +355,7 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
 
     test "returns not_found for a service account from a different org", %{grpc_channel: channel} do
       service_account_id = Ecto.UUID.generate()
-      owner_org_id = Ecto.UUID.generate()
+      _owner_org_id = Ecto.UUID.generate()
       other_org_id = Ecto.UUID.generate()
 
       with_mocks([
@@ -371,7 +371,6 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
          ]}
       ]) do
         # SA created in owner_org_id, queried with a different org_id
-        _ = owner_org_id
 
         request =
           ServiceAccount.DescribeRequest.new(
@@ -528,7 +527,7 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
     end
 
     test "excludes service accounts from a different org", %{grpc_channel: channel} do
-      owner_org_id = Ecto.UUID.generate()
+      _owner_org_id = Ecto.UUID.generate()
       other_org_id = Ecto.UUID.generate()
       sa_in_owner_org = Ecto.UUID.generate()
       sa_in_other_org = Ecto.UUID.generate()
@@ -792,7 +791,7 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
     test "returns not_found when updating a service account from a different org",
          %{grpc_channel: channel} do
       service_account_id = Ecto.UUID.generate()
-      owner_org_id = Ecto.UUID.generate()
+      _owner_org_id = Ecto.UUID.generate()
       other_org_id = Ecto.UUID.generate()
 
       with_mocks([
@@ -807,8 +806,6 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
            end
          ]}
       ]) do
-        _ = owner_org_id
-
         request =
           ServiceAccount.UpdateRequest.new(
             service_account_id: service_account_id,
@@ -936,7 +933,7 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
     test "returns not_found when deactivating a service account from a different org",
          %{grpc_channel: channel} do
       service_account_id = Ecto.UUID.generate()
-      owner_org_id = Ecto.UUID.generate()
+      _owner_org_id = Ecto.UUID.generate()
       other_org_id = Ecto.UUID.generate()
 
       with_mocks([
@@ -950,8 +947,6 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
            end
          ]}
       ]) do
-        _ = owner_org_id
-
         request =
           ServiceAccount.DeactivateRequest.new(
             service_account_id: service_account_id,
@@ -1055,7 +1050,7 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
     test "returns not_found when reactivating a service account from a different org",
          %{grpc_channel: channel} do
       service_account_id = Ecto.UUID.generate()
-      owner_org_id = Ecto.UUID.generate()
+      _owner_org_id = Ecto.UUID.generate()
       other_org_id = Ecto.UUID.generate()
 
       with_mocks([
@@ -1069,8 +1064,6 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
            end
          ]}
       ]) do
-        _ = owner_org_id
-
         request =
           ServiceAccount.ReactivateRequest.new(
             service_account_id: service_account_id,
@@ -1174,7 +1167,7 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
     test "returns not_found when destroying a service account from a different org",
          %{grpc_channel: channel} do
       service_account_id = Ecto.UUID.generate()
-      owner_org_id = Ecto.UUID.generate()
+      _owner_org_id = Ecto.UUID.generate()
       other_org_id = Ecto.UUID.generate()
 
       with_mocks([
@@ -1188,8 +1181,6 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
            end
          ]}
       ]) do
-        _ = owner_org_id
-
         request =
           ServiceAccount.DestroyRequest.new(
             service_account_id: service_account_id,
@@ -1292,7 +1283,7 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
     test "returns not_found when regenerating token for a service account from a different org",
          %{grpc_channel: channel} do
       service_account_id = Ecto.UUID.generate()
-      owner_org_id = Ecto.UUID.generate()
+      _owner_org_id = Ecto.UUID.generate()
       other_org_id = Ecto.UUID.generate()
 
       with_mocks([
@@ -1306,8 +1297,6 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
            end
          ]}
       ]) do
-        _ = owner_org_id
-
         request =
           ServiceAccount.RegenerateTokenRequest.new(
             service_account_id: service_account_id,
