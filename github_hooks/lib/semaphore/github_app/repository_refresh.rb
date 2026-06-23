@@ -42,7 +42,8 @@ module Semaphore::GithubApp
       # the repositories/installations of other organizations.
       no_access = Result.new(:failed, "The GitHub App has no access to #{slug}. Grant access on GitHub first.")
 
-      github_uid = github_uid_for(user_id)
+      user = ::User.find_by(:id => user_id)
+      github_uid = user&.github_repo_host_account&.github_uid
       return no_access unless github_uid
 
       # Already listed for this user means they already have (push) access, so
@@ -54,12 +55,20 @@ module Semaphore::GithubApp
       installation = GithubAppInstallation.find_for_repository(slug)
 
       if installation
-        return no_access unless user_collaborates_in?(github_uid, installation)
+        return no_access unless authorized?(github_uid, user, slug, installation)
 
         refresh_cached_repository(installation, slug)
       else
         installation = GithubAppInstallation.find_for_organization(slug.split("/").first)
-        return no_access unless installation && user_collaborates_in?(github_uid, installation)
+        authorized = (installation && user_collaborates_in?(github_uid, installation)) ||
+                     user_has_github_push?(user, slug)
+        return no_access unless authorized
+
+        # No cached repo revealed the installation: ask GitHub which installation
+        # owns the repo so a zero-cached installation still works. Only after the
+        # caller is authorized, so we never persist installations they can't reach.
+        installation ||= discover_installation(slug)
+        return no_access unless installation
 
         Worker.perform_async(installation.installation_id, slug)
         Result.new(:started, "Fetching #{slug} from GitHub. Search again in a moment.")
@@ -133,6 +142,14 @@ module Semaphore::GithubApp
     end
     private_class_method :listed_for?
 
+    # Authorize a refresh of an already-known installation: a cached collaborator
+    # row (cheap, no API) OR live push access verified against GitHub (one
+    # user-scoped API call). The cached check runs first to keep the fast path.
+    def self.authorized?(github_uid, user, slug, installation)
+      user_collaborates_in?(github_uid, installation) || user_has_github_push?(user, slug)
+    end
+    private_class_method :authorized?
+
     # A user may refresh an installation they collaborate in — the same scope
     # .full grants. Installation-level (not per-repo) on purpose: .full already
     # lets such a user re-sync the installation's entire repository list, so a
@@ -141,6 +158,38 @@ module Semaphore::GithubApp
       GithubAppCollaborator.exists?(:c_id => github_uid, :installation_id => installation.installation_id)
     end
     private_class_method :user_collaborates_in?
+
+    # Verify the caller's real push access using the caller's OWN OAuth token, so
+    # the cold-start case (no cached collaborator row yet) still works without
+    # reopening cross-tenant access — a user can only pass for repos they truly
+    # push to. Uses the real (non-synthetic) GitHub account, so connectionless
+    # users short-circuit without an API call. Fails closed on any GitHub error.
+    def self.user_has_github_push?(user, slug)
+      account = user&.repo_host_account(::Repository::GITHUB_PROVIDER)
+      return false if account&.token.blank?
+
+      repository = RepoHost::Github::Client.new(account.token).repository(slug)
+      !!repository.permissions&.push
+    rescue RepoHost::RemoteException
+      false
+    end
+    private_class_method :user_has_github_push?
+
+    # Resolve (and persist) the installation that owns a repository when no cached
+    # repo reveals it. Only called for an already-authorized caller, so we never
+    # create rows for installations the caller cannot reach.
+    def self.discover_installation(slug)
+      installation_id = Token.repository_installation_id(slug)
+      return unless installation_id
+
+      GithubAppInstallation.find_or_create_by!(:installation_id => installation_id)
+    rescue ActiveRecord::RecordNotUnique
+      GithubAppInstallation.find_by(:installation_id => installation_id)
+    rescue StandardError => e
+      Rails.logger.error("[RepositoryRefresh] Failed to discover installation for '#{slug}': #{e.message}")
+      nil
+    end
+    private_class_method :discover_installation
 
     def self.github_uid_for(user_id)
       ::User.find(user_id).github_repo_host_account&.github_uid
