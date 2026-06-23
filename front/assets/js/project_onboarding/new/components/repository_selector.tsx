@@ -68,6 +68,12 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
   const manualSlugCandidate = extractRepositorySearchTerm(manualSlug, selectedProviderType);
   const manualSlugValid = parseRepositorySlug(manualSlugCandidate);
 
+  // Full refresh derives the installation from the user's existing repositories
+  // (same source as this list). With no repositories loaded there is no
+  // installation to refresh, so the full-refresh control is disabled. Stays
+  // enabled while loading / reloading to avoid flicker.
+  const canFullRefresh = isLoading || repositories.length > 0;
+
   const filteredRepositories = useMemo(
     () =>
       repositories.filter((repo) => {
@@ -581,6 +587,9 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
                         type="button"
                         className="btn btn-secondary ph2 flex items-center"
                         aria-label="More refresh options"
+                        title={canFullRefresh ? undefined : `No repositories to refresh yet`}
+                        disabled={!canFullRefresh}
+                        style={{ cursor: canFullRefresh ? `pointer` : `default` }}
                         onClick={() => setMenuOpen((open) => !open)}
                       >
                         <span className="material-symbols-outlined">arrow_drop_down</span>
