@@ -1,5 +1,6 @@
 
 import { useEffect, useContext, useState, useRef, useMemo } from "preact/hooks";
+import Tippy from "@tippyjs/react";
 import * as stores from "../stores";
 import * as toolbox from "js/toolbox";
 import { parseRepositorySlug, extractRepositorySearchTerm } from "../utils/slug";
@@ -56,6 +57,7 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [cooldownLeft, setCooldownLeft] = useState(0);
   const [manualSlug, setManualSlug] = useState(``);
+  const [menuOpen, setMenuOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const reloadTimeoutRef = useRef<number | null>(null);
@@ -493,63 +495,7 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
             {providerState.selectedProvider?.type === `github_app` &&
               configState.refreshRepositoriesUrl && (
               <div className="pv3 ph2 bt b--black-10">
-                <div className="flex justify-between items-center">
-                  <h3 className="f4 mb1">Repository not listed? Try refreshing it manually</h3>
-                  <toolbox.Popover
-                    placement="bottom-end"
-                    maxWidth={320}
-                    className="pa2"
-                    anchor={
-                      <button
-                        type="button"
-                        className="bg-transparent bn pa2 pointer flex items-center"
-                        aria-label="Repository options"
-                        data-tippy-content="Repository options"
-                      >
-                        <toolbox.Asset
-                          path="images/icn-more.svg"
-                          alt="Repository options"
-                          style={{ width: `18px`, height: `18px` }}
-                        />
-                      </button>
-                    }
-                    content={({ setVisible }) => (
-                      <button
-                        type="button"
-                        className="w-100 tl bg-white db dark-gray pa2 br2 bn hover-bg-row-highlight"
-                        style={{ cursor: isRefreshing || cooldownLeft > 0 ? `default` : `pointer` }}
-                        disabled={isRefreshing || cooldownLeft > 0}
-                        onClick={() => {
-                          void requestRefresh();
-                          setVisible(false);
-                        }}
-                      >
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 mr2">
-                            <toolbox.Asset
-                              path={
-                                isRefreshing
-                                  ? `images/spinner-2.svg`
-                                  : `images/icn-refresh.svg`
-                              }
-                              style={{ width: `16px`, height: `16px` }}
-                            />
-                          </div>
-                          <div>
-                            <h3 className="f5 mb0">
-                              {cooldownLeft > 0
-                                ? `Refresh available in ${cooldownLeft}s`
-                                : `Refresh repository list`}
-                            </h3>
-                            <p className="f6 black-60 mb0">
-                                Re-sync the full list from GitHub — slower
-                            </p>
-                          </div>
-                        </div>
-                      </button>
-                    )}
-                  />
-                </div>
+                <h3 className="f4 mb1">Repository not listed? Try refreshing it manually</h3>
                 <div className="flex items-center">
                   <input
                     type="text"
@@ -567,25 +513,80 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
                       }
                     }}
                   />
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    style={{
-                      cursor: !manualSlugValid || isRefreshing ? `default` : `pointer`,
-                    }}
-                    disabled={!manualSlugValid || isRefreshing}
-                    onClick={() => void submitManualSlug()}
-                  >
-                    {isRefreshing ? (
-                      <toolbox.Asset
-                        path="images/spinner-2.svg"
-                        alt="spinner"
-                        style={{ width: `16px`, height: `16px` }}
-                      />
-                    ) : (
-                      `Refresh`
-                    )}
-                  </button>
+                  <div className="button-group">
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      style={{
+                        cursor: !manualSlugValid || isRefreshing ? `default` : `pointer`,
+                      }}
+                      disabled={!manualSlugValid || isRefreshing}
+                      onClick={() => void submitManualSlug()}
+                    >
+                      {isRefreshing ? (
+                        <toolbox.Asset
+                          path="images/spinner-2.svg"
+                          alt="spinner"
+                          style={{ width: `16px`, height: `16px` }}
+                        />
+                      ) : (
+                        `Refresh`
+                      )}
+                    </button>
+                    <Tippy
+                      visible={menuOpen}
+                      onClickOutside={() => setMenuOpen(false)}
+                      interactive
+                      placement="bottom-end"
+                      arrow
+                      theme="dropdown"
+                      maxWidth={320}
+                      content={
+                        <button
+                          type="button"
+                          className="w-100 tl bg-white db dark-gray pa2 br2 bn hover-bg-row-highlight"
+                          style={{ cursor: isRefreshing || cooldownLeft > 0 ? `default` : `pointer` }}
+                          disabled={isRefreshing || cooldownLeft > 0}
+                          onClick={() => {
+                            void requestRefresh();
+                            setMenuOpen(false);
+                          }}
+                        >
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 mr2">
+                              <toolbox.Asset
+                                path={
+                                  isRefreshing
+                                    ? `images/spinner-2.svg`
+                                    : `images/icn-refresh.svg`
+                                }
+                                style={{ width: `16px`, height: `16px` }}
+                              />
+                            </div>
+                            <div>
+                              <h3 className="f5 mb0">
+                                {cooldownLeft > 0
+                                  ? `Refresh available in ${cooldownLeft}s`
+                                  : `Refresh repository list`}
+                              </h3>
+                              <p className="f6 black-60 mb0">
+                                  Re-sync the full list from GitHub — slower
+                              </p>
+                            </div>
+                          </div>
+                        </button>
+                      }
+                    >
+                      <button
+                        type="button"
+                        className="btn btn-secondary ph2 flex items-center"
+                        aria-label="More refresh options"
+                        onClick={() => setMenuOpen((open) => !open)}
+                      >
+                        <span className="material-symbols-outlined">arrow_drop_down</span>
+                      </button>
+                    </Tippy>
+                  </div>
                 </div>
                 <p className="f6 black-60 mt1 mb0">
                   {manualSlug.length > 0 && !manualSlugValid
