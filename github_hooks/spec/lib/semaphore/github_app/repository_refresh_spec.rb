@@ -231,7 +231,12 @@ module Semaphore::GithubApp
           expect(installation.installation_repositories.exists?(:slug => "renderedtext/brand-new-repo")).to be(false)
         end
 
-        it "fails without enqueuing when no installation covers the owner" do
+        it "fails without enqueuing when no installation covers the owner and the caller lacks push" do
+          # No cached installation for this owner, so authorization falls through
+          # to the live push check — which the caller fails for an unknown repo.
+          allow_any_instance_of(RepoHost::Github::Client).to receive(:repository)
+            .and_raise(RepoHost::RemoteException::NotFound)
+
           result = described_class.targeted(user.id, "unknown-owner/repo")
 
           expect(result.state).to eq(:failed)
@@ -242,12 +247,18 @@ module Semaphore::GithubApp
 
       # Regression for the cross-tenant authorization gap: a targeted refresh
       # must be scoped to the requesting user, not to anyone who can reach the
-      # endpoint. Previously any logged-in user could trigger a collaborator
-      # re-sync of — and enumerate — repositories of other organizations.
-      context "when the caller does not collaborate in the installation" do
+      # endpoint. With no cached row, authorization falls back to the caller's
+      # REAL GitHub push access (their own token) — an outsider without push is
+      # still refused, and gets the same opaque result for real vs missing repos.
+      context "when the caller neither collaborates nor has live push access" do
         let(:outsider) { FactoryBot.create(:user, :github_connection) }
 
-        it "refuses to refresh a cached repository and never calls GitHub" do
+        before do
+          allow_any_instance_of(RepoHost::Github::Client).to receive(:repository)
+            .and_raise(RepoHost::RemoteException::NotFound)
+        end
+
+        it "refuses a cached repository without re-syncing collaborators" do
           allow(Collaborators).to receive(:refresh)
 
           result = described_class.targeted(outsider.id, "renderedtext/guard")
@@ -277,10 +288,85 @@ module Semaphore::GithubApp
         end
       end
 
+      context "when the caller has no cached row but has live GitHub push access" do
+        let(:newcomer) { FactoryBot.create(:user, :github_connection) }
+
+        def repo_with_push(value)
+          Struct.new(:permissions).new(Struct.new(:push).new(value))
+        end
+
+        context "and the repository is cached" do
+          it "authorizes via live push and refreshes collaborators" do
+            allow_any_instance_of(RepoHost::Github::Client).to receive(:repository)
+              .with("renderedtext/guard").and_return(repo_with_push(true))
+            allow(Collaborators).to receive(:refresh).and_return(:ok)
+
+            result = described_class.targeted(newcomer.id, "renderedtext/guard")
+
+            expect(result.state).to eq(:done)
+            expect(Collaborators).to have_received(:refresh).with("renderedtext/guard", 0)
+          end
+
+          it "refuses when the caller lacks live push access" do
+            allow_any_instance_of(RepoHost::Github::Client).to receive(:repository)
+              .with("renderedtext/guard").and_return(repo_with_push(false))
+            allow(Collaborators).to receive(:refresh)
+
+            result = described_class.targeted(newcomer.id, "renderedtext/guard")
+
+            expect(result.state).to eq(:failed)
+            expect(result.message).to match(/Grant access on GitHub first/)
+            expect(Collaborators).not_to have_received(:refresh)
+          end
+        end
+
+        context "and no cached repo reveals the installation" do
+          before do
+            allow_any_instance_of(RepoHost::Github::Client).to receive(:repository)
+              .and_return(repo_with_push(true))
+          end
+
+          it "discovers the installation and enqueues the fetch" do
+            allow(Semaphore::GithubApp::Token).to receive(:repository_installation_id)
+              .with("acme/widget").and_return(777)
+
+            result = described_class.targeted(newcomer.id, "acme/widget")
+
+            expect(result.state).to eq(:started)
+            expect(GithubAppInstallation.exists?(:installation_id => 777)).to be(true)
+            expect(described_class::Worker.jobs.map { |job| job["args"] })
+              .to eq([[777, "acme/widget"]])
+          end
+
+          it "refuses when the app is not installed on the repository" do
+            allow(Semaphore::GithubApp::Token).to receive(:repository_installation_id).and_return(nil)
+
+            result = described_class.targeted(newcomer.id, "acme/widget")
+
+            expect(result.state).to eq(:failed)
+            expect(described_class::Worker.jobs).to be_empty
+            expect(GithubAppInstallation.count).to eq(1)
+          end
+        end
+
+        it "skips discovery entirely when the caller lacks live push access" do
+          allow_any_instance_of(RepoHost::Github::Client).to receive(:repository)
+            .and_return(repo_with_push(false))
+          expect(Semaphore::GithubApp::Token).not_to receive(:repository_installation_id)
+
+          result = described_class.targeted(newcomer.id, "acme/widget")
+
+          expect(result.state).to eq(:failed)
+          expect(described_class::Worker.jobs).to be_empty
+        end
+      end
+
       context "when the caller has no GitHub connection" do
         let(:user_without_github) { FactoryBot.create(:user) }
 
-        it "is refused" do
+        it "is refused without a live GitHub call" do
+          expect_any_instance_of(RepoHost::Github::Client).not_to receive(:repository)
+
           result = described_class.targeted(user_without_github.id, "renderedtext/guard")
 
           expect(result.state).to eq(:failed)
