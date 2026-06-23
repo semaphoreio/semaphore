@@ -9,7 +9,7 @@ module Semaphore::GithubApp
 
       # Webhook-driven repository/collaborator syncs are opt-out via env; the
       # installation records are always updated, only the workers are gated.
-      sync = !App.disable_repository_webhook_sync
+      sync = !App.disable_collaborator_webhook_sync
 
       installation_id = payload["installation"]["id"]
       repositories = map_repositories(payload["repositories"])

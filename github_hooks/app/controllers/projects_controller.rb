@@ -162,10 +162,10 @@ class ProjectsController < ApplicationController
   private
 
   # Re-syncs the installation's repository list on every webhook. When
-  # DISABLE_REPOSITORY_WEBHOOK_SYNC is set, the list is still synced — only the
+  # DISABLE_COLLABORATOR_WEBHOOK_SYNC is set, the list is still synced — only the
   # per-repo collaborator fan-out is suppressed.
   def enqueue_repository_list_sync(installation_id, logger)
-    sync_collaborators = !App.disable_repository_webhook_sync
+    sync_collaborators = !App.disable_collaborator_webhook_sync
 
     unless sync_collaborators
       Watchman.increment("repo_host_post_commit_hooks.controller.collaborator_webhook_sync_disabled")

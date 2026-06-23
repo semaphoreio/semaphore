@@ -429,9 +429,9 @@ module Semaphore::GithubApp
       end
     end
 
-    context "when DISABLE_REPOSITORY_WEBHOOK_SYNC is set" do
+    context "when DISABLE_COLLABORATOR_WEBHOOK_SYNC is set" do
       before do
-        allow(App).to receive(:disable_repository_webhook_sync).and_return(true)
+        allow(App).to receive(:disable_collaborator_webhook_sync).and_return(true)
       end
 
       it "still enqueues the repository sync — manual refresh is not gated by the env flag" do

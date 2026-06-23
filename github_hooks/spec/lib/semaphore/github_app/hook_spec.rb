@@ -305,9 +305,9 @@ module Semaphore::GithubApp
         end
       end
 
-      context "when repository webhook sync is disabled", :aggregate_failures do
+      context "when collaborator webhook sync is disabled", :aggregate_failures do
         before do
-          allow(App).to receive(:disable_repository_webhook_sync).and_return(true)
+          allow(App).to receive(:disable_collaborator_webhook_sync).and_return(true)
         end
 
         context "add repositories" do
