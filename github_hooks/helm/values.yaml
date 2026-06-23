@@ -5,7 +5,7 @@ imagePullSecrets: []
 hooks:
   replicas: 1
   dbPoolSize: 2
-  disableRepositoryWebhookSync: false
+  disableCollaboratorWebhookSync: false
   resources:
     limits:
       cpu: 500m

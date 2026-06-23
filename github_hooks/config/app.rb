@@ -27,10 +27,10 @@ class App < Configurable # :nodoc:
   config.always_filter_skip_ci = (SemaphoreConfig.always_filter_skip_ci || "false") == "true"
   config.collaborators_api_rate_limit = (SemaphoreConfig.collaborators_api_rate_limit || 4000).to_i
 
-  # Set to "true" to disable the webhook-triggered repository-list sync; any
+  # Set to "true" to disable the webhook-triggered collaborator sync; any
   # other value (or unset) keeps it enabled.
-  config.disable_repository_webhook_sync =
-    (SemaphoreConfig.disable_repository_webhook_sync || "false") == "true"
+  config.disable_collaborator_webhook_sync =
+    (SemaphoreConfig.disable_collaborator_webhook_sync || "false") == "true"
   config.semaphore_edition = (SemaphoreConfig.semaphore_edition || "").downcase
 
   config.worker_max_retries    = (SemaphoreConfig.worker_max_retries || 10).to_i
