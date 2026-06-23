@@ -180,7 +180,12 @@ defmodule Guard.GrpcServers.ServiceAccountServer do
       ) do
     observe_and_log(
       "grpc.service_account.update",
-      %{service_account_id: service_account_id, name: name, description: description, org_id: org_id},
+      %{
+        service_account_id: service_account_id,
+        name: name,
+        description: description,
+        org_id: org_id
+      },
       fn ->
         validate_uuid!(service_account_id)
         validate_uuid!(org_id)
