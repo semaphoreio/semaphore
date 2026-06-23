@@ -28,7 +28,8 @@ defmodule Front.ServiceAccount do
                 description :: String.t()
               ) :: {:ok, ServiceAccount.t()} | {:error, any}
 
-    @callback delete(service_account_id :: String.t(), org_id :: String.t()) :: :ok | {:error, any}
+    @callback delete(service_account_id :: String.t(), org_id :: String.t()) ::
+                :ok | {:error, any}
 
     @callback regenerate_token(service_account_id :: String.t(), org_id :: String.t()) ::
                 {:ok, String.t()} | {:error, any}
