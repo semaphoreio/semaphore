@@ -259,7 +259,8 @@ defmodule Guard.Store.ServiceAccount do
   Permanently deletes the service account and associated user records from the database.
   This action cannot be undone.
   """
-  @spec destroy(String.t(), String.t()) :: {:ok, :destroyed} | {:error, :not_found | :internal_error}
+  @spec destroy(String.t(), String.t()) ::
+          {:ok, :destroyed} | {:error, :not_found | :internal_error}
   def destroy(service_account_id, org_id)
       when is_binary(service_account_id) and is_binary(org_id) do
     if valid_uuid?(service_account_id) and valid_uuid?(org_id) do

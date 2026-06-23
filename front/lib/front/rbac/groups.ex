@@ -109,8 +109,11 @@ defmodule Front.RBAC.Groups do
     Front.RBAC.GroupsClient.channel()
     |> Groups.Groups.Stub.list_groups(req)
     |> case do
-      {:ok, resp} -> {:ok, List.first(resp.groups) |> inject_user_data(org_id) |> Map.get(:members)}
-      e -> e
+      {:ok, resp} ->
+        {:ok, List.first(resp.groups) |> inject_user_data(org_id) |> Map.get(:members)}
+
+      e ->
+        e
     end
   end
 

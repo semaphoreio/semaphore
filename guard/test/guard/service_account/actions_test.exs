@@ -207,8 +207,7 @@ defmodule Guard.ServiceAccount.ActionsTest do
       org_id = "org-id"
       update_params = %{name: "Updated Name", description: "Updated Description"}
 
-      with_mock ServiceAccount, [:passthrough],
-        update: fn _, _, _ -> {:error, :update_failed} end do
+      with_mock ServiceAccount, [:passthrough], update: fn _, _, _ -> {:error, :update_failed} end do
         {:error, :update_failed} = Actions.update(service_account_id, org_id, update_params)
       end
     end
@@ -527,7 +526,9 @@ defmodule Guard.ServiceAccount.ActionsTest do
 
         # Update it within its own org
         update_params = %{name: "Updated Name", description: "Updated Description"}
-        {:ok, updated_sa} = Actions.update(service_account.id, service_account.org_id, update_params)
+
+        {:ok, updated_sa} =
+          Actions.update(service_account.id, service_account.org_id, update_params)
 
         assert updated_sa.name == "Updated Name"
         assert updated_sa.description == "Updated Description"
