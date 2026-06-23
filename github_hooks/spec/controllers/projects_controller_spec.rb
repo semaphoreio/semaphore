@@ -518,8 +518,8 @@ RSpec.describe ProjectsController, :type => :controller do
           let(:installation_target_type) { "integration" }
           let(:payload) { RepoHost::Github::Responses::Payload.repository_renamed_app_hook }
 
-          it "does not enqueue the repository sync and returns ok" do
-            expect(Semaphore::GithubApp::Repositories::Worker).not_to receive(:perform_async)
+          it "still enqueues the repository list sync, but without collaborators" do
+            expect(Semaphore::GithubApp::Repositories::Worker).to receive(:perform_async).with(anything, false)
 
             post_payload(payload)
 
@@ -527,7 +527,7 @@ RSpec.describe ProjectsController, :type => :controller do
           end
 
           it "increments the disabled metric" do
-            expect(Watchman).to receive(:increment).with("repo_host_post_commit_hooks.controller.repository_webhook_sync_disabled").and_call_original
+            expect(Watchman).to receive(:increment).with("repo_host_post_commit_hooks.controller.collaborator_webhook_sync_disabled").and_call_original
 
             post_payload(payload)
           end
