@@ -537,6 +537,13 @@ The username is used for connecting to the cache server.
 
 The path in the server to the SSH key file to access the cache server.
 
+### Fail on error {#cache-fail-on-error}
+
+- **Environment variable**: `CACHE_FAIL_ON_ERROR`
+- **Example**: `true`
+
+When set to `true`, cache commands exit with a non-zero status if an operation fails — for example, when the cache server is unreachable. By default this variable is unset and cache commands are best-effort: they log the error and exit with status `0` so the job continues without the cache. A cache miss is not considered an error. See [cache error handling](./toolbox#cache-error-handling) for details.
+
 ## Semaphore Docker registry variables {#registry-variables}
 
 These variables can be used to access the [Semaphore Docker registry](../using-semaphore/containers/docker).
