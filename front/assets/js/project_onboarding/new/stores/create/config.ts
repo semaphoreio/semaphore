@@ -8,6 +8,8 @@ export interface State {
   createProjectStatusUrl: string;
   domain: string;
   repositoriesUrl: string;
+  refreshRepositoriesUrl?: string;
+  repositoryRefreshCooldown?: number;
   providers?: Provider.Provider[];
   primaryProvider?: Provider.Provider;
   userProfileUrl?: string;

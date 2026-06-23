@@ -1,7 +1,9 @@
 
 import { useEffect, useContext, useState, useRef, useMemo } from "preact/hooks";
+import Tippy from "@tippyjs/react";
 import * as stores from "../stores";
 import * as toolbox from "js/toolbox";
+import { parseRepositorySlug, extractRepositorySearchTerm } from "../utils/slug";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { Notice } from "js/notice";
@@ -28,6 +30,14 @@ interface ApiErrorResponse {
   message?: string;
 }
 
+interface RefreshResponse {
+  state: string;
+  message?: string;
+  retry_after?: number;
+}
+
+const BACKGROUND_SYNC_RELOAD_DELAY_MS = 15000;
+
 interface RepositorySelectorProps {
   repositoriesUrl: string;
   githubInstallUrl?: string;
@@ -44,18 +54,29 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
   const [searchQuery, setSearchQuery] = useState(``);
   const [selectedRepo, setSelectedRepo] = useState<Repository | null>(null);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [cooldownLeft, setCooldownLeft] = useState(0);
+  const [manualSlug, setManualSlug] = useState(``);
+  const [menuOpen, setMenuOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const reloadTimeoutRef = useRef<number | null>(null);
+
+  const selectedProviderType = providerState.selectedProvider?.type;
+  const searchTerm = extractRepositorySearchTerm(searchQuery, selectedProviderType);
+  const slugCandidate = parseRepositorySlug(searchTerm);
+  const manualSlugCandidate = extractRepositorySearchTerm(manualSlug, selectedProviderType);
+  const manualSlugValid = parseRepositorySlug(manualSlugCandidate);
 
   const filteredRepositories = useMemo(
     () =>
       repositories.filter((repo) => {
         const searchFields = [repo.full_name, repo.name, repo.url];
         return searchFields.some((field) =>
-          field?.toLowerCase().includes(searchQuery.toLowerCase())
+          field?.toLowerCase().includes(searchTerm.toLowerCase())
         );
       }),
-    [repositories, searchQuery]
+    [repositories, searchTerm]
   );
 
   const parseErrorMessage = (payload: unknown): string | null => {
@@ -125,11 +146,94 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
     setSearchQuery(target.value);
   };
 
+  const reloadRepositories = () => {
+    setRepositories([]);
+    setNextPageToken(null);
+    void loadRepositories(props.repositoriesUrl);
+  };
+
+  const startCooldown = () => {
+    setCooldownLeft(configState.repositoryRefreshCooldown ?? 60);
+  };
+
+  const requestRefresh = async (slug?: string): Promise<boolean> => {
+    if (!configState.refreshRepositoriesUrl || isRefreshing) return false;
+    setIsRefreshing(true);
+
+    try {
+      const { data, error, status } = await toolbox.APIRequest.post<RefreshResponse>(
+        configState.refreshRepositoriesUrl,
+        {
+          integration_type: providerState.selectedProvider?.type,
+          repository_slug: slug ?? ``,
+        }
+      );
+
+      if (!data) {
+        Notice.error(error || `Could not refresh repositories.`);
+        return false;
+      }
+
+      if (status === 429) {
+        setCooldownLeft(data.retry_after ?? configState.repositoryRefreshCooldown ?? 60);
+        Notice.notice(data.message);
+        return false;
+      }
+
+      switch (data.state) {
+        case `started`:
+        case `already_running`:
+          Notice.notice(`Repository sync started.`);
+          if (!slug) startCooldown();
+          if (reloadTimeoutRef.current !== null) window.clearTimeout(reloadTimeoutRef.current);
+          reloadTimeoutRef.current = window.setTimeout(
+            reloadRepositories,
+            BACKGROUND_SYNC_RELOAD_DELAY_MS
+          );
+          return true;
+        case `done`:
+          if (slug) {
+            reloadRepositories();
+          }
+          return true;
+        default:
+          Notice.error(data.message || error || `Could not refresh repositories.`);
+          return false;
+      }
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const submitManualSlug = async () => {
+    const slug = parseRepositorySlug(manualSlugCandidate);
+    if (!slug || isRefreshing) return;
+    if (await requestRefresh(slug)) {
+      setManualSlug(``);
+    }
+  };
+
   useEffect(() => {
     if (props.repositoriesUrl) {
       void loadRepositories(props.repositoriesUrl);
     }
   }, [props.repositoriesUrl]);
+
+  useEffect(() => {
+    if (cooldownLeft <= 0) return;
+
+    const interval = window.setInterval(() => {
+      setCooldownLeft((left) => (left > 1 ? left - 1 : 0));
+    }, 1000);
+
+    return () => window.clearInterval(interval);
+  }, [cooldownLeft > 0]);
+
+  useEffect(() => {
+    return () => {
+      if (reloadTimeoutRef.current !== null) window.clearTimeout(reloadTimeoutRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (filteredRepositories.length > 0 && hoveredIndex === null) {
@@ -291,7 +395,7 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
                   </div>
                   <div className="w-100">
                     <h3 className="f4 mb0 flex items-center justify-between">
-                      <span>{highlightMatch(repo.full_name, searchQuery)}</span>
+                      <span>{highlightMatch(repo.full_name, searchTerm)}</span>
                       <span className="f6 fw5">
                         {repo.addable ? (
                           <>
@@ -312,11 +416,11 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
                     </h3>
                     <p className="f4 measure black-60 mb0">
                       {repo.description
-                        ? highlightMatch(repo.description, searchQuery)
+                        ? highlightMatch(repo.description, searchTerm)
                         : ``}
                     </p>
                     <p className="f4 measure black-60 mb0">
-                      {repo.url ? highlightMatch(repo.url, searchQuery) : ``}
+                      {repo.url ? highlightMatch(repo.url, searchTerm) : ``}
                     </p>
                   </div>
                 </div>
@@ -332,6 +436,35 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
             {filteredRepositories.length === 0 && !isLoading && (
               <div className="mt3 pl3">
                 <p className="f5 black-70">No repositories found.</p>
+              </div>
+            )}
+            {providerState.selectedProvider?.type === `github_app` &&
+              configState.refreshRepositoriesUrl &&
+              !isLoading &&
+              filteredRepositories.length === 0 &&
+              slugCandidate && (
+              <div
+                className="flex option pv2 ph3 pointer bt b--black-10"
+                role="option"
+                onClick={() => void requestRefresh(slugCandidate)}
+              >
+                <div className="flex-shrink-0 mt1 mr2">
+                  <toolbox.Asset
+                    path="images/icn-repository.svg"
+                    alt="repository"
+                  />
+                </div>
+                <div className="w-100">
+                  <h3 className="f4 mb0">
+                      Fetch {slugCandidate} from GitHub
+                  </h3>
+                  <p className="f4 measure black-60 mb0">
+                      Sync only this repository&apos;s data from GitHub
+                  </p>
+                </div>
+                {isRefreshing && (
+                  <toolbox.Asset path="images/spinner-2.svg" className="mr2" alt="spinner" style={{ width: `20px`, height: `20px` }}/>
+                )}
               </div>
             )}
             {providerState.selectedProvider?.type === `github_app` &&
@@ -357,6 +490,109 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
                     </div>
                   </div>
                 </a>
+              </div>
+            )}
+            {providerState.selectedProvider?.type === `github_app` &&
+              configState.refreshRepositoriesUrl && (
+              <div className="pv3 ph2 bt b--black-10">
+                <h3 className="f4 mb1">Repository not listed? Try refreshing it manually</h3>
+                <div className="flex items-center">
+                  <input
+                    type="text"
+                    className="form-control flex-auto ba b--black-20 br2 pa2 mr2"
+                    style={{ outline: `none`, boxShadow: `none` }}
+                    placeholder="organization/repository or repository URL"
+                    value={manualSlug}
+                    onInput={(event) =>
+                      setManualSlug((event.target as HTMLInputElement).value)
+                    }
+                    onKeyDown={(event: KeyboardEvent) => {
+                      if (event.key === `Enter`) {
+                        event.preventDefault();
+                        void submitManualSlug();
+                      }
+                    }}
+                  />
+                  <div className="button-group">
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      style={{
+                        cursor: !manualSlugValid || isRefreshing ? `default` : `pointer`,
+                      }}
+                      disabled={!manualSlugValid || isRefreshing}
+                      onClick={() => void submitManualSlug()}
+                    >
+                      {isRefreshing ? (
+                        <toolbox.Asset
+                          path="images/spinner-2.svg"
+                          alt="spinner"
+                          style={{ width: `16px`, height: `16px` }}
+                        />
+                      ) : (
+                        `Refresh`
+                      )}
+                    </button>
+                    <Tippy
+                      visible={menuOpen}
+                      onClickOutside={() => setMenuOpen(false)}
+                      interactive
+                      placement="bottom-end"
+                      arrow
+                      theme="dropdown"
+                      maxWidth={320}
+                      content={
+                        <button
+                          type="button"
+                          className="w-100 tl bg-white db dark-gray pa2 br2 bn hover-bg-row-highlight"
+                          style={{ cursor: isRefreshing || cooldownLeft > 0 ? `default` : `pointer` }}
+                          disabled={isRefreshing || cooldownLeft > 0}
+                          onClick={() => {
+                            void requestRefresh();
+                            setMenuOpen(false);
+                          }}
+                        >
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 mr2">
+                              <toolbox.Asset
+                                path={
+                                  isRefreshing
+                                    ? `images/spinner-2.svg`
+                                    : `images/icn-refresh.svg`
+                                }
+                                style={{ width: `16px`, height: `16px` }}
+                              />
+                            </div>
+                            <div>
+                              <h3 className="f5 mb0">
+                                {cooldownLeft > 0
+                                  ? `Refresh available in ${cooldownLeft}s`
+                                  : `Refresh repository list`}
+                              </h3>
+                              <p className="f6 black-60 mb0">
+                                  Re-sync the full list from GitHub — slower
+                              </p>
+                            </div>
+                          </div>
+                        </button>
+                      }
+                    >
+                      <button
+                        type="button"
+                        className="btn btn-secondary ph2 flex items-center"
+                        aria-label="More refresh options"
+                        onClick={() => setMenuOpen((open) => !open)}
+                      >
+                        <span className="material-symbols-outlined">arrow_drop_down</span>
+                      </button>
+                    </Tippy>
+                  </div>
+                </div>
+                <p className="f6 black-60 mt1 mb0">
+                  {manualSlug.length > 0 && !manualSlugValid
+                    ? `Use the owner/repository format, e.g. organization/repository`
+                    : `Paste the repository URL or owner/repository to sync just that repository.`}
+                </p>
               </div>
             )}
           </div>
