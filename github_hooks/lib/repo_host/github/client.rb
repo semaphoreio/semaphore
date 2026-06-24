@@ -20,6 +20,7 @@ module RepoHost::Github
     OWNER_TYPE_USER = "User"
     OWNER_TYPE_ORGANIZATION = "Organization"
     WEBHOOK_OPTIONS = { :events => ["push", "pull_request", "member"] }
+    ORG_PUSH_SCAN_MAX_PAGES = 10
 
     Octokit.default_media_type = "application/vnd.github.moondragon+json"
 
@@ -53,6 +54,27 @@ module RepoHost::Github
 
     def repositories
       user_repositories
+    rescue *GITHUB_EXCEPTION => exception
+      handle_octokit_exceptions(exception)
+    end
+
+    # True if the token owner has push access to at least one repository owned by
+    # the given organization. Pages /user/repos (org-member + collaborator
+    # affiliations) with early exit, bounded by ORG_PUSH_SCAN_MAX_PAGES.
+    def push_access_to_organization?(organization)
+      target = organization.to_s.downcase
+      client = Octokit::Client.new(:access_token => @token, :auto_paginate => false)
+
+      ORG_PUSH_SCAN_MAX_PAGES.times do |index|
+        repos = client.repos(nil, :affiliation => "organization_member,collaborator",
+                                  :per_page => 100, :page => index + 1)
+        return false if repos.empty?
+        return true if repos.any? { |repo| organization_push?(repo, target) }
+        return false if repos.size < 100
+      end
+
+      Rails.logger.warn("[RepoHost::Github::Client] org push scan hit page cap for organization=#{organization}")
+      false
     rescue *GITHUB_EXCEPTION => exception
       handle_octokit_exceptions(exception)
     end
@@ -202,6 +224,14 @@ module RepoHost::Github
     end
 
     private
+
+    def organization_push?(repo, target_login)
+      owner = repo[:owner]
+      owner &&
+        owner[:type] == OWNER_TYPE_ORGANIZATION &&
+        owner[:login].to_s.downcase == target_login &&
+        repo[:permissions] && !!repo[:permissions][:push]
+    end
 
     def user_client
       @user_client ||= Octokit::Client.new(:access_token => @token,

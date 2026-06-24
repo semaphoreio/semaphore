@@ -58,6 +58,27 @@ class Semaphore::GithubApp::Token
     nil
   end
 
+  # Resolve the installation id for an organization via the app JWT, even when no
+  # repository of the org is cached. Returns nil when the app is not installed on
+  # the org (404) or on any error.
+  def self.organization_installation_id(organization)
+    response = Excon.get(
+      "https://api.github.com/orgs/#{organization}/installation",
+      :headers => {
+        "User-Agent" => "Awesome-Octocat-App",
+        "Authorization" => "Bearer #{generate_jwt}",
+        "Accept" => "application/vnd.github.v3+json"
+      })
+
+    return JSON.parse(response.data[:body])["id"].to_i if response.status < 300
+
+    nil
+  rescue StandardError => e
+    Rails.logger.error("[Semaphore::GithubApp::Token] Failed to resolve installation for organization '#{organization}': #{e.message}")
+
+    nil
+  end
+
   # PRIVATE
 
   def self.fetch_token(installation_id)

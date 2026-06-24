@@ -33,6 +33,32 @@ module Semaphore::GithubApp
       Result.new(:started, "Repository sync started. This can take a few minutes.")
     end
 
+    # Full refresh scoped to a single organization the caller names. Authorized
+    # by the caller's real push access to a repo in that org (their own OAuth
+    # token), so it works even when nothing is cached yet — without read:org and
+    # without reopening cross-tenant access.
+    def self.full_for_organization(user_id, organization)
+      org = normalize_organization(organization)
+      return Result.new(:failed, "Enter a GitHub organization name.") unless org
+
+      # Opaque result whether the org has no installation or the caller has no
+      # claim to it, so this cannot enumerate other organizations.
+      no_access = Result.new(:failed, "The GitHub App has no access to #{org}. Grant access on GitHub first.")
+
+      user = ::User.find_by(:id => user_id)
+      return no_access unless user_has_org_push?(user, org)
+
+      installation = GithubAppInstallation.find_for_organization(org) || discover_organization_installation(org)
+      return no_access unless installation
+
+      if Repositories::Worker.new.unique_lock_exists?([installation.installation_id])
+        return Result.new(:already_running, "A repository sync is already running. Results will appear shortly.")
+      end
+
+      refresh_installation(installation)
+      Result.new(:started, "Repository sync started for #{org}. This can take a few minutes.")
+    end
+
     def self.targeted(user_id, repository_slug)
       slug = GithubAppInstallation.normalize_slug(repository_slug)
       return Result.new(:failed, "Use the owner/repository format.") unless slug
@@ -190,6 +216,46 @@ module Semaphore::GithubApp
       nil
     end
     private_class_method :discover_installation
+
+    def self.normalize_organization(organization)
+      name = organization.to_s.strip
+      return if name.empty?
+      return unless name.match?(/\A[A-Za-z0-9][A-Za-z0-9-]{0,38}\z/)
+
+      name
+    end
+    private_class_method :normalize_organization
+
+    # Authorize an org-scoped full refresh: the caller has "write" to the org iff
+    # they have push access to at least one repository owned by it. Uses the
+    # caller's OWN OAuth token (no read:org scope needed) — tenant-safe, since a
+    # user can only pass for orgs they truly have push in. Connectionless users
+    # short-circuit; fails closed on any GitHub error.
+    def self.user_has_org_push?(user, organization)
+      account = user&.repo_host_account(::Repository::GITHUB_PROVIDER)
+      return false if account&.token.blank?
+
+      RepoHost::Github::Client.new(account.token).push_access_to_organization?(organization)
+    rescue RepoHost::RemoteException
+      false
+    end
+    private_class_method :user_has_org_push?
+
+    # Resolve (and persist) an organization's installation when no cached repo
+    # reveals it. Only called for an already-authorized caller, so we never create
+    # rows for installations the caller cannot reach.
+    def self.discover_organization_installation(organization)
+      installation_id = Token.organization_installation_id(organization)
+      return unless installation_id
+
+      GithubAppInstallation.find_or_create_by!(:installation_id => installation_id)
+    rescue ActiveRecord::RecordNotUnique
+      GithubAppInstallation.find_by(:installation_id => installation_id)
+    rescue StandardError => e
+      Rails.logger.error("[RepositoryRefresh] Failed to discover installation for org '#{organization}': #{e.message}")
+      nil
+    end
+    private_class_method :discover_organization_installation
 
     def self.github_uid_for(user_id)
       ::User.find(user_id).github_repo_host_account&.github_uid

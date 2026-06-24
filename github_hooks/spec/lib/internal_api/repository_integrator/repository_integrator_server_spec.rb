@@ -345,6 +345,29 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
       end
     end
 
+    context "for an organization-scoped github app refresh" do
+      before do
+        @req = InternalApi::RepositoryIntegrator::RefreshRepositoriesRequest.new(
+          :user_id => user_id,
+          :integration_type => :GITHUB_APP,
+          :organization => "acme"
+        )
+      end
+
+      it "dispatches to RepositoryRefresh.full_for_organization with the requesting user and org" do
+        expect(Semaphore::GithubApp::RepositoryRefresh).not_to receive(:full)
+        allow(Semaphore::GithubApp::RepositoryRefresh).to receive(:full_for_organization).and_return(
+          Semaphore::GithubApp::RepositoryRefresh::Result.new(:started, "Repository sync started for acme.")
+        )
+
+        response = server.refresh_repositories(@req, call)
+
+        expect(Semaphore::GithubApp::RepositoryRefresh).to have_received(:full_for_organization).with(user_id, "acme")
+        expect(response.sync_state).to eq(:STARTED)
+        expect(response.message).to eq("Repository sync started for acme.")
+      end
+    end
+
     context "for a targeted github app refresh" do
       before do
         @req = InternalApi::RepositoryIntegrator::RefreshRepositoriesRequest.new(

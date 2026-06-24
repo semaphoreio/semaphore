@@ -109,6 +109,103 @@ module Semaphore::GithubApp
       end
     end
 
+    describe ".full_for_organization" do
+      let(:user) { FactoryBot.create(:user, :github_connection) }
+      let!(:installation) do
+        FactoryBot.create(:github_app_installation, :installation_id => 555, :repositories => ["acme/widget"])
+      end
+
+      before do
+        Sidekiq::Worker.clear_all
+        allow_any_instance_of(Repositories::Worker).to receive(:unique_lock_exists?).and_return(false)
+      end
+
+      it "rejects a blank or malformed organization without calling GitHub" do
+        expect_any_instance_of(RepoHost::Github::Client).not_to receive(:push_access_to_organization?)
+
+        result = described_class.full_for_organization(user.id, "not a valid org!")
+
+        expect(result.state).to eq(:failed)
+        expect(result.message).to match(/organization name/)
+        expect(Repositories::Worker.jobs).to be_empty
+      end
+
+      context "when the caller has push access in the org" do
+        before do
+          allow_any_instance_of(RepoHost::Github::Client)
+            .to receive(:push_access_to_organization?).with("acme").and_return(true)
+        end
+
+        it "starts a refresh for the org's cached installation" do
+          result = described_class.full_for_organization(user.id, "acme")
+
+          expect(result.state).to eq(:started)
+          expect(result.message).to include("acme")
+          expect(Repositories::Worker.jobs.map { |job| job["args"] }).to eq([[installation.installation_id]])
+        end
+
+        it "discovers the installation via app JWT when the org has no cached repos" do
+          allow(GithubAppInstallation).to receive(:find_for_organization).with("acme").and_return(nil)
+          allow(Semaphore::GithubApp::Token).to receive(:organization_installation_id).with("acme").and_return(9090)
+
+          result = described_class.full_for_organization(user.id, "acme")
+
+          expect(result.state).to eq(:started)
+          expect(GithubAppInstallation.exists?(:installation_id => 9090)).to be(true)
+          expect(Repositories::Worker.jobs.map { |job| job["args"] }).to eq([[9090]])
+        end
+
+        it "fails when the app is not installed on the org" do
+          allow(GithubAppInstallation).to receive(:find_for_organization).with("acme").and_return(nil)
+          allow(Semaphore::GithubApp::Token).to receive(:organization_installation_id).and_return(nil)
+
+          result = described_class.full_for_organization(user.id, "acme")
+
+          expect(result.state).to eq(:failed)
+          expect(result.message).to match(/Grant access on GitHub first/)
+          expect(Repositories::Worker.jobs).to be_empty
+        end
+
+        it "reports already running when the installation is locked" do
+          allow_any_instance_of(Repositories::Worker).to receive(:unique_lock_exists?).and_return(true)
+
+          result = described_class.full_for_organization(user.id, "acme")
+
+          expect(result.state).to eq(:already_running)
+          expect(Repositories::Worker.jobs).to be_empty
+        end
+      end
+
+      context "when the caller lacks push access in the org" do
+        before do
+          allow_any_instance_of(RepoHost::Github::Client).to receive(:push_access_to_organization?).and_return(false)
+        end
+
+        it "refuses without enqueuing or discovering an installation" do
+          expect(Semaphore::GithubApp::Token).not_to receive(:organization_installation_id)
+
+          result = described_class.full_for_organization(user.id, "acme")
+
+          expect(result.state).to eq(:failed)
+          expect(result.message).to match(/Grant access on GitHub first/)
+          expect(Repositories::Worker.jobs).to be_empty
+        end
+      end
+
+      context "when the caller has no GitHub connection" do
+        let(:user_without_github) { FactoryBot.create(:user) }
+
+        it "refuses without a GitHub call" do
+          expect_any_instance_of(RepoHost::Github::Client).not_to receive(:push_access_to_organization?)
+
+          result = described_class.full_for_organization(user_without_github.id, "acme")
+
+          expect(result.state).to eq(:failed)
+          expect(Repositories::Worker.jobs).to be_empty
+        end
+      end
+    end
+
     describe ".targeted" do
       let!(:installation) { FactoryBot.create(:github_app_installation) }
       let(:user) { FactoryBot.create(:user, :github_connection) }

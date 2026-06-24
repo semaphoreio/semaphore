@@ -90,4 +90,30 @@ RSpec.describe Semaphore::GithubApp::Token do
       expect(described_class.repository_installation_id("acme/widget")).to be_nil
     end
   end
+
+  describe "#organization_installation_id" do
+    before { allow(described_class).to receive(:generate_jwt).and_return("jwt") }
+
+    it "returns the installation id on success" do
+      allow(Excon).to receive(:get).and_return(
+        instance_double(Excon::Response, :status => 200, :data => { :body => JSON.generate({ "id" => 9090 }) })
+      )
+
+      expect(described_class.organization_installation_id("acme")).to eq(9090)
+    end
+
+    it "returns nil when the app is not installed on the organization" do
+      allow(Excon).to receive(:get).and_return(
+        instance_double(Excon::Response, :status => 404, :data => { :body => "{}" })
+      )
+
+      expect(described_class.organization_installation_id("acme")).to be_nil
+    end
+
+    it "returns nil on a transport error" do
+      allow(Excon).to receive(:get).and_raise(StandardError.new("boom"))
+
+      expect(described_class.organization_installation_id("acme")).to be_nil
+    end
+  end
 end

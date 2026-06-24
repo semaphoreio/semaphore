@@ -91,11 +91,13 @@ module InternalApi
             )
           elsif req.repository_slug.present?
             ::Semaphore::GithubApp::RepositoryRefresh.targeted(req.user_id, req.repository_slug)
+          elsif req.organization.present?
+            ::Semaphore::GithubApp::RepositoryRefresh.full_for_organization(req.user_id, req.organization)
           else
             ::Semaphore::GithubApp::RepositoryRefresh.full(req.user_id)
           end
 
-        logger.info("RefreshRepositories user_id=#{req.user_id} slug=#{req.repository_slug.inspect} -> #{result.state}")
+        logger.info("RefreshRepositories user_id=#{req.user_id} slug=#{req.repository_slug.inspect} org=#{req.organization.inspect} -> #{result.state}")
 
         InternalApi::RepositoryIntegrator::RefreshRepositoriesResponse.new(
           :sync_state => result.state.to_s.upcase.to_sym,
