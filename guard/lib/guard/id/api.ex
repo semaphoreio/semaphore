@@ -146,29 +146,6 @@ defmodule Guard.Id.Api do
     nil
   end
 
-  @doc false
-  def parse_expires_at(nil), do: nil
-  def parse_expires_at(%DateTime{} = dt), do: dt
-
-  def parse_expires_at(expires_at) when is_integer(expires_at) do
-    case DateTime.from_unix(expires_at, :second) do
-      {:ok, dt} ->
-        dt
-
-      {:error, reason} ->
-        Logger.warning(
-          "Invalid expires_at integer from OAuth: #{inspect(expires_at)} (#{inspect(reason)})"
-        )
-
-        nil
-    end
-  end
-
-  def parse_expires_at(other) do
-    Logger.warning("Unexpected expires_at value from OAuth: #{inspect(other)}")
-    nil
-  end
-
   defp extract_repo_host_data(auth) do
     token_expires_at = parse_expires_at(auth.credentials.expires_at)
 
