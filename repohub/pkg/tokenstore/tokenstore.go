@@ -7,13 +7,12 @@ import (
 	"log"
 	"strings"
 
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 
 	"github.com/semaphoreio/semaphore/repohub/pkg/config"
 	"github.com/semaphoreio/semaphore/repohub/pkg/gitrekt"
+	"github.com/semaphoreio/semaphore/repohub/pkg/grpcconn"
 
 	ia_projecthub "github.com/semaphoreio/semaphore/repohub/pkg/internal_api/projecthub"
 	ia_repository_integrator "github.com/semaphoreio/semaphore/repohub/pkg/internal_api/repository_integrator"
@@ -61,11 +60,11 @@ func (s *TokenStore) FindRepoToken(r *models.Repository) (string, error) {
 }
 
 func (s *TokenStore) FindUser(userID string) (*ia_user.DescribeResponse, error) {
-	conn, err := grpc.NewClient(config.UserAPIEndpoint(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	// Reuse a pooled, long-lived connection — never Close it (see pkg/grpcconn).
+	conn, err := grpcconn.Get(config.UserAPIEndpoint())
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
 
 	log.Printf("Looking up user: %s", userID)
 
@@ -92,11 +91,11 @@ func (s *TokenStore) findIntegrationToken(projectID string, integrationType stri
 		return s.fetchRepositoryToken(userID, ia_repository_integrator.IntegrationType(ia_repository_integrator.IntegrationType_value[integrationType]))
 	}
 
-	conn, err := grpc.NewClient(config.RepositoryIntegratorAPIEndpoint(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	// Reuse a pooled, long-lived connection — never Close it (see pkg/grpcconn).
+	conn, err := grpcconn.Get(config.RepositoryIntegratorAPIEndpoint())
 	if err != nil {
 		return "", err
 	}
-	defer conn.Close()
 
 	log.Printf("Looking up token for project: %s", projectID)
 
@@ -118,11 +117,11 @@ func (s *TokenStore) findIntegrationToken(projectID string, integrationType stri
 }
 
 func (s *TokenStore) fetchRepositoryToken(userID string, integrationType ia_repository_integrator.IntegrationType) (string, error) {
-	conn, err := grpc.NewClient(config.UserAPIEndpoint(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	// Reuse a pooled, long-lived connection — never Close it (see pkg/grpcconn).
+	conn, err := grpcconn.Get(config.UserAPIEndpoint())
 	if err != nil {
 		return "", err
 	}
-	defer conn.Close()
 
 	log.Printf("Looking up user: %s", userID)
 
@@ -139,11 +138,11 @@ func (s *TokenStore) fetchRepositoryToken(userID string, integrationType ia_repo
 }
 
 func (s *TokenStore) findProject(projectID string) (*ia_projecthub.Project, error) {
-	conn, err := grpc.NewClient(config.ProjectAPIEndpoint(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	// Reuse a pooled, long-lived connection — never Close it (see pkg/grpcconn).
+	conn, err := grpcconn.Get(config.ProjectAPIEndpoint())
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
 
 	client := ia_projecthub.NewProjectServiceClient(conn)
 	req := ia_projecthub.DescribeRequest{Id: projectID, Metadata: &ia_projecthub.RequestMeta{OrgId: ""}}
