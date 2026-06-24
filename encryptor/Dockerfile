@@ -31,7 +31,7 @@ RUN curl -sL https://github.com/google/protobuf/releases/download/v3.3.0/protoc-
 
 WORKDIR /app
 RUN go install github.com/mgechev/revive@v1.7.0
-RUN go install gotest.tools/gotestsum@v1.12.1
+RUN go install gotest.tools/gotestsum@v1.13.0
 RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.7
 
 CMD [ "/bin/bash",  "-c \"while sleep 1000; do :; done\"" ]
