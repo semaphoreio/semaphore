@@ -161,8 +161,16 @@ module Semaphore::GithubApp
         result = described_class.refresh(installation_id)
 
         expect(result).to eq(:ok)
-        expect(Semaphore::GithubApp::Hook).to have_received(:add_repositories).with(installation_id, satisfy { |repositories| repositories.size == 200 })
-        expect(Semaphore::GithubApp::Hook).to have_received(:remove_repositories).with(installation_id, satisfy { |repositories| repositories.size == 200 })
+        expect(Semaphore::GithubApp::Hook).to have_received(:add_repositories).with(installation_id, satisfy { |repositories| repositories.size == 200 }, :sync_collaborators => true)
+        expect(Semaphore::GithubApp::Hook).to have_received(:remove_repositories).with(installation_id, satisfy { |repositories| repositories.size == 200 }, :sync_collaborators => true)
+      end
+
+      it "forwards sync_collaborators: false so the collaborator fan-out is skipped" do
+        result = described_class.refresh(installation_id, :sync_collaborators => false)
+
+        expect(result).to eq(:ok)
+        expect(Semaphore::GithubApp::Hook).to have_received(:add_repositories).with(installation_id, anything, :sync_collaborators => false)
+        expect(Semaphore::GithubApp::Hook).to have_received(:remove_repositories).with(installation_id, anything, :sync_collaborators => false)
       end
 
       context "when a repository slug differs only by letter case" do
@@ -173,8 +181,8 @@ module Semaphore::GithubApp
           result = described_class.refresh(installation_id)
 
           expect(result).to eq(:ok)
-          expect(Semaphore::GithubApp::Hook).to have_received(:add_repositories).with(installation_id, [])
-          expect(Semaphore::GithubApp::Hook).to have_received(:remove_repositories).with(installation_id, [])
+          expect(Semaphore::GithubApp::Hook).to have_received(:add_repositories).with(installation_id, [], :sync_collaborators => true)
+          expect(Semaphore::GithubApp::Hook).to have_received(:remove_repositories).with(installation_id, [], :sync_collaborators => true)
         end
       end
     end
