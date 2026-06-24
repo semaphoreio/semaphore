@@ -160,6 +160,36 @@ The supported options for `--cleanup-by` are:
 - `STORE_TIME`: (default) delete oldest files first
 - `ACCESS_TIME`: delete oldest accessed files first
 
+### Error handling {#cache-error-handling}
+
+By default, cache commands are **best-effort**: if the cache server can't be reached, or an operation otherwise fails, the command logs the error and exits with status `0` so the job continues without the cache. This prevents a cache outage from failing your pipeline.
+
+A cache *miss* is not an error: `has_key` exits with a non-zero status when the key is absent, and `restore` exits with status `0` when nothing matches.
+
+To make cache errors (for example, a failed connection to the cache server) fail the job instead, set [`CACHE_FAIL_ON_ERROR`](./env-vars#cache-fail-on-error) to `true`. Any cache command that then encounters an error exits with a non-zero status:
+
+```yaml
+blocks:
+  - name: Build
+    task:
+      env_vars:
+        - name: CACHE_FAIL_ON_ERROR
+          value: "true"
+      jobs:
+        - name: bundle
+          commands:
+            - cache restore gems-$SEMAPHORE_GIT_BRANCH
+            - bundle install
+            - cache store gems-$SEMAPHORE_GIT_BRANCH vendor/bundle
+```
+
+You can also export it for specific commands only:
+
+```shell
+export CACHE_FAIL_ON_ERROR=true
+cache restore gems-$SEMAPHORE_GIT_BRANCH
+```
+
 ### Environment variables {#cache-env-vars}
 
 The cache tool depends on the following environment variables:
@@ -167,6 +197,7 @@ The cache tool depends on the following environment variables:
 - [`SEMAPHORE_CACHE_URL`](./env-vars#cache-url)
 - [`SEMAPHORE_CACHE_USERNAME`](./env-vars#cache-username)
 - [`SEMAPHORE_CACHE_PRIVATE_KEY_PATH`](./env-vars#cache-private-key-path)
+- [`CACHE_FAIL_ON_ERROR`](./env-vars#cache-fail-on-error) (optional) — fail the job on cache errors instead of continuing. See [Error handling](#cache-error-handling).
 
 ## checkout {#checkout}
 
