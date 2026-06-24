@@ -87,6 +87,7 @@ defmodule FrontWeb.ProjectOnboardingController do
                             )
 
   @repository_slug_format ~r{\A[A-Za-z0-9][A-Za-z0-9\-]*/[A-Za-z0-9._\-]+\z}
+  @organization_format ~r/\A[A-Za-z0-9][A-Za-z0-9\-]{0,38}\z/
 
   def refresh_cooldown_seconds, do: @refresh_cooldown_seconds
 
@@ -547,6 +548,7 @@ defmodule FrontWeb.ProjectOnboardingController do
     org_id = conn.assigns.organization_id
     integration_type = Map.get(params, "integration_type", "")
     slug = params |> Map.get("repository_slug", "") |> String.trim()
+    organization = params |> Map.get("organization", "") |> String.trim()
 
     cond do
       integration_type != "github_app" ->
@@ -561,12 +563,17 @@ defmodule FrontWeb.ProjectOnboardingController do
         |> json(%{state: "failed", message: "Use the owner/repository format."})
 
       slug != "" ->
-        do_refresh(conn, user_id, slug)
+        do_refresh(conn, user_id, slug, "")
+
+      organization != "" and not Regex.match?(@organization_format, organization) ->
+        conn
+        |> put_status(422)
+        |> json(%{state: "failed", message: "Use a valid GitHub organization name."})
 
       true ->
         case claim_refresh_cooldown(org_id, user_id) do
           :ok ->
-            do_refresh(conn, user_id, "")
+            do_refresh(conn, user_id, "", organization)
 
           {:cooldown, seconds_left} ->
             conn
@@ -580,9 +587,9 @@ defmodule FrontWeb.ProjectOnboardingController do
     end
   end
 
-  defp do_refresh(conn, user_id, slug) do
-    result = Models.RepositoryIntegrator.refresh_repositories(user_id, slug)
-    audit_refresh(conn, slug, result)
+  defp do_refresh(conn, user_id, slug, organization) do
+    result = Models.RepositoryIntegrator.refresh_repositories(user_id, slug, organization)
+    audit_refresh(conn, slug, organization, result)
 
     case result do
       {:ok, %{state: state, message: message}}
@@ -617,9 +624,13 @@ defmodule FrontWeb.ProjectOnboardingController do
   # Audit every refresh that reaches the provider RPC, recording who triggered
   # it, the scope (full vs a single repository), and the resulting state — so a
   # refresh of another organization's repository leaves a trail.
-  defp audit_refresh(conn, slug, result) do
+  defp audit_refresh(conn, slug, organization, result) do
     {scope, resource_name} =
-      if slug == "", do: {"full", "all repositories"}, else: {"targeted", slug}
+      cond do
+        slug != "" -> {"targeted", slug}
+        organization != "" -> {"organization", organization}
+        true -> {"full", "all repositories"}
+      end
 
     conn
     |> Audit.new(:Project, :Modified)
@@ -630,6 +641,7 @@ defmodule FrontWeb.ProjectOnboardingController do
     |> Audit.metadata(
       refresh_scope: scope,
       repository_slug: slug,
+      organization: organization,
       result: refresh_result_state(result)
     )
     |> Audit.log()

@@ -194,6 +194,50 @@ defmodule FrontWeb.ProjectOnboardingControllerTest do
              |> Map.fetch!("state") == "done"
     end
 
+    test "organization refresh passes the org through and consumes the cooldown", %{conn: conn} do
+      test_pid = self()
+
+      GrpcMock.stub(RepositoryIntegratorMock, :refresh_repositories, fn req, _ ->
+        send(test_pid, {:refresh_request, req})
+
+        RefreshRepositoriesResponse.new(
+          sync_state: RefreshRepositoriesResponse.SyncState.value(:STARTED),
+          message: "Repository sync started for acme."
+        )
+      end)
+
+      params = %{integration_type: "github_app", organization: "acme"}
+
+      assert conn
+             |> post("/x/repositories/refresh", params)
+             |> json_response(200)
+             |> Map.fetch!("state") == "started"
+
+      assert_received {:refresh_request, req}
+      assert req.organization == "acme"
+      assert req.repository_slug == ""
+
+      # An org refresh is a full refresh, so an immediate retry is rate limited.
+      conn = post(conn, "/x/repositories/refresh", params)
+      assert json_response(conn, 429)
+    end
+
+    test "rejects an invalid organization without calling the RPC", %{conn: conn} do
+      GrpcMock.stub(RepositoryIntegratorMock, :refresh_repositories, fn _, _ ->
+        raise "refresh_repositories must not be called"
+      end)
+
+      conn =
+        post(conn, "/x/repositories/refresh", %{
+          integration_type: "github_app",
+          organization: "not a valid org!"
+        })
+
+      body = json_response(conn, 422)
+      assert body["state"] == "failed"
+      assert body["message"] =~ "organization"
+    end
+
     test "rejects an invalid slug without calling the RPC", %{conn: conn} do
       GrpcMock.stub(RepositoryIntegratorMock, :refresh_repositories, fn _, _ ->
         raise "refresh_repositories must not be called"

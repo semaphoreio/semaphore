@@ -45,13 +45,14 @@ defmodule Front.Models.RepositoryIntegrator do
   re-synced; with an "owner/repository" slug only that repository's data is
   refreshed.
   """
-  def refresh_repositories(user_id, repository_slug \\ "") do
+  def refresh_repositories(user_id, repository_slug \\ "", organization \\ "") do
     Watchman.benchmark("repository_integrator.refresh_repositories.duration", fn ->
       req =
         InternalApi.RepositoryIntegrator.RefreshRepositoriesRequest.new(
           user_id: user_id,
           integration_type: IntegrationType.value(:GITHUB_APP),
-          repository_slug: repository_slug
+          repository_slug: repository_slug,
+          organization: organization
         )
 
       case GRPC.Stub.connect(Application.fetch_env!(:front, :repository_integrator_grpc_endpoint)) do

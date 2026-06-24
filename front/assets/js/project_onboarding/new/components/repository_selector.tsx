@@ -58,6 +58,7 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
   const [cooldownLeft, setCooldownLeft] = useState(0);
   const [manualSlug, setManualSlug] = useState(``);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [orgName, setOrgName] = useState(``);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const reloadTimeoutRef = useRef<number | null>(null);
@@ -68,11 +69,6 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
   const manualSlugCandidate = extractRepositorySearchTerm(manualSlug, selectedProviderType);
   const manualSlugValid = parseRepositorySlug(manualSlugCandidate);
 
-  // Full refresh derives the installation from the user's existing repositories
-  // (same source as this list). With no repositories loaded there is no
-  // installation to refresh, so the full-refresh control is disabled. Stays
-  // enabled while loading / reloading to avoid flicker.
-  const canFullRefresh = isLoading || repositories.length > 0;
 
   const filteredRepositories = useMemo(
     () =>
@@ -162,7 +158,7 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
     setCooldownLeft(configState.repositoryRefreshCooldown ?? 60);
   };
 
-  const requestRefresh = async (slug?: string): Promise<boolean> => {
+  const requestRefresh = async (slug?: string, organization?: string): Promise<boolean> => {
     if (!configState.refreshRepositoriesUrl || isRefreshing) return false;
     setIsRefreshing(true);
 
@@ -172,6 +168,7 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
         {
           integration_type: providerState.selectedProvider?.type,
           repository_slug: slug ?? ``,
+          organization: organization ?? ``,
         }
       );
 
@@ -216,6 +213,15 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
     if (!slug || isRefreshing) return;
     if (await requestRefresh(slug)) {
       setManualSlug(``);
+    }
+  };
+
+  const submitOrgRefresh = async () => {
+    const org = orgName.trim();
+    if (!org || isRefreshing || cooldownLeft > 0) return;
+    if (await requestRefresh(undefined, org)) {
+      setOrgName(``);
+      setMenuOpen(false);
     }
   };
 
@@ -548,48 +554,58 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
                       theme="dropdown"
                       maxWidth={320}
                       content={
-                        <button
-                          type="button"
-                          className="w-100 tl bg-white db dark-gray pa2 br2 bn hover-bg-row-highlight"
-                          style={{ cursor: isRefreshing || cooldownLeft > 0 ? `default` : `pointer` }}
-                          disabled={isRefreshing || cooldownLeft > 0}
-                          onClick={() => {
-                            void requestRefresh();
-                            setMenuOpen(false);
-                          }}
-                        >
+                        <div className="pa1" style={{ minWidth: `260px` }}>
+                          <h3 className="f5 mb1">Refresh an organization</h3>
+                          <p className="f6 black-60 mb2">
+                            Re-sync every repository for a GitHub organization you have access to.
+                          </p>
                           <div className="flex items-center">
-                            <div className="flex-shrink-0 mr2">
-                              <toolbox.Asset
-                                path={
-                                  isRefreshing
-                                    ? `images/spinner-2.svg`
-                                    : `images/icn-refresh.svg`
+                            <input
+                              type="text"
+                              className="form-control flex-auto ba b--black-20 br2 pa2 mr2"
+                              style={{ outline: `none`, boxShadow: `none` }}
+                              placeholder="organization"
+                              value={orgName}
+                              disabled={isRefreshing || cooldownLeft > 0}
+                              onInput={(event) =>
+                                setOrgName((event.target as HTMLInputElement).value)
+                              }
+                              onKeyDown={(event: KeyboardEvent) => {
+                                if (event.key === `Enter`) {
+                                  event.preventDefault();
+                                  void submitOrgRefresh();
                                 }
-                                style={{ width: `16px`, height: `16px` }}
-                              />
-                            </div>
-                            <div>
-                              <h3 className="f5 mb0">
-                                {cooldownLeft > 0
-                                  ? `Refresh available in ${cooldownLeft}s`
-                                  : `Refresh repository list`}
-                              </h3>
-                              <p className="f6 black-60 mb0">
-                                  Re-sync the full list from GitHub — slower
-                              </p>
-                            </div>
+                              }}
+                            />
+                            <button
+                              type="button"
+                              className="btn btn-secondary"
+                              disabled={!orgName.trim() || isRefreshing || cooldownLeft > 0}
+                              onClick={() => void submitOrgRefresh()}
+                            >
+                              {isRefreshing ? (
+                                <toolbox.Asset
+                                  path="images/spinner-2.svg"
+                                  alt="spinner"
+                                  style={{ width: `16px`, height: `16px` }}
+                                />
+                              ) : (
+                                `Refresh`
+                              )}
+                            </button>
                           </div>
-                        </button>
+                          {cooldownLeft > 0 && (
+                            <p className="f6 black-60 mt1 mb0">
+                              Refresh available in {cooldownLeft}s
+                            </p>
+                          )}
+                        </div>
                       }
                     >
                       <button
                         type="button"
                         className="btn btn-secondary ph2 flex items-center"
-                        aria-label="More refresh options"
-                        title={canFullRefresh ? undefined : `No repositories to refresh yet`}
-                        disabled={!canFullRefresh}
-                        style={{ cursor: canFullRefresh ? `pointer` : `default` }}
+                        aria-label="Refresh an organization"
                         onClick={() => setMenuOpen((open) => !open)}
                       >
                         <span className="material-symbols-outlined">arrow_drop_down</span>

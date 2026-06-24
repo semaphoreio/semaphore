@@ -198,13 +198,15 @@ defmodule InternalApi.RepositoryIntegrator.RefreshRepositoriesRequest do
   @type t :: %__MODULE__{
           user_id: String.t(),
           integration_type: integer,
-          repository_slug: String.t()
+          repository_slug: String.t(),
+          organization: String.t()
         }
-  defstruct [:user_id, :integration_type, :repository_slug]
+  defstruct [:user_id, :integration_type, :repository_slug, :organization]
 
   field(:user_id, 1, type: :string)
   field(:integration_type, 2, type: InternalApi.RepositoryIntegrator.IntegrationType, enum: true)
   field(:repository_slug, 3, type: :string)
+  field(:organization, 4, type: :string)
 end
 
 defmodule InternalApi.RepositoryIntegrator.RefreshRepositoriesResponse do
