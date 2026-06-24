@@ -24,7 +24,7 @@ ENV LANG=C.UTF-8 \
 
 RUN gem update --system 3.5.23
 RUN gem install bundler -v '2.6.2' --no-document
-RUN gem install net-imap -v '0.5.14' --no-document && \
+RUN gem install net-imap -v '0.5.15' --no-document && \
   rm -rf /usr/local/lib/ruby/gems/3.3.0/gems/net-imap-0.4.21 && \
   rm -f /usr/local/lib/ruby/gems/3.3.0/specifications/net-imap-0.4.21.gemspec \
     /usr/local/lib/ruby/gems/3.3.0/specifications/default/net-imap-0.4.21.gemspec
