@@ -94,6 +94,11 @@ spec:
             - name: ENCRYPTOR_URL
               value: "localhost:50052"
 
+{{- if .Values.hooks.disableCollaboratorWebhookSync }}
+            - name: DISABLE_COLLABORATOR_WEBHOOK_SYNC
+              value: "true"
+{{- end }}
+
           startupProbe:
             httpGet:
               path: /is_alive
