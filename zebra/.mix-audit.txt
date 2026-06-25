@@ -1,0 +1,10 @@
+# cowlib — cookie request header injection in cow_cookie:cookie/1 (no patched
+# version released upstream; zebra does not generate Set-Cookie headers from
+# user input — it only serves a small internal Plug.Cowboy plane).
+GHSA-g2wm-735q-3f56
+
+# postgrex — channel-name SQL injection in Postgrex.Notifications.listen/3.
+# zebra does not call Postgrex.Notifications anywhere (grep `Postgrex.Notifications`
+# in lib/ returns no hits). Bumping postgrex past 0.16.x would cascade into an
+# ecto/Elixir version bump that is out of scope for a security patch PR.
+GHSA-r73h-97w8-m54h

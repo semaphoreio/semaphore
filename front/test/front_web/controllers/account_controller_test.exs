@@ -1,6 +1,8 @@
 defmodule FrontWeb.AccountControllerTest do
   use FrontWeb.ConnCase
 
+  @oauth_error_codes ~w(invalid_uid missing_name missing_login auth_failed login_not_allowed)
+
   setup do
     Cacheman.clear(:front)
 
@@ -46,6 +48,93 @@ defmodule FrontWeb.AccountControllerTest do
       assert html_response(conn, 200) =~ "GitHub"
 
       Support.Stubs.Feature.setup_feature("bitbucket", state: :ENABLED, quantity: 1)
+    end
+
+    test "when status=error with invalid_uid code => sets :alert flash with mapped text", %{
+      conn: conn
+    } do
+      conn = get(conn, "/account", %{"status" => "error", "code" => "invalid_uid"})
+
+      assert html_response(conn, 200)
+      assert get_flash(conn, :alert) =~ "did not return the required profile data"
+    end
+
+    test "when status=error with missing_name code => sets :alert flash with mapped text", %{
+      conn: conn
+    } do
+      conn = get(conn, "/account", %{"status" => "error", "code" => "missing_name"})
+
+      assert html_response(conn, 200)
+      assert get_flash(conn, :alert) =~ "profile is missing a display name"
+    end
+
+    test "when status=error with missing_login code => sets :alert flash with mapped text", %{
+      conn: conn
+    } do
+      conn = get(conn, "/account", %{"status" => "error", "code" => "missing_login"})
+
+      assert html_response(conn, 200)
+      assert get_flash(conn, :alert) =~ "profile is missing a username"
+    end
+
+    test "when status=error with unknown code => sets generic :alert flash", %{conn: conn} do
+      conn = get(conn, "/account", %{"status" => "error", "code" => "bogus"})
+
+      assert html_response(conn, 200)
+      assert get_flash(conn, :alert) =~ "connection attempt was unsuccessful"
+    end
+
+    test "when status=error with attacker text in code => still falls to generic, no reflection",
+         %{conn: conn} do
+      conn =
+        get(conn, "/account", %{
+          "status" => "error",
+          "code" => "<script>alert(1)</script>"
+        })
+
+      assert html_response(conn, 200)
+      assert get_flash(conn, :alert) =~ "connection attempt was unsuccessful"
+      refute get_flash(conn, :alert) =~ "<script>"
+    end
+
+    test "when status=error without code => sets generic :alert flash", %{conn: conn} do
+      conn = get(conn, "/account", %{"status" => "error"})
+
+      assert html_response(conn, 200)
+      assert get_flash(conn, :alert) =~ "connection attempt was unsuccessful"
+    end
+
+    test "when status=success => sets :notice flash", %{conn: conn} do
+      conn = get(conn, "/account", %{"status" => "success"})
+
+      assert html_response(conn, 200)
+      assert get_flash(conn, :notice) == "Repository account connected."
+    end
+
+    test "when no status param => no flash set from oauth path", %{conn: conn} do
+      conn = get(conn, "/account")
+
+      assert html_response(conn, 200)
+      assert get_flash(conn, :alert) == nil
+      assert get_flash(conn, :notice) == nil
+    end
+
+    test "every declared oauth error code maps to a non-generic flash message",
+         %{conn: conn} do
+      generic =
+        "We're sorry, but your connection attempt was unsuccessful. Please try again. " <>
+          "If you continue to experience issues, please contact our support team for assistance."
+
+      for code <- @oauth_error_codes do
+        conn = get(conn, "/account", %{"status" => "error", "code" => code})
+
+        flash = get_flash(conn, :alert)
+
+        assert is_binary(flash), "code #{inspect(code)} produced no :alert flash"
+
+        refute flash == generic,
+               "code #{inspect(code)} fell through to generic copy — add an oauth_error_text/1 clause"
+      end
     end
   end
 

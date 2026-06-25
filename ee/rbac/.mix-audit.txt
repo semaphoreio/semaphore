@@ -1,0 +1,16 @@
+# cowlib — cookie request header injection in cow_cookie:cookie/1 (no patched
+# version released upstream). ee/rbac does not generate Set-Cookie headers from
+# user-controlled input; cowlib is only pulled in via plug_cowboy/grpc.
+GHSA-g2wm-735q-3f56
+
+# postgrex — channel-name SQL injection in Postgrex.Notifications.listen/3.
+# ee/rbac does not call Postgrex.Notifications anywhere (grep `Postgrex.Notifications`
+# in lib/ returns no hits). Bumping postgrex past 0.19.x would cascade into an
+# ecto/Elixir version bump that is out of scope for a security patch PR.
+GHSA-r73h-97w8-m54h
+
+# decimal — unbounded exponent in `Decimal.new` (patched in 3.0.0). postgrex 0.19.3
+# pins decimal to `~> 2.0`, so bumping to 3.0 would cascade into a postgrex/ecto
+# bump that is out of scope for a security patch PR. ee/rbac does not parse
+# untrusted decimal strings.
+GHSA-rhv4-8758-jx7v

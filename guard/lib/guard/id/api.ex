@@ -77,8 +77,8 @@ defmodule Guard.Id.Api do
         conn
         |> redirect(:noop, %{
           status: "error",
-          message:
-            "We're sorry, but your connection attempt was unsuccessful. Please try again. If you continue to experience issues, please contact our support team for assistance."
+          code: "auth_failed",
+          provider: to_string(fails.provider)
         })
 
       %{assigns: %{user_id: user_id, ueberauth_auth: auth}} ->
@@ -97,25 +97,74 @@ defmodule Guard.Id.Api do
               status: "success"
             })
 
-          {:error, _} ->
-            conn |> redirect(:noop)
+          {:error, reason} ->
+            code = Guard.Id.OAuthErrorCode.from_reason(reason)
+
+            Logger.error(
+              "Failed to update RepoHostAccount user_id=#{user_id} provider=#{repo_host} " <>
+                "code=#{code} kind=#{repo_host_error_kind(reason)}"
+            )
+
+            conn
+            |> redirect(:noop, %{
+              status: "error",
+              code: code,
+              provider: to_string(repo_host)
+            })
         end
     end
   end
 
+  defp repo_host_error_kind(:invalid_data), do: "invalid_data"
+
+  defp repo_host_error_kind(%Ecto.Changeset{errors: errors}) do
+    "changeset:" <> (errors |> Keyword.keys() |> Enum.map_join(",", &to_string/1))
+  end
+
+  defp repo_host_error_kind(_), do: "other"
+
+  @doc false
+  def parse_expires_at(nil), do: nil
+  def parse_expires_at(%DateTime{} = dt), do: dt
+
+  def parse_expires_at(expires_at) when is_integer(expires_at) do
+    case DateTime.from_unix(expires_at, :second) do
+      {:ok, dt} ->
+        dt
+
+      {:error, reason} ->
+        Logger.warning(
+          "Invalid expires_at integer from OAuth: #{inspect(expires_at)} (#{inspect(reason)})"
+        )
+
+        nil
+    end
+  end
+
+  def parse_expires_at(other) do
+    Logger.warning("Unexpected expires_at value from OAuth: #{inspect(other)}")
+    nil
+  end
+
   defp extract_repo_host_data(auth) do
+    token_expires_at = parse_expires_at(auth.credentials.expires_at)
+
     {
       auth.provider,
       %{
         github_uid: auth.uid |> map_uid_to_string(),
         login: auth.info.nickname,
-        name: auth.info.name || auth.info.nickname,
+        name: pick_name(auth.info.name, auth.info.nickname),
         permission_scope: auth.credentials.scopes |> Enum.join(","),
         token: auth.credentials.token,
-        refresh_token: auth.credentials.refresh_token
+        refresh_token: auth.credentials.refresh_token,
+        token_expires_at: token_expires_at
       }
     }
   end
+
+  defp pick_name(name, nickname) when name in [nil, ""], do: nickname
+  defp pick_name(name, _nickname), do: name
 
   defp map_uid_to_string(uid) when is_integer(uid), do: uid |> Integer.to_string()
   defp map_uid_to_string(uid), do: uid
@@ -467,7 +516,7 @@ defmodule Guard.Id.Api do
           conn
           |> redirect(:noop, %{
             status: "error",
-            message: message || "Login not allowed. Please contact your administrator."
+            code: "login_not_allowed"
           })
 
         {:error, :user_blocked, user} ->

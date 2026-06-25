@@ -137,7 +137,14 @@ module InternalApi
 
         if rha.repo_host == "bitbucket"
           token, _ = ::Semaphore::Bitbucket::Token.user_token(rha)
-          rha.update!(:revoked => !::Semaphore::Bitbucket::Token.valid?(token))
+          validation_state = ::Semaphore::Bitbucket::Token.validation_state(token)
+
+          case validation_state
+          when :valid
+            rha.update!(:revoked => false)
+          when :invalid
+            rha.update!(:revoked => true)
+          end
         end
 
         rha

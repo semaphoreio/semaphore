@@ -26,8 +26,8 @@ defmodule Guard.Mixfile do
   defp deps do
     [
       {:grpc, "0.5.0-beta.1", override: true},
-      {:cowboy, "~> 2.9.0", override: true},
-      {:cowlib, "~> 2.11.0", override: true},
+      {:cowboy, "~> 2.15", override: true},
+      {:cowlib, "~> 2.16", override: true},
       {:plug_cowboy, "~> 2.3"},
       {:httpoison, "~> 1.8"},
       {:gen_retry, "~> 1.4.0"},
@@ -50,7 +50,7 @@ defmodule Guard.Mixfile do
       {:junit_formatter, "~> 3.1", only: [:test]},
       {:util, github: "renderedtext/elixir-util"},
       {:x509, "~> 0.8.7"},
-      {:esaml, git: "https://github.com/dropbox/esaml", tag: "v4.2.0"},
+      {:esaml, git: "https://github.com/handnot2/esaml", tag: "v4.2.0"},
       {:plug_rails_cookie_session_store, "~> 2.0"},
       {:yaml_elixir, "~> 2.9"},
       {:mox, "~> 1.0", only: [:dev, :test]},
