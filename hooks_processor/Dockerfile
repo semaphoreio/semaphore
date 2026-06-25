@@ -16,8 +16,7 @@ RUN apk update && \
     apk add --no-cache \
     git libretls-static
 
-RUN mix local.hex --force --if-missing && \
-    mix local.rebar --force --if-missing
+RUN mix local.rebar --force --if-missing
 
 WORKDIR /app
 

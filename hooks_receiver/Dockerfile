@@ -22,8 +22,7 @@ RUN apt-get update -y && apt-get install --no-install-recommends -y build-essent
 WORKDIR /app
 
 # install hex + rebar
-RUN mix local.hex --force --if-missing && \
-    mix local.rebar --force --if-missing
+RUN mix local.rebar --force --if-missing
 
 # install mix dependencies
 COPY mix.exs mix.lock ./
