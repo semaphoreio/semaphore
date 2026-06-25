@@ -154,6 +154,26 @@ defmodule FrontWeb.ProjectOnboardingControllerTest do
       assert body["retry_after"] <= 60
     end
 
+    test "uses the configurable full-refresh cooldown for the retry window", %{conn: conn} do
+      original = Application.get_env(:front, :repository_full_refresh_cooldown_seconds)
+      Application.put_env(:front, :repository_full_refresh_cooldown_seconds, 600)
+
+      on_exit(fn ->
+        Application.put_env(:front, :repository_full_refresh_cooldown_seconds, original)
+      end)
+
+      assert conn
+             |> post("/x/repositories/refresh", %{integration_type: "github_app"})
+             |> json_response(200)
+
+      conn = post(conn, "/x/repositories/refresh", %{integration_type: "github_app"})
+      body = json_response(conn, 429)
+
+      # 10-minute full cooldown, distinct from the 60s targeted throttle.
+      assert body["retry_after"] > 60
+      assert body["retry_after"] <= 600
+    end
+
     test "an already running sync still consumes the cooldown", %{conn: conn} do
       stub_refresh(:ALREADY_RUNNING, "A repository sync is already running.")
 

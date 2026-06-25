@@ -79,17 +79,17 @@ defmodule FrontWeb.ProjectOnboardingController do
     GIT: :CONFIG_TYPE_UNSPECIFIED
   }
 
-  # Cooldown between full repository refreshes, per organization + user.
-  @refresh_cooldown_seconds Application.compile_env(
-                              :front,
-                              :repository_refresh_cooldown_seconds,
-                              60
-                            )
+  # Per-user cooldown between targeted (single-repo) refreshes.
+  @targeted_refresh_cooldown_seconds 60
+  # Default cooldown between full / per-organization refreshes; override at
+  # runtime with REPOSITORY_FULL_REFRESH_COOLDOWN_SECONDS (see config/runtime.exs).
+  @default_full_refresh_cooldown_seconds 600
 
   @repository_slug_format ~r|\A[A-Za-z0-9][A-Za-z0-9\-]{0,38}/[A-Za-z0-9._\-]{1,100}\z|
   @organization_format ~r/\A[A-Za-z0-9][A-Za-z0-9\-]{0,38}\z/
 
-  def refresh_cooldown_seconds, do: @refresh_cooldown_seconds
+  # The UI surfaces the full-refresh cooldown (the org-refresh control).
+  def refresh_cooldown_seconds, do: cooldown_seconds(:full)
 
   defp get_agent_name(project) do
     Front.Models.CommitJob.get_agent(project)
@@ -676,22 +676,33 @@ defmodule FrontWeb.ProjectOnboardingController do
   # fix needs an atomic Redis SET NX claim.
   defp claim_refresh_cooldown(scope, org_id, user_id) do
     key = refresh_cooldown_key(scope, org_id, user_id)
+    cooldown = cooldown_seconds(scope)
 
     case Front.Cache.get(key) do
       {:ok, claimed_at} ->
         elapsed = System.system_time(:second) - String.to_integer(claimed_at)
-        {:cooldown, max(@refresh_cooldown_seconds - elapsed, 1)}
+        {:cooldown, max(cooldown - elapsed, 1)}
 
       {:not_cached, _} ->
         Front.Cache.set(
           key,
           Integer.to_string(System.system_time(:second)),
-          :timer.seconds(@refresh_cooldown_seconds)
+          :timer.seconds(cooldown)
         )
 
         :ok
     end
   end
+
+  defp cooldown_seconds(:targeted), do: @targeted_refresh_cooldown_seconds
+
+  defp cooldown_seconds(:full),
+    do:
+      Application.get_env(
+        :front,
+        :repository_full_refresh_cooldown_seconds,
+        @default_full_refresh_cooldown_seconds
+      )
 
   defp release_refresh_cooldown(scope, org_id, user_id) do
     Front.Cache.unset(refresh_cooldown_key(scope, org_id, user_id))
