@@ -337,7 +337,7 @@ defmodule Projecthub.Api.GrpcServer do
       project_spec = req.project.spec
 
       with org <- find_org(req),
-           {:ok, project} <- Project.find(project_id),
+           {:ok, project} <- Project.find_in_org(req.metadata.org_id, project_id),
            :ok <- ParamsChecker.run(project_spec, org.open_source) do
         attempt_update(project, project_metadata, project_spec, req)
       else

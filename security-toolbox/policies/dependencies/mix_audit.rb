@@ -4,6 +4,7 @@ class Policy::MixAudit < Policy
   def initialize(args)
     super(args)
     @ignore_packages = args[:ignore_packages] || nil
+    @ignore_file = args[:ignore_file] || nil
   end
 
   def test
@@ -13,6 +14,10 @@ class Policy::MixAudit < Policy
 
     if @ignore_packages != nil
       command << "--ignore-package-names #{@ignore_packages}"
+    end
+
+    if @ignore_file != nil
+      command << "--ignore-file #{@ignore_file}"
     end
 
     @output = `#{command.join(" ")}`

@@ -460,6 +460,20 @@ defmodule Zebra.Models.JobTest do
       end)
     end
 
+    test "preserves whether execution ever started" do
+      {:ok, enqueued_job} = Support.Factories.Job.create(:enqueued)
+      {:ok, started_job} = Support.Factories.Job.create(:started)
+
+      assert {:ok, enqueued_job} = Job.stop(enqueued_job)
+      assert {:ok, started_job} = Job.stop(started_job)
+
+      assert enqueued_job.started_at == nil
+      refute is_nil(enqueued_job.finished_at)
+
+      refute is_nil(started_job.started_at)
+      refute is_nil(started_job.finished_at)
+    end
+
     test "stops self-hosted job" do
       GrpcMock.stub(Support.FakeServers.SelfHosted, :stop_job, fn _, _ ->
         InternalApi.SelfHosted.StopJobResponse.new()

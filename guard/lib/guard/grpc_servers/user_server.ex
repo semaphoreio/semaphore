@@ -379,7 +379,10 @@ defmodule Guard.GrpcServers.UserServer do
   defp handle_update_repo_status(user, account) do
     {token, _expires_at} = get_token(account, user_id: user.id)
 
-    account_update_result = handle_validate_token(user, account, token)
+    account_update_result =
+      user
+      |> handle_validate_token(account, token)
+      |> Guard.User.GithubProfileSync.sync(user.id, token)
 
     repository_provider =
       case account_update_result do
@@ -416,6 +419,13 @@ defmodule Guard.GrpcServers.UserServer do
         )
 
         FrontRepo.RepoHostAccount.update_revoke_status(repo_account, not is_valid)
+
+      {:error, :transient} ->
+        Logger.warning(
+          "Transient token validation failure for #{user.id}; keeping existing revoke status."
+        )
+
+        {:ok, repo_account}
 
       {:error, _} ->
         grpc_error!(:internal, "Error while validating token for #{user.id}.")

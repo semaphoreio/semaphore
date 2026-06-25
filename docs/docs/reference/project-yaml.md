@@ -103,6 +103,8 @@ Each parameter has the following properties:
 |`description`| No | A descriptive string for the parameter |
 |`default_value`| No | The parameter's default value. Required if `required: true` |
 |`options`| No | A list of possible values to show on the Semaphore website |
+|`validate_input_format`| No | Either `true` or `false`. If `true`, the supplied value is validated against `regex_pattern` before the task runs. Defaults to `false` |
+|`regex_pattern`| No | A regular expression used to validate the supplied value when `validate_input_format: true`. Required if `validate_input_format: true`. Capped at 512 bytes |
 
 ## repository {#repository-in-spec}
 
