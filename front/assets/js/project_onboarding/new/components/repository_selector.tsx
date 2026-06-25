@@ -4,6 +4,7 @@ import Tippy from "@tippyjs/react";
 import * as stores from "../stores";
 import * as toolbox from "js/toolbox";
 import { parseRepositorySlug, extractRepositorySearchTerm } from "../utils/slug";
+import { decideRefreshOutcome, RefreshResponse } from "../utils/refresh";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { Notice } from "js/notice";
@@ -28,12 +29,6 @@ interface ApiResponse {
 interface ApiErrorResponse {
   error?: string;
   message?: string;
-}
-
-interface RefreshResponse {
-  state: string;
-  message?: string;
-  retry_after?: number;
 }
 
 const BACKGROUND_SYNC_RELOAD_DELAY_MS = 15000;
@@ -158,6 +153,14 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
     setCooldownLeft(configState.repositoryRefreshCooldown ?? 60);
   };
 
+  const scheduleBackgroundReload = () => {
+    if (reloadTimeoutRef.current !== null) window.clearTimeout(reloadTimeoutRef.current);
+    reloadTimeoutRef.current = window.setTimeout(
+      reloadRepositories,
+      BACKGROUND_SYNC_RELOAD_DELAY_MS
+    );
+  };
+
   const requestRefresh = async (slug?: string, organization?: string): Promise<boolean> => {
     if (!configState.refreshRepositoriesUrl || isRefreshing) return false;
     setIsRefreshing(true);
@@ -172,35 +175,29 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
         }
       );
 
-      if (!data) {
-        Notice.error(error || `Could not refresh repositories.`);
-        return false;
-      }
+      const outcome = decideRefreshOutcome(
+        status,
+        data,
+        error,
+        slug,
+        configState.repositoryRefreshCooldown ?? 60
+      );
 
-      if (status === 429) {
-        setCooldownLeft(data.retry_after ?? configState.repositoryRefreshCooldown ?? 60);
-        Notice.notice(data.message);
-        return false;
-      }
-
-      switch (data.state) {
+      switch (outcome.kind) {
+        case `rate_limited`:
+          setCooldownLeft(outcome.cooldown);
+          if (outcome.message) Notice.notice(outcome.message);
+          return false;
         case `started`:
-        case `already_running`:
           Notice.notice(`Repository sync started.`);
-          if (!slug) startCooldown();
-          if (reloadTimeoutRef.current !== null) window.clearTimeout(reloadTimeoutRef.current);
-          reloadTimeoutRef.current = window.setTimeout(
-            reloadRepositories,
-            BACKGROUND_SYNC_RELOAD_DELAY_MS
-          );
+          if (outcome.startCooldown) startCooldown();
+          scheduleBackgroundReload();
           return true;
         case `done`:
-          if (slug) {
-            reloadRepositories();
-          }
+          if (outcome.reloadNow) reloadRepositories();
           return true;
-        default:
-          Notice.error(data.message || error || `Could not refresh repositories.`);
+        case `error`:
+          Notice.error(outcome.message);
           return false;
       }
     } finally {
