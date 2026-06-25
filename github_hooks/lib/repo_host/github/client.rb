@@ -21,6 +21,8 @@ module RepoHost::Github
     OWNER_TYPE_ORGANIZATION = "Organization"
     WEBHOOK_OPTIONS = { :events => ["push", "pull_request", "member"] }
     ORG_PUSH_SCAN_MAX_PAGES = 10
+    ORG_PUSH_OPEN_TIMEOUT = 5
+    ORG_PUSH_READ_TIMEOUT = 10
 
     Octokit.default_media_type = "application/vnd.github.moondragon+json"
 
@@ -63,7 +65,13 @@ module RepoHost::Github
     # affiliations) with early exit, bounded by ORG_PUSH_SCAN_MAX_PAGES.
     def push_access_to_organization?(organization)
       target = organization.to_s.downcase
-      client = Octokit::Client.new(:access_token => @token, :auto_paginate => false)
+      client = Octokit::Client.new(
+        :access_token => @token,
+        :auto_paginate => false,
+        :connection_options => {
+          :request => { :open_timeout => ORG_PUSH_OPEN_TIMEOUT, :timeout => ORG_PUSH_READ_TIMEOUT }
+        }
+      )
 
       ORG_PUSH_SCAN_MAX_PAGES.times do |index|
         repos = client.repos(nil, :affiliation => "organization_member,collaborator",
@@ -74,6 +82,11 @@ module RepoHost::Github
       end
 
       Rails.logger.warn("[RepoHost::Github::Client] org push scan hit page cap for organization=#{organization}")
+      false
+    rescue Faraday::Error => exception
+      # A slow/hung GitHub call must not occupy the request thread past the
+      # per-request timeout: fail closed (treat as no push access).
+      Rails.logger.warn("[RepoHost::Github::Client] org push scan failed for organization=#{organization}: #{exception.class}")
       false
     rescue *GITHUB_EXCEPTION => exception
       handle_octokit_exceptions(exception)

@@ -367,5 +367,27 @@ RSpec.describe RepoHost::Github::Client do
 
       expect(@client.push_access_to_organization?("acme")).to be(false)
     end
+
+    it "fails closed when the GitHub call times out" do
+      allow_any_instance_of(Octokit::Client).to receive(:repos).and_raise(Faraday::TimeoutError)
+
+      expect(@client.push_access_to_organization?("acme")).to be(false)
+    end
+
+    it "builds the scan client with request timeouts" do
+      allow(Octokit::Client).to receive(:new).and_return(instance_double(Octokit::Client, :repos => []))
+
+      expect(@client.push_access_to_organization?("acme")).to be(false)
+      expect(Octokit::Client).to have_received(:new).with(
+        hash_including(
+          :connection_options => {
+            :request => {
+              :open_timeout => described_class::ORG_PUSH_OPEN_TIMEOUT,
+              :timeout => described_class::ORG_PUSH_READ_TIMEOUT
+            }
+          }
+        )
+      )
+    end
   end
 end
