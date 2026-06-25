@@ -37,7 +37,7 @@ COPY secrethub/test test
 
 RUN mix sentry_recompile && mix compile
 
-CMD [ "/bin/bash",  "-c \"while sleep 1000; do :; done\"" ]
+CMD ["/bin/bash", "-c", "while sleep 1000; do :; done"]
 
 FROM base AS builder
 
@@ -46,7 +46,7 @@ RUN mix release
 FROM ${RUNNER_IMAGE} AS runner
 
 # This is needed to connect the GitHub Container Registry package with our repository.
-LABEL org.opencontainers.image.source https://github.com/semaphoreio/semaphore
+LABEL org.opencontainers.image.source=https://github.com/semaphoreio/semaphore
 
 ARG BUILD_ENV=prod
 ENV MIX_ENV=$BUILD_ENV

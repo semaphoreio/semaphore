@@ -5,7 +5,7 @@ ARG UBUNTU_VERSION=jammy-20240808
 ARG BUILDER_IMAGE="hexpm/elixir:${ELIXIR_VERSION}-erlang-${OTP_VERSION}-ubuntu-${UBUNTU_VERSION}"
 ARG RUNNER_IMAGE="ubuntu:${UBUNTU_VERSION}"
 
-FROM ${BUILDER_IMAGE} as base
+FROM ${BUILDER_IMAGE} AS base
 
 ARG BUILD_ENV=prod
 ENV MIX_ENV=$BUILD_ENV
@@ -22,8 +22,7 @@ RUN apt-get update -y && apt-get install --no-install-recommends -y build-essent
 WORKDIR /app
 
 # install hex + rebar
-RUN mix local.hex --force --if-missing && \
-    mix local.rebar --force --if-missing
+RUN mix local.rebar --force --if-missing
 
 # install mix dependencies
 COPY mix.exs mix.lock ./
@@ -41,7 +40,7 @@ COPY config/ config/
 # Compile the release
 COPY lib lib
 
-FROM base as dev
+FROM base AS dev
 
 COPY .formatter.exs .formatter.exs
 COPY .credo.exs .credo.exs
@@ -49,16 +48,16 @@ COPY test test
 
 RUN mix compile
 
-CMD [ "/bin/bash",  "-c \"while sleep 1000; do :; done\"" ]
+CMD ["/bin/bash", "-c", "while sleep 1000; do :; done"]
 
-FROM base as builder
+FROM base AS builder
 
 RUN mix release
 
-FROM ${RUNNER_IMAGE} as runner
+FROM ${RUNNER_IMAGE} AS runner
 
 # This is needed to connect the GitHub Container Registry package with our repository.
-LABEL org.opencontainers.image.source https://github.com/semaphoreio/semaphore
+LABEL org.opencontainers.image.source=https://github.com/semaphoreio/semaphore
 
 HEALTHCHECK NONE
 
@@ -68,9 +67,9 @@ RUN apt-get update -y && apt-get install --no-install-recommends -y libstdc++6 o
 # Set the locale
 RUN sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && locale-gen
 
-ENV LANG en_US.UTF-8
-ENV LANGUAGE en_US:en
-ENV LC_ALL en_US.UTF-8
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US:en
+ENV LC_ALL=en_US.UTF-8
 
 WORKDIR "/app"
 RUN chown nobody /app
@@ -86,4 +85,4 @@ COPY --from=builder --chown=nobody:root /app/_build/${MIX_ENV}/rel/${APP_NAME} .
 
 USER nobody
 
-CMD /app/bin/${APP_NAME} start
+CMD ["/app/bin/${APP_NAME}", "start"]

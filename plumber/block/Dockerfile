@@ -67,4 +67,4 @@ COPY block/test test
 
 RUN mix compile
 
-CMD [ "/bin/bash",  "-c \"while sleep 1000; do :; done\"" ]
+CMD ["/bin/bash", "-c", "while sleep 1000; do :; done"]

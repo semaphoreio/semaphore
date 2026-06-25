@@ -37,7 +37,7 @@ COPY test test
 COPY .formatter.exs .formatter.exs
 COPY .credo.exs .credo.exs
 
-CMD [ "/bin/ash",  "-c \"while sleep 1000; do :; done\"" ]
+CMD ["/bin/ash", "-c", "while sleep 1000; do :; done"]
 
 FROM base AS builder
 WORKDIR /app
@@ -49,7 +49,7 @@ FROM ${RUNNER_IMAGE} AS runner
 HEALTHCHECK NONE
 
 # This is needed to connect the GitHub Container Registry package with our repository.
-LABEL org.opencontainers.image.source https://github.com/semaphoreio/semaphore
+LABEL org.opencontainers.image.source=https://github.com/semaphoreio/semaphore
 
 RUN apk update && \
     apk add --no-cache \

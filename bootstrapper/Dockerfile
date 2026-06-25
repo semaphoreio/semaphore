@@ -1,4 +1,4 @@
-ARG GO_VERSION=1.24
+ARG GO_VERSION=1.25
 ARG UBUNTU_VERSION=3.17.7
 ARG ALPINE_VERSION=3.22
 ARG BUILDER_IMAGE="golang:${GO_VERSION}"
@@ -30,13 +30,13 @@ RUN curl -sL https://github.com/google/protobuf/releases/download/v28.0/protoc-2
 
 WORKDIR /app
 RUN go install github.com/mgechev/revive@v1.7.0
-RUN go install gotest.tools/gotestsum@v1.12.1
+RUN go install gotest.tools/gotestsum@v1.13.0
 RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.0
 RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1
 RUN export PATH="$PATH:$(go env GOPATH)/bin"
 RUN . ~/.bashrc
 
-CMD [ "/bin/bash",  "-c", "while sleep 1000; do :; done" ]
+CMD ["/bin/bash", "-c", "while sleep 1000; do :; done"]
 
 FROM base AS builder
 
@@ -45,7 +45,7 @@ RUN rm -rf build && go build -o build/${APP_NAME}
 FROM ${RUNNER_IMAGE} AS runner
 
 # This is needed to connect the GitHub Container Registry package with our repository.
-LABEL org.opencontainers.image.source https://github.com/semaphoreio/semaphore
+LABEL org.opencontainers.image.source=https://github.com/semaphoreio/semaphore
 
 # We don't need Docker health checks, since these containers
 # are intended to run in Kubernetes pods, which have probes.
@@ -63,4 +63,4 @@ COPY --from=builder --chown=nobody:root /app/build/${APP_NAME} /app/build/${APP_
 
 USER nobody
 
-CMD [ "/bin/sh",  "-c", "/app/build/${APP_NAME}" ]
+ENTRYPOINT ["/app/build/${APP_NAME}"]

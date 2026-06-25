@@ -42,7 +42,7 @@ COPY github_notifier/test test
 
 RUN mix compile
 
-CMD [ "/bin/ash",  "-c \"while sleep 1000; do :; done\"" ]
+CMD ["/bin/ash", "-c", "while sleep 1000; do :; done"]
 
 FROM base AS builder
 
@@ -53,7 +53,7 @@ RUN mix release
 FROM ${RUNNER_IMAGE} AS runner
 
 # This is needed to connect the GitHub Container Registry package with our repository.
-LABEL org.opencontainers.image.source https://github.com/semaphoreio/semaphore
+LABEL org.opencontainers.image.source=https://github.com/semaphoreio/semaphore
 
 HEALTHCHECK NONE
 

@@ -50,7 +50,7 @@ COPY task_api_referent/test test
 
 RUN mix compile
 
-CMD [ "/bin/bash",  "-c \"while sleep 1000; do :; done\"" ]
+CMD ["/bin/bash", "-c", "while sleep 1000; do :; done"]
 
 FROM base AS builder
 
@@ -66,9 +66,9 @@ RUN apt-get update -y && apt-get install --no-install-recommends -y ca-certifica
 # Set the locale
 RUN sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && locale-gen
 
-ENV LANG en_US.UTF-8
-ENV LANGUAGE en_US:en
-ENV LC_ALL en_US.UTF-8
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US:en
+ENV LC_ALL=en_US.UTF-8
 
 RUN GRPC_HEALTH_PROBE_VERSION=v0.4.24 && \
     wget -qO/bin/grpc_health_probe https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/${GRPC_HEALTH_PROBE_VERSION}/grpc_health_probe-linux-amd64 && \
@@ -88,4 +88,4 @@ COPY --from=builder --chown=nobody:root /app/_build/${MIX_ENV}/rel/${APP_NAME} .
 
 USER nobody
 
-CMD /app/bin/${APP_NAME} start
+CMD ["/app/bin/${APP_NAME}", "start"]
