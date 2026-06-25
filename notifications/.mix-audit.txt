@@ -1,3 +1,9 @@
+# Notifications is on Elixir 1.12 / OTP 24. These deps can't be bumped
+# to fixed versions without upgrading the Elixir/OTP stack first.
+# cowboy/cowlib: need cowboy >= 2.15.0 which requires grpc 0.9+ / protobuf 0.14+
+# postgrex: needs >= 0.22.2 (requires Elixir >= 1.14)
+# hackney: needs >= 1.24.0 (API changes)
+# decimal: needs >= 3.0.0 (major version bump)
 GHSA-r73h-97w8-m54h
 GHSA-rhv4-8758-jx7v
 GHSA-jfc2-q6qh-g5x8
