@@ -1,4 +1,4 @@
-export const REPOSITORY_SLUG_REGEX = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/;
+export const REPOSITORY_SLUG_REGEX = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9._-]{1,100}$/;
 
 export const parseRepositorySlug = (query: string): string | null => {
   const trimmed = query.trim();

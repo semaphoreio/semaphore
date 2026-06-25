@@ -86,7 +86,7 @@ defmodule FrontWeb.ProjectOnboardingController do
                               60
                             )
 
-  @repository_slug_format ~r{\A[A-Za-z0-9][A-Za-z0-9\-]*/[A-Za-z0-9._\-]+\z}
+  @repository_slug_format ~r|\A[A-Za-z0-9][A-Za-z0-9\-]{0,38}/[A-Za-z0-9._\-]{1,100}\z|
   @organization_format ~r/\A[A-Za-z0-9][A-Za-z0-9\-]{0,38}\z/
 
   def refresh_cooldown_seconds, do: @refresh_cooldown_seconds

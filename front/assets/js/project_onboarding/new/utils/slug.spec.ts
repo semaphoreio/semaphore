@@ -34,6 +34,14 @@ describe(`parseRepositorySlug`, () => {
   it(`rejects full URLs`, () => {
     expect(parseRepositorySlug(`https://github.com/octo/repo`)).to.be.null;
   });
+
+  it(`rejects an owner longer than 39 characters`, () => {
+    expect(parseRepositorySlug(`${`a`.repeat(40)}/repo`)).to.be.null;
+  });
+
+  it(`rejects a repository longer than 100 characters`, () => {
+    expect(parseRepositorySlug(`octo/${`a`.repeat(101)}`)).to.be.null;
+  });
 });
 
 describe(`extractRepositorySearchTerm`, () => {
