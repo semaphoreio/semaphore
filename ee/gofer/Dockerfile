@@ -62,7 +62,7 @@ RUN mix release
 FROM ${RUNNER_IMAGE} AS runner
 
 # This is needed to connect the GitHub Container Registry package with our repository.
-LABEL org.opencontainers.image.source https://github.com/semaphoreio/semaphore
+LABEL org.opencontainers.image.source=https://github.com/semaphoreio/semaphore
 
 HEALTHCHECK NONE
 
@@ -72,9 +72,9 @@ RUN apt-get update -y && apt-get install --no-install-recommends -y libstdc++6 o
 # Set the locale
 RUN sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && locale-gen
 
-ENV LANG en_US.UTF-8
-ENV LANGUAGE en_US:en
-ENV LC_ALL en_US.UTF-8
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US:en
+ENV LC_ALL=en_US.UTF-8
 
 WORKDIR "/app"
 RUN chown nobody /app
@@ -92,4 +92,4 @@ COPY --chown=nobody:root priv/ecto_repo/migrations migrations
 
 USER nobody
 
-CMD /app/bin/${APP_NAME} start
+CMD ["/app/bin/${APP_NAME}", "start"]

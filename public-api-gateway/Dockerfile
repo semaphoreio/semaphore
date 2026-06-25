@@ -41,12 +41,12 @@ COPY test test
 COPY scripts scripts
 COPY lint.toml lint.toml
 
-CMD [ "/bin/bash",  "-c \"while sleep 1000; do :; done\"" ]
+CMD ["/bin/bash", "-c", "while sleep 1000; do :; done"]
 
 FROM ${RUNNER_IMAGE} AS runner
 
 # This is needed to connect the GitHub Container Registry package with our repository.
-LABEL org.opencontainers.image.source https://github.com/semaphoreio/semaphore
+LABEL org.opencontainers.image.source=https://github.com/semaphoreio/semaphore
 
 RUN apk add --no-cache libc6-compat
 HEALTHCHECK NONE

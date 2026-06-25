@@ -65,7 +65,7 @@ RUN go install gotest.tools/gotestsum@v1.13.0
 RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.3.0
 RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.8
 
-CMD [ "/bin/bash",  "-c \"while sleep 1000; do :; done\"" ]
+CMD ["/bin/bash", "-c", "while sleep 1000; do :; done"]
 
 FROM base AS builder
 
@@ -74,7 +74,7 @@ RUN rm -rf build && go build -o build/${APP_NAME} cmd/server/main.go
 FROM ${RUNNER_IMAGE} AS runner
 
 # This is needed to connect the GitHub Container Registry package with our repository.
-LABEL org.opencontainers.image.source https://github.com/semaphoreio/semaphore
+LABEL org.opencontainers.image.source=https://github.com/semaphoreio/semaphore
 
 RUN apt-get update -y && apt-get install --no-install-recommends -y git ca-certificates sudo \
     && apt-get clean && rm -f /var/lib/apt/lists/*_*

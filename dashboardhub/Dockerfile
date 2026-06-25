@@ -4,7 +4,7 @@ ARG ALPINE_VERSION=3.22.2
 ARG BUILDER_IMAGE="hexpm/elixir:${ELIXIR_VERSION}-erlang-${OTP_VERSION}-alpine-${ALPINE_VERSION}"
 ARG RUNNER_IMAGE="alpine:${ALPINE_VERSION}"
 
-FROM ${BUILDER_IMAGE} as base
+FROM ${BUILDER_IMAGE} AS base
 
 ARG BUILD_ENV=prod
 ENV MIX_ENV=$BUILD_ENV
@@ -26,7 +26,7 @@ RUN mix do deps.get, deps.compile
 
 COPY lib lib
 
-FROM base as dev
+FROM base AS dev
 
 COPY priv/repo/migrations priv/repo/migrations
 
@@ -39,9 +39,9 @@ COPY test test
 
 RUN mix compile
 
-CMD [ "/bin/ash",  "-c \"while sleep 1000; do :; done\"" ]
+CMD ["/bin/ash", "-c", "while sleep 1000; do :; done"]
 
-FROM base as builder
+FROM base AS builder
 
 COPY priv/repo/migrations priv/repo/migrations
 
@@ -49,10 +49,10 @@ RUN mix compile
 RUN mix deps.compile sentry --force
 RUN mix release
 
-FROM ${RUNNER_IMAGE} as runner
+FROM ${RUNNER_IMAGE} AS runner
 
 # This is needed to connect the GitHub Container Registry package with our repository.
-LABEL org.opencontainers.image.source https://github.com/semaphoreio/semaphore
+LABEL org.opencontainers.image.source=https://github.com/semaphoreio/semaphore
 
 HEALTHCHECK NONE
 

@@ -53,7 +53,7 @@ FROM ${RUNNER_IMAGE} AS runner
 ENV MIX_ENV=prod
 
 # This is needed to connect the GitHub Container Registry package with our repository.
-LABEL org.opencontainers.image.source https://github.com/semaphoreio/semaphore
+LABEL org.opencontainers.image.source=https://github.com/semaphoreio/semaphore
 
 HEALTHCHECK NONE
 
