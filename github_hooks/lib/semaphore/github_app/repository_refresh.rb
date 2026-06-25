@@ -83,27 +83,23 @@ module Semaphore::GithubApp
       # short-circuiting avoids a synchronous GitHub collaborator re-sync.
       return Result.new(:done, "Repository #{slug} is already in your list.") if listed_for?(github_uid, slug)
 
-      installation = GithubAppInstallation.find_for_repository(slug)
+      # Authorize on push to THIS repo (caller's own token). A row anywhere in
+      # the installation is NOT enough — it would expose co-tenant private repos.
+      return no_access unless user_has_github_push?(user, slug)
 
-      if installation
-        return no_access unless authorized?(github_uid, user, slug, installation)
+      # Resolve the installation: cached repo, else the org's installation, else
+      # ask GitHub (app JWT) so a zero-cached installation still works. Discovery
+      # runs only after authorization, so we never persist installations the
+      # caller cannot reach.
+      installation = GithubAppInstallation.find_for_repository(slug) ||
+                     GithubAppInstallation.find_for_organization(slug.split("/").first) ||
+                     discover_installation(slug)
+      return no_access unless installation
 
-        refresh_cached_repository(installation, slug)
-      else
-        installation = GithubAppInstallation.find_for_organization(slug.split("/").first)
-        authorized = (installation && user_collaborates_in?(github_uid, installation)) ||
-                     user_has_github_push?(user, slug)
-        return no_access unless authorized
-
-        # No cached repo revealed the installation: ask GitHub which installation
-        # owns the repo so a zero-cached installation still works. Only after the
-        # caller is authorized, so we never persist installations they can't reach.
-        installation ||= discover_installation(slug)
-        return no_access unless installation
-
-        Worker.perform_async(installation.installation_id, slug)
-        Result.new(:started, "Fetching #{slug} from GitHub. Search again in a moment.")
-      end
+      # The fetch + collaborator sync always runs in the worker (rate-limited,
+      # unique-locked) so it never blocks the request thread — cached or not.
+      Worker.perform_async(installation.installation_id, slug)
+      Result.new(:started, "Refreshing #{slug} from GitHub. Search again in a moment.")
     end
 
     # Fetch a single repository, cache it, and sync its collaborators. Returns a
@@ -139,29 +135,6 @@ module Semaphore::GithubApp
     end
     private_class_method :refresh_installation
 
-    # Refresh collaborators with the stored slug/remote_id, not the user-typed
-    # slug — GithubAppCollaborator rows must keep the API-provided casing.
-    def self.refresh_cached_repository(installation, slug)
-      canonical = GithubAppInstallation.canonical_slug(slug)
-      repository = installation.installation_repositories.where("LOWER(slug) = ?", canonical).first
-
-      return Result.new(:failed, "Repository #{slug} is no longer available. Try again.") if repository.nil?
-
-      case Collaborators.refresh(repository.slug, repository.remote_id)
-      when :ok
-        Result.new(:done, "Repository #{repository.slug} refreshed.")
-      when :no_token
-        Result.new(:failed, "The GitHub App has no access to #{repository.slug}. Grant access on GitHub first.")
-      when :no_repository
-        Result.new(:failed, "Repository #{repository.slug} was not found on GitHub.")
-      when :low_rate_limit
-        Result.new(:failed, "GitHub API rate limit is too low right now. Try again later.")
-      else
-        Result.new(:failed, "Could not refresh #{repository.slug}. Try again later.")
-      end
-    end
-    private_class_method :refresh_cached_repository
-
     # Whether the repository already shows up in this user's list — i.e. they
     # hold a (push-access) collaborator row for it. Mirrors how #get_repositories
     # builds the list, so "listed" here means exactly "listed in the UI".
@@ -171,16 +144,9 @@ module Semaphore::GithubApp
     end
     private_class_method :listed_for?
 
-    # Authorize a refresh of an already-known installation: a cached collaborator
-    # row (cheap, no API) OR live push access verified against GitHub (one
-    # user-scoped API call). The cached check runs first to keep the fast path.
-    def self.authorized?(github_uid, user, slug, installation)
-      user_collaborates_in?(github_uid, installation) || user_has_github_push?(user, slug)
-    end
-    private_class_method :authorized?
-
-    # Installation-level on purpose: .full already lets a collaborator re-sync the
-    # whole installation, so a per-repo refresh within it is strictly narrower.
+    # Installation-scoped: authorizes full / per-organization refresh only (whole-
+    # installation re-sync, returns no per-repo data). Targeted per-repo refresh
+    # does NOT use this — it requires push to the named repo.
     def self.user_collaborates_in?(github_uid, installation)
       GithubAppCollaborator.exists?(:c_id => github_uid, :installation_id => installation.installation_id)
     end

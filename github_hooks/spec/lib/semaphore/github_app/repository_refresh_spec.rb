@@ -226,10 +226,10 @@ module Semaphore::GithubApp
       let(:user) { FactoryBot.create(:user, :github_connection) }
       let(:github_uid) { user.github_repo_host_account.github_uid }
 
-      # Grant the caller installation-level access via a repo other than the one
-      # under test, so the cached-repo specs still reach the real collaborator
-      # re-sync. Listing them on the target repo would instead trigger the
-      # already-listed short-circuit.
+      # An installation-level collaborator row on a repo OTHER than the one under
+      # test. It no longer authorizes a targeted per-repo refresh (that requires
+      # push to the named repo); it sets up the cross-tenant regression below,
+      # where a co-tenant collaborator without push must still be refused.
       def authorize(user_uid, installation_record, repo: "semaphoreio/semaphore")
         GithubAppCollaborator.create!(
           :c_id => user_uid,
@@ -237,6 +237,12 @@ module Semaphore::GithubApp
           :r_name => repo,
           :installation_id => installation_record.installation_id
         )
+      end
+
+      # Targeted refresh authorizes on live push to the named repo. Stubs the
+      # check (RepoHost::Github::Client#repository.permissions.push).
+      def repo_with_push(value)
+        Struct.new(:permissions).new(Struct.new(:push).new(value))
       end
 
       before { authorize(github_uid, installation) }
@@ -271,63 +277,30 @@ module Semaphore::GithubApp
       end
 
       context "when the repository is cached" do
-        it "refreshes collaborators with the stored slug and remote id" do
-          allow(Collaborators).to receive(:refresh).and_return(:ok)
-
-          result = described_class.targeted(user.id, "RenderedText/Guard")
-
-          expect(Collaborators).to have_received(:refresh).with("renderedtext/guard", 0)
-          expect(result.state).to eq(:done)
-          expect(result.message).to include("renderedtext/guard")
+        # Caller has live push to the target repo, so the per-repo authorization
+        # passes and the refresh is enqueued.
+        before do
+          allow_any_instance_of(RepoHost::Github::Client).to receive(:repository)
+            .and_return(repo_with_push(true))
         end
 
-        it "maps :no_token to a failure about app access" do
-          allow(Collaborators).to receive(:refresh).and_return(:no_token)
-
-          result = described_class.targeted(user.id, "renderedtext/guard")
-
-          expect(result.state).to eq(:failed)
-          expect(result.message).to match(/no access/)
-        end
-
-        it "maps :no_repository to a failure about the repository" do
-          allow(Collaborators).to receive(:refresh).and_return(:no_repository)
-
-          result = described_class.targeted(user.id, "renderedtext/guard")
-
-          expect(result.state).to eq(:failed)
-          expect(result.message).to match(/not found on GitHub/)
-        end
-
-        it "maps :low_rate_limit to a retry-later failure" do
-          allow(Collaborators).to receive(:refresh).and_return(:low_rate_limit)
-
-          result = described_class.targeted(user.id, "renderedtext/guard")
-
-          expect(result.state).to eq(:failed)
-          expect(result.message).to match(/rate limit/)
-        end
-
-        it "fails without calling refresh when the cached row is gone" do
-          empty_installation = FactoryBot.create(
-            :github_app_installation,
-            :installation_id => 4242,
-            :repositories => ["other/repo"]
-          )
-          authorize(github_uid, empty_installation)
-          allow(GithubAppInstallation).to receive(:find_for_repository).and_return(empty_installation)
+        it "enqueues a background refresh and reports started without re-syncing inline" do
           allow(Collaborators).to receive(:refresh)
 
           result = described_class.targeted(user.id, "renderedtext/guard")
 
-          expect(result.state).to eq(:failed)
-          expect(result.message).to match(/no longer available/)
+          expect(result.state).to eq(:started)
+          expect(described_class::Worker.jobs.map { |job| job["args"] })
+            .to eq([[installation.installation_id, "renderedtext/guard"]])
           expect(Collaborators).not_to have_received(:refresh)
         end
       end
 
       context "when the repository is not cached" do
         it "enqueues a background fetch for the single repository and reports started" do
+          allow_any_instance_of(RepoHost::Github::Client).to receive(:repository)
+            .and_return(repo_with_push(true))
+
           result = described_class.targeted(user.id, "renderedtext/brand-new-repo")
 
           expect(result.state).to eq(:started)
@@ -335,12 +308,14 @@ module Semaphore::GithubApp
             .to eq([[installation.installation_id, "renderedtext/brand-new-repo"]])
         end
 
-        it "does not touch GitHub or the cache synchronously" do
-          expect_any_instance_of(RepoHost::Github::Client).not_to receive(:repository)
+        it "defers the GitHub fetch and cache write to the background worker" do
+          allow_any_instance_of(RepoHost::Github::Client).to receive(:repository)
+            .and_return(repo_with_push(true))
 
           described_class.targeted(user.id, "renderedtext/brand-new-repo")
 
           expect(installation.installation_repositories.exists?(:slug => "renderedtext/brand-new-repo")).to be(false)
+          expect(described_class::Worker.jobs).not_to be_empty
         end
 
         it "fails without enqueuing when no installation covers the owner and the caller lacks push" do
@@ -354,6 +329,27 @@ module Semaphore::GithubApp
           expect(result.state).to eq(:failed)
           expect(result.message).to match(/no access/)
           expect(described_class::Worker.jobs).to be_empty
+        end
+      end
+
+      # Regression for the cross-tenant authorization gap: `user` already holds an
+      # installation-level collaborator row (semaphoreio/semaphore, via the outer
+      # before), but has NO push to the co-tenant target repo. Installation-wide
+      # membership must NOT authorize a per-repo refresh of a repo they cannot see.
+      context "when the caller collaborates elsewhere in the installation but cannot push to the target" do
+        before do
+          allow_any_instance_of(RepoHost::Github::Client).to receive(:repository)
+            .with("renderedtext/guard").and_return(repo_with_push(false))
+        end
+
+        it "refuses the cached co-tenant repository without re-syncing collaborators" do
+          allow(Collaborators).to receive(:refresh)
+
+          result = described_class.targeted(user.id, "renderedtext/guard")
+
+          expect(result.state).to eq(:failed)
+          expect(result.message).to match(/Grant access on GitHub first/)
+          expect(Collaborators).not_to have_received(:refresh)
         end
       end
 
@@ -403,20 +399,18 @@ module Semaphore::GithubApp
       context "when the caller has no cached row but has live GitHub push access" do
         let(:newcomer) { FactoryBot.create(:user, :github_connection) }
 
-        def repo_with_push(value)
-          Struct.new(:permissions).new(Struct.new(:push).new(value))
-        end
-
         context "and the repository is cached" do
-          it "authorizes via live push and refreshes collaborators" do
+          it "authorizes via live push and enqueues the refresh" do
             allow_any_instance_of(RepoHost::Github::Client).to receive(:repository)
               .with("renderedtext/guard").and_return(repo_with_push(true))
-            allow(Collaborators).to receive(:refresh).and_return(:ok)
+            allow(Collaborators).to receive(:refresh)
 
             result = described_class.targeted(newcomer.id, "renderedtext/guard")
 
-            expect(result.state).to eq(:done)
-            expect(Collaborators).to have_received(:refresh).with("renderedtext/guard", 0)
+            expect(result.state).to eq(:started)
+            expect(described_class::Worker.jobs.map { |job| job["args"] })
+              .to eq([[installation.installation_id, "renderedtext/guard"]])
+            expect(Collaborators).not_to have_received(:refresh)
           end
 
           it "refuses when the caller lacks live push access" do
