@@ -668,12 +668,12 @@ defmodule FrontWeb.ProjectOnboardingController do
   defp refresh_cooldown_key(scope, org_id, user_id),
     do: "repository_refresh_cooldown/#{scope}/#{org_id}/#{user_id}"
 
-  # Claimed before the RPC so a rapid double-submit is rate-limited, and released
-  # again if the refresh does no work (see do_refresh/5). The get-then-set is
-  # intentionally not atomic across replicas — Cacheman exposes no SET NX — but the
-  # cooldown is a soft UX/cost guard, not a lock: a racing duplicate is deduped
-  # downstream by the sync worker's unique lock, so the worst case is one redundant
-  # RPC.
+  # Soft cost-guard, not a lock. Claimed before the RPC, released if the refresh
+  # did no work (see do_refresh/5). Two known limits, both bounded by the sync
+  # worker's own unique lock (the real dedup), so the worst case is a few extra
+  # GitHub calls: the get-then-set is non-atomic (Cacheman has no SET NX), and it
+  # fails open if Redis is down (Cacheman maps errors to a cache miss). A proper
+  # fix needs an atomic Redis SET NX claim.
   defp claim_refresh_cooldown(scope, org_id, user_id) do
     key = refresh_cooldown_key(scope, org_id, user_id)
 
