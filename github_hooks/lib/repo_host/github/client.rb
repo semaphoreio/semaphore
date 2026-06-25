@@ -135,6 +135,12 @@ module RepoHost::Github
       handle_octokit_exceptions(exception)
     end
 
+    def compare(repo, base, head)
+      user_client.compare(repo, base, head)
+    rescue *GITHUB_EXCEPTION => exception
+      handle_octokit_exceptions(exception)
+    end
+
     def collaborators(repo)
       user_client.collaborators(repo)
     rescue *GITHUB_EXCEPTION => exception
