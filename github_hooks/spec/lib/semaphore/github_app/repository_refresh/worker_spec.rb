@@ -66,6 +66,26 @@ module Semaphore::GithubApp
           described_class.new.perform(installation_id, slug)
         end.to raise_error(LowRateLimitError, /rate limit too low/i)
       end
+
+      it "treats a non-rate-limit error as terminal: releases the lock and does not retry" do
+        allow(RepositoryRefresh).to receive(:fetch_and_cache_repository).and_raise(StandardError.new("revoked token"))
+        allow(Rails.logger).to receive(:info)
+
+        worker = described_class.new
+        expect(worker).to receive(:delete_unique_lock).with([installation_id, slug])
+
+        expect { worker.perform(installation_id, slug) }.not_to raise_error
+        expect(Rails.logger).to have_received(:info).with(/Terminal error/)
+      end
+
+      it "releases the lock for the blank-slug no-op" do
+        allow(Rails.logger).to receive(:info)
+
+        worker = described_class.new
+        expect(worker).to receive(:delete_unique_lock).with([installation_id, ""])
+
+        worker.perform(installation_id, "")
+      end
     end
 
     describe "sidekiq_retries_exhausted" do

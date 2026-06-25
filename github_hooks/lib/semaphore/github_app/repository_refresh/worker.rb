@@ -32,6 +32,7 @@ module Semaphore::GithubApp
 
         if slug.blank?
           log(installation_id, slug, "Empty slug")
+          delete_unique_lock([installation_id, slug])
           return
         end
 
@@ -51,6 +52,14 @@ module Semaphore::GithubApp
           log(installation_id, slug, "Unknown result: #{result.inspect}")
         end
 
+        delete_unique_lock([installation_id, slug])
+      rescue LowRateLimitError
+        # Retryable: keep the lock and let Sidekiq retry with backoff.
+        raise
+      rescue StandardError => e
+        # Any other error is non-retryable (e.g. a revoked token): release the lock
+        # and finish, so a permanent failure doesn't burn the whole retry budget.
+        log(installation_id, slug, "Terminal error — #{e.class}: #{e.message}")
         delete_unique_lock([installation_id, slug])
       end
 
