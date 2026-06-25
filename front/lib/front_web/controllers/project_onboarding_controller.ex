@@ -563,7 +563,7 @@ defmodule FrontWeb.ProjectOnboardingController do
         |> json(%{state: "failed", message: "Use the owner/repository format."})
 
       slug != "" ->
-        do_refresh(conn, user_id, slug, "")
+        start_targeted_refresh(conn, user_id, org_id, slug)
 
       organization != "" and not Regex.match?(@organization_format, organization) ->
         conn
@@ -575,24 +575,35 @@ defmodule FrontWeb.ProjectOnboardingController do
     end
   end
 
-  # Full / per-organization refresh, rate-limited once per user via the cooldown.
+  # Full / per-organization refresh, throttled once per user via the cooldown.
   defp start_full_refresh(conn, user_id, org_id, organization) do
-    case claim_refresh_cooldown(org_id, user_id) do
-      :ok ->
-        do_refresh(conn, user_id, "", organization)
-
-      {:cooldown, seconds_left} ->
-        conn
-        |> put_status(429)
-        |> json(%{
-          state: "rate_limited",
-          retry_after: seconds_left,
-          message: "Refresh available again in #{seconds_left}s."
-        })
+    case claim_refresh_cooldown(:full, org_id, user_id) do
+      :ok -> do_refresh(conn, user_id, :full, "", organization)
+      {:cooldown, seconds_left} -> rate_limited(conn, seconds_left)
     end
   end
 
-  defp do_refresh(conn, user_id, slug, organization) do
+  # Targeted refresh, throttled per user so a caller cannot loop distinct slugs to
+  # spam the synchronous push check. The cooldown is kept on a failed attempt
+  # (only released on a transient RPC error) so denied slugs stay throttled.
+  defp start_targeted_refresh(conn, user_id, org_id, slug) do
+    case claim_refresh_cooldown(:targeted, org_id, user_id) do
+      :ok -> do_refresh(conn, user_id, :targeted, slug, "")
+      {:cooldown, seconds_left} -> rate_limited(conn, seconds_left)
+    end
+  end
+
+  defp rate_limited(conn, seconds_left) do
+    conn
+    |> put_status(429)
+    |> json(%{
+      state: "rate_limited",
+      retry_after: seconds_left,
+      message: "Refresh available again in #{seconds_left}s."
+    })
+  end
+
+  defp do_refresh(conn, user_id, scope, slug, organization) do
     result = Models.RepositoryIntegrator.refresh_repositories(user_id, slug, organization)
     audit_refresh(conn, slug, organization, result)
 
@@ -602,9 +613,11 @@ defmodule FrontWeb.ProjectOnboardingController do
         json(conn, %{state: state |> Atom.to_string() |> String.downcase(), message: message})
 
       {:ok, %{message: message}} ->
-        # A business failure (e.g. nothing to refresh) did no work, so don't make
-        # the user sit out the cooldown for a no-op.
-        release_full_refresh_cooldown(conn, user_id, slug)
+        # A full/org business failure (e.g. nothing to refresh) did no work, so
+        # release its cooldown. A targeted failure (e.g. no access) keeps the
+        # cooldown so a caller cannot loop denied slugs.
+        if scope == :full,
+          do: release_refresh_cooldown(:full, conn.assigns.organization_id, user_id)
 
         conn
         |> put_status(422)
@@ -612,18 +625,12 @@ defmodule FrontWeb.ProjectOnboardingController do
 
       {:error, _} ->
         # Don't burn the user's cooldown on a transient RPC failure.
-        release_full_refresh_cooldown(conn, user_id, slug)
+        release_refresh_cooldown(scope, conn.assigns.organization_id, user_id)
 
         conn
         |> put_status(503)
         |> json(%{state: "failed", message: "Could not refresh repositories. Please retry."})
     end
-  end
-
-  # The cooldown only guards full refreshes (empty slug); targeted refreshes
-  # never claim it, so there is nothing to release for them.
-  defp release_full_refresh_cooldown(conn, user_id, slug) do
-    if slug == "", do: release_refresh_cooldown(conn.assigns.organization_id, user_id)
   end
 
   # Audit every refresh that reaches the provider RPC, recording who triggered
@@ -657,17 +664,18 @@ defmodule FrontWeb.ProjectOnboardingController do
 
   defp refresh_result_state(_), do: "error"
 
-  defp refresh_cooldown_key(org_id, user_id),
-    do: "repository_refresh_cooldown/#{org_id}/#{user_id}"
+  # Scoped per (full vs targeted) so the two refresh kinds throttle independently.
+  defp refresh_cooldown_key(scope, org_id, user_id),
+    do: "repository_refresh_cooldown/#{scope}/#{org_id}/#{user_id}"
 
   # Claimed before the RPC so a rapid double-submit is rate-limited, and released
-  # again if the refresh does no work (see release_full_refresh_cooldown/3). The
-  # get-then-set is intentionally not atomic across replicas — Cacheman exposes no
-  # SET NX — but the cooldown is a soft UX/cost guard, not a lock: a racing
-  # duplicate is deduped downstream by the sync worker's unique lock, so the worst
-  # case is one redundant RPC.
-  defp claim_refresh_cooldown(org_id, user_id) do
-    key = refresh_cooldown_key(org_id, user_id)
+  # again if the refresh does no work (see do_refresh/5). The get-then-set is
+  # intentionally not atomic across replicas — Cacheman exposes no SET NX — but the
+  # cooldown is a soft UX/cost guard, not a lock: a racing duplicate is deduped
+  # downstream by the sync worker's unique lock, so the worst case is one redundant
+  # RPC.
+  defp claim_refresh_cooldown(scope, org_id, user_id) do
+    key = refresh_cooldown_key(scope, org_id, user_id)
 
     case Front.Cache.get(key) do
       {:ok, claimed_at} ->
@@ -685,8 +693,8 @@ defmodule FrontWeb.ProjectOnboardingController do
     end
   end
 
-  defp release_refresh_cooldown(org_id, user_id) do
-    Front.Cache.unset(refresh_cooldown_key(org_id, user_id))
+  defp release_refresh_cooldown(scope, org_id, user_id) do
+    Front.Cache.unset(refresh_cooldown_key(scope, org_id, user_id))
   end
 
   def project_repository_status(conn, params) do

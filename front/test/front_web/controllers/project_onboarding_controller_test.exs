@@ -166,15 +166,15 @@ defmodule FrontWeb.ProjectOnboardingControllerTest do
       assert json_response(conn, 429)
     end
 
-    test "targeted refresh passes the slug through and is not rate limited", %{conn: conn} do
+    test "targeted refresh passes the slug through and is then rate limited", %{conn: conn} do
       test_pid = self()
 
       GrpcMock.stub(RepositoryIntegratorMock, :refresh_repositories, fn req, _ ->
         send(test_pid, {:refresh_request, req})
 
         RefreshRepositoriesResponse.new(
-          sync_state: RefreshRepositoriesResponse.SyncState.value(:DONE),
-          message: "Repository octo/repo refreshed."
+          sync_state: RefreshRepositoriesResponse.SyncState.value(:STARTED),
+          message: "Refreshing octo/repo from GitHub."
         )
       end)
 
@@ -183,15 +183,50 @@ defmodule FrontWeb.ProjectOnboardingControllerTest do
       assert conn
              |> post("/x/repositories/refresh", params)
              |> json_response(200)
-             |> Map.fetch!("state") == "done"
+             |> Map.fetch!("state") == "started"
 
       assert_received {:refresh_request, req}
       assert req.repository_slug == "octo/repo"
 
+      # Targeted refreshes are throttled per user, so an immediate retry is limited.
+      conn = post(conn, "/x/repositories/refresh", params)
+      assert json_response(conn, 429)["state"] == "rate_limited"
+    end
+
+    test "throttles a second targeted refresh even for a different slug", %{conn: conn} do
+      stub_refresh(:STARTED, "Refreshing from GitHub.")
+
       assert conn
-             |> post("/x/repositories/refresh", params)
+             |> post("/x/repositories/refresh", %{
+               integration_type: "github_app",
+               repository_slug: "octo/repo"
+             })
              |> json_response(200)
-             |> Map.fetch!("state") == "done"
+
+      # A different slug must not bypass the per-user targeted throttle — that is
+      # exactly what an enumeration/abuse loop would do.
+      conn =
+        post(conn, "/x/repositories/refresh", %{
+          integration_type: "github_app",
+          repository_slug: "octo/other"
+        })
+
+      assert json_response(conn, 429)["state"] == "rate_limited"
+    end
+
+    test "targeted and full refreshes throttle independently", %{conn: conn} do
+      stub_refresh(:STARTED, "started")
+
+      assert conn
+             |> post("/x/repositories/refresh", %{
+               integration_type: "github_app",
+               repository_slug: "octo/repo"
+             })
+             |> json_response(200)
+
+      # A targeted cooldown must not block a full refresh (separate scope).
+      conn = post(conn, "/x/repositories/refresh", %{integration_type: "github_app"})
+      assert json_response(conn, 200)["state"] == "started"
     end
 
     test "organization refresh passes the org through and consumes the cooldown", %{conn: conn} do
