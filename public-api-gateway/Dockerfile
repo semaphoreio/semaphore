@@ -1,4 +1,4 @@
-ARG GO_VERSION=1.24
+ARG GO_VERSION=1.25
 ARG ALPINE_VERSION=3.22
 ARG BUILDER_IMAGE="golang:${GO_VERSION}"
 ARG RUNNER_IMAGE="alpine:${ALPINE_VERSION}"
@@ -21,7 +21,7 @@ RUN curl -sL https://github.com/google/protobuf/releases/download/v3.3.0/protoc-
 WORKDIR /app
 
 RUN go install github.com/mgechev/revive@v1.7.0
-RUN go install gotest.tools/gotestsum@v1.12.1
+RUN go install gotest.tools/gotestsum@v1.13.0
 RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.7
 RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.3.0
 
@@ -41,12 +41,12 @@ COPY test test
 COPY scripts scripts
 COPY lint.toml lint.toml
 
-CMD [ "/bin/bash",  "-c \"while sleep 1000; do :; done\"" ]
+CMD ["/bin/bash", "-c", "while sleep 1000; do :; done"]
 
 FROM ${RUNNER_IMAGE} AS runner
 
 # This is needed to connect the GitHub Container Registry package with our repository.
-LABEL org.opencontainers.image.source https://github.com/semaphoreio/semaphore
+LABEL org.opencontainers.image.source=https://github.com/semaphoreio/semaphore
 
 RUN apk add --no-cache libc6-compat
 HEALTHCHECK NONE

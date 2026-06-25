@@ -44,7 +44,7 @@ COPY test test
 
 RUN mix compile
 
-CMD [ "/bin/bash",  "-c \"while sleep 1000; do :; done\"" ]
+CMD ["/bin/bash", "-c", "while sleep 1000; do :; done"]
 
 FROM base AS builder
 
@@ -53,7 +53,7 @@ RUN mix release
 FROM ${RUNNER_IMAGE} AS runner
 
 # This is needed to connect the GitHub Container Registry package with our repository.
-LABEL org.opencontainers.image.source https://github.com/semaphoreio/semaphore
+LABEL org.opencontainers.image.source=https://github.com/semaphoreio/semaphore
 
 HEALTHCHECK NONE
 
@@ -77,4 +77,4 @@ COPY --from=builder --chown=nobody:root /app/_build/${MIX_ENV}/rel/pre_flight_ch
 
 USER nobody
 
-CMD /app/bin/pre_flight_checks start
+CMD ["/app/bin/pre_flight_checks", "start"]
