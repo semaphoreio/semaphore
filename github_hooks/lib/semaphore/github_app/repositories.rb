@@ -6,6 +6,7 @@ module Semaphore::GithubApp
     MAX_NUMBER_OF_REPOSITORIES = 10000
     PER_PAGE = 100
     EXCON_RETRY_LIMIT = 4
+    MAX_PAGES = (MAX_NUMBER_OF_REPOSITORIES / PER_PAGE) + 1
 
     def self.parse_total_count!(body, installation_id:)
       total_count = Integer(body.fetch("total_count"))
@@ -81,9 +82,13 @@ module Semaphore::GithubApp
     def get_remote_repositories
       github_repos = []
       expected_total_count = nil
+      pages_fetched = 0
       next_page_url = "https://api.github.com/installation/repositories?per_page=#{PER_PAGE}&page=1"
 
       while next_page_url
+        pages_fetched += 1
+        raise IncompleteRepositoryListError, "GitHub App installation repository pagination exceeded #{MAX_PAGES} pages" if pages_fetched > MAX_PAGES
+
         response = Excon.get(
           next_page_url,
           :headers => github_api_headers,
@@ -100,10 +105,15 @@ module Semaphore::GithubApp
         expected_total_count ||= total_count
         raise IncompleteRepositoryListError, "GitHub App installation repository count changed during pagination" if total_count != expected_total_count
 
-        remaining_slots = expected_total_count - github_repos.size
+        size_before = github_repos.size
+        remaining_slots = expected_total_count - size_before
         github_repos.concat(Semaphore::GithubApp::Hook.map_repositories(repositories.first(remaining_slots)))
 
         break if github_repos.size >= expected_total_count
+
+        # A page advertised "next" but added nothing: we can never reach
+        # expected_total_count, so stop instead of following the link forever.
+        raise IncompleteRepositoryListError, "GitHub App installation repositories pagination stalled at #{github_repos.size}/#{expected_total_count}" if github_repos.size == size_before
 
         next_page_url = next_page_url(response.headers)
       end

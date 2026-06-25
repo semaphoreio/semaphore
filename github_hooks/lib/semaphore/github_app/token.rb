@@ -66,8 +66,12 @@ class Semaphore::GithubApp::Token
 
   def self.installation_id_from(path, subject)
     response = Excon.get("https://api.github.com/#{path}", :headers => app_jwt_headers)
+    return unless response.status < 300
 
-    JSON.parse(response.data[:body])["id"].to_i if response.status < 300
+    # A 2xx without a positive integer "id" (unexpected shape) must not become 0
+    # and persist a junk installation row downstream.
+    id = JSON.parse(response.data[:body])["id"]
+    id if id.is_a?(Integer) && id.positive?
   rescue StandardError => e
     Rails.logger.error("[Semaphore::GithubApp::Token] Failed to resolve installation for #{subject}: #{e.message}")
 

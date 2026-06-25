@@ -81,6 +81,29 @@ module Semaphore::GithubApp
         end.to raise_error(described_class::IncompleteRepositoryListError, /Fetched 200 repositories, expected 399/)
       end
 
+      it "raises instead of looping when a page advertises next but adds no repositories" do
+        page_1_repos = (1..100).map { |i| { "id" => i, "full_name" => "acme/repo-#{i}" } }
+
+        # Page 2 (and every subsequent stubbed call) returns an empty list while
+        # still advertising a next link — without a guard this loops forever.
+        allow(Excon).to receive(:get).and_return(
+          instance_double(
+            Excon::Response,
+            :data => { :body => JSON.generate({ "total_count" => 399, "repositories" => page_1_repos }) },
+            :headers => { "Link" => '<https://api.github.com/installation/repositories?per_page=100&page=2>; rel="next"' }
+          ),
+          instance_double(
+            Excon::Response,
+            :data => { :body => JSON.generate({ "total_count" => 399, "repositories" => [] }) },
+            :headers => { "Link" => '<https://api.github.com/installation/repositories?per_page=100&page=3>; rel="next"' }
+          )
+        )
+
+        expect do
+          repositories.send(:get_remote_repositories)
+        end.to raise_error(described_class::IncompleteRepositoryListError, %r{pagination stalled at 100/399})
+      end
+
       it "raises when total_count is missing" do
         allow(Excon).to receive(:get).and_return(
           instance_double(

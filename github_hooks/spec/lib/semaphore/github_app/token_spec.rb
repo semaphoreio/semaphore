@@ -97,6 +97,22 @@ RSpec.describe Semaphore::GithubApp::Token do
 
       expect(described_class.repository_installation_id("acme/widget")).to be_nil
     end
+
+    it "returns nil when a 2xx response carries no id (never 0)" do
+      allow(Excon).to receive(:get).and_return(
+        instance_double(Excon::Response, :status => 200, :data => { :body => "{}" })
+      )
+
+      expect(described_class.repository_installation_id("acme/widget")).to be_nil
+    end
+
+    it "returns nil when a 2xx id is not a positive integer" do
+      allow(Excon).to receive(:get).and_return(
+        instance_double(Excon::Response, :status => 200, :data => { :body => JSON.generate({ "id" => "nan" }) })
+      )
+
+      expect(described_class.repository_installation_id("acme/widget")).to be_nil
+    end
   end
 
   describe "#organization_installation_id" do
