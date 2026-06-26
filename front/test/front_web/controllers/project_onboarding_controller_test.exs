@@ -133,20 +133,23 @@ defmodule FrontWeb.ProjectOnboardingControllerTest do
       )
     end
 
-    test "starts a full refresh for github_app", %{conn: conn} do
+    test "fails a github_app refresh with neither a repository nor an organization", %{conn: conn} do
+      stub_refresh(:FAILED, "Specify a repository or organization to refresh.")
+
       conn = post(conn, "/x/repositories/refresh", %{integration_type: "github_app"})
 
-      body = json_response(conn, 200)
-      assert body["state"] == "started"
-      assert body["message"] == "Repository sync started."
+      body = json_response(conn, 422)
+      assert body["state"] == "failed"
+      assert body["message"] =~ "repository or organization"
     end
 
-    test "rate limits an immediate second full refresh", %{conn: conn} do
-      assert conn
-             |> post("/x/repositories/refresh", %{integration_type: "github_app"})
-             |> json_response(200)
+    test "rate limits an immediate second org/full refresh", %{conn: conn} do
+      stub_refresh(:STARTED, "Repository sync started for acme.")
+      params = %{integration_type: "github_app", organization: "acme"}
 
-      conn = post(conn, "/x/repositories/refresh", %{integration_type: "github_app"})
+      assert conn |> post("/x/repositories/refresh", params) |> json_response(200)
+
+      conn = post(conn, "/x/repositories/refresh", params)
 
       body = json_response(conn, 429)
       assert body["state"] == "rate_limited"
@@ -162,27 +165,29 @@ defmodule FrontWeb.ProjectOnboardingControllerTest do
         Application.put_env(:front, :repository_full_refresh_cooldown_seconds, original)
       end)
 
-      assert conn
-             |> post("/x/repositories/refresh", %{integration_type: "github_app"})
-             |> json_response(200)
+      stub_refresh(:STARTED, "Repository sync started for acme.")
+      params = %{integration_type: "github_app", organization: "acme"}
 
-      conn = post(conn, "/x/repositories/refresh", %{integration_type: "github_app"})
+      assert conn |> post("/x/repositories/refresh", params) |> json_response(200)
+
+      conn = post(conn, "/x/repositories/refresh", params)
       body = json_response(conn, 429)
 
-      # 10-minute full cooldown, distinct from the 60s targeted throttle.
+      # 10-minute full/org cooldown, distinct from the 60s targeted throttle.
       assert body["retry_after"] > 60
       assert body["retry_after"] <= 600
     end
 
     test "an already running sync still consumes the cooldown", %{conn: conn} do
       stub_refresh(:ALREADY_RUNNING, "A repository sync is already running.")
+      params = %{integration_type: "github_app", organization: "acme"}
 
       assert conn
-             |> post("/x/repositories/refresh", %{integration_type: "github_app"})
+             |> post("/x/repositories/refresh", params)
              |> json_response(200)
              |> Map.fetch!("state") == "already_running"
 
-      conn = post(conn, "/x/repositories/refresh", %{integration_type: "github_app"})
+      conn = post(conn, "/x/repositories/refresh", params)
       assert json_response(conn, 429)
     end
 
@@ -234,7 +239,7 @@ defmodule FrontWeb.ProjectOnboardingControllerTest do
       assert json_response(conn, 429)["state"] == "rate_limited"
     end
 
-    test "targeted and full refreshes throttle independently", %{conn: conn} do
+    test "targeted and org/full refreshes throttle independently", %{conn: conn} do
       stub_refresh(:STARTED, "started")
 
       assert conn
@@ -244,8 +249,13 @@ defmodule FrontWeb.ProjectOnboardingControllerTest do
              })
              |> json_response(200)
 
-      # A targeted cooldown must not block a full refresh (separate scope).
-      conn = post(conn, "/x/repositories/refresh", %{integration_type: "github_app"})
+      # A targeted cooldown must not block an org refresh (separate scope).
+      conn =
+        post(conn, "/x/repositories/refresh", %{
+          integration_type: "github_app",
+          organization: "acme"
+        })
+
       assert json_response(conn, 200)["state"] == "started"
     end
 
@@ -325,33 +335,33 @@ defmodule FrontWeb.ProjectOnboardingControllerTest do
         raise GRPC.RPCError, status: GRPC.Status.unavailable(), message: "down"
       end)
 
+      params = %{integration_type: "github_app", organization: "acme"}
+
       assert conn
-             |> post("/x/repositories/refresh", %{integration_type: "github_app"})
+             |> post("/x/repositories/refresh", params)
              |> json_response(503)
              |> Map.fetch!("state") == "failed"
 
-      stub_refresh(:STARTED, "Repository sync started.")
+      stub_refresh(:STARTED, "Repository sync started for acme.")
 
-      conn = post(conn, "/x/repositories/refresh", %{integration_type: "github_app"})
+      conn = post(conn, "/x/repositories/refresh", params)
       assert json_response(conn, 200)["state"] == "started"
     end
 
-    test "a failed full refresh does not consume the cooldown", %{conn: conn} do
-      stub_refresh(
-        :FAILED,
-        "No GitHub App repositories to refresh. Install the GitHub App first."
-      )
+    test "a failed org/full refresh does not consume the cooldown", %{conn: conn} do
+      stub_refresh(:FAILED, "The GitHub App has no access to acme. Grant access on GitHub first.")
+      params = %{integration_type: "github_app", organization: "acme"}
 
       assert conn
-             |> post("/x/repositories/refresh", %{integration_type: "github_app"})
+             |> post("/x/repositories/refresh", params)
              |> json_response(422)
              |> Map.fetch!("state") == "failed"
 
       # The no-op failure released the cooldown, so an immediate retry is allowed
       # rather than rate limited.
-      stub_refresh(:STARTED, "Repository sync started.")
+      stub_refresh(:STARTED, "Repository sync started for acme.")
 
-      conn = post(conn, "/x/repositories/refresh", %{integration_type: "github_app"})
+      conn = post(conn, "/x/repositories/refresh", params)
       assert json_response(conn, 200)["state"] == "started"
     end
 
