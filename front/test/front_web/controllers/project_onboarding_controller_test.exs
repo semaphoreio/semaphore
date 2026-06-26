@@ -270,6 +270,54 @@ defmodule FrontWeb.ProjectOnboardingControllerTest do
       assert json_response(conn, 429)
     end
 
+    test "a refresh of one GitHub org does not block a different org", %{conn: conn} do
+      stub_refresh(:STARTED, "started")
+
+      assert conn
+             |> post("/x/repositories/refresh", %{
+               integration_type: "github_app",
+               organization: "acme"
+             })
+             |> json_response(200)
+
+      # A different org has its own cooldown bucket, so it is not throttled.
+      assert conn
+             |> post("/x/repositories/refresh", %{
+               integration_type: "github_app",
+               organization: "beta"
+             })
+             |> json_response(200)
+
+      # ...but re-refreshing the first org is still throttled.
+      conn =
+        post(conn, "/x/repositories/refresh", %{
+          integration_type: "github_app",
+          organization: "acme"
+        })
+
+      assert json_response(conn, 429)["state"] == "rate_limited"
+    end
+
+    test "the org cooldown is case-insensitive", %{conn: conn} do
+      stub_refresh(:STARTED, "started")
+
+      assert conn
+             |> post("/x/repositories/refresh", %{
+               integration_type: "github_app",
+               organization: "Acme"
+             })
+             |> json_response(200)
+
+      # Acme and acme are the same GitHub org, so the second is throttled.
+      conn =
+        post(conn, "/x/repositories/refresh", %{
+          integration_type: "github_app",
+          organization: "acme"
+        })
+
+      assert json_response(conn, 429)["state"] == "rate_limited"
+    end
+
     test "rejects an invalid organization without calling the RPC", %{conn: conn} do
       GrpcMock.stub(RepositoryIntegratorMock, :refresh_repositories, fn _, _ ->
         raise "refresh_repositories must not be called"
