@@ -58,12 +58,14 @@ module Semaphore::GithubApp
       # the installation is NOT enough — it would expose co-tenant private repos.
       return no_access unless user_has_github_push?(user, slug)
 
-      # Resolve the installation: cached repo, else the org's installation, else
-      # ask GitHub (app JWT) so a zero-cached installation still works. Discovery
-      # runs only after authorization, so we never persist installations the
+      # Resolve the installation: a cached repo (which definitely covers the slug),
+      # else ask GitHub which installation owns THIS repo (app JWT). We must not
+      # reuse another cached org installation — on a selected-repos app it may not
+      # cover this repo, and the worker would 404 silently. discover_installation
+      # 404s -> nil when the app has no access, so that path returns no_access.
+      # Runs only after authorization, so we never persist installations the
       # caller cannot reach.
       installation = GithubAppInstallation.find_for_repository(slug) ||
-                     GithubAppInstallation.find_for_organization(slug.split("/").first) ||
                      discover_installation(slug)
       return no_access unless installation
 
