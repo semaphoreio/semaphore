@@ -505,11 +505,10 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
               configState.refreshRepositoriesUrl && (
               <div className="pv3 ph2 bt b--black-10">
                 <h3 className="f4 mb1">Repository not listed? Try refreshing it manually</h3>
-                <div className="flex items-center">
+                <div className="input-button-group">
                   <input
                     type="text"
-                    className="form-control flex-auto ba b--black-20 br2 pa2 mr2"
-                    style={{ outline: `none`, boxShadow: `none` }}
+                    className="form-control flex-auto"
                     placeholder="organization/repository or repository URL"
                     value={manualSlug}
                     onInput={(event) =>
@@ -551,16 +550,15 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
                       theme="dropdown"
                       maxWidth={320}
                       content={
-                        <div className="pa1" style={{ minWidth: `260px` }}>
+                        <div className="pa2" style={{ minWidth: `260px` }}>
                           <h3 className="f5 mb1">Refresh an organization</h3>
                           <p className="f6 black-60 mb2">
                             Re-sync every repository for a GitHub organization you have access to.
                           </p>
-                          <div className="flex items-center">
+                          <div className="input-button-group">
                             <input
                               type="text"
-                              className="form-control flex-auto ba b--black-20 br2 pa2 mr2"
-                              style={{ outline: `none`, boxShadow: `none` }}
+                              className="form-control flex-auto"
                               placeholder="organization"
                               value={orgName}
                               disabled={isRefreshing || cooldownLeft > 0}
