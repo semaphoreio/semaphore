@@ -78,6 +78,32 @@ module Semaphore::GithubApp
         expect(Rails.logger).to have_received(:info).with(/Terminal error/)
       end
 
+      it "re-raises a transient GitHub error so Sidekiq retries, keeping the lock" do
+        allow(RepositoryRefresh).to receive(:fetch_and_cache_repository)
+          .and_raise(RepoHost::RemoteException::ServiceUnavailable.new("503"))
+        allow(Rails.logger).to receive(:info)
+
+        worker = described_class.new
+        expect(worker).not_to receive(:delete_unique_lock)
+
+        expect { worker.perform(installation_id, slug) }
+          .to raise_error(RepoHost::RemoteException::ServiceUnavailable)
+        expect(Rails.logger).to have_received(:info).with(/Transient error — retrying with backoff/)
+      end
+
+      it "re-raises a transient DB error (StatementInvalid) so Sidekiq retries" do
+        allow(RepositoryRefresh).to receive(:fetch_and_cache_repository)
+          .and_raise(ActiveRecord::StatementInvalid.new("connection timed out"))
+        allow(Rails.logger).to receive(:info)
+
+        worker = described_class.new
+        expect(worker).not_to receive(:delete_unique_lock)
+
+        expect { worker.perform(installation_id, slug) }
+          .to raise_error(ActiveRecord::StatementInvalid)
+        expect(Rails.logger).to have_received(:info).with(/Transient error — retrying with backoff/)
+      end
+
       it "releases the lock for the blank-slug no-op" do
         allow(Rails.logger).to receive(:info)
 

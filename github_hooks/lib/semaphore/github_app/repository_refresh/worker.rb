@@ -7,6 +7,16 @@ module Semaphore::GithubApp
       include Sidekiq::Worker
       include Semaphore::GithubApp::UniqueLockManagement
 
+      # Transient failures worth retrying (GitHub 5xx, network, DB timeouts);
+      # everything else (e.g. a revoked-token Unauthorized) finishes terminally.
+      RETRYABLE_ERRORS = [
+        RepoHost::RemoteException::RepoHostIssue,
+        Octokit::ServerError,
+        Faraday::TimeoutError,
+        Faraday::ConnectionFailed,
+        ActiveRecord::StatementInvalid
+      ].freeze
+
       sidekiq_options :queue => :github_app,
                       :lock => :until_expired,
                       :on_conflict => { :client => :log, :server => :reject },
@@ -56,9 +66,14 @@ module Semaphore::GithubApp
       rescue LowRateLimitError
         # Retryable: keep the lock and let Sidekiq retry with backoff.
         raise
+      rescue *RETRYABLE_ERRORS => e
+        # Transient: keep the lock and re-raise so Sidekiq retries with backoff
+        # (bounded by worker_max_retries; the lock is freed on exhaustion).
+        log(installation_id, slug, "Transient error — retrying with backoff: #{e.class}: #{e.message}")
+        raise
       rescue StandardError => e
-        # Any other error is non-retryable (e.g. a revoked token): release the lock
-        # and finish, so a permanent failure doesn't burn the whole retry budget.
+        # Anything else is permanent (e.g. a revoked-token Unauthorized): release the
+        # lock and finish, so a permanent failure doesn't burn the whole retry budget.
         log(installation_id, slug, "Terminal error — #{e.class}: #{e.message}")
         delete_unique_lock([installation_id, slug])
       end
