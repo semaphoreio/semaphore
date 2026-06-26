@@ -31,7 +31,7 @@ defmodule Front.Mixfile do
 
   defp deps do
     [
-      {:plug_cowboy, "~> 2.5"},
+      {:plug_cowboy, "~> 2.8"},
       {:etag_plug, "~> 1.0"},
       {:phoenix, "~> 1.6.0", override: true},
       {:phoenix_html, "~> 3.0.0", override: true},

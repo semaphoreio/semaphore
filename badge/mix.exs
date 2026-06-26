@@ -28,8 +28,8 @@ defmodule Badges.MixProject do
   defp deps do
     [
       {:cowlib, "~> 2.16", override: true},
-      {:plug, "~> 1.8.3"},
-      {:plug_cowboy, "~> 2.0"},
+      {:plug, "~> 1.18"},
+      {:plug_cowboy, "~> 2.8"},
       {:grpc, "~> 0.3.1"},
       {:grpc_mock, github: "renderedtext/grpc-mock", only: [:dev, :test]},
       {:watchman, github: "renderedtext/ex-watchman"},
