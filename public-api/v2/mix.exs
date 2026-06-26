@@ -40,6 +40,7 @@ defmodule PublicAPI.Mixfile do
   # Type "mix help deps" for more examples and options
   defp deps do
     [
+      {:cowlib, "~> 2.16", override: true},
       {:grpc, "~> 0.3"},
       {:protobuf, "~> 0.12.0"},
       {:plug_cowboy, "~> 2.0"},
