@@ -348,7 +348,7 @@ defmodule FrontWeb.ProjectOnboardingControllerTest do
       assert json_response(conn, 200)["state"] == "started"
     end
 
-    test "a failed targeted refresh does not consume the cooldown", %{conn: conn} do
+    test "a failed targeted refresh still consumes the cooldown", %{conn: conn} do
       stub_refresh(:FAILED, "The GitHub App has no access to octo/repo.")
 
       params = %{integration_type: "github_app", repository_slug: "octo/repo"}
@@ -358,12 +358,10 @@ defmodule FrontWeb.ProjectOnboardingControllerTest do
              |> json_response(422)
              |> Map.fetch!("state") == "failed"
 
-      # No access did no work, so the cooldown was released — an immediate retry
-      # is allowed rather than rate limited.
-      stub_refresh(:STARTED, "Refreshing octo/repo from GitHub.")
-
+      # The cooldown is kept on a failed targeted refresh so denied slugs cannot be
+      # looped — an immediate retry is rate limited.
       conn = post(conn, "/x/repositories/refresh", params)
-      assert json_response(conn, 200)["state"] == "started"
+      assert json_response(conn, 429)["state"] == "rate_limited"
     end
 
     test "maps a failed refresh to 422 with the server message", %{conn: conn} do
