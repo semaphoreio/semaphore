@@ -314,7 +314,7 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
       end
     end
 
-    context "for a full github app refresh" do
+    context "for a GITHUB_APP request with neither a repository nor an organization" do
       before do
         @req = InternalApi::RepositoryIntegrator::RefreshRepositoriesRequest.new(
           :user_id => user_id,
@@ -322,26 +322,14 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
         )
       end
 
-      it "dispatches to RepositoryRefresh.full with the requesting user and maps the result" do
-        allow(Semaphore::GithubApp::RepositoryRefresh).to receive(:full).and_return(
-          Semaphore::GithubApp::RepositoryRefresh::Result.new(:started, "Repository sync started.")
-        )
+      it "fails without dispatching a repository or organization refresh" do
+        expect(Semaphore::GithubApp::RepositoryRefresh).not_to receive(:targeted)
+        expect(Semaphore::GithubApp::RepositoryRefresh).not_to receive(:full_for_organization)
 
         response = server.refresh_repositories(@req, call)
 
-        expect(Semaphore::GithubApp::RepositoryRefresh).to have_received(:full).with(user_id)
-        expect(response.sync_state).to eq(:STARTED)
-        expect(response.message).to eq("Repository sync started.")
-      end
-
-      it "maps an already running sync" do
-        allow(Semaphore::GithubApp::RepositoryRefresh).to receive(:full).and_return(
-          Semaphore::GithubApp::RepositoryRefresh::Result.new(:already_running, "A repository sync is already running.")
-        )
-
-        response = server.refresh_repositories(@req, call)
-
-        expect(response.sync_state).to eq(:ALREADY_RUNNING)
+        expect(response.sync_state).to eq(:FAILED)
+        expect(response.message).to match(/Specify a repository or organization/)
       end
     end
 

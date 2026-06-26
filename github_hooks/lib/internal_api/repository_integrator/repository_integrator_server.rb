@@ -94,7 +94,9 @@ module InternalApi
           elsif req.organization.present?
             ::Semaphore::GithubApp::RepositoryRefresh.full_for_organization(req.user_id, req.organization)
           else
-            ::Semaphore::GithubApp::RepositoryRefresh.full(req.user_id)
+            ::Semaphore::GithubApp::RepositoryRefresh::Result.new(
+              :failed, "Specify a repository or organization to refresh."
+            )
           end
 
         logger.info("RefreshRepositories user_id=#{req.user_id} slug=#{req.repository_slug.inspect} org=#{req.organization.inspect} -> #{result.state}")
