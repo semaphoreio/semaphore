@@ -424,5 +424,17 @@ RSpec.describe RepoHost::Github::Client do
         )
       )
     end
+
+    it "scans only organization-member repositories (excludes outside collaborators)" do
+      scan_client = instance_double(Octokit::Client)
+      allow(Octokit::Client).to receive(:new).and_return(scan_client)
+      allow(scan_client).to receive(:repos).and_return([])
+
+      @client.push_access_to_organization?("acme")
+
+      expect(scan_client).to have_received(:repos).with(
+        nil, hash_including(:affiliation => "organization_member")
+      )
+    end
   end
 end
