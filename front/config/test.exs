@@ -39,4 +39,3 @@ config :junit_formatter,
 
 config :front, me_host: "me.", me_path: "/"
 config :front, :artifact_host, "http://localhost:9000"
-config :front, repository_full_refresh_cooldown_seconds: 60

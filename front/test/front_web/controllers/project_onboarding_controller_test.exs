@@ -143,7 +143,9 @@ defmodule FrontWeb.ProjectOnboardingControllerTest do
       assert body["message"] =~ "repository or organization"
     end
 
-    test "rate limits an immediate second org/full refresh", %{conn: conn} do
+    test "rate limits an immediate second org/full refresh with the 10-minute window", %{
+      conn: conn
+    } do
       stub_refresh(:STARTED, "Repository sync started for acme.")
       params = %{integration_type: "github_app", organization: "acme"}
 
@@ -154,26 +156,7 @@ defmodule FrontWeb.ProjectOnboardingControllerTest do
       body = json_response(conn, 429)
       assert body["state"] == "rate_limited"
       assert is_integer(body["retry_after"])
-      assert body["retry_after"] <= 60
-    end
-
-    test "uses the configurable full-refresh cooldown for the retry window", %{conn: conn} do
-      original = Application.get_env(:front, :repository_full_refresh_cooldown_seconds)
-      Application.put_env(:front, :repository_full_refresh_cooldown_seconds, 600)
-
-      on_exit(fn ->
-        Application.put_env(:front, :repository_full_refresh_cooldown_seconds, original)
-      end)
-
-      stub_refresh(:STARTED, "Repository sync started for acme.")
-      params = %{integration_type: "github_app", organization: "acme"}
-
-      assert conn |> post("/x/repositories/refresh", params) |> json_response(200)
-
-      conn = post(conn, "/x/repositories/refresh", params)
-      body = json_response(conn, 429)
-
-      # 10-minute full/org cooldown, distinct from the 60s targeted throttle.
+      # Fixed 10-minute full/org cooldown, distinct from the 60s targeted throttle.
       assert body["retry_after"] > 60
       assert body["retry_after"] <= 600
     end
