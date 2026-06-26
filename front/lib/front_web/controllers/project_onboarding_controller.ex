@@ -574,18 +574,20 @@ defmodule FrontWeb.ProjectOnboardingController do
     end
   end
 
-  # Full / per-organization refresh, throttled once per user via the cooldown.
+  # Full / per-organization refresh, throttled per (user, GitHub org) so
+  # refreshing one org doesn't block a different one.
   defp start_full_refresh(conn, user_id, org_id, organization) do
-    case claim_refresh_cooldown(:full, org_id, user_id) do
+    case claim_refresh_cooldown(:full, org_id, user_id, cooldown_resource(:full, organization)) do
       :ok -> do_refresh(conn, user_id, :full, "", organization)
       {:cooldown, seconds_left} -> rate_limited(conn, seconds_left)
     end
   end
 
-  # Targeted refresh, throttled per user. The cooldown is only consumed by a
-  # successful refresh; a failed attempt (e.g. no access) releases it.
+  # Targeted refresh, throttled per user (not per slug, on purpose: the cooldown
+  # is kept on failure so a caller cannot loop denied slugs to spam the
+  # synchronous push check).
   defp start_targeted_refresh(conn, user_id, org_id, slug) do
-    case claim_refresh_cooldown(:targeted, org_id, user_id) do
+    case claim_refresh_cooldown(:targeted, org_id, user_id, cooldown_resource(:targeted, "")) do
       :ok -> do_refresh(conn, user_id, :targeted, slug, "")
       {:cooldown, seconds_left} -> rate_limited(conn, seconds_left)
     end
@@ -605,6 +607,9 @@ defmodule FrontWeb.ProjectOnboardingController do
     result = Models.RepositoryIntegrator.refresh_repositories(user_id, slug, organization)
     audit_refresh(conn, slug, organization, result)
 
+    org_id = conn.assigns.organization_id
+    resource = cooldown_resource(scope, organization)
+
     case result do
       {:ok, %{state: state, message: message}}
       when state in [:STARTED, :ALREADY_RUNNING, :DONE] ->
@@ -616,7 +621,7 @@ defmodule FrontWeb.ProjectOnboardingController do
         # cooldown so a caller cannot loop denied/failed slugs to spam the
         # synchronous push check.
         if scope == :full,
-          do: release_refresh_cooldown(:full, conn.assigns.organization_id, user_id)
+          do: release_refresh_cooldown(:full, org_id, user_id, resource)
 
         conn
         |> put_status(422)
@@ -624,7 +629,7 @@ defmodule FrontWeb.ProjectOnboardingController do
 
       {:error, _} ->
         # Don't burn the user's cooldown on a transient RPC failure (either scope).
-        release_refresh_cooldown(scope, conn.assigns.organization_id, user_id)
+        release_refresh_cooldown(scope, org_id, user_id, resource)
 
         conn
         |> put_status(503)
@@ -663,9 +668,16 @@ defmodule FrontWeb.ProjectOnboardingController do
 
   defp refresh_result_state(_), do: "error"
 
-  # Scoped per (full vs targeted) so the two refresh kinds throttle independently.
-  defp refresh_cooldown_key(scope, org_id, user_id),
-    do: "repository_refresh_cooldown/#{scope}/#{org_id}/#{user_id}"
+  # Scoped per (full vs targeted) so the two refresh kinds throttle independently,
+  # and per resource (the normalized GitHub org for :full; "" for :targeted) so
+  # refreshing one org doesn't lock out another.
+  defp refresh_cooldown_key(scope, org_id, user_id, resource),
+    do: "repository_refresh_cooldown/#{scope}/#{org_id}/#{user_id}/#{resource}"
+
+  # GitHub logins are case-insensitive, so normalize to a single bucket. Targeted
+  # stays per-user (no slug) on purpose — see start_targeted_refresh/4.
+  defp cooldown_resource(:full, organization), do: String.downcase(organization)
+  defp cooldown_resource(:targeted, _organization), do: ""
 
   # Soft cost-guard, not a lock. Claimed before the RPC, released if the refresh
   # did no work (see do_refresh/5). Two known limits, both bounded by the sync
@@ -673,8 +685,8 @@ defmodule FrontWeb.ProjectOnboardingController do
   # GitHub calls: the get-then-set is non-atomic (Cacheman has no SET NX), and it
   # fails open if Redis is down (Cacheman maps errors to a cache miss). A proper
   # fix needs an atomic Redis SET NX claim.
-  defp claim_refresh_cooldown(scope, org_id, user_id) do
-    key = refresh_cooldown_key(scope, org_id, user_id)
+  defp claim_refresh_cooldown(scope, org_id, user_id, resource) do
+    key = refresh_cooldown_key(scope, org_id, user_id, resource)
     cooldown = cooldown_seconds(scope)
 
     case Front.Cache.get(key) do
@@ -696,8 +708,8 @@ defmodule FrontWeb.ProjectOnboardingController do
   defp cooldown_seconds(:targeted), do: @targeted_refresh_cooldown_seconds
   defp cooldown_seconds(:full), do: @full_refresh_cooldown_seconds
 
-  defp release_refresh_cooldown(scope, org_id, user_id) do
-    Front.Cache.unset(refresh_cooldown_key(scope, org_id, user_id))
+  defp release_refresh_cooldown(scope, org_id, user_id, resource) do
+    Front.Cache.unset(refresh_cooldown_key(scope, org_id, user_id, resource))
   end
 
   def project_repository_status(conn, params) do
