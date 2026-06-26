@@ -5,7 +5,7 @@ export interface RefreshResponse {
 }
 
 type RefreshOutcome =
-  | { kind: `rate_limited`, cooldown: number, message?: string, ok: false, }
+  | { kind: `rate_limited`, cooldown: number, ok: false, }
   | { kind: `started`, startCooldown: boolean, ok: true, }
   | { kind: `done`, reloadNow: boolean, ok: true, }
   | { kind: `error`, message: string, ok: false, };
@@ -27,12 +27,7 @@ export const decideRefreshOutcome = (
   defaultCooldown: number
 ): RefreshOutcome => {
   if (status === 429) {
-    return {
-      kind: `rate_limited`,
-      cooldown: data?.retry_after ?? defaultCooldown,
-      message: data?.message,
-      ok: false,
-    };
+    return { kind: `rate_limited`, cooldown: data?.retry_after ?? defaultCooldown, ok: false };
   }
 
   if (!data) {
