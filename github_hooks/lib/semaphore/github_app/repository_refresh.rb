@@ -98,11 +98,17 @@ module Semaphore::GithubApp
       :no_repository
     end
 
-    # Re-sync the installation's repository list. Repositories.refresh enqueues a
-    # collaborator sync for any repo it discovers as newly added, so a blanket
-    # per-repo fan-out here would only re-sync already-known repos.
+    # Reconcile the installation's repository list (the add/remove delta also syncs
+    # those repos' collaborators), then re-sync collaborators for every already-cached
+    # repo too: a user's access can change with no change to the repo list, which is
+    # exactly what a manual refresh must reflect. Collaborators::Worker's unique lock
+    # (keyed on slug) dedupes any overlap with the delta path.
     def self.refresh_installation(installation)
       Repositories::Worker.perform_async(installation.installation_id)
+
+      installation.installation_repositories.find_each do |repository|
+        Collaborators::Worker.perform_in(10, repository.slug, repository.remote_id)
+      end
     end
     private_class_method :refresh_installation
 
