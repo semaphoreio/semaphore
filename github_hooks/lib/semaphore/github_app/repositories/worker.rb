@@ -6,6 +6,7 @@ module Semaphore::GithubApp
 
       sidekiq_options :queue => :github_app,
                       :lock => :until_expired,
+                      :lock_args_method => ->(args) { [args.first] },
                       :on_conflict => { :client => :log, :server => :reject },
                       :lock_ttl => App.worker_lock_ttl,
                       :retry => App.worker_max_retries,
@@ -24,10 +25,10 @@ module Semaphore::GithubApp
         new.delete_unique_lock([installation_id])
       end
 
-      def perform(installation_id)
+      def perform(installation_id, sync_collaborators = true) # rubocop:disable Style/OptionalBooleanParameter
         log(installation_id, "Start")
 
-        result = Semaphore::GithubApp::Repositories.refresh(installation_id)
+        result = Semaphore::GithubApp::Repositories.refresh(installation_id, :sync_collaborators => sync_collaborators)
 
         case result
         when :ok
