@@ -27,6 +27,7 @@ defmodule Badges.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      {:cowlib, "~> 2.16", override: true},
       {:plug, "~> 1.8.3"},
       {:plug_cowboy, "~> 2.0"},
       {:grpc, "~> 0.3.1"},
