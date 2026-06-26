@@ -7,108 +7,6 @@ module Semaphore::GithubApp
       allow_any_instance_of(Repositories::Worker).to receive(:unique_lock_exists?).and_return(false)
     end
 
-    describe ".full" do
-      let(:user) { FactoryBot.create(:user, :github_connection) }
-      let(:github_uid) { user.github_repo_host_account.github_uid }
-
-      def link_user_to(installation)
-        GithubAppCollaborator.create!(
-          :c_id => github_uid,
-          :c_name => "user",
-          :r_name => "renderedtext/guard",
-          :installation_id => installation.installation_id
-        )
-      end
-
-      context "when the user is not a collaborator on any installation" do
-        before { FactoryBot.create(:github_app_installation) }
-
-        it "fails and enqueues nothing" do
-          result = described_class.full(user.id)
-
-          expect(result.state).to eq(:failed)
-          expect(result.message).to match(/Install the GitHub App/)
-          expect(Repositories::Worker.jobs).to be_empty
-        end
-      end
-
-      context "when the requesting user cannot be resolved" do
-        it "fails without issuing a query for a nil github uid" do
-          # github_repo_host_account falls back to a synthetic account for existing
-          # users, so a nil uid only happens when the user_id resolves to nothing.
-          # c_id is NOT NULL, so where(c_id: nil) would match nothing anyway — but
-          # we should not run the query at all.
-          ghost = FactoryBot.create(:user)
-          ghost_id = ghost.id
-          ghost.destroy
-
-          expect(GithubAppCollaborator).not_to receive(:where)
-
-          result = described_class.full(ghost_id)
-
-          expect(result.state).to eq(:failed)
-          expect(result.message).to match(/Install the GitHub App/)
-          expect(Repositories::Worker.jobs).to be_empty
-        end
-      end
-
-      context "when the user's only installation is suspended" do
-        before do
-          installation = FactoryBot.create(:github_app_installation, :suspended_at => Time.zone.now)
-          link_user_to(installation)
-        end
-
-        it "fails and enqueues nothing" do
-          result = described_class.full(user.id)
-
-          expect(result.state).to eq(:failed)
-          expect(Repositories::Worker.jobs).to be_empty
-        end
-      end
-
-      context "when the user's installations are already being synced" do
-        before do
-          installation = FactoryBot.create(:github_app_installation)
-          link_user_to(installation)
-          allow_any_instance_of(Repositories::Worker).to receive(:unique_lock_exists?).and_return(true)
-        end
-
-        it "reports the sync as already running without enqueueing" do
-          result = described_class.full(user.id)
-
-          expect(result.state).to eq(:already_running)
-          expect(Repositories::Worker.jobs).to be_empty
-          expect(Collaborators::Worker.jobs).to be_empty
-        end
-      end
-
-      context "with the user's free installations" do
-        let!(:installation) { FactoryBot.create(:github_app_installation) }
-
-        before { link_user_to(installation) }
-
-        it "refreshes only installations the user collaborates in" do
-          # An installation the user is NOT linked to must be left untouched.
-          FactoryBot.create(:github_app_installation, :installation_id => 999,
-                                                      :repositories => ["acme/anvil"])
-
-          result = described_class.full(user.id)
-
-          expect(result.state).to eq(:started)
-          expect(Repositories::Worker.jobs.map { |job| job["args"] })
-            .to eq([[installation.installation_id]])
-        end
-
-        it "enqueues no collaborator workers directly" do
-          described_class.full(user.id)
-
-          expect(Collaborators::Worker.jobs).to be_empty
-          expect(Repositories::Worker.jobs.map { |job| job["args"] })
-            .to eq([[installation.installation_id]])
-        end
-      end
-    end
-
     describe ".full_for_organization" do
       let(:user) { FactoryBot.create(:user, :github_connection) }
       let!(:installation) do
@@ -542,15 +440,15 @@ module Semaphore::GithubApp
 
       it "still enqueues the repository sync — manual refresh is not gated by the env flag" do
         user = FactoryBot.create(:user, :github_connection)
-        installation = FactoryBot.create(:github_app_installation)
+        installation = FactoryBot.create(:github_app_installation, :repositories => ["acme/widget"])
         GithubAppCollaborator.create!(
           :c_id => user.github_repo_host_account.github_uid,
           :c_name => "user",
-          :r_name => "renderedtext/guard",
+          :r_name => "acme/widget",
           :installation_id => installation.installation_id
         )
 
-        result = described_class.full(user.id)
+        result = described_class.full_for_organization(user.id, "acme")
 
         expect(result.state).to eq(:started)
         expect(Repositories::Worker.jobs.map { |job| job["args"] })
