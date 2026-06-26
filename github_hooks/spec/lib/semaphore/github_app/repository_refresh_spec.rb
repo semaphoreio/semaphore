@@ -57,6 +57,16 @@ module Semaphore::GithubApp
           expect(Repositories::Worker.jobs.map { |job| job["args"] }).to eq([[installation.installation_id]])
         end
 
+        it "re-syncs collaborators for every already-cached repository" do
+          installation.add_repositories!([{ "id" => 77, "slug" => "acme/another" }])
+          expected = installation.installation_repositories.map { |repo| [repo.slug, repo.remote_id] }
+
+          described_class.full_for_organization(user.id, "acme")
+
+          expect(expected).not_to be_empty
+          expect(Collaborators::Worker.jobs.map { |job| job["args"] }).to match_array(expected)
+        end
+
         it "discovers the installation via app JWT when the org has no cached repos" do
           allow(GithubAppInstallation).to receive(:find_for_organization).with("acme").and_return(nil)
           allow(Semaphore::GithubApp::Token).to receive(:organization_installation_id).with("acme").and_return(9090)
