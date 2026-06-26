@@ -60,9 +60,10 @@ module RepoHost::Github
       handle_octokit_exceptions(exception)
     end
 
-    # True if the token owner has push access to at least one repository owned by
-    # the given organization. Pages /user/repos (org-member + collaborator
-    # affiliations) with early exit, bounded by ORG_PUSH_SCAN_MAX_PAGES.
+    # True if the token owner is an ORGANIZATION MEMBER with push access to at
+    # least one repository owned by the org. Pages /user/repos with the
+    # organization_member affiliation only — outside collaborators (who are not
+    # members) are excluded — early exit, bounded by ORG_PUSH_SCAN_MAX_PAGES.
     def push_access_to_organization?(organization)
       target = organization.to_s.downcase
       client = Octokit::Client.new(
@@ -74,7 +75,7 @@ module RepoHost::Github
       )
 
       ORG_PUSH_SCAN_MAX_PAGES.times do |index|
-        repos = client.repos(nil, :affiliation => "organization_member,collaborator",
+        repos = client.repos(nil, :affiliation => "organization_member",
                                   :per_page => 100, :page => index + 1)
         return false if repos.empty?
         return true if repos.any? { |repo| organization_push?(repo, target) }
