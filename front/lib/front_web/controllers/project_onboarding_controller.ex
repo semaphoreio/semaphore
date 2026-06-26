@@ -79,11 +79,10 @@ defmodule FrontWeb.ProjectOnboardingController do
     GIT: :CONFIG_TYPE_UNSPECIFIED
   }
 
-  # Per-user cooldown between targeted (single-repo) refreshes.
+  # Per-user cooldowns: 60s between targeted (single-repo) refreshes, 10 minutes
+  # between full / per-organization refreshes.
   @targeted_refresh_cooldown_seconds 60
-  # Default cooldown between full / per-organization refreshes; override at
-  # runtime with REPOSITORY_FULL_REFRESH_COOLDOWN_SECONDS (see config/runtime.exs).
-  @default_full_refresh_cooldown_seconds 600
+  @full_refresh_cooldown_seconds 600
 
   @repository_slug_format ~r|\A[A-Za-z0-9][A-Za-z0-9\-]{0,38}/[A-Za-z0-9._\-]{1,100}\z|
   @organization_format ~r/\A[A-Za-z0-9][A-Za-z0-9\-]{0,38}\z/
@@ -692,14 +691,7 @@ defmodule FrontWeb.ProjectOnboardingController do
   end
 
   defp cooldown_seconds(:targeted), do: @targeted_refresh_cooldown_seconds
-
-  defp cooldown_seconds(:full),
-    do:
-      Application.get_env(
-        :front,
-        :repository_full_refresh_cooldown_seconds,
-        @default_full_refresh_cooldown_seconds
-      )
+  defp cooldown_seconds(:full), do: @full_refresh_cooldown_seconds
 
   defp release_refresh_cooldown(scope, org_id, user_id) do
     Front.Cache.unset(refresh_cooldown_key(scope, org_id, user_id))

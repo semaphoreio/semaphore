@@ -12,10 +12,6 @@ config :front,
   pipeline_data_retention_days:
     String.to_integer(System.get_env("PIPELINE_DATA_RETENTION_DAYS") || "400")
 
-if cooldown = System.get_env("REPOSITORY_FULL_REFRESH_COOLDOWN_SECONDS") do
-  config :front, repository_full_refresh_cooldown_seconds: String.to_integer(cooldown)
-end
-
 if System.get_env("TZDATA_DATA_DIRECTORY") != nil do
   config :tzdata, :data_dir, System.get_env("TZDATA_DATA_DIRECTORY")
 else
