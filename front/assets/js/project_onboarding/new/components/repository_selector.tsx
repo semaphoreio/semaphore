@@ -186,7 +186,7 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
       switch (outcome.kind) {
         case `rate_limited`:
           setCooldownLeft(outcome.cooldown);
-          if (outcome.message) Notice.notice(outcome.message);
+          Notice.notice(`Refresh available again in ${formatCooldown(outcome.cooldown)}.`);
           return false;
         case `started`:
           Notice.notice(`Repository sync started.`);

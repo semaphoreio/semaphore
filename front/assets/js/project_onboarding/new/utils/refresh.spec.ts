@@ -17,7 +17,7 @@ describe(`formatCooldown`, () => {
 });
 
 describe(`decideRefreshOutcome`, () => {
-  it(`rate-limits a 429 with the server-provided retry_after and message`, () => {
+  it(`rate-limits a 429 with the server-provided retry_after as the cooldown`, () => {
     const out = decideRefreshOutcome(
       429,
       { state: `rate_limited`, retry_after: 42, message: `Try again soon.` },
@@ -28,7 +28,6 @@ describe(`decideRefreshOutcome`, () => {
 
     expect(out.kind).to.eq(`rate_limited`);
     expect(out).to.have.property(`cooldown`, 42);
-    expect(out).to.have.property(`message`, `Try again soon.`);
     expect(out.ok).to.eq(false);
   });
 
