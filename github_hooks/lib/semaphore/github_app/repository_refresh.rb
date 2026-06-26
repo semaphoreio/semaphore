@@ -21,6 +21,15 @@ module Semaphore::GithubApp
       # Authorize locally first — a cached collaborator row in the org's
       # installation means the caller already had push there — and fall back to a
       # live GitHub push check only on a cache miss.
+      #
+      # Tradeoff: the fast path is collaborator-level (a push row on any one repo
+      # in the installation), so an outside collaborator who is not an org member
+      # passes it, unlike the live fallback which requires org membership. This is
+      # an accepted over-broad TRIGGER, not a data gap: it only fans out a re-sync
+      # (bounded by the per-(user, org) cooldown and each repo's collaborator
+      # lock), and the caller still only sees repos they hold their own row for.
+      # Tightening it to membership would need the live scan on every org refresh,
+      # since there is no local org-membership signal to check.
       installation = GithubAppInstallation.find_for_organization(org)
       authorized = (installation && github_uid && user_collaborates_in?(github_uid, installation)) ||
                    user_has_org_push?(user, org)
