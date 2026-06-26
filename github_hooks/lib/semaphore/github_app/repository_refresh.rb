@@ -4,35 +4,6 @@ module Semaphore::GithubApp
   class RepositoryRefresh
     Result = Struct.new(:state, :message)
 
-    def self.full(user_id)
-      github_uid = github_uid_for(user_id)
-
-      # No GitHub account ⇒ nothing to refresh. Guard here so we never issue a
-      # `c_id IS NULL` query (c_id is NOT NULL, so it would match nothing anyway).
-      unless github_uid
-        return Result.new(:failed, "No GitHub App repositories to refresh. Install the GitHub App first.")
-      end
-
-      installation_ids = GithubAppCollaborator.where(:c_id => github_uid).distinct.pluck(:installation_id)
-      installations = GithubAppInstallation.where(:installation_id => installation_ids, :suspended_at => nil)
-
-      if installations.empty?
-        return Result.new(:failed, "No GitHub App repositories to refresh. Install the GitHub App first.")
-      end
-
-      free = installations.reject do |installation|
-        Repositories::Worker.new.unique_lock_exists?([installation.installation_id])
-      end
-
-      if free.empty?
-        return Result.new(:already_running, "A repository sync is already running. Results will appear shortly.")
-      end
-
-      free.each { |installation| refresh_installation(installation) }
-
-      Result.new(:started, "Repository sync started. This can take a few minutes.")
-    end
-
     # Full refresh scoped to a single organization the caller names. Authorized
     # by the caller's real push access to a repo in that org (their own OAuth
     # token), so it works even when nothing is cached yet.
@@ -214,12 +185,5 @@ module Semaphore::GithubApp
       nil
     end
     private_class_method :discover_organization_installation
-
-    def self.github_uid_for(user_id)
-      ::User.find(user_id).github_repo_host_account&.github_uid
-    rescue ActiveRecord::RecordNotFound
-      nil
-    end
-    private_class_method :github_uid_for
   end
 end
