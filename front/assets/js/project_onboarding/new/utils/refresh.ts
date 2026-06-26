@@ -4,7 +4,7 @@ export interface RefreshResponse {
   retry_after?: number;
 }
 
-export type RefreshOutcome =
+type RefreshOutcome =
   | { kind: `rate_limited`, cooldown: number, message?: string, ok: false, }
   | { kind: `started`, startCooldown: boolean, ok: true, }
   | { kind: `done`, reloadNow: boolean, ok: true, }
