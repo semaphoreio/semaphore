@@ -363,6 +363,7 @@ defmodule FrontWeb.Router do
 
       post("/projects", ProjectOnboardingController, :create)
       get("/repositories", ProjectOnboardingController, :repositories)
+      post("/repositories/refresh", ProjectOnboardingController, :refresh)
 
       post(
         "/projects/:name_or_id/skip_onboarding",
