@@ -611,16 +611,19 @@ defmodule FrontWeb.ProjectOnboardingController do
         json(conn, %{state: state |> Atom.to_string() |> String.downcase(), message: message})
 
       {:ok, %{message: message}} ->
-        # Only a successful refresh consumes the cooldown: a business failure
-        # (e.g. nothing to refresh, or no access) did no work, so release it.
-        release_refresh_cooldown(scope, conn.assigns.organization_id, user_id)
+        # A full/org business failure (e.g. nothing to refresh) did no work, so
+        # release its cooldown. A targeted failure (e.g. no access) KEEPS the
+        # cooldown so a caller cannot loop denied/failed slugs to spam the
+        # synchronous push check.
+        if scope == :full,
+          do: release_refresh_cooldown(:full, conn.assigns.organization_id, user_id)
 
         conn
         |> put_status(422)
         |> json(%{state: "failed", message: message})
 
       {:error, _} ->
-        # Don't burn the user's cooldown on a transient RPC failure.
+        # Don't burn the user's cooldown on a transient RPC failure (either scope).
         release_refresh_cooldown(scope, conn.assigns.organization_id, user_id)
 
         conn
