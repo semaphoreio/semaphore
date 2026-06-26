@@ -205,6 +205,13 @@ module Semaphore::GithubApp
       end
 
       context "when the repository is not cached" do
+        # Uncached repo → resolution goes through discover_installation; the app
+        # covers this repo, so discovery returns the org's installation id.
+        before do
+          allow(Semaphore::GithubApp::Token).to receive(:repository_installation_id)
+            .with("renderedtext/brand-new-repo").and_return(installation.installation_id)
+        end
+
         it "enqueues a background fetch for the single repository and reports started" do
           allow_any_instance_of(RepoHost::Github::Client).to receive(:repository)
             .and_return(repo_with_push(true))
@@ -236,6 +243,28 @@ module Semaphore::GithubApp
 
           expect(result.state).to eq(:failed)
           expect(result.message).to match(/no access/)
+          expect(described_class::Worker.jobs).to be_empty
+        end
+      end
+
+      # Regression (P2): selected-repos app — the org installation is cached (other
+      # repos) but does NOT cover the requested repo, though the caller has push to
+      # it. We must refuse, not reuse the org installation and 404 silently in the
+      # worker. find_for_organization is gone from the targeted chain; only the
+      # coverage-checked discover_installation resolves an uncached repo.
+      context "when a cached org installation does not cover the requested repo" do
+        before do
+          allow_any_instance_of(RepoHost::Github::Client).to receive(:repository)
+            .with("renderedtext/uncovered").and_return(repo_with_push(true))
+          allow(Semaphore::GithubApp::Token).to receive(:repository_installation_id)
+            .with("renderedtext/uncovered").and_return(nil)
+        end
+
+        it "refuses without enqueuing instead of reusing the org's installation" do
+          result = described_class.targeted(user.id, "renderedtext/uncovered")
+
+          expect(result.state).to eq(:failed)
+          expect(result.message).to match(/Grant access on GitHub first/)
           expect(described_class::Worker.jobs).to be_empty
         end
       end
