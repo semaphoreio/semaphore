@@ -31,6 +31,7 @@ defmodule Looper.Mixfile do
 
   defp deps do
     [
+      {:plug, "1.19.2", override: true},
       {:credo, "~> 1.4", only: [:dev, :test], runtime: false},
       {:mix_test_watch, "~> 1.1", only: :dev, runtime: false},
       {:ecto_sql, "~> 3.10"},
