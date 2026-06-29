@@ -3,44 +3,41 @@ defmodule Zebra.Apis.DebugPermissions do
 
   alias InternalApi.Projecthub.Project.Spec.PermissionType
   alias Zebra.Models.Job
-  alias Zebra.Workers.JobRequestFactory.{Organization, Project, RepoProxy, Repository}
+  alias Zebra.Workers.JobRequestFactory.{Project, RepoProxy, Repository}
 
   def check_project(org_id, project, operation) do
-    case Organization.find(org_id) do
-      {:ok, %{restricted: true}} ->
-        case check_project_permissions(
-               nil,
-               project.custom_permissions,
-               permissions_list(operation, project),
-               operation,
-               nil
-             ) do
-          :ok -> {:ok, true}
-          error -> error
-        end
-
-      {:ok, %{restricted: false}} ->
-        {:ok, true}
-
-      _ ->
-        {:error, :internal, "Error looking up #{org_id}"}
+    if restrictions_enabled?(org_id) do
+      case check_project_permissions(
+             nil,
+             project.custom_permissions,
+             permissions_list(operation, project),
+             operation,
+             nil
+           ) do
+        :ok -> {:ok, true}
+        error -> error
+      end
+    else
+      {:ok, true}
     end
   end
 
   def check(org_id, job, operation) do
-    case Organization.find(org_id) do
-      {:ok, %{restricted: true}} ->
-        case check_org_permissions(job, operation) do
-          :ok -> {:ok, true}
-          error -> error
-        end
-
-      {:ok, %{restricted: false}} ->
-        {:ok, true}
-
-      _ ->
-        {:error, :internal, "Error looking up #{org_id}"}
+    if restrictions_enabled?(org_id) do
+      case check_org_permissions(job, operation) do
+        :ok -> {:ok, true}
+        error -> error
+      end
+    else
+      {:ok, true}
     end
+  end
+
+  # Debug (SSH) and attach restrictions are gated by the `restrict_job_ssh_access`
+  # feature. When it is disabled (the default), debug and attach are allowed for any
+  # job; when enabled, the project's debug/attach permissions are enforced.
+  defp restrictions_enabled?(org_id) do
+    FeatureProvider.feature_enabled?("restrict_job_ssh_access", param: org_id)
   end
 
   defp check_org_permissions(job, operation) do
