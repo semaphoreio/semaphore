@@ -29,7 +29,7 @@ defmodule PipelinesAPI.RBACClient.GrpcClient do
     LogTee.debug(result, "RBACClient.GrpcClient.list_user_permissions result")
 
     case result do
-      {:ok, result} -> result
+      {:ok, result} -> map_grpc_status(result)
       {:error, reason} -> Log.internal_error(reason, "list_user_permissions")
     end
   end
@@ -63,7 +63,7 @@ defmodule PipelinesAPI.RBACClient.GrpcClient do
     LogTee.debug(result, "RBACClient.GrpcClient.list_project_members result")
 
     case result do
-      {:ok, result} -> result
+      {:ok, result} -> map_grpc_status(result)
       {:error, reason} -> Log.internal_error(reason, "list_project_members")
     end
   end
@@ -97,7 +97,7 @@ defmodule PipelinesAPI.RBACClient.GrpcClient do
       )
 
     case result do
-      {:ok, result} -> result
+      {:ok, result} -> map_grpc_status(result)
       {:error, reason} -> Log.internal_error(reason, "list_roles")
     end
   end
@@ -126,7 +126,7 @@ defmodule PipelinesAPI.RBACClient.GrpcClient do
       )
 
     case result do
-      {:ok, result} -> result
+      {:ok, result} -> map_grpc_status(result)
       {:error, reason} -> Log.internal_error(reason, "retract_role")
     end
   end
@@ -155,7 +155,7 @@ defmodule PipelinesAPI.RBACClient.GrpcClient do
       )
 
     case result do
-      {:ok, result} -> result
+      {:ok, result} -> map_grpc_status(result)
       {:error, reason} -> Log.internal_error(reason, "list_org_members")
     end
   end
@@ -174,7 +174,7 @@ defmodule PipelinesAPI.RBACClient.GrpcClient do
       )
 
     case result do
-      {:ok, result} -> result
+      {:ok, result} -> map_grpc_status(result)
       {:error, reason} -> Log.internal_error(reason, "describe_role")
     end
   end
@@ -202,7 +202,7 @@ defmodule PipelinesAPI.RBACClient.GrpcClient do
       )
 
     case result do
-      {:ok, result} -> result
+      {:ok, result} -> map_grpc_status(result)
       {:error, reason} -> Log.internal_error(reason, "modify_role")
     end
   end
@@ -230,7 +230,7 @@ defmodule PipelinesAPI.RBACClient.GrpcClient do
       )
 
     case result do
-      {:ok, result} -> result
+      {:ok, result} -> map_grpc_status(result)
       {:error, reason} -> Log.internal_error(reason, "destroy_role")
     end
   end
@@ -258,7 +258,7 @@ defmodule PipelinesAPI.RBACClient.GrpcClient do
       )
 
     case result do
-      {:ok, result} -> result
+      {:ok, result} -> map_grpc_status(result)
       {:error, reason} -> Log.internal_error(reason, "assign_role")
     end
   end
@@ -286,7 +286,7 @@ defmodule PipelinesAPI.RBACClient.GrpcClient do
       )
 
     case result do
-      {:ok, result} -> result
+      {:ok, result} -> map_grpc_status(result)
       {:error, reason} -> Log.internal_error(reason, "list_existing_permissions")
     end
   end
@@ -304,4 +304,20 @@ defmodule PipelinesAPI.RBACClient.GrpcClient do
       |> RBAC.Stub.list_existing_permissions(request, opts())
     end)
   end
+
+  # Maps a gRPC reply to the result shape the response formatters expect: success
+  # passes through; NOT_FOUND -> not_found (404); INVALID_ARGUMENT / FAILED_PRECONDITION /
+  # ALREADY_EXISTS -> user error (4xx); anything else -> internal (500). Without this a
+  # clean backend NOT_FOUND surfaced as a 500.
+  defp map_grpc_status({:ok, response}), do: {:ok, response}
+
+  defp map_grpc_status({:error, %GRPC.RPCError{message: message, status: status}}) do
+    cond do
+      status in [3, 6, 9] -> ToTuple.user_error(message)
+      status == 5 -> ToTuple.not_found_error(message)
+      true -> Log.internal_error(message, "rbac")
+    end
+  end
+
+  defp map_grpc_status(other), do: Log.internal_error(other, "rbac")
 end
