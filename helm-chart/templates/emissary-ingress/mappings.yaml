@@ -556,7 +556,10 @@ metadata:
   namespace: {{ .Release.Namespace }}
 spec:
   hostname: "*"
-  prefix: "/api/v1alpha/projects/.+/members"
+  # prefix_regex is a full-path match, so it must also cover the
+  # /members/<subject>/roles sub-path (assign/retract project roles),
+  # otherwise those fall through to the generic projects mapping and 404.
+  prefix: "/api/v1alpha/projects/[^/]+/members(/[^/]+/roles)?"
   prefix_regex: true
   regex_rewrite:
     pattern: "/api/v1alpha/(.*)"
