@@ -5,6 +5,7 @@ defmodule PipelinesAPI.Roles.Update do
   alias PipelinesAPI.Pipelines.Common, as: RespCommon
   alias PipelinesAPI.Util.Metrics
   alias PipelinesAPI.RBACClient
+  alias PipelinesAPI.Roles.PermissionResolver
   alias InternalApi.RBAC
   alias Plug.Conn
 
@@ -19,10 +20,6 @@ defmodule PipelinesAPI.Roles.Update do
       requester_id = Conn.get_req_header(conn, "x-semaphore-user-id") |> Enum.at(0, "")
       params = conn.params
 
-      permissions =
-        (params["permissions"] || [])
-        |> Enum.map(fn name -> RBAC.Permission.new(name: name) end)
-
       scope =
         case params["scope"] do
           "project" -> RBAC.Scope.value(:SCOPE_PROJECT)
@@ -30,19 +27,25 @@ defmodule PipelinesAPI.Roles.Update do
           _ -> RBAC.Scope.value(:SCOPE_UNSPECIFIED)
         end
 
-      role =
-        RBAC.Role.new(
-          id: params["id"],
-          name: params["name"] || "",
-          org_id: org_id,
-          scope: scope,
-          description: params["description"] || "",
-          rbac_permissions: permissions
-        )
+      case PermissionResolver.resolve(scope, params["permissions"] || []) do
+        {:ok, permissions} ->
+          role =
+            RBAC.Role.new(
+              id: params["id"],
+              name: params["name"] || "",
+              org_id: org_id,
+              scope: scope,
+              description: params["description"] || "",
+              rbac_permissions: permissions
+            )
 
-      %{role: role, requester_id: requester_id}
-      |> RBACClient.modify_role()
-      |> RespCommon.respond(conn)
+          %{role: role, requester_id: requester_id}
+          |> RBACClient.modify_role()
+          |> RespCommon.respond(conn)
+
+        error ->
+          RespCommon.respond(error, conn)
+      end
     end)
   end
 end
