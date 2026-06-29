@@ -19,33 +19,35 @@ defmodule PipelinesAPI.Roles.Update do
       org_id = Conn.get_req_header(conn, "x-semaphore-org-id") |> Enum.at(0, "")
       requester_id = Conn.get_req_header(conn, "x-semaphore-user-id") |> Enum.at(0, "")
       params = conn.params
+      role_id = params["id"]
 
-      scope =
-        case params["scope"] do
-          "project" -> RBAC.Scope.value(:SCOPE_PROJECT)
-          "org" -> RBAC.Scope.value(:SCOPE_ORG)
-          _ -> RBAC.Scope.value(:SCOPE_UNSPECIFIED)
-        end
+      # ModifyRole is a full replace, so fetch the current role and keep every
+      # field the caller did not supply. Otherwise a partial update — e.g. only
+      # --description — would blank the role's permissions, name, etc.
+      with {:ok, current} <- RBACClient.describe_role(%{role_id: role_id, org_id: org_id}),
+           scope <- scope_value(params["scope"] || current.scope),
+           {:ok, permissions} <-
+             PermissionResolver.resolve(scope, params["permissions"] || current.permissions) do
+        role =
+          RBAC.Role.new(
+            id: role_id,
+            name: params["name"] || current.name,
+            org_id: org_id,
+            scope: scope,
+            description: params["description"] || current.description,
+            rbac_permissions: permissions
+          )
 
-      case PermissionResolver.resolve(scope, params["permissions"] || []) do
-        {:ok, permissions} ->
-          role =
-            RBAC.Role.new(
-              id: params["id"],
-              name: params["name"] || "",
-              org_id: org_id,
-              scope: scope,
-              description: params["description"] || "",
-              rbac_permissions: permissions
-            )
-
-          %{role: role, requester_id: requester_id}
-          |> RBACClient.modify_role()
-          |> RespCommon.respond(conn)
-
-        error ->
-          RespCommon.respond(error, conn)
+        %{role: role, requester_id: requester_id}
+        |> RBACClient.modify_role()
+        |> RespCommon.respond(conn)
+      else
+        error -> RespCommon.respond(error, conn)
       end
     end)
   end
+
+  defp scope_value("project"), do: RBAC.Scope.value(:SCOPE_PROJECT)
+  defp scope_value("org"), do: RBAC.Scope.value(:SCOPE_ORG)
+  defp scope_value(_), do: RBAC.Scope.value(:SCOPE_ORG)
 end
