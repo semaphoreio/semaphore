@@ -16,9 +16,12 @@ module InternalApi::RepoProxy
       # single `compare(base: sha, head: branch)` call instead of the separate
       # `reference` + `commit` pair:
       #
-      #   * It still validates the branch exists — `compare` 404s on a missing
-      #     branch exactly like the old `git/refs/heads/:branch` lookup, so we
-      #     keep failing fast on typo'd/deleted branches.
+      #   * It still validates the branch exists, failing fast on typo'd/deleted
+      #     branches. The head is the fully-qualified `refs/heads/<branch>` (the
+      #     input `ref`) so GitHub resolves it strictly in the heads namespace —
+      #     a *bare* ref follows git precedence (tags before heads), which would
+      #     let a deleted branch validate against a same-named tag and build a
+      #     phantom branch.
       #   * Its `base_commit` is the commit for `sha`, so we reuse it and skip
       #     the dedicated `commit` call.
       #
@@ -27,9 +30,8 @@ module InternalApi::RepoProxy
       # existence + the commit object, matching the prior contract (which never
       # verified SHA-on-branch membership either).
       if SHA_REGEXP.match?(sha)
-        branch_name = ref.delete_prefix("refs/heads/")
         response_ref = ref
-        branch_commit = repo_host.compare(repo, sha, branch_name).base_commit
+        branch_commit = repo_host.compare(repo, sha, ref).base_commit
       else
         encoded_ref = CGI.escape(ref.delete_prefix("refs/heads/"))
         reference = repo_host.reference(repo, "heads/#{encoded_ref}")

@@ -116,9 +116,11 @@ RSpec.describe InternalApi::RepoProxy::BranchPayload do
     # carries the commit object back as `base_commit`.
     let(:sha) { "a" * 40 }
 
-    it "resolves via a single compare call, not reference + commit" do
+    it "resolves via a single compare call against the fully-qualified branch ref" do
+      # The head must be `refs/heads/<branch>`, not the bare name: a bare ref
+      # would let GitHub resolve a same-named tag for a deleted branch.
       expect(repo_host).to receive(:compare)
-        .with("owner/repo", sha, "main")
+        .with("owner/repo", sha, "refs/heads/main")
         .and_call_original
       expect(repo_host).not_to receive(:reference)
       expect(repo_host).not_to receive(:commit)
