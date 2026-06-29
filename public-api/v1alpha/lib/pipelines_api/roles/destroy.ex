@@ -15,8 +15,9 @@ defmodule PipelinesAPI.Roles.Destroy do
   def destroy_role(conn, _opts) do
     Metrics.benchmark("PipelinesAPI.router", ["roles_destroy"], fn ->
       org_id = Conn.get_req_header(conn, "x-semaphore-org-id") |> Enum.at(0, "")
+      requester_id = Conn.get_req_header(conn, "x-semaphore-user-id") |> Enum.at(0, "")
 
-      %{role_id: conn.params["id"], org_id: org_id}
+      %{role_id: conn.params["id"], org_id: org_id, requester_id: requester_id}
       |> RBACClient.destroy_role()
       |> RespCommon.respond(conn)
     end)

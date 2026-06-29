@@ -16,6 +16,7 @@ defmodule PipelinesAPI.Roles.Update do
   def update_role(conn, _opts) do
     Metrics.benchmark("PipelinesAPI.router", ["roles_update"], fn ->
       org_id = Conn.get_req_header(conn, "x-semaphore-org-id") |> Enum.at(0, "")
+      requester_id = Conn.get_req_header(conn, "x-semaphore-user-id") |> Enum.at(0, "")
       params = conn.params
 
       permissions =
@@ -39,7 +40,7 @@ defmodule PipelinesAPI.Roles.Update do
           rbac_permissions: permissions
         )
 
-      %{role: role}
+      %{role: role, requester_id: requester_id}
       |> RBACClient.modify_role()
       |> RespCommon.respond(conn)
     end)

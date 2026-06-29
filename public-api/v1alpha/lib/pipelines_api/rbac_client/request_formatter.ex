@@ -189,19 +189,25 @@ defmodule PipelinesAPI.RBACClient.RequestFormatter do
   def form_describe_role_request(_),
     do: ToTuple.user_error("role_id and org_id are required")
 
-  def form_modify_role_request(%{role: role}) do
-    ToTuple.ok(RBAC.ModifyRoleRequest.new(role: role))
+  def form_modify_role_request(%{role: role, requester_id: requester_id}) do
+    ToTuple.ok(RBAC.ModifyRoleRequest.new(role: role, requester_id: requester_id))
   end
 
   def form_modify_role_request(_),
-    do: ToTuple.user_error("role is required")
+    do: ToTuple.user_error("role and requester_id are required")
 
-  def form_destroy_role_request(%{role_id: role_id, org_id: org_id}) do
-    ToTuple.ok(RBAC.DestroyRoleRequest.new(role_id: role_id, org_id: org_id))
+  def form_destroy_role_request(%{role_id: role_id, org_id: org_id, requester_id: requester_id}) do
+    ToTuple.ok(
+      RBAC.DestroyRoleRequest.new(
+        role_id: role_id,
+        org_id: org_id,
+        requester_id: requester_id
+      )
+    )
   end
 
   def form_destroy_role_request(_),
-    do: ToTuple.user_error("role_id and org_id are required")
+    do: ToTuple.user_error("role_id, org_id, and requester_id are required")
 
   def form_assign_role_request(%{
         role_id: role_id,
