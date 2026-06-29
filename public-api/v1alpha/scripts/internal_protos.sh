@@ -22,6 +22,8 @@ repository_integrator
 repo_proxy
 secrethub
 self_hosted
+service_account
+groups
 server_farm.job
 superjerry
 user
