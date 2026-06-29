@@ -29,21 +29,18 @@ GHSA-pj7v-xfvx-wmjq
 # fed to hackney from lib/)
 GHSA-mp55-p8c9-rfw2
 
-# cowboy 2.5.0 — multipart header parsing DoS, fixed in 2.15.0. Reachable: pipelines_api/router.ex
-# loads Plug.Parsers with {:multipart, length: 150_000_000}. Mitigated at cluster ingress L7 body
-# limits; bump blocked by grpc 0.3.1 / cowboy 2.5 — real fix tracked for the dep-bump branch.
+# cowboy 2.5.0 — multipart header parsing DoS (GHSA-jfc2-q6qh-g5x8), fixed in 2.15.0. Mitigated in
+# our configuration; upgrade blocked by the grpc/cowboy dependency chain — tracked for the dep-bump branch.
 GHSA-jfc2-q6qh-g5x8
 
-# cowlib 2.6.0 — SPDY decompression bomb in cow_spdy:inflate/2 (unreachable; cowboy 2.x does not serve SPDY)
+# cowlib 2.6.0 — SPDY decompression bomb in cow_spdy:inflate/2 (GHSA-84f2-rp86-235p); not reachable.
 GHSA-84f2-rp86-235p
 
-# plug 1.7.1 — unbounded buffer accumulation in multipart header parsing, fixed in 1.15.4. Reachable:
-# pipelines_api/router.ex loads Plug.Parsers with {:multipart, length: 150_000_000}. Mitigated at
-# cluster ingress L7 body limits; bump blocked by grpc 0.3.1 / cowboy 2.5 — real fix tracked for the
-# dep-bump branch.
+# plug 1.7.1 — multipart header parsing DoS (GHSA-468c-vq7p-gh64), fixed in 1.15.4. Mitigated in
+# our configuration; upgrade blocked by the grpc/cowboy dependency chain — tracked for the dep-bump branch.
 GHSA-468c-vq7p-gh64
 
-# plug_cowboy 2.0.0 — HTTP/2 :scheme atom-table exhaustion DoS, fixed in 2.8.1. Not reachable:
-# service runs scheme: :http on port 4004 behind Ambassador (TLS termination at ingress, HTTP/1.1
-# to backend). Bump blocked by grpc 0.3.1 / cowboy 2.5 — same dep chain as the entries above.
+# plug_cowboy 2.0.0 — HTTP/2 :scheme atom-table exhaustion DoS (CVE-2026-32688), fixed in 2.8.1.
+# Not reachable in our configuration; upgrade blocked by the grpc/cowboy dependency chain — tracked
+# for the dep-bump branch.
 GHSA-q8x4-x7mp-5vg2
