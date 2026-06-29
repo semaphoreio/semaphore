@@ -80,6 +80,12 @@ defmodule Zebra.Api.PublicJobApiTest do
       InternalApi.Repository.DescribeResponse.new(repository: repository, private_ssh_key: key)
     end)
 
+    stub(Support.MockedProvider, :provide_features, fn org_id, opts ->
+      {:ok, features} = Support.StubbedProvider.provide_features(org_id, opts)
+      state = if org_id == @restricted_org_id, do: :enabled, else: :hidden
+      {:ok, features ++ [Support.StubbedProvider.feature("restrict_job_ssh_access", [state])]}
+    end)
+
     :ok
   end
 
@@ -969,7 +975,7 @@ defmodule Zebra.Api.PublicJobApiTest do
       create_debug_job_passes_permission_check()
     end
 
-    test "when organization api fails => raise error" do
+    test "when organization api is unavailable => debug job is still created (org lookup no longer gates debug)" do
       alias Semaphore.Jobs.V1alpha.JobsApi.Stub, as: Stub
 
       GrpcMock.stub(Support.FakeServers.OrganizationApi, :describe, fn _, _ ->
@@ -989,12 +995,9 @@ defmodule Zebra.Api.PublicJobApiTest do
 
       {:ok, channel} = GRPC.Stub.connect("localhost:50051")
 
-      {:error, reply} = channel |> Stub.create_debug_job(req, @options)
-
-      assert reply == %GRPC.RPCError{
-               message: "Error looking up #{@org_id}",
-               status: 13
-             }
+      # Debug/attach is now gated by the `restrict_job_ssh_access` feature, not the
+      # organization API, so an Organization API outage no longer blocks debug sessions.
+      assert {:ok, _debug_job} = channel |> Stub.create_debug_job(req, @options)
     end
 
     test "when repo proxy api fails => raise error" do
@@ -1191,7 +1194,7 @@ defmodule Zebra.Api.PublicJobApiTest do
       create_debug_project_passes_permission_check()
     end
 
-    test "when organization api fails => raise error" do
+    test "when organization api is unavailable => empty debug session is still created (org lookup no longer gates debug)" do
       alias Semaphore.Jobs.V1alpha.JobsApi.Stub, as: Stub
       alias InternalApi.Projecthub.Project.Spec.PermissionType
 
@@ -1208,12 +1211,9 @@ defmodule Zebra.Api.PublicJobApiTest do
 
       {:ok, channel} = GRPC.Stub.connect("localhost:50051")
 
-      {:error, reply} = channel |> Stub.create_debug_project(req, @options)
-
-      assert reply == %GRPC.RPCError{
-               message: "Error looking up #{@org_id}",
-               status: 13
-             }
+      # Debug/attach is now gated by the `restrict_job_ssh_access` feature, not the
+      # organization API, so an Organization API outage no longer blocks debug sessions.
+      assert {:ok, _debug_job} = channel |> Stub.create_debug_project(req, @options)
     end
 
     test "when project api fails => raise error" do

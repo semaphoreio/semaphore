@@ -244,37 +244,24 @@ defmodule FrontWeb.ProjectSettingsController do
   def permissions(conn, _params) do
     Watchman.benchmark("project-settings.permissions.duration", fn ->
       project = conn.assigns.project
-      org_id = conn.assigns.organization_id
       changeset = Project.changeset(project)
 
-      fetch_org = Async.run(fn -> fetch_org_data(org_id) end)
+      assigns =
+        %{
+          project: project,
+          changeset: changeset,
+          title: "Settings・#{project.name}",
+          js: :debug_sessions_settings,
+          permissions: conn.assigns.permissions
+        }
+        |> put_layout_assigns(conn, project)
+        |> Front.Breadcrumbs.Project.construct(conn, :settings)
 
-      {:ok, org_data} = Async.await(fetch_org)
-
-      case org_data.restricted do
-        false ->
-          conn
-          |> render_404()
-
-        true ->
-          assigns =
-            %{
-              project: project,
-              changeset: changeset,
-              title: "Settings・#{project.name}",
-              js: :debug_sessions_settings,
-              org_restricted: org_data.restricted,
-              permissions: conn.assigns.permissions
-            }
-            |> put_layout_assigns(conn, project)
-            |> Front.Breadcrumbs.Project.construct(conn, :settings)
-
-          render(
-            conn,
-            "permissions.html",
-            assigns
-          )
-      end
+      render(
+        conn,
+        "permissions.html",
+        assigns
+      )
     end)
   end
 
