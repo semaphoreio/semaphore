@@ -49,7 +49,7 @@ defmodule Rbac.GrpcServers.GroupsServer do
       if group_id == "" do
         Group.fetch_all_org_groups(org_id, page.page_no, page.page_size)
       else
-        case Group.fetch_group(group_id) do
+        case Group.fetch_group(group_id, org_id) do
           {:ok, group} -> [group]
           {:error, _} -> []
         end
@@ -63,26 +63,37 @@ defmodule Rbac.GrpcServers.GroupsServer do
       do: grpc_error!(:invalid_argument, "Required group information not provided")
 
     validate_uuid!([req.org_id, req.requester_id, req.group.id])
-    authorize!(@manage_groups_permission, req.requester_id, req.org_id)
-    check_if_members_are_in_org!(req.members_to_add, req.org_id)
 
-    with {:ok, _} <- Group.fetch_group(req.group.id),
-         {:ok, group} <-
-           Group.modify_metadata(req.group.id, req.org_id, req.group.name, req.group.description) do
-      {:ok, _} = create_request(req.members_to_remove, group.id, :remove_user, req.requester_id)
-      {:ok, _} = create_request(req.members_to_add, group.id, :add_user, req.requester_id)
+    case Group.fetch_group(req.group.id, req.org_id) do
+      {:ok, group} ->
+        authorize!(@manage_groups_permission, req.requester_id, req.org_id)
+        check_if_members_are_in_org!(req.members_to_add, req.org_id)
 
-      %Groups.ModifyGroupResponse{group: construct_grpc_group(group)}
-    else
+        case Group.modify_metadata(group.id, req.org_id, req.group.name, req.group.description) do
+          {:ok, modified_group} ->
+            {:ok, _} =
+              create_request(
+                req.members_to_remove,
+                modified_group.id,
+                :remove_user,
+                req.requester_id
+              )
+
+            {:ok, _} =
+              create_request(req.members_to_add, modified_group.id, :add_user, req.requester_id)
+
+            %Groups.ModifyGroupResponse{group: construct_grpc_group(modified_group)}
+
+          {:error, :name_taken} ->
+            grpc_error!(:invalid_argument, "The new group name is already in use")
+
+          {:error, _error_msg} ->
+            Watchman.increment("modify_group.failure")
+            grpc_error!(:internal)
+        end
+
       {:error, :not_found} ->
-        grpc_error!(:invalid_argument, "The group you are trying to modify does not exist")
-
-      {:error, :name_taken} ->
-        grpc_error!(:invalid_argument, "The new group name is already in use")
-
-      {:error, _error_msg} ->
-        Watchman.increment("modify_group.failure")
-        grpc_error!(:internal)
+        grpc_error!(:not_found, "The group you are trying to modify does not exist")
     end
   end
 
