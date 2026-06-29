@@ -143,6 +143,22 @@ RSpec.describe InternalApi::RepoProxy::BranchPayload do
       )
       expect(payload["commits"].last["id"]).to eq(sha)
     end
+
+    it "wires author and commit details from base_commit (parity with the slow path)" do
+      commit = described_class.new(ref, sha).call(project, user)["commits"].last
+      expect(commit["author"]["name"]).to eq("Alice")
+      expect(commit["author"]["email"]).to eq("alice@example.com")
+      expect(commit["author"]["username"]).to eq("alice")
+      expect(commit["id"]).to eq(sha)
+      expect(commit["message"]).to eq("Branch commit")
+    end
+
+    it "fails fast when the branch no longer exists (does not swallow compare's 404)" do
+      allow(repo_host).to receive(:compare).and_raise(RepoHost::RemoteException::NotFound)
+      expect do
+        described_class.new(ref, sha).call(project, user)
+      end.to raise_error(RepoHost::RemoteException::NotFound)
+    end
   end
 
   describe "#call when sha does not match SHA_REGEXP" do
