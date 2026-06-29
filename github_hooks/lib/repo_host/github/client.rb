@@ -135,6 +135,23 @@ module RepoHost::Github
       handle_octokit_exceptions(exception)
     end
 
+    def compare(repo, base, head)
+      # We only read the first-page envelope of the comparison (`base_commit`).
+      # The `commits[]`/`files[]` lists are never used, so route this through a
+      # non-paginating client: with auto-pagination a SHA far behind the branch
+      # head would make Octokit walk every intermediate commit page, *increasing*
+      # rate-limit usage (the opposite of this call's intent). A dedicated
+      # memoized client is used rather than toggling `user_client.auto_paginate`,
+      # which would race other callers of the shared client.
+      #
+      # `base`/`head` are interpolated into the URL path unescaped by Octokit, so
+      # escape them per `/`-segment to keep branch names with URL-significant
+      # characters (e.g. `feat#1`) working while preserving namespace slashes.
+      non_paginating_client.compare(repo, escape_ref(base), escape_ref(head))
+    rescue *GITHUB_EXCEPTION => exception
+      handle_octokit_exceptions(exception)
+    end
+
     def collaborators(repo)
       user_client.collaborators(repo)
     rescue *GITHUB_EXCEPTION => exception
@@ -206,6 +223,20 @@ module RepoHost::Github
     def user_client
       @user_client ||= Octokit::Client.new(:access_token => @token,
                                            :auto_paginate => AUTO_PAGINATE)
+    end
+
+    # Like `user_client`, but with auto-pagination disabled. For calls that only
+    # need first-page envelope fields (e.g. `compare`'s `base_commit`) and must
+    # not fan out across paginated array fields.
+    def non_paginating_client
+      @non_paginating_client ||= Octokit::Client.new(:access_token => @token,
+                                                     :auto_paginate => false)
+    end
+
+    # Escapes a git ref for safe interpolation into a URL path segment, leaving
+    # the `/` separators that delimit nested branch namespaces intact.
+    def escape_ref(ref)
+      ref.to_s.split("/").map { |segment| CGI.escape(segment) }.join("/")
     end
 
     def app_client
