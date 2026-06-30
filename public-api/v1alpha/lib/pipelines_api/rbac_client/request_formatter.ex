@@ -149,7 +149,7 @@ defmodule PipelinesAPI.RBACClient.RequestFormatter do
     )
   end
 
-  def form_list_org_members_request(%{org_id: org_id} = params) do
+  def form_list_org_members_request(params = %{org_id: org_id}) do
     ToTuple.ok(
       RBAC.ListMembersRequest.new(
         org_id: org_id,
