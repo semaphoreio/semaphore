@@ -10,6 +10,8 @@ defmodule Rbac.GrpcServers.RbacServer do
   alias Rbac.RoleBindingIdentification, as: RBI
   alias InternalApi.RBAC
 
+  @change_owner_permission "organization.change_owner"
+
   def list_user_permissions(%RBAC.ListUserPermissionsRequest{} = req, _stream) do
     alias Rbac.Store.UserPermissions
 
@@ -287,7 +289,6 @@ defmodule Rbac.GrpcServers.RbacServer do
   @manage_global_roles "insider.global_roles.manage"
   @manage_org_roles "organization.people.manage"
   @manage_project_roles "project.access.manage"
-  @change_owner_permission "organization.change_owner"
   defp authorize!(user_id, org_id, project_id) do
     import Rbac.Utils.Common, only: [nil_uuid: 0]
     import Rbac.Utils.Grpc, only: [authorize!: 4]
