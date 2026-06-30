@@ -308,6 +308,21 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
       {:ok, _} = state.grpc_channel |> Stub.assign_role(req)
     end
 
+    test "demoting a current Owner is rejected when requester is unauthorized", state do
+      Support.Rbac.assign_org_role_by_name(@org_id, @user_id, "Owner")
+
+      key = "user:#{@requester_id}_org:*_project:*"
+
+      %Rbac.Repo.UserPermissionsKeyValueStore{key: key, value: "organization.people.manage"}
+      |> Rbac.Repo.insert()
+
+      {:ok, member_role} = Rbac.Repo.RbacRole.get_role_by_name("Member", "org_scope", @org_id)
+      req = gen_assign_role_req(@user_id, member_role.id, @org_id)
+      {:error, err} = state.grpc_channel |> Stub.assign_role(req)
+
+      assert err.status == GRPC.Status.permission_denied()
+    end
+
     test "organization role is assigned when role binding already exists", state do
       Support.Rbac.assign_org_role_by_name(@org_id, @user_id, "Admin")
       assert Rbac.Repo.SubjectRoleBinding |> Rbac.Repo.all() |> length() == 1
