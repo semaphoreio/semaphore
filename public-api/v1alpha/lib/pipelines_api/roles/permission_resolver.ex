@@ -29,8 +29,13 @@ defmodule PipelinesAPI.Roles.PermissionResolver do
          }) do
       {:ok, held} ->
         case names -- held do
-          [] -> :ok
-          missing -> ToTuple.user_error("cannot grant permissions you do not hold: #{Enum.join(missing, ", ")}")
+          [] ->
+            :ok
+
+          missing ->
+            ToTuple.user_error(
+              "cannot grant permissions you do not hold: #{Enum.join(missing, ", ")}"
+            )
         end
 
       error ->
