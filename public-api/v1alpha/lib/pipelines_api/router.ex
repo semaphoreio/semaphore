@@ -217,10 +217,16 @@ defmodule PipelinesAPI.Router do
   match("/members", via: :get, to: ListMembers)
   match("/members/:subject_id/roles", via: :post, to: AssignOrgRole)
   match("/members/:subject_id/roles", via: :delete, to: RetractOrgRole)
+  match("/members/:subject_id/roles/:role_id", via: :delete, to: RetractOrgRole)
 
   match("/projects/:project_id/members", via: :get, to: ListProjectMembers)
   match("/projects/:project_id/members/:subject_id/roles", via: :post, to: AssignProjectRole)
   match("/projects/:project_id/members/:subject_id/roles", via: :delete, to: RetractProjectRole)
+
+  match("/projects/:project_id/members/:subject_id/roles/:role_id",
+    via: :delete,
+    to: RetractProjectRole
+  )
 
   match("/roles", via: :get, to: ListRoles)
   match("/roles", via: :post, to: CreateRole)

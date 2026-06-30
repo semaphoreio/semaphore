@@ -43,7 +43,7 @@ defmodule PipelinesAPI.ServiceAccountClient.RequestFormatter do
     ListRequest.new(
       org_id: org_id,
       page_size: params |> Map.get("page_size", 100) |> to_int("page_size"),
-      page_token: params |> Map.get("page_token", "")
+      page_token: params |> Map.get("page_token", "") |> to_page_token()
     )
     |> ToTuple.ok()
   catch
@@ -136,4 +136,20 @@ defmodule PipelinesAPI.ServiceAccountClient.RequestFormatter do
         |> throw()
     end
   end
+
+  defp to_page_token(""), do: ""
+
+  defp to_page_token(val) when is_binary(val) do
+    case Integer.parse(val) do
+      {n, ""} when n >= 0 ->
+        val
+
+      _ ->
+        "Invalid value of 'page_token' param: #{inspect(val)} - must be a non-negative integer."
+        |> ToTuple.user_error()
+        |> throw()
+    end
+  end
+
+  defp to_page_token(_), do: ""
 end
