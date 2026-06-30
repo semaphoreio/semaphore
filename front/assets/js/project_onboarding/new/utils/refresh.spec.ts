@@ -6,6 +6,10 @@ import {
   cooldownScope,
   isTargetedRefreshDisabled,
   isOrgRefreshLocked,
+  repositoriesIncludeSlug,
+  nextSyncPollDelayMs,
+  shouldStopPolling,
+  SYNC_POLL_MAX_ATTEMPTS,
 } from "./refresh";
 
 describe(`formatCooldown`, () => {
@@ -151,5 +155,56 @@ describe(`refresh control gating`, () => {
 
   it(`an invalid manual slug disables the targeted control regardless of cooldown`, () => {
     expect(isTargetedRefreshDisabled(null, false, 0)).to.eq(true);
+  });
+});
+
+describe(`repositoriesIncludeSlug`, () => {
+  const repos = [{ full_name: `acme/widget` }, { full_name: `octo/Repo` }];
+
+  it(`finds a slug case-insensitively`, () => {
+    expect(repositoriesIncludeSlug(repos, `OCTO/repo`)).to.eq(true);
+    expect(repositoriesIncludeSlug(repos, `acme/widget`)).to.eq(true);
+  });
+
+  it(`returns false when the slug is absent`, () => {
+    expect(repositoriesIncludeSlug(repos, `acme/missing`)).to.eq(false);
+    expect(repositoriesIncludeSlug([], `acme/widget`)).to.eq(false);
+  });
+});
+
+describe(`nextSyncPollDelayMs`, () => {
+  it(`polls targeted at a steady short interval`, () => {
+    expect(nextSyncPollDelayMs(1, `targeted`)).to.eq(3000);
+    expect(nextSyncPollDelayMs(9, `targeted`)).to.eq(3000);
+  });
+
+  it(`backs org off linearly and caps at 20s`, () => {
+    expect(nextSyncPollDelayMs(1, `org`)).to.eq(5000);
+    expect(nextSyncPollDelayMs(2, `org`)).to.eq(10000);
+    expect(nextSyncPollDelayMs(3, `org`)).to.eq(15000);
+    expect(nextSyncPollDelayMs(4, `org`)).to.eq(20000);
+    expect(nextSyncPollDelayMs(9, `org`)).to.eq(20000);
+  });
+});
+
+describe(`shouldStopPolling`, () => {
+  const max = SYNC_POLL_MAX_ATTEMPTS.targeted;
+
+  it(`keeps targeted polling while the repo is still missing`, () => {
+    expect(shouldStopPolling({ scope: `targeted`, attempt: 1, maxAttempts: max, found: false })).to.eq(false);
+  });
+
+  it(`stops targeted polling as soon as the repo appears`, () => {
+    expect(shouldStopPolling({ scope: `targeted`, attempt: 2, maxAttempts: max, found: true })).to.eq(true);
+  });
+
+  it(`stops targeted polling at the attempt cap even if never found`, () => {
+    expect(shouldStopPolling({ scope: `targeted`, attempt: max, maxAttempts: max, found: false })).to.eq(true);
+  });
+
+  it(`stops org polling only when the attempt cap is reached (no completion signal)`, () => {
+    const orgMax = SYNC_POLL_MAX_ATTEMPTS.org;
+    expect(shouldStopPolling({ scope: `org`, attempt: 1, maxAttempts: orgMax, found: false })).to.eq(false);
+    expect(shouldStopPolling({ scope: `org`, attempt: orgMax, maxAttempts: orgMax, found: false })).to.eq(true);
   });
 });
