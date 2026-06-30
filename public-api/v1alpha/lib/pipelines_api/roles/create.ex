@@ -28,7 +28,8 @@ defmodule PipelinesAPI.Roles.Create do
 
       requested = params["permissions"] || []
 
-      with :ok <- PermissionResolver.ensure_requester_holds(scope, requested, requester_id, org_id),
+      with :ok <-
+             PermissionResolver.ensure_requester_holds(scope, requested, requester_id, org_id),
            {:ok, permissions} <- PermissionResolver.resolve(scope, requested) do
         role =
           RBAC.Role.new(
