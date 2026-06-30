@@ -41,6 +41,7 @@ defmodule Dashboardhub.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      {:cowlib, "~> 2.16", override: true},
       {:grpc, "~> 0.6"},
       {:protobuf, "~> 0.11"},
       {:fun_registry, github: "renderedtext/fun-registry", only: [:dev, :test]},

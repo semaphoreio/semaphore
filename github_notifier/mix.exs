@@ -29,8 +29,8 @@ defmodule GithubNotifier.MixProject do
   defp deps do
     [
       {:grpc, github: "elixir-grpc/grpc", override: true},
-      # 2.9.0 fixes some important bugs, so it's better to use ~> 2.9.0
-      {:cowlib, "~> 2.9.0", override: true},
+      # 2.9.0 fixes some important bugs, so it's better to use ~> 2.16
+      {:cowlib, "~> 2.16", override: true},
       {:grpc_mock, github: "renderedtext/grpc-mock", only: [:dev, :test]},
       {:watchman, github: "renderedtext/ex-watchman"},
       {:tackle, github: "renderedtext/ex-tackle"},

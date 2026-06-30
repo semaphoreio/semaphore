@@ -38,7 +38,7 @@ defmodule FeatureProvider.MixProject do
       {:cachex, ">= 3.0.0"},
       {:mox, "~> 1.0", only: :test},
       {:ex_doc, "~> 0.27", only: :test, runtime: false},
-      {:excoveralls, "~> 0.10", only: :test},
+      {:excoveralls, "~> 0.18", only: :test},
       {:junit_formatter, "~> 3.3", only: [:test]}
     ]
   end
