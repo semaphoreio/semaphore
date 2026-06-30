@@ -16,6 +16,9 @@ defmodule PipelinesAPI.Roles.PermissionResolver do
 
   @spec ensure_requester_holds(integer(), [String.t()], String.t(), String.t()) ::
           :ok | {:error, term()}
+  def ensure_requester_holds(_scope, names, _requester_id, _org_id) when not is_list(names),
+    do: ToTuple.user_error("permissions must be a list")
+
   def ensure_requester_holds(scope, _names, _requester_id, _org_id) when scope != @org_scope,
     do: :ok
 
@@ -44,6 +47,9 @@ defmodule PipelinesAPI.Roles.PermissionResolver do
   end
 
   @spec resolve(integer(), [String.t()]) :: {:ok, [RBAC.Permission.t()]} | {:error, term()}
+  def resolve(_scope, names) when not is_list(names),
+    do: ToTuple.user_error("permissions must be a list")
+
   def resolve(_scope, []), do: ToTuple.ok([])
 
   def resolve(scope, names) do
