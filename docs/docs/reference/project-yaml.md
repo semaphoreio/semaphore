@@ -36,6 +36,9 @@ It can also optionally include:
 
 - [`schedulers`](#schedulers-in-spec) (DEPRECATED)
 - [`tasks`](#tasks-in-spec)
+- [`custom_permissions`](#custom-permissions-in-spec)
+- [`debug_permissions`](#debug-permissions-in-spec)
+- [`attach_permissions`](#attach-permissions-in-spec)
 
 ### schedulers {#schedulers-in-spec}
 
@@ -105,6 +108,51 @@ Each parameter has the following properties:
 |`options`| No | A list of possible values to show on the Semaphore website |
 |`validate_input_format`| No | Either `true` or `false`. If `true`, the supplied value is validated against `regex_pattern` before the task runs. Defaults to `false` |
 |`regex_pattern`| No | A regular expression used to validate the supplied value when `validate_input_format: true`. Required if `validate_input_format: true`. Capped at 512 bytes |
+
+### custom_permissions {#custom-permissions-in-spec}
+
+:::note
+
+`custom_permissions`, `debug_permissions`, and `attach_permissions` control [debug session and attach restrictions](../using-semaphore/jobs#restrict-ssh-access), a feature that must be enabled for your organization. To have it enabled, contact us at support@semaphore.io.
+
+:::
+
+A boolean that controls whether Semaphore enforces per-project restrictions on who can start [debug (SSH) sessions](../using-semaphore/jobs#ssh-into-agent) and [attach to running jobs](../using-semaphore/jobs#attach-job).
+
+- When `true`, Semaphore enforces the [`debug_permissions`](#debug-permissions-in-spec) and [`attach_permissions`](#attach-permissions-in-spec) lists: debug and attach are allowed only in the contexts you list, and denied everywhere else.
+- When `false` (the default), all debug and attach operations are blocked for the project.
+
+```yaml
+spec:
+  custom_permissions: true
+  debug_permissions:
+    - default_branch
+    - non_default_branch
+    - empty
+  attach_permissions:
+    - default_branch
+```
+
+### debug_permissions {#debug-permissions-in-spec}
+
+The contexts in which collaborators may start a [debug (SSH) session](../using-semaphore/jobs#ssh-into-agent). Only takes effect when [`custom_permissions`](#custom-permissions-in-spec) is `true`.
+
+It is a list containing any of the following values:
+
+| Value | Debugging allowed on |
+|--|--|
+|`default_branch` | Jobs running on the default branch (for example, `main` or `master`) |
+|`non_default_branch` | Jobs running on any other branch |
+|`pull_request` | Jobs triggered by pull requests from the same repository |
+|`forked_pull_request` | Jobs triggered by pull requests from forked repositories |
+|`tag` | Jobs triggered by Git tags |
+|`empty` | Empty debug sessions started by collaborators (not tied to an existing job) |
+
+### attach_permissions {#attach-permissions-in-spec}
+
+The contexts in which collaborators may [attach to a running job](../using-semaphore/jobs#attach-job). Only takes effect when [`custom_permissions`](#custom-permissions-in-spec) is `true`.
+
+It accepts the same values as [`debug_permissions`](#debug-permissions-in-spec), except `empty` (which applies to debug sessions only): `default_branch`, `non_default_branch`, `pull_request`, `forked_pull_request`, and `tag`.
 
 ## repository {#repository-in-spec}
 
