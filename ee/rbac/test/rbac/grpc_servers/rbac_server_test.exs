@@ -288,6 +288,26 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
              ) == 1
     end
 
+    test "organization Owner role is rejected when requester is unauthorized (no change_owner)",
+         state do
+      key = "user:#{@requester_id}_org:*_project:*"
+
+      %Rbac.Repo.UserPermissionsKeyValueStore{key: key, value: "organization.people.manage"}
+      |> Rbac.Repo.insert()
+
+      {:ok, owner_role} = Rbac.Repo.RbacRole.get_role_by_name("Owner", "org_scope", @org_id)
+      req = gen_assign_role_req(@user_id, owner_role.id, @org_id)
+      {:error, err} = state.grpc_channel |> Stub.assign_role(req)
+
+      assert err.status == GRPC.Status.permission_denied()
+    end
+
+    test "organization Owner role is assigned when requester has change_owner", state do
+      {:ok, owner_role} = Rbac.Repo.RbacRole.get_role_by_name("Owner", "org_scope", @org_id)
+      req = gen_assign_role_req(@user_id, owner_role.id, @org_id)
+      {:ok, _} = state.grpc_channel |> Stub.assign_role(req)
+    end
+
     test "organization role is assigned when role binding already exists", state do
       Support.Rbac.assign_org_role_by_name(@org_id, @user_id, "Admin")
       assert Rbac.Repo.SubjectRoleBinding |> Rbac.Repo.all() |> length() == 1
@@ -1215,7 +1235,7 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
   ### Helper functions
   ###
 
-  @permissions "insider.global_roles.manage,organization.people.manage,project.access.manage,organization.custom_roles.manage"
+  @permissions "insider.global_roles.manage,organization.people.manage,project.access.manage,organization.custom_roles.manage,organization.change_owner"
   defp give_all_permissions do
     alias Rbac.Repo
     key = "user:#{@requester_id}_org:*_project:*"
