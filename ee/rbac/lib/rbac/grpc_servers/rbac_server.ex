@@ -10,6 +10,8 @@ defmodule Rbac.GrpcServers.RbacServer do
   alias Rbac.RoleBindingIdentification, as: RBI
   alias InternalApi.RBAC
 
+  @change_owner_permission "organization.change_owner"
+
   def list_user_permissions(%RBAC.ListUserPermissionsRequest{} = req, _stream) do
     alias Rbac.Store.UserPermissions
 
@@ -61,6 +63,10 @@ defmodule Rbac.GrpcServers.RbacServer do
 
       validate_role_assignment_arguments(req.role_assignment)
       authorize!(req.requester_id, org_id, project_id)
+
+      if owner_role?(role_id),
+        do: Rbac.Utils.Grpc.authorize!(@change_owner_permission, req.requester_id, org_id)
+
       {:ok, rbi} = RBI.new(user_id: subject_id, org_id: org_id, project_id: project_id)
 
       case Rbac.RoleManagement.assign_role(rbi, role_id, :manually_assigned) do
@@ -292,6 +298,13 @@ defmodule Rbac.GrpcServers.RbacServer do
       project_id == "" -> authorize!(@manage_org_roles, user_id, org_id, "")
       Rbac.Models.Project.project_being_initialized?(project_id) -> nil
       true -> authorize!(@manage_project_roles, user_id, org_id, project_id)
+    end
+  end
+
+  defp owner_role?(role_id) do
+    case Rbac.Repo.RbacRole.get_role_by_id(role_id) do
+      %{name: "Owner"} -> true
+      _ -> false
     end
   end
 
