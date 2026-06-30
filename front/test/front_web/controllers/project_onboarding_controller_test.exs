@@ -379,21 +379,38 @@ defmodule FrontWeb.ProjectOnboardingControllerTest do
       assert json_response(conn, 200)["state"] == "started"
     end
 
-    test "a failed org/full refresh does not consume the cooldown", %{conn: conn} do
-      stub_refresh(:FAILED, "The GitHub App has no access to acme. Grant access on GitHub first.")
+    test "a failed org/full refresh floors a short cooldown instead of releasing it", %{
+      conn: conn
+    } do
+      test_pid = self()
+
+      GrpcMock.stub(RepositoryIntegratorMock, :refresh_repositories, fn _req, _ ->
+        send(test_pid, :rpc_called)
+
+        RefreshRepositoriesResponse.new(
+          sync_state: RefreshRepositoriesResponse.SyncState.value(:FAILED),
+          message: "The GitHub App has no access to acme. Grant access on GitHub first."
+        )
+      end)
+
       params = %{integration_type: "github_app", organization: "acme"}
 
+      # The failed attempt reaches the RPC — it ran the synchronous org-push scan.
       assert conn
              |> post("/x/repositories/refresh", params)
              |> json_response(422)
              |> Map.fetch!("state") == "failed"
 
-      # The no-op failure released the cooldown, so an immediate retry is allowed
-      # rather than rate limited.
-      stub_refresh(:STARTED, "Repository sync started for acme.")
+      assert_received :rpc_called
 
+      # Because the scan ran, the cooldown is floored (not released): an immediate
+      # same-org retry is throttled — a short floor, well under the 600s window —
+      # and must not re-invoke the RPC.
       conn = post(conn, "/x/repositories/refresh", params)
-      assert json_response(conn, 200)["state"] == "started"
+      body = json_response(conn, 429)
+      assert body["state"] == "rate_limited"
+      assert body["retry_after"] <= 60
+      refute_received :rpc_called
     end
 
     test "a failed targeted refresh still consumes the cooldown", %{conn: conn} do
