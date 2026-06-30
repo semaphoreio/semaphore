@@ -726,6 +726,48 @@ defmodule Zebra.Api.PublicJobApiTest do
                status: 7
              }
     end
+
+    test "with the production cache, a cold cache + provider error denies (fail-closed)" do
+      original_provider = Application.get_env(FeatureProvider, :provider)
+      on_exit(fn -> Application.put_env(FeatureProvider, :provider, original_provider) end)
+
+      Cachex.clear(:feature_provider_cache)
+
+      FeatureProvider.init(
+        {Support.MockedProvider,
+         [
+           cache:
+             {FeatureProvider.CachexCache, name: :feature_provider_cache, ttl_ms: :timer.hours(6)}
+         ]}
+      )
+
+      stub(Support.MockedProvider, :provide_features, fn _org_id, _opts -> {:error, :timeout} end)
+
+      mock_repo_proxy(:BRANCH, "some-non-default-branch", "test-org/test-repo", "")
+      mock_project([], [])
+
+      {:ok, task} = Support.Factories.Task.create()
+
+      {:ok, job} =
+        Support.Factories.Job.create(:started, %{
+          project_id: hd(@authorized_projects),
+          private_ssh_key: Zebra.RSA.generate().private_key,
+          organization_id: @restricted_org_id,
+          build_id: task.id
+        })
+
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+      request = Request.new(job_id: job.id)
+
+      {:error, reply} =
+        channel |> Stub.get_job_debug_ssh_key(request, @options_for_restricted_org)
+
+      assert reply == %GRPC.RPCError{
+               message:
+                 "You are not allowed to attach jobs on non default branches of this project",
+               status: 7
+             }
+    end
   end
 
   describe ".create_job" do

@@ -34,27 +34,14 @@ defmodule Zebra.Apis.DebugPermissions do
   end
 
   # Debug (SSH) and attach restrictions are gated by the `restrict_job_ssh_access`
-  # feature. When it is disabled (the default), debug and attach are allowed for any
-  # job; when enabled, the project's debug/attach permissions are enforced.
-  #
-  # We distinguish two non-enabled outcomes:
-  #
-  #   * `{:error, {:not_found, _}}` — FeatureHub answered and the feature is simply not
-  #     granted to this org. This is an authoritative "off", so restrictions do not
-  #     apply (allow). Treating it as "on" would force every org without the feature to
-  #     enforce and, with the default `custom_permissions: false`, deny all debug/attach.
-  #
-  #   * any other `{:error, _}` — the lookup itself failed (FeatureHub unreachable, cold
-  #     cache, transient gRPC error). We cannot tell whether restrictions apply, so we
-  #     fail closed and enforce them rather than risk granting unauthorized debug/attach
-  #     access. The error is logged and counted so this (rare) window is observable.
+  # feature. The feature is always present in the catalog, so a healthy lookup returns
+  # `{:ok, feature}`. Any `{:error, _}` means the lookup itself failed (FeatureHub
+  # unreachable, cold cache), so we fail closed — enforce restrictions rather than risk
+  # granting unauthorized debug/attach — and log + count it.
   defp restrictions_enabled?(org_id) do
     case FeatureProvider.find_feature("restrict_job_ssh_access", param: org_id) do
       {:ok, feature} ->
         FeatureProvider.Feature.enabled?(feature)
-
-      {:error, {:not_found, _}} ->
-        false
 
       {:error, reason} ->
         Logger.warning(
