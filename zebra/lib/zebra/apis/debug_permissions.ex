@@ -3,43 +3,67 @@ defmodule Zebra.Apis.DebugPermissions do
 
   alias InternalApi.Projecthub.Project.Spec.PermissionType
   alias Zebra.Models.Job
-  alias Zebra.Workers.JobRequestFactory.{Organization, Project, RepoProxy, Repository}
+  alias Zebra.Workers.JobRequestFactory.{Project, RepoProxy, Repository}
 
   def check_project(org_id, project, operation) do
-    case Organization.find(org_id) do
-      {:ok, %{restricted: true}} ->
-        case check_project_permissions(
-               nil,
-               project.custom_permissions,
-               permissions_list(operation, project),
-               operation,
-               nil
-             ) do
-          :ok -> {:ok, true}
-          error -> error
-        end
-
-      {:ok, %{restricted: false}} ->
-        {:ok, true}
-
-      _ ->
-        {:error, :internal, "Error looking up #{org_id}"}
+    if restrictions_enabled?(org_id) do
+      case check_project_permissions(
+             nil,
+             project.custom_permissions,
+             permissions_list(operation, project),
+             operation,
+             nil
+           ) do
+        :ok -> {:ok, true}
+        error -> error
+      end
+    else
+      {:ok, true}
     end
   end
 
   def check(org_id, job, operation) do
-    case Organization.find(org_id) do
-      {:ok, %{restricted: true}} ->
-        case check_org_permissions(job, operation) do
-          :ok -> {:ok, true}
-          error -> error
-        end
+    if restrictions_enabled?(org_id) do
+      case check_org_permissions(job, operation) do
+        :ok -> {:ok, true}
+        error -> error
+      end
+    else
+      {:ok, true}
+    end
+  end
 
-      {:ok, %{restricted: false}} ->
-        {:ok, true}
+  # Debug (SSH) and attach restrictions are gated by the `restrict_job_ssh_access`
+  # feature. When it is disabled (the default), debug and attach are allowed for any
+  # job; when enabled, the project's debug/attach permissions are enforced.
+  #
+  # We distinguish two non-enabled outcomes:
+  #
+  #   * `{:error, {:not_found, _}}` — FeatureHub answered and the feature is simply not
+  #     granted to this org. This is an authoritative "off", so restrictions do not
+  #     apply (allow). Treating it as "on" would force every org without the feature to
+  #     enforce and, with the default `custom_permissions: false`, deny all debug/attach.
+  #
+  #   * any other `{:error, _}` — the lookup itself failed (FeatureHub unreachable, cold
+  #     cache, transient gRPC error). We cannot tell whether restrictions apply, so we
+  #     fail closed and enforce them rather than risk granting unauthorized debug/attach
+  #     access. The error is logged and counted so this (rare) window is observable.
+  defp restrictions_enabled?(org_id) do
+    case FeatureProvider.find_feature("restrict_job_ssh_access", param: org_id) do
+      {:ok, feature} ->
+        FeatureProvider.Feature.enabled?(feature)
 
-      _ ->
-        {:error, :internal, "Error looking up #{org_id}"}
+      {:error, {:not_found, _}} ->
+        false
+
+      {:error, reason} ->
+        Logger.warning(
+          "restrict_job_ssh_access lookup failed for org #{org_id}; " <>
+            "enforcing debug/attach restrictions (fail-closed): #{inspect(reason)}"
+        )
+
+        Watchman.increment("debug_permissions.feature_lookup_error")
+        true
     end
   end
 
