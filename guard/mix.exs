@@ -69,6 +69,7 @@ defmodule Guard.Mixfile do
        ref: "e59638a5671721aa0b5eb02217991a39db993c23"},
       {:ueberauth_gitlab_strategy, "~> 0.4"},
       {:tesla, "~> 1.11.0"},
+      {:gun, "~> 2.0", override: true},
       {:castore, "~> 0.1.22"},
       {:joken, "~> 2.5"},
       {:hackney, "~> 1.20"},

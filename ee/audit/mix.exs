@@ -32,7 +32,7 @@ defmodule Audit.MixProject do
   defp deps do
     [
       {:grpc, "0.5.0-beta.1", override: true},
-      {:cowlib, "~> 2.11.0", override: true},
+      {:cowlib, "~> 2.16", override: true},
       {:amqp, "~> 1.3", override: true},
       {:grpc_mock, github: "renderedtext/grpc-mock", only: [:dev, :test]},
       {:protobuf, "~> 0.7.1"},
