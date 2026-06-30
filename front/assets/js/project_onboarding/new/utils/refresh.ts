@@ -76,3 +76,39 @@ export const isOrgRefreshLocked = (
   isRefreshing: boolean,
   orgCooldownLeft: number
 ): boolean => isRefreshing || orgCooldownLeft > 0;
+
+// Post-enqueue polling: the refresh RPC only enqueues async Sidekiq work, so the
+// UI keeps polling the repository list (indicator up) until the synced repo shows
+// up (targeted, detectable) or a bounded best-effort window elapses (org, which
+// has no client-side completion signal). Pure policy; the component owns timers.
+export const SYNC_POLL_MAX_ATTEMPTS: Record<RefreshScope, number> = {
+  targeted: 20,
+  org: 4,
+};
+
+// Pages to scan per poll tick when hunting for a targeted slug (it may not be on
+// page 1); org needs no detection, so it reads a single page.
+export const SYNC_POLL_MAX_PAGES = 5;
+
+export const repositoriesIncludeSlug = (
+  repos: ReadonlyArray<{ full_name: string }>,
+  slug: string
+): boolean => {
+  const target = slug.toLowerCase();
+  return repos.some((repo) => repo.full_name.toLowerCase() === target);
+};
+
+// Delay before poll attempt `attempt` (1-based). Targeted polls at a steady short
+// interval; org backs off (5s, 10s, 15s, 20s…) since it cannot detect completion.
+export const nextSyncPollDelayMs = (attempt: number, scope: RefreshScope): number =>
+  scope === `targeted` ? 3000 : Math.min(attempt * 5000, 20000);
+
+export const shouldStopPolling = (args: {
+  scope: RefreshScope,
+  attempt: number,
+  maxAttempts: number,
+  found: boolean,
+}): boolean => {
+  if (args.scope === `targeted` && args.found) return true;
+  return args.attempt >= args.maxAttempts;
+};

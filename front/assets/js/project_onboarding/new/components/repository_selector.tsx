@@ -10,7 +10,13 @@ import {
   cooldownScope,
   isTargetedRefreshDisabled,
   isOrgRefreshLocked,
+  repositoriesIncludeSlug,
+  nextSyncPollDelayMs,
+  shouldStopPolling,
+  SYNC_POLL_MAX_ATTEMPTS,
+  SYNC_POLL_MAX_PAGES,
   RefreshResponse,
+  RefreshScope,
 } from "../utils/refresh";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
@@ -38,8 +44,6 @@ interface ApiErrorResponse {
   message?: string;
 }
 
-const BACKGROUND_SYNC_RELOAD_DELAY_MS = 15000;
-
 interface RepositorySelectorProps {
   repositoriesUrl: string;
   githubInstallUrl?: string;
@@ -57,6 +61,7 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
   const [selectedRepo, setSelectedRepo] = useState<Repository | null>(null);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [orgCooldownLeft, setOrgCooldownLeft] = useState(0);
   const [targetedCooldownLeft, setTargetedCooldownLeft] = useState(0);
   const [manualSlug, setManualSlug] = useState(``);
@@ -65,12 +70,16 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const reloadTimeoutRef = useRef<number | null>(null);
+  const syncCancelRef = useRef(false);
 
   const selectedProviderType = providerState.selectedProvider?.type;
   const searchTerm = extractRepositorySearchTerm(searchQuery, selectedProviderType);
   const slugCandidate = parseRepositorySlug(searchTerm);
   const manualSlugCandidate = extractRepositorySearchTerm(manualSlug, selectedProviderType);
   const manualSlugValid = parseRepositorySlug(manualSlugCandidate);
+  // Busy = the refresh RPC is in flight OR a background sync poll is running; both
+  // keep the indicator up and the refresh controls disabled.
+  const refreshBusy = isRefreshing || isSyncing;
 
 
   const filteredRepositories = useMemo(
@@ -98,45 +107,49 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
     return null;
   };
 
+  // Fetch and parse one repositories page without mutating component state, so it
+  // can back both the initial paginated load and the background sync poll.
+  const fetchRepositoryPage = async (
+    url: string
+  ): Promise<{ repos: Repository[], nextPageToken: string | null }> => {
+    const response = await fetch(url);
+    const contentType = response.headers.get(`content-type`) || ``;
+
+    if (!contentType.includes(`application/json`)) {
+      const responseBody = await response.text();
+      const responsePreview = responseBody.replace(/\s+/g, ` `).trim().slice(0, 200);
+      const details = responsePreview ? `: ${responsePreview}` : ``;
+
+      throw new Error(`Failed to load repositories (HTTP ${response.status})${details}`);
+    }
+
+    const payload: ApiResponse | ApiErrorResponse = await response.json();
+
+    if (!response.ok) {
+      throw new Error(parseErrorMessage(payload) || `Failed to load repositories (HTTP ${response.status})`);
+    }
+
+    const json = payload as ApiResponse;
+    if (!json || !Array.isArray(json.repos)) {
+      throw new Error(parseErrorMessage(payload) || `Failed to load repositories: invalid response payload`);
+    }
+
+    return { repos: json.repos, nextPageToken: json.next_page_token || null };
+  };
+
   const loadRepositories = async (url: string) => {
     if (!url || isLoading) return;
     setIsLoading(true);
 
     try {
-      const response = await fetch(url);
-      const contentType = response.headers.get(`content-type`) || ``;
-      const isJson = contentType.includes(`application/json`);
+      const { repos, nextPageToken } = await fetchRepositoryPage(url);
 
-      if (!isJson) {
-        const responseBody = await response.text();
-        const responsePreview = responseBody.replace(/\s+/g, ` `).trim().slice(0, 200);
-        const details = responsePreview ? `: ${responsePreview}` : ``;
-
-        throw new Error(`Failed to load repositories (HTTP ${response.status})${details}`);
-      }
-
-      const payload: ApiResponse | ApiErrorResponse = await response.json();
-
-      if (!response.ok) {
-        const message = parseErrorMessage(payload);
-        throw new Error(message || `Failed to load repositories (HTTP ${response.status})`);
-      }
-
-      const json = payload as ApiResponse;
-      if (!json || !Array.isArray(json.repos)) {
-        const message = parseErrorMessage(payload);
-        throw new Error(message || `Failed to load repositories: invalid response payload`);
-      }
-
-      const repos = json.repos;
-
-      setRepositories(prev => [...prev, ... repos]);
-      setNextPageToken(json.next_page_token || null);
+      setRepositories(prev => [...prev, ...repos]);
+      setNextPageToken(nextPageToken);
 
       // If we have few filtered results after search, automatically load more
-      if (json.next_page_token && filteredRepositories.length < 5) {
-        const nextUrl = `${props.repositoriesUrl}&page_token=${json.next_page_token}`;
-        void loadRepositories(nextUrl);
+      if (nextPageToken && filteredRepositories.length < 5) {
+        void loadRepositories(`${props.repositoriesUrl}&page_token=${nextPageToken}`);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -144,6 +157,30 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Collect repositories for a poll tick: a single page for org (no target to
+  // detect), or up to SYNC_POLL_MAX_PAGES for targeted, stopping as soon as the
+  // slug is found (it may not be on the first page).
+  const collectRepositories = async (
+    slug: string | undefined,
+    maxPages: number
+  ): Promise<{ repos: Repository[], nextPageToken: string | null }> => {
+    const collected: Repository[] = [];
+    let token: string | null = null;
+    let url = props.repositoriesUrl;
+
+    for (let page = 0; page < maxPages; page++) {
+      const result = await fetchRepositoryPage(url);
+      collected.push(...result.repos);
+      token = result.nextPageToken;
+
+      if (slug && repositoriesIncludeSlug(collected, slug)) break;
+      if (!token) break;
+      url = `${props.repositoriesUrl}&page_token=${token}`;
+    }
+
+    return { repos: collected, nextPageToken: token };
   };
 
   const handleSearch = (event: Event) => {
@@ -161,11 +198,57 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
     setOrgCooldownLeft(configState.repositoryRefreshCooldown ?? 60);
   };
 
-  const scheduleBackgroundReload = () => {
+  const stopSyncPolling = () => {
+    syncCancelRef.current = true;
+    if (reloadTimeoutRef.current !== null) {
+      window.clearTimeout(reloadTimeoutRef.current);
+      reloadTimeoutRef.current = null;
+    }
+    setIsSyncing(false);
+  };
+
+  // The refresh RPC only enqueues async work, so keep the indicator up and reload
+  // the list until the synced repo appears (targeted) or the bounded best-effort
+  // window elapses (org). Self-scheduling so the cadence can back off per scope.
+  const startSyncPolling = (scope: RefreshScope, slug?: string) => {
     if (reloadTimeoutRef.current !== null) window.clearTimeout(reloadTimeoutRef.current);
+    syncCancelRef.current = false;
+    setIsSyncing(true);
+
+    const maxAttempts = SYNC_POLL_MAX_ATTEMPTS[scope];
+    const maxPages = scope === `targeted` ? SYNC_POLL_MAX_PAGES : 1;
+
+    const runAttempt = async (attempt: number) => {
+      if (syncCancelRef.current) return;
+
+      let found = false;
+      try {
+        const { repos, nextPageToken } = await collectRepositories(slug, maxPages);
+        if (syncCancelRef.current) return;
+        // Swap in one shot (no empty interim) to avoid a list flash each tick.
+        setRepositories(repos);
+        setNextPageToken(nextPageToken);
+        found = slug ? repositoriesIncludeSlug(repos, slug) : false;
+      } catch {
+        // A transient poll error must not end the sync; keep polling.
+      }
+
+      if (syncCancelRef.current) return;
+
+      if (shouldStopPolling({ scope, attempt, maxAttempts, found })) {
+        stopSyncPolling();
+        return;
+      }
+
+      reloadTimeoutRef.current = window.setTimeout(
+        () => void runAttempt(attempt + 1),
+        nextSyncPollDelayMs(attempt + 1, scope)
+      );
+    };
+
     reloadTimeoutRef.current = window.setTimeout(
-      reloadRepositories,
-      BACKGROUND_SYNC_RELOAD_DELAY_MS
+      () => void runAttempt(1),
+      nextSyncPollDelayMs(1, scope)
     );
   };
 
@@ -203,7 +286,7 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
         case `started`:
           Notice.notice(`Repository sync started.`);
           if (outcome.startCooldown) startCooldown();
-          scheduleBackgroundReload();
+          startSyncPolling(cooldownScope(slug), slug);
           return true;
         case `done`:
           if (outcome.reloadNow) reloadRepositories();
@@ -219,7 +302,7 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
 
   const submitManualSlug = async () => {
     const slug = parseRepositorySlug(manualSlugCandidate);
-    if (!slug || isRefreshing || targetedCooldownLeft > 0) return;
+    if (!slug || refreshBusy || targetedCooldownLeft > 0) return;
     if (await requestRefresh(slug)) {
       setManualSlug(``);
     }
@@ -227,7 +310,7 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
 
   const submitOrgRefresh = async () => {
     const org = orgName.trim();
-    if (!org || isOrgRefreshLocked(isRefreshing, orgCooldownLeft)) return;
+    if (!org || isOrgRefreshLocked(refreshBusy, orgCooldownLeft)) return;
     if (await requestRefresh(undefined, org)) {
       setOrgName(``);
       setMenuOpen(false);
@@ -262,6 +345,7 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
 
   useEffect(() => {
     return () => {
+      syncCancelRef.current = true;
       if (reloadTimeoutRef.current !== null) window.clearTimeout(reloadTimeoutRef.current);
     };
   }, []);
@@ -493,7 +577,7 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
                       Sync only this repository&apos;s data from GitHub
                   </p>
                 </div>
-                {isRefreshing && (
+                {refreshBusy && (
                   <toolbox.Asset path="images/spinner-2.svg" className="mr2" alt="spinner" style={{ width: `20px`, height: `20px` }}/>
                 )}
               </div>
@@ -550,7 +634,7 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
                       style={{
                         cursor: isTargetedRefreshDisabled(
                           manualSlugValid,
-                          isRefreshing,
+                          refreshBusy,
                           targetedCooldownLeft
                         )
                           ? `default`
@@ -558,12 +642,12 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
                       }}
                       disabled={isTargetedRefreshDisabled(
                         manualSlugValid,
-                        isRefreshing,
+                        refreshBusy,
                         targetedCooldownLeft
                       )}
                       onClick={() => void submitManualSlug()}
                     >
-                      {isRefreshing ? (
+                      {refreshBusy ? (
                         <toolbox.Asset
                           path="images/spinner-2.svg"
                           alt="spinner"
@@ -593,7 +677,7 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
                               className="form-control flex-auto"
                               placeholder="organization"
                               value={orgName}
-                              disabled={isOrgRefreshLocked(isRefreshing, orgCooldownLeft)}
+                              disabled={isOrgRefreshLocked(refreshBusy, orgCooldownLeft)}
                               onInput={(event) =>
                                 setOrgName((event.target as HTMLInputElement).value)
                               }
@@ -608,11 +692,11 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
                               type="button"
                               className="btn btn-secondary"
                               disabled={
-                                !orgName.trim() || isOrgRefreshLocked(isRefreshing, orgCooldownLeft)
+                                !orgName.trim() || isOrgRefreshLocked(refreshBusy, orgCooldownLeft)
                               }
                               onClick={() => void submitOrgRefresh()}
                             >
-                              {isRefreshing ? (
+                              {refreshBusy ? (
                                 <toolbox.Asset
                                   path="images/spinner-2.svg"
                                   alt="spinner"
@@ -642,11 +726,23 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
                     </Tippy>
                   </div>
                 </div>
-                <p className="f6 black-60 mt1 mb0">
-                  {manualSlug.length > 0 && !manualSlugValid
-                    ? `Use the owner/repository format, e.g. organization/repository`
-                    : `Paste the repository URL or owner/repository to sync just that repository.`}
-                </p>
+                {isSyncing ? (
+                  <p className="f6 black-60 mt1 mb0 flex items-center">
+                    <toolbox.Asset
+                      path="images/spinner-2.svg"
+                      className="mr1"
+                      alt="spinner"
+                      style={{ width: `14px`, height: `14px` }}
+                    />
+                    Syncing repositories from GitHub…
+                  </p>
+                ) : (
+                  <p className="f6 black-60 mt1 mb0">
+                    {manualSlug.length > 0 && !manualSlugValid
+                      ? `Use the owner/repository format, e.g. organization/repository`
+                      : `Paste the repository URL or owner/repository to sync just that repository.`}
+                  </p>
+                )}
               </div>
             )}
           </div>
