@@ -26,6 +26,13 @@ defmodule PipelinesAPI.Roles.Update do
       # --description — would blank the role's permissions, name, etc.
       with {:ok, current} <- RBACClient.describe_role(%{role_id: role_id, org_id: org_id}),
            scope <- scope_value(params["scope"] || current.scope),
+           :ok <-
+             PermissionResolver.ensure_requester_holds(
+               scope,
+               params["permissions"] || [],
+               requester_id,
+               org_id
+             ),
            {:ok, permissions} <-
              PermissionResolver.resolve(scope, params["permissions"] || current.permissions) do
         role =

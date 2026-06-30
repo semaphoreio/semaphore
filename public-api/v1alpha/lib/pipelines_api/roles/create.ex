@@ -26,23 +26,24 @@ defmodule PipelinesAPI.Roles.Create do
           _ -> RBAC.Scope.value(:SCOPE_ORG)
         end
 
-      case PermissionResolver.resolve(scope, params["permissions"] || []) do
-        {:ok, permissions} ->
-          role =
-            RBAC.Role.new(
-              name: params["name"] || "",
-              org_id: org_id,
-              scope: scope,
-              description: params["description"] || "",
-              rbac_permissions: permissions
-            )
+      requested = params["permissions"] || []
 
-          %{role: role, requester_id: requester_id}
-          |> RBACClient.modify_role()
-          |> RespCommon.respond(conn)
+      with :ok <- PermissionResolver.ensure_requester_holds(scope, requested, requester_id, org_id),
+           {:ok, permissions} <- PermissionResolver.resolve(scope, requested) do
+        role =
+          RBAC.Role.new(
+            name: params["name"] || "",
+            org_id: org_id,
+            scope: scope,
+            description: params["description"] || "",
+            rbac_permissions: permissions
+          )
 
-        error ->
-          RespCommon.respond(error, conn)
+        %{role: role, requester_id: requester_id}
+        |> RBACClient.modify_role()
+        |> RespCommon.respond(conn)
+      else
+        error -> RespCommon.respond(error, conn)
       end
     end)
   end

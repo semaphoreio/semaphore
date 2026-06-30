@@ -12,6 +12,32 @@ defmodule PipelinesAPI.Roles.PermissionResolver do
   alias PipelinesAPI.Util.ToTuple
   alias InternalApi.RBAC
 
+  @org_scope RBAC.Scope.value(:SCOPE_ORG)
+
+  @spec ensure_requester_holds(integer(), [String.t()], String.t(), String.t()) ::
+          :ok | {:error, term()}
+  def ensure_requester_holds(scope, _names, _requester_id, _org_id) when scope != @org_scope,
+    do: :ok
+
+  def ensure_requester_holds(_scope, [], _requester_id, _org_id), do: :ok
+
+  def ensure_requester_holds(_scope, names, requester_id, org_id) do
+    case RBACClient.list_user_permissions(%{
+           user_id: requester_id,
+           org_id: org_id,
+           project_id: ""
+         }) do
+      {:ok, held} ->
+        case names -- held do
+          [] -> :ok
+          missing -> ToTuple.user_error("cannot grant permissions you do not hold: #{Enum.join(missing, ", ")}")
+        end
+
+      error ->
+        error
+    end
+  end
+
   @spec resolve(integer(), [String.t()]) :: {:ok, [RBAC.Permission.t()]} | {:error, term()}
   def resolve(_scope, []), do: ToTuple.ok([])
 
