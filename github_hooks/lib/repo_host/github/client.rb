@@ -20,6 +20,9 @@ module RepoHost::Github
     OWNER_TYPE_USER = "User"
     OWNER_TYPE_ORGANIZATION = "Organization"
     WEBHOOK_OPTIONS = { :events => ["push", "pull_request", "member"] }
+    ORG_PUSH_SCAN_MAX_PAGES = 10
+    ORG_PUSH_OPEN_TIMEOUT = 5
+    ORG_PUSH_READ_TIMEOUT = 10
 
     Octokit.default_media_type = "application/vnd.github.moondragon+json"
 
@@ -53,6 +56,39 @@ module RepoHost::Github
 
     def repositories
       user_repositories
+    rescue *GITHUB_EXCEPTION => exception
+      handle_octokit_exceptions(exception)
+    end
+
+    # True if the token owner is an ORGANIZATION MEMBER with push access to at
+    # least one repository owned by the org. Pages /user/repos with the
+    # organization_member affiliation only — outside collaborators (who are not
+    # members) are excluded — early exit, bounded by ORG_PUSH_SCAN_MAX_PAGES.
+    def push_access_to_organization?(organization)
+      target = organization.to_s.downcase
+      client = Octokit::Client.new(
+        :access_token => @token,
+        :auto_paginate => false,
+        :connection_options => {
+          :request => { :open_timeout => ORG_PUSH_OPEN_TIMEOUT, :timeout => ORG_PUSH_READ_TIMEOUT }
+        }
+      )
+
+      ORG_PUSH_SCAN_MAX_PAGES.times do |index|
+        repos = client.repos(nil, :affiliation => "organization_member",
+                                  :per_page => 100, :page => index + 1)
+        return false if repos.empty?
+        return true if repos.any? { |repo| organization_push?(repo, target) }
+        return false if repos.size < 100
+      end
+
+      Rails.logger.warn("[RepoHost::Github::Client] org push scan hit page cap for organization=#{organization}")
+      false
+    rescue Faraday::Error => exception
+      # A slow/hung GitHub call must not occupy the request thread past the
+      # per-request timeout: fail closed (treat as no push access).
+      Rails.logger.warn("[RepoHost::Github::Client] org push scan failed for organization=#{organization}: #{exception.class}")
+      false
     rescue *GITHUB_EXCEPTION => exception
       handle_octokit_exceptions(exception)
     end
@@ -219,6 +255,14 @@ module RepoHost::Github
     end
 
     private
+
+    def organization_push?(repo, target_login)
+      owner = repo[:owner]
+      owner &&
+        owner[:type] == OWNER_TYPE_ORGANIZATION &&
+        owner[:login].to_s.downcase == target_login &&
+        repo[:permissions] && !!repo[:permissions][:push]
+    end
 
     def user_client
       @user_client ||= Octokit::Client.new(:access_token => @token,
