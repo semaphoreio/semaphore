@@ -4,7 +4,14 @@ import Tippy from "@tippyjs/react";
 import * as stores from "../stores";
 import * as toolbox from "js/toolbox";
 import { parseRepositorySlug, extractRepositorySearchTerm } from "../utils/slug";
-import { decideRefreshOutcome, formatCooldown, RefreshResponse } from "../utils/refresh";
+import {
+  decideRefreshOutcome,
+  formatCooldown,
+  cooldownScope,
+  isTargetedRefreshDisabled,
+  isOrgRefreshLocked,
+  RefreshResponse,
+} from "../utils/refresh";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { Notice } from "js/notice";
@@ -50,7 +57,8 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
   const [selectedRepo, setSelectedRepo] = useState<Repository | null>(null);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [cooldownLeft, setCooldownLeft] = useState(0);
+  const [orgCooldownLeft, setOrgCooldownLeft] = useState(0);
+  const [targetedCooldownLeft, setTargetedCooldownLeft] = useState(0);
   const [manualSlug, setManualSlug] = useState(``);
   const [menuOpen, setMenuOpen] = useState(false);
   const [orgName, setOrgName] = useState(``);
@@ -150,7 +158,7 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
   };
 
   const startCooldown = () => {
-    setCooldownLeft(configState.repositoryRefreshCooldown ?? 60);
+    setOrgCooldownLeft(configState.repositoryRefreshCooldown ?? 60);
   };
 
   const scheduleBackgroundReload = () => {
@@ -185,7 +193,11 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
 
       switch (outcome.kind) {
         case `rate_limited`:
-          setCooldownLeft(outcome.cooldown);
+          if (cooldownScope(slug) === `targeted`) {
+            setTargetedCooldownLeft(outcome.cooldown);
+          } else {
+            setOrgCooldownLeft(outcome.cooldown);
+          }
           Notice.notice(`Refresh available again in ${formatCooldown(outcome.cooldown)}.`);
           return false;
         case `started`:
@@ -207,7 +219,7 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
 
   const submitManualSlug = async () => {
     const slug = parseRepositorySlug(manualSlugCandidate);
-    if (!slug || isRefreshing) return;
+    if (!slug || isRefreshing || targetedCooldownLeft > 0) return;
     if (await requestRefresh(slug)) {
       setManualSlug(``);
     }
@@ -215,7 +227,7 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
 
   const submitOrgRefresh = async () => {
     const org = orgName.trim();
-    if (!org || isRefreshing || cooldownLeft > 0) return;
+    if (!org || isOrgRefreshLocked(isRefreshing, orgCooldownLeft)) return;
     if (await requestRefresh(undefined, org)) {
       setOrgName(``);
       setMenuOpen(false);
@@ -229,14 +241,24 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
   }, [props.repositoriesUrl]);
 
   useEffect(() => {
-    if (cooldownLeft <= 0) return;
+    if (orgCooldownLeft <= 0) return;
 
     const interval = window.setInterval(() => {
-      setCooldownLeft((left) => (left > 1 ? left - 1 : 0));
+      setOrgCooldownLeft((left) => (left > 1 ? left - 1 : 0));
     }, 1000);
 
     return () => window.clearInterval(interval);
-  }, [cooldownLeft > 0]);
+  }, [orgCooldownLeft > 0]);
+
+  useEffect(() => {
+    if (targetedCooldownLeft <= 0) return;
+
+    const interval = window.setInterval(() => {
+      setTargetedCooldownLeft((left) => (left > 1 ? left - 1 : 0));
+    }, 1000);
+
+    return () => window.clearInterval(interval);
+  }, [targetedCooldownLeft > 0]);
 
   useEffect(() => {
     return () => {
@@ -526,9 +548,19 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
                       type="button"
                       className="btn btn-secondary"
                       style={{
-                        cursor: !manualSlugValid || isRefreshing ? `default` : `pointer`,
+                        cursor: isTargetedRefreshDisabled(
+                          manualSlugValid,
+                          isRefreshing,
+                          targetedCooldownLeft
+                        )
+                          ? `default`
+                          : `pointer`,
                       }}
-                      disabled={!manualSlugValid || isRefreshing}
+                      disabled={isTargetedRefreshDisabled(
+                        manualSlugValid,
+                        isRefreshing,
+                        targetedCooldownLeft
+                      )}
                       onClick={() => void submitManualSlug()}
                     >
                       {isRefreshing ? (
@@ -561,7 +593,7 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
                               className="form-control flex-auto"
                               placeholder="organization"
                               value={orgName}
-                              disabled={isRefreshing || cooldownLeft > 0}
+                              disabled={isOrgRefreshLocked(isRefreshing, orgCooldownLeft)}
                               onInput={(event) =>
                                 setOrgName((event.target as HTMLInputElement).value)
                               }
@@ -575,7 +607,9 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
                             <button
                               type="button"
                               className="btn btn-secondary"
-                              disabled={!orgName.trim() || isRefreshing || cooldownLeft > 0}
+                              disabled={
+                                !orgName.trim() || isOrgRefreshLocked(isRefreshing, orgCooldownLeft)
+                              }
                               onClick={() => void submitOrgRefresh()}
                             >
                               {isRefreshing ? (
@@ -589,9 +623,9 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
                               )}
                             </button>
                           </div>
-                          {cooldownLeft > 0 && (
+                          {orgCooldownLeft > 0 && (
                             <p className="f6 black-60 mt1 mb0">
-                              Refresh available in {formatCooldown(cooldownLeft)}
+                              Refresh available in {formatCooldown(orgCooldownLeft)}
                             </p>
                           )}
                         </div>

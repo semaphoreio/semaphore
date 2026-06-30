@@ -1,6 +1,12 @@
 import { expect } from "chai";
 import { describe, it } from "mocha";
-import { decideRefreshOutcome, formatCooldown } from "./refresh";
+import {
+  decideRefreshOutcome,
+  formatCooldown,
+  cooldownScope,
+  isTargetedRefreshDisabled,
+  isOrgRefreshLocked,
+} from "./refresh";
 
 describe(`formatCooldown`, () => {
   it(`keeps values of 60s or less in seconds`, () => {
@@ -111,5 +117,39 @@ describe(`decideRefreshOutcome`, () => {
 
     expect(out.kind).to.eq(`error`);
     expect(out).to.have.property(`message`, `Could not refresh repositories.`);
+  });
+});
+
+describe(`cooldownScope`, () => {
+  it(`scopes a slugged refresh as targeted`, () => {
+    expect(cooldownScope(`octo/repo`)).to.eq(`targeted`);
+  });
+
+  it(`scopes an absent or empty slug as org`, () => {
+    expect(cooldownScope(undefined)).to.eq(`org`);
+    expect(cooldownScope(``)).to.eq(`org`);
+  });
+});
+
+describe(`refresh control gating`, () => {
+  it(`a targeted cooldown blocks the targeted control but leaves the org control enabled`, () => {
+    // The bug: a targeted 429 used to set a shared cooldown that disabled the org
+    // control, though the backend throttles the two independently.
+    expect(isTargetedRefreshDisabled(`octo/repo`, false, 45)).to.eq(true);
+    expect(isOrgRefreshLocked(false, 0)).to.eq(false);
+  });
+
+  it(`an org cooldown locks the org control but leaves targeted enabled`, () => {
+    expect(isOrgRefreshLocked(false, 300)).to.eq(true);
+    expect(isTargetedRefreshDisabled(`octo/repo`, false, 0)).to.eq(false);
+  });
+
+  it(`an in-flight refresh locks both controls`, () => {
+    expect(isOrgRefreshLocked(true, 0)).to.eq(true);
+    expect(isTargetedRefreshDisabled(`octo/repo`, true, 0)).to.eq(true);
+  });
+
+  it(`an invalid manual slug disables the targeted control regardless of cooldown`, () => {
+    expect(isTargetedRefreshDisabled(null, false, 0)).to.eq(true);
   });
 });

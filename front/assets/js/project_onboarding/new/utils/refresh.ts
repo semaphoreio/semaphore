@@ -54,3 +54,25 @@ export const formatCooldown = (seconds: number): string => {
 
   return `${seconds}s`;
 };
+
+// Which cooldown a refresh affects: targeted and org refreshes throttle
+// independently on the backend, so a `slug` (targeted) and an empty slug (org)
+// must update separate cooldown state — never a shared one.
+export type RefreshScope = `targeted` | `org`;
+
+export const cooldownScope = (slug: string | undefined): RefreshScope =>
+  slug ? `targeted` : `org`;
+
+// Control gating, kept pure so the component and tests share one definition.
+// Each control is blocked only by its OWN cooldown (plus the shared in-flight
+// flag) — a targeted cooldown must not disable the org control, or vice versa.
+export const isTargetedRefreshDisabled = (
+  validSlug: string | null,
+  isRefreshing: boolean,
+  targetedCooldownLeft: number
+): boolean => !validSlug || isRefreshing || targetedCooldownLeft > 0;
+
+export const isOrgRefreshLocked = (
+  isRefreshing: boolean,
+  orgCooldownLeft: number
+): boolean => isRefreshing || orgCooldownLeft > 0;
