@@ -197,7 +197,8 @@ defmodule PipelinesAPI.ServiceAccountClient.GrpcClient do
     result =
       Wormhole.capture(__MODULE__, :regenerate_token_, [request],
         stacktrace: true,
-        skip_log: true
+        skip_log: true,
+        timeout_ms: @wormhole_timeout
       )
 
     case result do
@@ -231,6 +232,7 @@ defmodule PipelinesAPI.ServiceAccountClient.GrpcClient do
     cond do
       status in [3, 6, 9] -> ToTuple.user_error(message)
       status == 5 -> ToTuple.not_found_error(message)
+      status == 7 -> ToTuple.forbidden_error(message)
       true -> Log.internal_error(message, action, "ServiceAccount")
     end
   end

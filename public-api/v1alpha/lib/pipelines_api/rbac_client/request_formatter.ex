@@ -98,13 +98,16 @@ defmodule PipelinesAPI.RBACClient.RequestFormatter do
   def form_list_roles_request(_),
     do: ToTuple.user_error("organization id is required to make list roles request")
 
-  def form_retract_role_request(%{user_id: user_id, org_id: org_id, requester_id: requester_id}) do
+  def form_retract_role_request(
+        params = %{user_id: user_id, org_id: org_id, requester_id: requester_id}
+      ) do
     ToTuple.ok(
       RBAC.RetractRoleRequest.new(
         role_assignment:
           RBAC.RoleAssignment.new(
             subject: RBAC.Subject.new(subject_id: user_id),
-            org_id: org_id
+            org_id: org_id,
+            role_id: Map.get(params, :role_id) || ""
           ),
         requester_id: requester_id
       )
@@ -114,19 +117,22 @@ defmodule PipelinesAPI.RBACClient.RequestFormatter do
   def form_retract_role_request(_),
     do: ToTuple.user_error("Bad retract role request")
 
-  def form_retract_project_role_request(%{
-        user_id: user_id,
-        org_id: org_id,
-        project_id: project_id,
-        requester_id: requester_id
-      }) do
+  def form_retract_project_role_request(
+        params = %{
+          user_id: user_id,
+          org_id: org_id,
+          project_id: project_id,
+          requester_id: requester_id
+        }
+      ) do
     ToTuple.ok(
       RBAC.RetractRoleRequest.new(
         role_assignment:
           RBAC.RoleAssignment.new(
             subject: RBAC.Subject.new(subject_id: user_id),
             org_id: org_id,
-            project_id: project_id
+            project_id: project_id,
+            role_id: Map.get(params, :role_id) || ""
           ),
         requester_id: requester_id
       )

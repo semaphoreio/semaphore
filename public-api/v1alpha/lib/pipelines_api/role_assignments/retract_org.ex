@@ -20,7 +20,8 @@ defmodule PipelinesAPI.RoleAssignments.RetractOrg do
       %{
         user_id: conn.params["subject_id"],
         org_id: org_id,
-        requester_id: requester_id
+        requester_id: requester_id,
+        role_id: conn.params["role_id"]
       }
       |> RBACClient.retract_role()
       |> RespCommon.respond(conn)

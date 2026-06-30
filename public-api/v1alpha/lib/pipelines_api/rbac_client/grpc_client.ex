@@ -315,6 +315,7 @@ defmodule PipelinesAPI.RBACClient.GrpcClient do
     cond do
       status in [3, 6, 9] -> ToTuple.user_error(message)
       status == 5 -> ToTuple.not_found_error(message)
+      status == 7 -> ToTuple.forbidden_error(message)
       true -> Log.internal_error(message, "rbac")
     end
   end
