@@ -153,8 +153,8 @@ defmodule Guard.Id.MaybeSetupGitProviders do
   defp cooldown_expired?(provider) do
     Cachex.exists?(:config_cache, provider.cooldown_key())
     |> case do
-      {:ok, true} -> true
-      _ -> false
+      {:ok, true} -> false
+      _ -> true
     end
   end
 end
