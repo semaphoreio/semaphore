@@ -84,6 +84,11 @@ defmodule FrontWeb.ProjectOnboardingController do
   @targeted_refresh_cooldown_seconds 60
   @full_refresh_cooldown_seconds 600
 
+  # A full/org refresh that fails for business reasons still ran the synchronous
+  # org-push scan, so floor a short cooldown (rather than fully releasing) to
+  # throttle a caller looping the same org against that scan.
+  @full_refresh_failure_cooldown_seconds 60
+
   @repository_slug_format ~r|\A[A-Za-z0-9][A-Za-z0-9\-]{0,38}/[A-Za-z0-9._\-]{1,100}\z|
   @organization_format ~r/\A[A-Za-z0-9][A-Za-z0-9\-]{0,38}\z/
 
@@ -616,12 +621,13 @@ defmodule FrontWeb.ProjectOnboardingController do
         json(conn, %{state: state |> Atom.to_string() |> String.downcase(), message: message})
 
       {:ok, %{message: message}} ->
-        # A full/org business failure (e.g. nothing to refresh) did no work, so
-        # release its cooldown. A targeted failure (e.g. no access) KEEPS the
-        # cooldown so a caller cannot loop denied/failed slugs to spam the
-        # synchronous push check.
+        # A full/org business failure (e.g. no access) still ran the synchronous
+        # org-push scan, so floor a short cooldown instead of fully releasing —
+        # throttling a caller looping the same org against that scan. A targeted
+        # failure likewise KEEPS its (full) cooldown so denied slugs cannot be
+        # looped to spam the synchronous push check.
         if scope == :full,
-          do: release_refresh_cooldown(:full, org_id, user_id, resource)
+          do: floor_refresh_cooldown(:full, org_id, user_id, resource)
 
         conn
         |> put_status(422)
@@ -687,22 +693,32 @@ defmodule FrontWeb.ProjectOnboardingController do
   # fix needs an atomic Redis SET NX claim.
   defp claim_refresh_cooldown(scope, org_id, user_id, resource) do
     key = refresh_cooldown_key(scope, org_id, user_id, resource)
-    cooldown = cooldown_seconds(scope)
 
     case Front.Cache.get(key) do
-      {:ok, claimed_at} ->
-        elapsed = System.system_time(:second) - String.to_integer(claimed_at)
-        {:cooldown, max(cooldown - elapsed, 1)}
+      {:ok, expires_at} ->
+        {:cooldown, max(String.to_integer(expires_at) - System.system_time(:second), 1)}
 
       {:not_cached, _} ->
-        Front.Cache.set(
-          key,
-          Integer.to_string(System.system_time(:second)),
-          :timer.seconds(cooldown)
-        )
-
+        write_refresh_cooldown(key, cooldown_seconds(scope))
         :ok
     end
+  end
+
+  # Reduce a held cooldown to a short floor (used on org business failure): the
+  # scan already ran, so keep some throttle even though the full window is gone.
+  defp floor_refresh_cooldown(scope, org_id, user_id, resource) do
+    refresh_cooldown_key(scope, org_id, user_id, resource)
+    |> write_refresh_cooldown(@full_refresh_failure_cooldown_seconds)
+  end
+
+  # The value is the absolute expiry, so a variable floor reports the right
+  # retry_after; the TTL evicts the key when the window ends.
+  defp write_refresh_cooldown(key, seconds) do
+    Front.Cache.set(
+      key,
+      Integer.to_string(System.system_time(:second) + seconds),
+      :timer.seconds(seconds)
+    )
   end
 
   defp cooldown_seconds(:targeted), do: @targeted_refresh_cooldown_seconds
