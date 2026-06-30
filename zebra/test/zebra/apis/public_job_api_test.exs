@@ -80,6 +80,12 @@ defmodule Zebra.Api.PublicJobApiTest do
       InternalApi.Repository.DescribeResponse.new(repository: repository, private_ssh_key: key)
     end)
 
+    stub(Support.MockedProvider, :provide_features, fn org_id, opts ->
+      {:ok, features} = Support.StubbedProvider.provide_features(org_id, opts)
+      state = if org_id == @restricted_org_id, do: :enabled, else: :hidden
+      {:ok, features ++ [Support.StubbedProvider.feature("restrict_job_ssh_access", [state])]}
+    end)
+
     :ok
   end
 
@@ -665,6 +671,103 @@ defmodule Zebra.Api.PublicJobApiTest do
                status: 7
              }
     end
+
+    test "when the restrict_job_ssh_access feature is disabled => attach is allowed even if the project would block it" do
+      # @org_id has the feature disabled. Restrictions must not be enforced regardless
+      # of the project's permissions or the org's `restricted` flag (which is no longer
+      # consulted) — enforcement is gated solely by the feature.
+      mock_repo_proxy(:BRANCH, "some-non-default-branch", "test-org/test-repo", "")
+      mock_project([], [])
+
+      {:ok, task} = Support.Factories.Task.create()
+
+      {:ok, job} =
+        Support.Factories.Job.create(:started, %{
+          project_id: hd(@authorized_projects),
+          private_ssh_key: Zebra.RSA.generate().private_key,
+          organization_id: @org_id,
+          build_id: task.id
+        })
+
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+      request = Request.new(job_id: job.id)
+
+      {:ok, reply} = channel |> Stub.get_job_debug_ssh_key(request, @options)
+      assert reply == %Semaphore.Jobs.V1alpha.JobDebugSSHKey{key: job.private_ssh_key}
+    end
+
+    test "when the feature lookup fails => attach is denied (fail-closed)" do
+      # A provider/cache error must fail closed: when we cannot determine whether the
+      # restriction feature is on, we enforce it rather than risk unauthorized access.
+      stub(Support.MockedProvider, :provide_features, fn _org_id, _opts -> {:error, :timeout} end)
+
+      mock_repo_proxy(:BRANCH, "some-non-default-branch", "test-org/test-repo", "")
+      mock_project([], [])
+
+      {:ok, task} = Support.Factories.Task.create()
+
+      {:ok, job} =
+        Support.Factories.Job.create(:started, %{
+          project_id: hd(@authorized_projects),
+          private_ssh_key: Zebra.RSA.generate().private_key,
+          organization_id: @restricted_org_id,
+          build_id: task.id
+        })
+
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+      request = Request.new(job_id: job.id)
+
+      {:error, reply} =
+        channel |> Stub.get_job_debug_ssh_key(request, @options_for_restricted_org)
+
+      assert reply == %GRPC.RPCError{
+               message:
+                 "You are not allowed to attach jobs on non default branches of this project",
+               status: 7
+             }
+    end
+
+    test "with the production cache, a cold cache + provider error denies (fail-closed)" do
+      original_provider = Application.get_env(FeatureProvider, :provider)
+      on_exit(fn -> Application.put_env(FeatureProvider, :provider, original_provider) end)
+
+      Cachex.clear(:feature_provider_cache)
+
+      FeatureProvider.init(
+        {Support.MockedProvider,
+         [
+           cache:
+             {FeatureProvider.CachexCache, name: :feature_provider_cache, ttl_ms: :timer.hours(6)}
+         ]}
+      )
+
+      stub(Support.MockedProvider, :provide_features, fn _org_id, _opts -> {:error, :timeout} end)
+
+      mock_repo_proxy(:BRANCH, "some-non-default-branch", "test-org/test-repo", "")
+      mock_project([], [])
+
+      {:ok, task} = Support.Factories.Task.create()
+
+      {:ok, job} =
+        Support.Factories.Job.create(:started, %{
+          project_id: hd(@authorized_projects),
+          private_ssh_key: Zebra.RSA.generate().private_key,
+          organization_id: @restricted_org_id,
+          build_id: task.id
+        })
+
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+      request = Request.new(job_id: job.id)
+
+      {:error, reply} =
+        channel |> Stub.get_job_debug_ssh_key(request, @options_for_restricted_org)
+
+      assert reply == %GRPC.RPCError{
+               message:
+                 "You are not allowed to attach jobs on non default branches of this project",
+               status: 7
+             }
+    end
   end
 
   describe ".create_job" do
@@ -969,7 +1072,7 @@ defmodule Zebra.Api.PublicJobApiTest do
       create_debug_job_passes_permission_check()
     end
 
-    test "when organization api fails => raise error" do
+    test "when organization api is unavailable => debug job is still created (org lookup no longer gates debug)" do
       alias Semaphore.Jobs.V1alpha.JobsApi.Stub, as: Stub
 
       GrpcMock.stub(Support.FakeServers.OrganizationApi, :describe, fn _, _ ->
@@ -989,12 +1092,9 @@ defmodule Zebra.Api.PublicJobApiTest do
 
       {:ok, channel} = GRPC.Stub.connect("localhost:50051")
 
-      {:error, reply} = channel |> Stub.create_debug_job(req, @options)
-
-      assert reply == %GRPC.RPCError{
-               message: "Error looking up #{@org_id}",
-               status: 13
-             }
+      # Debug/attach is now gated by the `restrict_job_ssh_access` feature, not the
+      # organization API, so an Organization API outage no longer blocks debug sessions.
+      assert {:ok, _debug_job} = channel |> Stub.create_debug_job(req, @options)
     end
 
     test "when repo proxy api fails => raise error" do
@@ -1191,7 +1291,7 @@ defmodule Zebra.Api.PublicJobApiTest do
       create_debug_project_passes_permission_check()
     end
 
-    test "when organization api fails => raise error" do
+    test "when organization api is unavailable => empty debug session is still created (org lookup no longer gates debug)" do
       alias Semaphore.Jobs.V1alpha.JobsApi.Stub, as: Stub
       alias InternalApi.Projecthub.Project.Spec.PermissionType
 
@@ -1208,12 +1308,9 @@ defmodule Zebra.Api.PublicJobApiTest do
 
       {:ok, channel} = GRPC.Stub.connect("localhost:50051")
 
-      {:error, reply} = channel |> Stub.create_debug_project(req, @options)
-
-      assert reply == %GRPC.RPCError{
-               message: "Error looking up #{@org_id}",
-               status: 13
-             }
+      # Debug/attach is now gated by the `restrict_job_ssh_access` feature, not the
+      # organization API, so an Organization API outage no longer blocks debug sessions.
+      assert {:ok, _debug_job} = channel |> Stub.create_debug_project(req, @options)
     end
 
     test "when project api fails => raise error" do
