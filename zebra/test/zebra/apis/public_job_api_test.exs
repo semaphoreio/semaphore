@@ -671,6 +671,61 @@ defmodule Zebra.Api.PublicJobApiTest do
                status: 7
              }
     end
+
+    test "when the restrict_job_ssh_access feature is disabled => attach is allowed even if the project would block it" do
+      # @org_id has the feature disabled. Restrictions must not be enforced regardless
+      # of the project's permissions or the org's `restricted` flag (which is no longer
+      # consulted) — enforcement is gated solely by the feature.
+      mock_repo_proxy(:BRANCH, "some-non-default-branch", "test-org/test-repo", "")
+      mock_project([], [])
+
+      {:ok, task} = Support.Factories.Task.create()
+
+      {:ok, job} =
+        Support.Factories.Job.create(:started, %{
+          project_id: hd(@authorized_projects),
+          private_ssh_key: Zebra.RSA.generate().private_key,
+          organization_id: @org_id,
+          build_id: task.id
+        })
+
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+      request = Request.new(job_id: job.id)
+
+      {:ok, reply} = channel |> Stub.get_job_debug_ssh_key(request, @options)
+      assert reply == %Semaphore.Jobs.V1alpha.JobDebugSSHKey{key: job.private_ssh_key}
+    end
+
+    test "when the feature lookup fails => attach is denied (fail-closed)" do
+      # A provider/cache error must fail closed: when we cannot determine whether the
+      # restriction feature is on, we enforce it rather than risk unauthorized access.
+      stub(Support.MockedProvider, :provide_features, fn _org_id, _opts -> {:error, :timeout} end)
+
+      mock_repo_proxy(:BRANCH, "some-non-default-branch", "test-org/test-repo", "")
+      mock_project([], [])
+
+      {:ok, task} = Support.Factories.Task.create()
+
+      {:ok, job} =
+        Support.Factories.Job.create(:started, %{
+          project_id: hd(@authorized_projects),
+          private_ssh_key: Zebra.RSA.generate().private_key,
+          organization_id: @restricted_org_id,
+          build_id: task.id
+        })
+
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+      request = Request.new(job_id: job.id)
+
+      {:error, reply} =
+        channel |> Stub.get_job_debug_ssh_key(request, @options_for_restricted_org)
+
+      assert reply == %GRPC.RPCError{
+               message:
+                 "You are not allowed to attach jobs on non default branches of this project",
+               status: 7
+             }
+    end
   end
 
   describe ".create_job" do
