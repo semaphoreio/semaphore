@@ -16,7 +16,7 @@ defmodule PipelinesAPI.Members.List do
     Metrics.benchmark("PipelinesAPI.router", ["members_list"], fn ->
       org_id = Conn.get_req_header(conn, "x-semaphore-org-id") |> Enum.at(0, "")
 
-      %{org_id: org_id}
+      %{org_id: org_id, member_type: conn.params["member_type"]}
       |> RBACClient.list_org_members()
       |> RespCommon.respond(conn)
     end)

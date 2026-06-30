@@ -149,7 +149,7 @@ defmodule PipelinesAPI.RBACClient.RequestFormatter do
     )
   end
 
-  def form_list_org_members_request(%{org_id: org_id}) do
+  def form_list_org_members_request(%{org_id: org_id} = params) do
     ToTuple.ok(
       RBAC.ListMembersRequest.new(
         org_id: org_id,
@@ -157,13 +157,21 @@ defmodule PipelinesAPI.RBACClient.RequestFormatter do
         member_name_contains: "",
         member_has_role: "",
         page: RBAC.ListMembersRequest.Page.new(page_no: 0, page_size: @total_page_size),
-        member_type: RBAC.SubjectType.value(:USER)
+        member_type: subject_type_value(Map.get(params, :member_type))
       )
     )
   end
 
   def form_list_org_members_request(_),
     do: ToTuple.user_error("organization id is required")
+
+  defp subject_type_value(t) when t in ["service_account", "SERVICE_ACCOUNT"],
+    do: RBAC.SubjectType.value(:SERVICE_ACCOUNT)
+
+  defp subject_type_value(t) when t in ["group", "GROUP"],
+    do: RBAC.SubjectType.value(:GROUP)
+
+  defp subject_type_value(_), do: RBAC.SubjectType.value(:USER)
 
   def form_list_org_roles_request(%{org_id: org_id}) do
     ToTuple.ok(
