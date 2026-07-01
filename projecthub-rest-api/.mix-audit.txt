@@ -8,3 +8,15 @@ GHSA-9fm9-hp7p-53mf
 
 # hackney 1.17.4 — SSRF via redirect target (no user-controlled URL fed to hackney; HTTPoison not called from lib/)
 GHSA-vq52-99r9-h5pw
+
+# hackney 1.17.4 — four URL/TLS advisories all first patched in hackney 4.0.1: ssl:connect/2
+# post-handshake upgrade has no timeout (GHSA-gp9c-pm5m-5cxr), CR/LF injection in query param
+# (GHSA-j9wq-vxxc-94wf), CRLF/header injection via domain/path options (GHSA-mp55-p8c9-rfw2), and
+# SSRF allowlist bypass via percent-encoded host (GHSA-pj7v-xfvx-wmjq). hackney 4.0.1 is a major
+# upgrade blocked by httpoison ~> 1.8 / sentry ~> 1.8 (both cap hackney < 2.0; no httpoison/sentry
+# release uses hackney 4.x). Not reachable: outbound is bounded to the Sentry DSN + tzdata IANA URL —
+# no user-controlled host/query/path is fed to hackney.
+GHSA-gp9c-pm5m-5cxr
+GHSA-j9wq-vxxc-94wf
+GHSA-mp55-p8c9-rfw2
+GHSA-pj7v-xfvx-wmjq

@@ -106,7 +106,10 @@ defmodule Projecthub.HttpApi.Test do
                    },
                    "schedulers" => [],
                    "tasks" => [],
-                   "visibility" => "private"
+                   "visibility" => "private",
+                   "custom_permissions" => true,
+                   "debug_permissions" => ["empty", "default_branch"],
+                   "attach_permissions" => []
                  }
                },
                %{
@@ -143,7 +146,10 @@ defmodule Projecthub.HttpApi.Test do
                    },
                    "schedulers" => [],
                    "tasks" => [],
-                   "visibility" => "private"
+                   "visibility" => "private",
+                   "custom_permissions" => true,
+                   "debug_permissions" => ["empty", "default_branch"],
+                   "attach_permissions" => []
                  }
                }
              ] == Poison.decode!(response.body)
@@ -540,7 +546,10 @@ defmodule Projecthub.HttpApi.Test do
                  },
                  "schedulers" => [],
                  "tasks" => [],
-                 "visibility" => "private"
+                 "visibility" => "private",
+                 "custom_permissions" => true,
+                 "debug_permissions" => ["empty", "default_branch"],
+                 "attach_permissions" => []
                }
              }
     end
@@ -629,7 +638,10 @@ defmodule Projecthub.HttpApi.Test do
                      "status" => "ACTIVE"
                    }
                  ],
-                 "visibility" => "private"
+                 "visibility" => "private",
+                 "custom_permissions" => true,
+                 "debug_permissions" => ["empty", "default_branch"],
+                 "attach_permissions" => []
                }
              }
     end
@@ -814,7 +826,10 @@ defmodule Projecthub.HttpApi.Test do
                  },
                  "schedulers" => [],
                  "tasks" => [],
-                 "visibility" => "private"
+                 "visibility" => "private",
+                 "custom_permissions" => false,
+                 "debug_permissions" => [],
+                 "attach_permissions" => []
                }
              }
     end
@@ -1059,7 +1074,10 @@ defmodule Projecthub.HttpApi.Test do
                  },
                  "schedulers" => [],
                  "tasks" => [],
-                 "visibility" => "public"
+                 "visibility" => "public",
+                 "custom_permissions" => true,
+                 "debug_permissions" => ["empty"],
+                 "attach_permissions" => []
                }
              }
     end
@@ -1703,7 +1721,10 @@ defmodule Projecthub.HttpApi.Test do
                  },
                  "schedulers" => [],
                  "tasks" => [],
-                 "visibility" => "private"
+                 "visibility" => "private",
+                 "custom_permissions" => true,
+                 "debug_permissions" => ["empty", "default_branch"],
+                 "attach_permissions" => []
                }
              }
     end
