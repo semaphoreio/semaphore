@@ -3,7 +3,7 @@ defmodule Rbac.Workers.RefreshProjectAccessTest do
 
   alias Rbac.Worker.RefresProjectAccess, as: Worker
   alias Support.Factories.RbacRefreshProjectAccessRequest, as: Request
-  import Ecto.Query, only: [where: 3]
+  import Ecto.Query, only: [where: 2, where: 3]
   import Mock
 
   @org_id Ecto.UUID.generate()
