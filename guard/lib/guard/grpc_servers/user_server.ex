@@ -327,9 +327,22 @@ defmodule Guard.GrpcServers.UserServer do
             grpc_error!(:invalid_argument, "User #{user_id} is owner of projects.")
           end
 
-          handle_delete_with_owned_orgs(user.id)
+          case Guard.Store.Organization.orgs_blocking_user_deletion(user.id) do
+            [] ->
+              handle_delete_with_owned_orgs(user.id)
+
+            orgs ->
+              grpc_error!(:failed_precondition, blocking_orgs_message(orgs))
+          end
       end
     end)
+  end
+
+  defp blocking_orgs_message(orgs) do
+    names = Enum.map_join(orgs, ", ", fn {_id, name} -> name end)
+
+    "You are the last owner of organization(s): #{names}. " <>
+      "Transfer ownership or delete the organization first before you can delete your account."
   end
 
   @spec create(User.CreateRequest.t(), GRPC.Server.Stream.t()) :: User.User.t()
