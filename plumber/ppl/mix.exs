@@ -51,6 +51,11 @@ defmodule Ppl.Mixfile do
       {:credo, "~> 1.4", only: [:dev, :test], runtime: false},
       {:poison, "~> 3.1"},
       {:httpoison, "~> 0.11"},
+      # Pulled in transitively by httpoison; pinned forward to clear the hackney
+      # CVEs (GHSA-9fm9-hp7p-53mf, GHSA-vq52-99r9-h5pw). 1.24 is the first
+      # version patched against both. override needed because httpoison ~> 0.11
+      # requests hackney ~> 1.8.
+      {:hackney, "~> 1.24", override: true},
       {:mix_test_watch, "~> 1.1", only: :dev, runtime: false},
       {:mock, "~> 0.3.0", only: :test},
       {:ecto_sql, "~> 3.10"},
@@ -63,6 +68,12 @@ defmodule Ppl.Mixfile do
       {:definition_validator, path: "../definition_validator"},
       {:block, path: "../block"},
       {:job_matrix, path: "../job_matrix"},
+      {:feature_provider, path: "../../feature_provider"},
+      # feature_provider requests yaml_elixir >= 2.0, but plumber's
+      # definition_validator (pipeline YAML validation) pins ~> 1.1. We only use
+      # feature_provider's FeatureHub provider (not its YamlProvider), so pin the
+      # existing 1.3 line to keep a single version across the umbrella.
+      {:yaml_elixir, "~> 1.3", override: true},
       {:dialyxir, "~> 0.5", only: [:dev], runtime: false},
       {:amqp_client, "~> 3.9.2"},
       {:tackle, github: "renderedtext/ex-tackle", tag: "v0.2.1"},

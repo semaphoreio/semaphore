@@ -7,6 +7,7 @@ defmodule Zebra.Workers.JobRequestFactory do
     Artifacthub,
     Cache,
     CallbackToken,
+    GitCheckout,
     JobRequest,
     Loghub2,
     Machine,
@@ -94,6 +95,8 @@ defmodule Zebra.Workers.JobRequestFactory do
          {:ok, open_id_token_env_vars} <-
            OpenIDConnect.load(job, repo_env_vars, organization, project, job_type, spec_env_vars),
          {:ok, callback_token} <- CallbackToken.generate(job) do
+      log_dropped_cache_vars(job, project, repo_proxy, cache_env_vars)
+
       org_url = "https://#{organization.org_username}.#{Application.get_env(:zebra, :domain)}"
 
       env_vars =
@@ -102,6 +105,7 @@ defmodule Zebra.Workers.JobRequestFactory do
           cache_env_vars ++
           ToolboxInstall.env_vars(job) ++
           TestResults.env_vars(org_id) ++
+          GitCheckout.env_vars(job, org_id) ++
           open_id_token_env_vars ++
           repo_env_vars ++
           Enum.flat_map(all_secrets.job_secrets, & &1.env_vars) ++
@@ -191,6 +195,17 @@ defmodule Zebra.Workers.JobRequestFactory do
       ] ++ common_vars
     else
       common_vars
+    end
+  end
+
+  defp log_dropped_cache_vars(job, project, repo_proxy, cache_env_vars) do
+    # Forked-PR cache skips are intentional (gated by the disable_forked_pr_cache
+    # feature flag in Cache.find/3), so they are not a dropped-vars condition.
+    if cache_env_vars == [] and not Job.self_hosted?(job.machine_type) and
+         not is_nil(project.cache_id) and not Cache.forked_pr?(repo_proxy) do
+      Logger.warning(
+        "Cache env vars not injected into job. job_id=#{job.id} project_id=#{project.id} cache_id=#{project.cache_id}"
+      )
     end
   end
 end

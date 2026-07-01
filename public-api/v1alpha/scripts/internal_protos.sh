@@ -23,7 +23,9 @@ repo_proxy
 secrethub
 self_hosted
 server_farm.job
+superjerry
 user
+velocity
 loghub
 loghub2
 '

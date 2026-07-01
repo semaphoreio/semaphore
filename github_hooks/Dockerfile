@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=ruby:3.3.10-slim-bookworm
+ARG BASE_IMAGE=ruby:3.3.11-slim-bookworm
 
 FROM ${BASE_IMAGE} as base
 
@@ -11,8 +11,10 @@ ENV APP_NAME=${APP_NAME}
 RUN echo "Build of $APP_NAME for $RAILS_ENV environment started"
 
 RUN apt-get update && apt-get install --no-install-recommends -y -qq \
-  libpq-dev \
+  libpq5 \
   libjemalloc2 \
+  libgnutls30 \
+  openssl \
   && apt-get clean && rm -f /var/lib/apt/lists/*_*
 
 ENV LANG=C.UTF-8 \
@@ -21,7 +23,11 @@ ENV LANG=C.UTF-8 \
   GEM_HOME=/app/vendor/bundle
 
 RUN gem update --system 3.5.23
-RUN gem install bundler -v '2.5.23' --no-document
+RUN gem install bundler -v '2.6.2' --no-document
+RUN gem install net-imap -v '0.5.15' --no-document && \
+  rm -rf /usr/local/lib/ruby/gems/3.3.0/gems/net-imap-0.4.21 && \
+  rm -f /usr/local/lib/ruby/gems/3.3.0/specifications/net-imap-0.4.21.gemspec \
+    /usr/local/lib/ruby/gems/3.3.0/specifications/default/net-imap-0.4.21.gemspec
 
 FROM base AS builder
 
@@ -33,6 +39,7 @@ RUN apt-get update && apt-get install --no-install-recommends -y --allow-downgra
   git \
   locales \
   linux-libc-dev \
+  libpq-dev \
   zlib1g-dev \
   libyaml-dev \
   && apt-get clean && rm -f /var/lib/apt/lists/*_*
@@ -66,7 +73,7 @@ RUN bundle config set --local deployment true && \
     bundle config set --local clean 'true' && \
     bundle config set --local no-cache 'true' && \
     bundle install --jobs=${BUNDLE_JOBS} && \
-    rm -rf $BUNDLE_PATH/ruby/3.0.0/cache/*
+    rm -rf $BUNDLE_PATH/ruby/3.3.0/cache/*
 
 FROM base as runner
 

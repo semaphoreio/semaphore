@@ -15,7 +15,7 @@ defmodule Rbac.GrpcServers.RbacServer do
 
     Watchman.benchmark("list_user_permissions.duration", fn ->
       [req.user_id, req.org_id] |> validate_uuid!()
-      if req.project_id != "", do: validate_uuid!(req.project_id)
+      if req.project_id != "", do: validate_project!(req.project_id, req.org_id)
 
       {:ok, rbi} =
         RBI.new(
@@ -81,7 +81,7 @@ defmodule Rbac.GrpcServers.RbacServer do
         req.role_assignment
 
       [subject_id, org_id] |> validate_uuid!()
-      if project_id != "", do: validate_uuid!(project_id)
+      if project_id != "", do: validate_project!(project_id, org_id)
       if project_id == "", do: raise_error_if_user_is_owner(subject_id, org_id)
       authorize!(req.requester_id, org_id, project_id)
 
@@ -165,7 +165,7 @@ defmodule Rbac.GrpcServers.RbacServer do
   def list_members(%RBAC.ListMembersRequest{} = req, _stream) do
     Watchman.benchmark("list_members.duration", fn ->
       validate_uuid!(req.org_id)
-      if req.project_id != "", do: validate_uuid!(req.project_id)
+      if req.project_id != "", do: validate_project!(req.project_id, req.org_id)
 
       project_id = if req.project_id != "", do: req.project_id, else: :is_nil
       {:ok, rbi} = RBI.new(org_id: req.org_id, project_id: project_id)
@@ -316,7 +316,7 @@ defmodule Rbac.GrpcServers.RbacServer do
          project_id: project_id
        }) do
     [subject_id, org_id, role_id] |> validate_uuid!()
-    if project_id != "", do: validate_uuid!(project_id)
+    if project_id != "", do: validate_project!(project_id, org_id)
   end
 
   defp validate_role_assignment_arguments(arg) do
@@ -358,20 +358,36 @@ defmodule Rbac.GrpcServers.RbacServer do
         )
   end
 
-  defp validate_project!(project_id, org_id) do
+  defp validate_project!(project_id, org_id, opts \\ []) do
     validate_uuid!(project_id)
+    source = Keyword.get(opts, :source, :store)
+    do_validate_project!(project_id, org_id, source)
+  end
 
-    project =
-      case Rbac.Models.Project.find(project_id) do
-        {:error, :project_not_found} ->
-          grpc_error!(:failed_precondition, "Project does not exist #{project_id}")
+  defp do_validate_project!(project_id, org_id, :store) do
+    case Rbac.Store.Project.find(project_id) do
+      {:ok, %{org_id: ^org_id}} ->
+        :ok
 
-        {:ok, project} ->
-          project
-      end
+      {:ok, _other_org_project} ->
+        grpc_error!(:failed_precondition, "Project does not belong to the organization")
 
-    if project.org_id != org_id,
-      do: grpc_error!(:failed_precondition, "Project does not belong to the organization")
+      {:error, :project_not_found} ->
+        do_validate_project!(project_id, org_id, :api)
+    end
+  end
+
+  defp do_validate_project!(project_id, org_id, :api) do
+    case Rbac.Models.Project.find(project_id) do
+      {:ok, %{org_id: ^org_id}} ->
+        :ok
+
+      {:ok, _other_org_project} ->
+        grpc_error!(:failed_precondition, "Project does not belong to the organization")
+
+      {:error, :project_not_found} ->
+        grpc_error!(:failed_precondition, "Project does not exist #{project_id}")
+    end
   end
 
   ###

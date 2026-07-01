@@ -553,6 +553,47 @@ Inspecting running jobs may be unavailable when [access policies for secrets](./
 
 :::
 
+### Restrict debug and attach access {#restrict-ssh-access}
+
+Interactive [debug sessions](#ssh-into-agent) and [attaching to running jobs](#attach-job) give whoever starts them a full shell on the agent that runs your code. You can restrict who may use these features on a per-project basis and limit them to specific contexts, such as the default branch, pull requests, or tags.
+
+:::note
+
+This feature must be enabled for your organization. To have it enabled, contact us at support@semaphore.io. Once enabled, the **Permissions** page appears in your project settings, and debug and attach operations are denied until a project explicitly allows them.
+
+:::
+
+To configure the permissions, open the project and go to **Settings → Permissions**. You need the `project.access.view` permission to open the page and `project.access.manage` to change the settings (see [project roles and permissions](./rbac)).
+
+The page offers two modes:
+
+- **Debug sessions are not allowed**: blocks every debug session and attach operation for the project
+- **Customize the settings for this project**: lets you allow debug and attach operations individually for each context
+
+When you customize the settings, you can independently allow **debug sessions** and **attaching to running jobs** for each of the following contexts:
+
+| Context | Jobs affected |
+|---------|---------------|
+| Default branch | Jobs running on the default branch (for example, `main` or `master`) |
+| Non-default branches | Jobs running on any other branch |
+| Pull requests | Jobs triggered by pull requests from the same repository |
+| Forked pull requests | Jobs triggered by pull requests from forked repositories |
+| Tags | Jobs triggered by Git tags |
+
+Debug sessions have one additional option, **empty debug sessions**, which lets collaborators start a debug session that is not tied to an existing job.
+
+When someone starts a debug session (`sem debug job`), attaches to a job (`sem attach`), or starts an empty debug session, Semaphore matches the project's permissions against the context of the target job — the type of Git reference and whether it runs on the default branch or a forked repository. If the operation is not allowed, Semaphore refuses it with a message such as:
+
+```text
+You are not allowed to debug jobs on the default branch of this project
+```
+
+:::note
+
+Debug and attach can also be unavailable when [access policies for secrets](./secrets#secret-access-policy) disable them for a secret used by the job.
+
+:::
+
 ### Port forwarding {#port-forwarding}
 
 When SSH is not enough to troubleshoot an issue, you can use port forwarding to connect to services listening to ports in the agent.

@@ -138,6 +138,112 @@ RSpec.describe RepoHost::Github::Client do
         end.to raise_error(RepoHost::RemoteException::HookExistsOnRepository)
       end
     end
+
+    context "when create_ref encounters 'Reference already exists' (idempotent)" do
+      before do
+        allow_any_instance_of(Octokit::Client).to receive(:create_ref)
+          .and_raise(
+            Octokit::UnprocessableEntity.new(
+              :status => 422,
+              :body => "Reference already exists"
+            )
+          )
+      end
+
+      it "raises RepoHost::RemoteException::ReferenceAlreadyExists so callers can handle the idempotent case explicitly" do
+        expect do
+          @client.create_ref("repo", "refs/semaphoreci/abc", "abc")
+        end.to raise_error(RepoHost::RemoteException::ReferenceAlreadyExists)
+      end
+    end
+
+    context "when create_ref encounters 'Reference already exists' wrapped in Octokit's full message format" do
+      # Real Octokit constructs the exception message by prefixing the request
+      # method/URL and HTTP status before the API body. This test guards
+      # against the matcher silently breaking if `:body =>` and the real
+      # `.message` ever diverge.
+      before do
+        allow_any_instance_of(Octokit::Client).to receive(:create_ref)
+          .and_raise(
+            Octokit::UnprocessableEntity.new(
+              :status => 422,
+              :body => "POST https://api.github.com/repos/owner/repo/git/refs: 422 - Reference already exists // See: https://docs.github.com/rest"
+            )
+          )
+      end
+
+      it "still raises ReferenceAlreadyExists" do
+        expect do
+          @client.create_ref("repo", "refs/semaphoreci/abc", "abc")
+        end.to raise_error(RepoHost::RemoteException::ReferenceAlreadyExists)
+      end
+    end
+
+    context "when create_ref encounters an unrelated 422" do
+      before do
+        allow_any_instance_of(Octokit::Client).to receive(:create_ref)
+          .and_raise(
+            Octokit::UnprocessableEntity.new(
+              :status => 422,
+              :body => "Invalid object SHA"
+            )
+          )
+      end
+
+      it "raises RepoHost::RemoteException::Unknown so the caller sees the failure" do
+        expect do
+          @client.create_ref("repo", "refs/semaphoreci/abc", "abc")
+        end.to raise_error(RepoHost::RemoteException::Unknown)
+      end
+    end
+
+    context "when create_ref encounters TooManyRequests" do
+      before do
+        allow_any_instance_of(Octokit::Client).to receive(:create_ref)
+          .and_raise(Octokit::TooManyRequests)
+      end
+
+      it "propagates as RepoHost::RemoteException::TooManyRequests rather than swallowing" do
+        expect do
+          @client.create_ref("repo", "refs/semaphoreci/abc", "abc")
+        end.to raise_error(RepoHost::RemoteException::TooManyRequests)
+      end
+    end
+  end
+
+  describe "#compare" do
+    it "fetches the comparison through a non-paginating client" do
+      non_paginating = instance_double(Octokit::Client)
+      allow(Octokit::Client).to receive(:new)
+        .with(hash_including(:auto_paginate => false))
+        .and_return(non_paginating)
+      allow(non_paginating).to receive(:compare).and_return(:comparison)
+
+      expect(@client.compare("owner/repo", "basesha", "main")).to eq(:comparison)
+      expect(non_paginating).to have_received(:compare).with("owner/repo", "basesha", "main")
+    end
+
+    it "escapes URL-significant ref characters, preserving namespace slashes" do
+      non_paginating = instance_double(Octokit::Client)
+      allow(Octokit::Client).to receive(:new)
+        .with(hash_including(:auto_paginate => false))
+        .and_return(non_paginating)
+      allow(non_paginating).to receive(:compare).and_return(:comparison)
+
+      @client.compare("owner/repo", "basesha", "release/feat#1")
+
+      expect(non_paginating).to have_received(:compare)
+        .with("owner/repo", "basesha", "release/feat%231")
+    end
+
+    it "translates a missing ref into RepoHost::RemoteException::NotFound" do
+      allow_any_instance_of(Octokit::Client).to receive(:compare)
+        .and_raise(Octokit::NotFound)
+
+      expect do
+        @client.compare("owner/repo", "basesha", "missing-branch")
+      end.to raise_error(RepoHost::RemoteException::NotFound)
+    end
   end
 
   describe "#token_valid?" do

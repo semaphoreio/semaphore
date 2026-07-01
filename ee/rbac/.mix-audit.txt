@@ -1,0 +1,34 @@
+# cowlib — cookie request header injection in cow_cookie:cookie/1 (no patched
+# version released upstream). ee/rbac does not generate Set-Cookie headers from
+# user-controlled input; cowlib is only pulled in via plug_cowboy/grpc.
+GHSA-g2wm-735q-3f56
+
+# postgrex — channel-name SQL injection in Postgrex.Notifications.listen/3.
+# ee/rbac does not call Postgrex.Notifications anywhere (grep `Postgrex.Notifications`
+# in lib/ returns no hits). Bumping postgrex past 0.19.x would cascade into an
+# ecto/Elixir version bump that is out of scope for a security patch PR.
+GHSA-r73h-97w8-m54h
+
+# decimal — unbounded exponent in `Decimal.new` (patched in 3.0.0). postgrex 0.19.3
+# pins decimal to `~> 2.0`, so bumping to 3.0 would cascade into a postgrex/ecto
+# bump that is out of scope for a security patch PR. ee/rbac does not parse
+# untrusted decimal strings.
+GHSA-rhv4-8758-jx7v
+
+# --- hackney 1.25.0 advisories, all fixed in 4.0.1 ---
+# Bump to 4.0.1 is blocked: httpoison 2.x requires hackney ~> 1.17, so hackney cannot move to
+# 4.x without a fleet-wide httpoison/grpc upgrade. Real fix tracked for the dep-bump branch.
+# ee/rbac's only outbound HTTP is via Tesla to configured provider base URLs (GitHub, Bitbucket,
+# OIDC) — hosts and paths are static config or server-issued identifiers, never free-form user input.
+#
+# ssl:connect/2 post-handshake upgrade has no timeout (operational DoS; outbound calls only, to
+# trusted provider endpoints)
+GHSA-gp9c-pm5m-5cxr
+# CR/LF injection in query parameter (no user-controlled data fed to hackney query params from lib/)
+GHSA-j9wq-vxxc-94wf
+# SSRF allowlist bypass in hackney_url:normalize/2 via percent-encoded host (base URLs are static
+# config, no user-controlled URL fed to hackney from lib/)
+GHSA-pj7v-xfvx-wmjq
+# CRLF / header injection via unvalidated `domain` and `path` options (no user-controlled domain/path
+# fed to hackney from lib/)
+GHSA-mp55-p8c9-rfw2

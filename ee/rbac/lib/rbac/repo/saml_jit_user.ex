@@ -81,6 +81,10 @@ defmodule Rbac.Repo.SamlJitUser do
     changeset(user, %{state: :processed}) |> Rbac.Repo.update()
   end
 
+  def update_attributes(%__MODULE__{} = user, attributes) do
+    changeset(user, %{attributes: attributes}) |> Rbac.Repo.update()
+  end
+
   defp new(integration, email, attributes) do
     %__MODULE__{
       integration_id: integration.id,
