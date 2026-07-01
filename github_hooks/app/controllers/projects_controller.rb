@@ -51,8 +51,7 @@ class ProjectsController < ApplicationController
           logger.info("GitHub APP Repository Webhook")
 
           Watchman.increment("repo_host_post_commit_hooks.controller.repository_webhook")
-
-          Semaphore::GithubApp::Repositories::Worker.perform_async(webhook_filter.installation_id)
+          enqueue_repository_list_sync(webhook_filter.installation_id, logger)
 
           head :ok and return
         end
@@ -152,6 +151,20 @@ class ProjectsController < ApplicationController
   end
 
   private
+
+  # Re-syncs the installation's repository list on every webhook. When
+  # DISABLE_COLLABORATOR_WEBHOOK_SYNC is set, the list is still synced — only the
+  # per-repo collaborator fan-out is suppressed.
+  def enqueue_repository_list_sync(installation_id, logger)
+    sync_collaborators = !App.disable_collaborator_webhook_sync
+
+    unless sync_collaborators
+      Watchman.increment("repo_host_post_commit_hooks.controller.collaborator_webhook_sync_disabled")
+      logger.info("Collaborator webhook sync disabled via env; syncing repository list only")
+    end
+
+    Semaphore::GithubApp::Repositories::Worker.perform_async(installation_id, sync_collaborators)
+  end
 
   def find_github_app_projects(repository, installation_id)
     if repository

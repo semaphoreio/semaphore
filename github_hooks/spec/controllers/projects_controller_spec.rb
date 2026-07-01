@@ -505,6 +505,75 @@ RSpec.describe ProjectsController, :type => :controller do
         end
       end
 
+      context "when collaborator webhook sync is disabled via env" do
+        before do
+          allow(App).to receive(:disable_collaborator_webhook_sync).and_return(true)
+        end
+
+        context "and a github app repository webhook arrives" do
+          let(:event) { "repository" }
+          let(:installation_target_type) { "integration" }
+          let(:payload) { RepoHost::Github::Responses::Payload.repository_renamed_app_hook }
+
+          it "still enqueues the repository list sync, but without collaborators" do
+            expect(Semaphore::GithubApp::Repositories::Worker).to receive(:perform_async).with(anything, false)
+
+            post_payload(payload)
+
+            expect(response).to be_ok
+          end
+
+          it "increments the disabled metric" do
+            expect(Watchman).to receive(:increment).with("repo_host_post_commit_hooks.controller.collaborator_webhook_sync_disabled").and_call_original
+
+            post_payload(payload)
+          end
+        end
+
+        context "and a github app installation_repositories webhook arrives" do
+          let(:event) { "installation_repositories" }
+          let(:payload) { RepoHost::Github::Responses::Payload.installation_repositories_added }
+
+          it "still processes the installation but enqueues no collaborator sync" do
+            expect(Semaphore::GithubApp::Hook).to receive(:process).and_call_original
+            expect(Semaphore::GithubApp::Collaborators::Worker).not_to receive(:perform_in)
+
+            post_app_payload(payload)
+
+            expect(response).to be_ok
+          end
+        end
+
+        context "and a github app installation webhook arrives" do
+          let(:event) { "installation" }
+          let(:payload) { RepoHost::Github::Responses::Payload.installation_created }
+
+          it "still processes the installation but enqueues no collaborator sync" do
+            expect(Semaphore::GithubApp::Hook).to receive(:process).and_call_original
+            expect(Semaphore::GithubApp::Collaborators::Worker).not_to receive(:perform_in)
+
+            post_app_payload(payload)
+
+            expect(response).to be_ok
+          end
+        end
+
+        context "and a member webhook arrives (not gated)" do
+          let(:event) { "member" }
+
+          it "still enqueues the collaborator sync" do
+            repository = double("Repository", :id => "repo-123", :remote_id => "")
+            project = double(Project, :id => "96b0a57c-d9ae-453f-b56f-3b154eb10cda", :organization => @organization,
+                                      :repo_owner_and_name => "foo/bar", :repository => repository)
+            expect(Project).to receive(:find_by).and_return(project)
+
+            expect(Semaphore::GithubApp::Collaborators::Worker).to receive(:perform_async)
+
+            post_payload(RepoHost::Github::Responses::Payload.post_receive_hook_member)
+          end
+        end
+      end
+
       context "when github_app push event occurs" do
         let(:event) { "push" }
         let(:installation_target_type) { "integration" }

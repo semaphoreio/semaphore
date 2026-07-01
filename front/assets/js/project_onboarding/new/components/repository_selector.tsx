@@ -1,7 +1,23 @@
 
 import { useEffect, useContext, useState, useRef, useMemo } from "preact/hooks";
+import Tippy from "@tippyjs/react";
 import * as stores from "../stores";
 import * as toolbox from "js/toolbox";
+import { parseRepositorySlug, extractRepositorySearchTerm } from "../utils/slug";
+import {
+  decideRefreshOutcome,
+  formatCooldown,
+  cooldownScope,
+  isTargetedRefreshDisabled,
+  isOrgRefreshLocked,
+  repositoriesIncludeSlug,
+  nextSyncPollDelayMs,
+  shouldStopPolling,
+  SYNC_POLL_MAX_ATTEMPTS,
+  SYNC_POLL_MAX_PAGES,
+  RefreshResponse,
+  RefreshScope,
+} from "../utils/refresh";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { Notice } from "js/notice";
@@ -44,18 +60,37 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
   const [searchQuery, setSearchQuery] = useState(``);
   const [selectedRepo, setSelectedRepo] = useState<Repository | null>(null);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [orgCooldownLeft, setOrgCooldownLeft] = useState(0);
+  const [targetedCooldownLeft, setTargetedCooldownLeft] = useState(0);
+  const [manualSlug, setManualSlug] = useState(``);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [orgName, setOrgName] = useState(``);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const reloadTimeoutRef = useRef<number | null>(null);
+  const syncCancelRef = useRef(false);
+
+  const selectedProviderType = providerState.selectedProvider?.type;
+  const searchTerm = extractRepositorySearchTerm(searchQuery, selectedProviderType);
+  const slugCandidate = parseRepositorySlug(searchTerm);
+  const manualSlugCandidate = extractRepositorySearchTerm(manualSlug, selectedProviderType);
+  const manualSlugValid = parseRepositorySlug(manualSlugCandidate);
+  // Busy = the refresh RPC is in flight OR a background sync poll is running; both
+  // keep the indicator up and the refresh controls disabled.
+  const refreshBusy = isRefreshing || isSyncing;
+
 
   const filteredRepositories = useMemo(
     () =>
       repositories.filter((repo) => {
         const searchFields = [repo.full_name, repo.name, repo.url];
         return searchFields.some((field) =>
-          field?.toLowerCase().includes(searchQuery.toLowerCase())
+          field?.toLowerCase().includes(searchTerm.toLowerCase())
         );
       }),
-    [repositories, searchQuery]
+    [repositories, searchTerm]
   );
 
   const parseErrorMessage = (payload: unknown): string | null => {
@@ -72,45 +107,49 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
     return null;
   };
 
+  // Fetch and parse one repositories page without mutating component state, so it
+  // can back both the initial paginated load and the background sync poll.
+  const fetchRepositoryPage = async (
+    url: string
+  ): Promise<{ repos: Repository[], nextPageToken: string | null }> => {
+    const response = await fetch(url);
+    const contentType = response.headers.get(`content-type`) || ``;
+
+    if (!contentType.includes(`application/json`)) {
+      const responseBody = await response.text();
+      const responsePreview = responseBody.replace(/\s+/g, ` `).trim().slice(0, 200);
+      const details = responsePreview ? `: ${responsePreview}` : ``;
+
+      throw new Error(`Failed to load repositories (HTTP ${response.status})${details}`);
+    }
+
+    const payload: ApiResponse | ApiErrorResponse = await response.json();
+
+    if (!response.ok) {
+      throw new Error(parseErrorMessage(payload) || `Failed to load repositories (HTTP ${response.status})`);
+    }
+
+    const json = payload as ApiResponse;
+    if (!json || !Array.isArray(json.repos)) {
+      throw new Error(parseErrorMessage(payload) || `Failed to load repositories: invalid response payload`);
+    }
+
+    return { repos: json.repos, nextPageToken: json.next_page_token || null };
+  };
+
   const loadRepositories = async (url: string) => {
     if (!url || isLoading) return;
     setIsLoading(true);
 
     try {
-      const response = await fetch(url);
-      const contentType = response.headers.get(`content-type`) || ``;
-      const isJson = contentType.includes(`application/json`);
+      const { repos, nextPageToken } = await fetchRepositoryPage(url);
 
-      if (!isJson) {
-        const responseBody = await response.text();
-        const responsePreview = responseBody.replace(/\s+/g, ` `).trim().slice(0, 200);
-        const details = responsePreview ? `: ${responsePreview}` : ``;
-
-        throw new Error(`Failed to load repositories (HTTP ${response.status})${details}`);
-      }
-
-      const payload: ApiResponse | ApiErrorResponse = await response.json();
-
-      if (!response.ok) {
-        const message = parseErrorMessage(payload);
-        throw new Error(message || `Failed to load repositories (HTTP ${response.status})`);
-      }
-
-      const json = payload as ApiResponse;
-      if (!json || !Array.isArray(json.repos)) {
-        const message = parseErrorMessage(payload);
-        throw new Error(message || `Failed to load repositories: invalid response payload`);
-      }
-
-      const repos = json.repos;
-
-      setRepositories(prev => [...prev, ... repos]);
-      setNextPageToken(json.next_page_token || null);
+      setRepositories(prev => [...prev, ...repos]);
+      setNextPageToken(nextPageToken);
 
       // If we have few filtered results after search, automatically load more
-      if (json.next_page_token && filteredRepositories.length < 5) {
-        const nextUrl = `${props.repositoriesUrl}&page_token=${json.next_page_token}`;
-        void loadRepositories(nextUrl);
+      if (nextPageToken && filteredRepositories.length < 5) {
+        void loadRepositories(`${props.repositoriesUrl}&page_token=${nextPageToken}`);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -120,9 +159,162 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
     }
   };
 
+  // Collect repositories for a poll tick: a single page for org (no target to
+  // detect), or up to SYNC_POLL_MAX_PAGES for targeted, stopping as soon as the
+  // slug is found (it may not be on the first page).
+  const collectRepositories = async (
+    slug: string | undefined,
+    maxPages: number
+  ): Promise<{ repos: Repository[], nextPageToken: string | null }> => {
+    const collected: Repository[] = [];
+    let token: string | null = null;
+    let url = props.repositoriesUrl;
+
+    for (let page = 0; page < maxPages; page++) {
+      const result = await fetchRepositoryPage(url);
+      collected.push(...result.repos);
+      token = result.nextPageToken;
+
+      if (slug && repositoriesIncludeSlug(collected, slug)) break;
+      if (!token) break;
+      url = `${props.repositoriesUrl}&page_token=${token}`;
+    }
+
+    return { repos: collected, nextPageToken: token };
+  };
+
   const handleSearch = (event: Event) => {
     const target = event.target as HTMLInputElement;
     setSearchQuery(target.value);
+  };
+
+  const reloadRepositories = () => {
+    setRepositories([]);
+    setNextPageToken(null);
+    void loadRepositories(props.repositoriesUrl);
+  };
+
+  const startCooldown = () => {
+    setOrgCooldownLeft(configState.repositoryRefreshCooldown ?? 60);
+  };
+
+  const stopSyncPolling = () => {
+    syncCancelRef.current = true;
+    if (reloadTimeoutRef.current !== null) {
+      window.clearTimeout(reloadTimeoutRef.current);
+      reloadTimeoutRef.current = null;
+    }
+    setIsSyncing(false);
+  };
+
+  // The refresh RPC only enqueues async work, so keep the indicator up and reload
+  // the list until the synced repo appears (targeted) or the bounded best-effort
+  // window elapses (org). Self-scheduling so the cadence can back off per scope.
+  const startSyncPolling = (scope: RefreshScope, slug?: string) => {
+    if (reloadTimeoutRef.current !== null) window.clearTimeout(reloadTimeoutRef.current);
+    syncCancelRef.current = false;
+    setIsSyncing(true);
+
+    const maxAttempts = SYNC_POLL_MAX_ATTEMPTS[scope];
+    const maxPages = scope === `targeted` ? SYNC_POLL_MAX_PAGES : 1;
+
+    const runAttempt = async (attempt: number) => {
+      if (syncCancelRef.current) return;
+
+      let found = false;
+      try {
+        const { repos, nextPageToken } = await collectRepositories(slug, maxPages);
+        if (syncCancelRef.current) return;
+        // Swap in one shot (no empty interim) to avoid a list flash each tick.
+        setRepositories(repos);
+        setNextPageToken(nextPageToken);
+        found = slug ? repositoriesIncludeSlug(repos, slug) : false;
+      } catch {
+        // A transient poll error must not end the sync; keep polling.
+      }
+
+      if (syncCancelRef.current) return;
+
+      if (shouldStopPolling({ scope, attempt, maxAttempts, found })) {
+        stopSyncPolling();
+        return;
+      }
+
+      reloadTimeoutRef.current = window.setTimeout(
+        () => void runAttempt(attempt + 1),
+        nextSyncPollDelayMs(attempt + 1, scope)
+      );
+    };
+
+    reloadTimeoutRef.current = window.setTimeout(
+      () => void runAttempt(1),
+      nextSyncPollDelayMs(1, scope)
+    );
+  };
+
+  const requestRefresh = async (slug?: string, organization?: string): Promise<boolean> => {
+    if (!configState.refreshRepositoriesUrl || isRefreshing) return false;
+    setIsRefreshing(true);
+
+    try {
+      const { data, error, status } = await toolbox.APIRequest.post<RefreshResponse>(
+        configState.refreshRepositoriesUrl,
+        {
+          integration_type: providerState.selectedProvider?.type,
+          repository_slug: slug ?? ``,
+          organization: organization ?? ``,
+        }
+      );
+
+      const outcome = decideRefreshOutcome(
+        status,
+        data,
+        error,
+        slug,
+        configState.repositoryRefreshCooldown ?? 60
+      );
+
+      switch (outcome.kind) {
+        case `rate_limited`:
+          if (cooldownScope(slug) === `targeted`) {
+            setTargetedCooldownLeft(outcome.cooldown);
+          } else {
+            setOrgCooldownLeft(outcome.cooldown);
+          }
+          Notice.notice(`Refresh available again in ${formatCooldown(outcome.cooldown)}.`);
+          return false;
+        case `started`:
+          Notice.notice(`Repository sync started.`);
+          if (outcome.startCooldown) startCooldown();
+          startSyncPolling(cooldownScope(slug), slug);
+          return true;
+        case `done`:
+          if (outcome.reloadNow) reloadRepositories();
+          return true;
+        case `error`:
+          Notice.error(outcome.message);
+          return false;
+      }
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const submitManualSlug = async () => {
+    const slug = parseRepositorySlug(manualSlugCandidate);
+    if (!slug || refreshBusy || targetedCooldownLeft > 0) return;
+    if (await requestRefresh(slug)) {
+      setManualSlug(``);
+    }
+  };
+
+  const submitOrgRefresh = async () => {
+    const org = orgName.trim();
+    if (!org || isOrgRefreshLocked(refreshBusy, orgCooldownLeft)) return;
+    if (await requestRefresh(undefined, org)) {
+      setOrgName(``);
+      setMenuOpen(false);
+    }
   };
 
   useEffect(() => {
@@ -130,6 +322,33 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
       void loadRepositories(props.repositoriesUrl);
     }
   }, [props.repositoriesUrl]);
+
+  useEffect(() => {
+    if (orgCooldownLeft <= 0) return;
+
+    const interval = window.setInterval(() => {
+      setOrgCooldownLeft((left) => (left > 1 ? left - 1 : 0));
+    }, 1000);
+
+    return () => window.clearInterval(interval);
+  }, [orgCooldownLeft > 0]);
+
+  useEffect(() => {
+    if (targetedCooldownLeft <= 0) return;
+
+    const interval = window.setInterval(() => {
+      setTargetedCooldownLeft((left) => (left > 1 ? left - 1 : 0));
+    }, 1000);
+
+    return () => window.clearInterval(interval);
+  }, [targetedCooldownLeft > 0]);
+
+  useEffect(() => {
+    return () => {
+      syncCancelRef.current = true;
+      if (reloadTimeoutRef.current !== null) window.clearTimeout(reloadTimeoutRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (filteredRepositories.length > 0 && hoveredIndex === null) {
@@ -291,7 +510,7 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
                   </div>
                   <div className="w-100">
                     <h3 className="f4 mb0 flex items-center justify-between">
-                      <span>{highlightMatch(repo.full_name, searchQuery)}</span>
+                      <span>{highlightMatch(repo.full_name, searchTerm)}</span>
                       <span className="f6 fw5">
                         {repo.addable ? (
                           <>
@@ -312,11 +531,11 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
                     </h3>
                     <p className="f4 measure black-60 mb0">
                       {repo.description
-                        ? highlightMatch(repo.description, searchQuery)
+                        ? highlightMatch(repo.description, searchTerm)
                         : ``}
                     </p>
                     <p className="f4 measure black-60 mb0">
-                      {repo.url ? highlightMatch(repo.url, searchQuery) : ``}
+                      {repo.url ? highlightMatch(repo.url, searchTerm) : ``}
                     </p>
                   </div>
                 </div>
@@ -332,6 +551,35 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
             {filteredRepositories.length === 0 && !isLoading && (
               <div className="mt3 pl3">
                 <p className="f5 black-70">No repositories found.</p>
+              </div>
+            )}
+            {providerState.selectedProvider?.type === `github_app` &&
+              configState.refreshRepositoriesUrl &&
+              !isLoading &&
+              filteredRepositories.length === 0 &&
+              slugCandidate && (
+              <div
+                className="flex option pv2 ph3 pointer bt b--black-10"
+                role="option"
+                onClick={() => void requestRefresh(slugCandidate)}
+              >
+                <div className="flex-shrink-0 mt1 mr2">
+                  <toolbox.Asset
+                    path="images/icn-repository.svg"
+                    alt="repository"
+                  />
+                </div>
+                <div className="w-100">
+                  <h3 className="f4 mb0">
+                      Fetch {slugCandidate} from GitHub
+                  </h3>
+                  <p className="f4 measure black-60 mb0">
+                      Sync only this repository&apos;s data from GitHub
+                  </p>
+                </div>
+                {refreshBusy && (
+                  <toolbox.Asset path="images/spinner-2.svg" className="mr2" alt="spinner" style={{ width: `20px`, height: `20px` }}/>
+                )}
               </div>
             )}
             {providerState.selectedProvider?.type === `github_app` &&
@@ -357,6 +605,144 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
                     </div>
                   </div>
                 </a>
+              </div>
+            )}
+            {providerState.selectedProvider?.type === `github_app` &&
+              configState.refreshRepositoriesUrl && (
+              <div className="pv3 ph2 bt b--black-10">
+                <h3 className="f4 mb1">Repository not listed? Try refreshing it manually</h3>
+                <div className="input-button-group">
+                  <input
+                    type="text"
+                    className="form-control flex-auto"
+                    placeholder="organization/repository or repository URL"
+                    value={manualSlug}
+                    onInput={(event) =>
+                      setManualSlug((event.target as HTMLInputElement).value)
+                    }
+                    onKeyDown={(event: KeyboardEvent) => {
+                      if (event.key === `Enter`) {
+                        event.preventDefault();
+                        void submitManualSlug();
+                      }
+                    }}
+                  />
+                  <div className="button-group">
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      style={{
+                        cursor: isTargetedRefreshDisabled(
+                          manualSlugValid,
+                          refreshBusy,
+                          targetedCooldownLeft
+                        )
+                          ? `default`
+                          : `pointer`,
+                      }}
+                      disabled={isTargetedRefreshDisabled(
+                        manualSlugValid,
+                        refreshBusy,
+                        targetedCooldownLeft
+                      )}
+                      onClick={() => void submitManualSlug()}
+                    >
+                      {refreshBusy ? (
+                        <toolbox.Asset
+                          path="images/spinner-2.svg"
+                          alt="spinner"
+                          style={{ width: `16px`, height: `16px` }}
+                        />
+                      ) : (
+                        `Refresh`
+                      )}
+                    </button>
+                    <Tippy
+                      visible={menuOpen}
+                      onClickOutside={() => setMenuOpen(false)}
+                      interactive
+                      placement="bottom-end"
+                      arrow
+                      theme="dropdown"
+                      maxWidth={320}
+                      content={
+                        <div className="pa2" style={{ minWidth: `260px` }}>
+                          <h3 className="f5 mb1">Refresh an organization</h3>
+                          <p className="f6 black-60 mb2">
+                            Re-sync every repository for a GitHub organization you have access to.
+                          </p>
+                          <div className="input-button-group">
+                            <input
+                              type="text"
+                              className="form-control flex-auto"
+                              placeholder="organization"
+                              value={orgName}
+                              disabled={isOrgRefreshLocked(refreshBusy, orgCooldownLeft)}
+                              onInput={(event) =>
+                                setOrgName((event.target as HTMLInputElement).value)
+                              }
+                              onKeyDown={(event: KeyboardEvent) => {
+                                if (event.key === `Enter`) {
+                                  event.preventDefault();
+                                  void submitOrgRefresh();
+                                }
+                              }}
+                            />
+                            <button
+                              type="button"
+                              className="btn btn-secondary"
+                              disabled={
+                                !orgName.trim() || isOrgRefreshLocked(refreshBusy, orgCooldownLeft)
+                              }
+                              onClick={() => void submitOrgRefresh()}
+                            >
+                              {refreshBusy ? (
+                                <toolbox.Asset
+                                  path="images/spinner-2.svg"
+                                  alt="spinner"
+                                  style={{ width: `16px`, height: `16px` }}
+                                />
+                              ) : (
+                                `Refresh`
+                              )}
+                            </button>
+                          </div>
+                          {orgCooldownLeft > 0 && (
+                            <p className="f6 black-60 mt1 mb0">
+                              Refresh available in {formatCooldown(orgCooldownLeft)}
+                            </p>
+                          )}
+                        </div>
+                      }
+                    >
+                      <button
+                        type="button"
+                        className="btn btn-secondary ph2 flex items-center"
+                        aria-label="Refresh an organization"
+                        onClick={() => setMenuOpen((open) => !open)}
+                      >
+                        <span className="material-symbols-outlined">arrow_drop_down</span>
+                      </button>
+                    </Tippy>
+                  </div>
+                </div>
+                {isSyncing ? (
+                  <p className="f6 black-60 mt1 mb0 flex items-center">
+                    <toolbox.Asset
+                      path="images/spinner-2.svg"
+                      className="mr1"
+                      alt="spinner"
+                      style={{ width: `14px`, height: `14px` }}
+                    />
+                    Syncing repositories from GitHub…
+                  </p>
+                ) : (
+                  <p className="f6 black-60 mt1 mb0">
+                    {manualSlug.length > 0 && !manualSlugValid
+                      ? `Use the owner/repository format, e.g. organization/repository`
+                      : `Paste the repository URL or owner/repository to sync just that repository.`}
+                  </p>
+                )}
               </div>
             )}
           </div>

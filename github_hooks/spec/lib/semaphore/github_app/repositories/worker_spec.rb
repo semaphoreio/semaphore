@@ -33,12 +33,23 @@ module Semaphore::GithubApp
 
     describe "#perform" do
       it "calls Repositories.refresh and logs Finish on success" do
-        allow(Repositories).to receive(:refresh).with(installation_id).and_return(:ok)
+        allow(Repositories).to receive(:refresh).with(installation_id, :sync_collaborators => true).and_return(:ok)
 
         expect(Rails.logger).to receive(:info).with(/#{installation_id}: Start/)
         expect(Rails.logger).to receive(:info).with(/#{installation_id}: Finish/)
 
         described_class.new.perform(installation_id)
+      end
+
+      it "defaults sync_collaborators to true and forwards an explicit false" do
+        allow(Rails.logger).to receive(:info)
+        allow(Repositories).to receive(:refresh).and_return(:ok)
+
+        described_class.new.perform(installation_id)
+        described_class.new.perform(installation_id, false)
+
+        expect(Repositories).to have_received(:refresh).with(installation_id, :sync_collaborators => true)
+        expect(Repositories).to have_received(:refresh).with(installation_id, :sync_collaborators => false)
       end
 
       it "logs 'Token not found' when result is :no_token" do
@@ -150,6 +161,16 @@ module Semaphore::GithubApp
         SidekiqUniqueJobs.use_config(enabled: true) do
           first_jid = described_class.perform_async(installation_id)
           second_jid = described_class.perform_async(installation_id)
+
+          expect(first_jid).not_to be_nil
+          expect(second_jid).to be_nil
+        end
+      end
+
+      it "locks on installation_id only, ignoring the sync_collaborators arg" do
+        SidekiqUniqueJobs.use_config(enabled: true) do
+          first_jid = described_class.perform_async(installation_id, true)
+          second_jid = described_class.perform_async(installation_id, false)
 
           expect(first_jid).not_to be_nil
           expect(second_jid).to be_nil
@@ -323,6 +344,42 @@ module Semaphore::GithubApp
 
           dup_jid = described_class.perform_async(installation_id)
           expect(dup_jid).to be_nil
+        end
+      end
+    end
+
+    describe "#unique_lock_exists?", :multithreaded do
+      before do
+        Sidekiq::Testing.disable!
+      end
+
+      after do
+        Sidekiq::Testing.fake!
+      end
+
+      it "is false when no job holds the lock" do
+        SidekiqUniqueJobs.use_config(enabled: true) do
+          expect(described_class.new.unique_lock_exists?([installation_id])).to be(false)
+        end
+      end
+
+      it "is true while an enqueued job holds the lock" do
+        SidekiqUniqueJobs.use_config(enabled: true) do
+          jid = described_class.perform_async(installation_id)
+          expect(jid).not_to be_nil
+
+          expect(described_class.new.unique_lock_exists?([installation_id])).to be(true)
+        end
+      end
+
+      it "is false again after the lock is deleted" do
+        SidekiqUniqueJobs.use_config(enabled: true) do
+          jid = described_class.perform_async(installation_id)
+          expect(jid).not_to be_nil
+
+          described_class.new.delete_unique_lock([installation_id])
+
+          expect(described_class.new.unique_lock_exists?([installation_id])).to be(false)
         end
       end
     end
