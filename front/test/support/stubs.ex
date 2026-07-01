@@ -85,6 +85,7 @@ defmodule Support.Stubs do
     Support.Stubs.InstanceConfig.Grpc.init()
     Support.Stubs.Switch.Grpc.init()
     Support.Stubs.Secrethub.Grpc.init()
+    Support.Stubs.RepositoryIntegrator.init()
 
     :ok
   end

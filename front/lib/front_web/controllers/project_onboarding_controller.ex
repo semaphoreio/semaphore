@@ -79,6 +79,22 @@ defmodule FrontWeb.ProjectOnboardingController do
     GIT: :CONFIG_TYPE_UNSPECIFIED
   }
 
+  # Per-user cooldowns: 60s between targeted (single-repo) refreshes, 10 minutes
+  # between full / per-organization refreshes.
+  @targeted_refresh_cooldown_seconds 60
+  @full_refresh_cooldown_seconds 600
+
+  # A full/org refresh that fails for business reasons still ran the synchronous
+  # org-push scan, so floor a short cooldown (rather than fully releasing) to
+  # throttle a caller looping the same org against that scan.
+  @full_refresh_failure_cooldown_seconds 60
+
+  @repository_slug_format ~r|\A[A-Za-z0-9][A-Za-z0-9\-]{0,38}/[A-Za-z0-9._\-]{1,100}\z|
+  @organization_format ~r/\A[A-Za-z0-9][A-Za-z0-9\-]{0,38}\z/
+
+  # The UI surfaces the full-refresh cooldown (the org-refresh control).
+  def refresh_cooldown_seconds, do: cooldown_seconds(:full)
+
   defp get_agent_name(project) do
     Front.Models.CommitJob.get_agent(project)
     |> case do
@@ -524,6 +540,192 @@ defmodule FrontWeb.ProjectOnboardingController do
         |> put_status(:service_unavailable)
         |> json(error_response)
     end
+  end
+
+  @doc """
+  Re-syncs the cached GitHub App repository list: full refresh without a
+  "repository_slug" (cooldown-limited), or a single repo with one. Non-github_app
+  types are fetched live, so they no-op.
+  """
+  def refresh(conn, params) do
+    user_id = conn.assigns.user_id
+    org_id = conn.assigns.organization_id
+    integration_type = Map.get(params, "integration_type", "")
+    slug = params |> Map.get("repository_slug", "") |> String.trim()
+    organization = params |> Map.get("organization", "") |> String.trim()
+
+    cond do
+      integration_type != "github_app" ->
+        json(conn, %{
+          state: "done",
+          message: "This repository list is always fetched live from the provider."
+        })
+
+      slug != "" and not Regex.match?(@repository_slug_format, slug) ->
+        conn
+        |> put_status(422)
+        |> json(%{state: "failed", message: "Use the owner/repository format."})
+
+      slug != "" ->
+        start_targeted_refresh(conn, user_id, org_id, slug)
+
+      organization != "" and not Regex.match?(@organization_format, organization) ->
+        conn
+        |> put_status(422)
+        |> json(%{state: "failed", message: "Use a valid GitHub organization name."})
+
+      true ->
+        start_full_refresh(conn, user_id, org_id, organization)
+    end
+  end
+
+  # Full / per-organization refresh, throttled per (user, GitHub org) so
+  # refreshing one org doesn't block a different one.
+  defp start_full_refresh(conn, user_id, org_id, organization) do
+    case claim_refresh_cooldown(:full, org_id, user_id, cooldown_resource(:full, organization)) do
+      :ok -> do_refresh(conn, user_id, :full, "", organization)
+      {:cooldown, seconds_left} -> rate_limited(conn, seconds_left)
+    end
+  end
+
+  # Targeted refresh, throttled per user (not per slug, on purpose: the cooldown
+  # is kept on failure so a caller cannot loop denied slugs to spam the
+  # synchronous push check).
+  defp start_targeted_refresh(conn, user_id, org_id, slug) do
+    case claim_refresh_cooldown(:targeted, org_id, user_id, cooldown_resource(:targeted, "")) do
+      :ok -> do_refresh(conn, user_id, :targeted, slug, "")
+      {:cooldown, seconds_left} -> rate_limited(conn, seconds_left)
+    end
+  end
+
+  defp rate_limited(conn, seconds_left) do
+    conn
+    |> put_status(429)
+    |> json(%{
+      state: "rate_limited",
+      retry_after: seconds_left,
+      message: "Refresh available again in #{seconds_left}s."
+    })
+  end
+
+  defp do_refresh(conn, user_id, scope, slug, organization) do
+    result = Models.RepositoryIntegrator.refresh_repositories(user_id, slug, organization)
+    audit_refresh(conn, slug, organization, result)
+
+    org_id = conn.assigns.organization_id
+    resource = cooldown_resource(scope, organization)
+
+    case result do
+      {:ok, %{state: state, message: message}}
+      when state in [:STARTED, :ALREADY_RUNNING, :DONE] ->
+        json(conn, %{state: state |> Atom.to_string() |> String.downcase(), message: message})
+
+      {:ok, %{message: message}} ->
+        # A full/org business failure (e.g. no access) still ran the synchronous
+        # org-push scan, so floor a short cooldown instead of fully releasing —
+        # throttling a caller looping the same org against that scan. A targeted
+        # failure likewise KEEPS its (full) cooldown so denied slugs cannot be
+        # looped to spam the synchronous push check.
+        if scope == :full,
+          do: floor_refresh_cooldown(:full, org_id, user_id, resource)
+
+        conn
+        |> put_status(422)
+        |> json(%{state: "failed", message: message})
+
+      {:error, _} ->
+        # Don't burn the user's cooldown on a transient RPC failure (either scope).
+        release_refresh_cooldown(scope, org_id, user_id, resource)
+
+        conn
+        |> put_status(503)
+        |> json(%{state: "failed", message: "Could not refresh repositories. Please retry."})
+    end
+  end
+
+  # Audit every refresh that reaches the provider RPC, recording who triggered
+  # it, the scope (full vs a single repository), and the resulting state — so a
+  # refresh of another organization's repository leaves a trail.
+  defp audit_refresh(conn, slug, organization, result) do
+    {scope, resource_name} =
+      cond do
+        slug != "" -> {"targeted", slug}
+        organization != "" -> {"organization", organization}
+        true -> {"full", "all repositories"}
+      end
+
+    conn
+    |> Audit.new(:Project, :Modified)
+    |> Audit.add(
+      description: "Refreshed the #{scope} GitHub App repository list",
+      resource_name: resource_name
+    )
+    |> Audit.metadata(
+      refresh_scope: scope,
+      repository_slug: slug,
+      organization: organization,
+      result: refresh_result_state(result)
+    )
+    |> Audit.log()
+  end
+
+  defp refresh_result_state({:ok, %{state: state}}),
+    do: state |> Atom.to_string() |> String.downcase()
+
+  defp refresh_result_state(_), do: "error"
+
+  # Scoped per (full vs targeted) so the two refresh kinds throttle independently,
+  # and per resource (the normalized GitHub org for :full; "" for :targeted) so
+  # refreshing one org doesn't lock out another.
+  defp refresh_cooldown_key(scope, org_id, user_id, resource),
+    do: "repository_refresh_cooldown/#{scope}/#{org_id}/#{user_id}/#{resource}"
+
+  # GitHub logins are case-insensitive, so normalize to a single bucket. Targeted
+  # stays per-user (no slug) on purpose — see start_targeted_refresh/4.
+  defp cooldown_resource(:full, organization), do: String.downcase(organization)
+  defp cooldown_resource(:targeted, _organization), do: ""
+
+  # Soft cost-guard, not a lock. Claimed before the RPC, released if the refresh
+  # did no work (see do_refresh/5). Two known limits, both bounded by the sync
+  # worker's own unique lock (the real dedup), so the worst case is a few extra
+  # GitHub calls: the get-then-set is non-atomic (Cacheman has no SET NX), and it
+  # fails open if Redis is down (Cacheman maps errors to a cache miss). A proper
+  # fix needs an atomic Redis SET NX claim.
+  defp claim_refresh_cooldown(scope, org_id, user_id, resource) do
+    key = refresh_cooldown_key(scope, org_id, user_id, resource)
+
+    case Front.Cache.get(key) do
+      {:ok, expires_at} ->
+        {:cooldown, max(String.to_integer(expires_at) - System.system_time(:second), 1)}
+
+      {:not_cached, _} ->
+        write_refresh_cooldown(key, cooldown_seconds(scope))
+        :ok
+    end
+  end
+
+  # Reduce a held cooldown to a short floor (used on org business failure): the
+  # scan already ran, so keep some throttle even though the full window is gone.
+  defp floor_refresh_cooldown(scope, org_id, user_id, resource) do
+    refresh_cooldown_key(scope, org_id, user_id, resource)
+    |> write_refresh_cooldown(@full_refresh_failure_cooldown_seconds)
+  end
+
+  # The value is the absolute expiry, so a variable floor reports the right
+  # retry_after; the TTL evicts the key when the window ends.
+  defp write_refresh_cooldown(key, seconds) do
+    Front.Cache.set(
+      key,
+      Integer.to_string(System.system_time(:second) + seconds),
+      :timer.seconds(seconds)
+    )
+  end
+
+  defp cooldown_seconds(:targeted), do: @targeted_refresh_cooldown_seconds
+  defp cooldown_seconds(:full), do: @full_refresh_cooldown_seconds
+
+  defp release_refresh_cooldown(scope, org_id, user_id, resource) do
+    Front.Cache.unset(refresh_cooldown_key(scope, org_id, user_id, resource))
   end
 
   def project_repository_status(conn, params) do
