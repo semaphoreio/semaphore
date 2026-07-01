@@ -32,7 +32,7 @@ defmodule FrontWeb.AccountControllerTest do
 
       assert get_req_header(conn, "x-semaphore-org-id") == []
       assert html_response(conn, 200) =~ "Danger Zone"
-      assert html_response(conn, 200) =~ "Delete account and owned organizations"
+      assert html_response(conn, 200) =~ "transfer ownership"
       assert html_response(conn, 200) =~ "/account/update_repo_scope/bitbucket"
       refute html_response(conn, 200) =~ "/account/update_repo_scope/github"
     end
@@ -172,6 +172,25 @@ defmodule FrontWeb.AccountControllerTest do
 
       assert redirected_to(conn) == "/account"
       assert get_flash(conn, :alert) == "Failed to delete account."
+    end
+
+    test "when backend rejects with a precondition => surfaces the backend message", %{
+      conn: conn
+    } do
+      message =
+        "You are the last owner of organization(s): Acme. " <>
+          "Transfer ownership or delete the organization first before you can delete your account."
+
+      GrpcMock.stub(UserMock, :delete_with_owned_orgs, fn _req, _ ->
+        raise GRPC.RPCError, status: GRPC.Status.failed_precondition(), message: message
+      end)
+
+      conn =
+        conn
+        |> post("/account/delete_with_owned_orgs")
+
+      assert redirected_to(conn) == "/account"
+      assert get_flash(conn, :alert) == message
     end
   end
 
