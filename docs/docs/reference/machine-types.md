@@ -33,7 +33,7 @@ Linux machines are provided in four generations. The following table shows what 
 
 
 
-### E1 generation {#e1}
+### E1 generation (legacy) {#e1}
 
 This is the entry-level, cost-effective machine type. E1s are a good choice for less compute and memory intensive tasks.
 
@@ -57,7 +57,7 @@ E1 Generation machine types can be paired with:
 - [`ubuntu2404`](../reference/os-ubuntu-images/ubuntu-2404-image)
 - [Docker-based environment](../using-semaphore/pipelines#docker-environments).
 
-### E2 generation {#e2}
+### E2 generation (legacy) {#e2}
 
 The E2 generation balances power with cost. It is a good choice for most tasks.
 
