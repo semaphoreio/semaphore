@@ -54,12 +54,16 @@ defmodule Guard.Api.Rbac do
   end
 
   def user_part_of_org?(user_id, org_id) do
+    Enum.member?(list_accessible_org_ids(user_id), org_id)
+  end
+
+  def list_accessible_org_ids(user_id) do
     req = InternalApi.RBAC.ListAccessibleOrgsRequest.new(user_id: user_id)
 
     {:ok, response} =
       InternalApi.RBAC.RBAC.Stub.list_accessible_orgs(channel(), req, timeout: 30_000)
 
-    Enum.member?(response.org_ids, org_id)
+    response.org_ids
   end
 
   defp get_role_id(org_id, role_name, scope) do
