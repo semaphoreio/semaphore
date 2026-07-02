@@ -28,7 +28,16 @@ RSpec.describe RepoHost::Github::Client do
   end
 
   describe "#app_client" do
-    it "gets credentials from Semaphore::GithubApp::Credentials::InstanceConfigClient when instance config credentials are set" do
+    before do
+      # Credentials prefer Local (env/App config), so clear it — and the memoized
+      # values — to exercise the InstanceConfig fallback.
+      Semaphore::GithubApp::Credentials.instance_variable_set(:@github_client_id, nil)
+      Semaphore::GithubApp::Credentials.instance_variable_set(:@github_client_secret, nil)
+      allow(Semaphore::GithubApp::Credentials::Local).to receive(:github_client_id).and_return(nil)
+      allow(Semaphore::GithubApp::Credentials::Local).to receive(:github_client_secret).and_return(nil)
+    end
+
+    it "falls back to InstanceConfigClient credentials when local config is unset" do
       client = RepoHost::Github::Client.new(token)
       app_client = client.send(:app_client)
 
