@@ -7,6 +7,7 @@ defmodule PipelinesAPI.Roles.Update do
   alias PipelinesAPI.RBACClient
   alias PipelinesAPI.Roles.PermissionResolver
   alias PipelinesAPI.Util.ToTuple
+  alias PipelinesAPI.Audit
   alias InternalApi.RBAC
   alias Plug.Conn
 
@@ -54,12 +55,22 @@ defmodule PipelinesAPI.Roles.Update do
 
         %{role: role, requester_id: requester_id}
         |> RBACClient.modify_role()
+        |> tap(fn result -> audit_event(result, conn) end)
         |> RespCommon.respond(conn)
       else
         error -> RespCommon.respond(error, conn)
       end
     end)
   end
+
+  defp audit_event({:ok, role}, conn) do
+    conn
+    |> Audit.new(:RBACRole, :Modified)
+    |> Audit.add(resource_id: role.id, resource_name: role.name)
+    |> Audit.log()
+  end
+
+  defp audit_event(_result, _conn), do: :ok
 
   defp scope_value("project"), do: {:ok, RBAC.Scope.value(:SCOPE_PROJECT)}
   defp scope_value("org"), do: {:ok, RBAC.Scope.value(:SCOPE_ORG)}

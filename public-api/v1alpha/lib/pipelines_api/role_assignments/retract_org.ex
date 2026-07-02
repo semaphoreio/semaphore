@@ -5,6 +5,7 @@ defmodule PipelinesAPI.RoleAssignments.RetractOrg do
   alias PipelinesAPI.Pipelines.Common, as: RespCommon
   alias PipelinesAPI.Util.Metrics
   alias PipelinesAPI.RBACClient
+  alias PipelinesAPI.Audit
   alias Plug.Conn
 
   import PipelinesAPI.Members.Authorize, only: [authorize_manage_people: 2]
@@ -24,7 +25,17 @@ defmodule PipelinesAPI.RoleAssignments.RetractOrg do
         role_id: conn.params["role_id"]
       }
       |> RBACClient.retract_role()
+      |> tap(fn result -> audit_event(result, conn) end)
       |> RespCommon.respond(conn)
     end)
   end
+
+  defp audit_event({:ok, _result}, conn) do
+    conn
+    |> Audit.new(:User, :Removed)
+    |> Audit.add(resource_id: conn.params["subject_id"])
+    |> Audit.log()
+  end
+
+  defp audit_event(_result, _conn), do: :ok
 end

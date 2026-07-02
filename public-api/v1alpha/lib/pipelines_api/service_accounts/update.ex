@@ -5,6 +5,7 @@ defmodule PipelinesAPI.ServiceAccounts.Update do
   alias PipelinesAPI.Pipelines.Common, as: RespCommon
   alias PipelinesAPI.Util.Metrics
   alias PipelinesAPI.ServiceAccountClient
+  alias PipelinesAPI.Audit
 
   import PipelinesAPI.ServiceAccounts.Authorize, only: [authorize_manage: 2]
 
@@ -19,6 +20,7 @@ defmodule PipelinesAPI.ServiceAccounts.Update do
           |> Map.put("name", conn.params["name"] || current.name)
           |> Map.put("description", conn.params["description"] || current.description)
           |> ServiceAccountClient.update(conn)
+          |> tap(fn result -> audit_event(result, conn) end)
           |> RespCommon.respond(conn)
 
         error ->
@@ -26,4 +28,13 @@ defmodule PipelinesAPI.ServiceAccounts.Update do
       end
     end)
   end
+
+  defp audit_event({:ok, sa}, conn) do
+    conn
+    |> Audit.new(:ServiceAccount, :Modified)
+    |> Audit.add(resource_id: sa.id, resource_name: sa.name)
+    |> Audit.log()
+  end
+
+  defp audit_event(_result, _conn), do: :ok
 end
