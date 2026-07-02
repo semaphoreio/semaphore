@@ -561,16 +561,29 @@ RSpec.describe ProjectsController, :type => :controller do
           end
         end
 
-        context "and a member webhook arrives (not gated)" do
+        context "and a member webhook arrives" do
           let(:event) { "member" }
 
-          it "still enqueues the collaborator sync" do
+          def stub_member_project
             repository = double("Repository", :id => "repo-123", :remote_id => "")
             project = double(Project, :id => "96b0a57c-d9ae-453f-b56f-3b154eb10cda", :organization => @organization,
                                       :repo_owner_and_name => "foo/bar", :repository => repository)
             expect(Project).to receive(:find_by).and_return(project)
+          end
 
-            expect(Semaphore::GithubApp::Collaborators::Worker).to receive(:perform_async)
+          it "skips the collaborator sync and the changed event" do
+            stub_member_project
+
+            expect(Semaphore::Events::ProjectCollaboratorsChanged).not_to receive(:emit)
+            expect(Semaphore::GithubApp::Collaborators::Worker).not_to receive(:perform_async)
+
+            post_payload(RepoHost::Github::Responses::Payload.post_receive_hook_member)
+          end
+
+          it "increments the disabled metric" do
+            stub_member_project
+
+            expect(Watchman).to receive(:increment).with("repo_host_post_commit_hooks.controller.collaborator_webhook_sync_disabled").and_call_original
 
             post_payload(RepoHost::Github::Responses::Payload.post_receive_hook_member)
           end
