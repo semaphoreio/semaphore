@@ -56,8 +56,10 @@ defmodule Guard.Store.Organization do
   `{org_id, org_name}`. An empty list means the user can be deleted.
   """
   def orgs_blocking_user_deletion(user_id) do
-    user_id
-    |> Guard.Api.Rbac.list_accessible_org_ids()
+    org_ids = Guard.Api.Rbac.list_accessible_org_ids(user_id)
+    Logger.info("[delete-guard] user=#{inspect(user_id)} accessible_orgs=#{inspect(org_ids)}")
+
+    org_ids
     |> Enum.filter(&blocks_user_deletion?(&1, user_id))
     |> Enum.map(&{&1, org_name(&1)})
   end
@@ -66,16 +68,18 @@ defmodule Guard.Store.Organization do
   # every member of the org, which is prohibitively slow for large orgs on a
   # request that carries a hard 30s deadline.
   defp blocks_user_deletion?(org_id, user_id) do
-    sole_member?(org_id) or last_owner?(org_id, user_id)
-  end
-
-  # The user is known to be a member of the org (it came from their accessible
-  # orgs), so a total of one member means that member is the user.
-  defp sole_member?(org_id), do: Guard.Api.Rbac.no_of_members(org_id) == 1
-
-  defp last_owner?(org_id, user_id) do
+    members = Guard.Api.Rbac.no_of_members(org_id)
     owner_ids = Guard.Api.Rbac.org_owner_ids(org_id)
-    user_id in owner_ids and length(owner_ids) == 1
+    sole_member? = members == 1
+    last_owner? = user_id in owner_ids and length(owner_ids) == 1
+
+    Logger.info(
+      "[delete-guard] org=#{inspect(org_id)} user=#{inspect(user_id)} " <>
+        "no_of_members=#{members} owner_ids=#{inspect(owner_ids)} " <>
+        "sole_member=#{sole_member?} last_owner=#{last_owner?}"
+    )
+
+    sole_member? or last_owner?
   end
 
   defp org_name(org_id) do
