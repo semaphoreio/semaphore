@@ -45,7 +45,7 @@ defmodule Projecthub.Application do
       Logger.info("Starting: #{inspect(c)}")
     end)
 
-    opts = [strategy: :one_for_one, name: Projecthub.Supervisor]
+    opts = [strategy: :one_for_one, name: Projecthub.Supervisor, max_restarts: 1000]
 
     if env == :prod do
       {:ok, _} = Logger.add_backend(Sentry.LoggerBackend)
