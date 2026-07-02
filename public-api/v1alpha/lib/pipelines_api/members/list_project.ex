@@ -8,9 +8,9 @@ defmodule PipelinesAPI.Members.ListProject do
   alias PipelinesAPI.RBACClient.ResponseFormatter
   alias Plug.Conn
 
-  import PipelinesAPI.Members.Authorize, only: [authorize_view_people: 2]
+  import PipelinesAPI.Members.Authorize, only: [authorize_view_project_people: 2]
 
-  plug(:authorize_view_people)
+  plug(:authorize_view_project_people)
   plug(:list_project_members)
 
   def list_project_members(conn, _opts) do
@@ -19,7 +19,12 @@ defmodule PipelinesAPI.Members.ListProject do
       project_id = conn.params["project_id"]
 
       result =
-        %{org_id: org_id, project_id: project_id}
+        %{
+          org_id: org_id,
+          project_id: project_id,
+          page_no: parse_page_param(conn.params["page_no"], 0),
+          page_size: parse_page_param(conn.params["page_size"], nil)
+        }
         |> RBACClient.list_project_members()
 
       case result do
@@ -32,4 +37,13 @@ defmodule PipelinesAPI.Members.ListProject do
       end
     end)
   end
+
+  defp parse_page_param(value, default) when is_binary(value) do
+    case Integer.parse(value) do
+      {num, _} when num >= 0 -> num
+      _ -> default
+    end
+  end
+
+  defp parse_page_param(_, default), do: default
 end

@@ -5,14 +5,14 @@ defmodule PipelinesAPI.SharedAuthorize do
   alias LogTee, as: LT
   alias Plug.Conn
 
-  def check_permission(permission, conn) do
+  def check_permission(permission, conn, extra_params \\ %{}) do
     user_id = Conn.get_req_header(conn, "x-semaphore-user-id") |> Enum.at(0, "")
     org_id = Conn.get_req_header(conn, "x-semaphore-org-id") |> Enum.at(0, "")
 
     if user_id == "" or org_id == "" do
       conn |> Plug.Conn.resp(404, "Not found") |> Plug.Conn.halt()
     else
-      with params <- %{user_id: user_id, org_id: org_id},
+      with params <- Map.merge(%{user_id: user_id, org_id: org_id}, extra_params),
            {:ok, permissions} <- RBACClient.list_user_permissions(params) do
         if Enum.member?(permissions, permission) do
           conn
