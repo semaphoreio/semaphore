@@ -52,6 +52,7 @@ defmodule PipelinesAPI.Router do
   alias PipelinesAPI.Insights.Reliability, as: InsightsReliability
   alias PipelinesAPI.Insights.Frequency, as: InsightsFrequency
   alias PipelinesAPI.Members.List, as: ListMembers
+  alias PipelinesAPI.Members.Create, as: CreateMember
   alias PipelinesAPI.Members.ListProject, as: ListProjectMembers
   alias PipelinesAPI.Roles.List, as: ListRoles
   alias PipelinesAPI.Roles.Describe, as: DescribeRole
@@ -215,6 +216,8 @@ defmodule PipelinesAPI.Router do
   match("/projects/:project_id/insights/frequency", via: :get, to: InsightsFrequency)
 
   match("/members", via: :get, to: ListMembers)
+  # Invite a human to the org by SCM handle and set an initial role.
+  match("/members", via: :post, to: CreateMember)
   # Set/change the single manually-assigned org role (overwrite).
   match("/members/:subject_id/role", via: :put, to: AssignOrgRole)
   # Remove the person from the org (cascades all their role bindings).
