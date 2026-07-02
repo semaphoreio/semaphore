@@ -557,9 +557,9 @@ metadata:
 spec:
   hostname: "*"
   # prefix_regex is a full-path match, so it must also cover the
-  # /members/<subject>/roles sub-path (assign/retract project roles),
+  # /members/<subject>/role sub-path (assign/retract project role),
   # otherwise those fall through to the generic projects mapping and 404.
-  prefix: "/api/v1alpha/projects/[^/]+/members(/[^/]+/roles)?"
+  prefix: "/api/v1alpha/projects/[^/]+/members(/[^/]+/role)?"
   prefix_regex: true
   regex_rewrite:
     pattern: "/api/v1alpha/(.*)"

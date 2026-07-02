@@ -215,18 +215,16 @@ defmodule PipelinesAPI.Router do
   match("/projects/:project_id/insights/frequency", via: :get, to: InsightsFrequency)
 
   match("/members", via: :get, to: ListMembers)
-  match("/members/:subject_id/roles", via: :post, to: AssignOrgRole)
-  match("/members/:subject_id/roles", via: :delete, to: RetractOrgRole)
-  match("/members/:subject_id/roles/:role_id", via: :delete, to: RetractOrgRole)
+  # Set/change the single manually-assigned org role (overwrite).
+  match("/members/:subject_id/role", via: :put, to: AssignOrgRole)
+  # Remove the person from the org (cascades all their role bindings).
+  match("/members/:subject_id", via: :delete, to: RetractOrgRole)
 
   match("/projects/:project_id/members", via: :get, to: ListProjectMembers)
-  match("/projects/:project_id/members/:subject_id/roles", via: :post, to: AssignProjectRole)
-  match("/projects/:project_id/members/:subject_id/roles", via: :delete, to: RetractProjectRole)
-
-  match("/projects/:project_id/members/:subject_id/roles/:role_id",
-    via: :delete,
-    to: RetractProjectRole
-  )
+  # Upsert the manually-assigned project role.
+  match("/projects/:project_id/members/:subject_id/role", via: :put, to: AssignProjectRole)
+  # Remove the manually-assigned project role.
+  match("/projects/:project_id/members/:subject_id/role", via: :delete, to: RetractProjectRole)
 
   match("/roles", via: :get, to: ListRoles)
   match("/roles", via: :post, to: CreateRole)
