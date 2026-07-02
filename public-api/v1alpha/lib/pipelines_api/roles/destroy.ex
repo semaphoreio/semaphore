@@ -5,6 +5,7 @@ defmodule PipelinesAPI.Roles.Destroy do
   alias PipelinesAPI.Pipelines.Common, as: RespCommon
   alias PipelinesAPI.Util.Metrics
   alias PipelinesAPI.RBACClient
+  alias PipelinesAPI.Audit
   alias Plug.Conn
 
   import PipelinesAPI.Roles.Authorize, only: [authorize_manage_roles: 2]
@@ -19,7 +20,17 @@ defmodule PipelinesAPI.Roles.Destroy do
 
       %{role_id: conn.params["id"], org_id: org_id, requester_id: requester_id}
       |> RBACClient.destroy_role()
+      |> tap(fn result -> audit_event(result, conn) end)
       |> RespCommon.respond(conn)
     end)
   end
+
+  defp audit_event({:ok, _result}, conn) do
+    conn
+    |> Audit.new(:RBACRole, :Removed)
+    |> Audit.add(resource_id: conn.params["id"])
+    |> Audit.log()
+  end
+
+  defp audit_event(_result, _conn), do: :ok
 end

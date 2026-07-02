@@ -6,6 +6,7 @@ defmodule PipelinesAPI.Roles.Create do
   alias PipelinesAPI.Util.Metrics
   alias PipelinesAPI.RBACClient
   alias PipelinesAPI.Roles.PermissionResolver
+  alias PipelinesAPI.Audit
   alias InternalApi.RBAC
   alias Plug.Conn
 
@@ -42,10 +43,20 @@ defmodule PipelinesAPI.Roles.Create do
 
         %{role: role, requester_id: requester_id}
         |> RBACClient.modify_role()
+        |> tap(fn result -> audit_event(result, conn) end)
         |> RespCommon.respond(conn)
       else
         error -> RespCommon.respond(error, conn)
       end
     end)
   end
+
+  defp audit_event({:ok, role}, conn) do
+    conn
+    |> Audit.new(:RBACRole, :Added)
+    |> Audit.add(resource_id: role.id, resource_name: role.name)
+    |> Audit.log()
+  end
+
+  defp audit_event(_result, _conn), do: :ok
 end

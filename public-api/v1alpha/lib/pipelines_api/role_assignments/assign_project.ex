@@ -5,6 +5,7 @@ defmodule PipelinesAPI.RoleAssignments.AssignProject do
   alias PipelinesAPI.Pipelines.Common, as: RespCommon
   alias PipelinesAPI.Util.Metrics
   alias PipelinesAPI.RBACClient
+  alias PipelinesAPI.Audit
   alias Plug.Conn
 
   import PipelinesAPI.RoleAssignments.AuthorizeProject, only: [authorize_manage_project_access: 2]
@@ -25,7 +26,17 @@ defmodule PipelinesAPI.RoleAssignments.AssignProject do
         requester_id: requester_id
       }
       |> RBACClient.assign_role()
+      |> tap(fn result -> audit_event(result, conn) end)
       |> RespCommon.respond(conn)
     end)
   end
+
+  defp audit_event({:ok, _result}, conn) do
+    conn
+    |> Audit.new(:User, :Modified)
+    |> Audit.add(resource_id: conn.params["subject_id"])
+    |> Audit.log()
+  end
+
+  defp audit_event(_result, _conn), do: :ok
 end
