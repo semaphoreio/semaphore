@@ -50,8 +50,6 @@ defmodule Guard.Store.Organization do
 
   def no_of_members(org_id), do: Guard.Api.Rbac.no_of_members(org_id)
 
-  @owner_role_name "Owner"
-
   @doc """
   Returns the organizations that block deletion of the given user because the
   user is the sole member or the last Owner of them. Each entry is
@@ -64,27 +62,20 @@ defmodule Guard.Store.Organization do
     |> Enum.map(&{&1, org_name(&1)})
   end
 
+  # Decided from a member count and an owner-only lookup so we never enumerate
+  # every member of the org, which is prohibitively slow for large orgs on a
+  # request that carries a hard 30s deadline.
   defp blocks_user_deletion?(org_id, user_id) do
-    members = Guard.Api.Rbac.list_members(org_id)
-
-    member_ids = members |> Enum.map(& &1.subject.subject_id) |> Enum.uniq()
-
-    owner_ids =
-      members
-      |> Enum.filter(&owner?/1)
-      |> Enum.map(& &1.subject.subject_id)
-      |> Enum.uniq()
-
-    sole_member? = member_ids == [user_id]
-    last_owner? = user_id in owner_ids and length(owner_ids) == 1
-
-    sole_member? or last_owner?
+    sole_member?(org_id) or last_owner?(org_id, user_id)
   end
 
-  defp owner?(member) do
-    Enum.any?(member.subject_role_bindings, fn binding ->
-      binding.role && binding.role.name == @owner_role_name
-    end)
+  # The user is known to be a member of the org (it came from their accessible
+  # orgs), so a total of one member means that member is the user.
+  defp sole_member?(org_id), do: Guard.Api.Rbac.no_of_members(org_id) == 1
+
+  defp last_owner?(org_id, user_id) do
+    owner_ids = Guard.Api.Rbac.org_owner_ids(org_id)
+    user_id in owner_ids and length(owner_ids) == 1
   end
 
   defp org_name(org_id) do
