@@ -67,7 +67,14 @@ defmodule Rbac.GrpcServers.RbacServer do
       if owner_role?(role_id) or currently_owner?(subject_id, org_id),
         do: Rbac.Utils.Grpc.authorize!(@change_owner_permission, req.requester_id, org_id)
 
-      authorize_holds_role_permissions!(req.requester_id, org_id, project_id, role_id)
+      # The Owner role is fully gated by @change_owner_permission above; every other
+      # role must pass the held-permissions check so a requester cannot escalate by
+      # assigning a role that grants permissions they do not hold themselves. Skip the
+      # check for project initialization, which bypasses authorization entirely (see
+      # authorize!/3) and has no requester to compare permissions against.
+      unless owner_role?(role_id) or
+               (project_id != "" and Rbac.Models.Project.project_being_initialized?(project_id)),
+             do: authorize_holds_role_permissions!(req.requester_id, org_id, project_id, role_id)
 
       {:ok, rbi} = RBI.new(user_id: subject_id, org_id: org_id, project_id: project_id)
 
@@ -318,6 +325,7 @@ defmodule Rbac.GrpcServers.RbacServer do
     |> List.first(%{})
     |> Map.get(:role_bindings, [])
     |> Enum.map(&Rbac.Repo.RbacRole.get_role_by_id(&1["role_id"]))
+    |> Enum.reject(&is_nil/1)
     |> Enum.any?(&(&1.name == "Owner"))
   end
 
@@ -329,7 +337,10 @@ defmodule Rbac.GrpcServers.RbacServer do
   defp authorize_holds_role_permissions!(requester_id, org_id, project_id, role_id) do
     role = Rbac.Repo.RbacRole.get_role_by_id(role_id)
 
-    if role && role.editable do
+    # Applies to ALL roles, not just editable ones. Built-in roles are seeded
+    # editable: false, so gating on role.editable would let a requester escalate by
+    # assigning a built-in role (e.g. Admin) granting permissions they do not hold.
+    if role do
       project = if project_id == "", do: :is_nil, else: project_id
       {:ok, rbi} = RBI.new(user_id: requester_id, org_id: org_id, project_id: project)
       held = rbi |> Rbac.Store.UserPermissions.read_user_permissions() |> String.split(",")
