@@ -700,25 +700,11 @@ defmodule Guard.GrpcServers.UserServerTest do
 
       request = User.DeleteWithOwnedOrgsRequest.new(user_id: user.id)
 
-      with_mock InternalApi.Projecthub.ProjectService.Stub,
-        list: fn _channel, _req, _opts ->
-          {:ok,
-           InternalApi.Projecthub.ListResponse.new(
-             metadata: InternalApi.Projecthub.ResponseMeta.new(status: %{code: 0}),
-             projects: []
-           )}
-        end do
+      with_mock InternalApi.Projecthub.ProjectService.Stub, list: projecthub_list_mock() do
         with_mock InternalApi.RBAC.RBAC.Stub,
-          list_accessible_orgs: fn _channel, _req, _opts ->
-            {:ok, InternalApi.RBAC.ListAccessibleOrgsResponse.new(org_ids: [org.id])}
-          end,
-          list_members: fn _channel, _req, _opts ->
-            {:ok,
-             InternalApi.RBAC.ListMembersResponse.new(
-               members: [owner_member(user.id), plain_member(other.id)],
-               total_pages: 1
-             )}
-          end do
+          list_accessible_orgs: accessible_orgs_mock([org.id]),
+          list_roles: list_roles_mock(),
+          list_members: list_members_mock([user.id, other.id], [user.id]) do
           {:error, grpc_error} = channel |> Stub.delete_with_owned_orgs(request)
 
           assert %GRPC.RPCError{status: status, message: message} = grpc_error
@@ -745,25 +731,12 @@ defmodule Guard.GrpcServers.UserServerTest do
 
       request = User.DeleteWithOwnedOrgsRequest.new(user_id: user.id)
 
-      with_mock InternalApi.Projecthub.ProjectService.Stub,
-        list: fn _channel, _req, _opts ->
-          {:ok,
-           InternalApi.Projecthub.ListResponse.new(
-             metadata: InternalApi.Projecthub.ResponseMeta.new(status: %{code: 0}),
-             projects: []
-           )}
-        end do
+      with_mock InternalApi.Projecthub.ProjectService.Stub, list: projecthub_list_mock() do
+        # list_roles is intentionally not stubbed: a sole-member org must be
+        # decided by the member count alone and short-circuit the owner lookup.
         with_mock InternalApi.RBAC.RBAC.Stub,
-          list_accessible_orgs: fn _channel, _req, _opts ->
-            {:ok, InternalApi.RBAC.ListAccessibleOrgsResponse.new(org_ids: [org.id])}
-          end,
-          list_members: fn _channel, _req, _opts ->
-            {:ok,
-             InternalApi.RBAC.ListMembersResponse.new(
-               members: [plain_member(user.id)],
-               total_pages: 1
-             )}
-          end do
+          list_accessible_orgs: accessible_orgs_mock([org.id]),
+          list_members: list_members_mock([user.id], []) do
           {:error, grpc_error} = channel |> Stub.delete_with_owned_orgs(request)
 
           assert %GRPC.RPCError{status: status, message: message} = grpc_error
@@ -790,25 +763,41 @@ defmodule Guard.GrpcServers.UserServerTest do
 
       request = User.DeleteWithOwnedOrgsRequest.new(user_id: user.id)
 
-      with_mock InternalApi.Projecthub.ProjectService.Stub,
-        list: fn _channel, _req, _opts ->
-          {:ok,
-           InternalApi.Projecthub.ListResponse.new(
-             metadata: InternalApi.Projecthub.ResponseMeta.new(status: %{code: 0}),
-             projects: []
-           )}
-        end do
+      with_mock InternalApi.Projecthub.ProjectService.Stub, list: projecthub_list_mock() do
         with_mock InternalApi.RBAC.RBAC.Stub,
-          list_accessible_orgs: fn _channel, _req, _opts ->
-            {:ok, InternalApi.RBAC.ListAccessibleOrgsResponse.new(org_ids: [org.id])}
-          end,
-          list_members: fn _channel, _req, _opts ->
-            {:ok,
-             InternalApi.RBAC.ListMembersResponse.new(
-               members: [owner_member(user.id), owner_member(other.id)],
-               total_pages: 1
-             )}
-          end do
+          list_accessible_orgs: accessible_orgs_mock([org.id]),
+          list_roles: list_roles_mock(),
+          list_members: list_members_mock([user.id, other.id], [user.id, other.id]) do
+          {:ok, response} = channel |> Stub.delete_with_owned_orgs(request)
+
+          id = user.id
+          assert %User.User{id: ^id} = response
+          assert is_nil(FrontRepo.get(FrontRepo.User, id))
+        end
+      end
+    end
+
+    test "delete_with_owned_orgs should allow deletion when user is a plain member of an org", %{
+      grpc_channel: channel
+    } do
+      alias Guard.FrontRepo
+
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user.id)
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      {:ok, owner} = Support.Factories.RbacUser.insert()
+      {:ok, teammate} = Support.Factories.RbacUser.insert()
+
+      org = Support.Factories.Organization.insert!(name: "BigCo", username: "acme-plain-member")
+
+      request = User.DeleteWithOwnedOrgsRequest.new(user_id: user.id)
+
+      with_mock InternalApi.Projecthub.ProjectService.Stub, list: projecthub_list_mock() do
+        with_mock InternalApi.RBAC.RBAC.Stub,
+          list_accessible_orgs: accessible_orgs_mock([org.id]),
+          list_roles: list_roles_mock(),
+          list_members: list_members_mock([user.id, owner.id, teammate.id], [owner.id]) do
           {:ok, response} = channel |> Stub.delete_with_owned_orgs(request)
 
           id = user.id
@@ -819,21 +808,54 @@ defmodule Guard.GrpcServers.UserServerTest do
     end
   end
 
-  defp owner_member(subject_id), do: rbac_member(subject_id, "Owner")
-  defp plain_member(subject_id), do: rbac_member(subject_id, "Member")
+  @owner_role_id "11111111-1111-1111-1111-111111111111"
 
-  defp rbac_member(subject_id, role_name) do
+  defp projecthub_list_mock do
+    fn _channel, _req, _opts ->
+      {:ok,
+       InternalApi.Projecthub.ListResponse.new(
+         metadata: InternalApi.Projecthub.ResponseMeta.new(status: %{code: 0}),
+         projects: []
+       )}
+    end
+  end
+
+  defp accessible_orgs_mock(org_ids) do
+    fn _channel, _req, _opts ->
+      {:ok, InternalApi.RBAC.ListAccessibleOrgsResponse.new(org_ids: org_ids)}
+    end
+  end
+
+  defp list_roles_mock do
+    fn _channel, _req, _opts ->
+      {:ok,
+       InternalApi.RBAC.ListRolesResponse.new(
+         roles: [InternalApi.RBAC.Role.new(id: @owner_role_id, name: "Owner")]
+       )}
+    end
+  end
+
+  # Simulates the server-side role filter: the owner-role query returns only the
+  # owner ids, any other query returns every USER member.
+  defp list_members_mock(member_ids, owner_ids) do
+    fn _channel, req, _opts ->
+      ids = if req.member_has_role == @owner_role_id, do: owner_ids, else: member_ids
+
+      {:ok,
+       InternalApi.RBAC.ListMembersResponse.new(
+         members: Enum.map(ids, &rbac_member/1),
+         total_pages: 1
+       )}
+    end
+  end
+
+  defp rbac_member(subject_id) do
     InternalApi.RBAC.ListMembersResponse.Member.new(
       subject:
         InternalApi.RBAC.Subject.new(
           subject_id: subject_id,
           subject_type: InternalApi.RBAC.SubjectType.value(:USER)
-        ),
-      subject_role_bindings: [
-        InternalApi.RBAC.SubjectRoleBinding.new(
-          role: InternalApi.RBAC.Role.new(id: Ecto.UUID.generate(), name: role_name)
         )
-      ]
     )
   end
 
