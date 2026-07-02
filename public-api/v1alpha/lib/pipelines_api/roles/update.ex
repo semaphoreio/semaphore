@@ -6,6 +6,7 @@ defmodule PipelinesAPI.Roles.Update do
   alias PipelinesAPI.Util.Metrics
   alias PipelinesAPI.RBACClient
   alias PipelinesAPI.Roles.PermissionResolver
+  alias PipelinesAPI.Util.ToTuple
   alias InternalApi.RBAC
   alias Plug.Conn
 
@@ -25,16 +26,22 @@ defmodule PipelinesAPI.Roles.Update do
       # field the caller did not supply. Otherwise a partial update — e.g. only
       # --description — would blank the role's permissions, name, etc.
       with {:ok, current} <- RBACClient.describe_role(%{role_id: role_id, org_id: org_id}),
-           scope <- scope_value(params["scope"] || current.scope),
+           {:ok, scope} <- scope_value(params["scope"] || current.scope),
+           # ModifyRole is a full replace, so the effective permission set is what
+           # the caller supplied or, absent that, the role's current permissions.
+           # The held-permissions guard must check the exact set being written —
+           # otherwise a PATCH omitting "permissions" would re-write current.permissions
+           # while the guard checked an empty list and passed trivially.
+           effective_permissions <- params["permissions"] || current.permissions,
            :ok <-
              PermissionResolver.ensure_requester_holds(
                scope,
-               params["permissions"] || [],
+               effective_permissions,
                requester_id,
                org_id
              ),
            {:ok, permissions} <-
-             PermissionResolver.resolve(scope, params["permissions"] || current.permissions) do
+             PermissionResolver.resolve(scope, effective_permissions) do
         role =
           RBAC.Role.new(
             id: role_id,
@@ -54,7 +61,9 @@ defmodule PipelinesAPI.Roles.Update do
     end)
   end
 
-  defp scope_value("project"), do: RBAC.Scope.value(:SCOPE_PROJECT)
-  defp scope_value("org"), do: RBAC.Scope.value(:SCOPE_ORG)
-  defp scope_value(_), do: RBAC.Scope.value(:SCOPE_ORG)
+  defp scope_value("project"), do: {:ok, RBAC.Scope.value(:SCOPE_PROJECT)}
+  defp scope_value("org"), do: {:ok, RBAC.Scope.value(:SCOPE_ORG)}
+
+  defp scope_value(other),
+    do: ToTuple.user_error("invalid scope: #{inspect(other)} (expected \"project\" or \"org\")")
 end
