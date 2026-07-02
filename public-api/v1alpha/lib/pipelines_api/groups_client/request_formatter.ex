@@ -4,14 +4,32 @@ defmodule PipelinesAPI.GroupsClient.RequestFormatter do
   alias PipelinesAPI.Util.ToTuple
   alias InternalApi.Groups
 
-  def form_list_request(_params, conn) do
-    org_id = Conn.get_req_header(conn, "x-semaphore-org-id") |> Enum.at(0, "")
+  @default_page_size 2_000
 
-    Groups.ListGroupsRequest.new(org_id: org_id)
+  def form_list_request(params, conn) do
+    org_id = Conn.get_req_header(conn, "x-semaphore-org-id") |> Enum.at(0, "")
+    page_no = params |> Map.get("page_no", 0) |> to_int(0)
+    page_size = params |> Map.get("page_size", @default_page_size) |> to_int(@default_page_size)
+
+    Groups.ListGroupsRequest.new(
+      org_id: org_id,
+      page: Groups.ListGroupsRequest.Page.new(page_no: page_no, page_size: page_size)
+    )
     |> ToTuple.ok()
   catch
     error -> error
   end
+
+  defp to_int(value, _default) when is_integer(value), do: value
+
+  defp to_int(value, default) when is_binary(value) do
+    case Integer.parse(value) do
+      {int, _} -> int
+      :error -> default
+    end
+  end
+
+  defp to_int(_value, default), do: default
 
   def form_create_request(params, conn) when is_map(params) do
     org_id = Conn.get_req_header(conn, "x-semaphore-org-id") |> Enum.at(0, "")

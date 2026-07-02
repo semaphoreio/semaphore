@@ -2,7 +2,7 @@ defmodule PipelinesAPI.GroupsClient.ResponseFormatter do
   @moduledoc false
   def process_list_response({:ok, response}) do
     groups = Enum.map(response.groups, &serialize/1)
-    {:ok, %{groups: groups}}
+    {:ok, %{groups: groups, total_pages: response.total_pages}}
   end
 
   def process_list_response(error), do: error
