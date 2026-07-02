@@ -33,8 +33,7 @@ RSpec.describe RepoHost::Github::Client do
       # values — to exercise the InstanceConfig fallback.
       Semaphore::GithubApp::Credentials.instance_variable_set(:@github_client_id, nil)
       Semaphore::GithubApp::Credentials.instance_variable_set(:@github_client_secret, nil)
-      allow(Semaphore::GithubApp::Credentials::Local).to receive(:github_client_id).and_return(nil)
-      allow(Semaphore::GithubApp::Credentials::Local).to receive(:github_client_secret).and_return(nil)
+      allow(Semaphore::GithubApp::Credentials::Local).to receive_messages(:github_client_id => nil, :github_client_secret => nil)
     end
 
     it "falls back to InstanceConfigClient credentials when local config is unset" do
