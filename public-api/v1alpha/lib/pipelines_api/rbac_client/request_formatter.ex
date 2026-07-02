@@ -37,17 +37,13 @@ defmodule PipelinesAPI.RBACClient.RequestFormatter do
         "organization id and user id are required to build list user permissions request"
       )
 
-  def form_list_project_members_request(_params = %{org_id: org_id, project_id: project_id}) do
+  def form_list_project_members_request(params = %{org_id: org_id, project_id: project_id}) do
     ToTuple.ok(
       RBAC.ListMembersRequest.new(
         org_id: org_id,
         project_id: project_id,
         member_name_contains: "",
-        page:
-          RBAC.ListMembersRequest.Page.new(
-            page_no: 0,
-            page_size: @total_page_size
-          ),
+        page: build_page(params),
         member_type: RBAC.SubjectType.value(:USER)
       )
     )
@@ -142,19 +138,6 @@ defmodule PipelinesAPI.RBACClient.RequestFormatter do
   def form_retract_project_role_request(_),
     do: ToTuple.user_error("Bad retract project role request")
 
-  def form_list_org_members_request(%{org_id: org_id, page_no: page_no, page_size: page_size}) do
-    ToTuple.ok(
-      RBAC.ListMembersRequest.new(
-        org_id: org_id,
-        project_id: "",
-        member_name_contains: "",
-        member_has_role: "",
-        page: RBAC.ListMembersRequest.Page.new(page_no: page_no, page_size: page_size),
-        member_type: RBAC.SubjectType.value(:USER)
-      )
-    )
-  end
-
   def form_list_org_members_request(params = %{org_id: org_id}) do
     ToTuple.ok(
       RBAC.ListMembersRequest.new(
@@ -162,7 +145,7 @@ defmodule PipelinesAPI.RBACClient.RequestFormatter do
         project_id: "",
         member_name_contains: "",
         member_has_role: "",
-        page: RBAC.ListMembersRequest.Page.new(page_no: 0, page_size: @total_page_size),
+        page: build_page(params),
         member_type: subject_type_value(Map.get(params, :member_type))
       )
     )
@@ -170,6 +153,15 @@ defmodule PipelinesAPI.RBACClient.RequestFormatter do
 
   def form_list_org_members_request(_),
     do: ToTuple.user_error("organization id is required")
+
+  # Builds a pagination page from optional :page_no / :page_size params,
+  # falling back to a sane default page size when the client omits it.
+  defp build_page(params) do
+    page_no = Map.get(params, :page_no) || 0
+    page_size = Map.get(params, :page_size) || @total_page_size
+
+    RBAC.ListMembersRequest.Page.new(page_no: page_no, page_size: page_size)
+  end
 
   defp subject_type_value(t) when t in ["service_account", "SERVICE_ACCOUNT"],
     do: RBAC.SubjectType.value(:SERVICE_ACCOUNT)
