@@ -27,6 +27,20 @@ defmodule Ppl.PplBlocks.STMHandler.StoppingState do
     |> determin_state_transition(ppl_blk)
   end
 
+  # The block reached a real verdict (passed/failed) before the stop took effect — preserve
+  # it. Relabelling passed work as "stopped" would make a partial rebuild needlessly re-run
+  # Mirrors RunningState's result handling.
+  defp determin_state_transition({:ok, %{state: "done", result: result, result_reason: nil}}, _ppl_blk)
+       when result in ["passed", "failed"],
+    do: {:ok, fn _, _ -> {:ok, %{state: "done", result: result}} end}
+
+  defp determin_state_transition({:ok, %{state: "done", result: result, result_reason: reason}}, _ppl_blk)
+       when result in ["passed", "failed"],
+    do: {:ok, fn _, _ -> {:ok, %{state: "done", result: result, result_reason: reason}} end}
+
+  # Otherwise the block was actually interrupted (stopped/canceled) — record it as stopped
+  # and recompute the termination reason here so fast_failing/user/strategy is reported
+  # (the block-service block only knows it was an "API call" termination).
   defp determin_state_transition({:ok, %{state: "done"}}, ppl_blk) do
     reason = determin_reason(ppl_blk)
     {:ok, fn _, _ -> {:ok, %{state: "done", result: "stopped", result_reason: reason}} end}
