@@ -568,7 +568,7 @@ RSpec.describe ProjectsController, :type => :controller do
             repository = double("Repository", :id => "repo-123", :remote_id => "")
             project = double(Project, :id => "96b0a57c-d9ae-453f-b56f-3b154eb10cda", :organization => @organization,
                                       :repo_owner_and_name => "foo/bar", :repository => repository)
-            expect(Project).to receive(:find_by).and_return(project)
+            allow(Project).to receive(:find_by).and_return(project)
           end
 
           it "skips the collaborator sync and the changed event" do
