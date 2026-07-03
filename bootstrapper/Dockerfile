@@ -1,4 +1,4 @@
-ARG GO_VERSION=1.24
+ARG GO_VERSION=1.25
 ARG UBUNTU_VERSION=3.17.7
 ARG ALPINE_VERSION=3.22
 ARG BUILDER_IMAGE="golang:${GO_VERSION}"
@@ -30,7 +30,7 @@ RUN curl -sL https://github.com/google/protobuf/releases/download/v28.0/protoc-2
 
 WORKDIR /app
 RUN go install github.com/mgechev/revive@v1.7.0
-RUN go install gotest.tools/gotestsum@v1.12.1
+RUN go install gotest.tools/gotestsum@v1.13.0
 RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.0
 RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1
 RUN export PATH="$PATH:$(go env GOPATH)/bin"

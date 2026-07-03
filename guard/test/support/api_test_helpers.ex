@@ -29,9 +29,13 @@ defmodule Support.ApiTestHelpers do
     headers =
       (params[:headers] || []) ++ [{"x-forwarded-proto", "https"}, {"user-agent", "test-agent"}]
 
+    # hackney >= 1.24 consumes and discards the body of redirect responses
+    # (301/302/303/307/308) when a connection pool is used, which is HTTPoison's
+    # default. These tests assert on the body of OAuth redirect responses, so we
+    # disable pooling to keep the redirect body available to the client.
     "#{@host}/#{path}#{query_string}"
     |> URI.encode()
-    |> HTTPoison.get(headers)
+    |> HTTPoison.get(headers, hackney: [pool: false])
   end
 
   defp parse_query_params(nil), do: ""
