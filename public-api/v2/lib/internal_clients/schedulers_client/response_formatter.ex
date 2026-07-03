@@ -59,6 +59,10 @@ defmodule InternalClients.Schedulers.ResponseFormatter do
     {:error, {:user, r.status.message}}
   end
 
+  def process_response({:ok, r = %{status: %InternalApi.Status{code: :UNAVAILABLE}}}) do
+    {:error, {:service_unavailable, r.status.message}}
+  end
+
   def process_response({:ok, _r = %{status: %InternalApi.Status{code: _other_code}}}) do
     {:error, {:internal, "Unexpected error occurred"}}
   end
