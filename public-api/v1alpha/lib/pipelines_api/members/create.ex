@@ -44,7 +44,7 @@ defmodule PipelinesAPI.Members.Create do
   end
 
   # Invite failed -> map the gRPC error through the standard error path.
-  defp assign_role_and_build({:error, _} = error, _conn), do: error
+  defp assign_role_and_build(error = {:error, _}, _conn), do: error
 
   defp assign_role_and_build({:ok, member}, conn) do
     org_id = Conn.get_req_header(conn, "x-semaphore-org-id") |> Enum.at(0, "")

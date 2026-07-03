@@ -15,18 +15,19 @@ defmodule PipelinesAPI.ServiceAccounts.Update do
   def update_service_account(conn, _opts) do
     Metrics.benchmark("PipelinesAPI.router", ["service_account_update"], fn ->
       case ServiceAccountClient.describe(conn.params, conn) do
-        {:ok, current} ->
-          conn.params
-          |> Map.put("name", conn.params["name"] || current.name)
-          |> Map.put("description", conn.params["description"] || current.description)
-          |> ServiceAccountClient.update(conn)
-          |> tap(fn result -> audit_event(result, conn) end)
-          |> RespCommon.respond(conn)
-
-        error ->
-          RespCommon.respond(error, conn)
+        {:ok, current} -> apply_update(conn, current)
+        error -> RespCommon.respond(error, conn)
       end
     end)
+  end
+
+  defp apply_update(conn, current) do
+    conn.params
+    |> Map.put("name", conn.params["name"] || current.name)
+    |> Map.put("description", conn.params["description"] || current.description)
+    |> ServiceAccountClient.update(conn)
+    |> tap(fn result -> audit_event(result, conn) end)
+    |> RespCommon.respond(conn)
   end
 
   defp audit_event({:ok, sa}, conn) do
