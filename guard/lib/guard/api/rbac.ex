@@ -2,7 +2,9 @@ defmodule Guard.Api.Rbac do
   @list_page_size 100
   @owner_role_name "Owner"
 
-  def list_members(org_id, project_id \\ ""), do: do_list_members(org_id, project_id, "", 0, [])
+  def list_members(org_id, project_id \\ ""), do: collect_members(org_id, project_id, "")
+
+  def no_of_members(org_id), do: org_id |> collect_members("", "") |> length()
 
   @doc """
   Returns the unique subject ids of the users holding the Owner role in the
@@ -17,42 +19,48 @@ defmodule Guard.Api.Rbac do
 
       role_id ->
         org_id
-        |> do_list_members("", role_id, 0, [])
+        |> collect_members("", role_id)
         |> Enum.map(& &1.subject.subject_id)
         |> Enum.uniq()
     end
   end
 
-  # Pages are 0-indexed: the RBAC backend offsets by `page_no * page_size`, so the
-  # first page is page 0 and we keep fetching while a later page exists.
-  defp do_list_members(org_id, project_id, role_id, page_no, acc) do
+  # ListMembers pagination differs between editions: EE is 0-based
+  # (offset = page_no * size) while CE is 1-based and coerces page_no 0 to 1
+  # (so page_no 0 and 1 both return the first page). We therefore cannot trust a
+  # fixed page-number convention or `total_pages`. Walk pages from 0, dedup by
+  # subject_id (CE repeats the first page), and stop once a page comes back
+  # shorter than a full page, which terminates on either backend.
+  defp collect_members(org_id, project_id, role_id) do
+    {members, _seen} =
+      0
+      |> Stream.iterate(&(&1 + 1))
+      |> Enum.reduce_while({[], MapSet.new()}, fn page_no, {acc, seen} ->
+        page = fetch_member_page(org_id, project_id, role_id, page_no)
+
+        {acc, seen} =
+          Enum.reduce(page, {acc, seen}, fn member, {acc, seen} ->
+            id = member.subject.subject_id
+
+            if MapSet.member?(seen, id),
+              do: {acc, seen},
+              else: {[member | acc], MapSet.put(seen, id)}
+          end)
+
+        if length(page) < @list_page_size,
+          do: {:halt, {acc, seen}},
+          else: {:cont, {acc, seen}}
+      end)
+
+    Enum.reverse(members)
+  end
+
+  defp fetch_member_page(org_id, project_id, role_id, page_no) do
     req = build_list_members_request(org_id, project_id, role_id, page_no)
 
     {:ok, response} = InternalApi.RBAC.RBAC.Stub.list_members(channel(), req, timeout: 30_000)
 
-    acc = acc ++ response.members
-
-    if page_no + 1 < response.total_pages do
-      do_list_members(org_id, project_id, role_id, page_no + 1, acc)
-    else
-      acc
-    end
-  end
-
-  def no_of_members(org_id), do: do_no_of_members(org_id, 0, 0)
-
-  defp do_no_of_members(org_id, page_no, acc) do
-    req = build_list_members_request(org_id, "", "", page_no)
-
-    {:ok, response} = InternalApi.RBAC.RBAC.Stub.list_members(channel(), req, timeout: 30_000)
-
-    acc = acc + Enum.count(response.members)
-
-    if page_no + 1 < response.total_pages do
-      do_no_of_members(org_id, page_no + 1, acc)
-    else
-      acc
-    end
+    response.members
   end
 
   defp build_list_members_request(org_id, project_id, role_id, page) do
