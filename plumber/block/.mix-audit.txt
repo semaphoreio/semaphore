@@ -1,6 +1,8 @@
 # Advisories ignored here are transitive, unreachable in this app, and only
-# fixable by an out-of-scope major bump of a core dependency. hackney is NOT
-# ignored — it is bumped to a patched version (~> 1.24) in mix.exs instead.
+# fixable by an out-of-scope major bump of a core dependency. hackney is bumped
+# forward to the latest 1.x (~> 1.24, resolves 1.25.0) in mix.exs, which cleared
+# the older pool-leak/SSRF advisories; the newer 2026 hackney advisories (at the
+# end of this file) are only fixed in 4.0.1 and are accepted.
 
 # decimal — unbounded exponent in Decimal.new enables an unauthenticated DoS
 # (GHSA-rhv4-8758-jx7v, moderate). Patched in decimal 3.0.0, but this app's
@@ -34,3 +36,16 @@ GHSA-jfc2-q6qh-g5x8
 GHSA-32p9-57cr-4x65
 GHSA-84f2-rp86-235p
 GHSA-hv23-4qp7-8c8r
+
+# hackney — four 2026 advisories, all first patched in hackney 4.0.1. hackney is already bumped to
+# the latest 1.x (~> 1.24 -> 1.25.0) in mix.exs, which cleared the older pool-leak/SSRF advisories;
+# 4.0.1 is a major bump blocked by httpoison 0.13 (`hackney ~> 1.8`). Not reachable: block does not
+# call HTTPoison/hackney from lib/ at all — hackney is only a transitive httpoison dependency.
+#   GHSA-gp9c-pm5m-5cxr — ssl:connect/2 post-handshake upgrade has no timeout
+#   GHSA-j9wq-vxxc-94wf — CR/LF injection in query parameter
+#   GHSA-mp55-p8c9-rfw2 — CRLF/header injection via unvalidated domain/path options
+#   GHSA-pj7v-xfvx-wmjq — SSRF allowlist bypass via percent-encoded host
+GHSA-gp9c-pm5m-5cxr
+GHSA-j9wq-vxxc-94wf
+GHSA-mp55-p8c9-rfw2
+GHSA-pj7v-xfvx-wmjq
