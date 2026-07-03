@@ -338,11 +338,16 @@ defmodule Guard.GrpcServers.UserServer do
     end)
   end
 
+  defp blocking_orgs_message([{_id, name}]) do
+    "You are the last owner of #{name}. " <>
+      "Transfer ownership or delete it first before you can delete your account."
+  end
+
   defp blocking_orgs_message(orgs) do
     names = Enum.map_join(orgs, ", ", fn {_id, name} -> name end)
 
-    "You are the last owner of organization(s): #{names}. " <>
-      "Transfer ownership or delete the organization first before you can delete your account."
+    "You are the last owner of these organizations: #{names}. " <>
+      "Transfer ownership or delete them first before you can delete your account."
   end
 
   @spec create(User.CreateRequest.t(), GRPC.Server.Stream.t()) :: User.User.t()
