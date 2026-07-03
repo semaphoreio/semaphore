@@ -7,6 +7,11 @@ defmodule Audit.Retention.PolicyMarkerTest do
   alias InternalApi.Usage.OrganizationPolicyApply
   alias Support.RetentionFixtures
 
+  setup do
+    stub_retention_feature(true)
+    :ok
+  end
+
   test "marks old events and keeps recent events" do
     org_id = Ecto.UUID.generate()
     # Older than the 400-day retention floor so the cutoff is accepted.
@@ -36,6 +41,24 @@ defmodule Audit.Retention.PolicyMarkerTest do
     refute is_nil(get_event(old_event.id).expires_at)
     assert is_nil(get_event(recent_event.id).expires_at)
     assert is_nil(get_event(other_org.id).expires_at)
+  end
+
+  test "skips marking when the audit_logs_retention feature is disabled" do
+    stub_retention_feature(false)
+
+    org_id = Ecto.UUID.generate()
+
+    cutoff =
+      DateTime.add(DateTime.utc_now(), -401 * 86_400, :second) |> DateTime.truncate(:second)
+
+    old_event =
+      RetentionFixtures.insert_event(%{
+        org_id: org_id,
+        timestamp: DateTime.add(cutoff, -120, :second)
+      })
+
+    assert :ok = PolicyMarker.handle_message(encode_policy_event(org_id, cutoff))
+    assert is_nil(get_event(old_event.id).expires_at)
   end
 
   test "ignores invalid org id payload" do
