@@ -47,7 +47,7 @@ defmodule Rbac.MixProject do
       {:sentry, "~> 10.8"},
       {:x509, "~> 0.8.10"},
       {:httpoison, "~> 2.2"},
-      {:hackney, "~> 1.24", override: true},
+      {:hackney, "~> 4.4", override: true},
       {:plug_rails_cookie_session_store, "~> 2.0"},
       {:tackle, github: "renderedtext/ex-tackle"},
       {:amqp, "~> 3.3"},

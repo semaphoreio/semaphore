@@ -55,9 +55,9 @@ defmodule Dashboardhub.MixProject do
       {:junit_formatter, "~> 3.1", only: [:test]},
       {:jason, "~> 1.2"},
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
-      {:sentry, "~> 8.0"},
+      {:sentry, "~> 13.2"},
       {:sentry_grpc, github: "renderedtext/sentry_grpc"},
-      {:hackney, "~> 1.8"}
+      {:hackney, "~> 4.4"}
     ]
   end
 end
