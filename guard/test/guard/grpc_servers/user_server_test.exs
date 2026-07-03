@@ -667,7 +667,7 @@ defmodule Guard.GrpcServers.UserServerTest do
 
         assert %GRPC.RPCError{
                  status: GRPC.Status.invalid_argument(),
-                 message: "User #{user.id} is owner of projects."
+                 message: "You still own projects — transfer or delete them first."
                } == grpc_error
       end
     end
