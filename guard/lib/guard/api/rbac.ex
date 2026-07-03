@@ -7,6 +7,20 @@ defmodule Guard.Api.Rbac do
   def no_of_members(org_id), do: org_id |> collect_members("", "") |> length()
 
   @doc """
+  Whether the organization has exactly one member. Only the first page is read
+  (page 0 maps to offset 0 on both the EE and CE backends), so this stays a
+  single request instead of walking the whole membership just to check for one.
+  Subject ids are deduped because CE returns a row per role assignment.
+  """
+  def single_member?(org_id) do
+    org_id
+    |> fetch_member_page("", "", 0)
+    |> Enum.map(& &1.subject.subject_id)
+    |> Enum.uniq()
+    |> length() == 1
+  end
+
+  @doc """
   Returns the unique subject ids of the users holding the Owner role in the
   organization. Owners are fetched with a server-side role filter, so the cost
   is proportional to the number of owners rather than to the total membership.
