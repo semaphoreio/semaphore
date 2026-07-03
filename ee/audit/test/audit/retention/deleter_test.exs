@@ -9,6 +9,9 @@ defmodule Audit.Retention.DeleterTest do
   alias Support.RetentionFixtures
 
   test "deletes only expired events for org that received retention policy event" do
+    # The org must have the retention feature enabled for the policy to be applied.
+    stub_retention_feature(true)
+
     # Older than the 400-day retention floor so the policy cutoff is accepted.
     cutoff =
       DateTime.add(DateTime.utc_now(), -401 * 86_400, :second) |> DateTime.truncate(:second)
