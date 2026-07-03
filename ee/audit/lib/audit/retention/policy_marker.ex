@@ -8,6 +8,16 @@ defmodule Audit.Retention.PolicyMarker do
   1. Marks events with `timestamp < cutoff_date` → sets `expires_at = now + grace_period`
   2. Unmarks events with `timestamp >= cutoff_date` → clears `expires_at`
 
+  ## Feature flag (per-organization)
+
+  Processing is gated per org by the `:audit_logs_retention` feature flag. When a
+  policy event arrives its org is checked against the flag; if the flag is not
+  enabled the event is ignored — nothing is marked or unmarked. The check is
+  fail-closed: a Feature service error is treated as "disabled", so a lookup
+  failure never marks audit logs for deletion. This is orthogonal to the
+  service-level `RETENTION_CONSUMER_ENABLED` switch (which decides whether the
+  consumer runs at all); the flag decides which organizations it acts on.
+
   ## Retention floor
 
   `cutoff_date` is computed by the upstream publisher, not this service. To
@@ -36,6 +46,7 @@ defmodule Audit.Retention.PolicyMarker do
   alias Audit.Retention.Queries
 
   @default_min_retention_days 400
+  @feature_flag :audit_logs_retention
 
   use Tackle.Consumer,
     url: Application.get_env(:audit, :amqp_url),
@@ -48,6 +59,7 @@ defmodule Audit.Retention.PolicyMarker do
   def handle_message(message) do
     with {:ok, event} <- decode(message),
          {:ok, org_id} <- validate_org_id(event.org_id),
+         :ok <- check_feature_enabled(org_id),
          {:ok, cutoff} <- resolve_cutoff(event.cutoff_date) do
       apply_policy(org_id, cutoff)
     else
@@ -55,6 +67,23 @@ defmodule Audit.Retention.PolicyMarker do
         Watchman.increment("retention.policy.invalid")
         Logger.warning("[Retention] Skipping invalid policy event: #{reason}")
         :ok
+
+      {:disabled, org_id} ->
+        Watchman.increment("retention.policy.feature_disabled")
+        Logger.debug("[Retention] Skipping org=#{org_id}: #{@feature_flag} feature disabled")
+        :ok
+    end
+  end
+
+  # Per-org guard: retention is only applied to organizations that have the
+  # `:audit_logs_retention` feature enabled. `feature_enabled?/2` is fail-closed
+  # (returns false on a Feature service error), so a lookup failure skips the org
+  # rather than risking deletion of its audit logs.
+  defp check_feature_enabled(org_id) do
+    if FeatureProvider.feature_enabled?(@feature_flag, param: org_id) do
+      :ok
+    else
+      {:disabled, org_id}
     end
   end
 
