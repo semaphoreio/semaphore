@@ -51,6 +51,45 @@ defmodule Guard.Store.Organization do
   def no_of_members(org_id), do: Guard.Api.Rbac.no_of_members(org_id)
 
   @doc """
+  Returns the organizations that block deletion of the given user because the
+  user is the sole member or the last Owner of them. Each entry is
+  `{org_id, org_name}`. An empty list means the user can be deleted.
+  """
+  def orgs_blocking_user_deletion(user_id) do
+    org_ids = Guard.Api.Rbac.list_accessible_org_ids(user_id)
+    Logger.info("[delete-guard] user=#{inspect(user_id)} accessible_orgs=#{inspect(org_ids)}")
+
+    org_ids
+    |> Enum.filter(&blocks_user_deletion?(&1, user_id))
+    |> Enum.map(&{&1, org_name(&1)})
+  end
+
+  # Decided from a member count and an owner-only lookup so we never enumerate
+  # every member of the org, which is prohibitively slow for large orgs on a
+  # request that carries a hard 30s deadline.
+  defp blocks_user_deletion?(org_id, user_id) do
+    members = Guard.Api.Rbac.no_of_members(org_id)
+    owner_ids = Guard.Api.Rbac.org_owner_ids(org_id)
+    sole_member? = members == 1
+    last_owner? = user_id in owner_ids and length(owner_ids) == 1
+
+    Logger.info(
+      "[delete-guard] org=#{inspect(org_id)} user=#{inspect(user_id)} " <>
+        "no_of_members=#{members} owner_ids=#{inspect(owner_ids)} " <>
+        "sole_member=#{sole_member?} last_owner=#{last_owner?}"
+    )
+
+    sole_member? or last_owner?
+  end
+
+  defp org_name(org_id) do
+    case get_by_id(org_id) do
+      {:ok, org} -> org.name
+      _ -> org_id
+    end
+  end
+
+  @doc """
   Creates a new organization.
   Returns {:ok, organization} if successful, or {:error, changeset} if validation fails.
   """
