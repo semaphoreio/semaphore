@@ -49,7 +49,6 @@ defmodule Scouter.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:cowlib, "~> 2.16", override: true},
       {:credo, "~> 1.5", only: [:dev, :test]},
       {:ecto, "~> 3.12"},
       {:ecto_sql, "~> 3.0"},

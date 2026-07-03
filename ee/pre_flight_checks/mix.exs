@@ -35,7 +35,6 @@ defmodule PreFlightChecks.MixProject do
   # Type "mix help deps" for more examples and options
   defp deps do
     [
-      {:cowlib, "~> 2.16", override: true},
       {:ecto_sql, "~> 3.7"},
       {:ecto, "~> 3.7"},
       {:jason, "~> 1.3"},

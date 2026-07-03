@@ -41,7 +41,6 @@ defmodule Dashboardhub.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:cowlib, "~> 2.16", override: true},
       {:grpc, "~> 0.6"},
       {:protobuf, "~> 0.11"},
       {:fun_registry, github: "renderedtext/fun-registry", only: [:dev, :test]},
@@ -55,9 +54,9 @@ defmodule Dashboardhub.MixProject do
       {:junit_formatter, "~> 3.1", only: [:test]},
       {:jason, "~> 1.2"},
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
-      {:sentry, "~> 13.2"},
+      {:sentry, "~> 8.0"},
       {:sentry_grpc, github: "renderedtext/sentry_grpc"},
-      {:hackney, "~> 4.4"}
+      {:hackney, "~> 1.24"}
     ]
   end
 end

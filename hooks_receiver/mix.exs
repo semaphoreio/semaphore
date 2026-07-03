@@ -20,9 +20,8 @@ defmodule HooksReceiver.MixProject do
 
   defp deps do
     [
-      {:cowlib, "~> 2.16", override: true},
       {:util, github: "renderedtext/elixir-util"},
-      {:plug_cowboy, "~> 2.8"},
+      {:plug_cowboy, "~> 2.0"},
       {:amqp_client, "~> 3.11.18"},
       {:tackle, github: "renderedtext/ex-tackle", tag: "v0.3.0"},
       {:grpc, "~> 0.9.0"},

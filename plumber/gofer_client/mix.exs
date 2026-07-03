@@ -39,7 +39,6 @@ defmodule GoferClient.Mixfile do
   # Type "mix help deps" for more examples and options
   defp deps do
     [
-      {:cowlib, "~> 2.16", override: true},
       {:grpc, "~> 0.3"},
       {:log_tee, git: "https://github.com/renderedtext/log-tee.git"},
       {:uuid, "~> 1.1"},

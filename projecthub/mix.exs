@@ -27,7 +27,6 @@ defmodule Projecthub.MixProject do
 
   defp deps do
     [
-      {:cowlib, "~> 2.16", override: true},
       {:ecto_sql, "~> 3.0"},
       {:scrivener_ecto, "~> 2.0"},
       {:paginator, "~> 1.1.0"},

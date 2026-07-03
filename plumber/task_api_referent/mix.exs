@@ -38,7 +38,6 @@ defmodule TaskApiReferent.Mixfile do
   # Type "mix help deps" for more examples and options
   defp deps do
     [
-      {:cowlib, "~> 2.16", override: true},
       {:sys2app, github: "renderedtext/sys2app"},
       {:credo, "~> 1.4", only: [:dev, :test], runtime: false},
       {:proto, path: "../proto"},

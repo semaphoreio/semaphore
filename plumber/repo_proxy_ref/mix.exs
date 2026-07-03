@@ -38,7 +38,6 @@ defmodule RepoProxyRef.Mixfile do
   # Type "mix help deps" for more examples and options
   defp deps do
     [
-      {:cowlib, "~> 2.16", override: true},
       {:proto, path: "../proto"},
       {:util, github: "renderedtext/elixir-util"},
       {:grpc, "~> 0.3"}
