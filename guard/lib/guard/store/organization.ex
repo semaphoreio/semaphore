@@ -71,7 +71,7 @@ defmodule Guard.Store.Organization do
 
   # The user is known to be a member of the org (it came from their accessible
   # orgs), so a total of one member means that member is the user.
-  defp sole_member?(org_id), do: Guard.Api.Rbac.no_of_members(org_id) == 1
+  defp sole_member?(org_id), do: Guard.Api.Rbac.single_member?(org_id)
 
   defp last_owner?(org_id, user_id) do
     owner_ids = Guard.Api.Rbac.org_owner_ids(org_id)
