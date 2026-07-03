@@ -1,6 +1,35 @@
 require "spec_helper"
 
 RSpec.describe GithubAppInstallation, :type => :model do
+  describe ".normalize_slug", :aggregate_failures do
+    it "accepts a normal owner/repository slug" do
+      expect(described_class.normalize_slug("renderedtext/guard")).to eq("renderedtext/guard")
+    end
+
+    it "accepts a leading-dot repository such as .github" do
+      expect(described_class.normalize_slug("acme/.github")).to eq("acme/.github")
+    end
+
+    it "rejects a '..' path segment in either position" do
+      expect(described_class.normalize_slug("acme/..")).to be_nil
+      expect(described_class.normalize_slug("../guard")).to be_nil
+    end
+
+    it "rejects a '.' path segment" do
+      expect(described_class.normalize_slug("acme/.")).to be_nil
+    end
+
+    it "rejects an owner longer than 39 characters" do
+      long_owner = "a" * 40
+      expect(described_class.normalize_slug("#{long_owner}/repo")).to be_nil
+    end
+
+    it "rejects a repository longer than 100 characters" do
+      long_repo = "a" * 101
+      expect(described_class.normalize_slug("acme/#{long_repo}")).to be_nil
+    end
+  end
+
   describe ".with_more_than_repos" do
     let!(:small_installation) do
       FactoryBot.create(

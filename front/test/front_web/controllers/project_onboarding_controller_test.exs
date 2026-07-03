@@ -1,5 +1,6 @@
 defmodule FrontWeb.ProjectOnboardingControllerTest do
   use FrontWeb.ConnCase
+  import ExUnit.CaptureLog
   alias Support.Stubs.DB
 
   setup %{conn: conn} do
@@ -115,6 +116,359 @@ defmodule FrontWeb.ProjectOnboardingControllerTest do
                "error" => "repository_service_unavailable",
                "message" => "Failed to load repositories. Please retry."
              }
+    end
+  end
+
+  describe "POST refresh" do
+    alias InternalApi.RepositoryIntegrator.RefreshRepositoriesResponse
+
+    defp stub_refresh(state, message) do
+      GrpcMock.stub(
+        RepositoryIntegratorMock,
+        :refresh_repositories,
+        RefreshRepositoriesResponse.new(
+          sync_state: RefreshRepositoriesResponse.SyncState.value(state),
+          message: message
+        )
+      )
+    end
+
+    test "fails a github_app refresh with neither a repository nor an organization", %{conn: conn} do
+      stub_refresh(:FAILED, "Specify a repository or organization to refresh.")
+
+      conn = post(conn, "/x/repositories/refresh", %{integration_type: "github_app"})
+
+      body = json_response(conn, 422)
+      assert body["state"] == "failed"
+      assert body["message"] =~ "repository or organization"
+    end
+
+    test "rate limits an immediate second org/full refresh with the 10-minute window", %{
+      conn: conn
+    } do
+      stub_refresh(:STARTED, "Repository sync started for acme.")
+      params = %{integration_type: "github_app", organization: "acme"}
+
+      assert conn |> post("/x/repositories/refresh", params) |> json_response(200)
+
+      conn = post(conn, "/x/repositories/refresh", params)
+
+      body = json_response(conn, 429)
+      assert body["state"] == "rate_limited"
+      assert is_integer(body["retry_after"])
+      # Fixed 10-minute full/org cooldown, distinct from the 60s targeted throttle.
+      assert body["retry_after"] > 60
+      assert body["retry_after"] <= 600
+    end
+
+    test "an already running sync still consumes the cooldown", %{conn: conn} do
+      stub_refresh(:ALREADY_RUNNING, "A repository sync is already running.")
+      params = %{integration_type: "github_app", organization: "acme"}
+
+      assert conn
+             |> post("/x/repositories/refresh", params)
+             |> json_response(200)
+             |> Map.fetch!("state") == "already_running"
+
+      conn = post(conn, "/x/repositories/refresh", params)
+      assert json_response(conn, 429)
+    end
+
+    test "targeted refresh passes the slug through and is then rate limited", %{conn: conn} do
+      test_pid = self()
+
+      GrpcMock.stub(RepositoryIntegratorMock, :refresh_repositories, fn req, _ ->
+        send(test_pid, {:refresh_request, req})
+
+        RefreshRepositoriesResponse.new(
+          sync_state: RefreshRepositoriesResponse.SyncState.value(:STARTED),
+          message: "Refreshing octo/repo from GitHub."
+        )
+      end)
+
+      params = %{integration_type: "github_app", repository_slug: "octo/repo"}
+
+      assert conn
+             |> post("/x/repositories/refresh", params)
+             |> json_response(200)
+             |> Map.fetch!("state") == "started"
+
+      assert_received {:refresh_request, req}
+      assert req.repository_slug == "octo/repo"
+
+      # Targeted refreshes are throttled per user, so an immediate retry is limited.
+      conn = post(conn, "/x/repositories/refresh", params)
+      assert json_response(conn, 429)["state"] == "rate_limited"
+    end
+
+    test "throttles a second targeted refresh even for a different slug", %{conn: conn} do
+      stub_refresh(:STARTED, "Refreshing from GitHub.")
+
+      assert conn
+             |> post("/x/repositories/refresh", %{
+               integration_type: "github_app",
+               repository_slug: "octo/repo"
+             })
+             |> json_response(200)
+
+      # A different slug must not bypass the per-user targeted throttle — that is
+      # exactly what an enumeration/abuse loop would do.
+      conn =
+        post(conn, "/x/repositories/refresh", %{
+          integration_type: "github_app",
+          repository_slug: "octo/other"
+        })
+
+      assert json_response(conn, 429)["state"] == "rate_limited"
+    end
+
+    test "targeted and org/full refreshes throttle independently", %{conn: conn} do
+      stub_refresh(:STARTED, "started")
+
+      assert conn
+             |> post("/x/repositories/refresh", %{
+               integration_type: "github_app",
+               repository_slug: "octo/repo"
+             })
+             |> json_response(200)
+
+      # A targeted cooldown must not block an org refresh (separate scope).
+      conn =
+        post(conn, "/x/repositories/refresh", %{
+          integration_type: "github_app",
+          organization: "acme"
+        })
+
+      assert json_response(conn, 200)["state"] == "started"
+    end
+
+    test "organization refresh passes the org through and consumes the cooldown", %{conn: conn} do
+      test_pid = self()
+
+      GrpcMock.stub(RepositoryIntegratorMock, :refresh_repositories, fn req, _ ->
+        send(test_pid, {:refresh_request, req})
+
+        RefreshRepositoriesResponse.new(
+          sync_state: RefreshRepositoriesResponse.SyncState.value(:STARTED),
+          message: "Repository sync started for acme."
+        )
+      end)
+
+      params = %{integration_type: "github_app", organization: "acme"}
+
+      assert conn
+             |> post("/x/repositories/refresh", params)
+             |> json_response(200)
+             |> Map.fetch!("state") == "started"
+
+      assert_received {:refresh_request, req}
+      assert req.organization == "acme"
+      assert req.repository_slug == ""
+
+      # An org refresh is a full refresh, so an immediate retry is rate limited.
+      conn = post(conn, "/x/repositories/refresh", params)
+      assert json_response(conn, 429)
+    end
+
+    test "a refresh of one GitHub org does not block a different org", %{conn: conn} do
+      stub_refresh(:STARTED, "started")
+
+      assert conn
+             |> post("/x/repositories/refresh", %{
+               integration_type: "github_app",
+               organization: "acme"
+             })
+             |> json_response(200)
+
+      # A different org has its own cooldown bucket, so it is not throttled.
+      assert conn
+             |> post("/x/repositories/refresh", %{
+               integration_type: "github_app",
+               organization: "beta"
+             })
+             |> json_response(200)
+
+      # ...but re-refreshing the first org is still throttled.
+      conn =
+        post(conn, "/x/repositories/refresh", %{
+          integration_type: "github_app",
+          organization: "acme"
+        })
+
+      assert json_response(conn, 429)["state"] == "rate_limited"
+    end
+
+    test "the org cooldown is case-insensitive", %{conn: conn} do
+      stub_refresh(:STARTED, "started")
+
+      assert conn
+             |> post("/x/repositories/refresh", %{
+               integration_type: "github_app",
+               organization: "Acme"
+             })
+             |> json_response(200)
+
+      # Acme and acme are the same GitHub org, so the second is throttled.
+      conn =
+        post(conn, "/x/repositories/refresh", %{
+          integration_type: "github_app",
+          organization: "acme"
+        })
+
+      assert json_response(conn, 429)["state"] == "rate_limited"
+    end
+
+    test "rejects an invalid organization without calling the RPC", %{conn: conn} do
+      GrpcMock.stub(RepositoryIntegratorMock, :refresh_repositories, fn _, _ ->
+        raise "refresh_repositories must not be called"
+      end)
+
+      conn =
+        post(conn, "/x/repositories/refresh", %{
+          integration_type: "github_app",
+          organization: "not a valid org!"
+        })
+
+      body = json_response(conn, 422)
+      assert body["state"] == "failed"
+      assert body["message"] =~ "organization"
+    end
+
+    test "rejects an invalid slug without calling the RPC", %{conn: conn} do
+      GrpcMock.stub(RepositoryIntegratorMock, :refresh_repositories, fn _, _ ->
+        raise "refresh_repositories must not be called"
+      end)
+
+      conn =
+        post(conn, "/x/repositories/refresh", %{
+          integration_type: "github_app",
+          repository_slug: "not a slug"
+        })
+
+      body = json_response(conn, 422)
+      assert body["state"] == "failed"
+      assert body["message"] =~ "owner/repository"
+    end
+
+    test "short-circuits integration types without a cache", %{conn: conn} do
+      GrpcMock.stub(RepositoryIntegratorMock, :refresh_repositories, fn _, _ ->
+        raise "refresh_repositories must not be called"
+      end)
+
+      conn = post(conn, "/x/repositories/refresh", %{integration_type: "bitbucket"})
+
+      body = json_response(conn, 200)
+      assert body["state"] == "done"
+    end
+
+    test "releases the cooldown when the RPC fails", %{conn: conn} do
+      GrpcMock.stub(RepositoryIntegratorMock, :refresh_repositories, fn _, _ ->
+        raise GRPC.RPCError, status: GRPC.Status.unavailable(), message: "down"
+      end)
+
+      params = %{integration_type: "github_app", organization: "acme"}
+
+      assert conn
+             |> post("/x/repositories/refresh", params)
+             |> json_response(503)
+             |> Map.fetch!("state") == "failed"
+
+      stub_refresh(:STARTED, "Repository sync started for acme.")
+
+      conn = post(conn, "/x/repositories/refresh", params)
+      assert json_response(conn, 200)["state"] == "started"
+    end
+
+    test "a failed org/full refresh floors a short cooldown instead of releasing it", %{
+      conn: conn
+    } do
+      test_pid = self()
+
+      GrpcMock.stub(RepositoryIntegratorMock, :refresh_repositories, fn _req, _ ->
+        send(test_pid, :rpc_called)
+
+        RefreshRepositoriesResponse.new(
+          sync_state: RefreshRepositoriesResponse.SyncState.value(:FAILED),
+          message: "The GitHub App has no access to acme. Grant access on GitHub first."
+        )
+      end)
+
+      params = %{integration_type: "github_app", organization: "acme"}
+
+      # The failed attempt reaches the RPC — it ran the synchronous org-push scan.
+      assert conn
+             |> post("/x/repositories/refresh", params)
+             |> json_response(422)
+             |> Map.fetch!("state") == "failed"
+
+      assert_received :rpc_called
+
+      # Because the scan ran, the cooldown is floored (not released): an immediate
+      # same-org retry is throttled — a short floor, well under the 600s window —
+      # and must not re-invoke the RPC.
+      conn = post(conn, "/x/repositories/refresh", params)
+      body = json_response(conn, 429)
+      assert body["state"] == "rate_limited"
+      assert body["retry_after"] <= 60
+      refute_received :rpc_called
+    end
+
+    test "a failed targeted refresh still consumes the cooldown", %{conn: conn} do
+      stub_refresh(:FAILED, "The GitHub App has no access to octo/repo.")
+
+      params = %{integration_type: "github_app", repository_slug: "octo/repo"}
+
+      assert conn
+             |> post("/x/repositories/refresh", params)
+             |> json_response(422)
+             |> Map.fetch!("state") == "failed"
+
+      # The cooldown is kept on a failed targeted refresh so denied slugs cannot be
+      # looped — an immediate retry is rate limited.
+      conn = post(conn, "/x/repositories/refresh", params)
+      assert json_response(conn, 429)["state"] == "rate_limited"
+    end
+
+    test "maps a failed refresh to 422 with the server message", %{conn: conn} do
+      stub_refresh(:FAILED, "The GitHub App has no access to octo/repo.")
+
+      conn =
+        post(conn, "/x/repositories/refresh", %{
+          integration_type: "github_app",
+          repository_slug: "octo/repo"
+        })
+
+      body = json_response(conn, 422)
+      assert body["state"] == "failed"
+      assert body["message"] =~ "no access"
+    end
+
+    test "writes an audit event when a refresh reaches the provider", %{conn: conn} do
+      log =
+        capture_log(fn ->
+          assert conn
+                 |> post("/x/repositories/refresh", %{
+                   integration_type: "github_app",
+                   repository_slug: "octo/repo"
+                 })
+                 |> json_response(200)
+        end)
+
+      assert log =~ "AuditLog"
+    end
+
+    test "does not write an audit event when the slug is rejected before the RPC", %{conn: conn} do
+      log =
+        capture_log(fn ->
+          assert conn
+                 |> post("/x/repositories/refresh", %{
+                   integration_type: "github_app",
+                   repository_slug: "not a slug"
+                 })
+                 |> json_response(422)
+        end)
+
+      refute log =~ "AuditLog"
     end
   end
 end

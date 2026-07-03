@@ -66,7 +66,12 @@ class GithubAppInstallation < ActiveRecord::Base
   def self.normalize_slug(slug)
     normalized_slug = slug.to_s.strip.sub(/\A,+/, "")
     return if normalized_slug.blank?
-    return unless normalized_slug.match?(%r{\A[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\z})
+
+    # Length caps match GitHub (owner <= 39, repo <= 100). Reject "." / ".."
+    # segments so a slug can never traverse a GitHub API path built from it
+    # (e.g. owner/../installation -> .../repos/installation).
+    return unless normalized_slug.match?(%r{\A[A-Za-z0-9_.-]{1,39}/[A-Za-z0-9_.-]{1,100}\z})
+    return if normalized_slug.split("/").any? { |segment| [".", ".."].include?(segment) }
 
     normalized_slug
   end
