@@ -324,7 +324,10 @@ defmodule Guard.GrpcServers.UserServer do
 
         {:ok, user} ->
           if Guard.Api.Project.user_has_any_project?(user_id) do
-            grpc_error!(:invalid_argument, "User #{user_id} is owner of projects.")
+            grpc_error!(
+              :invalid_argument,
+              "You still own projects — transfer or delete them first."
+            )
           end
 
           case Guard.Store.Organization.orgs_blocking_user_deletion(user.id) do
