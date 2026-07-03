@@ -835,11 +835,19 @@ defmodule Guard.GrpcServers.UserServerTest do
     end
   end
 
-  # Simulates the server-side role filter: the owner-role query returns only the
-  # owner ids, any other query returns every USER member.
+  # Simulates the real RBAC ListMembers: pagination is 0-based (page 0 is the
+  # first page), and the server-side role filter returns only the owner ids for
+  # the owner-role query, or every USER member otherwise. Requesting any page
+  # other than 0 (these fixtures fit in one page) yields no members, exactly as
+  # the backend's `offset(page_no * page_size)` does.
   defp list_members_mock(member_ids, owner_ids) do
     fn _channel, req, _opts ->
-      ids = if req.member_has_role == @owner_role_id, do: owner_ids, else: member_ids
+      ids =
+        cond do
+          req.page.page_no != 0 -> []
+          req.member_has_role == @owner_role_id -> owner_ids
+          true -> member_ids
+        end
 
       {:ok,
        InternalApi.RBAC.ListMembersResponse.new(
