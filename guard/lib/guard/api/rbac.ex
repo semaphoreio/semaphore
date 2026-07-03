@@ -2,7 +2,7 @@ defmodule Guard.Api.Rbac do
   @list_page_size 100
   @owner_role_name "Owner"
 
-  def list_members(org_id, project_id \\ ""), do: do_list_members(org_id, project_id, "", 1, [])
+  def list_members(org_id, project_id \\ ""), do: do_list_members(org_id, project_id, "", 0, [])
 
   @doc """
   Returns the unique subject ids of the users holding the Owner role in the
@@ -17,41 +17,41 @@ defmodule Guard.Api.Rbac do
 
       role_id ->
         org_id
-        |> do_list_members("", role_id, 1, [])
+        |> do_list_members("", role_id, 0, [])
         |> Enum.map(& &1.subject.subject_id)
         |> Enum.uniq()
     end
   end
 
+  # Pages are 0-indexed: the RBAC backend offsets by `page_no * page_size`, so the
+  # first page is page 0 and we keep fetching while a later page exists.
   defp do_list_members(org_id, project_id, role_id, page_no, acc) do
     req = build_list_members_request(org_id, project_id, role_id, page_no)
 
     {:ok, response} = InternalApi.RBAC.RBAC.Stub.list_members(channel(), req, timeout: 30_000)
 
-    if response.total_pages > page_no do
-      do_list_members(org_id, project_id, role_id, page_no + 1, acc ++ response.members)
+    acc = acc ++ response.members
+
+    if page_no + 1 < response.total_pages do
+      do_list_members(org_id, project_id, role_id, page_no + 1, acc)
     else
-      acc ++ response.members
+      acc
     end
   end
 
-  def no_of_members(org_id), do: do_no_of_members(org_id, 1, 0)
+  def no_of_members(org_id), do: do_no_of_members(org_id, 0, 0)
 
   defp do_no_of_members(org_id, page_no, acc) do
     req = build_list_members_request(org_id, "", "", page_no)
 
     {:ok, response} = InternalApi.RBAC.RBAC.Stub.list_members(channel(), req, timeout: 30_000)
-    members_count = Enum.count(response.members)
 
-    # if there is more than one page it is possible to calculate
-    # the total number of members until the last page. Then we
-    # add the number of members from the last page. This will make us not
-    # have to request each page to get the total number of members.
-    if response.total_pages > page_no do
-      members_count = @list_page_size * (response.total_pages - 1)
-      do_no_of_members(org_id, response.total_pages, members_count)
+    acc = acc + Enum.count(response.members)
+
+    if page_no + 1 < response.total_pages do
+      do_no_of_members(org_id, page_no + 1, acc)
     else
-      acc + members_count
+      acc
     end
   end
 
