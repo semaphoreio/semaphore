@@ -28,15 +28,7 @@ defmodule Guard.Api.RbacTest do
       members =
         all_ids
         |> Enum.slice(offset, @page_size)
-        |> Enum.map(fn id ->
-          RBAC.ListMembersResponse.Member.new(
-            subject:
-              RBAC.Subject.new(
-                subject_id: id,
-                subject_type: RBAC.SubjectType.value(:USER)
-              )
-          )
-        end)
+        |> Enum.map(&member/1)
 
       total_pages = div(total + @page_size - 1, @page_size)
       {:ok, RBAC.ListMembersResponse.new(members: members, total_pages: total_pages)}
@@ -55,5 +47,44 @@ defmodule Guard.Api.RbacTest do
         assert Enum.uniq(ids) == ids
       end
     end
+
+    test "single_member? is true only for exactly one member (#{convention} backend)" do
+      with_mock RBAC.RBAC.Stub, list_members: list_members_responder(1, unquote(convention)) do
+        assert Rbac.single_member?(@org_id)
+      end
+    end
+
+    test "single_member? is false for more than one member (#{convention} backend)" do
+      with_mock RBAC.RBAC.Stub, list_members: list_members_responder(2, unquote(convention)) do
+        refute Rbac.single_member?(@org_id)
+      end
+    end
+
+    test "single_member? is false for a multi-page org (#{convention} backend)" do
+      with_mock RBAC.RBAC.Stub, list_members: list_members_responder(150, unquote(convention)) do
+        refute Rbac.single_member?(@org_id)
+      end
+    end
+  end
+
+  test "single_member? dedups repeated subject rows on the first page (ce)" do
+    # CE returns one row per role assignment, so a single user with several org
+    # roles appears multiple times on page 0 but must still count as one member.
+    responder = fn _channel, req, _opts ->
+      members =
+        if req.page.page_no == 0, do: Enum.map(1..3, fn _ -> member("user-1") end), else: []
+
+      {:ok, RBAC.ListMembersResponse.new(members: members, total_pages: 1)}
+    end
+
+    with_mock RBAC.RBAC.Stub, list_members: responder do
+      assert Rbac.single_member?(@org_id)
+    end
+  end
+
+  defp member(id) do
+    RBAC.ListMembersResponse.Member.new(
+      subject: RBAC.Subject.new(subject_id: id, subject_type: RBAC.SubjectType.value(:USER))
+    )
   end
 end
