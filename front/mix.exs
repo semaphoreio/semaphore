@@ -31,7 +31,7 @@ defmodule Front.Mixfile do
 
   defp deps do
     [
-      {:plug_cowboy, "~> 2.8"},
+      {:plug_cowboy, "~> 2.5"},
       {:etag_plug, "~> 1.0"},
       {:phoenix, "~> 1.6.0", override: true},
       {:phoenix_html, "~> 3.0.0", override: true},
@@ -40,8 +40,9 @@ defmodule Front.Mixfile do
       {:poison, "~> 6.0", override: true},
       {:gettext, "~> 0.11"},
       {:grpc, "0.5.0-beta.1", override: true},
-      {:cowboy, "~> 2.16", override: true},
-      {:cowlib, "~> 2.16", override: true},
+      {:gun, "~> 2.0.0", hex: :grpc_gun, override: true},
+      {:cowboy, "~> 2.9.0", override: true},
+      {:cowlib, "~> 2.11.0", override: true},
       {:decimal, "~> 3.0", override: true},
       {:watchman, github: "renderedtext/ex-watchman"},
       {:traceman, github: "renderedtext/traceman"},
