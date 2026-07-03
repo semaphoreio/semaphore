@@ -330,6 +330,8 @@ defmodule Guard.GrpcServers.UserServer do
             )
           end
 
+          # Best-effort: a co-owner removed between this check and the delete can
+          # still orphan an org. Closing that race needs RBAC-side enforcement.
           case Guard.Store.Organization.orgs_blocking_user_deletion(user.id) do
             [] ->
               handle_delete_with_owned_orgs(user.id)
