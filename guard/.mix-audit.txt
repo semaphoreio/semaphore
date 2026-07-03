@@ -6,3 +6,19 @@ GHSA-rhv4-8758-jx7v
 
 # postgrex 0.20.0 — channel-name SQL injection in Notifications.listen/3 (not used by guard)
 GHSA-r73h-97w8-m54h
+
+# --- hackney 1.22.0 advisories, all fixed in 4.0.1 ---
+# Bump to 4.0.1 is blocked: httpoison ~> 1.x requires hackney ~> 1.17, so hackney cannot move to
+# 4.x without a fleet-wide httpoison/grpc upgrade. Real fix tracked for the dep-bump branch.
+#
+# ssl:connect/2 post-handshake upgrade has no timeout (operational DoS; outbound bounded, same
+# class as GHSA-9fm9 above)
+GHSA-gp9c-pm5m-5cxr
+# CR/LF injection in query parameter (no user-controlled data fed to hackney query params from lib/)
+GHSA-j9wq-vxxc-94wf
+# SSRF allowlist bypass in hackney_url:normalize/2 via percent-encoded host (no user-controlled URL
+# fed to hackney from lib/)
+GHSA-pj7v-xfvx-wmjq
+# CRLF / header injection via unvalidated `domain` and `path` options (no user-controlled domain/path
+# fed to hackney from lib/)
+GHSA-mp55-p8c9-rfw2
