@@ -2,6 +2,7 @@ defmodule Guard.Api.RbacTest do
   use ExUnit.Case, async: false
 
   import Mock
+  import ExUnit.CaptureLog
 
   alias Guard.Api.Rbac
   alias InternalApi.RBAC
@@ -80,6 +81,21 @@ defmodule Guard.Api.RbacTest do
     with_mock RBAC.RBAC.Stub, list_members: responder do
       assert Rbac.single_member?(@org_id)
     end
+  end
+
+  test "org_owner_ids returns [] and warns when the Owner role cannot be resolved" do
+    list_roles_without_owner = fn _channel, _req, _opts ->
+      {:ok, RBAC.ListRolesResponse.new(roles: [RBAC.Role.new(id: "role-admin", name: "Admin")])}
+    end
+
+    log =
+      capture_log(fn ->
+        with_mock RBAC.RBAC.Stub, list_roles: list_roles_without_owner do
+          assert Rbac.org_owner_ids(@org_id) == []
+        end
+      end)
+
+    assert log =~ "Owner role not found"
   end
 
   defp member(id) do

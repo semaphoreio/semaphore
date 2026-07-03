@@ -1,4 +1,6 @@
 defmodule Guard.Api.Rbac do
+  require Logger
+
   @list_page_size 100
   @owner_role_name "Owner"
 
@@ -29,6 +31,11 @@ defmodule Guard.Api.Rbac do
   def org_owner_ids(org_id) do
     case get_role_id(org_id, @owner_role_name, :SCOPE_ORG) do
       nil ->
+        Logger.warning(
+          "[Guard.Api.Rbac] Owner role not found for org #{org_id}; " <>
+            "returning no owners (org may be ownerless or misconfigured)"
+        )
+
         []
 
       role_id ->
