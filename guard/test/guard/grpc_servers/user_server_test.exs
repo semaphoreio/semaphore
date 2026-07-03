@@ -709,10 +709,44 @@ defmodule Guard.GrpcServers.UserServerTest do
 
           assert %GRPC.RPCError{status: status, message: message} = grpc_error
           assert status == GRPC.Status.failed_precondition()
-          assert message =~ "Acme"
-          assert message =~ "Transfer ownership"
+          assert message =~ "You are the last owner of Acme."
+          assert message =~ "delete it first"
+          refute message =~ "these organizations"
 
           # user must NOT be deleted
+          refute is_nil(FrontRepo.get(FrontRepo.User, user.id))
+        end
+      end
+    end
+
+    test "delete_with_owned_orgs pluralizes the message when blocking multiple orgs", %{
+      grpc_channel: channel
+    } do
+      alias Guard.FrontRepo
+
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user.id)
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      {:ok, other} = Support.Factories.RbacUser.insert()
+
+      org_a = Support.Factories.Organization.insert!(name: "Acme", username: "plural-acme")
+      org_b = Support.Factories.Organization.insert!(name: "Globex", username: "plural-globex")
+
+      request = User.DeleteWithOwnedOrgsRequest.new(user_id: user.id)
+
+      with_mock InternalApi.Projecthub.ProjectService.Stub, list: projecthub_list_mock() do
+        with_mock InternalApi.RBAC.RBAC.Stub,
+          list_accessible_orgs: accessible_orgs_mock([org_a.id, org_b.id]),
+          list_roles: list_roles_mock(),
+          list_members: list_members_mock([user.id, other.id], [user.id]) do
+          {:error, grpc_error} = channel |> Stub.delete_with_owned_orgs(request)
+
+          assert %GRPC.RPCError{status: status, message: message} = grpc_error
+          assert status == GRPC.Status.failed_precondition()
+          assert message =~ "these organizations: Acme, Globex"
+          assert message =~ "delete them first"
+
           refute is_nil(FrontRepo.get(FrontRepo.User, user.id))
         end
       end
