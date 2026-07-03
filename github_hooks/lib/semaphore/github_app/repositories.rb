@@ -12,20 +12,20 @@ module Semaphore::GithubApp
       new(installation.installation_id).refresh
     end
 
-    def self.refresh(installation_id)
-      new(installation_id).refresh
+    def self.refresh(installation_id, sync_collaborators: true)
+      new(installation_id).refresh(:sync_collaborators => sync_collaborators)
     end
 
     def initialize(installation_id)
       @installation_id = installation_id
     end
 
-    def refresh
+    def refresh(sync_collaborators: true)
       return :no_token unless client
       return :low_rate_limit if client.rate_limit_remaining() < App.collaborators_api_rate_limit
 
-      Semaphore::GithubApp::Hook.add_repositories(installation_id, repositories_to_add)
-      Semaphore::GithubApp::Hook.remove_repositories(installation_id, repositories_to_remove)
+      Semaphore::GithubApp::Hook.add_repositories(installation_id, repositories_to_add, :sync_collaborators => sync_collaborators)
+      Semaphore::GithubApp::Hook.remove_repositories(installation_id, repositories_to_remove, :sync_collaborators => sync_collaborators)
 
       :ok
     rescue ActiveRecord::RecordNotFound

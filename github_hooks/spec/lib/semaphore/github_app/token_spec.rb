@@ -40,4 +40,88 @@ RSpec.describe Semaphore::GithubApp::Token do
       end
     end
   end
+
+  describe "#repository_installation_id" do
+    before { allow(described_class).to receive(:generate_jwt).and_return("jwt") }
+
+    it "returns the installation id on success" do
+      allow(Excon).to receive(:get).and_return(
+        instance_double(Excon::Response, :status => 200, :data => { :body => JSON.generate({ "id" => 4242 }) })
+      )
+
+      expect(described_class.repository_installation_id("acme/widget")).to eq(4242)
+      expect(Excon).to have_received(:get).with(
+        "https://api.github.com/repos/acme/widget/installation",
+        :headers => {
+          "User-Agent" => "Awesome-Octocat-App",
+          "Authorization" => "Bearer jwt",
+          "Accept" => "application/vnd.github.v3+json"
+        }
+      )
+    end
+
+    it "returns nil when the app is not installed on the repository" do
+      allow(Excon).to receive(:get).and_return(
+        instance_double(Excon::Response, :status => 404, :data => { :body => "{}" })
+      )
+
+      expect(described_class.repository_installation_id("acme/widget")).to be_nil
+    end
+
+    it "returns nil on a transport error" do
+      allow(Excon).to receive(:get).and_raise(StandardError.new("boom"))
+
+      expect(described_class.repository_installation_id("acme/widget")).to be_nil
+    end
+
+    it "returns nil when a 2xx response carries no id (never 0)" do
+      allow(Excon).to receive(:get).and_return(
+        instance_double(Excon::Response, :status => 200, :data => { :body => "{}" })
+      )
+
+      expect(described_class.repository_installation_id("acme/widget")).to be_nil
+    end
+
+    it "returns nil when a 2xx id is not a positive integer" do
+      allow(Excon).to receive(:get).and_return(
+        instance_double(Excon::Response, :status => 200, :data => { :body => JSON.generate({ "id" => "nan" }) })
+      )
+
+      expect(described_class.repository_installation_id("acme/widget")).to be_nil
+    end
+  end
+
+  describe "#organization_installation_id" do
+    before { allow(described_class).to receive(:generate_jwt).and_return("jwt") }
+
+    it "returns the installation id on success" do
+      allow(Excon).to receive(:get).and_return(
+        instance_double(Excon::Response, :status => 200, :data => { :body => JSON.generate({ "id" => 9090 }) })
+      )
+
+      expect(described_class.organization_installation_id("acme")).to eq(9090)
+      expect(Excon).to have_received(:get).with(
+        "https://api.github.com/orgs/acme/installation",
+        :headers => {
+          "User-Agent" => "Awesome-Octocat-App",
+          "Authorization" => "Bearer jwt",
+          "Accept" => "application/vnd.github.v3+json"
+        }
+      )
+    end
+
+    it "returns nil when the app is not installed on the organization" do
+      allow(Excon).to receive(:get).and_return(
+        instance_double(Excon::Response, :status => 404, :data => { :body => "{}" })
+      )
+
+      expect(described_class.organization_installation_id("acme")).to be_nil
+    end
+
+    it "returns nil on a transport error" do
+      allow(Excon).to receive(:get).and_raise(StandardError.new("boom"))
+
+      expect(described_class.organization_installation_id("acme")).to be_nil
+    end
+  end
 end

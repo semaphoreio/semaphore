@@ -39,6 +39,7 @@ defmodule Front.Mixfile do
       {:poison, "~> 6.0", override: true},
       {:gettext, "~> 0.11"},
       {:grpc, "0.5.0-beta.1", override: true},
+      {:gun, "~> 2.0.0", hex: :grpc_gun, override: true},
       {:cowboy, "~> 2.9.0", override: true},
       {:cowlib, "~> 2.11.0", override: true},
       {:decimal, "~> 3.0", override: true},
