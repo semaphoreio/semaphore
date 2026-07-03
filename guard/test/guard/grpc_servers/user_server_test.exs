@@ -840,9 +840,75 @@ defmodule Guard.GrpcServers.UserServerTest do
         end
       end
     end
+
+    test "delete_with_owned_orgs allows deletion when the only owned org is soft-deleted", %{
+      grpc_channel: channel
+    } do
+      alias Guard.FrontRepo
+
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user.id)
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      org = Support.Factories.Organization.insert!(name: "Gone", username: "soft-del-only")
+      soft_delete!(org)
+
+      request = User.DeleteWithOwnedOrgsRequest.new(user_id: user.id)
+
+      with_mock InternalApi.Projecthub.ProjectService.Stub, list: projecthub_list_mock() do
+        with_mock InternalApi.RBAC.RBAC.Stub,
+          list_accessible_orgs: accessible_orgs_mock([org.id]),
+          list_roles: list_roles_mock(),
+          list_members: list_members_mock([user.id], [user.id]) do
+          {:ok, response} = channel |> Stub.delete_with_owned_orgs(request)
+
+          id = user.id
+          assert %User.User{id: ^id} = response
+          assert is_nil(FrontRepo.get(FrontRepo.User, id))
+        end
+      end
+    end
+
+    test "delete_with_owned_orgs blocks only on the active org, ignoring soft-deleted ones", %{
+      grpc_channel: channel
+    } do
+      alias Guard.FrontRepo
+
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user.id)
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      active = Support.Factories.Organization.insert!(name: "Live", username: "mix-active")
+      gone = Support.Factories.Organization.insert!(name: "Gone", username: "mix-soft")
+      soft_delete!(gone)
+
+      request = User.DeleteWithOwnedOrgsRequest.new(user_id: user.id)
+
+      with_mock InternalApi.Projecthub.ProjectService.Stub, list: projecthub_list_mock() do
+        with_mock InternalApi.RBAC.RBAC.Stub,
+          list_accessible_orgs: accessible_orgs_mock([active.id, gone.id]),
+          list_roles: list_roles_mock(),
+          list_members: list_members_mock([user.id], [user.id]) do
+          {:error, grpc_error} = channel |> Stub.delete_with_owned_orgs(request)
+
+          assert %GRPC.RPCError{status: status, message: message} = grpc_error
+          assert status == GRPC.Status.failed_precondition()
+          assert message =~ "Live"
+          refute message =~ "Gone"
+
+          refute is_nil(FrontRepo.get(FrontRepo.User, user.id))
+        end
+      end
+    end
   end
 
   @owner_role_id "11111111-1111-1111-1111-111111111111"
+
+  defp soft_delete!(org) do
+    org
+    |> Ecto.Changeset.change(deleted_at: DateTime.utc_now() |> DateTime.truncate(:second))
+    |> Guard.FrontRepo.update!()
+  end
 
   defp projecthub_list_mock do
     fn _channel, _req, _opts ->

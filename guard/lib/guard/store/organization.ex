@@ -58,8 +58,20 @@ defmodule Guard.Store.Organization do
   def orgs_blocking_user_deletion(user_id) do
     user_id
     |> Guard.Api.Rbac.list_accessible_org_ids()
-    |> Enum.filter(&blocks_user_deletion?(&1, user_id))
-    |> Enum.map(&{&1, org_name(&1)})
+    |> active_orgs()
+    |> Enum.filter(fn {org_id, _name} -> blocks_user_deletion?(org_id, user_id) end)
+  end
+
+  # Only active orgs can block account deletion: a user may still own soft-deleted
+  # orgs (pending hard-delete, RBAC bindings not yet retracted), and those must not
+  # prevent deletion. list_by_ids/1 already filters out soft-deleted rows and gives
+  # us the names for the message; accessible order is preserved for a stable message.
+  defp active_orgs(org_ids) do
+    names_by_id = org_ids |> list_by_ids() |> Map.new(&{&1.id, &1.name})
+
+    org_ids
+    |> Enum.filter(&Map.has_key?(names_by_id, &1))
+    |> Enum.map(&{&1, names_by_id[&1]})
   end
 
   # Decided from a member count and an owner-only lookup so we never enumerate
@@ -76,13 +88,6 @@ defmodule Guard.Store.Organization do
   defp last_owner?(org_id, user_id) do
     owner_ids = Guard.Api.Rbac.org_owner_ids(org_id)
     user_id in owner_ids and length(owner_ids) == 1
-  end
-
-  defp org_name(org_id) do
-    case get_by_id(org_id) do
-      {:ok, org} -> org.name
-      _ -> org_id
-    end
   end
 
   @doc """
