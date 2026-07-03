@@ -164,7 +164,7 @@ defmodule FrontWeb.PeopleControllerTest do
       assert html_response(conn, 200) =~ "Reset Password"
       assert html_response(conn, 200) =~ "Reset API Token"
       assert html_response(conn, 200) =~ "Danger Zone"
-      assert html_response(conn, 200) =~ "Delete account and owned organizations"
+      assert html_response(conn, 200) =~ "transfer ownership"
     end
 
     test "user on own page when email_members is disabled => hides update email form", %{
@@ -615,6 +615,26 @@ defmodule FrontWeb.PeopleControllerTest do
 
       assert redirected_to(conn) == "/people/#{user.id}"
       assert get_flash(conn, :alert) == "Failed to delete account."
+    end
+
+    test "when backend rejects with a precondition => surfaces the backend message", %{
+      conn: conn,
+      user: user
+    } do
+      message =
+        "You are the last owner of organization(s): Acme. " <>
+          "Transfer ownership or delete the organization first before you can delete your account."
+
+      GrpcMock.stub(UserMock, :delete_with_owned_orgs, fn _req, _ ->
+        raise GRPC.RPCError, status: GRPC.Status.failed_precondition(), message: message
+      end)
+
+      conn =
+        conn
+        |> post("/people/#{user.id}/delete_with_owned_orgs")
+
+      assert redirected_to(conn) == "/people/#{user.id}"
+      assert get_flash(conn, :alert) == message
     end
   end
 

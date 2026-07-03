@@ -321,6 +321,21 @@ defmodule Front.Models.User do
         {:ok, user} ->
           {:ok, construct(user)}
 
+        {:error, %GRPC.RPCError{status: status, message: message} = error} ->
+          if status in [GRPC.Status.failed_precondition(), GRPC.Status.invalid_argument()] do
+            Logger.error(
+              "[User Model] Account deletion rejected for #{inspect(user_id)}: #{message}"
+            )
+
+            {:error, message}
+          else
+            Logger.error(
+              "[User Model] Error while deleting user with owned orgs #{inspect(user_id)}: #{inspect(error)}"
+            )
+
+            {:error, "Failed to delete account."}
+          end
+
         {:error, error} ->
           Logger.error(
             "[User Model] Error while deleting user with owned orgs #{inspect(user_id)}: #{inspect(error)}"

@@ -1,44 +1,65 @@
 defmodule Guard.Api.Rbac do
   @list_page_size 100
+  @owner_role_name "Owner"
 
-  def list_members(org_id, project_id \\ ""), do: do_list_members(org_id, project_id, 1, [])
+  def list_members(org_id, project_id \\ ""), do: do_list_members(org_id, project_id, "", 0, [])
 
-  defp do_list_members(org_id, project_id, page_no, acc) do
-    req = build_list_members_request(org_id, project_id, page_no)
+  @doc """
+  Returns the unique subject ids of the users holding the Owner role in the
+  organization. Owners are fetched with a server-side role filter, so the cost
+  is proportional to the number of owners rather than to the total membership.
+  Returns `[]` when the Owner role cannot be resolved.
+  """
+  def org_owner_ids(org_id) do
+    case get_role_id(org_id, @owner_role_name, :SCOPE_ORG) do
+      nil ->
+        []
 
-    {:ok, response} = InternalApi.RBAC.RBAC.Stub.list_members(channel(), req, timeout: 30_000)
-
-    if response.total_pages > page_no do
-      do_list_members(org_id, project_id, page_no + 1, acc ++ response.members)
-    else
-      acc ++ response.members
+      role_id ->
+        org_id
+        |> do_list_members("", role_id, 0, [])
+        |> Enum.map(& &1.subject.subject_id)
+        |> Enum.uniq()
     end
   end
 
-  def no_of_members(org_id), do: do_no_of_members(org_id, 1, 0)
+  # Pages are 0-indexed: the RBAC backend offsets by `page_no * page_size`, so the
+  # first page is page 0 and we keep fetching while a later page exists.
+  defp do_list_members(org_id, project_id, role_id, page_no, acc) do
+    req = build_list_members_request(org_id, project_id, role_id, page_no)
+
+    {:ok, response} = InternalApi.RBAC.RBAC.Stub.list_members(channel(), req, timeout: 30_000)
+
+    acc = acc ++ response.members
+
+    if page_no + 1 < response.total_pages do
+      do_list_members(org_id, project_id, role_id, page_no + 1, acc)
+    else
+      acc
+    end
+  end
+
+  def no_of_members(org_id), do: do_no_of_members(org_id, 0, 0)
 
   defp do_no_of_members(org_id, page_no, acc) do
-    req = build_list_members_request(org_id, "", page_no)
+    req = build_list_members_request(org_id, "", "", page_no)
 
     {:ok, response} = InternalApi.RBAC.RBAC.Stub.list_members(channel(), req, timeout: 30_000)
-    members_count = Enum.count(response.members)
 
-    # if there is more than one page it is possible to calculate
-    # the total number of members until the last page. Then we
-    # add the number of members from the last page. This will make us not
-    # have to request each page to get the total number of members.
-    if response.total_pages > page_no do
-      members_count = @list_page_size * (response.total_pages - 1)
-      do_no_of_members(org_id, response.total_pages, members_count)
+    acc = acc + Enum.count(response.members)
+
+    if page_no + 1 < response.total_pages do
+      do_no_of_members(org_id, page_no + 1, acc)
     else
-      acc + members_count
+      acc
     end
   end
 
-  defp build_list_members_request(org_id, project_id, page) do
+  defp build_list_members_request(org_id, project_id, role_id, page) do
     InternalApi.RBAC.ListMembersRequest.new(
       org_id: org_id,
       project_id: project_id,
+      member_has_role: role_id,
       member_type: InternalApi.RBAC.SubjectType.value(:USER),
       page:
         InternalApi.RBAC.ListMembersRequest.Page.new(
@@ -54,12 +75,16 @@ defmodule Guard.Api.Rbac do
   end
 
   def user_part_of_org?(user_id, org_id) do
+    Enum.member?(list_accessible_org_ids(user_id), org_id)
+  end
+
+  def list_accessible_org_ids(user_id) do
     req = InternalApi.RBAC.ListAccessibleOrgsRequest.new(user_id: user_id)
 
     {:ok, response} =
       InternalApi.RBAC.RBAC.Stub.list_accessible_orgs(channel(), req, timeout: 30_000)
 
-    Enum.member?(response.org_ids, org_id)
+    response.org_ids
   end
 
   defp get_role_id(org_id, role_name, scope) do
