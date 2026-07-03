@@ -1,17 +1,35 @@
-# Advisories intentionally ignored for the audit service.
-# Everything patchable is fixed by version bumps in mix.exs (cowboy 2.15 /
-# cowlib 2.16 / decimal 3.x). The two below have no safe fix and are not
-# reachable from this service.
-
-# cowlib — cookie request-header injection in cow_cookie:cookie/1.
-# No patched version has been released upstream (affects <= 2.16.1, the latest).
-# audit is an internal gRPC/Plug.Cowboy service that does not build Set-Cookie
-# headers from user input.
+# cowlib 2.16.1 — cookie request-header injection in cow_cookie:cookie/1 (GHSA-g2wm-735q-3f56, low).
+# No upstream patch (2.16.1 is the latest release and is still flagged). ee/audit is an internal gRPC
+# service and does not generate Set-Cookie headers from user input (no cookie usage in lib/); cowlib
+# is pulled in only via cowboy/grpc_gun.
 GHSA-g2wm-735q-3f56
 
-# postgrex — channel-name SQL injection in Postgrex.Notifications.listen/3.
-# audit never calls Postgrex.Notifications (grep `Postgrex.Notifications` in
-# lib/ returns no hits). The fix lands in postgrex 0.22.2, which would force an
-# ecto/ecto_sql major bump (current ecto_sql 3.8 caps postgrex at ~> 0.16) —
-# out of scope for a security patch. Matches zebra's stance.
+# postgrex — channel-name SQL injection in Postgrex.Notifications.listen/3 (GHSA-r73h-97w8-m54h,
+# high). Patched in 0.22.2, but ecto_sql 3.8.1 pins postgrex `~> 0.16.0`, so adopting it forces an
+# out-of-scope ecto/ecto_sql bump. ee/audit never calls Postgrex.Notifications (no hits in lib/).
 GHSA-r73h-97w8-m54h
+
+# decimal — unbounded exponent DoS in Decimal.new (GHSA-rhv4-8758-jx7v, moderate). Patched in 3.0.0,
+# but ecto 3.8.2 / postgrex 0.16.3 pin decimal `< 3.0`, so it cascades an out-of-scope ecto bump.
+# decimal is not called anywhere in lib/ (no Decimal. hits).
+GHSA-rhv4-8758-jx7v
+
+# rabbit_common 3.8.30 — predictable credential-obfuscation seed in the Shovel and Federation
+# plugins (GHSA-v9gv-xp36-jgj8, moderate). Those are RabbitMQ *server* plugins; ee/audit is only an
+# AMQP client (via amqp/amqp_client) and does not run Shovel/Federation, so the affected code path is
+# not present. A fix would require an amqp_client/rabbit_common move gated by amqp `~> 1.3`.
+GHSA-v9gv-xp36-jgj8
+
+# --- hackney advisories first patched in hackney 4.0.1 ---
+# hackney is bumped to `~> 1.24` in mix.exs (clears the older pool-leak GHSA-9fm9 + SSRF GHSA-vq52);
+# 4.0.1 is a major bump blocked by sentry (`hackney ~> 1.8`). Not reachable: hackney is used only by
+# sentry for outbound error reporting to the fixed Sentry DSN — no user-controlled host/domain/path/
+# query is fed to hackney (no direct HTTPoison/hackney calls in lib/).
+#   GHSA-gp9c-pm5m-5cxr — ssl:connect/2 post-handshake upgrade has no timeout
+#   GHSA-j9wq-vxxc-94wf — CR/LF injection in query parameter
+#   GHSA-mp55-p8c9-rfw2 — CRLF/header injection via unvalidated domain/path options
+#   GHSA-pj7v-xfvx-wmjq — SSRF allowlist bypass via percent-encoded host
+GHSA-gp9c-pm5m-5cxr
+GHSA-j9wq-vxxc-94wf
+GHSA-mp55-p8c9-rfw2
+GHSA-pj7v-xfvx-wmjq

@@ -32,6 +32,9 @@ defmodule Audit.MixProject do
   defp deps do
     [
       {:grpc, "0.5.0-beta.1", override: true},
+      {:cowlib, "~> 2.16.1", override: true},
+      {:cowboy, "~> 2.15.0", override: true},
+      {:ranch, "~> 1.8", override: true},
       {:amqp, "~> 1.3", override: true},
       {:grpc_mock, github: "renderedtext/grpc-mock", only: [:dev, :test]},
       {:protobuf, "~> 0.7.1"},
@@ -46,7 +49,7 @@ defmodule Audit.MixProject do
       {:cowlib, "~> 2.16", override: true},
       {:ranch, "~> 1.8", override: true},
       {:sentry, "~> 8.0"},
-      {:hackney, "~> 1.8"},
+      {:hackney, "~> 1.24"},
       {:sentry_grpc, github: "renderedtext/sentry_grpc"},
       {:util, github: "renderedtext/elixir-util"},
       {:grpc_health_check, github: "renderedtext/grpc_health_check", branch: "protobuf_0.7.1"},
