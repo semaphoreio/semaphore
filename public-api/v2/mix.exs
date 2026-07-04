@@ -42,6 +42,8 @@ defmodule PublicAPI.Mixfile do
     [
       {:grpc, "~> 0.3"},
       {:protobuf, "~> 0.12.0"},
+      {:cowlib, "~> 2.16", override: true},
+      {:plug, "~> 1.16.3", override: true},
       {:plug_cowboy, "~> 2.0"},
       {:cors_plug, "~> 3.0"},
       {:httpoison, "~> 2.2.0"},
@@ -51,7 +53,7 @@ defmodule PublicAPI.Mixfile do
       {:tesla, "~> 1.4", only: [:dev, :test], runtime: false},
       {:hackney, "~> 1.17"},
       {:jason, ">= 1.0.0"},
-      {:watchman, github: "renderedtext/ex-watchman"},
+      {:watchman, github: "renderedtext/ex-watchman", ref: "1ff788c782352758d644d4e921aa4423d360a64a", override: true},
       {:scrivener_headers, "~> 3.1"},
       {:scrivener, "~> 2.3"},
       {:util, github: "renderedtext/elixir-util"},

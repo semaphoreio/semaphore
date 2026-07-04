@@ -24,13 +24,15 @@ defmodule HooksProcessor.MixProject do
 
   defp deps do
     [
+      {:cowlib, "~> 2.16", override: true},
+      {:plug, "~> 1.16.3", override: true},
       {:plug_cowboy, "~> 2.0"},
       {:httpoison, "~> 2.0"},
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
       {:log_tee, github: "renderedtext/log-tee"},
       {:amqp_client, "~> 3.11.18"},
       {:tackle, github: "renderedtext/ex-tackle", tag: "v0.3.0"},
-      {:util, github: "renderedtext/elixir-util"},
+      {:util, github: "renderedtext/elixir-util", ref: "7104e9565ff0067970bd2cead9a7bd99955421ed"},
       {:watchman, github: "renderedtext/ex-watchman", tag: "v0.3.0", override: true},
       {:grpc_mock, github: "renderedtext/grpc-mock", branch: "grpc08", only: [:dev, :test]},
       {:grpc, "~> 0.9.0"},
