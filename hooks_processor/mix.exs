@@ -32,7 +32,7 @@ defmodule HooksProcessor.MixProject do
       {:log_tee, github: "renderedtext/log-tee"},
       {:amqp_client, "~> 3.11.18"},
       {:tackle, github: "renderedtext/ex-tackle", tag: "v0.3.0"},
-      {:util, github: "renderedtext/elixir-util"},
+      {:util, github: "renderedtext/elixir-util", ref: "7104e9565ff0067970bd2cead9a7bd99955421ed"},
       {:watchman, github: "renderedtext/ex-watchman", tag: "v0.3.0", override: true},
       {:grpc_mock, github: "renderedtext/grpc-mock", branch: "grpc08", only: [:dev, :test]},
       {:grpc, "~> 0.9.0"},

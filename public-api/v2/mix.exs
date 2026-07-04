@@ -53,7 +53,7 @@ defmodule PublicAPI.Mixfile do
       {:tesla, "~> 1.4", only: [:dev, :test], runtime: false},
       {:hackney, "~> 1.17"},
       {:jason, ">= 1.0.0"},
-      {:watchman, github: "renderedtext/ex-watchman"},
+      {:watchman, github: "renderedtext/ex-watchman", ref: "1ff788c782352758d644d4e921aa4423d360a64a", override: true},
       {:scrivener_headers, "~> 3.1"},
       {:scrivener, "~> 2.3"},
       {:util, github: "renderedtext/elixir-util"},

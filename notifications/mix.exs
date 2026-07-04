@@ -40,7 +40,7 @@ defmodule Notifications.Mixfile do
       {:mock, "~> 0.3.0", only: [:dev, :test]},
       {:paginator, "~> 1.0"},
       {:tackle, github: "renderedtext/ex-tackle"},
-      {:util, github: "renderedtext/elixir-util", branch: "rw/string_enums"},
+      {:util, github: "renderedtext/elixir-util", ref: "7104e9565ff0067970bd2cead9a7bd99955421ed"},
       {:sentry, "~> 8.0"},
       {:hackney, "~> 1.8"},
       {:sentry_grpc, github: "renderedtext/sentry_grpc"},

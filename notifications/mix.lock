@@ -7,7 +7,7 @@
   "combine": {:hex, :combine, "0.10.0", "eff8224eeb56498a2af13011d142c5e7997a80c8f5b97c499f84c841032e429f", [:mix], [], "hexpm", "1b1dbc1790073076580d0d1d64e42eae2366583e7aecd455d1215b0d16f2451b"},
   "connection": {:hex, :connection, "1.1.0", "ff2a49c4b75b6fb3e674bfc5536451607270aac754ffd1bdfe175abe4a6d7a68", [:mix], [], "hexpm", "722c1eb0a418fbe91ba7bd59a47e28008a189d47e37e0e7bb85585a016b2869c"},
   "cowboy": {:hex, :cowboy, "2.7.0", "91ed100138a764355f43316b1d23d7ff6bdb0de4ea618cb5d8677c93a7a2f115", [:rebar3], [{:cowlib, "~> 2.8.0", [hex: :cowlib, repo: "hexpm", optional: false]}, {:ranch, "~> 1.7.1", [hex: :ranch, repo: "hexpm", optional: false]}], "hexpm", "04fd8c6a39edc6aaa9c26123009200fc61f92a3a94f3178c527b70b767c6e605"},
-  "cowlib": {:hex, :cowlib, "2.16.1", "318d385d55f657e9a5005838c4e426e13dcd724a691438384b6165a69687e531", [:make, :rebar3], [], "hexpm", "c4f89d33a61162d4cfdcb5a1af7e562d80a700b2573cc71020ce6521b152dc1a"},
+  "cowlib": {:hex, :cowlib, "2.16.1", "318d385d55f657e9a5005838c4e426e13dcd724a691438384b6165a69687e531", [:make, :rebar3], [], "hexpm", "58f1e425a9e04176f1d30e20116f57c4e90ef0e187552e9741c465bdf4044f70"},
   "credentials_obfuscation": {:hex, :credentials_obfuscation, "3.1.0", "2c405ea0c5db7b3344aa5a99f86c33e7b6ecea97d2cb613371e1cf0d192ef2c6", [:rebar3], [], "hexpm", "04884e62b1c6cdfba999d4d6b3e99bc0a59d5e439517bc5c01767255afb7b778"},
   "credo": {:hex, :credo, "1.7.10", "6e64fe59be8da5e30a1b96273b247b5cf1cc9e336b5fd66302a64b25749ad44d", [:mix], [{:bunt, "~> 0.2.1 or ~> 1.0", [hex: :bunt, repo: "hexpm", optional: false]}, {:file_system, "~> 0.2 or ~> 1.0", [hex: :file_system, repo: "hexpm", optional: false]}, {:jason, "~> 1.0", [hex: :jason, repo: "hexpm", optional: false]}], "hexpm", "71fbc9a6b8be21d993deca85bf151df023a3097b01e09a2809d460348561d8cd"},
   "db_connection": {:hex, :db_connection, "2.4.2", "f92e79aff2375299a16bcb069a14ee8615c3414863a6fef93156aee8e86c2ff3", [:mix], [{:connection, "~> 1.0", [hex: :connection, repo: "hexpm", optional: false]}, {:telemetry, "~> 0.4 or ~> 1.0", [hex: :telemetry, repo: "hexpm", optional: false]}], "hexpm", "4fe53ca91b99f55ea249693a0229356a08f4d1a7931d8ffa79289b145fe83668"},
@@ -54,7 +54,7 @@
   "tzdata": {:hex, :tzdata, "1.1.1", "20c8043476dfda8504952d00adac41c6eda23912278add38edc140ae0c5bcc46", [:mix], [{:hackney, "~> 1.17", [hex: :hackney, repo: "hexpm", optional: false]}], "hexpm", "a69cec8352eafcd2e198dea28a34113b60fdc6cb57eb5ad65c10292a6ba89787"},
   "unicode_util_compat": {:hex, :unicode_util_compat, "0.7.0", "bc84380c9ab48177092f43ac89e4dfa2c6d62b40b8bd132b1059ecc7232f9a78", [:rebar3], [], "hexpm", "25eee6d67df61960cf6a794239566599b09e17e668d3700247bc498638152521"},
   "unsafe": {:hex, :unsafe, "1.0.1", "a27e1874f72ee49312e0a9ec2e0b27924214a05e3ddac90e91727bc76f8613d8", [:mix], [], "hexpm", "6c7729a2d214806450d29766abc2afaa7a2cbecf415be64f36a6691afebb50e5"},
-  "util": {:git, "https://github.com/renderedtext/elixir-util.git", "d45b317c405e38229187e07e19532e726bd7c095", [branch: "rw/string_enums"]},
+  "util": {:git, "https://github.com/renderedtext/elixir-util.git", "d45b317c405e38229187e07e19532e726bd7c095", [ref: "7104e9565ff0067970bd2cead9a7bd99955421ed"]},
   "watchman": {:git, "https://github.com/renderedtext/ex-watchman.git", "9aa8f89488353300219945a3a8f1695adbd7be4a", []},
   "wormhole": {:hex, :wormhole, "2.3.0", "5539d538b87fd70fd2b9cd95b8ce8b272c38aa4adf18690cbe8d1736c56054b6", [:mix], [], "hexpm", "5a82445fe84193adafe64eb2c144d703b93d3ddac8aa7e1b0ab0ce3968b22440"},
 }
