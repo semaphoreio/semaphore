@@ -35,7 +35,7 @@ defmodule Secrethub.Mixfile do
       {:grpc_health_check, github: "renderedtext/grpc_health_check", branch: "protobuf_0.7.1"},
       {:protobuf, "~> 0.7.1"},
       {:cowboy, "~> 2.9.0", override: true},
-      {:cowlib, "~> 2.11.0", override: true},
+      {:cowlib, "~> 2.16", override: true},
       {:watchman, github: "renderedtext/ex-watchman"},
       {:timex, "~> 3.1"},
       {:cachex, "~> 3.0"},
