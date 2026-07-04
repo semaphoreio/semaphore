@@ -29,7 +29,7 @@ defmodule Secrethub.Mixfile do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:plug, "~> 1.13.6"},
+      {:plug, "~> 1.15.4", override: true},
       {:plug_cowboy, "~> 2.5"},
       {:grpc, "0.5.0-beta.1", override: true},
       {:grpc_health_check, github: "renderedtext/grpc_health_check", branch: "protobuf_0.7.1"},
