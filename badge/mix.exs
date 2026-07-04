@@ -33,7 +33,7 @@ defmodule Badges.MixProject do
       {:cowlib, "~> 2.16", override: true},
       {:grpc, "~> 0.3.1"},
       {:grpc_mock, github: "renderedtext/grpc-mock", only: [:dev, :test]},
-      {:watchman, github: "renderedtext/ex-watchman"},
+      {:watchman, path: "../watchman"},
       {:cachex, "~> 3.2"},
       {:sentry, "~> 7.0"},
       {:jason, "~> 1.1"},
