@@ -27,11 +27,13 @@ defmodule Badges.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:plug, "~> 1.8.3"},
-      {:plug_cowboy, "~> 2.0"},
+      {:plug, "~> 1.15.4", override: true},
+      {:plug_cowboy, "~> 2.5"},
+      {:cowboy, "~> 2.9.0", override: true},
+      {:cowlib, "~> 2.16", override: true},
       {:grpc, "~> 0.3.1"},
       {:grpc_mock, github: "renderedtext/grpc-mock", only: [:dev, :test]},
-      {:watchman, github: "renderedtext/ex-watchman"},
+      {:watchman, path: "../watchman"},
       {:cachex, "~> 3.2"},
       {:sentry, "~> 7.0"},
       {:jason, "~> 1.1"},
