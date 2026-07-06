@@ -75,7 +75,7 @@ module Semaphore::GithubApp
       if App.use_github_app_to_check_permissions
         targeted_with_app_token(user, slug)
       else
-        targeted_with_oauth_token(user, slug, no_access)
+        targeted_with_oauth_fallback(user, slug, no_access)
       end
     end
 
@@ -133,32 +133,32 @@ module Semaphore::GithubApp
     end
     private_class_method :user_collaborates_in?
 
-    # Authorize on push to THIS repo: the caller's own OAuth token first, then
-    # the GitHub App — but only for callers already cached as collaborators in
-    # the slug owner's installation, so unproven probes never spend
-    # installation tokens or persist installation rows.
-    def self.targeted_with_oauth_token(user, slug, no_access)
-      if user_has_github_push?(user, slug)
-        # A cached repo definitely covers the slug; otherwise ask GitHub which
-        # installation owns it (app JWT). Never reuse another cached org
-        # installation — on a selected-repos app it may not cover the slug and
-        # the worker would 404 silently.
-        installation = GithubAppInstallation.find_for_repository(slug) ||
-                       discover_installation(slug)
-        return no_access unless installation
+    # App-first: a locally cached installation for the slug or its owner lets
+    # the App token settle the push check with no OAuth call. Only when
+    # nothing local resolves the installation does the caller's OAuth token
+    # authorize (push to THIS repo), with app-JWT discovery resolving the
+    # installation afterwards.
+    def self.targeted_with_oauth_fallback(user, slug, no_access)
+      installation = GithubAppInstallation.find_for_repository(slug) ||
+                     GithubAppInstallation.find_for_organization(slug.split("/").first)
+      if installation
+        account = github_account(user)
+        return cannot_verify_access(slug) unless account && app_confirms_push?(installation, slug, account)
 
         return start_targeted_refresh(installation, slug)
       end
 
-      # The fallback's permission check already proved this installation covers
-      # the slug — reuse it; re-discovery could transiently fail and falsely
-      # deny access just proven.
-      installation = app_granted_installation(user, slug)
-      return cannot_verify_access(slug) unless installation
+      return cannot_verify_access(slug) unless user_has_github_push?(user, slug)
+
+      # Ask GitHub which installation owns THIS repo (app JWT); nil when the
+      # app has no access. Runs only after authorization, so we never persist
+      # installations the caller cannot reach.
+      installation = discover_installation(slug)
+      return no_access unless installation
 
       start_targeted_refresh(installation, slug)
     end
-    private_class_method :targeted_with_oauth_token
+    private_class_method :targeted_with_oauth_fallback
 
     # USE_GITHUB_APP_TO_CHECK_PERMISSIONS path: the App token is the only
     # authority on push. Resolving the installation first persists a row
@@ -176,22 +176,6 @@ module Semaphore::GithubApp
       start_targeted_refresh(installation, slug)
     end
     private_class_method :targeted_with_app_token
-
-    # DB precondition, no GitHub calls: the caller must already hold a
-    # collaborator row in the slug owner's installation (one installation per
-    # account; cached only, no discovery). Returns the installation whose
-    # token confirmed push, nil when access could not be proven.
-    def self.app_granted_installation(user, slug)
-      account = github_account(user)
-      return unless account
-
-      installation = GithubAppInstallation.find_for_organization(slug.split("/").first)
-      return unless installation
-      return unless user_collaborates_in?(account.github_uid, installation)
-
-      installation if app_confirms_push?(installation, slug, account)
-    end
-    private_class_method :app_granted_installation
 
     # Push check with the App's installation token. The reported user must
     # match the stored uid so a stale or reassigned login can't inherit
@@ -226,15 +210,14 @@ module Semaphore::GithubApp
     end
     private_class_method :github_account
 
-    # One message for every caller-access denial (precondition miss, missing
-    # token, uid mismatch, non-push permission, GitHub errors), so the reply
-    # cannot be used to probe which failure occurred.
+    # One message for every caller-access denial (missing account or token,
+    # uid mismatch, non-push permission, GitHub errors), so the reply cannot
+    # be used to probe which failure occurred.
     def self.cannot_verify_access(slug)
-      owner = slug.split("/").first
       Result.new(
         :failed,
-        "Couldn't determine your access to #{slug}. You need to already be recognized as " \
-        "a collaborator on one of #{owner}'s repositories to refresh it."
+        "Couldn't determine your access to #{slug}. Make sure the GitHub App has access " \
+        "to it and that you have push permission on the repository."
       )
     end
     private_class_method :cannot_verify_access
