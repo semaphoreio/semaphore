@@ -133,21 +133,16 @@ module Semaphore::GithubApp
     end
     private_class_method :user_collaborates_in?
 
-    # Authorize on push to THIS repo, proven by the caller's own OAuth token.
-    # When that token cannot prove push (no repo scope 404s private repos,
-    # revoked token), fall back to the GitHub App — but only for callers our
-    # cache already recognizes as a collaborator in the slug owner's
-    # installation, so arbitrary probes never spend installation tokens and no
-    # installation row is persisted for an unproven caller.
+    # Authorize on push to THIS repo: the caller's own OAuth token first, then
+    # the GitHub App — but only for callers already cached as collaborators in
+    # the slug owner's installation, so unproven probes never spend
+    # installation tokens or persist installation rows.
     def self.targeted_with_oauth_token(user, slug, no_access)
       if user_has_github_push?(user, slug)
-        # Resolve the installation: a cached repo (which definitely covers the
-        # slug), else ask GitHub which installation owns THIS repo (app JWT). We
-        # must not reuse another cached org installation — on a selected-repos
-        # app it may not cover this repo, and the worker would 404 silently.
-        # discover_installation 404s -> nil when the app has no access, so that
-        # path returns no_access. Runs only after authorization, so we never
-        # persist installations the caller cannot reach.
+        # A cached repo definitely covers the slug; otherwise ask GitHub which
+        # installation owns it (app JWT). Never reuse another cached org
+        # installation — on a selected-repos app it may not cover the slug and
+        # the worker would 404 silently.
         installation = GithubAppInstallation.find_for_repository(slug) ||
                        discover_installation(slug)
         return no_access unless installation
@@ -155,10 +150,9 @@ module Semaphore::GithubApp
         return start_targeted_refresh(installation, slug)
       end
 
-      # The fallback's successful permission check already proved this exact
-      # installation covers the slug (its scoped token would have 404d
-      # otherwise), so reuse it — a redundant re-discovery could transiently
-      # fail and falsely deny access proven a moment earlier.
+      # The fallback's permission check already proved this installation covers
+      # the slug — reuse it; re-discovery could transiently fail and falsely
+      # deny access just proven.
       installation = app_granted_installation(user, slug)
       return cannot_verify_access(slug) unless installation
 
