@@ -194,6 +194,12 @@ module RepoHost::Github
       handle_octokit_exceptions(exception)
     end
 
+    def permission_level(repo, username)
+      user_client.permission_level(repo, username)
+    rescue *GITHUB_EXCEPTION => exception
+      handle_octokit_exceptions(exception)
+    end
+
     def user_teams
       user_client.user_teams
     rescue *GITHUB_EXCEPTION => exception

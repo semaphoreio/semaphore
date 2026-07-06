@@ -97,6 +97,11 @@ spec:
               value: {{ .Values.global.statsd.metricsNamespace }}
 {{- end }}
 
+{{- if .Values.repoProxyApi.useGithubAppToCheckPermissions }}
+            - name: USE_GITHUB_APP_TO_CHECK_PERMISSIONS
+              value: "true"
+{{- end }}
+
 {{- if .Values.repoProxyApi.resources }}
           resources:
 {{ toYaml .Values.repoProxyApi.resources | indent 12 }}
