@@ -194,9 +194,9 @@ module Semaphore::GithubApp
       let(:github_uid) { user.github_repo_host_account.github_uid }
 
       # An installation-level collaborator row on a repo OTHER than the one
-      # under test. Rows never gate a targeted refresh — the App reports the
-      # caller's real per-repo permission — so this proves their presence
-      # changes nothing.
+      # under test. A row unlocks the App-token per-repo check (skipping
+      # OAuth) but never grants access by itself — the App reports the
+      # caller's real permission.
       def authorize(user_uid, installation_record, repo: "semaphoreio/semaphore")
         GithubAppCollaborator.create!(
           :c_id => user_uid,
@@ -249,8 +249,9 @@ module Semaphore::GithubApp
         end
       end
 
-      # A cached installation covers the slug's owner, so the App token settles
-      # the permission check directly — the caller's own OAuth token is never
+      # A cached installation covers the slug's owner and the caller holds a
+      # collaborator row in it (outer before), so the App token settles the
+      # permission check directly — the caller's own OAuth token is never
       # used on this path.
       context "when a cached installation covers the owner" do
         before do
@@ -384,15 +385,31 @@ module Semaphore::GithubApp
           expect(result.message).to match(/Couldn't determine your access/)
         end
 
-        # Probes by callers with no relationship to the owner spend one App
-        # call and get the same opaque denial as a missing repository, so the
-        # endpoint still cannot be used to enumerate repositories.
-        it "refuses an outsider with the same message as a missing repository" do
+        # A caller with no collaborator row is authorized by their own OAuth
+        # token instead; the cached installation is still reused for the fetch.
+        it "authorizes a rowless caller via OAuth and reuses the cached installation" do
+          rowless = FactoryBot.create(:user, :github_connection)
+          allow_any_instance_of(RepoHost::Github::Client).to receive(:repository)
+            .with("renderedtext/guard").and_return(repo_with_push(true))
+          expect_any_instance_of(RepoHost::Github::Client).not_to receive(:permission_level)
+          expect(Semaphore::GithubApp::Token).not_to receive(:repository_installation_id)
+
+          result = described_class.targeted(rowless.id, "renderedtext/guard")
+
+          expect(result.state).to eq(:started)
+          expect(described_class::Worker.jobs.map { |job| job["args"] })
+            .to eq([[installation.installation_id, "renderedtext/guard"]])
+        end
+
+        # Rowless probes never spend an App token and get the same opaque
+        # denial as a missing repository, so the endpoint still cannot be
+        # used to enumerate repositories.
+        it "refuses an outsider without App calls and with the same message as a missing repository" do
           outsider = FactoryBot.create(:user, :github_connection)
-          allow_any_instance_of(RepoHost::Github::Client).to receive(:permission_level)
-            .and_raise(RepoHost::RemoteException::NotFound)
           allow_any_instance_of(RepoHost::Github::Client).to receive(:repository)
             .and_raise(RepoHost::RemoteException::NotFound)
+          expect_any_instance_of(RepoHost::Github::Client).not_to receive(:permission_level)
+          expect(Semaphore::GithubApp::Token).not_to receive(:installation_token)
 
           covered = described_class.targeted(outsider.id, "renderedtext/guard")
           missing = described_class.targeted(outsider.id, "ghost-owner/ghost-repo")

@@ -125,35 +125,36 @@ module Semaphore::GithubApp
     end
     private_class_method :listed_for?
 
-    # Installation-scoped: authorizes full / per-organization refresh only (whole-
-    # installation re-sync, returns no per-repo data). Targeted per-repo refresh
-    # does NOT use this — it requires push to the named repo.
+    # Installation-scoped: authorizes full / per-organization refresh, and in
+    # the targeted flow only unlocks the App-token per-repo check — it never
+    # grants per-repo access by itself.
     def self.user_collaborates_in?(github_uid, installation)
       GithubAppCollaborator.exists?(:c_id => github_uid, :installation_id => installation.installation_id)
     end
     private_class_method :user_collaborates_in?
 
-    # App-first: a locally cached installation for the slug or its owner lets
-    # the App token settle the push check with no OAuth call. Only when
-    # nothing local resolves the installation does the caller's OAuth token
-    # authorize (push to THIS repo), with app-JWT discovery resolving the
-    # installation afterwards.
+    # App-first for callers we already know: a cached installation covering
+    # the slug's owner plus the caller's own collaborator row in it lets the
+    # App token settle the push check with no OAuth call. Everyone else is
+    # authorized by their OAuth token (push to THIS repo) before any App
+    # token is spent.
     def self.targeted_with_oauth_fallback(user, slug, no_access)
-      installation = GithubAppInstallation.find_for_repository(slug) ||
-                     GithubAppInstallation.find_for_organization(slug.split("/").first)
-      if installation
-        account = github_account(user)
-        return cannot_verify_access(slug) unless account && app_confirms_push?(installation, slug, account)
+      account = github_account(user)
+      cached = GithubAppInstallation.find_for_repository(slug)
+      installation = cached || GithubAppInstallation.find_for_organization(slug.split("/").first)
+
+      if installation && account && user_collaborates_in?(account.github_uid, installation)
+        return cannot_verify_access(slug) unless app_confirms_push?(installation, slug, account)
 
         return start_targeted_refresh(installation, slug)
       end
 
       return cannot_verify_access(slug) unless user_has_github_push?(user, slug)
 
-      # Ask GitHub which installation owns THIS repo (app JWT); nil when the
-      # app has no access. Runs only after authorization, so we never persist
-      # installations the caller cannot reach.
-      installation = discover_installation(slug)
+      # A cached repo definitely covers the slug; otherwise ask GitHub which
+      # installation owns it (app JWT). Runs only after authorization, so we
+      # never persist installations the caller cannot reach.
+      installation = cached || discover_installation(slug)
       return no_access unless installation
 
       start_targeted_refresh(installation, slug)
