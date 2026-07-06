@@ -533,6 +533,19 @@ module Semaphore::GithubApp
           expect(result.state).to eq(:started)
         end
 
+        it "reuses the proven installation for an uncached repository without re-discovery" do
+          allow_any_instance_of(RepoHost::Github::Client).to receive(:permission_level)
+            .with("renderedtext/uncached-repo", user.github_repo_host_account.login)
+            .and_return(permission_response("write", github_uid))
+          expect(Semaphore::GithubApp::Token).not_to receive(:repository_installation_id)
+
+          result = described_class.targeted(user.id, "renderedtext/uncached-repo")
+
+          expect(result.state).to eq(:started)
+          expect(described_class::Worker.jobs.map { |job| job["args"] })
+            .to eq([[installation.installation_id, "renderedtext/uncached-repo"]])
+        end
+
         it "does not consult the app when the caller's own token proves push" do
           allow_any_instance_of(RepoHost::Github::Client).to receive(:repository)
             .and_return(repo_with_push(true))

@@ -140,18 +140,27 @@ module Semaphore::GithubApp
     # installation, so arbitrary probes never spend installation tokens and no
     # installation row is persisted for an unproven caller.
     def self.targeted_with_oauth_token(user, slug, no_access)
-      return cannot_verify_access(slug) unless user_has_github_push?(user, slug) || app_grants_push?(user, slug)
+      if user_has_github_push?(user, slug)
+        # Resolve the installation: a cached repo (which definitely covers the
+        # slug), else ask GitHub which installation owns THIS repo (app JWT). We
+        # must not reuse another cached org installation — on a selected-repos
+        # app it may not cover this repo, and the worker would 404 silently.
+        # discover_installation 404s -> nil when the app has no access, so that
+        # path returns no_access. Runs only after authorization, so we never
+        # persist installations the caller cannot reach.
+        installation = GithubAppInstallation.find_for_repository(slug) ||
+                       discover_installation(slug)
+        return no_access unless installation
 
-      # Resolve the installation: a cached repo (which definitely covers the slug),
-      # else ask GitHub which installation owns THIS repo (app JWT). We must not
-      # reuse another cached org installation — on a selected-repos app it may not
-      # cover this repo, and the worker would 404 silently. discover_installation
-      # 404s -> nil when the app has no access, so that path returns no_access.
-      # Runs only after authorization, so we never persist installations the
-      # caller cannot reach.
-      installation = GithubAppInstallation.find_for_repository(slug) ||
-                     discover_installation(slug)
-      return no_access unless installation
+        return start_targeted_refresh(installation, slug)
+      end
+
+      # The fallback's successful permission check already proved this exact
+      # installation covers the slug (its scoped token would have 404d
+      # otherwise), so reuse it — a redundant re-discovery could transiently
+      # fail and falsely deny access proven a moment earlier.
+      installation = app_granted_installation(user, slug)
+      return cannot_verify_access(slug) unless installation
 
       start_targeted_refresh(installation, slug)
     end
@@ -183,18 +192,19 @@ module Semaphore::GithubApp
     # equals owner scope — a GitHub App has at most one installation per
     # account; a stale transferred slug can at worst match an installation
     # whose token then 404s the permission check, failing closed. Cached
-    # installations only — no discovery here.
-    def self.app_grants_push?(user, slug)
+    # installations only — no discovery here. Returns the installation whose
+    # token confirmed push, nil when access could not be proven.
+    def self.app_granted_installation(user, slug)
       account = github_account(user)
-      return false unless account
+      return unless account
 
       installation = GithubAppInstallation.find_for_organization(slug.split("/").first)
-      return false unless installation
-      return false unless user_collaborates_in?(account.github_uid, installation)
+      return unless installation
+      return unless user_collaborates_in?(account.github_uid, installation)
 
-      app_confirms_push?(installation, slug, account)
+      installation if app_confirms_push?(installation, slug, account)
     end
-    private_class_method :app_grants_push?
+    private_class_method :app_granted_installation
 
     # Push check with the App's installation token instead of the caller's
     # OAuth token. The reported GitHub user must match the account by uid — a
