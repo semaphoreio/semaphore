@@ -1,0 +1,14 @@
+# --- hackney 1.25.0 advisories, all fixed only in 4.0.1 ---
+# Bump to 4.x is a breaking API rewrite (hackney is a direct dep here); tracked for the
+# fleet-wide hackney/httpoison migration. Same suppressions and reasoning as guard/.mix-audit.txt.
+#
+# ssl:connect/2 post-handshake upgrade has no timeout (operational DoS; outbound bounded)
+GHSA-gp9c-pm5m-5cxr
+# CR/LF injection in query parameter (no user-controlled data fed to hackney query params from lib/)
+GHSA-j9wq-vxxc-94wf
+# SSRF allowlist bypass in hackney_url:normalize/2 via percent-encoded host (no user-controlled URL
+# fed to hackney from lib/)
+GHSA-pj7v-xfvx-wmjq
+# CRLF / header injection via unvalidated `domain` and `path` options (no user-controlled domain/path
+# fed to hackney from lib/)
+GHSA-mp55-p8c9-rfw2
