@@ -36,11 +36,31 @@ defmodule PipelinesAPI.Members.Create do
   def create_member(conn, _opts) do
     Metrics.benchmark("PipelinesAPI.router", ["members_create"], fn ->
       conn.params
-      |> GuardClient.invite_collaborators(conn)
-      |> assign_role_and_build(conn)
+      |> validate_provider()
+      |> invite_and_build(conn)
       |> tap(fn result -> audit_event(result, conn) end)
       |> RespCommon.respond(conn)
     end)
+  end
+
+  # Reject an unknown provider up front with a 400 instead of letting it degrade
+  # to a pending role after a real invite side effect.
+  defp validate_provider(params) do
+    provider = params["provider"] |> to_string() |> String.downcase()
+
+    if Map.has_key?(@provider_types, provider) do
+      {:ok, params}
+    else
+      {:error, {:user, "provider must be one of: github, bitbucket, gitlab"}}
+    end
+  end
+
+  defp invite_and_build(error = {:error, _}, _conn), do: error
+
+  defp invite_and_build({:ok, params}, conn) do
+    params
+    |> GuardClient.invite_collaborators(conn)
+    |> assign_role_and_build(conn)
   end
 
   # Invite failed -> map the gRPC error through the standard error path.
@@ -95,8 +115,15 @@ defmodule PipelinesAPI.Members.Create do
            role: role_status(role_id, true)
          }}
 
-      error ->
-        error
+      # The invite already added the person as a Member; the role upgrade just
+      # could not be applied (e.g. the requester cannot grant it). Respond
+      # success with the role marked denied so it reflects the real state.
+      _error ->
+        {:ok,
+         %{
+           member: Map.put(member, :user_id, user_id),
+           role: role_status(role_id, :denied)
+         }}
     end
   end
 
@@ -106,6 +133,9 @@ defmodule PipelinesAPI.Members.Create do
   defp role_status(role_id, true), do: %{role_id: role_id, applied: true, status: "assigned"}
 
   defp role_status(role_id, false), do: %{role_id: role_id, applied: false, status: "pending"}
+
+  defp role_status(role_id, :denied),
+    do: %{role_id: role_id, applied: false, status: "denied"}
 
   defp audit_event({:ok, %{member: member}}, conn) do
     conn

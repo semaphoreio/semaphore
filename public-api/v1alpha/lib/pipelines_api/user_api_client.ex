@@ -91,7 +91,7 @@ defmodule PipelinesAPI.UserApiClient do
              ok_tuple: true
            ) do
         {:ok, result} ->
-          {:ok, Proto.to_map(result)}
+          Proto.to_map(result)
 
         {:error, {:error, %{status: @not_found_grpc_status_code}}} ->
           {:error, :not_found}
