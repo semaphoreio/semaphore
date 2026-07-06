@@ -198,8 +198,10 @@ module Semaphore::GithubApp
     # stale or reassigned login must not inherit someone else's permission.
     # GitHub folds fine-grained roles into the legacy permission field
     # (maintain -> write, triage -> read), so admin/write is exactly "can
-    # push". Fails closed on any GitHub error (404 = repo not covered by the
-    # installation, rate limit, 5xx).
+    # push". Fails closed on any GitHub error: HTTP failures (404 = repo not
+    # covered by the installation, rate limit, 5xx) arrive as RemoteException,
+    # while transport failures leak through as Faraday errors from the
+    # permission call and Excon errors from the token mint.
     def self.app_confirms_push?(installation, slug, account)
       token, _expires_at = Token.installation_token(installation.installation_id)
       return false unless token
@@ -210,7 +212,7 @@ module Semaphore::GithubApp
       granted = %w[admin write].include?(response.permission.to_s)
       Rails.logger.info("[RepositoryRefresh] App-token permission for '#{slug}': #{response.permission}")
       granted
-    rescue RepoHost::RemoteException => e
+    rescue RepoHost::RemoteException, Faraday::Error, Excon::Error => e
       Rails.logger.info("[RepositoryRefresh] App-token permission check failed for '#{slug}': #{e.class}")
       false
     end

@@ -583,6 +583,28 @@ module Semaphore::GithubApp
           expect(described_class::Worker.jobs).to be_empty
         end
 
+        it "fails closed when the permission check cannot reach GitHub" do
+          allow_any_instance_of(RepoHost::Github::Client).to receive(:permission_level)
+            .and_raise(Faraday::ConnectionFailed)
+
+          result = described_class.targeted(user.id, "renderedtext/guard")
+
+          expect(result.state).to eq(:failed)
+          expect(result.message).to match(/Couldn't determine your access/)
+          expect(described_class::Worker.jobs).to be_empty
+        end
+
+        it "fails closed when the token mint cannot reach GitHub" do
+          allow(Semaphore::GithubApp::Token).to receive(:installation_token)
+            .and_raise(Excon::Error::Timeout)
+
+          result = described_class.targeted(user.id, "renderedtext/guard")
+
+          expect(result.state).to eq(:failed)
+          expect(result.message).to match(/Couldn't determine your access/)
+          expect(described_class::Worker.jobs).to be_empty
+        end
+
         it "refuses without a permission check when no installation token is available" do
           allow(Semaphore::GithubApp::Token).to receive(:installation_token).and_return(nil)
           expect_any_instance_of(RepoHost::Github::Client).not_to receive(:permission_level)
