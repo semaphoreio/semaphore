@@ -68,6 +68,9 @@ defmodule PipelinesAPI.Router do
   plug(:match)
   plug(:dispatch)
 
+  # Account-level org creation; reachable only via me.<domain>, no org context.
+  match("/organizations", via: :post, to: PipelinesAPI.Organizations.Create)
+
   match("/workflows", via: :get, to: WfList)
 
   match("/workflows", via: :post, to: WfSchedule)
