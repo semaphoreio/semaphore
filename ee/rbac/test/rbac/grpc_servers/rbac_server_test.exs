@@ -288,6 +288,58 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
              ) == 1
     end
 
+    test "organization Owner role is rejected when requester is unauthorized (no change_owner)",
+         state do
+      key = "user:#{@requester_id}_org:*_project:*"
+
+      %Rbac.Repo.UserPermissionsKeyValueStore{key: key, value: "organization.people.manage"}
+      |> Rbac.Repo.insert()
+
+      {:ok, owner_role} = Rbac.Repo.RbacRole.get_role_by_name("Owner", "org_scope", @org_id)
+      req = gen_assign_role_req(@user_id, owner_role.id, @org_id)
+      {:error, err} = state.grpc_channel |> Stub.assign_role(req)
+
+      assert err.status == GRPC.Status.permission_denied()
+    end
+
+    test "organization Owner role is assigned when requester has change_owner", state do
+      {:ok, owner_role} = Rbac.Repo.RbacRole.get_role_by_name("Owner", "org_scope", @org_id)
+      req = gen_assign_role_req(@user_id, owner_role.id, @org_id)
+      {:ok, _} = state.grpc_channel |> Stub.assign_role(req)
+    end
+
+    test "demoting a current Owner is rejected when requester is unauthorized", state do
+      Support.Rbac.assign_org_role_by_name(@org_id, @user_id, "Owner")
+
+      key = "user:#{@requester_id}_org:*_project:*"
+
+      %Rbac.Repo.UserPermissionsKeyValueStore{key: key, value: "organization.people.manage"}
+      |> Rbac.Repo.insert()
+
+      {:ok, member_role} = Rbac.Repo.RbacRole.get_role_by_name("Member", "org_scope", @org_id)
+      req = gen_assign_role_req(@user_id, member_role.id, @org_id)
+      {:error, err} = state.grpc_channel |> Stub.assign_role(req)
+
+      assert err.status == GRPC.Status.permission_denied()
+    end
+
+    test "built-in Admin role is rejected when requester is unauthorized (holds fewer permissions)",
+         state do
+      # Requester holds only organization.people.manage, which passes the outer authorize!
+      # check but does not cover the permissions granted by the built-in (non-editable) Admin
+      # role. The held-permissions check must run for built-in roles too, denying escalation.
+      key = "user:#{@requester_id}_org:*_project:*"
+
+      %Rbac.Repo.UserPermissionsKeyValueStore{key: key, value: "organization.people.manage"}
+      |> Rbac.Repo.insert()
+
+      {:ok, admin_role} = Rbac.Repo.RbacRole.get_role_by_name("Admin", "org_scope", @org_id)
+      req = gen_assign_role_req(@user_id, admin_role.id, @org_id)
+      {:error, err} = state.grpc_channel |> Stub.assign_role(req)
+
+      assert err.status == GRPC.Status.permission_denied()
+    end
+
     test "organization role is assigned when role binding already exists", state do
       Support.Rbac.assign_org_role_by_name(@org_id, @user_id, "Admin")
       assert Rbac.Repo.SubjectRoleBinding |> Rbac.Repo.all() |> length() == 1
@@ -1215,7 +1267,10 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
   ### Helper functions
   ###
 
-  @permissions "insider.global_roles.manage,organization.people.manage,project.access.manage,organization.custom_roles.manage"
+  # Role-management permissions plus the content permissions of every seeded org/project
+  # role (see Support.Rbac). The held-permissions check requires the requester to hold every
+  # permission granted by the role being assigned, so "all permissions" must include those.
+  @permissions "insider.global_roles.manage,organization.people.manage,project.access.manage,organization.custom_roles.manage,organization.change_owner,organization.view,organization.general_settings.manage,organization.delete,organization.billing.manage,project.view,project.workflow.manage,project.scheduler.view,project.job.rerun,project.general_settings.manage,project.delete"
   defp give_all_permissions do
     alias Rbac.Repo
     key = "user:#{@requester_id}_org:*_project:*"

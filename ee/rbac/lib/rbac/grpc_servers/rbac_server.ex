@@ -10,6 +10,8 @@ defmodule Rbac.GrpcServers.RbacServer do
   alias Rbac.RoleBindingIdentification, as: RBI
   alias InternalApi.RBAC
 
+  @change_owner_permission "organization.change_owner"
+
   def list_user_permissions(%RBAC.ListUserPermissionsRequest{} = req, _stream) do
     alias Rbac.Store.UserPermissions
 
@@ -61,6 +63,19 @@ defmodule Rbac.GrpcServers.RbacServer do
 
       validate_role_assignment_arguments(req.role_assignment)
       authorize!(req.requester_id, org_id, project_id)
+
+      if owner_role?(role_id) or currently_owner?(subject_id, org_id),
+        do: Rbac.Utils.Grpc.authorize!(@change_owner_permission, req.requester_id, org_id)
+
+      # The Owner role is fully gated by @change_owner_permission above; every other
+      # role must pass the held-permissions check so a requester cannot escalate by
+      # assigning a role that grants permissions they do not hold themselves. Skip the
+      # check for project initialization, which bypasses authorization entirely (see
+      # authorize!/3) and has no requester to compare permissions against.
+      unless owner_role?(role_id) or
+               (project_id != "" and Rbac.Models.Project.project_being_initialized?(project_id)),
+             do: authorize_holds_role_permissions!(req.requester_id, org_id, project_id, role_id)
+
       {:ok, rbi} = RBI.new(user_id: subject_id, org_id: org_id, project_id: project_id)
 
       case Rbac.RoleManagement.assign_role(rbi, role_id, :manually_assigned) do
@@ -295,18 +310,52 @@ defmodule Rbac.GrpcServers.RbacServer do
     end
   end
 
-  defp raise_error_if_user_is_owner(user_id, org_id) do
+  defp owner_role?(role_id) do
+    case Rbac.Repo.RbacRole.get_role_by_id(role_id) do
+      %{name: "Owner"} -> true
+      _ -> false
+    end
+  end
+
+  defp currently_owner?(user_id, org_id) do
     {:ok, rbi} = RBI.new(user_id: user_id, org_id: org_id, project_id: :is_nil)
 
-    is_owner? =
-      Rbac.RoleManagement.fetch_subject_role_bindings(rbi)
-      |> elem(0)
-      |> List.first(%{})
-      |> Map.get(:role_bindings, [])
-      |> Enum.map(&Rbac.Repo.RbacRole.get_role_by_id(&1["role_id"]))
-      |> Enum.any?(&(&1.name == "Owner"))
+    Rbac.RoleManagement.fetch_subject_role_bindings(rbi)
+    |> elem(0)
+    |> List.first(%{})
+    |> Map.get(:role_bindings, [])
+    |> Enum.map(&Rbac.Repo.RbacRole.get_role_by_id(&1["role_id"]))
+    |> Enum.reject(&is_nil/1)
+    |> Enum.any?(&(&1.name == "Owner"))
+  end
 
-    if is_owner?, do: grpc_error!(:invalid_argument, "Owner can not be removed")
+  defp raise_error_if_user_is_owner(user_id, org_id) do
+    if currently_owner?(user_id, org_id),
+      do: grpc_error!(:invalid_argument, "Owner can not be removed")
+  end
+
+  defp authorize_holds_role_permissions!(requester_id, org_id, project_id, role_id) do
+    role = Rbac.Repo.RbacRole.get_role_by_id(role_id)
+
+    # Applies to ALL roles, not just editable ones. Built-in roles are seeded
+    # editable: false, so gating on role.editable would let a requester escalate by
+    # assigning a built-in role (e.g. Admin) granting permissions they do not hold.
+    if role do
+      project = if project_id == "", do: :is_nil, else: project_id
+      {:ok, rbi} = RBI.new(user_id: requester_id, org_id: org_id, project_id: project)
+      held = rbi |> Rbac.Store.UserPermissions.read_user_permissions() |> String.split(",")
+
+      case Enum.map(role.permissions, & &1.name) -- held do
+        [] ->
+          :ok
+
+        missing ->
+          grpc_error!(
+            :permission_denied,
+            "Cannot assign a role granting permissions you do not hold: #{Enum.join(missing, ", ")}"
+          )
+      end
+    end
   end
 
   defp validate_subjects_have_roles_arguments(%{
