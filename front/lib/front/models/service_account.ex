@@ -52,7 +52,7 @@ defmodule Front.Models.ServiceAccount do
            ),
          member_ids <- Enum.map(members, & &1.id),
          {:ok, service_accounts} <-
-           Front.ServiceAccount.describe_many(member_ids),
+           Front.ServiceAccount.describe_many(member_ids, org_id),
          service_accounts <-
            assign_service_accounts_to_members(members, service_accounts) do
       {:ok, {service_accounts, total_pages}}
@@ -75,9 +75,9 @@ defmodule Front.Models.ServiceAccount do
     end
   end
 
-  def update(service_account_id, name, description, user_id, role_id) do
+  def update(service_account_id, org_id, name, description, user_id, role_id) do
     with {:ok, service_account} <-
-           Front.ServiceAccount.update(service_account_id, name, description),
+           Front.ServiceAccount.update(service_account_id, org_id, name, description),
          {:ok, _} <-
            assign_role(
              service_account.org_id,
@@ -93,9 +93,9 @@ defmodule Front.Models.ServiceAccount do
     end
   end
 
-  def delete(service_account_id) do
-    with {:ok, service_account} <- Front.ServiceAccount.describe(service_account_id),
-         :ok <- Front.ServiceAccount.delete(service_account_id) do
+  def delete(service_account_id, org_id) do
+    with {:ok, service_account} <- Front.ServiceAccount.describe(service_account_id, org_id),
+         :ok <- Front.ServiceAccount.delete(service_account_id, org_id) do
       {:ok, from_proto(service_account)}
     else
       error ->
@@ -104,9 +104,9 @@ defmodule Front.Models.ServiceAccount do
     end
   end
 
-  def regenerate_token(service_account_id) do
-    with {:ok, service_account} <- Front.ServiceAccount.describe(service_account_id),
-         {:ok, api_token} <- Front.ServiceAccount.regenerate_token(service_account_id) do
+  def regenerate_token(service_account_id, org_id) do
+    with {:ok, service_account} <- Front.ServiceAccount.describe(service_account_id, org_id),
+         {:ok, api_token} <- Front.ServiceAccount.regenerate_token(service_account_id, org_id) do
       {:ok, {from_proto(service_account), api_token}}
     else
       error ->
