@@ -160,14 +160,10 @@ module Semaphore::GithubApp
     end
     private_class_method :targeted_with_oauth_token
 
-    # USE_GITHUB_APP_TO_CHECK_PERMISSIONS path: the caller's OAuth token cannot
-    # prove repo access, so the GitHub App itself is the only authority on push.
-    # Resolves the installation first because the permission check needs its
-    # token; that persists an installation row before push is proven — an
-    # accepted tradeoff behind the operator-enabled flag. Every denial returns
-    # the same message: an unresolved installation must be indistinguishable
-    # from a failed permission check, or the reply becomes an oracle for which
-    # repositories the app covers.
+    # USE_GITHUB_APP_TO_CHECK_PERMISSIONS path: the App token is the only
+    # authority on push. Resolving the installation first persists a row
+    # before push is proven — accepted behind the operator flag. All denials
+    # share one message so the reply can't reveal which repos the app covers.
     def self.targeted_with_app_token(user, slug)
       account = github_account(user)
       return cannot_verify_access(slug) unless account
@@ -181,12 +177,9 @@ module Semaphore::GithubApp
     end
     private_class_method :targeted_with_app_token
 
-    # DB precondition first (no GitHub calls): the caller must already hold a
-    # collaborator row in the slug owner's installation. Installation scope
-    # equals owner scope — a GitHub App has at most one installation per
-    # account; a stale transferred slug can at worst match an installation
-    # whose token then 404s the permission check, failing closed. Cached
-    # installations only — no discovery here. Returns the installation whose
+    # DB precondition, no GitHub calls: the caller must already hold a
+    # collaborator row in the slug owner's installation (one installation per
+    # account; cached only, no discovery). Returns the installation whose
     # token confirmed push, nil when access could not be proven.
     def self.app_granted_installation(user, slug)
       account = github_account(user)
@@ -200,15 +193,11 @@ module Semaphore::GithubApp
     end
     private_class_method :app_granted_installation
 
-    # Push check with the App's installation token instead of the caller's
-    # OAuth token. The reported GitHub user must match the account by uid — a
-    # stale or reassigned login must not inherit someone else's permission.
-    # GitHub folds fine-grained roles into the legacy permission field
-    # (maintain -> write, triage -> read), so admin/write is exactly "can
-    # push". Fails closed on any GitHub error: HTTP failures (404 = repo not
-    # covered by the installation, rate limit, 5xx) arrive as RemoteException,
-    # while transport failures leak through as Faraday errors from the
-    # permission call and Excon errors from the token mint.
+    # Push check with the App's installation token. The reported user must
+    # match the stored uid so a stale or reassigned login can't inherit
+    # someone else's permission. GitHub folds maintain -> write and
+    # triage -> read, so admin/write is exactly "can push". Fails closed on
+    # any GitHub error, HTTP (RemoteException) or transport (Faraday/Excon).
     def self.app_confirms_push?(installation, slug, account)
       token, _expires_at = Token.installation_token(installation.installation_id)
       return false unless token
