@@ -16,6 +16,8 @@ module Semaphore::GithubApp
       no_access = Result.new(:failed, "The GitHub App has no access to #{org}. Grant access on GitHub first.")
 
       user = ::User.find_by(:id => user_id)
+      return no_access unless user
+
       github_uid = user&.github_repo_host_account&.github_uid
 
       # Authorize locally first — a cached collaborator row in the org's
@@ -30,8 +32,15 @@ module Semaphore::GithubApp
       # lock), and the caller still only sees repos they hold their own row for.
       # Tightening it to membership would need the live scan on every org refresh,
       # since there is no local org-membership signal to check.
+      #
+      # With USE_GITHUB_APP_TO_CHECK_PERMISSIONS the caller's OAuth token cannot
+      # prove repo access and the collaborator cache may be empty, so neither
+      # signal can authorize anyone. The flag hands authorization to the App
+      # itself; discovery and the refresh workers already run on installation
+      # tokens.
       installation = GithubAppInstallation.find_for_organization(org)
-      authorized = (installation && github_uid && user_collaborates_in?(github_uid, installation)) ||
+      authorized = App.use_github_app_to_check_permissions ||
+                   (installation && github_uid && user_collaborates_in?(github_uid, installation)) ||
                    user_has_org_push?(user, org)
       return no_access unless authorized
 
@@ -63,7 +72,11 @@ module Semaphore::GithubApp
       # short-circuiting avoids a synchronous GitHub collaborator re-sync.
       return Result.new(:done, "Repository #{slug} is already in your list.") if listed_for?(github_uid, slug)
 
-      targeted_with_oauth_token(user, slug, no_access)
+      if App.use_github_app_to_check_permissions
+        targeted_with_app_token(user, slug, no_access)
+      else
+        targeted_with_oauth_token(user, slug, no_access)
+      end
     end
 
     # Fetch a single repository, cache it, and sync its collaborators. Returns a
@@ -143,6 +156,24 @@ module Semaphore::GithubApp
       start_targeted_refresh(installation, slug)
     end
     private_class_method :targeted_with_oauth_token
+
+    # USE_GITHUB_APP_TO_CHECK_PERMISSIONS path: the caller's OAuth token cannot
+    # prove repo access, so the GitHub App itself is the only authority on push.
+    # Resolves the installation first because the permission check needs its
+    # token; that persists an installation row before push is proven — an
+    # accepted tradeoff behind the operator-enabled flag.
+    def self.targeted_with_app_token(user, slug, no_access)
+      account = github_account(user)
+      return cannot_verify_access(slug) unless account
+
+      installation = GithubAppInstallation.find_for_repository(slug) ||
+                     discover_installation(slug)
+      return no_access unless installation
+      return cannot_verify_access(slug) unless app_confirms_push?(installation, slug, account)
+
+      start_targeted_refresh(installation, slug)
+    end
+    private_class_method :targeted_with_app_token
 
     # DB precondition first (no GitHub calls): the caller must already hold a
     # collaborator row in the slug owner's installation. Installation scope

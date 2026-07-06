@@ -127,6 +127,65 @@ module Semaphore::GithubApp
           expect(Repositories::Worker.jobs).to be_empty
         end
       end
+
+      context "when USE_GITHUB_APP_TO_CHECK_PERMISSIONS is set" do
+        before do
+          allow(App).to receive(:use_github_app_to_check_permissions).and_return(true)
+        end
+
+        it "authorizes without an OAuth scan or cached collaborator rows" do
+          expect_any_instance_of(RepoHost::Github::Client).not_to receive(:push_access_to_organization?)
+
+          result = described_class.full_for_organization(user.id, "acme")
+
+          expect(result.state).to eq(:started)
+          expect(Repositories::Worker.jobs.map { |job| job["args"] }).to eq([[installation.installation_id]])
+        end
+
+        it "discovers the installation via app JWT when the org has no cached repos" do
+          allow(GithubAppInstallation).to receive(:find_for_organization).with("acme").and_return(nil)
+          allow(Semaphore::GithubApp::Token).to receive(:organization_installation_id).with("acme").and_return(9090)
+
+          result = described_class.full_for_organization(user.id, "acme")
+
+          expect(result.state).to eq(:started)
+          expect(Repositories::Worker.jobs.map { |job| job["args"] }).to eq([[9090]])
+        end
+
+        it "fails when the app is not installed on the org" do
+          allow(GithubAppInstallation).to receive(:find_for_organization).with("acme").and_return(nil)
+          allow(Semaphore::GithubApp::Token).to receive(:organization_installation_id).and_return(nil)
+
+          result = described_class.full_for_organization(user.id, "acme")
+
+          expect(result.state).to eq(:failed)
+          expect(result.message).to match(/Grant access on GitHub first/)
+          expect(Repositories::Worker.jobs).to be_empty
+        end
+
+        it "still rejects a malformed organization without enqueuing" do
+          result = described_class.full_for_organization(user.id, "not a valid org!")
+
+          expect(result.state).to eq(:failed)
+          expect(Repositories::Worker.jobs).to be_empty
+        end
+
+        it "still reports already running when the installation is locked" do
+          allow_any_instance_of(Repositories::Worker).to receive(:unique_lock_exists?).and_return(true)
+
+          result = described_class.full_for_organization(user.id, "acme")
+
+          expect(result.state).to eq(:already_running)
+          expect(Repositories::Worker.jobs).to be_empty
+        end
+
+        it "refuses an unknown user id without enqueuing" do
+          result = described_class.full_for_organization(SecureRandom.uuid, "acme")
+
+          expect(result.state).to eq(:failed)
+          expect(Repositories::Worker.jobs).to be_empty
+        end
+      end
     end
 
     describe ".targeted" do
@@ -532,6 +591,100 @@ module Semaphore::GithubApp
 
           expect(result.state).to eq(:failed)
           expect(result.message).to match(/Couldn't determine your access/)
+        end
+      end
+
+      context "when USE_GITHUB_APP_TO_CHECK_PERMISSIONS is set" do
+        before do
+          allow(App).to receive(:use_github_app_to_check_permissions).and_return(true)
+          allow(Semaphore::GithubApp::Token).to receive(:installation_token)
+            .and_return(["app-token", Time.zone.now + 3600])
+        end
+
+        def stub_permission_for(account, slug, response)
+          allow_any_instance_of(RepoHost::Github::Client).to receive(:permission_level)
+            .with(slug, account.login).and_return(response)
+        end
+
+        it "authorizes with the app token without consulting the caller's own token" do
+          expect_any_instance_of(RepoHost::Github::Client).not_to receive(:repository)
+          stub_permission_for(user.github_repo_host_account, "renderedtext/guard",
+                              permission_response("write", github_uid))
+
+          result = described_class.targeted(user.id, "renderedtext/guard")
+
+          expect(result.state).to eq(:started)
+          expect(described_class::Worker.jobs.map { |job| job["args"] })
+            .to eq([[installation.installation_id, "renderedtext/guard"]])
+        end
+
+        it "authorizes a caller with no cached collaborator rows" do
+          newcomer = FactoryBot.create(:user, :github_connection)
+          account = newcomer.github_repo_host_account
+          stub_permission_for(account, "renderedtext/guard",
+                              permission_response("write", account.github_uid))
+
+          result = described_class.targeted(newcomer.id, "renderedtext/guard")
+
+          expect(result.state).to eq(:started)
+        end
+
+        it "discovers the installation for an uncached repository" do
+          allow(Semaphore::GithubApp::Token).to receive(:repository_installation_id)
+            .with("acme/widget").and_return(777)
+          stub_permission_for(user.github_repo_host_account, "acme/widget",
+                              permission_response("write", github_uid))
+
+          result = described_class.targeted(user.id, "acme/widget")
+
+          expect(result.state).to eq(:started)
+          expect(described_class::Worker.jobs.map { |job| job["args"] }).to eq([[777, "acme/widget"]])
+        end
+
+        it "refuses when the app is not installed on the repository" do
+          allow(Semaphore::GithubApp::Token).to receive(:repository_installation_id).and_return(nil)
+
+          result = described_class.targeted(user.id, "acme/widget")
+
+          expect(result.state).to eq(:failed)
+          expect(result.message).to match(/Grant access on GitHub first/)
+          expect(described_class::Worker.jobs).to be_empty
+        end
+
+        it "refuses when the app reports read-only permission" do
+          stub_permission_for(user.github_repo_host_account, "renderedtext/guard",
+                              permission_response("read", github_uid))
+
+          result = described_class.targeted(user.id, "renderedtext/guard")
+
+          expect(result.state).to eq(:failed)
+          expect(result.message).to match(/Couldn't determine your access/)
+          expect(described_class::Worker.jobs).to be_empty
+        end
+
+        it "refuses a caller without a real GitHub account before any GitHub call" do
+          no_github = FactoryBot.create(:user)
+          expect(Semaphore::GithubApp::Token).not_to receive(:repository_installation_id)
+          expect(Semaphore::GithubApp::Token).not_to receive(:installation_token)
+
+          result = described_class.targeted(no_github.id, "renderedtext/guard")
+
+          expect(result.state).to eq(:failed)
+          expect(result.message).to match(/Couldn't determine your access/)
+        end
+
+        it "short-circuits to done when the repository is already listed" do
+          GithubAppCollaborator.create!(
+            :c_id => github_uid,
+            :c_name => "user",
+            :r_name => "renderedtext/guard",
+            :installation_id => installation.installation_id
+          )
+          expect_any_instance_of(RepoHost::Github::Client).not_to receive(:permission_level)
+
+          result = described_class.targeted(user.id, "renderedtext/guard")
+
+          expect(result.state).to eq(:done)
         end
       end
     end
