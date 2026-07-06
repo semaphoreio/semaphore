@@ -22,3 +22,19 @@ GHSA-84f2-rp86-235p
 # /support file_input loads Plug.Parsers multipart. Mitigated at cluster ingress L7 body limits;
 # real fix tracked for the plug dep-bump branch.
 GHSA-468c-vq7p-gh64
+
+# --- hackney 1.25.0 advisories, all fixed in 4.0.1 ---
+# Bump to 4.0.1 is blocked: httpoison ~> 1.x requires hackney ~> 1.17, so hackney cannot move to
+# 4.x without a fleet-wide httpoison/grpc upgrade. Real fix tracked for the dep-bump branch.
+# front's outbound HTTP (httpoison/hackney) targets internal backend services and configured
+# third-party endpoints, not user-supplied URLs/queries/hosts.
+#
+# ssl:connect/2 post-handshake upgrade has no timeout (operational DoS; outbound bounded to known hosts)
+GHSA-gp9c-pm5m-5cxr
+# CR/LF injection in query parameter (query params to hackney are not user-controlled)
+GHSA-j9wq-vxxc-94wf
+# SSRF allowlist bypass in hackney_url:normalize/2 via percent-encoded host (target hosts are not
+# user-supplied)
+GHSA-pj7v-xfvx-wmjq
+# CRLF / header injection via unvalidated `domain` and `path` options (domain/path not user-controlled)
+GHSA-mp55-p8c9-rfw2

@@ -19,7 +19,7 @@ defmodule Front.DebugSessionsDescription.Test do
     end
 
     test "returns proper string for all false params" do
-      msg = "Debug sessions are set to follow organization defaults."
+      msg = "Changed debug session restrictions. Debug and attach are disabled for this project."
       params = all_params()
 
       assert msg == Dscr.description(params)
@@ -34,7 +34,7 @@ defmodule Front.DebugSessionsDescription.Test do
     end
 
     test "returns proper string for when custom is not set but params are checked" do
-      msg = "Debug sessions are set to follow organization defaults."
+      msg = "Changed debug session restrictions. Debug and attach are disabled for this project."
       params = Map.merge(all_params(), %{"allow_debug_tag" => "true"})
 
       assert msg == Dscr.description(params)

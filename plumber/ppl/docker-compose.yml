@@ -4,10 +4,10 @@ services:
   app:
     image: ${IMAGE:-ppl}:${TAG:-latest}
     build:
-      context: ..
+      context: ../..
       cache_from:
         - "${IMAGE:-ppl}:${IMAGE_TAG:-latest}"
-      dockerfile: ppl/Dockerfile
+      dockerfile: plumber/ppl/Dockerfile
       target: ${DOCKER_BUILD_TARGET:-dev}
       args:
         - BUILD_ENV=dev

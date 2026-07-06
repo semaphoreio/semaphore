@@ -8,3 +8,15 @@ GHSA-g2wm-735q-3f56
 # in lib/ returns no hits). Bumping postgrex past 0.16.x would cascade into an
 # ecto/Elixir version bump that is out of scope for a security patch PR.
 GHSA-r73h-97w8-m54h
+
+# hackney 1.25.0 — four URL/TLS advisories all first patched in hackney 4.0.1: ssl:connect/2
+# post-handshake upgrade has no timeout (GHSA-gp9c-pm5m-5cxr), CR/LF injection in query param
+# (GHSA-j9wq-vxxc-94wf), CRLF/header injection via domain/path options (GHSA-mp55-p8c9-rfw2), and
+# SSRF allowlist bypass via percent-encoded host (GHSA-pj7v-xfvx-wmjq). hackney 4.0.1 is a major
+# upgrade blocked by httpoison ~> 1.17 / sentry (1.6.5 or ~> 1.8) — both cap hackney < 2.0; no
+# httpoison/sentry release uses hackney 4.x. Not reachable: outbound goes to fixed internal service
+# endpoints + the Sentry DSN — no user-controlled host/query/path is fed to hackney.
+GHSA-gp9c-pm5m-5cxr
+GHSA-j9wq-vxxc-94wf
+GHSA-mp55-p8c9-rfw2
+GHSA-pj7v-xfvx-wmjq

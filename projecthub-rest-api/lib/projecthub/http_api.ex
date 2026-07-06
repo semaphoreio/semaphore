@@ -1,5 +1,5 @@
 defmodule Projecthub.HttpApi do
-  alias Projecthub.{Auth, Organization, Utils}
+  alias Projecthub.{Auth, Utils}
 
   require Logger
 
@@ -60,12 +60,11 @@ defmodule Projecthub.HttpApi do
     org_id = conn.assigns.org_id
 
     project_rsp = fetch_project(conn)
-    restricted = Organization.restricted?(org_id)
 
     case project_rsp do
       {:ok, project} ->
         if Auth.has_permissions?(org_id, user_id, project.metadata.id, "project.view") do
-          send_resp(conn, 200, encode(project, restricted))
+          send_resp(conn, 200, encode(project))
         else
           send_resp(conn, 401, Poison.encode!(%{message: "Unauthorized"}))
         end
@@ -85,8 +84,6 @@ defmodule Projecthub.HttpApi do
     org_id = conn.assigns.org_id
 
     if Auth.has_permissions?(org_id, user_id, "organization.projects.create") do
-      restricted = Organization.restricted?(org_id)
-
       spec = conn.body_params["spec"]
       repository = spec["repository"]
 
@@ -147,7 +144,7 @@ defmodule Projecthub.HttpApi do
 
       case InternalApi.Projecthub.ResponseMeta.Code.key(res.metadata.status.code) do
         :OK ->
-          send_resp(conn, 200, encode(res.project, restricted))
+          send_resp(conn, 200, encode(res.project))
 
         :FAILED_PRECONDITION ->
           send_resp(conn, 422, Poison.encode!(%{message: res.metadata.status.message}))
@@ -171,8 +168,6 @@ defmodule Projecthub.HttpApi do
       repository = spec["repository"]
 
       {schedulers, tasks} = construct_schedulers_and_tasks(conn.body_params)
-
-      restricted = Organization.restricted?(org_id)
 
       req =
         InternalApi.Projecthub.UpdateRequest.new(
@@ -225,7 +220,7 @@ defmodule Projecthub.HttpApi do
 
       case InternalApi.Projecthub.ResponseMeta.Code.key(res.metadata.status.code) do
         :OK ->
-          send_resp(conn, 200, encode(res.project, restricted))
+          send_resp(conn, 200, encode(res.project))
 
         :NOT_FOUND ->
           send_resp(conn, 404, Poison.encode!(%{message: "Not found"}))
@@ -432,22 +427,22 @@ defmodule Projecthub.HttpApi do
     assign(conn, :version, @version)
   end
 
-  def encode(proto_projects, restricted) when is_list(proto_projects) do
+  def encode(proto_projects) when is_list(proto_projects) do
     proto_projects
     |> Enum.map(fn proto_project ->
-      encode_project(proto_project, restricted)
+      encode_project(proto_project)
       |> Map.merge(%{"apiVersion" => @version, "kind" => "Project"})
     end)
     |> Poison.encode!()
   end
 
-  def encode(proto_project, restricted) do
-    encode_project(proto_project, restricted)
+  def encode(proto_project) do
+    encode_project(proto_project)
     |> Map.merge(%{"apiVersion" => @version, "kind" => "Project"})
     |> Poison.encode!()
   end
 
-  defp encode_project(p, restricted) do
+  defp encode_project(p) do
     alias InternalApi.Projecthub.Project.Spec.Visibility
 
     metadata = %{
@@ -484,11 +479,7 @@ defmodule Projecthub.HttpApi do
       "attach_permissions" => map_permission_types(p.spec.attach_permissions)
     }
 
-    if restricted do
-      %{"metadata" => metadata, "spec" => Map.merge(spec, debugs)}
-    else
-      %{"metadata" => metadata, "spec" => spec}
-    end
+    %{"metadata" => metadata, "spec" => Map.merge(spec, debugs)}
   end
 
   defp encode_inegration_type(0), do: "github_token"
@@ -738,17 +729,16 @@ defmodule Projecthub.HttpApi do
 
   defp list_projects(conn) do
     org_id = conn.assigns.org_id
-    restricted = Organization.restricted?(org_id)
 
     case parse_int(conn.params, "page", 1, 100, 1) do
-      {:ok, page} -> do_list_projects(conn, org_id, restricted, page)
+      {:ok, page} -> do_list_projects(conn, org_id, page)
       {:error, reason} -> {:error, reason}
     end
   end
 
   defp page_size, do: Application.get_env(:projecthub, :projects_page_size, 500)
 
-  defp do_list_projects(conn, org_id, restricted, page) do
+  defp do_list_projects(conn, org_id, page) do
     req =
       InternalApi.Projecthub.ListRequest.new(
         metadata: Utils.construct_req_meta(conn),
@@ -769,7 +759,7 @@ defmodule Projecthub.HttpApi do
         projects =
           res.projects
           |> Auth.filter_projects(org_id, conn.assigns.user_id)
-          |> Enum.map(&encode_project(&1, restricted))
+          |> Enum.map(&encode_project(&1))
           |> Enum.map(&Map.merge(&1, %{"apiVersion" => @version, "kind" => "Project"}))
 
         total = Map.get(res.pagination || %{}, :total_entries, 0)
