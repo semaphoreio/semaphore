@@ -1,7 +1,41 @@
-# plug_cowboy 2.1.0 — HTTP/2 :scheme atom-table exhaustion DoS (GHSA-q8x4-x7mp-5vg2 /
-# CVE-2026-32688, high). Fixed in plug_cowboy 2.8.1, which requires cowboy ~> 2.7. badge pins
-# cowboy 2.5.0, so adopting 2.8.1 forces a cowboy/cowlib/ranch stack bump on Elixir 1.12 — out of
-# scope/risky (the last stack bump attempt regressed badge's routing tests). badge serves only GET
-# SVG endpoints and sits behind cluster ingress that terminates HTTP/2; the atom-exhaustion path is
-# not reachable from HTTP/1.1 backends. Real fix tracked for the plug_cowboy dep-bump branch.
+# badge dependency-audit suppressions.
+#
+# badge pins the Elixir 1.12 / cowboy 2.5.0 / plug 1.8 / hackney 1.15 stack and serves only GET SVG
+# badge endpoints behind cluster ingress. Every advisory below is cleared only by a cowboy/cowlib/
+# plug/hackney stack bump that is blocked on this branch (the last stack-bump attempt regressed
+# badge's routing tests). All are tracked for the dep-bump branch.
+
+# --- plug 1.8.3 ---
+# Unbounded buffer accumulation in multipart header parsing DoS (high). badge exposes no multipart
+# upload endpoints; a plug bump also drags the plug_cowboy/cowboy stack.
+GHSA-468c-vq7p-gh64
+
+# --- plug_cowboy 2.1.0 ---
+# HTTP/2 :scheme atom-table exhaustion DoS (GHSA-q8x4 / CVE-2026-32688, high). Fixed in plug_cowboy
+# 2.8.1, which requires cowboy ~> 2.7; badge pins cowboy 2.5.0. HTTP/2 is terminated at ingress, so
+# the atom-exhaustion path is not reachable from HTTP/1.1 backends.
 GHSA-q8x4-x7mp-5vg2
+
+# --- cowboy 2.5.0 ---
+# Unbounded buffer accumulation in multipart header parsing DoS (high). Fixed in cowboy 2.13.0;
+# multipart parsing is not exercised by badge's GET-only routes.
+GHSA-jfc2-q6qh-g5x8
+
+# --- cowlib 2.6.0 (fixed only in cowlib 2.18.0, needs cowboy 2.17 / ranch 2.2) ---
+# cow_http_te uncontrolled resource consumption / excessive allocation (high).
+GHSA-32p9-57cr-4x65
+# cow_spdy:inflate/2 decompression bomb (high). SPDY is not enabled.
+GHSA-84f2-rp86-235p
+# CRLF injection / SSE event splitting via unvalidated field values (moderate).
+GHSA-hv23-4qp7-8c8r
+
+# --- hackney 1.15.2 (all fixed in hackney 4.0.1) ---
+# Bump to 4.x is blocked fleet-wide: httpoison ~> 1.x requires hackney ~> 1.17, so hackney cannot
+# move to 4.x without a fleet-wide httpoison/grpc upgrade. badge's outbound HTTP targets fixed
+# internal endpoints with no user-controlled URLs, query params, domain or path.
+GHSA-9fm9-hp7p-53mf
+GHSA-gp9c-pm5m-5cxr
+GHSA-j9wq-vxxc-94wf
+GHSA-mp55-p8c9-rfw2
+GHSA-pj7v-xfvx-wmjq
+GHSA-vq52-99r9-h5pw

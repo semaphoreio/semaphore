@@ -1,7 +1,42 @@
-# cowlib 2.11.0 — Cookie request-header injection in cow_cookie:cookie/1 (GHSA-g2wm-735q-3f56, low).
-# Vulnerable >= 2.9.0, <= 2.16.1; cleared only in cowlib 2.18.0, which requires the cowboy 2.17 /
-# gun 2.4 / ranch 2.2 stack — an out-of-scope bump blocked by the pinned gRPC adapter. cowlib is
-# pulled in only via grpc/cowboy/gun; notifications is a gRPC + AMQP service and does not build
-# outbound Cookie request headers from user-controlled input. Real fix tracked for the dep-bump
-# branch.
+# notifications dependency-audit suppressions.
+#
+# notifications is a gRPC + AMQP service. cowlib/cowboy are pulled in only via the grpc/cowboy/gun
+# stack (pinned by the gRPC adapter); hackney via httpoison; postgrex/decimal via the Ecto stack.
+# Every advisory below is cleared only by an out-of-scope stack bump tracked for the dep-bump branch.
+
+# --- cowlib 2.11.0 (fixed only in cowlib 2.18.0, needs cowboy 2.17 / gun 2.4 / ranch 2.2) ---
+# cow_http_te uncontrolled resource consumption / excessive allocation (high).
+GHSA-32p9-57cr-4x65
+# cow_spdy:inflate/2 decompression bomb (high). SPDY is not enabled.
+GHSA-84f2-rp86-235p
+# Cookie request-header injection in cow_cookie:cookie/1 (low). notifications does not build outbound
+# Cookie request headers from user-controlled input.
 GHSA-g2wm-735q-3f56
+# CRLF injection / SSE event splitting via unvalidated field values (moderate).
+GHSA-hv23-4qp7-8c8r
+
+# --- cowboy 2.7.0 ---
+# Unbounded buffer accumulation in multipart header parsing DoS (high). Fixed in cowboy 2.13.0;
+# notifications serves gRPC, not multipart HTTP uploads.
+GHSA-jfc2-q6qh-g5x8
+
+# --- hackney 1.18.1 (all fixed in hackney 4.0.1) ---
+# Bump to 4.x is blocked fleet-wide: httpoison ~> 1.x requires hackney ~> 1.17, so hackney cannot
+# move to 4.x without a fleet-wide httpoison/grpc upgrade. Outbound HTTP targets fixed internal
+# endpoints with no user-controlled URL, query params, domain or path.
+GHSA-9fm9-hp7p-53mf
+GHSA-gp9c-pm5m-5cxr
+GHSA-j9wq-vxxc-94wf
+GHSA-mp55-p8c9-rfw2
+GHSA-pj7v-xfvx-wmjq
+GHSA-vq52-99r9-h5pw
+
+# --- postgrex 0.16.2 ---
+# Channel-name SQL injection in Postgrex.Notifications.listen/3 (high). listen/3 is not used by
+# notifications (no Postgrex.Notifications usage in lib/). Fix requires a larger postgrex bump.
+GHSA-r73h-97w8-m54h
+
+# --- decimal 2.0.0 ---
+# Unbounded exponent in Decimal.new enables unauthenticated DoS (moderate). Fix is decimal v3, a
+# breaking major. No user-controlled input reaches Decimal.new.
+GHSA-rhv4-8758-jx7v

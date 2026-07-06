@@ -1,14 +1,54 @@
-# plug_cowboy 2.5.2 — HTTP/2 :scheme atom-table exhaustion DoS (GHSA-q8x4-x7mp-5vg2 /
-# CVE-2026-32688, high). Fixed in plug_cowboy 2.8.1, which requires plug ~> 1.14; secrethub pins
-# plug ~> 1.13.6, so the bump drags a plug minor upgrade that in turn pulls a still-vulnerable plug
-# 1.16.x multipart advisory — out of scope on this branch. Same handling as public-api/v2. The only
-# HTTP surface is the OIDC discovery Plug.Router (GET/JSON), fronted by cluster ingress; the HTTP/2
-# atom-exhaustion path is not reachable. Real fix tracked for the plug_cowboy dep-bump branch.
+# secrethub dependency-audit suppressions.
+#
+# secrethub's only HTTP surface is the OIDC discovery Plug.Router (GET/JSON) behind cluster ingress;
+# it also uses gRPC (grpc_gun) and the Ecto stack. cowlib/cowboy come via grpc_gun/cowboy, hackney
+# via httpoison, postgrex/decimal via Ecto. Every advisory below is cleared only by an out-of-scope
+# stack bump tracked for the dep-bump branch (same handling as public-api/v2).
+
+# --- plug 1.13.6 ---
+# Unbounded buffer accumulation in multipart header parsing DoS (high). The OIDC router is GET/JSON
+# with no multipart uploads; a plug bump also drags the plug_cowboy/cowboy stack.
+GHSA-468c-vq7p-gh64
+
+# --- plug_cowboy 2.5.2 ---
+# HTTP/2 :scheme atom-table exhaustion DoS (GHSA-q8x4 / CVE-2026-32688, high). Fixed in plug_cowboy
+# 2.8.1, which requires plug ~> 1.14; secrethub pins plug ~> 1.13.6. HTTP/2 is terminated at ingress,
+# so the atom-exhaustion path is not reachable.
 GHSA-q8x4-x7mp-5vg2
 
-# cowlib 2.11.0 — Cookie request-header injection in cow_cookie:cookie/1 (GHSA-g2wm-735q-3f56, low).
-# Vulnerable >= 2.9.0, <= 2.16.1; cleared only in cowlib 2.18.0, which requires the cowboy 2.17 /
-# gun 2.4 / ranch 2.2 stack — blocked by the pinned grpc_gun adapter. cowlib is pulled in only via
-# grpc_gun/cowboy; secrethub does not build outbound Cookie request headers from user-controlled
-# input. Real fix tracked for the dep-bump branch.
+# --- cowboy 2.9.0 ---
+# Unbounded buffer accumulation in multipart header parsing DoS (high). Fixed in cowboy 2.13.0; the
+# OIDC router is GET/JSON, not multipart.
+GHSA-jfc2-q6qh-g5x8
+
+# --- cowlib 2.11.0 (fixed only in cowlib 2.18.0, needs cowboy 2.17 / gun 2.4 / ranch 2.2) ---
+# cow_http_te uncontrolled resource consumption / excessive allocation (high).
+GHSA-32p9-57cr-4x65
+# cow_spdy:inflate/2 decompression bomb (high). SPDY is not enabled.
+GHSA-84f2-rp86-235p
+# Cookie request-header injection in cow_cookie:cookie/1 (low). No outbound Cookie request headers
+# are built from user-controlled input.
 GHSA-g2wm-735q-3f56
+# CRLF injection / SSE event splitting via unvalidated field values (moderate).
+GHSA-hv23-4qp7-8c8r
+
+# --- hackney 1.18.1 (all fixed in hackney 4.0.1) ---
+# Bump to 4.x is blocked fleet-wide: httpoison ~> 1.x requires hackney ~> 1.17, so hackney cannot
+# move to 4.x without a fleet-wide httpoison/grpc upgrade. Outbound HTTP targets fixed internal
+# endpoints with no user-controlled URL, query params, domain or path.
+GHSA-9fm9-hp7p-53mf
+GHSA-gp9c-pm5m-5cxr
+GHSA-j9wq-vxxc-94wf
+GHSA-mp55-p8c9-rfw2
+GHSA-pj7v-xfvx-wmjq
+GHSA-vq52-99r9-h5pw
+
+# --- postgrex 0.16.3 ---
+# Channel-name SQL injection in Postgrex.Notifications.listen/3 (high). listen/3 is not used by
+# secrethub (no Postgrex.Notifications usage in lib/). Fix requires a larger postgrex bump.
+GHSA-r73h-97w8-m54h
+
+# --- decimal 2.0.0 ---
+# Unbounded exponent in Decimal.new enables unauthenticated DoS (moderate). Fix is decimal v3, a
+# breaking major. No user-controlled input reaches Decimal.new.
+GHSA-rhv4-8758-jx7v
