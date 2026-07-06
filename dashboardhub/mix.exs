@@ -56,7 +56,7 @@ defmodule Dashboardhub.MixProject do
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
       {:sentry, "~> 8.0"},
       {:sentry_grpc, github: "renderedtext/sentry_grpc"},
-      {:hackney, "~> 1.8"}
+      {:hackney, "~> 1.24"}
     ]
   end
 end

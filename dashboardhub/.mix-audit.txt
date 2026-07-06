@@ -1,0 +1,28 @@
+# --- hackney 1.25.0 advisories, all fixed only in 4.0.1 ---
+# Bump to 4.x is blocked: httpoison ~> 1.x requires hackney ~> 1.17, so hackney cannot move to
+# 4.x without a fleet-wide httpoison upgrade. Same suppressions and reasoning as guard/.mix-audit.txt.
+#
+# ssl:connect/2 post-handshake upgrade has no timeout (operational DoS; outbound bounded)
+GHSA-gp9c-pm5m-5cxr
+# CR/LF injection in query parameter (no user-controlled data fed to hackney query params from lib/)
+GHSA-j9wq-vxxc-94wf
+# SSRF allowlist bypass in hackney_url:normalize/2 via percent-encoded host (no user-controlled URL
+# fed to hackney from lib/)
+GHSA-pj7v-xfvx-wmjq
+# CRLF / header injection via unvalidated `domain` and `path` options (no user-controlled domain/path
+# fed to hackney from lib/)
+GHSA-mp55-p8c9-rfw2
+
+# postgrex 0.17.x — channel-name SQL injection in Postgrex.Notifications.listen/3. Dashboardhub does
+# not use Postgrex.Notifications. Real fix needs postgrex 0.21+, blocked behind ecto_sql 3.14 and the
+# decimal 3 breaking major.
+GHSA-r73h-97w8-m54h
+
+# decimal 2.x — DoS via unbounded exponent in Decimal.new. Fixed only in decimal 3.0 (breaking major),
+# same suppression as guard.
+GHSA-rhv4-8758-jx7v
+
+# rabbit_common 3.12.2 — RabbitMQ broker DoS via large messages published over the HTTP API. The
+# advisory targets the RabbitMQ server, surfaced here through the amqp client's rabbit_common dep.
+# The broker is deployed and patched separately.
+GHSA-w6cq-9cf4-gqpg
