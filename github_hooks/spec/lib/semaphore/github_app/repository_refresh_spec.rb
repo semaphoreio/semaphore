@@ -669,8 +669,22 @@ module Semaphore::GithubApp
           result = described_class.targeted(user.id, "acme/widget")
 
           expect(result.state).to eq(:failed)
-          expect(result.message).to match(/Grant access on GitHub first/)
+          expect(result.message).to match(/Couldn't determine your access/)
           expect(described_class::Worker.jobs).to be_empty
+        end
+
+        it "gives callers no signal distinguishing an uncovered repository from denied permission" do
+          allow(Semaphore::GithubApp::Token).to receive(:repository_installation_id).and_return(nil)
+          uncovered = described_class.targeted(user.id, "ghost-owner/ghost-repo")
+
+          stub_permission_for(user.github_repo_host_account, "renderedtext/guard",
+                              permission_response("read", github_uid))
+          denied = described_class.targeted(user.id, "renderedtext/guard")
+
+          expect(uncovered.state).to eq(:failed)
+          expect(denied.state).to eq(:failed)
+          expect(uncovered.message).to match(/Couldn't determine your access/)
+          expect(denied.message).to match(/Couldn't determine your access/)
         end
 
         it "refuses when the app reports read-only permission" do

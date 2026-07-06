@@ -73,7 +73,7 @@ module Semaphore::GithubApp
       return Result.new(:done, "Repository #{slug} is already in your list.") if listed_for?(github_uid, slug)
 
       if App.use_github_app_to_check_permissions
-        targeted_with_app_token(user, slug, no_access)
+        targeted_with_app_token(user, slug)
       else
         targeted_with_oauth_token(user, slug, no_access)
       end
@@ -161,14 +161,17 @@ module Semaphore::GithubApp
     # prove repo access, so the GitHub App itself is the only authority on push.
     # Resolves the installation first because the permission check needs its
     # token; that persists an installation row before push is proven — an
-    # accepted tradeoff behind the operator-enabled flag.
-    def self.targeted_with_app_token(user, slug, no_access)
+    # accepted tradeoff behind the operator-enabled flag. Every denial returns
+    # the same message: an unresolved installation must be indistinguishable
+    # from a failed permission check, or the reply becomes an oracle for which
+    # repositories the app covers.
+    def self.targeted_with_app_token(user, slug)
       account = github_account(user)
       return cannot_verify_access(slug) unless account
 
       installation = GithubAppInstallation.find_for_repository(slug) ||
                      discover_installation(slug)
-      return no_access unless installation
+      return cannot_verify_access(slug) unless installation
       return cannot_verify_access(slug) unless app_confirms_push?(installation, slug, account)
 
       start_targeted_refresh(installation, slug)
