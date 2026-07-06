@@ -1,0 +1,7 @@
+# plug_cowboy 2.1.0 — HTTP/2 :scheme atom-table exhaustion DoS (GHSA-q8x4-x7mp-5vg2 /
+# CVE-2026-32688, high). Fixed in plug_cowboy 2.8.1, which requires cowboy ~> 2.7. badge pins
+# cowboy 2.5.0, so adopting 2.8.1 forces a cowboy/cowlib/ranch stack bump on Elixir 1.12 — out of
+# scope/risky (the last stack bump attempt regressed badge's routing tests). badge serves only GET
+# SVG endpoints and sits behind cluster ingress that terminates HTTP/2; the atom-exhaustion path is
+# not reachable from HTTP/1.1 backends. Real fix tracked for the plug_cowboy dep-bump branch.
+GHSA-q8x4-x7mp-5vg2
