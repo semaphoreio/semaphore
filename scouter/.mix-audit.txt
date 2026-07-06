@@ -1,0 +1,6 @@
+# cowlib 2.13.0 — Cookie request-header injection in cow_cookie:cookie/1 (GHSA-g2wm-735q-3f56, low).
+# Vulnerable >= 2.9.0, <= 2.16.1; cleared only in cowlib 2.18.0, which requires the cowboy 2.17 /
+# gun 2.4 / ranch 2.2 stack — an out-of-scope bump blocked by the pinned gRPC adapter. cowlib is
+# pulled in only via grpc/cowboy/gun; scouter is a gRPC service and does not build outbound Cookie
+# request headers from user-controlled input. Real fix tracked for the dep-bump branch.
+GHSA-g2wm-735q-3f56

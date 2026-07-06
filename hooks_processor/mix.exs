@@ -24,8 +24,6 @@ defmodule HooksProcessor.MixProject do
 
   defp deps do
     [
-      {:cowlib, "~> 2.16", override: true},
-      {:plug, "~> 1.16.3", override: true},
       {:plug_cowboy, "~> 2.0"},
       {:httpoison, "~> 2.0"},
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false},

@@ -27,7 +27,7 @@ defmodule Notifications.Mixfile do
   defp deps do
     [
       {:grpc, "0.5.0-beta.1", override: true},
-      {:cowlib, "~> 2.16", override: true},
+      {:cowlib, "~> 2.9", override: true},
       {:amqp, "~> 1.3", override: true},
       {:watchman, github: "renderedtext/ex-watchman"},
       {:timex, "~> 3.1"},

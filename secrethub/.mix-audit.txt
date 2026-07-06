@@ -1,0 +1,14 @@
+# plug_cowboy 2.5.2 — HTTP/2 :scheme atom-table exhaustion DoS (GHSA-q8x4-x7mp-5vg2 /
+# CVE-2026-32688, high). Fixed in plug_cowboy 2.8.1, which requires plug ~> 1.14; secrethub pins
+# plug ~> 1.13.6, so the bump drags a plug minor upgrade that in turn pulls a still-vulnerable plug
+# 1.16.x multipart advisory — out of scope on this branch. Same handling as public-api/v2. The only
+# HTTP surface is the OIDC discovery Plug.Router (GET/JSON), fronted by cluster ingress; the HTTP/2
+# atom-exhaustion path is not reachable. Real fix tracked for the plug_cowboy dep-bump branch.
+GHSA-q8x4-x7mp-5vg2
+
+# cowlib 2.11.0 — Cookie request-header injection in cow_cookie:cookie/1 (GHSA-g2wm-735q-3f56, low).
+# Vulnerable >= 2.9.0, <= 2.16.1; cleared only in cowlib 2.18.0, which requires the cowboy 2.17 /
+# gun 2.4 / ranch 2.2 stack — blocked by the pinned grpc_gun adapter. cowlib is pulled in only via
+# grpc_gun/cowboy; secrethub does not build outbound Cookie request headers from user-controlled
+# input. Real fix tracked for the dep-bump branch.
+GHSA-g2wm-735q-3f56

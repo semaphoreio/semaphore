@@ -42,7 +42,6 @@ defmodule Looper.Mixfile do
       {:util, github: "renderedtext/elixir-util"},
       {:mock, "~> 0.3.0", only: :test},
       {:amqp_client, "~> 3.9.2"},
-      {:plug, "~> 1.15.4", only: :dev, runtime: false, override: true},
       {:tackle, github: "renderedtext/ex-tackle", tag: "v0.2.1"},
       {:junit_formatter, "~> 3.3", only: [:test]}
     ]

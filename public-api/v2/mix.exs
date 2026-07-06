@@ -42,8 +42,6 @@ defmodule PublicAPI.Mixfile do
     [
       {:grpc, "~> 0.3"},
       {:protobuf, "~> 0.12.0"},
-      {:cowlib, "~> 2.16", override: true},
-      {:plug, "~> 1.16.3", override: true},
       {:plug_cowboy, "~> 2.0"},
       {:cors_plug, "~> 3.0"},
       {:httpoison, "~> 2.2.0"},
