@@ -658,4 +658,186 @@ defmodule Zebra.Models.JobTest do
       assert Zebra.LegacyRepo.get(Zebra.Models.Job, job.id) != nil
     end
   end
+
+  describe ".create_copy" do
+    setup do
+      {:ok, original} =
+        Support.Factories.Job.create(:finished, %{
+          result: "passed",
+          index: 3,
+          priority: 60,
+          deployment_target_id: Ecto.UUID.generate(),
+          repository_id: Ecto.UUID.generate(),
+          request: %{
+            "job_id" => Ecto.UUID.generate(),
+            "job_name" => "RSpec 1/3",
+            "env_vars" => [
+              %{"name" => "SEMAPHORE_GIT_BRANCH", "value" => "bWFzdGVy"},
+              %{"name" => "SEMAPHORE_GIT_SHA", "value" => "SEVBRA=="}
+            ]
+          }
+        })
+
+      {:ok, original: original, task_id: Ecto.UUID.generate()}
+    end
+
+    test "returns a fresh copy row carrying original_job_id lineage", ctx do
+      {:ok, copy} = Job.create_copy(ctx.original, ctx.task_id)
+
+      assert copy.id != ctx.original.id
+      assert copy.original_job_id == ctx.original.id
+      assert copy.build_id == ctx.task_id
+    end
+
+    test "is born finished + passed", ctx do
+      {:ok, copy} = Job.create_copy(ctx.original, ctx.task_id)
+
+      assert copy.aasm_state == Job.state_finished()
+      assert copy.result == Job.result_passed()
+    end
+
+    test "preserves the original's timestamps, never stamps now (D-03)", ctx do
+      {:ok, copy} = Job.create_copy(ctx.original, ctx.task_id)
+
+      assert copy.created_at == ctx.original.created_at
+      assert copy.started_at == ctx.original.started_at
+      assert copy.finished_at == ctx.original.finished_at
+    end
+
+    test "clones expires_at from the original (D-08 — copy ages with the original)", ctx do
+      expiry = DateTime.utc_now() |> DateTime.add(3600, :second) |> DateTime.truncate(:second)
+
+      {:ok, original} =
+        Support.Factories.Job.create(:finished, %{result: "passed", expires_at: expiry})
+
+      {:ok, copy} = Job.create_copy(original, ctx.task_id)
+
+      assert copy.expires_at == original.expires_at
+      assert copy.expires_at == expiry
+    end
+
+    test "a nil expires_at on the original stays nil on the copy", ctx do
+      assert is_nil(ctx.original.expires_at)
+
+      {:ok, copy} = Job.create_copy(ctx.original, ctx.task_id)
+
+      assert is_nil(copy.expires_at)
+    end
+
+    test "ACCEPTED EDGE (user decision 2026-07-06): a copy with a past cloned expires_at is claimable by the retention sweeper — intended near-expiry behavior, not a bug",
+         ctx do
+      now = DateTime.utc_now() |> DateTime.truncate(:second)
+      past = DateTime.add(now, -3600, :second)
+      project_id = Ecto.UUID.generate()
+      artifact_store_id = Ecto.UUID.generate()
+
+      Ecto.Adapters.SQL.query!(
+        Zebra.LegacyRepo,
+        "INSERT INTO projects (id, artifact_store_id) VALUES ($1, $2)",
+        [Ecto.UUID.dump!(project_id), Ecto.UUID.dump!(artifact_store_id)]
+      )
+
+      {:ok, original} =
+        Support.Factories.Job.create(:finished, %{
+          result: "passed",
+          project_id: project_id,
+          expires_at: past
+        })
+
+      {:ok, copy} = Job.create_copy(original, ctx.task_id)
+      assert copy.expires_at == past
+
+      {:ok, _deleted_stop_requests, deleted_jobs} = Job.claim_and_delete_expired_jobs(10)
+
+      assert deleted_jobs >= 1
+      # The copy row is swept exactly like any other expired job. Accepted residual
+      # risk at ~400-day retention (T-02-03): rerunning a pipeline whose originals are
+      # about to expire is a negligible window — documented, not mitigated here.
+      assert Zebra.LegacyRepo.get(Zebra.Models.Job, copy.id) == nil
+    end
+
+    test "clones identity, spec and display columns from the original", ctx do
+      {:ok, copy} = Job.create_copy(ctx.original, ctx.task_id)
+
+      assert copy.name == ctx.original.name
+      assert copy.index == ctx.original.index
+      assert copy.machine_type == ctx.original.machine_type
+      assert copy.machine_os_image == ctx.original.machine_os_image
+      assert copy.spec == ctx.original.spec
+      assert copy.organization_id == ctx.original.organization_id
+      assert copy.project_id == ctx.original.project_id
+      assert copy.deployment_target_id == ctx.original.deployment_target_id
+      assert copy.repository_id == ctx.original.repository_id
+      assert copy.priority == ctx.original.priority
+    end
+
+    test "clones request so job read surfaces do not crash on a copy row (finding 10)", ctx do
+      {:ok, copy} = Job.create_copy(ctx.original, ctx.task_id)
+
+      assert copy.request == ctx.original.request
+      refute is_nil(copy.request)
+
+      # internal_job_api.get_agent_payload reads job.request via Poison.encode!/1
+      assert is_binary(Poison.encode!(copy.request))
+
+      # public_job_api serializer reads job.request + job.spec — must not crash on a copy
+      serialized = Zebra.Apis.PublicJobApi.Serializer.serialize(copy)
+      assert %Semaphore.Jobs.V1alpha.Job{} = serialized
+    end
+
+    test "forces runtime-only execution fields to their zero value (a copy never executed)", ctx do
+      # sanity: the original DID carry runtime execution fields
+      refute is_nil(ctx.original.agent_ip_address)
+
+      {:ok, copy} = Job.create_copy(ctx.original, ctx.task_id)
+
+      assert is_nil(copy.port)
+      assert is_nil(copy.agent_id)
+      assert is_nil(copy.agent_name)
+      assert is_nil(copy.agent_ip_address)
+      assert is_nil(copy.agent_ctrl_port)
+      assert is_nil(copy.agent_auth_token)
+      assert is_nil(copy.private_ssh_key)
+      assert is_nil(copy.failure_reason)
+    end
+
+    test "a plain job created via Job.create/1 has original_job_id == nil (backward compatible)" do
+      {:ok, job} =
+        Job.create(
+          organization_id: Ecto.UUID.generate(),
+          project_id: Ecto.UUID.generate(),
+          name: "plain",
+          index: 0,
+          priority: 50,
+          spec: %Semaphore.Jobs.V1alpha.Job.Spec{},
+          machine_type: "e1-standard-2",
+          machine_os_image: "ubuntu1804"
+        )
+
+      assert is_nil(job.original_job_id)
+    end
+
+    test "D-05 one-hop flattening: a copy of a copy points at the terminal executed job, never an intermediate copy",
+         ctx do
+      {:ok, first_copy} = Job.create_copy(ctx.original, ctx.task_id)
+      assert first_copy.original_job_id == ctx.original.id
+
+      second_task_id = Ecto.UUID.generate()
+      {:ok, second_copy} = Job.create_copy(first_copy, second_task_id)
+
+      # flattens to the terminal executed job (original), NOT the intermediate copy
+      assert second_copy.original_job_id == ctx.original.id
+      refute second_copy.original_job_id == first_copy.id
+    end
+
+    test "security (V5): org/project ids come from the original row, never caller-supplied params",
+         ctx do
+      # create_copy/2 takes only (original, task_id) — there is no caller-supplied
+      # org/project param, so a copy cannot be minted into a different tenant.
+      {:ok, copy} = Job.create_copy(ctx.original, ctx.task_id)
+
+      assert copy.organization_id == ctx.original.organization_id
+      assert copy.project_id == ctx.original.project_id
+    end
+  end
 end
