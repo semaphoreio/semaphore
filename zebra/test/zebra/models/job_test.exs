@@ -785,7 +785,8 @@ defmodule Zebra.Models.JobTest do
       assert %Semaphore.Jobs.V1alpha.Job{} = serialized
     end
 
-    test "forces runtime-only execution fields to their zero value (a copy never executed)", ctx do
+    test "forces runtime-only execution fields to their zero value (a copy never executed)",
+         ctx do
       # sanity: the original DID carry runtime execution fields
       refute is_nil(ctx.original.agent_ip_address)
 
