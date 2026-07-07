@@ -227,6 +227,47 @@ defmodule Ppl.PplBlocks.Model.PplBlocksQueries do
     ppl_block |> Repo.preload([connections: :dependency_pipeline_block])
   end
 
+  @doc """
+  Moves to 'done'/'canceled' all pipeline blocks that are stuck in a non-terminal
+  state while the pipeline they belong to is already in 'done' state (orphaned
+  blocks).
+
+  This is a pure data fix performed with a single `update_all`. It deliberately
+  does NOT go through the STM, so no state-transition events are published, no
+  epilogue handlers run and no other services are notified - the results of the
+  (already finished) pipelines the blocks belong to are left untouched.
+
+  Returns `{:ok, number_of_affected_blocks}`. When `dry_run?` is true nothing is
+  changed and the count of matching blocks is returned instead.
+  """
+  def cancel_orphaned_blocks(dry_run? \\ false)
+
+  def cancel_orphaned_blocks(true) do
+    orphaned_blocks_query() |> Repo.aggregate(:count) |> return_ok_tuple()
+  end
+
+  def cancel_orphaned_blocks(false) do
+    orphaned_blocks_query()
+    |> Repo.update_all(
+      set: [
+        state: "done",
+        result: "canceled",
+        result_reason: "internal",
+        in_scheduling: false,
+        updated_at: NaiveDateTime.utc_now()
+      ]
+    )
+    |> return_number()
+  end
+
+  defp orphaned_blocks_query do
+    from(pb in PplBlocks,
+      join: p in Ppls,
+      on: p.ppl_id == pb.ppl_id,
+      where: p.state == "done" and pb.state != "done"
+    )
+  end
+
   defp return_number({number, _}) when is_integer(number),
     do: return_ok_tuple(number)
   defp return_number(error), do: return_error_tuple(error)
