@@ -128,7 +128,8 @@ defmodule Guard.OIDC.User do
       oidc_user_id: oidc_user_id,
       email: email,
       name: name,
-      repository_providers: repository_providers
+      repository_providers: repository_providers,
+      provider_conflict: :skip
     })
   end
 
