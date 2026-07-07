@@ -105,6 +105,46 @@ defmodule Block.TaskApiClient.ScheduleRequestFormatter.Test do
     end
   end
 
+  test "end-to-end: partition persisted in request_args survives DB reload and reaches the built request", ctx do
+    {a_orig_id, c_orig_id} = {UUID.uuid4(), UUID.uuid4()}
+
+    partition = %{"original_block_id" => ctx.orig_block_id,
+                  "jobs" => %{"0" => a_orig_id, "2" => c_orig_id}}
+
+    request_args = %{"service" => "local", @partition_key => partition}
+
+    {:ok, blk_req} = insert_block_request(request_args, ctx.task_def)
+    {:ok, _blk_req} = BlockRequestsQueries.insert_build(blk_req, %{build: ctx.task_def})
+
+    {:ok, blk_req} = BlockRequestsQueries.get_by_id(blk_req.id)
+
+    ppl_args = blk_req.request_args |> Map.merge(blk_req.source_args || %{})
+    params = additional_params(ppl_args)
+
+    assert {:ok, req} = ScheduleRequestFormatter.to_proto_request(blk_req.build, params)
+
+    assert req.original_task_id == ctx.zebra_task_id
+    assert [j0, j1, j2] = req.jobs
+    assert j0.original_job_id == a_orig_id
+    assert j1.original_job_id == ""
+    assert j2.original_job_id == c_orig_id
+  end
+
+  test "end-to-end inverse: request_args without a partition yields no original ids", ctx do
+    {:ok, blk_req} = insert_block_request(%{"service" => "local"}, ctx.task_def)
+    {:ok, _blk_req} = BlockRequestsQueries.insert_build(blk_req, %{build: ctx.task_def})
+
+    {:ok, blk_req} = BlockRequestsQueries.get_by_id(blk_req.id)
+
+    ppl_args = blk_req.request_args |> Map.merge(blk_req.source_args || %{})
+    params = additional_params(ppl_args)
+
+    assert {:ok, req} = ScheduleRequestFormatter.to_proto_request(blk_req.build, params)
+
+    assert req.original_task_id == ""
+    assert Enum.all?(req.jobs, fn job -> job.original_job_id == "" end)
+  end
+
   defp additional_params(ppl_args) do
     %{"wf_id" => UUID.uuid4(), "ppl_id" => UUID.uuid4(),
       "request_token" => UUID.uuid4(), "project_id" => UUID.uuid4(),
