@@ -214,7 +214,7 @@ resource "keycloak_oidc_identity_provider" "github_provider" {
   trust_email                   = true
   store_token                   = false
   default_scopes                = "user:email"
-  first_broker_login_flow_alias = ""
+  first_broker_login_flow_alias = keycloak_authentication_flow.first_broker_login_auto_link.alias
 
   sync_mode = "IMPORT"
 
@@ -231,6 +231,12 @@ resource "keycloak_oidc_identity_provider" "github_provider" {
       hide_on_login_page,
     ]
   }
+
+  # Point logins at the flow only after it is fully assembled.
+  depends_on = [
+    keycloak_authentication_execution.auto_link,
+    keycloak_authentication_execution_config.review_profile_config,
+  ]
 }
 
 // IDENTITY PROVIDER - Bitbucket
@@ -247,7 +253,7 @@ resource "keycloak_oidc_identity_provider" "bitbucket_provider" {
   trust_email                   = true
   store_token                   = false
   default_scopes                = ""
-  first_broker_login_flow_alias = ""
+  first_broker_login_flow_alias = keycloak_authentication_flow.first_broker_login_auto_link.alias
 
   sync_mode = "IMPORT"
 
@@ -264,6 +270,12 @@ resource "keycloak_oidc_identity_provider" "bitbucket_provider" {
       hide_on_login_page,
     ]
   }
+
+  # Point logins at the flow only after it is fully assembled.
+  depends_on = [
+    keycloak_authentication_execution.auto_link,
+    keycloak_authentication_execution_config.review_profile_config,
+  ]
 }
 
 // IDENTITY PROVIDER - Gitlab
@@ -280,7 +292,7 @@ resource "keycloak_oidc_identity_provider" "gitlab_provider" {
   trust_email                   = true
   store_token                   = false
   default_scopes                = "api read_user read_repository write_repository openid"
-  first_broker_login_flow_alias = ""
+  first_broker_login_flow_alias = keycloak_authentication_flow.first_broker_login_auto_link.alias
 
   sync_mode = "IMPORT"
 
@@ -297,6 +309,12 @@ resource "keycloak_oidc_identity_provider" "gitlab_provider" {
       hide_on_login_page,
     ]
   }
+
+  # Point logins at the flow only after it is fully assembled.
+  depends_on = [
+    keycloak_authentication_execution.auto_link,
+    keycloak_authentication_execution_config.review_profile_config,
+  ]
 }
 
 // Realm User Profile
