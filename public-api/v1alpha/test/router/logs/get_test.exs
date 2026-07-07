@@ -164,23 +164,12 @@ defmodule PipelinesAPI.Logs.Get.Test do
       failure_reason = "Selected machine type is not available in this organization"
 
       job =
-        Job.create(UUID.uuid4(), UUID.uuid4(),
-          project_id: ctx.cloud_job.project_id,
-          state: "finished",
+        create_finished_without_execution_job(ctx,
           result: "failed",
           failure_reason: failure_reason
         )
 
-      GrpcMock.stub(LoghubMock, :get_log_events, fn _, _ ->
-        %InternalApi.Loghub.GetLogEventsResponse{
-          final: false,
-          events: [],
-          status: %InternalApi.ResponseStatus{
-            code: InternalApi.ResponseStatus.Code.value(:BAD_PARAM),
-            message: "Log not found neither in the archive nor in the virtual machine"
-          }
-        }
-      end)
+      stub_loghub_not_found()
 
       assert {404, _, response} = get_logs(job.api_model.id, ctx.user_id)
       assert response == failure_reason

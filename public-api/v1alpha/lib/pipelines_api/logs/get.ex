@@ -66,7 +66,7 @@ defmodule PipelinesAPI.Logs.Get do
     end)
   end
 
-  defp get_logs(conn, %{self_hosted: true} = job) do
+  defp get_logs(conn, job = %{self_hosted: true}) do
     case Loghub2Client.generate_token(job.id) do
       {:ok, token} ->
         conn
@@ -78,7 +78,7 @@ defmodule PipelinesAPI.Logs.Get do
     end
   end
 
-  defp get_logs(conn, %{self_hosted: false} = job) do
+  defp get_logs(conn, job = %{self_hosted: false}) do
     case LoghubClient.get_log_events(job.id) do
       {:ok, events} ->
         conn

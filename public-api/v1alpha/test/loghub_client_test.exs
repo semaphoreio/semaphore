@@ -33,7 +33,8 @@ defmodule PipelinesAPI.LoghubClient.Test do
         }
       end)
 
-      assert {:error, {:not_found, "Log not found neither in the archive nor in the virtual machine"}} =
+      assert {:error,
+              {:not_found, "Log not found neither in the archive nor in the virtual machine"}} =
                LoghubClient.get_log_events(@job_id)
     end
 
