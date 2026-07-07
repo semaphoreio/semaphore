@@ -162,6 +162,20 @@ resource "keycloak_oidc_identity_provider" "github_provider" {
   first_broker_login_flow_alias = ""
 
   sync_mode = "IMPORT"
+
+  # Client credentials and endpoints are configured out-of-band directly in
+  # Keycloak (terraform provisions placeholders), so re-applies must never
+  # revert them.
+  lifecycle {
+    ignore_changes = [
+      client_id,
+      authorization_url,
+      token_url,
+      extra_config,
+      enabled,
+      hide_on_login_page,
+    ]
+  }
 }
 
 // IDENTITY PROVIDER - Bitbucket
@@ -181,6 +195,20 @@ resource "keycloak_oidc_identity_provider" "bitbucket_provider" {
   first_broker_login_flow_alias = ""
 
   sync_mode = "IMPORT"
+
+  # Client credentials and endpoints are configured out-of-band directly in
+  # Keycloak (terraform provisions placeholders), so re-applies must never
+  # revert them.
+  lifecycle {
+    ignore_changes = [
+      client_id,
+      authorization_url,
+      token_url,
+      extra_config,
+      enabled,
+      hide_on_login_page,
+    ]
+  }
 }
 
 // IDENTITY PROVIDER - Gitlab
@@ -200,6 +228,20 @@ resource "keycloak_oidc_identity_provider" "gitlab_provider" {
   first_broker_login_flow_alias = ""
 
   sync_mode = "IMPORT"
+
+  # Client credentials and endpoints are configured out-of-band directly in
+  # Keycloak (terraform provisions placeholders), so re-applies must never
+  # revert them.
+  lifecycle {
+    ignore_changes = [
+      client_id,
+      authorization_url,
+      token_url,
+      extra_config,
+      enabled,
+      hide_on_login_page,
+    ]
+  }
 }
 
 // Realm User Profile

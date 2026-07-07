@@ -66,22 +66,25 @@ spec:
             value: '["https://id.$(BASE_DOMAIN)/*"]'
           - name: TF_VAR_semaphore_client_web_origins
             value: '["https://id.$(BASE_DOMAIN)"]'
+          # Client secrets use the Keycloak mask value: on update Keycloak
+          # preserves the stored secret when it receives the mask, while an
+          # empty string would overwrite it.
           - name: TF_VAR_github_provider_client_id
             value: ""
           - name: TF_VAR_github_provider_client_secret
-            value: ""
+            value: "**********"
           - name: TF_VAR_github_provider_authorization_url
             value: ""
           - name: TF_VAR_bitbucket_provider_client_id
             value: ""
           - name: TF_VAR_bitbucket_provider_client_secret
-            value: ""
+            value: "**********"
           - name: TF_VAR_bitbucket_provider_authorization_url
             value: ""
           - name: TF_VAR_gitlab_provider_client_id
             value: ""
           - name: TF_VAR_gitlab_provider_client_secret
-            value: ""
+            value: "**********"
           - name: TF_VAR_gitlab_provider_authorization_url
             value: ""
           - name: TF_VAR_semaphore_realm_login_theme
