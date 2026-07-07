@@ -21,6 +21,8 @@ defmodule Rbac.FrontRepo.RepoHostAccount do
 
   @type repo_host :: :github | :bitbucket
 
+  @uid_taken_message "is already connected to another Semaphore user"
+
   @type t :: %__MODULE__{
           login: String.t(),
           github_uid: String.t(),
@@ -80,6 +82,7 @@ defmodule Rbac.FrontRepo.RepoHostAccount do
         :name,
         :permission_scope
       ])
+      |> validate_github_uid_not_taken()
       |> FrontRepo.insert()
 
     case result do
@@ -172,6 +175,36 @@ defmodule Rbac.FrontRepo.RepoHostAccount do
 
   def update_revoke_status(rha, revoked) do
     update_account(%{revoked: revoked}, rha)
+  end
+
+  @doc """
+  Returns true when the changeset failed because the GitHub account is
+  already connected to another user.
+  """
+  @spec uid_taken_error?(term()) :: boolean()
+  def uid_taken_error?(%Ecto.Changeset{errors: errors}) do
+    Enum.any?(errors, fn
+      {:github_uid, {_msg, opts}} -> opts[:validation] == :unsafe_unique
+      _ -> false
+    end)
+  end
+
+  def uid_taken_error?(_), do: false
+
+  # A GitHub identity may be linked to at most one user. On update changesets
+  # the row itself is excluded by primary key, so reconnecting the same
+  # account for the same user stays valid.
+  defp validate_github_uid_not_taken(changeset) do
+    repo_host = Ecto.Changeset.get_field(changeset, :repo_host)
+    uid = Ecto.Changeset.get_field(changeset, :github_uid)
+
+    if repo_host == "github" and uid not in [nil, ""] do
+      Ecto.Changeset.unsafe_validate_unique(changeset, [:github_uid, :repo_host], FrontRepo,
+        message: @uid_taken_message
+      )
+    else
+      changeset
+    end
   end
 
   defp adjust_scope(%{permission_scope: scope} = data, _) when scope in @scopes_in_order, do: data
@@ -299,6 +332,7 @@ defmodule Rbac.FrontRepo.RepoHostAccount do
         ]
       )
       |> Ecto.Changeset.validate_required([:github_uid, :login, :name])
+      |> validate_github_uid_not_taken()
       |> FrontRepo.update()
 
     case result do
