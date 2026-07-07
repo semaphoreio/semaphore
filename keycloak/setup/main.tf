@@ -145,6 +145,61 @@ resource "keycloak_required_action" "webauthn-register" {
   name     = "Webauthn Register"
 }
 
+// AUTHENTICATION FLOW - first broker login with auto-link
+// Auto-links an identity-provider login to the existing user with the same
+// (trusted) email instead of asking for verification - users created by
+// Semaphore have no password credential, so re-authentication dead-ends.
+resource "keycloak_authentication_flow" "first_broker_login_auto_link" {
+  realm_id    = keycloak_realm.semaphore_realm.id
+  alias       = "first broker login auto link"
+  description = "First broker login flow that auto-links accounts by verified email"
+}
+
+resource "keycloak_authentication_execution" "review_profile" {
+  realm_id          = keycloak_realm.semaphore_realm.id
+  parent_flow_alias = keycloak_authentication_flow.first_broker_login_auto_link.alias
+  authenticator     = "idp-review-profile"
+  requirement       = "REQUIRED"
+}
+
+resource "keycloak_authentication_execution_config" "review_profile_config" {
+  realm_id     = keycloak_realm.semaphore_realm.id
+  execution_id = keycloak_authentication_execution.review_profile.id
+  alias        = "auto link review profile config"
+  config = {
+    "update.profile.on.first.login" = "off"
+  }
+}
+
+resource "keycloak_authentication_subflow" "create_or_link" {
+  realm_id          = keycloak_realm.semaphore_realm.id
+  parent_flow_alias = keycloak_authentication_flow.first_broker_login_auto_link.alias
+  alias             = "create user or auto link"
+  requirement       = "REQUIRED"
+
+  # Provider 4.4.0 has no priority attribute: sibling order is creation
+  # order, so this subflow must be created after the review profile step.
+  depends_on = [keycloak_authentication_execution.review_profile]
+}
+
+resource "keycloak_authentication_execution" "create_user_if_unique" {
+  realm_id          = keycloak_realm.semaphore_realm.id
+  parent_flow_alias = keycloak_authentication_subflow.create_or_link.alias
+  authenticator     = "idp-create-user-if-unique"
+  requirement       = "ALTERNATIVE"
+}
+
+resource "keycloak_authentication_execution" "auto_link" {
+  realm_id          = keycloak_realm.semaphore_realm.id
+  parent_flow_alias = keycloak_authentication_subflow.create_or_link.alias
+  authenticator     = "idp-auto-link"
+  requirement       = "ALTERNATIVE"
+
+  # Must run after idp-create-user-if-unique: it consumes the
+  # EXISTING_USER_INFO note set by the duplicate check.
+  depends_on = [keycloak_authentication_execution.create_user_if_unique]
+}
+
 // IDENTITY PROVIDER - Github
 resource "keycloak_oidc_identity_provider" "github_provider" {
   realm             = keycloak_realm.semaphore_realm.id
