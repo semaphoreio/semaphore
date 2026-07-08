@@ -61,16 +61,16 @@ defmodule PipelinesAPI.Logs.Get do
       if LogsParams.artifact_job_logs_requested_for_job?(conn.params, job) do
         conn |> get_artifact_job_logs(job)
       else
-        conn |> get_logs(job.id, job.self_hosted)
+        conn |> get_logs(job)
       end
     end)
   end
 
-  defp get_logs(conn, job_id, true) do
-    case Loghub2Client.generate_token(job_id) do
+  defp get_logs(conn, job = %{self_hosted: true}) do
+    case Loghub2Client.generate_token(job.id) do
       {:ok, token} ->
         conn
-        |> put_resp_header("location", build_loghub2_url(conn, job_id, token))
+        |> put_resp_header("location", build_loghub2_url(conn, job.id, token))
         |> send_resp(302, "")
 
       e ->
@@ -78,21 +78,64 @@ defmodule PipelinesAPI.Logs.Get do
     end
   end
 
-  defp get_logs(conn, job_id, false) do
-    case LoghubClient.get_log_events(job_id) do
+  defp get_logs(conn, job = %{self_hosted: false}) do
+    case LoghubClient.get_log_events(job.id) do
       {:ok, events} ->
         conn
         |> put_resp_content_type("application/json")
         |> send_resp(200, prepare_response(events))
+
+      # The job produced no logs. If zebra recorded why it never ran (e.g. an
+      # invalid machine type), surface that reason instead of a bare not-found.
+      {:error, {:not_found, message}} ->
+        RespCommon.respond({:error, {:not_found, missing_logs_message(job, message)}}, conn)
 
       e ->
         RespCommon.respond(e, conn)
     end
   rescue
     e ->
-      Logger.error("Error getting logs for #{job_id}: #{inspect(e)}")
+      Logger.error("Error getting logs for #{job.id}: #{inspect(e)}")
       RespCommon.respond(e, conn)
   end
+
+  # Mirrors the UI's behaviour of showing why a job produced no logs in place of
+  # the logs themselves (see FrontWeb.JobView.missing_logs_message/1). Falls back
+  # to loghub's own message when the job did run but its logs are unavailable.
+  defp missing_logs_message(job, fallback) do
+    cond do
+      failed_to_start?(job) ->
+        job.failure_reason
+
+      finished_without_execution?(job) and job_result(job) == "stopped" ->
+        "This job was stopped before it started, so no logs were produced."
+
+      finished_without_execution?(job) ->
+        "This job never started, so no logs were produced."
+
+      true ->
+        fallback
+    end
+  end
+
+  # The job never started but zebra recorded a concrete reason (e.g. an invalid
+  # machine type).
+  defp failed_to_start?(job) do
+    not started?(job) and is_binary(Map.get(job, :failure_reason)) and
+      Map.get(job, :failure_reason) != ""
+  end
+
+  # The job reached a terminal (FINISHED) state without ever running.
+  defp finished_without_execution?(job) do
+    not started?(job) and job_state(job) == "finished"
+  end
+
+  # started_at is rendered as "" by JobsClient when the job never started.
+  defp started?(%{timeline: %{started_at: started_at}}), do: started_at not in [nil, ""]
+  defp started?(_job), do: false
+
+  defp job_state(job), do: Map.get(job, :state)
+  defp job_result(job), do: Map.get(job, :result)
 
   defp get_artifact_job_logs(conn, job) do
     with :ok <- ensure_artifact_job_logs_feature_enabled(conn),
