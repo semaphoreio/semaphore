@@ -2,4 +2,4 @@
 ignore:
   - CVE-2024-26143
   - CVE-2024-34341
-  - CVE-2026-38969
+  - CVE-2026-38969 # webrick 1.9.2 trailer reparse; no patched release yet
