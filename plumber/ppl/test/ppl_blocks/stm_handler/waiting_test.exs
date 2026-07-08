@@ -85,6 +85,81 @@ defmodule Ppl.PplBlocks.STMHandler.WaitingState.JobCopyPartition.Test do
     end
   end
 
+  test "yaml 'partial_rerun: block' on the block forces whole-block rebuild even with flag ON", ctx do
+    set_block_partial_rerun(ctx.ppl_id, "block")
+
+    assert {:ok, ppl_blk} = insert_ppl_blk(ctx.ppl_id, 0, %{duplicate: true})
+
+    with_mocks([
+      {Ppl.Features, [], [job_level_partial_rerun_enabled?: fn _ -> true end]},
+      {Block, [], block_mocks(ctx, [], self())}
+    ]) do
+      assert {:ok, %{state: "running", block_id: _}} = run_scheduling(ppl_blk)
+
+      assert_received {:block_schedule_request, req}
+      refute Map.has_key?(req.request_args, @partition_key)
+      assert_not_called(Block.describe(:_))
+    end
+  end
+
+  test "yaml 'partial_rerun: block' at pipeline level forces whole-block rebuild for all blocks", ctx do
+    set_pipeline_partial_rerun(ctx.ppl_id, "block")
+
+    assert {:ok, ppl_blk} = insert_ppl_blk(ctx.ppl_id, 0, %{duplicate: true})
+
+    with_mocks([
+      {Ppl.Features, [], [job_level_partial_rerun_enabled?: fn _ -> true end]},
+      {Block, [], block_mocks(ctx, [], self())}
+    ]) do
+      assert {:ok, %{state: "running", block_id: _}} = run_scheduling(ppl_blk)
+
+      assert_received {:block_schedule_request, req}
+      refute Map.has_key?(req.request_args, @partition_key)
+      assert_not_called(Block.describe(:_))
+    end
+  end
+
+  test "block-level 'partial_rerun: jobs' overrides pipeline-level 'block'", ctx do
+    {a_id, b_id} = {UUID.uuid4(), UUID.uuid4()}
+
+    jobs = [
+      describe_job(a_id, 0, "FINISHED", "PASSED"),
+      describe_job(b_id, 1, "FINISHED", "FAILED"),
+      describe_job(UUID.uuid4(), 2, "FINISHED", "FAILED")
+    ]
+
+    set_pipeline_partial_rerun(ctx.ppl_id, "block")
+    set_block_partial_rerun(ctx.ppl_id, "jobs")
+
+    assert {:ok, ppl_blk} = insert_ppl_blk(ctx.ppl_id, 0, %{duplicate: true})
+
+    with_mocks([
+      {Ppl.Features, [], [job_level_partial_rerun_enabled?: fn _ -> true end]},
+      {Block, [], block_mocks(ctx, jobs, self())}
+    ]) do
+      assert {:ok, %{state: "running", block_id: _}} = run_scheduling(ppl_blk)
+
+      assert_received {:block_schedule_request, req}
+      assert req.request_args[@partition_key]["jobs"] == %{"0" => a_id}
+    end
+  end
+
+  test "yaml 'partial_rerun: jobs' alone does not bypass the feature flag", ctx do
+    set_block_partial_rerun(ctx.ppl_id, "jobs")
+
+    assert {:ok, ppl_blk} = insert_ppl_blk(ctx.ppl_id, 0, %{duplicate: true})
+
+    with_mocks([
+      {Ppl.Features, [], [job_level_partial_rerun_enabled?: fn _ -> false end]},
+      {Block, [], block_mocks(ctx, [], self())}
+    ]) do
+      assert {:ok, %{state: "running", block_id: _}} = run_scheduling(ppl_blk)
+
+      assert_received {:block_schedule_request, req}
+      refute Map.has_key?(req.request_args, @partition_key)
+    end
+  end
+
   test "rerun_jobs carries prior job ids for every non-copied original job", ctx do
     {a_id, b_id, c_id} = {UUID.uuid4(), UUID.uuid4(), UUID.uuid4()}
 
@@ -384,6 +459,18 @@ defmodule Ppl.PplBlocks.STMHandler.WaitingState.JobCopyPartition.Test do
       assert_called Watchman.submit(@copied_metric, 1)
       assert_called Watchman.submit(@rerun_metric, 2)
     end
+  end
+
+  defp set_pipeline_partial_rerun(ppl_id, value) do
+    assert {:ok, _} =
+      "update pipeline_requests set definition = jsonb_set(definition, '{partial_rerun}', '\"#{value}\"') where id = '#{ppl_id}'"
+      |> Repo.query()
+  end
+
+  defp set_block_partial_rerun(ppl_id, value) do
+    assert {:ok, _} =
+      "update pipeline_requests set definition = jsonb_set(definition, '{blocks,0,partial_rerun}', '\"#{value}\"') where id = '#{ppl_id}'"
+      |> Repo.query()
   end
 
   defp run_scheduling(ppl_blk) do
