@@ -198,6 +198,30 @@ defmodule Zebra.Apis.InternalTaskApi.ScheduleTest do
       assert {:error, :invalid_argument, _msg} = Schedule.schedule(req)
     end
 
+    test "original_task_id that is not a valid UUID => invalid_argument" do
+      req =
+        copy_request(nil,
+          jobs: [copy_job_spec("copy", Ecto.UUID.generate())],
+          original_task_id: "not-a-uuid"
+        )
+
+      assert {:error, :invalid_argument, msg} = Schedule.schedule(req)
+      assert msg =~ "not a valid UUID"
+    end
+
+    test "marker that is not a valid UUID => invalid_argument" do
+      {orig_task, _member} = original_with_passed_job()
+
+      req =
+        copy_request(orig_task,
+          jobs: [copy_job_spec("copy", "not-a-uuid")]
+        )
+
+      assert {:error, :invalid_argument, msg} = Schedule.schedule(req)
+      assert msg =~ "not a valid UUID"
+      assert {:error, :not_found} = Schedule.find_already_scheduled_task(req)
+    end
+
     test "original_task_id in a different workflow => invalid_argument" do
       {orig_task, member} = original_with_passed_job()
 
