@@ -219,6 +219,25 @@ RSpec.describe RepoHost::Github::Client do
     end
   end
 
+  describe "#permission_level" do
+    it "fetches the collaborator permission for a repository" do
+      allow_any_instance_of(Octokit::Client).to receive(:permission_level)
+        .with("owner/repo", "marvin")
+        .and_return(:payload)
+
+      expect(@client.permission_level("owner/repo", "marvin")).to eq(:payload)
+    end
+
+    it "translates a missing collaborator into RepoHost::RemoteException::NotFound" do
+      allow_any_instance_of(Octokit::Client).to receive(:permission_level)
+        .and_raise(Octokit::NotFound)
+
+      expect do
+        @client.permission_level("owner/repo", "marvin")
+      end.to raise_error(RepoHost::RemoteException::NotFound)
+    end
+  end
+
   describe "#compare" do
     it "fetches the comparison through a non-paginating client" do
       non_paginating = instance_double(Octokit::Client)
