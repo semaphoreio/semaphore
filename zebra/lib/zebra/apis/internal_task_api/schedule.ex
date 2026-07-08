@@ -87,7 +87,9 @@ defmodule Zebra.Apis.InternalTaskApi.Schedule do
         if Keyword.has_key?(changeset.errors, :build_request_id) do
           Repo.rollback(:already_scheduled)
         else
-          Repo.rollback({:invalid_argument, "failed to create task: #{inspect(changeset.errors)}"})
+          Repo.rollback(
+            {:invalid_argument, "failed to create task: #{inspect(changeset.errors)}"}
+          )
         end
     end
   end
@@ -132,6 +134,12 @@ defmodule Zebra.Apis.InternalTaskApi.Schedule do
         not present?(req.original_task_id) ->
           Repo.rollback(
             {:invalid_argument, "original_task_id required when job markers are present"}
+          )
+
+        Ecto.UUID.cast(req.original_task_id) == :error ->
+          Repo.rollback(
+            {:invalid_argument,
+             "original_task_id #{inspect(req.original_task_id)} is not a valid UUID"}
           )
 
         true ->
@@ -179,20 +187,25 @@ defmodule Zebra.Apis.InternalTaskApi.Schedule do
   defp classify_copy_marker(job_req, req, copy_ctx) do
     marker = job_req.original_job_id
 
-    case Map.get(copy_ctx.members, marker) do
-      nil ->
-        classify_non_member(marker, req)
+    case Ecto.UUID.cast(marker) do
+      :error ->
+        {:invalid, "original_job_id #{inspect(marker)} is not a valid UUID"}
 
-      member ->
-        classify_member(member, marker, req)
+      {:ok, _} ->
+        case Map.get(copy_ctx.members, marker) do
+          nil ->
+            classify_non_member(marker, req)
+
+          member ->
+            classify_member(member, marker, req)
+        end
     end
   end
 
   defp classify_member(member, marker, req) do
     cond do
       member.organization_id != req.org_id or member.project_id != req.project_id ->
-        {:invalid,
-         "original_job_id #{marker} belongs to a different tenant than the request"}
+        {:invalid, "original_job_id #{marker} belongs to a different tenant than the request"}
 
       copyable?(member) ->
         {:copy, member}
