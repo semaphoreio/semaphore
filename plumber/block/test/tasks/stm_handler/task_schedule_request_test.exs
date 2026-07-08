@@ -305,7 +305,8 @@ defmodule Block.Looper.Tasks.TaskScheduleRequest.Test do
             prologue_commands: [],
             secrets: [],
             execution_time_limit: params.time_limit,
-            priority: params.priority
+            priority: params.priority,
+            original_job_id: ""
           }
         ],
       org_id: params.request_args["organization_id"],
@@ -314,7 +315,8 @@ defmodule Block.Looper.Tasks.TaskScheduleRequest.Test do
       wf_id: params.request_args["wf_id"],
       hook_id:  params.request_args["hook_id"],
       repository_id:  params.request_args["repository_id"],
-      deployment_target_id: params.request_args["deployment_target_id"]
+      deployment_target_id: params.request_args["deployment_target_id"],
+      original_task_id: ""
     }
   end
 

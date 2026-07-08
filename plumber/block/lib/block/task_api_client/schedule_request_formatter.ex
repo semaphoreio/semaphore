@@ -5,8 +5,12 @@ defmodule Block.TaskApiClient.ScheduleRequestFormatter do
   """
 
   alias Util.{ToTuple, Proto}
+  alias Block.Tasks.Model.TasksQueries
   alias InternalApi.Task.ScheduleRequest
   alias InternalApi.Task.ScheduleRequest.FailFast
+
+  @original_task_unresolvable_metric "Block.job_copy_partition.original_task_unresolvable"
+
   @doc """
   Creates ScheduleRequest proto message from task yaml spec
   """
@@ -16,9 +20,11 @@ defmodule Block.TaskApiClient.ScheduleRequestFormatter do
                                <- split_task_def(task_def),
          ppl_args              <- Map.get(additional_params, "ppl_args", %{}),
          ppl_priority          <- Map.get(ppl_args, "ppl_priority", 50),
-         {:ok, raw_jobs}       <- transform_jobs(raw_jobs, ppl_args, ppl_priority),
+         {:ok, copy_partition} <- resolve_job_copy_partition(ppl_args),
+         {:ok, raw_jobs}       <- transform_jobs(raw_jobs, ppl_args, ppl_priority, copy_partition),
          {:ok, jobs}           <- merge_settings(raw_jobs, task_settings),
          {:ok, addit_params}   <- extract_fail_fast(additional_params, task_settings),
+         {:ok, addit_params}   <- put_original_task_id(addit_params, copy_partition),
          {:ok, request_params} <- form_request_params(jobs, addit_params)
     do
       Proto.deep_new(ScheduleRequest, request_params, string_keys_to_atoms: true,
@@ -28,6 +34,56 @@ defmodule Block.TaskApiClient.ScheduleRequestFormatter do
       error -> {:error, error}
     end
   end
+
+###########
+
+  defp resolve_job_copy_partition(ppl_args) do
+    ppl_args |> Map.get("job_copy_partition") |> resolve_job_copy_partition_()
+  end
+
+  defp resolve_job_copy_partition_(partition = %{"original_block_id" => block_id, "jobs" => markers})
+    when is_binary(block_id) and is_map(markers) and map_size(markers) > 0 do
+    case TasksQueries.get_by_id(block_id) do
+      {:ok, %{task_id: task_id}} when is_binary(task_id) and task_id != "" ->
+        {:ok, %{original_task_id: task_id, markers: normalize_marker_keys(markers),
+                rerun_markers: partition |> Map.get("rerun_jobs", %{}) |> normalize_marker_keys()}}
+
+      _ ->
+        Watchman.increment(@original_task_unresolvable_metric)
+        {:ok, :none}
+    end
+  end
+  defp resolve_job_copy_partition_(_), do: {:ok, :none}
+
+  defp normalize_marker_keys(markers) when is_map(markers) do
+    markers |> Enum.into(%{}, fn {index, job_id} -> {to_string(index), job_id} end)
+  end
+  defp normalize_marker_keys(_markers), do: %{}
+
+  defp set_original_job_id(job, _index, :none), do: job
+  defp set_original_job_id(job, index, %{markers: markers}) do
+    case Map.get(markers, Integer.to_string(index)) do
+      nil -> job
+      original_job_id -> job |> Map.put("original_job_id", original_job_id)
+    end
+  end
+
+  defp set_original_job_id_env(job, _index, :none), do: job
+  defp set_original_job_id_env(job, index, %{rerun_markers: markers}) do
+    case Map.get(markers, Integer.to_string(index)) do
+      nil ->
+        job
+
+      original_job_id ->
+        env_var = %{"name" => "SEMAPHORE_ORIGINAL_JOB_ID", "value" => original_job_id}
+        job |> Map.update("env_vars", [env_var], &(&1 ++ [env_var]))
+    end
+  end
+  defp set_original_job_id_env(job, _index, _partition), do: job
+
+  defp put_original_task_id(params, :none), do: params |> ToTuple.ok()
+  defp put_original_task_id(params, %{original_task_id: task_id}),
+    do: params |> Map.put("original_task_id", task_id) |> ToTuple.ok()
 
 ###########
 
@@ -69,10 +125,14 @@ defmodule Block.TaskApiClient.ScheduleRequestFormatter do
 
 ###########
 
-  defp transform_jobs(raw_jobs, ppl_args, ppl_priority) do
-    Enum.reduce_while(raw_jobs, {:ok, []}, fn raw_job, {:ok, jobs} ->
+  defp transform_jobs(raw_jobs, ppl_args, ppl_priority, copy_partition) do
+    raw_jobs
+    |> Enum.with_index()
+    |> Enum.reduce_while({:ok, []}, fn {raw_job, index}, {:ok, jobs} ->
       raw_job
       |> set_exec_time_limit()
+      |> set_original_job_id(index, copy_partition)
+      |> set_original_job_id_env(index, copy_partition)
       |> set_priority(ppl_args, ppl_priority)
       |> case do
         {:ok, job} -> {:cont, {:ok, jobs ++ [job]}}
