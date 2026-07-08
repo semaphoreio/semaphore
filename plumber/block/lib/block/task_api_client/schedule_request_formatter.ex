@@ -41,11 +41,12 @@ defmodule Block.TaskApiClient.ScheduleRequestFormatter do
     ppl_args |> Map.get("job_copy_partition") |> resolve_job_copy_partition_()
   end
 
-  defp resolve_job_copy_partition_(%{"original_block_id" => block_id, "jobs" => markers})
+  defp resolve_job_copy_partition_(partition = %{"original_block_id" => block_id, "jobs" => markers})
     when is_binary(block_id) and is_map(markers) and map_size(markers) > 0 do
     case TasksQueries.get_by_id(block_id) do
       {:ok, %{task_id: task_id}} when is_binary(task_id) and task_id != "" ->
-        {:ok, %{original_task_id: task_id, markers: normalize_marker_keys(markers)}}
+        {:ok, %{original_task_id: task_id, markers: normalize_marker_keys(markers),
+                rerun_markers: partition |> Map.get("rerun_jobs", %{}) |> normalize_marker_keys()}}
 
       _ ->
         Watchman.increment(@original_task_unresolvable_metric)
@@ -54,9 +55,10 @@ defmodule Block.TaskApiClient.ScheduleRequestFormatter do
   end
   defp resolve_job_copy_partition_(_), do: {:ok, :none}
 
-  defp normalize_marker_keys(markers) do
+  defp normalize_marker_keys(markers) when is_map(markers) do
     markers |> Enum.into(%{}, fn {index, job_id} -> {to_string(index), job_id} end)
   end
+  defp normalize_marker_keys(_markers), do: %{}
 
   defp set_original_job_id(job, _index, :none), do: job
   defp set_original_job_id(job, index, %{markers: markers}) do
@@ -65,6 +67,19 @@ defmodule Block.TaskApiClient.ScheduleRequestFormatter do
       original_job_id -> job |> Map.put("original_job_id", original_job_id)
     end
   end
+
+  defp set_original_job_id_env(job, _index, :none), do: job
+  defp set_original_job_id_env(job, index, %{rerun_markers: markers}) do
+    case Map.get(markers, Integer.to_string(index)) do
+      nil ->
+        job
+
+      original_job_id ->
+        env_var = %{"name" => "SEMAPHORE_ORIGINAL_JOB_ID", "value" => original_job_id}
+        job |> Map.update("env_vars", [env_var], &(&1 ++ [env_var]))
+    end
+  end
+  defp set_original_job_id_env(job, _index, _partition), do: job
 
   defp put_original_task_id(params, :none), do: params |> ToTuple.ok()
   defp put_original_task_id(params, %{original_task_id: task_id}),
@@ -117,6 +132,7 @@ defmodule Block.TaskApiClient.ScheduleRequestFormatter do
       raw_job
       |> set_exec_time_limit()
       |> set_original_job_id(index, copy_partition)
+      |> set_original_job_id_env(index, copy_partition)
       |> set_priority(ppl_args, ppl_priority)
       |> case do
         {:ok, job} -> {:cont, {:ok, jobs ++ [job]}}
