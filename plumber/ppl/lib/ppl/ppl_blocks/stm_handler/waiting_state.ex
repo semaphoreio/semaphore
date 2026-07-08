@@ -268,16 +268,23 @@ defmodule Ppl.PplBlocks.STMHandler.WaitingState do
          {:ok, orig_jobs}    <- describe_original_jobs(orig_ppl_blk.block_id),
          :ok                 <- check_partition_alignment(orig_jobs, definition)
     do
-      markers =
-        orig_jobs
-        |> Enum.filter(&copy_original_job?/1)
-        |> Enum.into(%{}, fn job -> {"#{Map.get(job, :index)}", Map.get(job, :job_id)} end)
+      {copied, rerun} = orig_jobs |> Enum.split_with(&copy_original_job?/1)
+
+      markers = copied |> Enum.into(%{}, &marker_pair/1)
+
+      rerun_markers =
+        rerun
+        |> Enum.filter(fn job ->
+          is_map(job) and is_binary(Map.get(job, :job_id)) and not is_nil(Map.get(job, :index))
+        end)
+        |> Enum.into(%{}, &marker_pair/1)
 
       Watchman.submit(@partition_copied_metric, map_size(markers))
       Watchman.submit(@partition_rerun_metric, length(orig_jobs) - map_size(markers))
 
       if map_size(markers) > 0 do
-        {:ok, %{"original_block_id" => orig_ppl_blk.block_id, "jobs" => markers}}
+        {:ok, %{"original_block_id" => orig_ppl_blk.block_id, "jobs" => markers,
+                "rerun_jobs" => rerun_markers}}
       else
         {:error, :no_copyable_jobs}
       end
@@ -335,6 +342,8 @@ defmodule Ppl.PplBlocks.STMHandler.WaitingState do
       is_binary(Map.get(job, :job_id)) and not is_nil(Map.get(job, :index))
   end
   defp copy_original_job?(_job), do: false
+
+  defp marker_pair(job), do: {"#{Map.get(job, :index)}", Map.get(job, :job_id)}
 
   defp entry_metrics?([], ppl_id, block_id) do
     with {:ok, trace} <- PplTracesQueries.get_by_id(ppl_id),
