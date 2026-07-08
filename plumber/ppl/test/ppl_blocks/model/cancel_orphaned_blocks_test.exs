@@ -11,28 +11,50 @@ defmodule Ppl.PplBlocks.Model.PplBlocksQueries.CancelOrphanedBlocks.Test do
   end
 
   @tag :integration
-  test "cancels blocks orphaned under a 'done' pipeline and leaves the rest untouched" do
-    # 'done' pipeline with a block stuck in 'waiting' (the orphan we want to fix)
+  test "cancels only orphaned blocks (no external work) and leaves everything else untouched" do
     done_ppl = schedule_ppl_in_state("done")
-    {:ok, _orphan} = insert_block(done_ppl, 0, "waiting")
 
-    # already finished block under the same 'done' pipeline - must not be modified
-    {:ok, _finished} = insert_block(done_ppl, 1, "done", result: "passed")
+    # orphans: never scheduled to the block service (no block_id), stuck under a
+    # 'done' pipeline - these must be cleaned.
+    {:ok, init_orphan} = insert_block(done_ppl, 0, "initializing")
+    {:ok, wait_orphan} = insert_block(done_ppl, 1, "waiting")
 
-    # 'running' pipeline with a legitimately waiting block - must not be touched
+    # blocks holding live external work (have a block_id) - must NOT be touched,
+    # completing them here would abandon the running Block/jobs in zebra.
+    {:ok, _running} = insert_block(done_ppl, 2, "running", block_id: Ecto.UUID.generate())
+    {:ok, _stopping} = insert_block(done_ppl, 3, "stopping", block_id: Ecto.UUID.generate())
+
+    # already finished block under the same 'done' pipeline - must not be modified.
+    {:ok, _finished} = insert_block(done_ppl, 4, "done", result: "passed")
+
+    # legitimately waiting block under a 'running' pipeline - must not be touched.
     running_ppl = schedule_ppl_in_state("running")
     {:ok, _live} = insert_block(running_ppl, 0, "waiting")
 
-    assert {:ok, 1} = PplBlocksQueries.cancel_orphaned_blocks()
+    assert {:ok, affected} = PplBlocksQueries.cancel_orphaned_blocks()
 
-    # orphan moved to done/canceled/internal
-    assert {:ok, orphan} = PplBlocksQueries.get_by_id_and_index(done_ppl, 0)
-    assert orphan.state == "done"
-    assert orphan.result == "canceled"
-    assert orphan.result_reason == "internal"
+    # the audit list contains exactly the two orphans
+    assert Enum.sort_by(affected, & &1.block_index) == [
+             %{id: init_orphan.id, ppl_id: done_ppl, block_index: 0},
+             %{id: wait_orphan.id, ppl_id: done_ppl, block_index: 1}
+           ]
+
+    # orphans moved to done/canceled/internal
+    for index <- [0, 1] do
+      assert {:ok, blk} = PplBlocksQueries.get_by_id_and_index(done_ppl, index)
+      assert blk.state == "done"
+      assert blk.result == "canceled"
+      assert blk.result_reason == "internal"
+    end
+
+    # blocks with live external work are left as-is
+    assert {:ok, running} = PplBlocksQueries.get_by_id_and_index(done_ppl, 2)
+    assert running.state == "running"
+    assert {:ok, stopping} = PplBlocksQueries.get_by_id_and_index(done_ppl, 3)
+    assert stopping.state == "stopping"
 
     # already-done block under the done pipeline is unchanged
-    assert {:ok, finished} = PplBlocksQueries.get_by_id_and_index(done_ppl, 1)
+    assert {:ok, finished} = PplBlocksQueries.get_by_id_and_index(done_ppl, 4)
     assert finished.state == "done"
     assert finished.result == "passed"
 
@@ -42,11 +64,15 @@ defmodule Ppl.PplBlocks.Model.PplBlocksQueries.CancelOrphanedBlocks.Test do
   end
 
   @tag :integration
-  test "dry run reports the count without changing anything" do
+  test "dry run reports the matching orphans without changing anything" do
     done_ppl = schedule_ppl_in_state("done")
-    {:ok, _orphan} = insert_block(done_ppl, 0, "waiting")
+    {:ok, orphan} = insert_block(done_ppl, 0, "waiting")
 
-    assert {:ok, 1} = PplBlocksQueries.cancel_orphaned_blocks(true)
+    assert {:ok, [%{id: id, ppl_id: ppl_id, block_index: 0}]} =
+             PplBlocksQueries.cancel_orphaned_blocks(true)
+
+    assert id == orphan.id
+    assert ppl_id == done_ppl
 
     assert {:ok, blk} = PplBlocksQueries.get_by_id_and_index(done_ppl, 0)
     assert blk.state == "waiting"

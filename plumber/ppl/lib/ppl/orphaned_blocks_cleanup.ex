@@ -30,16 +30,23 @@ defmodule Ppl.OrphanedBlocksCleanup do
     {:ok, _} = Ppl.EctoRepo.start_link(pool_size: 2)
 
     dry_run? = dry_run?()
-    {:ok, count} = PplBlocksQueries.cancel_orphaned_blocks(dry_run?)
+    mode = if dry_run?, do: "dry-run", else: "apply"
 
-    if dry_run? do
-      IO.puts("[orphaned_blocks_cleanup] DRY RUN: #{count} orphaned block(s) would be canceled.")
-    else
-      IO.puts("[orphaned_blocks_cleanup] Canceled #{count} orphaned block(s).")
-    end
+    log("mode=#{mode} criteria=\"#{PplBlocksQueries.orphaned_blocks_criteria()}\"")
+
+    {:ok, affected} = PplBlocksQueries.cancel_orphaned_blocks(dry_run?)
+
+    verb = if dry_run?, do: "would cancel", else: "canceled"
+    log("#{verb} #{length(affected)} orphaned block(s)")
+
+    Enum.each(affected, fn b ->
+      log("  ppl_id=#{b.ppl_id} block_index=#{b.block_index} id=#{b.id}")
+    end)
 
     :init.stop()
   end
+
+  defp log(message), do: IO.puts("[orphaned_blocks_cleanup] #{message}")
 
   defp dry_run? do
     value = System.get_env("DRY_RUN", "false") |> String.downcase()
