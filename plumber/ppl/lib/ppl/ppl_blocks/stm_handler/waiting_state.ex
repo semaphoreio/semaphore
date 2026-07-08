@@ -246,6 +246,11 @@ defmodule Ppl.PplBlocks.STMHandler.WaitingState do
     else
       _ -> request
     end
+  rescue
+    error ->
+      Watchman.increment(@partition_mismatch_metric)
+      error |> LT.warn("job_copy_partition: unexpected error, rescheduling whole block")
+      request
   end
   defp maybe_put_job_copy_partition(request, _ppl_req, _ppl_blk, _ppl, _definition), do: request
 
