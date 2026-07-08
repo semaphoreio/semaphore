@@ -239,7 +239,8 @@ defmodule Ppl.PplBlocks.STMHandler.WaitingState do
   defp maybe_put_job_copy_partition(request, ppl_req, ppl_blk = %{duplicate: true}, ppl, definition) do
     org_id = Map.get(ppl_req.request_args, "organization_id")
 
-    with true             <- job_copy_partition_enabled?(org_id),
+    with true             <- partial_rerun_wanted?(ppl_req, definition),
+         true             <- job_copy_partition_enabled?(org_id),
          {:ok, partition} <- compute_job_copy_partition(ppl, ppl_blk, definition)
     do
       request |> put_in([:request_args, "job_copy_partition"], partition)
@@ -253,6 +254,14 @@ defmodule Ppl.PplBlocks.STMHandler.WaitingState do
       request
   end
   defp maybe_put_job_copy_partition(request, _ppl_req, _ppl_blk, _ppl, _definition), do: request
+
+  defp partial_rerun_wanted?(ppl_req, block_def) do
+    setting =
+      Map.get(block_def, "partial_rerun") ||
+        Map.get(ppl_req.definition || %{}, "partial_rerun")
+
+    setting != "block"
+  end
 
   defp job_copy_partition_enabled?(org_id) do
     Ppl.Features.job_level_partial_rerun_enabled?(org_id)
