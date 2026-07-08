@@ -52,6 +52,14 @@
     "node": ">=18.0"
   },
   "overrides": {
+    "@babel/plugin-transform-modules-systemjs": "7.29.4",
+    "shell-quote": "1.8.4",
+    "webpack-bundle-analyzer": {
+      "ws": "7.5.11"
+    },
+    "webpack-dev-server": {
+      "ws": "8.21.0"
+    },
     "node-forge": "1.4.0",
     "path-to-regexp": "0.1.13",
     "picomatch": "2.3.2",
@@ -72,6 +80,10 @@
     "serialize-javascript": "7.0.3"
   },
   "resolutions": {
+    "@babel/plugin-transform-modules-systemjs": "7.29.4",
+    "shell-quote": "1.8.4",
+    "webpack-bundle-analyzer/ws": "7.5.11",
+    "webpack-dev-server/ws": "8.21.0",
     "node-forge": "1.4.0",
     "path-to-regexp": "0.1.13",
     "picomatch": "2.3.2",
