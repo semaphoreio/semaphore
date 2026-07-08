@@ -29,6 +29,8 @@ class App < Configurable # :nodoc:
 
   config.disable_collaborator_webhook_sync =
     (SemaphoreConfig.disable_collaborator_webhook_sync || "false") == "true"
+  config.use_github_app_to_check_permissions =
+    (SemaphoreConfig.use_github_app_to_check_permissions || "false") == "true"
   config.semaphore_edition = (SemaphoreConfig.semaphore_edition || "").downcase
 
   config.worker_max_retries    = (SemaphoreConfig.worker_max_retries || 10).to_i
