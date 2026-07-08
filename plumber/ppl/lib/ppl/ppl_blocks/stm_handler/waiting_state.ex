@@ -5,6 +5,12 @@ defmodule Ppl.PplBlocks.STMHandler.WaitingState do
 
   @entry_metric_name "Ppl.block_init_overhead"
 
+  @partition_copied_metric "Ppl.job_copy_partition.copied_count"
+  @partition_rerun_metric "Ppl.job_copy_partition.rerun_count"
+  @partition_mismatch_metric "Ppl.job_copy_partition.mismatch"
+  @partition_describe_error_metric "Ppl.job_copy_partition.describe_error"
+  @partition_provider_error_metric "Ppl.job_copy_partition.provider_error"
+
   alias Ppl.Ppls.Model.PplsQueries
   alias Ppl.PplTraces.Model.PplTracesQueries
   alias Ppl.TimeLimits.Model.TimeLimitsQueries
@@ -107,7 +113,7 @@ defmodule Ppl.PplBlocks.STMHandler.WaitingState do
          {:ok, run?}         <- run_block?(block_def, label, ppl_args),
          {:ok, skip_or_run?} <- decide(skip?, run?)
     do
-      run_block(ppl_req, ppl_blk.block_index, block_def, skip_or_run?)
+      run_block(ppl_req, ppl_blk, block_def, skip_or_run?)
     else
       error -> error
     end
@@ -118,12 +124,12 @@ defmodule Ppl.PplBlocks.STMHandler.WaitingState do
   defp make_ppl_args(_src_args, req_args) when is_map(req_args), do: req_args
   defp make_ppl_args(_src_args, _req_args), do: %{}
 
-  defp run_block(_ppl_req, _block_index, _block_def, :skip),
+  defp run_block(_ppl_req, _ppl_blk, _block_def, :skip),
     do: {:ok, "done", {"passed", "skipped"}}
 
-  defp run_block(ppl_req, block_index, block_def, :run) do
+  defp run_block(ppl_req, ppl_blk, block_def, :run) do
     Metrics.benchmark("Ppl.ppl_blk.waiting_STM", "run_block",  fn ->
-      schedule_block(ppl_req, block_index, block_def)
+      schedule_block(ppl_req, ppl_blk, block_def)
     end)
   end
 
@@ -204,9 +210,9 @@ defmodule Ppl.PplBlocks.STMHandler.WaitingState do
     do: Regex.match?(~r/#{pattern}/, branch)
   defp filter_match(_filter, _branch), do: false
 
-  def schedule_block(ppl_req, block_index, block_def) do
+  def schedule_block(ppl_req, ppl_blk, block_def) do
     with {:ok, ppl}           <- PplsQueries.get_by_id(ppl_req.id),
-         {:ok, block_request} <- form_request(ppl_req, block_index, block_def, ppl),
+         {:ok, block_request} <- form_request(ppl_req, ppl_blk, block_def, ppl),
          {:ok, block_id}      <- Block.schedule(block_request),
     do: {:ok, "running", block_id}
   end
@@ -216,8 +222,8 @@ defmodule Ppl.PplBlocks.STMHandler.WaitingState do
     {:ok, block_definition}
   end
 
-  defp form_request(ppl_req, ppl_block_index, definition, ppl) do
-    %{ppl_id: ppl_req.id, pple_block_index: ppl_block_index,
+  defp form_request(ppl_req, ppl_blk, definition, ppl) do
+    %{ppl_id: ppl_req.id, pple_block_index: ppl_blk.block_index,
       hook_id: Map.get(ppl_req.request_args, "hook_id"),
       request_args: ppl_req.request_args, definition: definition,
       source_args: ppl_req.source_args
@@ -226,8 +232,118 @@ defmodule Ppl.PplBlocks.STMHandler.WaitingState do
     |> put_in([:request_args, "ppl_fail_fast"], ppl.fast_failing)
     |> put_in([:request_args, "wf_id"], ppl_req.wf_id)
     |> put_in([:request_args, "ppl_priority"], ppl.priority)
+    |> maybe_put_job_copy_partition(ppl_req, ppl_blk, ppl, definition)
     |> ToTuple.ok()
   end
+
+  defp maybe_put_job_copy_partition(request, ppl_req, ppl_blk = %{duplicate: true}, ppl, definition) do
+    org_id = Map.get(ppl_req.request_args, "organization_id")
+
+    with true             <- job_copy_partition_enabled?(org_id),
+         {:ok, partition} <- compute_job_copy_partition(ppl, ppl_blk, definition)
+    do
+      request |> put_in([:request_args, "job_copy_partition"], partition)
+    else
+      _ -> request
+    end
+  rescue
+    error ->
+      Watchman.increment(@partition_mismatch_metric)
+      error |> LT.warn("job_copy_partition: unexpected error, rescheduling whole block")
+      request
+  end
+  defp maybe_put_job_copy_partition(request, _ppl_req, _ppl_blk, _ppl, _definition), do: request
+
+  defp job_copy_partition_enabled?(org_id) do
+    Ppl.Features.job_level_partial_rerun_enabled?(org_id)
+  rescue
+    error ->
+      Watchman.increment(@partition_provider_error_metric)
+      error |> LT.warn("job_copy_partition: feature check failed, rescheduling whole block")
+      false
+  end
+
+  defp compute_job_copy_partition(ppl, ppl_blk, definition) do
+    with {:ok, orig_ppl_blk} <- get_original_block(ppl, ppl_blk),
+         {:ok, orig_jobs}    <- describe_original_jobs(orig_ppl_blk.block_id),
+         :ok                 <- check_partition_alignment(orig_jobs, definition)
+    do
+      {copied, rerun} = orig_jobs |> Enum.split_with(&copy_original_job?/1)
+
+      markers = copied |> Enum.into(%{}, &marker_pair/1)
+
+      rerun_markers =
+        rerun
+        |> Enum.filter(fn job ->
+          is_map(job) and is_binary(Map.get(job, :job_id)) and not is_nil(Map.get(job, :index))
+        end)
+        |> Enum.into(%{}, &marker_pair/1)
+
+      Watchman.submit(@partition_copied_metric, map_size(markers))
+      Watchman.submit(@partition_rerun_metric, length(orig_jobs) - map_size(markers))
+
+      if map_size(markers) > 0 do
+        {:ok, %{"original_block_id" => orig_ppl_blk.block_id, "jobs" => markers,
+                "rerun_jobs" => rerun_markers}}
+      else
+        {:error, :no_copyable_jobs}
+      end
+    end
+  end
+
+  defp get_original_block(%{partial_rebuild_of: orig_ppl_id}, ppl_blk)
+    when is_binary(orig_ppl_id) and orig_ppl_id != "" do
+    case PplBlocksQueries.get_by_id_and_index(orig_ppl_id, ppl_blk.block_index) do
+      {:ok, orig_ppl_blk = %{block_id: block_id}} when is_binary(block_id) ->
+        {:ok, orig_ppl_blk}
+
+      error ->
+        Watchman.increment(@partition_mismatch_metric)
+        error |> LT.warn("job_copy_partition: original block not resolvable, rescheduling whole block")
+        {:error, :original_block_not_found}
+    end
+  end
+  defp get_original_block(_ppl, _ppl_blk) do
+    Watchman.increment(@partition_mismatch_metric)
+    {:error, :original_pipeline_not_found}
+  end
+
+  defp describe_original_jobs(orig_block_id) do
+    Watchman.benchmark("Ppl.job_copy_partition.describe.duration", fn ->
+      case Block.describe(orig_block_id) do
+        {:ok, description} ->
+          {:ok, Map.get(description, :jobs) || []}
+
+        error ->
+          Watchman.increment(@partition_describe_error_metric)
+          error |> LT.warn("job_copy_partition: original block describe failed, rescheduling whole block")
+          {:error, :describe_failed}
+      end
+    end)
+  end
+
+  defp check_partition_alignment(orig_jobs, definition) do
+    with {:ok, expanded} <- JobMatrix.Handler.handle_block(definition),
+         new_jobs        <- get_in(expanded, ["build", "jobs"]) || [],
+         true            <- length(new_jobs) > 0,
+         orig_indexes    <- orig_jobs |> Enum.map(&Map.get(&1, :index)) |> Enum.sort(),
+         true            <- orig_indexes == Enum.to_list(0..(length(new_jobs) - 1))
+    do
+      :ok
+    else
+      _ ->
+        Watchman.increment(@partition_mismatch_metric)
+        {:error, :partition_mismatch}
+    end
+  end
+
+  defp copy_original_job?(job) when is_map(job) do
+    Map.get(job, :status) == "FINISHED" and Map.get(job, :result) == "PASSED" and
+      is_binary(Map.get(job, :job_id)) and not is_nil(Map.get(job, :index))
+  end
+  defp copy_original_job?(_job), do: false
+
+  defp marker_pair(job), do: {"#{Map.get(job, :index)}", Map.get(job, :job_id)}
 
   defp entry_metrics?([], ppl_id, block_id) do
     with {:ok, trace} <- PplTracesQueries.get_by_id(ppl_id),
