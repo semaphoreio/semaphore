@@ -7,8 +7,7 @@ defmodule Zebra.LegacyRepo.Migrations.AddUniqueBuildRequestIdIndexToBuilds do
     create unique_index(:builds, [:build_request_id],
       name: "unique_builds_on_build_request_id_not_null",
       concurrently: true,
-      where: "build_request_id IS NOT NULL",
-      if_not_exists: true
+      where: "build_request_id IS NOT NULL"
     )
   end
 end
