@@ -24,16 +24,30 @@ defmodule PipelinesAPI.LoghubClient.Test do
       assert events == ["first", "second"]
     end
 
-    test "failure response" do
+    test "not found response returns a not_found error with loghub's message" do
       GrpcMock.stub(LoghubMock, :get_log_events, fn _, _ ->
         %InternalApi.Loghub.GetLogEventsResponse{
-          status: not_ok(),
-          events: ["first", "second"],
+          status: not_ok("Log not found neither in the archive nor in the virtual machine"),
+          events: [],
           final: true
         }
       end)
 
-      assert {:error, {:internal, "Internal error"}} = LoghubClient.get_log_events(@job_id)
+      assert {:error,
+              {:not_found, "Log not found neither in the archive nor in the virtual machine"}} =
+               LoghubClient.get_log_events(@job_id)
+    end
+
+    test "not found response without a message falls back to a default message" do
+      GrpcMock.stub(LoghubMock, :get_log_events, fn _, _ ->
+        %InternalApi.Loghub.GetLogEventsResponse{
+          status: not_ok(),
+          events: [],
+          final: true
+        }
+      end)
+
+      assert {:error, {:not_found, "Logs not found"}} = LoghubClient.get_log_events(@job_id)
     end
 
     test "when loghub throws" do
@@ -52,10 +66,10 @@ defmodule PipelinesAPI.LoghubClient.Test do
     }
   end
 
-  defp not_ok do
+  defp not_ok(message \\ "") do
     %InternalApi.ResponseStatus{
       code: InternalApi.ResponseStatus.Code.value(:BAD_PARAM),
-      message: ""
+      message: message
     }
   end
 end
