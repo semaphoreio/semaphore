@@ -153,11 +153,9 @@ defmodule Zebra.Workers.TaskFinisherTest do
       {:ok, task} = Support.Factories.Task.create()
       now = DateTime.utc_now() |> DateTime.truncate(:second)
 
-      {:ok, o1} =
-        Support.Factories.Job.create(:finished, %{result: "passed", finished_at: now})
+      {:ok, o1} = Support.Factories.Job.create(:finished, %{result: "passed", finished_at: now})
 
-      {:ok, o2} =
-        Support.Factories.Job.create(:finished, %{result: "passed", finished_at: now})
+      {:ok, o2} = Support.Factories.Job.create(:finished, %{result: "passed", finished_at: now})
 
       {:ok, _c1} = Zebra.Models.Job.create_copy(o1, task.id)
       {:ok, _c2} = Zebra.Models.Job.create_copy(o2, task.id)
@@ -166,6 +164,28 @@ defmodule Zebra.Workers.TaskFinisherTest do
 
       {:ok, task} = Zebra.Models.Task.find(task.id)
       assert task.result == "passed"
+    end
+
+    test "an all-copy task's finished timestamp is clamped to task creation, not the originals' past" do
+      {:ok, task} = Support.Factories.Task.create()
+
+      days_ago =
+        DateTime.utc_now()
+        |> DateTime.add(-3 * 24 * 60 * 60, :second)
+        |> DateTime.truncate(:second)
+
+      {:ok, original} =
+        Support.Factories.Job.create(:finished, %{result: "passed", finished_at: days_ago})
+
+      {:ok, _copy} = Zebra.Models.Job.create_copy(original, task.id)
+
+      W.lock_and_process(task.id)
+
+      {:ok, task} = Zebra.Models.Task.find(task.id)
+      assert task.result == "passed"
+
+      assert DateTime.compare(Zebra.Models.Task.finished_at(task), task.created_at) == :lt
+      assert DateTime.compare(W.task_finished_timestamp(task), task.created_at) != :lt
     end
   end
 
