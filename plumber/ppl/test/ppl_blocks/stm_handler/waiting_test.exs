@@ -314,6 +314,30 @@ defmodule Ppl.PplBlocks.STMHandler.WaitingState.JobCopyPartition.Test do
     end
   end
 
+  test "degrade on unexpected raise mid-partition: no partition, mismatch metric, block still schedules", ctx do
+    assert {:ok, ppl_blk} = insert_ppl_blk(ctx.ppl_id, 0, %{duplicate: true})
+
+    test_pid = self()
+
+    with_mocks([
+      {Ppl.Features, [], [job_level_partial_rerun_enabled?: fn _ -> true end]},
+      {Block, [],
+       [describe: fn _ -> raise "unexpected crash" end,
+        schedule: fn block_request ->
+          send(test_pid, {:block_schedule_request, block_request})
+          {:ok, UUID.uuid4()}
+        end,
+        status: fn _ -> %{inserted_at: DateTime.utc_now()} end]},
+      {Watchman, [:passthrough], [increment: fn _ -> :ok end, submit: fn _, _ -> :ok end]}
+    ]) do
+      assert {:ok, %{state: "running", block_id: _}} = run_scheduling(ppl_blk)
+
+      assert_received {:block_schedule_request, req}
+      refute Map.has_key?(req.request_args, @partition_key)
+      assert_called Watchman.increment(@mismatch_metric)
+    end
+  end
+
   test "partition metrics: copied and rerun counts are emitted", ctx do
     {a_id, b_id, c_id} = {UUID.uuid4(), UUID.uuid4(), UUID.uuid4()}
 
