@@ -17,6 +17,7 @@ hooks:
 repoProxyApi:
   replicas: 1
   dbPoolSize: 2
+  useGithubAppToCheckPermissions: false
   resources:
     limits:
       cpu: '0.6'
