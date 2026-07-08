@@ -68,6 +68,74 @@ defmodule Block.TaskApiClient.ScheduleRequestFormatter.Test do
 
     assert req.original_task_id == ""
     assert Enum.all?(req.jobs, fn job -> job.original_job_id == "" end)
+    assert Enum.all?(req.jobs, fn job -> original_job_id_env(job) == nil end)
+  end
+
+  test "rerun_jobs markers inject SEMAPHORE_ORIGINAL_JOB_ID env into re-run jobs only", ctx do
+    {a_orig_id, b_orig_id, c_orig_id} = {UUID.uuid4(), UUID.uuid4(), UUID.uuid4()}
+
+    ppl_args = %{@partition_key =>
+      %{"original_block_id" => ctx.orig_block_id,
+        "jobs" => %{"0" => a_orig_id},
+        "rerun_jobs" => %{"1" => b_orig_id, "2" => c_orig_id}}}
+
+    assert {:ok, req} =
+      ScheduleRequestFormatter.to_proto_request(ctx.task_def, additional_params(ppl_args))
+
+    assert [j0, j1, j2] = req.jobs
+
+    assert j0.original_job_id == a_orig_id
+    assert original_job_id_env(j0) == nil
+
+    assert j1.original_job_id == ""
+    assert original_job_id_env(j1) == b_orig_id
+
+    assert j2.original_job_id == ""
+    assert original_job_id_env(j2) == c_orig_id
+  end
+
+  test "env injection appends to already-defined job env_vars without dropping them", ctx do
+    b_orig_id = UUID.uuid4()
+
+    job_with_env = %{"name" => "job2", "commands" => ["echo bar"],
+                     "env_vars" => [%{"name" => "FOO", "value" => "bar"}]}
+
+    task_def = ctx.task_def |> Map.put("jobs", [
+      %{"name" => "job1", "commands" => ["echo foo"]},
+      job_with_env,
+      %{"name" => "job3", "commands" => ["echo baz"]}
+    ])
+
+    ppl_args = %{@partition_key =>
+      %{"original_block_id" => ctx.orig_block_id,
+        "jobs" => %{"0" => UUID.uuid4()},
+        "rerun_jobs" => %{"1" => b_orig_id}}}
+
+    assert {:ok, req} =
+      ScheduleRequestFormatter.to_proto_request(task_def, additional_params(ppl_args))
+
+    assert [_j0, j1, _j2] = req.jobs
+    assert Enum.any?(j1.env_vars, fn ev -> ev.name == "FOO" and ev.value == "bar" end)
+    assert original_job_id_env(j1) == b_orig_id
+  end
+
+  test "partition without rerun_jobs key (older format) injects no env", ctx do
+    ppl_args = %{@partition_key =>
+      %{"original_block_id" => ctx.orig_block_id, "jobs" => %{"0" => UUID.uuid4()}}}
+
+    assert {:ok, req} =
+      ScheduleRequestFormatter.to_proto_request(ctx.task_def, additional_params(ppl_args))
+
+    assert Enum.all?(req.jobs, fn job -> original_job_id_env(job) == nil end)
+  end
+
+  defp original_job_id_env(job) do
+    job.env_vars
+    |> Enum.find(fn ev -> ev.name == "SEMAPHORE_ORIGINAL_JOB_ID" end)
+    |> case do
+      nil -> nil
+      ev -> ev.value
+    end
   end
 
   test "degrade: original block with no Tasks row drops all markers and the anchor + metric", ctx do

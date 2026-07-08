@@ -80,7 +80,31 @@ defmodule Ppl.PplBlocks.STMHandler.WaitingState.JobCopyPartition.Test do
       assert_received {:block_schedule_request, req}
 
       assert req.request_args[@partition_key] ==
-        %{"original_block_id" => ctx.orig_block_id, "jobs" => %{"0" => a_id}}
+        %{"original_block_id" => ctx.orig_block_id, "jobs" => %{"0" => a_id},
+          "rerun_jobs" => %{"1" => b_id, "2" => c_id}}
+    end
+  end
+
+  test "rerun_jobs carries prior job ids for every non-copied original job", ctx do
+    {a_id, b_id, c_id} = {UUID.uuid4(), UUID.uuid4(), UUID.uuid4()}
+
+    jobs = [
+      describe_job(a_id, 0, "FINISHED", "FAILED"),
+      describe_job(b_id, 1, "FINISHED", "STOPPED"),
+      describe_job(c_id, 2, "FINISHED", "PASSED")
+    ]
+
+    assert {:ok, ppl_blk} = insert_ppl_blk(ctx.ppl_id, 0, %{duplicate: true})
+
+    with_mocks([
+      {Ppl.Features, [], [job_level_partial_rerun_enabled?: fn _ -> true end]},
+      {Block, [], block_mocks(ctx, jobs, self())}
+    ]) do
+      assert {:ok, %{state: "running", block_id: _}} = run_scheduling(ppl_blk)
+
+      assert_received {:block_schedule_request, req}
+      assert req.request_args[@partition_key]["jobs"] == %{"2" => c_id}
+      assert req.request_args[@partition_key]["rerun_jobs"] == %{"0" => a_id, "1" => b_id}
     end
   end
 
