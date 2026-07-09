@@ -1,5 +1,4 @@
 defmodule Projecthub.Organization do
-  alias InternalApi.Organization.DescribeRequest
   alias InternalApi.Organization.OrganizationService.Stub, as: Client
   alias InternalApi.Organization.RepositoryIntegratorsRequest
 
