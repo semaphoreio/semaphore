@@ -153,6 +153,20 @@ When a job in the pipeline fails, the default behavior is to stop the pipeline. 
 
 ![Location of rerun and rebuild buttons](./img/rerun-pipeline.jpg)
 
+### Job-level partial rerun {#job-level-rerun}
+
+When the job-level partial rerun feature is enabled for your organization, **Rebuild Pipeline** goes one step further inside each re-run block: jobs that already passed are carried over as *copies* instead of being executed again, and only the failed jobs actually re-run.
+
+A copied job:
+
+- keeps the logs, artifacts, and test results of its original run
+- keeps the original execution timestamps and does not occupy an agent
+- is linked to the original job it was copied from
+
+Jobs that re-execute receive `SEMAPHORE_JOB_RERUN=true` and the [`SEMAPHORE_JOB_ORIGINAL_ID`](../reference/env-vars#job-original-id) environment variable pointing at their previous attempt, so CI scripts can fetch the prior run's artifacts or compare test results.
+
+If the original block's job layout cannot be matched safely (for example, the pipeline definition changed between runs), Semaphore falls back to re-running the whole block, which is the same behavior as without the feature.
+
 ## Connecting pipelines with promotions {#connecting-pipelines}
 
 Your project can have multiple pipelines to perform different tasks such as build, release, or test. [Promotions](./promotions) connect pipelines. Multiple pipelines can be chained to create branching workflows to automate almost any task.
