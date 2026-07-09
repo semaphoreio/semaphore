@@ -52,7 +52,12 @@ config :guard, Guard.FrontRepo,
   username: System.get_env("POSTGRES_DB_USER") || "postgres",
   password: System.get_env("POSTGRES_DB_PASSWORD") || "the-cake-is-a-lie",
   hostname: System.get_env("POSTGRES_DB_HOST") || "127.0.0.1",
-  pool_size: String.to_integer(System.get_env("POSTGRES_DB_POOL_SIZE") || "1"),
+  # Optional dedicated pool size for the Front repo; falls back to the shared pool size.
+  pool_size:
+    String.to_integer(
+      System.get_env("POSTGRES_FRONT_DB_POOL_SIZE") || System.get_env("POSTGRES_DB_POOL_SIZE") ||
+        "1"
+    ),
   parameters: [application_name: "guard"],
   ssl: System.get_env("POSTGRES_DB_SSL") == "true" || false
 
