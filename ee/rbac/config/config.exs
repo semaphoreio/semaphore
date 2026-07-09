@@ -41,7 +41,7 @@ config :rbac, Rbac.FrontRepo,
       System.get_env("POSTGRES_FRONT_DB_POOL_SIZE") || System.get_env("POSTGRES_DB_POOL_SIZE") ||
         "1"
     ),
-  parameters: [application_name: "guard"],
+  parameters: [application_name: "rbac"],
   ssl: System.get_env("POSTGRES_DB_SSL") == "true" || false,
   ssl_opts: [verify: :verify_none]
 
