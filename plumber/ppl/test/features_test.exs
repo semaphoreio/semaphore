@@ -37,4 +37,20 @@ defmodule Ppl.FeaturesTest do
       assert Ppl.Features.sparse_checkout_init_job_enabled?("org-123") == false
     end
   end
+
+  describe "job_level_partial_rerun_enabled?/1" do
+    test "true when the feature is enabled for the org (via the FeatureHub mock)" do
+      assert Ppl.Features.job_level_partial_rerun_enabled?("org-123") == true
+    end
+
+    test "fails closed for a missing org id" do
+      assert Ppl.Features.job_level_partial_rerun_enabled?("") == false
+      assert Ppl.Features.job_level_partial_rerun_enabled?(nil) == false
+    end
+
+    test "fails closed when the Feature service is unreachable" do
+      System.put_env(@url_env_var, "localhost:1")
+      assert Ppl.Features.job_level_partial_rerun_enabled?("org-123") == false
+    end
+  end
 end

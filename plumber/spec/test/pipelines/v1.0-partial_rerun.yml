@@ -1,0 +1,21 @@
+version: "v1.0"
+name: Pipeline with partial_rerun control
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1604-minimal
+partial_rerun: jobs
+blocks:
+  - name: Block 1
+    task:
+      jobs:
+        - name: job1
+          commands:
+            - echo Single command job
+  - name: Block 2
+    partial_rerun: block
+    task:
+      jobs:
+        - name: job1
+          commands:
+            - echo Single command job
