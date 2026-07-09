@@ -555,7 +555,7 @@ Credentials are optional. Go to the next step if you don't need them.
 
 ### Granular permissions {#granular-permissions}
 
-<Available plans={['Enterprise']} />
+<Available plans={['The Plan']} />
 
 In the "Who can deploy?" section, you can define the users and roles that can manually start the promotion. Granular permissions are optional. You can go to the next section if you don't need to restrict access to the promotion.
 
