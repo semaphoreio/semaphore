@@ -384,6 +384,27 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
       assert ProjectAccess.get_list_of_projects(@user_id, @org_id) == [@project_id]
     end
 
+    test "project role is assigned during initialization even when subject is the org Owner and no requester is passed",
+         state do
+      alias Rbac.Store.ProjectAccess
+
+      # Regression test for the project-creation outage: projecthub assigns the creator
+      # the project Admin role during init with an empty requester_id. When the creator is
+      # also the org Owner, currently_owner?/2 is true, so the change_owner gate must still
+      # be skipped during initialization (just like the held-permissions check below it),
+      # otherwise the empty requester fails authorization and project creation times out.
+      Support.Rbac.assign_org_role_by_name(@org_id, @user_id, "Owner")
+      {:ok, proj_role} = Rbac.Repo.RbacRole.get_role_by_name("Admin", "project_scope", @org_id)
+      register_project_api_response(:INITIALIZING)
+
+      req =
+        gen_assign_role_req(@user_id, proj_role.id, @org_id, @project_id)
+        |> Map.replace(:requester_id, "")
+
+      {:ok, _} = state.grpc_channel |> Stub.assign_role(req)
+      assert ProjectAccess.get_list_of_projects(@user_id, @org_id) == [@project_id]
+    end
+
     test "Assign a global role to an 'insider'", state do
       alias Rbac.Repo.RbacRole
       alias Rbac.Store.{UserPermissions, ProjectAccess}
