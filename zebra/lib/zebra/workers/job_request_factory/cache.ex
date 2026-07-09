@@ -128,7 +128,7 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
   def forked_pr?(_repo = %{pr_slug: ""}), do: false
   def forked_pr?(nil), do: false
 
-  defp forked_pr?(repo) do
+  def forked_pr?(repo) do
     if approval_enable_cache?(repo) do
       false
     else
