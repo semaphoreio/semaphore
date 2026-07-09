@@ -1,8 +1,10 @@
 defmodule Zebra.Apis.InternalTaskApi.Schedule do
   require Logger
+  import Ecto.Query
 
   alias Semaphore.Jobs.V1alpha.Job.Spec, as: Spec
   alias Zebra.LegacyRepo, as: Repo
+  alias Zebra.Models.Job
 
   @default_job_priority 50
   # in seconds
@@ -32,33 +34,235 @@ defmodule Zebra.Apis.InternalTaskApi.Schedule do
     end)
   end
 
-  @spec create_task(InternalApi.Task.Task.t()) :: {:ok, Zebra.Models.Task.t()}
-  defp create_task(req) do
+  @spec create_task(InternalApi.Task.Task.t()) ::
+          {:ok, Zebra.Models.Task.t()} | {:error, :invalid_argument, String.t()}
+  def create_task(req) do
     Watchman.benchmark("internal_task_api.schedule.create_task.duration", fn ->
-      Repo.transaction(fn ->
-        {:ok, task} =
-          Zebra.Models.Task.create(
-            version: "v0.0",
-            request: Zebra.Models.Task.encode_request(req),
-            hook_id: req.hook_id,
-            workflow_id: req.wf_id,
-            ppl_id: req.ppl_id,
-            build_request_id: req.request_token,
-            fail_fast_strategy: encode_fail_fast_strategy(req.fail_fast)
-          )
+      result =
+        Repo.transaction(fn ->
+          copy_ctx = resolve_copy_context(req)
 
-        req.jobs
-        |> Enum.with_index()
-        |> Enum.each(fn {j, index} ->
-          {:ok, job} = create_job(task.id, req, j, index)
+          task = insert_task(req)
 
-          onprem_metrics(job)
+          req.jobs
+          |> Enum.with_index()
+          |> Enum.each(fn {j, index} ->
+            create_task_job(task, req, j, index, copy_ctx)
+          end)
+
+          task
         end)
 
-        task
-      end)
+      handle_transaction_result(result, req)
     end)
   end
+
+  defp handle_transaction_result({:ok, task}, req), do: maybe_finish_all_copy(task, req)
+
+  defp handle_transaction_result({:error, :already_scheduled}, req) do
+    find_already_scheduled_task(req)
+  end
+
+  defp handle_transaction_result({:error, {:invalid_argument, msg}}, _req) do
+    {:error, :invalid_argument, msg}
+  end
+
+  # Inserts the task row. A losing concurrent insert on the same request_token
+  # surfaces as a changeset error (via the build_request_id unique_constraint);
+  # roll back so the winning task is re-read outside the transaction.
+  defp insert_task(req) do
+    case Zebra.Models.Task.create(
+           version: "v0.0",
+           request: Zebra.Models.Task.encode_request(req),
+           hook_id: req.hook_id,
+           workflow_id: req.wf_id,
+           ppl_id: req.ppl_id,
+           build_request_id: req.request_token,
+           fail_fast_strategy: encode_fail_fast_strategy(req.fail_fast)
+         ) do
+      {:ok, task} ->
+        task
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        if Keyword.has_key?(changeset.errors, :build_request_id) do
+          Repo.rollback(:already_scheduled)
+        else
+          Repo.rollback(
+            {:invalid_argument, "failed to create task: #{inspect(changeset.errors)}"}
+          )
+        end
+    end
+  end
+
+  # Run vs copy decision for a single job spec, executed inside the transaction.
+  defp create_task_job(task, req, job_req, job_index, copy_ctx) do
+    case classify_job(job_req, req, copy_ctx) do
+      :run ->
+        run_job(task.id, req, job_req, job_index)
+
+      {:copy, member} ->
+        case Job.create_copy(member, task.id) do
+          {:ok, _copy} ->
+            :ok
+
+          {:error, reason} ->
+            Repo.rollback({:invalid_argument, "failed to create copy: #{inspect(reason)}"})
+        end
+
+      {:invalid, msg} ->
+        Repo.rollback({:invalid_argument, msg})
+    end
+  end
+
+  defp run_job(task_id, req, job_req, job_index) do
+    case create_job(task_id, req, job_req, job_index) do
+      {:ok, job} ->
+        onprem_metrics(job)
+
+      {:error, reason} ->
+        Repo.rollback({:invalid_argument, "failed to create job: #{inspect(reason)}"})
+    end
+  end
+
+  # Resolve the exact-membership anchor once per request when any job spec
+  # carries an original_job_id marker (D-14 amendment). Returns nil when the
+  # request has no markers, or a %{members: %{id => job}} cache otherwise.
+  # Rolls back with a typed invalid_argument on any anchor failure.
+  defp resolve_copy_context(req) do
+    if Enum.any?(req.jobs, fn j -> present?(j.original_job_id) end) do
+      cond do
+        not present?(req.original_task_id) ->
+          Repo.rollback(
+            {:invalid_argument, "original_task_id required when job markers are present"}
+          )
+
+        Ecto.UUID.cast(req.original_task_id) == :error ->
+          Repo.rollback(
+            {:invalid_argument,
+             "original_task_id #{inspect(req.original_task_id)} is not a valid UUID"}
+          )
+
+        true ->
+          load_copy_context(req)
+      end
+    else
+      nil
+    end
+  end
+
+  defp load_copy_context(req) do
+    case Zebra.Models.Task.find(req.original_task_id) do
+      {:error, :not_found} ->
+        Repo.rollback(
+          {:invalid_argument, "original_task_id #{req.original_task_id} does not exist"}
+        )
+
+      {:ok, original_task} ->
+        if original_task.workflow_id != req.wf_id do
+          Repo.rollback(
+            {:invalid_argument,
+             "original_task_id #{req.original_task_id} belongs to a different workflow"}
+          )
+        else
+          %{members: load_members(original_task.id)}
+        end
+    end
+  end
+
+  defp load_members(original_task_id) do
+    Job
+    |> where([j], j.build_id == ^original_task_id)
+    |> Repo.all()
+    |> Map.new(fn j -> {j.id, j} end)
+  end
+
+  defp classify_job(job_req, req, copy_ctx) do
+    if present?(job_req.original_job_id) do
+      classify_copy_marker(job_req, req, copy_ctx)
+    else
+      :run
+    end
+  end
+
+  defp classify_copy_marker(job_req, req, copy_ctx) do
+    marker = job_req.original_job_id
+
+    case Ecto.UUID.cast(marker) do
+      :error ->
+        {:invalid, "original_job_id #{inspect(marker)} is not a valid UUID"}
+
+      {:ok, _} ->
+        case Map.get(copy_ctx.members, marker) do
+          nil ->
+            classify_non_member(marker, req)
+
+          member ->
+            classify_member(member, marker, req)
+        end
+    end
+  end
+
+  defp classify_member(member, marker, req) do
+    cond do
+      member.organization_id != req.org_id or member.project_id != req.project_id ->
+        {:invalid, "original_job_id #{marker} belongs to a different tenant than the request"}
+
+      copyable?(member) ->
+        {:copy, member}
+
+      true ->
+        # A member that never finished+passed cannot be represented as a passed
+        # copy; run it from its own spec instead of stranding the block.
+        Watchman.increment("internal_task_api.schedule.copy_source_not_copyable")
+        :run
+    end
+  end
+
+  defp classify_non_member(marker, req) do
+    case Job.find(marker) do
+      {:ok, _foreign} ->
+        # The job exists but is not a member of original_task_id: a
+        # cross-membership forge. Fail loud (security).
+        {:invalid,
+         "original_job_id #{marker} is not a job of original_task_id #{req.original_task_id}"}
+
+      {:error, :not_found} ->
+        # No row anywhere: a genuinely retention-deleted member is
+        # indistinguishable from a fabricated id. Run the job from its own
+        # spec — no copy is minted, nothing leaks, the block is not stranded.
+        Watchman.increment("internal_task_api.schedule.copy_source_missing")
+        :run
+    end
+  end
+
+  defp copyable?(member) do
+    Job.finished?(member) and Job.passed?(member) and not is_nil(member.finished_at)
+  end
+
+  # An all-copy task (zero runnable pending jobs) is finished immediately rather
+  # than waiting on the periodic TaskFinisher poller. Only runs when the request
+  # actually carried copy markers, leaving the common run-only path untouched.
+  defp maybe_finish_all_copy(task, req) do
+    if Enum.any?(req.jobs, fn j -> present?(j.original_job_id) end) do
+      pending_count =
+        Job
+        |> where([j], j.build_id == ^task.id and j.aasm_state == ^Job.state_pending())
+        |> Repo.aggregate(:count)
+
+      if pending_count == 0 do
+        Zebra.Workers.TaskFinisher.lock_and_process(task.id)
+        Zebra.Models.Task.find(task.id)
+      else
+        {:ok, task}
+      end
+    else
+      {:ok, task}
+    end
+  end
+
+  defp present?(nil), do: false
+  defp present?(""), do: false
+  defp present?(_), do: true
 
   defp create_job(task_id, req, job_req, job_index) do
     Watchman.benchmark("internal_task_api.schedule.create_job.duration", fn ->
