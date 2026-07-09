@@ -75,8 +75,12 @@ defmodule Block.TaskApiClient.ScheduleRequestFormatter do
         job
 
       original_job_id ->
-        env_var = %{"name" => "SEMAPHORE_ORIGINAL_JOB_ID", "value" => original_job_id}
-        job |> Map.update("env_vars", [env_var], &(&1 ++ [env_var]))
+        env_vars = [
+          %{"name" => "SEMAPHORE_JOB_RERUN", "value" => "true"},
+          %{"name" => "SEMAPHORE_JOB_ORIGINAL_ID", "value" => original_job_id}
+        ]
+
+        job |> Map.update("env_vars", env_vars, &(&1 ++ env_vars))
     end
   end
   defp set_original_job_id_env(job, _index, _partition), do: job

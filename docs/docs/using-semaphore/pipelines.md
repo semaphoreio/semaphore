@@ -163,7 +163,7 @@ A copied job:
 - keeps the original execution timestamps and does not occupy an agent
 - is linked to the original job it was copied from
 
-Jobs that re-execute receive the [`SEMAPHORE_ORIGINAL_JOB_ID`](../reference/env-vars#original-job-id) environment variable pointing at their previous attempt, so CI scripts can fetch the prior run's artifacts or compare test results.
+Jobs that re-execute receive `SEMAPHORE_JOB_RERUN=true` and the [`SEMAPHORE_JOB_ORIGINAL_ID`](../reference/env-vars#job-original-id) environment variable pointing at their previous attempt, so CI scripts can fetch the prior run's artifacts or compare test results.
 
 If the original block's job layout cannot be matched safely (for example, the pipeline definition changed between runs), Semaphore falls back to re-running the whole block, which is the same behavior as without the feature.
 
