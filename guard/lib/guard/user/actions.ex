@@ -16,12 +16,20 @@ defmodule Guard.User.Actions do
     {password, user_params} = Map.pop(user_params, :password)
     {oidc_user_id, user_params} = Map.pop(user_params, :oidc_user_id)
     {repository_providers, user_params} = Map.pop(user_params, :repository_providers)
+    {provider_conflict, user_params} = Map.pop(user_params, :provider_conflict, :error)
     skip_password_change = Map.get(user_params, :skip_password_change, false)
 
     name = ensure_name(user_params.name, user_params.email)
     user_params = Map.put(user_params, :name, name)
 
-    case _create(user_params, password, oidc_user_id, repository_providers, skip_password_change) do
+    case _create(
+           user_params,
+           password,
+           oidc_user_id,
+           repository_providers,
+           skip_password_change,
+           provider_conflict
+         ) do
       {:ok, user} ->
         Guard.Events.UserCreated.publish(user.id, false)
 
@@ -41,12 +49,24 @@ defmodule Guard.User.Actions do
 
   defp ensure_name(name, _), do: name
 
-  defp _create(params, password, oidc_user_id, repository_providers, skip_password_change) do
+  defp _create(
+         params,
+         password,
+         oidc_user_id,
+         repository_providers,
+         skip_password_change,
+         provider_conflict
+       ) do
     FrontRepo.transaction(fn ->
       case Repo.transaction(fn ->
              with {:ok, front_user} <- create_front_user(params),
                   {:ok, user} <- create_rbac_user(front_user),
-                  :ok <- connect_repository_providers(user.id, repository_providers),
+                  :ok <-
+                    connect_repository_providers(
+                      user.id,
+                      repository_providers,
+                      provider_conflict
+                    ),
                   {:ok, oidc_user_id} <-
                     create_oidc_user(oidc_user_id, user, password, skip_password_change),
                   {:ok, _oidc_user} <- connect_oidc_user(oidc_user_id, user.id) do
@@ -65,7 +85,8 @@ defmodule Guard.User.Actions do
     end)
   end
 
-  defp connect_repository_providers(user_id, providers) when is_list(providers) do
+  defp connect_repository_providers(user_id, providers, provider_conflict)
+       when is_list(providers) do
     Enum.reduce_while(providers, :ok, fn provider, acc ->
       repo_host = map_provider_type(provider.type)
 
@@ -86,13 +107,22 @@ defmodule Guard.User.Actions do
           {:cont, acc}
 
         {:error, changeset} ->
-          Logger.error("Failed to create repo_host for user #{user_id}: #{inspect(changeset)}")
-          {:halt, {:error, changeset.errors}}
+          if provider_conflict == :skip and
+               Guard.FrontRepo.RepoHostAccount.uid_taken_error?(changeset) do
+            Logger.warning(
+              "Skipping #{repo_host} link for user #{user_id}: provider account already connected to another user"
+            )
+
+            {:cont, acc}
+          else
+            Logger.error("Failed to create repo_host for user #{user_id}: #{inspect(changeset)}")
+            {:halt, {:error, changeset.errors}}
+          end
       end
     end)
   end
 
-  defp connect_repository_providers(_user_id, _), do: :ok
+  defp connect_repository_providers(_user_id, _, _), do: :ok
 
   defp map_provider_type(type),
     do:
