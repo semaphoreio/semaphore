@@ -594,14 +594,14 @@ defmodule FrontWeb.PeopleControllerTest do
     end
   end
 
-  describe "POST delete_with_owned_orgs" do
+  describe "POST delete_user" do
     test "user on own page deletes account and is redirected to destroyed account page", %{
       conn: conn,
       user: user
     } do
       conn =
         conn
-        |> post("/people/#{user.id}/delete_with_owned_orgs")
+        |> post("/people/#{user.id}/delete_user")
 
       assert redirected_to(conn) == "https://id.semaphoretest.test/destroyed_account"
     end
@@ -611,7 +611,7 @@ defmodule FrontWeb.PeopleControllerTest do
 
       conn =
         conn
-        |> post("/people/#{user.id}/delete_with_owned_orgs")
+        |> post("/people/#{user.id}/delete_user")
 
       assert redirected_to(conn) == "/people/#{user.id}"
       assert get_flash(conn, :alert) == "Failed to delete account."
@@ -631,7 +631,7 @@ defmodule FrontWeb.PeopleControllerTest do
 
       conn =
         conn
-        |> post("/people/#{user.id}/delete_with_owned_orgs")
+        |> post("/people/#{user.id}/delete_user")
 
       assert redirected_to(conn) == "/people/#{user.id}"
       assert get_flash(conn, :alert) == message

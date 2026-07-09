@@ -153,11 +153,11 @@ defmodule FrontWeb.AccountControllerTest do
     end
   end
 
-  describe "POST delete_with_owned_orgs" do
+  describe "POST delete_user" do
     test "deletes account and redirects to destroyed account page", %{conn: conn} do
       conn =
         conn
-        |> post("/account/delete_with_owned_orgs")
+        |> post("/account/delete_user")
 
       assert redirected_to(conn) == "https://id.semaphoretest.test/destroyed_account"
     end
@@ -168,7 +168,7 @@ defmodule FrontWeb.AccountControllerTest do
 
       conn =
         conn
-        |> post("/account/delete_with_owned_orgs")
+        |> post("/account/delete_user")
 
       assert redirected_to(conn) == "/account"
       assert get_flash(conn, :alert) == "Failed to delete account."
@@ -187,7 +187,7 @@ defmodule FrontWeb.AccountControllerTest do
 
       conn =
         conn
-        |> post("/account/delete_with_owned_orgs")
+        |> post("/account/delete_user")
 
       assert redirected_to(conn) == "/account"
       assert get_flash(conn, :alert) == message
