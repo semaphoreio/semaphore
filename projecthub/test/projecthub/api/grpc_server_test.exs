@@ -2597,6 +2597,7 @@ defmodule Projecthub.Api.GrpcServerTest do
 
       assert response.metadata.status.code ==
                InternalApi.Projecthub.ResponseMeta.Code.value(:FAILED_PRECONDITION)
+
       assert response.metadata.status.message =~
                "Sem-approve options require forked pull requests to be enabled"
 
@@ -3256,13 +3257,15 @@ defmodule Projecthub.Api.GrpcServerTest do
           request_id: Ecto.UUID.generate()
         )
 
-      with_mock RepositoryHubClient, [:passthrough], fork: fn _ ->
-        raise "fork should not be called for invalid sem-approve settings"
-      end do
+      with_mock RepositoryHubClient, [:passthrough],
+        fork: fn _ ->
+          raise "fork should not be called for invalid sem-approve settings"
+        end do
         response = GrpcServer.fork_and_create(request, nil)
 
         assert response.metadata.status.code ==
                  InternalApi.Projecthub.ResponseMeta.Code.value(:FAILED_PRECONDITION)
+
         assert response.metadata.status.message =~
                  "Sem-approve options require forked pull requests to be enabled"
 
