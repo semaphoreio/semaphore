@@ -27,11 +27,27 @@ defmodule Rbac.FrontRepo.RepoHostAccountTest do
       assert RepoHostAccount.uid_taken_error?(changeset)
     end
 
-    test "create/1 rejects the uid even when the existing link is revoked" do
-      {:ok, _} = Support.Members.insert_repo_host_account(github_uid: "10002", revoked: true)
+    test "create/1 claims the uid and deletes the stale link when the existing one is revoked" do
+      {:ok, stale} =
+        Support.Members.insert_repo_host_account(github_uid: "10002", revoked: true)
 
+      assert {:ok, claimed} = RepoHostAccount.create(create_params(%{github_uid: "10002"}))
+
+      assert claimed.github_uid == "10002"
+      assert {:error, :not_found} = RepoHostAccount.get_for_github_user(stale.user_id)
+    end
+
+    test "create/1 rejects the uid once it has been claimed away from a revoked link" do
+      {:ok, stale} =
+        Support.Members.insert_repo_host_account(github_uid: "10007", revoked: true)
+
+      {:ok, _claimed} = RepoHostAccount.create(create_params(%{github_uid: "10007"}))
+
+      # The original owner reconnecting must not revive the duplicate.
       assert {:error, %Ecto.Changeset{} = changeset} =
-               RepoHostAccount.create(create_params(%{github_uid: "10002"}))
+               RepoHostAccount.create(
+                 create_params(%{github_uid: "10007", user_id: stale.user_id})
+               )
 
       assert RepoHostAccount.uid_taken_error?(changeset)
     end
