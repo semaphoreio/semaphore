@@ -159,9 +159,14 @@ When the job-level partial rerun feature is enabled for your organization, **Reb
 
 A copied job:
 
-- keeps the logs, artifacts, and test results of its original run
-- keeps the original execution timestamps and does not occupy an agent
-- is linked to the original job it was copied from
+- does not re-execute: it keeps the original execution timestamps and does not occupy an agent
+- is linked to the original job it was copied from; the logs, artifacts, and test results produced by the original run remain stored under the original job
+
+:::note
+
+The job pages of copied jobs do not yet follow the link to the original job when displaying logs, artifacts, and test results — open the original job to view them. This indirection is being added separately.
+
+:::
 
 Jobs that re-execute receive `SEMAPHORE_JOB_RERUN=true` and the [`SEMAPHORE_JOB_ORIGINAL_ID`](../reference/env-vars#job-original-id) environment variable pointing at their previous attempt, so CI scripts can fetch the prior run's artifacts or compare test results.
 
