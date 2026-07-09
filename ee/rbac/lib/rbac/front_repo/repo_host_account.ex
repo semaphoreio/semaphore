@@ -230,11 +230,12 @@ defmodule Rbac.FrontRepo.RepoHostAccount do
   end
 
   defp release_revoked_uid_rows(%__MODULE__{repo_host: "github"} = account) do
-    {count, _} =
+    {count, released_user_ids} =
       from(r in __MODULE__,
         where: r.repo_host == ^account.repo_host and r.github_uid == ^account.github_uid,
         where: r.id != ^account.id,
-        where: r.revoked == true
+        where: r.revoked == true,
+        select: r.user_id
       )
       |> FrontRepo.delete_all()
 
@@ -242,6 +243,8 @@ defmodule Rbac.FrontRepo.RepoHostAccount do
       Logger.info(
         "Released #{count} revoked repo_host_account row(s) for github uid #{account.github_uid} claimed by user #{account.user_id}"
       )
+
+      Rbac.OIDC.FederatedIdentitySync.sync_github_claim(account, released_user_ids)
     end
 
     account
