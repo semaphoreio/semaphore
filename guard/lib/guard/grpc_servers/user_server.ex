@@ -334,7 +334,7 @@ defmodule Guard.GrpcServers.UserServer do
           # still orphan an org. Closing that race needs RBAC-side enforcement.
           case Guard.Store.Organization.orgs_blocking_user_deletion(user.id) do
             [] ->
-              handle_delete_with_owned_orgs(user.id)
+              handle_delete_user(user.id)
 
             orgs ->
               grpc_error!(:failed_precondition, blocking_orgs_message(orgs))
@@ -455,8 +455,8 @@ defmodule Guard.GrpcServers.UserServer do
     end
   end
 
-  defp handle_delete_with_owned_orgs(user_id) do
-    case Front.delete_with_owned_orgs(user_id) do
+  defp handle_delete_user(user_id) do
+    case Front.delete_user(user_id) do
       {:ok, _} ->
         Guard.Events.UserDeleted.publish(user_id, @user_exchange, @deleted_routing_key)
         User.User.new(id: user_id)
