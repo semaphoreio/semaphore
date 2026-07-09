@@ -71,7 +71,7 @@ defmodule Block.TaskApiClient.ScheduleRequestFormatter.Test do
     assert Enum.all?(req.jobs, fn job -> original_job_id_env(job) == nil end)
   end
 
-  test "rerun_jobs markers inject SEMAPHORE_ORIGINAL_JOB_ID env into re-run jobs only", ctx do
+  test "rerun_jobs markers inject SEMAPHORE_JOB_RERUN and SEMAPHORE_JOB_ORIGINAL_ID env into re-run jobs only", ctx do
     {a_orig_id, b_orig_id, c_orig_id} = {UUID.uuid4(), UUID.uuid4(), UUID.uuid4()}
 
     ppl_args = %{@partition_key =>
@@ -86,12 +86,15 @@ defmodule Block.TaskApiClient.ScheduleRequestFormatter.Test do
 
     assert j0.original_job_id == a_orig_id
     assert original_job_id_env(j0) == nil
+    assert job_rerun_env(j0) == nil
 
     assert j1.original_job_id == ""
     assert original_job_id_env(j1) == b_orig_id
+    assert job_rerun_env(j1) == "true"
 
     assert j2.original_job_id == ""
     assert original_job_id_env(j2) == c_orig_id
+    assert job_rerun_env(j2) == "true"
   end
 
   test "env injection appends to already-defined job env_vars without dropping them", ctx do
@@ -129,9 +132,13 @@ defmodule Block.TaskApiClient.ScheduleRequestFormatter.Test do
     assert Enum.all?(req.jobs, fn job -> original_job_id_env(job) == nil end)
   end
 
-  defp original_job_id_env(job) do
+  defp original_job_id_env(job), do: env_value(job, "SEMAPHORE_JOB_ORIGINAL_ID")
+
+  defp job_rerun_env(job), do: env_value(job, "SEMAPHORE_JOB_RERUN")
+
+  defp env_value(job, name) do
     job.env_vars
-    |> Enum.find(fn ev -> ev.name == "SEMAPHORE_ORIGINAL_JOB_ID" end)
+    |> Enum.find(fn ev -> ev.name == name end)
     |> case do
       nil -> nil
       ev -> ev.value
