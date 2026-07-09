@@ -109,7 +109,8 @@ defmodule Guard.Application do
     services ++
       [
         {Plug.Cowboy, scheme: :http, plug: Guard.Id.Api, options: [port: 4003]},
-        {Services.InstanceConfigInvalidatorWorker, []}
+        {Services.InstanceConfigInvalidatorWorker, []},
+        Guard.CLIAuth.DeviceRateLimiter
       ]
   end
 
