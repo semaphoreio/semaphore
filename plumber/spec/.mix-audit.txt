@@ -1,0 +1,7 @@
+# decimal — unbounded exponent in Decimal.new enables an unauthenticated DoS
+# (GHSA-rhv4-8758-jx7v, moderate). Patched in decimal 3.0.0, but this app's
+# jason 1.4.1 (`decimal ~> 1.0 or ~> 2.0`) pins decimal to < 3.0, so adopting
+# it forces an out-of-scope jason bump. decimal is not called anywhere in lib/
+# (grep `Decimal.` returns no hits) — it is only jason's optional transitive.
+# Same advisory is accepted with the same rationale in ../ppl/.mix-audit.txt.
+GHSA-rhv4-8758-jx7v
