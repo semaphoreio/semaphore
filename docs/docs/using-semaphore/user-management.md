@@ -214,7 +214,7 @@ See [organization roles](./rbac#org) to learn what roles are available.
 
 ### How to create groups {#add-groups}
 
-<Available plans={['Enterprise']}/>
+<Available plans={['The Plan']}/>
 
 User groups streamline user management by allowing bulk actions. After creating a group, you can:
 
