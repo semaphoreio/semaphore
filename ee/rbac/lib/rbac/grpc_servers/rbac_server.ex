@@ -64,17 +64,20 @@ defmodule Rbac.GrpcServers.RbacServer do
       validate_role_assignment_arguments(req.role_assignment)
       authorize!(req.requester_id, org_id, project_id)
 
-      if owner_role?(role_id) or currently_owner?(subject_id, org_id),
+      # Project initialization bypasses authorization entirely (see authorize!/3): it is
+      # a system operation with no requester_id, so it must be exempt from every
+      # requester-based check below, not just the held-permissions one.
+      initializing? =
+        project_id != "" and Rbac.Models.Project.project_being_initialized?(project_id)
+
+      if not initializing? and (owner_role?(role_id) or currently_owner?(subject_id, org_id)),
         do: Rbac.Utils.Grpc.authorize!(@change_owner_permission, req.requester_id, org_id)
 
       # The Owner role is fully gated by @change_owner_permission above; every other
       # role must pass the held-permissions check so a requester cannot escalate by
-      # assigning a role that grants permissions they do not hold themselves. Skip the
-      # check for project initialization, which bypasses authorization entirely (see
-      # authorize!/3) and has no requester to compare permissions against.
-      unless owner_role?(role_id) or
-               (project_id != "" and Rbac.Models.Project.project_being_initialized?(project_id)),
-             do: authorize_holds_role_permissions!(req.requester_id, org_id, project_id, role_id)
+      # assigning a role that grants permissions they do not hold themselves.
+      unless owner_role?(role_id) or initializing?,
+        do: authorize_holds_role_permissions!(req.requester_id, org_id, project_id, role_id)
 
       {:ok, rbi} = RBI.new(user_id: subject_id, org_id: org_id, project_id: project_id)
 
