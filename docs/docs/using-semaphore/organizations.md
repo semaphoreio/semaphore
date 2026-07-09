@@ -114,7 +114,7 @@ If you experience errors during initialization, see the [initialization job logs
 
 ### Okta integration {#okta-integration}
 
-<Available plans={['Enterprise']} />
+<Available plans={['The Plan']} />
 
 Integration with Okta allows you to automate user management within your Semaphore organization, as well as to use Okta apps for Single Sign On.
 
@@ -134,7 +134,7 @@ In this section, you can add contact details in case the Semaphore Support Team 
 
 <VideoTutorial title="How to view audit logs" src="https://www.youtube.com/embed/o5yXSvjcz7s"/>
 
-<Available plans={['Enterprise']} />
+<Available plans={['The Plan']} />
 
 To support compliance, accountability, and security, Semaphore provides logs of audited events. Audit Log events are events that affect your organization, projects, users, or any other resources in Semaphore. Events contain information about when who and what was the performed activity.
 
@@ -148,7 +148,7 @@ The audit logs shows all the [audited events](../reference/audit-events) in reve
 
 ### How to export audit logs {#audit-export}
 
-<Available plans={['Enterprise']} />
+<Available plans={['The Plan']} />
 
 Audit logs can be exported in two ways:
 
