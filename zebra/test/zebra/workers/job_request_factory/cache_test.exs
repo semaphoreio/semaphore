@@ -162,7 +162,7 @@ defmodule Zebra.Workers.JobRequestFactory.CacheTest do
     end
   end
 
-  describe ".find" do
+  describe ".find with forked PR approval options" do
     test "forked PR with disable_forked_pr_cache enabled skips cache loading" do
       enable_feature("disable_forked_pr_cache")
 
