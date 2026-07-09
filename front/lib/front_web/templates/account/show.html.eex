@@ -201,7 +201,7 @@
           <p class="mb3">
             If you are the last owner of an organization, you must transfer ownership or delete that organization before you can delete your account.
           </p>
-          <%= form_for @conn, account_path(@conn, :delete_with_owned_orgs), [class: "mb0"], fn _f -> %>
+          <%= form_for @conn, account_path(@conn, :delete_user), [class: "mb0"], fn _f -> %>
             <%= submit "Delete account",
               class: "btn btn-danger",
               data: [confirm: "This will permanently delete your account. This action cannot be undone. Continue?"] %>

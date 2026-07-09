@@ -308,7 +308,7 @@ defmodule Front.Models.User do
     end)
   end
 
-  def delete_with_owned_orgs(user_id, metadata \\ nil) do
+  def delete_user(user_id, metadata \\ nil) do
     Watchman.benchmark("delete_user_with_owned_orgs.duration", fn ->
       req = InternalApi.User.DeleteWithOwnedOrgsRequest.new(user_id: user_id)
 
