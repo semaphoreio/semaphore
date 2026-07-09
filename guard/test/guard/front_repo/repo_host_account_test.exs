@@ -131,10 +131,11 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
       assert RepoHostAccount.uid_taken_error?(changeset)
     end
 
-    test "create/1 rejects the uid even when the existing link is revoked", %{rha: rha} do
+    test "create/1 claims the uid and deletes the stale link when the existing one is revoked",
+         %{rha: rha} do
       {:ok, _} = RepoHostAccount.update_revoke_status(rha, true)
 
-      assert {:error, %Ecto.Changeset{} = changeset} =
+      assert {:ok, claimed} =
                RepoHostAccount.create(%{
                  login: "other-login",
                  github_uid: rha.github_uid,
@@ -144,7 +145,62 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
                  permission_scope: "user:email"
                })
 
+      assert claimed.github_uid == rha.github_uid
+      assert {:error, :not_found} = RepoHostAccount.get_for_github_user(rha.user_id)
+    end
+
+    test "create/1 rejects the uid once it has been claimed away from a revoked link", %{
+      rha: rha
+    } do
+      {:ok, _} = RepoHostAccount.update_revoke_status(rha, true)
+
+      {:ok, _claimed} =
+        RepoHostAccount.create(%{
+          login: "other-login",
+          github_uid: rha.github_uid,
+          repo_host: "github",
+          user_id: Ecto.UUID.generate(),
+          name: "Other User",
+          permission_scope: "user:email"
+        })
+
+      # The original owner reconnecting must not revive the duplicate.
+      assert {:error, %Ecto.Changeset{} = changeset} =
+               RepoHostAccount.create(%{
+                 login: rha.login,
+                 github_uid: rha.github_uid,
+                 repo_host: "github",
+                 user_id: rha.user_id,
+                 name: rha.name,
+                 permission_scope: "user:email"
+               })
+
       assert RepoHostAccount.uid_taken_error?(changeset)
+    end
+
+    test "update_repo_host_account/4 with reset claims a uid held only by a revoked link", %{
+      rha: rha
+    } do
+      {:ok, _} = RepoHostAccount.update_revoke_status(rha, true)
+
+      {other_user, _other_rha} =
+        Support.Members.insert_user_with_github_account(github_uid: "10009", login: "claimer")
+
+      assert {:ok, updated} =
+               RepoHostAccount.update_repo_host_account(
+                 other_user.id,
+                 :github,
+                 %{
+                   github_uid: rha.github_uid,
+                   login: "claimer",
+                   name: "Claimer",
+                   permission_scope: "user:email"
+                 },
+                 reset: true
+               )
+
+      assert updated.github_uid == rha.github_uid
+      assert {:error, :not_found} = RepoHostAccount.get_for_github_user(rha.user_id)
     end
 
     test "create/1 allows the same uid under a different repo_host", %{rha: rha} do
