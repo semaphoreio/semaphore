@@ -103,6 +103,33 @@ defmodule Guard.User.ActionsTest do
       end
     end
 
+    test "with github account held by a revoked link it claims the uid for the new user" do
+      with_mock Guard.Events.UserCreated, publish: fn _, _ -> :ok end do
+        {other_user, other_rha} =
+          Support.Members.insert_user_with_github_account(github_uid: "30003", revoked: true)
+
+        user_params = %{
+          email: "john@example.com",
+          name: "John",
+          repository_providers: [
+            %{
+              type: InternalApi.User.RepositoryProvider.Type.value(:GITHUB),
+              uid: other_rha.github_uid,
+              login: "john"
+            }
+          ]
+        }
+
+        {:ok, user} = Guard.User.Actions.create(user_params)
+
+        {:ok, claimed} = Guard.FrontRepo.RepoHostAccount.get_for_github_user(user.id)
+        assert claimed.github_uid == other_rha.github_uid
+
+        assert {:error, :not_found} =
+                 Guard.FrontRepo.RepoHostAccount.get_for_github_user(other_user.id)
+      end
+    end
+
     test "with provider_conflict: :skip it creates the user without the conflicting link" do
       with_mock Guard.Events.UserCreated, publish: fn _, _ -> :ok end do
         {other_user, other_rha} =
