@@ -87,6 +87,8 @@ defmodule Rbac.FrontRepo.RepoHostAccount do
 
     case result do
       {:ok, account} ->
+        release_revoked_uid_rows(account)
+
         Logger.info(
           "Successfully created RepoHostAccount for #{account.user_id} #{account.repo_host} with login #{account.login}, github_uid #{account.github_uid}, and scope #{account.permission_scope}"
         )
@@ -191,21 +193,61 @@ defmodule Rbac.FrontRepo.RepoHostAccount do
 
   def uid_taken_error?(_), do: false
 
-  # A GitHub identity may be linked to at most one user. On update changesets
-  # the row itself is excluded by primary key, so reconnecting the same
-  # account for the same user stays valid.
+  # A GitHub identity may be actively linked to at most one user. Revoked
+  # links don't block a claim — they are deleted once the claim succeeds
+  # (see release_revoked_uid_rows/1), otherwise the old owner reconnecting
+  # would revive the row and recreate the duplicate. The row being changed
+  # is excluded, so reconnecting the same account for the same user stays
+  # valid.
   defp validate_github_uid_not_taken(changeset) do
     repo_host = Ecto.Changeset.get_field(changeset, :repo_host)
     uid = Ecto.Changeset.get_field(changeset, :github_uid)
 
-    if repo_host == "github" and uid not in [nil, ""] do
-      Ecto.Changeset.unsafe_validate_unique(changeset, [:github_uid, :repo_host], FrontRepo,
-        message: @uid_taken_message
+    if repo_host == "github" and uid not in [nil, ""] and
+         uid_actively_held_by_other?(changeset, repo_host, uid) do
+      Ecto.Changeset.add_error(changeset, :github_uid, @uid_taken_message,
+        validation: :unsafe_unique
       )
     else
       changeset
     end
   end
+
+  defp uid_actively_held_by_other?(changeset, repo_host, uid) do
+    query =
+      from(r in __MODULE__,
+        where: r.repo_host == ^repo_host and r.github_uid == ^uid,
+        where: coalesce(r.revoked, false) == false
+      )
+
+    query =
+      case changeset.data.id do
+        nil -> query
+        id -> from(r in query, where: r.id != ^id)
+      end
+
+    FrontRepo.exists?(query)
+  end
+
+  defp release_revoked_uid_rows(%__MODULE__{repo_host: "github"} = account) do
+    {count, _} =
+      from(r in __MODULE__,
+        where: r.repo_host == ^account.repo_host and r.github_uid == ^account.github_uid,
+        where: r.id != ^account.id,
+        where: r.revoked == true
+      )
+      |> FrontRepo.delete_all()
+
+    if count > 0 do
+      Logger.info(
+        "Released #{count} revoked repo_host_account row(s) for github uid #{account.github_uid} claimed by user #{account.user_id}"
+      )
+    end
+
+    account
+  end
+
+  defp release_revoked_uid_rows(account), do: account
 
   defp adjust_scope(%{permission_scope: scope} = data, _) when scope in @scopes_in_order, do: data
 
@@ -337,6 +379,8 @@ defmodule Rbac.FrontRepo.RepoHostAccount do
 
     case result do
       {:ok, account} ->
+        release_revoked_uid_rows(account)
+
         Logger.warning(
           "Successfully reset RepoHostAccount for #{account.user_id} from #{inspect(account)} to #{inspect(data)}"
         )
