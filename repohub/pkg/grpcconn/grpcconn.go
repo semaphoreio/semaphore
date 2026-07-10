@@ -94,7 +94,7 @@ type Pool struct {
 
 type targetConns struct {
 	conns []*grpc.ClientConn
-	next  uint32
+	next  atomic.Int64
 }
 
 // New returns a Pool that keeps size connections per target (size < 1 is treated
@@ -127,8 +127,10 @@ func (p *Pool) Get(address string) (*grpc.ClientConn, error) {
 		}
 	}
 
-	idx := (atomic.AddUint32(&t.next, 1) - 1) % uint32(len(t.conns))
-	return t.conns[idx], nil
+	// int64 round-robin index — a widening int->int64 conversion of len avoids
+	// the int->uint32 overflow gosec flags (G115); len(conns) is 1..MaxPoolSize.
+	next := t.next.Add(1) - 1
+	return t.conns[next%int64(len(t.conns))], nil
 }
 
 // add dials and caches the connections for a target, guarding against several
