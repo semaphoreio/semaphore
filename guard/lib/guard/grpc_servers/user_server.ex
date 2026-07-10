@@ -343,16 +343,40 @@ defmodule Guard.GrpcServers.UserServer do
     end)
   end
 
-  defp blocking_orgs_message([{_id, name}]) do
+  defp blocking_orgs_message(orgs) do
+    {unverified, owned} =
+      Enum.split_with(orgs, fn {_id, _name, reason} -> reason == :ownership_unverified end)
+
+    [owned_sentence(org_names(owned)), unverified_sentence(org_names(unverified))]
+    |> Enum.reject(&(&1 == ""))
+    |> Enum.join(" ")
+  end
+
+  defp org_names(orgs), do: Enum.map(orgs, fn {_id, name, _reason} -> name end)
+
+  defp owned_sentence([]), do: ""
+
+  defp owned_sentence([name]) do
     "You are the last owner of #{name}. " <>
       "Transfer ownership or delete it first before you can delete your account."
   end
 
-  defp blocking_orgs_message(orgs) do
-    names = Enum.map_join(orgs, ", ", fn {_id, name} -> name end)
-
-    "You are the last owner of these organizations: #{names}. " <>
+  defp owned_sentence(names) do
+    "You are the last owner of these organizations: #{Enum.join(names, ", ")}. " <>
       "Transfer ownership or delete them first before you can delete your account."
+  end
+
+  defp unverified_sentence([]), do: ""
+
+  defp unverified_sentence([name]) do
+    "We couldn't verify ownership of #{name}. If you are the owner, " <>
+      "transfer ownership or delete it first (or contact support) before deleting your account."
+  end
+
+  defp unverified_sentence(names) do
+    "We couldn't verify ownership of these organizations: #{Enum.join(names, ", ")}. " <>
+      "If you are the owner, transfer ownership or delete them first (or contact support) " <>
+      "before deleting your account."
   end
 
   @spec create(User.CreateRequest.t(), GRPC.Server.Stream.t()) :: User.User.t()

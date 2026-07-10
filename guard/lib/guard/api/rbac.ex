@@ -23,26 +23,31 @@ defmodule Guard.Api.Rbac do
   end
 
   @doc """
-  Returns the unique subject ids of the users holding the Owner role in the
-  organization. Owners are fetched with a server-side role filter, so the cost
-  is proportional to the number of owners rather than to the total membership.
-  Returns `[]` when the Owner role cannot be resolved.
+  Returns `{:ok, subject_ids}` for the users holding the Owner role in the
+  organization (deduped). Owners are fetched with a server-side role filter, so
+  the cost is proportional to the number of owners rather than to the total
+  membership. Returns `{:error, :owner_role_unresolved}` when the org has no
+  role named "Owner" (missing/renamed) — callers must fail closed, since
+  ownership cannot be proven.
   """
   def org_owner_ids(org_id) do
     case get_role_id(org_id, @owner_role_name, :SCOPE_ORG) do
       nil ->
         Logger.warning(
           "[Guard.Api.Rbac] Owner role not found for org #{org_id}; " <>
-            "returning no owners (org may be ownerless or misconfigured)"
+            "cannot verify ownership (org may be misconfigured or unprovisioned)"
         )
 
-        []
+        {:error, :owner_role_unresolved}
 
       role_id ->
-        org_id
-        |> collect_members("", role_id)
-        |> Enum.map(& &1.subject.subject_id)
-        |> Enum.uniq()
+        ids =
+          org_id
+          |> collect_members("", role_id)
+          |> Enum.map(& &1.subject.subject_id)
+          |> Enum.uniq()
+
+        {:ok, ids}
     end
   end
 
