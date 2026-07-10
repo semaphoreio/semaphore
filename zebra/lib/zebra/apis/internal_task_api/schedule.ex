@@ -14,9 +14,15 @@ defmodule Zebra.Apis.InternalTaskApi.Schedule do
 
   @spec schedule(InternalApi.Task.Task.t()) :: {:ok, Zebra.Models.Task.t()}
   def schedule(req) do
-    case find_already_scheduled_task(req) do
-      {:ok, task} -> {:ok, task}
-      {:error, :not_found} -> create_task(req)
+    case Ecto.UUID.cast(req.request_token) do
+      :error ->
+        {:error, :invalid_argument, "request_token must be a valid UUID"}
+
+      {:ok, _} ->
+        case find_already_scheduled_task(req) do
+          {:ok, task} -> {:ok, task}
+          {:error, :not_found} -> create_task(req)
+        end
     end
   end
 
@@ -60,11 +66,21 @@ defmodule Zebra.Apis.InternalTaskApi.Schedule do
   defp handle_transaction_result({:ok, task}, req), do: maybe_finish_all_copy(task, req)
 
   defp handle_transaction_result({:error, :already_scheduled}, req) do
-    find_already_scheduled_task(req)
+    case find_already_scheduled_task(req) do
+      {:ok, task} -> {:ok, task}
+      {:error, :not_found} -> {:error, :aborted}
+    end
   end
 
   defp handle_transaction_result({:error, {:invalid_argument, msg}}, _req) do
     {:error, :invalid_argument, msg}
+  end
+
+  defp unique_violation?(changeset, field) do
+    Enum.any?(changeset.errors, fn
+      {^field, {_msg, opts}} -> Keyword.get(opts, :constraint) == :unique
+      _ -> false
+    end)
   end
 
   # Inserts the task row. A losing concurrent insert on the same request_token
@@ -84,7 +100,7 @@ defmodule Zebra.Apis.InternalTaskApi.Schedule do
         task
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        if Keyword.has_key?(changeset.errors, :build_request_id) do
+        if unique_violation?(changeset, :build_request_id) do
           Repo.rollback(:already_scheduled)
         else
           Repo.rollback(
