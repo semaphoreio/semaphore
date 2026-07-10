@@ -64,10 +64,19 @@ defmodule Guard.CLIAuth do
 
   @doc """
   Atomically redeem a loopback code from POST /cli/token params (code,
-  code_verifier, redirect_uri). Locks the row, verifies PKCE and the redirect_uri
-  binding, marks it consumed — all in one transaction. Returns the bound user_id.
+  code_verifier, redirect_uri) AND mint the account token under the shared
+  policy (see `mint_token/1`) — all inside one Guard.Repo transaction.
+
+  The row stays locked (SELECT FOR UPDATE) for the duration of the mint, and
+  the code is only marked consumed once the mint outcome is known: a fresh
+  mint or an existing-user `:token_exists` both consume the code (both are
+  terminal); a mint that errors on persist does NOT consume it, so the client
+  can retry with the same code. This closes the "code burned, no token minted"
+  gap that existed when redemption and minting were two independent calls.
   """
-  @spec exchange(map()) :: {:ok, String.t()} | {:error, :invalid_grant}
+  @spec exchange(map()) ::
+          {:ok, String.t()}
+          | {:error, :token_exists | :user_not_found | :invalid_grant | String.t()}
   def exchange(params) do
     code = params["code"]
     verifier = params["code_verifier"]
@@ -78,16 +87,15 @@ defmodule Guard.CLIAuth do
         Guard.Repo.transaction(fn ->
           with {:ok, auth_code} <- CliAuthCode.lock_loopback_code(code),
                true <- PKCE.verify(verifier, auth_code.code_challenge),
-               true <- redirect_uri == auth_code.redirect_uri,
-               {:ok, used} <- CliAuthCode.mark_consumed(auth_code) do
-            used.user_id
+               true <- redirect_uri == auth_code.redirect_uri do
+            mint_then_consume(auth_code)
           else
             _ -> Guard.Repo.rollback(:invalid_grant)
           end
         end)
 
       case result do
-        {:ok, user_id} -> {:ok, user_id}
+        {:ok, mint_result} -> mint_result
         {:error, _} -> {:error, :invalid_grant}
       end
     else
@@ -152,17 +160,21 @@ defmodule Guard.CLIAuth do
   @doc """
   Validate a user_code submitted on the verification page, before sign-in.
 
-  Applies the global rate limit, looks the code up, and enforces the per-code
-  attempt cap (burning the code past the limit). On success returns the pending
+  Applies the rate limit (per-IP, under the global backstop — see
+  `DeviceRateLimiter`), looks the code up, and enforces the per-code attempt
+  cap (burning the code past the limit). On success returns the pending
   device row so the caller can start the OIDC sign-in that leads to consent.
+
+  `ip` is the requester's address (from the conn); pass `nil` if unavailable
+  to fall back to the global-only limit.
   """
-  @spec verify_user_code(String.t()) ::
+  @spec verify_user_code(String.t(), String.t() | nil) ::
           {:ok, Guard.Repo.CliAuthCode.t()}
           | {:error, :rate_limited | :invalid_user_code | :too_many_attempts}
-  def verify_user_code(raw_user_code) do
-    with :ok <- DeviceRateLimiter.check(),
+  def verify_user_code(raw_user_code, ip \\ nil) do
+    with :ok <- DeviceRateLimiter.check(ip),
          normalized = CliAuthCode.normalize_user_code(raw_user_code),
-         {:ok, row} <- lookup_user_code(normalized) do
+         {:ok, row} <- lookup_user_code(normalized, ip) do
       if row.attempt_count >= @user_code_max_attempts do
         CliAuthCode.deny(row)
         {:error, :too_many_attempts}
@@ -173,13 +185,13 @@ defmodule Guard.CLIAuth do
     end
   end
 
-  defp lookup_user_code(normalized) do
+  defp lookup_user_code(normalized, ip) do
     case CliAuthCode.find_pending_by_user_code(normalized) do
       {:ok, row} ->
         {:ok, row}
 
       {:error, :not_found} ->
-        DeviceRateLimiter.record_failure()
+        DeviceRateLimiter.record_failure(ip)
         {:error, :invalid_user_code}
     end
   end
@@ -221,6 +233,8 @@ defmodule Guard.CLIAuth do
     * `{:error, :expired_token}` — past expires_at
     * `{:error, :token_exists}` — approved, but the account already has a token
     * `{:error, :invalid_grant}` — unknown / already consumed device_code
+    * `{:error, :user_not_found}` / `{:error, String.t()}` — mint failed to
+      persist; the code is left unconsumed so the client can retry
   """
   @spec poll_device_token(String.t()) ::
           {:ok, String.t()}
@@ -230,7 +244,9 @@ defmodule Guard.CLIAuth do
              | :access_denied
              | :expired_token
              | :token_exists
-             | :invalid_grant}
+             | :user_not_found
+             | :invalid_grant
+             | String.t()}
   def poll_device_token(device_code) when is_binary(device_code) do
     device_code_hash = CliAuthCode.hash(device_code)
 
@@ -243,8 +259,7 @@ defmodule Guard.CLIAuth do
       end)
 
     case result do
-      {:ok, {:ok, user_id}} -> mint_token(user_id)
-      {:ok, {:error, reason}} -> {:error, reason}
+      {:ok, outcome} -> outcome
       {:error, _} -> {:error, :invalid_grant}
     end
   end
@@ -252,28 +267,29 @@ defmodule Guard.CLIAuth do
   def poll_device_token(_), do: {:error, :invalid_grant}
 
   # Runs inside the SELECT FOR UPDATE transaction. Non-terminal branches
-  # (pending / slow_down) intentionally commit their bookkeeping writes.
+  # (pending / slow_down) intentionally commit their bookkeeping writes. The
+  # approved branch mints the token in the same transaction as the lock (see
+  # `mint_then_consume/1`) so consumption and minting share fate.
   defp resolve_device_poll(row) do
     cond do
       expired?(row) -> {:error, :expired_token}
       row.status == "denied" -> {:error, :access_denied}
       row.status == "consumed" -> {:error, :invalid_grant}
       row.status == "approved" and is_nil(row.user_id) -> {:error, :invalid_grant}
-      row.status == "approved" -> consume_approved(row)
+      row.status == "approved" -> mint_then_consume(row)
       row.status == "pending" -> throttle_pending(row)
       true -> {:error, :invalid_grant}
     end
   end
 
-  defp consume_approved(row) do
-    {:ok, _} = CliAuthCode.mark_consumed(row)
-    {:ok, row.user_id}
-  end
-
   defp throttle_pending(row) do
     now = DateTime.utc_now() |> DateTime.truncate(:second)
 
-    if row.last_polled_at && DateTime.diff(now, row.last_polled_at) < row.interval do
+    # Both `now` and `last_polled_at` are second-truncated, which can make a
+    # compliant client's exact-interval poll look 1s too fast. Grace the
+    # comparison by 1s so a poll at (or just past) the interval boundary is
+    # never spuriously throttled.
+    if row.last_polled_at && DateTime.diff(now, row.last_polled_at) < row.interval - 1 do
       {:ok, _} =
         CliAuthCode.update_row(row, %{
           interval: row.interval + @slow_down_increment,
@@ -294,22 +310,46 @@ defmodule Guard.CLIAuth do
   token is rejected with `:token_exists` — signup is for new accounts; an existing
   account should authenticate with `sem-ai connect`. We can't return the existing
   token anyway (only its hash is stored).
+
+  The write is a single atomic conditional UPDATE (see
+  `Guard.FrontRepo.User.mint_token_if_absent/1`), not read-then-write: this is
+  what makes the mint safe against two overlapping signups for the same fresh
+  account.
   """
   @spec mint_token(String.t()) ::
           {:ok, String.t()} | {:error, :token_exists | :user_not_found | String.t()}
   def mint_token(user_id) do
     case Guard.Store.User.Front.find(user_id) do
-      {:ok, front_user} ->
-        case front_user.authentication_token do
-          token when is_nil(token) or token == "" ->
-            Guard.FrontRepo.User.reset_auth_token(front_user)
-
-          _ ->
-            {:error, :token_exists}
-        end
+      {:ok, _front_user} ->
+        Guard.FrontRepo.User.mint_token_if_absent(user_id)
 
       {:error, :not_found} ->
         {:error, :user_not_found}
+    end
+  end
+
+  # Runs inside the caller's Guard.Repo transaction on the locked cli_auth_codes
+  # row, but the mint itself touches Guard.FrontRepo — a different database, so
+  # there is no single cross-DB transaction that could cover both writes (see
+  # module doc / PR notes). Instead we resolve this by ORDERING: the row lock
+  # (SELECT FOR UPDATE) is held for the duration of the mint call, and the code
+  # is only marked consumed once the mint's outcome is known, so the two never
+  # diverge:
+  #   * mint succeeds            -> consume (this code is now spent)
+  #   * mint says :token_exists  -> consume (existing-user path is terminal)
+  #   * mint errors on persist   -> do NOT consume (client can retry the code)
+  defp mint_then_consume(row) do
+    case mint_token(row.user_id) do
+      {:ok, token} ->
+        {:ok, _} = CliAuthCode.mark_consumed(row)
+        {:ok, token}
+
+      {:error, :token_exists} ->
+        {:ok, _} = CliAuthCode.mark_consumed(row)
+        {:error, :token_exists}
+
+      {:error, other} ->
+        {:error, other}
     end
   end
 

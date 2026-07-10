@@ -370,14 +370,17 @@ defmodule Guard.Id.Api do
   end
 
   defp handle_loopback_token(conn, params) do
-    with {:ok, user_id} <- Guard.CLIAuth.exchange(params),
-         {:ok, token} <- Guard.CLIAuth.mint_token(user_id) do
-      # host is nil: a fresh signup has no org yet. The org (and its subdomain
-      # host) is created in a later step; the CLI stores token now, host pending.
-      cli_json(conn, 200, %{token: token, host: nil})
-    else
-      {:error, :token_exists} -> cli_json(conn, 409, token_exists_body())
-      _ -> cli_json(conn, 400, %{error: "invalid_grant"})
+    case Guard.CLIAuth.exchange(params) do
+      {:ok, token} ->
+        # host is nil: a fresh signup has no org yet. The org (and its subdomain
+        # host) is created in a later step; the CLI stores token now, host pending.
+        cli_json(conn, 200, %{token: token, host: nil})
+
+      {:error, :token_exists} ->
+        cli_json(conn, 409, token_exists_body())
+
+      _ ->
+        cli_json(conn, 400, %{error: "invalid_grant"})
     end
   end
 
@@ -422,7 +425,9 @@ defmodule Guard.Id.Api do
     user_code = (conn.body_params || %{})["user_code"] || ""
 
     if Guard.OIDC.enabled?() do
-      case Guard.CLIAuth.verify_user_code(user_code) do
+      {:ok, remote_ip} = get_remote_ip(conn)
+
+      case Guard.CLIAuth.verify_user_code(user_code, remote_ip) do
         {:ok, row} ->
           start_device_oidc(conn, row, user_code)
 
@@ -523,6 +528,9 @@ defmodule Guard.Id.Api do
   defp cli_json(conn, status, body) do
     conn
     |> put_resp_header("content-type", "application/json")
+    # RFC 8628 §3.2 / §3.4 MUST: /cli/device and /cli/token responses carry
+    # device_code, user_code, and tokens — never cache them.
+    |> put_resp_header("cache-control", "no-store")
     |> send_resp(status, Jason.encode!(body))
   end
 
