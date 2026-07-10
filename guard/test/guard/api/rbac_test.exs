@@ -51,19 +51,19 @@ defmodule Guard.Api.RbacTest do
 
     test "single_member? is true only for exactly one member (#{convention} backend)" do
       with_mock RBAC.RBAC.Stub, list_members: list_members_responder(1, unquote(convention)) do
-        assert Rbac.single_member?(@org_id)
+        assert Rbac.single_member?(@org_id) == {:ok, true}
       end
     end
 
     test "single_member? is false for more than one member (#{convention} backend)" do
       with_mock RBAC.RBAC.Stub, list_members: list_members_responder(2, unquote(convention)) do
-        refute Rbac.single_member?(@org_id)
+        assert Rbac.single_member?(@org_id) == {:ok, false}
       end
     end
 
     test "single_member? is false for a multi-page org (#{convention} backend)" do
       with_mock RBAC.RBAC.Stub, list_members: list_members_responder(150, unquote(convention)) do
-        refute Rbac.single_member?(@org_id)
+        assert Rbac.single_member?(@org_id) == {:ok, false}
       end
     end
   end
@@ -79,7 +79,7 @@ defmodule Guard.Api.RbacTest do
     end
 
     with_mock RBAC.RBAC.Stub, list_members: responder do
-      assert Rbac.single_member?(@org_id)
+      assert Rbac.single_member?(@org_id) == {:ok, true}
     end
   end
 
@@ -96,6 +96,42 @@ defmodule Guard.Api.RbacTest do
       end)
 
     assert log =~ "Owner role not found"
+  end
+
+  test "single_member? returns an error when the member lookup fails" do
+    failing = fn _channel, _req, _opts ->
+      {:error, %GRPC.RPCError{status: 14, message: "unavailable"}}
+    end
+
+    log =
+      capture_log(fn ->
+        with_mock RBAC.RBAC.Stub, list_members: failing do
+          assert Rbac.single_member?(@org_id) == {:error, :ownership_unverified}
+        end
+      end)
+
+    assert log =~ "member lookup failed"
+  end
+
+  test "org_owner_ids returns an error when the owner lookup fails" do
+    list_roles_with_owner = fn _channel, _req, _opts ->
+      {:ok, RBAC.ListRolesResponse.new(roles: [RBAC.Role.new(id: "role-owner", name: "Owner")])}
+    end
+
+    failing_members = fn _channel, _req, _opts ->
+      {:error, %GRPC.RPCError{status: 14, message: "unavailable"}}
+    end
+
+    log =
+      capture_log(fn ->
+        with_mock RBAC.RBAC.Stub,
+          list_roles: list_roles_with_owner,
+          list_members: failing_members do
+          assert Rbac.org_owner_ids(@org_id) == {:error, :ownership_unverified}
+        end
+      end)
+
+    assert log =~ "owner lookup failed"
   end
 
   defp member(id) do

@@ -931,6 +931,38 @@ defmodule Guard.GrpcServers.UserServerTest do
         end
       end
     end
+
+    test "delete_with_owned_orgs rejects when ownership can't be verified due to an RBAC error",
+         %{grpc_channel: channel} do
+      alias Guard.FrontRepo
+
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user.id)
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      org = Support.Factories.Organization.insert!(name: "Foggy", username: "rbac-unavailable")
+
+      request = User.DeleteWithOwnedOrgsRequest.new(user_id: user.id)
+
+      rbac_unavailable = fn _channel, _req, _opts ->
+        {:error, %GRPC.RPCError{status: 14, message: "unavailable"}}
+      end
+
+      with_mock InternalApi.Projecthub.ProjectService.Stub, list: projecthub_list_mock() do
+        with_mock InternalApi.RBAC.RBAC.Stub,
+          list_accessible_orgs: accessible_orgs_mock([org.id]),
+          list_members: rbac_unavailable do
+          {:error, grpc_error} = channel |> Stub.delete_with_owned_orgs(request)
+
+          assert %GRPC.RPCError{status: status, message: message} = grpc_error
+          assert status == GRPC.Status.failed_precondition()
+          assert message =~ "couldn't verify ownership"
+          assert message =~ "Foggy"
+
+          refute is_nil(FrontRepo.get(FrontRepo.User, user.id))
+        end
+      end
+    end
   end
 
   @owner_role_id "11111111-1111-1111-1111-111111111111"

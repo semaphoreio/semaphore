@@ -15,11 +15,18 @@ defmodule Guard.Api.Rbac do
   Subject ids are deduped because CE returns a row per role assignment.
   """
   def single_member?(org_id) do
-    org_id
-    |> fetch_member_page("", "", 0)
-    |> Enum.map(& &1.subject.subject_id)
-    |> Enum.uniq()
-    |> length() == 1
+    count =
+      org_id
+      |> fetch_member_page("", "", 0)
+      |> Enum.map(& &1.subject.subject_id)
+      |> Enum.uniq()
+      |> length()
+
+    {:ok, count == 1}
+  rescue
+    e ->
+      Logger.warning("[Guard.Api.Rbac] member lookup failed for org #{org_id}: #{inspect(e)}")
+      {:error, :ownership_unverified}
   end
 
   @doc """
@@ -49,6 +56,10 @@ defmodule Guard.Api.Rbac do
 
         {:ok, ids}
     end
+  rescue
+    e ->
+      Logger.warning("[Guard.Api.Rbac] owner lookup failed for org #{org_id}: #{inspect(e)}")
+      {:error, :ownership_unverified}
   end
 
   # ListMembers pagination differs between editions: EE is 0-based

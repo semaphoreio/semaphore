@@ -85,17 +85,19 @@ defmodule Guard.Store.Organization do
   # deadline). Returns nil when the org does not block deletion.
   defp block_reason(org_id, user_id) do
     # The user came from their accessible orgs, so one member means it's them.
-    if Guard.Api.Rbac.single_member?(org_id) do
-      :sole_member
-    else
-      case Guard.Api.Rbac.org_owner_ids(org_id) do
-        {:ok, owner_ids} ->
-          if user_id in owner_ids and length(owner_ids) == 1, do: :last_owner
+    case Guard.Api.Rbac.single_member?(org_id) do
+      {:ok, true} -> :sole_member
+      {:ok, false} -> owner_block(org_id, user_id)
+      # Can't reach RBAC to count members → can't prove it's safe → block.
+      {:error, _} -> :ownership_unverified
+    end
+  end
 
-        # Can't resolve the Owner role → can't prove deletion is safe → block.
-        {:error, _reason} ->
-          :ownership_unverified
-      end
+  defp owner_block(org_id, user_id) do
+    case Guard.Api.Rbac.org_owner_ids(org_id) do
+      {:ok, owner_ids} -> if user_id in owner_ids and length(owner_ids) == 1, do: :last_owner
+      # Owner role unresolved or RBAC error → can't prove it's safe → block.
+      {:error, _} -> :ownership_unverified
     end
   end
 
