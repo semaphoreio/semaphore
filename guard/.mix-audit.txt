@@ -22,3 +22,19 @@ GHSA-pj7v-xfvx-wmjq
 # CRLF / header injection via unvalidated `domain` and `path` options (no user-controlled domain/path
 # fed to hackney from lib/)
 GHSA-mp55-p8c9-rfw2
+
+# --- tesla 1.11.2 advisories, fixed in 1.18.3 ---
+# Bump is blocked: the custom ueberauth_bitbucket strategy (bitbucket.org/semaphoreci fork)
+# breaks against tesla >= 1.12 (oauth request phase returns an empty redirect; caught by
+# test/guard/id/api_test.exs). Migrating the fork is tracked separately; until then guard
+# stays on the deliberate ~> 1.11.0 pin.
+GHSA-28jh-g32x-v9v4
+GHSA-9m9w-gxf7-rh8m
+GHSA-h74c-q9j7-mpcm
+GHSA-mc85-72gr-vm9f
+GHSA-q7jx-v53g-848w
+
+# mint 1.7.1 — CONTINUATION frame flood DoS against the HTTP/2 client, fixed in 1.9.0.
+# Bump is blocked by an upstream "~> 1.6.2 or ~> 1.7" constraint. mint here only talks to
+# internal services, not attacker-controlled servers.
+GHSA-2p26-p43x-fhp8
