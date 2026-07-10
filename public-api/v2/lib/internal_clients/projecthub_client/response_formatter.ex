@@ -134,12 +134,23 @@ defmodule InternalClients.Projecthub.ResponseFormatter do
     }
   end
 
-  defp forked_pull_requests_from_pb(nil), do: %{allowed_secrets: [], allowed_contributors: []}
+  defp forked_pull_requests_from_pb(nil) do
+    %{
+      allowed_secrets: [],
+      allowed_contributors: [],
+      allow_sem_approve_include_secrets: false,
+      allow_sem_approve_enable_cache: false
+    }
+  end
 
   defp forked_pull_requests_from_pb(forked_pull_requests) do
     %{
       allowed_secrets: Map.get(forked_pull_requests, :allowed_secrets, []),
-      allowed_contributors: Map.get(forked_pull_requests, :allowed_contributors, [])
+      allowed_contributors: Map.get(forked_pull_requests, :allowed_contributors, []),
+      allow_sem_approve_include_secrets:
+        Map.get(forked_pull_requests, :allow_sem_approve_include_secrets, false),
+      allow_sem_approve_enable_cache:
+        Map.get(forked_pull_requests, :allow_sem_approve_enable_cache, false)
     }
   end
 

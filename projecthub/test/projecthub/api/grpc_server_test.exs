@@ -8,7 +8,7 @@ defmodule Projecthub.Api.GrpcServerTest do
   alias Projecthub.Models.Project
   alias Projecthub.Models.User
   alias Projecthub.Models.Organization
-  alias Projecthub.{RepoChecker, ParamsChecker, Fork}
+  alias Projecthub.{RepoChecker, ParamsChecker, Fork, RepositoryHubClient}
   alias Projecthub.Api.GrpcServer
 
   setup do
@@ -2162,6 +2162,46 @@ defmodule Projecthub.Api.GrpcServerTest do
       )
     end
 
+    def create_request_with_invalid_sem_approve_options(org_id: org_id, request_id: request_id) do
+      InternalApi.Projecthub.CreateRequest.new(
+        metadata:
+          InternalApi.Projecthub.RequestMeta.new(
+            api_version: "",
+            kind: "",
+            req_id: request_id,
+            org_id: org_id,
+            user_id: "12345678-1234-5678-1234-567812345678"
+          ),
+        project:
+          InternalApi.Projecthub.Project.new(
+            metadata:
+              InternalApi.Projecthub.Project.Metadata.new(
+                name: "organization",
+                id: "12345678-1234-5678-1234-567812345678",
+                owner_id: "12345678-1234-5678-1234-567812345678",
+                org_id: org_id,
+                description: "A repo for testing SemaphoreCI features"
+              ),
+            spec:
+              InternalApi.Projecthub.Project.Spec.new(
+                repository:
+                  InternalApi.Projecthub.Project.Spec.Repository.new(
+                    url: "repo_url",
+                    name: "repo_name",
+                    owner: "repo_owner",
+                    run_on: [:PULL_REQUESTS],
+                    forked_pull_requests:
+                      InternalApi.Projecthub.Project.Spec.Repository.ForkedPullRequests.new(
+                        allowed_contributors: [],
+                        allow_sem_approve_include_secrets: true,
+                        allow_sem_approve_enable_cache: true
+                      )
+                  )
+              )
+          )
+      )
+    end
+
     test "when there are errors with the repo => returns a failed precondition, project is removed" do
       {:ok, channel} =
         GRPC.Stub.connect("localhost:50051",
@@ -2545,6 +2585,25 @@ defmodule Projecthub.Api.GrpcServerTest do
       {:ok, project} = Projecthub.Models.Project.find(response.project.metadata.id)
       assert project.state == Projecthub.Models.Project.StateMachine.initializing()
     end
+
+    test "returns failed precondition when sem-approve options are invalid" do
+      request =
+        create_request_with_invalid_sem_approve_options(
+          org_id: Ecto.UUID.generate(),
+          request_id: Ecto.UUID.generate()
+        )
+
+      response = GrpcServer.create(request, nil)
+
+      assert response.metadata.status.code ==
+               InternalApi.Projecthub.ResponseMeta.Code.value(:FAILED_PRECONDITION)
+
+      assert response.metadata.status.message =~
+               "Sem-approve options require forked pull requests to be enabled"
+
+      assert response.metadata.status.message =~
+               "Sem-approve options require at least one trusted contributor"
+    end
   end
 
   describe ".update" do
@@ -2693,6 +2752,68 @@ defmodule Projecthub.Api.GrpcServerTest do
       end
     end
 
+    test "updates project with sem-approve options when forked PR prerequisites are met" do
+      {:ok, channel} =
+        GRPC.Stub.connect("localhost:50051",
+          interceptors: [
+            Projecthub.Util.GRPC.ClientRequestIdInterceptor,
+            Projecthub.Util.GRPC.ClientLoggerInterceptor,
+            Projecthub.Util.GRPC.ClientRunAsyncInterceptor
+          ]
+        )
+
+      {:ok, project} = Support.Factories.Project.create_with_repo()
+
+      project_metadata =
+        InternalApi.Projecthub.Project.Metadata.new(
+          name: "organization",
+          id: project.id,
+          owner_id: project.creator_id,
+          org_id: project.organization_id,
+          description: "A repo for testing SemaphoreCI features"
+        )
+
+      request =
+        InternalApi.Projecthub.UpdateRequest.new(
+          metadata:
+            InternalApi.Projecthub.RequestMeta.new(
+              api_version: "",
+              kind: "",
+              req_id: "",
+              org_id: project.organization_id,
+              user_id: "12345678-1234-5678-1234-567812345678"
+            ),
+          project:
+            InternalApi.Projecthub.Project.new(
+              metadata: project_metadata,
+              spec:
+                InternalApi.Projecthub.Project.Spec.new(
+                  repository:
+                    InternalApi.Projecthub.Project.Spec.Repository.new(
+                      url: "git@github.com:myorg/hello-world.git",
+                      run_on: [:BRANCHES, :FORKED_PULL_REQUESTS],
+                      forked_pull_requests:
+                        InternalApi.Projecthub.Project.Spec.Repository.ForkedPullRequests.new(
+                          allowed_contributors: ["trusted-user"],
+                          allow_sem_approve_include_secrets: true,
+                          allow_sem_approve_enable_cache: true
+                        )
+                    ),
+                  schedulers: []
+                )
+            )
+        )
+
+      {:ok, response} = Stub.update(channel, request)
+
+      assert response.metadata.status ==
+               InternalApi.Projecthub.ResponseMeta.Status.new(code: :OK)
+
+      assert response.project.spec.repository.forked_pull_requests.allow_sem_approve_include_secrets == true
+      assert response.project.spec.repository.forked_pull_requests.allow_sem_approve_enable_cache == true
+      assert response.project.spec.repository.forked_pull_requests.allowed_contributors == ["trusted-user"]
+    end
+
     test "when the project can't be found => returns not found" do
       {:ok, channel} =
         GRPC.Stub.connect("localhost:50051",
@@ -2796,6 +2917,8 @@ defmodule Projecthub.Api.GrpcServerTest do
 
       _project_params = %{
         allowed_secrets: "",
+        allow_sem_approve_enable_cache: false,
+        allow_sem_approve_include_secrets: false,
         build_branch: false,
         build_forked_pr: false,
         build_pr: true,
@@ -2869,6 +2992,8 @@ defmodule Projecthub.Api.GrpcServerTest do
 
       project_params = %{
         allowed_secrets: "",
+        allow_sem_approve_enable_cache: false,
+        allow_sem_approve_include_secrets: false,
         build_branch: false,
         build_forked_pr: false,
         build_pr: true,
@@ -3084,6 +3209,72 @@ defmodule Projecthub.Api.GrpcServerTest do
     # TODO
   end
 
+  describe ".fork_and_create validations" do
+    def fork_and_create_request_with_invalid_sem_approve_options(org_id: org_id, request_id: request_id) do
+      InternalApi.Projecthub.ForkAndCreateRequest.new(
+        metadata:
+          InternalApi.Projecthub.RequestMeta.new(
+            api_version: "",
+            kind: "",
+            req_id: request_id,
+            org_id: org_id,
+            user_id: "12345678-1234-5678-1234-567812345678"
+          ),
+        project:
+          InternalApi.Projecthub.Project.new(
+            metadata:
+              InternalApi.Projecthub.Project.Metadata.new(
+                name: "organization",
+                id: "12345678-1234-5678-1234-567812345678",
+                owner_id: "12345678-1234-5678-1234-567812345678",
+                org_id: org_id,
+                description: "A repo for testing SemaphoreCI features"
+              ),
+            spec:
+              InternalApi.Projecthub.Project.Spec.new(
+                repository:
+                  InternalApi.Projecthub.Project.Spec.Repository.new(
+                    url: "repo_url",
+                    name: "repo_name",
+                    owner: "repo_owner",
+                    run_on: [:PULL_REQUESTS],
+                    forked_pull_requests:
+                      InternalApi.Projecthub.Project.Spec.Repository.ForkedPullRequests.new(
+                        allowed_contributors: [],
+                        allow_sem_approve_include_secrets: true,
+                        allow_sem_approve_enable_cache: true
+                      )
+                  )
+              )
+          )
+      )
+    end
+
+    test "returns failed precondition for invalid sem-approve options before forking" do
+      request =
+        fork_and_create_request_with_invalid_sem_approve_options(
+          org_id: Ecto.UUID.generate(),
+          request_id: Ecto.UUID.generate()
+        )
+
+      with_mock RepositoryHubClient, [:passthrough],
+        fork: fn _ ->
+          raise "fork should not be called for invalid sem-approve settings"
+        end do
+        response = GrpcServer.fork_and_create(request, nil)
+
+        assert response.metadata.status.code ==
+                 InternalApi.Projecthub.ResponseMeta.Code.value(:FAILED_PRECONDITION)
+
+        assert response.metadata.status.message =~
+                 "Sem-approve options require forked pull requests to be enabled"
+
+        assert response.metadata.status.message =~
+                 "Sem-approve options require at least one trusted contributor"
+      end
+    end
+  end
+
   describe ".fork_and_create" do
     @describetag :skip
     test "when everything is in order with request => forks and creates the project and returns ok" do
@@ -3163,6 +3354,8 @@ defmodule Projecthub.Api.GrpcServerTest do
         _project_params = %{
           allowed_contributors: "",
           allowed_secrets: "",
+          allow_sem_approve_enable_cache: false,
+          allow_sem_approve_include_secrets: false,
           build_branch: true,
           build_forked_pr: false,
           build_pr: false,
