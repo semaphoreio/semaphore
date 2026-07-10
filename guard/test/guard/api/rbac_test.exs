@@ -83,7 +83,7 @@ defmodule Guard.Api.RbacTest do
     end
   end
 
-  test "org_owner_ids returns [] and warns when the Owner role cannot be resolved" do
+  test "org_owner_ids returns an error and warns when the Owner role cannot be resolved" do
     list_roles_without_owner = fn _channel, _req, _opts ->
       {:ok, RBAC.ListRolesResponse.new(roles: [RBAC.Role.new(id: "role-admin", name: "Admin")])}
     end
@@ -91,7 +91,7 @@ defmodule Guard.Api.RbacTest do
     log =
       capture_log(fn ->
         with_mock RBAC.RBAC.Stub, list_roles: list_roles_without_owner do
-          assert Rbac.org_owner_ids(@org_id) == []
+          assert Rbac.org_owner_ids(@org_id) == {:error, :owner_role_unresolved}
         end
       end)
 

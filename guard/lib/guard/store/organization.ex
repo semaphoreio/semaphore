@@ -51,15 +51,21 @@ defmodule Guard.Store.Organization do
   def no_of_members(org_id), do: Guard.Api.Rbac.no_of_members(org_id)
 
   @doc """
-  Returns the organizations that block deletion of the given user because the
-  user is the sole member or the last Owner of them. Each entry is
-  `{org_id, org_name}`. An empty list means the user can be deleted.
+  Returns the organizations that block deletion of the given user, each as
+  `{org_id, name, reason}` where reason is `:sole_member`, `:last_owner`, or
+  `:ownership_unverified` (the Owner role could not be resolved, so we fail
+  closed). An empty list means the user can be deleted.
   """
   def orgs_blocking_user_deletion(user_id) do
     user_id
     |> Guard.Api.Rbac.list_accessible_org_ids()
     |> active_orgs()
-    |> Enum.filter(fn {org_id, _name} -> blocks_user_deletion?(org_id, user_id) end)
+    |> Enum.flat_map(fn {org_id, name} ->
+      case block_reason(org_id, user_id) do
+        nil -> []
+        reason -> [{org_id, name, reason}]
+      end
+    end)
   end
 
   # Only active orgs can block account deletion: a user may still own soft-deleted
@@ -74,20 +80,23 @@ defmodule Guard.Store.Organization do
     |> Enum.map(&{&1, names_by_id[&1]})
   end
 
-  # Decided from a member count and an owner-only lookup so we never enumerate
-  # every member of the org, which is prohibitively slow for large orgs on a
-  # request that carries a hard 30s deadline.
-  defp blocks_user_deletion?(org_id, user_id) do
-    sole_member?(org_id) or last_owner?(org_id, user_id)
-  end
+  # Member count and an owner-only lookup, so we never enumerate every member of
+  # the org (prohibitively slow for large orgs on a request with a hard 30s
+  # deadline). Returns nil when the org does not block deletion.
+  defp block_reason(org_id, user_id) do
+    # The user came from their accessible orgs, so one member means it's them.
+    if Guard.Api.Rbac.single_member?(org_id) do
+      :sole_member
+    else
+      case Guard.Api.Rbac.org_owner_ids(org_id) do
+        {:ok, owner_ids} ->
+          if user_id in owner_ids and length(owner_ids) == 1, do: :last_owner
 
-  # The user is known to be a member of the org (it came from their accessible
-  # orgs), so a total of one member means that member is the user.
-  defp sole_member?(org_id), do: Guard.Api.Rbac.single_member?(org_id)
-
-  defp last_owner?(org_id, user_id) do
-    owner_ids = Guard.Api.Rbac.org_owner_ids(org_id)
-    user_id in owner_ids and length(owner_ids) == 1
+        # Can't resolve the Owner role → can't prove deletion is safe → block.
+        {:error, _reason} ->
+          :ownership_unverified
+      end
+    end
   end
 
   @doc """

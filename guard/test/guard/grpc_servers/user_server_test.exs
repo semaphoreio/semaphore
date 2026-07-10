@@ -900,6 +900,37 @@ defmodule Guard.GrpcServers.UserServerTest do
         end
       end
     end
+
+    test "delete_with_owned_orgs rejects when the Owner role cannot be resolved for a multi-member org",
+         %{grpc_channel: channel} do
+      alias Guard.FrontRepo
+
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user.id)
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      {:ok, other} = Support.Factories.RbacUser.insert()
+
+      org = Support.Factories.Organization.insert!(name: "Mystery", username: "no-owner-role")
+
+      request = User.DeleteWithOwnedOrgsRequest.new(user_id: user.id)
+
+      with_mock InternalApi.Projecthub.ProjectService.Stub, list: projecthub_list_mock() do
+        with_mock InternalApi.RBAC.RBAC.Stub,
+          list_accessible_orgs: accessible_orgs_mock([org.id]),
+          list_roles: list_roles_without_owner_mock(),
+          list_members: list_members_mock([user.id, other.id], []) do
+          {:error, grpc_error} = channel |> Stub.delete_with_owned_orgs(request)
+
+          assert %GRPC.RPCError{status: status, message: message} = grpc_error
+          assert status == GRPC.Status.failed_precondition()
+          assert message =~ "couldn't verify ownership"
+          assert message =~ "Mystery"
+
+          refute is_nil(FrontRepo.get(FrontRepo.User, user.id))
+        end
+      end
+    end
   end
 
   @owner_role_id "11111111-1111-1111-1111-111111111111"
@@ -931,6 +962,17 @@ defmodule Guard.GrpcServers.UserServerTest do
       {:ok,
        InternalApi.RBAC.ListRolesResponse.new(
          roles: [InternalApi.RBAC.Role.new(id: @owner_role_id, name: "Owner")]
+       )}
+    end
+  end
+
+  # An org whose roles do not include one named "Owner" — get_role_id/1 returns
+  # nil, so ownership can't be verified.
+  defp list_roles_without_owner_mock do
+    fn _channel, _req, _opts ->
+      {:ok,
+       InternalApi.RBAC.ListRolesResponse.new(
+         roles: [InternalApi.RBAC.Role.new(id: "role-admin", name: "Admin")]
        )}
     end
   end
