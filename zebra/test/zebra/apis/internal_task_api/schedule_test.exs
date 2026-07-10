@@ -389,6 +389,13 @@ defmodule Zebra.Apis.InternalTaskApi.ScheduleTest do
       assert Keyword.has_key?(changeset.errors, :build_request_id)
     end
 
+    test "a non-UUID request_token is a typed invalid_argument, not an idempotency re-read" do
+      req = construct_example_schedule_request("not-a-uuid")
+
+      assert {:error, :invalid_argument, msg} = Schedule.schedule(req)
+      assert msg =~ "request_token"
+    end
+
     test "losing a concurrent race on request_token returns the existing task (idempotency)" do
       token = Ecto.UUID.generate()
       {:ok, winner} = Factories.Task.create(%{build_request_id: token})
