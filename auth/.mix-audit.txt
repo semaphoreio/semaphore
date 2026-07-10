@@ -10,3 +10,11 @@ GHSA-pj7v-xfvx-wmjq
 
 # hackney 1.22.0 — fails to release HTTP connections to pool
 GHSA-9fm9-hp7p-53mf
+
+# mint — four HTTP/2 client advisories (CONTINUATION flood and related frame
+# handling), fixed in newer mint but pinned below by upstream constraints.
+# mint here only talks to internal services and configured identity providers.
+GHSA-2p26-p43x-fhp8
+GHSA-2pg6-44cx-c49v
+GHSA-g586-ccqf-7x4r
+GHSA-mjqx-c6f6-7rc2
