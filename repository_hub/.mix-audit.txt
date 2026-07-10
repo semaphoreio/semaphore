@@ -29,3 +29,6 @@ GHSA-pj7v-xfvx-wmjq
 # 1.9.0 but pinned below by an upstream constraint. mint here only talks to
 # internal and provider endpoints, not attacker-controlled servers.
 GHSA-2p26-p43x-fhp8
+GHSA-2pg6-44cx-c49v
+GHSA-g586-ccqf-7x4r
+GHSA-mjqx-c6f6-7rc2

@@ -38,3 +38,6 @@ GHSA-q7jx-v53g-848w
 # Bump is blocked by an upstream "~> 1.6.2 or ~> 1.7" constraint. mint here only talks to
 # internal services, not attacker-controlled servers.
 GHSA-2p26-p43x-fhp8
+GHSA-2pg6-44cx-c49v
+GHSA-g586-ccqf-7x4r
+GHSA-mjqx-c6f6-7rc2
