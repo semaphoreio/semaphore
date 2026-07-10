@@ -72,6 +72,7 @@ defmodule Guard.Application do
     instance_config_api = System.get_env("INSTANCE_CONFIG_API") || "false"
     organization_cleaner = System.get_env("START_ORGANIZATION_CLEANER") || "false"
     mcp_auth_code_cleaner = System.get_env("START_MCP_AUTH_CODE_CLEANER") || "false"
+    cli_auth_code_cleaner = System.get_env("START_CLI_AUTH_CODE_CLEANER") || "false"
 
     services
     |> add_grpc_service(grpc)
@@ -81,6 +82,7 @@ defmodule Guard.Application do
     |> add_rabbit_workers(rabbit)
     |> add_organization_cleaner(organization_cleaner)
     |> add_mcp_auth_code_cleaner(mcp_auth_code_cleaner)
+    |> add_cli_auth_code_cleaner(cli_auth_code_cleaner)
   end
 
   defp add_grpc_service(services, "true") do
@@ -140,6 +142,12 @@ defmodule Guard.Application do
   end
 
   defp add_mcp_auth_code_cleaner(services, _), do: services
+
+  defp add_cli_auth_code_cleaner(services, "true") do
+    services ++ [{Guard.CLIAuth.AuthCodeCleaner, []}]
+  end
+
+  defp add_cli_auth_code_cleaner(services, _), do: services
 
   defp select_active(workers) do
     workers
