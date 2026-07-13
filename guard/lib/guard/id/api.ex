@@ -475,11 +475,23 @@ defmodule Guard.Id.Api do
   defp handle_device_decision(conn, "approve", row_id, user_id) do
     case Guard.CLIAuth.approve_device(row_id, user_id) do
       {:ok, :approved} ->
-        device_message_page(
-          conn,
-          "Device authorized",
-          "You can return to your terminal — the command-line tool will continue automatically."
-        )
+        if Guard.CLIAuth.account_has_token?(user_id) do
+          # The device was approved, but signup only mints for a new account, so
+          # the terminal will reject this with token_exists. Tell the user the
+          # real outcome here instead of showing "authorized".
+          device_message_page(
+            conn,
+            "Account already set up",
+            "This Semaphore account already has an API token, so nothing was created. " <>
+              "Return to your terminal and run sem-ai connect with a token from your account settings."
+          )
+        else
+          device_message_page(
+            conn,
+            "Device authorized",
+            "You can return to your terminal. The command-line tool finishes signing in automatically."
+          )
+        end
 
       {:error, _} ->
         device_message_page(
@@ -915,7 +927,7 @@ defmodule Guard.Id.Api do
         </div>
 
         <p class="warning">Only continue if you started this on your own machine.
-           If someone sent you this code, stop — click Deny.</p>
+           If someone sent you this code, stop and click Deny.</p>
 
         <form action="/device/decision" method="post">
           <input type="hidden" name="_csrf_token" value="#{Plug.CSRFProtection.get_csrf_token()}" />
@@ -962,7 +974,7 @@ defmodule Guard.Id.Api do
         .container { max-width: 520px; margin: 0 auto; background: #fff; padding: 32px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
         h1 { font-size: 22px; margin-top: 0; }
         label { display: block; font-weight: 600; margin: 16px 0 6px; }
-        input[type=text], input:not([type]) { width: 100%; padding: 12px; font-size: 18px; letter-spacing: 2px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        input[type=text], input:not([type]) { width: 100%; padding: 12px; font-size: 18px; letter-spacing: 4px; text-align: center; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
         button { margin-top: 20px; padding: 12px 24px; border: none; border-radius: 4px; font-size: 15px; cursor: pointer; }
         button[type=submit] { background: #19a974; color: #fff; }
         .details { background: #f8f9fa; border-radius: 6px; padding: 8px 16px; margin: 20px 0; }
