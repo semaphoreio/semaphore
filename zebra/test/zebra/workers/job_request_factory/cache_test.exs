@@ -176,7 +176,7 @@ defmodule Zebra.Workers.JobRequestFactory.CacheTest do
     end
 
     test "approval enable-cache bypasses forked PR cache restriction" do
-      enable_feature("disable_forked_pr_cache")
+      enable_features(["disable_forked_pr_cache", "sem_approve_options"])
 
       GrpcMock.stub(Support.FakeServers.CacheApi, :describe, fn req, _ ->
         InternalApi.Cache.DescribeResponse.new(
@@ -196,8 +196,20 @@ defmodule Zebra.Workers.JobRequestFactory.CacheTest do
       assert cache.id == @cache_id
     end
 
-    test "debug job on forked PR skips cache even when approval enable-cache is set" do
+    test "approval enable-cache is ignored when sem_approve_options feature is disabled" do
       enable_feature("disable_forked_pr_cache")
+
+      GrpcMock.stub(Support.FakeServers.CacheApi, :describe, fn _, _ ->
+        raise "cache should not be queried when sem_approve_options is disabled"
+      end)
+
+      repo = %{pr_slug: "contributor/repo", repo_slug: "org/repo", approval_enable_cache: true}
+
+      assert Cache.find(@cache_id, repo, @org_id) == {:ok, nil}
+    end
+
+    test "debug job on forked PR skips cache even when approval enable-cache is set" do
+      enable_features(["disable_forked_pr_cache", "sem_approve_options"])
 
       GrpcMock.stub(Support.FakeServers.CacheApi, :describe, fn _, _ ->
         raise "cache should not be queried for debug jobs on forked pull requests"
@@ -265,7 +277,9 @@ defmodule Zebra.Workers.JobRequestFactory.CacheTest do
     end
   end
 
-  defp enable_feature(type) do
+  defp enable_feature(type), do: enable_features(List.wrap(type))
+
+  defp enable_features(types) do
     Mox.stub(Support.MockedProvider, :provide_features, fn _, _ ->
       features =
         Support.StubbedProvider.provide_features()
@@ -274,9 +288,9 @@ defmodule Zebra.Workers.JobRequestFactory.CacheTest do
           {:error, _} -> []
         end
 
-      extra_feature = Support.StubbedProvider.feature(type, [:enabled])
+      extra_features = Enum.map(types, &Support.StubbedProvider.feature(&1, [:enabled]))
 
-      {:ok, [extra_feature | features]}
+      {:ok, extra_features ++ features}
     end)
   end
 end
