@@ -1,8 +1,8 @@
 defmodule Projecthub.ParamsChecker do
-  def run(spec, open_source) do
+  def run(spec, open_source, sem_approve_feature_enabled \\ true) do
     []
     |> validate_public_status(spec, open_source)
-    |> validate_sem_approve_options(spec)
+    |> validate_sem_approve_options(spec, sem_approve_feature_enabled)
     |> case do
       [] -> :ok
       errors -> {:error, Enum.reverse(errors)}
@@ -19,7 +19,11 @@ defmodule Projecthub.ParamsChecker do
     end
   end
 
-  defp validate_sem_approve_options(errors, spec) do
+  # When the `sem_approve_options` feature is disabled for the org, the options
+  # are ignored/forced-false downstream, so there is nothing to validate here.
+  defp validate_sem_approve_options(errors, _spec, false), do: errors
+
+  defp validate_sem_approve_options(errors, spec, true) do
     if sem_approve_options_enabled?(spec) do
       errors
       |> validate_forked_pr_enabled(spec)

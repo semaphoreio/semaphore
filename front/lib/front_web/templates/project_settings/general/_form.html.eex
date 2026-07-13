@@ -121,6 +121,7 @@
               <% end %>
               <p class="f6 mt1 mb0">Whitelist the GitHub logins you trust to run workflows. Comma separates multiple values.</p>
             </div>
+            <%= if FeatureProvider.feature_enabled?(:sem_approve_options, param: @conn.assigns[:organization_id]) do %>
             <div id="sem-approve-options" class="mt2">
               <p class="f5 b mv1">Allow extra /sem-approve options?</p>
               <p class="f6 mt1 mb2">
@@ -155,6 +156,7 @@
                 <% end %>
               </div>
             </div>
+            <% end %>
           </div>
         <% end %>
         <div class="mt3 pt3 bt b--lighter-gray">
