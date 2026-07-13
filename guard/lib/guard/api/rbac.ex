@@ -12,7 +12,10 @@ defmodule Guard.Api.Rbac do
   Whether the organization has exactly one member. Only the first page is read
   (page 0 maps to offset 0 on both the EE and CE backends), so this stays a
   single request instead of walking the whole membership just to check for one.
-  Subject ids are deduped because CE returns a row per role assignment.
+  Both backends return at most one row per member (CE keys role assignments by
+  user and org, EE groups role bindings by subject), so a short first page is
+  the whole membership and a full one means more than one member; the dedup is
+  only insurance against a backend someday repeating subjects within the page.
   """
   def single_member?(org_id) do
     count =
