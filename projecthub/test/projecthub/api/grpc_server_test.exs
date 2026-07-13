@@ -2593,6 +2593,17 @@ defmodule Projecthub.Api.GrpcServerTest do
           request_id: Ecto.UUID.generate()
         )
 
+      FunRegistry.set!(Support.FakeServices.FeatureService, :list_organization_features, fn _req, _ ->
+        InternalApi.Feature.ListOrganizationFeaturesResponse.new(
+          organization_features: [
+            [
+              feature: %{type: "sem_approve_options"},
+              availability: InternalApi.Feature.Availability.new(state: :ENABLED, quantity: 1)
+            ]
+          ]
+        )
+      end)
+
       response = GrpcServer.create(request, nil)
 
       assert response.metadata.status.code ==
@@ -3134,6 +3145,17 @@ defmodule Projecthub.Api.GrpcServerTest do
             )
         )
 
+      FunRegistry.set!(Support.FakeServices.FeatureService, :list_organization_features, fn _req, _ ->
+        InternalApi.Feature.ListOrganizationFeaturesResponse.new(
+          organization_features: [
+            [
+              feature: %{type: "sem_approve_options"},
+              availability: InternalApi.Feature.Availability.new(state: :ENABLED, quantity: 1)
+            ]
+          ]
+        )
+      end)
+
       {:ok, response} = Stub.update(channel, request)
 
       assert response.metadata.status ==
@@ -3257,10 +3279,10 @@ defmodule Projecthub.Api.GrpcServerTest do
         name: project_metadata.name
       }
 
-      with_mock ParamsChecker, run: fn _spec, _os -> {:error, ["message1", "message2"]} end do
+      with_mock ParamsChecker, run: fn _spec, _os, _feature -> {:error, ["message1", "message2"]} end do
         {:ok, response} = Stub.update(channel, request)
 
-        assert_called(ParamsChecker.run(request.project.spec, false))
+        assert_called(ParamsChecker.run(request.project.spec, false, :_))
 
         assert response.metadata.status ==
                  InternalApi.Projecthub.ResponseMeta.Status.new(
@@ -3586,6 +3608,17 @@ defmodule Projecthub.Api.GrpcServerTest do
           org_id: Ecto.UUID.generate(),
           request_id: Ecto.UUID.generate()
         )
+
+      FunRegistry.set!(Support.FakeServices.FeatureService, :list_organization_features, fn _req, _ ->
+        InternalApi.Feature.ListOrganizationFeaturesResponse.new(
+          organization_features: [
+            [
+              feature: %{type: "sem_approve_options"},
+              availability: InternalApi.Feature.Availability.new(state: :ENABLED, quantity: 1)
+            ]
+          ]
+        )
+      end)
 
       with_mock RepositoryHubClient, [:passthrough],
         fork: fn _ ->
