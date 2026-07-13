@@ -24,6 +24,42 @@ defmodule Guard.Id.Api.Test do
     end
   end
 
+  describe "CLI token endpoints send Cache-Control: no-store" do
+    setup do
+      bypass = Guard.Mocks.OpenIDConnect.discovery_document_server()
+      disc_url = "http://localhost:#{bypass.port}/.well-known/openid-configuration"
+
+      oidc = Application.get_env(:guard, :oidc)
+
+      Application.put_env(:guard, :oidc, %{
+        discovery_url: disc_url,
+        client_id: "test_client_id",
+        client_secret: "test_client_secret"
+      })
+
+      on_exit(fn ->
+        Application.put_env(:guard, :oidc, oidc)
+      end)
+
+      :ok
+    end
+
+    test "POST /cli/device (success) is not cacheable" do
+      {:ok, response} = send_post_request(path: "/cli/device", body: %{})
+
+      assert response.status_code == 200
+      assert cache_control(response) == "no-store"
+    end
+
+    test "POST /cli/token (error path) is not cacheable either" do
+      {:ok, response} =
+        send_post_request(path: "/cli/token", body: %{"grant_type" => "unsupported"})
+
+      assert response.status_code == 400
+      assert cache_control(response) == "no-store"
+    end
+  end
+
   describe "parse_expires_at/1" do
     test "returns nil for nil input" do
       assert Guard.Id.Api.parse_expires_at(nil) == nil
@@ -1561,4 +1597,10 @@ defmodule Guard.Id.Api.Test do
   end
 
   defp domain, do: Application.get_env(:guard, :base_domain)
+
+  defp cache_control(response) do
+    response.headers
+    |> Enum.find(fn {name, _} -> String.downcase(name) == "cache-control" end)
+    |> elem(1)
+  end
 end
