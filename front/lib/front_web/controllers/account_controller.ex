@@ -248,12 +248,12 @@ defmodule FrontWeb.AccountController do
     end)
   end
 
-  def delete_with_owned_orgs(conn, _params) do
+  def delete_user(conn, _params) do
     Watchman.benchmark("account.delete_with_owned_orgs.duration", fn ->
       user_id = conn.assigns.user_id
       tracing_headers = conn.assigns.tracing_headers
 
-      case Models.User.delete_with_owned_orgs(user_id, tracing_headers) do
+      case Models.User.delete_user(user_id, tracing_headers) do
         {:ok, _user} ->
           conn
           |> redirect(external: destroyed_account_redirect_url(conn))
