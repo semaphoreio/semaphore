@@ -572,6 +572,8 @@ defmodule Zebra.Workers.JobRequestFactory.SecretsTest do
     end
 
     test "approval include-secrets bypasses forked PR secret filtering for pipeline jobs" do
+      enable_feature("sem_approve_options")
+
       job_spec =
         Semaphore.Jobs.V1alpha.Job.Spec.new(
           agent:
@@ -642,6 +644,53 @@ defmodule Zebra.Workers.JobRequestFactory.SecretsTest do
                "aws-secrets",
                "secret-secrets"
              ]
+    end
+
+    test "approval include-secrets is ignored when sem_approve_options feature is disabled" do
+      job_spec =
+        Semaphore.Jobs.V1alpha.Job.Spec.new(
+          agent:
+            Semaphore.Jobs.V1alpha.Job.Spec.Agent.new(
+              machine:
+                Semaphore.Jobs.V1alpha.Job.Spec.Agent.Machine.new(
+                  type: "e1-standard-2",
+                  os_image: "ubuntu1804"
+                )
+            ),
+          secrets: [
+            Semaphore.Jobs.V1alpha.Job.Spec.Secret.new(name: "aws-secrets"),
+            Semaphore.Jobs.V1alpha.Job.Spec.Secret.new(name: "secret-secrets")
+          ]
+        )
+
+      hook =
+        InternalApi.RepoProxy.Hook.new(
+          git_ref_type: InternalApi.RepoProxy.Hook.Type.value(:PR),
+          pr_slug: "foo/bar",
+          repo_slug: "bar/bar"
+        )
+        |> Map.put(:approval_include_secrets, true)
+
+      api_project =
+        InternalApi.Projecthub.Project.new(
+          metadata: InternalApi.Projecthub.Project.Metadata.new(),
+          spec:
+            InternalApi.Projecthub.Project.Spec.new(
+              repository:
+                InternalApi.Projecthub.Project.Spec.Repository.new(
+                  forked_pull_requests:
+                    InternalApi.Projecthub.Project.Spec.Repository.ForkedPullRequests.new(
+                      allowed_secrets: ["secret-secrets"]
+                    )
+                )
+            )
+        )
+
+      project = Zebra.Models.Project.from_api(api_project)
+
+      # sem_approve_options disabled => escalation ignored, forked-PR filtering applies
+      assert {:ok, secrets} = Secrets.load(@org_id, @job_id, job_spec, project, hook)
+      assert Enum.map(secrets.job_secrets, & &1.name) == ["secret-secrets"]
     end
 
     test "approval include-secrets still respects forked PR secret filtering for debug jobs" do
@@ -880,5 +929,22 @@ defmodule Zebra.Workers.JobRequestFactory.SecretsTest do
                true
              }
     end
+  end
+
+  defp enable_feature(type), do: enable_features(List.wrap(type))
+
+  defp enable_features(types) do
+    Mox.stub(Support.MockedProvider, :provide_features, fn _, _ ->
+      features =
+        Support.StubbedProvider.provide_features()
+        |> case do
+          {:ok, features} -> features
+          {:error, _} -> []
+        end
+
+      extra_features = Enum.map(types, &Support.StubbedProvider.feature(&1, [:enabled]))
+
+      {:ok, extra_features ++ features}
+    end)
   end
 end
