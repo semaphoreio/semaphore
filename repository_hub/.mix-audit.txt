@@ -14,3 +14,14 @@ GHSA-r73h-97w8-m54h
 # ecto; bumping to 3.0 cascades into an ecto bump out of scope. repository_hub does
 # not parse untrusted decimal strings — no Decimal.new calls in lib/).
 GHSA-rhv4-8758-jx7v
+
+# --- hackney 1.x advisories, all first patched in hackney 4.0.1 ---
+# The 4.x major is blocked fleet-wide: httpoison requires hackney ~> 1.17, so
+# hackney cannot move to 4.x without a coordinated httpoison migration (same
+# acceptance as plumber and guard). repository_hub's outbound HTTP targets the
+# configured git providers and internal services only.
+GHSA-gp9c-pm5m-5cxr
+GHSA-j9wq-vxxc-94wf
+GHSA-mp55-p8c9-rfw2
+GHSA-pj7v-xfvx-wmjq
+
