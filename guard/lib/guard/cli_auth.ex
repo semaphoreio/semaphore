@@ -328,6 +328,21 @@ defmodule Guard.CLIAuth do
     end
   end
 
+  @doc """
+  Whether the account already holds an API token. Signup mints only for a
+  tokenless account (see `mint_token/1`), so the device consent screen uses this
+  to tell an existing user the truth ("already set up, use connect") instead of
+  showing "authorized" for a flow that the terminal will reject with
+  `:token_exists`.
+  """
+  @spec account_has_token?(String.t()) :: boolean()
+  def account_has_token?(user_id) do
+    case Guard.Store.User.Front.find(user_id) do
+      {:ok, %{authentication_token: token}} -> not (is_nil(token) or token == "")
+      _ -> false
+    end
+  end
+
   # Runs inside the caller's Guard.Repo transaction on the locked cli_auth_codes
   # row, but the mint itself touches Guard.FrontRepo — a different database, so
   # there is no single cross-DB transaction that could cover both writes (see
