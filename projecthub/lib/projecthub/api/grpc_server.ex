@@ -205,7 +205,12 @@ defmodule Projecthub.Api.GrpcServer do
       with {:ok, user} <- Task.yield(fetch_user),
            {:ok, org} <- Task.yield(fetch_org),
            :ok <- require_owner_project(user, org, repo, integration_type),
-           :ok <- ParamsChecker.run(params_checker_spec(project_spec, org.open_source), org.open_source),
+           :ok <-
+             ParamsChecker.run(
+               params_checker_spec(project_spec, org.open_source),
+               org.open_source,
+               sem_approve_options_enabled?(org.id)
+             ),
            {:ok, response} <-
              RepositoryHubClient.fork(%{
                user_id: user.id,
@@ -287,7 +292,12 @@ defmodule Projecthub.Api.GrpcServer do
       with {:ok, user} <- Task.yield(fetch_user),
            {:ok, org} <- Task.yield(fetch_org),
            :ok <- require_owner_project(user, org, repo, integration_type),
-           :ok <- ParamsChecker.run(params_checker_spec(project_spec, org.open_source), org.open_source),
+           :ok <-
+             ParamsChecker.run(
+               params_checker_spec(project_spec, org.open_source),
+               org.open_source,
+               sem_approve_options_enabled?(org.id)
+             ),
            {:ok, project} <-
              attempt_creation(
                user,
@@ -363,7 +373,12 @@ defmodule Projecthub.Api.GrpcServer do
 
       with org <- find_org(req),
            {:ok, project} <- Project.find_in_org(req.metadata.org_id, project_id),
-           :ok <- ParamsChecker.run(project_spec, org.open_source) do
+           :ok <-
+             ParamsChecker.run(
+               project_spec,
+               org.open_source,
+               sem_approve_options_enabled?(org.id)
+             ) do
         attempt_update(project, project_metadata, project_spec, req)
       else
         {:error, :not_found} ->
@@ -790,7 +805,7 @@ defmodule Projecthub.Api.GrpcServer do
         attach = attach_settings(project_spec)
         debug = debug_settings(project_spec)
         run_on = run_settings(project_spec)
-        forked_pull_requests = forked_pull_requests_settings(project_spec)
+        forked_pull_requests = forked_pull_requests_settings(project_spec, org.id)
         visibility = project_visibility_settings(org, project_spec)
         schedulers = Scheduler.construct_list(project_spec.schedulers)
         tasks = PeriodicTask.construct(project_spec.tasks, project_metadata.name)
@@ -884,7 +899,7 @@ defmodule Projecthub.Api.GrpcServer do
     attach = attach_settings(project_spec)
     debug = debug_settings(project_spec)
     run_on = run_settings(project_spec)
-    forked_pull_requests = forked_pull_requests_settings(project_spec)
+    forked_pull_requests = forked_pull_requests_settings(project_spec, project.organization_id)
 
     project_params =
       metadata
@@ -1007,15 +1022,20 @@ defmodule Projecthub.Api.GrpcServer do
     }
   end
 
-  defp forked_pull_requests_settings(project_spec) do
+  defp forked_pull_requests_settings(project_spec, org_id) do
     forked_pull_requests = project_spec.repository.forked_pull_requests
+    sem_approve_options_enabled = sem_approve_options_enabled?(org_id)
 
     if forked_pull_requests do
       %{
         allowed_secrets: Enum.join(forked_pull_requests.allowed_secrets, ","),
         allowed_contributors: Enum.join(forked_pull_requests.allowed_contributors, ","),
-        allow_sem_approve_include_secrets: Map.get(forked_pull_requests, :allow_sem_approve_include_secrets, false),
-        allow_sem_approve_enable_cache: Map.get(forked_pull_requests, :allow_sem_approve_enable_cache, false)
+        allow_sem_approve_include_secrets:
+          sem_approve_options_enabled and
+            Map.get(forked_pull_requests, :allow_sem_approve_include_secrets, false),
+        allow_sem_approve_enable_cache:
+          sem_approve_options_enabled and
+            Map.get(forked_pull_requests, :allow_sem_approve_enable_cache, false)
       }
     else
       %{
@@ -1025,6 +1045,12 @@ defmodule Projecthub.Api.GrpcServer do
         allow_sem_approve_enable_cache: false
       }
     end
+  end
+
+  # The sem-approve command options are only honored/persisted when the
+  # `sem_approve_options` feature is enabled for the organization.
+  defp sem_approve_options_enabled?(org_id) do
+    FeatureProvider.feature_enabled?(:sem_approve_options, param: org_id)
   end
 
   defp project_metadata_settings(project_metadata) do
