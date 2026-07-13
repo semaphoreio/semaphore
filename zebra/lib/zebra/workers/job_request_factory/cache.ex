@@ -125,11 +125,12 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
     end
   end
 
-  def forked_pr?(_repo = %{pr_slug: ""}), do: false
-  def forked_pr?(nil), do: false
+  def forked_pr?(repo, org_id \\ nil)
+  def forked_pr?(_repo = %{pr_slug: ""}, _org_id), do: false
+  def forked_pr?(nil, _org_id), do: false
 
-  def forked_pr?(repo) do
-    if approval_enable_cache?(repo) do
+  def forked_pr?(repo, org_id) do
+    if approval_enable_cache?(repo, org_id) do
       false
     else
       forked_pr_without_approval_override?(repo)
@@ -151,13 +152,17 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
   end
 
   defp skip_cache?(repo_proxy, org_id, _job_type) do
-    forked_pr?(repo_proxy) and
+    forked_pr?(repo_proxy, org_id) and
       FeatureProvider.feature_enabled?(:disable_forked_pr_cache, param: org_id)
   end
 
-  defp approval_enable_cache?(nil), do: false
+  defp approval_enable_cache?(nil, _org_id), do: false
+  defp approval_enable_cache?(_repo, nil), do: false
 
-  defp approval_enable_cache?(repo) do
-    Map.get(repo, :approval_enable_cache, false)
+  # The `--enable-cache` approval only takes effect when the `sem_approve_options`
+  # feature is enabled for the organization.
+  defp approval_enable_cache?(repo, org_id) do
+    Map.get(repo, :approval_enable_cache, false) and
+      FeatureProvider.feature_enabled?(:sem_approve_options, param: org_id)
   end
 end

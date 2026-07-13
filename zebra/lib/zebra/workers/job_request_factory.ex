@@ -202,7 +202,7 @@ defmodule Zebra.Workers.JobRequestFactory do
     # Forked-PR cache skips are intentional (gated by the disable_forked_pr_cache
     # feature flag in Cache.find/3), so they are not a dropped-vars condition.
     if cache_env_vars == [] and not Job.self_hosted?(job.machine_type) and
-         not is_nil(project.cache_id) and not Cache.forked_pr?(repo_proxy) do
+         not is_nil(project.cache_id) and not Cache.forked_pr?(repo_proxy, job.organization_id) do
       Logger.warning(
         "Cache env vars not injected into job. job_id=#{job.id} project_id=#{project.id} cache_id=#{project.cache_id}"
       )
