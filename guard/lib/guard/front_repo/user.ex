@@ -204,9 +204,8 @@ defmodule Guard.FrontRepo.User do
   end
 
   @doc """
-  Atomically mint a token for a user that doesn't have one yet — used by the
-  CLI signup token policy (`Guard.CLIAuth.mint_token/1`, #3390: mint-if-absent,
-  else reject).
+  Atomically mint a token for a user that doesn't have one yet — the CLI
+  sign-in path for a fresh account (`Guard.CLIAuth.mint_token/1`).
 
   This is a single conditional `UPDATE ... WHERE id = ? AND authentication_token
   IS NULL/empty`, not a read-then-write: two concurrent callers for the same
@@ -230,6 +229,35 @@ defmodule Guard.FrontRepo.User do
         case FrontRepo.update_all(query, set: [authentication_token: hash_token, updated_at: now]) do
           {1, _} -> {:ok, plain_token}
           {0, _} -> {:error, :token_exists}
+        end
+
+      {:error, _message} = error ->
+        error
+    end
+  end
+
+  @doc """
+  Rotate (regenerate) the user's API token, unconditionally replacing the
+  current one — the CLI sign-in path for an account that already had a token
+  and whose owner explicitly consented to the reset on the device consent
+  screen (`Guard.CLIAuth.rotate_token/1`). The old token stops working the
+  moment this commits.
+
+  Like `mint_token_if_absent/1` this is a single UPDATE by id whose row count
+  is checked, never a discarded write; 0 rows means the user does not exist.
+  """
+  @spec rotate_token(String.t()) ::
+          {:ok, String.t()} | {:error, :user_not_found | String.t()}
+  def rotate_token(user_id) do
+    case generate_authentication_token() do
+      {:ok, {plain_token, hash_token}} ->
+        now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+        query = from(u in __MODULE__, where: u.id == ^user_id)
+
+        case FrontRepo.update_all(query, set: [authentication_token: hash_token, updated_at: now]) do
+          {1, _} -> {:ok, plain_token}
+          {0, _} -> {:error, :user_not_found}
         end
 
       {:error, _message} = error ->

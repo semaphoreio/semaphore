@@ -17,8 +17,14 @@ defmodule Guard.CLIAuth do
   alias Guard.Store.CliAuthCode
   alias Guard.CLIAuth.DeviceRateLimiter
 
-  # RFC 8628 device flow parameters (industry-convergent values).
-  @device_ttl_seconds 900
+  # RFC 8628 device flow parameters. The TTL is 30 minutes — deliberately
+  # above the industry-typical 15 — because a brand-new user detours through
+  # the full web signup (registration, possibly email verification) between
+  # entering the user_code and approving on the consent screen, and the code
+  # must survive that detour. If it still expires mid-detour, every surface
+  # degrades cleanly to a re-prompt: the consent page shows "request expired,
+  # start again from your terminal" and the CLI poll gets :expired_token.
+  @device_ttl_seconds 1800
   @default_interval 5
   @slow_down_increment 5
   # A user_code can seed the sign-in/consent flow at most this many times before
@@ -125,12 +131,19 @@ defmodule Guard.CLIAuth do
     end
   end
 
-  @doc "Record the human's consent decision for a device row (after sign-in)."
-  @spec approve_device(binary(), binary()) :: {:ok, :approved} | {:error, term()}
-  def approve_device(row_id, user_id) do
+  @doc """
+  Record the human's consent decision for a device row (after sign-in), along
+  with WHAT was consented to: `"mint"` (fresh account, no token yet) or
+  `"rotate"` (the account already had a token and the user explicitly agreed
+  to reset it on the consent screen). The poll that redeems the device_code
+  executes exactly this recorded action — never more.
+  """
+  @spec approve_device(binary(), binary(), String.t()) ::
+          {:ok, :approved} | {:error, term()}
+  def approve_device(row_id, user_id, token_action) when token_action in ["mint", "rotate"] do
     Guard.Repo.transaction(fn ->
       with {:ok, row} <- CliAuthCode.lock_pending_device(row_id),
-           {:ok, _} <- CliAuthCode.approve(row, user_id) do
+           {:ok, _} <- CliAuthCode.approve(row, user_id, token_action) do
         :approved
       else
         {:error, reason} -> Guard.Repo.rollback(reason)
@@ -152,21 +165,24 @@ defmodule Guard.CLIAuth do
 
   @doc """
   Poll for a device grant at `POST /cli/token`. Enforces the RFC 8628 terminal
-  states and, on approval, mints the token under the shared signup policy.
+  states and, on approval, executes the token action the human consented to
+  (see `approve_device/3`).
 
   Returns one of:
-    * `{:ok, token}` — approved and a fresh token was minted
+    * `{:ok, token, "minted"}` — fresh account, first token minted
+    * `{:ok, token, "rotated"}` — existing account, token reset with consent
     * `{:error, :authorization_pending}` — still waiting for the human
     * `{:error, :slow_down}` — polled faster than the interval (interval bumped)
     * `{:error, :access_denied}` — the human denied it
     * `{:error, :expired_token}` — past expires_at
-    * `{:error, :token_exists}` — approved, but the account already has a token
+    * `{:error, :token_exists}` — consent said "mint" but a token appeared on
+      the account in the meantime; re-run sign-in to get the reset consent
     * `{:error, :invalid_grant}` — unknown / already consumed device_code
-    * `{:error, :user_not_found}` / `{:error, String.t()}` — mint failed to
-      persist; the code is left unconsumed so the client can retry
+    * `{:error, :user_not_found}` / `{:error, String.t()}` — the token write
+      failed to persist; the code is left unconsumed so the client can retry
   """
   @spec poll_device_token(String.t()) ::
-          {:ok, String.t()}
+          {:ok, String.t(), String.t()}
           | {:error,
              :authorization_pending
              | :slow_down
@@ -197,15 +213,15 @@ defmodule Guard.CLIAuth do
 
   # Runs inside the SELECT FOR UPDATE transaction. Non-terminal branches
   # (pending / slow_down) intentionally commit their bookkeeping writes. The
-  # approved branch mints the token in the same transaction as the lock (see
-  # `mint_then_consume/1`) so consumption and minting share fate.
+  # approved branch writes the token in the same transaction as the lock (see
+  # `execute_token_action/1`) so consumption and the token write share fate.
   defp resolve_device_poll(row) do
     cond do
       expired?(row) -> {:error, :expired_token}
       row.status == "denied" -> {:error, :access_denied}
       row.status == "consumed" -> {:error, :invalid_grant}
       row.status == "approved" and is_nil(row.user_id) -> {:error, :invalid_grant}
-      row.status == "approved" -> mint_then_consume(row)
+      row.status == "approved" -> execute_token_action(row)
       row.status == "pending" -> throttle_pending(row)
       true -> {:error, :invalid_grant}
     end
@@ -232,17 +248,18 @@ defmodule Guard.CLIAuth do
     end
   end
 
-  # ── shared token policy ─────────────────────────────────────────────────────
+  # ── token policy ────────────────────────────────────────────────────────────
 
   @doc """
-  Mint the API token for a tokenless (new) account. An account that already has a
-  token is rejected with `:token_exists` — signup is for new accounts; an existing
-  account should authenticate with `sem-ai connect`. We can't return the existing
-  token anyway (only its hash is stored).
+  Mint the API token for a tokenless (new) account. An account that already
+  holds a token is rejected with `:token_exists` — replacing a token requires
+  the explicit "rotate" consent recorded at approval (see `approve_device/3`);
+  minting never overwrites. We can't return the existing token anyway (only
+  its hash is stored).
 
   The write is a single atomic conditional UPDATE (see
   `Guard.FrontRepo.User.mint_token_if_absent/1`), not read-then-write: this is
-  what makes the mint safe against two overlapping signups for the same fresh
+  what makes the mint safe against two overlapping sign-ins for the same fresh
   account.
   """
   @spec mint_token(String.t()) ::
@@ -258,11 +275,26 @@ defmodule Guard.CLIAuth do
   end
 
   @doc """
-  Whether the account already holds an API token. Signup mints only for a
-  tokenless account (see `mint_token/1`), so the device consent screen uses this
-  to tell an existing user the truth ("already set up, use connect") instead of
-  showing "authorized" for a flow that the terminal will reject with
-  `:token_exists`.
+  Rotate (reset) the account's API token. Only reachable from a device row
+  whose approval recorded the explicit "rotate" consent — the authenticated
+  browser page is where that consent was given.
+  """
+  @spec rotate_token(String.t()) ::
+          {:ok, String.t()} | {:error, :user_not_found | String.t()}
+  def rotate_token(user_id) do
+    case Guard.Store.User.Front.find(user_id) do
+      {:ok, _front_user} ->
+        Guard.FrontRepo.User.rotate_token(user_id)
+
+      {:error, :not_found} ->
+        {:error, :user_not_found}
+    end
+  end
+
+  @doc """
+  Whether the account already holds an API token. The consent screen branches
+  on this: a tokenless account gets the plain "authorize this tool" consent,
+  an account with a token gets the explicit "reset your API token" consent.
   """
   @spec account_has_token?(String.t()) :: boolean()
   def account_has_token?(user_id) do
@@ -272,21 +304,35 @@ defmodule Guard.CLIAuth do
     end
   end
 
+  @doc """
+  The token action sign-in would take for this account right now: `"rotate"`
+  when a token already exists (needs explicit reset consent), `"mint"` when
+  the account has none. Computed when rendering the consent screen and
+  re-checked when the decision is submitted, so the consent the user gave
+  always matches the action recorded on the row.
+  """
+  @spec intended_token_action(String.t()) :: String.t()
+  def intended_token_action(user_id) do
+    if account_has_token?(user_id), do: "rotate", else: "mint"
+  end
+
   # Runs inside the caller's Guard.Repo transaction on the locked cli_auth_codes
-  # row, but the mint itself touches Guard.FrontRepo — a different database, so
-  # there is no single cross-DB transaction that could cover both writes (see
-  # module doc / PR notes). Instead we resolve this by ORDERING: the row lock
-  # (SELECT FOR UPDATE) is held for the duration of the mint call, and the code
-  # is only marked consumed once the mint's outcome is known, so the two never
+  # row, but the token write itself touches Guard.FrontRepo — a different
+  # database, so there is no single cross-DB transaction that could cover both
+  # writes. Instead we resolve this by ORDERING: the row lock (SELECT FOR
+  # UPDATE) is held for the duration of the token write, and the code is only
+  # marked consumed once the write's outcome is known, so the two never
   # diverge:
-  #   * mint succeeds            -> consume (this code is now spent)
-  #   * mint says :token_exists  -> consume (existing-user path is terminal)
-  #   * mint errors on persist   -> do NOT consume (client can retry the code)
-  defp mint_then_consume(row) do
-    case mint_token(row.user_id) do
-      {:ok, token} ->
+  #   * write succeeds            -> consume (this code is now spent)
+  #   * mint says :token_exists   -> consume (terminal: consent said "mint" but
+  #     a token appeared meanwhile; never escalate a mint consent into a
+  #     rotation — the client is told to re-run sign-in)
+  #   * write errors on persist   -> do NOT consume (client can retry the code)
+  defp execute_token_action(row) do
+    case consented_token_write(row) do
+      {:ok, token, action} ->
         {:ok, _} = CliAuthCode.mark_consumed(row)
-        {:ok, token}
+        {:ok, token, action}
 
       {:error, :token_exists} ->
         {:ok, _} = CliAuthCode.mark_consumed(row)
@@ -294,6 +340,22 @@ defmodule Guard.CLIAuth do
 
       {:error, other} ->
         {:error, other}
+    end
+  end
+
+  defp consented_token_write(%{token_action: "rotate"} = row) do
+    case rotate_token(row.user_id) do
+      {:ok, token} -> {:ok, token, "rotated"}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  # "mint" — also the default for any legacy approved row without a recorded
+  # action, since mint-if-absent is the non-destructive choice.
+  defp consented_token_write(row) do
+    case mint_token(row.user_id) do
+      {:ok, token} -> {:ok, token, "minted"}
+      {:error, error} -> {:error, error}
     end
   end
 

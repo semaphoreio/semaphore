@@ -58,6 +58,54 @@ defmodule Guard.Id.Api.Test do
       assert response.status_code == 400
       assert cache_control(response) == "no-store"
     end
+
+    test "POST /cli/device returns the RFC 8628 fields with the 30-minute TTL" do
+      {:ok, response} = send_post_request(path: "/cli/device", body: %{})
+
+      assert response.status_code == 200
+      body = Jason.decode!(response.body)
+
+      assert is_binary(body["device_code"]) and body["device_code"] != ""
+      assert body["user_code"] =~ ~r/^[A-Z]{4}-[A-Z]{4}$/
+      assert body["verification_uri"] =~ "/device"
+      assert body["verification_uri_complete"] =~ body["user_code"]
+      assert body["expires_in"] == 1800
+      assert body["interval"] == 5
+    end
+
+    test "POST /cli/token with the loopback grant type is no longer supported" do
+      {:ok, response} =
+        send_post_request(
+          path: "/cli/token",
+          body: %{"grant_type" => "authorization_code", "code" => "x"}
+        )
+
+      assert response.status_code == 400
+      assert Jason.decode!(response.body) == %{"error" => "unsupported_grant_type"}
+    end
+
+    test "POST /cli/token with an unknown device_code is invalid_grant" do
+      {:ok, response} =
+        send_post_request(
+          path: "/cli/token",
+          body: %{
+            "grant_type" => "urn:ietf:params:oauth:grant-type:device_code",
+            "device_code" => "no-such-code"
+          }
+        )
+
+      assert response.status_code == 400
+      assert Jason.decode!(response.body) == %{"error" => "invalid_grant"}
+    end
+
+    test "GET /device renders the code entry page with the query prefill" do
+      {:ok, response} =
+        send_login_request(path: "/device", query: %{user_code: "BCDF-GHJK"})
+
+      assert response.status_code == 200
+      assert response.body =~ "Enter the code shown in your terminal"
+      assert response.body =~ "BCDF-GHJK"
+    end
   end
 
   describe "parse_expires_at/1" do

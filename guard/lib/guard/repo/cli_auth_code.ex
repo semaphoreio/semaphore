@@ -19,6 +19,7 @@ defmodule Guard.Repo.CliAuthCode do
 
   @statuses ~w(pending approved denied consumed)
   @flow_types ~w(loopback device)
+  @token_actions ~w(mint rotate)
 
   schema "cli_auth_codes" do
     field(:flow_type, :string)
@@ -38,6 +39,10 @@ defmodule Guard.Repo.CliAuthCode do
     field(:interval, :integer, default: 5)
     field(:last_polled_at, :utc_datetime)
     field(:attempt_count, :integer, default: 0)
+
+    # What the human consented to at approval: "mint" (fresh account) or
+    # "rotate" (existing token, explicit reset consent). Null until approved.
+    field(:token_action, :string)
 
     field(:expires_at, :utc_datetime)
 
@@ -60,6 +65,7 @@ defmodule Guard.Repo.CliAuthCode do
     :interval,
     :last_polled_at,
     :attempt_count,
+    :token_action,
     :user_id,
     :expires_at
   ]
@@ -70,6 +76,7 @@ defmodule Guard.Repo.CliAuthCode do
     |> validate_required([:flow_type, :status, :expires_at])
     |> validate_inclusion(:flow_type, @flow_types)
     |> validate_inclusion(:status, @statuses)
+    |> validate_inclusion(:token_action, @token_actions)
     |> unique_constraint(:code)
     |> unique_constraint(:device_code_hash)
     |> unique_constraint(:user_code_hash, name: :cli_auth_codes_pending_user_code_index)

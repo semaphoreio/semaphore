@@ -143,9 +143,11 @@ defmodule Guard.Store.CliAuthCode do
 
   # ── status transitions ─────────────────────────────────────────────────────
 
-  @spec approve(CliAuthCode.t(), binary()) :: {:ok, CliAuthCode.t()} | {:error, term()}
-  def approve(%CliAuthCode{} = row, user_id),
-    do: update_row(row, %{status: "approved", user_id: user_id})
+  @doc "Approve a device row, recording who approved and the consented token action."
+  @spec approve(CliAuthCode.t(), binary(), String.t()) ::
+          {:ok, CliAuthCode.t()} | {:error, term()}
+  def approve(%CliAuthCode{} = row, user_id, token_action),
+    do: update_row(row, %{status: "approved", user_id: user_id, token_action: token_action})
 
   @spec deny(CliAuthCode.t()) :: {:ok, CliAuthCode.t()} | {:error, term()}
   def deny(%CliAuthCode{} = row), do: update_row(row, %{status: "denied"})

@@ -70,7 +70,8 @@ defmodule Guard.CLIAuthTest do
 
       assert is_binary(device.device_code)
       assert device.user_code =~ ~r/^[BCDFGHJKLMNPQRSTVWXZ]{4}-[BCDFGHJKLMNPQRSTVWXZ]{4}$/
-      assert device.expires_in == 900
+      # 30 min: the code must survive a new user's web-signup detour.
+      assert device.expires_in == 1800
       assert device.interval == 5
       assert device.verification_uri =~ "/device"
 
@@ -82,9 +83,9 @@ defmodule Guard.CLIAuthTest do
       # Still pending -> authorization_pending.
       assert {:error, :authorization_pending} = CLIAuth.poll_device_token(device.device_code)
 
-      assert {:ok, :approved} = CLIAuth.approve_device(row.id, user_id)
+      assert {:ok, :approved} = CLIAuth.approve_device(row.id, user_id, "mint")
 
-      assert {:ok, token} = CLIAuth.poll_device_token(device.device_code)
+      assert {:ok, token, "minted"} = CLIAuth.poll_device_token(device.device_code)
       assert is_binary(token) and token != ""
     end
 
@@ -95,27 +96,69 @@ defmodule Guard.CLIAuthTest do
 
       {:ok, device} = CLIAuth.request_device_authorization(%{ip: "203.0.113.7"})
       row = device_row(device.device_code)
-      {:ok, :approved} = CLIAuth.approve_device(row.id, user_id)
+      {:ok, :approved} = CLIAuth.approve_device(row.id, user_id, "mint")
 
-      assert {:ok, _token} = CLIAuth.poll_device_token(device.device_code)
+      assert {:ok, _token, _action} = CLIAuth.poll_device_token(device.device_code)
       assert {:error, :invalid_grant} = CLIAuth.poll_device_token(device.device_code)
       assert device_row(device.device_code).status == "consumed"
     end
   end
 
   describe "device grant — token policy" do
-    test "existing account is rejected with token_exists and the row is consumed", %{
-      user_id: user_id
-    } do
+    test "rotate consent resets an existing account's token", %{user_id: user_id} do
       :ok = existing_front_user(user_id)
 
       {:ok, device} = CLIAuth.request_device_authorization(%{ip: "203.0.113.7"})
       row = device_row(device.device_code)
-      {:ok, :approved} = CLIAuth.approve_device(row.id, user_id)
+
+      assert CLIAuth.intended_token_action(user_id) == "rotate"
+      {:ok, :approved} = CLIAuth.approve_device(row.id, user_id, "rotate")
+
+      assert {:ok, token, "rotated"} = CLIAuth.poll_device_token(device.device_code)
+      assert is_binary(token) and token != ""
+
+      # The previous token's hash is gone — the old token stopped working.
+      {:ok, front_user} = Guard.Store.User.Front.find(user_id)
+      assert front_user.authentication_token != "already-a-hash"
+
+      # Single-use, as ever.
+      assert {:error, :invalid_grant} = CLIAuth.poll_device_token(device.device_code)
+      assert device_row(device.device_code).status == "consumed"
+    end
+
+    test "a mint consent never escalates into a rotation: token_exists, row consumed", %{
+      user_id: user_id
+    } do
+      # Approved as "mint" (account was fresh at consent time), but a token
+      # appears before the poll redeems the code — e.g. a parallel sign-in.
+      :ok = fresh_front_user(user_id)
+
+      {:ok, device} = CLIAuth.request_device_authorization(%{ip: "203.0.113.7"})
+      row = device_row(device.device_code)
+      {:ok, :approved} = CLIAuth.approve_device(row.id, user_id, "mint")
+
+      {:ok, _} = Guard.FrontRepo.User.mint_token_if_absent(user_id)
+      {:ok, before_user} = Guard.Store.User.Front.find(user_id)
 
       assert {:error, :token_exists} = CLIAuth.poll_device_token(device.device_code)
-      # No replay: the approval was burned even though no token was returned.
+
+      # The sneaked-in token was NOT rotated away, and the approval is burned.
+      {:ok, after_user} = Guard.Store.User.Front.find(user_id)
+      assert after_user.authentication_token == before_user.authentication_token
       assert {:error, :invalid_grant} = CLIAuth.poll_device_token(device.device_code)
+    end
+
+    test "denying keeps an existing token untouched", %{user_id: user_id} do
+      :ok = existing_front_user(user_id)
+
+      {:ok, device} = CLIAuth.request_device_authorization(%{ip: "203.0.113.7"})
+      row = device_row(device.device_code)
+
+      assert {:ok, :denied} = CLIAuth.deny_device(row.id)
+      assert {:error, :access_denied} = CLIAuth.poll_device_token(device.device_code)
+
+      {:ok, front_user} = Guard.Store.User.Front.find(user_id)
+      assert front_user.authentication_token == "already-a-hash"
     end
 
     test "if minting errors on persist, the device code is NOT consumed (client can retry)", %{
@@ -125,7 +168,7 @@ defmodule Guard.CLIAuthTest do
 
       {:ok, device} = CLIAuth.request_device_authorization(%{ip: "203.0.113.7"})
       row = device_row(device.device_code)
-      {:ok, :approved} = CLIAuth.approve_device(row.id, user_id)
+      {:ok, :approved} = CLIAuth.approve_device(row.id, user_id, "mint")
 
       with_mock Guard.FrontRepo.User, [:passthrough],
         mint_token_if_absent: fn _ -> {:error, "persist failed"} end do
@@ -134,11 +177,30 @@ defmodule Guard.CLIAuthTest do
 
       # Still approved, not consumed: a retry (with mint working again) succeeds.
       assert device_row(device.device_code).status == "approved"
-      assert {:ok, token} = CLIAuth.poll_device_token(device.device_code)
+      assert {:ok, token, "minted"} = CLIAuth.poll_device_token(device.device_code)
       assert is_binary(token) and token != ""
     end
 
-    test "two overlapping signups for the same fresh account: exactly one mints, the other is rejected",
+    test "if rotation errors on persist, the device code is NOT consumed (client can retry)", %{
+      user_id: user_id
+    } do
+      :ok = existing_front_user(user_id)
+
+      {:ok, device} = CLIAuth.request_device_authorization(%{ip: "203.0.113.7"})
+      row = device_row(device.device_code)
+      {:ok, :approved} = CLIAuth.approve_device(row.id, user_id, "rotate")
+
+      with_mock Guard.FrontRepo.User, [:passthrough],
+        rotate_token: fn _ -> {:error, "persist failed"} end do
+        assert {:error, "persist failed"} = CLIAuth.poll_device_token(device.device_code)
+      end
+
+      assert device_row(device.device_code).status == "approved"
+      assert {:ok, token, "rotated"} = CLIAuth.poll_device_token(device.device_code)
+      assert is_binary(token) and token != ""
+    end
+
+    test "two overlapping sign-ins for the same fresh account: exactly one mints, the other is rejected",
          %{user_id: user_id} do
       :ok = fresh_front_user(user_id)
 
@@ -147,19 +209,19 @@ defmodule Guard.CLIAuthTest do
 
       row_a = device_row(device_a.device_code)
       row_b = device_row(device_b.device_code)
-      {:ok, :approved} = CLIAuth.approve_device(row_a.id, user_id)
-      {:ok, :approved} = CLIAuth.approve_device(row_b.id, user_id)
+      {:ok, :approved} = CLIAuth.approve_device(row_a.id, user_id, "mint")
+      {:ok, :approved} = CLIAuth.approve_device(row_b.id, user_id, "mint")
 
       # Two "different CLIs" polling concurrently for the same fresh account.
       # The atomic conditional UPDATE in mint_token_if_absent/1 means exactly
-      # one of these wins, regardless of interleaving — this is the crux of
-      # HIGH-1: no read-then-write window where both would see no token.
+      # one of these wins, regardless of interleaving: no read-then-write
+      # window where both would see no token.
       results =
         [device_a.device_code, device_b.device_code]
         |> Enum.map(fn code -> Task.async(fn -> CLIAuth.poll_device_token(code) end) end)
         |> Enum.map(&Task.await(&1, 5_000))
 
-      assert Enum.count(results, &match?({:ok, _token}, &1)) == 1
+      assert Enum.count(results, &match?({:ok, _token, "minted"}, &1)) == 1
       assert Enum.count(results, &match?({:error, :token_exists}, &1)) == 1
 
       # No replay on either side: both codes are consumed exactly once.
@@ -194,7 +256,7 @@ defmodule Guard.CLIAuthTest do
 
       {:ok, device} = CLIAuth.request_device_authorization(%{ip: "203.0.113.7"})
       row = device_row(device.device_code)
-      {:ok, :approved} = CLIAuth.approve_device(row.id, user_id)
+      {:ok, :approved} = CLIAuth.approve_device(row.id, user_id, "mint")
 
       expire!(row.id)
       assert {:error, :expired_token} = CLIAuth.poll_device_token(device.device_code)
