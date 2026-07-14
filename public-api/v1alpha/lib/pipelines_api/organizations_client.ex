@@ -29,12 +29,14 @@ defmodule PipelinesAPI.OrganizationsClient do
   def is_valid_(name, username, owner_id) do
     {:ok, channel} = GRPC.Stub.connect(org_url())
 
+    # Organization.new/1, not a struct literal: the literal leaves every other
+    # field nil and protobuf raises Protobuf.InvalidError on encode (e.g.
+    # "Organization#avatar_url is invalid!"); new/1 fills proto3 defaults.
+    request = Organization.new(name: name, org_username: username, owner_id: owner_id)
+
     Metrics.benchmark("PipelinesAPI.organizations_client", ["is_valid"], fn ->
       channel
-      |> OrganizationService.Stub.is_valid(
-        %Organization{name: name, org_username: username, owner_id: owner_id},
-        opts()
-      )
+      |> OrganizationService.Stub.is_valid(request, opts())
       |> process_is_valid()
     end)
   end
