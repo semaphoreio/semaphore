@@ -54,6 +54,22 @@ defmodule Front.Models.JobTest do
     end
   end
 
+  describe ".source_job_id" do
+    test "returns original_job_id for a copied job" do
+      original_id = UUID.uuid4()
+      job = %Job{id: UUID.uuid4(), original_job_id: original_id}
+
+      assert Job.source_job_id(job) == original_id
+    end
+
+    test "returns the job's own id when it is not a copy" do
+      id = UUID.uuid4()
+      job = %Job{id: id, original_job_id: nil}
+
+      assert Job.source_job_id(job) == id
+    end
+  end
+
   defp valid_job_spec do
     JobSpec.new(
       job_name: "RSpec 1/3",
