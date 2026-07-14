@@ -69,6 +69,9 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
       # run and be visible by the outside contributor trying to run it.
       logger.info("pr-approval")
       workflow.update(:state => Workflow::STATE_PR_APPROVAL)
+      include_secrets_requested = workflow.payload.respond_to?(:pr_approval_include_secrets?) &&
+                                  workflow.payload.pr_approval_include_secrets?
+      enable_cache_requested = pr_approval_enable_cache_requested?(workflow.payload)
 
       requestor = workflow.payload.comment_author
 
@@ -81,6 +84,41 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
         .recent(1).first
 
       return unless workflow
+
+      include_secrets_enabled = approval_option_enabled?(workflow.project, :allow_sem_approve_include_secrets)
+      enable_cache_enabled = approval_enable_cache_option_enabled?(workflow.project)
+      requestor_is_project_member =
+        requestor_project_member_for_pr_approval_options?(
+          workflow,
+          requestor,
+          include_secrets_requested,
+          enable_cache_requested,
+          logger
+        )
+
+      include_secrets = approved_sem_approve_option(
+        :requested => include_secrets_requested,
+        :enabled => include_secrets_enabled,
+        :requestor_is_project_member => requestor_is_project_member,
+        :option => "--include-secrets",
+        :logger => logger
+      )
+      enable_cache = approved_sem_approve_option(
+        :requested => enable_cache_requested,
+        :enabled => enable_cache_enabled,
+        :requestor_is_project_member => requestor_is_project_member,
+        :option => "--enable-cache",
+        :logger => logger
+      )
+
+      options_persisted = mark_workflow_with_pr_approval_options(
+        workflow,
+        :include_secrets => include_secrets,
+        :enable_cache => enable_cache,
+        :logger => logger
+      )
+      return unless options_persisted
+
     elsif workflow.payload.pull_request_within_repo?
       # Check if project members can run pull-request workflows for this organization.
       # Note that we do not need to check if non-members can run pull-request workflows,
@@ -315,6 +353,81 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
     Watchman.increment("github_hooks.ensure_ref.ref_already_exists")
     Logman.info("github_hooks.ensure_ref ref_already_exists repo=#{repo_slug} ref=#{ref} sha=#{sha}")
     nil
+  end
+
+  def self.mark_workflow_with_pr_approval_options(workflow, include_secrets: false, enable_cache: false, logger: nil)
+    return true unless include_secrets || enable_cache
+
+    payload = JSON.parse(workflow.request["payload"])
+    payload["semaphore_approval_include_secrets"] = true if include_secrets
+    payload["semaphore_approval_enable_cache"] = true if enable_cache
+
+    request = workflow.request.merge("payload" => payload.to_json)
+    return true if workflow.update(:request => request)
+
+    report_pr_approval_option_persist_failure(workflow, logger, "workflow_update_failed")
+    false
+  rescue StandardError => e
+    report_pr_approval_option_persist_failure(workflow, logger, e.message)
+    false
+  end
+
+  def self.approved_sem_approve_option(requested:, enabled:, requestor_is_project_member:, option:, logger:)
+    return false unless requested
+
+    unless enabled
+      logger&.info("pr-approval-option-dropped", :option => option, :reason => "project_option_disabled")
+      Watchman.increment("hooks.pr_approval.option_dropped", tags: [option.delete_prefix("--"), "project_option_disabled"])
+      return false
+    end
+
+    unless requestor_is_project_member
+      logger&.info("pr-approval-option-dropped", :option => option, :reason => "requestor_not_project_member")
+      Watchman.increment("hooks.pr_approval.option_dropped", tags: [option.delete_prefix("--"), "requestor_not_project_member"])
+      return false
+    end
+
+    true
+  end
+
+  def self.report_pr_approval_option_persist_failure(workflow, logger, reason)
+    workflow_id = workflow.respond_to?(:id) ? workflow.id : nil
+
+    logger&.error("pr-approval-option-persist-failed", :reason => reason, :workflow_id => workflow_id)
+    Watchman.increment("hooks.pr_approval.option_persist_failed")
+  end
+
+  def self.approval_option_enabled?(project, option)
+    project.respond_to?(option) && project.public_send(option) == true
+  end
+
+  def self.approval_enable_cache_option_enabled?(project)
+    approval_option_enabled?(project, :allow_sem_approve_enable_cache)
+  end
+
+  def self.pr_approval_enable_cache_requested?(payload)
+    payload.respond_to?(:pr_approval_enable_cache?) && payload.pr_approval_enable_cache?
+  end
+
+  def self.requestor_project_member_for_pr_approval_options?(
+    workflow,
+    requestor,
+    include_secrets_requested,
+    enable_cache_requested,
+    logger
+  )
+    return false unless include_secrets_requested || enable_cache_requested
+
+    project_member?(workflow.project, requestor)
+  rescue StandardError => e
+    logger&.error(
+      "pr-approval-option-membership-check-failed",
+      :error => e.message,
+      :requestor => requestor,
+      :project_id => workflow.project_id
+    )
+    Watchman.increment("hooks.pr_approval.option_membership_check_failed")
+    false
   end
 
   def self.forked_pr_allowed?(requestor, project)
