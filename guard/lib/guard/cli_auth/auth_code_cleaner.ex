@@ -1,8 +1,8 @@
 defmodule Guard.CLIAuth.AuthCodeCleaner do
   @moduledoc """
   Periodic cleanup for `cli_auth_codes` (see `Guard.CLIAuth`). Without this,
-  every CLI signup / device-authorization attempt leaves a row behind forever
-  — unbounded row/disk growth. Mirrors `Guard.McpOAuth.AuthCodeCleaner`.
+  every CLI sign-in attempt leaves a row behind forever — unbounded row/disk
+  growth. Mirrors `Guard.McpOAuth.AuthCodeCleaner`.
   """
 
   use Quantum, otp_app: :guard

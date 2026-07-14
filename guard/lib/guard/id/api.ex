@@ -314,8 +314,11 @@ defmodule Guard.Id.Api do
 
   defp handle_device_token(conn, params) do
     case Guard.CLIAuth.poll_device_token(params["device_code"] || "") do
-      {:ok, token} ->
-        cli_json(conn, 200, %{token: token, host: nil})
+      {:ok, token, action} ->
+        # host is nil: a fresh account has no org yet (the CLI keeps its own
+        # host argument). token_action tells the CLI whether this was a fresh
+        # mint ("minted", new account) or a consented reset ("rotated").
+        cli_json(conn, 200, %{token: token, host: nil, token_action: action})
 
       {:error, :token_exists} ->
         cli_json(conn, 409, token_exists_body())
@@ -330,12 +333,15 @@ defmodule Guard.Id.Api do
     end
   end
 
+  # Consent said "mint" (the account had no token when approved) but a token
+  # appeared before the poll redeemed the code. Never escalate that consent
+  # into a rotation — tell the CLI to start over.
   defp token_exists_body do
     %{
       error: "token_exists",
       message:
-        "This account already exists. Run `sem-ai connect <host> <token>` " <>
-          "with a token from your Semaphore settings."
+        "This account received an API token while sign-in was in progress. " <>
+          "Run `sem-ai signin` again to confirm what to do with it."
     }
   end
 
@@ -387,9 +393,17 @@ defmodule Guard.Id.Api do
     decision = (conn.body_params || %{})["decision"]
 
     case Guard.Utils.Http.fetch_state_value(conn, @device_consent_cookie_key) do
-      {:ok, {row_id, user_id}, conn} ->
+      {:ok, {row_id, user_id, shown_action, user_code_display}, conn} ->
         conn = Guard.Utils.Http.delete_state_value(conn, @device_consent_cookie_key)
-        handle_device_decision(conn, decision, row_id, user_id)
+
+        ctx = %{
+          row_id: row_id,
+          user_id: user_id,
+          shown_action: shown_action,
+          user_code_display: user_code_display
+        }
+
+        handle_device_decision(conn, decision, ctx)
 
       _ ->
         device_message_page(
@@ -400,26 +414,54 @@ defmodule Guard.Id.Api do
     end
   end
 
-  defp handle_device_decision(conn, "approve", row_id, user_id) do
-    case Guard.CLIAuth.approve_device(row_id, user_id) do
+  defp handle_device_decision(conn, "approve", ctx) do
+    # The click is the authoritative consent moment: what the user approved
+    # must be exactly what gets recorded on the row. If the account's token
+    # state changed while the consent page was open (say, a parallel sign-in
+    # minted a token), the wording they read no longer matches the action —
+    # re-ask with the right wording instead of silently recording a stronger
+    # action than the one they consented to.
+    actual_action = Guard.CLIAuth.intended_token_action(ctx.user_id)
+
+    if actual_action == ctx.shown_action do
+      record_device_approval(conn, ctx, actual_action)
+    else
+      reprompt_device_consent(conn, ctx, actual_action)
+    end
+  end
+
+  defp handle_device_decision(conn, _deny, ctx) do
+    Guard.CLIAuth.deny_device(ctx.row_id)
+
+    message =
+      case ctx.shown_action do
+        "rotate" ->
+          "Nothing was authorized and your API token was not changed. " <>
+            "It is safe to close this window."
+
+        _ ->
+          "Nothing was authorized. It is safe to close this window."
+      end
+
+    device_message_page(conn, "Request denied", message)
+  end
+
+  defp record_device_approval(conn, ctx, action) do
+    case Guard.CLIAuth.approve_device(ctx.row_id, ctx.user_id, action) do
       {:ok, :approved} ->
-        if Guard.CLIAuth.account_has_token?(user_id) do
-          # The device was approved, but signup only mints for a new account, so
-          # the terminal will reject this with token_exists. Tell the user the
-          # real outcome here instead of showing "authorized".
-          device_message_page(
-            conn,
-            "Account already set up",
-            "This Semaphore account already has an API token, so nothing was created. " <>
-              "Return to your terminal and run sem-ai connect with a token from your account settings."
-          )
-        else
-          device_message_page(
-            conn,
-            "Device authorized",
-            "You can return to your terminal. The command-line tool finishes signing in automatically."
-          )
-        end
+        message =
+          case action do
+            "rotate" ->
+              "You can return to your terminal. Your API token is reset as the tool " <>
+                "finishes signing in — anything still using the previous token " <>
+                "(CI secrets, scripts, other machines) will need the new one."
+
+            _ ->
+              "You can return to your terminal. The command-line tool finishes " <>
+                "signing in automatically."
+          end
+
+        device_message_page(conn, "Device authorized", message)
 
       {:error, _} ->
         device_message_page(
@@ -430,14 +472,22 @@ defmodule Guard.Id.Api do
     end
   end
 
-  defp handle_device_decision(conn, _deny, row_id, _user_id) do
-    Guard.CLIAuth.deny_device(row_id)
+  defp reprompt_device_consent(conn, ctx, actual_action) do
+    case Guard.Store.CliAuthCode.get_device(ctx.row_id) do
+      {:ok, %{status: "pending"} = row} ->
+        consent = {row.id, ctx.user_id, actual_action, ctx.user_code_display}
 
-    device_message_page(
-      conn,
-      "Request denied",
-      "Nothing was authorized. It is safe to close this window."
-    )
+        conn
+        |> Guard.Utils.Http.put_state_value(@device_consent_cookie_key, consent)
+        |> render_device_consent_page(row, ctx.user_code_display, actual_action, reprompt: true)
+
+      _ ->
+        device_message_page(
+          conn,
+          "Request expired",
+          "This request expired before it was approved. Start a new sign-in from your terminal."
+        )
+    end
   end
 
   defp start_device_oidc(conn, row, raw_user_code) do
@@ -742,9 +792,16 @@ defmodule Guard.Id.Api do
            Guard.Store.CliAuthCode.get_device(ctx.device_row_id) do
       Logger.info("[ID] CLI device sign-in complete, showing consent for user_id: #{user.id}")
 
+      # The consent wording depends on whether the account already has a token
+      # ("rotate" = explicit reset consent) or not ("mint"). The action shown
+      # rides in the signed cookie and is re-checked at decision time, so the
+      # recorded consent can never be stronger than the wording that was read.
+      token_action = Guard.CLIAuth.intended_token_action(user.id)
+      consent = {row.id, user.id, token_action, ctx.user_code_display}
+
       conn
-      |> Guard.Utils.Http.put_state_value(@device_consent_cookie_key, {row.id, user.id})
-      |> render_device_consent_page(row, ctx.user_code_display)
+      |> Guard.Utils.Http.put_state_value(@device_consent_cookie_key, consent)
+      |> render_device_consent_page(row, ctx.user_code_display, token_action)
     else
       error ->
         Logger.warning("CLI device OIDC callback failed: #{inspect(error)}")
@@ -773,7 +830,9 @@ defmodule Guard.Id.Api do
     #{device_page_head("Connect a command-line tool")}
       <div class="container">
         <h1>Connect a command-line tool</h1>
-        <p>Enter the code shown in your terminal to continue signing in.</p>
+        <p>Enter the code shown in your terminal to continue. You'll sign in to
+           Semaphore — or create an account — and then review exactly what you
+           are authorizing.</p>
         #{error_html}
         <form action="/device" method="post">
           <input type="hidden" name="_csrf_token" value="#{Plug.CSRFProtection.get_csrf_token()}" />
@@ -793,14 +852,43 @@ defmodule Guard.Id.Api do
   end
 
   # sobelow_skip ["XSS.SendResp"]
-  defp render_device_consent_page(conn, row, user_code_display) do
+  defp render_device_consent_page(conn, row, user_code_display, token_action, opts \\ []) do
+    reprompt_html =
+      if opts[:reprompt] do
+        ~s(<p class="error">Your account changed while this page was open — ) <>
+          ~s(review the updated details below before deciding.</p>)
+      else
+        ""
+      end
+
+    {title, action_html, approve_label} =
+      case token_action do
+        "rotate" ->
+          {"Reset your API token?",
+           """
+           <p class="warning"><strong>This account already has an API token.</strong>
+              Approving generates a new token for this command-line tool and
+              <strong>your current token stops working immediately, everywhere it is
+              used</strong> — CI secrets, scripts, other machines, and any other
+              integration authenticated with it will need the new token.</p>
+           """, "Reset token and authorize"}
+
+        _ ->
+          {"Authorize a command-line tool",
+           """
+           <p>Approving creates the API token for this account and hands it to the
+              command-line tool.</p>
+           """, "Approve"}
+      end
+
     html = """
-    #{device_page_head("Authorize a command-line tool")}
+    #{device_page_head(title)}
       <div class="container">
-        <h1>Authorize a command-line tool</h1>
+        <h1>#{html_escape(title)}</h1>
+        #{reprompt_html}
         <p>You are authorizing a <strong>command-line tool on a device to act as YOU</strong>
            on Semaphore. This is not a normal website login.</p>
-
+        #{action_html}
         <div class="details">
           <div><span>Code</span><code>#{html_escape(user_code_display)}</code></div>
           <div><span>Requested from IP</span><code>#{html_escape(row.requester_ip)}</code></div>
@@ -814,8 +902,8 @@ defmodule Guard.Id.Api do
         <form action="/device/decision" method="post">
           <input type="hidden" name="_csrf_token" value="#{Plug.CSRFProtection.get_csrf_token()}" />
           <div class="buttons">
-            <button type="submit" name="decision" value="deny" class="deny">Deny</button>
-            <button type="submit" name="decision" value="approve" class="approve">Approve</button>
+            <button type="submit" name="decision" value="deny" class="deny">#{if token_action == "rotate", do: "Keep current token", else: "Deny"}</button>
+            <button type="submit" name="decision" value="approve" class="approve">#{approve_label}</button>
           </div>
         </form>
       </div>
