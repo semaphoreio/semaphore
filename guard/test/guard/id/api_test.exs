@@ -99,8 +99,7 @@ defmodule Guard.Id.Api.Test do
     end
 
     test "GET /device renders the code entry page with the query prefill" do
-      {:ok, response} =
-        send_login_request(path: "/device", query: %{user_code: "BCDF-GHJK"})
+      {:ok, response} = send_login_request(path: "/device", query: %{user_code: "BCDF-GHJK"})
 
       assert response.status_code == 200
       assert response.body =~ "Enter the code shown in your terminal"

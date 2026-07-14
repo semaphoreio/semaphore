@@ -16,7 +16,8 @@ defmodule PipelinesAPI.OrganizationsClient.Test do
     :ok
   end
 
-  defp ok_status, do: InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK))
+  defp ok_status,
+    do: InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK))
 
   defp bad_status(message),
     do:

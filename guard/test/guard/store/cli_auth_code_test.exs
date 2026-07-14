@@ -54,14 +54,12 @@ defmodule Guard.Store.CliAuthCodeTest do
           expires_at: expires_in(900)
         })
 
-      {:ok, result} =
-        Repo.transaction(fn -> CliAuthCode.lock_pending_by_user_code(user_code) end)
+      {:ok, result} = Repo.transaction(fn -> CliAuthCode.lock_pending_by_user_code(user_code) end)
 
       assert {:ok, row} = result
       assert row.user_code_hash == CliAuthCode.hash(user_code)
 
-      {:ok, miss} =
-        Repo.transaction(fn -> CliAuthCode.lock_pending_by_user_code("MNPQRSTV") end)
+      {:ok, miss} = Repo.transaction(fn -> CliAuthCode.lock_pending_by_user_code("MNPQRSTV") end)
 
       assert {:error, :not_found} = miss
     end
