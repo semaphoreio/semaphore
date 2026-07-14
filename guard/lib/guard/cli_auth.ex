@@ -172,27 +172,45 @@ defmodule Guard.CLIAuth do
           {:ok, Guard.Repo.CliAuthCode.t()}
           | {:error, :rate_limited | :invalid_user_code | :too_many_attempts}
   def verify_user_code(raw_user_code, ip \\ nil) do
-    with :ok <- DeviceRateLimiter.check(ip),
-         normalized = CliAuthCode.normalize_user_code(raw_user_code),
-         {:ok, row} <- lookup_user_code(normalized, ip) do
-      if row.attempt_count >= @user_code_max_attempts do
-        CliAuthCode.deny(row)
-        {:error, :too_many_attempts}
-      else
-        CliAuthCode.increment_attempt(row)
-        {:ok, row}
+    with :ok <- DeviceRateLimiter.check(ip) do
+      normalized = CliAuthCode.normalize_user_code(raw_user_code)
+
+      # The cap check and the attempt increment run inside ONE SELECT FOR
+      # UPDATE transaction: concurrent entries of the same code serialize on
+      # the row lock, so no two of them can both read attempt_count == max - 1
+      # and slip past the cap. The deny (burning the code) commits with the
+      # transaction.
+      result =
+        Guard.Repo.transaction(fn ->
+          case CliAuthCode.lock_pending_by_user_code(normalized) do
+            {:error, :not_found} ->
+              {:error, :invalid_user_code}
+
+            {:ok, row} ->
+              if row.attempt_count >= @user_code_max_attempts do
+                {:ok, _} = CliAuthCode.deny(row)
+                {:error, :too_many_attempts}
+              else
+                {:ok, row} = CliAuthCode.increment_attempt(row)
+                {:ok, row}
+              end
+          end
+        end)
+
+      case result do
+        {:ok, {:ok, row}} ->
+          {:ok, row}
+
+        {:ok, {:error, :invalid_user_code}} ->
+          DeviceRateLimiter.record_failure(ip)
+          {:error, :invalid_user_code}
+
+        {:ok, {:error, reason}} ->
+          {:error, reason}
+
+        {:error, _} ->
+          {:error, :invalid_user_code}
       end
-    end
-  end
-
-  defp lookup_user_code(normalized, ip) do
-    case CliAuthCode.find_pending_by_user_code(normalized) do
-      {:ok, row} ->
-        {:ok, row}
-
-      {:error, :not_found} ->
-        DeviceRateLimiter.record_failure(ip)
-        {:error, :invalid_user_code}
     end
   end
 

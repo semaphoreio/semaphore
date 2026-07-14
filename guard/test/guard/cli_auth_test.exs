@@ -257,6 +257,27 @@ defmodule Guard.CLIAuthTest do
       assert device_row(device.device_code).status == "denied"
     end
 
+    test "the attempt cap is strict under concurrent entries of the same code" do
+      {:ok, device} = CLIAuth.request_device_authorization(%{ip: "203.0.113.7"})
+      row = device_row(device.device_code)
+
+      # One attempt left before the cap. Check + increment are folded into a
+      # single SELECT FOR UPDATE transaction, so of N concurrent entries
+      # exactly one can take that last slot — the rest serialize behind the
+      # row lock and see the cap (or the already-denied row).
+      from(r in Guard.Repo.CliAuthCode, where: r.id == ^row.id)
+      |> Repo.update_all(set: [attempt_count: 4])
+
+      results =
+        1..6
+        |> Enum.map(fn _ -> Task.async(fn -> CLIAuth.verify_user_code(device.user_code) end) end)
+        |> Enum.map(&Task.await(&1, 5_000))
+
+      assert Enum.count(results, &match?({:ok, _}, &1)) == 1
+      refute match?({:ok, _}, CLIAuth.verify_user_code(device.user_code))
+      assert device_row(device.device_code).status == "denied"
+    end
+
     test "wrong user_code returns invalid_user_code" do
       assert {:error, :invalid_user_code} = CLIAuth.verify_user_code("ZZZZ-ZZZZ")
     end

@@ -94,10 +94,15 @@ defmodule Guard.Store.CliAuthCode do
 
   # ── device (RFC 8628) ─────────────────────────────────────────────────────
 
-  @doc "Look up the pending, unexpired device row for a normalized user_code."
-  @spec find_pending_by_user_code(String.t()) ::
+  @doc """
+  Lock the pending, unexpired device row for a normalized user_code. Must run
+  inside a Repo.transaction: `Guard.CLIAuth.verify_user_code/2` folds the
+  attempt-cap check and the attempt increment into this lock, so concurrent
+  entries of the same code serialize and the cap is strict.
+  """
+  @spec lock_pending_by_user_code(String.t()) ::
           {:ok, CliAuthCode.t()} | {:error, :not_found}
-  def find_pending_by_user_code(normalized_user_code) when is_binary(normalized_user_code) do
+  def lock_pending_by_user_code(normalized_user_code) when is_binary(normalized_user_code) do
     now = now()
     user_code_hash = hash(normalized_user_code)
 
@@ -105,6 +110,7 @@ defmodule Guard.Store.CliAuthCode do
       CliAuthCode
       |> where([ac], ac.flow_type == "device" and ac.user_code_hash == ^user_code_hash)
       |> where([ac], ac.status == "pending" and ac.expires_at > ^now)
+      |> lock("FOR UPDATE")
 
     case Repo.one(query) do
       nil -> {:error, :not_found}

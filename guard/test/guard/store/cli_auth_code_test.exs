@@ -84,7 +84,7 @@ defmodule Guard.Store.CliAuthCodeTest do
   end
 
   describe "device rows" do
-    test "find_pending_by_user_code matches the hash of a pending, unexpired code" do
+    test "lock_pending_by_user_code matches the hash of a pending, unexpired code" do
       user_code = "BCDFGHJK"
 
       {:ok, _} =
@@ -96,9 +96,47 @@ defmodule Guard.Store.CliAuthCodeTest do
           expires_at: expires_in(900)
         })
 
-      assert {:ok, row} = CliAuthCode.find_pending_by_user_code(user_code)
+      {:ok, result} =
+        Repo.transaction(fn -> CliAuthCode.lock_pending_by_user_code(user_code) end)
+
+      assert {:ok, row} = result
       assert row.user_code_hash == CliAuthCode.hash(user_code)
-      assert {:error, :not_found} = CliAuthCode.find_pending_by_user_code("MNPQRSTV")
+
+      {:ok, miss} =
+        Repo.transaction(fn -> CliAuthCode.lock_pending_by_user_code("MNPQRSTV") end)
+
+      assert {:error, :not_found} = miss
+    end
+
+    test "lock_pending_by_user_code refuses denied and expired rows" do
+      {:ok, denied} =
+        CliAuthCode.create(%{
+          flow_type: "device",
+          status: "pending",
+          device_code_hash: CliAuthCode.hash("dev-denied"),
+          user_code_hash: CliAuthCode.hash("DDDDDDDD"),
+          expires_at: expires_in(900)
+        })
+
+      {:ok, _} = CliAuthCode.deny(denied)
+
+      {:ok, _} =
+        CliAuthCode.create(%{
+          flow_type: "device",
+          status: "pending",
+          device_code_hash: CliAuthCode.hash("dev-expired"),
+          user_code_hash: CliAuthCode.hash("XXXXXXXX"),
+          expires_at: expires_in(-60)
+        })
+
+      {:ok, denied_result} =
+        Repo.transaction(fn -> CliAuthCode.lock_pending_by_user_code("DDDDDDDD") end)
+
+      {:ok, expired_result} =
+        Repo.transaction(fn -> CliAuthCode.lock_pending_by_user_code("XXXXXXXX") end)
+
+      assert {:error, :not_found} = denied_result
+      assert {:error, :not_found} = expired_result
     end
   end
 
