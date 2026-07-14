@@ -1,18 +1,17 @@
 defmodule Guard.Repo.CliAuthCode do
   @moduledoc """
-  Ecto schema for sem-ai CLI signup authorization records.
-
-  One table backs both flows (see the migration):
-
-    * `flow_type = "loopback"` — RFC 8252 loopback + PKCE. Stores the one-time
-      `code`, its PKCE `code_challenge` and the loopback `redirect_uri`.
-    * `flow_type = "device"` — RFC 8628 device grant. Stores `device_code_hash`
-      and `user_code_hash` (both sha256 hex), the requester context shown on the
-      consent screen, and the poll `interval`.
+  Ecto schema for sem-ai CLI sign-in authorization records (RFC 8628 device
+  grant, `flow_type = "device"`). Stores `device_code_hash` and
+  `user_code_hash` (both sha256 hex), the requester context shown on the
+  consent screen, and the poll `interval`.
 
   `status` moves `pending -> approved -> consumed` (or `pending -> denied`).
   Redemption is a SELECT FOR UPDATE transaction, so records are single-use and
   safe across guard's multiple pods.
+
+  The `code`/`code_challenge`/`redirect_uri` columns (and the "loopback"
+  flow_type) belonged to a since-removed RFC 8252 loopback + PKCE flow; they
+  are kept in the schema so existing rows still load, but nothing writes them.
   """
 
   use Guard.Repo.Schema
@@ -25,7 +24,7 @@ defmodule Guard.Repo.CliAuthCode do
     field(:flow_type, :string)
     field(:status, :string, default: "pending")
 
-    # loopback
+    # legacy loopback columns (see moduledoc) — kept, never written
     field(:code, :string)
     field(:code_challenge, :string)
     field(:redirect_uri, :string)

@@ -21,9 +21,8 @@ defmodule Guard.Store.CliAuthCodeTest do
       assert code =~ ~r/^[BCDFGHJKLMNPQRSTVWXZ]{8}$/
     end
 
-    test "generate_device_code and generate_code produce unique values" do
+    test "generate_device_code produces unique values" do
       assert CliAuthCode.generate_device_code() != CliAuthCode.generate_device_code()
-      assert CliAuthCode.generate_code() != CliAuthCode.generate_code()
     end
 
     test "format_user_code groups as XXXX-XXXX" do
@@ -39,47 +38,6 @@ defmodule Guard.Store.CliAuthCodeTest do
       assert CliAuthCode.hash("abc") == CliAuthCode.hash("abc")
       assert CliAuthCode.hash("abc") != CliAuthCode.hash("abd")
       assert String.length(CliAuthCode.hash("abc")) == 64
-    end
-  end
-
-  describe "loopback rows" do
-    test "lock_loopback_code returns an approved, unexpired row", %{user_id: user_id} do
-      {:ok, _} =
-        CliAuthCode.create(%{
-          flow_type: "loopback",
-          status: "approved",
-          code: "loopback-code-1",
-          code_challenge: "challenge",
-          redirect_uri: "http://127.0.0.1:1234/cb",
-          user_id: user_id,
-          expires_at: expires_in(300)
-        })
-
-      {:ok, result} =
-        Repo.transaction(fn -> CliAuthCode.lock_loopback_code("loopback-code-1") end)
-
-      assert {:ok, row} = result
-      assert row.code == "loopback-code-1"
-    end
-
-    test "a consumed loopback code cannot be locked", %{user_id: user_id} do
-      {:ok, row} =
-        CliAuthCode.create(%{
-          flow_type: "loopback",
-          status: "approved",
-          code: "loopback-code-2",
-          code_challenge: "challenge",
-          redirect_uri: "http://127.0.0.1:1234/cb",
-          user_id: user_id,
-          expires_at: expires_in(300)
-        })
-
-      {:ok, _} = CliAuthCode.mark_consumed(row)
-
-      {:ok, result} =
-        Repo.transaction(fn -> CliAuthCode.lock_loopback_code("loopback-code-2") end)
-
-      assert {:error, :invalid_or_used} = result
     end
   end
 

@@ -1,37 +1,21 @@
 defmodule Guard.CLIAuth do
   @moduledoc """
-  CLI signup support for `sem-ai`. Two coexisting flows, both server-side here;
-  the CLI client lives in a separate repo.
+  Server side of the unified `sem-ai signin` flow (the CLI client lives in a
+  separate repo): a device authorization grant (RFC 8628).
 
-    * **Loopback + PKCE (RFC 8252)** — for machines with a browser. The browser
-      runs the normal Keycloak OIDC web flow in `Guard.Id.Api`; on success guard
-      issues a short-lived, single-use authorization code bound to the CLI's PKCE
-      challenge and loopback redirect_uri. The CLI exchanges that code (plus its
-      verifier) at `POST /cli/token`.
-
-    * **Device authorization grant (RFC 8628)** — for headless / agent
-      environments. The CLI calls `POST /cli/device` to get a `device_code` and a
-      human-typeable `user_code`. The human opens the verification page, signs in
-      via the same OIDC web flow, sees a consent screen naming the requesting
-      device, and approves. The CLI polls `POST /cli/token` with the device_code
-      until it is approved.
+  The CLI calls `POST /cli/device` to get a `device_code` and a human-typeable
+  `user_code`. The human opens the verification page, enters the code, signs in
+  via the normal OIDC web flow (which routes a new user through web signup),
+  sees a consent screen naming the requesting device, and approves. The CLI
+  polls `POST /cli/token` with the device_code until it is approved.
 
   All records live in the `cli_auth_codes` table (see `Guard.Store.CliAuthCode`),
   NOT in memory — redemption is a SELECT-FOR-UPDATE transaction, so it is
   single-use and safe across guard's multiple pods.
-
-  Token policy (#3390): mint-if-absent, else reject. A fresh signup has no token
-  yet, so we mint the first one. An existing user already has a (hashed,
-  unrecoverable) token; we refuse rather than rotate, since rotating would break
-  every other client. They are told to `sem-ai connect` with a token from
-  Settings. This holds for BOTH flows.
   """
 
   alias Guard.Store.CliAuthCode
   alias Guard.CLIAuth.DeviceRateLimiter
-  alias Guard.McpOAuth.PKCE
-
-  @loopback_ttl_seconds 300
 
   # RFC 8628 device flow parameters (industry-convergent values).
   @device_ttl_seconds 900
@@ -40,79 +24,6 @@ defmodule Guard.CLIAuth do
   # A user_code can seed the sign-in/consent flow at most this many times before
   # it is burned; caps abuse of a leaked or shoulder-surfed code.
   @user_code_max_attempts 5
-
-  # ── loopback (RFC 8252) ────────────────────────────────────────────────────
-
-  @doc "Issue a one-time authorization code bound to {user_id, code_challenge, redirect_uri}."
-  @spec issue_code(String.t(), String.t(), String.t()) :: {:ok, String.t()} | {:error, term()}
-  def issue_code(user_id, code_challenge, redirect_uri) do
-    code = CliAuthCode.generate_code()
-
-    case CliAuthCode.create(%{
-           flow_type: "loopback",
-           status: "approved",
-           code: code,
-           user_id: user_id,
-           code_challenge: code_challenge,
-           redirect_uri: redirect_uri,
-           expires_at: expires_in(@loopback_ttl_seconds)
-         }) do
-      {:ok, _} -> {:ok, code}
-      {:error, error} -> {:error, error}
-    end
-  end
-
-  @doc """
-  Atomically redeem a loopback code from POST /cli/token params (code,
-  code_verifier, redirect_uri) AND mint the account token under the shared
-  policy (see `mint_token/1`) — all inside one Guard.Repo transaction.
-
-  The row stays locked (SELECT FOR UPDATE) for the duration of the mint, and
-  the code is only marked consumed once the mint outcome is known: a fresh
-  mint or an existing-user `:token_exists` both consume the code (both are
-  terminal); a mint that errors on persist does NOT consume it, so the client
-  can retry with the same code. This closes the "code burned, no token minted"
-  gap that existed when redemption and minting were two independent calls.
-  """
-  @spec exchange(map()) ::
-          {:ok, String.t()}
-          | {:error, :token_exists | :user_not_found | :invalid_grant | String.t()}
-  def exchange(params) do
-    code = params["code"]
-    verifier = params["code_verifier"]
-    redirect_uri = params["redirect_uri"]
-
-    if is_binary(code) and is_binary(verifier) and is_binary(redirect_uri) do
-      result =
-        Guard.Repo.transaction(fn ->
-          with {:ok, auth_code} <- CliAuthCode.lock_loopback_code(code),
-               true <- PKCE.verify(verifier, auth_code.code_challenge),
-               true <- redirect_uri == auth_code.redirect_uri do
-            mint_then_consume(auth_code)
-          else
-            _ -> Guard.Repo.rollback(:invalid_grant)
-          end
-        end)
-
-      case result do
-        {:ok, mint_result} -> mint_result
-        {:error, _} -> {:error, :invalid_grant}
-      end
-    else
-      {:error, :invalid_grant}
-    end
-  end
-
-  @doc "Only http loopback redirect_uris are allowed (open-redirect guard)."
-  @spec loopback_redirect?(String.t()) :: boolean()
-  def loopback_redirect?(uri) when is_binary(uri) do
-    case URI.parse(uri) do
-      %URI{scheme: "http", host: host} when host in ["127.0.0.1", "localhost", "::1"] -> true
-      _ -> false
-    end
-  end
-
-  def loopback_redirect?(_), do: false
 
   # ── device (RFC 8628) ──────────────────────────────────────────────────────
 
