@@ -7,7 +7,6 @@ defmodule Guard.CLIAuthTest do
   alias Guard.CLIAuth.DeviceRateLimiter
   alias Guard.Store.CliAuthCode
   alias Guard.Repo
-  alias Guard.McpOAuth.PKCE
 
   import Ecto.Query
 
@@ -297,102 +296,6 @@ defmodule Guard.CLIAuthTest do
       end)
 
       assert {:error, :rate_limited} = CLIAuth.verify_user_code("BCDF-GHJK")
-    end
-  end
-
-  describe "loopback flow still works" do
-    test "issue -> exchange mints the token atomically, and the code is single-use", %{
-      user_id: user_id
-    } do
-      :ok = fresh_front_user(user_id)
-
-      verifier = "loopback-verifier-that-is-long-enough-1234567890"
-      challenge = PKCE.compute_challenge(verifier)
-      redirect_uri = "http://127.0.0.1:38213/callback"
-
-      assert {:ok, code} = CLIAuth.issue_code(user_id, challenge, redirect_uri)
-
-      params = %{
-        "code" => code,
-        "code_verifier" => verifier,
-        "redirect_uri" => redirect_uri
-      }
-
-      # exchange/1 now mints inside the same transaction as redemption —
-      # no separate mint_token call, and no window between "code consumed"
-      # and "token minted".
-      assert {:ok, token} = CLIAuth.exchange(params)
-      assert is_binary(token) and token != ""
-
-      # Single-use: the second exchange fails.
-      assert {:error, :invalid_grant} = CLIAuth.exchange(params)
-    end
-
-    test "existing account is rejected with token_exists and the code is still consumed", %{
-      user_id: user_id
-    } do
-      :ok = existing_front_user(user_id)
-
-      verifier = "loopback-verifier-that-is-long-enough-1234567890"
-      challenge = PKCE.compute_challenge(verifier)
-      redirect_uri = "http://127.0.0.1:38213/callback"
-
-      {:ok, code} = CLIAuth.issue_code(user_id, challenge, redirect_uri)
-
-      params = %{
-        "code" => code,
-        "code_verifier" => verifier,
-        "redirect_uri" => redirect_uri
-      }
-
-      assert {:error, :token_exists} = CLIAuth.exchange(params)
-      # No replay: the existing-user outcome is terminal, same as the device flow.
-      assert {:error, :invalid_grant} = CLIAuth.exchange(params)
-    end
-
-    test "if minting errors on persist, the loopback code is NOT consumed (client can retry)",
-         %{user_id: user_id} do
-      :ok = fresh_front_user(user_id)
-
-      verifier = "loopback-verifier-that-is-long-enough-1234567890"
-      challenge = PKCE.compute_challenge(verifier)
-      redirect_uri = "http://127.0.0.1:38213/callback"
-      {:ok, code} = CLIAuth.issue_code(user_id, challenge, redirect_uri)
-
-      params = %{
-        "code" => code,
-        "code_verifier" => verifier,
-        "redirect_uri" => redirect_uri
-      }
-
-      with_mock Guard.FrontRepo.User, [:passthrough],
-        mint_token_if_absent: fn _ -> {:error, "persist failed"} end do
-        assert {:error, "persist failed"} = CLIAuth.exchange(params)
-      end
-
-      # Still redeemable: the failed mint did not burn the code.
-      assert {:ok, token} = CLIAuth.exchange(params)
-      assert is_binary(token) and token != ""
-    end
-
-    test "wrong PKCE verifier is rejected", %{user_id: user_id} do
-      challenge = PKCE.compute_challenge("the-real-verifier-value-1234567890")
-      redirect_uri = "http://localhost:38213/callback"
-      {:ok, code} = CLIAuth.issue_code(user_id, challenge, redirect_uri)
-
-      params = %{
-        "code" => code,
-        "code_verifier" => "a-different-verifier-value",
-        "redirect_uri" => redirect_uri
-      }
-
-      assert {:error, :invalid_grant} = CLIAuth.exchange(params)
-    end
-
-    test "non-loopback redirect_uri is refused" do
-      refute CLIAuth.loopback_redirect?("https://evil.example.com/callback")
-      assert CLIAuth.loopback_redirect?("http://127.0.0.1:1234/cb")
-      assert CLIAuth.loopback_redirect?("http://localhost:1234/cb")
     end
   end
 end

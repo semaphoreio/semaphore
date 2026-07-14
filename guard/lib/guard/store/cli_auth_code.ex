@@ -1,7 +1,6 @@
 defmodule Guard.Store.CliAuthCode do
   @moduledoc """
-  Store for sem-ai CLI signup authorization records (both the loopback + PKCE
-  flow and the device authorization grant).
+  Store for sem-ai CLI sign-in authorization records (RFC 8628 device grant).
 
   Redemption is single-use and multi-pod safe: `lock_*` locks the row with
   SELECT FOR UPDATE inside a transaction and the caller marks it consumed, so
@@ -21,10 +20,6 @@ defmodule Guard.Store.CliAuthCode do
   # (0/O, 1/I/L). 8 chars => 20^8 ~= 2.56e10 (~34.8 bits) of entropy.
   @user_code_alphabet ~c"BCDFGHJKLMNPQRSTVWXZ"
   @user_code_length 8
-
-  @doc "Secure random, URL-safe loopback authorization code."
-  @spec generate_code() :: String.t()
-  def generate_code, do: :crypto.strong_rand_bytes(32) |> Base.url_encode64(padding: false)
 
   @doc "Secure random device_code (256-bit), returned to the CLI in plaintext."
   @spec generate_device_code() :: String.t()
@@ -68,28 +63,6 @@ defmodule Guard.Store.CliAuthCode do
     %CliAuthCode{}
     |> CliAuthCode.changeset(params)
     |> Repo.insert()
-  end
-
-  # ── loopback (RFC 8252) ───────────────────────────────────────────────────
-
-  @doc """
-  Lock a loopback code that is still redeemable (approved and unexpired).
-  Must run inside a Repo.transaction.
-  """
-  @spec lock_loopback_code(String.t()) :: {:ok, CliAuthCode.t()} | {:error, :invalid_or_used}
-  def lock_loopback_code(code) when is_binary(code) do
-    now = now()
-
-    query =
-      CliAuthCode
-      |> where([ac], ac.flow_type == "loopback" and ac.code == ^code)
-      |> where([ac], ac.status == "approved" and ac.expires_at > ^now)
-      |> lock("FOR UPDATE")
-
-    case Repo.one(query) do
-      nil -> {:error, :invalid_or_used}
-      auth_code -> {:ok, auth_code}
-    end
   end
 
   # ── device (RFC 8628) ─────────────────────────────────────────────────────
