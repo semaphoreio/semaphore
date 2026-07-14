@@ -64,6 +64,7 @@ defmodule FrontWeb.JobController do
     org_id = conn.assigns.organization_id
     user_id = conn |> extract_user_id()
     job_id = conn.assigns.job.id
+    source_job_id = Models.Job.source_job_id(conn.assigns.job)
     ppl_id = conn.assigns.job.ppl_id
     self_hosted = conn.assigns.job.self_hosted
     project = conn.assigns.project
@@ -80,8 +81,8 @@ defmodule FrontWeb.JobController do
 
     fetch_workflow = Async.run(fn -> find_workflow(pipeline.workflow_id) end)
     fetch_hook = Async.run(fn -> find_hook(pipeline.hook_id) end)
-    fetch_artifact_logs = Async.run(fn -> find_artifact_logs(project.id, job_id) end)
-    create_token = Async.run(fn -> generate_token(job_id, self_hosted) end)
+    fetch_artifact_logs = Async.run(fn -> find_artifact_logs(project.id, source_job_id) end)
+    create_token = Async.run(fn -> generate_token(source_job_id, self_hosted) end)
 
     {:ok, organization} = Async.await(fetch_organization)
     {:ok, hook} = Async.await(fetch_hook)
@@ -243,7 +244,7 @@ defmodule FrontWeb.JobController do
         nil ->
           token = params |> Map.get("token", "0") |> Integer.parse() |> elem(0)
 
-          case JobPage.Events.fetch_events(job.id, token) do
+          case JobPage.Events.fetch_events(Models.Job.source_job_id(job), token) do
             {:ok, events} ->
               conn
               |> put_resp_content_type("application/json")
@@ -293,9 +294,11 @@ defmodule FrontWeb.JobController do
           starting_event = params |> Map.get("starting_event", "0") |> Integer.parse() |> elem(0)
           take = params |> Map.get("take", "0") |> Integer.parse() |> elem(0)
 
+          source_job_id = Models.Job.source_job_id(job)
+
           if job.self_hosted do
             # The generated token should be valid for 1 minute only
-            case Models.Job.generate_token(job.id, 60) do
+            case Models.Job.generate_token(source_job_id, 60) do
               "" ->
                 conn
                 |> put_flash(:alert, "There was a problem finding the raw logs.")
@@ -305,12 +308,13 @@ defmodule FrontWeb.JobController do
                 conn
                 |> put_status(:temporary_redirect)
                 |> redirect(
-                  external: "https://#{conn.host}/api/v1/logs/#{job.id}?jwt=#{token}&raw=true"
+                  external:
+                    "https://#{conn.host}/api/v1/logs/#{source_job_id}?jwt=#{token}&raw=true"
                 )
             end
           else
             conn
-            |> text(JobPage.Events.raw_logs(job.id, starting_event, take))
+            |> text(JobPage.Events.raw_logs(source_job_id, starting_event, take))
           end
 
         message ->
@@ -332,7 +336,10 @@ defmodule FrontWeb.JobController do
 
           conn
           |> put_resp_content_type("application/json")
-          |> send_resp(200, JobPage.Events.raw_events(job.id, starting_event, take))
+          |> send_resp(
+            200,
+            JobPage.Events.raw_events(Models.Job.source_job_id(job), starting_event, take)
+          )
 
         message ->
           conn
