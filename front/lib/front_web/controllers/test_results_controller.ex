@@ -43,7 +43,12 @@ defmodule FrontWeb.TestResultsController do
       fetch_junit_json_url =
         Async.run(
           fn ->
-            Artifacthub.signed_url(project.id, "jobs", job.id, "test-results/junit.json")
+            Artifacthub.signed_url(
+              project.id,
+              "jobs",
+              Front.Models.Job.source_job_id(job),
+              "test-results/junit.json"
+            )
           end,
           metric: "artifacts.artifact.signed_url"
         )
