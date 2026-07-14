@@ -164,7 +164,7 @@ defmodule Front.Models.Job do
   end
 
   def preload_summary(job) do
-    ListJobSummariesRequest.new(job_ids: [job.id])
+    ListJobSummariesRequest.new(job_ids: [source_job_id(job)])
     |> Clients.Velocity.list_job_summaries()
     |> case do
       {:ok, %{job_summaries: [job_summary]}} -> job_summary
