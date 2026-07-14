@@ -509,6 +509,26 @@ defmodule Zebra.Api.InternalJobApiTest do
                is_debug_job: false,
                self_hosted: false
              } = res.job
+
+      assert res.job.original_job_id == ""
+    end
+
+    test "copied job exposes original_job_id" do
+      alias InternalApi.ServerFarm.Job.Job
+      alias InternalApi.ServerFarm.Job.DescribeRequest, as: Request
+      alias InternalApi.ServerFarm.Job.JobService.Stub, as: Stub
+
+      original_job_id = Ecto.UUID.generate()
+
+      {:ok, job} = Support.Factories.Job.create(:finished, %{original_job_id: original_job_id})
+
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+
+      req = Request.new(job_id: job.id)
+      {:ok, res} = Stub.describe(channel, req)
+
+      assert res.status.code == InternalApi.ResponseStatus.Code.value(:OK)
+      assert %Job{original_job_id: ^original_job_id} = res.job
     end
 
     test "self hosted job is found" do
