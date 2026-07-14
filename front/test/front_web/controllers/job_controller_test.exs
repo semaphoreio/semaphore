@@ -75,6 +75,45 @@ defmodule FrontWeb.JobControllerTest do
     end
   end
 
+  describe "show for a copied job" do
+    test "renders the copied-job banner linking to the original", %{conn: conn, job: job} do
+      original_job_id = UUID.uuid4()
+
+      GrpcMock.stub(InternalJobMock, :describe, fn req, _ ->
+        job = DB.find(:jobs, req.job_id)
+        task = DB.find(:tasks, job.task_id)
+        task_job = job |> DB.extract(:api_model)
+
+        DescribeResponse.new(
+          status:
+            InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
+          job:
+            Job.new(
+              id: task_job.id,
+              project_id: task.project_id,
+              branch_id: task.branch_id,
+              hook_id: task.api_model.hook_id,
+              ppl_id: task.api_model.ppl_id,
+              timeline: Job.Timeline.new(),
+              state: Job.State.value(:FINISHED),
+              result: Job.Result.value(:PASSED),
+              machine_type: "e1-standard-2",
+              self_hosted: false,
+              name: task_job.name,
+              index: task_job.index,
+              original_job_id: original_job_id
+            )
+        )
+      end)
+
+      conn = get(conn, job_path(conn, :show, job.id))
+      html = html_response(conn, 200)
+
+      assert html =~ "Copied job"
+      assert html =~ "/jobs/#{original_job_id}"
+    end
+  end
+
   describe "status_badge" do
     test "renders badge", %{conn: conn, job: job} do
       conn = get(conn, job_path(conn, :status_badge, job.id))
