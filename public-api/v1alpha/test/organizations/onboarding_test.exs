@@ -35,8 +35,7 @@ defmodule PipelinesAPI.Organizations.Onboarding.Test do
       send(test_pid, :create_called)
 
       CreateResponse.new(
-        status:
-          InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
+        status: InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
         organization:
           Organization.new(
             org_id: "92be62c2-9cf4-4dad-b168-d6efa6aa5e21",

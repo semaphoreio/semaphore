@@ -31,8 +31,7 @@ defmodule PipelinesAPI.Organizations.Create.Test do
 
     GrpcMock.stub(OrganizationMock, :create, fn req, _ ->
       CreateResponse.new(
-        status:
-          InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
+        status: InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
         organization:
           Organization.new(
             org_id: @org_id,
