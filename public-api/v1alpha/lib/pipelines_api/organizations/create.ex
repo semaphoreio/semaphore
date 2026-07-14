@@ -40,7 +40,11 @@ defmodule PipelinesAPI.Organizations.Create do
     if present?(conn.params["username"]) do
       conn
     else
-      conn |> Common.respond({:error, {:user, "username must be present"}}) |> halt()
+      # Common.respond/2 takes (state, conn) — piping conn in as the first
+      # argument crashed with a FunctionClauseError (500) instead of a 400.
+      {:error, {:user, "username must be present"}}
+      |> Common.respond(conn)
+      |> halt()
     end
   end
 
