@@ -1,0 +1,11 @@
+# --- hackney 1.x advisories, all first patched in hackney 4.0.1 ---
+# The 4.x major is blocked fleet-wide: httpoison 1.x/2.x requires hackney ~> 1.17,
+# so hackney cannot move to 4.x without a coordinated httpoison migration (same
+# acceptance as plumber and guard). auth's outbound HTTP goes to internal services
+# and the configured identity providers, not attacker-supplied hosts.
+GHSA-gp9c-pm5m-5cxr
+GHSA-j9wq-vxxc-94wf
+GHSA-mp55-p8c9-rfw2
+GHSA-pj7v-xfvx-wmjq
+
+
