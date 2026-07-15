@@ -145,6 +145,36 @@ defmodule Guard.Api.RbacTest do
     end
   end
 
+  test "org_owner_ids expands owner groups through the groups endpoint, not the rbac one" do
+    test_pid = self()
+    groups_endpoint = "groups.internal:50051"
+    rbac_endpoint = Application.fetch_env!(:guard, :rbac_grpc_endpoint)
+    original = Application.get_env(:guard, :groups_grpc_endpoint)
+    Application.put_env(:guard, :groups_grpc_endpoint, groups_endpoint)
+    on_exit(fn -> Application.put_env(:guard, :groups_grpc_endpoint, original) end)
+
+    members = fn channel, req, _opts ->
+      send(test_pid, {:rbac_channel, channel})
+      owner_members_responder(users: [], groups: ["group-1"]).(channel, req, [])
+    end
+
+    groups = fn channel, req, _opts ->
+      send(test_pid, {:groups_channel, channel})
+      groups_responder(%{"group-1" => ["user-alice"]}).(channel, req, [])
+    end
+
+    with_mock GRPC.Stub, [:passthrough], connect: fn endpoint -> {:ok, {:channel, endpoint}} end do
+      with_mock RBAC.RBAC.Stub, list_roles: list_roles_with_owner_fn(), list_members: members do
+        with_mock InternalApi.Groups.Groups.Stub, list_groups: groups do
+          assert {:ok, ["user-alice"]} = Rbac.org_owner_ids(@org_id)
+        end
+      end
+    end
+
+    assert_received {:rbac_channel, {:channel, ^rbac_endpoint}}
+    assert_received {:groups_channel, {:channel, ^groups_endpoint}}
+  end
+
   test "org_owner_ids fails closed when expanding an owner group fails" do
     failing_groups = fn _channel, _req, _opts ->
       {:error, %GRPC.RPCError{status: 14, message: "unavailable"}}

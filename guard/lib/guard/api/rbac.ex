@@ -77,7 +77,8 @@ defmodule Guard.Api.Rbac do
   defp group_member_ids(org_id, group_id) do
     req = InternalApi.Groups.ListGroupsRequest.new(org_id: org_id, group_id: group_id)
 
-    {:ok, response} = InternalApi.Groups.Groups.Stub.list_groups(channel(), req, timeout: 30_000)
+    {:ok, response} =
+      InternalApi.Groups.Groups.Stub.list_groups(groups_channel(), req, timeout: 30_000)
 
     Enum.flat_map(response.groups, & &1.member_ids)
   end
@@ -222,6 +223,13 @@ defmodule Guard.Api.Rbac do
 
   defp channel do
     {:ok, channel} = GRPC.Stub.connect(Application.fetch_env!(:guard, :rbac_grpc_endpoint))
+
+    channel
+  end
+
+  # The Groups API is served by its own deployment, not by the RBAC endpoint.
+  defp groups_channel do
+    {:ok, channel} = GRPC.Stub.connect(Application.fetch_env!(:guard, :groups_grpc_endpoint))
 
     channel
   end
