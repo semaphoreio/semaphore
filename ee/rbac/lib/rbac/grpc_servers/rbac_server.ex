@@ -243,20 +243,11 @@ defmodule Rbac.GrpcServers.RbacServer do
     end)
   end
 
-  @first_page 0
-  @page_size 40
   def list_accessible_orgs(%RBAC.ListAccessibleOrgsRequest{user_id: user_id}, _stream) do
     Watchman.benchmark("list_accessible_orgs.duration", fn ->
       validate_uuid!(user_id)
-      {:ok, rbi} = RBI.new(user_id: user_id, project_id: :is_nil)
 
-      {org_role_bindings, _total_pages} =
-        Rbac.RoleManagement.fetch_subject_role_bindings(rbi,
-          page_no: @first_page,
-          page_size: @page_size
-        )
-
-      org_ids = org_role_bindings |> Enum.map(& &1.org_id) |> Enum.uniq()
+      org_ids = Rbac.RoleManagement.accessible_org_ids(user_id)
 
       %RBAC.ListAccessibleOrgsResponse{org_ids: org_ids}
     end)
