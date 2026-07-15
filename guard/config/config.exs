@@ -141,4 +141,8 @@ config :guard, :hard_destroy_grace_period_days, 30
 config :guard, :posthog_api_key, ""
 config :guard, :posthog_host, "https://app.posthog.com"
 
+# `use Tesla` is soft-deprecated since tesla 1.18; silence the warning until
+# the clients migrate to runtime configuration.
+config :tesla, disable_deprecated_builder_warning: true
+
 import_config "#{config_env()}.exs"

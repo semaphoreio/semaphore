@@ -89,6 +89,11 @@ defmodule Guard.GrpcServers.InstanceConfigServerTest do
     test "when config type is ok but configuration status check fails", %{grpc_channel: channel} do
       {:ok, setup} = setup_github_app_integration()
 
+      # Replace the global stub installed in the setup block: Tesla.Mock
+      # registers a supervised agent per test, so it must be stopped before a
+      # second mock_global call in the same test.
+      stop_supervised!(Tesla.Mock)
+
       Tesla.Mock.mock_global(fn
         %{method: :get, url: "https://api.github.com/app"} ->
           resp = %Tesla.Env{
