@@ -1140,6 +1140,20 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
       {:ok, resp} = state.grpc_channel |> Stub.list_accessible_orgs(req)
       assert [@org_id] == resp.org_ids
     end
+
+    test "If user has access to more orgs than one page holds, return all of them", state do
+      org_ids =
+        for _ <- 1..41 do
+          org_id = UUID.generate()
+          Support.Rbac.create_org_roles(org_id)
+          Support.Rbac.assign_org_role_by_name(org_id, @user_id, "Member")
+          org_id
+        end
+
+      req = %Request{user_id: @user_id}
+      {:ok, resp} = state.grpc_channel |> Stub.list_accessible_orgs(req)
+      assert Enum.sort(org_ids) == Enum.sort(resp.org_ids)
+    end
   end
 
   describe "list_accessible_projects" do
