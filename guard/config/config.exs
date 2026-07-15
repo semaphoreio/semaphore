@@ -88,6 +88,10 @@ config :guard, session_secret_key_base: System.get_env("SESSION_SECRET_KEY_BASE"
 config :guard, session_key: System.get_env("SESSION_COOKIE_NAME")
 
 config :guard,
+  mcp_oauth_access_token_ttl_seconds:
+    String.to_integer(System.get_env("MCP_OAUTH_ACCESS_TOKEN_TTL_SECONDS") || "86400")
+
+config :guard,
   oidc: [
     discovery_url: System.get_env("OIDC_DISCOVERY_URL"),
     client_id: System.get_env("OIDC_CLIENT_ID"),
