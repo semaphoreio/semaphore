@@ -113,6 +113,93 @@ defmodule Guard.Api.RbacTest do
     assert log =~ "member lookup failed"
   end
 
+  test "org_owner_ids includes users owning through a group next to direct owners" do
+    with_mock RBAC.RBAC.Stub,
+      list_roles: list_roles_with_owner_fn(),
+      list_members: owner_members_responder(users: ["user-direct"], groups: ["group-1"]) do
+      with_mock InternalApi.Groups.Groups.Stub,
+        list_groups: groups_responder(%{"group-1" => ["user-alice", "user-direct"]}) do
+        assert {:ok, ids} = Rbac.org_owner_ids(@org_id)
+        assert Enum.sort(ids) == ["user-alice", "user-direct"]
+      end
+    end
+  end
+
+  test "org_owner_ids resolves owners held only through a group" do
+    with_mock RBAC.RBAC.Stub,
+      list_roles: list_roles_with_owner_fn(),
+      list_members: owner_members_responder(users: [], groups: ["group-1"]) do
+      with_mock InternalApi.Groups.Groups.Stub,
+        list_groups: groups_responder(%{"group-1" => ["user-alice", "user-bob"]}) do
+        assert {:ok, ids} = Rbac.org_owner_ids(@org_id)
+        assert Enum.sort(ids) == ["user-alice", "user-bob"]
+      end
+    end
+  end
+
+  test "org_owner_ids stays direct-only when the backend reports no owner groups" do
+    with_mock RBAC.RBAC.Stub,
+      list_roles: list_roles_with_owner_fn(),
+      list_members: owner_members_responder(users: ["user-direct"], groups: []) do
+      assert Rbac.org_owner_ids(@org_id) == {:ok, ["user-direct"]}
+    end
+  end
+
+  test "org_owner_ids fails closed when expanding an owner group fails" do
+    failing_groups = fn _channel, _req, _opts ->
+      {:error, %GRPC.RPCError{status: 14, message: "unavailable"}}
+    end
+
+    log =
+      capture_log(fn ->
+        with_mock RBAC.RBAC.Stub,
+          list_roles: list_roles_with_owner_fn(),
+          list_members: owner_members_responder(users: ["user-direct"], groups: ["group-1"]) do
+          with_mock InternalApi.Groups.Groups.Stub, list_groups: failing_groups do
+            assert Rbac.org_owner_ids(@org_id) == {:error, :ownership_unverified}
+          end
+        end
+      end)
+
+    assert log =~ "owner lookup failed"
+  end
+
+  # ListMembers responder keyed by the requested member_type: owner users for
+  # :USER, owner groups for :GROUP (single short page each, like both backends).
+  defp owner_members_responder(users: user_ids, groups: group_ids) do
+    fn _channel, req, _opts ->
+      ids =
+        cond do
+          req.member_type == RBAC.SubjectType.value(:USER) -> user_ids
+          req.member_type == RBAC.SubjectType.value(:GROUP) -> group_ids
+        end
+
+      members = if req.page.page_no in [0, 1], do: Enum.map(ids, &member/1), else: []
+      {:ok, RBAC.ListMembersResponse.new(members: members, total_pages: 1)}
+    end
+  end
+
+  defp groups_responder(members_by_group) do
+    fn _channel, req, _opts ->
+      groups =
+        case Map.fetch(members_by_group, req.group_id) do
+          {:ok, member_ids} ->
+            [InternalApi.Groups.Group.new(id: req.group_id, member_ids: member_ids)]
+
+          :error ->
+            []
+        end
+
+      {:ok, InternalApi.Groups.ListGroupsResponse.new(groups: groups)}
+    end
+  end
+
+  defp list_roles_with_owner_fn do
+    fn _channel, _req, _opts ->
+      {:ok, RBAC.ListRolesResponse.new(roles: [RBAC.Role.new(id: "role-owner", name: "Owner")])}
+    end
+  end
+
   test "org_owner_ids returns an error when the owner lookup fails" do
     list_roles_with_owner = fn _channel, _req, _opts ->
       {:ok, RBAC.ListRolesResponse.new(roles: [RBAC.Role.new(id: "role-owner", name: "Owner")])}
