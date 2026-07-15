@@ -6,6 +6,10 @@ defmodule GithubNotifier.StatusSender do
   are sent one at a time, in order. A `pending` status is dropped when a
   terminal status (success/failure) was already sent for the same check,
   since delivering it would leave the commit check pending forever.
+
+  A status is only marked as sent after a successful delivery; transport
+  failures return `:error` so the caller can fail the message and have it
+  redelivered.
   """
 
   use Supervisor
@@ -54,9 +58,7 @@ defmodule GithubNotifier.StatusSender.Worker do
 
   @impl true
   def handle_call({:send, status_key, data, request_id}, _from, state) do
-    deliver(status_key, data, request_id)
-
-    {:reply, :ok, state}
+    {:reply, deliver(status_key, data, request_id), state}
   end
 
   defp deliver(status_key, data, request_id) do
@@ -66,16 +68,25 @@ defmodule GithubNotifier.StatusSender.Worker do
     cond do
       Cachex.get!(:store, dedupe_key) ->
         Logger.info("[#{request_id}] Skipping Status: #{dedupe_key}")
+        :ok
 
       data.state == "pending" && Cachex.get!(:store, terminal_key) ->
         Watchman.increment("set_commit_status.skipped_stale_pending")
         Logger.info("[#{request_id}] Skipping stale pending Status: #{dedupe_key}")
+        :ok
 
       true ->
         Logger.info("[#{request_id}] Creating Status: #{dedupe_key}")
-        create_status(data)
-        mark_sent(dedupe_key, terminal_key, data.state)
-        Logger.info("[#{request_id}] Creating Status Finished: #{dedupe_key}")
+
+        case create_status(data) do
+          :ok ->
+            mark_sent(dedupe_key, terminal_key, data.state)
+            Logger.info("[#{request_id}] Creating Status Finished: #{dedupe_key}")
+            :ok
+
+          :error ->
+            :error
+        end
     end
   end
 
