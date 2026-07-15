@@ -16,26 +16,24 @@ defmodule GithubNotifier.Application do
     )
 
     children =
-      filter_enabled([
-        {{GRPC.Server.Supervisor, {grpc_services(), 50_051}}, enabled?("START_API")},
-        {{Services.BlockFinishedNotifier, []}, enabled?("START_CONSUMERS")},
-        {{Services.PipelineStartedNotifier, []}, enabled?("START_CONSUMERS")},
-        {{Services.PipelineFinishedNotifier, []}, enabled?("START_CONSUMERS")},
-        {{Services.PipelineSummaryAvailableNotifier, []}, enabled?("START_CONSUMERS")},
-        {{GithubNotifier.FeatureProviderInvalidatorWorker, []}, true},
-        feature_provider()
-      ])
-
-    children =
-      children ++
-        [
-          {Task.Supervisor, name: GithubNotifier.TaskSupervisor},
-          %{id: Cachex, start: {Cachex, :start_link, [:store, []]}},
-          %{
-            id: FeatureProvider.Cachex,
-            start: {Cachex, :start_link, [:feature_provider_cache, []]}
-          }
-        ]
+      [
+        {Task.Supervisor, name: GithubNotifier.TaskSupervisor},
+        %{id: Cachex, start: {Cachex, :start_link, [:store, []]}},
+        %{
+          id: FeatureProvider.Cachex,
+          start: {Cachex, :start_link, [:feature_provider_cache, []]}
+        },
+        GithubNotifier.StatusSender
+      ] ++
+        filter_enabled([
+          {{GRPC.Server.Supervisor, {grpc_services(), 50_051}}, enabled?("START_API")},
+          {{Services.BlockFinishedNotifier, []}, enabled?("START_CONSUMERS")},
+          {{Services.PipelineStartedNotifier, []}, enabled?("START_CONSUMERS")},
+          {{Services.PipelineFinishedNotifier, []}, enabled?("START_CONSUMERS")},
+          {{Services.PipelineSummaryAvailableNotifier, []}, enabled?("START_CONSUMERS")},
+          {{GithubNotifier.FeatureProviderInvalidatorWorker, []}, true},
+          feature_provider()
+        ])
 
     Enum.each(children, fn c ->
       Logger.info("Starting: #{inspect(c)}")
