@@ -719,6 +719,71 @@ defmodule Guard.GrpcServers.UserServerTest do
       end
     end
 
+    test "delete_with_owned_orgs should reject when user is the last owner through a group", %{
+      grpc_channel: channel
+    } do
+      alias Guard.FrontRepo
+
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user.id)
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      {:ok, other} = Support.Factories.RbacUser.insert()
+
+      org = Support.Factories.Organization.insert!(name: "Acme", username: "acme-group-owner")
+
+      request = User.DeleteWithOwnedOrgsRequest.new(user_id: user.id)
+
+      with_mock InternalApi.Projecthub.ProjectService.Stub, list: projecthub_list_mock() do
+        with_mock InternalApi.RBAC.RBAC.Stub,
+          list_accessible_orgs: accessible_orgs_mock([org.id]),
+          list_roles: list_roles_mock(),
+          list_members: list_members_mock([user.id, other.id], [], ["owners-group"]) do
+          with_mock InternalApi.Groups.Groups.Stub,
+            list_groups: list_groups_mock(%{"owners-group" => [user.id]}) do
+            {:error, grpc_error} = channel |> Stub.delete_with_owned_orgs(request)
+
+            assert %GRPC.RPCError{status: status, message: message} = grpc_error
+            assert status == GRPC.Status.failed_precondition()
+            assert message =~ "You are the last owner of Acme."
+
+            refute is_nil(FrontRepo.get(FrontRepo.User, user.id))
+          end
+        end
+      end
+    end
+
+    test "delete_with_owned_orgs should allow deletion when the owner group has another member",
+         %{grpc_channel: channel} do
+      alias Guard.FrontRepo
+
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user.id)
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      {:ok, other} = Support.Factories.RbacUser.insert()
+
+      org = Support.Factories.Organization.insert!(name: "Shared", username: "group-coowner")
+
+      request = User.DeleteWithOwnedOrgsRequest.new(user_id: user.id)
+
+      with_mock InternalApi.Projecthub.ProjectService.Stub, list: projecthub_list_mock() do
+        with_mock InternalApi.RBAC.RBAC.Stub,
+          list_accessible_orgs: accessible_orgs_mock([org.id]),
+          list_roles: list_roles_mock(),
+          list_members: list_members_mock([user.id, other.id], [], ["owners-group"]) do
+          with_mock InternalApi.Groups.Groups.Stub,
+            list_groups: list_groups_mock(%{"owners-group" => [user.id, other.id]}) do
+            {:ok, response} = channel |> Stub.delete_with_owned_orgs(request)
+
+            id = user.id
+            assert %User.User{id: ^id} = response
+            assert is_nil(FrontRepo.get(FrontRepo.User, id))
+          end
+        end
+      end
+    end
+
     test "delete_with_owned_orgs pluralizes the message when blocking multiple orgs", %{
       grpc_channel: channel
     } do
@@ -1011,13 +1076,18 @@ defmodule Guard.GrpcServers.UserServerTest do
 
   # Single-page ListMembers stub: these fixtures fit in one page, so only the
   # first page carries members and the server-side role filter returns the owner
-  # ids for the owner-role query or every USER member otherwise. Cross-edition
-  # pagination is covered directly in Guard.Api.RbacTest.
-  defp list_members_mock(member_ids, owner_ids) do
+  # ids for the owner-role query or every USER member otherwise. GROUP-typed
+  # queries return the groups holding the owner role. Cross-edition pagination
+  # is covered directly in Guard.Api.RbacTest.
+  defp list_members_mock(member_ids, owner_ids, owner_group_ids \\ []) do
     fn _channel, req, _opts ->
+      group_query? = req.member_type == InternalApi.RBAC.SubjectType.value(:GROUP)
+
       ids =
         cond do
           req.page.page_no != 0 -> []
+          group_query? and req.member_has_role == @owner_role_id -> owner_group_ids
+          group_query? -> []
           req.member_has_role == @owner_role_id -> owner_ids
           true -> member_ids
         end
@@ -1027,6 +1097,21 @@ defmodule Guard.GrpcServers.UserServerTest do
          members: Enum.map(ids, &rbac_member/1),
          total_pages: 1
        )}
+    end
+  end
+
+  defp list_groups_mock(members_by_group) do
+    fn _channel, req, _opts ->
+      groups =
+        case Map.fetch(members_by_group, req.group_id) do
+          {:ok, member_ids} ->
+            [InternalApi.Groups.Group.new(id: req.group_id, member_ids: member_ids)]
+
+          :error ->
+            []
+        end
+
+      {:ok, InternalApi.Groups.ListGroupsResponse.new(groups: groups)}
     end
   end
 
