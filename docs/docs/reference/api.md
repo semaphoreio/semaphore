@@ -84,6 +84,55 @@ May have a larger impact and effort will be made to provide migration paths as n
 
 - May have larger impact, but is unavoidable due to legal compliance, security vulnerabilities, or violation of specification.
 
+## Organizations
+
+### Create an organization
+
+Creates a new organization owned by the authenticated user.
+
+Unlike every other endpoint, this one is **account-scoped, not
+organization-scoped**: it is served on the `me.` host (there is no organization
+subdomain yet) and is authenticated with your personal account API token. The
+user resolved from the token becomes the owner of the new organization.
+
+Request:
+
+```text
+POST https://me.semaphoreci.com/api/v1alpha/organizations
+```
+
+Parameters:
+
+- `username` (**required**) - the organization's URL handle, used as its subdomain (`<username>.semaphoreci.com`). Must be unique and not already taken.
+- `name` (*optional*) - human-readable display name. Defaults to `username` when omitted.
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "organization_id": "2b4e4c0f-c760-4f47-9dc4-b3e84f993f63",
+  "name": "My Organization",
+  "username": "my-org"
+}
+```
+
+A `username` that is missing or already taken returns a `4xx` error describing
+the problem.
+
+Example:
+
+```shell
+curl -X POST --location "https://me.semaphoreci.com/api/v1alpha/organizations" \
+    -H "Authorization: Token {api_token}" \
+    -H "Content-Type: application/json" \
+    -d $'{
+    "username": "my-org",
+    "name": "My Organization"
+}'
+```
+
 ## Workflows
 
 ### Run workflow
