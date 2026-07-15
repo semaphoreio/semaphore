@@ -453,7 +453,7 @@ defmodule Guard.Id.Api do
           case action do
             "rotate" ->
               "You can return to your terminal. Your API token is reset as the tool " <>
-                "finishes signing in — anything still using the previous token " <>
+                "finishes signing in. Anything still using the previous token " <>
                 "(CI secrets, scripts, other machines) will need the new one."
 
             _ ->
@@ -831,7 +831,7 @@ defmodule Guard.Id.Api do
       <div class="container">
         <h1>Connect a command-line tool</h1>
         <p>Enter the code shown in your terminal to continue. You'll sign in to
-           Semaphore — or create an account — and then review exactly what you
+           Semaphore (or create an account), then review exactly what you
            are authorizing.</p>
         #{error_html}
         <form action="/device" method="post">
@@ -855,8 +855,8 @@ defmodule Guard.Id.Api do
   defp render_device_consent_page(conn, row, user_code_display, token_action, opts \\ []) do
     reprompt_html =
       if opts[:reprompt] do
-        ~s(<p class="error">Your account changed while this page was open — ) <>
-          ~s(review the updated details below before deciding.</p>)
+        ~s(<p class="error">Your account changed while this page was open. ) <>
+          ~s(Review the updated details below before deciding.</p>)
       else
         ""
       end
@@ -869,7 +869,7 @@ defmodule Guard.Id.Api do
            <p class="warning"><strong>This account already has an API token.</strong>
               Approving generates a new token for this command-line tool and
               <strong>your current token stops working immediately, everywhere it is
-              used</strong> — CI secrets, scripts, other machines, and any other
+              used</strong>: CI secrets, scripts, other machines, and any other
               integration authenticated with it will need the new token.</p>
            """, "Reset token and authorize"}
 
