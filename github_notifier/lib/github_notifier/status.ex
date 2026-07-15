@@ -10,6 +10,9 @@ defmodule GithubNotifier.Status do
   def create(data, request_id) do
     status_key = "#{data.repository_id}/#{data.sha}/#{data.ppl_id}/#{data.context}"
 
-    StatusSender.send_status(status_key, data, request_id)
+    case StatusSender.send_status(status_key, data, request_id) do
+      :ok -> :ok
+      :error -> raise "Failed to deliver #{data.state} status for #{status_key}"
+    end
   end
 end

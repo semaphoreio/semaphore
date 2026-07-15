@@ -68,6 +68,30 @@ defmodule GithubNotifier.StatusTest do
 
       refute_receive {:build_status, :SUCCESS, _}, 200
     end
+
+    test "raises and does not mark the status as sent when delivery fails" do
+      endpoint = Application.fetch_env!(:github_notifier, :repositoryhub_api_grpc_endpoint)
+
+      on_exit(fn ->
+        Application.put_env(:github_notifier, :repositoryhub_api_grpc_endpoint, endpoint)
+      end)
+
+      Application.put_env(:github_notifier, :repositoryhub_api_grpc_endpoint, "127.0.0.1:1")
+
+      assert_raise RuntimeError, ~r/Failed to deliver success status/, fn ->
+        GithubNotifier.Status.create(success_data(), "req-1")
+      end
+
+      assert Cachex.get!(:store, "#{status_key()}/success/The build passed on Semaphore 2.0.") ==
+               nil
+
+      assert Cachex.get!(:store, "terminal/#{status_key()}") == nil
+
+      Application.put_env(:github_notifier, :repositoryhub_api_grpc_endpoint, endpoint)
+
+      GithubNotifier.Status.create(success_data(), "req-2")
+      assert_receive {:build_status, :SUCCESS, @context}
+    end
   end
 
   defp status_atom(status) when is_atom(status), do: status
