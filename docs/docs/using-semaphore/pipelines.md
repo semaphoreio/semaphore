@@ -157,6 +157,8 @@ When a job in the pipeline fails, the default behavior is to stop the pipeline. 
 
 When the job-level partial rerun feature is enabled for your organization, **Rebuild Pipeline** goes one step further inside each re-run block: jobs that already passed are carried over as *copies* instead of being executed again, and only the failed jobs actually re-run.
 
+Enabling the feature changes the default rebuild behavior. To keep re-running whole blocks — for the entire pipeline or for individual blocks — set the [`partial_rerun: block`](../reference/pipeline-yaml#partial-rerun) property in the pipeline YAML.
+
 A copied job:
 
 - does not re-execute: it keeps the original execution timestamps and does not occupy an agent
