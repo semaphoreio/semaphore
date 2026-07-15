@@ -11,6 +11,8 @@ defmodule Guard.McpOAuth.Token do
   alias Guard.Store.McpOAuthAuthCode
   alias Guard.McpOAuth.{JWT, PKCE}
 
+  @access_token_ttl_seconds 86_400
+
   @doc """
   Exchanges an authorization code for an access token.
 
@@ -121,14 +123,14 @@ defmodule Guard.McpOAuth.Token do
   end
 
   defp create_token(auth_code) do
-    JWT.create_token(%{user_id: auth_code.user_id})
+    JWT.create_token(%{user_id: auth_code.user_id}, ttl_seconds: @access_token_ttl_seconds)
   end
 
   defp build_response(token) do
     %{
       "access_token" => token,
       "token_type" => "Bearer",
-      "expires_in" => JWT.default_token_ttl_seconds(),
+      "expires_in" => @access_token_ttl_seconds,
       "scope" => "mcp"
     }
   end
