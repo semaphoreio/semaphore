@@ -33,12 +33,15 @@ defmodule Guard.Api.Rbac do
   end
 
   @doc """
-  Returns `{:ok, subject_ids}` for the users holding the Owner role in the
-  organization (deduped). Owners are fetched with a server-side role filter, so
-  the cost is proportional to the number of owners rather than to the total
-  membership. Returns `{:error, :owner_role_unresolved}` when the org has no
-  role named "Owner" (missing/renamed) — callers must fail closed, since
-  ownership cannot be proven.
+  Returns `{:ok, subject_ids}` for the users who effectively hold the Owner
+  role in the organization (deduped): users owning directly, plus the members
+  of any group that holds the role — ownership can be granted through a group,
+  and those users must count when deciding whether someone is the last owner.
+  Owners are fetched with a server-side role filter, so the cost is
+  proportional to the number of owners rather than to the total membership.
+  Returns `{:error, :owner_role_unresolved}` when the org has no role named
+  "Owner" (missing/renamed) — callers must fail closed, since ownership cannot
+  be proven.
   """
   def org_owner_ids(org_id) do
     case get_role_id(org_id, @owner_role_name, :SCOPE_ORG) do
@@ -51,18 +54,32 @@ defmodule Guard.Api.Rbac do
         {:error, :owner_role_unresolved}
 
       role_id ->
-        ids =
+        group_member_ids =
           org_id
-          |> collect_members("", role_id)
-          |> Enum.map(& &1.subject.subject_id)
-          |> Enum.uniq()
+          |> owner_subject_ids(role_id, :GROUP)
+          |> Enum.flat_map(&group_member_ids(org_id, &1))
 
-        {:ok, ids}
+        {:ok, Enum.uniq(owner_subject_ids(org_id, role_id, :USER) ++ group_member_ids)}
     end
   rescue
     e ->
       Logger.warning("[Guard.Api.Rbac] owner lookup failed for org #{org_id}: #{inspect(e)}")
       {:error, :ownership_unverified}
+  end
+
+  defp owner_subject_ids(org_id, role_id, member_type) do
+    org_id
+    |> collect_members("", role_id, member_type)
+    |> Enum.map(& &1.subject.subject_id)
+    |> Enum.uniq()
+  end
+
+  defp group_member_ids(org_id, group_id) do
+    req = InternalApi.Groups.ListGroupsRequest.new(org_id: org_id, group_id: group_id)
+
+    {:ok, response} = InternalApi.Groups.Groups.Stub.list_groups(channel(), req, timeout: 30_000)
+
+    Enum.flat_map(response.groups, & &1.member_ids)
   end
 
   # ListMembers pagination differs between editions: EE is 0-based
@@ -71,12 +88,12 @@ defmodule Guard.Api.Rbac do
   # fixed page-number convention or `total_pages`. Walk pages from 0, dedup by
   # subject_id (CE repeats the first page), and stop once a page comes back
   # shorter than a full page, which terminates on either backend.
-  defp collect_members(org_id, project_id, role_id) do
+  defp collect_members(org_id, project_id, role_id, member_type \\ :USER) do
     {members, _seen} =
       0
       |> Stream.iterate(&(&1 + 1))
       |> Enum.reduce_while({[], MapSet.new()}, fn page_no, {acc, seen} ->
-        page = fetch_member_page(org_id, project_id, role_id, page_no)
+        page = fetch_member_page(org_id, project_id, role_id, page_no, member_type)
 
         {acc, seen} =
           Enum.reduce(page, {acc, seen}, fn member, {acc, seen} ->
@@ -95,20 +112,20 @@ defmodule Guard.Api.Rbac do
     Enum.reverse(members)
   end
 
-  defp fetch_member_page(org_id, project_id, role_id, page_no) do
-    req = build_list_members_request(org_id, project_id, role_id, page_no)
+  defp fetch_member_page(org_id, project_id, role_id, page_no, member_type \\ :USER) do
+    req = build_list_members_request(org_id, project_id, role_id, page_no, member_type)
 
     {:ok, response} = InternalApi.RBAC.RBAC.Stub.list_members(channel(), req, timeout: 30_000)
 
     response.members
   end
 
-  defp build_list_members_request(org_id, project_id, role_id, page) do
+  defp build_list_members_request(org_id, project_id, role_id, page, member_type) do
     InternalApi.RBAC.ListMembersRequest.new(
       org_id: org_id,
       project_id: project_id,
       member_has_role: role_id,
-      member_type: InternalApi.RBAC.SubjectType.value(:USER),
+      member_type: InternalApi.RBAC.SubjectType.value(member_type),
       page:
         InternalApi.RBAC.ListMembersRequest.Page.new(
           page_no: page,
