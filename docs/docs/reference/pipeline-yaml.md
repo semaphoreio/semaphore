@@ -551,6 +551,8 @@ This optional property controls the granularity of [pipeline rebuilds](../using-
 
 The pipeline-level value is the default for every block; individual blocks can override it with their own [`partial_rerun`](#partial-rerun-in-blocks) property.
 
+When `partial_rerun` is not set, `jobs` is used whenever [job-level partial rerun](../using-semaphore/pipelines#job-level-rerun) is enabled for your organization. To keep re-running whole blocks, set `partial_rerun: block` explicitly.
+
 Set `block` on blocks whose jobs must always run together, for example test suites that split dynamically across jobs, where the per-job split can change between runs.
 
 ```yaml title="Example"
