@@ -351,8 +351,12 @@ defmodule Guard.McpOAuth.Server.Test do
       result = Jason.decode!(response.body)
       assert is_binary(result["access_token"])
       assert result["token_type"] == "Bearer"
-      assert is_integer(result["expires_in"])
+      assert result["expires_in"] == 86_400
       assert result["scope"] == "mcp"
+
+      signer = Joken.Signer.create("HS256", System.get_env("MCP_OAUTH_JWT_KEYS"))
+      assert {:ok, claims} = Joken.verify(result["access_token"], signer)
+      assert claims["exp"] - claims["iat"] == 86_400
     end
 
     test "invalid grant_type returns error" do
