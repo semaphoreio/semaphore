@@ -260,7 +260,7 @@ export class Agent {
         this.containers = []
         break
 
-      case Agent.ENVIRONMENT_TYPE_DOCKER:
+      case Agent.ENVIRONMENT_TYPE_DOCKER: {
         const isOS = Features.isEnabled("isOS")
         this.type = isOS ? this.defaultMachineTypeForOS() : this.defaultMachineTypeFor("LINUX")
         this.osImage = isOS ? "" : this.defaultOSImage(this.type)
@@ -271,6 +271,7 @@ export class Agent {
           })
         ]
         break
+      }
       case Agent.ENVIRONMENT_TYPE_SELF_HOSTED:
         this.type = this.availableMachineTypes("SELF_HOSTED")[0]
         this.osImage = ""
