@@ -47,10 +47,27 @@ RUN apt-get update && apt-get install --no-install-recommends -y --allow-downgra
 ENV BUNDLE_JOBS=4 \
   BUNDLE_RETRY=3
 
+# ---------------------------------------------------------------------------
+# grpc-gem: compile the forked grpc C-core (clone -> submodule init -> native
+# build) ONCE into an isolated, cacheable layer. Its only cache key is
+# docker/grpc.Gemfile, so it is rebuilt only when the grpc fork ref changes --
+# unrelated Gemfile.lock churn no longer triggers the ~20-40 min recompile. The
+# compiled gem lands in $BUNDLE_PATH and is copied forward by the stages below.
+# ---------------------------------------------------------------------------
+FROM builder AS grpc-gem
+
+WORKDIR /grpc-build
+
+COPY docker/grpc.Gemfile Gemfile
+RUN bundle install --jobs=${BUNDLE_JOBS} && rm -f "$BUNDLE_PATH/config"
+
 FROM builder AS dev
 
 WORKDIR /app
 
+# Reuse the pre-compiled grpc from the cached grpc-gem layer, so this stage's
+# bundle install skips the C-core build and only installs the remaining gems.
+COPY --from=grpc-gem ${BUNDLE_PATH} ${BUNDLE_PATH}
 COPY Gemfile Gemfile.lock ./
 RUN bundle install --jobs=${BUNDLE_JOBS}
 
@@ -67,6 +84,8 @@ FROM builder as production-builder
 
 WORKDIR /app
 
+# Reuse the pre-compiled grpc from the cached grpc-gem layer (see dev stage).
+COPY --from=grpc-gem ${BUNDLE_PATH} ${BUNDLE_PATH}
 COPY Gemfile Gemfile.lock ./
 RUN bundle config set --local deployment true && \
     bundle config set --local without 'development test' && \
