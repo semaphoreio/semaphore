@@ -833,7 +833,8 @@ defmodule Guard.Id.Api.Test do
       Application.put_env(:guard, :oidc, %{
         discovery_url: disc_url,
         client_id: "test_client_id",
-        client_secret: "test_client_secret"
+        client_secret: "test_client_secret",
+        manage_url: "http://localhost/manage"
       })
 
       on_exit(fn ->
@@ -871,7 +872,8 @@ defmodule Guard.Id.Api.Test do
       Application.put_env(:guard, :oidc, %{
         discovery_url: disc_url,
         client_id: "test_client_id",
-        client_secret: "test_client_secret"
+        client_secret: "test_client_secret",
+        manage_url: "http://localhost/manage"
       })
 
       on_exit(fn ->

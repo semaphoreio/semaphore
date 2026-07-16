@@ -160,6 +160,10 @@ if config_env() == :prod do
     feature_api_endpoint: System.fetch_env!("INTERNAL_API_URL_FEATURE"),
     instance_config_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_INSTANCE_CONFIG"),
     rbac_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_RBAC"),
+    # Backends without a separate Groups deployment never serve GROUP-typed
+    # owner subjects, so the fallback endpoint is never actually called there.
+    groups_grpc_endpoint:
+      System.get_env("INTERNAL_API_URL_GROUPS") || System.fetch_env!("INTERNAL_API_URL_RBAC"),
     okta_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_OKTA")
 end
 

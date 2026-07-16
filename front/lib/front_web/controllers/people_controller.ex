@@ -11,7 +11,7 @@ defmodule FrontWeb.PeopleController do
   @all_management_pages @old_management_pages ++ ~w(create_member)a
   @project_actions ~w(project fetch_project_non_members)a
   @person_manage_action ~w(reset_password change_email)a
-  @self_manage_action ~w(update reset_token update_repo_scope delete_with_owned_orgs)a
+  @self_manage_action ~w(update reset_token update_repo_scope delete_user)a
   @person_action @person_manage_action ++ @self_manage_action ++ ~w(show)a
 
   plug(FetchPermissions, [scope: "org"] when action in @all_management_pages)
@@ -737,9 +737,9 @@ defmodule FrontWeb.PeopleController do
     end)
   end
 
-  def delete_with_owned_orgs(conn, %{"user_id" => user_id}) do
+  def delete_user(conn, %{"user_id" => user_id}) do
     Watchman.benchmark("people.delete_with_owned_orgs", fn ->
-      case Models.User.delete_with_owned_orgs(user_id, conn.assigns.tracing_headers) do
+      case Models.User.delete_user(user_id, conn.assigns.tracing_headers) do
         {:ok, _user} ->
           conn
           |> redirect(external: destroyed_account_redirect_url(conn))
