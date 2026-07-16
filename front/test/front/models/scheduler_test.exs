@@ -1,5 +1,5 @@
 defmodule Front.Models.SchedulerTest do
-  use ExUnit.Case
+  use Front.TestCase
 
   import Mock
 
