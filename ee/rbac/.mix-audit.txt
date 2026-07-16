@@ -3,6 +3,13 @@
 # user-controlled input; cowlib is only pulled in via plug_cowboy/grpc.
 GHSA-g2wm-735q-3f56
 
+# protobuf — unbounded recursion depth in embedded-message decoding (patched in
+# 0.16.1). The bump is tracked in a dedicated dependency PR: it must also drop
+# the vendored Google.Protobuf.Timestamp module (protobuf ships the well-known
+# types since 0.14, so keeping the generated copy fails --warnings-as-errors)
+# and adjust pb.gen accordingly. ee/rbac only decodes internal-service traffic.
+GHSA-rv48-qqj5-crxg
+
 # postgrex — channel-name SQL injection in Postgrex.Notifications.listen/3.
 # ee/rbac does not call Postgrex.Notifications anywhere (grep `Postgrex.Notifications`
 # in lib/ returns no hits). Bumping postgrex past 0.19.x would cascade into an
