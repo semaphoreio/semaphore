@@ -17,13 +17,11 @@ defmodule Guard.McpOAuth.JWT do
 
   require Logger
 
-  @default_token_ttl_seconds 3600
-
   @doc """
   Creates a signed JWT for an MCP grant.
 
   ## Options
-  - `:ttl_seconds` - Token TTL in seconds (default: 3600)
+  - `:ttl_seconds` - Token TTL in seconds (defaults to `default_token_ttl_seconds/0`)
 
   ## Returns
   - `{:ok, token}` on success
@@ -33,7 +31,7 @@ defmodule Guard.McpOAuth.JWT do
   def create_token(params, opts \\ []) do
     with {:ok, signer} <- get_signer() do
       now = DateTime.utc_now() |> DateTime.to_unix()
-      ttl = Keyword.get(opts, :ttl_seconds, @default_token_ttl_seconds)
+      ttl = Keyword.get(opts, :ttl_seconds, default_token_ttl_seconds())
 
       claims = %{
         "iss" => issuer(),
@@ -54,6 +52,14 @@ defmodule Guard.McpOAuth.JWT do
     e ->
       Logger.error("[McpOAuth.JWT] Error creating token: #{inspect(e)}")
       {:error, :token_creation_failed}
+  end
+
+  @doc """
+  Returns the default token TTL in seconds.
+  """
+  @spec default_token_ttl_seconds() :: pos_integer()
+  def default_token_ttl_seconds do
+    Application.fetch_env!(:guard, :mcp_oauth_access_token_ttl_seconds)
   end
 
   @doc """
