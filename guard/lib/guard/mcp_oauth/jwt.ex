@@ -57,11 +57,6 @@ defmodule Guard.McpOAuth.JWT do
   end
 
   @doc """
-  Returns the default token TTL in seconds.
-  """
-  def default_token_ttl_seconds, do: @default_token_ttl_seconds
-
-  @doc """
   Returns the OAuth issuer URL.
   """
   @spec issuer() :: String.t()
