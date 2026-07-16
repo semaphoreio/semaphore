@@ -33,6 +33,7 @@ config :guard,
   feature_app_endpoint: "127.0.0.1:50052",
   instance_config_grpc_endpoint: "127.0.0.1:50051",
   rbac_grpc_endpoint: "127.0.0.1:50052",
+  groups_grpc_endpoint: "127.0.0.1:50052",
   okta_grpc_endpoint: "127.0.0.1:50052"
 
 config :guard, Guard.Repo,

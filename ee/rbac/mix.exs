@@ -25,7 +25,7 @@ defmodule Rbac.MixProject do
     [
       {:grpc, "< 0.9.0"},
       {:grpc_mock, github: "renderedtext/grpc-mock", branch: "grpc08", only: [:dev, :test]},
-      {:protobuf, "~> 0.13.0"},
+      {:protobuf, "~> 0.16.1"},
       {:mix_test_watch, "~> 1.2.0", only: :dev},
       {:watchman, github: "renderedtext/ex-watchman"},
       {:postgrex, ">= 0.19.2"},
