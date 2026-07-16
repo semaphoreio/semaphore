@@ -1,4 +1,14 @@
 GIT
+  remote: https://github.com/dexyk/grpc.git
+  revision: d2bfbfab64b64643280a116fc957107db43d7727
+  branch: ruby-v1.62.1-auth-context-leak-fix
+  submodules: true
+  specs:
+    grpc (1.62.1)
+      google-protobuf (~> 3.25)
+      googleapis-common-protos-types (~> 1.0)
+
+GIT
   remote: https://github.com/renderedtext/watchman.git
   revision: 74530687a232aea678b6738114c82dfc163657cd
   ref: 74530687a232aea678b6738114c82dfc163657cd
@@ -167,18 +177,6 @@ GEM
     google-protobuf (3.25.8-x86_64-linux)
     googleapis-common-protos-types (1.18.0)
       google-protobuf (>= 3.18, < 5.a)
-    grpc (1.62.3)
-      google-protobuf (~> 3.25)
-      googleapis-common-protos-types (~> 1.0)
-    grpc (1.62.3-aarch64-linux)
-      google-protobuf (~> 3.25)
-      googleapis-common-protos-types (~> 1.0)
-    grpc (1.62.3-arm64-darwin)
-      google-protobuf (~> 3.25)
-      googleapis-common-protos-types (~> 1.0)
-    grpc (1.62.3-x86_64-linux)
-      google-protobuf (~> 3.25)
-      googleapis-common-protos-types (~> 1.0)
     grpc-tools (1.74.1)
     hashdiff (1.2.0)
     httparty (0.24.2)
@@ -521,7 +519,7 @@ DEPENDENCIES
   factory_bot_rails (< 5)
   faraday (>= 2.14.3)
   googleapis-common-protos-types (~> 1.18.0)
-  grpc (~> 1.62.1)
+  grpc (~> 1.62.1)!
   grpc-tools
   httparty (~> 0.24.0)
   httpclient
