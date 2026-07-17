@@ -16,8 +16,8 @@ gem 'net-imap', '~> 0.5.15'
 # Forked grpc: patches an auth_context object leak (grpc_auth_context not
 # released on the unauthenticated / no-cert early-return paths in rb_call.c).
 # Built from source, so the C-core + third_party submodules are compiled at
-# bundle-install time. See https://github.com/dexyk/grpc/tree/ruby-v1.62.1-auth-context-leak-fix
-gem "grpc", "~> 1.62.1", :github => "dexyk/grpc", :branch => "ruby-v1.62.1-auth-context-leak-fix", :submodules => true
+# bundle-install time. See https://github.com/renderedtext/grpc/tree/ruby-v1.62.1-auth-context-leak-fix
+gem "grpc", "~> 1.62.1", :github => "renderedtext/grpc", :branch => "ruby-v1.62.1-auth-context-leak-fix", :submodules => true
 gem "googleapis-common-protos-types", "~> 1.18.0"
 gem "httparty", "~> 0.24.0"
 gem "httpclient"

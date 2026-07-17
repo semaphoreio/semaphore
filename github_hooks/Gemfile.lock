@@ -1,5 +1,5 @@
 GIT
-  remote: https://github.com/dexyk/grpc.git
+  remote: https://github.com/renderedtext/grpc.git
   revision: d2bfbfab64b64643280a116fc957107db43d7727
   branch: ruby-v1.62.1-auth-context-leak-fix
   submodules: true

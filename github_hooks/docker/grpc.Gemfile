@@ -14,6 +14,6 @@ source "https://rubygems.org"
 git_source(:github) { |repo| "https://github.com/#{repo}.git" }
 
 gem "grpc", "1.62.1",
-    :github     => "dexyk/grpc",
+    :github     => "renderedtext/grpc",
     :ref        => "d2bfbfab64b64643280a116fc957107db43d7727",
     :submodules => true
