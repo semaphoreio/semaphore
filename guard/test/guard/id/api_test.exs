@@ -107,6 +107,152 @@ defmodule Guard.Id.Api.Test do
     end
   end
 
+  describe "GET /device with a parked device authorization" do
+    setup do
+      bypass = Guard.Mocks.OpenIDConnect.discovery_document_server()
+      disc_url = "http://localhost:#{bypass.port}/.well-known/openid-configuration"
+
+      oidc = Application.get_env(:guard, :oidc)
+
+      Application.put_env(:guard, :oidc, %{
+        discovery_url: disc_url,
+        client_id: "test_client_id",
+        client_secret: "test_client_secret"
+      })
+
+      on_exit(fn ->
+        Application.put_env(:guard, :oidc, oidc)
+      end)
+
+      :ok
+    end
+
+    test "no parked flow renders the entry form (unchanged)" do
+      {:ok, response} = send_login_request(path: "/device")
+
+      assert response.status_code == 200
+      assert response.body =~ "Enter the code shown in your terminal"
+    end
+
+    test "a parked pending flow resumes the sign-in instead of re-asking for the code" do
+      {row, display} = pending_device_row()
+
+      {:ok, response} =
+        send_login_request(
+          path: "/device",
+          headers: [{"cookie", parked_state_cookie(row.id, display)}]
+        )
+
+      assert response.status_code == 302
+      {_, location} = Enum.find(response.headers, fn h -> elem(h, 0) == "location" end)
+      assert location =~ "/protocol/openid-connect/auth"
+
+      # A fresh state cookie is issued, exactly like the code POST does.
+      {_, cookie} = Enum.find(response.headers, fn h -> elem(h, 0) == "set-cookie" end)
+      assert cookie =~ "semaphore_auth_state="
+    end
+
+    test "the same ?user_code= as the parked flow also resumes" do
+      {row, display} = pending_device_row()
+
+      {:ok, response} =
+        send_login_request(
+          path: "/device",
+          query: %{user_code: display},
+          headers: [{"cookie", parked_state_cookie(row.id, display)}]
+        )
+
+      assert response.status_code == 302
+    end
+
+    test "a ?user_code= for a DIFFERENT code wins over the parked flow" do
+      {row, display} = pending_device_row()
+
+      {:ok, response} =
+        send_login_request(
+          path: "/device",
+          query: %{user_code: "WXYZ-WXYZ"},
+          headers: [{"cookie", parked_state_cookie(row.id, display)}]
+        )
+
+      assert response.status_code == 200
+      assert response.body =~ "Enter the code shown in your terminal"
+      assert response.body =~ "WXYZ-WXYZ"
+    end
+
+    test "a parked flow whose row expired falls back to the form with a fresh-code hint" do
+      {row, display} = pending_device_row()
+
+      past = DateTime.utc_now() |> DateTime.add(-60, :second) |> DateTime.truncate(:second)
+      {:ok, _} = Guard.Store.CliAuthCode.update_row(row, %{expires_at: past})
+
+      {:ok, response} =
+        send_login_request(
+          path: "/device",
+          headers: [{"cookie", parked_state_cookie(row.id, display)}]
+        )
+
+      assert response.status_code == 200
+      assert response.body =~ "That sign-in request expired"
+      assert response.body =~ "Enter the code shown in your terminal"
+    end
+
+    test "a parked flow whose row was denied falls back to the plain form" do
+      {row, display} = pending_device_row()
+      {:ok, :denied} = Guard.CLIAuth.deny_device(row.id)
+
+      {:ok, response} =
+        send_login_request(
+          path: "/device",
+          headers: [{"cookie", parked_state_cookie(row.id, display)}]
+        )
+
+      assert response.status_code == 200
+      assert response.body =~ "Enter the code shown in your terminal"
+      refute response.body =~ "That sign-in request expired"
+    end
+
+    test "a normal web-login OIDC state (2-tuple, no device ctx) renders the form" do
+      secret = Application.get_env(:guard, :session_secret_key_base)
+
+      cookie_conn =
+        Plug.Test.conn(:get, "/")
+        |> Map.put(:secret_key_base, secret)
+        |> Guard.Utils.Http.put_state_value("semaphore_auth_state", {"oidc-state", "verifier"})
+
+      cookie = "semaphore_auth_state=#{cookie_conn.resp_cookies["semaphore_auth_state"].value}"
+
+      {:ok, response} = send_login_request(path: "/device", headers: [{"cookie", cookie}])
+
+      assert response.status_code == 200
+      assert response.body =~ "Enter the code shown in your terminal"
+    end
+  end
+
+  # Creates a pending device row (as POST /cli/device would) and returns it
+  # with its display-formatted user code.
+  defp pending_device_row do
+    {:ok, %{user_code: display}} = Guard.CLIAuth.request_device_authorization()
+    {:ok, row} = Guard.CLIAuth.verify_user_code(display, nil)
+    {row, display}
+  end
+
+  # Builds the encrypted state cookie exactly as the code POST parks it, using
+  # the same helper and secret as the app.
+  defp parked_state_cookie(row_id, display) do
+    secret = Application.get_env(:guard, :session_secret_key_base)
+
+    conn =
+      Plug.Test.conn(:get, "/")
+      |> Map.put(:secret_key_base, secret)
+      |> Guard.Utils.Http.put_state_value(
+        "semaphore_auth_state",
+        {"oidc-state", "oidc-verifier", %{device_row_id: row_id, user_code_display: display}}
+      )
+
+    "semaphore_auth_state=#{conn.resp_cookies["semaphore_auth_state"].value}"
+  end
+
   describe "parse_expires_at/1" do
     test "returns nil for nil input" do
       assert Guard.Id.Api.parse_expires_at(nil) == nil

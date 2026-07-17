@@ -352,7 +352,83 @@ defmodule Guard.Id.Api do
   get "/device" do
     conn = fetch_query_params(conn)
     prefill = conn.query_params["user_code"] || ""
-    device_entry_page(conn, 200, prefill: prefill)
+
+    # Navigating back here while a device authorization is already parked in
+    # the state cookie (the code POST stashes it before redirecting to the
+    # IdP) resumes that sign-in instead of asking for the code again.
+    case parked_device_authorization(conn, prefill) do
+      {:resume, row, user_code_display, conn} ->
+        resume_device_oidc(conn, row, user_code_display)
+
+      {:expired, conn} ->
+        conn
+        |> Guard.Utils.Http.delete_state_value(@state_cookie_key)
+        |> device_entry_page(200,
+          prefill: prefill,
+          error:
+            "That sign-in request expired. Start a new one from your terminal " <>
+              "and enter the new code."
+        )
+
+      {:none, conn} ->
+        device_entry_page(conn, 200, prefill: prefill)
+    end
+  end
+
+  # Resolves what a GET /device should do with the state cookie:
+  #
+  #   * `{:resume, row, display, conn}` - a device flow is parked and its row
+  #     is still pending and unexpired; continue to the IdP.
+  #   * `{:expired, conn}` - the parked row is pending but past expires_at;
+  #     the caller drops the stale cookie and re-renders the form with a hint.
+  #   * `{:none, conn}` - no parked device flow (no cookie, a normal web-login
+  #     OIDC state, a consumed/denied row, or an explicit ?user_code= for a
+  #     DIFFERENT code); render the entry form as before.
+  #
+  # The signed state cookie remains the only carrier of flow state - nothing
+  # is read from the URL beyond the pre-existing prefill, and resuming
+  # re-issues a fresh OIDC state/verifier exactly like the code POST does.
+  defp parked_device_authorization(conn, prefill) do
+    case Guard.Utils.Http.fetch_state_value(conn, @state_cookie_key) do
+      {:ok, {_state, _verifier, %{device_row_id: row_id, user_code_display: display}}, conn} ->
+        if prefill_matches?(prefill, display) do
+          resolve_parked_device_row(conn, row_id, display)
+        else
+          # An explicitly supplied different code wins over the parked flow.
+          {:none, conn}
+        end
+
+      {:ok, _other, conn} ->
+        {:none, conn}
+
+      _ ->
+        {:none, conn}
+    end
+  end
+
+  defp resolve_parked_device_row(conn, row_id, display) do
+    case Guard.Store.CliAuthCode.get_device(row_id) do
+      {:ok, %{status: "pending"} = row} ->
+        if DateTime.compare(DateTime.utc_now(), row.expires_at) == :lt do
+          {:resume, row, display, conn}
+        else
+          {:expired, conn}
+        end
+
+      _ ->
+        # Consumed, denied, or gone: this sign-in already reached a terminal
+        # state elsewhere; fall back to the plain entry form.
+        {:none, conn}
+    end
+  end
+
+  # An empty prefill is a plain revisit; a non-empty one only resumes the
+  # parked flow when it is the same code (compared normalized).
+  defp prefill_matches?("", _display), do: true
+
+  defp prefill_matches?(prefill, display) do
+    Guard.Store.CliAuthCode.normalize_user_code(prefill) ==
+      Guard.Store.CliAuthCode.normalize_user_code(display)
   end
 
   post "/device" do
@@ -491,15 +567,23 @@ defmodule Guard.Id.Api do
   end
 
   defp start_device_oidc(conn, row, raw_user_code) do
+    user_code_display =
+      raw_user_code
+      |> Guard.Store.CliAuthCode.normalize_user_code()
+      |> Guard.Store.CliAuthCode.format_user_code()
+
+    resume_device_oidc(conn, row, user_code_display)
+  end
+
+  # Redirects into the OIDC sign-in for a device row, parking the device
+  # context in the state cookie. Used both when the code is first submitted
+  # (start_device_oidc) and when GET /device resumes a parked pending flow -
+  # each call issues a fresh state/verifier pair, replacing any previous one.
+  defp resume_device_oidc(conn, row, user_code_display) do
     oidc_callback = id_page("oidc/callback")
 
     case Guard.OIDC.authorization_uri(oidc_callback) do
       {:ok, {state, verifier, url}} ->
-        user_code_display =
-          raw_user_code
-          |> Guard.Store.CliAuthCode.normalize_user_code()
-          |> Guard.Store.CliAuthCode.format_user_code()
-
         # Ride the device context inside the single OIDC state cookie (3-tuple),
         # per-flow and gated by state_match.
         ctx = %{device_row_id: row.id, user_code_display: user_code_display}
