@@ -24,6 +24,235 @@ defmodule Guard.Id.Api.Test do
     end
   end
 
+  describe "CLI token endpoints send Cache-Control: no-store" do
+    setup do
+      bypass = Guard.Mocks.OpenIDConnect.discovery_document_server()
+      disc_url = "http://localhost:#{bypass.port}/.well-known/openid-configuration"
+
+      oidc = Application.get_env(:guard, :oidc)
+
+      Application.put_env(:guard, :oidc, %{
+        discovery_url: disc_url,
+        client_id: "test_client_id",
+        client_secret: "test_client_secret"
+      })
+
+      on_exit(fn ->
+        Application.put_env(:guard, :oidc, oidc)
+      end)
+
+      :ok
+    end
+
+    test "POST /cli/device (success) is not cacheable" do
+      {:ok, response} = send_post_request(path: "/cli/device", body: %{})
+
+      assert response.status_code == 200
+      assert cache_control(response) == "no-store"
+    end
+
+    test "POST /cli/token (error path) is not cacheable either" do
+      {:ok, response} =
+        send_post_request(path: "/cli/token", body: %{"grant_type" => "unsupported"})
+
+      assert response.status_code == 400
+      assert cache_control(response) == "no-store"
+    end
+
+    test "POST /cli/device returns the RFC 8628 fields with the 30-minute TTL" do
+      {:ok, response} = send_post_request(path: "/cli/device", body: %{})
+
+      assert response.status_code == 200
+      body = Jason.decode!(response.body)
+
+      assert is_binary(body["device_code"]) and body["device_code"] != ""
+      assert body["user_code"] =~ ~r/^[A-Z]{4}-[A-Z]{4}$/
+      assert body["verification_uri"] =~ "/device"
+      assert body["verification_uri_complete"] =~ body["user_code"]
+      assert body["expires_in"] == 1800
+      assert body["interval"] == 5
+    end
+
+    test "POST /cli/token with the loopback grant type is no longer supported" do
+      {:ok, response} =
+        send_post_request(
+          path: "/cli/token",
+          body: %{"grant_type" => "authorization_code", "code" => "x"}
+        )
+
+      assert response.status_code == 400
+      assert Jason.decode!(response.body) == %{"error" => "unsupported_grant_type"}
+    end
+
+    test "POST /cli/token with an unknown device_code is invalid_grant" do
+      {:ok, response} =
+        send_post_request(
+          path: "/cli/token",
+          body: %{
+            "grant_type" => "urn:ietf:params:oauth:grant-type:device_code",
+            "device_code" => "no-such-code"
+          }
+        )
+
+      assert response.status_code == 400
+      assert Jason.decode!(response.body) == %{"error" => "invalid_grant"}
+    end
+
+    test "GET /device renders the code entry page with the query prefill" do
+      {:ok, response} = send_login_request(path: "/device", query: %{user_code: "BCDF-GHJK"})
+
+      assert response.status_code == 200
+      assert response.body =~ "Enter the code shown in your terminal"
+      assert response.body =~ "BCDF-GHJK"
+    end
+  end
+
+  describe "GET /device with a parked device authorization" do
+    setup do
+      bypass = Guard.Mocks.OpenIDConnect.discovery_document_server()
+      disc_url = "http://localhost:#{bypass.port}/.well-known/openid-configuration"
+
+      oidc = Application.get_env(:guard, :oidc)
+
+      Application.put_env(:guard, :oidc, %{
+        discovery_url: disc_url,
+        client_id: "test_client_id",
+        client_secret: "test_client_secret"
+      })
+
+      on_exit(fn ->
+        Application.put_env(:guard, :oidc, oidc)
+      end)
+
+      :ok
+    end
+
+    test "no parked flow renders the entry form (unchanged)" do
+      {:ok, response} = send_login_request(path: "/device")
+
+      assert response.status_code == 200
+      assert response.body =~ "Enter the code shown in your terminal"
+    end
+
+    test "a parked pending flow resumes the sign-in instead of re-asking for the code" do
+      {row, display} = pending_device_row()
+
+      {:ok, response} =
+        send_login_request(
+          path: "/device",
+          headers: [{"cookie", parked_state_cookie(row.id, display)}]
+        )
+
+      assert response.status_code == 302
+      {_, location} = Enum.find(response.headers, fn h -> elem(h, 0) == "location" end)
+      assert location =~ "/protocol/openid-connect/auth"
+
+      # A fresh state cookie is issued, exactly like the code POST does.
+      {_, cookie} = Enum.find(response.headers, fn h -> elem(h, 0) == "set-cookie" end)
+      assert cookie =~ "semaphore_auth_state="
+    end
+
+    test "the same ?user_code= as the parked flow also resumes" do
+      {row, display} = pending_device_row()
+
+      {:ok, response} =
+        send_login_request(
+          path: "/device",
+          query: %{user_code: display},
+          headers: [{"cookie", parked_state_cookie(row.id, display)}]
+        )
+
+      assert response.status_code == 302
+    end
+
+    test "a ?user_code= for a DIFFERENT code wins over the parked flow" do
+      {row, display} = pending_device_row()
+
+      {:ok, response} =
+        send_login_request(
+          path: "/device",
+          query: %{user_code: "WXYZ-WXYZ"},
+          headers: [{"cookie", parked_state_cookie(row.id, display)}]
+        )
+
+      assert response.status_code == 200
+      assert response.body =~ "Enter the code shown in your terminal"
+      assert response.body =~ "WXYZ-WXYZ"
+    end
+
+    test "a parked flow whose row expired falls back to the form with a fresh-code hint" do
+      {row, display} = pending_device_row()
+
+      past = DateTime.utc_now() |> DateTime.add(-60, :second) |> DateTime.truncate(:second)
+      {:ok, _} = Guard.Store.CliAuthCode.update_row(row, %{expires_at: past})
+
+      {:ok, response} =
+        send_login_request(
+          path: "/device",
+          headers: [{"cookie", parked_state_cookie(row.id, display)}]
+        )
+
+      assert response.status_code == 200
+      assert response.body =~ "That sign-in request expired"
+      assert response.body =~ "Enter the code shown in your terminal"
+    end
+
+    test "a parked flow whose row was denied falls back to the plain form" do
+      {row, display} = pending_device_row()
+      {:ok, :denied} = Guard.CLIAuth.deny_device(row.id)
+
+      {:ok, response} =
+        send_login_request(
+          path: "/device",
+          headers: [{"cookie", parked_state_cookie(row.id, display)}]
+        )
+
+      assert response.status_code == 200
+      assert response.body =~ "Enter the code shown in your terminal"
+      refute response.body =~ "That sign-in request expired"
+    end
+
+    test "a normal web-login OIDC state (2-tuple, no device ctx) renders the form" do
+      secret = Application.get_env(:guard, :session_secret_key_base)
+
+      cookie_conn =
+        Plug.Test.conn(:get, "/")
+        |> Map.put(:secret_key_base, secret)
+        |> Guard.Utils.Http.put_state_value("semaphore_auth_state", {"oidc-state", "verifier"})
+
+      cookie = "semaphore_auth_state=#{cookie_conn.resp_cookies["semaphore_auth_state"].value}"
+
+      {:ok, response} = send_login_request(path: "/device", headers: [{"cookie", cookie}])
+
+      assert response.status_code == 200
+      assert response.body =~ "Enter the code shown in your terminal"
+    end
+  end
+
+  # Creates a pending device row (as POST /cli/device would) and returns it
+  # with its display-formatted user code.
+  defp pending_device_row do
+    {:ok, %{user_code: display}} = Guard.CLIAuth.request_device_authorization()
+    {:ok, row} = Guard.CLIAuth.verify_user_code(display, nil)
+    {row, display}
+  end
+
+  # Builds the encrypted state cookie exactly as the code POST parks it, using
+  # the same helper and secret as the app.
+  defp parked_state_cookie(row_id, display) do
+    secret = Application.get_env(:guard, :session_secret_key_base)
+
+    conn =
+      Plug.Test.conn(:get, "/")
+      |> Map.put(:secret_key_base, secret)
+      |> Guard.Utils.Http.put_state_value(
+        "semaphore_auth_state",
+        {"oidc-state", "oidc-verifier", %{device_row_id: row_id, user_code_display: display}}
+      )
+
+    "semaphore_auth_state=#{conn.resp_cookies["semaphore_auth_state"].value}"
+  end
+
   describe "parse_expires_at/1" do
     test "returns nil for nil input" do
       assert Guard.Id.Api.parse_expires_at(nil) == nil
@@ -1563,4 +1792,10 @@ defmodule Guard.Id.Api.Test do
   end
 
   defp domain, do: Application.get_env(:guard, :base_domain)
+
+  defp cache_control(response) do
+    response.headers
+    |> Enum.find(fn {name, _} -> String.downcase(name) == "cache-control" end)
+    |> elem(1)
+  end
 end
