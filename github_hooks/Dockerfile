@@ -47,10 +47,47 @@ RUN apt-get update && apt-get install --no-install-recommends -y --allow-downgra
 ENV BUNDLE_JOBS=4 \
   BUNDLE_RETRY=3
 
+# ---------------------------------------------------------------------------
+# grpc-gem: compile the forked grpc C-core (clone -> submodule init -> native
+# build) ONCE into an isolated, cacheable layer. Its only cache key is
+# docker/grpc.Gemfile, so it is rebuilt only when the grpc fork ref changes --
+# unrelated Gemfile.lock churn no longer triggers the ~20-40 min recompile. The
+# compiled gem lands in $BUNDLE_PATH and is copied forward by the stages below.
+#
+# After building, strip the build-only tree from the installed git gem. A
+# git-source native gem otherwise leaves the whole monorepo (~4GB) in the
+# bundle: the .git clone (~1.4G), C/C++ core sources under src/ (~2.0G), all
+# third_party submodules (~440M), headers, tests and object files -- none
+# needed at runtime, which needs only src/ruby + the compiled grpc_c.so (~9M).
+# This is what keeps the dev/production images at a normal size (~4.0GB -> ~85MB
+# of bundle). Verified: grpc still loads and the consuming stages' bundle
+# install reuses the slimmed gem without recompiling.
+# ---------------------------------------------------------------------------
+FROM builder AS grpc-gem
+
+WORKDIR /grpc-build
+
+COPY docker/grpc.Gemfile Gemfile
+RUN bundle install --jobs=${BUNDLE_JOBS} && \
+    GEMDIR="$(ls -d "$BUNDLE_PATH"/ruby/*/bundler/gems/grpc-* | head -1)" && \
+    test -n "$GEMDIR" && \
+    rm -rf \
+      "$GEMDIR/.git" "$GEMDIR/third_party" "$GEMDIR/test" \
+      "$GEMDIR/src/core" "$GEMDIR/src/cpp" "$GEMDIR/src/python" "$GEMDIR/src/php" \
+      "$GEMDIR/src/csharp" "$GEMDIR/src/objective-c" "$GEMDIR/src/proto" "$GEMDIR/src/android" \
+      "$GEMDIR/include" "$GEMDIR/examples" "$GEMDIR/doc" "$GEMDIR/tools" \
+      "$GEMDIR/bazel" "$GEMDIR/cmake" "$GEMDIR/templates" "$GEMDIR/summerofcode" && \
+    find "$GEMDIR" -type f \( -name '*.o' -o -name '*.a' \) -delete && \
+    find "$BUNDLE_PATH"/ruby/*/extensions -type f -name '*.o' -delete && \
+    rm -f "$BUNDLE_PATH/config"
+
 FROM builder AS dev
 
 WORKDIR /app
 
+# Reuse the pre-compiled grpc from the cached grpc-gem layer, so this stage's
+# bundle install skips the C-core build and only installs the remaining gems.
+COPY --from=grpc-gem ${BUNDLE_PATH} ${BUNDLE_PATH}
 COPY Gemfile Gemfile.lock ./
 RUN bundle install --jobs=${BUNDLE_JOBS}
 
@@ -67,6 +104,8 @@ FROM builder as production-builder
 
 WORKDIR /app
 
+# Reuse the pre-compiled grpc from the cached grpc-gem layer (see dev stage).
+COPY --from=grpc-gem ${BUNDLE_PATH} ${BUNDLE_PATH}
 COPY Gemfile Gemfile.lock ./
 RUN bundle config set --local deployment true && \
     bundle config set --local without 'development test' && \
