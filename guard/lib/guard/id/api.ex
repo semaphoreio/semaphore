@@ -351,27 +351,49 @@ defmodule Guard.Id.Api do
   #
   get "/device" do
     conn = fetch_query_params(conn)
-    prefill = conn.query_params["user_code"] || ""
 
-    # Navigating back here while a device authorization is already parked in
-    # the state cookie (the code POST stashes it before redirecting to the
-    # IdP) resumes that sign-in instead of asking for the code again.
+    prefill =
+      case conn.query_params["user_code"] do
+        p when is_binary(p) -> p
+        _ -> ""
+      end
+
+    # Auth-first, in precedence order:
+    #
+    #   1. A device authorization parked mid-flow in the state cookie (the
+    #      code POST stashes it before redirecting to the IdP) resumes its
+    #      sign-in continuation, session or not.
+    #   2. Otherwise, an anonymous visitor is sent to the OIDC sign-in first
+    #      and lands back here afterwards, prefill preserved (carried in the
+    #      state cookie across the round trip - see device_return flow).
+    #   3. An authenticated visitor gets the code-entry page as before.
+    #
+    # Entering the code stays an explicit POST in every branch: auth-first
+    # never consumes a code from the URL.
     case parked_device_authorization(conn, prefill) do
       {:resume, row, user_code_display, conn} ->
         resume_device_oidc(conn, row, user_code_display)
 
       {:expired, conn} ->
-        conn
-        |> Guard.Utils.Http.delete_state_value(@state_cookie_key)
-        |> device_entry_page(200,
-          prefill: prefill,
-          error:
-            "That sign-in request expired. Start a new one from your terminal " <>
-              "and enter the new code."
-        )
+        conn = Guard.Utils.Http.delete_state_value(conn, @state_cookie_key)
+
+        if conn.assigns[:user_id] do
+          device_entry_page(conn, 200,
+            prefill: prefill,
+            error:
+              "That sign-in request expired. Start a new one from your terminal " <>
+                "and enter the new code."
+          )
+        else
+          start_device_return_oidc(conn, prefill)
+        end
 
       {:none, conn} ->
-        device_entry_page(conn, 200, prefill: prefill)
+        if conn.assigns[:user_id] do
+          device_entry_page(conn, 200, prefill: prefill)
+        else
+          start_device_return_oidc(conn, prefill)
+        end
     end
   end
 
@@ -574,6 +596,38 @@ defmodule Guard.Id.Api do
 
     resume_device_oidc(conn, row, user_code_display)
   end
+
+  # Auth-first: an anonymous GET /device goes to the OIDC sign-in before the
+  # code-entry page is ever shown. The state cookie carries a `device_return`
+  # ctx (a shape distinct from both the web-login 2-tuple and the
+  # device-authorization `device_row_id` ctx), so the callback knows to land
+  # the user back on /device - prefill included - after establishing the
+  # session. The prefill rides the encrypted cookie, never the IdP round trip.
+  defp start_device_return_oidc(conn, prefill) do
+    oidc_callback = id_page("oidc/callback")
+
+    case Guard.OIDC.authorization_uri(oidc_callback) do
+      {:ok, {state, verifier, url}} ->
+        ctx = %{device_return: true, user_code_prefill: prefill}
+
+        conn
+        |> Guard.Utils.Http.put_state_value(@state_cookie_key, {state, verifier, ctx})
+        |> Guard.Utils.Http.redirect_to_url(url)
+
+      {:error, error} ->
+        Logger.error("CLI device return OIDC authorization_uri error: #{inspect(error)}")
+        conn |> error_login_page("Error occurred while fetching authorization uri")
+    end
+  end
+
+  # Where the device_return callback lands: back on the verification page,
+  # with the preserved prefill re-attached (query-encoded; the host is fixed).
+  defp device_return_url(""), do: id_page("device")
+
+  defp device_return_url(prefill) when is_binary(prefill),
+    do: id_page("device") <> "?" <> URI.encode_query(%{"user_code" => prefill})
+
+  defp device_return_url(_), do: id_page("device")
 
   # Redirects into the OIDC sign-in for a device row, parking the device
   # context in the state cookie. Used both when the code is first submitted
@@ -825,21 +879,38 @@ defmodule Guard.Id.Api do
   end
 
   get "/oidc/callback" do
-    if cli_flow?(conn) do
-      handle_cli_oidc_callback(conn)
-    else
-      handle_browser_oidc_callback(conn)
+    case oidc_flow_kind(conn) do
+      :device ->
+        handle_cli_oidc_callback(conn)
+
+      {:device_return, prefill} ->
+        handle_browser_oidc_callback(conn, device_return_url(prefill))
+
+      :browser ->
+        handle_browser_oidc_callback(conn)
     end
   end
 
-  # A CLI flow is identified by the OIDC state cookie carrying a 3rd element (the
-  # CLI device context map). Branching on the cookie SHAPE (not a separate
-  # persistent cookie) means each flow is self-contained: a new login overwrites
-  # it, the callback consumes it, and state_match still gates it.
-  defp cli_flow?(conn) do
+  # The flow a callback belongs to is identified by the SHAPE of the OIDC
+  # state cookie (not a separate persistent cookie), so each flow is
+  # self-contained: a new login overwrites it, the callback consumes it, and
+  # state_match still gates it.
+  #
+  #   * `{state, verifier, %{device_row_id: ...}}` - CLI device authorization
+  #     continuation (code already entered); ends on the consent page.
+  #   * `{state, verifier, %{device_return: true, ...}}` - auth-first /device
+  #     visit; a normal web sign-in that lands back on /device afterwards.
+  #   * `{state, verifier}` - normal web login.
+  defp oidc_flow_kind(conn) do
     case Guard.Utils.Http.fetch_state_value(conn, @state_cookie_key) do
-      {:ok, {_state, _verifier, %{device_row_id: _}}, _conn} -> true
-      _ -> false
+      {:ok, {_state, _verifier, %{device_row_id: _}}, _conn} ->
+        :device
+
+      {:ok, {_state, _verifier, %{device_return: true} = ctx}, _conn} ->
+        {:device_return, Map.get(ctx, :user_code_prefill, "")}
+
+      _ ->
+        :browser
     end
   end
 
@@ -1071,14 +1142,27 @@ defmodule Guard.Id.Api do
 
   defp html_escape(value), do: value |> to_string() |> html_escape()
 
-  defp handle_browser_oidc_callback(conn) do
+  # A web sign-in callback. With `return_to` set (the auth-first /device
+  # visit), the user lands there after the session is established instead of
+  # following the stored redirect - notably, a fresh registration must come
+  # back to /device too, not to the default post-signup page.
+  defp handle_browser_oidc_callback(conn, return_to \\ nil) do
     if Guard.OIDC.enabled?() do
       oidc_callback = id_page("oidc/callback")
 
       code = conn.query_params["code"] || ""
       callback_state = conn.query_params["state"] || ""
 
-      {:ok, {state, verifier}, conn} = Guard.Utils.Http.fetch_state_value(conn, @state_cookie_key)
+      {:ok, state_tuple, conn} = Guard.Utils.Http.fetch_state_value(conn, @state_cookie_key)
+
+      # A plain web login parks a 2-tuple; the device_return flow parks a
+      # 3-tuple with its ctx. Both authenticate identically.
+      {state, verifier} =
+        case state_tuple do
+          {state, verifier} -> {state, verifier}
+          {state, verifier, _ctx} -> {state, verifier}
+        end
+
       Guard.Utils.Http.delete_state_value(conn, @state_cookie_key)
 
       with :ok <- Guard.OIDC.state_match?(state, callback_state),
@@ -1102,10 +1186,13 @@ defmodule Guard.Id.Api do
              }) do
         Logger.info("[ID] User create a session user_id: #{user.id} session_id: #{session.id}")
 
-        conn
-        |> inject_session_cookie(session)
-        |> update_redirect(mode)
-        |> redirect(mode)
+        conn = inject_session_cookie(conn, session)
+
+        if return_to do
+          conn |> Guard.Utils.Http.redirect_to_url(return_to)
+        else
+          conn |> update_redirect(mode) |> redirect(mode)
+        end
       else
         {:error, :invalid_state} ->
           Logger.warning("State mismatch: #{inspect(state)} != #{inspect(callback_state)}")
