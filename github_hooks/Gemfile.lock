@@ -1,10 +1,10 @@
 GIT
   remote: https://github.com/renderedtext/grpc.git
-  revision: d2bfbfab64b64643280a116fc957107db43d7727
-  branch: ruby-v1.62.1-auth-context-leak-fix
+  revision: 80d88be7ca316e8b6a60aa9af6d7774500955e77
+  branch: ruby-v1.62.3-auth-context-leak-fix
   submodules: true
   specs:
-    grpc (1.62.1)
+    grpc (1.62.3)
       google-protobuf (~> 3.25)
       googleapis-common-protos-types (~> 1.0)
 
@@ -519,7 +519,7 @@ DEPENDENCIES
   factory_bot_rails (< 5)
   faraday (>= 2.14.3)
   googleapis-common-protos-types (~> 1.18.0)
-  grpc (~> 1.62.1)!
+  grpc (~> 1.62.3)!
   grpc-tools
   httparty (~> 0.24.0)
   httpclient

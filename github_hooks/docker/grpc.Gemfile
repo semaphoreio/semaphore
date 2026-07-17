@@ -7,13 +7,13 @@
 #
 # KEEP THIS IN SYNC WITH ../Gemfile and ../Gemfile.lock:
 #   - the :ref below must equal the `revision:` of the grpc GIT block in
-#     Gemfile.lock (currently d2bfbfab64b64643280a116fc957107db43d7727).
+#     Gemfile.lock (currently 80d88be7ca316e8b6a60aa9af6d7774500955e77).
 # If it drifts, nothing breaks — the main `bundle install` just recompiles grpc
 # that one build instead of reusing the cached layer.
 source "https://rubygems.org"
 git_source(:github) { |repo| "https://github.com/#{repo}.git" }
 
-gem "grpc", "1.62.1",
+gem "grpc", "1.62.3",
     :github     => "renderedtext/grpc",
-    :ref        => "d2bfbfab64b64643280a116fc957107db43d7727",
+    :ref        => "80d88be7ca316e8b6a60aa9af6d7774500955e77",
     :submodules => true
