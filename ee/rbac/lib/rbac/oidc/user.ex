@@ -147,6 +147,10 @@ defmodule Rbac.OIDC.User do
          ) do
       {:error, changeset} ->
         if RepoHostAccount.uid_taken_error?(changeset) do
+          Watchman.increment(
+            {"rbac.repo_host_account.account_taken", [Atom.to_string(repo_host), "oidc_signup"]}
+          )
+
           Logger.warning(
             "Skipping #{repo_host} link for user #{user.id}: provider account already connected to another user"
           )
