@@ -136,6 +136,12 @@ config :guard, Guard.McpOAuth.AuthCodeCleaner,
     {"*/30 * * * *", {Guard.McpOAuth.AuthCodeCleaner, :process, []}}
   ]
 
+config :guard, Guard.DuplicateLinkAuditor,
+  jobs: [
+    # Every hour
+    {"0 * * * *", {Guard.DuplicateLinkAuditor, :process, []}}
+  ]
+
 config :guard, :hard_destroy_grace_period_days, 30
 
 config :guard, :posthog_api_key, ""
