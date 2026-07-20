@@ -23,6 +23,8 @@ defmodule Audit.Event do
     field(:streamed, :boolean)
 
     field(:operation_id, :string)
+
+    field(:expires_at, :utc_datetime)
   end
 
   def create(params) do
