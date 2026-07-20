@@ -109,8 +109,16 @@ defmodule Guard.User.Actions do
           {:cont, acc}
 
         {:error, changeset} ->
-          if provider_conflict == :skip and
-               Guard.FrontRepo.RepoHostAccount.uid_taken_error?(changeset) do
+          uid_taken = Guard.FrontRepo.RepoHostAccount.uid_taken_error?(changeset)
+
+          if uid_taken do
+            Watchman.increment(
+              {"guard.repo_host_account.account_taken",
+               [Atom.to_string(repo_host), "user_create"]}
+            )
+          end
+
+          if provider_conflict == :skip and uid_taken do
             Logger.warning(
               "Skipping #{repo_host} link for user #{user_id}: provider account already connected to another user"
             )
