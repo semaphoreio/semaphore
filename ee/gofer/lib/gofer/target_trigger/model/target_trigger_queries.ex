@@ -169,6 +169,25 @@ defmodule Gofer.TargetTrigger.Model.TargetTriggerQueries do
   end
 
   @doc """
+  Returns count of unprocessed trigger requests for target in given switch.
+  """
+  def get_unprocessed_triggers_count(switch_id, target_name) do
+    from(st in SwitchTrigger,
+      left_join: tt in TargetTrigger,
+      on: tt.switch_trigger_id == st.id and tt.target_name == ^target_name,
+      where: st.switch_id == ^switch_id,
+      where:
+        (st.processed == true and tt.processed == false) or
+          (st.processed == false and ^target_name in st.target_names)
+    )
+    |> select([st], count(st.id))
+    |> Repo.one()
+    |> ToTuple.ok()
+  rescue
+    e -> {:error, e}
+  end
+
+  @doc """
   Returns TargetTrigger with given switch_trigger_id and target_name
   """
   def get_by_id_and_name(id, name) do

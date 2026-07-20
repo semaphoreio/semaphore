@@ -254,4 +254,27 @@ describe("Switch", () => {
       expect(Switch.isProcessed(null)).to.not.be.true;
     });
   });
+
+  describe("promotionErrorMessage", () => {
+    it("returns code and message from JSON payload", () => {
+      const xhr = {
+        responseJSON: {
+          code: "REFUSED",
+          message: "Too many pending promotions."
+        }
+      };
+
+      expect(Switch.promotionErrorMessage(xhr)).to.equal(
+        "REFUSED: Too many pending promotions."
+      );
+    });
+
+    it("falls back to response text for non-JSON payloads", () => {
+      const xhr = {
+        responseText: "Internal error"
+      };
+
+      expect(Switch.promotionErrorMessage(xhr)).to.equal("Internal error");
+    });
+  });
 });

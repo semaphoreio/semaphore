@@ -9,6 +9,13 @@ import Config
 
 get_env! = &(System.get_env(&1) || raise("env variable #{&1} is missing"))
 
+get_integer = fn env_var, default ->
+  case System.get_env(env_var) do
+    nil -> default
+    value -> String.to_integer(value)
+  end
+end
+
 if config_env() == :prod do
   config :gofer, amqp_url: System.get_env("AMQP_URL") || "amqp://rabbitmq:5672"
 
@@ -30,7 +37,14 @@ if config_env() == :prod do
     start_grpc?: get_env!.("START_GRPC") == "true",
     start_cache?: get_env!.("START_CACHE") == "true",
     start_engines?: get_env!.("START_ENGINES") == "true",
-    start_metrics?: get_env!.("START_METRICS") == "true"
+    start_metrics?: get_env!.("START_METRICS") == "true",
+    target_trigger_ttl_ms:
+      get_integer.("TARGET_TRIGGER_TTL_MS", Application.get_env(:gofer, :target_trigger_ttl_ms)),
+    target_trigger_queue_limit:
+      get_integer.(
+        "TARGET_TRIGGER_QUEUE_LIMIT",
+        Application.get_env(:gofer, :target_trigger_queue_limit)
+      )
 
   config :gofer, Gofer.RBAC.RolesCache,
     cache_name: :rbac_roles,
