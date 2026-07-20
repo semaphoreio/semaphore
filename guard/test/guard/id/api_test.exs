@@ -98,13 +98,8 @@ defmodule Guard.Id.Api.Test do
       assert Jason.decode!(response.body) == %{"error" => "invalid_grant"}
     end
 
-    test "GET /device renders the code entry page with the query prefill (authenticated)" do
-      {:ok, response} =
-        send_login_request(
-          path: "/device",
-          query: %{user_code: "BCDF-GHJK"},
-          headers: [session_header()]
-        )
+    test "GET /device renders the code entry page with the query prefill" do
+      {:ok, response} = send_login_request(path: "/device", query: %{user_code: "BCDF-GHJK"})
 
       assert response.status_code == 200
       assert response.body =~ "Enter the code shown in your terminal"
@@ -132,25 +127,11 @@ defmodule Guard.Id.Api.Test do
       :ok
     end
 
-    test "no parked flow renders the entry form for an authenticated session" do
-      {:ok, response} = send_login_request(path: "/device", headers: [session_header()])
+    test "no parked flow renders the entry form (unchanged)" do
+      {:ok, response} = send_login_request(path: "/device")
 
       assert response.status_code == 200
       assert response.body =~ "Enter the code shown in your terminal"
-    end
-
-    test "a parked pending flow resumes even when the session is authenticated" do
-      {row, display} = pending_device_row()
-
-      {:ok, response} =
-        send_login_request(
-          path: "/device",
-          headers: [session_header(), {"cookie", parked_state_cookie(row.id, display)}]
-        )
-
-      assert response.status_code == 302
-      {_, location} = Enum.find(response.headers, fn h -> elem(h, 0) == "location" end)
-      assert location =~ "/protocol/openid-connect/auth"
     end
 
     test "a parked pending flow resumes the sign-in instead of re-asking for the code" do
@@ -191,7 +172,7 @@ defmodule Guard.Id.Api.Test do
         send_login_request(
           path: "/device",
           query: %{user_code: "WXYZ-WXYZ"},
-          headers: [session_header(), {"cookie", parked_state_cookie(row.id, display)}]
+          headers: [{"cookie", parked_state_cookie(row.id, display)}]
         )
 
       assert response.status_code == 200
@@ -208,7 +189,7 @@ defmodule Guard.Id.Api.Test do
       {:ok, response} =
         send_login_request(
           path: "/device",
-          headers: [session_header(), {"cookie", parked_state_cookie(row.id, display)}]
+          headers: [{"cookie", parked_state_cookie(row.id, display)}]
         )
 
       assert response.status_code == 200
@@ -223,7 +204,7 @@ defmodule Guard.Id.Api.Test do
       {:ok, response} =
         send_login_request(
           path: "/device",
-          headers: [session_header(), {"cookie", parked_state_cookie(row.id, display)}]
+          headers: [{"cookie", parked_state_cookie(row.id, display)}]
         )
 
       assert response.status_code == 200
@@ -241,128 +222,10 @@ defmodule Guard.Id.Api.Test do
 
       cookie = "semaphore_auth_state=#{cookie_conn.resp_cookies["semaphore_auth_state"].value}"
 
-      {:ok, response} =
-        send_login_request(path: "/device", headers: [session_header(), {"cookie", cookie}])
+      {:ok, response} = send_login_request(path: "/device", headers: [{"cookie", cookie}])
 
       assert response.status_code == 200
       assert response.body =~ "Enter the code shown in your terminal"
-    end
-  end
-
-  describe "GET /device is auth-first" do
-    setup do
-      bypass = Guard.Mocks.OpenIDConnect.discovery_document_server()
-      disc_url = "http://localhost:#{bypass.port}/.well-known/openid-configuration"
-
-      oidc = Application.get_env(:guard, :oidc)
-
-      Application.put_env(:guard, :oidc, %{
-        discovery_url: disc_url,
-        client_id: "test_client_id",
-        client_secret: "test_client_secret"
-      })
-
-      on_exit(fn ->
-        Application.put_env(:guard, :oidc, oidc)
-      end)
-
-      %{bypass: bypass, client_id: "test_client_id"}
-    end
-
-    test "an anonymous GET redirects to the OIDC sign-in with a return-to-device state" do
-      {:ok, response} = send_login_request(path: "/device")
-
-      assert response.status_code == 302
-      {_, location} = Enum.find(response.headers, fn h -> elem(h, 0) == "location" end)
-      assert location =~ "/protocol/openid-connect/auth"
-
-      {_, cookie} = Enum.find(response.headers, fn h -> elem(h, 0) == "set-cookie" end)
-      assert cookie =~ "semaphore_auth_state="
-    end
-
-    test "after sign-in the user lands back on /device with the prefill preserved", %{
-      bypass: bypass,
-      client_id: client_id
-    } do
-      # An existing user with an OIDC identity, as the web-login tests set up.
-      {:ok, user} = Support.Factories.RbacUser.insert()
-      {:ok, oidc_user} = Support.Factories.OIDCUser.insert(user.id)
-
-      {:ok, _} =
-        Support.Members.insert_user(
-          id: user.id,
-          email: user.email,
-          name: user.name
-        )
-
-      {token, _claims} =
-        Guard.Mocks.OpenIDConnect.generate_openid_connect_token(%{client_id: client_id}, %{
-          id: oidc_user.oidc_user_id,
-          name: "Foo Bar",
-          email: "foo@example.com"
-        })
-
-      Guard.Mocks.OpenIDConnect.expect_fetch_token(bypass, %{
-        "token_type" => "Bearer",
-        "id_token" => token,
-        "access_token" => "MY_ACCESS_TOKEN",
-        "refresh_token" => "OTHER_REFRESH_TOKEN",
-        "expires_in" => 300
-      })
-
-      # Anonymous visit with a prefill: bounced to the IdP, prefill parked in
-      # the state cookie (it must survive the round trip without touching the
-      # IdP URLs).
-      {:ok, response} = send_login_request(path: "/device", query: %{user_code: "BCDF-GHJK"})
-
-      assert response.status_code == 302
-      {_, location} = Enum.find(response.headers, fn h -> elem(h, 0) == "location" end)
-      refute location =~ "BCDF-GHJK"
-
-      {_, cookie} = Enum.find(response.headers, fn h -> elem(h, 0) == "set-cookie" end)
-      {:ok, state} = extract_state_from_location(location)
-
-      # Simulated IdP callback: the session is established and the user is
-      # sent back to /device, prefill re-attached.
-      {:ok, response} =
-        send_login_request(
-          path: "/oidc/callback",
-          headers: [{"cookie", cookie}],
-          query: %{state: state}
-        )
-
-      assert response.status_code == 302
-      {_, location} = Enum.find(response.headers, fn h -> elem(h, 0) == "location" end)
-      assert location == "https://id.#{domain()}/device?user_code=BCDF-GHJK"
-
-      {_, session_cookie} = Enum.find(response.headers, fn h -> elem(h, 0) == "set-cookie" end)
-      assert session_cookie =~ "_sxtesting_session="
-    end
-
-    test "a registered session gets the entry page directly (no redirect)" do
-      {:ok, response} = send_login_request(path: "/device", headers: [session_header()])
-
-      assert response.status_code == 200
-      assert response.body =~ "Enter the code shown in your terminal"
-    end
-  end
-
-  # Simulates the ext-auth edge having authenticated the browser session:
-  # in production the auth service injects x-semaphore-user-id after
-  # validating the session cookie (and strips any client-supplied value).
-  defp session_header, do: {"x-semaphore-user-id", Ecto.UUID.generate()}
-
-  # The OIDC state parameter from an authorize-redirect location URL.
-  defp extract_state_from_location(location) do
-    case URI.parse(location).query do
-      nil ->
-        {:error, nil}
-
-      query ->
-        case URI.decode_query(query) do
-          %{"state" => state} -> {:ok, state}
-          _ -> {:error, nil}
-        end
     end
   end
 
