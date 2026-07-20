@@ -1488,6 +1488,26 @@ defmodule Guard.Id.Api.Test do
       assert location == "https://id.localhost"
     end
 
+    test "when the state cookie is absent entirely, redirect instead of crashing" do
+      # Regression: a user who refreshes or back-buttons a COMPLETED callback
+      # replays /oidc/callback?code=...&state=... AFTER the state cookie was
+      # deleted (success deletes it), so no cookie is sent at all. This is
+      # distinct from "when state is missing return 400" above, which DOES send
+      # the cookie and only omits the query state (hitting :invalid_state).
+      # With no cookie, fetch_state_value returns {:error, _}; the handler must
+      # redirect gracefully rather than raise a MatchError -> 500.
+      {:ok, response} =
+        send_login_request(
+          path: "/oidc/callback",
+          query: %{code: "some-code", state: "some-state"}
+        )
+
+      {_, location} = Enum.find(response.headers, fn h -> elem(h, 0) == "location" end)
+
+      assert response.status_code == 302
+      assert location == "https://id.localhost"
+    end
+
     test "when state do not match saved one return 400" do
       {:ok, response} = send_login_request(path: "/oidc/login")
       {_, cookie} = Enum.find(response.headers, fn h -> elem(h, 0) == "set-cookie" end)
