@@ -47,6 +47,18 @@ defmodule Rbac.OIDC.User do
     end
   end
 
+  def set_federated_identity(oidc_user_id, identity) do
+    with {:ok, client} <- Rbac.Api.OIDC.client() do
+      Rbac.Api.OIDC.set_federated_identity(client, oidc_user_id, identity)
+    end
+  end
+
+  def remove_federated_identity(oidc_user_id, provider) do
+    with {:ok, client} <- Rbac.Api.OIDC.client() do
+      Rbac.Api.OIDC.remove_federated_identity(client, oidc_user_id, provider)
+    end
+  end
+
   def create_with_oidc_data(%{oidc_user_id: oidc_user_id}) do
     with {:ok, oidc_user} <- get_oidc_user(oidc_user_id),
          {:ok, github} <- get_github_data(oidc_user.github),
@@ -103,36 +115,51 @@ defmodule Rbac.OIDC.User do
   end
 
   defp sync_repo_host_acccount_connection(user, github, bitbucket, gitlab) do
-    alias Rbac.FrontRepo.RepoHostAccount
-
     common = %{
       name: user.name,
-      permission_scope: RepoHostAccount.register_scope(),
+      permission_scope: Rbac.FrontRepo.RepoHostAccount.register_scope(),
       token: nil,
       refresh_token: nil
     }
 
-    RepoHostAccount.update_repo_host_account(
-      user.id,
-      :github,
-      %{github_uid: github.id, login: github.login} |> Map.merge(common),
-      reset: true
-    )
+    connect_provider(user, :github, %{github_uid: github.id, login: github.login}, common)
 
-    RepoHostAccount.update_repo_host_account(
-      user.id,
+    connect_provider(
+      user,
       :bitbucket,
-      %{github_uid: bitbucket.id, login: bitbucket.login} |> Map.merge(common),
-      reset: true
+      %{github_uid: bitbucket.id, login: bitbucket.login},
+      common
     )
 
-    RepoHostAccount.update_repo_host_account(
-      user.id,
-      :gitlab,
-      %{github_uid: gitlab.id, login: gitlab.username} |> Map.merge(common),
-      reset: true
-    )
+    connect_provider(user, :gitlab, %{github_uid: gitlab.id, login: gitlab.username}, common)
 
     {:ok, user}
+  end
+
+  defp connect_provider(user, repo_host, data, common) do
+    alias Rbac.FrontRepo.RepoHostAccount
+
+    case RepoHostAccount.update_repo_host_account(
+           user.id,
+           repo_host,
+           data |> Map.merge(common),
+           reset: true
+         ) do
+      {:error, changeset} ->
+        if RepoHostAccount.uid_taken_error?(changeset) do
+          Watchman.increment(
+            {"rbac.repo_host_account.account_taken", [Atom.to_string(repo_host), "oidc_signup"]}
+          )
+
+          Logger.warning(
+            "Skipping #{repo_host} link for user #{user.id}: provider account already connected to another user"
+          )
+        end
+
+        :ok
+
+      _ ->
+        :ok
+    end
   end
 end
