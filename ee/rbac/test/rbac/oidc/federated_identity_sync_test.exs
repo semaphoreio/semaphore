@@ -92,7 +92,141 @@ defmodule Rbac.OIDC.FederatedIdentitySyncTest do
       assert {:error, :not_found} = RepoHostAccount.get_for_github_user(loser.id)
 
       assert_receive {:oidc_delete, _}, 5_000
-      assert_receive {:oidc_post, _}, 5_000
+
+      # The loser's identity may still be attached in Keycloak; pushing the
+      # claimer's identity anyway could attach it to two users. The push is
+      # skipped until a later sync succeeds.
+      refute_receive {:oidc_post, _}, 500
+    end
+
+    test "retries transient Keycloak failures before succeeding", %{claimer: claimer} do
+      test_pid = self()
+      counter = :counters.new(1, [:atomics])
+
+      Tesla.Mock.mock_global(fn
+        %{method: :delete, url: url} ->
+          send(test_pid, {:oidc_delete, url})
+
+          if :counters.get(counter, 1) == 0 do
+            :counters.add(counter, 1, 1)
+            {:ok, %Tesla.Env{status: 500, body: %{"errorMessage" => "boom"}}}
+          else
+            {:ok, %Tesla.Env{status: 204, body: %{}}}
+          end
+
+        %{method: :post, url: url, body: body} ->
+          send(test_pid, {:oidc_post, url, body})
+          {:ok, %Tesla.Env{status: 200, body: %{}}}
+
+        %{method: :put} ->
+          {:ok, %Tesla.Env{status: 200, body: %{}}}
+      end)
+
+      assert {:ok, _} =
+               RepoHostAccount.create(%{
+                 login: "new-login",
+                 github_uid: @claimed_uid,
+                 repo_host: "github",
+                 user_id: claimer.id,
+                 name: "Claimer",
+                 permission_scope: "user:email"
+               })
+
+      # first delete attempt fails, the retry succeeds, so the push happens
+      assert_receive {:oidc_delete, _first_attempt}, 5_000
+      assert_receive {:oidc_delete, _retry}, 5_000
+
+      assert_receive {:oidc_post, post_url, _body}, 5_000
+      assert post_url =~ "kc-claimer"
+    end
+  end
+
+  describe "claims inside a database transaction" do
+    setup do
+      {:ok, loser} = Support.Factories.RbacUser.insert()
+
+      {:ok, _} =
+        Support.Members.insert_repo_host_account(
+          github_uid: @claimed_uid,
+          user_id: loser.id,
+          login: "previous-owner",
+          name: "Previous Owner",
+          permission_scope: "user:email",
+          revoked: true
+        )
+
+      {:ok, _} = Rbac.Store.OIDCUser.connect_user("kc-loser", loser.id)
+
+      {:ok, claimer} = Support.Factories.RbacUser.insert()
+      {:ok, _} = Rbac.Store.OIDCUser.connect_user("kc-claimer", claimer.id)
+
+      {:ok, loser: loser, claimer: claimer}
+    end
+
+    test "sync is deferred until run_deferred/0 releases it", %{claimer: claimer} do
+      setup_oidc_connection()
+      setup_tesla_mock()
+
+      {:ok, _} =
+        Rbac.FrontRepo.transaction(fn ->
+          {:ok, account} =
+            RepoHostAccount.create(%{
+              login: "new-login",
+              github_uid: @claimed_uid,
+              repo_host: "github",
+              user_id: claimer.id,
+              name: "Claimer",
+              permission_scope: "user:email"
+            })
+
+          account
+        end)
+
+      # the claim ran inside a transaction, so nothing may touch Keycloak yet
+      refute_receive {:oidc_delete, _}, 300
+
+      assert :ok = FederatedIdentitySync.run_deferred()
+
+      assert_receive {:oidc_delete, loser_url}, 5_000
+      assert loser_url =~ "kc-loser"
+
+      assert_receive {:oidc_delete, _claimer_pre_post}, 5_000
+      assert_receive {:oidc_post, post_url, _body}, 5_000
+      assert post_url =~ "kc-claimer"
+    end
+
+    test "drop_deferred/0 discards pending syncs", %{claimer: claimer} do
+      oidc_env = Application.get_env(:rbac, :oidc)
+
+      Application.put_env(:rbac, :oidc, %{
+        discovery_url: "http://localhost/dummy",
+        manage_url: "http://localhost/manage/"
+      })
+
+      on_exit(fn -> Application.put_env(:rbac, :oidc, oidc_env) end)
+
+      setup_tesla_mock()
+
+      {:ok, _} =
+        Rbac.FrontRepo.transaction(fn ->
+          {:ok, account} =
+            RepoHostAccount.create(%{
+              login: "new-login",
+              github_uid: @claimed_uid,
+              repo_host: "github",
+              user_id: claimer.id,
+              name: "Claimer",
+              permission_scope: "user:email"
+            })
+
+          account
+        end)
+
+      assert :ok = FederatedIdentitySync.drop_deferred()
+      assert :ok = FederatedIdentitySync.run_deferred()
+
+      refute_receive {:oidc_delete, _}, 300
+      refute_receive {:oidc_post, _, _}, 300
     end
   end
 
