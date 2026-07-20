@@ -4,6 +4,7 @@ config :logger, level: (System.get_env("LOG_LEVEL") || "info") |> String.to_atom
 
 config :branch_hub, BranchHub.Repo,
   adapter: Ecto.Adapters.Postgres,
+  prepare: :unnamed,
   database: System.get_env("POSTGRES_DB_NAME") || "front",
   username: System.get_env("POSTGRES_DB_USER") || "postgres",
   password: System.get_env("POSTGRES_DB_PASSWORD") || "the-cake-is-a-lie",
