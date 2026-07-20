@@ -322,6 +322,79 @@ defmodule Guard.Id.Api.Test do
       refute Enum.any?(set_cookies, &(&1 =~ "_sxtesting_session="))
     end
 
+    test "device_return signs up a brand-new OIDC identity: creates the user, sets the marker, 302s to clean /device",
+         %{bypass: bypass, client_id: client_id} do
+      # A not-yet-existing OIDC identity, so find_or_create_user goes down the
+      # create_with_oidc_data branch (the signup path the demo's Take 1 hits).
+      email = "newbie@example.com"
+      oidc_user_id = Ecto.UUID.generate()
+      url = "#{Application.get_env(:guard, :oidc)[:manage_url]}/users/#{oidc_user_id}"
+
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://bitbucket.org/api/2.0/users/5a6add182da8542a51d3fbcc"} ->
+          json(%{"uuid" => "{babc48bc-fc2c-46f8-aae0-34c5ec255ffb}", "nickname" => "radwo"})
+
+        %{method: :get, url: "https://api.github.com/user/184065"} ->
+          json(%{"id" => 184_065, "login" => "radwo"})
+
+        %{method: :get, url: ^url} ->
+          json(%{
+            "id" => oidc_user_id,
+            "email" => email,
+            "firstName" => "New",
+            "lastName" => "Comer",
+            "federatedIdentities" => [
+              %{"identityProvider" => "github", "userId" => "184065", "userName" => "radwo"},
+              %{
+                "identityProvider" => "bitbucket",
+                "userId" => "5a6add182da8542a51d3fbcc",
+                "userName" => "radwo2"
+              }
+            ]
+          })
+      end)
+
+      assert Guard.Store.RbacUser.fetch_by_oidc_id(oidc_user_id) == {:error, :not_found}
+
+      {token, _claims} =
+        Guard.Mocks.OpenIDConnect.generate_openid_connect_token(%{client_id: client_id}, %{
+          id: oidc_user_id,
+          name: "New Comer",
+          email: email
+        })
+
+      Guard.Mocks.OpenIDConnect.expect_fetch_token(bypass, %{
+        "token_type" => "Bearer",
+        "id_token" => token,
+        "access_token" => "MY_ACCESS_TOKEN",
+        "refresh_token" => "OTHER_REFRESH_TOKEN",
+        "expires_in" => 300
+      })
+
+      # Real anonymous GET /device -> IdP, prefill parked in the state cookie.
+      {:ok, r1} = send_login_request(path: "/device", query: %{user_code: "BCDF-GHJK"})
+      assert r1.status_code == 302
+      {_, loc1} = Enum.find(r1.headers, fn h -> elem(h, 0) == "location" end)
+      {:ok, state} = extract_state_from_location(loc1)
+      {_, state_cookie} = Enum.find(r1.headers, fn h -> elem(h, 0) == "set-cookie" end)
+
+      # device_return callback for the brand-new identity.
+      {:ok, r2} =
+        send_login_request(
+          path: "/oidc/callback",
+          headers: [{"cookie", state_cookie}],
+          query: %{state: state}
+        )
+
+      assert r2.status_code == 302
+      {_, location} = Enum.find(r2.headers, fn h -> elem(h, 0) == "location" end)
+      assert location == "https://id.#{domain()}/device?user_code=BCDF-GHJK"
+      assert set_cookie_pair(r2, "semaphore_cli_device_authed") != nil
+
+      # The account was actually created via the create_with_oidc_data branch.
+      assert {:ok, _user} = Guard.Store.RbacUser.fetch_by_oidc_id(oidc_user_id)
+    end
+
     test "a failed device_return callback lands on a device-specific page, not /login" do
       # A device_return-shaped state cookie but a mismatching state param: the
       # exchange never happens; the user must not be dumped on bare /login.
