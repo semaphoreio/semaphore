@@ -1024,12 +1024,10 @@ defmodule Guard.Id.Api do
     code = conn.query_params["code"] || ""
     callback_state = conn.query_params["state"] || ""
 
-    {:ok, {state, verifier, _ctx}, conn} =
-      Guard.Utils.Http.fetch_state_value(conn, @state_cookie_key)
-
-    conn = Guard.Utils.Http.delete_state_value(conn, @state_cookie_key)
-
-    with :ok <- Guard.OIDC.state_match?(state, callback_state),
+    with {:ok, {state, verifier, _ctx}, conn} <-
+           Guard.Utils.Http.fetch_state_value(conn, @state_cookie_key),
+         conn = Guard.Utils.Http.delete_state_value(conn, @state_cookie_key),
+         :ok <- Guard.OIDC.state_match?(state, callback_state),
          {:ok, {user_data, _tokens}} <- Guard.OIDC.exchange_code(code, verifier, oidc_callback),
          {:ok, allowed, error_message} <- verify_oidc_login_allowed(user_data),
          true <- allowed || {:error, :login_not_allowed, error_message},
@@ -1073,12 +1071,10 @@ defmodule Guard.Id.Api do
       code = conn.query_params["code"] || ""
       callback_state = conn.query_params["state"] || ""
 
-      {:ok, {state, verifier, _ctx}, conn} =
-        Guard.Utils.Http.fetch_state_value(conn, @state_cookie_key)
-
-      conn = Guard.Utils.Http.delete_state_value(conn, @state_cookie_key)
-
-      with :ok <- Guard.OIDC.state_match?(state, callback_state),
+      with {:ok, {state, verifier, _ctx}, conn} <-
+             Guard.Utils.Http.fetch_state_value(conn, @state_cookie_key),
+           conn = Guard.Utils.Http.delete_state_value(conn, @state_cookie_key),
+           :ok <- Guard.OIDC.state_match?(state, callback_state),
            {:ok, {user_data, _tokens}} <- Guard.OIDC.exchange_code(code, verifier, oidc_callback),
            {:ok, allowed, error_message} <- verify_oidc_login_allowed(user_data),
            true <- allowed || {:error, :login_not_allowed, error_message},
@@ -1284,9 +1280,9 @@ defmodule Guard.Id.Api do
       code = conn.query_params["code"] || ""
       callback_state = conn.query_params["state"] || ""
 
-      {:ok, {state, verifier}, conn} = Guard.Utils.Http.fetch_state_value(conn, @state_cookie_key)
-
-      with :ok <- Guard.OIDC.state_match?(state, callback_state),
+      with {:ok, {state, verifier}, conn} <-
+             Guard.Utils.Http.fetch_state_value(conn, @state_cookie_key),
+           :ok <- Guard.OIDC.state_match?(state, callback_state),
            {:ok, {user_data, tokens}} <-
              Guard.OIDC.exchange_code(code, verifier, oidc_callback),
            {:ok, allowed, error_message} <- verify_oidc_login_allowed(user_data),
@@ -1317,7 +1313,7 @@ defmodule Guard.Id.Api do
         |> redirect(mode)
       else
         {:error, :invalid_state} ->
-          Logger.warning("State mismatch: #{inspect(state)} != #{inspect(callback_state)}")
+          Logger.warning("State mismatch on OIDC callback: #{inspect(callback_state)}")
 
           conn |> Guard.Utils.Http.redirect_to_url(id_page())
 
@@ -1582,7 +1578,11 @@ defmodule Guard.Id.Api do
   end
 
   defp get_user_agent(conn) do
-    [user_agent] = get_req_header(conn, "user-agent")
+    user_agent =
+      case get_req_header(conn, "user-agent") do
+        [ua | _] -> ua
+        _ -> ""
+      end
 
     {:ok, user_agent}
   end
