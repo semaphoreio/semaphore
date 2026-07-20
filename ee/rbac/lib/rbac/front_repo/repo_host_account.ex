@@ -240,8 +240,10 @@ defmodule Rbac.FrontRepo.RepoHostAccount do
       |> FrontRepo.delete_all()
 
     if count > 0 do
+      Watchman.increment({"rbac.repo_host_account.revoked_link_claimed", [account.repo_host]})
+
       Logger.info(
-        "Released #{count} revoked repo_host_account row(s) for github uid #{account.github_uid} claimed by user #{account.user_id}"
+        "Released #{count} revoked repo_host_account row(s) for github uid #{account.github_uid} claimed by user #{account.user_id} from users #{inspect(released_user_ids)}"
       )
 
       Rbac.OIDC.FederatedIdentitySync.sync_github_claim(account, released_user_ids)
