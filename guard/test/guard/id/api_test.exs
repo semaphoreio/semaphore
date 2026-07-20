@@ -282,27 +282,9 @@ defmodule Guard.Id.Api.Test do
       assert cookie =~ "semaphore_auth_state="
     end
 
-    test "the device_return callback sets the marker cookie and lands on the code page with the prefill",
+    test "the device_return callback sets the marker cookie, redirects to a clean /device with the prefill, and starts NO standing session",
          %{bypass: bypass, client_id: client_id} do
-      {:ok, user} = Support.Factories.RbacUser.insert()
-      {:ok, oidc_user} = Support.Factories.OIDCUser.insert(user.id)
-
-      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
-
-      {token, _claims} =
-        Guard.Mocks.OpenIDConnect.generate_openid_connect_token(%{client_id: client_id}, %{
-          id: oidc_user.oidc_user_id,
-          name: "Foo Bar",
-          email: "foo@example.com"
-        })
-
-      Guard.Mocks.OpenIDConnect.expect_fetch_token(bypass, %{
-        "token_type" => "Bearer",
-        "id_token" => token,
-        "access_token" => "MY_ACCESS_TOKEN",
-        "refresh_token" => "OTHER_REFRESH_TOKEN",
-        "expires_in" => 300
-      })
+      device_return_oidc_mock(bypass, client_id)
 
       # Anonymous visit with a prefill: bounced to the IdP, prefill parked in
       # the state cookie (never in the IdP URL).
@@ -315,9 +297,10 @@ defmodule Guard.Id.Api.Test do
       {_, cookie} = Enum.find(response.headers, fn h -> elem(h, 0) == "set-cookie" end)
       {:ok, state} = extract_state_from_location(location)
 
-      # Simulated IdP callback: the session is established and, instead of
-      # bouncing back to the edge-gated GET /device (the old loop), the
-      # code-entry form is rendered directly with the marker cookie set.
+      # Simulated IdP callback: instead of bouncing back to the edge-gated GET
+      # /device (the old loop) or rendering in place (which would replay the
+      # code on refresh), it 302s to a clean /device URL with the prefill and
+      # sets the marker cookie - and does NOT open a standing app session.
       {:ok, response} =
         send_login_request(
           path: "/oidc/callback",
@@ -325,9 +308,9 @@ defmodule Guard.Id.Api.Test do
           query: %{state: state}
         )
 
-      assert response.status_code == 200
-      assert response.body =~ "Enter the code shown in your terminal"
-      assert response.body =~ "BCDF-GHJK"
+      assert response.status_code == 302
+      {_, location} = Enum.find(response.headers, fn h -> elem(h, 0) == "location" end)
+      assert location == "https://id.#{domain()}/device?user_code=BCDF-GHJK"
 
       set_cookies =
         response.headers
@@ -335,16 +318,69 @@ defmodule Guard.Id.Api.Test do
         |> Enum.map(fn {_, c} -> c end)
 
       assert Enum.any?(set_cookies, &(&1 =~ "semaphore_cli_device_authed="))
-      assert Enum.any?(set_cookies, &(&1 =~ "_sxtesting_session="))
+      # device_return asserts "signed in" only; no full app session cookie.
+      refute Enum.any?(set_cookies, &(&1 =~ "_sxtesting_session="))
     end
 
-    test "a valid marker cookie renders the form with no redirect (anti-loop)" do
+    test "a failed device_return callback lands on a device-specific page, not /login" do
+      # A device_return-shaped state cookie but a mismatching state param: the
+      # exchange never happens; the user must not be dumped on bare /login.
       {:ok, response} =
-        send_login_request(path: "/device", headers: [{"cookie", device_authed_cookie()}])
+        send_login_request(
+          path: "/oidc/callback",
+          query: %{state: "does-not-match"},
+          headers: [{"cookie", device_return_state_cookie("BCDF-GHJK")}]
+        )
 
       assert response.status_code == 200
-      assert response.body =~ "Enter the code shown in your terminal"
-      assert Enum.find(response.headers, fn h -> elem(h, 0) == "location" end) == nil
+      assert response.body =~ "Sign-in failed"
+      assert response.body =~ "Return to your terminal"
+      refute response.body =~ "Log in to Semaphore"
+
+      set_cookies =
+        response.headers
+        |> Enum.filter(fn h -> elem(h, 0) == "set-cookie" end)
+        |> Enum.map(fn {_, c} -> c end)
+
+      refute Enum.any?(set_cookies, &(&1 =~ "semaphore_cli_device_authed="))
+    end
+
+    test "the real anon GET -> callback -> fresh GET handoff composes without a loop",
+         %{bypass: bypass, client_id: client_id} do
+      device_return_oidc_mock(bypass, client_id)
+
+      # 1. Real anonymous GET /device: 302 to the IdP, state cookie parked.
+      {:ok, r1} = send_login_request(path: "/device", query: %{user_code: "BCDF-GHJK"})
+      assert r1.status_code == 302
+      {_, loc1} = Enum.find(r1.headers, fn h -> elem(h, 0) == "location" end)
+      {:ok, state} = extract_state_from_location(loc1)
+      {_, state_cookie} = Enum.find(r1.headers, fn h -> elem(h, 0) == "set-cookie" end)
+
+      # 2. Real device_return callback: 302 to /device, marker cookie set.
+      {:ok, r2} =
+        send_login_request(
+          path: "/oidc/callback",
+          headers: [{"cookie", state_cookie}],
+          query: %{state: state}
+        )
+
+      assert r2.status_code == 302
+      marker_cookie = set_cookie_pair(r2, "semaphore_cli_device_authed")
+      assert marker_cookie != nil
+
+      # 3. Fresh GET /device carrying ONLY the real marker cookie: renders the
+      #    form, no redirect. This is the anti-loop guarantee, proven end to end.
+      {:ok, r3} =
+        send_login_request(
+          path: "/device",
+          query: %{user_code: "BCDF-GHJK"},
+          headers: [{"cookie", marker_cookie}]
+        )
+
+      assert r3.status_code == 200
+      assert r3.body =~ "Enter the code shown in your terminal"
+      assert r3.body =~ "BCDF-GHJK"
+      assert Enum.find(r3.headers, fn h -> elem(h, 0) == "location" end) == nil
     end
 
     test "an expired marker cookie with no edge header falls back to the sign-in redirect" do
@@ -405,21 +441,71 @@ defmodule Guard.Id.Api.Test do
   # Builds the encrypted device-auth marker cookie exactly as the device_return
   # callback sets it, using the same helper and secret as the app.
   defp device_authed_cookie(opts \\ []) do
-    secret = Application.get_env(:guard, :session_secret_key_base)
-
     marker = %{
       device_authed: true,
-      user_id: Ecto.UUID.generate(),
       user_code_prefill: Keyword.get(opts, :prefill, ""),
       issued_at: Keyword.get(opts, :issued_at, DateTime.utc_now() |> DateTime.to_unix())
     }
 
+    fabricate_cookie("semaphore_cli_device_authed", marker)
+  end
+
+  # A device_return-shaped state cookie (3-tuple with the device_return ctx),
+  # as start_device_return_oidc/2 parks before the IdP round trip.
+  defp device_return_state_cookie(prefill) do
+    fabricate_cookie(
+      "semaphore_auth_state",
+      {"oidc-state", "oidc-verifier", %{device_return: true, user_code_prefill: prefill}}
+    )
+  end
+
+  # Encrypts `value` under `key` with the app secret and returns a "name=value"
+  # Cookie header string.
+  defp fabricate_cookie(key, value) do
+    secret = Application.get_env(:guard, :session_secret_key_base)
+
     conn =
       Plug.Test.conn(:get, "/")
       |> Map.put(:secret_key_base, secret)
-      |> Guard.Utils.Http.put_state_value("semaphore_cli_device_authed", marker)
+      |> Guard.Utils.Http.put_state_value(key, value)
 
-    "semaphore_cli_device_authed=#{conn.resp_cookies["semaphore_cli_device_authed"].value}"
+    "#{key}=#{conn.resp_cookies[key].value}"
+  end
+
+  # Stands up the OIDC discovery/token mocks for a successful device_return
+  # sign-in of an existing OIDC user.
+  defp device_return_oidc_mock(bypass, client_id) do
+    {:ok, user} = Support.Factories.RbacUser.insert()
+    {:ok, oidc_user} = Support.Factories.OIDCUser.insert(user.id)
+    {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+    {token, _claims} =
+      Guard.Mocks.OpenIDConnect.generate_openid_connect_token(%{client_id: client_id}, %{
+        id: oidc_user.oidc_user_id,
+        name: "Foo Bar",
+        email: "foo@example.com"
+      })
+
+    Guard.Mocks.OpenIDConnect.expect_fetch_token(bypass, %{
+      "token_type" => "Bearer",
+      "id_token" => token,
+      "access_token" => "MY_ACCESS_TOKEN",
+      "refresh_token" => "OTHER_REFRESH_TOKEN",
+      "expires_in" => 300
+    })
+  end
+
+  # The "name=value" pair for a named cookie out of a response's Set-Cookie
+  # headers (attributes stripped), or nil if absent.
+  defp set_cookie_pair(response, name) do
+    response.headers
+    |> Enum.filter(fn h -> elem(h, 0) == "set-cookie" end)
+    |> Enum.map(fn {_, c} -> c end)
+    |> Enum.find(fn c -> String.starts_with?(c, name <> "=") end)
+    |> case do
+      nil -> nil
+      c -> c |> String.split(";") |> List.first()
+    end
   end
 
   # The OIDC state parameter from an authorize-redirect location URL.

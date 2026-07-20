@@ -429,7 +429,7 @@ defmodule Guard.Id.Api do
       {:authed, conn}
     else
       case fetch_device_authed_marker(conn, prefill) do
-        {:ok, _user_id, conn} -> {:authed, conn}
+        {:ok, conn} -> {:authed, conn}
         {:none, conn} -> {:anonymous, conn}
       end
     end
@@ -686,13 +686,24 @@ defmodule Guard.Id.Api do
     end
   end
 
+  # Clean id-host URL the device_return callback redirects to once the marker
+  # is set: back on /device with the (non-secret) user_code re-attached. A
+  # refresh of this URL is a harmless GET, unlike sitting on
+  # /oidc/callback?code=... which would replay the one-time OIDC code.
+  defp device_return_url(prefill) when is_binary(prefill) and prefill != "" do
+    id_page("device") <> "?" <> URI.encode_query(%{"user_code" => prefill})
+  end
+
+  defp device_return_url(_prefill), do: id_page("device")
+
   # Sets the short-lived, AEAD-encrypted marker recording that this browser
-  # just completed OIDC as `user_id`. It asserts identity only: the token
-  # mint/rotate still requires the code POST and the consent decision.
-  defp put_device_authed_marker(conn, user_id, prefill) do
+  # just completed the OIDC web sign-in. It asserts "this browser is signed in"
+  # only - no user identity is stored, and the token mint/rotate still requires
+  # the code POST and the consent decision (identity is re-established there via
+  # the device-authorization OIDC callback).
+  defp put_device_authed_marker(conn, prefill) do
     marker = %{
       device_authed: true,
-      user_id: user_id,
       user_code_prefill: prefill,
       issued_at: DateTime.utc_now() |> DateTime.to_unix()
     }
@@ -709,12 +720,11 @@ defmodule Guard.Id.Api do
       {:ok,
        %{
          device_authed: true,
-         user_id: user_id,
          user_code_prefill: marker_prefill,
          issued_at: issued_at
        }, conn} ->
         if device_marker_fresh?(issued_at) and prefill_matches?(prefill, marker_prefill) do
-          {:ok, user_id, conn}
+          {:ok, conn}
         else
           {:none, conn}
         end
@@ -965,7 +975,7 @@ defmodule Guard.Id.Api do
         handle_cli_oidc_callback(conn)
 
       {:device_return, prefill} ->
-        handle_browser_oidc_callback(conn, device_return: prefill)
+        handle_device_return_oidc_callback(conn, prefill)
 
       :browser ->
         handle_browser_oidc_callback(conn)
@@ -1047,6 +1057,50 @@ defmodule Guard.Id.Api do
           "Sign-in failed",
           "We couldn't complete sign-in for this request. Return to your terminal and try again."
         )
+    end
+  end
+
+  # Auth-first /device return: the anonymous visitor was bounced to the OIDC
+  # sign-in and is now back. We only confirm the web sign-in succeeded (account
+  # exists, allowed, not blocked) - NOT a standing app session: no session cookie
+  # is set, only the short-lived device-auth marker (keeps the browser footprint
+  # to "can approve"). Then 302 to a clean /device?user_code=<prefill> URL so a
+  # refresh is a harmless GET; rendering the form in place would leave the browser
+  # on /oidc/callback?code=... and replay the one-time OIDC code on reload.
+  defp handle_device_return_oidc_callback(conn, prefill) do
+    if Guard.OIDC.enabled?() do
+      oidc_callback = id_page("oidc/callback")
+      code = conn.query_params["code"] || ""
+      callback_state = conn.query_params["state"] || ""
+
+      {:ok, {state, verifier, _ctx}, conn} =
+        Guard.Utils.Http.fetch_state_value(conn, @state_cookie_key)
+
+      conn = Guard.Utils.Http.delete_state_value(conn, @state_cookie_key)
+
+      with :ok <- Guard.OIDC.state_match?(state, callback_state),
+           {:ok, {user_data, _tokens}} <- Guard.OIDC.exchange_code(code, verifier, oidc_callback),
+           {:ok, allowed, error_message} <- verify_oidc_login_allowed(user_data),
+           true <- allowed || {:error, :login_not_allowed, error_message},
+           {:ok, _user, _mode} <- find_or_create_user(user_data) do
+        conn
+        |> put_device_authed_marker(prefill)
+        |> Guard.Utils.Http.redirect_to_url(device_return_url(prefill))
+      else
+        error ->
+          Logger.warning("CLI device return OIDC callback failed: #{inspect(error)}")
+
+          # A device-specific page, never bare /login: the user was mid device
+          # sign-in and should be told to retry from the terminal.
+          device_message_page(
+            conn,
+            "Sign-in failed",
+            "We couldn't complete sign-in for this request. Return to your terminal and try again."
+          )
+      end
+    else
+      Logger.info("OIDC configuration is missing")
+      conn |> Guard.Utils.Http.redirect_to_url(id_page())
     end
   end
 
@@ -1223,29 +1277,14 @@ defmodule Guard.Id.Api do
 
   defp html_escape(value), do: value |> to_string() |> html_escape()
 
-  # A web sign-in callback. With `device_return: prefill` in opts (the
-  # auth-first /device visit) the user does NOT bounce back to the edge-gated
-  # GET /device - that redirect is exactly what looped. Instead we set the
-  # device-auth marker cookie and render the code-entry form directly, prefill
-  # included, so the next step is the explicit code POST.
-  defp handle_browser_oidc_callback(conn, opts \\ []) do
+  defp handle_browser_oidc_callback(conn) do
     if Guard.OIDC.enabled?() do
       oidc_callback = id_page("oidc/callback")
 
       code = conn.query_params["code"] || ""
       callback_state = conn.query_params["state"] || ""
 
-      {:ok, state_tuple, conn} = Guard.Utils.Http.fetch_state_value(conn, @state_cookie_key)
-
-      # A plain web login parks a 2-tuple; the device_return flow parks a
-      # 3-tuple with its ctx. Both authenticate identically.
-      {state, verifier} =
-        case state_tuple do
-          {state, verifier} -> {state, verifier}
-          {state, verifier, _ctx} -> {state, verifier}
-        end
-
-      Guard.Utils.Http.delete_state_value(conn, @state_cookie_key)
+      {:ok, {state, verifier}, conn} = Guard.Utils.Http.fetch_state_value(conn, @state_cookie_key)
 
       with :ok <- Guard.OIDC.state_match?(state, callback_state),
            {:ok, {user_data, tokens}} <-
@@ -1268,19 +1307,14 @@ defmodule Guard.Id.Api do
              }) do
         Logger.info("[ID] User create a session user_id: #{user.id} session_id: #{session.id}")
 
-        conn = inject_session_cookie(conn, session)
-
-        case Keyword.fetch(opts, :device_return) do
-          {:ok, prefill} ->
-            conn
-            |> put_device_authed_marker(user.id, prefill)
-            |> device_entry_page(200, prefill: prefill)
-
-          :error ->
-            conn
-            |> update_redirect(mode)
-            |> redirect(mode)
-        end
+        # Genuinely drop the consumed state cookie (the previous code discarded
+        # delete_state_value/2's return, leaving it live); thread it through so
+        # the successful response actually clears it.
+        conn
+        |> Guard.Utils.Http.delete_state_value(@state_cookie_key)
+        |> inject_session_cookie(session)
+        |> update_redirect(mode)
+        |> redirect(mode)
       else
         {:error, :invalid_state} ->
           Logger.warning("State mismatch: #{inspect(state)} != #{inspect(callback_state)}")
