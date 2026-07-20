@@ -24,7 +24,12 @@ module.exports = {
     tsconfigRootDir: __dirname,
     sourceType: "module",
   },
-  ignorePatterns: ["*.js", "*.json"],
+  ignorePatterns: [
+    "*.js",
+    "*.json",
+    "!js/workflow_editor/models/agent.js",
+    "!js/workflow_editor/models/agent.spec.js",
+  ],
   rules: {},
  overrides: [
     {
