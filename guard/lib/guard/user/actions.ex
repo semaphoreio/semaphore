@@ -31,11 +31,13 @@ defmodule Guard.User.Actions do
            provider_conflict
          ) do
       {:ok, user} ->
+        Guard.OIDC.FederatedIdentitySync.run_deferred()
         Guard.Events.UserCreated.publish(user.id, false)
 
         {:ok, user}
 
       error ->
+        Guard.OIDC.FederatedIdentitySync.drop_deferred()
         error
     end
   end
