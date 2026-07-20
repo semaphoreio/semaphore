@@ -91,6 +91,41 @@ defmodule Rbac.FrontRepo.RepoHostAccountTest do
       assert unchanged.github_uid == "10005"
     end
 
+    test "update_repo_host_account/4 with reset claims a uid held only by a revoked link" do
+      {:ok, stale} =
+        Support.Members.insert_repo_host_account(
+          github_uid: "10008",
+          login: "previous-owner",
+          name: "Previous Owner",
+          permission_scope: "user:email",
+          revoked: true
+        )
+
+      {:ok, mine} =
+        Support.Members.insert_repo_host_account(
+          github_uid: "10010",
+          login: "claimer",
+          name: "Claimer",
+          permission_scope: "user:email"
+        )
+
+      assert {:ok, updated} =
+               RepoHostAccount.update_repo_host_account(
+                 mine.user_id,
+                 :github,
+                 %{
+                   github_uid: stale.github_uid,
+                   login: "claimer",
+                   name: "Claimer",
+                   permission_scope: "user:email"
+                 },
+                 reset: true
+               )
+
+      assert updated.github_uid == stale.github_uid
+      assert {:error, :not_found} = RepoHostAccount.get_for_github_user(stale.user_id)
+    end
+
     test "update_repo_host_account/4 allows reconnecting the user's own uid" do
       {:ok, mine} =
         Support.Members.insert_repo_host_account(

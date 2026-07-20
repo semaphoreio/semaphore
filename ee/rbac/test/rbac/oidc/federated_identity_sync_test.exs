@@ -99,6 +99,37 @@ defmodule Rbac.OIDC.FederatedIdentitySyncTest do
       refute_receive {:oidc_post, _}, 500
     end
 
+    test "reset claim syncs identities too", %{claimer: claimer} do
+      {:ok, _} =
+        Support.Members.insert_repo_host_account(
+          github_uid: "77999",
+          user_id: claimer.id,
+          login: "old-login",
+          name: "Claimer",
+          permission_scope: "user:email"
+        )
+
+      assert {:ok, _} =
+               RepoHostAccount.update_repo_host_account(
+                 claimer.id,
+                 :github,
+                 %{
+                   github_uid: @claimed_uid,
+                   login: "new-login",
+                   name: "Claimer",
+                   permission_scope: "user:email"
+                 },
+                 reset: true
+               )
+
+      assert_receive {:oidc_delete, loser_url}, 5_000
+      assert loser_url =~ "kc-loser"
+
+      assert_receive {:oidc_delete, _claimer_pre_post}, 5_000
+      assert_receive {:oidc_post, post_url, _body}, 5_000
+      assert post_url =~ "kc-claimer"
+    end
+
     test "retries transient Keycloak failures before succeeding", %{claimer: claimer} do
       test_pid = self()
       counter = :counters.new(1, [:atomics])
