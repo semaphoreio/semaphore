@@ -24,9 +24,11 @@ GHSA-28jh-g32x-v9v4
 # CRLF injection in Content-Type via add_content_type_param (API unused)
 GHSA-q7jx-v53g-848w
 
-# --- protobuf 0.15.0, fixed in 0.16.1 ---
-# Unbounded recursion depth in embedded-message decoding (DoS via deeply nested
-# messages). auth only decodes protobuf from internal gRPC services inside the
-# cluster trust boundary, never attacker-supplied payloads. Bump to 0.16.1
-# tracked for the dep-bump branch (regenerates stubs fleet-wide).
+# --- protobuf GHSA-rv48-qqj5-crxg (unbounded recursion decoding nested embedded messages) ---
+# First patched in protobuf 0.16.1. auth pulls protobuf transitively via grpc
+# (~> 0.14) and only decodes messages from internal gRPC services, not
+# attacker-supplied payloads, so the recursion DoS is not reachable here.
+# Held at 0.15.x deliberately: 0.16.x adds a per-encode map-coercion
+# deprecation warning that is noisy in hot encode paths, so the bump is
+# deferred pending an explicit-struct sweep of the encode sites.
 GHSA-rv48-qqj5-crxg
