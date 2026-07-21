@@ -15,7 +15,7 @@ defmodule GithubNotifier.StatusTest do
 
     GrpcMock.stub(RepositoryHubMock, :create_build_status, fn req, _stream ->
       send(test_pid, {:build_status, status_atom(req.status), req.context})
-      Google.Protobuf.Empty.new()
+      Support.Factories.create_build_status_response()
     end)
 
     :ok
@@ -91,6 +91,38 @@ defmodule GithubNotifier.StatusTest do
 
       GithubNotifier.Status.create(success_data(), "req-2")
       assert_receive {:build_status, :SUCCESS, @context}
+    end
+
+    test "raises and does not mark the status as sent when repositoryhub replies with a non-OK code" do
+      GrpcMock.stub(RepositoryHubMock, :create_build_status, fn _req, _stream ->
+        Support.Factories.create_build_status_response(:SERVICE_ERROR)
+      end)
+
+      assert_raise RuntimeError, ~r/Failed to deliver success status/, fn ->
+        GithubNotifier.Status.create(success_data(), "req-1")
+      end
+
+      assert Cachex.get!(:store, "#{status_key()}/success/The build passed on Semaphore 2.0.") ==
+               nil
+
+      assert Cachex.get!(:store, "terminal/#{status_key()}") == nil
+    end
+
+    test "raises and does not mark the status as sent when the RPC fails" do
+      GrpcMock.stub(RepositoryHubMock, :create_build_status, fn _req, _stream ->
+        raise GRPC.RPCError,
+          status: GRPC.Status.unavailable(),
+          message: "repositoryhub is unavailable"
+      end)
+
+      assert_raise RuntimeError, ~r/Failed to deliver success status/, fn ->
+        GithubNotifier.Status.create(success_data(), "req-1")
+      end
+
+      assert Cachex.get!(:store, "#{status_key()}/success/The build passed on Semaphore 2.0.") ==
+               nil
+
+      assert Cachex.get!(:store, "terminal/#{status_key()}") == nil
     end
   end
 
