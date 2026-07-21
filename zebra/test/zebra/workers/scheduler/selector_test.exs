@@ -118,6 +118,35 @@ defmodule Zebra.Workers.Scheduler.SelectorTest do
       assert result.for_force_finish == []
     end
 
+    test "no_capacity_by_reason records org_ceiling when the org parallelism limit is hit" do
+      stub_org_call(total: 1, e2: 1000, e4: 1000, e8: 1000, a4: 1000, a8: 0)
+
+      {:ok, j1} = create_job(:enqueued)
+      {:ok, _} = create_job(:enqueued)
+
+      result = Selector.select(@org_id)
+
+      assert result.for_scheduling == [j1.id]
+      assert result.no_capacity["e1-standard-2"] == 1
+      assert result.no_capacity_by_reason[{"e1-standard-2", :org_ceiling}] == 1
+      assert result.no_capacity_by_reason[{"e1-standard-2", :machine_quota}] == 0
+    end
+
+    test "no_capacity_by_reason records machine_quota when the machine type limit is hit" do
+      stub_org_call(total: 100, e2: 2, e4: 1, e8: 1000, a4: 1000, a8: 0)
+
+      {:ok, j1} = create_job(:enqueued)
+      {:ok, j2} = create_job(:enqueued)
+      {:ok, _} = create_job(:enqueued)
+
+      result = Selector.select(@org_id)
+
+      assert result.for_scheduling == [j1.id, j2.id]
+      assert result.no_capacity["e1-standard-2"] == 1
+      assert result.no_capacity_by_reason[{"e1-standard-2", :machine_quota}] == 1
+      assert result.no_capacity_by_reason[{"e1-standard-2", :org_ceiling}] == 0
+    end
+
     test "combined max_limit and machine limits" do
       stub_org_call(total: 3, e2: 2, e4: 2, e8: 1000, a4: 1000, a8: 0)
 
@@ -355,6 +384,18 @@ defmodule Zebra.Workers.Scheduler.SelectorTest do
 
       assert res.for_scheduling == []
       assert res.for_force_finish == [job1_id, job2_id]
+    end
+
+    test "adding no capacity by reason" do
+      res = Selector.Result.new(%{id: Ecto.UUID.generate(), username: "test-org"})
+
+      res = Selector.Result.add_no_capacity(res, "e1-standard-2", :org_ceiling)
+      res = Selector.Result.add_no_capacity(res, "e1-standard-2", :org_ceiling)
+      res = Selector.Result.add_no_capacity(res, "e1-standard-2", :machine_quota)
+
+      assert res.no_capacity["e1-standard-2"] == 3
+      assert res.no_capacity_by_reason[{"e1-standard-2", :org_ceiling}] == 2
+      assert res.no_capacity_by_reason[{"e1-standard-2", :machine_quota}] == 1
     end
   end
 
