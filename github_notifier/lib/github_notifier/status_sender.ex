@@ -10,6 +10,10 @@ defmodule GithubNotifier.StatusSender do
   A status is only marked as sent after a successful delivery; transport
   failures return `:error` so the caller can fail the message and have it
   redelivered.
+
+  Each worker holds a single long-lived gRPC channel and reuses it across
+  deliveries, reconnecting when the connection is down, the configured
+  endpoint changed, or the previous delivery failed at the transport level.
   """
 
   use Supervisor
@@ -32,10 +36,10 @@ defmodule GithubNotifier.StatusSender do
   end
 
   def send_status(status_key, data, request_id) do
-    worker = worker_name(:erlang.phash2(status_key, @pool_size))
-
-    GenServer.call(worker, {:send, status_key, data, request_id}, 35_000)
+    GenServer.call(worker_for(status_key), {:send, status_key, data, request_id}, 35_000)
   end
+
+  def worker_for(status_key), do: worker_name(:erlang.phash2(status_key, @pool_size))
 
   defp worker_name(index), do: :"github_notifier_status_sender_#{index}"
 end
@@ -56,40 +60,82 @@ defmodule GithubNotifier.StatusSender.Worker do
   end
 
   @impl true
-  def init(state), do: {:ok, state}
+  def init(_arg), do: {:ok, %{channel: nil, endpoint: nil}}
 
   @impl true
   def handle_call({:send, status_key, data, request_id}, _from, state) do
-    {:reply, deliver(status_key, data, request_id), state}
+    {reply, state} = deliver(status_key, data, request_id, state)
+    {:reply, reply, state}
   end
 
-  defp deliver(status_key, data, request_id) do
+  defp deliver(status_key, data, request_id, state) do
     dedupe_key = "#{status_key}/#{data.state}/#{data.description}"
     terminal_key = "terminal/#{status_key}"
 
     cond do
       Cachex.get!(:store, dedupe_key) ->
         Logger.info("[#{request_id}] Skipping Status: #{dedupe_key}")
-        :ok
+        {:ok, state}
 
       data.state == "pending" && Cachex.get!(:store, terminal_key) ->
         Watchman.increment("set_commit_status.skipped_stale_pending")
         Logger.info("[#{request_id}] Skipping stale pending Status: #{dedupe_key}")
-        :ok
+        {:ok, state}
 
       true ->
         Logger.info("[#{request_id}] Creating Status: #{dedupe_key}")
+        send_over_channel(dedupe_key, terminal_key, data, request_id, state)
+    end
+  end
 
-        case create_status(data) do
+  defp send_over_channel(dedupe_key, terminal_key, data, request_id, state) do
+    case ensure_channel(state) do
+      {:ok, state} ->
+        case create_status(data, state.channel) do
           :ok ->
             mark_sent(dedupe_key, terminal_key, data.state)
             Logger.info("[#{request_id}] Creating Status Finished: #{dedupe_key}")
-            :ok
+            {:ok, state}
 
           :error ->
-            :error
+            {:error, state}
+
+          :transport_error ->
+            {:error, drop_channel(state)}
         end
+
+      {:error, reason, state} ->
+        report_failure(reason)
+        {:error, state}
     end
+  end
+
+  defp ensure_channel(state) do
+    endpoint = Application.fetch_env!(:github_notifier, :repositoryhub_api_grpc_endpoint)
+
+    if usable_channel?(state, endpoint) do
+      {:ok, state}
+    else
+      state = drop_channel(state)
+
+      case GRPC.Stub.connect(endpoint) do
+        {:ok, channel} -> {:ok, %{state | channel: channel, endpoint: endpoint}}
+        {:error, reason} -> {:error, reason, state}
+      end
+    end
+  end
+
+  defp usable_channel?(%{channel: nil}, _endpoint), do: false
+
+  defp usable_channel?(%{channel: channel, endpoint: endpoint}, current_endpoint) do
+    endpoint == current_endpoint && Process.alive?(channel.adapter_payload.conn_pid)
+  end
+
+  defp drop_channel(%{channel: nil} = state), do: state
+
+  defp drop_channel(%{channel: channel} = state) do
+    GRPC.Stub.disconnect(channel)
+    %{state | channel: nil, endpoint: nil}
   end
 
   defp mark_sent(dedupe_key, terminal_key, state) do
@@ -100,7 +146,7 @@ defmodule GithubNotifier.StatusSender.Worker do
     end
   end
 
-  defp create_status(data) do
+  defp create_status(data, channel) do
     Watchman.benchmark("create_status.duration", fn ->
       req =
         InternalApi.Repository.CreateBuildStatusRequest.new(
@@ -110,11 +156,6 @@ defmodule GithubNotifier.StatusSender.Worker do
           url: data.url,
           description: data.description,
           context: data.context
-        )
-
-      {:ok, channel} =
-        GRPC.Stub.connect(
-          Application.fetch_env!(:github_notifier, :repositoryhub_api_grpc_endpoint)
         )
 
       Logger.debug(fn ->
@@ -134,7 +175,9 @@ defmodule GithubNotifier.StatusSender.Worker do
       handle_response(res)
     end)
   rescue
-    error -> report_failure(error)
+    error ->
+      report_failure(error)
+      :transport_error
   end
 
   defp handle_response({:ok, %{code: code}} = res) do
@@ -150,7 +193,10 @@ defmodule GithubNotifier.StatusSender.Worker do
     end
   end
 
-  defp handle_response(res), do: report_failure(res)
+  defp handle_response(res) do
+    report_failure(res)
+    :transport_error
+  end
 
   defp report_failure(res) do
     Watchman.increment(
