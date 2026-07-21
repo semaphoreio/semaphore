@@ -8,4 +8,13 @@ GHSA-j9wq-vxxc-94wf
 GHSA-mp55-p8c9-rfw2
 GHSA-pj7v-xfvx-wmjq
 
+# --- protobuf GHSA-rv48-qqj5-crxg (unbounded recursion decoding nested embedded messages) ---
+# First patched in protobuf 0.16.1. auth pulls protobuf transitively via grpc
+# (~> 0.14) and only decodes messages from internal gRPC services, not
+# attacker-supplied payloads, so the recursion DoS is not reachable here.
+# Held at 0.15.x deliberately: 0.16.x adds a per-encode map-coercion
+# deprecation warning that is noisy in hot encode paths, so the bump is
+# deferred pending an explicit-struct sweep of the encode sites.
+GHSA-rv48-qqj5-crxg
+
 

@@ -69,6 +69,19 @@ defmodule Auth do
   end
 
   #
+  # Account-level org creation: token-authed, org-less. Only this path on me.;
+  # everything else on me. uses the cookie-only catch-all below.
+  #
+  match "/exauth/api/v1alpha/organizations", host: "me." do
+    log_request(conn, "me.#{Application.fetch_env!(:auth, :domain)}")
+
+    case set_user_headers(conn, allow_token: true) do
+      {:ok, conn_with_headers} -> send_resp(conn_with_headers, 200, "")
+      {:error, conn} -> send_resp(conn, 401, "")
+    end
+  end
+
+  #
   # Routes for me.<domain> hostname
   #
   match "/exauth:path/*rest", host: "me." do
