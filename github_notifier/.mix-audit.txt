@@ -1,0 +1,41 @@
+# --- hackney 1.20.1 advisories, all fixed in 4.0.1 (one in 1.24.0/1.21.0) ---
+# hackney is never fed user-controlled input here: tentacat is a declared dependency with no
+# callers in lib/, and the only runtime consumer is sentry error reporting, which talks to a
+# fixed, operator-configured endpoint. No request URL, query, header, domain or path comes
+# from users, so the injection/SSRF advisories have nothing to exploit; the connection-handling
+# ones are bounded operational risk on outbound error reporting only.
+# Bump to 4.x is blocked: tentacat ~> 2.0 requires httpoison ~> 1.0, which requires
+# hackney ~> 1.17. Real fix tracked for the dep-bump branch.
+#
+# fails to properly release HTTP connections to the pool (low)
+GHSA-9fm9-hp7p-53mf
+# ssl:connect/2 post-handshake upgrade has no timeout (high; outbound-only, hung connection at worst)
+GHSA-gp9c-pm5m-5cxr
+# CR/LF injection in query parameter (moderate; no user-controlled query params)
+GHSA-j9wq-vxxc-94wf
+# CRLF / header injection via unvalidated domain and path options (low; fixed endpoint)
+GHSA-mp55-p8c9-rfw2
+# SSRF allowlist bypass in hackney_url:normalize/2 via percent-encoded host (moderate; no
+# user-controlled URLs)
+GHSA-pj7v-xfvx-wmjq
+# SSRF in hackney (low; no user-controlled URLs)
+GHSA-vq52-99r9-h5pw
+
+# --- cowboy 2.8.0 / cowlib 2.9.1 advisories, fixed in 2.15.0 / 2.16.1 ---
+# cowboy/cowlib only serve the internal gRPC listener (HTTP/2, service-to-service). The
+# vulnerable modules sit outside the gRPC request path: multipart parsing (cowboy), SPDY
+# inflate, HTTP/1.1 transfer-encoding decode, SSE encoding and cookie encoding (cowlib) are
+# never invoked. Versions are pinned by the grpc library (cowlib ~> 2.9.0 override in mix.exs);
+# bumping requires a grpc upgrade. Real fix tracked for the dep-bump branch.
+#
+# unbounded buffer accumulation in multipart header parsing causes DoS (high; multipart never parsed)
+GHSA-jfc2-q6qh-g5x8
+# cow_http_te uncontrolled resource consumption / excessive allocation (high; HTTP/1.1
+# transfer-encoding decode unused on an HTTP/2-only listener)
+GHSA-32p9-57cr-4x65
+# decompression bomb in cow_spdy:inflate/2 via crafted SPDY frame (high; SPDY unused)
+GHSA-84f2-rp86-235p
+# cookie request header injection via unvalidated encoder in cow_cookie:cookie/1 (low; no cookies)
+GHSA-g2wm-735q-3f56
+# CRLF injection allows SSE event splitting via unvalidated field values (moderate; no SSE)
+GHSA-hv23-4qp7-8c8r
