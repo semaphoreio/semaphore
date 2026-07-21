@@ -126,6 +126,82 @@ defmodule GithubNotifier.StatusTest do
     end
   end
 
+  describe "connection reuse" do
+    test "reuses the gRPC connection across deliveries" do
+      GithubNotifier.Status.create(pending_data(), "req-1")
+      assert_receive {:build_status, :PENDING, @context}
+
+      pid = conn_pid(status_key())
+      assert Process.alive?(pid)
+
+      GithubNotifier.Status.create(success_data(), "req-2")
+      assert_receive {:build_status, :SUCCESS, @context}
+
+      assert conn_pid(status_key()) == pid
+    end
+
+    test "reconnects when the cached connection is down" do
+      GithubNotifier.Status.create(pending_data(), "req-1")
+      assert_receive {:build_status, :PENDING, @context}
+
+      pid = conn_pid(status_key())
+      Process.exit(pid, :kill)
+
+      GithubNotifier.Status.create(success_data(), "req-2")
+      assert_receive {:build_status, :SUCCESS, @context}
+
+      new_pid = conn_pid(status_key())
+      assert new_pid != pid
+      assert Process.alive?(new_pid)
+    end
+
+    test "keeps the connection after a non-OK response" do
+      GithubNotifier.Status.create(pending_data(), "req-1")
+      assert_receive {:build_status, :PENDING, @context}
+
+      pid = conn_pid(status_key())
+
+      GrpcMock.stub(RepositoryHubMock, :create_build_status, fn _req, _stream ->
+        Support.Factories.create_build_status_response(:SERVICE_ERROR)
+      end)
+
+      assert_raise RuntimeError, ~r/Failed to deliver success status/, fn ->
+        GithubNotifier.Status.create(success_data(), "req-2")
+      end
+
+      assert conn_pid(status_key()) == pid
+      assert Process.alive?(pid)
+    end
+
+    test "drops the connection after a transport error" do
+      GithubNotifier.Status.create(pending_data(), "req-1")
+      assert_receive {:build_status, :PENDING, @context}
+
+      assert conn_pid(status_key())
+
+      GrpcMock.stub(RepositoryHubMock, :create_build_status, fn _req, _stream ->
+        raise GRPC.RPCError,
+          status: GRPC.Status.unavailable(),
+          message: "repositoryhub is unavailable"
+      end)
+
+      assert_raise RuntimeError, ~r/Failed to deliver success status/, fn ->
+        GithubNotifier.Status.create(success_data(), "req-2")
+      end
+
+      worker = GithubNotifier.StatusSender.worker_for(status_key())
+      assert :sys.get_state(worker).channel == nil
+    end
+  end
+
+  defp conn_pid(status_key) do
+    worker = GithubNotifier.StatusSender.worker_for(status_key)
+
+    %{channel: %{adapter_payload: %{conn_pid: pid}}} = :sys.get_state(worker)
+
+    pid
+  end
+
   defp status_atom(status) when is_atom(status), do: status
   defp status_atom(status), do: CreateBuildStatusRequest.Status.key(status)
 
