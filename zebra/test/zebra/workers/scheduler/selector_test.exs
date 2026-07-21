@@ -399,6 +399,30 @@ defmodule Zebra.Workers.Scheduler.SelectorTest do
     end
   end
 
+  describe "utilization" do
+    test "reports the percentage of the ceiling in use" do
+      assert Selector.utilization(0, 6) == 0
+      assert Selector.utilization(3, 6) == 50
+      assert Selector.utilization(6, 6) == 100
+      # rounds to nearest percent
+      assert Selector.utilization(1, 3) == 33
+    end
+
+    test "a fully-blocked org (max == 0) with running jobs is 100% saturated" do
+      assert Selector.utilization(5, 0) == 100
+    end
+
+    test "an idle org is 0% regardless of the ceiling" do
+      assert Selector.utilization(0, 0) == 0
+      assert Selector.utilization(0, 10) == 0
+    end
+
+    test "a nil/unknown ceiling does not crash and treats running jobs as saturated" do
+      assert Selector.utilization(5, nil) == 100
+      assert Selector.utilization(0, nil) == 0
+    end
+  end
+
   describe "organization Quota" do
     alias Zebra.Workers.Scheduler.Org
 
