@@ -46,6 +46,8 @@ defmodule GithubNotifier.StatusSender.Worker do
   use GenServer
   require Logger
 
+  alias InternalApi.Repository.CreateBuildStatusResponse
+
   @terminal_states ["success", "failure"]
   @cache_ttl :timer.hours(5)
 
@@ -126,35 +128,39 @@ defmodule GithubNotifier.StatusSender.Worker do
           timeout: 30_000
         )
 
-      case res do
-        {:ok, %{code: :OK}} ->
-          Watchman.increment(
-            internal: "set_commit_status.success",
-            external: {"set_commit_status", [result: "success"]}
-          )
-
-        _ ->
-          Watchman.increment(
-            internal: "set_commit_status.failure",
-            external: {"set_commit_status", [result: "failure"]}
-          )
-      end
-
       Logger.debug("Received Create Status response")
       Logger.debug(inspect(res))
 
-      :ok
+      handle_response(res)
     end)
   rescue
-    error ->
+    error -> report_failure(error)
+  end
+
+  defp handle_response({:ok, %{code: code}} = res) do
+    if CreateBuildStatusResponse.Code.key(code) == :OK do
       Watchman.increment(
-        internal: "set_commit_status.failure",
-        external: {"set_commit_status", [result: "failure"]}
+        internal: "set_commit_status.success",
+        external: {"set_commit_status", [result: "success"]}
       )
 
-      Logger.error("Failed to create status: #{inspect(error)}")
+      :ok
+    else
+      report_failure(res)
+    end
+  end
 
-      :error
+  defp handle_response(res), do: report_failure(res)
+
+  defp report_failure(res) do
+    Watchman.increment(
+      internal: "set_commit_status.failure",
+      external: {"set_commit_status", [result: "failure"]}
+    )
+
+    Logger.error("Failed to create status: #{inspect(res)}")
+
+    :error
   end
 
   alias InternalApi.Repository.CreateBuildStatusRequest.Status
