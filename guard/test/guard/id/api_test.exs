@@ -513,7 +513,7 @@ defmodule Guard.Id.Api.Test do
 
   # Builds the encrypted device-auth marker cookie exactly as the device_return
   # callback sets it, using the same helper and secret as the app.
-  defp device_authed_cookie(opts \\ []) do
+  defp device_authed_cookie(opts) do
     marker = %{
       device_authed: true,
       user_code_prefill: Keyword.get(opts, :prefill, ""),
