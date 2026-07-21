@@ -11,6 +11,10 @@ defmodule GithubNotifier.StatusSender do
   failures return `:error` so the caller can fail the message and have it
   redelivered.
 
+  Callers block until their own delivery attempt finishes. Each attempt is
+  bounded by the connect and RPC timeouts, so a delivery is never failed
+  just because it waited in the worker queue behind a slow one.
+
   Each worker holds a single long-lived gRPC channel and reuses it across
   deliveries, reconnecting when the connection is down, the configured
   endpoint changed, or the previous delivery failed at the transport level.
@@ -36,7 +40,7 @@ defmodule GithubNotifier.StatusSender do
   end
 
   def send_status(status_key, data, request_id) do
-    GenServer.call(worker_for(status_key), {:send, status_key, data, request_id}, 35_000)
+    GenServer.call(worker_for(status_key), {:send, status_key, data, request_id}, :infinity)
   end
 
   def worker_for(status_key), do: worker_name(:erlang.phash2(status_key, @pool_size))
