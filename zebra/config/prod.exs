@@ -1,6 +1,7 @@
 import Config
 
 config :zebra, Zebra.QuantumScheduler,
+  overlap: false,
   jobs: [
     # Measure job states every minute.
     {"* * * * *", {Zebra.Monitor, :count_pending_jobs, []}},
