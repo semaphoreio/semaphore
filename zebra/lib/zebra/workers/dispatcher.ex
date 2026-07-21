@@ -83,7 +83,11 @@ defmodule Zebra.Workers.Dispatcher do
 
   def dispatch_self_hosted_job(job) do
     with {:ok, agent} <- SelfHostedAgent.occupy(job),
-         {:ok, _} <- update_job(job, agent) do
+         {:ok, updated_job} <- update_job(job, agent) do
+      # submit_metrics computes latency from started_at; for the
+      # waiting-for-agent case started_at is nil and it is a no-op.
+      submit_metrics(updated_job)
+
       :ok
     else
       e ->
