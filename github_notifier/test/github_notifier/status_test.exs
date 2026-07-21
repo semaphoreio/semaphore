@@ -51,6 +51,31 @@ defmodule GithubNotifier.StatusTest do
       assert_receive {:build_status, :SUCCESS, @context}
     end
 
+    test "a delivery queued behind a slow one completes and stays ordered" do
+      test_pid = self()
+
+      GrpcMock.stub(RepositoryHubMock, :create_build_status, fn req, _stream ->
+        status = status_atom(req.status)
+        send(test_pid, {:build_status_started, status})
+
+        if status == :PENDING, do: :timer.sleep(300)
+
+        send(test_pid, {:build_status, status, req.context})
+        Support.Factories.create_build_status_response()
+      end)
+
+      slow = Task.async(fn -> GithubNotifier.Status.create(pending_data(), "req-1") end)
+      assert_receive {:build_status_started, :PENDING}, 2_000
+
+      queued = Task.async(fn -> GithubNotifier.Status.create(success_data(), "req-2") end)
+
+      assert Task.await(slow) == :ok
+      assert Task.await(queued) == :ok
+
+      assert_receive {:build_status, :PENDING, @context}
+      assert_receive {:build_status, :SUCCESS, @context}
+    end
+
     test "sends pending for a new pipeline after another pipeline's terminal status" do
       GithubNotifier.Status.create(success_data(), "req-1")
       assert_receive {:build_status, :SUCCESS, @context}
