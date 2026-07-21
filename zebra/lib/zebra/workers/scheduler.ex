@@ -65,7 +65,7 @@ defmodule Zebra.Workers.Scheduler do
         |> Zebra.LegacyRepo.all()
       end)
 
-    Logger.info("Try to schedule jobs for organizations #{inspect(org_ids)}")
+    Logger.info("Try to schedule jobs for #{length(org_ids)} organizations")
     batch_size = Zebra.Config.fetch!(__MODULE__, :batch_size)
 
     org_ids
@@ -100,13 +100,13 @@ defmodule Zebra.Workers.Scheduler do
         Zebra.Lock.advisory(org_id, fn ->
           result = Zebra.Workers.Scheduler.Selector.select(org_id)
 
-          Logger.info("[#{org_id}] No capacity: #{inspect(result.no_capacity)}")
+          Logger.info("[#{org_id}] No capacity: #{Enum.count(result.no_capacity)}")
           submit_no_capacity_metrics(result)
 
-          Logger.info("[#{org_id}] Scheduling: #{inspect(result.for_scheduling)}")
+          Logger.info("[#{org_id}] Scheduling: #{Enum.count(result.for_scheduling)}")
           Zebra.Models.Job.bulk_schedule(result.for_scheduling)
 
-          Logger.info("[#{org_id}] Force Finishing: #{inspect(result.for_force_finish)}")
+          Logger.info("[#{org_id}] Force Finishing: #{Enum.count(result.for_force_finish)}")
 
           Zebra.Models.Job.bulk_force_finish(
             result.for_force_finish,
