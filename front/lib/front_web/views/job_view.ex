@@ -22,7 +22,7 @@ defmodule FrontWeb.JobView do
 
   def logs_url(conn, job, _org) do
     if job.self_hosted do
-      "/api/v1/logs/#{job.id}"
+      "/api/v1/logs/#{Front.Models.Job.source_job_id(job)}"
     else
       job_path(conn, :logs, job.id)
     end
