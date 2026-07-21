@@ -53,9 +53,33 @@ defmodule Zebra.Workers.Scheduler.Selector do
     max_running = Org.max_running_jobs(org.id)
     running = __MODULE__.State.running_jobs(state, :all)
 
-    utilization = if max_running > 0, do: round(running / max_running * 100), else: 0
+    Watchman.submit(
+      {"scheduler.org_utilization", [org.username]},
+      utilization(running, max_running),
+      :gauge
+    )
+  end
 
-    Watchman.submit({"scheduler.org_utilization", [org.username]}, utilization, :gauge)
+  @doc """
+  Utilization of an org's parallelism ceiling, as a percentage (0..100).
+
+  An org whose ceiling is 0 (or unknown) while it has running jobs is maximally
+  saturated, so it reports 100 rather than 0 - otherwise a saturation alert
+  would miss the fully-blocked/suspended case. 0 is reserved for genuinely idle
+  orgs (no running jobs). The nil/non-number guard matters because Elixir's term
+  ordering makes `nil > 0` true, which would otherwise divide by nil.
+  """
+  def utilization(running, max_running) do
+    cond do
+      is_number(max_running) and max_running > 0 ->
+        round(running / max_running * 100)
+
+      running > 0 ->
+        100
+
+      true ->
+        0
+    end
   end
 
   defp select([], _, _, result), do: result
