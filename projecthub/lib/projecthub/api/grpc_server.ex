@@ -1056,10 +1056,11 @@ defmodule Projecthub.Api.GrpcServer do
   # followed by any project update would silently wipe the stored settings and
   # they would not come back when the feature is re-enabled. New projects (no
   # existing value) default to false.
-  defp sem_approve_option_value(_feature_enabled = true, requested, _existing_project, _key), do: requested
-  defp sem_approve_option_value(_feature_enabled = false, _requested, nil, _key), do: false
+  # First arg is whether the `sem_approve_options` feature is enabled.
+  defp sem_approve_option_value(true, requested, _existing_project, _key), do: requested
+  defp sem_approve_option_value(false, _requested, nil, _key), do: false
 
-  defp sem_approve_option_value(_feature_enabled = false, _requested, existing_project, key),
+  defp sem_approve_option_value(false, _requested, existing_project, key),
     do: Map.get(existing_project, key, false)
 
   # The sem-approve command options are only honored/persisted when the
