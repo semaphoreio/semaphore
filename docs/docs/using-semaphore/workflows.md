@@ -244,7 +244,7 @@ Selecting **Run on** allows you to configure what triggers are enabled for the p
 
 ### Approving PRs with `/sem-approve` {#sem-approve}
 
-Blocked pull requests can be manually approved by adding a comment containing `/sem-approve` string in the PR conversation. Anyone who can run a forked pull request can also approve one.
+Blocked pull requests can be manually approved by adding a comment containing the `/sem-approve` string in the PR conversation. Approving requires permission to start pipelines in the project — the same permission as rerunning or rebuilding a workflow (`project.job.rerun`). A `/sem-approve` comment from someone without that permission is ignored.
 
 By default, `/sem-approve` keeps forked pull request protections in place:
 
@@ -253,10 +253,10 @@ By default, `/sem-approve` keeps forked pull request protections in place:
 
 Project maintainers can allow extra `/sem-approve` options in **Project settings > General > Forked pull requests**:
 
-- **Allow `/sem-approve --include-secrets`**: enables approved runs to include secrets according to your secret configuration
-- **Allow `/sem-approve --enable-cache`**: enables approved runs to use cache
+- **Allow `/sem-approve --include-secrets`**: approved runs receive **all** project secrets referenced by the workflow, bypassing the forked-PR allowed-secrets list (still limited to the secrets the project is allowed to access). Use with care — it exposes those secrets to externally-authored fork code.
+- **Allow `/sem-approve --enable-cache`**: enables approved runs to use cache. The fork run gets read/write access to the project cache, so treat cache entries it writes as untrusted.
 
-When these settings are enabled, project members can approve with:
+When these settings are enabled, an authorized approver can approve with:
 
 - `/sem-approve --include-secrets`
 - `/sem-approve --enable-cache`
@@ -266,7 +266,7 @@ If a `/sem-approve` comment includes unknown options, the workflow is still appr
 
 These options are currently available for GitHub pull request approvals.
 
-Approving forked pull requests is limited to new comments only and does not work with comment edits. Due to security concerns, `/sem-approve` will work only once. Subsequent pushes to the forked pull request must be approved again.
+Approving forked pull requests is limited to new comments only and does not work with comment edits. An approval is bound to the fork commit that was present when the comment was processed: if the fork pushes a new commit before the run starts, the run is not executed and a fresh `/sem-approve` is required. Due to security concerns, `/sem-approve` will work only once. Subsequent pushes to the forked pull request must be approved again.
 
 ## How to skip commits {#skip}
 

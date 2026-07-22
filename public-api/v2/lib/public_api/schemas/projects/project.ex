@@ -92,7 +92,7 @@ defmodule PublicAPI.Schemas.Projects.Project do
                     type: :boolean,
                     default: false,
                     description:
-                      "Allows project members to use `/sem-approve --include-secrets` when approving forked pull request workflows."
+                      "Allows authorized approvers to use `/sem-approve --include-secrets` when approving forked pull request workflows. An approved run then receives all project secrets referenced by the workflow, bypassing the allowed_secrets list (still bounded by the secrets the project can access)."
                   },
                   allow_sem_approve_enable_cache: %Schema{
                     type: :boolean,

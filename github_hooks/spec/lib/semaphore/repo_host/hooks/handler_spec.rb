@@ -81,8 +81,43 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
     end
 
     context "PR approval" do
-      it "marks workflow as pr approval" do
+      # A blocked forked-PR workflow whose payload is a real pull_request
+      # event, so the shared pull_request? launch path — and the SHA-binding
+      # guard — is exercised end to end.
+      def build_blocked_pr_workflow(project_id:, pr_number: 1)
+        wf = FactoryBot.create(
+          :workflow,
+          :project_id => project_id,
+          :state => Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR,
+          :request => ActionController::Parameters.new(
+            "payload" => RepoHost::Github::Responses::Payload.post_receive_hook_pull_request
+          )
+        )
+        wf.update(:git_ref => "refs/pull/#{pr_number}/merge")
+        wf
+      end
+
+      # update_pr_data result whose live head is `head_sha`. Defaults to the
+      # approved head, i.e. the approval is still valid (no injected commit).
+      def ok_pr_data(workflow, head_sha: nil)
+        [
+          :ok,
+          {
+            :mergeable => true,
+            :commit_author => "octocat",
+            :merge_commit_sha => workflow.commit_sha,
+            :ref => workflow.git_ref,
+            :head_sha => head_sha || workflow.commit_sha
+          },
+          nil
+        ]
+      end
+
+      it "marks the comment workflow as pr approval" do
+        allow(@logger).to receive(:info)
         allow(@workflow.payload).to receive(:pr_approval?).and_return(true)
+        allow(described_class).to receive(:can_approve_forked_pr?).and_return(false)
+
         expect(@logger).to receive(:info).with("pr-approval")
 
         described_class.run(@workflow, @logger)
@@ -90,7 +125,22 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
         expect(@workflow.reload.state).to eq(Workflow::STATE_PR_APPROVAL)
       end
 
-      it "launches workflow if marked as allowed user" do
+      it "denies approval and does not launch when the requestor lacks project.job.rerun" do
+        build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 45)
+
+        allow(@logger).to receive(:info)
+        allow(Watchman).to receive(:increment)
+        allow(@workflow.payload).to receive_messages(issue_number: 45, pr_approval?: true, comment_author: "octocat")
+        allow(described_class).to receive(:can_approve_forked_pr?).and_return(false)
+
+        expect(@logger).to receive(:info).with("pr-approval-denied", :requestor => "octocat")
+        expect(Watchman).to receive(:increment).with("hooks.pr_approval.denied")
+        expect(described_class).not_to receive(:launch_pipeline)
+
+        described_class.run(@workflow, @logger)
+      end
+
+      it "launches the blocked workflow when the requestor can approve" do
         workflow = FactoryBot.create(
           :workflow,
           :project_id => @workflow.project_id,
@@ -98,134 +148,153 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
         )
         workflow.update(:git_ref => "refs/pull/45/merge")
 
-        allow(@workflow.payload).to receive_messages(issue_number: 45, pr_approval?: true)
+        allow(@workflow.payload).to receive_messages(issue_number: 45, pr_approval?: true, comment_author: "maintainer")
+        allow(described_class).to receive(:can_approve_forked_pr?).and_return(true)
 
         expect(described_class).to receive(:launch_pipeline).with(kind_of(Branch), workflow, @logger)
-
-        allow(Semaphore::RepoHost::Hooks::Handler).to receive(:forked_pr_allowed?).and_return(true)
 
         described_class.run(@workflow, @logger)
       end
 
-      it "marks blocked workflow payload with approval include options" do
-        workflow = FactoryBot.create(
-          :workflow,
-          :project_id => @workflow.project_id,
-          :state => Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR,
-          :request => ActionController::Parameters.new(
-            "payload" => RepoHost::Github::Responses::Payload.post_receive_hook_pull_request
-          )
-        )
-        workflow.update(:git_ref => "refs/pull/1/merge")
+      it "passes the requestor and project to the permission check" do
+        build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 45)
+
+        allow(@workflow.payload).to receive_messages(issue_number: 45, pr_approval?: true, comment_author: "maintainer")
+
+        expect(described_class).to receive(:can_approve_forked_pr?)
+          .with(@workflow.project, "maintainer", @logger)
+          .and_return(false)
+
+        described_class.run(@workflow, @logger)
+      end
+
+      it "does not launch when there is no blocked workflow" do
+        allow(@workflow.payload).to receive_messages(issue_number: 999, pr_approval?: true, comment_author: "maintainer")
+        allow(described_class).to receive(:can_approve_forked_pr?).and_return(true)
+
+        expect(described_class).not_to receive(:launch_pipeline)
+
+        described_class.run(@workflow, @logger)
+      end
+
+      it "persists a typed approval record and launches when authorized and enabled" do
+        workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
 
         allow(@workflow.payload).to receive_messages(
           issue_number: 1,
           pr_approval?: true,
           pr_approval_include_secrets?: true,
-          pr_approval_enable_cache?: true
+          pr_approval_enable_cache?: true,
+          comment_author: "maintainer",
+          comment_id: 42,
+          comment_created_at: "2026-07-20T00:00:00Z"
         )
-        update_pr_data_result = [
-          :ok,
-          { :mergeable => true, :commit_author => "octocat", :merge_commit_sha => workflow.commit_sha, :ref => workflow.git_ref },
-          nil
-        ]
         allow(described_class).to receive_messages(
           approval_option_enabled?: true,
-          project_member?: true,
-          update_pr_data: update_pr_data_result
+          can_approve_forked_pr?: true,
+          update_pr_data: ok_pr_data(workflow)
         )
 
         expect(described_class).to receive(:launch_pipeline).with(kind_of(Branch), workflow, @logger)
-
-        allow(Semaphore::RepoHost::Hooks::Handler).to receive(:forked_pr_allowed?).and_return(true)
 
         described_class.run(@workflow, @logger)
 
         payload = JSON.parse(Workflow.find(workflow.id).request["payload"])
         expect(payload["semaphore_approval_include_secrets"]).to be(true)
         expect(payload["semaphore_approval_enable_cache"]).to be(true)
+
+        record = payload["semaphore_approval"]
+        expect(record["include_secrets"]).to be(true)
+        expect(record["enable_cache"]).to be(true)
+        expect(record["approver"]).to eq("maintainer")
+        expect(record["approved_head_sha"]).to eq(workflow.commit_sha)
+        expect(record["comment_id"]).to eq(42)
+        expect(record["approved_at"]).to eq("2026-07-20T00:00:00Z")
       end
 
-      it "drops sem-approve options for non-project-members" do
-        workflow = FactoryBot.create(
-          :workflow,
-          :project_id => @workflow.project_id,
-          :state => Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR,
-          :request => ActionController::Parameters.new(
-            "payload" => RepoHost::Github::Responses::Payload.post_receive_hook_pull_request
-          )
-        )
-        workflow.update(:git_ref => "refs/pull/1/merge")
+      it "drops options (no marker) but still launches when the project setting is disabled" do
+        workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
 
         allow(@workflow.payload).to receive_messages(
           issue_number: 1,
           pr_approval?: true,
           pr_approval_include_secrets?: true,
-          pr_approval_enable_cache?: true
+          pr_approval_enable_cache?: true,
+          comment_author: "maintainer"
         )
-        update_pr_data_result = [
-          :ok,
-          { :mergeable => true, :commit_author => "octocat", :merge_commit_sha => workflow.commit_sha, :ref => workflow.git_ref },
-          nil
-        ]
         allow(described_class).to receive_messages(
-          approval_option_enabled?: true,
-          project_member?: false,
-          update_pr_data: update_pr_data_result
+          approval_option_enabled?: false,
+          approval_enable_cache_option_enabled?: false,
+          can_approve_forked_pr?: true,
+          update_pr_data: ok_pr_data(workflow)
         )
 
         expect(described_class).to receive(:launch_pipeline).with(kind_of(Branch), workflow, @logger)
-        allow(Semaphore::RepoHost::Hooks::Handler).to receive(:forked_pr_allowed?).and_return(true)
 
         described_class.run(@workflow, @logger)
 
         payload = JSON.parse(Workflow.find(workflow.id).request["payload"])
         expect(payload["semaphore_approval_include_secrets"]).to be_nil
         expect(payload["semaphore_approval_enable_cache"]).to be_nil
+        expect(payload["semaphore_approval"]).to be_nil
       end
 
-      it "drops sem-approve options and still launches when member check fails" do
-        workflow = FactoryBot.create(
-          :workflow,
-          :project_id => @workflow.project_id,
-          :state => Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR,
-          :request => ActionController::Parameters.new(
-            "payload" => RepoHost::Github::Responses::Payload.post_receive_hook_pull_request
-          )
-        )
-        workflow.update(:git_ref => "refs/pull/1/merge")
+      it "fails closed (STATE_PR_APPROVAL_STALE, no launch) when the fork head moved after approval" do
+        workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
 
-        allow(@workflow.payload).to receive_messages(
-          issue_number: 1,
-          pr_approval?: true,
-          pr_approval_include_secrets?: true,
-          comment_author: "octocat"
-        )
-        update_pr_data_result = [
-          :ok,
-          { :mergeable => true, :commit_author => "octocat", :merge_commit_sha => workflow.commit_sha, :ref => workflow.git_ref },
-          nil
-        ]
-        allow(described_class).to receive_messages(
-          approval_option_enabled?: true,
-          update_pr_data: update_pr_data_result
-        )
-        allow(described_class).to receive(:project_member?).and_raise(StandardError.new("rbac unavailable"))
-        allow(Semaphore::RepoHost::Hooks::Handler).to receive(:forked_pr_allowed?).and_return(true)
+        allow(@logger).to receive(:info)
         allow(Watchman).to receive(:increment)
-
-        expect(@logger).to receive(:error).with(
-          "pr-approval-option-membership-check-failed",
-          hash_including(:error => "rbac unavailable", :requestor => "octocat", :project_id => workflow.project_id)
+        allow(@workflow.payload).to receive_messages(
+          issue_number: 1,
+          pr_approval?: true,
+          pr_approval_include_secrets?: true,
+          comment_author: "maintainer"
         )
-        expect(Watchman).to receive(:increment).with("hooks.pr_approval.option_membership_check_failed")
-        expect(described_class).to receive(:launch_pipeline).with(kind_of(Branch), workflow, @logger)
+        allow(described_class).to receive_messages(
+          approval_option_enabled?: true,
+          can_approve_forked_pr?: true,
+          # Live fork head differs from the approved (blocked) head → a commit
+          # was injected between approval and launch.
+          update_pr_data: ok_pr_data(workflow, head_sha: "attacker-pushed-sha")
+        )
+
+        expect(described_class).not_to receive(:launch_pipeline)
+        expect(@logger).to receive(:info).with(
+          "pr-approval-stale-head",
+          hash_including(:approved_head_sha => workflow.commit_sha, :live_head_sha => "attacker-pushed-sha")
+        )
+        expect(Watchman).to receive(:increment).with("hooks.pr_approval.stale_head")
 
         described_class.run(@workflow, @logger)
 
-        payload = JSON.parse(Workflow.find(workflow.id).request["payload"])
-        expect(payload["semaphore_approval_include_secrets"]).to be_nil
-        expect(payload["semaphore_approval_enable_cache"]).to be_nil
+        expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_PR_APPROVAL_STALE)
+      end
+
+      it "fails closed when the live PR head cannot be determined" do
+        workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+
+        allow(@logger).to receive(:info)
+        allow(Watchman).to receive(:increment)
+        allow(@workflow.payload).to receive_messages(
+          issue_number: 1,
+          pr_approval?: true,
+          comment_author: "maintainer"
+        )
+        allow(described_class).to receive_messages(
+          can_approve_forked_pr?: true,
+          # No :head_sha at all → treated as changed, fail closed.
+          update_pr_data: [
+            :ok,
+            { :mergeable => true, :commit_author => "octocat", :merge_commit_sha => workflow.commit_sha, :ref => workflow.git_ref },
+            nil
+          ]
+        )
+
+        expect(described_class).not_to receive(:launch_pipeline)
+
+        described_class.run(@workflow, @logger)
+
+        expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_PR_APPROVAL_STALE)
       end
 
       it "does not launch workflow when option persistence fails" do
@@ -240,32 +309,31 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
         allow(@workflow.payload).to receive_messages(
           issue_number: 1,
           pr_approval?: true,
-          pr_approval_include_secrets?: true
+          pr_approval_include_secrets?: true,
+          comment_author: "maintainer"
         )
         allow(described_class).to receive_messages(
           approval_option_enabled?: true,
-          project_member?: true
+          can_approve_forked_pr?: true
         )
-        allow(Semaphore::RepoHost::Hooks::Handler).to receive(:forked_pr_allowed?).and_return(true)
 
         expect(described_class).not_to receive(:launch_pipeline)
 
         described_class.run(@workflow, @logger)
       end
 
-      it "does not launch workflow if marked as not allowed user" do
-        workflow = FactoryBot.create(
+      it "does not launch workflow when the requestor cannot approve" do
+        FactoryBot.create(
           :workflow,
           :project_id => @workflow.project_id,
           :state => Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR
-        )
-        workflow.update(:git_ref => "refs/pull/45/merge")
+        ).update(:git_ref => "refs/pull/45/merge")
 
-        allow(@workflow.payload).to receive_messages(issue_number: 45, pr_approval?: true)
+        allow(@workflow.payload).to receive_messages(issue_number: 45, pr_approval?: true, comment_author: "outsider")
 
         expect(described_class).not_to receive(:launch_pipeline)
 
-        allow(Semaphore::RepoHost::Hooks::Handler).to receive(:forked_pr_allowed?).and_return(false)
+        allow(described_class).to receive(:can_approve_forked_pr?).and_return(false)
 
         described_class.run(@workflow, @logger)
       end
@@ -578,7 +646,6 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
       result = described_class.approved_sem_approve_option(
         :requested => true,
         :enabled => false,
-        :requestor_is_project_member => true,
         :option => "--include-secrets",
         :logger => @logger
       )
@@ -586,21 +653,79 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
       expect(result).to be(false)
     end
 
-    it "handles a nil logger when requester is not a project member" do
-      expect(Watchman).to receive(:increment).with(
-        "hooks.pr_approval.option_dropped",
-        :tags => %w[enable-cache requestor_not_project_member]
-      )
-
+    it "returns false when the option was not requested" do
       result = described_class.approved_sem_approve_option(
-        :requested => true,
+        :requested => false,
         :enabled => true,
-        :requestor_is_project_member => false,
         :option => "--enable-cache",
         :logger => nil
       )
 
       expect(result).to be(false)
+    end
+
+    it "returns true when requested and the project setting is enabled" do
+      result = described_class.approved_sem_approve_option(
+        :requested => true,
+        :enabled => true,
+        :option => "--include-secrets",
+        :logger => @logger
+      )
+
+      expect(result).to be(true)
+    end
+  end
+
+  describe ".can_approve_forked_pr?" do
+    let(:project) { @workflow.project }
+
+    it "returns false for a blank username" do
+      expect(described_class.can_approve_forked_pr?(project, nil)).to be(false)
+      expect(described_class.can_approve_forked_pr?(project, "")).to be(false)
+    end
+
+    it "returns false when there is no matching repo host account" do
+      expect(described_class.can_approve_forked_pr?(project, "ghost")).to be(false)
+    end
+
+    context "with a known user" do
+      before do
+        user = FactoryBot.create(:user)
+        FactoryBot.create(:repo_host_account, :user => user, :login => "maintainer")
+      end
+
+      def stub_permissions(permissions)
+        allow_any_instance_of(InternalApi::RBAC::RBAC::Stub)
+          .to receive(:list_user_permissions)
+          .and_return(InternalApi::RBAC::ListUserPermissionsResponse.new(:permissions => permissions))
+      end
+
+      it "returns true when the user has project.job.rerun" do
+        stub_permissions(["project.view", "project.job.rerun"])
+
+        expect(described_class.can_approve_forked_pr?(project, "maintainer")).to be(true)
+      end
+
+      it "returns false when the user only has project.view" do
+        stub_permissions(["project.view"])
+
+        expect(described_class.can_approve_forked_pr?(project, "maintainer")).to be(false)
+      end
+
+      it "fails closed when the RBAC call raises" do
+        allow(Watchman).to receive(:increment)
+        allow_any_instance_of(InternalApi::RBAC::RBAC::Stub)
+          .to receive(:list_user_permissions)
+          .and_raise(StandardError.new("rbac down"))
+
+        expect(@logger).to receive(:error).with(
+          "pr-approval-permission-check-failed",
+          hash_including(:requestor => "maintainer", :project_id => project.id)
+        )
+        expect(Watchman).to receive(:increment).with("hooks.pr_approval.permission_check_failed")
+
+        expect(described_class.can_approve_forked_pr?(project, "maintainer", @logger)).to be(false)
+      end
     end
   end
 
