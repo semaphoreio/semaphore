@@ -54,3 +54,10 @@ GHSA-gp9c-pm5m-5cxr
 GHSA-j9wq-vxxc-94wf
 GHSA-mp55-p8c9-rfw2
 GHSA-pj7v-xfvx-wmjq
+
+# protobuf 0.12.0 — unbounded recursion depth in embedded-message decoding (GHSA-rv48-qqj5-crxg, high),
+# fixed in 0.16.1. Accepted rather than bumped: 0.12 -> 0.16.1 changes the generated-code API and
+# requires regenerating every .pb.ex module, which broke other services in prior attempts — tracked as a
+# separate migration. Reachability limited: v2 decodes protobuf only from internal gRPC backends behind
+# the authenticated public-API gateway, not arbitrary untrusted input.
+GHSA-rv48-qqj5-crxg
