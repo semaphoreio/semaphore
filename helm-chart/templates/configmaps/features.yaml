@@ -94,6 +94,8 @@ data:
       enabled: false
     self_hosted_agents:
       quantity: 1000
+    sem_approve_options:
+      enabled: false
     superjerry_tests:
       enabled: false
     test_explorer:
@@ -210,6 +212,8 @@ data:
       enabled: false
     self_hosted_agents:
       quantity: 1000
+    sem_approve_options:
+      enabled: false
     superjerry_tests:
       enabled: false
     test_explorer:

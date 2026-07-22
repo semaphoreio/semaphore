@@ -879,7 +879,9 @@ defmodule Projecthub.Api.GrpcServer do
     attach = attach_settings(project_spec)
     debug = debug_settings(project_spec)
     run_on = run_settings(project_spec)
-    forked_pull_requests = forked_pull_requests_settings(project_spec, project.organization_id)
+    # Pass the existing project so that, when the feature is disabled, stored
+    # sem-approve settings are preserved rather than wiped (see helper).
+    forked_pull_requests = forked_pull_requests_settings(project_spec, project.organization_id, project)
 
     project_params =
       metadata
@@ -1002,7 +1004,7 @@ defmodule Projecthub.Api.GrpcServer do
     }
   end
 
-  defp forked_pull_requests_settings(project_spec, org_id) do
+  defp forked_pull_requests_settings(project_spec, org_id, existing_project \\ nil) do
     forked_pull_requests = project_spec.repository.forked_pull_requests
     sem_approve_options_enabled = sem_approve_options_enabled?(org_id)
 
@@ -1011,21 +1013,44 @@ defmodule Projecthub.Api.GrpcServer do
         allowed_secrets: Enum.join(forked_pull_requests.allowed_secrets, ","),
         allowed_contributors: Enum.join(forked_pull_requests.allowed_contributors, ","),
         allow_sem_approve_include_secrets:
-          sem_approve_options_enabled and
+          sem_approve_option_value(
+            sem_approve_options_enabled,
             Map.get(forked_pull_requests, :allow_sem_approve_include_secrets, false),
+            existing_project,
+            :allow_sem_approve_include_secrets
+          ),
         allow_sem_approve_enable_cache:
-          sem_approve_options_enabled and
-            Map.get(forked_pull_requests, :allow_sem_approve_enable_cache, false)
+          sem_approve_option_value(
+            sem_approve_options_enabled,
+            Map.get(forked_pull_requests, :allow_sem_approve_enable_cache, false),
+            existing_project,
+            :allow_sem_approve_enable_cache
+          )
       }
     else
       %{
         allowed_secrets: "",
         allowed_contributors: "",
-        allow_sem_approve_include_secrets: false,
-        allow_sem_approve_enable_cache: false
+        allow_sem_approve_include_secrets:
+          sem_approve_option_value(sem_approve_options_enabled, false, existing_project, :allow_sem_approve_include_secrets),
+        allow_sem_approve_enable_cache:
+          sem_approve_option_value(sem_approve_options_enabled, false, existing_project, :allow_sem_approve_enable_cache)
       }
     end
   end
+
+  # Gate USE, not STORAGE. When the `sem_approve_options` feature is enabled we
+  # honor the requested value; when it is disabled we must NOT overwrite an
+  # already-configured value. Otherwise disabling the feature — or a transient
+  # feature-service failure that makes `feature_enabled?` return false —
+  # followed by any project update would silently wipe the stored settings and
+  # they would not come back when the feature is re-enabled. New projects (no
+  # existing value) default to false.
+  defp sem_approve_option_value(_feature_enabled = true, requested, _existing_project, _key), do: requested
+  defp sem_approve_option_value(_feature_enabled = false, _requested, nil, _key), do: false
+
+  defp sem_approve_option_value(_feature_enabled = false, _requested, existing_project, key),
+    do: Map.get(existing_project, key, false)
 
   # The sem-approve command options are only honored/persisted when the
   # `sem_approve_options` feature is enabled for the organization.

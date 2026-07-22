@@ -231,9 +231,11 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
         expect(record["approved_at"]).to eq(approval_comment_time)
       end
 
-      it "drops options (no marker) but still launches when the project setting is disabled" do
+      it "fails closed (no launch, no marker) when a requested option is disabled at project level" do
         workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
 
+        allow(@logger).to receive(:info)
+        allow(Watchman).to receive(:increment)
         allow(@workflow.payload).to receive_messages(
           issue_number: 1,
           pr_approval?: true,
@@ -245,18 +247,47 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
         allow(described_class).to receive_messages(
           approval_option_enabled?: false,
           approval_enable_cache_option_enabled?: false,
-          can_approve_forked_pr?: true,
-          update_pr_data: ok_pr_data(workflow)
+          can_approve_forked_pr?: true
         )
 
-        expect(described_class).to receive(:launch_pipeline).with(kind_of(Branch), workflow, @logger)
+        expect(described_class).not_to receive(:launch_pipeline)
+        expect(Watchman).to receive(:increment).with("hooks.pr_approval.option_not_enabled")
 
         described_class.run(@workflow, @logger)
 
+        # One-shot approval NOT consumed: no markers persisted and the workflow
+        # stays blocked so the option can be enabled and the command re-issued.
         payload = JSON.parse(Workflow.find(workflow.id).request["payload"])
         expect(payload["semaphore_approval_include_secrets"]).to be_nil
         expect(payload["semaphore_approval_enable_cache"]).to be_nil
         expect(payload["semaphore_approval"]).to be_nil
+      end
+
+      it "fails closed when only one of the requested options is disabled" do
+        build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+
+        allow(@logger).to receive(:info)
+        allow(Watchman).to receive(:increment)
+        allow(@workflow.payload).to receive_messages(
+          issue_number: 1,
+          pr_approval?: true,
+          pr_approval_include_secrets?: true,
+          pr_approval_enable_cache?: true,
+          comment_author: "maintainer",
+          comment_created_at: approval_comment_time
+        )
+        # include-secrets enabled, enable-cache disabled → the requested cache
+        # option is unavailable, so the whole command fails closed.
+        allow(described_class).to receive_messages(
+          approval_option_enabled?: true,
+          approval_enable_cache_option_enabled?: false,
+          can_approve_forked_pr?: true
+        )
+
+        expect(described_class).not_to receive(:launch_pipeline)
+        expect(Watchman).to receive(:increment).with("hooks.pr_approval.option_not_enabled")
+
+        described_class.run(@workflow, @logger)
       end
 
       it "fails closed (STATE_PR_APPROVAL_STALE, no launch) when the fork head moved after approval" do

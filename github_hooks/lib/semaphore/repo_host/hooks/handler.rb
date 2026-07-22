@@ -4,6 +4,11 @@ require "time" # Time.parse, used to bind an approval to its comment timestamp
 
 class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
 
+  # Fail-closed deadline (seconds) for the synchronous RBAC permission check in
+  # can_approve_forked_pr?, so a slow/hung RBAC service can't stall the approval
+  # worker; GRPC::DeadlineExceeded is caught below and treated as a denial.
+  PR_APPROVAL_RBAC_DEADLINE_SECONDS = 5
+
   # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength
   def self.run(workflow, logger, hook_payload = "", signature = "", retries = 0)
     # stops hooks from deleted projects from generating exceptions
@@ -163,6 +168,20 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
         :option => "--enable-cache",
         :logger => logger
       )
+
+      # Fail closed if the approver explicitly requested an option the project
+      # has not enabled, rather than silently downgrading to a bare approval —
+      # that would consume the one-shot approval on a run without the requested
+      # secrets/cache. Leave the workflow blocked so the option can be enabled
+      # (or the command re-issued without it). Consistent with how a misspelled
+      # option is rejected by the parser.
+      if (include_secrets_requested && !include_secrets) || (enable_cache_requested && !enable_cache)
+        logger.info("pr-approval-option-not-enabled",
+                    :include_secrets_requested => include_secrets_requested,
+                    :enable_cache_requested => enable_cache_requested)
+        Watchman.increment("hooks.pr_approval.option_not_enabled")
+        return
+      end
 
       options_persisted = mark_workflow_with_pr_approval_options(
         workflow,
@@ -536,7 +555,8 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
       :project_id => project.id
     )
 
-    client.list_user_permissions(req).permissions.include?("project.job.rerun")
+    client.list_user_permissions(req, :deadline => Time.now + PR_APPROVAL_RBAC_DEADLINE_SECONDS)
+          .permissions.include?("project.job.rerun")
   rescue StandardError => e
     logger&.error(
       "pr-approval-permission-check-failed",

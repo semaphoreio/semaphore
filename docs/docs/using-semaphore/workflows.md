@@ -262,7 +262,7 @@ When these settings are enabled, an authorized approver can approve with:
 - `/sem-approve --enable-cache`
 - `/sem-approve --include-secrets --enable-cache`
 
-A `/sem-approve` comment that includes an unrecognized option is **not** treated as an approval (rather than silently approving without the requested option). The blocked workflow is left untouched, so you can re-issue the command with the correct spelling.
+If a `/sem-approve` comment requests an option that is **not available** — either an unrecognized option (a typo) or one the project has not enabled — the command is **not** treated as an approval, rather than silently approving without it. The blocked workflow is left untouched, so you can enable the option (or fix the spelling) and re-issue the command.
 
 These options are currently available for GitHub pull request approvals.
 

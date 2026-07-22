@@ -2836,6 +2836,99 @@ defmodule Projecthub.Api.GrpcServerTest do
       assert response.project.spec.repository.forked_pull_requests.allowed_contributors == ["trusted-user"]
     end
 
+    test "does not wipe stored sem-approve options when the feature is disabled during an update" do
+      {:ok, channel} =
+        GRPC.Stub.connect("localhost:50051",
+          interceptors: [
+            Projecthub.Util.GRPC.ClientRequestIdInterceptor,
+            Projecthub.Util.GRPC.ClientLoggerInterceptor,
+            Projecthub.Util.GRPC.ClientRunAsyncInterceptor
+          ]
+        )
+
+      {:ok, project} = Support.Factories.Project.create_with_repo()
+
+      project_metadata =
+        InternalApi.Projecthub.Project.Metadata.new(
+          name: "organization",
+          id: project.id,
+          owner_id: project.creator_id,
+          org_id: project.organization_id,
+          description: "A repo for testing SemaphoreCI features"
+        )
+
+      build_request = fn include_secrets, enable_cache ->
+        InternalApi.Projecthub.UpdateRequest.new(
+          metadata:
+            InternalApi.Projecthub.RequestMeta.new(
+              api_version: "",
+              kind: "",
+              req_id: "",
+              org_id: project.organization_id,
+              user_id: "12345678-1234-5678-1234-567812345678"
+            ),
+          project:
+            InternalApi.Projecthub.Project.new(
+              metadata: project_metadata,
+              spec:
+                InternalApi.Projecthub.Project.Spec.new(
+                  repository:
+                    InternalApi.Projecthub.Project.Spec.Repository.new(
+                      url: "git@github.com:myorg/hello-world.git",
+                      run_on: [:BRANCHES, :FORKED_PULL_REQUESTS],
+                      forked_pull_requests:
+                        InternalApi.Projecthub.Project.Spec.Repository.ForkedPullRequests.new(
+                          allowed_contributors: ["trusted-user"],
+                          allow_sem_approve_include_secrets: include_secrets,
+                          allow_sem_approve_enable_cache: enable_cache
+                        )
+                    ),
+                  schedulers: []
+                )
+            )
+        )
+      end
+
+      enable_feature = fn ->
+        FunRegistry.set!(Support.FakeServices.FeatureService, :list_organization_features, fn _req, _ ->
+          InternalApi.Feature.ListOrganizationFeaturesResponse.new(
+            organization_features: [
+              [
+                feature: %{type: "sem_approve_options"},
+                availability: InternalApi.Feature.Availability.new(state: :ENABLED, quantity: 1)
+              ]
+            ]
+          )
+        end)
+      end
+
+      disable_feature = fn ->
+        FunRegistry.set!(Support.FakeServices.FeatureService, :list_organization_features, fn _req, _ ->
+          InternalApi.Feature.ListOrganizationFeaturesResponse.new(organization_features: [])
+        end)
+      end
+
+      # Feature ENABLED: configure both options on the project.
+      enable_feature.()
+      {:ok, enabled_response} = Stub.update(channel, build_request.(true, true))
+      assert enabled_response.metadata.status.code == :OK
+
+      {:ok, configured} = Projecthub.Models.Project.find(project.id)
+      assert configured.allow_sem_approve_include_secrets == true
+      assert configured.allow_sem_approve_enable_cache == true
+
+      # Feature DISABLED (deliberate rollback or a transient feature-service
+      # failure): a subsequent update must NOT wipe the stored values, even
+      # though the request carries false for both.
+      disable_feature.()
+      {:ok, disabled_response} = Stub.update(channel, build_request.(false, false))
+      assert disabled_response.metadata.status.code == :OK
+
+      {:ok, preserved} = Projecthub.Models.Project.find(project.id)
+      assert preserved.allow_sem_approve_include_secrets == true
+      assert preserved.allow_sem_approve_enable_cache == true
+    end
+
     test "when the project can't be found => returns not found" do
       {:ok, channel} =
         GRPC.Stub.connect("localhost:50051",
