@@ -1032,9 +1032,19 @@ defmodule Projecthub.Api.GrpcServer do
         allowed_secrets: "",
         allowed_contributors: "",
         allow_sem_approve_include_secrets:
-          sem_approve_option_value(sem_approve_options_enabled, false, existing_project, :allow_sem_approve_include_secrets),
+          sem_approve_option_value(
+            sem_approve_options_enabled,
+            false,
+            existing_project,
+            :allow_sem_approve_include_secrets
+          ),
         allow_sem_approve_enable_cache:
-          sem_approve_option_value(sem_approve_options_enabled, false, existing_project, :allow_sem_approve_enable_cache)
+          sem_approve_option_value(
+            sem_approve_options_enabled,
+            false,
+            existing_project,
+            :allow_sem_approve_enable_cache
+          )
       }
     end
   end

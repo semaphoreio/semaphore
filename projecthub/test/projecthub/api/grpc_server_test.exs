@@ -2846,7 +2846,14 @@ defmodule Projecthub.Api.GrpcServerTest do
           ]
         )
 
-      {:ok, project} = Support.Factories.Project.create_with_repo()
+      # Configure the options directly (as if set while the feature was
+      # enabled) without going through the API, so the org's feature cache is
+      # not warmed to "enabled".
+      {:ok, project} =
+        Support.Factories.Project.create_with_repo(%{
+          allow_sem_approve_include_secrets: true,
+          allow_sem_approve_enable_cache: true
+        })
 
       project_metadata =
         InternalApi.Projecthub.Project.Metadata.new(
@@ -2889,40 +2896,17 @@ defmodule Projecthub.Api.GrpcServerTest do
         )
       end
 
-      enable_feature = fn ->
-        FunRegistry.set!(Support.FakeServices.FeatureService, :list_organization_features, fn _req, _ ->
-          InternalApi.Feature.ListOrganizationFeaturesResponse.new(
-            organization_features: [
-              [
-                feature: %{type: "sem_approve_options"},
-                availability: InternalApi.Feature.Availability.new(state: :ENABLED, quantity: 1)
-              ]
-            ]
-          )
-        end)
-      end
-
-      disable_feature = fn ->
-        FunRegistry.set!(Support.FakeServices.FeatureService, :list_organization_features, fn _req, _ ->
-          InternalApi.Feature.ListOrganizationFeaturesResponse.new(organization_features: [])
-        end)
-      end
-
-      # Feature ENABLED: configure both options on the project.
-      enable_feature.()
-      {:ok, enabled_response} = Stub.update(channel, build_request.(true, true))
-      assert enabled_response.metadata.status.code == :OK
-
-      {:ok, configured} = Projecthub.Models.Project.find(project.id)
-      assert configured.allow_sem_approve_include_secrets == true
-      assert configured.allow_sem_approve_enable_cache == true
-
       # Feature DISABLED (deliberate rollback or a transient feature-service
-      # failure): a subsequent update must NOT wipe the stored values, even
-      # though the request carries false for both.
-      disable_feature.()
-      {:ok, disabled_response} = Stub.update(channel, build_request.(false, false))
-      assert disabled_response.metadata.status.code == :OK
+      # failure). The org's feature cache is cold, so this is what the update
+      # observes.
+      FunRegistry.set!(Support.FakeServices.FeatureService, :list_organization_features, fn _req, _ ->
+        InternalApi.Feature.ListOrganizationFeaturesResponse.new(organization_features: [])
+      end)
+
+      # An ordinary update that carries the options as false. With the feature
+      # disabled the stored (true) values must be preserved, not overwritten.
+      {:ok, response} = Stub.update(channel, build_request.(false, false))
+      assert response.metadata.status.code == :OK
 
       {:ok, preserved} = Projecthub.Models.Project.find(project.id)
       assert preserved.allow_sem_approve_include_secrets == true
