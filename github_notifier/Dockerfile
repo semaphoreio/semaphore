@@ -47,7 +47,7 @@ CMD [ "/bin/ash",  "-c \"while sleep 1000; do :; done\"" ]
 FROM base AS builder
 
 RUN mix compile --warnings-as-errors
-RUN mix deps.compile sentry --force
+RUN mix sentry.package_source_code
 RUN mix release
 
 FROM ${RUNNER_IMAGE} AS runner

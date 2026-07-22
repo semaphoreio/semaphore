@@ -1,7 +1,11 @@
 defmodule InternalApi.Projecthub.ResponseMeta.Code do
   @moduledoc false
 
-  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    enum: true,
+    full_name: "InternalApi.Projecthub.ResponseMeta.Code",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:OK, 0)
   field(:NOT_FOUND, 2)
@@ -11,7 +15,11 @@ end
 defmodule InternalApi.Projecthub.Project.Spec.Visibility do
   @moduledoc false
 
-  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    enum: true,
+    full_name: "InternalApi.Projecthub.Project.Spec.Visibility",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:PRIVATE, 0)
   field(:PUBLIC, 1)
@@ -20,7 +28,11 @@ end
 defmodule InternalApi.Projecthub.Project.Spec.PermissionType do
   @moduledoc false
 
-  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    enum: true,
+    full_name: "InternalApi.Projecthub.Project.Spec.PermissionType",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:EMPTY, 0)
   field(:DEFAULT_BRANCH, 1)
@@ -33,7 +45,11 @@ end
 defmodule InternalApi.Projecthub.Project.Spec.Repository.RunType do
   @moduledoc false
 
-  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    enum: true,
+    full_name: "InternalApi.Projecthub.Project.Spec.Repository.RunType",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:BRANCHES, 0)
   field(:TAGS, 1)
@@ -45,7 +61,11 @@ end
 defmodule InternalApi.Projecthub.Project.Spec.Repository.Status.PipelineFile.Level do
   @moduledoc false
 
-  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    enum: true,
+    full_name: "InternalApi.Projecthub.Project.Spec.Repository.Status.PipelineFile.Level",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:BLOCK, 0)
   field(:PIPELINE, 1)
@@ -54,7 +74,11 @@ end
 defmodule InternalApi.Projecthub.Project.Spec.Scheduler.Status do
   @moduledoc false
 
-  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    enum: true,
+    full_name: "InternalApi.Projecthub.Project.Spec.Scheduler.Status",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:STATUS_UNSPECIFIED, 0)
   field(:STATUS_INACTIVE, 1)
@@ -64,7 +88,11 @@ end
 defmodule InternalApi.Projecthub.Project.Spec.Task.Status do
   @moduledoc false
 
-  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    enum: true,
+    full_name: "InternalApi.Projecthub.Project.Spec.Task.Status",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:STATUS_UNSPECIFIED, 0)
   field(:STATUS_INACTIVE, 1)
@@ -74,7 +102,11 @@ end
 defmodule InternalApi.Projecthub.Project.Status.State do
   @moduledoc false
 
-  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    enum: true,
+    full_name: "InternalApi.Projecthub.Project.Status.State",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:INITIALIZING, 0)
   field(:READY, 1)
@@ -85,7 +117,11 @@ end
 defmodule InternalApi.Projecthub.ListKeysetRequest.Direction do
   @moduledoc false
 
-  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    enum: true,
+    full_name: "InternalApi.Projecthub.ListKeysetRequest.Direction",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:NEXT, 0)
   field(:PREVIOUS, 1)
@@ -94,7 +130,10 @@ end
 defmodule InternalApi.Projecthub.RequestMeta do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.RequestMeta",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:api_version, 1, type: :string, json_name: "apiVersion")
   field(:kind, 2, type: :string)
@@ -106,7 +145,10 @@ end
 defmodule InternalApi.Projecthub.ResponseMeta.Status do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.ResponseMeta.Status",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:code, 1, type: InternalApi.Projecthub.ResponseMeta.Code, enum: true)
   field(:message, 2, type: :string)
@@ -115,7 +157,10 @@ end
 defmodule InternalApi.Projecthub.ResponseMeta do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.ResponseMeta",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:api_version, 1, type: :string, json_name: "apiVersion")
   field(:kind, 2, type: :string)
@@ -128,7 +173,10 @@ end
 defmodule InternalApi.Projecthub.PaginationRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.PaginationRequest",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:page, 1, type: :int32)
   field(:page_size, 2, type: :int32, json_name: "pageSize")
@@ -137,7 +185,10 @@ end
 defmodule InternalApi.Projecthub.PaginationResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.PaginationResponse",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:page_number, 1, type: :int32, json_name: "pageNumber")
   field(:page_size, 2, type: :int32, json_name: "pageSize")
@@ -148,7 +199,10 @@ end
 defmodule InternalApi.Projecthub.Project.Metadata do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.Project.Metadata",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:name, 1, type: :string)
   field(:id, 2, type: :string)
@@ -161,7 +215,10 @@ end
 defmodule InternalApi.Projecthub.Project.Spec.Repository.ForkedPullRequests do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.Project.Spec.Repository.ForkedPullRequests",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:allowed_secrets, 1, repeated: true, type: :string, json_name: "allowedSecrets")
   field(:allowed_contributors, 2, repeated: true, type: :string, json_name: "allowedContributors")
@@ -170,7 +227,10 @@ end
 defmodule InternalApi.Projecthub.Project.Spec.Repository.Status.PipelineFile do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.Project.Spec.Repository.Status.PipelineFile",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:path, 1, type: :string)
 
@@ -183,7 +243,10 @@ end
 defmodule InternalApi.Projecthub.Project.Spec.Repository.Status do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.Project.Spec.Repository.Status",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:pipeline_files, 1,
     repeated: true,
@@ -195,7 +258,10 @@ end
 defmodule InternalApi.Projecthub.Project.Spec.Repository.Whitelist do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.Project.Spec.Repository.Whitelist",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:branches, 1, repeated: true, type: :string)
   field(:tags, 2, repeated: true, type: :string)
@@ -204,7 +270,10 @@ end
 defmodule InternalApi.Projecthub.Project.Spec.Repository do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.Project.Spec.Repository",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   oneof(:run_present, 0)
 
@@ -244,7 +313,10 @@ end
 defmodule InternalApi.Projecthub.Project.Spec.Scheduler do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.Project.Spec.Scheduler",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:id, 1, type: :string)
   field(:name, 2, type: :string)
@@ -257,7 +329,10 @@ end
 defmodule InternalApi.Projecthub.Project.Spec.Task.Parameter do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.Project.Spec.Task.Parameter",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:name, 1, type: :string)
   field(:required, 2, type: :bool)
@@ -271,7 +346,10 @@ end
 defmodule InternalApi.Projecthub.Project.Spec.Task do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.Project.Spec.Task",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:id, 1, type: :string)
   field(:name, 2, type: :string)
@@ -287,7 +365,10 @@ end
 defmodule InternalApi.Projecthub.Project.Spec do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.Project.Spec",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:repository, 1, type: InternalApi.Projecthub.Project.Spec.Repository)
   field(:schedulers, 2, repeated: true, type: InternalApi.Projecthub.Project.Spec.Scheduler)
@@ -319,7 +400,10 @@ end
 defmodule InternalApi.Projecthub.Project.Status.Cache do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.Project.Status.Cache",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:state, 1, type: InternalApi.Projecthub.Project.Status.State, enum: true)
 end
@@ -327,7 +411,10 @@ end
 defmodule InternalApi.Projecthub.Project.Status.ArtifactStore do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.Project.Status.ArtifactStore",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:state, 1, type: InternalApi.Projecthub.Project.Status.State, enum: true)
 end
@@ -335,7 +422,10 @@ end
 defmodule InternalApi.Projecthub.Project.Status.Repository do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.Project.Status.Repository",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:state, 1, type: InternalApi.Projecthub.Project.Status.State, enum: true)
 end
@@ -343,7 +433,10 @@ end
 defmodule InternalApi.Projecthub.Project.Status.Analysis do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.Project.Status.Analysis",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:state, 1, type: InternalApi.Projecthub.Project.Status.State, enum: true)
 end
@@ -351,7 +444,10 @@ end
 defmodule InternalApi.Projecthub.Project.Status.Permissions do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.Project.Status.Permissions",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:state, 1, type: InternalApi.Projecthub.Project.Status.State, enum: true)
 end
@@ -359,7 +455,10 @@ end
 defmodule InternalApi.Projecthub.Project.Status do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.Project.Status",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:state, 1, type: InternalApi.Projecthub.Project.Status.State, enum: true)
   field(:state_reason, 2, type: :string, json_name: "stateReason")
@@ -378,7 +477,10 @@ end
 defmodule InternalApi.Projecthub.Project do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.Project",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:metadata, 1, type: InternalApi.Projecthub.Project.Metadata)
   field(:spec, 2, type: InternalApi.Projecthub.Project.Spec)
@@ -388,7 +490,10 @@ end
 defmodule InternalApi.Projecthub.ListRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.ListRequest",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:metadata, 1, type: InternalApi.Projecthub.RequestMeta)
   field(:pagination, 2, type: InternalApi.Projecthub.PaginationRequest)
@@ -400,7 +505,10 @@ end
 defmodule InternalApi.Projecthub.ListResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.ListResponse",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:metadata, 1, type: InternalApi.Projecthub.ResponseMeta)
   field(:pagination, 2, type: InternalApi.Projecthub.PaginationResponse)
@@ -410,7 +518,10 @@ end
 defmodule InternalApi.Projecthub.ListKeysetRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.ListKeysetRequest",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:metadata, 1, type: InternalApi.Projecthub.RequestMeta)
   field(:page_size, 2, type: :int32, json_name: "pageSize")
@@ -424,7 +535,10 @@ end
 defmodule InternalApi.Projecthub.ListKeysetResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.ListKeysetResponse",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:metadata, 1, type: InternalApi.Projecthub.ResponseMeta)
   field(:projects, 2, repeated: true, type: InternalApi.Projecthub.Project)
@@ -435,7 +549,10 @@ end
 defmodule InternalApi.Projecthub.DescribeRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.DescribeRequest",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:metadata, 1, type: InternalApi.Projecthub.RequestMeta)
   field(:id, 2, type: :string)
@@ -447,7 +564,10 @@ end
 defmodule InternalApi.Projecthub.DescribeResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.DescribeResponse",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:metadata, 1, type: InternalApi.Projecthub.ResponseMeta)
   field(:project, 2, type: InternalApi.Projecthub.Project)
@@ -456,7 +576,10 @@ end
 defmodule InternalApi.Projecthub.DescribeManyRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.DescribeManyRequest",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:metadata, 1, type: InternalApi.Projecthub.RequestMeta)
   field(:ids, 2, repeated: true, type: :string)
@@ -466,7 +589,10 @@ end
 defmodule InternalApi.Projecthub.DescribeManyResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.DescribeManyResponse",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:metadata, 1, type: InternalApi.Projecthub.ResponseMeta)
   field(:projects, 2, repeated: true, type: InternalApi.Projecthub.Project)
@@ -475,7 +601,10 @@ end
 defmodule InternalApi.Projecthub.CreateRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.CreateRequest",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:metadata, 1, type: InternalApi.Projecthub.RequestMeta)
   field(:project, 2, type: InternalApi.Projecthub.Project)
@@ -485,7 +614,10 @@ end
 defmodule InternalApi.Projecthub.CreateResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.CreateResponse",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:metadata, 1, type: InternalApi.Projecthub.ResponseMeta)
   field(:project, 2, type: InternalApi.Projecthub.Project)
@@ -494,7 +626,10 @@ end
 defmodule InternalApi.Projecthub.UpdateRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.UpdateRequest",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:metadata, 1, type: InternalApi.Projecthub.RequestMeta)
   field(:project, 2, type: InternalApi.Projecthub.Project)
@@ -504,7 +639,10 @@ end
 defmodule InternalApi.Projecthub.UpdateResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.UpdateResponse",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:metadata, 1, type: InternalApi.Projecthub.ResponseMeta)
   field(:project, 2, type: InternalApi.Projecthub.Project)
@@ -513,7 +651,10 @@ end
 defmodule InternalApi.Projecthub.DestroyRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.DestroyRequest",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:metadata, 1, type: InternalApi.Projecthub.RequestMeta)
   field(:id, 2, type: :string)
@@ -523,7 +664,10 @@ end
 defmodule InternalApi.Projecthub.DestroyResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.DestroyResponse",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:metadata, 1, type: InternalApi.Projecthub.ResponseMeta)
 end
@@ -531,7 +675,10 @@ end
 defmodule InternalApi.Projecthub.RestoreRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.RestoreRequest",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:metadata, 1, type: InternalApi.Projecthub.RequestMeta)
   field(:id, 2, type: :string)
@@ -540,7 +687,10 @@ end
 defmodule InternalApi.Projecthub.RestoreResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.RestoreResponse",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:metadata, 1, type: InternalApi.Projecthub.ResponseMeta)
 end
@@ -548,7 +698,10 @@ end
 defmodule InternalApi.Projecthub.UsersRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.UsersRequest",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:metadata, 1, type: InternalApi.Projecthub.RequestMeta)
   field(:id, 2, type: :string)
@@ -557,7 +710,10 @@ end
 defmodule InternalApi.Projecthub.UsersResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.UsersResponse",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:metadata, 1, type: InternalApi.Projecthub.ResponseMeta)
   field(:users, 2, repeated: true, type: InternalApi.User.User)
@@ -566,7 +722,10 @@ end
 defmodule InternalApi.Projecthub.CheckDeployKeyRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.CheckDeployKeyRequest",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:metadata, 1, type: InternalApi.Projecthub.RequestMeta)
   field(:id, 2, type: :string)
@@ -575,7 +734,10 @@ end
 defmodule InternalApi.Projecthub.CheckDeployKeyResponse.DeployKey do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.CheckDeployKeyResponse.DeployKey",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:title, 1, type: :string)
   field(:fingerprint, 2, type: :string)
@@ -586,7 +748,10 @@ end
 defmodule InternalApi.Projecthub.CheckDeployKeyResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.CheckDeployKeyResponse",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:metadata, 1, type: InternalApi.Projecthub.ResponseMeta)
 
@@ -599,7 +764,10 @@ end
 defmodule InternalApi.Projecthub.RegenerateDeployKeyRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.RegenerateDeployKeyRequest",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:metadata, 1, type: InternalApi.Projecthub.RequestMeta)
   field(:id, 2, type: :string)
@@ -608,7 +776,10 @@ end
 defmodule InternalApi.Projecthub.RegenerateDeployKeyResponse.DeployKey do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.RegenerateDeployKeyResponse.DeployKey",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:title, 1, type: :string)
   field(:fingerprint, 2, type: :string)
@@ -619,7 +790,10 @@ end
 defmodule InternalApi.Projecthub.RegenerateDeployKeyResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.RegenerateDeployKeyResponse",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:metadata, 1, type: InternalApi.Projecthub.ResponseMeta)
 
@@ -632,7 +806,10 @@ end
 defmodule InternalApi.Projecthub.CheckWebhookRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.CheckWebhookRequest",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:metadata, 1, type: InternalApi.Projecthub.RequestMeta)
   field(:id, 2, type: :string)
@@ -641,7 +818,10 @@ end
 defmodule InternalApi.Projecthub.CheckWebhookResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.CheckWebhookResponse",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:metadata, 1, type: InternalApi.Projecthub.ResponseMeta)
   field(:webhook, 2, type: InternalApi.Projecthub.Webhook)
@@ -650,7 +830,10 @@ end
 defmodule InternalApi.Projecthub.RegenerateWebhookRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.RegenerateWebhookRequest",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:metadata, 1, type: InternalApi.Projecthub.RequestMeta)
   field(:id, 2, type: :string)
@@ -659,7 +842,10 @@ end
 defmodule InternalApi.Projecthub.RegenerateWebhookResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.RegenerateWebhookResponse",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:metadata, 1, type: InternalApi.Projecthub.ResponseMeta)
   field(:webhook, 2, type: InternalApi.Projecthub.Webhook)
@@ -668,7 +854,10 @@ end
 defmodule InternalApi.Projecthub.Webhook do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.Webhook",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:url, 1, type: :string)
 end
@@ -676,7 +865,10 @@ end
 defmodule InternalApi.Projecthub.ChangeProjectOwnerRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.ChangeProjectOwnerRequest",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:metadata, 1, type: InternalApi.Projecthub.RequestMeta)
   field(:id, 2, type: :string)
@@ -686,7 +878,10 @@ end
 defmodule InternalApi.Projecthub.ChangeProjectOwnerResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.ChangeProjectOwnerResponse",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:metadata, 1, type: InternalApi.Projecthub.ResponseMeta)
 end
@@ -694,7 +889,10 @@ end
 defmodule InternalApi.Projecthub.ForkAndCreateRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.ForkAndCreateRequest",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:metadata, 1, type: InternalApi.Projecthub.RequestMeta)
   field(:project, 2, type: InternalApi.Projecthub.Project)
@@ -703,7 +901,10 @@ end
 defmodule InternalApi.Projecthub.ForkAndCreateResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.ForkAndCreateResponse",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:metadata, 1, type: InternalApi.Projecthub.ResponseMeta)
   field(:project, 2, type: InternalApi.Projecthub.Project)
@@ -712,7 +913,10 @@ end
 defmodule InternalApi.Projecthub.GithubAppSwitchRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.GithubAppSwitchRequest",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:metadata, 1, type: InternalApi.Projecthub.RequestMeta)
   field(:id, 2, type: :string)
@@ -721,7 +925,10 @@ end
 defmodule InternalApi.Projecthub.GithubAppSwitchResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.GithubAppSwitchResponse",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:metadata, 1, type: InternalApi.Projecthub.ResponseMeta)
 end
@@ -729,7 +936,10 @@ end
 defmodule InternalApi.Projecthub.FinishOnboardingRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.FinishOnboardingRequest",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:metadata, 1, type: InternalApi.Projecthub.RequestMeta)
   field(:id, 2, type: :string)
@@ -738,7 +948,10 @@ end
 defmodule InternalApi.Projecthub.FinishOnboardingResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.FinishOnboardingResponse",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:metadata, 1, type: InternalApi.Projecthub.ResponseMeta)
 end
@@ -746,7 +959,10 @@ end
 defmodule InternalApi.Projecthub.RegenerateWebhookSecretRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.RegenerateWebhookSecretRequest",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:metadata, 1, type: InternalApi.Projecthub.RequestMeta)
   field(:id, 2, type: :string)
@@ -755,7 +971,10 @@ end
 defmodule InternalApi.Projecthub.RegenerateWebhookSecretResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.RegenerateWebhookSecretResponse",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:metadata, 1, type: InternalApi.Projecthub.ResponseMeta)
   field(:secret, 2, type: :string)
@@ -764,7 +983,10 @@ end
 defmodule InternalApi.Projecthub.ProjectCreated do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.ProjectCreated",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:project_id, 1, type: :string, json_name: "projectId")
   field(:timestamp, 2, type: Google.Protobuf.Timestamp)
@@ -774,7 +996,10 @@ end
 defmodule InternalApi.Projecthub.ProjectDeleted do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.ProjectDeleted",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:project_id, 1, type: :string, json_name: "projectId")
   field(:timestamp, 2, type: Google.Protobuf.Timestamp)
@@ -784,7 +1009,10 @@ end
 defmodule InternalApi.Projecthub.ProjectRestored do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.ProjectRestored",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:project_id, 1, type: :string, json_name: "projectId")
   field(:timestamp, 2, type: Google.Protobuf.Timestamp)
@@ -794,7 +1022,10 @@ end
 defmodule InternalApi.Projecthub.ProjectUpdated do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.ProjectUpdated",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:project_id, 1, type: :string, json_name: "projectId")
   field(:org_id, 2, type: :string, json_name: "orgId")
@@ -804,7 +1035,10 @@ end
 defmodule InternalApi.Projecthub.CollaboratorsChanged do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.Projecthub.CollaboratorsChanged",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:project_id, 1, type: :string, json_name: "projectId")
   field(:timestamp, 2, type: Google.Protobuf.Timestamp)
@@ -815,7 +1049,7 @@ defmodule InternalApi.Projecthub.ProjectService.Service do
 
   use GRPC.Service,
     name: "InternalApi.Projecthub.ProjectService",
-    protoc_gen_elixir_version: "0.13.0"
+    protoc_gen_elixir_version: "0.17.0"
 
   rpc(:List, InternalApi.Projecthub.ListRequest, InternalApi.Projecthub.ListResponse)
 
