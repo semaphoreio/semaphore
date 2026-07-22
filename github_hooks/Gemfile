@@ -77,7 +77,6 @@ group :test, :development do
 end
 
 group :test do
-  gem "selenium-webdriver", ">= 4.14.0" # CVE-2023-5590: NULL ptr deref, patched in 4.14.0 (unused test dep)
   gem "shoulda", "~> 4.0"
   gem "shoulda-matchers"
   gem "show_me_the_cookies"
