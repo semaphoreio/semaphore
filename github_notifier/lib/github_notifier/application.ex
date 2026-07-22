@@ -43,8 +43,8 @@ defmodule GithubNotifier.Application do
       Logger.info("Starting: #{inspect(c)}")
     end)
 
-    {:ok, _} = Logger.add_backend(Sentry.LoggerBackend)
-    Logger.configure_backend(Sentry.LoggerBackend, include_logger_metadata: true)
+    {:ok, _} = LoggerBackends.add(Sentry.LoggerBackend)
+    LoggerBackends.configure(Sentry.LoggerBackend, include_logger_metadata: true)
 
     opts = [strategy: :one_for_one, name: GithubNotifier.Supervisor]
     Supervisor.start_link(children, opts)

@@ -1,5 +1,4 @@
 defmodule GithubNotifier.Services.BlockFinishedNotifierTest do
-  require GrpcMock
   use ExUnit.Case
 
   setup do

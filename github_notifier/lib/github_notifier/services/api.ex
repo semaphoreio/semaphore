@@ -1,6 +1,4 @@
 defmodule GithubNotifier.Services.Api do
-  require Logger
-
   use GRPC.Server, service: InternalApi.GithubNotifier.GithubNotifier.Service
 
   alias InternalApi.ResponseStatus

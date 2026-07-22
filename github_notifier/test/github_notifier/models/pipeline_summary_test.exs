@@ -1,6 +1,5 @@
 defmodule GithubNotifier.Models.PipelineSummaryTest do
   use ExUnit.Case
-  require Logger
 
   alias GithubNotifier.Models.PipelineSummary
 
