@@ -1,11 +1,7 @@
 defmodule InternalApi.PlumberWF.TriggeredBy do
   @moduledoc false
 
-  use Protobuf,
-    enum: true,
-    full_name: "InternalApi.PlumberWF.TriggeredBy",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:HOOK, 0)
   field(:SCHEDULE, 1)
@@ -16,11 +12,7 @@ end
 defmodule InternalApi.PlumberWF.GitRefType do
   @moduledoc false
 
-  use Protobuf,
-    enum: true,
-    full_name: "InternalApi.PlumberWF.GitRefType",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:BRANCH, 0)
   field(:TAG, 1)
@@ -30,11 +22,7 @@ end
 defmodule InternalApi.PlumberWF.ScheduleRequest.ServiceType do
   @moduledoc false
 
-  use Protobuf,
-    enum: true,
-    full_name: "InternalApi.PlumberWF.ScheduleRequest.ServiceType",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:GIT_HUB, 0)
   field(:LOCAL, 1)
@@ -47,11 +35,7 @@ end
 defmodule InternalApi.PlumberWF.ListLatestWorkflowsRequest.Order do
   @moduledoc false
 
-  use Protobuf,
-    enum: true,
-    full_name: "InternalApi.PlumberWF.ListLatestWorkflowsRequest.Order",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:BY_CREATION_TIME_DESC, 0)
 end
@@ -59,11 +43,7 @@ end
 defmodule InternalApi.PlumberWF.ListLatestWorkflowsRequest.Direction do
   @moduledoc false
 
-  use Protobuf,
-    enum: true,
-    full_name: "InternalApi.PlumberWF.ListLatestWorkflowsRequest.Direction",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:NEXT, 0)
   field(:PREVIOUS, 1)
@@ -72,11 +52,7 @@ end
 defmodule InternalApi.PlumberWF.ListGroupedKSRequest.Order do
   @moduledoc false
 
-  use Protobuf,
-    enum: true,
-    full_name: "InternalApi.PlumberWF.ListGroupedKSRequest.Order",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:BY_CREATION_TIME_DESC, 0)
 end
@@ -84,11 +60,7 @@ end
 defmodule InternalApi.PlumberWF.ListGroupedKSRequest.Direction do
   @moduledoc false
 
-  use Protobuf,
-    enum: true,
-    full_name: "InternalApi.PlumberWF.ListGroupedKSRequest.Direction",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:NEXT, 0)
   field(:PREVIOUS, 1)
@@ -97,11 +69,7 @@ end
 defmodule InternalApi.PlumberWF.ListGroupedRequest.SourceType do
   @moduledoc false
 
-  use Protobuf,
-    enum: true,
-    full_name: "InternalApi.PlumberWF.ListGroupedRequest.SourceType",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:BRANCH, 0)
   field(:TAG, 1)
@@ -111,11 +79,7 @@ end
 defmodule InternalApi.PlumberWF.ListKeysetRequest.Order do
   @moduledoc false
 
-  use Protobuf,
-    enum: true,
-    full_name: "InternalApi.PlumberWF.ListKeysetRequest.Order",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:BY_CREATION_TIME_DESC, 0)
 end
@@ -123,11 +87,7 @@ end
 defmodule InternalApi.PlumberWF.ListKeysetRequest.Direction do
   @moduledoc false
 
-  use Protobuf,
-    enum: true,
-    full_name: "InternalApi.PlumberWF.ListKeysetRequest.Direction",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:NEXT, 0)
   field(:PREVIOUS, 1)
@@ -136,10 +96,7 @@ end
 defmodule InternalApi.PlumberWF.ScheduleRequest.Repo do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.PlumberWF.ScheduleRequest.Repo",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:owner, 1, type: :string)
   field(:repo_name, 2, type: :string, json_name: "repoName")
@@ -151,10 +108,7 @@ end
 defmodule InternalApi.PlumberWF.ScheduleRequest.EnvVar do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.PlumberWF.ScheduleRequest.EnvVar",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:name, 1, type: :string)
   field(:value, 2, type: :string)
@@ -163,10 +117,7 @@ end
 defmodule InternalApi.PlumberWF.ScheduleRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.PlumberWF.ScheduleRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:service, 2, type: InternalApi.PlumberWF.ScheduleRequest.ServiceType, enum: true)
   field(:repo, 3, type: InternalApi.PlumberWF.ScheduleRequest.Repo)
@@ -201,10 +152,7 @@ end
 defmodule InternalApi.PlumberWF.ScheduleResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.PlumberWF.ScheduleResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:wf_id, 2, type: :string, json_name: "wfId")
   field(:status, 3, type: InternalApi.Status)
@@ -214,10 +162,7 @@ end
 defmodule InternalApi.PlumberWF.GetPathRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.PlumberWF.GetPathRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:wf_id, 1, type: :string, json_name: "wfId")
   field(:first_ppl_id, 2, type: :string, json_name: "firstPplId")
@@ -227,10 +172,7 @@ end
 defmodule InternalApi.PlumberWF.GetPathResponse.PathElement do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.PlumberWF.GetPathResponse.PathElement",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:ppl_id, 1, type: :string, json_name: "pplId")
   field(:switch_id, 2, type: :string, json_name: "switchId")
@@ -240,10 +182,7 @@ end
 defmodule InternalApi.PlumberWF.GetPathResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.PlumberWF.GetPathResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:wf_id, 2, type: :string, json_name: "wfId")
   field(:wf_created_at, 3, type: Google.Protobuf.Timestamp, json_name: "wfCreatedAt")
@@ -254,10 +193,7 @@ end
 defmodule InternalApi.PlumberWF.ListLatestWorkflowsRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.PlumberWF.ListLatestWorkflowsRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:order, 1, type: InternalApi.PlumberWF.ListLatestWorkflowsRequest.Order, enum: true)
   field(:page_size, 2, type: :int32, json_name: "pageSize")
@@ -282,10 +218,7 @@ end
 defmodule InternalApi.PlumberWF.ListLatestWorkflowsResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.PlumberWF.ListLatestWorkflowsResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:workflows, 1, repeated: true, type: InternalApi.PlumberWF.WorkflowDetails)
   field(:next_page_token, 2, type: :string, json_name: "nextPageToken")
@@ -295,10 +228,7 @@ end
 defmodule InternalApi.PlumberWF.ListGroupedKSRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.PlumberWF.ListGroupedKSRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:order, 1, type: InternalApi.PlumberWF.ListGroupedKSRequest.Order, enum: true)
   field(:page_size, 2, type: :int32, json_name: "pageSize")
@@ -318,10 +248,7 @@ end
 defmodule InternalApi.PlumberWF.ListGroupedKSResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.PlumberWF.ListGroupedKSResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:workflows, 1, repeated: true, type: InternalApi.PlumberWF.WorkflowDetails)
   field(:next_page_token, 2, type: :string, json_name: "nextPageToken")
@@ -331,10 +258,7 @@ end
 defmodule InternalApi.PlumberWF.ListGroupedRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.PlumberWF.ListGroupedRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:page, 1, type: :int32)
   field(:page_size, 2, type: :int32, json_name: "pageSize")
@@ -357,10 +281,7 @@ end
 defmodule InternalApi.PlumberWF.ListGroupedResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.PlumberWF.ListGroupedResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:status, 1, type: InternalApi.Status)
   field(:workflows, 2, repeated: true, type: InternalApi.PlumberWF.WorkflowDetails)
@@ -373,10 +294,7 @@ end
 defmodule InternalApi.PlumberWF.ListRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.PlumberWF.ListRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:page, 1, type: :int32)
   field(:page_size, 2, type: :int32, json_name: "pageSize")
@@ -400,10 +318,7 @@ end
 defmodule InternalApi.PlumberWF.ListResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.PlumberWF.ListResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:status, 1, type: InternalApi.Status)
   field(:workflows, 2, repeated: true, type: InternalApi.PlumberWF.WorkflowDetails)
@@ -416,10 +331,7 @@ end
 defmodule InternalApi.PlumberWF.ListKeysetRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.PlumberWF.ListKeysetRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:page_size, 1, type: :int32, json_name: "pageSize")
   field(:page_token, 2, type: :string, json_name: "pageToken")
@@ -448,10 +360,7 @@ end
 defmodule InternalApi.PlumberWF.ListKeysetResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.PlumberWF.ListKeysetResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:status, 1, type: InternalApi.Status)
   field(:workflows, 2, repeated: true, type: InternalApi.PlumberWF.WorkflowDetails)
@@ -462,10 +371,7 @@ end
 defmodule InternalApi.PlumberWF.WorkflowDetails do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.PlumberWF.WorkflowDetails",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:wf_id, 1, type: :string, json_name: "wfId")
   field(:initial_ppl_id, 2, type: :string, json_name: "initialPplId")
@@ -491,10 +397,7 @@ end
 defmodule InternalApi.PlumberWF.DescribeRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.PlumberWF.DescribeRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:wf_id, 1, type: :string, json_name: "wfId")
 end
@@ -502,10 +405,7 @@ end
 defmodule InternalApi.PlumberWF.DescribeResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.PlumberWF.DescribeResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:status, 1, type: InternalApi.Status)
   field(:workflow, 2, type: InternalApi.PlumberWF.WorkflowDetails)
@@ -514,10 +414,7 @@ end
 defmodule InternalApi.PlumberWF.DescribeManyRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.PlumberWF.DescribeManyRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:wf_ids, 1, repeated: true, type: :string, json_name: "wfIds")
 end
@@ -525,10 +422,7 @@ end
 defmodule InternalApi.PlumberWF.DescribeManyResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.PlumberWF.DescribeManyResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:status, 1, type: InternalApi.Status)
   field(:workflows, 2, repeated: true, type: InternalApi.PlumberWF.WorkflowDetails)
@@ -537,10 +431,7 @@ end
 defmodule InternalApi.PlumberWF.TerminateRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.PlumberWF.TerminateRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:requester_id, 2, type: :string, json_name: "requesterId")
   field(:wf_id, 3, type: :string, json_name: "wfId")
@@ -549,10 +440,7 @@ end
 defmodule InternalApi.PlumberWF.TerminateResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.PlumberWF.TerminateResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:status, 2, type: InternalApi.Status)
 end
@@ -560,10 +448,7 @@ end
 defmodule InternalApi.PlumberWF.ListLabelsRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.PlumberWF.ListLabelsRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:page, 1, type: :int32)
   field(:page_size, 2, type: :int32, json_name: "pageSize")
@@ -573,10 +458,7 @@ end
 defmodule InternalApi.PlumberWF.ListLabelsResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.PlumberWF.ListLabelsResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:status, 1, type: InternalApi.Status)
   field(:labels, 2, repeated: true, type: :string)
@@ -589,10 +471,7 @@ end
 defmodule InternalApi.PlumberWF.RescheduleRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.PlumberWF.RescheduleRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:wf_id, 1, type: :string, json_name: "wfId")
   field(:requester_id, 2, type: :string, json_name: "requesterId")
@@ -602,10 +481,7 @@ end
 defmodule InternalApi.PlumberWF.GetProjectIdRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.PlumberWF.GetProjectIdRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:wf_id, 1, type: :string, json_name: "wfId")
 end
@@ -613,10 +489,7 @@ end
 defmodule InternalApi.PlumberWF.GetProjectIdResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.PlumberWF.GetProjectIdResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:status, 1, type: InternalApi.Status)
   field(:project_id, 2, type: :string, json_name: "projectId")
@@ -625,10 +498,7 @@ end
 defmodule InternalApi.PlumberWF.WorkflowDeleted do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.PlumberWF.WorkflowDeleted",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:workflow_id, 1, type: :string, json_name: "workflowId")
   field(:organization_id, 2, type: :string, json_name: "organizationId")
@@ -642,7 +512,7 @@ defmodule InternalApi.PlumberWF.WorkflowService.Service do
 
   use GRPC.Service,
     name: "InternalApi.PlumberWF.WorkflowService",
-    protoc_gen_elixir_version: "0.17.0"
+    protoc_gen_elixir_version: "0.13.0"
 
   rpc(:Schedule, InternalApi.PlumberWF.ScheduleRequest, InternalApi.PlumberWF.ScheduleResponse)
 

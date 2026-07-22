@@ -1,11 +1,7 @@
 defmodule InternalApi.Feature.Machine.Platform do
   @moduledoc false
 
-  use Protobuf,
-    enum: true,
-    full_name: "InternalApi.Feature.Machine.Platform",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:LINUX, 0)
   field(:MAC, 1)
@@ -14,11 +10,7 @@ end
 defmodule InternalApi.Feature.Availability.State do
   @moduledoc false
 
-  use Protobuf,
-    enum: true,
-    full_name: "InternalApi.Feature.Availability.State",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:HIDDEN, 0)
   field(:ZERO_STATE, 1)
@@ -28,10 +20,7 @@ end
 defmodule InternalApi.Feature.ListOrganizationFeaturesRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Feature.ListOrganizationFeaturesRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:org_id, 1, type: :string, json_name: "orgId")
 end
@@ -39,10 +28,7 @@ end
 defmodule InternalApi.Feature.ListOrganizationFeaturesResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Feature.ListOrganizationFeaturesResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:organization_features, 1,
     repeated: true,
@@ -54,10 +40,7 @@ end
 defmodule InternalApi.Feature.OrganizationFeature do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Feature.OrganizationFeature",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:feature, 1, type: InternalApi.Feature.Feature)
   field(:availability, 2, type: InternalApi.Feature.Availability)
@@ -70,19 +53,13 @@ end
 defmodule InternalApi.Feature.ListFeaturesRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Feature.ListFeaturesRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 end
 
 defmodule InternalApi.Feature.ListFeaturesResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Feature.ListFeaturesResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:features, 1, repeated: true, type: InternalApi.Feature.Feature)
 end
@@ -90,10 +67,7 @@ end
 defmodule InternalApi.Feature.Feature do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Feature.Feature",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:type, 1, type: :string)
   field(:availability, 2, type: InternalApi.Feature.Availability)
@@ -104,10 +78,7 @@ end
 defmodule InternalApi.Feature.ListOrganizationMachinesRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Feature.ListOrganizationMachinesRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:org_id, 1, type: :string, json_name: "orgId")
 end
@@ -115,10 +86,7 @@ end
 defmodule InternalApi.Feature.ListOrganizationMachinesResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Feature.ListOrganizationMachinesResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:organization_machines, 1,
     repeated: true,
@@ -132,10 +100,7 @@ end
 defmodule InternalApi.Feature.OrganizationMachine do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Feature.OrganizationMachine",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:machine, 1, type: InternalApi.Feature.Machine)
   field(:availability, 2, type: InternalApi.Feature.Availability)
@@ -147,19 +112,13 @@ end
 defmodule InternalApi.Feature.ListMachinesRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Feature.ListMachinesRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 end
 
 defmodule InternalApi.Feature.ListMachinesResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Feature.ListMachinesResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:machines, 1, repeated: true, type: InternalApi.Feature.Machine)
 end
@@ -167,10 +126,7 @@ end
 defmodule InternalApi.Feature.Machine do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Feature.Machine",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:type, 1, type: :string)
   field(:availability, 2, type: InternalApi.Feature.Availability)
@@ -185,10 +141,7 @@ end
 defmodule InternalApi.Feature.Availability do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Feature.Availability",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:state, 1, type: InternalApi.Feature.Availability.State, enum: true)
   field(:quantity, 2, type: :uint32)
@@ -197,19 +150,13 @@ end
 defmodule InternalApi.Feature.MachinesChanged do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Feature.MachinesChanged",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 end
 
 defmodule InternalApi.Feature.OrganizationMachinesChanged do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Feature.OrganizationMachinesChanged",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:org_id, 1, type: :string, json_name: "orgId")
 end
@@ -217,19 +164,13 @@ end
 defmodule InternalApi.Feature.FeaturesChanged do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Feature.FeaturesChanged",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 end
 
 defmodule InternalApi.Feature.OrganizationFeaturesChanged do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Feature.OrganizationFeaturesChanged",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:org_id, 1, type: :string, json_name: "orgId")
 end
@@ -239,7 +180,7 @@ defmodule InternalApi.Feature.FeatureService.Service do
 
   use GRPC.Service,
     name: "InternalApi.Feature.FeatureService",
-    protoc_gen_elixir_version: "0.17.0"
+    protoc_gen_elixir_version: "0.13.0"
 
   rpc(
     :ListOrganizationFeatures,

@@ -51,7 +51,7 @@ defmodule GithubNotifier.Models.Project do
 
   defp drop_unknown_fields(map) when is_map(map) do
     map
-    |> Map.drop(["__unknown_fields__", "__protobuf__"])
+    |> Map.delete("__unknown_fields__")
     |> Map.new(fn {k, v} -> {k, drop_unknown_fields(v)} end)
   end
 
