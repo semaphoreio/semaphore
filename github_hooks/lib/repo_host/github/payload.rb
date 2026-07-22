@@ -61,6 +61,18 @@ module RepoHost::Github
       @data["comment"]["user"]["login"]
     end
 
+    def comment_id
+      return nil unless pr_comment?
+
+      @data["comment"]["id"]
+    end
+
+    def comment_created_at
+      return nil unless pr_comment?
+
+      @data["comment"]["created_at"]
+    end
+
     def issue_number
       @data["issue"]["number"] if pr_comment?
     end
