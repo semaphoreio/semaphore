@@ -1,5 +1,4 @@
 defmodule GithubNotifier.Services.PipelineFinishedNotifierTest do
-  require GrpcMock
   use ExUnit.Case
 
   setup do

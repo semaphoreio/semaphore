@@ -34,6 +34,7 @@ defmodule GithubNotifier.MixProject do
       {:tackle, github: "renderedtext/ex-tackle", tag: "v0.3.0"},
       {:amqp, "~> 4.1", override: true},
       {:sentry, "~> 8.0"},
+      {:logger_backends, "~> 1.0"},
       {:tentacat, "~> 2.0"},
       {:cachex, "~> 3.0"},
       {:poison, "~> 3.1"},

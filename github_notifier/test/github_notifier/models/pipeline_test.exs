@@ -1,5 +1,4 @@
 defmodule GithubNotifier.Models.PipelineTest do
-  require GrpcMock
   use ExUnit.Case
 
   alias GithubNotifier.Models.Pipeline
