@@ -31,6 +31,7 @@ COPY repository_hub/mix.* ./
 COPY repository_hub/config config
 COPY repository_hub/lib lib
 COPY repository_hub/priv priv
+COPY feature_provider ../feature_provider
 RUN mix do deps.get, deps.compile
 
 # Dev stage
