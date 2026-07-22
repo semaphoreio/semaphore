@@ -10,10 +10,12 @@ module RepoHost::Github
     PULL_REQUEST_CLOSED = "closed"
     PULL_REQUEST_COMMIT = "synchronize"
     PULL_REQUEST_READY_FOR_REVIEW = "ready_for_review"
-    PR_APPROVE_COMMAND = "/sem-approve"
-    PR_INCLUDE_SECRETS_OPTION = "--include-secrets"
-    PR_ENABLE_CACHE_OPTION = "--enable-cache"
-    PR_APPROVAL_OPTIONS = [PR_INCLUDE_SECRETS_OPTION, PR_ENABLE_CACHE_OPTION].freeze
+    # Command/option vocabulary lives in the shared parser so the payload and
+    # the webhook filter can never disagree about what counts as an approval.
+    PR_APPROVE_COMMAND = ApprovalCommand::COMMAND
+    PR_INCLUDE_SECRETS_OPTION = ApprovalCommand::INCLUDE_SECRETS_OPTION
+    PR_ENABLE_CACHE_OPTION = ApprovalCommand::ENABLE_CACHE_OPTION
+    PR_APPROVAL_OPTIONS = ApprovalCommand::KNOWN_OPTIONS
 
     def initialize(payload)
       @data = JSON.parse(payload)
@@ -41,8 +43,21 @@ module RepoHost::Github
 
     def pr_approval?
       return false unless pr_comment?
+      # A privileged, secret-granting command must come from a brand-new
+      # comment: edited/deleted comments are rejected so an approval cannot be
+      # re-fired by editing an old comment (which would defeat the once-only
+      # control) and so quoting the command in an edit is inert.
+      return false unless comment_created?
 
-      pr_approval_command?
+      ApprovalCommand.present?(pr_comment_body)
+    end
+
+    # True only for freshly created issue_comment events. GitHub sends
+    # action "created" / "edited" / "deleted" for issue_comment webhooks.
+    def comment_created?
+      return false unless pr_comment?
+
+      @data["action"] == "created"
     end
 
     def pr_approval_include_secrets?
@@ -59,6 +74,15 @@ module RepoHost::Github
       return nil unless pr_comment?
 
       @data["comment"]["user"]["login"]
+    end
+
+    # Immutable GitHub user id of the commenter. Authorization must key off
+    # this rather than the mutable, reusable login (`comment_author`), which is
+    # kept only for display/audit.
+    def comment_author_uid
+      return nil unless pr_comment?
+
+      @data.dig("comment", "user", "id")
     end
 
     def comment_id
@@ -403,41 +427,12 @@ module RepoHost::Github
       "https://avatars.githubusercontent.com/#{username}?v=4"
     end
 
-    def pr_approval_command?
-      pr_approval_command_lines.any?
-    end
-
     def pr_approval_option?(option)
-      pr_approval_tokens.include?(option)
+      ApprovalCommand.options(pr_comment_body).include?(option)
     end
 
     def pr_comment_body
       @data.dig("comment", "body").to_s
-    end
-
-    def pr_approval_tokens
-      @pr_approval_tokens ||= pr_approval_command_lines.flat_map { |tokens| tokens.drop(1) }.uniq
-    end
-
-    def pr_approval_command_lines
-      @pr_approval_command_lines ||=
-        pr_comment_body
-        .split(/\r?\n/)
-        .map { |line| pr_approval_tokens_from_line(line) }
-        .compact
-    end
-
-    def pr_approval_tokens_from_line(line)
-      tokens = line.strip.split(/[ \t]+/)
-      command_index = tokens.index(PR_APPROVE_COMMAND)
-      return nil unless command_index
-
-      parsed_tokens = [PR_APPROVE_COMMAND]
-      options = tokens.drop(command_index + 1)
-
-      parsed_tokens.concat(options) if (options - PR_APPROVAL_OPTIONS).empty?
-
-      parsed_tokens
     end
   end
 end
