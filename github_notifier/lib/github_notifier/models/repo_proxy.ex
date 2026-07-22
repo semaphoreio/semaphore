@@ -3,7 +3,6 @@ defmodule GithubNotifier.Models.RepoProxy do
 
   alias InternalApi.RepoProxy.DescribeRequest
   alias InternalApi.RepoProxy.RepoProxyService.Stub
-  alias InternalApi.ResponseStatus
 
   defstruct [
     :id,
@@ -22,7 +21,7 @@ defmodule GithubNotifier.Models.RepoProxy do
       {:ok, response} = Stub.describe(channel(), request, options(tracing_headers))
       Logger.debug(fn -> "Received describe response from hook: #{inspect(response)}" end)
 
-      case ResponseStatus.Code.key(response.status.code) do
+      case response.status.code do
         :OK -> construct(response.hook)
         _ -> nil
       end
