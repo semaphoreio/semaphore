@@ -6,8 +6,16 @@ RSpec.describe RepoHost::Github::ApprovalCommand do
       expect(described_class.present?("/sem-approve")).to be(true)
     end
 
-    it "is true when leading whitespace precedes the command" do
-      expect(described_class.present?("   /sem-approve")).to be(true)
+    it "is false when the command is indented (leading spaces)" do
+      expect(described_class.present?("   /sem-approve")).to be(false)
+    end
+
+    it "is false when the command is indented with a tab" do
+      expect(described_class.present?("\t/sem-approve --include-secrets")).to be(false)
+    end
+
+    it "is false for an indented command among other lines (Markdown code block)" do
+      expect(described_class.present?("here is how it works:\n\n    /sem-approve\n")).to be(false)
     end
 
     it "is true when a command line appears among other lines" do
