@@ -18,14 +18,12 @@ config :watchman,
 
 config :logger, level: String.to_atom(System.get_env("LOG_LEVEL") || "info")
 
-sentry_env = System.get_env("SENTRY_ENV") || "development"
-
 config :sentry,
-  client: Sentry.HackneyClient,
-  dsn: if(sentry_env == "prod", do: System.get_env("SENTRY_DSN")),
-  environment_name: sentry_env,
+  dsn: System.get_env("SENTRY_DSN"),
+  environment_name: System.get_env("SENTRY_ENV") || "development",
   enable_source_code_context: true,
-  root_source_code_paths: [File.cwd!()],
+  root_source_code_path: File.cwd!(),
+  included_environments: [:prod],
   tags: %{
     env: System.get_env("K8S_NAMESPACE") || "dev",
     logger: System.get_env("K8S_DEPLOYMENT_NAME"),

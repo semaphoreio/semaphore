@@ -1,11 +1,7 @@
 defmodule InternalApi.Organization.ListRequest.Order do
   @moduledoc false
 
-  use Protobuf,
-    enum: true,
-    full_name: "InternalApi.Organization.ListRequest.Order",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:BY_NAME_ASC, 0)
   field(:BY_CREATION_TIME_ASC, 1)
@@ -14,11 +10,7 @@ end
 defmodule InternalApi.Organization.Suspension.Reason do
   @moduledoc false
 
-  use Protobuf,
-    enum: true,
-    full_name: "InternalApi.Organization.Suspension.Reason",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:INSUFFICIENT_FUNDS, 0)
   field(:ACCOUNT_AT_RISK, 1)
@@ -29,11 +21,7 @@ end
 defmodule InternalApi.Organization.Member.Role do
   @moduledoc false
 
-  use Protobuf,
-    enum: true,
-    full_name: "InternalApi.Organization.Member.Role",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:MEMBER, 0)
   field(:OWNER, 1)
@@ -43,11 +31,7 @@ end
 defmodule InternalApi.Organization.OrganizationContact.ContactType do
   @moduledoc false
 
-  use Protobuf,
-    enum: true,
-    full_name: "InternalApi.Organization.OrganizationContact.ContactType",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:CONTACT_TYPE_UNSPECIFIED, 0)
   field(:CONTACT_TYPE_MAIN, 1)
@@ -58,10 +42,7 @@ end
 defmodule InternalApi.Organization.DescribeRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.DescribeRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:org_id, 1, type: :string, json_name: "orgId")
   field(:org_username, 2, type: :string, json_name: "orgUsername")
@@ -72,10 +53,7 @@ end
 defmodule InternalApi.Organization.DescribeResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.DescribeResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:status, 1, type: InternalApi.ResponseStatus)
   field(:organization, 2, type: InternalApi.Organization.Organization)
@@ -84,10 +62,7 @@ end
 defmodule InternalApi.Organization.DescribeManyRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.DescribeManyRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:org_ids, 1, repeated: true, type: :string, json_name: "orgIds")
   field(:soft_deleted, 2, type: :bool, json_name: "softDeleted")
@@ -96,10 +71,7 @@ end
 defmodule InternalApi.Organization.DescribeManyResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.DescribeManyResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:organizations, 1, repeated: true, type: InternalApi.Organization.Organization)
 end
@@ -107,10 +79,7 @@ end
 defmodule InternalApi.Organization.ListRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.ListRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:user_id, 2, type: :string, json_name: "userId")
   field(:created_at_gt, 3, type: Google.Protobuf.Timestamp, json_name: "createdAtGt")
@@ -123,10 +92,7 @@ end
 defmodule InternalApi.Organization.ListResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.ListResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:status, 1, type: InternalApi.ResponseStatus)
   field(:organizations, 2, repeated: true, type: InternalApi.Organization.Organization)
@@ -136,10 +102,7 @@ end
 defmodule InternalApi.Organization.CreateRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.CreateRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:creator_id, 1, type: :string, json_name: "creatorId")
   field(:organization_name, 2, type: :string, json_name: "organizationName")
@@ -149,10 +112,7 @@ end
 defmodule InternalApi.Organization.CreateResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.CreateResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:status, 1, type: InternalApi.ResponseStatus)
   field(:organization, 2, type: InternalApi.Organization.Organization)
@@ -161,10 +121,7 @@ end
 defmodule InternalApi.Organization.UpdateRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.UpdateRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:organization, 1, type: InternalApi.Organization.Organization)
 end
@@ -172,10 +129,7 @@ end
 defmodule InternalApi.Organization.UpdateResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.UpdateResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:status, 1, type: Google.Rpc.Status)
   field(:organization, 2, type: InternalApi.Organization.Organization)
@@ -184,10 +138,7 @@ end
 defmodule InternalApi.Organization.IsValidResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.IsValidResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:is_valid, 1, type: :bool, json_name: "isValid")
   field(:errors, 2, type: :string)
@@ -196,10 +147,7 @@ end
 defmodule InternalApi.Organization.IsMemberRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.IsMemberRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:user_id, 1, type: :string, json_name: "userId")
   field(:org_id, 3, type: :string, json_name: "orgId")
@@ -209,10 +157,7 @@ end
 defmodule InternalApi.Organization.IsMemberResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.IsMemberResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:status, 1, type: InternalApi.ResponseStatus)
   field(:is_member, 2, type: :bool, json_name: "isMember")
@@ -221,10 +166,7 @@ end
 defmodule InternalApi.Organization.IsOwnerRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.IsOwnerRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:user_id, 1, type: :string, json_name: "userId")
   field(:org_id, 2, type: :string, json_name: "orgId")
@@ -233,10 +175,7 @@ end
 defmodule InternalApi.Organization.IsOwnerResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.IsOwnerResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:status, 1, type: InternalApi.ResponseStatus)
   field(:is_owner, 2, type: :bool, json_name: "isOwner")
@@ -245,10 +184,7 @@ end
 defmodule InternalApi.Organization.MakeOwnerRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.MakeOwnerRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:org_id, 1, type: :string, json_name: "orgId")
   field(:owner_id, 2, type: :string, json_name: "ownerId")
@@ -257,10 +193,7 @@ end
 defmodule InternalApi.Organization.MembersRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.MembersRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:org_id, 1, type: :string, json_name: "orgId")
   field(:org_username, 2, type: :string, json_name: "orgUsername")
@@ -271,10 +204,7 @@ end
 defmodule InternalApi.Organization.MembersResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.MembersResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:status, 1, type: InternalApi.ResponseStatus)
   field(:members, 2, repeated: true, type: InternalApi.Organization.Member)
@@ -289,10 +219,7 @@ end
 defmodule InternalApi.Organization.AddMemberRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.AddMemberRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:org_id, 1, type: :string, json_name: "orgId")
   field(:creator_id, 2, type: :string, json_name: "creatorId")
@@ -302,10 +229,7 @@ end
 defmodule InternalApi.Organization.AddMemberResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.AddMemberResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:status, 1, type: Google.Rpc.Status)
   field(:member, 2, type: InternalApi.Organization.Member)
@@ -314,10 +238,7 @@ end
 defmodule InternalApi.Organization.AddMembersRequest.MemberData do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.AddMembersRequest.MemberData",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:github_username, 1, type: :string, json_name: "githubUsername")
   field(:github_uid, 2, type: :string, json_name: "githubUid")
@@ -327,10 +248,7 @@ end
 defmodule InternalApi.Organization.AddMembersRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.AddMembersRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:org_id, 1, type: :string, json_name: "orgId")
   field(:creator_id, 2, type: :string, json_name: "creatorId")
@@ -345,10 +263,7 @@ end
 defmodule InternalApi.Organization.AddMembersResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.AddMembersResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:members, 1, repeated: true, type: InternalApi.Organization.Member)
 end
@@ -356,10 +271,7 @@ end
 defmodule InternalApi.Organization.DeleteMemberRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.DeleteMemberRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:org_id, 1, type: :string, json_name: "orgId")
   field(:membership_id, 3, type: :string, json_name: "membershipId")
@@ -369,10 +281,7 @@ end
 defmodule InternalApi.Organization.DeleteMemberResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.DeleteMemberResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:status, 1, type: Google.Rpc.Status)
 end
@@ -380,10 +289,7 @@ end
 defmodule InternalApi.Organization.SuspendRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.SuspendRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:org_id, 1, type: :string, json_name: "orgId")
   field(:origin, 2, type: :string)
@@ -394,10 +300,7 @@ end
 defmodule InternalApi.Organization.SuspendResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.SuspendResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:status, 1, type: Google.Rpc.Status)
 end
@@ -405,10 +308,7 @@ end
 defmodule InternalApi.Organization.SetOpenSourceRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.SetOpenSourceRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:org_id, 1, type: :string, json_name: "orgId")
 end
@@ -416,10 +316,7 @@ end
 defmodule InternalApi.Organization.SetOpenSourceResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.SetOpenSourceResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:organization, 1, type: InternalApi.Organization.Organization)
 end
@@ -427,10 +324,7 @@ end
 defmodule InternalApi.Organization.UnsuspendRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.UnsuspendRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:org_id, 1, type: :string, json_name: "orgId")
   field(:origin, 3, type: :string)
@@ -441,10 +335,7 @@ end
 defmodule InternalApi.Organization.UnsuspendResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.UnsuspendResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:status, 1, type: Google.Rpc.Status)
 end
@@ -452,10 +343,7 @@ end
 defmodule InternalApi.Organization.VerifyRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.VerifyRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:org_id, 1, type: :string, json_name: "orgId")
 end
@@ -463,10 +351,7 @@ end
 defmodule InternalApi.Organization.ListSuspensionsRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.ListSuspensionsRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:org_id, 1, type: :string, json_name: "orgId")
 end
@@ -474,10 +359,7 @@ end
 defmodule InternalApi.Organization.ListSuspensionsResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.ListSuspensionsResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:status, 1, type: Google.Rpc.Status)
   field(:suspensions, 2, repeated: true, type: InternalApi.Organization.Suspension)
@@ -486,10 +368,7 @@ end
 defmodule InternalApi.Organization.DestroyRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.DestroyRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:org_id, 1, type: :string, json_name: "orgId")
 end
@@ -497,10 +376,7 @@ end
 defmodule InternalApi.Organization.RestoreRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.RestoreRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:org_id, 1, type: :string, json_name: "orgId")
 end
@@ -508,10 +384,7 @@ end
 defmodule InternalApi.Organization.Organization do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.Organization",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:org_username, 1, type: :string, json_name: "orgUsername")
   field(:created_at, 2, type: Google.Protobuf.Timestamp, json_name: "createdAt")
@@ -533,10 +406,7 @@ end
 defmodule InternalApi.Organization.Suspension do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.Suspension",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:origin, 1, type: :string)
   field(:description, 2, type: :string)
@@ -547,10 +417,7 @@ end
 defmodule InternalApi.Organization.Member do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.Member",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:screen_name, 1, type: :string, json_name: "screenName")
   field(:avatar_url, 2, type: :string, json_name: "avatarUrl")
@@ -565,10 +432,7 @@ end
 defmodule InternalApi.Organization.OrganizationSetting do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.OrganizationSetting",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:key, 1, type: :string)
   field(:value, 2, type: :string)
@@ -577,10 +441,7 @@ end
 defmodule InternalApi.Organization.RepositoryIntegratorsRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.RepositoryIntegratorsRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:org_id, 1, type: :string, json_name: "orgId")
 end
@@ -588,10 +449,7 @@ end
 defmodule InternalApi.Organization.RepositoryIntegratorsResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.RepositoryIntegratorsResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:primary, 1, type: InternalApi.RepositoryIntegrator.IntegrationType, enum: true)
 
@@ -611,10 +469,7 @@ end
 defmodule InternalApi.Organization.FetchOrganizationContactsRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.FetchOrganizationContactsRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:org_id, 1, type: :string, json_name: "orgId")
 end
@@ -622,10 +477,7 @@ end
 defmodule InternalApi.Organization.FetchOrganizationContactsResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.FetchOrganizationContactsResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:org_contacts, 1,
     repeated: true,
@@ -637,10 +489,7 @@ end
 defmodule InternalApi.Organization.ModifyOrganizationContactRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.ModifyOrganizationContactRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:org_contact, 1,
     type: InternalApi.Organization.OrganizationContact,
@@ -651,19 +500,13 @@ end
 defmodule InternalApi.Organization.ModifyOrganizationContactResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.ModifyOrganizationContactResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 end
 
 defmodule InternalApi.Organization.OrganizationContact do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.OrganizationContact",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:org_id, 1, type: :string, json_name: "orgId")
   field(:type, 2, type: InternalApi.Organization.OrganizationContact.ContactType, enum: true)
@@ -675,10 +518,7 @@ end
 defmodule InternalApi.Organization.FetchOrganizationSettingsRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.FetchOrganizationSettingsRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:org_id, 1, type: :string, json_name: "orgId")
 end
@@ -686,10 +526,7 @@ end
 defmodule InternalApi.Organization.FetchOrganizationSettingsResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.FetchOrganizationSettingsResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:settings, 1, repeated: true, type: InternalApi.Organization.OrganizationSetting)
 end
@@ -697,10 +534,7 @@ end
 defmodule InternalApi.Organization.ModifyOrganizationSettingsRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.ModifyOrganizationSettingsRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:org_id, 1, type: :string, json_name: "orgId")
   field(:settings, 2, repeated: true, type: InternalApi.Organization.OrganizationSetting)
@@ -709,10 +543,7 @@ end
 defmodule InternalApi.Organization.ModifyOrganizationSettingsResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.ModifyOrganizationSettingsResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:settings, 1, repeated: true, type: InternalApi.Organization.OrganizationSetting)
 end
@@ -720,10 +551,7 @@ end
 defmodule InternalApi.Organization.OrganizationCreated do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.OrganizationCreated",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:org_id, 1, type: :string, json_name: "orgId")
   field(:timestamp, 2, type: Google.Protobuf.Timestamp)
@@ -732,10 +560,7 @@ end
 defmodule InternalApi.Organization.OrganizationDeleted do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.OrganizationDeleted",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:org_id, 1, type: :string, json_name: "orgId")
   field(:timestamp, 2, type: Google.Protobuf.Timestamp)
@@ -744,10 +569,7 @@ end
 defmodule InternalApi.Organization.OrganizationUpdated do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.OrganizationUpdated",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:org_id, 1, type: :string, json_name: "orgId")
   field(:timestamp, 2, type: Google.Protobuf.Timestamp)
@@ -756,10 +578,7 @@ end
 defmodule InternalApi.Organization.OrganizationBlocked do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.OrganizationBlocked",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:org_id, 1, type: :string, json_name: "orgId")
   field(:timestamp, 2, type: Google.Protobuf.Timestamp)
@@ -769,10 +588,7 @@ end
 defmodule InternalApi.Organization.OrganizationSuspensionCreated do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.OrganizationSuspensionCreated",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:org_id, 1, type: :string, json_name: "orgId")
   field(:timestamp, 2, type: Google.Protobuf.Timestamp)
@@ -782,10 +598,7 @@ end
 defmodule InternalApi.Organization.OrganizationSuspensionRemoved do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.OrganizationSuspensionRemoved",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:org_id, 1, type: :string, json_name: "orgId")
   field(:timestamp, 2, type: Google.Protobuf.Timestamp)
@@ -795,10 +608,7 @@ end
 defmodule InternalApi.Organization.OrganizationUnblocked do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.OrganizationUnblocked",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:org_id, 1, type: :string, json_name: "orgId")
   field(:timestamp, 2, type: Google.Protobuf.Timestamp)
@@ -807,10 +617,7 @@ end
 defmodule InternalApi.Organization.OrganizationDailyUpdate do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.OrganizationDailyUpdate",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:org_id, 1, type: :string, json_name: "orgId")
   field(:org_username, 2, type: :string, json_name: "orgUsername")
@@ -828,10 +635,7 @@ end
 defmodule InternalApi.Organization.OrganizationRestored do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Organization.OrganizationRestored",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:org_id, 1, type: :string, json_name: "orgId")
   field(:timestamp, 2, type: Google.Protobuf.Timestamp)
@@ -842,7 +646,7 @@ defmodule InternalApi.Organization.OrganizationService.Service do
 
   use GRPC.Service,
     name: "InternalApi.Organization.OrganizationService",
-    protoc_gen_elixir_version: "0.17.0"
+    protoc_gen_elixir_version: "0.13.0"
 
   rpc(
     :Describe,

@@ -1,11 +1,7 @@
 defmodule InternalApi.Velocity.Metric do
   @moduledoc false
 
-  use Protobuf,
-    enum: true,
-    full_name: "InternalApi.Velocity.Metric",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:METRIC_UNSPECIFIED, 0)
   field(:METRIC_PERFORMANCE, 1)
@@ -16,11 +12,7 @@ end
 defmodule InternalApi.Velocity.MetricAggregation do
   @moduledoc false
 
-  use Protobuf,
-    enum: true,
-    full_name: "InternalApi.Velocity.MetricAggregation",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:RANGE, 0)
   field(:DAILY, 1)
@@ -29,10 +21,7 @@ end
 defmodule InternalApi.Velocity.InitializeFlakyTestsFiltersRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.InitializeFlakyTestsFiltersRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:project_id, 1, type: :string, json_name: "projectId")
   field(:organization_id, 2, type: :string, json_name: "organizationId")
@@ -41,10 +30,7 @@ end
 defmodule InternalApi.Velocity.InitializeFlakyTestsFiltersResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.InitializeFlakyTestsFiltersResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:filters, 1, repeated: true, type: InternalApi.Velocity.FlakyTestsFilter)
 end
@@ -52,10 +38,7 @@ end
 defmodule InternalApi.Velocity.ListFlakyTestsFiltersRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.ListFlakyTestsFiltersRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:project_id, 1, type: :string, json_name: "projectId")
   field(:organization_id, 2, type: :string, json_name: "organizationId")
@@ -64,10 +47,7 @@ end
 defmodule InternalApi.Velocity.ListFlakyTestsFiltersResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.ListFlakyTestsFiltersResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:filters, 1, repeated: true, type: InternalApi.Velocity.FlakyTestsFilter)
 end
@@ -75,10 +55,7 @@ end
 defmodule InternalApi.Velocity.CreateFlakyTestsFilterRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.CreateFlakyTestsFilterRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:project_id, 1, type: :string, json_name: "projectId")
   field(:organization_id, 2, type: :string, json_name: "organizationId")
@@ -89,10 +66,7 @@ end
 defmodule InternalApi.Velocity.CreateFlakyTestsFilterResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.CreateFlakyTestsFilterResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:filter, 1, type: InternalApi.Velocity.FlakyTestsFilter)
 end
@@ -100,10 +74,7 @@ end
 defmodule InternalApi.Velocity.FlakyTestsFilter do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.FlakyTestsFilter",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:id, 1, type: :string)
   field(:project_id, 2, type: :string, json_name: "projectId")
@@ -117,10 +88,7 @@ end
 defmodule InternalApi.Velocity.RemoveFlakyTestsFilterRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.RemoveFlakyTestsFilterRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:id, 1, type: :string)
 end
@@ -128,19 +96,13 @@ end
 defmodule InternalApi.Velocity.RemoveFlakyTestsFilterResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.RemoveFlakyTestsFilterResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 end
 
 defmodule InternalApi.Velocity.UpdateFlakyTestsFilterRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.UpdateFlakyTestsFilterRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:id, 1, type: :string)
   field(:name, 2, type: :string)
@@ -150,10 +112,7 @@ end
 defmodule InternalApi.Velocity.UpdateFlakyTestsFilterResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.UpdateFlakyTestsFilterResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:filter, 1, type: InternalApi.Velocity.FlakyTestsFilter)
 end
@@ -161,10 +120,7 @@ end
 defmodule InternalApi.Velocity.OrganizationHealthRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.OrganizationHealthRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:project_ids, 1, repeated: true, type: :string, json_name: "projectIds")
   field(:org_id, 2, type: :string, json_name: "orgId")
@@ -175,10 +131,7 @@ end
 defmodule InternalApi.Velocity.OrganizationHealthResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.OrganizationHealthResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:health_metrics, 1,
     repeated: true,
@@ -190,10 +143,7 @@ end
 defmodule InternalApi.Velocity.ProjectHealthMetrics do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.ProjectHealthMetrics",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:project_id, 1, type: :string, json_name: "projectId")
   field(:project_name, 2, type: :string, json_name: "projectName")
@@ -213,10 +163,7 @@ end
 defmodule InternalApi.Velocity.Stats do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.Stats",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:all_count, 1, type: :int32, json_name: "allCount")
   field(:passed_count, 2, type: :int32, json_name: "passedCount")
@@ -230,10 +177,7 @@ end
 defmodule InternalApi.Velocity.DescribeDashboardItemRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.DescribeDashboardItemRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:id, 1, type: :string)
 end
@@ -241,10 +185,7 @@ end
 defmodule InternalApi.Velocity.DescribeDashboardItemResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.DescribeDashboardItemResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:item, 1, type: InternalApi.Velocity.DashboardItem)
 end
@@ -252,10 +193,7 @@ end
 defmodule InternalApi.Velocity.DeleteDashboardItemRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.DeleteDashboardItemRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:id, 1, type: :string)
 end
@@ -263,19 +201,13 @@ end
 defmodule InternalApi.Velocity.DeleteDashboardItemResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.DeleteDashboardItemResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 end
 
 defmodule InternalApi.Velocity.DeleteMetricsDashboardRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.DeleteMetricsDashboardRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:id, 1, type: :string)
 end
@@ -283,19 +215,13 @@ end
 defmodule InternalApi.Velocity.DeleteMetricsDashboardResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.DeleteMetricsDashboardResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 end
 
 defmodule InternalApi.Velocity.ListMetricsDashboardsRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.ListMetricsDashboardsRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:project_id, 1, type: :string, json_name: "projectId")
 end
@@ -303,10 +229,7 @@ end
 defmodule InternalApi.Velocity.ListMetricsDashboardsResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.ListMetricsDashboardsResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:dashboards, 1, repeated: true, type: InternalApi.Velocity.MetricsDashboard)
 end
@@ -314,10 +237,7 @@ end
 defmodule InternalApi.Velocity.DescribeMetricsDashboardRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.DescribeMetricsDashboardRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:id, 1, type: :string)
 end
@@ -325,10 +245,7 @@ end
 defmodule InternalApi.Velocity.DescribeMetricsDashboardResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.DescribeMetricsDashboardResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:dashboard, 1, type: InternalApi.Velocity.MetricsDashboard)
 end
@@ -336,10 +253,7 @@ end
 defmodule InternalApi.Velocity.MetricsDashboard do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.MetricsDashboard",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:id, 1, type: :string)
   field(:name, 2, type: :string)
@@ -353,10 +267,7 @@ end
 defmodule InternalApi.Velocity.DashboardItem do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.DashboardItem",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:id, 1, type: :string)
   field(:name, 2, type: :string)
@@ -372,10 +283,7 @@ end
 defmodule InternalApi.Velocity.DashboardItemSettings do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.DashboardItemSettings",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:metric, 1, type: InternalApi.Velocity.Metric, enum: true)
   field(:goal, 2, type: :string)
@@ -384,10 +292,7 @@ end
 defmodule InternalApi.Velocity.CreateMetricsDashboardRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.CreateMetricsDashboardRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:name, 1, type: :string)
   field(:project_id, 2, type: :string, json_name: "projectId")
@@ -397,10 +302,7 @@ end
 defmodule InternalApi.Velocity.CreateMetricsDashboardResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.CreateMetricsDashboardResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:dashboard, 1, type: InternalApi.Velocity.MetricsDashboard)
 end
@@ -408,10 +310,7 @@ end
 defmodule InternalApi.Velocity.UpdateMetricsDashboardRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.UpdateMetricsDashboardRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:id, 1, type: :string)
   field(:name, 2, type: :string)
@@ -420,19 +319,13 @@ end
 defmodule InternalApi.Velocity.UpdateMetricsDashboardResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.UpdateMetricsDashboardResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 end
 
 defmodule InternalApi.Velocity.CreateDashboardItemRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.CreateDashboardItemRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:name, 1, type: :string)
   field(:metrics_dashboard_id, 2, type: :string, json_name: "metricsDashboardId")
@@ -445,10 +338,7 @@ end
 defmodule InternalApi.Velocity.CreateDashboardItemResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.CreateDashboardItemResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:item, 1, type: InternalApi.Velocity.DashboardItem)
 end
@@ -456,10 +346,7 @@ end
 defmodule InternalApi.Velocity.UpdateDashboardItemRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.UpdateDashboardItemRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:id, 1, type: :string)
   field(:name, 2, type: :string)
@@ -468,19 +355,13 @@ end
 defmodule InternalApi.Velocity.UpdateDashboardItemResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.UpdateDashboardItemResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 end
 
 defmodule InternalApi.Velocity.ChangeDashboardItemNotesRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.ChangeDashboardItemNotesRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:id, 1, type: :string)
   field(:notes, 2, type: :string)
@@ -489,19 +370,13 @@ end
 defmodule InternalApi.Velocity.ChangeDashboardItemNotesResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.ChangeDashboardItemNotesResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 end
 
 defmodule InternalApi.Velocity.ListPipelinePerformanceMetricsRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.ListPipelinePerformanceMetricsRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:project_id, 1, type: :string, json_name: "projectId")
   field(:pipeline_file_name, 2, type: :string, json_name: "pipelineFileName")
@@ -514,10 +389,7 @@ end
 defmodule InternalApi.Velocity.ListPipelinePerformanceMetricsResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.ListPipelinePerformanceMetricsResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:all_metrics, 1,
     repeated: true,
@@ -541,10 +413,7 @@ end
 defmodule InternalApi.Velocity.PerformanceMetric do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.PerformanceMetric",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:from_date, 1, type: Google.Protobuf.Timestamp, json_name: "fromDate")
   field(:to_date, 2, type: Google.Protobuf.Timestamp, json_name: "toDate")
@@ -560,10 +429,7 @@ end
 defmodule InternalApi.Velocity.ListPipelineReliabilityMetricsRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.ListPipelineReliabilityMetricsRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:project_id, 1, type: :string, json_name: "projectId")
   field(:pipeline_file_name, 2, type: :string, json_name: "pipelineFileName")
@@ -576,10 +442,7 @@ end
 defmodule InternalApi.Velocity.ListPipelineReliabilityMetricsResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.ListPipelineReliabilityMetricsResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:metrics, 1, repeated: true, type: InternalApi.Velocity.ReliabilityMetric)
 end
@@ -587,10 +450,7 @@ end
 defmodule InternalApi.Velocity.ReliabilityMetric do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.ReliabilityMetric",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:from_date, 1, type: Google.Protobuf.Timestamp, json_name: "fromDate")
   field(:to_date, 2, type: Google.Protobuf.Timestamp, json_name: "toDate")
@@ -602,10 +462,7 @@ end
 defmodule InternalApi.Velocity.ListPipelineFrequencyMetricsRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.ListPipelineFrequencyMetricsRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:project_id, 1, type: :string, json_name: "projectId")
   field(:pipeline_file_name, 2, type: :string, json_name: "pipelineFileName")
@@ -618,10 +475,7 @@ end
 defmodule InternalApi.Velocity.ListPipelineFrequencyMetricsResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.ListPipelineFrequencyMetricsResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:metrics, 1, repeated: true, type: InternalApi.Velocity.FrequencyMetric)
 end
@@ -629,10 +483,7 @@ end
 defmodule InternalApi.Velocity.FrequencyMetric do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.FrequencyMetric",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:from_date, 1, type: Google.Protobuf.Timestamp, json_name: "fromDate")
   field(:to_date, 2, type: Google.Protobuf.Timestamp, json_name: "toDate")
@@ -642,10 +493,7 @@ end
 defmodule InternalApi.Velocity.DescribeProjectPerformanceRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.DescribeProjectPerformanceRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:project_id, 1, type: :string, json_name: "projectId")
   field(:pipeline_file_name, 2, type: :string, json_name: "pipelineFileName")
@@ -657,10 +505,7 @@ end
 defmodule InternalApi.Velocity.DescribeProjectPerformanceResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.DescribeProjectPerformanceResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:mean_time_to_recovery_seconds, 1, type: :int32, json_name: "meanTimeToRecoverySeconds")
 
@@ -676,10 +521,7 @@ end
 defmodule InternalApi.Velocity.DescribeProjectSettingsRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.DescribeProjectSettingsRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:project_id, 1, type: :string, json_name: "projectId")
 end
@@ -687,10 +529,7 @@ end
 defmodule InternalApi.Velocity.DescribeProjectSettingsResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.DescribeProjectSettingsResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:settings, 1, type: InternalApi.Velocity.Settings)
 end
@@ -698,10 +537,7 @@ end
 defmodule InternalApi.Velocity.UpdateProjectSettingsRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.UpdateProjectSettingsRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:project_id, 1, type: :string, json_name: "projectId")
   field(:settings, 2, type: InternalApi.Velocity.Settings)
@@ -710,10 +546,7 @@ end
 defmodule InternalApi.Velocity.UpdateProjectSettingsResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.UpdateProjectSettingsResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:settings, 1, type: InternalApi.Velocity.Settings)
 end
@@ -721,10 +554,7 @@ end
 defmodule InternalApi.Velocity.Settings do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.Settings",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:cd_branch_name, 1, type: :string, json_name: "cdBranchName")
   field(:cd_pipeline_file_name, 2, type: :string, json_name: "cdPipelineFileName")
@@ -735,10 +565,7 @@ end
 defmodule InternalApi.Velocity.ListPipelineSummariesRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.ListPipelineSummariesRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:pipeline_ids, 1, repeated: true, type: :string, json_name: "pipelineIds")
 end
@@ -746,10 +573,7 @@ end
 defmodule InternalApi.Velocity.ListPipelineSummariesResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.ListPipelineSummariesResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:pipeline_summaries, 1,
     repeated: true,
@@ -761,10 +585,7 @@ end
 defmodule InternalApi.Velocity.ListJobSummariesRequest do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.ListJobSummariesRequest",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:job_ids, 1, repeated: true, type: :string, json_name: "jobIds")
 end
@@ -772,10 +593,7 @@ end
 defmodule InternalApi.Velocity.ListJobSummariesResponse do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.ListJobSummariesResponse",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:job_summaries, 1,
     repeated: true,
@@ -787,10 +605,7 @@ end
 defmodule InternalApi.Velocity.PipelineSummary do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.PipelineSummary",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:pipeline_id, 1, type: :string, json_name: "pipelineId")
   field(:summary, 3, type: InternalApi.Velocity.Summary)
@@ -799,10 +614,7 @@ end
 defmodule InternalApi.Velocity.JobSummary do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.JobSummary",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:job_id, 1, type: :string, json_name: "jobId")
   field(:pipeline_id, 2, type: :string, json_name: "pipelineId")
@@ -812,10 +624,7 @@ end
 defmodule InternalApi.Velocity.Summary do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.Summary",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:total, 1, type: :int32)
   field(:passed, 2, type: :int32)
@@ -829,10 +638,7 @@ end
 defmodule InternalApi.Velocity.PipelineSummaryAvailableEvent do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.PipelineSummaryAvailableEvent",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:pipeline_id, 1, type: :string, json_name: "pipelineId")
   field(:timestamp, 2, type: Google.Protobuf.Timestamp)
@@ -841,10 +647,7 @@ end
 defmodule InternalApi.Velocity.JobSummaryAvailableEvent do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.JobSummaryAvailableEvent",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:job_id, 1, type: :string, json_name: "jobId")
   field(:timestamp, 2, type: Google.Protobuf.Timestamp)
@@ -853,10 +656,7 @@ end
 defmodule InternalApi.Velocity.CollectPipelineMetricsEvent do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.CollectPipelineMetricsEvent",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:project_id, 1, type: :string, json_name: "projectId")
   field(:organization_id, 2, type: :string, json_name: "organizationId")
@@ -870,10 +670,7 @@ end
 defmodule InternalApi.Velocity.CollectSuperjerryJobReportEvent do
   @moduledoc false
 
-  use Protobuf,
-    full_name: "InternalApi.Velocity.CollectSuperjerryJobReportEvent",
-    protoc_gen_elixir_version: "0.17.0",
-    syntax: :proto3
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:organization_id, 1, type: :string, json_name: "organizationId")
   field(:project_id, 2, type: :string, json_name: "projectId")
@@ -886,7 +683,7 @@ defmodule InternalApi.Velocity.PipelineMetricsService.Service do
 
   use GRPC.Service,
     name: "InternalApi.Velocity.PipelineMetricsService",
-    protoc_gen_elixir_version: "0.17.0"
+    protoc_gen_elixir_version: "0.13.0"
 
   rpc(
     :ListPipelineSummaries,
