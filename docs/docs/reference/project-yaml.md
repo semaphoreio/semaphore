@@ -81,7 +81,7 @@ A task has the following properties:
 - `at`: mandatory if `scheduled: true`. This is the schedule to run the pipeline expressed in the [standard cron syntax](https://en.wikipedia.org/wiki/Cron).
 - `branch`: specifies which branch will be used for running the pipeline.
 - `pipeline_file`: defines the relative path to the pipeline definition file from the root of the project
-- `status`: `ACTIVE` if the scheduler is currently enabled, or `INACTIVE` if the scheduler is currently disabled. 
+- `status`: `ACTIVE` if the scheduler is currently enabled, or `INACTIVE` if the scheduler is currently disabled.
 - [`parameters`](#parameters-in-spec): list of parameters to pass to the workflow
 
 :::tip
@@ -168,7 +168,7 @@ It must contain the following properties:
 
 ### url {#url-in-repository}
 
-The `url` property is a string that specifies the URL of the GitHub or BitBucket repository. 
+The `url` property is a string that specifies the URL of the GitHub or BitBucket repository.
 
 The format of the `url` value should be as follows:
 
@@ -221,16 +221,32 @@ When modifying the initial pipeline file it is necessary to also update the corr
 
 This property is used for holding the following properties:
 
-- [`allowed_secrets`](#allowed-secrets-in-forked-pull-requests) 
-- [`allowed_contributors`](#allowed-secrets-in-forked-pull-requests)
+- [`allowed_secrets`](#allowed-secrets-in-forked-pull-requests)
+- [`allowed_contributors`](#allowed-contributors-in-forked-pull-requests)
+- [`allow_sem_approve_include_secrets`](#allow-sem-approve-include-secrets-in-forked-pull-requests)
+- [`allow_sem_approve_enable_cache`](#allow-sem-approve-enable-cache-in-forked-pull-requests)
 
 ### allowed_secrets {#allowed-secrets-in-forked-pull-requests}
 
 Specifies the array of secrets' names that are allowed to be exported into jobs triggered by `forked-pull-requests`. If the array is empty, no secrets will be exported.
 
-### allowed_contributors {#allowed-secrets-in-forked-pull-requests}
+### allowed_contributors {#allowed-contributors-in-forked-pull-requests}
 
-Specifies an array of secrets (i.e. their names) that are allowed to be exported into jobs triggered by `forked-pull-requests`. If the array is empty, no secrets will be exported.
+Specifies an array of contributor usernames (repository host logins) whose forked pull requests are allowed to run. If the array is empty, no contributor restriction is applied.
+
+### allow_sem_approve_include_secrets {#allow-sem-approve-include-secrets-in-forked-pull-requests}
+
+Enables `/sem-approve --include-secrets` for forked pull requests. When set to `true`, an approved forked pull request run receives **all** project secrets referenced by the workflow — the forked-pull-request [`allowed_secrets`](#allowed-secrets-in-forked-pull-requests) allow list is **bypassed** for that run. Exposure is still bounded by the secrets the project itself is allowed to access.
+
+Because this hands repository secrets to externally-authored fork code, only enable it if you trust your approvers to review the fork changes before approving.
+
+Default value is `false`.
+
+### allow_sem_approve_enable_cache {#allow-sem-approve-enable-cache-in-forked-pull-requests}
+
+Enables `/sem-approve --enable-cache` for forked pull requests. When set to `true`, approved forked pull request runs can use cache.
+
+Default value is `false`.
 
 
 ## status {#status-in-repository}
@@ -382,4 +398,3 @@ spec:
 - [Agents YAML reference](./agent-yaml)
 - [Notifications YAML reference](./notifications-yaml)
 - [Semaphore Command Line reference](./semaphore-cli)
-
