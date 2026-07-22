@@ -33,7 +33,7 @@ defmodule GithubNotifier.MixProject do
       {:cowlib, "~> 2.9.0", override: true},
       {:grpc_mock, github: "renderedtext/grpc-mock", only: [:dev, :test]},
       {:watchman, github: "renderedtext/ex-watchman"},
-      {:tackle, github: "renderedtext/ex-tackle"},
+      {:tackle, github: "renderedtext/ex-tackle", tag: "v0.3.0"},
       {:sentry, "~> 8.0"},
       {:tentacat, "~> 2.0"},
       {:cachex, "~> 3.0"},
