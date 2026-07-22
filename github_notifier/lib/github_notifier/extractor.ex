@@ -35,7 +35,7 @@ defmodule GithubNotifier.Extractor do
     # This situation occurs when the pipeline tests pass(there are no errors in the summary),
     # but at least one of the jobs failed without test results
     link_to_summary_tab? =
-      not (pipeline.result == :FAILED and Models.PipelineSummary.is_passed?(pipeline_summary))
+      not (pipeline.result == :FAILED and Models.PipelineSummary.passed?(pipeline_summary))
 
     sha = notify_sha(repo_proxy)
 
