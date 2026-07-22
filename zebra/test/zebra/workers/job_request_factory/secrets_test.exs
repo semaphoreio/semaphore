@@ -820,7 +820,8 @@ defmodule Zebra.Workers.JobRequestFactory.SecretsTest do
 
       project = Zebra.Models.Project.from_api(api_project)
 
-      assert {:ok, secrets} = Secrets.load(@org_id, @job_id, job_spec, project, hook, :pipeline_job)
+      assert {:ok, secrets} =
+               Secrets.load(@org_id, @job_id, job_spec, project, hook, :pipeline_job)
 
       assert Enum.map(secrets.job_secrets, & &1.name) |> Enum.sort() == [
                "aws-secrets",
