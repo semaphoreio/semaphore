@@ -21,7 +21,7 @@ defmodule Zebra.Workers.Dispatcher do
       metric_name: "dispatcher",
       naptime: 1000,
       records_per_tick: 100,
-      isolate_machine_types: isolate_machine_types(),
+      isolate_machine_types: true,
       processor: &process/1
     }
   end
@@ -38,8 +38,6 @@ defmodule Zebra.Workers.Dispatcher do
         :all
     end
   end
-
-  def isolate_machine_types, do: System.get_env("DISPATCH_SELF_HOSTED_ONLY") != "true"
 
   def start_link do
     init() |> Zebra.Workers.DbWorker.start_link()
