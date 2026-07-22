@@ -121,7 +121,7 @@ defmodule GithubNotifier.Extractor do
   end
 
   def notify_sha(repo_proxy) do
-    case InternalApi.RepoProxy.Hook.Type.key(repo_proxy.git_ref_type) do
+    case repo_proxy.git_ref_type do
       :BRANCH -> repo_proxy.build_sha
       :TAG -> repo_proxy.build_sha
       :PR -> repo_proxy.pr_sha

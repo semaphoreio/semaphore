@@ -20,7 +20,7 @@ defmodule GithubNotifier.Services.Api do
 
       Notifier.notify(request_id, req.pipeline_id, req.block_id)
 
-      BlockStartedResponse.new(status: status_ok())
+      struct(BlockStartedResponse, status: status_ok())
     end)
   end
 
@@ -30,7 +30,7 @@ defmodule GithubNotifier.Services.Api do
 
       Notifier.notify(request_id, req.pipeline_id, req.block_id)
 
-      BlockFinishedResponse.new(status: status_ok())
+      struct(BlockFinishedResponse, status: status_ok())
     end)
   end
 
@@ -40,7 +40,7 @@ defmodule GithubNotifier.Services.Api do
 
       Notifier.notify(request_id, req.pipeline_id)
 
-      PipelineStartedResponse.new(status: status_ok())
+      struct(PipelineStartedResponse, status: status_ok())
     end)
   end
 
@@ -50,11 +50,11 @@ defmodule GithubNotifier.Services.Api do
 
       Notifier.notify(request_id, req.pipeline_id)
 
-      PipelineFinishedResponse.new(status: status_ok())
+      struct(PipelineFinishedResponse, status: status_ok())
     end)
   end
 
   defp status_ok do
-    ResponseStatus.new(code: ResponseStatus.Code.value(:OK))
+    struct(ResponseStatus, code: :OK)
   end
 end

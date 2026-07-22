@@ -3,8 +3,6 @@ defmodule GithubNotifier.Models.PipelineTest do
   use ExUnit.Case
 
   alias GithubNotifier.Models.Pipeline
-  alias InternalApi.Plumber.Pipeline.State, as: PipelineState
-  alias InternalApi.Plumber.Pipeline.Result, as: PipelineResult
 
   setup do
     :ok
@@ -17,8 +15,8 @@ defmodule GithubNotifier.Models.PipelineTest do
 
       assert Pipeline.find("1") == %Pipeline{
                id: response.pipeline.ppl_id,
-               state: PipelineState.key(response.pipeline.state),
-               result: PipelineResult.key(response.pipeline.result),
+               state: response.pipeline.state,
+               result: response.pipeline.result,
                sha: "1234567",
                project_id: "1",
                workflow_id: "3",
