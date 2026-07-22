@@ -63,50 +63,69 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
 
     organization = ::Organization.find_by_id(workflow.project.organization_id)
 
+    # Fork head SHA the approval is bound to. Set only on the /sem-approve
+    # path; used further down to fail closed if the fork pushes a new commit
+    # between approval and launch (TOCTOU protection).
+    approved_head_sha = nil
+
     if workflow.payload.pr_approval?
       # NOTE: We don't check the organization workflow restrictions here
       # because when a member uses /sem-approve, the workflow should still
       # run and be visible by the outside contributor trying to run it.
       logger.info("pr-approval")
       workflow.update(:state => Workflow::STATE_PR_APPROVAL)
+
       include_secrets_requested = workflow.payload.respond_to?(:pr_approval_include_secrets?) &&
                                   workflow.payload.pr_approval_include_secrets?
       enable_cache_requested = pr_approval_enable_cache_requested?(workflow.payload)
 
+      # Capture the approver identity and comment metadata from the *comment*
+      # workflow before we reassign `workflow` to the blocked forked-PR
+      # workflow below (its payload is a pull_request event, not a comment).
       requestor = workflow.payload.comment_author
+      comment_id = workflow.payload.respond_to?(:comment_id) ? workflow.payload.comment_id : nil
+      approved_at = workflow.payload.respond_to?(:comment_created_at) ? workflow.payload.comment_created_at : nil
+      issue_number = workflow.payload.issue_number
 
-      return unless forked_pr_allowed?(requestor, workflow.project)
+      # Approving a forked PR triggers a privileged workflow run (optionally
+      # with secrets/cache), so it requires the permission to start/rerun a
+      # pipeline (project.job.rerun) — not mere read access. Fails closed.
+      unless can_approve_forked_pr?(workflow.project, requestor, logger)
+        logger.info("pr-approval-denied", :requestor => requestor)
+        Watchman.increment("hooks.pr_approval.denied")
+        return
+      end
 
       workflow = Workflow
         .in_project(workflow.project_id)
         .blocked_by_contributor
-        .pr_number_in_git_ref(workflow.payload.issue_number)
+        .pr_number_in_git_ref(issue_number)
         .recent(1).first
 
       return unless workflow
 
+      # SHA binding (TOCTOU): pin the approval to the fork head that was
+      # present when /sem-approve was processed. `commit_sha` on a blocked
+      # forked-PR workflow is the fork head SHA recorded when that PR event
+      # arrived. Before launching, we re-check the live PR head against this
+      # value and fail closed if the fork pushed a new commit in the meantime
+      # (see the STATE_PR_APPROVAL_STALE guard in the pull_request? block).
+      approved_head_sha = workflow.commit_sha
+
       include_secrets_enabled = approval_option_enabled?(workflow.project, :allow_sem_approve_include_secrets)
       enable_cache_enabled = approval_enable_cache_option_enabled?(workflow.project)
-      requestor_is_project_member =
-        requestor_project_member_for_pr_approval_options?(
-          workflow,
-          requestor,
-          include_secrets_requested,
-          enable_cache_requested,
-          logger
-        )
 
+      # Authorization is already established by can_approve_forked_pr? above;
+      # each option additionally requires its per-project setting to be on.
       include_secrets = approved_sem_approve_option(
         :requested => include_secrets_requested,
         :enabled => include_secrets_enabled,
-        :requestor_is_project_member => requestor_is_project_member,
         :option => "--include-secrets",
         :logger => logger
       )
       enable_cache = approved_sem_approve_option(
         :requested => enable_cache_requested,
         :enabled => enable_cache_enabled,
-        :requestor_is_project_member => requestor_is_project_member,
         :option => "--enable-cache",
         :logger => logger
       )
@@ -115,6 +134,10 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
         workflow,
         :include_secrets => include_secrets,
         :enable_cache => enable_cache,
+        :approver => requestor,
+        :approved_head_sha => approved_head_sha,
+        :approved_at => approved_at,
+        :comment_id => comment_id,
         :logger => logger
       )
       return unless options_persisted
@@ -260,9 +283,25 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
 
           return
         when :without_reference
+          # No semaphoreci ref was created, so the launch runs the recorded
+          # fork head (approved_head_sha) directly rather than a freshly
+          # resolved merge commit — no TOCTOU window to guard here.
           logger.info("without-reference")
           workflow.update(:commit_author => meta[:commit_author])
         else
+          # For /sem-approve launches, the merge commit is derived from the
+          # *live* PR head. Refuse to run (and to hand over any granted
+          # secrets/cache) if the fork pushed a new commit since approval.
+          if approved_head_sha.present? && !approved_pr_head_unchanged?(meta, approved_head_sha)
+            logger.info("pr-approval-stale-head",
+                        :approved_head_sha => approved_head_sha,
+                        :live_head_sha => meta[:head_sha])
+            Watchman.increment("hooks.pr_approval.stale_head")
+            workflow.update(:state => Workflow::STATE_PR_APPROVAL_STALE)
+
+            return
+          end
+
           workflow.update(:commit_author => meta[:commit_author], :commit_sha => meta[:merge_commit_sha], :git_ref => meta[:ref])
         end
       rescue RepoHost::RemoteException::Unknown => e
@@ -322,6 +361,10 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
     end
 
     commit_sha ||= pr[:head][:sha]
+    # Live fork head SHA of the PR, used by the /sem-approve path to detect a
+    # commit injected between approval and launch. Read defensively so that
+    # payloads without a :head entry (e.g. in tests) simply yield nil.
+    head_sha = pr[:head] && pr[:head][:sha]
     commit = repo_host.commit(project.repo_owner_and_name, commit_sha)
     commit_author = commit.try(:author).try(:login)
     commit_message = commit.try(:commit).try(:message).to_s
@@ -334,7 +377,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
       ref = "refs/semaphoreci/#{merge_commit_sha}"
       ensure_ref(repo_host, project.repo_owner_and_name, ref, merge_commit_sha)
 
-      [:ok, { :pr => pr, :ref => ref, :merge_commit_sha => merge_commit_sha, :mergeable => mergeable, :commit_author => commit_author }, msg]
+      [:ok, { :pr => pr, :ref => ref, :merge_commit_sha => merge_commit_sha, :mergeable => mergeable, :commit_author => commit_author, :head_sha => head_sha }, msg]
     rescue RepoHost::RemoteException::Unauthorized, RepoHost::RemoteException::NotFound
       [:without_reference, { :mergeable => mergeable, :commit_author => commit_author }, ""]
     end
@@ -355,15 +398,37 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
     nil
   end
 
-  def self.mark_workflow_with_pr_approval_options(workflow, include_secrets: false, enable_cache: false, logger: nil)
+  def self.mark_workflow_with_pr_approval_options(workflow, include_secrets: false, enable_cache: false, approver: nil, approved_head_sha: nil, approved_at: nil, comment_id: nil, logger: nil)
     return true unless include_secrets || enable_cache
 
     payload = JSON.parse(workflow.request["payload"])
+
+    # Back-compat boolean markers, still consumed by RepoHost::Github::Payload,
+    # the repo_proxy Describe response, and zebra's secret/cache gating.
     payload["semaphore_approval_include_secrets"] = true if include_secrets
     payload["semaphore_approval_enable_cache"] = true if enable_cache
 
+    # Typed, auditable approval record: who approved, the reviewed fork head
+    # the grant is bound to, when, and the source comment id.
+    payload["semaphore_approval"] = {
+      "include_secrets" => include_secrets,
+      "enable_cache" => enable_cache,
+      "approver" => approver,
+      "approved_head_sha" => approved_head_sha,
+      "approved_at" => approved_at,
+      "comment_id" => comment_id
+    }
+
     request = workflow.request.merge("payload" => payload.to_json)
-    return true if workflow.update(:request => request)
+    if workflow.update(:request => request)
+      logger&.info("pr-approval-options-persisted",
+                   :include_secrets => include_secrets,
+                   :enable_cache => enable_cache,
+                   :approver => approver,
+                   :approved_head_sha => approved_head_sha,
+                   :comment_id => comment_id)
+      return true
+    end
 
     report_pr_approval_option_persist_failure(workflow, logger, "workflow_update_failed")
     false
@@ -372,7 +437,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
     false
   end
 
-  def self.approved_sem_approve_option(requested:, enabled:, requestor_is_project_member:, option:, logger:)
+  def self.approved_sem_approve_option(requested:, enabled:, option:, logger:)
     return false unless requested
 
     unless enabled
@@ -381,13 +446,16 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
       return false
     end
 
-    unless requestor_is_project_member
-      logger&.info("pr-approval-option-dropped", :option => option, :reason => "requestor_not_project_member")
-      Watchman.increment("hooks.pr_approval.option_dropped", tags: [option.delete_prefix("--"), "requestor_not_project_member"])
-      return false
-    end
-
     true
+  end
+
+  # True when the live PR head (as returned by update_pr_data) is present and
+  # still equals the SHA the approval was bound to. A blank/missing live head
+  # is treated as "changed" so the caller fails closed.
+  def self.approved_pr_head_unchanged?(meta, approved_head_sha)
+    live_head_sha = meta[:head_sha]
+
+    live_head_sha.present? && live_head_sha == approved_head_sha
   end
 
   def self.report_pr_approval_option_persist_failure(workflow, logger, reason)
@@ -409,24 +477,33 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
     payload.respond_to?(:pr_approval_enable_cache?) && payload.pr_approval_enable_cache?
   end
 
-  def self.requestor_project_member_for_pr_approval_options?(
-    workflow,
-    requestor,
-    include_secrets_requested,
-    enable_cache_requested,
-    logger
-  )
-    return false unless include_secrets_requested || enable_cache_requested
+  # Authorization gate for /sem-approve. Approving a forked PR starts a
+  # privileged pipeline run, so it requires the same permission as
+  # starting/rerunning a pipeline (project.job.rerun) rather than plain
+  # read access (project.view). Any failure (unknown user, RBAC error)
+  # fails closed.
+  def self.can_approve_forked_pr?(project, github_username, logger = nil)
+    return false if github_username.blank?
 
-    project_member?(workflow.project, requestor)
+    repo = RepoHostAccount.github.find_by(:login => github_username)
+    return false if repo.nil?
+
+    client = InternalApi::RBAC::RBAC::Stub.new(App.rbac_internal_url, :this_channel_is_insecure)
+    req = ::InternalApi::RBAC::ListUserPermissionsRequest.new(
+      :user_id => repo.user_id,
+      :org_id => project.organization_id,
+      :project_id => project.id
+    )
+
+    client.list_user_permissions(req).permissions.include?("project.job.rerun")
   rescue StandardError => e
     logger&.error(
-      "pr-approval-option-membership-check-failed",
+      "pr-approval-permission-check-failed",
       :error => e.message,
-      :requestor => requestor,
-      :project_id => workflow.project_id
+      :requestor => github_username,
+      :project_id => project.id
     )
-    Watchman.increment("hooks.pr_approval.option_membership_check_failed")
+    Watchman.increment("hooks.pr_approval.permission_check_failed")
     false
   end
 
@@ -445,7 +522,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
   end
 
   def self.project_member?(project, github_username)
-    repo = RepoHostAccount.find_by(:login => github_username)
+    repo = RepoHostAccount.github.find_by(:login => github_username)
 
     return false if repo.nil?
 

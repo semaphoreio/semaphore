@@ -232,11 +232,13 @@ Specifies the array of secrets' names that are allowed to be exported into jobs 
 
 ### allowed_contributors {#allowed-contributors-in-forked-pull-requests}
 
-Specifies an array of secrets (i.e. their names) that are allowed to be exported into jobs triggered by `forked-pull-requests`. If the array is empty, no secrets will be exported.
+Specifies an array of contributor usernames (repository host logins) whose forked pull requests are allowed to run. If the array is empty, no contributor restriction is applied.
 
 ### allow_sem_approve_include_secrets {#allow-sem-approve-include-secrets-in-forked-pull-requests}
 
-Enables `/sem-approve --include-secrets` for forked pull requests. When set to `true`, approved forked pull request runs can include secrets according to your forked pull request secret rules.
+Enables `/sem-approve --include-secrets` for forked pull requests. When set to `true`, an approved forked pull request run receives **all** project secrets referenced by the workflow — the forked-pull-request [`allowed_secrets`](#allowed-secrets-in-forked-pull-requests) allow list is **bypassed** for that run. Exposure is still bounded by the secrets the project itself is allowed to access.
+
+Because this hands repository secrets to externally-authored fork code, only enable it if you trust your approvers to review the fork changes before approving.
 
 Default value is `false`.
 
