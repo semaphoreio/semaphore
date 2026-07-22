@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "time" # Time.parse, used to bind an approval to its comment timestamp
+
 class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
 
   # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength
@@ -82,7 +84,13 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
       # Capture the approver identity and comment metadata from the *comment*
       # workflow before we reassign `workflow` to the blocked forked-PR
       # workflow below (its payload is a pull_request event, not a comment).
+      #
+      # `requestor` (the login) is display/audit only; authorization keys off
+      # the immutable `requestor_uid` because GitHub logins are renameable and
+      # reusable, so a stale/renamed account could otherwise map a commenter to
+      # a different Semaphore user who happens to hold that login.
       requestor = workflow.payload.comment_author
+      requestor_uid = workflow.payload.respond_to?(:comment_author_uid) ? workflow.payload.comment_author_uid : nil
       comment_id = workflow.payload.respond_to?(:comment_id) ? workflow.payload.comment_id : nil
       approved_at = workflow.payload.respond_to?(:comment_created_at) ? workflow.payload.comment_created_at : nil
       issue_number = workflow.payload.issue_number
@@ -90,9 +98,24 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
       # Approving a forked PR triggers a privileged workflow run (optionally
       # with secrets/cache), so it requires the permission to start/rerun a
       # pipeline (project.job.rerun) — not mere read access. Fails closed.
-      unless can_approve_forked_pr?(workflow.project, requestor, logger)
+      unless can_approve_forked_pr?(workflow.project, requestor_uid, logger)
         logger.info("pr-approval-denied", :requestor => requestor)
         Watchman.increment("hooks.pr_approval.denied")
+        return
+      end
+
+      # Bind the approval to the fork state that existed when the comment was
+      # written. Picking the newest blocked workflow unconditionally lets a
+      # contributor who pushes a new commit *after* the maintainer approves get
+      # that newer, unreviewed workflow selected and granted secrets/cache
+      # (the async worker can lag the comment by up to ~20 min of signature
+      # retries, widening the window). We therefore reject any blocked workflow
+      # created after the approval comment, and fail closed if we cannot
+      # establish when the comment was written.
+      approval_comment_time = parse_approval_comment_time(approved_at)
+      if approval_comment_time.nil?
+        logger.info("pr-approval-missing-comment-timestamp", :requestor => requestor)
+        Watchman.increment("hooks.pr_approval.missing_comment_time")
         return
       end
 
@@ -100,6 +123,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
         .in_project(workflow.project_id)
         .blocked_by_contributor
         .pr_number_in_git_ref(issue_number)
+        .created_before(approval_comment_time)
         .recent(1).first
 
       return unless workflow
@@ -110,7 +134,17 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
       # arrived. Before launching, we re-check the live PR head against this
       # value and fail closed if the fork pushed a new commit in the meantime
       # (see the STATE_PR_APPROVAL_STALE guard in the pull_request? block).
+      #
+      # A blank recorded head means we cannot bind the grant to a reviewed
+      # commit, so fail closed here rather than let the downstream guard be
+      # skipped (it is guarded on `approved_head_sha.present?`).
       approved_head_sha = workflow.commit_sha
+      if approved_head_sha.blank?
+        logger.info("pr-approval-missing-head-sha", :workflow_id => workflow.id)
+        Watchman.increment("hooks.pr_approval.missing_head_sha")
+        workflow.update(:state => Workflow::STATE_PR_APPROVAL_STALE)
+        return
+      end
 
       include_secrets_enabled = approval_option_enabled?(workflow.project, :allow_sem_approve_include_secrets)
       enable_cache_enabled = approval_enable_cache_option_enabled?(workflow.project)
@@ -135,6 +169,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
         :include_secrets => include_secrets,
         :enable_cache => enable_cache,
         :approver => requestor,
+        :approver_uid => requestor_uid,
         :approved_head_sha => approved_head_sha,
         :approved_at => approved_at,
         :comment_id => comment_id,
@@ -398,7 +433,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
     nil
   end
 
-  def self.mark_workflow_with_pr_approval_options(workflow, include_secrets: false, enable_cache: false, approver: nil, approved_head_sha: nil, approved_at: nil, comment_id: nil, logger: nil)
+  def self.mark_workflow_with_pr_approval_options(workflow, include_secrets: false, enable_cache: false, approver: nil, approver_uid: nil, approved_head_sha: nil, approved_at: nil, comment_id: nil, logger: nil) # rubocop:disable Metrics/ParameterLists
     return true unless include_secrets || enable_cache
 
     payload = JSON.parse(workflow.request["payload"])
@@ -408,12 +443,14 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
     payload["semaphore_approval_include_secrets"] = true if include_secrets
     payload["semaphore_approval_enable_cache"] = true if enable_cache
 
-    # Typed, auditable approval record: who approved, the reviewed fork head
-    # the grant is bound to, when, and the source comment id.
+    # Typed, auditable approval record: who approved (login + immutable uid),
+    # the reviewed fork head the grant is bound to, when, and the source
+    # comment id.
     payload["semaphore_approval"] = {
       "include_secrets" => include_secrets,
       "enable_cache" => enable_cache,
       "approver" => approver,
+      "approver_uid" => approver_uid,
       "approved_head_sha" => approved_head_sha,
       "approved_at" => approved_at,
       "comment_id" => comment_id
@@ -482,10 +519,14 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
   # starting/rerunning a pipeline (project.job.rerun) rather than plain
   # read access (project.view). Any failure (unknown user, RBAC error)
   # fails closed.
-  def self.can_approve_forked_pr?(project, github_username, logger = nil)
-    return false if github_username.blank?
+  #
+  # The commenter is resolved by immutable GitHub UID, not by login: logins
+  # are renameable and reusable, so keying off the login could authorize a
+  # different Semaphore account than the one that actually commented.
+  def self.can_approve_forked_pr?(project, github_uid, logger = nil)
+    return false if github_uid.blank?
 
-    repo = RepoHostAccount.github.find_by(:login => github_username)
+    repo = RepoHostAccount.github.find_by(:github_uid => github_uid)
     return false if repo.nil?
 
     client = InternalApi::RBAC::RBAC::Stub.new(App.rbac_internal_url, :this_channel_is_insecure)
@@ -500,11 +541,23 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
     logger&.error(
       "pr-approval-permission-check-failed",
       :error => e.message,
-      :requestor => github_username,
+      :requestor_uid => github_uid,
       :project_id => project.id
     )
     Watchman.increment("hooks.pr_approval.permission_check_failed")
     false
+  end
+
+  # Parse the approval comment's created_at (an ISO8601 string from the GitHub
+  # issue_comment payload) into a Time. Returns nil for a missing/unparseable
+  # value so the caller can fail closed — we must know when the comment was
+  # written to bind the approval to the fork state at that moment.
+  def self.parse_approval_comment_time(value)
+    return nil if value.blank?
+
+    Time.parse(value.to_s)
+  rescue ArgumentError, TypeError
+    nil
   end
 
   def self.forked_pr_allowed?(requestor, project)
