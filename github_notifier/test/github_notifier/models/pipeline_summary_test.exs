@@ -48,10 +48,10 @@ defmodule GithubNotifier.Models.PipelineSummaryTest do
     end
   end
 
-  describe ".is_failed?" do
+  describe ".failed?" do
     test "returns true when there are failed specs" do
       assert true ==
-               PipelineSummary.is_failed?(
+               PipelineSummary.failed?(
                  Velocity.Summary.new(
                    passed: 20,
                    error: 0,
@@ -60,7 +60,7 @@ defmodule GithubNotifier.Models.PipelineSummaryTest do
                )
 
       assert true ==
-               PipelineSummary.is_failed?(
+               PipelineSummary.failed?(
                  Velocity.Summary.new(
                    passed: 20,
                    error: 20,
@@ -69,7 +69,7 @@ defmodule GithubNotifier.Models.PipelineSummaryTest do
                )
 
       assert true ==
-               PipelineSummary.is_failed?(
+               PipelineSummary.failed?(
                  Velocity.Summary.new(
                    passed: 20,
                    error: 20,
@@ -80,20 +80,20 @@ defmodule GithubNotifier.Models.PipelineSummaryTest do
 
     test "returns false when there are no failed specs" do
       assert false ==
-               PipelineSummary.is_failed?(Velocity.Summary.new(passed: 20))
+               PipelineSummary.failed?(Velocity.Summary.new(passed: 20))
 
       assert false ==
-               PipelineSummary.is_failed?(Velocity.Summary.new(passed: 20, failed: 0))
+               PipelineSummary.failed?(Velocity.Summary.new(passed: 20, failed: 0))
 
       assert false ==
-               PipelineSummary.is_failed?(Velocity.Summary.new(passed: 20, error: 0))
+               PipelineSummary.failed?(Velocity.Summary.new(passed: 20, error: 0))
     end
   end
 
-  describe ".is_passed?" do
+  describe ".passed?" do
     test "returns true when there are no failed specs" do
       assert true ==
-               PipelineSummary.is_passed?(
+               PipelineSummary.passed?(
                  Velocity.Summary.new(
                    total: 20,
                    passed: 20,
@@ -105,7 +105,7 @@ defmodule GithubNotifier.Models.PipelineSummaryTest do
 
     test "returns false when there are failed specs" do
       assert false ==
-               PipelineSummary.is_passed?(
+               PipelineSummary.passed?(
                  Velocity.Summary.new(
                    passed: 20,
                    failed: 20
@@ -113,7 +113,7 @@ defmodule GithubNotifier.Models.PipelineSummaryTest do
                )
 
       assert false ==
-               PipelineSummary.is_passed?(
+               PipelineSummary.passed?(
                  Velocity.Summary.new(
                    passed: 20,
                    error: 20
@@ -123,10 +123,10 @@ defmodule GithubNotifier.Models.PipelineSummaryTest do
 
     test "returns false when there are no specs" do
       assert false ==
-               PipelineSummary.is_passed?(Velocity.Summary.new(total: 0))
+               PipelineSummary.passed?(Velocity.Summary.new(total: 0))
 
       assert false ==
-               PipelineSummary.is_passed?(Velocity.Summary.new(passed: 20, total: 0))
+               PipelineSummary.passed?(Velocity.Summary.new(passed: 20, total: 0))
     end
   end
 end
