@@ -1,7 +1,11 @@
 defmodule InternalApi.RepositoryIntegrator.IntegrationType do
   @moduledoc false
 
-  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    enum: true,
+    full_name: "InternalApi.RepositoryIntegrator.IntegrationType",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:GITHUB_OAUTH_TOKEN, 0)
   field(:GITHUB_APP, 1)
@@ -13,7 +17,11 @@ end
 defmodule InternalApi.RepositoryIntegrator.IntegrationScope do
   @moduledoc false
 
-  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    enum: true,
+    full_name: "InternalApi.RepositoryIntegrator.IntegrationScope",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:FULL_CONNECTION, 0)
   field(:ONLY_PUBLIC, 1)
@@ -23,7 +31,11 @@ end
 defmodule InternalApi.RepositoryIntegrator.RefreshRepositoriesResponse.SyncState do
   @moduledoc false
 
-  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    enum: true,
+    full_name: "InternalApi.RepositoryIntegrator.RefreshRepositoriesResponse.SyncState",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:SYNC_STATE_UNSPECIFIED, 0)
   field(:STARTED, 1)
@@ -35,7 +47,10 @@ end
 defmodule InternalApi.RepositoryIntegrator.GetTokenRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.RepositoryIntegrator.GetTokenRequest",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:user_id, 1, type: :string, json_name: "userId")
   field(:repository_slug, 2, type: :string, json_name: "repositorySlug")
@@ -53,7 +68,10 @@ end
 defmodule InternalApi.RepositoryIntegrator.GetTokenResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.RepositoryIntegrator.GetTokenResponse",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:token, 1, type: :string)
   field(:expires_at, 2, type: Google.Protobuf.Timestamp, json_name: "expiresAt")
@@ -62,7 +80,10 @@ end
 defmodule InternalApi.RepositoryIntegrator.CheckTokenRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.RepositoryIntegrator.CheckTokenRequest",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:project_id, 1, type: :string, json_name: "projectId")
 end
@@ -70,7 +91,10 @@ end
 defmodule InternalApi.RepositoryIntegrator.CheckTokenResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.RepositoryIntegrator.CheckTokenResponse",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:valid, 1, type: :bool)
 
@@ -84,7 +108,10 @@ end
 defmodule InternalApi.RepositoryIntegrator.PreheatFileCacheRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.RepositoryIntegrator.PreheatFileCacheRequest",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:project_id, 1, type: :string, json_name: "projectId")
   field(:path, 2, type: :string)
@@ -94,7 +121,10 @@ end
 defmodule InternalApi.RepositoryIntegrator.GetFileRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.RepositoryIntegrator.GetFileRequest",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:project_id, 1, type: :string, json_name: "projectId")
   field(:path, 2, type: :string)
@@ -104,7 +134,10 @@ end
 defmodule InternalApi.RepositoryIntegrator.GetFileResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.RepositoryIntegrator.GetFileResponse",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:content, 1, type: :string)
 end
@@ -112,7 +145,10 @@ end
 defmodule InternalApi.RepositoryIntegrator.GithubInstallationInfoRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.RepositoryIntegrator.GithubInstallationInfoRequest",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:project_id, 1, type: :string, json_name: "projectId")
 end
@@ -120,7 +156,10 @@ end
 defmodule InternalApi.RepositoryIntegrator.GithubInstallationInfoResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.RepositoryIntegrator.GithubInstallationInfoResponse",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:installation_id, 1, type: :int64, json_name: "installationId")
   field(:application_url, 2, type: :string, json_name: "applicationUrl")
@@ -130,19 +169,28 @@ end
 defmodule InternalApi.RepositoryIntegrator.InitGithubInstallationRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.RepositoryIntegrator.InitGithubInstallationRequest",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 end
 
 defmodule InternalApi.RepositoryIntegrator.InitGithubInstallationResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.RepositoryIntegrator.InitGithubInstallationResponse",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 end
 
 defmodule InternalApi.RepositoryIntegrator.GetRepositoriesRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.RepositoryIntegrator.GetRepositoriesRequest",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:user_id, 1, type: :string, json_name: "userId")
 
@@ -156,7 +204,10 @@ end
 defmodule InternalApi.RepositoryIntegrator.GetRepositoriesResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.RepositoryIntegrator.GetRepositoriesResponse",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:repositories, 1, repeated: true, type: InternalApi.RepositoryIntegrator.Repository)
 end
@@ -164,7 +215,10 @@ end
 defmodule InternalApi.RepositoryIntegrator.Repository do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.RepositoryIntegrator.Repository",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:addable, 1, type: :bool)
   field(:name, 2, type: :string)
@@ -176,7 +230,10 @@ end
 defmodule InternalApi.RepositoryIntegrator.RefreshRepositoriesRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.RepositoryIntegrator.RefreshRepositoriesRequest",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:user_id, 1, type: :string, json_name: "userId")
 
@@ -193,7 +250,10 @@ end
 defmodule InternalApi.RepositoryIntegrator.RefreshRepositoriesResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.RepositoryIntegrator.RefreshRepositoriesResponse",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:sync_state, 1,
     type: InternalApi.RepositoryIntegrator.RefreshRepositoriesResponse.SyncState,
@@ -209,7 +269,7 @@ defmodule InternalApi.RepositoryIntegrator.RepositoryIntegratorService.Service d
 
   use GRPC.Service,
     name: "InternalApi.RepositoryIntegrator.RepositoryIntegratorService",
-    protoc_gen_elixir_version: "0.13.0"
+    protoc_gen_elixir_version: "0.17.0"
 
   rpc(
     :GetToken,

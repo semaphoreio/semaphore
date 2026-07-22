@@ -1,7 +1,11 @@
 defmodule InternalApi.RepoProxy.Hook.Type do
   @moduledoc false
 
-  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    enum: true,
+    full_name: "InternalApi.RepoProxy.Hook.Type",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:BRANCH, 0)
   field(:TAG, 1)
@@ -11,7 +15,10 @@ end
 defmodule InternalApi.RepoProxy.DescribeRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.RepoProxy.DescribeRequest",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:hook_id, 1, type: :string, json_name: "hookId")
 end
@@ -19,7 +26,10 @@ end
 defmodule InternalApi.RepoProxy.DescribeResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.RepoProxy.DescribeResponse",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:status, 1, type: InternalApi.ResponseStatus)
   field(:hook, 2, type: InternalApi.RepoProxy.Hook)
@@ -28,7 +38,10 @@ end
 defmodule InternalApi.RepoProxy.Hook do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.RepoProxy.Hook",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:hook_id, 1, type: :string, json_name: "hookId")
   field(:head_commit_sha, 2, type: :string, json_name: "headCommitSha")
@@ -64,7 +77,10 @@ end
 defmodule InternalApi.RepoProxy.DescribeManyRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.RepoProxy.DescribeManyRequest",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:hook_ids, 1, repeated: true, type: :string, json_name: "hookIds")
 end
@@ -72,7 +88,10 @@ end
 defmodule InternalApi.RepoProxy.DescribeManyResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.RepoProxy.DescribeManyResponse",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:status, 1, type: InternalApi.ResponseStatus)
   field(:hooks, 2, repeated: true, type: InternalApi.RepoProxy.Hook)
@@ -81,7 +100,10 @@ end
 defmodule InternalApi.RepoProxy.ListBlockedHooksRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.RepoProxy.ListBlockedHooksRequest",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:project_id, 1, type: :string, json_name: "projectId")
   field(:git_ref, 2, type: :string, json_name: "gitRef")
@@ -90,7 +112,10 @@ end
 defmodule InternalApi.RepoProxy.ListBlockedHooksResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.RepoProxy.ListBlockedHooksResponse",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:status, 1, type: InternalApi.ResponseStatus)
   field(:hooks, 2, repeated: true, type: InternalApi.RepoProxy.Hook)
@@ -99,7 +124,10 @@ end
 defmodule InternalApi.RepoProxy.ScheduleBlockedHookRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.RepoProxy.ScheduleBlockedHookRequest",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:hook_id, 1, type: :string, json_name: "hookId")
   field(:project_id, 2, type: :string, json_name: "projectId")
@@ -108,7 +136,10 @@ end
 defmodule InternalApi.RepoProxy.ScheduleBlockedHookResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.RepoProxy.ScheduleBlockedHookResponse",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:status, 1, type: InternalApi.ResponseStatus)
   field(:wf_id, 2, type: :string, json_name: "wfId")
@@ -118,7 +149,10 @@ end
 defmodule InternalApi.RepoProxy.CreateRequest.Git do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.RepoProxy.CreateRequest.Git",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:reference, 1, type: :string)
   field(:commit_sha, 2, type: :string, json_name: "commitSha")
@@ -127,7 +161,10 @@ end
 defmodule InternalApi.RepoProxy.CreateRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.RepoProxy.CreateRequest",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:request_token, 1, type: :string, json_name: "requestToken")
   field(:project_id, 2, type: :string, json_name: "projectId")
@@ -146,7 +183,10 @@ end
 defmodule InternalApi.RepoProxy.CreateResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.RepoProxy.CreateResponse",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:hook_id, 1, type: :string, json_name: "hookId")
   field(:workflow_id, 2, type: :string, json_name: "workflowId")
@@ -156,7 +196,10 @@ end
 defmodule InternalApi.RepoProxy.CreateBlankRequest.Git do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.RepoProxy.CreateBlankRequest.Git",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:reference, 1, type: :string)
   field(:commit_sha, 2, type: :string, json_name: "commitSha")
@@ -165,7 +208,10 @@ end
 defmodule InternalApi.RepoProxy.CreateBlankRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.RepoProxy.CreateBlankRequest",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:request_token, 1, type: :string, json_name: "requestToken")
   field(:project_id, 2, type: :string, json_name: "projectId")
@@ -186,7 +232,10 @@ end
 defmodule InternalApi.RepoProxy.CreateBlankResponse.Repo do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.RepoProxy.CreateBlankResponse.Repo",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:owner, 1, type: :string)
   field(:repo_name, 2, type: :string, json_name: "repoName")
@@ -198,7 +247,10 @@ end
 defmodule InternalApi.RepoProxy.CreateBlankResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.RepoProxy.CreateBlankResponse",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:hook_id, 1, type: :string, json_name: "hookId")
   field(:wf_id, 2, type: :string, json_name: "wfId")
@@ -210,7 +262,10 @@ end
 defmodule InternalApi.RepoProxy.PullRequestUnmergeable do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+  use Protobuf,
+    full_name: "InternalApi.RepoProxy.PullRequestUnmergeable",
+    protoc_gen_elixir_version: "0.17.0",
+    syntax: :proto3
 
   field(:project_id, 1, type: :string, json_name: "projectId")
   field(:branch_name, 2, type: :string, json_name: "branchName")
@@ -222,7 +277,7 @@ defmodule InternalApi.RepoProxy.RepoProxyService.Service do
 
   use GRPC.Service,
     name: "InternalApi.RepoProxy.RepoProxyService",
-    protoc_gen_elixir_version: "0.13.0"
+    protoc_gen_elixir_version: "0.17.0"
 
   rpc(:Describe, InternalApi.RepoProxy.DescribeRequest, InternalApi.RepoProxy.DescribeResponse)
 
