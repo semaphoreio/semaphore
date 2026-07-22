@@ -12,3 +12,12 @@ GHSA-jfc2-q6qh-g5x8
 
 # cowlib 2.11.0 — SPDY decompression bomb in cow_spdy:inflate/2 (unreachable; cowboy 2.x does not serve SPDY)
 GHSA-84f2-rp86-235p
+
+# protobuf 0.11.0 — unbounded recursion depth in embedded-message decoding (GHSA-rv48-qqj5-crxg, high),
+# fixed in 0.16.1. Accepted rather than bumped: moving protobuf 0.11 -> 0.16.1 changes the generated-code
+# API and requires regenerating every .pb.ex module (protoc + new elixir plugin), which broke other
+# services in prior attempts — it's a large, separately-tracked migration, not a security-patch bump.
+# Reachability is limited: projecthub decodes protobuf only from internal gRPC callers (other Semaphore
+# services / the authenticated API), not arbitrary untrusted input, so a crafted deeply-nested message
+# would require an authenticated internal client.
+GHSA-rv48-qqj5-crxg
