@@ -64,15 +64,13 @@ module RepoHost
         in_fence = false
 
         body.to_s.split(/\r?\n/).map do |line|
-          stripped = line.strip
-
-          if fence_delimiter?(stripped)
+          if fence_delimiter?(line.strip)
             in_fence = !in_fence
             next
           end
           next if in_fence
 
-          tokens_from_line(stripped)
+          tokens_from_line(line)
         end.compact
       end
 
@@ -80,8 +78,13 @@ module RepoHost
         stripped_line.start_with?(*FENCE_DELIMITERS)
       end
 
-      def tokens_from_line(stripped_line)
-        tokens = stripped_line.split(/[ \t]+/)
+      def tokens_from_line(line)
+        # The command must begin at column zero. A leading space/tab means the
+        # line is indented Markdown code (or otherwise not a deliberate command)
+        # and must not trigger a privileged approval.
+        return nil if line != line.lstrip
+
+        tokens = line.strip.split(/[ \t]+/)
         return nil unless tokens.first == COMMAND
 
         options = tokens.drop(1)
