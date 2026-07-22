@@ -81,10 +81,27 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
     end
 
     context "PR approval" do
+      # Fixed timeline used by the approval tests. In the normal case a blocked
+      # forked-PR workflow is created *before* the maintainer's approval comment
+      # (the PR event arrives, is blocked, then a maintainer comments). Tests
+      # that model a contributor pushing after approval create a workflow at
+      # `after_comment`.
+      def approval_comment_time
+        "2026-07-20T00:00:00Z"
+      end
+
+      def before_comment
+        Time.utc(2026, 7, 19)
+      end
+
+      def after_comment
+        Time.utc(2026, 7, 21)
+      end
+
       # A blocked forked-PR workflow whose payload is a real pull_request
       # event, so the shared pull_request? launch path — and the SHA-binding
       # guard — is exercised end to end.
-      def build_blocked_pr_workflow(project_id:, pr_number: 1)
+      def build_blocked_pr_workflow(project_id:, pr_number: 1, created_at: before_comment)
         wf = FactoryBot.create(
           :workflow,
           :project_id => project_id,
@@ -93,7 +110,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
             "payload" => RepoHost::Github::Responses::Payload.post_receive_hook_pull_request
           )
         )
-        wf.update(:git_ref => "refs/pull/#{pr_number}/merge")
+        wf.update(:git_ref => "refs/pull/#{pr_number}/merge", :created_at => created_at)
         wf
       end
 
@@ -146,9 +163,9 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
           :project_id => @workflow.project_id,
           :state => Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR
         )
-        workflow.update(:git_ref => "refs/pull/45/merge")
+        workflow.update(:git_ref => "refs/pull/45/merge", :created_at => before_comment)
 
-        allow(@workflow.payload).to receive_messages(issue_number: 45, pr_approval?: true, comment_author: "maintainer")
+        allow(@workflow.payload).to receive_messages(issue_number: 45, pr_approval?: true, comment_author: "maintainer", comment_created_at: approval_comment_time)
         allow(described_class).to receive(:can_approve_forked_pr?).and_return(true)
 
         expect(described_class).to receive(:launch_pipeline).with(kind_of(Branch), workflow, @logger)
@@ -156,20 +173,20 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
         described_class.run(@workflow, @logger)
       end
 
-      it "passes the requestor and project to the permission check" do
+      it "authorizes the permission check by the commenter's immutable uid" do
         build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 45)
 
-        allow(@workflow.payload).to receive_messages(issue_number: 45, pr_approval?: true, comment_author: "maintainer")
+        allow(@workflow.payload).to receive_messages(issue_number: 45, pr_approval?: true, comment_author: "maintainer", comment_author_uid: 4242, comment_created_at: approval_comment_time)
 
         expect(described_class).to receive(:can_approve_forked_pr?)
-          .with(@workflow.project, "maintainer", @logger)
+          .with(@workflow.project, 4242, @logger)
           .and_return(false)
 
         described_class.run(@workflow, @logger)
       end
 
       it "does not launch when there is no blocked workflow" do
-        allow(@workflow.payload).to receive_messages(issue_number: 999, pr_approval?: true, comment_author: "maintainer")
+        allow(@workflow.payload).to receive_messages(issue_number: 999, pr_approval?: true, comment_author: "maintainer", comment_created_at: approval_comment_time)
         allow(described_class).to receive(:can_approve_forked_pr?).and_return(true)
 
         expect(described_class).not_to receive(:launch_pipeline)
@@ -186,8 +203,9 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
           pr_approval_include_secrets?: true,
           pr_approval_enable_cache?: true,
           comment_author: "maintainer",
+          comment_author_uid: 4242,
           comment_id: 42,
-          comment_created_at: "2026-07-20T00:00:00Z"
+          comment_created_at: approval_comment_time
         )
         allow(described_class).to receive_messages(
           approval_option_enabled?: true,
@@ -207,9 +225,10 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
         expect(record["include_secrets"]).to be(true)
         expect(record["enable_cache"]).to be(true)
         expect(record["approver"]).to eq("maintainer")
+        expect(record["approver_uid"]).to eq(4242)
         expect(record["approved_head_sha"]).to eq(workflow.commit_sha)
         expect(record["comment_id"]).to eq(42)
-        expect(record["approved_at"]).to eq("2026-07-20T00:00:00Z")
+        expect(record["approved_at"]).to eq(approval_comment_time)
       end
 
       it "drops options (no marker) but still launches when the project setting is disabled" do
@@ -220,7 +239,8 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
           pr_approval?: true,
           pr_approval_include_secrets?: true,
           pr_approval_enable_cache?: true,
-          comment_author: "maintainer"
+          comment_author: "maintainer",
+          comment_created_at: approval_comment_time
         )
         allow(described_class).to receive_messages(
           approval_option_enabled?: false,
@@ -248,7 +268,8 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
           issue_number: 1,
           pr_approval?: true,
           pr_approval_include_secrets?: true,
-          comment_author: "maintainer"
+          comment_author: "maintainer",
+          comment_created_at: approval_comment_time
         )
         allow(described_class).to receive_messages(
           approval_option_enabled?: true,
@@ -278,7 +299,8 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
         allow(@workflow.payload).to receive_messages(
           issue_number: 1,
           pr_approval?: true,
-          comment_author: "maintainer"
+          comment_author: "maintainer",
+          comment_created_at: approval_comment_time
         )
         allow(described_class).to receive_messages(
           can_approve_forked_pr?: true,
@@ -303,14 +325,15 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
           :project_id => @workflow.project_id,
           :state => Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR
         )
-        workflow.update(:git_ref => "refs/pull/1/merge")
+        workflow.update(:git_ref => "refs/pull/1/merge", :created_at => before_comment)
         workflow.update(:request => ActionController::Parameters.new("payload" => "{invalid-json"))
 
         allow(@workflow.payload).to receive_messages(
           issue_number: 1,
           pr_approval?: true,
           pr_approval_include_secrets?: true,
-          comment_author: "maintainer"
+          comment_author: "maintainer",
+          comment_created_at: approval_comment_time
         )
         allow(described_class).to receive_messages(
           approval_option_enabled?: true,
@@ -334,6 +357,90 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
         expect(described_class).not_to receive(:launch_pipeline)
 
         allow(described_class).to receive(:can_approve_forked_pr?).and_return(false)
+
+        described_class.run(@workflow, @logger)
+      end
+
+      it "binds the approval to the workflow present at comment time, ignoring a later push" do
+        reviewed = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 7, created_at: before_comment)
+        # The contributor pushes again AFTER the maintainer's approval comment,
+        # producing a newer blocked workflow for the same PR. It must never be
+        # the one that gets selected (and granted secrets).
+        build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 7, created_at: after_comment)
+
+        allow(@workflow.payload).to receive_messages(
+          issue_number: 7,
+          pr_approval?: true,
+          pr_approval_include_secrets?: true,
+          comment_author: "maintainer",
+          comment_created_at: approval_comment_time
+        )
+        allow(described_class).to receive_messages(
+          approval_option_enabled?: true,
+          can_approve_forked_pr?: true,
+          update_pr_data: ok_pr_data(reviewed)
+        )
+
+        # The reviewed (older) workflow is launched; the post-approval push is
+        # never selected.
+        expect(described_class).to receive(:launch_pipeline).with(kind_of(Branch), reviewed, @logger)
+
+        described_class.run(@workflow, @logger)
+      end
+
+      it "fails closed when the only blocked workflow was created after the approval comment" do
+        build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 8, created_at: after_comment)
+
+        allow(@workflow.payload).to receive_messages(
+          issue_number: 8,
+          pr_approval?: true,
+          comment_author: "maintainer",
+          comment_created_at: approval_comment_time
+        )
+        allow(described_class).to receive(:can_approve_forked_pr?).and_return(true)
+
+        expect(described_class).not_to receive(:launch_pipeline)
+
+        described_class.run(@workflow, @logger)
+      end
+
+      it "fails closed (STATE_PR_APPROVAL_STALE) when the approved head sha is blank" do
+        workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 9)
+        workflow.update(:commit_sha => nil)
+
+        allow(@logger).to receive(:info)
+        allow(Watchman).to receive(:increment)
+        allow(@workflow.payload).to receive_messages(
+          issue_number: 9,
+          pr_approval?: true,
+          comment_author: "maintainer",
+          comment_created_at: approval_comment_time
+        )
+        allow(described_class).to receive(:can_approve_forked_pr?).and_return(true)
+
+        expect(described_class).not_to receive(:launch_pipeline)
+        expect(Watchman).to receive(:increment).with("hooks.pr_approval.missing_head_sha")
+
+        described_class.run(@workflow, @logger)
+
+        expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_PR_APPROVAL_STALE)
+      end
+
+      it "fails closed when the approval comment timestamp is missing" do
+        build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 10)
+
+        allow(@logger).to receive(:info)
+        allow(Watchman).to receive(:increment)
+        allow(@workflow.payload).to receive_messages(
+          issue_number: 10,
+          pr_approval?: true,
+          comment_author: "maintainer",
+          comment_created_at: nil
+        )
+        allow(described_class).to receive(:can_approve_forked_pr?).and_return(true)
+
+        expect(described_class).not_to receive(:launch_pipeline)
+        expect(Watchman).to receive(:increment).with("hooks.pr_approval.missing_comment_time")
 
         described_class.run(@workflow, @logger)
       end
@@ -679,19 +786,21 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
   describe ".can_approve_forked_pr?" do
     let(:project) { @workflow.project }
 
-    it "returns false for a blank username" do
+    it "returns false for a blank uid" do
       expect(described_class.can_approve_forked_pr?(project, nil)).to be(false)
       expect(described_class.can_approve_forked_pr?(project, "")).to be(false)
     end
 
-    it "returns false when there is no matching repo host account" do
-      expect(described_class.can_approve_forked_pr?(project, "ghost")).to be(false)
+    it "returns false when there is no repo host account for the uid" do
+      expect(described_class.can_approve_forked_pr?(project, 999_999)).to be(false)
     end
 
     context "with a known user" do
+      let(:maintainer_uid) { 4242 }
+
       before do
         user = FactoryBot.create(:user)
-        FactoryBot.create(:repo_host_account, :user => user, :login => "maintainer")
+        FactoryBot.create(:repo_host_account, :user => user, :login => "maintainer", :github_uid => maintainer_uid)
       end
 
       def stub_permissions(permissions)
@@ -700,16 +809,25 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
           .and_return(InternalApi::RBAC::ListUserPermissionsResponse.new(:permissions => permissions))
       end
 
-      it "returns true when the user has project.job.rerun" do
+      it "returns true when the user (resolved by uid) has project.job.rerun" do
         stub_permissions(["project.view", "project.job.rerun"])
 
-        expect(described_class.can_approve_forked_pr?(project, "maintainer")).to be(true)
+        expect(described_class.can_approve_forked_pr?(project, maintainer_uid)).to be(true)
       end
 
       it "returns false when the user only has project.view" do
         stub_permissions(["project.view"])
 
-        expect(described_class.can_approve_forked_pr?(project, "maintainer")).to be(false)
+        expect(described_class.can_approve_forked_pr?(project, maintainer_uid)).to be(false)
+      end
+
+      it "resolves by immutable uid, not by the (reusable) login" do
+        stub_permissions(["project.view", "project.job.rerun"])
+
+        # A commenter whose GitHub uid is not linked to the authorized account
+        # must be denied even though that account's login exists — logins are
+        # renameable/reusable and must not grant a secret bypass.
+        expect(described_class.can_approve_forked_pr?(project, 5_150)).to be(false)
       end
 
       it "fails closed when the RBAC call raises" do
@@ -720,11 +838,11 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
 
         expect(@logger).to receive(:error).with(
           "pr-approval-permission-check-failed",
-          hash_including(:requestor => "maintainer", :project_id => project.id)
+          hash_including(:requestor_uid => maintainer_uid, :project_id => project.id)
         )
         expect(Watchman).to receive(:increment).with("hooks.pr_approval.permission_check_failed")
 
-        expect(described_class.can_approve_forked_pr?(project, "maintainer", @logger)).to be(false)
+        expect(described_class.can_approve_forked_pr?(project, maintainer_uid, @logger)).to be(false)
       end
     end
   end
