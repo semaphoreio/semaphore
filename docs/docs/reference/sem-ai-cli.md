@@ -36,9 +36,30 @@ make install
 
 ## Setup {#setup}
 
+### sem-ai signin {#signin}
+
+Sign in with your browser — no pre-existing API token needed:
+
+```shell
+sem-ai signin
+```
+
+Shows a one-time code and a verification URL, opening your browser when one is available. Sign in (or create your account right there) and approve; the terminal finishes automatically. `signup` and `login` are aliases for the same flow. Defaults to Semaphore Cloud (`me.semaphoreci.com`); pass a different host for another deployment:
+
+```shell
+sem-ai signin <your-instance-host>
+sem-ai signin --headless
+```
+
+:::note
+
+An account has a single API token. If your account already has one, approving the sign-in resets it after an explicit confirmation in the browser — the previous token immediately stops working everywhere it is used (CI secrets, scripts, other machines). To authenticate with an existing token instead, use `sem-ai connect`.
+
+:::
+
 ### sem-ai connect {#connect}
 
-Connect to your Semaphore organization. You need an [API token](https://me.semaphoreci.com/account).
+Connect to your Semaphore organization with an existing [API token](https://me.semaphoreci.com/account).
 
 ```shell
 sem-ai connect <organization>.semaphoreci.com <API_TOKEN>
@@ -65,6 +86,16 @@ Show the active organization:
 ```shell
 sem-ai context show
 ```
+
+Switch the active organization:
+
+```shell
+sem-ai context switch <name-or-number>
+```
+
+### Environment variables {#env-vars}
+
+`SEMAPHORE_HOST` and `SEMAPHORE_API_TOKEN` override the stored configuration when set — useful in CI jobs or containers where writing `~/.sem.yaml` is inconvenient.
 
 ## General syntax {#syntax}
 
@@ -1011,6 +1042,16 @@ Create a deployment target:
 sem-ai deploy create <name> --project <project-name> --url https://staging.example.com
 ```
 
+### sem-ai deploy update {#deploy-update}
+
+Update a deployment target. Only the flags you pass change; everything else keeps its current value:
+
+```shell
+sem-ai deploy update <target-id> --name staging-eu --description "EU staging"
+sem-ai deploy update <target-id> --branch-exact main --subject-role Admin
+sem-ai deploy update <target-id> --env-var API_URL=https://staging.example.com
+```
+
 ### sem-ai deploy activate / deactivate {#deploy-activate}
 
 Activate or deactivate a deployment target:
@@ -1080,12 +1121,25 @@ Create a scheduled task:
 sem-ai task create <name> --project <project-name> --branch main --file .semaphore/nightly.yml --cron "0 2 * * *"
 ```
 
+Tasks can declare parameters with `--param-def` (repeatable) — `NAME` for a required parameter, `NAME=DEFAULT` for an optional one with a default:
+
+```shell
+sem-ai task create deploy-env --project <project-name> --file .semaphore/deploy.yml --param-def ENVIRONMENT --param-def REGION=us-east-1
+```
+
 ### sem-ai task run {#task-run}
 
 Trigger a task to run now:
 
 ```shell
 sem-ai task run <task-id>
+```
+
+Pass parameter values with `--param KEY=VALUE` (repeatable), and optionally override the git ref or pipeline file for this run:
+
+```shell
+sem-ai task run <task-id> --param ENVIRONMENT=staging --param REGION=eu-west-1
+sem-ai task run <task-id> --branch hotfix-1 --pipeline-file .semaphore/deploy.yml
 ```
 
 ### sem-ai task delete {#task-delete}
@@ -1193,6 +1247,10 @@ Add to your project's `.mcp.json`:
 ```
 
 Most commands become available as MCP tools (e.g., `project_list`, `diagnose`, `status`, `blast-radius`). The long-running commands `watch` and `promote-and-wait` are excluded, since they would block the single in-memory command tree; use `status --exit-code` in a poll loop instead. The server starts once and handles all tool calls in-process — no new process per call.
+
+### Claude Desktop (MCPB extension)
+
+Each [release](https://github.com/semaphoreio/sem-ai/releases) also ships one-click MCPB bundles (`sem-ai_<version>_<os>_<arch>.mcpb`). Download the bundle for your platform and open it — Claude Desktop installs the same MCP server without a separate CLI install; enter your organization host and API token in the install dialog (the token is kept in the OS keychain).
 
 ## Agent skills {#skills}
 
