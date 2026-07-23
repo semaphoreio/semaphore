@@ -91,23 +91,35 @@ RSpec.describe RepoHost::Github::Payload do
       expect(payload.pr_approval_enable_cache?).to be(true)
     end
 
-    it "recognizes only options that stay on the same line as /sem-approve" do
-      payload = comment_payload(body: "/sem-approve --include-secrets\n--enable-cache")
+    it "tolerates surrounding blank lines around the command" do
+      payload = comment_payload(body: "\n/sem-approve --include-secrets\n")
 
       expect(payload.pr_approval?).to be(true)
       expect(payload.pr_approval_include_secrets?).to be(true)
+    end
+
+    # --- Security: the whole comment must be exactly the command ---
+
+    it "does not recognize the command when any other line is present" do
+      payload = comment_payload(body: "please review\n/sem-approve --include-secrets")
+
+      expect(payload.pr_approval?).to be(false)
+      expect(payload.pr_approval_include_secrets?).to be(false)
+    end
+
+    it "does not combine options across multiple command lines" do
+      payload = comment_payload(body: "/sem-approve --include-secrets\n/sem-approve --enable-cache")
+
+      expect(payload.pr_approval?).to be(false)
+      expect(payload.pr_approval_include_secrets?).to be(false)
       expect(payload.pr_approval_enable_cache?).to be(false)
     end
 
-    it "collects options from all approval-command lines" do
-      payload = comment_payload(body: "/sem-approve\n/sem-approve --enable-cache")
+    it "does not recognize an option spilled onto its own line" do
+      payload = comment_payload(body: "/sem-approve --include-secrets\n--enable-cache")
 
-      expect(payload.pr_approval?).to be(true)
-      expect(payload.pr_approval_include_secrets?).to be(false)
-      expect(payload.pr_approval_enable_cache?).to be(true)
+      expect(payload.pr_approval?).to be(false)
     end
-
-    # --- Security: the command must be an explicit, whole-line command ---
 
     it "does not recognize /sem-approve embedded in regular text" do
       payload = comment_payload(body: "LGTM /sem-approve")
@@ -132,6 +144,27 @@ RSpec.describe RepoHost::Github::Payload do
 
     it "does not recognize /sem-approve inside a fenced code block" do
       payload = comment_payload(body: "```\n/sem-approve --include-secrets\n```")
+
+      expect(payload.pr_approval?).to be(false)
+      expect(payload.pr_approval_include_secrets?).to be(false)
+    end
+
+    it "does not recognize /sem-approve inside a four-backtick fence with a triple-backtick line" do
+      payload = comment_payload(body: "````\n```\n/sem-approve --include-secrets\n````")
+
+      expect(payload.pr_approval?).to be(false)
+      expect(payload.pr_approval_include_secrets?).to be(false)
+    end
+
+    it "does not recognize /sem-approve inside an HTML comment (single line)" do
+      payload = comment_payload(body: "<!-- /sem-approve --include-secrets -->")
+
+      expect(payload.pr_approval?).to be(false)
+      expect(payload.pr_approval_include_secrets?).to be(false)
+    end
+
+    it "does not recognize /sem-approve inside a multi-line HTML comment" do
+      payload = comment_payload(body: "<!--\n/sem-approve --include-secrets\n-->")
 
       expect(payload.pr_approval?).to be(false)
       expect(payload.pr_approval_include_secrets?).to be(false)
