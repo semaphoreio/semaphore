@@ -3772,7 +3772,6 @@ blocks:
         commands:
           - sem-version erlang $ERLANG_VERSION
           - sem-version elixir $ELIXIR_VERSION
-          - mix local.rebar --force
           - checkout && cd feature_provider
           - cache restore
       jobs:
