@@ -52,7 +52,7 @@ defmodule GithubNotifier.FeatureHubProvider do
     channel()
     |> case do
       {:ok, channel} ->
-        request = InternalApi.Feature.ListOrganizationFeaturesRequest.new(org_id: org_id)
+        request = struct(InternalApi.Feature.ListOrganizationFeaturesRequest, org_id: org_id)
 
         Stub.list_organization_features(channel, request, opts)
 
@@ -67,7 +67,7 @@ defmodule GithubNotifier.FeatureHubProvider do
     channel()
     |> case do
       {:ok, channel} ->
-        request = InternalApi.Feature.ListFeaturesRequest.new()
+        request = struct(InternalApi.Feature.ListFeaturesRequest)
 
         Stub.list_features(channel, request, opts)
 
@@ -112,7 +112,6 @@ defmodule GithubNotifier.FeatureHubProvider do
 
   defp state_from_availability(%Availability{state: state}) do
     state
-    |> Availability.State.key()
     |> case do
       :ENABLED -> :enabled
       :HIDDEN -> :disabled
