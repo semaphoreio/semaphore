@@ -170,6 +170,33 @@ defmodule Rbac.OIDC.FederatedIdentitySyncTest do
       assert_receive {:oidc_post, post_url, _body}, 5_000
       assert post_url =~ "kc-claimer"
     end
+
+    test "re-activating a revoked link claims the uid and syncs identities", %{
+      loser: loser,
+      claimer: claimer
+    } do
+      {:ok, claimer_rha} =
+        Support.Members.insert_repo_host_account(
+          github_uid: @claimed_uid,
+          user_id: claimer.id,
+          login: "new-login",
+          name: "Claimer",
+          permission_scope: "user:email",
+          revoked: true
+        )
+
+      assert {:ok, updated} = RepoHostAccount.update_revoke_status(claimer_rha, false)
+      assert updated.revoked == false
+
+      assert {:error, :not_found} = RepoHostAccount.get_for_github_user(loser.id)
+
+      assert_receive {:oidc_delete, loser_url}, 5_000
+      assert loser_url =~ "kc-loser"
+
+      assert_receive {:oidc_delete, _claimer_pre_post}, 5_000
+      assert_receive {:oidc_post, post_url, _body}, 5_000
+      assert post_url =~ "kc-claimer"
+    end
   end
 
   describe "claims inside a database transaction" do

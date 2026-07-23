@@ -17,6 +17,16 @@ defmodule Rbac.FrontRepo.RepoHostAccountTest do
     )
   end
 
+  defp insert_full_rha(overrides) do
+    defaults = [
+      login: "octocat",
+      name: "The Octocat",
+      permission_scope: "user:email"
+    ]
+
+    Support.Members.insert_repo_host_account(Keyword.merge(defaults, overrides))
+  end
+
   describe "GitHub account uniqueness" do
     test "create/1 rejects a GitHub uid already connected to another user" do
       {:ok, existing} = Support.Members.insert_repo_host_account(github_uid: "10001")
@@ -162,6 +172,83 @@ defmodule Rbac.FrontRepo.RepoHostAccountTest do
 
       refute RepoHostAccount.uid_taken_error?(changeset)
       refute RepoHostAccount.uid_taken_error?(:invalid_data)
+    end
+  end
+
+  describe "un-revoking a link" do
+    test "update_revoke_status/2 rejects re-activation when the uid is actively held by another user" do
+      {:ok, revoked} = insert_full_rha(github_uid: "30001", revoked: true)
+      {:ok, _active} = insert_full_rha(github_uid: "30001", login: "current-holder")
+
+      assert {:error, %Ecto.Changeset{} = changeset} =
+               RepoHostAccount.update_revoke_status(revoked, false)
+
+      assert RepoHostAccount.uid_taken_error?(changeset)
+
+      {:ok, reloaded} = RepoHostAccount.get_for_github_user(revoked.user_id)
+      assert reloaded.revoked == true
+    end
+
+    test "update_revoke_status/2 re-activates when the uid is free" do
+      {:ok, revoked} = insert_full_rha(github_uid: "30002", revoked: true)
+
+      assert {:ok, updated} = RepoHostAccount.update_revoke_status(revoked, false)
+      assert updated.revoked == false
+    end
+
+    test "update_revoke_status/2 re-activation claims a uid held only by revoked links" do
+      {:ok, revoked} = insert_full_rha(github_uid: "30003", revoked: true)
+
+      {:ok, stale} =
+        insert_full_rha(github_uid: "30003", login: "stale-owner", revoked: true)
+
+      assert {:ok, updated} = RepoHostAccount.update_revoke_status(revoked, false)
+      assert updated.revoked == false
+
+      assert {:error, :not_found} = RepoHostAccount.get_for_github_user(stale.user_id)
+    end
+
+    test "token refresh on a pre-existing active duplicate is not blocked" do
+      {:ok, mine} =
+        insert_full_rha(
+          github_uid: "30004",
+          login: "dup-owner",
+          permission_scope: "repo,user:email",
+          token: "old-token"
+        )
+
+      # tolerated legacy state: two active rows share the uid
+      {:ok, _} = insert_full_rha(github_uid: "30004", login: "legacy-duplicate")
+
+      assert {:ok, updated} =
+               RepoHostAccount.update_repo_host_account(
+                 mine.user_id,
+                 :github,
+                 %{
+                   github_uid: "30004",
+                   login: "dup-owner",
+                   name: "The Octocat",
+                   token: "refreshed-token",
+                   permission_scope: "repo,user:email"
+                 },
+                 reset: true
+               )
+
+      assert updated.token == "refreshed-token"
+      assert updated.revoked == false
+    end
+
+    test "bitbucket links can re-activate even when the uid is actively held" do
+      shared_uid = "{30000000-0000-4000-8000-000000000002}"
+
+      {:ok, revoked} =
+        insert_full_rha(github_uid: shared_uid, repo_host: "bitbucket", revoked: true)
+
+      {:ok, _} =
+        insert_full_rha(github_uid: shared_uid, repo_host: "bitbucket", login: "bb-holder")
+
+      assert {:ok, updated} = RepoHostAccount.update_revoke_status(revoked, false)
+      assert updated.revoked == false
     end
   end
 end
