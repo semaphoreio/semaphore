@@ -417,6 +417,54 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
     end
   end
 
+  describe "get_github_token/1 revoke classification" do
+    test "does not revoke the link when the token refresh is rate-limited" do
+      {_user, rha} =
+        Support.Members.insert_user_with_github_account(
+          github_uid: "10201",
+          login: "rate-limited"
+        )
+
+      rha = %{rha | refresh_token: "refresh-token"}
+
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          {:ok, %Tesla.Env{status: 401, body: %{}}}
+
+        %{method: :post, url: "https://github.com/login/oauth/access_token"} ->
+          {:ok, %Tesla.Env{status: 429, body: %{}}}
+      end)
+
+      assert {:error, {"", nil}} = RepoHostAccount.get_github_token(rha)
+
+      {:ok, reloaded} = RepoHostAccount.get_for_github_user(rha.user_id)
+      assert reloaded.revoked == false
+    end
+
+    test "revokes the link when the token refresh is rejected" do
+      {_user, rha} =
+        Support.Members.insert_user_with_github_account(
+          github_uid: "10202",
+          login: "rejected"
+        )
+
+      rha = %{rha | refresh_token: "refresh-token"}
+
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          {:ok, %Tesla.Env{status: 401, body: %{}}}
+
+        %{method: :post, url: "https://github.com/login/oauth/access_token"} ->
+          {:ok, %Tesla.Env{status: 400, body: %{}}}
+      end)
+
+      assert {:error, {"", nil}} = RepoHostAccount.get_github_token(rha)
+
+      {:ok, reloaded} = RepoHostAccount.get_for_github_user(rha.user_id)
+      assert reloaded.revoked == true
+    end
+  end
+
   describe "Inspect implementation" do
     test "redacts :token and :refresh_token from inspect output" do
       rha = %RepoHostAccount{
