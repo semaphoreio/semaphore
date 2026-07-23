@@ -244,7 +244,7 @@ Selecting **Run on** allows you to configure what triggers are enabled for the p
 
 ### Approving PRs with `/sem-approve` {#sem-approve}
 
-Blocked pull requests can be manually approved by posting a new PR comment whose line is exactly `/sem-approve` (optionally followed by the options below). The command is only recognized when it starts its own line, so it is ignored inside quoted replies, blockquotes, and code blocks. Approving requires permission to start pipelines in the project — the same permission as rerunning or rebuilding a workflow (`project.job.rerun`). A `/sem-approve` comment from someone without that permission is ignored.
+Blocked pull requests can be manually approved by posting a new PR comment whose **entire content** is exactly `/sem-approve` (optionally followed by the options below) — nothing else in the comment. The command is deliberately ignored if the comment contains any other text, or if `/sem-approve` appears in prose, a quoted reply or blockquote, a code block (of any style), or an HTML comment. Approving requires permission to start pipelines in the project — the same permission as rerunning or rebuilding a workflow (`project.job.rerun`). A `/sem-approve` comment from someone without that permission is ignored.
 
 By default, `/sem-approve` keeps forked pull request protections in place:
 
