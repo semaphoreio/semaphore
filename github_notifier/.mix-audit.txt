@@ -1,0 +1,27 @@
+# --- hackney 1.20.1 advisories, all fixed in 4.0.1 ---
+# Bump to 4.x is blocked here: httpoison ~> 1.x/2.x requires hackney ~> 1.17 and
+# sentry 8.x caps hackney at 1.x, so hackney cannot move to 4.x without upgrading
+# httpoison to 3.x and sentry to 13.x together. Real fix tracked for a separate
+# dep-bump PR. github_notifier's outbound HTTP (tentacat/httpoison/hackney)
+# targets the GitHub API and Sentry with service-configured URLs, not
+# user-supplied hosts/queries.
+#
+# ssl:connect/2 post-handshake upgrade has no timeout (operational DoS; outbound bounded to known hosts)
+GHSA-gp9c-pm5m-5cxr
+# CR/LF injection in query parameter (query params are not user-controlled)
+GHSA-j9wq-vxxc-94wf
+# fails to properly release HTTP connections (resource leak; bounded workload)
+GHSA-9fm9-hp7p-53mf
+# CRLF / header injection via unvalidated `domain` and `path` options (not user-controlled)
+GHSA-mp55-p8c9-rfw2
+# Server-side Request Forgery (target hosts are not user-supplied)
+GHSA-vq52-99r9-h5pw
+# SSRF allowlist bypass in hackney_url:normalize/2 via percent-encoded host (hosts not user-supplied)
+GHSA-pj7v-xfvx-wmjq
+
+# --- protobuf 0.13.0 ---
+# Unbounded recursion depth in embedded-message decoding, fixed in 0.16.1.
+# Bump requires regenerating all internal_api stubs; messages decoded here come
+# from internal services over the private network, not untrusted input. Real fix
+# tracked for the same separate dep-bump PR.
+GHSA-rv48-qqj5-crxg
