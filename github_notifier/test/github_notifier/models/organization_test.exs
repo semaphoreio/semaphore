@@ -6,13 +6,13 @@ defmodule GithubNotifier.Models.OrganizationTest do
   describe ".find" do
     test "when the response is succesfull => it returns an organization model instance" do
       organization =
-        InternalApi.Organization.Organization.new(
+        struct(InternalApi.Organization.Organization,
           id: "123",
           name: "fooo"
         )
 
       response =
-        InternalApi.Organization.DescribeResponse.new(
+        struct(InternalApi.Organization.DescribeResponse,
           status: Support.Factories.status_ok(),
           organization: organization
         )
@@ -27,7 +27,9 @@ defmodule GithubNotifier.Models.OrganizationTest do
 
     test "when the response is unsuccesfull => it returns nil" do
       response =
-        InternalApi.Organization.DescribeResponse.new(status: Support.Factories.status_not_ok())
+        struct(InternalApi.Organization.DescribeResponse,
+          status: Support.Factories.status_not_ok()
+        )
 
       GrpcMock.stub(OrganizationMock, :describe, response)
 
