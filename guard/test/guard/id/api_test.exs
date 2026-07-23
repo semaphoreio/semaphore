@@ -1005,7 +1005,7 @@ defmodule Guard.Id.Api.Test do
     } do
       stale_owner_id = Ecto.UUID.generate()
 
-      {:ok, _} =
+      {:ok, stale_rha} =
         Support.Members.insert_repo_host_account(
           github_uid: gh_uid,
           user_id: stale_owner_id,
@@ -1014,6 +1014,8 @@ defmodule Guard.Id.Api.Test do
           permission_scope: "user:email",
           revoked: true
         )
+
+      :ok = Support.Members.age_repo_host_account(stale_rha)
 
       Tesla.Mock.mock_global(fn
         %{method: :post, url: "https://github.com/login/oauth/access_token"} ->

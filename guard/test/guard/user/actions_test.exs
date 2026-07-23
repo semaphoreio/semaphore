@@ -108,6 +108,8 @@ defmodule Guard.User.ActionsTest do
         {other_user, other_rha} =
           Support.Members.insert_user_with_github_account(github_uid: "30003", revoked: true)
 
+        :ok = Support.Members.age_repo_host_account(other_rha)
+
         user_params = %{
           email: "john@example.com",
           name: "John",
