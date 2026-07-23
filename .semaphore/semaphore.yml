@@ -3772,6 +3772,9 @@ blocks:
         commands:
           - sem-version erlang $ERLANG_VERSION
           - sem-version elixir $ELIXIR_VERSION
+          # rebar3 is per elixir-otp version; fresh installs (e.g. 1.19/1.20)
+          # have none, so rebar-built deps (sleeplocks) fail to compile without it
+          - mix local.rebar --force
           - checkout && cd feature_provider
           - cache restore
       jobs:
