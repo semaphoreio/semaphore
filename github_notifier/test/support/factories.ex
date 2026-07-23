@@ -1,9 +1,9 @@
 defmodule Support.Factories do
   def organization_describe_response do
-    InternalApi.Organization.DescribeResponse.new(
+    struct(InternalApi.Organization.DescribeResponse,
       status: Support.Factories.status_ok(),
       organization:
-        InternalApi.Organization.Organization.new(
+        struct(InternalApi.Organization.Organization,
           org_username: "renderedtext",
           org_id: "123"
         )
@@ -11,7 +11,7 @@ defmodule Support.Factories do
   end
 
   def user_describe_response do
-    InternalApi.User.DescribeResponse.new(
+    struct(InternalApi.User.DescribeResponse,
       status: Support.Factories.status_ok(),
       user_id: "78114608-be8a-465a-b9cd-81970fb802c5",
       github_token: "github_token"
@@ -21,31 +21,31 @@ defmodule Support.Factories do
   def project_describe_response(level \\ :BLOCK) do
     alias InternalApi.Projecthub.Project.Spec.Repository
 
-    InternalApi.Projecthub.DescribeResponse.new(
+    struct(InternalApi.Projecthub.DescribeResponse,
       metadata:
-        InternalApi.Projecthub.ResponseMeta.new(
+        struct(InternalApi.Projecthub.ResponseMeta,
           status:
-            InternalApi.Projecthub.ResponseMeta.Status.new(
-              code: InternalApi.Projecthub.ResponseMeta.Code.value(:OK)
+            struct(InternalApi.Projecthub.ResponseMeta.Status,
+              code: :OK
             )
         ),
       project:
-        InternalApi.Projecthub.Project.new(
+        struct(InternalApi.Projecthub.Project,
           metadata:
-            InternalApi.Projecthub.Project.Metadata.new(
+            struct(InternalApi.Projecthub.Project.Metadata,
               owner_id: "123",
               org_id: "123"
             ),
           spec:
-            InternalApi.Projecthub.Project.Spec.new(
+            struct(InternalApi.Projecthub.Project.Spec,
               repository:
-                Repository.new(
+                struct(Repository,
                   id: "ee2e6241-f30b-4892-a0d5-bd900b713430",
                   url: "git@github.com:renderedtext/github_notifier.git",
                   status:
-                    Repository.Status.new(
+                    struct(Repository.Status,
                       pipeline_files: [
-                        Repository.Status.PipelineFile.new(
+                        struct(Repository.Status.PipelineFile,
                           path: ".semaphore/semaphore.yml",
                           level: Repository.Status.PipelineFile.Level.value(level)
                         )
@@ -60,25 +60,25 @@ defmodule Support.Factories do
   def project_empty_status_describe_response do
     alias InternalApi.Projecthub.Project.Spec.Repository
 
-    InternalApi.Projecthub.DescribeResponse.new(
+    struct(InternalApi.Projecthub.DescribeResponse,
       metadata:
-        InternalApi.Projecthub.ResponseMeta.new(
+        struct(InternalApi.Projecthub.ResponseMeta,
           status:
-            InternalApi.Projecthub.ResponseMeta.Status.new(
-              code: InternalApi.Projecthub.ResponseMeta.Code.value(:OK)
+            struct(InternalApi.Projecthub.ResponseMeta.Status,
+              code: :OK
             )
         ),
       project:
-        InternalApi.Projecthub.Project.new(
+        struct(InternalApi.Projecthub.Project,
           metadata:
-            InternalApi.Projecthub.Project.Metadata.new(
+            struct(InternalApi.Projecthub.Project.Metadata,
               owner_id: "123",
               org_id: "123"
             ),
           spec:
-            InternalApi.Projecthub.Project.Spec.new(
+            struct(InternalApi.Projecthub.Project.Spec,
               repository:
-                Repository.new(
+                struct(Repository,
                   id: "ee2e6241-f30b-4892-a0d5-bd900b713430",
                   url: "git@github.com:renderedtext/github_notifier.git"
                 )
@@ -95,13 +95,13 @@ defmodule Support.Factories do
     code = Keyword.get(opts, :code, :ok)
 
     if code == :ok do
-      InternalApi.Plumber.DescribeResponse.new(
+      struct(InternalApi.Plumber.DescribeResponse,
         response_status:
-          InternalApi.Plumber.ResponseStatus.new(
-            code: InternalApi.Plumber.ResponseStatus.ResponseCode.value(:OK)
+          struct(InternalApi.Plumber.ResponseStatus,
+            code: :OK
           ),
         pipeline:
-          InternalApi.Plumber.Pipeline.new(
+          struct(InternalApi.Plumber.Pipeline,
             ppl_id: "1",
             project_id: "1",
             name: "Pipeline",
@@ -109,7 +109,7 @@ defmodule Support.Factories do
             hook_id: "3",
             branch_name: "master",
             commit_sha: "1234567",
-            state: InternalApi.Plumber.Pipeline.State.value(:RUNNING),
+            state: :RUNNING,
             created_at: %Google.Protobuf.Timestamp{nanos: 0, seconds: 0},
             pending_at: %Google.Protobuf.Timestamp{nanos: 0, seconds: 0},
             queuing_at: %Google.Protobuf.Timestamp{nanos: 0, seconds: 0},
@@ -121,43 +121,43 @@ defmodule Support.Factories do
             working_directory: working_directory
           ),
         blocks: [
-          InternalApi.Plumber.Block.new(
+          struct(InternalApi.Plumber.Block,
             block_id: "1",
             name: "Block 1",
             build_req_id: "1",
-            state: InternalApi.Plumber.Block.State.value(:RUNNING)
+            state: :RUNNING
           ),
-          InternalApi.Plumber.Block.new(
+          struct(InternalApi.Plumber.Block,
             block_id: "2",
             name: "Block 2",
             build_req_id: "1",
-            state: InternalApi.Plumber.Block.State.value(:RUNNING)
+            state: :RUNNING
           ),
-          InternalApi.Plumber.Block.new(
+          struct(InternalApi.Plumber.Block,
             block_id: "3",
             name: "Block 3",
             build_req_id: "1",
-            state: InternalApi.Plumber.Block.State.value(:RUNNING)
+            state: :RUNNING
           )
         ]
       )
     else
-      InternalApi.Plumber.DescribeResponse.new(
+      struct(InternalApi.Plumber.DescribeResponse,
         response_status:
-          InternalApi.Plumber.ResponseStatus.new(
-            code: InternalApi.Plumber.ResponseStatus.ResponseCode.value(:BAD_PARAM)
+          struct(InternalApi.Plumber.ResponseStatus,
+            code: :BAD_PARAM
           )
       )
     end
   end
 
   def status_ok do
-    InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK))
+    struct(InternalApi.ResponseStatus, code: :OK)
   end
 
   def status_not_ok(message \\ "") do
-    InternalApi.ResponseStatus.new(
-      code: InternalApi.ResponseStatus.Code.value(:BAD_PARAM),
+    struct(InternalApi.ResponseStatus,
+      code: :BAD_PARAM,
       message: message
     )
   end
@@ -171,46 +171,45 @@ defmodule Support.Factories do
       owner_id: "78114608-be8a-465a-b9cd-81970fb802c7"
     ]
 
-    meta = Keyword.merge(meta_def, meta) |> InternalApi.Projecthub.Project.Metadata.new()
+    meta = struct(InternalApi.Projecthub.Project.Metadata, Keyword.merge(meta_def, meta))
 
     spec =
       %{
         repository:
-          Repository.new(
+          struct(Repository,
             id: "ee2e6241-f30b-4892-a0d5-bd900b713430",
             url: "",
-            integration_type:
-              InternalApi.RepositoryIntegrator.IntegrationType.value(:GITHUB_OAUTH_TOKEN),
+            integration_type: :GITHUB_OAUTH_TOKEN,
             status:
-              Repository.Status.new(
+              struct(Repository.Status,
                 pipeline_files: [
-                  Repository.Status.PipelineFile.new(
+                  struct(Repository.Status.PipelineFile,
                     path: ".semaphore/semaphore.yml",
-                    level: Repository.Status.PipelineFile.Level.value(:PIPELINE)
+                    level: :PIPELINE
                   )
                 ]
               )
           )
       }
-      |> InternalApi.Projecthub.Project.Spec.new()
+      |> then(&struct(InternalApi.Projecthub.Project.Spec, &1))
 
-    InternalApi.Projecthub.Project.new(metadata: meta, spec: spec)
+    struct(InternalApi.Projecthub.Project, metadata: meta, spec: spec)
   end
 
   def response_meta(code \\ :OK) do
-    InternalApi.Projecthub.ResponseMeta.new(
+    struct(InternalApi.Projecthub.ResponseMeta,
       status:
-        InternalApi.Projecthub.ResponseMeta.Status.new(
+        struct(InternalApi.Projecthub.ResponseMeta.Status,
           code: InternalApi.Projecthub.ResponseMeta.Code.value(code)
         )
     )
   end
 
   def repo_proxy_describe_response do
-    InternalApi.RepoProxy.DescribeResponse.new(
+    struct(InternalApi.RepoProxy.DescribeResponse,
       status: Support.Factories.status_ok(),
       hook:
-        InternalApi.RepoProxy.Hook.new(
+        struct(InternalApi.RepoProxy.Hook,
           hook_id: "",
           head_commit_sha: "1234567",
           commit_message: "Merge pull request",
@@ -222,7 +221,7 @@ defmodule Support.Factories do
           semaphore_email: "mbogd@rt.com",
           repo_slug: "",
           git_ref: "",
-          git_ref_type: InternalApi.RepoProxy.Hook.Type.value(:BRANCH),
+          git_ref_type: :BRANCH,
           pr_slug: "",
           pr_name: "",
           pr_number: "",
@@ -234,27 +233,27 @@ defmodule Support.Factories do
   end
 
   def repo_integrator_get_token_response do
-    InternalApi.RepositoryIntegrator.GetTokenResponse.new(token: "token")
+    struct(InternalApi.RepositoryIntegrator.GetTokenResponse, token: "token")
   end
 
   def feature_list_response(availability \\ :HIDDEN) do
     quantity = if availability == :HIDDEN, do: 0, else: 1
 
-    InternalApi.Feature.ListOrganizationFeaturesResponse.new(
+    struct(InternalApi.Feature.ListOrganizationFeaturesResponse,
       organization_features: [
-        InternalApi.Feature.OrganizationFeature.new(
+        struct(InternalApi.Feature.OrganizationFeature,
           feature:
-            InternalApi.Feature.Feature.new(
+            struct(InternalApi.Feature.Feature,
               type: "github_merge_queues",
               name: "Github Merge Queues",
               availability:
-                InternalApi.Feature.Availability.new(
+                struct(InternalApi.Feature.Availability,
                   state: InternalApi.Feature.Availability.State.value(availability),
                   quantity: quantity
                 )
             ),
           availability:
-            InternalApi.Feature.Availability.new(
+            struct(InternalApi.Feature.Availability,
               state: InternalApi.Feature.Availability.State.value(availability),
               quantity: quantity
             )
