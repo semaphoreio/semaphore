@@ -515,6 +515,23 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
         end
       end
 
+      context "when the token check is rate limited" do
+        let(:permission_scope) { "repo,user:email" }
+
+        before do
+          allow_any_instance_of(RepoHost::Github::Client).to receive(:token_valid?)
+            .and_raise(RepoHost::RemoteException::TooManyRequests)
+        end
+
+        it "raises and keeps the revoke status unchanged", :aggregate_failures do
+          expect do
+            server.check_token(@req, call)
+          end.to raise_error(RepoHost::RemoteException::TooManyRequests)
+
+          expect(@project.repo_host_account.reload.revoked).to be(false)
+        end
+      end
+
       context "when there is no project" do
         it "returns project not found error" do
           req = InternalApi::RepositoryIntegrator::CheckTokenRequest.new(
