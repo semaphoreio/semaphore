@@ -23,6 +23,14 @@ defmodule Rbac.FrontRepo.RepoHostAccount do
 
   @uid_taken_message "is already connected to another Semaphore user"
 
+  # A revoked link is not claimable until it has been revoked for this long.
+  # `revoked` is written by token-health checks, so a transient upstream
+  # failure can briefly mark a healthy link revoked; the grace period gives it
+  # time to self-heal or be reconnected before another user can claim (and
+  # thereby delete) it. `updated_at` approximates the revocation time: it is
+  # bumped when the flag flips and revoked rows receive no further writes.
+  @revoked_claim_grace_seconds 2 * 60 * 60
+
   @type t :: %__MODULE__{
           login: String.t(),
           github_uid: String.t(),
@@ -234,7 +242,9 @@ defmodule Rbac.FrontRepo.RepoHostAccount do
     query =
       from(r in __MODULE__,
         where: r.repo_host == ^repo_host and r.github_uid == ^uid,
-        where: coalesce(r.revoked, false) == false
+        where:
+          coalesce(r.revoked, false) == false or
+            r.updated_at > ago(^@revoked_claim_grace_seconds, "second")
       )
 
     query =
@@ -252,6 +262,7 @@ defmodule Rbac.FrontRepo.RepoHostAccount do
         where: r.repo_host == ^account.repo_host and r.github_uid == ^account.github_uid,
         where: r.id != ^account.id,
         where: r.revoked == true,
+        where: r.updated_at <= ago(^@revoked_claim_grace_seconds, "second"),
         select: r.user_id
       )
       |> FrontRepo.delete_all()

@@ -41,15 +41,33 @@ defmodule Rbac.FrontRepo.RepoHostAccountTest do
       {:ok, stale} =
         Support.Members.insert_repo_host_account(github_uid: "10002", revoked: true)
 
+      :ok = Support.Members.age_repo_host_account(stale)
+
       assert {:ok, claimed} = RepoHostAccount.create(create_params(%{github_uid: "10002"}))
 
       assert claimed.github_uid == "10002"
       assert {:error, :not_found} = RepoHostAccount.get_for_github_user(stale.user_id)
     end
 
+    test "a freshly revoked link is not claimable during the grace period" do
+      {:ok, fresh} =
+        Support.Members.insert_repo_host_account(github_uid: "10011", revoked: true)
+
+      assert {:error, %Ecto.Changeset{} = changeset} =
+               RepoHostAccount.create(create_params(%{github_uid: "10011"}))
+
+      assert RepoHostAccount.uid_taken_error?(changeset)
+
+      # the transiently revoked link is untouched
+      {:ok, reloaded} = RepoHostAccount.get_for_github_user(fresh.user_id)
+      assert reloaded.revoked == true
+    end
+
     test "create/1 rejects the uid once it has been claimed away from a revoked link" do
       {:ok, stale} =
         Support.Members.insert_repo_host_account(github_uid: "10007", revoked: true)
+
+      :ok = Support.Members.age_repo_host_account(stale)
 
       {:ok, _claimed} = RepoHostAccount.create(create_params(%{github_uid: "10007"}))
 
@@ -110,6 +128,8 @@ defmodule Rbac.FrontRepo.RepoHostAccountTest do
           permission_scope: "user:email",
           revoked: true
         )
+
+      :ok = Support.Members.age_repo_host_account(stale)
 
       {:ok, mine} =
         Support.Members.insert_repo_host_account(
@@ -201,6 +221,8 @@ defmodule Rbac.FrontRepo.RepoHostAccountTest do
 
       {:ok, stale} =
         insert_full_rha(github_uid: "30003", login: "stale-owner", revoked: true)
+
+      :ok = Support.Members.age_repo_host_account(stale)
 
       assert {:ok, updated} = RepoHostAccount.update_revoke_status(revoked, false)
       assert updated.revoked == false

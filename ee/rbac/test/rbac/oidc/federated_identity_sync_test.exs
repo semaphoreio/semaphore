@@ -13,7 +13,7 @@ defmodule Rbac.OIDC.FederatedIdentitySyncTest do
 
       {:ok, loser} = Support.Factories.RbacUser.insert()
 
-      {:ok, _loser_rha} =
+      {:ok, loser_rha} =
         Support.Members.insert_repo_host_account(
           github_uid: @claimed_uid,
           user_id: loser.id,
@@ -22,6 +22,8 @@ defmodule Rbac.OIDC.FederatedIdentitySyncTest do
           permission_scope: "user:email",
           revoked: true
         )
+
+      :ok = Support.Members.age_repo_host_account(loser_rha)
 
       {:ok, _} = Rbac.Store.OIDCUser.connect_user("kc-loser", loser.id)
 
@@ -203,7 +205,7 @@ defmodule Rbac.OIDC.FederatedIdentitySyncTest do
     setup do
       {:ok, loser} = Support.Factories.RbacUser.insert()
 
-      {:ok, _} =
+      {:ok, loser_rha} =
         Support.Members.insert_repo_host_account(
           github_uid: @claimed_uid,
           user_id: loser.id,
@@ -212,6 +214,8 @@ defmodule Rbac.OIDC.FederatedIdentitySyncTest do
           permission_scope: "user:email",
           revoked: true
         )
+
+      :ok = Support.Members.age_repo_host_account(loser_rha)
 
       {:ok, _} = Rbac.Store.OIDCUser.connect_user("kc-loser", loser.id)
 
@@ -301,7 +305,7 @@ defmodule Rbac.OIDC.FederatedIdentitySyncTest do
 
       {:ok, loser} = Support.Factories.RbacUser.insert()
 
-      {:ok, _} =
+      {:ok, loser_rha} =
         Support.Members.insert_repo_host_account(
           github_uid: @claimed_uid,
           user_id: loser.id,
@@ -310,6 +314,8 @@ defmodule Rbac.OIDC.FederatedIdentitySyncTest do
           permission_scope: "user:email",
           revoked: true
         )
+
+      :ok = Support.Members.age_repo_host_account(loser_rha)
 
       {:ok, loser: loser}
     end
