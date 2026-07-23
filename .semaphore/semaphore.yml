@@ -3772,6 +3772,7 @@ blocks:
         commands:
           - sem-version erlang $ERLANG_VERSION
           - sem-version elixir $ELIXIR_VERSION
+          - mix local.rebar --force
           - checkout && cd feature_provider
           - cache restore
       jobs:
@@ -3781,7 +3782,7 @@ blocks:
               value: "23"
           matrix:
             - env_var: ELIXIR_VERSION
-              values: ["1.10", "1.11", "1.12", "1.13", "1.14", "1.15", "1.16", "1.17", "1.18", "1.19", "1.20"]
+              values: ["1.12", "1.13", "1.14"]
           commands:
             - make test
             - cache store
@@ -3791,7 +3792,7 @@ blocks:
               value: "24"
           matrix:
             - env_var: ELIXIR_VERSION
-              values: ["1.10", "1.11", "1.12", "1.13", "1.14", "1.15", "1.16", "1.17", "1.18", "1.19", "1.20"]
+              values: ["1.12", "1.13", "1.14", "1.15", "1.16"]
           commands:
             - make test
             - cache store
@@ -3801,7 +3802,7 @@ blocks:
               value: "25"
           matrix:
             - env_var: ELIXIR_VERSION
-              values: ["1.10", "1.11", "1.12", "1.13", "1.14", "1.15", "1.16", "1.17", "1.18", "1.19", "1.20"]
+              values: ["1.13", "1.14", "1.15", "1.16", "1.17", "1.18"]
           commands:
             - make test
             - cache store
@@ -3811,7 +3812,7 @@ blocks:
               value: "26"
           matrix:
             - env_var: ELIXIR_VERSION
-              values: ["1.10", "1.11", "1.12", "1.13", "1.14", "1.15", "1.16", "1.17", "1.18", "1.19", "1.20"]
+              values: ["1.14", "1.15", "1.16", "1.17", "1.18", "1.19"]
           commands:
             - make test
             - cache store
@@ -3821,7 +3822,7 @@ blocks:
               value: "27"
           matrix:
             - env_var: ELIXIR_VERSION
-              values: ["1.10", "1.11", "1.12", "1.13", "1.14", "1.15", "1.16", "1.17", "1.18", "1.19", "1.20"]
+              values: ["1.17", "1.18", "1.19", "1.20"]
           commands:
             - make test
             - cache store
@@ -3831,7 +3832,7 @@ blocks:
               value: "28"
           matrix:
             - env_var: ELIXIR_VERSION
-              values: ["1.10", "1.11", "1.12", "1.13", "1.14", "1.15", "1.16", "1.17", "1.18", "1.19", "1.20"]
+              values: ["1.19", "1.20"]
           commands:
             - make test
             - cache store
@@ -3841,7 +3842,7 @@ blocks:
               value: "29"
           matrix:
             - env_var: ELIXIR_VERSION
-              values: ["1.10", "1.11", "1.12", "1.13", "1.14", "1.15", "1.16", "1.17", "1.18", "1.19", "1.20"]
+              values: ["1.20"]
           commands:
             - make test
             - cache store
