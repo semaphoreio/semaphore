@@ -134,6 +134,7 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
     test "create/1 claims the uid and deletes the stale link when the existing one is revoked",
          %{rha: rha} do
       {:ok, _} = RepoHostAccount.update_revoke_status(rha, true)
+      :ok = Support.Members.age_repo_host_account(rha)
 
       assert {:ok, claimed} =
                RepoHostAccount.create(%{
@@ -149,10 +150,31 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
       assert {:error, :not_found} = RepoHostAccount.get_for_github_user(rha.user_id)
     end
 
+    test "a freshly revoked link is not claimable during the grace period", %{rha: rha} do
+      {:ok, _} = RepoHostAccount.update_revoke_status(rha, true)
+
+      assert {:error, %Ecto.Changeset{} = changeset} =
+               RepoHostAccount.create(%{
+                 login: "other-login",
+                 github_uid: rha.github_uid,
+                 repo_host: "github",
+                 user_id: Ecto.UUID.generate(),
+                 name: "Other User",
+                 permission_scope: "user:email"
+               })
+
+      assert RepoHostAccount.uid_taken_error?(changeset)
+
+      # the transiently revoked link is untouched
+      {:ok, reloaded} = RepoHostAccount.get_for_github_user(rha.user_id)
+      assert reloaded.revoked == true
+    end
+
     test "create/1 rejects the uid once it has been claimed away from a revoked link", %{
       rha: rha
     } do
       {:ok, _} = RepoHostAccount.update_revoke_status(rha, true)
+      :ok = Support.Members.age_repo_host_account(rha)
 
       {:ok, _claimed} =
         RepoHostAccount.create(%{
@@ -182,6 +204,7 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
       rha: rha
     } do
       {:ok, _} = RepoHostAccount.update_revoke_status(rha, true)
+      :ok = Support.Members.age_repo_host_account(rha)
 
       {other_user, _other_rha} =
         Support.Members.insert_user_with_github_account(github_uid: "10009", login: "claimer")
@@ -324,6 +347,8 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
           permission_scope: "user:email",
           revoked: true
         )
+
+      :ok = Support.Members.age_repo_host_account(stale)
 
       assert {:ok, updated} = RepoHostAccount.update_revoke_status(revoked, false)
       assert updated.revoked == false
