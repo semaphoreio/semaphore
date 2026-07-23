@@ -20,6 +20,7 @@ defmodule Guard.OIDC.FederatedIdentitySyncTest do
         )
 
       {:ok, _} = RepoHostAccount.update_revoke_status(loser_rha, true)
+      :ok = Support.Members.age_repo_host_account(loser_rha)
       {:ok, _} = Guard.Store.OIDCUser.connect_user("kc-loser", loser.id)
 
       {:ok, claimer} = Support.Factories.RbacUser.insert()
@@ -147,6 +148,7 @@ defmodule Guard.OIDC.FederatedIdentitySyncTest do
         )
 
       {:ok, _} = RepoHostAccount.update_revoke_status(loser_rha, true)
+      :ok = Support.Members.age_repo_host_account(loser_rha)
       {:ok, _} = Guard.Store.OIDCUser.connect_user("kc-loser", loser.id)
 
       {:ok, claimer} = Support.Factories.RbacUser.insert()
@@ -246,6 +248,7 @@ defmodule Guard.OIDC.FederatedIdentitySyncTest do
         )
 
       {:ok, _} = RepoHostAccount.update_revoke_status(loser_rha, true)
+      :ok = Support.Members.age_repo_host_account(loser_rha)
       {:ok, _} = Guard.Store.OIDCUser.connect_user("kc-loser", loser.id)
 
       {:ok, claimer} = Support.Factories.RbacUser.insert()
@@ -386,6 +389,7 @@ defmodule Guard.OIDC.FederatedIdentitySyncTest do
         )
 
       {:ok, _} = RepoHostAccount.update_revoke_status(loser_rha, true)
+      :ok = Support.Members.age_repo_host_account(loser_rha)
 
       {:ok, loser: loser}
     end
