@@ -277,6 +277,146 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
     end
   end
 
+  describe "un-revoking a link" do
+    setup do
+      {user, rha} = Support.Members.insert_user_with_github_account(github_uid: "10101")
+      {:ok, user: user, rha: rha}
+    end
+
+    test "update_revoke_status/2 rejects re-activation when the uid is actively held by another user",
+         %{rha: rha} do
+      {:ok, revoked} = RepoHostAccount.update_revoke_status(rha, true)
+
+      {:ok, _} =
+        Support.Members.insert_repo_host_account(
+          github_uid: rha.github_uid,
+          login: "current-holder",
+          name: "Current Holder",
+          permission_scope: "user:email"
+        )
+
+      assert {:error, %Ecto.Changeset{} = changeset} =
+               RepoHostAccount.update_revoke_status(revoked, false)
+
+      assert RepoHostAccount.uid_taken_error?(changeset)
+
+      {:ok, reloaded} = RepoHostAccount.get_for_github_user(rha.user_id)
+      assert reloaded.revoked == true
+    end
+
+    test "update_revoke_status/2 re-activates when the uid is free", %{rha: rha} do
+      {:ok, revoked} = RepoHostAccount.update_revoke_status(rha, true)
+
+      assert {:ok, updated} = RepoHostAccount.update_revoke_status(revoked, false)
+      assert updated.revoked == false
+    end
+
+    test "update_revoke_status/2 re-activation claims a uid held only by revoked links", %{
+      rha: rha
+    } do
+      {:ok, revoked} = RepoHostAccount.update_revoke_status(rha, true)
+
+      {:ok, stale} =
+        Support.Members.insert_repo_host_account(
+          github_uid: rha.github_uid,
+          login: "stale-owner",
+          name: "Stale Owner",
+          permission_scope: "user:email",
+          revoked: true
+        )
+
+      assert {:ok, updated} = RepoHostAccount.update_revoke_status(revoked, false)
+      assert updated.revoked == false
+
+      assert {:error, :not_found} = RepoHostAccount.get_for_github_user(stale.user_id)
+    end
+
+    test "token refresh on a pre-existing active duplicate is not blocked" do
+      {user, rha} =
+        Support.Members.insert_user_with_github_account(
+          github_uid: "10102",
+          login: "dup-owner",
+          permission_scope: "repo,user:email"
+        )
+
+      # tolerated legacy state: two active rows share the uid
+      {:ok, _} =
+        Support.Members.insert_repo_host_account(
+          github_uid: rha.github_uid,
+          login: "legacy-duplicate",
+          name: "Legacy Duplicate",
+          permission_scope: "user:email"
+        )
+
+      assert {:ok, updated} =
+               RepoHostAccount.update_repo_host_account(
+                 user.id,
+                 :github,
+                 %{
+                   github_uid: rha.github_uid,
+                   login: rha.login,
+                   name: rha.name,
+                   token: "refreshed-token",
+                   permission_scope: "repo,user:email"
+                 },
+                 reset: true
+               )
+
+      assert updated.token == "refreshed-token"
+      assert updated.revoked == false
+    end
+
+    test "bitbucket links can re-activate even when the uid is actively held" do
+      shared_uid = "{30000000-0000-4000-8000-000000000001}"
+
+      {:ok, revoked} =
+        Support.Members.insert_repo_host_account(
+          github_uid: shared_uid,
+          repo_host: "bitbucket",
+          login: "bb-revoked",
+          name: "BB Revoked",
+          permission_scope: "user:email",
+          revoked: true
+        )
+
+      {:ok, _} =
+        Support.Members.insert_repo_host_account(
+          github_uid: shared_uid,
+          repo_host: "bitbucket",
+          login: "bb-holder",
+          name: "BB Holder",
+          permission_scope: "user:email"
+        )
+
+      assert {:ok, updated} = RepoHostAccount.update_revoke_status(revoked, false)
+      assert updated.revoked == false
+    end
+
+    test "gitlab links can re-activate even when the uid is actively held" do
+      {:ok, revoked} =
+        Support.Members.insert_repo_host_account(
+          github_uid: "40001",
+          repo_host: "gitlab",
+          login: "gl-revoked",
+          name: "GL Revoked",
+          permission_scope: "user:email",
+          revoked: true
+        )
+
+      {:ok, _} =
+        Support.Members.insert_repo_host_account(
+          github_uid: "40001",
+          repo_host: "gitlab",
+          login: "gl-holder",
+          name: "GL Holder",
+          permission_scope: "user:email"
+        )
+
+      assert {:ok, updated} = RepoHostAccount.update_revoke_status(revoked, false)
+      assert updated.revoked == false
+    end
+  end
+
   describe "Inspect implementation" do
     test "redacts :token and :refresh_token from inspect output" do
       rha = %RepoHostAccount{
