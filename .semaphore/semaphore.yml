@@ -3772,8 +3772,14 @@ blocks:
         commands:
           - sem-version erlang $ERLANG_VERSION
           - sem-version elixir $ELIXIR_VERSION
+          # rebar3 is per elixir-otp version; fresh installs (e.g. 1.19/1.20)
+          # have none, so rebar-built deps (sleeplocks) fail to compile without it
+          - mix local.rebar --force
           - checkout && cd feature_provider
-          - cache restore
+          # key per toolchain + lockfile so cells don't restore another
+          # version's compiled _build (cross-OTP BEAM poisoning)
+          - cache restore deps-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock)
+          - cache restore build-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock)
       jobs:
         - name: Erlang 23
           env_vars:
@@ -3781,30 +3787,77 @@ blocks:
               value: "23"
           matrix:
             - env_var: ELIXIR_VERSION
-              values: ["1.10", "1.11", "1.12", "1.13"]
+              values: ["1.12", "1.13", "1.14"]
           commands:
             - make test
-            - cache store
+            - cache store deps-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock) deps
+            - cache store build-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock) _build
         - name: Erlang 24
           env_vars:
             - name: ERLANG_VERSION
               value: "24"
           matrix:
             - env_var: ELIXIR_VERSION
-              values: ["1.10", "1.11", "1.12", "1.13"]
+              values: ["1.12", "1.13", "1.14", "1.15", "1.16"]
           commands:
             - make test
-            - cache store
+            - cache store deps-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock) deps
+            - cache store build-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock) _build
         - name: Erlang 25
           env_vars:
             - name: ERLANG_VERSION
               value: "25"
           matrix:
             - env_var: ELIXIR_VERSION
-              values: ["1.10", "1.11", "1.12", "1.13", "1.14"]
+              values: ["1.13", "1.14", "1.15", "1.16", "1.17", "1.18"]
           commands:
             - make test
-            - cache store
+            - cache store deps-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock) deps
+            - cache store build-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock) _build
+        - name: Erlang 26
+          env_vars:
+            - name: ERLANG_VERSION
+              value: "26"
+          matrix:
+            - env_var: ELIXIR_VERSION
+              values: ["1.14", "1.15", "1.16", "1.17", "1.18", "1.19"]
+          commands:
+            - make test
+            - cache store deps-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock) deps
+            - cache store build-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock) _build
+        - name: Erlang 27
+          env_vars:
+            - name: ERLANG_VERSION
+              value: "27"
+          matrix:
+            - env_var: ELIXIR_VERSION
+              values: ["1.17", "1.18", "1.19", "1.20"]
+          commands:
+            - make test
+            - cache store deps-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock) deps
+            - cache store build-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock) _build
+        - name: Erlang 28
+          env_vars:
+            - name: ERLANG_VERSION
+              value: "28"
+          matrix:
+            - env_var: ELIXIR_VERSION
+              values: ["1.19", "1.20"]
+          commands:
+            - make test
+            - cache store deps-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock) deps
+            - cache store build-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock) _build
+        - name: Erlang 29
+          env_vars:
+            - name: ERLANG_VERSION
+              value: "29"
+          matrix:
+            - env_var: ELIXIR_VERSION
+              values: ["1.20"]
+          commands:
+            - make test
+            - cache store deps-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock) deps
+            - cache store build-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock) _build
 promotions:
   - name: Generate Helm Chart
     pipeline_file: generate-helm-chart.yml

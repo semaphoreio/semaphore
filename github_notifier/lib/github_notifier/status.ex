@@ -30,7 +30,7 @@ defmodule GithubNotifier.Status do
   defp create_status(data) do
     Watchman.benchmark("create_status.duration", fn ->
       req =
-        InternalApi.Repository.CreateBuildStatusRequest.new(
+        struct(InternalApi.Repository.CreateBuildStatusRequest,
           repository_id: data.repository_id,
           commit_sha: data.sha,
           status: map_status(data.state),
@@ -76,8 +76,7 @@ defmodule GithubNotifier.Status do
     end)
   end
 
-  alias InternalApi.Repository.CreateBuildStatusRequest.Status
-  defp map_status("success"), do: Status.value(:SUCCESS)
-  defp map_status("pending"), do: Status.value(:PENDING)
-  defp map_status("failure"), do: Status.value(:FAILURE)
+  defp map_status("success"), do: :SUCCESS
+  defp map_status("pending"), do: :PENDING
+  defp map_status("failure"), do: :FAILURE
 end
