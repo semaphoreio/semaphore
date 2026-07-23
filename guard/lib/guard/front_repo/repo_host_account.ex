@@ -324,6 +324,23 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     end
   end
 
+  # Re-activating a revoked link must re-check uniqueness: another user may
+  # have actively linked the same account while this row sat revoked. Only a
+  # real true→false transition is checked — writes that don't flip `revoked`
+  # (token refreshes, profile syncs) stay unchecked, so rows that already
+  # share a uid keep working.
+  defp maybe_validate_uid_on_unrevoke(changeset) do
+    if unrevoke_transition?(changeset) do
+      validate_github_uid_not_taken(changeset)
+    else
+      changeset
+    end
+  end
+
+  defp unrevoke_transition?(changeset) do
+    Ecto.Changeset.get_change(changeset, :revoked) == false and changeset.data.revoked == true
+  end
+
   defp uid_actively_held_by_other?(changeset, repo_host, uid) do
     query =
       from(r in __MODULE__,
@@ -442,7 +459,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     # because an *untouched* legacy field happens to be nil.
     required_now = Map.keys(data) |> Enum.filter(&(&1 in @required_on_write))
 
-    result =
+    changeset =
       account
       |> Ecto.Changeset.cast(
         data,
@@ -458,10 +475,15 @@ defmodule Guard.FrontRepo.RepoHostAccount do
         ]
       )
       |> Ecto.Changeset.validate_required(required_now)
-      |> FrontRepo.update()
+      |> maybe_validate_uid_on_unrevoke()
+
+    unrevoke? = unrevoke_transition?(changeset)
+    result = FrontRepo.update(changeset)
 
     case result do
       {:ok, account} ->
+        account = if unrevoke?, do: release_revoked_uid_rows(account), else: account
+
         Logger.info(
           "Successfully updated RepoHostAccount for #{account.user_id} #{account.repo_host} login=#{account.login}"
         )
