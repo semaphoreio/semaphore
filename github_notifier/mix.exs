@@ -28,17 +28,17 @@ defmodule GithubNotifier.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:grpc, github: "elixir-grpc/grpc", override: true},
-      # 2.9.0 fixes some important bugs, so it's better to use ~> 2.9.0
-      {:cowlib, "~> 2.9.0", override: true},
-      {:grpc_mock, github: "renderedtext/grpc-mock", only: [:dev, :test]},
+      {:grpc, "~> 0.9.0"},
+      {:grpc_mock, github: "renderedtext/grpc-mock", branch: "grpc08", only: [:dev, :test]},
       {:watchman, github: "renderedtext/ex-watchman"},
-      {:tackle, github: "renderedtext/ex-tackle"},
+      {:tackle, github: "renderedtext/ex-tackle", tag: "v0.3.0"},
+      {:amqp, "~> 4.1", override: true},
       {:sentry, "~> 8.0"},
+      {:logger_backends, "~> 1.0"},
       {:tentacat, "~> 2.0"},
       {:cachex, "~> 3.0"},
       {:poison, "~> 3.1"},
-      {:protobuf, "~> 0.5.4"},
+      {:protobuf, "~> 0.13.0"},
       {:feature_provider, path: "../feature_provider"},
       {:junit_formatter, "~> 3.3", only: [:test]},
       {:mix_test_watch, "~> 1.0", only: [:dev, :test], runtime: false},
