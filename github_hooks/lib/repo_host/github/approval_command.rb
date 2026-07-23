@@ -4,93 +4,76 @@ module RepoHost
   module Github
     # Single source of truth for parsing `/sem-approve` comment commands.
     #
-    # Shared by RepoHost::Github::Payload (authoritative) and
-    # Semaphore::RepoHost::Github::WebhookFilter (coarse entry filter) so the
-    # two can never drift apart — a drift where the filter is stricter than the
-    # payload would silently drop valid approvals, and the reverse would let a
-    # comment be recorded and then approved on looser terms than the filter
-    # believed it had matched.
+    # Shared by RepoHost::Github::Payload and
+    # Semaphore::RepoHost::Github::WebhookFilter so the two can never disagree
+    # about what counts as an approval.
     #
     # `/sem-approve` grants production secrets and/or writable cache to
-    # externally-authored fork code, so the parser is deliberately strict and
-    # fails closed:
+    # externally-authored fork code, so the trigger surface is kept as small as
+    # possible: the ENTIRE comment must be exactly the command, optionally
+    # followed by recognized options, on a single line at column zero
+    # (surrounding blank lines are tolerated). Anything else does NOT trigger an
+    # approval — the command embedded in prose, a blockquote or quoted reply,
+    # indented or fenced code (of ANY fence style/length, nested or unclosed),
+    # an HTML comment (single- or multi-line), or the command spread across
+    # multiple lines.
     #
-    #   * the command must be the FIRST token of a line (after leading
-    #     whitespace) — this rejects blockquotes (`> /sem-approve`, i.e. a
-    #     GitHub "quote reply" of a maintainer's approval), inline code
-    #     (`` `/sem-approve` ``) and any prose that merely mentions the command;
-    #   * lines inside fenced code blocks (``` / ~~~) are ignored entirely, so
-    #     quoting the command in a code fence does not trigger an approval;
-    #   * a command line may carry ONLY recognized options — any unknown token
-    #     invalidates the whole line rather than being silently discarded, so a
-    #     mistyped flag cannot spend the one-shot approval with the flag dropped.
+    # Requiring the command to be the sole content of the comment deliberately
+    # avoids interpreting Markdown at all. A partial fence/HTML-comment parser
+    # gets nested/mismatched/longer fences and multi-line HTML comments wrong —
+    # a command that GitHub still renders as code, or hides in a comment, can
+    # slip through — and the only robust alternative (a full CommonMark parse of
+    # the visible text) is far more machinery than a privileged one-shot command
+    # warrants. "The whole comment is the command" has no such ambiguity.
     module ApprovalCommand
       COMMAND = "/sem-approve"
 
       INCLUDE_SECRETS_OPTION = "--include-secrets"
       ENABLE_CACHE_OPTION = "--enable-cache"
 
-      # Backwards-compatible alias. The original task specification (and older
-      # drafts of the docs) used `--include-cache`; the implemented flag is
-      # `--enable-cache`. Accept both and normalize to the canonical spelling so
-      # a maintainer following the older contract does not silently consume the
-      # approval with the cache flag quietly ignored.
+      # Backwards-compatible alias for --enable-cache (older docs/task spec used
+      # `--include-cache`); normalized to the canonical spelling.
       ENABLE_CACHE_ALIAS = "--include-cache"
       OPTION_ALIASES = { ENABLE_CACHE_ALIAS => ENABLE_CACHE_OPTION }.freeze
 
-      # Canonical options callers may test for.
       KNOWN_OPTIONS = [INCLUDE_SECRETS_OPTION, ENABLE_CACHE_OPTION].freeze
-      # Tokens accepted on a command line (canonical options + aliases).
+      # Tokens accepted after the command (canonical options + aliases).
       RECOGNIZED_TOKENS = (KNOWN_OPTIONS + OPTION_ALIASES.keys).freeze
-
-      FENCE_DELIMITERS = ["```", "~~~"].freeze
 
       module_function
 
-      # True when `body` contains at least one valid whole-line approval command.
+      # True only when the whole comment is exactly an approval command.
       def present?(body)
-        command_lines(body).any?
+        !command_tokens(body).nil?
       end
 
-      # Unique, canonicalized options requested across every command line.
+      # Canonicalized, de-duplicated options requested by the command (empty
+      # unless present?). Alias + canonical (e.g. --include-cache + --enable-cache)
+      # collapse to a single canonical option.
       def options(body)
-        command_lines(body).flat_map { |tokens| tokens.drop(1) }.uniq
+        (command_tokens(body) || []).drop(1).uniq
       end
 
-      # Array of token arrays, one per line that is exactly an approval command
-      # (optionally followed only by recognized options). Options are returned
-      # in canonical form.
-      def command_lines(body)
-        in_fence = false
+      # Returns [COMMAND, *canonical_options] when the entire comment body is
+      # exactly the command line, or nil otherwise. Any non-blank line other
+      # than that single command line (prose, a code fence, an HTML comment, a
+      # second command) makes the comment non-triggering.
+      def command_tokens(body)
+        content_lines = body.to_s.split(/\r?\n/).map(&:rstrip).reject(&:empty?)
+        return nil unless content_lines.length == 1
 
-        body.to_s.split(/\r?\n/).map do |line|
-          if fence_delimiter?(line.strip)
-            in_fence = !in_fence
-            next
-          end
-          next if in_fence
-
-          tokens_from_line(line)
-        end.compact
-      end
-
-      def fence_delimiter?(stripped_line)
-        stripped_line.start_with?(*FENCE_DELIMITERS)
-      end
-
-      def tokens_from_line(line)
-        # The command must begin at column zero. A leading space/tab means the
-        # line is indented Markdown code (or otherwise not a deliberate command)
-        # and must not trigger a privileged approval.
+        line = content_lines.first
+        # The command must start at column zero: a leading space/tab means
+        # indented (Markdown code) content, not a deliberate command.
         return nil if line != line.lstrip
 
-        tokens = line.strip.split(/[ \t]+/)
+        tokens = line.split(/[ \t]+/)
         return nil unless tokens.first == COMMAND
 
-        options = tokens.drop(1)
-        return nil unless options.all? { |token| RECOGNIZED_TOKENS.include?(token) }
+        given_options = tokens.drop(1)
+        return nil unless given_options.all? { |token| RECOGNIZED_TOKENS.include?(token) }
 
-        [COMMAND, *options.map { |token| OPTION_ALIASES.fetch(token, token) }]
+        [COMMAND, *given_options.map { |token| OPTION_ALIASES.fetch(token, token) }]
       end
     end
   end
