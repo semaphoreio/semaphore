@@ -6,7 +6,7 @@ defmodule GithubNotifier.Models.Organization do
   @spec find(String.t()) :: GithubNotifier.Models.Organization | nil
   def find(id) do
     Watchman.benchmark("fetch_organization.duration", fn ->
-      req = InternalApi.Organization.DescribeRequest.new(org_id: id)
+      req = struct(InternalApi.Organization.DescribeRequest, org_id: id)
 
       {:ok, channel} =
         GRPC.Stub.connect(Application.fetch_env!(:github_notifier, :organization_grpc_endpoint))
@@ -23,7 +23,7 @@ defmodule GithubNotifier.Models.Organization do
       Logger.debug("Received Organization describe response")
       Logger.debug(inspect(res))
 
-      case InternalApi.ResponseStatus.Code.key(res.status.code) do
+      case res.status.code do
         :OK -> construct(res.organization)
         _ -> nil
       end
