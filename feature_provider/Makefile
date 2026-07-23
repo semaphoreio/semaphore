@@ -13,14 +13,14 @@ define maybe_call_in_docker
 endef
 endif
 
-test: MIX_ENV=test
+test: export MIX_ENV=test
 test:
 	$(call maybe_call_in_docker, $$(echo "mix do deps.get, test"))
 
-docs: MIX_ENV=test
+docs: export MIX_ENV=test
 docs:
 	$(call maybe_call_in_docker, $$(echo "mix docs"))
 
-cover: MIX_ENV=test
+cover: export MIX_ENV=test
 cover:
 	$(call maybe_call_in_docker, $$(echo "mix coveralls.lcov"))
