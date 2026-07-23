@@ -4,6 +4,7 @@
 
 import { expect } from "chai";
 import { Switch } from "./switch";
+import { TargetParams } from "./target_params";
 import { Utils } from "../utils";
 import $ from "jquery";
 import sinon from "sinon";
@@ -24,6 +25,12 @@ describe("Switch", () => {
   });
 
   afterEach(() => {
+    sinon.restore();
+    document.querySelectorAll("select").forEach((element) => {
+      if (element.tomselect) {
+        element.tomselect.destroy();
+      }
+    });
     document.body.innerHTML = "";
     $("body").off(); // Clean up event handlers
   });
@@ -171,6 +178,137 @@ describe("Switch", () => {
       expect(button.css("display")).to.not.equal("none");
       expect(button.prop("disabled")).to.be.true;
       expect(button.hasClass("btn-working")).to.be.true;
+    });
+  });
+
+  describe("handlePromoteClicks", () => {
+    it("focuses the first promotion dropdown without scrolling", () => {
+      document.body.innerHTML = `
+        <div switch="switch-123">
+          <div promotion-box data-promotion-target="Test Target">
+            <button promote-button data-promotion-target="Test Target" data-switch="switch-123">Promote</button>
+            <form hidden data-promotion-target="Test Target" promote-confirmation>
+              <select name="parameters[environment]" data-promotion-param-name="environment">
+                <option value="production">production</option>
+              </select>
+            </form>
+          </div>
+        </div>
+      `;
+
+      const focusStub = sinon.stub(HTMLElement.prototype, "focus");
+
+      Switch.handlePromoteClicks();
+      $("[promote-button]").trigger("click");
+
+      const select = document.querySelector("[data-promotion-param-name]");
+      const controlFocusCall = focusStub.getCalls().find((call) => {
+        return call.thisValue === select.tomselect.control;
+      });
+
+      expect(select.tomselect).to.not.be.undefined;
+      expect(controlFocusCall).to.not.be.undefined;
+      expect(controlFocusCall.args[0]).to.deep.equal({ preventScroll: true });
+
+      focusStub.restore();
+    });
+
+    it("focuses the first promotion text input without scrolling and keeps cursor placement", () => {
+      document.body.innerHTML = `
+        <div switch="switch-123">
+          <div promotion-box data-promotion-target="Test Target">
+            <button promote-button data-promotion-target="Test Target" data-switch="switch-123">Promote</button>
+            <form hidden data-promotion-target="Test Target" promote-confirmation>
+              <input name="parameters[environment]" value="production">
+            </form>
+          </div>
+        </div>
+      `;
+
+      const input = document.querySelector("input");
+      const focusStub = sinon.stub(HTMLElement.prototype, "focus");
+      const selectionStub = sinon.stub(input, "setSelectionRange");
+
+      Switch.handlePromoteClicks();
+      $("[promote-button]").trigger("click");
+
+      const inputFocusCall = focusStub.getCalls().find((call) => {
+        return call.thisValue === input;
+      });
+
+      expect(inputFocusCall).to.not.be.undefined;
+      expect(inputFocusCall.args[0]).to.deep.equal({ preventScroll: true });
+      expect(selectionStub.calledOnceWith(input.value.length, input.value.length)).to.be.true;
+
+      selectionStub.restore();
+      focusStub.restore();
+    });
+
+    it("shows the promotion form without focus errors when there are no inputs", () => {
+      document.body.innerHTML = `
+        <div switch="switch-123">
+          <div promotion-box data-promotion-target="Test Target">
+            <button promote-button data-promotion-target="Test Target" data-switch="switch-123">Promote</button>
+            <form hidden data-promotion-target="Test Target" promote-confirmation></form>
+          </div>
+        </div>
+      `;
+
+      const focusStub = sinon.stub(HTMLElement.prototype, "focus");
+
+      Switch.handlePromoteClicks();
+      expect(() => {
+        $("[promote-button]").trigger("click");
+      }).to.not.throw();
+      expect(focusStub.notCalled).to.be.true;
+
+      focusStub.restore();
+    });
+  });
+
+  describe("TargetParams", () => {
+    it("focuses TomSelect's focus node without scrolling", () => {
+      document.body.innerHTML = `
+        <select data-promotion-param-name="environment">
+          <option value="production">production</option>
+        </select>
+      `;
+
+      const focusStub = sinon.stub(HTMLElement.prototype, "focus");
+
+      TargetParams.init("[data-promotion-param-name]");
+
+      const select = document.querySelector("[data-promotion-param-name]");
+      const focusNode = select.tomselect.focus_node;
+      focusNode.focus();
+
+      const focusNodeCall = focusStub.getCalls().find((call) => {
+        return call.thisValue === focusNode && call.args[0] && call.args[0].preventScroll === true;
+      });
+
+      expect(focusNodeCall).to.not.be.undefined;
+      expect(focusNodeCall.args[0]).to.deep.equal({ preventScroll: true });
+
+      focusStub.restore();
+    });
+
+    it("does not reinitialize or double-wrap TomSelect on repeat init", () => {
+      document.body.innerHTML = `
+        <select data-promotion-param-name="environment">
+          <option value="production">production</option>
+        </select>
+      `;
+
+      TargetParams.init("[data-promotion-param-name]");
+
+      const select = document.querySelector("[data-promotion-param-name]");
+      const tomselect = select.tomselect;
+      const wrappedFocus = tomselect.focus_node.focus;
+
+      TargetParams.init("[data-promotion-param-name]");
+
+      expect(select.tomselect).to.equal(tomselect);
+      expect(tomselect.focus_node.focus).to.equal(wrappedFocus);
     });
   });
 
