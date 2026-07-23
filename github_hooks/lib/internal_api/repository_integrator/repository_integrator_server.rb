@@ -156,7 +156,7 @@ module InternalApi
 
       def update_revoke_status(rha)
         if rha.repo_host == "github"
-          rha.update!(:revoked => !::RepoHost::Github::Client.new(rha.token).token_valid?)
+          update_revoked(rha, !::RepoHost::Github::Client.new(rha.token).token_valid?)
         end
 
         if rha.repo_host == "bitbucket"
@@ -172,6 +172,27 @@ module InternalApi
         end
 
         rha
+      end
+
+      # Re-activating a revoked GitHub account must not resurrect a duplicate
+      # link: the same uid may have been actively linked to another user while
+      # this row sat revoked.
+      def update_revoked(rha, revoked)
+        if !revoked && rha.revoked? && rha.github_uid.present? && uid_actively_held_by_other?(rha)
+          Rails.logger.info(
+            "Keeping repo_host_account #{rha.id} revoked: uid is actively held by another account"
+          )
+        else
+          rha.update!(:revoked => revoked)
+        end
+      end
+
+      def uid_actively_held_by_other?(rha)
+        ::RepoHostAccount
+          .where(:repo_host => rha.repo_host, :github_uid => rha.github_uid)
+          .where.not(:id => rha.id)
+          .where(:revoked => false)
+          .exists?
       end
 
       def extract_repository_name(full_name)
