@@ -102,6 +102,33 @@ defmodule Guard.Api.GithubTest do
 
       assert {:error, :revoked} = Github.user_token(rha)
     end
+
+    test "rate-limited token refresh is a transient failure, not a revocation",
+         %{repo_host_account: rha} do
+      for status <- [408, 429] do
+        Tesla.Mock.mock_global(fn
+          %{method: :get, url: "https://api.github.com"} ->
+            {:ok, %Tesla.Env{status: 401, body: %{}}}
+
+          %{method: :post, url: "https://github.com/login/oauth/access_token"} ->
+            {:ok, %Tesla.Env{status: status, body: %{}}}
+        end)
+
+        assert {:error, :failed} = Github.user_token(rha)
+      end
+    end
+
+    test "rejected token refresh still classifies as revoked", %{repo_host_account: rha} do
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          {:ok, %Tesla.Env{status: 401, body: %{}}}
+
+        %{method: :post, url: "https://github.com/login/oauth/access_token"} ->
+          {:ok, %Tesla.Env{status: 400, body: %{}}}
+      end)
+
+      assert {:error, :revoked} = Github.user_token(rha)
+    end
   end
 
   describe "validate_token/1" do
