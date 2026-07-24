@@ -173,8 +173,32 @@ defmodule Zebra.Models.Job do
     query |> Q.where([j], j.aasm_state == ^state_pending())
   end
 
+  def cloud_pending(query \\ __MODULE__) do
+    query
+    |> Q.where([j], j.aasm_state == ^state_pending())
+    |> Q.where([j], not like(j.machine_type, "s1-%"))
+  end
+
+  def self_hosted_pending(query \\ __MODULE__) do
+    query
+    |> Q.where([j], j.aasm_state == ^state_pending())
+    |> Q.where([j], like(j.machine_type, "s1-%"))
+  end
+
   def enqueued(query \\ __MODULE__) do
     query |> Q.where([j], j.aasm_state == ^state_enqueued())
+  end
+
+  def cloud_enqueued(query \\ __MODULE__) do
+    query
+    |> Q.where([j], j.aasm_state == ^state_enqueued())
+    |> Q.where([j], not like(j.machine_type, "s1-%"))
+  end
+
+  def self_hosted_enqueued(query \\ __MODULE__) do
+    query
+    |> Q.where([j], j.aasm_state == ^state_enqueued())
+    |> Q.where([j], like(j.machine_type, "s1-%"))
   end
 
   def scheduled(query \\ __MODULE__) do
