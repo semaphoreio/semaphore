@@ -35,6 +35,26 @@ defmodule Guard.Id.OAuthErrorCodeTest do
       assert OAuthErrorCode.from_reason(changeset) == "generic"
     end
 
+    test "returns account_taken when the GitHub uid is connected to another user" do
+      {_user, rha} = Support.Members.insert_user_with_github_account(github_uid: "20001")
+
+      {:error, changeset} =
+        Guard.FrontRepo.RepoHostAccount.create(%{
+          login: "other-login",
+          github_uid: rha.github_uid,
+          repo_host: "github",
+          user_id: Ecto.UUID.generate(),
+          name: "Other User",
+          permission_scope: "user:email"
+        })
+
+      assert OAuthErrorCode.from_reason(changeset) == "account_taken"
+    end
+
+    test "account_taken is a bounded code" do
+      assert "account_taken" in OAuthErrorCode.codes()
+    end
+
     test "returns generic for any other reason" do
       assert OAuthErrorCode.from_reason(:something_else) == "generic"
       assert OAuthErrorCode.from_reason({:error, :boom}) == "generic"

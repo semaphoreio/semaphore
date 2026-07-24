@@ -91,6 +91,14 @@ defmodule Guard.Api.Bitbucket do
       {:ok, %Tesla.Env{status: status, body: body}} when status in 200..299 ->
         OAuth.handle_ok_token_response(repo_host_account, body)
 
+      {:ok, %Tesla.Env{status: status}} when status in [408, 429] ->
+        Logger.warning(
+          "Transient failure refreshing Bitbucket token (HTTP #{status}). " <>
+            "User repo_host_account id: #{repo_host_account.id}"
+        )
+
+        {:error, :failed}
+
       {:ok, %Tesla.Env{status: status, body: body}} when status in 400..499 ->
         Logger.warning(
           "Failed to refresh Bitbucket token (HTTP #{status}): " <>
