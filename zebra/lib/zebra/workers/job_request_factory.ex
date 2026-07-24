@@ -74,10 +74,10 @@ defmodule Zebra.Workers.JobRequestFactory do
            Task.async(fn ->
              if Job.self_hosted?(job.machine_type),
                do: {:ok, nil},
-               else: Cache.find(project.cache_id, repo_proxy, org_id)
+               else: Cache.find(project.cache_id, repo_proxy, org_id, job_type)
            end),
          find_secrets <-
-           Task.async(fn -> Secrets.load(org_id, job.id, spec, project, repo_proxy) end),
+           Task.async(fn -> Secrets.load(org_id, job.id, spec, project, repo_proxy, job_type) end),
          {:ok, repository, private_git_key} <- Task.await(find_repository),
          {:ok, repo_files} <- Repository.files(private_git_key),
          {:ok, repo_env_vars} <- Repository.env_vars(repository, repo_proxy, job_type),
@@ -202,7 +202,7 @@ defmodule Zebra.Workers.JobRequestFactory do
     # Forked-PR cache skips are intentional (gated by the disable_forked_pr_cache
     # feature flag in Cache.find/3), so they are not a dropped-vars condition.
     if cache_env_vars == [] and not Job.self_hosted?(job.machine_type) and
-         not is_nil(project.cache_id) and not Cache.forked_pr?(repo_proxy) do
+         not is_nil(project.cache_id) and not Cache.forked_pr?(repo_proxy, job.organization_id) do
       Logger.warning(
         "Cache env vars not injected into job. job_id=#{job.id} project_id=#{project.id} cache_id=#{project.cache_id}"
       )
