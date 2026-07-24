@@ -1,25 +1,36 @@
 defmodule Rbac.OIDC.FederatedIdentitySync do
   @moduledoc """
-  Best-effort Keycloak sync when a GitHub account is claimed away from users
-  whose revoked repo_host_accounts links were released.
+  Keycloak sync when a GitHub account is claimed away from users whose
+  revoked repo_host_accounts links were released.
 
   Removes the github federated identity from each losing user's Keycloak
   account and pushes the claiming user's github identity, so GitHub-brokered
   login routes to the claiming user. When any removal fails, the push is
   skipped — otherwise the same identity could end up attached to two Keycloak
-  users.
+  users. Removals are uid-aware: a loser who has since connected a different
+  GitHub account keeps that identity untouched.
+
+  Durability: each claim writes a `Rbac.FrontRepo.FederatedIdentitySyncRequest`
+  outbox row in the transaction that released the losing links. The row is
+  deleted only when the sync fully succeeds; failures and process crashes
+  leave it behind for guard's drainer (which processes the shared table) to
+  retry with backoff, so a lost task never results in permanent misrouting.
 
   Keycloak is never mutated from inside an open database transaction: when a
   claim happens inside one, the sync is deferred in the calling process and
   must be released with `run_deferred/0` after commit, or discarded with
-  `drop_deferred/0` on rollback.
+  `drop_deferred/0` on rollback (the outbox row rolls back with the
+  transaction).
 
-  Fire-and-forget: runs in an unlinked task, never fails the claim, and is a
-  no-op unless OIDC is enabled. Each Keycloak call gets a bounded number of
+  The immediate sync runs in an unlinked task, never fails the claim, and is
+  a no-op unless OIDC is enabled. Each Keycloak call gets a bounded number of
   retries; terminal outcomes are counted in Watchman metrics.
   """
 
   require Logger
+
+  alias Rbac.FrontRepo.FederatedIdentitySyncRequest
+  alias Rbac.FrontRepo.RepoHostAccount
 
   @provider "github"
   @success_metric "rbac.federated_identity_sync.success"
@@ -27,14 +38,21 @@ defmodule Rbac.OIDC.FederatedIdentitySync do
   @max_attempts 3
   @pdict_key :federated_identity_sync_deferred
 
-  @spec sync_github_claim(Rbac.FrontRepo.RepoHostAccount.t(), [String.t()]) :: :ok
-  def sync_github_claim(_account, []), do: :ok
+  @spec sync_github_claim(
+          RepoHostAccount.t(),
+          [String.t()],
+          FederatedIdentitySyncRequest.t() | nil
+        ) ::
+          :ok
+  def sync_github_claim(account, released_user_ids, request \\ nil)
 
-  def sync_github_claim(account, released_user_ids) do
+  def sync_github_claim(_account, [], _request), do: :ok
+
+  def sync_github_claim(account, released_user_ids, request) do
     cond do
       not Rbac.OIDC.enabled?() -> :ok
-      defer?() -> defer(account, released_user_ids)
-      true -> start_task(account, released_user_ids)
+      defer?() -> defer(account, released_user_ids, request)
+      true -> start_task(account, released_user_ids, request)
     end
   end
 
@@ -48,8 +66,8 @@ defmodule Rbac.OIDC.FederatedIdentitySync do
 
     deferred
     |> Enum.reverse()
-    |> Enum.each(fn {account, released_user_ids} ->
-      start_task(account, released_user_ids)
+    |> Enum.each(fn {account, released_user_ids, request} ->
+      start_task(account, released_user_ids, request)
     end)
 
     :ok
@@ -68,60 +86,86 @@ defmodule Rbac.OIDC.FederatedIdentitySync do
     Rbac.FrontRepo.in_transaction?()
   end
 
-  defp defer(account, released_user_ids) do
+  defp defer(account, released_user_ids, request) do
     Process.put(@pdict_key, [
-      {account, released_user_ids} | Process.get(@pdict_key, [])
+      {account, released_user_ids, request} | Process.get(@pdict_key, [])
     ])
 
     :ok
   end
 
-  defp start_task(account, released_user_ids) do
-    Task.start(fn -> do_sync(account, Enum.uniq(released_user_ids)) end)
+  defp start_task(account, released_user_ids, request) do
+    Task.start(fn -> do_sync(account, Enum.uniq(released_user_ids), request) end)
     :ok
   end
 
-  defp do_sync(account, released_user_ids) do
+  defp do_sync(account, released_user_ids, request) do
     removals_ok =
       released_user_ids
       |> Enum.map(&remove_github_identity(&1, account))
       |> Enum.all?(&(&1 == :ok))
 
     result =
-      if removals_ok do
-        push_github_identity(account)
-      else
-        Logger.error(
-          "[FederatedIdentitySync] Skipping github identity push for user #{account.user_id}: not all identity removals succeeded"
-        )
+      cond do
+        not removals_ok ->
+          Logger.error(
+            "[FederatedIdentitySync] Skipping github identity push for user #{account.user_id}: not all identity removals succeeded"
+          )
 
-        :error
+          {:error, "identity removal failed"}
+
+        not RepoHostAccount.holds_uid?(account.repo_host, account.github_uid, account.user_id) ->
+          # A later claim superseded this one; that flow owns the push. The
+          # removals this row required are done, so it is complete.
+          Logger.info(
+            "[FederatedIdentitySync] Skipping github identity push for user #{account.user_id}: no longer the holder of uid #{account.github_uid}"
+          )
+
+          :ok
+
+        true ->
+          case push_github_identity(account) do
+            :ok -> :ok
+            :error -> {:error, "identity push failed"}
+          end
       end
 
     case result do
-      :ok -> Watchman.increment({@success_metric, [@provider]})
-      :error -> Watchman.increment({@failure_metric, [@provider]})
+      :ok ->
+        FederatedIdentitySyncRequest.complete(request)
+        Watchman.increment({@success_metric, [@provider]})
+
+      {:error, reason} ->
+        FederatedIdentitySyncRequest.record_failure(request, reason)
+        Watchman.increment({@failure_metric, [@provider]})
     end
   rescue
     error ->
       log_crash(account, error)
+      FederatedIdentitySyncRequest.record_failure(request, inspect(error))
       Watchman.increment({@failure_metric, [@provider]})
   catch
     kind, reason ->
       log_crash(account, {kind, reason})
+      FederatedIdentitySyncRequest.record_failure(request, inspect({kind, reason}))
       Watchman.increment({@failure_metric, [@provider]})
   end
 
   defp remove_github_identity(user_id, account) do
     case Rbac.Store.OIDCUser.fetch_by_user_id(user_id) do
       {:ok, oidc_user} ->
-        with_retries(fn ->
-          Rbac.OIDC.User.remove_federated_identity(oidc_user.oidc_user_id, @provider)
-        end)
+        with_retries(fn -> detach_if_holding(oidc_user.oidc_user_id, account) end)
         |> case do
-          {:ok, _} ->
+          {:ok, :removed} ->
             Logger.info(
               "[FederatedIdentitySync] Removed github identity #{account.github_uid} from oidc user #{oidc_user.oidc_user_id} (user #{user_id})"
+            )
+
+            :ok
+
+          {:ok, :skipped} ->
+            Logger.info(
+              "[FederatedIdentitySync] Oidc user #{oidc_user.oidc_user_id} (user #{user_id}) no longer holds github identity #{account.github_uid}, skipping removal"
             )
 
             :ok
@@ -140,6 +184,28 @@ defmodule Rbac.OIDC.FederatedIdentitySync do
         )
 
         :ok
+    end
+  end
+
+  # Only detach the github identity if it still points at the claimed uid: a
+  # retried sync may run long after the loser connected a different GitHub
+  # account, and that identity must not be removed.
+  defp detach_if_holding(oidc_user_id, account) do
+    with {:ok, identities} <- Rbac.OIDC.User.get_federated_identities(oidc_user_id) do
+      github = Enum.find(identities, &(&1["identityProvider"] == @provider))
+
+      cond do
+        is_nil(github) ->
+          {:ok, :skipped}
+
+        github["userId"] != account.github_uid ->
+          {:ok, :skipped}
+
+        true ->
+          with {:ok, _} <- Rbac.OIDC.User.remove_federated_identity(oidc_user_id, @provider) do
+            {:ok, :removed}
+          end
+      end
     end
   end
 

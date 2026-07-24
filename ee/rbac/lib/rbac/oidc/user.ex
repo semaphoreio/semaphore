@@ -59,6 +59,12 @@ defmodule Rbac.OIDC.User do
     end
   end
 
+  def get_federated_identities(oidc_user_id) do
+    with {:ok, client} <- Rbac.Api.OIDC.client() do
+      Rbac.Api.OIDC.get_federated_identities(client, oidc_user_id)
+    end
+  end
+
   def create_with_oidc_data(%{oidc_user_id: oidc_user_id}) do
     with {:ok, oidc_user} <- get_oidc_user(oidc_user_id),
          {:ok, github} <- get_github_data(oidc_user.github),

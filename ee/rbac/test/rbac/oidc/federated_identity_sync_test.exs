@@ -1,6 +1,7 @@
 defmodule Rbac.OIDC.FederatedIdentitySyncTest do
   use Rbac.RepoCase, async: false
 
+  alias Rbac.FrontRepo.FederatedIdentitySyncRequest
   alias Rbac.FrontRepo.RepoHostAccount
   alias Rbac.OIDC.FederatedIdentitySync
 
@@ -62,12 +63,21 @@ defmodule Rbac.OIDC.FederatedIdentitySyncTest do
       body = decode_json_body(body)
       assert body["userId"] == @claimed_uid
       assert body["userName"] == "new-login"
+
+      # the durable sync request is cleared once the sync fully succeeded
+      Support.Wait.run("sync request to be completed", fn ->
+        FederatedIdentitySyncRequest.pending_count() == 0
+      end)
     end
 
     test "Keycloak failures do not fail the claim", %{loser: loser, claimer: claimer} do
       test_pid = self()
 
       Tesla.Mock.mock_global(fn
+        %{method: :get, url: url} ->
+          send(test_pid, {:oidc_get, url})
+          {:ok, %Tesla.Env{status: 200, body: loser_identities()}}
+
         %{method: :delete, url: url} ->
           send(test_pid, {:oidc_delete, url})
           {:ok, %Tesla.Env{status: 500, body: %{"errorMessage" => "boom"}}}
@@ -99,6 +109,21 @@ defmodule Rbac.OIDC.FederatedIdentitySyncTest do
       # claimer's identity anyway could attach it to two users. The push is
       # skipped until a later sync succeeds.
       refute_receive {:oidc_post, _}, 500
+
+      # the durable request survives the failure, scheduled for a retry
+      Support.Wait.run("sync request to record the failure", fn ->
+        case Rbac.FrontRepo.all(FederatedIdentitySyncRequest) do
+          [request] -> request.attempts >= 1
+          _ -> false
+        end
+      end)
+
+      [request] = Rbac.FrontRepo.all(FederatedIdentitySyncRequest)
+      assert request.uid == @claimed_uid
+      assert request.claiming_user_id == claimer.id
+      assert request.released_user_ids == [loser.id]
+      assert request.last_error != nil
+      assert DateTime.compare(request.next_attempt_at, DateTime.utc_now()) == :gt
     end
 
     test "reset claim syncs identities too", %{claimer: claimer} do
@@ -137,6 +162,9 @@ defmodule Rbac.OIDC.FederatedIdentitySyncTest do
       counter = :counters.new(1, [:atomics])
 
       Tesla.Mock.mock_global(fn
+        %{method: :get, url: _url} ->
+          {:ok, %Tesla.Env{status: 200, body: loser_identities()}}
+
         %{method: :delete, url: url} ->
           send(test_pid, {:oidc_delete, url})
 
@@ -335,6 +363,9 @@ defmodule Rbac.OIDC.FederatedIdentitySyncTest do
 
       refute_receive {:oidc_delete, _}, 200
       refute_receive {:oidc_post, _, _}, 200
+
+      # no Keycloak to sync -> no durable request either
+      assert FederatedIdentitySyncRequest.pending_count() == 0
     end
   end
 
@@ -373,6 +404,13 @@ defmodule Rbac.OIDC.FederatedIdentitySyncTest do
     test_pid = self()
 
     Tesla.Mock.mock_global(fn
+      %{method: :get, url: url} ->
+        if url =~ "federated-identity" do
+          {:ok, %Tesla.Env{status: 200, body: loser_identities()}}
+        else
+          {:ok, %Tesla.Env{status: 200, body: %{}}}
+        end
+
       %{method: :delete, url: url} ->
         send(test_pid, {:oidc_delete, url})
         {:ok, %Tesla.Env{status: 204, body: %{}}}
@@ -384,6 +422,16 @@ defmodule Rbac.OIDC.FederatedIdentitySyncTest do
       %{method: :put} ->
         {:ok, %Tesla.Env{status: 200, body: %{}}}
     end)
+  end
+
+  defp loser_identities do
+    [
+      %{
+        "identityProvider" => "github",
+        "userId" => @claimed_uid,
+        "userName" => "previous-owner"
+      }
+    ]
   end
 
   defp decode_json_body(body) when is_binary(body), do: Jason.decode!(body)

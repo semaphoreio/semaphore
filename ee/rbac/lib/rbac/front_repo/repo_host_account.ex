@@ -256,16 +256,21 @@ defmodule Rbac.FrontRepo.RepoHostAccount do
     FrontRepo.exists?(query)
   end
 
+  @doc """
+  True when `user_id` still owns a link for this uid, revoked or not. False
+  once the link was deleted (claimed away) or points at a different uid.
+  """
+  @spec holds_uid?(String.t(), String.t(), String.t()) :: boolean()
+  def holds_uid?(repo_host, uid, user_id) do
+    from(r in __MODULE__,
+      where: r.repo_host == ^repo_host and r.github_uid == ^uid,
+      where: r.user_id == ^user_id
+    )
+    |> FrontRepo.exists?()
+  end
+
   defp release_revoked_uid_rows(%__MODULE__{repo_host: "github"} = account) do
-    {count, released_user_ids} =
-      from(r in __MODULE__,
-        where: r.repo_host == ^account.repo_host and r.github_uid == ^account.github_uid,
-        where: r.id != ^account.id,
-        where: r.revoked == true,
-        where: r.updated_at <= ago(^@revoked_claim_grace_seconds, "second"),
-        select: r.user_id
-      )
-      |> FrontRepo.delete_all()
+    {count, released_user_ids, request} = release_and_enqueue_sync(account)
 
     if count > 0 do
       Watchman.increment({"rbac.repo_host_account.revoked_link_claimed", [account.repo_host]})
@@ -274,13 +279,40 @@ defmodule Rbac.FrontRepo.RepoHostAccount do
         "Released #{count} revoked repo_host_account row(s) for github uid #{account.github_uid} claimed by user #{account.user_id} from users #{inspect(released_user_ids)}"
       )
 
-      Rbac.OIDC.FederatedIdentitySync.sync_github_claim(account, released_user_ids)
+      Rbac.OIDC.FederatedIdentitySync.sync_github_claim(account, released_user_ids, request)
     end
 
     account
   end
 
   defp release_revoked_uid_rows(account), do: account
+
+  # The sync request is written in the same transaction that deletes the
+  # losing rows: a committed claim always leaves a durable record of the
+  # Keycloak sync it requires, even if the process dies before the sync runs.
+  defp release_and_enqueue_sync(account) do
+    {:ok, result} =
+      FrontRepo.transaction(fn ->
+        {count, released_user_ids} =
+          from(r in __MODULE__,
+            where: r.repo_host == ^account.repo_host and r.github_uid == ^account.github_uid,
+            where: r.id != ^account.id,
+            where: r.revoked == true,
+            where: r.updated_at <= ago(^@revoked_claim_grace_seconds, "second"),
+            select: r.user_id
+          )
+          |> FrontRepo.delete_all()
+
+        request =
+          if count > 0 and Rbac.OIDC.enabled?() do
+            FrontRepo.FederatedIdentitySyncRequest.enqueue(account, released_user_ids)
+          end
+
+        {count, released_user_ids, request}
+      end)
+
+    result
+  end
 
   defp adjust_scope(%{permission_scope: scope} = data, _) when scope in @scopes_in_order, do: data
 
