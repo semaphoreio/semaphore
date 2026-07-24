@@ -3782,24 +3782,13 @@ blocks:
           - cache restore deps-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock)
           - cache restore build-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock)
       jobs:
-        - name: Erlang 23
-          env_vars:
-            - name: ERLANG_VERSION
-              value: "23"
-          matrix:
-            - env_var: ELIXIR_VERSION
-              values: ["1.12", "1.13", "1.14"]
-          commands:
-            - make test
-            - cache store deps-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock) deps
-            - cache store build-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock) _build
         - name: Erlang 24
           env_vars:
             - name: ERLANG_VERSION
               value: "24"
           matrix:
             - env_var: ELIXIR_VERSION
-              values: ["1.12", "1.13", "1.14", "1.15", "1.16"]
+              values: ["1.11", "1.12", "1.13", "1.14"]
           commands:
             - make test
             - cache store deps-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock) deps
@@ -3810,7 +3799,7 @@ blocks:
               value: "25"
           matrix:
             - env_var: ELIXIR_VERSION
-              values: ["1.13", "1.14", "1.15", "1.16", "1.17", "1.18"]
+              values: ["1.15", "1.16", "1.17", "1.18"]
           commands:
             - make test
             - cache store deps-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock) deps
@@ -3821,7 +3810,7 @@ blocks:
               value: "26"
           matrix:
             - env_var: ELIXIR_VERSION
-              values: ["1.14", "1.15", "1.16", "1.17", "1.18", "1.19"]
+              values: ["1.15", "1.16", "1.17", "1.18"]
           commands:
             - make test
             - cache store deps-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock) deps
@@ -3843,7 +3832,7 @@ blocks:
               value: "28"
           matrix:
             - env_var: ELIXIR_VERSION
-              values: ["1.19", "1.20"]
+              values: [ "1.19", "1.20"]
           commands:
             - make test
             - cache store deps-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock) deps
