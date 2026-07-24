@@ -47,7 +47,7 @@ defmodule HooksProcessor.Application do
 
     :logger.add_handler(:sentry_handler, Sentry.LoggerHandler, %{})
 
-    opts = [strategy: :one_for_one, name: HooksProcessor.Supervisor]
+    opts = [strategy: :one_for_one, name: HooksProcessor.Supervisor, max_restarts: 1000]
     Supervisor.start_link(children, opts)
   end
 

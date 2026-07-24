@@ -18,7 +18,7 @@ defmodule Rbac.Application do
       |> add_task_supervisor()
       |> add_rabbit_workers()
 
-    opts = [strategy: :one_for_one, name: Rbac.Supervisor]
+    opts = [strategy: :one_for_one, name: Rbac.Supervisor, max_restarts: 1000]
     Supervisor.start_link(children, opts)
   end
 
