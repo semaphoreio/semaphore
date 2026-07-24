@@ -8,7 +8,7 @@ defmodule GithubNotifier.Models.ProjectTest do
       project = Support.Factories.project()
 
       response =
-        InternalApi.Projecthub.DescribeResponse.new(
+        struct(InternalApi.Projecthub.DescribeResponse,
           metadata: Support.Factories.response_meta(),
           project: project
         )
@@ -23,7 +23,7 @@ defmodule GithubNotifier.Models.ProjectTest do
                :repository_id => project.spec.repository.id,
                :status => %{
                  "pipeline_files" => [
-                   %{"level" => 1, "path" => ".semaphore/semaphore.yml"}
+                   %{"level" => "PIPELINE", "path" => ".semaphore/semaphore.yml"}
                  ]
                }
              }
@@ -31,7 +31,7 @@ defmodule GithubNotifier.Models.ProjectTest do
 
     test "when the project can't be found => it returns nil" do
       response =
-        InternalApi.Projecthub.DescribeResponse.new(
+        struct(InternalApi.Projecthub.DescribeResponse,
           metadata: Support.Factories.response_meta(:NOT_FOUND)
         )
 

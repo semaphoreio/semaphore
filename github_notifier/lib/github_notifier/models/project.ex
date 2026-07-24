@@ -7,8 +7,8 @@ defmodule GithubNotifier.Models.Project do
   def find(id) do
     Watchman.benchmark("fetch_project.duration", fn ->
       req =
-        InternalApi.Projecthub.DescribeRequest.new(
-          metadata: InternalApi.Projecthub.RequestMeta.new(),
+        struct(InternalApi.Projecthub.DescribeRequest,
+          metadata: struct(InternalApi.Projecthub.RequestMeta),
           id: id
         )
 
@@ -27,7 +27,7 @@ defmodule GithubNotifier.Models.Project do
       Logger.debug("Received Project describe response")
       Logger.debug(inspect(res))
 
-      case InternalApi.Projecthub.ResponseMeta.Code.key(res.metadata.status.code) do
+      case res.metadata.status.code do
         :OK -> construct(res.project)
         _ -> nil
       end
@@ -41,7 +41,20 @@ defmodule GithubNotifier.Models.Project do
       :owner_id => raw_project.metadata.owner_id,
       :url => raw_project.spec.repository.url,
       :repository_id => raw_project.spec.repository.id,
-      :status => raw_project.spec.repository.status |> Poison.encode!() |> Poison.decode!()
+      :status =>
+        raw_project.spec.repository.status
+        |> Poison.encode!()
+        |> Poison.decode!()
+        |> drop_unknown_fields()
     }
   end
+
+  defp drop_unknown_fields(map) when is_map(map) do
+    map
+    |> Map.delete("__unknown_fields__")
+    |> Map.new(fn {k, v} -> {k, drop_unknown_fields(v)} end)
+  end
+
+  defp drop_unknown_fields(list) when is_list(list), do: Enum.map(list, &drop_unknown_fields/1)
+  defp drop_unknown_fields(value), do: value
 end

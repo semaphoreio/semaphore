@@ -4,8 +4,6 @@ defmodule GithubNotifier.Utils.LevelTest do
   alias GithubNotifier.Utils.Level, as: L
   alias GithubNotifier.Models.Project
 
-  alias InternalApi.Projecthub.Project.Spec.Repository.Status.PipelineFile.Level
-
   describe ".level" do
     test "when the status is nil => returns nil" do
       project = %Project{status: nil}
@@ -25,7 +23,7 @@ defmodule GithubNotifier.Utils.LevelTest do
       project = %Project{
         status: %{
           "pipeline_files" => [
-            %{"level" => Level.value(:BLOCK), "path" => "bar"}
+            %{"level" => "BLOCK", "path" => "bar"}
           ]
         }
       }
@@ -39,8 +37,8 @@ defmodule GithubNotifier.Utils.LevelTest do
       project = %Project{
         status: %{
           "pipeline_files" => [
-            %{"level" => Level.value(:PIPELINE), "path" => "bar"},
-            %{"level" => Level.value(:PIPELINE), "path" => "foo"}
+            %{"level" => "PIPELINE", "path" => "bar"},
+            %{"level" => "PIPELINE", "path" => "foo"}
           ]
         }
       }
@@ -54,8 +52,8 @@ defmodule GithubNotifier.Utils.LevelTest do
       project = %Project{
         status: %{
           "pipeline_files" => [
-            %{"level" => Level.value(:PIPELINE), "path" => "bar"},
-            %{"level" => Level.value(:BLOCK), "path" => "bar"}
+            %{"level" => "PIPELINE", "path" => "bar"},
+            %{"level" => "BLOCK", "path" => "bar"}
           ]
         }
       }
