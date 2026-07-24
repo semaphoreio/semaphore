@@ -61,4 +61,135 @@ defmodule Rbac.Api.OIDCTest do
              end)
     end
   end
+
+  describe "remove_federated_identity/3" do
+    test "returns ok on 204 and treats 404 as already absent" do
+      Tesla.Mock.mock(fn %{method: :delete, url: url} ->
+        assert url == "http://keycloak/manage/users/kc-1/federated-identity/github"
+        {:ok, %Tesla.Env{status: 204, body: %{}}}
+      end)
+
+      assert {:ok, "kc-1"} =
+               Rbac.Api.OIDC.remove_federated_identity(tesla_client(), "kc-1", "github")
+
+      Tesla.Mock.mock(fn %{method: :delete} ->
+        {:ok, %Tesla.Env{status: 404, body: %{"errorMessage" => "not found"}}}
+      end)
+
+      assert {:ok, "kc-1"} =
+               Rbac.Api.OIDC.remove_federated_identity(tesla_client(), "kc-1", "github")
+    end
+
+    test "returns error on server failure" do
+      Tesla.Mock.mock(fn %{method: :delete} ->
+        {:ok, %Tesla.Env{status: 500, body: %{"errorMessage" => "boom"}}}
+      end)
+
+      assert {:error, "boom"} =
+               Rbac.Api.OIDC.remove_federated_identity(tesla_client(), "kc-1", "github")
+    end
+  end
+
+  describe "set_federated_identity/3" do
+    test "deletes then posts the identity" do
+      test_pid = self()
+
+      Tesla.Mock.mock(fn
+        %{method: :delete, url: url} ->
+          send(test_pid, {:delete, url})
+          {:ok, %Tesla.Env{status: 204, body: %{}}}
+
+        %{method: :post, url: url, body: body} ->
+          send(test_pid, {:post, url, body})
+          {:ok, %Tesla.Env{status: 200, body: %{}}}
+      end)
+
+      identity = %{identityProvider: "github", userId: "10001", userName: "octocat"}
+
+      assert {:ok, "kc-1"} =
+               Rbac.Api.OIDC.set_federated_identity(tesla_client(), "kc-1", identity)
+
+      assert_received {:delete, delete_url}
+      assert_received {:post, post_url, post_body}
+
+      assert delete_url == "http://keycloak/manage/users/kc-1/federated-identity/github"
+      assert post_url == delete_url
+      assert Jason.decode!(post_body)["userId"] == "10001"
+    end
+
+    test "returns error when the post fails" do
+      Tesla.Mock.mock(fn
+        %{method: :delete} -> {:ok, %Tesla.Env{status: 204, body: %{}}}
+        %{method: :post} -> {:ok, %Tesla.Env{status: 500, body: %{"errorMessage" => "boom"}}}
+      end)
+
+      identity = %{identityProvider: "github", userId: "10001", userName: "octocat"}
+
+      assert {:error, "boom"} =
+               Rbac.Api.OIDC.set_federated_identity(tesla_client(), "kc-1", identity)
+    end
+  end
+
+  describe "get_oidc_federeted_identities/1" do
+    test "skips identities with a pending claim sync request" do
+      {:ok, user} = Support.Factories.RbacUser.insert()
+
+      {:ok, github_rha} =
+        Support.Members.insert_repo_host_account(
+          user_id: user.id,
+          repo_host: "github",
+          github_uid: "70001",
+          login: "octocat",
+          name: "Octo",
+          permission_scope: "user:email"
+        )
+
+      {:ok, _gitlab_rha} =
+        Support.Members.insert_repo_host_account(
+          user_id: user.id,
+          repo_host: "gitlab",
+          github_uid: "70002",
+          login: "octocat-gl",
+          name: "Octo",
+          permission_scope: "user:email"
+        )
+
+      identities = Rbac.Api.OIDC.get_oidc_federeted_identities(user)
+      assert identities |> Enum.map(& &1.identityProvider) |> Enum.sort() == ["github", "gitlab"]
+
+      # a pending claim sync means the identity removals are not yet
+      # confirmed in Keycloak: the identity must not be pushed from here
+      Rbac.FrontRepo.FederatedIdentitySyncRequest.enqueue(github_rha, [Ecto.UUID.generate()])
+
+      identities = Rbac.Api.OIDC.get_oidc_federeted_identities(user)
+      assert Enum.map(identities, & &1.identityProvider) == ["gitlab"]
+    end
+  end
+
+  describe "get_federated_identities/2" do
+    test "returns the identity list on 200" do
+      identities = [
+        %{"identityProvider" => "github", "userId" => "10001", "userName" => "octocat"}
+      ]
+
+      Tesla.Mock.mock(fn %{method: :get, url: url} ->
+        assert url == "http://keycloak/manage/users/kc-1/federated-identity"
+        {:ok, %Tesla.Env{status: 200, body: identities}}
+      end)
+
+      assert {:ok, ^identities} = Rbac.Api.OIDC.get_federated_identities(tesla_client(), "kc-1")
+    end
+
+    test "returns error on server failure" do
+      Tesla.Mock.mock(fn %{method: :get} ->
+        {:ok, %Tesla.Env{status: 500, body: %{"errorMessage" => "boom"}}}
+      end)
+
+      assert {:error, "boom"} = Rbac.Api.OIDC.get_federated_identities(tesla_client(), "kc-1")
+    end
+  end
+
+  defp tesla_client do
+    Tesla.client([{Tesla.Middleware.BaseUrl, "http://keycloak/manage"}, Tesla.Middleware.JSON])
+  end
 end

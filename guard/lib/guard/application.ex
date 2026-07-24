@@ -72,7 +72,12 @@ defmodule Guard.Application do
     instance_config_api = System.get_env("INSTANCE_CONFIG_API") || "false"
     organization_cleaner = System.get_env("START_ORGANIZATION_CLEANER") || "false"
     mcp_auth_code_cleaner = System.get_env("START_MCP_AUTH_CODE_CLEANER") || "false"
+    duplicate_link_auditor = System.get_env("START_DUPLICATE_LINK_AUDITOR") || "false"
     cli_auth_code_cleaner = System.get_env("START_CLI_AUTH_CODE_CLEANER") || "false"
+
+    # no `|| "false"`: the catch-all clause treats nil as disabled, and the
+    # extra branch would push this function past the credo complexity limit
+    federated_identity_sync_drainer = System.get_env("START_FEDERATED_IDENTITY_SYNC_DRAINER")
 
     services
     |> add_grpc_service(grpc)
@@ -82,7 +87,9 @@ defmodule Guard.Application do
     |> add_rabbit_workers(rabbit)
     |> add_organization_cleaner(organization_cleaner)
     |> add_mcp_auth_code_cleaner(mcp_auth_code_cleaner)
+    |> add_duplicate_link_auditor(duplicate_link_auditor)
     |> add_cli_auth_code_cleaner(cli_auth_code_cleaner)
+    |> add_federated_identity_sync_drainer(federated_identity_sync_drainer)
   end
 
   defp add_grpc_service(services, "true") do
@@ -142,6 +149,18 @@ defmodule Guard.Application do
   end
 
   defp add_mcp_auth_code_cleaner(services, _), do: services
+
+  defp add_duplicate_link_auditor(services, "true") do
+    services ++ [{Guard.DuplicateLinkAuditor, []}]
+  end
+
+  defp add_duplicate_link_auditor(services, _), do: services
+
+  defp add_federated_identity_sync_drainer(services, "true") do
+    services ++ [{Guard.FederatedIdentitySyncDrainer, []}]
+  end
+
+  defp add_federated_identity_sync_drainer(services, _), do: services
 
   defp add_cli_auth_code_cleaner(services, "true") do
     services ++ [{Guard.CLIAuth.AuthCodeCleaner, []}]
