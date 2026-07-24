@@ -59,6 +59,12 @@ defmodule Guard.OIDC.User do
     end
   end
 
+  def get_federated_identities(oidc_user_id) do
+    with {:ok, client} <- Guard.Api.OIDC.client() do
+      Guard.Api.OIDC.get_federated_identities(client, oidc_user_id)
+    end
+  end
+
   def create_with_oidc_data(%{oidc_user_id: oidc_user_id}) do
     with {:ok, oidc_user} <- get_oidc_user(oidc_user_id),
          {:ok, github, mode} <- get_github_data(oidc_user.github),

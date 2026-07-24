@@ -98,6 +98,8 @@ spec:
               value: "true"
             - name: START_DUPLICATE_LINK_AUDITOR
               value: "true"
+            - name: START_FEDERATED_IDENTITY_SYNC_DRAINER
+              value: "true"
             - name: OIDC_DISCOVERY_URL
               value: "$(KC_ROOT_URL)/realms/$(KC_REALM)/.well-known/openid-configuration"
             - name: OIDC_MANAGE_URL

@@ -147,6 +147,12 @@ config :guard, Guard.DuplicateLinkAuditor,
     {"0 * * * *", {Guard.DuplicateLinkAuditor, :process, []}}
   ]
 
+config :guard, Guard.FederatedIdentitySyncDrainer,
+  jobs: [
+    # Every minute
+    {"* * * * *", {Guard.FederatedIdentitySyncDrainer, :process, []}}
+  ]
+
 config :guard, Guard.CLIAuth.AuthCodeCleaner,
   jobs: [
     # Every 30 minutes
