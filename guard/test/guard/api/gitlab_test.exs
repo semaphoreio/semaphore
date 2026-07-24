@@ -63,5 +63,72 @@ defmodule Guard.Api.GitlabTest do
 
       assert updated_rha.token == "new_token"
     end
+
+    test "rate-limited token refresh is a transient failure, not a revocation",
+         %{repo_host_account: rha} do
+      rha = Map.put(rha, :token_expires_at, Support.Members.invalid_expires_at())
+
+      for status <- [408, 429] do
+        Tesla.Mock.mock_global(fn
+          %{method: :post, url: "https://gitlab.com/oauth/token"} ->
+            {:ok, %Tesla.Env{status: status, body: %{}}}
+        end)
+
+        assert {:error, :failed} = Gitlab.user_token(rha)
+      end
+    end
+
+    test "rejected token refresh still classifies as revoked", %{repo_host_account: rha} do
+      rha = Map.put(rha, :token_expires_at, Support.Members.invalid_expires_at())
+
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://gitlab.com/oauth/token"} ->
+          {:ok, %Tesla.Env{status: 400, body: %{}}}
+      end)
+
+      assert {:error, :revoked} = Gitlab.user_token(rha)
+    end
+  end
+
+  describe "validate_token/1" do
+    test "returns valid for successful responses with a live expiry" do
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://gitlab.com/oauth/token/info"} ->
+          {:ok, %Tesla.Env{status: 200, body: %{"expires_in" => 3600}}}
+      end)
+
+      assert {:ok, true} = Gitlab.validate_token("token")
+    end
+
+    test "returns invalid only for auth errors" do
+      for status <- [401, 403] do
+        Tesla.Mock.mock_global(fn
+          %{method: :get, url: "https://gitlab.com/oauth/token/info"} ->
+            {:ok, %Tesla.Env{status: status, body: %{}}}
+        end)
+
+        assert {:ok, false} = Gitlab.validate_token("token")
+      end
+    end
+
+    test "returns transient error for provider-side failures" do
+      for status <- [429, 500, 503] do
+        Tesla.Mock.mock_global(fn
+          %{method: :get, url: "https://gitlab.com/oauth/token/info"} ->
+            {:ok, %Tesla.Env{status: status, body: %{}}}
+        end)
+
+        assert {:error, :transient} = Gitlab.validate_token("token")
+      end
+    end
+
+    test "returns transient error for transport failures" do
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://gitlab.com/oauth/token/info"} ->
+          {:error, :timeout}
+      end)
+
+      assert {:error, :transient} = Gitlab.validate_token("token")
+    end
   end
 end

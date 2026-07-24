@@ -38,7 +38,10 @@ module RepoHost::Github
       validate_token_presence!
 
       app_client.check_application_authorization(@token).present?
-    rescue Octokit::ServiceUnavailable, Octokit::InternalServerError => exception
+    rescue Octokit::ServiceUnavailable, Octokit::InternalServerError,
+           Octokit::TooManyRequests => exception
+      # Transient upstream failures (5xx, rate limits) must not classify the
+      # token as revoked; raising keeps the caller's revoke status unchanged.
       handle_octokit_exceptions(exception)
     rescue ::RepoHost::RemoteException::Unauthorized
       false
