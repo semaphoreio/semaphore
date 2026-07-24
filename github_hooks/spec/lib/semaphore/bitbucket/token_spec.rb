@@ -53,8 +53,8 @@ RSpec.describe Semaphore::Bitbucket::Token do
     let(:account) { FactoryBot.create(:bitbucket_account) }
 
     before do
-      allow(Semaphore::Bitbucket::Credentials).to receive(:app_id).and_return("app-id")
-      allow(Semaphore::Bitbucket::Credentials).to receive(:secret_id).and_return("secret-id")
+      allow(Semaphore::Bitbucket::Credentials).to receive_messages(:app_id => "app-id",
+                                                                   :secret_id => "secret-id")
     end
 
     def stub_refresh(status, body = "{}")
