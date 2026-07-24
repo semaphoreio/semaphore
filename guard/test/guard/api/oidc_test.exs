@@ -1,5 +1,5 @@
 defmodule Guard.Api.OIDCTest do
-  use ExUnit.Case, async: true
+  use Guard.RepoCase, async: true
 
   alias Guard.Api.OIDC
 
@@ -97,6 +97,61 @@ defmodule Guard.Api.OIDCTest do
       end)
 
       assert {:error, "boom"} = OIDC.set_federated_identity(client(), @oidc_user_id, @identity)
+    end
+  end
+
+  describe "get_federated_identities/2" do
+    test "returns the identity list on 200" do
+      identities = [
+        %{"identityProvider" => "github", "userId" => "10001", "userName" => "octocat"}
+      ]
+
+      Tesla.Mock.mock(fn %{method: :get, url: url} ->
+        assert url == "#{@base_url}/users/#{@oidc_user_id}/federated-identity"
+        {:ok, %Tesla.Env{status: 200, body: identities}}
+      end)
+
+      assert {:ok, ^identities} = OIDC.get_federated_identities(client(), @oidc_user_id)
+    end
+
+    test "returns error on server failure" do
+      Tesla.Mock.mock(fn %{method: :get} ->
+        {:ok, %Tesla.Env{status: 500, body: %{"errorMessage" => "boom"}}}
+      end)
+
+      assert {:error, "boom"} = OIDC.get_federated_identities(client(), @oidc_user_id)
+    end
+  end
+
+  describe "get_oidc_federeted_identities/1" do
+    test "skips identities with a pending claim sync request" do
+      user_id = Ecto.UUID.generate()
+
+      {:ok, github_rha} =
+        Support.Members.insert_repo_host_account(
+          user_id: user_id,
+          repo_host: "github",
+          github_uid: "70001",
+          login: "octocat"
+        )
+
+      {:ok, _gitlab_rha} =
+        Support.Members.insert_repo_host_account(
+          user_id: user_id,
+          repo_host: "gitlab",
+          github_uid: "70002",
+          login: "octocat-gl"
+        )
+
+      identities = OIDC.get_oidc_federeted_identities(%{id: user_id})
+      assert identities |> Enum.map(& &1.identityProvider) |> Enum.sort() == ["github", "gitlab"]
+
+      # a pending claim sync means the identity removals are not yet
+      # confirmed in Keycloak: the identity must not be pushed from here
+      Guard.FrontRepo.FederatedIdentitySyncRequest.enqueue(github_rha, [Ecto.UUID.generate()])
+
+      identities = OIDC.get_oidc_federeted_identities(%{id: user_id})
+      assert Enum.map(identities, & &1.identityProvider) == ["gitlab"]
     end
   end
 end

@@ -120,6 +120,24 @@ defmodule Guard.Api.OIDC do
     end
   end
 
+  def get_federated_identities(client, oidc_user_id) do
+    case Tesla.get(client, "/users/" <> oidc_user_id <> "/federated-identity") do
+      {:ok, res} ->
+        if res.status in 200..299 do
+          {:ok, res.body}
+        else
+          Logger.error(
+            "[OIDC API] Error fetching federated identities for user #{oidc_user_id}: #{inspect(res.body)}"
+          )
+
+          {:error, "#{res.body["errorMessage"]}"}
+        end
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
   def remove_federated_identity(client, oidc_user_id, provider) do
     case Tesla.delete(client, "/users/" <> oidc_user_id <> "/federated-identity/" <> provider) do
       {:ok, res} ->
@@ -160,8 +178,19 @@ defmodule Guard.Api.OIDC do
       {:ok, list} ->
         list
         |> Enum.map(&%{identityProvider: &1.repo_host, userId: &1.github_uid, userName: &1.login})
+        |> Enum.reject(&pending_claim_sync?/1)
         |> map_federated_identities()
     end
+  end
+
+  # A pending sync request means a claim's identity removals are not yet
+  # confirmed in Keycloak. Pushing the identity now could attach it to two
+  # Keycloak users; the drainer pushes it once the removals are done.
+  defp pending_claim_sync?(identity) do
+    Guard.FrontRepo.FederatedIdentitySyncRequest.pending?(
+      identity.identityProvider,
+      identity.userId
+    )
   end
 
   @spec get_oidc_credential(Keyword.t()) :: map() | nil
