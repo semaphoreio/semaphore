@@ -2,6 +2,7 @@ defmodule Ppl.Queues.Model.QueuesQueries.Test do
   use ExUnit.Case
 
   alias Ppl.Queues.Model.QueuesQueries
+  alias Ppl.Queues.Model.Queues
 
   setup do
     Test.Helpers.truncate_db()
@@ -254,5 +255,28 @@ defmodule Ppl.Queues.Model.QueuesQueries.Test do
     assert {:ok, queue_1} = QueuesQueries.insert_queue(params)
 
     assert {:ok, queue_1} == QueuesQueries.get_or_insert_queue(params)
+  end
+
+  # Long / implicit queue names (issue #10098)
+
+  test "get_or_insert_queue() shortens an over-long implicit name so the insert succeeds" do
+    long_label = String.duplicate("x", 300)
+    params = %{name: "#{long_label}-.semaphore/semaphore.yml", scope: "project",
+               project_id: UUID.uuid4, organization_id: UUID.uuid4, user_generated: false}
+
+    assert {:ok, queue} = QueuesQueries.get_or_insert_queue(params)
+    assert String.length(queue.name) <= Queues.max_name_length()
+  end
+
+  test "get_or_insert_queue() reuses the same queue for a repeated over-long name" do
+    long_label = String.duplicate("x", 300)
+    params = %{name: "#{long_label}-.semaphore/semaphore.yml", scope: "project",
+               project_id: UUID.uuid4, organization_id: UUID.uuid4, user_generated: false}
+
+    assert {:ok, %{queue_id: queue_id}} = QueuesQueries.get_or_insert_queue(params)
+    # a second identical request must map to the same queue, not create a duplicate
+    assert {:ok, %{queue_id: ^queue_id}} = QueuesQueries.get_or_insert_queue(params)
+    # and it is findable via the raw (un-normalized) params too
+    assert {:ok, %{queue_id: ^queue_id}} = QueuesQueries.get_by_name_and_id(params)
   end
 end
