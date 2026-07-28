@@ -11,10 +11,10 @@ defmodule GithubNotifier.Utils.Url.Test do
     GrpcMock.stub(
       OrganizationMock,
       :describe,
-      InternalApi.Organization.DescribeResponse.new(
+      struct(InternalApi.Organization.DescribeResponse,
         status: Support.Factories.status_ok(),
         organization:
-          InternalApi.Organization.Organization.new(
+          struct(InternalApi.Organization.Organization,
             org_username: "renderedtext",
             org_id: "123"
           )
