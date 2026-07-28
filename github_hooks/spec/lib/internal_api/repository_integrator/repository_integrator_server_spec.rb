@@ -475,6 +475,63 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
         end
       end
 
+      context "when a revoked account's uid is actively held by another account" do
+        let(:token_valid) { true }
+        let(:permission_scope) { "repo,user:email" }
+
+        before do
+          @project.repo_host_account.update!(:revoked => true)
+
+          FactoryBot.create(
+            :repo_host_account,
+            :repo_host => @project.repo_host_account.repo_host,
+            :github_uid => @project.repo_host_account.github_uid
+          )
+        end
+
+        it "keeps the account revoked and returns no connection", :aggregate_failures do
+          response = server.check_token(@req, call)
+
+          expect(@project.repo_host_account.reload.revoked).to be(true)
+          expect(response.valid).to be(false)
+          expect(response.integration_scope).to eq(:NO_CONNECTION)
+        end
+      end
+
+      context "when a revoked account's uid is free" do
+        let(:token_valid) { true }
+        let(:permission_scope) { "repo,user:email" }
+
+        before do
+          @project.repo_host_account.update!(:revoked => true)
+        end
+
+        it "un-revokes the account", :aggregate_failures do
+          response = server.check_token(@req, call)
+
+          expect(@project.repo_host_account.reload.revoked).to be(false)
+          expect(response.valid).to be(true)
+          expect(response.integration_scope).to eq(:FULL_CONNECTION)
+        end
+      end
+
+      context "when the token check is rate limited" do
+        let(:permission_scope) { "repo,user:email" }
+
+        before do
+          allow_any_instance_of(RepoHost::Github::Client).to receive(:token_valid?)
+            .and_raise(RepoHost::RemoteException::TooManyRequests)
+        end
+
+        it "raises and keeps the revoke status unchanged", :aggregate_failures do
+          expect do
+            server.check_token(@req, call)
+          end.to raise_error(RepoHost::RemoteException::TooManyRequests)
+
+          expect(@project.repo_host_account.reload.revoked).to be(false)
+        end
+      end
+
       context "when there is no project" do
         it "returns project not found error" do
           req = InternalApi::RepositoryIntegrator::CheckTokenRequest.new(
@@ -577,6 +634,22 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
       let(:validation_state) { :valid }
 
       it "marks connection as not revoked" do
+        server.send(:update_revoke_status, bitbucket_account)
+        expect(bitbucket_account.reload.revoked).to be(false)
+      end
+    end
+
+    # Only GitHub accounts are gated on re-activation; Bitbucket links keep
+    # the previous behavior even when the uid is actively held elsewhere.
+    context "when token is valid and the uid is actively held by another account" do
+      let(:revoked) { true }
+      let(:validation_state) { :valid }
+
+      before do
+        FactoryBot.create(:bitbucket_account, :github_uid => bitbucket_account.github_uid)
+      end
+
+      it "still un-revokes the bitbucket connection" do
         server.send(:update_revoke_status, bitbucket_account)
         expect(bitbucket_account.reload.revoked).to be(false)
       end
