@@ -273,4 +273,159 @@ defmodule Rbac.FrontRepo.RepoHostAccountTest do
       assert updated.revoked == false
     end
   end
+
+  # Ecto's query logger prints bound parameters, so a captured log always
+  # contains the raw token. These assertions cover this module's own messages.
+  defp app_log(log) do
+    log
+    |> String.split("\n")
+    |> Enum.filter(&(&1 =~ "RepoHostAccount"))
+    |> Enum.join("\n")
+  end
+
+  describe "logging" do
+    import ExUnit.CaptureLog
+
+    test "a token refresh logs the changed field names, never the token" do
+      {:ok, mine} =
+        insert_full_rha(
+          github_uid: "10020",
+          login: "logger",
+          permission_scope: "repo,user:email",
+          token: "old-token"
+        )
+
+      log =
+        capture_log(fn ->
+          assert {:ok, _} =
+                   RepoHostAccount.update_repo_host_account(
+                     mine.user_id,
+                     :github,
+                     %{
+                       github_uid: "10020",
+                       login: "logger",
+                       name: "The Octocat",
+                       token: "gho_supersecrettoken",
+                       refresh_token: "ghr_supersecretrefresh",
+                       permission_scope: "repo,user:email"
+                     },
+                     reset: true
+                   )
+        end)
+
+      assert app_log(log) =~ "Successfully updated RepoHostAccount for #{mine.user_id}"
+      assert app_log(log) =~ ":token"
+      refute app_log(log) =~ "gho_supersecrettoken"
+      refute app_log(log) =~ "ghr_supersecretrefresh"
+      refute app_log(log) =~ "old-token"
+    end
+
+    test "a reset logs the real uid and login transition" do
+      {:ok, mine} =
+        insert_full_rha(
+          github_uid: "10021",
+          login: "before",
+          permission_scope: "repo,user:email",
+          token: "old-token"
+        )
+
+      log =
+        capture_log(fn ->
+          assert {:ok, _} =
+                   RepoHostAccount.update_repo_host_account(
+                     mine.user_id,
+                     :github,
+                     %{
+                       github_uid: "10022",
+                       login: "after",
+                       name: "The Octocat",
+                       token: "gho_supersecrettoken",
+                       permission_scope: "repo,user:email"
+                     },
+                     reset: true
+                   )
+        end)
+
+      assert app_log(log) =~ "uid 10021 -> 10022"
+      assert app_log(log) =~ "login before -> after"
+      refute app_log(log) =~ "gho_supersecrettoken"
+      refute app_log(log) =~ "old-token"
+    end
+
+    test "a rejected reset logs the changeset errors and the attempted transition" do
+      {:ok, _} = insert_full_rha(github_uid: "10023", login: "holder")
+
+      {:ok, mine} =
+        insert_full_rha(
+          github_uid: "10024",
+          login: "claimer",
+          permission_scope: "repo,user:email"
+        )
+
+      log =
+        capture_log(fn ->
+          assert {:error, %Ecto.Changeset{}} =
+                   RepoHostAccount.update_repo_host_account(
+                     mine.user_id,
+                     :github,
+                     %{
+                       github_uid: "10023",
+                       login: "claimer",
+                       name: "The Octocat",
+                       token: "gho_supersecrettoken",
+                       permission_scope: "repo,user:email"
+                     },
+                     reset: true
+                   )
+        end)
+
+      assert app_log(log) =~ "Failed to reset RepoHostAccount for #{mine.user_id}"
+      assert app_log(log) =~ "uid 10024 -> 10023"
+      assert app_log(log) =~ "already connected to another Semaphore user"
+      refute app_log(log) =~ "gho_supersecrettoken"
+    end
+
+    test "a link missing required identity fields logs which ones are missing" do
+      log =
+        capture_log(fn ->
+          assert {:error, :invalid_data} =
+                   RepoHostAccount.update_repo_host_account(
+                     Ecto.UUID.generate(),
+                     :github,
+                     %{github_uid: nil, login: nil, token: "gho_supersecrettoken"},
+                     reset: true
+                   )
+        end)
+
+      assert app_log(log) =~ "missing [:github_uid, :login]"
+      refute app_log(log) =~ "gho_supersecrettoken"
+    end
+  end
+
+  describe "inspecting a link" do
+    test "credentials are redacted" do
+      account = %RepoHostAccount{
+        login: "octocat",
+        github_uid: "10001",
+        token: "gho_supersecrettoken",
+        refresh_token: "ghr_supersecretrefresh"
+      }
+
+      inspected = inspect(account)
+
+      refute inspected =~ "gho_supersecrettoken"
+      refute inspected =~ "ghr_supersecretrefresh"
+      assert inspected =~ "octocat"
+      assert inspected =~ "10001"
+    end
+
+    test "credentials are redacted when nested in a changeset" do
+      account = %RepoHostAccount{login: "octocat", github_uid: "10001"}
+
+      changeset =
+        Ecto.Changeset.cast(account, %{token: "gho_supersecrettoken"}, [:token, :login])
+
+      refute inspect(changeset) =~ "gho_supersecrettoken"
+    end
+  end
 end
