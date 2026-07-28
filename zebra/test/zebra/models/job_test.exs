@@ -160,7 +160,7 @@ defmodule Zebra.Models.JobTest do
 
       new_updated_at = job.updated_at
 
-      assert old_updated_at < new_updated_at
+      assert DateTime.compare(old_updated_at, new_updated_at) == :lt
     end
 
     test "it updates the fields" do

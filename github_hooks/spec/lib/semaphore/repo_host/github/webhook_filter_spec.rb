@@ -47,27 +47,163 @@ RSpec.describe Semaphore::RepoHost::Github::WebhookFilter do
     context "issue_comment" do
       let(:headers) { { "X-Github-Event" => "issue_comment" } }
 
-      context "issue comment" do
-        let(:payload) { '{"issue": {}, "comment": {"body": "/sem-approve"}}' }
+      context "issue comment (not a pull request)" do
+        let(:payload) { '{"action": "created", "issue": {}, "comment": {"body": "/sem-approve"}}' }
 
         it "returns true" do
           expect(filter.unsupported_webhook?).to eql(true)
         end
       end
 
-      context "pr comment with unsupported command" do
-        let(:payload) { '{"issue": {"pull_request": {"url": ""}}, "comment": {"body": "/foo"}}' }
+      context "pr comment with unsupported command only" do
+        let(:payload) { '{"action": "created", "issue": {"pull_request": {"url": ""}}, "comment": {"body": "/foo"}}' }
 
         it "returns true" do
           expect(filter.unsupported_webhook?).to eql(true)
         end
       end
 
-      context "pr comment with supported command" do
-        let(:payload) { '{"issue": {"pull_request": {"url": ""}}, "comment": {"body": "asd\r\n\r\n/sem-approve"}}' }
+      context "pr comment that is exactly the command" do
+        let(:payload) { '{"action": "created", "issue": {"pull_request": {"url": ""}}, "comment": {"body": "/sem-approve"}}' }
 
         it "returns false" do
           expect(filter.unsupported_webhook?).to eql(false)
+        end
+      end
+
+      context "pr comment with prose plus a command line" do
+        let(:payload) { '{"action": "created", "issue": {"pull_request": {"url": ""}}, "comment": {"body": "asd\r\n\r\n/sem-approve"}}' }
+
+        it "returns true (whole comment must be just the command)" do
+          expect(filter.unsupported_webhook?).to eql(true)
+        end
+      end
+
+      context "pr comment with --include-cache alias" do
+        let(:payload) { '{"action": "created", "issue": {"pull_request": {"url": ""}}, "comment": {"body": "/sem-approve --include-cache"}}' }
+
+        it "returns false" do
+          expect(filter.unsupported_webhook?).to eql(false)
+        end
+      end
+
+      context "pr comment with inline sem-approve command" do
+        let(:payload) { '{"action": "created", "issue": {"pull_request": {"url": ""}}, "comment": {"body": "LGTM /sem-approve"}}' }
+
+        it "returns true (command must start the line)" do
+          expect(filter.unsupported_webhook?).to eql(true)
+        end
+      end
+
+      context "pr comment with sem-approve inside a blockquote" do
+        let(:payload) { '{"action": "created", "issue": {"pull_request": {"url": ""}}, "comment": {"body": "> /sem-approve --include-secrets"}}' }
+
+        it "returns true (quoted command is inert)" do
+          expect(filter.unsupported_webhook?).to eql(true)
+        end
+      end
+
+      context "pr comment with sem-approve inside a fenced code block" do
+        let(:payload) { '{"action": "created", "issue": {"pull_request": {"url": ""}}, "comment": {"body": "```\n/sem-approve\n```"}}' }
+
+        it "returns true (fenced command is inert)" do
+          expect(filter.unsupported_webhook?).to eql(true)
+        end
+      end
+
+      context "pr comment with sem-approve inside a four-backtick fence with a triple-backtick line" do
+        let(:payload) { '{"action": "created", "issue": {"pull_request": {"url": ""}}, "comment": {"body": "````\n```\n/sem-approve --include-secrets\n````"}}' }
+
+        it "returns true (nested/longer fence is inert)" do
+          expect(filter.unsupported_webhook?).to eql(true)
+        end
+      end
+
+      context "pr comment with sem-approve inside an HTML comment" do
+        let(:payload) { '{"action": "created", "issue": {"pull_request": {"url": ""}}, "comment": {"body": "<!-- /sem-approve --include-secrets -->"}}' }
+
+        it "returns true (invisible HTML-comment command is inert)" do
+          expect(filter.unsupported_webhook?).to eql(true)
+        end
+      end
+
+      context "pr comment with sem-approve and trailing text" do
+        let(:payload) { '{"action": "created", "issue": {"pull_request": {"url": ""}}, "comment": {"body": "/sem-approve please rerun"}}' }
+
+        it "returns true (unknown trailing tokens fail closed)" do
+          expect(filter.unsupported_webhook?).to eql(true)
+        end
+      end
+
+      context "pr comment with unsupported command in multiline body" do
+        let(:payload) { '{"action": "created", "issue": {"pull_request": {"url": ""}}, "comment": {"body": "asd\r\n\r\n/sem-unknown"}}' }
+
+        it "returns true" do
+          expect(filter.unsupported_webhook?).to eql(true)
+        end
+      end
+
+      context "pr comment with sem-approve options" do
+        let(:payload) { '{"action": "created", "issue": {"pull_request": {"url": ""}}, "comment": {"body": "/sem-approve --include-secrets --enable-cache"}}' }
+
+        it "returns false" do
+          expect(filter.unsupported_webhook?).to eql(false)
+        end
+      end
+
+      context "pr comment with sem-approve options in reverse order" do
+        let(:payload) { '{"action": "created", "issue": {"pull_request": {"url": ""}}, "comment": {"body": "/sem-approve --enable-cache --include-secrets"}}' }
+
+        it "returns false" do
+          expect(filter.unsupported_webhook?).to eql(false)
+        end
+      end
+
+      context "pr comment with sem-approve options separated by tabs" do
+        let(:payload) { '{"action": "created", "issue": {"pull_request": {"url": ""}}, "comment": {"body": "/sem-approve\t--include-secrets"}}' }
+
+        it "returns false" do
+          expect(filter.unsupported_webhook?).to eql(false)
+        end
+      end
+
+      context "pr comment with multiple sem-approve options separated by tabs" do
+        let(:payload) { '{"action": "created", "issue": {"pull_request": {"url": ""}}, "comment": {"body": "/sem-approve\t--include-secrets\t--enable-cache"}}' }
+
+        it "returns false" do
+          expect(filter.unsupported_webhook?).to eql(false)
+        end
+      end
+
+      context "pr comment with sem-approve options separated by punctuation" do
+        let(:payload) { '{"action": "created", "issue": {"pull_request": {"url": ""}}, "comment": {"body": "/sem-approve,--include-secrets"}}' }
+
+        it "returns true" do
+          expect(filter.unsupported_webhook?).to eql(true)
+        end
+      end
+
+      context "pr comment with sem-approve and unsupported option" do
+        let(:payload) { '{"action": "created", "issue": {"pull_request": {"url": ""}}, "comment": {"body": "/sem-approve --unsupported-option"}}' }
+
+        it "returns true (unknown option fails closed)" do
+          expect(filter.unsupported_webhook?).to eql(true)
+        end
+      end
+
+      context "edited pr comment with a valid command" do
+        let(:payload) { '{"action": "edited", "issue": {"pull_request": {"url": ""}}, "comment": {"body": "/sem-approve --include-secrets"}}' }
+
+        it "returns true (edits do not approve)" do
+          expect(filter.unsupported_webhook?).to eql(true)
+        end
+      end
+
+      context "deleted pr comment with a valid command" do
+        let(:payload) { '{"action": "deleted", "issue": {"pull_request": {"url": ""}}, "comment": {"body": "/sem-approve"}}' }
+
+        it "returns true (deletes do not approve)" do
+          expect(filter.unsupported_webhook?).to eql(true)
         end
       end
 
