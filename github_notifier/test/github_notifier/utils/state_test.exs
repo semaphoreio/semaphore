@@ -7,7 +7,7 @@ defmodule GithubNotifier.Utils.State.Test do
 
   test "when block passed => return success" do
     block =
-      Block.new(
+      struct(Block,
         state: :DONE,
         result: :PASSED
       )
@@ -17,7 +17,7 @@ defmodule GithubNotifier.Utils.State.Test do
 
   test "when block failed => return failed" do
     block =
-      Block.new(
+      struct(Block,
         state: :DONE,
         result: :FAILED
       )
@@ -26,19 +26,19 @@ defmodule GithubNotifier.Utils.State.Test do
   end
 
   test "when block is running => return pending" do
-    block = Block.new(state: :RUNNING)
+    block = struct(Block, state: :RUNNING)
 
     assert State.extract(block) == {"pending", "The build is pending on Semaphore 2.0."}
   end
 
   test "when pipeline passed and no tests => return success and default build passed message" do
     pipeline =
-      Pipeline.new(
+      struct(Pipeline,
         state: :DONE,
         result: :PASSED
       )
 
-    pipeline_summary = Summary.new()
+    pipeline_summary = struct(Summary)
 
     assert State.extract_with_summary(pipeline, pipeline_summary) ==
              {"success", "The build passed on Semaphore 2.0."}
@@ -46,13 +46,13 @@ defmodule GithubNotifier.Utils.State.Test do
 
   test "when pipeline passed and there are non-zero passed tests => return success and number of passed tests" do
     pipeline =
-      Pipeline.new(
+      struct(Pipeline,
         state: :DONE,
         result: :PASSED
       )
 
     pipeline_summary =
-      Summary.new(
+      struct(Summary,
         total: 100,
         passed: 100
       )
@@ -63,12 +63,12 @@ defmodule GithubNotifier.Utils.State.Test do
 
   test "when pipeline failed and no tests => return failure and default build passed message" do
     pipeline =
-      Pipeline.new(
+      struct(Pipeline,
         state: :DONE,
         result: :FAILED
       )
 
-    pipeline_summary = Summary.new()
+    pipeline_summary = struct(Summary)
 
     assert State.extract_with_summary(pipeline, pipeline_summary) ==
              {"failure", "The build failed on Semaphore 2.0."}
@@ -76,13 +76,13 @@ defmodule GithubNotifier.Utils.State.Test do
 
   test "when pipeline failed and there are non-zero failed tests => return failure and number of failed tests" do
     pipeline =
-      Pipeline.new(
+      struct(Pipeline,
         state: :DONE,
         result: :FAILED
       )
 
     pipeline_summary =
-      Summary.new(
+      struct(Summary,
         total: 100,
         passed: 50,
         failed: 30,
@@ -95,13 +95,13 @@ defmodule GithubNotifier.Utils.State.Test do
 
   test "when pipeline failed and there are zero failed tests and non-zero passed tests => return failure and default build failed message" do
     pipeline =
-      Pipeline.new(
+      struct(Pipeline,
         state: :DONE,
         result: :FAILED
       )
 
     pipeline_summary =
-      Summary.new(
+      struct(Summary,
         total: 100,
         passed: 100,
         failed: 0,
