@@ -8,7 +8,8 @@ defmodule GithubNotifier.Services.PipelineStartedNotifier do
     exchange: "pipeline_state_exchange",
     routing_key: "running",
     service: "github_notifier.pipeline_started_notifier",
-    connection_id: :block_notifier
+    connection_id: :block_notifier,
+    dead_letter_queue: Application.get_env(:github_notifier, :tackle_dead_letter_queue, true)
 
   def handle_message(message) do
     Watchman.benchmark("pipeline_started_notifier.duration", fn ->

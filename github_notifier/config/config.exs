@@ -1,5 +1,7 @@
 import Config
 
+config :logger, :console, metadata: [:request_id]
+
 config :github_notifier,
   pipeline_grpc_endpoint: "0.0.0.0:50052",
   projecthub_grpc_endpoint: "0.0.0.0:50052",
