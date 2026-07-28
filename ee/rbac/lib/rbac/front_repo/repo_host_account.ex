@@ -54,8 +54,8 @@ defmodule Rbac.FrontRepo.RepoHostAccount do
     field(:user_id, :binary_id)
     field(:name, :string)
     field(:permission_scope, :string)
-    field(:token, :string)
-    field(:refresh_token, :string)
+    field(:token, :string, redact: true)
+    field(:refresh_token, :string, redact: true)
     field(:token_expires_at, :utc_datetime)
     field(:revoked, :boolean, default: false)
 
@@ -159,9 +159,11 @@ defmodule Rbac.FrontRepo.RepoHostAccount do
   @spec update_repo_host_account(String.t() | nil, repo_host, map(), Keyword.t()) ::
           {:ok, Rbac.FrontRepo.RepoHostAccount.t()}
           | {:error, :invalid_data | Ecto.Changeset.t()}
-  def update_repo_host_account(user_id, _, %{github_uid: uid, login: login} = data, _opts)
+  def update_repo_host_account(user_id, _, %{github_uid: uid, login: login}, _opts)
       when is_nil(uid) or is_nil(login) do
-    Logger.error("Cannot update RepoHostAccount for #{user_id} with data #{inspect(data)}")
+    missing = for {key, nil} <- [github_uid: uid, login: login], do: key
+
+    Logger.error("Cannot update RepoHostAccount for #{user_id}: missing #{inspect(missing)}")
 
     {:error, :invalid_data}
   end
@@ -171,7 +173,7 @@ defmodule Rbac.FrontRepo.RepoHostAccount do
     repo_host = repo_host |> Atom.to_string()
 
     Logger.debug(
-      "Updating RepoHostAccount for #{user_id} with data #{inspect(data)} and opts #{inspect(opts)} #{inspect(repo_host)}"
+      "Updating RepoHostAccount for #{user_id} #{repo_host} with fields #{inspect(Map.keys(data))} and opts #{inspect(opts)}"
     )
 
     case get_for_user_by_repo_host(user_id, repo_host) do
@@ -401,18 +403,18 @@ defmodule Rbac.FrontRepo.RepoHostAccount do
     result = FrontRepo.update(changeset)
 
     case result do
-      {:ok, account} ->
-        account = if unrevoke?, do: release_revoked_uid_rows(account), else: account
+      {:ok, updated} ->
+        updated = if unrevoke?, do: release_revoked_uid_rows(updated), else: updated
 
         Logger.info(
-          "Successfully updated RepoHostAccount for #{account.user_id} from #{inspect(account)} to #{inspect(data)}"
+          "Successfully updated RepoHostAccount for #{updated.user_id} fields #{inspect(Map.keys(data))}"
         )
 
-        {:ok, account}
+        {:ok, updated}
 
       {:error, error} ->
         Logger.error(
-          "Failed to update RepoHostAccount for #{account.user_id} from #{inspect(account)} to #{inspect(data)} #{inspect(error)}"
+          "Failed to update RepoHostAccount for #{account.user_id} fields #{inspect(Map.keys(data))}: #{inspect(error.errors)}"
         )
 
         {:error, error}
@@ -422,7 +424,7 @@ defmodule Rbac.FrontRepo.RepoHostAccount do
   defp reset_account(account, data, reset: reset)
        when account.github_uid == data.github_uid or reset == false do
     Logger.debug(
-      "Skipping reset account for #{account.user_id} from #{inspect(account)} to #{inspect(data)}"
+      "Skipping reset account for #{account.user_id}, uid #{account.github_uid}, reset: #{reset}"
     )
 
     {:ok, account}
@@ -448,18 +450,22 @@ defmodule Rbac.FrontRepo.RepoHostAccount do
       |> FrontRepo.update()
 
     case result do
-      {:ok, account} ->
-        release_revoked_uid_rows(account)
+      {:ok, updated} ->
+        release_revoked_uid_rows(updated)
 
         Logger.warning(
-          "Successfully reset RepoHostAccount for #{account.user_id} from #{inspect(account)} to #{inspect(data)}"
+          "Successfully reset RepoHostAccount for #{updated.user_id}: " <>
+            "uid #{account.github_uid} -> #{updated.github_uid}, " <>
+            "login #{account.login} -> #{updated.login}"
         )
 
-        {:ok, account}
+        {:ok, updated}
 
       {:error, error} ->
         Logger.error(
-          "Failed to reset RepoHostAccount for #{account.user_id} from #{inspect(account)} to #{inspect(data)} #{inspect(error)}"
+          "Failed to reset RepoHostAccount for #{account.user_id}: " <>
+            "uid #{account.github_uid} -> #{Map.get(data, :github_uid)}, " <>
+            "login #{account.login} -> #{Map.get(data, :login)}: #{inspect(error.errors)}"
         )
 
         {:error, error}
