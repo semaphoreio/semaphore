@@ -141,12 +141,6 @@ config :guard, Guard.McpOAuth.AuthCodeCleaner,
     {"*/30 * * * *", {Guard.McpOAuth.AuthCodeCleaner, :process, []}}
   ]
 
-config :guard, Guard.DuplicateLinkAuditor,
-  jobs: [
-    # Every hour
-    {"0 * * * *", {Guard.DuplicateLinkAuditor, :process, []}}
-  ]
-
 config :guard, Guard.FederatedIdentitySyncDrainer,
   jobs: [
     # Every minute
