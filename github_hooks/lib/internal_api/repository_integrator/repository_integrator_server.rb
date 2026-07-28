@@ -6,6 +6,23 @@ module InternalApi
 
       rpc_metric_namespace "repository_integrators_api"
 
+      # A revoked link is not claimable until it has been revoked for this
+      # long. `revoked` is written by token-health checks, so a transient
+      # upstream failure (notably Octokit::Forbidden from secondary rate
+      # limits, which RepoHost::Github::Client#token_valid? maps to false) can
+      # briefly mark a healthy link revoked; the grace period gives it time to
+      # self-heal or be reconnected before another user can claim it.
+      # `updated_at` approximates the revocation time: it is bumped when the
+      # flag flips, and revoked rows receive no further writes from this
+      # service.
+      #
+      # Mirrors @revoked_claim_grace_seconds in
+      # guard/lib/guard/front_repo/repo_host_account.ex and
+      # ee/rbac/lib/rbac/front_repo/repo_host_account.ex — all three write
+      # repo_host_accounts in the shared `front` DB, and a mismatch means one
+      # service allows an un-revoke another refuses.
+      REVOKED_CLAIM_GRACE = 2.hours
+
       define_rpc :preheat_file_cache do |req, logger|
         project = ::Project.find(req.project_id)
 
@@ -156,7 +173,7 @@ module InternalApi
 
       def update_revoke_status(rha)
         if rha.repo_host == "github"
-          rha.update!(:revoked => !::RepoHost::Github::Client.new(rha.token).token_valid?)
+          update_revoked(rha, !::RepoHost::Github::Client.new(rha.token).token_valid?)
         end
 
         if rha.repo_host == "bitbucket"
@@ -172,6 +189,31 @@ module InternalApi
         end
 
         rha
+      end
+
+      # Re-activating a revoked GitHub account must not resurrect a duplicate
+      # link: the same uid may have been actively linked to another user while
+      # this row sat revoked.
+      def update_revoked(rha, revoked)
+        if !revoked && rha.revoked? && rha.github_uid.present? && uid_actively_held_by_other?(rha)
+          Rails.logger.info(
+            "Keeping repo_host_account #{rha.id} revoked: uid is actively held " \
+            "by another account, or by a link revoked within the grace period"
+          )
+        else
+          rha.update!(:revoked => revoked)
+        end
+      end
+
+      # Rows with a NULL updated_at (legacy, pre-timestamps) fall outside the
+      # window: `NULL > ?` is NULL in SQL, so a revoked row with no updated_at
+      # does not block a claim. Guard behaves identically.
+      def uid_actively_held_by_other?(rha)
+        ::RepoHostAccount
+          .where(:repo_host => rha.repo_host, :github_uid => rha.github_uid)
+          .where.not(:id => rha.id)
+          .where("revoked = false OR updated_at > ?", REVOKED_CLAIM_GRACE.ago)
+          .exists?
       end
 
       def extract_repository_name(full_name)
