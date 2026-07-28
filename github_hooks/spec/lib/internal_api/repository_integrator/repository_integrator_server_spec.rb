@@ -498,6 +498,60 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
         end
       end
 
+      context "when a revoked account's uid is held by a recently revoked account" do
+        let(:token_valid) { true }
+        let(:permission_scope) { "repo,user:email" }
+
+        before do
+          @project.repo_host_account.update!(:revoked => true)
+
+          FactoryBot.create(
+            :repo_host_account,
+            :repo_host => @project.repo_host_account.repo_host,
+            :github_uid => @project.repo_host_account.github_uid,
+            :revoked => true
+          )
+        end
+
+        it "keeps the account revoked while the other link is inside the grace period", :aggregate_failures do
+          response = server.check_token(@req, call)
+
+          expect(@project.repo_host_account.reload.revoked).to be(true)
+          expect(response.valid).to be(false)
+          expect(response.integration_scope).to eq(:NO_CONNECTION)
+        end
+      end
+
+      context "when a revoked account's uid is held by a long-revoked account" do
+        let(:token_valid) { true }
+        let(:permission_scope) { "repo,user:email" }
+
+        before do
+          @project.repo_host_account.update!(:revoked => true)
+
+          @competitor = FactoryBot.create(
+            :repo_host_account,
+            :repo_host => @project.repo_host_account.repo_host,
+            :github_uid => @project.repo_host_account.github_uid,
+            :revoked => true,
+            :updated_at => 3.hours.ago
+          )
+        end
+
+        it "backdates the competing row" do
+          expect(@competitor.reload.updated_at)
+            .to be < InternalApi::RepositoryIntegrator::RepositoryIntegratorServer::REVOKED_CLAIM_GRACE.ago
+        end
+
+        it "un-revokes the account once the other link is past the grace period", :aggregate_failures do
+          response = server.check_token(@req, call)
+
+          expect(@project.repo_host_account.reload.revoked).to be(false)
+          expect(response.valid).to be(true)
+          expect(response.integration_scope).to eq(:FULL_CONNECTION)
+        end
+      end
+
       context "when a revoked account's uid is free" do
         let(:token_valid) { true }
         let(:permission_scope) { "repo,user:email" }
