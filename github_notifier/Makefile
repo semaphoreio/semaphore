@@ -60,3 +60,16 @@ endif
 		/home/protoc/source/velocity.proto
 	docker run --rm -v $(PWD):/home/protoc/code -v $(TMP_INTERNAL_REPO_DIR):/home/protoc/source renderedtext/protoc:$(RT_PROTOC_IMG_VSN) protoc -I /home/protoc/source -I /home/protoc/source/include --elixir_out=plugins=grpc:$(RELATIVE_INTERNAL_PB_OUTPUT_DIR) --plugin=/root/.mix/escripts/protoc-gen-elixir \
 		/home/protoc/source/feature.proto
+
+# Hardware-independent guard for the musl/Alpine BEAM signal-stack abort
+# (erlang/otp#11248). LD_PRELOADs a shim that fakes a kernel with
+# AT_MINSIGSTKSZ=16384 (GKE c3 / AVX-512 / AMX class) into the built
+# release: a vulnerable JIT (OTP 27..29.0.4) aborts -> job fails; a fixed
+# runtime (erlang/otp#11249) or OTP <= 26 boots -> job passes.
+check.beam.sigstk:
+	mkdir -p out/sigstk
+	docker run --rm -v $(PWD)/test/sigstk:/src -v $(PWD)/out/sigstk:/o alpine:3.24 \
+		sh -c 'apk add --no-cache gcc musl-dev >/dev/null && gcc -shared -fPIC /src/shim.c -o /o/shim.so -ldl'
+	docker run --rm -v $(PWD)/out/sigstk:/o -e LD_PRELOAD=/o/shim.so $(IMAGE):$(IMAGE_TAG) \
+		sh -c 'ERL=$$(ls -d /app/erts-*/bin/erl|head -1); BOOT=$$(ls /app/releases/*/start_clean.boot|head -1|sed "s/\.boot$$//"); $$ERL -boot $$BOOT -boot_var RELEASE_LIB /app/lib -noshell -eval "io:format(\"sigstk guard: BOOT_OK~n\"),halt()."' \
+		|| { echo "FAIL: BEAM aborted under simulated AT_MINSIGSTKSZ>8192 (musl JIT alt-stack bug, erlang/otp#11248)"; exit 1; }
