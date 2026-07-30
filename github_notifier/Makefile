@@ -4,6 +4,7 @@ include ../Makefile
 
 DOCKER_BUILD_PATH=..
 APP_NAME=$(shell grep 'app:' mix.exs | cut -d ':' -f3 | cut -d ',' -f1)
+DOCKERFILE_ALPINE_VERSION=$(shell sed -n 's/^ARG ALPINE_VERSION=//p' Dockerfile | tr -d '"')
 INTERNAL_API_BRANCH?=master
 TMP_INTERNAL_REPO_DIR?=/tmp/internal_api
 RELATIVE_INTERNAL_PB_OUTPUT_DIR=lib/internal_api
@@ -60,3 +61,22 @@ endif
 		/home/protoc/source/velocity.proto
 	docker run --rm -v $(PWD):/home/protoc/code -v $(TMP_INTERNAL_REPO_DIR):/home/protoc/source renderedtext/protoc:$(RT_PROTOC_IMG_VSN) protoc -I /home/protoc/source -I /home/protoc/source/include --elixir_out=plugins=grpc:$(RELATIVE_INTERNAL_PB_OUTPUT_DIR) --plugin=/root/.mix/escripts/protoc-gen-elixir \
 		/home/protoc/source/feature.proto
+
+# Hardware-independent guard for the musl/Alpine BEAM signal-stack bug
+# (erlang/otp#11248). LD_PRELOADs a shim that fakes a strict kernel whose
+# AT_MINSIGSTKSZ is SIGSTK_KERNEL_MIN (default: 11952, measured on the
+# production GKE c3-standard-8 nodes, amx_tile) into the built release:
+# a runtime that sizes its alternate signal stack below that minimum
+# (OTP 27..29.0.4 request musl's static SIGSTKSZ=8192) aborts -> job
+# fails; a fixed runtime (erlang/otp#11249) or OTP <= 26 boots -> passes.
+# Note: lenient kernels accept the undersized stack and risk silent
+# overflow instead of failing fast; the guard models the strict check.
+SIGSTK_KERNEL_MIN?=11952
+check.beam.sigstk: BUILD_ENV=prod
+check.beam.sigstk:
+	mkdir -p out/sigstk
+	docker run --rm -v $(PWD)/test/sigstk:/src -v $(PWD)/out/sigstk:/o alpine:$(DOCKERFILE_ALPINE_VERSION) \
+		sh -c 'apk add --no-cache gcc musl-dev >/dev/null && gcc -shared -fPIC -DSIGSTK_KERNEL_MIN=$(SIGSTK_KERNEL_MIN) /src/shim.c -o /o/shim.so -ldl'
+	docker run --rm -v $(PWD)/out/sigstk:/o -e LD_PRELOAD=/o/shim.so $(IMAGE):$(IMAGE_TAG) \
+		sh -c 'ERL=$$(ls -d /app/erts-*/bin/erl|head -1); BOOT=$$(ls /app/releases/*/start_clean.boot|head -1|sed "s/\.boot$$//"); $$ERL -boot $$BOOT -boot_var RELEASE_LIB /app/lib -noshell -eval "io:format(\"sigstk guard: BOOT_OK~n\"),halt()."' \
+		|| { echo "FAIL: release sizes its alternate signal stack below AT_MINSIGSTKSZ=$(SIGSTK_KERNEL_MIN) (musl SIGSTKSZ=8192, erlang/otp#11248); lenient kernels boot anyway but risk silent stack overflow on signal delivery"; exit 1; }
