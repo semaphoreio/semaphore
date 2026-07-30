@@ -3775,8 +3775,8 @@ blocks:
           # sem-version does not seed rebar3; without this, a cold compile of
           # any rebar dep (parse_trans, unicode_util_compat) aborts with
           # "Could not find rebar3". Proven necessary on a cold-cache run.
-          - mix local.rebar --force
           - checkout && cd feature_provider
+          - mix local.rebar --force
           # key per toolchain + lockfile so cells don't restore another
           # version's compiled _build (cross-OTP BEAM poisoning)
           - cache restore deps-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock)
