@@ -1227,7 +1227,7 @@ blocks:
           commands:
             - make build
             - make check.docker
-        - name: "BEAM signal-stack guard"
+        - name: "BEAM signal-stack guard (informational)"
           commands:
             - make build
             - make check.beam.sigstk
