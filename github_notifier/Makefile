@@ -4,6 +4,7 @@ include ../Makefile
 
 DOCKER_BUILD_PATH=..
 APP_NAME=$(shell grep 'app:' mix.exs | cut -d ':' -f3 | cut -d ',' -f1)
+DOCKERFILE_ALPINE_VERSION=$(shell sed -n 's/^ARG ALPINE_VERSION=//p' Dockerfile | tr -d '"')
 INTERNAL_API_BRANCH?=master
 TMP_INTERNAL_REPO_DIR?=/tmp/internal_api
 RELATIVE_INTERNAL_PB_OUTPUT_DIR=lib/internal_api
@@ -68,7 +69,7 @@ endif
 # runtime (erlang/otp#11249) or OTP <= 26 boots -> job passes.
 check.beam.sigstk:
 	mkdir -p out/sigstk
-	docker run --rm -v $(PWD)/test/sigstk:/src -v $(PWD)/out/sigstk:/o alpine:3.24 \
+	docker run --rm -v $(PWD)/test/sigstk:/src -v $(PWD)/out/sigstk:/o alpine:$(DOCKERFILE_ALPINE_VERSION) \
 		sh -c 'apk add --no-cache gcc musl-dev >/dev/null && gcc -shared -fPIC /src/shim.c -o /o/shim.so -ldl'
 	docker run --rm -v $(PWD)/out/sigstk:/o -e LD_PRELOAD=/o/shim.so $(IMAGE):$(IMAGE_TAG) \
 		sh -c 'ERL=$$(ls -d /app/erts-*/bin/erl|head -1); BOOT=$$(ls /app/releases/*/start_clean.boot|head -1|sed "s/\.boot$$//"); $$ERL -boot $$BOOT -boot_var RELEASE_LIB /app/lib -noshell -eval "io:format(\"sigstk guard: BOOT_OK~n\"),halt()."' \
