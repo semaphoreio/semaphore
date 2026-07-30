@@ -1,8 +1,8 @@
 .PHONY: docs test cover
 
 # On CI the job provides the Erlang/Elixir under test (sem-version), so run
-# commands directly. Locally, run in a docker container when docker is
-# available, otherwise run directly.
+# commands directly. Locally, run in a docker container when docker is available,
+# otherwise run directly.
 ifneq ($(CI),)
 define maybe_call_in_docker
 	$1

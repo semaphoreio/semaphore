@@ -3770,13 +3770,13 @@ blocks:
     task:
       prologue:
         commands:
+          - checkout && cd feature_provider
           - sem-version erlang $ERLANG_VERSION
           - sem-version elixir $ELIXIR_VERSION
           # sem-version does not seed rebar3; without this, a cold compile of
           # any rebar dep (parse_trans, unicode_util_compat) aborts with
           # "Could not find rebar3". Proven necessary on a cold-cache run.
           - mix local.rebar --force
-          - checkout && cd feature_provider
           # key per toolchain + lockfile so cells don't restore another
           # version's compiled _build (cross-OTP BEAM poisoning)
           - cache restore deps-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock)
