@@ -1227,6 +1227,10 @@ blocks:
           commands:
             - make build
             - make check.docker
+        - name: "BEAM signal-stack guard (informational)"
+          commands:
+            - make build
+            - 'make check.beam.sigstk || echo "WARNING (non-blocking): runtime is vulnerable to erlang/otp#11248 - BEAM aborts at startup on AVX-512/AMX nodes (e.g. GKE c3). Re-enable enforcement when the patched OTP ships."'
   - name: "GithubNotifier: QA"
     dependencies: ["GithubNotifier: Provision Test Image"]
     run:
