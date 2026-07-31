@@ -3,6 +3,10 @@ image: github_notifier
 imageTag: latest
 
 consumer:
+  # Must stay 1. Commit-status ordering is enforced in-process (per-check
+  # serialization and the stale-pending guard live in pod-local state), so a
+  # second consumer pod could deliver statuses out of order. Chart rendering
+  # fails if this is raised.
   replicas: 1
   logs:
     level: info
