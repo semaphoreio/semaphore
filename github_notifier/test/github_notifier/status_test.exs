@@ -1,5 +1,4 @@
 defmodule GithubNotifier.StatusTest do
-  require GrpcMock
   use ExUnit.Case
 
   @repository_id "ee2e6241-f30b-4892-a0d5-bd900b713430"
