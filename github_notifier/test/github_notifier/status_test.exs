@@ -2,8 +2,6 @@ defmodule GithubNotifier.StatusTest do
   require GrpcMock
   use ExUnit.Case
 
-  alias InternalApi.Repository.CreateBuildStatusRequest
-
   @repository_id "ee2e6241-f30b-4892-a0d5-bd900b713430"
   @sha "1234567"
   @context "ci/semaphoreci/push: Pipeline"
@@ -14,7 +12,7 @@ defmodule GithubNotifier.StatusTest do
     test_pid = self()
 
     GrpcMock.stub(RepositoryHubMock, :create_build_status, fn req, _stream ->
-      send(test_pid, {:build_status, status_atom(req.status), req.context})
+      send(test_pid, {:build_status, req.status, req.context})
       Support.Factories.create_build_status_response()
     end)
 
@@ -55,7 +53,7 @@ defmodule GithubNotifier.StatusTest do
       test_pid = self()
 
       GrpcMock.stub(RepositoryHubMock, :create_build_status, fn req, _stream ->
-        status = status_atom(req.status)
+        status = req.status
         send(test_pid, {:build_status_started, status})
 
         if status == :PENDING, do: :timer.sleep(300)
@@ -226,9 +224,6 @@ defmodule GithubNotifier.StatusTest do
 
     pid
   end
-
-  defp status_atom(status) when is_atom(status), do: status
-  defp status_atom(status), do: CreateBuildStatusRequest.Status.key(status)
 
   defp status_key, do: "#{@repository_id}/#{@sha}/ppl-1/#{@context}"
 
