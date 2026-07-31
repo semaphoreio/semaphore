@@ -54,8 +54,6 @@ defmodule GithubNotifier.StatusSender.Worker do
   use GenServer
   require Logger
 
-  alias InternalApi.Repository.CreateBuildStatusResponse
-
   @terminal_states ["success", "failure"]
   @cache_ttl :timer.hours(5)
 
@@ -153,7 +151,7 @@ defmodule GithubNotifier.StatusSender.Worker do
   defp create_status(data, channel) do
     Watchman.benchmark("create_status.duration", fn ->
       req =
-        InternalApi.Repository.CreateBuildStatusRequest.new(
+        struct(InternalApi.Repository.CreateBuildStatusRequest,
           repository_id: data.repository_id,
           commit_sha: data.sha,
           status: map_status(data.state),
@@ -185,7 +183,7 @@ defmodule GithubNotifier.StatusSender.Worker do
   end
 
   defp handle_response({:ok, %{code: code}} = res) do
-    if CreateBuildStatusResponse.Code.key(code) == :OK do
+    if code == :OK do
       Watchman.increment(
         internal: "set_commit_status.success",
         external: {"set_commit_status", [result: "success"]}
@@ -213,8 +211,7 @@ defmodule GithubNotifier.StatusSender.Worker do
     :error
   end
 
-  alias InternalApi.Repository.CreateBuildStatusRequest.Status
-  defp map_status("success"), do: Status.value(:SUCCESS)
-  defp map_status("pending"), do: Status.value(:PENDING)
-  defp map_status("failure"), do: Status.value(:FAILURE)
+  defp map_status("success"), do: :SUCCESS
+  defp map_status("pending"), do: :PENDING
+  defp map_status("failure"), do: :FAILURE
 end

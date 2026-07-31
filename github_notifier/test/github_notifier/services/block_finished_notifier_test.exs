@@ -54,6 +54,12 @@ defmodule GithubNotifier.Services.BlockFinishedNotifierTest do
     test "message processing when there is a duplication" do
       Cachex.clear(:store)
 
+      GrpcMock.stub(
+        RepositoryHubMock,
+        :create_build_status,
+        Support.Factories.create_build_status_response()
+      )
+
       GrpcMock.stub(PipelineMock, :describe, Support.Factories.pipeline_describe_response())
       GrpcMock.stub(RepoProxyMock, :describe, Support.Factories.repo_proxy_describe_response())
       GrpcMock.stub(ProjecthubMock, :describe, Support.Factories.project_describe_response())
