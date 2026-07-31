@@ -10,6 +10,7 @@ import (
 	support "github.com/semaphoreio/semaphore/repohub/test/support"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 var testConn *grpc.ClientConn = nil
@@ -26,7 +27,7 @@ func TestMain(m *testing.M) {
 	// Give some time for the server to start
 	time.Sleep(5 * time.Second)
 
-	conn, err := grpc.Dial("0.0.0.0:4000", grpc.WithInsecure())
+	conn, err := grpc.NewClient("0.0.0.0:4000", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("error opening connection to local GPRC server: %v", err)
 	}

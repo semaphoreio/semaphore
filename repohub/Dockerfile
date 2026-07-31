@@ -1,6 +1,6 @@
-ARG GO_VERSION=1.23
-ARG UBUNTU_VERSION=22.04
-ARG BUILDER_IMAGE="golang:${GO_VERSION}"
+ARG GO_VERSION=1.25
+ARG UBUNTU_VERSION=24.04
+ARG BUILDER_IMAGE="golang:${GO_VERSION}-bookworm"
 ARG RUNNER_IMAGE="ubuntu:${UBUNTU_VERSION}"
 
 FROM ${BUILDER_IMAGE} AS base
@@ -55,13 +55,13 @@ RUN curl -sL https://github.com/google/protobuf/releases/download/v3.20.0/protoc
     unzip protoc && \
     mv bin/protoc /usr/local/bin/protoc
 
-RUN curl -sL https://github.com/golang-migrate/migrate/releases/download/v4.18.1/migrate.linux-amd64.tar.gz | tar xvz && \
-    mv /tmp/migrate /usr/bin/migrate && \
-    chmod +x /usr/bin/migrate
+# Build migrate from source to ensure it uses the current Go version and patched dependencies
+RUN CGO_ENABLED=0 go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@v4.19.1 \
+    && mv /go/bin/migrate /usr/bin/migrate
 
 WORKDIR /app
 RUN go install github.com/mgechev/revive@v1.4.0
-RUN go install gotest.tools/gotestsum@v1.12.1
+RUN go install gotest.tools/gotestsum@v1.13.0
 RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.3.0
 RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.8
 
