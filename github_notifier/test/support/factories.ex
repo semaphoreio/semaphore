@@ -156,9 +156,7 @@ defmodule Support.Factories do
   end
 
   def create_build_status_response(code \\ :OK) do
-    InternalApi.Repository.CreateBuildStatusResponse.new(
-      code: InternalApi.Repository.CreateBuildStatusResponse.Code.value(code)
-    )
+    struct(InternalApi.Repository.CreateBuildStatusResponse, code: code)
   end
 
   def status_not_ok(message \\ "") do
