@@ -25,3 +25,15 @@ GHSA-pj7v-xfvx-wmjq
 # from internal services over the private network, not untrusted input. Real fix
 # tracked for the same separate dep-bump PR.
 GHSA-rv48-qqj5-crxg
+
+# --- gun 2.4.1: mix_audit false positive ---
+# GHSA-w4f7-4cxr-rv3c (CRLF injection in cowlib structured-field headers)
+# affects cowboy < 2.16.0 and gun < 2.4.0 per the advisory's own
+# per-package ranges. This lockfile has cowboy 2.17.0, gun 2.4.1 and
+# cowlib 2.18.0 - all at or above the patched versions. mix_audit
+# collapses the multi-package ranges into one list and matches gun
+# 2.4.1 against cowboy's "< 2.16.0" bound, so any gun version gets
+# flagged. Additionally, gun here only carries gRPC (HTTP/2, binary
+# framing) to internal services with fixed paths and internally
+# generated metadata - no user-controlled header values.
+GHSA-w4f7-4cxr-rv3c
