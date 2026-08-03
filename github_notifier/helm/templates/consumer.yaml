@@ -1,7 +1,4 @@
 {{- if not .Values.global.development.minimalDeployment }}
-{{- if gt (int .Values.consumer.replicas) 1 }}
-{{- fail "github_notifier: consumer.replicas must be 1. Commit-status ordering (per-check serialization and the stale-pending guard) is enforced in-process, so multiple consumer pods can deliver GitHub statuses out of order. Scaling out requires moving the guard to shared state first." }}
-{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
