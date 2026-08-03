@@ -107,6 +107,11 @@ spec:
                 configMapKeyRef:
                   name: {{ .Values.global.internalApi.configMapName }}
                   key: INTERNAL_API_URL_FEATURE
+            - name: PRE_FLIGHT_CHECKS_GRPC_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.internalApi.configMapName }}
+                  key: INTERNAL_API_URL_PFC
             - name: PROJECTHUB_API_GRPC_URL
               valueFrom:
                 configMapKeyRef:
