@@ -26,6 +26,7 @@ defmodule Guard.Mixfile do
   defp deps do
     [
       {:grpc, "0.5.0-beta.1", override: true},
+      {:gun, "~> 2.0", hex: :grpc_gun, override: true},
       {:cowboy, "~> 2.15", override: true},
       {:cowlib, "~> 2.16", override: true},
       {:plug_cowboy, "~> 2.3"},

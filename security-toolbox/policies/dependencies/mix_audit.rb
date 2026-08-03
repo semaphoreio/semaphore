@@ -8,6 +8,8 @@ class Policy::MixAudit < Policy
   end
 
   def test
+    return false unless synchronize_advisory_db
+
     command = [
       "~/.mix/escripts/mix_audit"
     ]
@@ -26,6 +28,25 @@ class Policy::MixAudit < Policy
 
   def reason
     @output
+  end
+
+  def synchronize_advisory_db
+    db_path = File.join(Dir.home, ".local", "share", "elixir-security-advisories-mirego")
+
+    if File.directory?(db_path)
+      synced = system("git", "-C", db_path, "pull", "--rebase", "--quiet", "origin", "main")
+    else
+      synced = system("git", "clone", "--quiet", "https://github.com/mirego/elixir-security-advisories.git", db_path)
+    end
+
+    advisory_count = Dir.glob(File.join(db_path, "packages", "**", "*.yml")).length
+
+    if !synced || advisory_count == 0
+      @output = "Could not synchronize the advisory database at #{db_path} (synced=#{!!synced}, advisories=#{advisory_count}). Without it, mix_audit reports 'No vulnerabilities found' from an empty database."
+      return false
+    end
+
+    true
   end
 
   def dependencies
