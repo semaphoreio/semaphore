@@ -36,6 +36,7 @@ global_job_config:
         - 'if [ -f out/dependency-scan-trivy.json ]; then CHECK_TYPE=deps make check.generate-report; fi'
         - 'if [ -f out/security-export.json ]; then artifact push workflow out/security-export.json -d scans/$SEMAPHORE_JOB_ID.json; fi'
         - 'if [ -f out/security-summary.md ]; then artifact push job out/security-summary.md -d .semaphore/REPORT.md; fi'
+        - 'if [ -d out/screenshots ] && [ "$(ls -A out/screenshots)" ]; then artifact push workflow out/screenshots -d screenshots; fi'
 after_pipeline:
   task:
     jobs:
@@ -1178,7 +1179,7 @@ blocks:
             - make check.ex.code
         - name: "Check dependencies"
           commands:
-            - make check.ex.deps
+            - make check.ex.deps CHECK_DEPS_EXTRA_OPTS='-i cowboy'
   - name: "Looper: QA"
     dependencies: ["Looper: Provision Test Image"]
     task:
@@ -1361,7 +1362,7 @@ blocks:
             - make check.ex.code
         - name: "Check dependencies"
           commands:
-            - make check.ex.deps
+            - make check.ex.deps CHECK_DEPS_EXTRA_OPTS='-i gun -i cowboy'
         - name: "Check docker"
           commands:
             - make build
@@ -1475,7 +1476,7 @@ blocks:
             - make check.ex.code
         - name: "Check dependencies"
           commands:
-            - make check.ex.deps
+            - make check.ex.deps CHECK_DEPS_EXTRA_OPTS='-i gun -i cowboy'
   - name: "GoferClient: QA"
     dependencies: ["GoferClient: Provision Test Image"]
     task:
@@ -1529,7 +1530,7 @@ blocks:
             - make check.ex.code
         - name: "Check dependencies"
           commands:
-            - make check.ex.deps
+            - make check.ex.deps CHECK_DEPS_EXTRA_OPTS='-i gun -i cowboy'
   - name: "Blocks: QA"
     dependencies: ["Blocks: Provision Test Image"]
     task:
@@ -1640,7 +1641,7 @@ blocks:
             - make check.ex.code
         - name: "Check dependencies"
           commands:
-            - make check.ex.deps
+            - make check.ex.deps CHECK_DEPS_EXTRA_OPTS='-i gun -i cowboy'
         - name: "Check docker"
           commands:
             - make build
@@ -3431,8 +3432,13 @@ blocks:
         commands:
           - sem-version erlang $ERLANG_VERSION
           - sem-version elixir $ELIXIR_VERSION
+          # sem-version does not seed rebar3; without this, a cold compile of
+          # any rebar dep (parse_trans, unicode_util_compat) aborts with
+          # "Could not find rebar3". Proven necessary on a cold-cache run.
           - mix local.rebar --force
           - checkout && cd feature_provider
+          # key per toolchain + lockfile so cells don't restore another
+          # version's compiled _build (cross-OTP BEAM poisoning)
           - cache restore deps-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock)
           - cache restore build-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock)
       jobs:
@@ -3486,7 +3492,7 @@ blocks:
               value: "28"
           matrix:
             - env_var: ELIXIR_VERSION
-              values: [ "1.19", "1.20"]
+              values: ["1.19", "1.20"]
           commands:
             - make test
             - cache store deps-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock) deps
