@@ -11,7 +11,11 @@ defmodule GithubNotifier.Services.PipelineFinishedNotifierTest do
     test "when block level => report each block" do
       Cachex.clear(:store)
 
-      GrpcMock.stub(RepositoryHubMock, :create_build_status, struct(Google.Protobuf.Empty))
+      GrpcMock.stub(
+        RepositoryHubMock,
+        :create_build_status,
+        Support.Factories.create_build_status_response()
+      )
 
       GrpcMock.stub(PipelineMock, :describe, Support.Factories.pipeline_describe_response())
 
@@ -75,7 +79,11 @@ defmodule GithubNotifier.Services.PipelineFinishedNotifierTest do
     test "when pipeline level => report only pipeline" do
       Cachex.clear(:store)
 
-      GrpcMock.stub(RepositoryHubMock, :create_build_status, struct(Google.Protobuf.Empty))
+      GrpcMock.stub(
+        RepositoryHubMock,
+        :create_build_status,
+        Support.Factories.create_build_status_response()
+      )
 
       GrpcMock.stub(PipelineMock, :describe, Support.Factories.pipeline_describe_response())
 
@@ -140,7 +148,11 @@ defmodule GithubNotifier.Services.PipelineFinishedNotifierTest do
     test "when empty status => do not report" do
       Cachex.clear(:store)
 
-      GrpcMock.stub(RepositoryHubMock, :create_build_status, struct(Google.Protobuf.Empty))
+      GrpcMock.stub(
+        RepositoryHubMock,
+        :create_build_status,
+        Support.Factories.create_build_status_response()
+      )
 
       GrpcMock.stub(PipelineMock, :describe, Support.Factories.pipeline_describe_response())
 
@@ -194,7 +206,11 @@ defmodule GithubNotifier.Services.PipelineFinishedNotifierTest do
     test "when no maching status => do not report" do
       Cachex.clear(:store)
 
-      GrpcMock.stub(RepositoryHubMock, :create_build_status, struct(Google.Protobuf.Empty))
+      GrpcMock.stub(
+        RepositoryHubMock,
+        :create_build_status,
+        Support.Factories.create_build_status_response()
+      )
 
       GrpcMock.stub(
         PipelineMock,
