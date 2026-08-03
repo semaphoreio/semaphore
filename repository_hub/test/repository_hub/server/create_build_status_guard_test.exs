@@ -63,6 +63,24 @@ defmodule RepositoryHub.Server.CreateBuildStatusGuardTest do
       assert :meck.num_calls(GithubClient, :create_build_status, :_) == 2
     end
 
+    test "rejects a malformed repository_id with a validation error", ctx do
+      request = %{request(ctx, :SUCCESS) | repository_id: "not-a-uuid"}
+
+      error =
+        assert_raise(GRPC.RPCError, ~r/is not valid repository id/, fn ->
+          Server.create_build_status(request, nil)
+        end)
+
+      assert error.status == GRPC.Status.failed_precondition()
+
+      assert %{rows: [[0]]} =
+               Repo.query!("SELECT count(*) FROM build_status_guards WHERE commit_sha = $1", [
+                 ctx.commit_sha
+               ])
+
+      assert :meck.num_calls(GithubClient, :create_build_status, :_) == 0
+    end
+
     test "reports unavailable while another delivery holds the lease", ctx do
       request = request(ctx, :SUCCESS)
       assert {:ok, _fence} = BuildStatusGuard.claim(request)

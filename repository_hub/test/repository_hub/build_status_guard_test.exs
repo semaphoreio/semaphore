@@ -55,6 +55,12 @@ defmodule RepositoryHub.BuildStatusGuardTest do
       assert {:ok, _fence} = BuildStatusGuard.claim(%{request | status: :FAILURE})
     end
 
+    test "returns invalid_key for a malformed repository_id", %{request: request} do
+      request = %{request | repository_id: "not-a-uuid"}
+
+      assert {:error, :invalid_key} = BuildStatusGuard.claim(request)
+    end
+
     test "guards checks independently per source_id", %{request: request} do
       success = %{request | status: :SUCCESS}
       assert {:ok, fence} = BuildStatusGuard.claim(success)
@@ -66,6 +72,12 @@ defmodule RepositoryHub.BuildStatusGuardTest do
   end
 
   describe "release/2" do
+    test "no-ops on a malformed repository_id", %{request: request} do
+      request = %{request | repository_id: "not-a-uuid"}
+
+      assert :ok = BuildStatusGuard.release(request, DateTime.utc_now())
+    end
+
     test "clears the lease without recording a delivery", %{request: request} do
       assert {:ok, fence} = BuildStatusGuard.claim(request)
       assert :ok = BuildStatusGuard.release(request, fence)
@@ -76,6 +88,12 @@ defmodule RepositoryHub.BuildStatusGuardTest do
   end
 
   describe "finalize/2" do
+    test "no-ops on a malformed repository_id", %{request: request} do
+      request = %{request | repository_id: "not-a-uuid"}
+
+      assert :ok = BuildStatusGuard.finalize(request, DateTime.utc_now())
+    end
+
     test "records the delivered state and clears the lease", %{request: request} do
       success = %{request | status: :SUCCESS}
       assert {:ok, fence} = BuildStatusGuard.claim(success)

@@ -12,7 +12,9 @@ defmodule RepositoryHub.BuildStatusGuard do
 
   Requests without a source_id are not guarded. If the guard table does not
   exist yet (migration not run), operations return
-  `{:error, :guard_unavailable}` so callers can deliver unguarded.
+  `{:error, :guard_unavailable}` so callers can deliver unguarded. A malformed
+  repository_id returns `{:error, :invalid_key}` so the caller's own request
+  validation can reject it instead of the guard crashing.
   """
 
   alias RepositoryHub.Repo
@@ -66,10 +68,16 @@ defmodule RepositoryHub.BuildStatusGuard do
   def claim(request) do
     pending? = request.status == :PENDING
 
-    case query(@claim_sql, key_params(request) ++ [pending?]) do
-      {:ok, %{rows: [[fence]]}} -> {:ok, fence}
-      {:ok, %{rows: []}} -> classify(request, pending?)
-      {:error, _} = error -> error
+    case key_params(request) do
+      {:ok, params} ->
+        case query(@claim_sql, params ++ [pending?]) do
+          {:ok, %{rows: [[fence]]}} -> {:ok, fence}
+          {:ok, %{rows: []}} -> classify(params, pending?)
+          {:error, _} = error -> error
+        end
+
+      :error ->
+        {:error, :invalid_key}
     end
   end
 
@@ -78,18 +86,24 @@ defmodule RepositoryHub.BuildStatusGuard do
   """
   @spec finalize(CreateBuildStatusRequest.t(), DateTime.t()) :: :ok | {:error, term}
   def finalize(request, fence) do
-    state = Atom.to_string(request.status)
+    case key_params(request) do
+      {:ok, params} ->
+        state = Atom.to_string(request.status)
 
-    case query(@finalize_sql, key_params(request) ++ [state, fence]) do
-      {:ok, %{num_rows: 0}} ->
-        Logger.warning("[BuildStatusGuard] stale fence on finalize, state not recorded")
+        case query(@finalize_sql, params ++ [state, fence]) do
+          {:ok, %{num_rows: 0}} ->
+            Logger.warning("[BuildStatusGuard] stale fence on finalize, state not recorded")
+            :ok
+
+          {:ok, _} ->
+            :ok
+
+          {:error, _} = error ->
+            error
+        end
+
+      :error ->
         :ok
-
-      {:ok, _} ->
-        :ok
-
-      {:error, _} = error ->
-        error
     end
   end
 
@@ -99,9 +113,15 @@ defmodule RepositoryHub.BuildStatusGuard do
   """
   @spec release(CreateBuildStatusRequest.t(), DateTime.t()) :: :ok | {:error, term}
   def release(request, fence) do
-    case query(@release_sql, key_params(request) ++ [fence]) do
-      {:ok, _} -> :ok
-      {:error, _} = error -> error
+    case key_params(request) do
+      {:ok, params} ->
+        case query(@release_sql, params ++ [fence]) do
+          {:ok, _} -> :ok
+          {:error, _} = error -> error
+        end
+
+      :error ->
+        :ok
     end
   end
 
@@ -111,8 +131,8 @@ defmodule RepositoryHub.BuildStatusGuard do
   @doc false
   def lease_seconds, do: @lease_seconds
 
-  defp classify(request, pending?) do
-    case query(@classify_sql, key_params(request)) do
+  defp classify(params, pending?) do
+    case query(@classify_sql, params) do
       {:ok, %{rows: [[last_state, live?]]}} ->
         cond do
           pending? && last_state in @terminal_states -> :skip
@@ -129,12 +149,10 @@ defmodule RepositoryHub.BuildStatusGuard do
   end
 
   defp key_params(request) do
-    [
-      Ecto.UUID.dump!(request.repository_id),
-      request.commit_sha,
-      request.context,
-      request.source_id
-    ]
+    case Ecto.UUID.dump(request.repository_id) do
+      {:ok, uuid} -> {:ok, [uuid, request.commit_sha, request.context, request.source_id]}
+      :error -> :error
+    end
   end
 
   defp query(sql, params) do
