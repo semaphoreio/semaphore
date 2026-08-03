@@ -2,10 +2,12 @@ defmodule GithubNotifier.StatusSender do
   @moduledoc """
   Delivers commit statuses, serialized per check (repository/sha/pipeline/context).
 
-  Statuses for the same check are always routed to the same worker, so they
-  are sent one at a time, in order. A `pending` status is dropped when a
-  terminal status (success/failure) was already sent for the same check,
-  since delivering it would leave the commit check pending forever.
+  Statuses for the same check are routed to the same worker, so within this
+  instance they are sent one at a time, in order, and a `pending` status is
+  dropped when a terminal status (success/failure) was already sent for the
+  same check. This per-instance ordering is a fast path only: the
+  authoritative, cross-instance guard lives in repository_hub, keyed by the
+  source_id sent with every request.
 
   A status is only marked as sent after a successful delivery; transport
   failures return `:error` so the caller can fail the message and have it
@@ -157,7 +159,8 @@ defmodule GithubNotifier.StatusSender.Worker do
           status: map_status(data.state),
           url: data.url,
           description: data.description,
-          context: data.context
+          context: data.context,
+          source_id: data.ppl_id
         )
 
       Logger.debug(fn ->
@@ -182,17 +185,21 @@ defmodule GithubNotifier.StatusSender.Worker do
       :transport_error
   end
 
-  defp handle_response({:ok, %{code: code}} = res) do
-    if code == :OK do
-      Watchman.increment(
-        internal: "set_commit_status.success",
-        external: {"set_commit_status", [result: "success"]}
-      )
-
-      :ok
-    else
-      report_failure(res)
+  defp handle_response({:ok, %{code: :OK} = response}) do
+    if Map.get(response, :skipped, false) do
+      Watchman.increment("set_commit_status.skipped_by_guard")
     end
+
+    Watchman.increment(
+      internal: "set_commit_status.success",
+      external: {"set_commit_status", [result: "success"]}
+    )
+
+    :ok
+  end
+
+  defp handle_response({:ok, _} = res) do
+    report_failure(res)
   end
 
   defp handle_response(res) do
