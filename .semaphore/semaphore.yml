@@ -1677,7 +1677,8 @@ blocks:
             - make check.ex.code
         - name: "Check dependencies"
           commands:
-            - make check.ex.deps
+            # gun/cowboy pinned by grpc 0.3.1 — gRPC stack upgrade tracked in semaphoreio/semaphore#1134
+            - make check.ex.deps CHECK_DEPS_EXTRA_OPTS='-i gun -i cowboy'
   - name: "Blocks: QA"
     dependencies: ["Blocks: Provision Test Image"]
     run:
@@ -1801,7 +1802,8 @@ blocks:
             - make check.ex.code
         - name: "Check dependencies"
           commands:
-            - make check.ex.deps
+            # gun/cowboy pinned by grpc 0.3.1 — gRPC stack upgrade tracked in semaphoreio/semaphore#1134
+            - make check.ex.deps CHECK_DEPS_EXTRA_OPTS='-i gun -i cowboy'
         - name: "Check docker"
           commands:
             - make build
