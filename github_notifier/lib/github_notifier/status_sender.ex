@@ -268,8 +268,7 @@ defmodule GithubNotifier.StatusSender.Worker do
           status: map_status(data.state),
           url: data.url,
           description: data.description,
-          context: data.context,
-          source_id: data.ppl_id
+          context: data.context
         )
 
       Logger.debug(fn ->
@@ -294,11 +293,7 @@ defmodule GithubNotifier.StatusSender.Worker do
       :transport_error
   end
 
-  defp handle_response({:ok, %{code: :OK} = response}) do
-    if Map.get(response, :skipped, false) do
-      Watchman.increment("set_commit_status.skipped_by_guard")
-    end
-
+  defp handle_response({:ok, %{code: :OK}}) do
     Watchman.increment(
       internal: "set_commit_status.success",
       external: {"set_commit_status", [result: "success"]}

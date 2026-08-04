@@ -148,19 +148,6 @@ defmodule GithubNotifier.StatusTest do
       assert Cachex.get!(:store, "terminal/#{status_key()}") == nil
     end
 
-    test "sends the pipeline id as source_id" do
-      test_pid = self()
-
-      GrpcMock.stub(RepositoryHubMock, :create_build_status, fn req, _stream ->
-        send(test_pid, {:source_id, req.source_id})
-        Support.Factories.create_build_status_response()
-      end)
-
-      GithubNotifier.Status.create(success_data(), "req-1")
-
-      assert_receive {:source_id, "ppl-1"}
-    end
-
     test "delivers remaining statuses when an earlier one in the list fails" do
       test_pid = self()
       block_context = "ci/semaphoreci/push: Block A"
@@ -226,19 +213,6 @@ defmodule GithubNotifier.StatusTest do
       after
         restart_guard_connections()
       end
-    end
-
-    test "treats a delivery skipped by the server-side guard as delivered" do
-      GrpcMock.stub(RepositoryHubMock, :create_build_status, fn _req, _stream ->
-        struct(InternalApi.Repository.CreateBuildStatusResponse, code: :OK, skipped: true)
-      end)
-
-      assert :ok = GithubNotifier.Status.create(pending_data(), "req-1")
-
-      assert Cachex.get!(
-               :store,
-               "#{status_key()}/pending/The build is pending on Semaphore 2.0."
-             ) == true
     end
   end
 

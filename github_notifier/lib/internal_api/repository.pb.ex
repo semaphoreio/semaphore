@@ -282,7 +282,6 @@ defmodule InternalApi.Repository.CreateBuildStatusRequest do
   field(:url, 4, type: :string)
   field(:description, 5, type: :string)
   field(:context, 6, type: :string)
-  field(:source_id, 7, type: :string, json_name: "sourceId")
 end
 
 defmodule InternalApi.Repository.CreateBuildStatusResponse do
@@ -291,7 +290,6 @@ defmodule InternalApi.Repository.CreateBuildStatusResponse do
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:code, 1, type: InternalApi.Repository.CreateBuildStatusResponse.Code, enum: true)
-  field(:skipped, 2, type: :bool)
 end
 
 defmodule InternalApi.Repository.DescribeRequest do
