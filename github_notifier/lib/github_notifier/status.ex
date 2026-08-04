@@ -1,82 +1,42 @@
 defmodule GithubNotifier.Status do
-  require Logger
+  alias GithubNotifier.StatusSender
 
   def create(nil, _request_id), do: nil
 
+  # Every status in the list is attempted — the statuses are independent
+  # GitHub contexts, so one failing must not starve the ones after it (the
+  # pipeline-level status is last). Delivered ones dedupe on redelivery.
   def create(data, request_id) when is_list(data) do
-    Enum.each(data, fn x -> create(x, request_id) end)
+    failures =
+      data
+      |> Enum.map(&deliver(&1, request_id))
+      |> Enum.filter(&match?({:error, _}, &1))
+
+    case failures do
+      [] ->
+        :ok
+
+      failures ->
+        keys = Enum.map_join(failures, ", ", fn {:error, status_key} -> status_key end)
+        raise "Failed to deliver #{length(failures)} of #{length(data)} statuses: #{keys}"
+    end
   end
 
   def create(data, request_id) do
-    key =
-      "#{data.repository_id}/#{data.sha}/#{data.ppl_id}/#{data.context}/#{data.state}/#{data.description}"
-
-    Cachex.transaction!(:store, [key], fn cache ->
-      case Cachex.get(cache, key) do
-        {:ok, true} ->
-          Logger.info("[#{request_id}] Skipping Status: #{key}")
-
-        _ ->
-          Logger.info("[#{request_id}] Creating Status: #{key}")
-          Task.async(fn -> create_status(data) end)
-          Logger.info("[#{request_id}] Creating Status Finished: #{key}")
-          Cachex.put!(cache, key, true)
-          Cachex.expire(cache, key, :timer.hours(5))
-          Logger.info("[#{request_id}] Creating Status Cache Updated: #{key}")
-      end
-    end)
+    case deliver(data, request_id) do
+      :ok -> :ok
+      {:error, status_key} -> raise "Failed to deliver #{data.state} status for #{status_key}"
+    end
   end
 
-  defp create_status(data) do
-    Watchman.benchmark("create_status.duration", fn ->
-      req =
-        struct(InternalApi.Repository.CreateBuildStatusRequest,
-          repository_id: data.repository_id,
-          commit_sha: data.sha,
-          status: map_status(data.state),
-          url: data.url,
-          description: data.description,
-          context: data.context
-        )
+  defp deliver(nil, _request_id), do: :ok
 
-      {:ok, channel} =
-        GRPC.Stub.connect(
-          Application.fetch_env!(:github_notifier, :repositoryhub_api_grpc_endpoint)
-        )
+  defp deliver(data, request_id) do
+    status_key = "#{data.repository_id}/#{data.sha}/#{data.ppl_id}/#{data.context}"
 
-      Logger.debug(fn ->
-        "Creating Status repository_id: #{req.repository_id}"
-      end)
-
-      Logger.debug(inspect(req))
-
-      res =
-        InternalApi.Repository.RepositoryService.Stub.create_build_status(channel, req,
-          timeout: 30_000
-        )
-
-      case res do
-        {:ok, %{code: :OK}} ->
-          Watchman.increment(
-            internal: "set_commit_status.success",
-            external: {"set_commit_status", [result: "success"]}
-          )
-
-        _ ->
-          Watchman.increment(
-            internal: "set_commit_status.failure",
-            external: {"set_commit_status", [result: "failure"]}
-          )
-      end
-
-      Logger.debug("Received Create Status response")
-      Logger.debug(inspect(res))
-
-      :ok
-    end)
+    case StatusSender.send_status(status_key, data, request_id) do
+      :ok -> :ok
+      :error -> {:error, status_key}
+    end
   end
-
-  defp map_status("success"), do: :SUCCESS
-  defp map_status("pending"), do: :PENDING
-  defp map_status("failure"), do: :FAILURE
 end
