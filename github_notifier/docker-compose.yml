@@ -17,8 +17,11 @@ services:
     tty: true
     links:
       - rabbitmq:rabbitmq
+      - redis-cache:redis-cache
     depends_on:
       rabbitmq:
+        condition: service_healthy
+      redis-cache:
         condition: service_healthy
 
     restart: always
@@ -30,9 +33,21 @@ services:
       IN_DOCKER: "true"
       CI: $CI
       AMQP_URL: "amqp://rabbitmq:5672"
+      CACHE_HOST: "redis-cache"
+      CACHE_PORT: "6379"
 
     volumes:
       - .:/app
+
+  redis-cache:
+    image: "redis:7.2-alpine"
+    entrypoint: "redis-server --appendonly yes"
+    restart: "on-failure"
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
 
   rabbitmq:
     image: rabbitmq:3.11.18-management
