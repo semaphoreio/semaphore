@@ -37,6 +37,7 @@ defmodule GithubNotifier.MixProject do
       {:logger_backends, "~> 1.0"},
       {:tentacat, "~> 2.0"},
       {:cachex, "~> 3.0"},
+      {:redix, "~> 1.2"},
       {:poison, "~> 3.1"},
       {:protobuf, "~> 0.13.0"},
       {:feature_provider, path: "../feature_provider"},
