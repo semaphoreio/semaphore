@@ -15,8 +15,9 @@ defmodule GithubNotifier.StatusGuard do
   Every operation fails open: on any Redis error callers deliver unguarded.
   Guard state is protection, not source of truth — RabbitMQ redelivery and
   live pipeline describes remain the durability story. The Redis instance must
-  run with `maxmemory-policy noeviction`; `HealthCheck` pins the guard to
-  fail-open and alarms if it does not.
+  run with `maxmemory-policy noeviction` (an evicting instance silently drops
+  guard keys and turns lost protection into wrong decisions) — this is trusted
+  to deployment configuration, not verified at runtime.
   """
 
   require Logger
@@ -81,22 +82,18 @@ defmodule GithubNotifier.StatusGuard do
   @spec claim(String.t(), String.t(), keyword()) ::
           {:ok, String.t()} | :skip | {:busy, non_neg_integer()} | {:error, term()}
   def claim(status_key, state, opts \\ []) do
-    if forced_fail_open?() do
-      {:error, :misconfigured}
-    else
-      token = :crypto.strong_rand_bytes(16) |> Base.encode16(case: :lower)
-      pending_flag = if state == "pending", do: "1", else: "0"
-      lease_ms = Keyword.get(opts, :lease_ms, @lease_ms)
+    token = :crypto.strong_rand_bytes(16) |> Base.encode16(case: :lower)
+    pending_flag = if state == "pending", do: "1", else: "0"
+    lease_ms = Keyword.get(opts, :lease_ms, @lease_ms)
 
-      args = [pending_flag, token, Integer.to_string(lease_ms), Integer.to_string(@state_ttl_ms)]
+    args = [pending_flag, token, Integer.to_string(lease_ms), Integer.to_string(@state_ttl_ms)]
 
-      case eval(status_key, @claim_script, args) do
-        {:ok, "skip"} -> :skip
-        {:ok, "deliver"} -> {:ok, token}
-        {:ok, remaining} when is_integer(remaining) -> {:busy, max(remaining, 0)}
-        {:ok, other} -> {:error, {:unexpected_reply, other}}
-        {:error, _} = error -> error
-      end
+    case eval(status_key, @claim_script, args) do
+      {:ok, "skip"} -> :skip
+      {:ok, "deliver"} -> {:ok, token}
+      {:ok, remaining} when is_integer(remaining) -> {:busy, max(remaining, 0)}
+      {:ok, other} -> {:error, {:unexpected_reply, other}}
+      {:error, _} = error -> error
     end
   end
 
@@ -162,13 +159,6 @@ defmodule GithubNotifier.StatusGuard do
         :ok
     end
   end
-
-  @doc false
-  def forced_fail_open?, do: :persistent_term.get({__MODULE__, :forced_fail_open}, false)
-
-  @doc false
-  def force_fail_open(flag) when is_boolean(flag),
-    do: :persistent_term.put({__MODULE__, :forced_fail_open}, flag)
 
   @doc false
   def conn_name(index), do: :"status_guard_redis_#{index}"

@@ -77,16 +77,6 @@ defmodule GithubNotifier.StatusGuardTest do
         restart_guard_connections()
       end
     end
-
-    test "fails open while the guard is pinned by the health check", %{key: key} do
-      StatusGuard.force_fail_open(true)
-
-      try do
-        assert {:error, :misconfigured} = StatusGuard.claim(key, "pending")
-      after
-        StatusGuard.force_fail_open(false)
-      end
-    end
   end
 
   describe "finalize/3" do

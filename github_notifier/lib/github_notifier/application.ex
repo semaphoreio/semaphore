@@ -38,7 +38,6 @@ defmodule GithubNotifier.Application do
         start: {Cachex, :start_link, [:feature_provider_cache, []]}
       },
       GithubNotifier.StatusGuard,
-      GithubNotifier.StatusGuard.HealthCheck,
       GithubNotifier.StatusSender
     ] ++
       filter_enabled([
