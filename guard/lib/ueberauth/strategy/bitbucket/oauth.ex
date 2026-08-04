@@ -2,7 +2,7 @@ defmodule Ueberauth.Strategy.Bitbucket.OAuth do
   @moduledoc """
   An implementation of OAuth2 for bitbucket.
 
-  Vendored from the ueberauth_bitbucket package (MIT).
+  Vendored from the ueberauth_bitbucket package. See `LICENSE.ueberauth_bitbucket` for its MIT license.
 
   To add your `client_id` and `client_secret` include these values in your configuration.
 

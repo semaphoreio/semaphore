@@ -2,7 +2,7 @@ defmodule Ueberauth.Strategy.Bitbucket do
   @moduledoc """
   Provides an Ueberauth strategy for authenticating with Bitbucket.
 
-  Vendored from the ueberauth_bitbucket package (MIT).
+  Vendored from the ueberauth_bitbucket package. See `LICENSE.ueberauth_bitbucket` for its MIT license.
 
   ### Setup
 
