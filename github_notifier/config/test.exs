@@ -2,6 +2,8 @@ import Config
 
 config :github_notifier, environment: :test
 
+config :github_notifier, status_guard_busy_budget_ms: 250
+
 config :logger, level: :debug
 
 config :junit_formatter,

@@ -7,6 +7,7 @@ defmodule GithubNotifier.StatusTest do
 
   setup do
     Cachex.clear(:store)
+    {:ok, _} = Redix.command(GithubNotifier.StatusGuard.conn_name(0), ["FLUSHDB"])
 
     test_pid = self()
 
@@ -160,6 +161,48 @@ defmodule GithubNotifier.StatusTest do
       assert_receive {:source_id, "ppl-1"}
     end
 
+    test "skips a stale pending known only to the cross-instance guard" do
+      GithubNotifier.Status.create(success_data(), "req-1")
+      assert_receive {:build_status, :SUCCESS, @context}
+
+      Cachex.clear(:store)
+
+      assert :ok = GithubNotifier.Status.create(pending_data(), "req-2")
+
+      refute_receive {:build_status, :PENDING, _}, 200
+    end
+
+    test "skips a status already delivered by another instance" do
+      dedupe_key = "#{status_key()}/success/The build passed on Semaphore 2.0."
+      GithubNotifier.StatusGuard.mark_delivered(dedupe_key)
+
+      assert :ok = GithubNotifier.Status.create(success_data(), "req-1")
+
+      refute_receive {:build_status, :SUCCESS, _}, 200
+      assert Cachex.get!(:store, dedupe_key) == true
+    end
+
+    test "raises while another instance holds the delivery lease" do
+      assert {:ok, _token} = GithubNotifier.StatusGuard.claim(status_key(), "success")
+
+      assert_raise RuntimeError, ~r/Failed to deliver success status/, fn ->
+        GithubNotifier.Status.create(success_data(), "req-1")
+      end
+
+      refute_receive {:build_status, :SUCCESS, _}, 100
+    end
+
+    test "delivers unguarded when the guard is unavailable" do
+      stop_guard_connections()
+
+      try do
+        assert :ok = GithubNotifier.Status.create(success_data(), "req-1")
+        assert_receive {:build_status, :SUCCESS, @context}
+      after
+        restart_guard_connections()
+      end
+    end
+
     test "treats a delivery skipped by the server-side guard as delivered" do
       GrpcMock.stub(RepositoryHubMock, :create_build_status, fn _req, _stream ->
         struct(InternalApi.Repository.CreateBuildStatusResponse, code: :OK, skipped: true)
@@ -248,6 +291,18 @@ defmodule GithubNotifier.StatusTest do
     %{channel: %{adapter_payload: %{conn_pid: pid}}} = :sys.get_state(worker)
 
     pid
+  end
+
+  defp stop_guard_connections do
+    for index <- 0..(GithubNotifier.StatusGuard.pool_size() - 1) do
+      :ok = Supervisor.terminate_child(GithubNotifier.StatusGuard, {Redix, index})
+    end
+  end
+
+  defp restart_guard_connections do
+    for index <- 0..(GithubNotifier.StatusGuard.pool_size() - 1) do
+      {:ok, _} = Supervisor.restart_child(GithubNotifier.StatusGuard, {Redix, index})
+    end
   end
 
   defp status_key, do: "#{@repository_id}/#{@sha}/ppl-1/#{@context}"

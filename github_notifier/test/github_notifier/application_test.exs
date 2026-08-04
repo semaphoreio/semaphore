@@ -13,6 +13,8 @@ defmodule GithubNotifier.ApplicationTest do
                {Task.Supervisor, name: GithubNotifier.TaskSupervisor},
                %{id: Cachex},
                %{id: FeatureProvider.Cachex},
+               GithubNotifier.StatusGuard,
+               GithubNotifier.StatusGuard.HealthCheck,
                GithubNotifier.StatusSender | rest
              ] = specs
 
@@ -46,6 +48,8 @@ defmodule GithubNotifier.ApplicationTest do
                  id: FeatureProvider.Cachex,
                  start: {Cachex, :start_link, [:feature_provider_cache, []]}
                },
+               GithubNotifier.StatusGuard,
+               GithubNotifier.StatusGuard.HealthCheck,
                GithubNotifier.StatusSender,
                {GithubNotifier.FeatureProviderInvalidatorWorker, []}
              ]

@@ -5,9 +5,11 @@ defmodule GithubNotifier.StatusSender do
   Statuses for the same check are routed to the same worker, so within this
   instance they are sent one at a time, in order, and a `pending` status is
   dropped when a terminal status (success/failure) was already sent for the
-  same check. This per-instance ordering is a fast path only: the
-  authoritative, cross-instance guard lives in repository_hub, keyed by the
-  source_id sent with every request.
+  same check. The in-process checks are a fast path only: the authoritative,
+  cross-instance guard lives in Redis (`GithubNotifier.StatusGuard`) — each
+  delivery holds a per-check lease and the last delivered state is shared, so
+  a stale pending is skipped even when the terminal status was sent by a
+  sibling instance. On any guard error delivery proceeds unguarded.
 
   A status is only marked as sent after a successful delivery; transport
   failures return `:error` so the caller can fail the message and have it
@@ -56,8 +58,21 @@ defmodule GithubNotifier.StatusSender.Worker do
   use GenServer
   require Logger
 
+  alias GithubNotifier.StatusGuard
+
   @terminal_states ["success", "failure"]
   @cache_ttl :timer.hours(5)
+  @busy_poll_max_ms 3_000
+
+  # repository_hub replied with an application error — the provider call
+  # definitively did not send, so releasing the delivery lease is safe.
+  @rejected_grpc_statuses [
+    GRPC.Status.invalid_argument(),
+    GRPC.Status.not_found(),
+    GRPC.Status.permission_denied(),
+    GRPC.Status.resource_exhausted(),
+    GRPC.Status.failed_precondition()
+  ]
 
   def start_link(name) do
     GenServer.start_link(__MODULE__, nil, name: name)
@@ -86,11 +101,105 @@ defmodule GithubNotifier.StatusSender.Worker do
         Logger.info("[#{request_id}] Skipping stale pending Status: #{dedupe_key}")
         {:ok, state}
 
+      StatusGuard.delivered?(dedupe_key) ->
+        Cachex.put!(:store, dedupe_key, true, ttl: @cache_ttl)
+
+        Logger.info(
+          "[#{request_id}] Skipping Status delivered by another instance: #{dedupe_key}"
+        )
+
+        {:ok, state}
+
       true ->
-        Logger.info("[#{request_id}] Creating Status: #{dedupe_key}")
-        send_over_channel(dedupe_key, terminal_key, data, request_id, state)
+        guarded_send(status_key, dedupe_key, terminal_key, data, request_id, state)
     end
   end
+
+  defp guarded_send(status_key, dedupe_key, terminal_key, data, request_id, state) do
+    case claim_with_wait(status_key, data.state, busy_wait_budget()) do
+      :skip ->
+        Watchman.increment("set_commit_status.skipped_stale_pending")
+        Cachex.put!(:store, terminal_key, true, ttl: @cache_ttl)
+
+        Logger.info(
+          "[#{request_id}] Skipping stale pending Status (cross-instance): #{dedupe_key}"
+        )
+
+        {:ok, state}
+
+      :busy ->
+        Watchman.increment("status_guard.busy")
+
+        Logger.info(
+          "[#{request_id}] Status delivery in flight on another instance: #{dedupe_key}"
+        )
+
+        {:error, state}
+
+      {:error, reason} ->
+        Watchman.increment("status_guard.unavailable")
+
+        Logger.warning(
+          "[#{request_id}] Status guard unavailable, delivering unguarded: #{inspect(reason)}"
+        )
+
+        send_unguarded(dedupe_key, terminal_key, data, request_id, state)
+
+      {:ok, token} ->
+        send_with_lease(status_key, dedupe_key, terminal_key, data, request_id, state, token)
+    end
+  end
+
+  defp send_unguarded(dedupe_key, terminal_key, data, request_id, state) do
+    Logger.info("[#{request_id}] Creating Status: #{dedupe_key}")
+
+    case send_over_channel(dedupe_key, terminal_key, data, request_id, state) do
+      {:ok, state} -> {:ok, state}
+      {:error, _outcome, state} -> {:error, state}
+    end
+  end
+
+  defp send_with_lease(status_key, dedupe_key, terminal_key, data, request_id, state, token) do
+    Logger.info("[#{request_id}] Creating Status: #{dedupe_key}")
+
+    case send_over_channel(dedupe_key, terminal_key, data, request_id, state) do
+      {:ok, state} ->
+        StatusGuard.finalize(status_key, data.state, token)
+        StatusGuard.mark_delivered(dedupe_key)
+        {:ok, state}
+
+      {:error, :rejected, state} ->
+        StatusGuard.release(status_key, token)
+        {:error, state}
+
+      {:error, :unknown, state} ->
+        {:error, state}
+    end
+  end
+
+  defp claim_with_wait(status_key, state_name, budget_ms) do
+    case StatusGuard.claim(status_key, state_name) do
+      {:busy, remaining} when budget_ms > 0 ->
+        sleep =
+          remaining
+          |> max(200)
+          |> min(@busy_poll_max_ms)
+          |> min(budget_ms)
+          |> Kernel.+(:rand.uniform(250))
+
+        Process.sleep(sleep)
+        claim_with_wait(status_key, state_name, budget_ms - sleep)
+
+      {:busy, _remaining} ->
+        :busy
+
+      other ->
+        other
+    end
+  end
+
+  defp busy_wait_budget,
+    do: Application.get_env(:github_notifier, :status_guard_busy_budget_ms, 30_000)
 
   defp send_over_channel(dedupe_key, terminal_key, data, request_id, state) do
     case ensure_channel(state) do
@@ -101,16 +210,16 @@ defmodule GithubNotifier.StatusSender.Worker do
             Logger.info("[#{request_id}] Creating Status Finished: #{dedupe_key}")
             {:ok, state}
 
-          :error ->
-            {:error, state}
+          :rejected ->
+            {:error, :rejected, state}
 
           :transport_error ->
-            {:error, drop_channel(state)}
+            {:error, :unknown, drop_channel(state)}
         end
 
       {:error, reason, state} ->
         report_failure(reason)
-        {:error, state}
+        {:error, :rejected, state}
     end
   end
 
@@ -200,6 +309,13 @@ defmodule GithubNotifier.StatusSender.Worker do
 
   defp handle_response({:ok, _} = res) do
     report_failure(res)
+    :rejected
+  end
+
+  defp handle_response({:error, %GRPC.RPCError{status: status} = error})
+       when status in @rejected_grpc_statuses do
+    report_failure(error)
+    :rejected
   end
 
   defp handle_response(res) do
