@@ -161,6 +161,31 @@ defmodule GithubNotifier.StatusTest do
       assert_receive {:source_id, "ppl-1"}
     end
 
+    test "delivers remaining statuses when an earlier one in the list fails" do
+      test_pid = self()
+      block_context = "ci/semaphoreci/push: Block A"
+
+      GrpcMock.stub(RepositoryHubMock, :create_build_status, fn req, _stream ->
+        if req.context == block_context do
+          Support.Factories.create_build_status_response(:SERVICE_ERROR)
+        else
+          send(test_pid, {:build_status, req.status, req.context})
+          Support.Factories.create_build_status_response()
+        end
+      end)
+
+      statuses = [
+        success_data(context: block_context, description: "Block A passed"),
+        success_data()
+      ]
+
+      assert_raise RuntimeError, ~r/Failed to deliver 1 of 2 statuses/, fn ->
+        GithubNotifier.Status.create(statuses, "req-1")
+      end
+
+      assert_receive {:build_status, :SUCCESS, @context}
+    end
+
     test "skips a stale pending known only to the cross-instance guard" do
       GithubNotifier.Status.create(success_data(), "req-1")
       assert_receive {:build_status, :SUCCESS, @context}
