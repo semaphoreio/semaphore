@@ -3,6 +3,8 @@ image: github_notifier
 imageTag: latest
 
 consumer:
+  # Cross-instance commit-status ordering is enforced by repository_hub
+  # (per-check guard keyed by source_id); consumers scale safely.
   replicas: 1
   logs:
     level: info
