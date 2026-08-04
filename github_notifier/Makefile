@@ -9,10 +9,18 @@ TMP_INTERNAL_REPO_DIR?=/tmp/internal_api
 RELATIVE_INTERNAL_PB_OUTPUT_DIR=lib/internal_api
 RT_PROTOC_IMG_VSN=1.18.1-3.20.1-0.13.0
 
+CACHE_HOST?=0.0.0.0
+CACHE_PORT?=6379
+
+CONTAINER_ENV_VARS= \
+	-e CACHE_HOST=$(CACHE_HOST) \
+	-e CACHE_PORT=$(CACHE_PORT)
+
 test.ex.setup: export MIX_ENV=test
 test.ex.setup:
 ifeq ($(CI),true)
 	sem-service start rabbitmq 3.8
+	sem-service start redis 7.0
 endif
 
 pb.clone:

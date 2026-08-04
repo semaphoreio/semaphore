@@ -66,6 +66,18 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.global.rabbitmq.secretName }}
                   key: amqp-url
+            - name: CACHE_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.redis.secretName }}
+                  key: host
+            - name: CACHE_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.redis.secretName }}
+                  key: port
+            - name: CACHE_POOL_SIZE
+              value: {{ .Values.redis.poolSize | quote }}
 
 {{- if .Values.api.resources }}
           resources:

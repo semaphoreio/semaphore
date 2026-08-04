@@ -36,6 +36,12 @@ config :github_notifier, amqp_url: System.get_env("AMQP_URL") || "amqp://localho
 config :github_notifier,
   context_prefix: System.get_env("CONTEXT_PREFIX") || "ci/semaphoreci"
 
+config :github_notifier,
+  cache_prefix: System.get_env("CACHE_PREFIX") || "github_notifier/",
+  cache_host: System.get_env("CACHE_HOST") || "localhost",
+  cache_port: System.get_env("CACHE_PORT") |> Kernel.||("6379") |> Integer.parse() |> elem(0),
+  cache_pool_size: System.get_env("CACHE_POOL_SIZE") |> Kernel.||("3") |> Integer.parse() |> elem(0)
+
 if config_env() == :prod do
   config :github_notifier,
     pipeline_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_PLUMBER"),

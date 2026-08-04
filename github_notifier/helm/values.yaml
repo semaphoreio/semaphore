@@ -2,6 +2,9 @@
 image: github_notifier
 imageTag: latest
 
+redis:
+  poolSize: 3
+
 consumer:
   replicas: 1
   logs:
