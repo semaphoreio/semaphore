@@ -111,6 +111,385 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
     end
   end
 
+  describe "GitHub account uniqueness" do
+    setup do
+      {user, rha} = Support.Members.insert_user_with_github_account(github_uid: "10001")
+      {:ok, user: user, rha: rha}
+    end
+
+    test "create/1 rejects a GitHub uid already connected to another user", %{rha: rha} do
+      assert {:error, %Ecto.Changeset{} = changeset} =
+               RepoHostAccount.create(%{
+                 login: "other-login",
+                 github_uid: rha.github_uid,
+                 repo_host: "github",
+                 user_id: Ecto.UUID.generate(),
+                 name: "Other User",
+                 permission_scope: "user:email"
+               })
+
+      assert RepoHostAccount.uid_taken_error?(changeset)
+    end
+
+    test "create/1 claims the uid and deletes the stale link when the existing one is revoked",
+         %{rha: rha} do
+      {:ok, _} = RepoHostAccount.update_revoke_status(rha, true)
+      :ok = Support.Members.age_repo_host_account(rha)
+
+      assert {:ok, claimed} =
+               RepoHostAccount.create(%{
+                 login: "other-login",
+                 github_uid: rha.github_uid,
+                 repo_host: "github",
+                 user_id: Ecto.UUID.generate(),
+                 name: "Other User",
+                 permission_scope: "user:email"
+               })
+
+      assert claimed.github_uid == rha.github_uid
+      assert {:error, :not_found} = RepoHostAccount.get_for_github_user(rha.user_id)
+    end
+
+    test "a freshly revoked link is not claimable during the grace period", %{rha: rha} do
+      {:ok, _} = RepoHostAccount.update_revoke_status(rha, true)
+
+      assert {:error, %Ecto.Changeset{} = changeset} =
+               RepoHostAccount.create(%{
+                 login: "other-login",
+                 github_uid: rha.github_uid,
+                 repo_host: "github",
+                 user_id: Ecto.UUID.generate(),
+                 name: "Other User",
+                 permission_scope: "user:email"
+               })
+
+      assert RepoHostAccount.uid_taken_error?(changeset)
+
+      # the transiently revoked link is untouched
+      {:ok, reloaded} = RepoHostAccount.get_for_github_user(rha.user_id)
+      assert reloaded.revoked == true
+    end
+
+    test "create/1 rejects the uid once it has been claimed away from a revoked link", %{
+      rha: rha
+    } do
+      {:ok, _} = RepoHostAccount.update_revoke_status(rha, true)
+      :ok = Support.Members.age_repo_host_account(rha)
+
+      {:ok, _claimed} =
+        RepoHostAccount.create(%{
+          login: "other-login",
+          github_uid: rha.github_uid,
+          repo_host: "github",
+          user_id: Ecto.UUID.generate(),
+          name: "Other User",
+          permission_scope: "user:email"
+        })
+
+      # The original owner reconnecting must not revive the duplicate.
+      assert {:error, %Ecto.Changeset{} = changeset} =
+               RepoHostAccount.create(%{
+                 login: rha.login,
+                 github_uid: rha.github_uid,
+                 repo_host: "github",
+                 user_id: rha.user_id,
+                 name: rha.name,
+                 permission_scope: "user:email"
+               })
+
+      assert RepoHostAccount.uid_taken_error?(changeset)
+    end
+
+    test "update_repo_host_account/4 with reset claims a uid held only by a revoked link", %{
+      rha: rha
+    } do
+      {:ok, _} = RepoHostAccount.update_revoke_status(rha, true)
+      :ok = Support.Members.age_repo_host_account(rha)
+
+      {other_user, _other_rha} =
+        Support.Members.insert_user_with_github_account(github_uid: "10009", login: "claimer")
+
+      assert {:ok, updated} =
+               RepoHostAccount.update_repo_host_account(
+                 other_user.id,
+                 :github,
+                 %{
+                   github_uid: rha.github_uid,
+                   login: "claimer",
+                   name: "Claimer",
+                   permission_scope: "user:email"
+                 },
+                 reset: true
+               )
+
+      assert updated.github_uid == rha.github_uid
+      assert {:error, :not_found} = RepoHostAccount.get_for_github_user(rha.user_id)
+    end
+
+    test "create/1 allows the same uid under a different repo_host", %{rha: rha} do
+      assert {:ok, _} =
+               RepoHostAccount.create(%{
+                 login: "other-login",
+                 github_uid: rha.github_uid,
+                 repo_host: "bitbucket",
+                 user_id: Ecto.UUID.generate(),
+                 name: "Other User",
+                 permission_scope: "user:email"
+               })
+    end
+
+    test "update_repo_host_account/4 with reset rejects switching to another user's uid", %{
+      rha: rha
+    } do
+      {other_user, _other_rha} =
+        Support.Members.insert_user_with_github_account(github_uid: "10002", login: "other")
+
+      assert {:error, %Ecto.Changeset{} = changeset} =
+               RepoHostAccount.update_repo_host_account(
+                 other_user.id,
+                 :github,
+                 %{
+                   github_uid: rha.github_uid,
+                   login: "other",
+                   name: "Other User",
+                   permission_scope: "user:email"
+                 },
+                 reset: true
+               )
+
+      assert RepoHostAccount.uid_taken_error?(changeset)
+
+      {:ok, unchanged} = RepoHostAccount.get_for_github_user(other_user.id)
+      assert unchanged.github_uid == "10002"
+    end
+
+    test "update_repo_host_account/4 allows reconnecting the user's own uid" do
+      {user, rha} =
+        Support.Members.insert_user_with_github_account(
+          github_uid: "10003",
+          login: "reconnect",
+          permission_scope: "repo,user:email"
+        )
+
+      assert {:ok, updated} =
+               RepoHostAccount.update_repo_host_account(
+                 user.id,
+                 :github,
+                 %{
+                   github_uid: rha.github_uid,
+                   login: rha.login,
+                   name: rha.name,
+                   token: "refreshed-token",
+                   permission_scope: "repo,user:email"
+                 },
+                 reset: true
+               )
+
+      assert updated.github_uid == rha.github_uid
+      assert updated.token == "refreshed-token"
+    end
+
+    test "uid_taken_error?/1 is false for other changeset errors" do
+      changeset =
+        %RepoHostAccount{}
+        |> Ecto.Changeset.cast(%{}, [:login])
+        |> Ecto.Changeset.validate_required([:login])
+
+      refute RepoHostAccount.uid_taken_error?(changeset)
+      refute RepoHostAccount.uid_taken_error?(:invalid_data)
+    end
+  end
+
+  describe "un-revoking a link" do
+    setup do
+      {user, rha} = Support.Members.insert_user_with_github_account(github_uid: "10101")
+      {:ok, user: user, rha: rha}
+    end
+
+    test "update_revoke_status/2 rejects re-activation when the uid is actively held by another user",
+         %{rha: rha} do
+      {:ok, revoked} = RepoHostAccount.update_revoke_status(rha, true)
+
+      {:ok, _} =
+        Support.Members.insert_repo_host_account(
+          github_uid: rha.github_uid,
+          login: "current-holder",
+          name: "Current Holder",
+          permission_scope: "user:email"
+        )
+
+      assert {:error, %Ecto.Changeset{} = changeset} =
+               RepoHostAccount.update_revoke_status(revoked, false)
+
+      assert RepoHostAccount.uid_taken_error?(changeset)
+
+      {:ok, reloaded} = RepoHostAccount.get_for_github_user(rha.user_id)
+      assert reloaded.revoked == true
+    end
+
+    test "update_revoke_status/2 re-activates when the uid is free", %{rha: rha} do
+      {:ok, revoked} = RepoHostAccount.update_revoke_status(rha, true)
+
+      assert {:ok, updated} = RepoHostAccount.update_revoke_status(revoked, false)
+      assert updated.revoked == false
+    end
+
+    test "update_revoke_status/2 re-activation claims a uid held only by revoked links", %{
+      rha: rha
+    } do
+      {:ok, revoked} = RepoHostAccount.update_revoke_status(rha, true)
+
+      {:ok, stale} =
+        Support.Members.insert_repo_host_account(
+          github_uid: rha.github_uid,
+          login: "stale-owner",
+          name: "Stale Owner",
+          permission_scope: "user:email",
+          revoked: true
+        )
+
+      :ok = Support.Members.age_repo_host_account(stale)
+
+      assert {:ok, updated} = RepoHostAccount.update_revoke_status(revoked, false)
+      assert updated.revoked == false
+
+      assert {:error, :not_found} = RepoHostAccount.get_for_github_user(stale.user_id)
+    end
+
+    test "token refresh on a pre-existing active duplicate is not blocked" do
+      {user, rha} =
+        Support.Members.insert_user_with_github_account(
+          github_uid: "10102",
+          login: "dup-owner",
+          permission_scope: "repo,user:email"
+        )
+
+      # tolerated legacy state: two active rows share the uid
+      {:ok, _} =
+        Support.Members.insert_repo_host_account(
+          github_uid: rha.github_uid,
+          login: "legacy-duplicate",
+          name: "Legacy Duplicate",
+          permission_scope: "user:email"
+        )
+
+      assert {:ok, updated} =
+               RepoHostAccount.update_repo_host_account(
+                 user.id,
+                 :github,
+                 %{
+                   github_uid: rha.github_uid,
+                   login: rha.login,
+                   name: rha.name,
+                   token: "refreshed-token",
+                   permission_scope: "repo,user:email"
+                 },
+                 reset: true
+               )
+
+      assert updated.token == "refreshed-token"
+      assert updated.revoked == false
+    end
+
+    test "bitbucket links can re-activate even when the uid is actively held" do
+      shared_uid = "{30000000-0000-4000-8000-000000000001}"
+
+      {:ok, revoked} =
+        Support.Members.insert_repo_host_account(
+          github_uid: shared_uid,
+          repo_host: "bitbucket",
+          login: "bb-revoked",
+          name: "BB Revoked",
+          permission_scope: "user:email",
+          revoked: true
+        )
+
+      {:ok, _} =
+        Support.Members.insert_repo_host_account(
+          github_uid: shared_uid,
+          repo_host: "bitbucket",
+          login: "bb-holder",
+          name: "BB Holder",
+          permission_scope: "user:email"
+        )
+
+      assert {:ok, updated} = RepoHostAccount.update_revoke_status(revoked, false)
+      assert updated.revoked == false
+    end
+
+    test "gitlab links can re-activate even when the uid is actively held" do
+      {:ok, revoked} =
+        Support.Members.insert_repo_host_account(
+          github_uid: "40001",
+          repo_host: "gitlab",
+          login: "gl-revoked",
+          name: "GL Revoked",
+          permission_scope: "user:email",
+          revoked: true
+        )
+
+      {:ok, _} =
+        Support.Members.insert_repo_host_account(
+          github_uid: "40001",
+          repo_host: "gitlab",
+          login: "gl-holder",
+          name: "GL Holder",
+          permission_scope: "user:email"
+        )
+
+      assert {:ok, updated} = RepoHostAccount.update_revoke_status(revoked, false)
+      assert updated.revoked == false
+    end
+  end
+
+  describe "get_github_token/1 revoke classification" do
+    test "does not revoke the link when the token refresh is rate-limited" do
+      {_user, rha} =
+        Support.Members.insert_user_with_github_account(
+          github_uid: "10201",
+          login: "rate-limited"
+        )
+
+      rha = %{rha | refresh_token: "refresh-token"}
+
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          {:ok, %Tesla.Env{status: 401, body: %{}}}
+
+        %{method: :post, url: "https://github.com/login/oauth/access_token"} ->
+          {:ok, %Tesla.Env{status: 429, body: %{}}}
+      end)
+
+      assert {:error, {"", nil}} = RepoHostAccount.get_github_token(rha)
+
+      {:ok, reloaded} = RepoHostAccount.get_for_github_user(rha.user_id)
+      assert reloaded.revoked == false
+    end
+
+    test "revokes the link when the token refresh is rejected" do
+      {_user, rha} =
+        Support.Members.insert_user_with_github_account(
+          github_uid: "10202",
+          login: "rejected"
+        )
+
+      rha = %{rha | refresh_token: "refresh-token"}
+
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          {:ok, %Tesla.Env{status: 401, body: %{}}}
+
+        %{method: :post, url: "https://github.com/login/oauth/access_token"} ->
+          {:ok, %Tesla.Env{status: 400, body: %{}}}
+      end)
+
+      assert {:error, {"", nil}} = RepoHostAccount.get_github_token(rha)
+
+      {:ok, reloaded} = RepoHostAccount.get_for_github_user(rha.user_id)
+      assert reloaded.revoked == true
+    end
+  end
+
   describe "Inspect implementation" do
     test "redacts :token and :refresh_token from inspect output" do
       rha = %RepoHostAccount{
