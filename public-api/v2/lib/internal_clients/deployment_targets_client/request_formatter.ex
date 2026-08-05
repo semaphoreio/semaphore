@@ -297,9 +297,17 @@ defmodule InternalClients.DeploymentTargetsClient.RequestFormatter do
     end
   end
 
+  # Maps both a role's name and its ID to the role ID, keyed lowercase.
+  #
+  # Gofer authorizes a ROLE rule by comparing subject_id against role IDs
+  # (Gofer.Deployment.Guardian.role_rules_apply?/3), so the ID is what has to be stored.
+  # Accepting the ID as well as the name keeps the API round-trippable: a target described
+  # by this API reports role rules as IDs, and sending those back must not be rejected.
   defp role_name_to_role_map(project_scope_roles) do
-    Enum.into(project_scope_roles, %{}, fn role ->
-      {String.downcase(role.name), role.name}
+    Enum.reduce(project_scope_roles, %{}, fn role, acc ->
+      acc
+      |> Map.put(String.downcase(role.name), role.id)
+      |> Map.put(String.downcase(role.id), role.id)
     end)
   end
 

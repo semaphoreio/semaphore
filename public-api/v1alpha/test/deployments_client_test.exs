@@ -8,6 +8,9 @@ defmodule PipelinesAPI.DeploymentsClient.Test do
   @default_org_id "92be62c2-9cf4-4dad-b168-d6efa6aa5e21"
   @default_project_id "92be1234-1234-4234-8234-123456789012"
 
+  # Gofer matches a ROLE rule's subject_id against role ids, so that is what the API stores.
+  defp admin_role_id, do: Support.Stubs.DB.find_by(:rbac_roles, :name, "Admin").id
+
   setup do
     Support.Stubs.DB.reset()
 
@@ -113,6 +116,8 @@ defmodule PipelinesAPI.DeploymentsClient.Test do
       assert %{subject_id: subject_id} =
                Support.Stubs.DB.find_by(:subject_role_bindings, :project_id, @default_project_id)
 
+      admin_role_id = admin_role_id()
+
       target_params =
         Map.merge(ctx.target_params, ctx.extra_args)
         |> Map.put("subject_rules", [
@@ -132,7 +137,7 @@ defmodule PipelinesAPI.DeploymentsClient.Test do
                 project_id: "92be1234-1234-4234-8234-123456789012",
                 subject_rules: [
                   %{git_login: "milica-nerlovic", subject_id: ^subject_id, type: :USER},
-                  %{subject_id: "Admin", type: :ROLE}
+                  %{subject_id: ^admin_role_id, type: :ROLE}
                 ],
                 url: "https://staging.rtx.com"
               }} = DeploymentsClient.create(params, conn)
@@ -298,6 +303,8 @@ defmodule PipelinesAPI.DeploymentsClient.Test do
       assert %{subject_id: subject_id} =
                Support.Stubs.DB.find_by(:subject_role_bindings, :project_id, @default_project_id)
 
+      admin_role_id = admin_role_id()
+
       params =
         params
         |> Map.merge(target_params)
@@ -316,9 +323,34 @@ defmodule PipelinesAPI.DeploymentsClient.Test do
               %{
                 subject_rules: [
                   %{git_login: "milica-nerlovic", subject_id: ^subject_id, type: :USER},
-                  %{subject_id: "Admin", type: :ROLE}
+                  %{subject_id: ^admin_role_id, type: :ROLE}
                 ]
               }} = DeploymentsClient.update(params, conn)
+    end
+
+    test "when a ROLE rule is given as a role id then it round-trips unchanged", ctx do
+      conn = create_conn(ctx)
+      admin_role_id = admin_role_id()
+      target_params = Map.merge(ctx.target_params, ctx.extra_args)
+      {:ok, key} = SecretClient.key()
+      params = create_params(target_params, UUID.uuid4(), [], [], key)
+      {:ok, target} = DeploymentsClient.create(params, conn)
+
+      target_params = Map.put(target_params, "id", target.id)
+
+      params =
+        params
+        |> Map.merge(target_params)
+        |> Map.put("subject_rules", [%{"type" => "ROLE", "subject_id" => admin_role_id}])
+        |> Map.put("unique_token", UUID.uuid4())
+        |> Map.put("old_target", target)
+        |> Map.put("old_env_vars", [])
+        |> Map.put("old_files", [])
+
+      conn = update_conn(ctx) |> Map.put(:params, params)
+
+      assert {:ok, %{subject_rules: [%{subject_id: ^admin_role_id, type: :ROLE}]}} =
+               DeploymentsClient.update(params, conn)
     end
   end
 
