@@ -24,6 +24,18 @@ defmodule Deployment.Model.Deployment.SubjectRuleTest do
       valid?(%{type: :GROUP, subject_id: UUID.uuid4()})
     end
 
+    test "when type is USER, ROLE or GROUP and subject_id is not a UUID then invalid" do
+      invalid?(%{type: :USER, subject_id: "Admin"}, subject_id: "must be a valid UUID")
+      invalid?(%{type: :ROLE, subject_id: "Admin"}, subject_id: "must be a valid UUID")
+      invalid?(%{type: :GROUP, subject_id: "Admin"}, subject_id: "must be a valid UUID")
+    end
+
+    test "when type is USER, ROLE or GROUP and subject_id is a valid UUID then valid" do
+      valid?(%{type: :USER, subject_id: UUID.uuid4()})
+      valid?(%{type: :ROLE, subject_id: UUID.uuid4()})
+      valid?(%{type: :GROUP, subject_id: UUID.uuid4()})
+    end
+
     test "when type is ANY or AUTO then valid" do
       valid?(%{type: :ANY})
       valid?(%{type: :AUTO})

@@ -29,12 +29,18 @@ defmodule Gofer.Deployment.Model.Deployment.SubjectRule do
   defp validate_subject_id(:ANY, changeset = %Ecto.Changeset{}), do: changeset
   defp validate_subject_id(:AUTO, changeset = %Ecto.Changeset{}), do: changeset
 
-  defp validate_subject_id(:USER, changeset = %Ecto.Changeset{}),
-    do: Ecto.Changeset.validate_required(changeset, [:subject_id])
+  defp validate_subject_id(:USER, changeset), do: validate_subject_id_uuid(changeset)
+  defp validate_subject_id(:ROLE, changeset), do: validate_subject_id_uuid(changeset)
+  defp validate_subject_id(:GROUP, changeset), do: validate_subject_id_uuid(changeset)
 
-  defp validate_subject_id(:ROLE, changeset = %Ecto.Changeset{}),
-    do: Ecto.Changeset.validate_required(changeset, [:subject_id])
-
-  defp validate_subject_id(:GROUP, changeset = %Ecto.Changeset{}),
-    do: Ecto.Changeset.validate_required(changeset, [:subject_id])
+  defp validate_subject_id_uuid(changeset = %Ecto.Changeset{}) do
+    changeset
+    |> Ecto.Changeset.validate_required([:subject_id])
+    |> Ecto.Changeset.validate_change(:subject_id, fn :subject_id, value ->
+      case Ecto.UUID.cast(value) do
+        {:ok, _} -> []
+        :error -> [subject_id: "must be a valid UUID"]
+      end
+    end)
+  end
 end
