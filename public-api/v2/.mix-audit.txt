@@ -41,3 +41,18 @@ GHSA-gp9c-pm5m-5cxr
 GHSA-j9wq-vxxc-94wf
 GHSA-mp55-p8c9-rfw2
 GHSA-pj7v-xfvx-wmjq
+
+# --- gun 2.1.0 advisories ---
+# gun is the gRPC client transport for internal-service calls only; no user-controlled
+# URLs, hosts, or request lines are fed to it. Bump tracked for the fleet-wide dep-bump branch.
+#
+# uncontrolled resource consumption, fixed in 2.4.0
+GHSA-r53j-fjj5-mv77
+# unexpected status/return value handling, fixed in 2.4.0
+GHSA-2j82-37xg-f9wp
+# HTTP request/response splitting (shared cowboy/gun advisory)
+GHSA-w4f7-4cxr-rv3c
+
+# protobuf 0.12.0 — unbounded recursion depth in embedded-message decoding, fixed in 0.16.1
+# (decodes internal-service traffic only; bump tracked in the dedicated dependency PR)
+GHSA-rv48-qqj5-crxg
