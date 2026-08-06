@@ -189,7 +189,7 @@ export var App = {
       window.FaviconUpdater.setPipelineStatusUrl(window.InjectedDataByBackend.pipelineStatusUrl);
     }
 
-    Pollman.init({ interval: 4000, forceRefreshCycle: 10, saveScrollElements: ["#workflow-tree-container", "#diagram"] });
+    Pollman.init({ interval: 10000, forceRefreshCycle: 10, saveScrollElements: ["#workflow-tree-container", "#diagram"] });
     Timer.init();
     Switch.init();
     InteractivePipelineTree.init();
