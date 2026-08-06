@@ -134,7 +134,7 @@ defmodule Rbac.RoleManagement do
     case verify_input_for_new_role(rbi.user_id, rbi.org_id, rbi.project_id, role_id) do
       {:ok, nil} ->
         user_to_subject_bindings = Queries.user_to_subject_bindings_query(rbi.user_id)
-        role_inheritance_tree = Queries.role_inheritance_and_mappings_query()
+        role_inheritance_tree = Queries.role_inheritance_and_mappings_query(rbi.org_id)
 
         project_where_clause =
           if valid_uuid?(rbi.project_id) do
