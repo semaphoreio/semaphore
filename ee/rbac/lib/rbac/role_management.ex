@@ -467,14 +467,14 @@ defmodule Rbac.RoleManagement do
     {:error, "Organization id cant be nil"}
   end
 
-  defp verify_input_for_new_role(_user_id, _org_id, project_id, role_id) do
+  defp verify_input_for_new_role(_user_id, org_id, project_id, role_id) do
     if valid_uuid?(role_id),
-      do: role_scope_matches_rest_of_data?(project_id, role_id),
+      do: role_scope_matches_rest_of_data?(org_id, project_id, role_id),
       else: {:error, "Role id must be a valid uuid"}
   end
 
-  defp role_scope_matches_rest_of_data?(project_id, role_id) do
-    case Rbac.Repo.RbacRole.get_role_by_id(role_id) do
+  defp role_scope_matches_rest_of_data?(org_id, project_id, role_id) do
+    case Rbac.Repo.RbacRole.get_role_by_id(role_id, org_id) do
       nil ->
         {:error, "Role with id #{role_id} does not exist."}
 
