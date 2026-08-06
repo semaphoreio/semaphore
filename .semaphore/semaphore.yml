@@ -1288,7 +1288,7 @@ blocks:
             - make check.ex.code
         - name: "Check dependencies"
           commands:
-            - make check.ex.deps
+            - make check.ex.deps CHECK_DEPS_EXTRA_OPTS='-i cowboy'
   - name: "Looper: QA"
     dependencies: ["Looper: Provision Test Image"]
     run:
@@ -1491,7 +1491,7 @@ blocks:
             - make check.ex.code
         - name: "Check dependencies"
           commands:
-            - make check.ex.deps
+            - make check.ex.deps CHECK_DEPS_EXTRA_OPTS='-i gun -i cowboy'
         - name: "Check docker"
           commands:
             - make build
@@ -1617,7 +1617,7 @@ blocks:
             - make check.ex.code
         - name: "Check dependencies"
           commands:
-            - make check.ex.deps
+            - make check.ex.deps CHECK_DEPS_EXTRA_OPTS='-i gun -i cowboy'
   - name: "GoferClient: QA"
     dependencies: ["GoferClient: Provision Test Image"]
     run:
@@ -1677,7 +1677,7 @@ blocks:
             - make check.ex.code
         - name: "Check dependencies"
           commands:
-            - make check.ex.deps
+            - make check.ex.deps CHECK_DEPS_EXTRA_OPTS='-i gun -i cowboy'
   - name: "Blocks: QA"
     dependencies: ["Blocks: Provision Test Image"]
     run:
@@ -1801,7 +1801,7 @@ blocks:
             - make check.ex.code
         - name: "Check dependencies"
           commands:
-            - make check.ex.deps
+            - make check.ex.deps CHECK_DEPS_EXTRA_OPTS='-i gun -i cowboy'
         - name: "Check docker"
           commands:
             - make build
