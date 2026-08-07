@@ -3,12 +3,14 @@ defmodule RepositoryHub.BuildStatusGuard do
   Cross-instance ordering guard for commit status delivery.
 
   One row per (repository_id, commit_sha, context, source_id) records the last
-  delivered state and an in-flight lease. `claim/1` is a single atomic upsert:
-  it acquires the lease unless another delivery currently holds it (`:busy`)
-  or a PENDING status arrives after a terminal state was already delivered
-  (`:skip`). The provider call happens outside any transaction; `finalize/2`
-  and `release/2` complete or abandon the lease, using the claim timestamp as
-  a fencing token so an expired claimant cannot overwrite newer state.
+  delivered state and an in-flight lease. `claim/1` decides under a row lock
+  (`SELECT ... FOR UPDATE` inside a transaction): it acquires the lease unless
+  another delivery currently holds it (`:busy`) or a PENDING status arrives
+  after a terminal state was already delivered (`:skip`). The provider call
+  happens outside the transaction; `finalize/2` and `release/2` complete or
+  abandon the lease, using the claim timestamp as a fencing token so an
+  expired claimant cannot overwrite newer state. Lease arithmetic uses the
+  database clock, never the pods'.
 
   Requests without a source_id are not guarded. If the guard table does not
   exist yet (migration not run), operations return
@@ -17,44 +19,16 @@ defmodule RepositoryHub.BuildStatusGuard do
   validation can reject it instead of the guard crashing.
   """
 
-  alias RepositoryHub.Repo
+  import Ecto.Query
+
   alias InternalApi.Repository.CreateBuildStatusRequest
+  alias RepositoryHub.Model.BuildStatusGuards
+  alias RepositoryHub.Repo
 
   require Logger
 
   @terminal_states ~w(SUCCESS FAILURE STOPPED)
   @lease_seconds 90
-
-  @claim_sql """
-  INSERT INTO build_status_guards AS g
-    (repository_id, commit_sha, context, source_id, claimed_at, updated_at)
-  VALUES ($1, $2, $3, $4, now(), now())
-  ON CONFLICT (repository_id, commit_sha, context, source_id) DO UPDATE
-  SET claimed_at = now(), updated_at = now()
-  WHERE (g.claimed_at IS NULL OR g.claimed_at < now() - interval '#{@lease_seconds} seconds')
-    AND NOT (COALESCE(g.last_state, '') = ANY('{#{Enum.join(@terminal_states, ",")}}') AND $5)
-  RETURNING g.claimed_at
-  """
-
-  @classify_sql """
-  SELECT last_state, COALESCE(claimed_at >= now() - interval '#{@lease_seconds} seconds', false)
-  FROM build_status_guards
-  WHERE repository_id = $1 AND commit_sha = $2 AND context = $3 AND source_id = $4
-  """
-
-  @finalize_sql """
-  UPDATE build_status_guards
-  SET last_state = $5, claimed_at = NULL, updated_at = now()
-  WHERE repository_id = $1 AND commit_sha = $2 AND context = $3 AND source_id = $4
-    AND claimed_at = $6
-  """
-
-  @release_sql """
-  UPDATE build_status_guards
-  SET claimed_at = NULL, updated_at = now()
-  WHERE repository_id = $1 AND commit_sha = $2 AND context = $3 AND source_id = $4
-    AND claimed_at = $5
-  """
 
   @doc """
   Acquires the delivery lease for the request's check.
@@ -66,18 +40,35 @@ defmodule RepositoryHub.BuildStatusGuard do
   @spec claim(CreateBuildStatusRequest.t()) ::
           {:ok, DateTime.t()} | :skip | :busy | {:error, term}
   def claim(request) do
-    pending? = request.status == :PENDING
+    with {:ok, key} <- key(request) do
+      pending? = request.status == :PENDING
 
-    case key_params(request) do
-      {:ok, params} ->
-        case query(@claim_sql, params ++ [pending?]) do
-          {:ok, %{rows: [[fence]]}} -> {:ok, fence}
-          {:ok, %{rows: []}} -> classify(params, pending?)
-          {:error, _} = error -> error
+      transaction(fn ->
+        ensure_row(key)
+
+        {row, db_now} =
+          key
+          |> by_key()
+          |> lock("FOR UPDATE")
+          |> select([g], {g, fragment("now()")})
+          |> Repo.one!()
+
+        cond do
+          pending? && row.last_state in @terminal_states ->
+            :skip
+
+          live_lease?(row, db_now) ->
+            :busy
+
+          true ->
+            {1, _} =
+              key
+              |> by_key()
+              |> Repo.update_all(set: [claimed_at: db_now, updated_at: db_now])
+
+            {:ok, db_now}
         end
-
-      :error ->
-        {:error, :invalid_key}
+      end)
     end
   end
 
@@ -86,23 +77,29 @@ defmodule RepositoryHub.BuildStatusGuard do
   """
   @spec finalize(CreateBuildStatusRequest.t(), DateTime.t()) :: :ok | {:error, term}
   def finalize(request, fence) do
-    case key_params(request) do
-      {:ok, params} ->
+    case key(request) do
+      {:ok, key} ->
         state = Atom.to_string(request.status)
 
-        case query(@finalize_sql, params ++ [state, fence]) do
-          {:ok, %{num_rows: 0}} ->
-            Logger.warning("[BuildStatusGuard] stale fence on finalize, state not recorded")
-            :ok
+        transaction(fn ->
+          key
+          |> by_key()
+          |> where([g], g.claimed_at == ^fence)
+          |> update([g],
+            set: [last_state: ^state, claimed_at: nil, updated_at: fragment("now()")]
+          )
+          |> Repo.update_all([])
+          |> case do
+            {0, _} ->
+              Logger.warning("[BuildStatusGuard] stale fence on finalize, state not recorded")
+              :ok
 
-          {:ok, _} ->
-            :ok
+            {_, _} ->
+              :ok
+          end
+        end)
 
-          {:error, _} = error ->
-            error
-        end
-
-      :error ->
+      {:error, :invalid_key} ->
         :ok
     end
   end
@@ -113,14 +110,19 @@ defmodule RepositoryHub.BuildStatusGuard do
   """
   @spec release(CreateBuildStatusRequest.t(), DateTime.t()) :: :ok | {:error, term}
   def release(request, fence) do
-    case key_params(request) do
-      {:ok, params} ->
-        case query(@release_sql, params ++ [fence]) do
-          {:ok, _} -> :ok
-          {:error, _} = error -> error
-        end
+    case key(request) do
+      {:ok, key} ->
+        transaction(fn ->
+          key
+          |> by_key()
+          |> where([g], g.claimed_at == ^fence)
+          |> update([g], set: [claimed_at: nil, updated_at: fragment("now()")])
+          |> Repo.update_all([])
 
-      :error ->
+          :ok
+        end)
+
+      {:error, :invalid_key} ->
         :ok
     end
   end
@@ -131,42 +133,58 @@ defmodule RepositoryHub.BuildStatusGuard do
   @doc false
   def lease_seconds, do: @lease_seconds
 
-  defp classify(params, pending?) do
-    case query(@classify_sql, params) do
-      {:ok, %{rows: [[last_state, live?]]}} ->
-        cond do
-          pending? && last_state in @terminal_states -> :skip
-          live? -> :busy
-          true -> :busy
-        end
+  defp key(request) do
+    case Ecto.UUID.cast(request.repository_id) do
+      {:ok, repository_id} ->
+        {:ok,
+         %{
+           repository_id: repository_id,
+           commit_sha: request.commit_sha,
+           context: request.context,
+           source_id: request.source_id
+         }}
 
-      {:ok, %{rows: []}} ->
-        :busy
-
-      {:error, _} = error ->
-        error
+      :error ->
+        {:error, :invalid_key}
     end
   end
 
-  defp key_params(request) do
-    case Ecto.UUID.dump(request.repository_id) do
-      {:ok, uuid} -> {:ok, [uuid, request.commit_sha, request.context, request.source_id]}
-      :error -> :error
-    end
+  defp by_key(key) do
+    from(g in BuildStatusGuards,
+      where:
+        g.repository_id == ^key.repository_id and g.commit_sha == ^key.commit_sha and
+          g.context == ^key.context and g.source_id == ^key.source_id
+    )
   end
 
-  defp query(sql, params) do
-    case Repo.query(sql, params) do
-      {:ok, _} = ok ->
-        ok
+  # updated_at only feeds retention cleanup, so the app clock is precise
+  # enough here; lease decisions always use the database clock.
+  defp ensure_row(key) do
+    Repo.insert_all(
+      BuildStatusGuards,
+      [Map.put(key, :updated_at, DateTime.utc_now())],
+      on_conflict: :nothing
+    )
+  end
 
-      {:error, %Postgrex.Error{postgres: %{code: :undefined_table}}} ->
-        {:error, :guard_unavailable}
+  defp live_lease?(%{claimed_at: nil}, _db_now), do: false
 
-      {:error, _} = error ->
-        error
+  defp live_lease?(%{claimed_at: claimed_at}, db_now),
+    do: DateTime.diff(db_now, claimed_at, :microsecond) < @lease_seconds * 1_000_000
+
+  defp transaction(fun) do
+    case Repo.transaction(fun) do
+      {:ok, result} -> result
+      {:error, reason} -> {:error, reason}
     end
   rescue
-    error -> {:error, error}
+    error in Postgrex.Error ->
+      case error.postgres do
+        %{code: :undefined_table} -> {:error, :guard_unavailable}
+        _ -> {:error, error}
+      end
+
+    error ->
+      {:error, error}
   end
 end
