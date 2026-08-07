@@ -9,6 +9,7 @@ defmodule GithubNotifier.FeatureProviderInvalidatorWorker do
   use Tackle.Multiconsumer,
     url: Application.get_env(:github_notifier, :amqp_url),
     service: "github_notifier",
+    dead_letter_queue: Application.get_env(:github_notifier, :tackle_dead_letter_queue, true),
     routes: [
       {"feature_exchange", "features_changed", :features_changed},
       {"feature_exchange", "organization_features_changed", :organization_features_changed}
