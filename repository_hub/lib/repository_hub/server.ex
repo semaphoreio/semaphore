@@ -30,6 +30,7 @@ defmodule RepositoryHub.Server do
     ListCollaboratorsRequest,
     ListCollaboratorsResponse,
     CreateBuildStatusRequest,
+    CreateBuildStatusResponse,
     CreateRequest,
     CreateResponse,
     CheckWebhookRequest,
@@ -50,6 +51,7 @@ defmodule RepositoryHub.Server do
     RegenerateWebhookSecretResponse
   }
 
+  alias RepositoryHub.BuildStatusGuard
   alias RepositoryHub.Server
 
   alias RepositoryHub.Adapters
@@ -156,9 +158,58 @@ defmodule RepositoryHub.Server do
   end
 
   @spec create_build_status(CreateBuildStatusRequest.t(), ServerStream.t()) :: %{}
-  def create_build_status(request, _stream) do
+  def create_build_status(%{source_id: ""} = request, _stream) do
     execute(request, Server.CreateBuildStatusAction)
   end
+
+  def create_build_status(request, _stream) do
+    case BuildStatusGuard.claim(request) do
+      :skip ->
+        Watchman.increment("build_status_guard.skipped_stale_pending")
+        %CreateBuildStatusResponse{code: :OK, skipped: true}
+
+      :busy ->
+        Watchman.increment("build_status_guard.busy")
+
+        raise(GRPC.RPCError,
+          status: GRPC.Status.unavailable(),
+          message: "Status delivery for this check is already in progress"
+        )
+
+      {:ok, fence} ->
+        try do
+          response = execute(request, Server.CreateBuildStatusAction)
+          BuildStatusGuard.finalize(request, fence)
+          response
+        rescue
+          e ->
+            # Release only when the provider definitively did not create the
+            # status. On unknown outcomes (timeouts, provider 5xx) the send may
+            # still land, so the lease is left to expire — an early release
+            # would let a competing terminal status finalize before a delayed
+            # pending reaches the provider.
+            if definitively_rejected?(e), do: BuildStatusGuard.release(request, fence)
+            reraise(e, __STACKTRACE__)
+        end
+
+      {:error, error} ->
+        Watchman.increment("build_status_guard.unavailable")
+        log_warn(["build status guard unavailable, delivering unguarded", inspect(error)])
+        execute(request, Server.CreateBuildStatusAction)
+    end
+  end
+
+  defp definitively_rejected?(%GRPC.RPCError{status: status}) do
+    status in [
+      GRPC.Status.invalid_argument(),
+      GRPC.Status.not_found(),
+      GRPC.Status.permission_denied(),
+      GRPC.Status.resource_exhausted(),
+      GRPC.Status.failed_precondition()
+    ]
+  end
+
+  defp definitively_rejected?(_error), do: false
 
   @spec check_deploy_key(CheckDeployKeyRequest.t(), ServerStream.t()) :: CheckDeployKeyResponse.t()
   def check_deploy_key(request, _stream) do
