@@ -81,6 +81,44 @@ defmodule RepositoryHub.Server.CreateBuildStatusGuardTest do
       assert :meck.num_calls(GithubClient, :create_build_status, :_) == 0
     end
 
+    test "releases the lease when the provider definitively rejects the status", ctx do
+      :meck.expect(GithubClient, :create_build_status, fn _params, _opts ->
+        {:error, "Can't create a commit status on GitHub."}
+      end)
+
+      request = request(ctx, :SUCCESS)
+
+      assert_raise GRPC.RPCError, fn -> Server.create_build_status(request, nil) end
+
+      assert {:ok, _fence} = BuildStatusGuard.claim(request)
+    end
+
+    test "holds the lease when the send outcome is unknown", ctx do
+      :meck.expect(GithubClient, :create_build_status, fn _params, _opts ->
+        raise "recv timeout"
+      end)
+
+      request = request(ctx, :SUCCESS)
+
+      assert_raise GRPC.RPCError, fn -> Server.create_build_status(request, nil) end
+
+      assert :busy = BuildStatusGuard.claim(request)
+    end
+
+    test "holds the lease when the provider reports unavailable", ctx do
+      :meck.expect(GithubClient, :create_build_status, fn _params, _opts ->
+        {:error, %{status: GRPC.Status.unavailable(), message: "GitHub is unavailable."}}
+      end)
+
+      request = request(ctx, :SUCCESS)
+
+      assert_raise GRPC.RPCError, ~r/unavailable/i, fn ->
+        Server.create_build_status(request, nil)
+      end
+
+      assert :busy = BuildStatusGuard.claim(request)
+    end
+
     test "reports unavailable while another delivery holds the lease", ctx do
       request = request(ctx, :SUCCESS)
       assert {:ok, _fence} = BuildStatusGuard.claim(request)

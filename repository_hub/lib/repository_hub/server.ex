@@ -183,7 +183,12 @@ defmodule RepositoryHub.Server do
           response
         rescue
           e ->
-            BuildStatusGuard.release(request, fence)
+            # Release only when the provider definitively did not create the
+            # status. On unknown outcomes (timeouts, provider 5xx) the send may
+            # still land, so the lease is left to expire — an early release
+            # would let a competing terminal status finalize before a delayed
+            # pending reaches the provider.
+            if definitively_rejected?(e), do: BuildStatusGuard.release(request, fence)
             reraise(e, __STACKTRACE__)
         end
 
@@ -193,6 +198,18 @@ defmodule RepositoryHub.Server do
         execute(request, Server.CreateBuildStatusAction)
     end
   end
+
+  defp definitively_rejected?(%GRPC.RPCError{status: status}) do
+    status in [
+      GRPC.Status.invalid_argument(),
+      GRPC.Status.not_found(),
+      GRPC.Status.permission_denied(),
+      GRPC.Status.resource_exhausted(),
+      GRPC.Status.failed_precondition()
+    ]
+  end
+
+  defp definitively_rejected?(_error), do: false
 
   @spec check_deploy_key(CheckDeployKeyRequest.t(), ServerStream.t()) :: CheckDeployKeyResponse.t()
   def check_deploy_key(request, _stream) do
