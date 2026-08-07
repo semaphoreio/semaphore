@@ -26,6 +26,7 @@ defmodule Guard.Mixfile do
   defp deps do
     [
       {:grpc, "0.5.0-beta.1", override: true},
+      {:gun, "~> 2.0", hex: :grpc_gun, override: true},
       {:cowboy, "~> 2.15", override: true},
       {:cowlib, "~> 2.16", override: true},
       {:plug_cowboy, "~> 2.3"},
@@ -64,9 +65,7 @@ defmodule Guard.Mixfile do
       {:bypass, "~> 2.1", only: [:dev, :test]},
       {:remote_ip, "~> 1.1"},
       {:ueberauth_github, "~> 0.8"},
-      {:ueberauth_bitbucket,
-       git: "https://bitbucket.org/semaphoreci/ueberauth_bitbucket.git",
-       ref: "e59638a5671721aa0b5eb02217991a39db993c23"},
+      {:oauth2, "~> 2.1"},
       {:ueberauth_gitlab_strategy, "~> 0.4"},
       {:tesla, "~> 1.11.0"},
       {:castore, "~> 0.1.22"},

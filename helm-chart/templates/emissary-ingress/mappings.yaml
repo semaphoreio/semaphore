@@ -370,6 +370,21 @@ spec:
 apiVersion: getambassador.io/v3alpha1
 kind: Mapping
 metadata:
+  name: plumber-public-organizations-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  # Account-level org creation, served only on me.<domain> (no org subdomain).
+  host: "^me\\..*"
+  host_regex: true
+  prefix: /api/v1alpha/organizations
+  rewrite: "/organizations"
+  service: plumber-public.{{ .Release.Namespace }}:4004
+  timeout_ms: 30000
+  precedence: 100
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
   name: plumber-public-workflow-mapping
   namespace: {{ .Release.Namespace }}
 spec:
