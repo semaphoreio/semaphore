@@ -192,6 +192,10 @@ defmodule RepositoryHub.Server do
             reraise(e, __STACKTRACE__)
         end
 
+      # Not a guard outage — request validation rejects this repository_id.
+      {:error, :invalid_key} ->
+        execute(request, Server.CreateBuildStatusAction)
+
       {:error, error} ->
         Watchman.increment("build_status_guard.unavailable")
         log_warn(["build status guard unavailable, delivering unguarded", inspect(error)])
