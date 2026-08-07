@@ -79,11 +79,11 @@ defmodule Rbac.Repo.Queries do
       Based on this, we would be able to deduce that anyone with role 1 has all the permissions
       given by the roles 1,4,7 and 3
   """
-  def role_inheritance_and_mappings_query do
+  def role_inheritance_and_mappings_query(org_id \\ nil) do
     role_inheritance_recursive = role_inheritance_query_recursive_step()
 
     inheritance_query =
-      role_inheritance_query_initial_step()
+      role_inheritance_query_initial_step(org_id)
       |> union_all(^role_inheritance_recursive)
 
     recursive_ctes(inheritance_query, true)
@@ -93,8 +93,9 @@ defmodule Rbac.Repo.Queries do
   # This query sets up the initial state of recursive CTE query. I does not take into the account
   # role inheritance, and assumes each role inherits only itslef. It also checks if that role maps
   # to any project level role, and if so , to which one (this will be true only in case of some
-  # organization level roles).
-  defp role_inheritance_query_initial_step do
+  # organization level roles). When org_id is given, the tree is seeded only with that
+  # organization's roles instead of materializing it for the whole roles table.
+  defp role_inheritance_query_initial_step(org_id) do
     RbacRole
     |> join(:left, [r], orm in OrgRoleToProjRoleMapping, on: r.id == orm.org_role_id)
     |> select([r, orm], %{
@@ -104,7 +105,11 @@ defmodule Rbac.Repo.Queries do
       scope_id: r.scope_id,
       depth: 0
     })
+    |> maybe_scope_roles_to_org(org_id)
   end
+
+  defp maybe_scope_roles_to_org(query, nil), do: query
+  defp maybe_scope_roles_to_org(query, org_id), do: where(query, [r], r.org_id == ^org_id)
 
   # When the initial set of roles is created based on the query above, now we can use that set (refered to here
   # as the `role_inheritance_tree` table) to join all of those roles with roles they are inheriting based on
