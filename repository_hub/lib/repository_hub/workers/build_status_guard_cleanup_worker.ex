@@ -45,7 +45,7 @@ defmodule RepositoryHub.BuildStatusGuardCleanupWorker do
     case Repo.query(@delete_sql, [], timeout: 30_000) do
       {:ok, %{num_rows: num_rows}} when num_rows > 0 ->
         Logger.info("[BuildStatusGuardCleanupWorker] deleted #{num_rows} expired rows")
-        if num_rows == @batch_size, do: send(self(), :tick)
+        if num_rows == @batch_size, do: cleanup()
 
       {:ok, _} ->
         :ok
