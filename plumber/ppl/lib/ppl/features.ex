@@ -16,6 +16,7 @@ defmodule Ppl.Features do
   require Logger
 
   @sparse_checkout_init_job "sparse_checkout_init_job"
+  @job_level_partial_rerun "job_level_partial_rerun"
 
   @cache :feature_cache
   @result_ttl_ms :timer.seconds(30)
@@ -32,6 +33,20 @@ defmodule Ppl.Features do
   end
 
   def sparse_checkout_init_job_enabled?(_org_id), do: false
+
+  @doc """
+  Whether a partial rebuild of a non-passed block may re-run only its non-passed
+  jobs and carry passed jobs over as lightweight copies, for the given
+  organization.
+  """
+  @spec job_level_partial_rerun_enabled?(String.t() | nil) :: boolean()
+  def job_level_partial_rerun_enabled?(org_id) when is_binary(org_id) and org_id != "" do
+    cached_result(@job_level_partial_rerun, org_id, fn ->
+      FeatureProvider.feature_enabled?(@job_level_partial_rerun, param: org_id)
+    end)
+  end
+
+  def job_level_partial_rerun_enabled?(_org_id), do: false
 
   # Memoize the boolean result (including the fail-closed false) for a short TTL.
   # On any cache error we fall back to evaluating directly, so caching can never

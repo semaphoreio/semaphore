@@ -18,6 +18,7 @@ defmodule Zebra.Apis.InternalTaskApi.Serializer do
         :name,
         :index,
         :priority,
+        :original_job_id,
         :created_at,
         :enqueued_at,
         :scheduled_at,
@@ -66,7 +67,8 @@ defmodule Zebra.Apis.InternalTaskApi.Serializer do
       result: serialize_job_result(job),
       name: job.name,
       index: job.index,
-      priority: job.priority || 50
+      priority: job.priority || 50,
+      original_job_id: job.original_job_id
     ]
     |> Keyword.merge(
       Zebra.Apis.Utils.encode_timestamps(
