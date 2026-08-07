@@ -31,8 +31,11 @@ defmodule Front.Models.Job do
     :summary,
     :machine_type,
     :agent_name,
-    :is_debug_job
+    :is_debug_job,
+    :original_job_id
   ]
+
+  def source_job_id(%__MODULE__{original_job_id: original, id: id}), do: original || id
 
   def find(id, tracing_headers \\ nil) do
     with {:ok, channel} <- GRPC.Stub.connect(internal_endpoint()),
@@ -154,13 +157,14 @@ defmodule Front.Models.Job do
       self_hosted: raw.self_hosted,
       machine_type: raw.machine_type,
       agent_name: raw.agent_name,
-      is_debug_job: raw.is_debug_job
+      is_debug_job: raw.is_debug_job,
+      original_job_id: presence(Map.get(raw, :original_job_id))
     }
     |> preload_summary()
   end
 
   def preload_summary(job) do
-    ListJobSummariesRequest.new(job_ids: [job.id])
+    ListJobSummariesRequest.new(job_ids: [source_job_id(job)])
     |> Clients.Velocity.list_job_summaries()
     |> case do
       {:ok, %{job_summaries: [job_summary]}} -> job_summary
@@ -186,6 +190,10 @@ defmodule Front.Models.Job do
 
   defp seconds(nil), do: nil
   defp seconds(time), do: time.seconds
+
+  defp presence(nil), do: nil
+  defp presence(""), do: nil
+  defp presence(value), do: value
 
   defp state(raw) do
     cond do
