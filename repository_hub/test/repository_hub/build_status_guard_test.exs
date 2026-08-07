@@ -55,6 +55,12 @@ defmodule RepositoryHub.BuildStatusGuardTest do
       assert {:ok, _fence} = BuildStatusGuard.claim(%{request | status: :FAILURE})
     end
 
+    test "claims a check whose context exceeds 255 characters", %{request: request} do
+      request = %{request | context: "ci/semaphoreci/push: " <> String.duplicate("b", 300)}
+
+      assert {:ok, %DateTime{}} = BuildStatusGuard.claim(request)
+    end
+
     test "returns invalid_key for a malformed repository_id", %{request: request} do
       request = %{request | repository_id: "not-a-uuid"}
 
