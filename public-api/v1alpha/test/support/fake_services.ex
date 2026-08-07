@@ -17,7 +17,9 @@ defmodule Support.FakeServices do
 
     GrpcMock.defmock(ProjectMock, for: InternalApi.Projecthub.ProjectService.Service)
     GrpcMock.defmock(UserMock, for: InternalApi.User.UserService.Service)
+    GrpcMock.defmock(GuardMock, for: InternalApi.Guard.Guard.Service)
     GrpcMock.defmock(OrganizationMock, for: InternalApi.Organization.OrganizationService.Service)
+    GrpcMock.defmock(BillingMock, for: InternalApi.Billing.BillingService.Service)
     GrpcMock.defmock(FeatureMock, for: InternalApi.Feature.FeatureService.Service)
     GrpcMock.defmock(RBACMock, for: InternalApi.RBAC.RBAC.Service)
     GrpcMock.defmock(LoghubMock, for: InternalApi.Loghub.Loghub.Service)
@@ -38,7 +40,9 @@ defmodule Support.FakeServices do
       JobMock,
       ProjectMock,
       UserMock,
+      GuardMock,
       OrganizationMock,
+      BillingMock,
       FeatureMock,
       RBACMock,
       LoghubMock,

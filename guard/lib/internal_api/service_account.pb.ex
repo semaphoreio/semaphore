@@ -65,11 +65,13 @@ defmodule InternalApi.ServiceAccount.DescribeRequest do
   use Protobuf, syntax: :proto3
 
   @type t :: %__MODULE__{
-          service_account_id: String.t()
+          service_account_id: String.t(),
+          org_id: String.t()
         }
 
-  defstruct [:service_account_id]
+  defstruct [:service_account_id, :org_id]
   field(:service_account_id, 1, type: :string)
+  field(:org_id, 2, type: :string)
 end
 
 defmodule InternalApi.ServiceAccount.DescribeResponse do
@@ -89,11 +91,13 @@ defmodule InternalApi.ServiceAccount.DescribeManyRequest do
   use Protobuf, syntax: :proto3
 
   @type t :: %__MODULE__{
-          sa_ids: [String.t()]
+          sa_ids: [String.t()],
+          org_id: String.t()
         }
 
-  defstruct [:sa_ids]
+  defstruct [:sa_ids, :org_id]
   field(:sa_ids, 1, repeated: true, type: :string)
+  field(:org_id, 2, type: :string)
 end
 
 defmodule InternalApi.ServiceAccount.DescribeManyResponse do
@@ -115,13 +119,15 @@ defmodule InternalApi.ServiceAccount.UpdateRequest do
   @type t :: %__MODULE__{
           service_account_id: String.t(),
           name: String.t(),
-          description: String.t()
+          description: String.t(),
+          org_id: String.t()
         }
 
-  defstruct [:service_account_id, :name, :description]
+  defstruct [:service_account_id, :name, :description, :org_id]
   field(:service_account_id, 1, type: :string)
   field(:name, 2, type: :string)
   field(:description, 3, type: :string)
+  field(:org_id, 4, type: :string)
 end
 
 defmodule InternalApi.ServiceAccount.UpdateResponse do
@@ -141,11 +147,13 @@ defmodule InternalApi.ServiceAccount.DeactivateRequest do
   use Protobuf, syntax: :proto3
 
   @type t :: %__MODULE__{
-          service_account_id: String.t()
+          service_account_id: String.t(),
+          org_id: String.t()
         }
 
-  defstruct [:service_account_id]
+  defstruct [:service_account_id, :org_id]
   field(:service_account_id, 1, type: :string)
+  field(:org_id, 2, type: :string)
 end
 
 defmodule InternalApi.ServiceAccount.DeactivateResponse do
@@ -160,11 +168,13 @@ defmodule InternalApi.ServiceAccount.ReactivateRequest do
   use Protobuf, syntax: :proto3
 
   @type t :: %__MODULE__{
-          service_account_id: String.t()
+          service_account_id: String.t(),
+          org_id: String.t()
         }
 
-  defstruct [:service_account_id]
+  defstruct [:service_account_id, :org_id]
   field(:service_account_id, 1, type: :string)
+  field(:org_id, 2, type: :string)
 end
 
 defmodule InternalApi.ServiceAccount.ReactivateResponse do
@@ -179,11 +189,13 @@ defmodule InternalApi.ServiceAccount.DestroyRequest do
   use Protobuf, syntax: :proto3
 
   @type t :: %__MODULE__{
-          service_account_id: String.t()
+          service_account_id: String.t(),
+          org_id: String.t()
         }
 
-  defstruct [:service_account_id]
+  defstruct [:service_account_id, :org_id]
   field(:service_account_id, 1, type: :string)
+  field(:org_id, 2, type: :string)
 end
 
 defmodule InternalApi.ServiceAccount.DestroyResponse do
@@ -198,11 +210,13 @@ defmodule InternalApi.ServiceAccount.RegenerateTokenRequest do
   use Protobuf, syntax: :proto3
 
   @type t :: %__MODULE__{
-          service_account_id: String.t()
+          service_account_id: String.t(),
+          org_id: String.t()
         }
 
-  defstruct [:service_account_id]
+  defstruct [:service_account_id, :org_id]
   field(:service_account_id, 1, type: :string)
+  field(:org_id, 2, type: :string)
 end
 
 defmodule InternalApi.ServiceAccount.RegenerateTokenResponse do

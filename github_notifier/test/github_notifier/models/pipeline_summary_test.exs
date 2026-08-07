@@ -1,6 +1,5 @@
 defmodule GithubNotifier.Models.PipelineSummaryTest do
   use ExUnit.Case
-  require Logger
 
   alias GithubNotifier.Models.PipelineSummary
 
@@ -9,10 +8,10 @@ defmodule GithubNotifier.Models.PipelineSummaryTest do
   describe ".find" do
     test "returns ok tuple when everything is 👌" do
       pipeline_summary =
-        Velocity.PipelineSummary.new(
+        struct(Velocity.PipelineSummary,
           pipeline_id: "81f1b92c-8c02-4328-9c05-e64a1d303b27",
           summary:
-            Velocity.Summary.new(
+            struct(Velocity.Summary,
               total: 100,
               passed: 20,
               skipped: 20,
@@ -24,7 +23,7 @@ defmodule GithubNotifier.Models.PipelineSummaryTest do
         )
 
       response =
-        Velocity.ListPipelineSummariesResponse.new(pipeline_summaries: [pipeline_summary])
+        struct(Velocity.ListPipelineSummariesResponse, pipeline_summaries: [pipeline_summary])
 
       GrpcMock.stub(VelocityHubMock, :list_pipeline_summaries, response)
 
@@ -41,18 +40,18 @@ defmodule GithubNotifier.Models.PipelineSummaryTest do
     end
 
     test "returns error when there is no summary for pipeline" do
-      response = Velocity.ListPipelineSummariesResponse.new(pipeline_summaries: [])
+      response = struct(Velocity.ListPipelineSummariesResponse, pipeline_summaries: [])
       GrpcMock.stub(VelocityHubMock, :list_pipeline_summaries, response)
 
       assert nil == PipelineSummary.find("81f1b92c-8c02-4328-9c05-e64a1d303b27")
     end
   end
 
-  describe ".is_failed?" do
+  describe ".failed?" do
     test "returns true when there are failed specs" do
       assert true ==
-               PipelineSummary.is_failed?(
-                 Velocity.Summary.new(
+               PipelineSummary.failed?(
+                 struct(Velocity.Summary,
                    passed: 20,
                    error: 0,
                    failed: 20
@@ -60,8 +59,8 @@ defmodule GithubNotifier.Models.PipelineSummaryTest do
                )
 
       assert true ==
-               PipelineSummary.is_failed?(
-                 Velocity.Summary.new(
+               PipelineSummary.failed?(
+                 struct(Velocity.Summary,
                    passed: 20,
                    error: 20,
                    failed: 0
@@ -69,8 +68,8 @@ defmodule GithubNotifier.Models.PipelineSummaryTest do
                )
 
       assert true ==
-               PipelineSummary.is_failed?(
-                 Velocity.Summary.new(
+               PipelineSummary.failed?(
+                 struct(Velocity.Summary,
                    passed: 20,
                    error: 20,
                    failed: 20
@@ -80,21 +79,21 @@ defmodule GithubNotifier.Models.PipelineSummaryTest do
 
     test "returns false when there are no failed specs" do
       assert false ==
-               PipelineSummary.is_failed?(Velocity.Summary.new(passed: 20))
+               PipelineSummary.failed?(struct(Velocity.Summary, passed: 20))
 
       assert false ==
-               PipelineSummary.is_failed?(Velocity.Summary.new(passed: 20, failed: 0))
+               PipelineSummary.failed?(struct(Velocity.Summary, passed: 20, failed: 0))
 
       assert false ==
-               PipelineSummary.is_failed?(Velocity.Summary.new(passed: 20, error: 0))
+               PipelineSummary.failed?(struct(Velocity.Summary, passed: 20, error: 0))
     end
   end
 
-  describe ".is_passed?" do
+  describe ".passed?" do
     test "returns true when there are no failed specs" do
       assert true ==
-               PipelineSummary.is_passed?(
-                 Velocity.Summary.new(
+               PipelineSummary.passed?(
+                 struct(Velocity.Summary,
                    total: 20,
                    passed: 20,
                    error: 0,
@@ -105,16 +104,16 @@ defmodule GithubNotifier.Models.PipelineSummaryTest do
 
     test "returns false when there are failed specs" do
       assert false ==
-               PipelineSummary.is_passed?(
-                 Velocity.Summary.new(
+               PipelineSummary.passed?(
+                 struct(Velocity.Summary,
                    passed: 20,
                    failed: 20
                  )
                )
 
       assert false ==
-               PipelineSummary.is_passed?(
-                 Velocity.Summary.new(
+               PipelineSummary.passed?(
+                 struct(Velocity.Summary,
                    passed: 20,
                    error: 20
                  )
@@ -123,10 +122,10 @@ defmodule GithubNotifier.Models.PipelineSummaryTest do
 
     test "returns false when there are no specs" do
       assert false ==
-               PipelineSummary.is_passed?(Velocity.Summary.new(total: 0))
+               PipelineSummary.passed?(struct(Velocity.Summary, total: 0))
 
       assert false ==
-               PipelineSummary.is_passed?(Velocity.Summary.new(passed: 20, total: 0))
+               PipelineSummary.passed?(struct(Velocity.Summary, passed: 20, total: 0))
     end
   end
 end

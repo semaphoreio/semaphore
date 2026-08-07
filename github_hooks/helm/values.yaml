@@ -5,6 +5,7 @@ imagePullSecrets: []
 hooks:
   replicas: 1
   dbPoolSize: 2
+  disableCollaboratorWebhookSync: false
   resources:
     limits:
       cpu: 500m
@@ -16,6 +17,7 @@ hooks:
 repoProxyApi:
   replicas: 1
   dbPoolSize: 2
+  useGithubAppToCheckPermissions: false
   resources:
     limits:
       cpu: '0.6'

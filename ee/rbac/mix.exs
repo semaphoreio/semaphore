@@ -56,7 +56,7 @@ defmodule Rbac.MixProject do
        github: "renderedtext/ex_marshal", ref: "b729808efefb6c61e53b6de13c79c28e2594e97a"},
       {:openid_connect,
        github: "firezone/openid_connect", ref: "dee689382699fce7a6ca70084ccbc8bc351d3246"},
-      {:tesla, "1.11.0"},
+      {:tesla, "~> 1.20"},
       {:castore, "0.1.22"},
       {:argon2_elixir, "~> 4.0"},
       {:wormhole, "~> 2.3"},

@@ -598,22 +598,27 @@ defmodule Guard.GrpcServers.UserServerTest do
              projects: []
            )}
         end do
-        {:ok, response} = channel |> Stub.delete_with_owned_orgs(request)
+        with_mock InternalApi.RBAC.RBAC.Stub,
+          list_accessible_orgs: fn _channel, _req, _opts ->
+            {:ok, InternalApi.RBAC.ListAccessibleOrgsResponse.new(org_ids: [])}
+          end do
+          {:ok, response} = channel |> Stub.delete_with_owned_orgs(request)
 
-        id = user.id
-        assert %User.User{id: ^id} = response
+          id = user.id
+          assert %User.User{id: ^id} = response
 
-        # check if the user is deleted
-        assert nil == FrontRepo.get(FrontRepo.User, id)
-        assert nil == FrontRepo.get(FrontRepo.RepoHostAccount, repo_host_account.id)
-        assert nil == FrontRepo.get(FrontRepo.Member, member.id)
+          # check if the user is deleted
+          assert nil == FrontRepo.get(FrontRepo.User, id)
+          assert nil == FrontRepo.get(FrontRepo.RepoHostAccount, repo_host_account.id)
+          assert nil == FrontRepo.get(FrontRepo.Member, member.id)
 
-        receive do
-          {:user_deleted_test, received_message} ->
-            user_deleted = User.UserDeleted.decode(received_message)
-            assert user_deleted.user_id == user.id
-        after
-          5000 -> flunk("Timeout: Message not received within 5 seconds")
+          receive do
+            {:user_deleted_test, received_message} ->
+              user_deleted = User.UserDeleted.decode(received_message)
+              assert user_deleted.user_id == user.id
+          after
+            5000 -> flunk("Timeout: Message not received within 5 seconds")
+          end
         end
       end
     end
@@ -662,7 +667,7 @@ defmodule Guard.GrpcServers.UserServerTest do
 
         assert %GRPC.RPCError{
                  status: GRPC.Status.invalid_argument(),
-                 message: "User #{user.id} is owner of projects."
+                 message: "You still own projects — transfer or delete them first."
                } == grpc_error
       end
     end
@@ -679,6 +684,445 @@ defmodule Guard.GrpcServers.UserServerTest do
 
       assert response.id == random_user_id
     end
+
+    test "delete_with_owned_orgs should reject when user is the last owner of an org", %{
+      grpc_channel: channel
+    } do
+      alias Guard.FrontRepo
+
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user.id)
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      {:ok, other} = Support.Factories.RbacUser.insert()
+
+      org = Support.Factories.Organization.insert!(name: "Acme", username: "acme-last-owner")
+
+      request = User.DeleteWithOwnedOrgsRequest.new(user_id: user.id)
+
+      with_mock InternalApi.Projecthub.ProjectService.Stub, list: projecthub_list_mock() do
+        with_mock InternalApi.RBAC.RBAC.Stub,
+          list_accessible_orgs: accessible_orgs_mock([org.id]),
+          list_roles: list_roles_mock(),
+          list_members: list_members_mock([user.id, other.id], [user.id]) do
+          {:error, grpc_error} = channel |> Stub.delete_with_owned_orgs(request)
+
+          assert %GRPC.RPCError{status: status, message: message} = grpc_error
+          assert status == GRPC.Status.failed_precondition()
+          assert message =~ "You are the last owner of Acme."
+          assert message =~ "delete it first"
+          refute message =~ "these organizations"
+
+          # user must NOT be deleted
+          refute is_nil(FrontRepo.get(FrontRepo.User, user.id))
+        end
+      end
+    end
+
+    test "delete_with_owned_orgs should reject when user is the last owner through a group", %{
+      grpc_channel: channel
+    } do
+      alias Guard.FrontRepo
+
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user.id)
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      {:ok, other} = Support.Factories.RbacUser.insert()
+
+      org = Support.Factories.Organization.insert!(name: "Acme", username: "acme-group-owner")
+
+      request = User.DeleteWithOwnedOrgsRequest.new(user_id: user.id)
+
+      with_mock InternalApi.Projecthub.ProjectService.Stub, list: projecthub_list_mock() do
+        with_mock InternalApi.RBAC.RBAC.Stub,
+          list_accessible_orgs: accessible_orgs_mock([org.id]),
+          list_roles: list_roles_mock(),
+          list_members: list_members_mock([user.id, other.id], [], ["owners-group"]) do
+          with_mock InternalApi.Groups.Groups.Stub,
+            list_groups: list_groups_mock(%{"owners-group" => [user.id]}) do
+            {:error, grpc_error} = channel |> Stub.delete_with_owned_orgs(request)
+
+            assert %GRPC.RPCError{status: status, message: message} = grpc_error
+            assert status == GRPC.Status.failed_precondition()
+            assert message =~ "You are the last owner of Acme."
+
+            refute is_nil(FrontRepo.get(FrontRepo.User, user.id))
+          end
+        end
+      end
+    end
+
+    test "delete_with_owned_orgs should allow deletion when the owner group has another member",
+         %{grpc_channel: channel} do
+      alias Guard.FrontRepo
+
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user.id)
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      {:ok, other} = Support.Factories.RbacUser.insert()
+
+      org = Support.Factories.Organization.insert!(name: "Shared", username: "group-coowner")
+
+      request = User.DeleteWithOwnedOrgsRequest.new(user_id: user.id)
+
+      with_mock InternalApi.Projecthub.ProjectService.Stub, list: projecthub_list_mock() do
+        with_mock InternalApi.RBAC.RBAC.Stub,
+          list_accessible_orgs: accessible_orgs_mock([org.id]),
+          list_roles: list_roles_mock(),
+          list_members: list_members_mock([user.id, other.id], [], ["owners-group"]) do
+          with_mock InternalApi.Groups.Groups.Stub,
+            list_groups: list_groups_mock(%{"owners-group" => [user.id, other.id]}) do
+            {:ok, response} = channel |> Stub.delete_with_owned_orgs(request)
+
+            id = user.id
+            assert %User.User{id: ^id} = response
+            assert is_nil(FrontRepo.get(FrontRepo.User, id))
+          end
+        end
+      end
+    end
+
+    test "delete_with_owned_orgs pluralizes the message when blocking multiple orgs", %{
+      grpc_channel: channel
+    } do
+      alias Guard.FrontRepo
+
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user.id)
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      {:ok, other} = Support.Factories.RbacUser.insert()
+
+      org_a = Support.Factories.Organization.insert!(name: "Acme", username: "plural-acme")
+      org_b = Support.Factories.Organization.insert!(name: "Globex", username: "plural-globex")
+
+      request = User.DeleteWithOwnedOrgsRequest.new(user_id: user.id)
+
+      with_mock InternalApi.Projecthub.ProjectService.Stub, list: projecthub_list_mock() do
+        with_mock InternalApi.RBAC.RBAC.Stub,
+          list_accessible_orgs: accessible_orgs_mock([org_a.id, org_b.id]),
+          list_roles: list_roles_mock(),
+          list_members: list_members_mock([user.id, other.id], [user.id]) do
+          {:error, grpc_error} = channel |> Stub.delete_with_owned_orgs(request)
+
+          assert %GRPC.RPCError{status: status, message: message} = grpc_error
+          assert status == GRPC.Status.failed_precondition()
+          assert message =~ "these organizations: Acme, Globex"
+          assert message =~ "delete them first"
+
+          refute is_nil(FrontRepo.get(FrontRepo.User, user.id))
+        end
+      end
+    end
+
+    test "delete_with_owned_orgs should reject when user is the sole member of an org", %{
+      grpc_channel: channel
+    } do
+      alias Guard.FrontRepo
+
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user.id)
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      org = Support.Factories.Organization.insert!(name: "Solo", username: "acme-sole")
+
+      request = User.DeleteWithOwnedOrgsRequest.new(user_id: user.id)
+
+      with_mock InternalApi.Projecthub.ProjectService.Stub, list: projecthub_list_mock() do
+        # list_roles is intentionally not stubbed: a sole-member org must be
+        # decided by the member count alone and short-circuit the owner lookup.
+        with_mock InternalApi.RBAC.RBAC.Stub,
+          list_accessible_orgs: accessible_orgs_mock([org.id]),
+          list_members: list_members_mock([user.id], []) do
+          {:error, grpc_error} = channel |> Stub.delete_with_owned_orgs(request)
+
+          assert %GRPC.RPCError{status: status, message: message} = grpc_error
+          assert status == GRPC.Status.failed_precondition()
+          assert message =~ "Solo"
+
+          refute is_nil(FrontRepo.get(FrontRepo.User, user.id))
+        end
+      end
+    end
+
+    test "delete_with_owned_orgs should allow deletion when org has another owner", %{
+      grpc_channel: channel
+    } do
+      alias Guard.FrontRepo
+
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user.id)
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      {:ok, other} = Support.Factories.RbacUser.insert()
+
+      org = Support.Factories.Organization.insert!(name: "Shared", username: "acme-coowner")
+
+      request = User.DeleteWithOwnedOrgsRequest.new(user_id: user.id)
+
+      with_mock InternalApi.Projecthub.ProjectService.Stub, list: projecthub_list_mock() do
+        with_mock InternalApi.RBAC.RBAC.Stub,
+          list_accessible_orgs: accessible_orgs_mock([org.id]),
+          list_roles: list_roles_mock(),
+          list_members: list_members_mock([user.id, other.id], [user.id, other.id]) do
+          {:ok, response} = channel |> Stub.delete_with_owned_orgs(request)
+
+          id = user.id
+          assert %User.User{id: ^id} = response
+          assert is_nil(FrontRepo.get(FrontRepo.User, id))
+        end
+      end
+    end
+
+    test "delete_with_owned_orgs should allow deletion when user is a plain member of an org", %{
+      grpc_channel: channel
+    } do
+      alias Guard.FrontRepo
+
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user.id)
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      {:ok, owner} = Support.Factories.RbacUser.insert()
+      {:ok, teammate} = Support.Factories.RbacUser.insert()
+
+      org = Support.Factories.Organization.insert!(name: "BigCo", username: "acme-plain-member")
+
+      request = User.DeleteWithOwnedOrgsRequest.new(user_id: user.id)
+
+      with_mock InternalApi.Projecthub.ProjectService.Stub, list: projecthub_list_mock() do
+        with_mock InternalApi.RBAC.RBAC.Stub,
+          list_accessible_orgs: accessible_orgs_mock([org.id]),
+          list_roles: list_roles_mock(),
+          list_members: list_members_mock([user.id, owner.id, teammate.id], [owner.id]) do
+          {:ok, response} = channel |> Stub.delete_with_owned_orgs(request)
+
+          id = user.id
+          assert %User.User{id: ^id} = response
+          assert is_nil(FrontRepo.get(FrontRepo.User, id))
+        end
+      end
+    end
+
+    test "delete_with_owned_orgs allows deletion when the only owned org is soft-deleted", %{
+      grpc_channel: channel
+    } do
+      alias Guard.FrontRepo
+
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user.id)
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      org = Support.Factories.Organization.insert!(name: "Gone", username: "soft-del-only")
+      soft_delete!(org)
+
+      request = User.DeleteWithOwnedOrgsRequest.new(user_id: user.id)
+
+      with_mock InternalApi.Projecthub.ProjectService.Stub, list: projecthub_list_mock() do
+        with_mock InternalApi.RBAC.RBAC.Stub,
+          list_accessible_orgs: accessible_orgs_mock([org.id]),
+          list_roles: list_roles_mock(),
+          list_members: list_members_mock([user.id], [user.id]) do
+          {:ok, response} = channel |> Stub.delete_with_owned_orgs(request)
+
+          id = user.id
+          assert %User.User{id: ^id} = response
+          assert is_nil(FrontRepo.get(FrontRepo.User, id))
+        end
+      end
+    end
+
+    test "delete_with_owned_orgs blocks only on the active org, ignoring soft-deleted ones", %{
+      grpc_channel: channel
+    } do
+      alias Guard.FrontRepo
+
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user.id)
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      active = Support.Factories.Organization.insert!(name: "Live", username: "mix-active")
+      gone = Support.Factories.Organization.insert!(name: "Gone", username: "mix-soft")
+      soft_delete!(gone)
+
+      request = User.DeleteWithOwnedOrgsRequest.new(user_id: user.id)
+
+      with_mock InternalApi.Projecthub.ProjectService.Stub, list: projecthub_list_mock() do
+        with_mock InternalApi.RBAC.RBAC.Stub,
+          list_accessible_orgs: accessible_orgs_mock([active.id, gone.id]),
+          list_roles: list_roles_mock(),
+          list_members: list_members_mock([user.id], [user.id]) do
+          {:error, grpc_error} = channel |> Stub.delete_with_owned_orgs(request)
+
+          assert %GRPC.RPCError{status: status, message: message} = grpc_error
+          assert status == GRPC.Status.failed_precondition()
+          assert message =~ "Live"
+          refute message =~ "Gone"
+
+          refute is_nil(FrontRepo.get(FrontRepo.User, user.id))
+        end
+      end
+    end
+
+    test "delete_with_owned_orgs rejects when the Owner role cannot be resolved for a multi-member org",
+         %{grpc_channel: channel} do
+      alias Guard.FrontRepo
+
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user.id)
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      {:ok, other} = Support.Factories.RbacUser.insert()
+
+      org = Support.Factories.Organization.insert!(name: "Mystery", username: "no-owner-role")
+
+      request = User.DeleteWithOwnedOrgsRequest.new(user_id: user.id)
+
+      with_mock InternalApi.Projecthub.ProjectService.Stub, list: projecthub_list_mock() do
+        with_mock InternalApi.RBAC.RBAC.Stub,
+          list_accessible_orgs: accessible_orgs_mock([org.id]),
+          list_roles: list_roles_without_owner_mock(),
+          list_members: list_members_mock([user.id, other.id], []) do
+          {:error, grpc_error} = channel |> Stub.delete_with_owned_orgs(request)
+
+          assert %GRPC.RPCError{status: status, message: message} = grpc_error
+          assert status == GRPC.Status.failed_precondition()
+          assert message =~ "couldn't verify ownership"
+          assert message =~ "Mystery"
+
+          refute is_nil(FrontRepo.get(FrontRepo.User, user.id))
+        end
+      end
+    end
+
+    test "delete_with_owned_orgs rejects when ownership can't be verified due to an RBAC error",
+         %{grpc_channel: channel} do
+      alias Guard.FrontRepo
+
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user.id)
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      org = Support.Factories.Organization.insert!(name: "Foggy", username: "rbac-unavailable")
+
+      request = User.DeleteWithOwnedOrgsRequest.new(user_id: user.id)
+
+      rbac_unavailable = fn _channel, _req, _opts ->
+        {:error, %GRPC.RPCError{status: 14, message: "unavailable"}}
+      end
+
+      with_mock InternalApi.Projecthub.ProjectService.Stub, list: projecthub_list_mock() do
+        with_mock InternalApi.RBAC.RBAC.Stub,
+          list_accessible_orgs: accessible_orgs_mock([org.id]),
+          list_members: rbac_unavailable do
+          {:error, grpc_error} = channel |> Stub.delete_with_owned_orgs(request)
+
+          assert %GRPC.RPCError{status: status, message: message} = grpc_error
+          assert status == GRPC.Status.failed_precondition()
+          assert message =~ "couldn't verify ownership"
+          assert message =~ "Foggy"
+
+          refute is_nil(FrontRepo.get(FrontRepo.User, user.id))
+        end
+      end
+    end
+  end
+
+  @owner_role_id "11111111-1111-1111-1111-111111111111"
+
+  defp soft_delete!(org) do
+    org
+    |> Ecto.Changeset.change(deleted_at: DateTime.utc_now() |> DateTime.truncate(:second))
+    |> Guard.FrontRepo.update!()
+  end
+
+  defp projecthub_list_mock do
+    fn _channel, _req, _opts ->
+      {:ok,
+       InternalApi.Projecthub.ListResponse.new(
+         metadata: InternalApi.Projecthub.ResponseMeta.new(status: %{code: 0}),
+         projects: []
+       )}
+    end
+  end
+
+  defp accessible_orgs_mock(org_ids) do
+    fn _channel, _req, _opts ->
+      {:ok, InternalApi.RBAC.ListAccessibleOrgsResponse.new(org_ids: org_ids)}
+    end
+  end
+
+  defp list_roles_mock do
+    fn _channel, _req, _opts ->
+      {:ok,
+       InternalApi.RBAC.ListRolesResponse.new(
+         roles: [InternalApi.RBAC.Role.new(id: @owner_role_id, name: "Owner")]
+       )}
+    end
+  end
+
+  # An org whose roles do not include one named "Owner" — get_role_id/1 returns
+  # nil, so ownership can't be verified.
+  defp list_roles_without_owner_mock do
+    fn _channel, _req, _opts ->
+      {:ok,
+       InternalApi.RBAC.ListRolesResponse.new(
+         roles: [InternalApi.RBAC.Role.new(id: "role-admin", name: "Admin")]
+       )}
+    end
+  end
+
+  # Single-page ListMembers stub: these fixtures fit in one page, so only the
+  # first page carries members and the server-side role filter returns the owner
+  # ids for the owner-role query or every USER member otherwise. GROUP-typed
+  # queries return the groups holding the owner role. Cross-edition pagination
+  # is covered directly in Guard.Api.RbacTest.
+  defp list_members_mock(member_ids, owner_ids, owner_group_ids \\ []) do
+    fn _channel, req, _opts ->
+      group_query? = req.member_type == InternalApi.RBAC.SubjectType.value(:GROUP)
+
+      ids =
+        cond do
+          req.page.page_no != 0 -> []
+          group_query? and req.member_has_role == @owner_role_id -> owner_group_ids
+          group_query? -> []
+          req.member_has_role == @owner_role_id -> owner_ids
+          true -> member_ids
+        end
+
+      {:ok,
+       InternalApi.RBAC.ListMembersResponse.new(
+         members: Enum.map(ids, &rbac_member/1),
+         total_pages: 1
+       )}
+    end
+  end
+
+  defp list_groups_mock(members_by_group) do
+    fn _channel, req, _opts ->
+      groups =
+        case Map.fetch(members_by_group, req.group_id) do
+          {:ok, member_ids} ->
+            [InternalApi.Groups.Group.new(id: req.group_id, member_ids: member_ids)]
+
+          :error ->
+            []
+        end
+
+      {:ok, InternalApi.Groups.ListGroupsResponse.new(groups: groups)}
+    end
+  end
+
+  defp rbac_member(subject_id) do
+    InternalApi.RBAC.ListMembersResponse.Member.new(
+      subject:
+        InternalApi.RBAC.Subject.new(
+          subject_id: subject_id,
+          subject_type: InternalApi.RBAC.SubjectType.value(:USER)
+        )
+    )
   end
 
   describe "regenerate_token" do

@@ -5,3 +5,15 @@
 # jason bump. decimal is not called anywhere in lib/ (grep `Decimal.` returns
 # no hits), so Decimal.new is never invoked on untrusted input.
 GHSA-rhv4-8758-jx7v
+
+# hackney — four 2026 advisories, all first patched in hackney 4.0.1 (major bump blocked by
+# httpoison 0.13 `hackney ~> 1.8`). hackney is only a transitive httpoison dependency (1.25.0) and
+# is not called anywhere in lib/ — no user-controlled input reaches hackney.
+#   GHSA-gp9c-pm5m-5cxr — ssl:connect/2 post-handshake upgrade has no timeout
+#   GHSA-j9wq-vxxc-94wf — CR/LF injection in query parameter
+#   GHSA-mp55-p8c9-rfw2 — CRLF/header injection via unvalidated domain/path options
+#   GHSA-pj7v-xfvx-wmjq — SSRF allowlist bypass via percent-encoded host
+GHSA-gp9c-pm5m-5cxr
+GHSA-j9wq-vxxc-94wf
+GHSA-mp55-p8c9-rfw2
+GHSA-pj7v-xfvx-wmjq

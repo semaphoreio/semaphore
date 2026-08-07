@@ -28,9 +28,13 @@ defmodule Projecthub.Mixfile do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:plug, "~> 1.7.1"},
-      {:plug_cowboy, "~> 2.0"},
-      {:grpc, "~> 0.3.1"},
+      {:plug, "~> 1.15.4", override: true},
+      {:plug_cowboy, "~> 2.8.1"},
+      {:grpc, "0.5.0-beta.1"},
+      {:protobuf, "~> 0.5.4", override: true},
+      {:cowboy, "~> 2.15.0", override: true},
+      {:cowlib, "~> 2.16.1", override: true},
+      {:ranch, "~> 1.8", override: true},
       {:watchman, github: "renderedtext/ex-watchman"},
       {:timex, "~> 3.1"},
       {:cachex, "~> 3.0"},

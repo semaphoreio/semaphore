@@ -21,7 +21,7 @@ defmodule Front.DebugSessionsDescription do
   end
 
   def description(%{"custom_permissions" => "false"}),
-    do: "Debug sessions are set to follow organization defaults."
+    do: "Changed debug session restrictions. Debug and attach are disabled for this project."
 
   def description(_), do: "Debug session restrictions did not change."
 

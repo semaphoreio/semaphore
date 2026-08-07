@@ -52,9 +52,10 @@ defmodule Front.Clients.ServiceAccount do
   end
 
   @impl Front.ServiceAccount.Behaviour
-  def describe(service_account_id) do
+  def describe(service_account_id, org_id) do
     %DescribeRequest{
-      service_account_id: service_account_id
+      service_account_id: service_account_id,
+      org_id: org_id
     }
     |> grpc_call(:describe)
     |> case do
@@ -68,9 +69,10 @@ defmodule Front.Clients.ServiceAccount do
   end
 
   @impl Front.ServiceAccount.Behaviour
-  def describe_many(service_account_ids) do
+  def describe_many(service_account_ids, org_id) do
     %DescribeManyRequest{
-      sa_ids: service_account_ids
+      sa_ids: service_account_ids,
+      org_id: org_id
     }
     |> grpc_call(:describe_many)
     |> case do
@@ -84,11 +86,12 @@ defmodule Front.Clients.ServiceAccount do
   end
 
   @impl Front.ServiceAccount.Behaviour
-  def update(service_account_id, name, description) do
+  def update(service_account_id, org_id, name, description) do
     %UpdateRequest{
       service_account_id: service_account_id,
       name: name,
-      description: description
+      description: description,
+      org_id: org_id
     }
     |> grpc_call(:update)
     |> case do
@@ -102,9 +105,10 @@ defmodule Front.Clients.ServiceAccount do
   end
 
   @impl Front.ServiceAccount.Behaviour
-  def delete(service_account_id) do
+  def delete(service_account_id, org_id) do
     %DestroyRequest{
-      service_account_id: service_account_id
+      service_account_id: service_account_id,
+      org_id: org_id
     }
     |> grpc_call(:destroy)
     |> case do
@@ -118,9 +122,10 @@ defmodule Front.Clients.ServiceAccount do
   end
 
   @impl Front.ServiceAccount.Behaviour
-  def regenerate_token(service_account_id) do
+  def regenerate_token(service_account_id, org_id) do
     %RegenerateTokenRequest{
-      service_account_id: service_account_id
+      service_account_id: service_account_id,
+      org_id: org_id
     }
     |> grpc_call(:regenerate_token)
     |> case do

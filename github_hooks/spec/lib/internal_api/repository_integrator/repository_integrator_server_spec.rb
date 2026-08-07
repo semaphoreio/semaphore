@@ -294,6 +294,102 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
     end
   end
 
+  describe "#refresh_repositories" do
+    context "for an integration type without a cache" do
+      before do
+        @req = InternalApi::RepositoryIntegrator::RefreshRepositoriesRequest.new(
+          :user_id => user_id,
+          :integration_type => :BITBUCKET
+        )
+      end
+
+      it "returns DONE without touching the refresh orchestrator" do
+        expect(Semaphore::GithubApp::RepositoryRefresh).not_to receive(:full)
+        expect(Semaphore::GithubApp::RepositoryRefresh).not_to receive(:targeted)
+
+        response = server.refresh_repositories(@req, call)
+
+        expect(response.sync_state).to eq(:DONE)
+        expect(response.message).to match(/fetched live/)
+      end
+    end
+
+    context "for a GITHUB_APP request with neither a repository nor an organization" do
+      before do
+        @req = InternalApi::RepositoryIntegrator::RefreshRepositoriesRequest.new(
+          :user_id => user_id,
+          :integration_type => :GITHUB_APP
+        )
+      end
+
+      it "fails without dispatching a repository or organization refresh" do
+        expect(Semaphore::GithubApp::RepositoryRefresh).not_to receive(:targeted)
+        expect(Semaphore::GithubApp::RepositoryRefresh).not_to receive(:full_for_organization)
+
+        response = server.refresh_repositories(@req, call)
+
+        expect(response.sync_state).to eq(:FAILED)
+        expect(response.message).to match(/Specify a repository or organization/)
+      end
+    end
+
+    context "for an organization-scoped github app refresh" do
+      before do
+        @req = InternalApi::RepositoryIntegrator::RefreshRepositoriesRequest.new(
+          :user_id => user_id,
+          :integration_type => :GITHUB_APP,
+          :organization => "acme"
+        )
+      end
+
+      it "dispatches to RepositoryRefresh.full_for_organization with the requesting user and org" do
+        expect(Semaphore::GithubApp::RepositoryRefresh).not_to receive(:full)
+        allow(Semaphore::GithubApp::RepositoryRefresh).to receive(:full_for_organization).and_return(
+          Semaphore::GithubApp::RepositoryRefresh::Result.new(:started, "Repository sync started for acme.")
+        )
+
+        response = server.refresh_repositories(@req, call)
+
+        expect(Semaphore::GithubApp::RepositoryRefresh).to have_received(:full_for_organization).with(user_id, "acme")
+        expect(response.sync_state).to eq(:STARTED)
+        expect(response.message).to eq("Repository sync started for acme.")
+      end
+    end
+
+    context "for a targeted github app refresh" do
+      before do
+        @req = InternalApi::RepositoryIntegrator::RefreshRepositoriesRequest.new(
+          :user_id => user_id,
+          :integration_type => :GITHUB_APP,
+          :repository_slug => repository_slug
+        )
+      end
+
+      it "dispatches to RepositoryRefresh.targeted with the requesting user and slug" do
+        allow(Semaphore::GithubApp::RepositoryRefresh).to receive(:targeted).and_return(
+          Semaphore::GithubApp::RepositoryRefresh::Result.new(:done, "Repository renderedtext/guard refreshed.")
+        )
+
+        response = server.refresh_repositories(@req, call)
+
+        expect(Semaphore::GithubApp::RepositoryRefresh).to have_received(:targeted).with(user_id, repository_slug)
+        expect(response.sync_state).to eq(:DONE)
+        expect(response.message).to eq("Repository renderedtext/guard refreshed.")
+      end
+
+      it "maps failures" do
+        allow(Semaphore::GithubApp::RepositoryRefresh).to receive(:targeted).and_return(
+          Semaphore::GithubApp::RepositoryRefresh::Result.new(:failed, "Repository renderedtext/guard was not found on GitHub.")
+        )
+
+        response = server.refresh_repositories(@req, call)
+
+        expect(response.sync_state).to eq(:FAILED)
+        expect(response.message).to match(/not found on GitHub/)
+      end
+    end
+  end
+
   describe "#check_token" do
     context "for github app integration" do
       before do

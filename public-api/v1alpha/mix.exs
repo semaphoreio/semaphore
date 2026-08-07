@@ -40,8 +40,13 @@ defmodule PipelinesAPI.Mixfile do
   # Type "mix help deps" for more examples and options
   defp deps do
     [
-      {:grpc, "~> 0.3"},
-      {:plug_cowboy, "~> 2.0"},
+      {:grpc, "0.5.0-beta.1"},
+      {:plug_cowboy, "~> 2.8.1"},
+      {:plug, "~> 1.15.4", override: true},
+      {:protobuf, "~> 0.5.2", override: true},
+      {:cowboy, "~> 2.15.0", override: true},
+      {:cowlib, "~> 2.16.1", override: true},
+      {:ranch, "~> 1.8", override: true},
       {:poison, "~> 3.1"},
       {:httpoison, "~> 1.3.0"},
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
