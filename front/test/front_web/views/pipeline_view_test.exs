@@ -303,6 +303,45 @@ defmodule FrontWeb.PipelineViewTest do
     end
   end
 
+  describe "pipeline/_switch.html" do
+    test "renders failed promotion reason when error response exists", %{conn: conn} do
+      switch = %Models.Switch{
+        id: "sw-1",
+        targets: [
+          %Models.Switch.Target{
+            switch_id: "sw-1",
+            name: "prod",
+            parameters: [],
+            deployment: nil,
+            events: [
+              %Models.Switch.TriggerEvent{
+                processed: true,
+                result: :FAILED,
+                triggered_at: 1_700_000_000,
+                auto_triggered: false,
+                error_response: "REFUSED: Too many pending promotions.",
+                author: %Models.User{name: "alex"}
+              }
+            ]
+          }
+        ]
+      }
+
+      html =
+        render_to_string(PipelineView, "_switch.html", %{
+          conn: conn,
+          workflow: %{id: "wf-1"},
+          pipeline: %{id: "pl-1"},
+          switch: switch,
+          selected_trigger_event_id: nil,
+          can_promote?: true
+        })
+
+      assert html =~ "Failed to promote"
+      assert html =~ "REFUSED: Too many pending promotions."
+    end
+  end
+
   describe ".action_string" do
     test "when the pipeline is terminated by a user => shows correct message" do
       terminator = %Models.User{

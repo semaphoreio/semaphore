@@ -89,7 +89,7 @@ defmodule FrontWeb.TargetControllerTest do
       assert conn.status == 200
     end
 
-    test "when the target triggering fails => it returns 500", %{conn: conn} do
+    test "when the target triggering fails => it returns BAD_PARAM payload", %{conn: conn} do
       GrpcMock.stub(GoferMock, :describe, Factories.Gofer.describe_response())
       GrpcMock.stub(GoferMock, :trigger, Factories.Gofer.failed_trigger_response())
 
@@ -100,7 +100,37 @@ defmodule FrontWeb.TargetControllerTest do
         conn
         |> post("/workflows/#{wf_id}/pipelines/#{ppl_id}/swithes/#{switch_id}/targets/#{name}")
 
-      assert conn.status == 500
+      assert conn.status == 400
+
+      assert %{"code" => "BAD_PARAM", "message" => "Promotion request is invalid."} =
+               json_response(conn, 400)
+    end
+
+    test "when gofer refuses promotion => it returns error code and message", %{conn: conn} do
+      GrpcMock.stub(GoferMock, :describe, Factories.Gofer.describe_response())
+
+      GrpcMock.stub(
+        GoferMock,
+        :trigger,
+        Factories.Gofer.refused_trigger_response(
+          "Too many pending promotions for target 'prod' (50/50). Please retry later."
+        )
+      )
+
+      name = URI.encode("Deploy to Prod")
+      %{workflow: wf_id, pipeline: ppl_id, switch: switch_id} = ids()
+
+      conn =
+        conn
+        |> post("/workflows/#{wf_id}/pipelines/#{ppl_id}/swithes/#{switch_id}/targets/#{name}")
+
+      assert conn.status == 409
+
+      assert %{
+               "code" => "REFUSED",
+               "message" =>
+                 "Too many pending promotions for target 'prod' (50/50). Please retry later."
+             } = json_response(conn, 409)
     end
   end
 end
