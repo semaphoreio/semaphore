@@ -1,5 +1,5 @@
 <%= if Map.has_key?(@job, :state) do %>
-  <%= link to: "/jobs/#{@job.id}", data: job_data(@job, @conn), class: "link dark-gray flex items-center justify-between pv1 nh2 ph2 bt b--black-15 hover-bg-washed-gray", style: "font-weight: normal;" do %>
+  <%= link to: "/jobs/#{@job.id}", data: job_data(@job, @conn), class: "link dark-gray flex items-center justify-between pv1 nh2 ph2 bt b--black-15 hover-bg-washed-gray#{if copied_job?(@job), do: " bg-washed-gray"}", style: "font-weight: normal;", title: (if copied_job?(@job), do: "This job passed in a previous run and was carried over as a copy — it was not re-executed.") do %>
     <div class="flex items-center pr3">
       <%= case {@job.state, @job.result} do %>
         <% {:ENQUEUED, _} -> %>
@@ -18,6 +18,9 @@
           <svg class="mr2" height="16" width="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><title>icn-running</title><g fill="none" fill-rule="evenodd"><circle cx="8" cy="8" fill="#1570ff" r="8"/><g fill="#fff"><circle cx="5" cy="8" r="1"/><circle cx="8" cy="8" r="1"/><circle cx="11" cy="8" r="1"/></g></g></svg>
       <% end %>
       <%= @job.name %>
+      <%= if copied_job?(@job) do %>
+        <span class="f6 gray ml2">copied</span>
+      <% end %>
     </div>
 
     <%= if job_timer_placeholder?(@job) do %>
