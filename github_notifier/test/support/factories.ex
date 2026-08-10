@@ -50,7 +50,7 @@ defmodule Support.Factories do
                           level: Repository.Status.PipelineFile.Level.value(level)
                         )
                       ],
-                      post_on_schedule: Keyword.get(opts, :post_on_schedule, false),
+                      skip_scheduled_run: Keyword.get(opts, :skip_scheduled_run, false),
                       skip_manual_run: Keyword.get(opts, :skip_manual_run, false)
                     )
                 )
@@ -196,7 +196,7 @@ defmodule Support.Factories do
                     level: :PIPELINE
                   )
                 ],
-                post_on_schedule: Keyword.get(status_opts, :post_on_schedule, false),
+                skip_scheduled_run: Keyword.get(status_opts, :skip_scheduled_run, false),
                 skip_manual_run: Keyword.get(status_opts, :skip_manual_run, false)
               )
           )
