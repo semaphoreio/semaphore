@@ -274,14 +274,19 @@ defmodule InternalApi.Projecthub.Project.Spec.Repository.Status do
   use Protobuf, syntax: :proto3
 
   @type t :: %__MODULE__{
-          pipeline_files: [InternalApi.Projecthub.Project.Spec.Repository.Status.PipelineFile.t()]
+          pipeline_files: [InternalApi.Projecthub.Project.Spec.Repository.Status.PipelineFile.t()],
+          skip_scheduled_run: boolean,
+          skip_manual_run: boolean
         }
-  defstruct [:pipeline_files]
+  defstruct [:pipeline_files, :skip_scheduled_run, :skip_manual_run]
 
   field(:pipeline_files, 1,
     repeated: true,
     type: InternalApi.Projecthub.Project.Spec.Repository.Status.PipelineFile
   )
+
+  field(:skip_scheduled_run, 2, type: :bool)
+  field(:skip_manual_run, 3, type: :bool)
 end
 
 defmodule InternalApi.Projecthub.Project.Spec.Repository.Status.PipelineFile do
