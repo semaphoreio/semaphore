@@ -377,7 +377,9 @@ defmodule Projecthub.HttpApi do
 
   defp status_map(status) do
     InternalApi.Projecthub.Project.Spec.Repository.Status.new(
-      pipeline_files: pipeline_files_map(status["pipeline_files"])
+      pipeline_files: pipeline_files_map(status["pipeline_files"]),
+      skip_scheduled_run: status["skip_scheduled_run"] == true,
+      skip_manual_run: status["skip_manual_run"] == true
     )
   end
 
@@ -578,7 +580,8 @@ defmodule Projecthub.HttpApi do
     Enum.map(types, fn type -> Type.key(type) |> from_atom() end)
   end
 
-  defp encode_status(nil), do: %{"pipeline_files" => []}
+  defp encode_status(nil),
+    do: %{"pipeline_files" => [], "skip_scheduled_run" => false, "skip_manual_run" => false}
 
   defp encode_status(status) do
     alias InternalApi.Projecthub.Project.Spec.Repository.Status.PipelineFile.Level
@@ -591,7 +594,9 @@ defmodule Projecthub.HttpApi do
             "path" => file.path,
             "level" => Level.key(file.level) |> from_atom()
           }
-        end)
+        end),
+      "skip_scheduled_run" => status.skip_scheduled_run == true,
+      "skip_manual_run" => status.skip_manual_run == true
     }
   end
 
