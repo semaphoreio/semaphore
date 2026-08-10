@@ -175,7 +175,11 @@ defmodule FrontWeb.ProjectSettingsControllerTest do
       assert redirected_to(conn) == project_settings_path(conn, :general, project.name)
 
       updated_project = DB.find_by(:projects, :name, project.name)
-      assert ^status = updated_project.api_model.spec.repository.status
+      updated_status = updated_project.api_model.spec.repository.status
+
+      assert status.pipeline_files == updated_status.pipeline_files
+      refute updated_status.skip_scheduled_run
+      refute updated_status.skip_manual_run
     end
 
     test "when pipeline file changed, it modifies repo status",
@@ -229,7 +233,136 @@ defmodule FrontWeb.ProjectSettingsControllerTest do
       assert redirected_to(conn) == project_settings_path(conn, :general, project.name)
 
       updated_project = DB.find_by(:projects, :name, project.name)
-      assert is_nil(updated_project.api_model.spec.repository.status)
+      updated_status = updated_project.api_model.spec.repository.status
+
+      assert [%PipelineFile{path: ".semaphore/ci.yml", level: 1}] = updated_status.pipeline_files
+      refute updated_status.skip_scheduled_run
+      refute updated_status.skip_manual_run
+    end
+
+    test "round-trips commit status trigger settings from the form",
+         %{conn: conn, project_name: project_name} do
+      alias InternalApi.Projecthub.Project.Spec.Repository.Status
+      alias InternalApi.Projecthub.Project.Spec.Repository.Status.PipelineFile
+      alias InternalApi.Projecthub.ResponseMeta
+
+      project = DB.find_by(:projects, :name, project_name)
+
+      status =
+        Status.new(
+          pipeline_files: [
+            PipelineFile.new(level: 1, path: ".semaphore/semaphore.yml")
+          ]
+        )
+
+      repository = %{project.api_model.spec.repository | status: status}
+      spec = %{project.api_model.spec | repository: repository}
+      api_model = %{project.api_model | spec: spec}
+      project = %{project | api_model: api_model}
+
+      DB.update(:projects, project)
+
+      GrpcMock.expect(ProjecthubMock, :update, fn req, _ ->
+        new_project = %{
+          id: req.project.metadata.id,
+          name: req.project.metadata.name,
+          org_id: req.project.metadata.org_id,
+          api_model: req.project
+        }
+
+        DB.update(:projects, new_project)
+
+        InternalApi.Projecthub.UpdateResponse.new(
+          metadata:
+            ResponseMeta.new(status: ResponseMeta.Status.new(code: ResponseMeta.Code.value(:OK))),
+          project: req.project
+        )
+      end)
+
+      conn =
+        conn
+        |> put(
+          project_settings_path(conn, :update, project_name),
+          %{
+            project: %{
+              initial_pipeline_file: ".semaphore/semaphore.yml",
+              commit_status_skip_scheduled_run: "true",
+              commit_status_skip_manual_run: "true"
+            }
+          }
+        )
+
+      assert get_flash(conn, :notice) == "Project has been updated."
+
+      updated_project = DB.find_by(:projects, :name, project.name)
+      updated_status = updated_project.api_model.spec.repository.status
+
+      assert status.pipeline_files == updated_status.pipeline_files
+      assert updated_status.skip_scheduled_run == true
+      assert updated_status.skip_manual_run == true
+    end
+
+    test "unchecking the commit status toggles turns the settings off",
+         %{conn: conn, project_name: project_name} do
+      alias InternalApi.Projecthub.Project.Spec.Repository.Status
+      alias InternalApi.Projecthub.Project.Spec.Repository.Status.PipelineFile
+      alias InternalApi.Projecthub.ResponseMeta
+
+      project = DB.find_by(:projects, :name, project_name)
+
+      status =
+        Status.new(
+          pipeline_files: [
+            PipelineFile.new(level: 1, path: ".semaphore/semaphore.yml")
+          ]
+        )
+
+      status = %{status | skip_scheduled_run: true, skip_manual_run: true}
+
+      repository = %{project.api_model.spec.repository | status: status}
+      spec = %{project.api_model.spec | repository: repository}
+      api_model = %{project.api_model | spec: spec}
+      project = %{project | api_model: api_model}
+
+      DB.update(:projects, project)
+
+      GrpcMock.expect(ProjecthubMock, :update, fn req, _ ->
+        new_project = %{
+          id: req.project.metadata.id,
+          name: req.project.metadata.name,
+          org_id: req.project.metadata.org_id,
+          api_model: req.project
+        }
+
+        DB.update(:projects, new_project)
+
+        InternalApi.Projecthub.UpdateResponse.new(
+          metadata:
+            ResponseMeta.new(status: ResponseMeta.Status.new(code: ResponseMeta.Code.value(:OK))),
+          project: req.project
+        )
+      end)
+
+      conn =
+        conn
+        |> put(
+          project_settings_path(conn, :update, project_name),
+          %{
+            project: %{
+              initial_pipeline_file: ".semaphore/semaphore.yml",
+              commit_status_skip_scheduled_run: "false",
+              commit_status_skip_manual_run: "false"
+            }
+          }
+        )
+
+      assert get_flash(conn, :notice) == "Project has been updated."
+
+      updated_project = DB.find_by(:projects, :name, project.name)
+      updated_status = updated_project.api_model.spec.repository.status
+
+      assert updated_status.skip_scheduled_run == false
+      assert updated_status.skip_manual_run == false
     end
 
     test "when project name is invalid, changeset assign is set", %{
