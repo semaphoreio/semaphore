@@ -111,4 +111,63 @@ defmodule GithubNotifier.Utils.State.Test do
     assert State.extract_with_summary(pipeline, pipeline_summary) ==
              {"failure", "The build failed on Semaphore 2.0."}
   end
+
+  test "when block stopped => return stopped, not failure" do
+    block =
+      struct(Block,
+        state: :DONE,
+        result: :STOPPED
+      )
+
+    assert State.extract(block) == {"stopped", "The build was canceled on Semaphore 2.0."}
+  end
+
+  test "when pipeline canceled => return stopped, not failure" do
+    pipeline =
+      struct(Pipeline,
+        state: :DONE,
+        result: :CANCELED
+      )
+
+    assert State.extract(pipeline) == {"stopped", "The build was canceled on Semaphore 2.0."}
+  end
+
+  test "when pipeline stopped => return stopped, not failure" do
+    pipeline =
+      struct(Pipeline,
+        state: :DONE,
+        result: :STOPPED
+      )
+
+    assert State.extract(pipeline) == {"stopped", "The build was canceled on Semaphore 2.0."}
+  end
+
+  test "when pipeline canceled but not yet done => return pending" do
+    pipeline =
+      struct(Pipeline,
+        state: :STOPPING,
+        result: :CANCELED
+      )
+
+    assert State.extract(pipeline) == {"pending", "The build is pending on Semaphore 2.0."}
+  end
+
+  test "when pipeline canceled => return stopped regardless of test summary" do
+    pipeline =
+      struct(Pipeline,
+        state: :DONE,
+        result: :CANCELED
+      )
+
+    pipeline_summary =
+      struct(Summary,
+        total: 100,
+        passed: 50,
+        failed: 30,
+        error: 20
+      )
+
+    assert State.extract_with_summary(pipeline, pipeline_summary) ==
+             {"stopped", "The build was canceled on Semaphore 2.0."}
+  end
 end
