@@ -23,6 +23,9 @@ defmodule GithubNotifier.Models.PipelineTest do
                created_at: 0,
                yaml_file_path: ".semaphore/semaphore.yml",
                name: "Pipeline",
+               triggered_by: :HOOK,
+               ppl_triggered_by: :WORKFLOW,
+               workflow_rerun_of: "",
                blocks: [
                  %{
                    id: "1",
@@ -51,6 +54,36 @@ defmodule GithubNotifier.Models.PipelineTest do
       GrpcMock.stub(PipelineMock, :describe, response)
 
       assert Pipeline.find("1") == nil
+    end
+
+    test "carries the workflow triggerer details" do
+      response =
+        Support.Factories.pipeline_describe_response(
+          triggered_by: :SCHEDULE,
+          ppl_triggered_by: :PARTIAL_RE_RUN,
+          workflow_rerun_of: "prev-wf-id"
+        )
+
+      GrpcMock.stub(PipelineMock, :describe, response)
+
+      pipeline = Pipeline.find("1")
+
+      assert pipeline.triggered_by == :SCHEDULE
+      assert pipeline.ppl_triggered_by == :PARTIAL_RE_RUN
+      assert pipeline.workflow_rerun_of == "prev-wf-id"
+    end
+
+    test "when the triggerer is missing => falls back to hook defaults" do
+      response = Support.Factories.pipeline_describe_response()
+      response = put_in(response.pipeline.triggerer, nil)
+
+      GrpcMock.stub(PipelineMock, :describe, response)
+
+      pipeline = Pipeline.find("1")
+
+      assert pipeline.triggered_by == :HOOK
+      assert pipeline.ppl_triggered_by == :WORKFLOW
+      assert pipeline.workflow_rerun_of == ""
     end
   end
 end
