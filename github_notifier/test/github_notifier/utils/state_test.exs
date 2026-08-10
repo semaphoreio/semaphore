@@ -152,6 +152,23 @@ defmodule GithubNotifier.Utils.State.Test do
     assert State.extract(pipeline) == {"pending", "The build is pending on Semaphore 2.0."}
   end
 
+  test "when pipeline is running => return pending regardless of test summary" do
+    pipeline =
+      struct(Pipeline,
+        state: :RUNNING,
+        result: :PASSED
+      )
+
+    pipeline_summary =
+      struct(Summary,
+        total: 100,
+        passed: 100
+      )
+
+    assert State.extract_with_summary(pipeline, pipeline_summary) ==
+             {"pending", "The build is pending on Semaphore 2.0."}
+  end
+
   test "when pipeline canceled => return stopped regardless of test summary" do
     pipeline =
       struct(Pipeline,
