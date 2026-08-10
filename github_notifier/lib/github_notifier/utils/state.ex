@@ -11,68 +11,45 @@ defmodule GithubNotifier.Utils.State do
   @message_build_canceled "The build was canceled on Semaphore 2.0."
   @message_build_pending "The build is pending on Semaphore 2.0."
 
-  def extract(pipeline) do
-    case pipeline.result do
-      :PASSED ->
-        case pipeline.state do
-          :DONE -> {@success, @message_build_passed}
-          _ -> {@pending, @message_build_pending}
-        end
+  def extract(%{state: :DONE} = pipeline), do: verdict(pipeline.result)
+  def extract(_pipeline), do: {@pending, @message_build_pending}
 
-      # A stopped/canceled pipeline never reached a verdict, so it reports as
-      # :STOPPED rather than a failure — an interrupted build is not a failed one.
-      result when result in [:STOPPED, :CANCELED] ->
-        case pipeline.state do
-          :DONE -> {@stopped, @message_build_canceled}
-          _ -> {@pending, @message_build_pending}
-        end
+  def extract_with_summary(%{state: :DONE} = pipeline, pipeline_summary),
+    do: verdict(pipeline.result, pipeline_summary)
 
-      _ ->
-        case pipeline.state do
-          :DONE -> {@failure, @message_build_failed}
-          _ -> {@pending, @message_build_pending}
-        end
-    end
+  def extract_with_summary(_pipeline, _pipeline_summary),
+    do: {@pending, @message_build_pending}
+
+  defp verdict(:PASSED), do: {@success, @message_build_passed}
+
+  # A stopped/canceled pipeline never reached a verdict, so it reports as
+  # :STOPPED rather than a failure — an interrupted build is not a failed one.
+  defp verdict(result) when result in [:STOPPED, :CANCELED],
+    do: {@stopped, @message_build_canceled}
+
+  defp verdict(_), do: {@failure, @message_build_failed}
+
+  defp verdict(:PASSED, summary) do
+    message =
+      if summary.passed > 0,
+        do: "#{pluralize(summary.passed, "test")} passed.",
+        else: @message_build_passed
+
+    {@success, message}
   end
 
-  def extract_with_summary(pipeline, pipeline_summary) do
-    case pipeline.result do
-      :PASSED ->
-        case pipeline.state do
-          :DONE ->
-            message =
-              if pipeline_summary.passed > 0,
-                do: "#{pluralize(pipeline_summary.passed, "test")} passed.",
-                else: @message_build_passed
+  defp verdict(result, _summary) when result in [:STOPPED, :CANCELED],
+    do: {@stopped, @message_build_canceled}
 
-            {@success, message}
+  defp verdict(_, summary) do
+    failures = summary.failed + summary.error
 
-          _ ->
-            {@pending, @message_build_pending}
-        end
+    message =
+      if failures > 0,
+        do: "#{pluralize(failures, "test")} failed.",
+        else: @message_build_failed
 
-      result when result in [:STOPPED, :CANCELED] ->
-        case pipeline.state do
-          :DONE -> {@stopped, @message_build_canceled}
-          _ -> {@pending, @message_build_pending}
-        end
-
-      _ ->
-        case pipeline.state do
-          :DONE ->
-            failures = pipeline_summary.failed + pipeline_summary.error
-
-            message =
-              if failures > 0,
-                do: "#{pluralize(failures, "test")} failed.",
-                else: @message_build_failed
-
-            {@failure, message}
-
-          _ ->
-            {@pending, @message_build_pending}
-        end
-    end
+    {@failure, message}
   end
 
   defp pluralize(count, fragment) do
