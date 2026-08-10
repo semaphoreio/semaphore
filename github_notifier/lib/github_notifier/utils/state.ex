@@ -3,10 +3,12 @@ defmodule GithubNotifier.Utils.State do
 
   @success "success"
   @failure "failure"
+  @stopped "stopped"
   @pending "pending"
 
   @message_build_passed "The build passed on Semaphore 2.0."
   @message_build_failed "The build failed on Semaphore 2.0."
+  @message_build_canceled "The build was canceled on Semaphore 2.0."
   @message_build_pending "The build is pending on Semaphore 2.0."
 
   def extract(pipeline) do
@@ -14,6 +16,14 @@ defmodule GithubNotifier.Utils.State do
       :PASSED ->
         case pipeline.state do
           :DONE -> {@success, @message_build_passed}
+          _ -> {@pending, @message_build_pending}
+        end
+
+      # A stopped/canceled pipeline never reached a verdict, so it reports as
+      # :STOPPED rather than a failure — an interrupted build is not a failed one.
+      result when result in [:STOPPED, :CANCELED] ->
+        case pipeline.state do
+          :DONE -> {@stopped, @message_build_canceled}
           _ -> {@pending, @message_build_pending}
         end
 
@@ -39,6 +49,12 @@ defmodule GithubNotifier.Utils.State do
 
           _ ->
             {@pending, @message_build_pending}
+        end
+
+      result when result in [:STOPPED, :CANCELED] ->
+        case pipeline.state do
+          :DONE -> {@stopped, @message_build_canceled}
+          _ -> {@pending, @message_build_pending}
         end
 
       _ ->
