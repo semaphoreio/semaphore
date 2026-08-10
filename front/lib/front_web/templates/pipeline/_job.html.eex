@@ -18,12 +18,14 @@
           <svg class="mr2" height="16" width="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><title>icn-running</title><g fill="none" fill-rule="evenodd"><circle cx="8" cy="8" fill="#1570ff" r="8"/><g fill="#fff"><circle cx="5" cy="8" r="1"/><circle cx="8" cy="8" r="1"/><circle cx="11" cy="8" r="1"/></g></g></svg>
       <% end %>
       <%= @job.name %>
-      <%= if copied_job?(@job) do %>
-        <span class="f6 gray ml2">copied</span>
-      <% end %>
     </div>
 
-    <%= if job_timer_placeholder?(@job) do %>
+    <%= if copied_job?(@job) do %>
+      <span class="f6 gray flex items-center">
+        <svg class="mr1" height="13" width="13" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="1.7"><rect x="5" y="2" width="9" height="9" rx="1.6"/><rect x="2" y="5" width="9" height="9" rx="1.6"/></g></svg>
+        copied
+      </span>
+    <% else %><%= if job_timer_placeholder?(@job) do %>
       <span class="f5 code gray">--:--</span>
     <% else %>
       <span
@@ -32,7 +34,7 @@
         seconds="<%= job_total_time(@job) %>">
         <%= job_timer_label(@job) %>
       </span>
-    <% end %>
+    <% end %><% end %>
   <% end %>
 <% else %>
   <div style="font-weight: normal;" class="link dark-gray flex items-center justify-between pv1 nh2 ph2 bt b--black-15 hover-bg-washed-gray">
