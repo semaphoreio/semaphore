@@ -458,15 +458,17 @@ defmodule FrontWeb.PipelineViewTest do
       html =
         render_graph_job(graph_job(%{original_job_id: "0561a1e6-e669-4b71-a752-a1e6a1a05a1e"}))
 
-      assert html =~ ">copied</span>"
+      assert html =~ "copied"
       assert html =~ "hover-bg-washed-gray bg-washed-gray"
       assert html =~ "was not re-executed"
+      refute html =~ "01:40"
     end
 
     test "a regular job renders without the copied marker" do
       html = render_graph_job(graph_job(%{}))
 
-      refute html =~ ">copied</span>"
+      assert html =~ "01:40"
+      refute html =~ "copied"
       refute html =~ "hover-bg-washed-gray bg-washed-gray"
       refute html =~ "was not re-executed"
     end
@@ -474,7 +476,8 @@ defmodule FrontWeb.PipelineViewTest do
     test "a job without the lineage field renders without the copied marker" do
       html = render_graph_job(graph_job(%{}) |> Map.delete(:original_job_id))
 
-      refute html =~ ">copied</span>"
+      assert html =~ "01:40"
+      refute html =~ "copied"
       refute html =~ "was not re-executed"
     end
   end
