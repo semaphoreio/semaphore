@@ -188,6 +188,9 @@ defmodule InternalApi.Projecthub.Project.Spec.Repository.Status do
     repeated: true,
     type: InternalApi.Projecthub.Project.Spec.Repository.Status.PipelineFile,
     json_name: "pipelineFiles"
+
+  field :skip_scheduled_run, 2, type: :bool, json_name: "skipScheduledRun"
+  field :skip_manual_run, 3, type: :bool, json_name: "skipManualRun"
 end
 
 defmodule InternalApi.Projecthub.Project.Spec.Repository.Whitelist do
@@ -259,6 +262,8 @@ defmodule InternalApi.Projecthub.Project.Spec.Task.Parameter do
   field :description, 3, type: :string
   field :default_value, 4, type: :string, json_name: "defaultValue"
   field :options, 5, repeated: true, type: :string
+  field :regex_pattern, 6, type: :string, json_name: "regexPattern"
+  field :validate_input_format, 7, type: :bool, json_name: "validateInputFormat"
 end
 
 defmodule InternalApi.Projecthub.Project.Spec.Task do
