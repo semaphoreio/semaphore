@@ -63,22 +63,30 @@ defmodule RepositoryHub.UniversalAdapter do
   def fetch_commit_status(request) do
     request.commit_status
     |> case do
-      %{pipeline_files: pipeline_files} when pipeline_files != [] ->
-        files =
-          Enum.map(pipeline_files, fn pf ->
-            level =
-              pf.level
-              |> Atom.to_string()
-              |> String.downcase()
-
-            %{"path" => pf.path, "level" => level}
-          end)
-
-        %{"pipeline_files" => files}
+      %InternalApi.Projecthub.Project.Spec.Repository.Status{} = status ->
+        %{
+          "pipeline_files" => commit_status_pipeline_files(status.pipeline_files, request),
+          "skip_scheduled_run" => status.skip_scheduled_run,
+          "skip_manual_run" => status.skip_manual_run
+        }
 
       _ ->
         %{"pipeline_files" => [%{"path" => fetch_pipeline_file(request), "level" => "pipeline"}]}
     end
+  end
+
+  defp commit_status_pipeline_files([], request),
+    do: [%{"path" => fetch_pipeline_file(request), "level" => "pipeline"}]
+
+  defp commit_status_pipeline_files(pipeline_files, _request) do
+    Enum.map(pipeline_files, fn pf ->
+      level =
+        pf.level
+        |> Atom.to_string()
+        |> String.downcase()
+
+      %{"path" => pf.path, "level" => level}
+    end)
   end
 
   def fetch_pipeline_file(request) do
