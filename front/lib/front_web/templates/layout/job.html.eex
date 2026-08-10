@@ -72,6 +72,16 @@
     </div>
   </div>
 
+  <%= if @job.original_job_id do %>
+    <div class="flex items-center w-100 pv2 ph3 mv1 bg-washed-yellow br2 f6">
+      <span class="b mr1">Copied job</span>
+      <span>
+        — this job passed in a previous run and was not re-executed. Logs, artifacts, and test results shown here come from the
+        <%= link "original job", to: job_path(@conn, :show, @job.original_job_id) %>.
+      </span>
+    </div>
+  <% end %>
+
   <div class="f6 gray mb1">
     by <%= @hook.repo_host_username %>, <time-ago datetime="<%= Timex.format!(@workflow.created_at, "%FT%T%:z", :strftime) %>"><%= Timex.format!(@workflow.created_at, "%FT%T%:z", :strftime) %></time-ago>
   </div>
