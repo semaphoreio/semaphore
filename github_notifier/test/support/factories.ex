@@ -18,7 +18,7 @@ defmodule Support.Factories do
     )
   end
 
-  def project_describe_response(level \\ :BLOCK) do
+  def project_describe_response(level \\ :BLOCK, opts \\ []) do
     alias InternalApi.Projecthub.Project.Spec.Repository
 
     struct(InternalApi.Projecthub.DescribeResponse,
@@ -49,7 +49,9 @@ defmodule Support.Factories do
                           path: ".semaphore/semaphore.yml",
                           level: Repository.Status.PipelineFile.Level.value(level)
                         )
-                      ]
+                      ],
+                      skip_scheduled_run: Keyword.get(opts, :skip_scheduled_run, false),
+                      skip_manual_run: Keyword.get(opts, :skip_manual_run, false)
                     )
                 )
             )
@@ -118,7 +120,13 @@ defmodule Support.Factories do
             done_at: %Google.Protobuf.Timestamp{nanos: 0, seconds: 0},
             wf_id: "3",
             yaml_file_name: yaml_file_name,
-            working_directory: working_directory
+            working_directory: working_directory,
+            triggerer:
+              struct(InternalApi.Plumber.Triggerer,
+                wf_triggered_by: Keyword.get(opts, :triggered_by, :HOOK),
+                ppl_triggered_by: Keyword.get(opts, :ppl_triggered_by, :WORKFLOW),
+                workflow_rerun_of: Keyword.get(opts, :workflow_rerun_of, "")
+              )
           ),
         blocks: [
           struct(InternalApi.Plumber.Block,
@@ -162,7 +170,7 @@ defmodule Support.Factories do
     )
   end
 
-  def project(meta \\ []) do
+  def project(meta \\ [], status_opts \\ []) do
     alias InternalApi.Projecthub.Project.Spec.Repository
 
     meta_def = [
@@ -187,7 +195,9 @@ defmodule Support.Factories do
                     path: ".semaphore/semaphore.yml",
                     level: :PIPELINE
                   )
-                ]
+                ],
+                skip_scheduled_run: Keyword.get(status_opts, :skip_scheduled_run, false),
+                skip_manual_run: Keyword.get(status_opts, :skip_manual_run, false)
               )
           )
       }
