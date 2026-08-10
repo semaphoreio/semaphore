@@ -9,7 +9,11 @@ defmodule GithubNotifier.Services.BlockFinishedNotifier do
     routing_key: "done",
     service: "github_notifier.block_finished_notifier",
     connection_id: :block_notifier,
-    dead_letter_queue: Application.get_env(:github_notifier, :tackle_dead_letter_queue, true)
+    dead_letter_queue: Application.get_env(:github_notifier, :tackle_dead_letter_queue, true),
+    # ~15 min of redelivery before dead-lettering — rides out provider outages
+    # and busy delivery-guard leases instead of dropping the status.
+    retry_delay: 30,
+    retry_limit: 30
 
   def handle_message(message) do
     Watchman.benchmark("block_finished_notifier.duration", fn ->

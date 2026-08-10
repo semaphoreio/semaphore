@@ -9,7 +9,11 @@ defmodule GithubNotifier.Services.PipelineStartedNotifier do
     routing_key: "running",
     service: "github_notifier.pipeline_started_notifier",
     connection_id: :block_notifier,
-    dead_letter_queue: Application.get_env(:github_notifier, :tackle_dead_letter_queue, true)
+    dead_letter_queue: Application.get_env(:github_notifier, :tackle_dead_letter_queue, true),
+    # ~15 min of redelivery before dead-lettering — rides out provider outages
+    # and busy delivery-guard leases instead of dropping the status.
+    retry_delay: 30,
+    retry_limit: 30
 
   def handle_message(message) do
     Watchman.benchmark("pipeline_started_notifier.duration", fn ->
