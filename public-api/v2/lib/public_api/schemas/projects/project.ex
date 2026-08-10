@@ -148,6 +148,18 @@ defmodule PublicAPI.Schemas.Projects.Project do
                       description:
                         "List of pipeline files that will submit a status check on GitHub pull requests"
                     }
+                  },
+                  skip_scheduled_run: %Schema{
+                    type: :boolean,
+                    default: false,
+                    description:
+                      "When true, commit statuses are not submitted for pipelines started by a scheduler task."
+                  },
+                  skip_manual_run: %Schema{
+                    type: :boolean,
+                    default: false,
+                    description:
+                      "When true, commit statuses are not submitted for pipelines started manually via a task's Run now."
                   }
                 }
               }
