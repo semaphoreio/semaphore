@@ -275,17 +275,17 @@ defmodule InternalApi.Projecthub.Project.Spec.Repository.Status do
 
   @type t :: %__MODULE__{
           pipeline_files: [InternalApi.Projecthub.Project.Spec.Repository.Status.PipelineFile.t()],
-          post_on_schedule: boolean,
+          skip_scheduled_run: boolean,
           skip_manual_run: boolean
         }
-  defstruct [:pipeline_files, :post_on_schedule, :skip_manual_run]
+  defstruct [:pipeline_files, :skip_scheduled_run, :skip_manual_run]
 
   field(:pipeline_files, 1,
     repeated: true,
     type: InternalApi.Projecthub.Project.Spec.Repository.Status.PipelineFile
   )
 
-  field(:post_on_schedule, 2, type: :bool)
+  field(:skip_scheduled_run, 2, type: :bool)
   field(:skip_manual_run, 3, type: :bool)
 end
 
