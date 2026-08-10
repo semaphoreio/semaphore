@@ -173,7 +173,7 @@ defmodule InternalApi.Projecthub.Project.Spec.Repository.Status do
     json_name: "pipelineFiles"
   )
 
-  field(:post_on_schedule, 2, type: :bool, json_name: "postOnSchedule")
+  field(:skip_scheduled_run, 2, type: :bool, json_name: "skipScheduledRun")
   field(:skip_manual_run, 3, type: :bool, json_name: "skipManualRun")
 end
 
