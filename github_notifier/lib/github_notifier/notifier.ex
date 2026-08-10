@@ -1,17 +1,24 @@
 defmodule GithubNotifier.Notifier do
   alias GithubNotifier.TaskSupervisor
   alias GithubNotifier.Models
+  alias GithubNotifier.Utils.SkipPolicy
+
+  require Logger
 
   def notify(request_id, pipeline_id, block_id \\ nil) do
     {:ok, pipeline} = fetch_pipeline(pipeline_id)
-    {:ok, repo_proxy} = fetch_repo_proxy(pipeline.hook_id)
     {:ok, project} = fetch_project(pipeline.project_id)
 
-    case project do
-      nil ->
+    cond do
+      is_nil(project) ->
         nil
 
-      project ->
+      SkipPolicy.skip?(project, pipeline) ->
+        skip(request_id, pipeline)
+
+      true ->
+        {:ok, repo_proxy} = fetch_repo_proxy(pipeline.hook_id)
+
         data = GithubNotifier.Extractor.extract(pipeline, block_id, repo_proxy, project)
         GithubNotifier.Status.create(data, request_id)
     end
@@ -19,15 +26,19 @@ defmodule GithubNotifier.Notifier do
 
   def notify_with_summary(request_id, pipeline_id) do
     {:ok, pipeline} = fetch_pipeline(pipeline_id)
-    {:ok, repo_proxy} = fetch_repo_proxy(pipeline.hook_id)
     {:ok, project} = fetch_project(pipeline.project_id)
-    {:ok, pipeline_summary} = fetch_pipeline_summary(pipeline_id)
 
-    case project do
-      nil ->
+    cond do
+      is_nil(project) ->
         nil
 
-      project ->
+      SkipPolicy.skip?(project, pipeline) ->
+        skip(request_id, pipeline)
+
+      true ->
+        {:ok, repo_proxy} = fetch_repo_proxy(pipeline.hook_id)
+        {:ok, pipeline_summary} = fetch_pipeline_summary(pipeline_id)
+
         data =
           GithubNotifier.Extractor.extract_with_summary(
             pipeline,
@@ -38,6 +49,19 @@ defmodule GithubNotifier.Notifier do
 
         GithubNotifier.Status.create(data, request_id)
     end
+  end
+
+  defp skip(request_id, pipeline) do
+    Logger.info(
+      "#{request_id} skipping commit status for pipeline #{pipeline.id}: triggered_by=#{pipeline.triggered_by}"
+    )
+
+    Watchman.increment(
+      internal: "set_commit_status.skipped",
+      external: {"set_commit_status", [result: "skipped"]}
+    )
+
+    nil
   end
 
   defp fetch_pipeline_summary(pipeline_id) do
