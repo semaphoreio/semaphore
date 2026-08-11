@@ -576,9 +576,16 @@ defmodule FrontWeb.PipelineView do
   def pipeline_status_icon_name(:DONE, :STOPPED), do: "icn-stopped"
   def pipeline_status_icon_name(:DONE, :CANCELED), do: "icn-skipped"
 
-  def copied_job?(job), do: Map.get(job, :original_job_id, "") not in [nil, ""]
+  def reused_job?(job), do: Map.get(job, :original_job_id, "") not in [nil, ""]
 
-  def carried_over_block?(block), do: Map.get(block, :carried_over_from, "") not in [nil, ""]
+  def reused_block?(block), do: Map.get(block, :reused_from, "") not in [nil, ""]
+
+  def job_link_id(job) do
+    case Map.get(job, :original_job_id, "") do
+      original when original not in [nil, ""] -> original
+      _ -> job.id
+    end
+  end
 
   def job_status_color(job), do: job_status_color(job.state, job.result)
   def job_status_color(:ENQUEUED, _), do: "light-gray"

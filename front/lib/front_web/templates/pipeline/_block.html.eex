@@ -16,16 +16,11 @@
     <% end %>
   </div>
 <% else %>
-  <div style="margin: 10px;" class="dib v-top bg-white shadow-1 pa2 br2 f5 <%= if carried_over_block?(@block), do: "block-carried-over" %>">
-    <h4 class="normal gray mb2">
-      <%= @block.name %>
-      <%= if carried_over_block?(@block) do %>
-        <span class="f6 gray ml2" data-tippy-content="This block passed in a previous run and was not re-executed. These are the results from that run.">carried over</span>
-      <% end %>
-    </h4>
+  <div style="margin: 10px;" class="dib v-top bg-white shadow-1 pa2 br2 f5">
+    <h4 class="normal gray mb2"><%= @block.name %></h4>
 
     <%= for job <- @block.jobs do %>
-      <%= render FrontWeb.PipelineView, "_job.html", job: job, conn: @conn, block_result_reason: Map.get(@block, :result_reason) %>
+      <%= render FrontWeb.PipelineView, "_job.html", job: job, conn: @conn, block_result_reason: Map.get(@block, :result_reason), block_reused?: reused_block?(@block) %>
     <% end %>
   </div>
 <% end %>

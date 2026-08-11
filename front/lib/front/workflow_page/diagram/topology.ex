@@ -13,9 +13,9 @@ defmodule Front.WorkflowPage.Diagram.Topology do
         if task do
           block
           |> Map.put(:jobs, task.jobs)
-          |> Map.put(:carried_over_from, carried_over_from(pipeline, task))
+          |> Map.put(:reused_from, reused_from(pipeline, task))
         else
-          block |> Map.put(:jobs, []) |> Map.put(:carried_over_from, nil)
+          block |> Map.put(:jobs, []) |> Map.put(:reused_from, nil)
         end
       end)
 
@@ -27,11 +27,11 @@ defmodule Front.WorkflowPage.Diagram.Topology do
   # rebuild. Plumber duplicates the block and reuses the very same task, so
   # the task still points at the pipeline that actually ran it.
   #
-  defp carried_over_from(%{id: ppl_id}, %{ppl_id: task_ppl_id})
+  defp reused_from(%{id: ppl_id}, %{ppl_id: task_ppl_id})
        when is_binary(task_ppl_id) and task_ppl_id != "" and task_ppl_id != ppl_id,
        do: task_ppl_id
 
-  defp carried_over_from(_pipeline, _task), do: nil
+  defp reused_from(_pipeline, _task), do: nil
 
   defp match(pipeline, topology) do
     #
