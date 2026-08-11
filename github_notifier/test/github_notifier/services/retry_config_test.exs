@@ -1,5 +1,5 @@
 defmodule GithubNotifier.Services.RetryConfigTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
 
   alias GithubNotifier.Services
 
@@ -14,15 +14,12 @@ defmodule GithubNotifier.Services.RetryConfigTest do
   # then dead-lettered. 30 retries spaced 30s apart keep a status alive for
   # ~15 minutes — long enough to ride out a provider outage or a held
   # delivery-guard lease, both of which fail single deliveries for minutes.
-  test "status consumers retry deliveries for ~15 minutes before dead-lettering" do
+  # retry_config/0 exposes the same attributes each consumer passes to
+  # Tackle.Consumer, so this pins the effective budget without needing AMQP.
+  test "status consumers keep a ~15 minute retry budget" do
     for consumer <- @consumers do
-      pid = Process.whereis(consumer)
-      assert pid, "#{inspect(consumer)} is not running (START_CONSUMERS not set?)"
-
-      state = :sys.get_state(pid)
-
-      assert state.retry_limit == 30, "#{inspect(consumer)} retry_limit"
-      assert String.ends_with?(state.delay_queue, ".delay.30"), "#{inspect(consumer)} delay"
+      assert consumer.retry_config() == %{retry_delay: 30, retry_limit: 30},
+             "#{inspect(consumer)} retry budget drifted"
     end
   end
 end
