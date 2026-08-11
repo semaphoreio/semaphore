@@ -15,6 +15,8 @@ defmodule FrontWeb.DeploymentsView do
     details |> Map.take(parameter_names) |> Map.values() |> Enum.any?(&(String.length(&1) > 0))
   end
 
+  def deployment_state(%Deployment{state: :STARTED, pipeline: nil}), do: :UNAVAILABLE
+
   def deployment_state(deployment = %Deployment{state: :STARTED}),
     do: pipeline_state(deployment.pipeline.state, deployment.pipeline.result)
 
@@ -31,16 +33,19 @@ defmodule FrontWeb.DeploymentsView do
   def details_color(:PASSED), do: "green"
   def details_color(:FAILED), do: "red"
   def details_color(:CANCELED), do: "gray"
+  def details_color(:UNAVAILABLE), do: "gray"
 
   def details_title(:RUNNING), do: "Deployment in progress"
   def details_title(:PASSED), do: "Last deployment"
   def details_title(:FAILED), do: "Last deployment"
   def details_title(:CANCELED), do: "Last deployment"
+  def details_title(:UNAVAILABLE), do: "Last deployment"
 
   def details_circle(:RUNNING), do: "circle"
   def details_circle(:PASSED), do: "check_circle"
   def details_circle(:FAILED), do: "cancel"
   def details_circle(:CANCELED), do: "do_not_disturb_on"
+  def details_circle(:UNAVAILABLE), do: "help"
 
   def git_ref_icon(%RepoProxy{type: type}),
     do: git_ref_icon(type)

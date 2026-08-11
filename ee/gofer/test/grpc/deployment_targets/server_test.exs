@@ -423,6 +423,15 @@ defmodule Gofer.Grpc.DeploymentTargets.ServerTest do
                }
     end
 
+    test "succeeds when RBAC cache warm-up fails", ctx do
+      Support.Stubs.RBAC.setdown()
+
+      assert {:ok, %API.ListResponse{targets: targets}} =
+               send(API.ListRequest.new(project_id: ctx.project_id, requester_id: ctx.user_id))
+
+      assert length(targets) > 0
+    end
+
     test "sends metrics via watchman", ctx do
       mock_watchman()
 

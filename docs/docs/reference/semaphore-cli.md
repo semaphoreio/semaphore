@@ -825,7 +825,7 @@ sem get pipeline c2016294-d5ac-4af3-9a3d-1212e6652cd8
 
 ### sem rebuild pipeline {#sem-rebuild-pipeline}
 
-Rebuilding a pipeline re-runs only the failed jobs.
+Rebuilding a pipeline re-runs only the failed blocks.
 
 The syntax is:
 
@@ -899,7 +899,7 @@ PIPELINE ID                            PIPELINE NAME            CREATION TIME   
 
 ### sem rebuild workflow {#sem-rebuild-workflow}
 
-Rebuilding a workflow re-runs all the jobs in the pipeline, even those that previously ended successfully.
+Rebuilding a workflow re-runs all the blocks in the pipeline, even those that previously ended successfully.
 
 The syntax is:
 

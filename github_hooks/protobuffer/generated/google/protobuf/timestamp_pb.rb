@@ -7,7 +7,7 @@ require 'google/protobuf'
 
 descriptor_data = "\n\x1fgoogle/protobuf/timestamp.proto\x12\x0fgoogle.protobuf\"+\n\tTimestamp\x12\x0f\n\x07seconds\x18\x01 \x01(\x03\x12\r\n\x05nanos\x18\x02 \x01(\x05\x42~\n\x13\x63om.google.protobufB\x0eTimestampProtoP\x01Z+github.com/golang/protobuf/ptypes/timestamp\xf8\x01\x01\xa2\x02\x03GPB\xaa\x02\x1eGoogle.Protobuf.WellKnownTypesb\x06proto3"
 
-pool = Google::Protobuf::DescriptorPool.generated_pool
+pool = ::Google::Protobuf::DescriptorPool.generated_pool
 pool.add_serialized_file(descriptor_data)
 
 module Google

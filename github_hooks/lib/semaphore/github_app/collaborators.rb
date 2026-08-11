@@ -1,7 +1,7 @@
 module Semaphore::GithubApp
   class Collaborators
-    def self.refresh(repository_slug)
-      client = new_client(repository_slug)
+    def self.refresh(repository_slug, repository_remote_id = nil)
+      client = new_client(repository_slug, repository_remote_id)
 
       return :no_token unless client
       return :low_rate_limit if client.rate_limit_remaining() < App.collaborators_api_rate_limit
@@ -46,8 +46,11 @@ module Semaphore::GithubApp
       client.collaborators(repository_slug).select { |col| col["permissions"]["push"] }
     end
 
-    def self.new_client(repository_slug)
-      token, = Semaphore::GithubApp::Token.repository_token(repository_slug)
+    def self.new_client(repository_slug, repository_remote_id)
+      token, = Semaphore::GithubApp::Token.repository_token(
+        :repository_slug => repository_slug,
+        :repository_remote_id => repository_remote_id
+      )
       return unless token
 
       RepoHost::Github::Client.new(token)

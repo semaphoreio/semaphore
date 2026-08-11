@@ -598,22 +598,27 @@ defmodule Guard.GrpcServers.UserServerTest do
              projects: []
            )}
         end do
-        {:ok, response} = channel |> Stub.delete_with_owned_orgs(request)
+        with_mock InternalApi.RBAC.RBAC.Stub,
+          list_accessible_orgs: fn _channel, _req, _opts ->
+            {:ok, InternalApi.RBAC.ListAccessibleOrgsResponse.new(org_ids: [])}
+          end do
+          {:ok, response} = channel |> Stub.delete_with_owned_orgs(request)
 
-        id = user.id
-        assert %User.User{id: ^id} = response
+          id = user.id
+          assert %User.User{id: ^id} = response
 
-        # check if the user is deleted
-        assert nil == FrontRepo.get(FrontRepo.User, id)
-        assert nil == FrontRepo.get(FrontRepo.RepoHostAccount, repo_host_account.id)
-        assert nil == FrontRepo.get(FrontRepo.Member, member.id)
+          # check if the user is deleted
+          assert nil == FrontRepo.get(FrontRepo.User, id)
+          assert nil == FrontRepo.get(FrontRepo.RepoHostAccount, repo_host_account.id)
+          assert nil == FrontRepo.get(FrontRepo.Member, member.id)
 
-        receive do
-          {:user_deleted_test, received_message} ->
-            user_deleted = User.UserDeleted.decode(received_message)
-            assert user_deleted.user_id == user.id
-        after
-          5000 -> flunk("Timeout: Message not received within 5 seconds")
+          receive do
+            {:user_deleted_test, received_message} ->
+              user_deleted = User.UserDeleted.decode(received_message)
+              assert user_deleted.user_id == user.id
+          after
+            5000 -> flunk("Timeout: Message not received within 5 seconds")
+          end
         end
       end
     end
@@ -662,7 +667,7 @@ defmodule Guard.GrpcServers.UserServerTest do
 
         assert %GRPC.RPCError{
                  status: GRPC.Status.invalid_argument(),
-                 message: "User #{user.id} is owner of projects."
+                 message: "You still own projects — transfer or delete them first."
                } == grpc_error
       end
     end
@@ -679,6 +684,445 @@ defmodule Guard.GrpcServers.UserServerTest do
 
       assert response.id == random_user_id
     end
+
+    test "delete_with_owned_orgs should reject when user is the last owner of an org", %{
+      grpc_channel: channel
+    } do
+      alias Guard.FrontRepo
+
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user.id)
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      {:ok, other} = Support.Factories.RbacUser.insert()
+
+      org = Support.Factories.Organization.insert!(name: "Acme", username: "acme-last-owner")
+
+      request = User.DeleteWithOwnedOrgsRequest.new(user_id: user.id)
+
+      with_mock InternalApi.Projecthub.ProjectService.Stub, list: projecthub_list_mock() do
+        with_mock InternalApi.RBAC.RBAC.Stub,
+          list_accessible_orgs: accessible_orgs_mock([org.id]),
+          list_roles: list_roles_mock(),
+          list_members: list_members_mock([user.id, other.id], [user.id]) do
+          {:error, grpc_error} = channel |> Stub.delete_with_owned_orgs(request)
+
+          assert %GRPC.RPCError{status: status, message: message} = grpc_error
+          assert status == GRPC.Status.failed_precondition()
+          assert message =~ "You are the last owner of Acme."
+          assert message =~ "delete it first"
+          refute message =~ "these organizations"
+
+          # user must NOT be deleted
+          refute is_nil(FrontRepo.get(FrontRepo.User, user.id))
+        end
+      end
+    end
+
+    test "delete_with_owned_orgs should reject when user is the last owner through a group", %{
+      grpc_channel: channel
+    } do
+      alias Guard.FrontRepo
+
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user.id)
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      {:ok, other} = Support.Factories.RbacUser.insert()
+
+      org = Support.Factories.Organization.insert!(name: "Acme", username: "acme-group-owner")
+
+      request = User.DeleteWithOwnedOrgsRequest.new(user_id: user.id)
+
+      with_mock InternalApi.Projecthub.ProjectService.Stub, list: projecthub_list_mock() do
+        with_mock InternalApi.RBAC.RBAC.Stub,
+          list_accessible_orgs: accessible_orgs_mock([org.id]),
+          list_roles: list_roles_mock(),
+          list_members: list_members_mock([user.id, other.id], [], ["owners-group"]) do
+          with_mock InternalApi.Groups.Groups.Stub,
+            list_groups: list_groups_mock(%{"owners-group" => [user.id]}) do
+            {:error, grpc_error} = channel |> Stub.delete_with_owned_orgs(request)
+
+            assert %GRPC.RPCError{status: status, message: message} = grpc_error
+            assert status == GRPC.Status.failed_precondition()
+            assert message =~ "You are the last owner of Acme."
+
+            refute is_nil(FrontRepo.get(FrontRepo.User, user.id))
+          end
+        end
+      end
+    end
+
+    test "delete_with_owned_orgs should allow deletion when the owner group has another member",
+         %{grpc_channel: channel} do
+      alias Guard.FrontRepo
+
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user.id)
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      {:ok, other} = Support.Factories.RbacUser.insert()
+
+      org = Support.Factories.Organization.insert!(name: "Shared", username: "group-coowner")
+
+      request = User.DeleteWithOwnedOrgsRequest.new(user_id: user.id)
+
+      with_mock InternalApi.Projecthub.ProjectService.Stub, list: projecthub_list_mock() do
+        with_mock InternalApi.RBAC.RBAC.Stub,
+          list_accessible_orgs: accessible_orgs_mock([org.id]),
+          list_roles: list_roles_mock(),
+          list_members: list_members_mock([user.id, other.id], [], ["owners-group"]) do
+          with_mock InternalApi.Groups.Groups.Stub,
+            list_groups: list_groups_mock(%{"owners-group" => [user.id, other.id]}) do
+            {:ok, response} = channel |> Stub.delete_with_owned_orgs(request)
+
+            id = user.id
+            assert %User.User{id: ^id} = response
+            assert is_nil(FrontRepo.get(FrontRepo.User, id))
+          end
+        end
+      end
+    end
+
+    test "delete_with_owned_orgs pluralizes the message when blocking multiple orgs", %{
+      grpc_channel: channel
+    } do
+      alias Guard.FrontRepo
+
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user.id)
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      {:ok, other} = Support.Factories.RbacUser.insert()
+
+      org_a = Support.Factories.Organization.insert!(name: "Acme", username: "plural-acme")
+      org_b = Support.Factories.Organization.insert!(name: "Globex", username: "plural-globex")
+
+      request = User.DeleteWithOwnedOrgsRequest.new(user_id: user.id)
+
+      with_mock InternalApi.Projecthub.ProjectService.Stub, list: projecthub_list_mock() do
+        with_mock InternalApi.RBAC.RBAC.Stub,
+          list_accessible_orgs: accessible_orgs_mock([org_a.id, org_b.id]),
+          list_roles: list_roles_mock(),
+          list_members: list_members_mock([user.id, other.id], [user.id]) do
+          {:error, grpc_error} = channel |> Stub.delete_with_owned_orgs(request)
+
+          assert %GRPC.RPCError{status: status, message: message} = grpc_error
+          assert status == GRPC.Status.failed_precondition()
+          assert message =~ "these organizations: Acme, Globex"
+          assert message =~ "delete them first"
+
+          refute is_nil(FrontRepo.get(FrontRepo.User, user.id))
+        end
+      end
+    end
+
+    test "delete_with_owned_orgs should reject when user is the sole member of an org", %{
+      grpc_channel: channel
+    } do
+      alias Guard.FrontRepo
+
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user.id)
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      org = Support.Factories.Organization.insert!(name: "Solo", username: "acme-sole")
+
+      request = User.DeleteWithOwnedOrgsRequest.new(user_id: user.id)
+
+      with_mock InternalApi.Projecthub.ProjectService.Stub, list: projecthub_list_mock() do
+        # list_roles is intentionally not stubbed: a sole-member org must be
+        # decided by the member count alone and short-circuit the owner lookup.
+        with_mock InternalApi.RBAC.RBAC.Stub,
+          list_accessible_orgs: accessible_orgs_mock([org.id]),
+          list_members: list_members_mock([user.id], []) do
+          {:error, grpc_error} = channel |> Stub.delete_with_owned_orgs(request)
+
+          assert %GRPC.RPCError{status: status, message: message} = grpc_error
+          assert status == GRPC.Status.failed_precondition()
+          assert message =~ "Solo"
+
+          refute is_nil(FrontRepo.get(FrontRepo.User, user.id))
+        end
+      end
+    end
+
+    test "delete_with_owned_orgs should allow deletion when org has another owner", %{
+      grpc_channel: channel
+    } do
+      alias Guard.FrontRepo
+
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user.id)
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      {:ok, other} = Support.Factories.RbacUser.insert()
+
+      org = Support.Factories.Organization.insert!(name: "Shared", username: "acme-coowner")
+
+      request = User.DeleteWithOwnedOrgsRequest.new(user_id: user.id)
+
+      with_mock InternalApi.Projecthub.ProjectService.Stub, list: projecthub_list_mock() do
+        with_mock InternalApi.RBAC.RBAC.Stub,
+          list_accessible_orgs: accessible_orgs_mock([org.id]),
+          list_roles: list_roles_mock(),
+          list_members: list_members_mock([user.id, other.id], [user.id, other.id]) do
+          {:ok, response} = channel |> Stub.delete_with_owned_orgs(request)
+
+          id = user.id
+          assert %User.User{id: ^id} = response
+          assert is_nil(FrontRepo.get(FrontRepo.User, id))
+        end
+      end
+    end
+
+    test "delete_with_owned_orgs should allow deletion when user is a plain member of an org", %{
+      grpc_channel: channel
+    } do
+      alias Guard.FrontRepo
+
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user.id)
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      {:ok, owner} = Support.Factories.RbacUser.insert()
+      {:ok, teammate} = Support.Factories.RbacUser.insert()
+
+      org = Support.Factories.Organization.insert!(name: "BigCo", username: "acme-plain-member")
+
+      request = User.DeleteWithOwnedOrgsRequest.new(user_id: user.id)
+
+      with_mock InternalApi.Projecthub.ProjectService.Stub, list: projecthub_list_mock() do
+        with_mock InternalApi.RBAC.RBAC.Stub,
+          list_accessible_orgs: accessible_orgs_mock([org.id]),
+          list_roles: list_roles_mock(),
+          list_members: list_members_mock([user.id, owner.id, teammate.id], [owner.id]) do
+          {:ok, response} = channel |> Stub.delete_with_owned_orgs(request)
+
+          id = user.id
+          assert %User.User{id: ^id} = response
+          assert is_nil(FrontRepo.get(FrontRepo.User, id))
+        end
+      end
+    end
+
+    test "delete_with_owned_orgs allows deletion when the only owned org is soft-deleted", %{
+      grpc_channel: channel
+    } do
+      alias Guard.FrontRepo
+
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user.id)
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      org = Support.Factories.Organization.insert!(name: "Gone", username: "soft-del-only")
+      soft_delete!(org)
+
+      request = User.DeleteWithOwnedOrgsRequest.new(user_id: user.id)
+
+      with_mock InternalApi.Projecthub.ProjectService.Stub, list: projecthub_list_mock() do
+        with_mock InternalApi.RBAC.RBAC.Stub,
+          list_accessible_orgs: accessible_orgs_mock([org.id]),
+          list_roles: list_roles_mock(),
+          list_members: list_members_mock([user.id], [user.id]) do
+          {:ok, response} = channel |> Stub.delete_with_owned_orgs(request)
+
+          id = user.id
+          assert %User.User{id: ^id} = response
+          assert is_nil(FrontRepo.get(FrontRepo.User, id))
+        end
+      end
+    end
+
+    test "delete_with_owned_orgs blocks only on the active org, ignoring soft-deleted ones", %{
+      grpc_channel: channel
+    } do
+      alias Guard.FrontRepo
+
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user.id)
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      active = Support.Factories.Organization.insert!(name: "Live", username: "mix-active")
+      gone = Support.Factories.Organization.insert!(name: "Gone", username: "mix-soft")
+      soft_delete!(gone)
+
+      request = User.DeleteWithOwnedOrgsRequest.new(user_id: user.id)
+
+      with_mock InternalApi.Projecthub.ProjectService.Stub, list: projecthub_list_mock() do
+        with_mock InternalApi.RBAC.RBAC.Stub,
+          list_accessible_orgs: accessible_orgs_mock([active.id, gone.id]),
+          list_roles: list_roles_mock(),
+          list_members: list_members_mock([user.id], [user.id]) do
+          {:error, grpc_error} = channel |> Stub.delete_with_owned_orgs(request)
+
+          assert %GRPC.RPCError{status: status, message: message} = grpc_error
+          assert status == GRPC.Status.failed_precondition()
+          assert message =~ "Live"
+          refute message =~ "Gone"
+
+          refute is_nil(FrontRepo.get(FrontRepo.User, user.id))
+        end
+      end
+    end
+
+    test "delete_with_owned_orgs rejects when the Owner role cannot be resolved for a multi-member org",
+         %{grpc_channel: channel} do
+      alias Guard.FrontRepo
+
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user.id)
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      {:ok, other} = Support.Factories.RbacUser.insert()
+
+      org = Support.Factories.Organization.insert!(name: "Mystery", username: "no-owner-role")
+
+      request = User.DeleteWithOwnedOrgsRequest.new(user_id: user.id)
+
+      with_mock InternalApi.Projecthub.ProjectService.Stub, list: projecthub_list_mock() do
+        with_mock InternalApi.RBAC.RBAC.Stub,
+          list_accessible_orgs: accessible_orgs_mock([org.id]),
+          list_roles: list_roles_without_owner_mock(),
+          list_members: list_members_mock([user.id, other.id], []) do
+          {:error, grpc_error} = channel |> Stub.delete_with_owned_orgs(request)
+
+          assert %GRPC.RPCError{status: status, message: message} = grpc_error
+          assert status == GRPC.Status.failed_precondition()
+          assert message =~ "couldn't verify ownership"
+          assert message =~ "Mystery"
+
+          refute is_nil(FrontRepo.get(FrontRepo.User, user.id))
+        end
+      end
+    end
+
+    test "delete_with_owned_orgs rejects when ownership can't be verified due to an RBAC error",
+         %{grpc_channel: channel} do
+      alias Guard.FrontRepo
+
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user.id)
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      org = Support.Factories.Organization.insert!(name: "Foggy", username: "rbac-unavailable")
+
+      request = User.DeleteWithOwnedOrgsRequest.new(user_id: user.id)
+
+      rbac_unavailable = fn _channel, _req, _opts ->
+        {:error, %GRPC.RPCError{status: 14, message: "unavailable"}}
+      end
+
+      with_mock InternalApi.Projecthub.ProjectService.Stub, list: projecthub_list_mock() do
+        with_mock InternalApi.RBAC.RBAC.Stub,
+          list_accessible_orgs: accessible_orgs_mock([org.id]),
+          list_members: rbac_unavailable do
+          {:error, grpc_error} = channel |> Stub.delete_with_owned_orgs(request)
+
+          assert %GRPC.RPCError{status: status, message: message} = grpc_error
+          assert status == GRPC.Status.failed_precondition()
+          assert message =~ "couldn't verify ownership"
+          assert message =~ "Foggy"
+
+          refute is_nil(FrontRepo.get(FrontRepo.User, user.id))
+        end
+      end
+    end
+  end
+
+  @owner_role_id "11111111-1111-1111-1111-111111111111"
+
+  defp soft_delete!(org) do
+    org
+    |> Ecto.Changeset.change(deleted_at: DateTime.utc_now() |> DateTime.truncate(:second))
+    |> Guard.FrontRepo.update!()
+  end
+
+  defp projecthub_list_mock do
+    fn _channel, _req, _opts ->
+      {:ok,
+       InternalApi.Projecthub.ListResponse.new(
+         metadata: InternalApi.Projecthub.ResponseMeta.new(status: %{code: 0}),
+         projects: []
+       )}
+    end
+  end
+
+  defp accessible_orgs_mock(org_ids) do
+    fn _channel, _req, _opts ->
+      {:ok, InternalApi.RBAC.ListAccessibleOrgsResponse.new(org_ids: org_ids)}
+    end
+  end
+
+  defp list_roles_mock do
+    fn _channel, _req, _opts ->
+      {:ok,
+       InternalApi.RBAC.ListRolesResponse.new(
+         roles: [InternalApi.RBAC.Role.new(id: @owner_role_id, name: "Owner")]
+       )}
+    end
+  end
+
+  # An org whose roles do not include one named "Owner" — get_role_id/1 returns
+  # nil, so ownership can't be verified.
+  defp list_roles_without_owner_mock do
+    fn _channel, _req, _opts ->
+      {:ok,
+       InternalApi.RBAC.ListRolesResponse.new(
+         roles: [InternalApi.RBAC.Role.new(id: "role-admin", name: "Admin")]
+       )}
+    end
+  end
+
+  # Single-page ListMembers stub: these fixtures fit in one page, so only the
+  # first page carries members and the server-side role filter returns the owner
+  # ids for the owner-role query or every USER member otherwise. GROUP-typed
+  # queries return the groups holding the owner role. Cross-edition pagination
+  # is covered directly in Guard.Api.RbacTest.
+  defp list_members_mock(member_ids, owner_ids, owner_group_ids \\ []) do
+    fn _channel, req, _opts ->
+      group_query? = req.member_type == InternalApi.RBAC.SubjectType.value(:GROUP)
+
+      ids =
+        cond do
+          req.page.page_no != 0 -> []
+          group_query? and req.member_has_role == @owner_role_id -> owner_group_ids
+          group_query? -> []
+          req.member_has_role == @owner_role_id -> owner_ids
+          true -> member_ids
+        end
+
+      {:ok,
+       InternalApi.RBAC.ListMembersResponse.new(
+         members: Enum.map(ids, &rbac_member/1),
+         total_pages: 1
+       )}
+    end
+  end
+
+  defp list_groups_mock(members_by_group) do
+    fn _channel, req, _opts ->
+      groups =
+        case Map.fetch(members_by_group, req.group_id) do
+          {:ok, member_ids} ->
+            [InternalApi.Groups.Group.new(id: req.group_id, member_ids: member_ids)]
+
+          :error ->
+            []
+        end
+
+      {:ok, InternalApi.Groups.ListGroupsResponse.new(groups: groups)}
+    end
+  end
+
+  defp rbac_member(subject_id) do
+    InternalApi.RBAC.ListMembersResponse.Member.new(
+      subject:
+        InternalApi.RBAC.Subject.new(
+          subject_id: subject_id,
+          subject_type: InternalApi.RBAC.SubjectType.value(:USER)
+        )
+    )
   end
 
   describe "regenerate_token" do
@@ -1132,11 +1576,11 @@ defmodule Guard.GrpcServers.UserServerTest do
            user: user
          } do
       Tesla.Mock.mock_global(fn
-        %{
-          method: :get,
-          url: "https://api.github.com"
-        } ->
+        %{method: :get, url: "https://api.github.com"} ->
           json(%{"valid" => "valid"})
+
+        %{method: :get, url: "https://api.github.com/user/184065"} ->
+          json(%{"id" => 184_065, "login" => "radwo", "name" => "radwo"})
       end)
 
       request =
@@ -1160,6 +1604,450 @@ defmodule Guard.GrpcServers.UserServerTest do
              } == response
     end
 
+    test "refresh_repository_provider syncs the github login when it changed upstream",
+         %{grpc_channel: channel, user: user, repo_host_account: rha} do
+      new_login = "#{rha.login}-renamed"
+
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          json(%{"valid" => "valid"})
+
+        %{method: :get, url: "https://api.github.com/user/184065"} ->
+          json(%{"id" => 184_065, "login" => new_login, "name" => rha.name})
+      end)
+
+      with_mock Guard.Events.UserUpdated, publish: fn _u, _e, _r -> :ok end do
+        request =
+          User.RefreshRepositoryProviderRequest.new(
+            user_id: user.id,
+            type: User.RepositoryProvider.Type.value(:GITHUB)
+          )
+
+        {:ok, response} = channel |> Stub.refresh_repository_provider(request)
+
+        assert response.repository_provider.login == new_login
+
+        {:ok, reloaded} = Guard.FrontRepo.RepoHostAccount.get_for_github_user(user.id)
+        assert reloaded.login == new_login
+        assert reloaded.name == rha.name
+        assert reloaded.revoked == false
+
+        assert called(Guard.Events.UserUpdated.publish(user.id, "user_exchange", "updated"))
+      end
+    end
+
+    test "refresh_repository_provider syncs the github display name when it changed upstream",
+         %{grpc_channel: channel, user: user, repo_host_account: rha} do
+      new_name = "#{rha.name} (renamed)"
+
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          json(%{"valid" => "valid"})
+
+        %{method: :get, url: "https://api.github.com/user/184065"} ->
+          json(%{"id" => 184_065, "login" => rha.login, "name" => new_name})
+      end)
+
+      with_mock Guard.Events.UserUpdated, publish: fn _u, _e, _r -> :ok end do
+        request =
+          User.RefreshRepositoryProviderRequest.new(
+            user_id: user.id,
+            type: User.RepositoryProvider.Type.value(:GITHUB)
+          )
+
+        {:ok, _response} = channel |> Stub.refresh_repository_provider(request)
+
+        {:ok, reloaded} = Guard.FrontRepo.RepoHostAccount.get_for_github_user(user.id)
+        assert reloaded.login == rha.login
+        assert reloaded.name == new_name
+
+        assert called(Guard.Events.UserUpdated.publish(user.id, "user_exchange", "updated"))
+      end
+    end
+
+    test "refresh_repository_provider syncs login and name together when both changed",
+         %{grpc_channel: channel, user: user, repo_host_account: rha} do
+      new_login = "#{rha.login}-v2"
+      new_name = "#{rha.name} v2"
+
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          json(%{"valid" => "valid"})
+
+        %{method: :get, url: "https://api.github.com/user/184065"} ->
+          json(%{"id" => 184_065, "login" => new_login, "name" => new_name})
+      end)
+
+      with_mock Guard.Events.UserUpdated, publish: fn _u, _e, _r -> :ok end do
+        request =
+          User.RefreshRepositoryProviderRequest.new(
+            user_id: user.id,
+            type: User.RepositoryProvider.Type.value(:GITHUB)
+          )
+
+        {:ok, _response} = channel |> Stub.refresh_repository_provider(request)
+
+        {:ok, reloaded} = Guard.FrontRepo.RepoHostAccount.get_for_github_user(user.id)
+        assert reloaded.login == new_login
+        assert reloaded.name == new_name
+
+        assert called(Guard.Events.UserUpdated.publish(user.id, "user_exchange", "updated"))
+      end
+    end
+
+    test "refresh_repository_provider is a no-op when github reports the same profile",
+         %{grpc_channel: channel, user: user, repo_host_account: rha} do
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          json(%{"valid" => "valid"})
+
+        %{method: :get, url: "https://api.github.com/user/184065"} ->
+          json(%{"id" => 184_065, "login" => rha.login, "name" => rha.name})
+      end)
+
+      with_mock Guard.Events.UserUpdated, publish: fn _u, _e, _r -> :ok end do
+        original_updated_at = rha.updated_at
+
+        request =
+          User.RefreshRepositoryProviderRequest.new(
+            user_id: user.id,
+            type: User.RepositoryProvider.Type.value(:GITHUB)
+          )
+
+        {:ok, response} = channel |> Stub.refresh_repository_provider(request)
+
+        assert response.repository_provider.login == rha.login
+
+        {:ok, reloaded} = Guard.FrontRepo.RepoHostAccount.get_for_github_user(user.id)
+        assert reloaded.login == rha.login
+        assert reloaded.name == rha.name
+        # update_revoke_status was a no-op (status unchanged) so updated_at stays put.
+        assert reloaded.updated_at == original_updated_at
+
+        refute called(Guard.Events.UserUpdated.publish(:_, :_, :_))
+      end
+    end
+
+    test "refresh_repository_provider is a no-op when github user fetch returns 500",
+         %{grpc_channel: channel, user: user, repo_host_account: rha} do
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          json(%{"valid" => "valid"})
+
+        %{method: :get, url: "https://api.github.com/user/184065"} ->
+          {:ok, %Tesla.Env{status: 500, body: %{"message" => "boom"}}}
+      end)
+
+      with_mock Guard.Events.UserUpdated, publish: fn _u, _e, _r -> :ok end do
+        request =
+          User.RefreshRepositoryProviderRequest.new(
+            user_id: user.id,
+            type: User.RepositoryProvider.Type.value(:GITHUB)
+          )
+
+        {:ok, response} = channel |> Stub.refresh_repository_provider(request)
+
+        assert response.repository_provider.login == rha.login
+
+        {:ok, reloaded} = Guard.FrontRepo.RepoHostAccount.get_for_github_user(user.id)
+        assert reloaded.login == rha.login
+        assert reloaded.name == rha.name
+        assert reloaded.revoked == false
+
+        refute called(Guard.Events.UserUpdated.publish(:_, :_, :_))
+      end
+    end
+
+    test "refresh_repository_provider does not clobber stored name when github returns null name",
+         %{grpc_channel: channel, user: user, repo_host_account: rha} do
+      new_login = "#{rha.login}-renamed"
+
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          json(%{"valid" => "valid"})
+
+        %{method: :get, url: "https://api.github.com/user/184065"} ->
+          json(%{"id" => 184_065, "login" => new_login, "name" => nil})
+      end)
+
+      with_mock Guard.Events.UserUpdated, publish: fn _u, _e, _r -> :ok end do
+        request =
+          User.RefreshRepositoryProviderRequest.new(
+            user_id: user.id,
+            type: User.RepositoryProvider.Type.value(:GITHUB)
+          )
+
+        {:ok, response} = channel |> Stub.refresh_repository_provider(request)
+
+        assert response.repository_provider.login == new_login
+
+        {:ok, reloaded} = Guard.FrontRepo.RepoHostAccount.get_for_github_user(user.id)
+        assert reloaded.login == new_login
+        assert reloaded.name == rha.name
+
+        assert called(Guard.Events.UserUpdated.publish(user.id, "user_exchange", "updated"))
+      end
+    end
+
+    test "refresh_repository_provider does not crash and skips event when update_profile fails",
+         %{grpc_channel: channel, user: user, repo_host_account: rha} do
+      new_login = "#{rha.login}-renamed"
+
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          json(%{"valid" => "valid"})
+
+        %{method: :get, url: "https://api.github.com/user/184065"} ->
+          json(%{"id" => 184_065, "login" => new_login, "name" => rha.name})
+      end)
+
+      forced_error = {:error, %Ecto.Changeset{errors: [login: {"is invalid", []}], valid?: false}}
+
+      with_mocks([
+        {Guard.FrontRepo.RepoHostAccount, [:passthrough],
+         update_profile: fn _, _ -> forced_error end},
+        {Guard.Events.UserUpdated, [], publish: fn _u, _e, _r -> :ok end}
+      ]) do
+        request =
+          User.RefreshRepositoryProviderRequest.new(
+            user_id: user.id,
+            type: User.RepositoryProvider.Type.value(:GITHUB)
+          )
+
+        {:ok, response} = channel |> Stub.refresh_repository_provider(request)
+
+        assert response.repository_provider.login == rha.login
+
+        {:ok, reloaded} = Guard.FrontRepo.RepoHostAccount.get_for_github_user(user.id)
+        assert reloaded.login == rha.login
+        assert reloaded.name == rha.name
+
+        refute called(Guard.Events.UserUpdated.publish(:_, :_, :_))
+      end
+    end
+
+    test "refresh_repository_provider revokes account when refresh_token is missing and token is invalid",
+         %{grpc_channel: channel, user: user, repo_host_account: rha} do
+      # Fixture rha has no refresh_token. Flow proven by this test:
+      #   get_token → user_token → validate_token → 401
+      #   → handle_fetch_token (refresh_token in [nil, ""]) → {:error, :revoked}
+      #   → get_token raises grpc_error!(:not_found, ...)
+      # handle_validate_token and GithubProfileSync.sync never run.
+      # No mock for /user/<uid> — if sync mistakenly tried to fetch, Tesla.Mock
+      # would raise and fail the test.
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          {:ok, %Tesla.Env{status: 401, body: %{}}}
+      end)
+
+      request =
+        User.RefreshRepositoryProviderRequest.new(
+          user_id: user.id,
+          type: User.RepositoryProvider.Type.value(:GITHUB)
+        )
+
+      {:error, _} = channel |> Stub.refresh_repository_provider(request)
+
+      updated_account = Guard.FrontRepo.get!(Guard.FrontRepo.RepoHostAccount, rha.id)
+      assert updated_account.revoked == true
+      assert updated_account.login == rha.login
+    end
+
+    test "refresh_repository_provider revokes account and skips profile fetch when refreshed token is rejected by validate",
+         %{grpc_channel: channel} do
+      # Distinct from the test above: here user_token's *refresh* path succeeds
+      # (refresh_token is present, /login/oauth/access_token returns 200 with a
+      # new token). Then handle_validate_token validates the NEW token,
+      # api.github.com still returns 401 → {:ok, false} → update_revoke_status
+      # writes revoked: true. GithubProfileSync.sync sees revoked: true and
+      # passes through — /user/<uid> must NEVER be called (no mock).
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user.id)
+
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      {:ok, _rha} =
+        Support.Members.insert_repo_host_account(
+          login: "radwo",
+          name: "radwo",
+          github_uid: "184065",
+          repo_host: "github",
+          refresh_token: "old_refresh",
+          user_id: user.id,
+          token: "old_token",
+          revoked: false,
+          permission_scope: "repo"
+        )
+
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          {:ok, %Tesla.Env{status: 401, body: %{}}}
+
+        %{method: :post, url: "https://github.com/login/oauth/access_token"} ->
+          {:ok,
+           %Tesla.Env{
+             status: 200,
+             body: %{"access_token" => "new_token", "expires_in" => 3600}
+           }}
+      end)
+
+      request =
+        User.RefreshRepositoryProviderRequest.new(
+          user_id: user.id,
+          type: User.RepositoryProvider.Type.value(:GITHUB)
+        )
+
+      {:ok, _response} = channel |> Stub.refresh_repository_provider(request)
+
+      {:ok, reloaded} = Guard.FrontRepo.RepoHostAccount.get_for_github_user(user.id)
+      # Proves user_token's refresh path was actually exercised (the new token
+      # is persisted from /login/oauth/access_token's response).
+      assert reloaded.token == "new_token"
+      # Proves handle_validate_token saw {:ok, false} on the new token and
+      # called update_revoke_status(_, true).
+      assert reloaded.revoked == true
+    end
+
+    test "refresh_repository_provider preserves revoke status on transient github validate_token 5xx",
+         %{grpc_channel: channel, user: user, repo_host_account: rha} do
+      # Two calls to validate_token happen per refresh:
+      #   1) inside user_token (must succeed to yield a token)
+      #   2) inside handle_validate_token (we force 500 here)
+      # Use a per-test counter to differentiate.
+      {:ok, counter} = Agent.start_link(fn -> 0 end)
+
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          n = Agent.get_and_update(counter, &{&1 + 1, &1 + 1})
+
+          if n == 1 do
+            json(%{"valid" => "valid"})
+          else
+            {:ok, %Tesla.Env{status: 500, body: %{"message" => "boom"}}}
+          end
+
+        %{method: :get, url: "https://api.github.com/user/184065"} ->
+          json(%{"id" => 184_065, "login" => rha.login, "name" => rha.name})
+      end)
+
+      original_updated_at = rha.updated_at
+
+      request =
+        User.RefreshRepositoryProviderRequest.new(
+          user_id: user.id,
+          type: User.RepositoryProvider.Type.value(:GITHUB)
+        )
+
+      {:ok, _response} = channel |> Stub.refresh_repository_provider(request)
+
+      {:ok, reloaded} = Guard.FrontRepo.RepoHostAccount.get_for_github_user(user.id)
+      # Transient validate failure must NOT flip revoke status.
+      assert reloaded.revoked == false
+      # update_revoke_status was not invoked, so updated_at stays put.
+      assert reloaded.updated_at == original_updated_at
+    end
+
+    test "refresh_repository_provider preserves revoke status when first validate_token returns 5xx and no refresh_token",
+         %{grpc_channel: channel, user: user, repo_host_account: rha} do
+      # Guards against revoking a healthy account when the FIRST validate_token
+      # call (inside user_token/1) hits a transient failure. Fixture rha has no
+      # refresh_token; without the :transient short-circuit, user_token would
+      # fall through to handle_fetch_token → {:error, :revoked} → account
+      # revoked.
+      original_updated_at = rha.updated_at
+
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          {:ok, %Tesla.Env{status: 500, body: %{"message" => "boom"}}}
+
+        %{method: :get, url: "https://api.github.com/user/184065"} ->
+          json(%{"id" => 184_065, "login" => rha.login, "name" => rha.name})
+
+        %{method: :post, url: "https://github.com/login/oauth/access_token"} ->
+          raise "must not attempt refresh when validate is transient"
+      end)
+
+      request =
+        User.RefreshRepositoryProviderRequest.new(
+          user_id: user.id,
+          type: User.RepositoryProvider.Type.value(:GITHUB)
+        )
+
+      {:ok, _response} = channel |> Stub.refresh_repository_provider(request)
+
+      {:ok, reloaded} = Guard.FrontRepo.RepoHostAccount.get_for_github_user(user.id)
+      assert reloaded.revoked == false
+      assert reloaded.updated_at == original_updated_at
+    end
+
+    test "refresh_repository_provider preserves revoke status when first validate_token returns 403 and no refresh_token",
+         %{grpc_channel: channel, user: user, repo_host_account: rha} do
+      # 403 from GET https://api.github.com/ is overwhelmingly secondary
+      # rate-limit, not "token revoked". It must be treated as transient and
+      # leave the account untouched.
+      original_updated_at = rha.updated_at
+
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          {:ok, %Tesla.Env{status: 403, body: %{"message" => "rate limited"}}}
+
+        %{method: :get, url: "https://api.github.com/user/184065"} ->
+          json(%{"id" => 184_065, "login" => rha.login, "name" => rha.name})
+
+        %{method: :post, url: "https://github.com/login/oauth/access_token"} ->
+          raise "must not attempt refresh on 403"
+      end)
+
+      request =
+        User.RefreshRepositoryProviderRequest.new(
+          user_id: user.id,
+          type: User.RepositoryProvider.Type.value(:GITHUB)
+        )
+
+      {:ok, _response} = channel |> Stub.refresh_repository_provider(request)
+
+      {:ok, reloaded} = Guard.FrontRepo.RepoHostAccount.get_for_github_user(user.id)
+      assert reloaded.revoked == false
+      assert reloaded.updated_at == original_updated_at
+    end
+
+    test "refresh_repository_provider succeeds on a legacy github account with name == nil",
+         %{grpc_channel: channel, user: user, repo_host_account: rha} do
+      # Before narrowing update_account's validate_required, a row with
+      # name == nil would error out in update_revoke_status with a
+      # :required changeset error → grpc_error!(:internal). The new sync
+      # could backfill name, but never got the chance because the revoke
+      # write failed first.
+      {:ok, legacy_rha} =
+        rha
+        |> Ecto.Changeset.change(%{name: nil})
+        |> Guard.FrontRepo.update(force: true)
+
+      assert legacy_rha.name == nil
+
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          json(%{"login" => rha.login})
+
+        %{method: :get, url: "https://api.github.com/user/184065"} ->
+          json(%{"id" => 184_065, "login" => rha.login, "name" => "Backfilled Name"})
+      end)
+
+      request =
+        User.RefreshRepositoryProviderRequest.new(
+          user_id: user.id,
+          type: User.RepositoryProvider.Type.value(:GITHUB)
+        )
+
+      {:ok, _response} = channel |> Stub.refresh_repository_provider(request)
+
+      {:ok, reloaded} = Guard.FrontRepo.RepoHostAccount.get_for_github_user(user.id)
+      assert reloaded.revoked == false
+      # GithubProfileSync should have backfilled the name now that the
+      # revoke write no longer blocks the flow on a nil legacy field.
+      assert reloaded.name == "Backfilled Name"
+    end
+
     test "refresh_repository_provider should refresh repository provider details for a valid user with bitbucket",
          %{
            grpc_channel: channel
@@ -1168,7 +2056,7 @@ defmodule Guard.GrpcServers.UserServerTest do
         case env do
           %{
             method: :get,
-            url: "https://api.bitbucket.org/2.0/repositories?access_token=mock_token"
+            url: "https://api.bitbucket.org/2.0/user/workspaces"
           } ->
             {:ok, %Tesla.Env{status: 200, body: %{}}}
 
@@ -1222,6 +2110,102 @@ defmodule Guard.GrpcServers.UserServerTest do
                  uid: repo_host_account.github_uid
                }
              } == response
+    end
+
+    test "refresh_repository_provider marks bitbucket account revoked for 401 responses",
+         %{grpc_channel: channel} do
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.bitbucket.org/2.0/user/workspaces"} ->
+          {:ok, %Tesla.Env{status: 401, body: %{}}}
+      end)
+
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user.id)
+
+      {:ok, _} =
+        Support.Members.insert_user(
+          id: user.id,
+          email: user.email,
+          name: user.name
+        )
+
+      {:ok, repo_host_account} =
+        Support.Members.insert_repo_host_account(
+          login: "radwo",
+          name: "radwo",
+          repo_host: "bitbucket",
+          refresh_token: "example_refresh_token",
+          token_expires_at: Support.Members.valid_expires_at(),
+          user_id: user.id,
+          token: "token",
+          revoked: false,
+          permission_scope: "repo"
+        )
+
+      request =
+        User.RefreshRepositoryProviderRequest.new(
+          user_id: user.id,
+          type: User.RepositoryProvider.Type.value(:BITBUCKET)
+        )
+
+      {:ok, response} =
+        channel
+        |> Stub.refresh_repository_provider(request)
+
+      assert response.repository_provider.scope == User.RepositoryProvider.Scope.value(:NONE)
+
+      updated_account =
+        Guard.FrontRepo.get!(Guard.FrontRepo.RepoHostAccount, repo_host_account.id)
+
+      assert updated_account.revoked == true
+    end
+
+    test "refresh_repository_provider keeps revoke status unchanged for transient bitbucket failures",
+         %{grpc_channel: channel} do
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.bitbucket.org/2.0/user/workspaces"} ->
+          {:ok, %Tesla.Env{status: 503, body: %{}}}
+      end)
+
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user.id)
+
+      {:ok, _} =
+        Support.Members.insert_user(
+          id: user.id,
+          email: user.email,
+          name: user.name
+        )
+
+      {:ok, repo_host_account} =
+        Support.Members.insert_repo_host_account(
+          login: "radwo",
+          name: "radwo",
+          repo_host: "bitbucket",
+          refresh_token: "example_refresh_token",
+          token_expires_at: Support.Members.valid_expires_at(),
+          user_id: user.id,
+          token: "token",
+          revoked: false,
+          permission_scope: "repo"
+        )
+
+      request =
+        User.RefreshRepositoryProviderRequest.new(
+          user_id: user.id,
+          type: User.RepositoryProvider.Type.value(:BITBUCKET)
+        )
+
+      {:ok, response} =
+        channel
+        |> Stub.refresh_repository_provider(request)
+
+      assert response.repository_provider.scope == User.RepositoryProvider.Scope.value(:PRIVATE)
+
+      updated_account =
+        Guard.FrontRepo.get!(Guard.FrontRepo.RepoHostAccount, repo_host_account.id)
+
+      assert updated_account.revoked == false
     end
 
     test "refresh_repository_provider should refresh repository provider details for a valid user with gitlab",

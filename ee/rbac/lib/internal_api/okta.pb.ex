@@ -12,6 +12,7 @@ defmodule InternalApi.Okta.OktaIntegration do
   field(:saml_issuer, 7, type: :string, json_name: "samlIssuer")
   field(:sso_url, 8, type: :string, json_name: "ssoUrl")
   field(:jit_provisioning_enabled, 9, type: :bool, json_name: "jitProvisioningEnabled")
+  field(:session_expiration_minutes, 10, type: :int32, json_name: "sessionExpirationMinutes")
 end
 
 defmodule InternalApi.Okta.SetUpRequest do
@@ -26,6 +27,7 @@ defmodule InternalApi.Okta.SetUpRequest do
   field(:saml_issuer, 5, type: :string, json_name: "samlIssuer")
   field(:sso_url, 6, type: :string, json_name: "ssoUrl")
   field(:jit_provisioning_enabled, 7, type: :bool, json_name: "jitProvisioningEnabled")
+  field(:session_expiration_minutes, 8, type: :int32, json_name: "sessionExpirationMinutes")
 end
 
 defmodule InternalApi.Okta.SetUpResponse do

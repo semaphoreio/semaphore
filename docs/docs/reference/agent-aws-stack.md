@@ -20,7 +20,7 @@ The AWS Autoscaler Stack accepts configuration settings in two ways:
     {
     "SEMAPHORE_AGENT_STACK_NAME": "<your-stack-name>",
     "SEMAPHORE_AGENT_TOKEN_PARAMETER_NAME": "<your-ssm-parameter-name>",
-    "SEMAPHORE_AGENT_TOKEN_KMS_KEY": "<your-ssm-parameter-name>",
+    "SEMAPHORE_AGENT_TOKEN_KMS_KEY": "<your-kms-key-alias>",
     "SEMAPHORE_ENDPOINT": "<organization-url>.semaphoreci.com"
     }
     ```
@@ -38,7 +38,7 @@ The AWS Autoscaler Stack accepts configuration settings in two ways:
 
     ```shell
     export SEMAPHORE_AGENT_TOKEN_PARAMETER_NAME=<your-ssm-parameter-name>
-    export SEMAPHORE_AGENT_TOKEN_KMS_KEY=<your-kms-key-id>
+    export SEMAPHORE_AGENT_TOKEN_KMS_KEY=<your-kms-key-alias>
     export SEMAPHORE_AGENT_STACK_NAME=<your-stack-name>
     export SEMAPHORE_ENDPOINT=<organization-url>.semaphoreci.com 
 
@@ -274,7 +274,7 @@ For example: `Name:Something,Category:SomethingElse`.
 - **Parameter name**: `SEMAPHORE_AGENT_USE_PRE_SIGNED_URL`
 - **default value**: `false`
 
-If true, use a pre-signed AWS STS GetCallerIdentity URL for agent registration.
+If true, use a pre-signed AWS STS GetCallerIdentity URL for agent registration. Default is `false`, so set this to `true` when the agent type requires AWS STS name assignment.
 
 See [agent type configuration](../using-semaphore/self-hosted-install#name-sts) to learn how to configure this security feature.
 

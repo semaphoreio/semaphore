@@ -294,6 +294,8 @@ defmodule Front.Models.PreFlightChecks do
   @doc "Describe pre-flight checks of organization"
   @spec describe_for_organization(String.t()) ::
           {:ok, OrganizationPFC.t()} | {:error, any()}
+  def describe_for_organization(nil), do: nil_arg_error("organization_id")
+
   def describe_for_organization(organization_id) do
     watch("organization_pfcs.model.describe", fn ->
       call_describe(:ORGANIZATION, organization_id: organization_id)
@@ -303,6 +305,8 @@ defmodule Front.Models.PreFlightChecks do
   @doc "Describe pre-flight checks of project"
   @spec describe_for_project(String.t()) ::
           {:ok, ProjectPFC.t()} | {:error, any()}
+  def describe_for_project(nil), do: nil_arg_error("project_id")
+
   def describe_for_project(project_id) do
     watch("project_pfcs.model.describe", fn ->
       call_describe(:PROJECT, project_id: project_id)
@@ -312,6 +316,9 @@ defmodule Front.Models.PreFlightChecks do
   @doc "Apply pre-flight checks for organization"
   @spec apply_for_organization(String.t(), String.t(), OrganizationPFC.t()) ::
           {:ok, OrganizationPFC.t()} | {:error, any()}
+  def apply_for_organization(nil, _requester_id, _model), do: nil_arg_error("organization_id")
+  def apply_for_organization(_organization_id, nil, _model), do: nil_arg_error("requester_id")
+
   def apply_for_organization(organization_id, requester_id, model) do
     watch("organization_pfcs.model.apply", fn ->
       call_apply(:ORGANIZATION,
@@ -339,6 +346,9 @@ defmodule Front.Models.PreFlightChecks do
   @doc "Destroy pre-flight checks from organization"
   @spec destroy_for_organization(String.t(), String.t()) ::
           :ok | {:error, any()}
+  def destroy_for_organization(nil, _requester_id), do: nil_arg_error("organization_id")
+  def destroy_for_organization(_organization_id, nil), do: nil_arg_error("requester_id")
+
   def destroy_for_organization(organization_id, requester_id) do
     watch("organization_pfcs.model.destroy", fn ->
       call_destroy(:ORGANIZATION, organization_id: organization_id, requester_id: requester_id)
@@ -348,11 +358,17 @@ defmodule Front.Models.PreFlightChecks do
   @doc "Destroy pre-flight checks from project"
   @spec destroy_for_project(String.t(), String.t()) ::
           :ok | {:error, any()}
+  def destroy_for_project(nil, _requester_id), do: nil_arg_error("project_id")
+  def destroy_for_project(_project_id, nil), do: nil_arg_error("requester_id")
+
   def destroy_for_project(project_id, requester_id) do
     watch("project_pfcs.model.destroy", fn ->
       call_destroy(:PROJECT, project_id: project_id, requester_id: requester_id)
     end)
   end
+
+  defp nil_arg_error(field),
+    do: {:error, %RuntimeError{message: "#{field} can't be nil"}}
 
   defp call_describe(level, params) do
     with {:ok, request} <- new_request(API.ApplyRequest, level, params),

@@ -37,6 +37,14 @@ Changing your user profile email address can revoke access to integrations such 
 
 :::
 
+To change your Semaphore email address, please contact support@semaphore.io from the primary email linked to your GitHub, Bitbucket, or GitLab account used to log in to Semaphore, and include your new email address.
+
+<!--
+
+## Temporary disabled section
+
+These instructions are currently hidden until we deploy this improvement: https://github.com/renderedtext/tasks/issues/9439
+
 To change your Semaphore email address, follow these steps:
 
 <Steps>
@@ -55,6 +63,8 @@ To change your Semaphore email address, follow these steps:
 5. Confirm the change
 
 </Steps>
+
+-->
 
 ### How to reset your personal API token {#profile-token}
 
@@ -81,6 +91,37 @@ To reset your Semaphore API token, follow these steps:
 
 </Steps>
 
+### How to delete your user account
+
+:::danger
+
+Deleted user accounts cannot be restored. There is no undo for this operation.
+
+:::
+
+To permanently delete your user account, follow these steps:
+
+<Steps>
+
+1. Open your user menu on the top-right corner
+2. Select **Profile settings**
+
+    ![Profile menu](./img/profile-menu.jpg)
+
+3. Under **Delete account permanently** press **Delete account and owned organizations**
+
+    ![Delete user account](./img/delete-user-account.jpg)
+
+4. Confirm the change.
+
+:::note
+
+In case you lose access to your Semaphore account, you can send an email to support@semaphore.io from the primary email address associated with your GitHub, Bitbucket, or Gitlab account used to log into Semaphore, confirming you'd like to delete your user account. 
+
+:::
+
+</Steps>
+
 ## Managing Semaphore users {#people}
 
 Semaphore users a [Role Based Access Control](./rbac) model to manage permissions at the organization and project level.
@@ -100,7 +141,7 @@ To invite a user to your organization, press the **Add people** button:
 1. Select one of the available tabs
 
     - Type the user's handle, e.g. `TomFern`, or select the user from the list. Usernames are case-sensitive and all characters are considered. Ensure the handle is entered accurately to avoid errors.
-    - If you don't see the user in the list. Ensure they have repository access in **GitHub** or **BitBucket** for at least one project in your organization
+    - If you don't see the user in the list. Ensure they have repository access in **GitHub** or **BitBucket** for at least one project in your organization.
 
     ![Invite users](./img/invite-users.jpg)
 
@@ -109,6 +150,13 @@ To invite a user to your organization, press the **Add people** button:
 
 
 </Steps>
+
+In case you run into a 401 error when adding a user, please attempt the following steps:
+
+1. Go to your [Semaphore account page](https://me.semaphoreci.com/account) and ensure the GitHub status of your account is marked as "connected". This will ensure you have the ability to send invitations. In case it's marked as "Not connected" here's how you can correct it: [Connect GitHub: Troubleshooting guide](https://docs.semaphore.io/using-semaphore/connect-github#troubleshooting-guide)
+2. Ensure the user has repository access in **GitHub** or **BitBucket** for at least one project in your organization and then click on the "re-sync" button located in the People page.
+3. Wait 2-5min and then try to invite the user again.
+
 
 ### How to remove users {#remove-users}
 
@@ -166,7 +214,7 @@ See [organization roles](./rbac#org) to learn what roles are available.
 
 ### How to create groups {#add-groups}
 
-<Available plans={['Enterprise']}/>
+<Available plans={['The Plan']}/>
 
 User groups streamline user management by allowing bulk actions. After creating a group, you can:
 

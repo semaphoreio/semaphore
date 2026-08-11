@@ -264,6 +264,8 @@ defmodule InternalApi.Projecthub.Project.Spec.Task.Parameter do
   field(:description, 3, type: :string)
   field(:default_value, 4, type: :string, json_name: "defaultValue")
   field(:options, 5, repeated: true, type: :string)
+  field(:regex_pattern, 6, type: :string, json_name: "regexPattern")
+  field(:validate_input_format, 7, type: :bool, json_name: "validateInputFormat")
 end
 
 defmodule InternalApi.Projecthub.Project.Spec.Task do

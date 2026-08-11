@@ -4,6 +4,13 @@ defmodule Guard.Api.BitbucketTest do
   alias Guard.Api.Bitbucket
 
   setup do
+    include_instance_config = Application.get_env(:guard, :include_instance_config)
+    Application.put_env(:guard, :include_instance_config, false)
+
+    on_exit(fn ->
+      Application.put_env(:guard, :include_instance_config, include_instance_config)
+    end)
+
     {:ok, user} = Support.Factories.RbacUser.insert()
     {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user.id)
 
@@ -46,7 +53,7 @@ defmodule Guard.Api.BitbucketTest do
 
         %{
           method: :get,
-          url: "https://api.bitbucket.org/2.0/repositories?access_token=token"
+          url: "https://api.bitbucket.org/2.0/user/workspaces"
         } ->
           {:ok, %Tesla.Env{status: 404, body: %{}}}
       end)
@@ -58,6 +65,35 @@ defmodule Guard.Api.BitbucketTest do
         |> Guard.FrontRepo.get!(rha.id)
 
       assert updated_rha.token == "new_token"
+    end
+  end
+
+  describe "validate_token/1" do
+    test "returns valid for successful responses" do
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.bitbucket.org/2.0/user/workspaces"} ->
+          {:ok, %Tesla.Env{status: 200, body: %{}}}
+      end)
+
+      assert {:ok, true} = Bitbucket.validate_token("valid_token")
+    end
+
+    test "returns invalid only for auth errors" do
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.bitbucket.org/2.0/user/workspaces"} ->
+          {:ok, %Tesla.Env{status: 401, body: %{}}}
+      end)
+
+      assert {:ok, false} = Bitbucket.validate_token("expired_token")
+    end
+
+    test "returns transient error for provider-side failures" do
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.bitbucket.org/2.0/user/workspaces"} ->
+          {:ok, %Tesla.Env{status: 503, body: %{}}}
+      end)
+
+      assert {:error, :transient} = Bitbucket.validate_token("token")
     end
   end
 end

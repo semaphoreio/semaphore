@@ -7,13 +7,29 @@ import { State } from "../util/stateful";
 import { NavBar } from "./nav_bar";
 import { TestExplorer } from "./test_explorer";
 import { ZeroState } from "./zero_state";
-import { DecompressGzip } from "../util/gzip";
+import { DecompressGzipJson, IsGzipBlob } from "../util/gzip";
+import { JSONReports } from "../types/json_types";
 
 export interface Props {
   className?: string;
   scope: string;
   encodedEmail: string;
 }
+
+const parseTestResultsPayload = (rawPayload: string): JSONReports => {
+  const parsedPayload: unknown = JSON.parse(rawPayload);
+  const parsedPayloadRecord = parsedPayload as Record<string, unknown>;
+
+  if (
+    typeof parsedPayload !== `object` ||
+    parsedPayload === null ||
+    !Array.isArray(parsedPayloadRecord.testResults)
+  ) {
+    throw new Error(`Payload is missing testResults array`);
+  }
+
+  return parsedPayload as JSONReports;
+};
 
 export const TestResults = (props: Props) => {
   const [loadingState, loadingDispatch] = useReducer(LoadingStore.Reducer, LoadingStore.EmptyState);
@@ -23,20 +39,19 @@ export const TestResults = (props: Props) => {
   const api = useContext(UrlStore.Context);
 
 
-  const handleStatus = (response: Response) => {
+  const handleStatus = (response: Response): Promise<JSONReports> => {
     if(response.ok) {
       return response.blob()
-        .then(blob => {
-        // Attempt to decompress, fallback to regular JSON if it fails
-          return DecompressGzip(blob).catch(() => blob.text());
-        })
-        .then(data => {
+        .then(async (blob) => {
           try {
-            // Try parsing the data as JSON
-            const jsonData = JSON.parse(data as string);
-            return Promise.resolve(jsonData);
+            if (await IsGzipBlob(blob)) {
+              return DecompressGzipJson(blob) as Promise<JSONReports>;
+            }
+
+            return parseTestResultsPayload(await blob.text());
           } catch (error) {
-            throw new Error(`Parsing failed - ${error as string}`);
+            const message = error instanceof Error ? error.message : String(error);
+            throw new Error(`Parsing failed - ${message}`);
           }
         });
     }
@@ -61,7 +76,7 @@ export const TestResults = (props: Props) => {
             return;
           }
 
-          const loadedReports = jsonPayload.testResults.map(Report.fromJSON) as Report[];
+          const loadedReports: Report[] = jsonPayload.testResults.map(Report.fromJSON);
           loadedReports
             .sort((a: Report, b: Report) => {
               const failedDiff = b.summary.failed - a.summary.failed;

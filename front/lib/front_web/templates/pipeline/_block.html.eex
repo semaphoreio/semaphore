@@ -20,7 +20,7 @@
     <h4 class="normal gray mb2"><%= @block.name %></h4>
 
     <%= for job <- @block.jobs do %>
-      <%= render FrontWeb.PipelineView, "_job.html", job: job, conn: @conn %>
+      <%= render FrontWeb.PipelineView, "_job.html", job: job, conn: @conn, block_result_reason: Map.get(@block, :result_reason) %>
     <% end %>
   </div>
 <% end %>

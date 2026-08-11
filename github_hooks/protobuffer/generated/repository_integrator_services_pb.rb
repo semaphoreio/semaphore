@@ -2,7 +2,7 @@
 # Source: repository_integrator.proto for package 'InternalApi.RepositoryIntegrator'
 
 require 'grpc'
-require_relative 'repository_integrator_pb'
+require 'repository_integrator_pb'
 
 module InternalApi
   module RepositoryIntegrator
@@ -22,6 +22,7 @@ module InternalApi
         rpc :GithubInstallationInfo, ::InternalApi::RepositoryIntegrator::GithubInstallationInfoRequest, ::InternalApi::RepositoryIntegrator::GithubInstallationInfoResponse
         rpc :InitGithubInstallation, ::InternalApi::RepositoryIntegrator::InitGithubInstallationRequest, ::InternalApi::RepositoryIntegrator::InitGithubInstallationResponse
         rpc :GetRepositories, ::InternalApi::RepositoryIntegrator::GetRepositoriesRequest, ::InternalApi::RepositoryIntegrator::GetRepositoriesResponse
+        rpc :RefreshRepositories, ::InternalApi::RepositoryIntegrator::RefreshRepositoriesRequest, ::InternalApi::RepositoryIntegrator::RefreshRepositoriesResponse
       end
 
       Stub = Service.rpc_stub_class

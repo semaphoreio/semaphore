@@ -19,6 +19,8 @@ config :watchman,
   port: 8125,
   prefix: "ppl-api.env-missing"
 
+config :pipelines_api, :audit_logging, false
+
 config :pipelines_api,
        :feature_api_endpoint,
        System.get_env("FEATURE_GRPC_URL") || "localhost:50051"
@@ -37,7 +39,7 @@ feature_provider =
     {PipelinesAPI.FeatureHubProvider,
      [
        cache:
-         {FeatureProvider.CachexCache, name: :feature_provider_cache, ttl_ms: :timer.hours(6)}
+         {FeatureProvider.CachexCache, name: :feature_provider_cache, ttl_ms: :timer.minutes(10)}
      ]}
   end
 

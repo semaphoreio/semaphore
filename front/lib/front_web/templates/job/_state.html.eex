@@ -6,6 +6,9 @@
     data-poll-href="<%= @pollman.href %>">
     <div class="flex items-center">
         <span class="mr1">Total Time:</span><%= raw job_timer(@job) %>
+        <%= if @job.state == "stopped" and assigns[:block_result_reason] do %>
+          <span class="ml2 f6 fw6 ph2 pv1 br2 bg-light-gray dark-gray"><%= FrontWeb.JobView.stop_reason_short(@block_result_reason) %></span>
+        <% end %>
 
         <%= if @job.state == "pending" || @job.state == "running" do %>
             <%= render FrontWeb.JobView, "_running_job_actions.html", conn: @conn, job: @job %>
@@ -23,10 +26,17 @@
         <% end %>
 
         <div class="flex items-center ph2">
-            <a href="<%= job_path(@conn, :plain_logs, @job.id) %>" class="link gray hover-dark-gray flex items-center" target="_blank">
-                <img src="<%= assets_path() %>/images/icn-arrowtopright-15.svg" width="16px" height="16px" alt="arrow pointing top-right" class="db ml1 mr2">
-                Raw
-            </a>
+            <%= if logs_available?(@job) do %>
+              <a href="<%= job_path(@conn, :plain_logs, @job.id) %>" class="link gray hover-dark-gray flex items-center" target="_blank">
+                  <img src="<%= assets_path() %>/images/icn-arrowtopright-15.svg" width="16px" height="16px" alt="arrow pointing top-right" class="db ml1 mr2">
+                  Raw
+              </a>
+            <% else %>
+              <span class="gray o-50 flex items-center" aria-disabled="true" title="<%= missing_logs_message(@job) %>">
+                  <img src="<%= assets_path() %>/images/icn-arrowtopright-15.svg" width="16px" height="16px" alt="arrow pointing top-right" class="db ml1 mr2">
+                  Raw
+              </span>
+            <% end %>
         </div>
 
         <%= if @conn.assigns.authorization == :member do %>

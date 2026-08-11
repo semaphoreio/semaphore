@@ -321,7 +321,12 @@ defmodule InternalApi.Billing.ListPlansRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3
 
-  defstruct []
+  @type t :: %__MODULE__{
+          org_id: String.t()
+        }
+  defstruct [:org_id]
+
+  field(:org_id, 1, type: :string)
 end
 
 defmodule InternalApi.Billing.ListPlansResponse do
@@ -1546,6 +1551,99 @@ defmodule InternalApi.Billing.UpgradePlanResponse do
   field(:payment_method_url, 3, type: :string)
 end
 
+defmodule InternalApi.Billing.ListAddonsRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          org_id: String.t()
+        }
+  defstruct [:org_id]
+
+  field(:org_id, 1, type: :string)
+end
+
+defmodule InternalApi.Billing.ListAddonsResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          addons: [InternalApi.Billing.Addon.t()],
+          groups: [InternalApi.Billing.AddonGroup.t()]
+        }
+  defstruct [:addons, :groups]
+
+  field(:addons, 1, repeated: true, type: InternalApi.Billing.Addon)
+  field(:groups, 2, repeated: true, type: InternalApi.Billing.AddonGroup)
+end
+
+defmodule InternalApi.Billing.Addon do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          name: String.t(),
+          display_name: String.t(),
+          description: String.t(),
+          price: String.t(),
+          enabled: boolean,
+          modifiable: boolean,
+          last_modified_at: Google.Protobuf.Timestamp.t()
+        }
+  defstruct [:name, :display_name, :description, :price, :enabled, :modifiable, :last_modified_at]
+
+  field(:name, 1, type: :string)
+  field(:display_name, 2, type: :string)
+  field(:description, 3, type: :string)
+  field(:price, 4, type: :string)
+  field(:enabled, 5, type: :bool)
+  field(:modifiable, 6, type: :bool)
+  field(:last_modified_at, 7, type: Google.Protobuf.Timestamp)
+end
+
+defmodule InternalApi.Billing.AddonGroup do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          name: String.t(),
+          display_name: String.t(),
+          description: String.t(),
+          type: integer,
+          addons: [InternalApi.Billing.Addon.t()]
+        }
+  defstruct [:name, :display_name, :description, :type, :addons]
+
+  field(:name, 1, type: :string)
+  field(:display_name, 2, type: :string)
+  field(:description, 3, type: :string)
+  field(:type, 4, type: InternalApi.Billing.AddonGroupType, enum: true)
+  field(:addons, 5, repeated: true, type: InternalApi.Billing.Addon)
+end
+
+defmodule InternalApi.Billing.UpdateAddonRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          org_id: String.t(),
+          addon_name: String.t(),
+          enabled: boolean
+        }
+  defstruct [:org_id, :addon_name, :enabled]
+
+  field(:org_id, 1, type: :string)
+  field(:addon_name, 2, type: :string)
+  field(:enabled, 3, type: :bool)
+end
+
+defmodule InternalApi.Billing.UpdateAddonResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  defstruct []
+end
+
 defmodule InternalApi.Billing.PlanType do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
@@ -1638,6 +1736,15 @@ defmodule InternalApi.Billing.CreditBalanceType do
   field(:CREDIT_BALANCE_TYPE_UNSPECIFIED, 0)
   field(:CREDIT_BALANCE_TYPE_CHARGE, 1)
   field(:CREDIT_BALANCE_TYPE_DEPOSIT, 2)
+end
+
+defmodule InternalApi.Billing.AddonGroupType do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+
+  field(:ADDON_GROUP_TYPE_UNSPECIFIED, 0)
+  field(:ADDON_GROUP_TYPE_EXCLUSIVE, 1)
+  field(:ADDON_GROUP_TYPE_REGULAR, 2)
 end
 
 defmodule InternalApi.Billing.BillingService.Service do
@@ -1764,6 +1871,14 @@ defmodule InternalApi.Billing.BillingService.Service do
     :AcknowledgeTrialEnd,
     InternalApi.Billing.AcknowledgeTrialEndRequest,
     InternalApi.Billing.AcknowledgeTrialEndResponse
+  )
+
+  rpc(:ListAddons, InternalApi.Billing.ListAddonsRequest, InternalApi.Billing.ListAddonsResponse)
+
+  rpc(
+    :UpdateAddon,
+    InternalApi.Billing.UpdateAddonRequest,
+    InternalApi.Billing.UpdateAddonResponse
   )
 end
 

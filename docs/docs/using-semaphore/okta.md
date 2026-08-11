@@ -10,7 +10,7 @@ Use Okta to provision, manage your user, and provide Single Sign On (SSO) to you
 
 ## Overview
 
-<Available plans={['Enterprise']} />
+<Available plans={['The Plan']} />
 
 [Okta](https://okta.com) is an enterprise identity management platform. It provides a centralized place to manage your users and groups across different products. You can integrate Okta with Semaphore to manage your users from the Okta application.
 
@@ -112,11 +112,12 @@ To create the connection between Semaphore and Okta, follow these steps:
 2. Open the organization menu on the top-right corner and select **Settings**
 3. Go to **Okta Integration** and press **Set up**
 4. Paste the **Single Sign On URL**, **SAML Issuer** and **SAML Certificate** values from the Okta SAML setup instructions
+5. (Optional) Set **Session expiration (days)** to control how long Okta SSO sessions last. The default is 14 days and the maximum is 30 days.
 
     ![Set up SAML values on Semaphore](./img/setup-okta-values.jpg)
 
 
-5. Once you press **Save**, Semaphore shows your **SCIM Authorization token**. 
+6. Once you press **Save**, Semaphore shows your **SCIM Authorization token**.
 
     This value is only shown once, so be sure to copy and store it in a safe place as you will need it during the next step.
 
@@ -125,6 +126,16 @@ To create the connection between Semaphore and Okta, follow these steps:
 </Steps>
 
 Semaphore is now connected to Okta. You can enable user provisioning in the next step.
+
+:::note
+
+You can update the **Session expiration (days)** later from the Okta Integration settings page.
+Changing it only updates the session duration for new SSO sessions and does not regenerate the SCIM
+token.
+
+![Updating only the session expiration in Okta settings](./img/setup-okta-session-update.jpg)
+
+:::
 
 ### Step 3: Configure user provisioning {#provision}
 
@@ -150,7 +161,7 @@ To enable user management in Okta, open the Okta application you created earlier
 
 4. Fill in the following values:
 
-    - **SCIM connector base URL**: this is your [organization URL](./organizations#general-settings) followed by `/okta/scrim`. For example, if your organization URL is `https://my-org.semaphoreci.com`, the value for this field is `https://my-org.semaphoreci.com/okta/scim`
+    - **SCIM connector base URL**: this is your [organization URL](./organizations#general-settings) followed by `/okta/scim`. For example, if your organization URL is `https://my-org.semaphoreci.com`, the value for this field is `https://my-org.semaphoreci.com/okta/scim`
     - **Unique identifier field for users**: type the string "email"
     - **Supported provisioning actions**: select **Push New Users**, **Push Profile Updates**, and **Push Groups**
     - **Authentication Mode**: select **HTTP Header**
@@ -247,5 +258,3 @@ If you are not sure how many organization members have corporate email accounts,
 
 - [Semaphore organizations](./organizations)
 - [How to set up OpenID Connect](./openid.md)
-  
-

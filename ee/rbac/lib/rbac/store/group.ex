@@ -28,6 +28,18 @@ defmodule Rbac.Store.Group do
     end
   end
 
+  def fetch_group(group_id, org_id) do
+    Rbac.Repo.Group
+    |> where([g], g.id == ^group_id and g.org_id == ^org_id)
+    |> join(:inner, [g], s in assoc(g, :subject))
+    |> select([g, s], %{id: g.id, org_id: g.org_id, name: s.name, description: g.description})
+    |> Rbac.Repo.one()
+    |> case do
+      nil -> {:error, :not_found}
+      group -> {:ok, group}
+    end
+  end
+
   def fetch_group_by_name(name, org_id) do
     Rbac.Repo.Group
     |> where([g], g.org_id == ^org_id)

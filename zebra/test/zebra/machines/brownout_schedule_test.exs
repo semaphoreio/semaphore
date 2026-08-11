@@ -3,6 +3,28 @@ defmodule Zebra.Machines.BrownoutScheduleTest do
   doctest Zebra.Machines.BrownoutSchedule
   alias Zebra.Machines.BrownoutSchedule
 
+  test "creates ubuntu2004 brownout schedule" do
+    schedule = BrownoutSchedule.ubuntu2004()
+
+    assert length(schedule) == 84
+
+    [first_event | _] = schedule
+
+    assert first_event == %{
+             from: ~U[2026-03-02 00:00:00Z],
+             os_images: ["ubuntu2004"],
+             to: ~U[2026-03-02 00:15:00Z]
+           }
+
+    [last_event | _] = schedule |> Enum.reverse()
+
+    assert last_event == %{
+             from: ~U[2026-03-29 15:00:00Z],
+             os_images: ["ubuntu2004"],
+             to: ~U[2026-03-29 18:00:00Z]
+           }
+  end
+
   test "creates macos-xcode14 brownout schedule" do
     schedule = BrownoutSchedule.macosxcode14()
 
@@ -22,6 +44,28 @@ defmodule Zebra.Machines.BrownoutScheduleTest do
              from: ~U[2024-09-30 15:00:00Z],
              os_images: ["macos-xcode14"],
              to: ~U[2024-09-30 18:00:00Z]
+           }
+  end
+
+  test "creates macos-xcode15 brownout schedule" do
+    schedule = BrownoutSchedule.macosxcode15()
+
+    assert length(schedule) == 105
+
+    [first_event | _] = schedule
+
+    assert first_event == %{
+             from: ~U[2026-06-15 10:00:00Z],
+             os_images: ["macos-xcode15"],
+             to: ~U[2026-06-15 10:15:00Z]
+           }
+
+    [last_event | _] = schedule |> Enum.reverse()
+
+    assert last_event == %{
+             from: ~U[2026-07-05 22:00:00Z],
+             os_images: ["macos-xcode15"],
+             to: ~U[2026-07-06 00:00:00Z]
            }
   end
 
@@ -46,6 +90,25 @@ defmodule Zebra.Machines.BrownoutScheduleTest do
                  from: ~U[2024-01-02 00:00:00Z],
                  os_images: ["ubuntu2004"],
                  to: ~U[2024-01-02 00:15:00Z]
+               }
+             ]
+    end
+
+    test "supports periods crossing midnight" do
+      phase =
+        BrownoutSchedule.phase(
+          Date.range(~D[2024-01-01], ~D[2024-01-01]),
+          [
+            {~T[22:00:00], ~T[00:00:00]}
+          ],
+          ["ubuntu2004"]
+        )
+
+      assert phase == [
+               %{
+                 from: ~U[2024-01-01 22:00:00Z],
+                 os_images: ["ubuntu2004"],
+                 to: ~U[2024-01-02 00:00:00Z]
                }
              ]
     end

@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Redirecting to Support Portal</title>
+  </head>
+  <body>
+    <form id="pylon-sso-form" method="post" action="<%= @post_url %>">
+      <input type="hidden" name="jwt" value="<%= @jwt %>">
+    </form>
+    <script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+      document.getElementById("pylon-sso-form").submit();
+    </script>
+    <noscript>
+      <button form="pylon-sso-form" type="submit">Continue to Support Portal</button>
+    </noscript>
+  </body>
+</html>

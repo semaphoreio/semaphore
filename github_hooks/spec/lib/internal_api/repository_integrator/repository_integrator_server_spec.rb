@@ -146,7 +146,10 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
 
     context "fetching app token with repositry slug" do
       before do
-        allow_any_instance_of(::Semaphore::ProjectIntegrationToken).to receive(:github_app_token).with(repository_slug) {
+        allow_any_instance_of(::Semaphore::ProjectIntegrationToken).to receive(:github_app_token).with(
+          :repository_slug => repository_slug,
+          :repository_remote_id => nil
+        ) {
                                                                          [token, expires_at]
                                                                        }
 
@@ -291,6 +294,102 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
     end
   end
 
+  describe "#refresh_repositories" do
+    context "for an integration type without a cache" do
+      before do
+        @req = InternalApi::RepositoryIntegrator::RefreshRepositoriesRequest.new(
+          :user_id => user_id,
+          :integration_type => :BITBUCKET
+        )
+      end
+
+      it "returns DONE without touching the refresh orchestrator" do
+        expect(Semaphore::GithubApp::RepositoryRefresh).not_to receive(:full)
+        expect(Semaphore::GithubApp::RepositoryRefresh).not_to receive(:targeted)
+
+        response = server.refresh_repositories(@req, call)
+
+        expect(response.sync_state).to eq(:DONE)
+        expect(response.message).to match(/fetched live/)
+      end
+    end
+
+    context "for a GITHUB_APP request with neither a repository nor an organization" do
+      before do
+        @req = InternalApi::RepositoryIntegrator::RefreshRepositoriesRequest.new(
+          :user_id => user_id,
+          :integration_type => :GITHUB_APP
+        )
+      end
+
+      it "fails without dispatching a repository or organization refresh" do
+        expect(Semaphore::GithubApp::RepositoryRefresh).not_to receive(:targeted)
+        expect(Semaphore::GithubApp::RepositoryRefresh).not_to receive(:full_for_organization)
+
+        response = server.refresh_repositories(@req, call)
+
+        expect(response.sync_state).to eq(:FAILED)
+        expect(response.message).to match(/Specify a repository or organization/)
+      end
+    end
+
+    context "for an organization-scoped github app refresh" do
+      before do
+        @req = InternalApi::RepositoryIntegrator::RefreshRepositoriesRequest.new(
+          :user_id => user_id,
+          :integration_type => :GITHUB_APP,
+          :organization => "acme"
+        )
+      end
+
+      it "dispatches to RepositoryRefresh.full_for_organization with the requesting user and org" do
+        expect(Semaphore::GithubApp::RepositoryRefresh).not_to receive(:full)
+        allow(Semaphore::GithubApp::RepositoryRefresh).to receive(:full_for_organization).and_return(
+          Semaphore::GithubApp::RepositoryRefresh::Result.new(:started, "Repository sync started for acme.")
+        )
+
+        response = server.refresh_repositories(@req, call)
+
+        expect(Semaphore::GithubApp::RepositoryRefresh).to have_received(:full_for_organization).with(user_id, "acme")
+        expect(response.sync_state).to eq(:STARTED)
+        expect(response.message).to eq("Repository sync started for acme.")
+      end
+    end
+
+    context "for a targeted github app refresh" do
+      before do
+        @req = InternalApi::RepositoryIntegrator::RefreshRepositoriesRequest.new(
+          :user_id => user_id,
+          :integration_type => :GITHUB_APP,
+          :repository_slug => repository_slug
+        )
+      end
+
+      it "dispatches to RepositoryRefresh.targeted with the requesting user and slug" do
+        allow(Semaphore::GithubApp::RepositoryRefresh).to receive(:targeted).and_return(
+          Semaphore::GithubApp::RepositoryRefresh::Result.new(:done, "Repository renderedtext/guard refreshed.")
+        )
+
+        response = server.refresh_repositories(@req, call)
+
+        expect(Semaphore::GithubApp::RepositoryRefresh).to have_received(:targeted).with(user_id, repository_slug)
+        expect(response.sync_state).to eq(:DONE)
+        expect(response.message).to eq("Repository renderedtext/guard refreshed.")
+      end
+
+      it "maps failures" do
+        allow(Semaphore::GithubApp::RepositoryRefresh).to receive(:targeted).and_return(
+          Semaphore::GithubApp::RepositoryRefresh::Result.new(:failed, "Repository renderedtext/guard was not found on GitHub.")
+        )
+
+        response = server.refresh_repositories(@req, call)
+
+        expect(response.sync_state).to eq(:FAILED)
+        expect(response.message).to match(/not found on GitHub/)
+      end
+    end
+  end
+
   describe "#check_token" do
     context "for github app integration" do
       before do
@@ -314,6 +413,23 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
       context "when there is an app instalation for a repository" do
         before do
           FactoryBot.create(:github_app_installation, :repositories => [@project.repo_owner_and_name])
+        end
+
+        it "returns as valid with full connection" do
+          response = server.check_token(@req, call)
+
+          expect(response.valid).to be(true)
+          expect(response.integration_scope).to eq(:FULL_CONNECTION)
+        end
+      end
+
+      context "when repository slug does not match but repository remote id does" do
+        before do
+          @project.repository.update!(:remote_id => "42")
+          FactoryBot.create(
+            :github_app_installation,
+            :repositories => [{ "id" => 42, "slug" => "acme/another-repository" }]
+          )
         end
 
         it "returns as valid with full connection" do
@@ -443,6 +559,46 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
             expect(response.integration_scope).to eq(:FULL_CONNECTION)
           end
         end
+      end
+    end
+  end
+
+  describe "#update_revoke_status" do
+    let(:bitbucket_account) { FactoryBot.create(:bitbucket_account, :revoked => revoked) }
+    let(:revoked) { false }
+
+    before do
+      allow(Semaphore::Bitbucket::Token).to receive(:user_token).with(bitbucket_account).and_return(["token", nil])
+      allow(Semaphore::Bitbucket::Token).to receive(:validation_state).with("token").and_return(validation_state)
+    end
+
+    context "when token is valid" do
+      let(:revoked) { true }
+      let(:validation_state) { :valid }
+
+      it "marks connection as not revoked" do
+        server.send(:update_revoke_status, bitbucket_account)
+        expect(bitbucket_account.reload.revoked).to be(false)
+      end
+    end
+
+    context "when token is invalid" do
+      let(:revoked) { false }
+      let(:validation_state) { :invalid }
+
+      it "marks connection as revoked" do
+        server.send(:update_revoke_status, bitbucket_account)
+        expect(bitbucket_account.reload.revoked).to be(true)
+      end
+    end
+
+    context "when token check is transient" do
+      let(:revoked) { false }
+      let(:validation_state) { :transient }
+
+      it "keeps the existing revoked status" do
+        server.send(:update_revoke_status, bitbucket_account)
+        expect(bitbucket_account.reload.revoked).to be(false)
       end
     end
   end

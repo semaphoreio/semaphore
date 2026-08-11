@@ -15,6 +15,10 @@ defmodule PipelinesAPI.Util.ToTuple do
   @spec not_found_error(any()) :: not_found_error_t
   def not_found_error(item), do: {:not_found, item} |> error()
 
+  @type forbidden_error_t :: {:error, {:forbidden, any()}}
+  @spec forbidden_error(any()) :: forbidden_error_t
+  def forbidden_error(item), do: {:forbidden, item} |> error()
+
   @type internal_error_t :: {:error, {:internal, any()}}
   @spec internal_error(any()) :: internal_error_t
   def internal_error(item), do: {:internal, item} |> error()

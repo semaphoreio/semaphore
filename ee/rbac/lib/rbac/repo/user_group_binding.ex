@@ -10,6 +10,13 @@ defmodule Rbac.Repo.UserGroupBinding do
     belongs_to(:group, Group, primary_key: true)
   end
 
+  @spec member?(String.t(), String.t()) :: boolean()
+  def member?(user_id, group_id) do
+    __MODULE__
+    |> where([ugb], ugb.user_id == ^user_id and ugb.group_id == ^group_id)
+    |> Rbac.Repo.exists?()
+  end
+
   @spec fetch_group_members(String.t()) :: [RbacUser.t()]
   def fetch_group_members(group_id) do
     __MODULE__

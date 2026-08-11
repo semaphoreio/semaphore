@@ -116,6 +116,27 @@ defmodule RepositoryHub.GithubClient do
 
   @impl true
   def create_build_status(params, opts \\ []) do
+    if RepositoryHub.MaxStatusesCache.maxed?(
+         params.repo_owner,
+         params.repo_name,
+         params.commit_sha,
+         params.context
+       ) do
+      # GitHub already rejected this (sha, context) for hitting the 1000-status
+      # limit. Skip the POST — it would 422 and still cost a rate-limit unit.
+      Watchman.increment("github_api.create_build_status.max_statuses_cache_hit")
+
+      log_debug(
+        "skipping create_build_status: cached as maxed for #{params.repo_owner}/#{params.repo_name}@#{params.commit_sha} ctx=#{params.context}"
+      )
+
+      wrap(%{})
+    else
+      do_create_build_status(params, opts)
+    end
+  end
+
+  defp do_create_build_status(params, opts) do
     with_client(opts[:token], params.repo_owner, :create_build_status, fn client ->
       Tentacat.Repositories.Statuses.create(
         client,
@@ -134,24 +155,24 @@ defmodule RepositoryHub.GithubClient do
           payload
           |> wrap()
 
-        {status_code, _, response} when status_code in [307, 404, 403, 422] ->
+        {422, _, response} ->
+          handle_422_create_build_status(params, response)
+
+        {status_code, _, response} when status_code in [307, 404, 403] ->
           log_error([
             "creating build status",
             "status: #{status_code}",
+            "#{params.repo_owner}/#{params.repo_name}@#{params.commit_sha} ctx=#{params.context}",
             "response: #{inspect_response(response)}"
           ])
 
-          if is_max_statuses_response?(response) do
-            # We're good.
-            wrap(%{})
-          else
-            fail_with(:precondition, "Can't create a commit status on GitHub. #{fetch_status_message(response)}")
-          end
+          fail_with(:precondition, "Can't create a commit status on GitHub. #{fetch_status_message(response)}")
 
         {status_code, _, response} ->
           log_error([
             "creating build status",
             "status: #{status_code}",
+            "#{params.repo_owner}/#{params.repo_name}@#{params.commit_sha} ctx=#{params.context}",
             "response: #{inspect_response(response)}"
           ])
 
@@ -160,14 +181,71 @@ defmodule RepositoryHub.GithubClient do
     end)
   end
 
-  defp is_max_statuses_response?(response) do
-    with ["Validation Failed"] <- fetch_message(response),
-         ["This SHA and context has reached the maximum number of statuses."] <- fetch_errors(response) do
-      true
-    else
-      _ -> false
+  defp handle_422_create_build_status(params, response) do
+    log_error([
+      "creating build status",
+      "status: 422",
+      "#{params.repo_owner}/#{params.repo_name}@#{params.commit_sha} ctx=#{params.context}",
+      "response: #{inspect_response(response)}"
+    ])
+
+    cond do
+      is_max_statuses_response?(response) ->
+        RepositoryHub.MaxStatusesCache.mark_maxed(
+          params.repo_owner,
+          params.repo_name,
+          params.commit_sha,
+          params.context
+        )
+
+        wrap(%{})
+
+      validation_failed?(response) ->
+        # A "Validation Failed" 422 that does NOT contain the canonical
+        # max-statuses substring is a canary for GitHub having reworded the
+        # error message. Surface it loudly so we can update the matcher
+        # before the rate-limit drain bug silently regresses.
+        log_warn([
+          "422 Validation Failed not recognised as max-statuses — matcher may be stale",
+          "errors: #{inspect(errors_as_text(response))}"
+        ])
+
+        fail_with(:precondition, "Can't create a commit status on GitHub. #{fetch_status_message(response)}")
+
+      true ->
+        fail_with(:precondition, "Can't create a commit status on GitHub. #{fetch_status_message(response)}")
     end
   end
+
+  # GitHub has been observed to return the per-SHA-per-context max-statuses
+  # error in two shapes:
+  #   errors: [%{"message" => "This SHA and context has reached..."}]
+  #   errors: "Validation failed: This SHA and context has reached..."
+  # We gate on the top-level message being "Validation Failed" AND match on
+  # the canonical substring inside `errors` so we accept either shape
+  # without false-positiving on unrelated 422s.
+  defp is_max_statuses_response?(response) do
+    validation_failed?(response) and
+      response
+      |> errors_as_text()
+      |> String.contains?("maximum number of statuses")
+  end
+
+  defp validation_failed?(response), do: fetch_message(response) == ["Validation Failed"]
+
+  defp errors_as_text(%{body: %{"errors" => errors}}) when is_binary(errors), do: errors
+
+  defp errors_as_text(%{body: %{"errors" => errors}}) when is_list(errors) do
+    errors
+    |> Enum.map(fn
+      %{"message" => message} when is_binary(message) -> message
+      message when is_binary(message) -> message
+      _ -> ""
+    end)
+    |> Enum.join(" ")
+  end
+
+  defp errors_as_text(_), do: ""
 
   @impl true
   def list_repository_collaborators(params, opts \\ []) do
@@ -749,47 +827,84 @@ defmodule RepositoryHub.GithubClient do
   end
 
   @doc """
-  https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#list-repository-tags
+  https://docs.github.com/en/rest/git/refs?apiVersion=2022-11-28#get-a-reference
   """
   @impl true
   def get_tag(params, opts \\ []) do
     {owner, repo, tag_name} = {params.repo_owner, params.repo_name, params.tag_name}
 
     with_client(opts[:token], owner, :get_tag, fn client ->
-      Tentacat.Repositories.Tags.list(client, owner, repo)
+      Tentacat.References.find(client, owner, repo, "tags/#{tag_name}")
       |> case do
         {200, payload, _} ->
-          response_tag = Enum.find(payload, fn tag -> tag["name"] == tag_name end)
-
-          if response_tag do
-            %{
-              type: "tag",
-              sha: response_tag["commit"]["sha"]
-            }
-            |> wrap
-          else
-            fail_with(:not_found, "Tag not found.")
-          end
+          resolve_tag_commit(payload, client, owner, repo, tag_name)
 
         {404, _, _response} ->
-          fail_with(:not_found, "Commit not found.")
+          fail_with(:not_found, "Tag not found.")
 
         {422, _, response} ->
-          fail_with(:not_found, "Validation failed. #{fetch_status_message(response)}")
+          fail_with(:precondition, "Validation failed. #{fetch_status_message(response)}")
 
         {status, _, response} ->
           log_error([
-            "fetching tag #{params.repo_owner}/#{params.repo_name} : #{params.tag_name}",
+            "fetching tag #{owner}/#{repo} : #{tag_name}",
             "status: #{status}",
             "response: #{inspect_response(response)}"
           ])
 
           fail_with(
             :precondition,
-            "Error while looking up repository #{owner}/#{repo}. #{fetch_status_message(response)}"
+            "Error while looking up tag #{owner}/#{repo} : #{tag_name}. #{fetch_status_message(response)}"
           )
       end
     end)
+  end
+
+  defp resolve_tag_commit(%{"object" => %{"type" => "commit", "sha" => sha}}, _client, _owner, _repo, _tag_name) do
+    %{type: "tag", sha: sha} |> wrap
+  end
+
+  defp resolve_tag_commit(%{"object" => %{"type" => "tag", "sha" => tag_sha}}, client, owner, repo, tag_name) do
+    Tentacat.get("repos/#{owner}/#{repo}/git/tags/#{tag_sha}", client, [], pagination: :none)
+    |> case do
+      {200, %{"object" => %{"type" => "commit", "sha" => commit_sha}}, _} ->
+        %{type: "tag", sha: commit_sha} |> wrap
+
+      {200, body, _} ->
+        log_error([
+          "dereferencing annotated tag #{owner}/#{repo} : #{tag_name} (sha: #{tag_sha})",
+          "expected dereferenced object type 'commit', got '#{inspect(get_in(body, ["object", "type"]))}'"
+        ])
+
+        fail_with(
+          :precondition,
+          "Unexpected dereferenced object type for annotated tag #{owner}/#{repo} : #{tag_name}."
+        )
+
+      {status, _, response} ->
+        log_error([
+          "dereferencing annotated tag #{owner}/#{repo} : #{tag_name} (sha: #{tag_sha})",
+          "status: #{status}",
+          "response: #{inspect_response(response)}"
+        ])
+
+        fail_with(
+          :precondition,
+          "Error while dereferencing annotated tag in #{owner}/#{repo}. #{fetch_status_message(response)}"
+        )
+    end
+  end
+
+  defp resolve_tag_commit(payload, _client, owner, repo, tag_name) do
+    log_error([
+      "unexpected tag reference object type for #{owner}/#{repo} : #{tag_name}",
+      "object type: #{inspect(get_in(payload, ["object", "type"]))}"
+    ])
+
+    fail_with(
+      :precondition,
+      "Unexpected tag reference object type for #{owner}/#{repo} : #{tag_name}."
+    )
   end
 
   @doc """

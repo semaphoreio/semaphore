@@ -83,11 +83,35 @@ module InternalApi
         ::InternalApi::RepositoryIntegrator::InitGithubInstallationResponse.new
       end
 
+      define_rpc :refresh_repositories do |req, logger|
+        result =
+          if req.integration_type != :GITHUB_APP
+            ::Semaphore::GithubApp::RepositoryRefresh::Result.new(
+              :done, "This repository list is always fetched live from the provider."
+            )
+          elsif req.repository_slug.present?
+            ::Semaphore::GithubApp::RepositoryRefresh.targeted(req.user_id, req.repository_slug)
+          elsif req.organization.present?
+            ::Semaphore::GithubApp::RepositoryRefresh.full_for_organization(req.user_id, req.organization)
+          else
+            ::Semaphore::GithubApp::RepositoryRefresh::Result.new(
+              :failed, "Specify a repository or organization to refresh."
+            )
+          end
+
+        logger.info("RefreshRepositories user_id=#{req.user_id} slug=#{req.repository_slug.inspect} org=#{req.organization.inspect} -> #{result.state}")
+
+        InternalApi::RepositoryIntegrator::RefreshRepositoriesResponse.new(
+          :sync_state => result.state.to_s.upcase.to_sym,
+          :message => result.message
+        )
+      end
+
       define_rpc :check_token do |req|
         project = ::Project.find(req.project_id)
 
         if project.repository.integration_type == "github_app"
-          installation = ::GithubAppInstallation.find_for_repository(project.repo_owner_and_name)
+          installation = ::GithubAppInstallation.get(repository_slug: project.repo_owner_and_name, repository_remote_id: project.repository.remote_id)
           valid = installation.present?
 
           if installation.present?
@@ -137,7 +161,14 @@ module InternalApi
 
         if rha.repo_host == "bitbucket"
           token, _ = ::Semaphore::Bitbucket::Token.user_token(rha)
-          rha.update!(:revoked => !::Semaphore::Bitbucket::Token.valid?(token))
+          validation_state = ::Semaphore::Bitbucket::Token.validation_state(token)
+
+          case validation_state
+          when :valid
+            rha.update!(:revoked => false)
+          when :invalid
+            rha.update!(:revoked => true)
+          end
         end
 
         rha
@@ -233,8 +264,14 @@ module InternalApi
           return token_service.bitbucket_oauth_token(user)
         end
 
-        if req.integration_type == :GITHUB_APP and req.repository_slug.present?
-          return token_service.github_app_token(req.repository_slug)
+        repository_remote_id = req.repository_remote_id.presence
+        repository_slug = req.repository_slug
+
+        if req.integration_type == :GITHUB_APP and (repository_remote_id.present? or repository_slug.present?)
+          return token_service.github_app_token(
+            :repository_slug => repository_slug,
+            :repository_remote_id => repository_remote_id
+          )
         end
 
         if req.project_id.present?

@@ -51,6 +51,14 @@ export class JobLogs {
       return
     }
 
+    if (!this.config.artifactLogsURL) {
+      if(State.get("fetching") == "ready") {
+        this.startLogs()
+      }
+
+      return
+    }
+
     fetch(this.config.artifactLogsURL, {method: "HEAD"})
       .then(response => {
         if(response.ok) {

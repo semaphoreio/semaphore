@@ -308,6 +308,44 @@ defmodule Front.Models.User do
     end)
   end
 
+  def delete_user(user_id, metadata \\ nil) do
+    Watchman.benchmark("delete_user_with_owned_orgs.duration", fn ->
+      req = InternalApi.User.DeleteWithOwnedOrgsRequest.new(user_id: user_id)
+
+      {:ok, channel} = channel()
+
+      case InternalApi.User.UserService.Stub.delete_with_owned_orgs(channel, req,
+             metadata: metadata,
+             timeout: 30_000
+           ) do
+        {:ok, user} ->
+          {:ok, construct(user)}
+
+        {:error, %GRPC.RPCError{status: status, message: message} = error} ->
+          if status in [GRPC.Status.failed_precondition(), GRPC.Status.invalid_argument()] do
+            Logger.error(
+              "[User Model] Account deletion rejected for #{inspect(user_id)}: #{message}"
+            )
+
+            {:error, message}
+          else
+            Logger.error(
+              "[User Model] Error while deleting user with owned orgs #{inspect(user_id)}: #{inspect(error)}"
+            )
+
+            {:error, "Failed to delete account."}
+          end
+
+        {:error, error} ->
+          Logger.error(
+            "[User Model] Error while deleting user with owned orgs #{inspect(user_id)}: #{inspect(error)}"
+          )
+
+          {:error, "Failed to delete account."}
+      end
+    end)
+  end
+
   def check_github_token(user_id, metadata \\ nil) do
     Watchman.benchmark("check_github_token.duration", fn ->
       alias InternalApi.User.UserService.Stub

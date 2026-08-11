@@ -143,6 +143,7 @@ defmodule Support.Stubs.User do
       GrpcMock.stub(UserMock, :describe, &__MODULE__.describe/2)
       GrpcMock.stub(UserMock, :describe_many, &__MODULE__.describe_many/2)
       GrpcMock.stub(UserMock, :update, &__MODULE__.update/2)
+      GrpcMock.stub(UserMock, :delete_with_owned_orgs, &__MODULE__.delete_with_owned_orgs/2)
       GrpcMock.stub(UserMock, :regenerate_token, &__MODULE__.regenerate_token/2)
       GrpcMock.stub(UserMock, :list_favorites, &__MODULE__.list_favorites/2)
       GrpcMock.stub(UserMock, :create_favorite, &__MODULE__.create_favorite/2)
@@ -216,6 +217,17 @@ defmodule Support.Stubs.User do
 
     def regenerate_token(_, _) do
       InternalApi.User.RegenerateTokenResponse.new(status: google_status(:OK), api_token: "token")
+    end
+
+    def delete_with_owned_orgs(req, _) do
+      user = DB.find(:users, req.user_id)
+
+      if user do
+        DB.delete(:users, user.id)
+        user.api_model.user
+      else
+        raise(GRPC.RPCError, status: GRPC.Status.not_found(), message: "User not found")
+      end
     end
 
     def list_favorites(req, _) do

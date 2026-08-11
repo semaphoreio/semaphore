@@ -24,17 +24,21 @@
     background-attachment: local, local, scroll, scroll;
   }
 </style>
-<%= if tos_violation_suspension?(@layout_model.suspensions) do %>
-  <div class="fixed bottom-0 left-0 z-5">
-    <a href="<%= support_path(@conn, :new) %>" class="db link white f6 lh-title ph2 ph3-ns pv1 pointer bg-red hover-bg-dark-red">
-      Our abuse detector has flagged your organization. All processing is blocked. If you think this is a mistake, please contact support.
-    </a>
-  </div>
-<% else %>
-  <%= if FeatureProvider.feature_enabled?(:billing, param: @conn.assigns[:organization_id]) do %>
-    <%= FrontWeb.BillingView.badge(@conn) %>
-  <% end %>
+
+<%= case suspension_banner(assigns) do %>
+  <% {:error, message} -> %>
+    <div class="fixed bottom-0 left-0 z-5">
+      <a href="<%= support_path(@conn, :new) %>" class="db link white f6 lh-title ph2 ph3-ns pv1 pointer bg-red hover-bg-dark-red">
+        <%= message %>
+      </a>
+    </div>
+
+  <% nil -> %>
+    <%= if FeatureProvider.feature_enabled?(:billing, param: @conn.assigns[:organization_id]) do %>
+      <%= FrontWeb.BillingView.badge(@conn) %>
+    <% end %>
 <% end %>
+
 <div class="header" id="global-page-header">
   <div class="flex items-center justify-between w-100 ph2 ph3-ns pv2">
     <div class="flex items-center">
@@ -94,14 +98,34 @@
           </a>
         </div>
       <% end %>
-      <%= if FeatureProvider.feature_enabled?(:help, param: @conn.assigns[:organization_id]) do %>
-        <!-- Help Menu -->
+      <% help_flag? = FeatureProvider.feature_enabled?(:help, param: @conn.assigns[:organization_id]) %>
+      <% pylon_support? = pylon_support_enabled?(@conn) %>
+      <% pylon_portal? = FeatureProvider.feature_enabled?(:pylon_support_portal, param: @conn.assigns[:organization_id]) %>
+      <%= if pylon_support? and (help_flag? or pylon_portal?) do %>
+        <!-- Support Portal (pylon_support_portal bypasses :help flag) -->
         <div class="pr1 pr2-ns mr2-ns br-ns b--black-10">
-          <div class="flex flex-shrink-0 pv1 ph1 ph2-ns br3 pointer hover-bg-washed-brown js-dropdown-color-trigger" data-template="helpMenu">
-            <%= icon("icn-help", class: "db o-80", width: "24", height: "24") %>
-            <span class="dn db-m ml2 b">Help</span>
-          </div>
+          <%= if pylon_support_visible?(@conn, @layout_model) do %>
+            <a href="<%= support_path(@conn, :pylon) %>" target="_blank" rel="noopener" class="link dark-gray b pointer flex flex-shrink-0 items-center pv1 ph1 ph2-ns br3 hover-bg-washed-brown">
+              <%= icon("icn-help", class: "db o-80", width: "24", height: "24") %>
+              <span class="dn db-m ml2 b">Support Portal</span>
+            </a>
+          <% else %>
+            <span class="dark-gray b pointer flex flex-shrink-0 items-center pv1 ph1 ph2-ns br3 hover-bg-washed-brown o-60" data-tippy-content="Your access to Semaphore support has been limited. Please contact your organization's Admin for more information.">
+              <%= icon("icn-help", class: "db o-80", width: "24", height: "24") %>
+              <span class="dn db-m ml2 b">Support Portal</span>
+            </span>
+          <% end %>
         </div>
+      <% else %>
+        <%= if help_flag? and help_enabled?(@conn) do %>
+          <!-- Help Menu -->
+          <div class="pr1 pr2-ns mr2-ns br-ns b--black-10">
+            <div class="flex flex-shrink-0 pv1 ph1 ph2-ns br3 pointer hover-bg-washed-brown js-dropdown-color-trigger" data-template="helpMenu">
+              <%= icon("icn-help", class: "db o-80", width: "24", height: "24") %>
+              <span class="dn db-m ml2 b">Help</span>
+            </div>
+          </div>
+        <% end %>
       <% end %>
       <div class="flex-shrink-0 pa1 ma1 pointer bg-animate hover-bg-washed-brown br-100 js-dropdown-color-trigger" data-template="profileMenu">
         <img src="<%= @layout_model.user.avatar_url %>" alt="<%= @layout_model.user.name %>" class="f7 db br-100 ba b--black-50" width="24" height="24">
@@ -113,44 +137,46 @@
   </div>
 </div>
 <div style="display: none;">
-  <!-- Header Help menu  -->
-  <div id="helpMenu">
-    <div class="ph2 pv1">
-      <div class="b ph2 pb2 pt2 mb2 bb b--white-40">Help Center</div>
-      <%= render FrontWeb.LayoutView, "page_header/_menu_card.html",
-            options: [target: "_blank", rel: "noopener"],
-            card_url: "https://#{Application.fetch_env!(:front, :docs_domain)}",
-            card_title: "Docs",
-            card_description: "Semaphore 2.0 documentation",
-            tooltip: false %>
-      <%= contact_support_card(@conn, @layout_model) %>
-      <%= support_requests_card(@conn, @layout_model) %>
-      <%= render FrontWeb.LayoutView, "page_header/_menu_card.html",
-            options: [target: "_blank", rel: "noopener"],
-            card_url: Application.fetch_env!(:front, :status_page_url),
-            card_title: "Status",
-            card_description: "Live system health",
-            tooltip: false %>
-      <%= render FrontWeb.LayoutView, "page_header/_menu_card.html",
-            options: [target: "_blank", rel: "noopener"],
-            card_url: "https://#{Application.fetch_env!(:front, :docs_domain)}/reference/semaphore-changelog/",
-            card_title: "Changelog",
-            card_description: "Most recent product updates",
-            tooltip: false %>
-      <%= render FrontWeb.LayoutView, "page_header/_menu_card.html",
-            options: [target: "_blank", rel: "noopener"],
-            card_url: "https://#{Application.fetch_env!(:front, :docs_domain)}/reference/sem-command-line-tool/",
-            card_title: "sem CLI Reference",
-            card_description: "Command line goodies",
-            tooltip: false %>
-      <%= render FrontWeb.LayoutView, "page_header/_menu_card.html",
-            options: [target: "_blank", rel: "noopener"],
-            card_url: "https://twitter.com/semaphoreci",
-            card_title: "Twitter",
-            card_description: "Follow us @semaphoreci",
-            tooltip: false %>
+  <%= if FeatureProvider.feature_enabled?(:help, param: @conn.assigns[:organization_id]) and help_enabled?(@conn) do %>
+    <!-- Header Help menu  -->
+    <div id="helpMenu">
+      <div class="ph2 pv1">
+        <div class="b ph2 pb2 pt2 mb2 bb b--white-40">Help Center</div>
+        <%= render FrontWeb.LayoutView, "page_header/_menu_card.html",
+              options: [target: "_blank", rel: "noopener"],
+              card_url: "https://#{Application.fetch_env!(:front, :docs_domain)}",
+              card_title: "Docs",
+              card_description: "Semaphore 2.0 documentation",
+              tooltip: false %>
+        <%= contact_support_card(@conn, @layout_model) %>
+        <%= support_requests_card(@conn, @layout_model) %>
+        <%= render FrontWeb.LayoutView, "page_header/_menu_card.html",
+              options: [target: "_blank", rel: "noopener"],
+              card_url: Application.fetch_env!(:front, :status_page_url),
+              card_title: "Status",
+              card_description: "Live system health",
+              tooltip: false %>
+        <%= render FrontWeb.LayoutView, "page_header/_menu_card.html",
+              options: [target: "_blank", rel: "noopener"],
+              card_url: "https://#{Application.fetch_env!(:front, :docs_domain)}/reference/semaphore-changelog/",
+              card_title: "Changelog",
+              card_description: "Most recent product updates",
+              tooltip: false %>
+        <%= render FrontWeb.LayoutView, "page_header/_menu_card.html",
+              options: [target: "_blank", rel: "noopener"],
+              card_url: "https://#{Application.fetch_env!(:front, :docs_domain)}/reference/sem-command-line-tool/",
+              card_title: "sem CLI Reference",
+              card_description: "Command line goodies",
+              tooltip: false %>
+        <%= render FrontWeb.LayoutView, "page_header/_menu_card.html",
+              options: [target: "_blank", rel: "noopener"],
+              card_url: "https://twitter.com/semaphoreci",
+              card_title: "Twitter",
+              card_description: "Follow us @semaphoreci",
+              tooltip: false %>
+      </div>
     </div>
-  </div>
+  <% end %>
   <!-- Header Profile menu -->
   <div id="profileMenu">
     <div class="ph2 pv1">

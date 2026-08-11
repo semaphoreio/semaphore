@@ -43,7 +43,7 @@ defmodule Zebra.Models.Job do
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
   @required_fields ~w(name organization_id project_id aasm_state created_at updated_at machine_type spec)a
-  @optional_fields ~w(build_id priority execution_time_limit deployment_target_id repository_id enqueued_at scheduled_at started_at finished_at request index port name machine_os_image failure_reason result agent_id agent_name agent_ip_address agent_ctrl_port agent_auth_token private_ssh_key expires_at)a
+  @optional_fields ~w(build_id priority execution_time_limit deployment_target_id repository_id enqueued_at scheduled_at started_at finished_at request index port name machine_os_image failure_reason result agent_id agent_name agent_ip_address agent_ctrl_port agent_auth_token private_ssh_key expires_at original_job_id)a
 
   schema "jobs" do
     belongs_to(:task, Zebra.Models.Task, foreign_key: :build_id)
@@ -80,6 +80,7 @@ defmodule Zebra.Models.Job do
     field(:started_at, :utc_datetime)
     field(:finished_at, :utc_datetime)
     field(:expires_at, :utc_datetime)
+    field(:original_job_id, :binary_id)
   end
 
   def create(params) do
@@ -96,6 +97,52 @@ defmodule Zebra.Models.Job do
 
     params = %{params | spec: encode_spec(params.spec)}
     params = set_machine_type_if_empty(params)
+
+    changeset(%__MODULE__{}, params)
+    |> LegacyRepo.insert()
+    |> case do
+      {:ok, job} ->
+        {:ok, job}
+
+      {:error, changeset} ->
+        {:error, readable_changeset_errors(changeset)}
+    end
+  end
+
+  def create_copy(original, task_id) do
+    params = %{
+      name: original.name,
+      index: original.index,
+      machine_type: original.machine_type,
+      machine_os_image: original.machine_os_image,
+      spec: encode_spec(original.spec),
+      request: original.request,
+      organization_id: original.organization_id,
+      project_id: original.project_id,
+      deployment_target_id: original.deployment_target_id,
+      repository_id: original.repository_id,
+      priority: original.priority,
+      created_at: original.created_at,
+      updated_at: original.updated_at,
+      enqueued_at: original.enqueued_at,
+      scheduled_at: original.scheduled_at,
+      started_at: original.started_at,
+      finished_at: original.finished_at,
+      expires_at: original.expires_at,
+      build_id: task_id,
+      aasm_state: state_finished(),
+      result: result_passed(),
+      original_job_id: original.original_job_id || original.id,
+      port: nil,
+      agent_id: nil,
+      agent_name: nil,
+      agent_ip_address: nil,
+      agent_ctrl_port: nil,
+      agent_auth_token: nil,
+      private_ssh_key: nil,
+      failure_reason: nil,
+      execution_time_limit: nil
+    }
 
     changeset(%__MODULE__{}, params)
     |> LegacyRepo.insert()
@@ -400,23 +447,6 @@ defmodule Zebra.Models.Job do
     )
   end
 
-  def expired_job_ids(limit) do
-    import Ecto.Query,
-      only: [from: 2, join: 5, where: 3, limit: 2, select: 2]
-
-    query =
-      from(j in Zebra.Models.Job,
-        join: p in "projects",
-        on: j.project_id == p.id,
-        where: not is_nil(j.expires_at) and j.expires_at <= fragment("CURRENT_TIMESTAMP"),
-        limit: ^limit,
-        select: {j.id, j.organization_id, j.project_id, p.artifact_store_id}
-      )
-
-    result = Zebra.LegacyRepo.all(query)
-    {:ok, result}
-  end
-
   def delete_job_stop_requests(job_ids) do
     import Ecto.Query,
       only: [from: 2, where: 3, limit: 2, order_by: 2]
@@ -442,6 +472,87 @@ defmodule Zebra.Models.Job do
     {deleted_count, _} = Zebra.LegacyRepo.delete_all(query)
 
     {:ok, deleted_count}
+  end
+
+  def claim_and_delete_expired_jobs(limit) do
+    Zebra.LegacyRepo.transaction(fn ->
+      jobs = claim_expired_jobs(limit)
+
+      if Enum.empty?(jobs) do
+        {0, 0}
+      else
+        delete_claimed_jobs(jobs)
+      end
+    end)
+    |> case do
+      {:ok, {deleted_stop_requests, deleted_jobs}} ->
+        {:ok, deleted_stop_requests, deleted_jobs}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp claim_expired_jobs(limit) do
+    import Ecto.Query, only: [from: 2, lock: 2]
+
+    from(j in __MODULE__,
+      where: not is_nil(j.expires_at) and j.expires_at <= fragment("CURRENT_TIMESTAMP"),
+      order_by: [asc: j.expires_at],
+      limit: ^limit,
+      select: {j.id, j.organization_id, j.project_id}
+    )
+    |> lock("FOR UPDATE SKIP LOCKED")
+    |> Zebra.LegacyRepo.all()
+  end
+
+  defp delete_claimed_jobs(jobs) do
+    jobs_with_artifacts = enrich_jobs_with_artifact_store_ids(jobs)
+    job_ids = Enum.map(jobs, fn {id, _, _} -> id end)
+
+    Logger.info("Claimed #{length(job_ids)} expired jobs for deletion: #{inspect(job_ids)}")
+
+    case publish_job_deletion_events(jobs_with_artifacts) do
+      :ok ->
+        {:ok, deleted_stop_requests} = delete_job_stop_requests(job_ids)
+        {:ok, deleted_jobs} = delete_jobs(job_ids)
+        {deleted_stop_requests, deleted_jobs}
+
+      {:error, reason} ->
+        Logger.error("Failed to publish deletion events: #{reason}")
+        Zebra.LegacyRepo.rollback({:error, reason})
+    end
+  end
+
+  defp enrich_jobs_with_artifact_store_ids(jobs) do
+    artifact_store_map = fetch_artifact_store_ids(jobs)
+
+    Enum.map(jobs, fn {id, org_id, project_id} ->
+      {id, org_id, project_id, Map.get(artifact_store_map, project_id)}
+    end)
+  end
+
+  defp fetch_artifact_store_ids(jobs) do
+    import Ecto.Query, only: [from: 2]
+
+    project_ids =
+      jobs
+      |> Enum.map(fn {_, _, project_id} -> project_id end)
+      |> Enum.uniq()
+      |> Enum.flat_map(fn id ->
+        case Ecto.UUID.dump(id) do
+          {:ok, binary} -> [binary]
+          :error -> []
+        end
+      end)
+
+    from(p in "projects",
+      where: p.id in ^project_ids,
+      select: {p.id, p.artifact_store_id}
+    )
+    |> Zebra.LegacyRepo.all()
+    |> Enum.map(fn {id, artifact_store_id} -> {Ecto.UUID.cast!(id), artifact_store_id} end)
+    |> Map.new()
   end
 
   def wait_for_agent(job) do
@@ -651,13 +762,15 @@ defmodule Zebra.Models.Job do
         :error -> ""
       end
 
+    project_id_str = project_id || ""
+
     now = DateTime.utc_now()
 
     message =
       InternalApi.ServerFarm.Job.JobDeleted.new(
         job_id: id,
         organization_id: organization_id,
-        project_id: project_id,
+        project_id: project_id_str,
         artifact_store_id: artifact_store_id_str,
         deleted_at:
           Google.Protobuf.Timestamp.new(

@@ -317,7 +317,7 @@ defmodule Support.Stubs.Feature do
            os_default_image :: String.t()}
   defp platform_from_opts(opts) do
     defaults = [
-      linux: ["ubuntu2004", "ubuntu1804"],
+      linux: ["ubuntu2204", "ubuntu2404", "ubuntu2004", "ubuntu1804"],
       mac: ["xcode13", "xcode12"]
     ]
 

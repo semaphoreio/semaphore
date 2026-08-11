@@ -143,7 +143,7 @@
                   value: if(rule.notify.webhook == nil, do: "", else: rule.notify.webhook.secret),
                   class: "form-control w-100",
                   placeholder: "webhook-secret" %>
-              <p class="f6 mt1 mb0 nb1">Read more about <a href="https://<%= Application.fetch_env!(:front, :docs_domain) %>/essentials/webhook-notifications/#securing-webhook-notifications" target="_blank" rel="noopener">securing webhook notifications</a></p>
+              <p class="f6 mt1 mb0 nb1">Read more about <a href="https://<%= Application.fetch_env!(:front, :docs_domain) %>/using-semaphore/notifications#securing-webhook-notifications" target="_blank" rel="noopener">securing webhook notifications</a></p>
             </div>
 
             <div class="f6 tc bt b--lighter-gray pv2 mt4 nh3 nb3 bg-washed-gray br3 br--bottom">

@@ -90,9 +90,14 @@ func (w *Worker) handleMessage(delivery tackle.Delivery) error {
 	jobID := event.GetJobId()
 	artifactStoreID := event.GetArtifactStoreId()
 
-	if jobID == "" || artifactStoreID == "" {
-		log.Printf("JobDeletion Worker: Invalid message, missing jobID or artifactStoreID: %+v", event)
-		return fmt.Errorf("invalid message, missing jobID or artifactStoreID")
+	if jobID == "" {
+		log.Printf("JobDeletion Worker: Invalid message, missing jobID: %+v", event)
+		return fmt.Errorf("invalid message, missing jobID")
+	}
+
+	if artifactStoreID == "" {
+		log.Printf("JobDeletion Worker: Skipping job %s - no artifactStoreID", jobID)
+		return nil
 	}
 
 	artifact, err := models.FindArtifactByID(artifactStoreID)

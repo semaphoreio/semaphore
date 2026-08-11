@@ -28,9 +28,18 @@ defmodule FrontWeb.DeploymentsController do
   def index(conn, _params) do
     Watchman.benchmark(watchman_name(:index, :duration), fn ->
       maybe_targets = Async.run(fetch_targets_with_details(conn.assigns))
-      {:ok, targets} = Async.await(maybe_targets)
 
-      render_page(conn, "index.html", targets)
+      case Async.await(maybe_targets) do
+        {:ok, targets} ->
+          render_page(conn, "index.html", targets)
+
+        {:exit, {error, _stacktrace}} ->
+          Logger.error("[DT] Failed to fetch targets: #{inspect(error)}")
+
+          conn
+          |> put_flash(:alert, "Failure: unable to load deployment targets")
+          |> render_page("index.html", [])
+      end
     end)
   end
 

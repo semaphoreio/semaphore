@@ -83,6 +83,14 @@ defmodule Rbac.GrpcServers.GroupsServer.Test do
       {:ok, response} = state.grpc_channel |> Stub.list_groups(request)
       assert response.groups == []
     end
+
+    test "returns an empty list for a group that belongs to another organization", state do
+      {:ok, group} = Factories.Group.insert(org_id: Ecto.UUID.generate())
+
+      request = %Request{org_id: @org_id, group_id: group.id}
+      {:ok, response} = state.grpc_channel |> Stub.list_groups(request)
+      assert response.groups == []
+    end
   end
 
   describe "modify_group/2" do
@@ -159,7 +167,7 @@ defmodule Rbac.GrpcServers.GroupsServer.Test do
 
     test "unauthorized requests", state do
       request = %Request{
-        group: %Groups.Group{id: Ecto.UUID.generate()},
+        group: %Groups.Group{id: state.group.id},
         requester_id: @requester_id,
         org_id: @org_id
       }
@@ -177,8 +185,46 @@ defmodule Rbac.GrpcServers.GroupsServer.Test do
       }
 
       {:error, %{status: status, message: msg}} = state.grpc_channel |> Stub.modify_group(request)
-      assert status == GRPC.Status.invalid_argument()
+      assert status == GRPC.Status.not_found()
       assert msg == "The group you are trying to modify does not exist"
+    end
+
+    test "returns not found when modifying a group in another organization", state do
+      {:ok, other_group} = Support.Factories.Group.insert(org_id: Ecto.UUID.generate())
+
+      request = %Request{
+        group: %Groups.Group{id: other_group.id, name: "New Name"},
+        requester_id: @requester_id,
+        org_id: @org_id
+      }
+
+      {:error, %{status: status}} = state.grpc_channel |> Stub.modify_group(request)
+      assert status == GRPC.Status.not_found()
+
+      {:ok, unchanged} = Rbac.Store.Group.fetch_group(other_group.id)
+      assert unchanged.name == other_group.name
+    end
+
+    test "does not add members to a group in another organization", state do
+      {:ok, other_group} = Support.Factories.Group.insert(org_id: Ecto.UUID.generate())
+      {:ok, member} = Support.Factories.RbacUser.insert()
+
+      Support.Rbac.create_org_roles(@org_id)
+      Support.Rbac.assign_org_role_by_name(@org_id, member.id, "Member")
+
+      request = %Request{
+        group: %Groups.Group{id: other_group.id},
+        members_to_add: [member.id],
+        requester_id: @requester_id,
+        org_id: @org_id
+      }
+
+      {:error, %{status: status}} = state.grpc_channel |> Stub.modify_group(request)
+      assert status == GRPC.Status.not_found()
+
+      refute Rbac.Repo.GroupManagementRequest
+             |> where([r], r.group_id == ^other_group.id and r.action == :add_user)
+             |> Rbac.Repo.exists?()
     end
 
     test "user that is being added to the group is not org member", state do

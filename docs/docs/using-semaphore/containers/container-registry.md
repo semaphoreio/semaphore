@@ -48,12 +48,12 @@ With:
 FROM registry.semaphoreci.com/node:20
 ```
 
-Service images can be used with [sem-service](../../reference/toolbox#sem-service). For example, the following command starts a PostgreSQL v16 container in your job:
+Service images can be used with [sem-service](../../reference/toolbox#sem-service). For example, the following command starts a PostgreSQL v18 container in your job:
 
 ```shell title="Job commands"
-$ sem-service start postgres 16
+$ sem-service start postgres 18
 Starting postgres...done.
-PostgreSQL 16 is running at 0.0.0.0:5432
+PostgreSQL 18 is running at 0.0.0.0:5432
 To access it use username 'postgres' and blank password.
 ```
 
@@ -299,6 +299,41 @@ Ruby images come in two variants:
 | ruby:3.2.3-node-browsers | `registry.semaphoreci.com/ruby:3.2.3-node-browsers` |  
 | ruby:3.3.0 | `registry.semaphoreci.com/ruby:3.3.0` |  
 | ruby:3.3.0-node-browsers | `registry.semaphoreci.com/ruby:3.3.0-node-browsers` |  
+| ruby:3.3.1 | `registry.semaphoreci.com/ruby:3.3.1` |
+| ruby:3.3.2 | `registry.semaphoreci.com/ruby:3.3.2` |
+| ruby:3.3.3 | `registry.semaphoreci.com/ruby:3.3.3` |
+| ruby:3.3.4 | `registry.semaphoreci.com/ruby:3.3.4` |
+| ruby:3.3.4-node-browsers | `registry.semaphoreci.com/ruby:3.3.4-node-browsers` |
+| ruby:3.3.5 | `registry.semaphoreci.com/ruby:3.3.5` |
+| ruby:3.3.5-node-browsers | `registry.semaphoreci.com/ruby:3.3.5-node-browsers` |
+| ruby:3.3.6 | `registry.semaphoreci.com/ruby:3.3.6` |
+| ruby:3.3.6-node-browsers | `registry.semaphoreci.com/ruby:3.3.6-node-browsers` |
+| ruby:3.3.7 | `registry.semaphoreci.com/ruby:3.3.7` |
+| ruby:3.3.7-node-browsers | `registry.semaphoreci.com/ruby:3.3.7-node-browsers` |
+| ruby:3.3.8 | `registry.semaphoreci.com/ruby:3.3.8` |
+| ruby:3.3.8-node-browsers | `registry.semaphoreci.com/ruby:3.3.8-node-browsers` |
+| ruby:3.3.9 | `registry.semaphoreci.com/ruby:3.3.9` |
+| ruby:3.3.10 | `registry.semaphoreci.com/ruby:3.3.10` |
+| ruby:3.3.11 | `registry.semaphoreci.com/ruby:3.3.11` |
+| ruby:3.4 | `registry.semaphoreci.com/ruby:3.4` |
+| ruby:3.4-node-browsers | `registry.semaphoreci.com/ruby:3.4-node-browsers` |
+| ruby:3.4.1 | `registry.semaphoreci.com/ruby:3.4.1` |
+| ruby:3.4.1-node-browsers | `registry.semaphoreci.com/ruby:3.4.1-node-browsers` |
+| ruby:3.4.2 | `registry.semaphoreci.com/ruby:3.4.2` |
+| ruby:3.4.3 | `registry.semaphoreci.com/ruby:3.4.3` |
+| ruby:3.4.3-node-browsers | `registry.semaphoreci.com/ruby:3.4.3-node-browsers` |
+| ruby:3.4.4 | `registry.semaphoreci.com/ruby:3.4.4` |
+| ruby:3.4.4-node-browsers | `registry.semaphoreci.com/ruby:3.4.4-node-browsers` |
+| ruby:3.4.5 | `registry.semaphoreci.com/ruby:3.4.5` |
+| ruby:3.4.7 | `registry.semaphoreci.com/ruby:3.4.7` |
+| ruby:3.4.8 | `registry.semaphoreci.com/ruby:3.4.8` |
+| ruby:3.4.9 | `registry.semaphoreci.com/ruby:3.4.9` |
+| ruby:4.0 | `registry.semaphoreci.com/ruby:4.0` |
+| ruby:4.0.0 | `registry.semaphoreci.com/ruby:4.0.0` |
+| ruby:4.0.1 | `registry.semaphoreci.com/ruby:4.0.1` |
+| ruby:4.0.2 | `registry.semaphoreci.com/ruby:4.0.2` |
+
+
 
 </div>
 </details>
@@ -468,6 +503,9 @@ This section lists utility images for [sem-service](../../reference/toolbox#sem-
 | postgres:16 | `registry.semaphoreci.com/postgres:16` |  
 | postgres:17 | `registry.semaphoreci.com/postgres:17` |  
 | postgres:17.2 | `registry.semaphoreci.com/postgres:17.2` |  
+| postgres:17.6 | `registry.semaphoreci.com/postgres:17.6` |  
+| postgres:18 | `registry.semaphoreci.com/postgres:18` |  
+| postgres:18.1 | `registry.semaphoreci.com/postgres:18.1` |  
 
 </div>
 </details>
@@ -587,6 +625,22 @@ This is a PostgreSQL container extended with [PostGIS](https://postgis.net/).
 | elasticsearch:8.5.3 | `registry.semaphoreci.com/elasticsearch:8.5.3` |   
 | elasticsearch:8.9.2 | `registry.semaphoreci.com/elasticsearch:8.9.2` |   
 | elasticsearch:8.11.3 | `registry.semaphoreci.com/elasticsearch:8.11.3` |   
+
+</div>
+</details>
+
+### OpenSearch
+
+<details>
+<summary>OpenSearch images</summary>
+<div>
+
+| Image | Link |
+|--------|--------|
+| opensearch:1.3.9 | `registry.semaphoreci.com/opensearch:1.3.9` |
+| opensearch:2.6.0 | `registry.semaphoreci.com/opensearch:2.6.0` |
+| opensearch:2.7.0 | `registry.semaphoreci.com/opensearch:2.7.0` |
+| opensearch:3.5.0 | `registry.semaphoreci.com/opensearch:3.5.0` |
 
 </div>
 </details>

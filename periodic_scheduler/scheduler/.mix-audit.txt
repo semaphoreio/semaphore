@@ -1,0 +1,17 @@
+# postgrex 0.17.1 — channel-name SQL injection in Postgrex.Notifications.listen/3 (service does not use Postgrex.Notifications; only standard Ecto queries)
+GHSA-r73h-97w8-m54h
+
+# cowlib 2.11.0 — cow_http_te DoS via excessive allocation (gRPC over HTTP/2 only; cow_http_te HTTP/1.1 path unreachable)
+GHSA-32p9-57cr-4x65
+
+# cowlib 2.11.0 — cookie header injection in cow_cookie:cookie/1 (gRPC clients do not build Cookie headers)
+GHSA-g2wm-735q-3f56
+
+# cowlib 2.11.0 — CRLF / SSE injection in header field values (gRPC server, no Plug response-header writes from user input; no SSE)
+GHSA-hv23-4qp7-8c8r
+
+# cowboy 2.9.0 — multipart header parsing DoS, fixed in 2.15.0 (unreachable; gRPC-only service over HTTP/2, no Plug.Parsers, no multipart endpoints)
+GHSA-jfc2-q6qh-g5x8
+
+# cowlib 2.11.0 — SPDY decompression bomb in cow_spdy:inflate/2 (unreachable; cowboy 2.x does not serve SPDY)
+GHSA-84f2-rp86-235p

@@ -17,7 +17,7 @@ export const getProviderName = (type: IntegrationType | string): string => {
 
 export const getProviderNameWithBadge = (type: IntegrationType | string) => {
   switch(type) {
-    case IntegrationType.GithubApp:
+    case IntegrationType.GithubOauthToken:
       return (
         <Fragment>
           GitHub

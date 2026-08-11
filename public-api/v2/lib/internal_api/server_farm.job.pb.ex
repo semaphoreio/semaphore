@@ -499,6 +499,18 @@ defmodule InternalApi.ServerFarm.Job.JobSpec do
   field(:execution_time_limit, 11, type: :int32, json_name: "executionTimeLimit")
 end
 
+defmodule InternalApi.ServerFarm.Job.JobDeleted do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:job_id, 1, type: :string, json_name: "jobId")
+  field(:organization_id, 2, type: :string, json_name: "organizationId")
+  field(:deleted_at, 3, type: Google.Protobuf.Timestamp, json_name: "deletedAt")
+  field(:artifact_store_id, 4, type: :string, json_name: "artifactStoreId")
+  field(:project_id, 5, type: :string, json_name: "projectId")
+end
+
 defmodule InternalApi.ServerFarm.Job.JobService.Service do
   @moduledoc false
 

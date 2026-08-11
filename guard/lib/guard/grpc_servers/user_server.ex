@@ -324,12 +324,59 @@ defmodule Guard.GrpcServers.UserServer do
 
         {:ok, user} ->
           if Guard.Api.Project.user_has_any_project?(user_id) do
-            grpc_error!(:invalid_argument, "User #{user_id} is owner of projects.")
+            grpc_error!(
+              :invalid_argument,
+              "You still own projects — transfer or delete them first."
+            )
           end
 
-          handle_delete_with_owned_orgs(user.id)
+          # Best-effort: a co-owner removed between this check and the delete can
+          # still orphan an org. Closing that race needs RBAC-side enforcement.
+          case Guard.Store.Organization.orgs_blocking_user_deletion(user.id) do
+            [] ->
+              handle_delete_user(user.id)
+
+            orgs ->
+              grpc_error!(:failed_precondition, blocking_orgs_message(orgs))
+          end
       end
     end)
+  end
+
+  defp blocking_orgs_message(orgs) do
+    {unverified, owned} =
+      Enum.split_with(orgs, fn {_id, _name, reason} -> reason == :ownership_unverified end)
+
+    [owned_sentence(org_names(owned)), unverified_sentence(org_names(unverified))]
+    |> Enum.reject(&(&1 == ""))
+    |> Enum.join(" ")
+  end
+
+  defp org_names(orgs), do: Enum.map(orgs, fn {_id, name, _reason} -> name end)
+
+  defp owned_sentence([]), do: ""
+
+  defp owned_sentence([name]) do
+    "You are the last owner of #{name}. " <>
+      "Transfer ownership or delete it first before you can delete your account."
+  end
+
+  defp owned_sentence(names) do
+    "You are the last owner of these organizations: #{Enum.join(names, ", ")}. " <>
+      "Transfer ownership or delete them first before you can delete your account."
+  end
+
+  defp unverified_sentence([]), do: ""
+
+  defp unverified_sentence([name]) do
+    "We couldn't verify ownership of #{name}. If you are the owner, " <>
+      "transfer ownership or delete it first (or contact support) before deleting your account."
+  end
+
+  defp unverified_sentence(names) do
+    "We couldn't verify ownership of these organizations: #{Enum.join(names, ", ")}. " <>
+      "If you are the owner, transfer ownership or delete them first (or contact support) " <>
+      "before deleting your account."
   end
 
   @spec create(User.CreateRequest.t(), GRPC.Server.Stream.t()) :: User.User.t()
@@ -379,7 +426,10 @@ defmodule Guard.GrpcServers.UserServer do
   defp handle_update_repo_status(user, account) do
     {token, _expires_at} = get_token(account, user_id: user.id)
 
-    account_update_result = handle_validate_token(user, account, token)
+    account_update_result =
+      user
+      |> handle_validate_token(account, token)
+      |> Guard.User.GithubProfileSync.sync(user.id, token)
 
     repository_provider =
       case account_update_result do
@@ -417,13 +467,20 @@ defmodule Guard.GrpcServers.UserServer do
 
         FrontRepo.RepoHostAccount.update_revoke_status(repo_account, not is_valid)
 
+      {:error, :transient} ->
+        Logger.warning(
+          "Transient token validation failure for #{user.id}; keeping existing revoke status."
+        )
+
+        {:ok, repo_account}
+
       {:error, _} ->
         grpc_error!(:internal, "Error while validating token for #{user.id}.")
     end
   end
 
-  defp handle_delete_with_owned_orgs(user_id) do
-    case Front.delete_with_owned_orgs(user_id) do
+  defp handle_delete_user(user_id) do
+    case Front.delete_user(user_id) do
       {:ok, _} ->
         Guard.Events.UserDeleted.publish(user_id, @user_exchange, @deleted_routing_key)
         User.User.new(id: user_id)

@@ -84,6 +84,55 @@ May have a larger impact and effort will be made to provide migration paths as n
 
 - May have larger impact, but is unavoidable due to legal compliance, security vulnerabilities, or violation of specification.
 
+## Organizations
+
+### Create an organization
+
+Creates a new organization owned by the authenticated user.
+
+Unlike every other endpoint, this one is **account-scoped, not
+organization-scoped**: it is served on the `me.` host (there is no organization
+subdomain yet) and is authenticated with your personal account API token. The
+user resolved from the token becomes the owner of the new organization.
+
+Request:
+
+```text
+POST https://me.semaphoreci.com/api/v1alpha/organizations
+```
+
+Parameters:
+
+- `username` (**required**) - the organization's URL handle, used as its subdomain (`<username>.semaphoreci.com`). Must be unique and not already taken.
+- `name` (*optional*) - human-readable display name. Defaults to `username` when omitted.
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "organization_id": "2b4e4c0f-c760-4f47-9dc4-b3e84f993f63",
+  "name": "My Organization",
+  "username": "my-org"
+}
+```
+
+A `username` that is missing or already taken returns a `4xx` error describing
+the problem.
+
+Example:
+
+```shell
+curl -X POST --location "https://me.semaphoreci.com/api/v1alpha/organizations" \
+    -H "Authorization: Token {api_token}" \
+    -H "Content-Type: application/json" \
+    -d $'{
+    "username": "my-org",
+    "name": "My Organization"
+}'
+```
+
 ## Workflows
 
 ### Run workflow
@@ -491,6 +540,44 @@ curl -i -X PATCH  -H "Authorization: Token {api_token}" \
      "https://<organization-url>.semaphoreci.com/api/v1alpha/pipelines/:pipeline_id"
 ```
 
+### Rebuild failed blocks in a pipeline
+
+```text
+POST <organization-url>.semaphoreci.com/api/v1alpha/pipelines/:pipeline_id/partial_rebuild
+```
+
+Parameters:
+
+- `pipeline_id` (**required**) - ID of a pipeline.
+- `request_token` (**required**) - Idempotency token (typically a UUID).
+
+Headers:
+
+- `x-semaphore-user-id` (*optional*) - The user ID triggering the rebuild.
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "pipeline_id":"79b53ff9-c005-4ff0-81a9-479a82324f6b",
+  "message:":""
+}
+```
+
+Example:
+
+```shell
+curl -i -X POST \
+  -H "Authorization: Token {api_token}" \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -H "x-semaphore-user-id: {your_user_id}" \
+  --data '{"request_token":"'"$(uuidgen | tr '[:upper:]' '[:lower:]')"'"}' \
+  "https://<organization-url>.semaphoreci.com/api/v1alpha/pipelines/{pipeline_id}/partial_rebuild"
+```
+
 ### Validate a pipeline YAML
 
 ```text
@@ -679,6 +766,17 @@ Instead of using the API to fetch job logs, you can also use [Semaphore CLI tool
 ```text
 GET https://<organization-url>.semaphoreci.com/api/v1alpha/logs/:job_id
 ```
+
+Parameters:
+
+- `artifact_job_logs` (*optional*) - when set to `1` or `true`, returns artifact job logs uploaded by agents.
+
+Behavior notes:
+
+- `artifact_job_logs=true` responds with `302` redirect to a signed job-artifact URL when artifact job logs are present in artifact storage.
+- Artifact job logs are uploaded by the CI agent at the end of the job. Availability depends on the agent upload setting (`upload-job-logs` / `SEMAPHORE_AGENT_UPLOAD_JOB_LOGS`) described in [self-hosted agent config](./self-hosted-config#upload-job-logs).
+- The API prioritizes `agent/job_logs.txt` and falls back to `agent/job_logs.txt.gz` only when `.txt` is not available.
+- `artifact_job_logs=true` requires both `project.view` and `project.artifacts.view`.
 
 Response:
 
@@ -1005,6 +1103,916 @@ curl -i \
   -H "Authorization: Token {api_token}" \
   -d 'only_idle=false' \
   "https://<organization-url>.semaphoreci.com/api/v1alpha/self_hosted_agent_types/s1-aws-small/disable_all"
+```
+
+## Organization members
+
+### List members
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1alpha/members?member_type=:member_type&page_no=:page_no&page_size=:page_size
+```
+
+Parameters:
+
+- `member_type` (*optional*) - filter by subject type. One of `user`, `service_account`, or `group`. If omitted, only human users are returned.
+- `page_no` (*optional*) - the page number to return. By default, this is 0.
+- `page_size` (*optional*) - the number of members to return per page. By default, this is 2000.
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "members": [
+    {
+      "id": "e18b1526-2c2a-4ac7-9e7e-4c6f130e9a11",
+      "subject_type": "user",
+      "name": "Jane Doe",
+      "roles": [
+        {
+          "role_id": "0b45cf14-2b7f-4bde-9a2c-df6b6cc35b13",
+          "role_name": "Admin",
+          "source": "manually"
+        }
+      ]
+    }
+  ],
+  "total_pages": 1
+}
+```
+
+Example:
+
+```shell
+curl -H "Authorization: Token {api_token}" \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/members?member_type=user"
+```
+
+### Invite a member
+
+```text
+POST <organization-url>.semaphoreci.com/api/v1alpha/members
+```
+
+Parameters:
+
+- `provider` (**required**) - the SCM provider the invitee's handle belongs to. One of `github`, `bitbucket`, or `gitlab`.
+- `handle` (**required**) - the invitee's SCM handle (username).
+- `uid` (**required** if `provider` is `bitbucket`) - the invitee's Bitbucket user id. Bitbucket accounts can't be resolved by handle alone.
+- `role_id` (*optional*) - the organization role to grant on invite. If omitted, the invitee keeps the default `Member` role.
+- `name` (*optional*) - the invitee's display name.
+- `email` (*optional*) - the invitee's email address.
+
+The invite always succeeds (HTTP 200) once the person is added as a collaborator, even if the requested role could not be granted right away. Check `role.status` in the response:
+
+- `assigned` - the role was granted immediately.
+- `pending` - the invitee doesn't have a Semaphore account yet, so the role couldn't be resolved. It's applied once they sign in.
+- `denied` - the invitee already has a Semaphore account, but the role couldn't be granted (for example, the requester doesn't hold that role themselves).
+- `defaulted_to_member` - no `role_id` was requested, so the invitee keeps the default `Member` role.
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "member": {
+    "email": "jane@example.com",
+    "name": "Jane Doe",
+    "provider": "github",
+    "handle": "janedoe",
+    "uid": "",
+    "user_id": "e18b1526-2c2a-4ac7-9e7e-4c6f130e9a11"
+  },
+  "role": {
+    "role_id": "0b45cf14-2b7f-4bde-9a2c-df6b6cc35b13",
+    "applied": true,
+    "status": "assigned"
+  }
+}
+```
+
+Example:
+
+```shell
+curl -H "Authorization: Token {api_token}" \
+     -H "Content-Type: application/json" \
+     --data '{"provider": "github", "handle": "janedoe", "role_id": "0b45cf14-2b7f-4bde-9a2c-df6b6cc35b13"}' \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/members"
+```
+
+### Assign a member's role
+
+```text
+PUT <organization-url>.semaphoreci.com/api/v1alpha/members/:subject_id/role
+```
+
+Parameters:
+
+- `subject_id` (**required**) - the id of the member (user, group, or service account) to update.
+- `role_id` (**required**) - the id of the role to assign.
+
+This is an upsert - it assigns the role if the member has none yet, or changes it if they already have one.
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "status": "assigned"
+}
+```
+
+Example:
+
+```shell
+curl -X PUT -i \
+     -H "Authorization: Token {api_token}" \
+     -H "Content-Type: application/json" \
+     --data '{"role_id": "0b45cf14-2b7f-4bde-9a2c-df6b6cc35b13"}' \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/members/e18b1526-2c2a-4ac7-9e7e-4c6f130e9a11/role"
+```
+
+### Remove a member
+
+```text
+DELETE <organization-url>.semaphoreci.com/api/v1alpha/members/:subject_id
+```
+
+Parameters:
+
+- `subject_id` (**required**) - the id of the member to remove from the organization.
+
+This removes the person from the organization entirely, not just a single role. Since that's their last role binding, it cascades: the member is also removed from any groups and loses every project and organization role binding.
+
+Response:
+
+```json
+HTTP status: 200
+
+true
+```
+
+Example:
+
+```shell
+curl -X DELETE -i \
+     -H "Authorization: Token {api_token}" \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/members/e18b1526-2c2a-4ac7-9e7e-4c6f130e9a11"
+```
+
+## Roles
+
+### List roles
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1alpha/roles
+```
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "roles": [
+    {
+      "id": "0b45cf14-2b7f-4bde-9a2c-df6b6cc35b13",
+      "name": "Admin",
+      "org_id": "2b4e4c0f-c760-4f47-9dc4-b3e84f993f63",
+      "scope": "org",
+      "description": "Organization administrator",
+      "permissions": [
+        "organization.people.view",
+        "organization.people.manage"
+      ],
+      "readonly": true
+    }
+  ]
+}
+```
+
+Example:
+
+```shell
+curl -H "Authorization: Token {api_token}" \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/roles"
+```
+
+### Describe a role
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1alpha/roles/:role_id
+```
+
+Parameters:
+
+- `role_id` (**required**) - the id of the role to describe.
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "id": "0b45cf14-2b7f-4bde-9a2c-df6b6cc35b13",
+  "name": "Admin",
+  "org_id": "2b4e4c0f-c760-4f47-9dc4-b3e84f993f63",
+  "scope": "org",
+  "description": "Organization administrator",
+  "permissions": [
+    "organization.people.view",
+    "organization.people.manage"
+  ],
+  "readonly": true
+}
+```
+
+Example:
+
+```shell
+curl -H "Authorization: Token {api_token}" \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/roles/0b45cf14-2b7f-4bde-9a2c-df6b6cc35b13"
+```
+
+### Create a role
+
+```text
+POST <organization-url>.semaphoreci.com/api/v1alpha/roles
+```
+
+Parameters:
+
+- `name` (**required**) - the name of the role.
+- `description` (*optional*) - a description of the role.
+- `scope` (*optional*) - `org` (*default*) or `project`.
+- `permissions` (*optional*) - a list of permission **names** to grant (for example `organization.people.view`), not the permission ids returned by `GET /permissions`.
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "id": "88f3a2b6-4b4e-4a5f-8c2f-6f1e3a2b7c9d",
+  "name": "Release manager",
+  "org_id": "2b4e4c0f-c760-4f47-9dc4-b3e84f993f63",
+  "scope": "org",
+  "description": "Can manage deployments",
+  "permissions": [
+    "organization.people.view"
+  ],
+  "readonly": false
+}
+```
+
+Example:
+
+```shell
+curl -H "Authorization: Token {api_token}" \
+     -H "Content-Type: application/json" \
+     --data '{"name": "Release manager", "description": "Can manage deployments", "scope": "org", "permissions": ["organization.people.view"]}' \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/roles"
+```
+
+### Update a role
+
+```text
+PATCH <organization-url>.semaphoreci.com/api/v1alpha/roles/:role_id
+```
+
+Parameters:
+
+- `role_id` (**required**) - the id of the role to update.
+- `name` (*optional*) - new name for the role.
+- `description` (*optional*) - new description for the role.
+- `scope` (*optional*) - `org` or `project`.
+- `permissions` (*optional*) - a list of permission **names** (not ids) that replaces the role's current permissions.
+
+Fields left out of the request keep their current value.
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "id": "88f3a2b6-4b4e-4a5f-8c2f-6f1e3a2b7c9d",
+  "name": "Release manager",
+  "org_id": "2b4e4c0f-c760-4f47-9dc4-b3e84f993f63",
+  "scope": "org",
+  "description": "Can manage deployments and view members",
+  "permissions": [
+    "organization.people.view",
+    "organization.people.manage"
+  ],
+  "readonly": false
+}
+```
+
+Example:
+
+```shell
+curl -X PATCH -i \
+     -H "Authorization: Token {api_token}" \
+     -H "Content-Type: application/json" \
+     --data '{"description": "Can manage deployments and view members", "permissions": ["organization.people.view", "organization.people.manage"]}' \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/roles/88f3a2b6-4b4e-4a5f-8c2f-6f1e3a2b7c9d"
+```
+
+### Delete a role
+
+```text
+DELETE <organization-url>.semaphoreci.com/api/v1alpha/roles/:role_id
+```
+
+Parameters:
+
+- `role_id` (**required**) - the id of the role to delete.
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "status": "deleted"
+}
+```
+
+Example:
+
+```shell
+curl -X DELETE -i \
+     -H "Authorization: Token {api_token}" \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/roles/88f3a2b6-4b4e-4a5f-8c2f-6f1e3a2b7c9d"
+```
+
+## Permissions
+
+### List permissions
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1alpha/permissions?scope=:scope
+```
+
+Parameters:
+
+- `scope` (*optional*) - `org` (*default*) or `project`. Returns the permissions available at that scope.
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "permissions": [
+    {
+      "id": "a1e2c3b4-5d6e-4f7a-8b9c-0d1e2f3a4b5c",
+      "name": "organization.people.view",
+      "description": "View organization members"
+    },
+    {
+      "id": "b2f3d4c5-6e7f-4a8b-9c0d-1e2f3a4b5c6d",
+      "name": "organization.people.manage",
+      "description": "Manage organization members"
+    }
+  ]
+}
+```
+
+Example:
+
+```shell
+curl -H "Authorization: Token {api_token}" \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/permissions?scope=org"
+```
+
+## Groups
+
+### List groups
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1alpha/groups?page_no=:page_no&page_size=:page_size
+```
+
+Parameters:
+
+- `page_no` (*optional*) - the page number to return. By default, this is 0.
+- `page_size` (*optional*) - the number of groups to return per page. By default, this is 2000.
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "groups": [
+    {
+      "id": "3f9a2b7e-8c4d-4e2a-9b1f-6a7c8d9e0f12",
+      "name": "Platform team",
+      "description": "Owns platform infrastructure",
+      "member_ids": [
+        "e18b1526-2c2a-4ac7-9e7e-4c6f130e9a11"
+      ]
+    }
+  ],
+  "total_pages": 1
+}
+```
+
+Example:
+
+```shell
+curl -H "Authorization: Token {api_token}" \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/groups"
+```
+
+### Create a group
+
+```text
+POST <organization-url>.semaphoreci.com/api/v1alpha/groups
+```
+
+Parameters:
+
+- `name` (**required**) - the name of the group.
+- `description` (*optional*) - a description of the group.
+- `member_ids` (*optional*) - a list of user ids to add to the group on creation.
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "id": "3f9a2b7e-8c4d-4e2a-9b1f-6a7c8d9e0f12",
+  "name": "Platform team",
+  "description": "Owns platform infrastructure",
+  "member_ids": [
+    "e18b1526-2c2a-4ac7-9e7e-4c6f130e9a11"
+  ]
+}
+```
+
+Example:
+
+```shell
+curl -H "Authorization: Token {api_token}" \
+     -H "Content-Type: application/json" \
+     --data '{"name": "Platform team", "description": "Owns platform infrastructure", "member_ids": ["e18b1526-2c2a-4ac7-9e7e-4c6f130e9a11"]}' \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/groups"
+```
+
+### Update a group
+
+```text
+PATCH <organization-url>.semaphoreci.com/api/v1alpha/groups/:group_id
+```
+
+Parameters:
+
+- `group_id` (**required**) - the id of the group to update.
+- `name` (*optional*) - new name for the group.
+- `description` (*optional*) - new description for the group.
+- `members_to_add` (*optional*) - a list of user ids to add to the group.
+- `members_to_remove` (*optional*) - a list of user ids to remove from the group.
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "id": "3f9a2b7e-8c4d-4e2a-9b1f-6a7c8d9e0f12",
+  "name": "Platform team",
+  "description": "Owns platform infrastructure and CI",
+  "member_ids": [
+    "e18b1526-2c2a-4ac7-9e7e-4c6f130e9a11",
+    "a5d8e9f0-1b2c-4d3e-8f4a-5b6c7d8e9f01"
+  ]
+}
+```
+
+Example:
+
+```shell
+curl -X PATCH -i \
+     -H "Authorization: Token {api_token}" \
+     -H "Content-Type: application/json" \
+     --data '{"members_to_add": ["a5d8e9f0-1b2c-4d3e-8f4a-5b6c7d8e9f01"]}' \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/groups/3f9a2b7e-8c4d-4e2a-9b1f-6a7c8d9e0f12"
+```
+
+### Delete a group
+
+```text
+DELETE <organization-url>.semaphoreci.com/api/v1alpha/groups/:group_id
+```
+
+Parameters:
+
+- `group_id` (**required**) - the id of the group to delete.
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "status": "deleted"
+}
+```
+
+Example:
+
+```shell
+curl -X DELETE -i \
+     -H "Authorization: Token {api_token}" \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/groups/3f9a2b7e-8c4d-4e2a-9b1f-6a7c8d9e0f12"
+```
+
+## Service accounts
+
+### List service accounts
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1alpha/service_accounts?page_size=:page_size&page_token=:page_token
+```
+
+Parameters:
+
+- `page_size` (*optional*) - the number of service accounts to return per page. By default, this is 100.
+- `page_token` (*optional*) - a pagination token taken from a previous response's `next_page_token`.
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "service_accounts": [
+    {
+      "id": "7c1e9f3a-5b2d-4a8e-9c3f-1d2e3f4a5b6c",
+      "name": "ci-deployer",
+      "description": "Used by the deploy pipeline",
+      "org_id": "2b4e4c0f-c760-4f47-9dc4-b3e84f993f63",
+      "creator_id": "e18b1526-2c2a-4ac7-9e7e-4c6f130e9a11",
+      "created_at": 1719979253,
+      "updated_at": 1719979253,
+      "deactivated": false
+    }
+  ],
+  "next_page_token": ""
+}
+```
+
+Example:
+
+```shell
+curl -H "Authorization: Token {api_token}" \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/service_accounts"
+```
+
+### Create a service account
+
+```text
+POST <organization-url>.semaphoreci.com/api/v1alpha/service_accounts
+```
+
+Parameters:
+
+- `name` (**required**) - the name of the service account.
+- `description` (*optional*) - a description of the service account.
+
+The response includes an `api_token` for the new service account. It is shown only now, and again if the token is later regenerated - store it, it can't be retrieved after that.
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "service_account": {
+    "id": "7c1e9f3a-5b2d-4a8e-9c3f-1d2e3f4a5b6c",
+    "name": "ci-deployer",
+    "description": "Used by the deploy pipeline",
+    "org_id": "2b4e4c0f-c760-4f47-9dc4-b3e84f993f63",
+    "creator_id": "e18b1526-2c2a-4ac7-9e7e-4c6f130e9a11",
+    "created_at": 1719979253,
+    "updated_at": 1719979253,
+    "deactivated": false
+  },
+  "api_token": "sa_token_1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d"
+}
+```
+
+Example:
+
+```shell
+curl -H "Authorization: Token {api_token}" \
+     -H "Content-Type: application/json" \
+     --data '{"name": "ci-deployer", "description": "Used by the deploy pipeline"}' \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/service_accounts"
+```
+
+### Describe a service account
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1alpha/service_accounts/:service_account_id
+```
+
+Parameters:
+
+- `service_account_id` (**required**) - the id of the service account to describe.
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "id": "7c1e9f3a-5b2d-4a8e-9c3f-1d2e3f4a5b6c",
+  "name": "ci-deployer",
+  "description": "Used by the deploy pipeline",
+  "org_id": "2b4e4c0f-c760-4f47-9dc4-b3e84f993f63",
+  "creator_id": "e18b1526-2c2a-4ac7-9e7e-4c6f130e9a11",
+  "created_at": 1719979253,
+  "updated_at": 1719979253,
+  "deactivated": false
+}
+```
+
+Example:
+
+```shell
+curl -H "Authorization: Token {api_token}" \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/service_accounts/7c1e9f3a-5b2d-4a8e-9c3f-1d2e3f4a5b6c"
+```
+
+### Update a service account
+
+```text
+PATCH <organization-url>.semaphoreci.com/api/v1alpha/service_accounts/:service_account_id
+```
+
+Parameters:
+
+- `service_account_id` (**required**) - the id of the service account to update.
+- `name` (*optional*) - new name for the service account.
+- `description` (*optional*) - new description for the service account.
+
+Fields left out of the request keep their current value.
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "id": "7c1e9f3a-5b2d-4a8e-9c3f-1d2e3f4a5b6c",
+  "name": "ci-deployer",
+  "description": "Used by the release pipeline",
+  "org_id": "2b4e4c0f-c760-4f47-9dc4-b3e84f993f63",
+  "creator_id": "e18b1526-2c2a-4ac7-9e7e-4c6f130e9a11",
+  "created_at": 1719979253,
+  "updated_at": 1719980000,
+  "deactivated": false
+}
+```
+
+Example:
+
+```shell
+curl -X PATCH -i \
+     -H "Authorization: Token {api_token}" \
+     -H "Content-Type: application/json" \
+     --data '{"description": "Used by the release pipeline"}' \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/service_accounts/7c1e9f3a-5b2d-4a8e-9c3f-1d2e3f4a5b6c"
+```
+
+### Delete a service account
+
+```text
+DELETE <organization-url>.semaphoreci.com/api/v1alpha/service_accounts/:service_account_id
+```
+
+Parameters:
+
+- `service_account_id` (**required**) - the id of the service account to delete.
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "status": "deleted"
+}
+```
+
+Example:
+
+```shell
+curl -X DELETE -i \
+     -H "Authorization: Token {api_token}" \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/service_accounts/7c1e9f3a-5b2d-4a8e-9c3f-1d2e3f4a5b6c"
+```
+
+### Deactivate a service account
+
+```text
+POST <organization-url>.semaphoreci.com/api/v1alpha/service_accounts/:service_account_id/deactivate
+```
+
+Parameters:
+
+- `service_account_id` (**required**) - the id of the service account to deactivate. A deactivated service account can no longer authenticate.
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "status": "deactivated"
+}
+```
+
+Example:
+
+```shell
+curl -H "Authorization: Token {api_token}" \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/service_accounts/7c1e9f3a-5b2d-4a8e-9c3f-1d2e3f4a5b6c/deactivate"
+```
+
+### Reactivate a service account
+
+```text
+POST <organization-url>.semaphoreci.com/api/v1alpha/service_accounts/:service_account_id/reactivate
+```
+
+Parameters:
+
+- `service_account_id` (**required**) - the id of the service account to reactivate.
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "status": "reactivated"
+}
+```
+
+Example:
+
+```shell
+curl -H "Authorization: Token {api_token}" \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/service_accounts/7c1e9f3a-5b2d-4a8e-9c3f-1d2e3f4a5b6c/reactivate"
+```
+
+### Regenerate a service account's token
+
+```text
+POST <organization-url>.semaphoreci.com/api/v1alpha/service_accounts/:service_account_id/regenerate_token
+```
+
+Parameters:
+
+- `service_account_id` (**required**) - the id of the service account whose token should be regenerated. The previous token stops working immediately.
+
+The new `api_token` is shown only in this response - store it, it can't be retrieved after that.
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "api_token": "sa_token_9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c"
+}
+```
+
+Example:
+
+```shell
+curl -H "Authorization: Token {api_token}" \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/service_accounts/7c1e9f3a-5b2d-4a8e-9c3f-1d2e3f4a5b6c/regenerate_token"
+```
+
+## Project members
+
+### List project members
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1alpha/projects/:project_id/members?page_no=:page_no&page_size=:page_size
+```
+
+Parameters:
+
+- `project_id` (**required**) - the id of the project.
+- `page_no` (*optional*) - the page number to return. By default, this is 0.
+- `page_size` (*optional*) - the number of members to return per page. By default, this is 2000.
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "members": [
+    {
+      "id": "e18b1526-2c2a-4ac7-9e7e-4c6f130e9a11",
+      "subject_type": "user",
+      "name": "Jane Doe",
+      "roles": [
+        {
+          "role_id": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
+          "role_name": "Contributor",
+          "source": "manually"
+        }
+      ]
+    }
+  ]
+}
+```
+
+Example:
+
+```shell
+curl -H "Authorization: Token {api_token}" \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/projects/e48c5cf8-7389-4df1-9904-235c06473af1/members"
+```
+
+### Assign a project member's role
+
+```text
+PUT <organization-url>.semaphoreci.com/api/v1alpha/projects/:project_id/members/:subject_id/role
+```
+
+Parameters:
+
+- `project_id` (**required**) - the id of the project.
+- `subject_id` (**required**) - the id of the member to update.
+- `role_id` (**required**) - the id of the project role to assign.
+
+This is an upsert - it assigns the role if the member has none on this project yet, or changes it if they already have one.
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "status": "assigned"
+}
+```
+
+Example:
+
+```shell
+curl -X PUT -i \
+     -H "Authorization: Token {api_token}" \
+     -H "Content-Type: application/json" \
+     --data '{"role_id": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d"}' \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/projects/e48c5cf8-7389-4df1-9904-235c06473af1/members/e18b1526-2c2a-4ac7-9e7e-4c6f130e9a11/role"
+```
+
+### Remove a project member's role
+
+```text
+DELETE <organization-url>.semaphoreci.com/api/v1alpha/projects/:project_id/members/:subject_id/role
+```
+
+Parameters:
+
+- `project_id` (**required**) - the id of the project.
+- `subject_id` (**required**) - the id of the member whose project role should be removed.
+- `role_id` (**required**) - the id of the project role to remove.
+
+This retracts only the project role binding. It does not remove the member from the organization or from any groups.
+
+Response:
+
+```json
+HTTP status: 200
+
+true
+```
+
+Example:
+
+```shell
+curl -X DELETE -i \
+     -H "Authorization: Token {api_token}" \
+     -H "Content-Type: application/json" \
+     --data '{"role_id": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d"}' \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/projects/e48c5cf8-7389-4df1-9904-235c06473af1/members/e18b1526-2c2a-4ac7-9e7e-4c6f130e9a11/role"
 ```
 
 ## Self-hosted agents
@@ -1660,6 +2668,139 @@ curl -i -H "Authorization: Token {api_token}" \
      "https://<organization-url>.semaphoreci.com/api/v1alpha/deployment_targets/:target_id/history"
 ```
 
+## Artifacts
+
+### List artifacts
+
+This API endpoint lists artifacts stored under a project, workflow, or job scope.
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1alpha/artifacts?scope=:scope&scope_id=:scope_id&path=:path
+```
+
+Parameters:
+
+- `scope` (**required**) - scope namespace. Valid values: `projects`, `workflows`, `jobs`.
+- `scope_id` (**required**) - UUID of the selected scope object.
+- `path` (*optional*) - relative path inside the selected scope. If omitted, the root directory is listed.
+
+Validation notes:
+
+- `path` must be a relative path.
+- Absolute paths (starting with `/`) are not allowed.
+- Path traversal segments (`.` and `..`) are not allowed.
+- Backslashes (`\`) are not allowed.
+- URL-encoded traversal and backslash variants are rejected after path normalization.
+
+Authorization notes:
+
+- The endpoint requires both `project.view` and `project.artifacts.view` permissions on the project that owns the selected scope.
+- `project_id` is resolved from `scope` and `scope_id`; if sent explicitly, it is ignored.
+- Listing is non-recursive: only direct children of the requested path are returned.
+
+Response:
+
+- `size` is included for files (in bytes) and omitted for directories.
+
+```json
+HTTP status: 200
+
+{
+  "artifacts": [
+    {
+      "is_directory": true,
+      "name": "agent",
+      "path": "agent"
+    },
+    {
+      "is_directory": false,
+      "name": "job_logs.txt.gz",
+      "path": "job_logs.txt.gz",
+      "size": 24576
+    },
+    {
+      "is_directory": false,
+      "name": "extra.log",
+      "path": "extra.log",
+      "size": 5120
+    }
+  ]
+}
+```
+
+Possible error responses:
+
+- `400` for invalid request parameters.
+- `401` when the user is missing one or both required permissions.
+- `404` when the scoped object or requested path does not exist (or is not visible to the user).
+- `500` for internal errors.
+
+Example:
+
+```shell
+curl -i -H "Authorization: Token {api_token}" \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/artifacts?scope=jobs&scope_id=:job_id&path=agent"
+```
+
+### Get artifact signed URL
+
+This API endpoint returns a signed URL for a single artifact file.
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1alpha/artifacts/signed_url?scope=:scope&scope_id=:scope_id&path=:path&method=:method
+```
+
+Parameters:
+
+- `scope` (**required**) - scope namespace. Valid values: `projects`, `workflows`, `jobs`.
+- `scope_id` (**required**) - UUID of the selected scope object.
+- `path` (**required**) - relative path of the artifact inside the selected scope.
+- `method` (*optional*) - HTTP method for the signed URL. Valid values: `GET`, `HEAD`. Defaults to `GET`.
+
+Validation notes:
+
+- `path` must be a relative path.
+- Absolute paths (starting with `/`) are not allowed.
+- Path traversal segments (`.` and `..`) are not allowed.
+- Backslashes (`\`) are not allowed.
+- URL-encoded traversal and backslash variants are rejected after path normalization.
+- `path` must point to a single file.
+
+Authorization notes:
+
+- The endpoint requires both `project.view` and `project.artifacts.view` permissions on the project that owns the selected scope.
+- `project_id` is resolved from `scope` and `scope_id`; if sent explicitly, it is ignored.
+- Directory signing and recursive signing are not supported.
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "items": [
+    {
+      "path": "agent/job_logs.txt.gz",
+      "url": "https://<signed-url>"
+    }
+  ]
+}
+```
+
+Possible error responses:
+
+- `400` for invalid request parameters.
+- `401` when the user is missing one or both required permissions.
+- `404` when the scoped object or artifact does not exist (or is not visible to the user).
+- `500` for internal errors.
+
+Example:
+
+```shell
+curl -i -H "Authorization: Token {api_token}" \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/artifacts/signed_url?scope=jobs&scope_id=:job_id&path=agent/job_logs.txt.gz&method=GET"
+```
+
 ## Artifact retention policies
 
 ### Configure retention policy
@@ -1780,4 +2921,304 @@ curl -i -H "Authorization: Token {api_token}" \
      "https://<organization-url>.semaphoreci.com/api/v1alpha/artifacts_retention_policies/:project_id"
 ```
 
+## Test results (flaky tests)
 
+These endpoints expose flaky test data collected from pipeline runs for a given project. All endpoints require a valid API token. Requests that fail authentication return `404 Not Found` rather than `401`.
+
+The base path for all test results endpoints is:
+
+```text
+/api/v1alpha/projects/{project_id}/test_results
+```
+
+### List flaky tests
+
+Returns a paginated list of flaky tests for the project. Pagination uses `Link` response headers (`first`, `next`, `prev`) and an `X-Total` header with the total count.
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1alpha/projects/{project_id}/test_results/flaky_tests
+```
+
+Query parameters (all optional):
+
+- `branch` - filter by branch name.
+- `commit_sha` - filter by commit SHA.
+- `test_name` - filter by test name (partial match).
+- `group` - filter by test group/class.
+- `file` - filter by source file path.
+- `suite` - filter by test suite name.
+- `runner` - filter by runner label.
+- `label` - comma-separated list of labels; tests must carry all specified labels.
+- `resolved` - `true` or `false`; filter by resolved status.
+- `scheduled` - `true` or `false`; filter by whether the run was a scheduled pipeline.
+- `age` - maximum age in days of the most recent flaky occurrence.
+- `pass_rate` - pass-rate threshold with a comparison operator, e.g. `>=80` or `<=50`. The value is a percentage (0–100).
+- `disruptions` - minimum number of disruptions, e.g. `>=5`.
+- `date_from` - include only occurrences on or after this date (`YYYY-MM-DD`).
+- `date_to` - include only occurrences on or before this date (`YYYY-MM-DD`).
+
+All parameter values are lowercase.
+
+Response:
+
+```json
+HTTP status: 200
+
+[
+  {
+    "id": "a1b2c3d4-...",
+    "test_name": "MyTest::should do the thing",
+    "group": "MyTest",
+    "file": "spec/my_test_spec.rb",
+    "suite": "unit",
+    "runner": "e2-standard-4",
+    "labels": ["critical"],
+    "pass_rate": 72.5,
+    "disruptions": 14,
+    "resolved": false,
+    "first_seen": "2025-01-10",
+    "last_seen": "2025-05-30"
+  }
+]
+```
+
+Example:
+
+```shell
+curl -H "Authorization: Token {api_token}" \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/projects/{project_id}/test_results/flaky_tests?branch=main&pass_rate=>=80"
+```
+
+### Get a flaky test
+
+Returns details for a single flaky test by its ID.
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1alpha/projects/{project_id}/test_results/flaky_tests/{id}
+```
+
+Parameters:
+
+- `project_id` (**required**) - UUID of the project.
+- `id` (**required**) - UUID of the flaky test record.
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "id": "a1b2c3d4-...",
+  "test_name": "MyTest::should do the thing",
+  "group": "MyTest",
+  "file": "spec/my_test_spec.rb",
+  "suite": "unit",
+  "runner": "e2-standard-4",
+  "labels": ["critical"],
+  "pass_rate": 72.5,
+  "disruptions": 14,
+  "resolved": false,
+  "first_seen": "2025-01-10",
+  "last_seen": "2025-05-30"
+}
+```
+
+### List disruptions for a flaky test
+
+Returns a paginated list of disruptions (pipeline runs that were disrupted by this test) for a specific flaky test. Pagination uses `Link` and `X-Total` headers.
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1alpha/projects/{project_id}/test_results/flaky_tests/{id}/disruptions
+```
+
+Query parameters (all optional): same filter set as [List flaky tests](#list-flaky-tests) (`branch`, `commit_sha`, `date_from`, `date_to`, `scheduled`).
+
+Response:
+
+```json
+HTTP status: 200
+
+[
+  {
+    "pipeline_id": "2abeb1a9-...",
+    "workflow_id": "32a689e0-...",
+    "branch": "main",
+    "commit_sha": "abc123",
+    "created_at": "2025-05-30T14:22:01Z"
+  }
+]
+```
+
+### List flaky test history
+
+Returns a time-series of flaky test counts grouped by date for the project.
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1alpha/projects/{project_id}/test_results/flaky_history
+```
+
+Query parameters (all optional): `branch`, `date_from`, `date_to`, `scheduled`.
+
+Response:
+
+```json
+HTTP status: 200
+
+[
+  { "date": "2025-05-28", "count": 3 },
+  { "date": "2025-05-29", "count": 7 },
+  { "date": "2025-05-30", "count": 2 }
+]
+```
+
+### List disruption history
+
+Returns a time-series of disruption counts grouped by date for the project.
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1alpha/projects/{project_id}/test_results/disruption_history
+```
+
+Query parameters (all optional): `branch`, `date_from`, `date_to`, `scheduled`.
+
+Response:
+
+```json
+HTTP status: 200
+
+[
+  { "date": "2025-05-28", "count": 12 },
+  { "date": "2025-05-29", "count": 19 },
+  { "date": "2025-05-30", "count": 8 }
+]
+```
+
+## Insights
+
+These endpoints return pipeline performance, reliability, and frequency metrics for a given project. All endpoints require a valid API token. Requests that fail authentication return `404 Not Found` rather than `401`.
+
+The base path for all insights endpoints is:
+
+```text
+/api/v1alpha/projects/{project_id}/insights
+```
+
+### Performance
+
+Returns time-series data for pipeline duration, broken down by overall, passed, and failed runs.
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1alpha/projects/{project_id}/insights/performance
+```
+
+Query parameters:
+
+- `pipeline_file` (**required**) - path to the pipeline YAML file within the repository, e.g. `.semaphore/semaphore.yml`.
+- `branch` (*optional*) - filter by branch name.
+- `from` (*optional*) - start date in `YYYY-MM-DD` format.
+- `to` (*optional*) - end date in `YYYY-MM-DD` format.
+- `aggregate` (*optional*) - aggregation window. Valid values: `daily` (default), `range`. All values are lowercase.
+
+Accuracy note: when `aggregate=range` is used, the returned value is the average of per-day averages, not a true mean across all runs in the period. Sparse days can skew the result.
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "performance": {
+    "all": [
+      { "date": "2025-05-28", "value_in_seconds": 310 },
+      { "date": "2025-05-29", "value_in_seconds": 295 }
+    ],
+    "passed": [
+      { "date": "2025-05-28", "value_in_seconds": 280 },
+      { "date": "2025-05-29", "value_in_seconds": 270 }
+    ],
+    "failed": [
+      { "date": "2025-05-28", "value_in_seconds": 420 },
+      { "date": "2025-05-29", "value_in_seconds": 390 }
+    ]
+  }
+}
+```
+
+Example:
+
+```shell
+curl -H "Authorization: Token {api_token}" \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/projects/{project_id}/insights/performance?pipeline_file=.semaphore/semaphore.yml&branch=main&aggregate=daily"
+```
+
+### Reliability
+
+Returns time-series data for the pipeline pass rate.
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1alpha/projects/{project_id}/insights/reliability
+```
+
+Query parameters: same as [Performance](#performance) (`pipeline_file` required, `branch`, `from`, `to`, `aggregate`).
+
+Accuracy note: `failed_count` includes pipelines that were STOPPED in addition to those that failed. This means the pass rate may appear lower than the true failure rate in projects that frequently cancel runs.
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "reliability": [
+    {
+      "date": "2025-05-28",
+      "passed_count": 18,
+      "failed_count": 2,
+      "pass_rate": 90.0
+    },
+    {
+      "date": "2025-05-29",
+      "passed_count": 22,
+      "failed_count": 3,
+      "pass_rate": 88.0
+    }
+  ]
+}
+```
+
+Example:
+
+```shell
+curl -H "Authorization: Token {api_token}" \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/projects/{project_id}/insights/reliability?pipeline_file=.semaphore/semaphore.yml&aggregate=range&from=2025-05-01&to=2025-05-31"
+```
+
+### Frequency
+
+Returns time-series data for how often the pipeline runs.
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1alpha/projects/{project_id}/insights/frequency
+```
+
+Query parameters: same as [Performance](#performance) (`pipeline_file` required, `branch`, `from`, `to`, `aggregate`).
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "frequency": [
+    { "date": "2025-05-28", "count": 20 },
+    { "date": "2025-05-29", "count": 25 }
+  ]
+}
+```
+
+Example:
+
+```shell
+curl -H "Authorization: Token {api_token}" \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/projects/{project_id}/insights/frequency?pipeline_file=.semaphore/semaphore.yml&branch=main"
+```

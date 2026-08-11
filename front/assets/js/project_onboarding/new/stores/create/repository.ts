@@ -312,8 +312,8 @@ export function useRepositoryStore(configState: stores.Config.State) {
       // If not complete and no error, schedule next check
       if (!data.ready && !data.error) {
         setTimeout(() => void checkProjectStatus(checkUrl), 2000);
-      } else if (data.ready && data.redirect_to) {
-        window.location.href = data.redirect_to;
+      } else if (data.ready && data.next_screen_url) {
+        window.location.href = data.next_screen_url;
       }
     } catch (error) {
       dispatch({

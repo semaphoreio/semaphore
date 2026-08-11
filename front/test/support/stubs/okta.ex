@@ -13,6 +13,7 @@ defmodule Support.Stubs.Okta do
       :sso_url,
       :saml_certificate,
       :jit_provisioning_enabled,
+      :session_expiration_minutes,
       :created_at,
       :updated_at
     ])
@@ -53,6 +54,7 @@ defmodule Support.Stubs.Okta do
           saml_issuer: req.saml_issuer,
           saml_certificate: req.saml_certificate,
           jit_provisioning_enabled: req.jit_provisioning_enabled,
+          session_expiration_minutes: req.session_expiration_minutes,
           created_at: StubTime.now(),
           updated_at: StubTime.now()
         })
@@ -165,7 +167,8 @@ defmodule Support.Stubs.Okta do
         creator_id: integration.creator_id,
         saml_issuer: integration.saml_issuer,
         sso_url: integration.sso_url,
-        jit_provisioning_enabled: integration.jit_provisioning_enabled
+        jit_provisioning_enabled: integration.jit_provisioning_enabled,
+        session_expiration_minutes: integration.session_expiration_minutes
       )
     end
   end

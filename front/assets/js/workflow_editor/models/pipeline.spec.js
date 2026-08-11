@@ -132,7 +132,7 @@ blockks:
       expect(p.toJson()).to.deep.equal({
         "agent": {
           "machine": {
-            "os_image": "ubuntu2004",
+            "os_image": "ubuntu2404",
             "type": "e1-standard-2"
           }
         },
@@ -209,7 +209,7 @@ blockks:
             "agent:",
             "  machine:",
             "    type: e1-standard-2",
-            "    os_image: ubuntu2004",
+            "    os_image: ubuntu2404",
             "blocks: []",
             ""
           ].join("\r\n"))
@@ -228,7 +228,7 @@ blockks:
             "agent:",
             "  machine:",
             "    type: e1-standard-2",
-            "    os_image: ubuntu2004",
+            "    os_image: ubuntu2404",
             "blocks: []",
             ""
           ].join("\n"))
@@ -247,7 +247,7 @@ blockks:
             "agent:",
             "  machine:",
             "    type: e1-standard-2",
-            "    os_image: ubuntu2004",
+            "    os_image: ubuntu2404",
             "blocks: []",
             ""
           ].join("\n"))
@@ -266,7 +266,7 @@ blockks:
             "agent:",
             "  machine:",
             "    type: e1-standard-2",
-            "    os_image: ubuntu2004",
+            "    os_image: ubuntu2404",
             "blocks: []",
             ""
           ].join("\r\n"))
@@ -285,7 +285,7 @@ blockks:
             "agent:",
             "  machine:",
             "    type: e1-standard-2",
-            "    os_image: ubuntu2004",
+            "    os_image: ubuntu2404",
             "blocks: []",
             ""
           ].join("\n"))
@@ -377,7 +377,7 @@ blockks:
           "agent": {
             "machine": {
               "type": "e1-standard-2",
-              "os_image": "ubuntu2004"
+              "os_image": "ubuntu2404"
             }
           },
           "blocks": [{"name": "A"}]

@@ -5,7 +5,7 @@ defmodule RepositoryHub.Model.GitRepository do
 
   import Toolkit
 
-  defstruct [:protocol, :username, :host, :owner, :repo, :ssh_git_url]
+  defstruct [:protocol, :username, :host, :owner, :repo, :ssh_git_url, :remote_id]
 
   @type t :: %GitRepository{}
 
@@ -17,9 +17,11 @@ defmodule RepositoryHub.Model.GitRepository do
   @doc """
   Validates the git url string and returns a struct with some data about the repository.
   """
-  @spec new(String.t()) :: Toolkit.tupled_result(t(), String.t())
-  def new(url) do
-    dissect(url)
+  @spec new(String.t(), String.t() | nil) :: Toolkit.tupled_result(t(), String.t())
+  def new(url, remote_id \\ nil) do
+    with {:ok, repo} <- dissect(url) do
+      {:ok, %{repo | remote_id: remote_id || ""}}
+    end
   end
 
   @spec from_github(String.t()) :: Toolkit.tupled_result(t(), String.t())
@@ -33,7 +35,7 @@ defmodule RepositoryHub.Model.GitRepository do
   def from_gitlab(url) do
     url
     |> Validator.validate([:is_gitlab_url])
-    |> unwrap(&new/1)
+    |> unwrap(&dissect_gitlab/1)
   end
 
   @spec from_bitbucket(String.t()) :: Toolkit.tupled_result(t(), String.t())
@@ -58,7 +60,8 @@ defmodule RepositoryHub.Model.GitRepository do
           host: captures["host"],
           owner: captures["owner"],
           repo: captures["repo"],
-          ssh_git_url: url
+          ssh_git_url: url,
+          remote_id: ""
         }
         |> wrap()
     end
@@ -106,6 +109,41 @@ defmodule RepositoryHub.Model.GitRepository do
     end
   end
 
+  defp dissect_gitlab(url) do
+    url_with_no_trailing_git = clean_url(url)
+
+    ~r/^(?<protocol>(http:\/\/|https:\/\/|git:\/\/|ssh:\/\/))?(?<username>[^@\/ ]+@)?(?<host>[^\/: ]+)[\/:]*(?<path>[^ ]+)$/
+    |> Regex.named_captures(url_with_no_trailing_git)
+    |> case do
+      nil ->
+        error("Unrecognized Git remote format '#{url}'")
+
+      captures ->
+        captures["path"]
+        |> String.trim_leading("/")
+        |> String.split("/", trim: true)
+        |> case do
+          [_invalid] ->
+            error("Unrecognized Git remote format '#{url}'")
+
+          path_segments ->
+            repo = List.last(path_segments)
+            owner = path_segments |> Enum.drop(-1) |> Enum.join("/")
+
+            %__MODULE__{
+              protocol: captures["protocol"],
+              username: captures["username"],
+              host: captures["host"],
+              owner: owner,
+              repo: repo,
+              ssh_git_url: "git@#{captures["host"]}:#{owner}/#{repo}.git",
+              remote_id: ""
+            }
+            |> wrap()
+        end
+    end
+  end
+
   defp construct(url_parts) do
     host = url_parts["host"]
     owner = url_parts["owner"]
@@ -117,7 +155,8 @@ defmodule RepositoryHub.Model.GitRepository do
       host: host,
       owner: owner,
       repo: repo,
-      ssh_git_url: "git@#{host}:#{owner}/#{repo}.git"
+      ssh_git_url: "git@#{host}:#{owner}/#{repo}.git",
+      remote_id: ""
     }
   end
 

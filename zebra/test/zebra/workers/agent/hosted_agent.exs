@@ -10,6 +10,16 @@ defmodule Zebra.Workers.Agent.HostedAgentTest do
   @agent_id Ecto.UUID.generate()
 
   describe ".send" do
+    test "uses hackney insecure mode without custom ssl overrides" do
+      assert Agent.http_options() == [
+               hackney: [
+                 :insecure,
+                 connect_timeout: 2_000,
+                 recv_timeout: 3_000
+               ]
+             ]
+    end
+
     test "response is 401 signature error" do
       host = "1.2.3.4"
       response = %HTTPoison.Response{body: "signature is invalid", status_code: 401}

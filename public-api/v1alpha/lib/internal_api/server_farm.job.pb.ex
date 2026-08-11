@@ -738,6 +738,26 @@ defmodule InternalApi.ServerFarm.Job.JobSpec.File do
   field(:content, 2, type: :string)
 end
 
+defmodule InternalApi.ServerFarm.Job.JobDeleted do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          job_id: String.t(),
+          organization_id: String.t(),
+          deleted_at: Google.Protobuf.Timestamp.t(),
+          artifact_store_id: String.t(),
+          project_id: String.t()
+        }
+  defstruct [:job_id, :organization_id, :deleted_at, :artifact_store_id, :project_id]
+
+  field(:job_id, 1, type: :string)
+  field(:organization_id, 2, type: :string)
+  field(:deleted_at, 3, type: Google.Protobuf.Timestamp)
+  field(:artifact_store_id, 4, type: :string)
+  field(:project_id, 5, type: :string)
+end
+
 defmodule InternalApi.ServerFarm.Job.DebugSessionType do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3

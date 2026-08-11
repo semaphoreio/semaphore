@@ -14,7 +14,7 @@ Yes. The list of the platform IPs used by Semaphore is [publicly available](http
 
 ### Can I use my own machines to run workflows?
 
-Yes. With the Semaphore [Hybrid Plan](https://semaphore.io/pricing) you can add your own machines as [self-hosted agents](../using-semaphore/self-hosted). You can use a mix of Semaphore Cloud and your own machines for your workflows.
+Yes, you can add your own machines as [self-hosted agents](../using-semaphore/self-hosted), and use a mix of Semaphore cloud and your own machines for your workflows.
 
 ### Can I run Semaphore On-Premise?
 

@@ -9,6 +9,23 @@ config :pipelines_api,
        :feature_api_endpoint,
        System.get_env("FEATURE_GRPC_URL") || "feature-hub:50052"
 
+config :pipelines_api, :audit_logging, System.get_env("AUDIT_LOGGING") == "true"
+
+config :pipelines_api, :amqp_url, System.get_env("AMQP_URL")
+
+if System.get_env("AMQP_URL") != nil do
+  config :amqp,
+    connections: [
+      amqp: [
+        url: System.get_env("AMQP_URL"),
+        name: "#{System.get_env("HOSTNAME", "pipelines-api-v1alpha")}"
+      ]
+    ],
+    channels: [
+      audit: [connection: :amqp]
+    ]
+end
+
 on_prem? = if(System.get_env("ON_PREM") == "true", do: true, else: false)
 config :pipelines_api, on_prem?: on_prem?
 
@@ -23,7 +40,7 @@ feature_provider =
     {PipelinesAPI.FeatureHubProvider,
      [
        cache:
-         {FeatureProvider.CachexCache, name: :feature_provider_cache, ttl_ms: :timer.hours(6)}
+         {FeatureProvider.CachexCache, name: :feature_provider_cache, ttl_ms: :timer.minutes(10)}
      ]}
   end
 

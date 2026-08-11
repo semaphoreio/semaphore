@@ -12,69 +12,24 @@ A machine type defines what virtualized hardware to use in your [agents](../usin
 
 The machines described in this page only apply to Semaphore Cloud. You can add more types of machines using [self-hosted agents](../using-semaphore/self-hosted).
 
+## Performance baseline and resource availability
+
+Each Semaphore machine type is provisioned with a guaranteed baseline of virtual CPUs, memory, and disk as listed in the specifications below.
+
+Depending on host utilization at any given moment, a machine may temporarily receive additional CPU time, disk throughput, network bandwidth, and memory speed beyond its baseline specification. This happens when the physical host running your VM has spare capacity available — for example, during off-peak hours when fewer jobs are running concurrently.
+
+As a result, you may notice that identical jobs sometimes complete faster than previous runs, even when nothing in the job configuration has changed. This is not a sign of performance degradation — these faster runs are benefiting from additional resources temporarily available on the host, and performance may vary between runs.
+
 ## Linux machines {#linux}
 
-Linux machines are provided in four generations. The following table shows what operating systems each generation supports and if they support [Docker environments](../using-semaphore/pipelines#docker-environments).
+Linux machines are provided in two generations. The following table shows what operating systems each generation supports and if they support [Docker environments](../using-semaphore/pipelines#docker-environments).
 
 | Generation | Arch | OS Supported | Docker environments |
 |--|--|--|--|
-| [E1](#e1) | Intel x86_64 | [Ubuntu 20.04](./os-ubuntu-images/ubuntu-2004-image) <br/> [Ubuntu 22.04](./os-ubuntu-images/ubuntu-2204-image)<br/>[Ubuntu 24.04](./os-ubuntu-images/ubuntu-2404-image) |  Yes |
-| [E2](#e2) | Intel x86_64 | [Ubuntu 20.04](./os-ubuntu-images/ubuntu-2004-image) <br/> [Ubuntu 22.04](./os-ubuntu-images/ubuntu-2204-image)<br/>[Ubuntu 24.04](./os-ubuntu-images/ubuntu-2404-image) | Yes |
-| [F1](#f1) | Intel x86_64 | [Ubuntu 20.04](./os-ubuntu-images/ubuntu-2004-image) <br/> [Ubuntu 22.04](./os-ubuntu-images/ubuntu-2204-image)<br/>[Ubuntu 24.04](./os-ubuntu-images/ubuntu-2404-image) | Yes |
+| [F1](#f1) | Intel x86_64 | [Ubuntu 22.04](./os-ubuntu-images/ubuntu-2204-image)<br/>[Ubuntu 24.04](./os-ubuntu-images/ubuntu-2404-image) | Yes |
 | [R1](#r1) | ARM | [Ubuntu 24.04 ARM](./os-ubuntu-images/ubuntu-2404-arm-image) | No |
 
-:::warning
-
-The Ubuntu 20.04 image will be phased out by March 2026
-
-:::
-
-### E1 generation {#e1}
-
-This is the entry-level, cost-effective machine type. E1s are a good choice for less compute and memory intensive tasks.
-
-Implementation details:
-
-- **CPU**: hyperthreaded on a 3.4GHz Max Turbo 4.0GHz Intel® Core™ i7
-- **Memory**: DDR4 RAM
-- **Disk**: RAM drive (DDR4)
-
-The E1 generation is presented in the following types:
-
-| Type | Virtual CPUs | Memory (GB) | Disk (GB) |
-|--|--|--|--|
-| `e1-standard-2` | 2 | 4 | 25 |
-| `e1-standard-4` | 4 | 8 | 35 |
-| `e1-standard-8` | 8 | 16 | 45 |
-
-E1 Generation machine types can be paired with:
-
-- [`ubuntu2404`](../reference/os-ubuntu-images/ubuntu-2404-image)
-- [Docker-based environment](../using-semaphore/pipelines#docker-environments).
-
-### E2 generation {#e2}
-
-The E2 generation balances power with cost. It is a good choice for most tasks.
-
-Implementation details:
-
-- **CPU**: hyperthreaded on a 3.6GHZ [AMD Ryzen 5 3600](https://www.amd.com/en/product/8456)
-- **Memory**: DDR4 RAM
-- **Disk**: NvME storage
-
-The E2 generation is presented in the following types:
-
-| Type | Virtual CPUs | Memory (GB) | Disk (GB) |
-|--|--|--|--|
-| `e2-standard-2` | 2 | 8 | 45 |
-| `e2-standard-4` | 4 | 16 | 65 |
-
-E2 machines can also be paired with:
-
-- [`ubuntu2004`](../reference/os-ubuntu-images/ubuntu-2004-image)
-- [`ubuntu2204`](../reference/os-ubuntu-images/ubuntu-2204-image)
-- [`ubuntu2404`](../reference/os-ubuntu-images/ubuntu-2404-image)
-- [Docker-based environments](../using-semaphore/pipelines#docker-environments).
+For legacy machine generations still supported for existing usage, see [Legacy Linux generations](#legacy-linux).
 
 ### F1 generation {#f1}
 
@@ -95,7 +50,6 @@ The F1 generation is presented in the following types:
 
 F1 machines can be paired with:
 
-- [`ubuntu2004`](../reference/os-ubuntu-images/ubuntu-2004-image)
 - [`ubuntu2204`](../reference/os-ubuntu-images/ubuntu-2204-image)
 - [`ubuntu2404`](../reference/os-ubuntu-images/ubuntu-2404-image)
 - [Docker-based environments](../using-semaphore/pipelines#docker-environments).
@@ -114,12 +68,65 @@ The r1 generation is presented in the following types:
 
 | Type | Virtual CPUs | Memory (GB) | Disk (GB) |
 |--|--|--|--|
-| `r1-standard-2` | 2 | 4 | 55 |
+| `r1-standard-2` | 2 | 4 | 50 |
 | `r1-standard-4` | 4 | 8 | 65 |
+| `r1-standard-8` | 8 | 16 | 75 |
 
 R1 Generation machine types can only be paired with:
 
 - [`ubuntu2404`](../reference/os-ubuntu-images/ubuntu-2404-arm-image) ARM version
+
+## Legacy Linux generations {#legacy-linux}
+
+The E1 and E2 generations are legacy machine types. They remain documented here for existing usage, but F1 and R1 are the recommended machine types for Linux workloads on Semaphore Cloud.
+
+| Generation | Arch | OS Supported | Docker environments |
+|--|--|--|--|
+| [E1](#e1) | Intel x86_64 | [Ubuntu 22.04](./os-ubuntu-images/ubuntu-2204-image)<br/>[Ubuntu 24.04](./os-ubuntu-images/ubuntu-2404-image) | Yes |
+| [E2](#e2) | Intel x86_64 | [Ubuntu 22.04](./os-ubuntu-images/ubuntu-2204-image)<br/>[Ubuntu 24.04](./os-ubuntu-images/ubuntu-2404-image) | Yes |
+
+### E1 generation (legacy) {#e1}
+
+Implementation details:
+
+- **CPU**: hyperthreaded on a 3.4GHz Max Turbo 4.0GHz Intel® Core™ i7
+- **Memory**: DDR4 RAM
+- **Disk**: RAM drive (DDR4)
+
+The E1 generation is presented in the following types:
+
+| Type | Virtual CPUs | Memory (GB) | Disk (GB) |
+|--|--|--|--|
+| `e1-standard-2` | 2 | 4 | 25 |
+| `e1-standard-4` | 4 | 8 | 35 |
+| `e1-standard-8` | 8 | 16 | 45 |
+
+E1 Generation machine types can be paired with:
+
+- [`ubuntu2204`](../reference/os-ubuntu-images/ubuntu-2204-image)
+- [`ubuntu2404`](../reference/os-ubuntu-images/ubuntu-2404-image)
+- [Docker-based environment](../using-semaphore/pipelines#docker-environments).
+
+### E2 generation (legacy) {#e2}
+
+Implementation details:
+
+- **CPU**: hyperthreaded on a 3.6GHZ [AMD Ryzen 5 3600](https://www.amd.com/en/product/8456)
+- **Memory**: DDR4 RAM
+- **Disk**: NvME storage
+
+The E2 generation is presented in the following types:
+
+| Type | Virtual CPUs | Memory (GB) | Disk (GB) |
+|--|--|--|--|
+| `e2-standard-2` | 2 | 8 | 45 |
+| `e2-standard-4` | 4 | 16 | 65 |
+
+E2 machines can also be paired with:
+
+- [`ubuntu2204`](../reference/os-ubuntu-images/ubuntu-2204-image)
+- [`ubuntu2404`](../reference/os-ubuntu-images/ubuntu-2404-image)
+- [Docker-based environments](../using-semaphore/pipelines#docker-environments).
 
 ## Apple machines {#macos}
 
@@ -140,4 +147,3 @@ A2 machines can be paired with:
 - [Self-hosted agents](../using-semaphore/self-hosted)
 - [Linux Ubuntu images reference](./os-ubuntu)
 - [Apple macOS images reference](./os-apple)
-

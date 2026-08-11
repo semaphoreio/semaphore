@@ -72,8 +72,12 @@ defmodule RepositoryHub.ProjecthubClient do
     |> unwrap(fn connection ->
       # In the first call, we don't check soft deleted projects
       # If the project is soft deleted, we will try again with soft deleted set to true
-      make_describe_request(connection, project_id, false, opts)
-      |> unwrap(fn response -> extract_project(response, connection, project_id, false, opts) end)
+      try do:
+            make_describe_request(connection, project_id, false, opts)
+            |> unwrap(fn response ->
+              extract_project(response, connection, project_id, false, opts)
+            end),
+          after: GRPC.Stub.disconnect(connection)
     end)
     |> unwrap_error(fn
       %{message: message} -> error(message)

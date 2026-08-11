@@ -26,7 +26,18 @@ class App < Configurable # :nodoc:
   ]
   config.always_filter_skip_ci = (SemaphoreConfig.always_filter_skip_ci || "false") == "true"
   config.collaborators_api_rate_limit = (SemaphoreConfig.collaborators_api_rate_limit || 4000).to_i
+
+  config.disable_collaborator_webhook_sync =
+    (SemaphoreConfig.disable_collaborator_webhook_sync || "false") == "true"
+  config.use_github_app_to_check_permissions =
+    (SemaphoreConfig.use_github_app_to_check_permissions || "false") == "true"
   config.semaphore_edition = (SemaphoreConfig.semaphore_edition || "").downcase
+
+  config.worker_max_retries    = (SemaphoreConfig.worker_max_retries || 10).to_i
+  config.worker_lock_ttl       = (SemaphoreConfig.worker_lock_ttl || 86_400).to_i
+  config.worker_base_delay     = (SemaphoreConfig.worker_base_delay || 900).to_i
+  config.worker_jitter_max     = (SemaphoreConfig.worker_jitter_max || 300).to_i
+  config.worker_max_delay      = (SemaphoreConfig.worker_max_delay || 7_200).to_i
 
   def self.ee?
     config.semaphore_edition == "ee"

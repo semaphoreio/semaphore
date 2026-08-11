@@ -576,6 +576,8 @@ defmodule FrontWeb.PipelineView do
   def pipeline_status_icon_name(:DONE, :STOPPED), do: "icn-stopped"
   def pipeline_status_icon_name(:DONE, :CANCELED), do: "icn-skipped"
 
+  def copied_job?(job), do: Map.get(job, :original_job_id, "") not in [nil, ""]
+
   def job_status_color(job), do: job_status_color(job.state, job.result)
   def job_status_color(:ENQUEUED, _), do: "light-gray"
   def job_status_color(:RUNNING, _), do: "indigo"
@@ -688,6 +690,22 @@ defmodule FrontWeb.PipelineView do
 
       true ->
         0
+    end
+  end
+
+  def job_timer_placeholder?(job) do
+    finished? = Map.get(job, :state) == :FINISHED || Map.get(job, :done?, false)
+
+    finished? && is_nil(Map.get(job, :started_at))
+  end
+
+  def job_timer_label(job) do
+    if job_timer_placeholder?(job) do
+      "--:--"
+    else
+      job
+      |> job_total_time()
+      |> Front.DurationFormatter.format()
     end
   end
 

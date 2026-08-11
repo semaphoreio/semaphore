@@ -1,5 +1,6 @@
 import { createRef, Fragment } from "preact";
 import { useContext, useEffect, useLayoutEffect, useState } from "preact/hooks";
+import * as toolbox from "js/toolbox";
 import { NavigationStore, FilterStore } from "../stores";
 import { Suite } from "../types/suite";
 import { Duration } from "./duration";
@@ -20,6 +21,7 @@ export const TestSuite = ({ className, suite, startExpanded }: TestSuiteProps) =
   const [expanded, setExpanded] = useState(false);
 
   const [filteredTests, setFilteredTests] = useState([]);
+  const [copied, setCopied] = useState(false);
   const el = createRef();
 
   const sortTests = (suites: types.TestCase[], sort: FilterStore.SortOrder) => {
@@ -93,15 +95,40 @@ export const TestSuite = ({ className, suite, startExpanded }: TestSuiteProps) =
     }
   };
 
+  const onCopyClick = (e: MouseEvent) => {
+    e.stopPropagation();
+    void navigator.clipboard.writeText(suite.name);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const isFilePath = /\/[^/]+\.[a-z]+$/i.test(suite.name);
+
   return (
     <Fragment key={suite.id}>
       <div className={className} onClick={toggleExpand} ref={el}>
         <h4 className="f4 mb0 pointer">
           <span className={`mr1 ${classPalette.dot[suite.state]} select-none`}>●</span>
           {suite.name}
+          {isFilePath &&
+            <span style={{ display: `inline-flex`, verticalAlign: `middle` }}>
+              <toolbox.Tooltip
+                content={copied ? `Copied!` : `Copy path`}
+                anchor={
+                  <button
+                    className="o-30 hover-o-100 ml1"
+                    style={{ background: `none`, border: `none`, padding: 0, cursor: `pointer`, lineHeight: 1 }}
+                    onClick={onCopyClick}
+                  >
+                    <toolbox.MaterializeIcon name={copied ? `done` : `content_copy`} className="f5"/>
+                  </button>
+                }
+              />
+            </span>
+          }
           <span className="f6 normal gray ph1">{suite.summary.formattedResults()}</span>
         </h4>
-        <div className="ph2-m">
+        <div className="flex items-center ph2-m">
           <Duration duration={suite.summary.duration} className="f7 code"/>
         </div>
       </div>

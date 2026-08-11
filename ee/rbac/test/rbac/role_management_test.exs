@@ -70,6 +70,15 @@ defmodule Rbac.RoleManagement.Test do
       assert RoleManagement.has_role(rbi, state[:project_role_id]) == false
     end
 
+    test "role belonging to another organization is not matched" do
+      Support.Rbac.create_org_roles(@org2_id)
+      Support.Rbac.assign_org_role_by_name(@org_id, @user_id, "Admin")
+      {:ok, other_org_role} = Rbac.Repo.RbacRole.get_role_by_name("Admin", "org_scope", @org2_id)
+
+      {:ok, rbi} = RBI.new(user_id: @user_id, org_id: @org_id)
+      assert RoleManagement.has_role(rbi, other_org_role.id) == false
+    end
+
     test "user has same role assigned twice (from different sources)" do
       Support.Rbac.assign_org_role_by_name(@org_id, @user_id, "Admin", :manually_assigned)
       Support.Rbac.assign_org_role_by_name(@org_id, @user_id, "Admin", :okta)
@@ -112,6 +121,18 @@ defmodule Rbac.RoleManagement.Test do
 
       {:ok, role} = Rbac.Repo.RbacRole.get_role_by_name("Admin", "org_scope", @org_id)
       {:error, _} = RoleManagement.assign_role(rbi, role.id, :okta)
+    end
+
+    test "role belonging to another organization is rejected" do
+      Support.Rbac.create_org_roles(@org2_id)
+      {:ok, other_org_role} = Rbac.Repo.RbacRole.get_role_by_name("Admin", "org_scope", @org2_id)
+
+      {:ok, rbi} = RBI.new(user_id: @user_id, org_id: @org_id)
+      assert {:error, _} = RoleManagement.assign_role(rbi, other_org_role.id, :manually_assigned)
+
+      refute Rbac.Repo.SubjectRoleBinding
+             |> where([srb], srb.role_id == ^other_org_role.id and srb.subject_id == ^@user_id)
+             |> Rbac.Repo.exists?()
     end
 
     test "project_role is given, but project_id is not" do

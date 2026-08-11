@@ -21,7 +21,7 @@ class Semaphore::GithubApp::Installations
     if response.status < 300
       body = JSON.parse(response.data[:body])
       body.map do |data|
-        GithubAppInstallation.create(:installation_id => data["id"].to_i, :repositories => [])
+        GithubAppInstallation.create(:installation_id => data["id"].to_i)
         Semaphore::GithubApp::Repositories.refresh(data["id"].to_i)
       end
     else

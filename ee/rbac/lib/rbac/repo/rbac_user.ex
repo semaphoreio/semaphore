@@ -24,6 +24,7 @@ defmodule Rbac.Repo.RbacUser do
     |> cast(params, [:id, :email])
     |> validate_required([:id, :email])
     |> unique_constraint(:email, name: :rbac_users_email_index)
+    |> unique_constraint(:email, name: :rbac_users_normalized_email_index)
     |> foreign_key_constraint(:id)
   end
 end

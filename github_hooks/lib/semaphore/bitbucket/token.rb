@@ -1,11 +1,28 @@
 module Semaphore::Bitbucket
   class Token
+    def self.validation_state(token)
+      return :invalid unless token.present?
+
+      response =
+        Excon.get(
+          "https://api.bitbucket.org/2.0/user/workspaces?pagelen=1",
+          :headers => { "Authorization" => "Bearer #{token}" }
+        )
+
+      case response.status
+      when 200..299
+        :valid
+      when 401, 403
+        :invalid
+      else
+        :transient
+      end
+    rescue Excon::Error
+      :transient
+    end
+
     def self.valid?(token)
-      return false unless token.present?
-
-      response = Excon.get("https://api.bitbucket.org/2.0/repositories?access_token=#{token}")
-
-      response.status <= 299
+      validation_state(token) == :valid
     end
 
     def self.user_token(repo_host_account)

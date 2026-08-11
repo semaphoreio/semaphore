@@ -41,8 +41,44 @@ defmodule PipelinesAPI.Router do
   alias PipelinesAPI.Troubleshoot.Job, as: TroubleshootJob
   alias PipelinesAPI.ArtifactsRetentionPolicy.Update, as: UpdateArtifactsRetentionPolicy
   alias PipelinesAPI.ArtifactsRetentionPolicy.Describe, as: DescribeArtifactsRetentionPolicy
+  alias PipelinesAPI.Artifacts.List, as: ListArtifacts
+  alias PipelinesAPI.Artifacts.GetSignedURL, as: GetArtifactSignedURL
+  alias PipelinesAPI.TestResults.ListFlakyTests
+  alias PipelinesAPI.TestResults.FlakyTestDetails
+  alias PipelinesAPI.TestResults.FlakyTestDisruptions
+  alias PipelinesAPI.TestResults.FlakyHistory
+  alias PipelinesAPI.TestResults.DisruptionHistory
+  alias PipelinesAPI.Insights.Performance, as: InsightsPerformance
+  alias PipelinesAPI.Insights.Reliability, as: InsightsReliability
+  alias PipelinesAPI.Insights.Frequency, as: InsightsFrequency
+  alias PipelinesAPI.Members.List, as: ListMembers
+  alias PipelinesAPI.Members.Create, as: CreateMember
+  alias PipelinesAPI.Members.ListProject, as: ListProjectMembers
+  alias PipelinesAPI.Roles.List, as: ListRoles
+  alias PipelinesAPI.Roles.Describe, as: DescribeRole
+  alias PipelinesAPI.Roles.Create, as: CreateRole
+  alias PipelinesAPI.Roles.Update, as: UpdateRole
+  alias PipelinesAPI.Roles.Destroy, as: DestroyRole
+  alias PipelinesAPI.Permissions.List, as: ListPermissions
+  alias PipelinesAPI.RoleAssignments.AssignOrg, as: AssignOrgRole
+  alias PipelinesAPI.RoleAssignments.RetractOrg, as: RetractOrgRole
+  alias PipelinesAPI.RoleAssignments.AssignProject, as: AssignProjectRole
+  alias PipelinesAPI.RoleAssignments.RetractProject, as: RetractProjectRole
+  alias PipelinesAPI.Groups.List, as: ListGroups
+  alias PipelinesAPI.Groups.Create, as: CreateGroup
+  alias PipelinesAPI.Groups.Modify, as: ModifyGroup
+  alias PipelinesAPI.Groups.Destroy, as: DestroyGroup
+  alias PipelinesAPI.ServiceAccounts.List, as: ListServiceAccounts
+  alias PipelinesAPI.ServiceAccounts.Create, as: CreateServiceAccount
+  alias PipelinesAPI.ServiceAccounts.Describe, as: DescribeServiceAccount
+  alias PipelinesAPI.ServiceAccounts.Update, as: UpdateServiceAccount
+  alias PipelinesAPI.ServiceAccounts.Destroy, as: DestroyServiceAccount
+  alias PipelinesAPI.ServiceAccounts.Deactivate, as: DeactivateServiceAccount
+  alias PipelinesAPI.ServiceAccounts.Reactivate, as: ReactivateServiceAccount
+  alias PipelinesAPI.ServiceAccounts.RegenerateToken, as: RegenerateTokenServiceAccount
 
   plug(PipelinesAPI.Plug.Logger)
+  plug(PipelinesAPI.Plug.ClientMetrics)
 
   plug(Plug.Parsers,
     parsers: [
@@ -56,6 +92,9 @@ defmodule PipelinesAPI.Router do
 
   plug(:match)
   plug(:dispatch)
+
+  # Account-level org creation; reachable only via me.<domain>, no org context.
+  match("/organizations", via: :post, to: PipelinesAPI.Organizations.Create)
 
   match("/workflows", via: :get, to: WfList)
 
@@ -152,6 +191,68 @@ defmodule PipelinesAPI.Router do
     via: :get,
     to: DescribeArtifactsRetentionPolicy
   )
+
+  match("/artifacts", via: :get, to: ListArtifacts)
+  match("/artifacts/signed_url", via: :get, to: GetArtifactSignedURL)
+
+  match("/projects/:project_id/test_results/flaky_tests", via: :get, to: ListFlakyTests)
+
+  match("/projects/:project_id/test_results/flaky_tests/:test_id/disruptions",
+    via: :get,
+    to: FlakyTestDisruptions
+  )
+
+  match("/projects/:project_id/test_results/flaky_tests/:test_id",
+    via: :get,
+    to: FlakyTestDetails
+  )
+
+  match("/projects/:project_id/test_results/flaky_history", via: :get, to: FlakyHistory)
+
+  match("/projects/:project_id/test_results/disruption_history",
+    via: :get,
+    to: DisruptionHistory
+  )
+
+  match("/projects/:project_id/insights/performance", via: :get, to: InsightsPerformance)
+  match("/projects/:project_id/insights/reliability", via: :get, to: InsightsReliability)
+  match("/projects/:project_id/insights/frequency", via: :get, to: InsightsFrequency)
+
+  match("/members", via: :get, to: ListMembers)
+  # Invite a human to the org by SCM handle and set an initial role.
+  match("/members", via: :post, to: CreateMember)
+  # Set/change the single manually-assigned org role (overwrite).
+  match("/members/:subject_id/role", via: :put, to: AssignOrgRole)
+  # Remove the person from the org (cascades all their role bindings).
+  match("/members/:subject_id", via: :delete, to: RetractOrgRole)
+
+  match("/projects/:project_id/members", via: :get, to: ListProjectMembers)
+  # Upsert the manually-assigned project role.
+  match("/projects/:project_id/members/:subject_id/role", via: :put, to: AssignProjectRole)
+  # Remove the manually-assigned project role.
+  match("/projects/:project_id/members/:subject_id/role", via: :delete, to: RetractProjectRole)
+
+  match("/roles", via: :get, to: ListRoles)
+  match("/roles", via: :post, to: CreateRole)
+  match("/roles/:id", via: :get, to: DescribeRole)
+  match("/roles/:id", via: :patch, to: UpdateRole)
+  match("/roles/:id", via: :delete, to: DestroyRole)
+
+  match("/permissions", via: :get, to: ListPermissions)
+
+  match("/groups", via: :get, to: ListGroups)
+  match("/groups", via: :post, to: CreateGroup)
+  match("/groups/:id", via: :patch, to: ModifyGroup)
+  match("/groups/:id", via: :delete, to: DestroyGroup)
+
+  match("/service_accounts", via: :get, to: ListServiceAccounts)
+  match("/service_accounts", via: :post, to: CreateServiceAccount)
+  match("/service_accounts/:id", via: :get, to: DescribeServiceAccount)
+  match("/service_accounts/:id", via: :patch, to: UpdateServiceAccount)
+  match("/service_accounts/:id", via: :delete, to: DestroyServiceAccount)
+  match("/service_accounts/:id/deactivate", via: :post, to: DeactivateServiceAccount)
+  match("/service_accounts/:id/reactivate", via: :post, to: ReactivateServiceAccount)
+  match("/service_accounts/:id/regenerate_token", via: :post, to: RegenerateTokenServiceAccount)
 
   match("/logs/:job_id", via: :get, to: PipelinesAPI.Logs.Get)
 

@@ -1,7 +1,12 @@
 require 'sidekiq'
+require 'sidekiq-unique-jobs'
 
 Sidekiq.configure_client do |config|
   config.redis = { :url => ENV["REDIS_SIDEKIQ_URL"], :id => nil, :password => ENV["REDIS_SIDEKIQ_PASSWORD"] }
+
+  config.client_middleware do |chain|
+    chain.add SidekiqUniqueJobs::Middleware::Client
+  end
 end
 
 # first, use IRB to create a shared secret key for sessions and commit it
@@ -12,6 +17,7 @@ use Rack::Session::Cookie, secret: File.read("tmp/.session.key"), same_site: tru
 
 require 'sidekiq/web'
 require 'sidekiq-scheduler/web'
+require 'sidekiq_unique_jobs/web'
 
 Sidekiq::Web.use(Rack::Auth::Basic) do |user, password|
   user == (ENV["SIDEKIQ_USER"] || "admin") && password == (ENV["SIDEKIQ_PASSWORD"] || "admin")

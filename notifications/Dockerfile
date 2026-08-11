@@ -1,6 +1,6 @@
 ARG ELIXIR_VERSION=1.12.3
 ARG OTP_VERSION=24.3.4.17
-ARG ALPINE_VERSION=3.20.3
+ARG ALPINE_VERSION=3.20.9
 ARG BUILDER_IMAGE="hexpm/elixir:${ELIXIR_VERSION}-erlang-${OTP_VERSION}-alpine-${ALPINE_VERSION}"
 ARG RUNNER_IMAGE="alpine:${ALPINE_VERSION}"
 
@@ -10,6 +10,7 @@ ARG BUILD_ENV=prod
 ENV MIX_ENV=$BUILD_ENV
 
 RUN apk update && \
+    apk upgrade --no-cache && \
     apk add --no-cache \
     git openssh-keygen openssl ncurses-libs libstdc++
 
@@ -57,6 +58,7 @@ LABEL org.opencontainers.image.source https://github.com/semaphoreio/semaphore
 HEALTHCHECK NONE
 
 RUN apk update && \
+    apk upgrade --no-cache && \
     apk add --no-cache \
     openssh-keygen openssl ncurses-libs libstdc++
 

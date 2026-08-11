@@ -12,6 +12,7 @@ import (
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/feature"
 	pipelinepb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber.pipeline"
 	rbacpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/rbac"
+	taskpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/task"
 	support "github.com/semaphoreio/semaphore/mcp_server/test/support"
 
 	"google.golang.org/grpc"
@@ -527,6 +528,458 @@ func TestPipelineJobsScopeMismatchProjectMissing(t *testing.T) {
 	}
 }
 
+func TestPipelineJobsWithAfterPipeline(t *testing.T) {
+	pipelineID := "11111111-2222-3333-4444-555555555555"
+	client := &pipelineClientStub{
+		describeResp: &pipelinepb.DescribeResponse{
+			Pipeline: &pipelinepb.Pipeline{
+				PplId:          pipelineID,
+				Name:           "Build",
+				WfId:           "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+				ProjectId:      "proj-1",
+				OrganizationId: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+				State:          pipelinepb.Pipeline_DONE,
+				Result:         pipelinepb.Pipeline_PASSED,
+				WithAfterTask:  true,
+				AfterTaskId:    "after-task-1",
+			},
+			Blocks: []*pipelinepb.Block{
+				{
+					BlockId: "block-1",
+					Name:    "Tests",
+					State:   pipelinepb.Block_DONE,
+					Result:  pipelinepb.Block_PASSED,
+					Jobs: []*pipelinepb.Block_Job{
+						{Name: "unit", JobId: "job-1", Index: 0, Status: "finished", Result: "passed"},
+					},
+				},
+			},
+		},
+		topologyResp: &pipelinepb.DescribeTopologyResponse{
+			AfterPipeline: &pipelinepb.DescribeTopologyResponse_AfterPipeline{
+				Jobs: []string{"Clean", "Generate report"},
+			},
+		},
+	}
+	taskClient := &pipelineTaskClientStub{
+		describeManyResp: &taskpb.DescribeManyResponse{
+			Tasks: []*taskpb.Task{
+				{
+					Id: "after-task-1",
+					Jobs: []*taskpb.Task_Job{
+						{Id: "after-job-id-1", Name: "Clean"},
+						{Id: "after-job-id-2", Name: "Generate report"},
+						{Id: "compile-job-id", Name: "Compile"},
+					},
+				},
+			},
+		},
+	}
+
+	provider := &support.MockProvider{
+		PipelineClient: client,
+		TaskClient:     taskClient,
+		Timeout:        time.Second,
+		RBACClient:     newRBACStub("project.view"),
+	}
+	handler := jobsHandler(provider)
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"pipeline_id":     pipelineID,
+		"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+	}}}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
+	req.Header = header
+
+	res, err := handler(context.Background(), req)
+	if err != nil {
+		toFail(t, "handler error: %v", err)
+	}
+
+	result, ok := res.StructuredContent.(jobsListResult)
+	if !ok {
+		toFail(t, "unexpected structured content type: %T", res.StructuredContent)
+	}
+	if result.JobCount != 1 {
+		toFail(t, "expected 1 block job, got %d", result.JobCount)
+	}
+	if result.AfterPipelineJobCount != 2 {
+		toFail(t, "expected 2 after-pipeline jobs, got %d", result.AfterPipelineJobCount)
+	}
+	if len(result.AfterPipelineJobIDs) != 2 {
+		toFail(t, "expected 2 after-pipeline job IDs, got %d", len(result.AfterPipelineJobIDs))
+	}
+	if result.AfterPipelineJobIDs[0] != "after-job-id-1" || result.AfterPipelineJobIDs[1] != "after-job-id-2" {
+		toFail(t, "unexpected after-pipeline job IDs: %v", result.AfterPipelineJobIDs)
+	}
+	if client.lastTopology == nil || client.lastTopology.GetPplId() != pipelineID {
+		toFail(t, "expected topology request for pipeline, got %+v", client.lastTopology)
+	}
+	if taskClient.lastDescribeMany == nil {
+		toFail(t, "expected task DescribeMany request for after-pipeline resolution")
+	}
+	if len(taskClient.lastDescribeMany.GetTaskIds()) != 1 || taskClient.lastDescribeMany.GetTaskIds()[0] != "after-task-1" {
+		toFail(t, "expected task DescribeMany request scoped to afterTaskID, got %+v", taskClient.lastDescribeMany)
+	}
+
+	// Verify markdown contains the after-pipeline section
+	text, ok := res.Content[0].(mcp.TextContent)
+	if !ok {
+		toFail(t, "expected text content, got %T", res.Content[0])
+	}
+	if !strings.Contains(text.Text, "After Pipeline") {
+		toFail(t, "expected markdown to contain 'After Pipeline' section, got:\n%s", text.Text)
+	}
+	if !strings.Contains(text.Text, "after-job-id-1") || !strings.Contains(text.Text, "after-job-id-2") {
+		toFail(t, "expected markdown to contain after-pipeline job IDs, got:\n%s", text.Text)
+	}
+	if !strings.Contains(text.Text, "Use `jobs_describe` or `jobs_logs` to inspect these jobs.") {
+		toFail(t, "expected markdown to contain jobs_describe hint, got:\n%s", text.Text)
+	}
+}
+
+func TestPipelineJobsWithoutAfterTask(t *testing.T) {
+	pipelineID := "11111111-2222-3333-4444-555555555555"
+	client := &pipelineClientStub{
+		describeResp: &pipelinepb.DescribeResponse{
+			Pipeline: &pipelinepb.Pipeline{
+				PplId:          pipelineID,
+				Name:           "Build",
+				WfId:           "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+				ProjectId:      "proj-1",
+				OrganizationId: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+				State:          pipelinepb.Pipeline_DONE,
+				Result:         pipelinepb.Pipeline_PASSED,
+				WithAfterTask:  false,
+			},
+			Blocks: []*pipelinepb.Block{
+				{
+					BlockId: "block-1",
+					Name:    "Tests",
+					State:   pipelinepb.Block_DONE,
+					Result:  pipelinepb.Block_PASSED,
+					Jobs: []*pipelinepb.Block_Job{
+						{Name: "unit", JobId: "job-1", Index: 0, Status: "finished", Result: "passed"},
+					},
+				},
+			},
+		},
+	}
+
+	provider := &support.MockProvider{PipelineClient: client, Timeout: time.Second, RBACClient: newRBACStub("project.view")}
+	handler := jobsHandler(provider)
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"pipeline_id":     pipelineID,
+		"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+	}}}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
+	req.Header = header
+
+	res, err := handler(context.Background(), req)
+	if err != nil {
+		toFail(t, "handler error: %v", err)
+	}
+
+	result, ok := res.StructuredContent.(jobsListResult)
+	if !ok {
+		toFail(t, "unexpected structured content type: %T", res.StructuredContent)
+	}
+	if result.JobCount != 1 {
+		toFail(t, "expected 1 job, got %d", result.JobCount)
+	}
+	if len(result.AfterPipelineJobIDs) != 0 {
+		toFail(t, "expected no after-pipeline job IDs, got %v", result.AfterPipelineJobIDs)
+	}
+	if client.lastTopology != nil {
+		toFail(t, "expected no topology request when WithAfterTask is false, got %+v", client.lastTopology)
+	}
+}
+
+func TestPipelineJobsTopologyFailureGraceful(t *testing.T) {
+	pipelineID := "11111111-2222-3333-4444-555555555555"
+	client := &pipelineClientStub{
+		describeResp: &pipelinepb.DescribeResponse{
+			Pipeline: &pipelinepb.Pipeline{
+				PplId:          pipelineID,
+				Name:           "Build",
+				WfId:           "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+				ProjectId:      "proj-1",
+				OrganizationId: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+				State:          pipelinepb.Pipeline_DONE,
+				Result:         pipelinepb.Pipeline_PASSED,
+				WithAfterTask:  true,
+				AfterTaskId:    "after-task-1",
+			},
+			Blocks: []*pipelinepb.Block{
+				{
+					BlockId: "block-1",
+					Name:    "Tests",
+					State:   pipelinepb.Block_DONE,
+					Result:  pipelinepb.Block_PASSED,
+					Jobs: []*pipelinepb.Block_Job{
+						{Name: "unit", JobId: "job-1", Index: 0, Status: "finished", Result: "passed"},
+					},
+				},
+			},
+		},
+		topologyErr: errors.New("connection refused"),
+	}
+
+	provider := &support.MockProvider{PipelineClient: client, Timeout: time.Second, RBACClient: newRBACStub("project.view")}
+	handler := jobsHandler(provider)
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"pipeline_id":     pipelineID,
+		"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+	}}}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
+	req.Header = header
+
+	res, err := handler(context.Background(), req)
+	if err != nil {
+		toFail(t, "handler error: %v", err)
+	}
+
+	result, ok := res.StructuredContent.(jobsListResult)
+	if !ok {
+		toFail(t, "unexpected structured content type: %T", res.StructuredContent)
+	}
+	// Block jobs should still be returned despite topology failure
+	if result.JobCount != 1 {
+		toFail(t, "expected 1 block job, got %d", result.JobCount)
+	}
+	if len(result.AfterPipelineJobIDs) != 0 {
+		toFail(t, "expected no after-pipeline job IDs on topology failure, got %v", result.AfterPipelineJobIDs)
+	}
+	if result.AfterPipelineJobCount != 0 {
+		toFail(t, "expected 0 after-pipeline job count on topology failure, got %d", result.AfterPipelineJobCount)
+	}
+	// Topology should still have been attempted
+	if client.lastTopology == nil || client.lastTopology.GetPplId() != pipelineID {
+		toFail(t, "expected topology request for pipeline, got %+v", client.lastTopology)
+	}
+
+	// Markdown should not contain After Pipeline section
+	text, ok := res.Content[0].(mcp.TextContent)
+	if !ok {
+		toFail(t, "expected text content, got %T", res.Content[0])
+	}
+	if strings.Contains(text.Text, "After Pipeline") {
+		toFail(t, "expected markdown to NOT contain 'After Pipeline' section on failure, got:\n%s", text.Text)
+	}
+}
+
+func TestPipelineJobsAfterTaskLookupFailureGraceful(t *testing.T) {
+	pipelineID := "11111111-2222-3333-4444-555555555555"
+	client := &pipelineClientStub{
+		describeResp: &pipelinepb.DescribeResponse{
+			Pipeline: &pipelinepb.Pipeline{
+				PplId:          pipelineID,
+				Name:           "Build",
+				WfId:           "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+				ProjectId:      "proj-1",
+				OrganizationId: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+				State:          pipelinepb.Pipeline_DONE,
+				Result:         pipelinepb.Pipeline_PASSED,
+				WithAfterTask:  true,
+				AfterTaskId:    "after-task-1",
+			},
+			Blocks: []*pipelinepb.Block{
+				{
+					BlockId: "block-1",
+					Name:    "Tests",
+					State:   pipelinepb.Block_DONE,
+					Result:  pipelinepb.Block_PASSED,
+					Jobs: []*pipelinepb.Block_Job{
+						{Name: "unit", JobId: "job-1", Index: 0, Status: "finished", Result: "passed"},
+					},
+				},
+			},
+		},
+		topologyResp: &pipelinepb.DescribeTopologyResponse{
+			AfterPipeline: &pipelinepb.DescribeTopologyResponse_AfterPipeline{
+				Jobs: []string{"Clean"},
+			},
+		},
+	}
+	taskClient := &pipelineTaskClientStub{
+		describeManyErr: errors.New("task service unavailable"),
+	}
+
+	provider := &support.MockProvider{
+		PipelineClient: client,
+		TaskClient:     taskClient,
+		Timeout:        time.Second,
+		RBACClient:     newRBACStub("project.view"),
+	}
+	handler := jobsHandler(provider)
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"pipeline_id":     pipelineID,
+		"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+	}}}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
+	req.Header = header
+
+	res, err := handler(context.Background(), req)
+	if err != nil {
+		toFail(t, "handler error: %v", err)
+	}
+
+	result, ok := res.StructuredContent.(jobsListResult)
+	if !ok {
+		toFail(t, "unexpected structured content type: %T", res.StructuredContent)
+	}
+	if result.JobCount != 1 {
+		toFail(t, "expected 1 block job, got %d", result.JobCount)
+	}
+	if len(result.AfterPipelineJobIDs) != 0 {
+		toFail(t, "expected no after-pipeline job IDs on task lookup failure, got %v", result.AfterPipelineJobIDs)
+	}
+	if client.lastTopology == nil || client.lastTopology.GetPplId() != pipelineID {
+		toFail(t, "expected topology request for pipeline, got %+v", client.lastTopology)
+	}
+	if taskClient.lastDescribeMany == nil {
+		toFail(t, "expected task DescribeMany request for after-task lookup")
+	}
+
+	text, ok := res.Content[0].(mcp.TextContent)
+	if !ok {
+		toFail(t, "expected text content, got %T", res.Content[0])
+	}
+	if !strings.Contains(text.Text, "After Pipeline (IDs unavailable)") {
+		toFail(t, "expected markdown to contain fallback after-pipeline section, got:\n%s", text.Text)
+	}
+	if !strings.Contains(text.Text, "`Clean`") {
+		toFail(t, "expected markdown to contain unresolved after-pipeline job names, got:\n%s", text.Text)
+	}
+	if strings.Contains(text.Text, "No jobs found for this pipeline") {
+		toFail(t, "expected markdown to avoid no-jobs message when after-pipeline names exist, got:\n%s", text.Text)
+	}
+}
+
+func TestPipelineJobsAfterTaskLookupFailureAfterPipelineOnly(t *testing.T) {
+	pipelineID := "11111111-2222-3333-4444-555555555555"
+	client := &pipelineClientStub{
+		describeResp: &pipelinepb.DescribeResponse{
+			Pipeline: &pipelinepb.Pipeline{
+				PplId:          pipelineID,
+				Name:           "Build",
+				WfId:           "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+				ProjectId:      "proj-1",
+				OrganizationId: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+				State:          pipelinepb.Pipeline_DONE,
+				Result:         pipelinepb.Pipeline_PASSED,
+				WithAfterTask:  true,
+				AfterTaskId:    "after-task-1",
+			},
+			Blocks: []*pipelinepb.Block{
+				{
+					BlockId: "block-1",
+					Name:    "Tests",
+					State:   pipelinepb.Block_DONE,
+					Result:  pipelinepb.Block_PASSED,
+					Jobs:    []*pipelinepb.Block_Job{},
+				},
+			},
+		},
+		topologyResp: &pipelinepb.DescribeTopologyResponse{
+			AfterPipeline: &pipelinepb.DescribeTopologyResponse_AfterPipeline{
+				Jobs: []string{"Clean", "Report"},
+			},
+		},
+	}
+	taskClient := &pipelineTaskClientStub{
+		describeManyErr: errors.New("task service unavailable"),
+	}
+
+	provider := &support.MockProvider{
+		PipelineClient: client,
+		TaskClient:     taskClient,
+		Timeout:        time.Second,
+		RBACClient:     newRBACStub("project.view"),
+	}
+	handler := jobsHandler(provider)
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"pipeline_id":     pipelineID,
+		"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+	}}}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
+	req.Header = header
+
+	res, err := handler(context.Background(), req)
+	if err != nil {
+		toFail(t, "handler error: %v", err)
+	}
+
+	result, ok := res.StructuredContent.(jobsListResult)
+	if !ok {
+		toFail(t, "unexpected structured content type: %T", res.StructuredContent)
+	}
+	if result.JobCount != 0 {
+		toFail(t, "expected 0 block jobs, got %d", result.JobCount)
+	}
+	if len(result.AfterPipelineJobIDs) != 0 {
+		toFail(t, "expected no resolved after-pipeline IDs on task lookup failure, got %v", result.AfterPipelineJobIDs)
+	}
+	if len(result.AfterPipelineJobNames) != 2 {
+		toFail(t, "expected unresolved after-pipeline names fallback, got %v", result.AfterPipelineJobNames)
+	}
+
+	text, ok := res.Content[0].(mcp.TextContent)
+	if !ok {
+		toFail(t, "expected text content, got %T", res.Content[0])
+	}
+	if strings.Contains(text.Text, "No jobs found for this pipeline") {
+		toFail(t, "expected markdown to avoid no-jobs message when fallback names exist, got:\n%s", text.Text)
+	}
+	if !strings.Contains(text.Text, "After Pipeline (IDs unavailable)") {
+		toFail(t, "expected markdown to contain fallback after-pipeline section, got:\n%s", text.Text)
+	}
+	if !strings.Contains(text.Text, "`Clean`") || !strings.Contains(text.Text, "`Report`") {
+		toFail(t, "expected markdown to contain unresolved job names, got:\n%s", text.Text)
+	}
+}
+
+func TestMatchAfterPipelineJobsToIDs_DuplicateTaskNamesBecomeUnresolved(t *testing.T) {
+	jobIDs, unresolved := matchAfterPipelineJobsToIDs(
+		[]string{"test"},
+		[]*taskpb.Task_Job{
+			{Id: "id-a", Name: "test", Index: 0},
+			{Id: "id-b", Name: "test", Index: 1},
+		},
+	)
+
+	if len(jobIDs) != 0 {
+		toFail(t, "expected no resolved IDs for ambiguous duplicate task names, got %v", jobIDs)
+	}
+	if len(unresolved) != 1 || unresolved[0] != "test" {
+		toFail(t, "expected unresolved name [test], got %v", unresolved)
+	}
+}
+
+func TestMatchAfterPipelineJobsToIDs_DoesNotTrimNames(t *testing.T) {
+	jobIDs, unresolved := matchAfterPipelineJobsToIDs(
+		[]string{"  Summary  ", "Summary"},
+		[]*taskpb.Task_Job{
+			{Id: "id-spaced", Name: "  Summary  ", Index: 0},
+			{Id: "id-plain", Name: "Summary", Index: 1},
+		},
+	)
+
+	if len(unresolved) != 0 {
+		toFail(t, "expected no unresolved jobs, got %v", unresolved)
+	}
+	if len(jobIDs) != 2 {
+		toFail(t, "expected 2 job IDs, got %d", len(jobIDs))
+	}
+	if jobIDs[0] != "id-spaced" || jobIDs[1] != "id-plain" {
+		toFail(t, "expected exact-name mapping [id-spaced id-plain], got %v", jobIDs)
+	}
+}
+
 type pipelineClientStub struct {
 	pipelinepb.PipelineServiceClient
 	listResp     *pipelinepb.ListKeysetResponse
@@ -535,6 +988,9 @@ type pipelineClientStub struct {
 	describeResp *pipelinepb.DescribeResponse
 	describeErr  error
 	lastDescribe *pipelinepb.DescribeRequest
+	topologyResp *pipelinepb.DescribeTopologyResponse
+	topologyErr  error
+	lastTopology *pipelinepb.DescribeTopologyRequest
 }
 
 func (s *pipelineClientStub) Schedule(context.Context, *pipelinepb.ScheduleRequest, ...grpc.CallOption) (*pipelinepb.ScheduleResponse, error) {
@@ -545,8 +1001,15 @@ func (s *pipelineClientStub) DescribeMany(context.Context, *pipelinepb.DescribeM
 	panic("not implemented")
 }
 
-func (s *pipelineClientStub) DescribeTopology(context.Context, *pipelinepb.DescribeTopologyRequest, ...grpc.CallOption) (*pipelinepb.DescribeTopologyResponse, error) {
-	panic("not implemented")
+func (s *pipelineClientStub) DescribeTopology(_ context.Context, in *pipelinepb.DescribeTopologyRequest, _ ...grpc.CallOption) (*pipelinepb.DescribeTopologyResponse, error) {
+	s.lastTopology = in
+	if s.topologyErr != nil {
+		return nil, s.topologyErr
+	}
+	if s.topologyResp == nil {
+		return &pipelinepb.DescribeTopologyResponse{}, nil
+	}
+	return s.topologyResp, nil
 }
 
 func (s *pipelineClientStub) Terminate(context.Context, *pipelinepb.TerminateRequest, ...grpc.CallOption) (*pipelinepb.TerminateResponse, error) {
@@ -618,6 +1081,24 @@ func (s *pipelineClientStub) PartialRebuild(context.Context, *pipelinepb.Partial
 
 func (s *pipelineClientStub) Version(context.Context, *pipelinepb.VersionRequest, ...grpc.CallOption) (*pipelinepb.VersionResponse, error) {
 	panic("not implemented")
+}
+
+type pipelineTaskClientStub struct {
+	taskpb.TaskServiceClient
+	describeManyResp *taskpb.DescribeManyResponse
+	describeManyErr  error
+	lastDescribeMany *taskpb.DescribeManyRequest
+}
+
+func (s *pipelineTaskClientStub) DescribeMany(_ context.Context, in *taskpb.DescribeManyRequest, _ ...grpc.CallOption) (*taskpb.DescribeManyResponse, error) {
+	s.lastDescribeMany = in
+	if s.describeManyErr != nil {
+		return nil, s.describeManyErr
+	}
+	if s.describeManyResp == nil {
+		return &taskpb.DescribeManyResponse{}, nil
+	}
+	return s.describeManyResp, nil
 }
 
 func requireErrorText(t *testing.T, res *mcp.CallToolResult) string {

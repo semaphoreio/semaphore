@@ -18,7 +18,7 @@
     </div>
 
     <div class="f6">
-    Docs: <a href="https://<%= Application.fetch_env!(:front, :docs_domain) %>/article/53-sem-reference#working-with-projects">Working with Projects</a> & <a href="https://<%= Application.fetch_env!(:front, :docs_domain) %>/article/52-projects-yaml-reference">YAML Reference</a>
+    Docs: <a href="https://<%= Application.fetch_env!(:front, :docs_domain) %>/reference/semaphore-cli#working-with-projects">Working with Projects</a> & <a href="https://<%= Application.fetch_env!(:front, :docs_domain) %>/reference/semaphore-cli#working-with-projects">YAML Reference</a>
     </div>
 
     <details class="nb1 pointer bt b--lighter-gray pt2 mt3">

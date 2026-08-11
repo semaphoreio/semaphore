@@ -27,6 +27,14 @@ defmodule Rbac.Store.RbacUser.Test do
       assert Rbac.Repo.Subject |> Rbac.Repo.all() |> length == 1
       assert Rbac.Repo.RbacUser |> Rbac.Repo.all() |> length == 1
     end
+
+    test "returns error for emails that only differ by case and spaces" do
+      existing_user_id = Ecto.UUID.generate()
+      new_user_id = Ecto.UUID.generate()
+
+      assert RbacUser.create(existing_user_id, "User@Example.com", "Test User") == :ok
+      assert RbacUser.create(new_user_id, "  user@example.com  ", "Another User") == :error
+    end
   end
 
   describe "delete/1" do
@@ -43,6 +51,28 @@ defmodule Rbac.Store.RbacUser.Test do
       assert Rbac.Repo.aggregate(Rbac.Repo.SubjectRoleBinding, :count, :id) == 0
       assert Rbac.Repo.aggregate(Rbac.Repo.UserPermissionsKeyValueStore, :count, :key) == 0
       assert Rbac.Repo.aggregate(Rbac.Repo.ProjectAccessKeyValueStore, :count, :key) == 0
+    end
+  end
+
+  describe "fetch_by_email/1" do
+    test "finds user with different case than stored email" do
+      {:ok, user} =
+        Factories.RbacUser.insert(Ecto.UUID.generate(), "Test User", "User@Example.com")
+
+      assert {:ok, found} = RbacUser.fetch_by_email("user@example.com")
+      assert found.id == user.id
+    end
+
+    test "finds user when lookup email has leading and trailing spaces" do
+      {:ok, user} =
+        Factories.RbacUser.insert(Ecto.UUID.generate(), "Test User", "User@Example.com")
+
+      assert {:ok, found} = RbacUser.fetch_by_email("  user@example.com  ")
+      assert found.id == user.id
+    end
+
+    test "returns error when email does not exist" do
+      assert {:error, :not_found} = RbacUser.fetch_by_email("nonexistent@example.com")
     end
   end
 

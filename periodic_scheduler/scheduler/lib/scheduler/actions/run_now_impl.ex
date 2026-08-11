@@ -4,6 +4,8 @@ defmodule Scheduler.Actions.RunNowImpl do
   periodic.
   """
 
+  require Logger
+
   alias Scheduler.PeriodicsTriggers.Model.PeriodicsTriggersQueries
   alias Scheduler.Periodics.Model.PeriodicsQueries
   alias Scheduler.Periodics.Model.Periodics
@@ -46,7 +48,7 @@ defmodule Scheduler.Actions.RunNowImpl do
         do: params.pipeline_file,
         else: periodics.pipeline_file
 
-    case merge_values(parameters, values) do
+    case merge_values(parameters, values, periodics.id) do
       {:ok, values} ->
         {:ok,
          params
@@ -59,24 +61,80 @@ defmodule Scheduler.Actions.RunNowImpl do
     end
   end
 
-  def merge_values(parameters, parameter_values) do
+  def merge_values(parameters, parameter_values, periodic_id) do
     request_values =
       parameter_values
       |> Enum.map(&{&1.name, String.trim(&1.value)})
       |> Enum.filter(&(String.length(elem(&1, 1)) > 0))
       |> Map.new()
 
-    to_error = &("Parameter '#{&1.name}' is required." |> ToTuple.error(:INVALID_ARGUMENT))
+    to_required_error =
+      &("Parameter '#{&1.name}' is required." |> ToTuple.error(:INVALID_ARGUMENT))
 
     Enum.reduce_while(parameters, {:ok, []}, fn parameter, {:ok, acc_values} ->
-      value = Map.get(request_values, parameter.name, parameter.default_value || "")
+      {value, source} =
+        case Map.fetch(request_values, parameter.name) do
+          {:ok, submitted} -> {submitted, :submitted}
+          :error -> {parameter.default_value || "", :default}
+        end
 
       case {String.equivalent?(value, ""), parameter.required} do
-        {true, true} -> {:halt, to_error.(parameter)}
+        {true, true} -> {:halt, to_required_error.(parameter)}
         {true, false} -> {:cont, {:ok, acc_values}}
-        {false, _} -> {:cont, {:ok, acc_values ++ [%{name: parameter.name, value: value}]}}
+        {false, _} -> validated_step(parameter, value, source, acc_values, periodic_id)
       end
     end)
+  end
+
+  defp validated_step(parameter, value, source, acc_values, periodic_id) do
+    case validate_value_format(parameter, value, source, periodic_id) do
+      :ok -> {:cont, {:ok, acc_values ++ [%{name: parameter.name, value: value}]}}
+      {:error, _} = err -> {:halt, err}
+    end
+  end
+
+  defp validate_value_format(parameter, value, source, periodic_id) do
+    validate_input_format? = Map.get(parameter, :validate_input_format, false)
+    pattern = Map.get(parameter, :regex_pattern)
+
+    if validate_input_format? and is_binary(pattern) and pattern != "" do
+      case Util.SafeRegex.match(pattern, value) do
+        {:ok, true} ->
+          :ok
+
+        {:ok, false} ->
+          format_error(parameter, mismatch_message(source))
+
+        {:error, :value_too_long} ->
+          format_error(
+            parameter,
+            "value exceeds maximum length of #{Util.SafeRegex.max_value_length()} bytes"
+          )
+
+        {:error, reason} ->
+          Logger.warning("Stored regex_pattern rejected at run-now",
+            event: "scheduler.run_now.regex_match_error",
+            periodic_id: periodic_id,
+            parameter_name: parameter.name,
+            reason: reason,
+            source: source
+          )
+
+          format_error(parameter, "value could not be validated against regex_pattern")
+      end
+    else
+      :ok
+    end
+  end
+
+  defp mismatch_message(:default),
+    do:
+      "default value does not match required format; provide an explicit value or fix the default"
+
+  defp mismatch_message(_), do: "value does not match required format"
+
+  defp format_error(parameter, message) do
+    "Parameter '#{parameter.name}' #{message}." |> ToTuple.error(:INVALID_ARGUMENT)
   end
 
   defp suspended?(%{suspended: true}),
@@ -110,8 +168,10 @@ defmodule Scheduler.Actions.RunNowImpl do
          {:ok, commit} <- fetch_branch_revision(repository_id, revision_args) do
       {:ok, commit}
     else
-      {:error, {:describe_project, _project_id}} ->
-        "Project assigned to periodic was not found." |> ToTuple.error(:FAILED_PRECONDITION)
+      {:error, {:describe_project, project_id, reason}} ->
+        reason
+        |> describe_project_error(project_id)
+        |> ToTuple.error(:FAILED_PRECONDITION)
 
       {:error, {:describe_revision, _revision_args}} ->
         "Cannot find git reference #{revision_args[:reference]}."
@@ -122,7 +182,7 @@ defmodule Scheduler.Actions.RunNowImpl do
   defp fetch_project_repository_id(project_id) do
     case ProjecthubClient.describe(project_id) do
       {:ok, project} -> {:ok, project.spec.repository.id}
-      _ -> {:error, {:describe_project, project_id}}
+      {:error, reason} -> {:error, {:describe_project, project_id, reason}}
     end
   end
 
@@ -131,5 +191,29 @@ defmodule Scheduler.Actions.RunNowImpl do
       {:ok, commit} -> {:ok, commit}
       _ -> {:error, {:describe_revision, revision_args}}
     end
+  end
+
+  defp describe_project_error(%{code: :NOT_FOUND}, _project_id),
+    do: "Project assigned to periodic was not found."
+
+  defp describe_project_error(reason = {:timeout, _timeout}, project_id) do
+    projecthub_describe_error(
+      project_id,
+      reason,
+      "Project lookup timed out while starting workflow."
+    )
+  end
+
+  defp describe_project_error(reason, project_id) do
+    projecthub_describe_error(
+      project_id,
+      reason,
+      "Project lookup failed while starting workflow."
+    )
+  end
+
+  defp projecthub_describe_error(project_id, reason, public_message) do
+    Logger.error("Projecthub describe failed for project #{project_id}: #{inspect(reason)}")
+    public_message
   end
 end

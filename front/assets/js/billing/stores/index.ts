@@ -1,3 +1,4 @@
+import * as Addons from "./addons";
 import * as Seats from './seats';
 import * as Spendings from "./spendings";
 import * as Config from "./config";
@@ -8,6 +9,7 @@ import * as Request from "./request";
 import * as Tooltip from "./tooltip";
 
 export {
+  Addons,
   Seats,
   Spendings,
   Invoices,

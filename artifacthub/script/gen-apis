@@ -17,8 +17,56 @@ protoc \
        --go-grpc_opt=require_unimplemented_servers=false \
        tmp/internal_api/include/internal_api/response_status.proto
 
-# internal api
+# status
+mkdir -p pkg/api/descriptors/include/internal_api/status
+sed --in-place '/go_package/d' tmp/internal_api/include/internal_api/status.proto
+echo 'option go_package = "github.com/semaphoreio/semaphore/artifacthub/pkg/api/descriptors/include/internal_api/status";' >> tmp/internal_api/include/internal_api/status.proto
 
+protoc \
+       --proto_path tmp/internal_api/include/internal_api \
+       --proto_path tmp/internal_api/include \
+       --go_out=pkg/api/descriptors/include/internal_api/status \
+       --go_opt=paths=source_relative \
+       --go-grpc_out=pkg/api/descriptors/include/internal_api/status \
+       --go-grpc_opt=paths=source_relative \
+       --go-grpc_opt=require_unimplemented_servers=false \
+       tmp/internal_api/include/internal_api/status.proto
+
+
+
+# repository integrator
+mkdir -p pkg/api/descriptors/repository_integrator/
+sed --in-place '/go_package/d' tmp/internal_api/repository_integrator.proto
+echo 'option go_package = "github.com/semaphoreio/semaphore/artifacthub/pkg/api/descriptors/repository_integrator";' >> tmp/internal_api/repository_integrator.proto
+
+protoc \
+       --proto_path tmp/internal_api \
+       --proto_path tmp/internal_api/include \
+       --proto_path tmp/internal_api/include/internal_api \
+       --go_out=pkg/api/descriptors/repository_integrator \
+       --go_opt=paths=source_relative \
+       --go-grpc_out=pkg/api/descriptors/repository_integrator \
+       --go-grpc_opt=paths=source_relative \
+       --go-grpc_opt=require_unimplemented_servers=false \
+       tmp/internal_api/repository_integrator.proto
+
+# user api
+mkdir -p pkg/api/descriptors/user/
+sed --in-place '/go_package/d' tmp/internal_api/user.proto
+echo 'option go_package = "github.com/semaphoreio/semaphore/artifacthub/pkg/api/descriptors/user";' >> tmp/internal_api/user.proto
+
+protoc \
+       --proto_path tmp/internal_api \
+       --proto_path tmp/internal_api/include \
+       --proto_path tmp/internal_api/include/internal_api \
+       --go_out=pkg/api/descriptors/user \
+       --go_opt=paths=source_relative \
+       --go-grpc_out=pkg/api/descriptors/user \
+       --go-grpc_opt=paths=source_relative \
+       --go-grpc_opt=require_unimplemented_servers=false \
+       tmp/internal_api/user.proto
+
+# internal api
 mkdir -p pkg/api/descriptors/artifacthub
 sed --in-place '/go_package/d' tmp/internal_api/artifacthub.proto
 echo 'option go_package = "github.com/semaphoreio/semaphore/artifacthub/pkg/api/descriptors/artifacthub";' >> tmp/internal_api/artifacthub.proto
@@ -50,6 +98,44 @@ protoc \
        --go-grpc_opt=paths=source_relative \
        --go-grpc_opt=require_unimplemented_servers=false \
        tmp/internal_api/server_farm.job.proto
+
+
+#plumber_w_f.workflow
+
+mkdir -p pkg/api/descriptors/plumber_w_f.workflow/
+sed --in-place '/go_package/d' tmp/internal_api/plumber_w_f.workflow.proto
+echo 'option go_package = "github.com/semaphoreio/semaphore/artifacthub/pkg/api/descriptors/plumber_w_f.workflow";' >> tmp/internal_api/plumber_w_f.workflow.proto
+
+protoc \
+       --proto_path tmp/internal_api \
+       --proto_path tmp/internal_api/include \
+       --proto_path tmp/internal_api/include/internal_api \
+       --go_out=pkg/api/descriptors/plumber_w_f.workflow \
+       --go_opt=paths=source_relative \
+       --go-grpc_out=pkg/api/descriptors/plumber_w_f.workflow \
+       --go-grpc_opt=paths=source_relative \
+       --go-grpc_opt=require_unimplemented_servers=false \
+       tmp/internal_api/plumber_w_f.workflow.proto
+
+# plumber.pipeline
+
+
+mkdir -p pkg/api/descriptors/plumber.pipeline
+sed --in-place '/go_package/d' tmp/internal_api/plumber.pipeline.proto
+echo 'option go_package = "github.com/semaphoreio/semaphore/artifacthub/pkg/api/descriptors/plumber.pipeline";' >> tmp/internal_api/plumber.pipeline.proto
+
+protoc \
+       --proto_path tmp/internal_api \
+       --proto_path tmp/internal_api/include \
+       --proto_path tmp/internal_api/include/internal_api \
+       --go_out=pkg/api/descriptors/plumber.pipeline \
+       --go_opt=paths=source_relative \
+       --go-grpc_out=pkg/api/descriptors/plumber.pipeline \
+       --go-grpc_opt=paths=source_relative \
+       --go-grpc_opt=require_unimplemented_servers=false \
+       tmp/internal_api/plumber.pipeline.proto
+
+
 
 # public api
 

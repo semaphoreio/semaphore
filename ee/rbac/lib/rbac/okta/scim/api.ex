@@ -264,7 +264,9 @@ defmodule Rbac.Okta.Scim.Api do
   end
 
   defp serialize_user(okta_user) do
-    Map.merge(okta_user.payload, %{
+    okta_user.payload
+    |> Map.delete("password")
+    |> Map.merge(%{
       id: okta_user.id,
       meta: %{resourceType: "User"}
     })
