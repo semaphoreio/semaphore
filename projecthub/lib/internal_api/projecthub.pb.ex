@@ -64,6 +64,15 @@ defmodule InternalApi.Projecthub.Project.Spec.Task.Status do
   field(:STATUS_ACTIVE, 2)
 end
 
+defmodule InternalApi.Projecthub.Project.Spec.Task.CommitStatus do
+  @moduledoc false
+  use Protobuf, enum: true, protoc_gen_elixir_version: "0.11.0", syntax: :proto3
+
+  field(:FOLLOW_PROJECT, 0)
+  field(:ALWAYS, 1)
+  field(:NEVER, 2)
+end
+
 defmodule InternalApi.Projecthub.Project.Status.State do
   @moduledoc false
   use Protobuf, enum: true, protoc_gen_elixir_version: "0.11.0", syntax: :proto3
@@ -262,6 +271,12 @@ defmodule InternalApi.Projecthub.Project.Spec.Task do
   field(:recurring, 7, type: :bool)
   field(:parameters, 8, repeated: true, type: InternalApi.Projecthub.Project.Spec.Task.Parameter)
   field(:description, 9, type: :string)
+
+  field(:commit_status, 10,
+    type: InternalApi.Projecthub.Project.Spec.Task.CommitStatus,
+    json_name: "commitStatus",
+    enum: true
+  )
 end
 
 defmodule InternalApi.Projecthub.Project.Spec do
