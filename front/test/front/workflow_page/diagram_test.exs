@@ -65,16 +65,16 @@ defmodule Front.WorkflowPage.DiagramTest do
       assert Map.has_key?(job, :finished_at)
     end
 
-    test "when a block task belongs to this pipeline, the block is not carried over", context do
+    test "when a block task belongs to this pipeline, the block is not marked reused", context do
       create_tasks(context.blocks)
 
       pipeline = Front.Models.Pipeline.find(context.pipeline.id)
       diagram = Diagram.load(pipeline)
 
-      assert Enum.all?(diagram.blocks, &(&1.carried_over_from == nil))
+      assert Enum.all?(diagram.blocks, &(&1.reused_from == nil))
     end
 
-    test "when a block task belongs to another pipeline, the block is carried over", context do
+    test "when a block task belongs to another pipeline, the block is marked reused", context do
       create_tasks(context.blocks)
 
       original_ppl_id = "b1e2a3c4-5d6e-4f70-8a9b-0c1d2e3f4a5b"
@@ -83,9 +83,9 @@ defmodule Front.WorkflowPage.DiagramTest do
       pipeline = Front.Models.Pipeline.find(context.pipeline.id)
       diagram = Diagram.load(pipeline)
 
-      carry_overs = Map.new(diagram.blocks, fn block -> {block.name, block.carried_over_from} end)
+      reuses = Map.new(diagram.blocks, fn block -> {block.name, block.reused_from} end)
 
-      assert carry_overs == %{
+      assert reuses == %{
                "Block 1" => nil,
                "Block 2" => original_ppl_id,
                "Block 3" => nil
