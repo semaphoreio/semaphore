@@ -33,6 +33,7 @@ defmodule GithubNotifier.Application do
         [
           {Task.Supervisor, name: GithubNotifier.TaskSupervisor},
           %{id: Cachex, start: {Cachex, :start_link, [:store, []]}},
+          %{id: TaskPolicyCachex, start: {Cachex, :start_link, [:task_policy, []]}},
           %{
             id: FeatureProvider.Cachex,
             start: {Cachex, :start_link, [:feature_provider_cache, []]}
