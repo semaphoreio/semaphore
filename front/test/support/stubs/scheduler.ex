@@ -39,7 +39,8 @@ defmodule Support.Stubs.Scheduler do
       pause_toggled_by: "",
       pause_toggled_at: Time.now() |> Map.take([:seconds, :nanos]),
       inserted_at: Time.now() |> Map.take([:seconds, :nanos]),
-      parameters: []
+      parameters: [],
+      commit_status: :FOLLOW_PROJECT
     ]
 
     defaults |> Keyword.merge(params) |> Map.new() |> Util.Proto.deep_new!(Periodic)
@@ -182,7 +183,8 @@ defmodule Support.Stubs.Scheduler do
         RunNowResponse.new(status: status(:NOT_FOUND))
     end
 
-    @modifiable_fields ~w(name description recurring reference pipeline_file at parameters)a
+    @modifiable_fields ~w(name description recurring reference pipeline_file at parameters
+                          commit_status)a
 
     def persist(req, _) do
       require Logger
@@ -324,7 +326,8 @@ defmodule Support.Stubs.Scheduler do
         reference: req.reference,
         pipeline_file: req.pipeline_file,
         at: req.at,
-        parameters: req.parameters
+        parameters: req.parameters,
+        commit_status: req.commit_status
       )
     end
 
