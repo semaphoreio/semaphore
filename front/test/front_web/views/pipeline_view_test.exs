@@ -459,9 +459,7 @@ defmodule FrontWeb.PipelineViewTest do
         render_graph_job(graph_job(%{original_job_id: "0561a1e6-e669-4b71-a752-a1e6a1a05a1e"}))
 
       assert html =~ "copied"
-      assert html =~ "br-pill"
-      assert html =~ "icn-arrow-left-top.svg"
-      assert html =~ "hover-bg-washed-gray bg-washed-gray"
+      assert html =~ "job-copied"
       assert html =~ "was not re-executed"
       refute html =~ "01:40"
     end
@@ -471,7 +469,6 @@ defmodule FrontWeb.PipelineViewTest do
 
       assert html =~ "01:40"
       refute html =~ "copied"
-      refute html =~ "hover-bg-washed-gray bg-washed-gray"
       refute html =~ "was not re-executed"
     end
 
