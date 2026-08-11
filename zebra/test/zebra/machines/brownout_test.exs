@@ -82,6 +82,39 @@ defmodule Zebra.Machines.BrownoutTest do
     end
   end
 
+  describe "resolving brownout status" do
+    test "returns :not_in_brownout outside a scheduled window", %{schedules: schedules} do
+      assert Brownout.status(schedules, ~N[2024-01-01 00:15:01], "regular-org", "ubuntu1804") ==
+               :not_in_brownout
+    end
+
+    test "returns :not_in_brownout for an os image without a schedule", %{schedules: schedules} do
+      assert Brownout.status(schedules, ~N[2024-01-01 00:10:00], "regular-org", "ubuntu2004") ==
+               :not_in_brownout
+    end
+
+    test "returns :in_brownout inside a scheduled window", %{schedules: schedules} do
+      assert Brownout.status(schedules, ~N[2024-01-01 00:10:00], "regular-org", "ubuntu1804") ==
+               :in_brownout
+    end
+
+    test "returns :excluded for an opted out organization", %{schedules: schedules} do
+      excluded_org = Support.StubbedProvider.exclude_from_brownouts_org_id()
+
+      assert Brownout.status(schedules, ~N[2024-01-01 00:10:00], excluded_org, "ubuntu1804") ==
+               :excluded
+    end
+
+    test "returns :not_in_brownout for an opted out organization outside a window", %{
+      schedules: schedules
+    } do
+      excluded_org = Support.StubbedProvider.exclude_from_brownouts_org_id()
+
+      assert Brownout.status(schedules, ~N[2024-01-01 00:15:01], excluded_org, "ubuntu1804") ==
+               :not_in_brownout
+    end
+  end
+
   describe "applying brownout without schedules" do
     test "works" do
       assert Brownout.os_image_in_brownout?([], ~N[2024-01-01 00:10:00], "1", "ubuntu1804") ==
