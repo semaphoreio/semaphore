@@ -420,4 +420,67 @@ defmodule FrontWeb.PipelineViewTest do
       assert PipelineView.job_timer_label(job) == "01:40"
     end
   end
+
+  describe ".copied_job?" do
+    test "true only for jobs carrying original_job_id lineage" do
+      assert PipelineView.copied_job?(%{original_job_id: "0561a1e6-e669-4b71-a752-a1e6a1a05a1e"})
+      refute PipelineView.copied_job?(%{original_job_id: ""})
+      refute PipelineView.copied_job?(%{original_job_id: nil})
+      refute PipelineView.copied_job?(%{})
+    end
+  end
+
+  defp graph_job(attrs) do
+    %{
+      id: "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+      name: "unit tests",
+      state: :FINISHED,
+      result: :PASSED,
+      original_job_id: "",
+      started_at: %{seconds: 1_714_999_900},
+      finished_at: %{seconds: 1_715_000_000}
+    }
+    |> Map.merge(attrs)
+  end
+
+  defp render_graph_job(job) do
+    conn = build_conn() |> Plug.Conn.assign(:organization_id, "org-1")
+
+    render_to_string(PipelineView, "_job.html",
+      job: job,
+      conn: conn,
+      block_result_reason: nil
+    )
+  end
+
+  describe "_job.html copied-job rendering" do
+    test "a copied job renders the copied marker, tooltip, and grey background" do
+      html =
+        render_graph_job(graph_job(%{original_job_id: "0561a1e6-e669-4b71-a752-a1e6a1a05a1e"}))
+
+      assert html =~ "copied"
+      assert html =~ "br-pill"
+      assert html =~ "icn-arrow-left-top.svg"
+      assert html =~ "hover-bg-washed-gray bg-washed-gray"
+      assert html =~ "was not re-executed"
+      refute html =~ "01:40"
+    end
+
+    test "a regular job renders without the copied marker" do
+      html = render_graph_job(graph_job(%{}))
+
+      assert html =~ "01:40"
+      refute html =~ "copied"
+      refute html =~ "hover-bg-washed-gray bg-washed-gray"
+      refute html =~ "was not re-executed"
+    end
+
+    test "a job without the lineage field renders without the copied marker" do
+      html = render_graph_job(graph_job(%{}) |> Map.delete(:original_job_id))
+
+      assert html =~ "01:40"
+      refute html =~ "copied"
+      refute html =~ "was not re-executed"
+    end
+  end
 end
