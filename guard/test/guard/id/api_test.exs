@@ -113,24 +113,7 @@ defmodule Guard.Id.Api.Test do
   end
 
   describe "GET /device with a parked device authorization" do
-    setup do
-      bypass = Guard.Mocks.OpenIDConnect.discovery_document_server()
-      disc_url = "http://localhost:#{bypass.port}/.well-known/openid-configuration"
-
-      oidc = Application.get_env(:guard, :oidc)
-
-      Application.put_env(:guard, :oidc, %{
-        discovery_url: disc_url,
-        client_id: "test_client_id",
-        client_secret: "test_client_secret"
-      })
-
-      on_exit(fn ->
-        Application.put_env(:guard, :oidc, oidc)
-      end)
-
-      %{bypass: bypass, client_id: "test_client_id"}
-    end
+    setup do: start_oidc_bypass()
 
     test "no parked flow renders the entry form for an authenticated session" do
       {:ok, response} = send_login_request(path: "/device", headers: [session_header()])
@@ -290,24 +273,7 @@ defmodule Guard.Id.Api.Test do
   end
 
   describe "GET /device is auth-first" do
-    setup do
-      bypass = Guard.Mocks.OpenIDConnect.discovery_document_server()
-      disc_url = "http://localhost:#{bypass.port}/.well-known/openid-configuration"
-
-      oidc = Application.get_env(:guard, :oidc)
-
-      Application.put_env(:guard, :oidc, %{
-        discovery_url: disc_url,
-        client_id: "test_client_id",
-        client_secret: "test_client_secret"
-      })
-
-      on_exit(fn ->
-        Application.put_env(:guard, :oidc, oidc)
-      end)
-
-      %{bypass: bypass, client_id: "test_client_id"}
-    end
+    setup do: start_oidc_bypass()
 
     test "an anonymous GET with no marker renders the provider picker with a return-to-device state and no code in the button URLs" do
       {:ok, response} = send_login_request(path: "/device", query: %{user_code: "BCDF-GHJK"})
@@ -566,6 +532,28 @@ defmodule Guard.Id.Api.Test do
       assert response.body =~ "Enter the code shown in your terminal"
       assert Enum.find(response.headers, fn h -> elem(h, 0) == "location" end) == nil
     end
+  end
+
+  # Stands up an OIDC discovery mock and points the app's :oidc config at it,
+  # restoring the previous config on exit. Shared by the "GET /device" describe
+  # blocks that need a device-return-capable OIDC bypass.
+  defp start_oidc_bypass do
+    bypass = Guard.Mocks.OpenIDConnect.discovery_document_server()
+    disc_url = "http://localhost:#{bypass.port}/.well-known/openid-configuration"
+
+    oidc = Application.get_env(:guard, :oidc)
+
+    Application.put_env(:guard, :oidc, %{
+      discovery_url: disc_url,
+      client_id: "test_client_id",
+      client_secret: "test_client_secret"
+    })
+
+    on_exit(fn ->
+      Application.put_env(:guard, :oidc, oidc)
+    end)
+
+    %{bypass: bypass, client_id: "test_client_id"}
   end
 
   # Simulates the ext-auth edge having authenticated the browser session: in
