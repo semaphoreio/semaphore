@@ -22,7 +22,7 @@
     </div>
 
     <%= if reused do %>
-      <span class="f5 code <%= FrontWeb.PipelineView.job_status_color(@job) %>">--:--</span>
+      <span class="f6 gray">reused</span>
     <% else %><%= if job_timer_placeholder?(@job) do %>
       <span class="f5 code gray">--:--</span>
     <% else %>

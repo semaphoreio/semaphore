@@ -482,8 +482,7 @@ defmodule FrontWeb.PipelineViewTest do
       assert html =~ "job-reused"
       assert html =~ "data-tippy-content"
       assert html =~ "was not re-executed"
-      # a reused job shows the placeholder timer in its status colour, not a duration
-      assert html =~ ~s(class="f5 code green">--:--)
+      assert html =~ ~s(<span class="f6 gray">reused</span>)
       refute html =~ "01:40"
       # the card itself is not dimmed and carries no marker of its own
       refute html =~ "block-reused"
@@ -538,7 +537,7 @@ defmodule FrontWeb.PipelineViewTest do
       assert html =~ "job-reused"
       assert html =~ "data-tippy-content"
       assert html =~ "was not re-executed"
-      assert html =~ ~s(class="f5 code green">--:--)
+      assert html =~ ~s(<span class="f6 gray">reused</span>)
       assert html =~ "/jobs/0561a1e6-e669-4b71-a752-a1e6a1a05a1e"
       refute html =~ "/jobs/6ba7b810-9dad-11d1-80b4-00c04fd430c8"
       refute html =~ "01:40"
@@ -574,7 +573,7 @@ defmodule FrontWeb.PipelineViewTest do
         )
 
       assert html =~ "job-reused"
-      assert html =~ ~s(class="f5 code green">--:--)
+      assert html =~ ~s(<span class="f6 gray">reused</span>)
       # no lineage, so the row still points at the job itself
       assert html =~ "/jobs/6ba7b810-9dad-11d1-80b4-00c04fd430c8"
       refute html =~ "01:40"
