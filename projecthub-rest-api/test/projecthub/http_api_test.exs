@@ -647,6 +647,7 @@ defmodule Projecthub.HttpApi.Test do
                      ],
                      "pipeline_file" => ".semaphore/semaphore.yml",
                      "scheduled" => false,
+                     "commit_status" => "follow_project",
                      "status" => "ACTIVE"
                    }
                  ],
@@ -1017,6 +1018,7 @@ defmodule Projecthub.HttpApi.Test do
                      ],
                      "pipeline_file" => ".semaphore/semaphore.yml",
                      "scheduled" => false,
+                     "commit_status" => "follow_project",
                      "status" => "ACTIVE"
                    }
                  ],
@@ -1226,6 +1228,60 @@ defmodule Projecthub.HttpApi.Test do
       :ok
     end
 
+    test "when a task carries a commit status policy => round-trips it" do
+      alias InternalApi.Projecthub, as: PH
+
+      FunRegistry.set!(FakeServices.ProjectService, :update, fn req, _ ->
+        assert [task] = req.project.spec.tasks
+
+        assert task.commit_status ==
+                 PH.Project.Spec.Task.CommitStatus.value(:NEVER)
+
+        PH.UpdateResponse.new(
+          metadata:
+            PH.ResponseMeta.new(
+              status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:OK))
+            ),
+          project: req.project
+        )
+      end)
+
+      restrict_org!()
+
+      resource =
+        Poison.encode!(%{
+          "metadata" => %{"name" => "trello", "id" => @project_id},
+          "spec" => %{
+            "repository" => %{
+              "url" => "git@github.com/shiroyasha/test.git",
+              "pipeline_file" => ""
+            },
+            "tasks" => [
+              %{
+                "name" => "nightly",
+                "scheduled" => true,
+                "branch" => "master",
+                "at" => "0 0 * * *",
+                "pipeline_file" => ".semaphore/cron.yml",
+                "commit_status" => "never"
+              }
+            ]
+          }
+        })
+
+      {:ok, response} =
+        HTTPoison.patch(
+          "http://localhost:#{@port}/api/#{@version}/projects/#{@project_id}",
+          resource,
+          @headers
+        )
+
+      assert response.status_code == 200
+
+      assert [task] = Poison.decode!(response.body)["spec"]["tasks"]
+      assert task["commit_status"] == "never"
+    end
+
     test "when project update with tasks succeds => returns 200" do
       FunRegistry.set!(FakeServices.ProjectService, :update, fn req, _ ->
         alias InternalApi.Projecthub, as: PH
@@ -1357,6 +1413,7 @@ defmodule Projecthub.HttpApi.Test do
                      "scheduled" => true,
                      "at" => "0 * * * *",
                      "pipeline_file" => ".semaphore/cron1.yml",
+                     "commit_status" => "follow_project",
                      "status" => "INACTIVE",
                      "parameters" => []
                    },
@@ -1368,6 +1425,7 @@ defmodule Projecthub.HttpApi.Test do
                      "branch" => "",
                      "at" => "",
                      "pipeline_file" => "",
+                     "commit_status" => "follow_project",
                      "status" => "ACTIVE",
                      "parameters" => [
                        %{
