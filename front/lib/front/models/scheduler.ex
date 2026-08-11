@@ -40,6 +40,7 @@ defmodule Front.Models.Scheduler do
     field(:at, :string)
     field(:parameters, :map)
     field(:pipeline_file, :string)
+    field(:commit_status, :string, default: "follow_project")
     field(:next, :string)
     field(:created_at, :string)
     field(:updated_by, :string)
@@ -441,7 +442,11 @@ defmodule Front.Models.Scheduler do
 
     # Build the reference field from reference_type and reference_name for gRPC service
     reference = build_reference(all_data)
-    grpc_data = Map.put(all_data, :reference, reference)
+
+    grpc_data =
+      all_data
+      |> Map.put(:reference, reference)
+      |> Map.put(:commit_status, commit_status_enum(all_data[:commit_status]))
 
     with true <- changeset.valid?,
          {:ok, channel} <- GRPC.Stub.connect(api_endpoint()),
@@ -556,6 +561,7 @@ defmodule Front.Models.Scheduler do
       at: raw_scheduler.at,
       parameters: construct_parameters(raw_scheduler.parameters),
       pipeline_file: raw_scheduler.pipeline_file,
+      commit_status: decode_commit_status(raw_scheduler.commit_status),
       created_at:
         raw_scheduler.inserted_at &&
           Front.Utils.decorate_relative(raw_scheduler.inserted_at.seconds),
@@ -587,6 +593,16 @@ defmodule Front.Models.Scheduler do
     construct({raw_scheduler, latest_trigger})
     |> Map.put(:latest_trigger, latest_trigger_with_preloads)
   end
+
+  defp commit_status_enum("always"), do: :ALWAYS
+  defp commit_status_enum("never"), do: :NEVER
+  defp commit_status_enum(_), do: :FOLLOW_PROJECT
+
+  defp decode_commit_status(1), do: "always"
+  defp decode_commit_status(2), do: "never"
+  defp decode_commit_status(:ALWAYS), do: "always"
+  defp decode_commit_status(:NEVER), do: "never"
+  defp decode_commit_status(_), do: "follow_project"
 
   defp construct_parameters(parameters) do
     fields =
