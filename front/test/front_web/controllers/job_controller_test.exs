@@ -114,7 +114,7 @@ defmodule FrontWeb.JobControllerTest do
       assert html =~ "/jobs/#{original_job_id}"
     end
 
-    test "fetches logs from the original job", %{conn: conn, job: job} do
+    test "fetches plain logs from the original job", %{conn: conn, job: job} do
       original_job_id = "9e0a1b2c-3d4e-4f5a-8b6c-7d8e9f0a1b2c"
 
       GrpcMock.stub(InternalJobMock, :describe, fn req, _ ->
@@ -145,9 +145,9 @@ defmodule FrontWeb.JobControllerTest do
         )
       end)
 
-      conn = get(conn, job_path(conn, :logs, job.id))
+      conn = get(conn, job_path(conn, :plain_logs, job.id))
 
-      assert response(conn, 200) =~ "log-of-the-original-job"
+      assert text_response(conn, 200) =~ "log-of-the-original-job"
     end
   end
 
