@@ -13,7 +13,8 @@ defmodule GithubNotifier.Models.Pipeline do
     :name,
     :triggered_by,
     :ppl_triggered_by,
-    :workflow_rerun_of
+    :workflow_rerun_of,
+    :scheduler_task_id
   ]
 
   require Logger
@@ -66,7 +67,8 @@ defmodule GithubNotifier.Models.Pipeline do
       triggered_by: triggerer_field(response.pipeline.triggerer, :wf_triggered_by, :HOOK),
       ppl_triggered_by:
         triggerer_field(response.pipeline.triggerer, :ppl_triggered_by, :WORKFLOW),
-      workflow_rerun_of: triggerer_field(response.pipeline.triggerer, :workflow_rerun_of, "")
+      workflow_rerun_of: triggerer_field(response.pipeline.triggerer, :workflow_rerun_of, ""),
+      scheduler_task_id: triggerer_field(response.pipeline.triggerer, :wf_triggerer_id, "")
     }
   end
 

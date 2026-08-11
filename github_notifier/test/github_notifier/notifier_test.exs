@@ -8,8 +8,34 @@ defmodule GithubNotifier.NotifierTest do
 
   setup do
     Cachex.clear(:store)
+    Cachex.clear(:task_policy)
 
     :ok
+  end
+
+  defp stub_scheduler(commit_status) do
+    GrpcMock.stub(
+      SchedulerMock,
+      :describe,
+      struct(InternalApi.PeriodicScheduler.DescribeResponse,
+        status: struct(InternalApi.Status, code: :OK),
+        periodic:
+          struct(InternalApi.PeriodicScheduler.Periodic,
+            id: "task-1",
+            commit_status: commit_status
+          )
+      )
+    )
+  end
+
+  defp stub_scheduler_not_found do
+    GrpcMock.stub(
+      SchedulerMock,
+      :describe,
+      struct(InternalApi.PeriodicScheduler.DescribeResponse,
+        status: struct(InternalApi.Status, code: :NOT_FOUND)
+      )
+    )
   end
 
   defp stub_services(pipeline_opts, project_opts) do
@@ -104,6 +130,54 @@ defmodule GithubNotifier.NotifierTest do
       )
 
       Notifier.notify("req-6", "123")
+
+      assert Cachex.get!(:store, @pipeline_key) == true
+    end
+
+    test "task ALWAYS posts even when the project skips scheduled runs" do
+      stub_services(
+        [triggered_by: :SCHEDULE, wf_triggerer_id: "task-1"],
+        skip_scheduled_run: true
+      )
+
+      stub_scheduler(:ALWAYS)
+
+      Notifier.notify("req-9", "123")
+
+      assert Cachex.get!(:store, @pipeline_key) == true
+    end
+
+    test "task NEVER skips even when the project posts scheduled runs" do
+      stub_services([triggered_by: :SCHEDULE, wf_triggerer_id: "task-1"], [])
+
+      stub_scheduler(:NEVER)
+
+      assert Notifier.notify("req-10", "123") == nil
+
+      assert Cachex.get!(:store, @pipeline_key) == nil
+    end
+
+    test "a deleted task falls back to the project settings" do
+      stub_services(
+        [triggered_by: :MANUAL_RUN, wf_triggerer_id: "task-1"],
+        skip_manual_run: true
+      )
+
+      stub_scheduler_not_found()
+
+      assert Notifier.notify("req-11", "123") == nil
+
+      assert Cachex.get!(:store, @pipeline_key) == nil
+    end
+
+    test "hook triggered pipelines never resolve the task" do
+      stub_services([triggered_by: :HOOK, wf_triggerer_id: "hook-id"], [])
+
+      GrpcMock.stub(SchedulerMock, :describe, fn _req, _stream ->
+        raise "describe must not be called for hook pipelines"
+      end)
+
+      Notifier.notify("req-12", "123")
 
       assert Cachex.get!(:store, @pipeline_key) == true
     end

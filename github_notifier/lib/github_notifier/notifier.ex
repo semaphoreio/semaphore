@@ -8,12 +8,13 @@ defmodule GithubNotifier.Notifier do
   def notify(request_id, pipeline_id, block_id \\ nil) do
     {:ok, pipeline} = fetch_pipeline(pipeline_id)
     {:ok, project} = fetch_project(pipeline.project_id)
+    task = fetch_task_settings(pipeline)
 
     cond do
       is_nil(project) ->
         nil
 
-      SkipPolicy.skip?(project, pipeline) ->
+      SkipPolicy.skip?(project, pipeline, task) ->
         skip(request_id, pipeline)
 
       true ->
@@ -27,12 +28,13 @@ defmodule GithubNotifier.Notifier do
   def notify_with_summary(request_id, pipeline_id) do
     {:ok, pipeline} = fetch_pipeline(pipeline_id)
     {:ok, project} = fetch_project(pipeline.project_id)
+    task = fetch_task_settings(pipeline)
 
     cond do
       is_nil(project) ->
         nil
 
-      SkipPolicy.skip?(project, pipeline) ->
+      SkipPolicy.skip?(project, pipeline, task) ->
         skip(request_id, pipeline)
 
       true ->
@@ -50,6 +52,18 @@ defmodule GithubNotifier.Notifier do
         GithubNotifier.Status.create(data, request_id)
     end
   end
+
+  defp fetch_task_settings(%{triggered_by: triggered_by, scheduler_task_id: task_id})
+       when triggered_by in [:SCHEDULE, :MANUAL_RUN] and task_id not in [nil, ""] do
+    Task.Supervisor.async_nolink(TaskSupervisor, fn -> Models.Periodic.find(task_id) end)
+    |> Task.yield()
+    |> case do
+      {:ok, task} -> task
+      _ -> nil
+    end
+  end
+
+  defp fetch_task_settings(_pipeline), do: nil
 
   defp skip(request_id, pipeline) do
     Logger.info(

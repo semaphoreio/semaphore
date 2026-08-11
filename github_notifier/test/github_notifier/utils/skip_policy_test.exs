@@ -94,4 +94,66 @@ defmodule GithubNotifier.Utils.SkipPolicyTest do
       refute SkipPolicy.skip?(legacy, pipeline(triggered_by: :SCHEDULE))
     end
   end
+
+  describe ".skip? with a task policy" do
+    alias GithubNotifier.Models.Periodic
+
+    defp task(commit_status), do: %Periodic{id: "task-1", commit_status: commit_status}
+
+    test "task ALWAYS posts even when the project skips" do
+      for trigger <- [:SCHEDULE, :MANUAL_RUN] do
+        refute SkipPolicy.skip?(
+                 project(%{"skip_scheduled_run" => true, "skip_manual_run" => true}),
+                 pipeline(triggered_by: trigger),
+                 task(:ALWAYS)
+               )
+      end
+    end
+
+    test "task NEVER skips even when the project posts" do
+      for trigger <- [:SCHEDULE, :MANUAL_RUN] do
+        assert SkipPolicy.skip?(project(), pipeline(triggered_by: trigger), task(:NEVER))
+      end
+    end
+
+    test "task FOLLOW_PROJECT falls back to the project settings" do
+      assert SkipPolicy.skip?(
+               project(%{"skip_scheduled_run" => true}),
+               pipeline(triggered_by: :SCHEDULE),
+               task(:FOLLOW_PROJECT)
+             )
+
+      refute SkipPolicy.skip?(project(), pipeline(triggered_by: :SCHEDULE), task(:FOLLOW_PROJECT))
+    end
+
+    test "an unresolvable task falls back to the project settings" do
+      assert SkipPolicy.skip?(
+               project(%{"skip_manual_run" => true}),
+               pipeline(triggered_by: :MANUAL_RUN),
+               nil
+             )
+
+      refute SkipPolicy.skip?(project(), pipeline(triggered_by: :MANUAL_RUN), nil)
+    end
+
+    test "task policy does not affect hook or api triggers" do
+      for trigger <- [:HOOK, :API] do
+        refute SkipPolicy.skip?(project(), pipeline(triggered_by: trigger), task(:NEVER))
+      end
+    end
+
+    test "reruns post even when the task says NEVER" do
+      refute SkipPolicy.skip?(
+               project(),
+               pipeline(triggered_by: :SCHEDULE, workflow_rerun_of: "prev-wf"),
+               task(:NEVER)
+             )
+
+      refute SkipPolicy.skip?(
+               project(),
+               pipeline(triggered_by: :MANUAL_RUN, ppl_triggered_by: :PARTIAL_RE_RUN),
+               task(:NEVER)
+             )
+    end
+  end
 end

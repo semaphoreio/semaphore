@@ -125,7 +125,8 @@ defmodule Support.Factories do
               struct(InternalApi.Plumber.Triggerer,
                 wf_triggered_by: Keyword.get(opts, :triggered_by, :HOOK),
                 ppl_triggered_by: Keyword.get(opts, :ppl_triggered_by, :WORKFLOW),
-                workflow_rerun_of: Keyword.get(opts, :workflow_rerun_of, "")
+                workflow_rerun_of: Keyword.get(opts, :workflow_rerun_of, ""),
+                wf_triggerer_id: Keyword.get(opts, :wf_triggerer_id, "")
               )
           ),
         blocks: [
