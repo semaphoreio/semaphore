@@ -830,9 +830,13 @@ defmodule FrontWeb.SchedulersController do
       description: params["description"] || "",
       pipeline_file: params["pipeline_file"],
       recurring: recurring?,
-      parameters: parse_form_parameters(params["parameters"] || %{})
+      parameters: parse_form_parameters(params["parameters"] || %{}),
+      commit_status: parse_commit_status(params["commit_status"])
     }
   end
+
+  defp parse_commit_status(value) when value in ["always", "never"], do: value
+  defp parse_commit_status(_value), do: "follow_project"
 
   defp get_at_value(params, true), do: String.trim(params["at"] || "")
   defp get_at_value(_params, false), do: ""
@@ -1007,7 +1011,8 @@ defmodule FrontWeb.SchedulersController do
       recurring: true,
       pipeline_file: ".semaphore/semaphore.yml",
       project_name: project_name,
-      parameters: []
+      parameters: [],
+      commit_status: "follow_project"
     }
   end
 
