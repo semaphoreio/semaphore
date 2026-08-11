@@ -384,7 +384,8 @@ defmodule InternalApi.Projecthub.Project.Spec.Task do
           status: integer,
           recurring: boolean,
           parameters: [InternalApi.Projecthub.Project.Spec.Task.Parameter.t()],
-          description: String.t()
+          description: String.t(),
+          commit_status: integer
         }
   defstruct [
     :id,
@@ -395,7 +396,8 @@ defmodule InternalApi.Projecthub.Project.Spec.Task do
     :status,
     :recurring,
     :parameters,
-    :description
+    :description,
+    :commit_status
   ]
 
   field(:id, 1, type: :string)
@@ -407,6 +409,11 @@ defmodule InternalApi.Projecthub.Project.Spec.Task do
   field(:recurring, 7, type: :bool)
   field(:parameters, 8, repeated: true, type: InternalApi.Projecthub.Project.Spec.Task.Parameter)
   field(:description, 9, type: :string)
+
+  field(:commit_status, 10,
+    type: InternalApi.Projecthub.Project.Spec.Task.CommitStatus,
+    enum: true
+  )
 end
 
 defmodule InternalApi.Projecthub.Project.Spec.Task.Parameter do
@@ -448,6 +455,15 @@ defmodule InternalApi.Projecthub.Project.Spec.Task.Status do
   field(:STATUS_UNSPECIFIED, 0)
   field(:STATUS_INACTIVE, 1)
   field(:STATUS_ACTIVE, 2)
+end
+
+defmodule InternalApi.Projecthub.Project.Spec.Task.CommitStatus do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+
+  field(:FOLLOW_PROJECT, 0)
+  field(:ALWAYS, 1)
+  field(:NEVER, 2)
 end
 
 defmodule InternalApi.Projecthub.Project.Spec.Visibility do
