@@ -146,7 +146,7 @@ defmodule PipelinesAPI.OrganizationsClient do
     {:ok, channel} = GRPC.Stub.connect(org_url())
 
     channel
-    |> OrganizationService.Stub.describe_many(%DescribeManyRequest{org_ids: org_ids}, opts())
+    |> OrganizationService.Stub.describe_many(DescribeManyRequest.new(org_ids: org_ids), opts())
     |> process_describe_many()
   end
 
