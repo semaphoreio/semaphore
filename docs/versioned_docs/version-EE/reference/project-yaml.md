@@ -213,6 +213,28 @@ The default value is:
   level: pipeline
 ```
 
+### skip_scheduled_run {#skip-scheduled-run-in-status}
+
+When set to `true`, pipelines started by a [scheduled task](../using-semaphore/tasks) don't submit status checks.
+
+The default value is `false`. Skipping scheduled runs prevents repositories with long-lived branch heads from exhausting the status limit that Git providers enforce per commit.
+
+```yaml title="Skipping status checks for scheduled runs"
+status:
+  pipeline_files:
+    - path: .semaphore/semaphore.yml
+      level: pipeline
+  skip_scheduled_run: true
+```
+
+### skip_manual_run {#skip-manual-run-in-status}
+
+When set to `true`, pipelines started manually with **Run now** on a [task](../using-semaphore/tasks) don't submit status checks.
+
+The default value is `false`.
+
+Status checks for pushes, pull requests, and reruns are always submitted regardless of these two settings.
+
 ## Examples
 
 This section shows project YAML examples.
