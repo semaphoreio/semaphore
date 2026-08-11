@@ -1,5 +1,5 @@
 <%= if Map.has_key?(@job, :state) do %>
-  <%= link to: "/jobs/#{@job.id}", data: job_data(@job, @conn), class: "link dark-gray flex items-center justify-between pv1 nh2 ph2 bt b--black-15 hover-bg-washed-gray#{if copied_job?(@job), do: " job-copied"}", style: "font-weight: normal;", title: (if copied_job?(@job), do: "This job passed in a previous run and was carried over as a copy — it was not re-executed.") do %>
+  <%= link to: "/jobs/#{@job.id}", data: job_data(@job, @conn), class: "link dark-gray flex items-center justify-between pv1 nh2 ph2 bt b--black-15 hover-bg-washed-gray#{if copied_job?(@job), do: " job-copied"}", style: "font-weight: normal;", "data-tippy-content": (if copied_job?(@job), do: "This job passed in a previous run and was carried over as a copy — it was not re-executed.") do %>
     <div class="flex items-center pr3">
       <%= case {@job.state, @job.result} do %>
         <% {:ENQUEUED, _} -> %>
