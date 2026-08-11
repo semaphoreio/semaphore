@@ -460,6 +460,7 @@ defmodule FrontWeb.PipelineViewTest do
 
       assert html =~ "copied"
       assert html =~ "job-copied"
+      assert html =~ "data-tippy-content"
       assert html =~ "was not re-executed"
       refute html =~ "01:40"
     end
