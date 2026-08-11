@@ -33,6 +33,69 @@ defmodule Router.Tasks.UpdateTest do
       {:ok, %{org_id: org_id, user_id: user_id, project_id: project.id}}
     end
 
+    test "PATCH /projects/:project_id_or_name/tasks/:id - preserves the commit status policy when omitted",
+         ctx do
+      scheduler =
+        Support.Stubs.Scheduler.create(ctx.project_id, ctx.user_id,
+          name: "Scheduler",
+          commit_status: :NEVER
+        )
+
+      params = %{
+        apiVersion: "v2",
+        kind: "Task",
+        spec: %{
+          reference: %{type: "branch", name: "develop"},
+          pipeline_file: "pipeline.yml",
+          cron_schedule: ""
+        }
+      }
+
+      assert {:ok, %Tesla.Env{status: 200} = env} =
+               Tesla.patch(
+                 http_client(ctx),
+                 "/projects/#{ctx.project_id}/tasks/" <> scheduler.id,
+                 params
+               )
+
+      assert env.body["spec"]["commit_status"] == "never"
+
+      task = Support.Stubs.DB.find(:schedulers, scheduler.id)
+      assert task.api_model.commit_status == :NEVER
+    end
+
+    test "PATCH /projects/:project_id_or_name/tasks/:id - updates the commit status policy when given",
+         ctx do
+      scheduler =
+        Support.Stubs.Scheduler.create(ctx.project_id, ctx.user_id,
+          name: "Scheduler",
+          commit_status: :NEVER
+        )
+
+      params = %{
+        apiVersion: "v2",
+        kind: "Task",
+        spec: %{
+          reference: %{type: "branch", name: "develop"},
+          pipeline_file: "pipeline.yml",
+          cron_schedule: "",
+          commit_status: "always"
+        }
+      }
+
+      assert {:ok, %Tesla.Env{status: 200} = env} =
+               Tesla.patch(
+                 http_client(ctx),
+                 "/projects/#{ctx.project_id}/tasks/" <> scheduler.id,
+                 params
+               )
+
+      assert env.body["spec"]["commit_status"] == "always"
+
+      task = Support.Stubs.DB.find(:schedulers, scheduler.id)
+      assert task.api_model.commit_status == :ALWAYS
+    end
+
     test "PATCH /projects/:project_id_or_name/tasks/:id - endpoint returns 200 when task is updated",
          ctx do
       params = %{
