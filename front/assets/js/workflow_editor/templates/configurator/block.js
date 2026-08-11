@@ -229,6 +229,30 @@ export class BlockConfigTemplate {
     `)
   }
 
+  static partialRerun(block) {
+    let selected = block.partialRerun || ""
+
+    let status = "Same as pipeline"
+    if(selected === "jobs") status = "Failed jobs"
+    if(selected === "block") status = "Whole block"
+
+    let options = {
+      title: "Rebuild granularity",
+      status: status,
+      collapsable: true
+    }
+
+    return Section.section(options, `
+      <p class="f5 gray mb2">What <b>Rebuild Pipeline</b> re-runs in this block</p>
+
+      <select data-action=selectBlockPartialRerun class="form-control form-control-small w-100">
+        <option value="" ${selected === "" ? "selected" : ""}>Same as pipeline</option>
+        <option value="jobs" ${selected === "jobs" ? "selected" : ""}>Only the failed jobs, reuse the ones that passed</option>
+        <option value="block" ${selected === "block" ? "selected" : ""}>Every job of this block</option>
+      </select>
+    `)
+  }
+
   static deleteBlock() {
     return `
       <div class="bb b--lighter-gray tc">

@@ -61,7 +61,7 @@ defmodule FrontWeb.JobControllerTest do
     test "displays job details", %{conn: conn, job: job} do
       conn = get(conn, job_path(conn, :show, job.id))
       html = html_response(conn, 200)
-      refute html =~ "Copied job"
+      refute html =~ "Reused job"
     end
 
     test "redirects when accessing debug job", %{conn: conn, debug_job: debug_job, task: task} do
@@ -76,8 +76,8 @@ defmodule FrontWeb.JobControllerTest do
     end
   end
 
-  describe "show for a copied job" do
-    test "renders the copied-job banner linking to the original", %{conn: conn, job: job} do
+  describe "show for a reused job" do
+    test "renders the reused-job banner linking to the original", %{conn: conn, job: job} do
       original_job_id = UUID.uuid4()
 
       GrpcMock.stub(InternalJobMock, :describe, fn req, _ ->
@@ -110,7 +110,7 @@ defmodule FrontWeb.JobControllerTest do
       conn = get(conn, job_path(conn, :show, job.id))
       html = html_response(conn, 200)
 
-      assert html =~ "Copied job"
+      assert html =~ "Reused job"
       assert html =~ "/jobs/#{original_job_id}"
     end
 
