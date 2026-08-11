@@ -35,7 +35,7 @@ defmodule Front.Models.Job do
     :original_job_id
   ]
 
-  def source_job_id(%__MODULE__{original_job_id: original, id: id}), do: original || id
+  def source_job_id(%__MODULE__{original_job_id: original, id: id}), do: presence(original) || id
 
   def find(id, tracing_headers \\ nil) do
     with {:ok, channel} <- GRPC.Stub.connect(internal_endpoint()),

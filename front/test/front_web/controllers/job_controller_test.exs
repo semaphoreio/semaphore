@@ -60,7 +60,8 @@ defmodule FrontWeb.JobControllerTest do
   describe "show" do
     test "displays job details", %{conn: conn, job: job} do
       conn = get(conn, job_path(conn, :show, job.id))
-      assert html_response(conn, 200)
+      html = html_response(conn, 200)
+      refute html =~ "Copied job"
     end
 
     test "redirects when accessing debug job", %{conn: conn, debug_job: debug_job, task: task} do
@@ -111,6 +112,42 @@ defmodule FrontWeb.JobControllerTest do
 
       assert html =~ "Copied job"
       assert html =~ "/jobs/#{original_job_id}"
+    end
+
+    test "fetches logs from the original job", %{conn: conn, job: job} do
+      original_job_id = "9e0a1b2c-3d4e-4f5a-8b6c-7d8e9f0a1b2c"
+
+      GrpcMock.stub(InternalJobMock, :describe, fn req, _ ->
+        job = DB.find(:jobs, req.job_id)
+        task = DB.find(:tasks, job.task_id)
+        task_job = job |> DB.extract(:api_model)
+        ts = Google.Protobuf.Timestamp.new(seconds: 1_739_285_890)
+
+        DescribeResponse.new(
+          status:
+            InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
+          job:
+            Job.new(
+              id: task_job.id,
+              project_id: task.project_id,
+              branch_id: task.branch_id,
+              hook_id: task.api_model.hook_id,
+              ppl_id: task.api_model.ppl_id,
+              timeline: Job.Timeline.new(created_at: ts, started_at: ts, finished_at: ts),
+              state: Job.State.value(:FINISHED),
+              result: Job.Result.value(:PASSED),
+              machine_type: "e1-standard-2",
+              self_hosted: false,
+              name: task_job.name,
+              index: task_job.index,
+              original_job_id: original_job_id
+            )
+        )
+      end)
+
+      conn = get(conn, job_path(conn, :logs, job.id))
+
+      assert response(conn, 200) =~ "log-of-the-original-job"
     end
   end
 

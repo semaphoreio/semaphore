@@ -68,6 +68,13 @@ defmodule Front.Models.JobTest do
 
       assert Job.source_job_id(job) == id
     end
+
+    test "treats an empty-string lineage as not a copy" do
+      id = UUID.uuid4()
+      job = %Job{id: id, original_job_id: ""}
+
+      assert Job.source_job_id(job) == id
+    end
   end
 
   defp valid_job_spec do
