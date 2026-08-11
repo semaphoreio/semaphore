@@ -60,7 +60,8 @@ defmodule InternalClients.Schedulers.RequestFormatter do
        pipeline_file: from_params!(params, :pipeline_file),
        requester_id: from_params!(params, :requester_id),
        at: from_params(params, :cron_schedule, ""),
-       parameters: from_params(params, :parameters)
+       parameters: from_params(params, :parameters),
+       commit_status: commit_status_from_params(params)
      }}
   rescue
     error in ArgumentError ->
@@ -92,6 +93,14 @@ defmodule InternalClients.Schedulers.RequestFormatter do
   rescue
     error in ArgumentError ->
       {:error, {:user, error.message}}
+  end
+
+  defp commit_status_from_params(params) do
+    case from_params(params, :commit_status) do
+      "always" -> :ALWAYS
+      "never" -> :NEVER
+      _ -> :FOLLOW_PROJECT
+    end
   end
 
   defp state_from_params(params) do

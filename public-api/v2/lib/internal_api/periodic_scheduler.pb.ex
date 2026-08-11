@@ -17,6 +17,16 @@ defmodule InternalApi.PeriodicScheduler.PersistRequest.ScheduleState do
   field(:PAUSED, 2)
 end
 
+defmodule InternalApi.PeriodicScheduler.Periodic.CommitStatus do
+  @moduledoc false
+
+  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:FOLLOW_PROJECT, 0)
+  field(:ALWAYS, 1)
+  field(:NEVER, 2)
+end
+
 defmodule InternalApi.PeriodicScheduler.HistoryRequest.CursorType do
   @moduledoc false
 
@@ -73,6 +83,12 @@ defmodule InternalApi.PeriodicScheduler.PersistRequest do
   field(:at, 11, type: :string)
   field(:parameters, 12, repeated: true, type: InternalApi.PeriodicScheduler.Periodic.Parameter)
   field(:project_id, 13, type: :string, json_name: "projectId")
+
+  field(:commit_status, 14,
+    type: InternalApi.PeriodicScheduler.Periodic.CommitStatus,
+    json_name: "commitStatus",
+    enum: true
+  )
 end
 
 defmodule InternalApi.PeriodicScheduler.PersistResponse do
@@ -200,6 +216,12 @@ defmodule InternalApi.PeriodicScheduler.Periodic do
   field(:parameters, 15, repeated: true, type: InternalApi.PeriodicScheduler.Periodic.Parameter)
   field(:description, 16, type: :string)
   field(:organization_id, 17, type: :string, json_name: "organizationId")
+
+  field(:commit_status, 18,
+    type: InternalApi.PeriodicScheduler.Periodic.CommitStatus,
+    json_name: "commitStatus",
+    enum: true
+  )
 end
 
 defmodule InternalApi.PeriodicScheduler.Trigger do
@@ -411,6 +433,12 @@ defmodule InternalApi.PeriodicScheduler.BulkUpsertAndPruneRequest.PeriodicDefini
   field(:pipeline_file, 7, type: :string, json_name: "pipelineFile")
   field(:parameters, 8, repeated: true, type: InternalApi.PeriodicScheduler.Periodic.Parameter)
   field(:state, 9, type: InternalApi.PeriodicScheduler.PersistRequest.ScheduleState, enum: true)
+
+  field(:commit_status, 10,
+    type: InternalApi.PeriodicScheduler.Periodic.CommitStatus,
+    json_name: "commitStatus",
+    enum: true
+  )
 end
 
 defmodule InternalApi.PeriodicScheduler.BulkUpsertAndPruneRequest do

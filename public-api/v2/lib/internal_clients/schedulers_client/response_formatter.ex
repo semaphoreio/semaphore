@@ -96,9 +96,14 @@ defmodule InternalClients.Schedulers.ResponseFormatter do
       reference: reference_from_pb(periodic.reference),
       pipeline_file: periodic.pipeline_file,
       cron_schedule: periodic.at,
-      parameters: Enum.into(periodic.parameters, [], &parameter_from_pb/1)
+      parameters: Enum.into(periodic.parameters, [], &parameter_from_pb/1),
+      commit_status: commit_status_from_pb(periodic.commit_status)
     }
   end
+
+  defp commit_status_from_pb(:ALWAYS), do: "always"
+  defp commit_status_from_pb(:NEVER), do: "never"
+  defp commit_status_from_pb(_), do: "follow_project"
 
   defp trigger_from_pb(trigger = %API.Trigger{}) do
     %{
