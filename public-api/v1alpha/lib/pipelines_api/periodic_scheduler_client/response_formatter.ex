@@ -53,7 +53,7 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.ResponseFormatter do
   # Describe
 
   def process_describe_response({:ok, proto_response}) do
-    with tf_map <- %{Timestamp => {__MODULE__, :timestamp_to_datetime_string}},
+    with tf_map <- transformations(),
          {:ok, response} <- Proto.to_map(proto_response, transformations: tf_map),
          :OK <- response.status.code do
       {:ok,
@@ -98,7 +98,7 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.ResponseFormatter do
   # List
 
   def process_list_response({:ok, proto_response}) do
-    with tf_map <- %{Timestamp => {__MODULE__, :timestamp_to_datetime_string}},
+    with tf_map <- transformations(),
          {:ok, response} <- Proto.to_map(proto_response, transformations: tf_map),
          :OK <- response.status.code do
       response
@@ -122,7 +122,7 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.ResponseFormatter do
   # Run now
 
   def process_run_now_response({:ok, proto_response}) do
-    with tf_map <- %{Timestamp => {__MODULE__, :timestamp_to_datetime_string}},
+    with tf_map <- transformations(),
          {:ok, response} <- Proto.to_map(proto_response, transformations: tf_map),
          :OK <- response.status.code do
       {:ok, %{workflow_id: response.trigger.scheduled_workflow_id}}
@@ -147,6 +147,18 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.ResponseFormatter do
   def process_run_now_response(error), do: error
 
   # Utility
+
+  defp transformations do
+    %{
+      Timestamp => {__MODULE__, :timestamp_to_datetime_string},
+      InternalApi.PeriodicScheduler.Periodic.CommitStatus =>
+        {__MODULE__, :commit_status_to_string}
+    }
+  end
+
+  def commit_status_to_string(_name, value) when value in [1, :ALWAYS], do: "always"
+  def commit_status_to_string(_name, value) when value in [2, :NEVER], do: "never"
+  def commit_status_to_string(_name, _value), do: "follow_project"
 
   def timestamp_to_datetime_string(_name, %{nanos: 0, seconds: 0}), do: ""
 
