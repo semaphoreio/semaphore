@@ -194,18 +194,14 @@ export var Pollman = {
       .then((body) => {
         if (Pollman.remembers(newFetch)) {
           this.withScrollSaved(document, () => {
-            const $body = $(body);
-            $(node).replaceWith($body);
+            if (window.Tippy) {
+              window.Tippy.destroyIn(node);
+            }
 
-            if (window.tippy) {
-              const targets = $body
-                .find("[data-tippy-content]")
-                .addBack("[data-tippy-content]")
-                .toArray();
+            $(node).replaceWith(body);
 
-              if (targets.length > 0) {
-                window.tippy(targets, { duration: [150, 50] });
-              }
+            if (window.Tippy) {
+              window.Tippy.rebind(document);
             }
           });
         }
