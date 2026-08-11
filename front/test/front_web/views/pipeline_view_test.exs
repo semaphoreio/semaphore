@@ -421,12 +421,89 @@ defmodule FrontWeb.PipelineViewTest do
     end
   end
 
-  describe ".copied_job?" do
+  describe ".reused_job?" do
     test "true only for jobs carrying original_job_id lineage" do
-      assert PipelineView.copied_job?(%{original_job_id: "0561a1e6-e669-4b71-a752-a1e6a1a05a1e"})
-      refute PipelineView.copied_job?(%{original_job_id: ""})
-      refute PipelineView.copied_job?(%{original_job_id: nil})
-      refute PipelineView.copied_job?(%{})
+      assert PipelineView.reused_job?(%{original_job_id: "0561a1e6-e669-4b71-a752-a1e6a1a05a1e"})
+      refute PipelineView.reused_job?(%{original_job_id: ""})
+      refute PipelineView.reused_job?(%{original_job_id: nil})
+      refute PipelineView.reused_job?(%{})
+    end
+  end
+
+  describe ".reused_block?" do
+    test "true only for blocks whose task ran in another pipeline" do
+      assert PipelineView.reused_block?(%{reused_from: "b1e2a3c4-5d6e-4f70-8a9b-0c1d2e3f4a5b"})
+
+      refute PipelineView.reused_block?(%{reused_from: ""})
+      refute PipelineView.reused_block?(%{reused_from: nil})
+      refute PipelineView.reused_block?(%{})
+    end
+  end
+
+  describe ".job_link_id" do
+    test "points at the original job when the job carries lineage" do
+      assert PipelineView.job_link_id(%{
+               id: "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+               original_job_id: "0561a1e6-e669-4b71-a752-a1e6a1a05a1e"
+             }) == "0561a1e6-e669-4b71-a752-a1e6a1a05a1e"
+    end
+
+    test "points at the job itself without lineage" do
+      id = "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+
+      assert PipelineView.job_link_id(%{id: id, original_job_id: ""}) == id
+      assert PipelineView.job_link_id(%{id: id, original_job_id: nil}) == id
+      assert PipelineView.job_link_id(%{id: id}) == id
+    end
+  end
+
+  defp graph_block(attrs) do
+    %{
+      name: "Build",
+      skipped?: false,
+      result_reason: nil,
+      reused_from: nil,
+      jobs: [graph_job(%{})]
+    }
+    |> Map.merge(attrs)
+  end
+
+  defp render_graph_block(block) do
+    conn = build_conn() |> Plug.Conn.assign(:organization_id, "org-1")
+
+    render_to_string(PipelineView, "_block.html", block: block, conn: conn)
+  end
+
+  describe "_block.html reused-block rendering" do
+    test "every job of a reused block gets the reused treatment, the block itself stays plain" do
+      html =
+        render_graph_block(graph_block(%{reused_from: "b1e2a3c4-5d6e-4f70-8a9b-0c1d2e3f4a5b"}))
+
+      assert html =~ "job-reused"
+      assert html =~ "data-tippy-content"
+      assert html =~ "was not re-executed"
+      # a reused job shows the placeholder timer in its status colour, not a duration
+      assert html =~ ~s(class="f5 code green">--:--)
+      refute html =~ "01:40"
+      # the card itself is not dimmed and carries no marker of its own
+      refute html =~ "block-reused"
+      refute html =~ "carried over"
+    end
+
+    test "a regular block renders its jobs untouched" do
+      html = render_graph_block(graph_block(%{}))
+
+      assert html =~ "01:40"
+      refute html =~ "job-reused"
+      refute html =~ "was not re-executed"
+    end
+
+    test "a block without the reuse field renders its jobs untouched" do
+      html = render_graph_block(graph_block(%{}) |> Map.delete(:reused_from))
+
+      assert html =~ "01:40"
+      refute html =~ "job-reused"
+      refute html =~ "was not re-executed"
     end
   end
 
@@ -453,32 +530,54 @@ defmodule FrontWeb.PipelineViewTest do
     )
   end
 
-  describe "_job.html copied-job rendering" do
-    test "a copied job renders the copied marker, tooltip, and grey background" do
+  describe "_job.html reused-job rendering" do
+    test "a reused job dims, shows the placeholder timer, and links to the original job" do
       html =
         render_graph_job(graph_job(%{original_job_id: "0561a1e6-e669-4b71-a752-a1e6a1a05a1e"}))
 
-      assert html =~ "copied"
-      assert html =~ "job-copied"
+      assert html =~ "job-reused"
       assert html =~ "data-tippy-content"
       assert html =~ "was not re-executed"
+      assert html =~ ~s(class="f5 code green">--:--)
+      assert html =~ "/jobs/0561a1e6-e669-4b71-a752-a1e6a1a05a1e"
+      refute html =~ "/jobs/6ba7b810-9dad-11d1-80b4-00c04fd430c8"
       refute html =~ "01:40"
     end
 
-    test "a regular job renders without the copied marker" do
+    test "a regular job renders its duration and links to itself" do
       html = render_graph_job(graph_job(%{}))
 
       assert html =~ "01:40"
-      refute html =~ "copied"
+      assert html =~ "/jobs/6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+      refute html =~ "job-reused"
       refute html =~ "was not re-executed"
     end
 
-    test "a job without the lineage field renders without the copied marker" do
+    test "a job without the lineage field renders untouched" do
       html = render_graph_job(graph_job(%{}) |> Map.delete(:original_job_id))
 
       assert html =~ "01:40"
-      refute html =~ "copied"
+      assert html =~ "/jobs/6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+      refute html =~ "job-reused"
       refute html =~ "was not re-executed"
+    end
+
+    test "a job in a reused block gets the same treatment without lineage of its own" do
+      conn = build_conn() |> Plug.Conn.assign(:organization_id, "org-1")
+
+      html =
+        render_to_string(PipelineView, "_job.html",
+          job: graph_job(%{}),
+          conn: conn,
+          block_result_reason: nil,
+          block_reused?: true
+        )
+
+      assert html =~ "job-reused"
+      assert html =~ ~s(class="f5 code green">--:--)
+      # no lineage, so the row still points at the job itself
+      assert html =~ "/jobs/6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+      refute html =~ "01:40"
     end
   end
 end

@@ -1,5 +1,6 @@
 <%= if Map.has_key?(@job, :state) do %>
-  <%= link to: "/jobs/#{@job.id}", data: job_data(@job, @conn), class: "link dark-gray flex items-center justify-between pv1 nh2 ph2 bt b--black-15 hover-bg-washed-gray#{if copied_job?(@job), do: " job-copied"}", style: "font-weight: normal;", "data-tippy-content": (if copied_job?(@job), do: "This job passed in a previous run and was carried over as a copy — it was not re-executed.") do %>
+  <% reused = reused_job?(@job) or assigns[:block_reused?] == true %>
+  <%= link to: "/jobs/#{job_link_id(@job)}", data: job_data(@job, @conn), class: "link dark-gray flex items-center justify-between pv1 nh2 ph2 bt b--black-15 hover-bg-washed-gray#{if reused, do: " job-reused"}", style: "font-weight: normal;", "data-tippy-content": (if reused, do: "This job passed in a previous run and was reused here — it was not re-executed.") do %>
     <div class="flex items-center pr3">
       <%= case {@job.state, @job.result} do %>
         <% {:ENQUEUED, _} -> %>
@@ -20,8 +21,8 @@
       <%= @job.name %>
     </div>
 
-    <%= if copied_job?(@job) do %>
-      <span class="f6 gray">copied</span>
+    <%= if reused do %>
+      <span class="f5 code <%= FrontWeb.PipelineView.job_status_color(@job) %>">--:--</span>
     <% else %><%= if job_timer_placeholder?(@job) do %>
       <span class="f5 code gray">--:--</span>
     <% else %>
