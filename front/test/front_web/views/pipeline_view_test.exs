@@ -430,6 +430,68 @@ defmodule FrontWeb.PipelineViewTest do
     end
   end
 
+  describe ".carried_over_block?" do
+    test "true only for blocks whose task ran in another pipeline" do
+      assert PipelineView.carried_over_block?(%{
+               carried_over_from: "b1e2a3c4-5d6e-4f70-8a9b-0c1d2e3f4a5b"
+             })
+
+      refute PipelineView.carried_over_block?(%{carried_over_from: ""})
+      refute PipelineView.carried_over_block?(%{carried_over_from: nil})
+      refute PipelineView.carried_over_block?(%{})
+    end
+  end
+
+  defp graph_block(attrs) do
+    %{
+      name: "Build",
+      skipped?: false,
+      result_reason: nil,
+      carried_over_from: nil,
+      jobs: [graph_job(%{})]
+    }
+    |> Map.merge(attrs)
+  end
+
+  defp render_graph_block(block) do
+    conn = build_conn() |> Plug.Conn.assign(:organization_id, "org-1")
+
+    render_to_string(PipelineView, "_block.html", block: block, conn: conn)
+  end
+
+  describe "_block.html carried-over rendering" do
+    test "a carried-over block renders the marker, tooltip, and dimming" do
+      html =
+        render_graph_block(
+          graph_block(%{carried_over_from: "b1e2a3c4-5d6e-4f70-8a9b-0c1d2e3f4a5b"})
+        )
+
+      assert html =~ "carried over"
+      assert html =~ "block-carried-over"
+      assert html =~ "data-tippy-content"
+      assert html =~ "was not re-executed"
+      # jobs keep their own duration - they are the very same jobs
+      assert html =~ "01:40"
+      refute html =~ ">copied<"
+    end
+
+    test "a regular block renders without the carried-over marker" do
+      html = render_graph_block(graph_block(%{}))
+
+      assert html =~ "01:40"
+      refute html =~ "carried over"
+      refute html =~ "block-carried-over"
+    end
+
+    test "a block without the carry-over field renders without the marker" do
+      html = render_graph_block(graph_block(%{}) |> Map.delete(:carried_over_from))
+
+      assert html =~ "01:40"
+      refute html =~ "carried over"
+      refute html =~ "block-carried-over"
+    end
+  end
+
   defp graph_job(attrs) do
     %{
       id: "6ba7b810-9dad-11d1-80b4-00c04fd430c8",

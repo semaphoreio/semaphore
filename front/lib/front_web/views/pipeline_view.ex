@@ -578,6 +578,8 @@ defmodule FrontWeb.PipelineView do
 
   def copied_job?(job), do: Map.get(job, :original_job_id, "") not in [nil, ""]
 
+  def carried_over_block?(block), do: Map.get(block, :carried_over_from, "") not in [nil, ""]
+
   def job_status_color(job), do: job_status_color(job.state, job.result)
   def job_status_color(:ENQUEUED, _), do: "light-gray"
   def job_status_color(:RUNNING, _), do: "indigo"

@@ -487,3 +487,6 @@ sem-popover {
 
 .job-copied { opacity: 0.55; }
 .job-copied:hover { opacity: 0.85; }
+
+.block-carried-over { opacity: 0.55; }
+.block-carried-over:hover { opacity: 0.85; }
