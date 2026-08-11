@@ -28,6 +28,11 @@ defmodule Scheduler.Periodics.Model.Periodics do
     field :pause_toggled_by, :string, read_after_writes: true, default: ""
     field :pause_toggled_at, :utc_datetime_usec, read_after_writes: true
 
+    field :commit_status, Ecto.Enum,
+      values: [:follow_project, :always, :never],
+      read_after_writes: true,
+      default: :follow_project
+
     embeds_many :parameters, Scheduler.Periodics.Model.PeriodicsParam, on_replace: :delete
 
     timestamps()
@@ -43,11 +48,12 @@ defmodule Scheduler.Periodics.Model.Periodics do
 
   @required_fields ~w(id requester_id organization_id name project_name
                       project_id recurring reference pipeline_file)a
-  @optional_fields ~w(description at paused pause_toggled_by pause_toggled_at)a
+  @optional_fields ~w(description at paused pause_toggled_by pause_toggled_at commit_status)a
 
   @required_fields_update ~w(requester_id)a
   @optional_fields_update ~w(name project_name reference at pipeline_file recurring
-                             description suspended paused pause_toggled_by pause_toggled_at)a
+                             description suspended paused pause_toggled_by pause_toggled_at
+                             commit_status)a
 
   @doc """
   ## Examples:
