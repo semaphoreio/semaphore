@@ -182,7 +182,12 @@ defmodule FrontWeb.ReportController do
   end
 
   defp fetch_report_from_context(project, "job", job) do
-    Artifacthub.signed_url(project.id, "jobs", job.id, ".semaphore/REPORT.md")
+    Artifacthub.signed_url(
+      project.id,
+      "jobs",
+      Front.Models.Job.source_job_id(job),
+      ".semaphore/REPORT.md"
+    )
   end
 
   defp fetch_report_from_context(project, "workflow", workflow) do
