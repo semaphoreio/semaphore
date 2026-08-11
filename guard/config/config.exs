@@ -92,6 +92,12 @@ config :guard,
   mcp_oauth_access_token_ttl_seconds:
     String.to_integer(System.get_env("MCP_OAUTH_ACCESS_TOKEN_TTL_SECONDS") || "86400")
 
+# Refresh tokens are rotated on every use, so this bounds how long a client can
+# stay signed in without opening the browser again. Defaults to 30 days.
+config :guard,
+  mcp_oauth_refresh_token_ttl_seconds:
+    String.to_integer(System.get_env("MCP_OAUTH_REFRESH_TOKEN_TTL_SECONDS") || "2592000")
+
 config :guard,
   oidc: [
     discovery_url: System.get_env("OIDC_DISCOVERY_URL"),
