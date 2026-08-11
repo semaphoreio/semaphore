@@ -484,3 +484,6 @@ sem-popover {
 .material-symbols-outlined.md-24 { font-size: 24px; }
 .material-symbols-outlined.md-36 { font-size: 36px; }
 .material-symbols-outlined.md-48 { font-size: 48px; }
+
+.job-copied { opacity: 0.55; }
+.job-copied:hover { opacity: 0.85; }
