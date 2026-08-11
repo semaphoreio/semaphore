@@ -613,7 +613,15 @@ defmodule Guard.Id.Api.Test do
   defp device_return_oidc_mock(bypass, client_id) do
     {:ok, user} = Support.Factories.RbacUser.insert()
     {:ok, oidc_user} = Support.Factories.OIDCUser.insert(user.id)
-    {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+    # authentication_token: nil so the consent page takes the mint path
+    # ("Authorize a command-line tool"), not rotate; insert_user defaults it non-nil.
+    {:ok, _} =
+      Support.Members.insert_user(
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        authentication_token: nil
+      )
 
     {token, _claims} =
       Guard.Mocks.OpenIDConnect.generate_openid_connect_token(%{client_id: client_id}, %{
@@ -641,20 +649,6 @@ defmodule Guard.Id.Api.Test do
     |> case do
       nil -> nil
       c -> c |> String.split(";") |> List.first()
-    end
-  end
-
-  # The OIDC state parameter from an authorize-redirect location URL.
-  defp extract_state_from_location(location) do
-    case URI.parse(location).query do
-      nil ->
-        {:error, nil}
-
-      query ->
-        case URI.decode_query(query) do
-          %{"state" => state} -> {:ok, state}
-          _ -> {:error, nil}
-        end
     end
   end
 
