@@ -8,8 +8,7 @@ defmodule DefinitionValidator do
     YamlStringParser,
     YamlMapValidator,
     PplBlocksDependencies,
-    PromotionsValidator,
-    PartialRerunValidator
+    PromotionsValidator
   }
 
   def validate_yaml_string(yaml_string) do
@@ -23,7 +22,6 @@ defmodule DefinitionValidator do
           {:ok, ^definition}    <- YamlMapValidator.validate_yaml(definition),
           {:ok, ^definition}    <- PplBlocksDependencies.validate_yaml(definition),
           {:ok, ^definition}    <- PromotionsValidator.validate_yaml(definition),
-          {:ok, ^definition}    <- PartialRerunValidator.validate_yaml(definition),
     do: {:ok, definition}
   end
 
