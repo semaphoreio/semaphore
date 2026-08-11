@@ -25,3 +25,35 @@ GHSA-j9wq-vxxc-94wf
 GHSA-mp55-p8c9-rfw2
 GHSA-pj7v-xfvx-wmjq
 
+# --- gun 2.0.1 advisories, all first patched in gun 2.4.0 ---
+# gun is the gRPC client transport (grpc dep). Every outbound gun connection
+# targets a fixed internal endpoint from env config (encryptor sidecar,
+# user/organization/repository_integrator services) — plaintext HTTP/2 inside
+# the cluster, no user-controlled URLs, no proxies, no cross-origin connection
+# reuse, and the far end is a trusted internal service. The bump to 2.4.x
+# requires a cowlib move (gun 2.4 needs cowlib >= 2.15, lock pins 2.12.1) —
+# deferred to a dep-bump branch.
+# GHSA-2j82-37xg-f9wp (high): unexpected status/return value — protocol
+#   confusion needs an attacker-influenced or proxied endpoint; none exist.
+GHSA-2j82-37xg-f9wp
+# GHSA-36w4-95hv-5vwg (moderate): gun_http2 origin validation — needs
+#   connection reuse across origins; channels here are per-endpoint.
+GHSA-36w4-95hv-5vwg
+# GHSA-r53j-fjj5-mv77 (high): uncontrolled resource consumption — requires a
+#   malicious/compromised internal server flooding the client; worst case is
+#   one pod's memory, supervisor restarts.
+GHSA-r53j-fjj5-mv77
+# GHSA-w4f7-4cxr-rv3c (moderate, also cowboy < 2.16): HTTP request/response
+#   splitting — CRLF header injection is an HTTP/1.1 concern; both the cowboy
+#   listener and gun clients here speak binary-framed HTTP/2 on the internal
+#   network with no user-controlled header values.
+GHSA-w4f7-4cxr-rv3c
+
+# protobuf — unbounded recursion depth decoding embedded messages, patched in
+# 0.16.1. repository_hub only decodes protobufs from internal gRPC callers on
+# the cluster network; a hostile deeply-nested payload requires a compromised
+# internal service and yields a single-pod DoS (supervisor restarts). The bump
+# needs pb regeneration against the 0.16 codegen — deferred to a dep-bump
+# branch.
+GHSA-rv48-qqj5-crxg
+
