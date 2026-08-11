@@ -26,6 +26,7 @@ defmodule GithubNotifier.Models.PipelineTest do
                triggered_by: :HOOK,
                ppl_triggered_by: :WORKFLOW,
                workflow_rerun_of: "",
+               scheduler_task_id: "",
                blocks: [
                  %{
                    id: "1",
