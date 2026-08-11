@@ -323,7 +323,8 @@ defmodule Scheduler.Periodics.Model.PeriodicsQueries do
         parameters: per.parameters,
         pause_toggled_by: per.pause_toggled_by,
         pause_toggled_at: per.pause_toggled_at,
-        inserted_at: per.inserted_at
+        inserted_at: per.inserted_at,
+        commit_status: per.commit_status
       }
     )
   end
