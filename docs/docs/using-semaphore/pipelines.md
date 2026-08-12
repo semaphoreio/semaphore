@@ -155,20 +155,16 @@ When a job in the pipeline fails, the default behavior is to stop the pipeline. 
 
 ### Job-level partial rerun {#job-level-rerun}
 
-When the job-level partial rerun feature is enabled for your organization, **Rebuild Pipeline** goes one step further inside each re-run block: jobs that already passed are carried over as *copies* instead of being executed again, and only the failed jobs actually re-run.
+When the job-level partial rerun feature is enabled for your organization, **Rebuild Pipeline** goes one step further inside each re-run block: jobs that already passed are *reused* instead of being executed again, and only the failed jobs actually re-run.
 
-Enabling the feature changes the default rebuild behavior. To keep re-running whole blocks — for the entire pipeline or for individual blocks — set the [`partial_rerun: block`](../reference/pipeline-yaml#partial-rerun) property in the pipeline YAML.
+Enabling the feature changes the default rebuild behavior. To keep re-running whole blocks — for the entire pipeline or for individual blocks — set the [`partial_rerun: block`](../reference/pipeline-yaml#partial-rerun) property in the pipeline YAML. Any other value is rejected when the pipeline YAML is validated.
 
-A copied job:
+A reused job does not re-execute and does not occupy an agent. It is marked as `reused` in the pipeline and workflow views, and opening it takes you to the job that produced the results — with its logs, artifacts, and test results.
 
-- does not re-execute: it keeps the original execution timestamps and does not occupy an agent
-- is linked to the original job it was copied from; the logs, artifacts, and test results produced by the original run remain stored under the original job
+There are two ways a job ends up reused, and the rebuild picks whichever applies:
 
-:::note
-
-The job pages of copied jobs do not yet follow the link to the original job when displaying logs, artifacts, and test results — open the original job to view them. This indirection is being added separately.
-
-:::
+- **A block that had to be rebuilt** keeps the jobs that already passed instead of running them again. Those are new rows pointing back at the run that executed them, so their page carries a banner naming the original job.
+- **A block whose jobs all passed** is not rebuilt at all, so its rows are the original jobs themselves.
 
 Jobs that re-execute receive `SEMAPHORE_JOB_RERUN=true` and the [`SEMAPHORE_JOB_ORIGINAL_ID`](../reference/env-vars#job-original-id) environment variable pointing at their previous attempt, so CI scripts can fetch the prior run's artifacts or compare test results.
 
