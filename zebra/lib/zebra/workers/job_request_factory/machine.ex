@@ -4,11 +4,7 @@ defmodule Zebra.Workers.JobRequestFactory.Machine do
       Zebra.Models.Job.self_hosted?(job.machine_type) ->
         validate_self_hosted_type(org_id, job.machine_type)
 
-      Zebra.Machines.Brownout.os_image_in_brownout?(
-        DateTime.utc_now(),
-        job.organization_id,
-        job.machine_os_image
-      ) ->
+      brownout_stops_job?(job) ->
         Watchman.increment(
           {"brownout.job_stopped", [job.machine_os_image, job.organization_id, job.project_id]}
         )
@@ -42,6 +38,27 @@ defmodule Zebra.Workers.JobRequestFactory.Machine do
           :stop_job_processing,
           "Unknown machine type '#{job.machine_type}' with os image '#{job.machine_os_image}'"
         }
+    end
+  end
+
+  defp brownout_stops_job?(job) do
+    case Zebra.Machines.Brownout.status(
+           DateTime.utc_now(),
+           job.organization_id,
+           job.machine_os_image
+         ) do
+      :in_brownout ->
+        true
+
+      :excluded ->
+        Watchman.increment(
+          {"brownout.job_excluded", [job.machine_os_image, job.organization_id, job.project_id]}
+        )
+
+        false
+
+      :not_in_brownout ->
+        false
     end
   end
 
