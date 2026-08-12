@@ -196,10 +196,24 @@ defmodule RepositoryHub.Server do
       {:error, :invalid_key} ->
         execute(request, Server.CreateBuildStatusAction)
 
-      {:error, error} ->
+      # Missing guard table = deploy-before-migration window. Deliberately
+      # fail open so the rollout cannot stall deliveries.
+      {:error, :guard_unavailable} ->
         Watchman.increment("build_status_guard.unavailable")
-        log_warn(["build status guard unavailable, delivering unguarded", inspect(error)])
+        log_warn(["build status guard unavailable, delivering unguarded"])
         execute(request, Server.CreateBuildStatusAction)
+
+      # Transient guard errors fail closed: delivery reads the same database
+      # moments later anyway, and an unguarded send during a partial blip
+      # reopens the cross-instance race. The caller nacks and redelivers.
+      {:error, error} ->
+        Watchman.increment("build_status_guard.error")
+        log_warn(["build status guard error, failing delivery for retry", inspect(error)])
+
+        raise(GRPC.RPCError,
+          status: GRPC.Status.unavailable(),
+          message: "Status delivery guard is unavailable"
+        )
     end
   end
 

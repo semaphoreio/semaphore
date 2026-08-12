@@ -127,6 +127,29 @@ defmodule RepositoryHub.Server.CreateBuildStatusGuardTest do
       assert :busy = BuildStatusGuard.claim(request)
     end
 
+    test "delivers unguarded while the guard table is missing", ctx do
+      with_mock BuildStatusGuard, [:passthrough], claim: fn _request -> {:error, :guard_unavailable} end do
+        assert %CreateBuildStatusResponse{code: :OK, skipped: false} =
+                 Server.create_build_status(request(ctx, :SUCCESS), nil)
+      end
+
+      assert :meck.num_calls(GithubClient, :create_build_status, :_) == 1
+    end
+
+    test "fails delivery for retry on a transient guard error", ctx do
+      with_mock BuildStatusGuard, [:passthrough],
+        claim: fn _request -> {:error, %DBConnection.ConnectionError{message: "tcp recv"}} end do
+        error =
+          assert_raise(GRPC.RPCError, ~r/guard is unavailable/, fn ->
+            Server.create_build_status(request(ctx, :SUCCESS), nil)
+          end)
+
+        assert error.status == GRPC.Status.unavailable()
+      end
+
+      assert :meck.num_calls(GithubClient, :create_build_status, :_) == 0
+    end
+
     test "reports unavailable while another delivery holds the lease", ctx do
       request = request(ctx, :SUCCESS)
       assert {:ok, _fence} = BuildStatusGuard.claim(request)

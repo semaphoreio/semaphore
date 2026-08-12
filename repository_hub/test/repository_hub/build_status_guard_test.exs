@@ -67,6 +67,16 @@ defmodule RepositoryHub.BuildStatusGuardTest do
       assert {:error, :invalid_key} = BuildStatusGuard.claim(request)
     end
 
+    test "reports guard_unavailable while the table is missing", %{request: request} do
+      Repo.query!("ALTER TABLE build_status_guards RENAME TO build_status_guards_hidden")
+
+      try do
+        assert {:error, :guard_unavailable} = BuildStatusGuard.claim(request)
+      after
+        Repo.query!("ALTER TABLE build_status_guards_hidden RENAME TO build_status_guards")
+      end
+    end
+
     test "guards checks independently per source_id", %{request: request} do
       success = %{request | status: :SUCCESS}
       assert {:ok, fence} = BuildStatusGuard.claim(success)
