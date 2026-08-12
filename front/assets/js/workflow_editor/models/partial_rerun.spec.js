@@ -66,6 +66,36 @@ blocks:
     });
   });
 
+  describe("schema validation", () => {
+    it("accepts the property at both levels", () => {
+      const pipeline = Pipeline.fromYaml(
+        workflow,
+        `version: v1.0
+name: Test
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu2004
+partial_rerun: jobs
+blocks:
+  - name: Unit tests
+    partial_rerun: block
+    task:
+      jobs:
+        - name: unit
+          commands:
+            - make test
+`,
+        ".semaphore/semaphore.yml"
+      );
+
+      pipeline.validate();
+
+      expect(pipeline.schemaErrors).to.deep.equal([]);
+      expect(pipeline.hasSchemaErrors()).to.equal(false);
+    });
+  });
+
   describe("block level", () => {
     const blockWith = (extra) =>
       new Block(parent, Object.assign({ name: "A", task: { jobs: [] } }, extra));

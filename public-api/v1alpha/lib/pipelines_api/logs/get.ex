@@ -149,7 +149,7 @@ defmodule PipelinesAPI.Logs.Get do
          {:ok, project} <- ProjectClient.describe(job.project_id),
          {:ok, artifact_store_id} <- artifact_store_id_from_project(project),
          {:ok, path} <- resolve_artifact_job_logs_path(source_job_id(job), artifact_store_id),
-         {:ok, _audit} <- log_artifact_job_logs_download(conn, job, path),
+         {:ok, _audit} <- log_artifact_job_logs_download(conn, job, source_job_id(job), path),
          {:ok, signed_url} <-
            signed_url_for_artifact_path(artifact_store_id, source_job_id(job), path) do
       conn
@@ -214,10 +214,10 @@ defmodule PipelinesAPI.Logs.Get do
     end
   end
 
-  defp log_artifact_job_logs_download(conn, job, path) do
+  defp log_artifact_job_logs_download(conn, job, scope_id, path) do
     case Audit.log_artifact_download(conn, %{
            "scope" => "jobs",
-           "scope_id" => job.id,
+           "scope_id" => scope_id,
            "path" => path,
            "project_id" => job.project_id,
            "method" => "GET"

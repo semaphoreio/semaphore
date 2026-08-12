@@ -159,13 +159,12 @@ When the job-level partial rerun feature is enabled for your organization, **Reb
 
 Enabling the feature changes the default rebuild behavior. To keep re-running whole blocks — for the entire pipeline or for individual blocks — set the [`partial_rerun: block`](../reference/pipeline-yaml#partial-rerun) property in the pipeline YAML. Any other value is rejected when the pipeline YAML is validated.
 
-A reused job:
+A reused job does not re-execute and does not occupy an agent. It is marked as `reused` in the pipeline and workflow views, and opening it takes you to the job that produced the results — with its logs, artifacts, and test results.
 
-- does not re-execute: it keeps the original execution timestamps and does not occupy an agent
-- is linked to the job that produced its results; its logs, artifacts, and test results are the ones stored under that original job
-- is marked as `reused` in the pipeline and workflow views, and its page shows a banner linking to the original job
+There are two ways a job ends up reused, and the rebuild picks whichever applies:
 
-A block whose jobs all passed is not rebuilt at all, so every job in it is reused.
+- **A block that had to be rebuilt** keeps the jobs that already passed instead of running them again. Those are new rows pointing back at the run that executed them, so their page carries a banner naming the original job.
+- **A block whose jobs all passed** is not rebuilt at all, so its rows are the original jobs themselves.
 
 Jobs that re-execute receive `SEMAPHORE_JOB_RERUN=true` and the [`SEMAPHORE_JOB_ORIGINAL_ID`](../reference/env-vars#job-original-id) environment variable pointing at their previous attempt, so CI scripts can fetch the prior run's artifacts or compare test results.
 

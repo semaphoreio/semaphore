@@ -484,9 +484,9 @@ defmodule FrontWeb.PipelineViewTest do
       assert html =~ "was not re-executed"
       assert html =~ ~s(<span class="f6 gray">reused</span>)
       refute html =~ "01:40"
-      # the card itself is not dimmed and carries no marker of its own
-      refute html =~ "block-reused"
-      refute html =~ "carried over"
+      # the treatment is per row: the card keeps its plain classes, only rows dim
+      assert html =~ ~s(class="dib v-top bg-white shadow-1 pa2 br2 f5")
+      refute html =~ "br2 f5 job-reused"
     end
 
     test "a regular block renders its jobs untouched" do

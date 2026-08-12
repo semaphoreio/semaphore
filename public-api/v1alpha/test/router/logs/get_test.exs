@@ -372,6 +372,44 @@ defmodule PipelinesAPI.Logs.Get.Test do
                {"location", txt_url}
     end
 
+    test "signs and audits a reused job's artifact logs under the original job", ctx do
+      parent = self()
+
+      reused =
+        Job.create(ctx.ppl.ppl_id, ctx.block.build_req_id,
+          project_id: ctx.cloud_job.project_id,
+          original_job_id: ctx.cloud_job.id
+        )
+
+      Support.Stubs.Artifacthub.create(ctx.cloud_job.id,
+        scope: "jobs",
+        path: "agent/job_logs.txt",
+        url: @full_logs_url
+      )
+
+      GrpcMock.stub(ArtifacthubMock, :get_signed_url, fn req, _ ->
+        send(parent, {:signed_path, req.path})
+
+        InternalApi.Artifacthub.GetSignedURLResponse.new(
+          url: "https://localhost:9000/" <> req.path
+        )
+      end)
+
+      log =
+        capture_log(fn ->
+          assert {302, _headers, _response} =
+                   get_logs(reused.api_model.id, ctx.user_id, false, %{
+                     "artifact_job_logs" => "true"
+                   })
+        end)
+
+      assert_receive {:signed_path, signed_path}
+      assert signed_path == "artifacts/jobs/#{ctx.cloud_job.id}/agent/job_logs.txt"
+
+      assert log =~ "artifacts/jobs/#{ctx.cloud_job.id}/agent/job_logs.txt"
+      refute log =~ "artifacts/jobs/#{reused.api_model.id}"
+    end
+
     test "returns 400 when artifact job logs listing fails with hard limit", ctx do
       parent = self()
 

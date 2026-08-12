@@ -37,8 +37,8 @@ export var Tippy = {
     scope.forEach((element) => {
       if (!element.querySelectorAll) return;
 
-      const inside = Array.from(element.querySelectorAll("[data-tippy-content]"));
-      const all = element.matches && element.matches("[data-tippy-content]") ? [element].concat(inside) : inside;
+      const inside = Array.from(element.querySelectorAll("*"));
+      const all = [element].concat(inside);
 
       all.forEach((node) => node._tippy && node._tippy.destroy());
     });
