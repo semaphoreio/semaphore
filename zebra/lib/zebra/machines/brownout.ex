@@ -13,12 +13,14 @@ defmodule Zebra.Machines.Brownout do
 
   @type brownout_schedules :: [brownout_schedule]
 
+  @type status :: :not_in_brownout | :in_brownout | :excluded
+
   @doc """
   Returns the combined brownout schedules for all OS images.
   """
   @spec schedules() :: brownout_schedules()
   def schedules do
-    BrownoutSchedule.macosxcode15()
+    BrownoutSchedule.macosxcode16()
   end
 
   @doc """
@@ -35,8 +37,35 @@ defmodule Zebra.Machines.Brownout do
   @spec os_image_in_brownout?(brownout_schedules(), Datetime.t(), String.t(), String.t()) ::
           boolean()
   def os_image_in_brownout?(schedules, datetime, organization_id, machine_os_image) do
-    apply_brownout_to_organization?(organization_id) &&
-      os_image_in_scheduled_brownout?(schedules, datetime, machine_os_image)
+    status(schedules, datetime, organization_id, machine_os_image) == :in_brownout
+  end
+
+  @doc """
+  Resolves the brownout status for an organization's machine using the default schedules.
+
+  Returns `:excluded` when the OS image is inside a scheduled brownout window but the
+  organization opted out via the `exclude_from_brownouts` feature flag.
+  """
+  @spec status(Datetime.t(), String.t(), String.t()) :: status()
+  def status(datetime, organization_id, machine_os_image) do
+    status(schedules(), datetime, organization_id, machine_os_image)
+  end
+
+  @doc """
+  Resolves the brownout status for an organization's machine.
+  """
+  @spec status(brownout_schedules(), Datetime.t(), String.t(), String.t()) :: status()
+  def status(schedules, datetime, organization_id, machine_os_image) do
+    cond do
+      not os_image_in_scheduled_brownout?(schedules, datetime, machine_os_image) ->
+        :not_in_brownout
+
+      apply_brownout_to_organization?(organization_id) ->
+        :in_brownout
+
+      true ->
+        :excluded
+    end
   end
 
   @doc """
