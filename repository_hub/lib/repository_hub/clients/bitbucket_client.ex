@@ -26,6 +26,7 @@ defmodule RepositoryHub.BitbucketClient do
       "description" => params.description,
       "name" => params.context
     })
+    |> unavailable_on_server_error("Bitbucket")
     |> process_response
   end
 
@@ -480,6 +481,16 @@ defmodule RepositoryHub.BitbucketClient do
     [recv_timeout: 25_000]
     |> Keyword.merge(opts)
   end
+
+  # 5xx: the provider accepted the request but the outcome is unknown — the
+  # status may still be created. Report unavailable so callers treat the send
+  # as possibly-in-flight rather than definitively rejected.
+  defp unavailable_on_server_error({:ok, %{status_code: status_code}}, provider)
+       when status_code >= 500 do
+    fail_with(:unavailable, "#{provider} is unavailable. Status: #{status_code}")
+  end
+
+  defp unavailable_on_server_error(response, _provider), do: response
 
   defp process_response(response) do
     response
