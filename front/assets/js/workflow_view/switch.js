@@ -46,7 +46,7 @@ export var Switch = {
       const firstInput = promotionForm.find('input, select').first();
       if (firstInput.length) {
         if (firstInput[0].tomselect) {
-          firstInput[0].tomselect.control.focus({ preventScroll: true });
+          firstInput[0].tomselect.focus_node.focus({ preventScroll: true });
         } else {
           firstInput[0].focus({ preventScroll: true });
           // Position cursor at the end of the text if there's a value
