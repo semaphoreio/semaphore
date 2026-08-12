@@ -49,3 +49,13 @@ GHSA-gp9c-pm5m-5cxr
 GHSA-j9wq-vxxc-94wf
 GHSA-mp55-p8c9-rfw2
 GHSA-pj7v-xfvx-wmjq
+
+# gun — two advisories, pulled in transitively by grpc 0.3.1 (`gun ~> 1.2`, resolves
+# 1.3.0). Patched in gun 2.4.0, but bumping gun forces the same out-of-scope grpc-stack
+# bump as cowboy/cowlib above; the real fix — upgrading the plumber gRPC stack — is
+# tracked in semaphoreio/semaphore#1134. gun is the gRPC client transport for
+# internal-service calls only; no user-controlled URLs, hosts, or request lines reach it.
+#   GHSA-r53j-fjj5-mv77 — uncontrolled resource consumption, fixed in 2.4.0
+#   GHSA-w4f7-4cxr-rv3c — HTTP request/response splitting (shared cowboy/gun advisory)
+GHSA-r53j-fjj5-mv77
+GHSA-w4f7-4cxr-rv3c

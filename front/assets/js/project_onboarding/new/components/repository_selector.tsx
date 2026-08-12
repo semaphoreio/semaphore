@@ -111,7 +111,7 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
   // can back both the initial paginated load and the background sync poll.
   const fetchRepositoryPage = async (
     url: string
-  ): Promise<{ repos: Repository[], nextPageToken: string | null }> => {
+  ): Promise<{ repos: Repository[], nextPageToken: string | null, }> => {
     const response = await fetch(url);
     const contentType = response.headers.get(`content-type`) || ``;
 
@@ -165,7 +165,7 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
   const collectRepositories = async (
     slug: string | undefined,
     maxPages: number
-  ): Promise<{ repos: Repository[], nextPageToken: string | null }> => {
+  ): Promise<{ repos: Repository[], nextPageToken: string | null, }> => {
     const collected: Repository[] = [];
     let token: string | null = null;
     let url = props.repositoriesUrl;

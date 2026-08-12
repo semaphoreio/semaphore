@@ -22,3 +22,17 @@ GHSA-pj7v-xfvx-wmjq
 # CRLF / header injection via unvalidated `domain` and `path` options (no user-controlled domain/path
 # fed to hackney from lib/)
 GHSA-mp55-p8c9-rfw2
+
+# --- tesla 1.11.2 advisories, fixed in 1.18.3 ---
+# Bump is blocked pending investigation: with tesla 1.20 the bitbucket oauth request
+# phase regressed (empty redirect; caught by test/guard/id/api_test.exs) while the
+# github/gitlab strategies kept working. tesla reaches guard only through
+# oauth2 2.1.0 (tesla ~> 1.5) and the ueberauth_bitbucket fork's oauth2 usage; the
+# exact mechanism is not yet isolated. Root-causing the regression and unblocking
+# the bump is tracked as a follow-up; until then guard stays on ~> 1.11.0.
+GHSA-28jh-g32x-v9v4
+GHSA-9m9w-gxf7-rh8m
+GHSA-h74c-q9j7-mpcm
+GHSA-mc85-72gr-vm9f
+GHSA-q7jx-v53g-848w
+

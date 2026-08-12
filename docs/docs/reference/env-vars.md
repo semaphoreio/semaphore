@@ -78,6 +78,22 @@ You can view all the job IDs using the [sem CLI](./semaphore-cli):
 
 A string with a user-supplied name for the job.
 
+### Job rerun {#job-rerun}
+
+- **Environment variable**: `SEMAPHORE_JOB_RERUN`
+- **Example**: `true`
+
+Only set (to `true`) when the job is re-executed by a [job-level partial rerun](../using-semaphore/pipelines#job-level-rerun). See also [`SEMAPHORE_JOB_ORIGINAL_ID`](#job-original-id) for the previous attempt's identifier, and the analogous [`SEMAPHORE_PIPELINE_RERUN`](#pipeline-rerun) and [`SEMAPHORE_WORKFLOW_RERUN`](#workflow-rerun) variables.
+
+### Job original id {#job-original-id}
+
+- **Environment variable**: `SEMAPHORE_JOB_ORIGINAL_ID`
+- **Example**: `a26d42cf-89ac-4c3f-9e2d-51bb231897bf`
+
+The identifier of this job's previous attempt. Only set when the job is re-executed by a [job-level partial rerun](../using-semaphore/pipelines#job-level-rerun); not set on first runs, whole-pipeline reruns, or jobs carried over as copies.
+
+Use it to fetch the previous attempt's artifacts or logs, or to compare test results between attempts.
+
 ### Job count {#job-count}
 
 - **Environment variable**: `SEMAPHORE_JOB_COUNT`

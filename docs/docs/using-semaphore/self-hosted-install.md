@@ -4,7 +4,7 @@ description: Install self-hosted agent stack in your machines
 
 # Install Agents
 
-<Available plans={['Hybrid', 'Enterprise']}/>
+<Available plans={['The Plan']}/>
 
 ## Overview
 

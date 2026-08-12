@@ -91,7 +91,7 @@ export const SYNC_POLL_MAX_ATTEMPTS: Record<RefreshScope, number> = {
 export const SYNC_POLL_MAX_PAGES = 5;
 
 export const repositoriesIncludeSlug = (
-  repos: ReadonlyArray<{ full_name: string }>,
+  repos: ReadonlyArray<{ full_name: string, }>,
   slug: string
 ): boolean => {
   const target = slug.toLowerCase();
@@ -104,10 +104,10 @@ export const nextSyncPollDelayMs = (attempt: number, scope: RefreshScope): numbe
   scope === `targeted` ? 3000 : Math.min(attempt * 5000, 20000);
 
 export const shouldStopPolling = (args: {
-  scope: RefreshScope,
-  attempt: number,
-  maxAttempts: number,
-  found: boolean,
+  scope: RefreshScope;
+  attempt: number;
+  maxAttempts: number;
+  found: boolean;
 }): boolean => {
   if (args.scope === `targeted` && args.found) return true;
   return args.attempt >= args.maxAttempts;

@@ -95,6 +95,19 @@ defmodule Rbac.RoleManagement do
     |> Rbac.Repo.one()
   end
 
+  @doc """
+    Returns the ids of all organizations in which the given subject has an
+    org-scope role binding, without pagination.
+  """
+  @spec accessible_org_ids(uuid) :: [uuid]
+  def accessible_org_ids(user_id) do
+    SubjectRoleBinding
+    |> where([srb], srb.subject_id == ^user_id and is_nil(srb.project_id))
+    |> select([srb], srb.org_id)
+    |> distinct(true)
+    |> Rbac.Repo.all()
+  end
+
   @page_size 20
   defp extract_pagination_info(opts) do
     page_size = if opts[:page_size] in [nil, 0], do: @page_size, else: opts[:page_size]
@@ -121,7 +134,7 @@ defmodule Rbac.RoleManagement do
     case verify_input_for_new_role(rbi.user_id, rbi.org_id, rbi.project_id, role_id) do
       {:ok, nil} ->
         user_to_subject_bindings = Queries.user_to_subject_bindings_query(rbi.user_id)
-        role_inheritance_tree = Queries.role_inheritance_and_mappings_query()
+        role_inheritance_tree = Queries.role_inheritance_and_mappings_query(rbi.org_id)
 
         project_where_clause =
           if valid_uuid?(rbi.project_id) do
@@ -454,14 +467,14 @@ defmodule Rbac.RoleManagement do
     {:error, "Organization id cant be nil"}
   end
 
-  defp verify_input_for_new_role(_user_id, _org_id, project_id, role_id) do
+  defp verify_input_for_new_role(_user_id, org_id, project_id, role_id) do
     if valid_uuid?(role_id),
-      do: role_scope_matches_rest_of_data?(project_id, role_id),
+      do: role_scope_matches_rest_of_data?(org_id, project_id, role_id),
       else: {:error, "Role id must be a valid uuid"}
   end
 
-  defp role_scope_matches_rest_of_data?(project_id, role_id) do
-    case Rbac.Repo.RbacRole.get_role_by_id(role_id) do
+  defp role_scope_matches_rest_of_data?(org_id, project_id, role_id) do
+    case Rbac.Repo.RbacRole.get_role_by_id(role_id, org_id) do
       nil ->
         {:error, "Role with id #{role_id} does not exist."}
 

@@ -298,6 +298,275 @@ Stop a running job:
 sem-ai job stop <job-id>
 ```
 
+## Managing organization members and roles {#org-management}
+
+### sem-ai org member list {#org-member-list}
+
+List organization members, optionally filtered by member type:
+
+```shell
+sem-ai org member list
+sem-ai org member list --type service_account
+sem-ai org member list --type group
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--type` | `user` | filter by member type: `user`, `service_account`, or `group` |
+
+### sem-ai org member add {#org-member-add}
+
+Invite a person to the organization by their SCM handle:
+
+```shell
+sem-ai org member add --provider github --handle octocat
+sem-ai org member add --provider github --handle octocat --role <role-id> --name "Octo Cat" --email octo@example.com
+sem-ai org member add --provider bitbucket --handle jdoe --uid 557058:1a2b3c
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--handle` | — | SCM login/handle of the person to invite (required) |
+| `--provider` | — | SCM provider: `github`, `bitbucket`, or `gitlab` (required) |
+| `--uid` | — | SCM user ID (required for `bitbucket`) |
+| `--role` | — | org role ID to assign |
+| `--name` | — | display name |
+| `--email` | — | email address |
+
+### sem-ai org member set-role {#org-member-set-role}
+
+Assign or change a member's org-level role. This is an upsert — the same command creates the initial role assignment and changes it later.
+
+```shell
+sem-ai org member set-role <user-id> <role-id>
+sem-ai org member set-role <service-account-id> <role-id>
+```
+
+### sem-ai org member remove {#org-member-remove}
+
+Remove a member or service account from the organization:
+
+```shell
+sem-ai org member remove <user-id>
+```
+
+### sem-ai org role list {#org-role-list}
+
+List organization roles, including built-in and custom roles:
+
+```shell
+sem-ai org role list
+```
+
+### sem-ai org role show {#org-role-show}
+
+Show role details, including its permission set:
+
+```shell
+sem-ai org role show <role-id>
+```
+
+### sem-ai org role create {#org-role-create}
+
+Create a custom role:
+
+```shell
+sem-ai org role create deployer --permissions "project.view,project.job.rerun"
+sem-ai org role create viewer --scope project --permissions "project.view"
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--description` | — | role description |
+| `--scope` | `org` | role scope: `org` or `project` |
+| `--permissions` | — | comma-separated permission names, e.g. `organization.people.view,organization.people.manage` |
+
+### sem-ai org role update {#org-role-update}
+
+Update a custom role:
+
+```shell
+sem-ai org role update <role-id> --permissions "project.view,project.job.rerun"
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--name` | — | new role name |
+| `--description` | — | new role description |
+| `--permissions` | — | comma-separated permission names (replaces the existing set) |
+
+### sem-ai org role delete {#org-role-delete}
+
+Delete a custom role:
+
+```shell
+sem-ai org role delete <role-id>
+```
+
+### sem-ai permission list {#permission-list}
+
+List available permissions, optionally filtered by scope:
+
+```shell
+sem-ai permission list
+sem-ai permission list --scope project
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--scope` | — | filter by scope: `org` or `project` |
+
+## Managing groups {#groups}
+
+### sem-ai group list {#group-list}
+
+List groups in the organization:
+
+```shell
+sem-ai group list
+```
+
+### sem-ai group create {#group-create}
+
+Create a group:
+
+```shell
+sem-ai group create backend-team
+sem-ai group create backend-team --description "Backend engineers" --members "id1,id2"
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--description` | — | group description |
+| `--members` | — | comma-separated member IDs to add on creation |
+
+### sem-ai group update {#group-update}
+
+Update a group's name, description, or membership:
+
+```shell
+sem-ai group update <group-id> --add "id1,id2" --remove "id3"
+sem-ai group update <group-id> --name "new-name"
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--name` | — | new group name |
+| `--description` | — | new group description |
+| `--add` | — | comma-separated member IDs to add |
+| `--remove` | — | comma-separated member IDs to remove |
+
+### sem-ai group delete {#group-delete}
+
+Delete a group:
+
+```shell
+sem-ai group delete <group-id>
+```
+
+## Managing service accounts {#service-accounts}
+
+### sem-ai service-account list {#service-account-list}
+
+List service accounts in the organization:
+
+```shell
+sem-ai service-account list
+```
+
+### sem-ai service-account create {#service-account-create}
+
+Create a service account. The API token is only ever returned in this create response — save it now, since `service-account show` never returns it again (use `regenerate-token` if it's lost).
+
+```shell
+sem-ai service-account create ci-bot
+sem-ai service-account create ci-bot --description "Bot for CI pipelines"
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--description` | — | service account description |
+
+### sem-ai service-account show {#service-account-show}
+
+Show service account details:
+
+```shell
+sem-ai service-account show <service-account-id>
+```
+
+### sem-ai service-account update {#service-account-update}
+
+Update a service account's name or description. The API replaces the whole record on update, so if `--name` is omitted, sem-ai first fetches the current name and resends it unchanged to avoid clearing it.
+
+```shell
+sem-ai service-account update <service-account-id> --name "new-name"
+sem-ai service-account update <service-account-id> --description "new description"
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--name` | — | new service account name |
+| `--description` | — | new service account description |
+
+### sem-ai service-account delete {#service-account-delete}
+
+Delete a service account:
+
+```shell
+sem-ai service-account delete <service-account-id>
+```
+
+### sem-ai service-account deactivate {#service-account-deactivate}
+
+Deactivate a service account, disabling its token without deleting the account:
+
+```shell
+sem-ai service-account deactivate <service-account-id>
+```
+
+### sem-ai service-account reactivate {#service-account-reactivate}
+
+Reactivate a previously deactivated service account:
+
+```shell
+sem-ai service-account reactivate <service-account-id>
+```
+
+### sem-ai service-account regenerate-token {#service-account-regenerate-token}
+
+Regenerate a service account's API token. The old token is invalidated and the new one is printed once in the response — save it immediately.
+
+```shell
+sem-ai service-account regenerate-token <service-account-id>
+```
+
+## Managing project members {#project-members}
+
+### sem-ai project member list {#project-member-list}
+
+List project members:
+
+```shell
+sem-ai project member list my-project
+```
+
+### sem-ai project member set-role {#project-member-set-role}
+
+Set a project-level role for a member:
+
+```shell
+sem-ai project member set-role my-project <user-id> <role-id>
+```
+
+### sem-ai project member remove {#project-member-remove}
+
+Remove a member's project-level role:
+
+```shell
+sem-ai project member remove my-project <user-id>
+```
+
 ## Compound commands {#compound}
 
 These commands compose multiple API calls into a single operation.
