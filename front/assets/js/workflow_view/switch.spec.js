@@ -202,13 +202,14 @@ describe("Switch", () => {
       $("[promote-button]").trigger("click");
 
       const select = document.querySelector("[data-promotion-param-name]");
-      const controlFocusCall = focusStub.getCalls().find((call) => {
-        return call.thisValue === select.tomselect.control;
+      const focusNodeCall = focusStub.getCalls().find((call) => {
+        return call.thisValue === select.tomselect.focus_node;
       });
 
       expect(select.tomselect).to.not.be.undefined;
-      expect(controlFocusCall).to.not.be.undefined;
-      expect(controlFocusCall.args[0]).to.deep.equal({ preventScroll: true });
+      expect(select.tomselect.focus_node.tabIndex).to.be.at.least(0);
+      expect(focusNodeCall).to.not.be.undefined;
+      expect(focusNodeCall.args[0]).to.deep.equal({ preventScroll: true });
 
       focusStub.restore();
     });
