@@ -91,13 +91,13 @@ sequenceDiagram
 
     Client->>Guard: POST /mcp/oauth/token (grant_type=refresh_token)
     Guard->>DB: lock refresh token by hash + client_id (FOR UPDATE)
-    alt token unused, unrevoked, unexpired
+    alt token unused, unrevoked, family and token unexpired
         Guard->>DB: mark used, insert successor in the same family
         Guard-->>Client: new access_token + new refresh_token
     else token already used (replay)
         Guard->>DB: revoke every token in the family
         Guard-->>Client: 400 invalid_grant
-    else unknown / revoked / expired
+    else unknown / revoked / expired / family past its deadline
         Guard-->>Client: 400 invalid_grant
     end
 ```
@@ -130,7 +130,8 @@ Guard also issues an opaque refresh token with every access token, so an expired
 access token never forces the user back through the browser flow.
 
 - Refresh tokens are stored as sha256 hashes and bound to the issuing `client_id`
-- Refresh token TTL: `MCP_OAUTH_REFRESH_TOKEN_TTL_SECONDS` (default 30 days)
+- Refresh token TTL: `MCP_OAUTH_REFRESH_TOKEN_TTL_SECONDS` (default 30 days), sliding — it restarts on every rotation
+- Token family lifetime: `MCP_OAUTH_REFRESH_TOKEN_MAX_LIFETIME_SECONDS` (default 90 days), absolute — rotation does not extend it
 - Expired auth codes and refresh tokens are swept by `Guard.McpOAuth.AuthCodeCleaner`
 
 ## Security Guarantees
@@ -139,6 +140,7 @@ access token never forces the user back through the browser flow.
 - Authorization codes are single-use and consumed atomically
 - Refresh tokens are single-use and rotated on every refresh, as OAuth 2.1 requires for public clients
 - Replaying a used refresh token revokes every token in its family, so a leaked token cannot outlive its detection
+- A token family also has an absolute deadline that rotation cannot extend, so a stolen family that only the thief refreshes still ages out
 - Redirect URI must match a registered URI for the client
 - Consent endpoints require a logged-in browser session
 - Unauthorized protected-resource requests return `401` with OAuth-style error details

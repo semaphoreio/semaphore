@@ -6,6 +6,7 @@ defmodule Guard.Repo.Migrations.CreateMcpOauthRefreshTokens do
       add :id, :uuid, primary_key: true
       add :token_hash, :string, null: false
       add :family_id, :uuid, null: false
+      add :family_expires_at, :utc_datetime, null: false
       add :client_id, :string, null: false
       add :user_id, references(:rbac_users, type: :uuid, on_delete: :delete_all), null: false
       add :expires_at, :utc_datetime, null: false

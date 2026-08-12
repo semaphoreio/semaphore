@@ -55,6 +55,29 @@ defmodule Guard.Store.McpOAuthRefreshToken.Test do
       assert_in_delta ttl, McpOAuthRefreshToken.ttl_seconds(), 10
     end
 
+    test "defaults the family deadline to the configured max lifetime", %{user_id: user_id} do
+      {:ok, _, record} = issue(user_id)
+
+      lifetime = DateTime.diff(record.family_expires_at, DateTime.utc_now())
+      assert_in_delta lifetime, McpOAuthRefreshToken.max_lifetime_seconds(), 10
+    end
+
+    test "keeps the given family deadline", %{user_id: user_id} do
+      deadline = DateTime.utc_now() |> DateTime.add(600, :second) |> DateTime.truncate(:second)
+      {:ok, _, record} = issue(user_id, %{family_expires_at: deadline})
+
+      assert record.family_expires_at == deadline
+    end
+
+    test "caps expiry at the family deadline", %{user_id: user_id} do
+      # A family that is closer to its absolute deadline than one sliding TTL
+      # away must not hand out a token that outlives it.
+      deadline = DateTime.utc_now() |> DateTime.add(600, :second) |> DateTime.truncate(:second)
+      {:ok, _, record} = issue(user_id, %{family_expires_at: deadline})
+
+      assert record.expires_at == deadline
+    end
+
     test "missing client_id returns an error", %{user_id: user_id} do
       params = %{user_id: user_id, client_id: nil}
 

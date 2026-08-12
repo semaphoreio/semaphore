@@ -60,7 +60,8 @@ defmodule Guard.McpOAuth.Token do
            :ok <- validate_pkce(auth_code, params),
            :ok <- validate_redirect_uri(auth_code, params),
            {:ok, _} <- McpOAuthAuthCode.mark_code_used(auth_code),
-           {:ok, response} <- issue_tokens(auth_code.client_id, auth_code.user_id, nil) do
+           {:ok, response} <-
+             issue_tokens(%{client_id: auth_code.client_id, user_id: auth_code.user_id}) do
         response
       else
         {:error, error_map} -> Repo.rollback(error_map)
@@ -107,6 +108,9 @@ defmodule Guard.McpOAuth.Token do
       not is_nil(refresh_token.revoked_at) ->
         Repo.rollback(error_response("invalid_grant", "Refresh token has been revoked"))
 
+      family_expired?(refresh_token) ->
+        Repo.rollback(error_response("invalid_grant", "Refresh token family has expired"))
+
       expired?(refresh_token) ->
         Repo.rollback(error_response("invalid_grant", "Refresh token has expired"))
 
@@ -116,10 +120,10 @@ defmodule Guard.McpOAuth.Token do
   end
 
   defp do_rotate(refresh_token) do
-    %{client_id: client_id, user_id: user_id, family_id: family_id} = refresh_token
+    attrs = Map.take(refresh_token, [:client_id, :user_id, :family_id, :family_expires_at])
 
     with {:ok, _} <- McpOAuthRefreshToken.mark_used(refresh_token),
-         {:ok, response} <- issue_tokens(client_id, user_id, family_id) do
+         {:ok, response} <- issue_tokens(attrs) do
       response
     else
       {:error, error_map} -> Repo.rollback(error_map)
@@ -142,6 +146,12 @@ defmodule Guard.McpOAuth.Token do
 
   defp expired?(refresh_token),
     do: DateTime.compare(refresh_token.expires_at, DateTime.utc_now()) != :gt
+
+  # Rotation carries the family deadline over untouched, so a family that keeps
+  # refreshing still ages out. Belt and braces: `issue/1` caps a token's own
+  # expiry at that deadline, so a rotated token normally expires with it.
+  defp family_expired?(refresh_token),
+    do: DateTime.compare(refresh_token.family_expires_at, DateTime.utc_now()) != :gt
 
   defp refresh_params(params) do
     cond do
@@ -235,16 +245,11 @@ defmodule Guard.McpOAuth.Token do
   end
 
   # Mints the access token and the refresh token that replaces the credential
-  # just consumed. `family_id` is nil for a fresh authorization, or the family
-  # of the refresh token being rotated.
-  defp issue_tokens(client_id, user_id, family_id) do
-    with {:ok, access_token} <- JWT.create_token(%{user_id: user_id}),
-         {:ok, refresh_token, _record} <-
-           McpOAuthRefreshToken.issue(%{
-             client_id: client_id,
-             user_id: user_id,
-             family_id: family_id
-           }) do
+  # just consumed. A fresh authorization passes only client_id/user_id and so
+  # starts a new family; rotation also passes the family and its deadline.
+  defp issue_tokens(attrs) do
+    with {:ok, access_token} <- JWT.create_token(%{user_id: attrs.user_id}),
+         {:ok, refresh_token, _record} <- McpOAuthRefreshToken.issue(attrs) do
       {:ok, build_response(access_token, refresh_token)}
     else
       {:error, reason} ->

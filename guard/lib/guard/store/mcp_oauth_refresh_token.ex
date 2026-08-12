@@ -13,6 +13,11 @@ defmodule Guard.Store.McpOAuthRefreshToken do
   transaction, so two concurrent refreshes with the same token serialize and
   exactly one of them wins. Only the sha256 hash of a token is stored; the
   plaintext is returned once, at issue time.
+
+  Each token's own expiry slides forward on rotation, but the family also
+  carries an absolute deadline (`family_expires_at`) fixed when it is created.
+  A family that keeps rotating therefore still dies at that deadline, so a
+  stolen family cannot be kept alive indefinitely by the thief refreshing it.
   """
 
   require Logger
@@ -37,11 +42,21 @@ defmodule Guard.Store.McpOAuthRefreshToken do
     do: :crypto.hash(:sha256, value) |> Base.encode16(case: :lower)
 
   @doc """
-  Returns the configured refresh token TTL in seconds.
+  Returns the configured refresh token TTL in seconds. This is the sliding
+  window: it restarts on every rotation.
   """
   @spec ttl_seconds() :: pos_integer()
   def ttl_seconds do
     Application.fetch_env!(:guard, :mcp_oauth_refresh_token_ttl_seconds)
+  end
+
+  @doc """
+  Returns the configured absolute lifetime of a token family in seconds,
+  measured from the authorization that created it. Rotation does not extend it.
+  """
+  @spec max_lifetime_seconds() :: pos_integer()
+  def max_lifetime_seconds do
+    Application.fetch_env!(:guard, :mcp_oauth_refresh_token_max_lifetime_seconds)
   end
 
   @doc """
@@ -52,18 +67,23 @@ defmodule Guard.Store.McpOAuthRefreshToken do
   - user_id (required)
   - family_id (optional): reuse the family of the token being rotated. A new
     family is started when omitted (i.e. on authorization code exchange).
-  - expires_at (optional): defaults to now + `ttl_seconds/0`
+  - family_expires_at (optional): carry over the rotated family's absolute
+    deadline. Defaults to now + `max_lifetime_seconds/0` for a new family.
+  - expires_at (optional): defaults to now + `ttl_seconds/0`, capped at the
+    family deadline
   """
   @spec issue(map()) :: {:ok, String.t(), McpOAuthRefreshToken.t()} | {:error, term()}
   def issue(params) do
     token = generate_token()
+    family_expires_at = params[:family_expires_at] || default_family_expires_at()
 
     attrs = %{
       token_hash: hash(token),
       family_id: params[:family_id] || Ecto.UUID.generate(),
+      family_expires_at: family_expires_at,
       client_id: params[:client_id],
       user_id: params[:user_id],
-      expires_at: params[:expires_at] || default_expires_at()
+      expires_at: params[:expires_at] || default_expires_at(family_expires_at)
     }
 
     changeset = McpOAuthRefreshToken.changeset(%McpOAuthRefreshToken{}, attrs)
@@ -145,8 +165,20 @@ defmodule Guard.Store.McpOAuthRefreshToken do
     |> Repo.delete_all()
   end
 
-  defp default_expires_at do
-    now() |> DateTime.add(ttl_seconds(), :second)
+  defp default_family_expires_at do
+    now() |> DateTime.add(max_lifetime_seconds(), :second)
+  end
+
+  # A token never outlives its family: the sliding TTL is capped at the family's
+  # absolute deadline, so an aged-out family also stops handing out live tokens
+  # and its rows are swept by `cleanup_expired/0`.
+  defp default_expires_at(family_expires_at) do
+    sliding = now() |> DateTime.add(ttl_seconds(), :second)
+
+    case DateTime.compare(sliding, family_expires_at) do
+      :gt -> family_expires_at
+      _ -> sliding
+    end
   end
 
   defp now, do: DateTime.utc_now() |> DateTime.truncate(:second)

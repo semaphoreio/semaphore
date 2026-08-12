@@ -6,6 +6,10 @@ defmodule Guard.Repo.McpOAuthRefreshToken do
   presented one used. All tokens descending from one authorization grant share a
   `family_id`, so re-presenting an already-used token (replay) can revoke the
   whole family at once. Only the sha256 hash of the token is stored.
+
+  `expires_at` slides forward on every rotation, while `family_expires_at` is
+  fixed when the family is created and carried over unchanged, so a family that
+  keeps rotating still ages out at an absolute deadline.
   """
 
   use Guard.Repo.Schema
@@ -17,6 +21,7 @@ defmodule Guard.Repo.McpOAuthRefreshToken do
   schema "mcp_oauth_refresh_tokens" do
     field(:token_hash, :string)
     field(:family_id, :binary_id)
+    field(:family_expires_at, :utc_datetime)
     field(:client_id, :string)
     field(:expires_at, :utc_datetime)
     field(:used_at, :utc_datetime)
@@ -32,6 +37,7 @@ defmodule Guard.Repo.McpOAuthRefreshToken do
     |> cast(attrs, [
       :token_hash,
       :family_id,
+      :family_expires_at,
       :client_id,
       :user_id,
       :expires_at,
@@ -41,6 +47,7 @@ defmodule Guard.Repo.McpOAuthRefreshToken do
     |> validate_required([
       :token_hash,
       :family_id,
+      :family_expires_at,
       :client_id,
       :user_id,
       :expires_at
