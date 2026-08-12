@@ -273,24 +273,24 @@ defmodule GithubNotifier.StatusTest do
       assert Process.alive?(pid)
     end
 
-    test "drops the connection after a transport error" do
+    test "keeps the connection when repositoryhub replies unavailable (busy guard)" do
       GithubNotifier.Status.create(pending_data(), "req-1")
       assert_receive {:build_status, :PENDING, @context}
 
-      assert conn_pid(status_key())
+      pid = conn_pid(status_key())
 
       GrpcMock.stub(RepositoryHubMock, :create_build_status, fn _req, _stream ->
         raise GRPC.RPCError,
           status: GRPC.Status.unavailable(),
-          message: "repositoryhub is unavailable"
+          message: "Status delivery for this check is already in progress"
       end)
 
       assert_raise RuntimeError, ~r/Failed to deliver success status/, fn ->
         GithubNotifier.Status.create(success_data(), "req-2")
       end
 
-      worker = GithubNotifier.StatusSender.worker_for(status_key())
-      assert :sys.get_state(worker).channel == nil
+      assert conn_pid(status_key()) == pid
+      assert Process.alive?(pid)
     end
   end
 

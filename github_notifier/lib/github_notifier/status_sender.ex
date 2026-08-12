@@ -202,6 +202,12 @@ defmodule GithubNotifier.StatusSender.Worker do
     report_failure(res)
   end
 
+  # repository_hub replied (busy guard, rejection, unavailable) — the channel
+  # itself is healthy, so keep it; the message is retried via redelivery.
+  defp handle_response({:error, %GRPC.RPCError{} = error}) do
+    report_failure(error)
+  end
+
   defp handle_response(res) do
     report_failure(res)
     :transport_error
