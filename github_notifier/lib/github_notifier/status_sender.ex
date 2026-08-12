@@ -56,7 +56,7 @@ defmodule GithubNotifier.StatusSender.Worker do
   use GenServer
   require Logger
 
-  @terminal_states ["success", "failure"]
+  @terminal_states ["success", "failure", "stopped"]
   @cache_ttl :timer.hours(5)
 
   def start_link(name) do
@@ -221,4 +221,5 @@ defmodule GithubNotifier.StatusSender.Worker do
   defp map_status("success"), do: :SUCCESS
   defp map_status("pending"), do: :PENDING
   defp map_status("failure"), do: :FAILURE
+  defp map_status("stopped"), do: :STOPPED
 end

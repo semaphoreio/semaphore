@@ -47,6 +47,14 @@ defmodule RepositoryHub.BuildStatusGuardTest do
       assert {:ok, _fence} = BuildStatusGuard.claim(%{request | status: :SUCCESS})
     end
 
+    test "skips a pending after a stopped state was delivered", %{request: request} do
+      stopped = %{request | status: :STOPPED}
+      assert {:ok, fence} = BuildStatusGuard.claim(stopped)
+      assert :ok = BuildStatusGuard.finalize(stopped, fence)
+
+      assert :skip = BuildStatusGuard.claim(%{request | status: :PENDING})
+    end
+
     test "allows a terminal state after a terminal state", %{request: request} do
       success = %{request | status: :SUCCESS}
       assert {:ok, fence} = BuildStatusGuard.claim(success)

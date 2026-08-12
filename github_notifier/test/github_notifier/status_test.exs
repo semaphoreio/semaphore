@@ -40,6 +40,33 @@ defmodule GithubNotifier.StatusTest do
       refute_receive {:build_status, :PENDING, _}, 200
     end
 
+    test "does not send pending after stopped was already sent for the same check" do
+      GithubNotifier.Status.create(stopped_data(), "req-1")
+      assert_receive {:build_status, :STOPPED, @context}
+
+      GithubNotifier.Status.create(pending_data(), "req-2")
+
+      refute_receive {:build_status, :PENDING, _}, 200
+    end
+
+    test "delivers every state the extractor can produce" do
+      states = [
+        {"pending", :PENDING},
+        {"success", :SUCCESS},
+        {"failure", :FAILURE},
+        {"stopped", :STOPPED}
+      ]
+
+      for {state, status} <- states do
+        GithubNotifier.Status.create(
+          data(state: state, description: "state #{state}", ppl_id: "ppl-#{state}"),
+          "req-#{state}"
+        )
+
+        assert_receive {:build_status, ^status, @context}
+      end
+    end
+
     test "sends pending and success in order when they arrive in order" do
       GithubNotifier.Status.create(pending_data(), "req-1")
       GithubNotifier.Status.create(success_data(), "req-2")
@@ -290,6 +317,15 @@ defmodule GithubNotifier.StatusTest do
     data(
       Keyword.merge(
         [state: "success", description: "The build passed on Semaphore 2.0."],
+        overrides
+      )
+    )
+  end
+
+  defp stopped_data(overrides \\ []) do
+    data(
+      Keyword.merge(
+        [state: "stopped", description: "The build was canceled on Semaphore 2.0."],
         overrides
       )
     )

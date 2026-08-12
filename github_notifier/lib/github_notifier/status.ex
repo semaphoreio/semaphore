@@ -39,9 +39,4 @@ defmodule GithubNotifier.Status do
       :error -> {:error, status_key}
     end
   end
-
-  defp map_status("success"), do: :SUCCESS
-  defp map_status("pending"), do: :PENDING
-  defp map_status("failure"), do: :FAILURE
-  defp map_status("stopped"), do: :STOPPED
 end
