@@ -23,7 +23,7 @@ defmodule HooksReceiver.MixProject do
       {:util, github: "renderedtext/elixir-util"},
       {:plug_cowboy, "~> 2.0"},
       {:amqp_client, "~> 3.11.18"},
-      {:tackle, github: "renderedtext/ex-tackle", tag: "v0.3.0"},
+      {:tackle, github: "renderedtext/ex-tackle", tag: "v0.4.0"},
       {:grpc, "~> 0.9.0"},
       {:protobuf, "~> 0.13.0"},
       {:grpc_mock, github: "renderedtext/grpc-mock", branch: "grpc08", only: [:dev, :test]},
