@@ -304,6 +304,43 @@ RSpec.describe RepoHost::Github::Client do
         expect(client.token_valid?).to eql(false)
       end
     end
+
+    context "check is rate limited" do
+      before do
+        allow_any_instance_of(Octokit::Client).to receive(:check_application_authorization)
+          .and_raise(Octokit::TooManyRequests)
+      end
+
+      it "raises instead of classifying the token as invalid" do
+        expect do
+          @client.token_valid?
+        end.to raise_error(RepoHost::RemoteException::TooManyRequests)
+      end
+    end
+
+    context "check is forbidden (non-rate-limit 403)" do
+      before do
+        allow_any_instance_of(Octokit::Client).to receive(:check_application_authorization)
+          .and_raise(Octokit::Forbidden)
+      end
+
+      it "returns false" do
+        expect(@client.token_valid?).to eql(false)
+      end
+    end
+
+    context "github is unavailable" do
+      before do
+        allow_any_instance_of(Octokit::Client).to receive(:check_application_authorization)
+          .and_raise(Octokit::ServiceUnavailable)
+      end
+
+      it "raises instead of classifying the token as invalid" do
+        expect do
+          @client.token_valid?
+        end.to raise_error(RepoHost::RemoteException::ServiceUnavailable)
+      end
+    end
   end
 
   describe "#revoke_connection" do
