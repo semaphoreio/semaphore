@@ -1,0 +1,10 @@
+# --- hackney 1.25.0 advisories, all first patched in hackney 4.0.1 ---
+# Bump to 4.0.1 is blocked: httpoison ~> 1.0 requires hackney ~> 1.17, so hackney
+# cannot move to 4.x without an httpoison major upgrade. No httpoison release
+# supports hackney 4.x. secrethub's outbound HTTP (httpoison/hackney, dev/test
+# only) and sentry's hackney adapter target internal/configured endpoints, not
+# user-supplied hosts/queries.
+GHSA-gp9c-pm5m-5cxr
+GHSA-j9wq-vxxc-94wf
+GHSA-mp55-p8c9-rfw2
+GHSA-pj7v-xfvx-wmjq
