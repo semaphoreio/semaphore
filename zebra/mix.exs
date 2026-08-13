@@ -51,7 +51,7 @@ defmodule Zebra.Mixfile do
       {:gettext, "~> 0.11"},
       {:timex, "~> 3.6.1"},
       {:amqp_client, "~> 3.9.27"},
-      {:tackle, github: "renderedtext/ex-tackle", tag: "v0.2.3"},
+      {:tackle, github: "renderedtext/ex-tackle", tag: "v0.4.0"},
       {:mock, "~> 0.3.7", only: :test},
       {:fun_registry, github: "renderedtext/fun-registry", only: [:dev, :test]},
       {:junit_formatter, "~> 3.0", only: [:test]},
