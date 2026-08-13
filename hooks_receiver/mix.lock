@@ -37,7 +37,7 @@
   "recon": {:hex, :recon, "2.5.3", "739107b9050ea683c30e96de050bc59248fd27ec147696f79a8797ff9fa17153", [:mix, :rebar3], [], "hexpm", "6c6683f46fd4a1dfd98404b9f78dcabc7fcd8826613a89dcb984727a8c3099d7"},
   "sleeplocks": {:hex, :sleeplocks, "1.1.3", "96a86460cc33b435c7310dbd27ec82ca2c1f24ae38e34f8edde97f756503441a", [:rebar3], [], "hexpm", "d3b3958552e6eb16f463921e70ae7c767519ef8f5be46d7696cc1ed649421321"},
   "ssl_verify_fun": {:hex, :ssl_verify_fun, "1.1.7", "354c321cf377240c7b8716899e182ce4890c5938111a1296add3ec74cf1715df", [:make, :mix, :rebar3], [], "hexpm", "fe4c190e8f37401d30167c8c405eda19469f34577987c76dde613e838bbc67f8"},
-  "tackle": {:git, "https://github.com/renderedtext/ex-tackle.git", "59c0ed2f40ff772f403b497042d6f75f802803c1", [tag: "v0.3.0"]},
+  "tackle": {:git, "https://github.com/renderedtext/ex-tackle.git", "6406cf51212695df32876eee46a98031c058d4ed", [tag: "v0.4.0"]},
   "telemetry": {:hex, :telemetry, "1.3.0", "fedebbae410d715cf8e7062c96a1ef32ec22e764197f70cda73d82778d61e7a2", [:rebar3], [], "hexpm", "7015fc8919dbe63764f4b4b87a95b7c0996bd539e0d499be6ec9d7f3875b79e6"},
   "thoas": {:hex, :thoas, "1.0.0", "567c03902920827a18a89f05b79a37b5bf93553154b883e0131801600cf02ce0", [:rebar3], [], "hexpm", "fc763185b932ecb32a554fb735ee03c3b6b1b31366077a2427d2a97f3bd26735"},
   "unicode_util_compat": {:hex, :unicode_util_compat, "0.7.0", "bc84380c9ab48177092f43ac89e4dfa2c6d62b40b8bd132b1059ecc7232f9a78", [:rebar3], [], "hexpm", "25eee6d67df61960cf6a794239566599b09e17e668d3700247bc498638152521"},
