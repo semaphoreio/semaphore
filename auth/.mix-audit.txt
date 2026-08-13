@@ -39,3 +39,21 @@ GHSA-q7jx-v53g-848w
 # cluster trust boundary, never attacker-supplied payloads. Bump to 0.16.1
 # tracked for the dep-bump branch (regenerates stubs fleet-wide).
 GHSA-rv48-qqj5-crxg
+
+# --- gun 2.2.0 advisories, all fixed in gun 2.4.0 ---
+# gun is a transitive dependency of grpc and is used only as the HTTP/2 client
+# transport for gRPC calls to fixed internal cluster endpoints (see
+# Auth.GrpcClient / Auth.FeatureClient). No user-supplied URLs, no external or
+# untrusted servers, no HTTP/1.1 usage. Bump to 2.4.0 (inside grpc's ~> 2.0
+# requirement) tracked for the dep-bump branch.
+#
+# unexpected status code/return value mishandling (requires a malicious server)
+GHSA-2j82-37xg-f9wp
+# gun_http2 origin validation error (requires cross-origin connection reuse;
+# gRPC channels here are single fixed origins)
+GHSA-36w4-95hv-5vwg
+# uncontrolled resource consumption driven by a malicious server
+GHSA-r53j-fjj5-mv77
+# HTTP request/response splitting via crafted headers (HTTP/1.1-shaped; gRPC
+# metadata is internally constructed and HPACK-encoded over HTTP/2)
+GHSA-w4f7-4cxr-rv3c
