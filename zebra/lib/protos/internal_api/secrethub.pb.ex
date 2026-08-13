@@ -674,7 +674,8 @@ defmodule InternalApi.Secrethub.GenerateOpenIDConnectTokenRequest do
           git_pull_request_branch: String.t(),
           repo_slug: String.t(),
           triggerer: String.t(),
-          project_name: String.t()
+          project_name: String.t(),
+          audience: [String.t()]
         }
   defstruct [
     :org_id,
@@ -696,7 +697,8 @@ defmodule InternalApi.Secrethub.GenerateOpenIDConnectTokenRequest do
     :git_pull_request_branch,
     :repo_slug,
     :triggerer,
-    :project_name
+    :project_name,
+    :audience
   ]
 
   field(:org_id, 1, type: :string)
@@ -719,6 +721,7 @@ defmodule InternalApi.Secrethub.GenerateOpenIDConnectTokenRequest do
   field(:repo_slug, 18, type: :string)
   field(:triggerer, 19, type: :string)
   field(:project_name, 20, type: :string)
+  field(:audience, 21, repeated: true, type: :string)
 end
 
 defmodule InternalApi.Secrethub.GenerateOpenIDConnectTokenResponse do

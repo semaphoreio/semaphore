@@ -7,6 +7,8 @@ defmodule Zebra.Workers.JobRequestFactory.CacheTest do
   @org_id Ecto.UUID.generate()
   @cache_id Ecto.UUID.generate()
 
+  @org InternalApi.Organization.Organization.new(org_id: @org_id, org_username: "test-org")
+
   @sftp_cache InternalApi.Cache.Cache.new(
                 id: @cache_id,
                 credential: "--BEGIN....lalalala...cache_key...END---",
@@ -33,21 +35,17 @@ defmodule Zebra.Workers.JobRequestFactory.CacheTest do
   end
 
   defp stub_cache_token(token, test_pid) do
-    GrpcMock.stub(Support.FakeServers.SecretsApi, :generate_cache_open_id_connect_token, fn req,
-                                                                                            _ ->
+    GrpcMock.stub(Support.FakeServers.SecretsApi, :generate_open_id_connect_token, fn req, _ ->
       send(test_pid, {:cache_token_req, req})
 
-      InternalApi.Secrethub.GenerateCacheOpenIDConnectTokenResponse.new(
-        token: token,
-        expires_at: 123
-      )
+      InternalApi.Secrethub.GenerateOpenIDConnectTokenResponse.new(token: token)
     end)
   end
 
   describe ".env_vars (sftp)" do
     test "injects the sftp cache env contract" do
       {:ok, job} = Support.Factories.Job.create(:pending, %{})
-      {:ok, envs} = Cache.env_vars(job, @sftp_cache, @org_id, nil, :pipeline_job)
+      {:ok, envs} = Cache.env_vars(job, @sftp_cache, @org, nil, :pipeline_job)
 
       assert env_value(envs, "SEMAPHORE_CACHE_BACKEND") == "sftp"
       assert env_value(envs, "SEMAPHORE_CACHE_URL") == "localhost:29920"
@@ -63,7 +61,7 @@ defmodule Zebra.Workers.JobRequestFactory.CacheTest do
       stub_cache_token("the-cache-token", test_pid)
 
       {:ok, job} = Support.Factories.Job.create(:pending, %{})
-      {:ok, envs} = Cache.env_vars(job, @ceph_cache, @org_id, @non_forked, :pipeline_job)
+      {:ok, envs} = Cache.env_vars(job, @ceph_cache, @org, @non_forked, :pipeline_job)
 
       assert env_value(envs, "SEMAPHORE_CACHE_BACKEND") == "ceph"
       assert env_value(envs, "SEMAPHORE_CACHE_S3_BUCKET") == "9c2a7b10-project-bucket"
@@ -74,10 +72,12 @@ defmodule Zebra.Workers.JobRequestFactory.CacheTest do
       assert env_value(envs, "AWS_ACCESS_KEY_ID") == nil
 
       assert_receive {:cache_token_req, req}
-      assert req.cache_access == "read_write"
+      assert req.subject == "org:#{@org_id}:project:#{job.project_id}:access:read_write"
+      assert req.audience == ["ceph-cache"]
       assert req.project_id == job.project_id
       assert req.job_id == job.id
-      assert req.organization_id == @org_id
+      assert req.org_id == @org_id
+      assert req.org_username == "test-org"
     end
 
     test "forked PR job gets the read-only role and read_only access claim" do
@@ -85,22 +85,21 @@ defmodule Zebra.Workers.JobRequestFactory.CacheTest do
       stub_cache_token("the-cache-token", test_pid)
 
       {:ok, job} = Support.Factories.Job.create(:pending, %{})
-      {:ok, envs} = Cache.env_vars(job, @ceph_cache, @org_id, @forked_pr, :pipeline_job)
+      {:ok, envs} = Cache.env_vars(job, @ceph_cache, @org, @forked_pr, :pipeline_job)
 
       assert env_value(envs, "SEMAPHORE_CACHE_ROLE_ARN") == "arn:aws:iam::acc:role/ro-role"
 
       assert_receive {:cache_token_req, req}
-      assert req.cache_access == "read_only"
+      assert req.subject == "org:#{@org_id}:project:#{job.project_id}:access:read_only"
     end
 
     test "falls back to no cache when Secrethub fails" do
-      GrpcMock.stub(Support.FakeServers.SecretsApi, :generate_cache_open_id_connect_token, fn _,
-                                                                                              _ ->
+      GrpcMock.stub(Support.FakeServers.SecretsApi, :generate_open_id_connect_token, fn _, _ ->
         raise GRPC.RPCError, status: :internal, message: "boom"
       end)
 
       {:ok, job} = Support.Factories.Job.create(:pending, %{})
-      assert {:ok, []} = Cache.env_vars(job, @ceph_cache, @org_id, @non_forked, :pipeline_job)
+      assert {:ok, []} = Cache.env_vars(job, @ceph_cache, @org, @non_forked, :pipeline_job)
     end
   end
 

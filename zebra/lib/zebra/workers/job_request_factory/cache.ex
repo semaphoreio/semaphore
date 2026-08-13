@@ -4,7 +4,7 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
   alias InternalApi.Cache.DescribeRequest, as: Request
   alias InternalApi.Cache.CacheService.Stub
 
-  alias InternalApi.Secrethub.GenerateCacheOpenIDConnectTokenRequest, as: CacheTokenRequest
+  alias InternalApi.Secrethub.GenerateOpenIDConnectTokenRequest, as: TokenRequest
   alias InternalApi.Secrethub.SecretService.Stub, as: SecrethubStub
 
   alias Zebra.Workers.JobRequestFactory.JobRequest
@@ -84,13 +84,13 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
 
   def env_vars(_, nil, _, _, _), do: {:ok, []}
 
-  def env_vars(job, cache, organization_id, repo_proxy, job_type) do
+  def env_vars(job, cache, organization, repo_proxy, job_type) do
     case cache_backend(cache) do
       :ceph ->
-        ceph_env_vars(job, cache, organization_id, repo_proxy, job_type)
+        ceph_env_vars(job, cache, organization, repo_proxy, job_type)
 
       :sftp ->
-        sftp_env_vars(job, cache, organization_id)
+        sftp_env_vars(job, cache, organization.org_id)
     end
   end
 
@@ -114,7 +114,7 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
   # injects a cache-scoped OIDC token plus the selected role ARN; the job-side
   # cache runtime exchanges the token for short-lived S3 credentials via
   # AssumeRoleWithWebIdentity and refreshes them as needed.
-  defp ceph_env_vars(job, cache, organization_id, repo_proxy, job_type) do
+  defp ceph_env_vars(job, cache, organization, repo_proxy, job_type) do
     read_only? = read_only_cache_access?(repo_proxy, job_type)
     role_arn = if read_only?, do: cache.ro_role_arn, else: cache.rw_role_arn
     cache_access = if read_only?, do: "read_only", else: "read_write"
@@ -122,7 +122,7 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
     with false <- blank?(role_arn),
          false <- blank?(cache.bucket),
          {:ok, s3_url} <- ceph_cache_s3_url(),
-         {:ok, token} <- generate_cache_oidc_token(job, organization_id, cache_access, job_type) do
+         {:ok, token} <- generate_cache_oidc_token(job, organization, cache_access, job_type) do
       vars = [
         JobRequest.env_var("SEMAPHORE_CACHE_BACKEND", "ceph"),
         JobRequest.env_var("SEMAPHORE_CACHE_S3_URL", s3_url),
@@ -131,7 +131,7 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
         JobRequest.env_var("SEMAPHORE_CACHE_OIDC_TOKEN", token)
       ]
 
-      {:ok, maybe_add_parallel_archive(vars, organization_id)}
+      {:ok, maybe_add_parallel_archive(vars, organization.org_id)}
     else
       true ->
         {:ok, []}
@@ -148,27 +148,41 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
     end
   end
 
-  defp generate_cache_oidc_token(job, organization_id, cache_access, job_type) do
+  # The cache token reuses the org's existing per-org OIDC issuer: Secrethub derives
+  # `iss = https://<org_username>.<domain>` from `org_username` (identical to the
+  # regular OIDC token), so we only customize `aud` (ceph-cache), `sub` (the
+  # canonical per-project cache subject), and the TTL. The account-scoped Ceph OIDC
+  # provider trusts exactly that issuer + aud + sub.
+  defp generate_cache_oidc_token(job, organization, cache_access, job_type) do
     Watchman.benchmark("zebra.external.secrethub.generate_cache_oidc_token", fn ->
       req =
-        CacheTokenRequest.new(
-          organization_id: organization_id,
+        TokenRequest.new(
+          org_id: organization.org_id,
+          org_username: organization.org_username,
           project_id: job.project_id,
           job_id: job.id,
           job_type: to_string(job_type),
-          cache_access: cache_access,
+          subject: cache_subject(organization.org_id, job.project_id, cache_access),
+          audience: ["ceph-cache"],
           expires_in: token_expires_in(job_type)
         )
 
       with {:ok, endpoint} <- Application.fetch_env(:zebra, :secrethub_api_endpoint),
            {:ok, channel} <- GRPC.Stub.connect(endpoint),
            {:ok, response} <-
-             SecrethubStub.generate_cache_open_id_connect_token(channel, req, timeout: 30_000) do
+             SecrethubStub.generate_open_id_connect_token(channel, req, timeout: 30_000) do
         {:ok, response.token}
       else
         e -> {:error, {:secrethub_error, e}}
       end
     end)
+  end
+
+  # Canonical cache OIDC subject. MUST stay byte-for-byte identical to cachehub's
+  # `Cachehub.Ceph.CacheClaims.subject/3`, which renders the project role trust
+  # policy matching this `sub` via StringEquals. `access` is "read_only"/"read_write".
+  defp cache_subject(org_id, project_id, access) do
+    "org:#{org_id}:project:#{project_id}:access:#{access}"
   end
 
   defp maybe_add_parallel_archive(vars, organization_id) do
