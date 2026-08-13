@@ -796,6 +796,41 @@ defmodule Secrethub.InternalGrpcApi.Test do
   end
 
   describe ".generate_openid_connect_token" do
+    test "aud is overridden by req.audience (single -> string, multiple -> list); iss unchanged" do
+      build = fn audience ->
+        GenerateOpenIDConnectTokenRequest.new(
+          org_id: Ecto.UUID.generate(),
+          org_username: "testera",
+          expires_in: 3600,
+          subject: "org:testera:project:#{Ecto.UUID.generate()}:access:read_write",
+          project_id: Ecto.UUID.generate(),
+          audience: audience
+        )
+      end
+
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+
+      # single requested audience -> plain string (for strict-aud consumers like the Ceph cache)
+      assert {:ok, r1} =
+               SecretService.Stub.generate_open_id_connect_token(channel, build.(["ceph-cache"]))
+
+      assert {true, jwt1, _} = Secrethub.OpenIDConnect.JWT.verify(r1.token)
+      assert Map.get(jwt1.fields, "aud") == "ceph-cache"
+      assert Map.get(jwt1.fields, "iss") == "https://testera.localhost"
+
+      # multiple audiences -> JSON array
+      assert {:ok, r2} =
+               SecretService.Stub.generate_open_id_connect_token(channel, build.(["a", "b"]))
+
+      assert {true, jwt2, _} = Secrethub.OpenIDConnect.JWT.verify(r2.token)
+      assert Map.get(jwt2.fields, "aud") == ["a", "b"]
+
+      # empty/unset -> default org issuer URL (unchanged behavior)
+      assert {:ok, r3} = SecretService.Stub.generate_open_id_connect_token(channel, build.([]))
+      assert {true, jwt3, _} = Secrethub.OpenIDConnect.JWT.verify(r3.token)
+      assert Map.get(jwt3.fields, "aud") == "https://testera.localhost"
+    end
+
     test "it returns a signed token, no AWS tags field" do
       org_id = Ecto.UUID.generate()
       project_id = Ecto.UUID.generate()

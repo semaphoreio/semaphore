@@ -107,6 +107,7 @@ defmodule Secrethub.OpenIDConnect.JWT do
 
   defp build_oidc_claims(req) do
     domain = Application.fetch_env!(:secrethub, :domain)
+    issuer = "https://#{req.org_username}.#{domain}"
 
     common_claims = %{
       "org" => req.org_username,
@@ -125,8 +126,8 @@ defmodule Secrethub.OpenIDConnect.JWT do
       "pr" => req.git_pull_request_number,
       "sub" => req.subject,
       "sub127" => build_subject_127(req),
-      "iss" => "https://#{req.org_username}.#{domain}",
-      "aud" => "https://#{req.org_username}.#{domain}",
+      "iss" => issuer,
+      "aud" => oidc_audience(req, issuer),
       "job_type" => req.job_type,
       "pr_branch" => req.git_pull_request_branch,
       "repo_slug" => req.repo_slug,
@@ -163,6 +164,17 @@ defmodule Secrethub.OpenIDConnect.JWT do
       end
 
     Secrethub.OpenIDConnect.JWTFilter.filter_claims(claims, req.org_id, req.project_id)
+  end
+
+  # Resolve the `aud` claim: empty -> the org issuer default; a single requested
+  # audience -> a plain string (required by strict-aud consumers like the Ceph
+  # cache / PyPI); multiple -> the list (JSON array).
+  defp oidc_audience(req, default_audience) do
+    case Map.get(req, :audience) || [] do
+      [] -> default_audience
+      [single] -> single
+      multiple -> multiple
+    end
   end
 
   defp build_subject_127(req) do
