@@ -1,0 +1,18 @@
+# --- hackney 1.25.0 advisories, all first patched in hackney 4.0.1 ---
+# Bump to 4.0.1 is blocked: sentry 8.0.6 pins hackney "~> 1.8" (its optional HTTP
+# adapter), so hackney cannot move to 4.x without a sentry major upgrade. No
+# httpoison/other consumer forces this either - dashboardhub only pulls hackney
+# transitively via sentry, targeting the configured Sentry DSN, not
+# user-supplied hosts/queries.
+GHSA-gp9c-pm5m-5cxr
+GHSA-j9wq-vxxc-94wf
+GHSA-mp55-p8c9-rfw2
+GHSA-pj7v-xfvx-wmjq
+
+# --- gun 2.5.0: mix_audit false positive ---
+# GHSA-w4f7-4cxr-rv3c affects cowboy < 2.16.0 and gun < 2.4.0 per the advisory's
+# own per-package ranges; mix_audit collapses the multi-package ranges and
+# matches gun 2.5.0 against cowboy's "< 2.16.0" bound, so any gun version gets
+# flagged. This lockfile has cowboy 2.18.0, gun 2.5.0, cowlib 2.19.0 - all at or
+# above the patched versions.
+GHSA-w4f7-4cxr-rv3c
