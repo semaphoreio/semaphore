@@ -42,10 +42,10 @@ defmodule Dashboardhub.MixProject do
   defp deps do
     [
       {:grpc, "~> 0.6"},
-      {:protobuf, "~> 0.11"},
+      {:protobuf, "~> 0.17.0"},
       {:fun_registry, github: "renderedtext/fun-registry", only: [:dev, :test]},
       {:ecto_sql, "~> 3.0"},
-      {:postgrex, ">= 0.0.0"},
+      {:postgrex, "~> 0.22.2", override: true},
       {:poison, "~> 3.1"},
       {:watchman, github: "renderedtext/ex-watchman"},
       {:tackle, github: "renderedtext/ex-tackle", tag: "v0.4.0"},
@@ -56,7 +56,14 @@ defmodule Dashboardhub.MixProject do
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
       {:sentry, "~> 8.0"},
       {:sentry_grpc, github: "renderedtext/sentry_grpc"},
-      {:hackney, "~> 1.8"}
+      {:hackney, "~> 1.24"},
+      # CVE bumps: transitive deps pinned tightly by grpc 0.6.0 / ecto_sql - override to fixed versions
+      {:cowlib, "~> 2.16", override: true},
+      {:cowboy, "~> 2.15", override: true},
+      {:gun, "~> 2.4", override: true},
+      {:mint, "~> 1.9", override: true},
+      {:decimal, "~> 3.0", override: true},
+      {:db_connection, "~> 2.10", override: true}
     ]
   end
 end
