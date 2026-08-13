@@ -39,7 +39,11 @@ defmodule GithubNotifier.NotifierTest do
   end
 
   defp stub_services(pipeline_opts, project_opts) do
-    GrpcMock.stub(RepositoryHubMock, :create_build_status, struct(Google.Protobuf.Empty))
+    GrpcMock.stub(
+      RepositoryHubMock,
+      :create_build_status,
+      Support.Factories.create_build_status_response()
+    )
 
     GrpcMock.stub(
       PipelineMock,

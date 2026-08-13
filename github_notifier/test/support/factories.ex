@@ -164,6 +164,10 @@ defmodule Support.Factories do
     struct(InternalApi.ResponseStatus, code: :OK)
   end
 
+  def create_build_status_response(code \\ :OK) do
+    struct(InternalApi.Repository.CreateBuildStatusResponse, code: code)
+  end
+
   def status_not_ok(message \\ "") do
     struct(InternalApi.ResponseStatus,
       code: :BAD_PARAM,
