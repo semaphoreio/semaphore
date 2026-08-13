@@ -48,7 +48,7 @@ defmodule Dashboardhub.MixProject do
       {:postgrex, ">= 0.0.0"},
       {:poison, "~> 3.1"},
       {:watchman, github: "renderedtext/ex-watchman"},
-      {:tackle, github: "renderedtext/ex-tackle"},
+      {:tackle, github: "renderedtext/ex-tackle", tag: "v0.4.0"},
       {:amqp, "~> 3.0", override: true},
       {:paginator, "~> 1.0"},
       {:junit_formatter, "~> 3.1", only: [:test]},
