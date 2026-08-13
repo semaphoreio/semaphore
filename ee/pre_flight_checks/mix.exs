@@ -43,7 +43,7 @@ defmodule PreFlightChecks.MixProject do
       {:vmstats, "~> 2.4"},
       {:grpc, "0.5.0-beta.1", override: true},
       {:amqp, "~> 1.2", override: true},
-      {:tackle, github: "renderedtext/ex-tackle"},
+      {:tackle, github: "renderedtext/ex-tackle", tag: "v0.4.0"},
       {:util, github: "renderedtext/elixir-util"},
       {:log_tee, github: "renderedtext/log-tee"},
       {:watchman, github: "renderedtext/ex-watchman"},
