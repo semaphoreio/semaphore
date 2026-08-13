@@ -29,7 +29,7 @@ defmodule HooksProcessor.MixProject do
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
       {:log_tee, github: "renderedtext/log-tee"},
       {:amqp_client, "~> 3.11.18"},
-      {:tackle, github: "renderedtext/ex-tackle", tag: "v0.3.0"},
+      {:tackle, github: "renderedtext/ex-tackle", tag: "v0.4.0"},
       {:util, github: "renderedtext/elixir-util"},
       {:watchman, github: "renderedtext/ex-watchman", tag: "v0.3.0", override: true},
       {:grpc_mock, github: "renderedtext/grpc-mock", branch: "grpc08", only: [:dev, :test]},
