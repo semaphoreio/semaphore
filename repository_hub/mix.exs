@@ -58,7 +58,7 @@ defmodule RepositoryHub.MixProject do
       {:excoveralls, "~> 0.10", only: :test},
       {:timex, "~> 3.7.11"},
       {:sentry, "~> 8.0"},
-      {:tackle, github: "renderedtext/ex-tackle"},
+      {:tackle, github: "renderedtext/ex-tackle", tag: "v0.4.0"},
       {:amqp, "~> 3.0", override: true},
       {:broadway_rabbitmq, "~> 0.7"},
       {:tesla, "~> 1.9"},
