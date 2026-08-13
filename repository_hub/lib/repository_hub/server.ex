@@ -177,20 +177,7 @@ defmodule RepositoryHub.Server do
         )
 
       {:ok, fence} ->
-        try do
-          response = execute(request, Server.CreateBuildStatusAction)
-          BuildStatusGuard.finalize(request, fence)
-          response
-        rescue
-          e ->
-            # Release only when the provider definitively did not create the
-            # status. On unknown outcomes (timeouts, provider 5xx) the send may
-            # still land, so the lease is left to expire — an early release
-            # would let a competing terminal status finalize before a delayed
-            # pending reaches the provider.
-            if definitively_rejected?(e), do: BuildStatusGuard.release(request, fence)
-            reraise(e, __STACKTRACE__)
-        end
+        deliver_with_fence(request, fence)
 
       # Not a guard outage — request validation rejects this repository_id.
       {:error, :invalid_key} ->
@@ -214,6 +201,50 @@ defmodule RepositoryHub.Server do
           status: GRPC.Status.unavailable(),
           message: "Status delivery guard is unavailable"
         )
+    end
+  end
+
+  defp deliver_with_fence(request, fence) do
+    response = execute(request, Server.CreateBuildStatusAction)
+
+    # The provider write is already irreversible here: losing the bookkeeping
+    # silently would let a stale pending claim after the lease expires against
+    # an unrecorded last_state. Failing the request instead makes the caller
+    # redeliver — the duplicate provider write is a harmless identical append
+    # and the retry records the state.
+    case BuildStatusGuard.finalize(request, fence) do
+      :ok ->
+        response
+
+      {:error, error} ->
+        Watchman.increment("build_status_guard.finalize_error")
+        log_warn(["build status guard finalize failed, forcing redelivery", inspect(error)])
+
+        raise(GRPC.RPCError,
+          status: GRPC.Status.unavailable(),
+          message: "Status delivered but not recorded, retry to record it"
+        )
+    end
+  rescue
+    e ->
+      # Release only when the provider definitively did not create the
+      # status. On unknown outcomes (timeouts, provider 5xx) the send may
+      # still land, so the lease is left to expire — an early release would
+      # let a competing terminal status finalize before a delayed pending
+      # reaches the provider.
+      if definitively_rejected?(e), do: release_quietly(request, fence)
+      reraise(e, __STACKTRACE__)
+  end
+
+  defp release_quietly(request, fence) do
+    case BuildStatusGuard.release(request, fence) do
+      :ok ->
+        :ok
+
+      {:error, error} ->
+        # Worst case the lease runs its remaining <= 90s; no ordering impact.
+        Watchman.increment("build_status_guard.release_error")
+        log_warn(["build status guard release failed, lease will expire", inspect(error)])
     end
   end
 

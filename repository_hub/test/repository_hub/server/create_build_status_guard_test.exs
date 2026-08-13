@@ -150,6 +150,37 @@ defmodule RepositoryHub.Server.CreateBuildStatusGuardTest do
       assert :meck.num_calls(GithubClient, :create_build_status, :_) == 0
     end
 
+    test "forces redelivery when finalize fails after a successful send", ctx do
+      with_mock BuildStatusGuard, [:passthrough],
+        finalize: fn _request, _fence -> {:error, %DBConnection.ConnectionError{message: "tcp"}} end do
+        error =
+          assert_raise(GRPC.RPCError, ~r/delivered but not recorded/, fn ->
+            Server.create_build_status(request(ctx, :SUCCESS), nil)
+          end)
+
+        assert error.status == GRPC.Status.unavailable()
+
+        assert :meck.num_calls(GithubClient, :create_build_status, :_) == 1
+        assert :busy = BuildStatusGuard.claim(request(ctx, :SUCCESS))
+      end
+    end
+
+    test "a failing release does not mask the provider rejection", ctx do
+      :meck.expect(GithubClient, :create_build_status, fn _params, _opts ->
+        {:error, "Can't create a commit status on GitHub."}
+      end)
+
+      with_mock BuildStatusGuard, [:passthrough],
+        release: fn _request, _fence -> {:error, %DBConnection.ConnectionError{message: "tcp"}} end do
+        error =
+          assert_raise(GRPC.RPCError, fn ->
+            Server.create_build_status(request(ctx, :SUCCESS), nil)
+          end)
+
+        assert error.status == GRPC.Status.failed_precondition()
+      end
+    end
+
     test "reports unavailable while another delivery holds the lease", ctx do
       request = request(ctx, :SUCCESS)
       assert {:ok, _fence} = BuildStatusGuard.claim(request)
