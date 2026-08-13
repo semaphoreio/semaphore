@@ -40,7 +40,7 @@ defmodule Guard.Mixfile do
       {:ecto_sql, "~> 3.11.2"},
       {:flop, "~> 0.26.1"},
       {:amqp_client, "~> 3.9.27"},
-      {:tackle, github: "renderedtext/ex-tackle", tag: "v0.2.3"},
+      {:tackle, github: "renderedtext/ex-tackle", tag: "v0.4.0"},
       {:mock, "~> 0.3.0", only: :test},
       {:grpc_health_check, github: "renderedtext/grpc_health_check"},
       {:sentry, "~> 8.0"},
