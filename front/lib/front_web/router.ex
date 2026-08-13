@@ -54,6 +54,15 @@ defmodule FrontWeb.Router do
     get("/", PageController, :is_alive)
   end
 
+  if Enum.member?([:dev, :test], Application.compile_env(:front, :environment)) do
+    scope "/design-book", FrontWeb do
+      pipe_through(:browser)
+
+      get("/", DesignBookController, :index)
+      get("/data/workspace/:workflow_id", DesignBookController, :workspace_data)
+    end
+  end
+
   scope Application.compile_env(:front, :me_path), FrontWeb,
     host: Application.compile_env(:front, :me_host) do
     pipe_through(:browser)
