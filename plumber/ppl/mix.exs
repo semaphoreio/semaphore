@@ -76,7 +76,7 @@ defmodule Ppl.Mixfile do
       {:yaml_elixir, "~> 1.3", override: true},
       {:dialyxir, "~> 0.5", only: [:dev], runtime: false},
       {:amqp_client, "~> 3.9.2"},
-      {:tackle, github: "renderedtext/ex-tackle", tag: "v0.2.1"},
+      {:tackle, github: "renderedtext/ex-tackle", tag: "v0.4.0"},
       {:watchman, github: "renderedtext/ex-watchman"},
       {:looper, path: "../looper"},
       {:cloak, "~> 0.5.0"},
