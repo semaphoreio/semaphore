@@ -33,7 +33,7 @@ defmodule Projecthub.MixProject do
       {:postgrex, ">= 0.0.0"},
       {:grpc, "~> 0.5.0"},
       {:protobuf, "~> 0.11"},
-      {:tackle, github: "renderedtext/ex-tackle"},
+      {:tackle, github: "renderedtext/ex-tackle", tag: "v0.4.0"},
       {:amqp, "~> 1.3", override: true},
       {:jsx, "~> 3.1", override: true},
       {:timex, "~> 3.3"},
