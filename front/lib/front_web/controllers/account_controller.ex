@@ -68,6 +68,12 @@ defmodule FrontWeb.AccountController do
       "We couldn't authenticate. Please try again. " <>
         "If the problem persists, contact our support team."
 
+  defp oauth_error_text("account_taken"),
+    do:
+      "This account is already connected to another Semaphore user. " <>
+        "A GitHub account can only be linked to one Semaphore user. " <>
+        "If you believe this is an error, contact your administrator or our support team."
+
   defp oauth_error_text(_code), do: generic_oauth_error()
 
   defp generic_oauth_error,
