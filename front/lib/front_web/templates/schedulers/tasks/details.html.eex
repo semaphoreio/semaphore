@@ -64,6 +64,20 @@
               <% end %>
             </td>
           </tr>
+          <%= if @scheduler.commit_status in ["always", "never"] do %>
+            <tr>
+              <td class="v-top pr2">Commit statuses:</td>
+              <td class="flex items-center">
+                <%= if @scheduler.commit_status == "always" do %>
+                  <span class="material-symbols-outlined green b">check</span>
+                  <span class="gray f6">Always sent for pipelines started by this task.</span>
+                <% else %>
+                  <span class="material-symbols-outlined red b">close</span>
+                  <span class="gray f6">Never sent for pipelines started by this task.</span>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
         </tbody>
       </table>
     </div>

@@ -70,5 +70,43 @@ defmodule RepositoryHub.Model.RepositoriesTest do
 
       assert hook_secret == decrypted_secret
     end
+
+    test "#to_grpc_model defaults commit status trigger settings for legacy rows" do
+      model =
+        RepositoryModelFactory.build_repository(
+          commit_status: %{"pipeline_files" => [%{"path" => ".semaphore/semaphore.yml", "level" => "pipeline"}]}
+        )
+
+      status = Repositories.to_grpc_model(model).commit_status
+
+      refute status.skip_scheduled_run
+      refute status.skip_manual_run
+    end
+
+    test "#to_grpc_model carries commit status trigger settings" do
+      model =
+        RepositoryModelFactory.build_repository(
+          commit_status: %{
+            "pipeline_files" => [%{"path" => ".semaphore/semaphore.yml", "level" => "pipeline"}],
+            "skip_scheduled_run" => true,
+            "skip_manual_run" => true
+          }
+        )
+
+      status = Repositories.to_grpc_model(model).commit_status
+
+      assert status.skip_scheduled_run
+      assert status.skip_manual_run
+    end
+
+    test "#to_grpc_model defaults commit status trigger settings when commit status is nil" do
+      model = RepositoryModelFactory.build_repository(commit_status: nil)
+
+      status = Repositories.to_grpc_model(model).commit_status
+
+      assert [] == status.pipeline_files
+      refute status.skip_scheduled_run
+      refute status.skip_manual_run
+    end
   end
 end

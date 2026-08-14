@@ -45,7 +45,8 @@ defmodule InternalApi.PeriodicScheduler.PersistRequest do
           pipeline_file: String.t(),
           at: String.t(),
           parameters: [InternalApi.PeriodicScheduler.Periodic.Parameter.t()],
-          project_id: String.t()
+          project_id: String.t(),
+          commit_status: integer
         }
   defstruct [
     :id,
@@ -60,7 +61,8 @@ defmodule InternalApi.PeriodicScheduler.PersistRequest do
     :pipeline_file,
     :at,
     :parameters,
-    :project_id
+    :project_id,
+    :commit_status
   ]
 
   field(:id, 1, type: :string)
@@ -76,6 +78,7 @@ defmodule InternalApi.PeriodicScheduler.PersistRequest do
   field(:at, 11, type: :string)
   field(:parameters, 12, repeated: true, type: InternalApi.PeriodicScheduler.Periodic.Parameter)
   field(:project_id, 13, type: :string)
+  field(:commit_status, 14, type: InternalApi.PeriodicScheduler.Periodic.CommitStatus, enum: true)
 end
 
 defmodule InternalApi.PeriodicScheduler.PersistRequest.ScheduleState do
@@ -240,7 +243,8 @@ defmodule InternalApi.PeriodicScheduler.Periodic do
           recurring: boolean,
           parameters: [InternalApi.PeriodicScheduler.Periodic.Parameter.t()],
           description: String.t(),
-          organization_id: String.t()
+          organization_id: String.t(),
+          commit_status: integer
         }
   defstruct [
     :id,
@@ -259,7 +263,8 @@ defmodule InternalApi.PeriodicScheduler.Periodic do
     :recurring,
     :parameters,
     :description,
-    :organization_id
+    :organization_id,
+    :commit_status
   ]
 
   field(:id, 1, type: :string)
@@ -279,6 +284,7 @@ defmodule InternalApi.PeriodicScheduler.Periodic do
   field(:parameters, 15, repeated: true, type: InternalApi.PeriodicScheduler.Periodic.Parameter)
   field(:description, 16, type: :string)
   field(:organization_id, 17, type: :string)
+  field(:commit_status, 18, type: InternalApi.PeriodicScheduler.Periodic.CommitStatus, enum: true)
 end
 
 defmodule InternalApi.PeriodicScheduler.Periodic.Parameter do
@@ -311,6 +317,15 @@ defmodule InternalApi.PeriodicScheduler.Periodic.Parameter do
   field(:options, 5, repeated: true, type: :string)
   field(:regex_pattern, 6, type: :string)
   field(:validate_input_format, 7, type: :bool)
+end
+
+defmodule InternalApi.PeriodicScheduler.Periodic.CommitStatus do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+
+  field(:FOLLOW_PROJECT, 0)
+  field(:ALWAYS, 1)
+  field(:NEVER, 2)
 end
 
 defmodule InternalApi.PeriodicScheduler.Trigger do
@@ -672,7 +687,8 @@ defmodule InternalApi.PeriodicScheduler.BulkUpsertAndPruneRequest.PeriodicDefini
           at: String.t(),
           pipeline_file: String.t(),
           parameters: [InternalApi.PeriodicScheduler.Periodic.Parameter.t()],
-          state: integer
+          state: integer,
+          commit_status: integer
         }
   defstruct [
     :id,
@@ -683,7 +699,8 @@ defmodule InternalApi.PeriodicScheduler.BulkUpsertAndPruneRequest.PeriodicDefini
     :at,
     :pipeline_file,
     :parameters,
-    :state
+    :state,
+    :commit_status
   ]
 
   field(:id, 1, type: :string)
@@ -695,6 +712,7 @@ defmodule InternalApi.PeriodicScheduler.BulkUpsertAndPruneRequest.PeriodicDefini
   field(:pipeline_file, 7, type: :string)
   field(:parameters, 8, repeated: true, type: InternalApi.PeriodicScheduler.Periodic.Parameter)
   field(:state, 9, type: InternalApi.PeriodicScheduler.PersistRequest.ScheduleState, enum: true)
+  field(:commit_status, 10, type: InternalApi.PeriodicScheduler.Periodic.CommitStatus, enum: true)
 end
 
 defmodule InternalApi.PeriodicScheduler.BulkUpsertAndPruneResponse do

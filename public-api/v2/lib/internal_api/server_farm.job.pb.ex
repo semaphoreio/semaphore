@@ -117,6 +117,7 @@ defmodule InternalApi.ServerFarm.Job.Job do
   field(:build_req_id, 24, type: :string, json_name: "buildReqId")
   field(:agent_name, 25, type: :string, json_name: "agentName")
   field(:agent_id, 27, type: :string, json_name: "agentId")
+  field(:original_job_id, 28, type: :string, json_name: "originalJobId")
 end
 
 defmodule InternalApi.ServerFarm.Job.DescribeResponse do
