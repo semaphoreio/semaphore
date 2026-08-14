@@ -78,7 +78,8 @@ defmodule Projecthub.Models.PeriodicTask.GRPC do
       at: Map.get(definition, :at) || "",
       pipeline_file: Map.get(definition, :pipeline_file) || "",
       parameters: Enum.map(Map.get(definition, :parameters) || [], &build_parameter/1),
-      state: Map.get(definition, :state, :UNCHANGED)
+      state: Map.get(definition, :state, :UNCHANGED),
+      commit_status: Map.get(definition, :commit_status) || :FOLLOW_PROJECT
     )
   end
 

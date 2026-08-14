@@ -157,6 +157,69 @@ defmodule Test.Actions.PersistImpl.Test do
     refute periodic.id |> String.to_atom() |> QuantumScheduler.find_job()
   end
 
+  test "persist stores the commit status policy", ctx do
+    request =
+      API.PersistRequest.new(
+        name: "policy periodic",
+        recurring: false,
+        organization_id: ctx.org_id,
+        project_id: ctx.pr_id,
+        requester_id: ctx.usr_id,
+        reference: "master",
+        pipeline_file: ".semaphore/cron.yml",
+        commit_status: :ALWAYS
+      )
+
+    assert {:ok, periodic} = PersistImpl.persist(request)
+    assert periodic.commit_status == :always
+  end
+
+  test "persist defaults the commit status policy to follow_project", ctx do
+    request =
+      API.PersistRequest.new(
+        name: "default policy periodic",
+        recurring: false,
+        organization_id: ctx.org_id,
+        project_id: ctx.pr_id,
+        requester_id: ctx.usr_id,
+        reference: "master",
+        pipeline_file: ".semaphore/cron.yml"
+      )
+
+    assert {:ok, periodic} = PersistImpl.persist(request)
+    assert periodic.commit_status == :follow_project
+  end
+
+  test "persist updates and resets the commit status policy", ctx do
+    assert {:ok, periodic: periodics} =
+             Test.Support.Factory.setup_periodic(ctx,
+               organization_id: ctx.org_id,
+               project_id: ctx.pr_id,
+               requester_id: ctx.usr_id,
+               commit_status: :always
+             )
+
+    update = fn commit_status ->
+      API.PersistRequest.new(
+        [
+          id: periodics.id,
+          name: "policy periodic",
+          recurring: false,
+          requester_id: ctx.usr_id,
+          reference: "master",
+          pipeline_file: ".semaphore/cron.yml"
+        ] ++ commit_status
+      )
+    end
+
+    assert {:ok, periodic} = PersistImpl.persist(update.(commit_status: :NEVER))
+    assert periodic.commit_status == :never
+
+    # persist is full-replace: omitting the field resets the policy
+    assert {:ok, periodic} = PersistImpl.persist(update.([]))
+    assert periodic.commit_status == :follow_project
+  end
+
   test "persist works when required parameters do not have a default value", ctx do
     assert {:ok, periodic: periodics} =
              Test.Support.Factory.setup_periodic(ctx,

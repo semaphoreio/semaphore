@@ -132,6 +132,18 @@
             <% end %>
           </div>
         </div>
+        <div class="mt3 pt3 bt b--lighter-gray">
+          <div class="db f5 b mb1">Commit statuses</div>
+          <div class="flex items-center">
+            <%= checkbox f, :commit_status_skip_scheduled_run, disabled: !@permissions["project.general_settings.manage"] %>
+            <%= label f, :commit_status_skip_scheduled_run, "Don't send commit statuses for scheduled pipelines", class: "ml2" %>
+          </div>
+          <div class="flex items-center">
+            <%= checkbox f, :commit_status_skip_manual_run, disabled: !@permissions["project.general_settings.manage"] %>
+            <%= label f, :commit_status_skip_manual_run, "Don't send commit statuses for manually run tasks", class: "ml2" %>
+          </div>
+          <p class="f6 mt1 mb0">Applies to pipelines started by a task, either on schedule or with “Run now”. Statuses for pushes, pull requests and reruns are always sent.</p>
+        </div>
         <%= if f.errors[:run_on] do %>
           <div class="f5 b mv1 red"><%= translate_error(f.errors[:run_on]) %></div>
         <% end %>

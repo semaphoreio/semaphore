@@ -29,3 +29,16 @@
         placeholder: "e.g. runs scheduled pings to our production environments." %>
     <div class="f5 b mv1 red" data-validation-message="description"></div>
 </div>
+
+<div class="ml2 mt2 mb4">
+    <%= label @form, :commit_status, "Commit statuses", class: "db b mb2" %>
+    <div class="flex items-center">
+        <%= radio_button @form, :commit_status, "follow_project", checked: @scheduler.commit_status not in ["always", "never"] %>
+        <%= label @form, :commit_status_follow_project, "Follow project settings", class: "ml2 mr4" %>
+        <%= radio_button @form, :commit_status, "always", checked: @scheduler.commit_status == "always" %>
+        <%= label @form, :commit_status_always, "Always send", class: "ml2 mr4" %>
+        <%= radio_button @form, :commit_status, "never", checked: @scheduler.commit_status == "never" %>
+        <%= label @form, :commit_status_never, "Never send", class: "ml2 mr4" %>
+    </div>
+    <p class="f6 gray mt1 mb0">Applies to pipelines started by this task, on schedule or with “Run now”. Reruns always send commit statuses.</p>
+</div>

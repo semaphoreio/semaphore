@@ -119,7 +119,9 @@ defmodule InternalClients.Projecthub.ResponseFormatter do
         pipeline_file: spec.repository.pipeline_file,
         status: %{
           pipeline_files:
-            Enum.map(spec.repository.status.pipeline_files, &pipeline_file_from_pb/1)
+            Enum.map(spec.repository.status.pipeline_files, &pipeline_file_from_pb/1),
+          skip_scheduled_run: spec.repository.status.skip_scheduled_run,
+          skip_manual_run: spec.repository.status.skip_manual_run
         }
       }
     }

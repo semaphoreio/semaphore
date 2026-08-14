@@ -131,6 +131,15 @@ defmodule Support.FakeServices.RepositoryService do
         record.repository.id == request.repository_id
       end)
 
+    repository = %{
+      record.repository
+      | pipeline_file: request.pipeline_file || record.repository.pipeline_file,
+        commit_status: request.commit_status || record.repository.commit_status,
+        whitelist: request.whitelist || record.repository.whitelist
+    }
+
+    record = MemoryDb.add({:repository_hub, :repositories}, %{record | repository: repository})
+
     Repository.UpdateResponse.new(repository: record.repository)
   end
 
