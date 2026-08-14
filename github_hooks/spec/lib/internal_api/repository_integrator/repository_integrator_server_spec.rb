@@ -522,6 +522,9 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
         end
       end
 
+      # Releasing a long-revoked competing link is a claim: it must delete that
+      # row and move the Keycloak identity. This service cannot do that, so it
+      # declines rather than flipping the flag and leaving Keycloak behind.
       context "when a revoked account's uid is held by a long-revoked account" do
         let(:token_valid) { true }
         let(:permission_scope) { "repo,user:email" }
@@ -538,17 +541,18 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
           )
         end
 
-        it "backdates the competing row" do
-          expect(@competitor.reload.updated_at)
-            .to be < InternalApi::RepositoryIntegrator::RepositoryIntegratorServer::REVOKED_CLAIM_GRACE.ago
-        end
-
-        it "un-revokes the account once the other link is past the grace period", :aggregate_failures do
+        it "keeps the account revoked and defers the claim to guard", :aggregate_failures do
           response = server.check_token(@req, call)
 
-          expect(@project.repo_host_account.reload.revoked).to be(false)
-          expect(response.valid).to be(true)
-          expect(response.integration_scope).to eq(:FULL_CONNECTION)
+          expect(@project.repo_host_account.reload.revoked).to be(true)
+          expect(response.valid).to be(false)
+          expect(response.integration_scope).to eq(:NO_CONNECTION)
+        end
+
+        it "leaves the competing link untouched" do
+          server.check_token(@req, call)
+
+          expect(@competitor.reload).to be_present
         end
       end
 
