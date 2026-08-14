@@ -87,6 +87,46 @@ defmodule Router.Tasks.CreateTest do
       assert {:ok, _} = UUID.info(task_id)
     end
 
+    test "POST /tasks - round-trips the commit status policy", ctx do
+      params = %{
+        apiVersion: "v2",
+        kind: "Task",
+        spec: %{
+          name: "Task with policy",
+          reference: %{type: "branch", name: "master"},
+          pipeline_file: "pipeline.yml",
+          cron_schedule: "0 0 * * *",
+          commit_status: "never"
+        }
+      }
+
+      assert {:ok, %Tesla.Env{status: 200, body: body}} =
+               Tesla.post(http_client(ctx), "/projects/#{ctx.project_id}/tasks", params)
+
+      assert body["spec"]["commit_status"] == "never"
+
+      task = Support.Stubs.DB.find(:schedulers, body["metadata"]["id"])
+      assert task.api_model.commit_status == :NEVER
+    end
+
+    test "POST /tasks - defaults the commit status policy to follow_project", ctx do
+      params = %{
+        apiVersion: "v2",
+        kind: "Task",
+        spec: %{
+          name: "Task without policy",
+          reference: %{type: "branch", name: "master"},
+          pipeline_file: "pipeline.yml",
+          cron_schedule: "0 0 * * *"
+        }
+      }
+
+      assert {:ok, %Tesla.Env{status: 200, body: body}} =
+               Tesla.post(http_client(ctx), "/projects/#{ctx.project_id}/tasks", params)
+
+      assert body["spec"]["commit_status"] == "follow_project"
+    end
+
     test "POST /tasks - endpoint returns 200 when task is created with reference structure for branch",
          ctx do
       params = %{

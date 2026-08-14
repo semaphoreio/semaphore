@@ -24,9 +24,51 @@ defmodule GithubNotifier.Models.ProjectTest do
                :status => %{
                  "pipeline_files" => [
                    %{"level" => "PIPELINE", "path" => ".semaphore/semaphore.yml"}
-                 ]
+                 ],
+                 "skip_scheduled_run" => false,
+                 "skip_manual_run" => false
                }
              }
+    end
+
+    test "tolerates unknown fields on the status message" do
+      project = Support.Factories.project()
+      status = Map.put(project.spec.repository.status, :__unknown_fields__, [{99, 0, 1}])
+      repository = %{project.spec.repository | status: status}
+      project = %{project | spec: %{project.spec | repository: repository}}
+
+      response =
+        struct(InternalApi.Projecthub.DescribeResponse,
+          metadata: Support.Factories.response_meta(),
+          project: project
+        )
+
+      GrpcMock.stub(ProjecthubMock, :describe, response)
+
+      found = Project.find(project.metadata.id)
+
+      assert found.status["pipeline_files"] == [
+               %{"level" => "PIPELINE", "path" => ".semaphore/semaphore.yml"}
+             ]
+
+      refute Map.has_key?(found.status, "__unknown_fields__")
+    end
+
+    test "carries the commit status trigger settings" do
+      project = Support.Factories.project([], skip_scheduled_run: true, skip_manual_run: true)
+
+      response =
+        struct(InternalApi.Projecthub.DescribeResponse,
+          metadata: Support.Factories.response_meta(),
+          project: project
+        )
+
+      GrpcMock.stub(ProjecthubMock, :describe, response)
+
+      found = Project.find(project.metadata.id)
+
+      assert found.status["skip_scheduled_run"] == true
+      assert found.status["skip_manual_run"] == true
     end
 
     test "when the project can't be found => it returns nil" do

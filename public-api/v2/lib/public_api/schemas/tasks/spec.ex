@@ -32,7 +32,13 @@ defmodule PublicAPI.Schemas.Tasks.Spec do
       pipeline_file: %Schema{type: :string, example: "pipeline.yml"},
       cron_schedule: %Schema{type: :string, example: "0 0 * * *"},
       paused: %Schema{type: :boolean, example: false},
-      parameters: %Schema{type: :array, items: PublicAPI.Schemas.Tasks.Parameter.schema()}
+      parameters: %Schema{type: :array, items: PublicAPI.Schemas.Tasks.Parameter.schema()},
+      commit_status: %Schema{
+        type: :string,
+        enum: ["follow_project", "always", "never"],
+        description:
+          "Whether pipelines started by this task submit commit statuses. follow_project defers to the project settings. Defaults to follow_project on create; omitted on update, the stored value is kept."
+      }
     },
     required: [:name, :reference, :pipeline_file]
   })

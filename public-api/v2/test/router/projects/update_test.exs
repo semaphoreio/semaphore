@@ -40,6 +40,25 @@ defmodule Router.Projects.UpdateTest do
       assert project.spec.name == updated_project["metadata"]["name"]
     end
 
+    test "update a project with commit status trigger settings", ctx do
+      project =
+        construct_project("a-project")
+        |> put_status(%{
+          pipeline_files: [%{path: ".semaphore/semaphore.yml", level: "PIPELINE"}],
+          skip_scheduled_run: true,
+          skip_manual_run: true
+        })
+
+      {:ok, response} = update_project(ctx, ctx.project.id, project)
+      updated_project = Jason.decode!(response.body)
+
+      assert 200 == response.status_code
+      check_response(response)
+
+      assert updated_project["spec"]["repository"]["status"]["skip_scheduled_run"] == true
+      assert updated_project["spec"]["repository"]["status"]["skip_manual_run"] == true
+    end
+
     test "without specified name in spec => fail", ctx do
       default_project = construct_project()
 
@@ -118,6 +137,12 @@ defmodule Router.Projects.UpdateTest do
     default = OpenApiSpex.Schema.example(PublicAPI.Schemas.Projects.Project.schema())
 
     Map.put(default, :spec, Map.put(default.spec, :name, name))
+  end
+
+  defp put_status(project, status) do
+    repository = Map.put(project.spec.repository, :status, status)
+
+    Map.put(project, :spec, Map.put(project.spec, :repository, repository))
   end
 
   defp check_response(response) do

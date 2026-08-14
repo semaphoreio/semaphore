@@ -658,6 +658,52 @@ defmodule FrontWeb.SchedulersControllerTest do
         assert param.regex_pattern == "^[0-9]+\\.[0-9]+\\.[0-9]+$"
       end
     end
+
+    test "passes commit_status through to Scheduler.persist", %{project_name: project_name} do
+      params = Map.put(@raw_scheduler_form_params, :commit_status, "never")
+
+      with_mocks([
+        {
+          Front.Models.Scheduler,
+          [:passthrough],
+          [
+            persist: fn parsed, _ctx ->
+              send(self(), {:persist, parsed})
+              {:ok, "id"}
+            end
+          ]
+        }
+      ]) do
+        build_conn()
+        |> post(schedulers_path(build_conn(), :create, project_name), params)
+
+        assert_received {:persist, parsed}
+        assert parsed.commit_status == "never"
+      end
+    end
+
+    test "clamps an invalid commit_status to follow_project", %{project_name: project_name} do
+      params = Map.put(@raw_scheduler_form_params, :commit_status, "sometimes")
+
+      with_mocks([
+        {
+          Front.Models.Scheduler,
+          [:passthrough],
+          [
+            persist: fn parsed, _ctx ->
+              send(self(), {:persist, parsed})
+              {:ok, "id"}
+            end
+          ]
+        }
+      ]) do
+        build_conn()
+        |> post(schedulers_path(build_conn(), :create, project_name), params)
+
+        assert_received {:persist, parsed}
+        assert parsed.commit_status == "follow_project"
+      end
+    end
   end
 
   describe "GET edit" do

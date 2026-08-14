@@ -132,6 +132,34 @@ You can add tasks by editing the project using the [Semaphore command line tool]
 </TabItem>
 </Tabs>
 
+## Commit statuses for tasks {#commit-status}
+
+Pipelines started by a task submit [status checks](./projects#status-checks) to the repository like any other trigger. Each task can override this with a tri-state setting on the task form:
+
+- **Follow project settings** (default): defers to the project-level [status check settings](./projects#status-checks-triggers)
+- **Always send**: submits status checks even when the project skips scheduled or manual runs
+- **Never send**: never submits status checks for pipelines started by this task
+
+In the task YAML the setting is the optional `commit_status` key with the values `follow_project`, `always`, or `never`. Omitting the key means `follow_project`.
+
+```yaml title="Task without status checks"
+apiVersion: v1.2
+kind: Schedule
+metadata:
+  name: nightly-smoke-test
+spec:
+  project: my-project
+  recurring: true
+  reference:
+    type: BRANCH
+    name: master
+  at: "0 3 * * *"
+  pipeline_file: .semaphore/smoke.yml
+  commit_status: never
+```
+
+Reruns always submit status checks regardless of this setting. If the task is deleted while its pipelines are still running, the project settings apply.
+
 ## How to view your tasks {#view-task}
 
 Go to the **Tasks** tab in your project to view the configured tasks.

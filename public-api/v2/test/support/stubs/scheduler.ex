@@ -159,7 +159,8 @@ defmodule Support.Stubs.Scheduler do
       end
     end
 
-    @modifiable_fields ~w(name description recurring reference pipeline_file at parameters)a
+    @modifiable_fields ~w(name description recurring reference pipeline_file at parameters
+                          commit_status)a
 
     def persist(req, _) do
       model_from_req = periodic_from_req(req)
@@ -381,7 +382,8 @@ defmodule Support.Stubs.Scheduler do
         reference: req.reference,
         pipeline_file: req.pipeline_file,
         at: req.at,
-        parameters: req.parameters
+        parameters: req.parameters,
+        commit_status: req.commit_status
       }
     end
   end
