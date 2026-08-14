@@ -1,0 +1,86 @@
+# Pre-existing advisories, allowlisted to unblock the tackle v0.4.0 (credential-in-logs
+# fix) merge gate. None of these are introduced or worsened by this PR (mix.lock is
+# otherwise unchanged). Grouped by verified reachability; each verified directly against
+# this service's source (grep + application.ex boot list), not copied blind from siblings.
+
+# --- dashboardhub is gRPC-only: GRPC.Server.Supervisor (cowboy adapter) is the only
+# server started in application.ex; no Plug.Parsers, no plug/plug_cowboy direct dep, no
+# multipart, no cookie code anywhere in lib/. cowlib/cowboy HTTP/1.1-only and cookie
+# features are never exercised. Same class already accepted in projecthub/zebra/front
+# .mix-audit.txt (gRPC-only cowlib/cowboy reasoning). ---
+# cow_http_te DoS via excessive allocation (HTTP/1.1 Transfer-Encoding parsing; unreachable over HTTP/2-only gRPC)
+GHSA-32p9-57cr-4x65
+# SPDY decompression bomb in cow_spdy:inflate/2 (cowboy 2.x never implements SPDY, version-independent)
+GHSA-84f2-rp86-235p
+# cookie header injection in cow_cookie:cookie/1 (no cookie code anywhere in lib/; grep clean)
+GHSA-g2wm-735q-3f56
+# SSE CRLF injection (dashboardhub exposes no SSE endpoints)
+GHSA-hv23-4qp7-8c8r
+# cowboy multipart header parsing DoS, fixed in 2.15.0 (no plug/plug_cowboy dep, no Plug.Parsers/multipart in lib/; grep clean)
+GHSA-jfc2-q6qh-g5x8
+
+# --- gun + mint are grpc's CLIENT transport adapters (deps/grpc/lib/grpc/client/adapters/{gun,mint}.ex).
+# dashboardhub's application.ex starts ONLY GRPC.Server.Supervisor (cowboy server adapter); no
+# GRPC.Client/Stub channel is ever opened anywhere in lib/ (grep clean, generated .pb.ex stub
+# defs are codegen boilerplate, not call sites). Both client adapters are dead code at runtime. ---
+# gun: unexpected status/return value handling, fixed in 2.4.0
+GHSA-2j82-37xg-f9wp
+# gun_http2 origin validation error, fixed in 2.4.0
+GHSA-36w4-95hv-5vwg
+# gun: uncontrolled resource consumption, fixed in 2.4.0 (also: per ex-tackle-v0.4.0-fanout.md,
+# gun's gun_http HTTP/1.1 module never loads on the grpc HTTP/2 path for any grpc-only gun consumer)
+GHSA-r53j-fjj5-mv77
+# HTTP request/response splitting, shared cowboy/gun advisory; cowboy's own fix already in place
+# via 2.16.0 range check, gun-attributed instance never reaches the flagged code path (same call
+# already accepted fleet-wide, see public-api/v2/.mix-audit.txt)
+GHSA-w4f7-4cxr-rv3c
+# mint: unbounded CONTINUATION/HEADERS frame accumulation (client-only attack surface, dead code here)
+GHSA-2p26-p43x-fhp8
+# mint: CRLF injection via unvalidated method/target (client-only attack surface, dead code here)
+GHSA-2pg6-44cx-c49v
+# mint: unbounded PUSH_PROMISE streams map growth (client-only attack surface, dead code here)
+GHSA-g586-ccqf-7x4r
+# mint: Content-Length "+" prefix parsing (client-only attack surface, dead code here)
+GHSA-mjqx-c6f6-7rc2
+
+# --- hackney is pulled in transitively only via `sentry` (no direct :hackney call in lib/;
+# grep clean); sentry's HTTP client posts to a single fixed, operator-configured DSN, never a
+# user-controlled host/query/path. Same fleet-wide acceptance as front/guard/zebra/repository_hub/
+# auth/public-api/v2 .mix-audit.txt. ---
+# fails to properly release HTTP connections to the pool
+GHSA-9fm9-hp7p-53mf
+# ssl:connect/2 post-handshake upgrade has no timeout
+GHSA-gp9c-pm5m-5cxr
+# CR/LF injection in query parameter
+GHSA-j9wq-vxxc-94wf
+# CRLF/header injection via unvalidated domain/path options
+GHSA-mp55-p8c9-rfw2
+# SSRF allowlist bypass in hackney_url:normalize/2 via percent-encoded host
+GHSA-pj7v-xfvx-wmjq
+# SSRF via redirect target, fixed in 1.21.0 (same fixed-DSN-only reasoning; accepted in public-api/v2)
+GHSA-vq52-99r9-h5pw
+
+# decimal — unbounded exponent DoS in Decimal.new, fixed in 3.0.0. dashboardhub has zero
+# Decimal.new call sites (grep clean); transitive via ecto only. Same acceptance as
+# guard/repository_hub/rbac-ce/public-api/v2.
+GHSA-rhv4-8758-jx7v
+
+# postgrex — channel-name SQL injection in Postgrex.Notifications.listen/3, fixed in 0.22.2.
+# dashboardhub never calls Postgrex.Notifications (grep clean). Same acceptance as
+# guard/zebra/repository_hub.
+GHSA-r73h-97w8-m54h
+
+# protobuf — unbounded recursion depth in embedded-message decoding, fixed in 0.16.1. Same
+# "internal gRPC traffic only" acceptance already carried by auth and public-api/v2
+# .mix-audit.txt (shared advisory, hits 5 services fleet-wide per ex-tackle-v0.4.0-fanout.md).
+# NOTE: dashboardhub has zero deprecated `.new(` call sites on generated modules (grep clean),
+# so unlike hackney/gun this one is NOT toolchain- or major-version-blocked - a plain bump to
+# 0.16.1+ is safe and should be prioritized in the follow-up dependency-bump PR.
+GHSA-rv48-qqj5-crxg
+
+# rabbit_common — DoS via publishing large messages over the RabbitMQ HTTP management API
+# (CVE-2023-46118). dashboardhub only consumes rabbit_common/amqp_client as an AMQP-0-9-1
+# protocol CLIENT (via tackle/amqp) against an operator-configured AMQP_URL; it never runs
+# the RabbitMQ broker or its management HTTP API plugin where this CVE actually lives, so the
+# vulnerable server code path does not exist in this service's runtime.
+GHSA-w6cq-9cf4-gqpg
