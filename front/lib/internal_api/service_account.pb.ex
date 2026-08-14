@@ -8,8 +8,8 @@ defmodule InternalApi.ServiceAccount.CreateRequest do
           description: String.t(),
           creator_id: String.t()
         }
-
   defstruct [:org_id, :name, :description, :creator_id]
+
   field(:org_id, 1, type: :string)
   field(:name, 2, type: :string)
   field(:description, 3, type: :string)
@@ -24,8 +24,8 @@ defmodule InternalApi.ServiceAccount.CreateResponse do
           service_account: InternalApi.ServiceAccount.ServiceAccount.t(),
           api_token: String.t()
         }
-
   defstruct [:service_account, :api_token]
+
   field(:service_account, 1, type: InternalApi.ServiceAccount.ServiceAccount)
   field(:api_token, 2, type: :string)
 end
@@ -39,8 +39,8 @@ defmodule InternalApi.ServiceAccount.ListRequest do
           page_size: integer,
           page_token: String.t()
         }
-
   defstruct [:org_id, :page_size, :page_token]
+
   field(:org_id, 1, type: :string)
   field(:page_size, 2, type: :int32)
   field(:page_token, 3, type: :string)
@@ -54,8 +54,8 @@ defmodule InternalApi.ServiceAccount.ListResponse do
           service_accounts: [InternalApi.ServiceAccount.ServiceAccount.t()],
           next_page_token: String.t()
         }
-
   defstruct [:service_accounts, :next_page_token]
+
   field(:service_accounts, 1, repeated: true, type: InternalApi.ServiceAccount.ServiceAccount)
   field(:next_page_token, 2, type: :string)
 end
@@ -68,8 +68,8 @@ defmodule InternalApi.ServiceAccount.DescribeRequest do
           service_account_id: String.t(),
           org_id: String.t()
         }
-
   defstruct [:service_account_id, :org_id]
+
   field(:service_account_id, 1, type: :string)
   field(:org_id, 2, type: :string)
 end
@@ -81,8 +81,8 @@ defmodule InternalApi.ServiceAccount.DescribeResponse do
   @type t :: %__MODULE__{
           service_account: InternalApi.ServiceAccount.ServiceAccount.t()
         }
-
   defstruct [:service_account]
+
   field(:service_account, 1, type: InternalApi.ServiceAccount.ServiceAccount)
 end
 
@@ -94,8 +94,8 @@ defmodule InternalApi.ServiceAccount.DescribeManyRequest do
           sa_ids: [String.t()],
           org_id: String.t()
         }
-
   defstruct [:sa_ids, :org_id]
+
   field(:sa_ids, 1, repeated: true, type: :string)
   field(:org_id, 2, type: :string)
 end
@@ -107,8 +107,8 @@ defmodule InternalApi.ServiceAccount.DescribeManyResponse do
   @type t :: %__MODULE__{
           service_accounts: [InternalApi.ServiceAccount.ServiceAccount.t()]
         }
-
   defstruct [:service_accounts]
+
   field(:service_accounts, 1, repeated: true, type: InternalApi.ServiceAccount.ServiceAccount)
 end
 
@@ -122,8 +122,8 @@ defmodule InternalApi.ServiceAccount.UpdateRequest do
           description: String.t(),
           org_id: String.t()
         }
-
   defstruct [:service_account_id, :name, :description, :org_id]
+
   field(:service_account_id, 1, type: :string)
   field(:name, 2, type: :string)
   field(:description, 3, type: :string)
@@ -137,8 +137,8 @@ defmodule InternalApi.ServiceAccount.UpdateResponse do
   @type t :: %__MODULE__{
           service_account: InternalApi.ServiceAccount.ServiceAccount.t()
         }
-
   defstruct [:service_account]
+
   field(:service_account, 1, type: InternalApi.ServiceAccount.ServiceAccount)
 end
 
@@ -150,8 +150,8 @@ defmodule InternalApi.ServiceAccount.DeactivateRequest do
           service_account_id: String.t(),
           org_id: String.t()
         }
-
   defstruct [:service_account_id, :org_id]
+
   field(:service_account_id, 1, type: :string)
   field(:org_id, 2, type: :string)
 end
@@ -171,8 +171,8 @@ defmodule InternalApi.ServiceAccount.ReactivateRequest do
           service_account_id: String.t(),
           org_id: String.t()
         }
-
   defstruct [:service_account_id, :org_id]
+
   field(:service_account_id, 1, type: :string)
   field(:org_id, 2, type: :string)
 end
@@ -192,8 +192,8 @@ defmodule InternalApi.ServiceAccount.DestroyRequest do
           service_account_id: String.t(),
           org_id: String.t()
         }
-
   defstruct [:service_account_id, :org_id]
+
   field(:service_account_id, 1, type: :string)
   field(:org_id, 2, type: :string)
 end
@@ -213,8 +213,8 @@ defmodule InternalApi.ServiceAccount.RegenerateTokenRequest do
           service_account_id: String.t(),
           org_id: String.t()
         }
-
   defstruct [:service_account_id, :org_id]
+
   field(:service_account_id, 1, type: :string)
   field(:org_id, 2, type: :string)
 end
@@ -226,8 +226,8 @@ defmodule InternalApi.ServiceAccount.RegenerateTokenResponse do
   @type t :: %__MODULE__{
           api_token: String.t()
         }
-
   defstruct [:api_token]
+
   field(:api_token, 1, type: :string)
 end
 
@@ -245,7 +245,6 @@ defmodule InternalApi.ServiceAccount.ServiceAccount do
           updated_at: Google.Protobuf.Timestamp.t(),
           deactivated: boolean
         }
-
   defstruct [
     :id,
     :name,

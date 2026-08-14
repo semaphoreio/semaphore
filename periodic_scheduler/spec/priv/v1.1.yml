@@ -15,6 +15,9 @@ properties:
     type: boolean
   recurring:
     type: boolean
+  commit_status:
+    type: string
+    enum: [follow_project, always, never]
   parameters:
     type: array
     items: 

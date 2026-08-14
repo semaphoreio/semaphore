@@ -91,6 +91,37 @@ defmodule Test.Actions.BulkUpsertAndPruneImpl.Test do
     assert persisted_param.validate_input_format == true
   end
 
+  test "round-trips the commit status policy on definitions", ctx do
+    params = base_params(ctx, [definition("with-policy", "0 0 * * *", commit_status: :NEVER)])
+
+    assert {:ok, %{upserted: [upserted], deleted_ids: []}} =
+             BulkUpsertAndPruneImpl.bulk_upsert_and_prune(params)
+
+    assert upserted.commit_status == :never
+
+    [persisted] = list_periodics_for(ctx.pr_id)
+    assert persisted.commit_status == :never
+  end
+
+  test "resets the commit status policy when a definition omits it", ctx do
+    {:ok, periodic: existing} =
+      Factory.setup_periodic(ctx,
+        organization_id: ctx.org_id,
+        project_id: ctx.pr_id,
+        requester_id: ctx.usr_id,
+        name: "alpha",
+        at: "0 0 * * *",
+        commit_status: :never
+      )
+
+    params = base_params(ctx, [definition("alpha", "0 0 * * *", id: existing.id)])
+
+    assert {:ok, %{upserted: [upserted], deleted_ids: []}} =
+             BulkUpsertAndPruneImpl.bulk_upsert_and_prune(params)
+
+    assert upserted.commit_status == :follow_project
+  end
+
   test "prunes existing periodics that are not in the desired set", ctx do
     {:ok, periodic: keep} =
       Factory.setup_periodic(ctx,
@@ -376,8 +407,7 @@ defmodule Test.Actions.BulkUpsertAndPruneImpl.Test do
         definition("valid-new", "0 0 * * *")
       ])
 
-    assert {:error, {:NOT_FOUND, message}} =
-             BulkUpsertAndPruneImpl.bulk_upsert_and_prune(params)
+    assert {:error, {:NOT_FOUND, message}} = BulkUpsertAndPruneImpl.bulk_upsert_and_prune(params)
 
     assert message =~ foreign.id
     assert message =~ "not found in project"
@@ -399,8 +429,7 @@ defmodule Test.Actions.BulkUpsertAndPruneImpl.Test do
 
     params = base_params(ctx, [definition("ghost", "0 0 * * *", id: unknown_id)])
 
-    assert {:error, {:NOT_FOUND, message}} =
-             BulkUpsertAndPruneImpl.bulk_upsert_and_prune(params)
+    assert {:error, {:NOT_FOUND, message}} = BulkUpsertAndPruneImpl.bulk_upsert_and_prune(params)
 
     assert message =~ unknown_id
     assert message =~ "not found in project"
@@ -486,7 +515,8 @@ defmodule Test.Actions.BulkUpsertAndPruneImpl.Test do
       reference: Keyword.get(opts, :reference, "refs/heads/master"),
       at: at,
       pipeline_file: Keyword.get(opts, :pipeline_file, ".semaphore/cron.yml"),
-      parameters: Keyword.get(opts, :parameters, [])
+      parameters: Keyword.get(opts, :parameters, []),
+      commit_status: Keyword.get(opts, :commit_status, :FOLLOW_PROJECT)
     }
   end
 

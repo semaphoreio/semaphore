@@ -179,7 +179,11 @@ defmodule RepositoryHub.Model.Repositories do
         }
       end)
 
-    %InternalApi.Projecthub.Project.Spec.Repository.Status{pipeline_files: files}
+    %InternalApi.Projecthub.Project.Spec.Repository.Status{
+      pipeline_files: files,
+      skip_scheduled_run: Map.get(commit_status, "skip_scheduled_run", false),
+      skip_manual_run: Map.get(commit_status, "skip_manual_run", false)
+    }
   end
 
   def default_yaml_location do

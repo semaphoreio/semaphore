@@ -74,6 +74,8 @@ defmodule Front.Models.Project do
 
     field(:integration_type, :string)
     field(:commit_status, :map)
+    field(:commit_status_skip_scheduled_run, :boolean)
+    field(:commit_status_skip_manual_run, :boolean)
   end
 
   @required_fields [:name, :initial_pipeline_file]
@@ -106,7 +108,9 @@ defmodule Front.Models.Project do
     :tag_whitelist,
     :public,
     :description,
-    :repo_url
+    :repo_url,
+    :commit_status_skip_scheduled_run,
+    :commit_status_skip_manual_run
   ]
 
   def initial_semaphore_yaml_path, do: @initial_semaphore_yaml_path
@@ -345,7 +349,7 @@ defmodule Front.Models.Project do
                       allowed_secrets: allowed_secrets,
                       allowed_contributors: allowed_contributors
                     ),
-                  status: project_data.commit_status,
+                  status: compose_status(project_data),
                   pipeline_file: project_data.initial_pipeline_file,
                   whitelist:
                     Whitelist.new(
@@ -862,6 +866,10 @@ defmodule Front.Models.Project do
       :analysis_state => State.key(project.status.analysis.state),
       :integration_type => IntegrationType.key(project.spec.repository.integration_type),
       :commit_status => project.spec.repository.status,
+      :commit_status_skip_scheduled_run =>
+        status_flag(project.spec.repository.status, :skip_scheduled_run),
+      :commit_status_skip_manual_run =>
+        status_flag(project.spec.repository.status, :skip_manual_run),
       :repo_connected => project.spec.repository.connected,
       :repo_id => project.spec.repository.id,
       :cache_id => project.spec.cache_id,
@@ -1084,10 +1092,38 @@ defmodule Front.Models.Project do
   end
 
   defp validate_commit_status(changeset) do
-    if get_change(changeset, :initial_pipeline_file),
-      do: put_change(changeset, :commit_status, nil),
-      else: changeset
+    case get_change(changeset, :initial_pipeline_file) do
+      nil ->
+        changeset
+
+      path ->
+        put_change(
+          changeset,
+          :commit_status,
+          Repository.Status.new(
+            pipeline_files: [
+              Repository.Status.PipelineFile.new(
+                path: path,
+                level: Repository.Status.PipelineFile.Level.value(:PIPELINE)
+              )
+            ]
+          )
+        )
+    end
   end
+
+  defp compose_status(project_data) do
+    base = project_data.commit_status || Repository.Status.new(pipeline_files: [])
+
+    %{
+      base
+      | skip_scheduled_run: project_data.commit_status_skip_scheduled_run == true,
+        skip_manual_run: project_data.commit_status_skip_manual_run == true
+    }
+  end
+
+  defp status_flag(nil, _field), do: false
+  defp status_flag(status, field), do: Map.get(status, field) == true
 
   defp split_and_trim(list) do
     list

@@ -128,7 +128,9 @@ defmodule InternalClients.Projecthub.RequestFormatter do
         Enum.map(
           from_params(params.spec.repository.status, :pipeline_files, []),
           &pipeline_file/1
-        )
+        ),
+      skip_scheduled_run: from_params(params.spec.repository.status, :skip_scheduled_run, false),
+      skip_manual_run: from_params(params.spec.repository.status, :skip_manual_run, false)
     }
   end
 
