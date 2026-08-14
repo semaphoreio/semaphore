@@ -1,0 +1,93 @@
+# --- cowboy/cowlib/gun: HTTP request/response splitting via structured-field escaping ---
+# Affects cow_http_struct_hd:escape_string/2 (RFC 8941 structured-field header
+# encoding). This service never constructs structured HTTP field headers (no
+# put_resp_header calls anywhere in the codebase, no Alt-Svc/custom structured
+# headers). The gun-attributed instance is additionally a known false positive:
+# mix_audit collapses the advisory's per-package version ranges and matches any gun
+# version against cowboy's bound (same false positive already accepted in
+# front/github_notifier .mix-audit.txt).
+GHSA-w4f7-4cxr-rv3c
+
+# --- cowboy/plug: multipart parsing DoS (unbounded buffer / temp-file accumulation) ---
+# router.ex configures Plug.Parsers with `parsers: [:urlencoded, :json]` - :multipart
+# is never enabled, so the multipart parser is never invoked.
+GHSA-jfc2-q6qh-g5x8
+GHSA-468c-vq7p-gh64
+GHSA-95qv-c9g9-rm63
+
+# --- cowlib: cookie / SSE / SPDY encoders ---
+# This service never sets response cookies, never serves SSE, and never speaks SPDY.
+GHSA-g2wm-735q-3f56
+GHSA-hv23-4qp7-8c8r
+GHSA-84f2-rp86-235p
+
+# --- plug: cookie attribute injection ---
+# This service never sets response cookies (no put_resp_cookie usage anywhere).
+GHSA-wpmj-jh88-rpgm
+
+# --- protobuf: unbounded recursion depth in embedded-message decoding ---
+# This service is gRPC-client-only (license_client.ex, organization_client.ex,
+# repository_client.ex) - it runs no gRPC server. Protobuf is only decoded from its
+# own internal gRPC client responses; inbound webhooks are parsed as JSON, never
+# protobuf. Internal cluster traffic, not untrusted input (same rationale already
+# accepted in github_notifier/.mix-audit.txt).
+GHSA-rv48-qqj5-crxg
+
+# --- grpc: no upstream fix released in any 0.x version (0.3.1-0.11.5) ---
+# gzip-decompression bomb, unbounded request-body memory accumulation, and unsafe
+# Erlang term deserialization (RCE). No compatible fixed version exists upstream;
+# suppressing pending a patch, tracked separately.
+GHSA-6ccx-9c9f-327w
+GHSA-q8gf-9rvj-gmgj
+GHSA-grp7-v8xh-rj7h
+
+# --- grpc: authorization bypass via path binding override in HTTP transcoding ---
+# This service's gRPC clients do not implement or enable HTTP transcoding (no
+# google.api.http annotations processed, no transcode plug/gateway configured
+# anywhere in the codebase).
+GHSA-mwr4-5g34-j5cq
+
+# --- gun: HTTP/1.1-only issues (unsolicited 101 upgrade hijack, unbounded response
+# buffer) and HTTP/2 PUSH_PROMISE cross-origin cookie injection ---
+# This service's gRPC clients use the default GRPC.Client.Adapters.Gun (never
+# overridden, see license_client.ex/organization_client.ex/repository_client.ex)
+# speaking HTTP/2 exclusively to internal, operator-configured gRPC endpoints
+# (env-configured URLs, not user-supplied). gun's HTTP/1.1 module never loads on
+# this path (same reachability argument already accepted fleet-wide for
+# GHSA-r53j-fjj5-mv77); gRPC never uses server push, and a backend gRPC client has
+# no cookie jar.
+GHSA-2j82-37xg-f9wp
+GHSA-36w4-95hv-5vwg
+GHSA-r53j-fjj5-mv77
+
+# --- hpax: unauthenticated DoS via unbounded HPACK integer decoding ---
+# Only exercised via gun's HTTP/2 transport, which talks exclusively to internal,
+# trusted gRPC servers - not attacker-controlled input.
+GHSA-jj2p-32j7-whj2
+
+# --- mint: all 8 advisories (CONTINUATION flood, chunked-body buffering, CRLF
+# injection, response smuggling, unbounded stream/header/trailer growth) ---
+# mint is a transitive dependency of grpc but is never selected as the transport:
+# grpc defaults GRPC.Stub.connect/2 to GRPC.Client.Adapters.Gun, and none of this
+# service's GRPC.Stub.connect calls pass an :adapter option. mint's client code path
+# is dead code at runtime.
+GHSA-8pf6-g464-h6h9
+GHSA-2p26-p43x-fhp8
+GHSA-c59h-fq4p-r36r
+GHSA-2pg6-44cx-c49v
+GHSA-mjqx-c6f6-7rc2
+GHSA-g586-ccqf-7x4r
+GHSA-x3x7-96vm-6h2w
+GHSA-qrfr-wh4c-3qhw
+
+# --- hackney: SSRF, CRLF/header injection, connection-pool leak, TLS-upgrade
+# timeout ---
+# hackney is only reached transitively via the Sentry client, which posts events to
+# the operator-configured SENTRY_DSN endpoint - not a user-supplied host/query (same
+# rationale already accepted in front/github_notifier/secrethub .mix-audit.txt).
+GHSA-vq52-99r9-h5pw
+GHSA-gp9c-pm5m-5cxr
+GHSA-j9wq-vxxc-94wf
+GHSA-9fm9-hp7p-53mf
+GHSA-mp55-p8c9-rfw2
+GHSA-pj7v-xfvx-wmjq
