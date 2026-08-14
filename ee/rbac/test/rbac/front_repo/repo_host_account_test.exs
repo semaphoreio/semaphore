@@ -63,6 +63,21 @@ defmodule Rbac.FrontRepo.RepoHostAccountTest do
       assert reloaded.revoked == true
     end
 
+    # `updated_at` is nullable with no backfill. NULL fails both `>` and `<=`,
+    # so before the is_nil/1 guard such a row neither blocked a claim nor was
+    # released by it, leaving a duplicate with no sync request enqueued.
+    test "a revoked link with no updated_at is claimable and is released" do
+      {:ok, stale} =
+        Support.Members.insert_repo_host_account(github_uid: "10012", revoked: true)
+
+      :ok = Support.Members.clear_repo_host_account_timestamp(stale)
+
+      assert {:ok, claimed} = RepoHostAccount.create(create_params(%{github_uid: "10012"}))
+
+      assert claimed.github_uid == "10012"
+      assert {:error, :not_found} = RepoHostAccount.get_for_github_user(stale.user_id)
+    end
+
     test "create/1 rejects the uid once it has been claimed away from a revoked link" do
       {:ok, stale} =
         Support.Members.insert_repo_host_account(github_uid: "10007", revoked: true)

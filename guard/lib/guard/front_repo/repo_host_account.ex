@@ -409,7 +409,13 @@ defmodule Guard.FrontRepo.RepoHostAccount do
             where: r.repo_host == ^account.repo_host and r.github_uid == ^account.github_uid,
             where: r.id != ^account.id,
             where: r.revoked == true,
-            where: r.updated_at <= ago(^@revoked_claim_grace_seconds, "second"),
+            # Exact complement of the blocking predicate above. `updated_at` is
+            # nullable with no backfill, and NULL fails both `>` and `<=`, so
+            # without is_nil/1 such a row would neither block a claim nor be
+            # released by it — leaving a silent duplicate with no sync request.
+            where:
+              is_nil(r.updated_at) or
+                r.updated_at <= ago(^@revoked_claim_grace_seconds, "second"),
             select: r.user_id
           )
           |> FrontRepo.delete_all()

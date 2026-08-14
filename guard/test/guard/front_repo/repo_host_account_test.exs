@@ -170,6 +170,28 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
       assert reloaded.revoked == true
     end
 
+    # `updated_at` is nullable with no backfill. NULL fails both `>` and `<=`,
+    # so before the is_nil/1 guard such a row neither blocked a claim nor was
+    # released by it, leaving a duplicate with no sync request enqueued.
+    test "a revoked link with no updated_at is claimable and is released", %{rha: rha} do
+      {:ok, _} = RepoHostAccount.update_revoke_status(rha, true)
+
+      :ok = Support.Members.clear_repo_host_account_timestamp(rha)
+
+      assert {:ok, claimed} =
+               RepoHostAccount.create(%{
+                 login: "other-login",
+                 github_uid: rha.github_uid,
+                 repo_host: "github",
+                 user_id: Ecto.UUID.generate(),
+                 name: "Other User",
+                 permission_scope: "user:email"
+               })
+
+      assert claimed.github_uid == rha.github_uid
+      assert {:error, :not_found} = RepoHostAccount.get_for_github_user(rha.user_id)
+    end
+
     test "create/1 rejects the uid once it has been claimed away from a revoked link", %{
       rha: rha
     } do
