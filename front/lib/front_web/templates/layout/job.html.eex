@@ -58,9 +58,9 @@
     </div>
     <div class="flex">
       <%= if !assigns[:permissions] or @permissions["project.job.rerun"] do %>
-        <%= link "Rerun", to: workflow_path(@conn, :rebuild, @workflow.id), method: :post, class: "btn btn-secondary ml1", "data-tippy-content": "Rerun the parent workflow, including this job" %>
+        <%= link "Rerun Workflow", to: workflow_path(@conn, :rebuild, @workflow.id), method: :post, class: "btn btn-secondary ml1", "data-tippy-content": "Starts a fresh run of the whole workflow, including this job" %>
       <% else %>
-        <button class="btn btn-secondary" disabled>Rerun</button>
+        <button class="btn btn-secondary" disabled>Rerun Workflow</button>
       <% end %>
       <div class="ml2 pl2 bl b--lighter-gray">
       <%= link to: "/workflows/#{@workflow.id}/edit" do %>
