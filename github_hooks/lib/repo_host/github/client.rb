@@ -39,9 +39,16 @@ module RepoHost::Github
 
       app_client.check_application_authorization(@token).present?
     rescue Octokit::ServiceUnavailable, Octokit::InternalServerError,
-           Octokit::TooManyRequests => exception
-      # Transient upstream failures (5xx, rate limits) must not classify the
+           Octokit::TooManyRequests, Octokit::AbuseDetected,
+           Octokit::TooManyLoginAttempts => exception
+      # Transient upstream failures (5xx and throttling) must not classify the
       # token as revoked; raising keeps the caller's revoke status unchanged.
+      #
+      # All three throttling classes are Octokit::Forbidden subclasses, and
+      # Forbidden is in GITHUB_EXCEPTION below, so they must be named here to
+      # be rescued first. Octokit maps a 403 by body: "rate limit exceeded" and
+      # "exceeded a secondary rate limit" to TooManyRequests, "abuse" to
+      # AbuseDetected, "login attempts exceeded" to TooManyLoginAttempts.
       handle_octokit_exceptions(exception)
     rescue ::RepoHost::RemoteException::Unauthorized
       false
@@ -313,6 +320,12 @@ module RepoHost::Github
       elsif exception.instance_of? Octokit::NotFound
         raise ::RepoHost::RemoteException::NotFound, exception.message
       elsif exception.instance_of? Octokit::TooManyRequests
+        raise ::RepoHost::RemoteException::TooManyRequests, exception.message
+      elsif exception.instance_of?(Octokit::AbuseDetected) ||
+            exception.instance_of?(Octokit::TooManyLoginAttempts)
+        # Both are throttling, not a bad token. This branch matches on exact
+        # class, so these must be named explicitly even though they subclass
+        # Forbidden, which maps to Unauthorized below.
         raise ::RepoHost::RemoteException::TooManyRequests, exception.message
       elsif exception.instance_of? Octokit::ServiceUnavailable
         raise ::RepoHost::RemoteException::ServiceUnavailable, exception.message
