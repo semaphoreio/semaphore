@@ -23,6 +23,11 @@ defmodule Rbac.FrontRepo.FederatedIdentitySyncRequest do
   @base_retry_seconds 60
   @max_retry_seconds 3600
   @max_error_length 500
+  # Head start for the in-process sync before guard's drainer may lease the
+  # row. Must match @lease_seconds in
+  # guard/lib/guard/front_repo/federated_identity_sync_request.ex — rbac has no
+  # drainer of its own, so guard leases the rows rbac enqueues.
+  @lease_seconds 300
 
   @type t :: %__MODULE__{}
 
@@ -49,7 +54,11 @@ defmodule Rbac.FrontRepo.FederatedIdentitySyncRequest do
       claiming_user_id: account.user_id,
       released_user_ids: released_user_ids,
       login: account.login,
-      next_attempt_at: now()
+      # One lease ahead, not now: the claim starts an in-process sync for this
+      # row immediately, and that task holds no lease. Due-now would let
+      # guard's next drainer tick pick up a row already in flight and run the
+      # Keycloak move twice.
+      next_attempt_at: DateTime.add(now(), @lease_seconds, :second)
     }
     |> FrontRepo.insert!()
   end

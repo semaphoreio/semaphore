@@ -4,6 +4,21 @@ defmodule Guard.FrontRepo.FederatedIdentitySyncRequestTest do
   alias Guard.FrontRepo.FederatedIdentitySyncRequest, as: Request
   alias Guard.FrontRepo.RepoHostAccount
 
+  # enqueue/2 schedules a request one lease ahead so the in-process sync owns
+  # the first attempt. The drainer only ever sees rows that have become due, so
+  # tests of lease_due/1 have to age them first.
+  defp make_due(request) do
+    import Ecto.Query
+
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    {1, _} =
+      from(r in Request, where: r.id == ^request.id)
+      |> Guard.FrontRepo.update_all(set: [next_attempt_at: now])
+
+    request
+  end
+
   defp account(overrides \\ %{}) do
     Map.merge(
       %RepoHostAccount{
@@ -17,7 +32,7 @@ defmodule Guard.FrontRepo.FederatedIdentitySyncRequestTest do
   end
 
   describe "enqueue/2 and pending?/2" do
-    test "an enqueued request is immediately due and pending" do
+    test "an enqueued request is pending but not immediately due" do
       released = [Ecto.UUID.generate()]
 
       request = Request.enqueue(account(), released)
@@ -28,6 +43,12 @@ defmodule Guard.FrontRepo.FederatedIdentitySyncRequestTest do
       refute Request.pending?("github", "99999")
       refute Request.pending?("bitbucket", "55001")
       assert Request.pending_count() == 1
+
+      # The claim starts an in-process sync that holds no lease, so the row
+      # must not be leasable until that task has had a full lease to finish.
+      # Otherwise the next drainer tick runs the same Keycloak move twice.
+      assert DateTime.compare(request.next_attempt_at, DateTime.utc_now()) == :gt
+      assert Request.lease_due(10) == []
     end
   end
 
@@ -77,7 +98,7 @@ defmodule Guard.FrontRepo.FederatedIdentitySyncRequestTest do
 
   describe "lease_due/1" do
     test "returns due requests and makes them invisible to the next lease" do
-      request = Request.enqueue(account(), [Ecto.UUID.generate()])
+      request = Request.enqueue(account(), [Ecto.UUID.generate()]) |> make_due()
 
       assert [leased] = Request.lease_due(10)
       assert leased.id == request.id
@@ -97,8 +118,10 @@ defmodule Guard.FrontRepo.FederatedIdentitySyncRequestTest do
     test "respects the batch limit, oldest first" do
       import Ecto.Query
 
-      first = Request.enqueue(account(), [Ecto.UUID.generate()])
-      _second = Request.enqueue(account(%{github_uid: "55002"}), [Ecto.UUID.generate()])
+      first = Request.enqueue(account(), [Ecto.UUID.generate()]) |> make_due()
+
+      _second =
+        Request.enqueue(account(%{github_uid: "55002"}), [Ecto.UUID.generate()]) |> make_due()
 
       # break the same-second tie in insertion order
       earlier = DateTime.utc_now() |> DateTime.add(-60) |> DateTime.truncate(:second)

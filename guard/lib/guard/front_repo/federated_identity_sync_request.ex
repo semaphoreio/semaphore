@@ -52,7 +52,12 @@ defmodule Guard.FrontRepo.FederatedIdentitySyncRequest do
       claiming_user_id: account.user_id,
       released_user_ids: released_user_ids,
       login: account.login,
-      next_attempt_at: now()
+      # One lease ahead, not now: the claim starts an in-process sync for this
+      # row immediately, and that task holds no lease. Due-now would let the
+      # next drainer tick pick up a row already in flight and run the Keycloak
+      # move twice. The drainer is the recovery path, so it only sees the row
+      # if the immediate task failed to complete it within one lease.
+      next_attempt_at: DateTime.add(now(), @lease_seconds, :second)
     }
     |> FrontRepo.insert!()
   end
