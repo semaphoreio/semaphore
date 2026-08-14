@@ -11,14 +11,15 @@ defmodule Support.Factories.Repository do
         repository_url: Map.get(params, :url, "repo"),
         only_public: true,
         integration_type: :GITHUB_OAUTH_TOKEN,
-        commit_status: %InternalApi.Projecthub.Project.Spec.Repository.Status{
-          pipeline_files: [
-            %InternalApi.Projecthub.Project.Spec.Repository.Status.PipelineFile{
-              level: :PIPELINE,
-              path: ".semaphore/semaphore.yml"
-            }
-          ]
-        },
+        commit_status:
+          Map.get(params, :commit_status, %InternalApi.Projecthub.Project.Spec.Repository.Status{
+            pipeline_files: [
+              %InternalApi.Projecthub.Project.Spec.Repository.Status.PipelineFile{
+                level: :PIPELINE,
+                path: ".semaphore/semaphore.yml"
+              }
+            ]
+          }),
         whitelist: %InternalApi.Projecthub.Project.Spec.Repository.Whitelist{
           branches: ["master", "/feature-*/"],
           tags: []
@@ -41,16 +42,12 @@ defmodule Support.Factories.Repository do
         created_at: DateTime.utc_now(),
         project_id: Ecto.UUID.generate(),
         enable_commit_status: true,
-        commit_status: %{
-          "pipeline_files" => [
-            %{"path" => ".semaphore/semaphore.yml", "level" => "pipeline"}
-          ]
-        },
+        commit_status: commit_status_jsonb(Map.get(params, :commit_status)),
         whitelist: %{"branches" => ["master", "/feature-*/"], "tags" => []},
         connected: true,
         default_branch: "main"
       }
-      |> Map.merge(params)
+      |> Map.merge(Map.delete(params, :commit_status))
 
     changeset =
       %Repository.SQL{}
@@ -75,5 +72,24 @@ defmodule Support.Factories.Repository do
 
     {:ok, _} = Repo.insert(changeset)
     {:ok, repository}
+  end
+
+  defp commit_status_jsonb(nil) do
+    %{
+      "pipeline_files" => [
+        %{"path" => ".semaphore/semaphore.yml", "level" => "pipeline"}
+      ]
+    }
+  end
+
+  defp commit_status_jsonb(%InternalApi.Projecthub.Project.Spec.Repository.Status{} = status) do
+    %{
+      "pipeline_files" =>
+        Enum.map(status.pipeline_files, fn pf ->
+          %{"path" => pf.path, "level" => pf.level |> Atom.to_string() |> String.downcase()}
+        end),
+      "skip_scheduled_run" => status.skip_scheduled_run,
+      "skip_manual_run" => status.skip_manual_run
+    }
   end
 end

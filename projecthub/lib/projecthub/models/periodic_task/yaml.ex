@@ -44,8 +44,14 @@ defmodule Projecthub.Models.PeriodicTask.YAML do
       "pipeline_file" => task.pipeline_file || ""
     }
 
-    maybe_add_parameters(base, task.parameters)
+    base
+    |> maybe_add_commit_status(task.commit_status)
+    |> maybe_add_parameters(task.parameters)
   end
+
+  defp maybe_add_commit_status(spec, :ALWAYS), do: Map.put(spec, "commit_status", "always")
+  defp maybe_add_commit_status(spec, :NEVER), do: Map.put(spec, "commit_status", "never")
+  defp maybe_add_commit_status(spec, _), do: spec
 
   defp maybe_add_parameters(spec, nil), do: spec
   defp maybe_add_parameters(spec, []), do: spec

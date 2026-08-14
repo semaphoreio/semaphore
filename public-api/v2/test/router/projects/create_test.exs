@@ -23,6 +23,36 @@ defmodule Router.Projects.CreateTest do
       check_response(created_project)
     end
 
+    test "create a project with commit status trigger settings", ctx do
+      project =
+        construct_project()
+        |> put_status(%{
+          pipeline_files: [%{path: ".semaphore/semaphore.yml", level: "PIPELINE"}],
+          skip_scheduled_run: true,
+          skip_manual_run: true
+        })
+
+      {:ok, response} = create_project(ctx, project)
+      created_project = Jason.decode!(response.body)
+
+      assert 200 == response.status_code
+      check_response(created_project)
+
+      assert created_project["spec"]["repository"]["status"]["skip_scheduled_run"] == true
+      assert created_project["spec"]["repository"]["status"]["skip_manual_run"] == true
+    end
+
+    test "create a project without trigger settings defaults them to false", ctx do
+      project = construct_project()
+      {:ok, response} = create_project(ctx, project)
+      created_project = Jason.decode!(response.body)
+
+      assert 200 == response.status_code
+
+      assert created_project["spec"]["repository"]["status"]["skip_scheduled_run"] == false
+      assert created_project["spec"]["repository"]["status"]["skip_manual_run"] == false
+    end
+
     test "without specified name in spec => fail", ctx do
       default_project = construct_project()
 
@@ -81,6 +111,12 @@ defmodule Router.Projects.CreateTest do
     default = OpenApiSpex.Schema.example(PublicAPI.Schemas.Projects.Project.schema())
 
     Map.put(default, :spec, Map.put(default.spec, :name, name))
+  end
+
+  defp put_status(project, status) do
+    repository = Map.put(project.spec.repository, :status, status)
+
+    Map.put(project, :spec, Map.put(project.spec, :repository, repository))
   end
 
   defp create_project(ctx, project) do

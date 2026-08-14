@@ -4,7 +4,7 @@ defmodule Projecthub.Models.PeriodicTask do
   require Logger
 
   @fields ~w(id name description status recurring project_name
-             branch pipeline_file at parameters)a
+             branch pipeline_file at parameters commit_status)a
   defstruct @fields
 
   def construct(periodics_or_tasks, project_name) when is_list(periodics_or_tasks) do
@@ -25,10 +25,17 @@ defmodule Projecthub.Models.PeriodicTask do
       |> Map.put(:status, status)
       |> Map.put(:parameters, parameters)
       |> Map.put(:branch, branch)
+      |> Map.put(:commit_status, construct_commit_status(periodic_or_task))
       |> Map.merge(Map.new())
 
     struct!(__MODULE__, params)
   end
+
+  defp construct_commit_status(%{commit_status: commit_status})
+       when commit_status in ~w(FOLLOW_PROJECT ALWAYS NEVER)a,
+       do: commit_status
+
+  defp construct_commit_status(_periodic_or_task), do: :FOLLOW_PROJECT
 
   defp construct_status(%{paused: true}), do: :STATUS_INACTIVE
   defp construct_status(%{paused: false}), do: :STATUS_ACTIVE
@@ -133,7 +140,8 @@ defmodule Projecthub.Models.PeriodicTask do
       at: task.at || "",
       pipeline_file: task.pipeline_file || "",
       parameters: task.parameters || [],
-      state: Definition.status_to_state(task.status)
+      state: Definition.status_to_state(task.status),
+      commit_status: task.commit_status || :FOLLOW_PROJECT
     }
   end
 

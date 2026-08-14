@@ -44,7 +44,8 @@ if config_env() == :prod do
     hook_api_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_REPO_PROXY"),
     repositoryhub_api_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_REPOSITORY"),
     velocityhub_api_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_VELOCITY"),
-    feature_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_FEATURE")
+    feature_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_FEATURE"),
+    scheduler_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_SCHEDULER")
 end
 
 feature_provider =

@@ -378,6 +378,8 @@ spec:
       pipeline_files:
       - path: .semaphore/semaphore.yml
         level: pipeline
+      skip_scheduled_run: false
+      skip_manual_run: false
     whitelist:
       branches: []
       tags: []

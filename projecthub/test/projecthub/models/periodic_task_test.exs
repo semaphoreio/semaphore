@@ -131,6 +131,16 @@ defmodule Projecthub.Models.PeriodicTaskTest do
              ]
     end
 
+    test "maps the commit status policy" do
+      periodic = periodic_from_grpc(%{id: "5", name: "task5", commit_status: :NEVER})
+
+      assert %PeriodicTask{commit_status: :NEVER} = PeriodicTask.construct(periodic, "p")
+    end
+
+    test "defaults the commit status policy to FOLLOW_PROJECT", ctx do
+      assert %PeriodicTask{commit_status: :FOLLOW_PROJECT} = PeriodicTask.construct(ctx.periodic1, "p")
+    end
+
     test "correctly maps inactive status", ctx do
       assert %PeriodicTask{
                id: "3",
@@ -326,6 +336,33 @@ defmodule Projecthub.Models.PeriodicTaskTest do
         )
 
       assert {:ok, _} = PeriodicTask.update_all(ctx.project, [task], "requester_id")
+    end
+
+    test "round-trips the commit status policy through the request", ctx do
+      FunRegistry.set!(PeriodicService, :bulk_upsert_and_prune, fn req, _stream ->
+        assert [with_policy, defaulted] = req.periodics
+        assert with_policy.commit_status == :NEVER
+        assert defaulted.commit_status == :FOLLOW_PROJECT
+
+        API.BulkUpsertAndPruneResponse.new(
+          status: Status.new(),
+          upserted: [API.Periodic.new(id: "1"), API.Periodic.new(id: "2")],
+          deleted_ids: []
+        )
+      end)
+
+      constructed =
+        PeriodicTask.construct(
+          periodic_from_grpc(%{id: "1", name: "with-policy", commit_status: :NEVER}),
+          "project_name"
+        )
+
+      assert {:ok, _} =
+               PeriodicTask.update_all(
+                 ctx.project,
+                 [constructed, periodic_task(id: "2")],
+                 "requester_id"
+               )
     end
 
     test "empty branch falls back to refs/heads/master on the wire", ctx do

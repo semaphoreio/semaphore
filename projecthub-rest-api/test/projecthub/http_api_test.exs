@@ -96,7 +96,9 @@ defmodule Projecthub.HttpApi.Test do
                      "status" => %{
                        "pipeline_files" => [
                          %{"path" => ".semaphore/semaphore.yml", "level" => "pipeline"}
-                       ]
+                       ],
+                       "skip_scheduled_run" => false,
+                       "skip_manual_run" => false
                      },
                      "whitelist" => %{
                        "branches" => ["master", "/features-.*/"],
@@ -136,7 +138,9 @@ defmodule Projecthub.HttpApi.Test do
                      "status" => %{
                        "pipeline_files" => [
                          %{"path" => ".semaphore/semaphore.yml", "level" => "pipeline"}
-                       ]
+                       ],
+                       "skip_scheduled_run" => false,
+                       "skip_manual_run" => false
                      },
                      "whitelist" => %{
                        "branches" => ["master", "/features-.*/"],
@@ -188,7 +192,9 @@ defmodule Projecthub.HttpApi.Test do
                      "status" => %{
                        "pipeline_files" => [
                          %{"path" => ".semaphore/semaphore.yml", "level" => "pipeline"}
-                       ]
+                       ],
+                       "skip_scheduled_run" => false,
+                       "skip_manual_run" => false
                      },
                      "whitelist" => %{
                        "branches" => ["master", "/features-.*/"],
@@ -228,7 +234,9 @@ defmodule Projecthub.HttpApi.Test do
                      "status" => %{
                        "pipeline_files" => [
                          %{"path" => ".semaphore/semaphore.yml", "level" => "pipeline"}
-                       ]
+                       ],
+                       "skip_scheduled_run" => false,
+                       "skip_manual_run" => false
                      },
                      "whitelist" => %{
                        "branches" => ["master", "/features-.*/"],
@@ -536,7 +544,9 @@ defmodule Projecthub.HttpApi.Test do
                    "status" => %{
                      "pipeline_files" => [
                        %{"level" => "pipeline", "path" => ".semaphore/semaphore.yml"}
-                     ]
+                     ],
+                     "skip_scheduled_run" => false,
+                     "skip_manual_run" => false
                    },
                    "whitelist" => %{
                      "branches" => ["master", "/features-.*/"],
@@ -606,7 +616,9 @@ defmodule Projecthub.HttpApi.Test do
                    "status" => %{
                      "pipeline_files" => [
                        %{"level" => "pipeline", "path" => ".semaphore/semaphore.yml"}
-                     ]
+                     ],
+                     "skip_scheduled_run" => false,
+                     "skip_manual_run" => false
                    },
                    "whitelist" => %{
                      "branches" => ["master", "/features-.*/"],
@@ -635,6 +647,7 @@ defmodule Projecthub.HttpApi.Test do
                      ],
                      "pipeline_file" => ".semaphore/semaphore.yml",
                      "scheduled" => false,
+                     "commit_status" => "follow_project",
                      "status" => "ACTIVE"
                    }
                  ],
@@ -677,7 +690,9 @@ defmodule Projecthub.HttpApi.Test do
                    "status" => %{
                      "pipeline_files" => [
                        %{"level" => "pipeline", "path" => ".semaphore/semaphore.yml"}
-                     ]
+                     ],
+                     "skip_scheduled_run" => false,
+                     "skip_manual_run" => false
                    },
                    "whitelist" => %{
                      "branches" => ["master", "/features-.*/"],
@@ -816,7 +831,9 @@ defmodule Projecthub.HttpApi.Test do
                    "run_on" => ["tags"],
                    "pipeline_file" => ".semaphore/semaphore.yml",
                    "status" => %{
-                     "pipeline_files" => []
+                     "pipeline_files" => [],
+                     "skip_scheduled_run" => false,
+                     "skip_manual_run" => false
                    },
                    "whitelist" => %{
                      "branches" => [],
@@ -881,7 +898,9 @@ defmodule Projecthub.HttpApi.Test do
                    "run_on" => ["tags"],
                    "pipeline_file" => ".semaphore/semaphore.yml",
                    "status" => %{
-                     "pipeline_files" => []
+                     "pipeline_files" => [],
+                     "skip_scheduled_run" => false,
+                     "skip_manual_run" => false
                    },
                    "whitelist" => %{
                      "branches" => [],
@@ -968,7 +987,9 @@ defmodule Projecthub.HttpApi.Test do
                    "run_on" => ["tags"],
                    "pipeline_file" => ".semaphore/semaphore.yml",
                    "status" => %{
-                     "pipeline_files" => []
+                     "pipeline_files" => [],
+                     "skip_scheduled_run" => false,
+                     "skip_manual_run" => false
                    },
                    "whitelist" => %{
                      "branches" => [],
@@ -997,6 +1018,7 @@ defmodule Projecthub.HttpApi.Test do
                      ],
                      "pipeline_file" => ".semaphore/semaphore.yml",
                      "scheduled" => false,
+                     "commit_status" => "follow_project",
                      "status" => "ACTIVE"
                    }
                  ],
@@ -1005,6 +1027,57 @@ defmodule Projecthub.HttpApi.Test do
                  "debug_permissions" => ["empty", "default_branch"],
                  "attach_permissions" => ["default_branch"]
                }
+             }
+    end
+
+    test "when the status carries trigger settings => forwards and echoes them" do
+      alias InternalApi.Projecthub, as: PH
+
+      FunRegistry.set!(FakeServices.ProjectService, :create, fn req, _ ->
+        assert req.project.spec.repository.status.skip_scheduled_run == true
+        assert req.project.spec.repository.status.skip_manual_run == true
+
+        PH.CreateResponse.new(
+          metadata:
+            PH.ResponseMeta.new(
+              status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:OK))
+            ),
+          project: req.project
+        )
+      end)
+
+      resource =
+        Poison.encode!(%{
+          "metadata" => %{"name" => "trello"},
+          "spec" => %{
+            "repository" => %{
+              "url" => "git@github.com/shiroyasha/test.git",
+              "run_on" => ["tags"],
+              "pipeline_file" => ".semaphore/semaphore.yml",
+              "status" => %{
+                "pipeline_files" => [
+                  %{"path" => ".semaphore/semaphore.yml", "level" => "pipeline"}
+                ],
+                "skip_scheduled_run" => true,
+                "skip_manual_run" => true
+              }
+            },
+            "schedulers" => [],
+            "visibility" => "public"
+          }
+        })
+
+      {:ok, response} =
+        HTTPoison.post("http://localhost:#{@port}/api/#{@version}/projects", resource, @headers)
+
+      assert response.status_code == 200
+
+      assert Poison.decode!(response.body)["spec"]["repository"]["status"] == %{
+               "pipeline_files" => [
+                 %{"path" => ".semaphore/semaphore.yml", "level" => "pipeline"}
+               ],
+               "skip_scheduled_run" => true,
+               "skip_manual_run" => true
              }
     end
 
@@ -1064,7 +1137,9 @@ defmodule Projecthub.HttpApi.Test do
                    "run_on" => ["tags"],
                    "pipeline_file" => ".semaphore/semaphore.yml",
                    "status" => %{
-                     "pipeline_files" => []
+                     "pipeline_files" => [],
+                     "skip_scheduled_run" => false,
+                     "skip_manual_run" => false
                    },
                    "whitelist" => %{
                      "branches" => [],
@@ -1151,6 +1226,60 @@ defmodule Projecthub.HttpApi.Test do
       end)
 
       :ok
+    end
+
+    test "when a task carries a commit status policy => round-trips it" do
+      alias InternalApi.Projecthub, as: PH
+
+      FunRegistry.set!(FakeServices.ProjectService, :update, fn req, _ ->
+        assert [task] = req.project.spec.tasks
+
+        assert task.commit_status ==
+                 PH.Project.Spec.Task.CommitStatus.value(:NEVER)
+
+        PH.UpdateResponse.new(
+          metadata:
+            PH.ResponseMeta.new(
+              status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:OK))
+            ),
+          project: req.project
+        )
+      end)
+
+      restrict_org!()
+
+      resource =
+        Poison.encode!(%{
+          "metadata" => %{"name" => "trello", "id" => @project_id},
+          "spec" => %{
+            "repository" => %{
+              "url" => "git@github.com/shiroyasha/test.git",
+              "pipeline_file" => ""
+            },
+            "tasks" => [
+              %{
+                "name" => "nightly",
+                "scheduled" => true,
+                "branch" => "master",
+                "at" => "0 0 * * *",
+                "pipeline_file" => ".semaphore/cron.yml",
+                "commit_status" => "never"
+              }
+            ]
+          }
+        })
+
+      {:ok, response} =
+        HTTPoison.patch(
+          "http://localhost:#{@port}/api/#{@version}/projects/#{@project_id}",
+          resource,
+          @headers
+        )
+
+      assert response.status_code == 200
+
+      assert [task] = Poison.decode!(response.body)["spec"]["tasks"]
+      assert task["commit_status"] == "never"
     end
 
     test "when project update with tasks succeds => returns 200" do
@@ -1264,7 +1393,9 @@ defmodule Projecthub.HttpApi.Test do
                    "run_on" => [],
                    "pipeline_file" => "",
                    "status" => %{
-                     "pipeline_files" => []
+                     "pipeline_files" => [],
+                     "skip_scheduled_run" => false,
+                     "skip_manual_run" => false
                    },
                    "whitelist" => %{
                      "branches" => [],
@@ -1282,6 +1413,7 @@ defmodule Projecthub.HttpApi.Test do
                      "scheduled" => true,
                      "at" => "0 * * * *",
                      "pipeline_file" => ".semaphore/cron1.yml",
+                     "commit_status" => "follow_project",
                      "status" => "INACTIVE",
                      "parameters" => []
                    },
@@ -1293,6 +1425,7 @@ defmodule Projecthub.HttpApi.Test do
                      "branch" => "",
                      "at" => "",
                      "pipeline_file" => "",
+                     "commit_status" => "follow_project",
                      "status" => "ACTIVE",
                      "parameters" => [
                        %{
@@ -1417,6 +1550,61 @@ defmodule Projecthub.HttpApi.Test do
              }
     end
 
+    test "when the status carries trigger settings => forwards and echoes them" do
+      alias InternalApi.Projecthub, as: PH
+
+      FunRegistry.set!(FakeServices.ProjectService, :update, fn req, _ ->
+        assert req.project.spec.repository.status.skip_scheduled_run == true
+        assert req.project.spec.repository.status.skip_manual_run == true
+
+        PH.UpdateResponse.new(
+          metadata:
+            PH.ResponseMeta.new(
+              status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:OK))
+            ),
+          project: req.project
+        )
+      end)
+
+      resource =
+        Poison.encode!(%{
+          "metadata" => %{"name" => "trello", "id" => @project_id},
+          "spec" => %{
+            "repository" => %{
+              "url" => "git@github.com/shiroyasha/test.git",
+              "run_on" => ["tags"],
+              "pipeline_file" => ".semaphore/semaphore.yml",
+              "status" => %{
+                "pipeline_files" => [
+                  %{"path" => ".semaphore/semaphore.yml", "level" => "pipeline"}
+                ],
+                "skip_scheduled_run" => true,
+                "skip_manual_run" => true
+              }
+            },
+            "schedulers" => [],
+            "visibility" => "public"
+          }
+        })
+
+      {:ok, response} =
+        HTTPoison.patch(
+          "http://localhost:#{@port}/api/#{@version}/projects/#{@project_id}",
+          resource,
+          @headers
+        )
+
+      assert response.status_code == 200
+
+      assert Poison.decode!(response.body)["spec"]["repository"]["status"] == %{
+               "pipeline_files" => [
+                 %{"path" => ".semaphore/semaphore.yml", "level" => "pipeline"}
+               ],
+               "skip_scheduled_run" => true,
+               "skip_manual_run" => true
+             }
+    end
+
     test "when project update succeds => returns 200" do
       FunRegistry.set!(FakeServices.ProjectService, :update, fn req, _ ->
         alias InternalApi.Projecthub, as: PH
@@ -1515,7 +1703,9 @@ defmodule Projecthub.HttpApi.Test do
                    "run_on" => [],
                    "pipeline_file" => "",
                    "status" => %{
-                     "pipeline_files" => []
+                     "pipeline_files" => [],
+                     "skip_scheduled_run" => false,
+                     "skip_manual_run" => false
                    },
                    "whitelist" => %{
                      "branches" => [],
@@ -1711,7 +1901,9 @@ defmodule Projecthub.HttpApi.Test do
                    "run_on" => [],
                    "pipeline_file" => "",
                    "status" => %{
-                     "pipeline_files" => []
+                     "pipeline_files" => [],
+                     "skip_scheduled_run" => false,
+                     "skip_manual_run" => false
                    },
                    "whitelist" => %{
                      "branches" => [],
@@ -1803,7 +1995,9 @@ defmodule Projecthub.HttpApi.Test do
                    "run_on" => ["tags"],
                    "pipeline_file" => ".semaphore/semaphore.yml",
                    "status" => %{
-                     "pipeline_files" => []
+                     "pipeline_files" => [],
+                     "skip_scheduled_run" => false,
+                     "skip_manual_run" => false
                    },
                    "whitelist" => %{
                      "branches" => [],

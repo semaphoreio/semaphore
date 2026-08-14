@@ -48,6 +48,38 @@ defmodule Scheduler.Periodics.Model.Periodics.Test do
                Periodics.changeset(%Periodics{}, "v1.1", Map.put(ctx.params, :recurring, false))
     end
 
+    test "commit_status accepts the three policies and rejects anything else", ctx do
+      params = Map.put(ctx.params, :recurring, false)
+
+      for value <- ~w(follow_project always never)a do
+        assert %Ecto.Changeset{valid?: true} =
+                 Periodics.changeset(%Periodics{}, "v1.1", Map.put(params, :commit_status, value))
+      end
+
+      for value <- ["never", "always"] do
+        assert %Ecto.Changeset{valid?: true} =
+                 Periodics.changeset(%Periodics{}, "v1.1", Map.put(params, :commit_status, value))
+      end
+
+      assert %Ecto.Changeset{valid?: false, errors: [commit_status: {"is invalid", _}]} =
+               Periodics.changeset(
+                 %Periodics{},
+                 "v1.1",
+                 Map.put(params, :commit_status, "sometimes")
+               )
+    end
+
+    test "commit_status is ignored by v1.0 changesets", ctx do
+      params =
+        ctx.params
+        |> Map.merge(%{at: "* * * * *", commit_status: :never})
+
+      changeset = Periodics.changeset(%Periodics{}, "v1.0", params)
+
+      assert changeset.valid?
+      refute Map.has_key?(changeset.changes, :commit_status)
+    end
+
     test "when cron expression is invalid then invalid", ctx do
       params = Map.merge(ctx.params, %{reference: "master", pipeline_file: "deploy.yml"})
 

@@ -461,9 +461,11 @@ And also on pull requests.
 
 Semaphore only reports status checks on the initial pipeline (`.semaphore/semaphore.yml`). But you can configure status checks on any other pipelines in the workflows or even on blocks.
 
+Status checks are sent for every trigger type by default. Pipelines started by [tasks](./tasks) can be excluded per project. See [status checks for scheduled and manual runs](#status-checks-triggers).
+
 ### Edit status checks
 
-Status checks can only be configured using the [Semaphore Command Line](../reference/semaphore-cli#sem-edit).
+The status check pipelines can only be configured using the [Semaphore Command Line](../reference/semaphore-cli#sem-edit).
 
 To add status checks on other non-initial pipelines, follow these steps:
 
@@ -527,6 +529,28 @@ To add status checks on other non-initial pipelines, follow these steps:
                 # highlight-end
             ```
 </Steps>
+
+### Status checks for scheduled and manual runs {#status-checks-triggers}
+
+Pipelines started by a [task](./tasks) submit status checks like any other trigger. A scheduled run isn't a response to a code change though, and on branches whose head doesn't move for a long time, repeated runs can exhaust the status check limit that Git providers enforce per commit.
+
+Two per-project settings let you exclude task-started pipelines:
+
+- **Don't send commit statuses for scheduled pipelines**: skips status checks for scheduled runs (`skip_scheduled_run: true` in the [project YAML](../reference/project-yaml#status-in-repository))
+- **Don't send commit statuses for manually run tasks**: skips status checks for pipelines started with **Run now** on a task (`skip_manual_run: true`)
+
+You can change both settings in the project settings:
+
+<Steps>
+
+1. Open your project on Semaphore
+2. Go to **Settings**, then **General**
+3. Toggle the checkboxes under **Commit statuses**
+4. Press **Save changes**
+
+</Steps>
+
+Status checks for pushes, pull requests, tags, and reruns are always submitted regardless of these settings.
 
 ## Troubleshooting guide
 
