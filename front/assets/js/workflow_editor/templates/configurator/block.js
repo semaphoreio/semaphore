@@ -239,13 +239,13 @@ export class BlockConfigTemplate {
     if(unknown) status = "Unrecognized"
 
     let options = {
-      title: "Rebuild granularity",
+      title: "Rerun granularity",
       status: status,
       collapsable: true
     }
 
     return Section.section(options, `
-      <p class="f5 gray mb2">What <b>Rebuild Pipeline</b> re-runs in this block</p>
+      <p class="f5 gray mb2">What <b>Rerun Failed Jobs</b> re-runs in this block</p>
 
       <select data-action=selectBlockPartialRerun class="form-control form-control-small w-100">
         ${unknown ? `<option value="${escapeHtml(selected)}" selected>${escapeHtml(selected)} — not a valid value</option>` : ""}
