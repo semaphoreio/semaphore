@@ -1,0 +1,36 @@
+# cowlib — cow_http_te module DoS via excessive allocation, patched in 2.16.1. pre-flight-checks-hub
+# is an internal gRPC-only service (PreFlightChecks.Application only supervises PreFlightChecks.GRPC;
+# no Plug.Cowboy/Phoenix HTTP endpoint anywhere in the app) — cow_http_te is cowboy's HTTP/1.1
+# transfer-encoding parser, never invoked on the gRPC-over-HTTP/2 path. cowlib is pulled in only via grpc.
+GHSA-32p9-57cr-4x65
+
+# cowlib — SPDY decompression bomb in cow_spdy:inflate/2. Not reachable at any cowlib version: cowboy
+# 2.x never implemented SPDY support, so this code path cannot be hit regardless of fix availability.
+GHSA-84f2-rp86-235p
+
+# cowlib — CRLF injection enabling SSE event splitting via unvalidated header field values, patched in
+# 2.16.1. This service has no SSE endpoints and, being gRPC-only (see above), writes no Plug response
+# headers from user input.
+GHSA-hv23-4qp7-8c8r
+
+# cowboy — unbounded buffer accumulation in multipart header parsing, patched in 2.15.0. Not reachable:
+# no Plug.Parsers, no multipart endpoints — gRPC-only over HTTP/2.
+GHSA-jfc2-q6qh-g5x8
+
+# postgrex — channel-name SQL injection in Postgrex.Notifications.listen/3, patched in 0.22.2. This
+# service never calls Postgrex.Notifications (grep confirms no hits in lib/); it uses only standard
+# Ecto queries. Bumping past 0.16.x cascades into an out-of-scope ecto/postgrex/Elixir toolchain bump.
+GHSA-r73h-97w8-m54h
+
+# decimal — unbounded exponent in Decimal.new enables unauthenticated DoS, patched in 3.0.0. Not
+# called anywhere in lib/ (grep confirms no Decimal. hits) — pulled in only transitively via
+# ecto/postgrex. Bumping cascades an out-of-scope ecto bump.
+GHSA-rhv4-8758-jx7v
+
+# protobuf — unbounded recursion depth in embedded-message decoding, patched in 0.16.1. This service
+# only decodes protobufs from internal gRPC callers on the cluster network (same acceptance as
+# repository_hub/ee-gofer/ee-rbac); a hostile deeply-nested payload requires a compromised internal
+# service and yields a single-pod DoS. Bumping is additionally proven-breaking here:
+# lib/pre_flight_checks/grpc/response.ex calls InternalApi.Status.new(...) directly, a constructor
+# form removed in protobuf >= 0.16.1.
+GHSA-rv48-qqj5-crxg
