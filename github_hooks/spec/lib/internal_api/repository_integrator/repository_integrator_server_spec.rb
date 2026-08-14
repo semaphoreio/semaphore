@@ -539,6 +539,10 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
             :revoked => true,
             :updated_at => 3.hours.ago
           )
+
+          # Round-trip through the database: the in-memory value carries
+          # nanoseconds, the column stores microseconds.
+          @competitor_updated_at = @competitor.reload.updated_at
         end
 
         it "keeps the account revoked and defers the claim to guard", :aggregate_failures do
@@ -549,10 +553,67 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
           expect(response.integration_scope).to eq(:NO_CONNECTION)
         end
 
-        it "leaves the competing link untouched" do
+        it "leaves the competing link untouched", :aggregate_failures do
           server.check_token(@req, call)
 
-          expect(@competitor.reload).to be_present
+          @competitor.reload
+
+          expect(@competitor.revoked).to be(true)
+          expect(@competitor.updated_at).to eq(@competitor_updated_at)
+        end
+      end
+
+      # The repo_host filter is load-bearing: bitbucket stores its uid in the
+      # same github_uid column, so without it a bitbucket row would block a
+      # github un-revoke.
+      context "when the same uid exists under a different repo_host" do
+        let(:token_valid) { true }
+        let(:permission_scope) { "repo,user:email" }
+
+        before do
+          @project.repo_host_account.update!(:revoked => true)
+
+          FactoryBot.create(
+            :repo_host_account,
+            :repo_host => "bitbucket",
+            :github_uid => @project.repo_host_account.github_uid,
+            :revoked => true
+          )
+        end
+
+        it "un-revokes the account", :aggregate_failures do
+          response = server.check_token(@req, call)
+
+          expect(@project.repo_host_account.reload.revoked).to be(false)
+          expect(response.valid).to be(true)
+          expect(response.integration_scope).to eq(:FULL_CONNECTION)
+        end
+      end
+
+      # A blank uid cannot be matched against other rows, so the gate must not
+      # apply: without the .present? short-circuit every legacy blank-uid row
+      # would be permanently un-revokable.
+      context "when the revoked account has no github_uid" do
+        let(:token_valid) { true }
+        let(:permission_scope) { "repo,user:email" }
+
+        before do
+          @project.repo_host_account.update!(:revoked => true, :github_uid => nil)
+
+          FactoryBot.create(
+            :repo_host_account,
+            :repo_host => @project.repo_host_account.repo_host,
+            :github_uid => nil,
+            :revoked => true
+          )
+        end
+
+        it "un-revokes the account", :aggregate_failures do
+          response = server.check_token(@req, call)
+
+          expect(@project.repo_host_account.reload.revoked).to be(false)
+          expect(response.valid).to be(true)
+          expect(response.integration_scope).to eq(:FULL_CONNECTION)
         end
       end
 
