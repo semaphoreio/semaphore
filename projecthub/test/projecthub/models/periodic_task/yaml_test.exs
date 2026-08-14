@@ -50,6 +50,69 @@ defmodule Projecthub.Models.PeriodicTask.YamlTest do
       )
     end
 
+    test "with a commit status policy" do
+      result =
+        Projecthub.Models.PeriodicTask.YAML.compose(
+          %PeriodicTask{
+            id: "id",
+            name: "name",
+            description: "test description",
+            project_name: "project_name",
+            status: :STATUS_ACTIVE,
+            recurring: true,
+            branch: "master",
+            at: "* * * * *",
+            pipeline_file: "semaphore.yml",
+            commit_status: :NEVER
+          },
+          %Project{name: "project_name"}
+        )
+
+      assert_yaml_equals(
+        result,
+        %{
+          "apiVersion" => "v1.2",
+          "kind" => "Schedule",
+          "metadata" => %{
+            "name" => "name",
+            "id" => "id",
+            "description" => "test description"
+          },
+          "spec" => %{
+            "project" => "project_name",
+            "recurring" => true,
+            "paused" => false,
+            "at" => "* * * * *",
+            "reference" => %{"type" => "BRANCH", "name" => "master"},
+            "pipeline_file" => "semaphore.yml",
+            "commit_status" => "never"
+          }
+        }
+      )
+    end
+
+    test "omits the commit status policy when it follows the project" do
+      result =
+        Projecthub.Models.PeriodicTask.YAML.compose(
+          %PeriodicTask{
+            id: "id",
+            name: "name",
+            description: "test description",
+            project_name: "project_name",
+            status: :STATUS_ACTIVE,
+            recurring: true,
+            branch: "master",
+            at: "* * * * *",
+            pipeline_file: "semaphore.yml",
+            commit_status: :FOLLOW_PROJECT
+          },
+          %Project{name: "project_name"}
+        )
+
+      {:ok, actual_map} = YamlElixir.read_from_string(result)
+      refute Map.has_key?(actual_map["spec"], "commit_status")
+    end
+
     test "without description" do
       result =
         Projecthub.Models.PeriodicTask.YAML.compose(

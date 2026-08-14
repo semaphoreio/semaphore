@@ -191,6 +191,53 @@ defmodule InternalApi.RepositoryIntegrator.Repository do
   field(:description, 5, type: :string)
 end
 
+defmodule InternalApi.RepositoryIntegrator.RefreshRepositoriesRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          user_id: String.t(),
+          integration_type: integer,
+          repository_slug: String.t(),
+          organization: String.t()
+        }
+  defstruct [:user_id, :integration_type, :repository_slug, :organization]
+
+  field(:user_id, 1, type: :string)
+  field(:integration_type, 2, type: InternalApi.RepositoryIntegrator.IntegrationType, enum: true)
+  field(:repository_slug, 3, type: :string)
+  field(:organization, 4, type: :string)
+end
+
+defmodule InternalApi.RepositoryIntegrator.RefreshRepositoriesResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          sync_state: integer,
+          message: String.t()
+        }
+  defstruct [:sync_state, :message]
+
+  field(:sync_state, 1,
+    type: InternalApi.RepositoryIntegrator.RefreshRepositoriesResponse.SyncState,
+    enum: true
+  )
+
+  field(:message, 2, type: :string)
+end
+
+defmodule InternalApi.RepositoryIntegrator.RefreshRepositoriesResponse.SyncState do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+
+  field(:SYNC_STATE_UNSPECIFIED, 0)
+  field(:STARTED, 1)
+  field(:ALREADY_RUNNING, 2)
+  field(:DONE, 3)
+  field(:FAILED, 4)
+end
+
 defmodule InternalApi.RepositoryIntegrator.IntegrationType do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
@@ -255,6 +302,12 @@ defmodule InternalApi.RepositoryIntegrator.RepositoryIntegratorService.Service d
     :GetRepositories,
     InternalApi.RepositoryIntegrator.GetRepositoriesRequest,
     InternalApi.RepositoryIntegrator.GetRepositoriesResponse
+  )
+
+  rpc(
+    :RefreshRepositories,
+    InternalApi.RepositoryIntegrator.RefreshRepositoriesRequest,
+    InternalApi.RepositoryIntegrator.RefreshRepositoriesResponse
   )
 end
 

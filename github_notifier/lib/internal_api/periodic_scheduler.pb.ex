@@ -1,7 +1,7 @@
 defmodule InternalApi.PeriodicScheduler.ListOrder do
   @moduledoc false
 
-  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:BY_NAME_ASC, 0)
   field(:BY_CREATION_DATE_DESC, 1)
@@ -10,7 +10,7 @@ end
 defmodule InternalApi.PeriodicScheduler.PersistRequest.ScheduleState do
   @moduledoc false
 
-  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:UNCHANGED, 0)
   field(:ACTIVE, 1)
@@ -20,7 +20,7 @@ end
 defmodule InternalApi.PeriodicScheduler.Periodic.CommitStatus do
   @moduledoc false
 
-  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:FOLLOW_PROJECT, 0)
   field(:ALWAYS, 1)
@@ -30,7 +30,7 @@ end
 defmodule InternalApi.PeriodicScheduler.HistoryRequest.CursorType do
   @moduledoc false
 
-  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:FIRST, 0)
   field(:AFTER, 1)
@@ -40,7 +40,7 @@ end
 defmodule InternalApi.PeriodicScheduler.ListKeysetRequest.Direction do
   @moduledoc false
 
-  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:NEXT, 0)
   field(:PREV, 1)
@@ -49,7 +49,7 @@ end
 defmodule InternalApi.PeriodicScheduler.ApplyRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:requester_id, 1, type: :string, json_name: "requesterId")
   field(:organization_id, 2, type: :string, json_name: "organizationId")
@@ -59,7 +59,7 @@ end
 defmodule InternalApi.PeriodicScheduler.ApplyResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:status, 1, type: InternalApi.Status)
   field(:id, 2, type: :string)
@@ -68,7 +68,7 @@ end
 defmodule InternalApi.PeriodicScheduler.PersistRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:id, 1, type: :string)
   field(:name, 2, type: :string)
@@ -94,7 +94,7 @@ end
 defmodule InternalApi.PeriodicScheduler.PersistResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:status, 1, type: InternalApi.Status)
   field(:periodic, 2, type: InternalApi.PeriodicScheduler.Periodic)
@@ -103,7 +103,7 @@ end
 defmodule InternalApi.PeriodicScheduler.PauseRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:id, 1, type: :string)
   field(:requester, 2, type: :string)
@@ -112,7 +112,7 @@ end
 defmodule InternalApi.PeriodicScheduler.PauseResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:status, 1, type: InternalApi.Status)
 end
@@ -120,7 +120,7 @@ end
 defmodule InternalApi.PeriodicScheduler.UnpauseRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:id, 1, type: :string)
   field(:requester, 2, type: :string)
@@ -129,7 +129,7 @@ end
 defmodule InternalApi.PeriodicScheduler.UnpauseResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:status, 1, type: InternalApi.Status)
 end
@@ -137,7 +137,7 @@ end
 defmodule InternalApi.PeriodicScheduler.RunNowRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:id, 1, type: :string)
   field(:requester, 2, type: :string)
@@ -154,7 +154,7 @@ end
 defmodule InternalApi.PeriodicScheduler.RunNowResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:status, 1, type: InternalApi.Status)
   field(:periodic, 2, type: InternalApi.PeriodicScheduler.Periodic)
@@ -165,7 +165,7 @@ end
 defmodule InternalApi.PeriodicScheduler.DescribeRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:id, 1, type: :string)
 end
@@ -173,7 +173,7 @@ end
 defmodule InternalApi.PeriodicScheduler.DescribeResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:status, 1, type: InternalApi.Status)
   field(:periodic, 2, type: InternalApi.PeriodicScheduler.Periodic)
@@ -183,7 +183,7 @@ end
 defmodule InternalApi.PeriodicScheduler.Periodic.Parameter do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:name, 1, type: :string)
   field(:required, 2, type: :bool)
@@ -197,7 +197,7 @@ end
 defmodule InternalApi.PeriodicScheduler.Periodic do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:id, 1, type: :string)
   field(:name, 2, type: :string)
@@ -227,7 +227,7 @@ end
 defmodule InternalApi.PeriodicScheduler.Trigger do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:triggered_at, 1, type: Google.Protobuf.Timestamp, json_name: "triggeredAt")
   field(:project_id, 2, type: :string, json_name: "projectId")
@@ -250,7 +250,7 @@ end
 defmodule InternalApi.PeriodicScheduler.ParameterValue do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:name, 1, type: :string)
   field(:value, 2, type: :string)
@@ -259,7 +259,7 @@ end
 defmodule InternalApi.PeriodicScheduler.LatestTriggersRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:periodic_ids, 1, repeated: true, type: :string, json_name: "periodicIds")
 end
@@ -267,7 +267,7 @@ end
 defmodule InternalApi.PeriodicScheduler.LatestTriggersResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:status, 1, type: InternalApi.Status)
   field(:triggers, 2, repeated: true, type: InternalApi.PeriodicScheduler.Trigger)
@@ -276,7 +276,7 @@ end
 defmodule InternalApi.PeriodicScheduler.HistoryRequest.Filters do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:branch_name, 1, type: :string, json_name: "branchName")
   field(:pipeline_file, 2, type: :string, json_name: "pipelineFile")
@@ -286,7 +286,7 @@ end
 defmodule InternalApi.PeriodicScheduler.HistoryRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:periodic_id, 1, type: :string, json_name: "periodicId")
 
@@ -303,7 +303,7 @@ end
 defmodule InternalApi.PeriodicScheduler.HistoryResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:status, 1, type: InternalApi.Status)
   field(:triggers, 2, repeated: true, type: InternalApi.PeriodicScheduler.Trigger)
@@ -314,7 +314,7 @@ end
 defmodule InternalApi.PeriodicScheduler.ListRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:organization_id, 1, type: :string, json_name: "organizationId")
   field(:project_id, 2, type: :string, json_name: "projectId")
@@ -328,7 +328,7 @@ end
 defmodule InternalApi.PeriodicScheduler.ListResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:status, 1, type: InternalApi.Status)
   field(:periodics, 2, repeated: true, type: InternalApi.PeriodicScheduler.Periodic)
@@ -341,7 +341,7 @@ end
 defmodule InternalApi.PeriodicScheduler.ListKeysetRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:organization_id, 1, type: :string, json_name: "organizationId")
   field(:project_id, 2, type: :string, json_name: "projectId")
@@ -360,7 +360,7 @@ end
 defmodule InternalApi.PeriodicScheduler.ListKeysetResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:status, 1, type: InternalApi.Status)
   field(:periodics, 2, repeated: true, type: InternalApi.PeriodicScheduler.Periodic)
@@ -372,7 +372,7 @@ end
 defmodule InternalApi.PeriodicScheduler.DeleteRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:id, 1, type: :string)
   field(:requester, 4, type: :string)
@@ -381,7 +381,7 @@ end
 defmodule InternalApi.PeriodicScheduler.DeleteResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:status, 1, type: InternalApi.Status)
 end
@@ -389,7 +389,7 @@ end
 defmodule InternalApi.PeriodicScheduler.GetProjectIdRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:periodic_id, 1, type: :string, json_name: "periodicId")
   field(:project_name, 2, type: :string, json_name: "projectName")
@@ -399,7 +399,7 @@ end
 defmodule InternalApi.PeriodicScheduler.GetProjectIdResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:status, 1, type: InternalApi.Status)
   field(:project_id, 2, type: :string, json_name: "projectId")
@@ -408,13 +408,13 @@ end
 defmodule InternalApi.PeriodicScheduler.VersionRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 end
 
 defmodule InternalApi.PeriodicScheduler.VersionResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:version, 1, type: :string)
 end
@@ -422,7 +422,7 @@ end
 defmodule InternalApi.PeriodicScheduler.BulkUpsertAndPruneRequest.PeriodicDefinition do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:id, 1, type: :string)
   field(:name, 2, type: :string)
@@ -444,7 +444,7 @@ end
 defmodule InternalApi.PeriodicScheduler.BulkUpsertAndPruneRequest do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:organization_id, 1, type: :string, json_name: "organizationId")
   field(:project_id, 2, type: :string, json_name: "projectId")
@@ -459,7 +459,7 @@ end
 defmodule InternalApi.PeriodicScheduler.BulkUpsertAndPruneResponse do
   @moduledoc false
 
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:status, 1, type: InternalApi.Status)
   field(:upserted, 2, repeated: true, type: InternalApi.PeriodicScheduler.Periodic)
@@ -471,7 +471,7 @@ defmodule InternalApi.PeriodicScheduler.PeriodicService.Service do
 
   use GRPC.Service,
     name: "InternalApi.PeriodicScheduler.PeriodicService",
-    protoc_gen_elixir_version: "0.12.0"
+    protoc_gen_elixir_version: "0.13.0"
 
   rpc(
     :Apply,

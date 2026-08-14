@@ -440,6 +440,37 @@ defmodule Front.Models.SchedulerTest do
       end
     end
 
+    test "find action maps the commit status policy" do
+      response =
+        DescribeResponse.new(
+          status: InternalApi.Status.new(code: Google.Rpc.Code.value(:OK), message: ""),
+          periodic: scheduler_desc(1, commit_status: :ALWAYS),
+          triggers: [trigger_desc(1)]
+        )
+
+      with_mock Stub, describe: fn _c, _r, _o -> {:ok, response} end do
+        assert {:ok, scheduler} = Subject.find(@scheduler_id)
+        assert scheduler.commit_status == "always"
+      end
+    end
+
+    test "find action falls back to follow_project on an unknown commit status value" do
+      periodic = scheduler_desc(1)
+      periodic = %{periodic | commit_status: 99}
+
+      response =
+        DescribeResponse.new(
+          status: InternalApi.Status.new(code: Google.Rpc.Code.value(:OK), message: ""),
+          periodic: periodic,
+          triggers: [trigger_desc(1)]
+        )
+
+      with_mock Stub, describe: fn _c, _r, _o -> {:ok, response} end do
+        assert {:ok, scheduler} = Subject.find(@scheduler_id)
+        assert scheduler.commit_status == "follow_project"
+      end
+    end
+
     test "when find request fails, it returns an error" do
       response =
         DescribeResponse.new(
@@ -652,6 +683,52 @@ defmodule Front.Models.SchedulerTest do
       with_mock Stub, run_now: fn _c, _r, _o -> {:ok, response} end do
         assert {:error, {:resource_exhausted, message}} = Subject.run_now(@scheduler_id, @user_id)
         assert message == "Too many pipelines in the queue."
+      end
+    end
+  end
+
+  describe ".persist commit status" do
+    test "maps the form value onto the request enum" do
+      response =
+        PersistResponse.new(
+          status: InternalApi.Status.new(code: Google.Rpc.Code.value(:OK)),
+          periodic: scheduler_desc(1)
+        )
+
+      with_mock Stub,
+        persist: fn _channel, request, _opts ->
+          send(self(), {:persist_request, request})
+          {:ok, response}
+        end do
+        form_data = Map.put(@form_data, :commit_status, "never")
+
+        assert {:ok, _id} = Subject.persist(form_data, @context_data)
+
+        assert_received {:persist_request, request}
+
+        assert request.commit_status ==
+                 InternalApi.PeriodicScheduler.Periodic.CommitStatus.value(:NEVER)
+      end
+    end
+
+    test "defaults to FOLLOW_PROJECT when the form omits the value" do
+      response =
+        PersistResponse.new(
+          status: InternalApi.Status.new(code: Google.Rpc.Code.value(:OK)),
+          periodic: scheduler_desc(1)
+        )
+
+      with_mock Stub,
+        persist: fn _channel, request, _opts ->
+          send(self(), {:persist_request, request})
+          {:ok, response}
+        end do
+        assert {:ok, _id} = Subject.persist(@form_data, @context_data)
+
+        assert_received {:persist_request, request}
+
+        assert request.commit_status ==
+                 InternalApi.PeriodicScheduler.Periodic.CommitStatus.value(:FOLLOW_PROJECT)
       end
     end
   end

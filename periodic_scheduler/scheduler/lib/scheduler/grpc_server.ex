@@ -47,14 +47,20 @@ defmodule Scheduler.Grpc.Server do
     Metrics.benchmark("PeriodicSch.persist", __MODULE__, fn ->
       request = %{
         request
-        | state: InternalApi.PeriodicScheduler.PersistRequest.ScheduleState.value(request.state)
+        | state: InternalApi.PeriodicScheduler.PersistRequest.ScheduleState.value(request.state),
+          commit_status:
+            InternalApi.PeriodicScheduler.Periodic.CommitStatus.value(request.commit_status)
       }
 
       with {:ok, params} <- Proto.to_map(request),
            {:ok, periodic} <- Actions.persist(params) do
         %{periodic: periodic, status: %{code: :OK}}
         |> Proto.deep_new!(PersistResponse,
-          transformations: %{Timestamp => {__MODULE__, :date_time_to_timestamps}}
+          transformations: %{
+            Timestamp => {__MODULE__, :date_time_to_timestamps},
+            InternalApi.PeriodicScheduler.Periodic.CommitStatus =>
+              {__MODULE__, :commit_status_to_enum}
+          }
         )
       else
         {:error, {code, message}} ->
@@ -105,7 +111,11 @@ defmodule Scheduler.Grpc.Server do
           |> Map.merge(%{status: %{code: :OK}})
           |> Proto.deep_new!(
             RunNowResponse,
-            transformations: %{Timestamp => {__MODULE__, :date_time_to_timestamps}}
+            transformations: %{
+              Timestamp => {__MODULE__, :date_time_to_timestamps},
+              InternalApi.PeriodicScheduler.Periodic.CommitStatus =>
+                {__MODULE__, :commit_status_to_enum}
+            }
           )
         else
           {:error, {code, message}} ->
@@ -142,7 +152,11 @@ defmodule Scheduler.Grpc.Server do
         |> Map.merge(%{status: %{code: :OK}})
         |> Proto.deep_new!(
           DescribeResponse,
-          transformations: %{Timestamp => {__MODULE__, :date_time_to_timestamps}}
+          transformations: %{
+            Timestamp => {__MODULE__, :date_time_to_timestamps},
+            InternalApi.PeriodicScheduler.Periodic.CommitStatus =>
+              {__MODULE__, :commit_status_to_enum}
+          }
         )
       else
         {:error, {code, message}} ->
@@ -162,7 +176,11 @@ defmodule Scheduler.Grpc.Server do
         |> Map.merge(%{"status" => %{"code" => :OK}})
         |> Proto.deep_new!(
           LatestTriggersResponse,
-          transformations: %{Timestamp => {__MODULE__, :date_time_to_timestamps}},
+          transformations: %{
+            Timestamp => {__MODULE__, :date_time_to_timestamps},
+            InternalApi.PeriodicScheduler.Periodic.CommitStatus =>
+              {__MODULE__, :commit_status_to_enum}
+          },
           string_keys_to_atoms: true
         )
       else
@@ -188,7 +206,11 @@ defmodule Scheduler.Grpc.Server do
           |> Map.merge(%{"status" => %{"code" => :OK}})
           |> Proto.deep_new!(
             HistoryResponse,
-            transformations: %{Timestamp => {__MODULE__, :date_time_to_timestamps}},
+            transformations: %{
+              Timestamp => {__MODULE__, :date_time_to_timestamps},
+              InternalApi.PeriodicScheduler.Periodic.CommitStatus =>
+                {__MODULE__, :commit_status_to_enum}
+            },
             string_keys_to_atoms: true
           )
 
@@ -211,7 +233,11 @@ defmodule Scheduler.Grpc.Server do
           |> Map.merge(%{status: %{code: :OK}})
           |> Proto.deep_new!(
             ListResponse,
-            transformations: %{Timestamp => {__MODULE__, :date_time_to_timestamps}}
+            transformations: %{
+              Timestamp => {__MODULE__, :date_time_to_timestamps},
+              InternalApi.PeriodicScheduler.Periodic.CommitStatus =>
+                {__MODULE__, :commit_status_to_enum}
+            }
           )
 
         {:error, {code, message}} ->
@@ -233,7 +259,11 @@ defmodule Scheduler.Grpc.Server do
           |> Map.merge(%{status: %{code: :OK}})
           |> Proto.deep_new!(
             ListKeysetResponse,
-            transformations: %{Timestamp => {__MODULE__, :date_time_to_timestamps}}
+            transformations: %{
+              Timestamp => {__MODULE__, :date_time_to_timestamps},
+              InternalApi.PeriodicScheduler.Periodic.CommitStatus =>
+                {__MODULE__, :commit_status_to_enum}
+            }
           )
 
         {:error, {code, message}} ->
@@ -286,7 +316,11 @@ defmodule Scheduler.Grpc.Server do
         |> Map.merge(%{status: %{code: :OK}})
         |> Proto.deep_new!(
           BulkUpsertAndPruneResponse,
-          transformations: %{Timestamp => {__MODULE__, :date_time_to_timestamps}}
+          transformations: %{
+            Timestamp => {__MODULE__, :date_time_to_timestamps},
+            InternalApi.PeriodicScheduler.Periodic.CommitStatus =>
+              {__MODULE__, :commit_status_to_enum}
+          }
         )
       else
         {:error, {code, message}} ->
@@ -296,8 +330,12 @@ defmodule Scheduler.Grpc.Server do
     end)
   end
 
-  defp normalize_state(periodic = %{state: state}) do
-    %{periodic | state: InternalApi.PeriodicScheduler.PersistRequest.ScheduleState.value(state)}
+  defp normalize_state(periodic = %{state: state, commit_status: commit_status}) do
+    %{
+      periodic
+      | state: InternalApi.PeriodicScheduler.PersistRequest.ScheduleState.value(state),
+        commit_status: InternalApi.PeriodicScheduler.Periodic.CommitStatus.value(commit_status)
+    }
   end
 
   # Version
@@ -313,6 +351,11 @@ defmodule Scheduler.Grpc.Server do
   end
 
   # Utility
+
+  def commit_status_to_enum(_field_name, value) when value in [:follow_project, :always, :never],
+    do: value |> Atom.to_string() |> String.upcase() |> String.to_atom()
+
+  def commit_status_to_enum(_field_name, value), do: value
 
   def date_time_to_timestamps(_field_name, nil), do: %{seconds: 0, nanos: 0}
   def date_time_to_timestamps(_fn, val = %{seconds: _s, nanos: _n}), do: val

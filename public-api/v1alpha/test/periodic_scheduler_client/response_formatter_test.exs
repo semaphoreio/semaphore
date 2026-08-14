@@ -113,10 +113,11 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.ResponseFormatter.Test do
 
     assert {:ok, resp} = ResponseFormatter.process_describe_response({:ok, proto})
 
-    assert proto.periodic |> Map.from_struct() |> Map.delete(:updated_at) ==
-             resp.schedule |> Map.delete(:updated_at)
+    assert proto.periodic |> Map.from_struct() |> Map.drop([:updated_at, :commit_status]) ==
+             resp.schedule |> Map.drop([:updated_at, :commit_status])
 
     assert resp.schedule.updated_at == "2018-12-12 09:26:53.765473Z"
+    assert resp.schedule.commit_status == "follow_project"
 
     assert proto.triggers
            |> Enum.at(0)
@@ -135,6 +136,16 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.ResponseFormatter.Test do
 
     assert resp.triggers |> Enum.at(1) |> Map.get(:triggered_at) == "2018-12-12 09:26:53.765473Z"
     assert resp.triggers |> Enum.at(1) |> Map.get(:scheduled_at) == "2018-12-12 09:26:53.765473Z"
+  end
+
+  test "process_describe_response() maps the commit status policy to a lowercase string" do
+    assert {:ok, proto} = describe_response(:OK)
+
+    periodic = %{proto.periodic | commit_status: 2}
+    proto = %{proto | periodic: periodic}
+
+    assert {:ok, resp} = ResponseFormatter.process_describe_response({:ok, proto})
+    assert resp.schedule.commit_status == "never"
   end
 
   test "process_describe_response() returns error and server message when server returns
@@ -251,10 +262,14 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.ResponseFormatter.Test do
     resp.entries
     |> Enum.with_index()
     |> Enum.map(fn {periodic, ind} ->
-      assert proto.periodics |> Enum.at(ind) |> Map.from_struct() |> Map.delete(:updated_at) ==
-               periodic |> Map.delete(:updated_at)
+      assert proto.periodics
+             |> Enum.at(ind)
+             |> Map.from_struct()
+             |> Map.drop([:updated_at, :commit_status]) ==
+               periodic |> Map.drop([:updated_at, :commit_status])
 
       assert periodic.updated_at == "2018-12-12 09:26:53.765473Z"
+      assert periodic.commit_status == "follow_project"
     end)
   end
 

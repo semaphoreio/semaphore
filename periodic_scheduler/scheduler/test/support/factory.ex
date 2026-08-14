@@ -24,7 +24,8 @@ defmodule Test.Support.Factory do
       reference: "master",
       at: "0 0 * * *",
       name: "Periodic",
-      id: UUID.uuid4()
+      id: UUID.uuid4(),
+      commit_status: :follow_project
     }
 
     params = Map.take(Map.new(extra), Map.keys(defaults))

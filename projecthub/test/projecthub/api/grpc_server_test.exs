@@ -125,6 +125,57 @@ defmodule Projecthub.Api.GrpcServerTest do
                )
     end
 
+    test "carries commit status trigger settings" do
+      {:ok, project} =
+        Support.Factories.Project.create_with_repo(
+          %{},
+          %{
+            commit_status:
+              InternalApi.Projecthub.Project.Spec.Repository.Status.new(
+                pipeline_files: [
+                  InternalApi.Projecthub.Project.Spec.Repository.Status.PipelineFile.new(
+                    path: ".semaphore/semaphore.yml",
+                    level: :PIPELINE
+                  )
+                ],
+                skip_scheduled_run: true,
+                skip_manual_run: true
+              )
+          }
+        )
+
+      {:ok, channel} =
+        GRPC.Stub.connect("localhost:50051",
+          interceptors: [
+            Projecthub.Util.GRPC.ClientRequestIdInterceptor,
+            Projecthub.Util.GRPC.ClientLoggerInterceptor,
+            Projecthub.Util.GRPC.ClientRunAsyncInterceptor
+          ]
+        )
+
+      request =
+        InternalApi.Projecthub.DescribeRequest.new(
+          metadata:
+            InternalApi.Projecthub.RequestMeta.new(
+              api_version: "",
+              kind: "",
+              req_id: "",
+              org_id: "",
+              user_id: "12345678-1234-5678-1234-567812345678"
+            ),
+          id: project.id,
+          name: project.name
+        )
+
+      {:ok, response} = Stub.describe(channel, request)
+
+      assert response.metadata.status == InternalApi.Projecthub.ResponseMeta.Status.new(code: :OK)
+
+      status = response.project.spec.repository.status
+      assert status.skip_scheduled_run
+      assert status.skip_manual_run
+    end
+
     test "when a detailed project is requested => returns the project with schedulers" do
       artifact_store_id = Ecto.UUID.generate()
 
@@ -2403,6 +2454,87 @@ defmodule Projecthub.Api.GrpcServerTest do
       assert project.state == Projecthub.Models.Project.StateMachine.initializing_skip()
     end
 
+    test "forwards commit status trigger settings to the repository service" do
+      {:ok, channel} =
+        GRPC.Stub.connect("localhost:50051",
+          interceptors: [
+            Projecthub.Util.GRPC.ClientRequestIdInterceptor,
+            Projecthub.Util.GRPC.ClientLoggerInterceptor,
+            Projecthub.Util.GRPC.ClientRunAsyncInterceptor
+          ]
+        )
+
+      org_id = Ecto.UUID.generate()
+
+      org_response =
+        InternalApi.Organization.DescribeResponse.new(
+          status: InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
+          organization:
+            InternalApi.Organization.Organization.new(
+              org_username: "organization",
+              org_id: org_id
+            )
+        )
+
+      FunRegistry.set!(Support.FakeServices.OrganizationService, :describe, org_response)
+      FunRegistry.set!(Support.FakeServices.FeatureService, :organization_features, org_response)
+
+      request =
+        InternalApi.Projecthub.CreateRequest.new(
+          metadata:
+            InternalApi.Projecthub.RequestMeta.new(
+              api_version: "",
+              kind: "",
+              req_id: "",
+              org_id: org_id,
+              user_id: "12345678-1234-5678-1234-567812345678"
+            ),
+          project:
+            InternalApi.Projecthub.Project.new(
+              metadata:
+                InternalApi.Projecthub.Project.Metadata.new(
+                  name: "project-with-trigger-settings",
+                  id: "12345678-1234-5678-1234-567812345678",
+                  owner_id: "12345678-1234-5678-1234-567812345678",
+                  org_id: org_id,
+                  description: "A repo for testing SemaphoreCI features"
+                ),
+              spec:
+                InternalApi.Projecthub.Project.Spec.new(
+                  repository:
+                    InternalApi.Projecthub.Project.Spec.Repository.new(
+                      url: "repo_url",
+                      name: "repo_name",
+                      owner: "repo_owner",
+                      status:
+                        InternalApi.Projecthub.Project.Spec.Repository.Status.new(
+                          pipeline_files: [
+                            InternalApi.Projecthub.Project.Spec.Repository.Status.PipelineFile.new(
+                              path: ".semaphore/semaphore.yml",
+                              level: :PIPELINE
+                            )
+                          ],
+                          skip_manual_run: true
+                        )
+                    )
+                )
+            )
+        )
+
+      {:ok, response} = Stub.create(channel, request)
+
+      assert response.metadata.status ==
+               InternalApi.Projecthub.ResponseMeta.Status.new(code: :OK)
+
+      record =
+        Support.MemoryDb.find({:repository_hub, :repositories}, fn record ->
+          record.repository.project_id == response.project.metadata.id
+        end)
+
+      assert record.repository.commit_status.skip_manual_run
+      refute record.repository.commit_status.skip_scheduled_run
+    end
+
     test "when creating fails with specific error message => returns the error message" do
       {:ok, channel} =
         GRPC.Stub.connect("localhost:50051",
@@ -2637,6 +2769,78 @@ defmodule Projecthub.Api.GrpcServerTest do
       assert response.project.spec.debug_permissions == []
 
       assert response.project.spec.attach_permissions == []
+    end
+
+    test "forwards commit status trigger settings to the repository service" do
+      {:ok, channel} =
+        GRPC.Stub.connect("localhost:50051",
+          interceptors: [
+            Projecthub.Util.GRPC.ClientRequestIdInterceptor,
+            Projecthub.Util.GRPC.ClientLoggerInterceptor,
+            Projecthub.Util.GRPC.ClientRunAsyncInterceptor
+          ]
+        )
+
+      {:ok, project} = Support.Factories.Project.create_with_repo()
+
+      request =
+        InternalApi.Projecthub.UpdateRequest.new(
+          metadata:
+            InternalApi.Projecthub.RequestMeta.new(
+              api_version: "",
+              kind: "",
+              req_id: "",
+              org_id: project.organization_id,
+              user_id: "12345678-1234-5678-1234-567812345678"
+            ),
+          project:
+            InternalApi.Projecthub.Project.new(
+              metadata:
+                InternalApi.Projecthub.Project.Metadata.new(
+                  name: project.name,
+                  id: project.id,
+                  owner_id: project.creator_id,
+                  org_id: project.organization_id,
+                  description: project.description
+                ),
+              spec:
+                InternalApi.Projecthub.Project.Spec.new(
+                  repository:
+                    InternalApi.Projecthub.Project.Spec.Repository.new(
+                      url: "git@github.com:myorg/hello-world.git",
+                      owner: "",
+                      pipeline_file: ".semaphore/semaphore.yml",
+                      status:
+                        InternalApi.Projecthub.Project.Spec.Repository.Status.new(
+                          pipeline_files: [
+                            InternalApi.Projecthub.Project.Spec.Repository.Status.PipelineFile.new(
+                              path: ".semaphore/semaphore.yml",
+                              level: :PIPELINE
+                            )
+                          ],
+                          skip_scheduled_run: true,
+                          skip_manual_run: true
+                        ),
+                      connected: true
+                    ),
+                  schedulers: [],
+                  visibility: :PUBLIC
+                )
+            )
+        )
+
+      {:ok, response} = Stub.update(channel, request)
+
+      assert response.metadata.status ==
+               InternalApi.Projecthub.ResponseMeta.Status.new(code: :OK)
+
+      record =
+        Support.MemoryDb.find({:repository_hub, :repositories}, fn record ->
+          record.repository.project_id == project.id
+        end)
+
+      assert record.repository.commit_status.skip_scheduled_run
+      assert record.repository.commit_status.skip_manual_run
     end
 
     test "when allowed_secrets are ommited => set default empty value" do
