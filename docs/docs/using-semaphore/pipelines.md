@@ -148,14 +148,14 @@ Here you can see the how spc evaluated the pipeline and all the actions taken du
 
 When a job in the pipeline fails, the default behavior is to stop the pipeline. You can attempt to re-run the pipeline in two ways:
 
-- Pressing **Rerun** restarts the whole pipeline from the beginning
-- Pressing **Rebuild Pipeline** only re-runs the blocks with failed jobs
+- Pressing **Rerun Workflow** starts a fresh run of the whole workflow from the same commit
+- Pressing **Rerun Failed Jobs** re-runs only what did not pass in that pipeline, keeping the jobs that did — the granularity (failed jobs or their whole blocks) follows the pipeline's rerun settings
 
 ![Location of rerun and rebuild buttons](./img/rerun-pipeline.jpg)
 
 ### Job-level partial rerun {#job-level-rerun}
 
-When the job-level partial rerun feature is enabled for your organization, **Rebuild Pipeline** goes one step further inside each re-run block: jobs that already passed are *reused* instead of being executed again, and only the failed jobs actually re-run.
+When the job-level partial rerun feature is enabled for your organization, **Rerun Failed Jobs** goes one step further inside each re-run block: jobs that already passed are *reused* instead of being executed again, and only the failed jobs actually re-run.
 
 Enabling the feature changes the default rebuild behavior. To keep re-running whole blocks — for the entire pipeline or for individual blocks — set the [`partial_rerun: block`](../reference/pipeline-yaml#partial-rerun) property in the pipeline YAML. Any other value is rejected when the pipeline YAML is validated.
 

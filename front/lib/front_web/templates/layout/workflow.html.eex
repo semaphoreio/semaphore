@@ -62,9 +62,9 @@
       </h1>
       <div class="flex-shrink-0 pt1 pt0-m">
       <%= if !assigns[:permissions] or @permissions["project.job.rerun"] do %>
-          <%= link "Rerun", to: workflow_path(@conn, :rebuild, @workflow.id), method: :post, class: "btn btn-secondary" %>
+          <%= link "Rerun Workflow", to: workflow_path(@conn, :rebuild, @workflow.id), method: :post, class: "btn btn-secondary", "data-tippy-content": "Starts a fresh run of the whole workflow from this commit" %>
         <% else %>
-          <button class="btn btn-secondary" disabled>Rerun</button>
+          <button class="btn btn-secondary" disabled>Rerun Workflow</button>
         <% end %>
       </div>
     </div>
