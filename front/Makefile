@@ -163,3 +163,25 @@ workflow.templates.check:
 	@echo "📦 Checking templates..."
 	./scripts/check-templates.sh workflow_templates/saas_new
 	./scripts/check-templates.sh workflow_templates/ce_new
+
+URL ?= http://localhost:4000/projects
+OUT ?= out/design.png
+SIZE ?= 1600x1200
+HOST_COMPOSE = docker compose -f docker-compose.yml -f docker-compose.host.yml
+
+dev.services:
+	$(HOST_COMPOSE) up -d rabbitmq redis-cache artifacts
+
+dev.services.stop:
+	$(HOST_COMPOSE) stop rabbitmq redis-cache artifacts
+
+dev.nix.server:
+	@lsof -ti :4000 >/dev/null 2>&1 && { echo "port 4000 is already in use; stop the other server first: kill $$(lsof -ti :4000)"; exit 1; } || true
+	@test -d assets/node_modules || echo "assets/node_modules missing; run: cd assets && npm install"
+	@echo "front dev server -> http://localhost:4000/projects"
+	@echo "needs the backing services; start them with: make dev.services"
+	@echo "screenshot a page with: make design.shot URL=<url> OUT=<file.png>"
+	nix develop -c iex -S mix dev.server
+
+design.shot:
+	scripts/screenshot.sh $(URL) $(OUT) $(SIZE)
