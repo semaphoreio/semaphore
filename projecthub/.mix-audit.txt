@@ -12,3 +12,26 @@ GHSA-jfc2-q6qh-g5x8
 
 # cowlib 2.11.0 — SPDY decompression bomb in cow_spdy:inflate/2 (unreachable; cowboy 2.x does not serve SPDY)
 GHSA-84f2-rp86-235p
+
+# protobuf — unbounded recursion depth in embedded-message decoding, patched in 0.16.1. projecthub
+# only decodes protobufs from internal gRPC callers on the cluster network (same acceptance as
+# repository_hub/ee-gofer/ee-rbac); a hostile deeply-nested payload requires a compromised internal
+# service and yields a single-pod DoS. Bumping is additionally proven-breaking here: grpc_server.ex
+# and friends call InternalApi.*.new(...) directly throughout, a constructor form removed in
+# protobuf >= 0.16.1.
+GHSA-rv48-qqj5-crxg
+
+# --- hackney advisories, all first patched in hackney 4.0.1 (or 1.24.0 / 1.21.0 for the two below) ---
+# hackney is used only transitively by the Sentry client (mix.exs {:sentry, "~> 8.0"}) for outbound
+# error reporting to the fixed Sentry DSN — no direct httpoison/tesla/hackney dep, no call sites in
+# lib/ (grep confirms no hits). No user-controlled host/query/domain/path is fed to hackney.
+GHSA-9fm9-hp7p-53mf
+GHSA-gp9c-pm5m-5cxr
+GHSA-j9wq-vxxc-94wf
+GHSA-mp55-p8c9-rfw2
+GHSA-pj7v-xfvx-wmjq
+GHSA-vq52-99r9-h5pw
+
+# decimal — unbounded exponent in Decimal.new enables unauthenticated DoS, patched in 3.0.0. Not
+# called anywhere in lib/ (transitive via ecto/postgrex only).
+GHSA-rhv4-8758-jx7v
