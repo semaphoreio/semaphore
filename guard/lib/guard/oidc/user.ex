@@ -47,6 +47,24 @@ defmodule Guard.OIDC.User do
     end
   end
 
+  def set_federated_identity(oidc_user_id, identity) do
+    with {:ok, client} <- Guard.Api.OIDC.client() do
+      Guard.Api.OIDC.set_federated_identity(client, oidc_user_id, identity)
+    end
+  end
+
+  def remove_federated_identity(oidc_user_id, provider) do
+    with {:ok, client} <- Guard.Api.OIDC.client() do
+      Guard.Api.OIDC.remove_federated_identity(client, oidc_user_id, provider)
+    end
+  end
+
+  def get_federated_identities(oidc_user_id) do
+    with {:ok, client} <- Guard.Api.OIDC.client() do
+      Guard.Api.OIDC.get_federated_identities(client, oidc_user_id)
+    end
+  end
+
   def create_with_oidc_data(%{oidc_user_id: oidc_user_id}) do
     with {:ok, oidc_user} <- get_oidc_user(oidc_user_id),
          {:ok, github, mode} <- get_github_data(oidc_user.github),
@@ -128,7 +146,8 @@ defmodule Guard.OIDC.User do
       oidc_user_id: oidc_user_id,
       email: email,
       name: name,
-      repository_providers: repository_providers
+      repository_providers: repository_providers,
+      provider_conflict: :skip
     })
   end
 
