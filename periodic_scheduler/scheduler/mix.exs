@@ -56,7 +56,7 @@ defmodule Scheduler.Mixfile do
       {:util, github: "renderedtext/elixir-util"},
       {:watchman, github: "renderedtext/ex-watchman"},
       {:log_tee, github: "renderedtext/log-tee"},
-      {:tackle, github: "renderedtext/ex-tackle", tag: "v0.4.0"},
+      {:tackle, github: "renderedtext/ex-tackle", tag: "v0.4.1"},
       {:feature_provider, path: "../../feature_provider"},
       # development dependencies
       {:ex_doc, "~> 0.19", only: :dev, runtime: false},
