@@ -49,7 +49,7 @@ defmodule Rbac.MixProject do
       {:httpoison, "~> 2.2"},
       {:hackney, "~> 1.24", override: true},
       {:plug_rails_cookie_session_store, "~> 2.0"},
-      {:tackle, github: "renderedtext/ex-tackle"},
+      {:tackle, github: "renderedtext/ex-tackle", tag: "v0.4.1"},
       {:amqp, "~> 3.3"},
       {:amqp_client, "~> 3.12"},
       {:ex_marshal,
