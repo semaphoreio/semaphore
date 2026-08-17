@@ -31,7 +31,7 @@ defmodule GithubNotifier.MixProject do
       {:grpc, "~> 0.9.0"},
       {:grpc_mock, github: "renderedtext/grpc-mock", branch: "grpc08", only: [:dev, :test]},
       {:watchman, github: "renderedtext/ex-watchman"},
-      {:tackle, github: "renderedtext/ex-tackle", tag: "v0.4.0"},
+      {:tackle, github: "renderedtext/ex-tackle", tag: "v0.4.1"},
       {:amqp, "~> 4.1", override: true},
       {:sentry, "~> 8.0"},
       {:logger_backends, "~> 1.0"},
