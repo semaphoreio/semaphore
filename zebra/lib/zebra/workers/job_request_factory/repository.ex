@@ -31,9 +31,13 @@ defmodule Zebra.Workers.JobRequestFactory.Repository do
       name: repository.name,
       url: repository.url,
       provider: repository.provider,
-      default_branch: "master"
+      default_branch: default_branch(repository.default_branch)
     }
   end
+
+  # Repositories created before default_branch was introduced have no value stored.
+  defp default_branch(branch) when branch in [nil, ""], do: "master"
+  defp default_branch(branch), do: branch
 
   def files(nil), do: {:ok, []}
 
