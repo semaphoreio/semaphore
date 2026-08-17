@@ -71,7 +71,7 @@ defmodule PublicAPI.Mixfile do
        github: "renderedtext/open_api_spex", ref: "1f4c474b95b7300cdce09cd768e9e4c03f802e42"},
       {:cacheman, github: "renderedtext/ex-cacheman"},
       {:ymlr, "~> 5.0"},
-      {:tackle, github: "renderedtext/ex-tackle", tag: "v0.4.0"},
+      {:tackle, github: "renderedtext/ex-tackle", tag: "v0.4.1"},
       {:feature_provider, path: "../../feature_provider"},
       {:logger_json, "~> 6.0"},
       {:logger_backends, "~> 1.0.0", only: [:dev]}
