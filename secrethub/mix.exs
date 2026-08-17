@@ -53,7 +53,7 @@ defmodule Secrethub.Mixfile do
       {:junit_formatter, "~> 3.1", only: [:test]},
       {:google_protos, "~> 0.1.0"},
       #### Audit Logs
-      {:tackle, github: "renderedtext/ex-tackle", tag: "v0.4.0"},
+      {:tackle, github: "renderedtext/ex-tackle", tag: "v0.4.1"},
       {:amqp, "~> 1.3", override: true},
       {:jsx, "~> 2.9", override: true},
       ### linting
