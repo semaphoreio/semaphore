@@ -62,7 +62,7 @@
   "sleeplocks": {:hex, :sleeplocks, "1.1.2", "d45aa1c5513da48c888715e3381211c859af34bee9b8290490e10c90bb6ff0ca", [:rebar3], [], "hexpm", "9fe5d048c5b781d6305c1a3a0f40bb3dfc06f49bf40571f3d2d0c57eaa7f59a5"},
   "ssl_verify_fun": {:hex, :ssl_verify_fun, "1.1.7", "354c321cf377240c7b8716899e182ce4890c5938111a1296add3ec74cf1715df", [:make, :mix, :rebar3], [], "hexpm", "fe4c190e8f37401d30167c8c405eda19469f34577987c76dde613e838bbc67f8"},
   "sys2app": {:git, "https://github.com/renderedtext/sys2app.git", "a18828faf1e05dfd1aa36eae9e9e458187c50d51", []},
-  "tackle": {:git, "https://github.com/renderedtext/ex-tackle.git", "6406cf51212695df32876eee46a98031c058d4ed", [tag: "v0.4.0"]},
+  "tackle": {:git, "https://github.com/renderedtext/ex-tackle.git", "5b154ec1a74fcaf28df98717436850adb3846c35", [tag: "v0.4.1"]},
   "telemetry": {:hex, :telemetry, "1.2.1", "68fdfe8d8f05a8428483a97d7aab2f268aaff24b49e0f599faa091f1d4e7f61c", [:rebar3], [], "hexpm", "dad9ce9d8effc621708f99eac538ef1cbe05d6a874dd741de2e689c47feafed5"},
   "thoas": {:hex, :thoas, "1.0.0", "567c03902920827a18a89f05b79a37b5bf93553154b883e0131801600cf02ce0", [:rebar3], [], "hexpm", "fc763185b932ecb32a554fb735ee03c3b6b1b31366077a2427d2a97f3bd26735"},
   "timex": {:hex, :timex, "3.6.3", "58ce6c9eda8ed47fc80c24dde09d481465838d3bcfc230949287fc1b0b0041c1", [:mix], [{:combine, "~> 0.10", [hex: :combine, repo: "hexpm", optional: false]}, {:gettext, "~> 0.10", [hex: :gettext, repo: "hexpm", optional: false]}, {:tzdata, "~> 0.1.8 or ~> 0.5 or ~> 1.0.0", [hex: :tzdata, repo: "hexpm", optional: false]}], "hexpm", "6d69f4f95fcf5684102a9cb3cf92c5ba6545bd60ed8d8a6a93cd2a4a4fb0d9ec"},
