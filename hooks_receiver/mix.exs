@@ -26,7 +26,7 @@ defmodule HooksReceiver.MixProject do
       {:cowboy, "~> 2.18.0", override: true},
       {:cowlib, "~> 2.19", override: true},
       {:amqp_client, "~> 3.11.18"},
-      {:tackle, github: "renderedtext/ex-tackle", tag: "v0.4.0"},
+      {:tackle, github: "renderedtext/ex-tackle", tag: "v0.4.1"},
       {:grpc, "~> 0.9.0"},
       {:protobuf, "~> 0.13.0"},
       {:grpc_mock, github: "renderedtext/grpc-mock", branch: "grpc08", only: [:dev, :test]},
