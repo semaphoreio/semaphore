@@ -64,7 +64,7 @@ defmodule Front.Mixfile do
       {:util, github: "renderedtext/elixir-util"},
       {:typed_struct, "~> 0.1.4"},
       {:amqp_client, "~> 3.9.27"},
-      {:tackle, github: "renderedtext/ex-tackle", tag: "v0.4.0"},
+      {:tackle, github: "renderedtext/ex-tackle", tag: "v0.4.1"},
       {:jsx, "~> 2.9", override: true},
       {:csv, "~> 2.3"},
       {:crontab, "~> 1.1.10"},

@@ -75,7 +75,7 @@
   "sobelow": {:hex, :sobelow, "0.11.1", "23438964486f8112b41e743bbfd402da3e5b296fdc9eacab29914b79c48916dd", [:mix], [{:jason, "~> 1.0", [hex: :jason, repo: "hexpm", optional: false]}], "hexpm", "9897363a7eff96f4809304a90aad819e2ad5e5d24db547af502885146746a53c"},
   "ssl_verify_fun": {:hex, :ssl_verify_fun, "1.1.7", "354c321cf377240c7b8716899e182ce4890c5938111a1296add3ec74cf1715df", [:make, :mix, :rebar3], [], "hexpm", "fe4c190e8f37401d30167c8c405eda19469f34577987c76dde613e838bbc67f8"},
   "stream_data": {:hex, :stream_data, "0.5.0", "b27641e58941685c75b353577dc602c9d2c12292dd84babf506c2033cd97893e", [:mix], [], "hexpm", "012bd2eec069ada4db3411f9115ccafa38540a3c78c4c0349f151fc761b9e271"},
-  "tackle": {:git, "https://github.com/renderedtext/ex-tackle.git", "6406cf51212695df32876eee46a98031c058d4ed", [tag: "v0.4.0"]},
+  "tackle": {:git, "https://github.com/renderedtext/ex-tackle.git", "5b154ec1a74fcaf28df98717436850adb3846c35", [tag: "v0.4.1"]},
   "telemetry": {:hex, :telemetry, "0.4.3", "a06428a514bdbc63293cd9a6263aad00ddeb66f608163bdec7c8995784080818", [:rebar3], [], "hexpm", "eb72b8365ffda5bed68a620d1da88525e326cb82a75ee61354fc24b844768041"},
   "telemetry_registry": {:hex, :telemetry_registry, "0.2.1", "fe648a691f2128e4279d993cd010994c67f282354dc061e697bf070d4b87b480", [:mix, :rebar3], [{:telemetry, "~> 0.4", [hex: :telemetry, repo: "hexpm", optional: false]}], "hexpm", "4221cefbcadd0b3e7076960339223742d973f1371bc20f3826af640257bc3690"},
   "tentacat": {:git, "https://github.com/renderedtext/tentacat.git", "cace77bcaeaeb839175db8e490a2d1a5d02ed652", []},
