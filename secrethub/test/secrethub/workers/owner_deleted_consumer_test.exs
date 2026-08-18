@@ -59,6 +59,39 @@ defmodule Secrethub.Workers.OwnerDeletedConsumer.Test do
     end
   end
 
+  describe "service_per_exchange queue naming" do
+    # OwnerDeletedConsumer has two routes with the same routing key
+    # ("deleted") on different exchanges. Tackle derives each route's queue
+    # name from "#{service}.#{routing_key}", so without service_per_exchange
+    # both routes would resolve to the identical queue name and org/project
+    # delete events would be misrouted between handlers.
+    test "project and organization routes resolve to distinct queue names" do
+      service = "secrethub.secret_destroyer"
+      routing_key = "deleted"
+
+      project_queue =
+        "#{Tackle.Multiconsumer.service_name(service, "project_exchange", true)}.#{routing_key}"
+
+      organization_queue =
+        "#{Tackle.Multiconsumer.service_name(service, "organization_exchange", true)}.#{routing_key}"
+
+      assert project_queue != organization_queue
+    end
+
+    test "without service_per_exchange the two routes would collide (the bug this guards against)" do
+      service = "secrethub.secret_destroyer"
+      routing_key = "deleted"
+
+      project_queue =
+        "#{Tackle.Multiconsumer.service_name(service, "project_exchange", false)}.#{routing_key}"
+
+      organization_queue =
+        "#{Tackle.Multiconsumer.service_name(service, "organization_exchange", false)}.#{routing_key}"
+
+      assert project_queue == organization_queue
+    end
+  end
+
   describe "JWT configuration deletion" do
     setup [:prepare_data]
 
