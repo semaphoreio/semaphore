@@ -33,6 +33,59 @@ defmodule Notifications.Workers.WebhookTest do
       assert Webhook.publish(request_id, s, data)
     end
 
+    test "blocks a private-resolving endpoint without issuing the request" do
+      settings = %{
+        endpoint: "https://private.internal.test/hook",
+        action: "post",
+        timeout: 200,
+        retries: 3
+      }
+
+      s = Notifications.Models.Rule.decode_webhook(settings)
+
+      with_mock HTTPoison,
+        request: fn _m, _u, _b, _h, _o ->
+          flunk("HTTPoison must not be called for a blocked host")
+        end do
+        assert Webhook.publish("blk-1", s, build_test_data()) == {:error, :ssrf_blocked}
+        assert_not_called(HTTPoison.request(:_, :_, :_, :_, :_))
+      end
+    end
+
+    test "blocks a cloud-metadata endpoint" do
+      settings = %{
+        endpoint: "http://169.254.169.254/latest/meta-data/",
+        action: "post",
+        timeout: 200,
+        retries: 1
+      }
+
+      s = Notifications.Models.Rule.decode_webhook(settings)
+
+      assert Webhook.publish("blk-2", s, build_test_data()) == {:error, :ssrf_blocked}
+    end
+
+    test "allows a public endpoint through to the request" do
+      settings = %{
+        endpoint: "https://public.example.test/hook",
+        action: "post",
+        timeout: 200,
+        retries: 1
+      }
+
+      s = Notifications.Models.Rule.decode_webhook(settings)
+
+      with_mock HTTPoison,
+        request: fn _m, _u, _b, _h, _o ->
+          {:ok, %HTTPoison.Response{status_code: 200, body: "ok"}}
+        end do
+        assert {:ok, %HTTPoison.Response{status_code: 200}} =
+                 Webhook.publish("ok-1", s, build_test_data())
+
+        assert_called(HTTPoison.request(:_, :_, :_, :_, :_))
+      end
+    end
+
     test "skips when endpoint is nil" do
       settings = %{endpoint: nil, action: "post", timeout: 0}
       s = Notifications.Models.Rule.decode_webhook(settings)
