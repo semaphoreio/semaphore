@@ -1,9 +1,15 @@
 defmodule Secrethub.Workers.OwnerDeletedConsumer do
   require Logger
 
+  # Both routes below share the "deleted" routing key across two different
+  # exchanges. Without service_per_exchange: true, tackle >= 0.4 derives the
+  # same queue name ("secrethub.secret_destroyer.deleted") for both routes, so
+  # the two consumers end up as competing consumers on one queue and
+  # org/project delete events get misrouted between handlers.
   use Tackle.Multiconsumer,
     url: Application.get_env(:secrethub, :amqp_url),
     service: "secrethub.secret_destroyer",
+    service_per_exchange: true,
     routes: [
       {"project_exchange", "deleted", :deleted_project},
       {"organization_exchange", "deleted", :deleted_organization}
