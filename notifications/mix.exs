@@ -42,7 +42,7 @@ defmodule Notifications.Mixfile do
       {:tackle, github: "renderedtext/ex-tackle", tag: "v0.4.1"},
       {:util, github: "renderedtext/elixir-util", branch: "rw/string_enums"},
       {:sentry, "~> 8.0"},
-      {:hackney, "~> 1.8"},
+      {:hackney, "~> 1.25"},
       {:sentry_grpc, github: "renderedtext/sentry_grpc"},
       {:jason, "~> 1.1"},
       {:junit_formatter, "~> 3.3", only: [:test]},
