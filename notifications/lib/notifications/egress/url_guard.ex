@@ -95,7 +95,7 @@ defmodule Notifications.Egress.UrlGuard do
   defp validate_scheme(_), do: {:error, :bad_scheme}
 
   defp validate_host(host) when is_binary(host) and host != "" do
-    decoded = URI.decode(host)
+    decoded = host |> URI.decode() |> strip_trailing_dot()
 
     cond do
       decoded == "" -> {:error, :missing_host}
@@ -107,19 +107,44 @@ defmodule Notifications.Egress.UrlGuard do
 
   defp validate_host(_), do: {:error, :missing_host}
 
+  # Drop a single trailing FQDN dot so the host we resolve, dial and bind SNI /
+  # certificate-hostname verification to matches hackney's own normalization
+  # (hackney_ssl:check_hostname_opts strips it); otherwise a "host." URL would
+  # pass DNS but fail the TLS hostname check.
+  defp strip_trailing_dot(host), do: String.replace_suffix(host, ".", "")
+
   # --- Stage 2: resolution + IP egress filter ------------------------------
 
   defp resolve(host) do
-    {mod, fun} =
+    resolver =
       Application.get_env(:notifications, :egress_resolver, {__MODULE__, :default_resolve})
 
-    case apply(mod, fun, [host]) do
+    case run_resolver(resolver, host) do
       {:ok, []} -> {:error, :unresolvable}
       {:ok, ips} -> {:ok, ips}
       {:error, _} -> {:error, :unresolvable}
       _ -> {:error, :unresolvable}
     end
   end
+
+  # The default resolver bounds each DNS lookup itself (see getaddrs/2), so call
+  # it directly. Any injected resolver is wrapped under the same timeout so a
+  # hung resolver still fails closed instead of stalling the worker; verify/1 is
+  # bounded regardless of which resolver is configured.
+  defp run_resolver(resolver = {__MODULE__, :default_resolve}, host) do
+    apply_resolver(resolver, host)
+  end
+
+  defp run_resolver(resolver, host) do
+    task = Task.async(fn -> apply_resolver(resolver, host) end)
+
+    case Task.yield(task, @resolve_timeout_ms) || Task.shutdown(task, :brutal_kill) do
+      {:ok, result} -> result
+      _ -> {:error, :timeout}
+    end
+  end
+
+  defp apply_resolver({mod, fun}, host), do: apply(mod, fun, [host])
 
   @doc false
   # Default resolver: IP literals are parsed directly (no DNS); host names are
@@ -170,7 +195,7 @@ defmodule Notifications.Egress.UrlGuard do
 
   # --- Stage 3: connection pinning -----------------------------------------
 
-  defp build_target(%URI{scheme: scheme, port: port} = uri, host, ip) do
+  defp build_target(uri = %URI{scheme: scheme, port: port}, host, ip) do
     %Target{
       ip: ip,
       url: build_request_url(scheme, ip_literal(ip), port, uri.path, uri.query),
@@ -219,9 +244,9 @@ defmodule Notifications.Egress.UrlGuard do
 
   defp ssl_options(_scheme, _host), do: []
 
-  defp ip_literal({_, _, _, _} = ip), do: ip |> :inet.ntoa() |> to_string()
+  defp ip_literal(ip = {_, _, _, _}), do: ip |> :inet.ntoa() |> to_string()
 
-  defp ip_literal({_, _, _, _, _, _, _, _} = ip),
+  defp ip_literal(ip = {_, _, _, _, _, _, _, _}),
     do: "[" <> (ip |> :inet.ntoa() |> to_string()) <> "]"
 
   defp bracket_if_v6(host) do
@@ -242,6 +267,9 @@ defmodule Notifications.Egress.UrlGuard do
   @spec blocked?(:inet.ip_address()) :: boolean()
   def blocked?({a, b, c, d}), do: blocked_v4?(a, b, c, d)
 
+  # One flat, auditable list of IPv6 non-public prefixes on purpose; splitting it
+  # would fragment a security-critical classifier and invite a transcription error.
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   def blocked?({a, b, c, d, e, f, g, h}) do
     cond do
       # unspecified :: and loopback ::1
@@ -251,6 +279,8 @@ defmodule Notifications.Egress.UrlGuard do
       (a &&& 0xFFC0) == 0xFE80 -> true
       # fc00::/7 unique-local (covers fd00:ec2::254 AWS IMDS v6)
       (a &&& 0xFE00) == 0xFC00 -> true
+      # ff00::/8 multicast (never a valid unicast egress target)
+      (a &&& 0xFF00) == 0xFF00 -> true
       # 2001:db8::/32 documentation
       a == 0x2001 and b == 0x0DB8 -> true
       # Embedded IPv4 forms: unwrap and re-run the v4 classifier.
@@ -268,7 +298,10 @@ defmodule Notifications.Egress.UrlGuard do
     end
   end
 
-  # Returns the embedded IPv4 tuple for IPv4-in-IPv6 forms, else nil.
+  # Returns the embedded IPv4 tuple for IPv4-in-IPv6 forms, else nil. Kept as one
+  # flat, auditable table on purpose; splitting the address forms would fragment a
+  # security-critical classifier and invite a transcription error.
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defp embedded_v4(a, b, c, d, e, f, g, h) do
     cond do
       # ::ffff:0:0/96 IPv4-mapped
@@ -303,6 +336,10 @@ defmodule Notifications.Egress.UrlGuard do
 
   # --- IPv4 classifier -----------------------------------------------------
 
+  # One flat, auditable list of non-public v4 ranges on purpose; splitting it
+  # would fragment a security-critical classifier and invite a CIDR transcription
+  # error.
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defp blocked_v4?(a, b, c, d) do
     cond do
       a == 0 -> true

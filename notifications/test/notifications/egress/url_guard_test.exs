@@ -50,6 +50,41 @@ defmodule Notifications.Egress.UrlGuardTest do
       # Non-default port is carried in the Host header.
       assert target.host_header == "public.example.test:8443"
     end
+
+    test "trailing FQDN dot is stripped before resolve and TLS binding" do
+      assert {:ok, %Target{ip: {93, 184, 216, 34}} = target} =
+               UrlGuard.verify("https://public.example.test./hook")
+
+      # Host is normalized: resolution still succeeds and the dot is gone from
+      # the Host header and the TLS SNI / hostname-check binding, matching
+      # hackney's own normalization so the cert hostname check still passes.
+      assert target.host_header == "public.example.test"
+      assert target.ssl_options[:server_name_indication] == ~c"public.example.test"
+    end
+
+    test "https ssl_options bind SNI and hostname verification to the original host" do
+      assert {:ok, %Target{} = target} = UrlGuard.verify("https://public.example.test/hook")
+
+      host = ~c"public.example.test"
+      opts = target.ssl_options
+
+      # Fail-closed TLS: verify against the trusted CA bundle, and bind BOTH the
+      # SNI and the certificate hostname check to the ORIGINAL host (not the
+      # pinned IP), so a rebinding IP can never satisfy the presented cert.
+      assert opts[:verify] == :verify_peer
+      assert opts[:server_name_indication] == host
+      assert opts[:verify_fun] == {&:ssl_verify_hostname.verify_fun/3, [check_hostname: host]}
+      assert [match_fun: match_fun] = opts[:customize_hostname_check]
+      assert is_function(match_fun, 2)
+
+      assert opts |> Keyword.keys() |> Enum.sort() ==
+               Enum.sort([
+                 :verify,
+                 :server_name_indication,
+                 :customize_hostname_check,
+                 :verify_fun
+               ])
+    end
   end
 
   describe "verify/1 - blocked private / metadata / reserved destinations" do
@@ -120,6 +155,10 @@ defmodule Notifications.Egress.UrlGuardTest do
 
     test "IPv6 ULA fc00::/7 is blocked" do
       assert {:error, {:blocked_ip, _}} = UrlGuard.verify("http://[fd00::1]/")
+    end
+
+    test "IPv6 multicast ff00::/8 is blocked" do
+      assert {:error, {:blocked_ip, _}} = UrlGuard.verify("http://[ff02::1]/")
     end
 
     test "IPv4-mapped IPv6 ::ffff:127.0.0.1 is blocked" do
@@ -210,6 +249,14 @@ defmodule Notifications.Egress.UrlGuardTest do
       assert UrlGuard.blocked?({169, 254, 169, 254})
       refute UrlGuard.blocked?({8, 8, 8, 8})
       refute UrlGuard.blocked?({1, 1, 1, 1})
+    end
+
+    test "classifies representative v6 addresses" do
+      assert UrlGuard.blocked?({0, 0, 0, 0, 0, 0, 0, 1})
+      assert UrlGuard.blocked?({0xFE80, 0, 0, 0, 0, 0, 0, 1})
+      assert UrlGuard.blocked?({0xFD00, 0, 0, 0, 0, 0, 0, 1})
+      assert UrlGuard.blocked?({0xFF02, 0, 0, 0, 0, 0, 0, 1})
+      refute UrlGuard.blocked?({0x2606, 0x2800, 0x220, 0x1, 0x248, 0x1893, 0x25C8, 0x1946})
     end
   end
 end
