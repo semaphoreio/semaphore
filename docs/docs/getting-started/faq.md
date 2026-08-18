@@ -576,3 +576,7 @@ Enabling the `set -e` option in the Bash shell causes autocomplete to fail and e
 ### Why are my secrets empty?
 
 We have discontinued exposing secret content via the CLI, API, and web interface to ensure enhanced security measures. Retrieval of secret values is now exclusively available through the job mechanism.
+
+### Why am I getting the following error: no SEMAPHORE_CACHE_BACKEND environment variable set
+
+Due to security reasons, we do not allow cache access on forked PR's by default. If you want to change this behaviour, reach out to `support@semaphore.io` requesting access.
