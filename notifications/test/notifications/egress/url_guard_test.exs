@@ -1,31 +1,54 @@
 defmodule Notifications.Egress.UrlGuardTest do
   use ExUnit.Case, async: true
 
+  alias Notifications.Egress.Target
   alias Notifications.Egress.UrlGuard
 
   describe "verify/1 - allowed (public) destinations" do
-    test "public https webhook passes" do
-      assert UrlGuard.verify("https://public.example.test/hook") == :ok
+    test "public https webhook passes and pins the resolved public IP" do
+      assert {:ok, %Target{ip: {93, 184, 216, 34}} = target} =
+               UrlGuard.verify("https://public.example.test/hook")
+
+      # Dial the vetted IP; keep the original host for routing and TLS.
+      assert target.url == "https://93.184.216.34:443/hook"
+      assert target.host_header == "public.example.test"
+      assert target.ssl_options[:server_name_indication] == ~c"public.example.test"
+      assert target.ssl_options[:verify] == :verify_peer
     end
 
-    test "public http webhook passes" do
-      assert UrlGuard.verify("http://public.example.test/hook") == :ok
+    test "public http webhook passes (no ssl options)" do
+      assert {:ok, %Target{ip: {93, 184, 216, 34}} = target} =
+               UrlGuard.verify("http://public.example.test/hook")
+
+      assert target.url == "http://93.184.216.34:80/hook"
+      assert target.ssl_options == []
     end
 
     test "Slack incoming-webhook host passes" do
-      assert UrlGuard.verify("https://hooks.slack.com/services/T00/B00/xxxx") == :ok
+      assert {:ok, %Target{ip: {3, 5, 5, 5}}} =
+               UrlGuard.verify("https://hooks.slack.com/services/T00/B00/xxxx")
     end
 
     test "public IPv4 literal passes" do
-      assert UrlGuard.verify("https://93.184.216.34/hook") == :ok
+      assert {:ok, %Target{ip: {93, 184, 216, 34}}} =
+               UrlGuard.verify("https://93.184.216.34/hook")
     end
 
-    test "public IPv6 literal passes" do
-      assert UrlGuard.verify("https://[2606:2800:220:1:248:1893:25c8:1946]/hook") == :ok
+    test "public IPv6 literal passes and is bracketed in the pinned url" do
+      assert {:ok,
+              %Target{ip: {0x2606, 0x2800, 0x220, 0x1, 0x248, 0x1893, 0x25C8, 0x1946}} = target} =
+               UrlGuard.verify("https://[2606:2800:220:1:248:1893:25c8:1946]/hook")
+
+      assert target.url == "https://[2606:2800:220:1:248:1893:25c8:1946]:443/hook"
     end
 
-    test "url with a path, query and port still passes" do
-      assert UrlGuard.verify("https://public.example.test:8443/a/b?x=1&y=2") == :ok
+    test "url with a path, query and port still passes and preserves them" do
+      assert {:ok, %Target{} = target} =
+               UrlGuard.verify("https://public.example.test:8443/a/b?x=1&y=2")
+
+      assert target.url == "https://93.184.216.34:8443/a/b?x=1&y=2"
+      # Non-default port is carried in the Host header.
+      assert target.host_header == "public.example.test:8443"
     end
   end
 
@@ -60,7 +83,7 @@ defmodule Notifications.Egress.UrlGuardTest do
     end
 
     test "172.32.x (outside the /12) is public and allowed" do
-      assert UrlGuard.verify("http://172.32.5.5/") == :ok
+      assert {:ok, %Target{ip: {172, 32, 5, 5}}} = UrlGuard.verify("http://172.32.5.5/")
     end
 
     test "RFC1918 192.168.0.0/16 literal is blocked" do
@@ -110,6 +133,14 @@ defmodule Notifications.Egress.UrlGuardTest do
     test "6to4 wrapping a private v4 (2002:a00:1::) is blocked" do
       # 2002:0a00:0001:: embeds 10.0.0.1
       assert {:error, {:blocked_ip, _}} = UrlGuard.verify("http://[2002:a00:1::]/")
+    end
+
+    test "IPv4-compatible IPv6 ::127.0.0.1 (deprecated ::/96) is blocked" do
+      assert {:error, {:blocked_ip, _}} = UrlGuard.verify("http://[::127.0.0.1]/")
+    end
+
+    test "IPv4-compatible IPv6 ::169.254.169.254 metadata (deprecated ::/96) is blocked" do
+      assert {:error, {:blocked_ip, _}} = UrlGuard.verify("http://[::169.254.169.254]/")
     end
   end
 
@@ -161,6 +192,13 @@ defmodule Notifications.Egress.UrlGuardTest do
     test "non-string input is rejected" do
       assert {:error, :bad_url} = UrlGuard.verify(nil)
       assert {:error, :bad_url} = UrlGuard.verify(:not_a_url)
+    end
+
+    test "invalid UTF-8 fails closed as bad_url without raising" do
+      # Previously String.to_charlist/1 raised UnicodeConversionError here,
+      # which skipped the caller's blocked metric/log. It must now be a clean
+      # {:error, :bad_url} the caller can meter.
+      assert {:error, :bad_url} = UrlGuard.verify(<<"https://public.example.test/", 0xFF, 0xFE>>)
     end
   end
 

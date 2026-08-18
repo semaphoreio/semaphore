@@ -20,8 +20,8 @@ defmodule Notifications.Workers.Webhook do
     endpoint = settings.endpoint
 
     case Notifications.Egress.UrlGuard.verify(endpoint) do
-      :ok ->
-        do_publish(request_id, settings, data)
+      {:ok, target} ->
+        do_publish(request_id, settings, data, target)
 
       {:error, reason} ->
         Watchman.increment("notification.webhook.blocked")
@@ -34,8 +34,7 @@ defmodule Notifications.Workers.Webhook do
     end
   end
 
-  defp do_publish(request_id, settings, data) do
-    endpoint = settings.endpoint
+  defp do_publish(request_id, settings, data, target) do
     method = if(settings.action == "", do: "post", else: settings.action)
     recv_timeout = if(settings.timeout == 0, do: @default_recv_timeout, else: settings.timeout)
 
@@ -43,17 +42,20 @@ defmodule Notifications.Workers.Webhook do
 
     body = Webhook.Message.construct(data) |> Poison.encode!()
     signature = get_signature(body, data.organization.org_id, settings.secret)
-    headers = get_headers(webhook_id, signature)
+    headers = get_headers(webhook_id, signature) ++ [{"Host", target.host_header}]
 
-    options = [
-      timeout: @default_connect_timeout,
-      recv_timeout: recv_timeout,
-      follow_redirect: false
-    ]
+    options =
+      [
+        timeout: @default_connect_timeout,
+        recv_timeout: recv_timeout,
+        follow_redirect: false
+      ] ++ ssl_option(target)
 
     req = %{
       method: method,
-      endpoint: endpoint,
+      # Dial the vetted IP, not the hostname, so the address the guard vetted
+      # is the address hackney connects to (no connect-time re-resolution).
+      endpoint: target.url,
       body: body,
       headers: headers,
       options: options,
@@ -139,6 +141,9 @@ defmodule Notifications.Workers.Webhook do
 
     %{req | options: new_opts}
   end
+
+  defp ssl_option(%{ssl_options: []}), do: []
+  defp ssl_option(%{ssl_options: opts}), do: [ssl: opts]
 
   defp get_headers(webhook_id, signature) when is_binary(signature) and signature != "",
     do: base_headers(webhook_id) ++ [{"X-Semaphore-Signature-256", signature}]
