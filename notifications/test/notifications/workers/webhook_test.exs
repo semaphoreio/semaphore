@@ -30,7 +30,65 @@ defmodule Notifications.Workers.WebhookTest do
       request_id = "1"
       s = Notifications.Models.Rule.decode_webhook(settings)
 
-      assert Webhook.publish(request_id, s, data)
+      with_mock HTTPoison,
+        request: fn _m, _u, _b, _h, _o ->
+          {:ok, %HTTPoison.Response{status_code: 200, body: "ok"}}
+        end do
+        assert Webhook.publish(request_id, s, data)
+      end
+    end
+
+    test "blocks a private-resolving endpoint without issuing the request" do
+      settings = %{
+        endpoint: "https://private.internal.test/hook",
+        action: "post",
+        timeout: 200,
+        retries: 3
+      }
+
+      s = Notifications.Models.Rule.decode_webhook(settings)
+
+      with_mock HTTPoison,
+        request: fn _m, _u, _b, _h, _o ->
+          flunk("HTTPoison must not be called for a blocked host")
+        end do
+        assert Webhook.publish("blk-1", s, build_test_data()) == {:error, :ssrf_blocked}
+        assert_not_called(HTTPoison.request(:_, :_, :_, :_, :_))
+      end
+    end
+
+    test "blocks a cloud-metadata endpoint" do
+      settings = %{
+        endpoint: "http://169.254.169.254/latest/meta-data/",
+        action: "post",
+        timeout: 200,
+        retries: 1
+      }
+
+      s = Notifications.Models.Rule.decode_webhook(settings)
+
+      assert Webhook.publish("blk-2", s, build_test_data()) == {:error, :ssrf_blocked}
+    end
+
+    test "allows a public endpoint through to the request" do
+      settings = %{
+        endpoint: "https://public.example.test/hook",
+        action: "post",
+        timeout: 200,
+        retries: 1
+      }
+
+      s = Notifications.Models.Rule.decode_webhook(settings)
+
+      with_mock HTTPoison,
+        request: fn _m, _u, _b, _h, _o ->
+          {:ok, %HTTPoison.Response{status_code: 200, body: "ok"}}
+        end do
+        assert {:ok, %HTTPoison.Response{status_code: 200}} =
+                 Webhook.publish("ok-1", s, build_test_data())
+
+        assert_called(HTTPoison.request(:_, :_, :_, :_, :_))
+      end
     end
 
     test "skips when endpoint is nil" do
@@ -45,6 +103,64 @@ defmodule Notifications.Workers.WebhookTest do
       s = Notifications.Models.Rule.decode_webhook(settings)
 
       assert Webhook.publish("1", s, %{}) == :skipped
+    end
+  end
+
+  describe "DNS-rebinding / connection pinning" do
+    setup do
+      {:ok, _} = Support.RebindingResolver.start()
+      Support.RebindingResolver.reset()
+
+      previous = Application.get_env(:notifications, :egress_resolver)
+      Application.put_env(:notifications, :egress_resolver, {Support.RebindingResolver, :resolve})
+
+      on_exit(fn -> Application.put_env(:notifications, :egress_resolver, previous) end)
+
+      :ok
+    end
+
+    test "pins the vetted public IP so a rebind to a private IP is never dialed" do
+      host = "rebind.attacker.test"
+
+      settings = %{
+        endpoint: "https://#{host}/hook",
+        action: "post",
+        timeout: 200,
+        secret: "",
+        retries: 0
+      }
+
+      s = Notifications.Models.Rule.decode_webhook(settings)
+
+      {:ok, agent} = Agent.start_link(fn -> [] end)
+
+      with_mock HTTPoison,
+        request: fn _m, url, _b, headers, _o ->
+          Agent.update(agent, fn calls -> calls ++ [{url, headers}] end)
+          {:ok, %HTTPoison.Response{status_code: 200, body: "ok"}}
+        end do
+        assert {:ok, %HTTPoison.Response{status_code: 200}} =
+                 Webhook.publish("rebind-1", s, build_test_data())
+      end
+
+      [{dialed_url, headers}] = Agent.get(agent, & &1)
+      Agent.stop(agent)
+
+      # The guard resolved once and pinned the first (public) answer; the
+      # request is dialed against that IP literal, never the hostname.
+      assert dialed_url == "https://93.184.216.34:443/hook"
+      # The original host is preserved for routing and TLS verification.
+      assert List.keyfind(headers, "Host", 0) == {"Host", host}
+
+      # Exactly one resolution happened inside publish...
+      assert Support.RebindingResolver.call_count(host) == 1
+
+      # ...and had the client re-resolved at connect time (what hackney would
+      # do if handed the hostname), it would now receive the attacker's
+      # PRIVATE IP, which the guard rejects. That is the rebind the pinning
+      # prevents from ever being dialed.
+      assert {:error, {:blocked_ip, {10, 0, 0, 5}}} =
+               Notifications.Egress.UrlGuard.verify("https://#{host}/hook")
     end
   end
 

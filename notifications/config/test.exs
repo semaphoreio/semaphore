@@ -17,3 +17,7 @@ config :notifications, workflow_endpoint: "localhost:50052" # sobelow_skip ["Con
 config :notifications, organization_endpoint: "localhost:50052" # sobelow_skip ["Config.Secrets"]
 
 config :notifications, Notifications.Repo, pool: Ecto.Adapters.SQL.Sandbox
+
+# Deterministic, offline DNS resolver for the egress guard so tests never touch
+# the network. See Support.TestEgressResolver for the fixed host -> IP mapping.
+config :notifications, :egress_resolver, {Support.TestEgressResolver, :resolve}
