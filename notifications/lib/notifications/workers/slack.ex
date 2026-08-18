@@ -1,32 +1,18 @@
 defmodule Notifications.Workers.Slack do
   require Logger
 
-  def publish(request_id, nil, _, _) do
-    Watchman.increment("notification.slack.skipped")
+  alias Notifications.Egress.UrlGuard
 
-    Logger.info("#{request_id} Slack target has empty endpoint - skipping")
+  def publish(request_id, nil, _, _), do: skip(request_id)
+  def publish(request_id, "", _, _), do: skip(request_id)
 
-    :skipped
-  end
-
-  def publish(request_id, "", _, _) do
-    Watchman.increment("notification.slack.skipped")
-
-    Logger.info("#{request_id} Slack target has empty endpoint - skipping")
-
-    :skipped
-  end
-
-  def publish(request_id, url, [], data), do: publish(request_id, url, nil, data)
-
-  def publish(request_id, url, channels, data) when is_list(channels) do
-    Enum.each(channels, fn channel -> publish(request_id, url, channel, data) end)
-  end
-
-  def publish(request_id, url, channel, data) do
-    case Notifications.Egress.UrlGuard.verify(url) do
-      :ok ->
-        do_publish(request_id, url, channel, data)
+  def publish(request_id, url, channels, data) do
+    # Verify (resolve + classify + pin) exactly once per URL, before any
+    # channel fan-out, so the guard runs a single DNS resolution and every
+    # channel dials the same vetted IP.
+    case UrlGuard.verify(url) do
+      {:ok, target} ->
+        dispatch(request_id, url, target, channels, data)
 
       {:error, reason} ->
         Watchman.increment("notification.slack.blocked")
@@ -39,13 +25,34 @@ defmodule Notifications.Workers.Slack do
     end
   end
 
-  defp do_publish(request_id, url, channel, data) do
+  defp skip(request_id) do
+    Watchman.increment("notification.slack.skipped")
+
+    Logger.info("#{request_id} Slack target has empty endpoint - skipping")
+
+    :skipped
+  end
+
+  defp dispatch(request_id, url, target, channels, data) when is_list(channels) do
+    channels
+    |> case do
+      [] -> [nil]
+      list -> list
+    end
+    |> Enum.each(fn channel -> do_publish(request_id, url, target, channel, data) end)
+  end
+
+  defp dispatch(request_id, url, target, channel, data) do
+    do_publish(request_id, url, target, channel, data)
+  end
+
+  defp do_publish(request_id, url, target, channel, data) do
     body = Notifications.Workers.Slack.Message.construct(channel, data) |> Poison.encode!()
-    headers = [{"Content-type", "application/json"}]
-    options = [follow_redirect: false]
+    headers = [{"Content-type", "application/json"}, {"Host", target.host_header}]
+    options = [follow_redirect: false] ++ ssl_option(target)
 
     Watchman.benchmark("notification.slack.duration", fn ->
-      case HTTPoison.request(:post, url, body, headers, options) do
+      case HTTPoison.request(:post, target.url, body, headers, options) do
         {:ok, response} ->
           Logger.info(fn ->
             "#{request_id} Success with #{url} #{body}"
@@ -66,6 +73,9 @@ defmodule Notifications.Workers.Slack do
       end
     end)
   end
+
+  defp ssl_option(%{ssl_options: []}), do: []
+  defp ssl_option(%{ssl_options: opts}), do: [ssl: opts]
 
   defp safe_host(url) when is_binary(url) do
     case URI.parse(url) do

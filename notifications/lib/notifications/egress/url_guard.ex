@@ -4,29 +4,47 @@ defmodule Notifications.Egress.UrlGuard do
   (webhooks and Slack). Called synchronously before every HTTPoison
   request against a customer-configured URL.
 
-  Two fail-closed stages:
+  Three fail-closed stages:
 
     1. Syntactic validation: require an http/https scheme and a non-empty
-       host, and reject any literal control byte (CR/LF/NUL) in the URL or
-       in the percent-decoded host. This blocks request-line and header
-       injection at the app layer regardless of the HTTP client version.
+       host, reject non-UTF-8 input, and reject any literal control byte
+       (CR/LF/NUL) in the URL or in the percent-decoded host. This blocks
+       request-line and header injection at the app layer regardless of the
+       HTTP client version.
 
     2. DNS-resolve + IP egress filter: resolve the host (percent-decoded and
        normalized here, so the guard sees the true target) across both IPv4
        and IPv6, then classify every resolved address. If ANY resolved IP is
        loopback, link-local, private (RFC1918/ULA/CGNAT), reserved, or a
        cloud metadata address, the whole request is rejected. Resolution
-       failure fails closed. Every genuinely public destination is allowed,
-       so legitimate customer endpoints keep working.
+       failure or timeout fails closed.
 
-  This is defense-in-depth, not a substitute for a patched HTTP client.
+    3. Connection pinning: from the resolved-and-vetted set the guard picks a
+       single public IP and returns it in a `Notifications.Egress.Target`.
+       Callers connect to THAT IP, not the hostname, so the address that was
+       vetted is the address that is dialed. For https the returned
+       `ssl_options` keep TLS SNI and certificate hostname verification bound
+       to the ORIGINAL hostname (verify_peer against the trusted CA bundle),
+       so legitimate customer endpoints keep working while the pinned IP
+       closes the DNS-rebinding / TOCTOU window: the attacker cannot answer a
+       public IP to the guard and an internal one to the HTTP client, because
+       the client never re-resolves.
+
+  This is defense-in-depth, not a substitute for a network-layer egress
+  policy or a patched HTTP client.
   """
 
   import Bitwise
 
   require Logger
 
+  alias Notifications.Egress.Target
+
   @schemes ~w(http https)
+
+  # Bound each DNS lookup; a hung resolver must not stall the worker. A lookup
+  # that exceeds this is treated as unresolvable (fail-closed).
+  @resolve_timeout_ms 2_000
 
   @type reason ::
           :bad_url
@@ -37,19 +55,20 @@ defmodule Notifications.Egress.UrlGuard do
           | {:blocked_ip, :inet.ip_address()}
 
   @doc """
-  Verify that `url` is safe to request. Returns `:ok` for a syntactically
-  valid http(s) URL whose host resolves exclusively to public IP addresses,
-  and `{:error, reason}` otherwise.
+  Verify that `url` is safe to request. Returns `{:ok, %Target{}}` for a
+  syntactically valid http(s) URL whose host resolves exclusively to public
+  IP addresses (the target carries the pinned IP and connection options), and
+  `{:error, reason}` otherwise.
   """
-  @spec verify(term()) :: :ok | {:error, reason()}
+  @spec verify(term()) :: {:ok, Target.t()} | {:error, reason()}
   def verify(url) when is_binary(url) do
     with :ok <- no_control_chars(url),
-         %URI{scheme: scheme, host: host} <- URI.parse(url),
+         %URI{scheme: scheme, host: host} = uri <- URI.parse(url),
          :ok <- validate_scheme(scheme),
          {:ok, host} <- validate_host(host),
          {:ok, ips} <- resolve(host),
          :ok <- check_ips(ips) do
-      :ok
+      {:ok, build_target(uri, host, pick_ip(ips))}
     end
   end
 
@@ -57,14 +76,20 @@ defmodule Notifications.Egress.UrlGuard do
 
   # --- Stage 1: syntactic validation ---------------------------------------
 
+  # Operate on raw bytes and gate on UTF-8 validity so malformed input is a
+  # clean {:error, ...} the caller can meter and log, never a raised
+  # UnicodeConversionError that skips the blocked metric.
   defp no_control_chars(string) do
-    if has_control_char?(string), do: {:error, :control_char}, else: :ok
+    cond do
+      not String.valid?(string) -> {:error, :bad_url}
+      has_control_byte?(string) -> {:error, :control_char}
+      true -> :ok
+    end
   end
 
-  defp has_control_char?(string) do
-    String.to_charlist(string)
-    |> Enum.any?(fn c -> c <= 0x1F or c == 0x7F end)
-  end
+  defp has_control_byte?(<<byte, _rest::binary>>) when byte <= 0x1F or byte == 0x7F, do: true
+  defp has_control_byte?(<<_byte, rest::binary>>), do: has_control_byte?(rest)
+  defp has_control_byte?(<<>>), do: false
 
   defp validate_scheme(scheme) when scheme in @schemes, do: :ok
   defp validate_scheme(_), do: {:error, :bad_scheme}
@@ -74,7 +99,8 @@ defmodule Notifications.Egress.UrlGuard do
 
     cond do
       decoded == "" -> {:error, :missing_host}
-      has_control_char?(decoded) -> {:error, :control_char}
+      not String.valid?(decoded) -> {:error, :bad_url}
+      has_control_byte?(decoded) -> {:error, :control_char}
       true -> {:ok, decoded}
     end
   end
@@ -97,7 +123,9 @@ defmodule Notifications.Egress.UrlGuard do
 
   @doc false
   # Default resolver: IP literals are parsed directly (no DNS); host names are
-  # resolved across both address families. Returns `{:ok, [ip]}` or `{:error, reason}`.
+  # resolved across both address families under a bounded timeout. A lookup
+  # timeout fails closed (`{:error, :timeout}` -> `:unresolvable`). Returns
+  # `{:ok, [ip]}` or `{:error, reason}`.
   def default_resolve(host) do
     charlist = String.to_charlist(host)
 
@@ -106,20 +134,26 @@ defmodule Notifications.Egress.UrlGuard do
         {:ok, [ip]}
 
       {:error, _} ->
-        v4 = getaddrs(charlist, :inet)
-        v6 = getaddrs(charlist, :inet6)
-
-        case v4 ++ v6 do
-          [] -> {:error, :nxdomain}
-          ips -> {:ok, ips}
+        with {:ok, v4} <- getaddrs(charlist, :inet),
+             {:ok, v6} <- getaddrs(charlist, :inet6) do
+          case v4 ++ v6 do
+            [] -> {:error, :nxdomain}
+            ips -> {:ok, ips}
+          end
         end
     end
   end
 
   defp getaddrs(charlist, family) do
-    case :inet.getaddrs(charlist, family) do
-      {:ok, addrs} -> addrs
-      {:error, _} -> []
+    task = Task.async(fn -> :inet.getaddrs(charlist, family) end)
+
+    case Task.yield(task, @resolve_timeout_ms) || Task.shutdown(task, :brutal_kill) do
+      {:ok, {:ok, addrs}} -> {:ok, addrs}
+      # No records for this family (e.g. nxdomain / no AAAA) is not fatal on
+      # its own; the other family may still answer.
+      {:ok, {:error, _}} -> {:ok, []}
+      # Timed out or the lookup process died: fail closed.
+      _ -> {:error, :timeout}
     end
   end
 
@@ -129,6 +163,77 @@ defmodule Notifications.Egress.UrlGuard do
       ip -> {:error, {:blocked_ip, ip}}
     end
   end
+
+  # All ips are public here (check_ips passed); pin the first as the dial
+  # target. resolve/1 guarantees the list is non-empty.
+  defp pick_ip([ip | _]), do: ip
+
+  # --- Stage 3: connection pinning -----------------------------------------
+
+  defp build_target(%URI{scheme: scheme, port: port} = uri, host, ip) do
+    %Target{
+      ip: ip,
+      url: build_request_url(scheme, ip_literal(ip), port, uri.path, uri.query),
+      host_header: build_host_header(scheme, host, port),
+      ssl_options: ssl_options(scheme, host)
+    }
+  end
+
+  defp build_request_url(scheme, ip_host, port, path, query) do
+    port_part = if port, do: ":#{port}", else: ""
+    path_part = path || "/"
+    query_part = if query, do: "?#{query}", else: ""
+    "#{scheme}://#{ip_host}#{port_part}#{path_part}#{query_part}"
+  end
+
+  # Preserve the original host (and non-default port) for the Host header so
+  # the destination still routes/vhosts as the customer configured.
+  defp build_host_header(scheme, host, port) do
+    header_host = bracket_if_v6(host)
+
+    if port in [nil, default_port(scheme)] do
+      header_host
+    else
+      "#{header_host}:#{port}"
+    end
+  end
+
+  # For https, pin SNI and certificate hostname verification to the ORIGINAL
+  # hostname while the socket connects to the vetted IP. verify_peer and the
+  # trusted CA bundle come from hackney's secure defaults (merged in); we only
+  # override SNI and the hostname-check binding. The verify_fun (hackney's own
+  # hostname verifier) is rebound to the original host because it, not
+  # customize_hostname_check, performs the actual match when a custom
+  # verify_fun is installed. customize_hostname_check is kept for parity with
+  # the default secure path.
+  defp ssl_options("https", host) do
+    hostname = String.to_charlist(host)
+
+    [
+      verify: :verify_peer,
+      server_name_indication: hostname,
+      customize_hostname_check: [match_fun: :public_key.pkix_verify_hostname_match_fun(:https)],
+      verify_fun: {&:ssl_verify_hostname.verify_fun/3, [check_hostname: hostname]}
+    ]
+  end
+
+  defp ssl_options(_scheme, _host), do: []
+
+  defp ip_literal({_, _, _, _} = ip), do: ip |> :inet.ntoa() |> to_string()
+
+  defp ip_literal({_, _, _, _, _, _, _, _} = ip),
+    do: "[" <> (ip |> :inet.ntoa() |> to_string()) <> "]"
+
+  defp bracket_if_v6(host) do
+    case :inet.parse_address(String.to_charlist(host)) do
+      {:ok, {_, _, _, _, _, _, _, _}} -> "[" <> host <> "]"
+      _ -> host
+    end
+  end
+
+  defp default_port("https"), do: 443
+  defp default_port("http"), do: 80
+  defp default_port(_), do: nil
 
   @doc """
   True if `ip` is a non-public destination (loopback, link-local, private,
@@ -168,6 +273,11 @@ defmodule Notifications.Egress.UrlGuard do
     cond do
       # ::ffff:0:0/96 IPv4-mapped
       a == 0 and b == 0 and c == 0 and d == 0 and e == 0 and f == 0xFFFF ->
+        words_to_v4(g, h)
+
+      # ::/96 IPv4-compatible (deprecated), excluding :: and ::1
+      a == 0 and b == 0 and c == 0 and d == 0 and e == 0 and f == 0 and
+          not (g == 0 and (h == 0 or h == 1)) ->
         words_to_v4(g, h)
 
       # 64:ff9b::/96 NAT64
