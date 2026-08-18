@@ -24,6 +24,23 @@ defmodule RepositoryHub.BitbucketClientTest do
       end
     end
 
+    test "create_build_status maps a 5xx to unavailable" do
+      with_mock(HTTPoison, [],
+        post: fn _url, _body, _headers, _opts ->
+          {:ok, %HTTPoison.Response{status_code: 502, body: "", headers: []}}
+        end
+      ) do
+        params = BitbucketClientFactory.build_status_params()
+
+        unavailable = GRPC.Status.unavailable()
+
+        assert {:error, %{status: ^unavailable, message: message}} =
+                 BitbucketClient.create_build_status(params, token: "foobar")
+
+        assert message =~ "Bitbucket is unavailable"
+      end
+    end
+
     test "list_repository_collaborators" do
       with_mock(HTTPoison, [],
         get: fn _url, _body, _headers ->

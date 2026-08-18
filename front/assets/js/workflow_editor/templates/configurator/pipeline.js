@@ -110,7 +110,7 @@ export class PipelineConfigTempate {
     if(unknown) status = "Unrecognized"
 
     let options = {
-      title: "Rebuild granularity",
+      title: "Rerun granularity",
       status: status,
       collapsable: true
     }
@@ -119,7 +119,7 @@ export class PipelineConfigTempate {
       `<option value="${escapeHtml(value)}" selected>${escapeHtml(value)} — not a valid value</option>` : ""
 
     return Section.section(options, `
-      <p class="f5 gray mb2">What <b>Rebuild Pipeline</b> re-runs after a failure</p>
+      <p class="f5 gray mb2">What <b>Rerun Failed Jobs</b> re-runs after a failure</p>
 
       <select data-action=selectPipelinePartialRerun class="form-control form-control-small w-100">
         ${unknownOption}
