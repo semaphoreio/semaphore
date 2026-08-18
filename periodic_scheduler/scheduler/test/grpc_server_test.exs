@@ -706,6 +706,51 @@ defmodule Scheduler.GrpcServer.Test do
     assert String.ends_with?(string_at, periodic.at)
   end
 
+  test "gRPC persist() round-trips the commit status policy", ctx do
+    request =
+      default_params(ctx)
+      |> Map.put(:commit_status, :NEVER)
+      |> Proto.deep_new!(PersistRequest)
+
+    assert {periodic, ""} = persist_grpc(request, :OK)
+    assert periodic.commit_status == :NEVER
+
+    assert {:ok, stored} = PeriodicsQueries.get_by_id(periodic.id)
+    assert stored.commit_status == :never
+
+    {:ok, channel} = GRPC.Stub.connect("localhost:50050")
+
+    assert {:ok, describe_response} =
+             PeriodicService.Stub.describe(
+               channel,
+               %InternalApi.PeriodicScheduler.DescribeRequest{
+                 id: periodic.id
+               }
+             )
+
+    assert describe_response.periodic.commit_status == :NEVER
+
+    assert {:ok, list_response} =
+             PeriodicService.Stub.list(
+               channel,
+               %InternalApi.PeriodicScheduler.ListRequest{
+                 project_id: ctx.ids.pr_id,
+                 page: 1,
+                 page_size: 10
+               }
+             )
+
+    assert [listed] = list_response.periodics
+    assert listed.commit_status == :NEVER
+  end
+
+  test "gRPC persist() defaults the commit status policy to FOLLOW_PROJECT", ctx do
+    request = default_params(ctx) |> Proto.deep_new!(PersistRequest)
+
+    assert {periodic, ""} = persist_grpc(request, :OK)
+    assert periodic.commit_status == :FOLLOW_PROJECT
+  end
+
   test "gRPC persist() with recurring=false creates new periodic and does not start quantum job for it",
        ctx do
     request =
@@ -1402,6 +1447,7 @@ defmodule Scheduler.GrpcServer.Test do
       :updated_at,
       :organization_id,
       :pause_toggled_at,
+      :commit_status,
       :__meta__
     ]
 
@@ -1412,6 +1458,7 @@ defmodule Scheduler.GrpcServer.Test do
              :updated_at,
              :organization_id,
              :pause_toggled_at,
+             :commit_status,
              :__struct__,
              :__unknown_fields__
            ]) ==
@@ -1468,6 +1515,7 @@ defmodule Scheduler.GrpcServer.Test do
       :inserted_at,
       :updated_at,
       :pause_toggled_at,
+      :commit_status,
       :__meta__
     ]
 
@@ -1477,6 +1525,7 @@ defmodule Scheduler.GrpcServer.Test do
              :description,
              :updated_at,
              :pause_toggled_at,
+             :commit_status,
              :__struct__,
              :__unknown_fields__
            ]) ==
@@ -1551,6 +1600,7 @@ defmodule Scheduler.GrpcServer.Test do
       :updated_at,
       :organization_id,
       :pause_toggled_at,
+      :commit_status,
       :__meta__
     ]
 
@@ -1561,6 +1611,7 @@ defmodule Scheduler.GrpcServer.Test do
              :updated_at,
              :organization_id,
              :pause_toggled_at,
+             :commit_status,
              :__struct__,
              :__unknown_fields__
            ]) ==
@@ -1625,6 +1676,7 @@ defmodule Scheduler.GrpcServer.Test do
       :updated_at,
       :organization_id,
       :pause_toggled_at,
+      :commit_status,
       :__meta__
     ]
 
@@ -1635,6 +1687,7 @@ defmodule Scheduler.GrpcServer.Test do
              :updated_at,
              :pause_toggled_at,
              :organization_id,
+             :commit_status,
              :__struct__,
              :__unknown_fields__
            ]) ==

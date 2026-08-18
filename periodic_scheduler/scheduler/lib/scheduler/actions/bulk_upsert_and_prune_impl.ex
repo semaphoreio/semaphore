@@ -213,7 +213,8 @@ defmodule Scheduler.Actions.BulkUpsertAndPruneImpl do
       reference: Map.get(definition, :reference, ""),
       pipeline_file: Map.get(definition, :pipeline_file, ""),
       at: Map.get(definition, :at, ""),
-      parameters: convert_parameters(Map.get(definition, :parameters, []))
+      parameters: convert_parameters(Map.get(definition, :parameters, [])),
+      commit_status: convert_commit_status(Map.get(definition, :commit_status))
     }
     |> inject_paused(Map.get(definition, :state, :UNCHANGED), params.requester_id)
   end
@@ -227,10 +228,15 @@ defmodule Scheduler.Actions.BulkUpsertAndPruneImpl do
       reference: Map.get(definition, :reference, ""),
       pipeline_file: Map.get(definition, :pipeline_file, ""),
       at: Map.get(definition, :at, ""),
-      parameters: convert_parameters(Map.get(definition, :parameters, []))
+      parameters: convert_parameters(Map.get(definition, :parameters, [])),
+      commit_status: convert_commit_status(Map.get(definition, :commit_status))
     }
     |> inject_paused(Map.get(definition, :state, :UNCHANGED), params.requester_id)
   end
+
+  defp convert_commit_status(:ALWAYS), do: :always
+  defp convert_commit_status(:NEVER), do: :never
+  defp convert_commit_status(_), do: :follow_project
 
   defp inject_paused(params, :UNCHANGED, _requester_id), do: params
 

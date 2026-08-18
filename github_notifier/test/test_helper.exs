@@ -14,6 +14,8 @@ GrpcMock.defmock(RepositoryIntegratorMock,
   for: InternalApi.RepositoryIntegrator.RepositoryIntegratorService.Service
 )
 
+GrpcMock.defmock(SchedulerMock, for: InternalApi.PeriodicScheduler.PeriodicService.Service)
+
 services = [
   PipelineMock,
   UserMock,
@@ -23,7 +25,8 @@ services = [
   RepositoryIntegratorMock,
   RepositoryHubMock,
   VelocityHubMock,
-  FeatureMock
+  FeatureMock,
+  SchedulerMock
 ]
 
 {:ok, _, _} = GRPC.Server.start(services, 50_052)
