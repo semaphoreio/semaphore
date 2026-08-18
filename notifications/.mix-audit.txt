@@ -27,18 +27,31 @@ GHSA-hv23-4qp7-8c8r
 # no Plug.Parsers/multipart endpoints — gRPC-only over HTTP/2.
 GHSA-jfc2-q6qh-g5x8
 
-# --- hackney advisories NOT allowlisted (deliberately left failing, flagged for follow-up) ---
+# --- hackney (bumped to 1.25.0) ---
 # notifications makes outbound HTTP to customer-configured webhook/Slack URLs
-# (lib/notifications/workers/webhook.ex, lib/notifications/workers/slack.ex) via HTTPoison/hackney
-# with no destination allowlist — the endpoint is whatever the org configured. Every advisory below is
-# a URL/TLS-handling bug whose exploitability depends on the destination being attacker-influenced,
-# and hackney here does serve those customer-configured requests (not solely the fixed Sentry DSN), so
-# the "target host is not user-controlled" rationale used elsewhere in the fleet does not hold for this
-# service. Left failing pending a real fix (hackney 4.0.1, blocked on an httpoison major; or 1.24.0/
-# 1.21.0 bumps for the last two) rather than allowlisted:
-#   GHSA-gp9c-pm5m-5cxr — ssl:connect/2 post-handshake upgrade has no timeout
-#   GHSA-j9wq-vxxc-94wf — CR/LF injection in query parameter
-#   GHSA-mp55-p8c9-rfw2 — CRLF/header injection via unvalidated domain/path options
-#   GHSA-pj7v-xfvx-wmjq — SSRF allowlist bypass via percent-encoded host
-#   GHSA-vq52-99r9-h5pw — SSRF in hackney, fixed in 1.21.0
-#   GHSA-9fm9-hp7p-53mf — connection-pool leak, fixed in 1.24.0
+# (lib/notifications/workers/webhook.ex, lib/notifications/workers/slack.ex) via HTTPoison/hackney;
+# the destination is whatever the org configured. The 1.25.0 bump already fixes two former findings,
+# which therefore no longer fire and are NOT suppressed here: GHSA-vq52-99r9-h5pw (SSRF, fixed in
+# 1.21.0) and GHSA-9fm9-hp7p-53mf (connection-pool leak, fixed in 1.24.0). The four advisories below
+# have no fix at any hackney version this service can adopt (the fix lands in 4.0.1, which requires an
+# httpoison major bump), so each is suppressed with the specific application-layer mitigation that
+# makes it non-exploitable here. Every webhook/Slack request now passes through
+# Notifications.Egress.UrlGuard (lib/notifications/egress/url_guard.ex) before hackney sees the URL.
+
+# hackney: SOCKS5 post-handshake TLS-upgrade has no timeout (DoS). Not reachable: notifications
+# configures no SOCKS5 proxy, so that hackney connect path is never exercised.
+GHSA-gp9c-pm5m-5cxr
+
+# hackney: CR/LF injection in the query via hackney_url:make_url/3. Mitigated: UrlGuard rejects any URL
+# containing control bytes (CR/LF/NUL) before the request is built.
+GHSA-j9wq-vxxc-94wf
+
+# hackney: CRLF/header injection via unvalidated domain and path options. Mitigated: the same UrlGuard
+# control-byte reject, plus scheme allowlist and URI parse, run before egress.
+GHSA-mp55-p8c9-rfw2
+
+# hackney: SSRF allowlist bypass via percent-encoded host (CVE-2026-47076). Mitigated: UrlGuard
+# percent-decodes and normalizes the host, DNS-resolves it, classifies every resolved IP, and pins the
+# vetted public IP into the connection (dials the IP literal while preserving Host and SNI), so the
+# hackney normalize/2 post-validation decode and DNS rebinding cannot reach an internal target.
+GHSA-pj7v-xfvx-wmjq
