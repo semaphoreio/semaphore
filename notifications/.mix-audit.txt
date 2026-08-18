@@ -27,19 +27,18 @@ GHSA-hv23-4qp7-8c8r
 # no Plug.Parsers/multipart endpoints — gRPC-only over HTTP/2.
 GHSA-jfc2-q6qh-g5x8
 
-# --- hackney: bumped 1.18.1 -> 1.25.0, clearing GHSA-9fm9-hp7p-53mf (connection-pool leak,
-# fixed in 1.24.0) and GHSA-vq52-99r9-h5pw (SSRF, fixed in 1.21.0). Four advisories remain:
-# requires hackney 4.x major; httpoison's multipart handler calls :hackney_headers.parse/2
-# which hackney 4.x removed, and no httpoison release supports hackney 4.x - blocked on an
-# httpoison major, deferred to renderedtext/tasks#10462.
-#
-# CAVEAT (differs from the rest of the fleet): notifications makes outbound HTTP to
-# customer-configured webhook/Slack URLs (lib/notifications/workers/webhook.ex,
-# lib/notifications/workers/slack.ex) with no destination allowlist, so the "target host is
-# not user-controlled" reasoning used in other services' .mix-audit.txt does not apply here.
-# These four are accepted as a known, tracked risk pending the httpoison major, not treated
-# as unreachable.
-GHSA-gp9c-pm5m-5cxr
-GHSA-j9wq-vxxc-94wf
-GHSA-mp55-p8c9-rfw2
-GHSA-pj7v-xfvx-wmjq
+# --- hackney advisories NOT allowlisted (deliberately left failing, flagged for follow-up) ---
+# notifications makes outbound HTTP to customer-configured webhook/Slack URLs
+# (lib/notifications/workers/webhook.ex, lib/notifications/workers/slack.ex) via HTTPoison/hackney
+# with no destination allowlist — the endpoint is whatever the org configured. Every advisory below is
+# a URL/TLS-handling bug whose exploitability depends on the destination being attacker-influenced,
+# and hackney here does serve those customer-configured requests (not solely the fixed Sentry DSN), so
+# the "target host is not user-controlled" rationale used elsewhere in the fleet does not hold for this
+# service. Left failing pending a real fix (hackney 4.0.1, blocked on an httpoison major; or 1.24.0/
+# 1.21.0 bumps for the last two) rather than allowlisted:
+#   GHSA-gp9c-pm5m-5cxr — ssl:connect/2 post-handshake upgrade has no timeout
+#   GHSA-j9wq-vxxc-94wf — CR/LF injection in query parameter
+#   GHSA-mp55-p8c9-rfw2 — CRLF/header injection via unvalidated domain/path options
+#   GHSA-pj7v-xfvx-wmjq — SSRF allowlist bypass via percent-encoded host
+#   GHSA-vq52-99r9-h5pw — SSRF in hackney, fixed in 1.21.0
+#   GHSA-9fm9-hp7p-53mf — connection-pool leak, fixed in 1.24.0
