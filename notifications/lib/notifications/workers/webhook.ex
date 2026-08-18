@@ -18,6 +18,24 @@ defmodule Notifications.Workers.Webhook do
 
   def publish(request_id, settings, data) do
     endpoint = settings.endpoint
+
+    case Notifications.Egress.UrlGuard.verify(endpoint) do
+      :ok ->
+        do_publish(request_id, settings, data)
+
+      {:error, reason} ->
+        Watchman.increment("notification.webhook.blocked")
+
+        Logger.error(fn ->
+          "#{request_id} Webhook endpoint blocked by egress guard (#{inspect(reason)}) host=#{safe_host(endpoint)}"
+        end)
+
+        {:error, :ssrf_blocked}
+    end
+  end
+
+  defp do_publish(request_id, settings, data) do
+    endpoint = settings.endpoint
     method = if(settings.action == "", do: "post", else: settings.action)
     recv_timeout = if(settings.timeout == 0, do: @default_recv_timeout, else: settings.timeout)
 
@@ -134,6 +152,15 @@ defmodule Notifications.Workers.Webhook do
       {"X-Semaphore-Webhook-Id", webhook_id}
     ]
   end
+
+  defp safe_host(url) when is_binary(url) do
+    case URI.parse(url) do
+      %URI{host: host} when is_binary(host) and host != "" -> host
+      _ -> "invalid"
+    end
+  end
+
+  defp safe_host(_), do: "invalid"
 
   defp get_signature(body, org_id, secret_name) do
     case Webhook.Secret.get(org_id, secret_name) do
