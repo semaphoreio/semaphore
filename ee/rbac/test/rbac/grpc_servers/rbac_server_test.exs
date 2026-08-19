@@ -323,6 +323,101 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
       assert err.status == GRPC.Status.permission_denied()
     end
 
+    test "organization Owner role is assigned when requester holds insider.owners.manage globally",
+         state do
+      replace_requester_permissions("organization.people.manage,insider.owners.manage")
+
+      {:ok, owner_role} = Rbac.Repo.RbacRole.get_role_by_name("Owner", "org_scope", @org_id)
+      req = gen_assign_role_req(@user_id, owner_role.id, @org_id)
+
+      {:ok, _} = state.grpc_channel |> Stub.assign_role(req)
+    end
+
+    test "demoting a current Owner is allowed when requester holds insider.owners.manage globally",
+         state do
+      Support.Rbac.assign_org_role_by_name(@org_id, @user_id, "Owner")
+
+      # organization.view is what the Member role grants, and the held-permissions check
+      # (which still runs for non-Owner roles) requires the requester to hold it.
+      replace_requester_permissions(
+        "organization.people.manage,organization.view,insider.owners.manage"
+      )
+
+      {:ok, member_role} = Rbac.Repo.RbacRole.get_role_by_name("Member", "org_scope", @org_id)
+      req = gen_assign_role_req(@user_id, member_role.id, @org_id)
+
+      {:ok, _} = state.grpc_channel |> Stub.assign_role(req)
+    end
+
+    test "organization Owner role is rejected when global binding lacks insider.owners.manage",
+         state do
+      replace_requester_permissions("organization.people.manage,insider.global_roles.manage")
+
+      {:ok, owner_role} = Rbac.Repo.RbacRole.get_role_by_name("Owner", "org_scope", @org_id)
+      req = gen_assign_role_req(@user_id, owner_role.id, @org_id)
+
+      {:error, err} = state.grpc_channel |> Stub.assign_role(req)
+      assert err.status == GRPC.Status.permission_denied()
+    end
+
+    test "organization Owner role is assigned when a global insider role grants insider.owners.manage",
+         state do
+      # The requester's permissions are computed from a real global role binding instead of
+      # being written to the cache by hand, which is what proves insider.owners.manage ends
+      # up on the global (user-only) cache key.
+      nil_uuid = Rbac.Utils.Common.nil_uuid()
+      Support.Factories.RbacUser.insert(@requester_id, "Insider User")
+
+      {:ok, insider_scope} = Support.Factories.Scope.insert("insider_scope")
+      org_scope = Rbac.Repo.Scope.get_scope_by_name("org_scope")
+
+      {:ok, owners_permission} =
+        Support.Factories.Permission.insert(
+          name: "insider.owners.manage",
+          scope_id: insider_scope.id
+        )
+
+      {:ok, people_permission} =
+        Support.Factories.Permission.insert(
+          name: "organization.people.manage",
+          scope_id: org_scope.id
+        )
+
+      {:ok, insider_role} =
+        Support.Factories.RbacRole.insert(
+          name: "OwnerManager",
+          org_id: nil_uuid,
+          scope_id: insider_scope.id
+        )
+
+      Support.Factories.RolePermissionBinding.insert(
+        rbac_role_id: insider_role.id,
+        permission_id: owners_permission.id
+      )
+
+      Support.Factories.RolePermissionBinding.insert(
+        rbac_role_id: insider_role.id,
+        permission_id: people_permission.id
+      )
+
+      replace_requester_permissions("")
+
+      {:ok, requester_rbi} =
+        Rbac.RoleBindingIdentification.new(user_id: @requester_id, org_id: nil_uuid)
+
+      {:ok, nil} =
+        Rbac.RoleManagement.assign_role(requester_rbi, insider_role.id, :manually_assigned)
+
+      permissions = Rbac.Store.UserPermissions.read_user_permissions(requester_rbi)
+      assert permissions =~ "insider.owners.manage"
+      refute permissions =~ "organization.change_owner"
+
+      {:ok, owner_role} = Rbac.Repo.RbacRole.get_role_by_name("Owner", "org_scope", @org_id)
+      req = gen_assign_role_req(@user_id, owner_role.id, @org_id)
+
+      {:ok, _} = state.grpc_channel |> Stub.assign_role(req)
+    end
+
     test "built-in Admin role is rejected when requester is unauthorized (holds fewer permissions)",
          state do
       # Requester holds only organization.people.manage, which passes the outer authorize!
@@ -1311,6 +1406,16 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
     key = "user:#{@requester_id}_org:*_project:*"
 
     %Repo.UserPermissionsKeyValueStore{key: key, value: @permissions} |> Repo.insert()
+  end
+
+  # setup/1 gives the requester every permission, including organization.change_owner. Tests
+  # that need a narrower requester overwrite that global cache entry.
+  defp replace_requester_permissions(permissions) do
+    alias Rbac.Repo
+    key = "user:#{@requester_id}_org:*_project:*"
+
+    %Repo.UserPermissionsKeyValueStore{key: key, value: permissions}
+    |> Repo.insert(on_conflict: {:replace, [:value]}, conflict_target: :key)
   end
 
   defp gen_assign_role_req(subject_id, role_id, org_id, project_id \\ "") do

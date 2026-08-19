@@ -11,6 +11,7 @@ defmodule Rbac.GrpcServers.RbacServer do
   alias InternalApi.RBAC
 
   @change_owner_permission "organization.change_owner"
+  @insider_owners_permission "insider.owners.manage"
 
   def list_user_permissions(%RBAC.ListUserPermissionsRequest{} = req, _stream) do
     alias Rbac.Store.UserPermissions
@@ -70,8 +71,8 @@ defmodule Rbac.GrpcServers.RbacServer do
       initializing? =
         project_id != "" and Rbac.Models.Project.project_being_initialized?(project_id)
 
-      if not initializing? and (owner_role?(role_id) or currently_owner?(subject_id, org_id)),
-        do: Rbac.Utils.Grpc.authorize!(@change_owner_permission, req.requester_id, org_id)
+      unless initializing?,
+        do: authorize_owner_change!(req.requester_id, org_id, subject_id, role_id)
 
       # The Owner role is fully gated by @change_owner_permission above; every other
       # role must pass the held-permissions check so a requester cannot escalate by
@@ -321,6 +322,21 @@ defmodule Rbac.GrpcServers.RbacServer do
     |> Enum.map(&Rbac.Repo.RbacRole.get_role_by_id(&1["role_id"]))
     |> Enum.reject(&is_nil/1)
     |> Enum.any?(&(&1.name == "Owner"))
+  end
+
+  defp authorize_owner_change!(requester_id, org_id, subject_id, role_id) do
+    if (owner_role?(role_id) or currently_owner?(subject_id, org_id)) and
+         not insider_owners_manager?(requester_id),
+       do: Rbac.Utils.Grpc.authorize!(@change_owner_permission, requester_id, org_id)
+  end
+
+  # Global (insider-scope) holders have no in-org binding to carry @change_owner_permission.
+  defp insider_owners_manager?(requester_id) do
+    import Rbac.Utils.Common, only: [nil_uuid: 0]
+
+    {:ok, rbi} = RBI.new(user_id: requester_id, org_id: nil_uuid())
+
+    Rbac.Store.UserPermissions.read_user_permissions(rbi) =~ @insider_owners_permission
   end
 
   defp raise_error_if_user_is_owner(user_id, org_id) do
