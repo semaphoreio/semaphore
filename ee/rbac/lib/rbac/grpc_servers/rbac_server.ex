@@ -71,14 +71,15 @@ defmodule Rbac.GrpcServers.RbacServer do
       initializing? =
         project_id != "" and Rbac.Models.Project.project_being_initialized?(project_id)
 
-      unless initializing?,
-        do: authorize_owner_change!(req.requester_id, org_id, subject_id, role_id)
+      unless initializing? do
+        owner_involved? = owner_role?(role_id) or currently_owner?(subject_id, org_id)
 
-      # The Owner role is fully gated by @change_owner_permission above; every other
-      # role must pass the held-permissions check so a requester cannot escalate by
-      # assigning a role that grants permissions they do not hold themselves.
-      unless owner_role?(role_id) or initializing?,
-        do: authorize_holds_role_permissions!(req.requester_id, org_id, project_id, role_id)
+        authorize_owner_change!(req.requester_id, org_id, owner_involved?)
+
+        # Owner holds every org-scope permission, so an org-level owner change grants nothing new.
+        unless project_id == "" and owner_involved?,
+          do: authorize_holds_role_permissions!(req.requester_id, org_id, project_id, role_id)
+      end
 
       {:ok, rbi} = RBI.new(user_id: subject_id, org_id: org_id, project_id: project_id)
 
@@ -324,10 +325,9 @@ defmodule Rbac.GrpcServers.RbacServer do
     |> Enum.any?(&(&1.name == "Owner"))
   end
 
-  defp authorize_owner_change!(requester_id, org_id, subject_id, role_id) do
-    if (owner_role?(role_id) or currently_owner?(subject_id, org_id)) and
-         not insider_owners_manager?(requester_id),
-       do: Rbac.Utils.Grpc.authorize!(@change_owner_permission, requester_id, org_id)
+  defp authorize_owner_change!(requester_id, org_id, owner_involved?) do
+    if owner_involved? and not insider_owners_manager?(requester_id),
+      do: Rbac.Utils.Grpc.authorize!(@change_owner_permission, requester_id, org_id)
   end
 
   # Global (insider-scope) holders have no in-org binding to carry @change_owner_permission.
@@ -336,7 +336,10 @@ defmodule Rbac.GrpcServers.RbacServer do
 
     {:ok, rbi} = RBI.new(user_id: requester_id, org_id: nil_uuid())
 
-    Rbac.Store.UserPermissions.read_user_permissions(rbi) =~ @insider_owners_permission
+    rbi
+    |> Rbac.Store.UserPermissions.read_user_permissions()
+    |> String.split(",")
+    |> Enum.member?(@insider_owners_permission)
   end
 
   defp raise_error_if_user_is_owner(user_id, org_id) do
