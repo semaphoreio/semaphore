@@ -3,6 +3,8 @@ defmodule Zebra.Workers.JobRequestFactory.RepoProxy do
   alias InternalApi.RepoProxy.DescribeRequest, as: Request
   alias InternalApi.RepoProxy.RepoProxyService.Stub
 
+  @cache_timeout :timer.minutes(15)
+
   def extract_hook_id(job = %{build_id: nil}, :pipeline_job),
     do: {:stop_job_processing, "Job #{job.id} is missing build_id"}
 
@@ -43,10 +45,10 @@ defmodule Zebra.Workers.JobRequestFactory.RepoProxy do
   def find(nil), do: {:ok, nil}
 
   def find(hook_id) do
-    case Cachex.fetch(:zebra_cache, "repo_proxy-#{hook_id}", &find_/1) do
-      {:ignore, {:stop_job_processing, message}} -> {:stop_job_processing, message}
-      {:ignore, :error} -> {:error, :communication_error}
-      {_, value} -> {:ok, value}
+    case Zebra.Cache.fetch!("repo_proxy-#{hook_id}", @cache_timeout, &find_/1) do
+      {:stop_job_processing, message} -> {:stop_job_processing, message}
+      :error -> {:error, :communication_error}
+      value -> {:ok, value}
     end
   end
 
