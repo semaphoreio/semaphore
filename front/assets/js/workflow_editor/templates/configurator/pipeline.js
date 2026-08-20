@@ -100,6 +100,37 @@ export class PipelineConfigTempate {
     `)
   }
 
+  static partialRerun(pipeline) {
+    let value = pipeline.partialRerun
+    let unknown = value !== "" && value !== "jobs" && value !== "block"
+    let selected = unknown ? value : (value === "block" ? "block" : "jobs")
+
+    let status = "Failed jobs"
+    if(selected === "block") status = "Whole blocks"
+    if(unknown) status = "Unrecognized"
+
+    let options = {
+      title: "Rerun granularity",
+      status: status,
+      collapsable: true
+    }
+
+    let unknownOption = unknown ?
+      `<option value="${escapeHtml(value)}" selected>${escapeHtml(value)} — not a valid value</option>` : ""
+
+    return Section.section(options, `
+      <p class="f5 gray mb2">What <b>Rerun Failed Jobs</b> re-runs after a failure</p>
+
+      <select data-action=selectPipelinePartialRerun class="form-control form-control-small w-100">
+        ${unknownOption}
+        <option value="jobs" ${selected === "jobs" ? "selected" : ""}>Only the failed jobs, reuse the ones that passed</option>
+        <option value="block" ${selected === "block" ? "selected" : ""}>Every job of the failed blocks</option>
+      </select>
+
+      <p class="f6 gray mt2 mb0">Individual blocks can override this.</p>
+    `)
+  }
+
   static deletePipeline(pipeline) {
     if(pipeline.filePath === pipeline.workflow.initialYAMLPath) {
       return `<div class="bb b--lighter-gray tc">
