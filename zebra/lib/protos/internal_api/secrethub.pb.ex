@@ -674,7 +674,8 @@ defmodule InternalApi.Secrethub.GenerateOpenIDConnectTokenRequest do
           git_pull_request_branch: String.t(),
           repo_slug: String.t(),
           triggerer: String.t(),
-          project_name: String.t()
+          project_name: String.t(),
+          audience: [String.t()]
         }
   defstruct [
     :org_id,
@@ -696,7 +697,8 @@ defmodule InternalApi.Secrethub.GenerateOpenIDConnectTokenRequest do
     :git_pull_request_branch,
     :repo_slug,
     :triggerer,
-    :project_name
+    :project_name,
+    :audience
   ]
 
   field(:org_id, 1, type: :string)
@@ -719,6 +721,7 @@ defmodule InternalApi.Secrethub.GenerateOpenIDConnectTokenRequest do
   field(:repo_slug, 18, type: :string)
   field(:triggerer, 19, type: :string)
   field(:project_name, 20, type: :string)
+  field(:audience, 21, repeated: true, type: :string)
 end
 
 defmodule InternalApi.Secrethub.GenerateOpenIDConnectTokenResponse do
@@ -731,6 +734,42 @@ defmodule InternalApi.Secrethub.GenerateOpenIDConnectTokenResponse do
   defstruct [:token]
 
   field(:token, 1, type: :string)
+end
+
+defmodule InternalApi.Secrethub.GenerateCacheOpenIDConnectTokenRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          organization_id: String.t(),
+          project_id: String.t(),
+          job_id: String.t(),
+          job_type: String.t(),
+          cache_access: String.t(),
+          expires_in: integer
+        }
+  defstruct [:organization_id, :project_id, :job_id, :job_type, :cache_access, :expires_in]
+
+  field(:organization_id, 1, type: :string)
+  field(:project_id, 2, type: :string)
+  field(:job_id, 3, type: :string)
+  field(:job_type, 4, type: :string)
+  field(:cache_access, 5, type: :string)
+  field(:expires_in, 6, type: :int64)
+end
+
+defmodule InternalApi.Secrethub.GenerateCacheOpenIDConnectTokenResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          token: String.t(),
+          expires_at: integer
+        }
+  defstruct [:token, :expires_at]
+
+  field(:token, 1, type: :string)
+  field(:expires_at, 2, type: :int64)
 end
 
 defmodule InternalApi.Secrethub.GetKeyRequest do
@@ -932,6 +971,12 @@ defmodule InternalApi.Secrethub.SecretService.Service do
     :GenerateOpenIDConnectToken,
     InternalApi.Secrethub.GenerateOpenIDConnectTokenRequest,
     InternalApi.Secrethub.GenerateOpenIDConnectTokenResponse
+  )
+
+  rpc(
+    :GenerateCacheOpenIDConnectToken,
+    InternalApi.Secrethub.GenerateCacheOpenIDConnectTokenRequest,
+    InternalApi.Secrethub.GenerateCacheOpenIDConnectTokenResponse
   )
 
   rpc(

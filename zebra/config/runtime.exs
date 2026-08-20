@@ -114,6 +114,10 @@ if config_env() == :prod do
 
   config :zebra, artifacthub_api_endpoint: System.fetch_env!("INTERNAL_API_URL_ARTIFACTHUB")
   config :zebra, cachehub_api_endpoint: System.fetch_env!("INTERNAL_API_URL_CACHEHUB")
+  # S3 endpoint (Ceph RGW, fronted by the pull-through cache) injected into jobs
+  # as SEMAPHORE_CACHE_S3_URL for the ceph cache backend. Optional: when unset,
+  # ceph caches fall back to no-cache.
+  config :zebra, ceph_cache_s3_url: System.get_env("CEPH_CACHE_S3_URL")
   config :zebra, chmura_endpoint: System.fetch_env!("INTERNAL_API_URL_CHMURA")
   config :zebra, dt_api_endpoint: System.fetch_env!("INTERNAL_API_URL_GOFER")
   config :zebra, feature_api_endpoint: System.fetch_env!("INTERNAL_API_URL_FEATURE")

@@ -5,6 +5,8 @@ include ../Makefile
 DOCKER_BUILD_PATH=..
 APP_NAME=zebra
 TMP_REPO_DIR?=/tmp/internal_api
+INTERNAL_API_LOCAL_PATH ?=
+INTERNAL_API_SOURCE_DIR=$(if $(INTERNAL_API_LOCAL_PATH),$(INTERNAL_API_LOCAL_PATH),$(TMP_REPO_DIR))
 PUBLIC_API_BRANCH ?= master
 INTERNAL_API_BRANCH ?= master
 RT_PROTOC_IMG_VSN=1.6.6-3.3.0-0.5.4
@@ -59,11 +61,15 @@ CONTAINER_ENV_VARS= \
 	-e ZEBRA_CALLBACK_TOKEN_KEYS=$(ZEBRA_CALLBACK_TOKEN_KEYS)
 
 internal.pb.gen:
+ifeq ($(INTERNAL_API_LOCAL_PATH),)
 	rm -rf $(TMP_REPO_DIR)
 	git clone git@github.com:renderedtext/internal_api.git $(TMP_REPO_DIR) && (cd $(TMP_REPO_DIR) && git checkout $(INTERNAL_API_BRANCH) && cd -)
+endif
 	scripts/vagrant_sudo rm -rf lib/protos/internal_api && mkdir -p lib/protos/internal_api
-	docker run --rm -v $(PWD):/home/protoc/code -v $(TMP_REPO_DIR):/home/protoc/source -t renderedtext/protoc:$(RT_PROTOC_IMG_VSN) sh -c /home/protoc/code/scripts/internal_protos.sh
+	docker run --rm -v $(PWD):/home/protoc/code -v $(INTERNAL_API_SOURCE_DIR):/home/protoc/source -t renderedtext/protoc:$(RT_PROTOC_IMG_VSN) sh -c /home/protoc/code/scripts/internal_protos.sh
+ifeq ($(INTERNAL_API_LOCAL_PATH),)
 	rm -rf $(TMP_REPO_DIR)
+endif
 
 public.pb.gen:
 	rm -rf $(TMP_REPO_DIR)
