@@ -80,6 +80,7 @@ import { DeploymentTargets } from "./deployments";
 
 import { Features } from "./features";
 import { Overlay } from "./overlay";
+import { TurboNavigation } from "./turbo_navigation";
 import { RoleForm } from "./roles/role_form.js";
 
 var ace = require('brace');
@@ -492,11 +493,40 @@ export var App = {
       config: InjectedDataByBackend.ReportConfig,
     })
   },
-  // App.run() is invoked at the bottom of the body element
-  run: function () {
+  //
+  // Bootstrap that must happen exactly once per document.
+  //
+  // Everything here binds to window, document or the custom element registry.
+  // Turbo keeps all three alive across visits, so re-running this would stack
+  // a duplicate scroll handler, click handler or posthog client per navigation.
+  //
+  runOnce: function () {
+    Overlay.init();
+
+    defineTimeAgoElement()
+    managePageHeaderShaddows()
+    enableMagicBreadcrumbs()
+    maybeEnablePosthog()
+
+    window.Tippy = Tippy;
+
+    $(document).on("click", ".x-select-on-click", function (event) {
+      event.currentTarget.setSelectionRange(0, event.currentTarget.value.length);
+    });
+
+    window.addEventListener("load", initPylonChatDraggable, { once: true });
+  },
+
+  //
+  // Bootstrap that has to happen for every page, including each Turbo visit.
+  //
+  // These either read page specific data out of InjectedDataByBackend, bind to
+  // elements in the current body, or - like Notice - delegate off document.body,
+  // which Turbo replaces wholesale on every render.
+  //
+  runPage: function () {
     Features.init(InjectedDataByBackend.Features || {});
 
-    Overlay.init();
     if (InjectedDataByBackend.InitialPlan) {
       TrialOverlay({
         dom: document.getElementById("trial-overlay"),
@@ -504,17 +534,10 @@ export var App = {
       })
     }
 
-    defineTimeAgoElement()
-    managePageHeaderShaddows()
-    enableMagicBreadcrumbs()
-    maybeEnablePosthog()
-
-
     if (InjectedDataByBackend.JumpTo !== undefined) {
       window.jumpTo = JumpTo.init();
     }
 
-    window.Tippy = Tippy;
     Tippy.defaultTip('[data-tippy-content]');
     Tippy.otherDefaultTip('.default-tip');
     Tippy.defaultDropdown('.js-dropdown-menu-trigger');
@@ -523,16 +546,24 @@ export var App = {
 
     window.Notice.init();
 
-
-    $(document).on("click", ".x-select-on-click", function (event) {
-      event.currentTarget.setSelectionRange(0, event.currentTarget.value.length);
-    });
-
     for (const el of document.querySelectorAll('[data-hotkey]')) {
       install(el);
     }
+  },
 
-    window.addEventListener("load", initPylonChatDraggable, { once: true });
+  //
+  // Releases the page that is about to be swapped out by Turbo. Modules that
+  // own timers, polling loops or editor instances have to be stopped here or
+  // they keep running against a body that no longer exists.
+  //
+  teardownPage: function () {
+    Pollman.stop();
+    Timer.stop();
+
+    if (window.FaviconUpdater) {
+      window.FaviconUpdater.stop();
+      window.FaviconUpdater = null;
+    }
   }
 };
 
@@ -622,7 +653,29 @@ function maybeEnablePosthog() {
   }
 }
 
-App.run()
-if (InjectedDataByBackend.JS != "" && InjectedDataByBackend.JS !== undefined) {
-  App[InjectedDataByBackend.JS]();
+//
+// Runs the per-page init function named by the backend, if there is one.
+// InjectedDataByBackend.JS is repopulated by _scripts.html.eex on every render,
+// so this picks up the new page's entry point after each Turbo visit.
+//
+function dispatchPageInit() {
+  const name = InjectedDataByBackend.JS;
+
+  if (name === undefined || name === "" || typeof App[name] !== "function") {
+    return;
+  }
+
+  App[name]();
 }
+
+App.runOnce()
+
+TurboNavigation.start({
+  onPageLoad: function () {
+    App.runPage();
+    dispatchPageInit();
+  },
+  onPageTeardown: function () {
+    App.teardownPage();
+  },
+})
