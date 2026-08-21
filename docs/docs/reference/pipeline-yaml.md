@@ -95,7 +95,7 @@ Part of the [`agent`](#agent) definition. This is an optional property to specif
 If a value is not provided, the default for the machine type is used:
 
 - `e1-standard-*` machine types: `ubuntu2404`
-- `a2-standard-*` machine types: `macos-xcode16`
+- `a2-standard-*` machine types: `macos-xcode26`
 
 The list of valid values for Semaphore Cloud is available on the [machine types reference](./machine-types) page.
 
@@ -551,7 +551,7 @@ This optional property controls the granularity of [pipeline rebuilds](../using-
 
 The pipeline-level value is the default for every block; individual blocks can override it with their own [`partial_rerun`](#partial-rerun-in-blocks) property.
 
-When `partial_rerun` is not set, `jobs` is used whenever [job-level partial rerun](../using-semaphore/pipelines#job-level-rerun) is enabled for your organization. To keep re-running whole blocks, set `partial_rerun: block` explicitly.
+When `partial_rerun` is not set, `jobs` is used. To keep re-running whole blocks, set `partial_rerun: block` explicitly.
 
 Set `block` on blocks whose jobs must always run together, for example test suites that split dynamically across jobs, where the per-job split can change between runs.
 
@@ -804,7 +804,7 @@ blocks:
       agent:
           machine:
             type: a2-standard-4
-            os_image: macos-xcode16
+            os_image: macos-xcode26
    # highlight-end
       jobs:
         - name: Using agent job
