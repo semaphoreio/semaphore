@@ -52,4 +52,26 @@ defmodule FrontWeb.LayoutViewTest do
       assert html =~ "Your Semaphore Enterprise Edition license will expire on"
     end
   end
+
+  describe "turbo_full_reload_page?/1" do
+    defp conn_with_js(js), do: %Plug.Conn{assigns: %{js: js}}
+
+    test "opts pages owning long lived client state out of Turbo rendering" do
+      assert FrontWeb.LayoutView.turbo_full_reload_page?(conn_with_js(:workflow_editor))
+      assert FrontWeb.LayoutView.turbo_full_reload_page?(conn_with_js(:logs))
+    end
+
+    test "matches the assign whether it is an atom or a string" do
+      assert FrontWeb.LayoutView.turbo_full_reload_page?(conn_with_js("workflow_editor"))
+    end
+
+    test "lets every other page render through Turbo" do
+      refute FrontWeb.LayoutView.turbo_full_reload_page?(conn_with_js(:workflow_view))
+      refute FrontWeb.LayoutView.turbo_full_reload_page?(conn_with_js(:people_page))
+    end
+
+    test "is false when the page sets no js assign" do
+      refute FrontWeb.LayoutView.turbo_full_reload_page?(%Plug.Conn{assigns: %{}})
+    end
+  end
 end

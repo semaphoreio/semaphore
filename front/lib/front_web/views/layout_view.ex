@@ -2,6 +2,18 @@ defmodule FrontWeb.LayoutView do
   use FrontWeb, :view
   alias Front.Async
 
+  #
+  # Pages that own long lived client state - Monaco and ace in the workflow
+  # editor, the streaming log viewer on a job - and would have to tear it all
+  # down to survive a Turbo render. They are cheap to opt out of, so navigating
+  # to one performs a normal full page load instead.
+  #
+  @turbo_full_reload_pages ~w(workflow_editor logs)
+
+  def turbo_full_reload_page?(conn) do
+    to_string(conn.assigns[:js]) in @turbo_full_reload_pages
+  end
+
   def login_url(conn) do
     org_id = conn.assigns.organization_id
     origin_url = Plug.Conn.request_url(conn)
