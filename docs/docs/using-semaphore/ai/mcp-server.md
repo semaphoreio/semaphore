@@ -63,6 +63,8 @@ If your MCP client supports OAuth for remote MCP servers:
 
 OAuth-capable clients use discovery and dynamic client registration automatically.
 
+Access tokens are short-lived, but the token response also includes a refresh token, so your client renews access in the background. You sign in through the browser again if your client stays offline past the refresh token lifetime (30 days), when the authorization reaches its maximum age (90 days), or if you revoke access.
+
 ### Connect with an API token
 
 If your client does not support OAuth yet, use an API token instead.
