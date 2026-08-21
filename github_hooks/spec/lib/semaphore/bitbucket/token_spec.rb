@@ -48,4 +48,55 @@ RSpec.describe Semaphore::Bitbucket::Token do
       expect(described_class.valid?("token")).to be(false)
     end
   end
+
+  describe ".fetch_token" do
+    let(:account) { FactoryBot.create(:bitbucket_account) }
+
+    before do
+      allow(Semaphore::Bitbucket::Credentials).to receive_messages(:app_id => "app-id",
+                                                                   :secret_id => "secret-id")
+    end
+
+    def stub_refresh(status, body = "{}")
+      allow(Excon).to receive(:post)
+        .and_return(instance_double(Excon::Response, :status => status, :body => body))
+    end
+
+    it "returns the refreshed token on success" do
+      stub_refresh(200, { "access_token" => "new-token", "expires_in" => 3600 }.to_json)
+
+      token, expires_at = described_class.fetch_token(account)
+
+      expect(token).to eq("new-token")
+      expect(expires_at).to be_present
+    end
+
+    it "revokes the connection when the refresh is rejected", :aggregate_failures do
+      stub_refresh(400)
+
+      expect(described_class.fetch_token(account)).to eq(["", nil])
+      expect(account.reload.revoked).to be(true)
+    end
+
+    it "does not revoke the connection when the refresh is rate limited", :aggregate_failures do
+      stub_refresh(429)
+
+      expect(described_class.fetch_token(account)).to eq(["", nil])
+      expect(account.reload.revoked).to be(false)
+    end
+
+    it "does not revoke the connection when the refresh times out", :aggregate_failures do
+      stub_refresh(408)
+
+      expect(described_class.fetch_token(account)).to eq(["", nil])
+      expect(account.reload.revoked).to be(false)
+    end
+
+    it "does not revoke the connection on provider-side failures", :aggregate_failures do
+      stub_refresh(503)
+
+      expect(described_class.fetch_token(account)).to eq(["", nil])
+      expect(account.reload.revoked).to be(false)
+    end
+  end
 end
