@@ -3,6 +3,7 @@ defmodule Projecthub.Models.DeployKey do
 
   require Logger
   import Ecto.Changeset
+  alias Projecthub.Github.PathSegment
   alias Projecthub.Repo
 
   @primary_key {:id, :binary_id, autogenerate: true}
@@ -63,65 +64,78 @@ defmodule Projecthub.Models.DeployKey do
 
   # credo:disable-for-lines:31
   def get_from_github(deploy_key, repo, token) do
-    client = Tentacat.Client.new(%{access_token: token})
+    with {:ok, owner} <- PathSegment.validate(repo.owner),
+         {:ok, name} <- PathSegment.validate(repo.name) do
+      client = Tentacat.Client.new(%{access_token: token})
 
-    response =
-      Tentacat.Repositories.DeployKeys.find(
-        client,
-        repo.owner,
-        repo.name,
-        deploy_key.remote_id
-      )
+      response =
+        Tentacat.Repositories.DeployKeys.find(
+          client,
+          owner,
+          name,
+          deploy_key.remote_id
+        )
 
-    case response do
-      {200, key, _} ->
-        {:ok, %{title: key["title"]}}
+      case response do
+        {200, key, _} ->
+          {:ok, %{title: key["title"]}}
 
-      {401, _, _} ->
-        {:error, :deploy_key_unauthorized}
+        {401, _, _} ->
+          {:error, :deploy_key_unauthorized}
 
-      {404, _, %{headers: headers}} ->
-        case List.keyfind(headers, "X-OAuth-Scopes", 0) do
-          nil ->
-            {:error, :deploy_key_no_scope}
+        {404, _, %{headers: headers}} ->
+          case List.keyfind(headers, "X-OAuth-Scopes", 0) do
+            nil ->
+              {:error, :deploy_key_no_scope}
 
-          {_, scope} ->
-            cond do
-              String.starts_with?(scope, "repo") ->
-                {:error, :deploy_key_not_found_private}
+            {_, scope} ->
+              cond do
+                String.starts_with?(scope, "repo") ->
+                  {:error, :deploy_key_not_found_private}
 
-              String.starts_with?(scope, "public_repo") ->
-                {:error, :deploy_key_not_found_public}
+                String.starts_with?(scope, "public_repo") ->
+                  {:error, :deploy_key_not_found_public}
 
-              true ->
-                {:error, :deploy_key_not_found_non}
-            end
-        end
+                true ->
+                  {:error, :deploy_key_not_found_non}
+              end
+          end
 
-      {_, _, resp} ->
-        Logger.error("Error while fetching deploy key #{deploy_key.id} on github: #{inspect(resp)}")
+        {_, _, resp} ->
+          Logger.error("Error while fetching deploy key #{deploy_key.id} on github: #{inspect(resp)}")
 
-        {:error, :deploy_key_not_fetched}
+          {:error, :deploy_key_not_fetched}
+      end
     end
   end
 
   def remove_from_github(deploy_key, repo, token) do
-    client = Tentacat.Client.new(%{access_token: token})
+    with {:ok, owner} <- PathSegment.validate(repo.owner),
+         {:ok, name} <- PathSegment.validate(repo.name) do
+      client = Tentacat.Client.new(%{access_token: token})
 
-    response =
-      Tentacat.Repositories.DeployKeys.remove(
-        client,
-        repo.owner,
-        repo.name,
-        deploy_key.remote_id
-      )
+      response =
+        Tentacat.Repositories.DeployKeys.remove(
+          client,
+          owner,
+          name,
+          deploy_key.remote_id
+        )
 
-    case response do
-      {204, _, _} ->
-        Logger.info("Successfully removed deploy key #{deploy_key.id}")
+      case response do
+        {204, _, _} ->
+          Logger.info("Successfully removed deploy key #{deploy_key.id}")
 
-      {_, _, resp} ->
-        Logger.error("Error while deleting deploy key #{deploy_key.id} on github: #{inspect(resp)}")
+        {_, _, resp} ->
+          Logger.error("Error while deleting deploy key #{deploy_key.id} on github: #{inspect(resp)}")
+      end
+    else
+      {:error, :invalid_github_path_segment} = error ->
+        Logger.error(
+          "Refusing to remove deploy key #{deploy_key.id} on github: unsafe repository owner/name"
+        )
+
+        error
     end
   end
 
@@ -144,44 +158,54 @@ defmodule Projecthub.Models.DeployKey do
   end
 
   defp post_to_github(deploy_key, project, repo, token) do
-    client = Tentacat.Client.new(%{access_token: token})
+    with {:ok, owner} <- PathSegment.validate(repo.owner),
+         {:ok, name} <- PathSegment.validate(repo.name) do
+      client = Tentacat.Client.new(%{access_token: token})
 
-    body = %{
-      title: title(repo, project),
-      key: deploy_key.public_key,
-      read_only: true
-    }
+      body = %{
+        title: title(repo, project),
+        key: deploy_key.public_key,
+        read_only: true
+      }
 
-    response =
-      Tentacat.Repositories.DeployKeys.create(
-        client,
-        repo.owner,
-        repo.name,
-        body
-      )
+      response =
+        Tentacat.Repositories.DeployKeys.create(
+          client,
+          owner,
+          name,
+          body
+        )
 
-    case response do
-      {201, key_payload, _} ->
-        Logger.info("Deploy key create project #{project.id} response #{inspect(response)}")
+      case response do
+        {201, key_payload, _} ->
+          Logger.info("Deploy key create project #{project.id} response #{inspect(response)}")
 
-        {:ok, key_payload["id"]}
+          {:ok, key_payload["id"]}
 
-      {404, _, %{headers: headers} = resp} ->
-        case List.keyfind(headers, "X-OAuth-Scopes", 0) do
-          nil ->
-            error(:deploy, deploy_key.id, resp)
-
-          {_, scope} ->
-            if String.contains?(scope, "repo") do
+        {404, _, %{headers: headers} = resp} ->
+          case List.keyfind(headers, "X-OAuth-Scopes", 0) do
+            nil ->
               error(:deploy, deploy_key.id, resp)
-            else
-              {:error,
-               "It looks like you haven't authorized Semaphore with GitHub, please visit https://docs.semaphoreci.com/using-semaphore/connect-github#troubleshooting-guide to read more."}
-            end
-        end
 
-      {_, _, resp} ->
-        error(:deploy, deploy_key.id, resp)
+            {_, scope} ->
+              if String.contains?(scope, "repo") do
+                error(:deploy, deploy_key.id, resp)
+              else
+                {:error,
+                 "It looks like you haven't authorized Semaphore with GitHub, please visit https://docs.semaphoreci.com/using-semaphore/connect-github#troubleshooting-guide to read more."}
+              end
+          end
+
+        {_, _, resp} ->
+          error(:deploy, deploy_key.id, resp)
+      end
+    else
+      {:error, :invalid_github_path_segment} = error ->
+        Logger.error(
+          "Refusing to create deploy key #{deploy_key.id} on github: unsafe repository owner/name"
+        )
+
+        error
     end
   end
 
