@@ -82,9 +82,9 @@ After installing and connecting the [Semaphore command line](../reference/semaph
 2. Run `sem init` at the root of the repository
 3. Push a change to get Semaphore working
  
-    ```shell title="Push pipeline to the repository
+    ```shell title="Push pipeline to the repository"
     git add .semaphore
-    git commit "Initialize Semaphore"
+    git commit -m "Initialize Semaphore"
     git push origin main
     ```
 
@@ -98,7 +98,7 @@ You can override the project name and URL by using [additional options](../refer
 sem init --project-name <project_name> --project-url <project_url>
 ```
 
-If you get permission or not find error message, double check the connection between Semaphore and your Git provider:
+If you get a permission or not found error message, double check the connection between Semaphore and your Git provider:
 
 - [How to connect to GitHub](./connect-github)
 - [How to connect to Bitbucket](./connect-bitbucket)
@@ -626,4 +626,3 @@ After changing the repository URL, verify that the **deploy key** and **webhook*
 - [Organization pre-flight checks](./org-preflight)
 - [How to manage organizations](./organizations.md)
 - [How to configure test reports](./tests/test-reports)
-
