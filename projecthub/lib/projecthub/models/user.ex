@@ -1,5 +1,6 @@
 defmodule Projecthub.Models.User do
   require Logger
+  alias Projecthub.Github.PathSegment
   defstruct [:id, :name, :github_token, :github_uid, :github_login, :avatar_url]
 
   def find(user_id, metadata \\ nil) do
@@ -14,39 +15,43 @@ defmodule Projecthub.Models.User do
   end
 
   def check_github_permissions(login, repo, token) do
-    client = Tentacat.Client.new(%{access_token: token})
+    with {:ok, owner} <- PathSegment.validate(repo.owner),
+         {:ok, name} <- PathSegment.validate(repo.name),
+         {:ok, login} <- PathSegment.validate(login) do
+      client = Tentacat.Client.new(%{access_token: token})
 
-    resp = Tentacat.get("repos/#{repo.owner}/#{repo.name}/collaborators/#{login}/permission", client)
+      resp = Tentacat.get("repos/#{owner}/#{name}/collaborators/#{login}/permission", client)
 
-    case resp do
-      {200, %{"permission" => "admin"}, _} ->
-        {:ok, :admin}
+      case resp do
+        {200, %{"permission" => "admin"}, _} ->
+          {:ok, :admin}
 
-      {200, _, _} ->
-        {:error, :permissions_not_an_admin}
+        {200, _, _} ->
+          {:error, :permissions_not_an_admin}
 
-      {401, _, _} ->
-        {:error, :permissions_unauthorized}
+        {401, _, _} ->
+          {:error, :permissions_unauthorized}
 
-      {403, %{"message" => "Must have push access to view collaborator permission."}, _} ->
-        {:error, :permissions_not_an_admin}
+        {403, %{"message" => "Must have push access to view collaborator permission."}, _} ->
+          {:error, :permissions_not_an_admin}
 
-      {403,
-       %{
-         "message" =>
-           "Resource protected by organization SAML enforcement. You must grant your OAuth token access to this organization."
-       }, _} ->
-        {:error, :permissions_saml_enforcement}
+        {403,
+         %{
+           "message" =>
+             "Resource protected by organization SAML enforcement. You must grant your OAuth token access to this organization."
+         }, _} ->
+          {:error, :permissions_saml_enforcement}
 
-      {404, _, _} ->
-        {:error, :permissions_not_found}
+        {404, _, _} ->
+          {:error, :permissions_not_found}
 
-      {_, _, resp} ->
-        Logger.error(
-          "Error while fetching permissions about #{login} from #{repo.owner}/#{repo.name} on github: #{inspect(resp)}"
-        )
+        {_, _, resp} ->
+          Logger.error(
+            "Error while fetching permissions about #{login} from #{owner}/#{name} on github: #{inspect(resp)}"
+          )
 
-        {:error, :permissions_not_fetched}
+          {:error, :permissions_not_fetched}
+      end
     end
   end
 
