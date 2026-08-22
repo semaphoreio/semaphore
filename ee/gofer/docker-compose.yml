@@ -1,6 +1,6 @@
 services:
   app:
-    build: 
+    build:
       context: .
       cache_from:
         - "${REGISTRY_HOST:-local}/guard/${BRANCH:-main}:${IMAGE_TAG:-test}"
@@ -22,6 +22,8 @@ services:
     tty: true
     volumes:
       - .:/app
+      - /app/_build
+      - /app/deps
 
   postgres:
     container_name: postgres
@@ -41,7 +43,7 @@ services:
     container_name: pgweb
     image: sosedoff/pgweb:0.11.7
     restart: always
-    links: 
+    links:
       - postgres:postgres
     environment:
       DATABASE_URL: "postgres://postgres:postgres@postgres:5432/postgres?sslmode=disable"
