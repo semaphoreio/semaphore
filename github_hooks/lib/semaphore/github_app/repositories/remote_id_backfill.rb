@@ -60,7 +60,7 @@ module Semaphore::GithubApp
           touch_pending_repositories(installation_id)
           return token_not_found(installation_id)
         end
-        if client(installation_id).rate_limit_remaining < App.collaborators_api_rate_limit
+        if client(installation_id).rate_limit_remaining < App.remote_id_backfill_rate_limit
           touch_pending_repositories(installation_id)
           return low_rate_limit(installation_id)
         end

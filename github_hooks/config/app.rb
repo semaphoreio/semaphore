@@ -26,6 +26,13 @@ class App < Configurable # :nodoc:
   ]
   config.always_filter_skip_ci = (SemaphoreConfig.always_filter_skip_ci || "false") == "true"
   config.collaborators_api_rate_limit = (SemaphoreConfig.collaborators_api_rate_limit || 4000).to_i
+  # Rate-limit threshold (min remaining GitHub quota required to proceed) for the remote_id
+  # backfill. Decoupled from collaborators_api_rate_limit: the collaborators refresh is quota-heavy
+  # (repos × collaborators) and operators may set its threshold very high to protect quota, which
+  # would otherwise starve the far cheaper remote_id backfill (~pages-per-installation). Falls back
+  # to the collaborators value when REMOTE_ID_BACKFILL_RATE_LIMIT is unset (no behavior change).
+  config.remote_id_backfill_rate_limit =
+    (SemaphoreConfig.remote_id_backfill_rate_limit || config.collaborators_api_rate_limit).to_i
 
   config.disable_collaborator_webhook_sync =
     (SemaphoreConfig.disable_collaborator_webhook_sync || "false") == "true"
