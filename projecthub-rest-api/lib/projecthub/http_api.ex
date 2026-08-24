@@ -377,7 +377,9 @@ defmodule Projecthub.HttpApi do
 
   defp status_map(status) do
     InternalApi.Projecthub.Project.Spec.Repository.Status.new(
-      pipeline_files: pipeline_files_map(status["pipeline_files"])
+      pipeline_files: pipeline_files_map(status["pipeline_files"]),
+      skip_scheduled_run: status["skip_scheduled_run"] == true,
+      skip_manual_run: status["skip_manual_run"] == true
     )
   end
 
@@ -547,10 +549,24 @@ defmodule Projecthub.HttpApi do
     |> Stream.map(fn task ->
       task
       |> encode_task_status_field()
+      |> encode_task_commit_status_field()
       |> encode_reference_field()
     end)
     |> Stream.map(&Map.put(&1, :scheduled, &1.recurring))
     |> Enum.map(&Map.delete(&1, :recurring))
+  end
+
+  @task_commit_status_always InternalApi.Projecthub.Project.Spec.Task.CommitStatus.value(:ALWAYS)
+  @task_commit_status_never InternalApi.Projecthub.Project.Spec.Task.CommitStatus.value(:NEVER)
+  defp encode_task_commit_status_field(task) do
+    encoded =
+      case task.commit_status do
+        @task_commit_status_always -> "always"
+        @task_commit_status_never -> "never"
+        _ -> "follow_project"
+      end
+
+    Map.put(task, :commit_status, encoded)
   end
 
   defp encode_task_status_field(task) do
@@ -578,7 +594,8 @@ defmodule Projecthub.HttpApi do
     Enum.map(types, fn type -> Type.key(type) |> from_atom() end)
   end
 
-  defp encode_status(nil), do: %{"pipeline_files" => []}
+  defp encode_status(nil),
+    do: %{"pipeline_files" => [], "skip_scheduled_run" => false, "skip_manual_run" => false}
 
   defp encode_status(status) do
     alias InternalApi.Projecthub.Project.Spec.Repository.Status.PipelineFile.Level
@@ -591,7 +608,9 @@ defmodule Projecthub.HttpApi do
             "path" => file.path,
             "level" => Level.key(file.level) |> from_atom()
           }
-        end)
+        end),
+      "skip_scheduled_run" => status.skip_scheduled_run == true,
+      "skip_manual_run" => status.skip_manual_run == true
     }
   end
 
@@ -649,13 +668,23 @@ defmodule Projecthub.HttpApi do
           at: task["at"] || "",
           pipeline_file: task["pipeline_file"] || "",
           parameters: construct_task_parameters(task["parameters"]),
-          status: task_status(task["status"])
+          status: task_status(task["status"]),
+          commit_status: task_commit_status(task["commit_status"])
         )
       end)
     else
       []
     end
   end
+
+  defp task_commit_status("always"),
+    do: InternalApi.Projecthub.Project.Spec.Task.CommitStatus.value(:ALWAYS)
+
+  defp task_commit_status("never"),
+    do: InternalApi.Projecthub.Project.Spec.Task.CommitStatus.value(:NEVER)
+
+  defp task_commit_status(_),
+    do: InternalApi.Projecthub.Project.Spec.Task.CommitStatus.value(:FOLLOW_PROJECT)
 
   defp construct_reference("branch", reference_name) do
     "refs/heads/#{reference_name}"

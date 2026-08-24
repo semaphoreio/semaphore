@@ -58,6 +58,8 @@ defmodule Front.Models.ProjectTest do
                :analysis_state => :READY,
                :permissions_state => :READY,
                :integration_type => :GITHUB_OAUTH_TOKEN,
+               :commit_status_skip_scheduled_run => false,
+               :commit_status_skip_manual_run => false,
                :repo_connected => false,
                :custom_permissions => false,
                :allow_debug_empty_session => false,
@@ -74,6 +76,39 @@ defmodule Front.Models.ProjectTest do
                :cache_id => "65a16553-69d9-480f-b52b-c56e6b12063e",
                :artifact_store_id => "118dcd98-97cc-4b31-8690-9c897b0adf46"
              }
+    end
+
+    test "maps enabled commit status trigger settings from the describe response" do
+      alias InternalApi.Projecthub.Project.Spec.Repository.Status
+
+      raw_project = Support.Factories.projecthub_api_described_project([], false)
+
+      status =
+        Status.new(
+          pipeline_files: [
+            Status.PipelineFile.new(
+              path: ".semaphore/semaphore.yml",
+              level: Status.PipelineFile.Level.value(:PIPELINE)
+            )
+          ]
+        )
+
+      status = %{status | skip_scheduled_run: true, skip_manual_run: true}
+      repository = %{raw_project.spec.repository | status: status}
+      raw_project = %{raw_project | spec: %{raw_project.spec | repository: repository}}
+
+      response =
+        InternalApi.Projecthub.DescribeResponse.new(
+          metadata: Support.Factories.response_meta(),
+          project: raw_project
+        )
+
+      GrpcMock.stub(ProjecthubMock, :describe, response)
+
+      project = Project.find(raw_project.metadata.name, "231312312312-123-12-312-312")
+
+      assert project.commit_status_skip_scheduled_run == true
+      assert project.commit_status_skip_manual_run == true
     end
 
     test "when the project can't be found => it returns nil" do
@@ -252,6 +287,8 @@ defmodule Front.Models.ProjectTest do
                   :analysis_state => :READY,
                   :permissions_state => :READY,
                   :integration_type => :GITHUB_OAUTH_TOKEN,
+                  :commit_status_skip_scheduled_run => false,
+                  :commit_status_skip_manual_run => false,
                   :repo_connected => false,
                   :custom_permissions => false,
                   :allow_debug_empty_session => false,

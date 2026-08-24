@@ -86,6 +86,7 @@ defmodule Scheduler.Actions.PersistImpl do
       reference pipeline_file at
     )a)
     |> Map.put(:parameters, parameters)
+    |> Map.put(:commit_status, map_commit_status(request.commit_status))
     |> inject_paused(request.state)
     |> Map.put(:project_name, project_name)
     |> ToTuple.ok()
@@ -101,8 +102,13 @@ defmodule Scheduler.Actions.PersistImpl do
     )a)
     |> inject_paused(request.state)
     |> Map.put(:parameters, parameters)
+    |> Map.put(:commit_status, map_commit_status(request.commit_status))
     |> ToTuple.ok()
   end
+
+  defp map_commit_status(:ALWAYS), do: :always
+  defp map_commit_status(:NEVER), do: :never
+  defp map_commit_status(_), do: :follow_project
 
   defp inject_paused(params, :UNCHANGED), do: params
 
