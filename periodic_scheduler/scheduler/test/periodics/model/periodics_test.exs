@@ -88,8 +88,7 @@ defmodule Scheduler.Periodics.Model.Periodics.Test do
       params = Map.merge(ctx.params, %{at: "* * * * *"})
       stored = %Periodics{skip_scheduled_run_notifications: true}
 
-      assert %Ecto.Changeset{changes: changes} =
-               Periodics.changeset(stored, "v1.1", params)
+      assert %Ecto.Changeset{changes: changes} = Periodics.changeset(stored, "v1.1", params)
 
       refute Map.has_key?(changes, :skip_scheduled_run_notifications)
     end
@@ -97,8 +96,7 @@ defmodule Scheduler.Periodics.Model.Periodics.Test do
     test "v1.0 changeset ignores them", ctx do
       params = Map.merge(ctx.params, %{at: "* * * * *", skip_scheduled_run_notifications: true})
 
-      assert %Ecto.Changeset{changes: changes} =
-               Periodics.changeset(%Periodics{}, "v1.0", params)
+      assert %Ecto.Changeset{changes: changes} = Periodics.changeset(%Periodics{}, "v1.0", params)
 
       refute Map.has_key?(changes, :skip_scheduled_run_notifications)
     end
