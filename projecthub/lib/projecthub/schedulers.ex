@@ -15,7 +15,8 @@ defmodule Projecthub.Schedulers do
   end
 
   defp do_update(project, schedulers, requester_id) do
-    definitions = Enum.map(schedulers, &to_periodic_definition/1)
+    stored_flags = stored_notification_flags(project.id)
+    definitions = Enum.map(schedulers, &to_periodic_definition(&1, stored_flags))
 
     Logger.info(
       "Schedulers.update dispatching to bulk_upsert_and_prune: project_id=#{project.id} " <>
@@ -63,7 +64,25 @@ defmodule Projecthub.Schedulers do
     {:ok, nil}
   end
 
-  defp to_periodic_definition(scheduler) do
+  # The legacy scheduler struct has no notification flags, so carry the stored
+  # values forward - otherwise a project update through this path would reset
+  # every task's commit status settings.
+  defp stored_notification_flags(project_id) do
+    case PeriodicSchedulerClient.list(project_id) do
+      {:ok, periodics} ->
+        Map.new(periodics, fn periodic ->
+          {periodic.id,
+           {periodic.skip_scheduled_run_notifications == true, periodic.skip_manual_run_notifications == true}}
+        end)
+
+      _ ->
+        %{}
+    end
+  end
+
+  defp to_periodic_definition(scheduler, stored_flags) do
+    {skip_scheduled, skip_manual} = Map.get(stored_flags, scheduler.id, {false, false})
+
     %{
       id: scheduler.id || "",
       name: scheduler.name || "",
@@ -73,7 +92,9 @@ defmodule Projecthub.Schedulers do
       at: scheduler.at || "",
       pipeline_file: scheduler.pipeline_file || "",
       parameters: [],
-      state: Definition.status_to_state(scheduler.status)
+      state: Definition.status_to_state(scheduler.status),
+      skip_scheduled_run_notifications: skip_scheduled,
+      skip_manual_run_notifications: skip_manual
     }
   end
 end
