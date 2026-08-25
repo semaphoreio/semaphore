@@ -118,7 +118,14 @@ defmodule Support.Factories do
             done_at: %Google.Protobuf.Timestamp{nanos: 0, seconds: 0},
             wf_id: "3",
             yaml_file_name: yaml_file_name,
-            working_directory: working_directory
+            working_directory: working_directory,
+            triggerer:
+              struct(InternalApi.Plumber.Triggerer,
+                wf_triggered_by: Keyword.get(opts, :triggered_by, :HOOK),
+                ppl_triggered_by: Keyword.get(opts, :ppl_triggered_by, :WORKFLOW),
+                workflow_rerun_of: Keyword.get(opts, :workflow_rerun_of, ""),
+                wf_triggerer_id: Keyword.get(opts, :wf_triggerer_id, "")
+              )
           ),
         blocks: [
           struct(InternalApi.Plumber.Block,
