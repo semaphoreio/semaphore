@@ -207,6 +207,26 @@ defmodule Support.Factories do
     struct(InternalApi.Projecthub.Project, metadata: meta, spec: spec)
   end
 
+  def periodic_describe_response(opts \\ []) do
+    struct(InternalApi.PeriodicScheduler.DescribeResponse,
+      status: struct(InternalApi.Status, code: :OK),
+      periodic:
+        struct(InternalApi.PeriodicScheduler.Periodic,
+          id: Keyword.get(opts, :id, "task-1"),
+          name: "nightly",
+          skip_scheduled_run_notifications:
+            Keyword.get(opts, :skip_scheduled_run_notifications, false),
+          skip_manual_run_notifications: Keyword.get(opts, :skip_manual_run_notifications, false)
+        )
+    )
+  end
+
+  def periodic_not_found_response do
+    struct(InternalApi.PeriodicScheduler.DescribeResponse,
+      status: struct(InternalApi.Status, code: :NOT_FOUND, message: "periodic not found")
+    )
+  end
+
   def response_meta(code \\ :OK) do
     struct(InternalApi.Projecthub.ResponseMeta,
       status:
