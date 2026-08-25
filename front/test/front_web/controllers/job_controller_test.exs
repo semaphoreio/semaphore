@@ -159,4 +159,91 @@ defmodule FrontWeb.JobControllerTest do
                "<div\n  class=\"flex mt1\"\n  data-poll-background\n  data-poll-state=\"poll\"\n  data-poll-href=\"/jobs/job-id/status_badge\"\n>\n  <span class=\"bg-indigo white br1 ph2\">\nRunning\n  </span>\n</div>\n"
     end
   end
+
+  # Regression tests: the job page header used to always show
+  # @workflow.created_at, which is pinned to the workflow's FIRST pipeline
+  # (initial_request == true) and never changes on rebuild. It must show the
+  # created_at of the pipeline the job actually belongs to.
+  describe "show header timestamp" do
+    setup do
+      user = Support.Stubs.User.create_default()
+      org = Support.Stubs.Organization.create_default(owner_id: user.id)
+      Support.Stubs.PermissionPatrol.allow_everything(org.id, user.id)
+
+      project =
+        Support.Stubs.Project.create(org, user,
+          run_on: ["branches"],
+          state: InternalApi.Projecthub.Project.Status.State.value(:READY)
+        )
+
+      branch = Support.Stubs.Branch.create(project)
+      hook = Support.Stubs.Hook.create(branch)
+
+      {:ok, user: user, org: org, hook: hook}
+    end
+
+    defp with_org_headers(conn, org, user) do
+      conn
+      |> put_req_header("x-semaphore-user-id", user.id)
+      |> put_req_header("x-semaphore-org-id", org.id)
+    end
+
+    defp job_in_pipeline(pipeline) do
+      task = Support.Stubs.Task.create_empty_task("req-token", pipeline)
+      Support.Stubs.Task.create_job(task, name: "Job")
+    end
+
+    defp formatted(unix_seconds) do
+      unix_seconds |> DateTime.from_unix!() |> Timex.format!("%FT%T%:z", :strftime)
+    end
+
+    test "non-rebuilt job: header time equals the pipeline's own created_at",
+         %{conn: conn, user: user, org: org, hook: hook} do
+      workflow_created_at = 1_700_000_000
+      pipeline_created_at = 1_700_000_500
+
+      workflow = Support.Stubs.Workflow.create(hook, user, created_at: workflow_created_at)
+
+      pipeline =
+        Support.Stubs.Pipeline.create_initial(workflow,
+          created_at: Google.Protobuf.Timestamp.new(seconds: pipeline_created_at)
+        )
+
+      job = job_in_pipeline(pipeline)
+      conn = with_org_headers(conn, org, user)
+
+      html = conn |> get(job_path(conn, :show, job.id)) |> html_response(200)
+
+      assert html =~ formatted(pipeline_created_at)
+      refute html =~ formatted(workflow_created_at)
+    end
+
+    test "rebuilt job: header shows the rebuild pipeline's created_at, not the workflow's first-pipeline time",
+         %{conn: conn, user: user, org: org, hook: hook} do
+      workflow_created_at = 1_700_000_000
+      rebuild_created_at = 1_700_999_999
+
+      workflow = Support.Stubs.Workflow.create(hook, user, created_at: workflow_created_at)
+
+      # The workflow's first (initial_request) pipeline - this is what
+      # @workflow.created_at is pinned to.
+      Support.Stubs.Pipeline.create_initial(workflow,
+        created_at: Google.Protobuf.Timestamp.new(seconds: workflow_created_at)
+      )
+
+      # A later partial rebuild: same workflow, new (non-initial) pipeline id.
+      rebuild_pipeline =
+        Support.Stubs.Pipeline.create(workflow,
+          created_at: Google.Protobuf.Timestamp.new(seconds: rebuild_created_at)
+        )
+
+      job = job_in_pipeline(rebuild_pipeline)
+      conn = with_org_headers(conn, org, user)
+
+      html = conn |> get(job_path(conn, :show, job.id)) |> html_response(200)
+
+      assert html =~ formatted(rebuild_created_at)
+      refute html =~ formatted(workflow_created_at)
+    end
+  end
 end
