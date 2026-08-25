@@ -1,6 +1,16 @@
 defmodule Support.ApiTestHelpers do
   @moduledoc """
   Shared helper functions for API integration tests.
+
+  These helpers make real loopback HTTP calls (via HTTPoison/hackney) against
+  the guard app's own Cowboy listener started for the test run, rather than
+  going through Plug.Test. `hackney: [pool: false]` opts every call out of
+  hackney's connection pool: with pooling on, hackney 1.24+'s tighter
+  connection-release lifecycle (the fix for GHSA-9fm9-hp7p-53mf) can hand back
+  a pooled loopback connection whose previous response hasn't fully drained
+  yet, which HTTPoison then reads as a bodyless response (status and headers
+  present, body hardcoded to `""`, see `HTTPoison.Base.request/6`). A fresh,
+  unpooled connection per call sidesteps that race entirely.
   """
 
   @port 4003
@@ -31,7 +41,7 @@ defmodule Support.ApiTestHelpers do
 
     "#{@host}/#{path}#{query_string}"
     |> URI.encode()
-    |> HTTPoison.get(headers)
+    |> HTTPoison.get(headers, hackney: [pool: false])
   end
 
   @doc """
@@ -69,7 +79,7 @@ defmodule Support.ApiTestHelpers do
     # GET, since Plug.CSRFProtection never checks safe methods.
     "#{@host}#{path}"
     |> URI.encode()
-    |> HTTPoison.post(body, headers)
+    |> HTTPoison.post(body, headers, hackney: [pool: false])
   end
 
   defp parse_query_params(nil), do: ""

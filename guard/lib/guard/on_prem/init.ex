@@ -135,6 +135,20 @@ defmodule Guard.OnPrem.Init do
   end
 
   defp get_github_user(github_username) do
+    case Guard.Invitees.LoginSegment.validate(github_username) do
+      {:ok, github_username} ->
+        fetch_github_user(github_username)
+
+      {:error, :invalid_login_segment} ->
+        Logger.error(
+          "[OnPrem Init] ORGANIZATION_SEED_OWNER_GITHUB_USERNAME contains unsupported characters"
+        )
+
+        exit({:shutdown, 1})
+    end
+  end
+
+  defp fetch_github_user(github_username) do
     case HTTPoison.get("https://api.github.com/users/#{github_username}") do
       {:ok, response} ->
         case response.status_code do
