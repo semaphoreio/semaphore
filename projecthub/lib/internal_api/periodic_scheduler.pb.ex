@@ -66,6 +66,13 @@ defmodule InternalApi.PeriodicScheduler.PersistRequest do
   field(:at, 11, type: :string)
   field(:parameters, 12, repeated: true, type: InternalApi.PeriodicScheduler.Periodic.Parameter)
   field(:project_id, 13, type: :string, json_name: "projectId")
+
+  field(:skip_scheduled_run_notifications, 14,
+    type: :bool,
+    json_name: "skipScheduledRunNotifications"
+  )
+
+  field(:skip_manual_run_notifications, 15, type: :bool, json_name: "skipManualRunNotifications")
 end
 
 defmodule InternalApi.PeriodicScheduler.PersistResponse do
@@ -182,6 +189,13 @@ defmodule InternalApi.PeriodicScheduler.Periodic do
   field(:parameters, 15, repeated: true, type: InternalApi.PeriodicScheduler.Periodic.Parameter)
   field(:description, 16, type: :string)
   field(:organization_id, 17, type: :string, json_name: "organizationId")
+
+  field(:skip_scheduled_run_notifications, 18,
+    type: :bool,
+    json_name: "skipScheduledRunNotifications"
+  )
+
+  field(:skip_manual_run_notifications, 19, type: :bool, json_name: "skipManualRunNotifications")
 end
 
 defmodule InternalApi.PeriodicScheduler.Trigger do
@@ -370,6 +384,13 @@ defmodule InternalApi.PeriodicScheduler.BulkUpsertAndPruneRequest.PeriodicDefini
   field(:pipeline_file, 7, type: :string, json_name: "pipelineFile")
   field(:parameters, 8, repeated: true, type: InternalApi.PeriodicScheduler.Periodic.Parameter)
   field(:state, 9, type: InternalApi.PeriodicScheduler.PersistRequest.ScheduleState, enum: true)
+
+  field(:skip_scheduled_run_notifications, 10,
+    type: :bool,
+    json_name: "skipScheduledRunNotifications"
+  )
+
+  field(:skip_manual_run_notifications, 11, type: :bool, json_name: "skipManualRunNotifications")
 end
 
 defmodule InternalApi.PeriodicScheduler.BulkUpsertAndPruneRequest do

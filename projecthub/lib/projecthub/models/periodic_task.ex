@@ -4,7 +4,8 @@ defmodule Projecthub.Models.PeriodicTask do
   require Logger
 
   @fields ~w(id name description status recurring project_name
-             branch pipeline_file at parameters)a
+             branch pipeline_file at parameters
+             skip_scheduled_run_notifications skip_manual_run_notifications)a
   defstruct @fields
 
   def construct(periodics_or_tasks, project_name) when is_list(periodics_or_tasks) do
@@ -25,6 +26,14 @@ defmodule Projecthub.Models.PeriodicTask do
       |> Map.put(:status, status)
       |> Map.put(:parameters, parameters)
       |> Map.put(:branch, branch)
+      |> Map.put(
+        :skip_scheduled_run_notifications,
+        Map.get(periodic_or_task, :skip_scheduled_run_notifications) == true
+      )
+      |> Map.put(
+        :skip_manual_run_notifications,
+        Map.get(periodic_or_task, :skip_manual_run_notifications) == true
+      )
       |> Map.merge(Map.new())
 
     struct!(__MODULE__, params)
