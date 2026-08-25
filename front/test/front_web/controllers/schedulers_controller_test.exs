@@ -537,6 +537,57 @@ defmodule FrontWeb.SchedulersControllerTest do
       refute html_response(conn, 302) =~ "Blazing-fast build and deploy!"
     end
 
+    test "a checked box persists the matching notification skip flag", %{
+      project_name: project_name
+    } do
+      params =
+        Map.merge(@raw_scheduler_form_params, %{
+          skip_scheduled_run_notifications: "true",
+          skip_manual_run_notifications: "false"
+        })
+
+      with_mocks([
+        {
+          Front.Models.Scheduler,
+          [:passthrough],
+          [
+            persist: fn form_data, context ->
+              send(self(), {:persisted, form_data})
+              :meck.passthrough([form_data, context])
+            end
+          ]
+        }
+      ]) do
+        build_conn() |> post(schedulers_path(build_conn(), :create, project_name), params)
+
+        assert_received {:persisted, form_data}
+        assert form_data.skip_scheduled_run_notifications == true
+        assert form_data.skip_manual_run_notifications == false
+      end
+    end
+
+    test "an absent box persists as false", %{project_name: project_name} do
+      with_mocks([
+        {
+          Front.Models.Scheduler,
+          [:passthrough],
+          [
+            persist: fn form_data, context ->
+              send(self(), {:persisted, form_data})
+              :meck.passthrough([form_data, context])
+            end
+          ]
+        }
+      ]) do
+        build_conn()
+        |> post(schedulers_path(build_conn(), :create, project_name), @raw_scheduler_form_params)
+
+        assert_received {:persisted, form_data}
+        assert form_data.skip_scheduled_run_notifications == false
+        assert form_data.skip_manual_run_notifications == false
+      end
+    end
+
     test "when apply request fails with an error, it returns 422, displays the new scheduler page with entered params and alerts",
          %{project_name: project_name} do
       with_mocks([
