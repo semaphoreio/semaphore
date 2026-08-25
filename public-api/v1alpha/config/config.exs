@@ -32,6 +32,10 @@ config :pipelines_api,
 on_prem? = if(System.get_env("ON_PREM") == "true", do: true, else: false)
 config :pipelines_api, on_prem?: on_prem?
 
+# Single-tenant installs disable user-initiated org creation, mirroring the
+# front app's SINGLE_TENANT flag. Read by PipelinesAPI.Organizations.Onboarding.
+config :pipelines_api, single_tenant: System.get_env("SINGLE_TENANT") == "true"
+
 feature_provider =
   if on_prem? do
     {FeatureProvider.YamlProvider,
