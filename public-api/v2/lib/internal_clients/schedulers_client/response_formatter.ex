@@ -96,6 +96,8 @@ defmodule InternalClients.Schedulers.ResponseFormatter do
       reference: reference_from_pb(periodic.reference),
       pipeline_file: periodic.pipeline_file,
       cron_schedule: periodic.at,
+      skip_scheduled_run_notifications: periodic.skip_scheduled_run_notifications == true,
+      skip_manual_run_notifications: periodic.skip_manual_run_notifications == true,
       parameters: Enum.into(periodic.parameters, [], &parameter_from_pb/1)
     }
   end
