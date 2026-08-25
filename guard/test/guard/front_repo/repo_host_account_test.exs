@@ -111,6 +111,139 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
     end
   end
 
+  describe "get_bitbucket_token/1 (Bitbucket refresh -> revoke; see bitbucket-oauth incident doc)" do
+    setup do
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      {:ok, rha} =
+        Support.Members.insert_repo_host_account(
+          login: "example",
+          name: "example",
+          repo_host: "bitbucket",
+          refresh_token: "example_refresh_token",
+          user_id: user.id,
+          token: "expired_token",
+          token_expires_at: Support.Members.invalid_expires_at(),
+          revoked: false,
+          permission_scope: "repo"
+        )
+
+      {:ok, rha: rha}
+    end
+
+    test "REPRODUCTION (current buggy behavior): a bare 403 with empty body on refresh " <>
+           "permanently revokes the row, even though it is not a genuine revocation",
+         %{rha: rha} do
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
+          {:ok, %Tesla.Env{status: 403, body: ""}}
+      end)
+
+      assert {:error, {"", nil}} = RepoHostAccount.get_bitbucket_token(rha)
+
+      reloaded = FrontRepo.get!(RepoHostAccount, rha.id)
+      assert reloaded.revoked == true
+    end
+  end
+
+  # Desired post-fix contract for get_bitbucket_token/1 (see
+  # shared/docs/bitbucket-oauth-chrome-csp-incident.md). These currently FAIL
+  # against the buggy classification in Guard.Api.Bitbucket.fetch_token/1
+  # (any refresh-endpoint 4xx, including a bare 403 or 429, is treated as a
+  # permanent revocation) and are @describetag :skip'd so CI stays green.
+  # Unskip once the fix (only invalid_grant/401 revoke; other 4xx/network
+  # errors are transient) lands.
+  describe "get_bitbucket_token/1 desired post-fix behavior (regression target, skipped)" do
+    @describetag :skip
+
+    setup do
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      {:ok, rha} =
+        Support.Members.insert_repo_host_account(
+          login: "example",
+          name: "example",
+          repo_host: "bitbucket",
+          refresh_token: "example_refresh_token",
+          user_id: user.id,
+          token: "expired_token",
+          token_expires_at: Support.Members.invalid_expires_at(),
+          revoked: false,
+          permission_scope: "repo"
+        )
+
+      {:ok, rha: rha}
+    end
+
+    test "bare 403 (Atlassian identity-proxy block, no OAuth error body) is " <>
+           "transient: row stays unrevoked",
+         %{rha: rha} do
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
+          {:ok, %Tesla.Env{status: 403, body: ""}}
+      end)
+
+      RepoHostAccount.get_bitbucket_token(rha)
+
+      reloaded = FrontRepo.get!(RepoHostAccount, rha.id)
+      refute reloaded.revoked
+    end
+
+    test "429 (rate limited) is transient: row stays unrevoked", %{rha: rha} do
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
+          {:ok, %Tesla.Env{status: 429, body: ""}}
+      end)
+
+      RepoHostAccount.get_bitbucket_token(rha)
+
+      reloaded = FrontRepo.get!(RepoHostAccount, rha.id)
+      refute reloaded.revoked
+    end
+
+    test "network error talking to Bitbucket is transient: row stays unrevoked", %{rha: rha} do
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
+          {:error, :timeout}
+      end)
+
+      RepoHostAccount.get_bitbucket_token(rha)
+
+      reloaded = FrontRepo.get!(RepoHostAccount, rha.id)
+      refute reloaded.revoked
+    end
+
+    test "genuine 400 invalid_grant IS a real revocation: row gets revoked", %{rha: rha} do
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
+          {:ok,
+           %Tesla.Env{
+             status: 400,
+             body: %{"error" => "invalid_grant", "error_description" => "Invalid refresh_token"}
+           }}
+      end)
+
+      assert {:error, {"", nil}} = RepoHostAccount.get_bitbucket_token(rha)
+
+      reloaded = FrontRepo.get!(RepoHostAccount, rha.id)
+      assert reloaded.revoked == true
+    end
+
+    test "401 unauthorized IS a real revocation: row gets revoked", %{rha: rha} do
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
+          {:ok, %Tesla.Env{status: 401, body: %{"error" => "invalid_client"}}}
+      end)
+
+      assert {:error, {"", nil}} = RepoHostAccount.get_bitbucket_token(rha)
+
+      reloaded = FrontRepo.get!(RepoHostAccount, rha.id)
+      assert reloaded.revoked == true
+    end
+  end
+
   describe "Inspect implementation" do
     test "redacts :token and :refresh_token from inspect output" do
       rha = %RepoHostAccount{
