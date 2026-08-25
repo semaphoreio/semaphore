@@ -18,6 +18,17 @@ defmodule InternalApi.RepositoryIntegrator.IntegrationScope do
   field(:NO_CONNECTION, 2)
 end
 
+defmodule InternalApi.RepositoryIntegrator.RefreshRepositoriesResponse.SyncState do
+  @moduledoc false
+  use Protobuf, enum: true, protoc_gen_elixir_version: "0.11.0", syntax: :proto3
+
+  field(:SYNC_STATE_UNSPECIFIED, 0)
+  field(:STARTED, 1)
+  field(:ALREADY_RUNNING, 2)
+  field(:DONE, 3)
+  field(:FAILED, 4)
+end
+
 defmodule InternalApi.RepositoryIntegrator.GetTokenRequest do
   @moduledoc false
   use Protobuf, protoc_gen_elixir_version: "0.11.0", syntax: :proto3
@@ -32,6 +43,7 @@ defmodule InternalApi.RepositoryIntegrator.GetTokenRequest do
   )
 
   field(:project_id, 4, type: :string, json_name: "projectId")
+  field(:repository_remote_id, 5, type: :string, json_name: "repositoryRemoteId")
 end
 
 defmodule InternalApi.RepositoryIntegrator.GetTokenResponse do
@@ -144,6 +156,35 @@ defmodule InternalApi.RepositoryIntegrator.Repository do
   field(:description, 5, type: :string)
 end
 
+defmodule InternalApi.RepositoryIntegrator.RefreshRepositoriesRequest do
+  @moduledoc false
+  use Protobuf, protoc_gen_elixir_version: "0.11.0", syntax: :proto3
+
+  field(:user_id, 1, type: :string, json_name: "userId")
+
+  field(:integration_type, 2,
+    type: InternalApi.RepositoryIntegrator.IntegrationType,
+    json_name: "integrationType",
+    enum: true
+  )
+
+  field(:repository_slug, 3, type: :string, json_name: "repositorySlug")
+  field(:organization, 4, type: :string)
+end
+
+defmodule InternalApi.RepositoryIntegrator.RefreshRepositoriesResponse do
+  @moduledoc false
+  use Protobuf, protoc_gen_elixir_version: "0.11.0", syntax: :proto3
+
+  field(:sync_state, 1,
+    type: InternalApi.RepositoryIntegrator.RefreshRepositoriesResponse.SyncState,
+    json_name: "syncState",
+    enum: true
+  )
+
+  field(:message, 2, type: :string)
+end
+
 defmodule InternalApi.RepositoryIntegrator.RepositoryIntegratorService.Service do
   @moduledoc false
   use GRPC.Service,
@@ -190,6 +231,12 @@ defmodule InternalApi.RepositoryIntegrator.RepositoryIntegratorService.Service d
     :GetRepositories,
     InternalApi.RepositoryIntegrator.GetRepositoriesRequest,
     InternalApi.RepositoryIntegrator.GetRepositoriesResponse
+  )
+
+  rpc(
+    :RefreshRepositories,
+    InternalApi.RepositoryIntegrator.RefreshRepositoriesRequest,
+    InternalApi.RepositoryIntegrator.RefreshRepositoriesResponse
   )
 end
 
