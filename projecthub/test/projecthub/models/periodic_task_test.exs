@@ -66,6 +66,26 @@ defmodule Projecthub.Models.PeriodicTaskTest do
              } = PeriodicTask.construct(ctx.periodic1, "project_name")
     end
 
+    test "maps the notification skip flags", ctx do
+      flagged =
+        Map.merge(ctx.periodic1, %{
+          skip_scheduled_run_notifications: true,
+          skip_manual_run_notifications: false
+        })
+
+      task = PeriodicTask.construct(flagged, "project_name")
+
+      assert task.skip_scheduled_run_notifications == true
+      assert task.skip_manual_run_notifications == false
+    end
+
+    test "defaults the notification skip flags to false when absent", ctx do
+      task = PeriodicTask.construct(ctx.periodic1, "project_name")
+
+      assert task.skip_scheduled_run_notifications == false
+      assert task.skip_manual_run_notifications == false
+    end
+
     test "correctly maps parameters", ctx do
       assert task = PeriodicTask.construct(ctx.periodic2, "project_name")
 
