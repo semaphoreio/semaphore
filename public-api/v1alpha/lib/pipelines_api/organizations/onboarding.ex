@@ -16,12 +16,13 @@ defmodule PipelinesAPI.Organizations.Onboarding do
     end
   end
 
-  # Single-tenant installs disable user-initiated org creation, mirroring
-  # FrontWeb.OrganizationOnboardingController.single_tenant_check on the UI path.
+  # Single-tenant installs disable user-initiated org creation, same intent as
+  # FrontWeb.OrganizationOnboardingController.single_tenant_check. Front renders 404 to hide the
+  # onboarding page from the browser flow; this documented API returns 403 (forbidden).
   # Controlled by the SINGLE_TENANT env var (see config/config.exs + config/runtime.exs).
   defp validate_single_tenant do
     if Application.fetch_env!(:pipelines_api, :single_tenant),
-      do: {:error, {:user, "Organization creation is disabled on this instance."}},
+      do: {:error, {:forbidden, "Organization creation is disabled on this instance."}},
       else: :ok
   end
 

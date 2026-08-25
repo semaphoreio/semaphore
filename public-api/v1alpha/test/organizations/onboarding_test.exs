@@ -129,8 +129,8 @@ defmodule PipelinesAPI.Organizations.Onboarding.Test do
       :ok
     end
 
-    test "returns a user error and never validates, bills, or creates" do
-      assert {:error, {:user, "Organization creation is disabled on this instance."}} =
+    test "returns a forbidden (403) error and never validates, bills, or creates" do
+      assert {:error, {:forbidden, "Organization creation is disabled on this instance."}} =
                Onboarding.create_organization("Acme Org", "acme", @owner_id)
 
       # the single-tenant guard runs before is_valid/billing/create, so nothing downstream fires
@@ -141,7 +141,7 @@ defmodule PipelinesAPI.Organizations.Onboarding.Test do
     test "blocks regardless of on_prem? (single_tenant is the sole gate)" do
       Application.put_env(:pipelines_api, :on_prem?, false)
 
-      assert {:error, {:user, "Organization creation is disabled on this instance."}} =
+      assert {:error, {:forbidden, "Organization creation is disabled on this instance."}} =
                Onboarding.create_organization("Acme Org", "acme", @owner_id)
 
       refute_receive :create_called, 200
