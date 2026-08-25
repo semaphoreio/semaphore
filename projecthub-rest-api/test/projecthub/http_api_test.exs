@@ -635,7 +635,9 @@ defmodule Projecthub.HttpApi.Test do
                      ],
                      "pipeline_file" => ".semaphore/semaphore.yml",
                      "scheduled" => false,
-                     "status" => "ACTIVE"
+                     "status" => "ACTIVE",
+                     "skip_scheduled_run_notifications" => false,
+                     "skip_manual_run_notifications" => false
                    }
                  ],
                  "visibility" => "private",
@@ -931,7 +933,9 @@ defmodule Projecthub.HttpApi.Test do
                 ],
                 "pipeline_file" => ".semaphore/semaphore.yml",
                 "scheduled" => false,
-                "status" => "ACTIVE"
+                "status" => "ACTIVE",
+                "skip_scheduled_run_notifications" => false,
+                "skip_manual_run_notifications" => false
               }
             ],
             "visibility" => "public",
@@ -997,7 +1001,9 @@ defmodule Projecthub.HttpApi.Test do
                      ],
                      "pipeline_file" => ".semaphore/semaphore.yml",
                      "scheduled" => false,
-                     "status" => "ACTIVE"
+                     "status" => "ACTIVE",
+                     "skip_scheduled_run_notifications" => false,
+                     "skip_manual_run_notifications" => false
                    }
                  ],
                  "visibility" => "public",
@@ -1204,6 +1210,8 @@ defmodule Projecthub.HttpApi.Test do
                 "description" => "description",
                 "branch" => "master",
                 "scheduled" => true,
+                "skip_scheduled_run_notifications" => true,
+                "skip_manual_run_notifications" => false,
                 "at" => "0 * * * *",
                 "pipeline_file" => ".semaphore/cron1.yml",
                 "status" => "INACTIVE"
@@ -1212,6 +1220,8 @@ defmodule Projecthub.HttpApi.Test do
                 "name" => "scheduler2",
                 "id" => @task_id,
                 "scheduled" => false,
+                "skip_scheduled_run_notifications" => false,
+                "skip_manual_run_notifications" => false,
                 "branch" => "",
                 "at" => "",
                 "pipeline_file" => "",
@@ -1280,6 +1290,8 @@ defmodule Projecthub.HttpApi.Test do
                      "description" => "description",
                      "branch" => "master",
                      "scheduled" => true,
+                     "skip_scheduled_run_notifications" => true,
+                     "skip_manual_run_notifications" => false,
                      "at" => "0 * * * *",
                      "pipeline_file" => ".semaphore/cron1.yml",
                      "status" => "INACTIVE",
@@ -1290,6 +1302,8 @@ defmodule Projecthub.HttpApi.Test do
                      "id" => @task_id,
                      "description" => "",
                      "scheduled" => false,
+                     "skip_scheduled_run_notifications" => false,
+                     "skip_manual_run_notifications" => false,
                      "branch" => "",
                      "at" => "",
                      "pipeline_file" => "",
@@ -1373,6 +1387,8 @@ defmodule Projecthub.HttpApi.Test do
                 "name" => "Rubocop",
                 "id" => @task_id,
                 "scheduled" => false,
+                "skip_scheduled_run_notifications" => false,
+                "skip_manual_run_notifications" => false,
                 "branch" => "main",
                 "pipeline_file" => ".semaphore/rubocop.yml",
                 "status" => "INACTIVE",
