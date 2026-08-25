@@ -1,6 +1,8 @@
 defmodule Guard.Invitees do
   require Logger
 
+  alias Guard.Invitees.LoginSegment
+
   def inject_provider_uid(invitees, inviter_id) when is_list(invitees) do
     Enum.reduce_while(invitees, {:ok, []}, fn cur, {:ok, acc} ->
       case inject_provider_uid(cur, inviter_id) do
@@ -57,6 +59,20 @@ defmodule Guard.Invitees do
   defp extract_uid_from_provider("", _inviter_id, _), do: {:error, "empty login not allowed"}
 
   defp extract_uid_from_provider(login, inviter_id, provider) do
+    case LoginSegment.validate(login) do
+      {:ok, login} ->
+        do_extract_uid_from_provider(login, inviter_id, provider)
+
+      {:error, :invalid_login_segment} ->
+        Logger.warning(
+          "[Invitees] Rejecting #{provider} login for inviter #{inviter_id}: unsafe characters"
+        )
+
+        {:error, "login contains unsupported characters"}
+    end
+  end
+
+  defp do_extract_uid_from_provider(login, inviter_id, provider) do
     with {:ok, resource} <- resource(login, provider),
          {:ok, rha} <- maybe_get_rha(inviter_id, provider),
          {:ok, api_token} <- maybe_get_api_token(rha, provider),
