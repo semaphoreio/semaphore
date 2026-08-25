@@ -1,27 +1,64 @@
-# hackney 1.22.0 — fails to release HTTP connections to pool
-GHSA-9fm9-hp7p-53mf
-
 # decimal 2.3.0 — DoS via unbounded exponent in Decimal.new
 GHSA-rhv4-8758-jx7v
 
 # postgrex 0.20.0 — channel-name SQL injection in Notifications.listen/3 (not used by guard)
 GHSA-r73h-97w8-m54h
 
-# --- hackney 1.22.0 advisories, all fixed in 4.0.1 ---
-# Bump to 4.0.1 is blocked: httpoison ~> 1.x requires hackney ~> 1.17, so hackney cannot move to
-# 4.x without a fleet-wide httpoison/grpc upgrade. Real fix tracked for the dep-bump branch.
+# GHSA-9fm9-hp7p-53mf (hackney fails to release HTTP connections to pool) is fixed upstream in
+# hackney 1.24.0, so it is bumped away instead of suppressed: see the hackney 1.22.0 -> 1.25.0
+# bump in mix.lock (mix.exs's existing {:hackney, "~> 1.20"} already allows it). Do not re-add it
+# here.
 #
-# ssl:connect/2 post-handshake upgrade has no timeout (operational DoS; outbound bounded, same
-# class as GHSA-9fm9 above)
+# --- hackney advisories still open at 1.25.0, all first patched only in hackney 4.0.1 ---
+# Two guard/lib call sites interpolate external data into the URL or query of an outbound
+# HTTPoison.get -> hackney request. Both are now guarded by Guard.Invitees.LoginSegment
+# (guard/lib/guard/invitees/login_segment.ex), which rejects any value containing a control
+# character (incl. CR/LF), space, `/`, `?`, or `#` before the request string is built:
+#   1. Guard.Invitees.resource/2 (guard/lib/guard/invitees.ex:91) builds a GitHub request path
+#      ("https://api.github.com/users/#{login}") and a GitLab request query
+#      ("https://gitlab.com/api/v4/users?username=#{login}") from an org admin-supplied invitee
+#      login, then Guard.Invitees.http_call/3 (invitees.ex:139-154) hands the string straight to
+#      HTTPoison.get/2 with no encoding. Its only production caller is the InviteCollaborators gRPC
+#      handler (guard/lib/guard/grpc_servers/guard_server.ex:153, invite_collaborators/2); the login
+#      is now validated in Guard.Invitees.extract_uid_from_provider/3 (invitees.ex:61) before the
+#      request is built.
+#   2. Guard.OnPrem.Init.get_github_user/1 (guard/lib/guard/on_prem/init.ex:137) builds
+#      "https://api.github.com/users/#{github_username}" from the
+#      ORGANIZATION_SEED_OWNER_GITHUB_USERNAME env var during on-prem org seeding and calls
+#      HTTPoison.get/1 (init.ex:152); github_username is now validated by the same LoginSegment
+#      guard before the request is built (a rejected value aborts the seed with
+#      exit({:shutdown, 1}) instead of issuing a malformed request).
+# The only other HTTPoison call in guard/lib, Guard.User.UpdateMails.migrate/2
+# (guard/lib/guard/user/update_mails.ex:30), requests a hardcoded constant URL
+# ("https://api.github.com/user/emails") and interpolates only a trusted DB-sourced OAuth token into
+# an Authorization header, never into the URL or query, so it feeds no caller-controlled data into
+# hackney's request-line/query construction; it is also a manual, run-by-hand maintenance script,
+# not a request-serving path. The 4.x rewrite that patches the four advisories below is blocked
+# fleet-wide: httpoison requires hackney ~> 1.17, so hackney cannot reach 4.x without a coordinated
+# httpoison migration (same acceptance as projecthub).
+#
+# Why each of the four is or isn't reachable through those interpolated values, per advisory:
+#   - GHSA-j9wq-vxxc-94wf (CRLF injection in the request QUERY): reachable. The GitLab call above
+#     puts login directly in the query string, and a login containing CR/LF reaches hackney's
+#     query-building code unescaped. Mitigated (not just theoretical): Guard.Invitees.LoginSegment
+#     (guard/lib/guard/invitees/login_segment.ex) rejects any login with a control character
+#     (incl. CR/LF), space, `/`, `?`, or `#` before either request is built, closing the axis this
+#     advisory needs. Suppressed with mitigation, not suppressed as unreachable.
+#   - GHSA-pj7v-xfvx-wmjq (SSRF allowlist bypass via percent-encoded host): not reachable. Every
+#     guard/lib request URL uses a hardcoded host literal (api.github.com in resource/2 and in
+#     on_prem/init.ex, gitlab.com in resource/2, the constant api.github.com URL in update_mails);
+#     external data is only ever spliced into a path or query, never into the host.
+#   - GHSA-mp55-p8c9-rfw2 (CRLF injection in hackney's Set-Cookie domain/path handling): not
+#     reachable. Guard's HTTPoison calls pass no options at all (HTTPoison.get(resource, []) or
+#     with only an Authorization header), so no hackney :domain/:path option is ever set from
+#     lib/, and any cookie data involved comes from the (trusted) GitHub/GitLab response, not from
+#     login.
+#   - GHSA-gp9c-pm5m-5cxr (SOCKS5 TLS-upgrade ignores caller timeout): not reachable. Guard's
+#     HTTPoison calls configure no proxy, so hackney never routes through a SOCKS5 upgrade path.
 GHSA-gp9c-pm5m-5cxr
-# CR/LF injection in query parameter (no user-controlled data fed to hackney query params from lib/)
 GHSA-j9wq-vxxc-94wf
-# SSRF allowlist bypass in hackney_url:normalize/2 via percent-encoded host (no user-controlled URL
-# fed to hackney from lib/)
-GHSA-pj7v-xfvx-wmjq
-# CRLF / header injection via unvalidated `domain` and `path` options (no user-controlled domain/path
-# fed to hackney from lib/)
 GHSA-mp55-p8c9-rfw2
+GHSA-pj7v-xfvx-wmjq
 
 # --- tesla 1.11.2 advisories, fixed in 1.18.3 ---
 # Bump is blocked pending investigation: with tesla 1.20 the bitbucket oauth request
@@ -35,4 +72,3 @@ GHSA-9m9w-gxf7-rh8m
 GHSA-h74c-q9j7-mpcm
 GHSA-mc85-72gr-vm9f
 GHSA-q7jx-v53g-848w
-

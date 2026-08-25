@@ -92,6 +92,42 @@ defmodule Guard.OnPrem.Init.Test do
         assert_repo_host_account_created()
       end
     end
+
+    test "accepts a valid hyphenated/dotted owner username and still seeds the org" do
+      with_mock Guard.Events.UserCreated, publish: fn _, _ -> :ok end do
+        gh_username = "radwo-the.dev"
+        insert_env_vars(owner_gh_username: gh_username)
+        github_uid = Ecto.UUID.generate()
+
+        with_mock HTTPoison,
+          get: fn url ->
+            assert url == "https://api.github.com/users/#{gh_username}"
+
+            {:ok,
+             %{
+               body:
+                 "{\"id\":\"#{github_uid}\",\"name\":\"Radoslav\",\"login\":\"#{gh_username}\"}",
+               status_code: 200
+             }}
+          end do
+          Init.init()
+        end
+
+        assert_org_created()
+        assert_user_created()
+        assert_org_member_added()
+        assert_oauth_connection_created()
+        assert_repo_host_account_created()
+      end
+    end
+
+    test "rejects a CRLF owner username before making any github api call" do
+      insert_env_vars(owner_gh_username: "radwo\r\nX-Injected: yes")
+
+      with_mock HTTPoison, get: fn _ -> flunk("HTTPoison should not be called") end do
+        assert catch_exit(Init.init()) == {:shutdown, 1}
+      end
+    end
   end
 
   ###
