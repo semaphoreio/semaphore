@@ -257,7 +257,7 @@ defmodule RepositoryHub.Toolkit do
   def log_success(message), do: pretty_log(:info, message)
 
   @spec log_warn(any()) :: :ok
-  def log_warn(message), do: pretty_log(:warn, message)
+  def log_warn(message), do: pretty_log(:warning, message)
 
   @spec log_debug(any()) :: :ok
   def log_debug(message), do: pretty_log(:debug, message)
@@ -276,7 +276,7 @@ defmodule RepositoryHub.Toolkit do
         :error ->
           "❌ "
 
-        :warn ->
+        :warning ->
           "⚠️ "
 
         :info ->

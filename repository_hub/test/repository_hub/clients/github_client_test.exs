@@ -103,6 +103,63 @@ defmodule RepositoryHub.GithubClientTest do
       assert %{} = result
     end
 
+    # gRPC :status/:message stay as the original; :http_status carries the real HTTP code.
+    test "find_repository keeps 5xx as failed_precondition and attaches http_status" do
+      :meck.expect(Tentacat.Repositories, :repo_get, fn _client, _owner, _repo ->
+        {503, %{}, http_response(503)}
+      end)
+
+      failed_precondition = GRPC.Status.failed_precondition()
+
+      response =
+        find_repository_params()
+        |> GithubClient.find_repository(token: "foobar")
+
+      assert {:error, %{status: ^failed_precondition, http_status: 503}} = response
+    end
+
+    test "find_repository keeps 403 as failed_precondition and attaches http_status" do
+      :meck.expect(Tentacat.Repositories, :repo_get, fn _client, _owner, _repo ->
+        {403, %{}, http_response(403)}
+      end)
+
+      failed_precondition = GRPC.Status.failed_precondition()
+
+      response =
+        find_repository_params()
+        |> GithubClient.find_repository(token: "foobar")
+
+      assert {:error, %{status: ^failed_precondition, http_status: 403}} = response
+    end
+
+    test "find_repository keeps 401 as failed_precondition and attaches http_status" do
+      :meck.expect(Tentacat.Repositories, :repo_get, fn _client, _owner, _repo ->
+        {401, %{}, http_response(401)}
+      end)
+
+      failed_precondition = GRPC.Status.failed_precondition()
+
+      response =
+        find_repository_params()
+        |> GithubClient.find_repository(token: "foobar")
+
+      assert {:error, %{status: ^failed_precondition, http_status: 401}} = response
+    end
+
+    test "find_repository attaches http_status 404 (no-scope-header path stays failed_precondition)" do
+      :meck.expect(Tentacat.Repositories, :repo_get, fn _client, _owner, _repo ->
+        {404, %{}, http_response(404)}
+      end)
+
+      failed_precondition = GRPC.Status.failed_precondition()
+
+      response =
+        find_repository_params()
+        |> GithubClient.find_repository(token: "foobar")
+
+      assert {:error, %{status: ^failed_precondition, http_status: 404}} = response
+    end
+
     test "create_webhook success" do
       response =
         create_webhook_params()

@@ -48,11 +48,33 @@ defimpl RepositoryHub.SyncRepositoryAction, for: RepositoryHub.GithubAdapter do
       token: github_token
     )
     |> unwrap_error(fn error ->
-      Model.RepositoryQuery.set_not_connected(repository.id)
+      # Disconnect only on 401/404. Everything else (403, 5xx, rate limit, transport) is transient or
+      # ambiguous and must NOT disconnect: the worker never retries connected==false rows, so a wrong
+      # disconnect strands the repo until a webhook reconnects it (real removals come via the webhook).
+      unless keep_connected?(error) do
+        Model.RepositoryQuery.set_not_connected(repository.id)
+      end
 
       error(error)
     end)
+  rescue
+    e ->
+      # Transport-level failure (timeout/DNS) — transient, never disconnect. Logged with the
+      # stacktrace so real bugs stay visible.
+      log_error([
+        "transport error while syncing repository #{repository.id}",
+        inspect(e),
+        inspect(__STACKTRACE__)
+      ])
+
+      error(%{status: GRPC.Status.unavailable(), message: "GitHub is unavailable (transport error)."})
   end
+
+  # :rate_limit is the pre-call quota atom; find_repository errors carry :http_status. Disconnect only
+  # on 401/404; unknown shapes stay connected (conservative default).
+  defp keep_connected?(:rate_limit), do: true
+  defp keep_connected?(%{http_status: http_status}), do: http_status not in [401, 404]
+  defp keep_connected?(_), do: true
 
   defp sync_repository_data(repository, github_repository) do
     params = %{

@@ -78,26 +78,31 @@ defmodule RepositoryHub.GithubClient do
 
         {307, _, response} ->
           fail_with(:precondition, "Repository not found. #{fetch_status_message(response)}")
+          |> put_http_status(307)
 
         {404, _, %{headers: headers}} ->
           log_warn([
             "repository not found in #{params.repo_owner}/#{params.repo_name}. Checking oauth scopes header..."
           ])
 
-          case List.keyfind(headers, "X-OAuth-Scopes", 0) do
-            nil ->
-              fail_with(:precondition, "Error while looking up repository #{owner}/#{repo}")
+          result =
+            case List.keyfind(headers, "X-OAuth-Scopes", 0) do
+              nil ->
+                fail_with(:precondition, "Error while looking up repository #{owner}/#{repo}")
 
-            {_, scope} ->
-              if scope |> String.split(", ") |> Enum.member?("repo") do
-                fail_with(:not_found, "Repository not found.")
-              else
-                fail_with(:not_found, @err_not_found)
-              end
-          end
+              {_, scope} ->
+                if scope |> String.split(", ") |> Enum.member?("repo") do
+                  fail_with(:not_found, "Repository not found.")
+                else
+                  fail_with(:not_found, @err_not_found)
+                end
+            end
+
+          put_http_status(result, 404)
 
         {401, _, _} ->
           fail_with(:precondition, @err_not_authorized)
+          |> put_http_status(401)
 
         {status, _, response} ->
           log_error([
@@ -110,6 +115,7 @@ defmodule RepositoryHub.GithubClient do
             :precondition,
             "Error while looking up repository #{owner}/#{repo}. #{fetch_status_message(response)}"
           )
+          |> put_http_status(status)
       end
     end)
   end
@@ -1045,6 +1051,7 @@ defmodule RepositoryHub.GithubClient do
 
       {401, _, _} ->
         fail_with(:precondition, @err_not_authorized)
+        |> put_http_status(401)
 
       {status, body, _} ->
         log_error("Failed to get the rate limit status=#{status} body=#{inspect(body)}")
@@ -1053,6 +1060,11 @@ defmodule RepositoryHub.GithubClient do
         {:ok, 100}
     end
   end
+
+  # Attach the upstream HTTP status to a fail_with/2 error so SyncRepositoryAction can classify by
+  # status. Other callers ignore it — handle_response/1 reads only :status and :message.
+  defp put_http_status({:error, %{} = err}, http_status), do: {:error, Map.put(err, :http_status, http_status)}
+  defp put_http_status(other, _http_status), do: other
 
   defp inspect_response(response) do
     request_headers =
