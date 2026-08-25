@@ -649,7 +649,9 @@ defmodule Projecthub.HttpApi do
           at: task["at"] || "",
           pipeline_file: task["pipeline_file"] || "",
           parameters: construct_task_parameters(task["parameters"]),
-          status: task_status(task["status"])
+          status: task_status(task["status"]),
+          skip_scheduled_run_notifications: task["skip_scheduled_run_notifications"] == true,
+          skip_manual_run_notifications: task["skip_manual_run_notifications"] == true
         )
       end)
     else
