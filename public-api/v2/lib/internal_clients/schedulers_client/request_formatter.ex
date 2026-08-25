@@ -60,7 +60,11 @@ defmodule InternalClients.Schedulers.RequestFormatter do
        pipeline_file: from_params!(params, :pipeline_file),
        requester_id: from_params!(params, :requester_id),
        at: from_params(params, :cron_schedule, ""),
-       parameters: from_params(params, :parameters)
+       parameters: from_params(params, :parameters),
+       skip_scheduled_run_notifications:
+         from_params(params, :skip_scheduled_run_notifications, false) == true,
+       skip_manual_run_notifications:
+         from_params(params, :skip_manual_run_notifications, false) == true
      }}
   rescue
     error in ArgumentError ->
