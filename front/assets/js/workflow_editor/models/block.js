@@ -32,6 +32,7 @@ export class Block {
 
     this.skipCondition = _.get(this.structure, ["skip", "when"]) || ""
     this.runCondition = _.get(this.structure, ["run", "when"]) || ""
+    this.partialRerun = this.structure.partial_rerun || ""
 
     this.errors = new Errors()
   }
@@ -145,6 +146,11 @@ export class Block {
     this.afterUpdate()
   }
 
+  setPartialRerun(value) {
+    this.partialRerun = value
+    this.afterUpdate()
+  }
+
   changeSkipCondition(condition) {
     this.skipCondition = condition
 
@@ -217,6 +223,12 @@ export class Block {
       }
     } else {
       delete json.run
+    }
+
+    if(this.partialRerun) {
+      json.partial_rerun = this.partialRerun
+    } else {
+      delete json.partial_rerun
     }
 
     if(!this.dependencies.isImplicit()) {

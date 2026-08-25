@@ -194,7 +194,15 @@ export var Pollman = {
       .then((body) => {
         if (Pollman.remembers(newFetch)) {
           this.withScrollSaved(document, () => {
+            if (window.Tippy) {
+              window.Tippy.destroyIn(node);
+            }
+
             $(node).replaceWith(body);
+
+            if (window.Tippy) {
+              window.Tippy.rebind(document);
+            }
           });
         }
       })
