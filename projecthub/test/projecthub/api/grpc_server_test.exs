@@ -2548,6 +2548,68 @@ defmodule Projecthub.Api.GrpcServerTest do
   end
 
   describe ".update" do
+    test "returns FAILED_PRECONDITION when the stored task settings cannot be read" do
+      {:ok, channel} =
+        GRPC.Stub.connect("localhost:50051",
+          interceptors: [
+            Projecthub.Util.GRPC.ClientRequestIdInterceptor,
+            Projecthub.Util.GRPC.ClientLoggerInterceptor,
+            Projecthub.Util.GRPC.ClientRunAsyncInterceptor
+          ]
+        )
+
+      {:ok, project} = Support.Factories.Project.create_with_repo()
+
+      FunRegistry.set!(Support.FakeServices.PeriodicSchedulerService, :list, fn _req, _stream ->
+        InternalApi.PeriodicScheduler.ListResponse.new(
+          status: InternalApi.Status.new(code: :INTERNAL, message: "scheduler down")
+        )
+      end)
+
+      request =
+        InternalApi.Projecthub.UpdateRequest.new(
+          metadata:
+            InternalApi.Projecthub.RequestMeta.new(
+              org_id: project.organization_id,
+              user_id: "12345678-1234-5678-1234-567812345678"
+            ),
+          project:
+            InternalApi.Projecthub.Project.new(
+              metadata:
+                InternalApi.Projecthub.Project.Metadata.new(
+                  name: project.name,
+                  id: project.id,
+                  org_id: project.organization_id
+                ),
+              spec:
+                InternalApi.Projecthub.Project.Spec.new(
+                  repository:
+                    InternalApi.Projecthub.Project.Spec.Repository.new(
+                      url: "git@github.com:myorg/hello-world.git",
+                      pipeline_file: ".semaphore/semaphore.yml",
+                      connected: true
+                    ),
+                  schedulers: [
+                    InternalApi.Projecthub.Project.Spec.Scheduler.new(
+                      id: "12345678-1234-5678-1234-567812345678",
+                      name: "cron",
+                      branch: "master",
+                      at: "* * * * *",
+                      pipeline_file: ".semaphore/cron.yml"
+                    )
+                  ],
+                  visibility: :PRIVATE
+                )
+            )
+        )
+
+      # the abort must surface as a precondition failure with a real message,
+      # not crash the response encoder on its way out
+      assert {:ok, response} = Stub.update(channel, request)
+      assert response.metadata.status.code == :FAILED_PRECONDITION
+      assert response.metadata.status.message =~ "commit status settings"
+    end
+
     test "updates the project and returns it" do
       {:ok, channel} =
         GRPC.Stub.connect("localhost:50051",
