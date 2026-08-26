@@ -5,8 +5,10 @@ defmodule RepositoryHub.BuildStatusGuard do
   One row per (repository_id, commit_sha, context, source_id) records the last
   delivered state and an in-flight lease. `claim/1` decides under a row lock
   (`SELECT ... FOR UPDATE` inside a transaction): it acquires the lease unless
-  another delivery currently holds it (`:busy`) or a PENDING status arrives
-  after a terminal state was already delivered (`:skip`). The provider call
+  another delivery currently holds it (`:busy`), a PENDING status arrives
+  after a terminal state was already delivered (`:skip`), or the caller asked
+  to suppress a status that isn't reconciling an outstanding PENDING
+  (`:suppressed`). The provider call
   happens outside the transaction; `finalize/2` and `release/2` complete or
   abandon the lease, using the claim timestamp as a fencing token so an
   expired claimant cannot overwrite newer state. Lease arithmetic uses the
@@ -34,14 +36,20 @@ defmodule RepositoryHub.BuildStatusGuard do
   Acquires the delivery lease for the request's check.
 
   Returns `{:ok, fence}` when the caller may deliver, `:skip` when the status
-  is a stale PENDING that must not be delivered, `:busy` when another delivery
-  for the same check is in flight, or an error tuple.
+  is a stale PENDING that must not be delivered, `:suppressed` when the caller
+  asked for suppression and no PENDING is outstanding for this check, `:busy`
+  when another delivery for the same check is in flight, or an error tuple.
+
+  A suppressed terminal state is still delivered when the last delivered state
+  is PENDING, so a suppression decision that flipped mid-pipeline cannot leave
+  a check pending forever.
   """
   @spec claim(CreateBuildStatusRequest.t()) ::
-          {:ok, DateTime.t()} | :skip | :busy | {:error, term}
+          {:ok, DateTime.t()} | :skip | :suppressed | :busy | {:error, term}
   def claim(request) do
     with {:ok, key} <- key(request) do
       pending? = request.status == :PENDING
+      suppress? = request.suppress == true
 
       transaction(fn ->
         ensure_row(key)
@@ -54,6 +62,12 @@ defmodule RepositoryHub.BuildStatusGuard do
           |> Repo.one!()
 
         cond do
+          suppress? && pending? ->
+            :suppressed
+
+          suppress? && row.last_state != "PENDING" ->
+            :suppressed
+
           pending? && row.last_state in @terminal_states ->
             :skip
 
