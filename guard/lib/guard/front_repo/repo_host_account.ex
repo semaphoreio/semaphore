@@ -151,11 +151,18 @@ defmodule Guard.FrontRepo.RepoHostAccount do
   # this (see RepoHostAccount.update_token/4), so this short-circuit can't
   # get permanently stuck.
   #
-  # NOTE / follow-up: this only avoids retrying a row already latched
-  # revoked=true. It does NOT add a negative-cache/backoff for a row that
-  # is still revoked=false but just failed a refresh moments ago (e.g. a
-  # 429 storm) - that needs new persisted state (a last-failure timestamp
-  # column) which is out of scope here.
+  # NOTE (tracked follow-up, not fixed here): this DOES mean an
+  # already-revoked row can no longer self-heal itself purely by being
+  # looked up - the refresh call that would flip revoked:false on success
+  # never fires once revoked:true is latched. `handle_update_repo_status`
+  # also calls `get_token` (this path) *before* `handle_validate_token`
+  # (the live-validate path that can flip revoked both ways), so live
+  # validate never runs for a short-circuited row either. Recovery for an
+  # already-revoked row is via reconnect (clears :revoked, see
+  # `id/api.ex`) or an admin `revoked=false` flip. Acceptable: post-fix, a
+  # row only reaches revoked:true on a genuine invalid_grant/401, so this
+  # is correct behavior, not a stuck state - it's still worth eventually
+  # reordering handle_update_repo_status to try live-validate first.
   def get_github_token(%__MODULE__{revoked: true} = rha) do
     Logger.debug(
       "Skipping GitHub token refresh for #{rha.user_id}: account already revoked"
@@ -165,17 +172,19 @@ defmodule Guard.FrontRepo.RepoHostAccount do
   end
 
   def get_github_token(%__MODULE__{} = rha) do
-    case Guard.Api.Github.user_token(rha) do
-      {:ok, {_token, _expires_at}} = token_tuple ->
-        token_tuple
+    with_negative_cache(rha, fn ->
+      case Guard.Api.Github.user_token(rha) do
+        {:ok, {_token, _expires_at}} = token_tuple ->
+          token_tuple
 
-      {:error, :revoked} ->
-        update_account(%{revoked: true}, rha)
-        {:error, :revoked}
+        {:error, :revoked} ->
+          update_account(%{revoked: true}, rha)
+          {:error, :revoked}
 
-      {:error, reason} ->
-        {:error, reason}
-    end
+        {:error, reason} ->
+          {:error, reason}
+      end
+    end)
   end
 
   def get_bitbucket_token(%__MODULE__{revoked: true} = rha) do
@@ -187,17 +196,19 @@ defmodule Guard.FrontRepo.RepoHostAccount do
   end
 
   def get_bitbucket_token(rha) do
-    case Guard.Api.Bitbucket.user_token(rha) do
-      {:ok, {_token, _expires_at}} = token_tuple ->
-        token_tuple
+    with_negative_cache(rha, fn ->
+      case Guard.Api.Bitbucket.user_token(rha) do
+        {:ok, {_token, _expires_at}} = token_tuple ->
+          token_tuple
 
-      {:error, :revoked} ->
-        update_account(%{revoked: true}, rha)
-        {:error, :revoked}
+        {:error, :revoked} ->
+          update_account(%{revoked: true}, rha)
+          {:error, :revoked}
 
-      {:error, reason} ->
-        {:error, reason}
-    end
+        {:error, reason} ->
+          {:error, reason}
+      end
+    end)
   end
 
   def get_gitlab_token(%__MODULE__{revoked: true} = rha) do
@@ -209,16 +220,52 @@ defmodule Guard.FrontRepo.RepoHostAccount do
   end
 
   def get_gitlab_token(rha) do
-    case Guard.Api.Gitlab.user_token(rha) do
-      {:ok, {_token, _expires_at}} = token_tuple ->
-        token_tuple
+    with_negative_cache(rha, fn ->
+      case Guard.Api.Gitlab.user_token(rha) do
+        {:ok, {_token, _expires_at}} = token_tuple ->
+          token_tuple
 
-      {:error, :revoked} ->
-        update_account(%{revoked: true}, rha)
-        {:error, :revoked}
+        {:error, :revoked} ->
+          update_account(%{revoked: true}, rha)
+          {:error, :revoked}
 
-      {:error, reason} ->
-        {:error, reason}
+        {:error, reason} ->
+          {:error, reason}
+      end
+    end)
+  end
+
+  # Negative cache for a row that is NOT yet revoked but just failed a
+  # refresh (transient upstream failure or network error). Without this, a
+  # bare-403/429 storm re-hammers the shared OAuth consumer credential on
+  # every lookup - and it's worse than a plain retry loop: :transient/
+  # :network_error surface as gRPC UNAVAILABLE (see user_server.ex
+  # handle_token_error/3), which repohub auto-retries, so each failure can
+  # trigger another failure almost immediately. A short TTL cache absorbs
+  # that amplification without needing new persisted state.
+  @oauth_refresh_failure_cache :oauth_refresh_failure_cache
+  @oauth_refresh_failure_cache_ttl :timer.seconds(60)
+
+  defp with_negative_cache(rha, fetch_fun) do
+    case Cachex.get(@oauth_refresh_failure_cache, rha.id) do
+      {:ok, {:error, _reason} = cached_error} ->
+        cached_error
+
+      _ ->
+        case fetch_fun.() do
+          {:error, _reason} = error ->
+            Cachex.put(
+              @oauth_refresh_failure_cache,
+              rha.id,
+              error,
+              ttl: @oauth_refresh_failure_cache_ttl
+            )
+
+            error
+
+          ok ->
+            ok
+        end
     end
   end
 
