@@ -4,42 +4,42 @@ defmodule GithubNotifier.Utils.SkipPolicyTest do
   alias GithubNotifier.Models.Periodic
   alias GithubNotifier.Utils.SkipPolicy
 
-  describe "skip?/2" do
-    test "skips scheduled pipelines when the task skips scheduled run notifications" do
-      assert SkipPolicy.skip?(pipeline(:SCHEDULE), task(scheduled: true))
+  describe "suppress?/2" do
+    test "suppresses scheduled pipelines when the task skips scheduled run notifications" do
+      assert SkipPolicy.suppress?(pipeline(:SCHEDULE), task(scheduled: true))
     end
 
-    test "skips manual runs when the task skips manual run notifications" do
-      assert SkipPolicy.skip?(pipeline(:MANUAL_RUN), task(manual: true))
+    test "suppresses manual runs when the task skips manual run notifications" do
+      assert SkipPolicy.suppress?(pipeline(:MANUAL_RUN), task(manual: true))
     end
 
-    test "a set flag also silences reruns of that trigger" do
+    test "a set flag also suppresses reruns of that trigger" do
       pipeline = %{pipeline(:SCHEDULE) | workflow_rerun_of: "wf-1"}
 
-      assert SkipPolicy.skip?(pipeline, task(scheduled: true))
+      assert SkipPolicy.suppress?(pipeline, task(scheduled: true))
     end
 
-    test "a set flag also silences partial re-runs of that trigger" do
+    test "a set flag also suppresses partial re-runs of that trigger" do
       pipeline = %{pipeline(:SCHEDULE) | ppl_triggered_by: :PARTIAL_RE_RUN}
 
-      assert SkipPolicy.skip?(pipeline, task(scheduled: true))
+      assert SkipPolicy.suppress?(pipeline, task(scheduled: true))
     end
 
-    test "does not skip when the flag for that trigger is unset" do
-      refute SkipPolicy.skip?(pipeline(:SCHEDULE), task(manual: true))
-      refute SkipPolicy.skip?(pipeline(:MANUAL_RUN), task(scheduled: true))
+    test "does not suppress when the flag for that trigger is unset" do
+      refute SkipPolicy.suppress?(pipeline(:SCHEDULE), task(manual: true))
+      refute SkipPolicy.suppress?(pipeline(:MANUAL_RUN), task(scheduled: true))
     end
 
-    test "never skips hook or api pipelines" do
+    test "never suppresses hook or api pipelines" do
       both = task(scheduled: true, manual: true)
 
-      refute SkipPolicy.skip?(pipeline(:HOOK), both)
-      refute SkipPolicy.skip?(pipeline(:API), both)
+      refute SkipPolicy.suppress?(pipeline(:HOOK), both)
+      refute SkipPolicy.suppress?(pipeline(:API), both)
     end
 
-    test "never skips when the task can't be resolved" do
-      refute SkipPolicy.skip?(pipeline(:SCHEDULE), nil)
-      refute SkipPolicy.skip?(pipeline(:MANUAL_RUN))
+    test "never suppresses when the task can't be resolved" do
+      refute SkipPolicy.suppress?(pipeline(:SCHEDULE), nil)
+      refute SkipPolicy.suppress?(pipeline(:MANUAL_RUN))
     end
   end
 
