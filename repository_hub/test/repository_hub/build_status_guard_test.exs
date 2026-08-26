@@ -71,6 +71,40 @@ defmodule RepositoryHub.BuildStatusGuardTest do
       assert :suppressed = BuildStatusGuard.claim(%{request | status: :SUCCESS, suppress: true})
     end
 
+    test "a suppressed terminal still records its state, so a later pending is stale",
+         %{request: request} do
+      assert :suppressed = BuildStatusGuard.claim(%{request | status: :SUCCESS, suppress: true})
+
+      # without the record, this pending would be delivered with nothing left
+      # to terminate it - the stranded check this feature must never cause
+      assert :skip = BuildStatusGuard.claim(%{request | status: :PENDING})
+    end
+
+    test "a suppressed pending records nothing, so a later suppressed terminal stays suppressed",
+         %{request: request} do
+      assert :suppressed = BuildStatusGuard.claim(%{request | suppress: true})
+
+      assert :suppressed = BuildStatusGuard.claim(%{request | status: :SUCCESS, suppress: true})
+    end
+
+    test "a suppressed terminal reports busy while a pending delivery is in flight",
+         %{request: request} do
+      # claimed but not finalized: last_state is still nil even though a
+      # PENDING is on its way to the provider
+      assert {:ok, _fence} = BuildStatusGuard.claim(request)
+
+      assert :busy = BuildStatusGuard.claim(%{request | status: :SUCCESS, suppress: true})
+    end
+
+    test "a suppressed terminal reconciles once the in-flight pending is recorded",
+         %{request: request} do
+      assert {:ok, fence} = BuildStatusGuard.claim(request)
+      assert :busy = BuildStatusGuard.claim(%{request | status: :SUCCESS, suppress: true})
+      assert :ok = BuildStatusGuard.finalize(request, fence)
+
+      assert {:ok, _fence} = BuildStatusGuard.claim(%{request | status: :SUCCESS, suppress: true})
+    end
+
     test "delivers a suppressed terminal state that reconciles an outstanding pending",
          %{request: request} do
       assert {:ok, fence} = BuildStatusGuard.claim(request)

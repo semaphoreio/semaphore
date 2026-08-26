@@ -158,11 +158,6 @@ defmodule RepositoryHub.Server do
   end
 
   @spec create_build_status(CreateBuildStatusRequest.t(), ServerStream.t()) :: %{}
-  def create_build_status(%{source_id: "", suppress: true}, _stream) do
-    Watchman.increment("build_status_guard.suppressed_unguarded")
-    %CreateBuildStatusResponse{code: :OK, skipped: true}
-  end
-
   def create_build_status(%{source_id: ""} = request, _stream) do
     execute(request, Server.CreateBuildStatusAction)
   end
@@ -191,13 +186,6 @@ defmodule RepositoryHub.Server do
       # Not a guard outage — request validation rejects this repository_id.
       {:error, :invalid_key} ->
         execute(request, Server.CreateBuildStatusAction)
-
-      # The guard cannot arbitrate, so there is no outstanding PENDING to
-      # reconcile against: honour the caller's suppression rather than
-      # failing open into a status it asked us not to send.
-      {:error, :guard_unavailable} when request.suppress ->
-        Watchman.increment("build_status_guard.suppressed_unguarded")
-        %CreateBuildStatusResponse{code: :OK, skipped: true}
 
       # Missing guard table = deploy-before-migration window. Deliberately
       # fail open so the rollout cannot stall deliveries.
