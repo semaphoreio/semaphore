@@ -70,7 +70,7 @@ defmodule PipelinesAPI.Mixfile do
       {:junit_formatter, "~> 3.1", only: [:test]},
       {:cachex, "~> 3.2"},
       {:amqp_client, "~> 3.9.27"},
-      {:tackle, github: "renderedtext/ex-tackle", tag: "v0.2.3"},
+      {:tackle, github: "renderedtext/ex-tackle", tag: "v0.4.1"},
       {:feature_provider, path: "../../feature_provider"}
     ]
   end
