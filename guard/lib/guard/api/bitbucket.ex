@@ -8,6 +8,11 @@ defmodule Guard.Api.Bitbucket do
   @api_v2_path "/api/2.0"
   @oauth2_path "/site/oauth2/access_token"
 
+  # Curated response-header subset logged on a refresh failure, to help
+  # identify which edge/CDN/WAF is involved (e.g. an Atlassian identity-proxy
+  # 403). Deliberately does NOT include the response body.
+  @diagnostic_headers ~w(server via x-amz-cf-id cf-ray x-amzn-requestid x-amz-apigw-id)
+
   plug(Tesla.Middleware.BaseUrl, @base_url)
   plug(Tesla.Middleware.JSON)
 
@@ -91,7 +96,9 @@ defmodule Guard.Api.Bitbucket do
       {:ok, %Tesla.Env{status: status, body: body}} when status in 200..299 ->
         OAuth.handle_ok_token_response(repo_host_account, body)
 
-      {:ok, %Tesla.Env{status: status, body: body}} ->
+      {:ok, %Tesla.Env{status: status, body: body, headers: headers}} ->
+        log_response_headers(status, headers, repo_host_account.id)
+
         case OAuth.classify_refresh_response(status, body) do
           :revoked ->
             Logger.warning(
@@ -118,6 +125,18 @@ defmodule Guard.Api.Bitbucket do
         Logger.error("Error fetching token: #{inspect(error)}")
         {:error, :network_error}
     end
+  end
+
+  defp log_response_headers(status, headers, repo_host_account_id) do
+    curated =
+      headers
+      |> Enum.filter(fn {key, _value} -> String.downcase(key) in @diagnostic_headers end)
+      |> Enum.into(%{})
+
+    Logger.warning(
+      "Bitbucket refresh failure (HTTP #{status}) response headers " <>
+        "for repo_host_account #{repo_host_account_id}: #{inspect(curated)}"
+    )
   end
 
   defp safe_oauth_error(body) when is_map(body), do: Map.get(body, "error")
