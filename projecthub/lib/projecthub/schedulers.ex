@@ -89,7 +89,9 @@ defmodule Projecthub.Schedulers do
             "project_id=#{project_id} reason=#{inspect(error)}"
         )
 
-        {:error, :notification_flags_unavailable}
+        {:error,
+         "Could not read the stored commit status settings for this project's tasks, " <>
+           "so no tasks were changed. Please retry."}
     end
   end
 
