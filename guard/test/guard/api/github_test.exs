@@ -114,7 +114,7 @@ defmodule Guard.Api.GithubTest do
             {:ok, %Tesla.Env{status: status, body: %{}}}
         end)
 
-        assert {:error, :failed} = Github.user_token(rha)
+        assert {:error, :transient} = Github.user_token(rha)
       end
     end
 
@@ -124,7 +124,7 @@ defmodule Guard.Api.GithubTest do
           {:ok, %Tesla.Env{status: 401, body: %{}}}
 
         %{method: :post, url: "https://github.com/login/oauth/access_token"} ->
-          {:ok, %Tesla.Env{status: 400, body: %{}}}
+          {:ok, %Tesla.Env{status: 400, body: %{"error" => "invalid_grant"}}}
       end)
 
       assert {:error, :revoked} = Github.user_token(rha)

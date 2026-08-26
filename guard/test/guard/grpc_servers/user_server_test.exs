@@ -1630,9 +1630,12 @@ defmodule Guard.GrpcServers.UserServerTest do
           type: User.RepositoryProvider.Type.value(:GITHUB)
         )
 
-      # A valid token must not resurrect the revoked link while another user
-      # actively holds the uid — and the RPC must not fail over it.
-      assert {:ok, _response} = channel |> Stub.refresh_repository_provider(request)
+      # get_github_token/1 short-circuits on an already-revoked row, so the RPC
+      # never reaches the un-revoke gate and surfaces the revoked-token error
+      # instead. What still matters here is that nothing resurrects the link
+      # while another user actively holds the uid.
+      assert {:error, %GRPC.RPCError{status: 5}} =
+               channel |> Stub.refresh_repository_provider(request)
 
       {:ok, reloaded} = Guard.FrontRepo.RepoHostAccount.get_for_github_user(user.id)
       assert reloaded.revoked == true

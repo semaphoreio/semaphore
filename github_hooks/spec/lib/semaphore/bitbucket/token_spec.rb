@@ -50,7 +50,7 @@ RSpec.describe Semaphore::Bitbucket::Token do
   end
 
   describe ".fetch_token" do
-    let(:account) { FactoryBot.create(:bitbucket_account) }
+    let(:account) { FactoryBot.create(:bitbucket_account, :revoked => false) }
 
     before do
       allow(Semaphore::Bitbucket::Credentials).to receive_messages(:app_id => "app-id",
@@ -71,11 +71,28 @@ RSpec.describe Semaphore::Bitbucket::Token do
       expect(expires_at).to be_present
     end
 
-    it "revokes the connection when the refresh is rejected", :aggregate_failures do
-      stub_refresh(400)
+    it "revokes the connection on a genuine invalid_grant", :aggregate_failures do
+      stub_refresh(400, { "error" => "invalid_grant" }.to_json)
 
       expect(described_class.fetch_token(account)).to eq(["", nil])
       expect(account.reload.revoked).to be(true)
+    end
+
+    # Only error=invalid_grant means the refresh_token was actually revoked. A
+    # bare 4xx is an edge/WAF response or rejected client credentials, and
+    # latching :revoked on it disconnects the account over a transient failure.
+    it "does not revoke on a bare 403 with no OAuth error body", :aggregate_failures do
+      stub_refresh(403, "")
+
+      expect(described_class.fetch_token(account)).to eq(["", nil])
+      expect(account.reload.revoked).to be(false)
+    end
+
+    it "does not revoke on a 400 with no OAuth error body", :aggregate_failures do
+      stub_refresh(400)
+
+      expect(described_class.fetch_token(account)).to eq(["", nil])
+      expect(account.reload.revoked).to be(false)
     end
 
     it "does not revoke the connection when the refresh is rate limited", :aggregate_failures do

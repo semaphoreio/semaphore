@@ -111,7 +111,7 @@ defmodule Guard.Api.BitbucketTest do
             {:ok, %Tesla.Env{status: 404, body: %{}}}
         end)
 
-        assert {:error, :failed} = Bitbucket.user_token(rha)
+        assert {:error, :transient} = Bitbucket.user_token(rha)
       end
     end
 
@@ -120,7 +120,7 @@ defmodule Guard.Api.BitbucketTest do
 
       Tesla.Mock.mock_global(fn
         %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
-          {:ok, %Tesla.Env{status: 400, body: %{}}}
+          {:ok, %Tesla.Env{status: 400, body: %{"error" => "invalid_grant"}}}
 
         %{method: :get, url: "https://api.bitbucket.org/2.0/user/workspaces"} ->
           {:ok, %Tesla.Env{status: 404, body: %{}}}

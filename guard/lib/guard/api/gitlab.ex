@@ -57,26 +57,22 @@ defmodule Guard.Api.Gitlab do
       {:ok, %Tesla.Env{status: status, body: body}} when status in 200..299 ->
         OAuth.handle_ok_token_response(repo_host_account, body)
 
-      {:ok, %Tesla.Env{status: status}} when status in [408, 429] ->
-        Logger.warning(
-          "Transient failure refreshing gitlab token for #{repo_host_account.login} (HTTP #{status})"
-        )
+      {:ok, %Tesla.Env{status: status, body: body}} ->
+        case OAuth.classify_refresh_response(status, body) do
+          :revoked ->
+            Logger.warning(
+              "Failed to refresh gitlab token for #{repo_host_account.login}, with: #{inspect(body)}"
+            )
 
-        {:error, :failed}
+            {:error, :revoked}
 
-      {:ok, %Tesla.Env{status: status, body: body}} when status in 400..499 ->
-        Logger.warning(
-          "Failed to refresh gitlab token for #{repo_host_account.login}, with: #{inspect(body)}"
-        )
+          :transient ->
+            Logger.debug(
+              "Transient failure refreshing gitlab token for #{repo_host_account.login}, with: #{inspect(body)}"
+            )
 
-        {:error, :revoked}
-
-      {:ok, %Tesla.Env{status: _status, body: body}} ->
-        Logger.debug(
-          "Failed to refresh gitlab token for #{repo_host_account.login}, with: #{inspect(body)}"
-        )
-
-        {:error, :failed}
+            {:error, :transient}
+        end
 
       {:error, error} ->
         Logger.error("Error fetching gitlab token: #{inspect(error)}")

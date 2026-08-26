@@ -74,7 +74,7 @@ defmodule Guard.Api.GitlabTest do
             {:ok, %Tesla.Env{status: status, body: %{}}}
         end)
 
-        assert {:error, :failed} = Gitlab.user_token(rha)
+        assert {:error, :transient} = Gitlab.user_token(rha)
       end
     end
 
@@ -83,7 +83,7 @@ defmodule Guard.Api.GitlabTest do
 
       Tesla.Mock.mock_global(fn
         %{method: :post, url: "https://gitlab.com/oauth/token"} ->
-          {:ok, %Tesla.Env{status: 400, body: %{}}}
+          {:ok, %Tesla.Env{status: 400, body: %{"error" => "invalid_grant"}}}
       end)
 
       assert {:error, :revoked} = Gitlab.user_token(rha)
