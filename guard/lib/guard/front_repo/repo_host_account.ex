@@ -164,9 +164,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
   # is correct behavior, not a stuck state - it's still worth eventually
   # reordering handle_update_repo_status to try live-validate first.
   def get_github_token(%__MODULE__{revoked: true} = rha) do
-    Logger.debug(
-      "Skipping GitHub token refresh for #{rha.user_id}: account already revoked"
-    )
+    Logger.debug("Skipping GitHub token refresh for #{rha.user_id}: account already revoked")
 
     {:error, :revoked}
   end
@@ -188,9 +186,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
   end
 
   def get_bitbucket_token(%__MODULE__{revoked: true} = rha) do
-    Logger.debug(
-      "Skipping Bitbucket token refresh for #{rha.user_id}: account already revoked"
-    )
+    Logger.debug("Skipping Bitbucket token refresh for #{rha.user_id}: account already revoked")
 
     {:error, :revoked}
   end
@@ -212,9 +208,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
   end
 
   def get_gitlab_token(%__MODULE__{revoked: true} = rha) do
-    Logger.debug(
-      "Skipping GitLab token refresh for #{rha.user_id}: account already revoked"
-    )
+    Logger.debug("Skipping GitLab token refresh for #{rha.user_id}: account already revoked")
 
     {:error, :revoked}
   end
