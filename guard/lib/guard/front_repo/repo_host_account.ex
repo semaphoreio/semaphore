@@ -146,6 +146,24 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     end
   end
 
+  # Already revoked: don't hammer the shared OAuth consumer credential with a
+  # refresh that's known to fail. A successful fetch elsewhere self-heals
+  # this (see RepoHostAccount.update_token/4), so this short-circuit can't
+  # get permanently stuck.
+  #
+  # NOTE / follow-up: this only avoids retrying a row already latched
+  # revoked=true. It does NOT add a negative-cache/backoff for a row that
+  # is still revoked=false but just failed a refresh moments ago (e.g. a
+  # 429 storm) - that needs new persisted state (a last-failure timestamp
+  # column) which is out of scope here.
+  def get_github_token(%__MODULE__{revoked: true} = rha) do
+    Logger.debug(
+      "Skipping GitHub token refresh for #{rha.user_id}: account already revoked"
+    )
+
+    {:error, {"", nil}}
+  end
+
   def get_github_token(%__MODULE__{} = rha) do
     case Guard.Api.Github.user_token(rha) do
       {:ok, {_token, _expires_at}} = token_tuple ->
@@ -160,6 +178,14 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     end
   end
 
+  def get_bitbucket_token(%__MODULE__{revoked: true} = rha) do
+    Logger.debug(
+      "Skipping Bitbucket token refresh for #{rha.user_id}: account already revoked"
+    )
+
+    {:error, {"", nil}}
+  end
+
   def get_bitbucket_token(rha) do
     case Guard.Api.Bitbucket.user_token(rha) do
       {:ok, {_token, _expires_at}} = token_tuple ->
@@ -172,6 +198,14 @@ defmodule Guard.FrontRepo.RepoHostAccount do
       {:error, _} ->
         {:error, {"", nil}}
     end
+  end
+
+  def get_gitlab_token(%__MODULE__{revoked: true} = rha) do
+    Logger.debug(
+      "Skipping GitLab token refresh for #{rha.user_id}: account already revoked"
+    )
+
+    {:error, {"", nil}}
   end
 
   def get_gitlab_token(rha) do
