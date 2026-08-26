@@ -15,7 +15,12 @@ defmodule Projecthub.Schedulers do
   end
 
   defp do_update(project, schedulers, requester_id) do
-    stored_flags = stored_notification_flags(project.id)
+    with {:ok, stored_flags} <- stored_notification_flags(project.id, schedulers) do
+      bulk_upsert(project, schedulers, requester_id, stored_flags)
+    end
+  end
+
+  defp bulk_upsert(project, schedulers, requester_id, stored_flags) do
     definitions = Enum.map(schedulers, &to_periodic_definition(&1, stored_flags))
 
     Logger.info(
@@ -67,16 +72,24 @@ defmodule Projecthub.Schedulers do
   # The legacy scheduler struct has no notification flags, so carry the stored
   # values forward - otherwise a project update through this path would reset
   # every task's commit status settings.
-  defp stored_notification_flags(project_id) do
+  defp stored_notification_flags(_project_id, []), do: {:ok, %{}}
+
+  defp stored_notification_flags(project_id, _schedulers) do
     case PeriodicSchedulerClient.list(project_id) do
       {:ok, periodics} ->
-        Map.new(periodics, fn periodic ->
-          {periodic.id,
-           {periodic.skip_scheduled_run_notifications == true, periodic.skip_manual_run_notifications == true}}
-        end)
+        {:ok,
+         Map.new(periodics, fn periodic ->
+           {periodic.id,
+            {periodic.skip_scheduled_run_notifications == true, periodic.skip_manual_run_notifications == true}}
+         end)}
 
-      _ ->
-        %{}
+      error ->
+        Logger.error(
+          "Schedulers.update aborted, stored notification flags unreadable: " <>
+            "project_id=#{project_id} reason=#{inspect(error)}"
+        )
+
+        {:error, :notification_flags_unavailable}
     end
   end
 
