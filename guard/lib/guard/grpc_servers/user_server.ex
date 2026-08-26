@@ -880,7 +880,13 @@ defmodule Guard.GrpcServers.UserServer do
   # later"), and callers/alerting need to be able to tell them apart.
   defp handle_token_error(:revoked, provider, user_id) do
     Logger.error("Token for User: '#{user_id}' and '#{provider}' is revoked.")
-    grpc_error!(:not_found, "Token not found: account access has been revoked.")
+    # Message must stay exactly "Token for not found." - repository_hub's
+    # GithubAdapter.SyncRepositoryAction disconnect_error?/1
+    # (adapters/github/sync_repository_action.ex) string-matches this exact
+    # gRPC error to decide whether to mark the repository not-connected.
+    # :transient/:network_error below must NOT reuse this string (or any
+    # " not found" suffix), or a transient blip would also disconnect it.
+    grpc_error!(:not_found, "Token for not found.")
   end
 
   defp handle_token_error(:transient, provider, user_id) do
