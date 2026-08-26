@@ -42,6 +42,8 @@ spec:
               value: {{ .Values.logging }}
             - name: API_VERSION
               value: "v1alpha"
+            - name: SINGLE_TENANT
+              value: "true"
             - name: PPL_GRPC_URL
               valueFrom:
                 configMapKeyRef:
