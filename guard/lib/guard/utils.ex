@@ -55,7 +55,10 @@ defmodule Guard.Utils.OAuth do
 
     token = body["access_token"]
     expires_in = body["expires_in"]
-    refresh_token = body["refresh_token"]
+    # Some providers (e.g. GitHub) omit refresh_token on a 2xx response when
+    # the existing refresh token is still valid (not rotated) - fall back to
+    # the stored one instead of overwriting it with nil.
+    refresh_token = body["refresh_token"] || repo_host_account.refresh_token
 
     expires_at = calc_expires_at(expires_in)
 
