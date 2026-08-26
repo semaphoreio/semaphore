@@ -42,6 +42,16 @@ defmodule GithubNotifier.Models.PeriodicTest do
     assert Cachex.get!(:task_policy, "gone") == :not_found
   end
 
+  test "a cached not-found is answered without asking the scheduler again" do
+    GrpcMock.stub(SchedulerMock, :describe, Support.Factories.periodic_not_found_response())
+
+    assert Periodic.find("gone") == nil
+
+    GrpcMock.stub(SchedulerMock, :describe, fn _, _ -> raise "should not be called again" end)
+
+    assert Periodic.find("gone") == nil
+  end
+
   test "caches a transport failure only briefly, so an outage does not cost a lookup per event" do
     GrpcMock.stub(SchedulerMock, :describe, fn _, _ -> raise "boom" end)
 
