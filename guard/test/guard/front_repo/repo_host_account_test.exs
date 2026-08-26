@@ -296,7 +296,7 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
 
     test "bare 403 on refresh is transient: row stays unrevoked", %{rha: rha} do
       Tesla.Mock.mock_global(fn
-        %{method: :get, url: "https://api.github.com/"} ->
+        %{method: :get, url: "https://api.github.com"} ->
           {:ok, %Tesla.Env{status: 401, body: %{}}}
 
         %{method: :post, url: "https://github.com/login/oauth/access_token"} ->
@@ -311,7 +311,7 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
 
     test "genuine 401 on refresh IS a real revocation: row gets revoked", %{rha: rha} do
       Tesla.Mock.mock_global(fn
-        %{method: :get, url: "https://api.github.com/"} ->
+        %{method: :get, url: "https://api.github.com"} ->
           {:ok, %Tesla.Env{status: 401, body: %{}}}
 
         %{method: :post, url: "https://github.com/login/oauth/access_token"} ->
