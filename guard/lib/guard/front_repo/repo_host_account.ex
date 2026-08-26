@@ -161,7 +161,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
       "Skipping GitHub token refresh for #{rha.user_id}: account already revoked"
     )
 
-    {:error, {"", nil}}
+    {:error, :revoked}
   end
 
   def get_github_token(%__MODULE__{} = rha) do
@@ -171,10 +171,10 @@ defmodule Guard.FrontRepo.RepoHostAccount do
 
       {:error, :revoked} ->
         update_account(%{revoked: true}, rha)
-        {:error, {"", nil}}
+        {:error, :revoked}
 
-      {:error, _} ->
-        {:error, {"", nil}}
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -183,7 +183,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
       "Skipping Bitbucket token refresh for #{rha.user_id}: account already revoked"
     )
 
-    {:error, {"", nil}}
+    {:error, :revoked}
   end
 
   def get_bitbucket_token(rha) do
@@ -193,10 +193,10 @@ defmodule Guard.FrontRepo.RepoHostAccount do
 
       {:error, :revoked} ->
         update_account(%{revoked: true}, rha)
-        {:error, {"", nil}}
+        {:error, :revoked}
 
-      {:error, _} ->
-        {:error, {"", nil}}
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -205,7 +205,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
       "Skipping GitLab token refresh for #{rha.user_id}: account already revoked"
     )
 
-    {:error, {"", nil}}
+    {:error, :revoked}
   end
 
   def get_gitlab_token(rha) do
@@ -215,10 +215,10 @@ defmodule Guard.FrontRepo.RepoHostAccount do
 
       {:error, :revoked} ->
         update_account(%{revoked: true}, rha)
-        {:error, {"", nil}}
+        {:error, :revoked}
 
-      {:error, _} ->
-        {:error, {"", nil}}
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
