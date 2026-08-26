@@ -122,7 +122,9 @@ defmodule Projecthub.SchedulersTest do
         API.BulkUpsertAndPruneResponse.new(status: Status.new())
       end)
 
-      assert {:error, :notification_flags_unavailable} = Schedulers.update(project, [scheduler], "requester_id")
+      assert {:error, message} = Schedulers.update(project, [scheduler], "requester_id")
+      assert is_binary(message)
+      assert message =~ "commit status settings"
 
       refute_received :bulk_called
     end
