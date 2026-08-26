@@ -244,6 +244,26 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
 
       assert {:error, :revoked} = RepoHostAccount.get_bitbucket_token(rha)
     end
+
+    test "negative cache: a second call within the TTL does not hit the provider",
+         %{rha: rha} do
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
+          {:ok, %Tesla.Env{status: 403, body: ""}}
+      end)
+
+      assert {:error, :transient} = RepoHostAccount.get_bitbucket_token(rha)
+
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
+          flunk("refresh endpoint must not be called again while the negative cache is warm")
+      end)
+
+      assert {:error, :transient} = RepoHostAccount.get_bitbucket_token(rha)
+
+      reloaded = FrontRepo.get!(RepoHostAccount, rha.id)
+      refute reloaded.revoked
+    end
   end
 
   describe "update_token/4 self-heal (see bitbucket-oauth incident doc)" do
