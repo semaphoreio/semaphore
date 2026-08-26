@@ -11,7 +11,7 @@ defmodule GithubNotifier.NotifierTest do
   end
 
   describe "notify/3 with a scheduled pipeline" do
-    test "skips the commit status when the task skips scheduled run notifications" do
+    test "asks repository_hub to suppress when the task skips scheduled run notifications" do
       stub_services(triggered_by: :SCHEDULE, wf_triggerer_id: "task-1")
 
       GrpcMock.stub(
@@ -22,7 +22,10 @@ defmodule GithubNotifier.NotifierTest do
 
       GithubNotifier.Notifier.notify("asd", "123", "1")
 
-      assert Cachex.get!(:store, @status_key) == nil
+      assert_received {:build_status, request}
+      assert request.suppress == true
+      # guarded: a source_id is what lets repository_hub serialize this check
+      assert request.source_id != ""
     end
 
     test "sends the commit status when the task does not skip them" do
@@ -36,6 +39,8 @@ defmodule GithubNotifier.NotifierTest do
 
       GithubNotifier.Notifier.notify("asd", "123", "1")
 
+      assert_received {:build_status, request}
+      assert request.suppress == false
       assert Cachex.get!(:store, @status_key) == true
     end
 
@@ -45,6 +50,8 @@ defmodule GithubNotifier.NotifierTest do
 
       GithubNotifier.Notifier.notify("asd", "123", "1")
 
+      assert_received {:build_status, request}
+      assert request.suppress == false
       assert Cachex.get!(:store, @status_key) == true
     end
 
@@ -58,6 +65,8 @@ defmodule GithubNotifier.NotifierTest do
 
       GithubNotifier.Notifier.notify("asd", "123", "1")
 
+      assert_received {:build_status, request}
+      assert request.suppress == false
       assert Cachex.get!(:store, @status_key) == true
     end
   end
@@ -69,16 +78,19 @@ defmodule GithubNotifier.NotifierTest do
 
       GithubNotifier.Notifier.notify("asd", "123", "1")
 
+      assert_received {:build_status, request}
+      assert request.suppress == false
       assert Cachex.get!(:store, @status_key) == true
     end
   end
 
   defp stub_services(pipeline_opts) do
-    GrpcMock.stub(
-      RepositoryHubMock,
-      :create_build_status,
+    test_pid = self()
+
+    GrpcMock.stub(RepositoryHubMock, :create_build_status, fn request, _stream ->
+      send(test_pid, {:build_status, request})
       Support.Factories.create_build_status_response()
-    )
+    end)
 
     GrpcMock.stub(
       PipelineMock,
