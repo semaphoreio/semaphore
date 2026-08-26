@@ -93,6 +93,21 @@ defmodule Scheduler.Periodics.Model.Periodics.Test do
       refute Map.has_key?(changes, :skip_scheduled_run_notifications)
     end
 
+    test "v1.2 changeset casts them", ctx do
+      params =
+        Map.merge(ctx.params, %{
+          at: "* * * * *",
+          skip_scheduled_run_notifications: false,
+          skip_manual_run_notifications: true
+        })
+
+      assert %Ecto.Changeset{valid?: true, changes: changes} =
+               Periodics.changeset(%Periodics{}, "v1.2", params)
+
+      assert changes.skip_manual_run_notifications == true
+      refute Map.has_key?(changes, :skip_scheduled_run_notifications)
+    end
+
     test "v1.0 changeset ignores them", ctx do
       params = Map.merge(ctx.params, %{at: "* * * * *", skip_scheduled_run_notifications: true})
 

@@ -71,6 +71,86 @@ defmodule GithubNotifier.NotifierTest do
     end
   end
 
+  describe "notify/3 across triggers and status levels" do
+
+    test "asks repository_hub to suppress a Run now pipeline when the task skips manual runs" do
+      stub_services(triggered_by: :MANUAL_RUN, wf_triggerer_id: "task-1")
+
+      GrpcMock.stub(
+        SchedulerMock,
+        :describe,
+        Support.Factories.periodic_describe_response(skip_manual_run_notifications: true)
+      )
+
+      GithubNotifier.Notifier.notify("asd", "123", "1")
+
+      assert_received {:build_status, request}
+      assert request.suppress == true
+    end
+
+    test "does not suppress a Run now pipeline when only the scheduled flag is set" do
+      stub_services(triggered_by: :MANUAL_RUN, wf_triggerer_id: "task-1")
+
+      GrpcMock.stub(
+        SchedulerMock,
+        :describe,
+        Support.Factories.periodic_describe_response(skip_scheduled_run_notifications: true)
+      )
+
+      GithubNotifier.Notifier.notify("asd", "123", "1")
+
+      assert_received {:build_status, request}
+      assert request.suppress == false
+    end
+
+    test "carries the flag onto every status when the project reports block and pipeline level" do
+      stub_services(triggered_by: :SCHEDULE, wf_triggerer_id: "task-1")
+      GrpcMock.stub(ProjecthubMock, :describe, block_and_pipeline_level_project())
+
+      GrpcMock.stub(
+        SchedulerMock,
+        :describe,
+        Support.Factories.periodic_describe_response(skip_scheduled_run_notifications: true)
+      )
+
+      GithubNotifier.Notifier.notify("asd", "123", "1")
+
+      # one status per level; the flag must ride on all of them
+      requests = collect_build_statuses()
+      assert length(requests) > 1
+      assert Enum.all?(requests, & &1.suppress)
+    end
+  end
+
+  describe "notify_with_summary/2" do
+    test "asks repository_hub to suppress when the task skips scheduled run notifications" do
+      stub_services(triggered_by: :SCHEDULE, wf_triggerer_id: "task-1")
+      stub_summary()
+
+      GrpcMock.stub(
+        SchedulerMock,
+        :describe,
+        Support.Factories.periodic_describe_response(skip_scheduled_run_notifications: true)
+      )
+
+      GithubNotifier.Notifier.notify_with_summary("asd", "123")
+
+      assert_received {:build_status, request}
+      assert request.suppress == true
+    end
+
+    test "does not suppress when the task sends statuses" do
+      stub_services(triggered_by: :SCHEDULE, wf_triggerer_id: "task-1")
+      stub_summary()
+      GrpcMock.stub(SchedulerMock, :describe, Support.Factories.periodic_describe_response())
+
+      GithubNotifier.Notifier.notify_with_summary("asd", "123")
+
+      assert_received {:build_status, request}
+      assert request.suppress == false
+    end
+  end
+
   describe "notify/3 with a hook pipeline" do
     test "never resolves the task" do
       stub_services(triggered_by: :HOOK)
@@ -82,6 +162,55 @@ defmodule GithubNotifier.NotifierTest do
       assert request.suppress == false
       assert Cachex.get!(:store, @status_key) == true
     end
+  end
+
+  defp collect_build_statuses(acc \\ []) do
+    receive do
+      {:build_status, request} -> collect_build_statuses([request | acc])
+    after
+      0 -> acc
+    end
+  end
+
+  defp stub_summary do
+    GrpcMock.stub(
+      VelocityHubMock,
+      :list_pipeline_summaries,
+      struct(InternalApi.Velocity.ListPipelineSummariesResponse,
+        pipeline_summaries: [
+          struct(InternalApi.Velocity.PipelineSummary,
+            pipeline_id: "123",
+            summary:
+              struct(InternalApi.Velocity.Summary,
+                total: 10,
+                passed: 9,
+                skipped: 0,
+                error: 0,
+                failed: 1,
+                disabled: 0,
+                duration: 100
+              )
+          )
+        ]
+      )
+    )
+  end
+
+  defp block_and_pipeline_level_project do
+    alias InternalApi.Projecthub.Project.Spec.Repository
+
+    response = Support.Factories.project_describe_response()
+    status = response.project.spec.repository.status
+    [file] = status.pipeline_files
+
+    files = [
+      file,
+      struct(Repository.Status.PipelineFile, path: file.path, level: :PIPELINE)
+    ]
+
+    repository = %{response.project.spec.repository | status: %{status | pipeline_files: files}}
+    spec = %{response.project.spec | repository: repository}
+    %{response | project: %{response.project | spec: spec}}
   end
 
   defp stub_services(pipeline_opts) do

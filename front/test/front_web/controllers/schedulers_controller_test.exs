@@ -351,6 +351,54 @@ defmodule FrontWeb.SchedulersControllerTest do
       assert html_response(conn, 200) =~ "Task History"
     end
 
+    test "the commit status row names the silenced triggers, and is absent when none are",
+         %{conn: conn, project_name: project_name} do
+      project = DB.first(:projects)
+      user = DB.first(:users)
+
+      show = fn scheduler ->
+        conn
+        |> get(schedulers_path(conn, :show, project_name, scheduler.id))
+        |> html_response(200)
+      end
+
+      both =
+        Support.Stubs.Scheduler.create(project, user,
+          name: "both silenced",
+          skip_scheduled_run_notifications: true,
+          skip_manual_run_notifications: true
+        )
+
+      body = show.(both)
+      assert body =~ "Commit statuses:"
+      assert body =~ "scheduled runs or"
+
+      scheduled_only =
+        Support.Stubs.Scheduler.create(project, user,
+          name: "scheduled silenced",
+          skip_scheduled_run_notifications: true
+        )
+
+      body = show.(scheduled_only)
+      assert body =~ "Commit statuses:"
+      assert body =~ "scheduled runs."
+      refute body =~ "scheduled runs or"
+
+      manual_only =
+        Support.Stubs.Scheduler.create(project, user,
+          name: "manual silenced",
+          skip_manual_run_notifications: true
+        )
+
+      body = show.(manual_only)
+      assert body =~ "Commit statuses:"
+      refute body =~ "scheduled runs"
+
+      neither = Support.Stubs.Scheduler.create(project, user, name: "nothing silenced")
+
+      refute show.(neither) =~ "Commit statuses:"
+    end
+
     test "when project doesn't match the scheduler, it renders 404",
          %{other_project_name: project_name, scheduler_id: scheduler_id} do
       conn =
