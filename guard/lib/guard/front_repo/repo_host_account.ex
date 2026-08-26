@@ -192,7 +192,11 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     params = %{
       token: token,
       refresh_token: refresh_token,
-      token_expires_at: expires_at
+      token_expires_at: expires_at,
+      # A successful token fetch is proof the account is not revoked -
+      # self-heal a row that got latched `revoked: true` by a past
+      # transient failure now correctly classified as such.
+      revoked: false
     }
 
     update_account(params, rha)
