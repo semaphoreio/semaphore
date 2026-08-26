@@ -159,5 +159,87 @@ defmodule Guard.InviteesTest do
                   "Login unknown331123 cannot be found. Please check the login and try again or contact support if the problem persists."}
       end
     end
+
+    test "inject uid for github provider with a hyphenated/dotted login" do
+      invitee = %{provider: %{login: "radwo-the.dev", uid: "", type: :GITHUB}}
+
+      invitee_with_uid = %{
+        provider: %{login: "radwo-the.dev", uid: "184065", type: :GITHUB}
+      }
+
+      response_body = Jason.encode!(%{"id" => 184_065})
+
+      with_mocks([
+        {Guard.FrontRepo.RepoHostAccount, [:passthrough],
+         get_github_token: fn _ -> {:ok, {"token", nil}} end},
+        {HTTPoison, [:passthrough],
+         get: fn url, headers ->
+           assert url == "https://api.github.com/users/radwo-the.dev"
+           assert headers == [{"Authorization", "Token token"}]
+           {:ok, %{status_code: 200, body: response_body}}
+         end}
+      ]) do
+        assert Invitees.inject_provider_uid(invitee, @inviter_id) == {:ok, invitee_with_uid}
+      end
+    end
+
+    test "inject uid for gitlab provider with a hyphenated/dotted login" do
+      invitee = %{provider: %{login: "radwo-the.dev_gitlab", uid: "", type: :GITLAB}}
+
+      invitee_with_uid = %{
+        provider: %{login: "radwo-the.dev_gitlab", uid: "456", type: :GITLAB}
+      }
+
+      response_body = Jason.encode!(%{"id" => 456})
+
+      with_mock HTTPoison, [:passthrough],
+        get: fn url, headers ->
+          assert url == "https://gitlab.com/api/v4/users?username=radwo-the.dev_gitlab"
+          assert headers == []
+          {:ok, %{status_code: 200, body: response_body}}
+        end do
+        assert Invitees.inject_provider_uid(invitee, @inviter_id) == {:ok, invitee_with_uid}
+      end
+    end
+
+    test "rejects a CRLF github login before making any github api call" do
+      invitee = %{provider: %{login: "radwo\r\nX-Injected: yes", uid: "", type: :GITHUB}}
+
+      with_mock HTTPoison, [:passthrough],
+        get: fn _url, _headers -> flunk("HTTPoison should not be called") end do
+        assert Invitees.inject_provider_uid(invitee, @inviter_id) ==
+                 {:error, "login contains unsupported characters"}
+      end
+    end
+
+    test "rejects a CRLF gitlab login before making any gitlab api call" do
+      invitee = %{provider: %{login: "radwo\r\nX-Injected: yes", uid: "", type: :GITLAB}}
+
+      with_mock HTTPoison, [:passthrough],
+        get: fn _url, _headers -> flunk("HTTPoison should not be called") end do
+        assert Invitees.inject_provider_uid(invitee, @inviter_id) ==
+                 {:error, "login contains unsupported characters"}
+      end
+    end
+
+    test "rejects a query-delimiter gitlab login before making any gitlab api call" do
+      invitee = %{provider: %{login: "radwo?username=admin", uid: "", type: :GITLAB}}
+
+      with_mock HTTPoison, [:passthrough],
+        get: fn _url, _headers -> flunk("HTTPoison should not be called") end do
+        assert Invitees.inject_provider_uid(invitee, @inviter_id) ==
+                 {:error, "login contains unsupported characters"}
+      end
+    end
+
+    test "rejects a path-separator github login before making any github api call" do
+      invitee = %{provider: %{login: "radwo/../admin", uid: "", type: :GITHUB}}
+
+      with_mock HTTPoison, [:passthrough],
+        get: fn _url, _headers -> flunk("HTTPoison should not be called") end do
+        assert Invitees.inject_provider_uid(invitee, @inviter_id) ==
+                 {:error, "login contains unsupported characters"}
+      end
+    end
   end
 end
