@@ -1,0 +1,57 @@
+# postgrex — channel-name SQL injection in Postgrex.Notifications.listen/3, patched in 0.22.2. Never
+# called anywhere in lib/ (grep confirms no hits); notifications uses only standard Ecto queries.
+GHSA-r73h-97w8-m54h
+
+# decimal — unbounded exponent in Decimal.new enables unauthenticated DoS, patched in 3.0.0. Not
+# called anywhere in lib/ — pulled in only transitively via ecto/postgrex.
+GHSA-rhv4-8758-jx7v
+
+# cowlib — cow_http_te DoS via excessive allocation, patched in 2.16.1. notifications' only network
+# listener is GRPC.Server.Supervisor (lib/notifications/application.ex) — no Plug.Cowboy/Phoenix HTTP
+# endpoint. cow_http_te is cowboy's HTTP/1.1 path, never invoked over gRPC/HTTP2.
+GHSA-32p9-57cr-4x65
+
+# cowlib — SPDY decompression bomb in cow_spdy:inflate/2. Not reachable at any cowlib version — cowboy
+# 2.x never implemented SPDY.
+GHSA-84f2-rp86-235p
+
+# cowlib — cookie request-header injection in cow_cookie:cookie/1. Not reachable regardless of upstream
+# fix status: notifications never sets cookies (no put_resp_cookie / Plug.Cowboy usage anywhere in lib/).
+GHSA-g2wm-735q-3f56
+
+# cowlib — CRLF injection enabling SSE event splitting. No SSE endpoints in this service; gRPC-only
+# (see above), no Plug response-header writes from user input.
+GHSA-hv23-4qp7-8c8r
+
+# cowboy — unbounded buffer accumulation in multipart header parsing, patched in 2.15.0. Not reachable:
+# no Plug.Parsers/multipart endpoints — gRPC-only over HTTP/2.
+GHSA-jfc2-q6qh-g5x8
+
+# --- hackney (bumped to 1.25.0) ---
+# notifications makes outbound HTTP to customer-configured webhook/Slack URLs
+# (lib/notifications/workers/webhook.ex, lib/notifications/workers/slack.ex) via HTTPoison/hackney;
+# the destination is whatever the org configured. The 1.25.0 bump already fixes two former findings,
+# which therefore no longer fire and are NOT suppressed here: GHSA-vq52-99r9-h5pw (SSRF, fixed in
+# 1.21.0) and GHSA-9fm9-hp7p-53mf (connection-pool leak, fixed in 1.24.0). The four advisories below
+# have no fix at any hackney version this service can adopt (the fix lands in 4.0.1, which requires an
+# httpoison major bump), so each is suppressed with the specific application-layer mitigation that
+# makes it non-exploitable here. Every webhook/Slack request now passes through
+# Notifications.Egress.UrlGuard (lib/notifications/egress/url_guard.ex) before hackney sees the URL.
+
+# hackney: SOCKS5 post-handshake TLS-upgrade has no timeout (DoS). Not reachable: notifications
+# configures no SOCKS5 proxy, so that hackney connect path is never exercised.
+GHSA-gp9c-pm5m-5cxr
+
+# hackney: CR/LF injection in the query via hackney_url:make_url/3. Mitigated: UrlGuard rejects any URL
+# containing control bytes (CR/LF/NUL) before the request is built.
+GHSA-j9wq-vxxc-94wf
+
+# hackney: CRLF/header injection via unvalidated domain and path options. Mitigated: the same UrlGuard
+# control-byte reject, plus scheme allowlist and URI parse, run before egress.
+GHSA-mp55-p8c9-rfw2
+
+# hackney: SSRF allowlist bypass via percent-encoded host (CVE-2026-47076). Mitigated: UrlGuard
+# percent-decodes and normalizes the host, DNS-resolves it, classifies every resolved IP, and pins the
+# vetted public IP into the connection (dials the IP literal while preserving Host and SNI), so the
+# hackney normalize/2 post-validation decode and DNS rebinding cannot reach an internal target.
+GHSA-pj7v-xfvx-wmjq
