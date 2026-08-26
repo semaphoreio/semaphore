@@ -74,4 +74,30 @@ defmodule FrontWeb.LayoutViewTest do
       refute FrontWeb.LayoutView.turbo_full_reload_page?(%Plug.Conn{assigns: %{}})
     end
   end
+
+  describe "turbo_enabled?/1" do
+    @org_id "78114608-be8a-465a-b9cd-81970fb802c6"
+
+    defp conn_with_org(org_id), do: %Plug.Conn{assigns: %{organization_id: org_id}}
+
+    test "is true for an organization the feature is enabled for" do
+      Support.Stubs.Feature.enable_feature(@org_id, :turbo_navigation)
+
+      assert FrontWeb.LayoutView.turbo_enabled?(conn_with_org(@org_id))
+    end
+
+    test "is false for an organization the feature is hidden for" do
+      Support.Stubs.Feature.disable_feature(@org_id, :turbo_navigation)
+
+      refute FrontWeb.LayoutView.turbo_enabled?(conn_with_org(@org_id))
+    end
+
+    test "is false for an organization the feature was never provisioned for" do
+      refute FrontWeb.LayoutView.turbo_enabled?(conn_with_org(@org_id))
+    end
+
+    test "is false when there is no organization on the conn" do
+      refute FrontWeb.LayoutView.turbo_enabled?(%Plug.Conn{assigns: %{}})
+    end
+  end
 end

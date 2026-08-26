@@ -14,6 +14,15 @@ defmodule FrontWeb.LayoutView do
     to_string(conn.assigns[:js]) in @turbo_full_reload_pages
   end
 
+  #
+  # Single source of truth for the flag. The head renders before the scripts
+  # partial, so both need to ask the same question, and an organization
+  # without the flag has to receive the page exactly as it was before Turbo.
+  #
+  def turbo_enabled?(conn) do
+    FeatureProvider.feature_enabled?(:turbo_navigation, param: conn.assigns[:organization_id])
+  end
+
   def login_url(conn) do
     org_id = conn.assigns.organization_id
     origin_url = Plug.Conn.request_url(conn)
