@@ -80,6 +80,14 @@ defmodule FrontWeb.LayoutViewTest do
 
     defp conn_with_org(org_id), do: %Plug.Conn{assigns: %{organization_id: org_id}}
 
+    setup do
+      # The org level override can only be set for a feature that exists, and
+      # turbo_navigation is not part of the default seed.
+      Support.Stubs.Feature.setup_feature("turbo_navigation", state: :HIDDEN, quantity: 0)
+
+      :ok
+    end
+
     test "is true for an organization the feature is enabled for" do
       Support.Stubs.Feature.enable_feature(@org_id, :turbo_navigation)
 
