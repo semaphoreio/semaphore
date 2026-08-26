@@ -45,6 +45,8 @@ defmodule Guard.Utils do
 end
 
 defmodule Guard.Utils.OAuth do
+  require Logger
+
   def handle_ok_token_response(repo_host_account, body) do
     body =
       if is_binary(body) do
@@ -114,34 +116,51 @@ defmodule Guard.Utils.OAuth do
   caller should take:
 
     - `:ok`        - 2xx, the token can be used
-    - `:revoked`   - genuine permanent revocation: the provider returned
-                      `error=invalid_grant` in the body, or HTTP 401
-    - `:transient` - everything else (429, 5xx, any other 4xx incl a bare
-                      403) - the caller MUST NOT treat this as a permanent
-                      revoke, since it may just be rate limiting or an
-                      upstream gateway hiccup
+    - `:revoked`   - genuine permanent revocation: the provider's body
+                      signals `error=invalid_grant` (all providers) or
+                      `error=bad_refresh_token` (GitHub)
+    - `:transient` - everything else, INCLUDING a bare HTTP 401 /
+                      `invalid_client` / `unauthorized_client`. Per RFC 6749
+                      those mean OUR shared client_id/client_secret was
+                      rejected, not a user's grant - treating a bare 401 as
+                      a revoke would mass-revoke every account on that
+                      provider. Also covers 403, 429, 5xx, or any other
+                      4xx. The caller MUST NOT treat `:transient` as a
+                      permanent revoke.
   """
   @spec classify_refresh_response(non_neg_integer(), term()) :: :ok | :revoked | :transient
   def classify_refresh_response(status, _body) when status in 200..299, do: :ok
 
   def classify_refresh_response(status, body) do
-    if status == 401 or invalid_grant?(body) do
-      :revoked
-    else
-      :transient
+    cond do
+      genuine_grant_revocation?(body) ->
+        :revoked
+
+      status == 401 ->
+        Logger.warning(
+          "Bitbucket/GitLab/GitHub OAuth client credentials rejected (HTTP 401) - " <>
+            "config issue, not a user revoke"
+        )
+
+        :transient
+
+      true ->
+        :transient
     end
   end
 
-  defp invalid_grant?(body) when is_map(body), do: Map.get(body, "error") == "invalid_grant"
+  defp genuine_grant_revocation?(body) when is_map(body) do
+    Map.get(body, "error") in ["invalid_grant", "bad_refresh_token"]
+  end
 
-  defp invalid_grant?(body) when is_binary(body) do
+  defp genuine_grant_revocation?(body) when is_binary(body) do
     case Jason.decode(body) do
-      {:ok, decoded} -> invalid_grant?(decoded)
+      {:ok, decoded} -> genuine_grant_revocation?(decoded)
       _ -> false
     end
   end
 
-  defp invalid_grant?(_body), do: false
+  defp genuine_grant_revocation?(_body), do: false
 end
 
 defmodule Guard.Utils.Http do
