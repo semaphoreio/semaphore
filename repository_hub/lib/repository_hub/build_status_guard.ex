@@ -62,25 +62,31 @@ defmodule RepositoryHub.BuildStatusGuard do
           |> Repo.one!()
 
         cond do
+          # Before any suppression call: last_state is written by finalize/2
+          # after the provider call, so a delivery in flight looks exactly like
+          # "nothing recorded". Serializing here is what lets a suppressed
+          # terminal see the PENDING it has to reconcile.
+          live_lease?(row, db_now) ->
+            :busy
+
           suppress? && pending? ->
             :suppressed
 
-          suppress? && row.last_state != "PENDING" ->
+          suppress? && row.last_state == "PENDING" ->
+            claim_lease(key, db_now)
+
+          # A suppressed terminal still records the state it stood for, so a
+          # PENDING arriving later is recognised as stale instead of being
+          # delivered with nothing left to terminate it.
+          suppress? ->
+            record_suppressed_state(key, request.status, db_now)
             :suppressed
 
           pending? && row.last_state in @terminal_states ->
             :skip
 
-          live_lease?(row, db_now) ->
-            :busy
-
           true ->
-            {1, _} =
-              key
-              |> by_key()
-              |> Repo.update_all(set: [claimed_at: db_now, updated_at: db_now])
-
-            {:ok, db_now}
+            claim_lease(key, db_now)
         end
       end)
     end
@@ -179,6 +185,24 @@ defmodule RepositoryHub.BuildStatusGuard do
       [Map.put(key, :updated_at, DateTime.utc_now())],
       on_conflict: :nothing
     )
+  end
+
+  defp claim_lease(key, db_now) do
+    {1, _} =
+      key
+      |> by_key()
+      |> Repo.update_all(set: [claimed_at: db_now, updated_at: db_now])
+
+    {:ok, db_now}
+  end
+
+  defp record_suppressed_state(key, status, db_now) do
+    {1, _} =
+      key
+      |> by_key()
+      |> Repo.update_all(set: [last_state: Atom.to_string(status), updated_at: db_now])
+
+    :ok
   end
 
   defp live_lease?(%{claimed_at: nil}, _db_now), do: false
