@@ -18,6 +18,10 @@ defmodule Projecthub.SchedulersTest do
         pipeline_file: ".semaphore/scheduler.yml"
       }
 
+      FunRegistry.set!(PeriodicService, :list, fn _req, _stream ->
+        API.ListResponse.new(status: Status.new(), periodics: [])
+      end)
+
       FunRegistry.set!(PeriodicService, :bulk_upsert_and_prune, fn req, _stream ->
         assert req.project_id == project.id
         assert req.organization_id == project.organization_id
@@ -30,6 +34,45 @@ defmodule Projecthub.SchedulersTest do
         assert definition.reference == "refs/heads/master"
         assert definition.pipeline_file == scheduler.pipeline_file
         assert definition.recurring == true
+
+        API.BulkUpsertAndPruneResponse.new(
+          status: Status.new(),
+          upserted: [API.Periodic.new(id: scheduler.id)],
+          deleted_ids: []
+        )
+      end)
+
+      assert {:ok, nil} = Schedulers.update(project, [scheduler], "requester_id")
+    end
+
+    test "carries the stored notification skip flags into the definitions" do
+      {:ok, project} = Support.Factories.Project.create()
+
+      scheduler = %Scheduler{
+        id: "12345678-1234-5678-1234-567812345678",
+        name: "cron",
+        branch: "master",
+        at: "*",
+        pipeline_file: ".semaphore/scheduler.yml"
+      }
+
+      FunRegistry.set!(PeriodicService, :list, fn _req, _stream ->
+        API.ListResponse.new(
+          status: Status.new(),
+          periodics: [
+            API.Periodic.new(
+              id: scheduler.id,
+              skip_scheduled_run_notifications: true,
+              skip_manual_run_notifications: false
+            )
+          ]
+        )
+      end)
+
+      FunRegistry.set!(PeriodicService, :bulk_upsert_and_prune, fn req, _stream ->
+        [definition] = req.periodics
+        assert definition.skip_scheduled_run_notifications == true
+        assert definition.skip_manual_run_notifications == false
 
         API.BulkUpsertAndPruneResponse.new(
           status: Status.new(),
@@ -57,11 +100,42 @@ defmodule Projecthub.SchedulersTest do
       assert {:ok, nil} = Schedulers.update(project, [], "requester_id")
     end
 
+    test "aborts without writing when the stored flags cannot be read" do
+      {:ok, project} = Support.Factories.Project.create()
+
+      scheduler = %Scheduler{
+        id: "12345678-1234-5678-1234-567812345678",
+        name: "cron",
+        branch: "master",
+        at: "*",
+        pipeline_file: ".semaphore/scheduler.yml"
+      }
+
+      test_pid = self()
+
+      FunRegistry.set!(PeriodicService, :list, fn _req, _stream ->
+        API.ListResponse.new(status: Status.new(code: :INTERNAL, message: "scheduler down"))
+      end)
+
+      FunRegistry.set!(PeriodicService, :bulk_upsert_and_prune, fn _req, _stream ->
+        send(test_pid, :bulk_called)
+        API.BulkUpsertAndPruneResponse.new(status: Status.new())
+      end)
+
+      assert {:error, :notification_flags_unavailable} = Schedulers.update(project, [scheduler], "requester_id")
+
+      refute_received :bulk_called
+    end
+
     test "when the bulk RPC fails the error is returned and no local fallback runs" do
       # Regression test: invalid scheduler payload must not leave the project
-      # with destroyed scheduler state. The fix routes update/3 through a single
-      # transactional RPC, so an error here means zero rows changed on the
-      # remote side and no other gRPC calls are made on the projecthub side.
+      # with destroyed scheduler state. The fix routes every write through a
+      # single transactional RPC, so an error here means zero rows changed on
+      # the remote side and no destructive call is made on the projecthub side.
+      #
+      # A read-only list is allowed: this path carries no notification skip
+      # flags of its own, so it reads the stored values to avoid resetting
+      # them. It never deletes, and it never writes outside the bulk RPC.
       {:ok, project} = Support.Factories.Project.create()
 
       scheduler = %Scheduler{
@@ -90,7 +164,7 @@ defmodule Projecthub.SchedulersTest do
 
       assert {:error, %GRPC.RPCError{message: "Invalid cron"}} = Schedulers.update(project, [scheduler], "requester_id")
 
-      refute_received :list_called
+      assert_received :list_called
       refute_received :delete_called
     end
   end
