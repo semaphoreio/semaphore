@@ -81,6 +81,7 @@ import { DeploymentTargets } from "./deployments";
 import { Features } from "./features";
 import { Overlay } from "./overlay";
 import { TurboNavigation } from "./turbo_navigation";
+import { islandRoot, unmountIslands } from "./preact_islands";
 import { RoleForm } from "./roles/role_form.js";
 
 var ace = require('brace');
@@ -96,7 +97,7 @@ window.SelfHostedAgents = SelfHostedAgents
 export var App = {
   agents: function () {
     Agents({
-      dom: document.getElementById("agents-app"),
+      dom: islandRoot(document.getElementById("agents-app")),
       config: InjectedDataByBackend.AgentsConfig,
     })
   },
@@ -204,13 +205,13 @@ export var App = {
   },
   index_new_project: function () {
     ProjectOnboardingCreate({
-      dom: document.getElementById("new-project-app"),
+      dom: islandRoot(document.getElementById("new-project-app")),
       config: window.InjectedDataByBackend.NewProjectConfig,
     });
   },
   index_project_bootstrap: function () {
     ProjectOnboardingWorkflowSetup({
-      dom: document.getElementById("new-project-app"),
+      dom: islandRoot(document.getElementById("new-project-app")),
       config: window.InjectedDataByBackend.NewProjectBootstrapConfig,
     });
   },
@@ -278,14 +279,14 @@ export var App = {
 
     document.querySelectorAll("#deploy-key-config-app").forEach((dom) => {
       DeployKeyConfig({
-        dom: dom,
+        dom: islandRoot(dom),
         config: dom.dataset
       })
     });
 
     document.querySelectorAll("#webhook-config-app").forEach((dom) => {
       WebhookConfig({
-        dom: dom,
+        dom: islandRoot(dom),
         config: dom.dataset
       })
     });
@@ -304,29 +305,29 @@ export var App = {
     const serviceAccountsEl = document.getElementById("service-accounts");
     if (serviceAccountsEl) {
       const config = JSON.parse(serviceAccountsEl.dataset.config);
-      ServiceAccounts({ dom: serviceAccountsEl, config });
+      ServiceAccounts({ dom: islandRoot(serviceAccountsEl), config });
     }
 
     const addPeopleEl = document.getElementById("add-people");
     if (addPeopleEl) {
-      AddPeople({ dom: addPeopleEl, config: addPeopleEl.dataset });
+      AddPeople({ dom: islandRoot(addPeopleEl), config: addPeopleEl.dataset });
     }
 
     const syncPeopleEl = document.querySelector(".app-sync-people");
     if (syncPeopleEl) {
-      SyncPeople({ dom: syncPeopleEl, config: syncPeopleEl.dataset });
+      SyncPeople({ dom: islandRoot(syncPeopleEl), config: syncPeopleEl.dataset });
     }
 
     document.querySelectorAll(".app-edit-person").forEach((editPersonAppRoot) => {
       EditPerson({
-        dom: editPersonAppRoot,
+        dom: islandRoot(editPersonAppRoot),
         config: editPersonAppRoot.dataset
       })
     });
   },
   organization_okta: function () {
     OrganizationOktaGroupMappingApp({
-      dom: document.getElementById("group-mapping-container"),
+      dom: islandRoot(document.getElementById("group-mapping-container")),
       config: window.InjectedDataByBackend.OrganizationOktaConfig
     });
   },
@@ -362,7 +363,7 @@ export var App = {
   testResults: function () {
     Pollman.init({ interval: 4000 })
     TestResults({
-      dom: document.getElementById("test-results"),
+      dom: islandRoot(document.getElementById("test-results")),
       jsonURL: InjectedDataByBackend.jsonArtifactsURL,
       scope: InjectedDataByBackend.scope,
       encodedEmail: InjectedDataByBackend.encodedEmail,
@@ -426,19 +427,19 @@ export var App = {
   },
   organization_health_tab: function () {
     OrganizationHealth({
-      dom: document.getElementById("organization-health-app"),
+      dom: islandRoot(document.getElementById("organization-health-app")),
       config: InjectedDataByBackend.OrganizationHealthConfig,
     });
   },
   flaky_tests_tab: function () {
     FlakyTests({
-      dom: document.getElementById("flaky-tests-app"),
+      dom: islandRoot(document.getElementById("flaky-tests-app")),
       config: InjectedDataByBackend.FlakyTestsConfig,
     });
   },
   insights: function () {
     Insights({
-      dom: document.getElementById("insights-app"),
+      dom: islandRoot(document.getElementById("insights-app")),
       config: InjectedDataByBackend.InsightsConfig,
     })
     new Star();
@@ -465,31 +466,31 @@ export var App = {
   },
   billingDashboard: function () {
     Billing({
-      dom: document.getElementById("billing-app"),
+      dom: islandRoot(document.getElementById("billing-app")),
       config: InjectedDataByBackend.BillingConfig,
     })
   },
   gitIntegration: function () {
     GitIntegration({
-      dom: document.getElementById("git-integration-app"),
+      dom: islandRoot(document.getElementById("git-integration-app")),
       config: InjectedDataByBackend.GitIntegrationConfig,
     })
   },
   organizationOnboarding: function () {
     OrganizationOnboarding({
-      dom: document.getElementById("organization-onboarding-app"),
+      dom: islandRoot(document.getElementById("organization-onboarding-app")),
       config: InjectedDataByBackend.OrganizationOnboardingConfig,
     })
   },
   getStarted: function () {
     GetStarted({
-      dom: document.getElementById("get-started-app"),
+      dom: islandRoot(document.getElementById("get-started-app")),
       config: InjectedDataByBackend.GetStartedConfig,
     })
   },
   report: function() {
     Report({
-      dom: document.getElementById("report-app"),
+      dom: islandRoot(document.getElementById("report-app")),
       config: InjectedDataByBackend.ReportConfig,
     })
   },
@@ -529,7 +530,7 @@ export var App = {
 
     if (InjectedDataByBackend.InitialPlan) {
       TrialOverlay({
-        dom: document.getElementById("trial-overlay"),
+        dom: islandRoot(document.getElementById("trial-overlay")),
         config: InjectedDataByBackend.InitialPlan,
       })
     }
@@ -560,6 +561,7 @@ export var App = {
     Pollman.stop();
     Timer.stop();
     DiagramDrag.stop();
+    unmountIslands();
 
     if (window.FaviconUpdater) {
       window.FaviconUpdater.stop();

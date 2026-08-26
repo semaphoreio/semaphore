@@ -75,7 +75,7 @@ defmodule FrontWeb.LayoutViewTest do
     end
   end
 
-  describe "turbo_enabled?/1" do
+  describe "turbo_enabled?/1 with the feature provisioned" do
     @org_id "78114608-be8a-465a-b9cd-81970fb802c6"
 
     defp conn_with_org(org_id), do: %Plug.Conn{assigns: %{organization_id: org_id}}
@@ -99,8 +99,15 @@ defmodule FrontWeb.LayoutViewTest do
 
       refute FrontWeb.LayoutView.turbo_enabled?(conn_with_org(@org_id))
     end
+  end
 
-    test "is false for an organization the feature was never provisioned for" do
+  #
+  # No setup here on purpose. turbo_navigation has no feature record yet, so
+  # this is what every organization gets today, and it is the case that keeps
+  # the flag off until someone provisions it.
+  #
+  describe "turbo_enabled?/1 without the feature provisioned" do
+    test "is false for an organization" do
       refute FrontWeb.LayoutView.turbo_enabled?(conn_with_org(@org_id))
     end
 
