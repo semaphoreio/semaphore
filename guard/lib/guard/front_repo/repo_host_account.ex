@@ -471,6 +471,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
           "Successfully updated RepoHostAccount for #{account.user_id} #{account.repo_host} login=#{account.login}"
         )
 
+        maybe_invalidate_negative_cache(data, account)
         {:ok, account}
 
       {:error, error} ->
@@ -479,6 +480,20 @@ defmodule Guard.FrontRepo.RepoHostAccount do
         )
 
         {:error, error}
+    end
+  end
+
+  # update_account/2 is the single write chokepoint for both self-heal
+  # (update_token/4, on a successful refresh) and reconnect
+  # (update_existing_account/3, driven by id/api.ex). Either one landing a
+  # fresh token or explicitly clearing :revoked means any cached refresh
+  # failure for this row is stale - purge it immediately instead of
+  # letting a user who just reconnected (or a refresh that just recovered)
+  # keep seeing the cached error for up to @oauth_refresh_failure_cache_ttl.
+  # A stray extra purge on an unrelated field-only update is harmless.
+  defp maybe_invalidate_negative_cache(data, account) do
+    if Map.has_key?(data, :token) or data[:revoked] == false do
+      Cachex.del(@oauth_refresh_failure_cache, account.id)
     end
   end
 
