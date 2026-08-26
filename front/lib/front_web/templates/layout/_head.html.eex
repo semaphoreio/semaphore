@@ -10,24 +10,26 @@
   <meta name="description" content="<%= description(@conn) %>">
   <meta name="author" content="">
 
-  <!--
-    Turbo stamps this nonce onto every script it injects. It reads the first
-    meta[name="csp-nonce"] in the document, which stays the one from the
-    originally loaded page - the same nonce that page's CSP header whitelists.
-  -->
-  <meta name="csp-nonce" content="<%= @conn.assigns[:script_src_nonce] %>">
+  <%= if turbo_enabled?(@conn) do %>
+    <!--
+      Turbo stamps this nonce onto every script it injects. It reads the first
+      meta[name="csp-nonce"] in the document, which stays the one from the
+      originally loaded page - the same nonce that page's CSP header whitelists.
+    -->
+    <meta name="csp-nonce" content="<%= @conn.assigns[:script_src_nonce] %>">
 
-  <%= if turbo_full_reload_page?(@conn) do %>
-    <meta name="turbo-visit-control" content="reload">
+    <%= if turbo_full_reload_page?(@conn) do %>
+      <meta name="turbo-visit-control" content="reload">
+    <% end %>
+
+    <!--
+      Turbo paints a cached snapshot before the fresh response arrives, but it
+      only fires turbo:load for the real render. The preview would therefore show
+      a page whose tooltips, hotkeys and per-page init have not run yet. Snapshots
+      are still cached and reused for back/forward, which do fire turbo:load.
+    -->
+    <meta name="turbo-cache-control" content="no-preview">
   <% end %>
-
-  <!--
-    Turbo paints a cached snapshot before the fresh response arrives, but it
-    only fires turbo:load for the real render. The preview would therefore show
-    a page whose tooltips, hotkeys and per-page init have not run yet. Snapshots
-    are still cached and reused for back/forward, which do fire turbo:load.
-  -->
-  <meta name="turbo-cache-control" content="no-preview">
 
   <%= social_metatags(@conn) %>
 

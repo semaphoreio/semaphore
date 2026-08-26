@@ -53,6 +53,9 @@ export const TurboNavigation = {
   // that keeps the import free of side effects for the majority of orgs that
   // have the flag off, and keeps this module loadable outside a browser.
   //
+  // Note this defers evaluation, not download: build.js bundles without
+  // splitting, so Turbo ships inside app.js for every organization either way.
+  //
   loadTurbo: function ({ onPageLoad, onPageTeardown }) {
     return import("@hotwired/turbo").then((Turbo) => {
       document.addEventListener("turbo:before-render", () => {

@@ -559,6 +559,7 @@ export var App = {
   teardownPage: function () {
     Pollman.stop();
     Timer.stop();
+    DiagramDrag.stop();
 
     if (window.FaviconUpdater) {
       window.FaviconUpdater.stop();
