@@ -10,10 +10,31 @@
   <meta name="description" content="<%= description(@conn) %>">
   <meta name="author" content="">
 
+  <%= if turbo_enabled?(@conn) do %>
+    <!--
+      Turbo stamps this nonce onto every script it injects. It reads the first
+      meta[name="csp-nonce"] in the document, which stays the one from the
+      originally loaded page - the same nonce that page's CSP header whitelists.
+    -->
+    <meta name="csp-nonce" content="<%= @conn.assigns[:script_src_nonce] %>">
+
+    <%= if turbo_full_reload_page?(@conn) do %>
+      <meta name="turbo-visit-control" content="reload">
+    <% end %>
+
+    <!--
+      Turbo paints a cached snapshot before the fresh response arrives, but it
+      only fires turbo:load for the real render. The preview would therefore show
+      a page whose tooltips, hotkeys and per-page init have not run yet. Snapshots
+      are still cached and reused for back/forward, which do fire turbo:load.
+    -->
+    <meta name="turbo-cache-control" content="no-preview">
+  <% end %>
+
   <%= social_metatags(@conn) %>
 
   <!-- Semaphore CSS -->
-  <link rel="stylesheet" media="screen" href="<%= assets_path() %>/css/app.css" />
+  <link rel="stylesheet" media="screen" data-turbo-track="reload" href="<%= assets_path() %>/css/app.css" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
 
   <!-- Favicon -->
@@ -26,4 +47,16 @@
     window.InjectedDataByBackend = {};
     window.InjectedDataByBackend.Watchman = {};
   </script>
+
+  <!--
+    The bundle lives in <head> on purpose: Turbo re-executes every <script> in
+    <body> on each visit, which would re-download and re-run the whole bundle.
+    Head scripts are only added when not already present, so this runs once.
+    "defer" keeps it executing after the body parses, so the per-page
+    InjectedDataByBackend blocks are populated before App boots.
+  -->
+  <script defer
+          nonce="<%= @conn.assigns[:script_src_nonce] %>"
+          data-turbo-track="reload"
+          src="<%= static_path(@conn, "/projects/assets/app.js") %>"></script>
 </head>
