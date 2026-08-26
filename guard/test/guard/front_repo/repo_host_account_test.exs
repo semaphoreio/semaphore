@@ -111,8 +111,7 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
     end
   end
 
-  describe "get_bitbucket_token/1 desired post-fix behavior (regression coverage; " <>
-             "see bitbucket-oauth incident doc)" do
+  describe "get_bitbucket_token/1 (regression coverage; see bitbucket-oauth incident doc)" do
     setup do
       {:ok, user} = Support.Factories.RbacUser.insert()
       {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
@@ -133,8 +132,8 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
       {:ok, rha: rha}
     end
 
-    test "FIXED: bare 403 (Atlassian identity-proxy block, no OAuth error body) is " <>
-           "transient: row stays unrevoked (used to be a permanent revoke pre-fix)",
+    test "FIXED: bare 403 is transient, row stays unrevoked (was a permanent " <>
+           "revoke pre-fix)",
          %{rha: rha} do
       Tesla.Mock.mock_global(fn
         %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
