@@ -111,7 +111,8 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
     end
   end
 
-  describe "get_bitbucket_token/1 (Bitbucket refresh - transient vs revoked; see bitbucket-oauth incident doc)" do
+  describe "get_bitbucket_token/1 desired post-fix behavior (regression coverage; " <>
+             "see bitbucket-oauth incident doc)" do
     setup do
       {:ok, user} = Support.Factories.RbacUser.insert()
       {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
@@ -132,44 +133,8 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
       {:ok, rha: rha}
     end
 
-    test "FIXED: a bare 403 with empty body on refresh is transient, row stays " <>
-           "unrevoked (used to be a permanent revoke pre-fix)",
-         %{rha: rha} do
-      Tesla.Mock.mock_global(fn
-        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
-          {:ok, %Tesla.Env{status: 403, body: ""}}
-      end)
-
-      assert {:error, :transient} = RepoHostAccount.get_bitbucket_token(rha)
-
-      reloaded = FrontRepo.get!(RepoHostAccount, rha.id)
-      refute reloaded.revoked
-    end
-  end
-
-  describe "get_bitbucket_token/1 desired post-fix behavior (regression coverage)" do
-    setup do
-      {:ok, user} = Support.Factories.RbacUser.insert()
-      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
-
-      {:ok, rha} =
-        Support.Members.insert_repo_host_account(
-          login: "example",
-          name: "example",
-          repo_host: "bitbucket",
-          refresh_token: "example_refresh_token",
-          user_id: user.id,
-          token: "expired_token",
-          token_expires_at: Support.Members.invalid_expires_at(),
-          revoked: false,
-          permission_scope: "repo"
-        )
-
-      {:ok, rha: rha}
-    end
-
-    test "bare 403 (Atlassian identity-proxy block, no OAuth error body) is " <>
-           "transient: row stays unrevoked",
+    test "FIXED: bare 403 (Atlassian identity-proxy block, no OAuth error body) is " <>
+           "transient: row stays unrevoked (used to be a permanent revoke pre-fix)",
          %{rha: rha} do
       Tesla.Mock.mock_global(fn
         %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
