@@ -53,8 +53,10 @@ RSpec.describe Semaphore::Bitbucket::Token do
     let(:repo_host_account) { FactoryBot.create(:bitbucket_account, :revoked => false) }
 
     before do
-      allow(Semaphore::Bitbucket::Credentials).to receive(:app_id).and_return("app_id")
-      allow(Semaphore::Bitbucket::Credentials).to receive(:secret_id).and_return("secret_id")
+      allow(Semaphore::Bitbucket::Credentials).to receive_messages(
+        app_id: "app_id",
+        secret_id: "secret_id"
+      )
     end
 
     it "does NOT revoke on a bare 403 (no OAuth error body)" do
