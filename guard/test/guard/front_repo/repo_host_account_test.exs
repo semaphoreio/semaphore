@@ -264,6 +264,40 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
       reloaded = FrontRepo.get!(RepoHostAccount, rha.id)
       refute reloaded.revoked
     end
+
+    test "negative cache: a successful write (reconnect / refresh recovery) invalidates " <>
+           "the stale cached failure immediately",
+         %{rha: rha} do
+      # Warm the negative cache with a transient failure.
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
+          {:ok, %Tesla.Env{status: 403, body: ""}}
+      end)
+
+      assert {:error, :transient} = RepoHostAccount.get_bitbucket_token(rha)
+
+      # Simulate a successful write through the same chokepoint reconnect and
+      # refresh-self-heal both go through (update_account/2 via update_token/4).
+      # Keep the new token already-expired so the next lookup is forced to hit
+      # the provider again, instead of short-circuiting on a still-valid token.
+      {:ok, healed_rha} =
+        RepoHostAccount.update_token(
+          rha,
+          "healed_token",
+          "healed_refresh_token",
+          Support.Members.invalid_expires_at()
+        )
+
+      # If the stale cache entry weren't purged, this would return the cached
+      # {:error, :transient} without ever reaching the mock below.
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
+          {:ok,
+           %Tesla.Env{status: 200, body: %{"access_token" => "fresh_token", "expires_in" => 3600}}}
+      end)
+
+      assert {:ok, {"fresh_token", _}} = RepoHostAccount.get_bitbucket_token(healed_rha)
+    end
   end
 
   describe "update_token/4 self-heal (see bitbucket-oauth incident doc)" do
