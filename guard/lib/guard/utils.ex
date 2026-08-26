@@ -55,7 +55,10 @@ defmodule Guard.Utils.OAuth do
 
     token = body["access_token"]
     expires_in = body["expires_in"]
-    refresh_token = body["refresh_token"]
+    # Some providers (e.g. GitHub) omit refresh_token on a 2xx response when
+    # the existing refresh token is still valid (not rotated) - fall back to
+    # the stored one instead of overwriting it with nil.
+    refresh_token = body["refresh_token"] || repo_host_account.refresh_token
 
     expires_at = calc_expires_at(expires_in)
 
@@ -105,6 +108,40 @@ defmodule Guard.Utils.OAuth do
     # 5 minutes before expiration
     expires_at - 300 > current_time
   end
+
+  @doc """
+  Classify a provider OAuth token-refresh HTTP response into an action the
+  caller should take:
+
+    - `:ok`        - 2xx, the token can be used
+    - `:revoked`   - genuine permanent revocation: the provider returned
+                      `error=invalid_grant` in the body, or HTTP 401
+    - `:transient` - everything else (429, 5xx, any other 4xx incl a bare
+                      403) - the caller MUST NOT treat this as a permanent
+                      revoke, since it may just be rate limiting or an
+                      upstream gateway hiccup
+  """
+  @spec classify_refresh_response(non_neg_integer(), term()) :: :ok | :revoked | :transient
+  def classify_refresh_response(status, _body) when status in 200..299, do: :ok
+
+  def classify_refresh_response(status, body) do
+    if status == 401 or invalid_grant?(body) do
+      :revoked
+    else
+      :transient
+    end
+  end
+
+  defp invalid_grant?(body) when is_map(body), do: Map.get(body, "error") == "invalid_grant"
+
+  defp invalid_grant?(body) when is_binary(body) do
+    case Jason.decode(body) do
+      {:ok, decoded} -> invalid_grant?(decoded)
+      _ -> false
+    end
+  end
+
+  defp invalid_grant?(_body), do: false
 end
 
 defmodule Guard.Utils.Http do

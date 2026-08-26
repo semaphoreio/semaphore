@@ -91,25 +91,28 @@ defmodule Guard.Api.Bitbucket do
       {:ok, %Tesla.Env{status: status, body: body}} when status in 200..299 ->
         OAuth.handle_ok_token_response(repo_host_account, body)
 
-      {:ok, %Tesla.Env{status: status, body: body}} when status in 400..499 ->
-        Logger.warning(
-          "Failed to refresh Bitbucket token (HTTP #{status}): " <>
-            "error=#{inspect(safe_oauth_error(body))} " <>
-            "error_description=#{inspect(safe_oauth_error_description(body))}. " <>
-            "User repo_host_account id: #{repo_host_account.id}"
-        )
-
-        {:error, :revoked}
-
       {:ok, %Tesla.Env{status: status, body: body}} ->
-        Logger.error(
-          "Unexpected response refreshing Bitbucket token (HTTP #{status}): " <>
-            "error=#{inspect(safe_oauth_error(body))} " <>
-            "error_description=#{inspect(safe_oauth_error_description(body))}. " <>
-            "User repo_host_account id: #{repo_host_account.id}"
-        )
+        case OAuth.classify_refresh_response(status, body) do
+          :revoked ->
+            Logger.warning(
+              "Failed to refresh Bitbucket token (HTTP #{status}): " <>
+                "error=#{inspect(safe_oauth_error(body))} " <>
+                "error_description=#{inspect(safe_oauth_error_description(body))}. " <>
+                "User repo_host_account id: #{repo_host_account.id}"
+            )
 
-        {:error, :failed}
+            {:error, :revoked}
+
+          :transient ->
+            Logger.warning(
+              "Transient failure refreshing Bitbucket token (HTTP #{status}): " <>
+                "error=#{inspect(safe_oauth_error(body))} " <>
+                "error_description=#{inspect(safe_oauth_error_description(body))}. " <>
+                "User repo_host_account id: #{repo_host_account.id}"
+            )
+
+            {:error, :transient}
+        end
 
       {:error, error} ->
         Logger.error("Error fetching token: #{inspect(error)}")
