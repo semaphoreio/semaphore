@@ -186,16 +186,18 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
       assert reloaded.revoked == true
     end
 
-    test "401 unauthorized IS a real revocation: row gets revoked", %{rha: rha} do
+    test "FIXED: bare 401 / invalid_client is transient (our client credentials, " <>
+           "not a user revoke): row stays unrevoked",
+         %{rha: rha} do
       Tesla.Mock.mock_global(fn
         %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
           {:ok, %Tesla.Env{status: 401, body: %{"error" => "invalid_client"}}}
       end)
 
-      assert {:error, :revoked} = RepoHostAccount.get_bitbucket_token(rha)
+      assert {:error, :transient} = RepoHostAccount.get_bitbucket_token(rha)
 
       reloaded = FrontRepo.get!(RepoHostAccount, rha.id)
-      assert reloaded.revoked == true
+      refute reloaded.revoked
     end
 
     test "already-revoked row short-circuits: no refresh call is made", %{rha: rha} do
