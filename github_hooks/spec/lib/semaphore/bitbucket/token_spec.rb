@@ -48,4 +48,31 @@ RSpec.describe Semaphore::Bitbucket::Token do
       expect(described_class.valid?("token")).to be(false)
     end
   end
+
+  describe ".fetch_token" do
+    let(:repo_host_account) { FactoryBot.create(:bitbucket_account, :revoked => false) }
+
+    before do
+      allow(Semaphore::Bitbucket::Credentials).to receive(:app_id).and_return("app_id")
+      allow(Semaphore::Bitbucket::Credentials).to receive(:secret_id).and_return("secret_id")
+    end
+
+    it "does NOT revoke on a bare 403 (no OAuth error body)" do
+      allow(Excon).to receive(:post).and_return(
+        instance_double(Excon::Response, :status => 403, :body => "")
+      )
+
+      expect(described_class.fetch_token(repo_host_account)).to eq(["", nil])
+      expect(repo_host_account.reload.revoked).to be(false)
+    end
+
+    it "revokes on a genuine invalid_grant" do
+      allow(Excon).to receive(:post).and_return(
+        instance_double(Excon::Response, :status => 400, :body => '{"error":"invalid_grant"}')
+      )
+
+      expect(described_class.fetch_token(repo_host_account)).to eq(["", nil])
+      expect(repo_host_account.reload.revoked).to be(true)
+    end
+  end
 end
