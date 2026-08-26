@@ -840,9 +840,8 @@ defmodule Guard.GrpcServers.UserServer do
 
   defp get_token(%{repo_host: "github"} = repo_host_account, user_id: user_id) do
     case FrontRepo.RepoHostAccount.get_github_token(repo_host_account) do
-      {:error, _} ->
-        Logger.error("Token for User: '#{user_id}' and 'GITHUB' not found.")
-        grpc_error!(:not_found, "Token for not found.")
+      {:error, reason} ->
+        handle_token_error(reason, "GITHUB", user_id)
 
       {:ok, {token, expires_at}} ->
         {token, expires_at}
@@ -851,9 +850,8 @@ defmodule Guard.GrpcServers.UserServer do
 
   defp get_token(%{repo_host: "bitbucket"} = repo_host_account, user_id: user_id) do
     case FrontRepo.RepoHostAccount.get_bitbucket_token(repo_host_account) do
-      {:error, _} ->
-        Logger.error("Token for User: '#{user_id}' and 'BITBUCKET' not found.")
-        grpc_error!(:not_found, "Token for not found.")
+      {:error, reason} ->
+        handle_token_error(reason, "BITBUCKET", user_id)
 
       {:ok, {token, expires_at}} ->
         {token, expires_at}
@@ -862,13 +860,45 @@ defmodule Guard.GrpcServers.UserServer do
 
   defp get_token(%{repo_host: "gitlab"} = repo_host_account, user_id: user_id) do
     case FrontRepo.RepoHostAccount.get_gitlab_token(repo_host_account) do
-      {:error, _} ->
-        Logger.error("Token for User: '#{user_id}' and 'GITLAB' not found.")
-        grpc_error!(:not_found, "Token for not found.")
+      {:error, reason} ->
+        handle_token_error(reason, "GITLAB", user_id)
 
       {:ok, {token, expires_at}} ->
         {token, expires_at}
     end
+  end
+
+  # De-conflate what used to be a single generic NOT_FOUND for every
+  # refresh failure: a genuine permanent revocation ("reconnect required")
+  # is a different situation from a transient upstream hiccup ("retry
+  # later"), and callers/alerting need to be able to tell them apart.
+  defp handle_token_error(:revoked, provider, user_id) do
+    Logger.error("Token for User: '#{user_id}' and '#{provider}' is revoked.")
+    grpc_error!(:not_found, "Token not found: account access has been revoked.")
+  end
+
+  defp handle_token_error(:transient, provider, user_id) do
+    Logger.warning(
+      "Transient failure fetching token for User: '#{user_id}' and '#{provider}'."
+    )
+
+    grpc_error!(:unavailable, "Token temporarily unavailable, please retry.")
+  end
+
+  defp handle_token_error(:network_error, provider, user_id) do
+    Logger.warning(
+      "Network error fetching token for User: '#{user_id}' and '#{provider}'."
+    )
+
+    grpc_error!(:unavailable, "Token temporarily unavailable, please retry.")
+  end
+
+  defp handle_token_error(reason, provider, user_id) do
+    Logger.error(
+      "Unexpected error (#{inspect(reason)}) fetching token for User: '#{user_id}' and '#{provider}'."
+    )
+
+    grpc_error!(:not_found, "Token for not found.")
   end
 
   defp get_token(_repo_host_account, user_id: user_id) do
