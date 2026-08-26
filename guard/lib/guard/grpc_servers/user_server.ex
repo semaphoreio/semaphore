@@ -868,6 +868,12 @@ defmodule Guard.GrpcServers.UserServer do
     end
   end
 
+  defp get_token(_repo_host_account, user_id: user_id) do
+    not_found_message = "Token for User: '#{user_id}' not found."
+    Logger.error(not_found_message)
+    grpc_error!(:not_found, not_found_message)
+  end
+
   # De-conflate what used to be a single generic NOT_FOUND for every
   # refresh failure: a genuine permanent revocation ("reconnect required")
   # is a different situation from a transient upstream hiccup ("retry
@@ -878,17 +884,13 @@ defmodule Guard.GrpcServers.UserServer do
   end
 
   defp handle_token_error(:transient, provider, user_id) do
-    Logger.warning(
-      "Transient failure fetching token for User: '#{user_id}' and '#{provider}'."
-    )
+    Logger.warning("Transient failure fetching token for User: '#{user_id}' and '#{provider}'.")
 
     grpc_error!(:unavailable, "Token temporarily unavailable, please retry.")
   end
 
   defp handle_token_error(:network_error, provider, user_id) do
-    Logger.warning(
-      "Network error fetching token for User: '#{user_id}' and '#{provider}'."
-    )
+    Logger.warning("Network error fetching token for User: '#{user_id}' and '#{provider}'.")
 
     grpc_error!(:unavailable, "Token temporarily unavailable, please retry.")
   end
@@ -899,12 +901,6 @@ defmodule Guard.GrpcServers.UserServer do
     )
 
     grpc_error!(:not_found, "Token for not found.")
-  end
-
-  defp get_token(_repo_host_account, user_id: user_id) do
-    not_found_message = "Token for User: '#{user_id}' not found."
-    Logger.error(not_found_message)
-    grpc_error!(:not_found, not_found_message)
   end
 
   defp check_integration!(integration_type) do
