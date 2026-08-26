@@ -111,7 +111,7 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
     end
   end
 
-  describe "get_bitbucket_token/1 (regression coverage; see bitbucket-oauth incident doc)" do
+  describe "get_bitbucket_token/1 (refresh failure classification regression coverage)" do
     setup do
       {:ok, user} = Support.Factories.RbacUser.insert()
       {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
@@ -266,7 +266,7 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
     end
   end
 
-  describe "update_token/4 self-heal (see bitbucket-oauth incident doc)" do
+  describe "update_token/4 self-heal (clears a stale revoked flag on success)" do
     test "a successful token write clears a previously-latched revoked flag" do
       {:ok, user} = Support.Factories.RbacUser.insert()
       {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
