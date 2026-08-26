@@ -50,6 +50,29 @@ defmodule Projecthub.Models.PeriodicTask.YamlTest do
       )
     end
 
+    test "emits notification skip flags only when set" do
+      task = %PeriodicTask{
+        id: "id",
+        name: "name",
+        project_name: "project_name",
+        status: :STATUS_ACTIVE,
+        recurring: true,
+        branch: "master",
+        at: "* * * * *",
+        pipeline_file: "semaphore.yml",
+        skip_scheduled_run_notifications: true,
+        skip_manual_run_notifications: false
+      }
+
+      {:ok, parsed} =
+        task
+        |> PeriodicTask.YAML.compose(%Project{name: "project_name"})
+        |> YamlElixir.read_from_string()
+
+      assert parsed["spec"]["skip_scheduled_run_notifications"] == true
+      refute Map.has_key?(parsed["spec"], "skip_manual_run_notifications")
+    end
+
     test "without description" do
       result =
         Projecthub.Models.PeriodicTask.YAML.compose(
