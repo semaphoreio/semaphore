@@ -42,10 +42,13 @@ defmodule GithubNotifier.Models.PeriodicTest do
     assert Cachex.get!(:task_policy, "gone") == :not_found
   end
 
-  test "does not cache a transport failure" do
+  test "caches a transport failure only briefly, so an outage does not cost a lookup per event" do
     GrpcMock.stub(SchedulerMock, :describe, fn _, _ -> raise "boom" end)
 
     assert Periodic.find("task-1") == nil
-    assert Cachex.get!(:task_policy, "task-1") == nil
+    assert Cachex.get!(:task_policy, "task-1") == :not_found
+
+    {:ok, ttl} = Cachex.ttl(:task_policy, "task-1")
+    assert ttl <= :timer.seconds(5)
   end
 end
