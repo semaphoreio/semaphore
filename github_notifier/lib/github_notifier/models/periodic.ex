@@ -5,6 +5,7 @@ defmodule GithubNotifier.Models.Periodic do
 
   @cache_ttl :timer.minutes(5)
   @not_found_cache_ttl :timer.seconds(30)
+  @unreachable_cache_ttl :timer.seconds(5)
   @rpc_timeout 2_000
 
   @doc """
@@ -55,6 +56,7 @@ defmodule GithubNotifier.Models.Periodic do
       {:error, error} ->
         Logger.error("Periodic #{id} describe failed: #{inspect(error)}")
         Watchman.increment("fetch_periodic.failed")
+        Cachex.put(:task_policy, id, :not_found, ttl: @unreachable_cache_ttl)
         nil
     end
   end
