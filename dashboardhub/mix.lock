@@ -41,7 +41,7 @@
   "sentry": {:hex, :sentry, "8.0.6", "c8de1bf0523bc120ec37d596c55260901029ecb0994e7075b0973328779ceef7", [:mix], [{:hackney, "~> 1.8", [hex: :hackney, repo: "hexpm", optional: true]}, {:jason, "~> 1.1", [hex: :jason, repo: "hexpm", optional: true]}, {:plug, "~> 1.6", [hex: :plug, repo: "hexpm", optional: true]}, {:plug_cowboy, "~> 2.3", [hex: :plug_cowboy, repo: "hexpm", optional: true]}], "hexpm", "051a2d0472162f3137787c7c9d6e6e4ef239de9329c8c45b1f1bf1e9379e1883"},
   "sentry_grpc": {:git, "https://github.com/renderedtext/sentry_grpc.git", "6879a067b22814984591dce62578222d596a0acd", []},
   "ssl_verify_fun": {:hex, :ssl_verify_fun, "1.1.7", "354c321cf377240c7b8716899e182ce4890c5938111a1296add3ec74cf1715df", [:make, :mix, :rebar3], [], "hexpm", "fe4c190e8f37401d30167c8c405eda19469f34577987c76dde613e838bbc67f8"},
-  "tackle": {:git, "https://github.com/renderedtext/ex-tackle.git", "c332957f26ed17b50f86d3688957218e3fb1dd18", []},
+  "tackle": {:git, "https://github.com/renderedtext/ex-tackle.git", "5b154ec1a74fcaf28df98717436850adb3846c35", [tag: "v0.4.1"]},
   "telemetry": {:hex, :telemetry, "1.2.1", "68fdfe8d8f05a8428483a97d7aab2f268aaff24b49e0f599faa091f1d4e7f61c", [:rebar3], [], "hexpm", "dad9ce9d8effc621708f99eac538ef1cbe05d6a874dd741de2e689c47feafed5"},
   "thoas": {:hex, :thoas, "1.0.0", "567c03902920827a18a89f05b79a37b5bf93553154b883e0131801600cf02ce0", [:rebar3], [], "hexpm", "fc763185b932ecb32a554fb735ee03c3b6b1b31366077a2427d2a97f3bd26735"},
   "unicode_util_compat": {:hex, :unicode_util_compat, "0.7.0", "bc84380c9ab48177092f43ac89e4dfa2c6d62b40b8bd132b1059ecc7232f9a78", [:rebar3], [], "hexpm", "25eee6d67df61960cf6a794239566599b09e17e668d3700247bc498638152521"},
