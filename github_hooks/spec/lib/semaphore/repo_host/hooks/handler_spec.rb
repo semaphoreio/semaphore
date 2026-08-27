@@ -265,16 +265,75 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
             allow(repo_host).to receive(:pull_request).and_return(:merge_commit_sha => "foo", :mergeable => true)
           end
 
-          it "creates ref on github" do
-            allow(repo_host).to receive(:reference).with("renderedtext/plakatt",
-                                                         "semaphoreci/foo").and_raise(::RepoHost::RemoteException::NotFound)
-
-            allow(repo_host).to receive(:create_ref).with("renderedtext/plakatt", "refs/semaphoreci/foo", "foo")
+          it "creates ref on github via exactly one create_ref call and no probe" do
+            # `ensure_ref` is now create-only — the whole optimisation. If
+            # this assertion ever loosens, the rate-limit win is gone.
+            expect(repo_host).not_to receive(:reference)
+            expect(repo_host).to receive(:create_ref)
+              .with("renderedtext/plakatt", "refs/semaphoreci/foo", "foo")
+              .once
 
             allow(repo_host).to receive(:commit).with("renderedtext/plakatt",
                                                       "97114836a47ff614e70e863df819f908877ee1c9").and_return(RepoHost::Github::Responses::Commit.commit)
 
             expect(described_class.run(@workflow, @logger)).to be_nil
+          end
+
+          it "treats ReferenceAlreadyExists as success and still proceeds" do
+            # When the ref already exists in GitHub, `create_ref` raises
+            # ReferenceAlreadyExists. `ensure_ref` rescues it (mirroring
+            # the existing typed-exception convention for MaximumNumberOfStatuses
+            # and HookExistsOnRepository) and continues to the commit lookup.
+            expect(repo_host).not_to receive(:reference)
+            expect(repo_host).to receive(:create_ref)
+              .with("renderedtext/plakatt", "refs/semaphoreci/foo", "foo")
+              .and_raise(::RepoHost::RemoteException::ReferenceAlreadyExists)
+            allow(repo_host).to receive(:commit).with("renderedtext/plakatt",
+                                                      "97114836a47ff614e70e863df819f908877ee1c9").and_return(RepoHost::Github::Responses::Commit.commit)
+
+            expect(described_class.run(@workflow, @logger)).to be_nil
+          end
+
+          shared_examples "without_reference fallback" do |exception_class, exception_msg|
+            it "falls back to :without_reference and records the workflow state when create_ref raises #{exception_class}" do
+              expect(repo_host).not_to receive(:reference)
+              allow(repo_host).to receive(:create_ref)
+                .with("renderedtext/plakatt", "refs/semaphoreci/foo", "foo")
+                .and_raise(exception_class, exception_msg)
+              allow(repo_host).to receive(:commit).with("renderedtext/plakatt",
+                                                        "97114836a47ff614e70e863df819f908877ee1c9").and_return(RepoHost::Github::Responses::Commit.commit)
+
+              # Spy on logger.info so we can assert "without-reference" was
+              # logged without blocking other downstream info calls.
+              allow(@logger).to receive(:info)
+
+              expect(described_class.run(@workflow, @logger)).to be_nil
+              expect(@logger).to have_received(:info).with("without-reference")
+              # The handler should not mark the workflow as a hard failure
+              # state for the without-reference path; it falls through to
+              # downstream branch/pipeline handling.
+              expect(@workflow.reload.state).not_to eq(Workflow::STATE_UNAUTHORIZED_REPO)
+              expect(@workflow.reload.state).not_to eq(Workflow::STATE_NOT_FOUND_REPO)
+            end
+          end
+
+          include_examples "without_reference fallback",
+                           ::RepoHost::RemoteException::Unauthorized, "no token"
+          include_examples "without_reference fallback",
+                           ::RepoHost::RemoteException::NotFound, "repo gone"
+
+          it "propagates RepoHost::RemoteException::Unknown raised by create_ref" do
+            # The without_reference rescue only catches Unauthorized + NotFound.
+            # Other failure modes (invalid SHA, etc.) must surface to the caller
+            # so the workflow doesn't silently appear to succeed.
+            expect(repo_host).not_to receive(:reference)
+            allow(repo_host).to receive(:create_ref)
+              .with("renderedtext/plakatt", "refs/semaphoreci/foo", "foo")
+              .and_raise(::RepoHost::RemoteException::Unknown, "invalid SHA")
+            allow(repo_host).to receive(:commit).with("renderedtext/plakatt",
+                                                      "97114836a47ff614e70e863df819f908877ee1c9").and_return(RepoHost::Github::Responses::Commit.commit)
+
+            expect { described_class.run(@workflow, @logger) }.to raise_error(::RepoHost::RemoteException::Unknown)
           end
         end
 
@@ -340,16 +399,39 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
           end
         end
 
-        context "and there is a problem with fetching mergeable status" do
+        context "and GitHub has not finished computing mergeability (mergeable is nil)" do
           before do
             allow(repo_host).to receive(:validate_token_presence!)
             allow(repo_host).to receive(:pull_request).and_return(:merge_commit_sha => "", :mergeable => nil)
+            allow(described_class).to receive(:sleep) # skip get_pr_data poll backoff
           end
 
-          it "logs the non mergeable pr" do
-            expect(@logger).to receive(:info).with("pr-non-mergeable")
+          it "reschedules the hook with an incremented retry count instead of building" do
+            expect(described_class).not_to receive(:launch_pipeline)
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker)
+              .to receive(:perform_in).with(2.minutes, @workflow.id, anything, anything, 1)
+            expect(@logger).to receive(:info).with("pr-mergeable-unknown-rescheduled", anything)
 
             described_class.run(@workflow, @logger)
+
+            expect(@workflow.reload.state).not_to eq(Workflow::STATE_PR_NON_MERGEABLE)
+          end
+
+          it "still reschedules on the last attempt before the budget is exhausted" do
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker)
+              .to receive(:perform_in).with(2.minutes, @workflow.id, anything, anything, 10)
+
+            described_class.run(@workflow, @logger, "", "", 9)
+
+            expect(@workflow.reload.state).not_to eq(Workflow::STATE_PR_NON_MERGEABLE)
+          end
+
+          it "gives up once retries are exhausted without emitting a spurious unmergeable event" do
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker).not_to receive(:perform_in)
+            expect(described_class).not_to receive(:update_pull_request_mergeable)
+            expect(@logger).to receive(:info).with("pr-mergeable-unknown-giving-up")
+
+            described_class.run(@workflow, @logger, "", "", 10)
 
             expect(@workflow.reload.state).to eq(Workflow::STATE_PR_NON_MERGEABLE)
           end

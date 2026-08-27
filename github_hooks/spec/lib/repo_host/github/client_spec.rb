@@ -28,7 +28,15 @@ RSpec.describe RepoHost::Github::Client do
   end
 
   describe "#app_client" do
-    it "gets credentials from Semaphore::GithubApp::Credentials::InstanceConfigClient when instance config credentials are set" do
+    before do
+      # Credentials prefer Local (env/App config), so clear it — and the memoized
+      # values — to exercise the InstanceConfig fallback.
+      Semaphore::GithubApp::Credentials.instance_variable_set(:@github_client_id, nil)
+      Semaphore::GithubApp::Credentials.instance_variable_set(:@github_client_secret, nil)
+      allow(Semaphore::GithubApp::Credentials::Local).to receive_messages(:github_client_id => nil, :github_client_secret => nil)
+    end
+
+    it "falls back to InstanceConfigClient credentials when local config is unset" do
       client = RepoHost::Github::Client.new(token)
       app_client = client.send(:app_client)
 
@@ -137,6 +145,131 @@ RSpec.describe RepoHost::Github::Client do
           @client.create_hook("repo", "id", "config")
         end.to raise_error(RepoHost::RemoteException::HookExistsOnRepository)
       end
+    end
+
+    context "when create_ref encounters 'Reference already exists' (idempotent)" do
+      before do
+        allow_any_instance_of(Octokit::Client).to receive(:create_ref)
+          .and_raise(
+            Octokit::UnprocessableEntity.new(
+              :status => 422,
+              :body => "Reference already exists"
+            )
+          )
+      end
+
+      it "raises RepoHost::RemoteException::ReferenceAlreadyExists so callers can handle the idempotent case explicitly" do
+        expect do
+          @client.create_ref("repo", "refs/semaphoreci/abc", "abc")
+        end.to raise_error(RepoHost::RemoteException::ReferenceAlreadyExists)
+      end
+    end
+
+    context "when create_ref encounters 'Reference already exists' wrapped in Octokit's full message format" do
+      # Real Octokit constructs the exception message by prefixing the request
+      # method/URL and HTTP status before the API body. This test guards
+      # against the matcher silently breaking if `:body =>` and the real
+      # `.message` ever diverge.
+      before do
+        allow_any_instance_of(Octokit::Client).to receive(:create_ref)
+          .and_raise(
+            Octokit::UnprocessableEntity.new(
+              :status => 422,
+              :body => "POST https://api.github.com/repos/owner/repo/git/refs: 422 - Reference already exists // See: https://docs.github.com/rest"
+            )
+          )
+      end
+
+      it "still raises ReferenceAlreadyExists" do
+        expect do
+          @client.create_ref("repo", "refs/semaphoreci/abc", "abc")
+        end.to raise_error(RepoHost::RemoteException::ReferenceAlreadyExists)
+      end
+    end
+
+    context "when create_ref encounters an unrelated 422" do
+      before do
+        allow_any_instance_of(Octokit::Client).to receive(:create_ref)
+          .and_raise(
+            Octokit::UnprocessableEntity.new(
+              :status => 422,
+              :body => "Invalid object SHA"
+            )
+          )
+      end
+
+      it "raises RepoHost::RemoteException::Unknown so the caller sees the failure" do
+        expect do
+          @client.create_ref("repo", "refs/semaphoreci/abc", "abc")
+        end.to raise_error(RepoHost::RemoteException::Unknown)
+      end
+    end
+
+    context "when create_ref encounters TooManyRequests" do
+      before do
+        allow_any_instance_of(Octokit::Client).to receive(:create_ref)
+          .and_raise(Octokit::TooManyRequests)
+      end
+
+      it "propagates as RepoHost::RemoteException::TooManyRequests rather than swallowing" do
+        expect do
+          @client.create_ref("repo", "refs/semaphoreci/abc", "abc")
+        end.to raise_error(RepoHost::RemoteException::TooManyRequests)
+      end
+    end
+  end
+
+  describe "#permission_level" do
+    it "fetches the collaborator permission for a repository" do
+      allow_any_instance_of(Octokit::Client).to receive(:permission_level)
+        .with("owner/repo", "marvin")
+        .and_return(:payload)
+
+      expect(@client.permission_level("owner/repo", "marvin")).to eq(:payload)
+    end
+
+    it "translates a missing collaborator into RepoHost::RemoteException::NotFound" do
+      allow_any_instance_of(Octokit::Client).to receive(:permission_level)
+        .and_raise(Octokit::NotFound)
+
+      expect do
+        @client.permission_level("owner/repo", "marvin")
+      end.to raise_error(RepoHost::RemoteException::NotFound)
+    end
+  end
+
+  describe "#compare" do
+    it "fetches the comparison through a non-paginating client" do
+      non_paginating = instance_double(Octokit::Client)
+      allow(Octokit::Client).to receive(:new)
+        .with(hash_including(:auto_paginate => false))
+        .and_return(non_paginating)
+      allow(non_paginating).to receive(:compare).and_return(:comparison)
+
+      expect(@client.compare("owner/repo", "basesha", "main")).to eq(:comparison)
+      expect(non_paginating).to have_received(:compare).with("owner/repo", "basesha", "main")
+    end
+
+    it "escapes URL-significant ref characters, preserving namespace slashes" do
+      non_paginating = instance_double(Octokit::Client)
+      allow(Octokit::Client).to receive(:new)
+        .with(hash_including(:auto_paginate => false))
+        .and_return(non_paginating)
+      allow(non_paginating).to receive(:compare).and_return(:comparison)
+
+      @client.compare("owner/repo", "basesha", "release/feat#1")
+
+      expect(non_paginating).to have_received(:compare)
+        .with("owner/repo", "basesha", "release/feat%231")
+    end
+
+    it "translates a missing ref into RepoHost::RemoteException::NotFound" do
+      allow_any_instance_of(Octokit::Client).to receive(:compare)
+        .and_raise(Octokit::NotFound)
+
+      expect do
+        @client.compare("owner/repo", "basesha", "missing-branch")
+      end.to raise_error(RepoHost::RemoteException::NotFound)
     end
   end
 
@@ -264,6 +397,71 @@ RSpec.describe RepoHost::Github::Client do
           end
         end
       end
+    end
+  end
+
+  describe "#push_access_to_organization?", :aggregate_failures do
+    def repo(login, type, push)
+      { :owner => { :login => login, :type => type }, :permissions => { :push => push } }
+    end
+
+    it "is true when the user has push to a repo owned by the org (case-insensitive)" do
+      allow_any_instance_of(Octokit::Client).to receive(:repos).and_return([repo("Acme", "Organization", true)])
+
+      expect(@client.push_access_to_organization?("acme")).to be(true)
+    end
+
+    it "is false when the user only has pull access in the org" do
+      allow_any_instance_of(Octokit::Client).to receive(:repos).and_return([repo("acme", "Organization", false)])
+
+      expect(@client.push_access_to_organization?("acme")).to be(false)
+    end
+
+    it "ignores push repos owned by a different org or a personal account" do
+      allow_any_instance_of(Octokit::Client).to receive(:repos)
+        .and_return([repo("other", "Organization", true), repo("acme", "User", true)])
+
+      expect(@client.push_access_to_organization?("acme")).to be(false)
+    end
+
+    it "is false when the user has no accessible repositories" do
+      allow_any_instance_of(Octokit::Client).to receive(:repos).and_return([])
+
+      expect(@client.push_access_to_organization?("acme")).to be(false)
+    end
+
+    it "fails closed when the GitHub call times out" do
+      allow_any_instance_of(Octokit::Client).to receive(:repos).and_raise(Faraday::TimeoutError)
+
+      expect(@client.push_access_to_organization?("acme")).to be(false)
+    end
+
+    it "builds the scan client with request timeouts" do
+      allow(Octokit::Client).to receive(:new).and_return(instance_double(Octokit::Client, :repos => []))
+
+      expect(@client.push_access_to_organization?("acme")).to be(false)
+      expect(Octokit::Client).to have_received(:new).with(
+        hash_including(
+          :connection_options => {
+            :request => {
+              :open_timeout => described_class::ORG_PUSH_OPEN_TIMEOUT,
+              :timeout => described_class::ORG_PUSH_READ_TIMEOUT
+            }
+          }
+        )
+      )
+    end
+
+    it "scans only organization-member repositories (excludes outside collaborators)" do
+      scan_client = instance_double(Octokit::Client)
+      allow(Octokit::Client).to receive(:new).and_return(scan_client)
+      allow(scan_client).to receive(:repos).and_return([])
+
+      @client.push_access_to_organization?("acme")
+
+      expect(scan_client).to have_received(:repos).with(
+        nil, hash_including(:affiliation => "organization_member")
+      )
     end
   end
 end

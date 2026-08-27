@@ -48,6 +48,21 @@ defmodule Rbac.Repo.GroupManagementRequest do
     |> insert()
   end
 
+  @doc """
+  Returns true when an `:add_user` request for this user/group is already
+  in-flight (`:pending` or `:processing`). Used to keep re-add provisioning
+  idempotent so rapid duplicate logins do not enqueue duplicate requests.
+  """
+  def open_add_user_request_exists?(user_id, group_id) do
+    __MODULE__
+    |> where(
+      [r],
+      r.user_id == ^user_id and r.group_id == ^group_id and r.action == ^:add_user and
+        r.state in ^[:pending, :processing]
+    )
+    |> Rbac.Repo.exists?()
+  end
+
   def finish_processing(%__MODULE__{} = req) do
     req = fetch(req)
 

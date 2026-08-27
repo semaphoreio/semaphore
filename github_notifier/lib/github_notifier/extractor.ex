@@ -35,7 +35,7 @@ defmodule GithubNotifier.Extractor do
     # This situation occurs when the pipeline tests pass(there are no errors in the summary),
     # but at least one of the jobs failed without test results
     link_to_summary_tab? =
-      not (pipeline.result == :FAILED and Models.PipelineSummary.is_passed?(pipeline_summary))
+      not (pipeline.result == :FAILED and Models.PipelineSummary.passed?(pipeline_summary))
 
     sha = notify_sha(repo_proxy)
 
@@ -121,7 +121,7 @@ defmodule GithubNotifier.Extractor do
   end
 
   def notify_sha(repo_proxy) do
-    case InternalApi.RepoProxy.Hook.Type.key(repo_proxy.git_ref_type) do
+    case repo_proxy.git_ref_type do
       :BRANCH -> repo_proxy.build_sha
       :TAG -> repo_proxy.build_sha
       :PR -> repo_proxy.pr_sha

@@ -48,12 +48,12 @@ With:
 FROM registry.semaphoreci.com/node:20
 ```
 
-Service images can be used with [sem-service](../../reference/toolbox#sem-service). For example, the following command starts a PostgreSQL v16 container in your job:
+Service images can be used with [sem-service](../../reference/toolbox#sem-service). For example, the following command starts a PostgreSQL v18 container in your job:
 
 ```shell title="Job commands"
-$ sem-service start postgres 16
+$ sem-service start postgres 18
 Starting postgres...done.
-PostgreSQL 16 is running at 0.0.0.0:5432
+PostgreSQL 18 is running at 0.0.0.0:5432
 To access it use username 'postgres' and blank password.
 ```
 
@@ -503,6 +503,9 @@ This section lists utility images for [sem-service](../../reference/toolbox#sem-
 | postgres:16 | `registry.semaphoreci.com/postgres:16` |  
 | postgres:17 | `registry.semaphoreci.com/postgres:17` |  
 | postgres:17.2 | `registry.semaphoreci.com/postgres:17.2` |  
+| postgres:17.6 | `registry.semaphoreci.com/postgres:17.6` |  
+| postgres:18 | `registry.semaphoreci.com/postgres:18` |  
+| postgres:18.1 | `registry.semaphoreci.com/postgres:18.1` |  
 
 </div>
 </details>

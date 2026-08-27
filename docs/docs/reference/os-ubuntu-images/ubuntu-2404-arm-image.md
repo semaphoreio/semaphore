@@ -121,7 +121,7 @@ Erlang versions are installed and managed via [kerl](https://github.com/kerl/ker
 Elixir versions are installed with [kiex](https://github.com/taylor/kiex).
 
 - Erlang: 24.3, 25.x, 26.x, 27.x (27.0 as default), 28.x
-- Elixir: 1.14.x, 1.15.x, 1.16.x, 1.17.x (1.17.3 as default), 1.18.x, 1.19.x
+- Elixir: 1.14.x, 1.15.x, 1.16.x, 1.17.x (1.17.3 as default), 1.18.x, 1.19.x, 1.20.x
 
 Additional libraries:
 

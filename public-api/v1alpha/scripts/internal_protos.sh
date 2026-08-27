@@ -3,6 +3,7 @@ list='artifacthub
 audit
 branch
 feature
+guard
 gofer.dt
 gofer.switch
 include/google/protobuf/timestamp
@@ -22,8 +23,12 @@ repository_integrator
 repo_proxy
 secrethub
 self_hosted
+service_account
+groups
 server_farm.job
+superjerry
 user
+velocity
 loghub
 loghub2
 '

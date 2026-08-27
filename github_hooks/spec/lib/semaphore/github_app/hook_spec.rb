@@ -305,6 +305,63 @@ module Semaphore::GithubApp
         end
       end
 
+      context "when collaborator webhook sync is disabled", :aggregate_failures do
+        before do
+          allow(App).to receive(:disable_collaborator_webhook_sync).and_return(true)
+        end
+
+        context "add repositories" do
+          let(:event) { "installation_repositories" }
+          let(:payload) { JSON.parse(RepoHost::Github::Responses::Payload.installation_repositories_added) }
+          let(:new_repositories) do
+            [
+              { "id" => 0, "slug" => "renderedtext/foo" },
+              { "id" => 217099396, "slug" => "semaphoreio/semaphore" }
+            ]
+          end
+
+          before do
+            FactoryBot.create(:github_app_installation, :installation_id => installation_id,
+                                                        :repositories => [{ "id" => 0, "slug" => "renderedtext/foo" }])
+          end
+
+          it "updates records but does not enqueue collaborator sync" do
+            expect(Semaphore::GithubApp::Collaborators::Worker).not_to receive(:perform_in)
+
+            project = FactoryBot.create(:project)
+            project.repository.update(
+              :integration_type => "github_app",
+              :url => "git@github.com:semaphoreio/semaphore.git",
+              :connected => false
+            )
+
+            described_class.process(event, payload)
+
+            installation = find_installation(installation_id)
+            expect(repositories_from_table(installation)).to match_array(new_repositories)
+            expect(project.repository.reload.connected).to be(true)
+          end
+        end
+
+        context "when repository mutation hits unique slug conflict" do
+          let(:event) { "installation_repositories" }
+          let(:payload) { JSON.parse(RepoHost::Github::Responses::Payload.installation_repositories_added) }
+
+          before do
+            FactoryBot.create(:github_app_installation, :installation_id => installation_id,
+                                                        :repositories => [{ "id" => 0, "slug" => "renderedtext/foo" }])
+            allow_any_instance_of(GithubAppInstallation).to receive(:add_repositories!).and_raise(ActiveRecord::RecordNotUnique)
+            allow(Exceptions).to receive(:notify)
+          end
+
+          it "does not schedule the installation refresh" do
+            expect(Semaphore::GithubApp::Repositories::Worker).not_to receive(:perform_in)
+
+            expect(described_class.process(event, payload)).to be(true)
+          end
+        end
+      end
+
       def find_installation(installation_id)
         GithubAppInstallation.find_by(:installation_id => installation_id)
       end

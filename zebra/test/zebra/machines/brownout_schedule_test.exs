@@ -47,6 +47,50 @@ defmodule Zebra.Machines.BrownoutScheduleTest do
            }
   end
 
+  test "creates macos-xcode15 brownout schedule" do
+    schedule = BrownoutSchedule.macosxcode15()
+
+    assert length(schedule) == 105
+
+    [first_event | _] = schedule
+
+    assert first_event == %{
+             from: ~U[2026-06-15 10:00:00Z],
+             os_images: ["macos-xcode15"],
+             to: ~U[2026-06-15 10:15:00Z]
+           }
+
+    [last_event | _] = schedule |> Enum.reverse()
+
+    assert last_event == %{
+             from: ~U[2026-07-05 22:00:00Z],
+             os_images: ["macos-xcode15"],
+             to: ~U[2026-07-06 00:00:00Z]
+           }
+  end
+
+  test "creates macos-xcode16 brownout schedule" do
+    schedule = BrownoutSchedule.macosxcode16()
+
+    assert length(schedule) == 140
+
+    [first_event | _] = schedule
+
+    assert first_event == %{
+             from: ~U[2026-09-07 10:00:00Z],
+             os_images: ["macos-xcode16"],
+             to: ~U[2026-09-07 10:15:00Z]
+           }
+
+    [last_event | _] = schedule |> Enum.reverse()
+
+    assert last_event == %{
+             from: ~U[2026-10-04 22:00:00Z],
+             os_images: ["macos-xcode16"],
+             to: ~U[2026-10-05 00:00:00Z]
+           }
+  end
+
   describe "creating phases" do
     test "work as expected" do
       phase =
@@ -68,6 +112,25 @@ defmodule Zebra.Machines.BrownoutScheduleTest do
                  from: ~U[2024-01-02 00:00:00Z],
                  os_images: ["ubuntu2004"],
                  to: ~U[2024-01-02 00:15:00Z]
+               }
+             ]
+    end
+
+    test "supports periods crossing midnight" do
+      phase =
+        BrownoutSchedule.phase(
+          Date.range(~D[2024-01-01], ~D[2024-01-01]),
+          [
+            {~T[22:00:00], ~T[00:00:00]}
+          ],
+          ["ubuntu2004"]
+        )
+
+      assert phase == [
+               %{
+                 from: ~U[2024-01-01 22:00:00Z],
+                 os_images: ["ubuntu2004"],
+                 to: ~U[2024-01-02 00:00:00Z]
                }
              ]
     end

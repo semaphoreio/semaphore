@@ -4,11 +4,14 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/renderedtext/go-watchman"
 	cleaner "github.com/semaphoreio/semaphore/repohub/pkg/cleaner"
 	fetcher "github.com/semaphoreio/semaphore/repohub/pkg/fetcher"
+	"github.com/semaphoreio/semaphore/repohub/pkg/grpcconn"
 	hub "github.com/semaphoreio/semaphore/repohub/pkg/hub"
 	metrics "github.com/semaphoreio/semaphore/repohub/pkg/metrics"
 )
@@ -79,6 +82,13 @@ func main() {
 
 	log.Println("RepoHub Fully Working")
 
-	// sleep forever
-	select {}
+	// Block until a termination signal, then release the pooled gRPC connections.
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+	<-stop
+
+	log.Println("Shutting down RepoHub")
+	if err := grpcconn.Default.Close(); err != nil {
+		log.Printf("(err) closing gRPC connection pool: %v", err)
+	}
 }

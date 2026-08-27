@@ -130,7 +130,7 @@ export var GroupManagement = {
     .then((response) => response.text())
     .then((html) => {
       reRenderPage(html)
-      App.run()
+      App.runPage()
       App["people_page"]()
     })
     .catch(e =>{
@@ -164,7 +164,7 @@ export var GroupManagement = {
     })
     .then((html) => {
       reRenderPage(html)
-      App.run()
+      App.runPage()
       App["people_page"]()
     })
     .catch(e =>{
