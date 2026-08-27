@@ -226,9 +226,14 @@ defmodule Front.Browser.PeopleTest do
 
   defp assert_number_of_role_labels(page, expected_no) do
     role_label_css_selector = "span.f6.normal.ml1.ph1.br2"
-    role_label_elems = all(page, Query.css(role_label_css_selector))
 
-    assert length(role_label_elems) == expected_no
+    #
+    # Counting a non-blocking all/2 asserts against whatever happens to be
+    # rendered at that instant. A count query retries until the labels settle,
+    # and reports the number it did find when they never do.
+    #
+    page |> Support.Browser.assert_stable(Query.css(role_label_css_selector, count: expected_no))
+
     true
   end
 
