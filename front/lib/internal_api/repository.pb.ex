@@ -321,9 +321,10 @@ defmodule InternalApi.Repository.CreateBuildStatusRequest do
           status: integer,
           url: String.t(),
           description: String.t(),
-          context: String.t()
+          context: String.t(),
+          source_id: String.t()
         }
-  defstruct [:repository_id, :commit_sha, :status, :url, :description, :context]
+  defstruct [:repository_id, :commit_sha, :status, :url, :description, :context, :source_id]
 
   field(:repository_id, 1, type: :string)
   field(:commit_sha, 2, type: :string)
@@ -331,6 +332,7 @@ defmodule InternalApi.Repository.CreateBuildStatusRequest do
   field(:url, 4, type: :string)
   field(:description, 5, type: :string)
   field(:context, 6, type: :string)
+  field(:source_id, 7, type: :string)
 end
 
 defmodule InternalApi.Repository.CreateBuildStatusRequest.Status do
@@ -348,11 +350,13 @@ defmodule InternalApi.Repository.CreateBuildStatusResponse do
   use Protobuf, syntax: :proto3
 
   @type t :: %__MODULE__{
-          code: integer
+          code: integer,
+          skipped: boolean
         }
-  defstruct [:code]
+  defstruct [:code, :skipped]
 
   field(:code, 1, type: InternalApi.Repository.CreateBuildStatusResponse.Code, enum: true)
+  field(:skipped, 2, type: :bool)
 end
 
 defmodule InternalApi.Repository.CreateBuildStatusResponse.Code do
