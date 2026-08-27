@@ -60,3 +60,11 @@ GHSA-pj7v-xfvx-wmjq
 #   GHSA-w4f7-4cxr-rv3c — HTTP request/response splitting (shared cowboy/gun advisory)
 GHSA-r53j-fjj5-mv77
 GHSA-w4f7-4cxr-rv3c
+
+# grpc 0.3.1 — unbounded request body accumulation in read_full_body/3
+# (GHSA-q8gf-9rvj-gmgj, high), first patched in 1.0.0. The 1.0 major is the
+# same out-of-scope grpc-stack upgrade as the cowboy/cowlib/gun entries above
+# (tracked in semaphoreio/semaphore#1134). Availability only, and only from an
+# in-cluster caller: the gRPC listener serves internal services and is not
+# exposed through ingress, so exploitation requires cluster network access.
+GHSA-q8gf-9rvj-gmgj
