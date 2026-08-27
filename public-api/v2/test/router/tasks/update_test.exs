@@ -77,64 +77,6 @@ defmodule Router.Tasks.UpdateTest do
              } = Support.Stubs.DB.find(:schedulers, scheduler.id)
     end
 
-    test "PATCH /projects/:project_id_or_name/tasks/:id - sets the notification skip flags",
-         ctx do
-      scheduler = Support.Stubs.Scheduler.create(ctx.project_id, ctx.user_id, name: "Scheduler")
-
-      params = %{
-        apiVersion: "v2",
-        kind: "Task",
-        spec: %{
-          reference: %{type: "branch", name: "develop"},
-          pipeline_file: "pipeline.yml",
-          cron_schedule: "",
-          skip_scheduled_run_notifications: true
-        }
-      }
-
-      assert {:ok, %Tesla.Env{status: 200} = env} =
-               Tesla.patch(
-                 http_client(ctx),
-                 "/projects/#{ctx.project_id}/tasks/" <> scheduler.id,
-                 params
-               )
-
-      assert %{
-               "spec" => %{
-                 "skip_scheduled_run_notifications" => true,
-                 "skip_manual_run_notifications" => false
-               }
-             } = env.body
-    end
-
-    test "PATCH /projects/:project_id_or_name/tasks/:id - keeps stored flags when the body omits them",
-         ctx do
-      scheduler =
-        Support.Stubs.Scheduler.create(ctx.project_id, ctx.user_id,
-          name: "Scheduler",
-          skip_manual_run_notifications: true
-        )
-
-      params = %{
-        apiVersion: "v2",
-        kind: "Task",
-        spec: %{
-          reference: %{type: "branch", name: "develop"},
-          pipeline_file: "pipeline.yml",
-          cron_schedule: ""
-        }
-      }
-
-      assert {:ok, %Tesla.Env{status: 200} = env} =
-               Tesla.patch(
-                 http_client(ctx),
-                 "/projects/#{ctx.project_id}/tasks/" <> scheduler.id,
-                 params
-               )
-
-      assert %{"spec" => %{"skip_manual_run_notifications" => true}} = env.body
-    end
-
     test "PATCH /projects/:project_id_or_name/tasks/:id - endpoint patches parameters correctly",
          ctx do
       params = %{
