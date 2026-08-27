@@ -73,6 +73,13 @@ defmodule InternalApi.PeriodicScheduler.PersistRequest do
   field(:at, 11, type: :string)
   field(:parameters, 12, repeated: true, type: InternalApi.PeriodicScheduler.Periodic.Parameter)
   field(:project_id, 13, type: :string, json_name: "projectId")
+
+  field(:skip_scheduled_run_notifications, 14,
+    type: :bool,
+    json_name: "skipScheduledRunNotifications"
+  )
+
+  field(:skip_manual_run_notifications, 15, type: :bool, json_name: "skipManualRunNotifications")
 end
 
 defmodule InternalApi.PeriodicScheduler.PersistResponse do
@@ -200,6 +207,13 @@ defmodule InternalApi.PeriodicScheduler.Periodic do
   field(:parameters, 15, repeated: true, type: InternalApi.PeriodicScheduler.Periodic.Parameter)
   field(:description, 16, type: :string)
   field(:organization_id, 17, type: :string, json_name: "organizationId")
+
+  field(:skip_scheduled_run_notifications, 18,
+    type: :bool,
+    json_name: "skipScheduledRunNotifications"
+  )
+
+  field(:skip_manual_run_notifications, 19, type: :bool, json_name: "skipManualRunNotifications")
 end
 
 defmodule InternalApi.PeriodicScheduler.Trigger do
@@ -397,6 +411,54 @@ defmodule InternalApi.PeriodicScheduler.VersionResponse do
   field(:version, 1, type: :string)
 end
 
+defmodule InternalApi.PeriodicScheduler.BulkUpsertAndPruneRequest.PeriodicDefinition do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:id, 1, type: :string)
+  field(:name, 2, type: :string)
+  field(:description, 3, type: :string)
+  field(:recurring, 4, type: :bool)
+  field(:reference, 5, type: :string)
+  field(:at, 6, type: :string)
+  field(:pipeline_file, 7, type: :string, json_name: "pipelineFile")
+  field(:parameters, 8, repeated: true, type: InternalApi.PeriodicScheduler.Periodic.Parameter)
+  field(:state, 9, type: InternalApi.PeriodicScheduler.PersistRequest.ScheduleState, enum: true)
+
+  field(:skip_scheduled_run_notifications, 10,
+    type: :bool,
+    json_name: "skipScheduledRunNotifications"
+  )
+
+  field(:skip_manual_run_notifications, 11, type: :bool, json_name: "skipManualRunNotifications")
+end
+
+defmodule InternalApi.PeriodicScheduler.BulkUpsertAndPruneRequest do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:organization_id, 1, type: :string, json_name: "organizationId")
+  field(:project_id, 2, type: :string, json_name: "projectId")
+  field(:requester_id, 3, type: :string, json_name: "requesterId")
+
+  field(:periodics, 4,
+    repeated: true,
+    type: InternalApi.PeriodicScheduler.BulkUpsertAndPruneRequest.PeriodicDefinition
+  )
+end
+
+defmodule InternalApi.PeriodicScheduler.BulkUpsertAndPruneResponse do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:status, 1, type: InternalApi.Status)
+  field(:upserted, 2, repeated: true, type: InternalApi.PeriodicScheduler.Periodic)
+  field(:deleted_ids, 3, repeated: true, type: :string, json_name: "deletedIds")
+end
+
 defmodule InternalApi.PeriodicScheduler.PeriodicService.Service do
   @moduledoc false
 
@@ -480,6 +542,12 @@ defmodule InternalApi.PeriodicScheduler.PeriodicService.Service do
     :Version,
     InternalApi.PeriodicScheduler.VersionRequest,
     InternalApi.PeriodicScheduler.VersionResponse
+  )
+
+  rpc(
+    :BulkUpsertAndPrune,
+    InternalApi.PeriodicScheduler.BulkUpsertAndPruneRequest,
+    InternalApi.PeriodicScheduler.BulkUpsertAndPruneResponse
   )
 end
 

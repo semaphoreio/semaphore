@@ -50,6 +50,22 @@
               <% end %>
             </td>
           </tr>
+          <%= if @scheduler.skip_scheduled_run_notifications or @scheduler.skip_manual_run_notifications do %>
+            <tr>
+              <td class="v-top pr2">Commit statuses:</td>
+              <td class="flex items-center">
+                <span class="material-symbols-outlined red b">close</span>
+                <p class="gray f6 mb0">
+                  Not sent for
+                  <%= if @scheduler.skip_scheduled_run_notifications and @scheduler.skip_manual_run_notifications do %>
+                    scheduled runs or “Run now”.
+                  <% else %>
+                    <%= if @scheduler.skip_scheduled_run_notifications do %>scheduled runs.<% else %>“Run now”.<% end %>
+                  <% end %>
+                </p>
+              </td>
+            </tr>
+          <% end %>
           <tr>
             <td class="v-top pr2">Parameters:</td>
             <td class="flex items-center">
