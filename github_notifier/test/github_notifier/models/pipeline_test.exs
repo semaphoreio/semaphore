@@ -24,8 +24,6 @@ defmodule GithubNotifier.Models.PipelineTest do
                yaml_file_path: ".semaphore/semaphore.yml",
                name: "Pipeline",
                triggered_by: :HOOK,
-               ppl_triggered_by: :WORKFLOW,
-               workflow_rerun_of: "",
                scheduler_task_id: "",
                blocks: [
                  %{
@@ -57,12 +55,11 @@ defmodule GithubNotifier.Models.PipelineTest do
       assert Pipeline.find("1") == nil
     end
 
-    test "carries the workflow triggerer details" do
+    test "carries the workflow trigger and the task that started it" do
       response =
         Support.Factories.pipeline_describe_response(
           triggered_by: :SCHEDULE,
-          ppl_triggered_by: :PARTIAL_RE_RUN,
-          workflow_rerun_of: "prev-wf-id"
+          wf_triggerer_id: "task-1"
         )
 
       GrpcMock.stub(PipelineMock, :describe, response)
@@ -70,8 +67,7 @@ defmodule GithubNotifier.Models.PipelineTest do
       pipeline = Pipeline.find("1")
 
       assert pipeline.triggered_by == :SCHEDULE
-      assert pipeline.ppl_triggered_by == :PARTIAL_RE_RUN
-      assert pipeline.workflow_rerun_of == "prev-wf-id"
+      assert pipeline.scheduler_task_id == "task-1"
     end
 
     test "when the triggerer is missing => falls back to hook defaults" do
@@ -83,8 +79,7 @@ defmodule GithubNotifier.Models.PipelineTest do
       pipeline = Pipeline.find("1")
 
       assert pipeline.triggered_by == :HOOK
-      assert pipeline.ppl_triggered_by == :WORKFLOW
-      assert pipeline.workflow_rerun_of == ""
+      assert pipeline.scheduler_task_id == ""
     end
   end
 end
