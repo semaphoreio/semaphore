@@ -48,49 +48,57 @@ defmodule RepositoryHub.BuildStatusGuard do
           {:ok, DateTime.t()} | :skip | :suppressed | :busy | {:error, term}
   def claim(request) do
     with {:ok, key} <- key(request) do
-      pending? = request.status == :PENDING
-      suppress? = request.suppress == true
-
       transaction(fn ->
         ensure_row(key)
-
-        {row, db_now} =
-          key
-          |> by_key()
-          |> lock("FOR UPDATE")
-          |> select([g], {g, fragment("now()")})
-          |> Repo.one!()
-
-        cond do
-          # Before any suppression call: last_state is written by finalize/2
-          # after the provider call, so a delivery in flight looks exactly like
-          # "nothing recorded". Serializing here is what lets a suppressed
-          # terminal see the PENDING it has to reconcile.
-          live_lease?(row, db_now) ->
-            :busy
-
-          suppress? && pending? ->
-            :suppressed
-
-          suppress? && row.last_state == "PENDING" ->
-            claim_lease(key, db_now)
-
-          # A suppressed terminal still records the state it stood for, so a
-          # PENDING arriving later is recognised as stale instead of being
-          # delivered with nothing left to terminate it.
-          suppress? ->
-            record_suppressed_state(key, request.status, db_now)
-            :suppressed
-
-          pending? && row.last_state in @terminal_states ->
-            :skip
-
-          true ->
-            claim_lease(key, db_now)
-        end
+        {row, db_now} = lock_row(key)
+        decide(key, request, row, db_now)
       end)
     end
   end
+
+  defp lock_row(key) do
+    key
+    |> by_key()
+    |> lock("FOR UPDATE")
+    |> select([g], {g, fragment("now()")})
+    |> Repo.one!()
+  end
+
+  # The lease check comes before any suppression call: last_state is written by
+  # finalize/2 after the provider call, so a delivery in flight looks exactly
+  # like "nothing recorded". Serializing here is what lets a suppressed
+  # terminal see the PENDING it has to reconcile.
+  defp decide(key, request, row, db_now) do
+    cond do
+      live_lease?(row, db_now) -> :busy
+      request.suppress == true -> suppressed_outcome(key, request, row, db_now)
+      stale_pending?(request, row) -> :skip
+      true -> claim_lease(key, db_now)
+    end
+  end
+
+  # A suppressed terminal still records the state it stood for, so a PENDING
+  # arriving later is recognised as stale instead of being delivered with
+  # nothing left to terminate it. A suppressed PENDING records nothing, or a
+  # later suppressed terminal would think a pending is outstanding.
+  defp suppressed_outcome(key, request, row, db_now) do
+    cond do
+      request.status == :PENDING ->
+        :suppressed
+
+      row.last_state == "PENDING" ->
+        claim_lease(key, db_now)
+
+      true ->
+        record_suppressed_state(key, request.status, db_now)
+        :suppressed
+    end
+  end
+
+  defp stale_pending?(%{status: :PENDING}, %{last_state: last_state}),
+    do: last_state in @terminal_states
+
+  defp stale_pending?(_request, _row), do: false
 
   @doc """
   Records the delivered state and clears the lease. A stale fence is a no-op.
