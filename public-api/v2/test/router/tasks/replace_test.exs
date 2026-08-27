@@ -92,34 +92,6 @@ defmodule Router.Tasks.ReplaceTest do
       assert %{api_model: %{name: "Task"}} = Support.Stubs.DB.find(:schedulers, scheduler.id)
     end
 
-    test "PUT /projects/:project_id_or_name/tasks/:id - resets flags the body omits", ctx do
-      scheduler =
-        Support.Stubs.Scheduler.create(ctx.project_id, ctx.user_id,
-          name: "Scheduler",
-          skip_scheduled_run_notifications: true
-        )
-
-      params = %{
-        apiVersion: "v2",
-        kind: "Task",
-        spec: %{
-          name: "Task",
-          reference: %{type: "branch", name: "master"},
-          pipeline_file: "pipeline.yml",
-          cron_schedule: "0 0 * * *"
-        }
-      }
-
-      assert {:ok, %Tesla.Env{status: 200} = env} =
-               Tesla.put(
-                 http_client(ctx),
-                 "/projects/#{ctx.project_id}/tasks/" <> scheduler.id,
-                 params
-               )
-
-      assert %{"spec" => %{"skip_scheduled_run_notifications" => false}} = env.body
-    end
-
     test "PUT /projects/:project_id_or_name/tasks/:id - endpoint returns 422 when request is invalid",
          ctx do
       params = %{

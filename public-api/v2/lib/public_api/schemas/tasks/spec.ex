@@ -32,20 +32,6 @@ defmodule PublicAPI.Schemas.Tasks.Spec do
       pipeline_file: %Schema{type: :string, example: "pipeline.yml"},
       cron_schedule: %Schema{type: :string, example: "0 0 * * *"},
       paused: %Schema{type: :boolean, example: false},
-      skip_scheduled_run_notifications: %Schema{
-        type: :boolean,
-        example: false,
-        description:
-          "Don't send commit statuses for pipelines this task starts on schedule. " <>
-            "Omitted on PATCH keeps the stored value; omitted on PUT resets it to false."
-      },
-      skip_manual_run_notifications: %Schema{
-        type: :boolean,
-        example: false,
-        description:
-          "Don't send commit statuses for pipelines this task starts with \"Run now\". " <>
-            "Omitted on PATCH keeps the stored value; omitted on PUT resets it to false."
-      },
       parameters: %Schema{type: :array, items: PublicAPI.Schemas.Tasks.Parameter.schema()}
     },
     required: [:name, :reference, :pipeline_file]
