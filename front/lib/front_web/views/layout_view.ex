@@ -20,7 +20,7 @@ defmodule FrontWeb.LayoutView do
   # without the flag has to receive the page exactly as it was before Turbo.
   #
   def turbo_enabled?(conn) do
-    FeatureProvider.feature_enabled?(:turbo_navigation, param: conn.assigns[:organization_id])
+    FeatureProvider.feature_enabled?(:ui_turbo_navigation, param: conn.assigns[:organization_id])
   end
 
   def login_url(conn) do

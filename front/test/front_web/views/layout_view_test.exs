@@ -82,27 +82,27 @@ defmodule FrontWeb.LayoutViewTest do
 
     setup do
       # The org level override can only be set for a feature that exists, and
-      # turbo_navigation is not part of the default seed.
-      Support.Stubs.Feature.setup_feature("turbo_navigation", state: :HIDDEN, quantity: 0)
+      # ui_turbo_navigation is not part of the default seed.
+      Support.Stubs.Feature.setup_feature("ui_turbo_navigation", state: :HIDDEN, quantity: 0)
 
       :ok
     end
 
     test "is true for an organization the feature is enabled for" do
-      Support.Stubs.Feature.enable_feature(@org_id, :turbo_navigation)
+      Support.Stubs.Feature.enable_feature(@org_id, :ui_turbo_navigation)
 
       assert FrontWeb.LayoutView.turbo_enabled?(conn_with_org(@org_id))
     end
 
     test "is false for an organization the feature is hidden for" do
-      Support.Stubs.Feature.disable_feature(@org_id, :turbo_navigation)
+      Support.Stubs.Feature.disable_feature(@org_id, :ui_turbo_navigation)
 
       refute FrontWeb.LayoutView.turbo_enabled?(conn_with_org(@org_id))
     end
   end
 
   #
-  # No setup here on purpose. turbo_navigation has no feature record yet, so
+  # No setup here on purpose. ui_turbo_navigation has no feature record yet, so
   # this is what every organization gets today, and it is the case that keeps
   # the flag off until someone provisions it.
   #
