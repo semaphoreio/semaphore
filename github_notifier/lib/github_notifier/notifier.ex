@@ -58,7 +58,8 @@ defmodule GithubNotifier.Notifier do
     task =
       Task.Supervisor.async_nolink(TaskSupervisor, fn -> Models.Periodic.find(task_id) end)
 
-    case Task.yield(task, 2_000) || Task.shutdown(task, :brutal_kill) do
+    case Task.yield(task, Models.Periodic.lookup_budget()) ||
+           Task.shutdown(task, :brutal_kill) do
       {:ok, result} ->
         result
 
