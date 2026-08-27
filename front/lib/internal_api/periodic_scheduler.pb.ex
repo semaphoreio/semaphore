@@ -45,7 +45,9 @@ defmodule InternalApi.PeriodicScheduler.PersistRequest do
           pipeline_file: String.t(),
           at: String.t(),
           parameters: [InternalApi.PeriodicScheduler.Periodic.Parameter.t()],
-          project_id: String.t()
+          project_id: String.t(),
+          skip_scheduled_run_notifications: boolean,
+          skip_manual_run_notifications: boolean
         }
   defstruct [
     :id,
@@ -60,7 +62,9 @@ defmodule InternalApi.PeriodicScheduler.PersistRequest do
     :pipeline_file,
     :at,
     :parameters,
-    :project_id
+    :project_id,
+    :skip_scheduled_run_notifications,
+    :skip_manual_run_notifications
   ]
 
   field(:id, 1, type: :string)
@@ -76,6 +80,8 @@ defmodule InternalApi.PeriodicScheduler.PersistRequest do
   field(:at, 11, type: :string)
   field(:parameters, 12, repeated: true, type: InternalApi.PeriodicScheduler.Periodic.Parameter)
   field(:project_id, 13, type: :string)
+  field(:skip_scheduled_run_notifications, 14, type: :bool)
+  field(:skip_manual_run_notifications, 15, type: :bool)
 end
 
 defmodule InternalApi.PeriodicScheduler.PersistRequest.ScheduleState do
@@ -240,7 +246,9 @@ defmodule InternalApi.PeriodicScheduler.Periodic do
           recurring: boolean,
           parameters: [InternalApi.PeriodicScheduler.Periodic.Parameter.t()],
           description: String.t(),
-          organization_id: String.t()
+          organization_id: String.t(),
+          skip_scheduled_run_notifications: boolean,
+          skip_manual_run_notifications: boolean
         }
   defstruct [
     :id,
@@ -259,7 +267,9 @@ defmodule InternalApi.PeriodicScheduler.Periodic do
     :recurring,
     :parameters,
     :description,
-    :organization_id
+    :organization_id,
+    :skip_scheduled_run_notifications,
+    :skip_manual_run_notifications
   ]
 
   field(:id, 1, type: :string)
@@ -279,6 +289,8 @@ defmodule InternalApi.PeriodicScheduler.Periodic do
   field(:parameters, 15, repeated: true, type: InternalApi.PeriodicScheduler.Periodic.Parameter)
   field(:description, 16, type: :string)
   field(:organization_id, 17, type: :string)
+  field(:skip_scheduled_run_notifications, 18, type: :bool)
+  field(:skip_manual_run_notifications, 19, type: :bool)
 end
 
 defmodule InternalApi.PeriodicScheduler.Periodic.Parameter do
@@ -411,10 +423,7 @@ defmodule InternalApi.PeriodicScheduler.HistoryRequest do
 
   field(:periodic_id, 1, type: :string)
 
-  field(:cursor_type, 2,
-    type: InternalApi.PeriodicScheduler.HistoryRequest.CursorType,
-    enum: true
-  )
+  field(:cursor_type, 2, type: InternalApi.PeriodicScheduler.HistoryRequest.CursorType, enum: true)
 
   field(:cursor_value, 3, type: :uint64)
   field(:filters, 4, type: InternalApi.PeriodicScheduler.HistoryRequest.Filters)
@@ -529,10 +538,7 @@ defmodule InternalApi.PeriodicScheduler.ListKeysetRequest do
   field(:page_token, 3, type: :string)
   field(:page_size, 4, type: :int32)
 
-  field(:direction, 5,
-    type: InternalApi.PeriodicScheduler.ListKeysetRequest.Direction,
-    enum: true
-  )
+  field(:direction, 5, type: InternalApi.PeriodicScheduler.ListKeysetRequest.Direction, enum: true)
 
   field(:order, 6, type: InternalApi.PeriodicScheduler.ListOrder, enum: true)
   field(:query, 7, type: :string)
@@ -641,6 +647,90 @@ defmodule InternalApi.PeriodicScheduler.VersionResponse do
   field(:version, 1, type: :string)
 end
 
+defmodule InternalApi.PeriodicScheduler.BulkUpsertAndPruneRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          organization_id: String.t(),
+          project_id: String.t(),
+          requester_id: String.t(),
+          periodics: [
+            InternalApi.PeriodicScheduler.BulkUpsertAndPruneRequest.PeriodicDefinition.t()
+          ]
+        }
+  defstruct [:organization_id, :project_id, :requester_id, :periodics]
+
+  field(:organization_id, 1, type: :string)
+  field(:project_id, 2, type: :string)
+  field(:requester_id, 3, type: :string)
+
+  field(:periodics, 4,
+    repeated: true,
+    type: InternalApi.PeriodicScheduler.BulkUpsertAndPruneRequest.PeriodicDefinition
+  )
+end
+
+defmodule InternalApi.PeriodicScheduler.BulkUpsertAndPruneRequest.PeriodicDefinition do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          id: String.t(),
+          name: String.t(),
+          description: String.t(),
+          recurring: boolean,
+          reference: String.t(),
+          at: String.t(),
+          pipeline_file: String.t(),
+          parameters: [InternalApi.PeriodicScheduler.Periodic.Parameter.t()],
+          state: integer,
+          skip_scheduled_run_notifications: boolean,
+          skip_manual_run_notifications: boolean
+        }
+  defstruct [
+    :id,
+    :name,
+    :description,
+    :recurring,
+    :reference,
+    :at,
+    :pipeline_file,
+    :parameters,
+    :state,
+    :skip_scheduled_run_notifications,
+    :skip_manual_run_notifications
+  ]
+
+  field(:id, 1, type: :string)
+  field(:name, 2, type: :string)
+  field(:description, 3, type: :string)
+  field(:recurring, 4, type: :bool)
+  field(:reference, 5, type: :string)
+  field(:at, 6, type: :string)
+  field(:pipeline_file, 7, type: :string)
+  field(:parameters, 8, repeated: true, type: InternalApi.PeriodicScheduler.Periodic.Parameter)
+  field(:state, 9, type: InternalApi.PeriodicScheduler.PersistRequest.ScheduleState, enum: true)
+  field(:skip_scheduled_run_notifications, 10, type: :bool)
+  field(:skip_manual_run_notifications, 11, type: :bool)
+end
+
+defmodule InternalApi.PeriodicScheduler.BulkUpsertAndPruneResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          status: InternalApi.Status.t(),
+          upserted: [InternalApi.PeriodicScheduler.Periodic.t()],
+          deleted_ids: [String.t()]
+        }
+  defstruct [:status, :upserted, :deleted_ids]
+
+  field(:status, 1, type: InternalApi.Status)
+  field(:upserted, 2, repeated: true, type: InternalApi.PeriodicScheduler.Periodic)
+  field(:deleted_ids, 3, repeated: true, type: :string)
+end
+
 defmodule InternalApi.PeriodicScheduler.ListOrder do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
@@ -729,6 +819,12 @@ defmodule InternalApi.PeriodicScheduler.PeriodicService.Service do
     :Version,
     InternalApi.PeriodicScheduler.VersionRequest,
     InternalApi.PeriodicScheduler.VersionResponse
+  )
+
+  rpc(
+    :BulkUpsertAndPrune,
+    InternalApi.PeriodicScheduler.BulkUpsertAndPruneRequest,
+    InternalApi.PeriodicScheduler.BulkUpsertAndPruneResponse
   )
 end
 
