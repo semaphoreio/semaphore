@@ -137,6 +137,39 @@ Here you can change the branch, tag, or pipeline file. Press **Run** to start th
 
 You may also trigger a task using the [Semaphore API](../reference/api#tasks)
 
+## Commit statuses for tasks {#commit-statuses}
+
+Every pipeline Semaphore runs reports a commit status back to your Git provider — the check marks you see next to a commit or on a pull request. A task that runs on a schedule reports against whatever commit is at the head of its branch, so a frequent task can bury a pull request in check marks it never asked for. GitHub also caps a commit at 1000 statuses.
+
+Each task controls this for itself with two checkboxes in the **Basics** section of the task form:
+
+- **Don't send status checks for scheduled runs** — silences pipelines this task starts on its schedule
+- **Don't send status checks for "Run now"** — silences pipelines this task starts when someone presses **Run now**
+
+Both are unchecked by default, so tasks send commit statuses unless you say otherwise. The two are independent: you can silence the schedule while keeping statuses for manual runs, or the reverse.
+
+A checked box applies to every pipeline that task starts with that trigger, **reruns included**. Pipelines started by a push, a pull request, or the API are never affected — they always report.
+
+In a project YAML file the same settings appear on each task:
+
+```yaml
+tasks:
+  - name: nightly-build
+    scheduled: true
+    branch: master
+    at: "0 3 * * *"
+    pipeline_file: ".semaphore/cron.yml"
+    status: ACTIVE
+    skip_scheduled_run_notifications: true
+    skip_manual_run_notifications: false
+```
+
+:::note
+
+If Semaphore cannot determine which task started a pipeline — for example the task was deleted after the workflow began — the pipeline sends its commit status as usual.
+
+:::
+
 ## How to pause a task {#deactivate-task}
 
 Deactivating a task disables the schedule. Deactivated tasks can still be run manually. If you don't need the task or its history, [delete the task](#delete-task) instead.
