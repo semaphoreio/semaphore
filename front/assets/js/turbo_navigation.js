@@ -76,7 +76,7 @@ export const TurboNavigation = {
       // controllers re-render the form with a 200 when validation fails, so
       // enabling this would need every form flow audited first.
       //
-      Turbo.setFormMode("off");
+      Turbo.config.forms.mode = "off";
 
       Turbo.start();
     });
