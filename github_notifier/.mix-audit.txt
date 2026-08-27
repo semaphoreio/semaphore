@@ -37,3 +37,28 @@ GHSA-rv48-qqj5-crxg
 # framing) to internal services with fixed paths and internally
 # generated metadata - no user-controlled header values.
 GHSA-w4f7-4cxr-rv3c
+
+# --- grpc 0.9.0 — all first patched in 1.0.0 ---
+# The 1.0 major is a fleet-wide migration (codec/stub API changes plus pb
+# regeneration), deferred to a dep-bump branch.
+#
+# RCE via attacker-controlled payloads: the sink is
+# GRPC.Codec.Erlpack.decode/2 (:erlang.binary_to_term). The handler resolves a
+# codec from the request content-type subtype, but only among the codecs
+# registered on the server, and 0.9.0 defaults to
+# [GRPC.Codec.Proto, GRPC.Codec.WebText, GRPC.Codec.JSON] — erlpack is not in
+# that list and github_notifier passes no `codecs:`, so the request is
+# rejected before decoding.
+GHSA-grp7-v8xh-rj7h
+# Path bindings overridable by query string / request body: path bindings only
+# exist under HTTP/JSON transcoding, which is opt-in (`http_transcode ||
+# false`). This service's only gRPC server declares no http_transcode option,
+# so there are no bindings to override.
+GHSA-mwr4-5g34-j5cq
+# Unbounded request body accumulation in read_full_body/3 — availability only,
+# reachable from an in-cluster caller: the listener is ClusterIP with no
+# ambassador mapping, so ingress body limits are not in the path.
+GHSA-q8gf-9rvj-gmgj
+# Unbounded gzip decompression (decompression bomb) — same internal-only reach,
+# availability only.
+GHSA-6ccx-9c9f-327w
