@@ -31,7 +31,7 @@ defmodule RepositoryHub.Application do
         {{RepositoryHub.BuildStatusGuardCleanupWorker, []}, guard_cleanup_worker_enabled}
       ])
 
-    opts = [strategy: :one_for_one, name: RepositoryHub.Supervisor]
+    opts = [strategy: :one_for_one, name: RepositoryHub.Supervisor, max_restarts: 1000]
 
     Supervisor.start_link(children, opts)
   end
