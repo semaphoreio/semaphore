@@ -12,8 +12,6 @@ defmodule GithubNotifier.Models.Pipeline do
     :yaml_file_path,
     :name,
     :triggered_by,
-    :ppl_triggered_by,
-    :workflow_rerun_of,
     :scheduler_task_id
   ]
 
@@ -65,9 +63,6 @@ defmodule GithubNotifier.Models.Pipeline do
         yaml_file_path(response.pipeline.working_directory, response.pipeline.yaml_file_name),
       name: response.pipeline.name,
       triggered_by: triggerer_field(response.pipeline.triggerer, :wf_triggered_by, :HOOK),
-      ppl_triggered_by:
-        triggerer_field(response.pipeline.triggerer, :ppl_triggered_by, :WORKFLOW),
-      workflow_rerun_of: triggerer_field(response.pipeline.triggerer, :workflow_rerun_of, ""),
       scheduler_task_id: triggerer_field(response.pipeline.triggerer, :wf_triggerer_id, "")
     }
   end

@@ -13,17 +13,14 @@ defmodule GithubNotifier.Utils.SkipPolicyTest do
       assert SkipPolicy.suppress?(pipeline(:MANUAL_RUN), task(manual: true))
     end
 
-    test "a set flag also suppresses reruns of that trigger" do
-      pipeline = %{pipeline(:SCHEDULE) | workflow_rerun_of: "wf-1"}
-
-      assert SkipPolicy.suppress?(pipeline, task(scheduled: true))
-    end
-
-    test "a set flag also suppresses partial re-runs of that trigger" do
-      pipeline = %{pipeline(:SCHEDULE) | ppl_triggered_by: :PARTIAL_RE_RUN}
-
-      assert SkipPolicy.suppress?(pipeline, task(scheduled: true))
-    end
+    # Reruns are covered by the trigger alone: suppress?/2 reads only
+    # triggered_by, and a rerun keeps the trigger of the original workflow
+    # because plumber copies request_args wholesale when it reschedules
+    # (plumber/ppl/lib/ppl/workflow/workflow_api_server.ex extract_schedule_params/2,
+    # which overrides only request_token, requester_id, wf_id, wf_rebuild_of
+    # and label). There is nothing rerun-specific to assert here - a test that
+    # set workflow_rerun_of or ppl_triggered_by would pass against any
+    # implementation, including one with no rerun awareness at all.
 
     test "does not suppress when the flag for that trigger is unset" do
       refute SkipPolicy.suppress?(pipeline(:SCHEDULE), task(manual: true))
@@ -44,12 +41,7 @@ defmodule GithubNotifier.Utils.SkipPolicyTest do
   end
 
   defp pipeline(triggered_by) do
-    %{
-      triggered_by: triggered_by,
-      ppl_triggered_by: :WORKFLOW,
-      workflow_rerun_of: "",
-      scheduler_task_id: "task-1"
-    }
+    %{triggered_by: triggered_by, scheduler_task_id: "task-1"}
   end
 
   defp task(opts) do
