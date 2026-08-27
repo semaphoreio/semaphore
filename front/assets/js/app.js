@@ -561,6 +561,7 @@ export var App = {
     Pollman.stop();
     Timer.stop();
     DiagramDrag.stop();
+    JobLogs.stop();
     unmountIslands();
 
     if (window.FaviconUpdater) {

@@ -5,6 +5,13 @@ let highlighted = false
 let last_selected_line = null
 
 export var Highlight = {
+  disconnect() {
+    if (this.observer) {
+      this.observer.disconnect()
+      this.observer = null
+    }
+  },
+
   init(containerSelector) {
     const container = document.querySelector(containerSelector)
     const config = { childList: true, subtree: true }
@@ -21,9 +28,13 @@ export var Highlight = {
       }
     }.bind(this);
 
-    const observer = new MutationObserver(callback);
+    // Kept on the module so the Turbo teardown can disconnect it. The observed
+    // node lives in the body and goes away with it, but an observer nothing
+    // holds a reference to can never be stopped explicitly.
+    this.disconnect()
+    this.observer = new MutationObserver(callback);
 
-    observer.observe(container, config);
+    this.observer.observe(container, config);
   },
 
   highlightLines() {
