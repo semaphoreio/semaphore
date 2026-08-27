@@ -6,7 +6,14 @@ defmodule GithubNotifier.Models.Periodic do
   @cache_ttl :timer.minutes(5)
   @not_found_cache_ttl :timer.seconds(30)
   @unreachable_cache_ttl :timer.seconds(5)
-  @rpc_timeout 2_000
+  @rpc_timeout 1_500
+  # A caller must outlast the RPC deadline, or it kills this process before the
+  # failure branch can cache the result and emit its metric.
+  @yield_grace 500
+
+  @doc "How long a caller should wait for find/1 before giving up on it."
+  @spec lookup_budget() :: pos_integer()
+  def lookup_budget, do: @rpc_timeout + @yield_grace
 
   @doc """
   Fetches the notification skip flags of a scheduler task. Successful lookups
@@ -31,9 +38,13 @@ defmodule GithubNotifier.Models.Periodic do
   end
 
   defp describe(id) do
-    {:ok, channel} =
-      GRPC.Stub.connect(Application.fetch_env!(:github_notifier, :scheduler_grpc_endpoint))
+    case GRPC.Stub.connect(Application.fetch_env!(:github_notifier, :scheduler_grpc_endpoint)) do
+      {:ok, channel} -> describe(id, channel)
+      {:error, error} -> unreachable(id, error)
+    end
+  end
 
+  defp describe(id, channel) do
     req = struct(InternalApi.PeriodicScheduler.DescribeRequest, id: id)
 
     case InternalApi.PeriodicScheduler.PeriodicService.Stub.describe(channel, req,
@@ -49,15 +60,19 @@ defmodule GithubNotifier.Models.Periodic do
 
       {:ok, response} ->
         Logger.info("Periodic #{id} not resolvable: #{inspect(response.status)}")
-        Watchman.increment("fetch_periodic.failed")
+        Watchman.increment("fetch_periodic.not_found")
         Cachex.put(:task_policy, id, :not_found, ttl: @not_found_cache_ttl)
         nil
 
       {:error, error} ->
-        Logger.error("Periodic #{id} describe failed: #{inspect(error)}")
-        Watchman.increment("fetch_periodic.failed")
-        Cachex.put(:task_policy, id, :not_found, ttl: @unreachable_cache_ttl)
-        nil
+        unreachable(id, error)
     end
+  end
+
+  defp unreachable(id, error) do
+    Logger.error("Periodic #{id} describe failed: #{inspect(error)}")
+    Watchman.increment("fetch_periodic.unreachable")
+    Cachex.put(:task_policy, id, :not_found, ttl: @unreachable_cache_ttl)
+    nil
   end
 end
