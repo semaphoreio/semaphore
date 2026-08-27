@@ -29,6 +29,14 @@
       are still cached and reused for back/forward, which do fire turbo:load.
     -->
     <meta name="turbo-cache-control" content="no-preview">
+
+    <!--
+      Turbo 8 prefetches a link's target on hover unless told otherwise, which
+      would fire a speculative GET for every link a cursor crosses. Link
+      navigation is all we are adopting here; prefetching is a separate change
+      to make deliberately, with the extra request load measured first.
+    -->
+    <meta name="turbo-prefetch" content="false">
   <% end %>
 
   <%= social_metatags(@conn) %>
