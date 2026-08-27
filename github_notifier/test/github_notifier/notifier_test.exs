@@ -55,11 +55,11 @@ defmodule GithubNotifier.NotifierTest do
       assert Cachex.get!(:store, @status_key) == true
     end
 
-    test "sends the commit status when the scheduler stalls past the lookup budget" do
+    test "sends the commit status when the scheduler stalls, and caches it as unreachable" do
       stub_services(triggered_by: :SCHEDULE, wf_triggerer_id: "task-1")
 
       GrpcMock.stub(SchedulerMock, :describe, fn _, _ ->
-        Process.sleep(4_000)
+        Process.sleep(GithubNotifier.Models.Periodic.lookup_budget() * 2)
         Support.Factories.periodic_describe_response(skip_scheduled_run_notifications: true)
       end)
 
@@ -68,11 +68,15 @@ defmodule GithubNotifier.NotifierTest do
       assert_received {:build_status, request}
       assert request.suppress == false
       assert Cachex.get!(:store, @status_key) == true
+
+      # the RPC deadline must expire before the caller's budget, or the task is
+      # killed before it can cache the failure and every later notification
+      # pays the full stall again
+      assert Cachex.get!(:task_policy, "task-1") == :not_found
     end
   end
 
   describe "notify/3 across triggers and status levels" do
-
     test "asks repository_hub to suppress a Run now pipeline when the task skips manual runs" do
       stub_services(triggered_by: :MANUAL_RUN, wf_triggerer_id: "task-1")
 
