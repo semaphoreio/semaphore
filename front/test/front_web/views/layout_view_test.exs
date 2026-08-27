@@ -52,4 +52,67 @@ defmodule FrontWeb.LayoutViewTest do
       assert html =~ "Your Semaphore Enterprise Edition license will expire on"
     end
   end
+
+  describe "turbo_full_reload_page?/1" do
+    defp conn_with_js(js), do: %Plug.Conn{assigns: %{js: js}}
+
+    test "opts pages owning long lived client state out of Turbo rendering" do
+      assert FrontWeb.LayoutView.turbo_full_reload_page?(conn_with_js(:workflow_editor))
+      assert FrontWeb.LayoutView.turbo_full_reload_page?(conn_with_js(:logs))
+    end
+
+    test "matches the assign whether it is an atom or a string" do
+      assert FrontWeb.LayoutView.turbo_full_reload_page?(conn_with_js("workflow_editor"))
+    end
+
+    test "lets every other page render through Turbo" do
+      refute FrontWeb.LayoutView.turbo_full_reload_page?(conn_with_js(:workflow_view))
+      refute FrontWeb.LayoutView.turbo_full_reload_page?(conn_with_js(:people_page))
+    end
+
+    test "is false when the page sets no js assign" do
+      refute FrontWeb.LayoutView.turbo_full_reload_page?(%Plug.Conn{assigns: %{}})
+    end
+  end
+
+  describe "turbo_enabled?/1 with the feature provisioned" do
+    @org_id "78114608-be8a-465a-b9cd-81970fb802c6"
+
+    defp conn_with_org(org_id), do: %Plug.Conn{assigns: %{organization_id: org_id}}
+
+    setup do
+      # The org level override can only be set for a feature that exists, and
+      # turbo_navigation is not part of the default seed.
+      Support.Stubs.Feature.setup_feature("turbo_navigation", state: :HIDDEN, quantity: 0)
+
+      :ok
+    end
+
+    test "is true for an organization the feature is enabled for" do
+      Support.Stubs.Feature.enable_feature(@org_id, :turbo_navigation)
+
+      assert FrontWeb.LayoutView.turbo_enabled?(conn_with_org(@org_id))
+    end
+
+    test "is false for an organization the feature is hidden for" do
+      Support.Stubs.Feature.disable_feature(@org_id, :turbo_navigation)
+
+      refute FrontWeb.LayoutView.turbo_enabled?(conn_with_org(@org_id))
+    end
+  end
+
+  #
+  # No setup here on purpose. turbo_navigation has no feature record yet, so
+  # this is what every organization gets today, and it is the case that keeps
+  # the flag off until someone provisions it.
+  #
+  describe "turbo_enabled?/1 without the feature provisioned" do
+    test "is false for an organization" do
+      refute FrontWeb.LayoutView.turbo_enabled?(conn_with_org(@org_id))
+    end
+
+    test "is false when there is no organization on the conn" do
+      refute FrontWeb.LayoutView.turbo_enabled?(%Plug.Conn{assigns: %{}})
+    end
+  end
 end
