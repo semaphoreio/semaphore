@@ -1,0 +1,57 @@
+# pre_flight_checks serves internal gRPC only (no public HTTP surface); cowboy
+# and cowlib arrive transitively via grpc, and none of the affected code paths
+# handle user-controlled input directly. Real dependency bumps are tracked for
+# the fleet-wide dep-bump branch.
+
+# --- grpc 0.5.0-beta.1 — all first patched in 1.0.0 ---
+# The 1.0 major is a fleet-wide migration (codec/stub API changes plus pb
+# regeneration), deferred to a dep-bump branch.
+#
+# RCE via attacker-controlled payloads: the sink is
+# GRPC.Codec.Erlpack.decode/2 (:erlang.binary_to_term). The Cowboy handler
+# resolves a codec from the request content-type subtype but only among the
+# codecs registered on that server, and `codecs = opts[:codecs] ||
+# [GRPC.Codec.Proto]` — pre_flight_checks registers none, so an
+# application/grpc+erlpack request is rejected with "No codec registered"
+# and binary_to_term is never reached. Not reachable without a code change.
+GHSA-grp7-v8xh-rj7h
+# Unbounded request body accumulation in read_full_body/3 — availability only,
+# and only from an in-cluster caller: the gRPC listener serves internal
+# services and is not exposed through ingress.
+GHSA-q8gf-9rvj-gmgj
+# Unbounded gzip decompression (decompression bomb) on request bodies —
+# availability only, same internal-only reach, same 1.0.0 fix.
+GHSA-6ccx-9c9f-327w
+
+# --- protobuf 0.9.0 ---
+# Unbounded recursion depth decoding embedded messages, patched in 0.16.1.
+# All decode paths take internal input: gRPC from sibling services and AMQP
+# consumers on the internal exchange. Bump needs pb regeneration against the
+# 0.16 codegen and is tracked in the dedicated dependency PR.
+GHSA-rv48-qqj5-crxg
+
+# cowboy 2.7.0 — multipart header parsing DoS, fixed in 2.15.0 (unreachable;
+# gRPC-only service over HTTP/2, no Plug.Parsers, no multipart endpoints)
+GHSA-jfc2-q6qh-g5x8
+
+# cowlib 2.8.0 — cow_http_te DoS via excessive allocation (gRPC over HTTP/2
+# only; cow_http_te HTTP/1.1 path unreachable)
+GHSA-32p9-57cr-4x65
+
+# cowlib 2.8.0 — SPDY decompression bomb in cow_spdy:inflate/2 (unreachable;
+# cowboy 2.x does not serve SPDY)
+GHSA-84f2-rp86-235p
+
+# cowlib 2.8.0 — CRLF / SSE injection in header field values (gRPC server, no
+# Plug response-header writes from user input; no SSE)
+GHSA-hv23-4qp7-8c8r
+
+# postgrex 0.16.2 — channel-name SQL injection in Postgrex.Notifications.listen/3
+# (service does not call Postgrex.Notifications; only standard Ecto queries.
+# Bumping past 0.16.x cascades into an ecto bump that is out of scope here)
+GHSA-r73h-97w8-m54h
+
+# decimal 2.0.0 — unbounded exponent DoS in Decimal.new, patched in 3.0.0
+# (transitive via ecto/postgrex; no Decimal call sites in lib/ — the service
+# parses no untrusted decimal strings)
+GHSA-rhv4-8758-jx7v
