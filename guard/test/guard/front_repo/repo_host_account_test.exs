@@ -200,15 +200,31 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
       refute reloaded.revoked
     end
 
-    test "already-revoked row short-circuits: no refresh call is made", %{rha: rha} do
+    test "already-revoked row is not gated: the refresh is attempted and the token returned",
+         %{rha: rha} do
       {:ok, rha} = RepoHostAccount.update_revoke_status(rha, true)
 
       Tesla.Mock.mock_global(fn
         %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
-          flunk("refresh endpoint must not be called for an already-revoked account")
+          {:ok,
+           %Tesla.Env{status: 200, body: %{"access_token" => "fresh_token", "expires_in" => 3600}}}
+      end)
+
+      assert {:ok, {"fresh_token", _}} = RepoHostAccount.get_bitbucket_token(rha)
+    end
+
+    test "already-revoked row with a genuinely dead grant stays revoked", %{rha: rha} do
+      {:ok, rha} = RepoHostAccount.update_revoke_status(rha, true)
+
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
+          {:ok, %Tesla.Env{status: 400, body: %{"error" => "invalid_grant"}}}
       end)
 
       assert {:error, :revoked} = RepoHostAccount.get_bitbucket_token(rha)
+
+      reloaded = FrontRepo.get!(RepoHostAccount, rha.id)
+      assert reloaded.revoked == true
     end
 
     test "negative cache: a second call within the TTL does not hit the provider",
@@ -345,6 +361,45 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
     end
   end
 
+  describe "get_github_token/1 (revoked flag must not gate the fetch)" do
+    test "revoked:true row whose stored token still validates returns that token" do
+      {_user, rha} =
+        Support.Members.insert_user_with_github_account(revoked: true, token: "stored_token")
+
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          {:ok, %Tesla.Env{status: 200, body: %{}}}
+
+        %{method: :post, url: "https://github.com/login/oauth/access_token"} ->
+          flunk("must not attempt a refresh while the stored token still validates")
+      end)
+
+      assert {:ok, {"stored_token", nil}} = RepoHostAccount.get_github_token(rha)
+    end
+
+    test "revoked:true row with a genuinely dead grant still returns :revoked and stays revoked" do
+      {_user, rha} =
+        Support.Members.insert_user_with_github_account(
+          revoked: true,
+          token: "dead_token",
+          refresh_token: "dead_refresh_token"
+        )
+
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          {:ok, %Tesla.Env{status: 401, body: %{}}}
+
+        %{method: :post, url: "https://github.com/login/oauth/access_token"} ->
+          {:ok, %Tesla.Env{status: 400, body: %{"error" => "invalid_grant"}}}
+      end)
+
+      assert {:error, :revoked} = RepoHostAccount.get_github_token(rha)
+
+      reloaded = FrontRepo.get!(RepoHostAccount, rha.id)
+      assert reloaded.revoked == true
+    end
+  end
+
   describe "get_gitlab_token/1 (GitLab refresh - transient vs revoked)" do
     setup do
       {:ok, user} = Support.Factories.RbacUser.insert()
@@ -379,6 +434,33 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
     end
 
     test "genuine 400 invalid_grant IS a real revocation: row gets revoked", %{rha: rha} do
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://gitlab.com/oauth/token"} ->
+          {:ok, %Tesla.Env{status: 400, body: %{"error" => "invalid_grant"}}}
+      end)
+
+      assert {:error, :revoked} = RepoHostAccount.get_gitlab_token(rha)
+
+      reloaded = FrontRepo.get!(RepoHostAccount, rha.id)
+      assert reloaded.revoked == true
+    end
+
+    test "already-revoked row is not gated: the refresh is attempted and the token returned",
+         %{rha: rha} do
+      {:ok, rha} = RepoHostAccount.update_revoke_status(rha, true)
+
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://gitlab.com/oauth/token"} ->
+          {:ok,
+           %Tesla.Env{status: 200, body: %{"access_token" => "fresh_token", "expires_in" => 3600}}}
+      end)
+
+      assert {:ok, {"fresh_token", _}} = RepoHostAccount.get_gitlab_token(rha)
+    end
+
+    test "already-revoked row with a genuinely dead grant stays revoked", %{rha: rha} do
+      {:ok, rha} = RepoHostAccount.update_revoke_status(rha, true)
+
       Tesla.Mock.mock_global(fn
         %{method: :post, url: "https://gitlab.com/oauth/token"} ->
           {:ok, %Tesla.Env{status: 400, body: %{"error" => "invalid_grant"}}}

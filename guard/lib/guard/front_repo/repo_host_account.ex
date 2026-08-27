@@ -146,29 +146,11 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     end
   end
 
-  # Already revoked: don't hammer the shared OAuth consumer credential with a
-  # refresh that's known to fail. A successful fetch elsewhere self-heals
-  # this (see RepoHostAccount.update_token/4), so this short-circuit can't
-  # get permanently stuck.
-  #
-  # NOTE (tracked follow-up, not fixed here): this DOES mean an
-  # already-revoked row can no longer self-heal itself purely by being
-  # looked up - the refresh call that would flip revoked:false on success
-  # never fires once revoked:true is latched. `handle_update_repo_status`
-  # also calls `get_token` (this path) *before* `handle_validate_token`
-  # (the live-validate path that can flip revoked both ways), so live
-  # validate never runs for a short-circuited row either. Recovery for an
-  # already-revoked row is via reconnect (clears :revoked, see
-  # `id/api.ex`) or an admin `revoked=false` flip. Acceptable: post-fix, a
-  # row only reaches revoked:true on a genuine invalid_grant/401, so this
-  # is correct behavior, not a stuck state - it's still worth eventually
-  # reordering handle_update_repo_status to try live-validate first.
-  def get_github_token(%__MODULE__{revoked: true} = rha) do
-    Logger.debug("Skipping GitHub token refresh for #{rha.user_id}: account already revoked")
-
-    {:error, :revoked}
-  end
-
+  # `revoked` must never gate the fetch. The column carries a backlog of
+  # false positives from an older write path that latched it on any 4xx
+  # (transient WAF/edge 403s included); those rows still hold working
+  # credentials, so gating here turns them into hard failures. Always ask
+  # the provider and let the live response decide.
   def get_github_token(%__MODULE__{} = rha) do
     with_negative_cache(rha, fn ->
       case Guard.Api.Github.user_token(rha) do
@@ -185,12 +167,6 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     end)
   end
 
-  def get_bitbucket_token(%__MODULE__{revoked: true} = rha) do
-    Logger.debug("Skipping Bitbucket token refresh for #{rha.user_id}: account already revoked")
-
-    {:error, :revoked}
-  end
-
   def get_bitbucket_token(rha) do
     with_negative_cache(rha, fn ->
       case Guard.Api.Bitbucket.user_token(rha) do
@@ -205,12 +181,6 @@ defmodule Guard.FrontRepo.RepoHostAccount do
           {:error, reason}
       end
     end)
-  end
-
-  def get_gitlab_token(%__MODULE__{revoked: true} = rha) do
-    Logger.debug("Skipping GitLab token refresh for #{rha.user_id}: account already revoked")
-
-    {:error, :revoked}
   end
 
   def get_gitlab_token(rha) do
