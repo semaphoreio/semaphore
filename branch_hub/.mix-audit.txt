@@ -55,3 +55,24 @@ GHSA-mp55-p8c9-rfw2
 GHSA-9fm9-hp7p-53mf
 # SSRF via redirect target (low)
 GHSA-vq52-99r9-h5pw
+
+# --- family completion (2026-08-28) ---
+# The scan syncs the advisory DB at run time, so per-advisory version ranges drift
+# between runs (a PR run flagged ids the main run did not). The ids below complete each
+# already-accepted package family so range widening cannot re-break the scan; each
+# family's rationale is documented above or here.
+# hackney (family completion) — same fleet-wide acceptance as above/other services: 4.0.1 is
+# blocked by httpoison ~> 1.x; no user input reaches hackney options in this app.
+GHSA-gp9c-pm5m-5cxr
+# grpc (family completion) — same acceptance as above: internal-only listeners, no Erlpack
+# codec registered repo-wide, no HTTP transcoding; real fix is the grpc 1.0.0 migration.
+GHSA-mwr4-5g34-j5cq
+# gun (family completion) — client transport to fixed internal endpoints; bump rides the
+# grpc 1.0.0 migration.
+GHSA-2j82-37xg-f9wp
+GHSA-r53j-fjj5-mv77
+GHSA-36w4-95hv-5vwg
+GHSA-w4f7-4cxr-rv3c
+# cowlib (family completion) — transitive via the grpc-pinned cowboy/gun stack; no SPDY,
+# SSE or user-input cookies in this app.
+GHSA-g2wm-735q-3f56

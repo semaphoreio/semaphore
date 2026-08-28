@@ -91,3 +91,18 @@ GHSA-mp55-p8c9-rfw2
 GHSA-9fm9-hp7p-53mf
 # SSRF via redirect target (low)
 GHSA-vq52-99r9-h5pw
+
+# --- family completion (2026-08-28) ---
+# The scan syncs the advisory DB at run time, so per-advisory version ranges drift
+# between runs (a PR run flagged ids the main run did not). The ids below complete each
+# already-accepted package family so range widening cannot re-break the scan; each
+# family's rationale is documented above or here.
+# grpc (family completion) — same acceptance as above: internal-only listeners, no Erlpack
+# codec registered repo-wide, no HTTP transcoding; real fix is the grpc 1.0.0 migration.
+GHSA-grp7-v8xh-rj7h
+GHSA-mwr4-5g34-j5cq
+# rabbit_common — advisories target the RabbitMQ server and its Shovel/Federation plugins;
+# this app is an AMQP client only (amqp/amqp_client) and the broker is deployed separately,
+# so the affected server code never runs in this image.
+GHSA-v9gv-xp36-jgj8
+GHSA-w6cq-9cf4-gqpg
