@@ -11,6 +11,11 @@ defmodule Zebra.Apis.InternalTaskApi.Schedule do
   @default_job_execution_time_limit 24 * 60 * 60
   # in minutes
   @max_job_execution_time_limit 24 * 60
+  # A just-created org's feature flags can be missing from a per-pod feature
+  # cache primed before provisioning finished (e.g. billing enabling a
+  # free-tier cap). Only orgs younger than this get a forced fresh feature
+  # read; see find_feature_based_job_time_limits/2.
+  @fresh_org_window_seconds 15 * 60
 
   @spec schedule(InternalApi.Task.Task.t()) :: {:ok, Zebra.Models.Task.t()}
   def schedule(req) do
@@ -358,14 +363,26 @@ defmodule Zebra.Apis.InternalTaskApi.Schedule do
   end
 
   defp find_max_and_default_job_time_limits(org_id) do
-    if org_verified?(org_id) do
+    org = load_org(org_id)
+
+    if org_verified?(org) do
       {@max_job_execution_time_limit, @default_job_execution_time_limit}
     else
-      find_feature_based_job_time_limits(org_id)
+      find_feature_based_job_time_limits(org_id, org)
     end
   end
 
-  defp find_feature_based_job_time_limits(org_id) do
+  defp find_feature_based_job_time_limits(org_id, org) do
+    if fresh_org?(org) do
+      # Force one fresh read so a feature enabled early in the org's life
+      # (e.g. the free-tier job time limit) isn't hidden behind a cache
+      # entry primed before it was set. This only changes where the value
+      # comes from, never what an absent feature resolves to below: if the
+      # fresh fetch itself fails, it isn't cached, so the reads that follow
+      # behave exactly as they would have without this call.
+      FeatureProvider.list_features(reload: true, param: org_id)
+    end
+
     if FeatureProvider.feature_enabled?(:max_job_execution_time_limit, param: org_id) do
       max_limit = FeatureProvider.feature_quota(:max_job_execution_time_limit, param: org_id)
 
@@ -382,11 +399,22 @@ defmodule Zebra.Apis.InternalTaskApi.Schedule do
     end
   end
 
-  defp org_verified?(org_id) do
+  defp load_org(org_id) do
     case Zebra.Workers.Scheduler.Org.load(org_id) do
-      {:ok, org} -> org.verified
-      _ -> false
+      {:ok, org} -> org
+      _ -> nil
     end
+  end
+
+  defp org_verified?(nil), do: false
+  defp org_verified?(org), do: org.verified
+
+  defp fresh_org?(nil), do: false
+  defp fresh_org?(%Zebra.Workers.Scheduler.Org{created_at: nil}), do: false
+
+  defp fresh_org?(%Zebra.Workers.Scheduler.Org{created_at: %{seconds: created_at_seconds}}) do
+    DateTime.utc_now() |> DateTime.to_unix() |> Kernel.-(created_at_seconds) <
+      @fresh_org_window_seconds
   end
 
   def encode_fail_fast_strategy(strategy) do

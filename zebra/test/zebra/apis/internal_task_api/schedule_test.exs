@@ -1,6 +1,8 @@
 defmodule Zebra.Apis.InternalTaskApi.ScheduleTest do
   use Zebra.DataCase
 
+  import Mox
+
   alias Zebra.Apis.InternalTaskApi.Schedule
   alias Zebra.LegacyRepo, as: Repo
   alias Support.Factories
@@ -601,9 +603,101 @@ defmodule Zebra.Apis.InternalTaskApi.ScheduleTest do
     end
   end
 
+  describe ".configure_execution_time_limit for very new orgs (feature-cache bypass window)" do
+    setup do
+      Cachex.clear(:zebra_cache)
+      :ok
+    end
+
+    test "young org: feature absent on a plain read but present on the forced reload => feature limit applies" do
+      org_id = UUID.uuid4()
+
+      # created 60s ago: inside the 15-minute fresh-org window
+      stub_org_describe(org_username: "fresh-org", verified: false, age_seconds: 60)
+
+      # The test env's feature_provider has no cache in front of it (see
+      # config/runtime.exs), so a plain (non-reload) read and a reload read
+      # both hit this stub directly. To exercise the same "stale cache
+      # becomes visible" contract the fix relies on in production, model the
+      # cache with an Agent: the feature starts absent (as a stale cache
+      # entry primed before the org existed would show), and only the forced
+      # `reload: true` read "warms" it, matching what a real cache would do.
+      {:ok, cache} = Agent.start_link(fn -> false end)
+
+      stub(Support.MockedProvider, :provide_features, fn ^org_id, opts ->
+        if Keyword.get(opts, :reload), do: Agent.update(cache, fn _ -> true end)
+
+        if Agent.get(cache, & &1) do
+          {:ok,
+           [
+             Support.StubbedProvider.feature("max_job_execution_time_limit", [
+               :enabled,
+               {:quantity, 30}
+             ])
+           ]}
+        else
+          {:ok, [Support.StubbedProvider.feature("max_job_execution_time_limit", [:hidden])]}
+        end
+      end)
+
+      # invalid request => falls to the default, which is now the feature's 30 min
+      assert 30 * 60 == Schedule.configure_execution_time_limit(org_id, 0)
+    end
+
+    test "old org: an absent feature is unaffected by the bypass, default stays 24h" do
+      org_id = UUID.uuid4()
+
+      # created 20 minutes ago: outside the 15-minute fresh-org window
+      stub_org_describe(org_username: "old-org", verified: false, age_seconds: 20 * 60)
+
+      stub(Support.MockedProvider, :provide_features, fn ^org_id, _opts ->
+        {:ok, [Support.StubbedProvider.feature("max_job_execution_time_limit", [:hidden])]}
+      end)
+
+      assert @default_job_execution_time_limit ==
+               Schedule.configure_execution_time_limit(org_id, 0)
+    end
+
+    test "young org: the forced reload erroring falls open to the unchanged default (no crash)" do
+      org_id = UUID.uuid4()
+
+      stub_org_describe(org_username: "fresh-org-error", verified: false, age_seconds: 60)
+
+      stub(Support.MockedProvider, :provide_features, fn ^org_id, opts ->
+        if Keyword.get(opts, :reload) do
+          raise "simulated feature provider failure"
+        else
+          {:ok, [Support.StubbedProvider.feature("max_job_execution_time_limit", [:hidden])]}
+        end
+      end)
+
+      assert @default_job_execution_time_limit ==
+               Schedule.configure_execution_time_limit(org_id, 0)
+    end
+  end
+
   #
   # Utils
   #
+
+  # Stubs the organization describe gRPC call with a `created_at` `age_seconds`
+  # in the past, so tests can exercise the young-vs-old org boundary.
+  defp stub_org_describe(org_username: org_username, verified: verified, age_seconds: age_seconds) do
+    created_at_seconds =
+      DateTime.utc_now() |> DateTime.add(-age_seconds, :second) |> DateTime.to_unix()
+
+    GrpcMock.stub(Support.FakeServers.OrganizationApi, :describe, fn _, _ ->
+      InternalApi.Organization.DescribeResponse.new(
+        status: InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
+        organization:
+          InternalApi.Organization.Organization.new(
+            org_username: org_username,
+            verified: verified,
+            created_at: Google.Protobuf.Timestamp.new(seconds: created_at_seconds)
+          )
+      )
+    end)
+  end
 
   defp example_agent do
     alias InternalApi.Task.ScheduleRequest, as: R
