@@ -58,3 +58,22 @@ GHSA-w4f7-4cxr-rv3c
 # protobuf 0.12.0 — unbounded recursion depth in embedded-message decoding, fixed in 0.16.1
 # (decodes internal-service traffic only; bump tracked in the dedicated dependency PR)
 GHSA-rv48-qqj5-crxg
+
+# --- grpc 0.9.0 — all first patched in 1.0.0 ---
+# The 1.0 major is a fleet-wide migration (codec/stub API changes plus pb
+# regeneration), deferred to a dep-bump branch. public-api/v2 runs no gRPC
+# server at all — grpc is present as the client for internal backend calls —
+# and all four advisories are flaws in server-side request handling
+# (codec resolution, path-binding transcoding, request-body reads), so there
+# is no inbound decode path to reach them.
+#
+# RCE via attacker-controlled payloads (server codec path; no server here)
+GHSA-grp7-v8xh-rj7h
+# Path bindings overridable via query string / body (HTTP transcoding is a
+# server feature; no server here)
+GHSA-mwr4-5g34-j5cq
+# Unbounded request body accumulation in read_full_body/3 (server-side read;
+# no server here)
+GHSA-q8gf-9rvj-gmgj
+# Unbounded gzip decompression of request bodies (server-side; no server here)
+GHSA-6ccx-9c9f-327w
