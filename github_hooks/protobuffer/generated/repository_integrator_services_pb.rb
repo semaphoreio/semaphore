@@ -22,6 +22,7 @@ module InternalApi
         rpc :GithubInstallationInfo, ::InternalApi::RepositoryIntegrator::GithubInstallationInfoRequest, ::InternalApi::RepositoryIntegrator::GithubInstallationInfoResponse
         rpc :InitGithubInstallation, ::InternalApi::RepositoryIntegrator::InitGithubInstallationRequest, ::InternalApi::RepositoryIntegrator::InitGithubInstallationResponse
         rpc :GetRepositories, ::InternalApi::RepositoryIntegrator::GetRepositoriesRequest, ::InternalApi::RepositoryIntegrator::GetRepositoriesResponse
+        rpc :RefreshRepositories, ::InternalApi::RepositoryIntegrator::RefreshRepositoriesRequest, ::InternalApi::RepositoryIntegrator::RefreshRepositoriesResponse
       end
 
       Stub = Service.rpc_stub_class

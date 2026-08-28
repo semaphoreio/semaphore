@@ -227,6 +227,69 @@ defmodule Ppl.PplBlocks.Model.PplBlocksQueries do
     ppl_block |> Repo.preload([connections: :dependency_pipeline_block])
   end
 
+  # Human-readable description of the exact criteria used by the orphaned-blocks
+  # cleanup - logged by the cleanup task so there is an audit record of what the
+  # mutation was allowed to touch.
+  @orphaned_blocks_criteria "pipelines.state = 'done' AND " <>
+                              "pipeline_blocks.state IN ('initializing', 'waiting') AND " <>
+                              "pipeline_blocks.block_id IS NULL"
+
+  def orphaned_blocks_criteria, do: @orphaned_blocks_criteria
+
+  @doc """
+  Moves to 'done'/'canceled' the pipeline blocks that were orphaned in a
+  non-terminal state while the pipeline they belong to had already transitioned
+  to 'done'.
+
+  Only blocks that hold NO external work are matched: those still in
+  'initializing' or 'waiting' AND without a `block_id` (i.e. never scheduled to
+  the block/zebra service). Blocks in 'running'/'stopping' own a live Block and
+  jobs, so they are deliberately excluded - completing them here (plumber DB
+  only, no cascade) would abandon that external work.
+
+  This is a pure data fix performed with a single `update_all`. It deliberately
+  does NOT go through the STM, so no state-transition events are published, no
+  epilogue handlers run and no other services are notified - the results of the
+  (already finished) pipelines the blocks belong to are left untouched.
+
+  Returns `{:ok, affected}` where `affected` is a list of
+  `%{id, ppl_id, block_index}` maps describing the blocks that were (or, in
+  dry-run mode, would be) canceled. When `dry_run?` is true nothing is changed.
+  """
+  def cancel_orphaned_blocks(dry_run? \\ false)
+
+  def cancel_orphaned_blocks(true) do
+    orphaned_blocks_query()
+    |> select([pb], %{id: pb.id, ppl_id: pb.ppl_id, block_index: pb.block_index})
+    |> Repo.all()
+    |> return_ok_tuple()
+  end
+
+  def cancel_orphaned_blocks(false) do
+    {_count, blocks} =
+      orphaned_blocks_query()
+      |> select([pb], %{id: pb.id, ppl_id: pb.ppl_id, block_index: pb.block_index})
+      |> Repo.update_all(
+        set: [
+          state: "done",
+          result: "canceled",
+          result_reason: "internal",
+          in_scheduling: false,
+          updated_at: NaiveDateTime.utc_now()
+        ]
+      )
+
+    {:ok, blocks}
+  end
+
+  defp orphaned_blocks_query do
+    from(pb in PplBlocks,
+      join: p in Ppls,
+      on: p.ppl_id == pb.ppl_id,
+      where: p.state == "done" and pb.state in ["initializing", "waiting"] and is_nil(pb.block_id)
+    )
+  end
+
   defp return_number({number, _}) when is_integer(number),
     do: return_ok_tuple(number)
   defp return_number(error), do: return_error_tuple(error)

@@ -1,0 +1,62 @@
+# Advisories ignored here are transitive, unreachable in this app, and only
+# fixable by an out-of-scope major bump of a core dependency. hackney is bumped
+# forward to the latest 1.x (~> 1.24, resolves 1.25.0) in mix.exs, which cleared
+# the older pool-leak/SSRF advisories; the newer 2026 hackney advisories (at the
+# end of this file) are only fixed in 4.0.1 and are accepted.
+
+# decimal — unbounded exponent in Decimal.new enables an unauthenticated DoS
+# (GHSA-rhv4-8758-jx7v, moderate). Patched in decimal 3.0.0, but this app's
+# ecto 3.10.3 (`decimal ~> 1.6 or ~> 2.0`), postgrex 0.17.3 (`decimal ~> 1.5
+# or ~> 2.0`) and jason 1.4.1 (`decimal ~> 1.0 or ~> 2.0`) all pin decimal to
+# < 3.0, so adopting it forces an out-of-scope ecto/postgrex major bump.
+# decimal is not called anywhere in lib/ (grep `Decimal.` returns no hits).
+GHSA-rhv4-8758-jx7v
+
+# postgrex — channel-name SQL injection in Postgrex.Notifications.listen/3
+# (GHSA-r73h-97w8-m54h, high). Patched in postgrex 0.22.2, but ecto_sql 3.10.2
+# pins postgrex `~> 0.16.0 or ~> 0.17.0 or ~> 1.0`, so adopting it forces an
+# out-of-scope ecto/ecto_sql bump. This app never calls Postgrex.Notifications
+# (grep `Postgrex.Notifications` in lib/ returns no hits).
+GHSA-r73h-97w8-m54h
+
+# cowboy — unbounded buffer accumulation in multipart header parsing causes DoS
+# (GHSA-jfc2-q6qh-g5x8, high). Pulled in transitively by grpc 0.3.1 (`cowboy
+# ~> 2.5`). Patched in cowboy 2.15.0, but bumping cowboy forces a cowboy/cowlib/
+# ranch stack bump on top of the old grpc 0.3.1 adapter — out of scope/risky.
+# The internal gRPC server does not parse multipart HTTP request bodies.
+GHSA-jfc2-q6qh-g5x8
+
+# cowlib — three advisories, all patched in cowlib 2.16.1, pulled in transitively
+# via grpc 0.3.1 -> cowboy 2.5 (`cowlib ~> 2.6`). Bumping cowlib forces the same
+# out-of-scope cowboy/cowlib/ranch stack bump on the old grpc adapter. None of
+# the affected code paths are exercised by the internal gRPC server:
+#   GHSA-32p9-57cr-4x65 — cow_http_te chunked Transfer-Encoding resource use
+#   GHSA-84f2-rp86-235p — cow_spdy decompression bomb (SPDY is not used)
+#   GHSA-hv23-4qp7-8c8r — CRLF injection / SSE event splitting (no SSE)
+GHSA-32p9-57cr-4x65
+GHSA-84f2-rp86-235p
+GHSA-hv23-4qp7-8c8r
+
+# hackney — four 2026 advisories, all first patched in hackney 4.0.1. hackney is already bumped to
+# the latest 1.x (~> 1.24 -> 1.25.0) in mix.exs, which cleared the older pool-leak/SSRF advisories;
+# 4.0.1 is a major bump blocked by httpoison 0.13 (`hackney ~> 1.8`). Not reachable: this app's only
+# outbound HTTP is HTTPoison.get on the internal artifacthub download URL (from
+# $INTERNAL_API_URL_ARTIFACTHUB) — no user-controlled host/domain/path/query is fed to hackney.
+#   GHSA-gp9c-pm5m-5cxr — ssl:connect/2 post-handshake upgrade has no timeout
+#   GHSA-j9wq-vxxc-94wf — CR/LF injection in query parameter
+#   GHSA-mp55-p8c9-rfw2 — CRLF/header injection via unvalidated domain/path options
+#   GHSA-pj7v-xfvx-wmjq — SSRF allowlist bypass via percent-encoded host
+GHSA-gp9c-pm5m-5cxr
+GHSA-j9wq-vxxc-94wf
+GHSA-mp55-p8c9-rfw2
+GHSA-pj7v-xfvx-wmjq
+
+# gun — two advisories, pulled in transitively by grpc 0.3.1 (`gun ~> 1.2`, resolves
+# 1.3.0). Patched in gun 2.4.0, but bumping gun forces the same out-of-scope grpc-stack
+# bump as cowboy/cowlib above; the real fix — upgrading the plumber gRPC stack — is
+# tracked in semaphoreio/semaphore#1134. gun is the gRPC client transport for
+# internal-service calls only; no user-controlled URLs, hosts, or request lines reach it.
+#   GHSA-r53j-fjj5-mv77 — uncontrolled resource consumption, fixed in 2.4.0
+#   GHSA-w4f7-4cxr-rv3c — HTTP request/response splitting (shared cowboy/gun advisory)
+GHSA-r53j-fjj5-mv77
+GHSA-w4f7-4cxr-rv3c

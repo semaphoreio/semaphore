@@ -95,7 +95,7 @@ Part of the [`agent`](#agent) definition. This is an optional property to specif
 If a value is not provided, the default for the machine type is used:
 
 - `e1-standard-*` machine types: `ubuntu2404`
-- `a2-standard-*` machine types: `macos-xcode16`
+- `a2-standard-*` machine types: `macos-xcode26`
 
 The list of valid values for Semaphore Cloud is available on the [machine types reference](./machine-types) page.
 
@@ -542,6 +542,46 @@ blocks:
             - echo $TEST_ENV_VAR
 ```
 
+## partial_rerun {#partial-rerun}
+
+This optional property controls the granularity of [pipeline rebuilds](../using-semaphore/pipelines#rebuild). It accepts one of two values:
+
+- `jobs`: re-run blocks carry previously passed jobs over as [copies](../using-semaphore/pipelines#job-level-rerun) and re-execute only the failed jobs
+- `block`: a re-run block re-executes all of its jobs
+
+The pipeline-level value is the default for every block; individual blocks can override it with their own [`partial_rerun`](#partial-rerun-in-blocks) property.
+
+When `partial_rerun` is not set, `jobs` is used. To keep re-running whole blocks, set `partial_rerun: block` explicitly.
+
+Set `block` on blocks whose jobs must always run together, for example test suites that split dynamically across jobs, where the per-job split can change between runs.
+
+```yaml title="Example"
+version: v1.0
+name: Rebuild granularity
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu2404
+# highlight-next-line
+partial_rerun: jobs
+blocks:
+  - name: Unit tests
+    task:
+      jobs:
+        - name: unit
+          commands:
+            - make test
+  - name: Split tests
+    # highlight-next-line
+    partial_rerun: block
+    task:
+      jobs:
+        - name: split
+          parallelism: 4
+          commands:
+            - make split-test
+```
+
 ## blocks {#blocks}
 
 Defines an array of items that hold the elements of a pipeline. Each element of that array is called a *block* and can have these properties:
@@ -551,6 +591,7 @@ Defines an array of items that hold the elements of a pipeline. Each element of 
 - [`task`](#task) (mandatory)
 - [`skip`](#skip-in-blocks)
 - [`run`](#run-in-blocks)
+- [`partial_rerun`](#partial-rerun-in-blocks)
 
 ### name {#name-in-blocks}
 
@@ -704,6 +745,10 @@ It is not possible to have both `skip` and [`run`](#run-in-blocks) properties de
 
 :::
 
+### partial_rerun {#partial-rerun-in-blocks}
+
+Optional override of the pipeline-level [`partial_rerun`](#partial-rerun) property for this block. Accepts the same `jobs` and `block` values.
+
 ## task {#task}
 
 The `task` property defines the [`jobs`](#jobs) in the blocks along with all its optional properties:
@@ -759,7 +804,7 @@ blocks:
       agent:
           machine:
             type: a2-standard-4
-            os_image: macos-xcode16
+            os_image: macos-xcode26
    # highlight-end
       jobs:
         - name: Using agent job

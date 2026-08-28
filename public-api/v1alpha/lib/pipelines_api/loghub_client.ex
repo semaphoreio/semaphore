@@ -54,11 +54,27 @@ defmodule PipelinesAPI.LoghubClient do
   end
 
   def process_get_log_events_response(response) do
-    if response.status.code == InternalApi.ResponseStatus.Code.value(:OK) do
-      {:ok, response.events}
-    else
-      Logger.error("Error getting log events: #{inspect(response.status)}")
-      ToTuple.internal_error("Internal error")
+    ok_code = InternalApi.ResponseStatus.Code.value(:OK)
+    bad_param_code = InternalApi.ResponseStatus.Code.value(:BAD_PARAM)
+
+    case response.status.code do
+      ^ok_code ->
+        {:ok, response.events}
+
+      # Loghub returns BAD_PARAM when the job or its logs cannot be found,
+      # e.g. when the job never started. This is not an internal error, so we
+      # surface it as a 404 with loghub's message instead of a generic 500.
+      ^bad_param_code ->
+        ToTuple.not_found_error(logs_not_found_message(response.status))
+
+      _ ->
+        Logger.error("Error getting log events: #{inspect(response.status)}")
+        ToTuple.internal_error("Internal error")
     end
   end
+
+  defp logs_not_found_message(%{message: message}) when is_binary(message) and message != "",
+    do: message
+
+  defp logs_not_found_message(_status), do: "Logs not found"
 end

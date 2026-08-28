@@ -65,11 +65,11 @@ defmodule Support.FakeClients.ServiceAccount do
   end
 
   @impl Front.ServiceAccount.Behaviour
-  def describe_many(service_account_ids) do
+  def describe_many(service_account_ids, org_id) do
     service_accounts =
       service_account_ids
       |> Enum.map(fn id ->
-        describe(id)
+        describe(id, org_id)
       end)
       |> Enum.filter(fn
         {:ok, _} -> true
@@ -107,15 +107,15 @@ defmodule Support.FakeClients.ServiceAccount do
   end
 
   @impl Front.ServiceAccount.Behaviour
-  def describe(service_account_id) do
+  def describe(service_account_id, org_id) do
     case Agent.get(__MODULE__, &get_in(&1, [:service_accounts, service_account_id])) do
-      nil -> {:error, "Service account not found"}
-      service_account -> {:ok, service_account}
+      %{org_id: ^org_id} = service_account -> {:ok, service_account}
+      _ -> {:error, "Service account not found"}
     end
   end
 
   @impl Front.ServiceAccount.Behaviour
-  def update(service_account_id, name, description) do
+  def update(service_account_id, org_id, name, description) do
     cond do
       name == "" ->
         {:error, "Service account name cannot be empty"}
@@ -129,10 +129,7 @@ defmodule Support.FakeClients.ServiceAccount do
       true ->
         Agent.get_and_update(__MODULE__, fn state ->
           case get_in(state, [:service_accounts, service_account_id]) do
-            nil ->
-              {{:error, "Service account not found"}, state}
-
-            service_account ->
+            %{org_id: ^org_id} = service_account ->
               updated_account = %{
                 service_account
                 | name: name,
@@ -143,40 +140,43 @@ defmodule Support.FakeClients.ServiceAccount do
               new_state = put_in(state, [:service_accounts, service_account_id], updated_account)
 
               {{:ok, updated_account}, new_state}
+
+            _ ->
+              {{:error, "Service account not found"}, state}
           end
         end)
     end
   end
 
   @impl Front.ServiceAccount.Behaviour
-  def delete(service_account_id) do
+  def delete(service_account_id, org_id) do
     Agent.get_and_update(__MODULE__, fn state ->
       case get_in(state, [:service_accounts, service_account_id]) do
-        nil ->
-          {{:error, "Service account not found"}, state}
-
-        _service_account ->
+        %{org_id: ^org_id} ->
           new_state =
             state
             |> update_in([:service_accounts], &Map.delete(&1, service_account_id))
             |> update_in([:tokens], &Map.delete(&1, service_account_id))
 
           {:ok, new_state}
+
+        _ ->
+          {{:error, "Service account not found"}, state}
       end
     end)
   end
 
   @impl Front.ServiceAccount.Behaviour
-  def regenerate_token(service_account_id) do
+  def regenerate_token(service_account_id, org_id) do
     Agent.get_and_update(__MODULE__, fn state ->
       case get_in(state, [:service_accounts, service_account_id]) do
-        nil ->
-          {{:error, "Service account not found"}, state}
-
-        _service_account ->
+        %{org_id: ^org_id} ->
           new_token = generate_token()
           new_state = put_in(state, [:tokens, service_account_id], new_token)
           {{:ok, new_token}, new_state}
+
+        _ ->
+          {{:error, "Service account not found"}, state}
       end
     end)
   end

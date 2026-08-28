@@ -58,9 +58,9 @@
     </div>
     <div class="flex">
       <%= if !assigns[:permissions] or @permissions["project.job.rerun"] do %>
-        <%= link "Rerun", to: workflow_path(@conn, :rebuild, @workflow.id), method: :post, class: "btn btn-secondary ml1", "data-tippy-content": "Rerun the parent workflow, including this job" %>
+        <%= link "Rerun Workflow", to: workflow_path(@conn, :rebuild, @workflow.id), method: :post, class: "btn btn-secondary ml1", "data-tippy-content": "Starts a fresh run of the whole workflow, including this job" %>
       <% else %>
-        <button class="btn btn-secondary" disabled>Rerun</button>
+        <button class="btn btn-secondary" disabled>Rerun Workflow</button>
       <% end %>
       <div class="ml2 pl2 bl b--lighter-gray">
       <%= link to: "/workflows/#{@workflow.id}/edit" do %>
@@ -71,6 +71,16 @@
       </div>
     </div>
   </div>
+
+  <%= if @job.original_job_id do %>
+    <div class="flex items-center w-100 pv2 ph3 mv1 bg-washed-yellow br2 f6">
+      <span class="b mr1">Reused job</span>
+      <span>
+        — this job passed in a previous run and was not re-executed. Logs, artifacts, and test results shown here come from the
+        <%= link "original job", to: job_path(@conn, :show, @job.original_job_id) %>.
+      </span>
+    </div>
+  <% end %>
 
   <div class="f6 gray mb1">
     by <%= @hook.repo_host_username %>, <time-ago datetime="<%= Timex.format!(@workflow.created_at, "%FT%T%:z", :strftime) %>"><%= Timex.format!(@workflow.created_at, "%FT%T%:z", :strftime) %></time-ago>

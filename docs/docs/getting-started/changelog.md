@@ -8,6 +8,23 @@ Thank you for using Semaphore!
 We continuously deploy changes that improve our product for our customers.
 This page is updated on a weekly basis.
 
+### Week of June 30, 2026
+
+**(Improved) macos-xcode26 image update**
+
+**(New)**
+
+- Xcode26.6
+
+**(Improved) Ubuntu 24.04 image update**
+
+**(New)** New packages:
+
+- Java: 25.0.3
+
+To learn more about this image, check our [Ubuntu 24.04 page](https://docs.semaphoreci.com/reference/os-ubuntu-images/ubuntu-2404-image/).
+
+
 ### Week of May 25, 2026
 
 **(Improved) macos-xcode26 image update**

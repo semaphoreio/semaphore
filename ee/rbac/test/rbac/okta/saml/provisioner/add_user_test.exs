@@ -86,6 +86,42 @@ defmodule Rbac.Okta.Saml.Provisioner.AddUser.Test do
 
       assert Repo.GroupManagementRequest |> Repo.aggregate(:count) == 2
     end
+
+    test "is re-entrant: a second run does not enqueue duplicate group add requests" do
+      import Ecto.Query
+
+      {:ok, jit_user} =
+        Factories.SamlJitUser.insert(
+          org_id: @org_id,
+          attributes: %{"member" => ["g1", "g2"]}
+        )
+
+      {:ok, group1} = Factories.Group.insert(organization_id: @org_id)
+      {:ok, group2} = Factories.Group.insert(organization_id: @org_id)
+      {:ok, member} = Repo.RbacRole.get_role_by_name("Member", "org_scope", jit_user.org_id)
+
+      Factories.IdpGroupMapping.insert(
+        organization_id: jit_user.org_id,
+        default_role_id: member.id,
+        group_mapping: [
+          %{idp_group_id: "g1", semaphore_group_id: group1.id},
+          %{idp_group_id: "g2", semaphore_group_id: group2.id}
+        ]
+      )
+
+      {:ok, jit_user} = AddUser.run(jit_user)
+
+      # Rapid second login before the async processor catches up: the pending
+      # :add_user requests already exist, so the second run must not duplicate them.
+      {:ok, _jit_user} = AddUser.run(jit_user)
+
+      add_user_requests =
+        Repo.GroupManagementRequest
+        |> where([r], r.user_id == ^jit_user.user_id and r.action == :add_user)
+        |> Repo.aggregate(:count)
+
+      assert add_user_requests == 2
+    end
   end
 
   defp assert_user_created(jit_user) do

@@ -351,8 +351,43 @@ defmodule Guard.McpOAuth.Server.Test do
       result = Jason.decode!(response.body)
       assert is_binary(result["access_token"])
       assert result["token_type"] == "Bearer"
-      assert is_integer(result["expires_in"])
+      assert result["expires_in"] == 86_400
       assert result["scope"] == "mcp"
+
+      signer = Joken.Signer.create("HS256", System.get_env("MCP_OAUTH_JWT_KEYS"))
+      assert {:ok, claims} = Joken.verify(result["access_token"], signer)
+      assert claims["exp"] - claims["iat"] == 86_400
+    end
+
+    test "token exchange honors configured TTL", %{user_id: user_id} do
+      original = Application.fetch_env!(:guard, :mcp_oauth_access_token_ttl_seconds)
+      Application.put_env(:guard, :mcp_oauth_access_token_ttl_seconds, 120)
+
+      on_exit(fn ->
+        Application.put_env(:guard, :mcp_oauth_access_token_ttl_seconds, original)
+      end)
+
+      client = create_test_client()
+      auth_code = create_test_auth_code(user_id, client.client_id)
+
+      body =
+        URI.encode_query(%{
+          "grant_type" => "authorization_code",
+          "code" => auth_code.code,
+          "redirect_uri" => @redirect_uri,
+          "client_id" => client.client_id,
+          "code_verifier" => @code_verifier
+        })
+
+      {:ok, response} = HTTPoison.post(mcp_oauth_url("/token"), body, form_headers())
+
+      assert response.status_code == 200
+      result = Jason.decode!(response.body)
+      assert result["expires_in"] == 120
+
+      signer = Joken.Signer.create("HS256", System.get_env("MCP_OAUTH_JWT_KEYS"))
+      assert {:ok, claims} = Joken.verify(result["access_token"], signer)
+      assert claims["exp"] - claims["iat"] == 120
     end
 
     test "invalid grant_type returns error" do

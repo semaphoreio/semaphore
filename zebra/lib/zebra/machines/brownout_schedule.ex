@@ -105,6 +105,107 @@ defmodule Zebra.Machines.BrownoutSchedule do
     first_phase ++ second_phase ++ third_phase ++ fourth_phase
   end
 
+  @spec macosxcode15 :: Brownout.brownout_schedules()
+  def macosxcode15 do
+    first_phase =
+      phase(
+        Date.range(~D[2026-06-15], ~D[2026-06-21]),
+        [
+          {~T[10:00:00], ~T[10:15:00]},
+          {~T[13:00:00], ~T[13:15:00]},
+          {~T[16:00:00], ~T[16:15:00]},
+          {~T[19:00:00], ~T[19:15:00]},
+          {~T[22:00:00], ~T[22:15:00]}
+        ],
+        ["macos-xcode15"]
+      )
+
+    second_phase =
+      phase(
+        Date.range(~D[2026-06-22], ~D[2026-06-28]),
+        [
+          {~T[10:00:00], ~T[11:00:00]},
+          {~T[13:00:00], ~T[14:00:00]},
+          {~T[16:00:00], ~T[17:00:00]},
+          {~T[19:00:00], ~T[20:00:00]},
+          {~T[22:00:00], ~T[23:00:00]}
+        ],
+        ["macos-xcode15"]
+      )
+
+    third_phase =
+      phase(
+        Date.range(~D[2026-06-29], ~D[2026-07-05]),
+        [
+          {~T[10:00:00], ~T[12:00:00]},
+          {~T[13:00:00], ~T[15:00:00]},
+          {~T[16:00:00], ~T[18:00:00]},
+          {~T[19:00:00], ~T[21:00:00]},
+          {~T[22:00:00], ~T[00:00:00]}
+        ],
+        ["macos-xcode15"]
+      )
+
+    first_phase ++ second_phase ++ third_phase
+  end
+
+  @spec macosxcode16 :: Brownout.brownout_schedules()
+  def macosxcode16 do
+    first_phase =
+      phase(
+        Date.range(~D[2026-09-07], ~D[2026-09-13]),
+        [
+          {~T[10:00:00], ~T[10:15:00]},
+          {~T[13:00:00], ~T[13:15:00]},
+          {~T[16:00:00], ~T[16:15:00]},
+          {~T[19:00:00], ~T[19:15:00]},
+          {~T[22:00:00], ~T[22:15:00]}
+        ],
+        ["macos-xcode16"]
+      )
+
+    second_phase =
+      phase(
+        Date.range(~D[2026-09-14], ~D[2026-09-20]),
+        [
+          {~T[10:00:00], ~T[10:30:00]},
+          {~T[13:00:00], ~T[13:30:00]},
+          {~T[16:00:00], ~T[16:30:00]},
+          {~T[19:00:00], ~T[19:30:00]},
+          {~T[22:00:00], ~T[22:30:00]}
+        ],
+        ["macos-xcode16"]
+      )
+
+    third_phase =
+      phase(
+        Date.range(~D[2026-09-21], ~D[2026-09-27]),
+        [
+          {~T[10:00:00], ~T[11:00:00]},
+          {~T[13:00:00], ~T[14:00:00]},
+          {~T[16:00:00], ~T[17:00:00]},
+          {~T[19:00:00], ~T[20:00:00]},
+          {~T[22:00:00], ~T[23:00:00]}
+        ],
+        ["macos-xcode16"]
+      )
+
+    fourth_phase =
+      phase(
+        Date.range(~D[2026-09-28], ~D[2026-10-04]),
+        [
+          {~T[10:00:00], ~T[12:00:00]},
+          {~T[13:00:00], ~T[15:00:00]},
+          {~T[16:00:00], ~T[18:00:00]},
+          {~T[19:00:00], ~T[21:00:00]},
+          {~T[22:00:00], ~T[00:00:00]}
+        ],
+        ["macos-xcode16"]
+      )
+
+    first_phase ++ second_phase ++ third_phase ++ fourth_phase
+  end
+
   @doc """
   Creates a brownout schedule for a given date and time range.
   """
@@ -113,15 +214,22 @@ defmodule Zebra.Machines.BrownoutSchedule do
     dates
     |> Enum.flat_map(fn date ->
       times
-      |> Enum.map(fn {from, to} ->
+      |> Enum.map(fn {from_time, to_time} ->
         from =
           date
-          |> NaiveDateTime.new!(from)
+          |> NaiveDateTime.new!(from_time)
           |> DateTime.from_naive!("Etc/UTC")
 
+        to_date =
+          if Time.compare(to_time, from_time) == :lt do
+            Date.add(date, 1)
+          else
+            date
+          end
+
         to =
-          date
-          |> NaiveDateTime.new!(to)
+          to_date
+          |> NaiveDateTime.new!(to_time)
           |> DateTime.from_naive!("Etc/UTC")
 
         Brownout.schedule(from, to, os_images)
