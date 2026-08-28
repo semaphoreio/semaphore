@@ -604,6 +604,13 @@ defmodule Zebra.Apis.InternalTaskApi.ScheduleTest do
   end
 
   describe ".configure_execution_time_limit for very new orgs (feature-cache bypass window)" do
+    # The forced reload is now gated through Zebra.Cache.fetch! (Cachex),
+    # whose fallback runs inside Cachex's own courier process rather than the
+    # test process. Mox's default per-process mode would reject those calls;
+    # global mode (same pattern as scheduler_test.exs) lets the stub answer
+    # regardless of which process calls it.
+    setup :set_mox_global
+
     setup do
       Cachex.clear(:zebra_cache)
       :ok
@@ -650,8 +657,26 @@ defmodule Zebra.Apis.InternalTaskApi.ScheduleTest do
       # created 20 minutes ago: outside the 15-minute fresh-org window
       stub_org_describe(org_username: "old-org", verified: false, age_seconds: 20 * 60)
 
-      stub(Support.MockedProvider, :provide_features, fn ^org_id, _opts ->
-        {:ok, [Support.StubbedProvider.feature("max_job_execution_time_limit", [:hidden])]}
+      # Same stateful contract as the young-org test above, but this stub
+      # doesn't need an Agent: a reload read would find the feature PRESENT
+      # (quota 30) while a plain read stays absent. A stub that ignored
+      # `opts` (the previous version of this test) would pass even if
+      # fresh_org? were inverted -- it only proves "absent stays absent". If
+      # the old org ever triggered the reload, this would surface as 1800
+      # instead of the untouched default, so this actually falsifies a
+      # broken youth boundary.
+      stub(Support.MockedProvider, :provide_features, fn ^org_id, opts ->
+        if Keyword.get(opts, :reload) do
+          {:ok,
+           [
+             Support.StubbedProvider.feature("max_job_execution_time_limit", [
+               :enabled,
+               {:quantity, 30}
+             ])
+           ]}
+        else
+          {:ok, [Support.StubbedProvider.feature("max_job_execution_time_limit", [:hidden])]}
+        end
       end)
 
       assert @default_job_execution_time_limit ==
@@ -673,6 +698,43 @@ defmodule Zebra.Apis.InternalTaskApi.ScheduleTest do
 
       assert @default_job_execution_time_limit ==
                Schedule.configure_execution_time_limit(org_id, 0)
+    end
+
+    test "young org scheduling many jobs only forces the reload once per window" do
+      org_id = UUID.uuid4()
+
+      # A fresh org fanning out several jobs calls configure_execution_time_limit
+      # once per job (see schedule.ex's create_job/create_task_job loop). Without
+      # the marker gate, each call would fire its own reload: true round trip.
+      stub_org_describe(org_username: "fresh-org-burst", verified: false, age_seconds: 60)
+
+      {:ok, reload_count} = Agent.start_link(fn -> 0 end)
+      {:ok, cache} = Agent.start_link(fn -> false end)
+
+      stub(Support.MockedProvider, :provide_features, fn ^org_id, opts ->
+        if Keyword.get(opts, :reload) do
+          Agent.update(reload_count, &(&1 + 1))
+          Agent.update(cache, fn _ -> true end)
+        end
+
+        if Agent.get(cache, & &1) do
+          {:ok,
+           [
+             Support.StubbedProvider.feature("max_job_execution_time_limit", [
+               :enabled,
+               {:quantity, 30}
+             ])
+           ]}
+        else
+          {:ok, [Support.StubbedProvider.feature("max_job_execution_time_limit", [:hidden])]}
+        end
+      end)
+
+      for _ <- 1..5 do
+        assert 30 * 60 == Schedule.configure_execution_time_limit(org_id, 0)
+      end
+
+      assert Agent.get(reload_count, & &1) == 1
     end
   end
 

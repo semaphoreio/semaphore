@@ -16,6 +16,10 @@ defmodule Zebra.Apis.InternalTaskApi.Schedule do
   # free-tier cap). Only orgs younger than this get a forced fresh feature
   # read; see find_feature_based_job_time_limits/2.
   @fresh_org_window_seconds 15 * 60
+  # TTL (ms) for the per-org "already reloaded" marker in maybe_reload_features/1.
+  # Matches the fresh-org window: once an org's forced reload has been
+  # attempted, it stays gated for the rest of that org's youth.
+  @fresh_org_reload_marker_ttl_ms @fresh_org_window_seconds * 1000
 
   @spec schedule(InternalApi.Task.Task.t()) :: {:ok, Zebra.Models.Task.t()}
   def schedule(req) do
@@ -380,7 +384,7 @@ defmodule Zebra.Apis.InternalTaskApi.Schedule do
       # comes from, never what an absent feature resolves to below: if the
       # fresh fetch itself fails, it isn't cached, so the reads that follow
       # behave exactly as they would have without this call.
-      FeatureProvider.list_features(reload: true, param: org_id)
+      maybe_reload_features(org_id)
     end
 
     if FeatureProvider.feature_enabled?(:max_job_execution_time_limit, param: org_id) do
@@ -397,6 +401,36 @@ defmodule Zebra.Apis.InternalTaskApi.Schedule do
     else
       {@max_job_execution_time_limit, @default_job_execution_time_limit}
     end
+  end
+
+  # `configure_execution_time_limit/2` runs once per job, inside the
+  # scheduling transaction. Without gating, a fresh org fanning out N jobs
+  # (one request or a burst of requests within the fresh-org window) would
+  # fire N synchronous FeatureProvider.list_features(reload: true, ...)
+  # calls -- each a real gRPC round trip held open inside that job's DB
+  # transaction, since `reload: true` never consults the cache first. Force
+  # at most one reload per org per fresh-org window instead, via a marker in
+  # the same Zebra.Cache the org load already uses.
+  #
+  # The marker is set on *attempt*, not on success: even if the reload
+  # itself errors, the marker still gets written so the rest of the burst
+  # doesn't retry it job-by-job. That means a reload failure leaves the org
+  # on today's default (24h) for the remainder of the window -- exactly
+  # today's pre-fix behavior -- and self-heals on the next window. A
+  # handful of jobs racing the first marker write may each trigger a reload
+  # before the marker lands; that's acceptable, the goal is killing the
+  # N-scale amplifier, not exactly-once semantics, so no locking here.
+  defp maybe_reload_features(org_id) do
+    Zebra.Cache.fetch!(
+      "feature-reload-done-#{org_id}",
+      @fresh_org_reload_marker_ttl_ms,
+      fn ->
+        FeatureProvider.list_features(reload: true, param: org_id)
+        {:commit, true}
+      end
+    )
+
+    :ok
   end
 
   defp load_org(org_id) do
@@ -416,6 +450,12 @@ defmodule Zebra.Apis.InternalTaskApi.Schedule do
     DateTime.utc_now() |> DateTime.to_unix() |> Kernel.-(created_at_seconds) <
       @fresh_org_window_seconds
   end
+
+  # Defense-in-depth: the real proto's created_at is always either nil or a
+  # %Google.Protobuf.Timestamp{} (both handled above). A catch-all keeps any
+  # unexpected shape from raising a FunctionClauseError inside the schedule
+  # transaction.
+  defp fresh_org?(_), do: false
 
   def encode_fail_fast_strategy(strategy) do
     alias InternalApi.Task.ScheduleRequest.FailFast, as: FF
