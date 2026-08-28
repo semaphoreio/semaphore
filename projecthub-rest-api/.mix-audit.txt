@@ -20,3 +20,41 @@ GHSA-gp9c-pm5m-5cxr
 GHSA-j9wq-vxxc-94wf
 GHSA-mp55-p8c9-rfw2
 GHSA-pj7v-xfvx-wmjq
+
+# --- grpc 0.5.0-beta.1 advisories, all first patched in grpc 1.0.0 ---
+# grpc is used purely as a client (GRPC.Stub) against internal backend services: there is no
+# `use GRPC.Server` and no GRPC.Server.Supervisor in lib/, so the server-side code paths
+# below are not started here. The fix is grpc 1.0.0 — a breaking major shared across the
+# monorepo, tracked as a coordinated migration (see ee/audit/.mix-audit.txt).
+#
+# RCE via :erlang.binary_to_term in GRPC.Codec.Erlpack.decode/2 (critical). Requires a server
+# that registers the Erlpack codec and accepts application/grpc+erlpack; no app in this repo
+# registers any custom codec (repo-wide grep for Erlpack/codecs: is empty), so the vulnerable
+# decode path is unreachable.
+GHSA-grp7-v8xh-rj7h
+# Decompression bomb in GRPC.Compressor.Gzip.decompress/1 (high) — fires on frames arriving
+# at a server with grpc-encoding: gzip; availability-only.
+GHSA-6ccx-9c9f-327w
+# Unbounded request-body accumulation in read_full_body/3 (high) — the server request read
+# loop; availability-only.
+GHSA-q8gf-9rvj-gmgj
+
+# --- family completion (2026-08-28) ---
+# The scan syncs the advisory DB at run time, so per-advisory version ranges drift
+# between runs (a PR run flagged ids the main run did not). The ids below complete each
+# already-accepted package family so range widening cannot re-break the scan; each
+# family's rationale is documented above or here.
+# grpc (family completion) — same acceptance as above: internal-only listeners, no Erlpack
+# codec registered repo-wide, no HTTP transcoding; real fix is the grpc 1.0.0 migration.
+GHSA-mwr4-5g34-j5cq
+# gun (family completion) — client transport to fixed internal endpoints; bump rides the
+# grpc 1.0.0 migration.
+GHSA-2j82-37xg-f9wp
+GHSA-r53j-fjj5-mv77
+GHSA-36w4-95hv-5vwg
+GHSA-w4f7-4cxr-rv3c
+# cowlib (family completion) — transitive via the grpc-pinned cowboy/gun stack; no SPDY,
+# SSE or user-input cookies in this app.
+GHSA-32p9-57cr-4x65
+GHSA-84f2-rp86-235p
+GHSA-hv23-4qp7-8c8r

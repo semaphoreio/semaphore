@@ -1,25 +1,6 @@
-# cowlib — cookie request header injection in cow_cookie:cookie/1 (no patched
-# version released upstream; zebra does not generate Set-Cookie headers from
-# user input — it only serves a small internal Plug.Cowboy plane).
-GHSA-g2wm-735q-3f56
-
-# postgrex — channel-name SQL injection in Postgrex.Notifications.listen/3.
-# zebra does not call Postgrex.Notifications anywhere (grep `Postgrex.Notifications`
-# in lib/ returns no hits). Bumping postgrex past 0.16.x would cascade into an
-# ecto/Elixir version bump that is out of scope for a security patch PR.
-GHSA-r73h-97w8-m54h
-
-# hackney 1.25.0 — four URL/TLS advisories all first patched in hackney 4.0.1: ssl:connect/2
-# post-handshake upgrade has no timeout (GHSA-gp9c-pm5m-5cxr), CR/LF injection in query param
-# (GHSA-j9wq-vxxc-94wf), CRLF/header injection via domain/path options (GHSA-mp55-p8c9-rfw2), and
-# SSRF allowlist bypass via percent-encoded host (GHSA-pj7v-xfvx-wmjq). hackney 4.0.1 is a major
-# upgrade blocked by httpoison ~> 1.17 / sentry (1.6.5 or ~> 1.8) — both cap hackney < 2.0; no
-# httpoison/sentry release uses hackney 4.x. Not reachable: outbound goes to fixed internal service
-# endpoints + the Sentry DSN — no user-controlled host/query/path is fed to hackney.
-GHSA-gp9c-pm5m-5cxr
-GHSA-j9wq-vxxc-94wf
-GHSA-mp55-p8c9-rfw2
-GHSA-pj7v-xfvx-wmjq
+# Advisories ignored here are documented individually below. Each entry is either not
+# reachable in this app or only fixable by an out-of-scope major dependency migration
+# that is tracked separately.
 
 # --- grpc 0.5.0-beta.1 advisories, all first patched in grpc 1.0.0 ---
 # This app runs an internal gRPC server (GRPC.Server.Supervisor); it is reachable only from
@@ -39,6 +20,42 @@ GHSA-6ccx-9c9f-327w
 # loop; availability-only.
 GHSA-q8gf-9rvj-gmgj
 
+# --- cowlib 2.8.0 advisories, first patched in cowlib 2.16.1 ---
+# cowlib arrives transitively via the cowboy/gun stack pinned by grpc; bumping it forces the
+# same grpc 1.0.0 stack migration. This app terminates no SPDY, emits no SSE and builds no
+# cookies from user input, so the affected encoders/decoders never see attacker data.
+# cow_http_te excessive allocation (high)
+GHSA-32p9-57cr-4x65
+# cow_spdy:inflate/2 decompression bomb via crafted SPDY frame (high)
+GHSA-84f2-rp86-235p
+# CRLF injection enabling SSE event splitting (moderate)
+GHSA-hv23-4qp7-8c8r
+
+# cowboy 2.7.0 — unbounded buffer accumulation in multipart header parsing causes DoS
+# (GHSA-jfc2-q6qh-g5x8, high), patched in cowboy 2.15.0. Version pinned by the grpc adapter
+# stack. This app parses no multipart HTTP request bodies (no multipart hits in lib/).
+GHSA-jfc2-q6qh-g5x8
+
+# decimal 2.0.0 — unbounded exponent DoS in Decimal.new (GHSA-rhv4-8758-jx7v, moderate).
+# Patched in decimal 3.0.0, but ecto/postgrex/jason pin decimal < 3.0, so adopting it forces
+# an out-of-scope ecto stack bump. decimal is not called anywhere in lib/ (no Decimal. hits).
+GHSA-rhv4-8758-jx7v
+
+# --- hackney 1.17.4 advisories, all first patched in hackney 4.0.1 ---
+# hackney 4.x is blocked fleet-wide by httpoison ~> 1.x. There are no HTTPoison/hackney call
+# sites in this app's lib/ — hackney arrives transitively (sentry/tzdata) with fixed,
+# service-configured endpoints, so none of the vulnerable options carry user input.
+# CR/LF injection in query parameter (moderate)
+GHSA-j9wq-vxxc-94wf
+# SSRF allowlist bypass via percent-encoded host (moderate)
+GHSA-pj7v-xfvx-wmjq
+# CRLF/header injection via unvalidated domain/path options (low)
+GHSA-mp55-p8c9-rfw2
+# HTTP connections not properly released to the pool (low)
+GHSA-9fm9-hp7p-53mf
+# SSRF via redirect target (low)
+GHSA-vq52-99r9-h5pw
+
 # --- family completion (2026-08-28) ---
 # The scan syncs the advisory DB at run time, so per-advisory version ranges drift
 # between runs (a PR run flagged ids the main run did not). The ids below complete each
@@ -46,8 +63,7 @@ GHSA-q8gf-9rvj-gmgj
 # family's rationale is documented above or here.
 # hackney (family completion) — same fleet-wide acceptance as above/other services: 4.0.1 is
 # blocked by httpoison ~> 1.x; no user input reaches hackney options in this app.
-GHSA-9fm9-hp7p-53mf
-GHSA-vq52-99r9-h5pw
+GHSA-gp9c-pm5m-5cxr
 # grpc (family completion) — same acceptance as above: internal-only listeners, no Erlpack
 # codec registered repo-wide, no HTTP transcoding; real fix is the grpc 1.0.0 migration.
 GHSA-mwr4-5g34-j5cq
@@ -59,11 +75,4 @@ GHSA-36w4-95hv-5vwg
 GHSA-w4f7-4cxr-rv3c
 # cowlib (family completion) — transitive via the grpc-pinned cowboy/gun stack; no SPDY,
 # SSE or user-input cookies in this app.
-GHSA-32p9-57cr-4x65
-GHSA-84f2-rp86-235p
-GHSA-hv23-4qp7-8c8r
-# rabbit_common — advisories target the RabbitMQ server and its Shovel/Federation plugins;
-# this app is an AMQP client only (amqp/amqp_client) and the broker is deployed separately,
-# so the affected server code never runs in this image.
-GHSA-v9gv-xp36-jgj8
-GHSA-w6cq-9cf4-gqpg
+GHSA-g2wm-735q-3f56

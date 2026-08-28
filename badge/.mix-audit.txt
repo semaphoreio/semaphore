@@ -1,0 +1,84 @@
+# Advisories ignored here are documented individually below. Each entry is either not
+# reachable in this app or only fixable by an out-of-scope major dependency migration
+# that is tracked separately.
+
+# --- grpc 0.3.1 advisories, all first patched in grpc 1.0.0 ---
+# grpc is used purely as a client (GRPC.Stub) against internal backend services: there is no
+# `use GRPC.Server` and no GRPC.Server.Supervisor in lib/, so the server-side code paths
+# below are not started here. The fix is grpc 1.0.0 — a breaking major shared across the
+# monorepo, tracked as a coordinated migration (see ee/audit/.mix-audit.txt).
+#
+# Unbounded request-body accumulation in read_full_body/3 (high) — the server request read
+# loop; availability-only.
+GHSA-q8gf-9rvj-gmgj
+
+# --- gun 1.3.1 advisories, first patched in gun 2.4.0 ---
+# gun is the gRPC client transport (via grpc/grpc_gun) to fixed internal service endpoints;
+# no user-supplied hosts, paths or headers reach it. The gun version is pinned by the grpc
+# dependency, so the bump rides the grpc 1.0.0 migration.
+# uncontrolled resource consumption (high)
+GHSA-r53j-fjj5-mv77
+# HTTP request/response splitting shared with cowboy (moderate)
+GHSA-w4f7-4cxr-rv3c
+
+# --- cowlib 2.6.0 advisories, first patched in cowlib 2.16.1 ---
+# cowlib arrives transitively via the cowboy/gun stack pinned by grpc; bumping it forces the
+# same grpc 1.0.0 stack migration. This app terminates no SPDY, emits no SSE and builds no
+# cookies from user input, so the affected encoders/decoders never see attacker data.
+# cow_http_te excessive allocation (high)
+GHSA-32p9-57cr-4x65
+# cow_spdy:inflate/2 decompression bomb via crafted SPDY frame (high)
+GHSA-84f2-rp86-235p
+# CRLF injection enabling SSE event splitting (moderate)
+GHSA-hv23-4qp7-8c8r
+
+# cowboy 2.5.0 — unbounded buffer accumulation in multipart header parsing causes DoS
+# (GHSA-jfc2-q6qh-g5x8, high), patched in cowboy 2.15.0. Version pinned by the grpc adapter
+# stack. This app parses no multipart HTTP request bodies (no multipart hits in lib/).
+GHSA-jfc2-q6qh-g5x8
+
+# plug 1.8.3 — unbounded buffer accumulation in multipart header parsing causes DoS
+# (GHSA-468c-vq7p-gh64, high). This app parses no multipart uploads (no multipart hits in
+# lib/); the bump is entangled with the phoenix/plug stack held back by the grpc pins.
+GHSA-468c-vq7p-gh64
+
+# plug_cowboy 2.1.0 — unauthenticated remote DoS via HTTP/2 :scheme atom-table exhaustion
+# (GHSA-q8x4-x7mp-5vg2, high). Reachable only over HTTP/2 connections terminated by cowboy
+# itself; the fix is a plug_cowboy/cowboy stack bump entangled with the grpc adapter pins,
+# tracked with the grpc 1.0.0 migration.
+GHSA-q8x4-x7mp-5vg2
+
+# --- hackney 1.15.2 advisories, all first patched in hackney 4.0.1 ---
+# hackney 4.x is blocked fleet-wide by httpoison ~> 1.x. There are no HTTPoison/hackney call
+# sites in this app's lib/ — hackney arrives transitively (sentry/tzdata) with fixed,
+# service-configured endpoints, so none of the vulnerable options carry user input.
+# ssl:connect/2 post-handshake upgrade has no timeout (high)
+GHSA-gp9c-pm5m-5cxr
+# CR/LF injection in query parameter (moderate)
+GHSA-j9wq-vxxc-94wf
+# SSRF allowlist bypass via percent-encoded host (moderate)
+GHSA-pj7v-xfvx-wmjq
+# CRLF/header injection via unvalidated domain/path options (low)
+GHSA-mp55-p8c9-rfw2
+# HTTP connections not properly released to the pool (low)
+GHSA-9fm9-hp7p-53mf
+# SSRF via redirect target (low)
+GHSA-vq52-99r9-h5pw
+
+# --- family completion (2026-08-28) ---
+# The scan syncs the advisory DB at run time, so per-advisory version ranges drift
+# between runs (a PR run flagged ids the main run did not). The ids below complete each
+# already-accepted package family so range widening cannot re-break the scan; each
+# family's rationale is documented above or here.
+# grpc (family completion) — same acceptance as above: internal-only listeners, no Erlpack
+# codec registered repo-wide, no HTTP transcoding; real fix is the grpc 1.0.0 migration.
+GHSA-grp7-v8xh-rj7h
+GHSA-6ccx-9c9f-327w
+GHSA-mwr4-5g34-j5cq
+# gun (family completion) — client transport to fixed internal endpoints; bump rides the
+# grpc 1.0.0 migration.
+GHSA-2j82-37xg-f9wp
+GHSA-36w4-95hv-5vwg
+# cowlib (family completion) — transitive via the grpc-pinned cowboy/gun stack; no SPDY,
+# SSE or user-input cookies in this app.
+GHSA-g2wm-735q-3f56

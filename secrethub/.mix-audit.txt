@@ -1,0 +1,99 @@
+# Advisories ignored here are documented individually below. Each entry is either not
+# reachable in this app or only fixable by an out-of-scope major dependency migration
+# that is tracked separately.
+
+# --- grpc 0.5.0-beta.1 advisories, all first patched in grpc 1.0.0 ---
+# This app runs an internal gRPC server (GRPC.Server.Supervisor); it is reachable only from
+# inside the cluster by sibling Semaphore services, not from the internet. The fix is grpc
+# 1.0.0 — a breaking major shared across the monorepo, tracked as a coordinated migration
+# (see ee/audit/.mix-audit.txt), not a security-patch bump.
+#
+# RCE via :erlang.binary_to_term in GRPC.Codec.Erlpack.decode/2 (critical). Requires a server
+# that registers the Erlpack codec and accepts application/grpc+erlpack; no app in this repo
+# registers any custom codec (repo-wide grep for Erlpack/codecs: is empty), so the vulnerable
+# decode path is unreachable.
+GHSA-grp7-v8xh-rj7h
+# Decompression bomb in GRPC.Compressor.Gzip.decompress/1 (high) — fires on frames arriving
+# at a server with grpc-encoding: gzip; availability-only.
+GHSA-6ccx-9c9f-327w
+# Unbounded request-body accumulation in read_full_body/3 (high) — the server request read
+# loop; availability-only.
+GHSA-q8gf-9rvj-gmgj
+
+# --- cowlib 2.11.0 advisories, first patched in cowlib 2.16.1 ---
+# cowlib arrives transitively via the cowboy/gun stack pinned by grpc; bumping it forces the
+# same grpc 1.0.0 stack migration. This app terminates no SPDY, emits no SSE and builds no
+# cookies from user input, so the affected encoders/decoders never see attacker data.
+# cow_http_te excessive allocation (high)
+GHSA-32p9-57cr-4x65
+# cow_spdy:inflate/2 decompression bomb via crafted SPDY frame (high)
+GHSA-84f2-rp86-235p
+# CRLF injection enabling SSE event splitting (moderate)
+GHSA-hv23-4qp7-8c8r
+# cookie request-header injection in cow_cookie:cookie/1 (low)
+GHSA-g2wm-735q-3f56
+
+# cowboy 2.9.0 — unbounded buffer accumulation in multipart header parsing causes DoS
+# (GHSA-jfc2-q6qh-g5x8, high), patched in cowboy 2.15.0. Version pinned by the grpc adapter
+# stack. This app parses no multipart HTTP request bodies (no multipart hits in lib/).
+GHSA-jfc2-q6qh-g5x8
+
+# plug 1.13.6 — unbounded buffer accumulation in multipart header parsing causes DoS
+# (GHSA-468c-vq7p-gh64, high). This app parses no multipart uploads (no multipart hits in
+# lib/); the bump is entangled with the phoenix/plug stack held back by the grpc pins.
+GHSA-468c-vq7p-gh64
+
+# plug_cowboy 2.5.2 — unauthenticated remote DoS via HTTP/2 :scheme atom-table exhaustion
+# (GHSA-q8x4-x7mp-5vg2, high). Reachable only over HTTP/2 connections terminated by cowboy
+# itself; the fix is a plug_cowboy/cowboy stack bump entangled with the grpc adapter pins,
+# tracked with the grpc 1.0.0 migration.
+GHSA-q8x4-x7mp-5vg2
+
+# decimal 2.0.0 — unbounded exponent DoS in Decimal.new (GHSA-rhv4-8758-jx7v, moderate).
+# Patched in decimal 3.0.0, but ecto/postgrex/jason pin decimal < 3.0, so adopting it forces
+# an out-of-scope ecto stack bump. decimal is not called anywhere in lib/ (no Decimal. hits).
+GHSA-rhv4-8758-jx7v
+
+# postgrex 0.16.3 — channel-name SQL injection in Postgrex.Notifications.listen/3
+# (GHSA-r73h-97w8-m54h, high). Patched in 0.22.2, but ecto_sql pins postgrex to older lines,
+# forcing an out-of-scope ecto/ecto_sql bump. This app never calls Postgrex.Notifications
+# (no hits in lib/).
+GHSA-r73h-97w8-m54h
+
+# --- hackney 1.18.1 advisories, all first patched in hackney 4.0.1 ---
+# hackney 4.x is blocked fleet-wide by httpoison ~> 1.x. There are no HTTPoison/hackney call
+# sites in this app's lib/ — hackney arrives transitively (sentry/tzdata) with fixed,
+# service-configured endpoints, so none of the vulnerable options carry user input.
+# CR/LF injection in query parameter (moderate)
+GHSA-j9wq-vxxc-94wf
+# SSRF allowlist bypass via percent-encoded host (moderate)
+GHSA-pj7v-xfvx-wmjq
+# CRLF/header injection via unvalidated domain/path options (low)
+GHSA-mp55-p8c9-rfw2
+# HTTP connections not properly released to the pool (low)
+GHSA-9fm9-hp7p-53mf
+# SSRF via redirect target (low)
+GHSA-vq52-99r9-h5pw
+
+# --- family completion (2026-08-28) ---
+# The scan syncs the advisory DB at run time, so per-advisory version ranges drift
+# between runs (a PR run flagged ids the main run did not). The ids below complete each
+# already-accepted package family so range widening cannot re-break the scan; each
+# family's rationale is documented above or here.
+# hackney (family completion) — same fleet-wide acceptance as above/other services: 4.0.1 is
+# blocked by httpoison ~> 1.x; no user input reaches hackney options in this app.
+GHSA-gp9c-pm5m-5cxr
+# grpc (family completion) — same acceptance as above: internal-only listeners, no Erlpack
+# codec registered repo-wide, no HTTP transcoding; real fix is the grpc 1.0.0 migration.
+GHSA-mwr4-5g34-j5cq
+# gun (family completion) — client transport to fixed internal endpoints; bump rides the
+# grpc 1.0.0 migration.
+GHSA-2j82-37xg-f9wp
+GHSA-r53j-fjj5-mv77
+GHSA-36w4-95hv-5vwg
+GHSA-w4f7-4cxr-rv3c
+# rabbit_common — advisories target the RabbitMQ server and its Shovel/Federation plugins;
+# this app is an AMQP client only (amqp/amqp_client) and the broker is deployed separately,
+# so the affected server code never runs in this image.
+GHSA-v9gv-xp36-jgj8
+GHSA-w6cq-9cf4-gqpg
