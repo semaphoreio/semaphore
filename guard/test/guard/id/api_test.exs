@@ -964,6 +964,170 @@ defmodule Guard.Id.Api.Test do
       refute Map.has_key?(query, "message")
     end
 
+    test "callback for github surfaces account_taken when uid is connected to another user", %{
+      user_id: user_id,
+      gh_uid: gh_uid
+    } do
+      {:ok, _} =
+        Support.Members.insert_repo_host_account(
+          github_uid: gh_uid,
+          user_id: Ecto.UUID.generate(),
+          login: "original-owner",
+          name: "Original Owner",
+          permission_scope: "user:email"
+        )
+
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://github.com/login/oauth/access_token"} ->
+          json(%{"access_token" => "token"})
+
+        %{method: :get, url: "https://api.github.com/user"} ->
+          json(%{"login" => "kjhdda", "name" => "Foo Bar", "id" => gh_uid})
+
+        %{method: :get, url: "https://api.github.com/user/emails"} ->
+          json([])
+      end)
+
+      query = run_github_oauth_round_trip(user_id)
+
+      assert query["status"] == "error"
+      assert query["code"] == "account_taken"
+      assert query["provider"] == "github"
+      refute Map.has_key?(query, "message")
+
+      assert {:error, :not_found} =
+               Guard.FrontRepo.RepoHostAccount.get_for_user_by_repo_host(user_id, "github")
+    end
+
+    test "callback for github claims the uid when the other user's link is revoked", %{
+      user_id: user_id,
+      gh_uid: gh_uid
+    } do
+      stale_owner_id = Ecto.UUID.generate()
+
+      {:ok, stale_rha} =
+        Support.Members.insert_repo_host_account(
+          github_uid: gh_uid,
+          user_id: stale_owner_id,
+          login: "previous-owner",
+          name: "Previous Owner",
+          permission_scope: "user:email",
+          revoked: true
+        )
+
+      :ok = Support.Members.age_repo_host_account(stale_rha)
+
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://github.com/login/oauth/access_token"} ->
+          json(%{"access_token" => "token"})
+
+        %{method: :get, url: "https://api.github.com/user"} ->
+          json(%{"login" => "kjhdda", "name" => "Foo Bar", "id" => gh_uid})
+
+        %{method: :get, url: "https://api.github.com/user/emails"} ->
+          json([])
+      end)
+
+      query = run_github_oauth_round_trip(user_id)
+
+      assert query["status"] == "success"
+
+      {:ok, account} =
+        Guard.FrontRepo.RepoHostAccount.get_for_user_by_repo_host(user_id, "github")
+
+      assert account.github_uid == gh_uid
+
+      assert {:error, :not_found} =
+               Guard.FrontRepo.RepoHostAccount.get_for_user_by_repo_host(
+                 stale_owner_id,
+                 "github"
+               )
+    end
+
+    test "callback for github succeeds when reconnecting the user's own account", %{
+      user_id: user_id,
+      gh_uid: gh_uid
+    } do
+      {:ok, _} =
+        Support.Members.insert_repo_host_account(
+          github_uid: gh_uid,
+          user_id: user_id,
+          login: "kjhdda",
+          name: "Foo Bar",
+          permission_scope: "user:email"
+        )
+
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://github.com/login/oauth/access_token"} ->
+          json(%{"access_token" => "token"})
+
+        %{method: :get, url: "https://api.github.com/user"} ->
+          json(%{"login" => "kjhdda", "name" => "Foo Bar", "id" => gh_uid})
+
+        %{method: :get, url: "https://api.github.com/user/emails"} ->
+          json([])
+      end)
+
+      query = run_github_oauth_round_trip(user_id)
+
+      assert query["status"] == "success"
+
+      {:ok, account} =
+        Guard.FrontRepo.RepoHostAccount.get_for_user_by_repo_host(user_id, "github")
+
+      assert account.github_uid == gh_uid
+      assert account.token == "token"
+    end
+
+    test "callback for github keeps a revoked link revoked when the uid is actively held", %{
+      user_id: user_id,
+      gh_uid: gh_uid
+    } do
+      # the caller's own link is revoked...
+      {:ok, _} =
+        Support.Members.insert_repo_host_account(
+          github_uid: gh_uid,
+          user_id: user_id,
+          login: "kjhdda",
+          name: "Foo Bar",
+          permission_scope: "user:email",
+          revoked: true
+        )
+
+      # ...while another user actively holds the same uid
+      {:ok, _} =
+        Support.Members.insert_repo_host_account(
+          github_uid: gh_uid,
+          user_id: Ecto.UUID.generate(),
+          login: "current-holder",
+          name: "Current Holder",
+          permission_scope: "user:email"
+        )
+
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://github.com/login/oauth/access_token"} ->
+          json(%{"access_token" => "token"})
+
+        %{method: :get, url: "https://api.github.com/user"} ->
+          json(%{"login" => "kjhdda", "name" => "Foo Bar", "id" => gh_uid})
+
+        %{method: :get, url: "https://api.github.com/user/emails"} ->
+          json([])
+      end)
+
+      query = run_github_oauth_round_trip(user_id)
+
+      assert query["status"] == "error"
+      assert query["code"] == "account_taken"
+      assert query["provider"] == "github"
+
+      {:ok, account} =
+        Guard.FrontRepo.RepoHostAccount.get_for_user_by_repo_host(user_id, "github")
+
+      assert account.revoked == true
+      assert account.token == nil
+    end
+
     test "callback for github falls back to nickname when profile name is empty string", %{
       user_id: user_id,
       gh_uid: gh_uid
