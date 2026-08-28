@@ -11,6 +11,15 @@ defmodule Zebra.Apis.InternalTaskApi.Schedule do
   @default_job_execution_time_limit 24 * 60 * 60
   # in minutes
   @max_job_execution_time_limit 24 * 60
+  # A just-created org's feature flags can be missing from a per-pod feature
+  # cache primed before provisioning finished (e.g. billing enabling a
+  # free-tier cap). Only orgs younger than this get a forced fresh feature
+  # read; see find_feature_based_job_time_limits/2.
+  @fresh_org_window_seconds 15 * 60
+  # TTL (ms) for the per-org "already reloaded" marker in maybe_reload_features/1.
+  # Matches the fresh-org window: once an org's forced reload has been
+  # attempted, it stays gated for the rest of that org's youth.
+  @fresh_org_reload_marker_ttl_ms @fresh_org_window_seconds * 1000
 
   @spec schedule(InternalApi.Task.Task.t()) :: {:ok, Zebra.Models.Task.t()}
   def schedule(req) do
@@ -358,14 +367,26 @@ defmodule Zebra.Apis.InternalTaskApi.Schedule do
   end
 
   defp find_max_and_default_job_time_limits(org_id) do
-    if org_verified?(org_id) do
+    org = load_org(org_id)
+
+    if org_verified?(org) do
       {@max_job_execution_time_limit, @default_job_execution_time_limit}
     else
-      find_feature_based_job_time_limits(org_id)
+      find_feature_based_job_time_limits(org_id, org)
     end
   end
 
-  defp find_feature_based_job_time_limits(org_id) do
+  defp find_feature_based_job_time_limits(org_id, org) do
+    if fresh_org?(org) do
+      # Force one fresh read so a feature enabled early in the org's life
+      # (e.g. the free-tier job time limit) isn't hidden behind a cache
+      # entry primed before it was set. This only changes where the value
+      # comes from, never what an absent feature resolves to below: if the
+      # fresh fetch itself fails, it isn't cached, so the reads that follow
+      # behave exactly as they would have without this call.
+      maybe_reload_features(org_id)
+    end
+
     if FeatureProvider.feature_enabled?(:max_job_execution_time_limit, param: org_id) do
       max_limit = FeatureProvider.feature_quota(:max_job_execution_time_limit, param: org_id)
 
@@ -382,12 +403,59 @@ defmodule Zebra.Apis.InternalTaskApi.Schedule do
     end
   end
 
-  defp org_verified?(org_id) do
+  # `configure_execution_time_limit/2` runs once per job, inside the
+  # scheduling transaction. Without gating, a fresh org fanning out N jobs
+  # (one request or a burst of requests within the fresh-org window) would
+  # fire N synchronous FeatureProvider.list_features(reload: true, ...)
+  # calls -- each a real gRPC round trip held open inside that job's DB
+  # transaction, since `reload: true` never consults the cache first. Force
+  # at most one reload per org per fresh-org window instead, via a marker in
+  # the same Zebra.Cache the org load already uses.
+  #
+  # The marker is set on *attempt*, not on success: even if the reload
+  # itself errors, the marker still gets written so the rest of the burst
+  # doesn't retry it job-by-job. That means a reload failure leaves the org
+  # on today's default (24h) for the remainder of the window -- exactly
+  # today's pre-fix behavior -- and self-heals on the next window. A
+  # handful of jobs racing the first marker write may each trigger a reload
+  # before the marker lands; that's acceptable, the goal is killing the
+  # N-scale amplifier, not exactly-once semantics, so no locking here.
+  defp maybe_reload_features(org_id) do
+    Zebra.Cache.fetch!(
+      "feature-reload-done-#{org_id}",
+      @fresh_org_reload_marker_ttl_ms,
+      fn ->
+        FeatureProvider.list_features(reload: true, param: org_id)
+        {:commit, true}
+      end
+    )
+
+    :ok
+  end
+
+  defp load_org(org_id) do
     case Zebra.Workers.Scheduler.Org.load(org_id) do
-      {:ok, org} -> org.verified
-      _ -> false
+      {:ok, org} -> org
+      _ -> nil
     end
   end
+
+  defp org_verified?(nil), do: false
+  defp org_verified?(org), do: org.verified
+
+  defp fresh_org?(nil), do: false
+  defp fresh_org?(%Zebra.Workers.Scheduler.Org{created_at: nil}), do: false
+
+  defp fresh_org?(%Zebra.Workers.Scheduler.Org{created_at: %{seconds: created_at_seconds}}) do
+    DateTime.utc_now() |> DateTime.to_unix() |> Kernel.-(created_at_seconds) <
+      @fresh_org_window_seconds
+  end
+
+  # Defense-in-depth: the real proto's created_at is always either nil or a
+  # %Google.Protobuf.Timestamp{} (both handled above). A catch-all keeps any
+  # unexpected shape from raising a FunctionClauseError inside the schedule
+  # transaction.
+  defp fresh_org?(_), do: false
 
   def encode_fail_fast_strategy(strategy) do
     alias InternalApi.Task.ScheduleRequest.FailFast, as: FF
