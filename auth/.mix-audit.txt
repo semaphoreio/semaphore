@@ -17,4 +17,36 @@ GHSA-pj7v-xfvx-wmjq
 # deferred pending an explicit-struct sweep of the encode sites.
 GHSA-rv48-qqj5-crxg
 
+# --- grpc 0.11.5 advisories, all first patched in grpc 1.0.0 ---
+# grpc is used purely as a client (GRPC.Stub) against internal backend services: there is no
+# `use GRPC.Server` and no GRPC.Server.Supervisor in lib/, so the server-side code paths
+# below are not started here. The fix is grpc 1.0.0 — a breaking major shared across the
+# monorepo, tracked as a coordinated migration (see ee/audit/.mix-audit.txt).
+#
+# RCE via :erlang.binary_to_term in GRPC.Codec.Erlpack.decode/2 (critical). Requires a server
+# that registers the Erlpack codec and accepts application/grpc+erlpack; no app in this repo
+# registers any custom codec (repo-wide grep for Erlpack/codecs: is empty), so the vulnerable
+# decode path is unreachable.
+GHSA-grp7-v8xh-rj7h
+# Decompression bomb in GRPC.Compressor.Gzip.decompress/1 (high) — fires on frames arriving
+# at a server with grpc-encoding: gzip; availability-only.
+GHSA-6ccx-9c9f-327w
+# Unbounded request-body accumulation in read_full_body/3 (high) — the server request read
+# loop; availability-only.
+GHSA-q8gf-9rvj-gmgj
+# Path bindings overridable by query string/request body (high) — applies only to servers
+# using HTTP transcoding path bindings (google.api.http); not used here.
+GHSA-mwr4-5g34-j5cq
 
+# --- gun 2.2.0 advisories, first patched in gun 2.4.0 ---
+# gun is the gRPC client transport (via grpc/grpc_gun) to fixed internal service endpoints;
+# no user-supplied hosts, paths or headers reach it. The gun version is pinned by the grpc
+# dependency, so the bump rides the grpc 1.0.0 migration.
+# unexpected status code / return value handling (high)
+GHSA-2j82-37xg-f9wp
+# uncontrolled resource consumption (high)
+GHSA-r53j-fjj5-mv77
+# gun_http2 origin validation error (moderate)
+GHSA-36w4-95hv-5vwg
+# HTTP request/response splitting shared with cowboy (moderate)
+GHSA-w4f7-4cxr-rv3c

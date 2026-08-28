@@ -58,3 +58,24 @@ GHSA-w4f7-4cxr-rv3c
 # protobuf 0.12.0 — unbounded recursion depth in embedded-message decoding, fixed in 0.16.1
 # (decodes internal-service traffic only; bump tracked in the dedicated dependency PR)
 GHSA-rv48-qqj5-crxg
+
+# --- grpc 0.9.0 advisories, all first patched in grpc 1.0.0 ---
+# grpc is used purely as a client (GRPC.Stub) against internal backend services: there is no
+# `use GRPC.Server` and no GRPC.Server.Supervisor in lib/, so the server-side code paths
+# below are not started here. The fix is grpc 1.0.0 — a breaking major shared across the
+# monorepo, tracked as a coordinated migration (see ee/audit/.mix-audit.txt).
+#
+# RCE via :erlang.binary_to_term in GRPC.Codec.Erlpack.decode/2 (critical). Requires a server
+# that registers the Erlpack codec and accepts application/grpc+erlpack; no app in this repo
+# registers any custom codec (repo-wide grep for Erlpack/codecs: is empty), so the vulnerable
+# decode path is unreachable.
+GHSA-grp7-v8xh-rj7h
+# Decompression bomb in GRPC.Compressor.Gzip.decompress/1 (high) — fires on frames arriving
+# at a server with grpc-encoding: gzip; availability-only.
+GHSA-6ccx-9c9f-327w
+# Unbounded request-body accumulation in read_full_body/3 (high) — the server request read
+# loop; availability-only.
+GHSA-q8gf-9rvj-gmgj
+# Path bindings overridable by query string/request body (high) — applies only to servers
+# using HTTP transcoding path bindings (google.api.http); not used here.
+GHSA-mwr4-5g34-j5cq

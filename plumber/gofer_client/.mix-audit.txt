@@ -27,3 +27,13 @@ GHSA-hv23-4qp7-8c8r
 #   GHSA-w4f7-4cxr-rv3c — HTTP request/response splitting (shared cowboy/gun advisory)
 GHSA-r53j-fjj5-mv77
 GHSA-w4f7-4cxr-rv3c
+
+# --- grpc 0.3.1 advisories, all first patched in grpc 1.0.0 ---
+# grpc is used purely as a client (GRPC.Stub) against internal backend services: there is no
+# `use GRPC.Server` and no GRPC.Server.Supervisor in lib/, so the server-side code paths
+# below are not started here. The fix is grpc 1.0.0 — a breaking major shared across the
+# monorepo, tracked as a coordinated migration (see ee/audit/.mix-audit.txt).
+#
+# Unbounded request-body accumulation in read_full_body/3 (high) — the server request read
+# loop; availability-only.
+GHSA-q8gf-9rvj-gmgj
