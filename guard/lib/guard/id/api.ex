@@ -124,6 +124,13 @@ defmodule Guard.Id.Api do
           {:error, reason} ->
             code = Guard.Id.OAuthErrorCode.from_reason(reason)
 
+            if code == "account_taken" do
+              Watchman.increment(
+                {"guard.repo_host_account.account_taken",
+                 [to_string(repo_host), "oauth_callback"]}
+              )
+            end
+
             Logger.error(
               "Failed to update RepoHostAccount user_id=#{user_id} provider=#{repo_host} " <>
                 "code=#{code} kind=#{repo_host_error_kind(reason)}"
