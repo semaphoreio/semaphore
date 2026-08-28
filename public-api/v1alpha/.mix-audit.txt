@@ -42,3 +42,21 @@ GHSA-468c-vq7p-gh64
 # service runs scheme: :http on port 4004 behind Ambassador (TLS termination at ingress, HTTP/1.1
 # to backend). Bump blocked by grpc 0.3.1 / cowboy 2.5 — same dep chain as the entries above.
 GHSA-q8x4-x7mp-5vg2
+
+# --- grpc 0.5.0-beta.1 advisories, all first patched in grpc 1.0.0 ---
+# grpc is used purely as a client (GRPC.Stub) against internal backend services: there is no
+# `use GRPC.Server` and no GRPC.Server.Supervisor in lib/, so the server-side code paths
+# below are not started here. The fix is grpc 1.0.0 — a breaking major shared across the
+# monorepo, tracked as a coordinated migration (see ee/audit/.mix-audit.txt).
+#
+# RCE via :erlang.binary_to_term in GRPC.Codec.Erlpack.decode/2 (critical). Requires a server
+# that registers the Erlpack codec and accepts application/grpc+erlpack; no app in this repo
+# registers any custom codec (repo-wide grep for Erlpack/codecs: is empty), so the vulnerable
+# decode path is unreachable.
+GHSA-grp7-v8xh-rj7h
+# Decompression bomb in GRPC.Compressor.Gzip.decompress/1 (high) — fires on frames arriving
+# at a server with grpc-encoding: gzip; availability-only.
+GHSA-6ccx-9c9f-327w
+# Unbounded request-body accumulation in read_full_body/3 (high) — the server request read
+# loop; availability-only.
+GHSA-q8gf-9rvj-gmgj
