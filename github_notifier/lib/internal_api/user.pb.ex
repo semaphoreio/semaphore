@@ -63,11 +63,13 @@ end
 defmodule InternalApi.User.User.CreationSource do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
-  @type t :: integer | :NOT_SET | :OKTA
+  @type t :: integer | :NOT_SET | :OKTA | :SERVICE_ACCOUNT
 
   field(:NOT_SET, 0)
 
   field(:OKTA, 1)
+
+  field(:SERVICE_ACCOUNT, 2)
 end
 
 defmodule InternalApi.User.ListFavoritesRequest do
