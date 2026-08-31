@@ -83,7 +83,7 @@
   <% end %>
 
   <div class="f6 gray mb1">
-    by <%= @hook.repo_host_username %>, <time-ago datetime="<%= Timex.format!(@workflow.created_at, "%FT%T%:z", :strftime) %>"><%= Timex.format!(@workflow.created_at, "%FT%T%:z", :strftime) %></time-ago>
+    by <%= @hook.repo_host_username %>, <time-ago datetime="<%= Timex.format!(DateTime.from_unix!(@pipeline.timeline.created_at), "%FT%T%:z", :strftime) %>"><%= Timex.format!(DateTime.from_unix!(@pipeline.timeline.created_at), "%FT%T%:z", :strftime) %></time-ago>
   </div>
 
   <div class="tabs">
