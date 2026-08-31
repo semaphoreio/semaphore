@@ -45,6 +45,8 @@ defmodule Guard.Utils do
 end
 
 defmodule Guard.Utils.OAuth do
+  require Logger
+
   def handle_ok_token_response(repo_host_account, body) do
     body =
       if is_binary(body) do
@@ -55,7 +57,10 @@ defmodule Guard.Utils.OAuth do
 
     token = body["access_token"]
     expires_in = body["expires_in"]
-    refresh_token = body["refresh_token"]
+    # Some providers (e.g. GitHub) omit refresh_token on a 2xx response when
+    # the existing refresh token is still valid (not rotated) - fall back to
+    # the stored one instead of overwriting it with nil.
+    refresh_token = body["refresh_token"] || repo_host_account.refresh_token
 
     expires_at = calc_expires_at(expires_in)
 
@@ -105,6 +110,57 @@ defmodule Guard.Utils.OAuth do
     # 5 minutes before expiration
     expires_at - 300 > current_time
   end
+
+  @doc """
+  Classify a provider OAuth token-refresh HTTP response into an action the
+  caller should take:
+
+    - `:ok`        - 2xx, the token can be used
+    - `:revoked`   - genuine permanent revocation: the provider's body
+                      signals `error=invalid_grant` (all providers) or
+                      `error=bad_refresh_token` (GitHub)
+    - `:transient` - everything else, INCLUDING a bare HTTP 401 /
+                      `invalid_client` / `unauthorized_client`. Per RFC 6749
+                      those mean OUR shared client_id/client_secret was
+                      rejected, not a user's grant - treating a bare 401 as
+                      a revoke would mass-revoke every account on that
+                      provider. Also covers 403, 429, 5xx, or any other
+                      4xx. The caller MUST NOT treat `:transient` as a
+                      permanent revoke.
+  """
+  @spec classify_refresh_response(non_neg_integer(), term()) :: :ok | :revoked | :transient
+  def classify_refresh_response(status, _body) when status in 200..299, do: :ok
+
+  def classify_refresh_response(status, body) do
+    cond do
+      genuine_grant_revocation?(body) ->
+        :revoked
+
+      status == 401 ->
+        Logger.warning(
+          "Bitbucket/GitLab/GitHub OAuth client credentials rejected (HTTP 401) - " <>
+            "config issue, not a user revoke"
+        )
+
+        :transient
+
+      true ->
+        :transient
+    end
+  end
+
+  defp genuine_grant_revocation?(body) when is_map(body) do
+    Map.get(body, "error") in ["invalid_grant", "bad_refresh_token"]
+  end
+
+  defp genuine_grant_revocation?(body) when is_binary(body) do
+    case Jason.decode(body) do
+      {:ok, decoded} -> genuine_grant_revocation?(decoded)
+      _ -> false
+    end
+  end
+
+  defp genuine_grant_revocation?(_body), do: false
 end
 
 defmodule Guard.Utils.Http do
