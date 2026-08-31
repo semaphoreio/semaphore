@@ -84,6 +84,37 @@ defmodule FrontWeb.ProjectPFCControllerTest do
       html = html_response(call_show(conn, project_id), 200)
       refute html =~ "Delete pre-flight checks"
     end
+
+    test "offers both organization- and project-level secrets as selectable options",
+         %{conn: conn, project_id: project_id} = context do
+      PermissionPatrol.allow_everything(context.organization_id, context.user_id)
+
+      Support.Stubs.Secret.create("ORG_SECRET", %{level: :ORGANIZATION, project_id: ""})
+      Support.Stubs.Secret.create("PROJECT_SECRET", %{level: :PROJECT, project_id: project_id})
+
+      html = html_response(call_show(conn, project_id), 200)
+
+      assert html =~ ~s(value="ORG_SECRET")
+      assert html =~ ~s(value="PROJECT_SECRET")
+    end
+
+    test "does not offer secrets scoped to a different project",
+         %{conn: conn, project_id: project_id} = context do
+      PermissionPatrol.allow_everything(context.organization_id, context.user_id)
+
+      organization = Support.Stubs.Organization.default()
+      user = Support.Stubs.User.default()
+      other_project = Support.Stubs.Project.create(organization, user)
+
+      Support.Stubs.Secret.create("OTHER_PROJECT_SECRET", %{
+        level: :PROJECT,
+        project_id: other_project.id
+      })
+
+      html = html_response(call_show(conn, project_id), 200)
+
+      refute html =~ "OTHER_PROJECT_SECRET"
+    end
   end
 
   describe "PUT /project/:project/pre_flight_checks" do
