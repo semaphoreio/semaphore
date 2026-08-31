@@ -37,3 +37,21 @@ GHSA-rv48-qqj5-crxg
 # framing) to internal services with fixed paths and internally
 # generated metadata - no user-controlled header values.
 GHSA-w4f7-4cxr-rv3c
+
+# --- grpc 0.9.0 advisories, all first patched in grpc 1.0.0 ---
+# github_notifier runs an internal gRPC server (GithubNotifier.GrpcEndpoint / services/api.ex,
+# InternalApi.GithubNotifier.GithubNotifier.Service on port 50051, start_server: true). It is
+# reachable only from inside the cluster by authenticated Semaphore services, not from the internet.
+# The fix is grpc 1.0.0, but moving 0.9.0 -> 1.0.0 is a major upgrade that changes the grpc-elixir
+# API and cascades to gun (~> 2.0), cowboy (~> 2.10), mint (~> 1.5), protobuf and every generated
+# .pb.ex stub - a large, separately-tracked migration, not a security-patch bump. Accepted for now,
+# with the 1.0.0 migration tracked as the real fix.
+#
+# RCE via attacker-controlled gRPC payloads (critical; needs a cluster foothold or a compromised upstream service - endpoint is not exposed externally)
+GHSA-grp7-v8xh-rj7h
+# unbounded gzip decompression / decompression bomb (high; DoS; no gRPC message compression enabled here; internal-only)
+GHSA-6ccx-9c9f-327w
+# path bindings overridable by query string and request body (high; request-routing manipulation; internal-only, authenticated callers)
+GHSA-mwr4-5g34-j5cq
+# unbounded request body accumulation in read_full_body/3 (high; DoS via large HTTP/2 bodies; internal-only, bounded by ingress limits)
+GHSA-q8gf-9rvj-gmgj
