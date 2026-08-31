@@ -379,7 +379,9 @@ defmodule InternalApi.Projecthub.Project.Spec.Task do
           status: integer,
           recurring: boolean,
           parameters: [InternalApi.Projecthub.Project.Spec.Task.Parameter.t()],
-          description: String.t()
+          description: String.t(),
+          skip_scheduled_run_notifications: boolean,
+          skip_manual_run_notifications: boolean
         }
   defstruct [
     :id,
@@ -390,7 +392,9 @@ defmodule InternalApi.Projecthub.Project.Spec.Task do
     :status,
     :recurring,
     :parameters,
-    :description
+    :description,
+    :skip_scheduled_run_notifications,
+    :skip_manual_run_notifications
   ]
 
   field(:id, 1, type: :string)
@@ -402,6 +406,8 @@ defmodule InternalApi.Projecthub.Project.Spec.Task do
   field(:recurring, 7, type: :bool)
   field(:parameters, 8, repeated: true, type: InternalApi.Projecthub.Project.Spec.Task.Parameter)
   field(:description, 9, type: :string)
+  field(:skip_scheduled_run_notifications, 10, type: :bool)
+  field(:skip_manual_run_notifications, 11, type: :bool)
 end
 
 defmodule InternalApi.Projecthub.Project.Spec.Task.Parameter do
