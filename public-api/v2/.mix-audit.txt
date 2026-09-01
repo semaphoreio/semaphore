@@ -58,3 +58,24 @@ GHSA-w4f7-4cxr-rv3c
 # protobuf 0.12.0 — unbounded recursion depth in embedded-message decoding, fixed in 0.16.1
 # (decodes internal-service traffic only; bump tracked in the dedicated dependency PR)
 GHSA-rv48-qqj5-crxg
+
+# --- grpc 0.9.0 advisories, all fixed in 1.0.0 ---
+# grpc runs here as a CLIENT only: the sole network listener is Plug.Cowboy -> PublicAPI.Router
+# (public_api/application.ex), all grpc call sites are GRPC.Stub.connect toward internal services,
+# and there is no GRPC.Server. All four advisories target grpc's server role or opt-in client
+# decoding, so none is reachable from the public HTTP surface or the internal client leg. The
+# public-facing large-body / DoS surface is the Plug/Cowboy stack, covered by the cowboy/plug
+# entries above. Bump to 1.0.0 tracked for the fleet-wide dep-bump branch.
+#
+# RCE via Erlpack binary_to_term — no gRPC server ingress; erlpack codec never registered
+# (no codec: option), client uses default Proto codec, so binary_to_term is unreachable
+GHSA-grp7-v8xh-rj7h
+# unbounded gzip decompression bomb — no server decompress path; client sets no
+# :accepted_compressors, so get_compressor returns nil and :zlib.gunzip is never invoked
+GHSA-6ccx-9c9f-327w
+# path bindings overridable by query string/body — requires gRPC HTTP transcoding; public
+# routing is a plain Plug.Router, no transcode layer present
+GHSA-mwr4-5g34-j5cq
+# unbounded request body accumulation in read_full_body/3 — lives in grpc's server cowboy
+# handler; no gRPC server runs, public bodies are read by Plug.Parsers with explicit limits
+GHSA-q8gf-9rvj-gmgj
