@@ -1,6 +1,75 @@
-# decimal — "unvalidated field values" (moderate). Patched only in decimal
-# 3.0.0, which requires an Ecto major upgrade (ecto ~> 3.12 caps decimal at
-# ~> 2.0). rbac/ce is an internal gRPC service and does not parse
-# attacker-controlled input into Decimal, so the impact is not reachable here.
-# Accepted until the Ecto/decimal major upgrade is done separately.
+# decimal — unbounded exponent in `Decimal.new` (moderate). Patched only in
+# decimal 3.0.0, which requires an Ecto major upgrade (ecto ~> 3.12 caps decimal
+# at ~> 2.0; postgrex 0.22.2 already allows ~> 3.0, so Ecto is the sole cap).
+# rbac/ce is an internal gRPC service and does not parse attacker-controlled
+# input into Decimal, so the impact is not reachable here. Accepted until the
+# Ecto/decimal major upgrade is done separately.
 GHSA-rhv4-8758-jx7v
+
+# --- grpc 0.8.1 advisories, all first patched in grpc 1.0.0 ---
+# rbac/ce runs a gRPC server (lib/rbac/application.ex — GRPC.Server.Supervisor on
+# port 50051), so two of the four below are reachable code paths rather than dead
+# ones. Both of those are availability-only, and the gRPC service is an internal
+# endpoint: the k8s Service is NodePort with no Ingress/LoadBalancer
+# (helm/templates/service.yaml), so it is reached only by sibling services within
+# the same deployment, never by end users. The real fix is grpc 1.0.0, a breaking
+# major shared across the monorepo, tracked as a coordinated migration.
+#
+# UNREACHABLE — RCE / atom-table exhaustion via :erlang.binary_to_term in
+# GRPC.Codec.Erlpack.decode/2 (critical). Requires a server that registers the
+# Erlpack codec and accepts application/grpc+erlpack; rbac/ce registers no custom
+# codec (grep for Erlpack, GRPC.Codec and `codecs:` across lib/ and config/
+# returns nothing).
+GHSA-grp7-v8xh-rj7h
+# REACHABLE, BOUNDED — decompression bomb in GRPC.Compressor.Gzip.decompress/1
+# (high). Fires on frames arriving at the server with grpc-encoding: gzip.
+# Availability-only, and reachable only by internal callers per the note above.
+GHSA-6ccx-9c9f-327w
+# REACHABLE, BOUNDED — unbounded request-body accumulation in read_full_body/3
+# (high), the server request read loop. Availability-only, internal callers only.
+GHSA-q8gf-9rvj-gmgj
+# UNREACHABLE — path bindings overridable by query string and request body
+# (high). Requires HTTP transcoding of gRPC path bindings, which rbac/ce does not
+# expose.
+GHSA-mwr4-5g34-j5cq
+
+# --- mint 1.6.2 advisories, all first patched in mint 1.9.0 ---
+# UNREACHABLE — mint is pulled in only as a grpc dependency. rbac/ce's gRPC client
+# uses the default Gun adapter: no `adapter:` option is passed at any
+# GRPC.Stub.connect call site (lib/rbac/api/{organization,user,project}.ex), and
+# GRPC.Stub.connect/2 defaults to GRPC.Client.Adapters.Gun. The Mint client
+# adapter is therefore never on a runtime path, so none of the mint advisories
+# below are reachable. (The server side uses the Cowboy adapter, not Mint.)
+# CONTINUATION/HEADERS frame flood — unbounded accumulation (high).
+GHSA-2p26-p43x-fhp8
+# Unbounded `streams` map growth via PUSH_PROMISE without HEADERS (high).
+GHSA-g586-ccqf-7x4r
+# Content-Length header accepts non-RFC values (moderate).
+GHSA-mjqx-c6f6-7rc2
+# CRLF injection in request line via method/target (low).
+GHSA-2pg6-44cx-c49v
+
+# --- gun 2.1.0 advisories, all first patched in gun 2.4.0 (cowlib 2.16.0) ---
+# gun is the active gRPC client transport (default Gun adapter, see mint note),
+# but rbac/ce connects only to static, trusted internal endpoints configured via
+# INTERNAL_API_URL_* (config/runtime.exs) — never to user-controlled hosts — and
+# the request lines it emits are gRPC method paths, not free-form user input. The
+# real fix is the fleet-wide grpc/gun dep-bump branch.
+#
+# REACHABLE transport, availability-only — unexpected status code / return value
+# (high). Triggered by a malformed server response; requires a compromised
+# in-cluster peer.
+GHSA-2j82-37xg-f9wp
+# REACHABLE transport, availability-only — uncontrolled resource consumption via
+# unbounded HTTP/1.1 response buffering (high). Response-side; internal peers only.
+GHSA-r53j-fjj5-mv77
+# NOT EXPLOITABLE — gun_http2 origin validation error / cross-origin cookie
+# injection via PUSH_PROMISE authority (moderate). rbac/ce uses gun purely as a
+# gRPC transport and maintains no HTTP cookie store; peers are trusted internal
+# services.
+GHSA-36w4-95hv-5vwg
+# NOT EXPLOITABLE — cowboy/gun HTTP request/response splitting via CRLF
+# (moderate; the <2.16.0 range is cowlib's numbering and over-matches gun).
+# rbac/ce's gun request lines carry static gRPC method paths, no user-controlled
+# CRLF.
+GHSA-w4f7-4cxr-rv3c
