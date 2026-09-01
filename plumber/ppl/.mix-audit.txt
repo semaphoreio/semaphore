@@ -60,3 +60,16 @@ GHSA-pj7v-xfvx-wmjq
 #   GHSA-w4f7-4cxr-rv3c — HTTP request/response splitting (shared cowboy/gun advisory)
 GHSA-r53j-fjj5-mv77
 GHSA-w4f7-4cxr-rv3c
+
+# grpc — unbounded request body accumulation in the server read loop read_full_body/3
+# (GHSA-q8gf-9rvj-gmgj, high). Direct dep `{:grpc, "~> 0.3"}` -> 0.3.1; first patched in
+# grpc 1.0.0, a breaking major that also moves the gun/cowboy/cowlib/ranch stack, so it is
+# the coordinated fleet-wide grpc upgrade tracked in semaphoreio/semaphore#1134, not a patch.
+# REACHABLE (unlike the cowboy/cowlib entries above): plumber/ppl runs internal gRPC servers
+# (GRPC.Server.Supervisor on :50053, config start_server: true), and read_full_body/3 is on
+# the request path of every unary RPC. Accepted on exposure + impact, not unreachability:
+# availability-only (single-pod memory exhaustion, supervisor restarts), and the endpoint is
+# internal NodePort with no ingress and no external clients — reachable only by in-cluster
+# sibling services. Mirrors the accepted rationale in ee/rbac, ee/audit, guard, front,
+# notifications and hooks_processor .mix-audit.txt.
+GHSA-q8gf-9rvj-gmgj
