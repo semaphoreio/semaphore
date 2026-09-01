@@ -46,27 +46,26 @@ GHSA-mp55-p8c9-rfw2
 # headers. Real fix tracked for the fleet-wide dep-bump branch.
 GHSA-w4f7-4cxr-rv3c
 
-# --- grpc 0.8.1 — all first patched in 1.0.0 ---
-# The 1.0 major is a fleet-wide migration (codec/stub API changes plus pb
-# regeneration), deferred to a dep-bump branch.
+# --- grpc 0.8.1 advisories, all first patched in grpc 1.0.0 ---
+# Unlike front (see front/.mix-audit.txt), ee/rbac does run a gRPC server, so two of the four
+# below are reachable code paths rather than dead ones. Both of those are availability-only, and
+# the gRPC service is an internal endpoint: it is not internet-facing and is reached only by
+# sibling services within the same deployment, never by end users.
+# The real fix is grpc 1.0.0, a breaking major shared across the monorepo, tracked as a
+# coordinated migration (see ee/audit and notifications .mix-audit.txt), not a patch bump.
 #
-# RCE via attacker-controlled payloads: the sink is
-# GRPC.Codec.Erlpack.decode/2 (:erlang.binary_to_term). The handler resolves a
-# codec from the request content-type subtype, but only among the codecs
-# registered on the server, and the 0.8.x default list is
-# [GRPC.Codec.Proto, GRPC.Codec.WebText, GRPC.Codec.JSON] — erlpack is not in
-# it and ee/rbac passes no `codecs:`, so the request is rejected before
-# decoding. Not reachable without a code change.
+# UNREACHABLE — RCE / atom-table exhaustion via :erlang.binary_to_term in
+# GRPC.Codec.Erlpack.decode/2 (critical). Requires a server that registers the Erlpack codec and
+# accepts application/grpc+erlpack; ee/rbac registers no custom codec (grep for Erlpack,
+# GRPC.Codec and `codecs:` across lib/ and config/ returns nothing).
 GHSA-grp7-v8xh-rj7h
-# Path bindings overridable by query string / request body: path bindings only
-# exist under HTTP/JSON transcoding, which is opt-in (`http_transcode`).
-# ee/rbac's gRPC servers declare no http_transcode option, so there are no
-# bindings to override.
-GHSA-mwr4-5g34-j5cq
-# Unbounded request body accumulation in read_full_body/3 — availability only,
-# and only from an in-cluster caller: the gRPC listener serves internal
-# services and is not exposed through ingress.
-GHSA-q8gf-9rvj-gmgj
-# Unbounded gzip decompression (decompression bomb) — same internal-only
-# reach, availability only.
+# REACHABLE, BOUNDED — decompression bomb in GRPC.Compressor.Gzip.decompress/1 (high). Fires on
+# frames arriving at the server with grpc-encoding: gzip. Availability-only, and reachable only
+# by internal callers per the note above.
 GHSA-6ccx-9c9f-327w
+# REACHABLE, BOUNDED — unbounded request-body accumulation in read_full_body/3 (high), the server
+# request read loop. Availability-only, internal callers only.
+GHSA-q8gf-9rvj-gmgj
+# UNREACHABLE — path bindings overridable by query string and request body (high). Requires HTTP
+# transcoding of gRPC path bindings, which ee/rbac does not expose.
+GHSA-mwr4-5g34-j5cq
