@@ -13,6 +13,7 @@ namespaces = ~w(METRICS_NAMESPACE K8S_NAMESPACE)
 
 if config_env() == :prod do
   config :scheduler, Scheduler.PeriodicsRepo,
+    prepare: :unnamed,
     hostname: get_env!.("DB_HOSTNAME"),
     username: get_env!.("DB_USERNAME"),
     password: get_env!.("DB_PASSWORD"),
@@ -21,6 +22,7 @@ if config_env() == :prod do
     ssl: System.get_env("POSTGRES_DB_SSL") == "true"
 
   config :scheduler, Scheduler.FrontRepo,
+    prepare: :unnamed,
     hostname: get_env!.("DB_HOSTNAME"),
     username: get_env!.("DB_USERNAME"),
     password: get_env!.("DB_PASSWORD"),
