@@ -4,3 +4,66 @@
 # attacker-controlled input into Decimal, so the impact is not reachable here.
 # Accepted until the Ecto/decimal major upgrade is done separately.
 GHSA-rhv4-8758-jx7v
+
+# --- grpc 0.8.1 — all first patched in 1.0.0 ---
+# The 1.0 major is a fleet-wide migration (codec/stub API changes plus pb
+# regeneration), deferred to a dep-bump branch.
+#
+# RCE via attacker-controlled payloads: the sink is
+# GRPC.Codec.Erlpack.decode/2 (:erlang.binary_to_term). The handler resolves a
+# codec from the request content-type subtype, but only among the codecs
+# registered on the server, and the 0.8.x default list is
+# [GRPC.Codec.Proto, GRPC.Codec.WebText, GRPC.Codec.JSON] — erlpack is not in
+# it and rbac/ce passes no `codecs:`, so the request is rejected before
+# decoding. Not reachable without a code change.
+GHSA-grp7-v8xh-rj7h
+# Path bindings overridable by query string / request body: path bindings only
+# exist under HTTP/JSON transcoding, which is opt-in (`http_transcode`).
+# rbac/ce's gRPC servers declare no http_transcode option, so there are no
+# bindings to override.
+GHSA-mwr4-5g34-j5cq
+# Unbounded request body accumulation in read_full_body/3 — availability only,
+# and only from an in-cluster caller: the gRPC listener serves internal
+# services and is not exposed through ingress.
+GHSA-q8gf-9rvj-gmgj
+# Unbounded gzip decompression (decompression bomb) — same internal-only
+# reach, availability only.
+GHSA-6ccx-9c9f-327w
+
+# --- protobuf 0.13.0 ---
+# Unbounded recursion depth decoding embedded messages, patched in 0.16.1.
+# rbac/ce decodes internal-service traffic only, and the RBAC schema includes
+# recursive messages (roles referencing roles), so the bump to 0.16.1 is the
+# real fix — it needs pb regeneration against the 0.16 codegen and is tracked
+# in the dedicated dependency PR. Until then, reach is limited to in-cluster
+# callers and the impact is availability only.
+GHSA-rv48-qqj5-crxg
+
+# --- gun 2.1.0 — all fixed in 2.4.0 ---
+# gun is the gRPC client transport for internal-service calls only; no
+# user-controlled URLs, hosts, or request lines are fed to it. The bump is
+# coupled to the grpc 1.0 migration and tracked for the dep-bump branch.
+#
+# uncontrolled resource consumption
+GHSA-r53j-fjj5-mv77
+# unexpected status code / return value handling
+GHSA-2j82-37xg-f9wp
+# gun_http2 origin validation error
+GHSA-36w4-95hv-5vwg
+# HTTP request/response splitting (shared cowboy/gun advisory)
+GHSA-w4f7-4cxr-rv3c
+
+# --- mint 1.6.2 ---
+# mint arrives transitively via grpc 0.8.1 as an alternative client transport;
+# rbac/ce's gRPC client traffic targets fixed internal endpoints with
+# internally generated request data — no user-controlled method, target, or
+# header values reach mint. Bump coupled to the same grpc migration.
+#
+# unbounded CONTINUATION/HEADERS frame accumulation (CONTINUATION flood)
+GHSA-2p26-p43x-fhp8
+# unbounded streams map growth via PUSH_PROMISE without follow-up HEADERS
+GHSA-g586-ccqf-7x4r
+# Content-Length header accepts non-RFC "+" sign prefix
+GHSA-mjqx-c6f6-7rc2
+# potential CRLF injection in HTTP request line via unvalidated method/target
+GHSA-2pg6-44cx-c49v
