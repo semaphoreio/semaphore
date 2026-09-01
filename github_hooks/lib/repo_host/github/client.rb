@@ -34,6 +34,11 @@ module RepoHost::Github
       user_client.rate_limit.remaining()
     end
 
+    # When the bucket refills, for scheduling a deferral until budget returns.
+    def rate_limit_resets_at
+      user_client.rate_limit.resets_at()
+    end
+
     def token_valid?
       validate_token_presence!
 

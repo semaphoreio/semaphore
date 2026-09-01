@@ -7,7 +7,7 @@ module Semaphore::GithubApp
     def self.process(event, payload)
       action = payload["action"]
 
-      sync = !App.disable_collaborator_webhook_sync
+      sync = !App.disable_collaborator_sync
 
       installation_id = payload["installation"]["id"]
       repositories = map_repositories(payload["repositories"])
