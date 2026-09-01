@@ -25,6 +25,7 @@ import (
 	loghub2 "github.com/semaphoreio/semaphore/self_hosted_hub/pkg/publicapi/loghub2"
 	zebraclient "github.com/semaphoreio/semaphore/self_hosted_hub/pkg/publicapi/zebraclient"
 	quotas "github.com/semaphoreio/semaphore/self_hosted_hub/pkg/quotas"
+	ratelimit "github.com/semaphoreio/semaphore/self_hosted_hub/pkg/ratelimit"
 	"github.com/semaphoreio/semaphore/self_hosted_hub/pkg/workers/agentcounter"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
@@ -43,6 +44,7 @@ type Server struct {
 	agentCounter          *agentcounter.AgentCounter
 	publisher             *amqp.Publisher
 	httpClient            *http.Client
+	rateLimiter           *ratelimit.Limiter
 }
 
 func NewServer(
@@ -61,6 +63,7 @@ func NewServer(
 		publisher:    publisher,
 		agentCounter: agentCounter,
 		httpClient:   &httpClient,
+		rateLimiter:  ratelimit.FromEnv(),
 	}
 
 	server.timeoutHandlerTimeout = 15 * time.Second
@@ -199,6 +202,19 @@ func (s *Server) Register(w http.ResponseWriter, r *http.Request) {
 	agentType, err := findAgentType(r)
 	if err != nil {
 		respondWith404(w)
+		return
+	}
+
+	// Smooth per-org register churn. Disabled by default; when enabled it is a
+	// per-pod limit, so the effective cluster-wide rate is this value times the
+	// replica count. This gates only the agent-facing register path; the admin
+	// bulk operations (DisableAllAgents/DeleteAgentType) run on the internal API
+	// and are unaffected.
+	orgID := agentType.OrganizationID.String()
+	if !s.rateLimiter.Allow(orgID) {
+		_ = watchman.IncrementWithTags("agent.register.rate_limited", []string{orgID})
+		logging.ForAgentType(agentType).Warnf("Register rate limited for organization %s", orgID)
+		respondWith429(w)
 		return
 	}
 
@@ -551,6 +567,16 @@ func (s *Server) Disconnect(w http.ResponseWriter, r *http.Request) {
 	agent, err := findAgent(r)
 	if err != nil {
 		respondWith404(w)
+		return
+	}
+
+	// Smooth per-org disconnect churn. See the note on Register; same per-pod
+	// limiter, and admin bulk operations on the internal API are unaffected.
+	orgID := agent.OrganizationID.String()
+	if !s.rateLimiter.Allow(orgID) {
+		_ = watchman.IncrementWithTags("agent.disconnect.rate_limited", []string{orgID})
+		logging.ForAgent(agent).Warnf("Disconnect rate limited for organization %s", orgID)
+		respondWith429(w)
 		return
 	}
 
