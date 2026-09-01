@@ -11,6 +11,10 @@ defmodule PipelinesAPI.GoferClient do
      (e.g. insufficient number of params) or by Gofer service which then
      returned :BAD_PARAM as response status code
 
+   - {:error, {:refused, %{code: "REFUSED", message: message}}} - For trigger
+     requests rejected by Gofer due to business constraints. Should be returned
+     as HTTP 409.
+
    - {:error, {:internal, message}} - For all other errors, both known
      (e.g. gRPC timeouts) and unknown. In this case response should be returned
      with HTTP 5xx code.
