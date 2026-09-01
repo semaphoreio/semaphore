@@ -30,7 +30,10 @@ defmodule Audit.Application do
       {{Audit.FeatureProviderInvalidatorWorker, []}, true}
     ]
 
-    children = filter_enabled_children(children)
+    children =
+      children
+      |> filter_enabled_children()
+      |> Kernel.++(retention_worker_children())
 
     opts = [strategy: :one_for_one, name: Audit.Supervisor]
     Supervisor.start_link(children, opts)
@@ -48,6 +51,37 @@ defmodule Audit.Application do
     children
     |> Enum.filter(fn {_child, enabled} -> enabled end)
     |> Enum.map(fn {child, _} -> child end)
+  end
+
+  @doc false
+  def retention_worker_children do
+    policy_enabled = retention_policy_enabled?()
+    deleter_enabled = retention_deleter_enabled?()
+
+    children = []
+
+    children =
+      if policy_enabled do
+        children ++ [Audit.Retention.PolicyMarker]
+      else
+        children
+      end
+
+    if deleter_enabled do
+      children ++ [Audit.Retention.Deleter]
+    else
+      children
+    end
+  end
+
+  defp retention_policy_enabled? do
+    config = Application.get_env(:audit, Audit.Retention.PolicyMarker, [])
+    Keyword.get(config, :enabled, false)
+  end
+
+  defp retention_deleter_enabled? do
+    config = Application.get_env(:audit, Audit.Retention.Deleter, [])
+    Keyword.get(config, :enabled, false)
   end
 
   defp enabled?(env_var), do: System.get_env(env_var) == "true" && !IEx.started?()
