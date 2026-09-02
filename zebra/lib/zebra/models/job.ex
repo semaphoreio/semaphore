@@ -324,7 +324,8 @@ defmodule Zebra.Models.Job do
         aasm_state: state_finished(),
         finished_at: now,
         result: result_failed(),
-        failure_reason: reason
+        failure_reason: reason,
+        request: JobRequest.sanitize(job.request)
       })
 
     optimisticaly_finish_task(job)
@@ -625,7 +626,8 @@ defmodule Zebra.Models.Job do
         params = %{
           aasm_state: state_finished(),
           finished_at: now,
-          result: result
+          result: result,
+          request: JobRequest.sanitize(job.request)
         }
 
         case update(job, params) do
