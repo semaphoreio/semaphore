@@ -24,6 +24,9 @@ type PendingMetricsEmitter struct {
 	crontab          string
 	options          tackle.Options
 	projectHubClient *service.ProjectHubGrpcClient
+
+	publisherMu sync.Mutex
+	publisher   *tackle.Publisher
 }
 
 func NewPendingMetricsEmitter(options tackle.Options, projectHubServiceClient *service.ProjectHubGrpcClient, crontab string) *PendingMetricsEmitter {
@@ -198,6 +201,9 @@ func (emitter *PendingMetricsEmitter) emit(pendingMetric entity.PendingMetric, o
 	return nil
 }
 
+// publishMessage sends on one long-lived AMQP connection shared by all emitter
+// workers. Opening a connection per message (tackle.PublishMessage) exhausts the
+// egress NAT's ports on the node when a run has thousands of pending metrics.
 func (emitter *PendingMetricsEmitter) publishMessage(message []byte) (err error) {
 	params := &tackle.PublishParams{
 		Body:       message,
@@ -206,12 +212,64 @@ func (emitter *PendingMetricsEmitter) publishMessage(message []byte) (err error)
 		Exchange:   emitter.options.RemoteExchange,
 	}
 
-	if err = tackle.PublishMessage(params); HasError(err) {
-		log.Printf("failed to publish message, %v", err)
+	emitter.publisherMu.Lock()
+	defer emitter.publisherMu.Unlock()
+
+	if err = emitter.ensurePublisher(); HasError(err) {
+		log.Printf("failed to connect publisher, %v", err)
 		return
 	}
 
+	if err = emitter.publisher.Publish(params); HasError(err) {
+		emitter.resetPublisher()
+
+		if err = emitter.ensurePublisher(); HasError(err) {
+			log.Printf("failed to reconnect publisher, %v", err)
+			return
+		}
+
+		err = emitter.publisher.Publish(params)
+	}
+
+	if HasError(err) {
+		log.Printf("failed to publish message, %v", err)
+		emitter.resetPublisher()
+	}
+
 	return
+}
+
+func (emitter *PendingMetricsEmitter) ensurePublisher() error {
+	if emitter.publisher != nil {
+		return nil
+	}
+
+	publisher, err := tackle.NewPublisher(emitter.options.URL)
+	if err != nil {
+		return err
+	}
+
+	publisher.SetConnectionName("velocity-pending-metrics-emitter")
+
+	if err = publisher.Connect(); err != nil {
+		publisher.Close()
+		return err
+	}
+
+	if err = publisher.ExchangeDeclare(emitter.options.RemoteExchange); err != nil {
+		publisher.Close()
+		return err
+	}
+
+	emitter.publisher = publisher
+	return nil
+}
+
+func (emitter *PendingMetricsEmitter) resetPublisher() {
+	if emitter.publisher != nil {
+		emitter.publisher.Close()
+		emitter.publisher = nil
+	}
 }
 
 func (emitter *PendingMetricsEmitter) buildMessage(pendingMetric entity.PendingMetric, orgID string, branchName string) (message []byte, err error) {
