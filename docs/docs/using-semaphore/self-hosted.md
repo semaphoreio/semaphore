@@ -234,6 +234,14 @@ Install Erlang before you install the agent. The toolbox picks a condition evalu
 
 :::
 
+Installing Erlang is not enough on its own: `erl` and `escript` must be on the `PATH` of the shell that runs the job. Job commands run in a login shell, so a version manager such as kerl, asdf, or mise works as long as it activates Erlang from a profile file like `~/.bash_profile`. If it only activates for interactive shells, initialization jobs fail even though Erlang is installed.
+
+For the same reason, check the machine using a login shell. Running `ssh <machine> 'which escript'` uses a non-login shell and reports a false negative:
+
+```shell title="Check escript the way a job sees it"
+ssh <machine> 'bash -lc "which escript"'
+```
+
 On Ubuntu 22.04 and 24.04 you can install everything with:
 
 ```shell title="Initialization job requirements on Ubuntu"
