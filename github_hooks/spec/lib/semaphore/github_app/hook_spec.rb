@@ -297,7 +297,7 @@ module Semaphore::GithubApp
           result = described_class.process(event, payload)
 
           expect(result).to be(true)
-          expect(Semaphore::GithubApp::Repositories::Worker).to have_received(:perform_in).with(10, installation_id)
+          expect(Semaphore::GithubApp::Repositories::Worker).to have_received(:perform_in).with(10, installation_id, true)
           expect(Exceptions).to have_received(:notify).with(
             an_instance_of(Semaphore::GithubApp::Hook::NotUnique),
             hash_including(:installation_id => installation_id, :event => event, :action => "added")
@@ -354,8 +354,8 @@ module Semaphore::GithubApp
             allow(Exceptions).to receive(:notify)
           end
 
-          it "does not schedule the installation refresh" do
-            expect(Semaphore::GithubApp::Repositories::Worker).not_to receive(:perform_in)
+          it "still schedules the repository refresh with the collaborator sweep suppressed" do
+            expect(Semaphore::GithubApp::Repositories::Worker).to receive(:perform_in).with(10, installation_id, false)
 
             expect(described_class.process(event, payload)).to be(true)
           end

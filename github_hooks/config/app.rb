@@ -42,8 +42,8 @@ class App < Configurable # :nodoc:
   # DISABLE_COLLABORATOR_WEBHOOK_SYNC is the deprecated former name, read as an
   # alias so existing operators keep working.
   config.disable_collaborator_sync =
-    (SemaphoreConfig.disable_collaborator_sync ||
-     SemaphoreConfig.disable_collaborator_webhook_sync ||
+    (SemaphoreConfig.disable_collaborator_sync.presence ||
+     SemaphoreConfig.disable_collaborator_webhook_sync.presence ||
      "false") == "true"
   config.use_github_app_to_check_permissions =
     (SemaphoreConfig.use_github_app_to_check_permissions || "false") == "true"

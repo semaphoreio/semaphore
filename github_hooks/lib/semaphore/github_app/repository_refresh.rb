@@ -80,7 +80,8 @@ module Semaphore::GithubApp
     end
 
     # Fetch a single repository, cache it, and sync its collaborators. Returns a
-    # status symbol for RepositoryRefresh::Worker to log / retry on.
+    # status symbol for RepositoryRefresh::Worker to log on; raises
+    # LowRateLimitError under the reserved floor so the worker defers the retry.
     def self.fetch_and_cache_repository(installation_id, slug)
       token, _expires_at = Token.installation_token(installation_id)
       return :no_token unless token

@@ -37,7 +37,7 @@ module Semaphore::GithubApp
         :event => event,
         :action => action
       )
-      Semaphore::GithubApp::Repositories::Worker.perform_in(10, installation_id) if sync
+      Semaphore::GithubApp::Repositories::Worker.perform_in(10, installation_id, sync)
 
       true
     rescue ActiveRecord::RecordNotFound

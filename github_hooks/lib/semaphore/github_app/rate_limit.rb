@@ -28,9 +28,8 @@ module Semaphore::GithubApp
       raise LowRateLimitError.new("GitHub App REST rate limit below reserved floor", :resets_at => client.rate_limit_resets_at)
     end
 
-    # Sidekiq retry delay. A throttled job waits until the bucket resets, then
-    # disperses across the jitter window; any other failure keeps the capped
-    # exponential backoff.
+    # Sidekiq retry delay: defer a throttled job to the reset window, else keep
+    # the capped exponential backoff.
     def retry_delay(count, exception)
       return defer_delay(exception.resets_at) if exception.is_a?(LowRateLimitError)
 
