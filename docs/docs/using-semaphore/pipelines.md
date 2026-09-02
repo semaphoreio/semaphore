@@ -157,9 +157,9 @@ When a job in the pipeline fails, the default behavior is to stop the pipeline. 
 
 ### Job-level partial rerun {#job-level-rerun}
 
-When the job-level partial rerun feature is enabled for your organization, **Rerun Failed Jobs** goes one step further inside each re-run block: jobs that already passed are *reused* instead of being executed again, and only the failed jobs actually re-run.
+**Rerun Failed Jobs** goes one step further inside each re-run block: jobs that already passed are *reused* instead of being executed again, and only the failed jobs actually re-run.
 
-Enabling the feature changes the default rebuild behavior. To keep re-running whole blocks — for the entire pipeline or for individual blocks — set the [`partial_rerun: block`](../reference/pipeline-yaml#partial-rerun) property in the pipeline YAML. Any other value is rejected when the pipeline YAML is validated.
+This is the default rebuild behavior. To keep re-running whole blocks — for the entire pipeline or for individual blocks — set the [`partial_rerun: block`](../reference/pipeline-yaml#partial-rerun) property in the pipeline YAML. Any other value is rejected when the pipeline YAML is validated.
 
 A reused job does not re-execute and does not occupy an agent. It is marked as `reused` in the pipeline and workflow views, and opening it takes you to the job that produced the results — with its logs, artifacts, and test results.
 
@@ -170,7 +170,7 @@ There are two ways a job ends up reused, and the rebuild picks whichever applies
 
 Jobs that re-execute receive `SEMAPHORE_JOB_RERUN=true` and the [`SEMAPHORE_JOB_ORIGINAL_ID`](../reference/env-vars#job-original-id) environment variable pointing at their previous attempt, so CI scripts can fetch the prior run's artifacts or compare test results.
 
-If the original block's job layout cannot be matched safely (for example, the pipeline definition changed between runs), Semaphore falls back to re-running the whole block, which is the same behavior as without the feature.
+If the original block's job layout cannot be matched safely (for example, the pipeline definition changed between runs), Semaphore falls back to re-running the whole block, which is the same behavior as [`partial_rerun: block`](../reference/pipeline-yaml#partial-rerun).
 
 ## Connecting pipelines with promotions {#connecting-pipelines}
 

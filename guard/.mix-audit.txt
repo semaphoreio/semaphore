@@ -36,3 +36,17 @@ GHSA-h74c-q9j7-mpcm
 GHSA-mc85-72gr-vm9f
 GHSA-q7jx-v53g-848w
 
+# --- grpc 0.5.0-beta.1 advisories, fixed in 1.0.0 ---
+# Bump to 1.0.0 is a major jump off a beta, entangled with the fleet-wide httpoison/hackney/grpc
+# upgrade noted above; it needs its own build + test pass and is tracked as an active follow-up.
+# Interim suppression, per advisory:
+#
+# Erlpack codec binary_to_term RCE. NOT reachable here: guard registers no custom codec on any
+# GRPC.Server (protobuf default only); the Erlpack codec is opt-in and never enabled.
+GHSA-grp7-v8xh-rj7h
+# gzip decompression bomb (DoS on the default path). Reachable only by an in-cluster caller of
+# guard's gRPC; internet exposure of that port is gated by cluster ingress/firewall (see launchpad2).
+GHSA-6ccx-9c9f-327w
+# unbounded request-body accumulation (DoS on the default path). Same in-cluster-only reachability.
+GHSA-q8gf-9rvj-gmgj
+

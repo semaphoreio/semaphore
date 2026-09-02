@@ -1033,7 +1033,7 @@ blocks:
       agent:
         machine:
           type: a2-standard-4
-          os_image: macos-xcode16
+          os_image: macos-xcode26
     # highlight-end
       jobs:
         - name: Build
