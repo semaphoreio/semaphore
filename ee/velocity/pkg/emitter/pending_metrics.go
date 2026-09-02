@@ -201,9 +201,6 @@ func (emitter *PendingMetricsEmitter) emit(pendingMetric entity.PendingMetric, o
 	return nil
 }
 
-// publishMessage sends on one long-lived AMQP connection shared by all emitter
-// workers. Opening a connection per message (tackle.PublishMessage) exhausts the
-// egress NAT's ports on the node when a run has thousands of pending metrics.
 func (emitter *PendingMetricsEmitter) publishMessage(message []byte) (err error) {
 	params := &tackle.PublishParams{
 		Body:       message,
