@@ -3,6 +3,7 @@ defmodule Zebra.Models.JobTest do
 
   alias Zebra.Models.Job
   alias Zebra.Workers.Agent.HostedAgent, as: Agent
+  alias Zebra.Workers.JobRequestFactory.JobRequest
 
   @org_id Ecto.UUID.generate()
   @project_id Ecto.UUID.generate()
@@ -196,6 +197,15 @@ defmodule Zebra.Models.JobTest do
       assert Job.failed?(job)
       assert job.failure_reason == "Santa said that he was naughty"
       assert Zebra.Models.Task.finished?(task)
+    end
+
+    test "sanitizes the job request" do
+      {:ok, job} = Support.Factories.Job.create(:scheduled, %{request: sensitive_request()})
+
+      assert {:ok, job} = Job.force_finish(job, "Santa said that he was naughty")
+
+      assert JobRequest.sanitized?(job.request)
+      assert JobRequest.sanitized?(Job.reload(job).request)
     end
   end
 
@@ -554,6 +564,15 @@ defmodule Zebra.Models.JobTest do
       refute is_nil(job.finished_at)
     end
 
+    test "sanitizes the job request" do
+      {:ok, job} = Support.Factories.Job.create(:started, %{request: sensitive_request()})
+
+      assert {:ok, job} = Job.finish(job, "passed")
+
+      assert JobRequest.sanitized?(job.request)
+      assert JobRequest.sanitized?(Job.reload(job).request)
+    end
+
     test "when the result is failed => finishes the job" do
       {:ok, job} = Support.Factories.Job.create(:started)
 
@@ -581,6 +600,33 @@ defmodule Zebra.Models.JobTest do
       assert Job.finished?(job)
       assert Job.passed?(job)
       assert Zebra.Models.Task.finished?(task)
+    end
+  end
+
+  describe ".sanitize_job_request" do
+    test "sanitizes the stored request" do
+      {:ok, job} = Support.Factories.Job.create(:started, %{request: sensitive_request()})
+
+      refute JobRequest.sanitized?(job.request)
+
+      Job.sanitize_job_request(job.id)
+
+      assert JobRequest.sanitized?(Job.reload(job).request)
+    end
+
+    test "when the request is already sanitized => leaves it alone" do
+      {:ok, job} = Support.Factories.Job.create(:started, %{request: sensitive_request()})
+
+      Job.sanitize_job_request(job.id)
+      sanitized = Job.reload(job).request
+
+      Job.sanitize_job_request(job.id)
+
+      assert Job.reload(job).request == sanitized
+    end
+
+    test "when the job does not exist => does not raise" do
+      assert Job.sanitize_job_request(Ecto.UUID.generate()) == :ok
     end
   end
 
@@ -840,5 +886,17 @@ defmodule Zebra.Models.JobTest do
       assert copy.organization_id == ctx.original.organization_id
       assert copy.project_id == ctx.original.project_id
     end
+  end
+
+  defp sensitive_request do
+    %{
+      "env_vars" => [
+        JobRequest.env_var("SEMAPHORE_JOB_ID", "job-id"),
+        JobRequest.env_var("MY_SECRET", "s3cr3t")
+      ],
+      "files" => [
+        JobRequest.file("/home/semaphore/.npmrc", "//registry/:_authToken=abc", "0600")
+      ]
+    }
   end
 end
