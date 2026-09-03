@@ -313,6 +313,10 @@ defmodule Zebra.Workers.JobRequestFactoryTest do
                "value" => Base.encode64(":99")
              },
              %{
+               "name" => "GIT_TERMINAL_PROMPT",
+               "value" => Base.encode64("0")
+             },
+             %{
                "name" => "TERM",
                "value" => Base.encode64("xterm")
              },
@@ -553,6 +557,10 @@ defmodule Zebra.Workers.JobRequestFactoryTest do
              %{
                "name" => "DISPLAY",
                "value" => Base.encode64(":99")
+             },
+             %{
+               "name" => "GIT_TERMINAL_PROMPT",
+               "value" => Base.encode64("0")
              },
              %{
                "name" => "TERM",
@@ -1034,6 +1042,10 @@ defmodule Zebra.Workers.JobRequestFactoryTest do
              %{
                "name" => "DISPLAY",
                "value" => Base.encode64(":99")
+             },
+             %{
+               "name" => "GIT_TERMINAL_PROMPT",
+               "value" => Base.encode64("0")
              },
              %{
                "name" => "TERM",

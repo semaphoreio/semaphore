@@ -191,7 +191,8 @@ defmodule Zebra.Workers.JobRequestFactory do
     if Job.hosted?(job.machine_type) do
       [
         JobRequest.env_var("PAGER", "cat"),
-        JobRequest.env_var("DISPLAY", ":99")
+        JobRequest.env_var("DISPLAY", ":99"),
+        JobRequest.env_var("GIT_TERMINAL_PROMPT", "0")
       ] ++ common_vars
     else
       common_vars
