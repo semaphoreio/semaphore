@@ -204,8 +204,8 @@ defmodule Zebra.Models.JobTest do
 
       assert {:ok, job} = Job.force_finish(job, "Santa said that he was naughty")
 
-      assert JobRequest.sanitized?(job.request)
-      assert JobRequest.sanitized?(Job.reload(job).request)
+      assert_fully_sanitized(job.request)
+      assert_fully_sanitized(Job.reload(job).request)
     end
   end
 
@@ -226,6 +226,14 @@ defmodule Zebra.Models.JobTest do
       assert job2.aasm_state == "finished"
       assert job2.result == "failed"
       refute is_nil(job2.finished_at)
+    end
+
+    test "sanitizes the job request" do
+      {:ok, job} = Support.Factories.Job.create(:enqueued, %{request: sensitive_request()})
+
+      Zebra.Models.Job.bulk_force_finish([job.id], "They were bad")
+
+      assert_fully_sanitized(Job.reload(job).request)
     end
   end
 
@@ -470,6 +478,15 @@ defmodule Zebra.Models.JobTest do
       end)
     end
 
+    test "sanitizes the job request" do
+      {:ok, job} = Support.Factories.Job.create(:started, %{request: sensitive_request()})
+
+      assert {:ok, job} = Job.stop(job)
+
+      assert_fully_sanitized(job.request)
+      assert_fully_sanitized(Job.reload(job).request)
+    end
+
     test "preserves whether execution ever started" do
       {:ok, enqueued_job} = Support.Factories.Job.create(:enqueued)
       {:ok, started_job} = Support.Factories.Job.create(:started)
@@ -564,13 +581,27 @@ defmodule Zebra.Models.JobTest do
       refute is_nil(job.finished_at)
     end
 
+    test "when the request is malformed => still finishes the job" do
+      malformed = %{
+        "env_vars" => [%{"name" => "MY_SECRET", "leftover" => "s3cr3t"}],
+        "compose" => %{"containers" => [%{"name" => "main"}], "image_pull_credentials" => []}
+      }
+
+      {:ok, job} = Support.Factories.Job.create(:started, %{request: malformed})
+
+      assert {:ok, job} = Job.finish(job, "passed")
+
+      assert Job.finished?(job)
+      refute secrets_present?(Job.reload(job).request)
+    end
+
     test "sanitizes the job request" do
       {:ok, job} = Support.Factories.Job.create(:started, %{request: sensitive_request()})
 
       assert {:ok, job} = Job.finish(job, "passed")
 
-      assert JobRequest.sanitized?(job.request)
-      assert JobRequest.sanitized?(Job.reload(job).request)
+      assert_fully_sanitized(job.request)
+      assert_fully_sanitized(Job.reload(job).request)
     end
 
     test "when the result is failed => finishes the job" do
@@ -608,10 +639,11 @@ defmodule Zebra.Models.JobTest do
       {:ok, job} = Support.Factories.Job.create(:started, %{request: sensitive_request()})
 
       refute JobRequest.sanitized?(job.request)
+      assert secrets_present?(job.request)
 
       Job.sanitize_job_request(job.id)
 
-      assert JobRequest.sanitized?(Job.reload(job).request)
+      assert_fully_sanitized(Job.reload(job).request)
     end
 
     test "when the request is already sanitized => leaves it alone" do
@@ -888,14 +920,46 @@ defmodule Zebra.Models.JobTest do
     end
   end
 
+  @secret_value "s3cr3t"
+  @secret_file_content "//registry/:_authToken=abc"
+
+  # Asserts on the actual values, not just JobRequest.sanitized?/1, which
+  # inspects env vars only and so cannot see an unsanitized file.
+  defp assert_fully_sanitized(request) do
+    assert JobRequest.sanitized?(request)
+
+    Enum.each(request["env_vars"], fn env_var ->
+      if env_var["name"] == "MY_SECRET" do
+        assert env_var["value"] == "{SANITIZED}"
+      end
+    end)
+
+    Enum.each(request["files"], fn file ->
+      assert file["content"] == "{SANITIZED}",
+             "file #{file["path"]} was not sanitized: #{inspect(file["content"])}"
+    end)
+
+    refute secrets_present?(request)
+  end
+
+  # Shape independent backstop: no secret material anywhere in the request.
+  defp secrets_present?(request) do
+    encoded = Poison.encode!(request)
+
+    String.contains?(encoded, Base.encode64(@secret_value)) or
+      String.contains?(encoded, Base.encode64(@secret_file_content)) or
+      String.contains?(encoded, @secret_value) or
+      String.contains?(encoded, @secret_file_content)
+  end
+
   defp sensitive_request do
     %{
       "env_vars" => [
         JobRequest.env_var("SEMAPHORE_JOB_ID", "job-id"),
-        JobRequest.env_var("MY_SECRET", "s3cr3t")
+        JobRequest.env_var("MY_SECRET", @secret_value)
       ],
       "files" => [
-        JobRequest.file("/home/semaphore/.npmrc", "//registry/:_authToken=abc", "0600")
+        JobRequest.file("/home/semaphore/.npmrc", @secret_file_content, "0600")
       ]
     }
   end
