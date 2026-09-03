@@ -540,6 +540,48 @@ defmodule Zebra.Workers.JobRequestFactory.JobRequestTest do
     end
   end
 
+  describe ".sanitize/1 with malformed collections" do
+    test "image pull credential that is not a map => does not raise" do
+      assert %{"compose" => %{"image_pull_credentials" => ["junk"]}} =
+               JobRequest.sanitize(%{
+                 "compose" => %{"containers" => [], "image_pull_credentials" => ["junk"]}
+               })
+    end
+
+    test "image_pull_credentials that is not a list => does not raise" do
+      assert %{"compose" => %{"image_pull_credentials" => "junk"}} =
+               JobRequest.sanitize(%{
+                 "compose" => %{"containers" => [], "image_pull_credentials" => "junk"}
+               })
+    end
+
+    test "containers that is not a list => does not raise" do
+      assert %{"compose" => %{"containers" => "junk"}} =
+               JobRequest.sanitize(%{
+                 "compose" => %{"containers" => "junk", "image_pull_credentials" => []}
+               })
+    end
+
+    test "env_vars that is not a list => does not raise" do
+      assert %{"env_vars" => "junk"} = JobRequest.sanitize(%{"env_vars" => "junk"})
+    end
+
+    test "files that is not a list => does not raise" do
+      assert %{"files" => "junk"} = JobRequest.sanitize(%{"files" => "junk"})
+    end
+
+    test "ssh_public_keys that is not a list => does not raise" do
+      assert %{"ssh_public_keys" => "junk"} = JobRequest.sanitize(%{"ssh_public_keys" => "junk"})
+    end
+
+    test "a request that is not a map => does not raise" do
+      assert JobRequest.sanitize("junk") == "junk"
+      assert JobRequest.sanitize(42) == 42
+      assert JobRequest.sanitize([]) == []
+      assert is_nil(JobRequest.sanitize(nil))
+    end
+  end
+
   describe "env_var" do
     test "value is nil => encodes using empty string" do
       assert JobRequest.env_var("A", nil) == %{
