@@ -39,3 +39,8 @@ GHSA-grp7-v8xh-rj7h
 # call rather than forwarding the caller's payload. No end-user-supplied compressed body reaches
 # this decoder.
 GHSA-6ccx-9c9f-327w
+
+# Availability-only — unbounded request-body accumulation in read_full_body/3, the server request
+# read loop. Same exposure as the gzip advisory above: bounded to callers that can reach zebra's
+# gRPC endpoints, which is sibling services and the gateway, not end users directly.
+GHSA-q8gf-9rvj-gmgj
