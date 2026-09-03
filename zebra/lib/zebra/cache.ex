@@ -20,7 +20,7 @@ defmodule Zebra.Cache do
     end
   end
 
-  defp with_ttl({:ignore, _value} = result, _timeout), do: result
+  defp with_ttl(result = {:ignore, _value}, _timeout), do: result
 
   defp with_ttl({:commit, value}, timeout), do: {:commit, value, ttl: timeout}
 
