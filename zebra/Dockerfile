@@ -18,6 +18,9 @@ RUN apt-get update && \
 RUN mix local.hex --force \
   && mix local.rebar --force
 
+ENV GIT_TERMINAL_PROMPT=0
+RUN git config --global http.version HTTP/1.1
+
 RUN mkdir -p ~/.ssh
 RUN touch ~/.ssh/known_hosts
 RUN ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
