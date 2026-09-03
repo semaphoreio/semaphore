@@ -324,7 +324,8 @@ defmodule Zebra.Models.Job do
         aasm_state: state_finished(),
         finished_at: now,
         result: result_failed(),
-        failure_reason: reason
+        failure_reason: reason,
+        request: JobRequest.sanitize(job.request)
       })
 
     optimisticaly_finish_task(job)
@@ -601,20 +602,6 @@ defmodule Zebra.Models.Job do
     }
   end
 
-  def sanitize_job_request(job_id) do
-    case find(job_id) do
-      {:ok, job} ->
-        if !JobRequest.sanitized?(job.request) do
-          update(job, %{
-            request: JobRequest.sanitize(job.request)
-          })
-        end
-
-      {:error, :not_found} ->
-        Logger.error("Error sanitizing '#{job_id}': not found")
-    end
-  end
-
   def finish(job, result) do
     if result == nil do
       {:error, :result_cant_be_nil}
@@ -625,7 +612,8 @@ defmodule Zebra.Models.Job do
         params = %{
           aasm_state: state_finished(),
           finished_at: now,
-          result: result
+          result: result,
+          request: JobRequest.sanitize(job.request)
         }
 
         case update(job, params) do

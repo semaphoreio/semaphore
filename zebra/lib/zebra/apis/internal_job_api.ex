@@ -296,13 +296,9 @@ defmodule Zebra.Apis.InternalJobApi do
 
       case Job.find(req.job_id) do
         {:ok, job} ->
-          # Now that the self-hosted agent will receive the job request, we can sanitize it.
-          Task.start(
-            Zebra.Models.Job,
-            :sanitize_job_request,
-            [job.id]
-          )
-
+          # Agents refetch this payload when a response is lost in transit, so it
+          # has to stay identical for the whole life of the job. The request is
+          # sanitized when the job reaches a terminal state instead.
           InternalApi.ServerFarm.Job.GetAgentPayloadResponse.new(
             payload: Poison.encode!(job.request)
           )
