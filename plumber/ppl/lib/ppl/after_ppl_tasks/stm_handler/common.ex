@@ -34,6 +34,39 @@ defmodule Ppl.AfterPplTasks.STMHandler.Common do
   defp to_str(term) when is_binary(term), do: term
   defp to_str(term), do: inspect(term)
 
+  @doc """
+  Ends an after_ppl_task that carries a terminate request but has no task on
+  Zebra yet, so nothing gets scheduled once the request is honoured.
+  """
+  def do_terminate_before_start(_after_ppl_task) do
+    {:ok, fn _, _ -> {:ok, %{state: "done", result: "stopped"}} end}
+  end
+
+  @doc """
+  Honours a terminate request for an after_ppl_task whose Zebra task is already
+  running: asks Zebra to terminate it, then reports the task's own verdict once
+  it reaches a terminal state.
+  """
+  def do_terminate_running(after_ppl_task) do
+    case Ppl.TaskClient.describe(after_ppl_task.after_task_id) do
+      {:ok, "done", result} ->
+        {:ok, fn _, _ -> {:ok, %{state: "done", result: result}} end}
+
+      {:ok, _state, _result} ->
+        request_termination(after_ppl_task)
+
+      error ->
+        {:ok, fn _, _ -> {:error, %{error_description: "#{inspect(error)}"}} end}
+    end
+  end
+
+  defp request_termination(after_ppl_task) do
+    case Ppl.TaskClient.terminate(after_ppl_task.after_task_id) do
+      {:ok, _response} -> {:ok, fn _, _ -> {:ok, %{state: "running"}} end}
+      error -> {:ok, fn _, _ -> {:error, %{error_description: "#{inspect(error)}"}} end}
+    end
+  end
+
   def after_ppl_task_done_notification_callback(query_fun) do
     STMHandler.RunningState.execute_now_with_predicate(query_fun)
   end

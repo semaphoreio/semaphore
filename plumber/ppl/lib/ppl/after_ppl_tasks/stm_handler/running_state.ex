@@ -40,6 +40,10 @@ defmodule Ppl.AfterPplTasks.STMHandler.RunningState do
     end
   end
 
+  def terminate_request_handler(after_ppl_task, request) when request in ["stop", "cancel"] do
+    Common.do_terminate_running(after_ppl_task)
+  end
+
   def terminate_request_handler(_ppl, _), do: {:ok, :continue}
 
   defp handle_error(e = {:error, _error}), do: {:ok, fn _, _ -> e end}

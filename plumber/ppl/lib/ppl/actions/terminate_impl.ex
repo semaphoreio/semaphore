@@ -6,6 +6,10 @@ defmodule Ppl.Actions.TerminateImpl do
   alias Ppl.Ppls.Model.{PplsQueries, Ppls}
   alias LogTee, as: LT
   alias Ppl.EctoRepo, as: Repo
+  alias Ppl.AfterPplTasks.Model.{AfterPplTasks, AfterPplTasksQueries}
+  alias Ppl.AfterPplTasks.STMHandler.RunningState, as: AfterPplRunningState
+  alias Ppl.AfterPplTasks.STMHandler.PendingState, as: AfterPplPendingState
+  alias Ppl.AfterPplTasks.STMHandler.WaitingState, as: AfterPplWaitingState
   alias Ppl.Ppls.STMHandler.RunningState, as: PplRunningState
   alias Ppl.Ppls.STMHandler.QueuingState, as: PplQueuingState
   import Ecto.Query
@@ -30,7 +34,7 @@ defmodule Ppl.Actions.TerminateImpl do
   defp missing_terminated_by(), do: {:error, "Invalid request - missing field requester_id."}
 
   defp terminate_ppl(_ppl, _terminated_by, "stopping"),  do: {:ok, "Pipeline termination started."}
-  defp terminate_ppl(_ppl, _terminated_by, "done"),      do: {:ok, "Pipeline termination started."}
+  defp terminate_ppl(ppl, _terminated_by, "done"),       do: terminate_after_ppl_task(ppl)
   defp terminate_ppl(ppl, terminated_by, _state) do
     ppl
     |> Ppls.changeset(termination_params(terminated_by))
@@ -55,6 +59,39 @@ defmodule Ppl.Actions.TerminateImpl do
     resp
   end
   defp trigger_state_handlers(error, _ppl_id), do: error
+
+  defp terminate_after_ppl_task(ppl) do
+    case AfterPplTasksQueries.get_by_id(ppl.ppl_id) do
+      {:ok, after_ppl_task} -> do_terminate_after_ppl_task(after_ppl_task)
+      _error -> {:ok, "Pipeline termination started."}
+    end
+  end
+
+  defp do_terminate_after_ppl_task(%{state: "done"}), do: {:ok, "Pipeline termination started."}
+
+  defp do_terminate_after_ppl_task(after_ppl_task) do
+    after_ppl_task
+    |> AfterPplTasks.changeset(after_ppl_task_termination_params())
+    |> Repo.update()
+    |> trigger_after_ppl_task_handlers(after_ppl_task.ppl_id)
+    |> respond_terminated()
+  end
+
+  defp after_ppl_task_termination_params() do
+    %{terminate_request: "stop", terminate_request_desc: "API call"}
+  end
+
+  defp trigger_after_ppl_task_handlers(resp = {:ok, _}, ppl_id) do
+    query_fun = fn query -> query |> where(ppl_id: ^ppl_id) end
+
+    query_fun |> AfterPplWaitingState.execute_now_with_predicate()
+    query_fun |> AfterPplPendingState.execute_now_with_predicate()
+    query_fun |> AfterPplRunningState.execute_now_with_predicate()
+
+    resp
+  end
+
+  defp trigger_after_ppl_task_handlers(error, _ppl_id), do: error
 
   defp respond_terminated({:ok, _}), do: {:ok, "Pipeline termination started."}
   defp respond_terminated(error), do: error
