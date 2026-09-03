@@ -31,7 +31,15 @@ func testEmitter(connect func() (*rabbit.Connection, error)) *PendingMetricsEmit
 	return emitter
 }
 
+func requireBroker(t *testing.T) {
+	if os.Getenv("RABBITMQ_URL") == "" {
+		t.Skip("RABBITMQ_URL not set; skipping broker integration test")
+	}
+}
+
 func TestPublisherDialsOncePerTick(t *testing.T) {
+	requireBroker(t)
+
 	var dials int32
 
 	emitter := testEmitter(func() (*rabbit.Connection, error) {
@@ -66,6 +74,8 @@ func TestPublisherDialsOncePerTick(t *testing.T) {
 }
 
 func TestPublisherReconnectsAfterConnectionDrop(t *testing.T) {
+	requireBroker(t)
+
 	conns := make([]*rabbit.Connection, 0, 2)
 
 	emitter := testEmitter(func() (*rabbit.Connection, error) {
@@ -91,6 +101,8 @@ func TestPublisherReconnectsAfterConnectionDrop(t *testing.T) {
 }
 
 func TestPublisherClosesConnectionAtEndOfTick(t *testing.T) {
+	requireBroker(t)
+
 	var conn *rabbit.Connection
 
 	emitter := testEmitter(func() (*rabbit.Connection, error) {
@@ -126,6 +138,8 @@ func TestOpenPublisherFailsFastWhenBrokerIsUnreachable(t *testing.T) {
 }
 
 func TestPublishStaysBoundedWhenBrokerDiesMidTick(t *testing.T) {
+	requireBroker(t)
+
 	var dials int32
 	var conn *rabbit.Connection
 
@@ -165,4 +179,58 @@ func TestPublishStaysBoundedWhenBrokerDiesMidTick(t *testing.T) {
 	}
 
 	assert.Less(t, elapsed, 5*time.Second)
+}
+
+func TestConcurrentReconnectAfterLiveDropIsRaceFree(t *testing.T) {
+	requireBroker(t)
+
+	var mu sync.Mutex
+	var conns []*rabbit.Connection
+
+	emitter := testEmitter(func() (*rabbit.Connection, error) {
+		conn, err := rabbit.Dial(testEmitterOptions().URL)
+		if err != nil {
+			return nil, err
+		}
+
+		mu.Lock()
+		conns = append(conns, conn)
+		mu.Unlock()
+		return conn, nil
+	})
+
+	require.NoError(t, emitter.openPublisher())
+	defer emitter.closePublisher()
+
+	require.NoError(t, emitter.publishMessage([]byte("establish connection")))
+	mu.Lock()
+	require.Len(t, conns, 1)
+	first := conns[0]
+	mu.Unlock()
+
+	require.NoError(t, first.Close())
+
+	wg := new(sync.WaitGroup)
+	errs := make(chan error, 50)
+
+	for i := 0; i < 50; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := emitter.publishMessage([]byte("after live drop")); err != nil {
+				errs <- err
+			}
+		}()
+	}
+
+	wg.Wait()
+	close(errs)
+
+	for err := range errs {
+		t.Errorf("publish failed after live drop: %v", err)
+	}
+
+	mu.Lock()
+	assert.Equal(t, 2, len(conns), "one initial dial plus exactly one reconnect")
+	mu.Unlock()
 }
