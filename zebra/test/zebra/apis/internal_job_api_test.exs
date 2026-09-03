@@ -929,7 +929,12 @@ defmodule Zebra.Api.InternalJobApiTest do
       alias InternalApi.ServerFarm.Job.GetAgentPayloadResponse, as: Response
       alias InternalApi.ServerFarm.Job.JobService.Stub, as: Stub
 
-      {:ok, job} = Support.Factories.Job.create(:started, %{request: agent_job_request()})
+      # GetAgentPayload is pulled by self-hosted agents; hosted jobs are pushed.
+      {:ok, job} =
+        Support.Factories.Job.create(:started, %{
+          machine_type: "s1-test",
+          request: agent_job_request()
+        })
 
       {:ok, channel} = GRPC.Stub.connect("localhost:50051")
 
