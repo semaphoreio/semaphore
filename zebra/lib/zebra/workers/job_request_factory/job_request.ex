@@ -164,7 +164,7 @@ defmodule Zebra.Workers.JobRequestFactory.JobRequest do
     end
   end
 
-  def sanitize(nil), do: nil
+  def sanitize(request) when not is_map(request), do: request
 
   def sanitize(request) do
     request
@@ -202,16 +202,13 @@ defmodule Zebra.Workers.JobRequestFactory.JobRequest do
 
   defp sanitize_logger(logger), do: logger
 
-  defp sanitize_keys(nil), do: nil
-  defp sanitize_keys([]), do: []
-
-  defp sanitize_keys(keys) do
+  defp sanitize_keys(keys) when is_list(keys) do
     Enum.map(keys, fn _key -> @sanitized end)
   end
 
-  defp sanitize_env_vars(nil), do: nil
+  defp sanitize_keys(keys), do: keys
 
-  defp sanitize_env_vars(env_vars) do
+  defp sanitize_env_vars(env_vars) when is_list(env_vars) do
     env_vars
     |> Enum.map(fn
       env_var when is_map(env_var) ->
@@ -225,6 +222,8 @@ defmodule Zebra.Workers.JobRequestFactory.JobRequest do
         env_var
     end)
   end
+
+  defp sanitize_env_vars(env_vars), do: env_vars
 
   # When sanitizing old requests, we should keep the same old structure, instead of mixing the two.
   defp sanitize_env_var(%{"unencrypted_content" => _, "name" => name}) do
@@ -267,9 +266,7 @@ defmodule Zebra.Workers.JobRequestFactory.JobRequest do
     end
   end
 
-  defp sanitize_files(nil), do: nil
-
-  defp sanitize_files(files) do
+  defp sanitize_files(files) when is_list(files) do
     files
     |> Enum.map(fn file ->
       cond do
@@ -290,6 +287,8 @@ defmodule Zebra.Workers.JobRequestFactory.JobRequest do
     end)
   end
 
+  defp sanitize_files(files), do: files
+
   defp sanitize_compose(
          compose = %{
            "containers" => containers,
@@ -305,9 +304,7 @@ defmodule Zebra.Workers.JobRequestFactory.JobRequest do
 
   defp sanitize_compose(compose), do: compose
 
-  defp sanitize_containers(nil), do: nil
-
-  defp sanitize_containers(containers) do
+  defp sanitize_containers(containers) when is_list(containers) do
     Enum.map(containers, fn
       container when is_map(container) ->
         container
@@ -319,16 +316,22 @@ defmodule Zebra.Workers.JobRequestFactory.JobRequest do
     end)
   end
 
-  defp sanitize_image_pull_credentials(nil), do: nil
+  defp sanitize_containers(containers), do: containers
 
-  defp sanitize_image_pull_credentials(credentials) do
-    Enum.map(credentials, fn credential ->
-      %{
-        "env_vars" => sanitize_env_vars(credential["env_vars"]),
-        "files" => sanitize_files(credential["files"])
-      }
+  defp sanitize_image_pull_credentials(credentials) when is_list(credentials) do
+    Enum.map(credentials, fn
+      credential when is_map(credential) ->
+        %{
+          "env_vars" => sanitize_env_vars(credential["env_vars"]),
+          "files" => sanitize_files(credential["files"])
+        }
+
+      credential ->
+        credential
     end)
   end
+
+  defp sanitize_image_pull_credentials(credentials), do: credentials
 
   #
   # On November 1st 2020, DockerHub introduced rate limits for pulling Docker
