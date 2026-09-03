@@ -22,25 +22,28 @@ GHSA-mp55-p8c9-rfw2
 GHSA-pj7v-xfvx-wmjq
 
 # --- grpc 0.5.0-beta.1 advisories, all first patched in grpc 1.0.0 ---
-# zebra does run gRPC servers (internal_job_api, internal_task_api, public_job_api and the
-# health check), so unlike front these are not dead code paths. Both are accepted for now: the
-# bump to 1.0.0 is a breaking major shared across the monorepo — front/.mix-audit.txt lists zebra
-# among the nine apps in the coordinated migration — and does not belong on an incident branch.
+# grpc 1.0.0 is a breaking major shared across the monorepo and is handled as a coordinated
+# migration (front/.mix-audit.txt carries the list), not a patch bump on a single app.
+# Reachability below is specific to the 0.5.0-beta.1 line and must be re-derived on any bump:
+# later lines auto-register codecs/compressors that this one does not.
 #
 # UNREACHABLE — RCE / atom-table exhaustion via :erlang.binary_to_term in
-# GRPC.Codec.Erlpack.decode/2 (critical). Requires a server that registers the Erlpack codec and
-# accepts application/grpc+erlpack; zebra registers no custom codec (grep for Erlpack, GRPC.Codec
-# and `codecs:` across lib/ and config/ returns nothing), so the decode path is never entered.
+# GRPC.Codec.Erlpack.decode/2 (critical). GRPC.Server defaults codecs to [GRPC.Codec.Proto] and
+# zebra registers none (grep for Erlpack, GRPC.Codec and `codecs:` across lib/ and config/ returns
+# nothing), so find_codec/2 rejects application/grpc+erlpack before decode/2 is reached. All 18
+# GRPC.Stub.connect sites pass no codec either.
 GHSA-grp7-v8xh-rj7h
 
-# Availability-only — unbounded gzip decompression (decompression bomb). zebra's gRPC endpoints
-# are cluster-internal: they are called by sibling services, and the public jobs API is reached
-# only through public-api-gateway, which terminates the end-user request and issues its own gRPC
-# call rather than forwarding the caller's payload. No end-user-supplied compressed body reaches
-# this decoder.
+# UNREACHABLE — unbounded gzip decompression (decompression bomb). On this grpc line the server
+# compressor list defaults to [] and zebra registers none, so find_compressor/2 answers
+# :unimplemented for any grpc-encoding and a compressed frame is rejected as :invalid_argument
+# before GRPC.Compressor.Gzip.decompress/1 is called. Note the advisory's PoC pins ~> 0.9, where
+# the compressor IS auto-registered — this stanza does not transfer to apps on that line.
 GHSA-6ccx-9c9f-327w
 
-# Availability-only — unbounded request-body accumulation in read_full_body/3, the server request
-# read loop. Same exposure as the gzip advisory above: bounded to callers that can reach zebra's
-# gRPC endpoints, which is sibling services and the gateway, not end users directly.
+# REACHABLE, BOUNDED — unbounded request-body accumulation in read_full_body/3 on the default
+# unary ingress path; there is no running total and no cap. Availability-only: worst case is
+# memory exhaustion in the receiving process, with no data exposure and no code execution. The
+# remaining bound is network-level rather than anything in this dependency. Accepted until the
+# grpc 1.0.0 migration; this is the stanza to revisit first.
 GHSA-q8gf-9rvj-gmgj
