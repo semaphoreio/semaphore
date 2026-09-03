@@ -213,12 +213,16 @@ defmodule Zebra.Workers.JobRequestFactory.JobRequest do
 
   defp sanitize_env_vars(env_vars) do
     env_vars
-    |> Enum.map(fn env_var ->
-      if sensitive_env_var?(env_var["name"]) do
-        sanitize_env_var(env_var)
-      else
+    |> Enum.map(fn
+      env_var when is_map(env_var) ->
+        if sensitive_env_var?(env_var["name"]) do
+          sanitize_env_var(env_var)
+        else
+          env_var
+        end
+
+      env_var ->
         env_var
-      end
     end)
   end
 
@@ -234,6 +238,14 @@ defmodule Zebra.Workers.JobRequestFactory.JobRequest do
   defp sanitize_env_var(%{"value" => _, "name" => name}) do
     env_var(name, @sanitized, encode_to_base64: false)
   end
+
+  # Fail closed: an env var we do not recognise still must not keep its value.
+  defp sanitize_env_var(env_var) do
+    env_var(env_var["name"], @sanitized, encode_to_base64: false)
+  end
+
+  # Fail closed: a name we cannot inspect is treated as sensitive.
+  defp sensitive_env_var?(name) when not is_binary(name), do: true
 
   defp sensitive_env_var?(name) do
     cond do
@@ -296,12 +308,14 @@ defmodule Zebra.Workers.JobRequestFactory.JobRequest do
   defp sanitize_containers(nil), do: nil
 
   defp sanitize_containers(containers) do
-    Enum.map(containers, fn container ->
-      %{
+    Enum.map(containers, fn
+      container when is_map(container) ->
         container
-        | "env_vars" => sanitize_env_vars(container["env_vars"]),
-          "files" => sanitize_files(container["files"])
-      }
+        |> sanitize_if_present("env_vars", fn v -> sanitize_env_vars(v) end)
+        |> sanitize_if_present("files", fn v -> sanitize_files(v) end)
+
+      container ->
+        container
     end)
   end
 
