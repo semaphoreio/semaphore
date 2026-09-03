@@ -20,7 +20,8 @@ defmodule Ppl.TaskClient.AfterPipeline do
          {:ok, {raw_jobs, task_settings}} <- split_task_def(task_definition),
          ppl_args <- Map.get(additional_params, "ppl_args", %{}),
          ppl_priority <- Map.get(ppl_args, "ppl_priority", 45),
-         {:ok, raw_jobs} <- transform_jobs(raw_jobs, ppl_args, ppl_priority),
+         inherited_limit <- Map.get(ppl, :exec_time_limit_min),
+         {:ok, raw_jobs} <- transform_jobs(raw_jobs, ppl_args, ppl_priority, inherited_limit),
          {:ok, jobs} <- merge_settings(raw_jobs, task_settings),
          {:ok, request_params} <- form_request_params(jobs, ppl_req),
          {:ok, request_params} <- form_request_token(after_ppl, request_params),
@@ -130,10 +131,10 @@ defmodule Ppl.TaskClient.AfterPipeline do
 
   ###########
 
-  defp transform_jobs(raw_jobs, ppl_args, ppl_priority) do
+  defp transform_jobs(raw_jobs, ppl_args, ppl_priority, inherited_limit) do
     Enum.reduce_while(raw_jobs, {:ok, []}, fn raw_job, {:ok, jobs} ->
       raw_job
-      |> set_exec_time_limit()
+      |> set_exec_time_limit(inherited_limit)
       |> set_priority(ppl_args, ppl_priority)
       |> case do
         {:ok, job} -> {:cont, {:ok, jobs ++ [job]}}
@@ -144,13 +145,17 @@ defmodule Ppl.TaskClient.AfterPipeline do
 
   ###########
 
-  defp set_exec_time_limit(job = %{"execution_time_limit" => limits}) do
+  defp set_exec_time_limit(job = %{"execution_time_limit" => limits}, _inherited_limit) do
     limit = Map.get(limits, "minutes", 0) + Map.get(limits, "hours", 0) * 60
 
     job |> Map.put("execution_time_limit", limit)
   end
 
-  defp set_exec_time_limit(job) when is_map(job), do: job
+  defp set_exec_time_limit(job, inherited_limit)
+       when is_map(job) and is_integer(inherited_limit) and inherited_limit > 0,
+       do: job |> Map.put("execution_time_limit", inherited_limit)
+
+  defp set_exec_time_limit(job, _inherited_limit) when is_map(job), do: job
 
   ###########
 
