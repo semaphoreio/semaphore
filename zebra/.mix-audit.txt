@@ -20,3 +20,22 @@ GHSA-gp9c-pm5m-5cxr
 GHSA-j9wq-vxxc-94wf
 GHSA-mp55-p8c9-rfw2
 GHSA-pj7v-xfvx-wmjq
+
+# --- grpc 0.5.0-beta.1 advisories, all first patched in grpc 1.0.0 ---
+# zebra does run gRPC servers (internal_job_api, internal_task_api, public_job_api and the
+# health check), so unlike front these are not dead code paths. Both are accepted for now: the
+# bump to 1.0.0 is a breaking major shared across the monorepo — front/.mix-audit.txt lists zebra
+# among the nine apps in the coordinated migration — and does not belong on an incident branch.
+#
+# UNREACHABLE — RCE / atom-table exhaustion via :erlang.binary_to_term in
+# GRPC.Codec.Erlpack.decode/2 (critical). Requires a server that registers the Erlpack codec and
+# accepts application/grpc+erlpack; zebra registers no custom codec (grep for Erlpack, GRPC.Codec
+# and `codecs:` across lib/ and config/ returns nothing), so the decode path is never entered.
+GHSA-grp7-v8xh-rj7h
+
+# Availability-only — unbounded gzip decompression (decompression bomb). zebra's gRPC endpoints
+# are cluster-internal: they are called by sibling services, and the public jobs API is reached
+# only through public-api-gateway, which terminates the end-user request and issues its own gRPC
+# call rather than forwarding the caller's payload. No end-user-supplied compressed body reaches
+# this decoder.
+GHSA-6ccx-9c9f-327w
