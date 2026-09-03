@@ -41,6 +41,9 @@ defmodule PipelinesAPI.Router do
   alias PipelinesAPI.Troubleshoot.Job, as: TroubleshootJob
   alias PipelinesAPI.ArtifactsRetentionPolicy.Update, as: UpdateArtifactsRetentionPolicy
   alias PipelinesAPI.ArtifactsRetentionPolicy.Describe, as: DescribeArtifactsRetentionPolicy
+  alias PipelinesAPI.PreFlightChecks.Describe, as: DescribePreFlightChecks
+  alias PipelinesAPI.PreFlightChecks.Apply, as: ApplyPreFlightChecks
+  alias PipelinesAPI.PreFlightChecks.Delete, as: DeletePreFlightChecks
   alias PipelinesAPI.Artifacts.List, as: ListArtifacts
   alias PipelinesAPI.Artifacts.GetSignedURL, as: GetArtifactSignedURL
   alias PipelinesAPI.TestResults.ListFlakyTests
@@ -191,6 +194,12 @@ defmodule PipelinesAPI.Router do
     via: :get,
     to: DescribeArtifactsRetentionPolicy
   )
+
+  match("/pre_flight_checks", via: :get, to: DescribePreFlightChecks)
+
+  match("/pre_flight_checks", via: :patch, to: ApplyPreFlightChecks)
+
+  match("/pre_flight_checks", via: :delete, to: DeletePreFlightChecks)
 
   match("/artifacts", via: :get, to: ListArtifacts)
   match("/artifacts/signed_url", via: :get, to: GetArtifactSignedURL)
