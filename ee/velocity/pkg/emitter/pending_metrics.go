@@ -2,6 +2,7 @@
 package emitter
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"sync"
@@ -19,14 +20,21 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+const (
+	defaultConnectionTimeout = 5 * time.Second
+	defaultPublishTimeout    = 15 * time.Second
+)
+
 type PendingMetricsEmitter struct {
 	Name             string
 	crontab          string
 	options          tackle.Options
 	projectHubClient *service.ProjectHubGrpcClient
 
-	publisherMu sync.Mutex
-	publisher   *tackle.Publisher
+	publisherOptions tackle.PublisherOptions
+	publishTimeout   time.Duration
+	publisher        *tackle.Publisher
+	publisherMu      sync.Mutex
 }
 
 func NewPendingMetricsEmitter(options tackle.Options, projectHubServiceClient *service.ProjectHubGrpcClient, crontab string) *PendingMetricsEmitter {
@@ -35,6 +43,11 @@ func NewPendingMetricsEmitter(options tackle.Options, projectHubServiceClient *s
 		crontab:          crontab,
 		options:          options,
 		projectHubClient: projectHubServiceClient,
+		publisherOptions: tackle.PublisherOptions{
+			ConnectionName:    options.ConnectionName,
+			ConnectionTimeout: defaultConnectionTimeout,
+		},
+		publishTimeout: defaultPublishTimeout,
 	}
 }
 
@@ -67,6 +80,12 @@ func (emitter *PendingMetricsEmitter) PublishPendingMetrics() (err error) {
 	log.Println(`Starting database cleanup`)
 	CleanDatabase()
 	log.Println(`Finished database cleanup`)
+
+	if err = emitter.openPublisher(); HasError(err) {
+		log.Printf("failed to connect publisher, %v", err)
+		return err
+	}
+	defer emitter.closePublisher()
 
 	wg := new(sync.WaitGroup)
 	workerCount := 20
@@ -201,55 +220,24 @@ func (emitter *PendingMetricsEmitter) emit(pendingMetric entity.PendingMetric, o
 	return nil
 }
 
-func (emitter *PendingMetricsEmitter) publishMessage(message []byte) (err error) {
-	params := &tackle.PublishParams{
-		Body:       message,
-		AmqpURL:    emitter.options.URL,
-		RoutingKey: emitter.options.RoutingKey,
-		Exchange:   emitter.options.RemoteExchange,
-	}
+func (emitter *PendingMetricsEmitter) publishMessage(message []byte) error {
+	ctx, cancel := context.WithTimeout(context.Background(), emitter.publishTimeout)
+	defer cancel()
 
 	emitter.publisherMu.Lock()
 	defer emitter.publisherMu.Unlock()
 
-	if err = emitter.ensurePublisher(); HasError(err) {
-		log.Printf("failed to connect publisher, %v", err)
-		return
-	}
-
-	if err = emitter.publisher.Publish(params); HasError(err) {
-		emitter.resetPublisher()
-
-		if err = emitter.ensurePublisher(); HasError(err) {
-			log.Printf("failed to reconnect publisher, %v", err)
-			return
-		}
-
-		err = emitter.publisher.Publish(params)
-	}
-
-	if HasError(err) {
-		log.Printf("failed to publish message, %v", err)
-		emitter.resetPublisher()
-	}
-
-	return
+	return emitter.publisher.PublishWithContext(ctx, &tackle.PublishParams{
+		Body:       message,
+		AmqpURL:    emitter.options.URL,
+		RoutingKey: emitter.options.RoutingKey,
+		Exchange:   emitter.options.RemoteExchange,
+	})
 }
 
-func (emitter *PendingMetricsEmitter) ensurePublisher() error {
-	if emitter.publisher != nil {
-		return nil
-	}
-
-	publisher, err := tackle.NewPublisher(emitter.options.URL)
+func (emitter *PendingMetricsEmitter) openPublisher() error {
+	publisher, err := tackle.NewPublisher(emitter.options.URL, emitter.publisherOptions)
 	if err != nil {
-		return err
-	}
-
-	publisher.SetConnectionName("velocity-pending-metrics-emitter")
-
-	if err = publisher.Connect(); err != nil {
-		publisher.Close()
 		return err
 	}
 
@@ -262,11 +250,13 @@ func (emitter *PendingMetricsEmitter) ensurePublisher() error {
 	return nil
 }
 
-func (emitter *PendingMetricsEmitter) resetPublisher() {
-	if emitter.publisher != nil {
-		emitter.publisher.Close()
-		emitter.publisher = nil
+func (emitter *PendingMetricsEmitter) closePublisher() {
+	if emitter.publisher == nil {
+		return
 	}
+
+	emitter.publisher.Close()
+	emitter.publisher = nil
 }
 
 func (emitter *PendingMetricsEmitter) buildMessage(pendingMetric entity.PendingMetric, orgID string, branchName string) (message []byte, err error) {
