@@ -9,6 +9,7 @@ defmodule Ppl.Actions.Test do
   alias InternalApi.Plumber.{ListRequest, ListKeysetRequest}
   alias Google.Protobuf.Timestamp
   alias Ppl.PplBlocks.Model.PplBlocksQueries
+  alias Ppl.AfterPplTasks.Model.{AfterPplTasks, AfterPplTasksQueries}
   alias Ppl.EctoRepo, as: Repo
   alias Util.Proto
 
@@ -361,6 +362,45 @@ end
 
   test "terminate test - done pipeline", ctx do
     test_termination_in_state(ctx, "done")
+  end
+
+  test "terminate test - done pipeline with a live after_pipeline task", ctx do
+    user_id = UUID.uuid4()
+    ppl_req = prepare_ppl_in_state_for_test(ctx, "done", user_id)
+
+    assert {:ok, after_ppl_task} = AfterPplTasksQueries.insert(ppl_req)
+
+    assert {:ok, _after_ppl_task} =
+             after_ppl_task
+             |> AfterPplTasks.changeset(%{state: "running", after_task_id: UUID.uuid4()})
+             |> Repo.update()
+
+    assert {:ok, message} =
+             Actions.terminate(%{"ppl_id" => ppl_req.id, "requester_id" => user_id})
+
+    assert message == "Pipeline termination started."
+
+    assert {:ok, after_ppl_task} = AfterPplTasksQueries.get_by_id(ppl_req.id)
+    assert after_ppl_task.terminate_request == "stop"
+    assert after_ppl_task.terminate_request_desc == "API call"
+  end
+
+  test "terminate test - done pipeline with an already finished after_pipeline task", ctx do
+    user_id = UUID.uuid4()
+    ppl_req = prepare_ppl_in_state_for_test(ctx, "done", user_id)
+
+    assert {:ok, after_ppl_task} = AfterPplTasksQueries.insert(ppl_req)
+
+    assert {:ok, _after_ppl_task} =
+             after_ppl_task
+             |> AfterPplTasks.changeset(%{state: "done", result: "passed"})
+             |> Repo.update()
+
+    assert {:ok, _message} =
+             Actions.terminate(%{"ppl_id" => ppl_req.id, "requester_id" => user_id})
+
+    assert {:ok, after_ppl_task} = AfterPplTasksQueries.get_by_id(ppl_req.id)
+    assert after_ppl_task.terminate_request == nil
   end
 
   defp test_termination_in_state(ctx, state) do

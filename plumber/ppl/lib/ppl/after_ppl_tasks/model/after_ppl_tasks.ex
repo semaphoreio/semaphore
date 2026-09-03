@@ -32,7 +32,7 @@ defmodule Ppl.AfterPplTasks.Model.AfterPplTasks do
 
   @valid_failed_result_reasons ~w(test stuck)
   @valid_terminated_result_reasons ~w()
-  @valid_terminate_requests ~w()
+  @valid_terminate_requests ~w(stop cancel)
 
   def changeset(model, params \\ %{}) do
     model
