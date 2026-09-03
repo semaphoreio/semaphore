@@ -1816,6 +1816,14 @@ blocks:
           value: test
         - name: DOCKER_BUILDKIT
           value: "1"
+        - name: GIT_TERMINAL_PROMPT
+          value: "0"
+        - name: GIT_CONFIG_COUNT
+          value: "1"
+        - name: GIT_CONFIG_KEY_0
+          value: "http.version"
+        - name: GIT_CONFIG_VALUE_0
+          value: "HTTP/1.1"
       prologue:
         commands:
           - checkout && cd plumber/ppl
@@ -1847,6 +1855,14 @@ blocks:
           value: test
         - name: DOCKER_BUILDKIT
           value: "1"
+        - name: GIT_TERMINAL_PROMPT
+          value: "0"
+        - name: GIT_CONFIG_COUNT
+          value: "1"
+        - name: GIT_CONFIG_KEY_0
+          value: "http.version"
+        - name: GIT_CONFIG_VALUE_0
+          value: "HTTP/1.1"
       prologue:
         commands:
           - checkout && cd plumber/ppl
