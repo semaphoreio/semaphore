@@ -634,34 +634,6 @@ defmodule Zebra.Models.JobTest do
     end
   end
 
-  describe ".sanitize_job_request" do
-    test "sanitizes the stored request" do
-      {:ok, job} = Support.Factories.Job.create(:started, %{request: sensitive_request()})
-
-      refute JobRequest.sanitized?(job.request)
-      assert secrets_present?(job.request)
-
-      Job.sanitize_job_request(job.id)
-
-      assert_fully_sanitized(Job.reload(job).request)
-    end
-
-    test "when the request is already sanitized => leaves it alone" do
-      {:ok, job} = Support.Factories.Job.create(:started, %{request: sensitive_request()})
-
-      Job.sanitize_job_request(job.id)
-      sanitized = Job.reload(job).request
-
-      Job.sanitize_job_request(job.id)
-
-      assert Job.reload(job).request == sanitized
-    end
-
-    test "when the job does not exist => does not raise" do
-      assert Job.sanitize_job_request(Ecto.UUID.generate()) == :ok
-    end
-  end
-
   describe ".detect_type" do
     test "when it is a pipeline job => pipeline_job" do
       {:ok, task} = Support.Factories.Task.create()
