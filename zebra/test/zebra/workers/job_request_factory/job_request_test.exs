@@ -494,6 +494,52 @@ defmodule Zebra.Workers.JobRequestFactory.JobRequestTest do
     end
   end
 
+  describe ".sanitize/1 with malformed requests" do
+    test "env var with neither value nor unencrypted_content => scrubbed, does not raise" do
+      assert %{"env_vars" => [%{"name" => "MY_SECRET", "value" => "{SANITIZED}"}]} =
+               JobRequest.sanitize(%{
+                 "env_vars" => [%{"name" => "MY_SECRET", "leftover" => "s3cr3t"}]
+               })
+    end
+
+    test "env var with a nil name => treated as sensitive, does not raise" do
+      assert %{"env_vars" => [%{"value" => "{SANITIZED}"}]} =
+               JobRequest.sanitize(%{"env_vars" => [%{"name" => nil, "value" => "s3cr3t"}]})
+    end
+
+    test "env var that is not a map => does not raise" do
+      assert %{"env_vars" => ["junk"]} = JobRequest.sanitize(%{"env_vars" => ["junk"]})
+    end
+
+    test "compose container missing env_vars and files => does not raise" do
+      assert %{"compose" => %{"containers" => [%{"name" => "main"}]}} =
+               JobRequest.sanitize(%{
+                 "compose" => %{
+                   "containers" => [%{"name" => "main"}],
+                   "image_pull_credentials" => []
+                 }
+               })
+    end
+
+    test "compose container with only env_vars => scrubs them, does not raise" do
+      assert %{
+               "compose" => %{
+                 "containers" => [
+                   %{"env_vars" => [%{"name" => "MY_SECRET", "value" => "{SANITIZED}"}]}
+                 ]
+               }
+             } =
+               JobRequest.sanitize(%{
+                 "compose" => %{
+                   "containers" => [
+                     %{"env_vars" => [JobRequest.env_var("MY_SECRET", "s3cr3t")]}
+                   ],
+                   "image_pull_credentials" => []
+                 }
+               })
+    end
+  end
+
   describe "env_var" do
     test "value is nil => encodes using empty string" do
       assert JobRequest.env_var("A", nil) == %{
