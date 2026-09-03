@@ -38,6 +38,12 @@ COPY plumber/looper/mix.exs plumber/looper/mix.lock ../looper/
 COPY plumber/proto/mix.exs plumber/proto/mix.lock ../proto/
 COPY plumber/spec/mix.exs plumber/spec/mix.lock ../spec/
 COPY feature_provider ../feature_provider
+
+ENV GIT_TERMINAL_PROMPT=0
+ENV GIT_CONFIG_COUNT=1
+ENV GIT_CONFIG_KEY_0=http.version
+ENV GIT_CONFIG_VALUE_0=HTTP/1.1
+
 RUN mix deps.get --only $MIX_ENV
 RUN mkdir config
 
