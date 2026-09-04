@@ -1,5 +1,5 @@
 ARG NODE_VERSION=22
-ARG ALPINE_VERSION=3.20
+ARG ALPINE_VERSION=3.22
 ARG BASE_IMAGE="node:${NODE_VERSION}-alpine${ALPINE_VERSION}"
 ARG RUNNER_IMAGE="alpine:${ALPINE_VERSION}"
 
@@ -24,8 +24,12 @@ EXPOSE 8125
 HEALTHCHECK NONE
 
 # trivyfs security updates
-RUN apk add --upgrade --no-cache && \
+RUN apk upgrade --no-cache && \
   apk add --no-cache make netcat-openbsd tcpdump && \
+  # statsd runs via `node`; drop npm + corepack (and their bundled node-tar) which
+  # are not needed at runtime and carry CVE-2026-59873 (node-tar decompression bomb).
+  rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+         /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack && \
   rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 WORKDIR /app
