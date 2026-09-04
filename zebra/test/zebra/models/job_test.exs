@@ -199,6 +199,19 @@ defmodule Zebra.Models.JobTest do
       assert Zebra.Models.Task.finished?(task)
     end
 
+    test "when sanitization raises => still finishes the job" do
+      {:ok, job} = Support.Factories.Job.create(:scheduled, %{request: sensitive_request()})
+
+      with_mock JobRequest, [:passthrough], sanitize: fn _ -> raise "boom" end do
+        assert {:ok, finished} = Job.force_finish(job, "Santa said that he was naughty")
+
+        assert Job.finished?(finished)
+        assert finished.request == %{}
+      end
+
+      assert Job.reload(job).request == %{}
+    end
+
     test "sanitizes the job request" do
       {:ok, job} = Support.Factories.Job.create(:scheduled, %{request: sensitive_request()})
 
@@ -226,6 +239,19 @@ defmodule Zebra.Models.JobTest do
       assert job2.aasm_state == "finished"
       assert job2.result == "failed"
       refute is_nil(job2.finished_at)
+    end
+
+    test "when sanitization raises => still finishes the job" do
+      {:ok, job} = Support.Factories.Job.create(:enqueued, %{request: sensitive_request()})
+
+      with_mock JobRequest, [:passthrough], sanitize: fn _ -> raise "boom" end do
+        Zebra.Models.Job.bulk_force_finish([job.id], "They were bad")
+      end
+
+      reloaded = Job.reload(job)
+
+      assert Job.finished?(reloaded)
+      assert reloaded.request == %{}
     end
 
     test "sanitizes the job request" do
@@ -376,6 +402,21 @@ defmodule Zebra.Models.JobTest do
   end
 
   describe ".start" do
+    test "when sanitization raises => still starts the job" do
+      {:ok, job} = Support.Factories.Job.create(:scheduled, %{request: sensitive_request()})
+
+      agent = %Agent{id: @agent_id, ip_address: "1.2.3.4", ctrl_port: 80}
+
+      with_mock JobRequest, [:passthrough], sanitize: fn _ -> raise "boom" end do
+        assert {:ok, started} = Job.start(job, agent, sanitize_request: true)
+
+        assert started.aasm_state == "started"
+        assert started.request == %{}
+      end
+
+      assert Job.reload(job).request == %{}
+    end
+
     test "when the job is pending => error" do
       {:ok, job} = Support.Factories.Job.create(:pending)
 
@@ -476,6 +517,19 @@ defmodule Zebra.Models.JobTest do
         assert Job.stopped?(job)
         assert Job.finished?(job)
       end)
+    end
+
+    test "when sanitization raises => still stops the job" do
+      {:ok, job} = Support.Factories.Job.create(:started, %{request: sensitive_request()})
+
+      with_mock JobRequest, [:passthrough], sanitize: fn _ -> raise "boom" end do
+        assert {:ok, stopped} = Job.stop(job)
+
+        assert Job.finished?(stopped)
+        assert stopped.request == %{}
+      end
+
+      assert Job.reload(job).request == %{}
     end
 
     test "sanitizes the job request" do
@@ -579,6 +633,19 @@ defmodule Zebra.Models.JobTest do
       assert Job.finished?(job)
       assert Job.passed?(job)
       refute is_nil(job.finished_at)
+    end
+
+    test "when sanitization raises => still finishes the job" do
+      {:ok, job} = Support.Factories.Job.create(:started, %{request: sensitive_request()})
+
+      with_mock JobRequest, [:passthrough], sanitize: fn _ -> raise "boom" end do
+        assert {:ok, finished} = Job.finish(job, "passed")
+
+        assert Job.finished?(finished)
+        assert finished.request == %{}
+      end
+
+      assert Job.reload(job).request == %{}
     end
 
     test "when the request is malformed => still finishes the job" do
