@@ -218,6 +218,15 @@ curl -X POST -H "Authorization: token <OAUTH_TOKEN>" \
     -d '{"body":"body"}'
 ```
 
+### When trying to clone a public repository hosted on GitHub, I get the following error: fatal: could not read Username for 'https://github.com'
+
+[Due to changes on how GitHub handles unauthenticated clones of public repositories](https://github.com/orgs/community/discussions/206581#discussioncomment-18269083), clones of public repositories may result in authentication being requested. Because a job is non-interactive, this results in failure.
+
+If this is occuring to you, you can configure the git client to use `HTTP/1.1`, which may resolve the issue:
+```git config --global http.version HTTP/1.1```
+
+[Otherwise, you can authenticate via the git cli](https://git-scm.com/docs/gitcredentials).
+
 ## Pipelines
 
 ### Can I insert multiline commands?
