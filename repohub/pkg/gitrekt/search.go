@@ -21,9 +21,7 @@ type SearchOptions struct {
 }
 
 func Search(repo *Repository, rev Revision, options *SearchOptions) ([]*File, error) {
-	defer watchman.BenchmarkWithTags(time.Now(), "gitrekt.Search", []string{
-		repo.HttpURL,
-	})
+	defer watchman.Benchmark(time.Now(), "gitrekt.Search")
 
 	log.Printf(
 		"Search Started. Repo %s, revision %+v",
