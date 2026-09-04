@@ -30,3 +30,23 @@ GHSA-r73h-97w8-m54h
 # protobuf 0.10.0 — unbounded recursion depth in embedded-message decoding, fixed in 0.16.1
 # (gofer only decodes internal-service traffic; bump tracked in the dedicated dependency PR)
 GHSA-rv48-qqj5-crxg
+
+# --- grpc 0.5.0 (via :grpc) — all first patched in 1.0.0 ---
+# The 1.0 major is a fleet-wide migration (codec/stub API changes plus pb
+# regeneration), deferred to a dep-bump branch.
+#
+# RCE via attacker-controlled payloads: the sink is
+# GRPC.Codec.Erlpack.decode/2 (:erlang.binary_to_term). The Cowboy handler
+# resolves a codec from the request content-type subtype but only among the
+# codecs registered on that server, and `codecs = opts[:codecs] ||
+# [GRPC.Codec.Proto]` — gofer registers none, so an
+# application/grpc+erlpack request is rejected with "No codec registered"
+# and binary_to_term is never reached. Not reachable without a code change.
+GHSA-grp7-v8xh-rj7h
+# Unbounded request body accumulation in read_full_body/3 — availability only,
+# and only from an in-cluster caller: the gRPC listener is ClusterIP, no
+# ambassador mapping targets it, so ingress body limits are not in the path.
+GHSA-q8gf-9rvj-gmgj
+# Unbounded gzip decompression (decompression bomb) on request bodies —
+# availability only, same internal-only reach, same 1.0.0 fix.
+GHSA-6ccx-9c9f-327w
