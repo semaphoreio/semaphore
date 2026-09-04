@@ -38,9 +38,7 @@ type CommitPayload struct {
 }
 
 func Commit(repo *Repository, payload CommitPayload) (rev *Revision, err error) {
-	defer watchman.BenchmarkWithTags(time.Now(), "gitrekt.commit", []string{
-		repo.HttpURL,
-	})
+	defer watchman.Benchmark(time.Now(), "gitrekt.commit")
 
 	defer func() {
 		if r := recover(); r != nil {

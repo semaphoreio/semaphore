@@ -13,7 +13,7 @@ import (
 )
 
 func UpdateOrClone(repo *Repository, revision *Revision) (string, error) {
-	defer watchman.BenchmarkWithTags(time.Now(), "gitrekt.UpdateOrClone", []string{repo.HttpURL})
+	defer watchman.Benchmark(time.Now(), "gitrekt.UpdateOrClone")
 
 	reference := extractReference(revision)
 
@@ -61,7 +61,7 @@ func (o *UpdateOrCloneOperation) Run() error {
 }
 
 func (o *UpdateOrCloneOperation) Update() error {
-	defer watchman.BenchmarkWithTags(time.Now(), "gitrekt.UpdateOrClone.Update", []string{o.Repository.HttpURL})
+	defer watchman.Benchmark(time.Now(), "gitrekt.UpdateOrClone.Update")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
 	defer cancel()
@@ -94,7 +94,7 @@ func (o *UpdateOrCloneOperation) Update() error {
 func (o *UpdateOrCloneOperation) Clone() error {
 	var err error
 
-	defer watchman.BenchmarkWithTags(time.Now(), "gitrekt.UpdateOrClone.Clone", []string{o.Repository.HttpURL})
+	defer watchman.Benchmark(time.Now(), "gitrekt.UpdateOrClone.Clone")
 
 	log.Printf("cloning %s", o.Repository.Path())
 

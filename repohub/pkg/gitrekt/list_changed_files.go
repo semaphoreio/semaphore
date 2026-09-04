@@ -16,9 +16,7 @@ const (
 )
 
 func ListChangedFiles(repo *Repository, base Revision, head Revision, comparison ListChangedFilesComparisonType) ([]string, error) {
-	defer watchman.BenchmarkWithTags(time.Now(), "gitrekt.ListChangedFiles", []string{
-		repo.HttpURL,
-	})
+	defer watchman.Benchmark(time.Now(), "gitrekt.ListChangedFiles")
 
 	log.Printf("ListChangedFiles Started. Repo: %s", repo.HttpURL)
 
