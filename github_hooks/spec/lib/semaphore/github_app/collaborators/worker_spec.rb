@@ -75,12 +75,14 @@ module Semaphore::GithubApp
         described_class.new.perform(slug, remote_id)
       end
 
-      it "raises LowRateLimitError when result is :low_rate_limit" do
-        allow(Collaborators).to receive(:refresh).and_return(:low_rate_limit)
+      it "re-raises LowRateLimitError so Sidekiq retries with a deferred backoff" do
+        allow(Rails.logger).to receive(:info)
+        allow(Collaborators).to receive(:refresh)
+          .and_raise(LowRateLimitError.new("low", :resets_at => Time.zone.at(1_000_000)))
 
         expect do
           described_class.new.perform(slug, remote_id)
-        end.to raise_error(LowRateLimitError, /rate limit too low/i)
+        end.to raise_error(LowRateLimitError)
       end
     end
 
@@ -141,6 +143,13 @@ module Semaphore::GithubApp
         high_count_delay = retry_block.call(20, StandardError.new, {})
 
         expect(high_count_delay).to eq(max_delay)
+      end
+
+      it "delegates to RateLimit.retry_delay so rate-limit errors defer to the reset window" do
+        error = LowRateLimitError.new("low", :resets_at => Time.now + 300)
+        allow(Semaphore::GithubApp::RateLimit).to receive(:retry_delay).with(2, error).and_return(4321)
+
+        expect(described_class.sidekiq_retry_in_block.call(2, error, {})).to eq(4321)
       end
     end
 
@@ -236,7 +245,8 @@ module Semaphore::GithubApp
           item = Sidekiq::Queue.new("github_app").first.item
 
           # 2. Job fails because of rate limit — lock is NOT released
-          allow(Collaborators).to receive(:refresh).and_return(:low_rate_limit)
+          allow(Collaborators).to receive(:refresh)
+            .and_raise(LowRateLimitError.new("low", :resets_at => Time.zone.at(1_000_000)))
 
           middleware = SidekiqUniqueJobs::Middleware::Server.new
           expect do
@@ -335,7 +345,8 @@ module Semaphore::GithubApp
       it "does NOT release lock after :low_rate_limit (job will retry)" do
         SidekiqUniqueJobs.use_config(enabled: true) do
           allow(Rails.logger).to receive(:info)
-          allow(Collaborators).to receive(:refresh).and_return(:low_rate_limit)
+          allow(Collaborators).to receive(:refresh)
+            .and_raise(LowRateLimitError.new("low", :resets_at => Time.zone.at(1_000_000)))
 
           jid = described_class.perform_async(slug, remote_id)
           expect(jid).not_to be_nil
