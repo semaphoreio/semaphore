@@ -603,144 +603,281 @@ defmodule Zebra.Apis.InternalTaskApi.ScheduleTest do
     end
   end
 
-  describe ".configure_execution_time_limit for very new orgs (feature-cache bypass window)" do
-    # The forced reload is now gated through Zebra.Cache.fetch! (Cachex),
-    # whose fallback runs inside Cachex's own courier process rather than the
-    # test process. Mox's default per-process mode would reject those calls;
-    # global mode (same pattern as scheduler_test.exs) lets the stub answer
-    # regardless of which process calls it.
-    setup :set_mox_global
-
+  describe ".configure_execution_time_limit for orgs with no limit provisioned yet" do
     setup do
       Cachex.clear(:zebra_cache)
       :ok
     end
 
-    test "young org: feature absent on a plain read but present on the forced reload => feature limit applies" do
+    test "young org whose feature carries a quota but is not enabled => held at that quota" do
       org_id = UUID.uuid4()
 
-      # created 60s ago: inside the 15-minute fresh-org window
+      # created 60s ago: inside the 15-minute window
       stub_org_describe(org_username: "fresh-org", verified: false, age_seconds: 60)
 
-      # The test env's feature_provider has no cache in front of it (see
-      # config/runtime.exs), so a plain (non-reload) read and a reload read
-      # both hit this stub directly. To exercise the same "stale cache
-      # becomes visible" contract the fix relies on in production, model the
-      # cache with an Agent: the feature starts absent (as a stale cache
-      # entry primed before the org existed would show), and only the forced
-      # `reload: true` read "warms" it, matching what a real cache would do.
-      {:ok, cache} = Agent.start_link(fn -> false end)
+      # What an org with no limit of its own gets: not enabled, but still
+      # carrying the platform-wide quota. Contrast with [:hidden] alone,
+      # which is quantity 0.
+      stub_job_time_limit_feature(org_id, [:hidden, {:quantity, 30}])
 
-      stub(Support.MockedProvider, :provide_features, fn ^org_id, opts ->
-        if Keyword.get(opts, :reload), do: Agent.update(cache, fn _ -> true end)
+      # nothing requested => the default comes down together with the max
+      assert 30 * 60 == Schedule.configure_execution_time_limit(org_id, 0)
 
-        if Agent.get(cache, & &1) do
-          {:ok,
-           [
-             Support.StubbedProvider.feature("max_job_execution_time_limit", [
-               :enabled,
-               {:quantity, 30}
-             ])
-           ]}
-        else
-          {:ok, [Support.StubbedProvider.feature("max_job_execution_time_limit", [:hidden])]}
-        end
+      # a request under the cap is still honoured
+      assert 15 * 60 == Schedule.configure_execution_time_limit(org_id, 15)
+
+      # a request over the cap falls back to the *capped* default, not to 24h.
+      # If only the max came down, this would hand the whole day straight back.
+      assert 30 * 60 == Schedule.configure_execution_time_limit(org_id, 24 * 60)
+    end
+
+    test "the same feature shape on an older org is left alone" do
+      org_id = UUID.uuid4()
+
+      # created 20 minutes ago: outside the window. Past it, "not enabled with
+      # a quota" is ambiguous -- an established org can show it too -- so
+      # nothing is capped.
+      stub_org_describe(org_username: "old-org", verified: false, age_seconds: 20 * 60)
+      stub_job_time_limit_feature(org_id, [:hidden, {:quantity, 30}])
+
+      assert @default_job_execution_time_limit ==
+               Schedule.configure_execution_time_limit(org_id, 0)
+
+      assert 180 * 60 == Schedule.configure_execution_time_limit(org_id, 180)
+    end
+
+    test "young org whose limit was deliberately lifted (quota 0) keeps the 24h default" do
+      org_id = UUID.uuid4()
+
+      # The shape an org gets when its limit is lifted: not enabled, quota 0.
+      # Age must not matter here.
+      stub_org_describe(org_username: "exempt-org", verified: false, age_seconds: 60)
+      stub_job_time_limit_feature(org_id, [:hidden])
+
+      assert @default_job_execution_time_limit ==
+               Schedule.configure_execution_time_limit(org_id, 0)
+
+      assert 180 * 60 == Schedule.configure_execution_time_limit(org_id, 180)
+    end
+
+    test "young org on an install that does not carry the feature keeps the 24h default" do
+      org_id = UUID.uuid4()
+
+      # A self-hosted install: max_job_execution_time_limit is not in the
+      # features YAML at all, so every org would otherwise look unprovisioned.
+      stub_org_describe(org_username: "self-hosted-org", verified: false, age_seconds: 60)
+
+      stub(Support.MockedProvider, :provide_features, fn
+        ^org_id, _opts -> {:ok, []}
+        other_org, opts -> Support.StubbedProvider.provide_features(other_org, opts)
       end)
 
-      # invalid request => falls to the default, which is now the feature's 30 min
+      assert @default_job_execution_time_limit ==
+               Schedule.configure_execution_time_limit(org_id, 0)
+
+      assert 180 * 60 == Schedule.configure_execution_time_limit(org_id, 180)
+    end
+
+    test "young org whose feature provider errors keeps the 24h default" do
+      org_id = UUID.uuid4()
+
+      # Capping the whole fleet during a FeatureHub outage would be worse than
+      # the leak this closes, so the error path stays fail-open.
+      stub_org_describe(org_username: "degraded-org", verified: false, age_seconds: 60)
+
+      stub(Support.MockedProvider, :provide_features, fn
+        ^org_id, _opts -> {:error, :timeout}
+        other_org, opts -> Support.StubbedProvider.provide_features(other_org, opts)
+      end)
+
+      assert @default_job_execution_time_limit ==
+               Schedule.configure_execution_time_limit(org_id, 0)
+
+      assert 180 * 60 == Schedule.configure_execution_time_limit(org_id, 180)
+    end
+
+    test "young org already provisioned uses the feature's own limit" do
+      org_id = UUID.uuid4()
+
+      stub_org_describe(org_username: "provisioned-org", verified: false, age_seconds: 60)
+      stub_job_time_limit_feature(org_id, [:enabled, {:quantity, 30}])
+
+      assert 30 * 60 == Schedule.configure_execution_time_limit(org_id, 0)
+      assert 15 * 60 == Schedule.configure_execution_time_limit(org_id, 15)
+    end
+
+    test "an enabled feature with a zero quota does not resolve to a zero time limit" do
+      org_id = UUID.uuid4()
+
+      stub_org_describe(org_username: "zero-quota-org", verified: false, age_seconds: 60)
+      stub_job_time_limit_feature(org_id, [:enabled, {:quantity, 0}])
+
+      assert @default_job_execution_time_limit ==
+               Schedule.configure_execution_time_limit(org_id, 0)
+    end
+
+    test "the production feature shape (:disabled, not :hidden) is capped the same way" do
+      org_id = UUID.uuid4()
+
+      # StubbedProvider's :hidden trait yields state: :hidden, but
+      # FeatureHubProvider maps the wire state to :disabled -- the atom
+      # :hidden never occurs in production. Assert the real shape too, so the
+      # other tests in this block cannot be the only thing pinning the clause.
+      stub_org_describe(org_username: "prod-shape-org", verified: false, age_seconds: 60)
+
+      stub(Support.MockedProvider, :provide_features, fn
+        ^org_id, _opts ->
+          {:ok,
+           [
+             %FeatureProvider.Feature{
+               type: "max_job_execution_time_limit",
+               state: :disabled,
+               quantity: 30
+             }
+           ]}
+
+        other_org, opts ->
+          Support.StubbedProvider.provide_features(other_org, opts)
+      end)
+
+      assert 30 * 60 == Schedule.configure_execution_time_limit(org_id, 0)
+      assert 30 * 60 == Schedule.configure_execution_time_limit(org_id, 24 * 60)
+    end
+
+    test "a quota below the floor cannot shorten jobs past the platform minimum" do
+      org_id = UUID.uuid4()
+
+      # the quota is configured elsewhere and has no floor of its own: a stray
+      # edit to 1 must not hand every young org one-minute jobs
+      stub_org_describe(org_username: "tiny-quota-org", verified: false, age_seconds: 60)
+      stub_job_time_limit_feature(org_id, [:hidden, {:quantity, 1}])
+
+      assert 30 * 60 == Schedule.configure_execution_time_limit(org_id, 0)
+      refute 60 == Schedule.configure_execution_time_limit(org_id, 0)
+    end
+
+    test "the fresh-org window boundary" do
+      org_id = UUID.uuid4()
+      stub_job_time_limit_feature(org_id, [:hidden, {:quantity, 30}])
+
+      stub_org_describe(org_username: "just-inside", verified: false, age_seconds: 15 * 60 - 5)
+      Cachex.clear(:zebra_cache)
+      assert 30 * 60 == Schedule.configure_execution_time_limit(org_id, 0)
+
+      stub_org_describe(org_username: "just-outside", verified: false, age_seconds: 15 * 60 + 5)
+      Cachex.clear(:zebra_cache)
+
+      assert @default_job_execution_time_limit ==
+               Schedule.configure_execution_time_limit(org_id, 0)
+    end
+
+    test "a created_at a few seconds in the future is still fresh" do
+      org_id = UUID.uuid4()
+
+      # Ordinary clock skew between this pod and the organization API. The very
+      # first job of a just-created org must not fall to 24h because the two
+      # clocks disagree by a second.
+      stub_org_describe(org_username: "skewed-org", verified: false, age_seconds: -5)
+      stub_job_time_limit_feature(org_id, [:hidden, {:quantity, 30}])
+
       assert 30 * 60 == Schedule.configure_execution_time_limit(org_id, 0)
     end
 
-    test "old org: an absent feature is unaffected by the bypass, default stays 24h" do
+    test "a created_at far in the future is not treated as fresh" do
       org_id = UUID.uuid4()
 
-      # created 20 minutes ago: outside the 15-minute fresh-org window
-      stub_org_describe(org_username: "old-org", verified: false, age_seconds: 20 * 60)
-
-      # Same stateful contract as the young-org test above, but this stub
-      # doesn't need an Agent: a reload read would find the feature PRESENT
-      # (quota 30) while a plain read stays absent. A stub that ignored
-      # `opts` (the previous version of this test) would pass even if
-      # fresh_org? were inverted -- it only proves "absent stays absent". If
-      # the old org ever triggered the reload, this would surface as 1800
-      # instead of the untouched default, so this actually falsifies a
-      # broken youth boundary.
-      stub(Support.MockedProvider, :provide_features, fn ^org_id, opts ->
-        if Keyword.get(opts, :reload) do
-          {:ok,
-           [
-             Support.StubbedProvider.feature("max_job_execution_time_limit", [
-               :enabled,
-               {:quantity, 30}
-             ])
-           ]}
-        else
-          {:ok, [Support.StubbedProvider.feature("max_job_execution_time_limit", [:hidden])]}
-        end
-      end)
+      # An hour ahead is not skew. Fall through to the unchanged default.
+      stub_org_describe(org_username: "corrupt-org", verified: false, age_seconds: -3600)
+      stub_job_time_limit_feature(org_id, [:hidden, {:quantity, 30}])
 
       assert @default_job_execution_time_limit ==
                Schedule.configure_execution_time_limit(org_id, 0)
     end
 
-    test "young org: the forced reload erroring falls open to the unchanged default (no crash)" do
+    test "a self-hosted install is never capped, whatever its features YAML says" do
       org_id = UUID.uuid4()
 
-      stub_org_describe(org_username: "fresh-org-error", verified: false, age_seconds: 60)
+      # A YamlProvider entry of `enabled: false` with an explicit quantity
+      # produces the same not-enabled + non-zero shape as the SaaS fallback.
+      # Self-hosted has no provisioning step, so it must resolve to 24h anyway.
+      stub_org_describe(org_username: "onprem-org", verified: false, age_seconds: 60)
+      stub_job_time_limit_feature(org_id, [:hidden, {:quantity, 30}])
 
-      stub(Support.MockedProvider, :provide_features, fn ^org_id, opts ->
-        if Keyword.get(opts, :reload) do
-          raise "simulated feature provider failure"
-        else
-          {:ok, [Support.StubbedProvider.feature("max_job_execution_time_limit", [:hidden])]}
-        end
-      end)
+      System.put_env("ON_PREM", "true")
+      on_exit(fn -> System.delete_env("ON_PREM") end)
 
       assert @default_job_execution_time_limit ==
                Schedule.configure_execution_time_limit(org_id, 0)
+
+      assert 180 * 60 == Schedule.configure_execution_time_limit(org_id, 180)
+    end
+  end
+
+  describe ".schedule job time limit resolution" do
+    setup do
+      Cachex.clear(:zebra_cache)
+      :ok
     end
 
-    test "young org scheduling many jobs only forces the reload once per window" do
+    test "resolves the org's limits once per task and applies them to every job" do
       org_id = UUID.uuid4()
+      req = %{construct_example_schedule_request(Ecto.UUID.generate()) | org_id: org_id}
 
-      # A fresh org fanning out several jobs calls configure_execution_time_limit
-      # once per job (see schedule.ex's create_job/create_task_job loop). Without
-      # the marker gate, each call would fire its own reload: true round trip.
-      stub_org_describe(org_username: "fresh-org-burst", verified: false, age_seconds: 60)
+      stub_org_describe(org_username: "fresh-org-task", verified: false, age_seconds: 60)
 
-      {:ok, reload_count} = Agent.start_link(fn -> 0 end)
-      {:ok, cache} = Agent.start_link(fn -> false end)
+      {:ok, calls} = Agent.start_link(fn -> 0 end)
 
-      stub(Support.MockedProvider, :provide_features, fn ^org_id, opts ->
-        if Keyword.get(opts, :reload) do
-          Agent.update(reload_count, &(&1 + 1))
-          Agent.update(cache, fn _ -> true end)
-        end
+      stub(Support.MockedProvider, :provide_features, fn
+        ^org_id, _opts ->
+          Agent.update(calls, &(&1 + 1))
 
-        if Agent.get(cache, & &1) do
           {:ok,
            [
              Support.StubbedProvider.feature("max_job_execution_time_limit", [
-               :enabled,
+               :hidden,
                {:quantity, 30}
              ])
            ]}
-        else
-          {:ok, [Support.StubbedProvider.feature("max_job_execution_time_limit", [:hidden])]}
-        end
+
+        other_org, opts ->
+          Support.StubbedProvider.provide_features(other_org, opts)
       end)
 
-      for _ <- 1..5 do
-        assert 30 * 60 == Schedule.configure_execution_time_limit(org_id, 0)
-      end
+      assert {:ok, task} = Schedule.schedule(req)
+      task = Repo.preload(task, [:jobs])
 
-      assert Agent.get(reload_count, & &1) == 1
+      first_job = Enum.find(task.jobs, &(&1.name == "Papa"))
+      second_job = Enum.find(task.jobs, &(&1.name == "Papa2"))
+
+      # job 1 asks for 5 minutes, under the cap, and gets it
+      assert first_job.execution_time_limit == 5 * 60
+      # job 2 asks for 48h, over the cap, and falls to the capped default
+      assert second_job.execution_time_limit == 30 * 60
+
+      # Resolved once for the whole task, not once per job: the limits are a
+      # property of the org, and the lookup must not sit inside the
+      # scheduling transaction.
+      assert Agent.get(calls, & &1) == 1
     end
   end
 
   #
   # Utils
   #
+
+  # Stubs the max_job_execution_time_limit feature for one org, delegating
+  # every other org id to the default StubbedProvider. A stub that matched only
+  # `^org_id` would raise FunctionClauseError for any concurrent lookup of a
+  # different org, surfacing as unrelated tests failing on some seeds.
+  defp stub_job_time_limit_feature(org_id, traits) do
+    stub(Support.MockedProvider, :provide_features, fn
+      ^org_id, _opts ->
+        {:ok, [Support.StubbedProvider.feature("max_job_execution_time_limit", traits)]}
+
+      other_org, opts ->
+        Support.StubbedProvider.provide_features(other_org, opts)
+    end)
+  end
 
   # Stubs the organization describe gRPC call with a `created_at` `age_seconds`
   # in the past, so tests can exercise the young-vs-old org boundary.
