@@ -35,6 +35,8 @@ test("localConfig.js parses and exposes expected defaults", () => {
   assert.equal(config.flushInterval, 60000);
   assert.equal(config.deleteGauges, true);
   assert.equal(config.deleteCounters, true);
+  assert.equal(config.deleteTimers, true);
+  assert.equal(config.deleteSets, true);
 });
 
 test("DUMP_MESSAGES enables dumpMessages", () => {
