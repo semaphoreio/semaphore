@@ -11,6 +11,16 @@ defmodule Zebra.Apis.InternalTaskApi.Schedule do
   @default_job_execution_time_limit 24 * 60 * 60
   # in minutes
   @max_job_execution_time_limit 24 * 60
+  # How long after creation an org is still too young to have had its job time
+  # limit lifted, so a feature that is visible but not enabled reads as "not
+  # provisioned yet"; see unprovisioned_org_job_time_limits/2.
+  @fresh_org_window_seconds 15 * 60
+  # Tolerated clock skew between this pod and the organization API.
+  @clock_skew_tolerance_seconds 60
+  # In minutes. Lower bound for unprovisioned_org_job_time_limits/2: the quota
+  # it reads is configured in another service, and must not be able to shorten
+  # jobs below this.
+  @min_unprovisioned_org_job_time_limit 30
 
   @spec schedule(InternalApi.Task.Task.t()) :: {:ok, Zebra.Models.Task.t()}
   def schedule(req) do
@@ -44,6 +54,13 @@ defmodule Zebra.Apis.InternalTaskApi.Schedule do
           {:ok, Zebra.Models.Task.t()} | {:error, :invalid_argument, String.t()}
   def create_task(req) do
     Watchman.benchmark("internal_task_api.schedule.create_task.duration", fn ->
+      # Resolved once per task, before the transaction opens: the job time
+      # limits are a property of the organization, identical for every job in
+      # the task, and resolving them can reach the organization and feature
+      # APIs over gRPC. Doing it per job inside Repo.transaction/1 would hold a
+      # DB connection open across that I/O.
+      time_limits = find_max_and_default_job_time_limits(req.org_id)
+
       result =
         Repo.transaction(fn ->
           copy_ctx = resolve_copy_context(req)
@@ -53,7 +70,7 @@ defmodule Zebra.Apis.InternalTaskApi.Schedule do
           req.jobs
           |> Enum.with_index()
           |> Enum.each(fn {j, index} ->
-            create_task_job(task, req, j, index, copy_ctx)
+            create_task_job(task, req, j, index, copy_ctx, time_limits)
           end)
 
           task
@@ -111,10 +128,10 @@ defmodule Zebra.Apis.InternalTaskApi.Schedule do
   end
 
   # Run vs copy decision for a single job spec, executed inside the transaction.
-  defp create_task_job(task, req, job_req, job_index, copy_ctx) do
+  defp create_task_job(task, req, job_req, job_index, copy_ctx, time_limits) do
     case classify_job(job_req, req, copy_ctx) do
       :run ->
-        run_job(task.id, req, job_req, job_index)
+        run_job(task.id, req, job_req, job_index, time_limits)
 
       {:copy, member} ->
         case Job.create_copy(member, task.id) do
@@ -130,8 +147,8 @@ defmodule Zebra.Apis.InternalTaskApi.Schedule do
     end
   end
 
-  defp run_job(task_id, req, job_req, job_index) do
-    case create_job(task_id, req, job_req, job_index) do
+  defp run_job(task_id, req, job_req, job_index, time_limits) do
+    case create_job(task_id, req, job_req, job_index, time_limits) do
       {:ok, job} ->
         onprem_metrics(job)
 
@@ -280,7 +297,7 @@ defmodule Zebra.Apis.InternalTaskApi.Schedule do
   defp present?(""), do: false
   defp present?(_), do: true
 
-  defp create_job(task_id, req, job_req, job_index) do
+  defp create_job(task_id, req, job_req, job_index, time_limits) do
     Watchman.benchmark("internal_task_api.schedule.create_job.duration", fn ->
       Zebra.Models.Job.create(
         name: job_req.name,
@@ -292,8 +309,7 @@ defmodule Zebra.Apis.InternalTaskApi.Schedule do
         repository_id: req.repository_id,
         machine_type: job_req.agent.machine.type,
         machine_os_image: job_req.agent.machine.os_image,
-        execution_time_limit:
-          configure_execution_time_limit(req.org_id, job_req.execution_time_limit),
+        execution_time_limit: apply_job_time_limits(time_limits, job_req.execution_time_limit),
         priority: valid_priority(job_req.priority),
         spec:
           Spec.new(
@@ -348,46 +364,100 @@ defmodule Zebra.Apis.InternalTaskApi.Schedule do
 
   # value of execution_time_limit is received in minutes and it is stored in seconds
   def configure_execution_time_limit(org_id, req_value) do
-    {max_job_time_limit, deafult_job_time_limit} = find_max_and_default_job_time_limits(org_id)
+    org_id
+    |> find_max_and_default_job_time_limits()
+    |> apply_job_time_limits(req_value)
+  end
 
+  defp apply_job_time_limits({max_job_time_limit, default_job_time_limit}, req_value) do
     if req_value > 0 and req_value <= max_job_time_limit do
       req_value * 60
     else
-      deafult_job_time_limit
+      default_job_time_limit
     end
   end
 
   defp find_max_and_default_job_time_limits(org_id) do
-    if org_verified?(org_id) do
-      {@max_job_execution_time_limit, @default_job_execution_time_limit}
+    org = load_org(org_id)
+
+    if org_verified?(org) do
+      unlimited_job_time_limits()
     else
-      find_feature_based_job_time_limits(org_id)
+      find_feature_based_job_time_limits(org_id, org)
     end
   end
 
-  defp find_feature_based_job_time_limits(org_id) do
-    if FeatureProvider.feature_enabled?(:max_job_execution_time_limit, param: org_id) do
-      max_limit = FeatureProvider.feature_quota(:max_job_execution_time_limit, param: org_id)
+  # One read of the feature, not two: `feature_enabled?/2` followed by
+  # `feature_quota/2` consults the cache twice, and an entry expiring between
+  # them resolves to {0, 0} -- a job written with execution_time_limit: 0.
+  defp find_feature_based_job_time_limits(org_id, org) do
+    case FeatureProvider.find_feature(:max_job_execution_time_limit, param: org_id) do
+      # A limit provisioned for this org specifically.
+      {:ok, %FeatureProvider.Feature{state: :enabled, quantity: quota}}
+      when is_integer(quota) and quota > 0 ->
+        {quota, min(quota * 60, @default_job_execution_time_limit)}
 
-      default_limit =
-        if max_limit * 60 < @default_job_execution_time_limit do
-          max_limit * 60
-        else
-          @default_job_execution_time_limit
-        end
+      # Not enabled, yet the response still carries a quota.
+      {:ok, %FeatureProvider.Feature{quantity: quota}} when is_integer(quota) and quota > 0 ->
+        unprovisioned_org_job_time_limits(quota, org)
 
-      {max_limit, default_limit}
-    else
-      {@max_job_execution_time_limit, @default_job_execution_time_limit}
+      # A zero quota, an absent feature, or a provider error. None of these
+      # authorise a cap.
+      _ ->
+        unlimited_job_time_limits()
     end
   end
 
-  defp org_verified?(org_id) do
+  # A feature that is not enabled but still carries a quota is the platform-wide
+  # default, served because the org has no limit of its own yet; a limit
+  # deliberately lifted for an org arrives with quota 0 and never reaches here.
+  # That only tells the two apart while the org is young -- an older org can
+  # show the same shape for unrelated reasons -- and self-hosted installs have
+  # no provisioning step at all, hence the explicit gate.
+  defp unprovisioned_org_job_time_limits(quota, org) do
+    if not Zebra.on_prem?() and fresh_org?(org) do
+      max_limit =
+        quota
+        |> max(@min_unprovisioned_org_job_time_limit)
+        |> min(@max_job_execution_time_limit)
+
+      {max_limit, min(max_limit * 60, @default_job_execution_time_limit)}
+    else
+      unlimited_job_time_limits()
+    end
+  end
+
+  defp unlimited_job_time_limits,
+    do: {@max_job_execution_time_limit, @default_job_execution_time_limit}
+
+  defp load_org(org_id) do
     case Zebra.Workers.Scheduler.Org.load(org_id) do
-      {:ok, org} -> org.verified
-      _ -> false
+      {:ok, org} -> org
+      _ -> nil
     end
   end
+
+  defp org_verified?(nil), do: false
+  defp org_verified?(org), do: org.verified
+
+  defp fresh_org?(nil), do: false
+  defp fresh_org?(%Zebra.Workers.Scheduler.Org{created_at: nil}), do: false
+
+  defp fresh_org?(%Zebra.Workers.Scheduler.Org{created_at: %{seconds: created_at_seconds}}) do
+    age_seconds = DateTime.utc_now() |> DateTime.to_unix() |> Kernel.-(created_at_seconds)
+
+    # The lower bound tolerates ordinary clock skew against the organization
+    # API: rejecting every future created_at would hand the default to the
+    # first job of a genuinely new org. Anything further ahead is not skew.
+    age_seconds >= -@clock_skew_tolerance_seconds and
+      age_seconds < @fresh_org_window_seconds
+  end
+
+  # Defense-in-depth: the real proto's created_at is always either nil or a
+  # %Google.Protobuf.Timestamp{} (both handled above). A catch-all keeps any
+  # unexpected shape from raising a FunctionClauseError inside the schedule
+  # transaction.
+  defp fresh_org?(_), do: false
 
   def encode_fail_fast_strategy(strategy) do
     alias InternalApi.Task.ScheduleRequest.FailFast, as: FF
