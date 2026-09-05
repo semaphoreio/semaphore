@@ -241,8 +241,8 @@ github.com/prometheus/procfs v0.8.0 h1:ODq8ZFEaYeCaZOJlZZdJA2AbQR98dSHSM1KW/You5
 github.com/prometheus/procfs v0.8.0/go.mod h1:z7EfXMXOkbkqb9IINtpCn86r/to3BnA0uaxHdg830/4=
 github.com/rabbitmq/amqp091-go v1.9.0 h1:qrQtyzB4H8BQgEuJwhmVQqVHB9O4+MNDJCCAcpc3Aoo=
 github.com/rabbitmq/amqp091-go v1.9.0/go.mod h1:+jPrT9iY2eLjRaMSRHUhc3z14E/l85kv/f+6luSD3pc=
-github.com/renderedtext/go-tackle v0.0.0-20231218124313-26ee274af69d h1:YtBUCNI/kgrJHf8lz/RE9Od8Agoqwujf0W2G68Ee1XM=
-github.com/renderedtext/go-tackle v0.0.0-20231218124313-26ee274af69d/go.mod h1:IfWH6x6erQ2Y4C7+BdP/fzOCN+8Szs2atOc6vUDOnvY=
+github.com/renderedtext/go-tackle v0.0.0-20231226193542-c913a4af4f94 h1:XynJJlfKWESMTlCM1fc7LDlPiQTvOPrRDQTiX6nyQiY=
+github.com/renderedtext/go-tackle v0.0.0-20231226193542-c913a4af4f94/go.mod h1:IfWH6x6erQ2Y4C7+BdP/fzOCN+8Szs2atOc6vUDOnvY=
 github.com/renderedtext/go-watchman v0.0.0-20221222100224-451a6f3c8d92 h1:OmDghaSHy96nHV+ZnXBKQnXBLvuSQNdFZRYIQiDDXsg=
 github.com/renderedtext/go-watchman v0.0.0-20221222100224-451a6f3c8d92/go.mod h1:Z+qanDzSoUGCbcrTM7G6YCA9ST2KBdte7sCz+HQAp7I=
 github.com/robfig/cron/v3 v3.0.1 h1:WdRxkvbJztn8LMz/QEvLN5sBU+xKpSqwwUO1Pjr4qDs=
