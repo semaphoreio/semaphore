@@ -1284,6 +1284,7 @@ func Test__Disconnect(t *testing.T) {
 
 func Test__RefreshToken(t *testing.T) {
 	database.TruncateTables()
+	grpcmock.Start()
 
 	t.Run("agent not found", func(t *testing.T) {
 		token := "token-not-connected-to-an-agent"
@@ -1336,6 +1337,23 @@ func Test__RefreshToken(t *testing.T) {
 
 		res := run("POST", "/refresh", token, nil)
 		require.Equal(t, http.StatusNotFound, res.Code)
+	})
+
+	t.Run("agent has job assigned but job was stopped", func(t *testing.T) {
+		agentType, _, err := newAgentType("s1-test-4")
+		require.Nil(t, err)
+
+		agent, token, err := newAgent(agentType)
+		require.Nil(t, err)
+
+		jobID, err := models.ForcefullyOccupyAgentWithJobID(agent)
+		require.Nil(t, err)
+
+		err = models.StopJob(testOrgID, jobID)
+		require.Nil(t, err)
+
+		res := run("POST", "/refresh", token, nil)
+		require.Equal(t, http.StatusUnprocessableEntity, res.Code)
 	})
 }
 

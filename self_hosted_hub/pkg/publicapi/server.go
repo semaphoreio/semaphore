@@ -133,6 +133,13 @@ func (s *Server) RefreshToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// the job is being stopped, so no new tokens should be issued for it.
+	if agent.JobStopRequestedAt != nil {
+		logging.ForAgent(agent).Warningf("Job %s was stopped", agent.AssignedJobID.String())
+		respondWith422(w)
+		return
+	}
+
 	newToken, err := loghub2.GenerateToken(agent.AssignedJobID.String())
 	if err != nil {
 		logging.ForAgent(agent).Errorf("Error generating new token: %v", err)

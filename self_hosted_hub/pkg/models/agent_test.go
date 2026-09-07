@@ -215,6 +215,27 @@ func Test__OccupyAgent(t *testing.T) {
 		require.Error(t, err)
 		require.Nil(t, req)
 	})
+
+	t.Run("clears a stale job stop request", func(t *testing.T) {
+		agent, token, err := RegisterAgent(orgID, "s1-test-1", "hello2", AgentMetadata{})
+		require.Nil(t, err)
+
+		now := time.Now()
+		err = database.Conn().Model(agent).Update("job_stop_requested_at", &now).Error
+		require.NoError(t, err)
+
+		jobID := database.UUID()
+		err = CreateOccupationRequest(orgID, "s1-test-1", jobID)
+		require.NoError(t, err)
+
+		_, err = OccupyAgent(agent)
+		require.NoError(t, err)
+
+		agent, err = FindAgentByToken(orgID.String(), securetoken.Hash(token))
+		require.NoError(t, err)
+		require.Equal(t, agent.AssignedJobID, &jobID)
+		require.Nil(t, agent.JobStopRequestedAt)
+	})
 }
 
 func Test__ReleaseAgent(t *testing.T) {
