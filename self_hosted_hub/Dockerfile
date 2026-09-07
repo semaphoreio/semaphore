@@ -39,8 +39,12 @@ RUN curl -sL https://github.com/google/protobuf/releases/download/v3.3.0/protoc-
 WORKDIR /app
 RUN go install github.com/mgechev/revive@v1.7.0
 RUN go install gotest.tools/gotestsum@v1.12.1
-RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+# Pinned, like every other tool here. protoc-gen-go tracks the protobuf
+# version in go.mod; protoc-gen-go-grpc is the newest release that still
+# builds with GO_VERSION, since v1.6.2 onwards requires Go 1.25 and the
+# builder pins GOTOOLCHAIN=local.
+RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.10
+RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.6.1
 
 CMD [ "/bin/bash",  "-c \"while sleep 1000; do :; done\"" ]
 
