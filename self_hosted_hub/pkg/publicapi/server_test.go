@@ -1083,6 +1083,15 @@ func Test__DescribeJob(t *testing.T) {
 
 		require.Equal(t, http.StatusOK, res.Code)
 	})
+
+	t.Run("when the job assigned to the agent was stopped", func(t *testing.T) {
+		jobID, _ := models.ForcefullyOccupyAgentWithJobID(agent)
+		require.NoError(t, models.StopJob(testOrgID, jobID))
+
+		res := run("GET", "/jobs/"+jobID.String(), token, nil)
+
+		require.Equal(t, http.StatusNotFound, res.Code)
+	})
 }
 
 func Test__ListJobs(t *testing.T) {
