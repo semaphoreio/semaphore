@@ -180,6 +180,28 @@ func Test__OccupyAgent(t *testing.T) {
 		require.Error(t, err)
 		require.Nil(t, req)
 	})
+
+	t.Run("clears a stop request left over from a previous job", func(t *testing.T) {
+		staleAgent, staleToken, err := RegisterAgent(orgID, "s1-test-1", "hello-stale", AgentMetadata{})
+		require.NoError(t, err)
+
+		// A previous job was stopped, which sets the flag without clearing
+		// the assignment.
+		previousJobID, err := ForcefullyOccupyAgentWithJobID(staleAgent)
+		require.NoError(t, err)
+		require.NoError(t, StopJob(orgID, previousJobID))
+
+		jobID := database.UUID()
+		require.NoError(t, CreateOccupationRequest(orgID, "s1-test-1", jobID))
+
+		_, err = OccupyAgent(staleAgent)
+		require.NoError(t, err)
+
+		reloaded, err := FindAgentByToken(orgID.String(), securetoken.Hash(staleToken))
+		require.NoError(t, err)
+		require.Equal(t, &jobID, reloaded.AssignedJobID)
+		require.Nil(t, reloaded.JobStopRequestedAt)
+	})
 }
 
 func Test__ReleaseAgent(t *testing.T) {

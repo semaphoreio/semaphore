@@ -161,6 +161,14 @@ func (s *Server) DescribeJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The payload of a stopped job is scrubbed of its secrets, so serving it
+	// would hand the agent a request it cannot use.
+	if agent.JobStopRequestedAt != nil {
+		logging.ForAgent(agent).Warningf("Job %s is stopped", jobID)
+		respondWith404(w)
+		return
+	}
+
 	payload, err := zebraclient.GetJobPayload(jobID)
 	if err != nil {
 		logging.ForAgent(agent).Errorf("Error fetching job payload for %s: %v", jobID, err)
