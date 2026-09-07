@@ -1232,6 +1232,40 @@ func Test__SyncDoesNotRunStoppedJobs(t *testing.T) {
 	require.Nil(t, reloaded.JobStopRequestedAt)
 }
 
+func Test__SyncShutsDownSingleJobAgentWhenItsJobIsStopped(t *testing.T) {
+	database.TruncateTables()
+	_ = declareExchangeAndQueue()
+
+	agentType, _, err := newAgentType("s1-test")
+	require.Nil(t, err)
+
+	agent, token, err := newAgentWithMetadata(agentType, models.AgentMetadata{SingleJob: true})
+	require.Nil(t, err)
+
+	// The agent was registered for one specific job, which was then stopped
+	// before it ever asked for work. It must shut down, exactly as it would
+	// after finishing that job - not be released and handed something else.
+	jobID, err := models.ForcefullyOccupyAgentWithJobID(agent)
+	require.NoError(t, err)
+	require.NoError(t, models.StopJob(testOrgID, jobID))
+
+	// another job is queued for the same agent type
+	otherJobID := database.UUID()
+	require.NoError(t, models.CreateOccupationRequest(testOrgID, agentType.Name, otherJobID))
+
+	sync(t, syncAssertion{
+		state:          agentsync.AgentStateWaitingForJobs,
+		token:          token,
+		action:         agentsync.AgentActionShutdown,
+		shutdownReason: agentsync.ShutdownReasonJobFinished,
+	})
+
+	// the unrelated job must still be waiting for a real agent
+	req, err := models.FindOccupationRequest(testOrgID, agentType.Name, otherJobID)
+	require.NoError(t, err)
+	require.NotNil(t, req)
+}
+
 func Test__ListJobs(t *testing.T) {
 	database.TruncateTables()
 	grpcmock.Start()
