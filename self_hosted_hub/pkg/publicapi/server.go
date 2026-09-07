@@ -118,6 +118,13 @@ func (s *Server) RefreshToken(w http.ResponseWriter, r *http.Request) {
 
 	logging.ForAgent(agent).Infof("Refresh token requested")
 
+	// a disabled agent is only allowed to sync until it shuts down.
+	if agent.DisabledAt != nil {
+		logging.ForAgent(agent).Warning("Agent is disabled")
+		respondWith404(w)
+		return
+	}
+
 	// agent is not assigned any jobs,
 	// so it should not be refreshing any tokens.
 	if agent.AssignedJobID == nil {
@@ -157,6 +164,13 @@ func (s *Server) DescribeJob(w http.ResponseWriter, r *http.Request) {
 	logging.ForAgent(agent).Infof("Get job %s", jobID)
 	if !agent.IsRunningJob(jobID) {
 		logging.ForAgent(agent).Warningf("Agent is not running job %s", jobID)
+		respondWith404(w)
+		return
+	}
+
+	// a disabled agent is only allowed to sync until it shuts down.
+	if agent.DisabledAt != nil {
+		logging.ForAgent(agent).Warningf("Agent is disabled - not serving job %s", jobID)
 		respondWith404(w)
 		return
 	}

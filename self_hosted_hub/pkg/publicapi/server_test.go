@@ -1177,6 +1177,20 @@ func Test__DescribeJob(t *testing.T) {
 
 		require.Equal(t, http.StatusOK, res.Code)
 	})
+
+	t.Run("when the agent is disabled", func(t *testing.T) {
+		agent, token, err := newAgent(agentType)
+		require.Nil(t, err)
+
+		jobID, err := models.ForcefullyOccupyAgentWithJobID(agent)
+		require.Nil(t, err)
+
+		_, err = models.DisableAgent(testOrgID, agentType.Name, agent.Name)
+		require.Nil(t, err)
+
+		res := run("GET", "/jobs/"+jobID.String(), token, nil)
+		require.Equal(t, http.StatusNotFound, res.Code)
+	})
 }
 
 func Test__ListJobs(t *testing.T) {
@@ -1305,6 +1319,23 @@ func Test__RefreshToken(t *testing.T) {
 		err = unmarshalJSON(res.Body, response)
 		require.Nil(t, err)
 		require.NotEmpty(t, response.Token)
+	})
+
+	t.Run("agent has job assigned but is disabled", func(t *testing.T) {
+		agentType, _, err := newAgentType("s1-test-3")
+		require.Nil(t, err)
+
+		agent, token, err := newAgent(agentType)
+		require.Nil(t, err)
+
+		_, err = models.ForcefullyOccupyAgentWithJobID(agent)
+		require.Nil(t, err)
+
+		_, err = models.DisableAgent(testOrgID, agentType.Name, agent.Name)
+		require.Nil(t, err)
+
+		res := run("POST", "/refresh", token, nil)
+		require.Equal(t, http.StatusNotFound, res.Code)
 	})
 }
 
