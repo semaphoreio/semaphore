@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/semaphoreio/semaphore/self_hosted_hub/pkg/amqp"
 	logging "github.com/semaphoreio/semaphore/self_hosted_hub/pkg/logging"
 	models "github.com/semaphoreio/semaphore/self_hosted_hub/pkg/models"
@@ -144,7 +143,7 @@ func answer(ctx context.Context, publisher *amqp.Publisher, agent *models.Agent,
 	// However, once we are sure agents being registered are no longer sending these, we can remove it.
 	// We treat this as a job-finished state, because new agents send these errors in a job-finished state sync.
 	case AgentStateFailedToFetchJob, AgentStateFailedToConstructJob, AgentStateFailedToSendCallback:
-		return handleFinishedJobState(ctx, publisher, agent, agent.AssignedJobID.String(), JobResultFailed)
+		return handleFinishedJobState(ctx, publisher, agent, req.JobID, JobResultFailed)
 	}
 
 	panic("invalid state - this should never happen")
@@ -224,41 +223,16 @@ func handleRunningJobState(agent *models.Agent, req *Request) (*Response, error)
 	return actionContinue(req), nil
 }
 
-func handleFinishedJobState(ctx context.Context, publisher *amqp.Publisher, agent *models.Agent, jobID string, result JobResult) (*Response, error) {
-	jobUUID, err := uuid.Parse(jobID)
-	if err != nil {
-		return nil, err
-	}
-
-	/*
-	 * We only release agents that will be assigned to more jobs, and that haven't been interrupted.
-	 * The other agents will be told to shut down, so we don't need to release them.
-	 */
-	if !agent.SingleJob && agent.InterruptedAt == nil {
-
-		_, err = models.ReleaseAgent(agent.OrganizationID, agent.AgentTypeName, jobUUID)
-		if err != nil {
-
-			/*
-			 * If the agent has already been released, it means the agent used callbacks (old agent).
-			 * To account for that, we make sure we don't error out if the agent has already been released.
-			 */
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				logging.ForAgent(agent).Warningf("Agent was not assigned to %s - ignoring", jobID)
-			} else {
-				logging.ForAgent(agent).Errorf("Error releasing agent after %s finished: %v", jobID, err)
-				return nil, err
-			}
-		}
-	}
-
-	/*
-	 * If the result received in the job-finished sync request is empty,
-	 * it means the agent was using callbacks, so we don't send them again here.
-	 */
-	if result != "" {
-		err = publisher.HandleJobFinished(ctx, jobID, string(result))
-		if err != nil {
+/*
+ * The job ID sent by the agent is not trusted. The only job an agent can finish
+ * is the one assigned to it on the server side; if there is none, nothing is
+ * released or published and the agent just gets its next action.
+ */
+func handleFinishedJobState(ctx context.Context, publisher *amqp.Publisher, agent *models.Agent, requestedJobID string, result JobResult) (*Response, error) {
+	if agent.AssignedJobID == nil {
+		logging.ForAgent(agent).Warningf("Agent is not assigned to any job - ignoring finished job %s", requestedJobID)
+	} else {
+		if err := finishAssignedJob(ctx, publisher, agent, requestedJobID, result); err != nil {
 			return nil, err
 		}
 	}
@@ -280,6 +254,46 @@ func handleFinishedJobState(ctx context.Context, publisher *amqp.Publisher, agen
 
 	// If none of the conditions above are met, the agent should wait for more jobs.
 	return actionWaitForJobs(), nil
+}
+
+func finishAssignedJob(ctx context.Context, publisher *amqp.Publisher, agent *models.Agent, requestedJobID string, result JobResult) error {
+	jobUUID := *agent.AssignedJobID
+	jobID := jobUUID.String()
+
+	if requestedJobID != "" && requestedJobID != jobID {
+		logging.ForAgent(agent).Warningf("Agent reported %s as finished, but is assigned to %s - using assigned job", requestedJobID, jobID)
+	}
+
+	/*
+	 * We only release agents that will be assigned to more jobs, and that haven't been interrupted.
+	 * The other agents will be told to shut down, so we don't need to release them.
+	 */
+	if !agent.SingleJob && agent.InterruptedAt == nil {
+		_, err := models.ReleaseAgent(agent.OrganizationID, agent.AgentTypeName, jobUUID)
+		if err != nil {
+
+			/*
+			 * If the agent has already been released, it means the agent used callbacks (old agent).
+			 * To account for that, we make sure we don't error out if the agent has already been released.
+			 */
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				logging.ForAgent(agent).Warningf("Agent was not assigned to %s - ignoring", jobID)
+			} else {
+				logging.ForAgent(agent).Errorf("Error releasing agent after %s finished: %v", jobID, err)
+				return err
+			}
+		}
+	}
+
+	/*
+	 * If the result received in the job-finished sync request is empty,
+	 * it means the agent was using callbacks, so we don't send them again here.
+	 */
+	if result == "" {
+		return nil
+	}
+
+	return publisher.HandleJobFinished(ctx, jobID, string(result))
 }
 
 func actionRunJob(jobID string) *Response {
