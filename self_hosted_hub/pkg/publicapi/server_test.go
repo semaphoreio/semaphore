@@ -1083,6 +1083,45 @@ func Test__DescribeJob(t *testing.T) {
 
 		require.Equal(t, http.StatusOK, res.Code)
 	})
+
+	t.Run("when the job assigned to the agent was stopped", func(t *testing.T) {
+		jobID, _ := models.ForcefullyOccupyAgentWithJobID(agent)
+		require.NoError(t, models.StopJob(testOrgID, jobID))
+
+		res := run("GET", "/jobs/"+jobID.String(), token, nil)
+
+		require.Equal(t, http.StatusNotFound, res.Code)
+	})
+}
+
+func Test__SyncDoesNotRunStoppedJobs(t *testing.T) {
+	database.TruncateTables()
+	_ = declareExchangeAndQueue()
+
+	agentType, _, err := newAgentType("s1-test")
+	require.Nil(t, err)
+
+	agent, token, err := newAgent(agentType)
+	require.Nil(t, err)
+
+	// The job was assigned to the agent, then stopped before the agent ever
+	// asked for it. StopJob leaves assigned_job_id in place, so the dispatch
+	// path used to hand the agent a job that was already over.
+	jobID, err := models.ForcefullyOccupyAgentWithJobID(agent)
+	require.NoError(t, err)
+	require.NoError(t, models.StopJob(testOrgID, jobID))
+
+	sync(t, syncAssertion{
+		state:  agentsync.AgentStateWaitingForJobs,
+		token:  token,
+		action: agentsync.AgentActionContinue,
+	})
+
+	// The stopped assignment is released, so the agent is free for real work.
+	reloaded, err := models.FindAgentByToken(testOrgID.String(), agent.TokenHash)
+	require.NoError(t, err)
+	require.Nil(t, reloaded.AssignedJobID)
+	require.Nil(t, reloaded.JobStopRequestedAt)
 }
 
 func Test__ListJobs(t *testing.T) {

@@ -488,7 +488,12 @@ func OccupyAgentInTransaction(tx *gorm.DB, agent *Agent, requestJobID *uuid.UUID
 			JobStopRequestedAt: nil,
 		}
 
-		err = db.Model(agent).Updates(fieldsToUpdate).Error
+		// Select() is required: Updates() with a struct skips zero-valued
+		// fields, so the nil above would not clear a stop request left over
+		// from the agent's previous job.
+		err = db.Model(agent).
+			Select("assigned_job_id", "job_assigned_at", "job_stop_requested_at").
+			Updates(fieldsToUpdate).Error
 		if err != nil {
 			return err
 		}
