@@ -163,6 +163,28 @@ func handleWaitingForJobsState(ctx context.Context, publisher *amqp.Publisher, a
 		return actionShutdown(ShutdownReasonInterrupted), nil
 	}
 
+	// The job was stopped before the agent ever asked for it. StopJob leaves
+	// the assignment in place, so without this the agent would be told to run a
+	// job that is already over, and would then fail fetching its payload.
+	// Release the assignment instead, so the agent is free for real work.
+	if agent.JobStopRequestedAt != nil && agent.AssignedJobID != nil {
+		jobID := *agent.AssignedJobID
+
+		// A single-job agent runs one job and shuts down, so releasing it would
+		// let it pick up an unrelated job instead. Registering with a job_id
+		// requires single_job, so this is also every agent bound to a specific
+		// job. Shut it down the same way finishing the job would.
+		if agent.SingleJob {
+			return actionShutdown(ShutdownReasonJobFinished), nil
+		}
+
+		if _, err := models.ReleaseAgent(agent.OrganizationID, agent.AgentTypeName, jobID); err != nil {
+			logging.ForAgent(agent).Errorf("Error releasing agent from stopped job %s: %v", jobID, err)
+		}
+
+		return actionContinue(req), nil
+	}
+
 	// If the agent was assigned a job during registration,
 	// we don't need to look for an occupation request again.
 	if agent.AssignedJobID != nil && agent.AssignedJobID.String() != agent.LastSyncJobID {
