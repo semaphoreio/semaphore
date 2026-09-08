@@ -87,6 +87,41 @@ func Test__RegisterAgent(t *testing.T) {
 	})
 }
 
+func Test__SyncAgent(t *testing.T) {
+	database.TruncateTables()
+
+	orgID := database.UUID()
+	requesterID := database.UUID()
+
+	_, _, err := CreateAgentType(orgID, &requesterID, "s1-test-1")
+	require.Nil(t, err)
+
+	t.Run("ignores job_id that does not match the assigned job", func(t *testing.T) {
+		_, token, err := RegisterAgent(orgID, "s1-test-1", "sync-1", AgentMetadata{})
+		require.Nil(t, err)
+
+		agent, err := SyncAgent(orgID.String(), securetoken.Hash(token), "finished-job", "fake-job-id", 0)
+		require.Nil(t, err)
+		require.Equal(t, "", agent.LastSyncJobID)
+	})
+
+	t.Run("accepts job_id that matches the assigned job", func(t *testing.T) {
+		agent, token, err := RegisterAgent(orgID, "s1-test-1", "sync-2", AgentMetadata{})
+		require.Nil(t, err)
+
+		jobID := database.UUID()
+		err = CreateOccupationRequest(orgID, "s1-test-1", jobID)
+		require.NoError(t, err)
+
+		_, err = OccupyAgent(agent)
+		require.NoError(t, err)
+
+		agent, err = SyncAgent(orgID.String(), securetoken.Hash(token), "running-job", jobID.String(), 0)
+		require.Nil(t, err)
+		require.Equal(t, jobID.String(), agent.LastSyncJobID)
+	})
+}
+
 func Test__ListAgentsWithCursor(t *testing.T) {
 	database.TruncateTables()
 

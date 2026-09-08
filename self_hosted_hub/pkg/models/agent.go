@@ -415,7 +415,10 @@ func SyncAgentWithContext(ctx context.Context, orgID, tokenHash, state, jobID st
 	}
 
 	if jobID != "" {
-		updates["last_sync_job_id"] = jobID
+		updates["last_sync_job_id"] = gorm.Expr(
+			"case when assigned_job_id IS NOT NULL AND assigned_job_id::text = ? then ? else last_sync_job_id end",
+			jobID, jobID,
+		)
 	}
 
 	if interruptedAt > 0 {
