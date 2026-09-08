@@ -66,6 +66,66 @@ defmodule Guard.Api.BitbucketTest do
 
       assert updated_rha.token == "new_token"
     end
+
+    test "persists the rotated refresh token", %{repo_host_account: rha} do
+      rha = Map.put(rha, :token_expires_at, Support.Members.invalid_expires_at())
+
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
+          {:ok,
+           %Tesla.Env{
+             status: 200,
+             body: %{
+               "access_token" => "new_token",
+               "refresh_token" => "rotated_refresh_token",
+               "expires_in" => 7200
+             }
+           }}
+      end)
+
+      assert {:ok, {"new_token", _}} = Bitbucket.user_token(rha)
+
+      updated_rha = Guard.FrontRepo.get!(Guard.FrontRepo.RepoHostAccount, rha.id)
+
+      # Bitbucket expires the previous refresh token shortly after a refresh, so
+      # losing the rotated one here breaks every later refresh for this account.
+      assert updated_rha.refresh_token == "rotated_refresh_token"
+    end
+
+    test "reports invalid_grant as revoked", %{repo_host_account: rha} do
+      rha = Map.put(rha, :token_expires_at, Support.Members.invalid_expires_at())
+
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
+          {:ok, %Tesla.Env{status: 400, body: %{"error" => "invalid_grant"}}}
+      end)
+
+      assert {:error, :revoked} = Bitbucket.user_token(rha)
+    end
+
+    test "reports a 403 as transient, not revoked", %{repo_host_account: rha} do
+      rha = Map.put(rha, :token_expires_at, Support.Members.invalid_expires_at())
+
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
+          {:ok, %Tesla.Env{status: 403, body: ""}}
+      end)
+
+      # A 403 is what Bitbucket answers for a refresh token superseded by a
+      # rotation. Calling it revoked disconnects the whole organization.
+      assert {:error, :transient} = Bitbucket.user_token(rha)
+    end
+
+    test "reports throttling as transient, not revoked", %{repo_host_account: rha} do
+      rha = Map.put(rha, :token_expires_at, Support.Members.invalid_expires_at())
+
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
+          {:ok, %Tesla.Env{status: 429, body: %{}}}
+      end)
+
+      assert {:error, :transient} = Bitbucket.user_token(rha)
+    end
   end
 
   describe "validate_token/1" do

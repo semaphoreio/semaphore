@@ -63,5 +63,49 @@ defmodule Guard.Api.GitlabTest do
 
       assert updated_rha.token == "new_token"
     end
+
+    test "persists the rotated refresh token", %{repo_host_account: rha} do
+      rha = Map.put(rha, :token_expires_at, Support.Members.invalid_expires_at())
+
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://gitlab.com/oauth/token"} ->
+          {:ok,
+           %Tesla.Env{
+             status: 200,
+             body: %{
+               "access_token" => "new_token",
+               "refresh_token" => "rotated_refresh_token",
+               "expires_in" => 3600
+             }
+           }}
+      end)
+
+      assert {:ok, {"new_token", _}} = Gitlab.user_token(rha)
+
+      updated_rha = Guard.FrontRepo.get!(Guard.FrontRepo.RepoHostAccount, rha.id)
+      assert updated_rha.refresh_token == "rotated_refresh_token"
+    end
+
+    test "reports invalid_grant as revoked", %{repo_host_account: rha} do
+      rha = Map.put(rha, :token_expires_at, Support.Members.invalid_expires_at())
+
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://gitlab.com/oauth/token"} ->
+          {:ok, %Tesla.Env{status: 400, body: %{"error" => "invalid_grant"}}}
+      end)
+
+      assert {:error, :revoked} = Gitlab.user_token(rha)
+    end
+
+    test "reports other 4xx as transient, not revoked", %{repo_host_account: rha} do
+      rha = Map.put(rha, :token_expires_at, Support.Members.invalid_expires_at())
+
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://gitlab.com/oauth/token"} ->
+          {:ok, %Tesla.Env{status: 429, body: %{}}}
+      end)
+
+      assert {:error, :transient} = Gitlab.user_token(rha)
+    end
   end
 end

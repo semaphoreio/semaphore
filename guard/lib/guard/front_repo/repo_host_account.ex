@@ -168,35 +168,57 @@ defmodule Guard.FrontRepo.RepoHostAccount do
   end
 
   def get_bitbucket_token(rha) do
-    with_negative_cache(rha, fn ->
-      case Guard.Api.Bitbucket.user_token(rha) do
-        {:ok, {_token, _expires_at}} = token_tuple ->
-          token_tuple
-
-        {:error, :revoked} ->
-          update_account(%{revoked: true}, rha)
-          {:error, :revoked}
-
-        {:error, reason} ->
-          {:error, reason}
-      end
-    end)
+    with_negative_cache(rha, fn -> refresh_serially(rha, &Guard.Api.Bitbucket.user_token/1) end)
   end
 
   def get_gitlab_token(rha) do
-    with_negative_cache(rha, fn ->
-      case Guard.Api.Gitlab.user_token(rha) do
-        {:ok, {_token, _expires_at}} = token_tuple ->
-          token_tuple
+    with_negative_cache(rha, fn -> refresh_serially(rha, &Guard.Api.Gitlab.user_token/1) end)
+  end
 
-        {:error, :revoked} ->
-          update_account(%{revoked: true}, rha)
-          {:error, :revoked}
+  # Bitbucket Cloud (since 2026-05-04) and GitLab both rotate refresh tokens: a
+  # refresh returns a new refresh_token and expires the previous one - and the
+  # access token it replaces - shortly after. Two refreshes racing on the same
+  # account therefore leave one caller, and the row every other service reads,
+  # holding a credential the provider has already thrown away.
+  #
+  # So take a row lock and re-read the account inside it. The second caller
+  # then sees what the first one persisted and returns it through the
+  # `valid_token?` branch in the Api module instead of rotating again.
+  #
+  # The lock is held across an HTTP call, so both token clients set a 10s
+  # timeout to bound how long a row - and a DB connection - can be held.
+  defp refresh_serially(rha, fetch_token) do
+    case FrontRepo.transaction(fn -> fetch_token.(lock_account(rha)) end) do
+      {:ok, {:ok, {_token, _expires_at}} = token_tuple} ->
+        token_tuple
 
-        {:error, reason} ->
-          {:error, reason}
-      end
-    end)
+      {:ok, {:error, :revoked}} ->
+        update_account(%{revoked: true}, rha)
+        {:error, :revoked}
+
+      {:ok, {:error, reason}} ->
+        {:error, reason}
+
+      # The transaction itself failed (lock wait timeout, connection checkout,
+      # a raise inside). Nothing was learned about the grant, so this is
+      # transient - never let it latch `revoked`.
+      {:error, reason} ->
+        Logger.error(
+          "Could not refresh #{rha.repo_host} token for #{rha.user_id}: #{inspect(reason)}"
+        )
+
+        {:error, :transient}
+    end
+  end
+
+  defp lock_account(rha) do
+    locked =
+      __MODULE__
+      |> where([r], r.id == ^rha.id)
+      |> lock("FOR UPDATE")
+      |> FrontRepo.one()
+
+    locked || rha
   end
 
   # Negative cache for a row that is NOT yet revoked but just failed a
@@ -374,6 +396,11 @@ defmodule Guard.FrontRepo.RepoHostAccount do
 
   defp drop_if_skip_credentials(data, permission_scope) do
     if skip_credentials?(permission_scope, Map.get(data, :permission_scope)) do
+      Logger.warning(
+        "Not storing credentials: incoming scope #{inspect(Map.get(data, :permission_scope))} " <>
+          "is narrower than stored #{inspect(permission_scope)}"
+      )
+
       Map.drop(data, [:permission_scope, :token, :refresh_token, :token_expires_at, :revoked])
     else
       data
@@ -461,10 +488,28 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     end
   end
 
-  defp reset_account(account, data, reset: reset)
-       when account.github_uid == data.github_uid or reset == false do
+  defp reset_account(account, data, reset: _reset)
+       when account.github_uid == data.github_uid do
     Logger.debug(
-      "Skipping reset account for #{account.user_id} #{account.repo_host} reset=#{reset}"
+      "Skipping reset account for #{account.user_id} #{account.repo_host}: uid unchanged"
+    )
+
+    {:ok, account}
+  end
+
+  # Reached only when the incoming uid differs from the stored one. With
+  # `reset: false` - which is what the OAuth connect callback passes - the
+  # write is dropped and the callback still redirects with `status=success`,
+  # so the user is told the reconnect worked while the dead credentials stay
+  # in place. Logged at warning because at debug level this was invisible in
+  # production; whether to fail the callback or adopt the new uid needs to be
+  # driven by what these lines show.
+  defp reset_account(account, data, reset: false) do
+    Logger.warning(
+      "Skipping reset account for #{account.user_id} #{account.repo_host} reset=false " <>
+        "stored_uid=#{inspect(account.github_uid)} " <>
+        "incoming_uid=#{inspect(Map.get(data, :github_uid))} " <>
+        "login=#{inspect(account.login)}: credentials from this OAuth exchange were NOT stored"
     )
 
     {:ok, account}
@@ -510,10 +555,21 @@ defmodule Guard.FrontRepo.RepoHostAccount do
   def skip_credentials?("", _to), do: false
   def skip_credentials?(from, to) when from == to, do: false
 
+  # Only skip when we can actually tell that the incoming scope is narrower
+  # than the stored one. An unknown scope has no rank, and `nil > integer` is
+  # `true` in Erlang term order - which used to make any account whose stored
+  # permission_scope was outside @scopes_in_order silently discard the freshly
+  # minted token, refresh_token and expiry while still reporting success to
+  # the user who had just reconnected.
   def skip_credentials?(from, to) do
-    order_index = fn scope -> Enum.find_index(@scopes_in_order, &(&1 == to_string(scope))) end
-    order_index.(from) > order_index.(to)
+    case {scope_rank(from), scope_rank(to)} do
+      {nil, _} -> false
+      {_, nil} -> false
+      {from_rank, to_rank} -> from_rank > to_rank
+    end
   end
+
+  defp scope_rank(scope), do: Enum.find_index(@scopes_in_order, &(&1 == to_string(scope)))
 
   defp changeset_error_fields(%Ecto.Changeset{errors: errors}) do
     Enum.map_join(errors, ",", fn {field, {msg, _opts}} -> "#{field}:#{msg}" end)

@@ -132,6 +132,70 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
       {:ok, rha: rha}
     end
 
+    test "rotation: refreshes once and then reuses what it persisted", %{rha: rha} do
+      {:ok, calls} = Agent.start_link(fn -> 0 end)
+
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
+          Agent.update(calls, &(&1 + 1))
+
+          {:ok,
+           %Tesla.Env{
+             status: 200,
+             body: %{
+               "access_token" => "rotated_token",
+               "refresh_token" => "rotated_refresh_token",
+               "expires_in" => 7200
+             }
+           }}
+      end)
+
+      assert {:ok, {"rotated_token", _}} = RepoHostAccount.get_bitbucket_token(rha)
+
+      # The caller still holds the stale struct carrying the expired expiry.
+      # The locked re-read has to see what the first call persisted and hand
+      # that back, because Bitbucket rotates on every refresh - a second
+      # rotation would expire the token the first call just gave out.
+      assert {:ok, {"rotated_token", _}} = RepoHostAccount.get_bitbucket_token(rha)
+
+      assert Agent.get(calls, & &1) == 1
+
+      reloaded = FrontRepo.get!(RepoHostAccount, rha.id)
+      assert reloaded.token == "rotated_token"
+      assert reloaded.refresh_token == "rotated_refresh_token"
+      refute reloaded.revoked
+    end
+
+    test "rotation: a response that omits refresh_token keeps the stored one", %{rha: rha} do
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
+          {:ok,
+           %Tesla.Env{
+             status: 200,
+             body: %{"access_token" => "rotated_token", "expires_in" => 7200}
+           }}
+      end)
+
+      assert {:ok, {"rotated_token", _}} = RepoHostAccount.get_bitbucket_token(rha)
+
+      reloaded = FrontRepo.get!(RepoHostAccount, rha.id)
+      assert reloaded.refresh_token == "example_refresh_token"
+    end
+
+    test "the token-endpoint body is decoded, so the OAuth error is visible", %{rha: rha} do
+      # Regression guard for the logging blind spot: the request is
+      # form-urlencoded, so without an explicit JSON decode the response body
+      # stayed a raw binary and every failure logged `error=nil`. A raw-binary
+      # `invalid_grant` still has to be recognised as a real revocation.
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
+          {:ok, %Tesla.Env{status: 400, body: ~s({"error":"invalid_grant"})}}
+      end)
+
+      assert {:error, :revoked} = RepoHostAccount.get_bitbucket_token(rha)
+      assert FrontRepo.get!(RepoHostAccount, rha.id).revoked
+    end
+
     test "FIXED: bare 403 is transient, row stays unrevoked (was a permanent " <>
            "revoke pre-fix)",
          %{rha: rha} do
@@ -470,6 +534,27 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
 
       reloaded = FrontRepo.get!(RepoHostAccount, rha.id)
       assert reloaded.revoked == true
+    end
+  end
+
+  describe "skip_credentials?/2" do
+    test "skips only a genuine narrowing of the stored scope" do
+      assert RepoHostAccount.skip_credentials?("repo,user:email", "public_repo,user:email")
+      assert RepoHostAccount.skip_credentials?("public_repo,user:email", "user:email")
+
+      refute RepoHostAccount.skip_credentials?("user:email", "repo,user:email")
+      refute RepoHostAccount.skip_credentials?("repo,user:email", "repo,user:email")
+    end
+
+    test "never skips when either scope is unrecognised" do
+      # `Enum.find_index` returns nil for an unknown scope and `nil > 0` is
+      # true in Erlang term order, which used to make any account holding a
+      # scope string outside the known set silently discard the freshly minted
+      # token, refresh_token and expiry - while the connect callback still
+      # redirected with status=success.
+      refute RepoHostAccount.skip_credentials?("account repository webhook", "repo,user:email")
+      refute RepoHostAccount.skip_credentials?("repo", "repo,user:email")
+      refute RepoHostAccount.skip_credentials?("repo,user:email", "account")
     end
   end
 

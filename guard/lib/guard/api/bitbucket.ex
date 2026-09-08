@@ -139,13 +139,25 @@ defmodule Guard.Api.Bitbucket do
     )
   end
 
-  defp safe_oauth_error(body) when is_map(body), do: Map.get(body, "error")
-  defp safe_oauth_error(_), do: nil
+  defp safe_oauth_error(body), do: oauth_field(body, "error")
 
-  defp safe_oauth_error_description(body) when is_map(body),
-    do: Map.get(body, "error_description")
+  defp safe_oauth_error_description(body), do: oauth_field(body, "error_description")
 
-  defp safe_oauth_error_description(_), do: nil
+  # The token endpoint answers JSON, but the request body has to stay
+  # form-urlencoded, so a response Tesla did not decode still reaches us as a
+  # raw binary. Decode it here too: without this every failure logged
+  # `error=nil error_description=nil`, which is why the OAuth reason behind
+  # these refresh failures was invisible in production.
+  defp oauth_field(body, key) when is_map(body), do: Map.get(body, key)
+
+  defp oauth_field(body, key) when is_binary(body) do
+    case Jason.decode(body) do
+      {:ok, decoded} when is_map(decoded) -> Map.get(decoded, key)
+      _ -> nil
+    end
+  end
+
+  defp oauth_field(_body, _key), do: nil
 
   defp build_token_client do
     {:ok, {client_id, client_secret}} = Guard.GitProviderCredentials.get(:bitbucket)
@@ -153,7 +165,15 @@ defmodule Guard.Api.Bitbucket do
     Tesla.client([
       {Tesla.Middleware.BaseUrl, @base_url},
       {Tesla.Middleware.BasicAuth, username: client_id, password: client_secret},
-      Tesla.Middleware.FormUrlencoded
+      Tesla.Middleware.FormUrlencoded,
+      # The request is form-urlencoded but the response is JSON, so decode it
+      # explicitly - `classify_refresh_response/2` and the failure logs both
+      # depend on being able to read `error` out of the body.
+      {Tesla.Middleware.DecodeJson, engine: Jason},
+      # get_bitbucket_token/1 holds a `FOR UPDATE` row lock across this call to
+      # serialize rotations, so the call has to be bounded or one hung
+      # connection stalls every other refresh for that account.
+      {Tesla.Middleware.Timeout, timeout: 10_000}
     ])
   end
 

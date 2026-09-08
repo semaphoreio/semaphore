@@ -79,7 +79,11 @@ defmodule Guard.Api.Gitlab do
     Tesla.client([
       {Tesla.Middleware.BaseUrl, @base_url},
       {Tesla.Middleware.BasicAuth, username: client_id, password: client_secret},
-      Tesla.Middleware.JSON
+      Tesla.Middleware.JSON,
+      # get_gitlab_token/1 holds a `FOR UPDATE` row lock across this call to
+      # serialize rotations, so the call has to be bounded or one hung
+      # connection stalls every other refresh for that account.
+      {Tesla.Middleware.Timeout, timeout: 10_000}
     ])
   end
 

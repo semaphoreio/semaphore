@@ -144,9 +144,12 @@ defmodule Ueberauth.Strategy.Bitbucket do
   def credentials(conn) do
     token = conn.private.bitbucket_token
 
+    # Bitbucket Cloud renamed this field from "scopes" to "scope" and delimits
+    # it with spaces per RFC 6749 (OAuth 2.0 authentication changes, enforced
+    # 2026-05-04); the legacy comma-separated "scopes" stays as a fallback.
     scopes =
-      (token.other_params["scopes"] || "")
-      |> String.split(",")
+      (token.other_params["scope"] || token.other_params["scopes"] || "")
+      |> String.split([" ", ","], trim: true)
 
     %Credentials{
       token: token.access_token,
