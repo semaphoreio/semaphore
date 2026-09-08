@@ -18,6 +18,8 @@ import (
 	"gorm.io/gorm"
 )
 
+var ErrInvalidStateTransition = errors.New("invalid state transition")
+
 type AgentState string
 type AgentAction string
 type JobResult string
@@ -225,16 +227,17 @@ func handleRunningJobState(agent *models.Agent, req *Request) (*Response, error)
 
 /*
  * The job ID sent by the agent is not trusted. The only job an agent can finish
- * is the one assigned to it on the server side; if there is none, nothing is
- * released or published and the agent just gets its next action.
+ * is the one assigned to it on the server side; if there is none, the request
+ * is rejected as an invalid state transition.
  */
 func handleFinishedJobState(ctx context.Context, publisher *amqp.Publisher, agent *models.Agent, requestedJobID string, result JobResult) (*Response, error) {
 	if agent.AssignedJobID == nil {
-		logging.ForAgent(agent).Warningf("Agent is not assigned to any job - ignoring finished job %s", requestedJobID)
-	} else {
-		if err := finishAssignedJob(ctx, publisher, agent, requestedJobID, result); err != nil {
-			return nil, err
-		}
+		logging.ForAgent(agent).Warningf("Agent is not assigned to any job - rejecting finished job %s", requestedJobID)
+		return nil, fmt.Errorf("%w: agent has no assigned job", ErrInvalidStateTransition)
+	}
+
+	if err := finishAssignedJob(ctx, publisher, agent, requestedJobID, result); err != nil {
+		return nil, err
 	}
 
 	// If agent was disconnected from the UI, we tell it to shut down.

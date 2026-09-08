@@ -739,7 +739,7 @@ func Test__Sync(t *testing.T) {
 
 	// This test makes sure backwards compatibility with the deprecated callback broker models works.
 	// We can remove it once we are sure no more old agents are being registered.
-	t.Run("finished-job => already released agent leads waits for jobs", func(t *testing.T) {
+	t.Run("finished-job => already released agent is rejected", func(t *testing.T) {
 		_ = declareExchangeAndQueue()
 		agent, token, err := newAgent(agentType)
 		require.Nil(t, err)
@@ -775,13 +775,14 @@ func Test__Sync(t *testing.T) {
 		_, err = models.ReleaseAgent(testOrgID, agent.AgentTypeName, jobId)
 		require.Nil(t, err)
 
-		// finished-job => wait-for-jobs
-		sync(t, syncAssertion{
-			state:          agentsync.AgentStateFinishedJob,
-			token:          token,
-			action:         agentsync.AgentActionWaitForJobs,
-			jobIdOnRequest: jobId.String(),
-		})
+		req := &agentsync.Request{
+			State:     agentsync.AgentStateFinishedJob,
+			JobID:     jobId.String(),
+			JobResult: agentsync.JobResultPassed,
+		}
+
+		res := run("POST", "/sync", token, req)
+		require.Equal(t, http.StatusUnprocessableEntity, res.Code)
 
 		checkNoFinishedEventReceived(t)
 		checkNoTeardownFinishedEventReceived(t)
@@ -1114,7 +1115,7 @@ func Test__Sync(t *testing.T) {
 		require.Nil(t, otherAgent.Disconnect())
 	})
 
-	t.Run("finished-job => agent without an assigned job finishes nothing", func(t *testing.T) {
+	t.Run("finished-job => agent without an assigned job is rejected", func(t *testing.T) {
 		_ = declareExchangeAndQueue()
 		agent, token, err := newAgent(agentType)
 		require.Nil(t, err)
@@ -1131,14 +1132,14 @@ func Test__Sync(t *testing.T) {
 			jobIdOnResponse: otherJobId.String(),
 		})
 
-		// idle agent claims the other agent's job finished
-		sync(t, syncAssertion{
-			state:          agentsync.AgentStateFinishedJob,
-			token:          token,
-			action:         agentsync.AgentActionWaitForJobs,
-			jobIdOnRequest: otherJobId.String(),
-			jobResult:      agentsync.JobResultFailed,
-		})
+		req := &agentsync.Request{
+			State:     agentsync.AgentStateFinishedJob,
+			JobID:     otherJobId.String(),
+			JobResult: agentsync.JobResultFailed,
+		}
+
+		res := run("POST", "/sync", token, req)
+		require.Equal(t, http.StatusUnprocessableEntity, res.Code)
 
 		checkNoFinishedEventReceived(t)
 		checkNoTeardownFinishedEventReceived(t)

@@ -532,6 +532,12 @@ func (s *Server) Sync(w http.ResponseWriter, r *http.Request) {
 
 	response, err := agentsync.Process(r.Context(), s.quotaClient, s.agentCounter, s.publisher, agent, request)
 	if err != nil {
+		if errors.Is(err, agentsync.ErrInvalidStateTransition) {
+			logging.ForAgent(agent).Warningf("Invalid sync state transition: %v", err)
+			respondWith422(w)
+			return
+		}
+
 		logging.ForAgent(agent).Errorf("Error processing sync request: %v", err)
 		_ = watchman.IncrementWithTags("server.error", []string{"sync_error", orgID})
 		respondWith500(w)
