@@ -25,6 +25,8 @@ import (
 	jobStateProtos "github.com/semaphoreio/semaphore/self_hosted_hub/pkg/protos/server_farm.mq.job_state_exchange"
 	quotas "github.com/semaphoreio/semaphore/self_hosted_hub/pkg/quotas"
 	"github.com/semaphoreio/semaphore/self_hosted_hub/pkg/workers/agentcounter"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 
 	require "github.com/stretchr/testify/require"
@@ -1199,6 +1201,40 @@ func Test__DescribeJob(t *testing.T) {
 		res := run("GET", "/jobs/"+jobID.String(), token, nil)
 
 		require.Equal(t, http.StatusNotFound, res.Code)
+	})
+
+	// Zebra scrubs the payload when a job reaches a terminal state, and answers
+	// FailedPrecondition instead of handing out the scrubbed copy. That is a
+	// permanent answer, so the agent must not keep retrying it.
+	t.Run("when zebra says the job is finished", func(t *testing.T) {
+		defer grpcmock.ResetGetAgentPayloadMock()
+		grpcmock.MockGetAgentPayloadError(status.Error(codes.FailedPrecondition, "Job is stopped"))
+
+		agent, token, err := newAgent(agentType)
+		require.Nil(t, err)
+
+		jobID, err := models.ForcefullyOccupyAgentWithJobID(agent)
+		require.NoError(t, err)
+
+		res := run("GET", "/jobs/"+jobID.String(), token, nil)
+
+		require.Equal(t, http.StatusNotFound, res.Code)
+	})
+
+	// Any other failure is transient, so it stays a 500 and the agent retries.
+	t.Run("when zebra is unavailable", func(t *testing.T) {
+		defer grpcmock.ResetGetAgentPayloadMock()
+		grpcmock.MockGetAgentPayloadError(status.Error(codes.Unavailable, "connection refused"))
+
+		agent, token, err := newAgent(agentType)
+		require.Nil(t, err)
+
+		jobID, err := models.ForcefullyOccupyAgentWithJobID(agent)
+		require.NoError(t, err)
+
+		res := run("GET", "/jobs/"+jobID.String(), token, nil)
+
+		require.Equal(t, http.StatusInternalServerError, res.Code)
 	})
 }
 

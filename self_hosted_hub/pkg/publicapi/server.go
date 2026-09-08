@@ -27,6 +27,8 @@ import (
 	quotas "github.com/semaphoreio/semaphore/self_hosted_hub/pkg/quotas"
 	"github.com/semaphoreio/semaphore/self_hosted_hub/pkg/workers/agentcounter"
 	log "github.com/sirupsen/logrus"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"gorm.io/gorm"
 )
 
@@ -192,6 +194,17 @@ func (s *Server) DescribeJob(w http.ResponseWriter, r *http.Request) {
 
 	payload, err := zebraclient.GetJobPayload(jobID)
 	if err != nil {
+		// Zebra scrubs the payload once a job reaches a terminal state and
+		// refuses to serve it rather than handing out the scrubbed copy. That
+		// is a permanent answer, not a failure: 404 is what the agent already
+		// understands as "this job is not yours to run", and it stops the
+		// retries a 500 would provoke.
+		if status.Code(err) == codes.FailedPrecondition {
+			logging.ForAgent(agent).Warningf("Job %s is no longer running - not serving payload: %v", jobID, err)
+			respondWith404(w)
+			return
+		}
+
 		logging.ForAgent(agent).Errorf("Error fetching job payload for %s: %v", jobID, err)
 		_ = watchman.IncrementWithTags("server.error", []string{"zebra_failure", agent.OrganizationID.String()})
 		respondWith500(w)
