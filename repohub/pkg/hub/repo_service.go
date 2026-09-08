@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/renderedtext/go-watchman"
+	bench "github.com/semaphoreio/semaphore/repohub/pkg/bench"
 	gitrekt "github.com/semaphoreio/semaphore/repohub/pkg/gitrekt"
 	models "github.com/semaphoreio/semaphore/repohub/pkg/models"
 	tokenstore "github.com/semaphoreio/semaphore/repohub/pkg/tokenstore"
@@ -39,7 +39,7 @@ func NewRepoService(db *gorm.DB) *RepoService {
 }
 
 func (s *RepoService) Describe(ctx context.Context, request *ia_repository.DescribeRequest) (*ia_repository.DescribeResponse, error) {
-	defer watchman.Benchmark(time.Now(), "hub.Describe")
+	defer bench.Observe(time.Now(), "hub.Describe", request.RepositoryId)
 
 	log.Printf("Describe: Request %v", request)
 
@@ -54,7 +54,7 @@ func (s *RepoService) Describe(ctx context.Context, request *ia_repository.Descr
 }
 
 func (s *RepoService) List(ctx context.Context, request *ia_repository.ListRequest) (*ia_repository.ListResponse, error) {
-	defer watchman.Benchmark(time.Now(), "hub.List")
+	defer bench.Observe(time.Now(), "hub.List", request.ProjectId)
 
 	log.Printf("List: Request %v", request)
 
@@ -80,7 +80,7 @@ func (s *RepoService) List(ctx context.Context, request *ia_repository.ListReque
 }
 
 func (s *RepoService) GetFiles(ctx context.Context, request *ia_repository.GetFilesRequest) (*ia_repository.GetFilesResponse, error) {
-	defer watchman.Benchmark(time.Now(), "hub.GetFiles")
+	defer bench.Observe(time.Now(), "hub.GetFiles", request.RepositoryId)
 
 	log.Printf(
 		"GetFiles: Repo %s, Revision %+v, Selectors %+v, IncludeContent %+v",
@@ -132,7 +132,7 @@ func (s *RepoService) GetFiles(ctx context.Context, request *ia_repository.GetFi
 }
 
 func (s *RepoService) Commit(ctx context.Context, request *ia_repository.CommitRequest) (*ia_repository.CommitResponse, error) {
-	defer watchman.Benchmark(time.Now(), "hub.Commit")
+	defer bench.Observe(time.Now(), "hub.Commit", request.RepositoryId)
 
 	log.Printf(
 		"Commit: Repo %s, User %s, Branch %s, CommitMessage: %s, Changes: %+v",
@@ -207,7 +207,7 @@ func (s *RepoService) Commit(ctx context.Context, request *ia_repository.CommitR
 }
 
 func (s *RepoService) GetChangedFilePaths(ctx context.Context, request *ia_repository.GetChangedFilePathsRequest) (*ia_repository.GetChangedFilePathsResponse, error) {
-	defer watchman.Benchmark(time.Now(), "hub.GetChangedFilePaths")
+	defer bench.Observe(time.Now(), "hub.GetChangedFilePaths", request.RepositoryId)
 
 	log.Printf(
 		"GetChangedFilePaths: Repo %s, Head %v, Base %v",
