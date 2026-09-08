@@ -111,6 +111,7 @@ See: `docs/arch.md`, `lib/notifications/application.ex`, `lib/notifications/work
 
 ## Infrastructure & Deployment (as implemented here)
 - Docker: multi-stage build creates a Mix release and runs `bin/notifications start` in the runner image. See: `Dockerfile`.
+- Base images are pinned via `ALPINE_VERSION` in the `Dockerfile` (currently 3.22.4). hexpm publishes the Elixir 1.12.3 / OTP 24.3.4.17 toolchain only up to alpine 3.22.4 (no 3.23.x builds for that combo), so alpine bumps are capped there until the Elixir/OTP modernization (renderedtext/tasks#10462) lands. See: `Dockerfile`.
 - Local stack: docker compose runs `app`, `db` (Postgres 9.6), and `rabbitmq`. See: `docker-compose.yml`.
 - Helm: Kubernetes chart and values live under `helm/`. See: `helm/Chart.yaml`, `helm/values.yaml`.
 - Proto generation uses Dockerized `protoc` and external API repos; invoked by `make pb.gen`. See: `Makefile`, `scripts/internal_protos.sh`, `scripts/public_protos.sh`.
