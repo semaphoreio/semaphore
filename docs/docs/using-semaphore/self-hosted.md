@@ -24,6 +24,7 @@ Jobs running on self-hosted agents have the following limitations:
 - [SSH debugging](#debug) works in [a different way]
 - On Kubernetes agents, only [Docker based environments](./pipelines#docker-environments) are supported
 - The CI environment may persist between jobs on certain configurations
+- [Initialization jobs](#init-requirements) run on Linux agents only and require extra software on the machine
 
 ## Agent lifecycle {#lifecycle}
 
@@ -206,6 +207,73 @@ If you want to run [initialization jobs](./pipelines#init-job) on self-hosted ag
 
 - **Organization**: affects all projects in the organization. See [organization init agent](./organizations#init-agent) to learn how to change this setting
 - **Project**: changes the agent running initialization for a single project. See [project pre-flight checks](./projects#preflight) to learn how to change this setting
+
+Machines running initialization jobs must provide additional software. See [initialization job requirements](#init-requirements).
+
+### Initialization job requirements {#init-requirements}
+
+Initialization jobs are supported on **Linux** agents only, on the x86_64 and arm64 architectures. Self-hosted macOS and Windows agents cannot run initialization jobs.
+
+The initialization job clones the repository with Git, compiles the pipeline with [spc](../reference/toolbox#spc), and uploads the compiled pipeline and the initialization log as artifacts. The following software must be present on the machine:
+
+| Software | Notes |
+|----------|-------|
+| Git | Version 2.25 or newer is recommended, 2.22 is the minimum. Older versions can't use the optimized checkout and fall back to a full clone |
+| Erlang/OTP | Must be major version 24, 25, 26, or 27. Both `erl` and `escript` must be on the `PATH` |
+| Bash | Job commands run in a login shell that sources `~/.bash_profile` |
+| OpenSSH client | Clones the repository and fetches additional commits when evaluating [`change_in`](../reference/conditions-dsl#change-in) |
+| CA certificates | Uploads the compiled pipeline and the initialization log |
+| `which` | Locates the condition evaluator. Provided by the `debianutils` package on Debian and Ubuntu |
+| Standard shell utilities | `awk`, `basename`, `chmod`, `curl`, `cut`, `date`, `du`, `grep`, `head`, `ln`, `mv`, `tar`, `tr`, `uname`, and `sudo` |
+
+Docker, Elixir, and Git LFS are not required to run initialization jobs. Install them only if your regular jobs need them.
+
+:::warning
+
+Install Erlang before you install the agent. The toolbox picks a condition evaluator matching the Erlang version found on the machine at installation time. If you install or change Erlang afterwards, re-run `~/.toolbox/install-toolbox`.
+
+:::
+
+Installing Erlang is not enough on its own: `erl` and `escript` must be on the `PATH` of the shell that runs the job. Job commands run in a login shell, so a version manager such as kerl, asdf, or mise works as long as it activates Erlang from a profile file like `~/.bash_profile`. If it only activates for interactive shells, initialization jobs fail even though Erlang is installed.
+
+For the same reason, check the machine using a login shell. Running `ssh <machine> 'which escript'` uses a non-login shell and reports a false negative:
+
+```shell title="Check escript the way a job sees it"
+ssh <machine> 'bash -lc "which escript"'
+```
+
+On Ubuntu 22.04 and 24.04 you can install everything with:
+
+```shell title="Initialization job requirements on Ubuntu"
+apt-get update && apt-get install -y --no-install-recommends \
+  git openssh-client ca-certificates curl tar sudo debianutils erlang-nox
+update-ca-certificates
+```
+
+To check that a machine has a supported Erlang version, run:
+
+```shell title="Check the Erlang version"
+$ erl -eval 'erlang:display(erlang:system_info(otp_release)), halt().' -noshell
+"25"
+```
+
+If the reported version falls outside 24 to 27, install a supported release from the [Erlang downloads page](https://www.erlang.org/downloads).
+
+To check that the agent has everything it needs after installation, run:
+
+```shell title="Check the initialization job toolchain"
+$ command -v git escript when spc artifact retry
+$ echo '[]' > /tmp/in.json && when list-inputs --input /tmp/in.json --output /tmp/out.json && cat /tmp/out.json
+[]
+```
+
+If `when` is missing or the last command fails, the Erlang version on the machine is unsupported or was installed after the agent.
+
+:::info
+
+If pipelines fail during initialization, see the [initialization job logs](./pipelines#init-logs) to troubleshoot the issue.
+
+:::
 
 ## How to debug jobs on self-hosted {#debug}
 

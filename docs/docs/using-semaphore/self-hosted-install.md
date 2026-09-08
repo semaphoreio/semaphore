@@ -10,6 +10,12 @@ description: Install self-hosted agent stack in your machines
 
 Before you can run jobs in your hardware, you need to install and register the self-hosted agent stack. This page explains how to install the stack on several platforms.
 
+:::note
+
+If the agent type will run [initialization jobs](./pipelines#init-job), the machine needs Erlang/OTP and other software installed *before* the agent. See [initialization job requirements](./self-hosted#init-requirements).
+
+:::
+
 ## How to register agent type {#register-agent}
 
 The agent type is the name assigned to agents running on the same hardware or platform. Semaphore expects all self-hosted agents to belong to one agent type.
