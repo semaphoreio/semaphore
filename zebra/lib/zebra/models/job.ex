@@ -654,7 +654,7 @@ defmodule Zebra.Models.Job do
       Logger.info("Stopping job '#{job.id}'")
 
       if hosted?(job.machine_type), do: stop_hosted_job(job)
-      if self_hosted?(job.machine_type), do: stop_self_hosted_job(job)
+      if self_hosted?(job.machine_type), do: notify_self_hosted_agent(job)
 
       now = DateTime.utc_now() |> DateTime.truncate(:second)
 
@@ -680,6 +680,23 @@ defmodule Zebra.Models.Job do
       end
     else
       {:error, :invalid_transition}
+    end
+  end
+
+  # The agent learns a job is over from this call, so when it fails the agent is
+  # left asking for a payload this transition is about to scrub. Finishing the
+  # job still has to win - raising here would leave it in its current state and
+  # the stop request retried forever - so record the divergence and carry on.
+  defp notify_self_hosted_agent(job) do
+    case stop_self_hosted_job(job) do
+      :ok ->
+        :ok
+
+      error ->
+        Logger.error("Failed to stop self-hosted job '#{job.id}': #{inspect(error)}")
+        Watchman.increment("job.self_hosted_stop.failed")
+
+        :error
     end
   end
 

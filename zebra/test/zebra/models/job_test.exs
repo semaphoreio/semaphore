@@ -588,6 +588,21 @@ defmodule Zebra.Models.JobTest do
       assert Job.finished?(job)
     end
 
+    test "records a metric when the self-hosted hub can't be told about the stop" do
+      GrpcMock.stub(Support.FakeServers.SelfHosted, :stop_job, fn _, _ ->
+        raise "muahhahaaha"
+      end)
+
+      {:ok, job} = Support.Factories.Job.create(:started, %{machine_type: "s1-job-test"})
+
+      with_mock Watchman, [:passthrough], increment: fn _ -> :ok end do
+        assert {:ok, job} = Job.stop(job)
+
+        assert Job.finished?(job)
+        assert_called(Watchman.increment("job.self_hosted_stop.failed"))
+      end
+    end
+
     test "tries to finish the task" do
       {:ok, task} = Support.Factories.Task.create()
       {:ok, job} = Support.Factories.Job.create(:scheduled, %{build_id: task.id})
