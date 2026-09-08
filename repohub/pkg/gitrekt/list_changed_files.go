@@ -5,7 +5,7 @@ import (
 	"time"
 
 	git "github.com/libgit2/git2go/v34"
-	"github.com/renderedtext/go-watchman"
+	bench "github.com/semaphoreio/semaphore/repohub/pkg/bench"
 )
 
 type ListChangedFilesComparisonType int
@@ -16,9 +16,7 @@ const (
 )
 
 func ListChangedFiles(repo *Repository, base Revision, head Revision, comparison ListChangedFilesComparisonType) ([]string, error) {
-	defer watchman.BenchmarkWithTags(time.Now(), "gitrekt.ListChangedFiles", []string{
-		repo.HttpURL,
-	})
+	defer bench.Observe(time.Now(), "gitrekt.ListChangedFiles", repo.HttpURL)
 
 	log.Printf("ListChangedFiles Started. Repo: %s", repo.HttpURL)
 
