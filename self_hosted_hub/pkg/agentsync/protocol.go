@@ -268,6 +268,16 @@ func finishAssignedJob(ctx context.Context, publisher *amqp.Publisher, agent *mo
 	}
 
 	/*
+	 * If the result received in the job-finished sync request is empty,
+	 * it means the agent was using callbacks, so we don't send them again here.
+	 */
+	if result != "" {
+		if err := publisher.HandleJobFinished(ctx, jobID, string(result)); err != nil {
+			return err
+		}
+	}
+
+	/*
 	 * We only release agents that will be assigned to more jobs, and that haven't been interrupted.
 	 * The other agents will be told to shut down, so we don't need to release them.
 	 */
@@ -288,15 +298,7 @@ func finishAssignedJob(ctx context.Context, publisher *amqp.Publisher, agent *mo
 		}
 	}
 
-	/*
-	 * If the result received in the job-finished sync request is empty,
-	 * it means the agent was using callbacks, so we don't send them again here.
-	 */
-	if result == "" {
-		return nil
-	}
-
-	return publisher.HandleJobFinished(ctx, jobID, string(result))
+	return nil
 }
 
 func actionRunJob(jobID string) *Response {
