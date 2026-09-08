@@ -170,6 +170,16 @@ func handleWaitingForJobsState(ctx context.Context, publisher *amqp.Publisher, a
 	if agent.JobStopRequestedAt != nil && agent.AssignedJobID != nil {
 		jobID := *agent.AssignedJobID
 
+		// last_sync_job_id is the last job the agent reported working on, so if
+		// it matches, the agent has this job in hand and this is a stale
+		// waiting-for-jobs request racing its own start. Releasing would give
+		// the slot away while the agent keeps running, and its finished-job
+		// sync would then be rejected for having no assignment. Leave the
+		// assignment alone; the running-job sync is what carries stop-job.
+		if jobID.String() == agent.LastSyncJobID {
+			return actionContinue(req), nil
+		}
+
 		// A single-job agent runs one job and shuts down, so releasing it would
 		// let it pick up an unrelated job instead. Registering with a job_id
 		// requires single_job, so this is also every agent bound to a specific

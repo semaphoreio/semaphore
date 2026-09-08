@@ -1302,6 +1302,55 @@ func Test__SyncShutsDownSingleJobAgentWhenItsJobIsStopped(t *testing.T) {
 	require.NotNil(t, req)
 }
 
+func Test__SyncDoesNotReleaseAJobTheAgentAlreadyStarted(t *testing.T) {
+	database.TruncateTables()
+	_ = declareExchangeAndQueue()
+
+	agentType, _, err := newAgentType("s1-test")
+	require.Nil(t, err)
+
+	agent, token, err := newAgent(agentType)
+	require.Nil(t, err)
+
+	jobID, err := models.ForcefullyOccupyAgentWithJobID(agent)
+	require.NoError(t, err)
+
+	// The agent acknowledges the job, which is what last_sync_job_id records.
+	sync(t, syncAssertion{
+		state:          agentsync.AgentStateStartingJob,
+		token:          token,
+		jobIdOnRequest: jobID.String(),
+		action:         agentsync.AgentActionContinue,
+	})
+
+	require.NoError(t, models.StopJob(testOrgID, jobID))
+
+	// another job is queued for the same agent type
+	otherJobID := database.UUID()
+	require.NoError(t, models.CreateOccupationRequest(testOrgID, agentType.Name, otherJobID))
+
+	// Nothing serialises two syncs from the same agent, so a waiting-for-jobs
+	// request can be read after the agent has already been told to run the job.
+	// Releasing on that stale request would hand the slot to another job while
+	// the agent keeps running this one, and its finished-job sync would then be
+	// rejected for having no assignment - losing the completion callback.
+	sync(t, syncAssertion{
+		state:  agentsync.AgentStateWaitingForJobs,
+		token:  token,
+		action: agentsync.AgentActionContinue,
+	})
+
+	reloaded, err := models.FindAgentByToken(testOrgID.String(), agent.TokenHash)
+	require.NoError(t, err)
+	require.Equal(t, &jobID, reloaded.AssignedJobID)
+	require.NotNil(t, reloaded.JobStopRequestedAt)
+
+	// the queued job must not have been handed to an agent that is busy
+	req, err := models.FindOccupationRequest(testOrgID, agentType.Name, otherJobID)
+	require.NoError(t, err)
+	require.NotNil(t, req)
+}
+
 func Test__ListJobs(t *testing.T) {
 	database.TruncateTables()
 	grpcmock.Start()
