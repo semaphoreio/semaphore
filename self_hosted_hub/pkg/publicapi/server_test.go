@@ -739,7 +739,7 @@ func Test__Sync(t *testing.T) {
 
 	// This test makes sure backwards compatibility with the deprecated callback broker models works.
 	// We can remove it once we are sure no more old agents are being registered.
-	t.Run("finished-job => already released agent leads waits for jobs", func(t *testing.T) {
+	t.Run("finished-job => already released agent is rejected", func(t *testing.T) {
 		_ = declareExchangeAndQueue()
 		agent, token, err := newAgent(agentType)
 		require.Nil(t, err)
@@ -775,13 +775,14 @@ func Test__Sync(t *testing.T) {
 		_, err = models.ReleaseAgent(testOrgID, agent.AgentTypeName, jobId)
 		require.Nil(t, err)
 
-		// finished-job => wait-for-jobs
-		sync(t, syncAssertion{
-			state:          agentsync.AgentStateFinishedJob,
-			token:          token,
-			action:         agentsync.AgentActionWaitForJobs,
-			jobIdOnRequest: jobId.String(),
-		})
+		req := &agentsync.Request{
+			State:     agentsync.AgentStateFinishedJob,
+			JobID:     jobId.String(),
+			JobResult: agentsync.JobResultPassed,
+		}
+
+		res := run("POST", "/sync", token, req)
+		require.Equal(t, http.StatusUnprocessableEntity, res.Code)
 
 		checkNoFinishedEventReceived(t)
 		checkNoTeardownFinishedEventReceived(t)
@@ -1058,6 +1059,99 @@ func Test__Sync(t *testing.T) {
 		checkTeardownFinishedEventReceived(t, jobId.String())
 		_ = purgeExchangeAndQueue()
 	})
+
+	t.Run("finished-job => job_id from request is ignored, only the assigned job is finished", func(t *testing.T) {
+		_ = declareExchangeAndQueue()
+		agent, token, err := newAgent(agentType)
+		require.Nil(t, err)
+		otherAgent, otherToken, err := newAgent(agentType)
+		require.Nil(t, err)
+
+		// both agents pick up a job each
+		jobId := database.UUID()
+		models.CreateOccupationRequest(testOrgID, agentType.Name, jobId)
+		sync(t, syncAssertion{
+			state:           agentsync.AgentStateWaitingForJobs,
+			token:           token,
+			action:          agentsync.AgentActionRunJob,
+			jobIdOnResponse: jobId.String(),
+		})
+
+		otherJobId := database.UUID()
+		models.CreateOccupationRequest(testOrgID, agentType.Name, otherJobId)
+		sync(t, syncAssertion{
+			state:           agentsync.AgentStateWaitingForJobs,
+			token:           otherToken,
+			action:          agentsync.AgentActionRunJob,
+			jobIdOnResponse: otherJobId.String(),
+		})
+
+		// first agent claims the other agent's job finished
+		sync(t, syncAssertion{
+			state:          agentsync.AgentStateFinishedJob,
+			token:          token,
+			action:         agentsync.AgentActionWaitForJobs,
+			jobIdOnRequest: otherJobId.String(),
+			jobResult:      agentsync.JobResultFailed,
+		})
+
+		// only the agent's own job is finished, with the result it sent
+		checkFinishedEventReceived(t, jobId.String(), agentsync.JobResultFailed)
+		checkTeardownFinishedEventReceived(t, jobId.String())
+		checkNoFinishedEventReceived(t)
+		checkNoTeardownFinishedEventReceived(t)
+
+		// first agent is released, other agent keeps its assignment
+		agent, err = models.FindAgentByToken(testOrgID.String(), agent.TokenHash)
+		require.Nil(t, err)
+		require.Nil(t, agent.AssignedJobID)
+
+		otherAgent, err = models.FindAgentByToken(testOrgID.String(), otherAgent.TokenHash)
+		require.Nil(t, err)
+		require.True(t, otherAgent.IsRunningJob(otherJobId.String()))
+
+		_ = purgeExchangeAndQueue()
+		require.Nil(t, agent.Disconnect())
+		require.Nil(t, otherAgent.Disconnect())
+	})
+
+	t.Run("finished-job => agent without an assigned job is rejected", func(t *testing.T) {
+		_ = declareExchangeAndQueue()
+		agent, token, err := newAgent(agentType)
+		require.Nil(t, err)
+
+		otherAgent, otherToken, err := newAgent(agentType)
+		require.Nil(t, err)
+
+		otherJobId := database.UUID()
+		models.CreateOccupationRequest(testOrgID, agentType.Name, otherJobId)
+		sync(t, syncAssertion{
+			state:           agentsync.AgentStateWaitingForJobs,
+			token:           otherToken,
+			action:          agentsync.AgentActionRunJob,
+			jobIdOnResponse: otherJobId.String(),
+		})
+
+		req := &agentsync.Request{
+			State:     agentsync.AgentStateFinishedJob,
+			JobID:     otherJobId.String(),
+			JobResult: agentsync.JobResultFailed,
+		}
+
+		res := run("POST", "/sync", token, req)
+		require.Equal(t, http.StatusUnprocessableEntity, res.Code)
+
+		checkNoFinishedEventReceived(t)
+		checkNoTeardownFinishedEventReceived(t)
+
+		otherAgent, err = models.FindAgentByToken(testOrgID.String(), otherAgent.TokenHash)
+		require.Nil(t, err)
+		require.True(t, otherAgent.IsRunningJob(otherJobId.String()))
+
+		_ = purgeExchangeAndQueue()
+		require.Nil(t, agent.Disconnect())
+		require.Nil(t, otherAgent.Disconnect())
+	})
 }
 
 func Test__DescribeJob(t *testing.T) {
@@ -1082,6 +1176,20 @@ func Test__DescribeJob(t *testing.T) {
 		res := run("GET", "/jobs/"+jobID.String(), token, nil)
 
 		require.Equal(t, http.StatusOK, res.Code)
+	})
+
+	t.Run("when the agent is disabled", func(t *testing.T) {
+		agent, token, err := newAgent(agentType)
+		require.Nil(t, err)
+
+		jobID, err := models.ForcefullyOccupyAgentWithJobID(agent)
+		require.Nil(t, err)
+
+		_, err = models.DisableAgent(testOrgID, agentType.Name, agent.Name)
+		require.Nil(t, err)
+
+		res := run("GET", "/jobs/"+jobID.String(), token, nil)
+		require.Equal(t, http.StatusNotFound, res.Code)
 	})
 
 	t.Run("when the job assigned to the agent was stopped", func(t *testing.T) {
@@ -1249,6 +1357,7 @@ func Test__Disconnect(t *testing.T) {
 
 func Test__RefreshToken(t *testing.T) {
 	database.TruncateTables()
+	grpcmock.Start()
 
 	t.Run("agent not found", func(t *testing.T) {
 		token := "token-not-connected-to-an-agent"
@@ -1284,6 +1393,40 @@ func Test__RefreshToken(t *testing.T) {
 		err = unmarshalJSON(res.Body, response)
 		require.Nil(t, err)
 		require.NotEmpty(t, response.Token)
+	})
+
+	t.Run("agent has job assigned but is disabled", func(t *testing.T) {
+		agentType, _, err := newAgentType("s1-test-3")
+		require.Nil(t, err)
+
+		agent, token, err := newAgent(agentType)
+		require.Nil(t, err)
+
+		_, err = models.ForcefullyOccupyAgentWithJobID(agent)
+		require.Nil(t, err)
+
+		_, err = models.DisableAgent(testOrgID, agentType.Name, agent.Name)
+		require.Nil(t, err)
+
+		res := run("POST", "/refresh", token, nil)
+		require.Equal(t, http.StatusNotFound, res.Code)
+	})
+
+	t.Run("agent has job assigned but job was stopped", func(t *testing.T) {
+		agentType, _, err := newAgentType("s1-test-4")
+		require.Nil(t, err)
+
+		agent, token, err := newAgent(agentType)
+		require.Nil(t, err)
+
+		jobID, err := models.ForcefullyOccupyAgentWithJobID(agent)
+		require.Nil(t, err)
+
+		err = models.StopJob(testOrgID, jobID)
+		require.Nil(t, err)
+
+		res := run("POST", "/refresh", token, nil)
+		require.Equal(t, http.StatusUnprocessableEntity, res.Code)
 	})
 }
 

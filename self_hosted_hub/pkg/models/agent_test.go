@@ -87,6 +87,41 @@ func Test__RegisterAgent(t *testing.T) {
 	})
 }
 
+func Test__SyncAgent(t *testing.T) {
+	database.TruncateTables()
+
+	orgID := database.UUID()
+	requesterID := database.UUID()
+
+	_, _, err := CreateAgentType(orgID, &requesterID, "s1-test-1")
+	require.Nil(t, err)
+
+	t.Run("ignores job_id that does not match the assigned job", func(t *testing.T) {
+		_, token, err := RegisterAgent(orgID, "s1-test-1", "sync-1", AgentMetadata{})
+		require.Nil(t, err)
+
+		agent, err := SyncAgent(orgID.String(), securetoken.Hash(token), "finished-job", "fake-job-id", 0)
+		require.Nil(t, err)
+		require.Equal(t, "", agent.LastSyncJobID)
+	})
+
+	t.Run("accepts job_id that matches the assigned job", func(t *testing.T) {
+		agent, token, err := RegisterAgent(orgID, "s1-test-1", "sync-2", AgentMetadata{})
+		require.Nil(t, err)
+
+		jobID := database.UUID()
+		err = CreateOccupationRequest(orgID, "s1-test-1", jobID)
+		require.NoError(t, err)
+
+		_, err = OccupyAgent(agent)
+		require.NoError(t, err)
+
+		agent, err = SyncAgent(orgID.String(), securetoken.Hash(token), "running-job", jobID.String(), 0)
+		require.Nil(t, err)
+		require.Equal(t, jobID.String(), agent.LastSyncJobID)
+	})
+}
+
 func Test__ListAgentsWithCursor(t *testing.T) {
 	database.TruncateTables()
 
@@ -181,26 +216,25 @@ func Test__OccupyAgent(t *testing.T) {
 		require.Nil(t, req)
 	})
 
-	t.Run("clears a stop request left over from a previous job", func(t *testing.T) {
-		staleAgent, staleToken, err := RegisterAgent(orgID, "s1-test-1", "hello-stale", AgentMetadata{})
-		require.NoError(t, err)
+	t.Run("clears a stale job stop request", func(t *testing.T) {
+		agent, token, err := RegisterAgent(orgID, "s1-test-1", "hello2", AgentMetadata{})
+		require.Nil(t, err)
 
-		// A previous job was stopped, which sets the flag without clearing
-		// the assignment.
-		previousJobID, err := ForcefullyOccupyAgentWithJobID(staleAgent)
+		now := time.Now()
+		err = database.Conn().Model(agent).Update("job_stop_requested_at", &now).Error
 		require.NoError(t, err)
-		require.NoError(t, StopJob(orgID, previousJobID))
 
 		jobID := database.UUID()
-		require.NoError(t, CreateOccupationRequest(orgID, "s1-test-1", jobID))
-
-		_, err = OccupyAgent(staleAgent)
+		err = CreateOccupationRequest(orgID, "s1-test-1", jobID)
 		require.NoError(t, err)
 
-		reloaded, err := FindAgentByToken(orgID.String(), securetoken.Hash(staleToken))
+		_, err = OccupyAgent(agent)
 		require.NoError(t, err)
-		require.Equal(t, &jobID, reloaded.AssignedJobID)
-		require.Nil(t, reloaded.JobStopRequestedAt)
+
+		agent, err = FindAgentByToken(orgID.String(), securetoken.Hash(token))
+		require.NoError(t, err)
+		require.Equal(t, agent.AssignedJobID, &jobID)
+		require.Nil(t, agent.JobStopRequestedAt)
 	})
 }
 

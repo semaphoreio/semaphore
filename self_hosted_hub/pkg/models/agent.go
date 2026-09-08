@@ -415,7 +415,10 @@ func SyncAgentWithContext(ctx context.Context, orgID, tokenHash, state, jobID st
 	}
 
 	if jobID != "" {
-		updates["last_sync_job_id"] = jobID
+		updates["last_sync_job_id"] = gorm.Expr(
+			"case when assigned_job_id IS NOT NULL AND assigned_job_id::text = ? then ? else last_sync_job_id end",
+			jobID, jobID,
+		)
 	}
 
 	if interruptedAt > 0 {
@@ -488,9 +491,8 @@ func OccupyAgentInTransaction(tx *gorm.DB, agent *Agent, requestJobID *uuid.UUID
 			JobStopRequestedAt: nil,
 		}
 
-		// Select() is required: Updates() with a struct skips zero-valued
-		// fields, so the nil above would not clear a stop request left over
-		// from the agent's previous job.
+		// Select() is required so the nil stop request is written too;
+		// Updates() alone skips zero-valued fields.
 		err = db.Model(agent).
 			Select("assigned_job_id", "job_assigned_at", "job_stop_requested_at").
 			Updates(fieldsToUpdate).Error
