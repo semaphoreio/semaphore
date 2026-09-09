@@ -588,6 +588,29 @@ defmodule Zebra.Models.JobTest do
       assert Job.finished?(job)
     end
 
+    test "still stops the job when the self-hosted hub is unreachable" do
+      # A failed gRPC call comes back as a tuple, but an unreachable endpoint
+      # raises out of GRPC.Stub.connect's hard match instead - and blocks long
+      # enough to outlive the Task.await in Zebra.Parallel, which takes the
+      # whole batch of stop requests down with it.
+      previous = Application.get_env(:zebra, :self_hosted_agents_grpc_endpoint)
+      Application.put_env(:zebra, :self_hosted_agents_grpc_endpoint, "localhost:1")
+
+      on_exit(fn ->
+        Application.put_env(:zebra, :self_hosted_agents_grpc_endpoint, previous)
+      end)
+
+      {:ok, job} = Support.Factories.Job.create(:started, %{machine_type: "s1-job-test"})
+
+      with_mock Watchman, [:passthrough], increment: fn _ -> :ok end do
+        assert {:ok, job} = Job.stop(job)
+
+        assert Job.finished?(job)
+        assert Job.stopped?(job)
+        assert_called(Watchman.increment("job.self_hosted_stop.failed"))
+      end
+    end
+
     test "records a metric when the self-hosted hub can't be told about the stop" do
       GrpcMock.stub(Support.FakeServers.SelfHosted, :stop_job, fn _, _ ->
         raise "muahhahaaha"
