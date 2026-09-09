@@ -194,11 +194,6 @@ func (s *Server) DescribeJob(w http.ResponseWriter, r *http.Request) {
 
 	payload, err := zebraclient.GetJobPayload(jobID)
 	if err != nil {
-		// Zebra scrubs the payload once a job reaches a terminal state and
-		// refuses to serve it rather than handing out the scrubbed copy. That
-		// is a permanent answer, not a failure: 404 is what the agent already
-		// understands as "this job is not yours to run", and it stops the
-		// retries a 500 would provoke.
 		if status.Code(err) == codes.FailedPrecondition {
 			logging.ForAgent(agent).Warningf("Job %s is no longer running - not serving payload: %v", jobID, err)
 			respondWith404(w)
