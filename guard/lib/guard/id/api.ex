@@ -640,10 +640,19 @@ defmodule Guard.Id.Api do
     resume_device_oidc(conn, row, user_code_display)
   end
 
-  # Redirects into the OIDC sign-in for a device row, parking the device
+  # Sends the browser into the OIDC sign-in for a device row, parking the device
   # context in the state cookie. Used both when the code is first submitted
   # (start_device_oidc) and when GET /device resumes a parked pending flow -
   # each call issues a fresh state/verifier pair, replacing any previous one.
+  #
+  # Renders the provider-picker login page (render_login_page/1) rather than
+  # redirecting straight to keycloak's raw authorization endpoint, so device
+  # users get the same GitHub/Bitbucket/GitLab page as web /login. The picker's
+  # per-provider buttons carry the very authorization URL built here (state
+  # included), and the device context rides the encrypted state cookie, so
+  # picking a provider continues this exact flow and the OIDC callback still
+  # matches state and completes the device grant. The keycloak_login_page
+  # toggle still forces the raw redirect (handled inside render_login_page/1).
   defp resume_device_oidc(conn, row, user_code_display) do
     oidc_callback = id_page("oidc/callback")
 
@@ -655,7 +664,7 @@ defmodule Guard.Id.Api do
 
         conn
         |> Guard.Utils.Http.put_state_value(@state_cookie_key, {state, verifier, ctx})
-        |> Guard.Utils.Http.redirect_to_url(url)
+        |> render_login_page(url)
 
       {:error, error} ->
         Logger.error("CLI device OIDC authorization_uri error: #{inspect(error)}")
@@ -676,9 +685,15 @@ defmodule Guard.Id.Api do
       {:ok, {state, verifier, url}} ->
         ctx = %{device_return: true, user_code_prefill: prefill}
 
+        # Render the provider-picker (not a raw keycloak redirect) so an
+        # anonymous device visitor sees the new login page; the device_return
+        # context and the prefill ride the encrypted state cookie, and each
+        # picker button carries this authorization URL (state included), so the
+        # callback finishes the auth-first flow exactly as before. The
+        # keycloak_login_page toggle still forces the raw redirect.
         conn
         |> Guard.Utils.Http.put_state_value(@state_cookie_key, {state, verifier, ctx})
-        |> Guard.Utils.Http.redirect_to_url(url)
+        |> render_login_page(url)
 
       {:error, error} ->
         Logger.error("CLI device return OIDC authorization_uri error: #{inspect(error)}")
