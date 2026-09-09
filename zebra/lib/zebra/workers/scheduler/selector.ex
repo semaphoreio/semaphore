@@ -34,12 +34,52 @@ defmodule Zebra.Workers.Scheduler.Selector do
 
       state = __MODULE__.State.initialize_from_db(org_id)
 
+      submit_utilization_metric(org, state)
+
       result = __MODULE__.Result.new(org)
 
       Watchman.benchmark("scheduler.selection.filtering", fn ->
         select(jobs, org, state, result)
       end)
     end)
+  end
+
+  #
+  # Emits how close the org is to its parallelism ceiling, as a percentage.
+  # A sustained value near 100 with an enqueued backlog is the quota-saturation
+  # signal (jobs parked at the org ceiling).
+  #
+  defp submit_utilization_metric(org, state) do
+    max_running = Org.max_running_jobs(org.id)
+    running = __MODULE__.State.running_jobs(state, :all)
+
+    Watchman.submit(
+      {"scheduler.org_utilization", [org.username]},
+      utilization(running, max_running),
+      :gauge
+    )
+  end
+
+  @doc """
+  Utilization of an org's parallelism ceiling, as a percentage (0..100).
+
+  An org whose ceiling is 0 (or unknown) while it has running jobs is maximally
+  saturated, so it reports 100 rather than 0 - otherwise a saturation alert
+  would miss the fully-blocked/suspended case. 0 is reserved for genuinely idle
+  orgs (no running jobs). The nil/non-number guard matters because Elixir's term
+  ordering makes `nil > 0` true, which would otherwise divide by nil.
+  """
+  def utilization(running, max_running) do
+    cond do
+      is_number(max_running) and max_running > 0 ->
+        round(running / max_running * 100)
+
+      running > 0 ->
+        100
+
+      true ->
+        0
+    end
   end
 
   defp select([], _, _, result), do: result
@@ -94,7 +134,7 @@ defmodule Zebra.Workers.Scheduler.Selector do
         # can be scheduled, however we continue in order to look up all the jobs
         # that need to be force finished.
         #
-        result = Result.add_no_capacity(result, job.machine_type)
+        result = Result.add_no_capacity(result, job.machine_type, :org_ceiling)
         select(rest, org, state, result)
 
       running_jobs_for_machine_type < machine_quota ->
@@ -106,7 +146,7 @@ defmodule Zebra.Workers.Scheduler.Selector do
 
       running_jobs_for_machine_type >= machine_quota ->
         # Can't run this job, continue selection on the rest of the jobs.
-        result = Result.add_no_capacity(result, job.machine_type)
+        result = Result.add_no_capacity(result, job.machine_type, :machine_quota)
         select(rest, org, state, result)
 
       true ->
@@ -147,18 +187,34 @@ defmodule Zebra.Workers.Scheduler.Selector do
     'add_for_scheduling' and 'add_for_force_finish' functions.
     """
 
-    defstruct [:for_scheduling, :for_force_finish, :no_capacity, :org_username]
+    defstruct [
+      :for_scheduling,
+      :for_force_finish,
+      :no_capacity,
+      :no_capacity_by_reason,
+      :org_username
+    ]
+
+    @no_capacity_reasons [:org_ceiling, :machine_quota]
 
     def new(org) do
+      types = Zebra.Machines.machine_types(org.id)
+
       init_no_capacity =
-        Zebra.Machines.machine_types(org.id)
+        types
         |> Enum.map(fn type -> {type, 0} end)
         |> Enum.into(%{})
+
+      init_no_capacity_by_reason =
+        for type <- types, reason <- @no_capacity_reasons, into: %{} do
+          {{type, reason}, 0}
+        end
 
       %__MODULE__{
         for_scheduling: [],
         for_force_finish: [],
         no_capacity: init_no_capacity,
+        no_capacity_by_reason: init_no_capacity_by_reason,
         org_username: org.username
       }
     end
@@ -175,13 +231,18 @@ defmodule Zebra.Workers.Scheduler.Selector do
       %{result | for_force_finish: result.for_force_finish ++ job_ids}
     end
 
-    def add_no_capacity(result, machine_type) do
+    def add_no_capacity(result, machine_type, reason) when reason in @no_capacity_reasons do
       no_capacity =
         Map.merge(result.no_capacity, %{machine_type => 1}, fn _, v1, v2 ->
           (v1 || 0) + v2
         end)
 
-      %{result | no_capacity: no_capacity}
+      no_capacity_by_reason =
+        Map.merge(result.no_capacity_by_reason, %{{machine_type, reason} => 1}, fn _, v1, v2 ->
+          (v1 || 0) + v2
+        end)
+
+      %{result | no_capacity: no_capacity, no_capacity_by_reason: no_capacity_by_reason}
     end
   end
 

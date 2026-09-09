@@ -525,6 +525,55 @@ defmodule Zebra.Workers.DispatcherTest do
     end
   end
 
+  describe ".submit_self_hosted_metrics" do
+    test "emits latency under the self-hosted metric name when a duration exists" do
+      job = %Job{
+        organization_id: Ecto.UUID.generate(),
+        machine_type: "s1-local-testing",
+        machine_os_image: "",
+        scheduled_at: ~U[2026-07-21 10:00:00Z],
+        started_at: ~U[2026-07-21 10:00:05Z]
+      }
+
+      with_mock Watchman,
+                [:passthrough],
+                submit: fn _, _, _ -> nil end,
+                increment: fn _ -> nil end do
+        Worker.submit_self_hosted_metrics(job)
+
+        # distinct metric name, not the untagged cloud series, non-negative value
+        assert_called(Watchman.submit("job.dispatching.self_hosted.duration", 5000, :timing))
+        assert_not_called(Watchman.submit("job.dispatching.duration", :_, :_))
+
+        assert_called(
+          Watchman.increment(
+            {"job.dispatching.histogram", [job.organization_id, "s1-local-testing-", :_]}
+          )
+        )
+      end
+    end
+
+    test "does not emit anything on the waiting-for-agent path (no started_at)" do
+      job = %Job{
+        organization_id: Ecto.UUID.generate(),
+        machine_type: "s1-local-testing",
+        machine_os_image: "",
+        scheduled_at: ~U[2026-07-21 10:00:00Z],
+        started_at: nil
+      }
+
+      with_mock Watchman,
+                [:passthrough],
+                submit: fn _, _, _ -> nil end,
+                increment: fn _ -> nil end do
+        assert Worker.submit_self_hosted_metrics(job) == nil
+
+        assert_not_called(Watchman.submit(:_, :_, :_))
+        assert_not_called(Watchman.increment(:_))
+      end
+    end
+  end
+
   defmodule Counter do
     use Agent
 
