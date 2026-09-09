@@ -173,9 +173,8 @@ func handleWaitingForJobsState(ctx context.Context, publisher *amqp.Publisher, a
 		// last_sync_job_id is the last job the agent reported working on, so if
 		// it matches, the agent has this job in hand and this is a stale
 		// waiting-for-jobs request racing its own start. Releasing would give
-		// the slot away while the agent keeps running, and its finished-job
-		// sync would then be rejected for having no assignment. Leave the
-		// assignment alone; the running-job sync is what carries stop-job.
+		// the slot away while the agent keeps running. Leave the assignment
+		// alone; the running-job sync is what carries stop-job.
 		if jobID.String() == agent.LastSyncJobID {
 			return actionContinue(req), nil
 		}
@@ -264,7 +263,15 @@ func handleRunningJobState(agent *models.Agent, req *Request) (*Response, error)
  */
 func handleFinishedJobState(ctx context.Context, publisher *amqp.Publisher, agent *models.Agent, requestedJobID string, result JobResult) (*Response, error) {
 	if agent.AssignedJobID == nil {
-		logging.ForAgent(agent).Warningf("Agent is not assigned to any job - rejecting finished job %s", requestedJobID)
+		// last_sync_job_id only ever names a job this agent was really assigned,
+		// so a match means the finish already landed and we released the agent:
+		// this is a retry whose original response never arrived. Answer it the
+		// same way, instead of erroring until the agent gives up and exits.
+		if requestedJobID == agent.LastSyncJobID {
+			return afterFinishedJob(agent), nil
+		}
+
+		logging.ForAgent(agent).Warningf("Agent never ran job %s - rejecting", requestedJobID)
 		return nil, fmt.Errorf("%w: agent has no assigned job", ErrInvalidStateTransition)
 	}
 
@@ -272,23 +279,29 @@ func handleFinishedJobState(ctx context.Context, publisher *amqp.Publisher, agen
 		return nil, err
 	}
 
+	return afterFinishedJob(agent), nil
+}
+
+// The shutdown-or-wait decision once a job is done. Shared by the normal path
+// and by the retry of a finish that already landed, so both answer the same.
+func afterFinishedJob(agent *models.Agent) *Response {
 	// If agent was disconnected from the UI, we tell it to shut down.
 	if agent.DisabledAt != nil {
-		return actionShutdown(ShutdownReasonRequested), nil
+		return actionShutdown(ShutdownReasonRequested)
 	}
 
 	// If agent is supposed to run only a single job, we tell it to shut down.
 	if agent.SingleJob {
-		return actionShutdown(ShutdownReasonJobFinished), nil
+		return actionShutdown(ShutdownReasonJobFinished)
 	}
 
 	// If agent was interrupted, we tell it to shutdown.
 	if agent.InterruptedAt != nil {
-		return actionShutdown(ShutdownReasonInterrupted), nil
+		return actionShutdown(ShutdownReasonInterrupted)
 	}
 
 	// If none of the conditions above are met, the agent should wait for more jobs.
-	return actionWaitForJobs(), nil
+	return actionWaitForJobs()
 }
 
 func finishAssignedJob(ctx context.Context, publisher *amqp.Publisher, agent *models.Agent, requestedJobID string, result JobResult) error {

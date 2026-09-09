@@ -741,7 +741,7 @@ func Test__Sync(t *testing.T) {
 
 	// This test makes sure backwards compatibility with the deprecated callback broker models works.
 	// We can remove it once we are sure no more old agents are being registered.
-	t.Run("finished-job => already released agent is rejected", func(t *testing.T) {
+	t.Run("finished-job => already released agent replaying its own job waits for jobs", func(t *testing.T) {
 		_ = declareExchangeAndQueue()
 		agent, token, err := newAgent(agentType)
 		require.Nil(t, err)
@@ -777,9 +777,98 @@ func Test__Sync(t *testing.T) {
 		_, err = models.ReleaseAgent(testOrgID, agent.AgentTypeName, jobId)
 		require.Nil(t, err)
 
+		// The finish already landed, so replaying it must not publish again,
+		// but must still answer, or the agent errors until it exits.
+		sync(t, syncAssertion{
+			state:          agentsync.AgentStateFinishedJob,
+			token:          token,
+			action:         agentsync.AgentActionWaitForJobs,
+			jobIdOnRequest: jobId.String(),
+			jobResult:      agentsync.JobResultPassed,
+		})
+
+		checkNoFinishedEventReceived(t)
+		checkNoTeardownFinishedEventReceived(t)
+		_ = purgeExchangeAndQueue()
+		require.Nil(t, agent.Disconnect())
+	})
+
+	t.Run("finished-job => released single-job agent replaying its own job shuts down", func(t *testing.T) {
+		_ = declareExchangeAndQueue()
+		agent, token, err := newAgentWithMetadata(agentType, models.AgentMetadata{SingleJob: true})
+		require.Nil(t, err)
+
+		jobId := database.UUID()
+		models.CreateOccupationRequest(testOrgID, agentType.Name, jobId)
+
+		sync(t, syncAssertion{
+			state:           agentsync.AgentStateWaitingForJobs,
+			token:           token,
+			action:          agentsync.AgentActionRunJob,
+			jobIdOnResponse: jobId.String(),
+		})
+
+		sync(t, syncAssertion{
+			state:          agentsync.AgentStateRunningJob,
+			token:          token,
+			action:         agentsync.AgentActionContinue,
+			jobIdOnRequest: jobId.String(),
+		})
+
+		_, err = models.ReleaseAgent(testOrgID, agent.AgentTypeName, jobId)
+		require.Nil(t, err)
+
+		// A single-job agent must still be told to shut down on the replay,
+		// otherwise it lingers waiting for work it will never take.
 		req := &agentsync.Request{
 			State:     agentsync.AgentStateFinishedJob,
 			JobID:     jobId.String(),
+			JobResult: agentsync.JobResultPassed,
+		}
+
+		res := run("POST", "/sync", token, req)
+		require.Equal(t, http.StatusOK, res.Code)
+
+		response := &agentsync.Response{}
+		require.Nil(t, unmarshalJSON(res.Body, response))
+		require.Equal(t, agentsync.AgentAction(agentsync.AgentActionShutdown), response.Action)
+		require.Equal(t, agentsync.ShutdownReason(agentsync.ShutdownReasonJobFinished), response.ShutdownReason)
+
+		checkNoFinishedEventReceived(t)
+		checkNoTeardownFinishedEventReceived(t)
+		_ = purgeExchangeAndQueue()
+		require.Nil(t, agent.Disconnect())
+	})
+
+	t.Run("finished-job => released agent replaying a job it never ran is rejected", func(t *testing.T) {
+		_ = declareExchangeAndQueue()
+		agent, token, err := newAgent(agentType)
+		require.Nil(t, err)
+
+		jobId := database.UUID()
+		models.CreateOccupationRequest(testOrgID, agentType.Name, jobId)
+
+		sync(t, syncAssertion{
+			state:           agentsync.AgentStateWaitingForJobs,
+			token:           token,
+			action:          agentsync.AgentActionRunJob,
+			jobIdOnResponse: jobId.String(),
+		})
+
+		sync(t, syncAssertion{
+			state:          agentsync.AgentStateRunningJob,
+			token:          token,
+			action:         agentsync.AgentActionContinue,
+			jobIdOnRequest: jobId.String(),
+		})
+
+		_, err = models.ReleaseAgent(testOrgID, agent.AgentTypeName, jobId)
+		require.Nil(t, err)
+
+		// Replaying some other job, not the one it ran, is not a retry.
+		req := &agentsync.Request{
+			State:     agentsync.AgentStateFinishedJob,
+			JobID:     database.UUID().String(),
 			JobResult: agentsync.JobResultPassed,
 		}
 
