@@ -13,6 +13,8 @@ defmodule Scheduler.Actions.ScheduleWfImpl do
   alias Util.ToTuple
   alias LogTee, as: LT
 
+  @grpc_unavailable GRPC.Status.unavailable()
+
   def start_schedule_task(periodic_id, timestamp) do
     with {:ok, periodic} <- PeriodicsQueries.get_by_id(periodic_id),
          :continue <- skip_in_first_minute(timestamp),
@@ -70,8 +72,14 @@ defmodule Scheduler.Actions.ScheduleWfImpl do
 
   def fetch_branch_revision(repository_id, revision_args) do
     case RepositoryClient.describe_revision(repository_id, revision_args) do
-      {:ok, commit} -> {:ok, commit}
-      {:error, _reason} -> {:error, {:missing_revision, revision_args}}
+      {:ok, commit} ->
+        {:ok, commit}
+
+      {:error, %GRPC.RPCError{status: @grpc_unavailable, message: message}} ->
+        {:error, {:unavailable, message}}
+
+      {:error, _reason} ->
+        {:error, {:missing_revision, revision_args}}
     end
   end
 

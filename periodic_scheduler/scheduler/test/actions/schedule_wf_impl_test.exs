@@ -353,6 +353,32 @@ defmodule Scheduler.Actions.ScheduleWfImpl.Test do
       assert DateTime.compare(tr.scheduled_at, ts_before) == :gt
     end
 
+    test "schedule() - when repository service returns unavailable then scheduling retries with backoff",
+         ctx do
+      use_mock_workflow_service()
+      mock_workflow_service_response("just_run")
+      reset_mock_feature_service()
+      mock_feature_response("just_run")
+      use_mock_project_service()
+      mock_projecthub_response("ok")
+      use_mock_repository_service()
+      mock_repositoryhub_response("unavailable")
+
+      ts_before = DateTime.utc_now()
+      timestamp = Timex.shift(ts_before, minutes: -1)
+
+      assert {:ok, _pid} = ScheduleWfImpl.start_schedule_task(ctx.periodic.id, timestamp)
+
+      :timer.sleep(2_000)
+
+      assert {:ok, [tr]} = PTQueries.get_n_by_periodic_id(ctx.periodic.id, 1)
+
+      assert tr.scheduling_status == "running"
+      assert tr.scheduled_workflow_id == ""
+      assert tr.error_description =~ "unavailable"
+      assert tr.attempts >= 1
+    end
+
     test "schedule() - error response from workflow service is stored in trigger", ctx do
       use_mock_workflow_service()
       mock_workflow_service_response("invalid_argument")
