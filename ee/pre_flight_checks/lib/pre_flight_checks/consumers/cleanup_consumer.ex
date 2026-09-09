@@ -6,9 +6,15 @@ defmodule PreFlightChecks.Consumers.CleanupConsumer do
   for removed organizations and projects
   """
 
+  # Both routes below share the "deleted" routing key across two different
+  # exchanges. Without service_per_exchange: true, tackle >= 0.4 derives the
+  # same queue name ("pre_flight_checks_hub.deleted") for both routes, so the
+  # two consumers end up as competing consumers on one queue and messages get
+  # misrouted between organization/project handlers.
   use Tackle.Multiconsumer,
     url: Application.get_env(:pre_flight_checks, :amqp_url),
     service: "pre_flight_checks_hub",
+    service_per_exchange: true,
     routes: [
       {"organization_exchange", "deleted", :handle_organization_messages},
       {"project_exchange", "deleted", :handle_project_messages}
