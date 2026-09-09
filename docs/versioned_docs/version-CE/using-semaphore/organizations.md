@@ -67,7 +67,7 @@ To change the initialization job agent for all your [projects](./projects) in yo
 
 :::note
 
-If you select a [self-hosted agent](./self-hosted) type, the machine must provide Git, Erlang/OTP, and a few other tools. See [initialization job requirements](./self-hosted#init-requirements).
+If you select a [self-hosted agent](./self-hosted) type, the job environment must provide Git, Erlang/OTP, and a few other tools. See [initialization job requirements](./self-hosted#init-requirements).
 
 :::
 

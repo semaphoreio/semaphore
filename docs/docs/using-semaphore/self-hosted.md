@@ -24,7 +24,7 @@ Jobs running on self-hosted agents have the following limitations:
 - [SSH debugging](#debug) works in [a different way]
 - On Kubernetes agents, only [Docker based environments](./pipelines#docker-environments) are supported
 - The CI environment may persist between jobs on certain configurations
-- [Initialization jobs](#init-requirements) run on Linux agents only and require extra software on the machine
+- [Initialization jobs](#init-requirements) run on Linux agents only and require extra software in the job environment
 
 ## Agent lifecycle {#lifecycle}
 
@@ -214,35 +214,72 @@ Machines running initialization jobs must provide additional software. See [init
 
 Initialization jobs are supported on **Linux** agents only, on the x86_64 and arm64 architectures. Self-hosted macOS and Windows agents cannot run initialization jobs.
 
-The initialization job clones the repository with Git, compiles the pipeline with [spc](../reference/toolbox#spc), and uploads the compiled pipeline and the initialization log as artifacts. The following software must be present on the machine:
+The initialization job clones the repository with Git, compiles the pipeline with [spc](../reference/toolbox#spc), and uploads the compiled pipeline and the initialization log as artifacts.
+
+#### Where the requirements apply {#init-requirements-where}
+
+On agents that run jobs directly on the machine, the software listed below must be installed on that machine.
+
+On agents that run jobs in containers, it must be present in the job environment instead:
+
+- For [Docker environments](./pipelines#docker-environments), in the container image
+- For Kubernetes agents, in the image set by the agent's `kubernetes-default-image` option. The initialization job specifies no container of its own, so a Kubernetes agent uses that default image, and the job fails with `no containers specified in Semaphore YAML, and no default container is provided` when the option is not set
+
+In both container cases the toolbox is provisioned at job time, so the install-ordering rules in [Erlang and the PATH](#init-erlang-path) don't apply. The image only has to contain a supported Erlang.
+
+#### Required software {#init-required-software}
 
 | Software | Notes |
 |----------|-------|
-| Git | Version 2.25 or newer is recommended, 2.22 is the minimum. Older versions can't use the optimized checkout and fall back to a full clone |
-| Erlang/OTP | Must be major version 24, 25, 26, or 27. Both `erl` and `escript` must be on the `PATH` |
-| Bash | Job commands run in a login shell that sources `~/.bash_profile` |
+| Git | Any reasonably recent version. Git 2.25 or newer additionally enables an optimized blobless, sparse checkout, which is gated on an organization feature and is otherwise a standard shallow clone |
+| Erlang/OTP | Must be major version 24, 25, 26, or 27. Both `erl` and `escript` must be resolvable — see [Erlang and the PATH](#init-erlang-path) |
+| Bash | Job commands run in a login shell |
 | OpenSSH client | Clones the repository and fetches additional commits when evaluating [`change_in`](../reference/conditions-dsl#change-in) |
 | CA certificates | Uploads the compiled pipeline and the initialization log |
-| `which` | Locates the condition evaluator. Provided by the `debianutils` package on Debian and Ubuntu |
-| Standard shell utilities | `awk`, `basename`, `chmod`, `curl`, `cut`, `date`, `du`, `grep`, `head`, `ln`, `mv`, `tar`, `tr`, `uname`, and `sudo` |
+| A standard userland | Coreutils plus `sed`, `grep`, `tar`, and `curl`, as shipped by any normal distribution image |
+| `which` | Used by spc to locate the condition evaluator. Provided by `debianutils` on Debian and Ubuntu, and easy to miss on a minimal image |
+| `sudo` | Used while installing the agent and toolbox. Not needed at job time |
+| `dig` | Only when `SEMAPHORE_GIT_CLONE_SLOW_RETRY` is enabled, which adds a GitHub-specific alternative-endpoint fallback to `checkout`. Provided by `dnsutils` on Debian and Ubuntu |
 
 Docker, Elixir, and Git LFS are not required to run initialization jobs. Install them only if your regular jobs need them.
 
+#### Erlang and the PATH {#init-erlang-path}
+
+Installing a supported Erlang is not sufficient on its own. Both `erl` and `escript` must be resolvable in two different contexts, and they are not the same shell:
+
+- **At agent install time, in a non-login shell.** The agent installer runs the toolbox installer as `sudo -u <agent-user> -H bash …`, which sources no profile file and uses sudo's `secure_path`. A version manager that activates Erlang from a profile file **is not visible here**. Install Erlang system-wide, or add its `bin` directory to the sudoers `secure_path`
+- **At job time, in a login shell.** Here a version manager does work, as long as it activates Erlang from `~/.bash_profile`
+
+Check both contexts, as the user the agent runs as:
+
+```shell title="Check Erlang in both contexts"
+$ sudo -u <agent-user> -H bash -c 'command -v erl'
+/usr/bin/erl
+$ sudo -u <agent-user> -H bash -lc 'command -v escript'
+/usr/bin/escript
+```
+
+A non-login check such as `ssh <machine> 'command -v escript'` reports a false negative for anything a version manager activates, which is why the second form uses `bash -lc`.
+
 :::warning
 
-Install Erlang before you install the agent. The toolbox picks a condition evaluator matching the Erlang version found on the machine at installation time. If you install or change Erlang afterwards, re-run `~/.toolbox/install-toolbox`.
+Activation must be in `~/.bash_profile` specifically. Bash reads only the first of `~/.bash_profile`, `~/.bash_login`, and `~/.profile` for login shells, and installing the agent **creates** `~/.bash_profile`. On a distribution that ships only `~/.profile` and `~/.bashrc` — Ubuntu, for example — `~/.profile` stops being read from that point on, and so does `~/.bashrc`, which Ubuntu's `~/.profile` is what loads.
+
+Activation placed in `~/.bashrc` or `~/.profile`, which is what asdf and mise instruct by default, therefore works before the agent is installed and stops working afterwards.
 
 :::
 
-Installing Erlang is not enough on its own: `erl` and `escript` must be on the `PATH` of the shell that runs the job. Job commands run in a login shell, so a version manager such as kerl, asdf, or mise works as long as it activates Erlang from a profile file like `~/.bash_profile`. If it only activates for interactive shells, initialization jobs fail even though Erlang is installed.
+:::warning
 
-For the same reason, check the machine using a login shell. Running `ssh <machine> 'which escript'` uses a non-login shell and reports a false negative:
+Install Erlang before you install the agent. The toolbox selects a condition evaluator matching the Erlang version present at installation time, and the installer does not fail the installation when no matching binary exists — you get an agent that reports a successful install but has no condition evaluator.
 
-```shell title="Check escript the way a job sees it"
-ssh <machine> 'bash -lc "which escript"'
-```
+If you install or change Erlang afterwards, re-extract the toolbox tarball and then run `~/.toolbox/install-toolbox`, or re-run the agent installer. Re-running `~/.toolbox/install-toolbox` on its own is not enough: it *moves* the matching `when_otp_<major>` binary out of `~/.toolbox`, so a second run can find nothing to install and will not report the failure. Expect an error line for `spc`, which is moved the same way — that one is harmless.
 
-On Ubuntu 22.04 and 24.04 you can install everything with:
+:::
+
+#### Install and verify {#init-verify}
+
+On Ubuntu 22.04 and 24.04:
 
 ```shell title="Initialization job requirements on Ubuntu"
 apt-get update && apt-get install -y --no-install-recommends \
@@ -250,24 +287,34 @@ apt-get update && apt-get install -y --no-install-recommends \
 update-ca-certificates
 ```
 
-To check that a machine has a supported Erlang version, run:
+Run the checks below as the user the agent runs as, in a login shell.
 
 ```shell title="Check the Erlang version"
-$ erl -eval 'erlang:display(erlang:system_info(otp_release)), halt().' -noshell
-"25"
+$ sudo -u <agent-user> -H bash -lc "erl -eval 'erlang:display(erlang:system_info(otp_release)), halt().' -noshell"
+"27"
 ```
 
 If the reported version falls outside 24 to 27, install a supported release from the [Erlang downloads page](https://www.erlang.org/downloads).
 
-To check that the agent has everything it needs after installation, run:
-
 ```shell title="Check the initialization job toolchain"
-$ command -v git escript when spc artifact retry
-$ echo '[]' > /tmp/in.json && when list-inputs --input /tmp/in.json --output /tmp/out.json && cat /tmp/out.json
-[]
+$ sudo -u <agent-user> -H bash -lc 'for b in git erl escript when spc artifact retry; do printf "%-10s %s\n" "$b" "$(command -v "$b" || echo MISSING)"; done'
+git        /usr/bin/git
+erl        /usr/bin/erl
+escript    /usr/bin/escript
+when       /usr/local/bin/when
+spc        /usr/local/bin/spc
+artifact   /usr/local/bin/artifact
+retry      /usr/local/bin/retry
 ```
 
-If `when` is missing or the last command fails, the Erlang version on the machine is unsupported or was installed after the agent.
+Every line must show a path. `MISSING` next to `when` means the Erlang version is unsupported, or Erlang was installed after the agent — see [Erlang and the PATH](#init-erlang-path).
+
+Finally, confirm the condition evaluator runs:
+
+```shell title="Check the condition evaluator"
+$ sudo -u <agent-user> -H bash -lc 'echo "[]" > /tmp/in.json && when list-inputs --input /tmp/in.json --output /tmp/out.json && cat /tmp/out.json'
+[]
+```
 
 :::info
 

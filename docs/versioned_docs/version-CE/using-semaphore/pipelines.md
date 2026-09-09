@@ -123,7 +123,7 @@ The Semaphore Pipeline Compiler (spc) is an open-source component. You can find 
 
 To change the agent that runs the initialization, see [init agent](./organizations#init-agent).
 
-If you point initialization jobs at a [self-hosted agent](./self-hosted) type, the machine must provide Git, Erlang/OTP, and a few other tools. See [initialization job requirements](./self-hosted#init-requirements).
+If you point initialization jobs at a [self-hosted agent](./self-hosted) type, the job environment must provide Git, Erlang/OTP, and a few other tools. See [initialization job requirements](./self-hosted#init-requirements).
 
 ### How to access init logs {#init-logs}
 

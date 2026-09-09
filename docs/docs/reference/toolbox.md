@@ -495,7 +495,7 @@ spc is called automatically by Semaphore during initialization.
 
 :::
 
-spc evaluates [conditions](./conditions-dsl) with a helper binary that runs on the Erlang virtual machine. On [self-hosted agents](../using-semaphore/self-hosted) running initialization jobs, this means the machine must have a supported Erlang/OTP version installed. See [initialization job requirements](../using-semaphore/self-hosted#init-requirements).
+spc evaluates [conditions](./conditions-dsl) with a helper binary that runs on the Erlang virtual machine. On [self-hosted agents](../using-semaphore/self-hosted) running initialization jobs, this means the job environment must have a supported Erlang/OTP version installed. See [initialization job requirements](../using-semaphore/self-hosted#init-requirements).
 
 The syntax is:
 

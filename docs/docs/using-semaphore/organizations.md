@@ -108,7 +108,7 @@ To change the initialization agent for a single project, see [project pre-flight
 
 :::note
 
-If you select a [self-hosted agent](./self-hosted) type, the machine must provide Git, Erlang/OTP, and a few other tools. See [initialization job requirements](./self-hosted#init-requirements).
+If you select a [self-hosted agent](./self-hosted) type, the job environment must provide Git, Erlang/OTP, and a few other tools. See [initialization job requirements](./self-hosted#init-requirements).
 
 :::
 

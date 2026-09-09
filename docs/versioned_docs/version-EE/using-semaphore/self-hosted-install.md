@@ -18,7 +18,7 @@ Before you can run jobs in your hardware, you need to install and register the s
 
 :::note
 
-If the agent type will run [initialization jobs](./pipelines#init-job), the machine needs Erlang/OTP and other software installed *before* the agent. See [initialization job requirements](./self-hosted#init-requirements).
+If the agent type will run [initialization jobs](./pipelines#init-job), its job environment needs Erlang/OTP and other software. On agents that run jobs on the machine itself, Erlang must be installed *before* the agent. See [initialization job requirements](./self-hosted#init-requirements).
 
 :::
 
