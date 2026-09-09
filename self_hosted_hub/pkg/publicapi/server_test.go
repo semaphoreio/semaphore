@@ -1440,6 +1440,51 @@ func Test__SyncDoesNotReleaseAJobTheAgentAlreadyStarted(t *testing.T) {
 	require.NotNil(t, req)
 }
 
+func Test__SyncDoesNotOccupyAnAgentThatAlreadyStartedItsJob(t *testing.T) {
+	database.TruncateTables()
+	_ = declareExchangeAndQueue()
+
+	agentType, _, err := newAgentType("s1-test")
+	require.Nil(t, err)
+
+	agent, token, err := newAgent(agentType)
+	require.Nil(t, err)
+
+	jobID, err := models.ForcefullyOccupyAgentWithJobID(agent)
+	require.NoError(t, err)
+
+	// The agent acknowledges the job, which is what last_sync_job_id records.
+	sync(t, syncAssertion{
+		state:          agentsync.AgentStateStartingJob,
+		token:          token,
+		jobIdOnRequest: jobID.String(),
+		action:         agentsync.AgentActionContinue,
+	})
+
+	// another job is queued for the same agent type
+	otherJobID := database.UUID()
+	require.NoError(t, models.CreateOccupationRequest(testOrgID, agentType.Name, otherJobID))
+
+	// Same stale sync as above, but with no stop pending. Without an early
+	// return the assignment matches last_sync_job_id, so the dispatch branch is
+	// skipped and the agent is occupied with the queued job instead - which
+	// overwrites the job it is running and consumes the queued job's request.
+	sync(t, syncAssertion{
+		state:  agentsync.AgentStateWaitingForJobs,
+		token:  token,
+		action: agentsync.AgentActionContinue,
+	})
+
+	reloaded, err := models.FindAgentByToken(testOrgID.String(), agent.TokenHash)
+	require.NoError(t, err)
+	require.Equal(t, &jobID, reloaded.AssignedJobID)
+
+	// the queued job must still be waiting for an agent that is free
+	req, err := models.FindOccupationRequest(testOrgID, agentType.Name, otherJobID)
+	require.NoError(t, err)
+	require.NotNil(t, req)
+}
+
 func Test__ListJobs(t *testing.T) {
 	database.TruncateTables()
 	grpcmock.Start()
