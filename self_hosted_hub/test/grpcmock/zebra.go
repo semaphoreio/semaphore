@@ -82,7 +82,23 @@ func (z ZebraService) TotalExecutionTime(context.Context, *zebrapb.TotalExecutio
 	return nil, nil
 }
 
+var getAgentPayloadError error
+
+// MockGetAgentPayloadError makes GetAgentPayload fail with err until
+// ResetGetAgentPayloadMock is called.
+func MockGetAgentPayloadError(err error) {
+	getAgentPayloadError = err
+}
+
+func ResetGetAgentPayloadMock() {
+	getAgentPayloadError = nil
+}
+
 func (z ZebraService) GetAgentPayload(context.Context, *zebrapb.GetAgentPayloadRequest) (*zebrapb.GetAgentPayloadResponse, error) {
+	if getAgentPayloadError != nil {
+		return nil, getAgentPayloadError
+	}
+
 	return &zebrapb.GetAgentPayloadResponse{
 		Payload: `{"id": "123", "fake": "payload"}`,
 	}, nil
