@@ -1,0 +1,63 @@
+# Pre-existing advisories, allowlisted to unblock the tackle v0.4.0 (credential-in-logs
+# fix) merge gate. None of these are introduced or worsened by this PR (mix.lock is
+# otherwise unchanged). Each verified directly against this service's source, not copied
+# blind from siblings. Note: secrethub is NOT gRPC-only like dashboardhub/repository_hub -
+# it also runs Secrethub.OpenIDConnect.HTTPServer (lib/secrethub/open_id_connect/http_server.ex),
+# a Plug.Router serving public `/.well-known/jwks*` and `/.well-known/openid-configuration`
+# GET endpoints on plain HTTP (scheme: :http, no h2c/protocol_options - see
+# lib/secrethub/application.ex `openid_connect_services/0`). Reachability below is judged
+# against that router specifically, not assumed unreachable by default.
+
+# --- OIDC HTTP router has no Plug.Parsers/multipart plug anywhere in its pipeline (only
+# `plug :match` / `plug :dispatch`; grep for Plug.Parsers/multipart across lib/ is clean),
+# so multipart-parsing DoS advisories are not reachable regardless of route. ---
+# cowboy: unbounded buffer accumulation in multipart header parsing, fixed in 2.15.0 (no Plug.Parsers/multipart configured anywhere in lib/)
+GHSA-jfc2-q6qh-g5x8
+# plug: same multipart-parsing DoS class, fixed per-line 1.15.4-1.19.2 (same: no Plug.Parsers/multipart configured anywhere in lib/)
+GHSA-468c-vq7p-gh64
+# plug_cowboy: unauthenticated remote DoS via HTTP/2 :scheme atom-table exhaustion, fixed in 2.8.1.
+# The OIDC HTTPServer is started with `scheme: :http` and no protocol_options enabling h2c
+# (lib/secrethub/application.ex openid_connect_services/0) - Cowboy serves HTTP/1.1 only here,
+# so the HTTP/2-specific :scheme pseudo-header parsing path is never invoked.
+GHSA-q8x4-x7mp-5vg2
+
+# --- cowlib: shared with dashboardhub/other services' acceptance. ---
+# cow_http_te DoS via excessive allocation, fixed in 2.16.1. Reachable: the OIDC HTTP/1.1
+# listener parses Transfer-Encoding on every inbound request regardless of matched route.
+# Same accepted risk class as public-api/v2 (mitigated at cluster ingress L7 before reaching
+# the backend).
+GHSA-32p9-57cr-4x65
+# SPDY decompression bomb in cow_spdy:inflate/2 (cowboy 2.x never implements SPDY, version-independent)
+GHSA-84f2-rp86-235p
+# cookie header injection in cow_cookie:cookie/1 (OIDC router never sets cookies - only
+# cache-control/content-type response headers; grep for put_resp_cookie/Set-Cookie is clean)
+GHSA-g2wm-735q-3f56
+# SSE CRLF injection (OIDC router has no send_chunked/SSE responses; grep clean)
+GHSA-hv23-4qp7-8c8r
+
+# --- hackney is pulled in transitively only via `sentry` (no direct :hackney call, no
+# HTTPoison usage in lib/; grep clean); sentry's HTTP client posts to a single fixed,
+# operator-configured DSN, never a user-controlled host/query/path. Same fleet-wide
+# acceptance as front/guard/zebra/repository_hub/auth/public-api/v2 .mix-audit.txt. ---
+# fails to properly release HTTP connections to the pool
+GHSA-9fm9-hp7p-53mf
+# ssl:connect/2 post-handshake upgrade has no timeout
+GHSA-gp9c-pm5m-5cxr
+# CR/LF injection in query parameter
+GHSA-j9wq-vxxc-94wf
+# CRLF/header injection via unvalidated domain/path options
+GHSA-mp55-p8c9-rfw2
+# SSRF allowlist bypass in hackney_url:normalize/2 via percent-encoded host
+GHSA-pj7v-xfvx-wmjq
+# SSRF via redirect target, fixed in 1.21.0 (same fixed-DSN-only reasoning; accepted in public-api/v2)
+GHSA-vq52-99r9-h5pw
+
+# decimal - unbounded exponent DoS in Decimal.new, fixed in 3.0.0. secrethub has zero
+# Decimal.new call sites (grep clean); transitive via ecto only. Same acceptance as
+# guard/repository_hub/rbac-ce/public-api/v2/auth.
+GHSA-rhv4-8758-jx7v
+
+# postgrex - channel-name SQL injection in Postgrex.Notifications.listen/3, fixed in 0.22.2.
+# secrethub never calls Postgrex.Notifications (grep clean). Same acceptance as
+# guard/zebra/repository_hub.
+GHSA-r73h-97w8-m54h
