@@ -22,3 +22,17 @@ GHSA-6ccx-9c9f-327w
 # availability-only: worst case is memory exhaustion in the receiving process, no data exposure, no
 # code execution. Reachable only by an in-cluster caller; accepted until the grpc 1.0.0 migration.
 GHSA-q8gf-9rvj-gmgj
+
+# --- hackney residual advisories, only fixed at 4.0.1 (blocked by httpoison ~> 1.x). Reachable only via Sentry optional adapter (operator SENTRY_DSN), no hackney/httpoison in secrethub/lib. Tracked for the fleet httpoison->hackney 4.x bump. ---
+GHSA-j9wq-vxxc-94wf
+GHSA-gp9c-pm5m-5cxr
+GHSA-mp55-p8c9-rfw2
+GHSA-pj7v-xfvx-wmjq
+# --- cowlib 2.20.0 (latest release), no fixed version published yet. Tracked. ---
+GHSA-w4f7-4cxr-rv3c
+GHSA-g2wm-735q-3f56
+# --- decimal advisory, fixed in 3.0 but ecto pins decimal ~> 2.0; unlocking needs an ecto bump. Tracked. ---
+GHSA-rhv4-8758-jx7v
+# --- postgrex advisories, fixed in 0.22 but ecto_sql pins postgrex ~> 0.16; unlocking needs an ecto bump. SQL-inj is via Notifications.listen channel-name, not reachable in a secrets service. Tracked. ---
+GHSA-r73h-97w8-m54h
+GHSA-4mw9-4qgj-m97w
