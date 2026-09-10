@@ -14,6 +14,11 @@ endif
 
 APP_NAME=github_hooks
 
+# Pin the dependency-scan image to the app's Ruby line: the floating ruby:3
+# tag moved to 3.4, whose toolchain cannot compile the forked grpc gem's
+# native extension during the scan's bundle install.
+SECURITY_TOOLBOX_RUBY_IMAGE=registry.semaphoreci.com/ruby:3.3
+
 POSTGRES_DB_NAME="front"
 POSTGRES_DB_USER?="postgres"
 POSTGRES_DB_PASSWORD?="the-cake-is-a-lie"

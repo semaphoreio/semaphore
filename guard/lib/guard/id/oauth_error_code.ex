@@ -4,7 +4,7 @@ defmodule Guard.Id.OAuthErrorCode do
   callback redirect URL. Front-end maps codes to user-facing text.
   """
 
-  @codes ~w(invalid_uid missing_name missing_login auth_failed login_not_allowed generic)
+  @codes ~w(invalid_uid missing_name missing_login auth_failed login_not_allowed account_taken generic)
 
   @type code ::
           String.t()
@@ -21,6 +21,7 @@ defmodule Guard.Id.OAuthErrorCode do
     errors = Ecto.Changeset.traverse_errors(changeset, fn {msg, _opts} -> msg end)
 
     cond do
+      Guard.FrontRepo.RepoHostAccount.uid_taken_error?(changeset) -> "account_taken"
       blank_error?(errors[:name]) -> "missing_name"
       blank_error?(errors[:login]) -> "missing_login"
       true -> "generic"
