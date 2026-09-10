@@ -29,13 +29,13 @@ defmodule Secrethub.Mixfile do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:plug, "~> 1.13.6"},
+      {:plug, ">= 1.20.3"},
       {:plug_cowboy, "~> 2.5"},
       {:grpc, "0.5.0-beta.1", override: true},
       {:grpc_health_check, github: "renderedtext/grpc_health_check", branch: "protobuf_0.7.1"},
       {:protobuf, "~> 0.7.1"},
-      {:cowboy, "~> 2.9.0", override: true},
-      {:cowlib, "~> 2.11.0", override: true},
+      {:cowboy, ">= 2.19.0", override: true},
+      {:cowlib, ">= 2.20.0", override: true},
       {:watchman, github: "renderedtext/ex-watchman"},
       {:timex, "~> 3.1"},
       {:cachex, "~> 3.0"},
@@ -53,7 +53,7 @@ defmodule Secrethub.Mixfile do
       {:junit_formatter, "~> 3.1", only: [:test]},
       {:google_protos, "~> 0.1.0"},
       #### Audit Logs
-      {:tackle, github: "renderedtext/ex-tackle"},
+      {:tackle, github: "renderedtext/ex-tackle", tag: "v0.4.1"},
       {:amqp, "~> 1.3", override: true},
       {:jsx, "~> 2.9", override: true},
       ### linting

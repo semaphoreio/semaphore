@@ -1,0 +1,38 @@
+# --- grpc 0.5.0-beta.1 advisories, all first patched in grpc 1.0.0 ---
+# secrethub runs both an internal gRPC server (Secrethub.InternalGrpcApi) and the "public" Secrets
+# API gRPC server (Secrethub.PublicGrpcApi / ProjectSecretsPublicApi); the latter is reached only
+# through public-api/v1alpha's HTTP/REST gateway, not exposed directly to the internet. Bumping to
+# grpc 1.0.0 is a breaking major that splits the grpc package into grpc/grpc_server/grpc_core
+# across ~20 services in the monorepo (already suppressed the same way in front, guard,
+# notifications, zebra, ee/audit, ee/rbac, hooks_processor); not viable as a same-day fix. Tracked
+# as a coordinated migration in an internal grpc-1.0 migration follow-up - this is the interim, not the fix.
+#
+# UNREACHABLE - RCE / atom-table exhaustion via :erlang.binary_to_term in
+# GRPC.Codec.Erlpack.decode/2 (critical). secrethub registers no `codecs:` option on any
+# GRPC.Server, so the server's codec list defaults to [GRPC.Codec.Proto] (grpc 0.5.0-beta.1,
+# lib/grpc/server.ex); find_codec/2 rejects application/grpc+erlpack before decode/2 is ever
+# reached. Erlpack is opt-in and has zero usages anywhere in this monorepo.
+GHSA-grp7-v8xh-rj7h
+# UNREACHABLE - unbounded gzip decompression (decompression bomb, high). On this grpc line the
+# server compressor list also defaults to [] and secrethub registers none, so find_compressor/2
+# rejects any grpc-encoding header before GRPC.Compressor.Gzip.decompress/1 is called.
+GHSA-6ccx-9c9f-327w
+# REACHABLE, BOUNDED - unbounded request-body accumulation in read_full_body/3 (high), the default
+# unary read loop on the Proto codec path (independent of compressor registration). DoS/
+# availability-only: worst case is memory exhaustion in the receiving process, no data exposure, no
+# code execution. Reachable only by an in-cluster caller; accepted until the grpc 1.0.0 migration.
+GHSA-q8gf-9rvj-gmgj
+
+# --- hackney residual advisories, only fixed at 4.0.1 (blocked by httpoison ~> 1.x). Reachable only via Sentry optional adapter (operator SENTRY_DSN), no hackney/httpoison in secrethub/lib. Tracked for the fleet httpoison->hackney 4.x bump. ---
+GHSA-j9wq-vxxc-94wf
+GHSA-gp9c-pm5m-5cxr
+GHSA-mp55-p8c9-rfw2
+GHSA-pj7v-xfvx-wmjq
+# --- cowlib 2.20.0 (latest release), no fixed version published yet. Tracked. ---
+GHSA-w4f7-4cxr-rv3c
+GHSA-g2wm-735q-3f56
+# --- decimal advisory, fixed in 3.0 but ecto pins decimal ~> 2.0; unlocking needs an ecto bump. Tracked. ---
+GHSA-rhv4-8758-jx7v
+# --- postgrex advisories, fixed in 0.22 but ecto_sql pins postgrex ~> 0.16; unlocking needs an ecto bump. SQL-inj is via Notifications.listen channel-name, not reachable in a secrets service. Tracked. ---
+GHSA-r73h-97w8-m54h
+GHSA-4mw9-4qgj-m97w
