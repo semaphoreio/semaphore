@@ -6,7 +6,7 @@ import (
 	"time"
 
 	git "github.com/libgit2/git2go/v34"
-	"github.com/renderedtext/go-watchman"
+	bench "github.com/semaphoreio/semaphore/repohub/pkg/bench"
 )
 
 func check(err error, message string) {
@@ -38,9 +38,7 @@ type CommitPayload struct {
 }
 
 func Commit(repo *Repository, payload CommitPayload) (rev *Revision, err error) {
-	defer watchman.BenchmarkWithTags(time.Now(), "gitrekt.commit", []string{
-		repo.HttpURL,
-	})
+	defer bench.Observe(time.Now(), "gitrekt.commit", repo.HttpURL)
 
 	defer func() {
 		if r := recover(); r != nil {
