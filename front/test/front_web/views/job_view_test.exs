@@ -17,6 +17,36 @@ defmodule FrontWeb.JobViewTest do
     end
   end
 
+  describe "job_moment/1" do
+    test "anchors on the job's own start, not the workflow it came from" do
+      job = %{
+        timeline: %{
+          created_at: 1_788_948_084,
+          started_at: 1_788_948_090,
+          finished_at: 1_788_948_109
+        }
+      }
+
+      assert JobView.job_moment(job) == {"started", "2026-09-09T10:01:30Z"}
+    end
+
+    test "falls back to creation for a job that never started" do
+      job = %{
+        timeline: %{
+          created_at: 1_788_948_084,
+          started_at: nil,
+          finished_at: nil
+        }
+      }
+
+      assert JobView.job_moment(job) == {"created", "2026-09-09T10:01:24Z"}
+    end
+
+    test "returns nothing when the job has no timestamps at all" do
+      assert JobView.job_moment(%{timeline: %{created_at: nil, started_at: nil}}) == nil
+    end
+  end
+
   describe "logs helpers" do
     test "marks fast-failed job stopped before execution as having no logs" do
       job = %{

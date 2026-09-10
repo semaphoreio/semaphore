@@ -1,4 +1,4 @@
-class TimeAgo extends HTMLElement {
+export class TimeAgo extends HTMLElement {
     constructor() {
         super();
         this.datetime = this.getAttribute("datetime");
@@ -28,6 +28,29 @@ class TimeAgo extends HTMLElement {
         }
 
         this.textContent = this.decorateRelative(date);
+        this.setExactTitle(date);
+    }
+
+    // The visible text is relative ("31 minutes ago"), which reads well but makes
+    // you do the arithmetic to get a wall-clock time. Keep the exact timestamp one
+    // hover away rather than making people work it out.
+    setExactTitle(date) {
+        const exact = this.formatExact(date);
+        if (this.title !== exact) this.title = exact;
+    }
+
+    formatExact(date) {
+        return date.toLocaleString(this.locale, {
+            weekday: "short",
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: false,
+            timeZoneName: "short",
+        });
     }
 
     decorateRelative(date) {
