@@ -1,36 +1,24 @@
-# cowlib — cow_http_te module DoS via excessive allocation, patched in 2.16.1. pre-flight-checks-hub
-# is an internal gRPC-only service (PreFlightChecks.Application only supervises PreFlightChecks.GRPC;
-# no Plug.Cowboy/Phoenix HTTP endpoint anywhere in the app) — cow_http_te is cowboy's HTTP/1.1
-# transfer-encoding parser, never invoked on the gRPC-over-HTTP/2 path. cowlib is pulled in only via grpc.
-GHSA-32p9-57cr-4x65
-
-# cowlib — SPDY decompression bomb in cow_spdy:inflate/2. Not reachable at any cowlib version: cowboy
-# 2.x never implemented SPDY support, so this code path cannot be hit regardless of fix availability.
-GHSA-84f2-rp86-235p
-
-# cowlib — CRLF injection enabling SSE event splitting via unvalidated header field values, patched in
-# 2.16.1. This service has no SSE endpoints and, being gRPC-only (see above), writes no Plug response
-# headers from user input.
-GHSA-hv23-4qp7-8c8r
-
-# cowboy — unbounded buffer accumulation in multipart header parsing, patched in 2.15.0. Not reachable:
-# no Plug.Parsers, no multipart endpoints — gRPC-only over HTTP/2.
-GHSA-jfc2-q6qh-g5x8
-
-# postgrex — channel-name SQL injection in Postgrex.Notifications.listen/3, patched in 0.22.2. This
-# service never calls Postgrex.Notifications (grep confirms no hits in lib/); it uses only standard
-# Ecto queries. Bumping past 0.16.x cascades into an out-of-scope ecto/postgrex/Elixir toolchain bump.
-GHSA-r73h-97w8-m54h
-
-# decimal — unbounded exponent in Decimal.new enables unauthenticated DoS, patched in 3.0.0. Not
-# called anywhere in lib/ (grep confirms no Decimal. hits) — pulled in only transitively via
-# ecto/postgrex. Bumping cascades an out-of-scope ecto bump.
-GHSA-rhv4-8758-jx7v
-
-# protobuf — unbounded recursion depth in embedded-message decoding, patched in 0.16.1. This service
-# only decodes protobufs from internal gRPC callers on the cluster network (same acceptance as
-# repository_hub/ee-gofer/ee-rbac); a hostile deeply-nested payload requires a compromised internal
-# service and yields a single-pod DoS. Bumping is additionally proven-breaking here:
-# lib/pre_flight_checks/grpc/response.ex calls InternalApi.Status.new(...) directly, a constructor
-# form removed in protobuf >= 0.16.1.
-GHSA-rv48-qqj5-crxg
+# --- grpc 0.5.0-beta.1 advisories, all first patched in grpc 1.0.0 ---
+# pre_flight_checks runs an internal gRPC server (PreFlightChecks.Grpc.Server); reachable only from
+# inside the cluster by sibling Semaphore services, not from the internet. Bumping to grpc 1.0.0 is
+# a breaking major that splits the grpc package into grpc/grpc_server/grpc_core across ~20 services
+# in the monorepo (already suppressed the same way in front, guard, notifications, zebra, ee/audit,
+# ee/rbac, hooks_processor); not viable as a same-day fix. Tracked as a coordinated migration in
+# an internal grpc-1.0 migration follow-up - this is the interim, not the fix.
+#
+# UNREACHABLE - RCE / atom-table exhaustion via :erlang.binary_to_term in
+# GRPC.Codec.Erlpack.decode/2 (critical). pre_flight_checks registers no `codecs:` option on any
+# GRPC.Server, so the server's codec list defaults to [GRPC.Codec.Proto] (grpc 0.5.0-beta.1,
+# lib/grpc/server.ex); find_codec/2 rejects application/grpc+erlpack before decode/2 is ever
+# reached. Erlpack is opt-in and has zero usages anywhere in this monorepo.
+GHSA-grp7-v8xh-rj7h
+# UNREACHABLE - unbounded gzip decompression (decompression bomb, high). On this grpc line the
+# server compressor list also defaults to [] and pre_flight_checks registers none, so
+# find_compressor/2 rejects any grpc-encoding header before GRPC.Compressor.Gzip.decompress/1 is
+# called.
+GHSA-6ccx-9c9f-327w
+# REACHABLE, BOUNDED - unbounded request-body accumulation in read_full_body/3 (high), the default
+# unary read loop on the Proto codec path (independent of compressor registration). DoS/
+# availability-only: worst case is memory exhaustion in the receiving process, no data exposure, no
+# code execution. Reachable only by an in-cluster caller; accepted until the grpc 1.0.0 migration.
+GHSA-q8gf-9rvj-gmgj
