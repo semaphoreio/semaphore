@@ -56,8 +56,17 @@ func (c *BatchCleaner) Run(tx *gorm.DB) (string, error) {
 		return "", err
 	}
 
-	if c.retentionPolicy.IsCleanedInLast24Hours() {
-		return "", ErrBucketAlreadyCleanedToday
+	// A purge must not wait out the once-a-day cleaning window: the whole point is
+	// to stop storing (and charging for) artifacts of a project that is already
+	// deleted. It also needs no retention policy, since everything goes anyway.
+	if !c.isPurging() {
+		if c.retentionPolicy == nil {
+			return "", nil
+		}
+
+		if c.retentionPolicy.IsCleanedInLast24Hours() {
+			return "", ErrBucketAlreadyCleanedToday
+		}
 	}
 
 	err = c.setupObjectPager()
@@ -79,6 +88,14 @@ func (c *BatchCleaner) Run(tx *gorm.DB) (string, error) {
 	// we mark the cleaning as done, as stop.
 	if nextPageToken == "" {
 		c.paginationEnded = true
+
+		// A purge deletes every object it visits, so once we have walked the whole
+		// bucket it is empty and the storage itself can go now, instead of waiting
+		// for a later run to notice it is empty.
+		if c.isPurging() {
+			return "", c.destroyArtifact()
+		}
+
 		return "", c.saveThatCleaningIsDone(tx)
 	}
 
@@ -105,19 +122,33 @@ func (c *BatchCleaner) saveThatCleaningIsDone(tx *gorm.DB) error {
 }
 
 func (c *BatchCleaner) loadRecords() error {
-	retentionPolicy, err := models.FindRetentionPolicy(c.cleanRequest.ArtifactBucketID)
-	if err != nil {
-		return err
-	}
-	c.retentionPolicy = retentionPolicy
-
 	artifact, err := models.FindArtifactByID(c.cleanRequest.ArtifactBucketID.String())
 	if err != nil {
 		return err
 	}
 	c.artifactBucket = artifact
 
+	retentionPolicy, err := models.FindRetentionPolicy(c.cleanRequest.ArtifactBucketID)
+	if err != nil {
+		// An artifact storage on its way out does not need a retention policy,
+		// everything under it is deleted regardless of the rules.
+		if c.isPurging() {
+			c.retentionPolicy = nil
+			return nil
+		}
+
+		return err
+	}
+	c.retentionPolicy = retentionPolicy
+
 	return nil
+}
+
+// isPurging reports whether the whole artifact storage is being deleted, which
+// happens when its project was deleted. Every object under it goes, no matter
+// what the retention policy says.
+func (c *BatchCleaner) isPurging() bool {
+	return c.artifactBucket.IsMarkedForPurging()
 }
 
 func (c *BatchCleaner) setupObjectPager() error {
@@ -210,7 +241,9 @@ func (c *BatchCleaner) cleanupOnePage() (string, error) {
 	for _, object := range objects {
 		c.visitedObjectCount++
 
-		if c.retentionPolicy.IsMatching(object.Path, *object.Age) {
+		// When the storage itself is being purged everything goes, including
+		// objects younger than the minimum retention age.
+		if c.isPurging() || c.retentionPolicy.IsMatching(object.Path, *object.Age) {
 			c.deletedObjectCount++
 			results = append(results, object.Path)
 		}

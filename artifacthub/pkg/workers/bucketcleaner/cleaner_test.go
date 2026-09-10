@@ -61,7 +61,7 @@ func Test__Cleaner(t *testing.T) {
 		assert.False(t, cleaner.artifactDeleted)
 	})
 
-	t.Run("deletes old files and bucket if artifact was destroyed", func(t *testing.T) {
+	t.Run("purges everything and destroys the storage in a single run", func(t *testing.T) {
 		artifact, _ := createBucketWithRetentionPolicy(t)
 		err := privateapi.DestroyArtifact(context.TODO(), s, artifact.ID.String())
 		assert.NoError(t, err)
@@ -72,45 +72,66 @@ func Test__Cleaner(t *testing.T) {
 
 		bucket.Add("/projects/"+id+"/docker/b.txt", daysAgo(10))
 		bucket.Add("/workflows/"+id+"/test-results/a.txt", daysAgo(10))
-		bucket.Add("/workflows/"+id+"/test-results/b.txt", daysAgo(10))
 		bucket.Add("/jobs/"+id+"/test-results/a.txt", daysAgo(10))
-		bucket.Add("/jobs/"+id+"/test-results/b.txt", daysAgo(10))
+		// Younger than every retention rule, and younger than the minimum
+		// retention age: a purge has to take it anyway.
+		bucket.Add("/jobs/"+id+"/test-results/fresh.txt", daysAgo(0))
 
-		// first cleaner only empties the bucket, without deleting it.
 		cleaner := NewBatchCleaner(s, request, 10)
-		assert.Equal(t, bucket.Size(), 5)
+		assert.Equal(t, bucket.Size(), 4)
 		nextPageToken, err := cleaner.Run(db.Conn())
 		assert.NoError(t, err)
 		assert.Empty(t, nextPageToken)
-		assert.Equal(t, bucket.Size(), 0)
-		assert.Equal(t, cleaner.deletedObjectCount, 5)
-		assert.Equal(t, cleaner.visitedObjectCount, 5)
-		assert.False(t, cleaner.artifactDeleted)
 
-		// second run deletes the bucket and the artifact record.
-		// NOTE: we need to update the last_cleaned_at timestamp to simulate 1 day passing.
-		assert.NoError(t, refreshPolicyCleanedAt(artifact.ID))
-		cleaner = NewBatchCleaner(s, request, 10)
-		nextPageToken, err = cleaner.Run(db.Conn())
-		assert.NoError(t, err)
-		assert.Empty(t, nextPageToken)
-		assert.Zero(t, cleaner.deletedObjectCount)
-		assert.Zero(t, cleaner.visitedObjectCount)
+		assert.Equal(t, bucket.Size(), 0)
+		assert.Equal(t, cleaner.deletedObjectCount, 4)
+		assert.Equal(t, cleaner.visitedObjectCount, 4)
 		assert.True(t, cleaner.artifactDeleted)
+
 		_, err = models.FindArtifactByID(artifact.ID.String())
 		assert.ErrorContains(t, err, gorm.ErrRecordNotFound.Error())
 		_, err = models.FindRetentionPolicy(artifact.ID)
 		assert.ErrorContains(t, err, gorm.ErrRecordNotFound.Error())
 	})
-}
 
-func refreshPolicyCleanedAt(artifactID uuid.UUID) error {
-	r, err := models.FindRetentionPolicy(artifactID)
-	if err != nil {
-		return err
-	}
+	t.Run("purges even when the bucket was already cleaned today", func(t *testing.T) {
+		artifact, policy := createBucketWithRetentionPolicy(t)
 
-	now := time.Now().Add(-48 * time.Hour)
-	r.LastCleanedAt = &now
-	return db.Conn().Save(r).Error
+		now := time.Now()
+		policy.LastCleanedAt = &now
+		assert.NoError(t, db.Conn().Save(policy).Error)
+
+		assert.NoError(t, privateapi.DestroyArtifact(context.TODO(), s, artifact.ID.String()))
+
+		bucket := s.GetBucket(storage.BucketOptions{Name: artifact.BucketName}).(*storage.InMemoryBucket)
+		bucket.Add("/projects/"+id+"/docker/a.txt", daysAgo(10))
+
+		request, err := NewCleanRequest(artifact.ID.String())
+		assert.Nil(t, err)
+
+		cleaner := NewBatchCleaner(s, request, 10)
+		_, err = cleaner.Run(db.Conn())
+		assert.NoError(t, err)
+		assert.Equal(t, bucket.Size(), 0)
+		assert.True(t, cleaner.artifactDeleted)
+	})
+
+	t.Run("purges a storage that never had a retention policy", func(t *testing.T) {
+		artifact, err := models.CreateArtifact(uuid.NewV4().String(), uuid.NewV4().String())
+		assert.NoError(t, err)
+
+		assert.NoError(t, privateapi.DestroyArtifact(context.TODO(), s, artifact.ID.String()))
+
+		bucket := s.GetBucket(storage.BucketOptions{Name: artifact.BucketName}).(*storage.InMemoryBucket)
+		bucket.Add("/projects/"+id+"/docker/a.txt", daysAgo(10))
+
+		request, err := NewCleanRequest(artifact.ID.String())
+		assert.Nil(t, err)
+
+		cleaner := NewBatchCleaner(s, request, 10)
+		_, err = cleaner.Run(db.Conn())
+		assert.NoError(t, err)
+		assert.Equal(t, bucket.Size(), 0)
+		assert.True(t, cleaner.artifactDeleted)
+	})
 }

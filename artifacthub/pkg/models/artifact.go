@@ -60,6 +60,26 @@ func (a *Artifact) UpdateDeleteAt(tx *gorm.DB, timestamp time.Time) error {
 	return tx.Model(&a).Update("DeletedAt", timestamp).Error
 }
 
+// ClearDeletedAt unmarks an artifact that was marked for purging, so the bucket
+// cleaners leave it and its contents alone again.
+func (a *Artifact) ClearDeletedAt(tx *gorm.DB) error {
+	err := tx.Model(&a).Updates(map[string]interface{}{"deleted_at": nil}).Error
+	if err != nil {
+		return err
+	}
+
+	a.DeletedAt = nil
+
+	return nil
+}
+
+// IsMarkedForPurging reports whether the whole artifact storage is on its way out,
+// in which case the bucket cleaners delete everything under it regardless of the
+// retention policy.
+func (a *Artifact) IsMarkedForPurging() bool {
+	return a != nil && a.DeletedAt != nil
+}
+
 // findArtifactByIdempotencyToken returns an artifact by its idempotency token, or an error.
 func findArtifactByIdempotencyToken(idempotencyToken string) (*Artifact, error) {
 	var a Artifact
