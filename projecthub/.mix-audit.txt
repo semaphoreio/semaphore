@@ -36,3 +36,6 @@ GHSA-6ccx-9c9f-327w
 # availability-only: worst case is memory exhaustion in the receiving process, no data exposure, no
 # code execution. Reachable only by an in-cluster caller; accepted until the grpc 1.0.0 migration.
 GHSA-q8gf-9rvj-gmgj
+# protobuf - grpc's message-encoding dependency on this line. Fixed version is pinned by grpc
+# 0.5.0's own dependency constraints. Blocked on the grpc 1.0 migration.
+GHSA-rv48-qqj5-crxg
