@@ -13,14 +13,29 @@ import (
 	pathutil "github.com/semaphoreio/semaphore/artifacthub/pkg/util/path"
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/util/retry"
 	"go.uber.org/zap"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"gorm.io/gorm"
 )
 
 // CreateArtifact creates a new artifact with a bucket, service account. If the same idempotency token
 // has already entered to the database, it returns that row instead of creating a new one.
+//
+// An artifact storage that is marked for purging is revived here, so restoring a
+// project within its soft-delete window gives it a working storage back instead
+// of one the bucket cleaners are about to destroy underneath it.
 func CreateArtifact(ctx context.Context, client storage.Client, idempotencyToken string) (*models.Artifact, error) {
 	a, err := models.FindArtifactByIdempotencyToken(idempotencyToken)
 	if err == nil { // created already
+		if a.DeletedAt != nil {
+			if err := a.ClearDeletedAt(db.Conn()); err != nil {
+				return nil, err
+			}
+
+			log.Info("revived artifact storage marked for purging",
+				zap.String("artifact_id", a.ID.String()))
+		}
+
 		return a, nil
 	}
 
@@ -34,37 +49,51 @@ func CreateArtifact(ctx context.Context, client storage.Client, idempotencyToken
 	return models.CreateArtifact(bucketName, idempotencyToken)
 }
 
-// DestroyArtifact destroys an artifact by it's id and everything connected to it.
+// DestroyArtifact marks an artifact storage for purging and lets the bucket
+// cleaners delete its contents and then the storage itself.
+//
+// Since buckets may have more files than we can delete before this request times
+// out, the deletion has to happen asynchronously. Marking the artifact as deleted
+// is all that is needed: the cleaners purge every object under a deleted artifact
+// regardless of the retention policy, and destroy the storage once it is empty.
+//
+// The retention policy is deliberately left untouched. It used to be overwritten
+// with a delete-everything rule, which threw away whatever rules the customer had
+// configured and, if the project was ever restored, kept silently deleting their
+// new artifacts.
+//
+// Calling this for an artifact that is already purged, or already gone, is a no-op.
 func DestroyArtifact(ctx context.Context, client storage.Client, artifactID string) error {
-	// Since buckets may have more files than we can delete
-	// before this request times out, we need to delete artifacts async.
-	// For that, we use the built-in mechanism for applying retention policies.
-	// Here, we update the retention policies used to
-	// delete all objects that are older than the minimum age allowed (1 day),
-	// and we will let the bucket cleaners do the work of deleting this artifact storage.
-	rules := models.RetentionPolicyRules{
-		Rules: []models.RetentionPolicyRuleItem{
-			{Selector: "/**/*", Age: models.MinRetentionPolicyAge},
-		},
-	}
-
 	return db.Conn().Transaction(func(tx *gorm.DB) error {
 		a, err := models.FindArtifactByIDWithTx(tx, artifactID)
 		if err != nil {
+			if status.Code(err) == codes.NotFound {
+				log.Info("artifact storage no longer exists, nothing to purge",
+					zap.String("artifact_id", artifactID))
+				return nil
+			}
+
 			return err
 		}
 
-		err = a.UpdateDeleteAt(tx, time.Now())
-		if err != nil {
+		if a.DeletedAt != nil {
+			log.Info("artifact storage is already marked for purging",
+				zap.String("artifact_id", a.ID.String()))
+			return nil
+		}
+
+		if err := a.UpdateDeleteAt(tx, time.Now()); err != nil {
 			return err
 		}
 
-		_, err = models.UpdateRetentionPolicyWithTx(tx, a.ID, rules, rules, rules)
-		if err != nil {
+		// The cleaner only ever visits artifacts that have a retention policy row,
+		// and skips the ones it already cleaned today. Make sure a row exists and
+		// that the artifact is due now, so the purge starts on the next tick.
+		if err := models.ScheduleForCleaningWithTx(tx, a.ID); err != nil {
 			return err
 		}
 
-		log.Info("added retention policy for bucket destruction", zap.Reflect("artifact", a))
+		log.Info("marked artifact storage for purging", zap.Reflect("artifact", a))
 		return nil
 	})
 }

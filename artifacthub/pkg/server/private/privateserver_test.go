@@ -397,7 +397,7 @@ func Test__Destroy(t *testing.T) {
 	models.PrepareDatabaseForTests()
 	server := Server{}
 
-	t.Run("creates retention policy for deletion", func(t *testing.T) {
+	t.Run("marks the storage for purging and makes it schedulable", func(t *testing.T) {
 		a, err := models.CreateArtifact("test-bucket", uuid.NewV4().String())
 		require.Nil(t, err)
 		assert.Nil(t, a.DeletedAt)
@@ -409,27 +409,25 @@ func Test__Destroy(t *testing.T) {
 		_, err = server.Destroy(context.TODO(), &artifacthub.DestroyRequest{ArtifactId: a.ID.String()})
 		assert.NoError(t, err)
 
-		// artifact record still exists, but has deleted_at and retention policy set
+		// The artifact record still exists, and is marked for purging.
 		a, err = models.FindArtifactByID(a.ID.String())
 		assert.NoError(t, err)
 		assert.NotNil(t, a.DeletedAt)
+
+		// The cleaner only visits artifacts that have a retention policy row, so one
+		// is created purely to make this artifact schedulable. It carries no rules,
+		// since a purge deletes everything regardless of them.
 		r, err := models.FindRetentionPolicy(a.ID)
 		assert.NoError(t, err)
 		if assert.NotNil(t, r) {
-			rule := models.RetentionPolicyRules{
-				Rules: []models.RetentionPolicyRuleItem{
-					{Selector: "/**/*", Age: models.MinRetentionPolicyAge},
-				},
-			}
-
 			assert.Equal(t, r.ArtifactID, a.ID)
-			assert.Equal(t, r.ProjectLevelPolicies, rule)
-			assert.Equal(t, r.WorkflowLevelPolicies, rule)
-			assert.Equal(t, r.JobLevelPolicies, rule)
+			assert.Empty(t, r.ProjectLevelPolicies.Rules)
+			assert.Empty(t, r.WorkflowLevelPolicies.Rules)
+			assert.Empty(t, r.JobLevelPolicies.Rules)
 		}
 	})
 
-	t.Run("overrides current retention policy for deletion", func(t *testing.T) {
+	t.Run("keeps the retention policy the customer configured", func(t *testing.T) {
 		previousRule := models.RetentionPolicyRules{
 			Rules: []models.RetentionPolicyRuleItem{
 				{Selector: "/my-dir/*", Age: 3600 * 24 * 7},
@@ -445,23 +443,24 @@ func Test__Destroy(t *testing.T) {
 		_, err = server.Destroy(context.TODO(), &artifacthub.DestroyRequest{ArtifactId: a.ID.String()})
 		assert.NoError(t, err)
 
-		// artifact record still exists, but has deleted_at and updated retention policy set
 		a, err = models.FindArtifactByID(a.ID.String())
 		assert.NoError(t, err)
 		assert.NotNil(t, a.DeletedAt)
+
+		// Destroying used to overwrite these rules with a delete-everything policy,
+		// which threw the customer's configuration away and, if the project was ever
+		// restored, kept silently deleting their new artifacts.
 		r, err := models.FindRetentionPolicy(a.ID)
 		assert.NoError(t, err)
 		if assert.NotNil(t, r) {
-			rule := models.RetentionPolicyRules{
-				Rules: []models.RetentionPolicyRuleItem{
-					{Selector: "/**/*", Age: models.MinRetentionPolicyAge},
-				},
-			}
-
 			assert.Equal(t, r.ArtifactID, a.ID)
-			assert.Equal(t, r.ProjectLevelPolicies, rule)
-			assert.Equal(t, r.WorkflowLevelPolicies, rule)
-			assert.Equal(t, r.JobLevelPolicies, rule)
+			assert.Equal(t, previousRule, r.ProjectLevelPolicies)
+			assert.Equal(t, previousRule, r.WorkflowLevelPolicies)
+			assert.Equal(t, previousRule, r.JobLevelPolicies)
+
+			// ... and the storage is due for cleaning right away.
+			assert.Nil(t, r.LastCleanedAt)
+			assert.Nil(t, r.ScheduledForCleaningAt)
 		}
 	})
 }

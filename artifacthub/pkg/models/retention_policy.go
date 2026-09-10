@@ -85,6 +85,34 @@ func FindRetentionPolicyOrReturnEmpty(artifactID uuid.UUID) (*RetentionPolicy, e
 	return policy, err
 }
 
+// ScheduleForCleaningWithTx makes an artifact visible to the bucket cleaner
+// scheduler and due for cleaning straight away.
+//
+// The scheduler picks its work from retention_policies and skips anything it
+// already cleaned in the last day, so an artifact with no policy row would never
+// be visited at all, and one that happened to be cleaned earlier today would sit
+// untouched until tomorrow. Rules the customer configured are never modified: if
+// no policy exists yet, an empty one is created purely to make the artifact
+// schedulable.
+func ScheduleForCleaningWithTx(tx *gorm.DB, artifactID uuid.UUID) error {
+	r, err := FindRetentionPolicyWithTx(tx, artifactID)
+	if err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+
+		empty := RetentionPolicyRules{}
+		_, err = CreateRetentionPolicyWithTx(tx, artifactID, empty, empty, empty)
+
+		return err
+	}
+
+	return tx.Model(r).Updates(map[string]interface{}{
+		"scheduled_for_cleaning_at": nil,
+		"last_cleaned_at":           nil,
+	}).Error
+}
+
 func UpdateRetentionPolicy(artifactID uuid.UUID, project, workflow, job RetentionPolicyRules) (*RetentionPolicy, error) {
 	return UpdateRetentionPolicyWithTx(db.Conn(), artifactID, project, workflow, job)
 }
