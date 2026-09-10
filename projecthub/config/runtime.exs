@@ -56,6 +56,10 @@ config :projecthub, :feature_provider, feature_provider
 
 if config_env() == :prod do
   config :projecthub,
+         :purge_artifacts_on_soft_delete,
+         System.get_env("PURGE_ARTIFACTS_ON_SOFT_DELETE") == "true"
+
+  config :projecthub,
     artifacthub_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_ARTIFACTHUB"),
     cache_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_CACHEHUB"),
     feature_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_FEATURE"),

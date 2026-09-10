@@ -60,4 +60,9 @@ config :projecthub, Projecthub.Workers.ProjectCleaner,
 
 config :projecthub, :hard_destroy_grace_period_days, 30
 
+# Purge a project's artifacts as soon as the project is deleted, instead of
+# storing (and billing) them for the whole hard-destroy grace period above.
+# Opt-in in production via PURGE_ARTIFACTS_ON_SOFT_DELETE while it rolls out.
+config :projecthub, :purge_artifacts_on_soft_delete, true
+
 import_config "#{config_env()}.exs"

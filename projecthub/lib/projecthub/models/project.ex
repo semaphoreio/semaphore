@@ -310,6 +310,8 @@ defmodule Projecthub.Models.Project do
 
     {:ok, _} = Events.ProjectDeleted.publish(project, soft_delete: true)
 
+    purge_artifacts(project)
+
     with {:ok, repository} <- Repository.find_for_project(project.id),
          {:ok, _} <- Repository.clear_external_data(repository) do
       Logger.info("External Repository data cleared for project #{project.id}")
@@ -320,6 +322,27 @@ defmodule Projecthub.Models.Project do
 
     {:ok, nil}
   end
+
+  # Artifacts go as soon as the project is deleted, rather than surviving the
+  # whole grace period. Keeping them meant the customer went on paying to store
+  # the artifacts of a project they had already deleted, with no way to see the
+  # cost, and our docs already promise that deleting a project loses them.
+  #
+  # The project itself stays restorable: `restore/1` provisions a fresh storage.
+  defp purge_artifacts(project) do
+    if purge_artifacts_on_soft_delete?() and artifact_store_present?(project) do
+      {:ok, _} = Task.start(Projecthub.Artifact, :destroy, [project.artifact_store_id, project.id])
+    end
+
+    :ok
+  end
+
+  defp purge_artifacts_on_soft_delete? do
+    Application.get_env(:projecthub, :purge_artifacts_on_soft_delete, false)
+  end
+
+  defp artifact_store_present?(%{artifact_store_id: id}) when is_binary(id), do: id != ""
+  defp artifact_store_present?(_), do: false
 
   def hard_destroy(project, user_id) do
     with {:ok, repository} <- Repository.find_for_project(project.id),
@@ -336,9 +359,34 @@ defmodule Projecthub.Models.Project do
 
   def restore(project) do
     {:ok, project} = update_record(project, %{deleted_at: nil, deleted_by: nil})
+
+    restore_artifact_store(project)
+
     {:ok, _} = Events.ProjectRestored.publish(project)
 
     {:ok, project}
+  end
+
+  # The artifact storage was marked for purging when the project was deleted, so
+  # ask for it again: that revives it if it is still around, or provisions a new
+  # one if the cleaners already removed it. Without this the project comes back
+  # holding a storage that is about to be destroyed underneath it.
+  #
+  # This runs even when the purge is disabled, so a project deleted while it was
+  # enabled can still be restored into a working state. Restoring a project must
+  # never fail because artifacthub is unhappy, so failures are only logged.
+  defp restore_artifact_store(project) do
+    case Projecthub.Artifact.create_for_project(project.id) do
+      :ok ->
+        Logger.info("Artifact storage restored for project #{project.id}")
+
+      other ->
+        Logger.error("Failed to restore artifact storage for project #{project.id}: #{inspect(other)}")
+    end
+  rescue
+    e ->
+      Logger.error("Failed to restore artifact storage for project #{project.id}: #{inspect(e)}")
+      :error
   end
 
   def find_candidates_for_hard_destroy() do

@@ -579,9 +579,74 @@ defmodule Projecthub.Models.ProjectTest do
         assert soft_deleted_project.name =~ "#{project.name}-deleted-#{cut_timestamp}"
       end
     end
+
+    test "purges the project's artifacts" do
+      {:ok, project} = Support.Factories.Project.create_with_repo()
+      user = %User{github_token: "token"}
+      test_pid = self()
+
+      with_mocks([
+        {Repository, [:passthrough], [clear_external_data: fn r -> {:ok, r} end]},
+        {Events.ProjectDeleted, [], [publish: fn _, _ -> {:ok, nil} end]},
+        {Projecthub.Artifact, [],
+         [
+           destroy: fn artifact_store_id, project_id ->
+             send(test_pid, {:artifacts_purged, artifact_store_id, project_id})
+             :ok
+           end
+         ]}
+      ]) do
+        {:ok, _} = Project.soft_destroy(project, user)
+
+        assert_receive {:artifacts_purged, artifact_store_id, project_id}, 1_000
+        assert artifact_store_id == project.artifact_store_id
+        assert project_id == project.id
+      end
+    end
+
+    test "keeps the artifacts when purging on delete is disabled" do
+      {:ok, project} = Support.Factories.Project.create_with_repo()
+      user = %User{github_token: "token"}
+      test_pid = self()
+
+      Application.put_env(:projecthub, :purge_artifacts_on_soft_delete, false)
+      on_exit(fn -> Application.put_env(:projecthub, :purge_artifacts_on_soft_delete, true) end)
+
+      with_mocks([
+        {Repository, [:passthrough], [clear_external_data: fn r -> {:ok, r} end]},
+        {Events.ProjectDeleted, [], [publish: fn _, _ -> {:ok, nil} end]},
+        {Projecthub.Artifact, [], [destroy: fn _, _ -> send(test_pid, :artifacts_purged) end]}
+      ]) do
+        {:ok, _} = Project.soft_destroy(project, user)
+
+        refute_receive :artifacts_purged, 200
+      end
+    end
   end
 
   describe ".restore" do
+    test "asks for the artifact storage again so the project has a working one" do
+      project = create_and_soft_destroy()
+
+      with_mock Projecthub.Artifact, create_for_project: fn _ -> :ok end do
+        {:ok, _} = Project.restore(project)
+
+        assert_called(Projecthub.Artifact.create_for_project(project.id))
+      end
+    end
+
+    test "still restores the project when the artifact storage cannot be restored" do
+      project = create_and_soft_destroy()
+
+      with_mock Projecthub.Artifact,
+        create_for_project: fn _ -> raise GRPC.RPCError, status: 2, message: "Unknown" end do
+        {:ok, _} = Project.restore(project)
+
+        assert {:ok, restored} = Project.find(project.id)
+        assert restored.deleted_at == nil
+      end
+    end
+
     test "restores the project updating deleted_at and deleted_by" do
       %{id: id} = create_and_soft_destroy()
 
