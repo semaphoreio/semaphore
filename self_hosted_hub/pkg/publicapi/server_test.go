@@ -25,6 +25,8 @@ import (
 	jobStateProtos "github.com/semaphoreio/semaphore/self_hosted_hub/pkg/protos/server_farm.mq.job_state_exchange"
 	quotas "github.com/semaphoreio/semaphore/self_hosted_hub/pkg/quotas"
 	"github.com/semaphoreio/semaphore/self_hosted_hub/pkg/workers/agentcounter"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 
 	require "github.com/stretchr/testify/require"
@@ -739,7 +741,7 @@ func Test__Sync(t *testing.T) {
 
 	// This test makes sure backwards compatibility with the deprecated callback broker models works.
 	// We can remove it once we are sure no more old agents are being registered.
-	t.Run("finished-job => already released agent is rejected", func(t *testing.T) {
+	t.Run("finished-job => already released agent replaying its own job waits for jobs", func(t *testing.T) {
 		_ = declareExchangeAndQueue()
 		agent, token, err := newAgent(agentType)
 		require.Nil(t, err)
@@ -775,9 +777,98 @@ func Test__Sync(t *testing.T) {
 		_, err = models.ReleaseAgent(testOrgID, agent.AgentTypeName, jobId)
 		require.Nil(t, err)
 
+		// The finish already landed, so replaying it must not publish again,
+		// but must still answer, or the agent errors until it exits.
+		sync(t, syncAssertion{
+			state:          agentsync.AgentStateFinishedJob,
+			token:          token,
+			action:         agentsync.AgentActionWaitForJobs,
+			jobIdOnRequest: jobId.String(),
+			jobResult:      agentsync.JobResultPassed,
+		})
+
+		checkNoFinishedEventReceived(t)
+		checkNoTeardownFinishedEventReceived(t)
+		_ = purgeExchangeAndQueue()
+		require.Nil(t, agent.Disconnect())
+	})
+
+	t.Run("finished-job => released single-job agent replaying its own job shuts down", func(t *testing.T) {
+		_ = declareExchangeAndQueue()
+		agent, token, err := newAgentWithMetadata(agentType, models.AgentMetadata{SingleJob: true})
+		require.Nil(t, err)
+
+		jobId := database.UUID()
+		models.CreateOccupationRequest(testOrgID, agentType.Name, jobId)
+
+		sync(t, syncAssertion{
+			state:           agentsync.AgentStateWaitingForJobs,
+			token:           token,
+			action:          agentsync.AgentActionRunJob,
+			jobIdOnResponse: jobId.String(),
+		})
+
+		sync(t, syncAssertion{
+			state:          agentsync.AgentStateRunningJob,
+			token:          token,
+			action:         agentsync.AgentActionContinue,
+			jobIdOnRequest: jobId.String(),
+		})
+
+		_, err = models.ReleaseAgent(testOrgID, agent.AgentTypeName, jobId)
+		require.Nil(t, err)
+
+		// A single-job agent must still be told to shut down on the replay,
+		// otherwise it lingers waiting for work it will never take.
 		req := &agentsync.Request{
 			State:     agentsync.AgentStateFinishedJob,
 			JobID:     jobId.String(),
+			JobResult: agentsync.JobResultPassed,
+		}
+
+		res := run("POST", "/sync", token, req)
+		require.Equal(t, http.StatusOK, res.Code)
+
+		response := &agentsync.Response{}
+		require.Nil(t, unmarshalJSON(res.Body, response))
+		require.Equal(t, agentsync.AgentAction(agentsync.AgentActionShutdown), response.Action)
+		require.Equal(t, agentsync.ShutdownReason(agentsync.ShutdownReasonJobFinished), response.ShutdownReason)
+
+		checkNoFinishedEventReceived(t)
+		checkNoTeardownFinishedEventReceived(t)
+		_ = purgeExchangeAndQueue()
+		require.Nil(t, agent.Disconnect())
+	})
+
+	t.Run("finished-job => released agent replaying a job it never ran is rejected", func(t *testing.T) {
+		_ = declareExchangeAndQueue()
+		agent, token, err := newAgent(agentType)
+		require.Nil(t, err)
+
+		jobId := database.UUID()
+		models.CreateOccupationRequest(testOrgID, agentType.Name, jobId)
+
+		sync(t, syncAssertion{
+			state:           agentsync.AgentStateWaitingForJobs,
+			token:           token,
+			action:          agentsync.AgentActionRunJob,
+			jobIdOnResponse: jobId.String(),
+		})
+
+		sync(t, syncAssertion{
+			state:          agentsync.AgentStateRunningJob,
+			token:          token,
+			action:         agentsync.AgentActionContinue,
+			jobIdOnRequest: jobId.String(),
+		})
+
+		_, err = models.ReleaseAgent(testOrgID, agent.AgentTypeName, jobId)
+		require.Nil(t, err)
+
+		// Replaying some other job, not the one it ran, is not a retry.
+		req := &agentsync.Request{
+			State:     agentsync.AgentStateFinishedJob,
+			JobID:     database.UUID().String(),
 			JobResult: agentsync.JobResultPassed,
 		}
 
@@ -1191,6 +1282,207 @@ func Test__DescribeJob(t *testing.T) {
 		res := run("GET", "/jobs/"+jobID.String(), token, nil)
 		require.Equal(t, http.StatusNotFound, res.Code)
 	})
+
+	t.Run("when the job assigned to the agent was stopped", func(t *testing.T) {
+		jobID, _ := models.ForcefullyOccupyAgentWithJobID(agent)
+		require.NoError(t, models.StopJob(testOrgID, jobID))
+
+		res := run("GET", "/jobs/"+jobID.String(), token, nil)
+
+		require.Equal(t, http.StatusNotFound, res.Code)
+	})
+
+	// Zebra scrubs the payload when a job reaches a terminal state, and answers
+	// FailedPrecondition instead of handing out the scrubbed copy. That is a
+	// permanent answer, so the agent must not keep retrying it.
+	t.Run("when zebra says the job is finished", func(t *testing.T) {
+		defer grpcmock.ResetGetAgentPayloadMock()
+		grpcmock.MockGetAgentPayloadError(status.Error(codes.FailedPrecondition, "Job is stopped"))
+
+		agent, token, err := newAgent(agentType)
+		require.Nil(t, err)
+
+		jobID, err := models.ForcefullyOccupyAgentWithJobID(agent)
+		require.NoError(t, err)
+
+		res := run("GET", "/jobs/"+jobID.String(), token, nil)
+
+		require.Equal(t, http.StatusNotFound, res.Code)
+	})
+
+	// Any other failure is transient, so it stays a 500 and the agent retries.
+	t.Run("when zebra is unavailable", func(t *testing.T) {
+		defer grpcmock.ResetGetAgentPayloadMock()
+		grpcmock.MockGetAgentPayloadError(status.Error(codes.Unavailable, "connection refused"))
+
+		agent, token, err := newAgent(agentType)
+		require.Nil(t, err)
+
+		jobID, err := models.ForcefullyOccupyAgentWithJobID(agent)
+		require.NoError(t, err)
+
+		res := run("GET", "/jobs/"+jobID.String(), token, nil)
+
+		require.Equal(t, http.StatusInternalServerError, res.Code)
+	})
+}
+
+func Test__SyncDoesNotRunStoppedJobs(t *testing.T) {
+	database.TruncateTables()
+	_ = declareExchangeAndQueue()
+
+	agentType, _, err := newAgentType("s1-test")
+	require.Nil(t, err)
+
+	agent, token, err := newAgent(agentType)
+	require.Nil(t, err)
+
+	// The job was assigned to the agent, then stopped before the agent ever
+	// asked for it. StopJob leaves assigned_job_id in place, so the dispatch
+	// path used to hand the agent a job that was already over.
+	jobID, err := models.ForcefullyOccupyAgentWithJobID(agent)
+	require.NoError(t, err)
+	require.NoError(t, models.StopJob(testOrgID, jobID))
+
+	sync(t, syncAssertion{
+		state:  agentsync.AgentStateWaitingForJobs,
+		token:  token,
+		action: agentsync.AgentActionContinue,
+	})
+
+	// The stopped assignment is released, so the agent is free for real work.
+	reloaded, err := models.FindAgentByToken(testOrgID.String(), agent.TokenHash)
+	require.NoError(t, err)
+	require.Nil(t, reloaded.AssignedJobID)
+	require.Nil(t, reloaded.JobStopRequestedAt)
+}
+
+func Test__SyncShutsDownSingleJobAgentWhenItsJobIsStopped(t *testing.T) {
+	database.TruncateTables()
+	_ = declareExchangeAndQueue()
+
+	agentType, _, err := newAgentType("s1-test")
+	require.Nil(t, err)
+
+	agent, token, err := newAgentWithMetadata(agentType, models.AgentMetadata{SingleJob: true})
+	require.Nil(t, err)
+
+	// The agent was registered for one specific job, which was then stopped
+	// before it ever asked for work. It must shut down, exactly as it would
+	// after finishing that job - not be released and handed something else.
+	jobID, err := models.ForcefullyOccupyAgentWithJobID(agent)
+	require.NoError(t, err)
+	require.NoError(t, models.StopJob(testOrgID, jobID))
+
+	// another job is queued for the same agent type
+	otherJobID := database.UUID()
+	require.NoError(t, models.CreateOccupationRequest(testOrgID, agentType.Name, otherJobID))
+
+	sync(t, syncAssertion{
+		state:          agentsync.AgentStateWaitingForJobs,
+		token:          token,
+		action:         agentsync.AgentActionShutdown,
+		shutdownReason: agentsync.ShutdownReasonJobFinished,
+	})
+
+	// the unrelated job must still be waiting for a real agent
+	req, err := models.FindOccupationRequest(testOrgID, agentType.Name, otherJobID)
+	require.NoError(t, err)
+	require.NotNil(t, req)
+}
+
+func Test__SyncDoesNotReleaseAJobTheAgentAlreadyStarted(t *testing.T) {
+	database.TruncateTables()
+	_ = declareExchangeAndQueue()
+
+	agentType, _, err := newAgentType("s1-test")
+	require.Nil(t, err)
+
+	agent, token, err := newAgent(agentType)
+	require.Nil(t, err)
+
+	jobID, err := models.ForcefullyOccupyAgentWithJobID(agent)
+	require.NoError(t, err)
+
+	// The agent acknowledges the job, which is what last_sync_job_id records.
+	sync(t, syncAssertion{
+		state:          agentsync.AgentStateStartingJob,
+		token:          token,
+		jobIdOnRequest: jobID.String(),
+		action:         agentsync.AgentActionContinue,
+	})
+
+	require.NoError(t, models.StopJob(testOrgID, jobID))
+
+	// another job is queued for the same agent type
+	otherJobID := database.UUID()
+	require.NoError(t, models.CreateOccupationRequest(testOrgID, agentType.Name, otherJobID))
+
+	// Nothing serialises two syncs from the same agent, so a waiting-for-jobs
+	// request can be read after the agent has already been told to run the job.
+	// Releasing on that stale request would hand the slot to another job while
+	// the agent keeps running this one, and its finished-job sync would then be
+	// rejected for having no assignment - losing the completion callback.
+	sync(t, syncAssertion{
+		state:  agentsync.AgentStateWaitingForJobs,
+		token:  token,
+		action: agentsync.AgentActionContinue,
+	})
+
+	reloaded, err := models.FindAgentByToken(testOrgID.String(), agent.TokenHash)
+	require.NoError(t, err)
+	require.Equal(t, &jobID, reloaded.AssignedJobID)
+	require.NotNil(t, reloaded.JobStopRequestedAt)
+
+	// the queued job must not have been handed to an agent that is busy
+	req, err := models.FindOccupationRequest(testOrgID, agentType.Name, otherJobID)
+	require.NoError(t, err)
+	require.NotNil(t, req)
+}
+
+func Test__SyncDoesNotOccupyAnAgentThatAlreadyStartedItsJob(t *testing.T) {
+	database.TruncateTables()
+	_ = declareExchangeAndQueue()
+
+	agentType, _, err := newAgentType("s1-test")
+	require.Nil(t, err)
+
+	agent, token, err := newAgent(agentType)
+	require.Nil(t, err)
+
+	jobID, err := models.ForcefullyOccupyAgentWithJobID(agent)
+	require.NoError(t, err)
+
+	// The agent acknowledges the job, which is what last_sync_job_id records.
+	sync(t, syncAssertion{
+		state:          agentsync.AgentStateStartingJob,
+		token:          token,
+		jobIdOnRequest: jobID.String(),
+		action:         agentsync.AgentActionContinue,
+	})
+
+	// another job is queued for the same agent type
+	otherJobID := database.UUID()
+	require.NoError(t, models.CreateOccupationRequest(testOrgID, agentType.Name, otherJobID))
+
+	// Same stale sync as above, but with no stop pending. Without an early
+	// return the assignment matches last_sync_job_id, so the dispatch branch is
+	// skipped and the agent is occupied with the queued job instead - which
+	// overwrites the job it is running and consumes the queued job's request.
+	sync(t, syncAssertion{
+		state:  agentsync.AgentStateWaitingForJobs,
+		token:  token,
+		action: agentsync.AgentActionContinue,
+	})
+
+	reloaded, err := models.FindAgentByToken(testOrgID.String(), agent.TokenHash)
+	require.NoError(t, err)
+	require.Equal(t, &jobID, reloaded.AssignedJobID)
+
+	// the queued job must still be waiting for an agent that is free
+	req, err := models.FindOccupationRequest(testOrgID, agentType.Name, otherJobID)
+	require.NoError(t, err)
+	require.NotNil(t, req)
 }
 
 func Test__ListJobs(t *testing.T) {

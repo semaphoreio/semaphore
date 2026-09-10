@@ -924,6 +924,49 @@ defmodule Zebra.Api.InternalJobApiTest do
                Stub.get_agent_payload(channel, request)
     end
 
+    test "when the job is finished => refuses to serve the payload" do
+      alias InternalApi.ServerFarm.Job.GetAgentPayloadRequest, as: Request
+      alias InternalApi.ServerFarm.Job.JobService.Stub, as: Stub
+
+      {:ok, job} =
+        Support.Factories.Job.create(:finished, %{
+          machine_type: "s1-test",
+          result: "stopped",
+          request: agent_job_request()
+        })
+
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+
+      assert {:error, %GRPC.RPCError{message: "Job is stopped", status: 9}} =
+               Stub.get_agent_payload(channel, Request.new(job_id: job.id))
+    end
+
+    test "when the job was stopped => refuses instead of serving a sanitized payload" do
+      alias InternalApi.ServerFarm.Job.GetAgentPayloadRequest, as: Request
+      alias InternalApi.ServerFarm.Job.JobService.Stub, as: Stub
+      alias Zebra.Models.Job
+
+      GrpcMock.stub(Support.FakeServers.SelfHosted, :stop_job, fn _, _ ->
+        InternalApi.SelfHosted.StopJobResponse.new()
+      end)
+
+      {:ok, job} =
+        Support.Factories.Job.create(:started, %{
+          machine_type: "s1-test",
+          request: agent_job_request()
+        })
+
+      # Stopping scrubs the request in the same update that finishes the job, so
+      # an agent that fetches afterwards used to receive '{SANITIZED}' values and
+      # die exporting env vars instead of learning the job was stopped.
+      assert {:ok, _} = Job.stop(job)
+
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+
+      assert {:error, %GRPC.RPCError{message: "Job is stopped", status: 9}} =
+               Stub.get_agent_payload(channel, Request.new(job_id: job.id))
+    end
+
     test "when the job is fetched twice => both payloads are intact" do
       alias InternalApi.ServerFarm.Job.GetAgentPayloadRequest, as: Request
       alias InternalApi.ServerFarm.Job.GetAgentPayloadResponse, as: Response

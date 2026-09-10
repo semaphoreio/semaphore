@@ -649,12 +649,16 @@ defmodule Zebra.Models.Job do
     end
   end
 
+  # Shorter than the 5s Task.await in Zebra.Parallel.in_batches, so a stop that
+  # cannot reach the hub fails this one job instead of the whole batch.
+  @self_hosted_stop_timeout 4_000
+
   def stop(job) do
     if valid_transition?(job.aasm_state, state_finished()) do
       Logger.info("Stopping job '#{job.id}'")
 
       if hosted?(job.machine_type), do: stop_hosted_job(job)
-      if self_hosted?(job.machine_type), do: stop_self_hosted_job(job)
+      if self_hosted?(job.machine_type), do: notify_self_hosted_agent(job)
 
       now = DateTime.utc_now() |> DateTime.truncate(:second)
 
@@ -680,6 +684,33 @@ defmodule Zebra.Models.Job do
       end
     else
       {:error, :invalid_transition}
+    end
+  end
+
+  # The agent learns a job is over from this call, so when it fails the agent is
+  # left asking for a payload this transition is about to scrub. Finishing the
+  # job still has to win - raising here would leave it in its current state and
+  # the stop request retried forever - so record the divergence and carry on.
+  #
+  # Capturing is what makes that true. An unreachable endpoint raises out of the
+  # gRPC client's channel setup rather than returning an error, and blocks for
+  # the connect timeout while it does; both outlive the Task.await that
+  # Zebra.Parallel gives each stop request, so the rest of the batch dies with
+  # it. Under capture every outcome - error, crash, or a hub too slow to matter
+  # - comes back as a value, on a deadline shorter than that await.
+  defp notify_self_hosted_agent(job) do
+    case Wormhole.capture(__MODULE__, :stop_self_hosted_job, [job],
+           timeout: @self_hosted_stop_timeout,
+           stacktrace: true
+         ) do
+      {:ok, :ok} ->
+        :ok
+
+      error ->
+        Logger.error("Failed to stop self-hosted job '#{job.id}': #{inspect(error)}")
+        Watchman.increment("job.self_hosted_stop.failed")
+
+        :error
     end
   end
 
