@@ -75,7 +75,7 @@ module Semaphore::GithubApp
       end
 
       context "low API rate limits", :vcr => vcr_options do
-        it "returns low rate limit" do
+        it "raises LowRateLimitError so the worker defers the retry" do
           FactoryBot.create(:github_app_installation, :installation_id => 13612966,
                                                       :repositories => ["renderedtext/guard"])
 
@@ -85,11 +85,12 @@ module Semaphore::GithubApp
             :c_id => 8652,
             :installation_id => 13612966
           )
+          resets_at = Time.zone.at(1_000_000)
           allow_any_instance_of(RepoHost::Github::Client).to receive(:rate_limit_remaining).and_return(100)
+          allow_any_instance_of(RepoHost::Github::Client).to receive(:rate_limit_resets_at).and_return(resets_at)
 
-          result = described_class.refresh("renderedtext/guard")
-
-          expect(result).to eq(:low_rate_limit)
+          expect { described_class.refresh("renderedtext/guard") }
+            .to raise_error(LowRateLimitError) { |e| expect(e.resets_at).to eq(resets_at) }
         end
       end
     end

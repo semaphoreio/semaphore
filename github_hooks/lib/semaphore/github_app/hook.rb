@@ -7,7 +7,7 @@ module Semaphore::GithubApp
     def self.process(event, payload)
       action = payload["action"]
 
-      sync = !App.disable_collaborator_webhook_sync
+      sync = !App.disable_collaborator_sync
 
       installation_id = payload["installation"]["id"]
       repositories = map_repositories(payload["repositories"])
@@ -37,7 +37,7 @@ module Semaphore::GithubApp
         :event => event,
         :action => action
       )
-      Semaphore::GithubApp::Repositories::Worker.perform_in(10, installation_id) if sync
+      Semaphore::GithubApp::Repositories::Worker.perform_in(10, installation_id, sync)
 
       true
     rescue ActiveRecord::RecordNotFound

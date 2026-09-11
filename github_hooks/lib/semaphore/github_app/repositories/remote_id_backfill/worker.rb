@@ -33,8 +33,8 @@ module Semaphore::GithubApp
           when :no_installation
             log(installation_id, "Installation not found")
           when :low_rate_limit
-            log(installation_id, "Low Rate Limit")
-            self.class.perform_in(15.minutes, installation_id)
+            log(installation_id, "Low Rate Limit — deferring until the bucket resets")
+            self.class.perform_in(Semaphore::GithubApp::RateLimit.defer_delay(result[:resets_at]), installation_id)
           else
             log(installation_id, "Unknown result: #{result.inspect}")
           end

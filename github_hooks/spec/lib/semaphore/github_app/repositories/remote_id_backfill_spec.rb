@@ -44,6 +44,24 @@ module Semaphore::GithubApp
             ]
           )
         end
+
+        context "when the installation is under the rate-limit floor" do
+          let(:resets_at) { Time.zone.at(1_000_000) }
+          let(:client) do
+            instance_double(
+              RepoHost::Github::Client,
+              :rate_limit_remaining => App.collaborators_api_rate_limit - 1,
+              :rate_limit_resets_at => resets_at
+            )
+          end
+
+          it "defers with the bucket's reset time" do
+            result = described_class.refresh_installation(installation_id)
+
+            expect(result[:status]).to eq(:low_rate_limit)
+            expect(result[:resets_at]).to eq(resets_at)
+          end
+        end
       end
 
       describe ".refresh_next_installation" do

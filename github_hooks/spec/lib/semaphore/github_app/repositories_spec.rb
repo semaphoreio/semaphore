@@ -208,6 +208,22 @@ module Semaphore::GithubApp
           expect(Semaphore::GithubApp::Hook).to have_received(:remove_repositories).with(installation_id, [], :sync_collaborators => true)
         end
       end
+
+      context "when the client is under the rate-limit floor" do
+        let(:client) do
+          instance_double(
+            RepoHost::Github::Client,
+            :rate_limit_remaining => App.collaborators_api_rate_limit - 1,
+            :rate_limit_resets_at => Time.zone.at(1_000_000)
+          )
+        end
+
+        it "raises LowRateLimitError before touching the repository list" do
+          expect(Semaphore::GithubApp::Hook).not_to receive(:add_repositories)
+
+          expect { described_class.refresh(installation_id) }.to raise_error(LowRateLimitError)
+        end
+      end
     end
   end
 end

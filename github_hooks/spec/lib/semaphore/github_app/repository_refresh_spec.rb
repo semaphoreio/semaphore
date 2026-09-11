@@ -40,7 +40,7 @@ module Semaphore::GithubApp
         result = described_class.full_for_organization(user.id, "acme")
 
         expect(result.state).to eq(:started)
-        expect(Repositories::Worker.jobs.map { |job| job["args"] }).to eq([[installation.installation_id]])
+        expect(Repositories::Worker.jobs.map { |job| job["args"] }).to eq([[installation.installation_id, true]])
       end
 
       context "when the caller has push access in the org" do
@@ -54,7 +54,7 @@ module Semaphore::GithubApp
 
           expect(result.state).to eq(:started)
           expect(result.message).to include("acme")
-          expect(Repositories::Worker.jobs.map { |job| job["args"] }).to eq([[installation.installation_id]])
+          expect(Repositories::Worker.jobs.map { |job| job["args"] }).to eq([[installation.installation_id, true]])
         end
 
         it "re-syncs collaborators for every already-cached repository" do
@@ -75,7 +75,7 @@ module Semaphore::GithubApp
 
           expect(result.state).to eq(:started)
           expect(GithubAppInstallation.exists?(:installation_id => 9090)).to be(true)
-          expect(Repositories::Worker.jobs.map { |job| job["args"] }).to eq([[9090]])
+          expect(Repositories::Worker.jobs.map { |job| job["args"] }).to eq([[9090, true]])
         end
 
         it "fails when the app is not installed on the org" do
@@ -139,7 +139,7 @@ module Semaphore::GithubApp
           result = described_class.full_for_organization(user.id, "acme")
 
           expect(result.state).to eq(:started)
-          expect(Repositories::Worker.jobs.map { |job| job["args"] }).to eq([[installation.installation_id]])
+          expect(Repositories::Worker.jobs.map { |job| job["args"] }).to eq([[installation.installation_id, true]])
         end
 
         it "discovers the installation via app JWT when the org has no cached repos" do
@@ -149,7 +149,7 @@ module Semaphore::GithubApp
           result = described_class.full_for_organization(user.id, "acme")
 
           expect(result.state).to eq(:started)
-          expect(Repositories::Worker.jobs.map { |job| job["args"] }).to eq([[9090]])
+          expect(Repositories::Worker.jobs.map { |job| job["args"] }).to eq([[9090, true]])
         end
 
         it "fails when the app is not installed on the org" do
@@ -637,13 +637,14 @@ module Semaphore::GithubApp
         expect(installation.installation_repositories.exists?(:slug => "renderedtext/brand-new-repo")).to be(false)
       end
 
-      it "returns :low_rate_limit without calling GitHub when the rate limit is too low" do
+      it "raises LowRateLimitError without calling GitHub when the rate limit is too low" do
         allow_any_instance_of(RepoHost::Github::Client).to receive(:rate_limit_remaining).and_return(0)
+        allow_any_instance_of(RepoHost::Github::Client).to receive(:rate_limit_resets_at).and_return(Time.zone.at(1_000_000))
         expect_any_instance_of(RepoHost::Github::Client).not_to receive(:repository)
 
-        result = described_class.fetch_and_cache_repository(installation.installation_id, "renderedtext/brand-new-repo")
-
-        expect(result).to eq(:low_rate_limit)
+        expect do
+          described_class.fetch_and_cache_repository(installation.installation_id, "renderedtext/brand-new-repo")
+        end.to raise_error(LowRateLimitError)
       end
 
       it "returns :no_token when no installation token is available" do
@@ -655,12 +656,12 @@ module Semaphore::GithubApp
       end
     end
 
-    context "when DISABLE_COLLABORATOR_WEBHOOK_SYNC is set" do
+    context "when DISABLE_COLLABORATOR_SYNC is set" do
       before do
-        allow(App).to receive(:disable_collaborator_webhook_sync).and_return(true)
+        allow(App).to receive(:disable_collaborator_sync).and_return(true)
       end
 
-      it "still enqueues the repository sync — manual refresh is not gated by the env flag" do
+      it "refreshes the repository list but suppresses the collaborator sweep" do
         user = FactoryBot.create(:user, :github_connection)
         installation = FactoryBot.create(:github_app_installation, :repositories => ["acme/widget"])
         GithubAppCollaborator.create!(
@@ -674,7 +675,8 @@ module Semaphore::GithubApp
 
         expect(result.state).to eq(:started)
         expect(Repositories::Worker.jobs.map { |job| job["args"] })
-          .to eq([[installation.installation_id]])
+          .to eq([[installation.installation_id, false]])
+        expect(Collaborators::Worker.jobs).to be_empty
       end
     end
   end

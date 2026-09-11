@@ -4,7 +4,8 @@ module Semaphore::GithubApp
       client = new_client(repository_slug, repository_remote_id)
 
       return :no_token unless client
-      return :low_rate_limit if client.rate_limit_remaining() < App.collaborators_api_rate_limit
+
+      RateLimit.guard!(client)
 
       github_collaborators = fetch_collaborators(client, repository_slug)
       current_uids = GithubAppCollaborator.where(:r_name => repository_slug).pluck(:c_id)

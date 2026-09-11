@@ -60,9 +60,9 @@ module Semaphore::GithubApp
           touch_pending_repositories(installation_id)
           return token_not_found(installation_id)
         end
-        if client(installation_id).rate_limit_remaining < App.collaborators_api_rate_limit
+        if RateLimit.exceeded?(client(installation_id))
           touch_pending_repositories(installation_id)
-          return low_rate_limit(installation_id)
+          return low_rate_limit(installation_id, client(installation_id).rate_limit_resets_at)
         end
 
         pending_repositories_by_slug = pending_repositories_for_installation(installation_id)
@@ -148,8 +148,8 @@ module Semaphore::GithubApp
         { :status => :no_token, :installation_id => installation_id }
       end
 
-      def low_rate_limit(installation_id)
-        { :status => :low_rate_limit, :installation_id => installation_id }
+      def low_rate_limit(installation_id, resets_at = nil)
+        { :status => :low_rate_limit, :installation_id => installation_id, :resets_at => resets_at }
       end
 
       def remote_repositories
