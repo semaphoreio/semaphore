@@ -1,3 +1,29 @@
+const EXACT_FORMAT_OPTIONS = {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+    timeZoneName: "short",
+};
+
+// Building an Intl formatter is two orders of magnitude dearer than using one, and
+// pages can carry dozens of these, so keep one per locale for the life of the page.
+const exactFormatters = new Map();
+
+function exactFormatter(locale) {
+    const key = locale || "";
+
+    if (!exactFormatters.has(key)) {
+        exactFormatters.set(key, new Intl.DateTimeFormat(locale, EXACT_FORMAT_OPTIONS));
+    }
+
+    return exactFormatters.get(key);
+}
+
 export class TimeAgo extends HTMLElement {
     constructor() {
         super();
@@ -7,6 +33,7 @@ export class TimeAgo extends HTMLElement {
     }
 
     connectedCallback() {
+        this.setExactTitle();
         this.updateTime();
         this.interval = setInterval(this.updateTime, 1000);
     }
@@ -28,29 +55,27 @@ export class TimeAgo extends HTMLElement {
         }
 
         this.textContent = this.decorateRelative(date);
-        this.setExactTitle(date);
     }
 
     // The visible text is relative ("31 minutes ago"), which reads well but makes
     // you do the arithmetic to get a wall-clock time. Keep the exact timestamp one
-    // hover away rather than making people work it out.
-    setExactTitle(date) {
-        const exact = this.formatExact(date);
-        if (this.title !== exact) this.title = exact;
+    // hover away rather than making people work it out. `datetime` is immutable, so
+    // this runs once on connect rather than on every tick of the relative-time timer.
+    setExactTitle() {
+        if (!this.datetime) return;
+
+        const date = new Date(this.datetime);
+        if (isNaN(date)) return;
+
+        this.title = this.formatExact(date);
     }
 
     formatExact(date) {
-        return date.toLocaleString(this.locale, {
-            weekday: "short",
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-            hour12: false,
-            timeZoneName: "short",
-        });
+        // Deliberately not this.locale, which falls back to "en": an exact timestamp
+        // is only readable in the viewer's own conventions. The relative text keeps
+        // the "en" default because formatDateWithTime parses English token order back
+        // out of its own output.
+        return exactFormatter(this.getAttribute("locale") || undefined).format(date);
     }
 
     decorateRelative(date) {
