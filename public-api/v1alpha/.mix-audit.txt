@@ -42,3 +42,23 @@ GHSA-468c-vq7p-gh64
 # service runs scheme: :http on port 4004 behind Ambassador (TLS termination at ingress, HTTP/1.1
 # to backend). Bump blocked by grpc 0.3.1 / cowboy 2.5 — same dep chain as the entries above.
 GHSA-q8x4-x7mp-5vg2
+
+# --- grpc 0.5.0-beta.1 advisories, all first patched in grpc 1.0.0 ---
+# All three are server-side only, and public-api/v1alpha never starts a gRPC server: there is no
+# `use GRPC.Server` and no GRPC.Server.Supervisor anywhere in lib/. grpc is used purely as a client
+# (GRPC.Stub) against internal backend services (same posture as front - see front/.mix-audit.txt).
+# Bumping to grpc 1.0.0 is a breaking major that splits the grpc package into
+# grpc/grpc_server/grpc_core across ~20 services in the monorepo; not viable as a same-day fix.
+# Tracked as a coordinated migration in an internal grpc-1.0 migration follow-up - this is the interim, not the fix.
+#
+# RCE / atom-table exhaustion via :erlang.binary_to_term in GRPC.Codec.Erlpack.decode/2. Needs a
+# server that explicitly registers the Erlpack codec and accepts application/grpc+erlpack;
+# public-api/v1alpha registers no codec and serves no gRPC endpoint.
+GHSA-grp7-v8xh-rj7h
+# Decompression bomb in GRPC.Compressor.Gzip.decompress/1, fired by frames arriving at a server
+# carrying grpc-encoding: gzip. public-api/v1alpha only decodes responses from internal backend
+# services, which are not attacker-controlled, and never accepts inbound gRPC frames itself.
+GHSA-6ccx-9c9f-327w
+# Unbounded request-body accumulation in read_full_body/3 - the server request read loop only;
+# public-api/v1alpha runs no gRPC server, so this code path is never entered.
+GHSA-q8gf-9rvj-gmgj
