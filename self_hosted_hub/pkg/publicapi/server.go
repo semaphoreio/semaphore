@@ -27,6 +27,8 @@ import (
 	quotas "github.com/semaphoreio/semaphore/self_hosted_hub/pkg/quotas"
 	"github.com/semaphoreio/semaphore/self_hosted_hub/pkg/workers/agentcounter"
 	log "github.com/sirupsen/logrus"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"gorm.io/gorm"
 )
 
@@ -182,8 +184,22 @@ func (s *Server) DescribeJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The payload of a stopped job is scrubbed of its secrets, so serving it
+	// would hand the agent a request it cannot use.
+	if agent.JobStopRequestedAt != nil {
+		logging.ForAgent(agent).Warningf("Job %s is stopped", jobID)
+		respondWith404(w)
+		return
+	}
+
 	payload, err := zebraclient.GetJobPayload(jobID)
 	if err != nil {
+		if status.Code(err) == codes.FailedPrecondition {
+			logging.ForAgent(agent).Warningf("Job %s is no longer running - not serving payload: %v", jobID, err)
+			respondWith404(w)
+			return
+		}
+
 		logging.ForAgent(agent).Errorf("Error fetching job payload for %s: %v", jobID, err)
 		_ = watchman.IncrementWithTags("server.error", []string{"zebra_failure", agent.OrganizationID.String()})
 		respondWith500(w)

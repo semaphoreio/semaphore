@@ -299,6 +299,11 @@ defmodule Zebra.Apis.InternalJobApi do
           # Agents refetch this payload when a response is lost in transit, so it
           # has to stay identical for the whole life of the job. The request is
           # sanitized when the job reaches a terminal state instead.
+
+          if Job.finished?(job) do
+            raise GRPC.RPCError, status: :failed_precondition, message: "Job is stopped"
+          end
+
           InternalApi.ServerFarm.Job.GetAgentPayloadResponse.new(
             payload: Poison.encode!(job.request)
           )
