@@ -1,0 +1,15 @@
+apiVersion: v1.2
+kind: Schedule
+metadata:
+  name: foo name
+  id: some-uuid
+spec:
+  project: my first
+  recurring: true
+  reference:
+    type: BRANCH
+    name: master
+  at: "* * * "
+  pipeline_file: .semaphore/cron.yml
+  skip_scheduled_run_notifications: false
+  skip_manual_run_notifications: true

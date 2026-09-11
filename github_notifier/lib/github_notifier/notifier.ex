@@ -1,6 +1,7 @@
 defmodule GithubNotifier.Notifier do
   alias GithubNotifier.TaskSupervisor
   alias GithubNotifier.Models
+  alias GithubNotifier.Utils.SkipPolicy
 
   def notify(request_id, pipeline_id, block_id \\ nil) do
     {:ok, pipeline} = fetch_pipeline(pipeline_id)
@@ -12,8 +13,10 @@ defmodule GithubNotifier.Notifier do
         nil
 
       project ->
-        data = GithubNotifier.Extractor.extract(pipeline, block_id, repo_proxy, project)
-        GithubNotifier.Status.create(data, request_id)
+        pipeline
+        |> GithubNotifier.Extractor.extract(block_id, repo_proxy, project)
+        |> with_suppression(pipeline)
+        |> GithubNotifier.Status.create(request_id)
     end
   end
 
@@ -28,17 +31,45 @@ defmodule GithubNotifier.Notifier do
         nil
 
       project ->
-        data =
-          GithubNotifier.Extractor.extract_with_summary(
-            pipeline,
-            repo_proxy,
-            project,
-            pipeline_summary
-          )
-
-        GithubNotifier.Status.create(data, request_id)
+        pipeline
+        |> GithubNotifier.Extractor.extract_with_summary(repo_proxy, project, pipeline_summary)
+        |> with_suppression(pipeline)
+        |> GithubNotifier.Status.create(request_id)
     end
   end
+
+  # The suppression decision rides along on the request: repository_hub
+  # resolves it against the last delivered state for the check, so a decision
+  # that flipped mid-pipeline cannot strand a pending status.
+  defp with_suppression(nil, _pipeline), do: nil
+
+  defp with_suppression(data, pipeline) do
+    put_suppress(data, SkipPolicy.suppress?(pipeline, fetch_task(pipeline)))
+  end
+
+  defp put_suppress(data, suppress) when is_list(data),
+    do: Enum.map(data, &put_suppress(&1, suppress))
+
+  defp put_suppress(nil, _suppress), do: nil
+  defp put_suppress(data, suppress), do: Map.put(data, :suppress, suppress)
+
+  defp fetch_task(%{triggered_by: triggered_by, scheduler_task_id: task_id})
+       when triggered_by in [:SCHEDULE, :MANUAL_RUN] and task_id not in [nil, ""] do
+    task =
+      Task.Supervisor.async_nolink(TaskSupervisor, fn -> Models.Periodic.find(task_id) end)
+
+    case Task.yield(task, Models.Periodic.lookup_budget()) ||
+           Task.shutdown(task, :brutal_kill) do
+      {:ok, result} ->
+        result
+
+      _ ->
+        Watchman.increment("fetch_periodic.timeout")
+        nil
+    end
+  end
+
+  defp fetch_task(_pipeline), do: nil
 
   defp fetch_pipeline_summary(pipeline_id) do
     Task.Supervisor.async_nolink(

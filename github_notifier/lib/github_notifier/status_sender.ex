@@ -160,7 +160,8 @@ defmodule GithubNotifier.StatusSender.Worker do
           url: data.url,
           description: data.description,
           context: data.context,
-          source_id: data.ppl_id
+          source_id: data.ppl_id,
+          suppress: Map.get(data, :suppress, false)
         )
 
       Logger.debug(fn ->

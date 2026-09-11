@@ -29,3 +29,20 @@
         placeholder: "e.g. runs scheduled pings to our production environments." %>
     <div class="f5 b mv1 red" data-validation-message="description"></div>
 </div>
+
+<div class="ml2 mt2 mb4">
+    <%= label @form, :commit_status_notifications, "Commit statuses", class: "db b mb2" %>
+    <div class="flex items-center mb1">
+        <%= checkbox @form, :skip_scheduled_run_notifications,
+            checked: @scheduler.skip_scheduled_run_notifications %>
+        <%= label @form, :skip_scheduled_run_notifications,
+            "Don't send status checks for scheduled runs", class: "ml2" %>
+    </div>
+    <div class="flex items-center">
+        <%= checkbox @form, :skip_manual_run_notifications,
+            checked: @scheduler.skip_manual_run_notifications %>
+        <%= label @form, :skip_manual_run_notifications,
+            "Don't send status checks for “Run now”", class: "ml2" %>
+    </div>
+    <p class="f6 gray mt1 mb0">Applies to every pipeline this task starts with that trigger, reruns included.</p>
+</div>

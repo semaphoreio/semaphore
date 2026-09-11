@@ -51,6 +51,29 @@ defmodule RepositoryHub.Server.CreateBuildStatusGuardTest do
       assert :meck.num_calls(GithubClient, :create_build_status, :_) == 2
     end
 
+    test "suppressed statuses never reach the provider", ctx do
+      suppressed = %{request(ctx, :PENDING) | suppress: true}
+
+      assert %CreateBuildStatusResponse{code: :OK, skipped: true} =
+               Server.create_build_status(suppressed, nil)
+
+      assert :meck.num_calls(GithubClient, :create_build_status, :_) == 0
+    end
+
+    test "a suppressed terminal status still reconciles an outstanding pending", ctx do
+      assert %CreateBuildStatusResponse{code: :OK, skipped: false} =
+               Server.create_build_status(request(ctx, :PENDING), nil)
+
+      suppressed_success = %{request(ctx, :SUCCESS) | suppress: true}
+
+      assert %CreateBuildStatusResponse{code: :OK, skipped: false} =
+               Server.create_build_status(suppressed_success, nil)
+
+      # the pending went out, so the terminal must follow it - a check is never
+      # left pending forever because the policy flipped mid-pipeline
+      assert :meck.num_calls(GithubClient, :create_build_status, :_) == 2
+    end
+
     test "delivers a pending for a new source_id after another run's terminal", ctx do
       assert %CreateBuildStatusResponse{code: :OK} =
                Server.create_build_status(request(ctx, :SUCCESS), nil)

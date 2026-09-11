@@ -167,7 +167,8 @@ defmodule Projecthub.HttpApi do
       spec = conn.body_params["spec"]
       repository = spec["repository"]
 
-      {schedulers, tasks} = construct_schedulers_and_tasks(conn.body_params)
+      {schedulers, tasks} =
+        construct_schedulers_and_tasks(conn.body_params, stored_notification_flags(conn))
 
       req =
         InternalApi.Projecthub.UpdateRequest.new(
@@ -601,9 +602,9 @@ defmodule Projecthub.HttpApi do
     |> String.downcase()
   end
 
-  defp construct_schedulers_and_tasks(body_params) do
+  defp construct_schedulers_and_tasks(body_params, stored_flags \\ %{}) do
     schedulers = construct_schedulers(body_params["spec"]["schedulers"])
-    tasks = construct_tasks(body_params["spec"]["tasks"])
+    tasks = construct_tasks(body_params["spec"]["tasks"], stored_flags)
 
     if Enum.empty?(tasks),
       do: {schedulers, []},
@@ -632,7 +633,7 @@ defmodule Projecthub.HttpApi do
     end
   end
 
-  defp construct_tasks(raw_tasks) do
+  defp construct_tasks(raw_tasks, stored_flags) do
     alias InternalApi.Projecthub.Project.Spec.Task, as: SpecTask
 
     if raw_tasks do
@@ -649,12 +650,66 @@ defmodule Projecthub.HttpApi do
           at: task["at"] || "",
           pipeline_file: task["pipeline_file"] || "",
           parameters: construct_task_parameters(task["parameters"]),
-          status: task_status(task["status"])
+          status: task_status(task["status"]),
+          skip_scheduled_run_notifications:
+            notification_flag(task, "skip_scheduled_run_notifications", stored_flags),
+          skip_manual_run_notifications:
+            notification_flag(task, "skip_manual_run_notifications", stored_flags)
         )
       end)
     else
       []
     end
+  end
+
+  # A proto3 bool cannot say "not provided", so presence has to be resolved
+  # here - this is the last layer that still sees whether the key was in the
+  # request body. An omitted key keeps the stored value; an explicit true or
+  # false wins, so a flag can still be cleared through the API.
+  defp notification_flag(task, key, stored_flags) do
+    if Map.has_key?(task, key) do
+      task[key] == true
+    else
+      stored_flags |> Map.get(task["id"], %{}) |> Map.get(key, false)
+    end
+  end
+
+  defp stored_notification_flags(conn) do
+    case fetch_project_by_id(conn) do
+      {:ok, project} ->
+        Map.new(project.spec.tasks, fn task ->
+          {task.id,
+           %{
+             "skip_scheduled_run_notifications" => task.skip_scheduled_run_notifications == true,
+             "skip_manual_run_notifications" => task.skip_manual_run_notifications == true
+           }}
+        end)
+
+      _ ->
+        %{}
+    end
+  end
+
+  defp fetch_project_by_id(conn) do
+    req =
+      InternalApi.Projecthub.DescribeRequest.new(
+        metadata: Utils.construct_req_meta(conn),
+        id: conn.params["id"],
+        detailed: true
+      )
+
+    {:ok, channel} =
+      GRPC.Stub.connect(Application.fetch_env!(:projecthub, :projecthub_grpc_endpoint))
+
+    {:ok, res} =
+      InternalApi.Projecthub.ProjectService.Stub.describe(channel, req, timeout: 30_000)
+
+    case InternalApi.Projecthub.ResponseMeta.Code.key(res.metadata.status.code) do
+      :OK -> {:ok, res.project}
+      code -> {:error, code}
+    end
+  rescue
+    error -> {:error, error}
   end
 
   defp construct_reference("branch", reference_name) do

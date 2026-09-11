@@ -372,6 +372,69 @@ defmodule Projecthub.Models.ProjectTest do
       end
     end
 
+    test "it carries task notification skip flags all the way to the scheduler" do
+      alias InternalApi.PeriodicScheduler, as: API
+      alias Support.FakeServices.PeriodicSchedulerService, as: PeriodicService
+
+      {:ok, project} =
+        Support.Factories.Project.create_with_repo(%{
+          name: "awesome_project",
+          creator_id: Ecto.UUID.generate(),
+          organization_id: Ecto.UUID.generate(),
+          description: "Just an awesome project"
+        })
+
+      task_id = "12345678-1234-5678-1234-567812345678"
+      test_pid = self()
+
+      FunRegistry.set!(PeriodicService, :bulk_upsert_and_prune, fn req, _stream ->
+        send(test_pid, {:definitions, req.periodics})
+
+        API.BulkUpsertAndPruneResponse.new(
+          status: InternalApi.Status.new(),
+          upserted: [API.Periodic.new(id: task_id)],
+          deleted_ids: []
+        )
+      end)
+
+      task =
+        InternalApi.Projecthub.Project.Spec.Task.new(
+          id: task_id,
+          name: "nightly",
+          branch: "master",
+          at: "0 3 * * *",
+          pipeline_file: ".semaphore/cron.yml",
+          status: :STATUS_ACTIVE,
+          recurring: true,
+          skip_scheduled_run_notifications: true,
+          skip_manual_run_notifications: false
+        )
+
+      project_params = %{
+        name: project.name,
+        id: project.id,
+        owner_id: "",
+        org_id: project.organization_id,
+        description: project.description
+      }
+
+      repo_params = %{url: "git@github.com:organization/awesome_project.git"}
+
+      {:ok, _updated} =
+        Project.update(
+          project,
+          project_params,
+          repo_params,
+          [],
+          [Projecthub.Models.PeriodicTask.construct(task, project.name)],
+          "requester_id"
+        )
+
+      assert_received {:definitions, [definition]}
+      assert definition.skip_scheduled_run_notifications == true
+      assert definition.skip_manual_run_notifications == false
+    end
+
     test "it updates schedulers when tasks are empty" do
       creator_id = Ecto.UUID.generate()
       org_id = Ecto.UUID.generate()

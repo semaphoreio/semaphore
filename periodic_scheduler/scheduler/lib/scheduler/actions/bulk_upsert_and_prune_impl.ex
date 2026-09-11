@@ -213,7 +213,10 @@ defmodule Scheduler.Actions.BulkUpsertAndPruneImpl do
       reference: Map.get(definition, :reference, ""),
       pipeline_file: Map.get(definition, :pipeline_file, ""),
       at: Map.get(definition, :at, ""),
-      parameters: convert_parameters(Map.get(definition, :parameters, []))
+      parameters: convert_parameters(Map.get(definition, :parameters, [])),
+      skip_scheduled_run_notifications:
+        Map.get(definition, :skip_scheduled_run_notifications, false),
+      skip_manual_run_notifications: Map.get(definition, :skip_manual_run_notifications, false)
     }
     |> inject_paused(Map.get(definition, :state, :UNCHANGED), params.requester_id)
   end
@@ -227,7 +230,10 @@ defmodule Scheduler.Actions.BulkUpsertAndPruneImpl do
       reference: Map.get(definition, :reference, ""),
       pipeline_file: Map.get(definition, :pipeline_file, ""),
       at: Map.get(definition, :at, ""),
-      parameters: convert_parameters(Map.get(definition, :parameters, []))
+      parameters: convert_parameters(Map.get(definition, :parameters, [])),
+      skip_scheduled_run_notifications:
+        Map.get(definition, :skip_scheduled_run_notifications, false),
+      skip_manual_run_notifications: Map.get(definition, :skip_manual_run_notifications, false)
     }
     |> inject_paused(Map.get(definition, :state, :UNCHANGED), params.requester_id)
   end
