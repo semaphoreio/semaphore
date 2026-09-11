@@ -75,6 +75,45 @@ defmodule Guard.McpOAuth.Server.Test do
     auth_code
   end
 
+  defp exchange_code_for_tokens(user_id, client) do
+    auth_code = create_test_auth_code(user_id, client.client_id)
+
+    body =
+      URI.encode_query(%{
+        "grant_type" => "authorization_code",
+        "code" => auth_code.code,
+        "redirect_uri" => @redirect_uri,
+        "client_id" => client.client_id,
+        "code_verifier" => @code_verifier
+      })
+
+    {:ok, response} = HTTPoison.post(mcp_oauth_url("/token"), body, form_headers())
+    assert response.status_code == 200
+
+    Jason.decode!(response.body)
+  end
+
+  defp refresh_body(client_id, refresh_token) do
+    URI.encode_query(%{
+      "grant_type" => "refresh_token",
+      "refresh_token" => refresh_token,
+      "client_id" => client_id
+    })
+  end
+
+  defp refresh(client_id, refresh_token) do
+    {:ok, response} =
+      HTTPoison.post(
+        mcp_oauth_url("/token"),
+        refresh_body(client_id, refresh_token),
+        form_headers()
+      )
+
+    assert response.status_code == 200
+
+    Jason.decode!(response.body)
+  end
+
   defp authorize_query(client_id, opts \\ []) do
     redirect_uri = Keyword.get(opts, :redirect_uri, @redirect_uri)
     code_challenge = PKCE.compute_challenge(@code_verifier)
@@ -133,6 +172,8 @@ defmodule Guard.McpOAuth.Server.Test do
       assert is_binary(body["registration_endpoint"])
       assert is_list(body["response_types_supported"])
       assert is_list(body["grant_types_supported"])
+      assert "authorization_code" in body["grant_types_supported"]
+      assert "refresh_token" in body["grant_types_supported"]
       assert is_list(body["code_challenge_methods_supported"])
       assert "S256" in body["code_challenge_methods_supported"]
     end
@@ -194,7 +235,7 @@ defmodule Guard.McpOAuth.Server.Test do
       result = Jason.decode!(response.body)
       assert is_binary(result["client_id"])
       assert result["redirect_uris"] == ["http://localhost:3000/callback"]
-      assert result["grant_types"] == ["authorization_code"]
+      assert result["grant_types"] == ["authorization_code", "refresh_token"]
       assert result["client_name"] == "My MCP Client"
     end
 
@@ -350,6 +391,7 @@ defmodule Guard.McpOAuth.Server.Test do
 
       result = Jason.decode!(response.body)
       assert is_binary(result["access_token"])
+      assert is_binary(result["refresh_token"])
       assert result["token_type"] == "Bearer"
       assert result["expires_in"] == 86_400
       assert result["scope"] == "mcp"
@@ -469,6 +511,158 @@ defmodule Guard.McpOAuth.Server.Test do
 
       result = Jason.decode!(response.body)
       assert result["error"] == "invalid_request"
+    end
+  end
+
+  # ====================
+  # Token Endpoint - refresh_token grant
+  # ====================
+
+  describe "POST /token with grant_type=refresh_token" do
+    test "returns a new access token and rotates the refresh token", %{user_id: user_id} do
+      client = create_test_client()
+      tokens = exchange_code_for_tokens(user_id, client)
+
+      {:ok, response} =
+        HTTPoison.post(
+          mcp_oauth_url("/token"),
+          refresh_body(client.client_id, tokens["refresh_token"]),
+          form_headers()
+        )
+
+      assert response.status_code == 200
+      assert_content_type(response, "application/json")
+
+      result = Jason.decode!(response.body)
+      assert is_binary(result["access_token"])
+      assert result["token_type"] == "Bearer"
+      assert result["expires_in"] == 86_400
+      assert result["scope"] == "mcp"
+
+      # Rotation: the refresh token is single-use and replaced on every refresh.
+      assert is_binary(result["refresh_token"])
+      assert result["refresh_token"] != tokens["refresh_token"]
+
+      signer = Joken.Signer.create("HS256", System.get_env("MCP_OAUTH_JWT_KEYS"))
+      assert {:ok, claims} = Joken.verify(result["access_token"], signer)
+      assert claims["semaphore_user_id"] == user_id
+      assert claims["scope"] == "mcp"
+    end
+
+    test "the rotated refresh token can be used again", %{user_id: user_id} do
+      client = create_test_client()
+      tokens = exchange_code_for_tokens(user_id, client)
+
+      first = refresh(client.client_id, tokens["refresh_token"])
+      second = refresh(client.client_id, first["refresh_token"])
+
+      assert is_binary(second["access_token"])
+      assert second["refresh_token"] != first["refresh_token"]
+    end
+
+    test "replaying a used refresh token revokes the whole family", %{user_id: user_id} do
+      client = create_test_client()
+      tokens = exchange_code_for_tokens(user_id, client)
+
+      rotated = refresh(client.client_id, tokens["refresh_token"])
+
+      # Replay of the consumed token.
+      {:ok, response} =
+        HTTPoison.post(
+          mcp_oauth_url("/token"),
+          refresh_body(client.client_id, tokens["refresh_token"]),
+          form_headers()
+        )
+
+      assert response.status_code == 400
+      assert Jason.decode!(response.body)["error"] == "invalid_grant"
+
+      # The token handed out by the replayed exchange is revoked as well.
+      {:ok, response} =
+        HTTPoison.post(
+          mcp_oauth_url("/token"),
+          refresh_body(client.client_id, rotated["refresh_token"]),
+          form_headers()
+        )
+
+      assert response.status_code == 400
+      assert Jason.decode!(response.body)["error"] == "invalid_grant"
+    end
+
+    test "refresh token is bound to the client it was issued to", %{user_id: user_id} do
+      client = create_test_client()
+      other_client = create_test_client()
+      tokens = exchange_code_for_tokens(user_id, client)
+
+      {:ok, response} =
+        HTTPoison.post(
+          mcp_oauth_url("/token"),
+          refresh_body(other_client.client_id, tokens["refresh_token"]),
+          form_headers()
+        )
+
+      assert response.status_code == 400
+      assert Jason.decode!(response.body)["error"] == "invalid_grant"
+
+      # The original client can still refresh: a mismatched client_id must not
+      # consume or revoke the token.
+      assert is_binary(refresh(client.client_id, tokens["refresh_token"])["access_token"])
+    end
+
+    test "expired refresh token returns error", %{user_id: user_id} do
+      client = create_test_client()
+
+      {:ok, token, _record} =
+        Guard.Store.McpOAuthRefreshToken.issue(%{
+          client_id: client.client_id,
+          user_id: user_id,
+          expires_at:
+            DateTime.utc_now() |> DateTime.add(-60, :second) |> DateTime.truncate(:second)
+        })
+
+      {:ok, response} =
+        HTTPoison.post(
+          mcp_oauth_url("/token"),
+          refresh_body(client.client_id, token),
+          form_headers()
+        )
+
+      assert response.status_code == 400
+      assert Jason.decode!(response.body)["error"] == "invalid_grant"
+    end
+
+    test "unknown refresh token returns error" do
+      client = create_test_client()
+
+      {:ok, response} =
+        HTTPoison.post(
+          mcp_oauth_url("/token"),
+          refresh_body(client.client_id, "not-a-real-token"),
+          form_headers()
+        )
+
+      assert response.status_code == 400
+      assert Jason.decode!(response.body)["error"] == "invalid_grant"
+    end
+
+    test "missing refresh_token returns error" do
+      %{client_id: client_id} = create_test_client()
+
+      body = URI.encode_query(%{"grant_type" => "refresh_token", "client_id" => client_id})
+
+      {:ok, response} = HTTPoison.post(mcp_oauth_url("/token"), body, form_headers())
+
+      assert response.status_code == 400
+      assert Jason.decode!(response.body)["error"] == "invalid_request"
+    end
+
+    test "missing client_id returns error" do
+      body = URI.encode_query(%{"grant_type" => "refresh_token", "refresh_token" => "abc"})
+
+      {:ok, response} = HTTPoison.post(mcp_oauth_url("/token"), body, form_headers())
+
+      assert response.status_code == 400
+      assert Jason.decode!(response.body)["error"] == "invalid_request"
     end
   end
 

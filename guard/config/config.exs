@@ -92,6 +92,20 @@ config :guard,
   mcp_oauth_access_token_ttl_seconds:
     String.to_integer(System.get_env("MCP_OAUTH_ACCESS_TOKEN_TTL_SECONDS") || "86400")
 
+# Refresh tokens are rotated on every use, so this bounds how long an idle
+# client can stay signed in without opening the browser again. Defaults to
+# 30 days, and slides forward on each rotation.
+config :guard,
+  mcp_oauth_refresh_token_ttl_seconds:
+    String.to_integer(System.get_env("MCP_OAUTH_REFRESH_TOKEN_TTL_SECONDS") || "2592000")
+
+# Absolute ceiling on a token family, measured from the authorization that
+# created it. Rotation does not extend it, so a stolen family cannot be kept
+# alive forever by refreshing it. Defaults to 90 days.
+config :guard,
+  mcp_oauth_refresh_token_max_lifetime_seconds:
+    String.to_integer(System.get_env("MCP_OAUTH_REFRESH_TOKEN_MAX_LIFETIME_SECONDS") || "7776000")
+
 config :guard,
   oidc: [
     discovery_url: System.get_env("OIDC_DISCOVERY_URL"),

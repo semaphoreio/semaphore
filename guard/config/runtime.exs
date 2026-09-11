@@ -72,6 +72,14 @@ config :guard,
     String.to_integer(System.get_env("MCP_OAUTH_ACCESS_TOKEN_TTL_SECONDS") || "86400")
 
 config :guard,
+  mcp_oauth_refresh_token_ttl_seconds:
+    String.to_integer(System.get_env("MCP_OAUTH_REFRESH_TOKEN_TTL_SECONDS") || "2592000")
+
+config :guard,
+  mcp_oauth_refresh_token_max_lifetime_seconds:
+    String.to_integer(System.get_env("MCP_OAUTH_REFRESH_TOKEN_MAX_LIFETIME_SECONDS") || "7776000")
+
+config :guard,
   github_app_redirect_url:
     "https://id.#{System.get_env("BASE_DOMAIN")}/github_app_manifest_callback"
 

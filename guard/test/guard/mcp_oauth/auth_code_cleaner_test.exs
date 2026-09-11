@@ -1,7 +1,7 @@
 defmodule Guard.McpOAuth.AuthCodeCleanerTest do
   use Guard.RepoCase, async: false
 
-  alias Guard.Store.McpOAuthAuthCode
+  alias Guard.Store.{McpOAuthAuthCode, McpOAuthRefreshToken}
   alias Guard.Repo
 
   setup do
@@ -53,6 +53,26 @@ defmodule Guard.McpOAuth.AuthCodeCleanerTest do
 
     test "handles empty table" do
       assert :ok = Guard.McpOAuth.AuthCodeCleaner.process()
+    end
+
+    test "deletes expired refresh tokens and keeps live ones", %{user_id: user_id} do
+      expired_at =
+        DateTime.utc_now() |> DateTime.add(-3600, :second) |> DateTime.truncate(:second)
+
+      {:ok, _, _expired} =
+        McpOAuthRefreshToken.issue(%{
+          client_id: "test-client",
+          user_id: user_id,
+          expires_at: expired_at
+        })
+
+      {:ok, _, live} = McpOAuthRefreshToken.issue(%{client_id: "test-client", user_id: user_id})
+
+      assert :ok = Guard.McpOAuth.AuthCodeCleaner.process()
+
+      remaining = Repo.all(Guard.Repo.McpOAuthRefreshToken)
+      assert length(remaining) == 1
+      assert hd(remaining).id == live.id
     end
   end
 end
