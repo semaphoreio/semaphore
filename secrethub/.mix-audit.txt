@@ -1,0 +1,34 @@
+# Suppressed advisories on secrethub. These are blocked from being fixed by a version bump on the
+# current toolchain; each is tracked for the coordinated remediation named below. Reachability
+# checked per group. Do not add new suppressions without the same review.
+
+# grpc 0.5.0-beta.1 - RCE and gzip-bomb provably unreachable (no codec/compressor registered), body
+# limit is a bounded in-cluster DoS. Blocked on the grpc 1.0 migration.
+GHSA-grp7-v8xh-rj7h
+GHSA-q8gf-9rvj-gmgj
+GHSA-6ccx-9c9f-327w
+# cowboy / cowlib - fixed versions require a newer Erlang/OTP than this service runs (OTP 24).
+# Blocked on the Elixir/OTP modernization.
+GHSA-jfc2-q6qh-g5x8
+GHSA-32p9-57cr-4x65
+GHSA-84f2-rp86-235p
+GHSA-g2wm-735q-3f56
+GHSA-hv23-4qp7-8c8r
+GHSA-w4f7-4cxr-rv3c
+# plug / plug_cowboy - fixed versions need Elixir 1.14+. Blocked on the same modernization.
+GHSA-468c-vq7p-gh64
+GHSA-q8x4-x7mp-5vg2
+# postgrex / decimal - fixed versions blocked by ecto/ecto_sql pins (postgrex ~> 0.16, decimal
+# ~> 2.0). Blocked on an ecto bump. The postgrex SQL-injection is via Notifications.listen channel
+# names, which a secrets service never feeds user input into.
+GHSA-r73h-97w8-m54h
+GHSA-4mw9-4qgj-m97w
+GHSA-rhv4-8758-jx7v
+# hackney - fixed at 4.0.1, blocked by httpoison ~> 1.x. Blocked on a fleet httpoison to hackney 4.x
+# bump. Reachable only via Sentry's optional adapter (operator SENTRY_DSN), never request data.
+GHSA-9fm9-hp7p-53mf
+GHSA-gp9c-pm5m-5cxr
+GHSA-j9wq-vxxc-94wf
+GHSA-mp55-p8c9-rfw2
+GHSA-pj7v-xfvx-wmjq
+GHSA-vq52-99r9-h5pw
