@@ -58,11 +58,14 @@ defmodule FrontWeb.LayoutViewTest do
 
     test "opts pages owning long lived client state out of Turbo rendering" do
       assert FrontWeb.LayoutView.turbo_full_reload_page?(conn_with_js(:workflow_editor))
-      assert FrontWeb.LayoutView.turbo_full_reload_page?(conn_with_js(:logs))
     end
 
     test "matches the assign whether it is an atom or a string" do
       assert FrontWeb.LayoutView.turbo_full_reload_page?(conn_with_js("workflow_editor"))
+    end
+
+    test "lets the job log page render through Turbo now that it tears itself down" do
+      refute FrontWeb.LayoutView.turbo_full_reload_page?(conn_with_js(:logs))
     end
 
     test "lets every other page render through Turbo" do
