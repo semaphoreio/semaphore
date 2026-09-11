@@ -64,11 +64,33 @@ describe("time-ago", () => {
         expect(el.title).to.equal(exact(at, undefined))
     })
 
-    it("formats the tooltip in the viewer's own locale, not a hardcoded English", () => {
+    // Both locale tests below compare against German output, so they say nothing on a
+    // runtime without non-English ICU data. Assert that up front, so such a runtime
+    // fails with the reason rather than with a confusing inequality.
+    it("has the locale data the tooltip tests rely on", () => {
+        const at = new Date("2026-09-09T10:01:30+00:00")
+
+        expect(exact(at, "de"), "runtime is missing non-English ICU data").to.not.equal(exact(at, "en"))
+    })
+
+    it("formats the tooltip in the locale it is given", () => {
         const at = new Date("2026-09-09T10:01:30+00:00")
 
         expect(render(at.toISOString(), "de").title).to.equal(exact(at, "de"))
-        expect(exact(at, "de")).to.not.equal(exact(at, "en"))
+    })
+
+    it("does not fall back to the relative text's English default for the tooltip", () => {
+        const at = new Date("2026-09-09T10:01:30+00:00")
+        const el = render(at.toISOString())
+
+        // `locale` is what the visible relative text uses and it defaults to "en", so
+        // comparing a no-attribute tooltip against the runtime default proves nothing
+        // on an English runtime. Stand a different value in it instead: this fails if
+        // formatExact ever reads it again, which is the English-only-tooltip bug.
+        el.locale = "de"
+
+        expect(el.formatExact(at)).to.equal(exact(at, undefined))
+        expect(el.formatExact(at)).to.not.equal(exact(at, "de"))
     })
 
     it("formats the tooltip once, not on every tick of the relative-time timer", () => {

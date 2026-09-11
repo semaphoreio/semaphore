@@ -17,9 +17,12 @@ defmodule FrontWeb.JobViewTest do
     end
   end
 
+  # Built as %Front.Models.Job{} rather than a bare map: job_moment/1 ends in a
+  # catch-all returning nil, so a hand-rolled shape would keep passing after a rename
+  # of the model's timeline while the header silently lost its timestamp.
   describe "job_moment/1" do
     test "anchors on the job's own start, not the workflow it came from" do
-      job = %{
+      job = %Front.Models.Job{
         timeline: %{
           created_at: 1_788_948_084,
           started_at: 1_788_948_090,
@@ -31,7 +34,7 @@ defmodule FrontWeb.JobViewTest do
     end
 
     test "falls back to creation for a job that never started" do
-      job = %{
+      job = %Front.Models.Job{
         timeline: %{
           created_at: 1_788_948_084,
           started_at: nil,
@@ -43,7 +46,9 @@ defmodule FrontWeb.JobViewTest do
     end
 
     test "returns nothing when the job has no timestamps at all" do
-      assert JobView.job_moment(%{timeline: %{created_at: nil, started_at: nil}}) == nil
+      job = %Front.Models.Job{timeline: %{created_at: nil, started_at: nil, finished_at: nil}}
+
+      assert JobView.job_moment(job) == nil
     end
   end
 

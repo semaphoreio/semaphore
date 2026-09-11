@@ -29,12 +29,18 @@ export class TimeAgo extends HTMLElement {
         super();
         this.datetime = this.getAttribute("datetime");
         this.locale = this.getAttribute("locale") || "en"; // Default locale: English
+        // Undefined rather than "en": an exact timestamp is only unambiguous in the
+        // reader's own conventions. The relative text above keeps the "en" default
+        // because formatDateWithTime parses English token order back out of its output.
+        this.exactLocale = this.getAttribute("locale") || undefined;
         this.updateTime = this.updateTime.bind(this);
     }
 
     connectedCallback() {
-        this.setExactTitle();
+        // Visible text first: the tooltip is an enhancement, and it must not be able
+        // to stop the relative time rendering or the interval being installed.
         this.updateTime();
+        this.setExactTitle();
         this.interval = setInterval(this.updateTime, 1000);
     }
 
@@ -71,18 +77,13 @@ export class TimeAgo extends HTMLElement {
     }
 
     formatExact(date) {
-        // Deliberately not this.locale, which falls back to "en": an exact timestamp
-        // is only readable in the viewer's own conventions. The relative text keeps
-        // the "en" default because formatDateWithTime parses English token order back
-        // out of its own output.
-        return exactFormatter(this.getAttribute("locale") || undefined).format(date);
+        return exactFormatter(this.exactLocale).format(date);
     }
 
     decorateRelative(date) {
         const now = new Date();
         const diffInSeconds = Math.floor((now - date) / 1000);
         const diffInHours = Math.floor(diffInSeconds / 3600);
-        const daysDifference = Math.floor(diffInSeconds / 86400);
 
         if (diffInHours >= 1) return this.formatDateWithTime(date);
         return this.formatRelativeTime(diffInSeconds);

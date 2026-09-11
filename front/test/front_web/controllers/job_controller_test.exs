@@ -105,6 +105,42 @@ defmodule FrontWeb.JobControllerTest do
       assert html =~ ~s(started <time-ago datetime="2026-09-09T10:01:30Z")
     end
 
+    test "falls back to the job's creation time when it never started",
+         %{conn: conn, job: job} do
+      created_at = 1_788_948_084
+
+      GrpcMock.stub(InternalJobMock, :describe, fn req, _ ->
+        found = DB.find(:jobs, req.job_id)
+        task = DB.find(:tasks, found.task_id)
+        task_job = found |> DB.extract(:api_model)
+
+        DescribeResponse.new(
+          status:
+            InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
+          job:
+            Job.new(
+              id: task_job.id,
+              project_id: task.project_id,
+              branch_id: task.branch_id,
+              hook_id: task.api_model.hook_id,
+              ppl_id: task.api_model.ppl_id,
+              timeline:
+                Job.Timeline.new(created_at: Google.Protobuf.Timestamp.new(seconds: created_at)),
+              state: Job.State.value(:PENDING),
+              machine_type: "e1-standard-2",
+              self_hosted: false,
+              name: task_job.name,
+              index: task_job.index,
+              is_debug_job: false
+            )
+        )
+      end)
+
+      html = conn |> get(job_path(conn, :show, job.id)) |> html_response(200)
+
+      assert html =~ ~s(created <time-ago datetime="2026-09-09T10:01:24Z")
+    end
+
     test "redirects when accessing debug job", %{conn: conn, debug_job: debug_job, task: task} do
       conn = get(conn, job_path(conn, :show, debug_job.id))
       assert redirected_to(conn) == project_path(conn, :show, task.project_id)

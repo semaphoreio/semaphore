@@ -85,7 +85,7 @@
   <div class="f6 gray mb1">
     <%= case FrontWeb.JobView.job_moment(@job) do %>
       <% {label, timestamp} -> %>
-        by <%= @hook.repo_host_username %>, <%= label %> <time-ago datetime="<%= timestamp %>"><%= timestamp %></time-ago>
+        by <%= @hook.repo_host_username %> <span class="mh1">&middot;</span> <%= label %> <time-ago datetime="<%= timestamp %>"><%= timestamp %></time-ago>
       <% nil -> %>
         by <%= @hook.repo_host_username %>
     <% end %>
