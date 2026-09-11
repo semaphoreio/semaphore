@@ -58,26 +58,30 @@ defmodule Audit.FeatureHubProvider do
       {:ok, ep} = Application.fetch_env(:audit, :feature_api_endpoint)
       {:ok, ch} = GRPC.Stub.connect(ep)
 
-      Stub.list_organization_features(ch, req, timeout: 3_000)
-      |> tap(fn
-        {:ok, _res} ->
-          Watchman.increment("feature_hub.list_organization_features.success")
+      try do
+        Stub.list_organization_features(ch, req, timeout: 3_000)
+        |> tap(fn
+          {:ok, _res} ->
+            Watchman.increment("feature_hub.list_organization_features.success")
 
-        {:error, _} ->
-          Watchman.increment("feature_hub.list_organization_features.failure")
-      end)
-      |> case do
-        {:ok, res} ->
-          features =
-            res.organization_features
-            |> Enum.map(&feature_from_grpc/1)
+          {:error, _} ->
+            Watchman.increment("feature_hub.list_organization_features.failure")
+        end)
+        |> case do
+          {:ok, res} ->
+            features =
+              res.organization_features
+              |> Enum.map(&feature_from_grpc/1)
 
-          {:ok, features}
+            {:ok, features}
 
-        {:error, e} ->
-          Logger.error("Error fetching organization features: #{inspect(e)}")
+          {:error, e} ->
+            Logger.error("Error fetching organization features: #{inspect(e)}")
 
-          {:ok, []}
+            {:ok, []}
+        end
+      after
+        GRPC.Stub.disconnect(ch)
       end
     end)
   end

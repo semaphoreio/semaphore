@@ -34,6 +34,38 @@ config :audit, Audit.Repo,
 
 config :audit, amqp_url: System.get_env("AMQP_URL") || "amqp://127.0.0.1:5672"
 
+retention_int = fn env_var, default, min ->
+  raw = System.get_env(env_var, Integer.to_string(default))
+
+  case Integer.parse(raw) do
+    {value, ""} when value >= min ->
+      value
+
+    _ ->
+      IO.warn(
+        "Invalid #{env_var}=#{inspect(raw)}. Expected integer >= #{min}, using default #{default}."
+      )
+
+      default
+  end
+end
+
+# `min` is 400: the retention floor can only be raised (stricter), never set
+# below the system-wide 400-day policy. Lower values warn and fall back to 400.
+config :audit, Audit.Retention.PolicyMarker,
+  enabled: System.get_env("RETENTION_CONSUMER_ENABLED", "false") == "true",
+  min_retention_days: retention_int.("RETENTION_MIN_RETENTION_DAYS", 400, 400)
+
+config :audit, Audit.Retention.Queries,
+  grace_period_days: retention_int.("RETENTION_GRACE_PERIOD_DAYS", 15, 7),
+  batch_size: retention_int.("RETENTION_APPLIER_BATCH_SIZE", 1_000, 1)
+
+config :audit, Audit.Retention.Deleter,
+  enabled: System.get_env("RETENTION_DELETER_ENABLED", "false") == "true",
+  sleep_period_sec: retention_int.("RETENTION_DELETER_SLEEP_PERIOD_SEC", 30, 1),
+  drain_period_sec: retention_int.("RETENTION_DELETER_DRAIN_PERIOD_SEC", 1, 1),
+  batch_size: retention_int.("RETENTION_DELETER_BATCH_SIZE", 100, 1)
+
 config :sentry,
   dsn: System.get_env("SENTRY_DSN"),
   environment_name: System.get_env("SENTRY_ENV") || "development",
