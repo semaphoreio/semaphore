@@ -1,7 +1,7 @@
 defmodule FrontWeb.AccountControllerTest do
   use FrontWeb.ConnCase
 
-  @oauth_error_codes ~w(invalid_uid missing_name missing_login auth_failed login_not_allowed)
+  @oauth_error_codes ~w(invalid_uid missing_name missing_login auth_failed login_not_allowed account_taken)
 
   setup do
     Cacheman.clear(:front)
@@ -117,6 +117,14 @@ defmodule FrontWeb.AccountControllerTest do
 
       assert html_response(conn, 200)
       assert get_flash(conn, :alert) =~ "connection attempt was unsuccessful"
+    end
+
+    test "when status=error with code=account_taken => explains the account is already linked",
+         %{conn: conn} do
+      conn = get(conn, "/account", %{"status" => "error", "code" => "account_taken"})
+
+      assert html_response(conn, 200)
+      assert get_flash(conn, :alert) =~ "already connected to another Semaphore user"
     end
 
     test "when status=success => sets :notice flash", %{conn: conn} do

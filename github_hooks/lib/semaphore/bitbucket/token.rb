@@ -59,6 +59,9 @@ module Semaphore::Bitbucket
 
       if response.status <= 299
         [body["access_token"], body["expires_in"].seconds.since]
+      elsif [408, 429].include?(response.status)
+        # Transient failures must not classify the connection as revoked.
+        ["", nil]
       elsif response.status >= 400 and response.status <= 499
         if invalid_grant?(body)
           repo_host_account.update(:revoked => true)

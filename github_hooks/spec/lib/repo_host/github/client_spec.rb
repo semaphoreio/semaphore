@@ -119,10 +119,10 @@ RSpec.describe RepoHost::Github::Client do
     context "when unhandled octokit exception occurs" do
       before do
         allow_any_instance_of(Octokit::Client).to receive(:repositories)
-          .and_raise(Octokit::TooManyLoginAttempts)
+          .and_raise(Octokit::UnprocessableEntity)
       end
 
-      it "raises semaphore's RepoHost::RemoteException::NotFound" do
+      it "raises semaphore's RepoHost::RemoteException::Unknown" do
         expect do
           @client.repositories
         end.to raise_error(RepoHost::RemoteException::Unknown)
@@ -302,6 +302,71 @@ RSpec.describe RepoHost::Github::Client do
       it "returns false" do
         client = RepoHost::Github::Client.new(nil)
         expect(client.token_valid?).to eql(false)
+      end
+    end
+
+    context "check is rate limited" do
+      before do
+        allow_any_instance_of(Octokit::Client).to receive(:check_application_authorization)
+          .and_raise(Octokit::TooManyRequests)
+      end
+
+      it "raises instead of classifying the token as invalid" do
+        expect do
+          @client.token_valid?
+        end.to raise_error(RepoHost::RemoteException::TooManyRequests)
+      end
+    end
+
+    # Raising the subclass directly would skip Octokit's own 403-body
+    # classification, which is what decides the class in production. These go
+    # through from_response so the mapping is exercised too.
+    {
+      "abuse detection" => "You have triggered an abuse detection mechanism",
+      "a secondary rate limit" => "You have exceeded a secondary rate limit",
+      "too many login attempts" => "Maximum number of login attempts exceeded"
+    }.each do |label, message|
+      context "check is throttled by #{label}" do
+        before do
+          error = Octokit::Error.from_response(
+            :status => 403,
+            :body => { :message => message }.to_json,
+            :response_headers => { "content-type" => "application/json" }
+          )
+
+          allow_any_instance_of(Octokit::Client).to receive(:check_application_authorization)
+            .and_raise(error)
+        end
+
+        it "raises instead of classifying the token as invalid" do
+          expect do
+            @client.token_valid?
+          end.to raise_error(RepoHost::RemoteException::TooManyRequests)
+        end
+      end
+    end
+
+    context "check is forbidden (non-rate-limit 403)" do
+      before do
+        allow_any_instance_of(Octokit::Client).to receive(:check_application_authorization)
+          .and_raise(Octokit::Forbidden)
+      end
+
+      it "returns false" do
+        expect(@client.token_valid?).to eql(false)
+      end
+    end
+
+    context "github is unavailable" do
+      before do
+        allow_any_instance_of(Octokit::Client).to receive(:check_application_authorization)
+          .and_raise(Octokit::ServiceUnavailable)
+      end
+
+      it "raises instead of classifying the token as invalid" do
+        expect do
+          @client.token_valid?
+        end.to raise_error(RepoHost::RemoteException::ServiceUnavailable)
       end
     end
   end

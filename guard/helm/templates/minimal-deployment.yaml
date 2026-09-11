@@ -116,6 +116,8 @@ spec:
               value: "true"
             - name: START_MCP_AUTH_CODE_CLEANER
               value: "true"
+            - name: START_FEDERATED_IDENTITY_SYNC_DRAINER
+              value: "true"
             - name: MIGRATIONS_PATH
               value: "/app/instance_config_repo/migrations"
             - name: OIDC_DISCOVERY_URL

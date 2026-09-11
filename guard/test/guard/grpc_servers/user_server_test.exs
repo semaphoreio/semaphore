@@ -1604,6 +1604,40 @@ defmodule Guard.GrpcServers.UserServerTest do
              } == response
     end
 
+    test "refresh_repository_provider keeps the link revoked when the uid is actively held by another user",
+         %{grpc_channel: channel, user: user, repo_host_account: rha} do
+      {:ok, _} = Guard.FrontRepo.RepoHostAccount.update_revoke_status(rha, true)
+
+      {:ok, _} =
+        Support.Members.insert_repo_host_account(
+          github_uid: rha.github_uid,
+          login: "current-holder",
+          name: "Current Holder",
+          permission_scope: "user:email"
+        )
+
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          json(%{"valid" => "valid"})
+
+        %{method: :get, url: "https://api.github.com/user/184065"} ->
+          json(%{"id" => 184_065, "login" => "radwo", "name" => "radwo"})
+      end)
+
+      request =
+        User.RefreshRepositoryProviderRequest.new(
+          user_id: user.id,
+          type: User.RepositoryProvider.Type.value(:GITHUB)
+        )
+
+      # A valid token must not resurrect the revoked link while another user
+      # actively holds the uid — and the RPC must not fail over it.
+      assert {:ok, _response} = channel |> Stub.refresh_repository_provider(request)
+
+      {:ok, reloaded} = Guard.FrontRepo.RepoHostAccount.get_for_github_user(user.id)
+      assert reloaded.revoked == true
+    end
+
     test "refresh_repository_provider syncs the github login when it changed upstream",
          %{grpc_channel: channel, user: user, repo_host_account: rha} do
       new_login = "#{rha.login}-renamed"

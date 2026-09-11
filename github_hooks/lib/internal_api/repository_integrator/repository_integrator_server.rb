@@ -156,7 +156,7 @@ module InternalApi
 
       def update_revoke_status(rha)
         if rha.repo_host == "github"
-          rha.update!(:revoked => !::RepoHost::Github::Client.new(rha.token).token_valid?)
+          update_revoked(rha, !::RepoHost::Github::Client.new(rha.token).token_valid?)
         end
 
         if rha.repo_host == "bitbucket"
@@ -172,6 +172,41 @@ module InternalApi
         end
 
         rha
+      end
+
+      # Re-activating a revoked GitHub account must not resurrect a duplicate
+      # link: the same uid may have been actively linked to another user while
+      # this row sat revoked.
+      #
+      # Un-revoking is only safe here when no other row holds the uid. Guard's
+      # un-revoke does two things — it flips the flag AND, via
+      # release_revoked_uid_rows/1, deletes the losing rows and enqueues the
+      # Keycloak federated-identity move. This service has no OIDC
+      # configuration and cannot do the second half, so performing the first
+      # half alone would leave the front database saying one user owns the uid
+      # while Keycloak still routes that GitHub login to another, with nothing
+      # to reconcile it. Rather than half-apply a claim, decline and leave it
+      # to guard's RefreshRepositoryProvider path, which performs the whole
+      # operation.
+      def update_revoked(rha, revoked)
+        if !revoked && rha.revoked? && rha.github_uid.present? && uid_held_by_other?(rha)
+          Rails.logger.info(
+            "Keeping repo_host_account #{rha.id} revoked: uid is held by another " \
+            "account; releasing it requires guard's claim path"
+          )
+        else
+          rha.update!(:revoked => revoked)
+        end
+      end
+
+      # Any other row for this uid blocks, whatever its revoke state or age:
+      # an active one because the uid is taken, a revoked one because
+      # releasing it is a claim this service cannot complete.
+      def uid_held_by_other?(rha)
+        ::RepoHostAccount
+          .where(:repo_host => rha.repo_host, :github_uid => rha.github_uid)
+          .where.not(:id => rha.id)
+          .exists?
       end
 
       def extract_repository_name(full_name)
