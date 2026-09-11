@@ -58,12 +58,12 @@ To configure your Android container using YAML, follow these steps:
     name: Initial Pipeline
     agent:
       machine:
-        type: e1-standard-2
+        type: f1-standard-2
         os_image: ubuntu2404
         # highlight-start
       containers:
         - name: main
-          image: 'registry.semaphoreci.com/android:34'
+          image: 'registry.semaphoreci.com/android:36'
         # highlight-end
     blocks:
       - name: 'Block #1'
@@ -139,7 +139,7 @@ version: v1.0
 name: React Native example
 agent:
   machine:
-    type: e1-standard-2
+    type: f1-standard-2
     os_image: ubuntu2404
     # highlight-start
   # Use an image with Node.js for React Native  
@@ -197,6 +197,13 @@ There are Docker images for each recent version of Android. There are also varia
 
 These are the pre-built Android images available:
 
+
+- `android:36`
+- `android:36-node`
+- `android:36-flutter`
+- `android:35`
+- `android:35-node`
+- `android:35-flutter`
 - `android:34`
 - `android:34-node`
 - `android:34-flutter`
