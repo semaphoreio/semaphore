@@ -12,3 +12,51 @@ GHSA-jfc2-q6qh-g5x8
 
 # cowlib 2.11.0 — SPDY decompression bomb in cow_spdy:inflate/2 (unreachable; cowboy 2.x does not serve SPDY)
 GHSA-84f2-rp86-235p
+
+# protobuf — unbounded recursion depth in embedded-message decoding, patched in 0.16.1. projecthub
+# only decodes protobufs from internal gRPC callers on the cluster network (same acceptance as
+# repository_hub/ee-gofer/ee-rbac); a hostile deeply-nested payload requires a compromised internal
+# service and yields a single-pod DoS. Bumping is additionally proven-breaking here: grpc_server.ex
+# and friends call InternalApi.*.new(...) directly throughout, a constructor form removed in
+# protobuf >= 0.16.1.
+GHSA-rv48-qqj5-crxg
+
+# GHSA-9fm9-hp7p-53mf and GHSA-vq52-99r9-h5pw are fixed upstream (1.24.0 and 1.21.0
+# respectively) and satisfied by httpoison/tzdata's existing `hackney ~> 1.17` constraint, so
+# they are bumped away instead of suppressed - see the hackney 1.18.0 -> 1.25.0 bump in mix.lock.
+# Do not re-add them here.
+#
+# --- hackney advisories still open at 1.25.0, all first patched only in hackney 4.0.1 ---
+# hackney is reachable in this service in principle: Projecthub.Models.User.check_github_permissions/3
+# (lib/projecthub/models/user.ex) and Projecthub.Models.DeployKey.get_from_github/2,
+# remove_from_github/2, and the private post_to_github/4 behind deploy_to_github/4
+# (lib/projecthub/models/deploy_key.ex) call Tentacat with repo.owner, repo.name, and/or a GitHub
+# login interpolated into the request PATH, and Tentacat does no URL-encoding before HTTPoison ->
+# hackney. The 4.x rewrite that patches these is blocked fleet-wide: httpoison requires
+# `hackney ~> 1.17`, so hackney cannot reach 4.x without a coordinated httpoison migration (same
+# acceptance as plumber/guard/repository_hub).
+#
+# Why none of the four is exploitable in this service, per advisory:
+#   - GHSA-j9wq-vxxc-94wf (CRLF in the request QUERY): the Tentacat calls above build only path
+#     segments, never a query string, so the vulnerable query-append path is never reached.
+#   - GHSA-mp55-p8c9-rfw2 (CRLF in a Set-Cookie domain/path option): hackney's outbound
+#     cookie-builder for server responses; this service never calls it (client use only).
+#   - GHSA-pj7v-xfvx-wmjq (percent-decoded-host SSRF): the host is fixed to api.github.com by
+#     Tentacat; user data only populates path segments, never the host/authority.
+#   - GHSA-gp9c-pm5m-5cxr (SOCKS5 TLS-timeout hang): only reachable when hackney routes through a
+#     SOCKS5 proxy, which this service does not configure.
+#
+# Defense-in-depth regardless: Projecthub.Github.PathSegment.validate/1 now gates every one of
+# those Tentacat call sites and rejects any owner/name/login containing a control character
+# (incl. CR/LF), space, `/`, `?`, or `#` before it reaches hackney, closing the CRLF/path-injection
+# axis (j9wq). These Tentacat call sites currently have no production callers in lib/ - the live
+# deploy-key and permission flow goes through Projecthub.RepositoryHubClient gRPC - and should be
+# deleted in a follow-up.
+GHSA-gp9c-pm5m-5cxr
+GHSA-j9wq-vxxc-94wf
+GHSA-mp55-p8c9-rfw2
+GHSA-pj7v-xfvx-wmjq
+
+# decimal — unbounded exponent in Decimal.new enables unauthenticated DoS, patched in 3.0.0. Not
+# called anywhere in lib/ (transitive via ecto/postgrex only).
+GHSA-rhv4-8758-jx7v
