@@ -218,14 +218,9 @@ The initialization job clones the repository with Git, compiles the pipeline wit
 
 #### Where the requirements apply {#init-requirements-where}
 
-On agents that run jobs directly on the machine, the software listed below must be installed on that machine.
+Initialization jobs run directly on the agent machine, so the software listed below must be installed there. The initialization job specifies no container of its own, so it is never run in a [Docker environment](./pipelines#docker-environments) — even on an agent whose regular jobs are.
 
-On agents that run jobs in containers, it must be present in the job environment instead:
-
-- For [Docker environments](./pipelines#docker-environments), in the container image
-- For Kubernetes agents, in the image set by the agent's `kubernetes-default-image` option. The initialization job specifies no container of its own, so a Kubernetes agent uses that default image, and the job fails with `no containers specified in Semaphore YAML, and no default container is provided` when the option is not set
-
-In both container cases the toolbox is provisioned at job time, so the install-ordering rules in [Erlang and the PATH](#init-erlang-path) don't apply. The image only has to contain a supported Erlang.
+Kubernetes agents are the exception: they run every job in a pod, so an initialization job uses the image set by the agent's `kubernetes-default-image` option, and fails with `no containers specified in Semaphore YAML, and no default container is provided` when that option is not set. That image must contain the Semaphore toolbox as well as a supported Erlang — the agent does not install the toolbox into pods — and the install-ordering rule in [Erlang and the PATH](#init-erlang-path) applies when building it.
 
 #### Required software {#init-required-software}
 
@@ -247,7 +242,7 @@ Docker, Elixir, and Git LFS are not required to run initialization jobs. Install
 
 Installing a supported Erlang is not sufficient on its own. Both `erl` and `escript` must be resolvable in two different contexts, and they are not the same shell:
 
-- **At agent install time, in a non-login shell.** The agent installer runs the toolbox installer as `sudo -u <agent-user> -H bash …`, which sources no profile file and uses sudo's `secure_path`. A version manager that activates Erlang from a profile file **is not visible here**. Install Erlang system-wide, or add its `bin` directory to the sudoers `secure_path`
+- **At agent install time, in a non-login shell.** The agent installer runs the toolbox installer as `sudo -u <agent-user> -H bash …`, which sources no profile file and uses sudo's `secure_path`. A version manager that activates Erlang from a profile file **is not visible here**. Install Erlang system-wide, in a root-owned directory such as `/usr/bin` or `/usr/local/bin`
 - **At job time, in a login shell.** Here a version manager does work, as long as it activates Erlang from `~/.bash_profile`
 
 Check both contexts, as the user the agent runs as:
@@ -297,17 +292,25 @@ $ sudo -u <agent-user> -H bash -lc "erl -eval 'erlang:display(erlang:system_info
 If the reported version falls outside 24 to 27, install a supported release from the [Erlang downloads page](https://www.erlang.org/downloads).
 
 ```shell title="Check the initialization job toolchain"
-$ sudo -u <agent-user> -H bash -lc 'for b in git erl escript when spc artifact retry; do printf "%-10s %s\n" "$b" "$(command -v "$b" || echo MISSING)"; done'
+$ sudo -u <agent-user> -H bash -lc 'missing=0
+for b in git erl escript which checkout when spc artifact retry; do
+  if p=$(command -v "$b"); then printf "%-10s %s\n" "$b" "$p"
+  else printf "%-10s MISSING\n" "$b"; missing=1; fi
+done; exit $missing'
 git        /usr/bin/git
 erl        /usr/bin/erl
 escript    /usr/bin/escript
+which      /usr/bin/which
+checkout   checkout
 when       /usr/local/bin/when
 spc        /usr/local/bin/spc
 artifact   /usr/local/bin/artifact
 retry      /usr/local/bin/retry
 ```
 
-Every line must show a path. `MISSING` next to `when` means the Erlang version is unsupported, or Erlang was installed after the agent — see [Erlang and the PATH](#init-erlang-path).
+The command exits non-zero when anything is missing. Every line must show a path, except `checkout`, which is a shell function and correctly shows as a bare name.
+
+`MISSING` next to `when` means the Erlang version is unsupported, or Erlang was installed after the agent. `MISSING` next to `checkout` means `~/.bash_profile` no longer sources `~/.toolbox/toolbox`. Both are covered in [Erlang and the PATH](#init-erlang-path).
 
 Finally, confirm the condition evaluator runs:
 
