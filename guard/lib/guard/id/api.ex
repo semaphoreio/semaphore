@@ -53,11 +53,10 @@ defmodule Guard.Id.Api do
   @state_cookie_key "semaphore_auth_state"
   @device_consent_cookie_key "semaphore_cli_device_consent"
   # Marks a browser that has completed the OIDC web sign-in during an
-  # auth-first GET /device. The ext-auth edge injects x-semaphore-user-id only
-  # on org hosts; the id host never gets it, so this marker is how the id host
-  # recognises an authenticated browser (its absence is what caused the
-  # /device -> OIDC redirect loop). Distinct key AND shape from the web-login
-  # state, the device-authorization ctx, and the consent cookie.
+  # auth-first GET /device. This marker is how /device recognises an
+  # authenticated browser (its absence is what caused the /device -> OIDC
+  # redirect loop). Distinct key AND shape from the web-login state, the
+  # device-authorization ctx, and the consent cookie.
   @device_authed_cookie_key "semaphore_cli_device_authed"
   # Server-side freshness bound for that marker. The cookie is AEAD-encrypted
   # with the same 30-minute max_age as the other state cookies; this issued_at
@@ -378,12 +377,13 @@ defmodule Guard.Id.Api do
     #      code-entry form, an anonymous one is sent to the OIDC sign-in first
     #      and returns here afterwards (see start_device_return_oidc).
     #
-    # Authentication is asserted by EITHER the x-semaphore-user-id header the
-    # ext-auth edge injects on org hosts OR a valid, unexpired device-auth
-    # marker cookie set by the device_return callback. The id host never gets
-    # that header, so gating on it alone looped /device -> OIDC forever;
-    # device_session/2 checks both. Entering the code stays an explicit POST
-    # in every branch - auth-first never consumes a code from the URL.
+    # Authentication is asserted by a valid, unexpired device-auth marker cookie
+    # set by the device_return callback after an OIDC sign-in; the request
+    # user-id header is not consulted here (see device_session/2). The marker is
+    # what lets the auth-first flow terminate: the visitor is sent to OIDC once,
+    # the callback sets the marker, and the return trip finds it. Entering the
+    # code stays an explicit POST in every branch - auth-first never consumes a
+    # code from the URL.
     case parked_device_authorization(conn, prefill) do
       {:resume, row, user_code_display, conn} ->
         resume_device_oidc(conn, row, user_code_display)
@@ -425,13 +425,14 @@ defmodule Guard.Id.Api do
   # A genuinely different explicit ?user_code= is a fresh sign-in attempt and
   # does NOT ride a stale marker (mirrors the parked-flow prefill rule).
   defp device_session(conn, prefill) do
-    if conn.assigns[:user_id] do
-      {:authed, conn}
-    else
-      case fetch_device_authed_marker(conn, prefill) do
-        {:ok, conn} -> {:authed, conn}
-        {:none, conn} -> {:anonymous, conn}
-      end
+    # The auth-first /device flow authenticates from the AEAD-encrypted
+    # device-auth marker cookie, set by handle_device_return_oidc_callback after
+    # an OIDC sign-in. The request user-id header (conn.assigns[:user_id]) is not
+    # used as the signal here; the marker cookie is the source of truth for
+    # whether this browser has completed sign-in.
+    case fetch_device_authed_marker(conn, prefill) do
+      {:ok, conn} -> {:authed, conn}
+      {:none, conn} -> {:anonymous, conn}
     end
   end
 
@@ -1646,10 +1647,15 @@ defmodule Guard.Id.Api do
   end
 
   defp assign_user_info(conn, _opts) do
+    # Normalize the x-semaphore-user-id header to either a non-empty id or nil:
+    # a missing header and a blank value both mean "no user". This keeps
+    # assigns[:user_id] presence checks (e.g. the /signup logged_in flag)
+    # correct when the header is absent or blank.
     user_id =
-      conn
-      |> get_req_header("x-semaphore-user-id")
-      |> List.first()
+      case conn |> get_req_header("x-semaphore-user-id") |> List.first() do
+        id when is_binary(id) and id != "" -> id
+        _ -> nil
+      end
 
     conn |> assign(:user_id, user_id)
   end
