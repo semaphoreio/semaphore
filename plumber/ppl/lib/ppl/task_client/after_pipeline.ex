@@ -17,6 +17,7 @@ defmodule Ppl.TaskClient.AfterPipeline do
          {:ok, task_definition} <- inject_pipeline_metrics(task_definition, ppl_trace, ppl),
          {:ok, task_definition} <- prologue_epilogue_transformation(task_definition),
          {:ok, task_definition} <- matrix_transformations(task_definition),
+         {:ok, task_definition} <- inherit_exec_time_limit(task_definition, ppl),
          {:ok, {raw_jobs, task_settings}} <- split_task_def(task_definition),
          ppl_args <- Map.get(additional_params, "ppl_args", %{}),
          ppl_priority <- Map.get(ppl_args, "ppl_priority", 45),
@@ -151,6 +152,28 @@ defmodule Ppl.TaskClient.AfterPipeline do
   end
 
   defp set_exec_time_limit(job) when is_map(job), do: job
+
+  ###########
+
+  defp inherit_exec_time_limit(task_definition, ppl) do
+    case Map.get(ppl, :exec_time_limit_min) do
+      limit when is_integer(limit) and limit > 0 ->
+        jobs =
+          task_definition
+          |> Map.get("jobs", [])
+          |> Enum.map(&put_inherited_limit(&1, limit))
+
+        task_definition |> Map.put("jobs", jobs) |> ToTuple.ok()
+
+      _ ->
+        ToTuple.ok(task_definition)
+    end
+  end
+
+  defp put_inherited_limit(job = %{"execution_time_limit" => _}, _limit), do: job
+
+  defp put_inherited_limit(job, limit) when is_map(job),
+    do: Map.put(job, "execution_time_limit", %{"minutes" => limit})
 
   ###########
 
