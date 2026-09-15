@@ -59,3 +59,11 @@ GHSA-pj7v-xfvx-wmjq
 #   GHSA-w4f7-4cxr-rv3c — HTTP request/response splitting (shared cowboy/gun advisory)
 GHSA-r53j-fjj5-mv77
 GHSA-w4f7-4cxr-rv3c
+
+# grpc — unbounded request body accumulation in read_full_body/3 enables an
+# unauthenticated DoS (GHSA-q8gf-9rvj-gmgj, high). The grpc 0.3.1 adapter itself,
+# the same old stack behind the cowboy/cowlib/gun advisories accepted above.
+# Patched in grpc 1.0.0, a major bump of the plumber gRPC stack — out of scope here
+# and tracked in semaphoreio/semaphore#1134. plumber's gRPC endpoints serve
+# internal-service traffic only; no user-controlled request bodies reach read_full_body/3.
+GHSA-q8gf-9rvj-gmgj

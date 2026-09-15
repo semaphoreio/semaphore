@@ -237,7 +237,7 @@ defmodule FrontWeb.JobController do
   end
 
   def logs(conn, params) do
-    Watchman.benchmark({"logs.duration", ["#{conn.assigns.job.id}"]}, fn ->
+    Watchman.benchmark("logs.duration", fn ->
       job = conn.assigns.job
 
       case missing_logs_message(job) do

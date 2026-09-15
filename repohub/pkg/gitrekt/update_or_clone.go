@@ -9,11 +9,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/renderedtext/go-watchman"
+	bench "github.com/semaphoreio/semaphore/repohub/pkg/bench"
 )
 
 func UpdateOrClone(repo *Repository, revision *Revision) (string, error) {
-	defer watchman.BenchmarkWithTags(time.Now(), "gitrekt.UpdateOrClone", []string{repo.HttpURL})
+	defer bench.Observe(time.Now(), "gitrekt.UpdateOrClone", repo.HttpURL)
 
 	reference := extractReference(revision)
 
@@ -61,7 +61,7 @@ func (o *UpdateOrCloneOperation) Run() error {
 }
 
 func (o *UpdateOrCloneOperation) Update() error {
-	defer watchman.BenchmarkWithTags(time.Now(), "gitrekt.UpdateOrClone.Update", []string{o.Repository.HttpURL})
+	defer bench.Observe(time.Now(), "gitrekt.UpdateOrClone.Update", o.Repository.HttpURL)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
 	defer cancel()
@@ -94,7 +94,7 @@ func (o *UpdateOrCloneOperation) Update() error {
 func (o *UpdateOrCloneOperation) Clone() error {
 	var err error
 
-	defer watchman.BenchmarkWithTags(time.Now(), "gitrekt.UpdateOrClone.Clone", []string{o.Repository.HttpURL})
+	defer bench.Observe(time.Now(), "gitrekt.UpdateOrClone.Clone", o.Repository.HttpURL)
 
 	log.Printf("cloning %s", o.Repository.Path())
 

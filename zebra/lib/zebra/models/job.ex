@@ -324,7 +324,8 @@ defmodule Zebra.Models.Job do
         aasm_state: state_finished(),
         finished_at: now,
         result: result_failed(),
-        failure_reason: reason
+        failure_reason: reason,
+        request: sanitized_request(job)
       })
 
     optimisticaly_finish_task(job)
@@ -361,7 +362,7 @@ defmodule Zebra.Models.Job do
         finished_at: now,
         result: result_failed(),
         failure_reason: reason,
-        request: JobRequest.sanitize(j.request)
+        request: sanitized_request(j)
       }
 
       case update(j, params) do
@@ -597,22 +598,23 @@ defmodule Zebra.Models.Job do
       port: agent.ssh_port,
       agent_ctrl_port: agent.ctrl_port,
       agent_auth_token: agent.auth_token,
-      request: JobRequest.sanitize(job.request)
+      request: sanitized_request(job)
     }
   end
 
-  def sanitize_job_request(job_id) do
-    case find(job_id) do
-      {:ok, job} ->
-        if !JobRequest.sanitized?(job.request) do
-          update(job, %{
-            request: JobRequest.sanitize(job.request)
-          })
-        end
+  # Sanitization is what keeps secrets from being left at rest, but a raise here
+  # would abort the transition that invoked it: the job would never leave its
+  # current state, and the stop request the terminator files would be retried
+  # forever. Drop the whole request instead, and make the shape that caused it
+  # alertable rather than silent.
+  defp sanitized_request(job) do
+    JobRequest.sanitize(job.request)
+  rescue
+    e ->
+      Logger.error("Failed to sanitize request of '#{job.id}': #{inspect(e)}")
+      Watchman.increment("job.request_sanitize.failed")
 
-      {:error, :not_found} ->
-        Logger.error("Error sanitizing '#{job_id}': not found")
-    end
+      %{}
   end
 
   def finish(job, result) do
@@ -625,7 +627,8 @@ defmodule Zebra.Models.Job do
         params = %{
           aasm_state: state_finished(),
           finished_at: now,
-          result: result
+          result: result,
+          request: sanitized_request(job)
         }
 
         case update(job, params) do
@@ -659,7 +662,7 @@ defmodule Zebra.Models.Job do
         aasm_state: state_finished(),
         finished_at: now,
         result: result_stopped(),
-        request: JobRequest.sanitize(job.request),
+        request: sanitized_request(job),
         machine_type: job.machine_type || ""
       }
 
