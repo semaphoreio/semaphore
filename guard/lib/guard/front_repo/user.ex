@@ -140,7 +140,14 @@ defmodule Guard.FrontRepo.User do
         {:error, :not_found}
 
       {:ok, user} ->
-        if Plug.Crypto.secure_compare(salt, user.salt) do
+        # Fail closed on a missing/malformed salt on either side:
+        # Plug.Crypto.secure_compare/2 raises on a nil argument, and a user with
+        # no stored salt must never authenticate through a salt-bearing (warden)
+        # session. These are data-shape checks, not secret comparisons, so they
+        # do not leak timing; a present-but-wrong salt still goes through the
+        # constant-time compare below.
+        if is_binary(salt) and is_binary(user.salt) and
+             Plug.Crypto.secure_compare(salt, user.salt) do
           {:ok, user}
         else
           {:error, :not_found}

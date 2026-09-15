@@ -13,13 +13,30 @@ defmodule Guard.McpOAuth.Server.Test do
     FunRegistry.clear!()
     Guard.FakeServers.setup_responses_for_development()
 
+    # Each session user needs a row in BOTH stores: the RBAC user satisfies the
+    # oidc_sessions.user_id foreign key, and the front user is what the OAuth
+    # identity actually resolves against (Guard.FrontRepo.User.active_user_by_id/1),
+    # so it must exist there and be unblocked. A salt is stored so the same user
+    # can also authenticate through a legacy warden session.
     user_id = Ecto.UUID.generate()
     user_name = "session-user-#{System.unique_integer([:positive])}"
-    {:ok, _user} = Support.Factories.RbacUser.insert(user_id, user_name)
+    user_salt = "salt-#{System.unique_integer([:positive])}"
+    {:ok, _rbac_user} = Support.Factories.RbacUser.insert(user_id, user_name)
+
+    {:ok, _user} =
+      Support.Factories.FrontUser.insert(id: user_id, name: user_name, salt: user_salt)
 
     other_user_id = Ecto.UUID.generate()
     other_user_name = "other-user-#{System.unique_integer([:positive])}"
-    {:ok, _other_user} = Support.Factories.RbacUser.insert(other_user_id, other_user_name)
+    other_user_salt = "salt-#{System.unique_integer([:positive])}"
+    {:ok, _other_rbac_user} = Support.Factories.RbacUser.insert(other_user_id, other_user_name)
+
+    {:ok, _other_user} =
+      Support.Factories.FrontUser.insert(
+        id: other_user_id,
+        name: other_user_name,
+        salt: other_user_salt
+      )
 
     System.put_env("MCP_OAUTH_JWT_KEYS", "test-secret-key-for-mcp-oauth-tests")
 
@@ -30,8 +47,10 @@ defmodule Guard.McpOAuth.Server.Test do
     {:ok,
      user_id: user_id,
      user_name: user_name,
+     user_salt: user_salt,
      other_user_id: other_user_id,
-     other_user_name: other_user_name}
+     other_user_name: other_user_name,
+     other_user_salt: other_user_salt}
   end
 
   defp mcp_oauth_url(path), do: "#{@base_url}#{path}"
@@ -71,6 +90,19 @@ defmodule Guard.McpOAuth.Server.Test do
       |> Guard.Session.encrypt_cookie()
 
     {"cookie", "#{Application.get_env(:guard, :session_key)}=#{value}"}
+  end
+
+  # Builds a genuine legacy Devise/warden authenticated session for user_id
+  # (session key [[user_id], salt], exactly as Guard.Session.serialize_into_session
+  # writes it) and returns the request headers carrying its signed+encrypted
+  # session cookie.
+  defp warden_session_headers(user_id, salt, extra_headers \\ []) do
+    value =
+      %{"warden.user.user.key" => [[user_id], salt]}
+      |> Guard.Session.encrypt_cookie()
+
+    cookie = {"cookie", "#{Application.get_env(:guard, :session_key)}=#{value}"}
+    [cookie | extra_headers ++ default_headers()]
   end
 
   # Extracts the session cookie set on a response (it now carries the CSRF
@@ -126,10 +158,16 @@ defmodule Guard.McpOAuth.Server.Test do
         header_user_id -> [{"x-semaphore-user-id", header_user_id}]
       end
 
+    # get_lazy: the default must NOT be built when :auth_headers is supplied,
+    # otherwise a caller driving a warden session would also create an unused
+    # OIDC session.
+    auth_headers =
+      Keyword.get_lazy(opts, :auth_headers, fn -> session_headers(session_user_id) end)
+
     {:ok, authorize_resp} =
       HTTPoison.get(
         mcp_oauth_url("/authorize#{authorize_query(client.client_id)}"),
-        session_headers(session_user_id)
+        auth_headers
       )
 
     200 = authorize_resp.status_code
@@ -438,6 +476,130 @@ defmodule Guard.McpOAuth.Server.Test do
       refute response.body =~ user_name
     end
 
+    test "a blocked user with a live OIDC session is not authenticated and gets no code" do
+      blocked_id = Ecto.UUID.generate()
+      # Exists in RBAC (so a real session row can reference it) but is blocked
+      # in the front users table.
+      {:ok, _} = Support.Factories.RbacUser.insert(blocked_id, "blocked-user")
+
+      {:ok, _} =
+        Support.Factories.FrontUser.insert(
+          id: blocked_id,
+          name: "blocked-user",
+          blocked_at: DateTime.utc_now() |> DateTime.truncate(:second)
+        )
+
+      client = create_test_client()
+      query = authorize_query(client.client_id)
+
+      {:ok, response} =
+        HTTPoison.get(mcp_oauth_url("/authorize#{query}"), session_headers(blocked_id),
+          follow_redirect: false
+        )
+
+      # A blocked account resolves to not-authenticated even with a live session
+      # cookie: redirected to login, no authorization code minted.
+      assert response.status_code == 302
+      location = get_header(response, "location")
+      assert location =~ "/login"
+      refute location =~ "code="
+      refute location =~ @redirect_uri
+    end
+
+    test "a deactivated user with a live OIDC session is not authenticated and gets no code" do
+      deactivated_id = Ecto.UUID.generate()
+      {:ok, _} = Support.Factories.RbacUser.insert(deactivated_id, "deactivated-user")
+
+      {:ok, _} =
+        Support.Factories.FrontUser.insert(
+          id: deactivated_id,
+          name: "deactivated-user",
+          deactivated: true,
+          deactivated_at: DateTime.utc_now() |> DateTime.truncate(:second)
+        )
+
+      client = create_test_client()
+      query = authorize_query(client.client_id)
+
+      {:ok, response} =
+        HTTPoison.get(mcp_oauth_url("/authorize#{query}"), session_headers(deactivated_id),
+          follow_redirect: false
+        )
+
+      assert response.status_code == 302
+      location = get_header(response, "location")
+      assert location =~ "/login"
+      refute location =~ "code="
+      refute location =~ @redirect_uri
+    end
+
+    test "a legacy warden session with the correct salt returns the consent page", %{
+      user_id: user_id,
+      user_name: user_name,
+      user_salt: user_salt
+    } do
+      client = create_test_client()
+      query = authorize_query(client.client_id)
+
+      {:ok, response} =
+        HTTPoison.get(
+          mcp_oauth_url("/authorize#{query}"),
+          warden_session_headers(user_id, user_salt)
+        )
+
+      assert response.status_code == 200
+      assert_content_type(response, "text/html")
+      assert response.body =~ "Authorize MCP Access"
+      assert response.body =~ user_name
+    end
+
+    test "a warden session with a stale salt is not authenticated and gets no code", %{
+      user_id: user_id
+    } do
+      client = create_test_client()
+      query = authorize_query(client.client_id)
+
+      {:ok, response} =
+        HTTPoison.get(
+          mcp_oauth_url("/authorize#{query}"),
+          warden_session_headers(user_id, "stale-salt-does-not-match"),
+          follow_redirect: false
+        )
+
+      # The stored session salt no longer matches (password reset /
+      # sign-out-everywhere): the warden session is rejected, no code minted.
+      assert response.status_code == 302
+      location = get_header(response, "location")
+      assert location =~ "/login"
+      refute location =~ "code="
+      refute location =~ @redirect_uri
+    end
+
+    test "a warden session for a user with no stored salt is not authenticated (fails closed, no crash)" do
+      # A legacy/OIDC-only account can have a nil salt. A salt-bearing warden
+      # session for it must fail closed (login redirect), never raise a 500 in
+      # the secure_compare.
+      nil_salt_id = Ecto.UUID.generate()
+      {:ok, _} = Support.Factories.RbacUser.insert(nil_salt_id, "nil-salt-user")
+      {:ok, _} = Support.Factories.FrontUser.insert(id: nil_salt_id, name: "nil-salt-user")
+
+      client = create_test_client()
+      query = authorize_query(client.client_id)
+
+      {:ok, response} =
+        HTTPoison.get(
+          mcp_oauth_url("/authorize#{query}"),
+          warden_session_headers(nil_salt_id, "any-salt-here"),
+          follow_redirect: false
+        )
+
+      assert response.status_code == 302
+      location = get_header(response, "location")
+      assert location =~ "/login"
+      refute location =~ "code="
+      refute location =~ @redirect_uri
+    end
+
     test "missing client_id returns error" do
       code_challenge = PKCE.compute_challenge(@code_verifier)
 
@@ -660,6 +822,21 @@ defmodule Guard.McpOAuth.Server.Test do
       client = create_test_client()
 
       claims = complete_oauth_flow(client, user_id)
+
+      assert claims["sub"] == user_id
+      assert claims["semaphore_user_id"] == user_id
+    end
+
+    test "a legacy warden session with the correct salt mints a token bound to that user", %{
+      user_id: user_id,
+      user_salt: user_salt
+    } do
+      client = create_test_client()
+
+      claims =
+        complete_oauth_flow(client, user_id,
+          auth_headers: warden_session_headers(user_id, user_salt)
+        )
 
       assert claims["sub"] == user_id
       assert claims["semaphore_user_id"] == user_id
