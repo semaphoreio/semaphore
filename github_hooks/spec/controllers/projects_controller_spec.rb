@@ -508,9 +508,9 @@ RSpec.describe ProjectsController, :type => :controller do
         end
       end
 
-      context "when collaborator webhook sync is disabled via env" do
+      context "when collaborator sync is disabled via env" do
         before do
-          allow(App).to receive(:disable_collaborator_webhook_sync).and_return(true)
+          allow(App).to receive(:disable_collaborator_sync).and_return(true)
         end
 
         context "and a github app repository webhook arrives" do

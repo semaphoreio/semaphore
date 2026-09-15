@@ -25,10 +25,26 @@ class App < Configurable # :nodoc:
     ".#{SemaphoreConfig.base_domain}"  # All subdomains within base domain.
   ]
   config.always_filter_skip_ci = (SemaphoreConfig.always_filter_skip_ci || "false") == "true"
+
+  # Reserved-headroom floor on the GitHub App's shared REST bucket: background
+  # collaborator/repository sync steps aside below this so interactive/CI calls
+  # keep budget.
   config.collaborators_api_rate_limit = (SemaphoreConfig.collaborators_api_rate_limit || 4000).to_i
 
-  config.disable_collaborator_webhook_sync =
-    (SemaphoreConfig.disable_collaborator_webhook_sync || "false") == "true"
+  # Jitter window (seconds) a rate-limited sync waits past the bucket reset before
+  # retrying, so a fanned-out sweep disperses across the post-reset window instead
+  # of stampeding it. Scale up with the number of repositories in the installation.
+  config.github_app_rate_limit_defer_spread =
+    (SemaphoreConfig.github_app_rate_limit_defer_spread || 1800).to_i
+
+  # Master switch that stops all GitHub App collaborator sync — the automatic
+  # webhook path and the collaborator fan-out of a manual org refresh alike.
+  # DISABLE_COLLABORATOR_WEBHOOK_SYNC is the deprecated former name, read as an
+  # alias so existing operators keep working.
+  config.disable_collaborator_sync =
+    (SemaphoreConfig.disable_collaborator_sync.presence ||
+     SemaphoreConfig.disable_collaborator_webhook_sync.presence ||
+     "false") == "true"
   config.use_github_app_to_check_permissions =
     (SemaphoreConfig.use_github_app_to_check_permissions || "false") == "true"
   config.semaphore_edition = (SemaphoreConfig.semaphore_edition || "").downcase

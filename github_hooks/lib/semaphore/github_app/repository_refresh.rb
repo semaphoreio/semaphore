@@ -80,13 +80,14 @@ module Semaphore::GithubApp
     end
 
     # Fetch a single repository, cache it, and sync its collaborators. Returns a
-    # status symbol for RepositoryRefresh::Worker to log / retry on.
+    # status symbol for RepositoryRefresh::Worker to log on; raises
+    # LowRateLimitError under the reserved floor so the worker defers the retry.
     def self.fetch_and_cache_repository(installation_id, slug)
       token, _expires_at = Token.installation_token(installation_id)
       return :no_token unless token
 
       client = RepoHost::Github::Client.new(token)
-      return :low_rate_limit if client.rate_limit_remaining < App.collaborators_api_rate_limit
+      RateLimit.guard!(client)
 
       repository = client.repository(slug)
 
@@ -107,8 +108,13 @@ module Semaphore::GithubApp
     # Reconcile the repo list, then re-sync collaborators for every cached repo too:
     # access can change with no repo-list change, which a manual refresh must reflect.
     # Collaborators::Worker's per-slug lock dedupes any overlap with the delta path.
+    #
+    # The kill switch suppresses the collaborator fan-out here as on the webhook
+    # path; the repo-list refresh still runs so manual refresh keeps working.
     def self.refresh_installation(installation)
-      Repositories::Worker.perform_async(installation.installation_id)
+      sync_collaborators = !App.disable_collaborator_sync
+      Repositories::Worker.perform_async(installation.installation_id, sync_collaborators)
+      return unless sync_collaborators
 
       installation.installation_repositories.find_each do |repository|
         Collaborators::Worker.perform_in(10, repository.slug, repository.remote_id)
