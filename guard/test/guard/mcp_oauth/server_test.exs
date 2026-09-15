@@ -575,6 +575,31 @@ defmodule Guard.McpOAuth.Server.Test do
       refute location =~ @redirect_uri
     end
 
+    test "a warden session for a user with no stored salt is not authenticated (fails closed, no crash)" do
+      # A legacy/OIDC-only account can have a nil salt. A salt-bearing warden
+      # session for it must fail closed (login redirect), never raise a 500 in
+      # the secure_compare.
+      nil_salt_id = Ecto.UUID.generate()
+      {:ok, _} = Support.Factories.RbacUser.insert(nil_salt_id, "nil-salt-user")
+      {:ok, _} = Support.Factories.FrontUser.insert(id: nil_salt_id, name: "nil-salt-user")
+
+      client = create_test_client()
+      query = authorize_query(client.client_id)
+
+      {:ok, response} =
+        HTTPoison.get(
+          mcp_oauth_url("/authorize#{query}"),
+          warden_session_headers(nil_salt_id, "any-salt-here"),
+          follow_redirect: false
+        )
+
+      assert response.status_code == 302
+      location = get_header(response, "location")
+      assert location =~ "/login"
+      refute location =~ "code="
+      refute location =~ @redirect_uri
+    end
+
     test "missing client_id returns error" do
       code_challenge = PKCE.compute_challenge(@code_verifier)
 
