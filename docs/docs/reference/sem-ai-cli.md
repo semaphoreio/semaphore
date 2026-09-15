@@ -567,6 +567,63 @@ Remove a member's project-level role:
 sem-ai project member remove my-project <user-id>
 ```
 
+## Managing pre-flight checks {#pre-flight-checks}
+
+Pre-flight checks are commands Semaphore runs during pipeline initialization, before any block starts. There is one organization-wide check and one check per project; both run, and either can stop a pipeline. Scope follows `--project`: pass it for a project's check, omit it for the organization-wide one.
+
+### sem-ai pfc show {#pfc-show}
+
+Show the commands, secrets, and agent of a pre-flight check:
+
+```shell
+# the organization-wide check
+sem-ai pfc show
+
+# one project's check
+sem-ai pfc show --project my-project
+```
+
+### sem-ai pfc apply {#pfc-apply}
+
+Create or replace a pre-flight check. This is a privileged change — the commands run at the start of every workflow in the scope, and a non-zero exit stops the pipeline before any block runs. Apply replaces the whole check rather than merging into it.
+
+```shell
+# organization-wide gate, two commands and one secret
+sem-ai pfc apply --command checkout --command 'make security-scan' --secret scanner-token
+
+# project-level gate on a specific agent
+sem-ai pfc apply --project my-project \
+  --command './scripts/gate.sh' \
+  --machine-type e2-standard-2 --os-image ubuntu2204
+```
+
+The spec can come from a YAML or JSON file instead of flags, but not both:
+
+```shell
+sem-ai pfc apply --project my-project --from-file pfc.yml
+```
+
+```yaml
+commands:
+  - checkout
+  - make security-scan
+secrets:
+  - scanner-token
+agent:
+  machine_type: e2-standard-2
+  os_image: ubuntu2204
+```
+
+Requires `organization.pre_flight_checks.manage` or `project.pre_flight_checks.manage`.
+
+### sem-ai pfc delete {#pfc-delete}
+
+Remove a pre-flight check:
+
+```shell
+sem-ai pfc delete --project my-project
+```
+
 ## Compound commands {#compound}
 
 These commands compose multiple API calls into a single operation.
