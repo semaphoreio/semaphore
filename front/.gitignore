@@ -36,6 +36,8 @@ browser_logs.log
 .direnv
 .envrc
 shell.nix
+/.nix-mix
+/.nix-hex
 priv/storage/test-results/debug
 google-chrome-stable_93.0.4577.63-1_amd64.deb
 assets/.nyc_output

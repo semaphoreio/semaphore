@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="assets-path" content="<%= assets_path() %>">
+    <link rel="stylesheet" media="screen" href="<%= assets_path() %>/css/app.css" />
+    <title>Design Book</title>
+  </head>
+  <body class="bg-lightest-brown">
+    <div class="main">
+      <div id="main-content" class="bg-white pa3 pa4-m">
+        <%= @inner_content %>
+      </div>
+    </div>
+    <script nonce="<%= @conn.assigns[:script_src_nonce] %>" src="<%= static_path(@conn, "/projects/assets/design_book.js") %>"></script>
+  </body>
+</html>
