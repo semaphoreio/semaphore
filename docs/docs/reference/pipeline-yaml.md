@@ -95,7 +95,7 @@ Part of the [`agent`](#agent) definition. This is an optional property to specif
 If a value is not provided, the default for the machine type is used:
 
 - `e1-standard-*` machine types: `ubuntu2404`
-- `a2-standard-*` machine types: `macos-xcode16`
+- `a2-standard-*` machine types: `macos-xcode26`
 
 The list of valid values for Semaphore Cloud is available on the [machine types reference](./machine-types) page.
 
@@ -258,7 +258,7 @@ The `execution_time_limit` property accepts one of two options:
 
 You can only either `hours` or `minutes`. Not both.
 
-This property is also available on [`blocks`](#blocks) and [`jobs`](#jobs).
+This property is also available on [`blocks`](#blocks) and [`jobs`](#jobs), where a limit longer than the pipeline's is rejected when the pipeline is compiled. Jobs in an [`after_pipeline`](#after_pipeline) task instead inherit the pipeline limit unless they set their own.
 
 ```yaml title="Example"
 version: v1.0
@@ -542,6 +542,46 @@ blocks:
             - echo $TEST_ENV_VAR
 ```
 
+## partial_rerun {#partial-rerun}
+
+This optional property controls the granularity of [pipeline rebuilds](../using-semaphore/pipelines#rebuild). It accepts one of two values:
+
+- `jobs`: re-run blocks carry previously passed jobs over as [copies](../using-semaphore/pipelines#job-level-rerun) and re-execute only the failed jobs
+- `block`: a re-run block re-executes all of its jobs
+
+The pipeline-level value is the default for every block; individual blocks can override it with their own [`partial_rerun`](#partial-rerun-in-blocks) property.
+
+When `partial_rerun` is not set, `jobs` is used. To keep re-running whole blocks, set `partial_rerun: block` explicitly.
+
+Set `block` on blocks whose jobs must always run together, for example test suites that split dynamically across jobs, where the per-job split can change between runs.
+
+```yaml title="Example"
+version: v1.0
+name: Rebuild granularity
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu2404
+# highlight-next-line
+partial_rerun: jobs
+blocks:
+  - name: Unit tests
+    task:
+      jobs:
+        - name: unit
+          commands:
+            - make test
+  - name: Split tests
+    # highlight-next-line
+    partial_rerun: block
+    task:
+      jobs:
+        - name: split
+          parallelism: 4
+          commands:
+            - make split-test
+```
+
 ## blocks {#blocks}
 
 Defines an array of items that hold the elements of a pipeline. Each element of that array is called a *block* and can have these properties:
@@ -551,6 +591,7 @@ Defines an array of items that hold the elements of a pipeline. Each element of 
 - [`task`](#task) (mandatory)
 - [`skip`](#skip-in-blocks)
 - [`run`](#run-in-blocks)
+- [`partial_rerun`](#partial-rerun-in-blocks)
 
 ### name {#name-in-blocks}
 
@@ -704,6 +745,10 @@ It is not possible to have both `skip` and [`run`](#run-in-blocks) properties de
 
 :::
 
+### partial_rerun {#partial-rerun-in-blocks}
+
+Optional override of the pipeline-level [`partial_rerun`](#partial-rerun) property for this block. Accepts the same `jobs` and `block` values.
+
 ## task {#task}
 
 The `task` property defines the [`jobs`](#jobs) in the blocks along with all its optional properties:
@@ -759,7 +804,7 @@ blocks:
       agent:
           machine:
             type: a2-standard-4
-            os_image: macos-xcode16
+            os_image: macos-xcode26
    # highlight-end
       jobs:
         - name: Using agent job
@@ -1238,6 +1283,23 @@ Jobs in the `after_pipeline` task are always executed regardless of the result o
 All `SEMAPHORE_*` environment variables that are injected into regular pipeline jobs are also injected into `after_pipeline` jobs.
 
 Additionally, Semaphore [injects environment variables](./env-vars#after-pipeline-variables) describes the state, result, and duration of the executed pipeline into `after_pipeline` jobs.
+
+Jobs in the `after_pipeline` task inherit the pipeline's [`execution_time_limit`](#execution_time_limit) when they don't define one of their own. Since a pipeline that doesn't set `execution_time_limit` defaults to 1 hour, an `after_pipeline` job without an explicit limit is bounded to 1 hour as well. Set `execution_time_limit` on the job when it needs a different limit.
+
+The limit applies to each `after_pipeline` job on its own, measured from the moment that job starts. It is not reduced by the time the pipeline already used, so a pipeline and its after-pipeline jobs can together run for roughly twice the limit. Time spent waiting for an agent is not counted towards it either. Unlike jobs in [`blocks`](#blocks), an `after_pipeline` job's own limit is independent of the pipeline's and is not required to be shorter.
+
+```yaml title="Example"
+after_pipeline:
+  task:
+    jobs:
+      - name: Publish Tests
+        # highlight-start
+        execution_time_limit:
+          minutes: 15
+        # highlight-end
+        commands:
+          - test-results gen-pipeline-report
+```
 
 :::note
 

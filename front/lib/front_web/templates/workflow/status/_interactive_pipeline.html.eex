@@ -23,7 +23,7 @@
     <% end %>
     <%= if FeatureProvider.feature_enabled?(:ui_partial_ppl_rebuild, param: @conn.assigns[:organization_id]) && @conn.assigns.permissions["project.job.rerun"] && FrontWeb.PipelineView.pipeline_rebuildable?(@pipeline) && !FrontWeb.PipelineView.anonymous?(@conn) do %>
       <span class="gray mh2">&middot;</span>
-      <%= link "Rebuild Pipeline", to: pipeline_rebuild_path(@conn, :rebuild, @workflow.id, @pipeline.id), class: "btn btn-secondary btn-tiny", pipeline_rebuild_button: "true", title: "Rerun only failed jobs in this pipeline" %>
+      <%= link "Rerun Failed Jobs", to: pipeline_rebuild_path(@conn, :rebuild, @workflow.id, @pipeline.id), class: "btn btn-secondary btn-tiny", pipeline_rebuild_button: "true", "data-tippy-content": "Reruns only the jobs in this pipeline that did not pass, keeping the ones that did. Use Rerun Workflow above for a fresh run of everything." %>
     <% end %>
     <span class="child ml2">←</span>
   </div>

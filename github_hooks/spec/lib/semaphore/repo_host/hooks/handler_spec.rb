@@ -399,16 +399,39 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
           end
         end
 
-        context "and there is a problem with fetching mergeable status" do
+        context "and GitHub has not finished computing mergeability (mergeable is nil)" do
           before do
             allow(repo_host).to receive(:validate_token_presence!)
             allow(repo_host).to receive(:pull_request).and_return(:merge_commit_sha => "", :mergeable => nil)
+            allow(described_class).to receive(:sleep) # skip get_pr_data poll backoff
           end
 
-          it "logs the non mergeable pr" do
-            expect(@logger).to receive(:info).with("pr-non-mergeable")
+          it "reschedules the hook with an incremented retry count instead of building" do
+            expect(described_class).not_to receive(:launch_pipeline)
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker)
+              .to receive(:perform_in).with(2.minutes, @workflow.id, anything, anything, 1)
+            expect(@logger).to receive(:info).with("pr-mergeable-unknown-rescheduled", anything)
 
             described_class.run(@workflow, @logger)
+
+            expect(@workflow.reload.state).not_to eq(Workflow::STATE_PR_NON_MERGEABLE)
+          end
+
+          it "still reschedules on the last attempt before the budget is exhausted" do
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker)
+              .to receive(:perform_in).with(2.minutes, @workflow.id, anything, anything, 10)
+
+            described_class.run(@workflow, @logger, "", "", 9)
+
+            expect(@workflow.reload.state).not_to eq(Workflow::STATE_PR_NON_MERGEABLE)
+          end
+
+          it "gives up once retries are exhausted without emitting a spurious unmergeable event" do
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker).not_to receive(:perform_in)
+            expect(described_class).not_to receive(:update_pull_request_mergeable)
+            expect(@logger).to receive(:info).with("pr-mergeable-unknown-giving-up")
+
+            described_class.run(@workflow, @logger, "", "", 10)
 
             expect(@workflow.reload.state).to eq(Workflow::STATE_PR_NON_MERGEABLE)
           end

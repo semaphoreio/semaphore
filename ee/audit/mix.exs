@@ -40,7 +40,7 @@ defmodule Audit.MixProject do
       {:protobuf, "~> 0.7.1"},
       {:ecto_sql, "~> 3.0"},
       {:postgrex, ">= 0.0.0"},
-      {:tackle, github: "renderedtext/ex-tackle"},
+      {:tackle, github: "renderedtext/ex-tackle", tag: "v0.4.1"},
       {:poison, "~> 3.1"},
       {:watchman, github: "renderedtext/ex-watchman"},
       {:jason, "~> 1.1"},

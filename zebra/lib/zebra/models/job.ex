@@ -43,7 +43,7 @@ defmodule Zebra.Models.Job do
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
   @required_fields ~w(name organization_id project_id aasm_state created_at updated_at machine_type spec)a
-  @optional_fields ~w(build_id priority execution_time_limit deployment_target_id repository_id enqueued_at scheduled_at started_at finished_at request index port name machine_os_image failure_reason result agent_id agent_name agent_ip_address agent_ctrl_port agent_auth_token private_ssh_key expires_at)a
+  @optional_fields ~w(build_id priority execution_time_limit deployment_target_id repository_id enqueued_at scheduled_at started_at finished_at request index port name machine_os_image failure_reason result agent_id agent_name agent_ip_address agent_ctrl_port agent_auth_token private_ssh_key expires_at original_job_id)a
 
   schema "jobs" do
     belongs_to(:task, Zebra.Models.Task, foreign_key: :build_id)
@@ -80,6 +80,7 @@ defmodule Zebra.Models.Job do
     field(:started_at, :utc_datetime)
     field(:finished_at, :utc_datetime)
     field(:expires_at, :utc_datetime)
+    field(:original_job_id, :binary_id)
   end
 
   def create(params) do
@@ -96,6 +97,52 @@ defmodule Zebra.Models.Job do
 
     params = %{params | spec: encode_spec(params.spec)}
     params = set_machine_type_if_empty(params)
+
+    changeset(%__MODULE__{}, params)
+    |> LegacyRepo.insert()
+    |> case do
+      {:ok, job} ->
+        {:ok, job}
+
+      {:error, changeset} ->
+        {:error, readable_changeset_errors(changeset)}
+    end
+  end
+
+  def create_copy(original, task_id) do
+    params = %{
+      name: original.name,
+      index: original.index,
+      machine_type: original.machine_type,
+      machine_os_image: original.machine_os_image,
+      spec: encode_spec(original.spec),
+      request: original.request,
+      organization_id: original.organization_id,
+      project_id: original.project_id,
+      deployment_target_id: original.deployment_target_id,
+      repository_id: original.repository_id,
+      priority: original.priority,
+      created_at: original.created_at,
+      updated_at: original.updated_at,
+      enqueued_at: original.enqueued_at,
+      scheduled_at: original.scheduled_at,
+      started_at: original.started_at,
+      finished_at: original.finished_at,
+      expires_at: original.expires_at,
+      build_id: task_id,
+      aasm_state: state_finished(),
+      result: result_passed(),
+      original_job_id: original.original_job_id || original.id,
+      port: nil,
+      agent_id: nil,
+      agent_name: nil,
+      agent_ip_address: nil,
+      agent_ctrl_port: nil,
+      agent_auth_token: nil,
+      private_ssh_key: nil,
+      failure_reason: nil,
+      execution_time_limit: nil
+    }
 
     changeset(%__MODULE__{}, params)
     |> LegacyRepo.insert()
@@ -277,7 +324,8 @@ defmodule Zebra.Models.Job do
         aasm_state: state_finished(),
         finished_at: now,
         result: result_failed(),
-        failure_reason: reason
+        failure_reason: reason,
+        request: sanitized_request(job)
       })
 
     optimisticaly_finish_task(job)
@@ -314,7 +362,7 @@ defmodule Zebra.Models.Job do
         finished_at: now,
         result: result_failed(),
         failure_reason: reason,
-        request: JobRequest.sanitize(j.request)
+        request: sanitized_request(j)
       }
 
       case update(j, params) do
@@ -550,22 +598,23 @@ defmodule Zebra.Models.Job do
       port: agent.ssh_port,
       agent_ctrl_port: agent.ctrl_port,
       agent_auth_token: agent.auth_token,
-      request: JobRequest.sanitize(job.request)
+      request: sanitized_request(job)
     }
   end
 
-  def sanitize_job_request(job_id) do
-    case find(job_id) do
-      {:ok, job} ->
-        if !JobRequest.sanitized?(job.request) do
-          update(job, %{
-            request: JobRequest.sanitize(job.request)
-          })
-        end
+  # Sanitization is what keeps secrets from being left at rest, but a raise here
+  # would abort the transition that invoked it: the job would never leave its
+  # current state, and the stop request the terminator files would be retried
+  # forever. Drop the whole request instead, and make the shape that caused it
+  # alertable rather than silent.
+  defp sanitized_request(job) do
+    JobRequest.sanitize(job.request)
+  rescue
+    e ->
+      Logger.error("Failed to sanitize request of '#{job.id}': #{inspect(e)}")
+      Watchman.increment("job.request_sanitize.failed")
 
-      {:error, :not_found} ->
-        Logger.error("Error sanitizing '#{job_id}': not found")
-    end
+      %{}
   end
 
   def finish(job, result) do
@@ -578,7 +627,8 @@ defmodule Zebra.Models.Job do
         params = %{
           aasm_state: state_finished(),
           finished_at: now,
-          result: result
+          result: result,
+          request: sanitized_request(job)
         }
 
         case update(job, params) do
@@ -612,7 +662,7 @@ defmodule Zebra.Models.Job do
         aasm_state: state_finished(),
         finished_at: now,
         result: result_stopped(),
-        request: JobRequest.sanitize(job.request),
+        request: sanitized_request(job),
         machine_type: job.machine_type || ""
       }
 

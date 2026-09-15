@@ -31,9 +31,15 @@ defmodule Front.Mixfile do
 
   defp deps do
     [
-      {:plug_cowboy, "~> 2.5"},
+      # plug/plug_cowboy are held at the versions .mix-audit.txt already defers to a
+      # dedicated dep-bump branch. They are pinned rather than left loose because any
+      # `mix deps.get` that re-resolves the tree otherwise drags plug to 1.20.x, which
+      # does not compile on the Elixir 1.14.5 this image is built with (bitstring spec
+      # expansion crash in the plug compile). Lift these together with ELIXIR_VERSION.
+      {:plug, "~> 1.18.1", override: true},
+      {:plug_cowboy, "~> 2.7.4"},
       {:etag_plug, "~> 1.0"},
-      {:phoenix, "~> 1.6.0", override: true},
+      {:phoenix, "~> 1.6.17", override: true},
       {:phoenix_html, "~> 3.0.0", override: true},
       {:phoenix_ecto, "~> 4.0"},
       {:phoenix_live_reload, "~> 1.3", only: :dev},
@@ -64,7 +70,7 @@ defmodule Front.Mixfile do
       {:util, github: "renderedtext/elixir-util"},
       {:typed_struct, "~> 0.1.4"},
       {:amqp_client, "~> 3.9.27"},
-      {:tackle, github: "renderedtext/ex-tackle", tag: "v0.2.3"},
+      {:tackle, github: "renderedtext/ex-tackle", tag: "v0.4.1"},
       {:jsx, "~> 2.9", override: true},
       {:csv, "~> 2.3"},
       {:crontab, "~> 1.1.10"},

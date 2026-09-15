@@ -251,7 +251,15 @@ defmodule Support.Stubs.Task do
             branch_id: task.branch_id,
             hook_id: task.api_model.hook_id,
             ppl_id: task.api_model.ppl_id,
-            timeline: Job.Timeline.new(),
+            # change_job_state/2 already records these; pass them through so a
+            # stubbed job page shows real timing instead of an empty timeline.
+            timeline:
+              Job.Timeline.new(
+                created_at: task_job.created_at,
+                enqueued_at: task_job.enqueued_at,
+                started_at: task_job.started_at,
+                finished_at: task_job.finished_at
+              ),
             state: to_job_state(Task.Job.State.key(task_job.state)),
             result: task_job.result,
             machine_type: "e1-standard-2",

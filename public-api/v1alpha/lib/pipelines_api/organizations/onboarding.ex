@@ -9,10 +9,21 @@ defmodule PipelinesAPI.Organizations.Onboarding do
   @spec create_organization(String.t(), String.t(), String.t()) ::
           {:ok, map()} | {:error, tuple()}
   def create_organization(name, username, user_id) do
-    with :ok <- OrganizationsClient.is_valid(name, username, user_id),
+    with :ok <- validate_single_tenant(),
+         :ok <- OrganizationsClient.is_valid(name, username, user_id),
          :ok <- validate_billing(user_id) do
       OrganizationsClient.create(user_id, name, username)
     end
+  end
+
+  # Single-tenant installs disable user-initiated org creation, same intent as
+  # FrontWeb.OrganizationOnboardingController.single_tenant_check. Front renders 404 to hide the
+  # onboarding page from the browser flow; this documented API returns 403 (forbidden).
+  # Controlled by the SINGLE_TENANT env var (see config/config.exs + config/runtime.exs).
+  defp validate_single_tenant do
+    if Application.fetch_env!(:pipelines_api, :single_tenant),
+      do: {:error, {:forbidden, "Organization creation is disabled on this instance."}},
+      else: :ok
   end
 
   defp validate_billing(user_id) do

@@ -67,18 +67,7 @@ defmodule Zebra.Api.PublicJobApiTest do
       )
     end)
 
-    GrpcMock.stub(Support.FakeServers.RepositoryApi, :describe, fn _, _ ->
-      key = "--BEGIN....lalalala..private_key...END---"
-
-      repository =
-        InternalApi.Repository.Repository.new(
-          name: "test-repo",
-          url: "git@github.com:/test-org/test-repo.git",
-          provider: "github"
-        )
-
-      InternalApi.Repository.DescribeResponse.new(repository: repository, private_ssh_key: key)
-    end)
+    mock_repository("master")
 
     stub(Support.MockedProvider, :provide_features, fn org_id, opts ->
       {:ok, features} = Support.StubbedProvider.provide_features(org_id, opts)
@@ -521,6 +510,32 @@ defmodule Zebra.Api.PublicJobApiTest do
       get_job_debug_ssh_key_passes_permission_check(task.id)
     end
 
+    test "when the repository default branch is main and attach on default branch is allowed => gets the key" do
+      alias InternalApi.Projecthub.Project.Spec.PermissionType
+
+      mock_repository("main")
+      mock_repo_proxy(:BRANCH, "main", "test-org/test-repo", "")
+      mock_project([], [PermissionType.value(:DEFAULT_BRANCH)])
+
+      {:ok, task} = Support.Factories.Task.create()
+      get_job_debug_ssh_key_passes_permission_check(task.id)
+    end
+
+    test "when the repository default branch is main and attach on default branch is blocked => raise error" do
+      alias InternalApi.Projecthub.Project.Spec.PermissionType
+
+      mock_repository("main")
+      mock_repo_proxy(:BRANCH, "main", "test-org/test-repo", "")
+      mock_project([], [PermissionType.value(:NON_DEFAULT_BRANCH)])
+
+      {:ok, task} = Support.Factories.Task.create()
+
+      get_job_debug_ssh_key_fails_permission_check(
+        "You are not allowed to attach jobs on the default branch of this project",
+        task.id
+      )
+    end
+
     test "when the project belongs to restricted org and blocks attach on non default branch => raise error" do
       mock_repo_proxy(:BRANCH, "some-non-default-branch", "test-org/test-repo", "")
       mock_project([], [])
@@ -939,6 +954,27 @@ defmodule Zebra.Api.PublicJobApiTest do
       mock_repo_proxy(:BRANCH, "master", "test-org/test-repo", "")
       mock_project([PermissionType.value(:DEFAULT_BRANCH)], [])
       create_debug_job_passes_permission_check()
+    end
+
+    test "when the repository default branch is main and debug on default branch is allowed => creates job" do
+      alias InternalApi.Projecthub.Project.Spec.PermissionType
+
+      mock_repository("main")
+      mock_repo_proxy(:BRANCH, "main", "test-org/test-repo", "")
+      mock_project([PermissionType.value(:DEFAULT_BRANCH)], [])
+      create_debug_job_passes_permission_check()
+    end
+
+    test "when the repository default branch is main and debug on default branch is blocked => raise error" do
+      alias InternalApi.Projecthub.Project.Spec.PermissionType
+
+      mock_repository("main")
+      mock_repo_proxy(:BRANCH, "main", "test-org/test-repo", "")
+      mock_project([PermissionType.value(:NON_DEFAULT_BRANCH)], [])
+
+      create_debug_job_fails_permission_check(
+        "You are not allowed to debug jobs on the default branch of this project"
+      )
     end
 
     test "when the project belongs to restricted org and blocks debug on non default branch => raise error" do
@@ -1444,6 +1480,22 @@ defmodule Zebra.Api.PublicJobApiTest do
   end
 
   # Utility functions
+  def mock_repository(default_branch) do
+    GrpcMock.stub(Support.FakeServers.RepositoryApi, :describe, fn _, _ ->
+      key = "--BEGIN....lalalala..private_key...END---"
+
+      repository =
+        InternalApi.Repository.Repository.new(
+          name: "test-repo",
+          url: "git@github.com:/test-org/test-repo.git",
+          provider: "github",
+          default_branch: default_branch
+        )
+
+      InternalApi.Repository.DescribeResponse.new(repository: repository, private_ssh_key: key)
+    end)
+  end
+
   def mock_repo_proxy(hook_type, branch_name, repo_slug, pr_slug) do
     GrpcMock.stub(Support.FakeServers.RepoProxyApi, :describe, fn _, _ ->
       status = InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK))

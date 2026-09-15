@@ -179,6 +179,13 @@ defmodule Guard.Application do
       %{
         worker: Supervisor.child_spec({Cachex, :config_cache}, id: :config_cache),
         active: true
+      },
+      %{
+        worker:
+          Supervisor.child_spec({Cachex, :oauth_refresh_failure_cache},
+            id: :oauth_refresh_failure_cache
+          ),
+        active: true
       }
     ])
   end

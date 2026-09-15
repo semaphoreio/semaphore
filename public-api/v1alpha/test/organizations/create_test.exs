@@ -148,4 +148,49 @@ defmodule PipelinesAPI.Organizations.Create.Test do
       assert Poison.decode!(conn.resp_body) == "Organization name is already taken"
     end
   end
+
+  describe "POST /organizations — single-tenant install (org creation disabled)" do
+    setup do
+      single_tenant = Application.fetch_env!(:pipelines_api, :single_tenant)
+      Application.put_env(:pipelines_api, :single_tenant, true)
+      on_exit(fn -> Application.put_env(:pipelines_api, :single_tenant, single_tenant) end)
+      :ok
+    end
+
+    test "-> 403 forbidden, and nothing downstream is called" do
+      test_pid = self()
+
+      GrpcMock.stub(OrganizationMock, :is_valid, fn _, _ ->
+        send(test_pid, :is_valid_called)
+        IsValidResponse.new(is_valid: true)
+      end)
+
+      GrpcMock.stub(BillingMock, :can_setup_organization, fn _, _ ->
+        send(test_pid, :billing_called)
+        CanSetupOrganizationResponse.new(allowed: true)
+      end)
+
+      GrpcMock.stub(OrganizationMock, :create, fn _, _ ->
+        send(test_pid, :create_called)
+
+        CreateResponse.new(
+          status:
+            InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
+          organization: Organization.new(org_id: @org_id, name: "acme")
+        )
+      end)
+
+      conn = call_create(%{"username" => "acme"})
+
+      assert conn.status == 403
+
+      assert Poison.decode!(conn.resp_body) ==
+               "Organization creation is disabled on this instance."
+
+      # the single-tenant guard runs first, so nothing downstream fires
+      refute_receive :is_valid_called, 200
+      refute_receive :billing_called, 200
+      refute_receive :create_called, 200
+    end
+  end
 end
