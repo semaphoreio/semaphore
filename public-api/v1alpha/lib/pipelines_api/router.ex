@@ -93,7 +93,10 @@ defmodule PipelinesAPI.Router do
   plug(:match)
   plug(:dispatch)
 
-  # Account-level org creation; reachable only via me.<domain>, no org context.
+  # Account-level org endpoints; reachable only via me.<domain>, no org context.
+  # GET lists the authenticated user's own organizations (used by CLI signin to
+  # resolve which org context to activate); POST creates one.
+  match("/organizations", via: :get, to: PipelinesAPI.Organizations.List)
   match("/organizations", via: :post, to: PipelinesAPI.Organizations.Create)
 
   match("/workflows", via: :get, to: WfList)
