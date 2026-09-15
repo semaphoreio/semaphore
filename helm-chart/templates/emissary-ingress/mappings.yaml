@@ -732,6 +732,42 @@ spec:
   precedence: 210
   timeout_ms: 30000
 ---
+# MCP OAuth Authorize endpoint - id. subdomain - REQUIRE auth (defense-in-depth).
+# On the id. host these paths otherwise fall through the bypass_auth:true id-host
+# catch-all (guard-id-http-api-root-redirect, prefix /), skipping edge auth.
+# Mirrors the mcp. mapping so edge auth is enforced on both hosts.
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: mcp-oauth-authorize-mapping-id
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: "^id\\..*"
+  host_regex: true
+  prefix: /mcp/oauth/authorize
+  rewrite: /mcp/oauth/authorize
+  service: guard-id-http-api.{{ .Release.Namespace }}:80
+  bypass_auth: false
+  precedence: 210
+  timeout_ms: 30000
+---
+# MCP OAuth Grant Selection - id. subdomain - REQUIRE auth (defense-in-depth).
+# Mirrors the mcp. mapping (see mcp-oauth-authorize-mapping-id above).
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: mcp-oauth-grant-selection-mapping-id
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: "^id\\..*"
+  host_regex: true
+  prefix: /mcp/oauth/grant-selection
+  rewrite: /mcp/oauth/grant-selection
+  service: guard-id-http-api.{{ .Release.Namespace }}:80
+  bypass_auth: false
+  precedence: 210
+  timeout_ms: 30000
+---
 # OAuth 2.0 Authorization Server Metadata (RFC 8414) - mcp. subdomain
 # Routes to Guard which serves AS metadata for the MCP OAuth server
 apiVersion: getambassador.io/v3alpha1
