@@ -61,6 +61,8 @@ sem-ai connect <your-org>.semaphoreci.com YOUR_API_TOKEN
 
 `sem-ai` writes credentials to `~/.sem.yaml`, the same file used by the legacy [`sem` CLI](https://github.com/semaphoreci/cli), so existing contexts and tokens are reused.
 
+No token yet? [`sem-ai signin`](../../reference/sem-ai-cli#signin) authenticates through your browser and stores the account token — see the reference for the flow and its token-reset caveat.
+
 For shared or headless setups — a chatops bot, an internal dashboard, or a non-Semaphore CI job that calls the Semaphore API — use a [service account](../service-accounts) token instead, so access and rotation are not tied to any single user.
 
 Verify with:

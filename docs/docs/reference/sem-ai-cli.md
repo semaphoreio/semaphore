@@ -36,9 +36,43 @@ make install
 
 ## Setup {#setup}
 
+### sem-ai signin {#signin}
+
+Sign in with your browser — no pre-existing API token needed:
+
+```shell
+sem-ai signin
+```
+
+Shows a one-time code and a verification URL. Enter the code in the browser, sign in (or create your account right there), and approve; the terminal finishes automatically. `signup` and `login` are aliases for the same flow. The browser opens automatically only in interactive sessions — over SSH or in scripts the code and URL are just printed (`--browser` forces the open, `--headless` suppresses it).
+
+Signing in stores the account token in `~/.sem.yaml` under the account host — `me.semaphoreci.com` on Semaphore Cloud. Organization commands need an organization context, so follow up with the stored token:
+
+```shell
+sem-ai connect <organization>.semaphoreci.com <API_TOKEN>
+```
+
+For a brand-new account, `--org` (with `--org-host`) instead creates a first organization and activates its context in one step:
+
+```shell
+sem-ai signin --org myorg --org-host myorg.semaphoreci.com
+```
+
+On another deployment, pass the account host explicitly, plus `--id-host` when the CLI-auth endpoints are served from a separate host (Semaphore Cloud uses `id.semaphoreci.com`). Self-hosted releases up to v1.5.0 don't serve these endpoints — use `sem-ai connect` there.
+
+```shell
+sem-ai signin <account-host> --id-host <id-host>
+```
+
+:::note
+
+An account has a single API token. If your account already has one, the sign-in offers to reset it — you confirm on the browser consent page. After a reset the previous token immediately stops working everywhere it is used: CI secrets, scripts, other machines, other contexts in `~/.sem.yaml`, and the `sem` CLI, which shares them.
+
+:::
+
 ### sem-ai connect {#connect}
 
-Connect to your Semaphore organization. You need an [API token](https://me.semaphoreci.com/account).
+Connect to your Semaphore organization with an existing [API token](https://me.semaphoreci.com/account).
 
 ```shell
 sem-ai connect <organization>.semaphoreci.com <API_TOKEN>
@@ -65,6 +99,22 @@ Show the active organization:
 ```shell
 sem-ai context show
 ```
+
+Switch the active organization, by the context name shown in `context list`:
+
+```shell
+sem-ai context switch <name>
+```
+
+### Environment variables {#env-vars}
+
+`SEMAPHORE_HOST` and `SEMAPHORE_API_TOKEN` override the stored configuration — useful in CI jobs or containers where writing `~/.sem.yaml` is inconvenient:
+
+```shell
+SEMAPHORE_HOST=<organization>.semaphoreci.com SEMAPHORE_API_TOKEN=<API_TOKEN> sem-ai status
+```
+
+Each variable applies on its own, so set both — a lone `SEMAPHORE_HOST` still uses the stored token (and vice versa). While either is set, `sem-ai context switch` has no effect on the credentials in use.
 
 ## General syntax {#syntax}
 
@@ -924,6 +974,14 @@ Open an interactive SSH session:
 sem-ai testbox ssh --id <testbox-id>
 ```
 
+### sem-ai testbox list {#testbox-list}
+
+List running testboxes — recover a testbox id, with its project, machine, and age:
+
+```shell
+sem-ai testbox list
+```
+
 ### sem-ai testbox stop {#testbox-stop}
 
 Stop a running testbox:
@@ -1011,6 +1069,27 @@ Create a deployment target:
 sem-ai deploy create <name> --project <project-name> --url https://staging.example.com
 ```
 
+### sem-ai deploy update {#deploy-update}
+
+Update a deployment target:
+
+```shell
+sem-ai deploy update <target-id> --name staging-eu --description "EU staging"
+```
+
+Scalar fields — `--name`, `--description`, `--url`, bookmarks — are merged: the ones you don't pass keep their current value. The list-valued groups are **replaced as a whole set** whenever any flag from the group is passed:
+
+- Object rules: `--branch-exact`, `--branch-regex`, `--allow-all-branches`, `--tag-exact`, `--tag-regex`, `--allow-all-tags`, `--allow-prs`
+- Subject rules: `--subject-user`, `--subject-role`, `--subject-any`, `--subject-auto`
+- Env vars and files: `--env-var`, `--file` — these two travel together; passing either replaces both sets
+
+Restate the full set on every update — check the current one with `sem-ai deploy show` first:
+
+```shell
+sem-ai deploy update <target-id> --branch-exact main --tag-regex "^v" --subject-role Admin
+sem-ai deploy update <target-id> --env-var API_URL=https://staging.example.com --env-var GITHUB_TOKEN=<value> --file /etc/app/config=./config.yml
+```
+
 ### sem-ai deploy activate / deactivate {#deploy-activate}
 
 Activate or deactivate a deployment target:
@@ -1080,12 +1159,34 @@ Create a scheduled task:
 sem-ai task create <name> --project <project-name> --branch main --file .semaphore/nightly.yml --cron "0 2 * * *"
 ```
 
+Without `--cron` the task is created as one-off: it never fires on a schedule and runs only when triggered with `task run`.
+
+Tasks can declare parameters with `--param-def` (repeatable) — `NAME` for a required parameter, `NAME=DEFAULT` for an optional one with a default:
+
+```shell
+sem-ai task create deploy-env --project <project-name> --file .semaphore/deploy.yml --cron "0 2 * * *" --param-def ENVIRONMENT=staging --param-def REGION=us-east-1
+```
+
+Required parameters are enforced only on manual `task run` triggers; scheduled runs fill in defaults and skip parameters that have none — on a cron task, give every parameter a default.
+
 ### sem-ai task run {#task-run}
 
 Trigger a task to run now:
 
 ```shell
 sem-ai task run <task-id>
+```
+
+Pass parameter values with `--param KEY=VALUE` (repeatable):
+
+```shell
+sem-ai task run <task-id> --param ENVIRONMENT=staging --param REGION=eu-west-1
+```
+
+For a single run you can also override the branch or pipeline file — `--branch` takes a branch name only, not a tag or commit SHA:
+
+```shell
+sem-ai task run <task-id> --branch hotfix-1 --pipeline-file .semaphore/deploy.yml
 ```
 
 ### sem-ai task delete {#task-delete}
@@ -1192,7 +1293,11 @@ Add to your project's `.mcp.json`:
 }
 ```
 
-Most commands become available as MCP tools (e.g., `project_list`, `diagnose`, `status`, `blast-radius`). The long-running commands `watch` and `promote-and-wait` are excluded, since they would block the single in-memory command tree; use `status --exit-code` in a poll loop instead. The server starts once and handles all tool calls in-process — no new process per call.
+Most commands become available as MCP tools (e.g., `project_list`, `diagnose`, `status`, `blast-radius`). The long-running commands `watch` and `promote-and-wait` are excluded, since they would block the single in-memory command tree; use `status --exit-code` in a poll loop instead. Interactive commands — `signin`, `testbox ssh`, `testbox run` — need a terminal and don't work as MCP tools; run them in a shell. The server starts once and handles all tool calls in-process — no new process per call.
+
+### Claude Desktop (MCPB extension)
+
+Each [release](https://github.com/semaphoreio/sem-ai/releases) also ships one-click MCPB bundles (`sem-ai_<version>_<os>_<arch>.mcpb`). Download the bundle for your platform and open it — Claude Desktop installs the same MCP server without a separate CLI install; enter your organization host and API token in the install dialog (the token is kept in the OS keychain). The dialog values reach the server as [`SEMAPHORE_HOST`/`SEMAPHORE_API_TOKEN`](#env-vars), which take precedence over `~/.sem.yaml` — if the token is later reset (for example by `sem-ai signin`), update it in the extension settings; `sem-ai connect` has no effect on an MCPB install.
 
 ## Agent skills {#skills}
 
@@ -1239,7 +1344,7 @@ This installs the skill instructions only — not the MCP server. The `sem-ai` b
 | Failure diagnosis | Manual (multiple commands) | `diagnose` (one command, full root cause) |
 | Test intelligence | None | `test summary`, `test flaky`, `flaky` history, `insights` |
 | Pipeline topology | None | `topology`, `critical-path`, `blast-radius` |
-| Testbox | `sem debug` (limited) | `testbox warmup/run/ssh/stop` with file sync |
+| Testbox | `sem debug` (limited) | `testbox warmup/run/ssh/list/stop` with file sync |
 | MCP server | None | `sem-ai mcp` |
 | Health reports | None | `health` (pass rates, trends, verdict) |
 | Deploy safety | Fire-and-forget | Dry run by default, `--confirm` required |
