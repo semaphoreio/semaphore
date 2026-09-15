@@ -363,6 +363,8 @@ blocks:
 
 The time limit for job execution. Defaults to 1 hour. Jobs running longer that the limit are forcibly terminated.
 
+[After-pipeline jobs](#after-pipeline-job) inherit this limit unless they define their own.
+
 <Tabs groupId="editor-yaml">
 <TabItem value="editor" label="Editor">
 
@@ -553,6 +555,8 @@ blocks:
 You can configure jobs to run once a pipeline stops. After pipeline jobs always run, even when jobs are canceled or have failed.
 
 After-pipeline jobs are executed in parallel. Typical use cases for after-pipeline jobs are sending notifications, collecting [test reports](./tests/test-reports), or submitting metrics to an external server.
+
+After-pipeline jobs inherit the pipeline's [execution time limit](#time-limit) unless they set their own. The limit is measured from the moment each after-pipeline job starts, so it is additional to the time the pipeline itself ran. See the [`after_pipeline` reference](../reference/pipeline-yaml#after_pipeline) for details.
 
 You can add after-pipeline jobs using YAML or the editor.
 
@@ -797,7 +801,7 @@ This section describes the limits that Semaphore applies to pipelines. See [job 
 
 ### Global job duration {#max-job-duration}
 
-All jobs in a pipeline have a *1 hour limit*. Jobs exceeding this limit are terminated.
+All jobs in a pipeline have a *1 hour limit*. Jobs exceeding this limit are terminated. This includes [after-pipeline jobs](#after-pipeline-job), which inherit the pipeline's limit unless they set their own.
 
 You can change the limit up to a maximum value of *24 hours*.
 
