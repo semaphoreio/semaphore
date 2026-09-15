@@ -12,25 +12,43 @@ defmodule Zebra.Monitor do
   def count_pending_jobs do
     Logger.info("Submiting pending jobs count")
 
-    count = LegacyRepo.aggregate(Job.pending(), :count, :id)
+    cloud_count = LegacyRepo.aggregate(Job.cloud_pending(), :count, :id)
+    self_hosted_count = LegacyRepo.aggregate(Job.self_hosted_pending(), :count, :id)
+    total = cloud_count + self_hosted_count
 
+    # Keep the pre-existing total series unchanged (internal untagged metric +
+    # external state tag), so existing dashboards/alerts keep measuring the same
+    # thing.
     internal_metric = "monitor.jobs.pending"
     external_metric = {"state", [state: "pending"]}
-    Watchman.submit([internal: internal_metric, external: external_metric], count)
+    Watchman.submit([internal: internal_metric, external: external_metric], total)
 
-    count
+    # Additional per-tier breakdown.
+    Watchman.submit({"monitor.jobs.pending", ["cloud"]}, cloud_count)
+    Watchman.submit({"monitor.jobs.pending", ["self_hosted"]}, self_hosted_count)
+
+    {cloud_count, self_hosted_count}
   end
 
   def count_enqueued_jobs do
     Logger.info("Submiting enqueued jobs count")
 
-    count = LegacyRepo.aggregate(Job.enqueued(), :count, :id)
+    cloud_count = LegacyRepo.aggregate(Job.cloud_enqueued(), :count, :id)
+    self_hosted_count = LegacyRepo.aggregate(Job.self_hosted_enqueued(), :count, :id)
+    total = cloud_count + self_hosted_count
 
+    # Keep the pre-existing total series unchanged (internal untagged metric +
+    # external state tag), so existing dashboards/alerts keep measuring the same
+    # thing.
     internal_metric = "monitor.jobs.enqueued"
     external_metric = {"state", [state: "enqueued"]}
-    Watchman.submit([internal: internal_metric, external: external_metric], count)
+    Watchman.submit([internal: internal_metric, external: external_metric], total)
 
-    count
+    # Additional per-tier breakdown.
+    Watchman.submit({"monitor.jobs.enqueued", ["cloud"]}, cloud_count)
+    Watchman.submit({"monitor.jobs.enqueued", ["self_hosted"]}, self_hosted_count)
+
+    {cloud_count, self_hosted_count}
   end
 
   def count_scheduled_jobs do
