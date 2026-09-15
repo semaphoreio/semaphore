@@ -42,3 +42,19 @@ GHSA-468c-vq7p-gh64
 # service runs scheme: :http on port 4004 behind Ambassador (TLS termination at ingress, HTTP/1.1
 # to backend). Bump blocked by grpc 0.3.1 / cowboy 2.5 — same dep chain as the entries above.
 GHSA-q8x4-x7mp-5vg2
+
+# --- grpc 0.5.0-beta.1 — all first patched in 1.0.0 ---
+# The 1.0 major is a fleet-wide migration, deferred to a dep-bump branch.
+# This service runs no gRPC server at all (no `use GRPC.Server`, no
+# GRPC.Server.Supervisor); it is a gRPC client only. All three advisories are
+# server-side request-handling flaws, so none has an inbound decode path here.
+#
+# RCE via attacker-controlled payloads (erlpack :erlang.binary_to_term): no
+# server, and the codec is not in any default codec list either.
+GHSA-grp7-v8xh-rj7h
+# Unbounded request body accumulation in read_full_body/3: server-side only.
+GHSA-q8gf-9rvj-gmgj
+# Unbounded gzip decompression: server-side for requests; the only client-side
+# exposure would be a compressed response from an internal service this one
+# calls, i.e. an already-compromised internal peer.
+GHSA-6ccx-9c9f-327w

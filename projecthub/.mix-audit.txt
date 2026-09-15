@@ -12,3 +12,48 @@ GHSA-jfc2-q6qh-g5x8
 
 # cowlib 2.11.0 — SPDY decompression bomb in cow_spdy:inflate/2 (unreachable; cowboy 2.x does not serve SPDY)
 GHSA-84f2-rp86-235p
+
+# --- grpc 0.5.0 (via :grpc) — all first patched in 1.0.0 ---
+# The 1.0 major is a fleet-wide migration (codec/stub API changes plus pb
+# regeneration), deferred to a dep-bump branch.
+#
+# RCE via attacker-controlled payloads: the sink is
+# GRPC.Codec.Erlpack.decode/2 (:erlang.binary_to_term). The Cowboy handler
+# picks a codec from the request content-type subtype but only among the
+# codecs registered on that server, and `codecs = opts[:codecs] ||
+# [GRPC.Codec.Proto]` — projecthub registers none, so an
+# application/grpc+erlpack request is rejected with "No codec registered"
+# and binary_to_term is never reached. Not reachable without a code change.
+GHSA-grp7-v8xh-rj7h
+# Unbounded request body accumulation in read_full_body/3 — availability only,
+# and only from an in-cluster caller: the gRPC listener is ClusterIP, no
+# ambassador mapping targets it, so ingress body limits are not in the path.
+GHSA-q8gf-9rvj-gmgj
+# Unbounded gzip decompression (decompression bomb) on request bodies —
+# availability only, same internal-only reach, same 1.0.0 fix.
+GHSA-6ccx-9c9f-327w
+
+# --- protobuf 0.11.0 ---
+# Unbounded recursion depth decoding embedded messages, patched in 0.16.1.
+# projecthub's schemas contain no cyclic message (76 messages, no cycle) and
+# no Any/Struct/Value field, so decode depth is bounded by the schema itself —
+# an attacker cannot nest arbitrarily. Callers are internal services on the
+# cluster network. Bump needs pb regeneration against the 0.16 codegen.
+GHSA-rv48-qqj5-crxg
+
+# --- hackney 1.18.0 — all first patched in 4.0.1 ---
+# 4.x is blocked fleet-wide by httpoison ~> 1.x. projecthub makes no outbound
+# HTTP from lib/ at all (no HTTPoison or :hackney call sites); hackney arrives
+# transitively via sentry/tzdata, whose targets are service-configured.
+GHSA-9fm9-hp7p-53mf
+GHSA-gp9c-pm5m-5cxr
+GHSA-j9wq-vxxc-94wf
+GHSA-mp55-p8c9-rfw2
+GHSA-pj7v-xfvx-wmjq
+GHSA-vq52-99r9-h5pw
+
+# --- decimal 2.0.0 ---
+# Unbounded exponent DoS in Decimal.new, patched in 3.0.0 (transitive via
+# ecto; the bump cascades into an ecto major). No Decimal.new call sites in
+# lib/ — projecthub parses no untrusted decimal strings.
+GHSA-rhv4-8758-jx7v

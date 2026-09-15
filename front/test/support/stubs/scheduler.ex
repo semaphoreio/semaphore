@@ -32,6 +32,8 @@ defmodule Support.Stubs.Scheduler do
       reference: "master",
       at: "10 17 * * 1-5",
       pipeline_file: ".semaphore/semaphore.yml",
+      skip_scheduled_run_notifications: false,
+      skip_manual_run_notifications: false,
       requester_id: user.id,
       updated_at: Time.now() |> Map.take([:seconds, :nanos]),
       suspended: false,
@@ -182,7 +184,8 @@ defmodule Support.Stubs.Scheduler do
         RunNowResponse.new(status: status(:NOT_FOUND))
     end
 
-    @modifiable_fields ~w(name description recurring reference pipeline_file at parameters)a
+    @modifiable_fields ~w(name description recurring reference pipeline_file at parameters
+                          skip_scheduled_run_notifications skip_manual_run_notifications)a
 
     def persist(req, _) do
       require Logger

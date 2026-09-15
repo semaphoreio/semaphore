@@ -635,7 +635,9 @@ defmodule Projecthub.HttpApi.Test do
                      ],
                      "pipeline_file" => ".semaphore/semaphore.yml",
                      "scheduled" => false,
-                     "status" => "ACTIVE"
+                     "status" => "ACTIVE",
+                     "skip_scheduled_run_notifications" => false,
+                     "skip_manual_run_notifications" => false
                    }
                  ],
                  "visibility" => "private",
@@ -931,7 +933,9 @@ defmodule Projecthub.HttpApi.Test do
                 ],
                 "pipeline_file" => ".semaphore/semaphore.yml",
                 "scheduled" => false,
-                "status" => "ACTIVE"
+                "status" => "ACTIVE",
+                "skip_scheduled_run_notifications" => false,
+                "skip_manual_run_notifications" => false
               }
             ],
             "visibility" => "public",
@@ -997,7 +1001,9 @@ defmodule Projecthub.HttpApi.Test do
                      ],
                      "pipeline_file" => ".semaphore/semaphore.yml",
                      "scheduled" => false,
-                     "status" => "ACTIVE"
+                     "status" => "ACTIVE",
+                     "skip_scheduled_run_notifications" => false,
+                     "skip_manual_run_notifications" => false
                    }
                  ],
                  "visibility" => "public",
@@ -1153,6 +1159,176 @@ defmodule Projecthub.HttpApi.Test do
       :ok
     end
 
+    test "a task update that omits the notification flags keeps the stored values" do
+      test_pid = self()
+
+      # the project as it stands: one task with scheduled-run notifications off
+      FunRegistry.set!(FakeServices.ProjectService, :describe, fn _req, _ ->
+        alias InternalApi.Projecthub, as: PH
+
+        PH.DescribeResponse.new(
+          metadata:
+            PH.ResponseMeta.new(
+              status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:OK))
+            ),
+          project:
+            PH.Project.new(
+              metadata: PH.Project.Metadata.new(id: @project_id, name: "trello"),
+              spec:
+                PH.Project.Spec.new(
+                  tasks: [
+                    PH.Project.Spec.Task.new(
+                      id: @task_id,
+                      name: "scheduler1",
+                      skip_scheduled_run_notifications: true,
+                      skip_manual_run_notifications: false
+                    )
+                  ]
+                )
+            )
+        )
+      end)
+
+      FunRegistry.set!(FakeServices.ProjectService, :update, fn req, _ ->
+        alias InternalApi.Projecthub, as: PH
+
+        send(test_pid, {:updated_tasks, req.project.spec.tasks})
+
+        PH.UpdateResponse.new(
+          metadata:
+            PH.ResponseMeta.new(
+              status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:OK))
+            ),
+          project:
+            PH.Project.new(
+              metadata: PH.Project.Metadata.new(id: @project_id, name: "trello"),
+              spec: req.project.spec
+            )
+        )
+      end)
+
+      restrict_org!()
+
+      resource =
+        Poison.encode!(%{
+          "metadata" => %{"name" => "trello", "id" => @project_id},
+          "spec" => %{
+            "repository" => %{
+              "url" => "git@github.com/shiroyasha/test.git",
+              "forked_pull_requests" => %{"allowed_secrets" => []},
+              "pipeline_file" => ""
+            },
+            "tasks" => [
+              # no skip_* keys at all - the shape of a hand-written or
+              # pre-feature project YAML
+              %{
+                "name" => "scheduler1",
+                "id" => @task_id,
+                "branch" => "master",
+                "scheduled" => true,
+                "at" => "0 * * * *",
+                "pipeline_file" => ".semaphore/cron1.yml",
+                "status" => "ACTIVE"
+              }
+            ]
+          }
+        })
+
+      {:ok, _response} =
+        HTTPoison.patch(
+          "http://localhost:#{@port}/api/#{@version}/projects/#{@project_id}",
+          resource,
+          @headers
+        )
+
+      assert_received {:updated_tasks, [task]}
+      assert task.skip_scheduled_run_notifications == true
+      assert task.skip_manual_run_notifications == false
+    end
+
+    test "an explicit false clears a stored notification flag" do
+      test_pid = self()
+
+      FunRegistry.set!(FakeServices.ProjectService, :describe, fn _req, _ ->
+        alias InternalApi.Projecthub, as: PH
+
+        PH.DescribeResponse.new(
+          metadata:
+            PH.ResponseMeta.new(
+              status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:OK))
+            ),
+          project:
+            PH.Project.new(
+              metadata: PH.Project.Metadata.new(id: @project_id, name: "trello"),
+              spec:
+                PH.Project.Spec.new(
+                  tasks: [
+                    PH.Project.Spec.Task.new(
+                      id: @task_id,
+                      name: "scheduler1",
+                      skip_scheduled_run_notifications: true
+                    )
+                  ]
+                )
+            )
+        )
+      end)
+
+      FunRegistry.set!(FakeServices.ProjectService, :update, fn req, _ ->
+        alias InternalApi.Projecthub, as: PH
+
+        send(test_pid, {:updated_tasks, req.project.spec.tasks})
+
+        PH.UpdateResponse.new(
+          metadata:
+            PH.ResponseMeta.new(
+              status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:OK))
+            ),
+          project:
+            PH.Project.new(
+              metadata: PH.Project.Metadata.new(id: @project_id, name: "trello"),
+              spec: req.project.spec
+            )
+        )
+      end)
+
+      restrict_org!()
+
+      resource =
+        Poison.encode!(%{
+          "metadata" => %{"name" => "trello", "id" => @project_id},
+          "spec" => %{
+            "repository" => %{
+              "url" => "git@github.com/shiroyasha/test.git",
+              "forked_pull_requests" => %{"allowed_secrets" => []},
+              "pipeline_file" => ""
+            },
+            "tasks" => [
+              %{
+                "name" => "scheduler1",
+                "id" => @task_id,
+                "branch" => "master",
+                "scheduled" => true,
+                "at" => "0 * * * *",
+                "pipeline_file" => ".semaphore/cron1.yml",
+                "status" => "ACTIVE",
+                "skip_scheduled_run_notifications" => false
+              }
+            ]
+          }
+        })
+
+      {:ok, _response} =
+        HTTPoison.patch(
+          "http://localhost:#{@port}/api/#{@version}/projects/#{@project_id}",
+          resource,
+          @headers
+        )
+
+      assert_received {:updated_tasks, [task]}
+      assert task.skip_scheduled_run_notifications == false
+    end
+
     test "when project update with tasks succeds => returns 200" do
       FunRegistry.set!(FakeServices.ProjectService, :update, fn req, _ ->
         alias InternalApi.Projecthub, as: PH
@@ -1204,6 +1380,8 @@ defmodule Projecthub.HttpApi.Test do
                 "description" => "description",
                 "branch" => "master",
                 "scheduled" => true,
+                "skip_scheduled_run_notifications" => true,
+                "skip_manual_run_notifications" => false,
                 "at" => "0 * * * *",
                 "pipeline_file" => ".semaphore/cron1.yml",
                 "status" => "INACTIVE"
@@ -1212,6 +1390,8 @@ defmodule Projecthub.HttpApi.Test do
                 "name" => "scheduler2",
                 "id" => @task_id,
                 "scheduled" => false,
+                "skip_scheduled_run_notifications" => false,
+                "skip_manual_run_notifications" => false,
                 "branch" => "",
                 "at" => "",
                 "pipeline_file" => "",
@@ -1280,6 +1460,8 @@ defmodule Projecthub.HttpApi.Test do
                      "description" => "description",
                      "branch" => "master",
                      "scheduled" => true,
+                     "skip_scheduled_run_notifications" => true,
+                     "skip_manual_run_notifications" => false,
                      "at" => "0 * * * *",
                      "pipeline_file" => ".semaphore/cron1.yml",
                      "status" => "INACTIVE",
@@ -1290,6 +1472,8 @@ defmodule Projecthub.HttpApi.Test do
                      "id" => @task_id,
                      "description" => "",
                      "scheduled" => false,
+                     "skip_scheduled_run_notifications" => false,
+                     "skip_manual_run_notifications" => false,
                      "branch" => "",
                      "at" => "",
                      "pipeline_file" => "",
@@ -1373,6 +1557,8 @@ defmodule Projecthub.HttpApi.Test do
                 "name" => "Rubocop",
                 "id" => @task_id,
                 "scheduled" => false,
+                "skip_scheduled_run_notifications" => false,
+                "skip_manual_run_notifications" => false,
                 "branch" => "main",
                 "pipeline_file" => ".semaphore/rubocop.yml",
                 "status" => "INACTIVE",

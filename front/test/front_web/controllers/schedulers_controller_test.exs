@@ -351,6 +351,54 @@ defmodule FrontWeb.SchedulersControllerTest do
       assert html_response(conn, 200) =~ "Task History"
     end
 
+    test "the commit status row names the silenced triggers, and is absent when none are",
+         %{conn: conn, project_name: project_name} do
+      project = DB.first(:projects)
+      user = DB.first(:users)
+
+      show = fn scheduler ->
+        conn
+        |> get(schedulers_path(conn, :show, project_name, scheduler.id))
+        |> html_response(200)
+      end
+
+      both =
+        Support.Stubs.Scheduler.create(project, user,
+          name: "both silenced",
+          skip_scheduled_run_notifications: true,
+          skip_manual_run_notifications: true
+        )
+
+      body = show.(both)
+      assert body =~ "Commit statuses:"
+      assert body =~ "scheduled runs or"
+
+      scheduled_only =
+        Support.Stubs.Scheduler.create(project, user,
+          name: "scheduled silenced",
+          skip_scheduled_run_notifications: true
+        )
+
+      body = show.(scheduled_only)
+      assert body =~ "Commit statuses:"
+      assert body =~ "scheduled runs."
+      refute body =~ "scheduled runs or"
+
+      manual_only =
+        Support.Stubs.Scheduler.create(project, user,
+          name: "manual silenced",
+          skip_manual_run_notifications: true
+        )
+
+      body = show.(manual_only)
+      assert body =~ "Commit statuses:"
+      refute body =~ "scheduled runs"
+
+      neither = Support.Stubs.Scheduler.create(project, user, name: "nothing silenced")
+
+      refute show.(neither) =~ "Commit statuses:"
+    end
+
     test "when project doesn't match the scheduler, it renders 404",
          %{other_project_name: project_name, scheduler_id: scheduler_id} do
       conn =
@@ -535,6 +583,57 @@ defmodule FrontWeb.SchedulersControllerTest do
       assert redirected_to(conn) == schedulers_path(conn, :index, project_name)
       assert get_flash(conn, :notice) == "Schedule created."
       refute html_response(conn, 302) =~ "Blazing-fast build and deploy!"
+    end
+
+    test "a checked box persists the matching notification skip flag", %{
+      project_name: project_name
+    } do
+      params =
+        Map.merge(@raw_scheduler_form_params, %{
+          skip_scheduled_run_notifications: "true",
+          skip_manual_run_notifications: "false"
+        })
+
+      with_mocks([
+        {
+          Front.Models.Scheduler,
+          [:passthrough],
+          [
+            persist: fn form_data, context ->
+              send(self(), {:persisted, form_data})
+              :meck.passthrough([form_data, context])
+            end
+          ]
+        }
+      ]) do
+        build_conn() |> post(schedulers_path(build_conn(), :create, project_name), params)
+
+        assert_received {:persisted, form_data}
+        assert form_data.skip_scheduled_run_notifications == true
+        assert form_data.skip_manual_run_notifications == false
+      end
+    end
+
+    test "an absent box persists as false", %{project_name: project_name} do
+      with_mocks([
+        {
+          Front.Models.Scheduler,
+          [:passthrough],
+          [
+            persist: fn form_data, context ->
+              send(self(), {:persisted, form_data})
+              :meck.passthrough([form_data, context])
+            end
+          ]
+        }
+      ]) do
+        build_conn()
+        |> post(schedulers_path(build_conn(), :create, project_name), @raw_scheduler_form_params)
+
+        assert_received {:persisted, form_data}
+        assert form_data.skip_scheduled_run_notifications == false
+        assert form_data.skip_manual_run_notifications == false
+      end
     end
 
     test "when apply request fails with an error, it returns 422, displays the new scheduler page with entered params and alerts",

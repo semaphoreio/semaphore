@@ -118,7 +118,12 @@ defmodule Support.Factories do
             done_at: %Google.Protobuf.Timestamp{nanos: 0, seconds: 0},
             wf_id: "3",
             yaml_file_name: yaml_file_name,
-            working_directory: working_directory
+            working_directory: working_directory,
+            triggerer:
+              struct(InternalApi.Plumber.Triggerer,
+                wf_triggered_by: Keyword.get(opts, :triggered_by, :HOOK),
+                wf_triggerer_id: Keyword.get(opts, :wf_triggerer_id, "")
+              )
           ),
         blocks: [
           struct(InternalApi.Plumber.Block,
@@ -198,6 +203,26 @@ defmodule Support.Factories do
       |> then(&struct(InternalApi.Projecthub.Project.Spec, &1))
 
     struct(InternalApi.Projecthub.Project, metadata: meta, spec: spec)
+  end
+
+  def periodic_describe_response(opts \\ []) do
+    struct(InternalApi.PeriodicScheduler.DescribeResponse,
+      status: struct(InternalApi.Status, code: :OK),
+      periodic:
+        struct(InternalApi.PeriodicScheduler.Periodic,
+          id: Keyword.get(opts, :id, "task-1"),
+          name: "nightly",
+          skip_scheduled_run_notifications:
+            Keyword.get(opts, :skip_scheduled_run_notifications, false),
+          skip_manual_run_notifications: Keyword.get(opts, :skip_manual_run_notifications, false)
+        )
+    )
+  end
+
+  def periodic_not_found_response do
+    struct(InternalApi.PeriodicScheduler.DescribeResponse,
+      status: struct(InternalApi.Status, code: :NOT_FOUND, message: "periodic not found")
+    )
   end
 
   def response_meta(code \\ :OK) do
