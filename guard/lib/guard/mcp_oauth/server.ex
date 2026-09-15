@@ -300,10 +300,15 @@ defmodule Guard.McpOAuth.Server do
   end
 
   defp oidc_session_identity(conn) do
+    # valid_for_auth?/1 gates on BOTH expiry and a present refresh token. The MCP
+    # flow consumes the session as identity but never refreshes it, so a revoked
+    # session (refresh_token_enc nulled, expires_at still in the future) must be
+    # rejected here exactly as Guard.GrpcServers.AuthServer.process_session/3
+    # rejects it. Sharing the predicate keeps the two from drifting.
     with session_id when is_binary(session_id) and session_id != "" <-
            get_session(conn, "oidc_session_id"),
          {:ok, session} <- Guard.Store.OIDCSession.get(session_id),
-         false <- Guard.Store.OIDCSession.expired?(session) do
+         true <- Guard.Store.OIDCSession.valid_for_auth?(session) do
       {:ok, {:id, session.user_id}}
     else
       _ -> :error
