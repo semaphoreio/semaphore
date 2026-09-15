@@ -430,6 +430,21 @@ The `<service>` argument is one of the following:
 
 The `<version>` argument depends on the kind of service being started. You can run `sem-service help` to see all available services and versions.
 
+### OpenSearch credentials {#sem-service-opensearch}
+
+When starting OpenSearch with `sem-service`, the service is exposed on port `9200` and uses the default admin user:
+
+For versions 3 and above:
+- Username: `admin`
+- Password: `Semaphore123!`
+
+For versions below 3:
+- Username: `admin`
+- Password: `admin`
+
+For example, when running `sem-service start opensearch 3.5.0`, OpenSearch is accessible at `0.0.0.0:9200`.
+
+
 ### Options for MySQL and PostgreSQL {#sem-service-options}
 
 When starting `mysql` or `postgres` services you can provide the following optional arguments:
