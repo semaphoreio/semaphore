@@ -600,6 +600,38 @@ defmodule Guard.McpOAuth.Server.Test do
       refute location =~ @redirect_uri
     end
 
+    test "a revoked OIDC session (refresh token nulled) is not authenticated and gets no code", %{
+      user_id: user_id
+    } do
+      session = create_oidc_session(user_id)
+
+      # Revocation as production records it (Guard.Store.OIDCSession.remove_refresh_token/1):
+      # the refresh token is nulled, expires_at is left in the future. This is how
+      # "sign out everywhere" and the refresh-resolved-to-a-different-user path
+      # revoke a session. AuthServer rejects it; the MCP flow must too.
+      {:ok, _} = Guard.Store.OIDCSession.remove_refresh_token(session)
+      {:ok, revoked} = Guard.Store.OIDCSession.get(session.id)
+      # Guard against a false pass: the session is genuinely NOT expired, so this
+      # exercises the refresh-token check, not the expiry check.
+      refute Guard.Store.OIDCSession.expired?(revoked)
+
+      client = create_test_client()
+      query = authorize_query(client.client_id)
+
+      {:ok, response} =
+        HTTPoison.get(
+          mcp_oauth_url("/authorize#{query}"),
+          [session_cookie_header(session) | default_headers()],
+          follow_redirect: false
+        )
+
+      assert response.status_code == 302
+      location = get_header(response, "location")
+      assert location =~ "/login"
+      refute location =~ "code="
+      refute location =~ @redirect_uri
+    end
+
     test "missing client_id returns error" do
       code_challenge = PKCE.compute_challenge(@code_verifier)
 
