@@ -2,7 +2,7 @@ defmodule Support.Rbac do
   alias Rbac.RoleBindingIdentification, as: RBI
   alias Rbac.RoleManagement
 
-  @member_permissions ["organization.view"]
+  @member_permissions ["organization.view", "organization.activity_monitor.view"]
   @org_admin_permissions @member_permissions ++ ["organization.general_settings.manage"]
   @owner_permissions @org_admin_permissions ++ ["organization.delete"]
   @billing_admin_permissions ["organization.billing.manage"]

@@ -21,7 +21,12 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
   @org_id UUID.generate()
   @project_id UUID.generate()
   @requester_id UUID.generate()
-  @org_admin_permissions ["organization.general_settings.manage", "organization.view"]
+  @requester_cache_key "user:#{@requester_id}_org:*_project:*"
+  @org_admin_permissions [
+    "organization.activity_monitor.view",
+    "organization.general_settings.manage",
+    "organization.view"
+  ]
   @proj_reader_permissions ["project.view"]
 
   setup state do
@@ -143,7 +148,7 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
   end
 
   # The following values have been taken from the Support.Rbac module used for initializing data for the tests
-  @no_of_org_permissions 4
+  @no_of_org_permissions 5
   @no_of_project_permissions 6
   describe "list_existing_permissions" do
     alias InternalApi.RBAC.ListExistingPermissionsRequest, as: Request
@@ -321,6 +326,169 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
       {:error, err} = state.grpc_channel |> Stub.assign_role(req)
 
       assert err.status == GRPC.Status.permission_denied()
+    end
+
+    test "organization Owner role is assigned when requester holds insider.owners.manage globally",
+         state do
+      replace_requester_permissions("organization.people.manage,insider.owners.manage")
+
+      {:ok, owner_role} = Rbac.Repo.RbacRole.get_role_by_name("Owner", "org_scope", @org_id)
+      req = gen_assign_role_req(@user_id, owner_role.id, @org_id)
+
+      {:ok, _} = state.grpc_channel |> Stub.assign_role(req)
+      assert_org_role_binding(@user_id, owner_role.id)
+    end
+
+    test "demoting a current Owner is allowed when requester holds insider.owners.manage globally",
+         state do
+      Support.Rbac.assign_org_role_by_name(@org_id, @user_id, "Owner")
+
+      permissions = grant_requester_global_owner_manager_role()
+      refute Enum.member?(permissions, "organization.change_owner")
+
+      {:ok, member_role} = Rbac.Repo.RbacRole.get_role_by_name("Member", "org_scope", @org_id)
+
+      member_grants =
+        Rbac.Repo.RbacRole.get_role_by_id(member_role.id).permissions |> Enum.map(& &1.name)
+
+      # The requester holds none of the permissions the Member role grants, so the assignment
+      # can only succeed because an org-level owner change skips the held-permissions check.
+      assert member_grants != []
+      refute Enum.any?(member_grants, &Enum.member?(permissions, &1))
+
+      req = gen_assign_role_req(@user_id, member_role.id, @org_id)
+
+      {:ok, _} = state.grpc_channel |> Stub.assign_role(req)
+      assert_org_role_binding(@user_id, member_role.id)
+    end
+
+    test "organization Owner role is rejected when global binding lacks insider.owners.manage",
+         state do
+      replace_requester_permissions("organization.people.manage,insider.global_roles.manage")
+
+      {:ok, owner_role} = Rbac.Repo.RbacRole.get_role_by_name("Owner", "org_scope", @org_id)
+      req = gen_assign_role_req(@user_id, owner_role.id, @org_id)
+
+      {:error, err} = state.grpc_channel |> Stub.assign_role(req)
+      assert err.status == GRPC.Status.permission_denied()
+    end
+
+    test "organization Owner role is assigned when a global insider role grants insider.owners.manage",
+         state do
+      # The requester's permissions are computed from a real global role binding instead of
+      # being written to the cache by hand, which is what proves insider.owners.manage ends
+      # up on the global (user-only) cache key.
+      permissions = grant_requester_global_owner_manager_role()
+
+      assert Enum.member?(permissions, "insider.owners.manage")
+      refute Enum.member?(permissions, "organization.change_owner")
+
+      {:ok, owner_role} = Rbac.Repo.RbacRole.get_role_by_name("Owner", "org_scope", @org_id)
+      req = gen_assign_role_req(@user_id, owner_role.id, @org_id)
+
+      {:ok, _} = state.grpc_channel |> Stub.assign_role(req)
+      assert_org_role_binding(@user_id, owner_role.id)
+    end
+
+    test "insider.owners.manage granted inside the organization does not pass the owner gate",
+         state do
+      # The bypass is global authority only: it must read the nil-uuid (user-only) cache key,
+      # never the requester's in-org permissions.
+      replace_requester_permissions("organization.people.manage")
+
+      %Rbac.Repo.UserPermissionsKeyValueStore{
+        key: "user:#{@requester_id}_org:#{@org_id}_project:*",
+        value: "organization.people.manage,insider.owners.manage"
+      }
+      |> Rbac.Repo.insert()
+
+      {:ok, owner_role} = Rbac.Repo.RbacRole.get_role_by_name("Owner", "org_scope", @org_id)
+      req = gen_assign_role_req(@user_id, owner_role.id, @org_id)
+
+      {:error, err} = state.grpc_channel |> Stub.assign_role(req)
+      assert err.status == GRPC.Status.permission_denied()
+    end
+
+    test "a permission merely prefixed by insider.owners.manage does not pass the owner gate",
+         state do
+      replace_requester_permissions("organization.people.manage,insider.owners.manage.view")
+
+      {:ok, owner_role} = Rbac.Repo.RbacRole.get_role_by_name("Owner", "org_scope", @org_id)
+      req = gen_assign_role_req(@user_id, owner_role.id, @org_id)
+
+      {:error, err} = state.grpc_channel |> Stub.assign_role(req)
+      assert err.status == GRPC.Status.permission_denied()
+    end
+
+    test "the Owner role grants every organization-scope permission" do
+      # assign_role skips the held-permissions check for an org-level owner change on the
+      # strength of this invariant. Only org-scope permissions are compared: org_scope Admin
+      # also lists project.delete, which Owner reaches through its maps_to project role.
+      {:ok, roles_yaml} = YamlElixir.read_from_file("./assets/roles.yaml")
+      {:ok, permissions_yaml} = YamlElixir.read_from_file("./assets/permissions.yaml")
+
+      org_permissions =
+        permissions_yaml["permissions"]["organization"] |> Enum.map(& &1["name"]) |> MapSet.new()
+
+      org_roles = roles_yaml["roles"]["org_scope"]
+      owner = Enum.find(org_roles, &(&1["name"] == "Owner"))
+      owner_permissions = MapSet.new(owner["permissions"])
+
+      assert MapSet.subset?(org_permissions, owner_permissions),
+             "Owner is missing org-scope permissions: " <>
+               inspect(MapSet.difference(org_permissions, owner_permissions))
+
+      for role <- org_roles, role["name"] != "Owner" do
+        extra =
+          role["permissions"]
+          |> MapSet.new()
+          |> MapSet.intersection(org_permissions)
+          |> MapSet.difference(owner_permissions)
+
+        assert MapSet.equal?(extra, MapSet.new()),
+               "#{role["name"]} grants org-scope permissions Owner does not: #{inspect(extra)}"
+      end
+    end
+
+    test "a project role named Owner runs the held-permissions check", state do
+      # owner_role?/1 matches on name alone, so a project-scope role named "Owner" trips the
+      # owner gate as well. The held-permissions skip covers org-level owner changes only, so
+      # this assignment must still prove the requester holds what the role grants.
+      register_project_api_response()
+      Support.Rbac.assign_org_role_by_name(@org_id, @user_id, "Member")
+      role = create_project_owner_role("project.delete")
+
+      # Passes the base authorize!/3 and the owner gate, but withholds project.delete.
+      replace_requester_permissions("project.access.manage,organization.change_owner")
+
+      req = gen_assign_role_req(@user_id, role.id, @org_id, @project_id)
+
+      {:error, err} = state.grpc_channel |> Stub.assign_role(req)
+      assert err.status == GRPC.Status.permission_denied()
+
+      assert err.message ==
+               "Cannot assign a role granting permissions you do not hold: project.delete"
+    end
+
+    test "a project role named Owner is assigned once the requester holds its permissions",
+         state do
+      register_project_api_response()
+      Support.Rbac.assign_org_role_by_name(@org_id, @user_id, "Member")
+      role = create_project_owner_role("project.delete")
+
+      replace_requester_permissions(
+        "project.access.manage,organization.change_owner,project.delete"
+      )
+
+      req = gen_assign_role_req(@user_id, role.id, @org_id, @project_id)
+
+      {:ok, _} = state.grpc_channel |> Stub.assign_role(req)
+
+      assert Rbac.Repo.aggregate(
+               Rbac.Repo.SubjectRoleBinding |> where([srb], srb.role_id == ^role.id),
+               :count,
+               :id
+             ) == 1
     end
 
     test "built-in Admin role is rejected when requester is unauthorized (holds fewer permissions)",
@@ -1305,12 +1473,97 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
   # Role-management permissions plus the content permissions of every seeded org/project
   # role (see Support.Rbac). The held-permissions check requires the requester to hold every
   # permission granted by the role being assigned, so "all permissions" must include those.
-  @permissions "insider.global_roles.manage,organization.people.manage,project.access.manage,organization.custom_roles.manage,organization.change_owner,organization.view,organization.general_settings.manage,organization.delete,organization.billing.manage,project.view,project.workflow.manage,project.scheduler.view,project.job.rerun,project.general_settings.manage,project.delete"
-  defp give_all_permissions do
-    alias Rbac.Repo
-    key = "user:#{@requester_id}_org:*_project:*"
+  @permissions "insider.global_roles.manage,organization.people.manage,project.access.manage,organization.custom_roles.manage,organization.change_owner,organization.view,organization.activity_monitor.view,organization.general_settings.manage,organization.delete,organization.billing.manage,project.view,project.workflow.manage,project.scheduler.view,project.job.rerun,project.general_settings.manage,project.delete"
+  defp give_all_permissions, do: replace_requester_permissions(@permissions)
 
-    %Repo.UserPermissionsKeyValueStore{key: key, value: @permissions} |> Repo.insert()
+  # setup/1 gives the requester every permission, including organization.change_owner. Tests
+  # that need a narrower requester overwrite that global cache entry.
+  defp replace_requester_permissions(permissions) do
+    %Rbac.Repo.UserPermissionsKeyValueStore{key: @requester_cache_key, value: permissions}
+    |> Rbac.Repo.insert(on_conflict: {:replace, [:value]}, conflict_target: :key)
+  end
+
+  # Gives the requester the authority a global owner-manager has in production: a real
+  # insider-scope role binding on the nil-uuid org, so their permissions are computed onto
+  # the global (user-only) cache key rather than written there by hand. Returns the
+  # permissions that binding resolves to.
+  defp grant_requester_global_owner_manager_role do
+    nil_uuid = Rbac.Utils.Common.nil_uuid()
+
+    Support.Factories.RbacUser.insert(@requester_id, "Insider User")
+    {:ok, insider_scope} = Support.Factories.Scope.insert("insider_scope")
+    org_scope = Rbac.Repo.Scope.get_scope_by_name("org_scope")
+
+    {:ok, owners_permission} =
+      Support.Factories.Permission.insert(
+        name: "insider.owners.manage",
+        scope_id: insider_scope.id
+      )
+
+    {:ok, people_permission} =
+      Support.Factories.Permission.insert(
+        name: "organization.people.manage",
+        scope_id: org_scope.id
+      )
+
+    {:ok, insider_role} =
+      Support.Factories.RbacRole.insert(
+        name: "OwnerManager",
+        org_id: nil_uuid,
+        scope_id: insider_scope.id
+      )
+
+    Support.Factories.RolePermissionBinding.insert(
+      rbac_role_id: insider_role.id,
+      permission_id: owners_permission.id
+    )
+
+    Support.Factories.RolePermissionBinding.insert(
+      rbac_role_id: insider_role.id,
+      permission_id: people_permission.id
+    )
+
+    # Drop the cache row setup/1 wrote, so the permissions below come from the real binding.
+    replace_requester_permissions("")
+
+    {:ok, requester_rbi} =
+      Rbac.RoleBindingIdentification.new(user_id: @requester_id, org_id: nil_uuid)
+
+    {:ok, nil} =
+      Rbac.RoleManagement.assign_role(requester_rbi, insider_role.id, :manually_assigned)
+
+    Rbac.Store.UserPermissions.read_user_permissions(requester_rbi) |> String.split(",")
+  end
+
+  # A custom project-scope role named "Owner", granting one permission the fixture already
+  # created. Support.Rbac seeds no project role by that name, so it has to be built here.
+  defp create_project_owner_role(permission_name) do
+    project_scope = Rbac.Repo.Scope.get_scope_by_name("project_scope")
+
+    {:ok, role} =
+      Support.Factories.RbacRole.insert(
+        name: "Owner",
+        org_id: @org_id,
+        scope_id: project_scope.id
+      )
+
+    Support.Factories.RolePermissionBinding.insert(
+      rbac_role_id: role.id,
+      permission_id: Rbac.Repo.Permission.get_permission_id(permission_name)
+    )
+
+    role
+  end
+
+  # Mirrors how the other assign_role tests verify their outcome: the subject ends up with
+  # exactly one organization-level binding, for the role that was assigned.
+  defp assert_org_role_binding(subject_id, role_id) do
+    query =
+      Rbac.Repo.SubjectRoleBinding
+      |> where([srb], srb.subject_id == ^subject_id and is_nil(srb.project_id))
+
+    assert Rbac.Repo.aggregate(query, :count, :id) == 1
+    assert Rbac.Repo.one(query).role_id == role_id
   end
 
   defp gen_assign_role_req(subject_id, role_id, org_id, project_id \\ "") do
