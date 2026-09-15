@@ -111,9 +111,11 @@ Each parameter has the following properties:
 
 ### custom_permissions {#custom-permissions-in-spec}
 
+<Available plans={['The Plan']}/>
+
 :::note
 
-`custom_permissions`, `debug_permissions`, and `attach_permissions` control [debug session and attach restrictions](../using-semaphore/jobs#restrict-ssh-access), a feature that must be enabled for your organization. To have it enabled, contact us at support@semaphore.io.
+`custom_permissions`, `debug_permissions`, and `attach_permissions` control [debug session and attach restrictions](../using-semaphore/jobs#restrict-ssh-access).
 
 :::
 

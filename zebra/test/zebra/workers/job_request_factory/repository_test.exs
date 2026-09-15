@@ -26,17 +26,7 @@ defmodule Zebra.Workers.JobRequestFactory.RepositoryTest do
 
   describe ".find" do
     test "uses repository api" do
-      GrpcMock.stub(Support.FakeServers.RepositoryApi, :describe, fn _, _ ->
-        InternalApi.Repository.DescribeResponse.new(
-          repository:
-            InternalApi.Repository.Repository.new(
-              name: "zebra2",
-              url: "git@bitbucket.org:test-org/test-repo.git",
-              provider: "github"
-            ),
-          private_ssh_key: @private_ssh_key
-        )
-      end)
+      stub_describe(default_branch: "main")
 
       repository =
         {:ok,
@@ -44,10 +34,16 @@ defmodule Zebra.Workers.JobRequestFactory.RepositoryTest do
            name: "zebra2",
            url: "git@bitbucket.org:test-org/test-repo.git",
            provider: "github",
-           default_branch: "master"
+           default_branch: "main"
          }, "--BEGIN....lalalala..private_key...END---"}
 
       assert repository == Repository.find(@project.spec.repository.id)
+    end
+
+    test "falls back to master when the default branch is empty" do
+      stub_describe(default_branch: "")
+
+      assert {:ok, %{default_branch: "master"}, _} = Repository.find(@project.spec.repository.id)
     end
   end
 
@@ -85,6 +81,16 @@ defmodule Zebra.Workers.JobRequestFactory.RepositoryTest do
                  "value" => Base.encode64("HEAD")
                }
              ]
+    end
+
+    test "when there is no repo_proxy for project debug job on a repository defaulting to main" do
+      repository = %{@repository | default_branch: "main"}
+
+      {:ok, envs} = Repository.env_vars(repository, nil, :project_debug_job)
+
+      assert %{"name" => "SEMAPHORE_GIT_BRANCH", "value" => Base.encode64("main")} in envs
+
+      assert %{"name" => "SEMAPHORE_GIT_WORKING_BRANCH", "value" => Base.encode64("main")} in envs
     end
 
     test "when build this is a branch build" do
@@ -329,5 +335,20 @@ defmodule Zebra.Workers.JobRequestFactory.RepositoryTest do
                }
              ]
     end
+  end
+
+  defp stub_describe(default_branch: default_branch) do
+    GrpcMock.stub(Support.FakeServers.RepositoryApi, :describe, fn _, _ ->
+      InternalApi.Repository.DescribeResponse.new(
+        repository:
+          InternalApi.Repository.Repository.new(
+            name: "zebra2",
+            url: "git@bitbucket.org:test-org/test-repo.git",
+            provider: "github",
+            default_branch: default_branch
+          ),
+        private_ssh_key: @private_ssh_key
+      )
+    end)
   end
 end

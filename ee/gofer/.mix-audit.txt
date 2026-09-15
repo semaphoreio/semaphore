@@ -1,0 +1,32 @@
+# Gofer serves internal gRPC only (no public HTTP surface); cowboy/cowlib are pulled in
+# via grpc/plug tooling and none of the affected code paths handle user-controlled input
+# directly. Dependency bumps are tracked for the fleet-wide dep-bump branch.
+
+# cowboy 2.9.0 — multipart header parsing DoS, fixed in 2.15.0 (unreachable; no Plug.Parsers,
+# no multipart endpoints — gRPC over HTTP/2 only)
+GHSA-jfc2-q6qh-g5x8
+
+# cowlib 2.11.0 — cow_http_te DoS via excessive allocation (gRPC over HTTP/2; cow_http_te unreachable)
+GHSA-32p9-57cr-4x65
+
+# cowlib 2.11.0 — SPDY decompression bomb in cow_spdy:inflate/2 (cowboy 2.x does not serve SPDY)
+GHSA-84f2-rp86-235p
+
+# cowlib 2.11.0 — cookie header injection in cow_cookie:cookie/1 (gofer does not set cookies)
+GHSA-g2wm-735q-3f56
+
+# cowlib 2.11.0 — SSE CRLF injection (gofer does not expose SSE)
+GHSA-hv23-4qp7-8c8r
+
+# decimal 2.0.0 — unbounded exponent DoS in Decimal.new, fixed in 3.0.0 (no user-supplied
+# decimal input; decimal is a transitive ecto/postgrex dependency)
+GHSA-rhv4-8758-jx7v
+
+# postgrex 0.16.3 — channel-name SQL injection in Postgrex.Notifications.listen/3
+# (gofer does not call Postgrex.Notifications; bumping past 0.16.x cascades into an
+# ecto bump that is out of scope here)
+GHSA-r73h-97w8-m54h
+
+# protobuf 0.10.0 — unbounded recursion depth in embedded-message decoding, fixed in 0.16.1
+# (gofer only decodes internal-service traffic; bump tracked in the dedicated dependency PR)
+GHSA-rv48-qqj5-crxg

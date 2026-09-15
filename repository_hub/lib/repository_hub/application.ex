@@ -17,6 +17,9 @@ defmodule RepositoryHub.Application do
     remote_id_sync_worker_enabled = Keyword.get(remote_id_sync_worker, :enabled, false)
     remote_id_sync_worker_opts = Keyword.delete(remote_id_sync_worker, :enabled)
 
+    guard_cleanup_worker = Application.get_env(:repository_hub, RepositoryHub.BuildStatusGuardCleanupWorker, [])
+    guard_cleanup_worker_enabled = Keyword.get(guard_cleanup_worker, :enabled, false)
+
     children =
       filter_enabled([
         {{Task.Supervisor, name: RepositoryHub.SentryEventSupervisor}, true},
@@ -24,7 +27,8 @@ defmodule RepositoryHub.Application do
         {{RepositoryHub.MaxStatusesCache, []}, true},
         {{GRPC.Server.Supervisor, endpoint: RepositoryHub.Server.Endpoint, port: grpc_port, start_server: true}, true},
         {{RepositoryHub.RemoteRepositoryChangedConsumer, []}, true},
-        {{RepositoryHub.RemoteIdSyncWorker, remote_id_sync_worker_opts}, remote_id_sync_worker_enabled}
+        {{RepositoryHub.RemoteIdSyncWorker, remote_id_sync_worker_opts}, remote_id_sync_worker_enabled},
+        {{RepositoryHub.BuildStatusGuardCleanupWorker, []}, guard_cleanup_worker_enabled}
       ])
 
     opts = [strategy: :one_for_one, name: RepositoryHub.Supervisor]

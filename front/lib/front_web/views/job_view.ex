@@ -22,7 +22,7 @@ defmodule FrontWeb.JobView do
 
   def logs_url(conn, job, _org) do
     if job.self_hosted do
-      "/api/v1/logs/#{job.id}"
+      "/api/v1/logs/#{Front.Models.Job.source_job_id(job)}"
     else
       job_path(conn, :logs, job.id)
     end
@@ -45,6 +45,24 @@ defmodule FrontWeb.JobView do
         nil
     end
   end
+
+  @doc """
+  When this job actually happened, as `{label, iso8601}`, for the page header.
+
+  The header used to render the *workflow's* creation time, which is identical for
+  every job of every promotion of that workflow and so says nothing about the job
+  in front of you. Anchor on the job's own start instead, falling back to creation
+  for a job that never got dispatched.
+  """
+  def job_moment(%{timeline: %{started_at: at}}) when not is_nil(at),
+    do: {"started", iso8601(at)}
+
+  def job_moment(%{timeline: %{created_at: at}}) when not is_nil(at),
+    do: {"created", iso8601(at)}
+
+  def job_moment(_), do: nil
+
+  defp iso8601(unix_seconds), do: unix_seconds |> DateTime.from_unix!() |> DateTime.to_iso8601()
 
   def job_timer(job), do: job_timer(job.state, job.timeline)
 

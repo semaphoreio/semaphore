@@ -19,9 +19,11 @@ defmodule Block.Tasks.STMHandler.PendingState do
   alias Block.BlockRequests.Model.BlockRequestsQueries
   alias Block.Tasks.STMHandler.Common
   alias Block.Tasks.Model.Tasks
+  alias LogTee, as: LT
   alias Util.{ToTuple, Metrics}
 
   @handler_timeout 4321
+  @partition_rejected_metric "Block.job_copy_partition.rejected_by_task_api"
 
   def initial_query(), do: Tasks
 
@@ -39,7 +41,7 @@ defmodule Block.Tasks.STMHandler.PendingState do
     with block_id           <- task.block_id,
          {:ok, blk_req}     <- BlockRequestsQueries.get_by_id(block_id),
          {:ok, task_params} <- form_task_params(blk_req, task.build_request_id),
-         {:ok, message}     <- schedule_task(task_params)
+         {:ok, message}     <- schedule_task_with_fallback(task_params)
     do handle_schedule_result({:ok, message}, task)
     else
       e -> handle_schedule_result(e, task)
@@ -51,6 +53,35 @@ defmodule Block.Tasks.STMHandler.PendingState do
                                           timeout_ms: @handler_timeout, stacktrace: true),
     do: result
   end
+
+  # A Task API invalid_argument rejection is deterministic - retrying the same
+  # request can not succeed. When the request carried a job copy partition,
+  # degrade by stripping it and rescheduling the whole block once; a rejection
+  # of a partition-free request falls through to the regular error path.
+  defp schedule_task_with_fallback(task_params) do
+    case schedule_task(task_params) do
+      error = {:error, %GRPC.RPCError{status: 3}} ->
+        retry_without_job_copy_partition(task_params, error)
+
+      result ->
+        result
+    end
+  end
+
+  defp retry_without_job_copy_partition([definition, params, url], error) do
+    ppl_args = Map.get(params, "ppl_args", %{})
+
+    if is_map(ppl_args) and Map.has_key?(ppl_args, "job_copy_partition") do
+      Watchman.increment(@partition_rejected_metric)
+      error |> LT.warn("Task API rejected job copy partition, rescheduling whole block")
+
+      params = Map.put(params, "ppl_args", Map.delete(ppl_args, "job_copy_partition"))
+      schedule_task([definition, params, url])
+    else
+      error
+    end
+  end
+  defp retry_without_job_copy_partition(_task_params, error), do: error
 
   defp form_task_params(blk_req, bld_req_id) do
     [
