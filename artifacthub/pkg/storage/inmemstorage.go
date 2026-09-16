@@ -13,6 +13,13 @@ type InMemoryStorage struct {
 type InMemoryBucket struct {
 	Name    string
 	Objects []*PathItem
+
+	// When set, DeleteObjects reports this instead of deleting, which is how a
+	// storage that refuses to be emptied is reproduced. GCS deletes really do fail,
+	// on an object hold or a missing permission, and the caller's behaviour in that
+	// case is the difference between a purge that retries and one that quietly
+	// pretends to have finished.
+	DeleteObjectsError error
 }
 
 type InMemoryObjectIterator struct {
@@ -83,6 +90,10 @@ func (b *InMemoryBucket) ListObjectsWithPagination(options ListOptions) (ObjectP
 }
 
 func (b *InMemoryBucket) DeleteObjects(paths []string) error {
+	if b.DeleteObjectsError != nil {
+		return b.DeleteObjectsError
+	}
+
 	for i := 0; i < len(b.Objects); i++ {
 		if b.Objects[i] == nil {
 			continue
