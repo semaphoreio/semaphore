@@ -334,11 +334,39 @@ defmodule Projecthub.Models.Project do
     end
   end
 
-  def restore(project) do
-    {:ok, project} = update_record(project, %{deleted_at: nil, deleted_by: nil})
-    {:ok, _} = Events.ProjectRestored.publish(project)
+  @restore_cooldown_minutes 60
 
-    {:ok, project}
+  @doc """
+  Brings a soft-deleted project back, once its deletion has had time to settle.
+
+  Deleting a project tells artifacthub to empty its artifact storage. That is
+  asynchronous, so restoring immediately would race it and anything the project
+  uploaded next would be deleted along with the rest. An hour is far longer than a
+  purge takes, so waiting keeps the two apart instead of arbitrating between them.
+
+  The project comes back with no artifacts, which is what deleting it said would
+  happen, and with its retention policy untouched.
+  """
+  def restore(project) do
+    if restorable?(project) do
+      {:ok, project} = update_record(project, %{deleted_at: nil, deleted_by: nil})
+      {:ok, _} = Events.ProjectRestored.publish(project)
+
+      {:ok, project}
+    else
+      {:error,
+       %{
+         message:
+           "Project #{project.id} was deleted less than #{@restore_cooldown_minutes} minutes ago, " <>
+             "and its artifacts may still be being deleted. Try again later."
+       }}
+    end
+  end
+
+  defp restorable?(%{deleted_at: nil}), do: true
+
+  defp restorable?(%{deleted_at: deleted_at}) do
+    DateTime.diff(DateTime.utc_now(), deleted_at, :second) >= @restore_cooldown_minutes * 60
   end
 
   def find_candidates_for_hard_destroy() do

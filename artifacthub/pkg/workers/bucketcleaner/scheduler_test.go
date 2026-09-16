@@ -8,6 +8,7 @@ import (
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/db"
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/models"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test__Scheduler(t *testing.T) {
@@ -85,14 +86,35 @@ func Test__Scheduler__WorkingWithRetentionPolicies(t *testing.T) {
 
 	_, policy = createBucketWithRetentionPolicy(t)
 
-	t.Run("it can mark retention polices as scheduled", func(t *testing.T) {
+	t.Run("it can mark retention policies as scheduled", func(t *testing.T) {
 		ids := []string{policy.ArtifactID.String()}
 
-		scheduler.markBatchAsScheduled(db.Conn(), ids)
+		require.NoError(t, scheduler.markBatchAsScheduled(db.Conn(), ids))
 
 		err := policy.Reload()
 		assert.Nil(t, err)
 
 		assert.NotNil(t, policy.ScheduledForCleaningAt)
 	})
+}
+
+func Test__Scheduler__PublishFailures(t *testing.T) {
+	models.PrepareDatabaseForTests()
+
+	_, policy := createBucketWithRetentionPolicy(t)
+
+	// A scheduler that cannot reach the broker at all.
+	offline, err := NewScheduler("amqp://127.0.0.1:1/nope", 1*time.Second, 3)
+	require.NoError(t, err)
+
+	require.NoError(t, offline.scheduleWork())
+
+	// Marking it anyway would put it out of reach for a day, with nothing left to
+	// retry it.
+	require.NoError(t, policy.Reload())
+	assert.Nil(t, policy.ScheduledForCleaningAt)
+
+	ids, err := offline.loadBatch(db.Conn())
+	require.NoError(t, err)
+	assert.Contains(t, ids, policy.ArtifactID.String())
 }
