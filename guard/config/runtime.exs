@@ -133,6 +133,36 @@ if config_env() == :prod do
   # per-provider default in Guard.Utils.OAuth.
   config :guard, :oauth_refresh_user_agent, System.get_env("OAUTH_REFRESH_USER_AGENT")
 
+  # Edge-aware retry knobs for the OAuth refresh path. Read at each call in
+  # Guard.Utils.OAuth, so these can be flipped without a new release (set the
+  # env + restart, or remote-console Application.put_env). Set
+  # OAUTH_REFRESH_MAX_ATTEMPTS=1 to disable retry (single POST) for a clean
+  # UA-only experiment.
+  oauth_refresh_env_int = fn var, default ->
+    case System.get_env(var) do
+      value when is_binary(value) ->
+        case Integer.parse(String.trim(value)) do
+          {parsed, _rest} -> parsed
+          :error -> default
+        end
+
+      _ ->
+        default
+    end
+  end
+
+  config :guard,
+         :oauth_refresh_max_attempts,
+         oauth_refresh_env_int.("OAUTH_REFRESH_MAX_ATTEMPTS", 3)
+
+  config :guard,
+         :oauth_refresh_retry_base_ms,
+         oauth_refresh_env_int.("OAUTH_REFRESH_RETRY_BASE_MS", 200)
+
+  config :guard,
+         :oauth_refresh_retry_jitter_ms,
+         oauth_refresh_env_int.("OAUTH_REFRESH_RETRY_JITTER_MS", 300)
+
   config :guard, :gitlab,
     client_id: System.get_env("GITLAB_CLIENT_ID"),
     client_secret: System.get_env("GITLAB_CLIENT_SECRET")

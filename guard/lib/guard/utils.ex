@@ -252,13 +252,25 @@ defmodule Guard.Utils.OAuth do
 
   @doc """
   An edge-shaped failure: a retry-eligible status carrying the AtlassianEdge
-  fingerprint that is NOT a genuine grant revocation. Public for tests.
+  fingerprint, with an EMPTY body and no genuine grant revocation - the actual
+  bot-block signature (empty-body AtlassianEdge 403). A real Bitbucket backend
+  error (e.g. a 500 with an error body) is NOT edge-shaped and is not retried.
+  Public for tests.
   """
   def edge_shaped_failure?(status, body, headers) do
     status in @edge_retry_statuses and
       atlassian_edge?(headers) and
+      empty_error_body?(body) and
       not genuine_grant_revocation?(body)
   end
+
+  # The edge returns no body on a bot-block. Treat nil, an empty/whitespace
+  # string, and an empty JSON object as "empty"; anything with actual content
+  # (an error body from the OAuth app or the Bitbucket backend) is not.
+  defp empty_error_body?(nil), do: true
+  defp empty_error_body?(body) when is_binary(body), do: String.trim(body) in ["", "{}"]
+  defp empty_error_body?(body) when is_map(body), do: map_size(body) == 0
+  defp empty_error_body?(_), do: false
 
   # Per-attempt log line. Greppable prefix `OAuth refresh attempt`; exposes the
   # `server` header + HTTP status on every outcome (success and failure) so a

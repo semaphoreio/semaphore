@@ -162,6 +162,52 @@ defmodule Guard.Api.BitbucketTest do
       refute updated_rha.revoked
     end
 
+    test "does NOT edge-retry an AtlassianEdge 500 that carries a non-empty error body",
+         %{repo_host_account: rha} do
+      rha = Map.put(rha, :token_expires_at, Support.Members.invalid_expires_at())
+      {:ok, counter} = Agent.start_link(fn -> 0 end)
+
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
+          Agent.update(counter, &(&1 + 1))
+
+          {:ok,
+           %Tesla.Env{
+             status: 500,
+             body: %{"error" => "internal_server_error"},
+             headers: [{"server", "AtlassianEdge"}]
+           }}
+      end)
+
+      assert {:error, :transient} = Bitbucket.user_token(rha)
+      assert Agent.get(counter, & &1) == 1
+
+      updated_rha = Guard.FrontRepo.get!(Guard.FrontRepo.RepoHostAccount, rha.id)
+      assert updated_rha.refresh_token == "example_refresh_token"
+      refute updated_rha.revoked
+    end
+
+    test "OAUTH_REFRESH_MAX_ATTEMPTS=1 disables retry: a single POST even on the edge shape",
+         %{repo_host_account: rha} do
+      Application.put_env(:guard, :oauth_refresh_max_attempts, 1)
+
+      rha = Map.put(rha, :token_expires_at, Support.Members.invalid_expires_at())
+      {:ok, counter} = Agent.start_link(fn -> 0 end)
+
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
+          Agent.update(counter, &(&1 + 1))
+          {:ok, %Tesla.Env{status: 403, body: "", headers: [{"server", "AtlassianEdge"}]}}
+      end)
+
+      assert {:error, :transient} = Bitbucket.user_token(rha)
+      assert Agent.get(counter, & &1) == 1
+
+      updated_rha = Guard.FrontRepo.get!(Guard.FrontRepo.RepoHostAccount, rha.id)
+      assert updated_rha.refresh_token == "example_refresh_token"
+      refute updated_rha.revoked
+    end
+
     test "does NOT retry a genuine invalid_grant and revokes on the first response",
          %{repo_host_account: rha} do
       rha = Map.put(rha, :token_expires_at, Support.Members.invalid_expires_at())
