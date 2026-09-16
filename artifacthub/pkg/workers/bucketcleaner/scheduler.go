@@ -94,25 +94,31 @@ func (s *Scheduler) scheduleWork() error {
 
 	log.Printf("BucketCleaner Scheduler: Scheduling work, batch size = %d", s.BatchSize)
 
-	return db.Conn().Transaction(func(tx *gorm.DB) error {
-		ids, err := s.loadBatch(tx)
-		if err != nil {
-			return err
-		}
+	ids, err := s.loadBatch(db.Conn())
+	if err != nil {
+		return err
+	}
 
-		if len(ids) == 0 {
-			return nil
-		}
+	if len(ids) == 0 {
+		return nil
+	}
 
-		_ = watchman.Submit("bucketcleaner.scheduler.batch.size", len(ids))
+	_ = watchman.Submit("bucketcleaner.scheduler.batch.size", len(ids))
 
-		err = s.publishBatch(ids)
-		if err != nil {
-			return err
-		}
+	published := s.publishBatch(ids)
 
-		return s.markBatchAsScheduled(tx, ids)
-	})
+	// Only what reached the broker is marked. Marking the whole batch put an artifact
+	// whose publish failed out of reach for a day, with nothing left to retry it, and
+	// for a purge that is a day of storage nobody asked to keep.
+	if len(published) < len(ids) {
+		_ = watchman.IncrementBy("bucketcleaner.scheduler.publish_failures", len(ids)-len(published))
+	}
+
+	if len(published) == 0 {
+		return nil
+	}
+
+	return s.markBatchAsScheduled(db.Conn(), published)
 }
 
 func (s *Scheduler) loadBatch(tx *gorm.DB) ([]string, error) {
@@ -139,7 +145,11 @@ func (s *Scheduler) loadBatch(tx *gorm.DB) ([]string, error) {
 	return result, nil
 }
 
-func (s *Scheduler) publishBatch(ids []string) error {
+// publishBatch returns the ids whose clean request reached the broker. The rest
+// stay due and are picked up on a later tick.
+func (s *Scheduler) publishBatch(ids []string) []string {
+	published := make([]string, 0, len(ids))
+
 	for _, id := range ids {
 		log.Printf("BucketCleaner Scheduler: Scheduling %s for cleaning", id)
 
@@ -166,9 +176,11 @@ func (s *Scheduler) publishBatch(ids []string) error {
 			log.Printf("Failed to schedule cleaning for %s, err: '%s'", id, err.Error())
 			continue
 		}
+
+		published = append(published, id)
 	}
 
-	return nil
+	return published
 }
 
 func (s *Scheduler) markBatchAsScheduled(tx *gorm.DB, ids []string) error {

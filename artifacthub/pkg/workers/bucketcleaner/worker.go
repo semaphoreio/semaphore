@@ -111,12 +111,13 @@ func (w *Worker) CleanBucket(cleanRequest *CleanRequest) error {
 		cleaner := NewBatchCleaner(w.client, cleanRequest, w.NumberOfPagesToProcessInOneGo)
 		token, err := cleaner.Run(tx)
 
-		log.Printf("BucketCleaner: Cleaning bucket %s - visited=%d deleted=%d pagination-finished=%t destroyed=%t",
+		log.Printf("BucketCleaner: Cleaning bucket %s - visited=%d deleted=%d pagination-finished=%t destroyed=%t purged=%t",
 			cleanRequest.ArtifactBucketID,
 			cleaner.visitedObjectCount,
 			cleaner.deletedObjectCount,
 			cleaner.paginationEnded,
 			cleaner.artifactDeleted,
+			cleaner.purgeCompleted,
 		)
 
 		nextPageToken = token
