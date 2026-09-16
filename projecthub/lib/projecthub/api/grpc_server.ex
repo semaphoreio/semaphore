@@ -386,14 +386,15 @@ defmodule Projecthub.Api.GrpcServer do
     Watchman.benchmark("projecthub_api.restore.duration", fn ->
       soft_deleted = true
 
-      case find_project(req, soft_deleted) do
-        {:ok, project} ->
-          {:ok, _} = Project.restore(project)
-          RestoreResponse.new(metadata: status_ok(req))
-
+      with {:ok, project} <- find_project(req, soft_deleted),
+           {:ok, _} <- Project.restore(project) do
+        RestoreResponse.new(metadata: status_ok(req))
+      else
         {:error, :not_found} ->
           RestoreResponse.new(metadata: status_not_found(req))
 
+        # Also how a restore refused during its cooldown comes back, so the caller is
+        # told why rather than seeing the RPC blow up.
         {:error, %{message: message}} ->
           RestoreResponse.new(metadata: status_failed_precondition(req, message))
       end

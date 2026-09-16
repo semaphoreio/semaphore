@@ -591,12 +591,37 @@ defmodule Projecthub.Models.ProjectTest do
       assert project.deleted_at != nil
       assert project.deleted_by != nil
 
+      # Deleting a project tells artifacthub to empty its artifact storage, and
+      # restoring is held back until that has had time to finish, so this one is
+      # aged past the cooldown.
+      {:ok, project} = Project.update_record(project, %{deleted_at: deleted_hours_ago(2)})
+
       {:ok, _} = Project.restore(project)
 
       assert {:ok, project} = Project.find(project.id)
       assert project.deleted_at == nil
       assert project.deleted_by == nil
     end
+
+    test "refuses while the artifact purge may still be running" do
+      %{id: id} = create_and_soft_destroy()
+
+      assert {:ok, project} = Project.find(id, true)
+
+      assert {:error, %{message: message}} = Project.restore(project)
+      assert message =~ "deleted less than 60 minutes ago"
+
+      # Still deleted. Bringing it back now would race the cleaner emptying its
+      # bucket, and anything the project uploaded next would go with the rest.
+      assert {:error, :not_found} = Project.find(id)
+      assert {:ok, _} = Project.find(id, true)
+    end
+  end
+
+  defp deleted_hours_ago(hours) do
+    DateTime.utc_now()
+    |> DateTime.add(-hours * 60 * 60, :second)
+    |> DateTime.truncate(:second)
   end
 
   describe ".find" do
