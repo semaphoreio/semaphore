@@ -127,6 +127,12 @@ if config_env() == :prod do
     client_id: System.get_env("BITBUCKET_CLIENT_ID"),
     client_secret: System.get_env("BITBUCKET_CLIENT_SECRET")
 
+  # Override the User-Agent sent on the Bitbucket/GitLab OAuth token-refresh
+  # request. Set live (env restart or remote-console Application.put_env) to
+  # A/B a value that clears the AtlassianEdge empty-403 wall. Unset -> the
+  # per-provider default in Guard.Utils.OAuth.
+  config :guard, :oauth_refresh_user_agent, System.get_env("OAUTH_REFRESH_USER_AGENT")
+
   config :guard, :gitlab,
     client_id: System.get_env("GITLAB_CLIENT_ID"),
     client_secret: System.get_env("GITLAB_CLIENT_SECRET")

@@ -8,11 +8,6 @@ defmodule Guard.Api.Bitbucket do
   @api_v2_path "/api/2.0"
   @oauth2_path "/site/oauth2/access_token"
 
-  # Curated response-header subset logged on a refresh failure, to help
-  # identify which edge/CDN/WAF is involved (e.g. an Atlassian identity-proxy
-  # 403). Deliberately does NOT include the response body.
-  @diagnostic_headers ~w(server via x-amz-cf-id cf-ray x-amzn-requestid x-amz-apigw-id)
-
   plug(Tesla.Middleware.BaseUrl, @base_url)
   plug(Tesla.Middleware.JSON)
 
@@ -91,14 +86,13 @@ defmodule Guard.Api.Bitbucket do
     }
 
     client = build_token_client()
+    request_fun = fn -> Tesla.post(client, @oauth2_path, body_params) end
 
-    case Tesla.post(client, @oauth2_path, body_params) do
+    case OAuth.post_with_edge_retry(:bitbucket, repo_host_account.id, request_fun) do
       {:ok, %Tesla.Env{status: status, body: body}} when status in 200..299 ->
         OAuth.handle_ok_token_response(repo_host_account, body)
 
-      {:ok, %Tesla.Env{status: status, body: body, headers: headers}} ->
-        log_response_headers(status, headers, repo_host_account.id)
-
+      {:ok, %Tesla.Env{status: status, body: body}} ->
         case OAuth.classify_refresh_response(status, body) do
           :revoked ->
             Logger.warning(
@@ -127,18 +121,6 @@ defmodule Guard.Api.Bitbucket do
     end
   end
 
-  defp log_response_headers(status, headers, repo_host_account_id) do
-    curated =
-      headers
-      |> Enum.filter(fn {key, _value} -> String.downcase(key) in @diagnostic_headers end)
-      |> Enum.into(%{})
-
-    Logger.warning(
-      "Bitbucket refresh failure (HTTP #{status}) response headers " <>
-        "for repo_host_account #{repo_host_account_id}: #{inspect(curated)}"
-    )
-  end
-
   defp safe_oauth_error(body) when is_map(body), do: Map.get(body, "error")
   defp safe_oauth_error(_), do: nil
 
@@ -153,6 +135,7 @@ defmodule Guard.Api.Bitbucket do
     Tesla.client([
       {Tesla.Middleware.BaseUrl, @base_url},
       {Tesla.Middleware.BasicAuth, username: client_id, password: client_secret},
+      {Tesla.Middleware.Headers, OAuth.token_client_headers(:bitbucket)},
       Tesla.Middleware.FormUrlencoded
     ])
   end

@@ -64,4 +64,31 @@ defmodule Guard.Api.GitlabTest do
       assert updated_rha.token == "new_token"
     end
   end
+
+  describe "refresh request headers" do
+    test "sends the default user-agent and accept header on the refresh POST", %{
+      repo_host_account: rha
+    } do
+      rha = Map.put(rha, :token_expires_at, Support.Members.invalid_expires_at())
+      test_pid = self()
+
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://gitlab.com/oauth/token", headers: headers} ->
+          send(test_pid, {:refresh_headers, headers})
+
+          {:ok,
+           %Tesla.Env{status: 200, body: %{"access_token" => "new_token", "expires_in" => 3600}}}
+
+        %{method: :get, url: "https://gitlab.com/oauth/token/info"} ->
+          {:ok, %Tesla.Env{status: 404, body: %{}}}
+      end)
+
+      assert {:ok, {"new_token", _}} = Gitlab.user_token(rha)
+
+      assert_received {:refresh_headers, headers}
+      hmap = Map.new(headers, fn {k, v} -> {String.downcase(k), v} end)
+      assert hmap["user-agent"] == "Semaphore-GitLab-Integration/1.0"
+      assert hmap["accept"] == "application/json"
+    end
+  end
 end

@@ -161,6 +161,166 @@ defmodule Guard.Utils.OAuth do
   end
 
   defp genuine_grant_revocation?(_body), do: false
+
+  # --- OAuth token/refresh HTTP client hardening (AtlassianEdge mitigation) ---
+
+  # Default per-provider User-Agent for the token/refresh request. Hackney (the
+  # HTTP adapter) otherwise sends a bare `hackney/x.y.z` UA, which edge/WAF
+  # layers (e.g. AtlassianEdge) flag as a bad bot and answer with an empty-body
+  # 403. A single env/app-env override lets us A/B the winning UA value against
+  # a live edge without a redeploy (read at each call).
+  @default_user_agents %{
+    bitbucket: "Semaphore-Bitbucket-Integration/1.0",
+    gitlab: "Semaphore-GitLab-Integration/1.0"
+  }
+
+  # Response headers logged per refresh attempt to fingerprint the edge/CDN/WAF
+  # in front of the OAuth endpoint. Never includes the response body.
+  @diagnostic_headers ~w(server via x-amz-cf-id cf-ray x-amzn-requestid x-amz-apigw-id)
+
+  # Statuses an AtlassianEdge-style layer returns before the request ever
+  # reaches OAuth. On these (with the edge fingerprint and no genuine
+  # invalid_grant) the single-use refresh_token is NOT consumed, so retrying
+  # with the same stored token is safe.
+  @edge_retry_statuses [400, 401, 403, 500]
+
+  @doc """
+  Explicit User-Agent for the token/refresh HTTP client. A single app-env
+  override (`:guard, :oauth_refresh_user_agent`, wired from
+  `OAUTH_REFRESH_USER_AGENT`) beats the per-provider default so the value can
+  be A/B-tested live.
+  """
+  def refresh_user_agent(provider) do
+    case Application.get_env(:guard, :oauth_refresh_user_agent) do
+      ua when is_binary(ua) and ua != "" -> ua
+      _ -> Map.get(@default_user_agents, provider, "Semaphore-OAuth-Integration/1.0")
+    end
+  end
+
+  @doc """
+  Headers a real OAuth client sends, for `Tesla.Middleware.Headers` on the
+  token/refresh client. Does not set Content-Type: that stays owned by the
+  form/JSON middleware already on each client.
+  """
+  def token_client_headers(provider) do
+    [
+      {"user-agent", refresh_user_agent(provider)},
+      {"accept", "application/json"}
+    ]
+  end
+
+  @doc """
+  Run a token/refresh POST with per-attempt observability and a bounded,
+  jittered retry on AtlassianEdge-shaped failures.
+
+  `request_fun` is a 0-arity closure that performs the POST and returns the
+  raw `Tesla.post/3` result. It is called with the SAME body (same stored
+  refresh_token) on every attempt: an edge-shaped failure never reached OAuth,
+  so the single-use refresh_token was not rotated/consumed and reuse is safe.
+
+  Returns the last `Tesla.post/3` result for the caller to classify. Genuine
+  `invalid_grant`/`bad_refresh_token` and non-edge responses are returned on
+  the first attempt (no wasteful retry).
+  """
+  def post_with_edge_retry(provider, rha_id, request_fun) when is_function(request_fun, 0) do
+    run_refresh_attempt(provider, rha_id, request_fun, 1, max_refresh_attempts())
+  end
+
+  defp run_refresh_attempt(provider, rha_id, request_fun, attempt, max) do
+    result = request_fun.()
+    log_refresh_attempt(provider, rha_id, attempt, max, result)
+
+    case result do
+      {:ok, %Tesla.Env{status: status, body: body, headers: headers}} ->
+        if attempt < max and edge_shaped_failure?(status, body, headers) do
+          Logger.warning(
+            "OAuth refresh got AtlassianEdge-shaped HTTP #{status} for " <>
+              "provider=#{provider} rha=#{rha_id}; refresh_token preserved, " <>
+              "retrying (#{attempt + 1}/#{max})"
+          )
+
+          backoff(attempt)
+          run_refresh_attempt(provider, rha_id, request_fun, attempt + 1, max)
+        else
+          result
+        end
+
+      {:error, _reason} ->
+        result
+    end
+  end
+
+  @doc """
+  An edge-shaped failure: a retry-eligible status carrying the AtlassianEdge
+  fingerprint that is NOT a genuine grant revocation. Public for tests.
+  """
+  def edge_shaped_failure?(status, body, headers) do
+    status in @edge_retry_statuses and
+      atlassian_edge?(headers) and
+      not genuine_grant_revocation?(body)
+  end
+
+  # Per-attempt log line. Greppable prefix `OAuth refresh attempt`; exposes the
+  # `server` header + HTTP status on every outcome (success and failure) so a
+  # given UA can be observed moving us off AtlassianEdge. Never logs the body,
+  # token, refresh_token, or client_secret.
+  defp log_refresh_attempt(provider, rha_id, attempt, max, {:ok, %Tesla.Env{} = env}) do
+    level = if env.status in 200..299, do: :info, else: :warning
+
+    Logger.log(
+      level,
+      "OAuth refresh attempt provider=#{provider} rha=#{rha_id} " <>
+        "attempt=#{attempt}/#{max} status=#{env.status} " <>
+        "server=#{inspect(response_server(env.headers))} " <>
+        "headers=#{inspect(curated_headers(env.headers))}"
+    )
+  end
+
+  defp log_refresh_attempt(provider, rha_id, attempt, max, {:error, reason}) do
+    Logger.warning(
+      "OAuth refresh attempt provider=#{provider} rha=#{rha_id} " <>
+        "attempt=#{attempt}/#{max} status=network_error error=#{inspect(reason)}"
+    )
+  end
+
+  defp atlassian_edge?(headers) when is_list(headers) do
+    headers
+    |> response_server()
+    |> case do
+      server when is_binary(server) ->
+        String.contains?(String.downcase(server), "atlassianedge")
+
+      _ ->
+        false
+    end
+  end
+
+  defp atlassian_edge?(_), do: false
+
+  defp response_server(headers) when is_list(headers) do
+    Enum.find_value(headers, fn {key, value} ->
+      if String.downcase(to_string(key)) == "server", do: value
+    end)
+  end
+
+  defp response_server(_), do: nil
+
+  defp curated_headers(headers) when is_list(headers) do
+    headers
+    |> Enum.filter(fn {key, _value} -> String.downcase(to_string(key)) in @diagnostic_headers end)
+    |> Enum.into(%{})
+  end
+
+  defp curated_headers(_), do: %{}
+
+  defp backoff(attempt) do
+    base = Application.get_env(:guard, :oauth_refresh_retry_base_ms, 200)
+    jitter = Application.get_env(:guard, :oauth_refresh_retry_jitter_ms, 300)
+    delay = base * attempt + if(jitter > 0, do: :rand.uniform(jitter), else: 0)
+    if delay > 0, do: Process.sleep(delay)
+  end
+
+  defp max_refresh_attempts, do: Application.get_env(:guard, :oauth_refresh_max_attempts, 3)
 end
 
 defmodule Guard.Utils.Http do

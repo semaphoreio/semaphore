@@ -45,8 +45,9 @@ defmodule Guard.Api.Gitlab do
     }
 
     client = build_token_client()
+    request_fun = fn -> Tesla.post(client, @oauth_path, body_params) end
 
-    case Tesla.post(client, @oauth_path, body_params) do
+    case OAuth.post_with_edge_retry(:gitlab, repo_host_account.id, request_fun) do
       {:ok, %Tesla.Env{status: status, body: body}} when status in 200..299 ->
         OAuth.handle_ok_token_response(repo_host_account, body)
 
@@ -79,6 +80,7 @@ defmodule Guard.Api.Gitlab do
     Tesla.client([
       {Tesla.Middleware.BaseUrl, @base_url},
       {Tesla.Middleware.BasicAuth, username: client_id, password: client_secret},
+      {Tesla.Middleware.Headers, OAuth.token_client_headers(:gitlab)},
       Tesla.Middleware.JSON
     ])
   end
