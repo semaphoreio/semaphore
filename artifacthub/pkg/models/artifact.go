@@ -23,6 +23,21 @@ type Artifact struct {
 	Created          time.Time
 	LastCleanedAt    time.Time
 	DeletedAt        *time.Time
+
+	// Set when this service is told to empty the storage, cleared when it has.
+	PurgeRequestedAt *time.Time
+}
+
+// ShouldPurgeContents reports whether every object in this storage is to be
+// deleted, whatever the retention policy says. Set by a project delete, which only
+// empties the storage, and by the hard destroy 30 days later, which also removes it.
+func (a *Artifact) ShouldPurgeContents() bool {
+	return a.PurgeRequestedAt != nil || a.DeletedAt != nil
+}
+
+// IsMarkedForDestruction reports whether the storage itself goes once it is empty.
+func (a *Artifact) IsMarkedForDestruction() bool {
+	return a.DeletedAt != nil
 }
 
 // CreateArtifact inserts a new artifact object to the database given by all its values.
@@ -60,11 +75,43 @@ func (a *Artifact) UpdateDeleteAt(tx *gorm.DB, timestamp time.Time) error {
 	return tx.Model(&a).Update("DeletedAt", timestamp).Error
 }
 
+func (a *Artifact) RequestPurge(tx *gorm.DB, timestamp time.Time) error {
+	if err := tx.Model(a).Update("PurgeRequestedAt", timestamp).Error; err != nil {
+		return err
+	}
+
+	a.PurgeRequestedAt = &timestamp
+
+	return nil
+}
+
+// ClearPurgeMark takes the mark off, either because the purge finished or because
+// the project came back. Updates with an explicit map, since Update with a nil
+// value is not a reliable way to write a NULL, and a mark left set has the cleaner
+// deleting a live project's artifacts day after day.
+func (a *Artifact) ClearPurgeMark(tx *gorm.DB) error {
+	err := tx.Model(a).Updates(map[string]interface{}{"purge_requested_at": nil}).Error
+	if err != nil {
+		return err
+	}
+
+	a.PurgeRequestedAt = nil
+	return nil
+}
+
 // findArtifactByIdempotencyToken returns an artifact by its idempotency token, or an error.
 func findArtifactByIdempotencyToken(idempotencyToken string) (*Artifact, error) {
+	return FindArtifactByIdempotencyTokenRaw(db.Conn(), idempotencyToken)
+}
+
+// FindArtifactByIdempotencyTokenRaw passes the database error through untouched.
+// The wrapping variants relabel every failure as NotFound, so a caller that has to
+// tell "no storage for this project", which is nothing to do, apart from "database
+// unreachable", which has to be retried, cannot use them.
+func FindArtifactByIdempotencyTokenRaw(tx *gorm.DB, idempotencyToken string) (*Artifact, error) {
 	var a Artifact
 
-	if err := db.Conn().Where("idempotency_token = ?", idempotencyToken).First(&a).Error; err != nil {
+	if err := tx.Where("idempotency_token = ?", idempotencyToken).First(&a).Error; err != nil {
 		return nil, err
 	}
 
