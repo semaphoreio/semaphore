@@ -54,6 +54,8 @@ The token is stored in `~/.sem.yaml`, shared with the [Semaphore CLI](./semaphor
 
 ### sem-ai context {#context}
 
+Each organization you connect to is stored in `~/.sem.yaml` as a named *context*.
+
 List configured organizations:
 
 ```shell
@@ -66,6 +68,46 @@ Show the active organization:
 sem-ai context show
 ```
 
+Change the organization every later command uses:
+
+```shell
+sem-ai context switch myorg_semaphoreci_com
+```
+
+`context switch` rewrites the shared `active-context` key in `~/.sem.yaml`. Every sem-ai and `sem` invocation on the machine reads that key, so switching affects sessions other than your own. To target an organization for a single command without changing what anyone else sees, pin it instead.
+
+### Pinning an organization {#context-pin}
+
+`--context` selects a named context for one invocation, without writing to the config file:
+
+```shell
+sem-ai --context myorg_semaphoreci_com project list
+```
+
+`SEM_CONTEXT` does the same for a whole shell session:
+
+```shell
+export SEM_CONTEXT=myorg_semaphoreci_com
+sem-ai project list
+```
+
+Pinning is what makes concurrent use safe. Several agents, terminals, or jobs on one machine can each pin a different organization and run at the same time, because none of them writes `active-context`. A name that is not in `~/.sem.yaml` fails immediately and lists the contexts that are, instead of quietly falling back to another organization.
+
+`connect`, `signin`, `context switch`, and `context list` ignore the pin — they create contexts or report the file's own state — so onboarding a new organization still works while pinned.
+
+### Credential resolution order {#credential-order}
+
+sem-ai takes credentials from the first source that applies:
+
+| Priority | Source | Scope |
+|------|-------------|-------|
+| 1 | `--context <name>` | A single invocation |
+| 2 | `SEM_CONTEXT=<name>` | A shell session |
+| 3 | `SEMAPHORE_HOST` and `SEMAPHORE_API_TOKEN` | The process environment |
+| 4 | `active-context` in `~/.sem.yaml` | Shared by every session on the machine |
+
+A context named by `--context` or `SEM_CONTEXT` supplies both the host and the token, and fully replaces the sources below it. Credentials from a context are never combined with `SEMAPHORE_HOST` or `SEMAPHORE_API_TOKEN`.
+
 ## General syntax {#syntax}
 
 ```shell
@@ -76,6 +118,7 @@ Global flags:
 
 | Flag | Description |
 |------|-------------|
+| `--context` | Run against a named context from `~/.sem.yaml` without changing the active one. See [pinning an organization](#context-pin) |
 | `--format` or `-f` | Output format: `json` (default), `table`, `yaml` |
 | `--verbose` or `-v` | Show HTTP requests for debugging |
 | `--examples` | Show usage examples for any command |
