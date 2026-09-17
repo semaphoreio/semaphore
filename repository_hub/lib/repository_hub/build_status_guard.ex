@@ -86,7 +86,7 @@ defmodule RepositoryHub.BuildStatusGuard do
       request.status == :PENDING ->
         :suppressed
 
-      row.last_state == "PENDING" ->
+      outstanding_delivery?(row) ->
         claim_lease(key, db_now)
 
       true ->
@@ -94,6 +94,13 @@ defmodule RepositoryHub.BuildStatusGuard do
         :suppressed
     end
   end
+
+  # A recorded PENDING is outstanding, and so is a claim that was never
+  # finalized: it may have reached the provider before stalling, and its fence
+  # still matches, so recording state under it would be undone when it wakes.
+  # Either way the terminal has to be delivered, taking over the lease.
+  defp outstanding_delivery?(%{last_state: "PENDING"}), do: true
+  defp outstanding_delivery?(%{claimed_at: claimed_at}), do: not is_nil(claimed_at)
 
   defp stale_pending?(%{status: :PENDING}, %{last_state: last_state}),
     do: last_state in @terminal_states
