@@ -45,8 +45,6 @@ defmodule Projecthub.Models.PeriodicTask.YAML do
     }
 
     base
-    |> maybe_add_bool("skip_scheduled_run_notifications", task.skip_scheduled_run_notifications)
-    |> maybe_add_bool("skip_manual_run_notifications", task.skip_manual_run_notifications)
     |> maybe_add_parameters(task.parameters)
   end
 
