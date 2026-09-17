@@ -135,8 +135,11 @@ func (c *BatchCleaner) loadRecords() error {
 
 // isPurging reports whether this run deletes everything, rather than applying the
 // retention policy.
+//
+// A storage marked by a project delete is not purged until its grace period is up,
+// so until then this is false and the run applies the retention policy as usual.
 func (c *BatchCleaner) isPurging() bool {
-	return c.artifactBucket.ShouldPurgeContents()
+	return c.artifactBucket.IsPurgeDue(PurgeGracePeriod)
 }
 
 // finishPurge takes the mark off once the storage has been emptied. The storage

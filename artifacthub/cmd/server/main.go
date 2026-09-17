@@ -195,6 +195,10 @@ func main() {
 
 	configureWatchman()
 
+	// Set before any worker starts: the scheduler decides what is due and the cleaner
+	// decides what to delete, and they must agree.
+	bucketcleaner.ConfigurePurgeGracePeriod()
+
 	storageClient, err := storage.New()
 	if err != nil {
 		log.Error("Failed to connect to storage", zap.Error(err))
