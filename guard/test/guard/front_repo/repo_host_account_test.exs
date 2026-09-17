@@ -946,5 +946,27 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
       refute rendered =~ "ghr_super_secret_refresh_token"
       assert rendered =~ "octocat"
     end
+
+    # @derive {Inspect, except: ...} only covers the struct. Ecto's Inspect
+    # impl for Ecto.Changeset masks :changes from __schema__(:redact_fields),
+    # which only redact: true populates - so this fails without it.
+    test "credentials are redacted when nested in a changeset" do
+      account = %RepoHostAccount{login: "octocat", github_uid: "10001"}
+
+      changeset =
+        Ecto.Changeset.cast(
+          account,
+          %{
+            token: "ghp_super_secret_oauth_token",
+            refresh_token: "ghr_super_secret_refresh_token"
+          },
+          [:token, :refresh_token, :login]
+        )
+
+      rendered = inspect(changeset)
+
+      refute rendered =~ "ghp_super_secret_oauth_token"
+      refute rendered =~ "ghr_super_secret_refresh_token"
+    end
   end
 end
