@@ -44,7 +44,8 @@ defmodule Projecthub.Models.PeriodicTask.YAML do
       "pipeline_file" => task.pipeline_file || ""
     }
 
-    maybe_add_parameters(base, task.parameters)
+    base
+    |> maybe_add_parameters(task.parameters)
   end
 
   defp maybe_add_parameters(spec, nil), do: spec

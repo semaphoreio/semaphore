@@ -63,6 +63,60 @@ defmodule Scheduler.Periodics.Model.Periodics.Test do
     end
   end
 
+  describe "commit status notification flags" do
+    test "both default to false", _ctx do
+      assert %Periodics{}.skip_scheduled_run_notifications == false
+      assert %Periodics{}.skip_manual_run_notifications == false
+    end
+
+    test "v1.1 changeset casts them", ctx do
+      params =
+        Map.merge(ctx.params, %{
+          at: "* * * * *",
+          skip_scheduled_run_notifications: true,
+          skip_manual_run_notifications: true
+        })
+
+      assert %Ecto.Changeset{valid?: true, changes: changes} =
+               Periodics.changeset(%Periodics{}, "v1.1", params)
+
+      assert changes.skip_scheduled_run_notifications == true
+      assert changes.skip_manual_run_notifications == true
+    end
+
+    test "an omitted flag produces no change, so the stored value survives an update", ctx do
+      params = Map.merge(ctx.params, %{at: "* * * * *"})
+      stored = %Periodics{skip_scheduled_run_notifications: true}
+
+      assert %Ecto.Changeset{changes: changes} = Periodics.changeset(stored, "v1.1", params)
+
+      refute Map.has_key?(changes, :skip_scheduled_run_notifications)
+    end
+
+    test "v1.2 changeset casts them", ctx do
+      params =
+        Map.merge(ctx.params, %{
+          at: "* * * * *",
+          skip_scheduled_run_notifications: false,
+          skip_manual_run_notifications: true
+        })
+
+      assert %Ecto.Changeset{valid?: true, changes: changes} =
+               Periodics.changeset(%Periodics{}, "v1.2", params)
+
+      assert changes.skip_manual_run_notifications == true
+      refute Map.has_key?(changes, :skip_scheduled_run_notifications)
+    end
+
+    test "v1.0 changeset ignores them", ctx do
+      params = Map.merge(ctx.params, %{at: "* * * * *", skip_scheduled_run_notifications: true})
+
+      assert %Ecto.Changeset{changes: changes} = Periodics.changeset(%Periodics{}, "v1.0", params)
+
+      refute Map.has_key?(changes, :skip_scheduled_run_notifications)
+    end
+  end
+
   defp prepare_common_params(_ctx) do
     {:ok,
      params: %{
