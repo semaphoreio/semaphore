@@ -22,8 +22,9 @@ defmodule Guard.FrontRepo.FederatedIdentitySyncRequest do
 
   @base_retry_seconds 60
   @max_retry_seconds 3600
-  # While leased, a row is invisible to other drainers; must exceed the worst
-  # case processing time of a single row (a few Keycloak calls with retries).
+  # While leased, a row is invisible to other drainers. The lease is taken per
+  # row (see lease/1), so this only has to exceed the worst case processing
+  # time of one row - a few Keycloak calls with retries - not of a whole batch.
   @lease_seconds 300
   @max_error_length 500
 
@@ -102,30 +103,53 @@ defmodule Guard.FrontRepo.FederatedIdentitySyncRequest do
   end
 
   @doc """
-  Atomically leases a batch of due rows: pushes their `next_attempt_at` into
-  the future so concurrent drainers skip them, and returns the leased rows.
-  The lock is held only for this single statement — never across the
-  Keycloak calls that process the rows.
+  Ids of rows whose next attempt is due, oldest first.
+
+  These are candidates, not a claim: a row may be leased by another drainer
+  before this caller gets to it. Lease each one with `lease/1` immediately
+  before processing it, and skip the ones that come back `nil`.
   """
-  @spec lease_due(pos_integer()) :: [t()]
-  def lease_due(limit) do
+  @spec due_ids(pos_integer()) :: [String.t()]
+  def due_ids(limit) do
+    from(r in __MODULE__,
+      where: r.next_attempt_at <= ^now(),
+      order_by: [asc: r.inserted_at],
+      limit: ^limit,
+      select: r.id
+    )
+    |> FrontRepo.all()
+  end
+
+  @doc """
+  Leases one due row, returning it, or `nil` when it is no longer due.
+
+  The lease is taken per row rather than per batch: a batch is processed
+  serially, so a single lease covering all of it expires under the rows still
+  waiting their turn, and another drainer picks them up while this one is
+  still working. Leasing here means the window only has to cover one row.
+
+  `next_attempt_at <= now` in the WHERE clause is what makes this a claim.
+  Concurrent updates serialize on the row lock, and the loser re-evaluates
+  the condition against the winner's committed row, finds the lease in the
+  future and matches nothing. The statement holds the lock on its own — never
+  across the Keycloak calls that follow.
+  """
+  @spec lease(String.t()) :: t() | nil
+  def lease(id) do
     now = now()
     lease_until = DateTime.add(now, @lease_seconds, :second)
 
-    due =
-      from(r in __MODULE__,
-        where: r.next_attempt_at <= ^now,
-        order_by: [asc: r.inserted_at],
-        limit: ^limit,
-        lock: "FOR UPDATE SKIP LOCKED",
-        select: r.id
-      )
-
     {_count, rows} =
-      from(r in __MODULE__, where: r.id in subquery(due), select: r)
+      from(r in __MODULE__,
+        where: r.id == ^id and r.next_attempt_at <= ^now,
+        select: r
+      )
       |> FrontRepo.update_all(set: [next_attempt_at: lease_until, updated_at: now])
 
-    rows
+    case rows do
+      [row] -> row
+      _ -> nil
+    end
   end
 
   defp retry_delay_seconds(attempts) do
