@@ -428,7 +428,7 @@ func Test__Destroy(t *testing.T) {
 		}
 	})
 
-	t.Run("leaves the customer's retention policy alone", func(t *testing.T) {
+	t.Run("leaves the configured retention policy alone", func(t *testing.T) {
 		previousRule := models.RetentionPolicyRules{
 			Rules: []models.RetentionPolicyRuleItem{
 				{Selector: "/my-dir/*", Age: 3600 * 24 * 7},
@@ -448,7 +448,7 @@ func Test__Destroy(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, a.DeletedAt)
 
-		// The rules the customer configured survive. Destroying a storage is driven
+		// The configured rules survive. Destroying a storage is driven
 		// by the artifact's own mark, so there is no reason to overwrite them, and a
 		// restored project would otherwise keep losing its new artifacts to a rule
 		// nobody set.

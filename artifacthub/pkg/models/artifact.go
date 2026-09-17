@@ -28,11 +28,30 @@ type Artifact struct {
 	PurgeRequestedAt *time.Time
 }
 
-// ShouldPurgeContents reports whether every object in this storage is to be
-// deleted, whatever the retention policy says. Set by a project delete, which only
-// empties the storage, and by the hard destroy 30 days later, which also removes it.
-func (a *Artifact) ShouldPurgeContents() bool {
+// IsPurgeMarked reports whether this storage is already spoken for, either by a
+// project delete or by the hard destroy 30 days later. Re-marking it would push the
+// grace period back, so callers check this before asking for a purge.
+func (a *Artifact) IsPurgeMarked() bool {
 	return a.PurgeRequestedAt != nil || a.DeletedAt != nil
+}
+
+// IsPurgeDue reports whether every object in this storage is to be deleted now,
+// whatever the retention policy says.
+//
+// A project delete asks for the purge but does not get it immediately. The storage
+// is kept for the grace period, so restoring the project inside that window brings
+// its artifacts back with it. Destruction is not held back, because the project has
+// already served its own 30 day grace period by the time it is destroyed.
+func (a *Artifact) IsPurgeDue(grace time.Duration) bool {
+	if a.DeletedAt != nil {
+		return true
+	}
+
+	if a.PurgeRequestedAt == nil {
+		return false
+	}
+
+	return time.Since(*a.PurgeRequestedAt) >= grace
 }
 
 // IsMarkedForDestruction reports whether the storage itself goes once it is empty.
