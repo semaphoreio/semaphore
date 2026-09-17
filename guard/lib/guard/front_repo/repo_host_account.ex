@@ -72,7 +72,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     do: from(r in __MODULE__, where: r.user_id == ^user_id) |> FrontRepo.aggregate(:count, :id)
 
   def create(data) do
-    result =
+    changeset =
       %__MODULE__{}
       |> Ecto.Changeset.cast(data, [
         :login,
@@ -94,12 +94,17 @@ defmodule Guard.FrontRepo.RepoHostAccount do
         :permission_scope
       ])
       |> validate_github_uid_not_taken()
-      |> FrontRepo.insert()
+
+    result =
+      transact_claim(fn ->
+        with {:ok, account} <- FrontRepo.insert(changeset) do
+          release_revoked_uid_rows(account)
+          {:ok, account}
+        end
+      end)
 
     case result do
       {:ok, account} ->
-        release_revoked_uid_rows(account)
-
         Logger.info(
           "Successfully created RepoHostAccount for #{account.user_id} #{account.repo_host} with login #{account.login}, github_uid #{account.github_uid}, and scope #{account.permission_scope}"
         )
@@ -429,6 +434,50 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     FrontRepo.exists?(query)
   end
 
+  # A claim is one unit of work: the write that takes the uid, the deletion of
+  # the losing rows, and the outbox row that records the Keycloak sync they
+  # need. Committing the write on its own — as happens on the OAuth reconnect
+  # and RefreshRepositoryProvider paths, which carry no ambient transaction —
+  # lets a crash in between leave the uid claimed with the losers still holding
+  # it and nothing queued to reconcile them.
+  #
+  # Keycloak is never called inside the transaction: FederatedIdentitySync
+  # defers while `in_transaction?/0` is true, so only the deferred tasks run
+  # after commit. A caller that already opened a transaction (see
+  # Guard.User.Actions.create/1) owns those deferrals and releases them itself,
+  # so we must not run or drop them on its behalf.
+  defp transact_claim(fun) do
+    if FrontRepo.in_transaction?() do
+      fun.()
+    else
+      result =
+        try do
+          FrontRepo.transaction(fn ->
+            case fun.() do
+              {:ok, account} -> account
+              {:error, reason} -> FrontRepo.rollback(reason)
+            end
+          end)
+        rescue
+          exception ->
+            # The transaction rolled back, so anything deferred inside it must
+            # not outlive it in the process dictionary.
+            Guard.OIDC.FederatedIdentitySync.drop_deferred()
+            reraise exception, __STACKTRACE__
+        end
+
+      case result do
+        {:ok, account} ->
+          Guard.OIDC.FederatedIdentitySync.run_deferred()
+          {:ok, account}
+
+        {:error, reason} ->
+          Guard.OIDC.FederatedIdentitySync.drop_deferred()
+          {:error, reason}
+      end
+    end
+  end
+
   defp release_revoked_uid_rows(%__MODULE__{repo_host: "github"} = account) do
     {count, released_user_ids, request} = release_and_enqueue_sync(account)
 
@@ -576,12 +625,23 @@ defmodule Guard.FrontRepo.RepoHostAccount do
       |> maybe_validate_uid_on_unrevoke()
 
     unrevoke? = unrevoke_transition?(changeset)
-    result = FrontRepo.update(changeset)
+
+    # Only an unrevoke claims a uid, so only that path needs the transaction.
+    # Token refreshes and profile syncs stay a plain UPDATE.
+    result =
+      if unrevoke? do
+        transact_claim(fn ->
+          with {:ok, account} <- FrontRepo.update(changeset) do
+            release_revoked_uid_rows(account)
+            {:ok, account}
+          end
+        end)
+      else
+        FrontRepo.update(changeset)
+      end
 
     case result do
       {:ok, account} ->
-        account = if unrevoke?, do: release_revoked_uid_rows(account), else: account
-
         Logger.info(
           "Successfully updated RepoHostAccount for #{account.user_id} #{account.repo_host} login=#{account.login}"
         )
@@ -622,7 +682,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
   end
 
   defp reset_account(account, data, _opts) do
-    result =
+    changeset =
       account
       |> Ecto.Changeset.cast(
         data,
@@ -639,12 +699,17 @@ defmodule Guard.FrontRepo.RepoHostAccount do
       )
       |> Ecto.Changeset.validate_required([:github_uid, :login, :name])
       |> validate_github_uid_not_taken()
-      |> FrontRepo.update()
+
+    result =
+      transact_claim(fn ->
+        with {:ok, account} <- FrontRepo.update(changeset) do
+          release_revoked_uid_rows(account)
+          {:ok, account}
+        end
+      end)
 
     case result do
       {:ok, account} ->
-        release_revoked_uid_rows(account)
-
         Logger.warning(
           "Successfully reset RepoHostAccount for #{account.user_id} #{account.repo_host} login=#{account.login}"
         )
