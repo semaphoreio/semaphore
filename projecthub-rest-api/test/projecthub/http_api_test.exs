@@ -1329,6 +1329,135 @@ defmodule Projecthub.HttpApi.Test do
       assert task.skip_scheduled_run_notifications == false
     end
 
+    test "a task update is rejected when the stored notification flags cannot be read" do
+      test_pid = self()
+
+      FunRegistry.set!(FakeServices.ProjectService, :describe, fn _req, _ ->
+        alias InternalApi.Projecthub, as: PH
+
+        PH.DescribeResponse.new(
+          metadata:
+            PH.ResponseMeta.new(
+              status:
+                PH.ResponseMeta.Status.new(
+                  code: PH.ResponseMeta.Code.value(:FAILED_PRECONDITION),
+                  message: "upstream is having a bad day"
+                )
+            )
+        )
+      end)
+
+      FunRegistry.set!(FakeServices.ProjectService, :update, fn req, _ ->
+        alias InternalApi.Projecthub, as: PH
+
+        send(test_pid, {:updated_tasks, req.project.spec.tasks})
+
+        PH.UpdateResponse.new(
+          metadata:
+            PH.ResponseMeta.new(
+              status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:OK))
+            ),
+          project: PH.Project.new(spec: req.project.spec)
+        )
+      end)
+
+      restrict_org!()
+
+      resource =
+        Poison.encode!(%{
+          "metadata" => %{"name" => "trello", "id" => @project_id},
+          "spec" => %{
+            "repository" => %{
+              "url" => "git@github.com/shiroyasha/test.git",
+              "forked_pull_requests" => %{"allowed_secrets" => []},
+              "pipeline_file" => ""
+            },
+            "tasks" => [
+              %{
+                "name" => "scheduler1",
+                "id" => @task_id,
+                "branch" => "master",
+                "scheduled" => true,
+                "at" => "0 * * * *",
+                "pipeline_file" => ".semaphore/cron1.yml",
+                "status" => "ACTIVE"
+              }
+            ]
+          }
+        })
+
+      {:ok, response} =
+        HTTPoison.patch(
+          "http://localhost:#{@port}/api/#{@version}/projects/#{@project_id}",
+          resource,
+          @headers
+        )
+
+      refute_received {:updated_tasks, _}
+      assert response.status_code == 503
+    end
+
+    test "an update without tasks is unaffected by a failing stored flag lookup" do
+      test_pid = self()
+
+      FunRegistry.set!(FakeServices.ProjectService, :describe, fn _req, _ ->
+        alias InternalApi.Projecthub, as: PH
+
+        PH.DescribeResponse.new(
+          metadata:
+            PH.ResponseMeta.new(
+              status:
+                PH.ResponseMeta.Status.new(
+                  code: PH.ResponseMeta.Code.value(:FAILED_PRECONDITION),
+                  message: "upstream is having a bad day"
+                )
+            )
+        )
+      end)
+
+      FunRegistry.set!(FakeServices.ProjectService, :update, fn req, _ ->
+        alias InternalApi.Projecthub, as: PH
+
+        send(test_pid, {:updated_tasks, req.project.spec.tasks})
+
+        PH.UpdateResponse.new(
+          metadata:
+            PH.ResponseMeta.new(
+              status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:OK))
+            ),
+          project:
+            PH.Project.new(
+              metadata: PH.Project.Metadata.new(id: @project_id, name: "trello"),
+              spec: req.project.spec
+            )
+        )
+      end)
+
+      restrict_org!()
+
+      resource =
+        Poison.encode!(%{
+          "metadata" => %{"name" => "trello", "id" => @project_id},
+          "spec" => %{
+            "repository" => %{
+              "url" => "git@github.com/shiroyasha/test.git",
+              "forked_pull_requests" => %{"allowed_secrets" => []},
+              "pipeline_file" => ""
+            }
+          }
+        })
+
+      {:ok, response} =
+        HTTPoison.patch(
+          "http://localhost:#{@port}/api/#{@version}/projects/#{@project_id}",
+          resource,
+          @headers
+        )
+
+      assert_received {:updated_tasks, []}
+      assert response.status_code == 200
+    end
+
     test "when project update with tasks succeds => returns 200" do
       FunRegistry.set!(FakeServices.ProjectService, :update, fn req, _ ->
         alias InternalApi.Projecthub, as: PH
