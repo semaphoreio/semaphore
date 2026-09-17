@@ -4,7 +4,7 @@ description: Run jobs on your hardware
 
 # Self-hosted Agents
 
-**Semaphore Hybrid** lets you run jobs on your own hardware. This page explains what self-hosted agents are and how to install them on several platforms.
+**Self-hosted Agents** lets you run jobs on your own hardware. This page explains what self-hosted agents are and how to install them on several platforms.
 
 ## Overview {#overview}
 

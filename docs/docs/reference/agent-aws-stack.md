@@ -4,7 +4,7 @@ description: AWS Autoscaler for self-hosted reference
 
 # AWS Autoscaler Settings
 
-<Available plans={['Hybrid', 'The Plan']}/>
+<Available plans={['The Plan']}/>
 
 This page describes all the settings available to configure [AWS Autoscaler Stack](../using-semaphore/self-hosted-aws).
 
