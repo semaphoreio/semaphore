@@ -56,6 +56,9 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     field(:user_id, :binary_id)
     field(:name, :string)
     field(:permission_scope, :string)
+    # @derive above masks these on the struct; redact: true is what populates
+    # __schema__(:redact_fields), which Ecto's Inspect impl for Ecto.Changeset
+    # uses to mask :changes. Without it inspect(changeset) prints credentials.
     field(:token, :string, redact: true)
     field(:refresh_token, :string, redact: true)
     field(:token_expires_at, :utc_datetime)
