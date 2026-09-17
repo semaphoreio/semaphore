@@ -334,39 +334,22 @@ defmodule Projecthub.Models.Project do
     end
   end
 
-  @restore_cooldown_minutes 60
-
   @doc """
-  Brings a soft-deleted project back, once its deletion has had time to settle.
+  Brings a soft-deleted project back.
 
-  Deleting a project tells artifacthub to empty its artifact storage. That is
-  asynchronous, so restoring immediately would race it and anything the project
-  uploaded next would be deleted along with the rest. An hour is far longer than a
-  purge takes, so waiting keeps the two apart instead of arbitrating between them.
+  Deleting a project tells artifacthub to empty its artifact storage, but that does
+  not happen straight away: the storage sits marked for a grace period first, and the
+  event published here cancels the mark. Restoring inside that window therefore brings
+  the artifacts back along with the project.
 
-  The project comes back with no artifacts, which is what deleting it said would
-  happen, and with its retention policy untouched.
+  Restoring later brings the project back without its artifacts, which is what
+  deleting it said would happen, and with its retention policy untouched.
   """
   def restore(project) do
-    if restorable?(project) do
-      {:ok, project} = update_record(project, %{deleted_at: nil, deleted_by: nil})
-      {:ok, _} = Events.ProjectRestored.publish(project)
+    {:ok, project} = update_record(project, %{deleted_at: nil, deleted_by: nil})
+    {:ok, _} = Events.ProjectRestored.publish(project)
 
-      {:ok, project}
-    else
-      {:error,
-       %{
-         message:
-           "Project #{project.id} was deleted less than #{@restore_cooldown_minutes} minutes ago, " <>
-             "and its artifacts may still be being deleted. Try again later."
-       }}
-    end
-  end
-
-  defp restorable?(%{deleted_at: nil}), do: true
-
-  defp restorable?(%{deleted_at: deleted_at}) do
-    DateTime.diff(DateTime.utc_now(), deleted_at, :second) >= @restore_cooldown_minutes * 60
+    {:ok, project}
   end
 
   def find_candidates_for_hard_destroy() do

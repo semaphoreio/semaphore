@@ -62,7 +62,7 @@ func Test__PurgeArtifactContents(t *testing.T) {
 		require.NoError(t, err)
 		assert.Nil(t, policy.LastCleanedAt)
 
-		// And the rules the customer configured are still theirs.
+		// And the configured rules are unchanged.
 		assert.Equal(t, rules, policy.ProjectLevelPolicies)
 	})
 
@@ -101,7 +101,7 @@ func Test__CancelArtifactPurge(t *testing.T) {
 		restored, err := models.FindArtifactByID(artifact.ID.String())
 		require.NoError(t, err)
 		assert.Nil(t, restored.PurgeRequestedAt)
-		assert.False(t, restored.ShouldPurgeContents())
+		assert.False(t, restored.IsPurgeMarked())
 	})
 
 	t.Run("leaves a storage that is being destroyed alone", func(t *testing.T) {
@@ -117,7 +117,7 @@ func Test__CancelArtifactPurge(t *testing.T) {
 		stored, err := models.FindArtifactByID(artifact.ID.String())
 		require.NoError(t, err)
 		assert.NotNil(t, stored.DeletedAt)
-		assert.True(t, stored.ShouldPurgeContents())
+		assert.True(t, stored.IsPurgeMarked())
 	})
 
 	t.Run("a project with no storage is not an error", func(t *testing.T) {
