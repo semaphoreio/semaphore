@@ -20,6 +20,7 @@ defmodule Guard.FederatedIdentitySyncDrainer do
 
   @batch_size 50
   @pending_metric "guard.federated_identity_sync.pending"
+  @dead_letter_metric "guard.federated_identity_sync.dead_letter_pending"
 
   @spec process() :: :ok
   def process do
@@ -49,6 +50,11 @@ defmodule Guard.FederatedIdentitySyncDrainer do
       end)
 
       Watchman.submit(@pending_metric, FederatedIdentitySyncRequest.pending_count())
+
+      # Separate from the pending gauge: these are no longer retried, so they
+      # never drain and would otherwise sit in the pending count forever,
+      # indistinguishable from a healthy backlog.
+      Watchman.submit(@dead_letter_metric, FederatedIdentitySyncRequest.dead_letter_count())
 
       :ok
     end)

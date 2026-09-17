@@ -19,6 +19,11 @@ defmodule Guard.FrontRepo.FederatedIdentitySyncRequestTest do
     request
   end
 
+  # One failure short of the ceiling, so the next record_failure/2 dead-letters.
+  defp at_last_attempt(request) do
+    %{request | attempts: Request.max_attempts() - 1}
+  end
+
   defp account(overrides \\ %{}) do
     Map.merge(
       %RepoHostAccount{
@@ -94,6 +99,72 @@ defmodule Guard.FrontRepo.FederatedIdentitySyncRequestTest do
 
     test "is a no-op for nil" do
       assert :ok = Request.record_failure(nil, "boom")
+    end
+  end
+
+  describe "dead lettering" do
+    test "a row short of the ceiling is still pending, due and leasable" do
+      import Ecto.Query
+
+      request = Request.enqueue(account(), [Ecto.UUID.generate()]) |> make_due()
+
+      {1, _} =
+        from(r in Request, where: r.id == ^request.id)
+        |> Guard.FrontRepo.update_all(set: [attempts: Request.max_attempts() - 1])
+
+      assert Request.pending?("github", "55001")
+      assert Request.pending_count() == 1
+      assert Request.dead_letter_count() == 0
+      assert [_] = Request.due_ids(10)
+      assert %Request{} = Request.lease(request.id)
+    end
+
+    test "the failure that reaches the ceiling stops the row blocking SSO" do
+      request = Request.enqueue(account(), [Ecto.UUID.generate()]) |> at_last_attempt()
+
+      assert :ok = Request.record_failure(request, "identity removal failed")
+
+      # The row survives - it records a claim Keycloak never reconciled - but
+      # it must no longer gate the claiming user's identity push.
+      assert Request.dead_letter_count() == 1
+      refute Request.pending?("github", "55001")
+      assert Request.pending_count() == 0
+    end
+
+    test "a dead-lettered row is never retried again" do
+      import Ecto.Query
+
+      request = Request.enqueue(account(), [Ecto.UUID.generate()]) |> at_last_attempt()
+      :ok = Request.record_failure(request, "boom")
+
+      # even once its backoff elapses
+      {1, _} =
+        from(r in Request, where: r.id == ^request.id)
+        |> Guard.FrontRepo.update_all(
+          set: [next_attempt_at: DateTime.utc_now() |> DateTime.truncate(:second)]
+        )
+
+      assert Request.due_ids(10) == []
+      assert Request.lease(request.id) == nil
+    end
+
+    test "max_attempts matches rbac's, which enqueues into this shared table" do
+      # rbac writes rows this drainer picks up. If the two ceilings drift,
+      # one service gates identity pushes on rows the other has abandoned.
+      assert Request.max_attempts() == 20
+    end
+
+    test "dead lettering one row leaves another claim's row alone" do
+      doomed = Request.enqueue(account(), [Ecto.UUID.generate()]) |> at_last_attempt()
+
+      other =
+        Request.enqueue(account(%{github_uid: "55002"}), [Ecto.UUID.generate()]) |> make_due()
+
+      :ok = Request.record_failure(doomed, "boom")
+
+      refute Request.pending?("github", "55001")
+      assert Request.pending?("github", "55002")
+      assert Request.due_ids(10) == [other.id]
     end
   end
 
