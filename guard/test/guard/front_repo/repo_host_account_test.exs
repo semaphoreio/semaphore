@@ -708,6 +708,64 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
 
       assert updated.revoked == false
     end
+
+    test "refreshed credentials are persisted even when the unrevoke is refused" do
+      # Another user actively holds the uid, so this revoked github row may not
+      # self-heal. The credentials must still be stored: GitHub rotates refresh
+      # tokens, and dropping the new one replays a stale token until the grant
+      # dies for good.
+      {:ok, holder} = Support.Factories.RbacUser.insert()
+
+      {:ok, _} =
+        Support.Members.insert_user(id: holder.id, email: holder.email, name: holder.name)
+
+      {:ok, _active} =
+        Support.Members.insert_repo_host_account(
+          login: "holder",
+          name: "holder",
+          repo_host: "github",
+          github_uid: "91001",
+          user_id: holder.id,
+          token: "holder_token",
+          revoked: false,
+          permission_scope: "repo"
+        )
+
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      {:ok, rha} =
+        Support.Members.insert_repo_host_account(
+          login: "example",
+          name: "example",
+          repo_host: "github",
+          github_uid: "91001",
+          refresh_token: "stale_refresh_token",
+          user_id: user.id,
+          token: "expired_token",
+          token_expires_at: Support.Members.invalid_expires_at(),
+          revoked: true,
+          permission_scope: "repo"
+        )
+
+      assert {:ok, updated} =
+               RepoHostAccount.update_token(
+                 rha,
+                 "new_token",
+                 "rotated_refresh_token",
+                 DateTime.utc_now()
+               )
+
+      # the flag stays latched, but the new credentials are on the row
+      assert updated.revoked == true
+      assert updated.token == "new_token"
+      assert updated.refresh_token == "rotated_refresh_token"
+
+      reloaded = Guard.FrontRepo.get(RepoHostAccount, rha.id)
+      assert reloaded.revoked == true
+      assert reloaded.token == "new_token"
+      assert reloaded.refresh_token == "rotated_refresh_token"
+    end
   end
 
   describe "get_github_token/1 (GitHub refresh - transient vs revoked)" do

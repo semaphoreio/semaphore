@@ -262,7 +262,28 @@ defmodule Guard.FrontRepo.RepoHostAccount do
       revoked: false
     }
 
-    update_account(params, rha)
+    case update_account(params, rha) do
+      {:error, %Ecto.Changeset{} = changeset} ->
+        if uid_taken_error?(changeset) do
+          # The self-heal is refused because another user actively holds this
+          # uid, but the credentials are still valid and still ours to keep.
+          # Dropping them would be worse than a stale flag: GitHub rotates
+          # refresh tokens, so the unsaved one is replayed on the next refresh
+          # until GitHub's grace window closes and the link dies for good.
+          # Persist without the unrevoke and leave the flag latched.
+          Logger.warning(
+            "Keeping repo_host_account #{rha.id} revoked: uid is actively held by another " <>
+              "user. Refreshed credentials are still persisted."
+          )
+
+          update_account(Map.delete(params, :revoked), rha)
+        else
+          {:error, changeset}
+        end
+
+      result ->
+        result
+    end
   end
 
   @doc """
