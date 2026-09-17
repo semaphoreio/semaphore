@@ -3865,6 +3865,60 @@ blocks:
             - make test
             - cache store deps-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock) deps
             - cache store build-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock) _build
+  - name: "Temp: DB timing probe"
+    dependencies: []
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: test
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      jobs:
+        - name: "probe ppl"
+          matrix:
+            - env_var: PG
+              values: ["9.6", "17"]
+            - env_var: MODE
+              values: ["config", "config_tmpfs"]
+            - env_var: REP
+              values: ["1", "2", "3", "4", "5"]
+          commands:
+            - export ARMS="$PG/stock $PG/$MODE $PG/$MODE $PG/stock"
+            - cd plumber/ppl && bash ../../.bench/bench.sh
+            - artifact push workflow out/db-bench/results.tsv -d db-bench/ppl-pg$PG-$MODE-rep$REP.tsv
+            - artifact push job out/db-bench/REPORT.md -d .semaphore/REPORT.md
+        - name: "probe gofer"
+          matrix:
+            - env_var: PG
+              values: ["9.6", "17"]
+            - env_var: REP
+              values: ["1", "2", "3"]
+          commands:
+            - export ARMS="$PG/stock $PG/config $PG/config $PG/stock"
+            - cd ee/gofer && bash ../../.bench/bench.sh
+            - artifact push workflow out/db-bench/results.tsv -d db-bench/gofer-pg$PG-rep$REP.tsv
+            - artifact push job out/db-bench/REPORT.md -d .semaphore/REPORT.md
+        - name: "probe audit"
+          matrix:
+            - env_var: PG
+              values: ["9.6", "17"]
+            - env_var: REP
+              values: ["1", "2", "3"]
+          commands:
+            - export ARMS="$PG/stock $PG/config $PG/config $PG/stock"
+            - cd ee/audit && bash ../../.bench/bench.sh
+            - artifact push workflow out/db-bench/results.tsv -d db-bench/audit-pg$PG-rep$REP.tsv
+            - artifact push job out/db-bench/REPORT.md -d .semaphore/REPORT.md
+  - name: "Temp: DB timing probe report"
+    dependencies: ["Temp: DB timing probe"]
+    task:
+      jobs:
+        - name: "aggregate"
+          commands:
+            - artifact pull workflow db-bench -d db-bench
+            - bash .bench/report.sh db-bench REPORT.md
+            - cat REPORT.md
+            - artifact push workflow REPORT.md -d .semaphore/REPORT.md
 promotions:
   - name: Generate Helm Chart
     pipeline_file: generate-helm-chart.yml
