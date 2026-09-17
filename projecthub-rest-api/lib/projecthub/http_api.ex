@@ -162,13 +162,13 @@ defmodule Projecthub.HttpApi do
     org_id = conn.assigns.org_id
     project_id = conn.params["id"]
 
-    if Auth.has_permissions?(org_id, user_id, project_id, @update_permissions) do
+    with true <- Auth.has_permissions?(org_id, user_id, project_id, @update_permissions),
+         {:ok, stored_flags} <- stored_notification_flags(conn) do
       metadata = conn.body_params["metadata"]
       spec = conn.body_params["spec"]
       repository = spec["repository"]
 
-      {schedulers, tasks} =
-        construct_schedulers_and_tasks(conn.body_params, stored_notification_flags(conn))
+      {schedulers, tasks} = construct_schedulers_and_tasks(conn.body_params, stored_flags)
 
       req =
         InternalApi.Projecthub.UpdateRequest.new(
@@ -230,7 +230,22 @@ defmodule Projecthub.HttpApi do
           send_resp(conn, 422, Poison.encode!(%{message: res.metadata.status.message}))
       end
     else
-      send_resp(conn, 401, Poison.encode!(%{message: "Unauthorized"}))
+      false ->
+        send_resp(conn, 401, Poison.encode!(%{message: "Unauthorized"}))
+
+      {:error, reason} ->
+        Logger.error(
+          "Reading the stored task notification settings for #{project_id} failed: #{inspect(reason)}"
+        )
+
+        send_resp(
+          conn,
+          503,
+          Poison.encode!(%{
+            message:
+              "Could not read the stored commit status settings for this project's tasks, so nothing was changed. Please retry."
+          })
+        )
     end
   end
 
@@ -675,18 +690,26 @@ defmodule Projecthub.HttpApi do
   end
 
   defp stored_notification_flags(conn) do
-    case fetch_project_by_id(conn) do
-      {:ok, project} ->
-        Map.new(project.spec.tasks, fn task ->
-          {task.id,
-           %{
-             "skip_scheduled_run_notifications" => task.skip_scheduled_run_notifications == true,
-             "skip_manual_run_notifications" => task.skip_manual_run_notifications == true
-           }}
-        end)
+    if tasks_in_request?(conn) do
+      with {:ok, project} <- fetch_project_by_id(conn) do
+        {:ok,
+         Map.new(project.spec.tasks, fn task ->
+           {task.id,
+            %{
+              "skip_scheduled_run_notifications" => task.skip_scheduled_run_notifications == true,
+              "skip_manual_run_notifications" => task.skip_manual_run_notifications == true
+            }}
+         end)}
+      end
+    else
+      {:ok, %{}}
+    end
+  end
 
-      _ ->
-        %{}
+  defp tasks_in_request?(conn) do
+    case conn.body_params["spec"] do
+      %{"tasks" => tasks} when is_list(tasks) -> tasks != []
+      _ -> false
     end
   end
 
