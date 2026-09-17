@@ -78,7 +78,9 @@ defmodule Projecthub.Models.PeriodicTask.GRPC do
       at: Map.get(definition, :at) || "",
       pipeline_file: Map.get(definition, :pipeline_file) || "",
       parameters: Enum.map(Map.get(definition, :parameters) || [], &build_parameter/1),
-      state: Map.get(definition, :state, :UNCHANGED)
+      state: Map.get(definition, :state, :UNCHANGED),
+      skip_scheduled_run_notifications: Map.get(definition, :skip_scheduled_run_notifications) == true,
+      skip_manual_run_notifications: Map.get(definition, :skip_manual_run_notifications) == true
     )
   end
 
