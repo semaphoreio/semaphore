@@ -1,6 +1,9 @@
 defmodule RepositoryHub.BuildStatusGuardTest do
   use RepositoryHub.Case, async: false
 
+  import ExUnit.CaptureLog
+  import Mock
+
   alias RepositoryHub.{BuildStatusGuard, InternalApiFactory, Repo}
 
   setup do
@@ -218,6 +221,29 @@ defmodule RepositoryHub.BuildStatusGuardTest do
       assert :ok = BuildStatusGuard.finalize(%{request | status: :PENDING}, stale_fence)
 
       assert [["SUCCESS"]] = select_field(request, "last_state")
+    end
+
+    test "a stale fence is counted and names the check it could not record", %{request: request} do
+      assert {:ok, stale_fence} = BuildStatusGuard.claim(request)
+      backdate_claim(request, BuildStatusGuard.lease_seconds() + 1)
+
+      success = %{request | status: :SUCCESS}
+      assert {:ok, fence} = BuildStatusGuard.claim(success)
+      assert :ok = BuildStatusGuard.finalize(success, fence)
+
+      with_mock Watchman, [:passthrough], [] do
+        log =
+          capture_log(fn ->
+            assert :ok = BuildStatusGuard.finalize(request, stale_fence)
+          end)
+
+        assert_called(Watchman.increment("build_status_guard.stale_fence"))
+
+        assert log =~ request.repository_id
+        assert log =~ request.commit_sha
+        assert log =~ request.context
+        assert log =~ request.source_id
+      end
     end
   end
 

@@ -126,7 +126,14 @@ defmodule RepositoryHub.BuildStatusGuard do
           |> Repo.update_all([])
           |> case do
             {0, _} ->
-              Logger.warning("[BuildStatusGuard] stale fence on finalize, state not recorded")
+              Watchman.increment("build_status_guard.stale_fence")
+
+              Logger.warning(
+                "[BuildStatusGuard] stale fence on finalize, state not recorded " <>
+                  "repository_id=#{key.repository_id} commit_sha=#{key.commit_sha} " <>
+                  "context=#{key.context} source_id=#{key.source_id}"
+              )
+
               :ok
 
             {_, _} ->
