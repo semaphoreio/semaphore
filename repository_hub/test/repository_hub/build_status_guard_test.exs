@@ -63,6 +63,87 @@ defmodule RepositoryHub.BuildStatusGuardTest do
       assert {:ok, _fence} = BuildStatusGuard.claim(%{request | status: :FAILURE})
     end
 
+    test "suppresses a pending when the caller asked for suppression", %{request: request} do
+      assert :suppressed = BuildStatusGuard.claim(%{request | suppress: true})
+    end
+
+    test "suppresses a terminal state when nothing is outstanding", %{request: request} do
+      assert :suppressed = BuildStatusGuard.claim(%{request | status: :SUCCESS, suppress: true})
+    end
+
+    test "a suppressed terminal still records its state, so a later pending is stale",
+         %{request: request} do
+      assert :suppressed = BuildStatusGuard.claim(%{request | status: :SUCCESS, suppress: true})
+
+      # without the record, this pending would be delivered with nothing left
+      # to terminate it - the stranded check this feature must never cause
+      assert :skip = BuildStatusGuard.claim(%{request | status: :PENDING})
+    end
+
+    test "a suppressed pending records nothing, so a later suppressed terminal stays suppressed",
+         %{request: request} do
+      assert :suppressed = BuildStatusGuard.claim(%{request | suppress: true})
+
+      assert :suppressed = BuildStatusGuard.claim(%{request | status: :SUCCESS, suppress: true})
+    end
+
+    test "a suppressed terminal reports busy while a pending delivery is in flight",
+         %{request: request} do
+      # claimed but not finalized: last_state is still nil even though a
+      # PENDING is on its way to the provider
+      assert {:ok, _fence} = BuildStatusGuard.claim(request)
+
+      assert :busy = BuildStatusGuard.claim(%{request | status: :SUCCESS, suppress: true})
+    end
+
+    test "a suppressed terminal takes over an expired claim instead of recording under it",
+         %{request: request} do
+      # a PENDING that reached the provider and then stalled before finalize:
+      # the claim is expired, but claimed_at is still set and its fence still
+      # matches, so recording under it would be undone by the old claimant
+      assert {:ok, stale_fence} = BuildStatusGuard.claim(request)
+      backdate_claim(request, BuildStatusGuard.lease_seconds() + 1)
+
+      success = %{request | status: :SUCCESS, suppress: true}
+
+      assert {:ok, fence} = BuildStatusGuard.claim(success)
+      assert :ok = BuildStatusGuard.finalize(success, fence)
+
+      # the stalled claimant wakes up: its fence must no longer be valid
+      assert :ok = BuildStatusGuard.finalize(request, stale_fence)
+
+      assert [["SUCCESS"]] = select_field(request, "last_state")
+    end
+
+    test "a suppressed terminal reconciles once the in-flight pending is recorded",
+         %{request: request} do
+      assert {:ok, fence} = BuildStatusGuard.claim(request)
+      assert :busy = BuildStatusGuard.claim(%{request | status: :SUCCESS, suppress: true})
+      assert :ok = BuildStatusGuard.finalize(request, fence)
+
+      assert {:ok, _fence} = BuildStatusGuard.claim(%{request | status: :SUCCESS, suppress: true})
+    end
+
+    test "delivers a suppressed terminal state that reconciles an outstanding pending",
+         %{request: request} do
+      assert {:ok, fence} = BuildStatusGuard.claim(request)
+      assert :ok = BuildStatusGuard.finalize(request, fence)
+
+      assert {:ok, _fence} = BuildStatusGuard.claim(%{request | status: :SUCCESS, suppress: true})
+    end
+
+    test "suppresses a terminal state once the pending has been reconciled",
+         %{request: request} do
+      assert {:ok, pending_fence} = BuildStatusGuard.claim(request)
+      assert :ok = BuildStatusGuard.finalize(request, pending_fence)
+
+      success = %{request | status: :SUCCESS, suppress: true}
+      assert {:ok, fence} = BuildStatusGuard.claim(success)
+      assert :ok = BuildStatusGuard.finalize(success, fence)
+
+      assert :suppressed = BuildStatusGuard.claim(success)
+    end
+
     test "claims a check whose context exceeds 255 characters", %{request: request} do
       request = %{request | context: "ci/semaphoreci/push: " <> String.duplicate("b", 300)}
 
