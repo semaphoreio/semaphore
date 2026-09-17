@@ -51,7 +51,7 @@ This is a required field for project-level secrets. It must contain either the p
 
 ## org_config {#org-config}
 
-<Available plans={['Enterprise']}/>
+<Available plans={['The Plan']}/>
 
 The `org_config` property holds organization access policy fields, which are enabled for organizations on a Cloud plan or higher. 
 
