@@ -6,7 +6,7 @@ defmodule Guard.FrontRepo.FederatedIdentitySyncRequestTest do
 
   # enqueue/2 schedules a request one lease ahead so the in-process sync owns
   # the first attempt. The drainer only ever sees rows that have become due, so
-  # tests of lease_due/1 have to age them first.
+  # tests of due_ids/1 and lease/1 have to age them first.
   defp make_due(request) do
     import Ecto.Query
 
@@ -48,7 +48,8 @@ defmodule Guard.FrontRepo.FederatedIdentitySyncRequestTest do
       # must not be leasable until that task has had a full lease to finish.
       # Otherwise the next drainer tick runs the same Keycloak move twice.
       assert DateTime.compare(request.next_attempt_at, DateTime.utc_now()) == :gt
-      assert Request.lease_due(10) == []
+      assert Request.due_ids(10) == []
+      assert Request.lease(request.id) == nil
     end
   end
 
@@ -96,23 +97,19 @@ defmodule Guard.FrontRepo.FederatedIdentitySyncRequestTest do
     end
   end
 
-  describe "lease_due/1" do
-    test "returns due requests and makes them invisible to the next lease" do
+  describe "due_ids/1" do
+    test "returns due requests" do
       request = Request.enqueue(account(), [Ecto.UUID.generate()]) |> make_due()
 
-      assert [leased] = Request.lease_due(10)
-      assert leased.id == request.id
-
-      # the lease pushed next_attempt_at into the future
-      assert Request.lease_due(10) == []
-      assert Request.pending?("github", "55001")
+      assert [id] = Request.due_ids(10)
+      assert id == request.id
     end
 
     test "skips requests scheduled in the future" do
       request = Request.enqueue(account(), [Ecto.UUID.generate()])
       :ok = Request.record_failure(request, "boom")
 
-      assert Request.lease_due(10) == []
+      assert Request.due_ids(10) == []
     end
 
     test "respects the batch limit, oldest first" do
@@ -130,8 +127,56 @@ defmodule Guard.FrontRepo.FederatedIdentitySyncRequestTest do
         from(r in Request, where: r.id == ^first.id)
         |> Guard.FrontRepo.update_all(set: [inserted_at: earlier])
 
-      assert [leased] = Request.lease_due(1)
-      assert leased.id == first.id
+      assert [id] = Request.due_ids(1)
+      assert id == first.id
+    end
+  end
+
+  describe "lease/1" do
+    test "returns the row and makes it invisible to the next lease" do
+      request = Request.enqueue(account(), [Ecto.UUID.generate()]) |> make_due()
+
+      assert leased = Request.lease(request.id)
+      assert leased.id == request.id
+
+      # the lease pushed next_attempt_at into the future
+      assert Request.lease(request.id) == nil
+      assert Request.due_ids(10) == []
+      assert Request.pending?("github", "55001")
+    end
+
+    test "returns nil for a row that is not due" do
+      request = Request.enqueue(account(), [Ecto.UUID.generate()])
+      :ok = Request.record_failure(request, "boom")
+
+      assert Request.lease(request.id) == nil
+    end
+
+    test "returns nil for a row that no longer exists" do
+      request = Request.enqueue(account(), [Ecto.UUID.generate()]) |> make_due()
+      :ok = Request.complete(request)
+
+      assert Request.lease(request.id) == nil
+    end
+
+    test "only one of two leases on the same id wins" do
+      request = Request.enqueue(account(), [Ecto.UUID.generate()]) |> make_due()
+
+      # A second drainer racing for the same candidate id: the row is already
+      # leased, so this one must skip rather than process it twice.
+      assert %Request{} = Request.lease(request.id)
+      assert Request.lease(request.id) == nil
+    end
+
+    test "leasing one row leaves the others due" do
+      first = Request.enqueue(account(), [Ecto.UUID.generate()]) |> make_due()
+
+      second =
+        Request.enqueue(account(%{github_uid: "55002"}), [Ecto.UUID.generate()]) |> make_due()
+
+      assert %Request{} = Request.lease(first.id)
+
+      assert Request.due_ids(10) == [second.id]
     end
   end
 end
