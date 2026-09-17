@@ -375,7 +375,28 @@ defmodule Guard.FrontRepo.RepoHostAccount do
       |> put_present(:refresh_token, refresh_token)
       |> put_present(:token_expires_at, expires_at)
 
-    update_account(params, rha, opts)
+    case update_account(params, rha, opts) do
+      {:error, %Ecto.Changeset{} = changeset} ->
+        if uid_taken_error?(changeset) do
+          # The self-heal is refused because another user actively holds this
+          # uid, but the credentials are still valid and still ours to keep.
+          # Dropping them would be worse than a stale flag: providers rotate
+          # refresh tokens, so the unsaved one is replayed on the next refresh
+          # until the grace window closes and the link dies for good. Persist
+          # without the unrevoke and leave the flag latched.
+          Logger.warning(
+            "Keeping repo_host_account #{rha.id} revoked: uid is actively held by another " <>
+              "user. Refreshed credentials are still persisted."
+          )
+
+          update_account(Map.delete(params, :revoked), rha, opts)
+        else
+          {:error, changeset}
+        end
+
+      result ->
+        result
+    end
   end
 
   # Bound the re-apply retries so a pathological stream of unrelated writes
