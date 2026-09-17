@@ -2,6 +2,7 @@ defmodule Guard.OIDC.FederatedIdentitySyncTest do
   use Guard.RepoCase, async: false
 
   import Ecto.Query
+  import Mock
 
   alias Guard.FrontRepo.FederatedIdentitySyncRequest
   alias Guard.FrontRepo.RepoHostAccount
@@ -547,9 +548,98 @@ defmodule Guard.OIDC.FederatedIdentitySyncTest do
     end
   end
 
+  describe "claim atomicity" do
+    setup do
+      enable_oidc_without_http()
+      setup_tesla_mock()
+
+      {loser, loser_rha} =
+        Support.Members.insert_user_with_github_account(
+          github_uid: @claimed_uid,
+          login: "previous-owner"
+        )
+
+      {:ok, _} = RepoHostAccount.update_revoke_status(loser_rha, true)
+      :ok = Support.Members.age_repo_host_account(loser_rha)
+      {:ok, _} = Guard.Store.OIDCUser.connect_user("kc-loser", loser.id)
+
+      {:ok, claimer} = Support.Factories.RbacUser.insert()
+      {:ok, _} = Guard.Store.OIDCUser.connect_user("kc-claimer", claimer.id)
+
+      {:ok, loser_rha: loser_rha, claimer: claimer}
+    end
+
+    test "create/1 rolls the claim back when the sync request cannot be enqueued",
+         %{loser_rha: loser_rha, claimer: claimer} do
+      with_mock FederatedIdentitySyncRequest,
+                [:passthrough],
+                enqueue: fn _account, _released -> raise "outbox unavailable" end do
+        assert_raise RuntimeError, ~r/outbox unavailable/, fn ->
+          RepoHostAccount.create(%{
+            login: "claimer-login",
+            github_uid: @claimed_uid,
+            repo_host: "github",
+            user_id: claimer.id,
+            name: "Claimer",
+            permission_scope: "user:email"
+          })
+        end
+      end
+
+      # The whole claim must be gone: the loser still holds the uid and the
+      # claimer has no row. Committing the insert on its own would leave the
+      # uid duplicated with nothing queued to reconcile it.
+      assert Guard.FrontRepo.get(RepoHostAccount, loser_rha.id)
+      refute Guard.FrontRepo.get_by(RepoHostAccount, user_id: claimer.id)
+      assert FederatedIdentitySyncRequest.pending_count() == 0
+    end
+
+    test "un-revoking rolls back when the sync request cannot be enqueued",
+         %{loser_rha: loser_rha} do
+      # A second, also-revoked row for the same uid: un-revoking it claims the
+      # uid and releases the loser, so it exercises the update_account/2 path.
+      {_claimer, claimer_rha} =
+        Support.Members.insert_user_with_github_account(
+          github_uid: @claimed_uid,
+          login: "claimer-login",
+          revoked: true
+        )
+
+      with_mock FederatedIdentitySyncRequest,
+                [:passthrough],
+                enqueue: fn _account, _released -> raise "outbox unavailable" end do
+        assert_raise RuntimeError, ~r/outbox unavailable/, fn ->
+          RepoHostAccount.update_revoke_status(claimer_rha, false)
+        end
+      end
+
+      assert Guard.FrontRepo.get(RepoHostAccount, claimer_rha.id).revoked
+      assert Guard.FrontRepo.get(RepoHostAccount, loser_rha.id)
+      assert FederatedIdentitySyncRequest.pending_count() == 0
+    end
+  end
+
   #
   # Helpers
   #
+
+  # The claim only enqueues a sync request when OIDC is enabled, but these
+  # tests roll the claim back before any Keycloak call is made. Going through
+  # stub_oidc_connection/0 would register Bypass expectations for requests that
+  # must never happen, and Bypass fails the test on exit when they don't.
+  # enabled?/0 only looks at :discovery_url, so set the config directly.
+  defp enable_oidc_without_http do
+    oidc_env = Application.get_env(:guard, :oidc)
+
+    Application.put_env(:guard, :oidc, %{
+      discovery_url: "http://localhost:0/.well-known/openid-configuration",
+      client_id: "test_client_id",
+      client_secret: "test_client_secret",
+      manage_url: "http://localhost/manage/"
+    })
+
+    on_exit(fn -> Application.put_env(:guard, :oidc, oidc_env) end)
+  end
 
   defp setup_oidc_connection do
     oidc_env = Application.get_env(:guard, :oidc)
