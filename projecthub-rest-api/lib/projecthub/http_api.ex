@@ -83,7 +83,8 @@ defmodule Projecthub.HttpApi do
     user_id = conn.assigns.user_id
     org_id = conn.assigns.org_id
 
-    if Auth.has_permissions?(org_id, user_id, "organization.projects.create") do
+    with true <- Auth.has_permissions?(org_id, user_id, "organization.projects.create"),
+         :ok <- validate_notification_flags(conn) do
       spec = conn.body_params["spec"]
       repository = spec["repository"]
 
@@ -150,9 +151,15 @@ defmodule Projecthub.HttpApi do
           send_resp(conn, 422, Poison.encode!(%{message: res.metadata.status.message}))
       end
     else
-      send_resp(conn, 401, Poison.encode!(%{message: "Unauthorized"}))
+      false ->
+        send_resp(conn, 401, Poison.encode!(%{message: "Unauthorized"}))
+
+      {:invalid, message} ->
+        send_resp(conn, 422, Poison.encode!(%{message: message}))
     end
   end
+
+  @notification_flags ~w(skip_scheduled_run_notifications skip_manual_run_notifications)
 
   @update_permissions ["project.general_settings.manage", "project.repository_info.manage"]
   patch "/api/#{@version}/projects/:id" do
@@ -163,6 +170,7 @@ defmodule Projecthub.HttpApi do
     project_id = conn.params["id"]
 
     with true <- Auth.has_permissions?(org_id, user_id, project_id, @update_permissions),
+         :ok <- validate_notification_flags(conn),
          {:ok, stored_flags} <- stored_notification_flags(conn) do
       metadata = conn.body_params["metadata"]
       spec = conn.body_params["spec"]
@@ -232,6 +240,9 @@ defmodule Projecthub.HttpApi do
     else
       false ->
         send_resp(conn, 401, Poison.encode!(%{message: "Unauthorized"}))
+
+      {:invalid, message} ->
+        send_resp(conn, 422, Poison.encode!(%{message: message}))
 
       {:error, reason} ->
         Logger.error(
@@ -706,10 +717,27 @@ defmodule Projecthub.HttpApi do
     end
   end
 
-  defp tasks_in_request?(conn) do
+  defp tasks_in_request?(conn), do: request_tasks(conn) != []
+
+  defp request_tasks(conn) do
     case conn.body_params["spec"] do
-      %{"tasks" => tasks} when is_list(tasks) -> tasks != []
-      _ -> false
+      %{"tasks" => tasks} when is_list(tasks) -> Enum.filter(tasks, &is_map/1)
+      _ -> []
+    end
+  end
+
+  # A proto3 bool takes anything truthy silently, so a quoted "true" would land
+  # as false and clear the flag instead of setting it. Reject it here, the way
+  # the scheduler YAML schema and the task form both do.
+  defp validate_notification_flags(conn) do
+    conn
+    |> request_tasks()
+    |> Enum.flat_map(fn task ->
+      Enum.filter(@notification_flags, &(Map.has_key?(task, &1) and not is_boolean(task[&1])))
+    end)
+    |> case do
+      [] -> :ok
+      [key | _] -> {:invalid, "#{key} must be true or false"}
     end
   end
 
@@ -724,12 +752,16 @@ defmodule Projecthub.HttpApi do
     {:ok, channel} =
       GRPC.Stub.connect(Application.fetch_env!(:projecthub, :projecthub_grpc_endpoint))
 
-    {:ok, res} =
-      InternalApi.Projecthub.ProjectService.Stub.describe(channel, req, timeout: 30_000)
+    try do
+      {:ok, res} =
+        InternalApi.Projecthub.ProjectService.Stub.describe(channel, req, timeout: 30_000)
 
-    case InternalApi.Projecthub.ResponseMeta.Code.key(res.metadata.status.code) do
-      :OK -> {:ok, res.project}
-      code -> {:error, code}
+      case InternalApi.Projecthub.ResponseMeta.Code.key(res.metadata.status.code) do
+        :OK -> {:ok, res.project}
+        code -> {:error, code}
+      end
+    after
+      GRPC.Stub.disconnect(channel)
     end
   rescue
     error -> {:error, error}

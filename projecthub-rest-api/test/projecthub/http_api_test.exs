@@ -777,6 +777,36 @@ defmodule Projecthub.HttpApi.Test do
       :ok
     end
 
+    test "project creation is rejected when a notification flag is not a boolean" do
+      resource =
+        Poison.encode!(%{
+          "metadata" => %{"name" => "trello"},
+          "spec" => %{
+            "repository" => %{
+              "url" => "git@github.com/shiroyasha/test.git",
+              "run_on" => ["tags"],
+              "pipeline_file" => ".semaphore/semaphore.yml"
+            },
+            "tasks" => [
+              %{
+                "name" => "scheduler1",
+                "branch" => "master",
+                "at" => "0 * * * *",
+                "pipeline_file" => ".semaphore/cron1.yml",
+                "status" => "ACTIVE",
+                "skip_manual_run_notifications" => 1
+              }
+            ]
+          }
+        })
+
+      {:ok, response} =
+        HTTPoison.post("http://localhost:#{@port}/api/#{@version}/projects", resource, @headers)
+
+      assert response.status_code == 422
+      assert Poison.decode!(response.body)["message"] =~ "skip_manual_run_notifications"
+    end
+
     test "when project creation succeds, without public flag => returns 200" do
       resource =
         Poison.encode!(%{
@@ -1395,6 +1425,61 @@ defmodule Projecthub.HttpApi.Test do
 
       refute_received {:updated_tasks, _}
       assert response.status_code == 503
+    end
+
+    test "a task update is rejected when a notification flag is not a boolean" do
+      test_pid = self()
+
+      FunRegistry.set!(FakeServices.ProjectService, :update, fn req, _ ->
+        alias InternalApi.Projecthub, as: PH
+
+        send(test_pid, {:updated_tasks, req.project.spec.tasks})
+
+        PH.UpdateResponse.new(
+          metadata:
+            PH.ResponseMeta.new(
+              status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:OK))
+            ),
+          project: PH.Project.new(spec: req.project.spec)
+        )
+      end)
+
+      restrict_org!()
+
+      resource =
+        Poison.encode!(%{
+          "metadata" => %{"name" => "trello", "id" => @project_id},
+          "spec" => %{
+            "repository" => %{
+              "url" => "git@github.com/shiroyasha/test.git",
+              "forked_pull_requests" => %{"allowed_secrets" => []},
+              "pipeline_file" => ""
+            },
+            "tasks" => [
+              %{
+                "name" => "scheduler1",
+                "id" => @task_id,
+                "branch" => "master",
+                "scheduled" => true,
+                "at" => "0 * * * *",
+                "pipeline_file" => ".semaphore/cron1.yml",
+                "status" => "ACTIVE",
+                "skip_scheduled_run_notifications" => "true"
+              }
+            ]
+          }
+        })
+
+      {:ok, response} =
+        HTTPoison.patch(
+          "http://localhost:#{@port}/api/#{@version}/projects/#{@project_id}",
+          resource,
+          @headers
+        )
+
+      refute_received {:updated_tasks, _}
+      assert response.status_code == 422
+      assert Poison.decode!(response.body)["message"] =~ "skip_scheduled_run_notifications"
     end
 
     test "an update without tasks is unaffected by a failing stored flag lookup" do
