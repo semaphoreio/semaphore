@@ -96,6 +96,25 @@ defmodule RepositoryHub.BuildStatusGuardTest do
       assert :busy = BuildStatusGuard.claim(%{request | status: :SUCCESS, suppress: true})
     end
 
+    test "a suppressed terminal takes over an expired claim instead of recording under it",
+         %{request: request} do
+      # a PENDING that reached the provider and then stalled before finalize:
+      # the claim is expired, but claimed_at is still set and its fence still
+      # matches, so recording under it would be undone by the old claimant
+      assert {:ok, stale_fence} = BuildStatusGuard.claim(request)
+      backdate_claim(request, BuildStatusGuard.lease_seconds() + 1)
+
+      success = %{request | status: :SUCCESS, suppress: true}
+
+      assert {:ok, fence} = BuildStatusGuard.claim(success)
+      assert :ok = BuildStatusGuard.finalize(success, fence)
+
+      # the stalled claimant wakes up: its fence must no longer be valid
+      assert :ok = BuildStatusGuard.finalize(request, stale_fence)
+
+      assert [["SUCCESS"]] = select_field(request, "last_state")
+    end
+
     test "a suppressed terminal reconciles once the in-flight pending is recorded",
          %{request: request} do
       assert {:ok, fence} = BuildStatusGuard.claim(request)
