@@ -111,6 +111,10 @@ func Test__CleanerPurge(t *testing.T) {
 	s := storage.NewInMemoryStorage()
 	id := uuid.NewV4().String()
 
+	// These cover what a purge does once it is due. The wait before it becomes due
+	// is covered by Test__CleanerPurgeGracePeriod.
+	withGracePeriod(t, 0)
+
 	t.Run("a purged storage loses everything, whatever the rules say", func(t *testing.T) {
 		artifact, _ := createBucketWithRetentionPolicy(t)
 		bucket := s.GetBucket(storage.BucketOptions{Name: artifact.BucketName}).(*storage.InMemoryBucket)
@@ -215,6 +219,8 @@ func Test__CleanerPurgeFailures(t *testing.T) {
 	s := storage.NewInMemoryStorage()
 	id := uuid.NewV4().String()
 
+	withGracePeriod(t, 0)
+
 	t.Run("a purge whose deletes fail reports the failure and keeps its mark", func(t *testing.T) {
 		artifact, _ := createBucketWithRetentionPolicy(t)
 		bucket := s.GetBucket(storage.BucketOptions{Name: artifact.BucketName}).(*storage.InMemoryBucket)
@@ -279,6 +285,146 @@ func Test__CleanerPurgeFailures(t *testing.T) {
 		require.NoError(t, err)
 		assert.Nil(t, stored.PurgeRequestedAt)
 	})
+}
+
+func Test__CleanerPurgeGracePeriod(t *testing.T) {
+	models.PrepareDatabaseForTests()
+	s := storage.NewInMemoryStorage()
+	id := uuid.NewV4().String()
+
+	withGracePeriod(t, 72*time.Hour)
+
+	t.Run("a marked storage keeps its contents until the grace period is up", func(t *testing.T) {
+		artifact, _ := createBucketWithRetentionPolicy(t)
+		bucket := s.GetBucket(storage.BucketOptions{Name: artifact.BucketName}).(*storage.InMemoryBucket)
+
+		bucket.Add("/jobs/"+id+"/junit/a.txt", daysAgo(0))
+
+		require.NoError(t, privateapi.PurgeArtifactContents(artifact.IdempotencyToken))
+
+		request, err := NewCleanRequest(artifact.ID.String())
+		require.NoError(t, err)
+
+		cleaner := NewBatchCleaner(s, request, 10)
+		_, err = cleaner.Run(db.Conn())
+		require.NoError(t, err)
+
+		// Still there to be restored along with the project, which is the point of
+		// the wait.
+		assert.Equal(t, 1, bucket.Size())
+		assert.Zero(t, cleaner.deletedObjectCount)
+		assert.False(t, cleaner.purgeCompleted)
+
+		// And the mark stays on, so the purge still happens once the wait is over.
+		stored, err := models.FindArtifactByID(artifact.ID.String())
+		require.NoError(t, err)
+		assert.NotNil(t, stored.PurgeRequestedAt)
+	})
+
+	t.Run("waiting applies the retention policy as usual, rather than nothing at all", func(t *testing.T) {
+		artifact, _ := createBucketWithRetentionPolicy(t)
+		bucket := s.GetBucket(storage.BucketOptions{Name: artifact.BucketName}).(*storage.InMemoryBucket)
+
+		// Old enough for the policy to delete, which it must still do: a marked
+		// storage is not exempt from routine retention while it waits.
+		bucket.Add("/jobs/"+id+"/junit/a.txt", daysAgo(10))
+		bucket.Add("/jobs/"+id+"/junit/b.txt", daysAgo(0))
+
+		require.NoError(t, privateapi.PurgeArtifactContents(artifact.IdempotencyToken))
+
+		request, err := NewCleanRequest(artifact.ID.String())
+		require.NoError(t, err)
+
+		cleaner := NewBatchCleaner(s, request, 10)
+		_, err = cleaner.Run(db.Conn())
+		require.NoError(t, err)
+
+		assert.Equal(t, 1, cleaner.deletedObjectCount)
+		assert.Equal(t, 1, bucket.Size())
+		assert.False(t, cleaner.purgeCompleted)
+	})
+
+	t.Run("once the grace period has passed the storage is emptied", func(t *testing.T) {
+		artifact, _ := createBucketWithRetentionPolicy(t)
+		bucket := s.GetBucket(storage.BucketOptions{Name: artifact.BucketName}).(*storage.InMemoryBucket)
+
+		bucket.Add("/jobs/"+id+"/junit/a.txt", daysAgo(0))
+
+		require.NoError(t, privateapi.PurgeArtifactContents(artifact.IdempotencyToken))
+		require.NoError(t, agePurgeMark(artifact.ID, 73*time.Hour))
+
+		request, err := NewCleanRequest(artifact.ID.String())
+		require.NoError(t, err)
+
+		cleaner := NewBatchCleaner(s, request, 10)
+		_, err = cleaner.Run(db.Conn())
+		require.NoError(t, err)
+
+		assert.Zero(t, bucket.Size())
+		assert.True(t, cleaner.purgeCompleted)
+	})
+
+	t.Run("restoring inside the grace period leaves the artifacts alone", func(t *testing.T) {
+		artifact, _ := createBucketWithRetentionPolicy(t)
+		bucket := s.GetBucket(storage.BucketOptions{Name: artifact.BucketName}).(*storage.InMemoryBucket)
+
+		bucket.Add("/jobs/"+id+"/junit/a.txt", daysAgo(0))
+
+		require.NoError(t, privateapi.PurgeArtifactContents(artifact.IdempotencyToken))
+		require.NoError(t, privateapi.CancelArtifactPurge(artifact.IdempotencyToken))
+
+		// Even long after the window would have closed, because the mark is gone.
+		request, err := NewCleanRequest(artifact.ID.String())
+		require.NoError(t, err)
+
+		cleaner := NewBatchCleaner(s, request, 10)
+		_, err = cleaner.Run(db.Conn())
+		require.NoError(t, err)
+
+		assert.Equal(t, 1, bucket.Size())
+		assert.False(t, cleaner.purgeCompleted)
+	})
+
+	t.Run("destruction is not held back by the grace period", func(t *testing.T) {
+		artifact, _ := createBucketWithRetentionPolicy(t)
+		bucket := s.GetBucket(storage.BucketOptions{Name: artifact.BucketName}).(*storage.InMemoryBucket)
+
+		bucket.Add("/jobs/"+id+"/junit/a.txt", daysAgo(0))
+
+		// A project is only destroyed after its own 30 day grace period, so there is
+		// nothing left to wait for.
+		require.NoError(t, privateapi.DestroyArtifact(context.TODO(), s, artifact.ID.String()))
+
+		request, err := NewCleanRequest(artifact.ID.String())
+		require.NoError(t, err)
+
+		cleaner := NewBatchCleaner(s, request, 10)
+		_, err = cleaner.Run(db.Conn())
+		require.NoError(t, err)
+
+		assert.Zero(t, bucket.Size())
+	})
+}
+
+// withGracePeriod sets the package-wide grace period for one test and puts it back
+// afterwards, since the cleaner and the scheduler both read it.
+func withGracePeriod(t *testing.T, grace time.Duration) {
+	t.Helper()
+
+	previous := PurgeGracePeriod
+	PurgeGracePeriod = grace
+
+	t.Cleanup(func() { PurgeGracePeriod = previous })
+}
+
+// agePurgeMark backdates the mark, which is the only way to reach the far side of
+// the grace period without waiting for it.
+func agePurgeMark(artifactID uuid.UUID, by time.Duration) error {
+	return db.Conn().
+		Table("artifacts").
+		Where("id = ?", artifactID.String()).
+		Update("purge_requested_at", time.Now().Add(-by)).
+		Error
 }
 
 func refreshPolicyCleanedAt(artifactID uuid.UUID) error {

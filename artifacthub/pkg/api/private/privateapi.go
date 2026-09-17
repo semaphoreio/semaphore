@@ -41,8 +41,8 @@ func CreateArtifact(ctx context.Context, client storage.Client, idempotencyToken
 //
 // Buckets can hold more files than one request can delete, so the work is
 // asynchronous: the mark is enough. This used to overwrite all three retention
-// policies with a delete-everything rule to express it, which threw away rules the
-// customer had set and kept deleting a restored project's new artifacts.
+// policies with a delete-everything rule to express it, which threw away the rules
+// the project had configured and kept deleting a restored project's new artifacts.
 func DestroyArtifact(ctx context.Context, client storage.Client, artifactID string) error {
 	return db.Conn().Transaction(func(tx *gorm.DB) error {
 		a, err := models.FindArtifactByIDWithTx(tx, artifactID)
@@ -67,6 +67,10 @@ func DestroyArtifact(ctx context.Context, client storage.Client, artifactID stri
 // PurgeArtifactContents marks a project's artifact storage so the bucket cleaners
 // empty it. This is what deleting a project does.
 //
+// The mark is not the deletion. Nothing is emptied until the storage has sat marked
+// for the grace period, so that restoring the project before then cancels the purge
+// and the artifacts come back with it.
+//
 // The delete is a soft one, so only the contents go: the storage, its bucket and
 // its retention policy stay, and a restored project can push to it again. Its
 // artifacts are gone, which is what the delete said would happen.
@@ -88,7 +92,9 @@ func PurgeArtifactContents(projectID string) error {
 			return log.ErrorCode(codes.Internal, "Finding Artifact row to purge", err)
 		}
 
-		if a.ShouldPurgeContents() {
+		// Already spoken for. Re-marking would push the grace period back, so a
+		// repeated event must not touch it.
+		if a.IsPurgeMarked() {
 			return nil
 		}
 
@@ -109,11 +115,10 @@ func PurgeArtifactContents(projectID string) error {
 
 // CancelArtifactPurge takes the mark off a restored project's storage.
 //
-// Normally there is nothing to do: projecthub refuses to restore a project until it
-// has been deleted for an hour, by which time the purge has finished and cleared
-// its own mark. This covers the case where it has not, a purge whose messages
-// dead-lettered or that ran while the broker was down, which would otherwise leave
-// a live project marked and emptied on every pass.
+// Restoring the project inside the grace period clears the mark before the cleaner
+// ever acts on it, so the artifacts are still there. After the grace period the
+// contents are already gone and this only protects what the project uploads next,
+// which would otherwise be emptied on every pass for as long as the mark stayed set.
 func CancelArtifactPurge(projectID string) error {
 	return db.Conn().Transaction(func(tx *gorm.DB) error {
 		a, err := models.FindArtifactByIdempotencyTokenRaw(tx, projectID)

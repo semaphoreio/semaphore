@@ -30,20 +30,27 @@ func SubmitMetrics() {
 }
 
 // oldestPurgeAgeSeconds is how long the longest outstanding emptying has been
-// going on, and is the signal to alert on.
+// overdue, and is the signal to alert on.
 //
 // A purge empties a storage and clears its own mark in one cleaner run, so this
-// sits at zero normally and rises only while marked work is not getting done. That
-// is the failure no other counter shows: nothing errors, the objects simply stay.
+// sits at zero normally and rises only while due work is not getting done. That is
+// the failure no other counter shows: nothing errors, the objects simply stay.
 // Alert above an hour. Covers destruction too, which also leaves the bucket behind
 // when it cannot finish.
+//
+// Storages still inside their grace period are not counted. They are waiting on
+// purpose, and counting them would sit permanently above any useful threshold.
 func oldestPurgeAgeSeconds() (int64, error) {
 	var res sql.NullFloat64
+	grace := postgresInterval(PurgeGracePeriod)
 
 	err := db.Conn().
 		Table("artifacts").
-		Select("COALESCE(MAX(EXTRACT(EPOCH FROM (now() - COALESCE(purge_requested_at, deleted_at)))), 0)").
-		Where("purge_requested_at IS NOT NULL OR deleted_at IS NOT NULL").
+		Select(
+			"COALESCE(MAX(EXTRACT(EPOCH FROM (now() - COALESCE(deleted_at, purge_requested_at + CAST(? AS interval))))), 0)",
+			grace,
+		).
+		Where("deleted_at IS NOT NULL OR purge_requested_at < now() - CAST(? AS interval)", grace).
 		Row().
 		Scan(&res)
 

@@ -121,16 +121,35 @@ func (s *Scheduler) scheduleWork() error {
 	return s.markBatchAsScheduled(db.Conn(), published)
 }
 
+// dueForRetention is the daily pass that applies retention policies. Columns are
+// qualified throughout because artifacts carries a last_cleaned_at of its own.
+const dueForRetention = `
+	(retention_policies.scheduled_for_cleaning_at IS NULL
+		OR retention_policies.scheduled_for_cleaning_at < now() - interval '1 day')
+	AND (retention_policies.last_cleaned_at IS NULL
+		OR retention_policies.last_cleaned_at < now() - interval '1 day')`
+
+// dueForPurge is a storage whose grace period is up, or one being destroyed.
+//
+// It does not wait for the daily pass, which would let artifacts outlive their grace
+// period by up to another day. It still paces itself, so a purge that keeps failing
+// retries hourly rather than on every tick.
+const dueForPurge = `
+	(artifacts.deleted_at IS NOT NULL
+		OR artifacts.purge_requested_at < now() - CAST(? AS interval))
+	AND (retention_policies.scheduled_for_cleaning_at IS NULL
+		OR retention_policies.scheduled_for_cleaning_at < now() - interval '1 hour')`
+
 func (s *Scheduler) loadBatch(tx *gorm.DB) ([]string, error) {
 	policies := []models.RetentionPolicy{}
 	result := []string{}
 
 	query := tx.
 		Table("retention_policies").
-		Select("artifact_id").
+		Select("retention_policies.artifact_id").
+		Joins("JOIN artifacts ON artifacts.id = retention_policies.artifact_id").
 		Set("gorm:query_option", "FOR UPDATE").
-		Where("scheduled_for_cleaning_at IS NULL or scheduled_for_cleaning_at < now() - interval '1 day'").
-		Where("last_cleaned_at IS NULL or last_cleaned_at < now() - interval '1 day'").
+		Where("("+dueForRetention+") OR ("+dueForPurge+")", postgresInterval(PurgeGracePeriod)).
 		Limit(s.BatchSize)
 
 	err := query.Find(&policies).Error
