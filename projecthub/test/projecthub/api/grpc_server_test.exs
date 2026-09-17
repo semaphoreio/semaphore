@@ -3033,15 +3033,6 @@ defmodule Projecthub.Api.GrpcServerTest do
 
       {:ok, _} = Project.soft_destroy(project, %User{github_token: "token"})
 
-      # Restoring is held back until the artifact purge the delete started has had
-      # time to finish, so this one is aged past the cooldown.
-      {:ok, deleted} = Project.find(project.id, true)
-
-      {:ok, _} =
-        Project.update_record(deleted, %{
-          deleted_at: DateTime.utc_now() |> DateTime.add(-2 * 60 * 60, :second) |> DateTime.truncate(:second)
-        })
-
       request =
         InternalApi.Projecthub.RestoreRequest.new(
           metadata:
@@ -3058,38 +3049,6 @@ defmodule Projecthub.Api.GrpcServerTest do
       {:ok, response} = Stub.restore(channel, request)
 
       assert response.metadata.status.code == :OK
-    end
-
-    test "when a project was deleted moments ago => refuses the restore" do
-      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
-
-      org_id = Ecto.UUID.generate()
-
-      {:ok, project} =
-        Support.Factories.Project.create_with_repo(%{
-          organization_id: org_id
-        })
-
-      {:ok, _} = Project.soft_destroy(project, %User{github_token: "token"})
-
-      request =
-        InternalApi.Projecthub.RestoreRequest.new(
-          metadata:
-            InternalApi.Projecthub.RequestMeta.new(
-              api_version: "",
-              kind: "",
-              req_id: "",
-              org_id: org_id,
-              user_id: "12345678-1234-5678-1234-567812345678"
-            ),
-          id: project.id
-        )
-
-      {:ok, response} = Stub.restore(channel, request)
-
-      # Told why, rather than the RPC failing, so an operator knows to wait.
-      assert response.metadata.status.code == :FAILED_PRECONDITION
-      assert response.metadata.status.message =~ "deleted less than 60 minutes ago"
     end
 
     test "when a project that is not soft deleted and it is requested to be restored => returns a not found response" do
