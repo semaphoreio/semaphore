@@ -16,12 +16,20 @@ defmodule Guard.FrontRepo.FederatedIdentitySyncRequest do
 
   use Ecto.Schema
 
+  require Logger
+
   import Ecto.Query
 
   alias Guard.FrontRepo
 
   @base_retry_seconds 60
   @max_retry_seconds 3600
+  # Attempts after which a row is dead-lettered: the drainer stops retrying it
+  # and it stops gating identity pushes. With the backoff above this is a day
+  # or so of retries, long past the point where a failure is still plausibly
+  # transient.
+  @max_attempts 20
+  @dead_letter_metric "guard.federated_identity_sync.dead_letter"
   # While leased, a row is invisible to other drainers. The lease is taken per
   # row (see lease/1), so this only has to exceed the worst case processing
   # time of one row - a few Keycloak calls with retries - not of a whole batch.
@@ -63,16 +71,44 @@ defmodule Guard.FrontRepo.FederatedIdentitySyncRequest do
     |> FrontRepo.insert!()
   end
 
+  @doc """
+  True while a claim for this identity still has Keycloak work outstanding.
+
+  Dead-lettered rows are excluded. They still describe unfinished work, but a
+  row that will never be retried must not gate identity pushes forever: doing
+  so leaves the claiming user unable to log in through this provider, with no
+  path to recovery. The trade is deliberate - see `record_failure/2`.
+  """
   @spec pending?(String.t(), String.t()) :: boolean()
   def pending?(repo_host, uid) do
-    from(r in __MODULE__, where: r.repo_host == ^repo_host and r.uid == ^uid)
+    from(r in __MODULE__,
+      where: r.repo_host == ^repo_host and r.uid == ^uid,
+      where: r.attempts < @max_attempts
+    )
     |> FrontRepo.exists?()
   end
 
+  @doc """
+  Rows still awaiting a successful sync, excluding dead-lettered ones.
+  """
   @spec pending_count() :: non_neg_integer()
   def pending_count do
-    FrontRepo.aggregate(__MODULE__, :count, :id)
+    from(r in __MODULE__, where: r.attempts < @max_attempts)
+    |> FrontRepo.aggregate(:count, :id)
   end
+
+  @doc """
+  Rows that exhausted their attempts. They are kept for investigation: each
+  one is a claim whose Keycloak state was never reconciled.
+  """
+  @spec dead_letter_count() :: non_neg_integer()
+  def dead_letter_count do
+    from(r in __MODULE__, where: r.attempts >= @max_attempts)
+    |> FrontRepo.aggregate(:count, :id)
+  end
+
+  @spec max_attempts() :: pos_integer()
+  def max_attempts, do: @max_attempts
 
   @spec complete(t() | nil) :: :ok
   def complete(nil), do: :ok
@@ -85,9 +121,11 @@ defmodule Guard.FrontRepo.FederatedIdentitySyncRequest do
   @spec record_failure(t() | nil, String.t()) :: :ok
   def record_failure(nil, _error), do: :ok
 
-  def record_failure(%__MODULE__{id: id, attempts: attempts}, error) do
+  def record_failure(%__MODULE__{id: id, attempts: attempts} = request, error) do
     attempts = attempts + 1
     retry_at = DateTime.add(now(), retry_delay_seconds(attempts), :second)
+
+    if attempts == @max_attempts, do: dead_letter(request, error)
 
     from(r in __MODULE__, where: r.id == ^id)
     |> FrontRepo.update_all(
@@ -113,6 +151,7 @@ defmodule Guard.FrontRepo.FederatedIdentitySyncRequest do
   def due_ids(limit) do
     from(r in __MODULE__,
       where: r.next_attempt_at <= ^now(),
+      where: r.attempts < @max_attempts,
       order_by: [asc: r.inserted_at],
       limit: ^limit,
       select: r.id
@@ -142,6 +181,7 @@ defmodule Guard.FrontRepo.FederatedIdentitySyncRequest do
     {_count, rows} =
       from(r in __MODULE__,
         where: r.id == ^id and r.next_attempt_at <= ^now,
+        where: r.attempts < @max_attempts,
         select: r
       )
       |> FrontRepo.update_all(set: [next_attempt_at: lease_until, updated_at: now])
@@ -150,6 +190,27 @@ defmodule Guard.FrontRepo.FederatedIdentitySyncRequest do
       [row] -> row
       _ -> nil
     end
+  end
+
+  # Crossing the attempt ceiling. The row stays in the table - it records a
+  # claim whose Keycloak side was never reconciled, and that needs a human -
+  # but it stops being retried and stops gating identity pushes.
+  #
+  # Releasing the gate is the lesser of two harms. Holding it means the
+  # claiming user can never sign in through this provider again. Releasing it
+  # means an identity may be pushed while a losing user still holds it in
+  # Keycloak, which Keycloak itself rejects if it enforces uniqueness for the
+  # provider. A broken login is certain; the duplicate is not.
+  defp dead_letter(%__MODULE__{} = request, error) do
+    Logger.error(
+      "[FederatedIdentitySync] Dead-lettering sync request #{request.id} after " <>
+        "#{@max_attempts} attempts: #{request.repo_host} uid #{request.uid} claimed by " <>
+        "user #{request.claiming_user_id}, released #{inspect(request.released_user_ids)}, " <>
+        "last error: #{error}. Keycloak was never reconciled for this claim and the " <>
+        "identity push is no longer gated."
+    )
+
+    Watchman.increment({@dead_letter_metric, [request.repo_host]})
   end
 
   defp retry_delay_seconds(attempts) do
