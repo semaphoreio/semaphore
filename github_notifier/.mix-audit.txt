@@ -55,10 +55,12 @@ GHSA-grp7-v8xh-rj7h
 # false`). This service's only gRPC server declares no http_transcode option,
 # so there are no bindings to override.
 GHSA-mwr4-5g34-j5cq
-# Unbounded request body accumulation in read_full_body/3 — availability only,
-# reachable from an in-cluster caller: the listener is ClusterIP with no
-# ambassador mapping, so ingress body limits are not in the path.
+# Unbounded request body accumulation in read_full_body/3 — availability only.
+# No ambassador or ingress mapping targets this service, so it is not reachable
+# from the internet and ingress body limits are not in the path either; the
+# listener is a NodePort service, so the reach is any in-cluster workload plus
+# whatever the cloud firewall lets hit a node IP.
 GHSA-q8gf-9rvj-gmgj
-# Unbounded gzip decompression (decompression bomb) — same internal-only reach,
+# Unbounded gzip decompression (decompression bomb) — same reach as above,
 # availability only.
 GHSA-6ccx-9c9f-327w
