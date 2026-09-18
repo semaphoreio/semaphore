@@ -430,7 +430,7 @@ defmodule Projecthub.Models.PeriodicTaskTest do
         )
       end)
 
-      FunRegistry.set!(PeriodicService, :bulk_upsert_and_prune, fn req, _stream ->
+      FunRegistry.set!(PeriodicService, :bulk_upsert_and_prune, fn _req, _stream ->
         send(test_pid, :upserted)
 
         API.BulkUpsertAndPruneResponse.new(
