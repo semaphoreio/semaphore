@@ -281,6 +281,48 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
 
       assert {:ok, {"fresh_token", _}} = RepoHostAccount.get_bitbucket_token(healed_rha)
     end
+
+    test "reuse-loser: invalid_grant while a concurrent winner rotated the token does NOT " <>
+           "revoke - the winner's token is returned",
+         %{rha: rha} do
+      # A sibling worker (the winner) rotates the token first.
+      {:ok, _winner} =
+        RepoHostAccount.update_token(
+          rha,
+          "winner_token",
+          "winner_refresh",
+          Support.Members.valid_expires_at()
+        )
+
+      # This worker (the loser) still holds the pre-rotation snapshot and its
+      # refresh reuses the now-burned old token, so Bitbucket answers
+      # invalid_grant. That must NOT revoke a healthy account.
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
+          {:ok, %Tesla.Env{status: 400, body: %{"error" => "invalid_grant"}}}
+      end)
+
+      assert {:ok, {"winner_token", _}} = RepoHostAccount.get_bitbucket_token(rha)
+
+      reloaded = FrontRepo.get!(RepoHostAccount, rha.id)
+      refute reloaded.revoked
+      assert reloaded.token == "winner_token"
+      assert reloaded.refresh_token == "winner_refresh"
+    end
+
+    test "genuine invalid_grant with NO concurrent winner STILL revokes", %{rha: rha} do
+      # No sibling rotated anything - the stored token is the same one the
+      # provider just rejected, so this is a real revocation.
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
+          {:ok, %Tesla.Env{status: 400, body: %{"error" => "invalid_grant"}}}
+      end)
+
+      assert {:error, :revoked} = RepoHostAccount.get_bitbucket_token(rha)
+
+      reloaded = FrontRepo.get!(RepoHostAccount, rha.id)
+      assert reloaded.revoked == true
+    end
   end
 
   describe "update_token/4 self-heal (clears a stale revoked flag on success)" do
@@ -474,6 +516,49 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
       reloaded = FrontRepo.get!(RepoHostAccount, rha.id)
       assert reloaded.revoked == true
     end
+
+    test "reuse-loser: invalid_grant while a concurrent winner rotated the token does NOT " <>
+           "revoke - the winner's token is returned" do
+      # GitHub tokens do not expire, so token_expires_at is nil and counts as
+      # valid - insert such a row explicitly to exercise the recover branch.
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      {:ok, rha} =
+        Support.Members.insert_repo_host_account(
+          login: "example",
+          name: "example",
+          repo_host: "github",
+          refresh_token: "dead_refresh",
+          user_id: user.id,
+          token: "dead_token",
+          token_expires_at: nil,
+          revoked: false,
+          permission_scope: "repo"
+        )
+
+      # A sibling worker rotates the token first (still non-expiring).
+      {:ok, _winner} =
+        RepoHostAccount.update_token(rha, "winner_token", "winner_refresh", nil)
+
+      Tesla.Mock.mock_global(fn
+        # The loser's stale token fails validation, forcing a refresh...
+        %{method: :get, url: "https://api.github.com"} ->
+          {:ok, %Tesla.Env{status: 401, body: %{}}}
+
+        # ...and the refresh reuses the burned token -> invalid_grant. That
+        # must NOT revoke a healthy account.
+        %{method: :post, url: "https://github.com/login/oauth/access_token"} ->
+          {:ok, %Tesla.Env{status: 400, body: %{"error" => "invalid_grant"}}}
+      end)
+
+      assert {:ok, {"winner_token", nil}} = RepoHostAccount.get_github_token(rha)
+
+      reloaded = FrontRepo.get!(RepoHostAccount, rha.id)
+      refute reloaded.revoked
+      assert reloaded.token == "winner_token"
+      assert reloaded.refresh_token == "winner_refresh"
+    end
   end
 
   describe "get_github_token/1 (revoked flag must not gate the fetch)" do
@@ -558,6 +643,31 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
 
       reloaded = FrontRepo.get!(RepoHostAccount, rha.id)
       assert reloaded.revoked == true
+    end
+
+    test "reuse-loser: invalid_grant while a concurrent winner rotated the token does NOT " <>
+           "revoke - the winner's token is returned",
+         %{rha: rha} do
+      # GitLab does strict single-use rotation with reuse-detection, so a
+      # concurrent loser gets invalid_grant on the burned token now.
+      {:ok, _winner} =
+        RepoHostAccount.update_token(
+          rha,
+          "winner_token",
+          "winner_refresh",
+          Support.Members.valid_expires_at()
+        )
+
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://gitlab.com/oauth/token"} ->
+          {:ok, %Tesla.Env{status: 400, body: %{"error" => "invalid_grant"}}}
+      end)
+
+      assert {:ok, {"winner_token", _}} = RepoHostAccount.get_gitlab_token(rha)
+
+      reloaded = FrontRepo.get!(RepoHostAccount, rha.id)
+      refute reloaded.revoked
+      assert reloaded.token == "winner_token"
     end
 
     test "already-revoked row is not gated: the refresh is attempted and the token returned",

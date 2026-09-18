@@ -125,6 +125,10 @@ defmodule Guard.Api.GitlabTest do
 
       reloaded = Guard.FrontRepo.get!(Guard.FrontRepo.RepoHostAccount, rha.id)
       assert reloaded.refresh_token == "rotated_refresh"
+      # token_expires_at must be refreshed to a conservative future value, not
+      # left at the old expired timestamp (churn against the single-use
+      # endpoint).
+      assert DateTime.compare(reloaded.token_expires_at, DateTime.utc_now()) == :gt
     end
 
     test "a transient 4xx does NOT null or rotate the stored token", %{rha: rha} do

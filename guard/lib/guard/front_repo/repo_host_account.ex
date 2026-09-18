@@ -46,8 +46,8 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     field(:user_id, :binary_id)
     field(:name, :string)
     field(:permission_scope, :string)
-    field(:token, :string)
-    field(:refresh_token, :string)
+    field(:token, :string, redact: true)
+    field(:refresh_token, :string, redact: true)
     field(:token_expires_at, :utc_datetime)
     field(:revoked, :boolean, default: false)
 
@@ -158,8 +158,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
           token_tuple
 
         {:error, :revoked} ->
-          update_account(%{revoked: true}, rha)
-          {:error, :revoked}
+          revoke_or_recover(rha)
 
         {:error, reason} ->
           {:error, reason}
@@ -174,8 +173,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
           token_tuple
 
         {:error, :revoked} ->
-          update_account(%{revoked: true}, rha)
-          {:error, :revoked}
+          revoke_or_recover(rha)
 
         {:error, reason} ->
           {:error, reason}
@@ -190,13 +188,57 @@ defmodule Guard.FrontRepo.RepoHostAccount do
           token_tuple
 
         {:error, :revoked} ->
-          update_account(%{revoked: true}, rha)
-          {:error, :revoked}
+          revoke_or_recover(rha)
 
         {:error, reason} ->
           {:error, reason}
       end
     end)
+  end
+
+  # A provider classified the refresh as a genuine revocation (invalid_grant).
+  # Under single-use refresh-token rotation this can be a FALSE revoke: the
+  # loser of a concurrent refresh reuses the token the winner already rotated,
+  # and the provider answers invalid_grant even though a sibling worker just
+  # stored a healthy token. Blindly flipping `revoked: true` here would
+  # disconnect that healthy account (the mass-disconnect failure class).
+  #
+  # So re-read the row first and decide:
+  #   - the stored token CHANGED vs the snapshot we refreshed with -> a
+  #     concurrent winner rotated it; do NOT revoke. Return the winner's token
+  #     if it is usable, else :transient (the caller refreshes with the new
+  #     refresh_token next time).
+  #   - the stored token is UNCHANGED (still the one the provider just
+  #     rejected) -> a genuine revocation; flip `revoked: true` as before.
+  defp revoke_or_recover(%__MODULE__{} = rha) do
+    case reload(rha) do
+      %__MODULE__{} = fresh ->
+        if token_rotated_by_winner?(rha, fresh) do
+          recover_after_winner(fresh)
+        else
+          update_account(%{revoked: true}, rha)
+          {:error, :revoked}
+        end
+
+      nil ->
+        update_account(%{revoked: true}, rha)
+        {:error, :revoked}
+    end
+  end
+
+  defp token_rotated_by_winner?(%__MODULE__{} = rha, %__MODULE__{} = fresh) do
+    fresh.token != rha.token or fresh.refresh_token != rha.refresh_token
+  end
+
+  defp recover_after_winner(%__MODULE__{} = fresh) do
+    nil_valid = fresh.repo_host == "github"
+
+    if not is_nil(fresh.token) and
+         Guard.Utils.OAuth.valid_token?(fresh.token_expires_at, nil_valid: nil_valid) do
+      {:ok, {fresh.token, fresh.token_expires_at}}
+    else
+      {:error, :transient}
+    end
   end
 
   # Negative cache for a row that is NOT yet revoked but just failed a
