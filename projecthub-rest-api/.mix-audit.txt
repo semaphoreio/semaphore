@@ -36,3 +36,19 @@ GHSA-q8gf-9rvj-gmgj
 # exposure would be a compressed response from an internal service this one
 # calls, i.e. an already-compromised internal peer.
 GHSA-6ccx-9c9f-327w
+
+# --- protobuf 0.11.0 ---
+# Unbounded recursion depth decoding embedded messages, patched in 0.16.1.
+# The service was on protobuf 0.5.4, below the advisory range, until field
+# presence (optional bool) forced the move to 0.11; 0.16.1 is not a version
+# bump but an API migration (new/1 was removed in 0.15, and 0.14 ships the
+# Google modules this service generates itself), tracked separately.
+# Not reachable here: the service runs no gRPC server, so it decodes no
+# attacker-supplied protobuf at all - its own surface is JSON over Plug. The
+# one self-referential message in the vendored schemas, RBAC.Role (via
+# inherited_role and maps_to), is never decoded: of the RPCs this service
+# calls, list_user_permissions and list_accessible_projects return only
+# scalars, and no projecthub, organization or repository_integrator response
+# reaches Role. No Any/Struct/Value field exists either, so a caller cannot
+# choose the decoded type.
+GHSA-rv48-qqj5-crxg
