@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/url"
 	"os/exec"
 	"strings"
 	"syscall"
@@ -66,6 +67,19 @@ func (o *UpdateOrCloneOperation) Update() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
 	defer cancel()
 
+	remoteURL, err := url.Parse(o.Repository.HttpURL)
+	if err != nil {
+		return fmt.Errorf("failed to parse remote URL %s: %w", o.Repository.HttpURL, err)
+	}
+
+	// #nosec G204
+	updateCmd := exec.CommandContext(ctx, "git", "remote", "set-url", "origin", remoteURL.String())
+	updateCmd.Dir = o.Repository.Path()
+	out, err := updateCmd.CombinedOutput()
+	if err != nil {
+		log.Printf("failed to update remote URL for %s, out: %s", o.Repository.HttpURL, string(out))
+	}
+
 	var cmd *exec.Cmd
 	if o.Reference != "" {
 		log.Printf("fetching from remotes %s with revision %v", o.Repository.Path(), o.Reference)
@@ -82,7 +96,7 @@ func (o *UpdateOrCloneOperation) Update() error {
 	cmd.Env = append(cmd.Env, fmt.Sprintf("GIT_USERNAME=%s", o.Repository.Credentials.Username))
 	cmd.Env = append(cmd.Env, fmt.Sprintf("GIT_PASSWORD=%s", o.Repository.Credentials.Password))
 
-	out, err := cmd.CombinedOutput()
+	out, err = cmd.CombinedOutput()
 	if err != nil {
 		log.Printf("(err) Fetch repo %s, out: %s", o.Repository.HttpURL, string(out))
 		return o.parseError(out, err)
