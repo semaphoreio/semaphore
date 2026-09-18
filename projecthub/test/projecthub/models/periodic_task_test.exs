@@ -275,6 +275,15 @@ defmodule Projecthub.Models.PeriodicTaskTest do
   end
 
   describe "update_all/3" do
+    setup do
+      # a task that omits a flag makes update_all read the stored values first
+      FunRegistry.set!(PeriodicService, :list, fn _req, _stream ->
+        API.ListResponse.new(status: Status.new(), periodics: [])
+      end)
+
+      :ok
+    end
+
     test "sends the full desired set to bulk_upsert_and_prune and returns ids", ctx do
       FunRegistry.set!(PeriodicService, :bulk_upsert_and_prune, fn req, _stream ->
         assert req.project_id == ctx.project.id
@@ -337,6 +346,104 @@ defmodule Projecthub.Models.PeriodicTaskTest do
         )
 
       assert {:ok, _} = PeriodicTask.update_all(ctx.project, [task], "requester_id")
+    end
+
+    test "keeps the stored notification flags when the task omits them", ctx do
+      FunRegistry.set!(PeriodicService, :list, fn _req, _stream ->
+        API.ListResponse.new(
+          status: Status.new(),
+          periodics: [
+            API.Periodic.new(
+              id: "1",
+              skip_scheduled_run_notifications: true,
+              skip_manual_run_notifications: true
+            )
+          ]
+        )
+      end)
+
+      FunRegistry.set!(PeriodicService, :bulk_upsert_and_prune, fn req, _stream ->
+        [first | _] = req.periodics
+        assert first.skip_scheduled_run_notifications == true
+        assert first.skip_manual_run_notifications == true
+
+        API.BulkUpsertAndPruneResponse.new(
+          status: Status.new(),
+          upserted: [API.Periodic.new(id: first.id)],
+          deleted_ids: []
+        )
+      end)
+
+      task =
+        periodic_task(
+          id: "1",
+          skip_scheduled_run_notifications: nil,
+          skip_manual_run_notifications: nil
+        )
+
+      assert {:ok, _} = PeriodicTask.update_all(ctx.project, [task], "requester_id")
+    end
+
+    test "an explicit false clears a stored notification flag", ctx do
+      FunRegistry.set!(PeriodicService, :list, fn _req, _stream ->
+        API.ListResponse.new(
+          status: Status.new(),
+          periodics: [
+            API.Periodic.new(
+              id: "1",
+              skip_scheduled_run_notifications: true,
+              skip_manual_run_notifications: true
+            )
+          ]
+        )
+      end)
+
+      FunRegistry.set!(PeriodicService, :bulk_upsert_and_prune, fn req, _stream ->
+        [first | _] = req.periodics
+        assert first.skip_scheduled_run_notifications == false
+        assert first.skip_manual_run_notifications == true
+
+        API.BulkUpsertAndPruneResponse.new(
+          status: Status.new(),
+          upserted: [API.Periodic.new(id: first.id)],
+          deleted_ids: []
+        )
+      end)
+
+      task =
+        periodic_task(
+          id: "1",
+          skip_scheduled_run_notifications: false,
+          skip_manual_run_notifications: nil
+        )
+
+      assert {:ok, _} = PeriodicTask.update_all(ctx.project, [task], "requester_id")
+    end
+
+    test "aborts when the stored notification flags cannot be read", ctx do
+      test_pid = self()
+
+      FunRegistry.set!(PeriodicService, :list, fn _req, _stream ->
+        API.ListResponse.new(
+          status: Status.new(code: :INVALID_ARGUMENT, message: "scheduler is having a bad day"),
+          periodics: []
+        )
+      end)
+
+      FunRegistry.set!(PeriodicService, :bulk_upsert_and_prune, fn req, _stream ->
+        send(test_pid, :upserted)
+
+        API.BulkUpsertAndPruneResponse.new(
+          status: Status.new(),
+          upserted: [API.Periodic.new(id: "1")],
+          deleted_ids: []
+        )
+      end)
+
+      task = periodic_task(id: "1", skip_scheduled_run_notifications: nil)
+
+      assert {:error, _reason} = PeriodicTask.update_all(ctx.project, [task], "requester_id")
+      refute_received :upserted
     end
 
     test "forwards regex_pattern and validate_input_format on parameters", ctx do
@@ -443,7 +550,8 @@ defmodule Projecthub.Models.PeriodicTaskTest do
       # Regression test for the original bug: when the periodic_scheduler service
       # rejects a batch (e.g. invalid cron), projecthub must NOT perform any local
       # delete-then-upsert sequence — the contract is now a single atomic RPC, so
-      # no projecthub-side data-loss path can exist.
+      # no projecthub-side data-loss path can exist. The list call that resolves
+      # omitted notification flags is a read and cannot delete anything.
       test_pid = self()
 
       FunRegistry.set!(PeriodicService, :list, fn _req, _stream ->
@@ -463,7 +571,6 @@ defmodule Projecthub.Models.PeriodicTaskTest do
       assert {:error, %GRPC.RPCError{message: "Invalid cron"}} =
                PeriodicTask.update_all(ctx.project, [periodic_task(id: "1")], "requester_id")
 
-      refute_received :list_called
       refute_received :delete_called
     end
   end
