@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 	"time"
 
 	gcsstorage "cloud.google.com/go/storage"
@@ -206,7 +207,18 @@ func (b *GcsBucket) CreatedAt(ctx context.Context, path string) (time.Time, erro
 	return a.Created, nil
 }
 
+// DeleteObjects deletes the given objects and reports whether any of them
+// survived.
+//
+// It used to log each failure and return nil regardless. That made a delete that
+// never happened look exactly like one that did, which matters most where the
+// caller uses the result to decide that a storage is empty. The S3 implementation
+// has always returned the error, so this is the two backends agreeing rather than
+// a new contract.
 func (b *GcsBucket) DeleteObjects(paths []string) error {
+	var mu sync.Mutex
+	var failed int
+	var firstErr error
 
 	// GCS does not support deleting objects in bulk,
 	// so we parallelize the deletion requests to make them faster.
@@ -214,10 +226,23 @@ func (b *GcsBucket) DeleteObjects(paths []string) error {
 		err := b.BucketHandler.Object(path).Delete(context.Background())
 		if err != nil {
 			log.Error("Failed to delete object", zap.String("object", path), zap.Error(err))
+
+			mu.Lock()
+			defer mu.Unlock()
+
+			failed++
+			if firstErr == nil {
+				firstErr = err
+			}
 		}
 	}, 10)
 
 	processor.Run()
+
+	if failed > 0 {
+		return fmt.Errorf("failed to delete %d of %d objects, first error: %w", failed, len(paths), firstErr)
+	}
+
 	return nil
 }
 
