@@ -37,10 +37,16 @@ GHSA-6ccx-9c9f-327w
 
 # --- protobuf 0.11.0 ---
 # Unbounded recursion depth decoding embedded messages, patched in 0.16.1.
-# projecthub's schemas contain no cyclic message (76 messages, no cycle) and
-# no Any/Struct/Value field, so decode depth is bounded by the schema itself —
-# an attacker cannot nest arbitrarily. Callers are internal services on the
-# cluster network. Bump needs pb regeneration against the 0.16 codegen.
+# The vendored schemas do contain one self-referential message: RBAC.Role
+# points at itself through inherited_role and maps_to. projecthub decodes it,
+# but only as part of a ListRolesResponse to its own outbound list_roles call,
+# so the bytes come from the rbac service, not from a caller. Nothing an
+# attacker can send reaches it: of the 19 request messages of the served
+# ProjectService, none references Role transitively, and nesting depth needs a
+# self-referential typed field that is actually in the decoded schema — unknown
+# fields cannot introduce one. No Any/Struct/Value field exists either, so the
+# decoded type is never attacker-chosen. Bump needs pb regeneration against the
+# 0.16 codegen.
 GHSA-rv48-qqj5-crxg
 
 # --- hackney 1.18.0 — all first patched in 4.0.1 ---
