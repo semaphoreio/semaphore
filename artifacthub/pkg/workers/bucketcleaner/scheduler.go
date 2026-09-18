@@ -129,16 +129,24 @@ const dueForRetention = `
 	AND (retention_policies.last_cleaned_at IS NULL
 		OR retention_policies.last_cleaned_at < now() - interval '1 day')`
 
+// purgeRetryInterval paces a purge that is due but not getting done, so a failure
+// retries in minutes rather than on every 60 second tick or once a day.
+//
+// It also bounds how long a due purge waits to be picked up at all, because the
+// previous daily pass may have set scheduled_for_cleaning_at moments before the grace
+// period ran out. That wait is exactly what bucketcleaner.oldest_purge_age measures,
+// so this has to stay well under the threshold that gauge is alerted on.
+const purgeRetryInterval = "10 minutes"
+
 // dueForPurge is a storage whose grace period is up, or one being destroyed.
 //
 // It does not wait for the daily pass, which would let artifacts outlive their grace
-// period by up to another day. It still paces itself, so a purge that keeps failing
-// retries hourly rather than on every tick.
+// period by up to another day.
 const dueForPurge = `
 	(artifacts.deleted_at IS NOT NULL
 		OR artifacts.purge_requested_at < now() - CAST(? AS interval))
 	AND (retention_policies.scheduled_for_cleaning_at IS NULL
-		OR retention_policies.scheduled_for_cleaning_at < now() - interval '1 hour')`
+		OR retention_policies.scheduled_for_cleaning_at < now() - interval '` + purgeRetryInterval + `')`
 
 func (s *Scheduler) loadBatch(tx *gorm.DB) ([]string, error) {
 	policies := []models.RetentionPolicy{}
