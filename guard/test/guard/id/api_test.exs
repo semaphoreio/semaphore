@@ -103,7 +103,7 @@ defmodule Guard.Id.Api.Test do
         send_login_request(
           path: "/device",
           query: %{user_code: "BCDF-GHJK"},
-          headers: [session_header()]
+          headers: [{"cookie", device_authed_cookie(prefill: "BCDF-GHJK")}]
         )
 
       assert response.status_code == 200
@@ -116,7 +116,8 @@ defmodule Guard.Id.Api.Test do
     setup do: start_oidc_bypass()
 
     test "no parked flow renders the entry form for an authenticated session" do
-      {:ok, response} = send_login_request(path: "/device", headers: [session_header()])
+      {:ok, response} =
+        send_login_request(path: "/device", headers: [{"cookie", device_authed_cookie([])}])
 
       assert response.status_code == 200
       assert response.body =~ "Enter the code shown in your terminal"
@@ -128,7 +129,9 @@ defmodule Guard.Id.Api.Test do
       {:ok, response} =
         send_login_request(
           path: "/device",
-          headers: [session_header(), {"cookie", parked_state_cookie(row.id, display)}]
+          headers: [
+            {"cookie", device_authed_cookie([]) <> "; " <> parked_state_cookie(row.id, display)}
+          ]
         )
 
       # The device flow now lands on the new provider-picker login page instead
@@ -214,7 +217,11 @@ defmodule Guard.Id.Api.Test do
         send_login_request(
           path: "/device",
           query: %{user_code: "WXYZ-WXYZ"},
-          headers: [session_header(), {"cookie", parked_state_cookie(row.id, display)}]
+          headers: [
+            {"cookie",
+             device_authed_cookie(prefill: "WXYZ-WXYZ") <>
+               "; " <> parked_state_cookie(row.id, display)}
+          ]
         )
 
       assert response.status_code == 200
@@ -231,7 +238,9 @@ defmodule Guard.Id.Api.Test do
       {:ok, response} =
         send_login_request(
           path: "/device",
-          headers: [session_header(), {"cookie", parked_state_cookie(row.id, display)}]
+          headers: [
+            {"cookie", device_authed_cookie([]) <> "; " <> parked_state_cookie(row.id, display)}
+          ]
         )
 
       assert response.status_code == 200
@@ -246,7 +255,9 @@ defmodule Guard.Id.Api.Test do
       {:ok, response} =
         send_login_request(
           path: "/device",
-          headers: [session_header(), {"cookie", parked_state_cookie(row.id, display)}]
+          headers: [
+            {"cookie", device_authed_cookie([]) <> "; " <> parked_state_cookie(row.id, display)}
+          ]
         )
 
       assert response.status_code == 200
@@ -265,7 +276,10 @@ defmodule Guard.Id.Api.Test do
       cookie = "semaphore_auth_state=#{cookie_conn.resp_cookies["semaphore_auth_state"].value}"
 
       {:ok, response} =
-        send_login_request(path: "/device", headers: [session_header(), {"cookie", cookie}])
+        send_login_request(
+          path: "/device",
+          headers: [{"cookie", device_authed_cookie([]) <> "; " <> cookie}]
+        )
 
       assert response.status_code == 200
       assert response.body =~ "Enter the code shown in your terminal"
@@ -525,12 +539,26 @@ defmodule Guard.Id.Api.Test do
       assert response.body =~ "BCDF-GHJK"
     end
 
-    test "an edge-authenticated session (org host header) gets the entry page directly" do
+    test "GET /device requires the device-auth marker cookie; a user-id header alone starts the OIDC sign-in" do
+      # The auth-first flow authenticates from the marker cookie, not the request
+      # user-id header, so with no marker it renders the OIDC provider picker.
       {:ok, response} = send_login_request(path: "/device", headers: [session_header()])
 
       assert response.status_code == 200
-      assert response.body =~ "Enter the code shown in your terminal"
-      assert Enum.find(response.headers, fn h -> elem(h, 0) == "location" end) == nil
+      assert response.body =~ "Log in to Semaphore"
+      assert response.body =~ "kc_idp_hint=github"
+      refute response.body =~ "Enter the code shown in your terminal"
+    end
+
+    test "GET /device with a blank user-id header and no marker starts the OIDC sign-in" do
+      # A blank user-id header is normalized to no user, so the flow goes to OIDC.
+      {:ok, response} =
+        send_login_request(path: "/device", headers: [{"x-semaphore-user-id", ""}])
+
+      assert response.status_code == 200
+      assert response.body =~ "Log in to Semaphore"
+      assert response.body =~ "kc_idp_hint=github"
+      refute response.body =~ "Enter the code shown in your terminal"
     end
   end
 
@@ -556,10 +584,10 @@ defmodule Guard.Id.Api.Test do
     %{bypass: bypass, client_id: "test_client_id"}
   end
 
-  # Simulates the ext-auth edge having authenticated the browser session: in
-  # production the auth service injects x-semaphore-user-id after validating
-  # the session cookie (and strips any client-supplied value). Only present on
-  # org hosts - the id host relies on the device-auth marker cookie instead.
+  # An x-semaphore-user-id request header with a random id. In the /device
+  # auth-first flow the marker cookie, not this header, is the authentication
+  # signal; used by the tests that assert the header alone does not authenticate.
+  # The marker-cookie signal is device_authed_cookie/1.
   defp session_header, do: {"x-semaphore-user-id", Ecto.UUID.generate()}
 
   # Builds the encrypted device-auth marker cookie exactly as the device_return
@@ -1568,6 +1596,18 @@ defmodule Guard.Id.Api.Test do
       refute response.body =~ "Try Cloud"
       refute response.body =~ "Signup with GitHub"
       refute response.body =~ "Signup with Bitbucket"
+    end
+
+    test "an empty x-semaphore-user-id is treated as not logged in" do
+      # A blank x-semaphore-user-id is normalized to no user, so the signup page
+      # renders the not-logged-in variant.
+      {:ok, response} =
+        send_login_request(path: "/signup", headers: [{"x-semaphore-user-id", ""}])
+
+      assert response.status_code == 200
+      assert response.body =~ "Try Cloud"
+      assert response.body =~ "Signup with GitHub"
+      refute response.body =~ "You're already logged in"
     end
 
     test "renders signup page correctly when redirect_to param is present" do

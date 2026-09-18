@@ -381,7 +381,7 @@ Check the following possible causes:
 
 :::tip
 
-While an issue is ongoing, you might consider using a shorter [execution_time_limit](../using-semaphore/pipelines#time-limit) in your pipelines. This will prevent stale builds from running for a full hour.
+While an issue is ongoing, you might consider using a shorter [execution_time_limit](../using-semaphore/pipelines#time-limit) in your pipelines. This will prevent stale builds from running for a full hour. After-pipeline jobs inherit that limit unless they set their own, so lowering it caps them too.
 
 :::
 

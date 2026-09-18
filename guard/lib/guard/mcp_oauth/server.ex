@@ -270,19 +270,50 @@ defmodule Guard.McpOAuth.Server do
   # ====================
 
   defp get_authenticated_user(conn) do
-    # User ID is set by auth service after validating browser session cookie
-    # Auth service handles login redirect if user is not authenticated
-    case get_req_header(conn, "x-semaphore-user-id") do
-      [user_id] when is_binary(user_id) and user_id != "" ->
+    # Identity for the OAuth grant is taken from guard's authenticated web-login
+    # session. This mirrors Guard.GrpcServers.AuthServer's session resolution and
+    # is independent of any x-semaphore-user-id request header. An unauthenticated
+    # request is redirected to the OIDC login by the caller.
+    case session_user_id(conn) do
+      {:ok, user_id} ->
         case Guard.Store.RbacUser.fetch(user_id) do
           user when not is_nil(user) -> {:ok, user}
           nil -> {:error, :not_authenticated}
         end
 
-      _ ->
-        # No auth header means user not authenticated
-        # Auth service would have redirected to login if no session
+      :error ->
         {:error, :not_authenticated}
+    end
+  end
+
+  # Resolves the logged-in user id from the authenticated session cookie.
+  # Mirrors Guard.GrpcServers.AuthServer: an OIDC web sign-in stores
+  # id_provider="OIDC" plus an oidc_session_id backed by a DB session row; a
+  # legacy Devise/warden sign-in stores the user id in warden.user.user.key.
+  # Both live inside the signed and encrypted session cookie. Anything else is
+  # treated as unauthenticated.
+  defp session_user_id(conn) do
+    case get_session(conn, "id_provider") do
+      "OIDC" -> oidc_session_user_id(conn)
+      _ -> warden_session_user_id(conn)
+    end
+  end
+
+  defp oidc_session_user_id(conn) do
+    with session_id when is_binary(session_id) and session_id != "" <-
+           get_session(conn, "oidc_session_id"),
+         {:ok, session} <- Guard.Store.OIDCSession.get(session_id),
+         false <- Guard.Store.OIDCSession.expired?(session) do
+      {:ok, session.user_id}
+    else
+      _ -> :error
+    end
+  end
+
+  defp warden_session_user_id(conn) do
+    case get_session(conn, "warden.user.user.key") do
+      [[user_id], _salt] when is_binary(user_id) and user_id != "" -> {:ok, user_id}
+      _ -> :error
     end
   end
 
