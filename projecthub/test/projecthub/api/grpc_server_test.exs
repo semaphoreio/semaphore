@@ -555,6 +555,8 @@ defmodule Projecthub.Api.GrpcServerTest do
                              pipeline_file: ".semaphore/semaphore.yml",
                              status: :STATUS_ACTIVE,
                              recurring: false,
+                             skip_scheduled_run_notifications: false,
+                             skip_manual_run_notifications: false,
                              parameters: [
                                InternalApi.Projecthub.Project.Spec.Task.Parameter.new(
                                  name: "parameter",
