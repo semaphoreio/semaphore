@@ -3,6 +3,7 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
 
   alias Guard.FrontRepo
   alias Guard.FrontRepo.RepoHostAccount
+  alias Guard.Utils.OAuth
 
   describe "update_profile/2" do
     setup do
@@ -306,6 +307,120 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
         RepoHostAccount.update_token(rha, "new_token", "new_refresh_token", DateTime.utc_now())
 
       assert updated.revoked == false
+    end
+  end
+
+  describe "update_token/4 refresh-token safety (single-use rotation)" do
+    setup do
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      {:ok, rha} =
+        Support.Members.insert_repo_host_account(
+          login: "example",
+          name: "example",
+          repo_host: "bitbucket",
+          refresh_token: "stored_refresh",
+          user_id: user.id,
+          token: "stored_token",
+          token_expires_at: Support.Members.valid_expires_at(),
+          revoked: false,
+          permission_scope: "repo"
+        )
+
+      {:ok, rha: rha}
+    end
+
+    test "rotates the stored refresh_token when a new one is supplied", %{rha: rha} do
+      {:ok, _} =
+        RepoHostAccount.update_token(
+          rha,
+          "rotated_token",
+          "rotated_refresh",
+          Support.Members.valid_expires_at()
+        )
+
+      reloaded = RepoHostAccount.reload(rha)
+      assert reloaded.token == "rotated_token"
+      assert reloaded.refresh_token == "rotated_refresh"
+    end
+
+    test "leaves the stored refresh_token UNTOUCHED when refresh_token is nil", %{rha: rha} do
+      {:ok, _} =
+        RepoHostAccount.update_token(rha, "rotated_token", nil, Support.Members.valid_expires_at())
+
+      reloaded = RepoHostAccount.reload(rha)
+      assert reloaded.token == "rotated_token"
+      # The stored refresh_token must NOT be nulled or clobbered.
+      assert reloaded.refresh_token == "stored_refresh"
+    end
+
+    test "leaves the stored refresh_token UNTOUCHED when refresh_token is empty string",
+         %{rha: rha} do
+      {:ok, _} =
+        RepoHostAccount.update_token(rha, "rotated_token", "", Support.Members.valid_expires_at())
+
+      reloaded = RepoHostAccount.reload(rha)
+      assert reloaded.refresh_token == "stored_refresh"
+    end
+
+    test "optimistic lock: a stale writer does NOT overwrite the winner's rotated token",
+         %{rha: rha} do
+      # Winner commits a rotation first through the same locked writer, so the
+      # optimistic-lock bump on :updated_at fires.
+      {:ok, winner} =
+        RepoHostAccount.update_token(
+          rha,
+          "winner_token",
+          "winner_refresh",
+          Support.Members.valid_expires_at()
+        )
+
+      assert winner.updated_at != rha.updated_at
+
+      # Loser writes with its now-stale snapshot (original updated_at) and must
+      # lose the race rather than clobber the freshly-rotated token.
+      assert {:error, :stale} =
+               RepoHostAccount.update_token(
+                 rha,
+                 "loser_token",
+                 "loser_refresh",
+                 Support.Members.valid_expires_at()
+               )
+
+      reloaded = RepoHostAccount.reload(rha)
+      assert reloaded.token == "winner_token"
+      assert reloaded.refresh_token == "winner_refresh"
+    end
+
+    test "handle_ok_token_response recovers the winner's token after losing the write race",
+         %{rha: rha} do
+      # Winner rotates first; row's updated_at advances past the loser's snapshot.
+      {:ok, _winner} =
+        RepoHostAccount.update_token(
+          rha,
+          "winner_token",
+          "winner_refresh",
+          Support.Members.valid_expires_at()
+        )
+
+      # The loser processes its (older) 2xx response using the stale rha
+      # struct. The write hits StaleEntryError, the loser DISCARDS its own
+      # response, re-reads, and returns the winner's still-valid token.
+      loser_body =
+        Jason.encode!(%{
+          "access_token" => "loser_token",
+          "refresh_token" => "loser_refresh",
+          "expires_in" => 3600
+        })
+
+      assert {:ok, {"winner_token", _expires_at}} =
+               OAuth.handle_ok_token_response(rha, loser_body)
+
+      # The winner's rotated refresh_token survived; the loser's was discarded.
+      reloaded = RepoHostAccount.reload(rha)
+      assert reloaded.token == "winner_token"
+      assert reloaded.refresh_token == "winner_refresh"
     end
   end
 
