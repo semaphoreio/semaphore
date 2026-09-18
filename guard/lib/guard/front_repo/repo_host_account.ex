@@ -233,19 +233,45 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     end
   end
 
-  def update_token(rha, token, refresh_token, expires_at) do
-    params = %{
-      token: token,
-      refresh_token: refresh_token,
-      token_expires_at: expires_at,
-      # A successful token fetch is proof the account is not revoked -
-      # self-heal a row that got latched `revoked: true` by a past
-      # transient failure now correctly classified as such.
-      revoked: false
-    }
+  @doc """
+  Persist a freshly-refreshed token.
 
-    update_account(params, rha)
+  `refresh_token` may be `nil` (the provider returned a 2xx WITHOUT rotating
+  it - e.g. GitHub, or an unchanged token). In that case the stored
+  `refresh_token` is left UNTOUCHED rather than overwritten with a snapshot
+  value, which would risk clobbering a newer rotated token written by a
+  concurrent worker. `token`/`expires_at` are written only when present.
+
+  The write is optimistic-locked on `:updated_at` (single-use refresh-token
+  rotation means the losing side of a concurrent refresh must not overwrite
+  the winner's freshly-rotated token). On a lost race the caller gets
+  `{:error, :stale}` and MUST discard its own (older) refresh response.
+  """
+  def update_token(rha, token, refresh_token, expires_at) do
+    params =
+      %{
+        # A successful token fetch is proof the account is not revoked -
+        # self-heal a row that got latched `revoked: true` by a past
+        # transient failure now correctly classified as such.
+        revoked: false
+      }
+      |> put_present(:token, token)
+      |> put_present(:refresh_token, refresh_token)
+      |> put_present(:token_expires_at, expires_at)
+
+    update_account(params, rha, lock: true)
   end
+
+  defp put_present(map, _key, nil), do: map
+  defp put_present(map, _key, ""), do: map
+  defp put_present(map, key, value), do: Map.put(map, key, value)
+
+  @doc """
+  Re-read the row from the DB by id. Used to recover the winner's freshly
+  rotated token after losing an optimistic-lock race on the token write.
+  """
+  @spec reload(t()) :: t() | nil
+  def reload(%__MODULE__{id: id}), do: FrontRepo.get(__MODULE__, id)
 
   @doc """
   Write `:login` and/or `:name` only; other keys dropped. Strict writer:
@@ -396,22 +422,30 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     end
   end
 
-  defp update_account(data, account) when data == %{} do
+  @required_on_write [:github_uid, :login, :name, :permission_scope]
+
+  # `lock: true` guards against a concurrent writer clobbering a
+  # freshly-rotated token: the write carries an optimistic lock on
+  # `:updated_at`, and if another writer committed first the update raises
+  # `Ecto.StaleEntryError`, which we surface as `{:error, :stale}` so the
+  # losing caller can discard its own (older) response. Unlocked callers
+  # (revoke flips, reconnect, profile-less writes) never raise it.
+  defp update_account(data, account, opts \\ [])
+
+  defp update_account(data, account, _opts) when data == %{} do
     Logger.debug("Account for #{account.user_id} already up to date")
 
     {:ok, account}
   end
 
-  @required_on_write [:github_uid, :login, :name, :permission_scope]
-
-  defp update_account(data, account) do
+  defp update_account(data, account, opts) do
     # Validate only the required-schema keys the caller is actually writing.
     # The full @required_on_write list is checked at create/reset time; on a
     # partial update (e.g., flipping :revoked) we must not refuse the write
     # because an *untouched* legacy field happens to be nil.
     required_now = Map.keys(data) |> Enum.filter(&(&1 in @required_on_write))
 
-    result =
+    changeset =
       account
       |> Ecto.Changeset.cast(
         data,
@@ -427,12 +461,16 @@ defmodule Guard.FrontRepo.RepoHostAccount do
         ]
       )
       |> Ecto.Changeset.validate_required(required_now)
-      |> FrontRepo.update()
 
-    case result do
+    changeset =
+      if Keyword.get(opts, :lock, false),
+        do: maybe_lock_on_updated_at(changeset),
+        else: changeset
+
+    case FrontRepo.update(changeset) do
       {:ok, account} ->
         Logger.info(
-          "Successfully updated RepoHostAccount for #{account.user_id} #{account.repo_host} login=#{account.login}"
+          "Successfully updated RepoHostAccount rha=#{account.id} user=#{account.user_id} #{account.repo_host} login=#{account.login}"
         )
 
         maybe_invalidate_negative_cache(data, account)
@@ -440,11 +478,18 @@ defmodule Guard.FrontRepo.RepoHostAccount do
 
       {:error, error} ->
         Logger.error(
-          "Failed to update RepoHostAccount for #{account.user_id} #{account.repo_host} login=#{account.login} errors=#{changeset_error_fields(error)}"
+          "Failed to update RepoHostAccount rha=#{account.id} user=#{account.user_id} #{account.repo_host} login=#{account.login} errors=#{changeset_error_fields(error)}"
         )
 
         {:error, error}
     end
+  rescue
+    Ecto.StaleEntryError ->
+      Logger.warning(
+        "Lost optimistic-lock race writing token for rha=#{account.id} user=#{account.user_id} #{account.repo_host}; discarding stale response"
+      )
+
+      {:error, :stale}
   end
 
   # update_account/2 is the single write chokepoint for both self-heal
