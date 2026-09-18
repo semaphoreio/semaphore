@@ -289,6 +289,8 @@ defmodule FrontWeb.BillingController do
     case BillingModel.update_addon(org_id, addon_name, enabled) do
       :ok ->
         Front.Clients.Billing.invalidate_cache(:list_addons, %{org_id: org_id})
+        Front.Clients.Billing.invalidate_cache(:current_spending, %{org_id: org_id})
+        Front.Clients.Billing.invalidate_cache(:list_spendings, %{org_id: org_id})
         conn |> json(%{ok: true})
 
       {:error, error} ->
