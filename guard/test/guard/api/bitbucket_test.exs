@@ -68,6 +68,108 @@ defmodule Guard.Api.BitbucketTest do
     end
   end
 
+  describe "refresh-token rotation persistence (single-use rotation)" do
+    setup %{repo_host_account: rha} do
+      # Force the refresh path (stored token already expired).
+      {:ok, rha: Map.put(rha, :token_expires_at, Support.Members.invalid_expires_at())}
+    end
+
+    test "persists the NEW rotated refresh_token from a raw JSON string 2xx body", %{rha: rha} do
+      # PROD SHAPE: the refresh client has no JSON middleware, so the body is
+      # a raw JSON string, and it carries a rotated refresh_token.
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
+          {:ok,
+           %Tesla.Env{
+             status: 200,
+             body:
+               Jason.encode!(%{
+                 "access_token" => "rotated_access",
+                 "refresh_token" => "rotated_refresh",
+                 "expires_in" => 3600
+               })
+           }}
+      end)
+
+      assert {:ok, {"rotated_access", _}} = Bitbucket.user_token(rha)
+
+      reloaded = Guard.FrontRepo.get!(Guard.FrontRepo.RepoHostAccount, rha.id)
+      assert reloaded.token == "rotated_access"
+      assert reloaded.refresh_token == "rotated_refresh"
+    end
+
+    test "a 2xx WITHOUT a refresh_token leaves the stored refresh_token unchanged", %{rha: rha} do
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
+          {:ok,
+           %Tesla.Env{
+             status: 200,
+             body: Jason.encode!(%{"access_token" => "rotated_access", "expires_in" => 3600})
+           }}
+      end)
+
+      assert {:ok, {"rotated_access", _}} = Bitbucket.user_token(rha)
+
+      reloaded = Guard.FrontRepo.get!(Guard.FrontRepo.RepoHostAccount, rha.id)
+      assert reloaded.token == "rotated_access"
+      # Not nulled, not clobbered - left exactly as it was.
+      assert reloaded.refresh_token == "example_refresh_token"
+    end
+
+    test "a 2xx with a MISSING expires_in STILL persists the rotated refresh_token", %{rha: rha} do
+      # Regression for the old valid_token? gate that silently dropped the
+      # rotation when expires_in was absent/short - guaranteeing a reuse burn.
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
+          {:ok,
+           %Tesla.Env{
+             status: 200,
+             body:
+               Jason.encode!(%{
+                 "access_token" => "rotated_access",
+                 "refresh_token" => "rotated_refresh"
+               })
+           }}
+      end)
+
+      assert {:ok, {"rotated_access", _}} = Bitbucket.user_token(rha)
+
+      reloaded = Guard.FrontRepo.get!(Guard.FrontRepo.RepoHostAccount, rha.id)
+      assert reloaded.refresh_token == "rotated_refresh"
+      # token_expires_at must be refreshed to a conservative future value, not
+      # left at the old expired timestamp (which would force a refresh on
+      # every request - churn against the single-use endpoint).
+      assert DateTime.compare(reloaded.token_expires_at, DateTime.utc_now()) == :gt
+    end
+
+    test "a transient 4xx does NOT null or rotate the stored token", %{rha: rha} do
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
+          {:ok, %Tesla.Env{status: 403, body: ""}}
+      end)
+
+      assert {:error, :transient} = Bitbucket.user_token(rha)
+
+      reloaded = Guard.FrontRepo.get!(Guard.FrontRepo.RepoHostAccount, rha.id)
+      assert reloaded.token == "token"
+      assert reloaded.refresh_token == "example_refresh_token"
+      assert reloaded.revoked == false
+    end
+
+    test "a genuine invalid_grant revokes", %{rha: rha} do
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
+          {:ok,
+           %Tesla.Env{
+             status: 400,
+             body: Jason.encode!(%{"error" => "invalid_grant"})
+           }}
+      end)
+
+      assert {:error, :revoked} = Bitbucket.user_token(rha)
+    end
+  end
+
   describe "validate_token/1" do
     test "returns valid for successful responses" do
       Tesla.Mock.mock_global(fn
