@@ -3,6 +3,7 @@
   window.InjectedDataByBackend.JumpTo.Starred = <%= raw Poison.encode!(@layout_model.starred_items) %>;
   window.InjectedDataByBackend.JumpTo.Projects = <%= raw Poison.encode!(@layout_model.unstarred_projects) %>;
   window.InjectedDataByBackend.JumpTo.Dashboards = <%= raw Poison.encode!(@layout_model.unstarred_dashboards) %>;
+  window.InjectedDataByBackend.JumpTo.CurrentProjectId = <%= raw Poison.encode!(@conn.assigns[:project] && @conn.assigns.project.id) %>;
   <%= if FeatureProvider.feature_enabled?(:billing, param: @conn.assigns[:organization_id]) do %>
     <%= if FrontWeb.BillingView.with_plan_overlay?(@conn) do %>
       window.InjectedDataByBackend.InitialPlan = <%= raw FrontWeb.BillingView.initial_plan_config(@conn) %>
