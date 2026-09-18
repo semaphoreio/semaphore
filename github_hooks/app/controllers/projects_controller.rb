@@ -157,13 +157,13 @@ class ProjectsController < ApplicationController
   private
 
   # Sync a repo's collaborators on a GitHub "member" webhook. When
-  # DISABLE_COLLABORATOR_WEBHOOK_SYNC is set, the sync and the changed event are
-  # both suppressed, so this kill switch also covers member events.
+  # DISABLE_COLLABORATOR_SYNC is set, the sync and the changed event are both
+  # suppressed, so this kill switch also covers member events.
   def handle_member_webhook(project, logger)
     Watchman.increment("repo_host_post_commit_hooks.controller.member_webhook")
     logger.info("Member Webhook")
 
-    if App.disable_collaborator_webhook_sync
+    if App.disable_collaborator_sync
       Watchman.increment("repo_host_post_commit_hooks.controller.collaborator_webhook_sync_disabled")
       logger.info("Collaborator webhook sync disabled via env; skipping member webhook sync")
       return
@@ -174,10 +174,10 @@ class ProjectsController < ApplicationController
   end
 
   # Re-syncs the installation's repository list on every webhook. When
-  # DISABLE_COLLABORATOR_WEBHOOK_SYNC is set, the list is still synced — only the
+  # DISABLE_COLLABORATOR_SYNC is set, the list is still synced — only the
   # per-repo collaborator fan-out is suppressed.
   def enqueue_repository_list_sync(installation_id, logger)
-    sync_collaborators = !App.disable_collaborator_webhook_sync
+    sync_collaborators = !App.disable_collaborator_sync
 
     unless sync_collaborators
       Watchman.increment("repo_host_post_commit_hooks.controller.collaborator_webhook_sync_disabled")

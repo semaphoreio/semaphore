@@ -59,12 +59,14 @@ module Semaphore::GithubApp
         described_class.new.perform(installation_id, slug)
       end
 
-      it "raises LowRateLimitError when result is :low_rate_limit" do
-        allow(RepositoryRefresh).to receive(:fetch_and_cache_repository).and_return(:low_rate_limit)
+      it "re-raises LowRateLimitError so Sidekiq retries with a deferred backoff" do
+        allow(Rails.logger).to receive(:info)
+        allow(RepositoryRefresh).to receive(:fetch_and_cache_repository)
+          .and_raise(LowRateLimitError.new("low", :resets_at => Time.zone.at(1_000_000)))
 
         expect do
           described_class.new.perform(installation_id, slug)
-        end.to raise_error(LowRateLimitError, /rate limit too low/i)
+        end.to raise_error(LowRateLimitError)
       end
 
       it "treats a non-rate-limit error as terminal: releases the lock and does not retry" do
