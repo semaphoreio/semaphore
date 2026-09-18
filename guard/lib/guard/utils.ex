@@ -55,27 +55,83 @@ defmodule Guard.Utils.OAuth do
         body
       end
 
-    token = body["access_token"]
+    token = presence(body["access_token"])
     expires_in = body["expires_in"]
-    # Some providers (e.g. GitHub) omit refresh_token on a 2xx response when
-    # the existing refresh token is still valid (not rotated) - fall back to
-    # the stored one instead of overwriting it with nil.
-    refresh_token = body["refresh_token"] || repo_host_account.refresh_token
+    # Single-use rotation: capture the NEW refresh_token when the provider
+    # returned one. Do NOT fall back to the stored/in-memory value - a 2xx
+    # that omits refresh_token (GitHub, or an unchanged token) must leave the
+    # stored column UNTOUCHED, never rewrite a possibly-stale snapshot over a
+    # newer token a concurrent worker just rotated in.
+    rotated_refresh_token = presence(body["refresh_token"])
 
     expires_at = calc_expires_at(expires_in)
 
-    # By default, GitHub don't expires, so the expires_at is nil
-    nil_valid = repo_host_account.repo_host == "github"
-
-    if valid_token?(expires_at, nil_valid: nil_valid) do
-      update_token(repo_host_account, token, refresh_token, expires_at)
-    end
-
-    {:ok, {token, expires_at}}
+    handle_ok_token_response(repo_host_account, token, rotated_refresh_token, expires_at)
   end
 
+  # A 2xx with no usable access_token is a malformed/dropped rotation
+  # response (a known failure mode of single-use rotation). Do NOT write it
+  # back (it would either no-op or clobber a good token) and do NOT hand a
+  # nil token to the caller - treat it as transient so the caller retries.
+  defp handle_ok_token_response(repo_host_account, nil, _refresh_token, _expires_at) do
+    Logger.warning(
+      "2xx token refresh response missing access_token for rha=#{repo_host_account.id} " <>
+        "user=#{repo_host_account.user_id} #{repo_host_account.repo_host}; treating as transient"
+    )
+
+    {:error, :transient}
+  end
+
+  defp handle_ok_token_response(repo_host_account, token, rotated_refresh_token, expires_at) do
+    # Persist on ANY 2xx that carries a token, regardless of how long the
+    # access token is valid for: skipping the write on a short/missing
+    # expires_in would silently drop the rotated refresh_token and guarantee
+    # a reuse burn on the next refresh.
+    case update_token(repo_host_account, token, rotated_refresh_token, expires_at) do
+      {:ok, _account} ->
+        {:ok, {token, expires_at}}
+
+      {:error, :stale} ->
+        # We lost a concurrent write race - another worker committed a
+        # rotation first. Discard our (now older) response and use the
+        # winner's freshly-stored token if it is still valid.
+        handle_stale_token_write(repo_host_account)
+
+      {:error, reason} ->
+        Logger.error(
+          "Failed to persist refreshed token for rha=#{repo_host_account.id} " <>
+            "user=#{repo_host_account.user_id} #{repo_host_account.repo_host}: #{inspect(reason)}"
+        )
+
+        {:error, :transient}
+    end
+  end
+
+  defp handle_stale_token_write(repo_host_account) do
+    nil_valid = repo_host_account.repo_host == "github"
+
+    case Guard.FrontRepo.RepoHostAccount.reload(repo_host_account) do
+      %{token: token, token_expires_at: expires_at} when not is_nil(token) ->
+        if valid_token?(expires_at, nil_valid: nil_valid) do
+          {:ok, {token, expires_at}}
+        else
+          {:error, :transient}
+        end
+
+      _ ->
+        {:error, :transient}
+    end
+  end
+
+  defp presence(value) when value in [nil, ""], do: nil
+  defp presence(value), do: value
+
   defp update_token(repo_host_account, token, refresh_token, expires_at) do
-    {:ok, parsed_expires_at} = expires_at |> DateTime.from_unix(:second)
+    parsed_expires_at =
+      case expires_at do
+        nil -> nil
+        unix -> DateTime.from_unix!(unix, :second)
+      end
 
     Guard.FrontRepo.RepoHostAccount.update_token(
       repo_host_account,
