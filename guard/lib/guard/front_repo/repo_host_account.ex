@@ -46,8 +46,8 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     field(:user_id, :binary_id)
     field(:name, :string)
     field(:permission_scope, :string)
-    field(:token, :string)
-    field(:refresh_token, :string)
+    field(:token, :string, redact: true)
+    field(:refresh_token, :string, redact: true)
     field(:token_expires_at, :utc_datetime)
     field(:revoked, :boolean, default: false)
 
@@ -158,8 +158,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
           token_tuple
 
         {:error, :revoked} ->
-          update_account(%{revoked: true}, rha)
-          {:error, :revoked}
+          revoke_or_recover(rha)
 
         {:error, reason} ->
           {:error, reason}
@@ -174,8 +173,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
           token_tuple
 
         {:error, :revoked} ->
-          update_account(%{revoked: true}, rha)
-          {:error, :revoked}
+          revoke_or_recover(rha)
 
         {:error, reason} ->
           {:error, reason}
@@ -190,13 +188,100 @@ defmodule Guard.FrontRepo.RepoHostAccount do
           token_tuple
 
         {:error, :revoked} ->
-          update_account(%{revoked: true}, rha)
-          {:error, :revoked}
+          revoke_or_recover(rha)
 
         {:error, reason} ->
           {:error, reason}
       end
     end)
+  end
+
+  # A provider classified the refresh as a genuine revocation (invalid_grant).
+  # Under single-use refresh-token rotation this can be a FALSE revoke: the
+  # loser of a concurrent refresh reuses the token the winner already rotated,
+  # and the provider answers invalid_grant even though a sibling worker just
+  # stored a healthy token. Blindly flipping `revoked: true` here would
+  # disconnect that healthy account (the mass-disconnect failure class).
+  #
+  # So re-read the row first and decide:
+  #   - the stored token CHANGED vs the snapshot we refreshed with -> a
+  #     concurrent winner rotated it; do NOT revoke. Return the winner's token
+  #     if it is usable, else :transient (the caller refreshes with the new
+  #     refresh_token next time).
+  #   - the stored token is UNCHANGED (still the one the provider just
+  #     rejected) -> a genuine revocation; flip `revoked: true` under an
+  #     optimistic lock so a winner committing between our reload and our write
+  #     cannot be clobbered by a stale revoke.
+  defp revoke_or_recover(%__MODULE__{} = rha) do
+    case reload(rha) do
+      %__MODULE__{} = fresh ->
+        if token_rotated_by_winner?(rha, fresh) do
+          recover_after_winner(fresh)
+        else
+          revoke_unrotated(rha, fresh)
+        end
+
+      nil ->
+        {:error, :revoked}
+    end
+  end
+
+  # No winner seen at reload: write revoked:true on the FRESH struct under an
+  # optimistic lock. If a winner commits in the gap, the locked write raises
+  # StaleEntryError (surfaced as {:error, :stale}) and we re-evaluate ONCE
+  # (no loop): recover if a rotation is now visible, otherwise degrade to
+  # :transient so the next request re-decides cleanly - never a blind revoke.
+  defp revoke_unrotated(%__MODULE__{} = rha, %__MODULE__{} = fresh) do
+    case update_account(%{revoked: true}, fresh, lock: true) do
+      {:ok, _} ->
+        {:error, :revoked}
+
+      {:error, :stale} ->
+        case reload(rha) do
+          %__MODULE__{} = refreshed ->
+            if token_rotated_by_winner?(rha, refreshed) do
+              recover_after_winner(refreshed)
+            else
+              {:error, :transient}
+            end
+
+          nil ->
+            {:error, :revoked}
+        end
+
+      {:error, _reason} ->
+        {:error, :revoked}
+    end
+  end
+
+  defp token_rotated_by_winner?(%__MODULE__{} = rha, %__MODULE__{} = fresh) do
+    fresh.token != rha.token or fresh.refresh_token != rha.refresh_token
+  end
+
+  # NOTE (GitLab caveat): a token recovered here may still be dead. GitLab's
+  # token-family reuse-detection can revoke the WHOLE family when the burned
+  # token is replayed, so the winner's rotated token could already be
+  # family-revoked; that surfaces on the next validate/refresh. The real fix
+  # (single-flight before the refresh POST) is tracked separately.
+  defp recover_after_winner(%__MODULE__{} = fresh) do
+    nil_valid = fresh.repo_host == "github"
+
+    if not is_nil(fresh.token) and
+         Guard.Utils.OAuth.valid_token?(fresh.token_expires_at, nil_valid: nil_valid) do
+      Logger.info(
+        "OAuth refresh classified revoked but a concurrent winner rotated the token; " <>
+          "recovering rha=#{fresh.id} user=#{fresh.user_id} provider=#{fresh.repo_host}"
+      )
+
+      {:ok, {fresh.token, fresh.token_expires_at}}
+    else
+      Logger.info(
+        "OAuth refresh classified revoked, winner rotated but token not yet usable " <>
+          "rha=#{fresh.id} user=#{fresh.user_id} provider=#{fresh.repo_host}; retrying"
+      )
+
+      {:error, :transient}
+    end
   end
 
   # Negative cache for a row that is NOT yet revoked but just failed a
@@ -233,19 +318,45 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     end
   end
 
-  def update_token(rha, token, refresh_token, expires_at) do
-    params = %{
-      token: token,
-      refresh_token: refresh_token,
-      token_expires_at: expires_at,
-      # A successful token fetch is proof the account is not revoked -
-      # self-heal a row that got latched `revoked: true` by a past
-      # transient failure now correctly classified as such.
-      revoked: false
-    }
+  @doc """
+  Persist a freshly-refreshed token.
 
-    update_account(params, rha)
+  `refresh_token` may be `nil` (the provider returned a 2xx WITHOUT rotating
+  it - e.g. GitHub, or an unchanged token). In that case the stored
+  `refresh_token` is left UNTOUCHED rather than overwritten with a snapshot
+  value, which would risk clobbering a newer rotated token written by a
+  concurrent worker. `token`/`expires_at` are written only when present.
+
+  The write is optimistic-locked on `:updated_at` (single-use refresh-token
+  rotation means the losing side of a concurrent refresh must not overwrite
+  the winner's freshly-rotated token). On a lost race the caller gets
+  `{:error, :stale}` and MUST discard its own (older) refresh response.
+  """
+  def update_token(rha, token, refresh_token, expires_at) do
+    params =
+      %{
+        # A successful token fetch is proof the account is not revoked -
+        # self-heal a row that got latched `revoked: true` by a past
+        # transient failure now correctly classified as such.
+        revoked: false
+      }
+      |> put_present(:token, token)
+      |> put_present(:refresh_token, refresh_token)
+      |> put_present(:token_expires_at, expires_at)
+
+    update_account(params, rha, lock: true)
   end
+
+  defp put_present(map, _key, nil), do: map
+  defp put_present(map, _key, ""), do: map
+  defp put_present(map, key, value), do: Map.put(map, key, value)
+
+  @doc """
+  Re-read the row from the DB by id. Used to recover the winner's freshly
+  rotated token after losing an optimistic-lock race on the token write.
+  """
+  @spec reload(t()) :: t() | nil
+  def reload(%__MODULE__{id: id}), do: FrontRepo.get(__MODULE__, id)
 
   @doc """
   Write `:login` and/or `:name` only; other keys dropped. Strict writer:
@@ -396,22 +507,30 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     end
   end
 
-  defp update_account(data, account) when data == %{} do
+  @required_on_write [:github_uid, :login, :name, :permission_scope]
+
+  # `lock: true` guards against a concurrent writer clobbering a
+  # freshly-rotated token: the write carries an optimistic lock on
+  # `:updated_at`, and if another writer committed first the update raises
+  # `Ecto.StaleEntryError`, which we surface as `{:error, :stale}` so the
+  # losing caller can discard its own (older) response. Unlocked callers
+  # (revoke flips, reconnect, profile-less writes) never raise it.
+  defp update_account(data, account, opts \\ [])
+
+  defp update_account(data, account, _opts) when data == %{} do
     Logger.debug("Account for #{account.user_id} already up to date")
 
     {:ok, account}
   end
 
-  @required_on_write [:github_uid, :login, :name, :permission_scope]
-
-  defp update_account(data, account) do
+  defp update_account(data, account, opts) do
     # Validate only the required-schema keys the caller is actually writing.
     # The full @required_on_write list is checked at create/reset time; on a
     # partial update (e.g., flipping :revoked) we must not refuse the write
     # because an *untouched* legacy field happens to be nil.
     required_now = Map.keys(data) |> Enum.filter(&(&1 in @required_on_write))
 
-    result =
+    changeset =
       account
       |> Ecto.Changeset.cast(
         data,
@@ -427,12 +546,16 @@ defmodule Guard.FrontRepo.RepoHostAccount do
         ]
       )
       |> Ecto.Changeset.validate_required(required_now)
-      |> FrontRepo.update()
 
-    case result do
+    changeset =
+      if Keyword.get(opts, :lock, false),
+        do: maybe_lock_on_updated_at(changeset),
+        else: changeset
+
+    case FrontRepo.update(changeset) do
       {:ok, account} ->
         Logger.info(
-          "Successfully updated RepoHostAccount for #{account.user_id} #{account.repo_host} login=#{account.login}"
+          "Successfully updated RepoHostAccount rha=#{account.id} user=#{account.user_id} #{account.repo_host} login=#{account.login}"
         )
 
         maybe_invalidate_negative_cache(data, account)
@@ -440,11 +563,18 @@ defmodule Guard.FrontRepo.RepoHostAccount do
 
       {:error, error} ->
         Logger.error(
-          "Failed to update RepoHostAccount for #{account.user_id} #{account.repo_host} login=#{account.login} errors=#{changeset_error_fields(error)}"
+          "Failed to update RepoHostAccount rha=#{account.id} user=#{account.user_id} #{account.repo_host} login=#{account.login} errors=#{changeset_error_fields(error)}"
         )
 
         {:error, error}
     end
+  rescue
+    Ecto.StaleEntryError ->
+      Logger.warning(
+        "Lost optimistic-lock race writing token for rha=#{account.id} user=#{account.user_id} #{account.repo_host}; discarding stale response"
+      )
+
+      {:error, :stale}
   end
 
   # update_account/2 is the single write chokepoint for both self-heal
