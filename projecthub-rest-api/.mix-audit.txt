@@ -20,3 +20,35 @@ GHSA-gp9c-pm5m-5cxr
 GHSA-j9wq-vxxc-94wf
 GHSA-mp55-p8c9-rfw2
 GHSA-pj7v-xfvx-wmjq
+
+# --- grpc 0.5.0-beta.1 — all first patched in 1.0.0 ---
+# The 1.0 major is a fleet-wide migration, deferred to a dep-bump branch.
+# This service runs no gRPC server at all (no `use GRPC.Server`, no
+# GRPC.Server.Supervisor); it is a gRPC client only. All three advisories are
+# server-side request-handling flaws, so none has an inbound decode path here.
+#
+# RCE via attacker-controlled payloads (erlpack :erlang.binary_to_term): no
+# server, and the codec is not in any default codec list either.
+GHSA-grp7-v8xh-rj7h
+# Unbounded request body accumulation in read_full_body/3: server-side only.
+GHSA-q8gf-9rvj-gmgj
+# Unbounded gzip decompression: server-side for requests; the only client-side
+# exposure would be a compressed response from an internal service this one
+# calls, i.e. an already-compromised internal peer.
+GHSA-6ccx-9c9f-327w
+
+# --- protobuf 0.11.0 ---
+# Unbounded recursion depth decoding embedded messages, patched in 0.16.1.
+# The service was on protobuf 0.5.4, below the advisory range, until field
+# presence (optional bool) forced the move to 0.11; 0.16.1 is not a version
+# bump but an API migration (new/1 was removed in 0.15, and 0.14 ships the
+# Google modules this service generates itself), tracked separately.
+# Not reachable here: the service runs no gRPC server, so it decodes no
+# attacker-supplied protobuf at all - its own surface is JSON over Plug. The
+# one self-referential message in the vendored schemas, RBAC.Role (via
+# inherited_role and maps_to), is never decoded: of the RPCs this service
+# calls, list_user_permissions and list_accessible_projects return only
+# scalars, and no projecthub, organization or repository_integrator response
+# reaches Role. No Any/Struct/Value field exists either, so a caller cannot
+# choose the decoded type.
+GHSA-rv48-qqj5-crxg
