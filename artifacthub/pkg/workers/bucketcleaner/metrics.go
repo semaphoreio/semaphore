@@ -33,10 +33,13 @@ func SubmitMetrics() {
 // overdue, and is the signal to alert on.
 //
 // A purge empties a storage and clears its own mark in one cleaner run, so this
-// sits at zero normally and rises only while due work is not getting done. That is
+// sits near zero normally and rises only while due work is not getting done. That is
 // the failure no other counter shows: nothing errors, the objects simply stay.
-// Alert above an hour. Covers destruction too, which also leaves the bucket behind
-// when it cannot finish.
+// Covers destruction too, which also leaves the bucket behind when it cannot finish.
+//
+// Alert above an hour. The floor under normal operation is purgeRetryInterval, since
+// a storage that comes due just after the scheduler last looked at it waits that long
+// to be picked up, so the threshold has to sit clear of it.
 //
 // Storages still inside their grace period are not counted. They are waiting on
 // purpose, and counting them would sit permanently above any useful threshold.

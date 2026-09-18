@@ -137,6 +137,29 @@ func Test__Scheduler__DuePurgesJumpTheDailyPass(t *testing.T) {
 		require.NoError(t, err)
 		assert.Contains(t, ids, policy.ArtifactID.String())
 	})
+
+	// The retry interval is also the floor on how long a due purge waits, and
+	// oldest_purge_age is alerted on that wait, so it must stay well under an hour.
+	t.Run("a due purge just published is not published again on the next tick", func(t *testing.T) {
+		artifact, policy := createBucketWithRetentionPolicy(t)
+
+		require.NoError(t, privateapi.PurgeArtifactContents(artifact.IdempotencyToken))
+		require.NoError(t, agePurgeMark(artifact.ID, 73*time.Hour))
+
+		// Published seconds ago, so the work is already on its way.
+		changeScheduledForCleaningAtTimestamp(t, policy, -5*time.Second)
+
+		ids, err := scheduler.loadBatch(db.Conn())
+		require.NoError(t, err)
+		assert.NotContains(t, ids, policy.ArtifactID.String())
+
+		// And picked up again once the retry interval is up, rather than waiting a day.
+		changeScheduledForCleaningAtTimestamp(t, policy, -11*time.Minute)
+
+		ids, err = scheduler.loadBatch(db.Conn())
+		require.NoError(t, err)
+		assert.Contains(t, ids, policy.ArtifactID.String())
+	})
 }
 
 func setPolicyCleanedAt(artifactID uuid.UUID, at time.Time) error {
