@@ -48,26 +48,70 @@ defmodule Guard.Utils.OAuth do
   require Logger
 
   def handle_ok_token_response(repo_host_account, body) do
-    body =
-      if is_binary(body) do
-        Jason.decode!(body)
-      else
-        body
-      end
+    # The refresh client has no JSON middleware, so a 2xx body arrives as a raw
+    # string. An empty / HTML / otherwise non-JSON 200 must degrade to
+    # :transient, NOT raise a Jason.DecodeError: an unrescued raise crosses the
+    # gRPC boundary as INTERNAL and, worse, it escapes before the negative
+    # cache is written, so the shared OAuth credential gets re-hammered every
+    # request.
+    case decode_token_body(body) do
+      {:ok, decoded} ->
+        token = presence(decoded["access_token"])
+        expires_in = decoded["expires_in"]
+        # Single-use rotation: capture the NEW refresh_token when the provider
+        # returned one. Do NOT fall back to the stored/in-memory value - a 2xx
+        # that omits refresh_token (GitHub, or an unchanged token) must leave
+        # the stored column UNTOUCHED, never rewrite a possibly-stale snapshot
+        # over a newer token a concurrent worker just rotated in.
+        rotated_refresh_token = presence(decoded["refresh_token"])
 
-    token = presence(body["access_token"])
-    expires_in = body["expires_in"]
-    # Single-use rotation: capture the NEW refresh_token when the provider
-    # returned one. Do NOT fall back to the stored/in-memory value - a 2xx
-    # that omits refresh_token (GitHub, or an unchanged token) must leave the
-    # stored column UNTOUCHED, never rewrite a possibly-stale snapshot over a
-    # newer token a concurrent worker just rotated in.
-    rotated_refresh_token = presence(body["refresh_token"])
+        expires_at = resolve_expires_at(repo_host_account, expires_in)
 
-    expires_at = calc_expires_at(expires_in)
+        handle_ok_token_response(repo_host_account, token, rotated_refresh_token, expires_at)
 
-    handle_ok_token_response(repo_host_account, token, rotated_refresh_token, expires_at)
+      :error ->
+        Logger.warning(
+          "2xx token refresh response body was not decodable JSON for " <>
+            "rha=#{repo_host_account.id} user=#{repo_host_account.user_id} " <>
+            "#{repo_host_account.repo_host}; treating as transient"
+        )
+
+        {:error, :transient}
+    end
   end
+
+  defp decode_token_body(body) when is_map(body), do: {:ok, body}
+
+  defp decode_token_body(body) when is_binary(body) do
+    case Jason.decode(body) do
+      {:ok, decoded} when is_map(decoded) -> {:ok, decoded}
+      _ -> :error
+    end
+  end
+
+  defp decode_token_body(_body), do: :error
+
+  # Fallback access-token lifetime when a 2xx omits expires_in. Kept well
+  # under the providers' real access-token lifetime (Bitbucket/GitLab ~2h) so
+  # we still refresh ahead of expiry, but long enough that we do not
+  # re-refresh on every request.
+  @default_access_token_ttl_seconds 3600
+
+  # A 2xx with a usable expires_in: honor it (even a short one is a real
+  # provider value).
+  defp resolve_expires_at(_repo_host_account, expires_in)
+       when is_integer(expires_in) and expires_in > 0,
+       do: calc_expires_at(expires_in)
+
+  # GitHub access tokens do not expire by default - leave token_expires_at nil.
+  defp resolve_expires_at(%{repo_host: "github"}, _expires_in), do: nil
+
+  # Any other provider with a missing/short expires_in on a 2xx: write a
+  # conservative TTL instead of dropping the field, which would leave the old
+  # (expired) timestamp and force a refresh on every request - churn against
+  # a single-use rotation endpoint.
+  defp resolve_expires_at(_repo_host_account, _expires_in),
+    do: calc_expires_at(@default_access_token_ttl_seconds)
 
   # A 2xx with no usable access_token is a malformed/dropped rotation
   # response (a known failure mode of single-use rotation). Do NOT write it
@@ -100,12 +144,23 @@ defmodule Guard.Utils.OAuth do
       {:error, reason} ->
         Logger.error(
           "Failed to persist refreshed token for rha=#{repo_host_account.id} " <>
-            "user=#{repo_host_account.user_id} #{repo_host_account.repo_host}: #{inspect(reason)}"
+            "user=#{repo_host_account.user_id} #{repo_host_account.repo_host}: " <>
+            describe_persist_error(reason)
         )
 
         {:error, :transient}
     end
   end
+
+  # Never inspect a raw changeset here: its `changes` map carries the
+  # plaintext token/refresh_token. Log only the failing field names and their
+  # (value-free) error messages.
+  defp describe_persist_error(%Ecto.Changeset{errors: errors}) do
+    "changeset_errors=" <>
+      Enum.map_join(errors, ",", fn {field, {msg, _opts}} -> "#{field}:#{msg}" end)
+  end
+
+  defp describe_persist_error(reason), do: inspect(reason)
 
   defp handle_stale_token_write(repo_host_account) do
     nil_valid = repo_host_account.repo_host == "github"
@@ -113,8 +168,20 @@ defmodule Guard.Utils.OAuth do
     case Guard.FrontRepo.RepoHostAccount.reload(repo_host_account) do
       %{token: token, token_expires_at: expires_at} when not is_nil(token) ->
         if valid_token?(expires_at, nil_valid: nil_valid) do
+          Logger.info(
+            "OAuth refresh lost write race, recovered winner's rotated token " <>
+              "rha=#{repo_host_account.id} user=#{repo_host_account.user_id} " <>
+              "provider=#{repo_host_account.repo_host}"
+          )
+
           {:ok, {token, expires_at}}
         else
+          Logger.info(
+            "OAuth refresh lost write race, winner's token not yet usable " <>
+              "rha=#{repo_host_account.id} user=#{repo_host_account.user_id} " <>
+              "provider=#{repo_host_account.repo_host}; retrying"
+          )
+
           {:error, :transient}
         end
 
