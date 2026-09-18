@@ -6,7 +6,7 @@ APP_NAME=projecthub-rest-api
 
 TMP_REPO_DIR?=/tmp/internal_api
 INTERNAL_API_BRANCH ?=master
-PROTOC_TAG=1.6.6-3.3.0-0.5.4
+PROTOC_TAG=1.16.3-31.1-0.16.1
 
 pb.gen:
 	rm -rf $(TMP_REPO_DIR)

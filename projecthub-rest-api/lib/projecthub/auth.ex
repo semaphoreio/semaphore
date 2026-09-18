@@ -14,12 +14,11 @@ defmodule Projecthub.Auth do
   end
 
   def has_permissions?(org_id, user_id, project_id, permissions) do
-    req =
-      ListUserPermissionsRequest.new(
-        org_id: org_id,
-        user_id: user_id,
-        project_id: project_id
-      )
+    req = %ListUserPermissionsRequest{
+      org_id: org_id,
+      user_id: user_id,
+      project_id: project_id
+    }
 
     case Cachex.fetch(:auth_cache, request_id(req, permissions), fn _id ->
            _has_permissions?(req, permissions)
@@ -40,7 +39,7 @@ defmodule Projecthub.Auth do
   defp _has_permissions?(req, permissions) do
     endpoint = Application.fetch_env!(:projecthub, :rbac_grpc_endpoint)
 
-    with {:ok, channel} <- GRPC.Stub.connect(endpoint),
+    with {:ok, channel} <- Projecthub.Grpc.connect(endpoint),
          {:ok, res} <- Stub.list_user_permissions(channel, req, timeout: 30_000) do
       {:commit, Enum.all?(permissions, fn p -> Enum.member?(res.permissions, p) end)}
     else
@@ -58,15 +57,14 @@ defmodule Projecthub.Auth do
   end
 
   def list_accessible_projects(org_id, user_id) do
-    request =
-      ListAccessibleProjectsRequest.new(
-        user_id: user_id,
-        org_id: org_id
-      )
+    request = %ListAccessibleProjectsRequest{
+      user_id: user_id,
+      org_id: org_id
+    }
 
     endpoint = Application.fetch_env!(:projecthub, :rbac_grpc_endpoint)
 
-    with {:ok, channel} <- GRPC.Stub.connect(endpoint),
+    with {:ok, channel} <- Projecthub.Grpc.connect(endpoint),
          {:ok, response} <- Stub.list_accessible_projects(channel, request, timeout: 30_000) do
       {:ok, response.project_ids}
     else

@@ -89,60 +89,53 @@ defmodule Projecthub.HttpApi do
 
       {schedulers, tasks} = construct_schedulers_and_tasks(conn.body_params)
 
-      req =
-        InternalApi.Projecthub.CreateRequest.new(
-          skip_onboarding: skip_onboarding_map(conn.body_params["skip_onboarding"]),
-          metadata: Utils.construct_req_meta(conn),
-          project:
-            InternalApi.Projecthub.Project.new(
-              metadata:
-                InternalApi.Projecthub.Project.Metadata.new(
-                  name: conn.body_params["metadata"]["name"]
-                ),
-              spec:
-                InternalApi.Projecthub.Project.Spec.new(
-                  repository:
-                    Repository.new(
-                      url: repository["url"],
-                      forked_pull_requests:
-                        Repository.ForkedPullRequests.new(
-                          allowed_secrets:
-                            repository["forked_pull_requests"]["allowed_secrets"] || [],
-                          allowed_contributors:
-                            repository["forked_pull_requests"]["allowed_contributors"] || []
-                        ),
-                      run_on: run_on_map(repository["run_on"]),
-                      pipeline_file: repository["pipeline_file"] || "",
-                      status: status_map(repository["status"]),
-                      whitelist: whitelist_map(repository["whitelist"]),
-                      integration_type:
-                        integration_type_map(
-                          repository["integration_type"],
-                          repository["url"],
-                          conn.assigns.org_id
-                        )
-                    ),
-                  schedulers: schedulers,
-                  tasks: tasks,
-                  visibility: visibility_map(spec["visibility"]),
-                  custom_permissions: custom_permissions_map(spec["custom_permissions"]),
-                  debug_permissions: permissions_map(spec["debug_permissions"]),
-                  attach_permissions: permissions_map(spec["attach_permissions"])
+      req = %InternalApi.Projecthub.CreateRequest{
+        skip_onboarding: skip_onboarding_map(conn.body_params["skip_onboarding"]),
+        metadata: Utils.construct_req_meta(conn),
+        project: %InternalApi.Projecthub.Project{
+          metadata: %InternalApi.Projecthub.Project.Metadata{
+            name: conn.body_params["metadata"]["name"]
+          },
+          spec: %InternalApi.Projecthub.Project.Spec{
+            repository: %Repository{
+              url: repository["url"],
+              forked_pull_requests: %Repository.ForkedPullRequests{
+                allowed_secrets: repository["forked_pull_requests"]["allowed_secrets"] || [],
+                allowed_contributors:
+                  repository["forked_pull_requests"]["allowed_contributors"] || []
+              },
+              run_on: run_on_map(repository["run_on"]),
+              pipeline_file: repository["pipeline_file"] || "",
+              status: status_map(repository["status"]),
+              whitelist: whitelist_map(repository["whitelist"]),
+              integration_type:
+                integration_type_map(
+                  repository["integration_type"],
+                  repository["url"],
+                  conn.assigns.org_id
                 )
-            )
-        )
+            },
+            schedulers: schedulers,
+            tasks: tasks,
+            visibility: visibility_map(spec["visibility"]),
+            custom_permissions: custom_permissions_map(spec["custom_permissions"]),
+            debug_permissions: permissions_map(spec["debug_permissions"]),
+            attach_permissions: permissions_map(spec["attach_permissions"])
+          }
+        }
+      }
 
       Logger.info("Constructed request info #{inspect(req)}")
 
       {:ok, channel} =
-        GRPC.Stub.connect(Application.fetch_env!(:projecthub, :projecthub_grpc_endpoint))
+        Projecthub.Grpc.connect(Application.fetch_env!(:projecthub, :projecthub_grpc_endpoint))
 
       {:ok, res} =
         InternalApi.Projecthub.ProjectService.Stub.create(channel, req, timeout: 30_000)
 
       Logger.info("Sending response #{inspect(res)}")
 
-      case InternalApi.Projecthub.ResponseMeta.Code.key(res.metadata.status.code) do
+      case enum_key(InternalApi.Projecthub.ResponseMeta.Code, res.metadata.status.code) do
         :OK ->
           send_resp(conn, 200, encode(res.project))
 
@@ -169,56 +162,48 @@ defmodule Projecthub.HttpApi do
 
       {schedulers, tasks} = construct_schedulers_and_tasks(conn.body_params)
 
-      req =
-        InternalApi.Projecthub.UpdateRequest.new(
-          metadata: Utils.construct_req_meta(conn),
-          project:
-            InternalApi.Projecthub.Project.new(
-              metadata:
-                InternalApi.Projecthub.Project.Metadata.new(
-                  id: conn.params["id"],
-                  name: metadata["name"],
-                  description: metadata["description"] || ""
-                ),
-              spec:
-                InternalApi.Projecthub.Project.Spec.new(
-                  repository:
-                    Repository.new(
-                      url: repository["url"],
-                      forked_pull_requests:
-                        Repository.ForkedPullRequests.new(
-                          allowed_secrets:
-                            repository["forked_pull_requests"]["allowed_secrets"] || [],
-                          allowed_contributors:
-                            repository["forked_pull_requests"]["allowed_contributors"] || []
-                        ),
-                      run_on: run_on_map(repository["run_on"]),
-                      pipeline_file:
-                        conn.body_params["spec"]["repository"]["pipeline_file"] || "",
-                      status: status_map(repository["status"]),
-                      whitelist: whitelist_map(repository["whitelist"])
-                    ),
-                  schedulers: schedulers,
-                  tasks: tasks,
-                  visibility: visibility_map(conn.body_params["spec"]["visibility"]),
-                  custom_permissions: custom_permissions_map(spec["custom_permissions"]),
-                  debug_permissions: permissions_map(spec["debug_permissions"]),
-                  attach_permissions: permissions_map(spec["attach_permissions"])
-                )
-            )
-        )
+      req = %InternalApi.Projecthub.UpdateRequest{
+        metadata: Utils.construct_req_meta(conn),
+        project: %InternalApi.Projecthub.Project{
+          metadata: %InternalApi.Projecthub.Project.Metadata{
+            id: conn.params["id"],
+            name: metadata["name"],
+            description: metadata["description"] || ""
+          },
+          spec: %InternalApi.Projecthub.Project.Spec{
+            repository: %Repository{
+              url: repository["url"],
+              forked_pull_requests: %Repository.ForkedPullRequests{
+                allowed_secrets: repository["forked_pull_requests"]["allowed_secrets"] || [],
+                allowed_contributors:
+                  repository["forked_pull_requests"]["allowed_contributors"] || []
+              },
+              run_on: run_on_map(repository["run_on"]),
+              pipeline_file: conn.body_params["spec"]["repository"]["pipeline_file"] || "",
+              status: status_map(repository["status"]),
+              whitelist: whitelist_map(repository["whitelist"])
+            },
+            schedulers: schedulers,
+            tasks: tasks,
+            visibility: visibility_map(conn.body_params["spec"]["visibility"]),
+            custom_permissions: custom_permissions_map(spec["custom_permissions"]),
+            debug_permissions: permissions_map(spec["debug_permissions"]),
+            attach_permissions: permissions_map(spec["attach_permissions"])
+          }
+        }
+      }
 
       Logger.info("Constructed request info #{inspect(req)}")
 
       {:ok, channel} =
-        GRPC.Stub.connect(Application.fetch_env!(:projecthub, :projecthub_grpc_endpoint))
+        Projecthub.Grpc.connect(Application.fetch_env!(:projecthub, :projecthub_grpc_endpoint))
 
       {:ok, res} =
         InternalApi.Projecthub.ProjectService.Stub.update(channel, req, timeout: 30_000)
 
       Logger.info("Sending response #{inspect(res)}")
 
-      case InternalApi.Projecthub.ResponseMeta.Code.key(res.metadata.status.code) do
+      case enum_key(InternalApi.Projecthub.ResponseMeta.Code, res.metadata.status.code) do
         :OK ->
           send_resp(conn, 200, encode(res.project))
 
@@ -239,23 +224,22 @@ defmodule Projecthub.HttpApi do
 
     with {:ok, project_id} <- get_project_id(conn),
          true <- Auth.has_permissions?(org_id, user_id, project_id, "project.delete") do
-      req =
-        InternalApi.Projecthub.DestroyRequest.new(
-          metadata: Utils.construct_req_meta(conn),
-          name: conn.params["name"]
-        )
+      req = %InternalApi.Projecthub.DestroyRequest{
+        metadata: Utils.construct_req_meta(conn),
+        name: conn.params["name"]
+      }
 
       Logger.info("Constructed request info #{inspect(req)}")
 
       {:ok, channel} =
-        GRPC.Stub.connect(Application.fetch_env!(:projecthub, :projecthub_grpc_endpoint))
+        Projecthub.Grpc.connect(Application.fetch_env!(:projecthub, :projecthub_grpc_endpoint))
 
       {:ok, res} =
         InternalApi.Projecthub.ProjectService.Stub.destroy(channel, req, timeout: 30_000)
 
       Logger.info("Sending response #{inspect(res)}")
 
-      case InternalApi.Projecthub.ResponseMeta.Code.key(res.metadata.status.code) do
+      case enum_key(InternalApi.Projecthub.ResponseMeta.Code, res.metadata.status.code) do
         :OK -> send_resp(conn, 200, "")
         _ -> send_resp(conn, 400, Poison.encode!(%{message: "Bad Request"}))
       end
@@ -278,19 +262,18 @@ defmodule Projecthub.HttpApi do
   #
 
   defp get_project_id(conn) do
-    req =
-      InternalApi.Projecthub.DescribeRequest.new(
-        metadata: Utils.construct_req_meta(conn),
-        name: conn.params["name"]
-      )
+    req = %InternalApi.Projecthub.DescribeRequest{
+      metadata: Utils.construct_req_meta(conn),
+      name: conn.params["name"]
+    }
 
     {:ok, channel} =
-      GRPC.Stub.connect(Application.fetch_env!(:projecthub, :projecthub_grpc_endpoint))
+      Projecthub.Grpc.connect(Application.fetch_env!(:projecthub, :projecthub_grpc_endpoint))
 
     {:ok, res} =
       InternalApi.Projecthub.ProjectService.Stub.describe(channel, req, timeout: 30_000)
 
-    case InternalApi.Projecthub.ResponseMeta.Code.key(res.metadata.status.code) do
+    case enum_key(InternalApi.Projecthub.ResponseMeta.Code, res.metadata.status.code) do
       :OK -> {:ok, res.project.metadata.id}
       _ -> {:error, nil}
     end
@@ -341,44 +324,37 @@ defmodule Projecthub.HttpApi do
     |> Enum.reject(&is_nil/1)
   end
 
-  defp integration_type_map("github_app", _, _),
-    do: InternalApi.RepositoryIntegrator.IntegrationType.value(:GITHUB_APP)
+  defp integration_type_map("github_app", _, _), do: :GITHUB_APP
 
-  defp integration_type_map("github_token", _, _),
-    do: InternalApi.RepositoryIntegrator.IntegrationType.value(:GITHUB_OAUTH_TOKEN)
+  defp integration_type_map("github_token", _, _), do: :GITHUB_OAUTH_TOKEN
 
-  defp integration_type_map("bitbucket", _, _),
-    do: InternalApi.RepositoryIntegrator.IntegrationType.value(:BITBUCKET)
+  defp integration_type_map("bitbucket", _, _), do: :BITBUCKET
 
-  defp integration_type_map("gitlab", _, _),
-    do: InternalApi.RepositoryIntegrator.IntegrationType.value(:GITLAB)
+  defp integration_type_map("gitlab", _, _), do: :GITLAB
 
-  defp integration_type_map("git", _, _),
-    do: InternalApi.RepositoryIntegrator.IntegrationType.value(:GIT)
+  defp integration_type_map("git", _, _), do: :GIT
 
-  defp integration_type_map(_, _, _org_id),
-    do: InternalApi.RepositoryIntegrator.IntegrationType.value(:GITHUB_OAUTH_TOKEN)
+  defp integration_type_map(_, _, _org_id), do: :GITHUB_OAUTH_TOKEN
 
-  defp visibility_map("private"),
-    do: InternalApi.Projecthub.Project.Spec.Visibility.value(:PRIVATE)
+  defp visibility_map("private"), do: :PRIVATE
 
-  defp visibility_map("public"), do: InternalApi.Projecthub.Project.Spec.Visibility.value(:PUBLIC)
+  defp visibility_map("public"), do: :PUBLIC
   defp visibility_map(_), do: visibility_map("private")
   defp whitelist_map(nil), do: nil
 
   defp whitelist_map(whitelist) do
-    InternalApi.Projecthub.Project.Spec.Repository.Whitelist.new(
+    %InternalApi.Projecthub.Project.Spec.Repository.Whitelist{
       branches: whitelist["branches"] || [],
       tags: whitelist["tags"] || []
-    )
+    }
   end
 
   defp status_map(nil), do: nil
 
   defp status_map(status) do
-    InternalApi.Projecthub.Project.Spec.Repository.Status.new(
+    %InternalApi.Projecthub.Project.Spec.Repository.Status{
       pipeline_files: pipeline_files_map(status["pipeline_files"])
-    )
+    }
   end
 
   defp pipeline_files_map(nil), do: []
@@ -394,7 +370,7 @@ defmodule Projecthub.HttpApi do
       if Enum.member?(valid_levels, level) do
         level = PipelineFile.Level.value(level)
 
-        PipelineFile.new(path: file["path"], level: level)
+        %PipelineFile{path: file["path"], level: level}
       else
         nil
       end
@@ -470,7 +446,7 @@ defmodule Projecthub.HttpApi do
       },
       "schedulers" => encode_schedulers(p.spec.schedulers),
       "tasks" => encode_tasks(p.spec.tasks),
-      "visibility" => Visibility.key(p.spec.visibility) |> from_atom()
+      "visibility" => enum_key(Visibility, p.spec.visibility) |> from_atom()
     }
 
     debugs = %{
@@ -482,11 +458,11 @@ defmodule Projecthub.HttpApi do
     %{"metadata" => metadata, "spec" => Map.merge(spec, debugs)}
   end
 
-  defp encode_inegration_type(0), do: "github_token"
-  defp encode_inegration_type(1), do: "github_app"
-  defp encode_inegration_type(2), do: "bitbucket"
-  defp encode_inegration_type(3), do: "gitlab"
-  defp encode_inegration_type(4), do: "git"
+  defp encode_inegration_type(:GITHUB_OAUTH_TOKEN), do: "github_token"
+  defp encode_inegration_type(:GITHUB_APP), do: "github_app"
+  defp encode_inegration_type(:BITBUCKET), do: "bitbucket"
+  defp encode_inegration_type(:GITLAB), do: "gitlab"
+  defp encode_inegration_type(:GIT), do: "git"
   defp encode_inegration_type(_), do: ""
 
   defp encode_whitelist(nil), do: %{"branches" => [], "tags" => []}
@@ -498,21 +474,36 @@ defmodule Projecthub.HttpApi do
     }
   end
 
-  @unspecified_status InternalApi.Projecthub.Project.Spec.Scheduler.Status.value(
-                        :STATUS_UNSPECIFIED
-                      )
-  @status_active InternalApi.Projecthub.Project.Spec.Scheduler.Status.value(:STATUS_ACTIVE)
-  @status_inactive InternalApi.Projecthub.Project.Spec.Scheduler.Status.value(:STATUS_INACTIVE)
+  @unspecified_status :STATUS_UNSPECIFIED
+  @status_active :STATUS_ACTIVE
+  @status_inactive :STATUS_INACTIVE
   defp encode_schedulers(schedulers) do
     alias InternalApi.Projecthub.Project.Spec.Scheduler
 
     schedulers
     |> Enum.map(fn scheduler ->
       scheduler
+      |> drop_protobuf_internals()
       |> encode_scheduler_status_field()
       |> encode_reference_field()
     end)
   end
+
+  # protobuf structs carry __unknown_fields__, which must not reach the JSON
+  # body; nested messages (task parameters) carry it too.
+  defp drop_protobuf_internals(%_{} = message),
+    do: message |> Map.from_struct() |> drop_protobuf_internals()
+
+  defp drop_protobuf_internals(%{} = map) do
+    map
+    |> Map.delete(:__unknown_fields__)
+    |> Map.new(fn {key, value} -> {key, drop_protobuf_internals(value)} end)
+  end
+
+  defp drop_protobuf_internals(values) when is_list(values),
+    do: Enum.map(values, &drop_protobuf_internals/1)
+
+  defp drop_protobuf_internals(value), do: value
 
   defp encode_scheduler_status_field(scheduler) do
     case scheduler.status do
@@ -537,15 +528,14 @@ defmodule Projecthub.HttpApi do
   defp encode_scheduler_status(@status_inactive), do: "INACTIVE"
   defp encode_scheduler_status(@status_active), do: "ACTIVE"
 
-  @task_unspecified_status InternalApi.Projecthub.Project.Spec.Task.Status.value(
-                             :STATUS_UNSPECIFIED
-                           )
-  @task_status_active InternalApi.Projecthub.Project.Spec.Task.Status.value(:STATUS_ACTIVE)
-  @task_status_inactive InternalApi.Projecthub.Project.Spec.Task.Status.value(:STATUS_INACTIVE)
+  @task_unspecified_status :STATUS_UNSPECIFIED
+  @task_status_active :STATUS_ACTIVE
+  @task_status_inactive :STATUS_INACTIVE
   defp encode_tasks(tasks) do
     tasks
     |> Stream.map(fn task ->
       task
+      |> drop_protobuf_internals()
       |> encode_task_status_field()
       |> encode_reference_field()
     end)
@@ -569,13 +559,13 @@ defmodule Projecthub.HttpApi do
   defp map_run_types(types) do
     alias InternalApi.Projecthub.Project.Spec.Repository.RunType, as: Type
 
-    Enum.map(types, fn type -> Type.key(type) |> from_atom() end)
+    Enum.map(types, fn type -> enum_key(Type, type) |> from_atom() end)
   end
 
   defp map_permission_types(types) do
     alias InternalApi.Projecthub.Project.Spec.PermissionType, as: Type
 
-    Enum.map(types, fn type -> Type.key(type) |> from_atom() end)
+    Enum.map(types, fn type -> enum_key(Type, type) |> from_atom() end)
   end
 
   defp encode_status(nil), do: %{"pipeline_files" => []}
@@ -589,7 +579,7 @@ defmodule Projecthub.HttpApi do
         |> Enum.map(fn file ->
           %{
             "path" => file.path,
-            "level" => Level.key(file.level) |> from_atom()
+            "level" => enum_key(Level, file.level) |> from_atom()
           }
         end)
     }
@@ -616,7 +606,7 @@ defmodule Projecthub.HttpApi do
     if raw_schedulers do
       raw_schedulers
       |> Enum.map(fn scheduler ->
-        Scheduler.new(
+        %Scheduler{
           id: scheduler["id"] || "",
           name: scheduler["name"],
           branch:
@@ -625,7 +615,7 @@ defmodule Projecthub.HttpApi do
           at: scheduler["at"],
           pipeline_file: scheduler["pipeline_file"],
           status: scheduler_status(scheduler["status"])
-        )
+        }
       end)
     else
       []
@@ -638,7 +628,7 @@ defmodule Projecthub.HttpApi do
     if raw_tasks do
       raw_tasks
       |> Enum.map(fn task ->
-        SpecTask.new(
+        %SpecTask{
           id: task["id"] || "",
           name: task["name"],
           description: task["description"] || "",
@@ -650,12 +640,17 @@ defmodule Projecthub.HttpApi do
           pipeline_file: task["pipeline_file"] || "",
           parameters: construct_task_parameters(task["parameters"]),
           status: task_status(task["status"])
-        )
+        }
       end)
     else
       []
     end
   end
+
+  # protobuf decodes enum fields to atoms; a stored integer still needs the
+  # module's own lookup.
+  defp enum_key(_module, value) when is_atom(value), do: value
+  defp enum_key(module, value), do: module.key(value)
 
   defp construct_reference("branch", reference_name) do
     "refs/heads/#{reference_name}"
@@ -673,7 +668,7 @@ defmodule Projecthub.HttpApi do
     if raw_task_parameters do
       raw_task_parameters
       |> Enum.map(fn task_parameter ->
-        SpecTaskParameter.new(
+        %SpecTaskParameter{
           name: task_parameter["name"],
           required: task_parameter["required"],
           description: task_parameter["description"] || "",
@@ -681,7 +676,7 @@ defmodule Projecthub.HttpApi do
           options: task_parameter["options"] || [],
           regex_pattern: task_parameter["regex_pattern"] || "",
           validate_input_format: task_parameter["validate_input_format"] || false
-        )
+        }
       end)
     else
       []
@@ -707,20 +702,19 @@ defmodule Projecthub.HttpApi do
   defp task_status_(_), do: :STATUS_UNSPECIFIED
 
   defp fetch_project(conn) do
-    req =
-      InternalApi.Projecthub.DescribeRequest.new(
-        metadata: Utils.construct_req_meta(conn),
-        name: conn.params["name"],
-        detailed: true
-      )
+    req = %InternalApi.Projecthub.DescribeRequest{
+      metadata: Utils.construct_req_meta(conn),
+      name: conn.params["name"],
+      detailed: true
+    }
 
     {:ok, channel} =
-      GRPC.Stub.connect(Application.fetch_env!(:projecthub, :projecthub_grpc_endpoint))
+      Projecthub.Grpc.connect(Application.fetch_env!(:projecthub, :projecthub_grpc_endpoint))
 
     {:ok, res} =
       InternalApi.Projecthub.ProjectService.Stub.describe(channel, req, timeout: 30_000)
 
-    case InternalApi.Projecthub.ResponseMeta.Code.key(res.metadata.status.code) do
+    case enum_key(InternalApi.Projecthub.ResponseMeta.Code, res.metadata.status.code) do
       :OK -> {:ok, res.project}
       :NOT_FOUND -> {:error, :not_found}
       _ -> {:error, "Bad Request"}
@@ -739,22 +733,20 @@ defmodule Projecthub.HttpApi do
   defp page_size, do: Application.get_env(:projecthub, :projects_page_size, 500)
 
   defp do_list_projects(conn, org_id, page) do
-    req =
-      InternalApi.Projecthub.ListRequest.new(
-        metadata: Utils.construct_req_meta(conn),
-        pagination:
-          InternalApi.Projecthub.PaginationRequest.new(
-            page: page,
-            page_size: page_size()
-          )
-      )
+    req = %InternalApi.Projecthub.ListRequest{
+      metadata: Utils.construct_req_meta(conn),
+      pagination: %InternalApi.Projecthub.PaginationRequest{
+        page: page,
+        page_size: page_size()
+      }
+    }
 
     {:ok, channel} =
-      GRPC.Stub.connect(Application.fetch_env!(:projecthub, :projecthub_grpc_endpoint))
+      Projecthub.Grpc.connect(Application.fetch_env!(:projecthub, :projecthub_grpc_endpoint))
 
     {:ok, res} = InternalApi.Projecthub.ProjectService.Stub.list(channel, req, timeout: 30_000)
 
-    case InternalApi.Projecthub.ResponseMeta.Code.key(res.metadata.status.code) do
+    case enum_key(InternalApi.Projecthub.ResponseMeta.Code, res.metadata.status.code) do
       :OK ->
         projects =
           res.projects

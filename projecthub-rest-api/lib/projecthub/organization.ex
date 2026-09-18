@@ -6,7 +6,7 @@ defmodule Projecthub.Organization do
 
   def primary_integration_type(org_id) do
     {:ok, channel} = get_channel()
-    req = RepositoryIntegratorsRequest.new(org_id: org_id)
+    req = %RepositoryIntegratorsRequest{org_id: org_id}
 
     case Client.repository_integrators(channel, req, timeout: 30_000) do
       {:ok, res} ->
@@ -18,6 +18,6 @@ defmodule Projecthub.Organization do
   end
 
   defp get_channel do
-    GRPC.Stub.connect(Application.fetch_env!(:projecthub, :organization_grpc_endpoint))
+    Projecthub.Grpc.connect(Application.fetch_env!(:projecthub, :organization_grpc_endpoint))
   end
 end

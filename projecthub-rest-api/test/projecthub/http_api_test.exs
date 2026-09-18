@@ -24,10 +24,10 @@ defmodule Projecthub.HttpApi.Test do
     Cachex.clear(:auth_cache)
 
     FunRegistry.set!(FakeServices.OrganizationService, :describe, fn _, _ ->
-      InternalApi.Organization.DescribeResponse.new(
-        status: InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
-        organization: InternalApi.Organization.Organization.new(restricted: false)
-      )
+      %InternalApi.Organization.DescribeResponse{
+        status: %InternalApi.ResponseStatus{code: InternalApi.ResponseStatus.Code.value(:OK)},
+        organization: %InternalApi.Organization.Organization{restricted: false}
+      }
     end)
 
     :ok
@@ -41,19 +41,18 @@ defmodule Projecthub.HttpApi.Test do
       p2 = create("tuturu", p2_id)
 
       FunRegistry.set!(FakeServices.RbacService, :list_accessible_projects, fn _, _ ->
-        InternalApi.RBAC.ListAccessibleProjectsResponse.new(project_ids: [p1_id, p2_id])
+        %InternalApi.RBAC.ListAccessibleProjectsResponse{project_ids: [p1_id, p2_id]}
       end)
 
       FunRegistry.set!(FakeServices.ProjectService, :list, fn _, _ ->
         alias InternalApi.Projecthub, as: PH
 
-        PH.ListResponse.new(
-          metadata:
-            PH.ResponseMeta.new(
-              status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:OK))
-            ),
+        %PH.ListResponse{
+          metadata: %PH.ResponseMeta{
+            status: %PH.ResponseMeta.Status{code: PH.ResponseMeta.Code.value(:OK)}
+          },
           projects: [p1, p2]
-        )
+        }
       end)
 
       {:ok, p1: p1_id, p2: p2_id}
@@ -253,7 +252,7 @@ defmodule Projecthub.HttpApi.Test do
   describe "GET /api/<version>/projects with unauthorized user" do
     setup do
       FunRegistry.set!(FakeServices.RbacService, :list_accessible_projects, fn _, _ ->
-        InternalApi.RBAC.ListAccessibleProjectsResponse.new(project_ids: [])
+        %InternalApi.RBAC.ListAccessibleProjectsResponse{project_ids: []}
       end)
 
       p1 = create("trello", uuid())
@@ -262,13 +261,12 @@ defmodule Projecthub.HttpApi.Test do
       FunRegistry.set!(FakeServices.ProjectService, :list, fn _, _ ->
         alias InternalApi.Projecthub, as: PH
 
-        PH.ListResponse.new(
-          metadata:
-            PH.ResponseMeta.new(
-              status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:OK))
-            ),
+        %PH.ListResponse{
+          metadata: %PH.ResponseMeta{
+            status: %PH.ResponseMeta.Status{code: PH.ResponseMeta.Code.value(:OK)}
+          },
           projects: [p1, p2]
-        )
+        }
       end)
 
       :ok
@@ -301,7 +299,7 @@ defmodule Projecthub.HttpApi.Test do
       page_size = Application.get_env(:projecthub, :projects_page_size)
 
       FunRegistry.set!(FakeServices.RbacService, :list_accessible_projects, fn _, _ ->
-        InternalApi.RBAC.ListAccessibleProjectsResponse.new(project_ids: [p1_id, p2_id, p3_id])
+        %InternalApi.RBAC.ListAccessibleProjectsResponse{project_ids: [p1_id, p2_id, p3_id]}
       end)
 
       FunRegistry.set!(FakeServices.ProjectService, :list, fn req, _ ->
@@ -310,20 +308,18 @@ defmodule Projecthub.HttpApi.Test do
         all_projects = [p1, p2, p3]
         projects = Enum.slice(all_projects, (page - 1) * page_size, page_size)
 
-        PH.ListResponse.new(
-          metadata:
-            PH.ResponseMeta.new(
-              status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:OK))
-            ),
+        %PH.ListResponse{
+          metadata: %PH.ResponseMeta{
+            status: %PH.ResponseMeta.Status{code: PH.ResponseMeta.Code.value(:OK)}
+          },
           projects: projects,
-          pagination:
-            PH.PaginationResponse.new(
-              page_number: page,
-              page_size: page_size,
-              total_entries: length(all_projects),
-              total_pages: div(length(all_projects) + page_size - 1, page_size)
-            )
-        )
+          pagination: %PH.PaginationResponse{
+            page_number: page,
+            page_size: page_size,
+            total_entries: length(all_projects),
+            total_pages: div(length(all_projects) + page_size - 1, page_size)
+          }
+        }
       end)
 
       :ok
@@ -385,13 +381,12 @@ defmodule Projecthub.HttpApi.Test do
       FunRegistry.set!(FakeServices.ProjectService, :list, fn _, _ ->
         alias InternalApi.Projecthub, as: PH
 
-        PH.ListResponse.new(
-          metadata:
-            PH.ResponseMeta.new(
-              status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:NOT_FOUND))
-            ),
+        %PH.ListResponse{
+          metadata: %PH.ResponseMeta{
+            status: %PH.ResponseMeta.Status{code: PH.ResponseMeta.Code.value(:NOT_FOUND)}
+          },
           projects: []
-        )
+        }
       end)
 
       {:ok, response} =
@@ -407,21 +402,20 @@ defmodule Projecthub.HttpApi.Test do
       FunRegistry.set!(FakeServices.ProjectService, :list, fn _, _ ->
         alias InternalApi.Projecthub, as: PH
 
-        PH.ListResponse.new(
-          metadata:
-            PH.ResponseMeta.new(
-              status:
-                PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:FAILED_PRECONDITION))
-            ),
+        %PH.ListResponse{
+          metadata: %PH.ResponseMeta{
+            status: %PH.ResponseMeta.Status{
+              code: PH.ResponseMeta.Code.value(:FAILED_PRECONDITION)
+            }
+          },
           projects: [],
-          pagination:
-            PH.PaginationResponse.new(
-              total_count: 0,
-              page_number: 0,
-              page_size: 0,
-              total_pages: 0
-            )
-        )
+          pagination: %PH.PaginationResponse{
+            total_entries: 0,
+            page_number: 0,
+            page_size: 0,
+            total_pages: 0
+          }
+        }
       end)
 
       {:ok, response} =
@@ -462,7 +456,7 @@ defmodule Projecthub.HttpApi.Test do
   describe "GET /api/<version>/projects/:name with authorized user" do
     setup do
       FunRegistry.set!(FakeServices.RbacService, :list_user_permissions, fn _, _ ->
-        InternalApi.RBAC.ListUserPermissionsResponse.new(permissions: ["project.view"])
+        %InternalApi.RBAC.ListUserPermissionsResponse{permissions: ["project.view"]}
       end)
 
       prj = create("trello", @project_id)
@@ -472,20 +466,18 @@ defmodule Projecthub.HttpApi.Test do
         assert req.detailed
 
         if req.name == "trello" do
-          PH.DescribeResponse.new(
-            metadata:
-              PH.ResponseMeta.new(
-                status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:OK))
-              ),
+          %PH.DescribeResponse{
+            metadata: %PH.ResponseMeta{
+              status: %PH.ResponseMeta.Status{code: PH.ResponseMeta.Code.value(:OK)}
+            },
             project: prj
-          )
+          }
         else
-          PH.DescribeResponse.new(
-            metadata:
-              PH.ResponseMeta.new(
-                status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:NOT_FOUND))
-              )
-          )
+          %PH.DescribeResponse{
+            metadata: %PH.ResponseMeta{
+              status: %PH.ResponseMeta.Status{code: PH.ResponseMeta.Code.value(:NOT_FOUND)}
+            }
+          }
         end
       end)
 
@@ -562,20 +554,18 @@ defmodule Projecthub.HttpApi.Test do
         assert req.detailed
 
         if req.name == "trello" do
-          PH.DescribeResponse.new(
-            metadata:
-              PH.ResponseMeta.new(
-                status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:OK))
-              ),
+          %PH.DescribeResponse{
+            metadata: %PH.ResponseMeta{
+              status: %PH.ResponseMeta.Status{code: PH.ResponseMeta.Code.value(:OK)}
+            },
             project: prj
-          )
+          }
         else
-          PH.DescribeResponse.new(
-            metadata:
-              PH.ResponseMeta.new(
-                status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:NOT_FOUND))
-              )
-          )
+          %PH.DescribeResponse{
+            metadata: %PH.ResponseMeta{
+              status: %PH.ResponseMeta.Status{code: PH.ResponseMeta.Code.value(:NOT_FOUND)}
+            }
+          }
         end
       end)
 
@@ -699,7 +689,7 @@ defmodule Projecthub.HttpApi.Test do
   describe "GET /api/<version>/projects/:name with unauthorized user" do
     setup do
       FunRegistry.set!(FakeServices.RbacService, :list_user_permissions, fn _, _ ->
-        InternalApi.RBAC.ListUserPermissionsResponse.new(permissions: [])
+        %InternalApi.RBAC.ListUserPermissionsResponse{permissions: []}
       end)
 
       prj = create("trello", @project_id)
@@ -708,20 +698,18 @@ defmodule Projecthub.HttpApi.Test do
         alias InternalApi.Projecthub, as: PH
 
         if req.name == "trello" do
-          PH.DescribeResponse.new(
-            metadata:
-              PH.ResponseMeta.new(
-                status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:OK))
-              ),
+          %PH.DescribeResponse{
+            metadata: %PH.ResponseMeta{
+              status: %PH.ResponseMeta.Status{code: PH.ResponseMeta.Code.value(:OK)}
+            },
             project: prj
-          )
+          }
         else
-          PH.DescribeResponse.new(
-            metadata:
-              PH.ResponseMeta.new(
-                status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:NOT_FOUND))
-              )
-          )
+          %PH.DescribeResponse{
+            metadata: %PH.ResponseMeta{
+              status: %PH.ResponseMeta.Status{code: PH.ResponseMeta.Code.value(:NOT_FOUND)}
+            }
+          }
         end
       end)
 
@@ -746,9 +734,9 @@ defmodule Projecthub.HttpApi.Test do
   describe "POST /api/<version>/projects with authorized user" do
     setup do
       FunRegistry.set!(FakeServices.RbacService, :list_user_permissions, fn _, _ ->
-        InternalApi.RBAC.ListUserPermissionsResponse.new(
+        %InternalApi.RBAC.ListUserPermissionsResponse{
           permissions: ["organization.projects.create"]
-        )
+        }
       end)
 
       FunRegistry.set!(FakeServices.ProjectService, :create, fn req, _ ->
@@ -759,7 +747,7 @@ defmodule Projecthub.HttpApi.Test do
       end)
 
       FunRegistry.set!(FakeServices.OrganizationService, :repository_integrators, fn _, _ ->
-        InternalApi.Organization.RepositoryIntegratorsResponse.new(
+        %InternalApi.Organization.RepositoryIntegratorsResponse{
           primary: InternalApi.RepositoryIntegrator.IntegrationType.value(:GITHUB_OAUTH_TOKEN),
           enabled: [
             InternalApi.RepositoryIntegrator.IntegrationType.value(:GITHUB_APP),
@@ -769,7 +757,7 @@ defmodule Projecthub.HttpApi.Test do
             InternalApi.RepositoryIntegrator.IntegrationType.value(:GITHUB_APP),
             InternalApi.RepositoryIntegrator.IntegrationType.value(:GITHUB_OAUTH_TOKEN)
           ]
-        )
+        }
       end)
 
       :ok
@@ -1010,7 +998,7 @@ defmodule Projecthub.HttpApi.Test do
 
     test "when github project without integration_type => setup primary one" do
       FunRegistry.set!(FakeServices.OrganizationService, :repository_integrators, fn _, _ ->
-        InternalApi.Organization.RepositoryIntegratorsResponse.new(
+        %InternalApi.Organization.RepositoryIntegratorsResponse{
           primary: InternalApi.RepositoryIntegrator.IntegrationType.value(:GITHUB_APP),
           enabled: [
             InternalApi.RepositoryIntegrator.IntegrationType.value(:GITHUB_APP),
@@ -1020,7 +1008,7 @@ defmodule Projecthub.HttpApi.Test do
             InternalApi.RepositoryIntegrator.IntegrationType.value(:GITHUB_APP),
             InternalApi.RepositoryIntegrator.IntegrationType.value(:GITHUB_OAUTH_TOKEN)
           ]
-        )
+        }
       end)
 
       resource =
@@ -1086,27 +1074,24 @@ defmodule Projecthub.HttpApi.Test do
   describe "POST /api/<version>/projects with unauthorized user" do
     setup do
       FunRegistry.set!(FakeServices.RbacService, :list_user_permissions, fn _, _ ->
-        InternalApi.RBAC.ListUserPermissionsResponse.new(permissions: [])
+        %InternalApi.RBAC.ListUserPermissionsResponse{permissions: []}
       end)
 
       FunRegistry.set!(FakeServices.ProjectService, :create, fn req, _ ->
         alias InternalApi.Projecthub, as: PH
 
-        PH.DescribeResponse.new(
-          metadata:
-            PH.ResponseMeta.new(
-              status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:OK))
-            ),
-          project:
-            PH.Project.new(
-              metadata:
-                PH.Project.Metadata.new(
-                  id: @project_id,
-                  name: req.project.metadata.name
-                ),
-              spec: req.project.spec
-            )
-        )
+        %PH.DescribeResponse{
+          metadata: %PH.ResponseMeta{
+            status: %PH.ResponseMeta.Status{code: PH.ResponseMeta.Code.value(:OK)}
+          },
+          project: %PH.Project{
+            metadata: %PH.Project.Metadata{
+              id: @project_id,
+              name: req.project.metadata.name
+            },
+            spec: req.project.spec
+          }
+        }
       end)
 
       :ok
@@ -1135,19 +1120,18 @@ defmodule Projecthub.HttpApi.Test do
       FunRegistry.set!(FakeServices.ProjectService, :describe, fn _, _ ->
         alias InternalApi.Projecthub, as: PH
 
-        PH.DescribeResponse.new(
-          metadata:
-            PH.ResponseMeta.new(
-              status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:OK))
-            ),
+        %PH.DescribeResponse{
+          metadata: %PH.ResponseMeta{
+            status: %PH.ResponseMeta.Status{code: PH.ResponseMeta.Code.value(:OK)}
+          },
           project: prj
-        )
+        }
       end)
 
       FunRegistry.set!(FakeServices.RbacService, :list_user_permissions, fn _, _ ->
-        InternalApi.RBAC.ListUserPermissionsResponse.new(
+        %InternalApi.RBAC.ListUserPermissionsResponse{
           permissions: ["project.general_settings.manage", "project.repository_info.manage"]
-        )
+        }
       end)
 
       :ok
@@ -1157,24 +1141,21 @@ defmodule Projecthub.HttpApi.Test do
       FunRegistry.set!(FakeServices.ProjectService, :update, fn req, _ ->
         alias InternalApi.Projecthub, as: PH
 
-        PH.UpdateResponse.new(
-          metadata:
-            PH.ResponseMeta.new(
-              status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:OK))
-            ),
-          project:
-            PH.Project.new(
-              metadata:
-                PH.Project.Metadata.new(
-                  id: @project_id,
-                  name: req.project.metadata.name,
-                  owner_id: @owner_id,
-                  org_id: @org_id,
-                  description: "A new description"
-                ),
-              spec: req.project.spec
-            )
-        )
+        %PH.UpdateResponse{
+          metadata: %PH.ResponseMeta{
+            status: %PH.ResponseMeta.Status{code: PH.ResponseMeta.Code.value(:OK)}
+          },
+          project: %PH.Project{
+            metadata: %PH.Project.Metadata{
+              id: @project_id,
+              name: req.project.metadata.name,
+              owner_id: @owner_id,
+              org_id: @org_id,
+              description: "A new description"
+            },
+            spec: req.project.spec
+          }
+        }
       end)
 
       restrict_org!()
@@ -1328,24 +1309,21 @@ defmodule Projecthub.HttpApi.Test do
       FunRegistry.set!(FakeServices.ProjectService, :update, fn req, _ ->
         alias InternalApi.Projecthub, as: PH
 
-        PH.UpdateResponse.new(
-          metadata:
-            PH.ResponseMeta.new(
-              status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:OK))
-            ),
-          project:
-            PH.Project.new(
-              metadata:
-                PH.Project.Metadata.new(
-                  id: @project_id,
-                  name: req.project.metadata.name,
-                  owner_id: @owner_id,
-                  org_id: @org_id,
-                  description: "A new description"
-                ),
-              spec: req.project.spec
-            )
-        )
+        %PH.UpdateResponse{
+          metadata: %PH.ResponseMeta{
+            status: %PH.ResponseMeta.Status{code: PH.ResponseMeta.Code.value(:OK)}
+          },
+          project: %PH.Project{
+            metadata: %PH.Project.Metadata{
+              id: @project_id,
+              name: req.project.metadata.name,
+              owner_id: @owner_id,
+              org_id: @org_id,
+              description: "A new description"
+            },
+            spec: req.project.spec
+          }
+        }
       end)
 
       restrict_org!()
@@ -1421,24 +1399,21 @@ defmodule Projecthub.HttpApi.Test do
       FunRegistry.set!(FakeServices.ProjectService, :update, fn req, _ ->
         alias InternalApi.Projecthub, as: PH
 
-        PH.UpdateResponse.new(
-          metadata:
-            PH.ResponseMeta.new(
-              status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:OK))
-            ),
-          project:
-            PH.Project.new(
-              metadata:
-                PH.Project.Metadata.new(
-                  id: @project_id,
-                  name: req.project.metadata.name,
-                  owner_id: @owner_id,
-                  org_id: @org_id,
-                  description: "A new description"
-                ),
-              spec: req.project.spec
-            )
-        )
+        %PH.UpdateResponse{
+          metadata: %PH.ResponseMeta{
+            status: %PH.ResponseMeta.Status{code: PH.ResponseMeta.Code.value(:OK)}
+          },
+          project: %PH.Project{
+            metadata: %PH.Project.Metadata{
+              id: @project_id,
+              name: req.project.metadata.name,
+              owner_id: @owner_id,
+              org_id: @org_id,
+              description: "A new description"
+            },
+            spec: req.project.spec
+          }
+        }
       end)
 
       restrict_org!()
@@ -1553,23 +1528,21 @@ defmodule Projecthub.HttpApi.Test do
       FunRegistry.set!(FakeServices.ProjectService, :describe, fn _, _ ->
         alias InternalApi.Projecthub, as: PH
 
-        PH.DescribeResponse.new(
-          metadata:
-            PH.ResponseMeta.new(
-              status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:NOT_FOUND))
-            )
-        )
+        %PH.DescribeResponse{
+          metadata: %PH.ResponseMeta{
+            status: %PH.ResponseMeta.Status{code: PH.ResponseMeta.Code.value(:NOT_FOUND)}
+          }
+        }
       end)
 
       FunRegistry.set!(FakeServices.ProjectService, :update, fn _, _ ->
         alias InternalApi.Projecthub, as: PH
 
-        PH.UpdateResponse.new(
-          metadata:
-            PH.ResponseMeta.new(
-              status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:NOT_FOUND))
-            )
-        )
+        %PH.UpdateResponse{
+          metadata: %PH.ResponseMeta{
+            status: %PH.ResponseMeta.Status{code: PH.ResponseMeta.Code.value(:NOT_FOUND)}
+          }
+        }
       end)
 
       resource =
@@ -1603,13 +1576,13 @@ defmodule Projecthub.HttpApi.Test do
       FunRegistry.set!(FakeServices.ProjectService, :update, fn _, _ ->
         alias InternalApi.Projecthub, as: PH
 
-        PH.UpdateResponse.new(
-          metadata:
-            PH.ResponseMeta.new(
-              status:
-                PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:FAILED_PRECONDITION))
-            )
-        )
+        %PH.UpdateResponse{
+          metadata: %PH.ResponseMeta{
+            status: %PH.ResponseMeta.Status{
+              code: PH.ResponseMeta.Code.value(:FAILED_PRECONDITION)
+            }
+          }
+        }
       end)
 
       resource =
@@ -1643,24 +1616,21 @@ defmodule Projecthub.HttpApi.Test do
       FunRegistry.set!(FakeServices.ProjectService, :update, fn req, _ ->
         alias InternalApi.Projecthub, as: PH
 
-        PH.UpdateResponse.new(
-          metadata:
-            PH.ResponseMeta.new(
-              status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:OK))
-            ),
-          project:
-            PH.Project.new(
-              metadata:
-                PH.Project.Metadata.new(
-                  id: @project_id,
-                  name: req.project.metadata.name,
-                  owner_id: @owner_id,
-                  org_id: @org_id,
-                  description: ""
-                ),
-              spec: req.project.spec
-            )
-        )
+        %PH.UpdateResponse{
+          metadata: %PH.ResponseMeta{
+            status: %PH.ResponseMeta.Status{code: PH.ResponseMeta.Code.value(:OK)}
+          },
+          project: %PH.Project{
+            metadata: %PH.Project.Metadata{
+              id: @project_id,
+              name: req.project.metadata.name,
+              owner_id: @owner_id,
+              org_id: @org_id,
+              description: ""
+            },
+            spec: req.project.spec
+          }
+        }
       end)
 
       resource =
@@ -1735,24 +1705,21 @@ defmodule Projecthub.HttpApi.Test do
 
         assert req.project.spec.schedulers == []
 
-        PH.UpdateResponse.new(
-          metadata:
-            PH.ResponseMeta.new(
-              status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:OK))
-            ),
-          project:
-            PH.Project.new(
-              metadata:
-                PH.Project.Metadata.new(
-                  id: @project_id,
-                  name: req.project.metadata.name,
-                  owner_id: @owner_id,
-                  org_id: @org_id,
-                  description: ""
-                ),
-              spec: req.project.spec
-            )
-        )
+        %PH.UpdateResponse{
+          metadata: %PH.ResponseMeta{
+            status: %PH.ResponseMeta.Status{code: PH.ResponseMeta.Code.value(:OK)}
+          },
+          project: %PH.Project{
+            metadata: %PH.Project.Metadata{
+              id: @project_id,
+              name: req.project.metadata.name,
+              owner_id: @owner_id,
+              org_id: @org_id,
+              description: ""
+            },
+            spec: req.project.spec
+          }
+        }
       end)
 
       restrict_org!()
@@ -1829,17 +1796,16 @@ defmodule Projecthub.HttpApi.Test do
       FunRegistry.set!(FakeServices.ProjectService, :describe, fn _, _ ->
         alias InternalApi.Projecthub, as: PH
 
-        PH.DescribeResponse.new(
-          metadata:
-            PH.ResponseMeta.new(
-              status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:OK))
-            ),
+        %PH.DescribeResponse{
+          metadata: %PH.ResponseMeta{
+            status: %PH.ResponseMeta.Status{code: PH.ResponseMeta.Code.value(:OK)}
+          },
           project: prj
-        )
+        }
       end)
 
       FunRegistry.set!(FakeServices.RbacService, :list_user_permissions, fn _, _ ->
-        InternalApi.RBAC.ListUserPermissionsResponse.new(permissions: [])
+        %InternalApi.RBAC.ListUserPermissionsResponse{permissions: []}
       end)
 
       :ok
@@ -1868,7 +1834,7 @@ defmodule Projecthub.HttpApi.Test do
   describe "DELETE /api/<version>/projects/:name with authorized user" do
     setup do
       FunRegistry.set!(FakeServices.RbacService, :list_user_permissions, fn _, _ ->
-        InternalApi.RBAC.ListUserPermissionsResponse.new(permissions: ["project.delete"])
+        %InternalApi.RBAC.ListUserPermissionsResponse{permissions: ["project.delete"]}
       end)
 
       prj = create("trello", @project_id)
@@ -1876,22 +1842,22 @@ defmodule Projecthub.HttpApi.Test do
       FunRegistry.set!(FakeServices.ProjectService, :describe, fn _, _ ->
         alias InternalApi.Projecthub, as: PH
 
-        PH.DescribeResponse.new(
-          metadata:
-            PH.ResponseMeta.new(
-              status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:OK))
-            ),
+        %PH.DescribeResponse{
+          metadata: %PH.ResponseMeta{
+            status: %PH.ResponseMeta.Status{code: PH.ResponseMeta.Code.value(:OK)}
+          },
           project: prj
-        )
+        }
       end)
 
       FunRegistry.set!(FakeServices.ProjectService, :destroy, fn _, _ ->
         alias InternalApi.Projecthub.ResponseMeta
 
-        InternalApi.Projecthub.DescribeResponse.new(
-          metadata:
-            ResponseMeta.new(status: ResponseMeta.Status.new(code: ResponseMeta.Code.value(:OK)))
-        )
+        %InternalApi.Projecthub.DescribeResponse{
+          metadata: %ResponseMeta{
+            status: %ResponseMeta.Status{code: ResponseMeta.Code.value(:OK)}
+          }
+        }
       end)
     end
 
@@ -1908,7 +1874,7 @@ defmodule Projecthub.HttpApi.Test do
   describe "DELETE /api/<version>/projects/:name with unauthorized user" do
     setup do
       FunRegistry.set!(FakeServices.RbacService, :list_user_permissions, fn _, _ ->
-        InternalApi.RBAC.ListUserPermissionsResponse.new(permissions: [])
+        %InternalApi.RBAC.ListUserPermissionsResponse{permissions: []}
       end)
 
       prj = create("trello", @project_id)
@@ -1916,13 +1882,12 @@ defmodule Projecthub.HttpApi.Test do
       FunRegistry.set!(FakeServices.ProjectService, :describe, fn _, _ ->
         alias InternalApi.Projecthub, as: PH
 
-        PH.DescribeResponse.new(
-          metadata:
-            PH.ResponseMeta.new(
-              status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:OK))
-            ),
+        %PH.DescribeResponse{
+          metadata: %PH.ResponseMeta{
+            status: %PH.ResponseMeta.Status{code: PH.ResponseMeta.Code.value(:OK)}
+          },
           project: prj
-        )
+        }
       end)
     end
 
@@ -1940,48 +1905,44 @@ defmodule Projecthub.HttpApi.Test do
     alias InternalApi.Projecthub.Project
     alias InternalApi.Projecthub.Project.Spec.{PermissionType, Repository, Visibility}
 
-    Project.new(
-      metadata: Project.Metadata.new(name: name, id: id),
-      spec:
-        Project.Spec.new(
-          visibility: Visibility.value(:PRIVATE),
-          repository:
-            Repository.new(
-              url: "git@github.com/shiroyasha/test.git",
-              forked_pull_requests: Repository.ForkedPullRequests.new(allowed_secrets: []),
-              run_on: [
-                Repository.RunType.value(:TAGS),
-                Repository.RunType.value(:BRANCHES)
-              ],
-              pipeline_file: ".semaphore/semaphore.yml",
-              status:
-                Repository.Status.new(
-                  pipeline_files: [
-                    Repository.Status.PipelineFile.new(
-                      path: ".semaphore/semaphore.yml",
-                      level: Repository.Status.PipelineFile.Level.value(:PIPELINE)
-                    )
-                  ]
-                ),
-              whitelist:
-                Repository.Whitelist.new(
-                  branches: ["master", "/features-.*/"],
-                  tags: []
-                )
-            ),
-          custom_permissions: true,
-          debug_permissions: [
-            PermissionType.value(:EMPTY),
-            PermissionType.value(:DEFAULT_BRANCH)
+    %Project{
+      metadata: %Project.Metadata{name: name, id: id},
+      spec: %Project.Spec{
+        visibility: Visibility.value(:PRIVATE),
+        repository: %Repository{
+          url: "git@github.com/shiroyasha/test.git",
+          forked_pull_requests: %Repository.ForkedPullRequests{allowed_secrets: []},
+          run_on: [
+            Repository.RunType.value(:TAGS),
+            Repository.RunType.value(:BRANCHES)
           ],
-          attach_permissions: []
-        )
-    )
+          pipeline_file: ".semaphore/semaphore.yml",
+          status: %Repository.Status{
+            pipeline_files: [
+              %Repository.Status.PipelineFile{
+                path: ".semaphore/semaphore.yml",
+                level: Repository.Status.PipelineFile.Level.value(:PIPELINE)
+              }
+            ]
+          },
+          whitelist: %Repository.Whitelist{
+            branches: ["master", "/features-.*/"],
+            tags: []
+          }
+        },
+        custom_permissions: true,
+        debug_permissions: [
+          PermissionType.value(:EMPTY),
+          PermissionType.value(:DEFAULT_BRANCH)
+        ],
+        attach_permissions: []
+      }
+    }
   end
 
   def create_with_tasks(name, id) do
     tasks = [
-      InternalApi.Projecthub.Project.Spec.Task.new(
+      %InternalApi.Projecthub.Project.Spec.Task{
         id: "task_id",
         name: "task_name",
         description: "task_description",
@@ -1991,15 +1952,15 @@ defmodule Projecthub.HttpApi.Test do
         at: "0 0 * * *",
         status: InternalApi.Projecthub.Project.Spec.Task.Status.value(:STATUS_ACTIVE),
         parameters: [
-          InternalApi.Projecthub.Project.Spec.Task.Parameter.new(
+          %InternalApi.Projecthub.Project.Spec.Task.Parameter{
             name: "param1",
             description: "description1",
             required: true,
             default_value: "default1",
             options: ["option1", "option2"]
-          )
+          }
         ]
-      )
+      }
     ]
 
     create(name, id) |> Map.update!(:spec, &Map.put(&1, :tasks, tasks))
@@ -2007,10 +1968,10 @@ defmodule Projecthub.HttpApi.Test do
 
   def restrict_org! do
     FunRegistry.set!(FakeServices.OrganizationService, :describe, fn _, _ ->
-      InternalApi.Organization.DescribeResponse.new(
-        status: InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
-        organization: InternalApi.Organization.Organization.new(restricted: true)
-      )
+      %InternalApi.Organization.DescribeResponse{
+        status: %InternalApi.ResponseStatus{code: InternalApi.ResponseStatus.Code.value(:OK)},
+        organization: %InternalApi.Organization.Organization{restricted: true}
+      }
     end)
   end
 

@@ -1,7 +1,9 @@
 defmodule Support.FakeServices.ProjectService do
   @moduledoc false
 
-  use GRPC.Server, service: InternalApi.Projecthub.ProjectService.Service
+  use GRPC.Server,
+    service: InternalApi.Projecthub.ProjectService.Service,
+    codecs: [Projecthub.Grpc.ProtoCodec]
 
   def list(req, stream) do
     FunRegistry.run!(__MODULE__, :list, [req, stream])

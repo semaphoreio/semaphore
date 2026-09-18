@@ -1,6 +1,4 @@
 list='include/internal_api/response_status
-include/google/protobuf/timestamp
-include/google/protobuf/empty
 include/google/rpc/status
 projecthub
 organization

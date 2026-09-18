@@ -31,7 +31,7 @@ defmodule Projecthub.Mixfile do
       {:plug, "~> 1.15.4", override: true},
       {:plug_cowboy, "~> 2.8.1"},
       {:grpc, "0.5.0-beta.1"},
-      {:protobuf, "~> 0.5.4", override: true},
+      {:protobuf, "~> 0.16.1", override: true},
       {:cowboy, "~> 2.15.0", override: true},
       {:cowlib, "~> 2.16.1", override: true},
       {:ranch, "~> 1.8", override: true},
