@@ -175,9 +175,46 @@ defmodule Front.Browser.ProjectSettings.ArtifactsTest do
   end
 
   defp save(page) do
+    previous = saved_policy_or_nil()
+
+    page =
+      page
+      |> execute_script("window.confirm = function(){return true;}")
+      |> click(Query.css("button", text: "Save changes"))
+
+    #
+    # click/2 returns as soon as the form is submitted, without waiting for the
+    # response. update_artifact_settings/2 re-renders rather than redirecting,
+    # so there is no flash to wait on, and the tests re-open the page straight
+    # after saving - that navigation can preempt the in-flight POST and leave
+    # the reloaded page with no policies at all. Wait for the write to land.
+    #
+    # Bounded and non-fatal on purpose: a save that legitimately writes an
+    # identical policy should not turn into a timeout here, and the real
+    # assertions still run afterwards.
+    #
+    await(fn -> saved_policy_or_nil() != previous end)
+
     page
-    |> execute_script("window.confirm = function(){return true;}")
-    |> click(Query.css("button", text: "Save changes"))
+  end
+
+  defp saved_policy_or_nil do
+    case Support.Stubs.DB.last(:artifacts_retention_policies) do
+      nil -> nil
+      row -> row.api_model
+    end
+  end
+
+  defp await(fun, attempts \\ 50)
+  defp await(_fun, 0), do: :ok
+
+  defp await(fun, attempts) do
+    if fun.() do
+      :ok
+    else
+      Process.sleep(100)
+      await(fun, attempts - 1)
+    end
   end
 
   defp add_policy(page, section_selector, pattern, age) do
@@ -193,10 +230,16 @@ defmodule Front.Browser.ProjectSettings.ArtifactsTest do
 
   defp remove_policy(page, section_selector, index: index) do
     find(page, section_selector, fn section ->
-      input_forms = all(section, Query.data("name", "input-form"))
-      input_form = Enum.at(input_forms, index)
-
-      input_form |> click(Query.data("action", "remove-retention-policy"))
+      #
+      # all/2 does not block, unlike find/3. When the policy saved just before
+      # this has not rendered yet the list comes back short, Enum.at/2 returns
+      # nil, and the nil ends up as the first argument to click/2 - which
+      # surfaces as a FunctionClauseError on execute_query/2 rather than as a
+      # missing element. Let find/3 wait for the form instead.
+      #
+      section
+      |> find(Query.data("name", "input-form", at: index, count: :any))
+      |> click(Query.data("action", "remove-retention-policy"))
     end)
   end
 
