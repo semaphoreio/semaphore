@@ -84,6 +84,7 @@ defmodule Scheduler.Actions.PersistImpl do
       name description recurring
       organization_id project_id requester_id
       reference pipeline_file at
+      skip_scheduled_run_notifications skip_manual_run_notifications
     )a)
     |> Map.put(:parameters, parameters)
     |> inject_paused(request.state)
@@ -98,6 +99,7 @@ defmodule Scheduler.Actions.PersistImpl do
     |> Map.take(~w(
       name description recurring requester_id
       reference pipeline_file at
+      skip_scheduled_run_notifications skip_manual_run_notifications
     )a)
     |> inject_paused(request.state)
     |> Map.put(:parameters, parameters)
