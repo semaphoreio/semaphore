@@ -706,6 +706,26 @@ defmodule Scheduler.GrpcServer.Test do
     assert String.ends_with?(string_at, periodic.at)
   end
 
+  test "gRPC persist() stores the notification skip flags and describe() serves them", ctx do
+    request =
+      default_params(ctx)
+      |> Map.merge(%{
+        skip_scheduled_run_notifications: true,
+        skip_manual_run_notifications: false
+      })
+      |> Proto.deep_new!(PersistRequest)
+
+    assert {persisted, ""} = persist_grpc(request, :OK)
+    assert persisted.skip_scheduled_run_notifications == true
+    assert persisted.skip_manual_run_notifications == false
+
+    describe_request = %{id: persisted.id} |> Proto.deep_new!(DescribeRequest)
+
+    assert {:ok, described, _triggers} = describe_grpc(describe_request, :OK)
+    assert described.skip_scheduled_run_notifications == true
+    assert described.skip_manual_run_notifications == false
+  end
+
   test "gRPC persist() with recurring=false creates new periodic and does not start quantum job for it",
        ctx do
     request =

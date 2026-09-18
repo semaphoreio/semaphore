@@ -1,12 +1,6 @@
 defmodule Google.Protobuf.Timestamp do
   @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          seconds: integer,
-          nanos: integer
-        }
-  defstruct [:seconds, :nanos]
+  use Protobuf, protoc_gen_elixir_version: "0.11.0", syntax: :proto3
 
   field(:seconds, 1, type: :int64)
   field(:nanos, 2, type: :int32)
