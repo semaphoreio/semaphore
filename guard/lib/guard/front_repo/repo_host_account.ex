@@ -378,9 +378,10 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     - the credential is UNCHANGED -> only an UNRELATED column write (profile
       sync, revoke flip, ...) advanced `:updated_at`. Our rotation is still the
       newest credential, so re-apply it onto the fresh row. After
-      `@max_token_persist_attempts` lost locks we persist unconditionally, so an
-      unrelated concurrent write can never strand the rotated token (the whole
-      point of this change).
+      `@max_token_persist_attempts` lost locks we persist via a credential
+      compare-and-set (write only while the stored credential is still the one
+      we reloaded), so an unrelated concurrent write can never strand the
+      rotated token while a concurrent reconnect still wins.
 
   Returns `{:ok, {token, expires_at}}` (ours or the recovered winner's) or
   `{:error, :transient}`.
@@ -431,25 +432,75 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     end
   end
 
-  # Terminal fallback after repeated UNRELATED write races (the credential was
-  # verified unchanged at the preceding reload, so there is no winner to yield
-  # to). Persist the rotated token WITHOUT the optimistic lock so an unrelated
-  # column write can never strand a single-use refresh token. Casting onto the
-  # freshly-reloaded row means only the credential columns (+ the `revoked`
-  # self-heal) are written; a concurrent profile change is preserved.
+  # Terminal fallback after repeated UNRELATED write races. The credential was
+  # verified unchanged vs the preceding reload, so our rotation is still the
+  # newest credential. Persist it with a COMPARE-AND-SET scoped to the
+  # credential columns: write only while the stored token AND refresh_token are
+  # still the ones we just reloaded. This closes the write without the
+  # optimistic lock on :updated_at (an unrelated column write cannot strand us)
+  # while STILL yielding to a reconnect: if reset_account/update_existing_account
+  # wrote a new authorization_code credential in the gap, the CAS matches zero
+  # rows and we recover the winner's token instead of clobbering it with our
+  # now-superseded (old-family) token.
   defp persist_rotated_token_unlocked(fresh, token, refresh_token, expires_at) do
     Logger.warning(
-      "Persisting rotated token without optimistic lock after repeated unrelated " <>
-        "write races rha=#{fresh.id} user=#{fresh.user_id} #{fresh.repo_host}"
+      "Persisting rotated token via credential compare-and-set after repeated " <>
+        "unrelated write races rha=#{fresh.id} user=#{fresh.user_id} #{fresh.repo_host}"
     )
 
-    case write_token(fresh, token, refresh_token, expires_at, lock: false) do
-      {:ok, account} -> {:ok, {account.token, account.token_expires_at}}
-      _ -> {:error, :transient}
+    case FrontRepo.update_all(credential_cas_query(fresh),
+           set: token_cas_set(token, refresh_token, expires_at)
+         ) do
+      {1, _} ->
+        Cachex.del(@oauth_refresh_failure_cache, fresh.id)
+
+        Logger.info(
+          "Persisted rotated token via compare-and-set rha=#{fresh.id} " <>
+            "user=#{fresh.user_id} #{fresh.repo_host}"
+        )
+
+        {:ok, {token, expires_at}}
+
+      {0, _} ->
+        # A concurrent reconnect committed a new credential between our reload
+        # and this CAS. Do NOT clobber it and do NOT strand ours as :transient
+        # (our refresh token is already burned upstream) - yield to the winner.
+        Logger.info(
+          "Compare-and-set missed - a concurrent credential write won; recovering " <>
+            "rha=#{fresh.id} user=#{fresh.user_id} #{fresh.repo_host}"
+        )
+
+        case reload(fresh) do
+          %__MODULE__{} = winner -> recover_after_winner(winner)
+          nil -> {:error, :transient}
+        end
     end
-  rescue
-    Ecto.StaleEntryError -> {:error, :transient}
   end
+
+  # WHERE id = ? AND token <=> fresh.token AND refresh_token <=> fresh.refresh_token
+  # (nil-safe: a nil credential column matches with IS NULL, not `= NULL`).
+  defp credential_cas_query(%__MODULE__{} = fresh) do
+    from(r in __MODULE__, where: r.id == ^fresh.id)
+    |> cas_where(:token, fresh.token)
+    |> cas_where(:refresh_token, fresh.refresh_token)
+  end
+
+  defp cas_where(query, field, nil), do: from(r in query, where: is_nil(field(r, ^field)))
+  defp cas_where(query, field, value), do: from(r in query, where: field(r, ^field) == ^value)
+
+  # Mirror write_token's put_present semantics: always self-heal `revoked` and
+  # bump `updated_at` (update_all does not touch timestamps automatically);
+  # write token/refresh_token/token_expires_at only when present.
+  defp token_cas_set(token, refresh_token, expires_at) do
+    [revoked: false, updated_at: DateTime.utc_now() |> DateTime.truncate(:second)]
+    |> put_set(:token, token)
+    |> put_set(:refresh_token, refresh_token)
+    |> put_set(:token_expires_at, expires_at)
+  end
+
+  defp put_set(set, _key, nil), do: set
+  defp put_set(set, _key, ""), do: set
+  defp put_set(set, key, value), do: set ++ [{key, value}]
 
   defp put_present(map, _key, nil), do: map
   defp put_present(map, _key, ""), do: map
