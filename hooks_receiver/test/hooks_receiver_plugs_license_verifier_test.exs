@@ -1,6 +1,6 @@
 defmodule HooksReceiver.Plugs.LicenseVerifierTest do
   use ExUnit.Case, async: false
-  use Plug.Test
+  import Plug.Test
 
   alias HooksReceiver.Plugs.LicenseVerifier
 
