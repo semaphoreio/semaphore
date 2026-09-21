@@ -180,8 +180,8 @@ defmodule RepositoryHub.GithubClientTest do
     end
 
     test "get_tag returns unavailable on GitHub 500" do
-      with_mock Tentacat.Repositories.Tags,
-        list: fn _client, _owner, _repo ->
+      with_mock Tentacat.References,
+        find: fn _client, _owner, _repo, _ref ->
           {500, nil, error_response(500)}
         end do
         response =
@@ -195,8 +195,8 @@ defmodule RepositoryHub.GithubClientTest do
     end
 
     test "get_tag returns unavailable on GitHub 429" do
-      with_mock Tentacat.Repositories.Tags,
-        list: fn _client, _owner, _repo ->
+      with_mock Tentacat.References,
+        find: fn _client, _owner, _repo, _ref ->
           {429, nil, error_response(429)}
         end do
         response =
