@@ -70,23 +70,21 @@ defmodule Guard.Utils.OAuth do
 
         expires_at = resolve_expires_at(repo_host_account, expires_in)
 
-        cond do
-          # Some providers (github) answer a 2xx whose BODY carries the OAuth
-          # error instead of a non-2xx status - e.g. bad_refresh_token /
-          # invalid_grant on a genuinely revoked grant. Without this it would
-          # decode to a nil access_token and get stuck :transient forever, never
-          # signalling the user to reconnect. Classify it as a real revoke.
-          is_nil(token) and genuine_grant_revocation?(decoded) ->
-            Logger.warning(
-              "2xx token refresh body signals a genuine revocation for " <>
-                "rha=#{repo_host_account.id} user=#{repo_host_account.user_id} " <>
-                "#{repo_host_account.repo_host}; treating as revoked"
-            )
+        # Some providers (github) answer a 2xx whose BODY carries the OAuth
+        # error instead of a non-2xx status - e.g. bad_refresh_token /
+        # invalid_grant on a genuinely revoked grant. Without this it would
+        # decode to a nil access_token and get stuck :transient forever, never
+        # signalling the user to reconnect. Classify it as a real revoke.
+        if is_nil(token) and genuine_grant_revocation?(decoded) do
+          Logger.warning(
+            "2xx token refresh body signals a genuine revocation for " <>
+              "rha=#{repo_host_account.id} user=#{repo_host_account.user_id} " <>
+              "#{repo_host_account.repo_host}; treating as revoked"
+          )
 
-            {:error, :revoked}
-
-          true ->
-            persist_refreshed_token(repo_host_account, token, rotated_refresh_token, expires_at)
+          {:error, :revoked}
+        else
+          persist_refreshed_token(repo_host_account, token, rotated_refresh_token, expires_at)
         end
 
       :error ->
