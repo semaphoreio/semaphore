@@ -11,14 +11,22 @@ defmodule Front.WorkflowPage.Diagram.Topology do
         task = tasks |> Enum.find(fn task -> block.build_request_id == task.request_token end)
 
         if task do
-          block |> Map.put(:jobs, task.jobs)
+          block
+          |> Map.put(:jobs, task.jobs)
+          |> Map.put(:reused_from, reused_from(pipeline, task))
         else
-          block |> Map.put(:jobs, [])
+          block |> Map.put(:jobs, []) |> Map.put(:reused_from, nil)
         end
       end)
 
     pipeline |> Map.put(:blocks, blocks_with_tasks)
   end
+
+  defp reused_from(%{id: ppl_id}, %{ppl_id: task_ppl_id})
+       when is_binary(task_ppl_id) and task_ppl_id != "" and task_ppl_id != ppl_id,
+       do: task_ppl_id
+
+  defp reused_from(_pipeline, _task), do: nil
 
   defp match(pipeline, topology) do
     #

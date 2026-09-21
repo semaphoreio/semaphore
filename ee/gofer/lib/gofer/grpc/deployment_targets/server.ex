@@ -12,6 +12,7 @@ defmodule Gofer.Grpc.DeploymentTargets.Server do
   alias Gofer.Deployment.Model.DeploymentQueries
   alias Gofer.Deployment.Model.Deployment
   alias Gofer.Deployment.Guardian
+  alias Gofer.RBAC
 
   alias Gofer.Switch.Model.Switch
   alias Gofer.Deployment.Engine.Supervisor
@@ -106,6 +107,8 @@ defmodule Gofer.Grpc.DeploymentTargets.Server do
 
     targets = DeploymentQueries.list_by_project_with_last_triggers(request.project_id)
     extra = %{requester_id: request.requester_id}
+
+    warm_roles_cache(targets, request.requester_id)
 
     API.ListResponse.new(targets: Enum.map(targets, &target_from_model(&1, extra)))
   end
@@ -272,6 +275,35 @@ defmodule Gofer.Grpc.DeploymentTargets.Server do
         raise_error(:unknown, "Unable to delete DT")
     end
   end
+
+  defp warm_roles_cache(targets, requester_id)
+       when is_binary(requester_id) and requester_id != "" do
+    role_ids =
+      targets
+      |> Enum.flat_map(fn %{deployment: d} -> d.subject_rules end)
+      |> Enum.filter(&(&1.type == :ROLE))
+      |> Enum.map(& &1.subject_id)
+      |> Enum.uniq()
+
+    if role_ids != [] do
+      deployment = List.first(targets).deployment
+
+      subject = %RBAC.Subject{
+        organization_id: deployment.organization_id,
+        project_id: deployment.project_id,
+        triggerer: requester_id
+      }
+
+      case RBAC.check_roles(subject, role_ids, cached?: true) do
+        {:ok, _} -> :ok
+        {:error, reason} -> Logger.warning("[DT] Failed to warm roles cache: #{inspect(reason)}")
+      end
+    end
+  rescue
+    e -> Logger.warning("[DT] Failed to warm roles cache: #{inspect(e)}")
+  end
+
+  defp warm_roles_cache(_targets, _requester_id), do: :ok
 
   # helpers
 

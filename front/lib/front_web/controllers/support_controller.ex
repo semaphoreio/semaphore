@@ -4,6 +4,7 @@ defmodule FrontWeb.SupportController do
 
   alias Front.{Async, Auth, Support}
   alias Front.Clients.Billing
+  alias Front.Support.PylonAccess
 
   alias Front.Models.{
     Organization,
@@ -17,7 +18,7 @@ defmodule FrontWeb.SupportController do
 
   plug(
     FrontWeb.Plugs.Header
-    when action in [:new, :thanks, :submit]
+    when action in [:new, :thanks, :submit, :pylon]
   )
 
   def thanks(conn, _params) do
@@ -32,6 +33,48 @@ defmodule FrontWeb.SupportController do
 
   def new(conn, _params) do
     redirect(conn, external: Front.Zendesk.new_ticket_location())
+  end
+
+  def pylon(conn, _params) do
+    org_id = conn.assigns.organization_id
+    has_contact_support_permission? = contact_support_permission?(conn)
+
+    cond do
+      not PylonAccess.enabled_for_org?(org_id) ->
+        conn
+        |> put_flash(:alert, "Pylon support is not enabled for this organization.")
+        |> redirect(to: dashboard_path(conn, :index))
+
+      not PylonAccess.visible_for_org?(org_id, has_contact_support_permission?) ->
+        conn
+        |> put_flash(
+          :alert,
+          "Your access to Semaphore support has been limited. Please contact your organization's Admin for more information."
+        )
+        |> redirect(to: dashboard_path(conn, :index))
+
+      true ->
+        user = conn.assigns.user_id |> User.find()
+
+        case Front.Pylon.new_ticket_location(user, org_id) do
+          {:ok, %{post_url: post_url, jwt: jwt}} ->
+            conn
+            |> put_layout(false)
+            |> render("pylon_sso_redirect.html",
+              post_url: post_url,
+              jwt: jwt
+            )
+
+          {:error, reason} ->
+            Logger.warning(
+              "Pylon support redirect failed for org_id=#{org_id}: #{inspect(reason)}"
+            )
+
+            conn
+            |> put_flash(:alert, "Unable to open Pylon support right now. Please try again.")
+            |> redirect(to: dashboard_path(conn, :index))
+        end
+    end
   end
 
   def submit(conn, params) do
@@ -143,5 +186,13 @@ defmodule FrontWeb.SupportController do
 
   defp billing_url(org) do
     "https://billing.#{Application.get_env(:front, :domain)}/?organization=#{org.username}"
+  end
+
+  defp contact_support_permission?(conn) do
+    Front.RBAC.Permissions.has?(
+      conn.assigns.user_id,
+      conn.assigns.organization_id,
+      "organization.contact_support"
+    )
   end
 end

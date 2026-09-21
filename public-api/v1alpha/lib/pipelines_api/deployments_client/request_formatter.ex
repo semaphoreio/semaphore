@@ -639,8 +639,10 @@ defmodule PipelinesAPI.DeploymentTargetsClient.RequestFormatter do
   defp check_role_subject_ids(error, _org_id, _subject_rules), do: error
 
   defp role_name_to_role_map(project_scope_roles) do
-    Enum.into(project_scope_roles, %{}, fn role ->
-      {String.downcase(role.name), role.name}
+    Enum.reduce(project_scope_roles, %{}, fn role, acc ->
+      acc
+      |> Map.put(String.downcase(role.name), role.id)
+      |> Map.put(String.downcase(role.id), role.id)
     end)
   end
 

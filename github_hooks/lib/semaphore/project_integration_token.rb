@@ -3,7 +3,10 @@ module Semaphore
     def project_token(project)
       case project.repository.integration_type
       when "github_app"
-        github_app_token(project.repo_owner_and_name)
+        github_app_token(
+          :repository_slug => project.repo_owner_and_name,
+          :repository_remote_id => project.repository.remote_id
+        )
       when "bitbucket"
         user = ::User.find(project.creator_id)
         bitbucket_oauth_token(user)
@@ -21,8 +24,11 @@ module Semaphore
       Semaphore::Bitbucket::Token.user_token(user.bitbucket_repo_host_account)
     end
 
-    def github_app_token(repository_slug)
-      Semaphore::GithubApp::Token.repository_token(repository_slug)
+    def github_app_token(repository_slug: nil, repository_remote_id: nil)
+      Semaphore::GithubApp::Token.repository_token(
+        :repository_slug => repository_slug,
+        :repository_remote_id => repository_remote_id
+      )
     end
   end
 end

@@ -108,6 +108,38 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
       assert Enum.sort(permissions) ==
                Enum.sort(@org_admin_permissions ++ @proj_reader_permissions)
     end
+
+    test "error returned when project from Store belongs to a different organization", state do
+      Support.Rbac.assign_org_role_by_name(@org_id, @user_id, "Admin")
+
+      other_org_project_id = UUID.generate()
+      Support.Projects.insert(project_id: other_org_project_id, org_id: UUID.generate())
+
+      req = %Request{user_id: @user_id, org_id: @org_id, project_id: other_org_project_id}
+      {:error, grpc_error} = state.grpc_channel |> Stub.list_user_permissions(req)
+
+      assert grpc_error.message =~ "Project does not belong to the organization"
+    end
+
+    test "falls back to projecthub when project is not in the Store cache", state do
+      Support.Rbac.assign_org_role_by_name(@org_id, @user_id, "Admin")
+
+      uncached_project_id = UUID.generate()
+
+      GrpcMock.stub(ProjecthubMock, :describe, fn _, _ ->
+        %InternalApi.Projecthub.DescribeResponse{
+          project: Support.Factories.project(id: uncached_project_id, org_id: UUID.generate()),
+          metadata: %InternalApi.Projecthub.ResponseMeta{
+            status: %InternalApi.Projecthub.ResponseMeta.Status{code: :OK}
+          }
+        }
+      end)
+
+      req = %Request{user_id: @user_id, org_id: @org_id, project_id: uncached_project_id}
+      {:error, grpc_error} = state.grpc_channel |> Stub.list_user_permissions(req)
+
+      assert grpc_error.message =~ "Project does not belong to the organization"
+    end
   end
 
   # The following values have been taken from the Support.Rbac module used for initializing data for the tests
@@ -256,6 +288,58 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
              ) == 1
     end
 
+    test "organization Owner role is rejected when requester is unauthorized (no change_owner)",
+         state do
+      key = "user:#{@requester_id}_org:*_project:*"
+
+      %Rbac.Repo.UserPermissionsKeyValueStore{key: key, value: "organization.people.manage"}
+      |> Rbac.Repo.insert()
+
+      {:ok, owner_role} = Rbac.Repo.RbacRole.get_role_by_name("Owner", "org_scope", @org_id)
+      req = gen_assign_role_req(@user_id, owner_role.id, @org_id)
+      {:error, err} = state.grpc_channel |> Stub.assign_role(req)
+
+      assert err.status == GRPC.Status.permission_denied()
+    end
+
+    test "organization Owner role is assigned when requester has change_owner", state do
+      {:ok, owner_role} = Rbac.Repo.RbacRole.get_role_by_name("Owner", "org_scope", @org_id)
+      req = gen_assign_role_req(@user_id, owner_role.id, @org_id)
+      {:ok, _} = state.grpc_channel |> Stub.assign_role(req)
+    end
+
+    test "demoting a current Owner is rejected when requester is unauthorized", state do
+      Support.Rbac.assign_org_role_by_name(@org_id, @user_id, "Owner")
+
+      key = "user:#{@requester_id}_org:*_project:*"
+
+      %Rbac.Repo.UserPermissionsKeyValueStore{key: key, value: "organization.people.manage"}
+      |> Rbac.Repo.insert()
+
+      {:ok, member_role} = Rbac.Repo.RbacRole.get_role_by_name("Member", "org_scope", @org_id)
+      req = gen_assign_role_req(@user_id, member_role.id, @org_id)
+      {:error, err} = state.grpc_channel |> Stub.assign_role(req)
+
+      assert err.status == GRPC.Status.permission_denied()
+    end
+
+    test "built-in Admin role is rejected when requester is unauthorized (holds fewer permissions)",
+         state do
+      # Requester holds only organization.people.manage, which passes the outer authorize!
+      # check but does not cover the permissions granted by the built-in (non-editable) Admin
+      # role. The held-permissions check must run for built-in roles too, denying escalation.
+      key = "user:#{@requester_id}_org:*_project:*"
+
+      %Rbac.Repo.UserPermissionsKeyValueStore{key: key, value: "organization.people.manage"}
+      |> Rbac.Repo.insert()
+
+      {:ok, admin_role} = Rbac.Repo.RbacRole.get_role_by_name("Admin", "org_scope", @org_id)
+      req = gen_assign_role_req(@user_id, admin_role.id, @org_id)
+      {:error, err} = state.grpc_channel |> Stub.assign_role(req)
+
+      assert err.status == GRPC.Status.permission_denied()
+    end
+
     test "organization role is assigned when role binding already exists", state do
       Support.Rbac.assign_org_role_by_name(@org_id, @user_id, "Admin")
       assert Rbac.Repo.SubjectRoleBinding |> Rbac.Repo.all() |> length() == 1
@@ -289,6 +373,27 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
       alias Rbac.Store.ProjectAccess
 
       Support.Rbac.assign_org_role_by_name(@org_id, @user_id, "Admin")
+      {:ok, proj_role} = Rbac.Repo.RbacRole.get_role_by_name("Admin", "project_scope", @org_id)
+      register_project_api_response(:INITIALIZING)
+
+      req =
+        gen_assign_role_req(@user_id, proj_role.id, @org_id, @project_id)
+        |> Map.replace(:requester_id, "")
+
+      {:ok, _} = state.grpc_channel |> Stub.assign_role(req)
+      assert ProjectAccess.get_list_of_projects(@user_id, @org_id) == [@project_id]
+    end
+
+    test "project role is assigned during initialization even when subject is the org Owner and no requester is passed",
+         state do
+      alias Rbac.Store.ProjectAccess
+
+      # Regression test for the project-creation outage: projecthub assigns the creator
+      # the project Admin role during init with an empty requester_id. When the creator is
+      # also the org Owner, currently_owner?/2 is true, so the change_owner gate must still
+      # be skipped during initialization (just like the held-permissions check below it),
+      # otherwise the empty requester fails authorization and project creation times out.
+      Support.Rbac.assign_org_role_by_name(@org_id, @user_id, "Owner")
       {:ok, proj_role} = Rbac.Repo.RbacRole.get_role_by_name("Admin", "project_scope", @org_id)
       register_project_api_response(:INITIALIZING)
 
@@ -490,6 +595,16 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
       assert UserPermissions.read_user_permissions(rbi) == ""
       assert ProjectAccess.get_list_of_projects(@user_id, @org_id) == []
     end
+
+    test "error returned when project belongs to a different organization", state do
+      other_org_project_id = UUID.generate()
+      Support.Projects.insert(project_id: other_org_project_id, org_id: UUID.generate())
+
+      req = gen_retract_role_req(@user_id, @org_id, other_org_project_id)
+      {:error, grpc_error} = state.grpc_channel |> Stub.retract_role(req)
+
+      assert grpc_error.message =~ "Project does not belong to the organization"
+    end
   end
 
   describe "list_members" do
@@ -605,6 +720,16 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
 
       assert inherited_role.subject_role_bindings |> hd() |> Map.get(:source) ==
                :ROLE_BINDING_SOURCE_INHERITED_FROM_ORG_ROLE
+    end
+
+    test "error returned when project belongs to a different organization", state do
+      other_org_project_id = UUID.generate()
+      Support.Projects.insert(project_id: other_org_project_id, org_id: UUID.generate())
+
+      req = %Request{org_id: @org_id, project_id: other_org_project_id}
+      {:error, grpc_error} = state.grpc_channel |> Stub.list_members(req)
+
+      assert grpc_error.message =~ "Project does not belong to the organization"
     end
   end
 
@@ -964,6 +1089,20 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
       assert response.has_roles |> length() == 1
       assert(response.has_roles |> Enum.at(0) |> Map.get(:has_role) == true)
     end
+
+    test "error returned when project belongs to a different organization", state do
+      other_org_project_id = UUID.generate()
+      Support.Projects.insert(project_id: other_org_project_id, org_id: UUID.generate())
+
+      req = %Request{
+        role_assignments: [
+          gen_role_assignment(UUID.generate(), @user_id, @org_id, other_org_project_id)
+        ]
+      }
+
+      {:error, grpc_error} = state.grpc_channel |> Stub.subjects_have_roles(req)
+      assert grpc_error.message =~ "Project does not belong to the organization"
+    end
   end
 
   describe "list_accessible_orgs" do
@@ -1000,6 +1139,20 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
       req = %Request{user_id: @user_id}
       {:ok, resp} = state.grpc_channel |> Stub.list_accessible_orgs(req)
       assert [@org_id] == resp.org_ids
+    end
+
+    test "If user has access to more orgs than one page holds, return all of them", state do
+      org_ids =
+        for _ <- 1..41 do
+          org_id = UUID.generate()
+          Support.Rbac.create_org_roles(org_id)
+          Support.Rbac.assign_org_role_by_name(org_id, @user_id, "Member")
+          org_id
+        end
+
+      req = %Request{user_id: @user_id}
+      {:ok, resp} = state.grpc_channel |> Stub.list_accessible_orgs(req)
+      assert Enum.sort(org_ids) == Enum.sort(resp.org_ids)
     end
   end
 
@@ -1149,7 +1302,10 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
   ### Helper functions
   ###
 
-  @permissions "insider.global_roles.manage,organization.people.manage,project.access.manage,organization.custom_roles.manage"
+  # Role-management permissions plus the content permissions of every seeded org/project
+  # role (see Support.Rbac). The held-permissions check requires the requester to hold every
+  # permission granted by the role being assigned, so "all permissions" must include those.
+  @permissions "insider.global_roles.manage,organization.people.manage,project.access.manage,organization.custom_roles.manage,organization.change_owner,organization.view,organization.general_settings.manage,organization.delete,organization.billing.manage,project.view,project.workflow.manage,project.scheduler.view,project.job.rerun,project.general_settings.manage,project.delete"
   defp give_all_permissions do
     alias Rbac.Repo
     key = "user:#{@requester_id}_org:*_project:*"

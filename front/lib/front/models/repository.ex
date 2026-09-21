@@ -1,6 +1,11 @@
 defmodule Front.Models.Repository do
+  require Logger
+
   defstruct [:name, :description, :url, :owner_name, :owner_avatar, :addable]
 
+  @spec list_repositories(String.t(), String.t(), String.t(), boolean()) ::
+          {:ok, %{repos: list(), next_page_token: String.t()}}
+          | {:error, %{error: String.t(), message: String.t()}}
   def list_repositories(user_id, integration_type, page_token, open_source) do
     req =
       InternalApi.Repository.ListAccessibleRepositoriesRequest.new(
@@ -13,17 +18,29 @@ defmodule Front.Models.Repository do
     {:ok, channel} =
       GRPC.Stub.connect(Application.fetch_env!(:front, :repositoryhub_grpc_endpoint))
 
-    {:ok, res} =
-      InternalApi.Repository.RepositoryService.Stub.list_accessible_repositories(
-        channel,
-        req,
-        timeout: 30_000
-      )
+    case InternalApi.Repository.RepositoryService.Stub.list_accessible_repositories(
+           channel,
+           req,
+           timeout: 30_000
+         ) do
+      {:ok, res} ->
+        {:ok,
+         %{
+           repos: map_repos(res.repositories),
+           next_page_token: res.next_page_token
+         }}
 
-    %{
-      repos: map_repos(res.repositories),
-      next_page_token: res.next_page_token
-    }
+      {:error, error} ->
+        Logger.error(
+          "[Repository Model] list_accessible_repositories failed for user #{user_id}, integration #{integration_type}: #{inspect(error)}"
+        )
+
+        {:error,
+         %{
+           error: "repository_service_unavailable",
+           message: "Failed to load repositories. Please retry."
+         }}
+    end
   end
 
   defp map_integratin_type("github_oauth_token"),

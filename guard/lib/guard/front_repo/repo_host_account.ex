@@ -37,6 +37,8 @@ defmodule Guard.FrontRepo.RepoHostAccount do
 
   @primary_key {:id, :binary_id, autogenerate: true}
 
+  @derive {Inspect, except: [:token, :refresh_token]}
+
   schema "repo_host_accounts" do
     field(:login, :string)
     field(:github_uid, :string)
@@ -70,7 +72,8 @@ defmodule Guard.FrontRepo.RepoHostAccount do
         :name,
         :permission_scope,
         :token,
-        :refresh_token
+        :refresh_token,
+        :token_expires_at
       ])
       |> Ecto.Changeset.validate_required([
         :login,
@@ -92,7 +95,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
 
       {:error, error} ->
         Logger.error(
-          "Failed to create RepoHostAccount for #{data.user_id} #{data.repo_host} with login #{data.login} and github_uid #{data.github_uid} #{inspect(error)}"
+          "Failed to create RepoHostAccount for #{data.user_id} #{data.repo_host} with login #{data.login} and github_uid #{data.github_uid} errors=#{changeset_error_fields(error)}"
         )
 
         {:error, error}
@@ -143,45 +146,90 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     end
   end
 
+  # `revoked` must never gate the fetch. The column carries a backlog of
+  # false positives from an older write path that latched it on any 4xx
+  # (transient WAF/edge 403s included); those rows still hold working
+  # credentials, so gating here turns them into hard failures. Always ask
+  # the provider and let the live response decide.
   def get_github_token(%__MODULE__{} = rha) do
-    case Guard.Api.Github.user_token(rha) do
-      {:ok, {_token, _expires_at}} = token_tuple ->
-        token_tuple
+    with_negative_cache(rha, fn ->
+      case Guard.Api.Github.user_token(rha) do
+        {:ok, {_token, _expires_at}} = token_tuple ->
+          token_tuple
 
-      {:error, :revoked} ->
-        update_account(%{revoked: true}, rha)
-        {:error, {"", nil}}
+        {:error, :revoked} ->
+          update_account(%{revoked: true}, rha)
+          {:error, :revoked}
 
-      {:error, _} ->
-        {:error, {"", nil}}
-    end
+        {:error, reason} ->
+          {:error, reason}
+      end
+    end)
   end
 
   def get_bitbucket_token(rha) do
-    case Guard.Api.Bitbucket.user_token(rha) do
-      {:ok, {_token, _expires_at}} = token_tuple ->
-        token_tuple
+    with_negative_cache(rha, fn ->
+      case Guard.Api.Bitbucket.user_token(rha) do
+        {:ok, {_token, _expires_at}} = token_tuple ->
+          token_tuple
 
-      {:error, :revoked} ->
-        update_account(%{revoked: true}, rha)
-        {:error, {"", nil}}
+        {:error, :revoked} ->
+          update_account(%{revoked: true}, rha)
+          {:error, :revoked}
 
-      {:error, _} ->
-        {:error, {"", nil}}
-    end
+        {:error, reason} ->
+          {:error, reason}
+      end
+    end)
   end
 
   def get_gitlab_token(rha) do
-    case Guard.Api.Gitlab.user_token(rha) do
-      {:ok, {_token, _expires_at}} = token_tuple ->
-        token_tuple
+    with_negative_cache(rha, fn ->
+      case Guard.Api.Gitlab.user_token(rha) do
+        {:ok, {_token, _expires_at}} = token_tuple ->
+          token_tuple
 
-      {:error, :revoked} ->
-        update_account(%{revoked: true}, rha)
-        {:error, {"", nil}}
+        {:error, :revoked} ->
+          update_account(%{revoked: true}, rha)
+          {:error, :revoked}
 
-      {:error, _} ->
-        {:error, {"", nil}}
+        {:error, reason} ->
+          {:error, reason}
+      end
+    end)
+  end
+
+  # Negative cache for a row that is NOT yet revoked but just failed a
+  # refresh (transient upstream failure or network error). Without this, a
+  # bare-403/429 storm re-hammers the shared OAuth consumer credential on
+  # every lookup - and it's worse than a plain retry loop: :transient/
+  # :network_error surface as gRPC UNAVAILABLE (see user_server.ex
+  # handle_token_error/3), which repohub auto-retries, so each failure can
+  # trigger another failure almost immediately. A short TTL cache absorbs
+  # that amplification without needing new persisted state.
+  @oauth_refresh_failure_cache :oauth_refresh_failure_cache
+  @oauth_refresh_failure_cache_ttl :timer.seconds(60)
+
+  defp with_negative_cache(rha, fetch_fun) do
+    case Cachex.get(@oauth_refresh_failure_cache, rha.id) do
+      {:ok, {:error, _reason} = cached_error} ->
+        cached_error
+
+      _ ->
+        case fetch_fun.() do
+          {:error, _reason} = error ->
+            Cachex.put(
+              @oauth_refresh_failure_cache,
+              rha.id,
+              error,
+              ttl: @oauth_refresh_failure_cache_ttl
+            )
+
+            error
+
+          ok ->
+            ok
+        end
     end
   end
 
@@ -189,10 +237,55 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     params = %{
       token: token,
       refresh_token: refresh_token,
-      token_expires_at: expires_at
+      token_expires_at: expires_at,
+      # A successful token fetch is proof the account is not revoked -
+      # self-heal a row that got latched `revoked: true` by a past
+      # transient failure now correctly classified as such.
+      revoked: false
     }
 
     update_account(params, rha)
+  end
+
+  @doc """
+  Write `:login` and/or `:name` only; other keys dropped. Strict writer:
+  any supplied key must carry a non-blank value or the changeset fails with
+  a `:required` error. Callers that want "drop nil/blank as no-opinion"
+  semantics must filter before calling.
+
+  Guards against concurrent writers via an optimistic lock on `:updated_at`.
+  When another writer commits between this caller's read and write, returns
+  `{:error, :stale}` instead of overwriting with the stale snapshot's view.
+  """
+  @spec update_profile(t(), map()) :: {:ok, t()} | {:error, Ecto.Changeset.t() | :stale}
+  def update_profile(%__MODULE__{} = rha, attrs) when is_map(attrs) do
+    rha
+    |> Ecto.Changeset.cast(attrs, [:login, :name])
+    |> then(&Ecto.Changeset.validate_required(&1, Map.keys(&1.changes)))
+    |> maybe_lock_on_updated_at()
+    |> FrontRepo.update()
+  rescue
+    Ecto.StaleEntryError -> {:error, :stale}
+  end
+
+  defp maybe_lock_on_updated_at(%Ecto.Changeset{changes: changes} = cs) when changes == %{},
+    do: cs
+
+  defp maybe_lock_on_updated_at(cs),
+    do: Ecto.Changeset.optimistic_lock(cs, :updated_at, &bump_updated_at/1)
+
+  # Force monotonic increment so the optimistic lock works even when two
+  # writes land in the same wall-clock second. The `:utc_datetime` schema
+  # type stores second precision, so plain `now()` can match the stale
+  # snapshot's `updated_at` and let a second writer through.
+  defp bump_updated_at(current) do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    if DateTime.compare(now, current) == :gt do
+      now
+    else
+      DateTime.add(current, 1, :second)
+    end
   end
 
   @spec get_uid_by_login(String.t(), String.t()) :: {:ok, String.t()} | {:error, :not_found}
@@ -213,9 +306,11 @@ defmodule Guard.FrontRepo.RepoHostAccount do
   @spec update_repo_host_account(String.t(), repo_host, map(), Keyword.t()) ::
           {:ok, Guard.FrontRepo.RepoHostAccount.t()}
           | {:error, :invalid_data | Ecto.Changeset.t()}
-  def update_repo_host_account(user_id, _, %{github_uid: uid, login: login} = data, _opts)
+  def update_repo_host_account(user_id, _, %{github_uid: uid, login: login}, _opts)
       when is_nil(uid) or is_nil(login) do
-    Logger.error("Cannot update RepoHostAccount for #{user_id} with data #{inspect(data)}")
+    Logger.error(
+      "Cannot update RepoHostAccount for #{user_id}: missing required fields (login_present=#{not is_nil(login)}, uid_present=#{not is_nil(uid)})"
+    )
 
     {:error, :invalid_data}
   end
@@ -224,9 +319,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     data = data |> adjust_scope(user_id)
     repo_host = repo_host |> Atom.to_string()
 
-    Logger.debug(
-      "Updating RepoHostAccount for #{user_id} with data #{inspect(data)} and opts #{inspect(opts)} #{inspect(repo_host)}"
-    )
+    Logger.debug("Updating RepoHostAccount for #{user_id} repo_host=#{repo_host}")
 
     case get_for_user_by_repo_host(user_id, repo_host) do
       {:ok, account} ->
@@ -281,7 +374,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
 
   defp drop_if_skip_credentials(data, permission_scope) do
     if skip_credentials?(permission_scope, Map.get(data, :permission_scope)) do
-      Map.drop(data, [:permission_scope, :token, :refresh_token, :revoked])
+      Map.drop(data, [:permission_scope, :token, :refresh_token, :token_expires_at, :revoked])
     else
       data
     end
@@ -309,7 +402,15 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     {:ok, account}
   end
 
+  @required_on_write [:github_uid, :login, :name, :permission_scope]
+
   defp update_account(data, account) do
+    # Validate only the required-schema keys the caller is actually writing.
+    # The full @required_on_write list is checked at create/reset time; on a
+    # partial update (e.g., flipping :revoked) we must not refuse the write
+    # because an *untouched* legacy field happens to be nil.
+    required_now = Map.keys(data) |> Enum.filter(&(&1 in @required_on_write))
+
     result =
       account
       |> Ecto.Changeset.cast(
@@ -325,30 +426,45 @@ defmodule Guard.FrontRepo.RepoHostAccount do
           :permission_scope
         ]
       )
-      |> Ecto.Changeset.validate_required([:github_uid, :login, :name, :permission_scope])
+      |> Ecto.Changeset.validate_required(required_now)
       |> FrontRepo.update()
 
     case result do
       {:ok, account} ->
         Logger.info(
-          "Successfully updated RepoHostAccount for #{account.user_id} from #{inspect(account)} to #{inspect(data)}"
+          "Successfully updated RepoHostAccount for #{account.user_id} #{account.repo_host} login=#{account.login}"
         )
 
+        maybe_invalidate_negative_cache(data, account)
         {:ok, account}
 
       {:error, error} ->
         Logger.error(
-          "Failed to update RepoHostAccount for #{account.user_id} from #{inspect(account)} to #{inspect(data)} #{inspect(error)}"
+          "Failed to update RepoHostAccount for #{account.user_id} #{account.repo_host} login=#{account.login} errors=#{changeset_error_fields(error)}"
         )
 
         {:error, error}
     end
   end
 
+  # update_account/2 is the single write chokepoint for both self-heal
+  # (update_token/4, on a successful refresh) and reconnect
+  # (update_existing_account/3, driven by id/api.ex). Either one landing a
+  # fresh token or explicitly clearing :revoked means any cached refresh
+  # failure for this row is stale - purge it immediately instead of
+  # letting a user who just reconnected (or a refresh that just recovered)
+  # keep seeing the cached error for up to @oauth_refresh_failure_cache_ttl.
+  # A stray extra purge on an unrelated field-only update is harmless.
+  defp maybe_invalidate_negative_cache(data, account) do
+    if Map.has_key?(data, :token) or data[:revoked] == false do
+      Cachex.del(@oauth_refresh_failure_cache, account.id)
+    end
+  end
+
   defp reset_account(account, data, reset: reset)
        when account.github_uid == data.github_uid or reset == false do
     Logger.debug(
-      "Skipping reset account for #{account.user_id} from #{inspect(account)} to #{inspect(data)}"
+      "Skipping reset account for #{account.user_id} #{account.repo_host} reset=#{reset}"
     )
 
     {:ok, account}
@@ -366,6 +482,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
           :revoked,
           :token,
           :refresh_token,
+          :token_expires_at,
           :permission_scope
         ]
       )
@@ -375,14 +492,14 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     case result do
       {:ok, account} ->
         Logger.warning(
-          "Successfully reset RepoHostAccount for #{account.user_id} from #{inspect(account)} to #{inspect(data)}"
+          "Successfully reset RepoHostAccount for #{account.user_id} #{account.repo_host} login=#{account.login}"
         )
 
         {:ok, account}
 
       {:error, error} ->
         Logger.error(
-          "Failed to reset RepoHostAccount for #{account.user_id} from #{inspect(account)} to #{inspect(data)} #{inspect(error)}"
+          "Failed to reset RepoHostAccount for #{account.user_id} #{account.repo_host} login=#{account.login} errors=#{changeset_error_fields(error)}"
         )
 
         {:error, error}
@@ -397,4 +514,11 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     order_index = fn scope -> Enum.find_index(@scopes_in_order, &(&1 == to_string(scope))) end
     order_index.(from) > order_index.(to)
   end
+
+  defp changeset_error_fields(%Ecto.Changeset{errors: errors}) do
+    Enum.map_join(errors, ",", fn {field, {msg, _opts}} -> "#{field}:#{msg}" end)
+  end
+
+  defp changeset_error_fields(atom) when is_atom(atom), do: "#{atom}"
+  defp changeset_error_fields(_other), do: "opaque"
 end

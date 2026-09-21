@@ -1,13 +1,18 @@
 # credo:disable-for-this-file
 defmodule Rbac.Okta.Saml.JitProvisioner.AddUser do
   @moduledoc """
-  Procedure for creating a Semaphore user based on the received
-  okta user payload.
+  Procedure for provisioning (or re-provisioning) a Semaphore user based on
+  the received okta/SAML JIT payload.
 
-  The assumed state of the system:
-  - We have an okta_user record in the database
-  - The okta_user.state is :pending
-  - The okta_user.user_id is nil
+  `run/1` is idempotent and safe to re-enter for an already-provisioned user
+  (the SAML re-add path: a JIT user who was removed from the org logging in
+  again). It does not assume `state == :pending` or `user_id == nil`:
+
+  - `find_or_create_user/2` reuses an existing user when one is found.
+  - `assign_role/3` is a no-op when the user is already part of the org.
+  - `assign_groups/2` skips a group when the user is already a member or an
+    `:add_user` request for that group is already in-flight, so rapid
+    duplicate logins do not enqueue duplicate `GroupManagementRequest` rows.
   """
 
   require Logger
@@ -144,7 +149,16 @@ defmodule Rbac.Okta.Saml.JitProvisioner.AddUser do
 
   defp assign_groups(user_id, group_ids) when is_list(group_ids) do
     Enum.each(group_ids, fn group_id ->
-      Rbac.Repo.GroupManagementRequest.create_new_request(user_id, group_id, :add_user, nil)
+      cond do
+        Rbac.Repo.UserGroupBinding.member?(user_id, group_id) ->
+          :ok
+
+        Rbac.Repo.GroupManagementRequest.open_add_user_request_exists?(user_id, group_id) ->
+          :ok
+
+        true ->
+          Rbac.Repo.GroupManagementRequest.create_new_request(user_id, group_id, :add_user, nil)
+      end
     end)
 
     :ok

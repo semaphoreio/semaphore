@@ -71,6 +71,7 @@ defmodule FrontWeb.Router do
     post("/account/change_email", AccountController, :change_my_email)
     post("/account/reset_my_password", AccountController, :reset_my_password)
     post("/account/update_repo_scope/:provider", AccountController, :update_repo_scope)
+    post("/account/delete_user", AccountController, :delete_user)
 
     get("/sso/zendesk", SSOController, :zendesk)
 
@@ -167,6 +168,7 @@ defmodule FrontWeb.Router do
 
       get("/:user_id", PeopleController, :show)
       post("/:user_id", PeopleController, :update)
+      post("/:user_id/delete_user", PeopleController, :delete_user)
       post("/:user_id/reset_token", PeopleController, :reset_token)
       post("/:user_id/reset_password", PeopleController, :reset_password)
       post("/:user_id/change_email", PeopleController, :change_email)
@@ -361,6 +363,7 @@ defmodule FrontWeb.Router do
 
       post("/projects", ProjectOnboardingController, :create)
       get("/repositories", ProjectOnboardingController, :repositories)
+      post("/repositories/refresh", ProjectOnboardingController, :refresh)
 
       post(
         "/projects/:name_or_id/skip_onboarding",
@@ -698,6 +701,7 @@ defmodule FrontWeb.Router do
     end
 
     # Support Page
+    get("/support/pylon", SupportController, :pylon)
     get("/support", SupportController, :new)
 
     post("/support", SupportController, :submit)
@@ -776,6 +780,9 @@ defmodule FrontWeb.Router do
       get("/project.json", BillingController, :project, as: :project)
       get("/projects.json", BillingController, :projects, as: :projects)
       get("/top_projects.json", BillingController, :top_projects, as: :top_projects)
+
+      get("/addons.json", BillingController, :addons, as: :addons)
+      post("/update_addon.json", BillingController, :update_addon, as: :update_addon)
 
       get("/*path", BillingController, :index, as: :index)
     end

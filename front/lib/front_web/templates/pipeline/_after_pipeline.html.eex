@@ -22,13 +22,17 @@
               <% end %>
               <%= job.name %>
             </div>
-            <span class="f5 code gray">
-              <% timer_state = if job.running?, do: "run" %>
-              <% timer_seconds = FrontWeb.SharedView.total_seconds(job.started_at, job.done_at) %>
-              <% timer_time = FrontWeb.SharedView.total_time(job.started_at, job.done_at) %>
-              <% timer_color = FrontWeb.SharedView.timer_color(job) %>
-              <div timer <%= timer_state %> seconds="<%= timer_seconds %>" class="f5 code <%= timer_color %> pl1"><%= timer_time %></div>
-            </span>
+            <%= if job_timer_placeholder?(job) do %>
+              <span class="f5 code gray">--:--</span>
+            <% else %>
+              <span class="f5 code gray">
+                <% timer_state = if job.running?, do: "run" %>
+                <% timer_seconds = FrontWeb.SharedView.total_seconds(job.started_at, job.done_at) %>
+                <% timer_time = FrontWeb.SharedView.total_time(job.started_at, job.done_at) %>
+                <% timer_color = FrontWeb.SharedView.timer_color(job) %>
+                <div timer <%= timer_state %> seconds="<%= timer_seconds %>" class="f5 code <%= timer_color %> pl1"><%= timer_time %></div>
+              </span>
+            <% end %>
           <% end %>
         <% else %>
           <div style="font-weight: normal;" class="link dark-gray flex items-center justify-between pv1 nh2 ph2 b--black-15 hover-bg-washed-gray <%= if idx != 0, do: "bt" %>">

@@ -22,7 +22,7 @@ defimpl RepositoryHub.Server.GetFileAction, for: RepositoryHub.GithubAdapter do
     |> Validator.validate(
       all: [
         chain: [{:from!, :repository_id}, :is_uuid],
-        chain: [{:from!, :commit_sha}, :is_sha],
+        chain: [{:from!, :commit_sha}, any: [:is_sha, :is_string]],
         chain: [{:from!, :path}, :is_file_path]
       ]
     )

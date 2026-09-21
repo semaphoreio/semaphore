@@ -4,7 +4,18 @@ import "moment-duration-format"
 
 export var Timer = {
   init: function() {
-    setInterval(this.tick, 1000);
+    // Under Turbo Drive init() runs again on each visit to the workflow view,
+    // so drop any previous interval instead of stacking a second ticker.
+    this.stop();
+
+    this.ticker = setInterval(this.tick, 1000);
+  },
+
+  stop: function() {
+    if (this.ticker) {
+      clearInterval(this.ticker);
+      this.ticker = null;
+    }
   },
 
   tick: function() {

@@ -17,7 +17,8 @@ defmodule Scheduler.Actions do
     RunNowImpl,
     LatestTriggersImpl,
     HistoryImpl,
-    PersistImpl
+    PersistImpl,
+    BulkUpsertAndPruneImpl
   }
 
   @apply_metric "PeriodicSch.action_apply"
@@ -33,6 +34,7 @@ defmodule Scheduler.Actions do
   @delete_metric "PeriodicSch.action_delete"
   @get_project_id_metric "PeriodicSch.action_get_project_id"
   @persist_metric "PeriodicSch.action_get_project_id"
+  @bulk_upsert_and_prune_metric "PeriodicSch.action_bulk_upsert_and_prune"
 
   @action_opts [
     {:apply, [impl: ApplyImpl, metric: @apply_metric]},
@@ -48,7 +50,9 @@ defmodule Scheduler.Actions do
     {:list_keyset, [impl: ListKeysetImpl, metric: @list_keyset_metric]},
     {:delete, [impl: DeleteImpl, metric: @delete_metric]},
     {:get_project_id, [impl: GetProjectIdImpl, metric: @get_project_id_metric]},
-    {:persist, [impl: PersistImpl, metric: @persist_metric]}
+    {:persist, [impl: PersistImpl, metric: @persist_metric]},
+    {:bulk_upsert_and_prune,
+     [impl: BulkUpsertAndPruneImpl, metric: @bulk_upsert_and_prune_metric]}
   ]
 
   def start_schedule_task(params, timestamp),
@@ -68,6 +72,7 @@ defmodule Scheduler.Actions do
   def delete(params), do: execute(:delete, [params])
   def get_project_id(params), do: execute(:get_project_id, [params])
   def persist(params), do: execute(:persist, [params])
+  def bulk_upsert_and_prune(params), do: execute(:bulk_upsert_and_prune, [params])
 
   defp execute(action, params) do
     opts = Keyword.fetch!(@action_opts, action)

@@ -2,7 +2,10 @@ export MIX_ENV?=dev
 
 include ../../Makefile
 
-DOCKER_BUILD_PATH=..
+# Build context is the repository root (two levels up from plumber/ppl) so the
+# Docker image can include feature_provider, which lives outside the plumber/
+# tree. The Dockerfile COPY paths are prefixed with plumber/ accordingly.
+DOCKER_BUILD_PATH=../..
 EX_CATCH_WARRNINGS_FLAG=
 
 APP_NAME=ppl

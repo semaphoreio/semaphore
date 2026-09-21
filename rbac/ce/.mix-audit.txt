@@ -1,0 +1,6 @@
+# decimal — "unvalidated field values" (moderate). Patched only in decimal
+# 3.0.0, which requires an Ecto major upgrade (ecto ~> 3.12 caps decimal at
+# ~> 2.0). rbac/ce is an internal gRPC service and does not parse
+# attacker-controlled input into Decimal, so the impact is not reachable here.
+# Accepted until the Ecto/decimal major upgrade is done separately.
+GHSA-rhv4-8758-jx7v

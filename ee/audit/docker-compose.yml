@@ -42,6 +42,8 @@ services:
 
     volumes:
       - .:/app/audit
+      - /app/audit/deps
+      - /app/audit/_build
 
   db:
     image: postgres:9.6
