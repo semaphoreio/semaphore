@@ -372,6 +372,46 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
       assert reloaded.token == "winner_token"
       assert reloaded.refresh_token == "winner_refresh"
     end
+
+    test "a FAILED revoke persist reports :transient, not :revoked (write result " <>
+           "must not be discarded)",
+         %{rha: rha} do
+      # Genuine invalid_grant, no concurrent winner -> a real revocation is
+      # attempted. But the revoke DB write fails (non-stale changeset error).
+      # We must NOT report {:error, :revoked}: that signals a permanent
+      # disconnect (gRPC NOT_FOUND) the DB never actually recorded. The failed
+      # write result must not be discarded - degrade to :transient.
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
+          {:ok, %Tesla.Env{status: 400, body: %{"error" => "invalid_grant"}}}
+      end)
+
+      :meck.new(Guard.FrontRepo, [:passthrough])
+
+      on_exit(fn ->
+        try do
+          :meck.unload(Guard.FrontRepo)
+        rescue
+          _ -> :ok
+        catch
+          _, _ -> :ok
+        end
+      end)
+
+      # The only FrontRepo.update/1 in this flow is the locked revoke write.
+      # Fail it with a changeset error (not StaleEntryError).
+      :meck.expect(Guard.FrontRepo, :update, fn revoke_changeset ->
+        {:error, Ecto.Changeset.add_error(revoke_changeset, :revoked, "boom")}
+      end)
+
+      assert {:error, :transient} = RepoHostAccount.get_bitbucket_token(rha)
+
+      :meck.unload(Guard.FrontRepo)
+
+      reloaded = FrontRepo.get!(RepoHostAccount, rha.id)
+      # The revoke never persisted, so the row must stay unrevoked.
+      refute reloaded.revoked
+    end
   end
 
   describe "update_token/4 self-heal (clears a stale revoked flag on success)" do
@@ -517,6 +557,90 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
       reloaded = RepoHostAccount.reload(rha)
       assert reloaded.token == "winner_token"
       assert reloaded.refresh_token == "winner_refresh"
+    end
+
+    test "unrelated column write (bumps :updated_at) does NOT strand the rotated " <>
+           "refresh_token - it is re-applied, not discarded",
+         %{rha: rha} do
+      # The bug: the write is optimistic-locked on :updated_at, so ANY unrelated
+      # writer (profile sync, revoke flip) that advances :updated_at while a
+      # refresh is in flight makes the token write lose the lock. Pre-fix, the
+      # freshly-rotated single-use refresh_token was then DISCARDED and the
+      # reload returned the already-burned old token = a permanent strand.
+      #
+      # Here an unrelated profile write commits first, advancing :updated_at.
+      # `rha` is now a stale snapshot. Persisting our rotation with it must
+      # re-apply the new token (credential unchanged vs our snapshot), never
+      # discard it.
+      {:ok, profile_winner} = RepoHostAccount.update_profile(rha, %{login: "profile-updated"})
+      assert profile_winner.updated_at != rha.updated_at
+
+      rotated_body =
+        Jason.encode!(%{
+          "access_token" => "rotated_access",
+          "refresh_token" => "rotated_refresh",
+          "expires_in" => 3600
+        })
+
+      assert {:ok, {"rotated_access", _}} = OAuth.handle_ok_token_response(rha, rotated_body)
+
+      reloaded = RepoHostAccount.reload(rha)
+      # The rotated single-use refresh_token survived the lost lock.
+      assert reloaded.token == "rotated_access"
+      assert reloaded.refresh_token == "rotated_refresh"
+      # The unrelated write was preserved, not clobbered.
+      assert reloaded.login == "profile-updated"
+      refute reloaded.revoked
+    end
+  end
+
+  describe "StaleEntryError translation is scoped to LOCKED writes" do
+    setup do
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      {:ok, rha} =
+        Support.Members.insert_repo_host_account(
+          login: "example",
+          name: "example",
+          repo_host: "bitbucket",
+          refresh_token: "stored_refresh",
+          user_id: user.id,
+          token: "stored_token",
+          token_expires_at: Support.Members.valid_expires_at(),
+          revoked: false,
+          permission_scope: "repo"
+        )
+
+      {:ok, rha: rha}
+    end
+
+    test "a LOCKED write returns {:error, :stale} when the row vanished under it", %{rha: rha} do
+      # A locked writer (the token path) expects and handles {:error, :stale}.
+      FrontRepo.delete!(rha)
+
+      assert {:error, :stale} =
+               RepoHostAccount.update_token(
+                 rha,
+                 "rotated_token",
+                 "rotated_refresh",
+                 Support.Members.valid_expires_at()
+               )
+    end
+
+    test "an UNLOCKED write does NOT return {:error, :stale} - it re-raises, so the " <>
+           "unlocked callers' changeset contract is preserved",
+         %{rha: rha} do
+      # update_revoke_status/2 (and update_existing_account/3) are unlocked. They
+      # pattern-match {:ok, _} | {:error, changeset}; leaking an undeclared
+      # {:error, :stale} would be mishandled downstream (e.g. actions.ex does
+      # changeset.errors). The rescue must NOT translate for them - it re-raises
+      # exactly as before this PR.
+      FrontRepo.delete!(rha)
+
+      assert_raise Ecto.StaleEntryError, fn ->
+        RepoHostAccount.update_revoke_status(rha, true)
+      end
     end
   end
 

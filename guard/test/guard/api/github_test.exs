@@ -102,6 +102,53 @@ defmodule Guard.Api.GithubTest do
 
       assert {:error, :revoked} = Github.user_token(rha)
     end
+
+    test "refreshes from a form-urlencoded 2xx body (github's default content-type) and " <>
+           "persists the rotated token",
+         %{repo_host_account: rha} do
+      # GitHub's OAuth token endpoint answers application/x-www-form-urlencoded
+      # by default (we send no Accept: application/json), so the 2xx body is a
+      # raw form-encoded STRING, not JSON. It must be decoded (not fed to a JSON
+      # decoder that fails and silently degrades to :transient, dropping the
+      # rotated refresh_token). expires_in also arrives as a numeric string.
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          {:ok, %Tesla.Env{status: 401, body: %{}}}
+
+        %{method: :post, url: "https://github.com/login/oauth/access_token"} ->
+          {:ok,
+           %Tesla.Env{
+             status: 200,
+             body:
+               "access_token=gho_new&expires_in=28800&refresh_token=ghr_rotated&" <>
+                 "token_type=bearer&scope="
+           }}
+      end)
+
+      assert {:ok, {"gho_new", _}} = Github.user_token(rha)
+
+      reloaded = Guard.FrontRepo.RepoHostAccount.reload(rha)
+      assert reloaded.token == "gho_new"
+      assert reloaded.refresh_token == "ghr_rotated"
+    end
+
+    test "an undecodable 2xx body degrades to :transient without crashing or clobbering",
+         %{repo_host_account: rha} do
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          {:ok, %Tesla.Env{status: 401, body: %{}}}
+
+        %{method: :post, url: "https://github.com/login/oauth/access_token"} ->
+          {:ok, %Tesla.Env{status: 200, body: ""}}
+      end)
+
+      assert {:error, :transient} = Github.user_token(rha)
+
+      reloaded = Guard.FrontRepo.RepoHostAccount.reload(rha)
+      # No token/refresh was written from the malformed body.
+      assert reloaded.token == "token"
+      assert reloaded.refresh_token == "example_refresh_token"
+    end
   end
 
   describe "validate_token/1" do
