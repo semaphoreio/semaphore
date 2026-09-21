@@ -2,6 +2,7 @@ defmodule Ppl.TaskClient.Compilation do
   @moduledoc """
   Handles all actions on Zebra that are connected with compliation tasks
   """
+
   alias Ppl.PplSubInits.STMHandler.Compilation.Definition
   alias Util.ToTuple
 
@@ -10,7 +11,10 @@ defmodule Ppl.TaskClient.Compilation do
          {:ok, definition} <- Definition.form_definition(ppl_req, pfcs, settings, mix_env),
          {:ok, task_params} <- form_task_params(definition, ppl_req),
          {:ok, result} <- Ppl.TaskClient.schedule(task_params),
-         do: handle_schedule_result(result)
+         {:ok, task_id} <- handle_schedule_result(result) do
+      emit_compilation_job_metrics(definition)
+      {:ok, task_id}
+    end
   end
 
   defp form_task_params(task_definition, ppl_req) do
@@ -37,4 +41,11 @@ defmodule Ppl.TaskClient.Compilation do
   defp handle_schedule_result({:ok, task}), do: {:ok, task.id}
   defp handle_schedule_result(error = {:error, _error}), do: error
   defp handle_schedule_result(error), do: {:error, error}
+
+  defp emit_compilation_job_metrics(definition) do
+    machine_type = get_in(definition, ["agent", "machine", "type"]) || ""
+    os_image = get_in(definition, ["agent", "machine", "os_image"]) || ""
+
+    Watchman.increment({"Ppl.TaskClient.Compilation.compilation_jobs", [machine_type, os_image]})
+  end
 end

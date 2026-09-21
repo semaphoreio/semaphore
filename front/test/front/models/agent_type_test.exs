@@ -20,11 +20,11 @@ defmodule Front.Models.AgentTypeTest do
       {:ok, agent_type_list} = AgentType.list(org_id)
 
       assert %{
-               default_linux_os_image: "ubuntu2004",
+               default_linux_os_image: "ubuntu2204",
                default_mac_os_image: "macos-xcode13"
              } = agent_type_list
 
-      assert length(agent_type_list.agent_types) == 10
+      assert length(agent_type_list.agent_types) == 16
 
       available_machines =
         agent_type_list.agent_types
@@ -33,6 +33,15 @@ defmodule Front.Models.AgentTypeTest do
 
       assert ["a1-standard-4", "a1-standard-8", "e1-standard-2", "e1-standard-4", "e1-standard-8"] ==
                available_machines
+
+      linux_os_images =
+        agent_type_list.agent_types
+        |> Enum.filter(&(&1.platform == "LINUX"))
+        |> Enum.map(& &1.os_image)
+        |> Enum.uniq()
+        |> Enum.sort()
+
+      assert linux_os_images == ["ubuntu1804", "ubuntu2004", "ubuntu2204", "ubuntu2404"]
     end
 
     test "list is empty if there are no agents available", %{empty_agents_org_id: org_id} do

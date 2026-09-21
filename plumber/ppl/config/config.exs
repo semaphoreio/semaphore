@@ -31,6 +31,14 @@ config :vmstats,
   sink: Ppl.VmstatsWatchmanSink,
   interval: 10_000
 
+# Feature flags (FeatureHub). The Feature service address is read at call time
+# from INTERNAL_API_URL_FEATURE (see Ppl.FeatureClient). Results are cached in
+# the :feature_cache Cachex instance started by Ppl.Application.
+config :ppl,
+  feature_provider:
+    {Ppl.FeatureHubProvider,
+     [cache: {FeatureProvider.CachexCache, name: :feature_cache, ttl_ms: :timer.minutes(10)}]}
+
 # Mappings to function definitions for functions available in when condition DSL
 config :when, change_in: {Block.ChangeInResolver, :change_in, [1, 2]}
 

@@ -47,7 +47,7 @@ export var InteractivePipelineTree = {
       event.preventDefault();
       let button = $(event.currentTarget);
       let href = button.attr("href");
-      button.text("Rebuilding...")
+      button.text("Rerunning...")
       button.attr("disabled", true);
 
       let req = $.ajax({
@@ -61,7 +61,7 @@ export var InteractivePipelineTree = {
       req.done(function(data) {
         if(data.error != undefined) {
           Notice.error(data.error)
-          button.text("Rebuild Pipeline")
+          button.text("Rerun Failed Jobs")
           button.attr("disabled", false);
         } else {
           Notice.notice(data.message)

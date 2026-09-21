@@ -38,8 +38,8 @@ defmodule Rbac.MixProject do
       {:credo, "~> 1.7.10", only: [:dev, :test], runtime: false},
       {:tackle, github: "renderedtext/ex-tackle"},
       {:rabbit_common, "~> 3.13.4", override: true},
-      {:cowboy, "~> 2.12.0", override: true},
-      {:cowlib, "~> 2.13.0", override: true},
+      {:cowboy, "~> 2.15", override: true},
+      {:cowlib, "~> 2.16", override: true},
       {:ranch, "~> 1.8.0", override: true}
     ]
   end

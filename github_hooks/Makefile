@@ -88,7 +88,7 @@ check.ruby.code:
 	$(MAKE) check.code LANGUAGE=ruby
 
 check.ruby.deps:
-	$(MAKE) check.deps LANGUAGE=ruby CHECK_DEPS_OPTS="-w app,rt-watchman"
+	$(MAKE) check.deps LANGUAGE=ruby CHECK_DEPS_OPTS="-w app,rt-watchman,grpc"
 
 pb.gen:
 	bash ./protobuffer/regenerate.sh

@@ -216,6 +216,23 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
           workflow.update(:state => Workflow::STATE_PR_NON_MERGEABLE)
 
           return
+        when :mergeable_unknown
+          # No merge ref exists until GitHub's async test-merge resolves, so
+          # retry rather than treat unknown as a conflict and skip the build.
+          if retries < 10
+            sidekiq_job_id = Semaphore::RepoHost::Hooks::Handler::Worker.perform_in(2.minutes, workflow.id, hook_payload, signature, retries + 1)
+            logger.info("pr-mergeable-unknown-rescheduled", :sidekiq_job_id => sidekiq_job_id)
+          else
+            # Persistent unknown past the retry budget is a stuck/degraded state,
+            # not an observed conflict: recording nil mergeability would emit a
+            # spurious PullRequestUnmergeable event, so only set the terminal
+            # state and surface a metric.
+            Watchman.increment("hook.processing.pr_mergeable_unknown_giving_up")
+            logger.info("pr-mergeable-unknown-giving-up")
+            workflow.update(:state => Workflow::STATE_PR_NON_MERGEABLE)
+          end
+
+          return
         when :skip_ci
           logger.info("request-is-filtered")
           workflow.update(:state => Workflow::STATE_SKIP_CI)
@@ -279,6 +296,13 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
       return [:not_found, {}, msg]
     end
 
+    # GitHub computes a PR's test-merge asynchronously, so `mergeable` is nil
+    # (unknown) until it finishes — distinct from false (a real conflict).
+    # Keep them apart so an unknown result can be retried rather than skipped.
+    if mergeable.nil?
+      return [:mergeable_unknown, { :pr => pr }, msg]
+    end
+
     unless mergeable
       return [:non_mergeable, { :pr => pr, :mergeable => mergeable }, msg]
     end
@@ -303,9 +327,18 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
   end
 
   def self.ensure_ref(repo_host, repo_slug, ref, sha)
-    repo_host.reference(repo_slug, ref.delete_prefix("refs/"))
-  rescue ::RepoHost::RemoteException::NotFound
+    # Try to create the ref directly. If GitHub reports the ref already
+    # exists (422 "Reference already exists" → ReferenceAlreadyExists),
+    # treat that as success — the post-condition (the ref is present
+    # for this SHA) is satisfied either way.
+    #
+    # Skipping the probe `repo_host.reference(...)` saves one GitHub API
+    # request per PR processed. Do not re-introduce a pre-check GET here.
     repo_host.create_ref(repo_slug, ref, sha)
+  rescue ::RepoHost::RemoteException::ReferenceAlreadyExists
+    Watchman.increment("github_hooks.ensure_ref.ref_already_exists")
+    Logman.info("github_hooks.ensure_ref ref_already_exists repo=#{repo_slug} ref=#{ref} sha=#{sha}")
+    nil
   end
 
   def self.forked_pr_allowed?(requestor, project)

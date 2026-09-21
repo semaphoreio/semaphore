@@ -32,7 +32,6 @@ const (
 	WorkflowService_ListLabels_FullMethodName          = "/InternalApi.PlumberWF.WorkflowService/ListLabels"
 	WorkflowService_Reschedule_FullMethodName          = "/InternalApi.PlumberWF.WorkflowService/Reschedule"
 	WorkflowService_GetProjectId_FullMethodName        = "/InternalApi.PlumberWF.WorkflowService/GetProjectId"
-	WorkflowService_Create_FullMethodName              = "/InternalApi.PlumberWF.WorkflowService/Create"
 )
 
 // WorkflowServiceClient is the client API for WorkflowService service.
@@ -86,11 +85,6 @@ type WorkflowServiceClient interface {
 	// Operation is called to get project_id for workflow with given wf_id
 	// Operation is synchronous.
 	GetProjectId(ctx context.Context, in *GetProjectIdRequest, opts ...grpc.CallOption) (*GetProjectIdResponse, error)
-	// This is early stage prototype.
-	// This call is intended to replace Schedule. It creates workflow.
-	// This operation is called by listener_proxy.
-	// Operation is asynchronous and idempotent.
-	Create(ctx context.Context, in *CreateRequest, opts ...grpc.CallOption) (*CreateResponse, error)
 }
 
 type workflowServiceClient struct {
@@ -218,15 +212,6 @@ func (c *workflowServiceClient) GetProjectId(ctx context.Context, in *GetProject
 	return out, nil
 }
 
-func (c *workflowServiceClient) Create(ctx context.Context, in *CreateRequest, opts ...grpc.CallOption) (*CreateResponse, error) {
-	out := new(CreateResponse)
-	err := c.cc.Invoke(ctx, WorkflowService_Create_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // WorkflowServiceServer is the server API for WorkflowService service.
 // All implementations should embed UnimplementedWorkflowServiceServer
 // for forward compatibility
@@ -278,11 +263,6 @@ type WorkflowServiceServer interface {
 	// Operation is called to get project_id for workflow with given wf_id
 	// Operation is synchronous.
 	GetProjectId(context.Context, *GetProjectIdRequest) (*GetProjectIdResponse, error)
-	// This is early stage prototype.
-	// This call is intended to replace Schedule. It creates workflow.
-	// This operation is called by listener_proxy.
-	// Operation is asynchronous and idempotent.
-	Create(context.Context, *CreateRequest) (*CreateResponse, error)
 }
 
 // UnimplementedWorkflowServiceServer should be embedded to have forward compatible implementations.
@@ -327,9 +307,6 @@ func (UnimplementedWorkflowServiceServer) Reschedule(context.Context, *Reschedul
 }
 func (UnimplementedWorkflowServiceServer) GetProjectId(context.Context, *GetProjectIdRequest) (*GetProjectIdResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetProjectId not implemented")
-}
-func (UnimplementedWorkflowServiceServer) Create(context.Context, *CreateRequest) (*CreateResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
 }
 
 // UnsafeWorkflowServiceServer may be embedded to opt out of forward compatibility for this service.
@@ -577,24 +554,6 @@ func _WorkflowService_GetProjectId_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
-func _WorkflowService_Create_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CreateRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(WorkflowServiceServer).Create(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: WorkflowService_Create_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorkflowServiceServer).Create(ctx, req.(*CreateRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // WorkflowService_ServiceDesc is the grpc.ServiceDesc for WorkflowService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -653,10 +612,6 @@ var WorkflowService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetProjectId",
 			Handler:    _WorkflowService_GetProjectId_Handler,
-		},
-		{
-			MethodName: "Create",
-			Handler:    _WorkflowService_Create_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

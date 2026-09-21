@@ -19,15 +19,15 @@ module Semaphore::GithubApp::Credentials
   end
 
   def self.github_client_id
-    @github_client_id ||=  InstanceConfigClient.github_client_id || Local.github_client_id
+    @github_client_id ||= Local.github_client_id || InstanceConfigClient.github_client_id
   end
 
   def self.github_client_secret
-    @github_client_secret ||= InstanceConfigClient.github_client_secret || Local.github_client_secret
+    @github_client_secret ||= Local.github_client_secret || InstanceConfigClient.github_client_secret
   end
 
   def self.github_app_webhook_secret
-    @github_app_webhook_secret ||= InstanceConfigClient.github_app_webhook_secret || Local.github_app_webhook_secret
+    @github_app_webhook_secret ||= Local.github_app_webhook_secret || InstanceConfigClient.github_app_webhook_secret
   end
 
   class Local

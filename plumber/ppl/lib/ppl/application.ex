@@ -15,17 +15,31 @@ defmodule Ppl.Application do
     Application.stop(:watchman)
     Application.ensure_all_started(:watchman)
 
+    init_feature_provider()
+
     # See http://elixir-lang.org/docs/stable/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Ppl.Supervisor]
     (children(get_env()) ++ grpc_supervisor(get_env())) |> Supervisor.start_link(opts)
   end
 
+  defp init_feature_provider() do
+    case Application.get_env(:ppl, :feature_provider) do
+      nil -> :ok
+      provider -> FeatureProvider.init(provider)
+    end
+  end
+
   def children(:test) do
     [
       {Looper.Publisher.AMQP, amqp_url()},
-      Supervisor.child_spec({Ppl.Grpc.InFlightCounter, in_flight_counter_args(:describe)}, id: InFlightCounterDescribe),
-      Supervisor.child_spec({Ppl.Grpc.InFlightCounter, in_flight_counter_args(:list)}, id: InFlightCounterList),
+      Supervisor.child_spec({Ppl.Grpc.InFlightCounter, in_flight_counter_args(:describe)},
+        id: InFlightCounterDescribe
+      ),
+      Supervisor.child_spec({Ppl.Grpc.InFlightCounter, in_flight_counter_args(:list)},
+        id: InFlightCounterList
+      ),
+      %{id: :feature_cache, start: {Cachex, :start_link, [:feature_cache, []]}},
       supervisor(Ppl.Cache, []),
       supervisor(Ppl.EctoRepo, [])
     ]
@@ -41,47 +55,57 @@ defmodule Ppl.Application do
       [
         Test.Support.Mocks.UserServer,
         Test.Support.Mocks.PFCServer,
-        Test.Support.Mocks.OrgServer
+        Test.Support.Mocks.OrgServer,
+        Test.Support.Mocks.FeatureServer
       ] ++ grpc_servers()
 
   defp grpc_servers(_), do: grpc_servers()
 
-  defp grpc_servers, do: [Ppl.Grpc.Server, Plumber.WorkflowAPI.Server, Ppl.Admin.Server, Ppl.Grpc.HealthCheck]
+  defp grpc_servers,
+    do: [Ppl.Grpc.Server, Plumber.WorkflowAPI.Server, Ppl.Admin.Server, Ppl.Grpc.HealthCheck]
 
   def children_ do
     [
       Ppl.Sup.STM,
       worker(Ppl.OrgEventsConsumer, [])
     ]
-    |> maybe_add_retention_consumer()
-    |> maybe_add_retention_deleter()
+    |> maybe_add_retention_workers()
   end
 
-  defp maybe_add_retention_consumer(children) do
-    if retention_consumer_enabled?() do
-      children ++ [worker(Ppl.Retention.PolicyConsumer, [])]
+  defp maybe_add_retention_workers(children) do
+    policy_enabled = retention_policy_enabled?()
+    deleter_enabled = retention_deleter_enabled?()
+
+    if policy_enabled or deleter_enabled do
+      children = children ++ [worker(Ppl.Retention.StateAgent, [])]
+
+      children =
+        if policy_enabled do
+          children ++ [worker(Ppl.Retention.Policy.Worker, [])]
+        else
+          Logger.info("[Retention] Policy.Worker disabled via config")
+          children
+        end
+
+      if deleter_enabled do
+        children ++ [worker(Ppl.Retention.Deleter.Worker, [])]
+      else
+        Logger.info("[Retention] Deleter.Worker disabled via config")
+        children
+      end
     else
-      Logger.info("[Retention] PolicyConsumer disabled via config")
+      Logger.info("[Retention] All retention workers disabled via config")
       children
     end
   end
 
-  defp maybe_add_retention_deleter(children) do
-    if retention_deleter_enabled?() do
-      children ++ [worker(Ppl.Retention.RecordDeleter, [])]
-    else
-      Logger.info("[Retention] RecordDeleter disabled via config")
-      children
-    end
-  end
-
-  defp retention_consumer_enabled? do
-    config = Application.get_env(:ppl, Ppl.Retention.PolicyConsumer, [])
+  defp retention_policy_enabled? do
+    config = Application.get_env(:ppl, Ppl.Retention.Policy.Worker, [])
     Keyword.get(config, :enabled, false)
   end
 
   defp retention_deleter_enabled? do
-    config = Application.get_env(:ppl, Ppl.Retention.RecordDeleter, [])
+    config = Application.get_env(:ppl, Ppl.Retention.Deleter.Worker, [])
     Keyword.get(config, :enabled, false)
   end
 
@@ -92,7 +116,7 @@ defmodule Ppl.Application do
   defp in_flight_counter_args(type), do: [type: type, limit: in_flight_counter_limit(type)]
 
   defp in_flight_counter_limit(type) do
-    up_type = type |> Atom.to_string |> String.upcase
+    up_type = type |> Atom.to_string() |> String.upcase()
 
     "IN_FLIGHT_#{up_type}_LIMIT"
     |> System.get_env()

@@ -43,7 +43,7 @@ defmodule Gofer.Deployment.Model.DeploymentTest do
     end
 
     test "when name is longer than 255 characters then invalid", %{bare_params: params} do
-      name = for _ <- 1..300, into: "", do: <<Enum.random('0123456789abcdef')>>
+      name = for _ <- 1..300, into: "", do: <<Enum.random(~c"0123456789abcdef")>>
       changeset = assert_invalid?(&Deployment.changeset/2, %{params | name: name})
 
       assert [
@@ -107,6 +107,12 @@ defmodule Gofer.Deployment.Model.DeploymentTest do
 
     test "casts subject rules", %{bare_params: params, subject_rules: rules} do
       assert_valid?(&Deployment.changeset/2, %{params | subject_rules: rules})
+    end
+
+    test "when ROLE subject rule carries a role name instead of an id then invalid",
+         %{bare_params: params} do
+      rules = [%{type: :ROLE, subject_id: "Admin"}]
+      assert_invalid?(&Deployment.changeset/2, %{params | subject_rules: rules})
     end
 
     test "casts object rules", %{bare_params: params, object_rules: rules} do

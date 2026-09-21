@@ -31,6 +31,11 @@ defmodule DefinitionValidator.Mixfile do
     [
       {:poison, "~> 3.1"},
       {:httpoison, "~> 0.11"},
+      # Pulled in transitively by httpoison; pinned forward to clear the hackney
+      # CVEs (GHSA-9fm9-hp7p-53mf, GHSA-vq52-99r9-h5pw). 1.24 is the first
+      # version patched against both. override needed because httpoison ~> 0.11
+      # requests hackney ~> 1.8.
+      {:hackney, "~> 1.24", override: true},
       {:credo, "~> 1.4", only: [:dev, :test], runtime: false},
       {:mix_test_watch, "~> 1.1", only: :dev, runtime: false},
       {:yaml_elixir, "~> 1.1"},

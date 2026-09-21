@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+
 	health "google.golang.org/grpc/health/grpc_health_v1"
 )
 
@@ -14,4 +15,12 @@ func (p healthService) Check(ctx context.Context, request *health.HealthCheckReq
 
 func (p healthService) Watch(request *health.HealthCheckRequest, server health.Health_WatchServer) error {
 	return server.Send(&health.HealthCheckResponse{Status: health.HealthCheckResponse_SERVING})
+}
+
+func (p healthService) List(ctx context.Context, request *health.HealthListRequest) (*health.HealthListResponse, error) {
+	return &health.HealthListResponse{
+		Statuses: map[string]*health.HealthCheckResponse{
+			"velocity": {Status: health.HealthCheckResponse_SERVING},
+		},
+	}, nil
 }

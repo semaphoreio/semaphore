@@ -15,11 +15,17 @@ defimpl RepositoryHub.Server.GetFileAction, for: RepositoryHub.BitbucketAdapter 
     |> BitbucketAdapter.multi(request.repository_id)
     |> RepositoryHub.Repo.transaction()
     |> unwrap(fn context ->
+      # Bitbucket requires a ref in the URL path, so fall back to the stored default branch
+      commit_sha =
+        if request.commit_sha == "",
+          do: context.repository.default_branch,
+          else: request.commit_sha
+
       BitbucketClient.get_file(
         %{
           repo_owner: context.repository.owner,
           repo_name: context.repository.name,
-          commit_sha: request.commit_sha,
+          commit_sha: commit_sha,
           path: request.path
         },
         token: context.bitbucket_token
@@ -37,7 +43,7 @@ defimpl RepositoryHub.Server.GetFileAction, for: RepositoryHub.BitbucketAdapter 
     |> Validator.validate(
       all: [
         chain: [{:from!, :repository_id}, :is_uuid],
-        chain: [{:from!, :commit_sha}, :is_sha],
+        chain: [{:from!, :commit_sha}, any: [:is_sha, :is_string]],
         chain: [{:from!, :path}, :is_file_path]
       ]
     )

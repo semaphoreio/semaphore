@@ -31,6 +31,14 @@ defmodule Rbac.Models.ProjectAssignment do
   end
 
   @doc """
+  Gets a single project_assignment by user_id, org_id, and project_id.
+  Ensures the project assignment belongs to the specified organization.
+  """
+  def get_by_user_org_and_project_id(user_id, org_id, project_id) do
+    Repo.get_by(__MODULE__, user_id: user_id, org_id: org_id, project_id: project_id)
+  end
+
+  @doc """
   Gets all project_assignments for a user in an org.
   """
   def get_by_user_and_org_id(user_id, org_id) do

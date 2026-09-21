@@ -37,16 +37,16 @@ defmodule Scheduler.Periodics.Model.Periodics do
                           project_id reference at pipeline_file)a
   @optional_fields_v1_0 ~w(paused pause_toggled_by pause_toggled_at)a
 
-  @required_fields_update_v1_0 ~w(requester_id organization_id)a
-  @optional_fields_update_v1_0 ~w(name project_name project_id reference at pipeline_file
+  @required_fields_update_v1_0 ~w(requester_id)a
+  @optional_fields_update_v1_0 ~w(name project_name reference at pipeline_file
                                  suspended paused pause_toggled_by pause_toggled_at)a
 
   @required_fields ~w(id requester_id organization_id name project_name
                       project_id recurring reference pipeline_file)a
   @optional_fields ~w(description at paused pause_toggled_by pause_toggled_at)a
 
-  @required_fields_update ~w(requester_id organization_id)a
-  @optional_fields_update ~w(name project_name project_id reference at pipeline_file recurring
+  @required_fields_update ~w(requester_id)a
+  @optional_fields_update ~w(name project_name reference at pipeline_file recurring
                              description suspended paused pause_toggled_by pause_toggled_at)a
 
   @doc """

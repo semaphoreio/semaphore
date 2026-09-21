@@ -111,6 +111,12 @@ export class Summary {
   hasSubscription(): boolean {
     return this.subscriptionTotal !== `$0.00`;
   }
+
+  discountedTotal(): string {
+    const usage = Formatter.parseMoney(this.usageTotal);
+    const discountAmt = Formatter.parseMoney(this.discountAmount);
+    return Formatter.toMoney(usage - discountAmt);
+  }
 }
 
 export class DailySpending {

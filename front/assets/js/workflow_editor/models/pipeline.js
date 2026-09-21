@@ -70,6 +70,7 @@ export class Pipeline {
       this.autoCancel = new AutoCancel(this, this.structure.auto_cancel)
       this.globalJobConfig = new GlobalJobConfig(this, this.structure.global_job_config)
       this.afterPipeline = new AfterPipeline(this, this.structure["after_pipeline"])
+      this.partialRerun = this.structure.partial_rerun || ""
     } catch(e) {
       if(e instanceof yaml.YAMLException) {
         this.structure = {}
@@ -308,6 +309,11 @@ export class Pipeline {
     this.afterUpdate()
   }
 
+  setPartialRerun(value) {
+    this.partialRerun = value
+    this.afterUpdate()
+  }
+
   findBlockByName(blockName) {
     return this.blocks.find((b) => b.name === blockName) || null
   }
@@ -345,6 +351,12 @@ export class Pipeline {
       res["auto_cancel"] = this.autoCancel.toJson()
     } else {
       delete res.auto_cancel
+    }
+
+    if(this.partialRerun) {
+      res["partial_rerun"] = this.partialRerun
+    } else {
+      delete res.partial_rerun
     }
 
     res["blocks"] = this.blocks.map((b) => b.toJson())

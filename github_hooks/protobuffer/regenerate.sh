@@ -4,6 +4,7 @@ set -euo pipefail
 IFS=$'\n\t'
 
 TMP_REPO_DIR=${TMP_REPO_DIR:-"/tmp/internal_api"}
+INTERNAL_API_REPOSITORY=${INTERNAL_API_REPOSITORY:-"git@github.com:renderedtext/internal_api.git"}
 INTERNAL_API_BRANCH=${INTERNAL_API_BRANCH:-master}
 PUBLIC_API_BRANCH=${PUBLIC_API_BRANCH:-master}
 
@@ -16,7 +17,7 @@ fi
 mkdir -p protobuffer/generated
 
 rm -rf $TMP_REPO_DIR
-git clone git@github.com:renderedtext/internal_api.git $TMP_REPO_DIR && (cd $TMP_REPO_DIR && git checkout $INTERNAL_API_BRANCH && cd -)
+git clone $INTERNAL_API_REPOSITORY $TMP_REPO_DIR && (cd $TMP_REPO_DIR && git checkout $INTERNAL_API_BRANCH && cd -)
 
 protos=(encryptor projecthub user plumber.pipeline plumber.admin google/protobuf/timestamp google/protobuf/empty google/rpc/google/protobuf/any google/rpc/code google/rpc/status repo_proxy repository_integrator internal_api/response_status server_farm.job server_farm.mq.job_state_exchange secrethub cache plumber_w_f.workflow internal_api/status repository rbac instance_config license)
 

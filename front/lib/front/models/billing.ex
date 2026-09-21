@@ -2,6 +2,7 @@ defmodule Front.Models.Billing do
   require Logger
 
   alias Front.Models.{
+    Billing.AddonGroup,
     Billing.Budget,
     Billing.Cost,
     Billing.Credits,
@@ -243,6 +244,30 @@ defmodule Front.Models.Billing do
         spending_id: "",
         payment_method_url: ""
       }
+  end
+
+  @spec list_addons(String.t(), billing_opts()) :: [AddonGroup.t()]
+  def list_addons(organization_id, opts \\ []) do
+    opts = parse_opts(opts, cache_ttl: :timer.hours(1))
+
+    case Front.Clients.Billing.list_addons(%{org_id: organization_id}, opts) do
+      {:ok, response} -> Enum.map(response.groups, &AddonGroup.from_grpc/1)
+      {:error, _} -> []
+    end
+  end
+
+  @spec update_addon(String.t(), String.t(), boolean(), billing_opts()) :: :ok | {:error, term()}
+  def update_addon(organization_id, addon_name, enabled, opts \\ []) do
+    opts = parse_opts(opts, use_cache?: false)
+
+    Front.Clients.Billing.update_addon(
+      %{org_id: organization_id, addon_name: addon_name, enabled: enabled},
+      opts
+    )
+    |> case do
+      {:ok, _} -> :ok
+      {:error, error} -> {:error, error}
+    end
   end
 
   @spec parse_opts(billing_opts(), overrides :: Keyword.t()) :: Keyword.t()

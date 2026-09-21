@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/logging"
 )
 
 const (
@@ -32,6 +34,10 @@ var (
 		"INTERNAL_API_URL_PLUMBER",
 		"MCP_PIPELINE_GRPC_ENDPOINT",
 		"PPL_GRPC_URL",
+	}
+	taskEndpointEnvs = []string{
+		"INTERNAL_API_URL_TASK",
+		"MCP_TASK_GRPC_ENDPOINT",
 	}
 	jobEndpointEnvs = []string{
 		"INTERNAL_API_URL_JOB",
@@ -64,6 +70,10 @@ var (
 		"INTERNAL_API_URL_FEATURE",
 		"MCP_FEATURE_GRPC_ENDPOINT",
 	}
+	schedulerEndpointEnvs = []string{
+		"INTERNAL_API_URL_SCHEDULER",
+		"MCP_SCHEDULER_GRPC_ENDPOINT",
+	}
 )
 
 // Config captures the connection settings for talking to internal API services.
@@ -72,6 +82,7 @@ type Config struct {
 	OrganizationEndpoint string
 	ProjectEndpoint      string
 	PipelineEndpoint     string
+	TaskEndpoint         string
 	JobEndpoint          string
 	ArtifacthubEndpoint  string
 	LoghubEndpoint       string
@@ -79,6 +90,7 @@ type Config struct {
 	UserEndpoint         string
 	RBACEndpoint         string
 	FeatureHubEndpoint   string
+	SchedulerEndpoint    string
 
 	BaseURL string
 
@@ -102,6 +114,7 @@ func LoadConfig() (Config, error) {
 		OrganizationEndpoint: endpointFromEnv(organizationEndpointEnvs...),
 		ProjectEndpoint:      endpointFromEnv(projectEndpointEnvs...),
 		PipelineEndpoint:     endpointFromEnv(pipelineEndpointEnvs...),
+		TaskEndpoint:         endpointFromEnv(taskEndpointEnvs...),
 		JobEndpoint:          endpointFromEnv(jobEndpointEnvs...),
 		ArtifacthubEndpoint:  endpointFromEnv(artifacthubEndpointEnvs...),
 		LoghubEndpoint:       endpointFromEnv(loghubEndpointEnvs...),
@@ -109,6 +122,7 @@ func LoadConfig() (Config, error) {
 		UserEndpoint:         endpointFromEnv(userEndpointEnvs...),
 		RBACEndpoint:         endpointFromEnv(rbacEndpointEnvs...),
 		FeatureHubEndpoint:   endpointFromEnv(featureHubEndpointEnvs...),
+		SchedulerEndpoint:    endpointFromEnv(schedulerEndpointEnvs...),
 		BaseURL:              baseURLFromEnv(),
 		DialTimeout:          dialTimeout,
 		CallTimeout:          callTimeout,
@@ -155,6 +169,12 @@ func (c Config) Validate() error {
 	if len(missing) > 0 {
 		return fmt.Errorf("missing required configuration: %s", strings.Join(missing, ", "))
 	}
+
+	// Warn about optional endpoints that are missing — tools will degrade gracefully.
+	if c.SchedulerEndpoint == "" {
+		logging.ForComponent("config").Warn("scheduler gRPC endpoint not configured — tasks tools (list, describe, run) will be unavailable")
+	}
+
 	return nil
 }
 

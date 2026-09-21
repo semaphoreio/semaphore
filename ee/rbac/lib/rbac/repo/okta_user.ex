@@ -60,7 +60,9 @@ defmodule Rbac.Repo.OktaUser do
     result =
       Repo.one(
         from(e in __MODULE__,
-          where: e.integration_id == ^integration.id and e.email == ^email,
+          where:
+            e.integration_id == ^integration.id and
+              fragment("LOWER(TRIM(?)) = LOWER(TRIM(?))", e.email, ^email),
           limit: 1
         )
       )
@@ -156,7 +158,7 @@ defmodule Rbac.Repo.OktaUser do
       payload["emails"]
       |> Enum.find(fn e -> e["primary"] == true end)
 
-    email["value"]
+    if email, do: email["value"] |> String.trim() |> String.downcase(), else: nil
   end
 
   def connect_user(okta_user, user_id) do
@@ -190,6 +192,8 @@ defmodule Rbac.Repo.OktaUser do
     user
     |> cast(params, @updatable_fields)
     |> validate_required(@required_fields)
+    |> unique_constraint(:email, name: :okta_users_integration_id_email_index)
+    |> unique_constraint(:email, name: :okta_users_integration_id_normalized_email_index)
   end
 
   defp apply_list_filters(query, []) do
