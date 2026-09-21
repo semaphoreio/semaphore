@@ -2506,6 +2506,132 @@ curl -i -H "Authorization: Token {api_token}" \
      "https://<organization-url>.semaphoreci.com/api/v1alpha/deployment_targets/:target_id/history"
 ```
 
+## Pre-flight checks
+
+Pre-flight checks are commands executed in the initialization job, before the rest of the workflow starts. They can be configured for the whole organization, or for a single project.
+
+Every endpoint operates on a single scope. When the `project_id` parameter is present, the request applies to that project. When it is absent, the request applies to the organization.
+
+These endpoints require the `pre_flight_checks` feature to be enabled for your organization.
+
+### Describe pre-flight checks
+
+This API endpoint returns the pre-flight checks configured for the organization, or for a single project.
+
+```text
+GET <organization-url>.semaphoreci.com/api/v1alpha/pre_flight_checks?project_id=:project_id
+```
+
+Parameters:
+
+- `project_id` (*optional*) - the UUID of the project. When omitted, the organization configuration is returned.
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "commands": [
+    "checkout",
+    "make lint"
+  ],
+  "secrets": [
+    "aws-keys"
+  ],
+  "agent": {
+    "machine_type": "e1-standard-2",
+    "os_image": "ubuntu2004"
+  },
+  "requester_id": "02984c87-efe8-4ea1-bcac-9511a34a3df3",
+  "created_at": "2024-05-14T09:24:04.000000Z",
+  "updated_at": "2024-05-14T09:24:04.000000Z"
+}
+```
+
+When no pre-flight checks are configured for the requested scope, the endpoint responds with `HTTP status: 404`.
+
+Example:
+
+```shell
+curl -H "Authorization: Token {api_token}" \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/pre_flight_checks"
+```
+
+### Apply pre-flight checks
+
+This API endpoint creates the pre-flight checks for the given scope, or replaces them when they already exist.
+
+```text
+PATCH <organization-url>.semaphoreci.com/api/v1alpha/pre_flight_checks
+```
+
+Parameters:
+
+- `commands` (**required**) - a non-empty list of commands to run in the initialization job.
+- `project_id` (*optional*) - the UUID of the project. When omitted, the organization configuration is applied.
+- `secrets` (*optional*) - a list of names of existing secrets to expose to the initialization job.
+- `agent` (*optional*) - an object with a `machine_type` and an optional `os_image` used for the initialization job.
+
+Response:
+
+```json
+HTTP status: 200
+
+{
+  "commands": [
+    "checkout",
+    "make lint"
+  ],
+  "secrets": [
+    "aws-keys"
+  ],
+  "agent": {
+    "machine_type": "e1-standard-2",
+    "os_image": "ubuntu2004"
+  },
+  "requester_id": "02984c87-efe8-4ea1-bcac-9511a34a3df3",
+  "created_at": "2024-05-14T09:24:04.000000Z",
+  "updated_at": "2024-05-14T09:24:04.000000Z"
+}
+```
+
+Example:
+
+```shell
+curl -i -X PATCH -H "Authorization: Token {api_token}" \
+     -H "Content-Type: application/json" \
+     -d '{"project_id": ":project_id", "commands": ["checkout", "make lint"], "secrets": ["aws-keys"]}' \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/pre_flight_checks"
+```
+
+### Delete pre-flight checks
+
+This API endpoint removes the pre-flight checks configured for the organization, or for a single project.
+
+```text
+DELETE <organization-url>.semaphoreci.com/api/v1alpha/pre_flight_checks?project_id=:project_id
+```
+
+Parameters:
+
+- `project_id` (*optional*) - the UUID of the project. When omitted, the organization configuration is removed.
+
+Response:
+
+```json
+HTTP status: 200
+
+"Pre-flight checks successfully deleted."
+```
+
+Example:
+
+```shell
+curl -i -X DELETE -H "Authorization: Token {api_token}" \
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/pre_flight_checks"
+```
+
 ## Artifact retention policies
 
 ### Configure retention policy

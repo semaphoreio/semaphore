@@ -12,7 +12,7 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
-	github.com/rabbitmq/amqp091-go v1.9.0
+	github.com/rabbitmq/amqp091-go v1.13.0
 	github.com/renderedtext/go-tackle v0.0.0-20231226193542-c913a4af4f94
 	github.com/renderedtext/go-watchman v0.0.0-20221222100224-451a6f3c8d92
 	github.com/samber/lo v1.38.1
@@ -20,7 +20,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.11.1
 	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1
-	google.golang.org/grpc v1.83.1
+	google.golang.org/grpc v1.83.2
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/driver/postgres v1.5.0
