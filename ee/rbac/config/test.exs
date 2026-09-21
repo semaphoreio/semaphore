@@ -21,4 +21,6 @@ config :junit_formatter,
 config :rbac, feature_provider: {Support.StubbedProvider, []}
 config :rbac, Rbac.OIDC.TokenEncryptor, module: {Rbac.FakeEncryptor, []}
 
+config :rbac, federated_identity_sync_backoff_ms: 1
+
 config :tesla, adapter: Tesla.Mock
