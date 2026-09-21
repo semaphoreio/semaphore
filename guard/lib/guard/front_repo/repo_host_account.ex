@@ -249,8 +249,17 @@ defmodule Guard.FrontRepo.RepoHostAccount do
             {:error, :revoked}
         end
 
-      {:error, _reason} ->
-        {:error, :revoked}
+      {:error, reason} ->
+        # The revoke write itself failed to persist. Do NOT report {:error,
+        # :revoked}: that signals a permanent revocation (gRPC NOT_FOUND ->
+        # repohub disconnect) the DB never actually recorded. Degrade to
+        # :transient so the caller retries and re-decides cleanly.
+        Logger.error(
+          "Failed to persist revoke for rha=#{rha.id} user=#{rha.user_id} " <>
+            "#{rha.repo_host}: errors=#{changeset_error_fields(reason)}"
+        )
+
+        {:error, :transient}
     end
   end
 
@@ -333,6 +342,10 @@ defmodule Guard.FrontRepo.RepoHostAccount do
   `{:error, :stale}` and MUST discard its own (older) refresh response.
   """
   def update_token(rha, token, refresh_token, expires_at) do
+    write_token(rha, token, refresh_token, expires_at, lock: true)
+  end
+
+  defp write_token(rha, token, refresh_token, expires_at, opts) do
     params =
       %{
         # A successful token fetch is proof the account is not revoked -
@@ -344,7 +357,98 @@ defmodule Guard.FrontRepo.RepoHostAccount do
       |> put_present(:refresh_token, refresh_token)
       |> put_present(:token_expires_at, expires_at)
 
-    update_account(params, rha, lock: true)
+    update_account(params, rha, opts)
+  end
+
+  # Bound the re-apply retries so a pathological stream of unrelated writes
+  # cannot spin here; after this many lost locks we persist unconditionally.
+  @max_token_persist_attempts 3
+
+  @doc """
+  Concurrency-safe persistence of a freshly-refreshed (possibly rotated) token.
+
+  The write carries an optimistic lock on `:updated_at`, but losing that lock
+  must NEVER discard a just-rotated single-use refresh_token. On a lost race we
+  re-read and decide by comparing the stored credential against the snapshot we
+  refreshed with:
+
+    - the credential CHANGED -> an independent writer (a reconnect, or a
+      sibling refresh) rotated it; ours is superseded, so recover the winner's
+      token instead.
+    - the credential is UNCHANGED -> only an UNRELATED column write (profile
+      sync, revoke flip, ...) advanced `:updated_at`. Our rotation is still the
+      newest credential, so re-apply it onto the fresh row. After
+      `@max_token_persist_attempts` lost locks we persist unconditionally, so an
+      unrelated concurrent write can never strand the rotated token (the whole
+      point of this change).
+
+  Returns `{:ok, {token, expires_at}}` (ours or the recovered winner's) or
+  `{:error, :transient}`.
+  """
+  @spec persist_refreshed_token(t(), String.t(), String.t() | nil, DateTime.t() | nil) ::
+          {:ok, {String.t(), DateTime.t() | nil}} | {:error, :transient}
+  def persist_refreshed_token(%__MODULE__{} = rha, token, refresh_token, expires_at) do
+    do_persist_refreshed_token(rha, token, refresh_token, expires_at, 1)
+  end
+
+  defp do_persist_refreshed_token(rha, token, refresh_token, expires_at, attempt) do
+    case write_token(rha, token, refresh_token, expires_at, lock: true) do
+      {:ok, account} ->
+        {:ok, {account.token, account.token_expires_at}}
+
+      {:error, :stale} ->
+        resolve_lost_token_write(rha, token, refresh_token, expires_at, attempt)
+
+      {:error, reason} ->
+        Logger.error(
+          "Failed to persist refreshed token rha=#{rha.id} user=#{rha.user_id} " <>
+            "#{rha.repo_host}: errors=#{changeset_error_fields(reason)}"
+        )
+
+        {:error, :transient}
+    end
+  end
+
+  defp resolve_lost_token_write(snapshot, token, refresh_token, expires_at, attempt) do
+    case reload(snapshot) do
+      %__MODULE__{} = fresh ->
+        cond do
+          token_rotated_by_winner?(snapshot, fresh) ->
+            # An independent writer rotated the credential; ours is superseded.
+            recover_after_winner(fresh)
+
+          attempt >= @max_token_persist_attempts ->
+            persist_rotated_token_unlocked(fresh, token, refresh_token, expires_at)
+
+          true ->
+            # Only an unrelated column write bumped :updated_at; our rotation is
+            # still authoritative. Re-apply it onto the fresh row.
+            do_persist_refreshed_token(fresh, token, refresh_token, expires_at, attempt + 1)
+        end
+
+      nil ->
+        {:error, :transient}
+    end
+  end
+
+  # Terminal fallback after repeated UNRELATED write races (the credential was
+  # verified unchanged at the preceding reload, so there is no winner to yield
+  # to). Persist the rotated token WITHOUT the optimistic lock so an unrelated
+  # column write can never strand a single-use refresh token. Casting onto the
+  # freshly-reloaded row means only the credential columns (+ the `revoked`
+  # self-heal) are written; a concurrent profile change is preserved.
+  defp persist_rotated_token_unlocked(fresh, token, refresh_token, expires_at) do
+    Logger.warning(
+      "Persisting rotated token without optimistic lock after repeated unrelated " <>
+        "write races rha=#{fresh.id} user=#{fresh.user_id} #{fresh.repo_host}"
+    )
+
+    case write_token(fresh, token, refresh_token, expires_at, lock: false) do
+      {:ok, account} -> {:ok, {account.token, account.token_expires_at}}
+      _ -> {:error, :transient}
+    end
+  rescue
+    Ecto.StaleEntryError -> {:error, :transient}
   end
 
   defp put_present(map, _key, nil), do: map
@@ -569,12 +673,23 @@ defmodule Guard.FrontRepo.RepoHostAccount do
         {:error, error}
     end
   rescue
-    Ecto.StaleEntryError ->
-      Logger.warning(
-        "Lost optimistic-lock race writing token for rha=#{account.id} user=#{account.user_id} #{account.repo_host}; discarding stale response"
-      )
+    error in [Ecto.StaleEntryError] ->
+      # Only the locked callers (token write, unrotated revoke) expect and
+      # handle {:error, :stale}. An UNLOCKED write raises StaleEntryError only
+      # when the row was deleted between read and write; converting that to
+      # {:error, :stale} here would hand every unlocked caller
+      # (update_revoke_status, update_existing_account) an undeclared error they
+      # pattern-match as a changeset. Scope the translation to the locked path
+      # and re-raise otherwise, preserving those callers' contract.
+      if Keyword.get(opts, :lock, false) do
+        Logger.warning(
+          "Lost optimistic-lock race writing token for rha=#{account.id} user=#{account.user_id} #{account.repo_host}; discarding stale response"
+        )
 
-      {:error, :stale}
+        {:error, :stale}
+      else
+        reraise error, __STACKTRACE__
+      end
   end
 
   # update_account/2 is the single write chokepoint for both self-heal
