@@ -48,12 +48,21 @@ ignore {
 		#
 		"CVE-2026-79921",
 		#
+		# xDS only: the panic is in the routing interceptor that
+		# `xds.NewGRPCServer` installs. This service never calls it — both
+		# servers use plain `grpc.NewServer` — and `xds` does not appear in
+		# go.sum at all, so the vulnerable code is not in the module graph, let
+		# alone compiled in. Fixed in grpc v1.82.2 / v1.83.2.
+		#
+		"CVE-2026-84445",
+		#
 		# REACHABLE — suppressed only to unblock CI, not because they are safe.
 		# Both are availability-only and confined to the internal gRPC server on
 		# :50051 (ClusterIP, not in the ingress, no ambassador gRPC mapping), but
 		# govulncheck does find a call path:
 		#   pkg/internalapi/server.go:64 -> grpc.Server.Serve -> http2Server.HandleStreams
-		# Remove these two by bumping grpc to v1.83.1.
+		# Remove these two, and CVE-2026-84445 above, by bumping grpc to
+		# v1.83.2.
 		#
 		"GHSA-hrxh-6v49-42gf",
 		"CVE-2026-84304",

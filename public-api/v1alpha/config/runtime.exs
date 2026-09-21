@@ -9,6 +9,10 @@ config :pipelines_api,
        :feature_api_endpoint,
        System.get_env("FEATURE_GRPC_URL") || "feature-hub:50052"
 
+config :pipelines_api,
+       :pre_flight_checks_grpc_url,
+       System.get_env("PRE_FLIGHT_CHECKS_GRPC_URL") || "pre-flight-checks-hub:50051"
+
 config :pipelines_api, :audit_logging, System.get_env("AUDIT_LOGGING") == "true"
 
 config :pipelines_api, :amqp_url, System.get_env("AMQP_URL")
