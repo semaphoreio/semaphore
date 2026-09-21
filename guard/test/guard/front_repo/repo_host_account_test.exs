@@ -592,6 +592,96 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
       assert reloaded.login == "profile-updated"
       refute reloaded.revoked
     end
+
+    test "terminal fallback persists the rotated token via credential CAS after repeated " <>
+           "lock losses",
+         %{rha: rha} do
+      # Force the bounded re-apply to exhaust (>= @max_token_persist_attempts):
+      # every locked Repo.update loses the optimistic lock, while the credential
+      # stays unchanged at each reload. The terminal compare-and-set (update_all,
+      # left to pass through) must then persist the rotated token.
+      :meck.new(Guard.FrontRepo, [:passthrough])
+
+      on_exit(fn ->
+        try do
+          :meck.unload(Guard.FrontRepo)
+        rescue
+          _ -> :ok
+        catch
+          _, _ -> :ok
+        end
+      end)
+
+      :meck.expect(Guard.FrontRepo, :update, fn changeset ->
+        raise Ecto.StaleEntryError, action: :update, changeset: changeset
+      end)
+
+      assert {:ok, {"rotated_access", _}} =
+               RepoHostAccount.persist_refreshed_token(
+                 rha,
+                 "rotated_access",
+                 "rotated_refresh",
+                 Support.Members.valid_expires_at()
+               )
+
+      :meck.unload(Guard.FrontRepo)
+
+      reloaded = RepoHostAccount.reload(rha)
+      assert reloaded.token == "rotated_access"
+      assert reloaded.refresh_token == "rotated_refresh"
+      refute reloaded.revoked
+    end
+
+    test "terminal fallback: a reconnect winning the CAS gap is NOT clobbered - recover it",
+         %{rha: rha} do
+      # Same exhaustion, but a reconnect commits a brand-new (independent-family)
+      # credential in the gap between the final reload and the CAS. The CAS is
+      # scoped to the reloaded credential, so it matches zero rows: we must
+      # recover the winner's token, never clobber it with our now-superseded one.
+      :meck.new(Guard.FrontRepo, [:passthrough])
+
+      on_exit(fn ->
+        try do
+          :meck.unload(Guard.FrontRepo)
+        rescue
+          _ -> :ok
+        catch
+          _, _ -> :ok
+        end
+      end)
+
+      :meck.expect(Guard.FrontRepo, :update, fn changeset ->
+        raise Ecto.StaleEntryError, action: :update, changeset: changeset
+      end)
+
+      :meck.expect(Guard.FrontRepo, :update_all, fn query, opts ->
+        Ecto.Adapters.SQL.query!(
+          Guard.FrontRepo,
+          "UPDATE repo_host_accounts SET token = $1, refresh_token = $2, " <>
+            "token_expires_at = now() + interval '1 hour', updated_at = now() " <>
+            "WHERE id::text = $3",
+          ["winner_token", "winner_refresh", rha.id]
+        )
+
+        :meck.passthrough([query, opts])
+      end)
+
+      assert {:ok, {"winner_token", _}} =
+               RepoHostAccount.persist_refreshed_token(
+                 rha,
+                 "rotated_access",
+                 "rotated_refresh",
+                 Support.Members.valid_expires_at()
+               )
+
+      :meck.unload(Guard.FrontRepo)
+
+      reloaded = RepoHostAccount.reload(rha)
+      # The reconnect's credential survived; our old rotation did not clobber it.
+      assert reloaded.token == "winner_token"
+      assert reloaded.refresh_token == "winner_refresh"
+      refute reloaded.revoked
+    end
   end
 
   describe "StaleEntryError translation is scoped to LOCKED writes" do

@@ -149,6 +149,32 @@ defmodule Guard.Api.GithubTest do
       assert reloaded.token == "token"
       assert reloaded.refresh_token == "example_refresh_token"
     end
+
+    test "a 2xx body carrying a genuine revocation error is classified :revoked, not :transient",
+         %{repo_host_account: rha} do
+      # GitHub can return bad_refresh_token / invalid_grant inside a HTTP 200
+      # form body. That decodes to a nil access_token; without treating the error
+      # code it would be stuck :transient forever and the user would never be
+      # told to reconnect. It must classify as a genuine revoke.
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          {:ok, %Tesla.Env{status: 401, body: %{}}}
+
+        %{method: :post, url: "https://github.com/login/oauth/access_token"} ->
+          {:ok,
+           %Tesla.Env{
+             status: 200,
+             body: "error=bad_refresh_token&error_description=The+refresh+token+is+invalid"
+           }}
+      end)
+
+      assert {:error, :revoked} = Github.user_token(rha)
+
+      reloaded = Guard.FrontRepo.RepoHostAccount.reload(rha)
+      # user_token only classifies; nothing was written to the credential columns.
+      assert reloaded.token == "token"
+      assert reloaded.refresh_token == "example_refresh_token"
+    end
   end
 
   describe "validate_token/1" do
