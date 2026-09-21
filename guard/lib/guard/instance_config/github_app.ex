@@ -1,7 +1,7 @@
 defmodule Guard.InstanceConfig.GithubApp do
   require Logger
 
-  def manifest(org_username \\ "") do
+  def manifest(org_username \\ "", is_public \\ false) do
     default_rand_name =
       "#{org_username}-" <>
         for(_ <- 1..10, into: "", do: <<Enum.random('0123456789abcdef')>>)
@@ -26,7 +26,7 @@ defmodule Guard.InstanceConfig.GithubApp do
       callback_urls: callback_urls,
       setup_url: setup_url,
       hook_attributes: %{url: webhook_url, active: true},
-      public: false,
+      public: is_public,
       redirect_url: redirect_url,
       default_events: [
         "create",
