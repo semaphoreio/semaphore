@@ -94,26 +94,59 @@ func (s *Scheduler) scheduleWork() error {
 
 	log.Printf("BucketCleaner Scheduler: Scheduling work, batch size = %d", s.BatchSize)
 
-	return db.Conn().Transaction(func(tx *gorm.DB) error {
-		ids, err := s.loadBatch(tx)
-		if err != nil {
-			return err
-		}
+	ids, err := s.loadBatch(db.Conn())
+	if err != nil {
+		return err
+	}
 
-		if len(ids) == 0 {
-			return nil
-		}
+	if len(ids) == 0 {
+		return nil
+	}
 
-		_ = watchman.Submit("bucketcleaner.scheduler.batch.size", len(ids))
+	_ = watchman.Submit("bucketcleaner.scheduler.batch.size", len(ids))
 
-		err = s.publishBatch(ids)
-		if err != nil {
-			return err
-		}
+	published := s.publishBatch(ids)
 
-		return s.markBatchAsScheduled(tx, ids)
-	})
+	// Only what reached the broker is marked. Marking the whole batch put an artifact
+	// whose publish failed out of reach for a day, with nothing left to retry it, and
+	// for a purge that is a day of storage nobody asked to keep.
+	if len(published) < len(ids) {
+		_ = watchman.IncrementBy("bucketcleaner.scheduler.publish_failures", len(ids)-len(published))
+	}
+
+	if len(published) == 0 {
+		return nil
+	}
+
+	return s.markBatchAsScheduled(db.Conn(), published)
 }
+
+// dueForRetention is the daily pass that applies retention policies. Columns are
+// qualified throughout because artifacts carries a last_cleaned_at of its own.
+const dueForRetention = `
+	(retention_policies.scheduled_for_cleaning_at IS NULL
+		OR retention_policies.scheduled_for_cleaning_at < now() - interval '1 day')
+	AND (retention_policies.last_cleaned_at IS NULL
+		OR retention_policies.last_cleaned_at < now() - interval '1 day')`
+
+// purgeRetryInterval paces a purge that is due but not getting done, so a failure
+// retries in minutes rather than on every 60 second tick or once a day.
+//
+// It also bounds how long a due purge waits to be picked up at all, because the
+// previous daily pass may have set scheduled_for_cleaning_at moments before the grace
+// period ran out. That wait is exactly what bucketcleaner.oldest_purge_age measures,
+// so this has to stay well under the threshold that gauge is alerted on.
+const purgeRetryInterval = "10 minutes"
+
+// dueForPurge is a storage whose grace period is up, or one being destroyed.
+//
+// It does not wait for the daily pass, which would let artifacts outlive their grace
+// period by up to another day.
+const dueForPurge = `
+	(artifacts.deleted_at IS NOT NULL
+		OR artifacts.purge_requested_at < now() - CAST(? AS interval))
+	AND (retention_policies.scheduled_for_cleaning_at IS NULL
+		OR retention_policies.scheduled_for_cleaning_at < now() - interval '` + purgeRetryInterval + `')`
 
 func (s *Scheduler) loadBatch(tx *gorm.DB) ([]string, error) {
 	policies := []models.RetentionPolicy{}
@@ -121,10 +154,10 @@ func (s *Scheduler) loadBatch(tx *gorm.DB) ([]string, error) {
 
 	query := tx.
 		Table("retention_policies").
-		Select("artifact_id").
+		Select("retention_policies.artifact_id").
+		Joins("JOIN artifacts ON artifacts.id = retention_policies.artifact_id").
 		Set("gorm:query_option", "FOR UPDATE").
-		Where("scheduled_for_cleaning_at IS NULL or scheduled_for_cleaning_at < now() - interval '1 day'").
-		Where("last_cleaned_at IS NULL or last_cleaned_at < now() - interval '1 day'").
+		Where("("+dueForRetention+") OR ("+dueForPurge+")", postgresInterval(PurgeGracePeriod)).
 		Limit(s.BatchSize)
 
 	err := query.Find(&policies).Error
@@ -139,7 +172,11 @@ func (s *Scheduler) loadBatch(tx *gorm.DB) ([]string, error) {
 	return result, nil
 }
 
-func (s *Scheduler) publishBatch(ids []string) error {
+// publishBatch returns the ids whose clean request reached the broker. The rest
+// stay due and are picked up on a later tick.
+func (s *Scheduler) publishBatch(ids []string) []string {
+	published := make([]string, 0, len(ids))
+
 	for _, id := range ids {
 		log.Printf("BucketCleaner Scheduler: Scheduling %s for cleaning", id)
 
@@ -166,9 +203,11 @@ func (s *Scheduler) publishBatch(ids []string) error {
 			log.Printf("Failed to schedule cleaning for %s, err: '%s'", id, err.Error())
 			continue
 		}
+
+		published = append(published, id)
 	}
 
-	return nil
+	return published
 }
 
 func (s *Scheduler) markBatchAsScheduled(tx *gorm.DB, ids []string) error {
