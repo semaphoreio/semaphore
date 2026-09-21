@@ -5,6 +5,63 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
   alias Guard.FrontRepo.RepoHostAccount
   alias Guard.Utils.OAuth
 
+  # Mock FrontRepo (passthrough) and guarantee it is unloaded after the test,
+  # even if the test raises before its own unload.
+  defp mock_front_repo! do
+    :meck.new(Guard.FrontRepo, [:passthrough])
+
+    on_exit(fn ->
+      try do
+        :meck.unload(Guard.FrontRepo)
+      rescue
+        _ -> :ok
+      catch
+        _, _ -> :ok
+      end
+    end)
+  end
+
+  # Every locked Repo.update loses the optimistic lock (StaleEntryError). Used to
+  # drive the token-persist re-apply loop to its terminal compare-and-set path.
+  defp stub_repo_update_always_stale! do
+    mock_front_repo!()
+
+    :meck.expect(Guard.FrontRepo, :update, fn changeset ->
+      raise Ecto.StaleEntryError, action: :update, changeset: changeset
+    end)
+  end
+
+  defp persist_rotated!(rha) do
+    RepoHostAccount.persist_refreshed_token(
+      rha,
+      "rotated_access",
+      "rotated_refresh",
+      Support.Members.valid_expires_at()
+    )
+  end
+
+  # Shared setup: a bitbucket RHA with a valid (not-yet-expired) stored token,
+  # used by the token-persistence and stale-scoping describes.
+  defp create_bitbucket_rha(_context) do
+    {:ok, user} = Support.Factories.RbacUser.insert()
+    {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+    {:ok, rha} =
+      Support.Members.insert_repo_host_account(
+        login: "example",
+        name: "example",
+        repo_host: "bitbucket",
+        refresh_token: "stored_refresh",
+        user_id: user.id,
+        token: "stored_token",
+        token_expires_at: Support.Members.valid_expires_at(),
+        revoked: false,
+        permission_scope: "repo"
+      )
+
+    {:ok, rha: rha}
+  end
+
   describe "update_profile/2" do
     setup do
       {user, rha} = Support.Members.insert_user_with_github_account()
@@ -338,17 +395,7 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
           {:ok, %Tesla.Env{status: 400, body: %{"error" => "invalid_grant"}}}
       end)
 
-      :meck.new(Guard.FrontRepo, [:passthrough])
-
-      on_exit(fn ->
-        try do
-          :meck.unload(Guard.FrontRepo)
-        rescue
-          _ -> :ok
-        catch
-          _, _ -> :ok
-        end
-      end)
+      mock_front_repo!()
 
       # The only FrontRepo.update/1 in this flow is the locked revoke write.
       # Commit the winner's rotation via raw SQL (bypasses the mocked update),
@@ -386,17 +433,7 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
           {:ok, %Tesla.Env{status: 400, body: %{"error" => "invalid_grant"}}}
       end)
 
-      :meck.new(Guard.FrontRepo, [:passthrough])
-
-      on_exit(fn ->
-        try do
-          :meck.unload(Guard.FrontRepo)
-        rescue
-          _ -> :ok
-        catch
-          _, _ -> :ok
-        end
-      end)
+      mock_front_repo!()
 
       # The only FrontRepo.update/1 in this flow is the locked revoke write.
       # Fail it with a changeset error (not StaleEntryError).
@@ -442,25 +479,7 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
   end
 
   describe "update_token/4 refresh-token safety (single-use rotation)" do
-    setup do
-      {:ok, user} = Support.Factories.RbacUser.insert()
-      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
-
-      {:ok, rha} =
-        Support.Members.insert_repo_host_account(
-          login: "example",
-          name: "example",
-          repo_host: "bitbucket",
-          refresh_token: "stored_refresh",
-          user_id: user.id,
-          token: "stored_token",
-          token_expires_at: Support.Members.valid_expires_at(),
-          revoked: false,
-          permission_scope: "repo"
-        )
-
-      {:ok, rha: rha}
-    end
+    setup :create_bitbucket_rha
 
     test "rotates the stored refresh_token when a new one is supplied", %{rha: rha} do
       {:ok, _} =
@@ -600,29 +619,9 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
       # every locked Repo.update loses the optimistic lock, while the credential
       # stays unchanged at each reload. The terminal compare-and-set (update_all,
       # left to pass through) must then persist the rotated token.
-      :meck.new(Guard.FrontRepo, [:passthrough])
+      stub_repo_update_always_stale!()
 
-      on_exit(fn ->
-        try do
-          :meck.unload(Guard.FrontRepo)
-        rescue
-          _ -> :ok
-        catch
-          _, _ -> :ok
-        end
-      end)
-
-      :meck.expect(Guard.FrontRepo, :update, fn changeset ->
-        raise Ecto.StaleEntryError, action: :update, changeset: changeset
-      end)
-
-      assert {:ok, {"rotated_access", _}} =
-               RepoHostAccount.persist_refreshed_token(
-                 rha,
-                 "rotated_access",
-                 "rotated_refresh",
-                 Support.Members.valid_expires_at()
-               )
+      assert {:ok, {"rotated_access", _}} = persist_rotated!(rha)
 
       :meck.unload(Guard.FrontRepo)
 
@@ -638,21 +637,7 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
       # credential in the gap between the final reload and the CAS. The CAS is
       # scoped to the reloaded credential, so it matches zero rows: we must
       # recover the winner's token, never clobber it with our now-superseded one.
-      :meck.new(Guard.FrontRepo, [:passthrough])
-
-      on_exit(fn ->
-        try do
-          :meck.unload(Guard.FrontRepo)
-        rescue
-          _ -> :ok
-        catch
-          _, _ -> :ok
-        end
-      end)
-
-      :meck.expect(Guard.FrontRepo, :update, fn changeset ->
-        raise Ecto.StaleEntryError, action: :update, changeset: changeset
-      end)
+      stub_repo_update_always_stale!()
 
       :meck.expect(Guard.FrontRepo, :update_all, fn query, opts ->
         Ecto.Adapters.SQL.query!(
@@ -666,13 +651,7 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
         :meck.passthrough([query, opts])
       end)
 
-      assert {:ok, {"winner_token", _}} =
-               RepoHostAccount.persist_refreshed_token(
-                 rha,
-                 "rotated_access",
-                 "rotated_refresh",
-                 Support.Members.valid_expires_at()
-               )
+      assert {:ok, {"winner_token", _}} = persist_rotated!(rha)
 
       :meck.unload(Guard.FrontRepo)
 
@@ -685,25 +664,7 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
   end
 
   describe "StaleEntryError translation is scoped to LOCKED writes" do
-    setup do
-      {:ok, user} = Support.Factories.RbacUser.insert()
-      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
-
-      {:ok, rha} =
-        Support.Members.insert_repo_host_account(
-          login: "example",
-          name: "example",
-          repo_host: "bitbucket",
-          refresh_token: "stored_refresh",
-          user_id: user.id,
-          token: "stored_token",
-          token_expires_at: Support.Members.valid_expires_at(),
-          revoked: false,
-          permission_scope: "repo"
-        )
-
-      {:ok, rha: rha}
-    end
+    setup :create_bitbucket_rha
 
     test "a LOCKED write returns {:error, :stale} when the row vanished under it", %{rha: rha} do
       # A locked writer (the token path) expects and handles {:error, :stale}.
