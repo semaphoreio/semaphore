@@ -12,10 +12,12 @@ import { NavLink } from "react-router-dom";
 
 export const OverviewPage = () => {
   const spendings = useContext(stores.Spendings.Context);
+  const config = useContext(stores.Config.Context);
   const selectedSpending = spendings.state.selectedSpending;
   const summary = selectedSpending?.summary;
   const plan = selectedSpending?.plan;
   const currentPlan = spendings.state.currentSpending?.plan;
+  const isBasic = config.isBasicPlan;
 
   return (
     <Fragment>
@@ -24,7 +26,9 @@ export const OverviewPage = () => {
           <div>
             <div className="inline-flex items-center">
               <p className="mb0 b f3">
-                {plan.name} plan {plan.isTrial() ? `- trial` : ``} {plan.type == types.Spendings.PlanType.Prepaid ? `- prepaid` : ``}
+                {isBasic ? selectedSpending?.name : (
+                  <Fragment>{plan.name} plan {plan.isTrial() ? `- trial` : ``} {plan.type == types.Spendings.PlanType.Prepaid ? `- prepaid` : ``}</Fragment>
+                )}
               </p>
             </div>
             <div className="gray mb3 measure flex items-center">
@@ -123,10 +127,35 @@ const Payments = ({ plan }: { plan: types.Spendings.Plan, }) => {
   }, []);
 
   const isPrepaid = plan.type == types.Spendings.PlanType.Prepaid;
+  const isBasic = config.isBasicPlan;
   const withPaymentDetails = plan.withPaymentDetails();
 
-  if (!withPaymentDetails && !isPrepaid) {
+  if (!withPaymentDetails && !isPrepaid && !isBasic) {
     return <Fragment></Fragment>;
+  }
+
+  if (isBasic && !withPaymentDetails) {
+    return (
+      <div className="ml3 bb b--black-075 w-100 mb3 br3 shadow-3 bg-white">
+        <div className="flex items-center justify-between ph3 pv2 bb bw1 b--black-075 br3 br--top">
+          <div className="flex items-center">
+            <span className="material-symbols-outlined pr2">credit_card</span>
+            <div className="b">Payment method</div>
+          </div>
+        </div>
+        <div className="ph3 pv3">
+          <div className="gray mb2">Add a payment method to remove usage limits.</div>
+          {config.isBillingManager && plan.hasPaymentMethodUrl() && (
+            <a href={plan.paymentMethodUrl} target="_blank" rel="noreferrer" className="btn btn-primary">
+              Add payment method ↗
+            </a>
+          )}
+          {!config.isBillingManager && (
+            <div className="f6 gray">Contact your organization owner to add a payment method.</div>
+          )}
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -664,35 +693,31 @@ const TotalSpendingsDiscounted = ({ summary }: { summary: types.Spendings.Summar
               <div className="flex-ns items-center">
                 <div className="w-60-ns flex-ns items-center">
                   <span className="pr1">Total spending</span>
-                  {
-                    <toolbox.Tooltip
-                      stickable={true}
-                      anchor={
-                        <span className="pointer material-symbols-outlined" style="font-size: 1em;" aria-expanded="false">
-                          help
-                        </span>
-                      }
-                      content={
-                        <div className="f7">
-                          <div className="f6 b pb1">Discount</div>
-                          <div className="pb1">
-                            <div className="flex justify-between">
-                              <div className="b pr2">You have a discount of:</div>
-                              <div>{summary?.discount}%</div>
-                            </div>
-                            <div className="flex justify-between">
-                              <div className="b pr2">Discounted from the original price:</div>
-                              <div>-{summary?.discountAmount}</div>
-                            </div>
+                  <toolbox.Tooltip
+                    stickable={true}
+                    anchor={
+                      <span className="pointer material-symbols-outlined" style="font-size: 1em;" aria-expanded="false">
+                        help
+                      </span>
+                    }
+                    content={
+                      <div className="f7">
+                        <div className="f6 b pb1">Discount</div>
+                        <div className="pb1">
+                          <div className="flex justify-between">
+                            <div className="b pr2">Spending before discount:</div>
+                            <div>{summary?.usageTotal}</div>
+                          </div>
+                          <div className="flex justify-between">
+                            <div className="b pr2">Discount ({summary?.discount}%):</div>
+                            <div>-{summary?.discountAmount}</div>
                           </div>
                         </div>
-                      }
-                    />
-                  }
+                      </div>
+                    }
+                  />
                 </div>
-                <div className="w-40-ns tr-ns tnum">
-                  <span className="f6 gray ml1">({summary?.discount}%) </span> {summary?.usageTotal}
-                </div>
+                <div className="w-40-ns tr-ns tnum">{summary?.discountedTotal()}</div>
               </div>
             </div>
           </div>

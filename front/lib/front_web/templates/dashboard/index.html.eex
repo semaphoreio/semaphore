@@ -8,7 +8,7 @@
     <div class="bg-washed-gray pa3 br3 ba b--black-075">
       <p class="mb3">In the last 7 days</p>
       <div class="nb3">
-        <%= render FrontWeb.DashboardView, "partials/_workflows.html", conn: @conn, workflows: @workflows, pagination: @pagination, pollman: @pollman, page: :dashboard %>
+        <%= render FrontWeb.DashboardView, "partials/_workflows.html", conn: @conn, workflows: @workflows, pagination: @pagination, pollman: @pollman, page: :dashboard, workflow_fetch_error: @workflow_fetch_error %>
       </div>
     </div>
 <% end %>

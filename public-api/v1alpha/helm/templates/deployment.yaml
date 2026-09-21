@@ -42,6 +42,8 @@ spec:
               value: {{ .Values.logging }}
             - name: API_VERSION
               value: "v1alpha"
+            - name: SINGLE_TENANT
+              value: "true"
             - name: PPL_GRPC_URL
               valueFrom:
                 configMapKeyRef:
@@ -57,6 +59,21 @@ spec:
                 configMapKeyRef:
                   name: {{ .Values.global.internalApi.configMapName }}
                   key: INTERNAL_API_URL_RBAC
+            - name: INTERNAL_API_URL_GROUPS
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.internalApi.configMapName }}
+                  key: INTERNAL_API_URL_GROUPS
+            - name: INTERNAL_API_URL_SERVICE_ACCOUNT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.internalApi.configMapName }}
+                  key: INTERNAL_API_URL_SERVICE_ACCOUNT
+            - name: INTERNAL_API_URL_GUARD
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.internalApi.configMapName }}
+                  key: INTERNAL_API_URL_GUARD
             - name: GOFER_GRPC_URL
               valueFrom:
                 configMapKeyRef:
@@ -92,6 +109,11 @@ spec:
                 configMapKeyRef:
                   name: {{ .Values.global.internalApi.configMapName }}
                   key: INTERNAL_API_URL_FEATURE
+            - name: PRE_FLIGHT_CHECKS_GRPC_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.internalApi.configMapName }}
+                  key: INTERNAL_API_URL_PFC
             - name: PROJECTHUB_API_GRPC_URL
               valueFrom:
                 configMapKeyRef:
@@ -112,6 +134,18 @@ spec:
                 configMapKeyRef:
                   name: {{ .Values.global.internalApi.configMapName }}
                   key: INTERNAL_API_URL_LOGHUB2
+            - name: AMQP_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.rabbitmq.secretName }}
+                  key: amqp-url
+{{- if eq .Values.global.edition "ee" }}
+            - name: AUDIT_LOGGING
+              value: "true"
+{{- else }}
+            - name: AUDIT_LOGGING
+              value: "false"
+{{- end }}
 {{- if .Values.global.statsd.enabled }}
             - name: METRICS_NAMESPACE
               value: {{ .Values.global.statsd.metricsNamespace }}

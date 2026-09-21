@@ -1736,20 +1736,6 @@ defmodule Plumber.WorkflowAPI.Server.Test do
     {:ok, message}
   end
 
-  # Create
-
-  test "gRPC create() - create workflow" do
-    %{
-      service: 3,
-      project_id: UUID.uuid4(),
-      request_token: UUID.uuid4(),
-      label: "some_label",
-      organization_id: UUID.uuid4()
-    }
-    |> InternalApi.PlumberWF.CreateRequest.new()
-    |> create_wf()
-  end
-
   ########
 
   defp assert_correct_branch(req_token, branch) do
@@ -1773,16 +1759,6 @@ defmodule Plumber.WorkflowAPI.Server.Test do
 
     assert {:ok, schedule_response} = response
     assert %{wf_id: wf_id, status: %{code: ^expected_status}} = Proto.to_map!(schedule_response)
-
-    wf_id
-  end
-
-  defp create_wf(request) when is_map(request) do
-    {:ok, channel} = GRPC.Stub.connect("localhost:50053")
-    response = channel |> WorkflowService.Stub.create(request)
-
-    assert {:ok, schedule_response} = response
-    assert %{wf_id: wf_id} = Proto.to_map!(schedule_response)
 
     wf_id
   end

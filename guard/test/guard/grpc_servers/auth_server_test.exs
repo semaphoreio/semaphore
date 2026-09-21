@@ -515,6 +515,41 @@ defmodule Guard.GrpcServers.AuthServerTest do
       assert session.refresh_token_enc == nil
       assert_response(response, user, "OIDC")
     end
+
+    test "return false with okta expiration reason for expired okta session", %{user: user} do
+      cookie = expired_session(user, "OKTA")
+      request = AuthenticateWithCookieRequest.new(cookie: cookie)
+
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+      {:ok, response} = channel |> Stub.authenticate_with_cookie(request)
+
+      assert_response(response)
+      assert response.error_reason == "SESSION_EXPIRED_OKTA"
+    end
+
+    test "return false with okta expiration reason for okta cookie without expires_at", %{
+      user: user
+    } do
+      cookie = legacy_okta_session(user)
+      request = AuthenticateWithCookieRequest.new(cookie: cookie)
+
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+      {:ok, response} = channel |> Stub.authenticate_with_cookie(request)
+
+      assert_response(response)
+      assert response.error_reason == "SESSION_EXPIRED_OKTA"
+    end
+
+    test "return false with generic expiration reason for expired non-okta session", %{user: user} do
+      cookie = expired_session(user, "GITHUB")
+      request = AuthenticateWithCookieRequest.new(cookie: cookie)
+
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+      {:ok, response} = channel |> Stub.authenticate_with_cookie(request)
+
+      assert_response(response)
+      assert response.error_reason == "SESSION_EXPIRED"
+    end
   end
 
   defp expect_fetch_token(bypass, client_id, session) do
@@ -554,6 +589,16 @@ defmodule Guard.GrpcServers.AuthServerTest do
     |> Guard.Session.encrypt_cookie()
   end
 
+  defp legacy_okta_session(user) do
+    %{
+      "id_provider" => "OKTA",
+      "ip_address" => "127.0.0.1",
+      "user_agent" => "Mozilla/5.0",
+      "warden.user.user.key" => [[user.id], user.salt]
+    }
+    |> Guard.Session.encrypt_cookie()
+  end
+
   defp mixed_session(session, user, id_provider) do
     %{
       "oidc_session_id" => session.id,
@@ -569,6 +614,22 @@ defmodule Guard.GrpcServers.AuthServerTest do
     %{
       "id_provider" => "OIDC",
       "oidc_session_id" => session.id
+    }
+    |> Guard.Session.encrypt_cookie()
+  end
+
+  defp expired_session(user, id_provider) do
+    expires_at =
+      DateTime.utc_now()
+      |> DateTime.add(-60, :second)
+      |> DateTime.to_unix()
+
+    %{
+      "id_provider" => id_provider,
+      "ip_address" => "127.0.0.1",
+      "user_agent" => "Mozilla/5.0",
+      "expires_at" => expires_at,
+      "warden.user.user.key" => [[user.id], user.salt]
     }
     |> Guard.Session.encrypt_cookie()
   end

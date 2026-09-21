@@ -1,0 +1,64 @@
+# hackney 1.18.1 — connection pool leak (operational only; outbound bounded to Sentry DSN + tzdata IANA URL)
+GHSA-9fm9-hp7p-53mf
+
+# hackney 1.18.1 — SSRF via redirect target (no user-controlled URL fed to hackney; HTTPoison not called from lib/)
+GHSA-vq52-99r9-h5pw
+
+# decimal 2.1.1 — unbounded exponent DoS in Decimal.new (transitive via ecto/jason, dev/test only; service has no Ecto repo; Jason default decoder does not call Decimal.new)
+GHSA-rhv4-8758-jx7v
+
+# cowlib 2.16.1 — cookie request-header injection in cow_cookie:cookie/1 (no upstream patch; 2.16.1 is the
+# latest release and is still flagged). v1alpha does not generate Set-Cookie headers from user input;
+# cowlib is pulled in only via cowboy/grpc_gun.
+GHSA-g2wm-735q-3f56
+
+# --- hackney 1.18.1 advisories, all fixed in 4.0.1 ---
+# Bump to 4.0.1 is blocked: httpoison ~> 1.3 requires hackney ~> 1.8, so hackney cannot move to
+# 4.x without a fleet-wide httpoison/grpc upgrade. Real fix tracked for the dep-bump branch.
+#
+# ssl:connect/2 post-handshake upgrade has no timeout (operational DoS; outbound bounded to Sentry
+# DSN + tzdata IANA URL, same class as GHSA-9fm9 above)
+GHSA-gp9c-pm5m-5cxr
+# CR/LF injection in query parameter (no user-controlled URL fed to hackney; HTTPoison not called
+# from lib/, same as GHSA-vq52 above)
+GHSA-j9wq-vxxc-94wf
+# SSRF allowlist bypass in hackney_url:normalize/2 via percent-encoded host (no user-controlled URL
+# fed to hackney from lib/)
+GHSA-pj7v-xfvx-wmjq
+# CRLF / header injection via unvalidated `domain` and `path` options (no user-controlled domain/path
+# fed to hackney from lib/)
+GHSA-mp55-p8c9-rfw2
+
+# cowlib 2.6.0 — SPDY decompression bomb in cow_spdy:inflate/2 (unreachable; cowboy 2.x does not serve SPDY)
+GHSA-84f2-rp86-235p
+
+# plug 1.7.1 — unbounded buffer accumulation in multipart header parsing, fixed in 1.15.4. Reachable:
+# pipelines_api/router.ex loads Plug.Parsers with {:multipart, length: 150_000_000}. Mitigated at
+# cluster ingress L7 body limits; bump blocked by grpc 0.3.1 / cowboy 2.5 — real fix tracked for the
+# dep-bump branch.
+GHSA-468c-vq7p-gh64
+
+# plug_cowboy 2.0.0 — HTTP/2 :scheme atom-table exhaustion DoS, fixed in 2.8.1. Not reachable:
+# service runs scheme: :http on port 4004 behind Ambassador (TLS termination at ingress, HTTP/1.1
+# to backend). Bump blocked by grpc 0.3.1 / cowboy 2.5 — same dep chain as the entries above.
+GHSA-q8x4-x7mp-5vg2
+
+# --- grpc 0.5.0-beta.1 advisories, all first patched in grpc 1.0.0 ---
+# public-api/v1alpha is a gRPC client only: every InternalApi.*.Stub call goes through
+# GRPC.Stub.connect (grpc_gun) to internal backend services, and lib/ starts no GRPC.Server or
+# GRPC.Endpoint. The bump to 1.0.0 is a breaking major shared with the other grpc apps in the
+# monorepo (see front/.mix-audit.txt and ee/audit/.mix-audit.txt), so it belongs on the
+# coordinated dep-bump branch, not here.
+#
+# RCE / atom-table exhaustion via :erlang.binary_to_term in GRPC.Codec.Erlpack.decode/2. Needs a
+# server that registers the Erlpack codec and accepts application/grpc+erlpack; this app registers
+# no codec and serves no gRPC endpoint (grep for Erlpack, GRPC.Codec and `codecs:` across lib/ and
+# config/ returns nothing).
+GHSA-grp7-v8xh-rj7h
+# Decompression bomb in GRPC.Compressor.Gzip.decompress/1, fired by frames arriving at a server
+# with grpc-encoding: gzip. This app only decodes responses from internal services, which are not
+# attacker-controlled, and registers no compressor.
+GHSA-6ccx-9c9f-327w
+# Unbounded request-body accumulation in read_full_body/3
+# (lib/grpc/server/adapters/cowboy/handler.ex) — the server request read loop only; no server here.
+GHSA-q8gf-9rvj-gmgj

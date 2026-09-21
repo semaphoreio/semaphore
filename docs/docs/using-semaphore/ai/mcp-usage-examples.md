@@ -7,7 +7,7 @@ sidebar_position: 2
 
 Semaphore’s [MCP Server](./mcp-server) unlocks practical, low-friction AI assistance for CI/CD. With an AI agent already connected, you can ask natural questions and get immediate insights from your Semaphore projects. 
 
-Below, we outline key use cases and examples for developers, each accompanied by example prompts, an explanation of what happens under the hood, and relevant technical details. These scenarios assume that you have MCP access enabled and an API token configured.
+Below, we outline key use cases and examples for developers, each accompanied by example prompts, an explanation of what happens under the hood, and relevant technical details. These scenarios assume that you have MCP access enabled and are authenticated either with OAuth or an API token.
 
 ## Organization and Project Context Discovery
 
@@ -196,5 +196,4 @@ To configure test reports, the agent typically:
 - [MCP Server](./mcp-server)
 - [Self-healing CI](./self-healing-ci)
 - [Copilot Cloud Integration](./copilot-agent-cloud)
-
 

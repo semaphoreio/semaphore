@@ -42,21 +42,21 @@
         <%= if @page.cursor_after do %>
             <div>
                 Back to <%= link "Newest", to: deployments_path(@conn, :show, @project.name, @target.id,
-                    filters: @page_args[:filters]) %>
+                    Map.to_list(@page_args[:filters])) %>
                 <span class="ml1 mr2">·</span>
             </div>
         <% end %>
         <div class="button-group">
             <%= if @page.cursor_after do %>
                 <%= link "Newer", class: "btn btn-secondary", to: deployments_path(@conn, :show, @project.name, @target.id,
-                        direction: :AFTER, timestamp: @page.cursor_after, filters: @page_args[:filters]) %>
+                        [direction: :AFTER, timestamp: @page.cursor_after] ++ Map.to_list(@page_args[:filters])) %>
             <% else %>
                 <button class="btn btn-secondary" disabled="disabled">Newer</button>
             <% end %>
 
             <%= if @page.cursor_before do %>
                 <%= link "Older", class: "btn btn-secondary", to: deployments_path(@conn, :show, @project.name, @target.id,
-                        direction: :BEFORE, timestamp: @page.cursor_before, filters: @page_args[:filters]) %>
+                        [direction: :BEFORE, timestamp: @page.cursor_before] ++ Map.to_list(@page_args[:filters])) %>
             <% else %>
                 <button class="btn btn-secondary" disabled="disabled">Older</button>
             <% end %>

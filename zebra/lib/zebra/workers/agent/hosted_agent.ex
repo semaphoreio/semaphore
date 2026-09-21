@@ -11,9 +11,6 @@ defmodule Zebra.Workers.Agent.HostedAgent do
         :insecure,
         connect_timeout: 2_000,
         recv_timeout: 3_000
-      ],
-      ssl: [
-        server_name_indication: :disable
       ]
     ]
 

@@ -1,0 +1,22 @@
+version: v1.0
+name: Failing pipeline - circular dependencies
+agent:
+  machine:
+    type: foo
+    os_image: bar
+blocks:
+  - name: A
+    dependencies: [C]
+    task:
+      jobs:
+        - commands: [echo foo]
+  - name: B
+    dependencies: [A]
+    task:
+      jobs:
+        - commands: [echo bar]
+  - name: C
+    dependencies: [B]
+    task:
+      jobs:
+        - commands: [echo baz]

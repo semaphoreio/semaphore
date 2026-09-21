@@ -42,6 +42,34 @@ defmodule RepositoryHub.GithubClientTest do
       assert {:ok, _result} = response
     end
 
+    test "create_build_status maps a 5xx to unavailable" do
+      :meck.expect(Tentacat.Repositories.Statuses, :create, fn _client, _owner, _repo, _sha, _body ->
+        {502, %{}, http_response(502)}
+      end)
+
+      unavailable = GRPC.Status.unavailable()
+
+      response =
+        build_status_params()
+        |> GithubClient.create_build_status(token: "abc")
+
+      assert {:error, %{status: ^unavailable}} = response
+    end
+
+    test "create_build_status keeps a 4xx as a precondition failure" do
+      :meck.expect(Tentacat.Repositories.Statuses, :create, fn _client, _owner, _repo, _sha, _body ->
+        {404, %{}, http_response(404)}
+      end)
+
+      failed_precondition = GRPC.Status.failed_precondition()
+
+      response =
+        build_status_params()
+        |> GithubClient.create_build_status(token: "abc")
+
+      assert {:error, %{status: ^failed_precondition}} = response
+    end
+
     test "list_repository_collaborators" do
       response =
         list_repository_collaborators_params()
@@ -111,7 +139,7 @@ defmodule RepositoryHub.GithubClientTest do
         |> GithubClient.get_tag(token: "foobar")
 
       assert {:ok, result} = response
-      assert %{type: "tag", sha: _} = result
+      assert %{type: "tag", sha: "f0bb5942f47193d153a205dc089cbbf38299dd1a"} = result
     end
 
     test "get_tag with missing" do
@@ -120,6 +148,33 @@ defmodule RepositoryHub.GithubClientTest do
         |> GithubClient.get_tag(token: "foobar")
 
       assert {:error, %{message: "Tag not found.", status: 5}} = response
+    end
+
+    test "get_tag with annotated tag" do
+      response =
+        get_tag_params(tag_name: "v2.0.0")
+        |> GithubClient.get_tag(token: "foobar")
+
+      assert {:ok, result} = response
+      assert %{type: "tag", sha: "abc123_annotated_commit_sha"} = result
+    end
+
+    test "get_tag with annotated tag dereference failure" do
+      response =
+        get_tag_params(tag_name: "v3.0.0")
+        |> GithubClient.get_tag(token: "foobar")
+
+      assert {:error, %{message: message}} = response
+      assert message =~ "dereferencing annotated tag"
+    end
+
+    test "get_tag with unexpected object type" do
+      response =
+        get_tag_params(tag_name: "v4.0.0")
+        |> GithubClient.get_tag(token: "foobar")
+
+      assert {:error, %{message: message}} = response
+      assert message =~ "Unexpected tag reference object type"
     end
 
     test "get_commit" do
@@ -143,6 +198,15 @@ defmodule RepositoryHub.GithubClientTest do
       assert MapSet.new(~w(sha message author_name author_uuid author_avatar_url)a) ==
                MapSet.new(result, &elem(&1, 0))
     end
+  end
+
+  defp http_response(status_code) do
+    %HTTPoison.Response{
+      status_code: status_code,
+      body: "{}",
+      headers: [],
+      request: %HTTPoison.Request{url: "https://api.github.com", headers: []}
+    }
   end
 
   @spec build_status_params(Keyword.t()) :: GithubClient.create_build_status_params()

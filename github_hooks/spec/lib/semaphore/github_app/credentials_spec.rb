@@ -5,6 +5,9 @@ RSpec.describe Semaphore::GithubApp::Credentials do
     Semaphore::GithubApp::Credentials.instance_variable_set(:@private_key, nil)
     Semaphore::GithubApp::Credentials.instance_variable_set(:@github_application_url, nil)
     Semaphore::GithubApp::Credentials.instance_variable_set(:@github_application_id, nil)
+    Semaphore::GithubApp::Credentials.instance_variable_set(:@github_client_id, nil)
+    Semaphore::GithubApp::Credentials.instance_variable_set(:@github_client_secret, nil)
+    Semaphore::GithubApp::Credentials.instance_variable_set(:@github_app_webhook_secret, nil)
   end
 
   context "when the local file exists" do
@@ -118,6 +121,117 @@ RSpec.describe Semaphore::GithubApp::Credentials do
 
     it "returns nil if both fallbacks are unavailable" do
       expect(Semaphore::GithubApp::Credentials.github_application_id).to be_nil
+    end
+  end
+
+  context "when the local client id exists" do
+    before do
+      allow(Semaphore::GithubApp::Credentials::Local).to receive(:github_client_id).and_return("local_client_id")
+      allow(Semaphore::GithubApp::Credentials::InstanceConfigClient).to receive(:github_client_id).and_return(nil)
+    end
+
+    it "returns the local value and caches it" do
+      expect(Semaphore::GithubApp::Credentials.github_client_id).to eq("local_client_id")
+      expect(Semaphore::GithubApp::Credentials.github_client_id).to eq("local_client_id")
+      expect(Semaphore::GithubApp::Credentials::Local).to have_received(:github_client_id).once
+    end
+  end
+
+  context "when the local client id does not exist" do
+    before do
+      allow(Semaphore::GithubApp::Credentials::Local).to receive(:github_client_id).and_return(nil)
+      allow(Semaphore::GithubApp::Credentials::InstanceConfigClient).to receive(:github_client_id).and_return("instance_client_id")
+    end
+
+    it "falls back to InstanceConfigClient and caches the value" do
+      expect(Semaphore::GithubApp::Credentials.github_client_id).to eq("instance_client_id")
+      expect(Semaphore::GithubApp::Credentials.github_client_id).to eq("instance_client_id")
+      expect(Semaphore::GithubApp::Credentials::InstanceConfigClient).to have_received(:github_client_id).once
+    end
+  end
+
+  context "when both the local client id and InstanceConfigClient fail" do
+    before do
+      allow(Semaphore::GithubApp::Credentials::Local).to receive(:github_client_id).and_return(nil)
+      allow(Semaphore::GithubApp::Credentials::InstanceConfigClient).to receive(:github_client_id).and_return(nil)
+    end
+
+    it "returns nil if both fallbacks are unavailable" do
+      expect(Semaphore::GithubApp::Credentials.github_client_id).to be_nil
+    end
+  end
+
+  context "when the local client secret exists" do
+    before do
+      allow(Semaphore::GithubApp::Credentials::Local).to receive(:github_client_secret).and_return("local_client_secret")
+      allow(Semaphore::GithubApp::Credentials::InstanceConfigClient).to receive(:github_client_secret).and_return(nil)
+    end
+
+    it "returns the local value and caches it" do
+      expect(Semaphore::GithubApp::Credentials.github_client_secret).to eq("local_client_secret")
+      expect(Semaphore::GithubApp::Credentials.github_client_secret).to eq("local_client_secret")
+      expect(Semaphore::GithubApp::Credentials::Local).to have_received(:github_client_secret).once
+    end
+  end
+
+  context "when the local client secret does not exist" do
+    before do
+      allow(Semaphore::GithubApp::Credentials::Local).to receive(:github_client_secret).and_return(nil)
+      allow(Semaphore::GithubApp::Credentials::InstanceConfigClient).to receive(:github_client_secret).and_return("instance_client_secret")
+    end
+
+    it "falls back to InstanceConfigClient and caches the value" do
+      expect(Semaphore::GithubApp::Credentials.github_client_secret).to eq("instance_client_secret")
+      expect(Semaphore::GithubApp::Credentials.github_client_secret).to eq("instance_client_secret")
+      expect(Semaphore::GithubApp::Credentials::InstanceConfigClient).to have_received(:github_client_secret).once
+    end
+  end
+
+  context "when both the local client secret and InstanceConfigClient fail" do
+    before do
+      allow(Semaphore::GithubApp::Credentials::Local).to receive(:github_client_secret).and_return(nil)
+      allow(Semaphore::GithubApp::Credentials::InstanceConfigClient).to receive(:github_client_secret).and_return(nil)
+    end
+
+    it "returns nil if both fallbacks are unavailable" do
+      expect(Semaphore::GithubApp::Credentials.github_client_secret).to be_nil
+    end
+  end
+
+  context "when the local webhook secret exists" do
+    before do
+      allow(Semaphore::GithubApp::Credentials::Local).to receive(:github_app_webhook_secret).and_return("local_webhook_secret")
+      allow(Semaphore::GithubApp::Credentials::InstanceConfigClient).to receive(:github_app_webhook_secret).and_return(nil)
+    end
+
+    it "returns the local value and caches it" do
+      expect(Semaphore::GithubApp::Credentials.github_app_webhook_secret).to eq("local_webhook_secret")
+      expect(Semaphore::GithubApp::Credentials.github_app_webhook_secret).to eq("local_webhook_secret")
+      expect(Semaphore::GithubApp::Credentials::Local).to have_received(:github_app_webhook_secret).once
+    end
+  end
+
+  context "when the local webhook secret does not exist" do
+    before do
+      allow(Semaphore::GithubApp::Credentials::Local).to receive(:github_app_webhook_secret).and_return(nil)
+      allow(Semaphore::GithubApp::Credentials::InstanceConfigClient).to receive(:github_app_webhook_secret).and_return("instance_webhook_secret")
+    end
+
+    it "falls back to InstanceConfigClient and caches the value" do
+      expect(Semaphore::GithubApp::Credentials.github_app_webhook_secret).to eq("instance_webhook_secret")
+      expect(Semaphore::GithubApp::Credentials.github_app_webhook_secret).to eq("instance_webhook_secret")
+      expect(Semaphore::GithubApp::Credentials::InstanceConfigClient).to have_received(:github_app_webhook_secret).once
+    end
+  end
+
+  context "when both the local webhook secret and InstanceConfigClient fail" do
+    before do
+      allow(Semaphore::GithubApp::Credentials::Local).to receive(:github_app_webhook_secret).and_return(nil)
+      allow(Semaphore::GithubApp::Credentials::InstanceConfigClient).to receive(:github_app_webhook_secret).and_return(nil)
+    end
+
+    it "returns nil if both fallbacks are unavailable" do
+      expect(Semaphore::GithubApp::Credentials.github_app_webhook_secret).to be_nil
     end
   end
 end

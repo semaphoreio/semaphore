@@ -2,7 +2,7 @@
 # Source: plumber_w_f.workflow.proto for package 'InternalApi.PlumberWF'
 
 require 'grpc'
-require_relative 'plumber_w_f.workflow_pb'
+require 'plumber_w_f.workflow_pb'
 
 module InternalApi
   module PlumberWF

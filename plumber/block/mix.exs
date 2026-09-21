@@ -42,6 +42,11 @@ defmodule Block.Mixfile do
       {:uuid, "~> 1.1"},
       {:credo, "~> 1.4", only: [:dev, :test], runtime: false},
       {:httpoison, "~> 0.11"},
+      # Pulled in transitively by httpoison; pinned forward to clear the hackney
+      # CVEs (GHSA-9fm9-hp7p-53mf, GHSA-vq52-99r9-h5pw). 1.24 is the first
+      # version patched against both. override needed because httpoison ~> 0.11
+      # requests hackney ~> 1.8.
+      {:hackney, "~> 1.24", override: true},
       {:ecto_sql, "~> 3.10"},
       {:postgrex, "~> 0.17"},
       {:jason, "~> 1.0"},

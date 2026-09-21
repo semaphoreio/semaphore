@@ -161,6 +161,7 @@ defmodule Zebra.Models.Task do
     ])
     |> validate_inclusion(:result, @results)
     |> validate_inclusion(:fail_fast_strategy, @fail_fast_strategies)
+    |> unique_constraint(:build_request_id, name: :index_build_request_ids_on_builds)
   end
 
   def encode_request(request) do

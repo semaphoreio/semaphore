@@ -76,7 +76,7 @@ pb.gen: pb.gen.internal pb.gen.public
 
 pb.gen.internal:
 	rm -rf $(TMP_REPO_DIR)
-	git clone git@github.com:renderedtext/internal_api.git $(TMP_REPO_DIR) && (cd $(TMP_REPO_DIR) && git checkout $(INTERNAL_API_BRANCH) && cd -)
+	git clone $(INTERNAL_API_REPOSITORY) $(TMP_REPO_DIR) && (cd $(TMP_REPO_DIR) && git checkout $(INTERNAL_API_BRANCH) && cd -)
 	scripts/vagrant_sudo rm -rf lib/internal_api && mkdir -p lib/internal_api
 	docker run --rm -v $(PWD):/home/protoc/code -v $(TMP_REPO_DIR):/home/protoc/source -t renderedtext/protoc:$(PROTOC_TAG) sh -c /home/protoc/code/scripts/internal_protos.sh
 	scripts/vagrant_sudo chown -R $$(id -u $${USER}):$$(id -g $${USER}) lib/internal_api
@@ -161,5 +161,5 @@ console.ce.bash:
 
 workflow.templates.check:
 	@echo "📦 Checking templates..."
-	./scripts/check-templates.sh workflow_templates/saas_new 
+	./scripts/check-templates.sh workflow_templates/saas_new
 	./scripts/check-templates.sh workflow_templates/ce_new

@@ -303,7 +303,9 @@ defmodule Rbac.GrpcServers.RbacServer do
 
   defp handle_list_user_permissions_on_project(user_id, org_id, project_id, role_assignment) do
     member? = role_assignment.role_id == Rbac.Roles.Member.role().id
-    project_access? = !is_nil(ProjectAssignment.get_by_user_and_project_id(user_id, project_id))
+
+    project_access? =
+      !is_nil(ProjectAssignment.get_by_user_org_and_project_id(user_id, org_id, project_id))
 
     role =
       if member? and !project_access?,
@@ -474,7 +476,7 @@ defmodule Rbac.GrpcServers.RbacServer do
         )
     end
 
-    case ProjectAssignment.get_by_user_and_project_id(subject_id, project_id) do
+    case ProjectAssignment.get_by_user_org_and_project_id(subject_id, org_id, project_id) do
       %ProjectAssignment{} = project_assignment ->
         ProjectAssignment.delete(project_assignment)
 
@@ -509,7 +511,7 @@ defmodule Rbac.GrpcServers.RbacServer do
       %RoleAssignment{role_id: role_id} ->
         if role_id == Rbac.Roles.Member.role().id do
           project_assignment =
-            ProjectAssignment.get_by_user_and_project_id(subject_id, project_id)
+            ProjectAssignment.get_by_user_org_and_project_id(subject_id, org_id, project_id)
 
           if is_nil(project_assignment) do
             ProjectAssignment.create(%{

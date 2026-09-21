@@ -8,6 +8,10 @@ defmodule Support.FakeServices do
       for: InternalApi.Gofer.DeploymentTargets.DeploymentTargets.Service
     )
 
+    GrpcMock.defmock(PreFlightChecksMock,
+      for: InternalApi.PreFlightChecksHub.PreFlightChecksService.Service
+    )
+
     GrpcMock.defmock(PipelineMock, for: InternalApi.Plumber.PipelineService.Service)
     GrpcMock.defmock(RepoProxyMock, for: InternalApi.RepoProxy.RepoProxyService.Service)
     GrpcMock.defmock(SchedulerMock, for: InternalApi.PeriodicScheduler.PeriodicService.Service)
@@ -17,17 +21,22 @@ defmodule Support.FakeServices do
 
     GrpcMock.defmock(ProjectMock, for: InternalApi.Projecthub.ProjectService.Service)
     GrpcMock.defmock(UserMock, for: InternalApi.User.UserService.Service)
+    GrpcMock.defmock(GuardMock, for: InternalApi.Guard.Guard.Service)
     GrpcMock.defmock(OrganizationMock, for: InternalApi.Organization.OrganizationService.Service)
+    GrpcMock.defmock(BillingMock, for: InternalApi.Billing.BillingService.Service)
     GrpcMock.defmock(FeatureMock, for: InternalApi.Feature.FeatureService.Service)
     GrpcMock.defmock(RBACMock, for: InternalApi.RBAC.RBAC.Service)
     GrpcMock.defmock(LoghubMock, for: InternalApi.Loghub.Loghub.Service)
     GrpcMock.defmock(Loghub2Mock, for: InternalApi.Loghub2.Loghub2.Service)
+    GrpcMock.defmock(SuperjerryMock, for: InternalApi.Superjerry.Superjerry.Service)
+    GrpcMock.defmock(VelocityMock, for: InternalApi.Velocity.PipelineMetricsService.Service)
 
     services = [
       ArtifacthubMock,
       SecretMock,
       GoferMock,
       DeploymentsMock,
+      PreFlightChecksMock,
       PipelineMock,
       RepoProxyMock,
       SchedulerMock,
@@ -36,11 +45,15 @@ defmodule Support.FakeServices do
       JobMock,
       ProjectMock,
       UserMock,
+      GuardMock,
       OrganizationMock,
+      BillingMock,
       FeatureMock,
       RBACMock,
       LoghubMock,
-      Loghub2Mock
+      Loghub2Mock,
+      SuperjerryMock,
+      VelocityMock
     ]
 
     spawn(fn ->

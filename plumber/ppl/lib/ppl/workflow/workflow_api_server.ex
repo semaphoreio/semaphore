@@ -13,7 +13,6 @@ defmodule Plumber.WorkflowAPI.Server do
   alias Ppl.DeleteRequests.Model.DeleteRequestsQueries
   alias InternalApi.PlumberWF.ListGroupedRequest.SourceType
   alias InternalApi.PlumberWF.{
-    CreateResponse,
     ScheduleResponse,
     TerminateResponse,
     GetPathResponse,
@@ -464,29 +463,6 @@ defmodule Plumber.WorkflowAPI.Server do
       else
         error ->
           respond(GetProjectIdResponse, :INVALID_ARGUMENT, error)
-      end
-    end)
-  end
-
-  # Create
-
-  def create(request, _stream) do
-    Metrics.benchmark("Wf.create", __MODULE__,  fn ->
-      with  {:ok, false}             <- project_deleted?(request.project_id),
-            {:ok, request_map}       <- Proto.to_map(request, string_keys: true),
-            {:ok, schedule_params}   <- Actions.form_schedule_params(request_map),
-            {:ok, result}            <- Actions.schedule(schedule_params, true, true)
-      do
-        %{wf_id: result.wf_id, ppl_id: result.ppl_id}
-        |> Proto.deep_new!(CreateResponse)
-      else
-        {:error, {:project_deleted, project_id}} ->
-          raise RPCError.exception(Status.failed_precondition(),
-                  "Project with id #{project_id} was deleted.")
-        {:limit, msg}  ->
-          raise RPCError.exception(Status.resource_exhausted(), msg)
-        error ->
-          raise RPCError.exception(Status.invalid_argument(), inspect(error))
       end
     end)
   end

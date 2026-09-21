@@ -3,8 +3,10 @@ defmodule Support.StubbedProvider do
 
   @e1_to_f1_org_id "org-e1-to-f1-enabled"
   @e2_to_f1_org_id "org-e2-to-f1-enabled"
+  @exclude_from_brownouts_org_id "org-exclude-from-brownouts-enabled"
 
   @test_results_no_trim_org_id "org-test-results-no-trim-enabled"
+  @git_clone_slow_retry_org_id "org-git-clone-slow-retry-enabled"
 
   @impl FeatureProvider.Provider
   def provide_features(org_id \\ nil, _opts \\ []) do
@@ -16,11 +18,15 @@ defmodule Support.StubbedProvider do
        max_job_time_limit_feature(org_id),
        feature("e1_to_f1_migration", e1_to_f1_traits(org_id)),
        feature("e2_to_f1_migration", e2_to_f1_traits(org_id)),
-       feature("test_results_no_trim", test_results_no_trim_traits(org_id))
+       feature("test_results_no_trim", test_results_no_trim_traits(org_id)),
+       feature("git_clone_slow_retry", git_clone_slow_retry_traits(org_id)),
+       feature("exclude_from_brownouts", exclude_from_brownouts_traits(org_id))
      ]}
   end
 
   def test_results_no_trim_org_id, do: @test_results_no_trim_org_id
+  def git_clone_slow_retry_org_id, do: @git_clone_slow_retry_org_id
+  def exclude_from_brownouts_org_id, do: @exclude_from_brownouts_org_id
 
   def e1_to_f1_org_id, do: @e1_to_f1_org_id
   def e2_to_f1_org_id, do: @e2_to_f1_org_id
@@ -53,6 +59,12 @@ defmodule Support.StubbedProvider do
 
   defp test_results_no_trim_traits(@test_results_no_trim_org_id), do: [:enabled]
   defp test_results_no_trim_traits(_org_id), do: [:hidden]
+
+  defp git_clone_slow_retry_traits(@git_clone_slow_retry_org_id), do: [:enabled]
+  defp git_clone_slow_retry_traits(_org_id), do: [:hidden]
+
+  defp exclude_from_brownouts_traits(@exclude_from_brownouts_org_id), do: [:enabled]
+  defp exclude_from_brownouts_traits(_org_id), do: [:hidden]
 
   @impl FeatureProvider.Provider
   def provide_machines(_org_id \\ nil, _opts \\ []) do

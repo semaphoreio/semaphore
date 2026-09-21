@@ -410,9 +410,23 @@ defmodule FrontWeb.AuditController do
 
   def csv(conn, _params) do
     Watchman.benchmark("audit.csv.duration", fn ->
-      data = Front.Audit.UI.csv(conn.assigns.organization_id)
+      org_id = conn.assigns.organization_id
 
-      conn |> send_download({:binary, data}, filename: "audit.csv")
+      case Front.Audit.UI.start_csv_stream(org_id) do
+        {:ok, channel, first_page} ->
+          conn
+          |> put_resp_content_type("text/csv")
+          |> put_resp_header("content-disposition", ~s(attachment; filename="audit.csv"))
+          |> send_chunked(200)
+          |> Front.Audit.UI.stream_csv(channel, first_page, org_id)
+
+        {:error, reason} ->
+          Logger.error("Audit CSV export failed before headers: #{inspect(reason)}")
+
+          conn
+          |> put_resp_content_type("text/plain")
+          |> send_resp(:bad_gateway, "Failed to export audit logs")
+      end
     end)
   end
 

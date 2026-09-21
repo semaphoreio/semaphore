@@ -5,12 +5,15 @@ defimpl RepositoryHub.Server.GetFileAction, for: RepositoryHub.GitlabAdapter do
 
   @impl true
   def execute(adapter, request) do
+    # GitLab uses "HEAD" to refer to the repository's default branch
+    commit_sha = if request.commit_sha == "", do: "HEAD", else: request.commit_sha
+
     with {:ok, context} <- GitlabAdapter.context(adapter, request.repository_id),
          {:ok, file_content} <-
            GitlabClient.get_file(
              %{
                repository_id: context.repository.remote_id,
-               commit_sha: request.commit_sha,
+               commit_sha: commit_sha,
                path: request.path
              },
              token: context.gitlab_token
@@ -27,7 +30,7 @@ defimpl RepositoryHub.Server.GetFileAction, for: RepositoryHub.GitlabAdapter do
       all: [
         chain: [{:from!, :repository_id}, :is_uuid],
         chain: [{:from!, :path}, :is_string],
-        chain: [{:from!, :commit_sha}, :is_sha]
+        chain: [{:from!, :commit_sha}, any: [:is_sha, :is_string]]
       ]
     )
   end

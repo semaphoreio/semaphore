@@ -21,9 +21,9 @@ defmodule Front.RBAC.Groups do
     |> case do
       {:ok, resp} ->
         if group_id != "" do
-          {:ok, hd(resp.groups) |> inject_user_data()}
+          {:ok, hd(resp.groups) |> inject_user_data(org_id)}
         else
-          {:ok, resp.groups |> Enum.map(&inject_user_data/1)}
+          {:ok, resp.groups |> Enum.map(&inject_user_data(&1, org_id))}
         end
 
       e ->
@@ -109,14 +109,17 @@ defmodule Front.RBAC.Groups do
     Front.RBAC.GroupsClient.channel()
     |> Groups.Groups.Stub.list_groups(req)
     |> case do
-      {:ok, resp} -> {:ok, List.first(resp.groups) |> inject_user_data() |> Map.get(:members)}
-      e -> e
+      {:ok, resp} ->
+        {:ok, List.first(resp.groups) |> inject_user_data(org_id) |> Map.get(:members)}
+
+      e ->
+        e
     end
   end
 
-  defp inject_user_data(group) when is_nil(group), do: []
+  defp inject_user_data(group, _org_id) when is_nil(group), do: []
 
-  defp inject_user_data(group) do
+  defp inject_user_data(group, org_id) do
     members =
       Front.Models.User.find_many(group.member_ids)
       |> Enum.map(
@@ -131,7 +134,7 @@ defmodule Front.RBAC.Groups do
     non_member_ids = group.member_ids -- member_user_ids
 
     service_accounts =
-      Front.ServiceAccount.describe_many(non_member_ids)
+      Front.ServiceAccount.describe_many(non_member_ids, org_id)
       |> case do
         {:ok, service_accounts} ->
           service_accounts
