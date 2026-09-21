@@ -319,14 +319,16 @@ defmodule Zebra.MonitorTest do
 
   test "count_pending_jobs" do
     {:ok, _} = Support.Factories.Job.create(:pending)
+    {:ok, _} = Support.Factories.Job.create(:pending, %{machine_type: "s1-local-testing"})
 
-    assert Monitor.count_pending_jobs() == 1
+    assert Monitor.count_pending_jobs() == {1, 1}
   end
 
   test "count_enqueued_jobs" do
     {:ok, _} = Support.Factories.Job.create(:enqueued)
+    {:ok, _} = Support.Factories.Job.create(:enqueued, %{machine_type: "s1-local-testing"})
 
-    assert Monitor.count_enqueued_jobs() == 1
+    assert Monitor.count_enqueued_jobs() == {1, 1}
   end
 
   test "count_scheduled_jobs" do
