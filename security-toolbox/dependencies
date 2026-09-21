@@ -45,6 +45,10 @@ if File.exist?(policy_file) and args[:ignore_policy].nil?
   args[:ignore_policy] = policy_file
 end
 
+if File.exist?(".mix-audit.txt") and args[:language] == "elixir"
+  args[:ignore_file] = ".mix-audit.txt"
+end
+
 case args[:language]
 when "go", "js"
   require_relative "#{__dir__}/policies/dependencies/trivy_fs"

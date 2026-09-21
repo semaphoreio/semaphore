@@ -19,6 +19,7 @@ tags
 .devcontainer
 .irb_history
 .vscode-server/
+.rubocop_cache/
 
 .env.local
 .env.*.local

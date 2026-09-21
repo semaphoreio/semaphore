@@ -51,6 +51,57 @@ defmodule Guard.Store.Organization do
   def no_of_members(org_id), do: Guard.Api.Rbac.no_of_members(org_id)
 
   @doc """
+  Returns the organizations that block deletion of the given user, each as
+  `{org_id, name, reason}` where reason is `:sole_member`, `:last_owner`, or
+  `:ownership_unverified` (the Owner role could not be resolved, so we fail
+  closed). An empty list means the user can be deleted.
+  """
+  def orgs_blocking_user_deletion(user_id) do
+    user_id
+    |> Guard.Api.Rbac.list_accessible_org_ids()
+    |> active_orgs()
+    |> Enum.flat_map(fn {org_id, name} ->
+      case block_reason(org_id, user_id) do
+        nil -> []
+        reason -> [{org_id, name, reason}]
+      end
+    end)
+  end
+
+  # Only active orgs can block account deletion: a user may still own soft-deleted
+  # orgs (pending hard-delete, RBAC bindings not yet retracted), and those must not
+  # prevent deletion. list_by_ids/1 already filters out soft-deleted rows and gives
+  # us the names for the message; accessible order is preserved for a stable message.
+  defp active_orgs(org_ids) do
+    names_by_id = org_ids |> list_by_ids() |> Map.new(&{&1.id, &1.name})
+
+    org_ids
+    |> Enum.filter(&Map.has_key?(names_by_id, &1))
+    |> Enum.map(&{&1, names_by_id[&1]})
+  end
+
+  # Member count and an owner-only lookup, so we never enumerate every member of
+  # the org (prohibitively slow for large orgs on a request with a hard 30s
+  # deadline). Returns nil when the org does not block deletion.
+  defp block_reason(org_id, user_id) do
+    # The user came from their accessible orgs, so one member means it's them.
+    case Guard.Api.Rbac.single_member?(org_id) do
+      {:ok, true} -> :sole_member
+      {:ok, false} -> owner_block(org_id, user_id)
+      # Can't reach RBAC to count members → can't prove it's safe → block.
+      {:error, _} -> :ownership_unverified
+    end
+  end
+
+  defp owner_block(org_id, user_id) do
+    case Guard.Api.Rbac.org_owner_ids(org_id) do
+      {:ok, owner_ids} -> if user_id in owner_ids and length(owner_ids) == 1, do: :last_owner
+      # Owner role unresolved or RBAC error → can't prove it's safe → block.
+      {:error, _} -> :ownership_unverified
+    end
+  end
+
+  @doc """
   Creates a new organization.
   Returns {:ok, organization} if successful, or {:error, changeset} if validation fails.
   """

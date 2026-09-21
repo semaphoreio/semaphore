@@ -201,6 +201,77 @@ defmodule Router.Tasks.CreateTest do
       assert %{"errors" => [%{"detail" => "Invalid format. Expected ~r/^[A-Z_]{1,}[A-Z0-9_]*$/"}]} =
                env.body
     end
+
+    test "POST /tasks - endpoint returns 422 when regex_pattern exceeds maxLength",
+         ctx do
+      oversized_pattern = String.duplicate("a", 513)
+
+      params = %{
+        apiVersion: "v2",
+        kind: "Task",
+        spec: %{
+          name: "Task",
+          description: "Task description",
+          reference: %{
+            type: "branch",
+            name: "master"
+          },
+          pipeline_file: "pipeline.yml",
+          cron_schedule: "0 0 * * *",
+          parameters: [
+            %{
+              name: "PARAM_NAME",
+              description: "Parameter description",
+              required: true,
+              default_value: "Default value",
+              regex_pattern: oversized_pattern,
+              validate_input_format: true
+            }
+          ]
+        }
+      }
+
+      assert {:ok, %Tesla.Env{status: 422} = env} =
+               Tesla.post(http_client(ctx), "/projects/#{ctx.project_id}/tasks", params)
+
+      assert %{"errors" => [%{"detail" => detail}]} = env.body
+      assert detail =~ "String length is larger than maxLength: 512"
+    end
+
+    test "POST /tasks - endpoint accepts regex_pattern at maxLength boundary",
+         ctx do
+      boundary_pattern = String.duplicate("a", 512)
+
+      params = %{
+        apiVersion: "v2",
+        kind: "Task",
+        spec: %{
+          name: "Task",
+          description: "Task description",
+          reference: %{
+            type: "branch",
+            name: "master"
+          },
+          pipeline_file: "pipeline.yml",
+          cron_schedule: "0 0 * * *",
+          parameters: [
+            %{
+              name: "PARAM_NAME",
+              description: "Parameter description",
+              required: true,
+              default_value: "Default value",
+              regex_pattern: boundary_pattern,
+              validate_input_format: true
+            }
+          ]
+        }
+      }
+
+      assert {:ok, %Tesla.Env{status: 200, body: %{"metadata" => %{"id" => task_id}}}} =
+               Tesla.post(http_client(ctx), "/projects/#{ctx.project_id}/tasks", params)
+
+      assert Support.Stubs.DB.find(:schedulers, task_id)
+    end
   end
 
   defp http_client(ctx) do

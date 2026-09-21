@@ -128,11 +128,35 @@ defmodule Ppl.PplSubInits.STMHandler.RegularInitState do
   end
 
   defp handle_validate(:ok, ppl_req, duplicate?) do
-    {:ok, fn _, _ ->
-      {:ok, _} = create_ppl_blocks(ppl_req, duplicate?)
-      {:ok, %{state: "done", result: "passed"}}
+    {:ok, fn repo, _ ->
+      # Re-read the sub_init with a row lock inside the exit transaction before
+      # creating blocks. A pipeline termination requested while this state was
+      # scheduling records a terminate_request on the sub_init _after_ our
+      # scheduling snapshot was taken. Without this check we would create blocks
+      # that get orphaned in 'waiting' once the pipeline has already transitioned
+      # to 'done'. The 'FOR UPDATE' lock serializes against the pipeline's
+      # terminate write, so either we observe it here (and skip block creation) or
+      # it observes our committed blocks (and terminates them) - never in between.
+      psi = lock_sub_init(repo, ppl_req.id)
+
+      if terminate_requested?(psi) do
+        {:ok, %{state: "done", result: "canceled", result_reason: determin_reason(psi)}}
+      else
+        {:ok, _} = create_ppl_blocks(ppl_req, duplicate?)
+        {:ok, %{state: "done", result: "passed"}}
+      end
     end}
   end
+
+  defp lock_sub_init(repo, ppl_id) do
+    PplSubInits
+    |> where(ppl_id: ^ppl_id)
+    |> lock("FOR UPDATE")
+    |> repo.one()
+  end
+
+  defp terminate_requested?(%{terminate_request: tr}) when tr in ["stop", "cancel"], do: true
+  defp terminate_requested?(_), do: false
 
   defp handle_validate({:error, {:malformed, msg}}) do
     desc = "Error: #{inspect(msg)}"

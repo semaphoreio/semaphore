@@ -37,10 +37,11 @@ defmodule Block.Tasks.STMHandler.StoppingState do
   end
 
   defp handle_description({:ok, {:ok, description}}, task) do
-    with {:ok, task_desc}  <- Map.fetch(description, :task),
-         {:ok, state}      <- Map.fetch(task_desc, :state),
-         {:ok, state}      <- decode_status(state)
-    do determin_state_transition(state, description, task)
+    with {:ok, task_desc}        <- Map.fetch(description, :task),
+         {:ok, state}            <- Map.fetch(task_desc, :state),
+         {:ok, result}           <- Map.fetch(task_desc, :result),
+         {:ok, [state, result]}  <- decode_status([state, result])
+    do determin_state_transition({state, result}, description, task)
     else
       e  -> handle_description({:error, inspect(e)}, task)
     end
@@ -51,19 +52,29 @@ defmodule Block.Tasks.STMHandler.StoppingState do
     {:ok, fn _, _ -> {:error, %{description: desc}} end}
   end
 
-  defp determin_state_transition("done", desc, task) do
+  # The jobs finished with a real verdict before the stop took effect — preserve it.
+  # Zebra is the source of truth here: if the task actually passed/failed, do not relabel
+  # it "stopped", otherwise the block is needlessly re-run.
+  # Mirrors RunningState's result handling.
+  defp determin_state_transition({"done", "passed"}, desc, _task),
+    do: {:ok, fn _, _ -> {:ok, %{state: "done", description: desc, result: "passed"}} end}
+
+  defp determin_state_transition({"done", "failed"}, desc, _task),
+    do: {:ok, fn _, _ -> {:ok, %{state: "done", description: desc, result: "failed", result_reason: "test"}} end}
+
+  # The task was actually interrupted — record it as stopped with the termination reason.
+  defp determin_state_transition({"done", _result}, desc, task) do
     reason = determin_reason(task)
     {:ok, fn _, _ -> {:ok, %{state: "done", description: desc, result: "stopped", result_reason: reason}} end}
   end
 
   # If it is not "done" we treat it as "stopping"
-  defp determin_state_transition(state, _desc, _task) when is_binary(state) ,
+  defp determin_state_transition({state, _result}, _desc, _task) when is_binary(state) ,
     do: {:ok, fn _, _ -> {:ok, %{state: "stopping"}} end}
 
-  defp decode_status(:FINISHED), do: {:ok, "done"}
-  defp decode_status(status) do
-    {:ok, status |> Atom.to_string() |> String.downcase()}
-  end
+  defp decode_status([:FINISHED, result]), do: decode_status([:DONE, result])
+  defp decode_status(status) when is_list(status),
+    do: {:ok, Enum.map(status, &(String.downcase(Atom.to_string(&1))))}
 
   defp determin_reason(%{terminate_request_desc: "API call"}), do: "user"
   defp determin_reason(%{terminate_request_desc: "strategy"}), do: "strategy"

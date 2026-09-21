@@ -156,6 +156,8 @@ defmodule InternalApi.PeriodicScheduler.Periodic.Parameter do
   field :description, 3, type: :string
   field :default_value, 4, type: :string, json_name: "defaultValue"
   field :options, 5, repeated: true, type: :string
+  field :regex_pattern, 6, type: :string, json_name: "regexPattern"
+  field :validate_input_format, 7, type: :bool, json_name: "validateInputFormat"
 end
 
 defmodule InternalApi.PeriodicScheduler.Periodic do
@@ -352,6 +354,43 @@ defmodule InternalApi.PeriodicScheduler.VersionResponse do
   field :version, 1, type: :string
 end
 
+defmodule InternalApi.PeriodicScheduler.BulkUpsertAndPruneRequest.PeriodicDefinition do
+  @moduledoc false
+  use Protobuf, protoc_gen_elixir_version: "0.11.0", syntax: :proto3
+
+  field :id, 1, type: :string
+  field :name, 2, type: :string
+  field :description, 3, type: :string
+  field :recurring, 4, type: :bool
+  field :reference, 5, type: :string
+  field :at, 6, type: :string
+  field :pipeline_file, 7, type: :string, json_name: "pipelineFile"
+  field :parameters, 8, repeated: true, type: InternalApi.PeriodicScheduler.Periodic.Parameter
+  field :state, 9, type: InternalApi.PeriodicScheduler.PersistRequest.ScheduleState, enum: true
+end
+
+defmodule InternalApi.PeriodicScheduler.BulkUpsertAndPruneRequest do
+  @moduledoc false
+  use Protobuf, protoc_gen_elixir_version: "0.11.0", syntax: :proto3
+
+  field :organization_id, 1, type: :string, json_name: "organizationId"
+  field :project_id, 2, type: :string, json_name: "projectId"
+  field :requester_id, 3, type: :string, json_name: "requesterId"
+
+  field :periodics, 4,
+    repeated: true,
+    type: InternalApi.PeriodicScheduler.BulkUpsertAndPruneRequest.PeriodicDefinition
+end
+
+defmodule InternalApi.PeriodicScheduler.BulkUpsertAndPruneResponse do
+  @moduledoc false
+  use Protobuf, protoc_gen_elixir_version: "0.11.0", syntax: :proto3
+
+  field :status, 1, type: InternalApi.Status
+  field :upserted, 2, repeated: true, type: InternalApi.PeriodicScheduler.Periodic
+  field :deleted_ids, 3, repeated: true, type: :string, json_name: "deletedIds"
+end
+
 defmodule InternalApi.PeriodicScheduler.PeriodicService.Service do
   @moduledoc false
   use GRPC.Service,
@@ -407,6 +446,10 @@ defmodule InternalApi.PeriodicScheduler.PeriodicService.Service do
   rpc :Version,
       InternalApi.PeriodicScheduler.VersionRequest,
       InternalApi.PeriodicScheduler.VersionResponse
+
+  rpc :BulkUpsertAndPrune,
+      InternalApi.PeriodicScheduler.BulkUpsertAndPruneRequest,
+      InternalApi.PeriodicScheduler.BulkUpsertAndPruneResponse
 end
 
 defmodule InternalApi.PeriodicScheduler.PeriodicService.Stub do

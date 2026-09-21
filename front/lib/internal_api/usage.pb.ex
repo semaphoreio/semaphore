@@ -284,6 +284,20 @@ defmodule InternalApi.Usage.Seat do
   field(:date, 5, type: Google.Protobuf.Timestamp)
 end
 
+defmodule InternalApi.Usage.OrganizationPolicyApply do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          org_id: String.t(),
+          cutoff_date: Google.Protobuf.Timestamp.t()
+        }
+  defstruct [:org_id, :cutoff_date]
+
+  field(:org_id, 1, type: :string)
+  field(:cutoff_date, 2, type: Google.Protobuf.Timestamp)
+end
+
 defmodule InternalApi.Usage.SeatOrigin do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3

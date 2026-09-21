@@ -82,7 +82,7 @@ func (b *GcsBucket) IsFile(ctx context.Context, path string) (bool, error) {
 		return true, nil
 	}
 
-	if err == gcsstorage.ErrObjectNotExist {
+	if errors.Is(err, gcsstorage.ErrObjectNotExist) {
 		return false, nil
 	}
 
@@ -178,7 +178,7 @@ func (b *GcsBucket) DeleteFile(ctx context.Context, filename string) error {
 
 	if err != nil {
 		l := ctxutil.Logger(ctx)
-		if err == gcsstorage.ErrObjectNotExist {
+		if errors.Is(err, gcsstorage.ErrObjectNotExist) {
 			l.Debug("file already deleted in GCS", zap.String("filename", filename))
 			return nil
 		}

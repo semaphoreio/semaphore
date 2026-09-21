@@ -79,6 +79,13 @@ defmodule Ppl.Grpc.Server.Test do
     assert String.contains?(message, "blocks/0/task")
   end
 
+  test "gRPC validate_yaml() - circular block dependencies rejected" do
+    yaml_definition = cyclic_definition()
+
+    assert {message, _} = assert_validate_yaml(yaml_definition, "", :error, false)
+    assert String.contains?(message, "Circular dependency between blocks detected:")
+  end
+
   test "gRPC validate_yaml() -  valid yaml definition, refuse ppls scheduling if project deletion was requested" do
     {:ok, %{ppl_id: ppl_id}} =
       %{"repo_name" => "5_v1_full", "project_id" => "to-delete"}
@@ -163,6 +170,36 @@ defmodule Ppl.Grpc.Server.Test do
         os_image: ubuntu1804
     blocks:
       - task:
+    """
+  end
+
+  defp cyclic_definition() do
+    """
+    version: "v1.0"
+    name: basic test
+    agent:
+      machine:
+        type: e1-standard-2
+        os_image: ubuntu1804
+    blocks:
+      - name: A
+        dependencies: [C]
+        task:
+          jobs:
+            - commands:
+                - echo foo
+      - name: B
+        dependencies: [A]
+        task:
+          jobs:
+            - commands:
+                - echo bar
+      - name: C
+        dependencies: [B]
+        task:
+          jobs:
+            - commands:
+                - echo baz
     """
   end
 

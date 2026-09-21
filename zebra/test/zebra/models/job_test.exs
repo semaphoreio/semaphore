@@ -3,6 +3,7 @@ defmodule Zebra.Models.JobTest do
 
   alias Zebra.Models.Job
   alias Zebra.Workers.Agent.HostedAgent, as: Agent
+  alias Zebra.Workers.JobRequestFactory.JobRequest
 
   @org_id Ecto.UUID.generate()
   @project_id Ecto.UUID.generate()
@@ -160,7 +161,7 @@ defmodule Zebra.Models.JobTest do
 
       new_updated_at = job.updated_at
 
-      assert old_updated_at < new_updated_at
+      assert DateTime.compare(old_updated_at, new_updated_at) == :lt
     end
 
     test "it updates the fields" do
@@ -197,6 +198,28 @@ defmodule Zebra.Models.JobTest do
       assert job.failure_reason == "Santa said that he was naughty"
       assert Zebra.Models.Task.finished?(task)
     end
+
+    test "when sanitization raises => still finishes the job" do
+      {:ok, job} = Support.Factories.Job.create(:scheduled, %{request: sensitive_request()})
+
+      with_mock JobRequest, [:passthrough], sanitize: fn _ -> raise "boom" end do
+        assert {:ok, finished} = Job.force_finish(job, "Santa said that he was naughty")
+
+        assert Job.finished?(finished)
+        assert finished.request == %{}
+      end
+
+      assert Job.reload(job).request == %{}
+    end
+
+    test "sanitizes the job request" do
+      {:ok, job} = Support.Factories.Job.create(:scheduled, %{request: sensitive_request()})
+
+      assert {:ok, job} = Job.force_finish(job, "Santa said that he was naughty")
+
+      assert_fully_sanitized(job.request)
+      assert_fully_sanitized(Job.reload(job).request)
+    end
   end
 
   describe ".bulk_force_finish" do
@@ -216,6 +239,27 @@ defmodule Zebra.Models.JobTest do
       assert job2.aasm_state == "finished"
       assert job2.result == "failed"
       refute is_nil(job2.finished_at)
+    end
+
+    test "when sanitization raises => still finishes the job" do
+      {:ok, job} = Support.Factories.Job.create(:enqueued, %{request: sensitive_request()})
+
+      with_mock JobRequest, [:passthrough], sanitize: fn _ -> raise "boom" end do
+        Zebra.Models.Job.bulk_force_finish([job.id], "They were bad")
+      end
+
+      reloaded = Job.reload(job)
+
+      assert Job.finished?(reloaded)
+      assert reloaded.request == %{}
+    end
+
+    test "sanitizes the job request" do
+      {:ok, job} = Support.Factories.Job.create(:enqueued, %{request: sensitive_request()})
+
+      Zebra.Models.Job.bulk_force_finish([job.id], "They were bad")
+
+      assert_fully_sanitized(Job.reload(job).request)
     end
   end
 
@@ -358,6 +402,21 @@ defmodule Zebra.Models.JobTest do
   end
 
   describe ".start" do
+    test "when sanitization raises => still starts the job" do
+      {:ok, job} = Support.Factories.Job.create(:scheduled, %{request: sensitive_request()})
+
+      agent = %Agent{id: @agent_id, ip_address: "1.2.3.4", ctrl_port: 80}
+
+      with_mock JobRequest, [:passthrough], sanitize: fn _ -> raise "boom" end do
+        assert {:ok, started} = Job.start(job, agent, sanitize_request: true)
+
+        assert started.aasm_state == "started"
+        assert started.request == %{}
+      end
+
+      assert Job.reload(job).request == %{}
+    end
+
     test "when the job is pending => error" do
       {:ok, job} = Support.Factories.Job.create(:pending)
 
@@ -460,6 +519,42 @@ defmodule Zebra.Models.JobTest do
       end)
     end
 
+    test "when sanitization raises => still stops the job" do
+      {:ok, job} = Support.Factories.Job.create(:started, %{request: sensitive_request()})
+
+      with_mock JobRequest, [:passthrough], sanitize: fn _ -> raise "boom" end do
+        assert {:ok, stopped} = Job.stop(job)
+
+        assert Job.finished?(stopped)
+        assert stopped.request == %{}
+      end
+
+      assert Job.reload(job).request == %{}
+    end
+
+    test "sanitizes the job request" do
+      {:ok, job} = Support.Factories.Job.create(:started, %{request: sensitive_request()})
+
+      assert {:ok, job} = Job.stop(job)
+
+      assert_fully_sanitized(job.request)
+      assert_fully_sanitized(Job.reload(job).request)
+    end
+
+    test "preserves whether execution ever started" do
+      {:ok, enqueued_job} = Support.Factories.Job.create(:enqueued)
+      {:ok, started_job} = Support.Factories.Job.create(:started)
+
+      assert {:ok, enqueued_job} = Job.stop(enqueued_job)
+      assert {:ok, started_job} = Job.stop(started_job)
+
+      assert enqueued_job.started_at == nil
+      refute is_nil(enqueued_job.finished_at)
+
+      refute is_nil(started_job.started_at)
+      refute is_nil(started_job.finished_at)
+    end
+
     test "stops self-hosted job" do
       GrpcMock.stub(Support.FakeServers.SelfHosted, :stop_job, fn _, _ ->
         InternalApi.SelfHosted.StopJobResponse.new()
@@ -540,6 +635,42 @@ defmodule Zebra.Models.JobTest do
       refute is_nil(job.finished_at)
     end
 
+    test "when sanitization raises => still finishes the job" do
+      {:ok, job} = Support.Factories.Job.create(:started, %{request: sensitive_request()})
+
+      with_mock JobRequest, [:passthrough], sanitize: fn _ -> raise "boom" end do
+        assert {:ok, finished} = Job.finish(job, "passed")
+
+        assert Job.finished?(finished)
+        assert finished.request == %{}
+      end
+
+      assert Job.reload(job).request == %{}
+    end
+
+    test "when the request is malformed => still finishes the job" do
+      malformed = %{
+        "env_vars" => [%{"name" => "MY_SECRET", "leftover" => "s3cr3t"}],
+        "compose" => %{"containers" => [%{"name" => "main"}], "image_pull_credentials" => []}
+      }
+
+      {:ok, job} = Support.Factories.Job.create(:started, %{request: malformed})
+
+      assert {:ok, job} = Job.finish(job, "passed")
+
+      assert Job.finished?(job)
+      refute secrets_present?(Job.reload(job).request)
+    end
+
+    test "sanitizes the job request" do
+      {:ok, job} = Support.Factories.Job.create(:started, %{request: sensitive_request()})
+
+      assert {:ok, job} = Job.finish(job, "passed")
+
+      assert_fully_sanitized(job.request)
+      assert_fully_sanitized(Job.reload(job).request)
+    end
+
     test "when the result is failed => finishes the job" do
       {:ok, job} = Support.Factories.Job.create(:started)
 
@@ -590,5 +721,285 @@ defmodule Zebra.Models.JobTest do
 
       assert Job.detect_type(job) == :project_debug_job
     end
+  end
+
+  describe ".claim_and_delete_expired_jobs" do
+    test "claims and deletes expired jobs in a transaction" do
+      now = DateTime.utc_now() |> DateTime.truncate(:second)
+      past = DateTime.add(now, -3600, :second)
+
+      project_id = Ecto.UUID.generate()
+      artifact_store_id = Ecto.UUID.generate()
+
+      Ecto.Adapters.SQL.query!(
+        Zebra.LegacyRepo,
+        "INSERT INTO projects (id, artifact_store_id) VALUES ($1, $2)",
+        [Ecto.UUID.dump!(project_id), Ecto.UUID.dump!(artifact_store_id)]
+      )
+
+      {:ok, job} =
+        Support.Factories.Job.create(:finished, %{
+          project_id: project_id,
+          expires_at: past
+        })
+
+      {:ok, _deleted_stop_requests, deleted_jobs} = Job.claim_and_delete_expired_jobs(10)
+
+      assert deleted_jobs >= 1
+
+      # Verify the job is actually deleted
+      assert Zebra.LegacyRepo.get(Zebra.Models.Job, job.id) == nil
+    end
+
+    test "returns 0 counts when no expired jobs exist" do
+      {:ok, deleted_stop_requests, deleted_jobs} = Job.claim_and_delete_expired_jobs(10)
+
+      assert deleted_stop_requests == 0
+      assert deleted_jobs == 0
+    end
+
+    test "does not claim jobs with future expires_at" do
+      now = DateTime.utc_now() |> DateTime.truncate(:second)
+      future = DateTime.add(now, 3600, :second)
+
+      {:ok, job} =
+        Support.Factories.Job.create(:finished, %{
+          expires_at: future
+        })
+
+      {:ok, _deleted_stop_requests, deleted_jobs} = Job.claim_and_delete_expired_jobs(10)
+
+      assert deleted_jobs == 0
+
+      # Verify the job still exists
+      assert Zebra.LegacyRepo.get(Zebra.Models.Job, job.id) != nil
+    end
+  end
+
+  describe ".create_copy" do
+    setup do
+      {:ok, original} =
+        Support.Factories.Job.create(:finished, %{
+          result: "passed",
+          index: 3,
+          priority: 60,
+          deployment_target_id: Ecto.UUID.generate(),
+          repository_id: Ecto.UUID.generate(),
+          request: %{
+            "job_id" => Ecto.UUID.generate(),
+            "job_name" => "RSpec 1/3",
+            "env_vars" => [
+              %{"name" => "SEMAPHORE_GIT_BRANCH", "value" => "bWFzdGVy"},
+              %{"name" => "SEMAPHORE_GIT_SHA", "value" => "SEVBRA=="}
+            ]
+          }
+        })
+
+      {:ok, original: original, task_id: Ecto.UUID.generate()}
+    end
+
+    test "returns a fresh copy row carrying original_job_id lineage", ctx do
+      {:ok, copy} = Job.create_copy(ctx.original, ctx.task_id)
+
+      assert copy.id != ctx.original.id
+      assert copy.original_job_id == ctx.original.id
+      assert copy.build_id == ctx.task_id
+    end
+
+    test "is born finished + passed", ctx do
+      {:ok, copy} = Job.create_copy(ctx.original, ctx.task_id)
+
+      assert copy.aasm_state == Job.state_finished()
+      assert copy.result == Job.result_passed()
+    end
+
+    test "preserves the original's timestamps, never stamps now (D-03)", ctx do
+      {:ok, copy} = Job.create_copy(ctx.original, ctx.task_id)
+
+      assert copy.created_at == ctx.original.created_at
+      assert copy.started_at == ctx.original.started_at
+      assert copy.finished_at == ctx.original.finished_at
+    end
+
+    test "clones expires_at from the original (D-08 — copy ages with the original)", ctx do
+      expiry = DateTime.utc_now() |> DateTime.add(3600, :second) |> DateTime.truncate(:second)
+
+      {:ok, original} =
+        Support.Factories.Job.create(:finished, %{result: "passed", expires_at: expiry})
+
+      {:ok, copy} = Job.create_copy(original, ctx.task_id)
+
+      assert copy.expires_at == original.expires_at
+      assert copy.expires_at == expiry
+    end
+
+    test "a nil expires_at on the original stays nil on the copy", ctx do
+      assert is_nil(ctx.original.expires_at)
+
+      {:ok, copy} = Job.create_copy(ctx.original, ctx.task_id)
+
+      assert is_nil(copy.expires_at)
+    end
+
+    test "ACCEPTED EDGE (user decision 2026-07-06): a copy with a past cloned expires_at is claimable by the retention sweeper — intended near-expiry behavior, not a bug",
+         ctx do
+      now = DateTime.utc_now() |> DateTime.truncate(:second)
+      past = DateTime.add(now, -3600, :second)
+      project_id = Ecto.UUID.generate()
+      artifact_store_id = Ecto.UUID.generate()
+
+      Ecto.Adapters.SQL.query!(
+        Zebra.LegacyRepo,
+        "INSERT INTO projects (id, artifact_store_id) VALUES ($1, $2)",
+        [Ecto.UUID.dump!(project_id), Ecto.UUID.dump!(artifact_store_id)]
+      )
+
+      {:ok, original} =
+        Support.Factories.Job.create(:finished, %{
+          result: "passed",
+          project_id: project_id,
+          expires_at: past
+        })
+
+      {:ok, copy} = Job.create_copy(original, ctx.task_id)
+      assert copy.expires_at == past
+
+      {:ok, _deleted_stop_requests, deleted_jobs} = Job.claim_and_delete_expired_jobs(10)
+
+      assert deleted_jobs >= 1
+      # The copy row is swept exactly like any other expired job. Accepted residual
+      # risk at ~400-day retention (T-02-03): rerunning a pipeline whose originals are
+      # about to expire is a negligible window — documented, not mitigated here.
+      assert Zebra.LegacyRepo.get(Zebra.Models.Job, copy.id) == nil
+    end
+
+    test "clones identity, spec and display columns from the original", ctx do
+      {:ok, copy} = Job.create_copy(ctx.original, ctx.task_id)
+
+      assert copy.name == ctx.original.name
+      assert copy.index == ctx.original.index
+      assert copy.machine_type == ctx.original.machine_type
+      assert copy.machine_os_image == ctx.original.machine_os_image
+      assert copy.spec == ctx.original.spec
+      assert copy.organization_id == ctx.original.organization_id
+      assert copy.project_id == ctx.original.project_id
+      assert copy.deployment_target_id == ctx.original.deployment_target_id
+      assert copy.repository_id == ctx.original.repository_id
+      assert copy.priority == ctx.original.priority
+    end
+
+    test "clones request so job read surfaces do not crash on a copy row (finding 10)", ctx do
+      {:ok, copy} = Job.create_copy(ctx.original, ctx.task_id)
+
+      assert copy.request == ctx.original.request
+      refute is_nil(copy.request)
+
+      # internal_job_api.get_agent_payload reads job.request via Poison.encode!/1
+      assert is_binary(Poison.encode!(copy.request))
+
+      # public_job_api serializer reads job.request + job.spec — must not crash on a copy
+      serialized = Zebra.Apis.PublicJobApi.Serializer.serialize(copy)
+      assert %Semaphore.Jobs.V1alpha.Job{} = serialized
+    end
+
+    test "forces runtime-only execution fields to their zero value (a copy never executed)",
+         ctx do
+      # sanity: the original DID carry runtime execution fields
+      refute is_nil(ctx.original.agent_ip_address)
+
+      {:ok, copy} = Job.create_copy(ctx.original, ctx.task_id)
+
+      assert is_nil(copy.port)
+      assert is_nil(copy.agent_id)
+      assert is_nil(copy.agent_name)
+      assert is_nil(copy.agent_ip_address)
+      assert is_nil(copy.agent_ctrl_port)
+      assert is_nil(copy.agent_auth_token)
+      assert is_nil(copy.private_ssh_key)
+      assert is_nil(copy.failure_reason)
+    end
+
+    test "a plain job created via Job.create/1 has original_job_id == nil (backward compatible)" do
+      {:ok, job} =
+        Job.create(
+          organization_id: Ecto.UUID.generate(),
+          project_id: Ecto.UUID.generate(),
+          name: "plain",
+          index: 0,
+          priority: 50,
+          spec: %Semaphore.Jobs.V1alpha.Job.Spec{},
+          machine_type: "e1-standard-2",
+          machine_os_image: "ubuntu1804"
+        )
+
+      assert is_nil(job.original_job_id)
+    end
+
+    test "D-05 one-hop flattening: a copy of a copy points at the terminal executed job, never an intermediate copy",
+         ctx do
+      {:ok, first_copy} = Job.create_copy(ctx.original, ctx.task_id)
+      assert first_copy.original_job_id == ctx.original.id
+
+      second_task_id = Ecto.UUID.generate()
+      {:ok, second_copy} = Job.create_copy(first_copy, second_task_id)
+
+      # flattens to the terminal executed job (original), NOT the intermediate copy
+      assert second_copy.original_job_id == ctx.original.id
+      refute second_copy.original_job_id == first_copy.id
+    end
+
+    test "security (V5): org/project ids come from the original row, never caller-supplied params",
+         ctx do
+      # create_copy/2 takes only (original, task_id) — there is no caller-supplied
+      # org/project param, so a copy cannot be minted into a different tenant.
+      {:ok, copy} = Job.create_copy(ctx.original, ctx.task_id)
+
+      assert copy.organization_id == ctx.original.organization_id
+      assert copy.project_id == ctx.original.project_id
+    end
+  end
+
+  @secret_value "s3cr3t"
+  @secret_file_content "//registry/:_authToken=abc"
+
+  # Asserts on the actual values, not just JobRequest.sanitized?/1, which
+  # inspects env vars only and so cannot see an unsanitized file.
+  defp assert_fully_sanitized(request) do
+    assert JobRequest.sanitized?(request)
+
+    Enum.each(request["env_vars"], fn env_var ->
+      if env_var["name"] == "MY_SECRET" do
+        assert env_var["value"] == "{SANITIZED}"
+      end
+    end)
+
+    Enum.each(request["files"], fn file ->
+      assert file["content"] == "{SANITIZED}",
+             "file #{file["path"]} was not sanitized: #{inspect(file["content"])}"
+    end)
+
+    refute secrets_present?(request)
+  end
+
+  # Shape independent backstop: no secret material anywhere in the request.
+  defp secrets_present?(request) do
+    encoded = Poison.encode!(request)
+
+    String.contains?(encoded, Base.encode64(@secret_value)) or
+      String.contains?(encoded, Base.encode64(@secret_file_content)) or
+      String.contains?(encoded, @secret_value) or
+      String.contains?(encoded, @secret_file_content)
+  end
+
+  defp sensitive_request do
+    %{
+      "env_vars" => [
+        JobRequest.env_var("SEMAPHORE_JOB_ID", "job-id"),
+        JobRequest.env_var("MY_SECRET", @secret_value)
+      ],
+      "files" => [
+        JobRequest.file("/home/semaphore/.npmrc", @secret_file_content, "0600")
+      ]
+    }
   end
 end

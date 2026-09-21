@@ -27,7 +27,7 @@
         <input class="x-select-on-click f5 code form-control w-100 mw7" type="text" value="sem get dashboards" size="36" readonly>
       </div>
       <div class="f6">
-        Docs: <a href="https://<%= Application.fetch_env!(:front, :docs_domain) %>/article/53-sem-reference#working-with-resources">Working with Resources</a> & <a href="https://<%= Application.fetch_env!(:front, :docs_domain) %>/article/60-dashboards-yaml-reference">YAML Reference</a>
+        Docs: <a href="https://<%= Application.fetch_env!(:front, :docs_domain) %>/reference/semaphore-cli#resources">Working with Resources</a> & <a href="https://<%= Application.fetch_env!(:front, :docs_domain) %>/reference/dashboard-yaml">YAML Reference</a>
       </div>
 
       <details class="nb1 pointer bt b--lighter-gray pt2 mt3">

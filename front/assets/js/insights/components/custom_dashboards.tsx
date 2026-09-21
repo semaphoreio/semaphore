@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { useContext, useLayoutEffect, useState } from "preact/hooks";
+import { useContext, useEffect, useLayoutEffect, useState } from "preact/hooks";
 import { Dashboard, DashboardItem } from "../types/dashboard";
 import { DashboardItemForm } from "./forms/dashboard_item_form";
 import * as types from "../types";
@@ -50,7 +50,13 @@ export const CustomDashboards = ({
   endpointUrls.frequency = pipelineFrequencyUrl;
   endpointUrls.dashboards = dashboardsUrl;
 
-  const [dashboardName, setDashboardName] = useState(dashboard.name);
+  const [dashboardName, setDashboardName] = useState(``);
+
+  useEffect(() => {
+    if (dashboard) {
+      setDashboardName(dashboard.name);
+    }
+  }, [dashboard?.id, dashboard?.name]);
 
   const { show, toggle } = useToggle();
 

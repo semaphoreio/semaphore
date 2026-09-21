@@ -75,7 +75,8 @@ defmodule RepositoryHub.RepositoryModelFactory do
       pipeline_file: ".semaphore/semaphore.yml",
       default_branch: "main",
       hook_id: "123",
-      hook_secret_enc: hook_secret_enc
+      hook_secret_enc: hook_secret_enc,
+      remote_id: Ecto.UUID.generate()
     )
     |> Enum.into(%{})
   end

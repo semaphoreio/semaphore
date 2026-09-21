@@ -30,10 +30,23 @@ defmodule Support.Stubs.RepositoryIntegrator do
 
     get_file_response = InternalApi.RepositoryIntegrator.GetFileResponse.new(content: "")
 
+    refresh_repositories_response =
+      InternalApi.RepositoryIntegrator.RefreshRepositoriesResponse.new(
+        sync_state:
+          InternalApi.RepositoryIntegrator.RefreshRepositoriesResponse.SyncState.value(:STARTED),
+        message: "Repository sync started."
+      )
+
     GrpcMock.stub(RepositoryIntegratorMock, :get_repositories, get_repositories_response)
     GrpcMock.stub(RepositoryIntegratorMock, :check_token, check_token_response)
     GrpcMock.stub(RepositoryIntegratorMock, :get_file, get_file_response)
     GrpcMock.stub(RepositoryIntegratorMock, :get_token, &__MODULE__.get_token/2)
+
+    GrpcMock.stub(
+      RepositoryIntegratorMock,
+      :refresh_repositories,
+      refresh_repositories_response
+    )
 
     GrpcMock.stub(
       RepositoryIntegratorMock,

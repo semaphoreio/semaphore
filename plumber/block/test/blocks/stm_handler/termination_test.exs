@@ -4,7 +4,7 @@ defmodule Block.Blocks.Termination.Test do
   alias Block.Blocks.Model.{Blocks, BlocksQueries}
   alias Block.BlockRequests.Model.BlockRequestsQueries
   alias Block.BlockSubppls.Model.BlockSubpplsQueries
-  alias Block.Tasks.Model.TasksQueries
+  alias Block.Tasks.Model.{Tasks, TasksQueries}
   alias Block.EctoRepo, as: Repo
   alias Test.Helpers
 
@@ -55,6 +55,56 @@ defmodule Block.Blocks.Termination.Test do
     assert_terminated(blk, t_params, handler, desired_result, 3_000)
   end
 
+  # When a block is being stopped (e.g. fast-failing of a sibling block)
+  # but its task had already finished, the block must keep the task's real verdict
+  # instead of being relabelled "stopped" — otherwise a partial rebuild needlessly re-runs
+  # an already-passed block.
+  test "stopping a block whose task already passed records the block as passed", ctx do
+    blk = Map.get(ctx, :blk)
+
+    {:ok, _task} = insert_done_task(blk.block_id, "passed", nil)
+    {:ok, blk} = put_in_stopping(blk, "API call")
+
+    {:ok, pid} = Block.Blocks.STMHandler.StoppingState.start_link()
+    args = [blk, {"done", "passed", nil}, [pid]]
+    Helpers.assert_finished_for_less_than(__MODULE__, :check_state?, args, 3_000)
+  end
+
+  test "stopping a block whose task already failed records the block as failed", ctx do
+    blk = Map.get(ctx, :blk)
+
+    {:ok, _task} = insert_done_task(blk.block_id, "failed", "test")
+    {:ok, blk} = put_in_stopping(blk, "API call")
+
+    {:ok, pid} = Block.Blocks.STMHandler.StoppingState.start_link()
+    args = [blk, {"done", "failed", "test"}, [pid]]
+    Helpers.assert_finished_for_less_than(__MODULE__, :check_state?, args, 3_000)
+  end
+
+  test "stopping a block whose task was interrupted records it as stopped", ctx do
+    blk = Map.get(ctx, :blk)
+
+    {:ok, _task} = insert_done_task(blk.block_id, "stopped", "user")
+    {:ok, blk} = put_in_stopping(blk, "API call")
+
+    {:ok, pid} = Block.Blocks.STMHandler.StoppingState.start_link()
+    args = [blk, {"done", "stopped", "user"}, [pid]]
+    Helpers.assert_finished_for_less_than(__MODULE__, :check_state?, args, 3_000)
+  end
+
+  # A task terminated before it ran ends up "canceled"; the stopped block must still be
+  # recorded "stopped" (only real passed/failed verdicts are preserved), not "canceled".
+  test "stopping a block whose task was canceled records it as stopped", ctx do
+    blk = Map.get(ctx, :blk)
+
+    {:ok, _task} = insert_done_task(blk.block_id, "canceled", "user")
+    {:ok, blk} = put_in_stopping(blk, "API call")
+
+    {:ok, pid} = Block.Blocks.STMHandler.StoppingState.start_link()
+    args = [blk, {"done", "stopped", "user"}, [pid]]
+    Helpers.assert_finished_for_less_than(__MODULE__, :check_state?, args, 3_000)
+  end
+
   @tag :integration
   test "stop blk in running state", ctx do
     blk = Map.get(ctx, :blk)
@@ -98,6 +148,19 @@ defmodule Block.Blocks.Termination.Test do
   defp terminate_blk(blk, t_req, t_desc) do
     blk
     |> Blocks.changeset(%{terminate_request: t_req, terminate_request_desc: t_desc})
+    |> Repo.update()
+  end
+
+  defp insert_done_task(block_id, result, result_reason) do
+    params = %{block_id: block_id, state: "done", result: result, result_reason: result_reason,
+               in_scheduling: false, build_request_id: UUID.uuid4()}
+
+    %Tasks{} |> Tasks.changeset(params) |> Repo.insert()
+  end
+
+  defp put_in_stopping(blk, t_desc) do
+    blk
+    |> Blocks.changeset(%{state: "stopping", terminate_request: "stop", terminate_request_desc: t_desc})
     |> Repo.update()
   end
 

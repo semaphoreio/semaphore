@@ -3,6 +3,7 @@ package storage
 import (
 	"fmt"
 	"mime"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,15 +15,32 @@ import (
 func AppendContentType(mimes map[string]bool, extraMimes map[string]string, URL, path string) string {
 	fileType := filepath.Ext(path)
 	if m, ok := extraMimes[fileType]; ok { // force extra mime
-		return fmt.Sprintf("%s&response-content-disposition=inline&response-content-type=%s", URL, m)
+		return appendResponseOverrides(URL, m)
 	}
 
 	m := mime.TypeByExtension(fileType) // the real mime of that file type
 	if _, ok := mimes[m]; ok {          // if we need it to be openable in browser
-		return fmt.Sprintf("%s&response-content-disposition=inline&response-content-type=%s", URL, m)
+		return appendResponseOverrides(URL, m)
 	}
 
 	return URL // will download as before
+}
+
+// appendResponseOverrides appends the GCS response-content-* override query
+// parameters that make an artifact open inline in the browser.
+//
+// The content type value MUST be percent-encoded: mime types can contain
+// characters that are illegal in a URL query string — e.g. the standard mapping
+// for ".txt" is "text/plain; charset=utf-8", whose space made the URL malformed.
+// Browsers silently repaired it (they re-encode the space to %20 before
+// requesting), but strict clients such as curl and the Go net/http client sent
+// it verbatim and the storage backend rejected the request with HTTP 400.
+// Spaces are encoded as %20 rather than '+' to avoid any '+'-vs-space ambiguity
+// in how the backend decodes the override. These params are not covered by the
+// V2 signature, so encoding them does not affect the signature.
+func appendResponseOverrides(signedURL, contentType string) string {
+	encoded := strings.ReplaceAll(url.QueryEscape(contentType), "+", "%20")
+	return fmt.Sprintf("%s&response-content-disposition=inline&response-content-type=%s", signedURL, encoded)
 }
 
 func LoadMimes() map[string]bool {

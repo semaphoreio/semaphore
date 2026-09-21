@@ -11,7 +11,7 @@ defmodule GithubNotifier.Utils.Context do
   """
   def prepare(name, repo_proxy, org_id) do
     name = name |> GithubNotifier.Utils.Cleaner.clean()
-    hook_type = InternalApi.RepoProxy.Hook.Type.key(repo_proxy.git_ref_type)
+    hook_type = repo_proxy.git_ref_type
 
     prefix = get_prefix()
     suffix = get_suffix(hook_type, repo_proxy.branch_name, org_id)

@@ -7,7 +7,7 @@ require 'google/protobuf'
 
 descriptor_data = "\n\x0f\x65ncryptor.proto\x12\x15InternalApi.Encryptor\"6\n\x0e\x45ncryptRequest\x12\x0b\n\x03raw\x18\x01 \x01(\x0c\x12\x17\n\x0f\x61ssociated_data\x18\x02 \x01(\x0c\"!\n\x0f\x45ncryptResponse\x12\x0e\n\x06\x63ypher\x18\x01 \x01(\x0c\"9\n\x0e\x44\x65\x63ryptRequest\x12\x0e\n\x06\x63ypher\x18\x01 \x01(\x0c\x12\x17\n\x0f\x61ssociated_data\x18\x02 \x01(\x0c\"\x1e\n\x0f\x44\x65\x63ryptResponse\x12\x0b\n\x03raw\x18\x01 \x01(\x0c\x32\xbf\x01\n\tEncryptor\x12X\n\x07\x45ncrypt\x12%.InternalApi.Encryptor.EncryptRequest\x1a&.InternalApi.Encryptor.EncryptResponse\x12X\n\x07\x44\x65\x63rypt\x12%.InternalApi.Encryptor.DecryptRequest\x1a&.InternalApi.Encryptor.DecryptResponseb\x06proto3"
 
-pool = Google::Protobuf::DescriptorPool.generated_pool
+pool = ::Google::Protobuf::DescriptorPool.generated_pool
 pool.add_serialized_file(descriptor_data)
 
 module InternalApi

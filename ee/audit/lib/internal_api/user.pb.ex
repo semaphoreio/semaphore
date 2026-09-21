@@ -23,11 +23,13 @@ end
 defmodule InternalApi.User.RepositoryProvider.Type do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
-  @type t :: integer | :GITHUB | :BITBUCKET
+  @type t :: integer | :GITHUB | :BITBUCKET | :GITLAB
 
   field(:GITHUB, 0)
 
   field(:BITBUCKET, 1)
+
+  field(:GITLAB, 2)
 end
 
 defmodule InternalApi.User.RepositoryProvider.Scope do
@@ -61,11 +63,13 @@ end
 defmodule InternalApi.User.User.CreationSource do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
-  @type t :: integer | :NOT_SET | :OKTA
+  @type t :: integer | :NOT_SET | :OKTA | :SERVICE_ACCOUNT
 
   field(:NOT_SET, 0)
 
   field(:OKTA, 1)
+
+  field(:SERVICE_ACCOUNT, 2)
 end
 
 defmodule InternalApi.User.ListFavoritesRequest do
@@ -169,7 +173,6 @@ defmodule InternalApi.User.DescribeResponse do
           github_token: String.t(),
           github_scope: InternalApi.User.DescribeResponse.RepoScope.t(),
           github_uid: String.t(),
-          api_token: String.t(),
           name: String.t(),
           github_login: String.t(),
           company: String.t(),
@@ -188,7 +191,6 @@ defmodule InternalApi.User.DescribeResponse do
     :github_token,
     :github_scope,
     :github_uid,
-    :api_token,
     :name,
     :github_login,
     :company,
@@ -206,7 +208,6 @@ defmodule InternalApi.User.DescribeResponse do
   field(:github_token, 7, type: :string)
   field(:github_scope, 12, type: InternalApi.User.DescribeResponse.RepoScope, enum: true)
   field(:github_uid, 8, type: :string)
-  field(:api_token, 9, type: :string)
   field(:name, 10, type: :string)
   field(:github_login, 11, type: :string)
   field(:company, 13, type: :string)
@@ -355,43 +356,13 @@ defmodule InternalApi.User.RegenerateTokenResponse do
 
   @type t :: %__MODULE__{
           status: Google.Rpc.Status.t() | nil,
-          user: InternalApi.User.User.t() | nil
+          api_token: String.t()
         }
 
-  defstruct [:status, :user]
+  defstruct [:status, :api_token]
 
   field(:status, 1, type: Google.Rpc.Status)
-  field(:user, 2, type: InternalApi.User.User)
-end
-
-defmodule InternalApi.User.RefererRequest do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          user_id: String.t()
-        }
-
-  defstruct [:user_id]
-
-  field(:user_id, 1, type: :string)
-end
-
-defmodule InternalApi.User.RefererResponse do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          user_id: String.t(),
-          entry_url: String.t(),
-          http_referer: String.t()
-        }
-
-  defstruct [:user_id, :entry_url, :http_referer]
-
-  field(:user_id, 1, type: :string)
-  field(:entry_url, 2, type: :string)
-  field(:http_referer, 3, type: :string)
+  field(:api_token, 3, type: :string)
 end
 
 defmodule InternalApi.User.CheckGithubTokenRequest do
@@ -493,6 +464,19 @@ defmodule InternalApi.User.DescribeByRepositoryProviderRequest do
   field(:provider, 1, type: InternalApi.User.RepositoryProvider)
 end
 
+defmodule InternalApi.User.DescribeByEmailRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          email: String.t()
+        }
+
+  defstruct [:email]
+
+  field(:email, 1, type: :string)
+end
+
 defmodule InternalApi.User.RefreshRepositoryProviderRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3
@@ -523,6 +507,27 @@ defmodule InternalApi.User.RefreshRepositoryProviderResponse do
   field(:repository_provider, 2, type: InternalApi.User.RepositoryProvider)
 end
 
+defmodule InternalApi.User.CreateRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          email: String.t(),
+          name: String.t(),
+          password: String.t(),
+          repository_providers: [InternalApi.User.RepositoryProvider.t()],
+          skip_password_change: boolean
+        }
+
+  defstruct [:email, :name, :password, :repository_providers, :skip_password_change]
+
+  field(:email, 1, type: :string)
+  field(:name, 2, type: :string)
+  field(:password, 3, type: :string)
+  field(:repository_providers, 4, repeated: true, type: InternalApi.User.RepositoryProvider)
+  field(:skip_password_change, 5, type: :bool)
+end
+
 defmodule InternalApi.User.User do
   @moduledoc false
   use Protobuf, syntax: :proto3
@@ -532,7 +537,6 @@ defmodule InternalApi.User.User do
           avatar_url: String.t(),
           github_uid: String.t(),
           name: String.t(),
-          api_token: String.t(),
           github_login: String.t(),
           company: String.t(),
           email: String.t(),
@@ -551,7 +555,6 @@ defmodule InternalApi.User.User do
     :avatar_url,
     :github_uid,
     :name,
-    :api_token,
     :github_login,
     :company,
     :email,
@@ -569,7 +572,6 @@ defmodule InternalApi.User.User do
   field(:avatar_url, 3, type: :string)
   field(:github_uid, 4, type: :string)
   field(:name, 5, type: :string)
-  field(:api_token, 6, type: :string)
   field(:github_login, 7, type: :string)
   field(:company, 8, type: :string)
   field(:email, 9, type: :string)
@@ -628,23 +630,6 @@ defmodule InternalApi.User.UserUpdated do
 
   field(:user_id, 1, type: :string)
   field(:timestamp, 2, type: Google.Protobuf.Timestamp)
-end
-
-defmodule InternalApi.User.UserRefererCreated do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          user_id: String.t(),
-          entry_url: String.t(),
-          http_referer: String.t()
-        }
-
-  defstruct [:user_id, :entry_url, :http_referer]
-
-  field(:user_id, 1, type: :string)
-  field(:entry_url, 2, type: :string)
-  field(:http_referer, 3, type: :string)
 end
 
 defmodule InternalApi.User.UserJoinedOrganization do
@@ -789,6 +774,8 @@ defmodule InternalApi.User.UserService.Service do
     InternalApi.User.User
   )
 
+  rpc(:DescribeByEmail, InternalApi.User.DescribeByEmailRequest, InternalApi.User.User)
+
   rpc(:SearchUsers, InternalApi.User.SearchUsersRequest, InternalApi.User.SearchUsersResponse)
 
   rpc(:DescribeMany, InternalApi.User.DescribeManyRequest, InternalApi.User.DescribeManyResponse)
@@ -813,8 +800,6 @@ defmodule InternalApi.User.UserService.Service do
 
   rpc(:DeleteFavorite, InternalApi.User.Favorite, InternalApi.User.Favorite)
 
-  rpc(:Referer, InternalApi.User.RefererRequest, InternalApi.User.RefererResponse)
-
   rpc(
     :CheckGithubToken,
     InternalApi.User.CheckGithubTokenRequest,
@@ -836,6 +821,8 @@ defmodule InternalApi.User.UserService.Service do
     InternalApi.User.RefreshRepositoryProviderRequest,
     InternalApi.User.RefreshRepositoryProviderResponse
   )
+
+  rpc(:Create, InternalApi.User.CreateRequest, InternalApi.User.User)
 end
 
 defmodule InternalApi.User.UserService.Stub do

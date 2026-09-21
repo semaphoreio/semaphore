@@ -31,6 +31,10 @@ defmodule Rbac.Services.UserUpdater do
         handle_oidc_sync(event.user_id)
       end
 
+      # Propagate any repo host login changes (e.g. GitHub username rename) into
+      # cached collaborator rows so per-project listings/exports stay in sync.
+      Rbac.SyncUsernames.propagate(event.user_id)
+
       log(event.user_id, "Processing finished")
     end)
   end

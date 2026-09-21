@@ -19,6 +19,10 @@ config :ppl, Ppl.Cache.OrganizationSettings,
   size_limit: 1_000,
   reclaim_coef: 0.5
 
+# In tests, use the FeatureHub provider without caching so the gRPC mock is
+# always consulted. Tests that need to control the flag stub Ppl.Features.
+config :ppl, feature_provider: {Ppl.FeatureHubProvider, []}
+
 # Time to wait before pipeline status is reexamined
 # -2 means 'do not wait' or take all
 config :ppl, general_looper_cooling_time_sec: -2

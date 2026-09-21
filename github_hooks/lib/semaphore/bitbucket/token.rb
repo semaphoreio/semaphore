@@ -1,11 +1,28 @@
 module Semaphore::Bitbucket
   class Token
+    def self.validation_state(token)
+      return :invalid unless token.present?
+
+      response =
+        Excon.get(
+          "https://api.bitbucket.org/2.0/user/workspaces?pagelen=1",
+          :headers => { "Authorization" => "Bearer #{token}" }
+        )
+
+      case response.status
+      when 200..299
+        :valid
+      when 401, 403
+        :invalid
+      else
+        :transient
+      end
+    rescue Excon::Error
+      :transient
+    end
+
     def self.valid?(token)
-      return false unless token.present?
-
-      response = Excon.get("https://api.bitbucket.org/2.0/repositories?access_token=#{token}")
-
-      response.status <= 299
+      validation_state(token) == :valid
     end
 
     def self.user_token(repo_host_account)
@@ -33,17 +50,38 @@ module Semaphore::Bitbucket
                    :password => Semaphore::Bitbucket::Credentials.secret_id,
                    :body => URI.encode_www_form(body_params),
                    :headers => { "Content-Type" => "application/x-www-form-urlencoded" })
-      body = JSON.parse(response.body)
+      body =
+        begin
+          JSON.parse(response.body)
+        rescue JSON::ParserError
+          {}
+        end
 
       if response.status <= 299
         [body["access_token"], body["expires_in"].seconds.since]
       elsif response.status >= 400 and response.status <= 499
-        repo_host_account.update(:revoked => true)
+        if invalid_grant?(body)
+          repo_host_account.update(:revoked => true)
+        else
+          # A bare 4xx (e.g. an edge/WAF 403, or our client credentials
+          # being rejected) is NOT a genuine grant revocation - only
+          # error=invalid_grant means the user's refresh_token was
+          # actually revoked. Latching :revoked on any 4xx here would
+          # permanently disconnect the account over a transient failure.
+          Rails.logger.warn(
+            "[Semaphore::Bitbucket::Token] Non-revoking refresh failure " \
+            "(HTTP #{response.status}) for repo_host_account #{repo_host_account.id}, not revoking"
+          )
+        end
 
         ["", nil]
       else
         ["", nil]
       end
+    end
+
+    def self.invalid_grant?(body)
+      body.is_a?(Hash) && body["error"] == "invalid_grant"
     end
 
     def self.cache_key(repo_host_account)

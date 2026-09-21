@@ -25,5 +25,21 @@ defmodule PipelinesAPI.Util.Metrics do
     end)
   end
 
+  @doc """
+  Increment a counter metric.
+  """
+  @spec increment(atom() | String.t(), [String.t()]) :: :ok
+  def increment(name, tags \\ [])
+
+  def increment(name, tags) when is_atom(name),
+    do: name |> inspect() |> increment(tags)
+
+  def increment(name, tags) when is_binary(name) and is_list(tags) do
+    {name, tags}
+    |> Watchman.increment()
+
+    :ok
+  end
+
   @typep fun0 :: (() -> any())
 end
