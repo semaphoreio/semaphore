@@ -61,6 +61,8 @@ sem-ai connect <your-org>.semaphoreci.com YOUR_API_TOKEN
 
 `sem-ai` writes credentials to `~/.sem.yaml`, the same file used by the legacy [`sem` CLI](https://github.com/semaphoreci/cli), so existing contexts and tokens are reused.
 
+If you work across several organizations, pin the one you mean per invocation with `--context` (or `SEM_CONTEXT` for a whole session) rather than switching the shared active context. That matters most when more than one agent runs on the same machine, since they would otherwise compete over a single shared setting. See [pinning an organization](../../reference/sem-ai-cli#context-pin).
+
 For shared or headless setups — a chatops bot, an internal dashboard, or a non-Semaphore CI job that calls the Semaphore API — use a [service account](../service-accounts) token instead, so access and rotation are not tied to any single user.
 
 Verify with:
@@ -152,7 +154,22 @@ To register `sem-ai mcp` manually in any MCP-aware client, add to `.mcp.json` in
 }
 ```
 
-This is local: the MCP server runs on the same machine as the agent, using your `sem-ai connect` credentials. Long-running commands (`watch`, `promote-and-wait`) are excluded from the MCP surface to prevent blocking the agent.
+To tie a server to one organization, pass `--context` in its `args`:
+
+```json
+{
+  "mcpServers": {
+    "semaphore": {
+      "command": "sem-ai",
+      "args": ["mcp", "--context", "myorg_semaphoreci_com"]
+    }
+  }
+}
+```
+
+Every tool call that server handles then runs against that organization, whatever the shared active context happens to be. Individual calls can still override it by passing a `context` argument, which applies to that call only.
+
+This is local: the MCP server runs on the same machine as the agent, using your `sem-ai connect` credentials. Long-running commands (`watch`, `promote-and-wait`) are excluded from the MCP surface to prevent blocking the agent, as are the `signin` and `connect` onboarding commands — run those in a shell.
 
 ## Create a project from the CLI
 
