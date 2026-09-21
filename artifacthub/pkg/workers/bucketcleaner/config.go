@@ -13,9 +13,9 @@ import (
 // The wait is what makes the delete reversible: restoring the project inside the
 // window cancels the purge, so the artifacts come back with it. Emptying the storage
 // as soon as the delete arrives leaves nothing to restore.
-const DefaultPurgeGracePeriod = 72 * time.Hour
+const DefaultPurgeGracePeriod = 24 * time.Hour
 
-// PurgeGracePeriodEnvVar holds a Go duration, for example "72h", "90m" or "0".
+// PurgeGracePeriodEnvVar holds a Go duration, for example "24h", "90m" or "0".
 // Zero means purge as soon as the delete is seen, which is the behaviour this grace
 // period replaced.
 const PurgeGracePeriodEnvVar = "ARTIFACT_PURGE_GRACE_PERIOD"
