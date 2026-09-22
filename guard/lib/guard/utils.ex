@@ -48,42 +48,157 @@ defmodule Guard.Utils.OAuth do
   require Logger
 
   def handle_ok_token_response(repo_host_account, body) do
-    body =
-      if is_binary(body) do
-        Jason.decode!(body)
-      else
-        body
-      end
+    # The refresh response body must degrade to :transient - never raise - on
+    # anything we cannot parse into a token. github's OAuth token endpoint
+    # answers `application/x-www-form-urlencoded` by default (we send no
+    # `Accept: application/json`), so its 2xx body arrives as a raw form-encoded
+    # STRING, not JSON; bitbucket/gitlab answer JSON. Decode by provider and
+    # never raise: an empty / HTML / otherwise unexpected body degrades to
+    # :transient. An unrescued raise would cross the gRPC boundary as INTERNAL
+    # and escape before the negative cache is written, re-hammering the shared
+    # OAuth credential every request.
+    case decode_token_body(repo_host_account.repo_host, body) do
+      {:ok, decoded} ->
+        token = presence(decoded["access_token"])
+        expires_in = normalize_expires_in(decoded["expires_in"])
+        # Single-use rotation: capture the NEW refresh_token when the provider
+        # returned one. Do NOT fall back to the stored/in-memory value - a 2xx
+        # that omits refresh_token (GitHub, or an unchanged token) must leave
+        # the stored column UNTOUCHED, never rewrite a possibly-stale snapshot
+        # over a newer token a concurrent worker just rotated in.
+        rotated_refresh_token = presence(decoded["refresh_token"])
 
-    token = body["access_token"]
-    expires_in = body["expires_in"]
-    # Some providers (e.g. GitHub) omit refresh_token on a 2xx response when
-    # the existing refresh token is still valid (not rotated) - fall back to
-    # the stored one instead of overwriting it with nil.
-    refresh_token = body["refresh_token"] || repo_host_account.refresh_token
+        expires_at = resolve_expires_at(repo_host_account, expires_in)
 
-    expires_at = calc_expires_at(expires_in)
+        # Some providers (github) answer a 2xx whose BODY carries the OAuth
+        # error instead of a non-2xx status - e.g. bad_refresh_token /
+        # invalid_grant on a genuinely revoked grant. Without this it would
+        # decode to a nil access_token and get stuck :transient forever, never
+        # signalling the user to reconnect. Classify it as a real revoke.
+        if is_nil(token) and genuine_grant_revocation?(decoded) do
+          Logger.warning(
+            "2xx token refresh body signals a genuine revocation for " <>
+              "rha=#{repo_host_account.id} user=#{repo_host_account.user_id} " <>
+              "#{repo_host_account.repo_host}; treating as revoked"
+          )
 
-    # By default, GitHub don't expires, so the expires_at is nil
-    nil_valid = repo_host_account.repo_host == "github"
+          {:error, :revoked}
+        else
+          persist_refreshed_token(repo_host_account, token, rotated_refresh_token, expires_at)
+        end
 
-    if valid_token?(expires_at, nil_valid: nil_valid) do
-      update_token(repo_host_account, token, refresh_token, expires_at)
+      :error ->
+        Logger.warning(
+          "2xx token refresh response body was not decodable for " <>
+            "rha=#{repo_host_account.id} user=#{repo_host_account.user_id} " <>
+            "#{repo_host_account.repo_host}; treating as transient"
+        )
+
+        {:error, :transient}
     end
-
-    {:ok, {token, expires_at}}
   end
 
-  defp update_token(repo_host_account, token, refresh_token, expires_at) do
-    {:ok, parsed_expires_at} = expires_at |> DateTime.from_unix(:second)
+  # Already-decoded map (e.g. gitlab, whose refresh client has JSON middleware).
+  defp decode_token_body(_provider, body) when is_map(body), do: {:ok, body}
 
-    Guard.FrontRepo.RepoHostAccount.update_token(
+  # github answers form-urlencoded by default; still tolerate a JSON body.
+  defp decode_token_body("github", body) when is_binary(body), do: decode_form_or_json(body)
+
+  # bitbucket's refresh client carries no JSON middleware, so its JSON body
+  # arrives as a raw string.
+  defp decode_token_body(_provider, body) when is_binary(body) do
+    case Jason.decode(body) do
+      {:ok, decoded} when is_map(decoded) -> {:ok, decoded}
+      _ -> :error
+    end
+  end
+
+  defp decode_token_body(_provider, _body), do: :error
+
+  defp decode_form_or_json(body) do
+    case Jason.decode(body) do
+      {:ok, decoded} when is_map(decoded) -> {:ok, decoded}
+      _ -> decode_form_urlencoded(body)
+    end
+  end
+
+  defp decode_form_urlencoded(body) do
+    case URI.decode_query(body) do
+      decoded when map_size(decoded) > 0 -> {:ok, decoded}
+      _ -> :error
+    end
+  rescue
+    ArgumentError -> :error
+  end
+
+  # expires_in is an integer over JSON but a numeric string over
+  # form-urlencoded (github). Normalise to a positive integer, else nil.
+  defp normalize_expires_in(value) when is_integer(value) and value > 0, do: value
+
+  defp normalize_expires_in(value) when is_binary(value) do
+    case Integer.parse(value) do
+      {int, _rest} when int > 0 -> int
+      _ -> nil
+    end
+  end
+
+  defp normalize_expires_in(_value), do: nil
+
+  # Fallback access-token lifetime when a 2xx omits expires_in. Kept well
+  # under the providers' real access-token lifetime (Bitbucket/GitLab ~2h) so
+  # we still refresh ahead of expiry, but long enough that we do not
+  # re-refresh on every request.
+  @default_access_token_ttl_seconds 3600
+
+  # A 2xx with a usable expires_in: honor it (even a short one is a real
+  # provider value).
+  defp resolve_expires_at(_repo_host_account, expires_in)
+       when is_integer(expires_in) and expires_in > 0,
+       do: calc_expires_at(expires_in)
+
+  # GitHub access tokens do not expire by default - leave token_expires_at nil.
+  defp resolve_expires_at(%{repo_host: "github"}, _expires_in), do: nil
+
+  # Any other provider with a missing/short expires_in on a 2xx: write a
+  # conservative TTL instead of dropping the field, which would leave the old
+  # (expired) timestamp and force a refresh on every request - churn against
+  # a single-use rotation endpoint.
+  defp resolve_expires_at(_repo_host_account, _expires_in),
+    do: calc_expires_at(@default_access_token_ttl_seconds)
+
+  # A 2xx with no usable access_token is a malformed/dropped rotation
+  # response (a known failure mode of single-use rotation). Do NOT write it
+  # back (it would either no-op or clobber a good token) and do NOT hand a
+  # nil token to the caller - treat it as transient so the caller retries.
+  defp persist_refreshed_token(repo_host_account, nil, _refresh_token, _expires_at) do
+    Logger.warning(
+      "2xx token refresh response missing access_token for rha=#{repo_host_account.id} " <>
+        "user=#{repo_host_account.user_id} #{repo_host_account.repo_host}; treating as transient"
+    )
+
+    {:error, :transient}
+  end
+
+  # Persist on ANY 2xx that carries a token, regardless of how long the access
+  # token is valid for: skipping the write on a short/missing expires_in would
+  # silently drop the rotated refresh_token and guarantee a reuse burn on the
+  # next refresh. The concurrency-safe persistence (optimistic lock, and - the
+  # #1 fix - re-applying our rotation instead of discarding it when only an
+  # UNRELATED column write lost us the lock) lives in the schema module.
+  defp persist_refreshed_token(repo_host_account, token, rotated_refresh_token, expires_at) do
+    Guard.FrontRepo.RepoHostAccount.persist_refreshed_token(
       repo_host_account,
       token,
-      refresh_token,
-      parsed_expires_at
+      rotated_refresh_token,
+      parse_expires_at(expires_at)
     )
   end
+
+  defp parse_expires_at(nil), do: nil
+  defp parse_expires_at(unix) when is_integer(unix), do: DateTime.from_unix!(unix, :second)
+
+  defp presence(value) when value in [nil, ""], do: nil
+  defp presence(value), do: value
 
   def calc_expires_at(nil), do: nil
 
