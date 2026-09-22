@@ -16,6 +16,7 @@ import (
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/workers/bucketcleaner"
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/workers/jobdeletion"
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/workers/pipelinedeletion"
+	"github.com/semaphoreio/semaphore/artifacthub/pkg/workers/projectdeletion"
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/workers/workflowdeletion"
 	"go.uber.org/zap"
 )
@@ -161,6 +162,23 @@ func workflowDeletionWorker(client storage.Client) {
 	worker.Start()
 }
 
+func projectDeletionWorkers() {
+	log.Info("Starting project deletion workers...")
+
+	deletion, err := projectdeletion.NewSoftDeleteWorker(amqpURL)
+	if err != nil {
+		panic(err)
+	}
+
+	restore, err := projectdeletion.NewRestoreWorker(amqpURL)
+	if err != nil {
+		panic(err)
+	}
+
+	deletion.Start()
+	restore.Start()
+}
+
 func main() {
 	flag.Parse()
 
@@ -176,6 +194,10 @@ func main() {
 	}()
 
 	configureWatchman()
+
+	// Set before any worker starts: the scheduler decides what is due and the cleaner
+	// decides what to delete, and they must agree.
+	bucketcleaner.ConfigurePurgeGracePeriod()
 
 	storageClient, err := storage.New()
 	if err != nil {
@@ -211,6 +233,10 @@ func main() {
 
 	if os.Getenv("START_WORKFLOW_DELETION_WORKER") == "yes" {
 		go workflowDeletionWorker(storageClient)
+	}
+
+	if os.Getenv("START_PROJECT_DELETION_WORKER") == "yes" {
+		go projectDeletionWorkers()
 	}
 
 	select {}

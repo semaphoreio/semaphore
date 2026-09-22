@@ -137,6 +137,23 @@ protoc \
 
 
 
+# projecthub
+#
+# Only the messages, with no --go-grpc_out: artifacthub never calls projecthub, it
+# consumes the events projecthub publishes when a project is deleted or restored.
+
+mkdir -p pkg/api/descriptors/projecthub
+sed --in-place '/go_package/d' tmp/internal_api/projecthub.proto
+echo 'option go_package = "github.com/semaphoreio/semaphore/artifacthub/pkg/api/descriptors/projecthub";' >> tmp/internal_api/projecthub.proto
+
+protoc \
+       --proto_path tmp/internal_api \
+       --proto_path tmp/internal_api/include \
+       --proto_path tmp/internal_api/include/internal_api \
+       --go_out=pkg/api/descriptors/projecthub \
+       --go_opt=paths=source_relative \
+       tmp/internal_api/projecthub.proto
+
 # public api
 
 mkdir -p pkg/api/descriptors/artifacts

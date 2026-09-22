@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/renderedtext/go-watchman"
+	"github.com/semaphoreio/semaphore/artifacthub/pkg/db"
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/models"
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/storage"
 	"gorm.io/gorm"
@@ -24,6 +25,7 @@ type BatchCleaner struct {
 	deletedObjectCount int
 	paginationEnded    bool
 	artifactDeleted    bool
+	purgeCompleted     bool
 	pages              int
 }
 
@@ -56,7 +58,9 @@ func (c *BatchCleaner) Run(tx *gorm.DB) (string, error) {
 		return "", err
 	}
 
-	if c.retentionPolicy.IsCleanedInLast24Hours() {
+	// A storage being purged is not held back by the once-a-day rule. That rule paces
+	// routine retention work; a purge is meant to happen now.
+	if !c.isPurging() && c.retentionPolicy.IsCleanedInLast24Hours() {
 		return "", ErrBucketAlreadyCleanedToday
 	}
 
@@ -79,6 +83,15 @@ func (c *BatchCleaner) Run(tx *gorm.DB) (string, error) {
 	// we mark the cleaning as done, as stop.
 	if nextPageToken == "" {
 		c.paginationEnded = true
+
+		// Every page visited and every delete succeeded, since a failed delete stops a
+		// purge, so the storage is empty and the mark comes off here.
+		if c.isPurging() && !c.artifactBucket.IsMarkedForDestruction() {
+			if err := c.finishPurge(); err != nil {
+				return "", err
+			}
+		}
+
 		return "", c.saveThatCleaningIsDone(tx)
 	}
 
@@ -116,6 +129,30 @@ func (c *BatchCleaner) loadRecords() error {
 		return err
 	}
 	c.artifactBucket = artifact
+
+	return nil
+}
+
+// isPurging reports whether this run deletes everything, rather than applying the
+// retention policy.
+//
+// A storage marked by a project delete is not purged until its grace period is up,
+// so until then this is false and the run applies the retention policy as usual.
+func (c *BatchCleaner) isPurging() bool {
+	return c.artifactBucket.IsPurgeDue(PurgeGracePeriod)
+}
+
+// finishPurge takes the mark off once the storage has been emptied. The storage
+// itself stays, so a restored project has somewhere to push to.
+func (c *BatchCleaner) finishPurge() error {
+	if err := c.artifactBucket.ClearPurgeMark(db.Conn()); err != nil {
+		return err
+	}
+
+	c.purgeCompleted = true
+	_ = watchman.Increment("bucketcleaner.worker.purge_completed")
+
+	log.Printf("Artifact storage %s is purged, its contents are gone", c.artifactBucket.ID.String())
 
 	return nil
 }
@@ -196,8 +233,11 @@ func (c *BatchCleaner) cleanupOnePage() (string, error) {
 		return "", err
 	}
 
-	// If the bucket is already empty, and it was marked for deletion, we delete it.
-	if len(objects) == 0 && c.cleanRequest.PaginationToken == "" && c.artifactBucket.DeletedAt != nil {
+	// An empty bucket whose project is gone for good is destroyed here. nextPageToken
+	// has to be empty too: a listing can return a page with no objects and still have
+	// more to come, and that would destroy a storage which is not empty at all.
+	if len(objects) == 0 && nextPageToken == "" && c.cleanRequest.PaginationToken == "" &&
+		c.artifactBucket.IsMarkedForDestruction() {
 		if err := c.destroyArtifact(); err != nil {
 			return "", err
 		}
@@ -210,16 +250,37 @@ func (c *BatchCleaner) cleanupOnePage() (string, error) {
 	for _, object := range objects {
 		c.visitedObjectCount++
 
-		if c.retentionPolicy.IsMatching(object.Path, *object.Age) {
+		// A marked storage loses everything, whatever the rules say and however young
+		// the object is.
+		if c.isPurging() || c.retentionPolicy.IsMatching(object.Path, *object.Age) {
 			c.deletedObjectCount++
 			results = append(results, object.Path)
 		}
 	}
 
+	if len(results) == 0 {
+		return nextPageToken, nil
+	}
+
+	purging := c.isPurging()
+
 	_ = watchman.IncrementBy("bucketcleaner.worker.delete_objects", len(results))
-	err = c.bucket.DeleteObjects(results)
-	if err != nil {
-		return "", err
+
+	if err = c.bucket.DeleteObjects(results); err != nil {
+		_ = watchman.Increment("bucketcleaner.worker.delete_failures")
+
+		// A purge stops here, because it decides it is finished by reaching the end of
+		// the pages: a delete that quietly did not happen would leave the storage
+		// recorded as purged while it is still full.
+		if purging {
+			return "", err
+		}
+
+		// Routine retention carries on, since the next pass tries again and one bad
+		// object must not stop a whole bucket being cleaned. That is what GCS did
+		// before, which reported nothing here at all, and relaxes the S3 backend,
+		// which failed the run.
+		log.Printf("Failed to delete some objects in bucket %s: %v", c.artifactBucket.BucketName, err)
 	}
 
 	return nextPageToken, nil
