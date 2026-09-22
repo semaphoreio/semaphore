@@ -232,13 +232,16 @@ defmodule Guard.Utils.OAuth do
 
     - `:ok`        - 2xx, the token can be used
     - `:revoked`   - genuine permanent revocation: the provider's body
-                      signals `error=invalid_grant` (all providers) or
-                      `error=bad_refresh_token` (GitHub)
+                      signals `error=invalid_grant` (all providers),
+                      `error=bad_refresh_token` (GitHub), or
+                      `error=unauthorized_client` WITH a description naming
+                      the refresh token (Bitbucket - see
+                      `genuine_grant_revocation?/1`)
     - `:transient` - everything else, INCLUDING a bare HTTP 401 /
-                      `invalid_client` / `unauthorized_client`. Per RFC 6749
-                      those mean OUR shared client_id/client_secret was
-                      rejected, not a user's grant - treating a bare 401 as
-                      a revoke would mass-revoke every account on that
+                      `invalid_client` / a bare `unauthorized_client`. Per
+                      RFC 6749 those mean OUR shared client_id/client_secret
+                      was rejected, not a user's grant - treating a bare 401
+                      as a revoke would mass-revoke every account on that
                       provider. Also covers 403, 429, 5xx, or any other
                       4xx. The caller MUST NOT treat `:transient` as a
                       permanent revoke.
@@ -265,7 +268,31 @@ defmodule Guard.Utils.OAuth do
   end
 
   defp genuine_grant_revocation?(body) when is_map(body) do
-    Map.get(body, "error") in ["invalid_grant", "bad_refresh_token"]
+    case Map.get(body, "error") do
+      error when error in ["invalid_grant", "bad_refresh_token"] ->
+        true
+
+      # Bitbucket answers a genuinely dead grant with `unauthorized_client`:
+      #
+      #   403 {"error": "unauthorized_client",
+      #        "error_description": "refresh_token is invalid"}
+      #
+      # RFC 6749 section 5.2 otherwise reserves that code for "the authenticated
+      # CLIENT is not authorized to use this authorization grant type" - i.e.
+      # our shared OAuth consumer credentials, not one user's grant. Matching
+      # the code alone would therefore mass-revoke every account on a provider
+      # the moment our consumer is misconfigured, disabled, or rate-limited at
+      # the client level - the failure class this classifier exists to prevent,
+      # and one that reaches here BEFORE the HTTP 401 guard below.
+      #
+      # So require the description to name the refresh token. A client-level
+      # rejection does not carry that, and a user-level one always does.
+      "unauthorized_client" ->
+        refresh_token_rejected?(Map.get(body, "error_description"))
+
+      _ ->
+        false
+    end
   end
 
   defp genuine_grant_revocation?(body) when is_binary(body) do
@@ -276,6 +303,18 @@ defmodule Guard.Utils.OAuth do
   end
 
   defp genuine_grant_revocation?(_body), do: false
+
+  # Matched loosely (case-insensitive, either spelling) so a wording change on
+  # the provider's side degrades to :transient - a retry - rather than to a
+  # wrong revoke.
+  defp refresh_token_rejected?(description) when is_binary(description) do
+    normalized = String.downcase(description)
+
+    String.contains?(normalized, "refresh_token") or
+      String.contains?(normalized, "refresh token")
+  end
+
+  defp refresh_token_rejected?(_description), do: false
 end
 
 defmodule Guard.Utils.Http do

@@ -339,6 +339,48 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
       assert {:ok, {"fresh_token", _}} = RepoHostAccount.get_bitbucket_token(healed_rha)
     end
 
+    test "Bitbucket's dead-grant 403 revokes the row, so the user is offered a re-grant",
+         %{rha: rha} do
+      # Captured live: a genuinely dead Bitbucket grant answers with
+      # `unauthorized_client`, not `invalid_grant`. That used to classify as
+      # :transient, so the row stayed revoked=false and was retried forever -
+      # the integration kept displaying as connected and the people page never
+      # offered the re-grant link, leaving the user no way out.
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
+          {:ok,
+           %Tesla.Env{
+             status: 403,
+             body:
+               Jason.encode!(%{
+                 "error" => "unauthorized_client",
+                 "error_description" => "refresh_token is invalid"
+               })
+           }}
+      end)
+
+      assert {:error, :revoked} = RepoHostAccount.get_bitbucket_token(rha)
+      assert FrontRepo.get!(RepoHostAccount, rha.id).revoked == true
+    end
+
+    test "a client-level 403 does NOT revoke (our consumer, not the user's grant)",
+         %{rha: rha} do
+      # The same error code without a refresh-token description is a statement
+      # about our shared OAuth consumer. Revoking on it would disconnect every
+      # account on the provider at once.
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
+          {:ok,
+           %Tesla.Env{
+             status: 403,
+             body: Jason.encode!(%{"error" => "unauthorized_client"})
+           }}
+      end)
+
+      assert {:error, :transient} = RepoHostAccount.get_bitbucket_token(rha)
+      refute FrontRepo.get!(RepoHostAccount, rha.id).revoked
+    end
+
     test "reuse-loser: invalid_grant while a concurrent winner rotated the token does NOT " <>
            "revoke - the winner's token is returned",
          %{rha: rha} do
