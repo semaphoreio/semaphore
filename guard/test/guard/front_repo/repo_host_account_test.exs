@@ -40,26 +40,89 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
     )
   end
 
-  # Shared setup: a bitbucket RHA with a valid (not-yet-expired) stored token,
-  # used by the token-persistence and stale-scoping describes.
-  defp create_bitbucket_rha(_context) do
+  # Shared factory for the token-fetch describes: one user plus one
+  # repo_host_account with the given credential shape. Kept in one place so the
+  # per-describe setups stay a single line of intent.
+  defp insert_rha!(overrides) do
     {:ok, user} = Support.Factories.RbacUser.insert()
     {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
 
-    {:ok, rha} =
-      Support.Members.insert_repo_host_account(
-        login: "example",
-        name: "example",
+    defaults = [
+      login: "example",
+      name: "example",
+      user_id: user.id,
+      revoked: false,
+      permission_scope: "repo"
+    ]
+
+    {:ok, rha} = Support.Members.insert_repo_host_account(Keyword.merge(defaults, overrides))
+
+    rha
+  end
+
+  defp expired_credentials(repo_host, refresh_token) do
+    [
+      repo_host: repo_host,
+      refresh_token: refresh_token,
+      token: "expired_token",
+      token_expires_at: Support.Members.invalid_expires_at()
+    ]
+  end
+
+  # Shared setup: a bitbucket RHA with a valid (not-yet-expired) stored token,
+  # used by the token-persistence and stale-scoping describes.
+  defp create_bitbucket_rha(_context) do
+    rha =
+      insert_rha!(
         repo_host: "bitbucket",
         refresh_token: "stored_refresh",
-        user_id: user.id,
         token: "stored_token",
-        token_expires_at: Support.Members.valid_expires_at(),
-        revoked: false,
-        permission_scope: "repo"
+        token_expires_at: Support.Members.valid_expires_at()
       )
 
     {:ok, rha: rha}
+  end
+
+  defp safe_unload(mod) do
+    :meck.unload(mod)
+  rescue
+    _ -> :ok
+  catch
+    _, _ -> :ok
+  end
+
+  # Replace the cross-replica refresh lock with `impl`, so the winner / waiter
+  # branches can be driven deterministically from a single test connection
+  # (advisory locks are re-entrant within one Postgres session, so a second
+  # checkout here would always win).
+  defp mock_advisory_lock!(impl) do
+    :meck.new(Guard.FrontRepo.AdvisoryLock, [:passthrough])
+    on_exit(fn -> safe_unload(Guard.FrontRepo.AdvisoryLock) end)
+    :meck.expect(Guard.FrontRepo.AdvisoryLock, :transaction, impl)
+  end
+
+  # Lose the lock for the first `busy_attempts` tries, then behave normally.
+  defp mock_advisory_lock_busy_then_passthrough!(busy_attempts) do
+    counter = :counters.new(1, [])
+
+    mock_advisory_lock!(fn key, fun ->
+      :counters.add(counter, 1, 1)
+
+      if :counters.get(counter, 1) <= busy_attempts do
+        :busy
+      else
+        :meck.passthrough([key, fun])
+      end
+    end)
+  end
+
+  # Any POST to a provider token endpoint fails the test. Used to prove a call
+  # path reached a token WITHOUT presenting a refresh token upstream - which is
+  # the reuse that gets the whole token family revoked.
+  defp refuse_provider_call! do
+    Tesla.Mock.mock_global(fn %{method: method, url: url} ->
+      flunk("unexpected provider call: #{method} #{url}")
+    end)
   end
 
   describe "update_profile/2" do
@@ -171,23 +234,7 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
 
   describe "get_bitbucket_token/1 (refresh failure classification regression coverage)" do
     setup do
-      {:ok, user} = Support.Factories.RbacUser.insert()
-      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
-
-      {:ok, rha} =
-        Support.Members.insert_repo_host_account(
-          login: "example",
-          name: "example",
-          repo_host: "bitbucket",
-          refresh_token: "example_refresh_token",
-          user_id: user.id,
-          token: "expired_token",
-          token_expires_at: Support.Members.invalid_expires_at(),
-          revoked: false,
-          permission_scope: "repo"
-        )
-
-      {:ok, rha: rha}
+      {:ok, rha: insert_rha!(expired_credentials("bitbucket", "example_refresh_token"))}
     end
 
     test "FIXED: bare 403 is transient, row stays unrevoked (was a permanent " <>
@@ -351,13 +398,13 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
           Support.Members.valid_expires_at()
         )
 
-      # This worker (the loser) still holds the pre-rotation snapshot and its
-      # refresh reuses the now-burned old token, so Bitbucket answers
-      # invalid_grant. That must NOT revoke a healthy account.
-      Tesla.Mock.mock_global(fn
-        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
-          {:ok, %Tesla.Env{status: 400, body: %{"error" => "invalid_grant"}}}
-      end)
+      # This worker (the loser) still holds the pre-rotation snapshot. Before
+      # the refresh single-flight it would reuse the now-burned old token and
+      # have to recover from the resulting invalid_grant; now the in-lock
+      # re-read sees the winner's token and the reuse never reaches Bitbucket
+      # at all - which is what stops the whole token family being revoked
+      # minutes later. Either way the account must NOT be revoked.
+      refuse_provider_call!()
 
       assert {:ok, {"winner_token", _}} = RepoHostAccount.get_bitbucket_token(rha)
 
@@ -451,23 +498,198 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
     end
   end
 
+  describe "get_bitbucket_token/1 single-flight (one provider POST per account)" do
+    setup do
+      rha = insert_rha!(expired_credentials("bitbucket", "stored_refresh"))
+
+      # Drive the waiter loop without real sleeps.
+      previous = Application.get_env(:guard, :oauth_refresh_wait_backoff_ms)
+      Application.put_env(:guard, :oauth_refresh_wait_backoff_ms, [1, 1, 1])
+
+      on_exit(fn ->
+        if is_nil(previous) do
+          Application.delete_env(:guard, :oauth_refresh_wait_backoff_ms)
+        else
+          Application.put_env(:guard, :oauth_refresh_wait_backoff_ms, previous)
+        end
+      end)
+
+      {:ok, rha: rha}
+    end
+
+    test "a usable stored token is served without taking the lock at all", %{rha: rha} do
+      # The hot path must not pay for a lock - which would mean holding one of
+      # the few pooled Front-DB connections - when nothing needs refreshing.
+      usable = Map.put(rha, :token_expires_at, Support.Members.valid_expires_at())
+
+      mock_advisory_lock!(fn _key, _fun -> flunk("must not lock on the hot path") end)
+      refuse_provider_call!()
+
+      assert {:ok, {"expired_token", _}} = RepoHostAccount.get_bitbucket_token(usable)
+    end
+
+    test "the in-lock re-read serves a winner's token WITHOUT a second provider POST",
+         %{rha: rha} do
+      # This is the fix. Our snapshot is stale, so we contend for the lock -
+      # but by the time we hold it a sibling worker has already stored a fresh
+      # token. Presenting our own (already-rotated) refresh_token at this point
+      # is the reuse that makes Bitbucket revoke the whole token family minutes
+      # later, so the re-read has to short-circuit before any POST.
+      {:ok, _winner} =
+        RepoHostAccount.update_token(
+          rha,
+          "winner_token",
+          "winner_refresh",
+          Support.Members.valid_expires_at()
+        )
+
+      refuse_provider_call!()
+
+      assert {:ok, {"winner_token", _}} = RepoHostAccount.get_bitbucket_token(rha)
+    end
+
+    test "a waiter that loses the lock releases it, backs off, and serves the winner's token",
+         %{rha: rha} do
+      # The lock is held elsewhere for the whole call, so we never run under
+      # it: the only way to a token is the post-backoff re-read.
+      mock_advisory_lock!(fn _key, _fun -> :busy end)
+      refuse_provider_call!()
+
+      {:ok, _winner} =
+        RepoHostAccount.update_token(
+          rha,
+          "winner_token",
+          "winner_refresh",
+          Support.Members.valid_expires_at()
+        )
+
+      assert {:ok, {"winner_token", _}} = RepoHostAccount.get_bitbucket_token(rha)
+    end
+
+    test "a waiter becomes the winner when the lock frees up but no token was published",
+         %{rha: rha} do
+      # A winner that died mid-refresh must not strand every waiter behind it:
+      # the next attempt takes the lock and does the POST itself.
+      mock_advisory_lock_busy_then_passthrough!(1)
+
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
+          {:ok,
+           %Tesla.Env{
+             status: 200,
+             body:
+               Jason.encode!(%{
+                 "access_token" => "rotated_access",
+                 "refresh_token" => "rotated_refresh",
+                 "expires_in" => 3600
+               })
+           }}
+      end)
+
+      assert {:ok, {"rotated_access", _}} = RepoHostAccount.get_bitbucket_token(rha)
+
+      reloaded = RepoHostAccount.reload(rha)
+      assert reloaded.token == "rotated_access"
+      assert reloaded.refresh_token == "rotated_refresh"
+    end
+
+    test "a waiter that never sees a usable token degrades to :transient, never :revoked",
+         %{rha: rha} do
+      mock_advisory_lock!(fn _key, _fun -> :busy end)
+      refuse_provider_call!()
+
+      assert {:error, :transient} = RepoHostAccount.get_bitbucket_token(rha)
+
+      # Losing a lock race says nothing about the grant.
+      refute RepoHostAccount.reload(rha).revoked
+    end
+
+    test "a failed lock transaction reports :transient, never :revoked", %{rha: rha} do
+      # An infrastructure failure (pool checkout, lock_timeout, dropped
+      # connection) must not surface as gRPC NOT_FOUND, which repository_hub
+      # treats as a permanent disconnect.
+      mock_advisory_lock!(fn _key, _fun -> {:error, :rollback} end)
+      refuse_provider_call!()
+
+      assert {:error, :transient} = RepoHostAccount.get_bitbucket_token(rha)
+
+      refute RepoHostAccount.reload(rha).revoked
+    end
+
+    test "a genuine revocation is still detected and persisted under the lock", %{rha: rha} do
+      # The revoke write now runs inside the locked transaction - it must still
+      # commit.
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
+          {:ok, %Tesla.Env{status: 400, body: Jason.encode!(%{"error" => "invalid_grant"})}}
+      end)
+
+      assert {:error, :revoked} = RepoHostAccount.get_bitbucket_token(rha)
+      assert RepoHostAccount.reload(rha).revoked == true
+    end
+
+    test "a writer that commits AFTER the in-lock re-read is still recovered, not revoked",
+         %{rha: rha} do
+      # Reconnect (Guard.Id.Api) does not go through this lock, so it can still
+      # land a new credential while a refresh is in flight. That residual race
+      # is what revoke_or_recover/1 exists for - assert it survives the
+      # single-flight change.
+      :meck.new(Guard.Api.Bitbucket, [:passthrough])
+      on_exit(fn -> safe_unload(Guard.Api.Bitbucket) end)
+
+      :meck.expect(Guard.Api.Bitbucket, :user_token, fn _rha ->
+        Ecto.Adapters.SQL.query!(
+          Guard.FrontRepo,
+          "UPDATE repo_host_accounts SET token = $1, refresh_token = $2, " <>
+            "token_expires_at = now() + interval '1 hour', updated_at = now() " <>
+            "WHERE id::text = $3",
+          ["reconnect_token", "reconnect_refresh", rha.id]
+        )
+
+        {:error, :revoked}
+      end)
+
+      assert {:ok, {"reconnect_token", _}} = RepoHostAccount.get_bitbucket_token(rha)
+
+      reloaded = RepoHostAccount.reload(rha)
+      refute reloaded.revoked
+      assert reloaded.token == "reconnect_token"
+    end
+  end
+
+  describe "get_github_token/1 is deliberately not single-flighted" do
+    setup do
+      rha =
+        insert_rha!(
+          repo_host: "github",
+          refresh_token: "example_refresh_token",
+          token: "token",
+          token_expires_at: nil
+        )
+
+      {:ok, rha: rha}
+    end
+
+    test "never takes the refresh lock", %{rha: rha} do
+      # GitHub does not rotate the refresh token on an ordinary refresh, so
+      # there is no token family to lose - and its user_token/1 validates
+      # against the API on EVERY call, so locking it would hold a pooled
+      # connection on the hot path for no benefit.
+      mock_advisory_lock!(fn _key, _fun -> flunk("github must not take the refresh lock") end)
+
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          {:ok, %Tesla.Env{status: 200, body: %{}}}
+      end)
+
+      assert {:ok, {"token", nil}} = RepoHostAccount.get_github_token(rha)
+    end
+  end
+
   describe "update_token/4 self-heal (clears a stale revoked flag on success)" do
     test "a successful token write clears a previously-latched revoked flag" do
-      {:ok, user} = Support.Factories.RbacUser.insert()
-      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
-
-      {:ok, rha} =
-        Support.Members.insert_repo_host_account(
-          login: "example",
-          name: "example",
-          repo_host: "bitbucket",
-          refresh_token: "example_refresh_token",
-          user_id: user.id,
-          token: "expired_token",
-          token_expires_at: Support.Members.invalid_expires_at(),
-          revoked: true,
-          permission_scope: "repo"
-        )
+      rha =
+        insert_rha!(expired_credentials("bitbucket", "example_refresh_token") ++ [revoked: true])
 
       assert rha.revoked == true
 
@@ -697,23 +919,7 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
 
   describe "get_github_token/1 (GitHub refresh - transient vs revoked)" do
     setup do
-      {:ok, user} = Support.Factories.RbacUser.insert()
-      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
-
-      {:ok, rha} =
-        Support.Members.insert_repo_host_account(
-          login: "example",
-          name: "example",
-          repo_host: "github",
-          refresh_token: "example_refresh_token",
-          user_id: user.id,
-          token: "expired_token",
-          token_expires_at: Support.Members.invalid_expires_at(),
-          revoked: false,
-          permission_scope: "repo"
-        )
-
-      {:ok, rha: rha}
+      {:ok, rha: insert_rha!(expired_credentials("github", "example_refresh_token"))}
     end
 
     test "bare 403 on refresh is transient: row stays unrevoked", %{rha: rha} do
@@ -750,20 +956,12 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
            "revoke - the winner's token is returned" do
       # GitHub tokens do not expire, so token_expires_at is nil and counts as
       # valid - insert such a row explicitly to exercise the recover branch.
-      {:ok, user} = Support.Factories.RbacUser.insert()
-      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
-
-      {:ok, rha} =
-        Support.Members.insert_repo_host_account(
-          login: "example",
-          name: "example",
+      rha =
+        insert_rha!(
           repo_host: "github",
           refresh_token: "dead_refresh",
-          user_id: user.id,
           token: "dead_token",
-          token_expires_at: nil,
-          revoked: false,
-          permission_scope: "repo"
+          token_expires_at: nil
         )
 
       # A sibling worker rotates the token first (still non-expiring).
@@ -830,23 +1028,7 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
 
   describe "get_gitlab_token/1 (GitLab refresh - transient vs revoked)" do
     setup do
-      {:ok, user} = Support.Factories.RbacUser.insert()
-      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
-
-      {:ok, rha} =
-        Support.Members.insert_repo_host_account(
-          login: "example",
-          name: "example",
-          repo_host: "gitlab",
-          refresh_token: "example_refresh_token",
-          user_id: user.id,
-          token: "expired_token",
-          token_expires_at: Support.Members.invalid_expires_at(),
-          revoked: false,
-          permission_scope: "repo"
-        )
-
-      {:ok, rha: rha}
+      {:ok, rha: insert_rha!(expired_credentials("gitlab", "example_refresh_token"))}
     end
 
     test "bare 403 on refresh is transient: row stays unrevoked", %{rha: rha} do
@@ -877,7 +1059,9 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
            "revoke - the winner's token is returned",
          %{rha: rha} do
       # GitLab does strict single-use rotation with reuse-detection, so a
-      # concurrent loser gets invalid_grant on the burned token now.
+      # concurrent loser that reused the burned token would get invalid_grant.
+      # With the refresh single-flight in place the in-lock re-read serves the
+      # winner's token and the reuse is never presented upstream.
       {:ok, _winner} =
         RepoHostAccount.update_token(
           rha,
@@ -886,10 +1070,7 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
           Support.Members.valid_expires_at()
         )
 
-      Tesla.Mock.mock_global(fn
-        %{method: :post, url: "https://gitlab.com/oauth/token"} ->
-          {:ok, %Tesla.Env{status: 400, body: %{"error" => "invalid_grant"}}}
-      end)
+      refuse_provider_call!()
 
       assert {:ok, {"winner_token", _}} = RepoHostAccount.get_gitlab_token(rha)
 
