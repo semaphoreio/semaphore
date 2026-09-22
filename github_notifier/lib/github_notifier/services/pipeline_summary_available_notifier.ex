@@ -10,7 +10,8 @@ defmodule GithubNotifier.Services.PipelineSummaryAvailableNotifier do
     exchange: "velocity_pipeline_summary_exchange",
     routing_key: "done",
     service: "github_notifier.pipeline_summary_notifier",
-    connection_id: :pipeline_summary_notifier
+    connection_id: :pipeline_summary_notifier,
+    dead_letter_queue: Application.get_env(:github_notifier, :tackle_dead_letter_queue, true)
 
   def handle_message(message) do
     Watchman.benchmark("pipeline_summary_notifier.duration", fn ->

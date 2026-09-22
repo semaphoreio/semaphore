@@ -1,5 +1,4 @@
 defmodule GithubNotifier.Services.PipelineFinishedNotifierTest do
-  require GrpcMock
   use ExUnit.Case
 
   setup do
@@ -12,7 +11,7 @@ defmodule GithubNotifier.Services.PipelineFinishedNotifierTest do
     test "when block level => report each block" do
       Cachex.clear(:store)
 
-      GrpcMock.stub(RepositoryHubMock, :create_build_status, Google.Protobuf.Empty.new())
+      GrpcMock.stub(RepositoryHubMock, :create_build_status, struct(Google.Protobuf.Empty))
 
       GrpcMock.stub(PipelineMock, :describe, Support.Factories.pipeline_describe_response())
 
@@ -27,7 +26,7 @@ defmodule GithubNotifier.Services.PipelineFinishedNotifierTest do
       GrpcMock.stub(
         UserMock,
         :describe,
-        InternalApi.User.DescribeResponse.new(
+        struct(InternalApi.User.DescribeResponse,
           status: Support.Factories.status_ok(),
           github_token: "github_token"
         )
@@ -36,10 +35,10 @@ defmodule GithubNotifier.Services.PipelineFinishedNotifierTest do
       GrpcMock.stub(
         OrganizationMock,
         :describe,
-        InternalApi.Organization.DescribeResponse.new(
+        struct(InternalApi.Organization.DescribeResponse,
           status: Support.Factories.status_ok(),
           organization:
-            InternalApi.Organization.Organization.new(
+            struct(InternalApi.Organization.Organization,
               org_username: "renderedtext",
               org_id: "123"
             )
@@ -76,7 +75,7 @@ defmodule GithubNotifier.Services.PipelineFinishedNotifierTest do
     test "when pipeline level => report only pipeline" do
       Cachex.clear(:store)
 
-      GrpcMock.stub(RepositoryHubMock, :create_build_status, Google.Protobuf.Empty.new())
+      GrpcMock.stub(RepositoryHubMock, :create_build_status, struct(Google.Protobuf.Empty))
 
       GrpcMock.stub(PipelineMock, :describe, Support.Factories.pipeline_describe_response())
 
@@ -91,7 +90,7 @@ defmodule GithubNotifier.Services.PipelineFinishedNotifierTest do
       GrpcMock.stub(
         UserMock,
         :describe,
-        InternalApi.User.DescribeResponse.new(
+        struct(InternalApi.User.DescribeResponse,
           status: Support.Factories.status_ok(),
           github_token: "github_token"
         )
@@ -100,10 +99,10 @@ defmodule GithubNotifier.Services.PipelineFinishedNotifierTest do
       GrpcMock.stub(
         OrganizationMock,
         :describe,
-        InternalApi.Organization.DescribeResponse.new(
+        struct(InternalApi.Organization.DescribeResponse,
           status: Support.Factories.status_ok(),
           organization:
-            InternalApi.Organization.Organization.new(
+            struct(InternalApi.Organization.Organization,
               org_username: "renderedtext",
               org_id: "123"
             )
@@ -141,7 +140,7 @@ defmodule GithubNotifier.Services.PipelineFinishedNotifierTest do
     test "when empty status => do not report" do
       Cachex.clear(:store)
 
-      GrpcMock.stub(RepositoryHubMock, :create_build_status, Google.Protobuf.Empty.new())
+      GrpcMock.stub(RepositoryHubMock, :create_build_status, struct(Google.Protobuf.Empty))
 
       GrpcMock.stub(PipelineMock, :describe, Support.Factories.pipeline_describe_response())
 
@@ -156,7 +155,7 @@ defmodule GithubNotifier.Services.PipelineFinishedNotifierTest do
       GrpcMock.stub(
         UserMock,
         :describe,
-        InternalApi.User.DescribeResponse.new(
+        struct(InternalApi.User.DescribeResponse,
           status: Support.Factories.status_ok(),
           github_token: "github_token"
         )
@@ -165,10 +164,10 @@ defmodule GithubNotifier.Services.PipelineFinishedNotifierTest do
       GrpcMock.stub(
         OrganizationMock,
         :describe,
-        InternalApi.Organization.DescribeResponse.new(
+        struct(InternalApi.Organization.DescribeResponse,
           status: Support.Factories.status_ok(),
           organization:
-            InternalApi.Organization.Organization.new(
+            struct(InternalApi.Organization.Organization,
               org_username: "renderedtext",
               org_id: "123"
             )
@@ -195,7 +194,7 @@ defmodule GithubNotifier.Services.PipelineFinishedNotifierTest do
     test "when no maching status => do not report" do
       Cachex.clear(:store)
 
-      GrpcMock.stub(RepositoryHubMock, :create_build_status, Google.Protobuf.Empty.new())
+      GrpcMock.stub(RepositoryHubMock, :create_build_status, struct(Google.Protobuf.Empty))
 
       GrpcMock.stub(
         PipelineMock,
@@ -214,7 +213,7 @@ defmodule GithubNotifier.Services.PipelineFinishedNotifierTest do
       GrpcMock.stub(
         UserMock,
         :describe,
-        InternalApi.User.DescribeResponse.new(
+        struct(InternalApi.User.DescribeResponse,
           status: Support.Factories.status_ok(),
           github_token: "github_token"
         )
@@ -223,10 +222,10 @@ defmodule GithubNotifier.Services.PipelineFinishedNotifierTest do
       GrpcMock.stub(
         OrganizationMock,
         :describe,
-        InternalApi.Organization.DescribeResponse.new(
+        struct(InternalApi.Organization.DescribeResponse,
           status: Support.Factories.status_ok(),
           organization:
-            InternalApi.Organization.Organization.new(
+            struct(InternalApi.Organization.Organization,
               org_username: "renderedtext",
               org_id: "123"
             )
