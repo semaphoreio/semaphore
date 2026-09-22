@@ -42,4 +42,45 @@ defmodule FrontWeb.SelfHostedAgentControllerTest do
       assert json_response(conn, 404) == %{"error" => "agent type not found"}
     end
   end
+
+  describe "permissions" do
+    test "GET index renders for a user with self_hosted_agents.view", %{
+      conn: conn,
+      org_id: org_id
+    } do
+      Support.Stubs.SelfHostedAgent.create(org_id, "s1-test")
+
+      conn = get(conn, "/self_hosted_agents")
+
+      assert html_response(conn, 200) =~ "s1-test"
+    end
+
+    test "GET index returns 404 without self_hosted_agents.view", %{
+      conn: conn,
+      org_id: org_id,
+      user_id: user_id
+    } do
+      Support.Stubs.PermissionPatrol.remove_all_permissions()
+      Support.Stubs.PermissionPatrol.add_permissions(org_id, user_id, ["organization.view"])
+
+      conn = get(conn, "/self_hosted_agents")
+
+      assert html_response(conn, 404) =~ "Page not found"
+    end
+
+    test "GET agents returns 404 without self_hosted_agents.view", %{
+      conn: conn,
+      org_id: org_id,
+      user_id: user_id
+    } do
+      Support.Stubs.SelfHostedAgent.create(org_id, "s1-test")
+
+      Support.Stubs.PermissionPatrol.remove_all_permissions()
+      Support.Stubs.PermissionPatrol.add_permissions(org_id, user_id, ["organization.view"])
+
+      conn = get(conn, "/self_hosted_agents/s1-test/agents")
+
+      assert html_response(conn, 404) =~ "Page not found"
+    end
+  end
 end

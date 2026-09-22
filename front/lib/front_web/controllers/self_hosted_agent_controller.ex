@@ -6,7 +6,7 @@ defmodule FrontWeb.SelfHostedAgentController do
   alias Front.SelfHostedAgents.AgentType
 
   plug(FrontWeb.Plugs.FetchPermissions, scope: "org")
-  plug(FrontWeb.Plugs.PageAccess, permissions: "organization.view")
+  plug(FrontWeb.Plugs.PageAccess, permissions: "organization.self_hosted_agents.view")
 
   plug(
     FrontWeb.Plugs.PageAccess,
