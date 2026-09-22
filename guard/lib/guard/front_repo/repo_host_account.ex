@@ -754,6 +754,13 @@ defmodule Guard.FrontRepo.RepoHostAccount do
 
   defp drop_if_skip_credentials(data, permission_scope) do
     if skip_credentials?(permission_scope, Map.get(data, :permission_scope)) do
+      # This silently discards a freshly minted credential while the caller
+      # still reports success, so it must never be invisible again.
+      Logger.warning(
+        "Not storing credentials: incoming scope #{inspect(Map.get(data, :permission_scope))} " <>
+          "is narrower than stored #{inspect(permission_scope)}"
+      )
+
       Map.drop(data, [:permission_scope, :token, :refresh_token, :token_expires_at, :revoked])
     else
       data
@@ -871,10 +878,28 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     end
   end
 
-  defp reset_account(account, data, reset: reset)
-       when account.github_uid == data.github_uid or reset == false do
+  defp reset_account(account, data, reset: _reset)
+       when account.github_uid == data.github_uid do
     Logger.debug(
-      "Skipping reset account for #{account.user_id} #{account.repo_host} reset=#{reset}"
+      "Skipping reset account for #{account.user_id} #{account.repo_host}: uid unchanged"
+    )
+
+    {:ok, account}
+  end
+
+  # Reached only when the incoming uid differs from the stored one. With
+  # `reset: false` - which is what the OAuth connect callback passes - the
+  # write is dropped and the callback still redirects with `status=success`,
+  # so the user is told the reconnect worked while the dead credentials stay
+  # in place. Behaviour is unchanged on purpose: logged at warning because at
+  # debug level this was invisible in production, and whether to fail the
+  # callback or adopt the new uid should be driven by what these lines show.
+  defp reset_account(account, data, reset: false) do
+    Logger.warning(
+      "Skipping reset account for #{account.user_id} #{account.repo_host} reset=false " <>
+        "stored_uid=#{inspect(account.github_uid)} " <>
+        "incoming_uid=#{inspect(Map.get(data, :github_uid))} " <>
+        "login=#{inspect(account.login)}: credentials from this OAuth exchange were NOT stored"
     )
 
     {:ok, account}
@@ -920,10 +945,29 @@ defmodule Guard.FrontRepo.RepoHostAccount do
   def skip_credentials?("", _to), do: false
   def skip_credentials?(from, to) when from == to, do: false
 
+  # Skip ONLY when we can actually tell that the incoming scope is narrower
+  # than the stored one.
+  #
+  # `Enum.find_index/2` returns nil for a scope outside @scopes_in_order, and
+  # `nil > integer` is `true` in Erlang term order (atom > number). @scopes_in_order
+  # is GitHub vocabulary, so any Bitbucket or GitLab row whose stored
+  # permission_scope came from somewhere other than adjust_scope/2 has no rank
+  # here - and the comparison silently answered "yes, skip". That dropped
+  # :token, :refresh_token, :token_expires_at and :revoked from the write while
+  # update_account/2 still returned {:ok, _} and the connect callback still
+  # redirected with status=success. A user who reconnected was told it worked
+  # and kept the dead credentials; the stale access token then went on working
+  # until its next refresh, which is what makes this present as "reconnecting
+  # fixes it for a few minutes".
   def skip_credentials?(from, to) do
-    order_index = fn scope -> Enum.find_index(@scopes_in_order, &(&1 == to_string(scope))) end
-    order_index.(from) > order_index.(to)
+    case {scope_rank(from), scope_rank(to)} do
+      {nil, _} -> false
+      {_, nil} -> false
+      {from_rank, to_rank} -> from_rank > to_rank
+    end
   end
+
+  defp scope_rank(scope), do: Enum.find_index(@scopes_in_order, &(&1 == to_string(scope)))
 
   defp changeset_error_fields(%Ecto.Changeset{errors: errors}) do
     Enum.map_join(errors, ",", fn {field, {msg, _opts}} -> "#{field}:#{msg}" end)

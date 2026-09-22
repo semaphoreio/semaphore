@@ -60,6 +60,44 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
     rha
   end
 
+  # A stored bitbucket account for the reconnect tests, plus the reconnect call
+  # itself (the shape Guard.Id.Api's OAuth callback makes: reset: false).
+  defp insert_stored_account!(user_id, overrides) do
+    {:ok, account} =
+      Support.Members.insert_repo_host_account(
+        Keyword.merge(
+          [
+            login: "example",
+            name: "example",
+            repo_host: "bitbucket",
+            user_id: user_id,
+            token: "dead_token",
+            refresh_token: "dead_refresh",
+            token_expires_at: Support.Members.invalid_expires_at()
+          ],
+          overrides
+        )
+      )
+
+    account
+  end
+
+  defp reconnect(user_id, github_uid) do
+    RepoHostAccount.update_repo_host_account(
+      user_id,
+      :bitbucket,
+      %{
+        github_uid: github_uid,
+        login: "example",
+        name: "example",
+        token: "reconnected_token",
+        refresh_token: "reconnected_refresh",
+        token_expires_at: Support.Members.valid_expires_at()
+      },
+      reset: false
+    )
+  end
+
   defp expired_credentials(repo_host, refresh_token) do
     [
       repo_host: repo_host,
@@ -546,6 +584,44 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
       refuse_provider_call!()
 
       assert {:ok, {"winner_token", _}} = RepoHostAccount.get_bitbucket_token(rha)
+    end
+
+    test "two refreshes of the same account make exactly ONE provider POST", %{rha: rha} do
+      # The direct form of the assertion the other tests make indirectly: count
+      # the calls. Every extra POST here is one reuse of an already-rotated
+      # refresh token, and Bitbucket answers reuse with 200 before revoking the
+      # whole family minutes later.
+      {:ok, calls} = Agent.start_link(fn -> 0 end)
+
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
+          Agent.update(calls, &(&1 + 1))
+
+          {:ok,
+           %Tesla.Env{
+             status: 200,
+             body:
+               Jason.encode!(%{
+                 "access_token" => "rotated_token",
+                 "refresh_token" => "rotated_refresh_token",
+                 "expires_in" => 7200
+               })
+           }}
+      end)
+
+      assert {:ok, {"rotated_token", _}} = RepoHostAccount.get_bitbucket_token(rha)
+
+      # The caller still holds the stale struct carrying the expired expiry, so
+      # it contends for the lock again - and the in-lock re-read has to hand
+      # back what the first call persisted rather than rotate a second time.
+      assert {:ok, {"rotated_token", _}} = RepoHostAccount.get_bitbucket_token(rha)
+
+      assert Agent.get(calls, & &1) == 1
+
+      reloaded = RepoHostAccount.reload(rha)
+      assert reloaded.token == "rotated_token"
+      assert reloaded.refresh_token == "rotated_refresh_token"
+      refute reloaded.revoked
     end
 
     test "a waiter that loses the lock releases it, backs off, and serves the winner's token",
@@ -1104,6 +1180,81 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
 
       reloaded = FrontRepo.get!(RepoHostAccount, rha.id)
       assert reloaded.revoked == true
+    end
+  end
+
+  describe "skip_credentials?/2" do
+    test "skips only a genuine narrowing of the stored scope" do
+      assert RepoHostAccount.skip_credentials?("repo,user:email", "public_repo,user:email")
+      assert RepoHostAccount.skip_credentials?("public_repo,user:email", "user:email")
+
+      refute RepoHostAccount.skip_credentials?("user:email", "repo,user:email")
+      refute RepoHostAccount.skip_credentials?("repo,user:email", "repo,user:email")
+    end
+
+    test "never skips when either scope is unrecognised" do
+      # `Enum.find_index/2` returns nil for an unknown scope and `nil > 0` is
+      # true in Erlang term order, so this used to answer "skip" for any row
+      # whose stored scope was outside the (GitHub-vocabulary) known set -
+      # silently discarding the freshly minted token, refresh_token and expiry
+      # while the connect callback still redirected with status=success.
+      refute RepoHostAccount.skip_credentials?("account repository webhook", "repo,user:email")
+      refute RepoHostAccount.skip_credentials?("repo", "repo,user:email")
+      refute RepoHostAccount.skip_credentials?("repo,user:email", "account")
+    end
+  end
+
+  describe "update_repo_host_account/4 credential persistence on reconnect" do
+    setup do
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      {:ok, user_id: user.id}
+    end
+
+    test "a reconnect STORES the new credentials on a row holding a provider-native scope",
+         %{user_id: user_id} do
+      # The regression this guards: @scopes_in_order is GitHub vocabulary, so a
+      # bitbucket row carrying a bitbucket scope string had no rank and the
+      # nil-vs-integer comparison dropped the whole credential set from the
+      # write - while the caller still saw {:ok, _} and the user was told the
+      # reconnect succeeded.
+      insert_stored_account!(user_id,
+        github_uid: "bb-uid",
+        permission_scope: "account repository webhook",
+        revoked: true
+      )
+
+      {:ok, _} = reconnect(user_id, "bb-uid")
+
+      {:ok, reloaded} = RepoHostAccount.get_for_user_by_repo_host(user_id, "bitbucket")
+      assert reloaded.token == "reconnected_token"
+      assert reloaded.refresh_token == "reconnected_refresh"
+      refute reloaded.revoked
+    end
+
+    test "a reconnect whose uid does not match is still a silent no-op, but now logs it",
+         %{user_id: user_id} do
+      # Behaviour deliberately unchanged: reset: false drops the write and the
+      # callback still reports success. Asserted here so the no-op is on the
+      # record, with a log line to find it by - deciding between failing the
+      # callback and adopting the new uid needs production data first.
+      insert_stored_account!(user_id,
+        github_uid: "old-uid",
+        permission_scope: "repo,user:email",
+        revoked: false
+      )
+
+      log =
+        ExUnit.CaptureLog.capture_log(fn ->
+          {:ok, _} = reconnect(user_id, "new-uid")
+        end)
+
+      assert log =~ "credentials from this OAuth exchange were NOT stored"
+      assert log =~ "stored_uid="
+
+      {:ok, reloaded} = RepoHostAccount.get_for_user_by_repo_host(user_id, "bitbucket")
+      assert reloaded.token == "dead_token"
     end
   end
 
