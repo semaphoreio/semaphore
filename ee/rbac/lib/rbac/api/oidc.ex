@@ -59,7 +59,7 @@ defmodule Rbac.Api.OIDC do
       {:ok, _} ->
         data.federatedIdentities
         |> Enum.map(fn identity ->
-          do_update_federated_identity(client, oidc_user_id, identity)
+          set_federated_identity(client, oidc_user_id, identity)
         end)
         |> Enum.reduce({:ok, oidc_user_id}, fn
           {:ok, oidc_user_id}, {:ok, _} -> {:ok, oidc_user_id}
@@ -88,12 +88,14 @@ defmodule Rbac.Api.OIDC do
     end
   end
 
-  defp do_update_federated_identity(
-         client,
-         oidc_user_id,
-         %{identityProvider: provider} = federated_identity
-       ) do
-    Tesla.delete(client, "/users/" <> oidc_user_id <> "/federated-identity/" <> provider)
+  def set_federated_identity(
+        client,
+        oidc_user_id,
+        %{identityProvider: provider} = federated_identity
+      ) do
+    # The identity may or may not already exist in Keycloak; the POST below
+    # is the authoritative operation, so the removal result is ignored.
+    _ = remove_federated_identity(client, oidc_user_id, provider)
 
     case Tesla.post(
            client,
@@ -106,6 +108,43 @@ defmodule Rbac.Api.OIDC do
         else
           Logger.error(
             "[OIDC API] Error updating federated identities for user #{oidc_user_id}: #{inspect(res.body)}"
+          )
+
+          {:error, "#{res.body["errorMessage"]}"}
+        end
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  def get_federated_identities(client, oidc_user_id) do
+    case Tesla.get(client, "/users/" <> oidc_user_id <> "/federated-identity") do
+      {:ok, res} ->
+        if res.status in 200..299 do
+          {:ok, res.body}
+        else
+          Logger.error(
+            "[OIDC API] Error fetching federated identities for user #{oidc_user_id}: #{inspect(res.body)}"
+          )
+
+          {:error, "#{res.body["errorMessage"]}"}
+        end
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  def remove_federated_identity(client, oidc_user_id, provider) do
+    case Tesla.delete(client, "/users/" <> oidc_user_id <> "/federated-identity/" <> provider) do
+      {:ok, res} ->
+        # 404 means the identity is already absent; removal is idempotent.
+        if res.status in 200..299 or res.status == 404 do
+          {:ok, oidc_user_id}
+        else
+          Logger.error(
+            "[OIDC API] Error removing #{provider} federated identity for user #{oidc_user_id}: #{inspect(res.body)}"
           )
 
           {:error, "#{res.body["errorMessage"]}"}
@@ -137,8 +176,19 @@ defmodule Rbac.Api.OIDC do
       {:ok, list} ->
         list
         |> Enum.map(&%{identityProvider: &1.repo_host, userId: &1.github_uid, userName: &1.login})
+        |> Enum.reject(&pending_claim_sync?/1)
         |> map_federated_identities()
     end
+  end
+
+  # A pending sync request means a claim's identity removals are not yet
+  # confirmed in Keycloak. Pushing the identity now could attach it to two
+  # Keycloak users; the drainer pushes it once the removals are done.
+  defp pending_claim_sync?(identity) do
+    Rbac.FrontRepo.FederatedIdentitySyncRequest.pending?(
+      identity.identityProvider,
+      identity.userId
+    )
   end
 
   @spec get_oidc_credential(Keyword.t()) :: map() | nil

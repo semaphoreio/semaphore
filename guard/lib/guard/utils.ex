@@ -68,7 +68,19 @@ defmodule Guard.Utils.OAuth do
     nil_valid = repo_host_account.repo_host == "github"
 
     if valid_token?(expires_at, nil_valid: nil_valid) do
-      update_token(repo_host_account, token, refresh_token, expires_at)
+      case update_token(repo_host_account, token, refresh_token, expires_at) do
+        {:error, reason} ->
+          # The caller still gets a working token, but the refreshed one was
+          # not stored: with rotating refresh tokens the next refresh replays
+          # a stale one, so this must not fail silently.
+          Logger.error(
+            "Failed to persist refreshed credentials for repo_host_account " <>
+              "#{repo_host_account.id}: #{inspect(reason)}"
+          )
+
+        _ ->
+          :ok
+      end
     end
 
     {:ok, {token, expires_at}}
