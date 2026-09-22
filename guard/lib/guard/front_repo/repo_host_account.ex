@@ -6,6 +6,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
   import Ecto.Query
 
   alias Guard.FrontRepo
+  alias Guard.FrontRepo.AdvisoryLock
 
   @register_scope "user:email"
   @public_scope "public_repo,user:email"
@@ -151,49 +152,165 @@ defmodule Guard.FrontRepo.RepoHostAccount do
   # (transient WAF/edge 403s included); those rows still hold working
   # credentials, so gating here turns them into hard failures. Always ask
   # the provider and let the live response decide.
+  #
+  # Deliberately NOT single-flighted, unlike bitbucket/gitlab below. GitHub
+  # does not rotate the refresh token on an ordinary refresh, so there is no
+  # token family to lose to reuse detection; and `Guard.Api.Github.user_token/1`
+  # validates against the API on EVERY call rather than only on a refresh, so
+  # locking it would hold the advisory lock and a pooled DB connection on the
+  # hot path for no benefit.
   def get_github_token(%__MODULE__{} = rha) do
     with_negative_cache(rha, fn ->
-      case Guard.Api.Github.user_token(rha) do
-        {:ok, {_token, _expires_at}} = token_tuple ->
-          token_tuple
-
-        {:error, :revoked} ->
-          revoke_or_recover(rha)
-
-        {:error, reason} ->
-          {:error, reason}
-      end
+      resolve_token_result(rha, Guard.Api.Github.user_token(rha))
     end)
   end
 
-  def get_bitbucket_token(rha) do
+  def get_bitbucket_token(%__MODULE__{} = rha) do
     with_negative_cache(rha, fn ->
-      case Guard.Api.Bitbucket.user_token(rha) do
-        {:ok, {_token, _expires_at}} = token_tuple ->
-          token_tuple
-
-        {:error, :revoked} ->
-          revoke_or_recover(rha)
-
-        {:error, reason} ->
-          {:error, reason}
-      end
+      with_refresh_single_flight(rha, &Guard.Api.Bitbucket.user_token/1)
     end)
   end
 
-  def get_gitlab_token(rha) do
+  def get_gitlab_token(%__MODULE__{} = rha) do
     with_negative_cache(rha, fn ->
-      case Guard.Api.Gitlab.user_token(rha) do
-        {:ok, {_token, _expires_at}} = token_tuple ->
-          token_tuple
-
-        {:error, :revoked} ->
-          revoke_or_recover(rha)
-
-        {:error, reason} ->
-          {:error, reason}
-      end
+      with_refresh_single_flight(rha, &Guard.Api.Gitlab.user_token/1)
     end)
+  end
+
+  defp resolve_token_result(rha, result) do
+    case result do
+      {:ok, {_token, _expires_at}} = token_tuple ->
+        token_tuple
+
+      {:error, :revoked} ->
+        revoke_or_recover(rha)
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  # Waiter backoff schedule, in milliseconds. The list length also bounds the
+  # number of lock attempts (one per entry, plus the initial one). The total
+  # budget is sized to cover a winner that runs to the 3s HTTP timeout on the
+  # provider token client, and stays far below repository_hub's 20s RPC
+  # deadline so a waiter degrades to :transient rather than having the call
+  # cancelled under it.
+  @refresh_wait_backoff_ms [100, 200, 400, 800, 1_500]
+
+  # Overridable so tests can drive the waiter loop without real sleeps.
+  defp refresh_wait_backoff_ms,
+    do: Application.get_env(:guard, :oauth_refresh_wait_backoff_ms, @refresh_wait_backoff_ms)
+
+  # Serialize the refresh POST across ALL guard replicas.
+  #
+  # Bitbucket and GitLab rotate the refresh token on every refresh and treat a
+  # SECOND presentation of an already-rotated token as reuse. Bitbucket answers
+  # that reuse with HTTP 200 and a usable token, then revokes the whole token
+  # family minutes later - including tokens that were never reused. So it is
+  # not enough to make the losing side of a concurrent refresh recover
+  # gracefully (see revoke_or_recover/1): the concurrent refresh must not
+  # happen at all.
+  #
+  # repository_hub holds no token cache and calls GetRepositoryToken per
+  # repository operation, so a burst of jobs on one project produces a burst of
+  # refreshes for one account, spread across replicas. A node-local guard
+  # cannot see that; a Postgres advisory lock can.
+  #
+  # Shape:
+  #   - stored token still usable -> no lock at all (the provider clients
+  #     short-circuit on the stored expiry, so there is nothing to serialize).
+  #   - lock acquired -> re-read the row INSIDE the lock before deciding. A
+  #     winner that finished while we were queued has already stored a usable
+  #     token; serve that instead of spending a second refresh on it. This
+  #     double check is what turns the herd into one POST.
+  #   - lock busy -> release the DB connection, back off OUTSIDE the
+  #     transaction, then re-read. The pool is small, so a waiter must never
+  #     sit on a connection while the winner does HTTP.
+  defp with_refresh_single_flight(%__MODULE__{} = rha, fetch_fun) do
+    if stored_token_usable?(rha) do
+      resolve_token_result(rha, fetch_fun.(rha))
+    else
+      contend_for_refresh(rha, fetch_fun, 0)
+    end
+  end
+
+  defp contend_for_refresh(%__MODULE__{} = rha, fetch_fun, attempt) do
+    case AdvisoryLock.transaction(rha.id, fn -> refresh_under_lock(rha, fetch_fun) end) do
+      {:ok, result} ->
+        result
+
+      :busy ->
+        await_refresh_winner(rha, fetch_fun, attempt)
+
+      {:error, reason} ->
+        # The lock transaction itself failed (pool checkout, lock_timeout, a
+        # dropped connection). Never report :revoked for an infrastructure
+        # failure - degrade to :transient so the caller retries.
+        Logger.error(
+          "OAuth refresh lock transaction failed rha=#{rha.id} user=#{rha.user_id} " <>
+            "#{rha.repo_host}: #{inspect(reason)}"
+        )
+
+        {:error, :transient}
+    end
+  end
+
+  defp refresh_under_lock(%__MODULE__{} = rha, fetch_fun) do
+    case reload(rha) do
+      nil ->
+        {:error, :revoked}
+
+      %__MODULE__{} = fresh ->
+        if stored_token_usable?(fresh) do
+          Logger.info(
+            "OAuth refresh already done by a concurrent winner; skipping the provider " <>
+              "call for rha=#{fresh.id} user=#{fresh.user_id} provider=#{fresh.repo_host}"
+          )
+
+          {:ok, {fresh.token, fresh.token_expires_at}}
+        else
+          resolve_token_result(fresh, fetch_fun.(fresh))
+        end
+    end
+  end
+
+  # We lost the lock. The transaction has already ended, so the pooled
+  # connection is back before we sleep.
+  defp await_refresh_winner(%__MODULE__{} = rha, fetch_fun, attempt) do
+    case Enum.at(refresh_wait_backoff_ms(), attempt) do
+      nil ->
+        Logger.warning(
+          "Gave up waiting for a concurrent OAuth refresh rha=#{rha.id} " <>
+            "user=#{rha.user_id} provider=#{rha.repo_host}; treating as transient"
+        )
+
+        {:error, :transient}
+
+      backoff_ms ->
+        Process.sleep(backoff_ms)
+
+        case reload(rha) do
+          nil ->
+            {:error, :revoked}
+
+          %__MODULE__{} = fresh ->
+            if stored_token_usable?(fresh) do
+              {:ok, {fresh.token, fresh.token_expires_at}}
+            else
+              # The winner has not published a usable token yet (still in
+              # flight, or it failed). Try to become the winner ourselves.
+              contend_for_refresh(fresh, fetch_fun, attempt + 1)
+            end
+        end
+    end
+  end
+
+  defp stored_token_usable?(%__MODULE__{} = rha) do
+    rha.token not in [nil, ""] and
+      Guard.Utils.OAuth.valid_token?(rha.token_expires_at,
+        nil_valid: rha.repo_host == "github"
+      )
   end
 
   # A provider classified the refresh as a genuine revocation (invalid_grant).
@@ -394,10 +511,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
   # family-revoked; that surfaces on the next validate/refresh. The real fix
   # (single-flight before the refresh POST) is tracked separately.
   defp recover_after_winner(%__MODULE__{} = fresh) do
-    nil_valid = fresh.repo_host == "github"
-
-    if not is_nil(fresh.token) and
-         Guard.Utils.OAuth.valid_token?(fresh.token_expires_at, nil_valid: nil_valid) do
+    if stored_token_usable?(fresh) do
       Logger.info(
         "OAuth refresh classified revoked but a concurrent winner rotated the token; " <>
           "recovering rha=#{fresh.id} user=#{fresh.user_id} provider=#{fresh.repo_host}"
