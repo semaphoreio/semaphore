@@ -216,6 +216,23 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
           workflow.update(:state => Workflow::STATE_PR_NON_MERGEABLE)
 
           return
+        when :mergeable_unknown
+          # No merge ref exists until GitHub's async test-merge resolves, so
+          # retry rather than treat unknown as a conflict and skip the build.
+          if retries < 10
+            sidekiq_job_id = Semaphore::RepoHost::Hooks::Handler::Worker.perform_in(2.minutes, workflow.id, hook_payload, signature, retries + 1)
+            logger.info("pr-mergeable-unknown-rescheduled", :sidekiq_job_id => sidekiq_job_id)
+          else
+            # Persistent unknown past the retry budget is a stuck/degraded state,
+            # not an observed conflict: recording nil mergeability would emit a
+            # spurious PullRequestUnmergeable event, so only set the terminal
+            # state and surface a metric.
+            Watchman.increment("hook.processing.pr_mergeable_unknown_giving_up")
+            logger.info("pr-mergeable-unknown-giving-up")
+            workflow.update(:state => Workflow::STATE_PR_NON_MERGEABLE)
+          end
+
+          return
         when :skip_ci
           logger.info("request-is-filtered")
           workflow.update(:state => Workflow::STATE_SKIP_CI)
@@ -277,6 +294,13 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
 
     if pr == nil
       return [:not_found, {}, msg]
+    end
+
+    # GitHub computes a PR's test-merge asynchronously, so `mergeable` is nil
+    # (unknown) until it finishes — distinct from false (a real conflict).
+    # Keep them apart so an unknown result can be retried rather than skipped.
+    if mergeable.nil?
+      return [:mergeable_unknown, { :pr => pr }, msg]
     end
 
     unless mergeable

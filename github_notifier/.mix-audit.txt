@@ -1,0 +1,57 @@
+# --- hackney 1.20.1 advisories, all fixed in 4.0.1 ---
+# Bump to 4.x is blocked here: httpoison ~> 1.x/2.x requires hackney ~> 1.17 and
+# sentry 8.x caps hackney at 1.x, so hackney cannot move to 4.x without upgrading
+# httpoison to 3.x and sentry to 13.x together. Real fix tracked for a separate
+# dep-bump PR. github_notifier's outbound HTTP (tentacat/httpoison/hackney)
+# targets the GitHub API and Sentry with service-configured URLs, not
+# user-supplied hosts/queries.
+#
+# ssl:connect/2 post-handshake upgrade has no timeout (operational DoS; outbound bounded to known hosts)
+GHSA-gp9c-pm5m-5cxr
+# CR/LF injection in query parameter (query params are not user-controlled)
+GHSA-j9wq-vxxc-94wf
+# fails to properly release HTTP connections (resource leak; bounded workload)
+GHSA-9fm9-hp7p-53mf
+# CRLF / header injection via unvalidated `domain` and `path` options (not user-controlled)
+GHSA-mp55-p8c9-rfw2
+# Server-side Request Forgery (target hosts are not user-supplied)
+GHSA-vq52-99r9-h5pw
+# SSRF allowlist bypass in hackney_url:normalize/2 via percent-encoded host (hosts not user-supplied)
+GHSA-pj7v-xfvx-wmjq
+
+# --- protobuf 0.13.0 ---
+# Unbounded recursion depth in embedded-message decoding, fixed in 0.16.1.
+# Bump requires regenerating all internal_api stubs; messages decoded here come
+# from internal services over the private network, not untrusted input. Real fix
+# tracked for the same separate dep-bump PR.
+GHSA-rv48-qqj5-crxg
+
+# --- gun 2.4.1: mix_audit false positive ---
+# GHSA-w4f7-4cxr-rv3c (CRLF injection in cowlib structured-field headers)
+# affects cowboy < 2.16.0 and gun < 2.4.0 per the advisory's own
+# per-package ranges. This lockfile has cowboy 2.17.0, gun 2.4.1 and
+# cowlib 2.18.0 - all at or above the patched versions. mix_audit
+# collapses the multi-package ranges into one list and matches gun
+# 2.4.1 against cowboy's "< 2.16.0" bound, so any gun version gets
+# flagged. Additionally, gun here only carries gRPC (HTTP/2, binary
+# framing) to internal services with fixed paths and internally
+# generated metadata - no user-controlled header values.
+GHSA-w4f7-4cxr-rv3c
+
+# --- grpc 0.9.0 advisories, all first patched in grpc 1.0.0 ---
+# github_notifier runs an internal gRPC server (GithubNotifier.GrpcEndpoint / services/api.ex,
+# InternalApi.GithubNotifier.GithubNotifier.Service on port 50051, start_server: true). It is
+# reachable only from inside the cluster by authenticated Semaphore services, not from the internet.
+# The fix is grpc 1.0.0, but moving 0.9.0 -> 1.0.0 is a major upgrade that changes the grpc-elixir
+# API and cascades to gun (~> 2.0), cowboy (~> 2.10), mint (~> 1.5), protobuf and every generated
+# .pb.ex stub - a large, separately-tracked migration, not a security-patch bump. Accepted for now,
+# with the 1.0.0 migration tracked as the real fix.
+#
+# RCE via attacker-controlled gRPC payloads (critical; needs a cluster foothold or a compromised upstream service - endpoint is not exposed externally)
+GHSA-grp7-v8xh-rj7h
+# unbounded gzip decompression / decompression bomb (high; DoS; no gRPC message compression enabled here; internal-only)
+GHSA-6ccx-9c9f-327w
+# path bindings overridable by query string and request body (high; request-routing manipulation; internal-only, authenticated callers)
+GHSA-mwr4-5g34-j5cq
+# unbounded request body accumulation in read_full_body/3 (high; DoS via large HTTP/2 bodies; internal-only, bounded by ingress limits)
+GHSA-q8gf-9rvj-gmgj
