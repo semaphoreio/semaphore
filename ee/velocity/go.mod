@@ -13,7 +13,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/rabbitmq/amqp091-go v1.13.0
-	github.com/renderedtext/go-tackle v0.0.0-20231226193542-c913a4af4f94
+	github.com/renderedtext/go-tackle v0.0.0-20260921080357-d04bdecbe4a8
 	github.com/renderedtext/go-watchman v0.0.0-20221222100224-451a6f3c8d92
 	github.com/samber/lo v1.38.1
 	github.com/semaphoreci/test-results v0.6.10-0.20231114151005-04b9d9ca32c9
