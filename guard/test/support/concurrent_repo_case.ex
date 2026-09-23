@@ -21,6 +21,13 @@ defmodule Guard.RepoCase do
       Ecto.Adapters.SQL.Sandbox.mode(Guard.InstanceConfigRepo, {:shared, self()})
     end
 
+    # Node-local caches are not rolled back with the sandbox transaction, so a
+    # value cached by one test outlives the rows it was derived from. The
+    # revoke-rate breaker counts accounts revoked in a window and caches that
+    # count for a few seconds - long enough for one test's storm to trip the
+    # breaker for the next test that legitimately revokes.
+    Cachex.clear(:oauth_revoke_rate_cache)
+
     :ok
   end
 end
