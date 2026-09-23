@@ -94,10 +94,17 @@ defmodule Guard.Api.Gitlab do
 
   defp safe_oauth_error(_), do: nil
 
+  # Hard bound on the refresh POST: it runs while holding a Postgres advisory
+  # lock and a pooled Front-DB connection (see the single-flight in
+  # Guard.FrontRepo.RepoHostAccount), so a hung provider must not be able to
+  # park either one until the caller's RPC deadline.
+  @refresh_timeout_ms 3_000
+
   defp build_token_client do
     {:ok, {client_id, client_secret}} = Guard.GitProviderCredentials.get(:gitlab)
 
     Tesla.client([
+      {Tesla.Middleware.Timeout, timeout: @refresh_timeout_ms},
       {Tesla.Middleware.BaseUrl, @base_url},
       {Tesla.Middleware.BasicAuth, username: client_id, password: client_secret},
       Tesla.Middleware.JSON
