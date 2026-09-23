@@ -54,24 +54,45 @@ defmodule Guard.Api.Gitlab do
         case OAuth.classify_refresh_response(status, body) do
           :revoked ->
             Logger.warning(
-              "Failed to refresh gitlab token for #{repo_host_account.login}, with: #{inspect(body)}"
+              "Failed to refresh GitLab token (HTTP #{status}): " <>
+                "error=#{inspect(safe_oauth_error(body))} " <>
+                "rha=#{repo_host_account.id} user=#{repo_host_account.user_id}"
             )
 
             {:error, :revoked}
 
           :transient ->
-            Logger.debug(
-              "Transient failure refreshing gitlab token for #{repo_host_account.login}, with: #{inspect(body)}"
+            Logger.warning(
+              "Transient failure refreshing GitLab token (HTTP #{status}): " <>
+                "error=#{inspect(safe_oauth_error(body))} " <>
+                "rha=#{repo_host_account.id} user=#{repo_host_account.user_id}"
             )
 
             {:error, :transient}
         end
 
       {:error, error} ->
-        Logger.error("Error fetching gitlab token: #{inspect(error)}")
+        Logger.error(
+          "Error fetching GitLab token: #{inspect(error)} " <>
+            "rha=#{repo_host_account.id} user=#{repo_host_account.user_id}"
+        )
+
         {:error, :network_error}
     end
   end
+
+  # Never log the raw body (it can carry token material); surface only the
+  # OAuth `error` code.
+  defp safe_oauth_error(body) when is_map(body), do: Map.get(body, "error")
+
+  defp safe_oauth_error(body) when is_binary(body) do
+    case Jason.decode(body) do
+      {:ok, decoded} -> safe_oauth_error(decoded)
+      _ -> nil
+    end
+  end
+
+  defp safe_oauth_error(_), do: nil
 
   defp build_token_client do
     {:ok, {client_id, client_secret}} = Guard.GitProviderCredentials.get(:gitlab)

@@ -61,7 +61,7 @@ sem-ai connect <your-org>.semaphoreci.com YOUR_API_TOKEN
 
 `sem-ai` writes credentials to `~/.sem.yaml`, the same file used by the legacy [`sem` CLI](https://github.com/semaphoreci/cli), so existing contexts and tokens are reused.
 
-If you work across several organizations, pin the one you mean per invocation with `--context` (or `SEM_CONTEXT` for a whole session) rather than switching the shared active context. That matters most when more than one agent runs on the same machine, since they would otherwise compete over a single shared setting. See [pinning an organization](../../reference/sem-ai-cli#context-pin).
+If you work across several organizations, pin the one you mean per invocation with `--context` (or `SEM_CONTEXT` for a whole session) rather than switching the shared active context. That matters most when more than one agent runs on the same machine, since they would otherwise compete over a single shared setting. The pin takes the context *name*, which is the host with its dots replaced by underscores — `myorg.semaphoreci.com` above is pinned as `--context myorg_semaphoreci_com`. Pinning isolates which organization each invocation reads; it does not serialize the commands that write `~/.sem.yaml`. See [pinning an organization](../../reference/sem-ai-cli#context-pin).
 
 For shared or headless setups — a chatops bot, an internal dashboard, or a non-Semaphore CI job that calls the Semaphore API — use a [service account](../service-accounts) token instead, so access and rotation are not tied to any single user.
 
@@ -168,6 +168,8 @@ To tie a server to one organization, pass `--context` in its `args`:
 ```
 
 Every tool call that server handles then runs against that organization, whatever the shared active context happens to be. Individual calls can still override it by passing a `context` argument, which applies to that call only.
+
+One exception is worth knowing about: a pinned server still exposes `context_switch`, and that tool rewrites the shared `active-context` key for every session on the machine. It ignores the server pin and a per-call `context` alike, so an agent must not call it to scope a request — pass `context` on the call instead.
 
 This is local: the MCP server runs on the same machine as the agent, using your `sem-ai connect` credentials. Long-running commands (`watch`, `promote-and-wait`) are excluded from the MCP surface to prevent blocking the agent, as are the `signin` and `connect` onboarding commands — run those in a shell.
 

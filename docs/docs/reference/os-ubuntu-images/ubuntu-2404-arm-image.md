@@ -58,18 +58,18 @@ Please note that `sem-service` is not available on R1 images.
 
 Following version control tools are pre-installed:
 
-- Git 2.54.0
-- Git LFS (Git Large File Storage) 3.7.1
-- GitHub CLI 2.90.0
-- Mercurial 6.7.2
-- Svn 1.14.3
+- Git: 2.55.0
+- Git LFS (Git Large File Storage): 3.8.0
+- GitHub CLI: 2.101.0
+- Mercurial: 6.7.2
+- Svn: 1.14.3
 
 ### Browsers and Headless Browser Testing
 
-- Firefox 140.9.1
-- Geckodriver 0.36.0
-- Chromium 147.0.7727.101
-- Chromium Driver 147.0.7727.101
+- Firefox: 140.16.0esr
+- Geckodriver: 0.37.1
+- Chromium: 153.0.8010.52
+- Chromium Driver: 153.0.8010.52
 - Xvfb (X Virtual Framebuffer)
 
 Chrome and Firefox both support headless mode. You shouldn't need to do more
@@ -80,34 +80,34 @@ Refer to the documentation of associated libraries when configuring your project
 
 Docker toolset is installed and the following versions are available:
 
-- Docker 29.4.1
-- Docker-compose 5.1.3 (used as `docker compose version`)
-- Docker-buildx 0.33.0
-- Docker-machine 0.16.2
-- Dockerize 0.11.0
-- Buildah 1.33.7
-- Podman 4.9.3
-- Skopeo 1.13.3
+- Docker: 29.8.1
+- Docker-compose: 5.5.1 (used as `docker compose version`)
+- Docker-buildx: 0.37.1
+- Docker-machine: 0.16.2
+- Dockerize: 0.15.1
+- Buildah: 1.33.7
+- Podman: 4.9.3
+- Skopeo: 1.13.3
 
 ### Cloud CLIs
 
-- Aws-cli v2 (used as `aws`) 2.34.34
-- Azure-cli 2.85.0
-- Eb-cli 3.25
-- Ecs-cli 1.21.0
-- Doctl 1.155.0
-- Gcloud 565.0.0
-- Gke-gcloud-auth-plugin 565.0.0
-- Kubectl 1.29.1
-- Terraform 1.14.9
-- Helm 4.1.4
-- Helmfile 1.4.4
+- Aws-cli v2 (used as `aws`): 2.36.49
+- Azure-cli: 2.90.0
+- Eb-cli: 3.25
+- Ecs-cli: 1.21.0
+- Doctl: 1.169.0
+- Gcloud: 585.0.0
+- Gke-gcloud-auth-plugin: 585.0.0
+- Kubectl: 1.29.1
+- Terraform: 1.16.3
+- Helm: 4.3.0
+- Helmfile: 1.8.0
 
 ### Network utilities
 
-- Httpie 3.2.4
-- Curl 8.5.0
-- Rsync 3.2.7
+- Httpie: 3.2.4
+- Curl: 8.5.0
+- Rsync: 3.2.7
 
 ## Compilers
 
@@ -140,19 +140,19 @@ Versions:
 - 1.25.x
 - 1.26.x
 
-The default installed Go version is 1.26.2.
+The default installed Go version is 1.27.1.
 
 ### Java and JVM languages
 
-- Java: 11.0.30, 17.0.18 (default), 21.0.10
+- Java: 11.0.32.1, 17.0.20.1 (default), 21.0.12.1, 25.0.4.1
 - Scala: 3.2.2
 - Leiningen: 2.12.0 (Clojure)
-- Sbt 1.12.9
+- Sbt: 2.0.9
 
 ### Additional Java build tools
 
-- Maven: 3.9.15
-- Gradle: 9.4.1
+- Maven: 3.9.16
+- Gradle: 9.7.1
 
 ### JavaScript via Node.js
 
@@ -160,11 +160,11 @@ Node.js versions are managed by [nvm](https://github.com/nvm-sh/nvm).
 You can install any version you need with `nvm install [version]`.
 Installed version:
 
-- 24.15.0 (set as default, with alias 24.15), includes npm 11.12.1
+- 24.21.0 (set as default, with alias 24.21), includes npm 11.19.0
 
 ### Additional JS tools
 
-- Bun: 1.3.13
+- Bun: 1.4.2
 - Yarn: 1.22.22
 
 ### PHP
@@ -182,7 +182,7 @@ The default installed PHP version is 8.1.34.
 
 ### Additional PHP libraries
 
-PHPUnit: 9.5.28
+PHPUnit: 9.5.27
 
 ### Python
 
@@ -196,8 +196,8 @@ Python versions are installed and managed by
 Supporting libraries:
 
 - pypy3: 7.3.21
-- pip: 26.0.1
-- virtualenv: 21.2.4
+- pip: 26.2.1
+- virtualenv: 21.9.0
 
 ### Ruby
 
@@ -212,11 +212,11 @@ The default installed Ruby version is 3.4.9.
 
 ### Rust
 
-- 1.95.0
+- 1.98.1
 
 ### Swiftly
 
-- 1.1.1
+- 1.1.4
 
 ## See also
 
