@@ -8,7 +8,7 @@ Thank you for using Semaphore!
 We continuously deploy changes that improve our product for our customers.
 This page is updated on a weekly basis.
 
-### Week of September 28, 2026
+### Upcoming Changes (Week of September 28, 2026)
 
 **(Improved) Ubuntu 24.04 image update**
 
