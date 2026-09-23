@@ -262,7 +262,29 @@ defmodule Guard.FrontRepo.RepoHostAccount do
   # shapes firing, distinct accounts revoked per 10 minutes peaked at 12
   # (p95 10, median 6) and never exceeded 20 across 104 buckets.
   @revoke_rate_window_seconds 600
-  @revoke_rate_threshold 20
+  @default_revoke_rate_threshold 20
+
+  # Runtime-configurable via OAUTH_REVOKE_RATE_THRESHOLD (see config/runtime.exs)
+  # so the threshold can be retuned by changing the deployment's environment and
+  # restarting the pods - no rebuild. Deliberately read on each check rather
+  # than into a module attribute, which would bake in whatever the BUILD
+  # container saw rather than what the pod is configured with.
+  defp revoke_rate_threshold do
+    case Application.get_env(:guard, :oauth_revoke_rate_threshold, @default_revoke_rate_threshold) do
+      threshold when is_integer(threshold) and threshold > 0 ->
+        threshold
+
+      other ->
+        # A zero or garbage threshold would hold the breaker permanently open
+        # and stop every revocation, so refuse it rather than trust it.
+        Logger.error(
+          "Invalid :oauth_revoke_rate_threshold #{inspect(other)}; " <>
+            "falling back to #{@default_revoke_rate_threshold}"
+        )
+
+        @default_revoke_rate_threshold
+    end
+  end
 
   # The count is cached briefly so a genuine storm - the moment the breaker
   # matters most - cannot turn every revoke attempt into its own query. A few
@@ -272,10 +294,12 @@ defmodule Guard.FrontRepo.RepoHostAccount do
   @revoke_rate_cache :oauth_revoke_rate_cache
 
   defp revoke_rate_exceeded?(%__MODULE__{} = rha) do
-    if recently_revoked_count(rha.repo_host) >= @revoke_rate_threshold do
+    threshold = revoke_rate_threshold()
+
+    if recently_revoked_count(rha.repo_host, threshold) >= threshold do
       Logger.error(
         "Revoke circuit breaker OPEN for #{rha.repo_host}: at least " <>
-          "#{@revoke_rate_threshold} distinct accounts revoked in the last " <>
+          "#{threshold} distinct accounts revoked in the last " <>
           "#{div(@revoke_rate_window_seconds, 60)} minutes. Refusing to revoke " <>
           "rha=#{rha.id} user=#{rha.user_id}; treating as transient. This is the " <>
           "signature of a client-credential or provider-wide failure, NOT of many " <>
@@ -288,7 +312,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     end
   end
 
-  defp recently_revoked_count(repo_host) do
+  defp recently_revoked_count(repo_host, threshold) do
     case Cachex.get(@revoke_rate_cache, repo_host) do
       {:ok, count} when is_integer(count) ->
         count
@@ -296,7 +320,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
       # Miss, or a cache failure. A cache problem must never silently disable
       # the breaker, so fall through to the live count either way.
       _ ->
-        count = count_recently_revoked(repo_host)
+        count = count_recently_revoked(repo_host, threshold)
         Cachex.put(@revoke_rate_cache, repo_host, count, ttl: @revoke_rate_cache_ttl)
         count
     end
@@ -306,7 +330,9 @@ defmodule Guard.FrontRepo.RepoHostAccount do
   # guard pod writes to, so no distributed counter is needed. Bounded by a
   # LIMIT so the scan stops as soon as the threshold is reached, which is
   # exactly the case where this runs most often.
-  defp count_recently_revoked(repo_host) do
+  # The LIMIT must track the threshold: capping the count below it would mean
+  # the breaker could never reach its own trip point.
+  defp count_recently_revoked(repo_host, threshold) do
     cutoff = DateTime.utc_now() |> DateTime.add(-@revoke_rate_window_seconds, :second)
 
     # `select: r.id` rather than a literal: Ecto requires a subquery to select a
@@ -315,7 +341,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
       from(r in __MODULE__,
         where: r.repo_host == ^repo_host and r.revoked == true and r.updated_at > ^cutoff,
         select: r.id,
-        limit: @revoke_rate_threshold
+        limit: ^threshold
       )
 
     from(r in subquery(capped), select: count(r.id)) |> FrontRepo.one() || 0

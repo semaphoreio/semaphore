@@ -70,6 +70,20 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
     end
   end
 
+  # Override the runtime-configurable breaker threshold for one test.
+  defp put_revoke_threshold(value) do
+    previous = Application.get_env(:guard, :oauth_revoke_rate_threshold)
+    Application.put_env(:guard, :oauth_revoke_rate_threshold, value)
+
+    on_exit(fn ->
+      if is_nil(previous) do
+        Application.delete_env(:guard, :oauth_revoke_rate_threshold)
+      else
+        Application.put_env(:guard, :oauth_revoke_rate_threshold, previous)
+      end
+    end)
+  end
+
   defp mock_dead_grant! do
     Tesla.Mock.mock_global(fn
       %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
@@ -584,6 +598,56 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
     test "revokes outside the window do not count toward the threshold", %{rha: rha} do
       stale = DateTime.utc_now() |> DateTime.add(-3600, :second) |> DateTime.truncate(:second)
       insert_revoked_bitbucket_accounts!(20, stale)
+      mock_dead_grant!()
+
+      assert {:error, :revoked} = RepoHostAccount.get_bitbucket_token(rha)
+      assert FrontRepo.get!(RepoHostAccount, rha.id).revoked == true
+    end
+
+    test "a raised threshold lets a larger burst through", %{rha: rha} do
+      # The rollout case: set higher while a backlog of already-broken accounts
+      # drains, then lower it again - by changing the deployment's environment,
+      # not by shipping a build.
+      put_revoke_threshold(100)
+
+      insert_revoked_bitbucket_accounts!(25, DateTime.utc_now() |> DateTime.truncate(:second))
+      mock_dead_grant!()
+
+      assert {:error, :revoked} = RepoHostAccount.get_bitbucket_token(rha)
+      assert FrontRepo.get!(RepoHostAccount, rha.id).revoked == true
+    end
+
+    test "a lowered threshold trips sooner", %{rha: rha} do
+      put_revoke_threshold(3)
+
+      insert_revoked_bitbucket_accounts!(3, DateTime.utc_now() |> DateTime.truncate(:second))
+      mock_dead_grant!()
+
+      assert {:error, :transient} = RepoHostAccount.get_bitbucket_token(rha)
+      refute FrontRepo.get!(RepoHostAccount, rha.id).revoked
+    end
+
+    test "the LIMIT tracks the threshold, so a raised one can still trip",
+         %{rha: rha} do
+      # Regression guard: the count is capped by a LIMIT for cost. If that LIMIT
+      # stayed at the old default while the threshold was raised, the count
+      # could never reach the trip point and the breaker would be permanently
+      # inert at exactly the settings someone chose for safety.
+      put_revoke_threshold(30)
+
+      insert_revoked_bitbucket_accounts!(30, DateTime.utc_now() |> DateTime.truncate(:second))
+      mock_dead_grant!()
+
+      assert {:error, :transient} = RepoHostAccount.get_bitbucket_token(rha)
+    end
+
+    test "a zero or unparseable threshold falls back to the default rather than " <>
+           "holding the breaker open",
+         %{rha: rha} do
+      # A threshold of 0 would compare `count >= 0` - always true - and stop
+      # every revocation on the provider. A misconfiguration must not be able
+      # to do that silently.
+      put_revoke_threshold(0)
       mock_dead_grant!()
 
       assert {:error, :revoked} = RepoHostAccount.get_bitbucket_token(rha)
