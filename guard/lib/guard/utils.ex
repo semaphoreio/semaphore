@@ -75,7 +75,8 @@ defmodule Guard.Utils.OAuth do
         # invalid_grant on a genuinely revoked grant. Without this it would
         # decode to a nil access_token and get stuck :transient forever, never
         # signalling the user to reconnect. Classify it as a real revoke.
-        if is_nil(token) and genuine_grant_revocation?(decoded) do
+        if is_nil(token) and
+             genuine_grant_revocation?(repo_host_account.repo_host, 200, decoded) do
           Logger.warning(
             "2xx token refresh body signals a genuine revocation for " <>
               "rha=#{repo_host_account.id} user=#{repo_host_account.user_id} " <>
@@ -231,12 +232,9 @@ defmodule Guard.Utils.OAuth do
   caller should take:
 
     - `:ok`        - 2xx, the token can be used
-    - `:revoked`   - genuine permanent revocation: the provider's body
-                      signals `error=invalid_grant` (all providers),
-                      `error=bad_refresh_token` (GitHub), or
-                      `error=unauthorized_client` WITH a description naming
-                      the refresh token (Bitbucket - see
-                      `genuine_grant_revocation?/1`)
+    - `:revoked`   - genuine permanent revocation; see
+                     `genuine_grant_revocation?/3` for exactly which bodies
+                     qualify and why the bar is set where it is
     - `:transient` - everything else, INCLUDING a bare HTTP 401 /
                       `invalid_client` / a bare `unauthorized_client`. Per
                       RFC 6749 those mean OUR shared client_id/client_secret
@@ -245,18 +243,22 @@ defmodule Guard.Utils.OAuth do
                       provider. Also covers 403, 429, 5xx, or any other
                       4xx. The caller MUST NOT treat `:transient` as a
                       permanent revoke.
-  """
-  @spec classify_refresh_response(non_neg_integer(), term()) :: :ok | :revoked | :transient
-  def classify_refresh_response(status, _body) when status in 200..299, do: :ok
 
-  def classify_refresh_response(status, body) do
+  `repo_host` is required because two of the codes below are ambiguous and are
+  only trusted for the provider we have actually observed sending them.
+  """
+  @spec classify_refresh_response(String.t(), non_neg_integer(), term()) ::
+          :ok | :revoked | :transient
+  def classify_refresh_response(_repo_host, status, _body) when status in 200..299, do: :ok
+
+  def classify_refresh_response(repo_host, status, body) do
     cond do
-      genuine_grant_revocation?(body) ->
+      genuine_grant_revocation?(repo_host, status, body) ->
         :revoked
 
       status == 401 ->
         Logger.warning(
-          "Bitbucket/GitLab/GitHub OAuth client credentials rejected (HTTP 401) - " <>
+          "#{repo_host} OAuth client credentials rejected (HTTP 401) - " <>
             "config issue, not a user revoke"
         )
 
@@ -267,54 +269,133 @@ defmodule Guard.Utils.OAuth do
     end
   end
 
-  defp genuine_grant_revocation?(body) when is_map(body) do
-    case Map.get(body, "error") do
-      error when error in ["invalid_grant", "bad_refresh_token"] ->
-        true
+  # Unambiguous in every dialect we speak: the grant itself was rejected.
+  @unambiguous_revocation_codes ~w(invalid_grant bad_refresh_token)
 
-      # Bitbucket answers a genuinely dead grant with `unauthorized_client`:
-      #
-      #   403 {"error": "unauthorized_client",
-      #        "error_description": "refresh_token is invalid"}
-      #
-      # RFC 6749 section 5.2 otherwise reserves that code for "the authenticated
-      # CLIENT is not authorized to use this authorization grant type" - i.e.
-      # our shared OAuth consumer credentials, not one user's grant. Matching
-      # the code alone would therefore mass-revoke every account on a provider
-      # the moment our consumer is misconfigured, disabled, or rate-limited at
-      # the client level - the failure class this classifier exists to prevent,
-      # and one that reaches here BEFORE the HTTP 401 guard below.
-      #
-      # So require the description to name the refresh token. A client-level
-      # rejection does not carry that, and a user-level one always does.
-      "unauthorized_client" ->
-        refresh_token_rejected?(Map.get(body, "error_description"))
+  # Providers observed sending the ambiguous codes for a dead grant. Scoped
+  # deliberately: `invalid_request` in particular is the generic
+  # malformed-request code, and applying it to GitHub and GitLab - which use
+  # `bad_refresh_token` and `invalid_grant` and so need none of this - would
+  # widen the blast radius across the fleet for no benefit.
+  @ambiguous_revocation_providers ~w(bitbucket)
+  @ambiguous_revocation_codes ~w(unauthorized_client invalid_request)
 
-      _ ->
-        false
+  # Words that assert the TOKEN is bad. A dead grant always says one of these.
+  @token_rejected_words [
+    "invalid",
+    "expired",
+    "revoked",
+    "not valid",
+    "no longer valid",
+    "not found",
+    "unknown"
+  ]
+
+  # Words that make the message a statement about the CLIENT or the grant TYPE
+  # rather than about this user's token. Our grant_type is literally
+  # `refresh_token`, so naming the token is NOT on its own a user-level signal:
+  # "the client is not authorized to use the refresh_token grant type" names it
+  # too, and that is a fleet-wide condition.
+  @client_level_words ["client", "consumer", "grant type", "grant_type"]
+
+  # An invalidity word PRECEDING the noun makes the client or application the
+  # subject being refused ("invalid client credentials for refresh_token
+  # grant"); following it, the noun is only scope, which is a dead grant.
+  @client_subject ~r/\b(invalid|bad|unknown|unauthorized|disabled)\s+(application|app|client|consumer)\b/
+
+  @doc """
+  Does this response body prove the USER's grant is permanently dead?
+
+  Three tiers, in descending order of how much the provider is telling us:
+
+    1. `invalid_grant` / `bad_refresh_token` - unambiguous in RFC 6749 and in
+       GitHub's dialect. Trusted on any provider, any status.
+
+    2. `access_denied` with a description saying the user's account is
+       inactive - Bitbucket's shape for a deactivated user. That is a
+       statement about the END USER, never about our OAuth consumer, so it is
+       safe on a 401 where the ambiguous codes below are not.
+
+    3. `unauthorized_client` / `invalid_request` - AMBIGUOUS. RFC 6749 section
+       5.2 reserves `unauthorized_client` for "the authenticated CLIENT is not
+       authorized to use this authorization grant type", and `invalid_request`
+       is what any server returns for a request WE malformed. Bitbucket uses
+       both for a dead grant:
+
+           403 {"error":"unauthorized_client","error_description":"refresh_token is invalid"}
+           400 {"error":"invalid_request",    "error_description":"Invalid refresh_token"}
+
+       Trusting either on its code alone would revoke every account on a
+       provider the moment our shared consumer is misconfigured, disabled or
+       rate-limited - the failure class this classifier exists to prevent.
+       So they are gated three ways: the provider must be one we have observed
+       sending them, the status must not be 401 (the status an OAuth server
+       returns when it rejects our `Authorization: Basic client_id:secret`,
+       which is how the Bitbucket and GitLab token clients authenticate), and
+       the description must pass `refresh_token_rejected?/1`.
+
+  Everything else is `:transient`. A false negative here costs a retry; a
+  false positive costs every account on the provider.
+  """
+  @spec genuine_grant_revocation?(String.t(), non_neg_integer(), term()) :: boolean()
+  def genuine_grant_revocation?(repo_host, status, body) when is_map(body) do
+    error = Map.get(body, "error")
+    description = Map.get(body, "error_description")
+
+    cond do
+      error in @unambiguous_revocation_codes -> true
+      inactive_user?(repo_host, error, description) -> true
+      ambiguous_revocation?(repo_host, status, error, description) -> true
+      true -> false
     end
   end
 
-  defp genuine_grant_revocation?(body) when is_binary(body) do
+  def genuine_grant_revocation?(repo_host, status, body) when is_binary(body) do
     case Jason.decode(body) do
-      {:ok, decoded} -> genuine_grant_revocation?(decoded)
+      {:ok, decoded} when is_map(decoded) -> genuine_grant_revocation?(repo_host, status, decoded)
       _ -> false
     end
   end
 
-  defp genuine_grant_revocation?(_body), do: false
+  def genuine_grant_revocation?(_repo_host, _status, _body), do: false
 
-  # Matched loosely (case-insensitive, either spelling) so a wording change on
-  # the provider's side degrades to :transient - a retry - rather than to a
-  # wrong revoke.
+  defp ambiguous_revocation?(repo_host, status, error, description) do
+    repo_host in @ambiguous_revocation_providers and
+      status != 401 and
+      error in @ambiguous_revocation_codes and
+      refresh_token_rejected?(description)
+  end
+
+  # A deactivated end user. `access_denied` is not otherwise a statement about
+  # the grant, so the description carries the whole signal.
+  defp inactive_user?(repo_host, "access_denied", description)
+       when repo_host in @ambiguous_revocation_providers and is_binary(description) do
+    normalized = String.downcase(description)
+
+    String.contains?(normalized, "user") and String.contains?(normalized, "inactive")
+  end
+
+  defp inactive_user?(_repo_host, _error, _description), do: false
+
+  # The positive condition and the exclusions do different jobs and neither is
+  # sufficient alone. The positive one catches refusals phrased as permission
+  # ("not enabled", "not permitted") that no exclusion list would ever
+  # enumerate; the exclusions catch refusals that happen to carry an invalidity
+  # word. Anything the exclusions miss still has to get past the positive one.
   defp refresh_token_rejected?(description) when is_binary(description) do
     normalized = String.downcase(description)
 
-    String.contains?(normalized, "refresh_token") or
-      String.contains?(normalized, "refresh token")
+    names_token?(normalized) and
+      Enum.any?(@token_rejected_words, &String.contains?(normalized, &1)) and
+      not Enum.any?(@client_level_words, &String.contains?(normalized, &1)) and
+      not Regex.match?(@client_subject, normalized)
   end
 
   defp refresh_token_rejected?(_description), do: false
+
+  defp names_token?(normalized) do
+    String.contains?(normalized, "refresh_token") or String.contains?(normalized, "refresh token")
+  end
 end
 
 defmodule Guard.Utils.Http do

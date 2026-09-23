@@ -42,6 +42,49 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
 
   # Shared setup: a bitbucket RHA with a valid (not-yet-expired) stored token,
   # used by the token-persistence and stale-scoping describes.
+  defp insert_revoked_bitbucket_accounts!(count, revoked_at) do
+    for _ <- 1..count do
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      {:ok, rha} =
+        Support.Members.insert_repo_host_account(
+          login: "example",
+          name: "example",
+          repo_host: "bitbucket",
+          user_id: user.id,
+          token: "dead_token",
+          refresh_token: "dead_refresh",
+          token_expires_at: Support.Members.invalid_expires_at(),
+          permission_scope: "repo,user:email",
+          revoked: true
+        )
+
+      # updated_at drives the window; set it explicitly rather than relying
+      # on insertion time.
+      Ecto.Adapters.SQL.query!(
+        Guard.FrontRepo,
+        "UPDATE repo_host_accounts SET updated_at = $1 WHERE id::text = $2",
+        [revoked_at, rha.id]
+      )
+    end
+  end
+
+  defp mock_dead_grant! do
+    Tesla.Mock.mock_global(fn
+      %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
+        {:ok,
+         %Tesla.Env{
+           status: 403,
+           body:
+             Jason.encode!(%{
+               "error" => "unauthorized_client",
+               "error_description" => "refresh_token is invalid"
+             })
+         }}
+    end)
+  end
+
   defp create_bitbucket_rha(_context) do
     {:ok, user} = Support.Factories.RbacUser.insert()
     {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
@@ -490,6 +533,85 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
       reloaded = FrontRepo.get!(RepoHostAccount, rha.id)
       # The revoke never persisted, so the row must stay unrevoked.
       refute reloaded.revoked
+    end
+  end
+
+  describe "revoke circuit breaker" do
+    setup do
+      # The count is cached per node for a few seconds, so clear it between
+      # tests or one test's count leaks into the next.
+      Cachex.clear(:oauth_revoke_rate_cache)
+
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      {:ok, rha} =
+        Support.Members.insert_repo_host_account(
+          login: "example",
+          name: "example",
+          repo_host: "bitbucket",
+          refresh_token: "example_refresh_token",
+          user_id: user.id,
+          token: "expired_token",
+          token_expires_at: Support.Members.invalid_expires_at(),
+          revoked: false,
+          permission_scope: "repo,user:email"
+        )
+
+      {:ok, rha: rha}
+    end
+
+    test "a normal revoke rate still revokes", %{rha: rha} do
+      insert_revoked_bitbucket_accounts!(5, DateTime.utc_now() |> DateTime.truncate(:second))
+      mock_dead_grant!()
+
+      assert {:error, :revoked} = RepoHostAccount.get_bitbucket_token(rha)
+      assert FrontRepo.get!(RepoHostAccount, rha.id).revoked == true
+    end
+
+    test "a fleet-wide revoke storm trips the breaker and degrades to :transient",
+         %{rha: rha} do
+      # A user-grant problem is per-account; a client-credential problem is
+      # fleet-wide. Above the threshold we stop revoking rather than disconnect
+      # every account on the provider over a wording change we mis-read.
+      insert_revoked_bitbucket_accounts!(20, DateTime.utc_now() |> DateTime.truncate(:second))
+      mock_dead_grant!()
+
+      assert {:error, :transient} = RepoHostAccount.get_bitbucket_token(rha)
+      refute FrontRepo.get!(RepoHostAccount, rha.id).revoked
+    end
+
+    test "revokes outside the window do not count toward the threshold", %{rha: rha} do
+      stale = DateTime.utc_now() |> DateTime.add(-3600, :second) |> DateTime.truncate(:second)
+      insert_revoked_bitbucket_accounts!(20, stale)
+      mock_dead_grant!()
+
+      assert {:error, :revoked} = RepoHostAccount.get_bitbucket_token(rha)
+      assert FrontRepo.get!(RepoHostAccount, rha.id).revoked == true
+    end
+
+    test "the breaker is per provider: a gitlab storm does not block a bitbucket revoke",
+         %{rha: rha} do
+      for _ <- 1..20 do
+        {:ok, user} = Support.Factories.RbacUser.insert()
+        {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+        {:ok, _} =
+          Support.Members.insert_repo_host_account(
+            login: "example",
+            name: "example",
+            repo_host: "gitlab",
+            user_id: user.id,
+            token: "dead_token",
+            refresh_token: "dead_refresh",
+            permission_scope: "repo,user:email",
+            revoked: true
+          )
+      end
+
+      mock_dead_grant!()
+
+      assert {:error, :revoked} = RepoHostAccount.get_bitbucket_token(rha)
     end
   end
 
