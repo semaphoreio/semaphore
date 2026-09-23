@@ -309,14 +309,16 @@ defmodule Guard.FrontRepo.RepoHostAccount do
   defp count_recently_revoked(repo_host) do
     cutoff = DateTime.utc_now() |> DateTime.add(-@revoke_rate_window_seconds, :second)
 
+    # `select: r.id` rather than a literal: Ecto requires a subquery to select a
+    # source, a field or a map.
     capped =
       from(r in __MODULE__,
         where: r.repo_host == ^repo_host and r.revoked == true and r.updated_at > ^cutoff,
-        select: 1,
+        select: r.id,
         limit: @revoke_rate_threshold
       )
 
-    from(r in subquery(capped), select: count()) |> FrontRepo.one() || 0
+    from(r in subquery(capped), select: count(r.id)) |> FrontRepo.one() || 0
   rescue
     error ->
       # Never let the breaker's own failure block a revoke.
