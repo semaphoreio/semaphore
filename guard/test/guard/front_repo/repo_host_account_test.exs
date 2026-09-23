@@ -762,6 +762,47 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
     end
   end
 
+  describe "pool-checkout failures degrade to :transient (never INTERNAL)" do
+    setup :create_bitbucket_rha
+
+    test "a raising persistence path is caught and negative-cached", %{rha: rha} do
+      # The persistence path raises this under fan-out. Left to propagate it
+      # crosses the gRPC boundary as INTERNAL and escapes BEFORE the negative
+      # cache entry is written, so repository_hub retries straight back into an
+      # already saturated pool.
+      Cachex.del(:oauth_refresh_failure_cache, rha.id)
+
+      :meck.new(Guard.Api.Github, [:passthrough])
+      on_exit(fn -> safe_unload(Guard.Api.Github) end)
+
+      :meck.expect(Guard.Api.Github, :user_token, fn _rha ->
+        raise DBConnection.ConnectionError, "connection not available"
+      end)
+
+      github = Map.put(rha, :repo_host, "github")
+
+      assert {:error, :transient} = RepoHostAccount.get_github_token(github)
+
+      # The point of catching it: the failure is now cached, so the next call
+      # backs off instead of re-entering the pool.
+      assert {:ok, {:error, :transient}} = Cachex.get(:oauth_refresh_failure_cache, rha.id)
+    end
+
+    test "an unrelated exception still propagates", %{rha: rha} do
+      # The rescue is scoped to connection failures on purpose - a bug must not
+      # be silently downgraded to a retry.
+      Cachex.del(:oauth_refresh_failure_cache, rha.id)
+
+      :meck.new(Guard.Api.Github, [:passthrough])
+      on_exit(fn -> safe_unload(Guard.Api.Github) end)
+      :meck.expect(Guard.Api.Github, :user_token, fn _rha -> raise "boom" end)
+
+      github = Map.put(rha, :repo_host, "github")
+
+      assert_raise RuntimeError, "boom", fn -> RepoHostAccount.get_github_token(github) end
+    end
+  end
+
   describe "update_token/4 self-heal (clears a stale revoked flag on success)" do
     test "a successful token write clears a previously-latched revoked flag" do
       rha =

@@ -150,8 +150,28 @@ defmodule Guard.Utils.OAuth do
   # re-refresh on every request.
   @default_access_token_ttl_seconds 3600
 
-  # A 2xx with a usable expires_in: honor it (even a short one is a real
-  # provider value).
+  # valid_token?/2 treats a token as expired 300s before it really is, so an
+  # expires_in at or under that skew makes the freshly-issued token look
+  # expired the moment it is stored - and every subsequent request refreshes
+  # again. Against a single-use rotation endpoint that is a rotation per
+  # request. Honour the provider's value (it is the truth about the access
+  # token) but say so loudly, because the churn is otherwise invisible.
+  @min_sane_expires_in_seconds 300
+
+  defp resolve_expires_at(repo_host_account, expires_in)
+       when is_integer(expires_in) and expires_in > 0 and
+              expires_in <= @min_sane_expires_in_seconds do
+    Logger.warning(
+      "Provider returned expires_in=#{expires_in}s for rha=#{repo_host_account.id} " <>
+        "#{repo_host_account.repo_host}, at or under the #{@min_sane_expires_in_seconds}s " <>
+        "validity skew - the token will look expired immediately and every request will " <>
+        "trigger a refresh"
+    )
+
+    calc_expires_at(expires_in)
+  end
+
+  # A 2xx with a usable expires_in: honour it.
   defp resolve_expires_at(_repo_host_account, expires_in)
        when is_integer(expires_in) and expires_in > 0,
        do: calc_expires_at(expires_in)
@@ -195,7 +215,25 @@ defmodule Guard.Utils.OAuth do
   end
 
   defp parse_expires_at(nil), do: nil
-  defp parse_expires_at(unix) when is_integer(unix), do: DateTime.from_unix!(unix, :second)
+
+  # Non-raising on purpose. normalize_expires_in/1 accepts any positive
+  # integer, so a provider returning an absurd value would otherwise raise
+  # inside persist_refreshed_token/4 - which has no rescue, and would escape
+  # as gRPC INTERNAL before the negative cache is written.
+  defp parse_expires_at(unix) when is_integer(unix) do
+    case DateTime.from_unix(unix, :second) do
+      {:ok, datetime} ->
+        datetime
+
+      {:error, reason} ->
+        Logger.warning(
+          "Provider returned an unusable expires_in (#{inspect(unix)}): #{inspect(reason)}; " <>
+            "storing the token without an expiry"
+        )
+
+        nil
+    end
+  end
 
   defp presence(value) when value in [nil, ""], do: nil
   defp presence(value), do: value

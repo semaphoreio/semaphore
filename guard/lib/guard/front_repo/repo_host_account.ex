@@ -424,7 +424,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
         cached_error
 
       _ ->
-        case fetch_fun.() do
+        case run_and_catch_pool_failure(rha, fetch_fun) do
           {:error, _reason} = error ->
             Cachex.put(
               @oauth_refresh_failure_cache,
@@ -439,6 +439,33 @@ defmodule Guard.FrontRepo.RepoHostAccount do
             ok
         end
     end
+  end
+
+  # The persistence path can raise a pool-checkout failure under fan-out, and
+  # it does so more readily than it used to: every lost optimistic lock costs a
+  # reload, the re-apply loop can repeat that, and the terminal path adds a
+  # compare-and-set. Left to propagate, the raise crosses the gRPC boundary as
+  # INTERNAL and escapes BEFORE the negative cache entry above is written - so
+  # repository_hub retries immediately and adds its retry to an already
+  # saturated pool.
+  #
+  # Guard.FrontRepo.AdvisoryLock already rescues this for the locked
+  # bitbucket/gitlab path; catching it here covers the rest, notably GitHub,
+  # which is deliberately not single-flighted and so persists outside any
+  # locked transaction.
+  #
+  # Deliberately narrow: only connection failures. Anything else a caller
+  # raises is a bug and must keep its stack trace.
+  defp run_and_catch_pool_failure(rha, fetch_fun) do
+    fetch_fun.()
+  rescue
+    error in [DBConnection.ConnectionError] ->
+      Logger.error(
+        "Database connection unavailable while fetching a token for rha=#{rha.id} " <>
+          "user=#{rha.user_id} #{rha.repo_host}: #{Exception.message(error)}"
+      )
+
+      {:error, :transient}
   end
 
   @doc """
