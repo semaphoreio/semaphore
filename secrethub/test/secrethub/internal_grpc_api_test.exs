@@ -912,7 +912,8 @@ defmodule Secrethub.InternalGrpcApi.Test do
                  "job_type" => [req.job_type],
                  "pr_branch" => [""],
                  "repo_slug" => [req.repo_slug],
-                 "trg" => [req.triggerer]
+                 "trg" => [req.triggerer],
+                 "tag" => [""]
                },
                "transitive_tag_keys" => [
                  "prj_id",
@@ -922,7 +923,8 @@ defmodule Secrethub.InternalGrpcApi.Test do
                  "job_type",
                  "pr_branch",
                  "repo_slug",
-                 "trg"
+                 "trg",
+                 "tag"
                ]
              }
 
