@@ -525,6 +525,32 @@ defmodule Zebra.Workers.DispatcherTest do
     end
   end
 
+  describe ".duration_bucket" do
+    test "maps each duration to its own bucket" do
+      assert Worker.duration_bucket(0) == "from_0s_to_3s"
+      assert Worker.duration_bucket(2.999) == "from_0s_to_3s"
+      assert Worker.duration_bucket(3) == "from_3s_to_10s"
+      assert Worker.duration_bucket(9.999) == "from_3s_to_10s"
+      assert Worker.duration_bucket(10) == "from_10s_to_30s"
+      assert Worker.duration_bucket(29.999) == "from_10s_to_30s"
+      assert Worker.duration_bucket(30) == "from_30s_to_60s"
+      assert Worker.duration_bucket(59.999) == "from_30s_to_60s"
+      assert Worker.duration_bucket(60) == "from_60s_to_180s"
+      assert Worker.duration_bucket(179.999) == "from_60s_to_180s"
+      assert Worker.duration_bucket(180) == "from_180s_to_600s"
+      assert Worker.duration_bucket(599.999) == "from_180s_to_600s"
+      assert Worker.duration_bucket(600) == "from_600s_to_inf"
+      assert Worker.duration_bucket(10_000) == "from_600s_to_inf"
+    end
+
+    test "every bucket is reachable and distinct" do
+      buckets = Enum.map([0, 3, 10, 30, 60, 180, 600], &Worker.duration_bucket/1)
+
+      assert buckets == Enum.uniq(buckets)
+      assert length(buckets) == 7
+    end
+  end
+
   defmodule Counter do
     use Agent
 
