@@ -22,7 +22,7 @@ class Policy::NjsScan < Policy
       {
         name: "njsscan",
         install: Proc.new do
-          `pip3 install --upgrade njsscan`
+          `pip3 install njsscan==1.0.0`
           $?.exitstatus
         end
       }
