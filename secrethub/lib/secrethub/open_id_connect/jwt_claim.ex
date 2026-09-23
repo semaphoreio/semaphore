@@ -182,7 +182,7 @@ defmodule Secrethub.OpenIDConnect.JWTClaim do
         name: "tag",
         description: "Git tag that triggered the pipeline",
         is_system_claim: true,
-        is_aws_tag: false,
+        is_aws_tag: true,
         is_mandatory: false,
         is_active: true
       },
