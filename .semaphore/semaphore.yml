@@ -18,7 +18,6 @@ global_job_config:
       value: "public.ecr.aws/aquasecurity/trivy-db,aquasec/trivy-db,ghcr.io/aquasecurity/trivy-db"
     - name: TRIVY_JAVA_DB_REPOSITORY
       value: "public.ecr.aws/aquasecurity/trivy-java-db,aquasec/trivy-java-db,ghcr.io/aquasecurity/trivy-java-db"
-
   prologue:
     commands:
       - echo $DOCKER_PASSWORD | docker login --username "$DOCKER_USERNAME" --password-stdin || echo "Docker login failed, but continuing the build process." && true
@@ -38,8 +37,6 @@ global_job_config:
         - 'if [ -f out/security-export.json ]; then artifact push workflow out/security-export.json -d scans/$SEMAPHORE_JOB_ID.json; fi'
         - 'if [ -f out/security-summary.md ]; then artifact push job out/security-summary.md -d .semaphore/REPORT.md; fi'
         - 'if [ -d out/screenshots ] && [ "$(ls -A out/screenshots)" ]; then artifact push workflow out/screenshots -d screenshots; fi'
-
-
 after_pipeline:
   task:
     jobs:
@@ -62,7 +59,7 @@ blocks:
   - name: "Audit: Provision Test Image"
     dependencies: []
     run:
-      when: "change_in('/ee/audit', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/ee/audit', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -80,7 +77,7 @@ blocks:
   - name: "Audit: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/ee/audit', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/ee/audit', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -99,7 +96,7 @@ blocks:
   - name: "Audit: Deployment Preconditions"
     dependencies: ["Audit: Provision Prod Image"]
     run:
-      when: "change_in('/ee/audit', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/ee/audit', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -126,7 +123,7 @@ blocks:
   - name: "Audit: QA"
     dependencies: ["Audit: Provision Test Image"]
     run:
-      when: "change_in('/ee/audit', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/ee/audit', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -153,7 +150,7 @@ blocks:
   - name: "ArtifactHub: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/artifacthub', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/artifacthub', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -172,7 +169,7 @@ blocks:
   - name: "ArtifactHub: Deployment Preconditions"
     dependencies: ["ArtifactHub: Provision Prod Image"]
     run:
-      when: "change_in('/artifacthub', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/artifacthub', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -199,7 +196,7 @@ blocks:
   - name: "ArtifactHub: QA"
     dependencies: ["ArtifactHub: Provision Prod Image"]
     run:
-      when: "change_in('/artifacthub', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/artifacthub', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -222,7 +219,7 @@ blocks:
   - name: "Auth: Provision Test Image"
     dependencies: []
     run:
-      when: "change_in('/auth', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/auth', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -240,7 +237,7 @@ blocks:
   - name: "Auth: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/auth', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/auth', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -259,7 +256,7 @@ blocks:
   - name: "Auth: Deployment Preconditions"
     dependencies: ["Auth: Provision Prod Image"]
     run:
-      when: "change_in('/auth', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/auth', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -286,7 +283,7 @@ blocks:
   - name: "Auth: QA"
     dependencies: ["Auth: Provision Test Image"]
     run:
-      when: "change_in('/auth', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/auth', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -312,7 +309,7 @@ blocks:
   - name: "Badge: Provision Test Image"
     dependencies: []
     run:
-      when: "change_in('/badge', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/badge', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -330,7 +327,7 @@ blocks:
   - name: "Badge: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/badge', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/badge', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -349,7 +346,7 @@ blocks:
   - name: "Badge: Deployment Preconditions"
     dependencies: ["Badge: Provision Prod Image"]
     run:
-      when: "change_in('/badge', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/badge', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -376,7 +373,7 @@ blocks:
   - name: "Badge: QA"
     dependencies: ["Badge: Provision Test Image"]
     run:
-      when: "change_in('/badge', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/badge', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -403,7 +400,7 @@ blocks:
   - name: "BranchHub: Provision Test Image"
     dependencies: []
     run:
-      when: "change_in('/branch_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/branch_hub', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -421,7 +418,7 @@ blocks:
   - name: "BranchHub: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/branch_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/branch_hub', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -440,7 +437,7 @@ blocks:
   - name: "BranchHub: Deployment Preconditions"
     dependencies: ["BranchHub: Provision Prod Image"]
     run:
-      when: "change_in('/branch_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/branch_hub', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -468,7 +465,7 @@ blocks:
   - name: "BranchHub: QA"
     dependencies: ["BranchHub: Provision Test Image"]
     run:
-      when: "change_in('/branch_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/branch_hub', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -493,7 +490,7 @@ blocks:
   - name: "Dashboardhub: Provision Test Image"
     dependencies: []
     run:
-      when: "change_in('/dashboardhub', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/dashboardhub', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       secrets:
         - name: semreg-semaphoredev-credentials
@@ -515,7 +512,7 @@ blocks:
   - name: "Dashboardhub: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/dashboardhub', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/dashboardhub', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       secrets:
         - name: semreg-semaphoredev-credentials
@@ -537,7 +534,7 @@ blocks:
   - name: "Dashboardhub: Deployment Preconditions"
     dependencies: ["Dashboardhub: Provision Prod Image"]
     run:
-      when: "change_in('/dashboardhub', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/dashboardhub', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       secrets:
         - name: semreg-semaphoredev-credentials
@@ -570,7 +567,7 @@ blocks:
   - name: "Dashboardhub: QA"
     dependencies: ["Dashboardhub: Provision Test Image"]
     run:
-      when: "change_in('/dashboardhub', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/dashboardhub', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       secrets:
         - name: semreg-semaphoredev-credentials
@@ -599,7 +596,7 @@ blocks:
   - name: "Docs: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/docs', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/docs', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: APP_ENV
@@ -614,7 +611,7 @@ blocks:
   - name: "Docs: Build test image"
     dependencies: []
     run:
-      when: "change_in('/docs', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/docs', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: APP_ENV
@@ -629,7 +626,7 @@ blocks:
   - name: "Docs: QA"
     dependencies: ["Docs: Build test image"]
     run:
-      when: "change_in('/docs', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/docs', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: APP_ENV
@@ -651,7 +648,7 @@ blocks:
   - name: "Front: Provision Test Image"
     dependencies: []
     run:
-      when: "change_in('/front', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/front', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       agent:
         machine:
@@ -677,7 +674,7 @@ blocks:
     dependencies:
       - "Front: Provision Test Image"
     run:
-      when: "change_in('/front', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/front', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -706,7 +703,7 @@ blocks:
     dependencies:
       - "Front: Provision Test Image"
     run:
-      when: "change_in('/front', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/front', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -747,7 +744,7 @@ blocks:
   - name: "Front: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/front', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/front', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       agent:
         machine:
@@ -773,7 +770,7 @@ blocks:
     dependencies:
       - "Front: Provision Prod Image"
     run:
-      when: "change_in('/front', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/front', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       secrets:
         - name: semreg-semaphoredev-credentials
@@ -810,7 +807,7 @@ blocks:
   - name: "Guard: Provision Test Image"
     dependencies: []
     run:
-      when: "change_in('/guard', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/guard', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -828,7 +825,7 @@ blocks:
   - name: "Guard: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/guard', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/guard', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -847,7 +844,7 @@ blocks:
   - name: "Guard: Deployment Preconditions"
     dependencies: ["Guard: Provision Prod Image"]
     run:
-      when: "change_in('/guard', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/guard', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -874,7 +871,7 @@ blocks:
   - name: "Guard: QA"
     dependencies: ["Guard: Provision Test Image"]
     run:
-      when: "change_in('/guard', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/guard', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -901,7 +898,7 @@ blocks:
   - name: "HooksReceiver: Provision Test Image"
     dependencies: []
     run:
-      when: "change_in('/hooks_receiver', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/hooks_receiver', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -919,7 +916,7 @@ blocks:
   - name: "HooksReceiver: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/hooks_receiver', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/hooks_receiver', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -937,7 +934,7 @@ blocks:
   - name: "HooksReceiver: Deployment Preconditions"
     dependencies: ["HooksReceiver: Provision Prod Image"]
     run:
-      when: "change_in('/hooks_receiver', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/hooks_receiver', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -964,7 +961,7 @@ blocks:
   - name: "HooksReceiver: QA"
     dependencies: ["HooksReceiver: Provision Test Image"]
     run:
-      when: "change_in('/hooks_receiver', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/hooks_receiver', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -990,7 +987,7 @@ blocks:
   - name: "HooksProcessor Provision Test Image"
     dependencies: []
     run:
-      when: "change_in('/hooks_processor', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/hooks_processor', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1008,7 +1005,7 @@ blocks:
   - name: "HooksProcessor Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/hooks_processor', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/hooks_processor', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1026,7 +1023,7 @@ blocks:
   - name: "HooksProcessor Deployment Preconditions"
     dependencies: ["HooksProcessor Provision Prod Image"]
     run:
-      when: "change_in('/hooks_processor', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/hooks_processor', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1053,7 +1050,7 @@ blocks:
   - name: "HooksProcessor: QA"
     dependencies: ["HooksProcessor Provision Test Image"]
     run:
-      when: "change_in('/hooks_processor', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/hooks_processor', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1080,7 +1077,7 @@ blocks:
   - name: "Gofer: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/ee/gofer', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/ee/gofer', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -1098,7 +1095,7 @@ blocks:
   - name: "Gofer: Provision Test Image"
     dependencies: []
     run:
-      when: "change_in('/ee/gofer', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/ee/gofer', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1116,7 +1113,7 @@ blocks:
   - name: "Gofer: Deployment Preconditions"
     dependencies: ["Gofer: Provision Prod Image"]
     run:
-      when: "change_in('/ee/gofer', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/ee/gofer', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       prologue:
         commands:
@@ -1137,7 +1134,7 @@ blocks:
   - name: "Gofer: Tests"
     dependencies: ["Gofer: Provision Test Image"]
     run:
-      when: "change_in('/ee/gofer', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/ee/gofer', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: SERVICE_NAME
@@ -1166,7 +1163,7 @@ blocks:
   - name: "GithubNotifier: Provision Test Image"
     dependencies: []
     run:
-      when: "change_in('/github_notifier', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/github_notifier', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1184,7 +1181,7 @@ blocks:
   - name: "GithubNotifier: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/github_notifier', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/github_notifier', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1203,7 +1200,7 @@ blocks:
   - name: "GithubNotifier: Deployment Preconditions"
     dependencies: ["GithubNotifier: Provision Prod Image"]
     run:
-      when: "change_in('/github_notifier', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/github_notifier', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1230,7 +1227,7 @@ blocks:
   - name: "GithubNotifier: QA"
     dependencies: ["GithubNotifier: Provision Test Image"]
     run:
-      when: "change_in('/github_notifier', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/github_notifier', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1256,7 +1253,7 @@ blocks:
   - name: "Looper: Provision Test Image"
     dependencies: []
     run:
-      when: "change_in('/plumber/looper', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/plumber/looper', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1274,7 +1271,7 @@ blocks:
   - name: "Looper: Deployment Preconditions"
     dependencies: []
     run:
-      when: "change_in('/plumber/looper', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/plumber/looper', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: SERVICE_NAME
@@ -1292,7 +1289,7 @@ blocks:
   - name: "Looper: QA"
     dependencies: ["Looper: Provision Test Image"]
     run:
-      when: "change_in('/plumber/looper', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/plumber/looper', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1318,7 +1315,7 @@ blocks:
   - name: "JobMatrix: Provision Test Image"
     dependencies: []
     run:
-      when: "change_in('/plumber/job_matrix', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/plumber/job_matrix', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1336,7 +1333,7 @@ blocks:
   - name: "JobMatrix: Deployment Preconditions"
     dependencies: []
     run:
-      when: "change_in('/plumber/job_matrix', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/plumber/job_matrix', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: SERVICE_NAME
@@ -1354,7 +1351,7 @@ blocks:
   - name: "JobMatrix: QA"
     dependencies: ["JobMatrix: Provision Test Image"]
     run:
-      when: "change_in('/plumber/job_matrix', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/plumber/job_matrix', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1380,7 +1377,7 @@ blocks:
   - name: "DefinitionValidator: Provision Test Image"
     dependencies: []
     run:
-      when: "change_in('/plumber/definition_validator', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/plumber/definition_validator', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1398,7 +1395,7 @@ blocks:
   - name: "DefinitionValidator: Deployment Preconditions"
     dependencies: []
     run:
-      when: "change_in('/plumber/definition_validator', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/plumber/definition_validator', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: SERVICE_NAME
@@ -1416,7 +1413,7 @@ blocks:
   - name: "DefinitionValidator: QA"
     dependencies: ["DefinitionValidator: Provision Test Image"]
     run:
-      when: "change_in('/plumber/definition_validator', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/plumber/definition_validator', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1441,7 +1438,7 @@ blocks:
   - name: "TaskApiMock: Provision Test Image"
     dependencies: []
     run:
-      when: "change_in('/plumber/task_api_referent', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/plumber/task_api_referent', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1459,7 +1456,7 @@ blocks:
   - name: "TaskApiMock: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/plumber', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/plumber', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1477,7 +1474,7 @@ blocks:
   - name: "TaskApiMock: Deployment Preconditions"
     dependencies: ["TaskApiMock: Provision Prod Image"]
     run:
-      when: "change_in('/plumber/task_api_referent', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/plumber/task_api_referent', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: SERVICE_NAME
@@ -1499,7 +1496,7 @@ blocks:
   - name: "TaskApiMock: QA"
     dependencies: ["TaskApiMock: Provision Test Image"]
     run:
-      when: "change_in('/plumber/task_api_referent', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/plumber/task_api_referent', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1524,7 +1521,7 @@ blocks:
   - name: "Spec: Provision Test Image"
     dependencies: []
     run:
-      when: "change_in('/plumber/spec', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/plumber/spec', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1542,7 +1539,7 @@ blocks:
   - name: "Spec: Deployment Preconditions"
     dependencies: []
     run:
-      when: "change_in('/plumber/spec', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/plumber/spec', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: SERVICE_NAME
@@ -1560,7 +1557,7 @@ blocks:
   - name: "Spec: QA"
     dependencies: ["Spec: Provision Test Image"]
     run:
-      when: "change_in('/plumber/spec', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/plumber/spec', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1585,7 +1582,7 @@ blocks:
   - name: "GoferClient: Provision Test Image"
     dependencies: []
     run:
-      when: "change_in('/plumber/gofer_client', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/plumber/gofer_client', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1603,7 +1600,7 @@ blocks:
   - name: "GoferClient: Deployment Preconditions"
     dependencies: []
     run:
-      when: "change_in('/plumber/gofer_client', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/plumber/gofer_client', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: SERVICE_NAME
@@ -1621,7 +1618,7 @@ blocks:
   - name: "GoferClient: QA"
     dependencies: ["GoferClient: Provision Test Image"]
     run:
-      when: "change_in('/plumber/gofer_client', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/plumber/gofer_client', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1646,7 +1643,7 @@ blocks:
   - name: "Blocks: Provision Test Image"
     dependencies: []
     run:
-      when: "change_in(['/plumber/block', '/plumber/job_matrix', '/plumber/looper'], {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in(['/plumber/block', '/plumber/job_matrix', '/plumber/looper'], {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: SERVICE_NAME
@@ -1666,7 +1663,7 @@ blocks:
   - name: "Blocks: Deployment Preconditions"
     dependencies: []
     run:
-      when: "change_in(['/plumber/block', '/plumber/job_matrix', '/plumber/looper'], {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in(['/plumber/block', '/plumber/job_matrix', '/plumber/looper'], {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       prologue:
         commands:
@@ -1681,7 +1678,7 @@ blocks:
   - name: "Blocks: QA"
     dependencies: ["Blocks: Provision Test Image"]
     run:
-      when: "change_in(['/plumber/block', '/plumber/job_matrix', '/plumber/looper'], {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in(['/plumber/block', '/plumber/job_matrix', '/plumber/looper'], {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1705,10 +1702,9 @@ blocks:
             - make test.ex
           parallelism: 2
   - name: "Blocks: Integration QA"
-    dependencies:
-      ["Blocks: Provision Test Image", "TaskApiMock: Provision Prod Image"]
+    dependencies: ["Blocks: Provision Test Image", "TaskApiMock: Provision Prod Image"]
     run:
-      when: "change_in(['/plumber/block', '/plumber/job_matrix', '/plumber/looper'], {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in(['/plumber/block', '/plumber/job_matrix', '/plumber/looper'], {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1729,7 +1725,7 @@ blocks:
   - name: "RepoProxyRef: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/plumber', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/plumber', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1747,7 +1743,7 @@ blocks:
   - name: "Ppl: Provision Test Image"
     dependencies: []
     run:
-      when: "change_in('/plumber', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/plumber', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: SERVICE_NAME
@@ -1767,7 +1763,7 @@ blocks:
   - name: "Ppl: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/plumber', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/plumber', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1785,7 +1781,7 @@ blocks:
   - name: "Ppl: Deployment Preconditions"
     dependencies: ["Ppl: Provision Prod Image"]
     run:
-      when: "change_in('/plumber', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/plumber', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1809,7 +1805,7 @@ blocks:
   - name: "Ppl: QA"
     dependencies: ["Ppl: Provision Test Image"]
     run:
-      when: "change_in('/plumber', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/plumber', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1833,14 +1829,9 @@ blocks:
             - make test.ex
           parallelism: 2
   - name: "Ppl: Integration QA"
-    dependencies:
-      [
-        "Ppl: Provision Test Image",
-        "RepoProxyRef: Provision Prod Image",
-        "TaskApiMock: Provision Prod Image",
-      ]
+    dependencies: ["Ppl: Provision Test Image", "RepoProxyRef: Provision Prod Image", "TaskApiMock: Provision Prod Image"]
     run:
-      when: "change_in('/plumber', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/plumber', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1863,7 +1854,7 @@ blocks:
   - name: "Pre-flight Checks: Provision Test Image"
     dependencies: []
     run:
-      when: "change_in('/ee/pre_flight_checks', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/ee/pre_flight_checks', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1881,7 +1872,7 @@ blocks:
   - name: "Pre-flight Checks: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/ee/pre_flight_checks', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/ee/pre_flight_checks', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1900,7 +1891,7 @@ blocks:
   - name: "Pre-flight Checks: Deployment Preconditions"
     dependencies: ["Pre-flight Checks: Provision Prod Image"]
     run:
-      when: "change_in('/ee/pre_flight_checks', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/ee/pre_flight_checks', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1927,7 +1918,7 @@ blocks:
   - name: "Pre-flight Checks: QA"
     dependencies: ["Pre-flight Checks: Provision Test Image"]
     run:
-      when: "change_in('/ee/pre_flight_checks', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/ee/pre_flight_checks', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1954,7 +1945,7 @@ blocks:
   - name: "ProjectHub: Provision Test Image"
     dependencies: []
     run:
-      when: "change_in('/projecthub/', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/projecthub/', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1972,7 +1963,7 @@ blocks:
   - name: "ProjectHub: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/projecthub/', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/projecthub/', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1991,7 +1982,7 @@ blocks:
   - name: "ProjectHub: Deployment Preconditions"
     dependencies: ["ProjectHub: Provision Prod Image"]
     run:
-      when: "change_in('/projecthub/', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/projecthub/', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -2018,7 +2009,7 @@ blocks:
   - name: "ProjectHub: QA"
     dependencies: ["ProjectHub: Provision Test Image"]
     run:
-      when: "change_in('/projecthub/', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/projecthub/', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -2043,7 +2034,7 @@ blocks:
   - name: "ProjectHub REST API: Provision Test Image"
     dependencies: []
     run:
-      when: "change_in('/projecthub-rest-api/', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/projecthub-rest-api/', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -2061,7 +2052,7 @@ blocks:
   - name: "ProjectHub REST API: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/projecthub-rest-api/', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/projecthub-rest-api/', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -2080,7 +2071,7 @@ blocks:
   - name: "ProjectHub REST API: Deployment Preconditions"
     dependencies: ["ProjectHub REST API: Provision Prod Image"]
     run:
-      when: "change_in('/projecthub-rest-api/', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/projecthub-rest-api/', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -2107,7 +2098,7 @@ blocks:
   - name: "ProjectHub REST API: QA"
     dependencies: ["ProjectHub REST API: Provision Test Image"]
     run:
-      when: "change_in('/projecthub-rest-api/', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/projecthub-rest-api/', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -2132,7 +2123,7 @@ blocks:
   - name: "public-api-gateway: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/public-api-gateway', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/public-api-gateway', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -2151,7 +2142,7 @@ blocks:
   - name: "public-api-gateway: Deployment Preconditions"
     dependencies: ["public-api-gateway: Provision Prod Image"]
     run:
-      when: "change_in('/public-api-gateway', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/public-api-gateway', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -2178,7 +2169,7 @@ blocks:
   - name: "public-api-gateway: QA"
     dependencies: ["public-api-gateway: Provision Prod Image"]
     run:
-      when: "change_in('/public-api-gateway', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/public-api-gateway', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -2203,7 +2194,7 @@ blocks:
   - name: "Repohub: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/repohub', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/repohub', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -2222,7 +2213,7 @@ blocks:
   - name: "Repohub: Deployment Preconditions"
     dependencies: ["Repohub: Provision Prod Image"]
     run:
-      when: "change_in('/repohub', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/repohub', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -2249,7 +2240,7 @@ blocks:
   - name: "Repohub: QA"
     dependencies: ["Repohub: Provision Prod Image"]
     run:
-      when: "change_in('/repohub', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/repohub', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       secrets:
         - name: repohub-integration
@@ -2274,7 +2265,7 @@ blocks:
   - name: "RBAC CE: Provision Test Image"
     dependencies: []
     run:
-      when: "change_in('/rbac/ce', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/rbac/ce', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -2292,7 +2283,7 @@ blocks:
   - name: "RBAC CE: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/rbac/ce', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/rbac/ce', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -2311,7 +2302,7 @@ blocks:
   - name: "RBAC CE: Deployment Preconditions"
     dependencies: ["RBAC CE: Provision Prod Image"]
     run:
-      when: "change_in('/rbac/ce', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/rbac/ce', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -2338,7 +2329,7 @@ blocks:
   - name: "RBAC CE: QA"
     dependencies: ["RBAC CE: Provision Test Image"]
     run:
-      when: "change_in('/rbac/ce', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/rbac/ce', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -2365,7 +2356,7 @@ blocks:
   - name: "RBAC EE: Provision Test Image"
     dependencies: []
     run:
-      when: "change_in('/ee/rbac', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/ee/rbac', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -2383,7 +2374,7 @@ blocks:
   - name: "RBAC EE: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/ee/rbac', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/ee/rbac', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -2402,7 +2393,7 @@ blocks:
   - name: "RBAC EE: Deployment Preconditions"
     dependencies: ["RBAC EE: Provision Prod Image"]
     run:
-      when: "change_in('/ee/rbac', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/ee/rbac', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -2429,7 +2420,7 @@ blocks:
   - name: "RBAC EE: QA"
     dependencies: ["RBAC EE: Provision Test Image"]
     run:
-      when: "change_in('/ee/rbac', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/ee/rbac', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -2456,7 +2447,7 @@ blocks:
   - name: "RepositoryHub Provision Test Image"
     dependencies: []
     run:
-      when: "change_in('/repository_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/repository_hub', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       secrets:
         - name: semreg-semaphoredev-credentials
@@ -2479,7 +2470,7 @@ blocks:
   - name: "RepositoryHub Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/repository_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/repository_hub', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       secrets:
         - name: semreg-semaphoredev-credentials
@@ -2503,7 +2494,7 @@ blocks:
   - name: "RepositoryHub Deployment Preconditions"
     dependencies: ["RepositoryHub Provision Prod Image"]
     run:
-      when: "change_in('/repository_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/repository_hub', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       secrets:
         - name: semreg-semaphoredev-credentials
@@ -2534,7 +2525,7 @@ blocks:
   - name: "RepositoryHub: QA"
     dependencies: ["RepositoryHub Provision Test Image"]
     run:
-      when: "change_in('/repository_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/repository_hub', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       secrets:
         - name: semreg-semaphoredev-credentials
@@ -2563,7 +2554,7 @@ blocks:
   - name: "Loghub2: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/loghub2', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/loghub2', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -2582,7 +2573,7 @@ blocks:
   - name: "Loghub2: Deployment Preconditions"
     dependencies: ["Loghub2: Provision Prod Image"]
     run:
-      when: "change_in('/loghub2', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/loghub2', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -2609,7 +2600,7 @@ blocks:
   - name: "Loghub2: QA"
     dependencies: ["Loghub2: Provision Prod Image"]
     run:
-      when: "change_in('/loghub2', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/loghub2', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -2628,13 +2619,11 @@ blocks:
         - name: "Lint"
           commands:
             - make lint
-
-
   # MCP Server
   - name: "MCP Server: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/mcp_server', {pipeline_file: 'ignore', default_branch: 'main'}) or change_in('/docs/docs', {pipeline_file: 'ignore', default_branch: 'main'}) or change_in('/docs/versioned_docs', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/mcp_server', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'}) or change_in('/docs/docs', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'}) or change_in('/docs/versioned_docs', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -2653,7 +2642,7 @@ blocks:
   - name: "MCP Server: Deployment Preconditions"
     dependencies: ["MCP Server: Provision Prod Image"]
     run:
-      when: "change_in('/mcp_server', {pipeline_file: 'ignore', default_branch: 'main'}) or change_in('/docs/docs', {pipeline_file: 'ignore', default_branch: 'main'}) or change_in('/docs/versioned_docs', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/mcp_server', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'}) or change_in('/docs/docs', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'}) or change_in('/docs/versioned_docs', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -2680,7 +2669,7 @@ blocks:
   - name: "MCP Server: QA"
     dependencies: ["MCP Server: Provision Prod Image"]
     run:
-      when: "change_in('/mcp_server', {pipeline_file: 'ignore', default_branch: 'main'}) or change_in('/docs/docs', {pipeline_file: 'ignore', default_branch: 'main'}) or change_in('/docs/versioned_docs', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/mcp_server', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'}) or change_in('/docs/docs', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'}) or change_in('/docs/versioned_docs', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -2703,7 +2692,7 @@ blocks:
   - name: "Encryptor: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/encryptor', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/encryptor', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -2722,7 +2711,7 @@ blocks:
   - name: "Encryptor: Deployment Preconditions"
     dependencies: ["Encryptor: Provision Prod Image"]
     run:
-      when: "change_in('/encryptor', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/encryptor', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -2749,7 +2738,7 @@ blocks:
   - name: "Encryptor: QA"
     dependencies: ["Encryptor: Provision Prod Image"]
     run:
-      when: "change_in('/encryptor', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/encryptor', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -2772,7 +2761,7 @@ blocks:
   - name: "Bootstrapper: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/bootstrapper', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/bootstrapper', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -2791,7 +2780,7 @@ blocks:
   - name: "Bootstrapper: Deployment Preconditions"
     dependencies: ["Bootstrapper: Provision Prod Image"]
     run:
-      when: "change_in('/bootstrapper', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/bootstrapper', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -2818,7 +2807,7 @@ blocks:
   - name: "Bootstrapper: QA"
     dependencies: ["Bootstrapper: Provision Prod Image"]
     run:
-      when: "change_in('/bootstrapper', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/bootstrapper', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -2836,12 +2825,11 @@ blocks:
         - name: "Lint"
           commands:
             - make lint
-
   # Self Hosted Hub
   - name: "Self-Hosted-Hub: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/self_hosted_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/self_hosted_hub', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -2860,7 +2848,7 @@ blocks:
   - name: "Self-Hosted-Hub: Deployment Preconditions"
     dependencies: ["Self-Hosted-Hub: Provision Prod Image"]
     run:
-      when: "change_in('/self_hosted_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/self_hosted_hub', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -2887,7 +2875,7 @@ blocks:
   - name: "Self-Hosted-Hub: QA"
     dependencies: ["Self-Hosted-Hub: Provision Prod Image"]
     run:
-      when: "change_in('/self_hosted_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/self_hosted_hub', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -2910,7 +2898,7 @@ blocks:
   - name: "Secrethub: Provision Test Image"
     dependencies: []
     run:
-      when: "change_in('/secrethub', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/secrethub', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -2928,7 +2916,7 @@ blocks:
   - name: "Secrethub: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/secrethub', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/secrethub', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -2947,7 +2935,7 @@ blocks:
   - name: "Secrethub: Deployment Preconditions"
     dependencies: ["Secrethub: Provision Prod Image"]
     run:
-      when: "change_in('/secrethub', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/secrethub', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -2974,7 +2962,7 @@ blocks:
   - name: "Secrethub: QA"
     dependencies: ["Secrethub: Provision Test Image"]
     run:
-      when: "change_in('/secrethub', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/secrethub', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -2999,7 +2987,7 @@ blocks:
   - name: "Notifications: Provision Test Image"
     dependencies: []
     run:
-      when: "change_in('/notifications', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/notifications', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -3017,7 +3005,7 @@ blocks:
   - name: "Notifications: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/notifications', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/notifications', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -3036,7 +3024,7 @@ blocks:
   - name: "Notifications: Deployment Preconditions"
     dependencies: ["Notifications: Provision Prod Image"]
     run:
-      when: "change_in('/notifications', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/notifications', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -3063,7 +3051,7 @@ blocks:
   - name: "Notifications: QA"
     dependencies: ["Notifications: Provision Test Image"]
     run:
-      when: "change_in('/notifications', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/notifications', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -3090,7 +3078,7 @@ blocks:
   - name: "APIv1alpha: Provision Test Image"
     dependencies: []
     run:
-      when: "change_in('/public-api/v1alpha', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/public-api/v1alpha', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -3108,7 +3096,7 @@ blocks:
   - name: "APIv1alpha: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/public-api/v1alpha', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/public-api/v1alpha', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -3127,7 +3115,7 @@ blocks:
   - name: "APIv1alpha: Deployment Preconditions"
     dependencies: ["APIv1alpha: Provision Prod Image"]
     run:
-      when: "change_in('/public-api/v1alpha', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/public-api/v1alpha', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -3154,7 +3142,7 @@ blocks:
   - name: "APIv1alpha: QA"
     dependencies: ["APIv1alpha: Provision Test Image"]
     run:
-      when: "change_in('/public-api/v1alpha', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/public-api/v1alpha', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -3179,7 +3167,7 @@ blocks:
   - name: "APIv2: Provision Test Image"
     dependencies: []
     run:
-      when: "change_in('/public-api/v2', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/public-api/v2', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -3197,7 +3185,7 @@ blocks:
   - name: "APIv2: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/public-api/v2', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/public-api/v2', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -3216,7 +3204,7 @@ blocks:
   - name: "APIv2: Deployment Preconditions"
     dependencies: ["APIv2: Provision Prod Image"]
     run:
-      when: "change_in('/public-api/v2', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/public-api/v2', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -3244,7 +3232,7 @@ blocks:
   - name: "APIv2: QA"
     dependencies: ["APIv2: Provision Test Image"]
     run:
-      when: "change_in('/public-api/v2', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/public-api/v2', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -3271,7 +3259,7 @@ blocks:
   - name: "Periodic scheduler: Security checks"
     dependencies: []
     run:
-      when: "change_in('/periodic_scheduler', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/periodic_scheduler', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: SERVICE_NAME
@@ -3293,7 +3281,7 @@ blocks:
   - name: "Periodic scheduler: Tests"
     dependencies: []
     run:
-      when: "change_in('/periodic_scheduler', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/periodic_scheduler', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -3319,7 +3307,7 @@ blocks:
   - name: "Test Spec and Definition validator"
     dependencies: []
     run:
-      when: "change_in('/periodic_scheduler', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/periodic_scheduler', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       jobs:
         - name: Spec tests
@@ -3335,7 +3323,7 @@ blocks:
   - name: "Github Hooks: Provision Test Image"
     dependencies: []
     run:
-      when: "change_in('/github_hooks', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/github_hooks', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: RAILS_ENV
@@ -3354,7 +3342,7 @@ blocks:
   - name: "Github Hooks: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/github_hooks', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/github_hooks', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: RAILS_ENV
@@ -3373,7 +3361,7 @@ blocks:
   - name: "Github Hooks: Deployment Preconditions"
     dependencies: ["Github Hooks: Provision Prod Image"]
     run:
-      when: "change_in('/github_hooks', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/github_hooks', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: RAILS_ENV
@@ -3400,7 +3388,7 @@ blocks:
   - name: "Github Hooks: QA"
     dependencies: ["Github Hooks: Provision Test Image"]
     run:
-      when: "change_in('/github_hooks', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/github_hooks', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: RAILS_ENV
@@ -3423,7 +3411,7 @@ blocks:
   - name: "statsd: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/statsd', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/statsd', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -3443,7 +3431,7 @@ blocks:
   - name: "statsd: Tests"
     dependencies: ["statsd: Provision Prod Image"]
     run:
-      when: "change_in('/statsd', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/statsd', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -3460,7 +3448,7 @@ blocks:
   - name: "statsd: Security Checks"
     dependencies: ["statsd: Provision Prod Image"]
     run:
-      when: "change_in('/statsd', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/statsd', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -3488,7 +3476,7 @@ blocks:
   - name: "Velocity: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/ee/velocity', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/ee/velocity', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -3507,7 +3495,7 @@ blocks:
   - name: "Velocity: Deployment Preconditions"
     dependencies: ["Velocity: Provision Prod Image"]
     run:
-      when: "change_in('/ee/velocity', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/ee/velocity', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -3534,7 +3522,7 @@ blocks:
   - name: "Velocity: QA"
     dependencies: ["Velocity: Provision Prod Image"]
     run:
-      when: "change_in('/ee/velocity', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/ee/velocity', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -3557,7 +3545,7 @@ blocks:
   - name: "Zebra: Provision Test Image"
     dependencies: []
     run:
-      when: "change_in('/zebra', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/zebra', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -3575,7 +3563,7 @@ blocks:
   - name: "Zebra: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/zebra', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/zebra', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -3594,7 +3582,7 @@ blocks:
   - name: "Zebra: Deployment Preconditions"
     dependencies: ["Zebra: Provision Prod Image"]
     run:
-      when: "change_in('/zebra', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/zebra', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -3621,7 +3609,7 @@ blocks:
   - name: "Zebra: QA"
     dependencies: ["Zebra: Provision Test Image"]
     run:
-      when: "change_in('/zebra', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/zebra', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -3646,7 +3634,7 @@ blocks:
   - name: "Keycloak setup - lint, build"
     dependencies: []
     run:
-      when: "change_in('/keycloak/setup', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/keycloak/setup', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: SERVICE_NAME
@@ -3673,7 +3661,7 @@ blocks:
   - name: "Keycloak image - lint, build"
     dependencies: []
     run:
-      when: "change_in('/keycloak/image', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/keycloak/image', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: SERVICE_NAME
@@ -3694,7 +3682,7 @@ blocks:
   - name: "Scouter: Provision Test Image"
     dependencies: []
     run:
-      when: "change_in('/scouter', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/scouter', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -3712,7 +3700,7 @@ blocks:
   - name: "Scouter: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/scouter', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/scouter', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -3731,7 +3719,7 @@ blocks:
   - name: "Scouter: Deployment Preconditions"
     dependencies: ["Scouter: Provision Prod Image"]
     run:
-      when: "change_in('/scouter', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/scouter', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -3758,7 +3746,7 @@ blocks:
   - name: "Scouter: QA"
     dependencies: ["Scouter: Provision Test Image"]
     run:
-      when: "change_in('/scouter', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/scouter', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -3783,7 +3771,7 @@ blocks:
   - name: "Feature Provider: QA"
     dependencies: []
     run:
-      when: "change_in('/feature_provider', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/feature_provider', {pipeline_file: 'ignore', default_branch: 'release/v1.6.x'})"
     task:
       prologue:
         commands:
@@ -3849,7 +3837,7 @@ blocks:
               value: "28"
           matrix:
             - env_var: ELIXIR_VERSION
-              values: [ "1.19", "1.20"]
+              values: ["1.19", "1.20"]
           commands:
             - make test
             - cache store deps-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock) deps
