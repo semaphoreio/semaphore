@@ -20,8 +20,15 @@ module Semaphore
       [user.github_repo_host_account.token, nil]
     end
 
+    # Returns the stored credential. Never refresh here: Bitbucket refresh
+    # tokens are single-use and rotating, and guard owns that lifecycle.
     def bitbucket_oauth_token(user)
-      Semaphore::Bitbucket::Token.user_token(user.bitbucket_repo_host_account)
+      rha = user.bitbucket_repo_host_account
+
+      # get_token puts this in a proto3 string field, which rejects nil.
+      return ["", nil] if rha.nil?
+
+      [rha.token.to_s, rha.token_expires_at]
     end
 
     def github_app_token(repository_slug: nil, repository_remote_id: nil)

@@ -564,41 +564,67 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
   end
 
   describe "#update_revoke_status" do
-    let(:bitbucket_account) { FactoryBot.create(:bitbucket_account, :revoked => revoked) }
-    let(:revoked) { false }
+    context "for a bitbucket connection" do
+      let(:bitbucket_account) { FactoryBot.create(:bitbucket_account, :revoked => revoked) }
 
-    before do
-      allow(Semaphore::Bitbucket::Token).to receive(:user_token).with(bitbucket_account).and_return(["token", nil])
-      allow(Semaphore::Bitbucket::Token).to receive(:validation_state).with("token").and_return(validation_state)
-    end
+      # guard is the only component that refreshes Bitbucket tokens, and it
+      # owns `revoked`.
+      context "when the connection is healthy" do
+        let(:revoked) { false }
 
-    context "when token is valid" do
-      let(:revoked) { true }
-      let(:validation_state) { :valid }
+        it "leaves the revoked status untouched" do
+          server.send(:update_revoke_status, bitbucket_account)
+          expect(bitbucket_account.reload.revoked).to be(false)
+        end
+      end
 
-      it "marks connection as not revoked" do
-        server.send(:update_revoke_status, bitbucket_account)
-        expect(bitbucket_account.reload.revoked).to be(false)
+      context "when guard has marked the connection revoked" do
+        let(:revoked) { true }
+
+        it "leaves the revoked status untouched" do
+          server.send(:update_revoke_status, bitbucket_account)
+          expect(bitbucket_account.reload.revoked).to be(true)
+        end
+      end
+
+      context "regardless of the stored revoked status" do
+        let(:revoked) { false }
+
+        it "never talks to bitbucket" do
+          expect(Excon).not_to receive(:post)
+          expect(Excon).not_to receive(:get)
+
+          server.send(:update_revoke_status, bitbucket_account)
+        end
       end
     end
 
-    context "when token is invalid" do
+    context "for a github connection" do
+      let(:github_account) { FactoryBot.create(:repo_host_account, :revoked => revoked) }
       let(:revoked) { false }
-      let(:validation_state) { :invalid }
 
-      it "marks connection as revoked" do
-        server.send(:update_revoke_status, bitbucket_account)
-        expect(bitbucket_account.reload.revoked).to be(true)
+      before do
+        allow_any_instance_of(RepoHost::Github::Client).to receive(:token_valid?) { token_valid }
       end
-    end
 
-    context "when token check is transient" do
-      let(:revoked) { false }
-      let(:validation_state) { :transient }
+      context "when the token is still valid" do
+        let(:revoked) { true }
+        let(:token_valid) { true }
 
-      it "keeps the existing revoked status" do
-        server.send(:update_revoke_status, bitbucket_account)
-        expect(bitbucket_account.reload.revoked).to be(false)
+        it "marks connection as not revoked" do
+          server.send(:update_revoke_status, github_account)
+          expect(github_account.reload.revoked).to be(false)
+        end
+      end
+
+      context "when the token is no longer valid" do
+        let(:revoked) { false }
+        let(:token_valid) { false }
+
+        it "marks connection as revoked" do
+          server.send(:update_revoke_status, github_account)
+          expect(github_account.reload.revoked).to be(true)
+        end
       end
     end
   end

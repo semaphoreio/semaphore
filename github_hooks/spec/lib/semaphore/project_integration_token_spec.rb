@@ -12,6 +12,35 @@ RSpec.describe Semaphore::ProjectIntegrationToken do
     end
   end
 
+  describe "#bitbucket_oauth_token" do
+    before do
+      @user = FactoryBot.create(:user)
+      @repo = FactoryBot.create(:bitbucket_account, :user => @user)
+    end
+
+    it "returns the stored bitbucket credential of a user" do
+      expect(described_class.new.bitbucket_oauth_token(@user))
+        .to eq([@repo.token, @repo.token_expires_at])
+    end
+
+    # Bitbucket refresh tokens are single-use and rotating; only guard
+    # refreshes them.
+    it "never talks to bitbucket" do
+      expect(Excon).not_to receive(:post)
+      expect(Excon).not_to receive(:get)
+
+      described_class.new.bitbucket_oauth_token(@user)
+    end
+
+    context "when the user has no bitbucket connection" do
+      # get_token feeds this into a proto3 string field, which rejects nil.
+      it "returns an empty credential instead of raising" do
+        expect(described_class.new.bitbucket_oauth_token(FactoryBot.create(:user)))
+          .to eq(["", nil])
+      end
+    end
+  end
+
   describe "#github_app_token" do
     it "returns github app token for an repository" do
       allow(Semaphore::GithubApp::Token).to receive(:repository_token).with(

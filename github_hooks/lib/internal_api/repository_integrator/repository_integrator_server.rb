@@ -154,21 +154,12 @@ module InternalApi
 
       private
 
+      # GitHub only: its OAuth tokens do not rotate, so validating one is free.
+      # Bitbucket refresh tokens are single-use and rotating, so guard is the
+      # only component that refreshes them, and it owns `revoked`.
       def update_revoke_status(rha)
         if rha.repo_host == "github"
           rha.update!(:revoked => !::RepoHost::Github::Client.new(rha.token).token_valid?)
-        end
-
-        if rha.repo_host == "bitbucket"
-          token, _ = ::Semaphore::Bitbucket::Token.user_token(rha)
-          validation_state = ::Semaphore::Bitbucket::Token.validation_state(token)
-
-          case validation_state
-          when :valid
-            rha.update!(:revoked => false)
-          when :invalid
-            rha.update!(:revoked => true)
-          end
         end
 
         rha
