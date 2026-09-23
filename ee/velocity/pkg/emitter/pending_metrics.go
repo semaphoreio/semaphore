@@ -34,7 +34,6 @@ type PendingMetricsEmitter struct {
 	publisherOptions tackle.PublisherOptions
 	publishTimeout   time.Duration
 	publisher        *tackle.Publisher
-	publisherMu      sync.Mutex
 }
 
 func NewPendingMetricsEmitter(options tackle.Options, projectHubServiceClient *service.ProjectHubGrpcClient, crontab string) *PendingMetricsEmitter {
@@ -223,9 +222,6 @@ func (emitter *PendingMetricsEmitter) emit(pendingMetric entity.PendingMetric, o
 func (emitter *PendingMetricsEmitter) publishMessage(message []byte) error {
 	ctx, cancel := context.WithTimeout(context.Background(), emitter.publishTimeout)
 	defer cancel()
-
-	emitter.publisherMu.Lock()
-	defer emitter.publisherMu.Unlock()
 
 	return emitter.publisher.PublishWithContext(ctx, &tackle.PublishParams{
 		Body:       message,
