@@ -165,13 +165,29 @@ defmodule Guard.Api.Bitbucket do
 
   defp safe_oauth_error_description(_), do: nil
 
+  # The refresh POST runs while holding a Postgres advisory lock AND a pooled
+  # Front-DB connection (see Guard.FrontRepo.RepoHostAccount single-flight), so
+  # it must be hard-bounded. Without a timeout a hung Atlassian edge would park
+  # the lock - and one of the few pooled connections - until the caller's RPC
+  # deadline, and every other refresh for that account would queue behind it.
+  @refresh_timeout_ms 3_000
+
   defp build_token_client do
     {:ok, {client_id, client_secret}} = Guard.GitProviderCredentials.get(:bitbucket)
 
     Tesla.client([
+      {Tesla.Middleware.Timeout, timeout: @refresh_timeout_ms},
       {Tesla.Middleware.BaseUrl, @base_url},
       {Tesla.Middleware.BasicAuth, username: client_id, password: client_secret},
-      Tesla.Middleware.FormUrlencoded
+      Tesla.Middleware.FormUrlencoded,
+      # The request has to stay form-urlencoded but the response is JSON, so
+      # decode it explicitly - otherwise the body reaches us as a raw binary
+      # and every failure logged `error=nil error_description=nil`, which is
+      # why the OAuth reason behind these refresh failures was invisible.
+      # The decoders downstream still handle a raw binary (an empty or
+      # non-JSON body, which this middleware leaves untouched), so this only
+      # makes the happy path deterministic.
+      {Tesla.Middleware.DecodeJson, engine: Jason}
     ])
   end
 
