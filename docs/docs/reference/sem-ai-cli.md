@@ -52,6 +52,32 @@ sem-ai connect myorg.semaphoreci.com NeUFkim46BCdpqCAyWXN
 
 The token is stored in `~/.sem.yaml`, shared with the [Semaphore CLI](./semaphore-cli). If you already have `sem` configured, sem-ai uses the same credentials automatically.
 
+### sem-ai signin {#signin}
+
+Sign in without pasting a token. `signin` runs a device flow: it shows a one-time code and a verification URL, opening a browser when one is available.
+
+```shell
+sem-ai signin
+```
+
+Enter the code in the browser, sign in — or create an account there, if you do not have one — and approve. The terminal finishes on its own. `signup` and `login` are aliases for the same flow. The resulting token is stored in `~/.sem.yaml` the same way `connect` stores one.
+
+Defaults to Semaphore Cloud. For another deployment, pass the host, and `--id-host` when the CLI-auth endpoints live elsewhere:
+
+```shell
+sem-ai signin my-onprem.example.com --id-host id.my-onprem.example.com
+```
+
+| Flag | Description |
+|------|-------------|
+| `--headless` or `--device` | Never try to open a browser; print the code and URL |
+| `--browser` | Open the verification page even when the terminal looks non-interactive |
+| `--id-host` | Host serving the CLI-auth endpoints (defaults to `<host>`) |
+| `--org` | Also create a first organization with this name (new accounts only) |
+| `--org-host` | Host for the `--org` organization's context |
+
+An account has a single API token. If yours already has one, approving the sign-in **resets it**, after an explicit confirmation in the browser. The previous token then stops working everywhere it is used — CI secrets, scripts, other machines. To authenticate with a token you already hold, use `connect` instead.
+
 ### sem-ai context {#context}
 
 Each organization you connect to is stored in `~/.sem.yaml` as a named *context*.
@@ -62,23 +88,25 @@ List configured organizations:
 sem-ai context list
 ```
 
-Show the active organization:
+Show the organization this invocation resolves to — the pin, if one is set, otherwise the active context:
 
 ```shell
 sem-ai context show
 ```
 
-Change the organization every later command uses:
+Under a pin, `show` and `list` report different things by design: `show` names what this invocation will actually talk to, while `list` reports the file, marking the stored default `active` and the pinned entry `pinned`.
+
+Change the default organization used by unpinned commands:
 
 ```shell
 sem-ai context switch myorg_semaphoreci_com
 ```
 
-`context switch` rewrites the shared `active-context` key in `~/.sem.yaml`. Every sem-ai and `sem` invocation on the machine reads that key, so switching affects sessions other than your own. To target an organization for a single command without changing what anyone else sees, pin it instead.
+`context switch` rewrites the shared `active-context` key in `~/.sem.yaml`. Unpinned invocations that set no credential environment variables read that key — including invocations of the legacy `sem` CLI — so switching affects sessions other than your own. It is meant for a person changing their own default, not for scoping a command, a script, or an agent. To target an organization for one command without changing what anyone else sees, pin it instead.
 
 ### Pinning an organization {#context-pin}
 
-`--context` selects a named context for one invocation, without writing to the config file:
+`--context` selects a named context for one invocation, without writing to the config file. It takes a context *name*, not a host: `connect` names each context after its host with the dots replaced by underscores, so `myorg.semaphoreci.com` is stored as `myorg_semaphoreci_com`. Run `sem-ai context list` to see the exact names.
 
 ```shell
 sem-ai --context myorg_semaphoreci_com project list
@@ -91,22 +119,28 @@ export SEM_CONTEXT=myorg_semaphoreci_com
 sem-ai project list
 ```
 
-Pinning is what makes concurrent use safe. Several agents, terminals, or jobs on one machine can each pin a different organization and run at the same time, because none of them writes `active-context`. A name that is not in `~/.sem.yaml` fails immediately and lists the contexts that are, instead of quietly falling back to another organization.
+A name that is not in `~/.sem.yaml` fails immediately and lists the contexts that are, instead of quietly falling back to another organization.
 
-`connect`, `signin`, `context switch`, and `context list` ignore the pin — they create contexts or report the file's own state — so onboarding a new organization still works while pinned.
+Pinning isolates the **read** path: a pinned invocation neither reads nor writes `active-context`, so pinned sessions cannot flip each other's organization. It does not make every operation concurrency-safe. `connect`, `signin`, and `context switch` still write `~/.sem.yaml`; each write replaces the whole file, and two overlapping writes are last-writer-wins, so a context one session adds can disappear when another lands. Pinning also covers `sem-ai` only — the legacy `sem` CLI reads neither `--context` nor `SEM_CONTEXT` and still follows `active-context`. When several agents run at once, sequence the commands that write, or give each agent its own `HOME`.
+
+`signin`, `context switch`, and `context list` ignore the pin entirely, so a pin naming a context that does not exist yet cannot block the command that is about to create it. `connect` ignores it when resolving credentials, but refuses outright when the pin resolves to a *different* host than its `<host>` argument, since that names two organizations at once. `connect` names the context it creates after its host, so re-pin to that name once onboarding finishes.
 
 ### Credential resolution order {#credential-order}
 
-sem-ai takes credentials from the first source that applies:
+sem-ai resolves a host and a token from these sources, in order:
 
-| Priority | Source | Scope |
-|------|-------------|-------|
-| 1 | `--context <name>` | A single invocation |
-| 2 | `SEM_CONTEXT=<name>` | A shell session |
-| 3 | `SEMAPHORE_HOST` and `SEMAPHORE_API_TOKEN` | The process environment |
-| 4 | `active-context` in `~/.sem.yaml` | Shared by every session on the machine |
+| Priority | Source | Scope | Behavior |
+|------|-------------|-------|----------|
+| 1 | `--context <name>` | A single invocation | Replaces everything below |
+| 2 | `SEM_CONTEXT=<name>` | A shell session | Replaces everything below |
+| 3 | `SEMAPHORE_HOST` and/or `SEMAPHORE_API_TOKEN` | The process environment | Merged — each variable overrides only its own field |
+| 4 | `active-context` in `~/.sem.yaml` | Shared by every session on the machine | The starting point when nothing above applies |
 
-A context named by `--context` or `SEM_CONTEXT` supplies both the host and the token, and fully replaces the sources below it. Credentials from a context are never combined with `SEMAPHORE_HOST` or `SEMAPHORE_API_TOKEN`.
+The two halves of that table behave differently, and the difference matters.
+
+A context named by `--context` or `SEM_CONTEXT` supplies the host and the token together and fully replaces the sources below it, so its credentials are never mixed with the environment variables.
+
+Without a selector, rows 3 and 4 **merge field by field**. `SEMAPHORE_HOST` and `SEMAPHORE_API_TOKEN` are independent, so setting only one leaves the other coming from the active context. Exporting `SEMAPHORE_API_TOKEN` on its own — which the [hosted MCP server](../using-semaphore/ai/mcp-server) setup instructs you to do — means every later `sem-ai` command in that shell sends that token to whichever host `active-context` currently names. Set both variables together, or pin a context, whenever the host and the token have to belong to the same organization.
 
 ## General syntax {#syntax}
 
@@ -1292,7 +1326,9 @@ Add to your project's `.mcp.json`:
 }
 ```
 
-Most commands become available as MCP tools (e.g., `project_list`, `diagnose`, `status`, `blast-radius`). The long-running commands `watch` and `promote-and-wait` are excluded, since they would block the single in-memory command tree; use `status --exit-code` in a poll loop instead. The server starts once and handles all tool calls in-process — no new process per call.
+Most commands become available as MCP tools (e.g., `project_list`, `diagnose`, `status`, `blast-radius`). The long-running commands `watch` and `promote-and-wait` are excluded, since they would block the single in-memory command tree; use `status --exit-code` in a poll loop instead. The onboarding commands `signin` and `connect` are excluded too — the device flow holds the server lock and hides the one-time code it prints, and `connect`'s two positional arguments cannot be expressed as tool arguments — so run those in a shell. The server starts once and handles all tool calls in-process — no new process per call.
+
+To tie a server to one organization, pass `--context` in its `args`, as described under [pinning an organization](#context-pin). One tool is worth knowing about: `context_switch` remains available and rewrites the shared `active-context` key for every session on the machine. It ignores both the server pin and a per-call `context` argument, so never call it to scope a request — pass `context` on the call instead.
 
 ## Agent skills {#skills}
 
