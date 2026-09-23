@@ -119,6 +119,8 @@ module InternalApi
           else
             scope = InternalApi::RepositoryIntegrator::IntegrationScope::NO_CONNECTION
           end
+        elsif GUARD_OWNED_INTEGRATIONS.key?(project.repository.integration_type)
+          valid, scope = guard_connection(project)
         else
           connection = update_revoke_status(project.repo_host_account)
           repository = project.repository
@@ -154,9 +156,50 @@ module InternalApi
 
       private
 
+      # Integrations whose OAuth lifecycle belongs to guard: it stores the
+      # tokens, performs the refresh and maintains `revoked`. Their refresh
+      # tokens are single-use and rotating, so refreshing one anywhere else
+      # invalidates it. Ask guard for the answer instead of deriving it here.
+      GUARD_OWNED_INTEGRATIONS = {
+        "bitbucket" => :BITBUCKET,
+        "gitlab" => :GITLAB
+      }.freeze
+
+      # Under front's 30s CheckToken timeout, with room for guard to refresh.
+      GUARD_TOKEN_TIMEOUT = 15
+
+      # A token guard can hand out is a usable connection. guard normalises the
+      # granted scope to a full one at connect time, so there is no partial
+      # state to report. Any failure is reported as no connection: the token is
+      # revoked, never connected, or guard cannot answer, and in each case the
+      # project cannot reach its repository.
+      def guard_connection(project)
+        request = InternalApi::User::GetRepositoryTokenRequest.new(
+          :user_id => project.creator_id,
+          :integration_type => GUARD_OWNED_INTEGRATIONS.fetch(project.repository.integration_type)
+        )
+
+        client = InternalApi::User::UserService::Stub.new(App.user_api_url, :this_channel_is_insecure)
+        client.get_repository_token(request, :deadline => Time.now.utc + GUARD_TOKEN_TIMEOUT)
+
+        [true, InternalApi::RepositoryIntegrator::IntegrationScope::FULL_CONNECTION]
+      rescue GRPC::BadStatus => e
+        Rails.logger.info(
+          "[CheckToken] guard reports no usable #{project.repository.integration_type} " \
+          "connection for project #{project.id}: #{e.class}"
+        )
+
+        [false, InternalApi::RepositoryIntegrator::IntegrationScope::NO_CONNECTION]
+      rescue StandardError => e
+        Rails.logger.error(
+          "[CheckToken] failed to reach guard for project #{project.id}: #{e.class}"
+        )
+
+        [false, InternalApi::RepositoryIntegrator::IntegrationScope::NO_CONNECTION]
+      end
+
       # GitHub only: its OAuth tokens do not rotate, so validating one is free.
-      # Bitbucket refresh tokens are single-use and rotating, so guard is the
-      # only component that refreshes them, and it owns `revoked`.
+      # Providers in GUARD_OWNED_INTEGRATIONS never reach this.
       def update_revoke_status(rha)
         if rha.repo_host == "github"
           rha.update!(:revoked => !::RepoHost::Github::Client.new(rha.token).token_valid?)

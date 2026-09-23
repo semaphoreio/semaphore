@@ -561,6 +561,98 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
         end
       end
     end
+
+    # guard owns the Bitbucket/GitLab OAuth lifecycle, so the connection state
+    # is whatever guard says it is, and nothing here may reach the provider.
+    %w[bitbucket gitlab].each do |integration_type|
+      context "for #{integration_type} integration" do
+        let(:guard_client) { instance_double(InternalApi::User::UserService::Stub) }
+
+        before do
+          user = FactoryBot.create(:user)
+          repository = FactoryBot.create(:repository, :integration_type => integration_type)
+          @project = FactoryBot.create(:project, :creator => user, :repository => repository)
+
+          allow(InternalApi::User::UserService::Stub).to receive(:new).and_return(guard_client)
+
+          @req = InternalApi::RepositoryIntegrator::CheckTokenRequest.new(
+            :project_id => @project.id
+          )
+        end
+
+        context "when guard hands out a token" do
+          before do
+            allow(guard_client).to receive(:get_repository_token)
+              .and_return(InternalApi::User::GetRepositoryTokenResponse.new(:token => "token"))
+          end
+
+          it "reports a full connection" do
+            response = server.check_token(@req, call)
+
+            expect(response.valid).to be(true)
+            expect(response.integration_scope).to eq(:FULL_CONNECTION)
+          end
+
+          it "asks guard about the project creator and this integration" do
+            expect(guard_client).to receive(:get_repository_token) do |request, _opts|
+              expect(request.user_id).to eq(@project.creator_id)
+              expect(request.integration_type).to eq(integration_type.upcase.to_sym)
+              InternalApi::User::GetRepositoryTokenResponse.new(:token => "token")
+            end
+
+            server.check_token(@req, call)
+          end
+
+          it "never talks to the provider" do
+            expect(Excon).not_to receive(:post)
+            expect(Excon).not_to receive(:get)
+
+            server.check_token(@req, call)
+          end
+        end
+
+        context "when guard reports the connection revoked" do
+          before do
+            allow(guard_client).to receive(:get_repository_token)
+              .and_raise(GRPC::NotFound.new("Token for not found."))
+          end
+
+          it "reports no connection" do
+            response = server.check_token(@req, call)
+
+            expect(response.valid).to be(false)
+            expect(response.integration_scope).to eq(:NO_CONNECTION)
+          end
+        end
+
+        context "when guard cannot answer" do
+          before do
+            allow(guard_client).to receive(:get_repository_token)
+              .and_raise(GRPC::Unavailable.new("Token temporarily unavailable, please retry."))
+          end
+
+          it "reports no connection rather than raising" do
+            response = server.check_token(@req, call)
+
+            expect(response.valid).to be(false)
+            expect(response.integration_scope).to eq(:NO_CONNECTION)
+          end
+        end
+
+        context "when guard is unreachable" do
+          before do
+            allow(guard_client).to receive(:get_repository_token).and_raise(StandardError, "boom")
+          end
+
+          it "reports no connection rather than raising" do
+            response = server.check_token(@req, call)
+
+            expect(response.valid).to be(false)
+            expect(response.integration_scope).to eq(:NO_CONNECTION)
+          end
+        end
+      end
+    end
   end
 
   describe "#update_revoke_status" do
