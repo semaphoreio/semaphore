@@ -566,14 +566,10 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
     # is whatever guard says it is, and nothing here may reach the provider.
     %w[bitbucket gitlab].each do |integration_type|
       context "for #{integration_type} integration" do
-        let(:guard_client) { instance_double(InternalApi::User::UserService::Stub) }
-
         before do
           user = FactoryBot.create(:user)
           repository = FactoryBot.create(:repository, :integration_type => integration_type)
           @project = FactoryBot.create(:project, :creator => user, :repository => repository)
-
-          allow(InternalApi::User::UserService::Stub).to receive(:new).and_return(guard_client)
 
           @req = InternalApi::RepositoryIntegrator::CheckTokenRequest.new(
             :project_id => @project.id
@@ -582,8 +578,8 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
 
         context "when guard hands out a token" do
           before do
-            allow(guard_client).to receive(:get_repository_token)
-              .and_return(InternalApi::User::GetRepositoryTokenResponse.new(:token => "token"))
+            allow(Semaphore::GuardUserClient).to receive(:repository_token)
+              .and_return(["token", nil])
           end
 
           it "reports a full connection" do
@@ -594,13 +590,10 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
           end
 
           it "asks guard about the project creator and this integration" do
-            expect(guard_client).to receive(:get_repository_token) do |request, _opts|
-              expect(request.user_id).to eq(@project.creator_id)
-              expect(request.integration_type).to eq(integration_type.upcase.to_sym)
-              InternalApi::User::GetRepositoryTokenResponse.new(:token => "token")
-            end
-
             server.check_token(@req, call)
+
+            expect(Semaphore::GuardUserClient).to have_received(:repository_token)
+              .with(@project.creator_id, integration_type)
           end
 
           it "never talks to the provider" do
@@ -613,7 +606,7 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
 
         context "when guard reports the connection revoked" do
           before do
-            allow(guard_client).to receive(:get_repository_token)
+            allow(Semaphore::GuardUserClient).to receive(:repository_token)
               .and_raise(GRPC::NotFound.new("Token for not found."))
           end
 
@@ -627,7 +620,7 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
 
         context "when guard cannot answer" do
           before do
-            allow(guard_client).to receive(:get_repository_token)
+            allow(Semaphore::GuardUserClient).to receive(:repository_token)
               .and_raise(GRPC::Unavailable.new("Token temporarily unavailable, please retry."))
           end
 
@@ -641,7 +634,7 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
 
         context "when guard is unreachable" do
           before do
-            allow(guard_client).to receive(:get_repository_token).and_raise(StandardError, "boom")
+            allow(Semaphore::GuardUserClient).to receive(:repository_token).and_raise(StandardError, "boom")
           end
 
           it "reports no connection rather than raising" do

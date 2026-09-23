@@ -119,7 +119,7 @@ module InternalApi
           else
             scope = InternalApi::RepositoryIntegrator::IntegrationScope::NO_CONNECTION
           end
-        elsif GUARD_OWNED_INTEGRATIONS.key?(project.repository.integration_type)
+        elsif ::Semaphore::GuardUserClient.owns?(project.repository.integration_type)
           valid, scope = guard_connection(project)
         else
           connection = update_revoke_status(project.repo_host_account)
@@ -156,31 +156,16 @@ module InternalApi
 
       private
 
-      # Integrations whose OAuth lifecycle belongs to guard: it stores the
-      # tokens, performs the refresh and maintains `revoked`. Their refresh
-      # tokens are single-use and rotating, so refreshing one anywhere else
-      # invalidates it. Ask guard for the answer instead of deriving it here.
-      GUARD_OWNED_INTEGRATIONS = {
-        "bitbucket" => :BITBUCKET,
-        "gitlab" => :GITLAB
-      }.freeze
-
-      # Under front's 30s CheckToken timeout, with room for guard to refresh.
-      GUARD_TOKEN_TIMEOUT = 15
-
       # A token guard can hand out is a usable connection. guard normalises the
       # granted scope to a full one at connect time, so there is no partial
       # state to report. Any failure is reported as no connection: the token is
       # revoked, never connected, or guard cannot answer, and in each case the
       # project cannot reach its repository.
       def guard_connection(project)
-        request = InternalApi::User::GetRepositoryTokenRequest.new(
-          :user_id => project.creator_id,
-          :integration_type => GUARD_OWNED_INTEGRATIONS.fetch(project.repository.integration_type)
+        ::Semaphore::GuardUserClient.repository_token(
+          project.creator_id,
+          project.repository.integration_type
         )
-
-        client = InternalApi::User::UserService::Stub.new(App.user_api_url, :this_channel_is_insecure)
-        client.get_repository_token(request, :deadline => Time.now.utc + GUARD_TOKEN_TIMEOUT)
 
         [true, InternalApi::RepositoryIntegrator::IntegrationScope::FULL_CONNECTION]
       rescue GRPC::BadStatus => e
@@ -296,6 +281,13 @@ module InternalApi
           raise GRPC::NotFound, "User with id #{req.user_id} not found." unless user
 
           return token_service.bitbucket_oauth_token(user)
+        end
+
+        if req.integration_type == :GITLAB and req.user_id.present?
+          user = ::User.find_by(:id => req.user_id)
+          raise GRPC::NotFound, "User with id #{req.user_id} not found." unless user
+
+          return token_service.gitlab_oauth_token(user)
         end
 
         repository_remote_id = req.repository_remote_id.presence

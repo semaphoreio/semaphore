@@ -12,31 +12,53 @@ RSpec.describe Semaphore::ProjectIntegrationToken do
     end
   end
 
-  describe "#bitbucket_oauth_token" do
-    before do
-      @user = FactoryBot.create(:user)
-      @repo = FactoryBot.create(:bitbucket_account, :user => @user)
-    end
+  # guard is the only component that may refresh these, so the token comes from
+  # guard and never from the stored row, which can be past its expiry.
+  %w[bitbucket gitlab].each do |integration_type|
+    describe "##{integration_type}_oauth_token" do
+      let(:method) { :"#{integration_type}_oauth_token" }
+      let(:expires_at) { Time.zone.now.change(:usec => 0) }
 
-    it "returns the stored bitbucket credential of a user" do
-      expect(described_class.new.bitbucket_oauth_token(@user))
-        .to eq([@repo.token, @repo.token_expires_at])
-    end
+      before do
+        @user = FactoryBot.create(:user)
+      end
 
-    # Bitbucket refresh tokens are single-use and rotating; only guard
-    # refreshes them.
-    it "never talks to bitbucket" do
-      expect(Excon).not_to receive(:post)
-      expect(Excon).not_to receive(:get)
+      it "returns the credential guard hands out" do
+        allow(Semaphore::GuardUserClient).to receive(:repository_token)
+          .with(@user.id, integration_type)
+          .and_return(["guard-token", expires_at])
 
-      described_class.new.bitbucket_oauth_token(@user)
-    end
+        expect(described_class.new.public_send(method, @user))
+          .to eq(["guard-token", expires_at])
+      end
 
-    context "when the user has no bitbucket connection" do
+      it "never talks to the provider" do
+        allow(Semaphore::GuardUserClient).to receive(:repository_token)
+          .and_return(["guard-token", nil])
+
+        expect(Excon).not_to receive(:post)
+        expect(Excon).not_to receive(:get)
+
+        described_class.new.public_send(method, @user)
+      end
+
       # get_token feeds this into a proto3 string field, which rejects nil.
-      it "returns an empty credential instead of raising" do
-        expect(described_class.new.bitbucket_oauth_token(FactoryBot.create(:user)))
-          .to eq(["", nil])
+      context "when guard has no usable credential" do
+        it "returns an empty credential instead of raising" do
+          allow(Semaphore::GuardUserClient).to receive(:repository_token)
+            .and_raise(GRPC::NotFound.new("Token for not found."))
+
+          expect(described_class.new.public_send(method, @user)).to eq(["", nil])
+        end
+      end
+
+      context "when guard is unreachable" do
+        it "returns an empty credential instead of raising" do
+          allow(Semaphore::GuardUserClient).to receive(:repository_token)
+            .and_raise(StandardError, "boom")
+
+          expect(described_class.new.public_send(method, @user)).to eq(["", nil])
+        end
       end
     end
   end
