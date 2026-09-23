@@ -13,6 +13,7 @@ if config_env() == :prod do
   config :gofer, amqp_url: System.get_env("AMQP_URL") || "amqp://rabbitmq:5672"
 
   config :gofer, Gofer.EctoRepo,
+    prepare: :unnamed,
     hostname: get_env!.("DB_HOSTNAME"),
     username: get_env!.("DB_USERNAME"),
     password: get_env!.("DB_PASSWORD"),

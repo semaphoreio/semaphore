@@ -13,6 +13,7 @@ if config_env() == :prod do
     prefix: "repository_hub.#{System.get_env("METRICS_NAMESPACE") || "dev"}"
 
   config :repository_hub, RepositoryHub.Repo,
+    prepare: :unnamed,
     database: System.get_env("POSTGRES_DB_NAME"),
     username: System.get_env("POSTGRES_DB_USER"),
     password: System.get_env("POSTGRES_DB_PASSWORD"),

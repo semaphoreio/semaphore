@@ -23,6 +23,7 @@ config :watchman,
 
 config :audit, Audit.Repo,
   adapter: Ecto.Adapters.Postgres,
+  prepare: :unnamed,
   database: System.get_env("POSTGRES_DB_NAME") || "audit",
   username: System.get_env("POSTGRES_DB_USER") || "postgres",
   password: System.get_env("POSTGRES_DB_PASSWORD") || "the-cake-is-a-lie",
