@@ -213,6 +213,7 @@ defmodule Front.Models.WorkflowTest do
           "e2f9050bddc171648cdb62ed187d74f03641c3f8...2d3e89c103a72ef950f1e5866c6df8917a747fdb",
         git_ref: "refs/heads/ms/describing-preloading-commit-data",
         git_ref_type: 0,
+        pr_mergeable_state: 0,
         head_commit_sha: "2d3e89c103a72ef950f1e5866c6df8917a747fdb",
         hook_id: @hook_id,
         pr_mergeable: false,
