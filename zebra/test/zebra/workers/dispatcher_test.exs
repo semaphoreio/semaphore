@@ -324,7 +324,7 @@ defmodule Zebra.Workers.DispatcherTest do
       assert Enum.count(requested_os_images, &(&1 == "ubuntu2404")) == 10
     end
 
-    test "isolates self-hosted dispatching per organization so one org's backlog can't starve another" do
+    test "interleaves self-hosted jobs across organizations so one org's backlog can't starve another" do
       System.put_env("DISPATCH_SELF_HOSTED_ONLY", "true")
       System.put_env("DISPATCH_CLOUD_ONLY", "false")
 
@@ -332,36 +332,27 @@ defmodule Zebra.Workers.DispatcherTest do
       org_b = Ecto.UUID.generate()
 
       now = DateTime.utc_now() |> DateTime.truncate(:second)
-      older = Timex.shift(now, seconds: -300)
 
-      # Org A: a large backlog of OLDER self-hosted jobs, same machine_type and
-      # os_image as org B's jobs (only the organization differs).
       org_a_jobs =
-        Enum.map(1..5, fn _ ->
+        Enum.map(1..5, fn i ->
           {:ok, job} =
             Support.Factories.Job.create(:scheduled, %{
               organization_id: org_a,
               machine_type: "s1-local-testing",
               machine_os_image: "ubuntu2004",
-              scheduled_at: older
+              scheduled_at: Timex.shift(now, seconds: -300 + i)
             })
 
           job
         end)
 
-      # Org B: a couple of NEWER self-hosted jobs of the same type name.
-      org_b_jobs =
-        Enum.map(1..2, fn _ ->
-          {:ok, job} =
-            Support.Factories.Job.create(:scheduled, %{
-              organization_id: org_b,
-              machine_type: "s1-local-testing",
-              machine_os_image: "ubuntu2004",
-              scheduled_at: now
-            })
-
-          job
-        end)
+      {:ok, org_b_job} =
+        Support.Factories.Job.create(:scheduled, %{
+          organization_id: org_b,
+          machine_type: "s1-local-testing",
+          machine_os_image: "ubuntu2004",
+          scheduled_at: now
+        })
 
       GrpcMock.stub(Support.FakeServers.SelfHosted, :occupy_agent, fn _, _ ->
         %InternalApi.SelfHosted.OccupyAgentResponse{
@@ -370,29 +361,94 @@ defmodule Zebra.Workers.DispatcherTest do
         }
       end)
 
-      # records_per_tick smaller than org A's backlog: under a single global FIFO
-      # the oldest jobs (all org A) would consume the entire per-tick budget and
-      # org B's newer jobs would never be dispatched. With per-org isolation each
-      # {organization_id, machine_type, os_image} key gets its own budget.
       worker = %{Worker.init() | records_per_tick: 3}
 
       with_stubbed_http_calls(fn ->
         Zebra.Workers.DbWorker.tick(worker)
       end)
 
-      # Org B is not starved: all of its jobs were dispatched this tick.
-      Enum.each(org_b_jobs, fn job ->
-        job = Job.reload(job)
-        assert Job.started?(job) == true
-        assert job.agent_id == @agent_id
-      end)
+      assert Job.started?(Job.reload(org_b_job)) == true
 
-      # Org A gets its own independent budget (records_per_tick of its backlog).
-      started_org_a = Enum.count(org_a_jobs, fn job -> Job.started?(Job.reload(job)) end)
-      assert started_org_a == 3
+      started_org_a = Enum.filter(org_a_jobs, fn job -> Job.started?(Job.reload(job)) end)
+      assert started_org_a == Enum.take(org_a_jobs, 2)
     end
 
-    test "cloud dispatching is not isolated per organization (unchanged behaviour)" do
+    test "interleaves self-hosted jobs across agent types within one organization" do
+      System.put_env("DISPATCH_SELF_HOSTED_ONLY", "true")
+      System.put_env("DISPATCH_CLOUD_ONLY", "false")
+
+      now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+      Enum.each(1..5, fn _ ->
+        {:ok, _} =
+          Support.Factories.Job.create(:scheduled, %{
+            machine_type: "s1-big-backlog",
+            scheduled_at: Timex.shift(now, seconds: -300)
+          })
+      end)
+
+      {:ok, other_type_job} =
+        Support.Factories.Job.create(:scheduled, %{
+          machine_type: "s1-other",
+          scheduled_at: now
+        })
+
+      GrpcMock.stub(Support.FakeServers.SelfHosted, :occupy_agent, fn _, _ ->
+        %InternalApi.SelfHosted.OccupyAgentResponse{
+          agent_id: @agent_id,
+          agent_name: "self-hosted-agent"
+        }
+      end)
+
+      worker = %{Worker.init() | records_per_tick: 2}
+
+      with_stubbed_http_calls(fn ->
+        Zebra.Workers.DbWorker.tick(worker)
+      end)
+
+      assert Job.started?(Job.reload(other_type_job)) == true
+
+      started =
+        Zebra.LegacyRepo.one(
+          from(j in Job, where: j.aasm_state == "started", select: count(j.id))
+        )
+
+      assert started == 2
+    end
+
+    test "dispatches self-hosted jobs with a blank or nil os_image in self-hosted-only mode" do
+      System.put_env("DISPATCH_SELF_HOSTED_ONLY", "true")
+      System.put_env("DISPATCH_CLOUD_ONLY", "false")
+
+      {:ok, nil_image_job} =
+        Support.Factories.Job.create(:scheduled, %{
+          machine_type: "s1-local-testing",
+          machine_os_image: nil
+        })
+
+      {:ok, blank_image_job} =
+        Support.Factories.Job.create(:scheduled, %{
+          machine_type: "s1-local-testing",
+          machine_os_image: ""
+        })
+
+      GrpcMock.stub(Support.FakeServers.SelfHosted, :occupy_agent, fn _, _ ->
+        %InternalApi.SelfHosted.OccupyAgentResponse{
+          agent_id: @agent_id,
+          agent_name: "self-hosted-agent"
+        }
+      end)
+
+      with_stubbed_http_calls(fn ->
+        Worker.init() |> Zebra.Workers.DbWorker.tick()
+      end)
+
+      Enum.each([nil_image_job, blank_image_job], fn job ->
+        assert Job.started?(Job.reload(job)) == true
+      end)
+    end
+
+    test "cloud dispatching is not interleaved per organization" do
       System.put_env("DISPATCH_SELF_HOSTED_ONLY", "false")
       System.put_env("DISPATCH_CLOUD_ONLY", "true")
 
@@ -402,7 +458,6 @@ defmodule Zebra.Workers.DispatcherTest do
       now = DateTime.utc_now() |> DateTime.truncate(:second)
       older = Timex.shift(now, seconds: -300)
 
-      # Two orgs, same cloud machine_type and os_image, org A older.
       org_a_jobs =
         Enum.map(1..3, fn _ ->
           {:ok, job} =
@@ -447,9 +502,6 @@ defmodule Zebra.Workers.DispatcherTest do
         Zebra.Workers.DbWorker.tick(worker)
       end)
 
-      # Cloud is isolated only by {machine_type, os_image}, NOT by org: the single
-      # per-key budget is consumed by the oldest jobs (org A), so org B's same-type
-      # jobs are NOT dispatched in this tick. This locks the cloud path as unchanged.
       Enum.each(org_a_jobs, fn job ->
         assert Job.started?(Job.reload(job)) == true
       end)

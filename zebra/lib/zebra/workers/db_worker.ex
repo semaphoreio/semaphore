@@ -69,9 +69,6 @@ defmodule Zebra.Workers.DbWorker do
   defp submit_batch_size(name, v, {machine_type, machine_os_image}),
     do: Watchman.submit({"#{name}.batch_size", ["#{machine_type}-#{machine_os_image}"]}, v)
 
-  defp submit_batch_size(name, v, {_organization_id, machine_type, machine_os_image}),
-    do: Watchman.submit({"#{name}.batch_size", ["#{machine_type}-#{machine_os_image}"]}, v)
-
   def process(worker, id) do
     Watchman.benchmark("#{worker.metric_name}.process.duration", fn ->
       Repo.transaction(fn ->
@@ -119,14 +116,8 @@ defmodule Zebra.Workers.DbWorker do
           from(r in worker.schema,
             where: field(r, ^worker.state_field) == ^worker.state_value,
             where: like(field(r, ^worker.machine_type_field), @self_hosted_prefix),
-            distinct: [
-              r.organization_id,
-              field(r, ^worker.machine_type_field),
-              field(r, ^machine_os_image_field)
-            ],
-            select:
-              {r.organization_id, field(r, ^worker.machine_type_field),
-               field(r, ^machine_os_image_field)}
+            distinct: [field(r, ^worker.machine_type_field), field(r, ^machine_os_image_field)],
+            select: {field(r, ^worker.machine_type_field), field(r, ^machine_os_image_field)}
           )
         )
 
@@ -164,7 +155,18 @@ defmodule Zebra.Workers.DbWorker do
           from(r in worker.schema,
             where: field(r, ^worker.state_field) == ^worker.state_value,
             where: like(field(r, ^worker.machine_type_field), @self_hosted_prefix),
-            order_by: [{^order_dir, ^order_by}],
+            windows: [
+              per_org: [
+                partition_by: [r.organization_id, field(r, ^worker.machine_type_field)],
+                order_by: [
+                  {^order_dir, field(r, ^order_by)},
+                  {:desc_nulls_last, r.priority},
+                  {:asc, r.id}
+                ]
+              ]
+            ],
+            order_by: [asc: over(row_number(), :per_org)],
+            order_by: [{^order_dir, field(r, ^order_by)}],
             select: r.id,
             limit: ^records_per_tick
           )
@@ -195,31 +197,6 @@ defmodule Zebra.Workers.DbWorker do
     base_query =
       from(r in worker.schema,
         where: field(r, ^worker.state_field) == ^worker.state_value,
-        where: field(r, ^worker.machine_type_field) == ^machine_type
-      )
-
-    filtered_query =
-      maybe_filter_machine_os_image(base_query, machine_os_image_field, machine_os_image)
-
-    Repo.all(
-      from(r in filtered_query,
-        order_by: [{^order_dir, ^order_by}],
-        select: r.id,
-        limit: ^records_per_tick
-      )
-    )
-  end
-
-  defp query_jobs(worker, {organization_id, machine_type, machine_os_image}) do
-    order_by = worker.order_by || :id
-    order_dir = worker.order_direction || :asc
-    records_per_tick = worker.records_per_tick || 100
-    machine_os_image_field = worker.machine_os_image_field
-
-    base_query =
-      from(r in worker.schema,
-        where: field(r, ^worker.state_field) == ^worker.state_value,
-        where: r.organization_id == ^organization_id,
         where: field(r, ^worker.machine_type_field) == ^machine_type
       )
 
