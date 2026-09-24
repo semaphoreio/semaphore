@@ -292,6 +292,7 @@ module InternalApi
           :pr_sha => hook.payload.pr_head_sha.to_s,
           :pr_branch_name => hook.payload.pr_head_branch_name.to_s,
           :pr_mergeable => pr_mergeable(hook),
+          :pr_mergeable_state => pr_mergeable_state(hook),
           :tag_name => hook.payload.tag_name.to_s,
           :branch_name => branch_name(hook)
         }
@@ -304,8 +305,21 @@ module InternalApi
         ::InternalApi::RepoProxy::Hook.new(data)
       end
 
+      # Deprecated: a bool cannot represent "not determined yet", and this
+      # coerces that case to false. Kept for readers still on the old field;
+      # new readers should use pr_mergeable_state.
       def pr_mergeable(hook)
         !!(hook.branch && hook.branch.pull_request_mergeable)
+      end
+
+      # branch.pull_request_mergeable is a nullable boolean and already carries
+      # all three states; only the wire format was lossy.
+      def pr_mergeable_state(hook)
+        case hook.branch&.pull_request_mergeable
+        when true then :PR_MERGEABLE_STATE_MERGEABLE
+        when false then :PR_MERGEABLE_STATE_CONFLICTED
+        else :PR_MERGEABLE_STATE_UNKNOWN
+        end
       end
 
       def branch_name(hook)
