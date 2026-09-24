@@ -1,0 +1,12 @@
+<div class="mv3 pa3 ph4 bg-washed-blue ba b--black-15">
+  <div class="flex-m items-center justify-between">
+    <div class="mb3 mb0-m pr3-m">
+      <div class="flex-m items-center">
+        <div class="flex-auto">
+          <p class="b mb0">GitHub didn’t finish checking whether this Pull Request can be merged</p>
+          <p class="mb0">This is not a merge conflict. GitHub computes the merge in the background, and on busy repositories it can be interrupted by new commits on the target branch before it completes. Pushing a new commit to the Pull Request will start a fresh attempt.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
