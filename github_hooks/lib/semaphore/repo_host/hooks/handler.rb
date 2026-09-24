@@ -356,10 +356,10 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
   # head. A merge computed before the last push still has the old head as its
   # second parent, and building it would silently test code the author never
   # pushed, so anything we cannot positively confirm is treated as not current.
-  def self.merge_commit_current?(repo_host, project, merge_commit_sha, pr)
+  def self.merge_commit_current?(repo_host, project, merge_commit_sha, pull_request)
     return false if merge_commit_sha.blank?
 
-    head_sha = pr[:head] && pr[:head][:sha]
+    head_sha = pull_request[:head] && pull_request[:head][:sha]
     return false if head_sha.blank?
 
     parents = repo_host.commit(project.repo_owner_and_name, merge_commit_sha).try(:parents).to_a

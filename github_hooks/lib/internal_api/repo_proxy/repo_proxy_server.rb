@@ -315,7 +315,7 @@ module InternalApi
       # branch.pull_request_mergeable is a nullable boolean and already carries
       # all three states; only the wire format was lossy.
       def pr_mergeable_state(hook)
-        case hook.branch && hook.branch.pull_request_mergeable
+        case hook.branch&.pull_request_mergeable
         when true then :PR_MERGEABLE_STATE_MERGEABLE
         when false then :PR_MERGEABLE_STATE_CONFLICTED
         else :PR_MERGEABLE_STATE_UNKNOWN
