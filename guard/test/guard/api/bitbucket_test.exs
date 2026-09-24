@@ -142,6 +142,63 @@ defmodule Guard.Api.BitbucketTest do
       assert DateTime.compare(reloaded.token_expires_at, DateTime.utc_now()) == :gt
     end
 
+    test "an absurd expires_in does not raise; the token is stored without an expiry",
+         %{rha: rha} do
+      # normalize_expires_in/1 accepts any positive integer, so a provider
+      # value outside DateTime's range would otherwise raise inside the
+      # persistence path - which has no rescue, and would escape as gRPC
+      # INTERNAL before the negative cache is written.
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
+          {:ok,
+           %Tesla.Env{
+             status: 200,
+             body:
+               Jason.encode!(%{
+                 "access_token" => "rotated_access",
+                 "refresh_token" => "rotated_refresh",
+                 "expires_in" => 999_999_999_999_999
+               })
+           }}
+      end)
+
+      assert {:ok, {"rotated_access", _}} = Bitbucket.user_token(rha)
+
+      reloaded = Guard.FrontRepo.get!(Guard.FrontRepo.RepoHostAccount, rha.id)
+      # The rotation is what matters - it must be persisted either way.
+      assert reloaded.refresh_token == "rotated_refresh"
+    end
+
+    test "a sub-skew expires_in is honoured and warned about", %{rha: rha} do
+      # valid_token?/2 treats a token as expired 300s early, so this token
+      # looks expired on arrival and every request will refresh again. We
+      # honour the provider's value but must not do it silently.
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
+          {:ok,
+           %Tesla.Env{
+             status: 200,
+             body:
+               Jason.encode!(%{
+                 "access_token" => "rotated_access",
+                 "refresh_token" => "rotated_refresh",
+                 "expires_in" => 60
+               })
+           }}
+      end)
+
+      log =
+        ExUnit.CaptureLog.capture_log(fn ->
+          assert {:ok, {"rotated_access", _}} = Bitbucket.user_token(rha)
+        end)
+
+      assert log =~ "expires_in=60s"
+      assert log =~ "validity skew"
+
+      reloaded = Guard.FrontRepo.get!(Guard.FrontRepo.RepoHostAccount, rha.id)
+      assert reloaded.refresh_token == "rotated_refresh"
+    end
+
     test "a transient 4xx does NOT null or rotate the stored token", %{rha: rha} do
       Tesla.Mock.mock_global(fn
         %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
