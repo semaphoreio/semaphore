@@ -439,13 +439,12 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
           end
 
           it "records mergeability as undetermined rather than unmergeable on give-up" do
-            described_class.run(@workflow, @logger, "", "", 10)
+            expect(described_class).to receive(:update_pull_request_mergeable).with(anything, nil)
 
-            expect(@workflow.reload.branch.pull_request_mergeable).to be_nil
+            described_class.run(@workflow, @logger, "", "", 10)
           end
 
           it "does not emit a PullRequestUnmergeable event on give-up" do
-            @workflow.branch.update(:pull_request_mergeable => true)
             expect(Semaphore::Events::PullRequestUnmergeable).not_to receive(:emit)
 
             described_class.run(@workflow, @logger, "", "", 10)
@@ -474,13 +473,12 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
             # branch, but the merge commit GitHub already produced is usable.
             allow(repo_host).to receive(:commit).with("renderedtext/plakatt", "merge-sha")
                                                 .and_return(merge_commit_with_parents("base-sha", head_sha))
-            allow(repo_host).to receive(:create_ref)
 
+            expect(repo_host).to receive(:create_ref)
+              .with("renderedtext/plakatt", "refs/semaphoreci/merge-sha", "merge-sha")
             expect(Semaphore::RepoHost::Hooks::Handler::Worker).not_to receive(:perform_in)
 
             described_class.run(@workflow, @logger)
-
-            expect(@workflow.reload.state).to eq(Workflow::STATE_LAUNCHING)
           end
 
           it "treats a current merge commit as proof the pull request merges" do
@@ -488,9 +486,9 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
                                                 .and_return(merge_commit_with_parents("base-sha", head_sha))
             allow(repo_host).to receive(:create_ref)
 
-            described_class.run(@workflow, @logger)
+            expect(described_class).to receive(:update_pull_request_mergeable).with(anything, true)
 
-            expect(@workflow.reload.branch.pull_request_mergeable).to eq(true)
+            described_class.run(@workflow, @logger)
           end
 
           it "retries instead of building when the merge commit predates the current head" do

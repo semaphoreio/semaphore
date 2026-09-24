@@ -173,7 +173,7 @@ defmodule Front.Models.RepoProxy do
       head_commit_sha: proxy.head_commit_sha,
       user_id: proxy.user_id,
       pr_mergeable: proxy.pr_mergeable,
-      pr_mergeable_state: proxy.pr_mergeable_state,
+      pr_mergeable_state: mergeable_state(proxy.pr_mergeable_state),
       pr_number: proxy.pr_number,
       pr_sha: proxy.pr_sha,
       tag_name: proxy.tag_name,
@@ -182,6 +182,16 @@ defmodule Front.Models.RepoProxy do
       forked_pr: forked_pr(key, proxy.repo_slug, proxy.pr_slug)
     }
   end
+
+  # Protobuf hands enum fields over as integers here (see git_ref_type), so
+  # resolve to the atom once, at the boundary. Callers pattern-match on the
+  # atom and must not have to know the wire representation.
+  defp mergeable_state(state) when is_integer(state) do
+    InternalApi.RepoProxy.Hook.PrMergeableState.key(state)
+  end
+
+  defp mergeable_state(state) when is_atom(state) and not is_nil(state), do: state
+  defp mergeable_state(_), do: :PR_MERGEABLE_STATE_UNKNOWN
 
   defp channel(integration_type \\ "github_oauth_token")
   # should be used only temporarly for create hook action
