@@ -59,7 +59,7 @@ const copyAssets = async () => {
 const buildOptions = {
   minify: true,
   sourcemap: (process.env.MIX_ENV || 'prod') != 'prod',
-  entryPoints: ['js/app.js'],
+  entryPoints: isProd ? ['js/app.js'] : ['js/app.js', 'js/design_book.tsx'],
   external: ['fs'],
   bundle,
   target: 'es2020',
