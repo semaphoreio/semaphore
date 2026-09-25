@@ -14,6 +14,7 @@ defmodule PipelinesAPI.LoghubClient do
 
   @unavailable GRPC.Status.unavailable()
   @unimplemented GRPC.Status.unimplemented()
+  @unknown GRPC.Status.unknown()
   @data_loss GRPC.Status.data_loss()
 
   def get_log_events(job_id) do
@@ -45,7 +46,7 @@ defmodule PipelinesAPI.LoghubClient do
 
       {:error, reason} ->
         reason |> LT.error("loghub service responded with")
-        ToTuple.internal_error("Internal error")
+        error_for(reason)
     end
   end
 
@@ -78,8 +79,22 @@ defmodule PipelinesAPI.LoghubClient do
         process_get_log_events_response(response)
 
       # Wormhole wraps an {:error, _} returned by the function in another one.
-      {:error, {:error, %GRPC.RPCError{status: @unimplemented}}} ->
+      #
+      # A loghub without StreamLogEvents rejects the call before sending any
+      # response: UNIMPLEMENTED in general, but grpc-elixir 0.5 servers answer
+      # an unknown method with UNKNOWN. Either way, use GetLogEvents instead.
+      {:error, {:error, {:rejected, %GRPC.RPCError{status: status} = error}}}
+      when status in [@unimplemented, @unknown] ->
+        Logger.warning(
+          "loghub rejected StreamLogEvents (status #{status}: #{error.message}), falling back to GetLogEvents"
+        )
+
+        Metrics.increment(__MODULE__, ["stream_log_events_fallback", "status_#{status}"])
         get_log_events(request.job_id)
+
+      {:error, {:error, {:rejected, error}}} ->
+        error |> LT.error("loghub service responded with")
+        error_for({:error, error})
 
       {:error, reason} ->
         reason |> LT.error("loghub service responded with")
@@ -98,11 +113,12 @@ defmodule PipelinesAPI.LoghubClient do
     {:ok, channel} = url() |> GRPC.Stub.connect()
 
     try do
-      with {:ok, responses} <-
-             InternalApi.Loghub.Loghub.Stub.stream_log_events(channel, request,
-               timeout: @wormhole_timeout
-             ) do
-        collect_stream(responses)
+      case InternalApi.Loghub.Loghub.Stub.stream_log_events(channel, request,
+             timeout: @wormhole_timeout
+           ) do
+        {:ok, responses} -> collect_stream(responses)
+        # The call failed before loghub sent anything back.
+        {:error, error} -> {:error, {:rejected, error}}
       end
     after
       GRPC.Stub.disconnect(channel)
