@@ -5,8 +5,7 @@ config :pipelines_api, wormhole_timeout: 1_000
 
 config :watchman,
   host: "localhost",
-  port: 8125,
-  prefix: "ppl-api.test"
+  port: 8125
 
 config :junit_formatter,
   automatic_create_dir?: true,
