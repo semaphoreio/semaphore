@@ -66,8 +66,14 @@ defmodule Ppl.FeaturesTest do
         enabled: false
       """)
 
-      provider =
-        {FeatureProvider.YamlProvider, [yaml_path: path, agent_name: :ppl_features_yaml_test]}
+      # Same reader as config/runtime.exs; fails if yaml_elixir moves off 1.x.
+      opts = [
+        yaml_path: path,
+        agent_name: :ppl_features_yaml_test,
+        reader: {YamlElixir, :read_from_file}
+      ]
+
+      provider = {FeatureProvider.YamlProvider, opts}
 
       start_supervised!(provider)
 
