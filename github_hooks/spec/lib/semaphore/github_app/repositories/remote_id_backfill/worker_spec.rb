@@ -19,14 +19,17 @@ module Semaphore::GithubApp
             described_class.new.perform
           end
 
-          it "retries the same installation on low rate limit" do
+          it "retries the same installation, deferred until the bucket resets, on low rate limit" do
+            resets_at = Time.zone.at(1_000_000)
             allow(Semaphore::GithubApp::Repositories::RemoteIdBackfill).to receive(:refresh_installation).with(123).and_return(
               {
                 :status => :low_rate_limit,
-                :installation_id => 123
+                :installation_id => 123,
+                :resets_at => resets_at
               }
             )
-            expect(described_class).to receive(:perform_in).with(15.minutes, 123)
+            allow(Semaphore::GithubApp::RateLimit).to receive(:defer_delay).with(resets_at).and_return(1234)
+            expect(described_class).to receive(:perform_in).with(1234, 123)
 
             described_class.new.perform(123)
           end
