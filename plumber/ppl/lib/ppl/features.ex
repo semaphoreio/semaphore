@@ -4,7 +4,7 @@ defmodule Ppl.Features do
 
   Thin wrapper around `FeatureProvider` so feature names live in one place and
   call sites stay readable. All checks fail closed: an empty organization id or
-  any error reaching the Feature service results in `false`.
+  any provider error (e.g. an unreachable Feature service) results in `false`.
 
   The boolean result is memoized for a short time in the `:feature_cache` Cachex
   instance. `FeatureProvider` only caches successful provider responses, so
