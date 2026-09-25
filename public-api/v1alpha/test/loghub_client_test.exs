@@ -153,9 +153,52 @@ defmodule PipelinesAPI.LoghubClient.Test do
       end)
     end
 
+    test "the GetLogEvents fallback maps UNAVAILABLE to a retryable error too" do
+      GrpcMock.stub(LoghubMock, :stream_log_events, fn _, _ ->
+        raise GRPC.RPCError, status: GRPC.Status.unimplemented(), message: "unimplemented"
+      end)
+
+      GrpcMock.stub(LoghubMock, :get_log_events, fn _, _ ->
+        raise GRPC.RPCError, status: GRPC.Status.unavailable(), message: "busy"
+      end)
+
+      capture_log(fn ->
+        assert LoghubClient.stream_log_events(@job_id) ==
+                 {:error, {:unavailable, "Logs are temporarily unavailable, please retry"}}
+      end)
+    end
+
+    # A real gRPC server whose service has no StreamLogEvents (like a loghub
+    # deployed before it existed). grpc-elixir answers it with UNKNOWN, not
+    # UNIMPLEMENTED.
+    test "against a loghub without StreamLogEvents, falls back to GetLogEvents" do
+      port =
+        Support.LegacyLoghub.start(fn _req, _stream ->
+          %InternalApi.Loghub.GetLogEventsResponse{
+            status: ok(),
+            events: ["from", "unary"],
+            final: true
+          }
+        end)
+
+      previous = System.get_env("LOGHUB_API_URL")
+      System.put_env("LOGHUB_API_URL", "127.0.0.1:#{port}")
+
+      on_exit(fn ->
+        System.put_env("LOGHUB_API_URL", previous)
+        Support.LegacyLoghub.stop()
+      end)
+
+      log =
+        capture_log(fn ->
+          assert LoghubClient.stream_log_events(@job_id) == {:ok, ["from", "unary"]}
+        end)
+
+      assert log =~ "falling back to GetLogEvents"
+    end
+
     test "falls back to GetLogEvents when loghub doesn't implement the stream" do
-      GrpcMock.stub(LoghubMock, :stream_log_events, fn _, stream ->
-        GRPC.Server.send_headers(stream, %{})
+      GrpcMock.stub(LoghubMock, :stream_log_events, fn _, _ ->
         raise GRPC.RPCError, status: GRPC.Status.unimplemented(), message: "unimplemented"
       end)
 
@@ -164,6 +207,54 @@ defmodule PipelinesAPI.LoghubClient.Test do
       end)
 
       assert LoghubClient.stream_log_events(@job_id) == {:ok, ["unary"]}
+    end
+  end
+
+  describe ".stream_log_events errors that must not fall back" do
+    # What a current loghub does when its handler fails (e.g. the job API is
+    # down): headers first, then the error. That must not look like an older
+    # loghub, so no GetLogEvents retry.
+    test "a handler that fails after sending headers is an error, without a GetLogEvents retry" do
+      GrpcMock.stub(LoghubMock, :stream_log_events, fn _, stream ->
+        GRPC.Server.send_headers(stream, %{})
+        raise GRPC.RPCError, status: GRPC.Status.unknown(), message: "Internal Server Error"
+      end)
+
+      GrpcMock.stub(LoghubMock, :get_log_events, fn _, _ -> flunk("must not fall back") end)
+
+      log =
+        capture_log(fn ->
+          assert LoghubClient.stream_log_events(@job_id) ==
+                   {:error, {:internal, "Internal error"}}
+        end)
+
+      refute log =~ "falling back"
+    end
+
+    test "UNKNOWN after the stream started is an internal error, without a GetLogEvents retry" do
+      GrpcMock.stub(LoghubMock, :stream_log_events, fn _, stream ->
+        GRPC.Server.send_headers(stream, %{})
+        raise "boom"
+      end)
+
+      GrpcMock.stub(LoghubMock, :get_log_events, fn _, _ -> flunk("must not fall back") end)
+
+      capture_log(fn ->
+        assert LoghubClient.stream_log_events(@job_id) == {:error, {:internal, "Internal error"}}
+      end)
+    end
+
+    test "UNAVAILABLE before the stream started is retryable, without a GetLogEvents retry" do
+      GrpcMock.stub(LoghubMock, :stream_log_events, fn _, _ ->
+        raise GRPC.RPCError, status: GRPC.Status.unavailable(), message: "busy"
+      end)
+
+      GrpcMock.stub(LoghubMock, :get_log_events, fn _, _ -> flunk("must not fall back") end)
+
+      capture_log(fn ->
+        assert LoghubClient.stream_log_events(@job_id) ==
+                 {:error, {:unavailable, "Logs are temporarily unavailable, please retry"}}
+      end)
     end
   end
 
