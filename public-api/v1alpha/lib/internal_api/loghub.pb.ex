@@ -37,6 +37,12 @@ defmodule InternalApi.Loghub.Loghub.Service do
     InternalApi.Loghub.GetLogEventsRequest,
     InternalApi.Loghub.GetLogEventsResponse
   )
+
+  rpc(
+    :StreamLogEvents,
+    InternalApi.Loghub.GetLogEventsRequest,
+    stream(InternalApi.Loghub.GetLogEventsResponse)
+  )
 end
 
 defmodule InternalApi.Loghub.Loghub.Stub do
