@@ -25,6 +25,10 @@ defmodule HooksProcessor.MixProject do
   defp deps do
     [
       {:plug_cowboy, "~> 2.0"},
+      # Pinned past GHSA-j43x-5hjq-rgxf (quadratic-time decoding of nested
+      # query/body parameters). Only pulled in transitively by plug_cowboy,
+      # whose "~> 1.14" range would otherwise resolve to the vulnerable 1.16.1.
+      {:plug, "~> 1.16.4"},
       {:httpoison, "~> 2.0"},
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
       {:log_tee, github: "renderedtext/log-tee"},
