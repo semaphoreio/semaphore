@@ -298,9 +298,19 @@ defmodule FrontWeb.BillingController do
           "Failed to update addon: #{inspect(error)} [org_id=#{org_id}] [addon=#{addon_name}] [enabled=#{enabled}]"
         )
 
+        message =
+          case error do
+            %GRPC.RPCError{status: 9, message: message}
+            when is_binary(message) and message != "" ->
+              message
+
+            _ ->
+              "Failed to update addon."
+          end
+
         conn
         |> put_status(422)
-        |> json(%{ok: false, error: "Failed to update addon."})
+        |> json(%{ok: false, error: message})
     end
   end
 
