@@ -12,6 +12,10 @@ defmodule PipelinesAPI.LoghubClient do
 
   @wormhole_timeout Application.compile_env(:pipelines_api, :grpc_timeout, [])
 
+  @unavailable GRPC.Status.unavailable()
+  @unimplemented GRPC.Status.unimplemented()
+  @data_loss GRPC.Status.data_loss()
+
   def get_log_events(job_id) do
     Metrics.benchmark(__MODULE__, ["get_log_events"], fn ->
       form_get_log_events_request(job_id)
@@ -47,10 +51,114 @@ defmodule PipelinesAPI.LoghubClient do
 
   defp grpc_call(error), do: error
 
+  #
+  # Fetches the events with the StreamLogEvents rpc, so that loghub sends the
+  # log in batches instead of one message holding all of it. Returns the same
+  # result as get_log_events/1. Falls back to GetLogEvents when loghub doesn't
+  # implement the stream yet.
+  #
+  def stream_log_events(job_id) do
+    Metrics.benchmark(__MODULE__, ["stream_log_events"], fn ->
+      form_get_log_events_request(job_id)
+      |> grpc_stream_call()
+    end)
+  end
+
+  defp grpc_stream_call({:ok, request}) do
+    result =
+      Wormhole.capture(__MODULE__, :do_stream_log_events, [request],
+        stacktrace: true,
+        skip_log: true,
+        timeout_ms: @wormhole_timeout,
+        ok_tuple: true
+      )
+
+    case result do
+      {:ok, response} ->
+        process_get_log_events_response(response)
+
+      # Wormhole wraps an {:error, _} returned by the function in another one.
+      {:error, {:error, %GRPC.RPCError{status: @unimplemented}}} ->
+        get_log_events(request.job_id)
+
+      {:error, reason} ->
+        reason |> LT.error("loghub service responded with")
+        error_for(reason)
+    end
+  end
+
+  defp grpc_stream_call(error), do: error
+
+  #
+  # Connects, reads the whole stream and disconnects, all in this process:
+  # the connection delivers the stream's messages to the process that opened
+  # it.
+  #
+  def do_stream_log_events(request) do
+    {:ok, channel} = url() |> GRPC.Stub.connect()
+
+    try do
+      with {:ok, responses} <-
+             InternalApi.Loghub.Loghub.Stub.stream_log_events(channel, request,
+               timeout: @wormhole_timeout
+             ) do
+        collect_stream(responses)
+      end
+    after
+      GRPC.Stub.disconnect(channel)
+    end
+  end
+
+  #
+  # Joins the batches into one response. The first response carries the
+  # status. An error anywhere in the stream fails the whole call: the events
+  # received before it are incomplete. A successful stream has at least one
+  # response, so an empty one is an error too.
+  #
+  def collect_stream(responses) do
+    result =
+      Enum.reduce_while(responses, nil, fn
+        {:ok, response}, nil -> {:cont, {response, [response.events]}}
+        {:ok, response}, {first, batches} -> {:cont, {first, [response.events | batches]}}
+        {:error, error}, _ -> {:halt, {:error, error}}
+      end)
+
+    case result do
+      {:error, error} ->
+        {:error, error}
+
+      nil ->
+        {:error, :empty_stream}
+
+      {first, batches} ->
+        {:ok, %{first | events: batches |> Enum.reverse() |> Enum.concat()}}
+    end
+  end
+
+  # loghub is up but can't serve the log right now (archive unavailable or
+  # too busy); the request can be retried.
+  defp error_for({:error, %GRPC.RPCError{status: @unavailable}}),
+    do: ToTuple.unavailable_error("Logs are temporarily unavailable, please retry")
+
+  # loghub ended the stream without any response, which a successful stream
+  # never does; most likely it went away mid-request. Retryable.
+  defp error_for({:error, :empty_stream}),
+    do: ToTuple.unavailable_error("Logs are temporarily unavailable, please retry")
+
+  # The stored log is corrupt. Retrying won't help, so this stays a 500.
+  defp error_for({:error, %GRPC.RPCError{status: @data_loss}}),
+    do: ToTuple.internal_error("Internal error")
+
+  defp error_for(_reason), do: ToTuple.internal_error("Internal error")
+
   def do_get_log_events(request) do
     {:ok, channel} = url() |> GRPC.Stub.connect()
 
-    InternalApi.Loghub.Loghub.Stub.get_log_events(channel, request, timeout: @wormhole_timeout)
+    try do
+      InternalApi.Loghub.Loghub.Stub.get_log_events(channel, request, timeout: @wormhole_timeout)
+    after
+      GRPC.Stub.disconnect(channel)
+    end
   end
 
   def process_get_log_events_response(response) do
