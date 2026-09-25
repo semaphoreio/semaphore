@@ -64,8 +64,19 @@ defmodule FeatureProvider.YamlProvider do
   @spec features_from_file(String.t()) :: [Feature.t()]
   defp features_from_file(feature_file_path) do
     feature_file_path
-    |> YamlElixir.read_from_file!()
+    |> read_yaml_file!()
     |> Enum.map(&parse_yaml_feature/1)
+  end
+
+  # yaml_elixir 2.x returns {:ok, data} or {:error, exception}; 1.x returns the data and
+  # raises on its own. Some consumers pin 1.x, so both shapes are accepted.
+  defp read_yaml_file!(path) do
+    case YamlElixir.read_from_file(path) do
+      {:ok, data} -> data
+      {:error, %{__exception__: true} = error} -> raise error
+      {:error, reason} -> raise ArgumentError, "cannot read #{path}: #{inspect(reason)}"
+      data -> data
+    end
   end
 
   @spec parse_yaml_feature(yaml_feature()) :: Feature.t()
