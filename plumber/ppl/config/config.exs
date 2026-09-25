@@ -33,7 +33,8 @@ config :vmstats,
 
 # Feature flags (FeatureHub). The Feature service address is read at call time
 # from INTERNAL_API_URL_FEATURE (see Ppl.FeatureClient). Results are cached in
-# the :feature_cache Cachex instance started by Ppl.Application.
+# the :feature_cache Cachex instance started by Ppl.Application. config/runtime.exs
+# switches to the YAML provider when FEATURE_YAML_PATH is set.
 config :ppl,
   feature_provider:
     {Ppl.FeatureHubProvider,
