@@ -232,6 +232,127 @@ defmodule Guard.FrontRepo.RepoHostAccount do
   # (no loop): recover if a rotation is now visible, otherwise degrade to
   # :transient so the next request re-decides cleanly - never a blind revoke.
   defp revoke_unrotated(%__MODULE__{} = rha, %__MODULE__{} = fresh) do
+    if revoke_rate_exceeded?(fresh) do
+      {:error, :transient}
+    else
+      do_revoke_unrotated(rha, fresh)
+    end
+  end
+
+  # Circuit breaker on the revoke path.
+  #
+  # Whether a provider's error body means "this user's grant is dead" or "our
+  # shared OAuth consumer was rejected" is decided by matching undocumented
+  # error strings (see Guard.Utils.OAuth.genuine_grant_revocation?/3). That
+  # match is careful, but it is still a bet on wording that the provider can
+  # change without telling us, and losing the bet disconnects every account on
+  # that provider at once.
+  #
+  # The rate needs no strings and cannot be fooled by wording:
+  #
+  #   a user-grant problem is per-account; a client-credential problem is
+  #   fleet-wide.
+  #
+  # So above a threshold of distinct accounts revoked for one provider inside a
+  # short window, stop revoking and degrade to :transient - the accounts keep
+  # working off their stored tokens and retry, instead of every user on the
+  # provider being told to reconnect.
+  #
+  # Sized against production: over a 17h window with both live dead-grant
+  # shapes firing, distinct accounts revoked per 10 minutes peaked at 12
+  # (p95 10, median 6) and never exceeded 20 across 104 buckets.
+  @revoke_rate_window_seconds 600
+  @default_revoke_rate_threshold 20
+
+  # Runtime-configurable via OAUTH_REVOKE_RATE_THRESHOLD (see config/runtime.exs)
+  # so the threshold can be retuned by changing the deployment's environment and
+  # restarting the pods - no rebuild. Deliberately read on each check rather
+  # than into a module attribute, which would bake in whatever the BUILD
+  # container saw rather than what the pod is configured with.
+  defp revoke_rate_threshold do
+    case Application.get_env(:guard, :oauth_revoke_rate_threshold, @default_revoke_rate_threshold) do
+      threshold when is_integer(threshold) and threshold > 0 ->
+        threshold
+
+      other ->
+        # A zero or garbage threshold would hold the breaker permanently open
+        # and stop every revocation, so refuse it rather than trust it.
+        Logger.error(
+          "Invalid :oauth_revoke_rate_threshold #{inspect(other)}; " <>
+            "falling back to #{@default_revoke_rate_threshold}"
+        )
+
+        @default_revoke_rate_threshold
+    end
+  end
+
+  # The count is cached briefly so a genuine storm - the moment the breaker
+  # matters most - cannot turn every revoke attempt into its own query. A few
+  # seconds of staleness only delays tripping, it cannot make the breaker wrong.
+  @revoke_rate_cache_ttl :timer.seconds(5)
+
+  @revoke_rate_cache :oauth_revoke_rate_cache
+
+  defp revoke_rate_exceeded?(%__MODULE__{} = rha) do
+    threshold = revoke_rate_threshold()
+
+    if recently_revoked_count(rha.repo_host, threshold) >= threshold do
+      Logger.error(
+        "Revoke circuit breaker OPEN for #{rha.repo_host}: at least " <>
+          "#{threshold} distinct accounts revoked in the last " <>
+          "#{div(@revoke_rate_window_seconds, 60)} minutes. Refusing to revoke " <>
+          "rha=#{rha.id} user=#{rha.user_id}; treating as transient. This is the " <>
+          "signature of a client-credential or provider-wide failure, NOT of many " <>
+          "users independently revoking access - investigate before overriding."
+      )
+
+      true
+    else
+      false
+    end
+  end
+
+  defp recently_revoked_count(repo_host, threshold) do
+    case Cachex.get(@revoke_rate_cache, repo_host) do
+      {:ok, count} when is_integer(count) ->
+        count
+
+      # Miss, or a cache failure. A cache problem must never silently disable
+      # the breaker, so fall through to the live count either way.
+      _ ->
+        count = count_recently_revoked(repo_host, threshold)
+        Cachex.put(@revoke_rate_cache, repo_host, count, ttl: @revoke_rate_cache_ttl)
+        count
+    end
+  end
+
+  # Cross-replica by construction: it reads the same shared row state every
+  # guard pod writes to, so no distributed counter is needed. Bounded by a
+  # LIMIT so the scan stops as soon as the threshold is reached, which is
+  # exactly the case where this runs most often.
+  # The LIMIT must track the threshold: capping the count below it would mean
+  # the breaker could never reach its own trip point.
+  defp count_recently_revoked(repo_host, threshold) do
+    cutoff = DateTime.utc_now() |> DateTime.add(-@revoke_rate_window_seconds, :second)
+
+    # `select: r.id` rather than a literal: Ecto requires a subquery to select a
+    # source, a field or a map.
+    capped =
+      from(r in __MODULE__,
+        where: r.repo_host == ^repo_host and r.revoked == true and r.updated_at > ^cutoff,
+        select: r.id,
+        limit: ^threshold
+      )
+
+    from(r in subquery(capped), select: count(r.id)) |> FrontRepo.one() || 0
+  rescue
+    error ->
+      # Never let the breaker's own failure block a revoke.
+      Logger.error("Revoke rate check failed for #{repo_host}: #{inspect(error)}")
+      0
+  end
+
+  defp do_revoke_unrotated(%__MODULE__{} = rha, %__MODULE__{} = fresh) do
     case update_account(%{revoked: true}, fresh, lock: true) do
       {:ok, _} ->
         {:error, :revoked}
