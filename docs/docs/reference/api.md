@@ -777,6 +777,7 @@ Behavior notes:
 - Artifact job logs are uploaded by the CI agent at the end of the job. Availability depends on the agent upload setting (`upload-job-logs` / `SEMAPHORE_AGENT_UPLOAD_JOB_LOGS`) described in [self-hosted agent config](./self-hosted-config#upload-job-logs).
 - The API prioritizes `agent/job_logs.txt` and falls back to `agent/job_logs.txt.gz` only when `.txt` is not available.
 - `artifact_job_logs=true` requires both `project.view` and `project.artifacts.view`.
+- `503` means the logs are temporarily unavailable (the log storage can't be reached, or too many logs are being fetched at once). The request can be retried, preferably with a backoff.
 
 Response:
 
