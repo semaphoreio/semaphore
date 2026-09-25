@@ -2,10 +2,10 @@
 -- PostgreSQL database dump
 --
 
-\restrict 2yk8NS74NJDI9lHS5sKknTp3LxCeX71pvR1Lfirp9e6vLPRIlfrcTFsjvlZJliA
+\restrict c5DM45G2ju9aacAb9nk8b1G4LEox3vrPxWsL5h4vAx1pK04pXgmRXdmfqA3Vj5s
 
 -- Dumped from database version 9.6.24
--- Dumped by pg_dump version 17.9 (Debian 17.9-0+deb13u1)
+-- Dumped by pg_dump version 17.11 (Debian 17.11-0+deb13u1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -52,7 +52,8 @@ CREATE TABLE public.artifacts (
     idempotency_token text,
     created timestamp with time zone,
     last_cleaned_at timestamp without time zone,
-    deleted_at timestamp without time zone
+    deleted_at timestamp without time zone,
+    purge_requested_at timestamp without time zone
 );
 
 
@@ -131,16 +132,16 @@ ALTER TABLE ONLY public.retention_policies
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 2yk8NS74NJDI9lHS5sKknTp3LxCeX71pvR1Lfirp9e6vLPRIlfrcTFsjvlZJliA
+\unrestrict c5DM45G2ju9aacAb9nk8b1G4LEox3vrPxWsL5h4vAx1pK04pXgmRXdmfqA3Vj5s
 
 --
 -- PostgreSQL database dump
 --
 
-\restrict CA3CH7umkPUddVI7VgCuICCK4icBQ3R5FHkge4PNCxhgiOZxVp4Ne9f9Byf3DJ8
+\restrict T4xtAcalrQRRg9IXb4g9UfmMhJoHKbh1RlXAkMXCbfPfvxp1s3SkVH0S0PtwfCI
 
 -- Dumped from database version 9.6.24
--- Dumped by pg_dump version 17.9 (Debian 17.9-0+deb13u1)
+-- Dumped by pg_dump version 17.11 (Debian 17.11-0+deb13u1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -159,7 +160,7 @@ SET row_security = off;
 --
 
 COPY public.schema_migrations (version, dirty) FROM stdin;
-20240612182638	f
+20260916120000	f
 \.
 
 
@@ -167,5 +168,5 @@ COPY public.schema_migrations (version, dirty) FROM stdin;
 -- PostgreSQL database dump complete
 --
 
-\unrestrict CA3CH7umkPUddVI7VgCuICCK4icBQ3R5FHkge4PNCxhgiOZxVp4Ne9f9Byf3DJ8
+\unrestrict T4xtAcalrQRRg9IXb4g9UfmMhJoHKbh1RlXAkMXCbfPfvxp1s3SkVH0S0PtwfCI
 
