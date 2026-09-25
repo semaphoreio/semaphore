@@ -47,7 +47,13 @@ if config_env() == :prod do
       :ok
 
     path ->
-      opts = [yaml_path: path, agent_name: :feature_provider_agent]
+      # yaml_elixir 1.x (pinned in mix.exs) returns the document from read_from_file/1.
+      opts = [
+        yaml_path: path,
+        agent_name: :feature_provider_agent,
+        reader: {YamlElixir, :read_from_file}
+      ]
+
       config :ppl, feature_provider: {FeatureProvider.YamlProvider, opts}
   end
 end

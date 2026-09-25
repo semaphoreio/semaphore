@@ -70,8 +70,8 @@ defmodule Ppl.Mixfile do
       {:job_matrix, path: "../job_matrix"},
       {:feature_provider, path: "../../feature_provider"},
       # feature_provider requests yaml_elixir >= 2.0, but plumber's
-      # definition_validator (pipeline YAML validation) pins ~> 1.1. feature_provider's
-      # YamlProvider reads files with either major version, so pin the existing 1.3
+      # definition_validator (pipeline YAML validation) pins ~> 1.1. config/runtime.exs
+      # gives feature_provider's YamlProvider a 1.x reader, so pin the existing 1.3
       # line to keep a single version across the umbrella.
       {:yaml_elixir, "~> 1.3", override: true},
       {:dialyxir, "~> 0.5", only: [:dev], runtime: false},
