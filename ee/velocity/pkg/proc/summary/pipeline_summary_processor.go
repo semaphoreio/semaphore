@@ -19,6 +19,7 @@ import (
 
 type PipelineSummaryProcessor struct {
 	amqp                tackle.Options
+	publisher           *tackle.Publisher
 	plumberClient       service.PlumberClient
 	projectHubClient    service.ProjectHubClient
 	reportFetcherClient service.ReportFetcherClient
@@ -112,7 +113,7 @@ func (p *PipelineSummaryProcessor) Process(delivery tackle.Delivery) (err error)
 		Exchange:   p.amqp.RemoteExchange,
 	}
 
-	return tackle.PublishMessage(&params)
+	return publish(p.publisher, &params)
 }
 
 // StartPipelineSummaryProcessor
@@ -120,8 +121,21 @@ func StartPipelineSummaryProcessor(inOptions, outOptions tackle.Options,
 	plumberClient service.PlumberClient, projectClient service.ProjectHubClient, reportFetcherClient service.ReportFetcherClient) {
 	log.Println("starting pipeline summary processor")
 
+	var publisher *tackle.Publisher
+
+	err := retry.WithConstantWait("RabbitMQ connection", 20, 2*time.Second, func() error {
+		var err error
+		publisher, err = openPublisher(outOptions)
+		return err
+	})
+
+	if err != nil {
+		log.Fatalf("failed to open publisher for pipeline summary processor: %v", err)
+	}
+
 	processor := &PipelineSummaryProcessor{
 		amqp:                outOptions,
+		publisher:           publisher,
 		plumberClient:       plumberClient,
 		projectHubClient:    projectClient,
 		reportFetcherClient: reportFetcherClient,
@@ -129,7 +143,7 @@ func StartPipelineSummaryProcessor(inOptions, outOptions tackle.Options,
 
 	consumer := tackle.NewConsumer()
 
-	err := retry.WithConstantWait("RabbitMQ connection", 20, 2*time.Second, func() error {
+	err = retry.WithConstantWait("RabbitMQ connection", 20, 2*time.Second, func() error {
 		return consumer.Start(&inOptions, processor.Process)
 	})
 
