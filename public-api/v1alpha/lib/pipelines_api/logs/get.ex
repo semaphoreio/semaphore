@@ -79,7 +79,7 @@ defmodule PipelinesAPI.Logs.Get do
   end
 
   defp get_logs(conn, job = %{self_hosted: false}) do
-    case LoghubClient.get_log_events(source_job_id(job)) do
+    case LoghubClient.stream_log_events(source_job_id(job)) do
       {:ok, events} ->
         conn
         |> put_resp_content_type("application/json")
@@ -265,8 +265,10 @@ defmodule PipelinesAPI.Logs.Get do
     end
   end
 
+  # iodata, so the events are written out as they are instead of being
+  # copied into one more binary the size of the log.
   defp prepare_response(events) do
-    Enum.join(['{ "events": [', Enum.join(events, ","), "] }"], "")
+    [~s({ "events": [), Enum.intersperse(events, ","), "] }"]
   end
 
   defp build_loghub2_url(conn, job_id, token) do
