@@ -103,6 +103,10 @@ roles:
         - "organization.dashboards.manage"
         - "organization.dashboards.view"
         - "organization.computers.view"
+    - name: "Computer Agent"
+      description: "Computer Agents can use Computers in the projects they are given, and nothing else in the organization. Meant for service accounts that run autonomous agents."
+      permissions:
+        - "organization.computers.view"
   project_scope:
     - name: "Admin"
       description: "Admins have the authority to modify any setting within the projects, including the ability to add new individuals, remove them, or even delete the entire project."
