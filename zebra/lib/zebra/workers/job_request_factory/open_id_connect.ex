@@ -33,7 +33,7 @@ defmodule Zebra.Workers.JobRequestFactory.OpenIDConnect do
             pipeline_id: ppl_id,
             job_id: job.id,
             repository_name: repo,
-            git_tag: find_env_var(repo_env_vars, "SEMAPHORE_GIT_TAG"),
+            git_tag: find_env_var(repo_env_vars, "SEMAPHORE_GIT_TAG_NAME"),
             git_ref: ref,
             git_ref_type: ref_type,
             git_branch_name: find_env_var(repo_env_vars, "SEMAPHORE_GIT_BRANCH"),
