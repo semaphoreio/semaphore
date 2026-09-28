@@ -1,0 +1,97 @@
+{{- if .Values.global.cache.local.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: storage-cache
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: storage-cache
+    product: semaphoreci
+spec:
+  type: ClusterIP
+  ports:
+  - port: 9000
+    targetPort: 9000
+  selector:
+    app: storage-cache
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: storage-cache
+  labels:
+    app: storage-cache
+    product: semaphoreci
+spec:
+  serviceName: storage-cache
+  replicas: 1
+  selector:
+    matchLabels:
+      app: storage-cache
+  template:
+    metadata:
+      labels:
+        app: storage-cache
+        product: semaphoreci
+    spec:
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        fsGroupChangePolicy: OnRootMismatch
+      containers:
+      - name: storage-cache
+        image: "{{ .Values.global.cache.local.image.repository }}:{{ .Values.global.cache.local.image.tag }}"
+        env:
+          - name: RUSTFS_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                name: job-extra-environment
+                key: SEMAPHORE_CACHE_S3_KEY
+          - name: RUSTFS_SECRET_KEY
+            valueFrom:
+              secretKeyRef:
+                name: job-extra-environment
+                key: SEMAPHORE_CACHE_S3_SECRET
+          - name: RUSTFS_REGION
+            value: {{ .Values.global.cache.region | quote }}
+          - name: RUSTFS_VOLUMES
+            value: "/data"
+          - name: RUSTFS_CHECK_UPDATE
+            value: "false"
+          - name: RUSTFS_OBS_LOG_DIRECTORY
+            value: ""
+          - name: RUSTFS_CONSOLE_ENABLE
+            value: "false"
+        ports:
+        - containerPort: 9000
+        command: ["sh"]
+        args: ["-c", "mkdir -p /data/semaphore-cache && exec /entrypoint.sh"]
+        resources:
+          {{- toYaml .Values.global.cache.local.resources | nindent 10 }}
+        volumeMounts:
+        - name: data
+          mountPath: "/data"
+        livenessProbe:
+          httpGet:
+            path: /minio/health/live
+            port: 9000
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /minio/health/ready
+            port: 9000
+          initialDelaySeconds: 30
+          periodSeconds: 15
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: {{ .Values.global.cache.local.size }}
+{{- end }}
