@@ -190,8 +190,9 @@ func (s *Server) DescribeJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = respondWithString(w, http.StatusOK, payload)
+	err = respondWithJobPayload(w, payload)
 	if err != nil {
+		logging.ForAgent(agent).Errorf("Error serving job payload for %s: %v", jobID, err)
 		respondWith500(w)
 	}
 }
