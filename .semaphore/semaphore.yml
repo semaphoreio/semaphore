@@ -172,7 +172,7 @@ blocks:
   - name: "ArtifactHub: Deployment Preconditions"
     dependencies: ["ArtifactHub: Provision Prod Image"]
     run:
-      when: "change_in('/artifacthub', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/artifacthub', {pipeline_file: 'ignore', default_branch: 'main'}) or change_in('/security-toolbox', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -2151,7 +2151,7 @@ blocks:
   - name: "public-api-gateway: Deployment Preconditions"
     dependencies: ["public-api-gateway: Provision Prod Image"]
     run:
-      when: "change_in('/public-api-gateway', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/public-api-gateway', {pipeline_file: 'ignore', default_branch: 'main'}) or change_in('/security-toolbox', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -2222,7 +2222,7 @@ blocks:
   - name: "Repohub: Deployment Preconditions"
     dependencies: ["Repohub: Provision Prod Image"]
     run:
-      when: "change_in('/repohub', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/repohub', {pipeline_file: 'ignore', default_branch: 'main'}) or change_in('/security-toolbox', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -2238,7 +2238,7 @@ blocks:
       jobs:
         - name: "Check code"
           commands:
-            - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated" --ignores G706'
+            - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated"'
         - name: "Check dependencies"
           commands:
             - make check.go.deps
@@ -2582,7 +2582,7 @@ blocks:
   - name: "Loghub2: Deployment Preconditions"
     dependencies: ["Loghub2: Provision Prod Image"]
     run:
-      when: "change_in('/loghub2', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/loghub2', {pipeline_file: 'ignore', default_branch: 'main'}) or change_in('/security-toolbox', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -2598,7 +2598,7 @@ blocks:
       jobs:
         - name: "Check code"
           commands:
-            - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated" --ignores G706,G204'
+            - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated"'
         - name: "Check dependencies"
           commands:
             - make check.go.deps
@@ -2653,7 +2653,7 @@ blocks:
   - name: "MCP Server: Deployment Preconditions"
     dependencies: ["MCP Server: Provision Prod Image"]
     run:
-      when: "change_in('/mcp_server', {pipeline_file: 'ignore', default_branch: 'main'}) or change_in('/docs/docs', {pipeline_file: 'ignore', default_branch: 'main'}) or change_in('/docs/versioned_docs', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/mcp_server', {pipeline_file: 'ignore', default_branch: 'main'}) or change_in('/docs/docs', {pipeline_file: 'ignore', default_branch: 'main'}) or change_in('/docs/versioned_docs', {pipeline_file: 'ignore', default_branch: 'main'}) or change_in('/security-toolbox', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -2722,7 +2722,7 @@ blocks:
   - name: "Encryptor: Deployment Preconditions"
     dependencies: ["Encryptor: Provision Prod Image"]
     run:
-      when: "change_in('/encryptor', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/encryptor', {pipeline_file: 'ignore', default_branch: 'main'}) or change_in('/security-toolbox', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -2791,7 +2791,7 @@ blocks:
   - name: "Bootstrapper: Deployment Preconditions"
     dependencies: ["Bootstrapper: Provision Prod Image"]
     run:
-      when: "change_in('/bootstrapper', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/bootstrapper', {pipeline_file: 'ignore', default_branch: 'main'}) or change_in('/security-toolbox', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -2860,7 +2860,7 @@ blocks:
   - name: "Self-Hosted-Hub: Deployment Preconditions"
     dependencies: ["Self-Hosted-Hub: Provision Prod Image"]
     run:
-      when: "change_in('/self_hosted_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/self_hosted_hub', {pipeline_file: 'ignore', default_branch: 'main'}) or change_in('/security-toolbox', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -2876,7 +2876,7 @@ blocks:
       jobs:
         - name: "Check code"
           commands:
-            - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated" --ignores G115,G101,G705'
+            - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated" --ignores G115'
         - name: "Check dependencies"
           commands:
             - make check.go.deps
@@ -3507,7 +3507,7 @@ blocks:
   - name: "Velocity: Deployment Preconditions"
     dependencies: ["Velocity: Provision Prod Image"]
     run:
-      when: "change_in('/ee/velocity', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/ee/velocity', {pipeline_file: 'ignore', default_branch: 'main'}) or change_in('/security-toolbox', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
