@@ -59,9 +59,9 @@ func readLogThreshold(raw string) time.Duration {
 	ms, err := strconv.Atoi(raw)
 	if err != nil || ms < 0 {
 		log.Printf(
-			"(err) Ignoring %s=%q, using %v",
+			"(err) Ignoring %s=%s, using %v",
 			logThresholdEnvVar,
-			raw,
+			strconv.Quote(raw),
 			defaultLogThreshold,
 		)
 

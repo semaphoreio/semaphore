@@ -12,7 +12,7 @@ const (
 	S3BucketName = "s3-test"
 )
 
-var s3Storage, _ = NewS3Storage(S3StorageOptions{URL: "http://s3:9000/", Bucket: S3BucketName})
+var s3Storage, _ = NewS3Storage(S3StorageOptions{URL: "http://s3:9090/", Bucket: S3BucketName})
 
 func Test__S3SavedFileCanBeRetrieved(t *testing.T) {
 	err := s3Storage.CreateBucket(S3BucketName)
