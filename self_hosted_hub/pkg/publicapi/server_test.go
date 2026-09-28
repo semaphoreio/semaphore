@@ -1176,6 +1176,8 @@ func Test__DescribeJob(t *testing.T) {
 		res := run("GET", "/jobs/"+jobID.String(), token, nil)
 
 		require.Equal(t, http.StatusOK, res.Code)
+		require.Equal(t, "application/json", res.Header().Get("Content-Type"))
+		require.JSONEq(t, `{"id": "123", "fake": "payload"}`, res.Body.String())
 	})
 
 	t.Run("when the agent is disabled", func(t *testing.T) {
