@@ -32,7 +32,7 @@ defmodule Audit.Application do
 
     children = filter_enabled_children(children)
 
-    opts = [strategy: :one_for_one, name: Audit.Supervisor]
+    opts = [strategy: :one_for_one, name: Audit.Supervisor, max_restarts: 1000]
     Supervisor.start_link(children, opts)
   end
 
