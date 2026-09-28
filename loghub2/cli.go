@@ -36,7 +36,7 @@ func main() {
 }
 
 func generateToken(jobId, tokenType string) {
-	log.Printf("Generating token for %s", jobId)
+	log.Printf("Generating token for %s", strconv.Quote(jobId))
 	conn, err := grpc.Dial("localhost:50051", grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("Error dialing: %v", err)
