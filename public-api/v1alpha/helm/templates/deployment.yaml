@@ -64,6 +64,7 @@ spec:
                 configMapKeyRef:
                   name: {{ .Values.global.internalApi.configMapName }}
                   key: INTERNAL_API_URL_GROUPS
+                  optional: true
             - name: INTERNAL_API_URL_SERVICE_ACCOUNT
               valueFrom:
                 configMapKeyRef:
