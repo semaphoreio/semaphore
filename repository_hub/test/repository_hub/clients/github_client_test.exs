@@ -42,6 +42,34 @@ defmodule RepositoryHub.GithubClientTest do
       assert {:ok, _result} = response
     end
 
+    test "create_build_status maps a 5xx to unavailable" do
+      :meck.expect(Tentacat.Repositories.Statuses, :create, fn _client, _owner, _repo, _sha, _body ->
+        {502, %{}, http_response(502)}
+      end)
+
+      unavailable = GRPC.Status.unavailable()
+
+      response =
+        build_status_params()
+        |> GithubClient.create_build_status(token: "abc")
+
+      assert {:error, %{status: ^unavailable}} = response
+    end
+
+    test "create_build_status keeps a 4xx as a precondition failure" do
+      :meck.expect(Tentacat.Repositories.Statuses, :create, fn _client, _owner, _repo, _sha, _body ->
+        {404, %{}, http_response(404)}
+      end)
+
+      failed_precondition = GRPC.Status.failed_precondition()
+
+      response =
+        build_status_params()
+        |> GithubClient.create_build_status(token: "abc")
+
+      assert {:error, %{status: ^failed_precondition}} = response
+    end
+
     test "list_repository_collaborators" do
       response =
         list_repository_collaborators_params()
@@ -170,6 +198,15 @@ defmodule RepositoryHub.GithubClientTest do
       assert MapSet.new(~w(sha message author_name author_uuid author_avatar_url)a) ==
                MapSet.new(result, &elem(&1, 0))
     end
+  end
+
+  defp http_response(status_code) do
+    %HTTPoison.Response{
+      status_code: status_code,
+      body: "{}",
+      headers: [],
+      request: %HTTPoison.Request{url: "https://api.github.com", headers: []}
+    }
   end
 
   @spec build_status_params(Keyword.t()) :: GithubClient.create_build_status_params()

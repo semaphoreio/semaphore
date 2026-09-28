@@ -1,5 +1,6 @@
 import _ from "lodash";
 import $ from "jquery";
+import { Features } from "../../../features";
 
 import { Utils } from "./utils"
 import { AgentConfigurator } from "./agent"
@@ -29,6 +30,7 @@ export class PipelineConfigurator {
     this.registerFilePathChangeHandler()
     this.registerExecutionTimeLimitHandler()
     this.registerDeletePipelineHandler()
+    this.handlePartialRerunEvents()
 
     this.agentConfig = new AgentConfigurator(this)
 
@@ -103,6 +105,14 @@ export class PipelineConfigurator {
     this.parent.on(event, `[data-type=pipeline] ${selector}`, callback)
   }
 
+  handlePartialRerunEvents() {
+    this.on("change", "[data-action=selectPipelinePartialRerun]", (e) => {
+      let value = $(e.currentTarget).find(":selected").attr("value")
+
+      this.model.setPartialRerun(value === "block" ? "block" : "")
+    })
+  }
+
   render() {
     if(this.renderingDisabled) return;
 
@@ -116,6 +126,7 @@ export class PipelineConfigurator {
           PipelineConfigTempate.executionTimeLimit(this.model),
           this.fastFailConfig.render(),
           this.autoCancelConfig.render(),
+          Features.isEnabled("jobLevelPartialRerun") ? PipelineConfigTempate.partialRerun(this.model) : "",
           PipelineConfigTempate.path(this.model),
           PipelineConfigTempate.deletePipeline(this.model)
         ]

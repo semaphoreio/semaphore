@@ -5,7 +5,12 @@ defmodule GithubNotifier.FakeServers do
     GrpcMock.stub(UserMock, :describe, Support.Factories.user_describe_response())
     GrpcMock.stub(OrganizationMock, :describe, Support.Factories.organization_describe_response())
     GrpcMock.stub(RepoProxyMock, :describe, Support.Factories.repo_proxy_describe_response())
-    GrpcMock.stub(RepositoryHubMock, :create_build_status, struct(Google.Protobuf.Empty))
+
+    GrpcMock.stub(
+      RepositoryHubMock,
+      :create_build_status,
+      Support.Factories.create_build_status_response()
+    )
 
     GrpcMock.stub(
       FeatureMock,

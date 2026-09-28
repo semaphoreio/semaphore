@@ -489,6 +489,19 @@ spec:
 apiVersion: getambassador.io/v3alpha1
 kind: Mapping
 metadata:
+  name: plumber-public-pre-flight-checks-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: "*"
+  prefix: /api/v1alpha/pre_flight_checks
+  rewrite: "/pre_flight_checks"
+  service: plumber-public.{{ .Release.Namespace }}:4004
+  timeout_ms: 5000
+  precedence: 100
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
   name: plumber-public-logs-mapping
   namespace: {{ .Release.Namespace }}
 spec:

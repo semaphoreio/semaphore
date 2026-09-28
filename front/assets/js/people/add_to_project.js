@@ -154,7 +154,7 @@ export var AddToProject = {
     .then((response) => response.text())
     .then((html) => {
       reRenderPage(html)
-      App.run()
+      App.runPage()
       App["people_page"]()
     })
     .catch(e =>{

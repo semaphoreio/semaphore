@@ -42,3 +42,23 @@ GHSA-468c-vq7p-gh64
 # service runs scheme: :http on port 4004 behind Ambassador (TLS termination at ingress, HTTP/1.1
 # to backend). Bump blocked by grpc 0.3.1 / cowboy 2.5 — same dep chain as the entries above.
 GHSA-q8x4-x7mp-5vg2
+
+# --- grpc 0.5.0-beta.1 advisories, all first patched in grpc 1.0.0 ---
+# public-api/v1alpha is a gRPC client only: every InternalApi.*.Stub call goes through
+# GRPC.Stub.connect (grpc_gun) to internal backend services, and lib/ starts no GRPC.Server or
+# GRPC.Endpoint. The bump to 1.0.0 is a breaking major shared with the other grpc apps in the
+# monorepo (see front/.mix-audit.txt and ee/audit/.mix-audit.txt), so it belongs on the
+# coordinated dep-bump branch, not here.
+#
+# RCE / atom-table exhaustion via :erlang.binary_to_term in GRPC.Codec.Erlpack.decode/2. Needs a
+# server that registers the Erlpack codec and accepts application/grpc+erlpack; this app registers
+# no codec and serves no gRPC endpoint (grep for Erlpack, GRPC.Codec and `codecs:` across lib/ and
+# config/ returns nothing).
+GHSA-grp7-v8xh-rj7h
+# Decompression bomb in GRPC.Compressor.Gzip.decompress/1, fired by frames arriving at a server
+# with grpc-encoding: gzip. This app only decodes responses from internal services, which are not
+# attacker-controlled, and registers no compressor.
+GHSA-6ccx-9c9f-327w
+# Unbounded request-body accumulation in read_full_body/3
+# (lib/grpc/server/adapters/cowboy/handler.ex) — the server request read loop only; no server here.
+GHSA-q8gf-9rvj-gmgj

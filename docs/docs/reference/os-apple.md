@@ -185,7 +185,7 @@ Following gems are pre-installed:
 </details>
 
 
-## macOS Xcode 16 {#mac-16}
+## (DEPRECATED) macOS Xcode 16 {#mac-16}
 
 <Tabs groupId="editor-yaml">
 <TabItem value="editor" label="Editor">

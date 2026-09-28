@@ -25,8 +25,16 @@ config :pipelines_api,
        :feature_api_endpoint,
        System.get_env("FEATURE_GRPC_URL") || "localhost:50051"
 
+config :pipelines_api,
+       :pre_flight_checks_grpc_url,
+       System.get_env("PRE_FLIGHT_CHECKS_GRPC_URL") || "localhost:50051"
+
 on_prem? = if(System.get_env("ON_PREM") == "true", do: true, else: false)
 config :pipelines_api, on_prem?: on_prem?
+
+# Single-tenant installs disable user-initiated org creation, mirroring the
+# front app's SINGLE_TENANT flag. Read by PipelinesAPI.Organizations.Onboarding.
+config :pipelines_api, single_tenant: System.get_env("SINGLE_TENANT") == "true"
 
 feature_provider =
   if on_prem? do

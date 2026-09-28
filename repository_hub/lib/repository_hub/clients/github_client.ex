@@ -168,6 +168,19 @@ defmodule RepositoryHub.GithubClient do
 
           fail_with(:precondition, "Can't create a commit status on GitHub. #{fetch_status_message(response)}")
 
+        # 5xx: GitHub accepted the request but the outcome is unknown — the
+        # status may still be created. Report unavailable so callers treat the
+        # send as possibly-in-flight rather than definitively rejected.
+        {status_code, _, response} when status_code >= 500 ->
+          log_error([
+            "creating build status",
+            "status: #{status_code}",
+            "#{params.repo_owner}/#{params.repo_name}@#{params.commit_sha} ctx=#{params.context}",
+            "response: #{inspect_response(response)}"
+          ])
+
+          fail_with(:unavailable, "GitHub is unavailable.")
+
         {status_code, _, response} ->
           log_error([
             "creating build status",

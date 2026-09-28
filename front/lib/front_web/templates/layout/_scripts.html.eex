@@ -3,9 +3,8 @@
   window.InjectedDataByBackend.Environment.Env = "<%= Application.get_env(:front, :environment) %>"
   window.InjectedDataByBackend.Integrations = {}
   window.InjectedDataByBackend.Posthog = <%= raw posthog_config_json(@conn) %>
+  window.InjectedDataByBackend.TurboNavigation = <%= turbo_enabled?(@conn) %>
 <%= if @conn.assigns[:js] do %>
   window.InjectedDataByBackend.JS = "<%= @conn.assigns[:js] %>"
 <% end %>
 </script>
-
-<script nonce="<%= @conn.assigns[:script_src_nonce] %>" src="<%= static_path(@conn, "/projects/assets/app.js") %>"></script>

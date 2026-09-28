@@ -17,6 +17,7 @@ organization
 periodic_scheduler
 plumber.pipeline
 plumber_w_f.workflow
+pre_flight_checks_hub
 projecthub
 rbac
 repository_integrator

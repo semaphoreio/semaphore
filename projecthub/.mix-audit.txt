@@ -12,3 +12,24 @@ GHSA-jfc2-q6qh-g5x8
 
 # cowlib 2.11.0 — SPDY decompression bomb in cow_spdy:inflate/2 (unreachable; cowboy 2.x does not serve SPDY)
 GHSA-84f2-rp86-235p
+
+# --- grpc 0.5.0 advisories, all first patched in grpc 1.0.0 ---
+# projecthub runs an internal gRPC server (Projecthub.Api.Endpoint / InternalApi.Projecthub.ProjectService,
+# started under start_internal_api?); it is reachable only from inside the cluster by authenticated
+# Semaphore services, not from the internet. The fix is grpc 1.0.0, a major upgrade from the 0.5 line that
+# changes the grpc-elixir API and cascades to gun (~> 2.0), cowboy/cowlib and the generated .pb.ex stubs —
+# a large, separately-tracked migration, not a security-patch bump. Accepted for now.
+# GHSA-grp7-v8xh-rj7h (critical) — RCE via attacker-controlled gRPC payloads (needs a cluster foothold or a compromised upstream service; the endpoint is not exposed externally)
+GHSA-grp7-v8xh-rj7h
+# GHSA-6ccx-9c9f-327w (high) — unbounded gzip decompression / decompression bomb (DoS; no gRPC message compression enabled here; internal-only)
+GHSA-6ccx-9c9f-327w
+# GHSA-q8gf-9rvj-gmgj (high) — unbounded request body accumulation in read_full_body/3 (DoS via large HTTP/2 bodies; internal-only)
+GHSA-q8gf-9rvj-gmgj
+
+# protobuf 0.11.0 — unbounded recursion depth in embedded-message decoding (GHSA-rv48-qqj5-crxg, high),
+# fixed in 0.16.1. Accepted rather than bumped: moving protobuf 0.11 -> 0.16.1 changes the generated-code
+# API and requires regenerating every .pb.ex module (protoc + new elixir plugin), which broke other
+# services in prior attempts — a large, separately-tracked migration, not a security-patch bump.
+# Reachability is limited: projecthub decodes protobuf only from internal gRPC callers (other Semaphore
+# services / the authenticated API), not arbitrary untrusted input.
+GHSA-rv48-qqj5-crxg

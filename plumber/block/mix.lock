@@ -46,7 +46,7 @@
   "recon": {:hex, :recon, "2.5.3", "739107b9050ea683c30e96de050bc59248fd27ec147696f79a8797ff9fa17153", [:mix, :rebar3], [], "hexpm", "6c6683f46fd4a1dfd98404b9f78dcabc7fcd8826613a89dcb984727a8c3099d7"},
   "ssl_verify_fun": {:hex, :ssl_verify_fun, "1.1.7", "354c321cf377240c7b8716899e182ce4890c5938111a1296add3ec74cf1715df", [:make, :mix, :rebar3], [], "hexpm", "fe4c190e8f37401d30167c8c405eda19469f34577987c76dde613e838bbc67f8"},
   "sys2app": {:git, "https://github.com/renderedtext/sys2app.git", "a18828faf1e05dfd1aa36eae9e9e458187c50d51", []},
-  "tackle": {:git, "https://github.com/renderedtext/ex-tackle.git", "e291fa18df08dfa7dc1ed7b6f3ee299389a8b5dd", [tag: "v0.2.1"]},
+  "tackle": {:git, "https://github.com/renderedtext/ex-tackle.git", "5b154ec1a74fcaf28df98717436850adb3846c35", [tag: "v0.4.1"]},
   "telemetry": {:hex, :telemetry, "1.2.1", "68fdfe8d8f05a8428483a97d7aab2f268aaff24b49e0f599faa091f1d4e7f61c", [:rebar3], [], "hexpm", "dad9ce9d8effc621708f99eac538ef1cbe05d6a874dd741de2e689c47feafed5"},
   "unicode_util_compat": {:hex, :unicode_util_compat, "0.7.1", "a48703a25c170eedadca83b11e88985af08d35f37c6f664d6dcfb106a97782fc", [:rebar3], [], "hexpm", "b3a917854ce3ae233619744ad1e0102e05673136776fb2fa76234f3e03b23642"},
   "util": {:git, "https://github.com/renderedtext/elixir-util.git", "d525765198d9ba05ee547397e6e21aedfa623a7d", []},
