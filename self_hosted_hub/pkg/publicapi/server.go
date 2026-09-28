@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -192,7 +193,7 @@ func (s *Server) DescribeJob(w http.ResponseWriter, r *http.Request) {
 
 	err = respondWithJobPayload(w, payload)
 	if err != nil {
-		logging.ForAgent(agent).Errorf("Error serving job payload for %s: %v", jobID, err)
+		logging.ForAgent(agent).Errorf("Error serving job payload for %s: %v", strconv.Quote(jobID), err)
 		respondWith500(w)
 	}
 }
