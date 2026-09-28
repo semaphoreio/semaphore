@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 
 	"github.com/semaphoreio/semaphore/loghub2/pkg/utils"
 )
@@ -39,7 +40,7 @@ func InitStorage() (Storage, error) {
 	case "gcs":
 		gcsURL := os.Getenv("GCS_URL")
 		if os.Getenv("GCS_URL") != "" {
-			log.Printf("Creating gcs client pointing at %s", gcsURL)
+			log.Printf("Creating gcs client pointing at %s", strconv.Quote(gcsURL))
 
 			gcsBucket := utils.AssertEnvVar("GCS_BUCKET")
 

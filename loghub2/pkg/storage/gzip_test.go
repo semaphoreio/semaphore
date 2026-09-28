@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
@@ -24,4 +25,114 @@ func Test__GzippedDataCanBeReadWithGunzip(t *testing.T) {
 
 	assert.Equal(t, string(decompressed), string(data))
 	os.Remove(tempFile.Name())
+}
+
+func Test__GzipRemovesOriginalFile(t *testing.T) {
+	tempFile, _ := ioutil.TempFile("", "*")
+	tempFile.Write([]byte("some logs"))
+	tempFile.Close()
+	defer os.Remove(tempFile.Name() + ".gz")
+
+	err := Gzip(context.Background(), tempFile.Name())
+	assert.Nil(t, err)
+
+	_, err = os.Stat(tempFile.Name())
+	assert.True(t, os.IsNotExist(err))
+
+	_, err = os.Stat(tempFile.Name() + ".gz")
+	assert.Nil(t, err)
+}
+
+func Test__GzipFailsForMissingFile(t *testing.T) {
+	fileName := fmt.Sprintf("%s/does-not-exist-%d", os.TempDir(), os.Getpid())
+
+	err := Gzip(context.Background(), fileName)
+	assert.NotNil(t, err)
+
+	_, err = os.Stat(fileName + ".gz")
+	assert.True(t, os.IsNotExist(err))
+}
+
+func Test__GzipDoesNotOverwriteExistingArchive(t *testing.T) {
+	tempFile, _ := ioutil.TempFile("", "*")
+	tempFile.Write([]byte("some logs"))
+	tempFile.Close()
+	defer os.Remove(tempFile.Name())
+
+	existing := tempFile.Name() + ".gz"
+	assert.Nil(t, ioutil.WriteFile(existing, []byte("existing"), 0600))
+	defer os.Remove(existing)
+
+	err := Gzip(context.Background(), tempFile.Name())
+	assert.NotNil(t, err)
+
+	// original input and pre-existing archive are both left untouched
+	_, err = os.Stat(tempFile.Name())
+	assert.Nil(t, err)
+	content, _ := ioutil.ReadFile(existing)
+	assert.Equal(t, "existing", string(content))
+}
+
+func Test__GzipFailsForCancelledContext(t *testing.T) {
+	tempFile, _ := ioutil.TempFile("", "*")
+	tempFile.Write([]byte("some logs"))
+	tempFile.Close()
+	defer os.Remove(tempFile.Name())
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	err := Gzip(ctx, tempFile.Name())
+	assert.NotNil(t, err)
+
+	_, err = os.Stat(tempFile.Name())
+	assert.Nil(t, err)
+}
+
+func Test__GzipKeepsArchiveWhenRemovingOriginalFails(t *testing.T) {
+	tempFile, _ := ioutil.TempFile("", "*")
+	tempFile.Write([]byte("some logs"))
+	tempFile.Close()
+	defer os.Remove(tempFile.Name())
+	defer os.Remove(tempFile.Name() + ".gz")
+
+	unlinkErr := fmt.Errorf("unlink failed")
+	originalRemove := removeFile
+	removeFile = func(name string) error {
+		if name == tempFile.Name() {
+			return unlinkErr
+		}
+		return os.Remove(name)
+	}
+	defer func() { removeFile = originalRemove }()
+
+	err := Gzip(context.Background(), tempFile.Name())
+	assert.Equal(t, unlinkErr, err)
+
+	// the complete archive survives and is readable
+	compressedFile, err := ioutil.ReadFile(tempFile.Name() + ".gz")
+	assert.Nil(t, err)
+	decompressed, err := Gunzip(compressedFile)
+	assert.Nil(t, err)
+	assert.Equal(t, "some logs", string(decompressed))
+
+	// the original is still there too
+	_, err = os.Stat(tempFile.Name())
+	assert.Nil(t, err)
+}
+
+func Test__GzipStopsWhenContextIsCancelledDuringCompression(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	reader := &contextReader{ctx: ctx, r: bytes.NewReader([]byte("some logs"))}
+
+	buf := make([]byte, 4)
+	n, err := reader.Read(buf)
+	assert.Nil(t, err)
+	assert.Equal(t, 4, n)
+
+	cancel()
+
+	n, err = reader.Read(buf)
+	assert.Equal(t, context.Canceled, err)
+	assert.Equal(t, 0, n)
 }
