@@ -550,10 +550,14 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
       {_user, rha} =
         Support.Members.insert_user_with_github_account(
           github_uid: "10202",
-          login: "rejected"
+          login: "rejected",
+          # Must be PERSISTED, not just set in memory: the reuse-loser check
+          # compares the reloaded row against this snapshot, so an in-memory
+          # only refresh_token looks exactly like a concurrent winner having
+          # rotated the credential, and the refusal is recovered instead of
+          # revoking.
+          refresh_token: "refresh-token"
         )
-
-      rha = %{rha | refresh_token: "refresh-token"}
 
       Tesla.Mock.mock_global(fn
         %{method: :get, url: "https://api.github.com"} ->
