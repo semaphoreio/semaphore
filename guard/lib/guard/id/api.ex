@@ -107,7 +107,9 @@ defmodule Guard.Id.Api do
       %{assigns: %{user_id: user_id, ueberauth_auth: auth}} ->
         {repo_host, repo_host_data} = extract_repo_host_data(auth)
 
-        Logger.debug("Received auth data for #{repo_host} #{inspect(repo_host_data)}")
+        # Keys only: repo_host_data is a plain map carrying the provider's
+        # access and refresh tokens, so no schema redaction applies to it.
+        Logger.debug("Received auth data for #{repo_host} #{inspect(Map.keys(repo_host_data))}")
 
         case RepoHostAccount.update_repo_host_account(user_id, repo_host, repo_host_data,
                reset: false
@@ -122,6 +124,13 @@ defmodule Guard.Id.Api do
 
           {:error, reason} ->
             code = Guard.Id.OAuthErrorCode.from_reason(reason)
+
+            if code == "account_taken" do
+              Watchman.increment(
+                {"guard.repo_host_account.account_taken",
+                 [to_string(repo_host), "oauth_callback"]}
+              )
+            end
 
             Logger.error(
               "Failed to update RepoHostAccount user_id=#{user_id} provider=#{repo_host} " <>
