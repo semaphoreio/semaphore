@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
@@ -86,4 +87,52 @@ func Test__GzipFailsForCancelledContext(t *testing.T) {
 
 	_, err = os.Stat(tempFile.Name())
 	assert.Nil(t, err)
+}
+
+func Test__GzipKeepsArchiveWhenRemovingOriginalFails(t *testing.T) {
+	tempFile, _ := ioutil.TempFile("", "*")
+	tempFile.Write([]byte("some logs"))
+	tempFile.Close()
+	defer os.Remove(tempFile.Name())
+	defer os.Remove(tempFile.Name() + ".gz")
+
+	unlinkErr := fmt.Errorf("unlink failed")
+	originalRemove := removeFile
+	removeFile = func(name string) error {
+		if name == tempFile.Name() {
+			return unlinkErr
+		}
+		return os.Remove(name)
+	}
+	defer func() { removeFile = originalRemove }()
+
+	err := Gzip(context.Background(), tempFile.Name())
+	assert.Equal(t, unlinkErr, err)
+
+	// the complete archive survives and is readable
+	compressedFile, err := ioutil.ReadFile(tempFile.Name() + ".gz")
+	assert.Nil(t, err)
+	decompressed, err := Gunzip(compressedFile)
+	assert.Nil(t, err)
+	assert.Equal(t, "some logs", string(decompressed))
+
+	// the original is still there too
+	_, err = os.Stat(tempFile.Name())
+	assert.Nil(t, err)
+}
+
+func Test__GzipStopsWhenContextIsCancelledDuringCompression(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	reader := &contextReader{ctx: ctx, r: bytes.NewReader([]byte("some logs"))}
+
+	buf := make([]byte, 4)
+	n, err := reader.Read(buf)
+	assert.Nil(t, err)
+	assert.Equal(t, 4, n)
+
+	cancel()
+
+	n, err = reader.Read(buf)
+	assert.Equal(t, context.Canceled, err)
+	assert.Equal(t, 0, n)
 }
