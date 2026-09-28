@@ -42,10 +42,19 @@ defmodule Ppl.Application do
       %{id: :feature_cache, start: {Cachex, :start_link, [:feature_cache, []]}},
       supervisor(Ppl.Cache, []),
       supervisor(Ppl.EctoRepo, [])
-    ]
+    ] ++ feature_provider_children()
   end
 
   def children(_), do: Enum.concat(children(:test), children_())
+
+  # The YAML provider keeps the parsed feature file in a supervised Agent;
+  # the FeatureHub provider needs no process of its own.
+  def feature_provider_children do
+    case Application.get_env(:ppl, :feature_provider) do
+      {FeatureProvider.YamlProvider, _opts} = provider -> [provider]
+      _ -> []
+    end
+  end
 
   defp grpc_supervisor(env),
     do: [supervisor(GRPC.Server.Supervisor, [{grpc_servers(env), 50_053}])]
