@@ -22,7 +22,8 @@ class Policy::NjsScan < Policy
       {
         name: "njsscan",
         install: Proc.new do
-          `pip3 install njsscan==1.0.0`
+          # PEP 668 blocks plain pip installs; sudo also puts the entry point in /usr/local/bin.
+          `sudo pip3 install --break-system-packages njsscan==1.0.0`
           $?.exitstatus
         end
       }
