@@ -137,6 +137,29 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.ResponseFormatter.Test do
     assert resp.triggers |> Enum.at(1) |> Map.get(:scheduled_at) == "2018-12-12 09:26:53.765473Z"
   end
 
+  test "process_describe_response() exposes the notification skip flags as booleans" do
+    periodic = %{
+      id: UUID.uuid4(),
+      name: "First periodic",
+      project_id: UUID.uuid4(),
+      branch: "master",
+      at: "* * * * *",
+      pipeline_file: ".semaphore/semaphore.yml",
+      requester_id: UUID.uuid4(),
+      updated_at: %{nanos: 765_473_000, seconds: 1_544_606_813},
+      skip_scheduled_run_notifications: true,
+      skip_manual_run_notifications: false
+    }
+
+    params = %{periodic: periodic, triggers: [], status: %{code: :OK}}
+    assert {:ok, proto} = Proto.deep_new(DescribeResponse, params)
+
+    assert {:ok, resp} = ResponseFormatter.process_describe_response({:ok, proto})
+
+    assert resp.schedule.skip_scheduled_run_notifications == true
+    assert resp.schedule.skip_manual_run_notifications == false
+  end
+
   test "process_describe_response() returns error and server message when server returns
         INVALID_ARGUMENT or NOT_FOUND" do
     response = describe_response(:INVALID_ARGUMENT, "INVALID_ARGUMENT message from server")

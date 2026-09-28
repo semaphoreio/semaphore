@@ -83,7 +83,8 @@ defmodule Projecthub.HttpApi do
     user_id = conn.assigns.user_id
     org_id = conn.assigns.org_id
 
-    if Auth.has_permissions?(org_id, user_id, "organization.projects.create") do
+    with true <- Auth.has_permissions?(org_id, user_id, "organization.projects.create"),
+         :ok <- validate_notification_flags(conn) do
       spec = conn.body_params["spec"]
       repository = spec["repository"]
 
@@ -142,7 +143,7 @@ defmodule Projecthub.HttpApi do
 
       Logger.info("Sending response #{inspect(res)}")
 
-      case InternalApi.Projecthub.ResponseMeta.Code.key(res.metadata.status.code) do
+      case enum_key(InternalApi.Projecthub.ResponseMeta.Code, res.metadata.status.code) do
         :OK ->
           send_resp(conn, 200, encode(res.project))
 
@@ -150,9 +151,15 @@ defmodule Projecthub.HttpApi do
           send_resp(conn, 422, Poison.encode!(%{message: res.metadata.status.message}))
       end
     else
-      send_resp(conn, 401, Poison.encode!(%{message: "Unauthorized"}))
+      false ->
+        send_resp(conn, 401, Poison.encode!(%{message: "Unauthorized"}))
+
+      {:invalid, message} ->
+        send_resp(conn, 422, Poison.encode!(%{message: message}))
     end
   end
+
+  @notification_flags ~w(skip_scheduled_run_notifications skip_manual_run_notifications)
 
   @update_permissions ["project.general_settings.manage", "project.repository_info.manage"]
   patch "/api/#{@version}/projects/:id" do
@@ -162,7 +169,8 @@ defmodule Projecthub.HttpApi do
     org_id = conn.assigns.org_id
     project_id = conn.params["id"]
 
-    if Auth.has_permissions?(org_id, user_id, project_id, @update_permissions) do
+    with true <- Auth.has_permissions?(org_id, user_id, project_id, @update_permissions),
+         :ok <- validate_notification_flags(conn) do
       metadata = conn.body_params["metadata"]
       spec = conn.body_params["spec"]
       repository = spec["repository"]
@@ -218,7 +226,7 @@ defmodule Projecthub.HttpApi do
 
       Logger.info("Sending response #{inspect(res)}")
 
-      case InternalApi.Projecthub.ResponseMeta.Code.key(res.metadata.status.code) do
+      case enum_key(InternalApi.Projecthub.ResponseMeta.Code, res.metadata.status.code) do
         :OK ->
           send_resp(conn, 200, encode(res.project))
 
@@ -229,7 +237,11 @@ defmodule Projecthub.HttpApi do
           send_resp(conn, 422, Poison.encode!(%{message: res.metadata.status.message}))
       end
     else
-      send_resp(conn, 401, Poison.encode!(%{message: "Unauthorized"}))
+      false ->
+        send_resp(conn, 401, Poison.encode!(%{message: "Unauthorized"}))
+
+      {:invalid, message} ->
+        send_resp(conn, 422, Poison.encode!(%{message: message}))
     end
   end
 
@@ -255,7 +267,7 @@ defmodule Projecthub.HttpApi do
 
       Logger.info("Sending response #{inspect(res)}")
 
-      case InternalApi.Projecthub.ResponseMeta.Code.key(res.metadata.status.code) do
+      case enum_key(InternalApi.Projecthub.ResponseMeta.Code, res.metadata.status.code) do
         :OK -> send_resp(conn, 200, "")
         _ -> send_resp(conn, 400, Poison.encode!(%{message: "Bad Request"}))
       end
@@ -290,7 +302,7 @@ defmodule Projecthub.HttpApi do
     {:ok, res} =
       InternalApi.Projecthub.ProjectService.Stub.describe(channel, req, timeout: 30_000)
 
-    case InternalApi.Projecthub.ResponseMeta.Code.key(res.metadata.status.code) do
+    case enum_key(InternalApi.Projecthub.ResponseMeta.Code, res.metadata.status.code) do
       :OK -> {:ok, res.project.metadata.id}
       _ -> {:error, nil}
     end
@@ -342,27 +354,27 @@ defmodule Projecthub.HttpApi do
   end
 
   defp integration_type_map("github_app", _, _),
-    do: InternalApi.RepositoryIntegrator.IntegrationType.value(:GITHUB_APP)
+    do: :GITHUB_APP
 
   defp integration_type_map("github_token", _, _),
-    do: InternalApi.RepositoryIntegrator.IntegrationType.value(:GITHUB_OAUTH_TOKEN)
+    do: :GITHUB_OAUTH_TOKEN
 
   defp integration_type_map("bitbucket", _, _),
-    do: InternalApi.RepositoryIntegrator.IntegrationType.value(:BITBUCKET)
+    do: :BITBUCKET
 
   defp integration_type_map("gitlab", _, _),
-    do: InternalApi.RepositoryIntegrator.IntegrationType.value(:GITLAB)
+    do: :GITLAB
 
   defp integration_type_map("git", _, _),
-    do: InternalApi.RepositoryIntegrator.IntegrationType.value(:GIT)
+    do: :GIT
 
   defp integration_type_map(_, _, _org_id),
-    do: InternalApi.RepositoryIntegrator.IntegrationType.value(:GITHUB_OAUTH_TOKEN)
+    do: :GITHUB_OAUTH_TOKEN
 
   defp visibility_map("private"),
-    do: InternalApi.Projecthub.Project.Spec.Visibility.value(:PRIVATE)
+    do: :PRIVATE
 
-  defp visibility_map("public"), do: InternalApi.Projecthub.Project.Spec.Visibility.value(:PUBLIC)
+  defp visibility_map("public"), do: :PUBLIC
   defp visibility_map(_), do: visibility_map("private")
   defp whitelist_map(nil), do: nil
 
@@ -470,7 +482,7 @@ defmodule Projecthub.HttpApi do
       },
       "schedulers" => encode_schedulers(p.spec.schedulers),
       "tasks" => encode_tasks(p.spec.tasks),
-      "visibility" => Visibility.key(p.spec.visibility) |> from_atom()
+      "visibility" => enum_key(Visibility, p.spec.visibility) |> from_atom()
     }
 
     debugs = %{
@@ -482,11 +494,11 @@ defmodule Projecthub.HttpApi do
     %{"metadata" => metadata, "spec" => Map.merge(spec, debugs)}
   end
 
-  defp encode_inegration_type(0), do: "github_token"
-  defp encode_inegration_type(1), do: "github_app"
-  defp encode_inegration_type(2), do: "bitbucket"
-  defp encode_inegration_type(3), do: "gitlab"
-  defp encode_inegration_type(4), do: "git"
+  defp encode_inegration_type(:GITHUB_OAUTH_TOKEN), do: "github_token"
+  defp encode_inegration_type(:GITHUB_APP), do: "github_app"
+  defp encode_inegration_type(:BITBUCKET), do: "bitbucket"
+  defp encode_inegration_type(:GITLAB), do: "gitlab"
+  defp encode_inegration_type(:GIT), do: "git"
   defp encode_inegration_type(_), do: ""
 
   defp encode_whitelist(nil), do: %{"branches" => [], "tags" => []}
@@ -498,21 +510,36 @@ defmodule Projecthub.HttpApi do
     }
   end
 
-  @unspecified_status InternalApi.Projecthub.Project.Spec.Scheduler.Status.value(
-                        :STATUS_UNSPECIFIED
-                      )
-  @status_active InternalApi.Projecthub.Project.Spec.Scheduler.Status.value(:STATUS_ACTIVE)
-  @status_inactive InternalApi.Projecthub.Project.Spec.Scheduler.Status.value(:STATUS_INACTIVE)
+  @unspecified_status :STATUS_UNSPECIFIED
+  @status_active :STATUS_ACTIVE
+  @status_inactive :STATUS_INACTIVE
   defp encode_schedulers(schedulers) do
     alias InternalApi.Projecthub.Project.Spec.Scheduler
 
     schedulers
     |> Enum.map(fn scheduler ->
       scheduler
+      |> drop_protobuf_internals()
       |> encode_scheduler_status_field()
       |> encode_reference_field()
     end)
   end
+
+  # protobuf structs carry __unknown_fields__, which must not reach the JSON
+  # body; nested messages (task parameters) carry it too.
+  defp drop_protobuf_internals(%_{} = message),
+    do: message |> Map.from_struct() |> drop_protobuf_internals()
+
+  defp drop_protobuf_internals(%{} = map) do
+    map
+    |> Map.delete(:__unknown_fields__)
+    |> Map.new(fn {key, value} -> {key, drop_protobuf_internals(value)} end)
+  end
+
+  defp drop_protobuf_internals(values) when is_list(values),
+    do: Enum.map(values, &drop_protobuf_internals/1)
+
+  defp drop_protobuf_internals(value), do: value
 
   defp encode_scheduler_status_field(scheduler) do
     case scheduler.status do
@@ -537,20 +564,20 @@ defmodule Projecthub.HttpApi do
   defp encode_scheduler_status(@status_inactive), do: "INACTIVE"
   defp encode_scheduler_status(@status_active), do: "ACTIVE"
 
-  @task_unspecified_status InternalApi.Projecthub.Project.Spec.Task.Status.value(
-                             :STATUS_UNSPECIFIED
-                           )
-  @task_status_active InternalApi.Projecthub.Project.Spec.Task.Status.value(:STATUS_ACTIVE)
-  @task_status_inactive InternalApi.Projecthub.Project.Spec.Task.Status.value(:STATUS_INACTIVE)
+  @task_unspecified_status :STATUS_UNSPECIFIED
+  @task_status_active :STATUS_ACTIVE
+  @task_status_inactive :STATUS_INACTIVE
   defp encode_tasks(tasks) do
     tasks
     |> Stream.map(fn task ->
       task
+      |> drop_protobuf_internals()
       |> encode_task_status_field()
       |> encode_reference_field()
     end)
     |> Stream.map(&Map.put(&1, :scheduled, &1.recurring))
-    |> Enum.map(&Map.delete(&1, :recurring))
+    |> Stream.map(&Map.delete(&1, :recurring))
+    |> Enum.map(&encode_notification_flags/1)
   end
 
   defp encode_task_status_field(task) do
@@ -566,16 +593,28 @@ defmodule Projecthub.HttpApi do
   defp encode_task_status(@task_status_inactive), do: "INACTIVE"
   defp encode_task_status(@task_status_active), do: "ACTIVE"
 
+  # The flags are optional on the wire so an update can omit them; a response
+  # always states them, and an unset flag means "not skipped".
+  defp encode_notification_flags(task) do
+    Enum.reduce(@notification_flags, task, fn key, task ->
+      Map.put(
+        task,
+        String.to_existing_atom(key),
+        Map.get(task, String.to_existing_atom(key)) == true
+      )
+    end)
+  end
+
   defp map_run_types(types) do
     alias InternalApi.Projecthub.Project.Spec.Repository.RunType, as: Type
 
-    Enum.map(types, fn type -> Type.key(type) |> from_atom() end)
+    Enum.map(types, fn type -> enum_key(Type, type) |> from_atom() end)
   end
 
   defp map_permission_types(types) do
     alias InternalApi.Projecthub.Project.Spec.PermissionType, as: Type
 
-    Enum.map(types, fn type -> Type.key(type) |> from_atom() end)
+    Enum.map(types, fn type -> enum_key(Type, type) |> from_atom() end)
   end
 
   defp encode_status(nil), do: %{"pipeline_files" => []}
@@ -589,7 +628,7 @@ defmodule Projecthub.HttpApi do
         |> Enum.map(fn file ->
           %{
             "path" => file.path,
-            "level" => Level.key(file.level) |> from_atom()
+            "level" => enum_key(Level, file.level) |> from_atom()
           }
         end)
     }
@@ -649,11 +688,40 @@ defmodule Projecthub.HttpApi do
           at: task["at"] || "",
           pipeline_file: task["pipeline_file"] || "",
           parameters: construct_task_parameters(task["parameters"]),
-          status: task_status(task["status"])
+          status: task_status(task["status"]),
+          skip_scheduled_run_notifications: task["skip_scheduled_run_notifications"],
+          skip_manual_run_notifications: task["skip_manual_run_notifications"]
         )
       end)
     else
       []
+    end
+  end
+
+  # protobuf 0.11 decodes enum fields to atoms; a stored integer still needs the
+  # module's own lookup.
+  defp enum_key(_module, value) when is_atom(value), do: value
+  defp enum_key(module, value), do: module.key(value)
+
+  defp request_tasks(conn) do
+    case conn.body_params["spec"] do
+      %{"tasks" => tasks} when is_list(tasks) -> Enum.filter(tasks, &is_map/1)
+      _ -> []
+    end
+  end
+
+  # The flags are optional on the wire: an omitted one keeps the stored value,
+  # which projecthub resolves. A supplied value has to be a real boolean, or a
+  # quoted "true" would arrive as false and clear the flag it meant to set.
+  defp validate_notification_flags(conn) do
+    conn
+    |> request_tasks()
+    |> Enum.flat_map(fn task ->
+      Enum.filter(@notification_flags, &(Map.has_key?(task, &1) and not is_boolean(task[&1])))
+    end)
+    |> case do
+      [] -> :ok
+      [key | _] -> {:invalid, "#{key} must be true or false"}
     end
   end
 
@@ -720,7 +788,7 @@ defmodule Projecthub.HttpApi do
     {:ok, res} =
       InternalApi.Projecthub.ProjectService.Stub.describe(channel, req, timeout: 30_000)
 
-    case InternalApi.Projecthub.ResponseMeta.Code.key(res.metadata.status.code) do
+    case enum_key(InternalApi.Projecthub.ResponseMeta.Code, res.metadata.status.code) do
       :OK -> {:ok, res.project}
       :NOT_FOUND -> {:error, :not_found}
       _ -> {:error, "Bad Request"}
@@ -754,7 +822,7 @@ defmodule Projecthub.HttpApi do
 
     {:ok, res} = InternalApi.Projecthub.ProjectService.Stub.list(channel, req, timeout: 30_000)
 
-    case InternalApi.Projecthub.ResponseMeta.Code.key(res.metadata.status.code) do
+    case enum_key(InternalApi.Projecthub.ResponseMeta.Code, res.metadata.status.code) do
       :OK ->
         projects =
           res.projects
