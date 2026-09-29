@@ -9,7 +9,7 @@ defmodule Guard.McpOAuth.Token do
 
   alias Guard.Repo
   alias Guard.Store.McpOAuthAuthCode
-  alias Guard.McpOAuth.{JWT, PKCE}
+  alias Guard.McpOAuth.{Computers, JWT, PKCE}
 
   @doc """
   Exchanges an authorization code for an access token.
@@ -39,8 +39,8 @@ defmodule Guard.McpOAuth.Token do
            :ok <- validate_pkce(auth_code, params),
            :ok <- validate_redirect_uri(auth_code, params),
            {:ok, _} <- McpOAuthAuthCode.mark_code_used(auth_code),
-           {:ok, token} <- create_token(auth_code) do
-        build_response(token)
+           {:ok, response} <- issue(auth_code) do
+        response
       else
         {:error, error_map} -> Repo.rollback(error_map)
       end
@@ -120,16 +120,26 @@ defmodule Guard.McpOAuth.Token do
     end
   end
 
-  defp create_token(auth_code) do
-    JWT.create_token(%{user_id: auth_code.user_id})
+  # semaphore.computer's client gets a token for its API; every other client
+  # gets an MCP token.
+  defp issue(auth_code) do
+    if Computers.client?(auth_code.client_id) do
+      with {:ok, token} <- Computers.create_token(auth_code.user_id) do
+        {:ok, build_response(token, Computers.ttl_seconds(), Computers.scope())}
+      end
+    else
+      with {:ok, token} <- JWT.create_token(%{user_id: auth_code.user_id}) do
+        {:ok, build_response(token, JWT.default_token_ttl_seconds(), "mcp")}
+      end
+    end
   end
 
-  defp build_response(token) do
+  defp build_response(token, ttl_seconds, scope) do
     %{
       "access_token" => token,
       "token_type" => "Bearer",
-      "expires_in" => JWT.default_token_ttl_seconds(),
-      "scope" => "mcp"
+      "expires_in" => ttl_seconds,
+      "scope" => scope
     }
   end
 

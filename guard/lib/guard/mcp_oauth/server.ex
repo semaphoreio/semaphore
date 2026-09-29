@@ -17,7 +17,7 @@ defmodule Guard.McpOAuth.Server do
 
   use Plug.Router
 
-  alias Guard.McpOAuth.{Authorize, Metadata, Register, Token}
+  alias Guard.McpOAuth.{Authorize, Computers, Metadata, Register, Token}
   alias Guard.Store.{McpOAuthAuthCode, McpOAuthClient}
 
   # Note: Plug.Parsers is NOT used here because Guard.Id.Api already parses
@@ -100,9 +100,10 @@ defmodule Guard.McpOAuth.Server do
   # ====================
 
   get "/jwks" do
-    # Return empty key set - tokens are validated server-side
+    # MCP tokens are HS256 and checked by auth, so their key is not here. The
+    # public key semaphore.computer's tokens are signed with is.
     jwks = %{
-      "keys" => []
+      "keys" => Computers.jwks()
     }
 
     conn
@@ -170,8 +171,13 @@ defmodule Guard.McpOAuth.Server do
         # Check if user is authenticated (has session)
         case get_authenticated_user(conn) do
           {:ok, user} ->
-            # User is authenticated, show consent UI
-            render_grant_selection(conn, validated_params, user)
+            if Computers.client?(validated_params.client_id) do
+              # semaphore.computer is first-party: people sign in to it with
+              # their own account, so there is nothing to consent to.
+              issue_code(conn, user.id, validated_params)
+            else
+              render_grant_selection(conn, validated_params, user)
+            end
 
           {:error, :not_authenticated} ->
             # User not authenticated, redirect to login
@@ -413,47 +419,12 @@ defmodule Guard.McpOAuth.Server do
     case McpOAuthClient.find_by_client_id(client_id) do
       {:ok, client} ->
         if McpOAuthClient.valid_redirect_uri?(client, redirect_uri) do
-          # Generate authorization code
-          code = McpOAuthAuthCode.generate_code()
-
-          expires_at =
-            DateTime.utc_now()
-            |> DateTime.add(@auth_code_ttl_seconds, :second)
-            |> DateTime.truncate(:second)
-
-          auth_code_params = %{
-            code: code,
+          issue_code(conn, user_id, %{
             client_id: client_id,
-            user_id: user_id,
             redirect_uri: redirect_uri,
             code_challenge: code_challenge,
-            expires_at: expires_at
-          }
-
-          case McpOAuthAuthCode.create(auth_code_params) do
-            {:ok, _auth_code} ->
-              # Redirect back to client with authorization code
-              success_url = Authorize.build_success_redirect(redirect_uri, code, state)
-
-              conn
-              |> put_resp_header("location", success_url)
-              |> send_resp(302, "")
-
-            {:error, reason} ->
-              Logger.error("[McpOAuth.Server] Failed to create auth code: #{inspect(reason)}")
-
-              error_url =
-                Authorize.build_error_redirect(
-                  redirect_uri,
-                  "server_error",
-                  "Failed to create authorization code",
-                  state
-                )
-
-              conn
-              |> put_resp_header("location", error_url)
-              |> send_resp(302, "")
-          end
+            state: state
+          })
         else
           conn
           |> put_resp_content_type("text/html")
@@ -464,6 +435,51 @@ defmodule Guard.McpOAuth.Server do
         conn
         |> put_resp_content_type("text/html")
         |> send_resp(400, "Invalid client_id")
+    end
+  end
+
+  # Creates a single-use authorization code for a validated request, and sends
+  # the browser back to the client with it.
+  defp issue_code(conn, user_id, params) do
+    code = McpOAuthAuthCode.generate_code()
+
+    expires_at =
+      DateTime.utc_now()
+      |> DateTime.add(@auth_code_ttl_seconds, :second)
+      |> DateTime.truncate(:second)
+
+    auth_code_params = %{
+      code: code,
+      client_id: params.client_id,
+      user_id: user_id,
+      redirect_uri: params.redirect_uri,
+      code_challenge: params.code_challenge,
+      expires_at: expires_at
+    }
+
+    case McpOAuthAuthCode.create(auth_code_params) do
+      {:ok, _auth_code} ->
+        # Redirect back to client with authorization code
+        success_url = Authorize.build_success_redirect(params.redirect_uri, code, params.state)
+
+        conn
+        |> put_resp_header("location", success_url)
+        |> send_resp(302, "")
+
+      {:error, reason} ->
+        Logger.error("[McpOAuth.Server] Failed to create auth code: #{inspect(reason)}")
+
+        error_url =
+          Authorize.build_error_redirect(
+            params.redirect_uri,
+            "server_error",
+            "Failed to create authorization code",
+            params.state
+          )
+
+        conn
+        |> put_resp_header("location", error_url)
+        |> send_resp(302, "")
     end
   end
 
@@ -480,8 +496,11 @@ defmodule Guard.McpOAuth.Server do
         "state" => validated_params.state || ""
       })
 
-    return_url = "/mcp/oauth/authorize?#{return_params}"
-    login_url = "/login?return_to=#{URI.encode_www_form(return_url)}"
+    # Login is on id.<domain>, and it reads redirect_to, which it only follows
+    # to an absolute URL on the base domain.
+    domain = Application.fetch_env!(:guard, :base_domain)
+    return_url = "https://#{conn.host}/mcp/oauth/authorize?#{return_params}"
+    login_url = "https://id.#{domain}/login?redirect_to=#{URI.encode_www_form(return_url)}"
 
     conn
     |> put_resp_header("location", login_url)
