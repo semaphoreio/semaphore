@@ -29,9 +29,9 @@ To uninstall Semaphore, follow these steps:
 
     ```shell title="Delete PVCs"
     kubectl delete pvc \
-      minio-artifacts-storage-minio-artifacts-0 \
-      minio-cache-storage-minio-cache-0 \
-      minio-logs-storage-minio-logs-0 \
+      data-storage-artifacts-0 \
+      data-storage-cache-0 \
+      data-storage-logs-0 \
       postgres-storage-postgres-0 \
       rabbitmq-storage-rabbitmq-0 \
       redis-data-redis-0
