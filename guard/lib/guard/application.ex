@@ -32,7 +32,7 @@ defmodule Guard.Application do
       {:ok, _} = Logger.add_backend(Sentry.LoggerBackend)
     end
 
-    opts = [strategy: :one_for_one, name: Guard.Supervisor]
+    opts = [strategy: :one_for_one, name: Guard.Supervisor, max_restarts: 1000]
     Supervisor.start_link(children, opts)
   end
 
