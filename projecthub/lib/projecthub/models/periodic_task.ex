@@ -4,7 +4,8 @@ defmodule Projecthub.Models.PeriodicTask do
   require Logger
 
   @fields ~w(id name description status recurring project_name
-             branch pipeline_file at parameters)a
+             branch pipeline_file at parameters
+             skip_scheduled_run_notifications skip_manual_run_notifications)a
   defstruct @fields
 
   def construct(periodics_or_tasks, project_name) when is_list(periodics_or_tasks) do
@@ -25,6 +26,14 @@ defmodule Projecthub.Models.PeriodicTask do
       |> Map.put(:status, status)
       |> Map.put(:parameters, parameters)
       |> Map.put(:branch, branch)
+      |> Map.put(
+        :skip_scheduled_run_notifications,
+        Map.get(periodic_or_task, :skip_scheduled_run_notifications)
+      )
+      |> Map.put(
+        :skip_manual_run_notifications,
+        Map.get(periodic_or_task, :skip_manual_run_notifications)
+      )
       |> Map.merge(Map.new())
 
     struct!(__MODULE__, params)
@@ -81,7 +90,42 @@ defmodule Projecthub.Models.PeriodicTask do
   end
 
   def update_all(%Project{} = project, new_tasks, requester_id) do
-    definitions = Enum.map(new_tasks, &to_periodic_definition/1)
+    with {:ok, stored_flags} <- stored_notification_flags(project, new_tasks) do
+      dispatch_update(project, new_tasks, requester_id, stored_flags)
+    end
+  end
+
+  # The flags are optional on the wire, so a task that leaves one out means
+  # "keep what is stored" - resolve that here, where the stored values are one
+  # RPC away, rather than asking every caller to restate them.
+  defp stored_notification_flags(project, new_tasks) do
+    if Enum.any?(new_tasks, &omits_a_notification_flag?/1) do
+      case GRPC.list(project.id) do
+        {:ok, periodics} ->
+          {:ok,
+           Map.new(periodics, fn periodic ->
+             {periodic.id,
+              {periodic.skip_scheduled_run_notifications == true, periodic.skip_manual_run_notifications == true}}
+           end)}
+
+        {:error, reason} ->
+          Logger.error(
+            "PeriodicTask.update_all aborted, stored notification flags unreadable: " <>
+              "project_id=#{project.id} reason=#{inspect(reason)}"
+          )
+
+          {:error, reason}
+      end
+    else
+      {:ok, %{}}
+    end
+  end
+
+  defp omits_a_notification_flag?(task),
+    do: is_nil(task.skip_scheduled_run_notifications) or is_nil(task.skip_manual_run_notifications)
+
+  defp dispatch_update(%Project{} = project, new_tasks, requester_id, stored_flags) do
+    definitions = Enum.map(new_tasks, &to_periodic_definition(&1, stored_flags))
 
     Logger.info(
       "PeriodicTask.update_all dispatching to bulk_upsert_and_prune: " <>
@@ -123,7 +167,9 @@ defmodule Projecthub.Models.PeriodicTask do
     end
   end
 
-  defp to_periodic_definition(%__MODULE__{} = task) do
+  defp to_periodic_definition(%__MODULE__{} = task, stored_flags) do
+    {stored_scheduled, stored_manual} = Map.get(stored_flags, task.id, {false, false})
+
     %{
       id: task.id || "",
       name: task.name || "",
@@ -133,9 +179,14 @@ defmodule Projecthub.Models.PeriodicTask do
       at: task.at || "",
       pipeline_file: task.pipeline_file || "",
       parameters: task.parameters || [],
-      state: Definition.status_to_state(task.status)
+      state: Definition.status_to_state(task.status),
+      skip_scheduled_run_notifications: resolve_flag(task.skip_scheduled_run_notifications, stored_scheduled),
+      skip_manual_run_notifications: resolve_flag(task.skip_manual_run_notifications, stored_manual)
     }
   end
+
+  defp resolve_flag(nil, stored), do: stored
+  defp resolve_flag(value, _stored), do: value == true
 
   # Helper function to extract branch name from reference or fall back to branch field
   # This handles the transition from gRPC "branch" field to "reference" field
