@@ -64,6 +64,7 @@ services:
       RUSTFS_REGION: "local"
       RUSTFS_CHECK_UPDATE: "false"
       RUSTFS_OBS_LOG_DIRECTORY: ""
+      RUSTFS_CONSOLE_ENABLE: "false"
     entrypoint: sh
     command: -c 'mkdir -p /tmp/s3-data/semaphore-cache && exec /entrypoint.sh /tmp/s3-data'
   gcs:
