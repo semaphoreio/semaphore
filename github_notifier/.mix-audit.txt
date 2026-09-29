@@ -38,29 +38,30 @@ GHSA-rv48-qqj5-crxg
 # generated metadata - no user-controlled header values.
 GHSA-w4f7-4cxr-rv3c
 
-# --- grpc 0.9.0 — all first patched in 1.0.0 ---
-# The 1.0 major is a fleet-wide migration (codec/stub API changes plus pb
-# regeneration), deferred to a dep-bump branch.
+# --- grpc 0.9.0 advisories, all fixed in 1.0.0 ---
+# Bump to 1.x requires regenerating all internal_api stubs, moving grpc_mock
+# off the grpc08 branch, and migrating to the 1.x client API. Real fix tracked
+# for the same separate dep-bump PR (with hackney and protobuf).
 #
-# RCE via attacker-controlled payloads: the sink is
-# GRPC.Codec.Erlpack.decode/2 (:erlang.binary_to_term). The handler resolves a
-# codec from the request content-type subtype, but only among the codecs
-# registered on the server, and 0.9.0 defaults to
-# [GRPC.Codec.Proto, GRPC.Codec.WebText, GRPC.Codec.JSON] — erlpack is not in
-# that list and github_notifier passes no `codecs:`, so the request is
-# rejected before decoding.
+# The gRPC server (Services.Api on port 50051) runs with default options:
+# codecs [Proto, WebText, JSON], compressors [], http_transcode false. The port
+# is not reachable from the public internet - the GKE Service is NodePort with
+# no firewall rule opening 50051 or the nodePort range to 0.0.0.0/0; only the
+# VPC/cluster CIDRs can reach it. There is no gRPC-level auth, so an attacker
+# with a network position inside the cluster or VPC is the threat model.
+#
+# RCE via Erlpack binary_to_term - not exploitable: GRPC.Codec.Erlpack is not
+# registered (default codecs only), so grpc+erlpack requests are rejected before
+# decoding.
 GHSA-grp7-v8xh-rj7h
-# Path bindings overridable by query string / request body: path bindings only
-# exist under HTTP/JSON transcoding, which is opt-in (`http_transcode ||
-# false`). This service's only gRPC server declares no http_transcode option,
-# so there are no bindings to override.
-GHSA-mwr4-5g34-j5cq
-# Unbounded request body accumulation in read_full_body/3 — availability only.
-# No ambassador or ingress mapping targets this service, so it is not reachable
-# from the internet and ingress body limits are not in the path either; the
-# listener is a NodePort service, so the reach is any in-cluster workload plus
-# whatever the cloud firewall lets hit a node IP.
-GHSA-q8gf-9rvj-gmgj
-# Unbounded gzip decompression (decompression bomb) — same reach as above,
-# availability only.
+# gzip decompression bomb - not exploitable: no compressor is registered, so a
+# grpc-encoding: gzip frame is rejected ("no compressor") and never decompressed.
 GHSA-6ccx-9c9f-327w
+# HTTP-transcode path-binding override - not exploitable: http_transcode is off.
+GHSA-mwr4-5g34-j5cq
+# Unbounded read_full_body accumulation - real internal DoS, risk accepted until
+# the dep-bump PR. Default unary path accumulates the body with no size cap and,
+# absent a grpc-timeout header, no read deadline; cowboy idle/inactivity timeouts
+# also default to :infinity. An in-cluster/in-VPC peer can OOM the single 200Mi
+# api pod. Not internet-reachable (see above); DoS only, no RCE or data exposure.
+GHSA-q8gf-9rvj-gmgj
