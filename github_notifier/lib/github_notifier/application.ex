@@ -24,7 +24,7 @@ defmodule GithubNotifier.Application do
     {:ok, _} = LoggerBackends.add(Sentry.LoggerBackend)
     LoggerBackends.configure(Sentry.LoggerBackend, include_logger_metadata: true)
 
-    opts = [strategy: :rest_for_one, name: GithubNotifier.Supervisor]
+    opts = [strategy: :rest_for_one, name: GithubNotifier.Supervisor, max_restarts: 1000]
     Supervisor.start_link(children, opts)
   end
 
