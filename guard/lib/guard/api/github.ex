@@ -107,7 +107,7 @@ defmodule Guard.Api.Github do
 
       {:error, error} ->
         Logger.error(
-          "Error fetching GitHub token: #{inspect(error)} " <>
+          "Error fetching GitHub token: #{OAuth.safe_transport_error(error)} " <>
             "rha=#{repo_host_account.id} user=#{repo_host_account.user_id}"
         )
 
@@ -144,7 +144,7 @@ defmodule Guard.Api.Github do
         {:error, :transient}
 
       {:error, error} ->
-        Logger.error("Error validating GitHub token: #{inspect(error)}")
+        Logger.error("Error validating GitHub token: #{OAuth.safe_transport_error(error)}")
         {:error, :transient}
     end
   end

@@ -239,6 +239,24 @@ defmodule Guard.Utils.OAuth do
   defp presence(value) when value in [nil, ""], do: nil
   defp presence(value), do: value
 
+  @doc """
+  Describe a Tesla transport/middleware failure WITHOUT echoing its payload.
+
+  `inspect/1` on one of these is a credential leak waiting to happen: a decode
+  failure carries the response body, and on a token endpoint that body holds
+  the access and refresh tokens. Log the shape, never the contents.
+  """
+  @spec safe_transport_error(term()) :: String.t()
+  def safe_transport_error(reason) when is_atom(reason), do: inspect(reason)
+
+  # {Tesla.Middleware.JSON, :decode, %Jason.DecodeError{data: <body>}}
+  def safe_transport_error({middleware, step, _payload})
+      when is_atom(middleware) and is_atom(step),
+      do: "#{inspect(middleware)}/#{step}"
+
+  def safe_transport_error(%{__struct__: struct}), do: inspect(struct)
+  def safe_transport_error(_reason), do: "unrecognised_error"
+
   def calc_expires_at(nil), do: nil
 
   def calc_expires_at(expires_in) do

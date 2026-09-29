@@ -27,7 +27,7 @@ defmodule Guard.Api.Gitlab do
         {:ok, res.status in 200..299 && OAuth.valid_token?(expires_at, nil_valid: false)}
 
       {:error, error} ->
-        Logger.error("Error validating token: #{inspect(error)}")
+        Logger.error("Error validating GitLab token: #{OAuth.safe_transport_error(error)}")
         {:error, :network_error}
     end
   end
@@ -73,7 +73,7 @@ defmodule Guard.Api.Gitlab do
 
       {:error, error} ->
         Logger.error(
-          "Error fetching GitLab token: #{inspect(error)} " <>
+          "Error fetching GitLab token: #{OAuth.safe_transport_error(error)} " <>
             "rha=#{repo_host_account.id} user=#{repo_host_account.user_id}"
         )
 

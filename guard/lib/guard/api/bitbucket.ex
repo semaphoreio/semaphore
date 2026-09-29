@@ -71,7 +71,7 @@ defmodule Guard.Api.Bitbucket do
         {:error, :transient}
 
       {:error, error} ->
-        Logger.error("Error validating Bitbucket token: #{inspect(error)}")
+        Logger.error("Error validating Bitbucket token: #{OAuth.safe_transport_error(error)}")
         {:error, :transient}
     end
   end
@@ -122,7 +122,7 @@ defmodule Guard.Api.Bitbucket do
         end
 
       {:error, error} ->
-        Logger.error("Error fetching token: #{inspect(error)}")
+        Logger.error("Error fetching Bitbucket token: #{OAuth.safe_transport_error(error)}")
         {:error, :network_error}
     end
   end
@@ -165,11 +165,8 @@ defmodule Guard.Api.Bitbucket do
 
   defp safe_oauth_error_description(_), do: nil
 
-  # The refresh POST runs while holding a Postgres advisory lock AND a pooled
-  # Front-DB connection (see Guard.FrontRepo.RepoHostAccount single-flight), so
-  # it must be hard-bounded. Without a timeout a hung Atlassian edge would park
-  # the lock - and one of the few pooled connections - until the caller's RPC
-  # deadline, and every other refresh for that account would queue behind it.
+  # The refresh runs while holding the per-account advisory lock and a pooled
+  # Front-DB connection, so it must be hard-bounded.
   @refresh_timeout_ms 3_000
 
   defp build_token_client do
@@ -179,15 +176,13 @@ defmodule Guard.Api.Bitbucket do
       {Tesla.Middleware.Timeout, timeout: @refresh_timeout_ms},
       {Tesla.Middleware.BaseUrl, @base_url},
       {Tesla.Middleware.BasicAuth, username: client_id, password: client_secret},
-      Tesla.Middleware.FormUrlencoded,
-      # The request has to stay form-urlencoded but the response is JSON, so
-      # decode it explicitly - otherwise the body reaches us as a raw binary
-      # and every failure logged `error=nil error_description=nil`, which is
-      # why the OAuth reason behind these refresh failures was invisible.
-      # The decoders downstream still handle a raw binary (an empty or
-      # non-JSON body, which this middleware leaves untouched), so this only
-      # makes the happy path deterministic.
-      {Tesla.Middleware.DecodeJson, engine: Jason}
+      # No response decoder on purpose. Tesla surfaces a decode failure as
+      # {:error, {middleware, :decode, %Jason.DecodeError{data: body}}}, and on
+      # a 2xx that body is the token response - one inspect away from a
+      # credential in the logs. It would also swallow the status, skipping the
+      # diagnostic-header log and the revoked/transient classification. The
+      # decoders in Guard.Utils.OAuth already handle a raw binary body.
+      Tesla.Middleware.FormUrlencoded
     ])
   end
 

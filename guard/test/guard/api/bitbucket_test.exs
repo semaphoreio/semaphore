@@ -199,6 +199,53 @@ defmodule Guard.Api.BitbucketTest do
       assert reloaded.refresh_token == "rotated_refresh"
     end
 
+    test "a JSON content-type 2xx that fails to parse never puts the body in the logs",
+         %{rha: rha} do
+      # Regression guard: with a response decoder installed, Tesla turns this
+      # into {:error, {middleware, :decode, %Jason.DecodeError{data: body}}} and
+      # the token endpoint's body is the credential. It also swallows the
+      # status, skipping the classification below. Neither may happen.
+      secret = "rotated_refresh_secret_value"
+
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
+          {:ok,
+           %Tesla.Env{
+             status: 200,
+             headers: [{"content-type", "application/json"}],
+             body: ~s({"refresh_token":"#{secret}", TRUNCATED)
+           }}
+      end)
+
+      log =
+        ExUnit.CaptureLog.capture_log(fn ->
+          assert {:error, :transient} = Bitbucket.user_token(rha)
+        end)
+
+      refute log =~ secret
+    end
+
+    test "a JSON content-type HTML 403 is still classified, not swallowed", %{rha: rha} do
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
+          {:ok,
+           %Tesla.Env{
+             status: 403,
+             headers: [{"content-type", "application/json"}],
+             body: "<html><body>blocked</body></html>"
+           }}
+      end)
+
+      log =
+        ExUnit.CaptureLog.capture_log(fn ->
+          assert {:error, :transient} = Bitbucket.user_token(rha)
+        end)
+
+      # The diagnostic-header line must still be emitted: a decoder in front of
+      # the status check would have skipped it.
+      assert log =~ "Bitbucket refresh failure (HTTP 403)"
+    end
+
     test "a transient 4xx does NOT null or rotate the stored token", %{rha: rha} do
       Tesla.Mock.mock_global(fn
         %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->

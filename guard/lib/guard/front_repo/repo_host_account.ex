@@ -1035,13 +1035,10 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     {:ok, account}
   end
 
-  # Reached only when the incoming uid differs from the stored one. With
-  # `reset: false` - which is what the OAuth connect callback passes - the
-  # write is dropped and the callback still redirects with `status=success`,
-  # so the user is told the reconnect worked while the dead credentials stay
-  # in place. Behaviour is unchanged on purpose: logged at warning because at
-  # debug level this was invisible in production, and whether to fail the
-  # callback or adopt the new uid should be driven by what these lines show.
+  # A uid mismatch with `reset: false` (what the OAuth connect callback passes)
+  # drops the write while the caller still reports success. Behaviour is
+  # unchanged; the warning exists so the case is measurable before deciding
+  # between failing the callback and adopting the new uid.
   defp reset_account(account, data, reset: false) do
     Logger.warning(
       "Skipping reset account for #{account.user_id} #{account.repo_host} reset=false " <>
@@ -1093,20 +1090,10 @@ defmodule Guard.FrontRepo.RepoHostAccount do
   def skip_credentials?("", _to), do: false
   def skip_credentials?(from, to) when from == to, do: false
 
-  # Skip ONLY when we can actually tell that the incoming scope is narrower
-  # than the stored one.
-  #
-  # `Enum.find_index/2` returns nil for a scope outside @scopes_in_order, and
-  # `nil > integer` is `true` in Erlang term order (atom > number). @scopes_in_order
-  # is GitHub vocabulary, so any Bitbucket or GitLab row whose stored
-  # permission_scope came from somewhere other than adjust_scope/2 has no rank
-  # here - and the comparison silently answered "yes, skip". That dropped
-  # :token, :refresh_token, :token_expires_at and :revoked from the write while
-  # update_account/2 still returned {:ok, _} and the connect callback still
-  # redirected with status=success. A user who reconnected was told it worked
-  # and kept the dead credentials; the stale access token then went on working
-  # until its next refresh, which is what makes this present as "reconnecting
-  # fixes it for a few minutes".
+  # Skip ONLY when both scopes are known and the incoming one is narrower.
+  # `Enum.find_index/2` returns nil for an unrecognised scope, and `nil > integer`
+  # is true in Erlang term order - which would silently drop the credentials
+  # from the write while still reporting success.
   def skip_credentials?(from, to) do
     case {scope_rank(from), scope_rank(to)} do
       {nil, _} -> false
