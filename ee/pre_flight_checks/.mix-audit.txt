@@ -1,0 +1,28 @@
+# pre_flight_checks serves internal gRPC only (no public route).
+
+# grpc 0.5.0-beta.1 — all fixed in 1.0.0 (major migration, tracked separately)
+# Erlpack RCE: unreachable, no custom codecs registered
+GHSA-grp7-v8xh-rj7h
+# gzip bomb: unreachable, no server compressors registered by default
+GHSA-6ccx-9c9f-327w
+# unbounded request body: DoS only, internal endpoint
+GHSA-q8gf-9rvj-gmgj
+
+# cowboy 2.7.0 — multipart DoS: unreachable, gRPC does not parse multipart
+GHSA-jfc2-q6qh-g5x8
+
+# cowlib 2.8.0 — chunked transfer-encoding DoS: internal endpoint only
+GHSA-32p9-57cr-4x65
+# cowlib 2.8.0 — SPDY decompression bomb: cowboy 2.x does not serve SPDY
+GHSA-84f2-rp86-235p
+# cowlib 2.8.0 — SSE CRLF injection: no SSE
+GHSA-hv23-4qp7-8c8r
+
+# decimal 2.0.0 — Decimal.new exponent DoS: Decimal not used
+GHSA-rhv4-8758-jx7v
+
+# postgrex 0.16.2 — Postgrex.Notifications SQL injection: not used
+GHSA-r73h-97w8-m54h
+
+# protobuf 0.9.0 — recursion depth: only internal traffic decoded
+GHSA-rv48-qqj5-crxg
