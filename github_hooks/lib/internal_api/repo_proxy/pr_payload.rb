@@ -15,11 +15,18 @@ module InternalApi::RepoProxy
         raise PrNotMergeableError, "Pull Request ##{number} was not found: #{msg}"
       end
 
-      # :mergeable_unknown means GitHub hasn't finished computing the test-merge.
-      # This synchronous path has no reschedule channel like the webhook handler,
-      # so treat it like :non_mergeable and raise; retrying is left to the caller.
-      if [:non_mergeable, :mergeable_unknown].include?(state)
+      if state == :non_mergeable
         raise PrNotMergeableError, "Pull Request ##{number} is not mergeable (#{pr[:html_url]})"
+      end
+
+      # :mergeable_unknown means GitHub has not finished computing the
+      # test-merge. This synchronous path has no reschedule channel like the
+      # webhook handler, so it still has to give up — but it must not claim a
+      # conflict it never observed. Retrying is left to the caller.
+      if state == :mergeable_unknown
+        raise PrNotMergeableError,
+              "GitHub has not finished determining whether Pull Request ##{number} can be merged. " \
+              "This is not a merge conflict; please try again. (#{pr[:html_url]})"
       end
 
       repo_host = ::RepoHost::Factory.create_from_project(project)

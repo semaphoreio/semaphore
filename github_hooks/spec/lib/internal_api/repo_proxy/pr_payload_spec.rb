@@ -147,10 +147,19 @@ RSpec.describe InternalApi::RepoProxy::PrPayload do
         .and_return([:mergeable_unknown, { pr: pr }, "mergeability unknown"])
     end
 
-    it "raises PrNotMergeableError" do
+    # This path still has to give up — it is synchronous and has no reschedule
+    # channel — but "not mergeable" is an assertion we never observed. GitHub
+    # simply has not answered yet.
+    it "raises PrNotMergeableError without claiming the PR is unmergeable" do
       expect do
         described_class.new(ref, number).call(project, user)
-      end.to raise_error(described_class::PrNotMergeableError, /not mergeable/i)
+      end.to raise_error(described_class::PrNotMergeableError, /has not finished determining/i)
+    end
+
+    it "tells the caller it is not a merge conflict" do
+      expect do
+        described_class.new(ref, number).call(project, user)
+      end.to raise_error(described_class::PrNotMergeableError, /not a merge conflict/i)
     end
   end
 end

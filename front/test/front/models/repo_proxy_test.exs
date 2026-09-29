@@ -106,6 +106,7 @@ defmodule Front.Models.RepoProxyTest do
                  head_commit_sha: "474488cb82e4784b8de8a91d3e58ed188fea4dbd",
                  user_id: "",
                  pr_mergeable: false,
+                 pr_mergeable_state: :PR_MERGEABLE_STATE_UNKNOWN,
                  pr_number: "5",
                  tag_name: "v1.2.3",
                  branch_name: "master"
@@ -262,6 +263,7 @@ defmodule Front.Models.RepoProxyTest do
                  forked_pr: false,
                  pr_branch_name: "master",
                  pr_mergeable: false,
+                 pr_mergeable_state: :PR_MERGEABLE_STATE_UNKNOWN,
                  pr_number: "5",
                  pr_sha: "",
                  tag_name: "v1.2.3",

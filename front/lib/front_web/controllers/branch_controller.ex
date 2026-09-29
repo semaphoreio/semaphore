@@ -157,11 +157,16 @@ defmodule FrontWeb.BranchController do
       false
     else
       latest_workflow = List.first(workflows)
-      conflict_info(latest_workflow.type, latest_workflow.pr_mergeable)
+      conflict_info(latest_workflow.type, latest_workflow.pr_mergeable_state)
     end
   end
 
-  defp conflict_info("pr", false), do: true
+  # Only an explicit CONFLICTED verdict is a conflict. UNKNOWN means the
+  # provider never finished computing the test-merge, which is a different
+  # thing to tell the user and used to be indistinguishable here, because the
+  # old pr_mergeable bool coerced "undetermined" to false.
+  defp conflict_info("pr", :PR_MERGEABLE_STATE_CONFLICTED), do: :conflict
+  defp conflict_info("pr", :PR_MERGEABLE_STATE_UNKNOWN), do: :undetermined
   defp conflict_info(_, _), do: false
 
   defp compose_title(branch, project, organization) do

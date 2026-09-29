@@ -16,6 +16,9 @@ class Workflow < ActiveRecord::Base
   STATE_SKIP_BRANCH = "skip_branch"
   STATE_WHITELIST_BRANCH = "whitelist_branch"
   STATE_PR_NON_MERGEABLE = "pr_non_mergeable"
+  # The provider never told us whether the PR merges. Distinct from
+  # STATE_PR_NON_MERGEABLE, which means it told us that it does not.
+  STATE_PR_MERGEABILITY_UNKNOWN = "pr_mergeability_unknown"
   STATE_PR_NOT_FOUND = "pr_not_found"
   STATE_LAUNCHING = "launching"
   STATE_LAUNCHING_FAILED = "launching_failed"

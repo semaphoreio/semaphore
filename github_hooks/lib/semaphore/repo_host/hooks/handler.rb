@@ -217,19 +217,24 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
 
           return
         when :mergeable_unknown
-          # No merge ref exists until GitHub's async test-merge resolves, so
-          # retry rather than treat unknown as a conflict and skip the build.
+          # The provider has not produced a usable test-merge yet. Retry: the
+          # merge commit persists once computed, so a later attempt often
+          # succeeds even while `mergeable` itself never settles.
+          Watchman.increment(
+            "hook.processing.mergeable_unknown.#{meta[:merge_commit_sha].present? ? "stale_merge_sha" : "no_merge_sha"}"
+          )
+
           if retries < 10
             sidekiq_job_id = Semaphore::RepoHost::Hooks::Handler::Worker.perform_in(2.minutes, workflow.id, hook_payload, signature, retries + 1)
-            logger.info("pr-mergeable-unknown-rescheduled", :sidekiq_job_id => sidekiq_job_id)
+            logger.info("pr-mergeable-unknown-rescheduled", :sidekiq_job_id => sidekiq_job_id, :retries => retries, :has_merge_sha => meta[:merge_commit_sha].present?)
           else
-            # Persistent unknown past the retry budget is a stuck/degraded state,
-            # not an observed conflict: recording nil mergeability would emit a
-            # spurious PullRequestUnmergeable event, so only set the terminal
-            # state and surface a metric.
-            Watchman.increment("hook.processing.pr_mergeable_unknown_giving_up")
-            logger.info("pr-mergeable-unknown-giving-up")
-            workflow.update(:state => Workflow::STATE_PR_NON_MERGEABLE)
+            # Exhausting the budget means we never learned whether the PR
+            # merges — it is not a conflict, and must not be reported as one.
+            # Record the undetermined result so readers can tell the two apart.
+            Watchman.increment("hook.processing.pr_mergeability_unknown_giving_up")
+            logger.info("pr-mergeability-unknown-giving-up", :retries => retries)
+            update_pull_request_mergeable(workflow, nil)
+            workflow.update(:state => Workflow::STATE_PR_MERGEABILITY_UNKNOWN)
           end
 
           return
@@ -298,13 +303,27 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
 
     # GitHub computes a PR's test-merge asynchronously, so `mergeable` is nil
     # (unknown) until it finishes — distinct from false (a real conflict).
-    # Keep them apart so an unknown result can be retried rather than skipped.
-    if mergeable.nil?
-      return [:mergeable_unknown, { :pr => pr }, msg]
+    # Only an explicit false is a conflict.
+    if mergeable == false
+      return [:non_mergeable, { :pr => pr, :mergeable => mergeable }, msg]
     end
 
-    unless mergeable
-      return [:non_mergeable, { :pr => pr, :mergeable => mergeable }, msg]
+    # mergeable.nil? means the provider has not finished computing the
+    # test-merge. That is not a conflict, and it is not a reason to wait: the
+    # merge commit is a durable artifact that survives base-branch pushes,
+    # while `mergeable` is a cached verdict those pushes invalidate. On a busy
+    # base branch the verdict may never settle, so proceed as soon as the merge
+    # commit we were already handed is current.
+    if mergeable.nil?
+      unless merge_commit_current?(repo_host, project, merge_commit_sha, pr)
+        return [:mergeable_unknown, { :pr => pr, :merge_commit_sha => merge_commit_sha }, msg]
+      end
+
+      # A test-merge commit for the current head only exists because the merge
+      # succeeded — GitHub does not produce one for a conflict. So a current
+      # merge commit is itself the answer the `mergeable` field never gave us.
+      Watchman.increment("hook.processing.mergeable_unknown.fresh_merge_sha")
+      mergeable = true
     end
 
     commit_sha ||= pr[:head][:sha]
@@ -321,9 +340,34 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
       ensure_ref(repo_host, project.repo_owner_and_name, ref, merge_commit_sha)
 
       [:ok, { :pr => pr, :ref => ref, :merge_commit_sha => merge_commit_sha, :mergeable => mergeable, :commit_author => commit_author }, msg]
-    rescue RepoHost::RemoteException::Unauthorized, RepoHost::RemoteException::NotFound
+    rescue RepoHost::RemoteException::Unauthorized, RepoHost::RemoteException::NotFound => e
+      # The build still runs, just without a pinned ref, so this failure is
+      # otherwise invisible. Record the cause: Unauthorized covers both a 403
+      # (missing permission, or a secondary rate limit) and a 404.
+      Watchman.increment("github_hooks.ensure_ref.without_reference")
+      Logman.info("github_hooks.ensure_ref without_reference repo=#{project.repo_owner_and_name} error=#{e.class} message=#{e.message}")
+
       [:without_reference, { :mergeable => mergeable, :commit_author => commit_author }, ""]
     end
+  end
+
+  # True when `merge_commit_sha` is the provider's test-merge of the PR's
+  # current head. GitHub builds it with two parents: [0] the base, [1] the PR
+  # head. A merge computed before the last push still has the old head as its
+  # second parent, and building it would silently test code the author never
+  # pushed, so anything we cannot positively confirm is treated as not current.
+  def self.merge_commit_current?(repo_host, project, merge_commit_sha, pull_request)
+    return false if merge_commit_sha.blank?
+
+    head_sha = pull_request[:head] && pull_request[:head][:sha]
+    return false if head_sha.blank?
+
+    parents = repo_host.commit(project.repo_owner_and_name, merge_commit_sha).try(:parents).to_a
+    return false if parents.size < 2
+
+    parents[1].sha == head_sha
+  rescue ::RepoHost::RemoteException::NotFound, ::RepoHost::RemoteException::Unauthorized
+    false
   end
 
   def self.ensure_ref(repo_host, repo_slug, ref, sha)
@@ -374,7 +418,9 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
     if (branch = find_branch(workflow))
       mergeable_before = branch.pull_request_mergeable
       branch.update(:pull_request_mergeable => mergeable)
-      if !mergeable && mergeable_before
+      # nil is "undetermined", not "unmergeable" — never announce a conflict
+      # we did not observe.
+      if mergeable == false && mergeable_before
         Semaphore::Events::PullRequestUnmergeable.emit(workflow.project_id, branch.name)
       end
     end

@@ -6,8 +6,12 @@
      <% end) %>
      >
 
-<%= if @conflict_info do %>
+<%= case @conflict_info do %>
+<% :conflict -> %>
   <%= render FrontWeb.BranchView, "_conflict_info.html", project: @project, branch: @branch %>
+<% :undetermined -> %>
+  <%= render FrontWeb.BranchView, "_undetermined_merge_info.html", project: @project, branch: @branch %>
+<% _ -> %>
 <% end %>
 
 <div class="mt3">

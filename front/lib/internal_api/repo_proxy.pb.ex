@@ -49,6 +49,7 @@ defmodule InternalApi.RepoProxy.Hook do
           pr_number: String.t(),
           pr_sha: String.t(),
           pr_mergeable: boolean,
+          pr_mergeable_state: integer,
           pr_branch_name: String.t(),
           tag_name: String.t(),
           branch_name: String.t()
@@ -74,6 +75,7 @@ defmodule InternalApi.RepoProxy.Hook do
     :pr_number,
     :pr_sha,
     :pr_mergeable,
+    :pr_mergeable_state,
     :pr_branch_name,
     :tag_name,
     :branch_name
@@ -98,7 +100,8 @@ defmodule InternalApi.RepoProxy.Hook do
   field(:pr_name, 12, type: :string)
   field(:pr_number, 13, type: :string)
   field(:pr_sha, 19, type: :string)
-  field(:pr_mergeable, 22, type: :bool)
+  field(:pr_mergeable, 22, type: :bool, deprecated: true)
+  field(:pr_mergeable_state, 26, type: InternalApi.RepoProxy.Hook.PrMergeableState, enum: true)
   field(:pr_branch_name, 23, type: :string)
   field(:tag_name, 14, type: :string)
   field(:branch_name, 16, type: :string)
@@ -111,6 +114,15 @@ defmodule InternalApi.RepoProxy.Hook.Type do
   field(:BRANCH, 0)
   field(:TAG, 1)
   field(:PR, 2)
+end
+
+defmodule InternalApi.RepoProxy.Hook.PrMergeableState do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+
+  field(:PR_MERGEABLE_STATE_UNKNOWN, 0)
+  field(:PR_MERGEABLE_STATE_MERGEABLE, 1)
+  field(:PR_MERGEABLE_STATE_CONFLICTED, 2)
 end
 
 defmodule InternalApi.RepoProxy.DescribeManyRequest do

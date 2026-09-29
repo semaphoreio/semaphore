@@ -426,14 +426,102 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
             expect(@workflow.reload.state).not_to eq(Workflow::STATE_PR_NON_MERGEABLE)
           end
 
-          it "gives up once retries are exhausted without emitting a spurious unmergeable event" do
+          it "gives up into its own state, never reporting an unobserved conflict" do
             expect(Semaphore::RepoHost::Hooks::Handler::Worker).not_to receive(:perform_in)
-            expect(described_class).not_to receive(:update_pull_request_mergeable)
-            expect(@logger).to receive(:info).with("pr-mergeable-unknown-giving-up")
+            expect(@logger).to receive(:info).with("pr-mergeability-unknown-giving-up", anything)
 
             described_class.run(@workflow, @logger, "", "", 10)
 
-            expect(@workflow.reload.state).to eq(Workflow::STATE_PR_NON_MERGEABLE)
+            # Exhaustion means we never learned the answer. Reporting
+            # STATE_PR_NON_MERGEABLE here is what told users to go resolve
+            # conflicts that did not exist.
+            expect(@workflow.reload.state).to eq(Workflow::STATE_PR_MERGEABILITY_UNKNOWN)
+          end
+
+          it "records mergeability as undetermined rather than unmergeable on give-up" do
+            expect(described_class).to receive(:update_pull_request_mergeable).with(anything, nil)
+
+            described_class.run(@workflow, @logger, "", "", 10)
+          end
+
+          it "does not emit a PullRequestUnmergeable event on give-up" do
+            expect(Semaphore::Events::PullRequestUnmergeable).not_to receive(:emit)
+
+            described_class.run(@workflow, @logger, "", "", 10)
+          end
+        end
+
+        context "and mergeability is unknown but a merge commit already exists" do
+          let(:head_sha) { "97114836a47ff614e70e863df819f908877ee1c9" }
+
+          def merge_commit_with_parents(base_sha, second_parent_sha)
+            double(:parents => [double(:sha => base_sha), double(:sha => second_parent_sha)])
+          end
+
+          before do
+            allow(repo_host).to receive(:validate_token_presence!)
+            allow(repo_host).to receive(:pull_request).and_return(
+              :merge_commit_sha => "merge-sha", :mergeable => nil, :head => { :sha => head_sha }
+            )
+            allow(described_class).to receive(:sleep)
+            allow(repo_host).to receive(:commit).with("renderedtext/plakatt", head_sha)
+                                                .and_return(RepoHost::Github::Responses::Commit.commit)
+          end
+
+          it "builds immediately when the merge commit is for the current head" do
+            # The whole point: `mergeable` may never settle on a busy base
+            # branch, but the merge commit GitHub already produced is usable.
+            allow(repo_host).to receive(:commit).with("renderedtext/plakatt", "merge-sha")
+                                                .and_return(merge_commit_with_parents("base-sha", head_sha))
+
+            expect(repo_host).to receive(:create_ref)
+              .with("renderedtext/plakatt", "refs/semaphoreci/merge-sha", "merge-sha")
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker).not_to receive(:perform_in)
+
+            described_class.run(@workflow, @logger)
+          end
+
+          it "treats a current merge commit as proof the pull request merges" do
+            allow(repo_host).to receive(:commit).with("renderedtext/plakatt", "merge-sha")
+                                                .and_return(merge_commit_with_parents("base-sha", head_sha))
+            allow(repo_host).to receive(:create_ref)
+
+            expect(described_class).to receive(:update_pull_request_mergeable).with(anything, true)
+
+            described_class.run(@workflow, @logger)
+          end
+
+          it "retries instead of building when the merge commit predates the current head" do
+            # Building a stale merge would silently test code the author never
+            # pushed, which is worse than waiting.
+            allow(repo_host).to receive(:commit).with("renderedtext/plakatt", "merge-sha")
+                                                .and_return(merge_commit_with_parents("base-sha", "an-older-head-sha"))
+
+            expect(described_class).not_to receive(:launch_pipeline)
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker)
+              .to receive(:perform_in).with(2.minutes, @workflow.id, anything, anything, 1)
+
+            described_class.run(@workflow, @logger)
+          end
+
+          it "retries when the merge commit has no second parent" do
+            allow(repo_host).to receive(:commit).with("renderedtext/plakatt", "merge-sha")
+                                                .and_return(double(:parents => [double(:sha => "base-sha")]))
+
+            expect(described_class).not_to receive(:launch_pipeline)
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker).to receive(:perform_in)
+
+            described_class.run(@workflow, @logger)
+          end
+
+          it "retries when the merge commit cannot be read" do
+            allow(repo_host).to receive(:commit).with("renderedtext/plakatt", "merge-sha")
+                                                .and_raise(::RepoHost::RemoteException::NotFound)
+
+            expect(described_class).not_to receive(:launch_pipeline)
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker).to receive(:perform_in)
+
+            described_class.run(@workflow, @logger)
           end
         end
       end

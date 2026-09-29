@@ -35,7 +35,8 @@ defmodule HooksProcessor.Hooks.Model.Hooks do
                       commit_author)a
   @valid_states ~w(no_project pr_approval skip_ci deleting_branch skip_pr
                    skip_forked_pr filtered_contributor skip_tag whitelist_tag
-                   skip_branch whitelist_branch pr_non_mergeable launching
+                   skip_branch whitelist_branch pr_non_mergeable
+                   pr_mergeability_unknown launching
                    unauthorized_repo not_found_repo processing failed)
   @base_providers ~w(github bitbucket gitlab api git)
 

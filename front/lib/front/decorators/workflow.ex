@@ -30,6 +30,7 @@ defmodule Front.Decorators.Workflow do
     :created_at,
     :pr_number,
     :pr_mergeable,
+    :pr_mergeable_state,
     :tag_name,
     :branch_name,
     :summary
@@ -96,6 +97,7 @@ defmodule Front.Decorators.Workflow do
       created_at: workflow.created_at,
       pr_number: "",
       pr_mergeable: "",
+      pr_mergeable_state: :PR_MERGEABLE_STATE_UNKNOWN,
       tag_name: "",
       branch_name: workflow.branch_name,
       summary: workflow.summary
@@ -132,6 +134,7 @@ defmodule Front.Decorators.Workflow do
       created_at: workflow.created_at,
       pr_number: workflow.hook.pr_number,
       pr_mergeable: workflow.hook.pr_mergeable,
+      pr_mergeable_state: workflow.hook.pr_mergeable_state,
       tag_name: workflow.hook.tag_name,
       branch_name: workflow.hook.branch_name,
       summary: workflow.summary
