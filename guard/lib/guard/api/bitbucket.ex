@@ -71,7 +71,7 @@ defmodule Guard.Api.Bitbucket do
         {:error, :transient}
 
       {:error, error} ->
-        Logger.error("Error validating Bitbucket token: #{inspect(error)}")
+        Logger.error("Error validating Bitbucket token: #{OAuth.safe_transport_error(error)}")
         {:error, :transient}
     end
   end
@@ -122,7 +122,7 @@ defmodule Guard.Api.Bitbucket do
         end
 
       {:error, error} ->
-        Logger.error("Error fetching token: #{inspect(error)}")
+        Logger.error("Error fetching Bitbucket token: #{OAuth.safe_transport_error(error)}")
         {:error, :network_error}
     end
   end
@@ -165,12 +165,23 @@ defmodule Guard.Api.Bitbucket do
 
   defp safe_oauth_error_description(_), do: nil
 
+  # The refresh runs while holding the per-account advisory lock and a pooled
+  # Front-DB connection, so it must be hard-bounded.
+  @refresh_timeout_ms 3_000
+
   defp build_token_client do
     {:ok, {client_id, client_secret}} = Guard.GitProviderCredentials.get(:bitbucket)
 
     Tesla.client([
+      {Tesla.Middleware.Timeout, timeout: @refresh_timeout_ms},
       {Tesla.Middleware.BaseUrl, @base_url},
       {Tesla.Middleware.BasicAuth, username: client_id, password: client_secret},
+      # No response decoder on purpose. Tesla surfaces a decode failure as
+      # {:error, {middleware, :decode, %Jason.DecodeError{data: body}}}, and on
+      # a 2xx that body is the token response - one inspect away from a
+      # credential in the logs. It would also swallow the status, skipping the
+      # diagnostic-header log and the revoked/transient classification. The
+      # decoders in Guard.Utils.OAuth already handle a raw binary body.
       Tesla.Middleware.FormUrlencoded
     ])
   end

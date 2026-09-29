@@ -9,6 +9,38 @@ defmodule Guard.Utils.OAuthTest do
     "error_description" => "refresh_token is invalid"
   }
 
+  describe "safe_transport_error/1" do
+    test "never echoes a decode failure's payload" do
+      # Tesla reports a decode failure as {middleware, :decode, %Jason.DecodeError{}},
+      # and the struct carries the whole response body. On a token endpoint that
+      # body is the credential, so inspecting it would put a live refresh token
+      # in an ERROR log.
+      secret = "ghr_super_secret_refresh_token"
+      reason = {Tesla.Middleware.JSON, :decode, %Jason.DecodeError{data: secret, position: 0}}
+
+      described = OAuth.safe_transport_error(reason)
+
+      refute described =~ secret
+      assert described =~ "decode"
+    end
+
+    test "keeps ordinary transport errors readable" do
+      assert OAuth.safe_transport_error(:timeout) == ":timeout"
+      assert OAuth.safe_transport_error(:econnrefused) == ":econnrefused"
+    end
+
+    test "names an exception struct without its contents" do
+      described = OAuth.safe_transport_error(%Jason.DecodeError{data: "secret", position: 0})
+
+      refute described =~ "secret"
+      assert described =~ "DecodeError"
+    end
+
+    test "degrades on anything unrecognised rather than dumping it" do
+      assert OAuth.safe_transport_error({:weird, "secret-payload"}) == "unrecognised_error"
+    end
+  end
+
   describe "classify_refresh_response/3 - genuine revocations" do
     test "a 2xx is always :ok" do
       assert OAuth.classify_refresh_response("bitbucket", 200, %{}) == :ok
