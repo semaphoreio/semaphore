@@ -39,6 +39,6 @@ export var Timer = {
     var duration  = moment.duration(current, 'seconds');
     var formatted = duration.format("hh:mm:ss", {stopTrim: "mm"});
 
-    timer.innerHTML = formatted;
+    timer.textContent = formatted;
   }
 };
