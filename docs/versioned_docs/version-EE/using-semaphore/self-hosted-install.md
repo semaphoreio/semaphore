@@ -16,6 +16,12 @@ This page explains how to install [self-hosted agents](./self-hosted) on differe
 
 Before you can run jobs in your hardware, you need to install and register the self-hosted agent stack. This page explains how to install the stack on several platforms.
 
+:::note
+
+If the agent type will run [initialization jobs](./pipelines#init-job), its job environment needs Erlang/OTP and other software. On agents that run jobs on the machine itself, Erlang must be installed *before* the agent. See [initialization job requirements](./self-hosted#init-requirements).
+
+:::
+
 ## How to register agent type {#register-agent}
 
 The agent type is the name assigned to agents running on the same hardware or platform. Semaphore expects all self-hosted agents to belong to one agent type.
@@ -102,7 +108,7 @@ Agent names should have between 8 and 80 characters.
 
 [AWS Security Token Service](https://docs.aws.amazon.com/general/latest/gr/sts.html) provides a second layer of security that ensures only allowed agents can connect with Semaphore.
 
-To use this option, you must run your agent in AWS EC2 instances. The [Autoscaling AWS Stack](./self-hosted-aws) uses this feature by default.
+To use this option, you must run your agent in AWS EC2 instances. The [Autoscaling AWS Stack](./self-hosted-aws) supports this feature when [SEMAPHORE_AGENT_USE_PRE_SIGNED_URL](../reference/agent-aws-stack#use-pre-signed-url) configuration parameter is set to `true`.
 
 When AWS STS is enabled, the agent sends a name request to Semaphore during registration, which in turn validates the access with the AWS-secured endpoint. This mechanism thwarts attempts to register rogue agents even if the attacked has secured access to a valid registration token.
 

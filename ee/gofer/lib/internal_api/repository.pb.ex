@@ -540,6 +540,7 @@ defmodule InternalApi.Repository.RemoteRepositoryChanged do
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
 
   field :remote_id, 1, type: :string, json_name: "remoteId"
+  field :repository_id, 2, type: :string, json_name: "repositoryId"
   field :timestamp, 3, type: Google.Protobuf.Timestamp
 end
 

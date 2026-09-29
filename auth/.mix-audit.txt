@@ -1,0 +1,20 @@
+# --- hackney 1.x advisories, all first patched in hackney 4.0.1 ---
+# The 4.x major is blocked fleet-wide: httpoison 1.x/2.x requires hackney ~> 1.17,
+# so hackney cannot move to 4.x without a coordinated httpoison migration (same
+# acceptance as plumber and guard). auth's outbound HTTP goes to internal services
+# and the configured identity providers, not attacker-supplied hosts.
+GHSA-gp9c-pm5m-5cxr
+GHSA-j9wq-vxxc-94wf
+GHSA-mp55-p8c9-rfw2
+GHSA-pj7v-xfvx-wmjq
+
+# --- protobuf GHSA-rv48-qqj5-crxg (unbounded recursion decoding nested embedded messages) ---
+# First patched in protobuf 0.16.1. auth pulls protobuf transitively via grpc
+# (~> 0.14) and only decodes messages from internal gRPC services, not
+# attacker-supplied payloads, so the recursion DoS is not reachable here.
+# Held at 0.15.x deliberately: 0.16.x adds a per-encode map-coercion
+# deprecation warning that is noisy in hot encode paths, so the bump is
+# deferred pending an explicit-struct sweep of the encode sites.
+GHSA-rv48-qqj5-crxg
+
+

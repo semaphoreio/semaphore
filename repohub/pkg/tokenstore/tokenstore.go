@@ -6,13 +6,14 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	"github.com/semaphoreio/semaphore/repohub/pkg/config"
 	"github.com/semaphoreio/semaphore/repohub/pkg/gitrekt"
+	"github.com/semaphoreio/semaphore/repohub/pkg/grpcconn"
 
 	ia_projecthub "github.com/semaphoreio/semaphore/repohub/pkg/internal_api/projecthub"
 	ia_repository_integrator "github.com/semaphoreio/semaphore/repohub/pkg/internal_api/repository_integrator"
@@ -20,6 +21,10 @@ import (
 	ia_user "github.com/semaphoreio/semaphore/repohub/pkg/internal_api/user"
 	"github.com/semaphoreio/semaphore/repohub/pkg/models"
 )
+
+// rpcTimeout bounds each internal-API lookup so a dead or wedged backend fails
+// the call instead of hanging on context.Background().
+const rpcTimeout = 20 * time.Second
 
 type TokenStore struct {
 }
@@ -60,18 +65,21 @@ func (s *TokenStore) FindRepoToken(r *models.Repository) (string, error) {
 }
 
 func (s *TokenStore) FindUser(userID string) (*ia_user.DescribeResponse, error) {
-	conn, err := grpc.Dial(config.UserAPIEndpoint(), grpc.WithInsecure())
+	// Reuse a pooled, long-lived connection — never Close it (see pkg/grpcconn).
+	conn, err := grpcconn.Get(config.UserAPIEndpoint())
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
 
 	log.Printf("Looking up user: %s", userID)
 
 	client := ia_user.NewUserServiceClient(conn)
 	req := ia_user.DescribeRequest{UserId: userID}
 
-	res, err := client.Describe(context.Background(), &req)
+	ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
+	defer cancel()
+
+	res, err := client.Describe(ctx, &req)
 	if err != nil {
 		log.Printf("User lookup failed %+v", err)
 		return nil, err
@@ -80,7 +88,7 @@ func (s *TokenStore) FindUser(userID string) (*ia_user.DescribeResponse, error) 
 	if res.Status.Code != ia_response_status.ResponseStatus_OK {
 		log.Printf("User lookup failed %s", res.Status.Message)
 
-		return nil, fmt.Errorf(res.Status.Message)
+		return nil, fmt.Errorf("%s", res.Status.Message)
 	}
 
 	return res, nil
@@ -91,11 +99,11 @@ func (s *TokenStore) findIntegrationToken(projectID string, integrationType stri
 		return s.fetchRepositoryToken(userID, ia_repository_integrator.IntegrationType(ia_repository_integrator.IntegrationType_value[integrationType]))
 	}
 
-	conn, err := grpc.Dial(config.RepositoryIntegratorAPIEndpoint(), grpc.WithInsecure())
+	// Reuse a pooled, long-lived connection — never Close it (see pkg/grpcconn).
+	conn, err := grpcconn.Get(config.RepositoryIntegratorAPIEndpoint())
 	if err != nil {
 		return "", err
 	}
-	defer conn.Close()
 
 	log.Printf("Looking up token for project: %s", projectID)
 
@@ -107,7 +115,10 @@ func (s *TokenStore) findIntegrationToken(projectID string, integrationType stri
 		IntegrationType: ia_repository_integrator.IntegrationType(ia_repository_integrator.IntegrationType_value[integrationType]),
 	}
 
-	res, err := client.GetToken(context.Background(), &req)
+	ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
+	defer cancel()
+
+	res, err := client.GetToken(ctx, &req)
 	if err != nil {
 		log.Printf("Project token lookup failed %+v", err)
 		return "", err
@@ -117,18 +128,21 @@ func (s *TokenStore) findIntegrationToken(projectID string, integrationType stri
 }
 
 func (s *TokenStore) fetchRepositoryToken(userID string, integrationType ia_repository_integrator.IntegrationType) (string, error) {
-	conn, err := grpc.Dial(config.UserAPIEndpoint(), grpc.WithInsecure())
+	// Reuse a pooled, long-lived connection — never Close it (see pkg/grpcconn).
+	conn, err := grpcconn.Get(config.UserAPIEndpoint())
 	if err != nil {
 		return "", err
 	}
-	defer conn.Close()
 
 	log.Printf("Looking up user: %s", userID)
 
 	client := ia_user.NewUserServiceClient(conn)
 	req := ia_user.GetRepositoryTokenRequest{UserId: userID, IntegrationType: integrationType}
 
-	res, err := client.GetRepositoryToken(context.Background(), &req)
+	ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
+	defer cancel()
+
+	res, err := client.GetRepositoryToken(ctx, &req)
 	if err != nil {
 		log.Printf("User lookup failed %+v", err)
 		return "", err
@@ -138,16 +152,19 @@ func (s *TokenStore) fetchRepositoryToken(userID string, integrationType ia_repo
 }
 
 func (s *TokenStore) findProject(projectID string) (*ia_projecthub.Project, error) {
-	conn, err := grpc.Dial(config.ProjectAPIEndpoint(), grpc.WithInsecure())
+	// Reuse a pooled, long-lived connection — never Close it (see pkg/grpcconn).
+	conn, err := grpcconn.Get(config.ProjectAPIEndpoint())
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
 
 	client := ia_projecthub.NewProjectServiceClient(conn)
 	req := ia_projecthub.DescribeRequest{Id: projectID, Metadata: &ia_projecthub.RequestMeta{OrgId: ""}}
 
-	res, err := client.Describe(context.Background(), &req)
+	ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
+	defer cancel()
+
+	res, err := client.Describe(ctx, &req)
 	if err != nil {
 		return nil, err
 	}

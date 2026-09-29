@@ -12,7 +12,7 @@ class Policy::Gosec < Policy
       "gosec",
       "-quiet",
       "-fmt=junit-xml",
-      "-out=gosec-junit.xml",
+      "-out=out/gosec-junit.xml",
       "-stdout"
     ]
 
@@ -34,6 +34,10 @@ class Policy::Gosec < Policy
     @output
   end
 
+  def produces_junit?
+    true
+  end
+
   def dependencies
     [
       {
@@ -51,7 +55,7 @@ class Policy::Gosec < Policy
       {
         name: "gosec",
         install: Proc.new do
-          `curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sudo sh -s -- -b /usr/local/bin v2.22.1`
+          `curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sudo sh -s -- -b /usr/local/bin v2.29.0`
           $?.exitstatus
         end
       }

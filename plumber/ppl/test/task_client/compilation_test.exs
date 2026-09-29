@@ -60,6 +60,37 @@ defmodule Ppl.TaskClient.CompilationTest do
     end
   end
 
+  test "when compilation job is scheduled => metric is emitted with machine type and image tags" do
+    ppl_req = %{
+      request_args: RequestFactory.schedule_args(%{}, :local),
+      source_args: %{},
+      id: UUID.uuid4(),
+      wf_id: UUID.uuid4()
+    }
+
+    pfcs = :undefined
+
+    settings = %{
+      "plan_machine_type" => "e2-standard-4",
+      "plan_os_image" => "ubuntu2004",
+      "custom_machine_type" => "f1-standard-2",
+      "custom_os_image" => "ubuntu2204"
+    }
+
+    with_mocks([
+      {TaskApiClient, [], [schedule: fn _, _, _ -> {:ok, %{id: "task-id"}} end]},
+      {Watchman, [], [increment: fn _ -> :ok end]}
+    ]) do
+      assert {:ok, "task-id"} = TaskClient.Compilation.start(ppl_req, pfcs, settings)
+
+      assert_called(
+        Watchman.increment(
+          {"Ppl.TaskClient.Compilation.compilation_jobs", ["f1-standard-2", "ubuntu2204"]}
+        )
+      )
+    end
+  end
+
   @tag :integration
   test "when schedule is called => gRPC server response is processed correctly" do
     ppl_req = %{

@@ -4,6 +4,7 @@ defmodule PipelinesAPI.Workflows.WfAuthorize.AuthorizeParams do
   use Plug.Builder
   alias InternalApi.PlumberWF.WorkflowService
   alias InternalApi.PlumberWF.DescribeRequest
+  alias Plug.Conn
   alias Util.Proto
 
   defp url(), do: System.get_env("PPL_GRPC_URL")
@@ -27,7 +28,10 @@ defmodule PipelinesAPI.Workflows.WfAuthorize.AuthorizeParams do
   defp process_response(:OK, workflow, conn) do
     %{initial_ppl_id: initial_ppl_id} = workflow
     params = Map.put(conn.params, "pipeline_id", initial_ppl_id)
-    Map.put(conn, :params, params)
+
+    conn
+    |> Map.put(:params, params)
+    |> Conn.assign(:audit_workflow, workflow)
   end
 
   defp process_response(:FAILED_PRECONDITION, _workflow, conn) do

@@ -283,23 +283,30 @@ defmodule FrontWeb.SelfHostedAgentController do
   end
 
   def agents(conn, params = %{"self_hosted_agent_id" => agent_type_name}) do
-    {:ok, agent_type} = AgentType.find(org_id(conn), agent_type_name)
-    cursor = if Map.has_key?(params, "cursor"), do: params["cursor"], else: ""
-    {:ok, agents, next_cursor} = AgentType.list_agents(org_id(conn), agent_type_name, cursor)
+    case AgentType.find(org_id(conn), agent_type_name) do
+      {:ok, agent_type} ->
+        cursor = if Map.has_key?(params, "cursor"), do: params["cursor"], else: ""
+        {:ok, agents, next_cursor} = AgentType.list_agents(org_id(conn), agent_type_name, cursor)
 
-    response =
-      if conn.assigns.permissions["organization.self_hosted_agents.view"] do
-        %{
-          agents: agents,
-          first_page_url: first_page_url(agent_type_name),
-          next_page_url: next_page_url(next_cursor, agent_type_name),
-          total_agents: agent_type.total_agent_count
-        }
-      else
-        %{}
-      end
+        response =
+          if conn.assigns.permissions["organization.self_hosted_agents.view"] do
+            %{
+              agents: agents,
+              first_page_url: first_page_url(agent_type_name),
+              next_page_url: next_page_url(next_cursor, agent_type_name),
+              total_agents: agent_type.total_agent_count
+            }
+          else
+            %{}
+          end
 
-    json(conn, response)
+        json(conn, response)
+
+      {:error, %GRPC.RPCError{status: 5}} ->
+        conn
+        |> put_status(:not_found)
+        |> json(%{error: "agent type not found"})
+    end
   end
 
   defp build_agent_type(agent_type) do

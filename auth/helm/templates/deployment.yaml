@@ -51,6 +51,11 @@ spec:
             - configMapRef:
                 name: {{ .Values.global.internalApi.configMapName }}
           env:
+            - name: MCP_OAUTH_JWT_KEYS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "secrets.authentication.name" . }}
+                  key: MCP_OAUTH_JWT_KEYS
             - name: FEATURE_YAML_PATH
               value: "/app/features.yml"
             - name: FORCE_IP_CHECK

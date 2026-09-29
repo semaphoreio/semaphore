@@ -39,17 +39,36 @@ config :watchman,
   prefix:
     System.get_env("METRICS_PREFIX") || "ppl.#{System.get_env("METRICS_NAMESPACE") || "dev"}"
 
+# Feature flags come from a YAML file when FEATURE_YAML_PATH is set (installs
+# without the Feature service); otherwise config.exs keeps FeatureHub.
+if config_env() == :prod do
+  case System.get_env("FEATURE_YAML_PATH") do
+    path when path in [nil, ""] ->
+      :ok
+
+    path ->
+      # yaml_elixir 1.x (pinned in mix.exs) returns the document from read_from_file/1.
+      opts = [
+        yaml_path: path,
+        agent_name: :feature_provider_agent,
+        reader: {YamlElixir, :read_from_file}
+      ]
+
+      config :ppl, feature_provider: {FeatureProvider.YamlProvider, opts}
+  end
+end
+
 # Retention policy event consumer
-config :ppl, Ppl.Retention.PolicyConsumer,
+config :ppl, Ppl.Retention.Policy.Worker,
   enabled: System.get_env("RETENTION_CONSUMER_ENABLED", "false") == "true"
 
-# Retention policy applier settings
-config :ppl, Ppl.Retention.PolicyApplier,
+# Retention policy query settings
+config :ppl, Ppl.Retention.Policy.Queries,
   grace_period_days: String.to_integer(System.get_env("RETENTION_GRACE_PERIOD_DAYS") || "15"),
   batch_size: String.to_integer(System.get_env("RETENTION_APPLIER_BATCH_SIZE") || "10000")
 
 # Retention record deleter worker (deletes expired pipeline records)
-config :ppl, Ppl.Retention.RecordDeleter,
+config :ppl, Ppl.Retention.Deleter.Worker,
   enabled: System.get_env("RETENTION_DELETER_ENABLED", "false") == "true",
   sleep_period_sec: String.to_integer(System.get_env("RETENTION_DELETER_SLEEP_PERIOD_SEC") || "30"),
   batch_size: String.to_integer(System.get_env("RETENTION_DELETER_BATCH_SIZE") || "100")

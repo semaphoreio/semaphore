@@ -22,7 +22,7 @@ defmodule Front.Models.Billing.PlanSwitchTest do
          } do
       available_plans = PlanSwitch.list_plans(org_id)
 
-      assert length(available_plans) == 3
+      assert length(available_plans) == 1
     end
 
     test "does not list any plans when billing does not allow for a switch",
@@ -84,29 +84,14 @@ defmodule Front.Models.Billing.PlanSwitchTest do
     end
 
     test "succeedes", %{org_id: org_id} do
-      stub_user_count(5)
-      stub_agent_count(5)
-
-      assert :ok = PlanSwitch.validate_plan_change(org_id, :free)
-    end
-
-    test "fails when user limit is exceeded", %{org_id: org_id} do
-      stub_user_count(6)
-
-      assert {:error, [users: _]} = PlanSwitch.validate_plan_change(org_id, :free)
-    end
-
-    test "fails when agent limit is exceeded", %{org_id: org_id} do
-      stub_agent_count(6)
-
-      assert {:error, [agents: _]} = PlanSwitch.validate_plan_change(org_id, :free)
+      assert :ok = PlanSwitch.validate_plan_change(org_id, :basic)
     end
 
     test "fails when billing does not allow organization to switch plans", %{org_id: org_id} do
       stub_billing_check(["too many orgs", "too many trials"])
 
       assert {:error, [plan: "too many orgs", plan: "too many trials"]} =
-               PlanSwitch.validate_plan_change(org_id, :free)
+               PlanSwitch.validate_plan_change(org_id, :basic)
     end
   end
 

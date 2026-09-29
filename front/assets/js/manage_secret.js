@@ -48,7 +48,7 @@ export var ManageSecret = {
         </div>
 
         <div class="w-100 w-50-ns">
-          <input id=${envVarValueId} class="form-control w-100 f5 code" style="${envVar.name? "display: none" : ""}" value='${envVar.value}' name=${envVarValueName} type="text" placeholder="Value">
+          <input id=${envVarValueId} class="form-control w-100 f5 code" style="${envVar.name? "display: none" : ""}" value='${envVar.value}' name=${envVarValueName} type="text" placeholder="Value" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-1p-ignore data-lpignore="true">
 
           <div id=${envVarDivId} class="secret-manipulation flex items-center ba b--light-gray ph2 h2 br2 bg-washed-gray" style="${envVar.name ? "" : "display: none"}">
             <div class="flex-auto f5 code overflow-x-scroll">

@@ -93,25 +93,36 @@ defmodule Front.Models.Deployments do
       |> grpc_send()
     end
 
+    @grpc_timeout 20_000
+
     defp grpc_send(request) do
       endpoint = Application.fetch_env!(:front, :gofer_grpc_endpoint)
 
-      case Front.Models.Deployments.send(endpoint, request_to_func(request), request) do
-        {:ok, %{targets: targets}} -> {:ok, targets}
-        {:ok, %{target: target}} -> {:ok, target}
-        {:ok, %{target_id: target_id}} -> {:ok, target_id}
-        {:ok, payload} when is_map(payload) -> {:ok, payload}
-        {:error, reason} -> {:error, reason}
+      with {:ok, channel} <- GRPC.Stub.connect(endpoint),
+           {:ok, response} <- do_grpc_send(channel, request) do
+        case Util.Proto.to_map(response) do
+          {:ok, %{targets: targets}} -> {:ok, targets}
+          {:ok, %{target: target}} -> {:ok, target}
+          {:ok, %{target_id: target_id}} -> {:ok, target_id}
+          {:ok, payload} when is_map(payload) -> {:ok, payload}
+          {:error, reason} -> {:error, reason}
+        end
+      else
+        {:error, _reason} = error -> error
       end
     end
 
-    defp request_to_func(%API.ListRequest{}), do: &API.DeploymentTargets.Stub.list/2
-    defp request_to_func(%API.DescribeRequest{}), do: &API.DeploymentTargets.Stub.describe/2
-    defp request_to_func(%API.HistoryRequest{}), do: &API.DeploymentTargets.Stub.history/2
-    defp request_to_func(%API.CordonRequest{}), do: &API.DeploymentTargets.Stub.cordon/2
-    defp request_to_func(%API.CreateRequest{}), do: &API.DeploymentTargets.Stub.create/2
-    defp request_to_func(%API.UpdateRequest{}), do: &API.DeploymentTargets.Stub.update/2
-    defp request_to_func(%API.DeleteRequest{}), do: &API.DeploymentTargets.Stub.delete/2
+    defp do_grpc_send(channel, request),
+      do: request_to_func(request).(channel, request, timeout: @grpc_timeout),
+      after: GRPC.Stub.disconnect(channel)
+
+    defp request_to_func(%API.ListRequest{}), do: &API.DeploymentTargets.Stub.list/3
+    defp request_to_func(%API.DescribeRequest{}), do: &API.DeploymentTargets.Stub.describe/3
+    defp request_to_func(%API.HistoryRequest{}), do: &API.DeploymentTargets.Stub.history/3
+    defp request_to_func(%API.CordonRequest{}), do: &API.DeploymentTargets.Stub.cordon/3
+    defp request_to_func(%API.CreateRequest{}), do: &API.DeploymentTargets.Stub.create/3
+    defp request_to_func(%API.UpdateRequest{}), do: &API.DeploymentTargets.Stub.update/3
+    defp request_to_func(%API.DeleteRequest{}), do: &API.DeploymentTargets.Stub.delete/3
   end
 
   defmodule Secrets do

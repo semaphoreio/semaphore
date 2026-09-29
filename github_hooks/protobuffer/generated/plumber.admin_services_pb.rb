@@ -2,7 +2,7 @@
 # Source: plumber.admin.proto for package 'InternalApi.Plumber'
 
 require 'grpc'
-require_relative 'plumber.admin_pb'
+require 'plumber.admin_pb'
 
 module InternalApi
   module Plumber

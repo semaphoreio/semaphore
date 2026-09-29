@@ -1,0 +1,14 @@
+version: "v1.0"
+name: Pipeline with invalid partial_rerun value
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1604-minimal
+partial_rerun: whole-block
+blocks:
+  - name: Block 1
+    task:
+      jobs:
+        - name: job1
+          commands:
+            - echo Single command job

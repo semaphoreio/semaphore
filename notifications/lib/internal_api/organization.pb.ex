@@ -11,13 +11,21 @@ end
 defmodule InternalApi.Organization.Suspension.Reason do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
-  @type t :: integer | :INSUFFICIENT_FUNDS | :ACCOUNT_AT_RISK | :VIOLATION_OF_TOS
+
+  @type t ::
+          integer
+          | :INSUFFICIENT_FUNDS
+          | :ACCOUNT_AT_RISK
+          | :VIOLATION_OF_TOS
+          | :REPEATED_FAILED_CHARGES
 
   field(:INSUFFICIENT_FUNDS, 0)
 
   field(:ACCOUNT_AT_RISK, 1)
 
   field(:VIOLATION_OF_TOS, 2)
+
+  field(:REPEATED_FAILED_CHARGES, 3)
 end
 
 defmodule InternalApi.Organization.Member.Role do

@@ -21,12 +21,14 @@ defmodule Guard.Store.ServiceAccount do
 
   Returns the service account with its associated user data.
   """
-  @spec find(String.t()) :: {:ok, map()} | {:error, :not_found}
-  def find(service_account_id) when is_binary(service_account_id) do
-    if valid_uuid?(service_account_id) do
+  @spec find(String.t(), String.t()) :: {:ok, map()} | {:error, :not_found}
+  def find(service_account_id, org_id)
+      when is_binary(service_account_id) and is_binary(org_id) do
+    if valid_uuid?(service_account_id) and valid_uuid?(org_id) do
       query =
         build_service_account_query()
         |> where([sa, u], sa.id == ^service_account_id)
+        |> where([sa, u], u.org_id == ^org_id)
         |> where([sa, u], is_nil(u.blocked_at))
 
       case FrontRepo.one(query) do
@@ -44,15 +46,17 @@ defmodule Guard.Store.ServiceAccount do
   Returns a list of service accounts for the given IDs.
   Invalid or non-existent IDs are filtered out.
   """
-  @spec find_many([String.t()]) :: {:ok, [map()]} | {:error, term()}
-  def find_many(service_account_ids) when is_list(service_account_ids) do
+  @spec find_many([String.t()], String.t()) :: {:ok, [map()]} | {:error, term()}
+  def find_many(service_account_ids, org_id)
+      when is_list(service_account_ids) and is_binary(org_id) do
     # Filter out invalid UUIDs
     valid_ids = Enum.filter(service_account_ids, &valid_uuid?/1)
 
-    if length(valid_ids) > 0 do
+    if length(valid_ids) > 0 and valid_uuid?(org_id) do
       query =
         build_service_account_query()
         |> where([sa, u], sa.id in ^valid_ids)
+        |> where([sa, u], u.org_id == ^org_id)
         |> where([sa, u], is_nil(u.blocked_at))
         |> order_by([sa, u], asc: u.created_at, asc: sa.id)
 
@@ -143,13 +147,14 @@ defmodule Guard.Store.ServiceAccount do
 
   Only allows updating name and description.
   """
-  @spec update(String.t(), map()) ::
+  @spec update(String.t(), String.t(), map()) ::
           {:ok, map()}
           | {:error, :not_found | :internal_error | [{atom(), Changeset.error()}]}
-  def update(service_account_id, params) when is_binary(service_account_id) do
-    if valid_uuid?(service_account_id) do
+  def update(service_account_id, org_id, params)
+      when is_binary(service_account_id) and is_binary(org_id) do
+    if valid_uuid?(service_account_id) and valid_uuid?(org_id) do
       FrontRepo.transaction(fn ->
-        with {:ok, _current_data} <- find(service_account_id),
+        with {:ok, _current_data} <- find(service_account_id, org_id),
              {:ok, updated_user} <- update_user_record(service_account_id, params),
              {:ok, updated_service_account} <-
                update_service_account_record(service_account_id, params) do
@@ -176,11 +181,13 @@ defmodule Guard.Store.ServiceAccount do
 
   Performs a soft delete by setting the user's deactivated flag to true.
   """
-  @spec deactivate(String.t()) :: {:ok, :deactivated} | {:error, :not_found | :internal_error}
-  def deactivate(service_account_id) when is_binary(service_account_id) do
-    if valid_uuid?(service_account_id) do
+  @spec deactivate(String.t(), String.t()) ::
+          {:ok, :deactivated} | {:error, :not_found | :internal_error}
+  def deactivate(service_account_id, org_id)
+      when is_binary(service_account_id) and is_binary(org_id) do
+    if valid_uuid?(service_account_id) and valid_uuid?(org_id) do
       case FrontRepo.transaction(fn ->
-             with {:ok, _current_data} <- find(service_account_id),
+             with {:ok, _current_data} <- find(service_account_id, org_id),
                   {:ok, _updated_user} <- deactivate_user_record(service_account_id) do
                :deactivated
              else
@@ -211,13 +218,16 @@ defmodule Guard.Store.ServiceAccount do
 
   Reactivates a previously deactivated service account by setting the user's deactivated flag to false.
   """
-  @spec reactivate(String.t()) :: {:ok, :reactivated} | {:error, :not_found | :internal_error}
-  def reactivate(service_account_id) when is_binary(service_account_id) do
+  @spec reactivate(String.t(), String.t()) ::
+          {:ok, :reactivated} | {:error, :not_found | :internal_error}
+  def reactivate(service_account_id, org_id)
+      when is_binary(service_account_id) and is_binary(org_id) do
     case FrontRepo.transaction(fn ->
            # Use a modified query that includes deactivated service accounts
            query =
              build_service_account_query()
              |> where([sa, u], sa.id == ^service_account_id)
+             |> where([sa, u], u.org_id == ^org_id)
              |> where([sa, u], is_nil(u.blocked_at))
 
            with service_account when not is_nil(service_account) <- FrontRepo.one(query),
@@ -249,14 +259,17 @@ defmodule Guard.Store.ServiceAccount do
   Permanently deletes the service account and associated user records from the database.
   This action cannot be undone.
   """
-  @spec destroy(String.t()) :: {:ok, :destroyed} | {:error, :not_found | :internal_error}
-  def destroy(service_account_id) when is_binary(service_account_id) do
-    if valid_uuid?(service_account_id) do
+  @spec destroy(String.t(), String.t()) ::
+          {:ok, :destroyed} | {:error, :not_found | :internal_error}
+  def destroy(service_account_id, org_id)
+      when is_binary(service_account_id) and is_binary(org_id) do
+    if valid_uuid?(service_account_id) and valid_uuid?(org_id) do
       case FrontRepo.transaction(fn ->
              # Use a modified query that includes deactivated service accounts for destruction
              query =
                build_service_account_query()
                |> where([sa, u], sa.id == ^service_account_id)
+               |> where([sa, u], u.org_id == ^org_id)
                |> where([sa, u], is_nil(u.blocked_at))
 
              case FrontRepo.one(query) do
@@ -292,13 +305,14 @@ defmodule Guard.Store.ServiceAccount do
 
   Generates a new token and updates the user's authentication_token field.
   """
-  @spec regenerate_token(String.t()) ::
+  @spec regenerate_token(String.t(), String.t()) ::
           {:ok, String.t()}
           | {:error, :not_found | :internal_error}
-  def regenerate_token(service_account_id) when is_binary(service_account_id) do
-    if valid_uuid?(service_account_id) do
+  def regenerate_token(service_account_id, org_id)
+      when is_binary(service_account_id) and is_binary(org_id) do
+    if valid_uuid?(service_account_id) and valid_uuid?(org_id) do
       FrontRepo.transaction(fn ->
-        with {:ok, _current_data} <- find(service_account_id),
+        with {:ok, _current_data} <- find(service_account_id, org_id),
              {:ok, {plain_token, hashed_token}} <- generate_api_token(),
              {:ok, _updated_user} <- update_user_token(service_account_id, hashed_token) do
           plain_token

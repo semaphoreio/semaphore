@@ -2,6 +2,27 @@ defmodule FrontWeb.LayoutView do
   use FrontWeb, :view
   alias Front.Async
 
+  #
+  # Pages that own long lived client state - Monaco and ace in the workflow
+  # editor, the streaming log viewer on a job - and would have to tear it all
+  # down to survive a Turbo render. They are cheap to opt out of, so navigating
+  # to one performs a normal full page load instead.
+  #
+  @turbo_full_reload_pages ~w(workflow_editor logs)
+
+  def turbo_full_reload_page?(conn) do
+    to_string(conn.assigns[:js]) in @turbo_full_reload_pages
+  end
+
+  #
+  # Single source of truth for the flag. The head renders before the scripts
+  # partial, so both need to ask the same question, and an organization
+  # without the flag has to receive the page exactly as it was before Turbo.
+  #
+  def turbo_enabled?(conn) do
+    FeatureProvider.feature_enabled?(:ui_turbo_navigation, param: conn.assigns[:organization_id])
+  end
+
   def login_url(conn) do
     org_id = conn.assigns.organization_id
     origin_url = Plug.Conn.request_url(conn)
@@ -151,8 +172,21 @@ defmodule FrontWeb.LayoutView do
     end
   end
 
-  def tos_violation_suspension?(suspensions) do
-    suspensions != nil && Enum.member?(suspensions, :VIOLATION_OF_TOS)
+  def suspension_banner(assigns) do
+    suspensions = assigns.layout_model.suspensions || []
+
+    cond do
+      :VIOLATION_OF_TOS in suspensions ->
+        {:error,
+         "Our abuse detector has flagged your organization. All processing is blocked. If you think this is a mistake, please contact support."}
+
+      :REPEATED_FAILED_CHARGES in suspensions ->
+        {:error,
+         "Due to the number of repeated failed charges on your subscriptions, your organization was blocked. Please review/update your payment method and contact Support."}
+
+      true ->
+        nil
+    end
   end
 
   ### Project Layout

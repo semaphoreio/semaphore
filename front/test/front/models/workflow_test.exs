@@ -1,6 +1,8 @@
 defmodule Front.Models.WorkflowTest do
   use Front.TestCase
 
+  import Mock
+
   alias Front.Models.Workflow
   alias Support.FakeServices, as: FS
   alias Support.Stubs.DB
@@ -179,6 +181,25 @@ defmodule Front.Models.WorkflowTest do
       wf_with_hook_info = Workflow.preload_commit_data(workflow)
 
       assert wf_with_hook_info.hook.name == "ms/describing-preloading-commit-data"
+    end
+  end
+
+  describe ".list_keyset" do
+    test "returns client error when list_keyset fails" do
+      with_mock Front.Clients.Workflow, [:passthrough],
+        list_keyset: fn _ -> {:error, "Error when opening connection: :timeout"} end do
+        assert {:error, "Error when opening connection: :timeout"} = Workflow.list_keyset()
+      end
+    end
+  end
+
+  describe ".list_latest_workflows" do
+    test "returns client error when list_latest_workflows fails" do
+      with_mock Front.Clients.Workflow, [:passthrough],
+        list_latest_workflows: fn _ -> {:error, "Error when opening connection: :timeout"} end do
+        assert {:error, "Error when opening connection: :timeout"} =
+                 Workflow.list_latest_workflows()
+      end
     end
   end
 

@@ -567,6 +567,13 @@ defmodule FrontWeb.SchedulersController do
           |> put_flash(:alert, "Unable to start workflow, pipeline queue limit reached.")
           |> redirect(to: schedulers_path(conn, :form_just_run, project.name, scheduler_id))
 
+        {:error, {:grpc_req_failed, msg}} ->
+          Logger.error("Starting JustRun workflow failed: #{inspect({:grpc_req_failed, msg})}")
+
+          conn
+          |> put_flash(:alert, starting_workflow_failed_message(msg))
+          |> redirect(to: schedulers_path(conn, :form_just_run, project.name, scheduler_id))
+
         error ->
           Logger.error("Starting JustRun workflow failed: #{inspect(error)}")
 
@@ -576,6 +583,11 @@ defmodule FrontWeb.SchedulersController do
       end
     end)
   end
+
+  defp starting_workflow_failed_message(message) when is_binary(message) and message != "",
+    do: "Starting workflow failed: #{message}"
+
+  defp starting_workflow_failed_message(_message), do: "Starting workflow failed."
 
   defp render_just_run(conn, _params, scheduler, just_run_params) do
     project = conn.assigns.project
@@ -720,13 +732,72 @@ defmodule FrontWeb.SchedulersController do
 
   defp validate_run_now_parameter_values(errors, parameters) do
     validation_errors =
-      Enum.map(parameters.parameters, fn pv ->
-        if empty?(pv.value) and pv.required,
-          do: %{field: :parameters, name: pv.name, message: "This parameter is required"}
+      Enum.flat_map(parameters.parameters, fn pv ->
+        [
+          required_param_error(pv),
+          regex_param_error(pv)
+        ]
       end)
 
     validation_errors |> Enum.reject(&is_nil/1) |> Enum.concat(errors)
   end
+
+  defp required_param_error(pv) do
+    if empty?(pv.value) and pv.required,
+      do: %{field: :parameters, name: pv.name, message: "This parameter is required"}
+  end
+
+  defp regex_param_error(pv) do
+    pattern = Map.get(pv, :regex_pattern, "")
+
+    if Map.get(pv, :validate_input_format) == true and is_binary(pattern) and pattern != "" do
+      {value, source} = effective_value(pv)
+      if value != "", do: check_regex_match(pv, pattern, value, source)
+    end
+  end
+
+  defp effective_value(pv) do
+    default = Map.get(pv, :default_value)
+
+    cond do
+      is_binary(pv.value) and pv.value != "" -> {pv.value, :submitted}
+      is_binary(default) and default != "" -> {default, :default}
+      true -> {"", :empty}
+    end
+  end
+
+  defp check_regex_match(pv, pattern, value, source) do
+    case Util.SafeRegex.match(pattern, value) do
+      {:ok, true} ->
+        nil
+
+      {:ok, false} ->
+        regex_error(pv, mismatch_message(source))
+
+      {:error, :value_too_long} ->
+        Logger.warning("regex_param_error value_too_long parameter=#{inspect(pv.name)}")
+
+        regex_error(
+          pv,
+          "Value exceeds maximum length of #{Util.SafeRegex.max_value_length()} bytes"
+        )
+
+      {:error, reason} ->
+        Logger.warning(
+          "regex_param_error parameter=#{inspect(pv.name)} reason=#{inspect(reason)}"
+        )
+
+        regex_error(pv, mismatch_message(source))
+    end
+  end
+
+  defp regex_error(pv, message), do: %{field: :parameters, name: pv.name, message: message}
+
+  defp mismatch_message(:default),
+    do:
+      "Default value does not match required format. Provide an explicit value or fix the default."
+
+  defp mismatch_message(_source), do: "Value does not match required format"
 
   defp empty?(nil), do: true
   defp empty?(""), do: true
@@ -776,7 +847,9 @@ defmodule FrontWeb.SchedulersController do
       description: parameter["description"] || "",
       required: parameter["required"] == "on",
       default_value: parameter["default_value"] || "",
-      options: parse_form_input_parameter_options(parameter["options"])
+      options: parse_form_input_parameter_options(parameter["options"]),
+      validate_input_format: parameter["validate_input_format"] == "on",
+      regex_pattern: parameter["regex_pattern"] || ""
     }
   end
 

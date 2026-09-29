@@ -273,6 +273,10 @@ const config = {
                 label: 'CI/CD Learning Tool',
                 href: 'https://semaphore.io/cicd-learning-hub',
               },
+              {
+                label: 'Semaphore Trademark Guidelines',
+                href: 'https://semaphore.io/tos/trademarks',
+              },
             ],
           },
         ],

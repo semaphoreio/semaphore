@@ -30,6 +30,21 @@ defmodule RepositoryHub.Server.GitLab.CreateActionTest do
       assert repository.integration_type == :GITLAB
     end
 
+    test "should create a repository for subgroup namespace", %{gitlab_adapter: adapter} do
+      request =
+        InternalApiFactory.create_request(
+          integration_type: :GITLAB,
+          repository_url: "git@gitlab.com:testorg/testgroup/testrepo.git"
+        )
+
+      assert {:ok, %CreateResponse{repository: repository}} = CreateAction.execute(adapter, request)
+      assert repository.owner == "testorg/testgroup"
+      assert repository.name == "testrepo"
+      assert repository.url == "git@gitlab.com:testorg/testgroup/testrepo.git"
+      assert repository.provider == "gitlab"
+      assert repository.integration_type == :GITLAB
+    end
+
     test "should validate a request", %{gitlab_adapter: adapter} do
       assertions = [
         {false, []},
@@ -40,7 +55,8 @@ defmodule RepositoryHub.Server.GitLab.CreateActionTest do
         {false, integration_type: -1},
         {true, integration_type: :GITLAB, repository_url: "git@gitlab.com:dummy/repository.git"},
         {false, repository_url: ""},
-        {true, integration_type: :GITLAB, repository_url: "https://gitlab.com/foo/bar"}
+        {true, integration_type: :GITLAB, repository_url: "https://gitlab.com/foo/bar"},
+        {true, integration_type: :GITLAB, repository_url: "https://gitlab.com/foo/bar/baz"}
       ]
 
       for {true, params} <- assertions do

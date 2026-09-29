@@ -31,7 +31,8 @@ defmodule RepositoryHub.UserClient do
         user_id: user_id
       }
 
-      UserService.Stub.describe(connection, request, opts)
+      try do: UserService.Stub.describe(connection, request, opts),
+          after: GRPC.Stub.disconnect(connection)
     end)
     |> unwrap_error(fn
       %{message: message} -> error(message)

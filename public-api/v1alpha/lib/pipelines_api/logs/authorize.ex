@@ -5,23 +5,24 @@ defmodule PipelinesAPI.Logs.Authorize do
 
   use Plug.Builder
 
+  alias PipelinesAPI.Logs.Params, as: LogsParams
   alias PipelinesAPI.RBACClient
   alias LogTee, as: LT
   alias Plug.Conn
 
   def authorize_job(conn, _opts) do
     job = conn.params.job
-    authorize(job.project_id, "project.view", conn)
+    authorize(job.project_id, required_permissions(conn.params, job), conn)
   end
 
-  defp authorize(project_id, permission, conn) do
+  defp authorize(project_id, required_permissions, conn) do
     user_id = Conn.get_req_header(conn, "x-semaphore-user-id") |> Enum.at(0, "")
     org_id = Conn.get_req_header(conn, "x-semaphore-org-id") |> Enum.at(0, "")
 
     with params <- %{user_id: user_id, org_id: org_id, project_id: project_id},
          :ok <- PipelinesAPI.Util.Auth.project_belongs_to_org(org_id, project_id),
          {:ok, permissions} <- RBACClient.list_user_permissions(params) do
-      authorize_or_halt(permissions, permission, conn)
+      authorize_or_halt(permissions, required_permissions, conn)
     else
       {:error, {:internal, _}} = error ->
         LT.error(error, "Logs.Authorize")
@@ -33,15 +34,25 @@ defmodule PipelinesAPI.Logs.Authorize do
     end
   end
 
-  defp authorize_or_halt(permissions, permission, conn) do
-    if Enum.member?(permissions, permission) do
+  defp authorize_or_halt(permissions, required_permissions, conn) do
+    if Enum.all?(required_permissions, &Enum.member?(permissions, &1)) do
       conn
     else
-      conn |> authorization_failed(:unathorized, "Permission denied")
+      conn |> authorization_failed(:unauthorized, "Permission denied")
     end
   end
 
-  defp authorization_failed(conn, :unathorized, msg), do: conn |> resp(401, msg) |> halt
+  defp required_permissions(params, job) do
+    base_permissions = ["project.view"]
+
+    if LogsParams.artifact_job_logs_requested_for_job?(params, job) do
+      base_permissions ++ ["project.artifacts.view"]
+    else
+      base_permissions
+    end
+  end
+
+  defp authorization_failed(conn, :unauthorized, msg), do: conn |> resp(401, msg) |> halt
   defp authorization_failed(conn, :internal), do: conn |> resp(500, "Internal error") |> halt
   defp authorization_failed(conn, :user), do: conn |> resp(404, "Not found") |> halt
 end

@@ -50,6 +50,45 @@ defmodule RepositoryHub.GitlabClientTest do
       end
     end
 
+    test "find_repository with subgroup path" do
+      with_mock(HTTPoison, [],
+        get: fn url, _headers, _opts ->
+          assert url == "https://gitlab.com/api/v4/projects/testorg%2Ftestgroup%2Ftestrepo"
+
+          response = %HTTPoison.Response{
+            status_code: 200,
+            body:
+              Jason.encode!(%{
+                "permissions" => %{
+                  "project_access" => %{"access_level" => 50}
+                },
+                "visibility" => "private",
+                "description" => "Subgroup repo",
+                "created_at" => "2024-01-28T10:00:00Z",
+                "ssh_url_to_repo" => "git@gitlab.com:testorg/testgroup/testrepo.git",
+                "path" => "testrepo",
+                "path_with_namespace" => "testorg/testgroup/testrepo",
+                "default_branch" => "main",
+                "id" => 321
+              }),
+            headers: []
+          }
+
+          {:ok, response}
+        end
+      ) do
+        params = %{
+          repo_owner: "testorg/testgroup",
+          repo_name: "testrepo"
+        }
+
+        assert {:ok, result} = GitlabClient.find_repository(params, token: "token")
+        assert result.id == "321"
+        assert result.full_name == "testorg/testgroup/testrepo"
+        assert result.url == "git@gitlab.com:testorg/testgroup/testrepo.git"
+      end
+    end
+
     test "create_build_status" do
       with_mock(HTTPoison, [],
         post: fn _url, _body, _headers, _opts ->
@@ -73,6 +112,31 @@ defmodule RepositoryHub.GitlabClientTest do
         }
 
         assert {:ok, _result} = GitlabClient.create_build_status(params, token: "token")
+      end
+    end
+
+    test "create_build_status maps a 5xx to unavailable" do
+      with_mock(HTTPoison, [],
+        post: fn _url, _body, _headers, _opts ->
+          {:ok, %HTTPoison.Response{status_code: 502, body: "", headers: []}}
+        end
+      ) do
+        params = %{
+          repo_owner: "owner",
+          repo_name: "repo",
+          commit_sha: "abc123",
+          state: "success",
+          url: "https://example.com",
+          description: "Build successful",
+          context: "ci/semaphore"
+        }
+
+        unavailable = GRPC.Status.unavailable()
+
+        assert {:error, %{status: ^unavailable, message: message}} =
+                 GitlabClient.create_build_status(params, token: "token")
+
+        assert message =~ "GitLab is unavailable"
       end
     end
 

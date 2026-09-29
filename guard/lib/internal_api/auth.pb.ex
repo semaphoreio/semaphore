@@ -34,16 +34,27 @@ defmodule InternalApi.Auth.AuthenticateResponse do
           user_id: String.t(),
           id_provider: integer,
           ip_address: String.t(),
-          user_agent: String.t()
+          user_agent: String.t(),
+          error_reason: String.t()
         }
 
-  defstruct [:authenticated, :name, :user_id, :id_provider, :ip_address, :user_agent]
+  defstruct [
+    :authenticated,
+    :name,
+    :user_id,
+    :id_provider,
+    :ip_address,
+    :user_agent,
+    :error_reason
+  ]
+
   field(:authenticated, 1, type: :bool)
   field(:name, 3, type: :string)
   field(:user_id, 4, type: :string)
   field(:id_provider, 5, type: InternalApi.Auth.IdProvider, enum: true)
   field(:ip_address, 6, type: :string)
   field(:user_agent, 7, type: :string)
+  field(:error_reason, 8, type: :string)
 end
 
 defmodule InternalApi.Auth.IdProvider do

@@ -7,7 +7,7 @@ APP_NAME=auth
 INTERNAL_API_BRANCH?=master
 TMP_REPO_DIR?=/tmp/internal_api
 RELATIVE_INTERNAL_PB_OUTPUT_DIR=lib/internal_api
-RT_PROTOC_IMG_VSN=1.12.1-3.17.3-0.7.1
+RT_PROTOC_IMG_VSN=1.16.2-otp-26-3.20.1-0.12.0
 
 #
 # Environment variables

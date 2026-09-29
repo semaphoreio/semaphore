@@ -10,6 +10,7 @@ defmodule Rbac.Okta.Integration do
   alias Rbac.Repo
   alias Rbac.Okta.Saml.Certificate
 
+  alias Rbac.Okta.SessionExpiration
   #
   # Integration storage
   #
@@ -21,56 +22,193 @@ defmodule Rbac.Okta.Integration do
         saml_issuer,
         certificate,
         jit_provisioning_enabled,
-        idempotency_token \\ Ecto.UUID.generate()
+        idempotency_token \\ Ecto.UUID.generate(),
+        session_expiration_minutes \\ nil
       ) do
-    Ecto.Multi.new()
-    |> Ecto.Multi.run(:fingerprint, fn _repo, _changes ->
-      Certificate.fingerprint(certificate)
-    end)
-    |> Ecto.Multi.run(:integration, fn _repo, %{fingerprint: fingerprint} ->
-      Rbac.Repo.OktaIntegration.insert_or_update(
-        org_id: org_id,
-        creator_id: creator_id,
+    existing = fetch_existing(org_id)
+
+    resolved =
+      resolve_inputs(existing, %{
         sso_url: sso_url,
         saml_issuer: saml_issuer,
-        saml_certificate_fingerprint: Base.encode64(fingerprint),
+        certificate: certificate,
         jit_provisioning_enabled: jit_provisioning_enabled,
-        idempotency_token: idempotency_token
-      )
+        session_expiration_minutes: session_expiration_minutes
+      })
+
+    case resolve_fingerprint(existing, resolved.certificate, org_id) do
+      {:ok, fingerprint_base64} ->
+        reset_scim_token =
+          should_reset_scim_token?(
+            existing,
+            resolved.sso_url,
+            resolved.saml_issuer,
+            fingerprint_base64,
+            resolved.jit_provisioning_enabled,
+            resolved.certificate
+          )
+
+        org_id
+        |> persist_integration(
+          integration_attrs(
+            org_id,
+            creator_id,
+            resolved,
+            fingerprint_base64,
+            idempotency_token
+          ),
+          reset_scim_token
+        )
+        |> handle_create_or_update_result(org_id)
+
+      {:error, reason} ->
+        Logger.error("Failed to resolve certificate for org #{org_id}: #{inspect(reason)}.")
+        {:error, :cert_decode_error}
+    end
+  end
+
+  defp fetch_existing(org_id) do
+    case Rbac.Repo.OktaIntegration.fetch_for_org(org_id) do
+      {:ok, integration} -> integration
+      _ -> nil
+    end
+  end
+
+  defp resolve_inputs(existing, inputs) do
+    sso_url = resolve_existing_value(existing, inputs.sso_url, :sso_url)
+    saml_issuer = resolve_existing_value(existing, inputs.saml_issuer, :saml_issuer)
+
+    credentials_present? =
+      present?(inputs.sso_url) or present?(inputs.saml_issuer) or present?(inputs.certificate)
+
+    jit_provisioning_enabled =
+      resolve_jit_provisioning(existing, inputs.jit_provisioning_enabled, credentials_present?)
+
+    session_expiration_minutes =
+      resolve_session_expiration(existing, inputs.session_expiration_minutes, inputs.certificate)
+
+    %{
+      sso_url: sso_url,
+      saml_issuer: saml_issuer,
+      certificate: inputs.certificate,
+      jit_provisioning_enabled: jit_provisioning_enabled,
+      session_expiration_minutes: session_expiration_minutes
+    }
+  end
+
+  defp resolve_existing_value(nil, value, _field), do: value
+
+  defp resolve_existing_value(existing, value, field) do
+    if present?(value), do: value, else: Map.get(existing, field)
+  end
+
+  defp resolve_jit_provisioning(nil, value, _credentials_present?), do: value
+
+  defp resolve_jit_provisioning(existing, nil, _credentials_present?),
+    do: existing.jit_provisioning_enabled
+
+  defp resolve_jit_provisioning(existing, _value, false),
+    do: existing.jit_provisioning_enabled
+
+  defp resolve_jit_provisioning(_existing, value, true), do: value
+
+  defp resolve_session_expiration(existing, session_expiration_minutes, certificate) do
+    cond do
+      existing && present?(certificate) ->
+        existing.session_expiration_minutes
+
+      is_integer(session_expiration_minutes) and session_expiration_minutes > 0 ->
+        session_expiration_minutes
+
+      existing ->
+        existing.session_expiration_minutes
+
+      true ->
+        SessionExpiration.default_minutes()
+    end
+  end
+
+  defp integration_attrs(org_id, creator_id, resolved, fingerprint_base64, idempotency_token) do
+    [
+      org_id: org_id,
+      creator_id: creator_id,
+      sso_url: resolved.sso_url,
+      saml_issuer: resolved.saml_issuer,
+      saml_certificate_fingerprint: fingerprint_base64,
+      jit_provisioning_enabled: resolved.jit_provisioning_enabled,
+      session_expiration_minutes: resolved.session_expiration_minutes,
+      idempotency_token: idempotency_token
+    ]
+  end
+
+  defp persist_integration(org_id, attrs, reset_scim_token) do
+    Ecto.Multi.new()
+    |> Ecto.Multi.run(:integration, fn _repo, _changes ->
+      Rbac.Repo.OktaIntegration.insert_or_update(attrs, reset_scim_token: reset_scim_token)
     end)
     |> Ecto.Multi.run(:allowed_id_providers, fn _repo, _changes ->
       add_okta_to_allowed_id_providers(org_id)
     end)
     |> Rbac.Repo.transaction()
-    |> case do
-      {:ok, %{integration: integration}} ->
-        {:ok, integration}
+  end
 
-      {:error, :fingerprint, reason, _changes} ->
-        Logger.error("Failed to decode certificate for org #{org_id}: #{inspect(reason)}.")
-        {:error, :cert_decode_error}
+  defp handle_create_or_update_result({:ok, %{integration: integration}}, _org_id),
+    do: {:ok, integration}
 
-      {:error, :integration, reason, _changes} ->
-        Logger.error(
-          "Failed to create/update Okta integration for org #{org_id}: #{inspect(reason)}"
-        )
+  defp handle_create_or_update_result({:error, :integration, reason, _changes}, org_id) do
+    Logger.error("Failed to create/update Okta integration for org #{org_id}: #{inspect(reason)}")
+    {:error, {:integration_failed, reason}}
+  end
 
-        {:error, {:integration_failed, reason}}
+  defp handle_create_or_update_result({:error, :allowed_id_providers, reason, _changes}, org_id) do
+    Logger.error(
+      "Failed to add Okta to allowed ID providers for org #{org_id}: #{inspect(reason)}"
+    )
 
-      {:error, :allowed_id_providers, reason, _changes} ->
-        Logger.error(
-          "Failed to add Okta to allowed ID providers for org #{org_id}: #{inspect(reason)}"
-        )
+    {:error, {:allowed_id_providers_failed, reason}}
+  end
 
-        {:error, {:allowed_id_providers_failed, reason}}
+  defp handle_create_or_update_result({:error, operation, reason, _changes}, org_id) do
+    Logger.error(
+      "Unknown operation #{inspect(operation)} failed for org #{org_id}: #{inspect(reason)}"
+    )
 
-      {:error, operation, reason, _changes} ->
-        Logger.error(
-          "Unknown operation #{inspect(operation)} failed for org #{org_id}: #{inspect(reason)}"
-        )
+    {:error, reason}
+  end
 
-        {:error, reason}
+  defp resolve_fingerprint(nil, certificate, _org_id) when certificate in [nil, ""] do
+    {:error, :missing_certificate}
+  end
+
+  defp resolve_fingerprint(existing, certificate, _org_id) when certificate in [nil, ""] do
+    {:ok, existing.saml_certificate_fingerprint}
+  end
+
+  defp resolve_fingerprint(_existing, certificate, _org_id) do
+    with {:ok, fingerprint} <- Certificate.fingerprint(certificate) do
+      {:ok, Base.encode64(fingerprint)}
     end
+  end
+
+  defp present?(value), do: value not in [nil, ""]
+
+  defp should_reset_scim_token?(nil, _sso_url, _saml_issuer, _fingerprint, _jit, _certificate),
+    do: true
+
+  defp should_reset_scim_token?(
+         existing,
+         sso_url,
+         saml_issuer,
+         fingerprint_base64,
+         jit_provisioning_enabled,
+         certificate
+       ) do
+    certificate_changed? = present?(certificate)
+
+    sso_url != existing.sso_url or saml_issuer != existing.saml_issuer or
+      fingerprint_base64 != existing.saml_certificate_fingerprint or
+      jit_provisioning_enabled != existing.jit_provisioning_enabled or
+      certificate_changed?
   end
 
   defp update_id_providers(org_id, operation, action) do

@@ -68,7 +68,7 @@ defmodule FrontWeb.ServiceAccountController do
     description = params["description"] || ""
     role_id = params["role_id"] || ""
 
-    Models.ServiceAccount.update(service_account_id, name, description, user_id, role_id)
+    Models.ServiceAccount.update(service_account_id, org_id, name, description, user_id, role_id)
     |> case do
       {:ok, service_account} ->
         conn
@@ -93,7 +93,7 @@ defmodule FrontWeb.ServiceAccountController do
     org_id = conn.assigns.organization_id
     user_id = conn.assigns.user_id
 
-    Models.ServiceAccount.delete(service_account_id)
+    Models.ServiceAccount.delete(service_account_id, org_id)
     |> case do
       {:ok, service_account} ->
         conn
@@ -118,7 +118,7 @@ defmodule FrontWeb.ServiceAccountController do
     org_id = conn.assigns.organization_id
     user_id = conn.assigns.user_id
 
-    Models.ServiceAccount.regenerate_token(service_account_id)
+    Models.ServiceAccount.regenerate_token(service_account_id, org_id)
     |> case do
       {:ok, {service_account, api_token}} ->
         conn

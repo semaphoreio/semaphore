@@ -1,4 +1,6 @@
 require_relative "system"
+require "cgi"
+require "time"
 
 class Policy
   def initialize(args)
@@ -44,6 +46,11 @@ class Policy
     false
   end
 
+  # Policies that emit their own JUnit report should override this.
+  def produces_junit?
+    false
+  end
+
   def install_dependencies
     for dependency in dependencies do
         dependency_name = dependency[:name]
@@ -60,12 +67,23 @@ class Policy
   end
 
   def self.run_all(args, policies)
+    output_dir = args[:output_dir] || "out"
+    System.prepare_directory(output_dir)
+    fallback_junit_path = File.join(output_dir, "test-reports.xml")
+    File.delete(fallback_junit_path) if File.exist?(fallback_junit_path)
+
     success = true
+    fallback_failures = []
+
     policies.each do |policy|
       begin
         instance = policy.new(args)
       rescue RuntimeError => e
         puts "Error constructing #{policy.name}: #{e}"
+        write_fallback_junit_report(
+          fallback_junit_path,
+          [{ name: policy.name, reason: "Error constructing policy: #{e}" }]
+        )
         exit 1
       end
 
@@ -77,13 +95,41 @@ class Policy
       else
         puts "\e[31mFAIL --- #{policy.name}\e[0m"
         puts instance.reason
+        if !instance.produces_junit?
+          fallback_failures << { name: policy.name, reason: instance.reason.to_s }
+        end
         success = false
       end
+    end
+
+    if fallback_failures.any?
+      write_fallback_junit_report(fallback_junit_path, fallback_failures)
     end
 
     # If any of the policies failed, the exit code should be non-zero
     if !success
       exit 1
     end
+  end
+
+  def self.write_fallback_junit_report(path, failures)
+    timestamp = Time.now.utc.iso8601
+    xml = []
+    xml << %(<?xml version="1.0" encoding="UTF-8"?>)
+    xml << %(<testsuites>)
+    xml << %(<testsuite name="Security Toolbox Policy Failures" tests="#{failures.length}" failures="#{failures.length}" errors="0" skipped="0" timestamp="#{timestamp}">)
+
+    failures.each do |failure|
+      testcase_name = CGI.escapeHTML(failure[:name].to_s)
+      message = CGI.escapeHTML(failure[:reason].to_s)
+      xml << %(<testcase classname="security-toolbox.code" name="#{testcase_name}">)
+      xml << %(<failure message="Policy failed">#{message}</failure>)
+      xml << %(</testcase>)
+    end
+
+    xml << %(</testsuite>)
+    xml << %(</testsuites>)
+
+    File.write(path, xml.join("\n"))
   end
 end

@@ -11,14 +11,20 @@ defmodule Projecthub.Models.Scheduler do
         page_size: 500
       )
 
-    {:ok, res} = InternalApi.PeriodicScheduler.PeriodicService.Stub.list(channel(), req, options(metadata))
+    case InternalApi.PeriodicScheduler.PeriodicService.Stub.list(channel(), req, options(metadata)) do
+      {:ok, res} ->
+        if res.status.code == status_ok() do
+          {:ok, construct_list(res.periodics)}
+        else
+          Logger.error("Failed to list schedulers for project #{project.id} with status: #{inspect(res.status)}")
 
-    if res.status.code == status_ok() do
-      {:ok, construct_list(res.periodics)}
-    else
-      Logger.error("Failed to list schedulers for project #{project.id} with status: #{inspect(res.status)}")
+          {:error, res.status.message}
+        end
 
-      {:error, res.status.message}
+      {:error, reason} ->
+        Logger.error("Failed to list schedulers for project #{project.id}: #{inspect(reason)}")
+
+        {:error, reason}
     end
   end
 
@@ -35,39 +41,6 @@ defmodule Projecthub.Models.Scheduler do
       {:ok, nil}
     else
       Logger.error("Failed to delete scheduler #{scheduler.id} with status: #{inspect(res.status)}")
-
-      {:error, res.status.message}
-    end
-  end
-
-  def apply(scheduler, project, requester_id, metadata \\ nil) do
-    Logger.info("Creating/updating scheduler #{scheduler.name} for project #{project.id}")
-
-    req =
-      InternalApi.PeriodicScheduler.PersistRequest.new(
-        id: scheduler.id,
-        name: scheduler.name,
-        description: "",
-        recurring: true,
-        state: :UNCHANGED,
-        organization_id: project.organization_id,
-        project_name: project.name,
-        requester_id: requester_id,
-        reference: format_branch_as_reference(scheduler.branch),
-        pipeline_file: scheduler.pipeline_file,
-        at: scheduler.at,
-        parameters: [],
-        project_id: project.id
-      )
-
-    {:ok, res} = InternalApi.PeriodicScheduler.PeriodicService.Stub.persist(channel(), req, options(metadata))
-
-    if res.status.code == status_ok() do
-      {:ok, nil}
-    else
-      Logger.error(
-        "Failed to create/update scheduler #{scheduler.name} for project #{project.id}, with status: #{inspect(res.status)}"
-      )
 
       {:error, res.status.message}
     end
@@ -141,16 +114,4 @@ defmodule Projecthub.Models.Scheduler do
   end
 
   defp extract_branch_name(_), do: ""
-
-  # Helper function to format branch name as Git reference
-  # "main" -> "refs/heads/main"
-  # "refs/tags/v1.0" -> "refs/tags/v1.0" (default to branch format)
-  defp format_branch_as_reference("refs/tags/" <> _ = tag), do: tag
-  defp format_branch_as_reference("refs/pull/" <> _ = pr), do: pr
-
-  defp format_branch_as_reference(branch_name) when is_binary(branch_name) do
-    "refs/heads/#{branch_name}"
-  end
-
-  defp format_branch_as_reference(_), do: "refs/heads/main"
 end

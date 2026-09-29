@@ -10,6 +10,7 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/sirupsen/logrus"
 
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/audit"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/authz"
 	workflowpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber_w_f.workflow"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
@@ -109,6 +110,29 @@ The authentication layer must inject the X-Semaphore-User-ID header so we can au
 
 		if err := authz.CheckProjectPermission(ctx, api, userID, orgID, projectID, projectRunPermission); err != nil {
 			return shared.ProjectAuthorizationError(err, orgID, projectID, projectRunPermission), nil
+		}
+
+		auditEnabled := false
+		if enabled, featureErr := shared.AuditLogsFeatureEnabled(ctx, api, orgID); featureErr != nil {
+			logging.ForComponent("audit").
+				WithError(featureErr).
+				WithField("organization_id", orgID).
+				WithField("tool", rerunToolName).
+				Warn("audit_logs feature check failed; proceeding with AMQP publish disabled")
+		} else {
+			auditEnabled = enabled
+		}
+
+		if err := audit.LogWorkflowRebuild(ctx, req.Header, audit.WorkflowRebuildParams{
+			UserID:       userID,
+			OrgID:        orgID,
+			WorkflowID:   workflowID,
+			ProjectID:    projectID,
+			BranchName:   strings.TrimSpace(workflow.GetBranchName()),
+			CommitSHA:    strings.TrimSpace(workflow.GetCommitSha()),
+			AuditEnabled: auditEnabled,
+		}); err != nil {
+			return mcp.NewToolResultError("Audit logging failed for workflow rerun. Please try again."), nil
 		}
 
 		rescheduleCtx, cancelReschedule := context.WithTimeout(ctx, api.CallTimeout())

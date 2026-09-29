@@ -32,12 +32,20 @@ defmodule Guard.GrpcServers.AuthServer do
 
     observe("grpc.authentication.authenticate_with_cookie", fn ->
       case find_user_by_cookie(cookie) do
-        {:ok, {user, id_provider, ip_address, user_agent}} ->
+        {:ok, {user, id_provider, ip_address, user_agent, expires_at}} ->
           Logger.debug(
             "[AuthServer] authenticate_with_cookie user_id=#{user.id} provider=#{id_provider} ip=#{ip_address}"
           )
 
-          respond_with_user(user, id_provider, ip_address, user_agent)
+          if session_expired?(id_provider, expires_at) do
+            Logger.info(
+              "[AuthServer] authenticate_with_cookie session_expired user_id=#{user.id} provider=#{id_provider}"
+            )
+
+            respond_false_with_reason(expired_reason(id_provider))
+          else
+            respond_with_user(user, id_provider, ip_address, user_agent)
+          end
 
         {:error, :user, :not_found} ->
           Logger.debug("[AuthServer] authenticate_with_cookie not found hash=#{cookie_hash}")
@@ -48,6 +56,9 @@ defmodule Guard.GrpcServers.AuthServer do
 
   defp respond_false,
     do: Auth.AuthenticateResponse.new(authenticated: false)
+
+  defp respond_false_with_reason(reason),
+    do: Auth.AuthenticateResponse.new(authenticated: false, error_reason: reason)
 
   defp respond_with_user(user, id_provider, ip_address, user_agent) do
     Guard.FrontRepo.User.record_visit(user.id)
@@ -99,7 +110,9 @@ defmodule Guard.GrpcServers.AuthServer do
             "[AuthServer] find_user_by_cookie resolved user_id=#{user.id} provider=#{id_provider}"
           )
 
-          {:ok, {user, id_provider, extras.ip_address, extras.user_agent}}
+          {:ok,
+           {user, id_provider, Map.get(extras, :ip_address, ""), Map.get(extras, :user_agent, ""),
+            Map.get(extras, :expires_at)}}
         else
           {:error, :user_not_found} ->
             Logger.debug(
@@ -183,6 +196,27 @@ defmodule Guard.GrpcServers.AuthServer do
     Logger.debug("[AuthServer] process_session no session_id, skipping")
     {:ok, user_data, extras}
   end
+
+  defp session_expired?("OKTA", nil), do: true
+  defp session_expired?(_, nil), do: false
+
+  defp session_expired?(_, %DateTime{} = expires_at) do
+    DateTime.compare(expires_at, DateTime.utc_now()) == :lt
+  end
+
+  defp session_expired?(id_provider, expires_at) when is_binary(expires_at) do
+    case Integer.parse(expires_at) do
+      {value, _} -> session_expired?(id_provider, value)
+      :error -> false
+    end
+  end
+
+  defp session_expired?(_, expires_at) when is_integer(expires_at) do
+    DateTime.to_unix(DateTime.utc_now()) >= expires_at
+  end
+
+  defp expired_reason("OKTA"), do: "SESSION_EXPIRED_OKTA"
+  defp expired_reason(_), do: "SESSION_EXPIRED"
 
   defp refresh_session(session) do
     Logger.debug("[AuthServer] refresh_session id=#{session.id} user_id=#{session.user_id}")

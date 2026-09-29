@@ -90,10 +90,11 @@ defmodule Guard.Session do
         id_provider = Map.get(values, "id_provider", "")
         ip_address = Map.get(values, "ip_address", "")
         user_agent = Map.get(values, "user_agent", "")
+        expires_at = Map.get(values, "expires_at")
 
         {:ok,
          {id_provider, %{id: user_id, salt: user_salt}, %{},
-          %{ip_address: ip_address, user_agent: user_agent}}}
+          %{ip_address: ip_address, user_agent: user_agent, expires_at: expires_at}}}
 
       true ->
         Logger.error("Inalid session cookie values: #{inspect(values)}")

@@ -38,7 +38,11 @@ defmodule Front.Clients.Billing do
     Billing.SetupOrganizationRequest,
     Billing.SetupOrganizationResponse,
     Billing.UpgradePlanRequest,
-    Billing.UpgradePlanResponse
+    Billing.UpgradePlanResponse,
+    Billing.ListAddonsRequest,
+    Billing.ListAddonsResponse,
+    Billing.UpdateAddonRequest,
+    Billing.UpdateAddonResponse
   }
 
   alias Util.Proto
@@ -206,6 +210,22 @@ defmodule Front.Clients.Billing do
       |> decorate(AcknowledgeTrialEndRequest)
       |> grpc_call(:acknowledge_trial_end, Keyword.merge(opts, use_cache?: false))
 
+  @spec list_addons(rpc_request(ListAddonsRequest.t()), Keyword.t()) ::
+          rpc_response(ListAddonsResponse.t())
+  def list_addons(request, opts \\ []),
+    do:
+      request
+      |> decorate(ListAddonsRequest)
+      |> grpc_call(:list_addons, opts)
+
+  @spec update_addon(rpc_request(UpdateAddonRequest.t()), Keyword.t()) ::
+          rpc_response(UpdateAddonResponse.t())
+  def update_addon(request, opts \\ []),
+    do:
+      request
+      |> decorate(UpdateAddonRequest)
+      |> grpc_call(:update_addon, Keyword.merge(opts, use_cache?: false))
+
   def invalidate_cache(operation, params) do
     operation
     |> case do
@@ -230,6 +250,12 @@ defmodule Front.Clients.Billing do
       :credits_usage ->
         params
         |> decorate(CreditsUsageRequest)
+        |> then(&cache_key(operation, &1))
+        |> Front.Cache.unset()
+
+      :list_addons ->
+        params
+        |> decorate(ListAddonsRequest)
         |> then(&cache_key(operation, &1))
         |> Front.Cache.unset()
 

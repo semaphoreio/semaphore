@@ -9,17 +9,22 @@ fail_fast:
     when: "true"
   cancel:
     when: "true"
+# A and B keep a command AFTER the sleep on purpose: the local task referent only honours a
+# stop BETWEEN commands, so the trailing command is where the fast_failing stop takes effect
+# and the job is recorded STOPPED (mirroring a real agent killing a still-running job). Without
+# it the jobs would run to completion and pass - which is the correct result for completed work,
+# but then this fixture would no longer exercise the "running block gets stopped" path.
 blocks:
   - name: A
     dependencies: []
     task:
       jobs:
-        - commands: [echo A, sleep 5]
+        - commands: [echo A, sleep 5, echo A done]
   - name: B
     dependencies: []
     task:
       jobs:
-        - commands: [echo B, sleep 5]
+        - commands: [echo B, sleep 5, echo B done]
   - name: C
     dependencies: []
     task:

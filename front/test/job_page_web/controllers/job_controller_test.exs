@@ -86,6 +86,25 @@ defmodule JobPageWeb.JobControllerTest do
       ]) do
         conn = auth_get(conn, "/jobs/#{ids().job}")
         assert conn.assigns.artifact_logs_url != nil
+        assert conn.assigns.artifact_logs_compressed == false
+      end
+    end
+
+    test "compressed artifacts logs are assigned", %{conn: conn} do
+      with_mocks([
+        {Front.Models.Project, [:passthrough], []}
+      ]) do
+        job = DB.find(:jobs, ids().job)
+
+        Support.Stubs.Task.add_job_artifact(job,
+          path: "agent/job_logs.txt.gz",
+          url: "http://example.com/agent/job_logs.txt.gz"
+        )
+
+        conn = auth_get(conn, "/jobs/#{ids().job}")
+
+        assert conn.assigns.artifact_logs_url != nil
+        assert conn.assigns.artifact_logs_compressed == true
       end
     end
   end

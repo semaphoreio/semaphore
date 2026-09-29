@@ -5,12 +5,23 @@ defmodule GithubNotifier.Services.PipelineSummaryAvailableNotifier do
 
   alias InternalApi.Velocity.PipelineSummaryAvailableEvent
 
+  # ~15 min of redelivery before dead-lettering — rides out provider outages
+  # and busy delivery-guard leases instead of dropping the status.
+  @retry_delay 30
+  @retry_limit 30
+
   use Tackle.Consumer,
     url: Application.get_env(:github_notifier, :amqp_url),
     exchange: "velocity_pipeline_summary_exchange",
     routing_key: "done",
     service: "github_notifier.pipeline_summary_notifier",
-    connection_id: :pipeline_summary_notifier
+    connection_id: :pipeline_summary_notifier,
+    dead_letter_queue: Application.get_env(:github_notifier, :tackle_dead_letter_queue, true),
+    retry_delay: @retry_delay,
+    retry_limit: @retry_limit
+
+  @doc false
+  def retry_config, do: %{retry_delay: @retry_delay, retry_limit: @retry_limit}
 
   def handle_message(message) do
     Watchman.benchmark("pipeline_summary_notifier.duration", fn ->

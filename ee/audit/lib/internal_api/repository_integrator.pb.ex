@@ -1,13 +1,17 @@
 defmodule InternalApi.RepositoryIntegrator.IntegrationType do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
-  @type t :: integer | :GITHUB_OAUTH_TOKEN | :GITHUB_APP | :BITBUCKET
+  @type t :: integer | :GITHUB_OAUTH_TOKEN | :GITHUB_APP | :BITBUCKET | :GITLAB | :GIT
 
   field(:GITHUB_OAUTH_TOKEN, 0)
 
   field(:GITHUB_APP, 1)
 
   field(:BITBUCKET, 2)
+
+  field(:GITLAB, 3)
+
+  field(:GIT, 4)
 end
 
 defmodule InternalApi.RepositoryIntegrator.IntegrationScope do
@@ -22,6 +26,22 @@ defmodule InternalApi.RepositoryIntegrator.IntegrationScope do
   field(:NO_CONNECTION, 2)
 end
 
+defmodule InternalApi.RepositoryIntegrator.RefreshRepositoriesResponse.SyncState do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+  @type t :: integer | :SYNC_STATE_UNSPECIFIED | :STARTED | :ALREADY_RUNNING | :DONE | :FAILED
+
+  field(:SYNC_STATE_UNSPECIFIED, 0)
+
+  field(:STARTED, 1)
+
+  field(:ALREADY_RUNNING, 2)
+
+  field(:DONE, 3)
+
+  field(:FAILED, 4)
+end
+
 defmodule InternalApi.RepositoryIntegrator.GetTokenRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3
@@ -30,15 +50,17 @@ defmodule InternalApi.RepositoryIntegrator.GetTokenRequest do
           user_id: String.t(),
           repository_slug: String.t(),
           integration_type: InternalApi.RepositoryIntegrator.IntegrationType.t(),
-          project_id: String.t()
+          project_id: String.t(),
+          repository_remote_id: String.t()
         }
 
-  defstruct [:user_id, :repository_slug, :integration_type, :project_id]
+  defstruct [:user_id, :repository_slug, :integration_type, :project_id, :repository_remote_id]
 
   field(:user_id, 1, type: :string)
   field(:repository_slug, 2, type: :string)
   field(:integration_type, 3, type: InternalApi.RepositoryIntegrator.IntegrationType, enum: true)
   field(:project_id, 4, type: :string)
+  field(:repository_remote_id, 5, type: :string)
 end
 
 defmodule InternalApi.RepositoryIntegrator.GetTokenResponse do
@@ -82,10 +104,7 @@ defmodule InternalApi.RepositoryIntegrator.CheckTokenResponse do
 
   field(:valid, 1, type: :bool)
 
-  field(:integration_scope, 2,
-    type: InternalApi.RepositoryIntegrator.IntegrationScope,
-    enum: true
-  )
+  field(:integration_scope, 2, type: InternalApi.RepositoryIntegrator.IntegrationScope, enum: true)
 end
 
 defmodule InternalApi.RepositoryIntegrator.PreheatFileCacheRequest do
@@ -165,6 +184,22 @@ defmodule InternalApi.RepositoryIntegrator.GithubInstallationInfoResponse do
   field(:installation_url, 3, type: :string)
 end
 
+defmodule InternalApi.RepositoryIntegrator.InitGithubInstallationRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+  @type t :: %__MODULE__{}
+
+  defstruct []
+end
+
+defmodule InternalApi.RepositoryIntegrator.InitGithubInstallationResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+  @type t :: %__MODULE__{}
+
+  defstruct []
+end
+
 defmodule InternalApi.RepositoryIntegrator.GetRepositoriesRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3
@@ -214,6 +249,44 @@ defmodule InternalApi.RepositoryIntegrator.Repository do
   field(:description, 5, type: :string)
 end
 
+defmodule InternalApi.RepositoryIntegrator.RefreshRepositoriesRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          user_id: String.t(),
+          integration_type: InternalApi.RepositoryIntegrator.IntegrationType.t(),
+          repository_slug: String.t(),
+          organization: String.t()
+        }
+
+  defstruct [:user_id, :integration_type, :repository_slug, :organization]
+
+  field(:user_id, 1, type: :string)
+  field(:integration_type, 2, type: InternalApi.RepositoryIntegrator.IntegrationType, enum: true)
+  field(:repository_slug, 3, type: :string)
+  field(:organization, 4, type: :string)
+end
+
+defmodule InternalApi.RepositoryIntegrator.RefreshRepositoriesResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          sync_state: InternalApi.RepositoryIntegrator.RefreshRepositoriesResponse.SyncState.t(),
+          message: String.t()
+        }
+
+  defstruct [:sync_state, :message]
+
+  field(:sync_state, 1,
+    type: InternalApi.RepositoryIntegrator.RefreshRepositoriesResponse.SyncState,
+    enum: true
+  )
+
+  field(:message, 2, type: :string)
+end
+
 defmodule InternalApi.RepositoryIntegrator.RepositoryIntegratorService.Service do
   @moduledoc false
   use GRPC.Service, name: "InternalApi.RepositoryIntegrator.RepositoryIntegratorService"
@@ -249,9 +322,21 @@ defmodule InternalApi.RepositoryIntegrator.RepositoryIntegratorService.Service d
   )
 
   rpc(
+    :InitGithubInstallation,
+    InternalApi.RepositoryIntegrator.InitGithubInstallationRequest,
+    InternalApi.RepositoryIntegrator.InitGithubInstallationResponse
+  )
+
+  rpc(
     :GetRepositories,
     InternalApi.RepositoryIntegrator.GetRepositoriesRequest,
     InternalApi.RepositoryIntegrator.GetRepositoriesResponse
+  )
+
+  rpc(
+    :RefreshRepositories,
+    InternalApi.RepositoryIntegrator.RefreshRepositoriesRequest,
+    InternalApi.RepositoryIntegrator.RefreshRepositoriesResponse
   )
 end
 

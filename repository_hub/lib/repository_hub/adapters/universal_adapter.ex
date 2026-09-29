@@ -25,7 +25,7 @@ defmodule RepositoryHub.UniversalAdapter do
     with {:ok, repository} <- Model.RepositoryQuery.get_by_id(repository_id),
          {:ok, project} <- ProjecthubClient.describe(repository.project_id),
          etag <- get_etag(stream),
-         {:ok, git_repository} <- Model.GitRepository.new(repository.url) do
+         {:ok, git_repository} <- Model.GitRepository.new(repository.url, repository.remote_id) do
       %{
         repository: repository,
         project: project,

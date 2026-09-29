@@ -11,7 +11,8 @@ defmodule InternalApi.Okta.OktaIntegration do
           idempotency_token: String.t(),
           saml_issuer: String.t(),
           sso_url: String.t(),
-          jit_provisioning_enabled: boolean
+          jit_provisioning_enabled: boolean,
+          session_expiration_minutes: integer
         }
   defstruct [
     :id,
@@ -22,7 +23,8 @@ defmodule InternalApi.Okta.OktaIntegration do
     :idempotency_token,
     :saml_issuer,
     :sso_url,
-    :jit_provisioning_enabled
+    :jit_provisioning_enabled,
+    :session_expiration_minutes
   ]
 
   field(:id, 1, type: :string)
@@ -34,6 +36,7 @@ defmodule InternalApi.Okta.OktaIntegration do
   field(:saml_issuer, 7, type: :string)
   field(:sso_url, 8, type: :string)
   field(:jit_provisioning_enabled, 9, type: :bool)
+  field(:session_expiration_minutes, 10, type: :int32)
 end
 
 defmodule InternalApi.Okta.SetUpRequest do
@@ -47,7 +50,8 @@ defmodule InternalApi.Okta.SetUpRequest do
           saml_certificate: String.t(),
           saml_issuer: String.t(),
           sso_url: String.t(),
-          jit_provisioning_enabled: boolean
+          jit_provisioning_enabled: boolean,
+          session_expiration_minutes: integer
         }
   defstruct [
     :idempotency_token,
@@ -56,7 +60,8 @@ defmodule InternalApi.Okta.SetUpRequest do
     :saml_certificate,
     :saml_issuer,
     :sso_url,
-    :jit_provisioning_enabled
+    :jit_provisioning_enabled,
+    :session_expiration_minutes
   ]
 
   field(:idempotency_token, 1, type: :string)
@@ -66,6 +71,7 @@ defmodule InternalApi.Okta.SetUpRequest do
   field(:saml_issuer, 5, type: :string)
   field(:sso_url, 6, type: :string)
   field(:jit_provisioning_enabled, 7, type: :bool)
+  field(:session_expiration_minutes, 8, type: :int32)
 end
 
 defmodule InternalApi.Okta.SetUpResponse do

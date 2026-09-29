@@ -59,7 +59,7 @@ export class Secrets {
 
   allSecretNames() {
     let allSecretsInOrg = _.cloneDeep(Secrets.validSecretNames())
-    let allSecretsOnBlock = this.secrets.map((s) => s.name())
+    let allSecretsOnBlock = this.secrets.map((s) => s.name()).filter(Boolean)
 
     let allSecrets = _.concat(allSecretsInOrg, allSecretsOnBlock).sort()
 

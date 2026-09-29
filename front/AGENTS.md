@@ -15,6 +15,25 @@
 - Keep `mix credo --strict`, `mix format`, and `npm run lint` clean before pushing.
 - Bundle production assets with `mix assets.deploy`.
 
+## CI Parity For Front Changes
+- Front CI in `.semaphore/semaphore.yml` is split into blocks: `Front: QA`, `Front: Deployment Preconditions`, and `Front: Security checks` (plus image provisioning blocks).
+- These blocks run Dockerized Make targets from `front/Makefile`; prefer these targets locally to avoid host tooling drift.
+- For UI/onboarding changes, run at minimum:
+  - `make test.ex TEST_FLAGS='--exclude browser:true --exclude comunity_edition:true'`
+  - `make test.js`
+  - `make lint.js`
+  - `make compile.ts`
+- If the change affects browser flow/layout/interactive behavior, also run:
+  - `make test.ex TEST_FILE='test/browser/**/*.exs test/browser/*.exs'`
+- For broader pre-merge parity with `Front: Deployment Preconditions`, run:
+  - `make coverage.js`
+  - `make deps.check`
+  - `make format.ex`
+  - `make lint.ex`
+- Notes:
+  - `make test.ex`, `make test.js`, `make lint.js`, and `make compile.ts` run inside Docker in this repo; this is the preferred path.
+  - `comunity_edition` spelling is intentional and matches the existing CI flag usage.
+
 ## Coding Style & Naming Conventions
 - Format Elixir with `mix format`; favor pipe-first flows and 2-space indentation.
 - Credo (`config/.credo.exs`) runs in strict mode—fix findings instead of disabling checks.

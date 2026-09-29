@@ -53,7 +53,7 @@ defmodule Ppl.PplsReviser do
     end
   end
   defp set_queue(ppl, _definition, ppl_args) do
-    with name               <- "#{ppl.label}-#{ppl.yml_file_path}",
+    with name               <- default_queue_name(ppl),
          {:ok, params}      <- form_queue_params(ppl_args, name, "project"),
          {:ok, queue}       <- QueuesQueries.get_or_insert_queue(params),
     do: {:ok, %{queue_id: queue.queue_id, in_parallel?: false}}
@@ -62,7 +62,7 @@ defmodule Ppl.PplsReviser do
   defp get_queue_details(queue_map, ppl, _ppl_args) when is_map(queue_map) do
     with name            <- Map.get(queue_map, "name", false),
          user_generated? <- name != false,
-         name            <- name || "#{ppl.label}-#{ppl.yml_file_path}",
+         name            <- name || default_queue_name(ppl),
          scope           <- Map.get(queue_map, "scope", "project"),
          processing      <- Map.get(queue_map, "processing", "serialized"),
          in_parallel?    <- processing == "parallel",
@@ -70,8 +70,8 @@ defmodule Ppl.PplsReviser do
   end
 
   defp get_queue_details(queue_list, ppl, ppl_args) when is_list(queue_list) do
-    default_queue_name = "#{ppl.label}-#{ppl.yml_file_path}"
-    default = {:ok, default_queue_name, "project", false, false}
+    default_name = default_queue_name(ppl)
+    default = {:ok, default_name, "project", false, false}
 
     ref_type = Map.get(ppl_args, "git_ref_type", "")
     {:ok, w_params} = when_params(ppl_args, ppl.label, ref_type)
@@ -87,6 +87,8 @@ defmodule Ppl.PplsReviser do
       end
     end)
   end
+
+  defp default_queue_name(ppl), do: "#{ppl.label}-#{ppl.yml_file_path}"
 
   defp form_queue_params(request_args, name, scope, user_generated \\ false) do
     %{

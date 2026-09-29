@@ -52,8 +52,23 @@
         });
       </script>
       <% end %>
+    <%= if assigns[:google_gtm_id] && assigns[:google_gtm_id] != "" do %>
+    <!-- Google Tag Manager -->
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','<%= assigns[:google_gtm_id] %>');</script>
+    <!-- End Google Tag Manager -->
+    <% end %>
    </head>
    <body class="page-template-default page page-id-19406 wp-embed-responsive no-sidebar">
+    <%= if assigns[:google_gtm_id] && assigns[:google_gtm_id] != "" do %>
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=<%= assigns[:google_gtm_id] %>"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
+    <% end %>
       <div id="page" class="site no-header-no-footer green   v8theme ">
          <div id="content" class="site-content">
             <main id="primary" class="site-main">

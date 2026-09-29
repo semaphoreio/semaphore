@@ -102,7 +102,7 @@ Agent names should have between 8 and 80 characters.
 
 [AWS Security Token Service](https://docs.aws.amazon.com/general/latest/gr/sts.html) provides a second layer of security that ensures only allowed agents can connect with Semaphore.
 
-To use this option, you must run your agent in AWS EC2 instances. The [Autoscaling AWS Stack](./self-hosted-aws) uses this feature by default.
+To use this option, you must run your agent in AWS EC2 instances. The [Autoscaling AWS Stack](./self-hosted-aws) supports this feature when [SEMAPHORE_AGENT_USE_PRE_SIGNED_URL](../reference/agent-aws-stack#use-pre-signed-url) configuration parameter is set to `true`.
 
 When AWS STS is enabled, the agent sends a name request to Semaphore during registration, which in turn validates the access with the AWS-secured endpoint. This mechanism thwarts attempts to register rogue agents even if the attacked has secured access to a valid registration token.
 

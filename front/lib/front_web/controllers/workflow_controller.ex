@@ -8,6 +8,7 @@ defmodule FrontWeb.WorkflowController do
 
   alias Front.Models.{
     AgentType,
+    AgentTypeSanitizer,
     Branch,
     Deployments,
     Organization,
@@ -446,22 +447,17 @@ defmodule FrontWeb.WorkflowController do
   end
 
   defp combine_agent_types(hosted_agent_types, self_hosted_agent_types) do
+    hosted_agent_types = AgentTypeSanitizer.sanitize_hosted_agent_types(hosted_agent_types)
+
     self_hosted =
       self_hosted_agent_types
       |> Enum.map(fn a ->
         %{type: a.name, platform: "SELF_HOSTED", specs: "", os_image: "", state: "ENABLED"}
       end)
 
-    combined = hosted_agent_types.agent_types ++ self_hosted
-
     %{
-      agent_types: combined,
-      # We want new pipelines constructed through the Workflow Editor to use ubuntu2004
-      # as the default OS image for Linux. However, to avoid breaking builds, Zebra still
-      # uses ubuntu1804 as the default one if you don't specify anything in your YAML.
-      # Once we deprecate the Ubuntu 18.04 image, we should be able to remove this hardcoded
-      # value from here and use hosted_agent_types.default_linux_os_image again.
-      default_linux_os_image: "ubuntu2004",
+      agent_types: hosted_agent_types.agent_types ++ self_hosted,
+      default_linux_os_image: hosted_agent_types.default_linux_os_image,
       default_mac_os_image: hosted_agent_types.default_mac_os_image
     }
   end

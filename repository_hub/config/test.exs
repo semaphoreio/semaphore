@@ -20,3 +20,4 @@ config :repository_hub, RepositoryHub.DeployKeyEncryptor, module: {RepositoryHub
 config :repository_hub, RepositoryHub.WebhookSecretEncryptor, module: {RepositoryHub.FakeEncryptor, []}
 
 config :repository_hub, RepositoryHub.RemoteIdSyncWorker, enabled: false
+config :repository_hub, RepositoryHub.BuildStatusGuardCleanupWorker, enabled: false

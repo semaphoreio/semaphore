@@ -310,6 +310,8 @@ defmodule Support.Stubs.Feature do
       {"max_projects_in_org", state: :ENABLED, quantity: 500},
       {"self_hosted_agents", state: :HIDDEN, quantity: 0},
       {"artifacts", state: :ENABLED, quantity: 1},
+      {"artifacts_api", state: :HIDDEN, quantity: 0},
+      {"artifacts_job_logs", state: :HIDDEN, quantity: 0},
       {"audit_logs", state: :HIDDEN, quantity: 0},
       {"audit_streaming", state: :HIDDEN, quantity: 0},
       {"badges", state: :ENABLED, quantity: 1},
@@ -338,7 +340,9 @@ defmodule Support.Stubs.Feature do
       {"ip_allow_list", state: :ENABLED, quantity: 1},
       {"zendesk_support", state: :HIDDEN, quantity: 0},
       {"new_billing", state: :ENABLED, quantity: 1},
-      {"organization_health", state: :ENABLED, quantity: 1}
+      {"organization_health", state: :ENABLED, quantity: 1},
+      {"superjerry_tests", state: :HIDDEN, quantity: 0},
+      {"velocity", state: :HIDDEN, quantity: 0}
     ]
     |> Enum.map(fn {feature_type, feature_opts} ->
       setup_feature(feature_type, feature_opts)

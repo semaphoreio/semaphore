@@ -130,24 +130,32 @@ To fix the broken webhook, click on **Regenerate**. This should generate a new w
 
 ### Reconnecting moved or renamed projects
 
-There are several actions that can break the connection between BitBucket and Semaphore. For example:
+Certain actions in GitHub can change the repository URL associated with your Semaphore project, such as:
 
-- moving the repository to a different location
-- renaming the repository
-- renaming the BitBucket user account
+- Moving the repository to a different location
+- Renaming the repository
+- Renaming the GitHub user account
+- Renaming the GitHub organization
 
-When this happens, you must update the URL of the repository in Semaphore. To do this:
+#### Scenario 1: Repository moved or renamed
 
-<Steps>
+If the repository URL changes due to a move or rename, no manual action is required in Semaphore.
 
-1. Open your [project settings](./projects#settings)
-2. Type the new repository URL
-3. Press **Change**
-    ![Changing the repository URL in Semaphore](./img/repository-url-bb.jpg)
+Once the change is made on GitHub, simply push a commit from the updated repository. Semaphore will automatically detect the new repository URL and update the connection with the project.
 
-</Steps>
+#### Scenario 2: Switching a project to a different repository
 
-After changing the URL, double-check the status of the [deploy key](#deploy-key) and the [webhook](#webhook).
+If you want to connect your project to a different repository (e.g., switching to a fork), you can update the repository URL manually.
+To change the repository associated with a project:
+
+1. Open your Project Settings
+1. Navigate to Repository
+1. Enter the new repository URL
+1. Click Change
+
+<img width="1774" height="1166" alt="image" src="https://github.com/user-attachments/assets/9ea3a849-17dc-4895-afb9-7c539226b92c" />
+
+After changing the repository URL, verify that the **deploy key** and **webhook** are still correctly configured.
 
 ## See also
 

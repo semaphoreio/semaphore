@@ -188,6 +188,7 @@ defmodule Front.Models.PipelineTest do
                    build_request_id: nil,
                    skipped?: false,
                    result: nil,
+                   result_reason: nil,
                    state: nil,
                    id: nil
                  }

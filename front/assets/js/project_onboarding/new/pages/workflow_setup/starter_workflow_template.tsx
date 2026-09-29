@@ -257,10 +257,10 @@ export const StarterWorkflowTemplate = () => {
     <Fragment>
       <div className="pt3 pb3">
         <div className="relative mw9 center">
-          <div className="flex-l">
+          <div className="flex-l items-stretch-l">
             {/* <!-- LEFT SIDE --> */}
-            <div className="w-25 bg-white shadow-1 br3 mr2" style="position: relative; overflow: hidden;">
-              <div className="f6 mb3 mb0-m pa3 br-m b--black-10 bb bb-0-m overflow-auto" style="position: absolute; top: 0; bottom: 0; left: 0; right: 0;">
+            <div className="w-100 w-third-l mb3 mb0-l">
+              <div className="f6 pa3 bg-white shadow-1 br3 h-100-l flex-l flex-column-l overflow-hidden">
                 <div className="pb3 mb3 bb b--black-10">
                   <div className="flex justify-between items-center">
                     <div>
@@ -280,20 +280,24 @@ export const StarterWorkflowTemplate = () => {
                   <FilterButton onFiltersChange={handleFiltersChange}/>
                 </div>
 
-                {allGroups.map(group => (
-                  <TemplateGroup
-                    key={group.name}
-                    group={group}
-                    templates={templatesByGroup[group.name] || []}
-                    onTemplateSelect={handleTemplateSelect}
-                    selectedTemplate={selectedTemplate}
-                  />
-                ))}
+                <div className="overflow-auto-l" style={{ minHeight: 0 }}>
+                  {allGroups.map(group => (
+                    <TemplateGroup
+                      key={group.name}
+                      group={group}
+                      templates={templatesByGroup[group.name] || []}
+                      onTemplateSelect={handleTemplateSelect}
+                      selectedTemplate={selectedTemplate}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
             {/* <!-- RIGHT SIDE --> */}
-            <div className="w-75 bg-white shadow-1 pa4 br3 ml2">
-              <PreviewPanel template={selectedTemplate}/>
+            <div className="w-100 w-two-thirds-l pl0 pl3-l">
+              <div className="bg-white shadow-1 pa4 br3 h-100-l">
+                <PreviewPanel template={selectedTemplate}/>
+              </div>
             </div>
           </div>
           <div className="tr">

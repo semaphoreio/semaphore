@@ -35,6 +35,7 @@ defmodule FrontWeb.BillingView do
       end
 
     available_plans = Billing.PlanSwitch.list_plans(conn.assigns.organization_id)
+    current_plan_type = Billing.PlanSwitch.current_plan_type(conn.assigns.current_spending.plan)
 
     %{
       baseUrl: billing_index_path(conn, :index, []),
@@ -53,11 +54,12 @@ defmodule FrontWeb.BillingView do
       selectedSpendingId: conn.assigns.spending.id,
       isBillingManager: Front.Auth.can?(conn, :ManageBilling),
       availablePlans: available_plans,
-      currentPlanType: Billing.PlanSwitch.current_plan_type(conn.assigns.current_spending.plan),
-      canUpgradeUrl: billing_can_upgrade_path(conn, :can_upgrade, []),
+      currentPlanType: current_plan_type,
+      isBasicPlan: "#{current_plan_type}" == System.get_env("BASIC_PLAN_SLUG", "basic"),
       peoplePageUrl: people_path(conn, :organization, []),
       agentsPageUrl: self_hosted_agent_path(conn, :index),
       contactSupportUrl: Front.Zendesk.new_ticket_location(),
+      pricingUrl: Application.get_env(:front, :pricing_url, ""),
       acknowledgePlanChangeUrl:
         billing_acknowledge_plan_change_path(conn, :acknowledge_plan_change, [])
     }
@@ -71,6 +73,16 @@ defmodule FrontWeb.BillingView do
         }
 
         Map.put(params, :projectSpendings, project_spendings)
+      else
+        params
+      end
+    end)
+    |> then(fn params ->
+      if match?(%{plan: _}, conn.assigns.current_spending) and
+           Billing.Plan.eligible_for_addons?(conn.assigns.current_spending.plan) do
+        params
+        |> Map.put(:addonsUrl, billing_addons_path(conn, :addons, url_opts))
+        |> Map.put(:updateAddonUrl, billing_update_addon_path(conn, :update_addon, []))
       else
         params
       end

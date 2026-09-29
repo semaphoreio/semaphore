@@ -14,8 +14,9 @@ import (
 )
 
 const (
-	describeToolName      = "jobs_describe"
-	projectViewPermission = "project.view"
+	describeToolName               = "jobs_describe"
+	projectViewPermission          = "project.view"
+	projectArtifactsViewPermission = "project.artifacts.view"
 )
 
 func describeFullDescription() string {

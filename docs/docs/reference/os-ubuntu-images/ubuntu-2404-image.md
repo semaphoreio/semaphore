@@ -45,20 +45,22 @@ The image comes with the following [toolbox utilities](../toolbox) preinstalled:
 
 Following version control tools are pre-installed:
 
-- Git 2.51.0
-- Git LFS (Git Large File Storage) 3.7.0
-- GitHub CLI 2.80.0
-- Mercurial 6.1.1
-- Svn 1.14.1
+- Git: 2.55.0
+- Git LFS (Git Large File Storage): 3.8.0
+- GitHub CLI: 2.101.0
+- Mercurial: 6.7.2
+- Svn: 1.14.3
 
 ### Browsers and Headless Browser Testing
 
-- Firefox 102.11.0 (`102`, `default`, `esr`)
-- Geckodriver 0.36.0
-- Google Chrome 140.0.7339.207
-- ChromeDriver 140.0.7339.207
+- Firefox: 102.11.0esr (`102`, `default`, `esr`)
+- Geckodriver: 0.37.1
+- Google Chrome: 153.0.8010.52
+- ChromeDriver: 153.0.8010.52
+- Microsoft Edge: 153.0.4234.48
+- EdgeDriver: 153.0.4234.48
 - Xvfb (X Virtual Framebuffer)
-- Phantomjs 2.1.1
+- Phantomjs: 2.1.1
 
 Chrome and Firefox both support headless mode. You shouldn't need to do more
 than install and use the relevant Selenium library for your language.
@@ -68,35 +70,35 @@ Refer to the documentation of associated libraries when configuring your project
 
  Docker toolset is installed and the following versions are available:
 
-- Docker 28.4.0
-- Docker-compose 1.29.2 (used as `docker-compose --version`)
-- Docker-compose 2.39.4 (used as `docker compose version`)
-- Docker-buildx 0.28.0
-- Docker-machine 0.16.2
-- Dockerize 0.9.6
-- Buildah 1.33.7
-- Podman 4.9.3
-- Skopeo 1.13.3
+- Docker: 29.8.1
+- Docker-compose: 1.29.2 (used as `docker-compose --version`)
+- Docker-compose: 5.5.1 (used as `docker compose version`)
+- Docker-buildx: 0.37.1
+- Docker-machine: 0.16.2
+- Dockerize: 0.15.1
+- Buildah: 1.33.7
+- Podman: 4.9.3
+- Skopeo: 1.13.3
 
 ### Cloud CLIs
 
-- Aws-cli v2 (used as `aws`) 2.31.1
-- Azure-cli 2.77.0
-- Ecs-cli 1.21.0
-- Doctl 1.142.0
-- Gcloud 540.0.0
-- Gke-gcloud-auth-plugin 540.0.0
-- Kubectl 1.29.1
-- Heroku 10.13.2
-- Terraform 1.13.3
-- Helm 3.19.0
-- Helmfile 1.1.7
+- Aws-cli v2 (used as `aws`): 2.36.49
+- Azure-cli: 2.90.0
+- Ecs-cli: 1.21.0
+- Doctl: 1.169.0
+- Gcloud: 585.0.0
+- Gke-gcloud-auth-plugin: 585.0.0
+- Kubectl: 1.29.1
+- Heroku: 11.10.0
+- Terraform: 1.16.3
+- Helm: 4.3.0
+- Helmfile: 1.8.0
 
 ### Network utilities
 
-- Httpie 3.2.4
-- Curl 8.5.0
-- Rsync 3.2.7
+- Httpie: 3.2.4
+- Curl: 8.5.0
+- Rsync: 3.2.7
 
 ## Compilers
 
@@ -109,8 +111,8 @@ Refer to the documentation of associated libraries when configuring your project
 Erlang versions are installed and managed via [kerl](https://github.com/kerl/kerl).
 Elixir versions are installed with [kiex](https://github.com/taylor/kiex).
 
-- Erlang: 24.3, 25.0, 25.1, 25.2, 25.3, 26.0, 26.1, 26.2, 27.0 (default), 27.1, 27.2, 27.3
-- Elixir: 1.12.x, 1.13.x, 1.14.x, 1.15.x, 1.16.x, 1.17.x (1.17.3 as default), 1.18.x
+- Erlang: 24.3, 25.x, 26.x, 27.x (27.0 as default), 28.x
+- Elixir: 1.12.x, 1.13.x, 1.14.x, 1.15.x, 1.16.x, 1.17.x (1.17.3 as default), 1.18.x, 1.19.x, 1.20.x
 
 Additional libraries:
 
@@ -133,23 +135,25 @@ Versions:
 - 1.20.x
 - 1.21.x
 - 1.22.x
+- 1.23.x
 - 1.24.x
 - 1.25.x
+- 1.26.x
 
-The default installed Go version is 1.25.1.
+The default installed Go version is 1.27.1.
 
 ### Java and JVM languages
 
-- Java: 11.0.28, 17.0.16 (default), 21.0.8
+- Java: 11.0.32, 17.0.20 (default), 21.0.12, 25.0.4.1
 - Scala: 3.2.2
 - Leiningen: 2.12.0 (Clojure)
-- Sbt 1.11.6
+- Sbt: 2.0.9
 
 ### Additional Java build tools
 
-- Maven: 3.9.11
-- Gradle: 9.1
-- Bazel: 8.4.1
+- Maven: 3.9.16
+- Gradle: 9.7.1
+- Bazel: 9.2.0
 
 ### JavaScript via Node.js
 
@@ -157,10 +161,11 @@ Node.js versions are managed by [nvm](https://github.com/nvm-sh/nvm).
 You can install any version you need with `nvm install [version]`.
 Installed version:
 
-- 22.19.0 (set as default, with alias 22.19), includes npm 10.9.3
+- 24.21.0 (set as default, with alias 24.21), includes npm 11.19.0
 
 ### Additional JS tools
 
+- Bun: 1.4.2
 - Yarn: 1.22.22
 
 ### PHP
@@ -171,27 +176,29 @@ Available versions:
 - 8.1.x
 - 8.2.x
 - 8.3.x
+- 8.4.x
+- 8.5.x
 
-The default installed PHP version is 8.1.32.
+The default installed PHP version is 8.1.34.
 
 ### Additional PHP libraries
 
-PHPUnit: 9.5.28
+PHPUnit: 9.5.27
 
 ### Python
 
 Python versions are installed and managed by
 [virtualenv](https://virtualenv.pypa.io/en/stable/). Installed versions:
 
-- 3.10.18 (default)
-- 3.11.13
+- 3.10.20 (default)
+- 3.11.15
 - 3.12.9
 
 Supporting libraries:
 
-- pypy3: 7.3.19
-- pip: 25.2
-- virtualenv: 20.34.0
+- pypy3: 7.3.21
+- pip: 26.2.1
+- virtualenv: 21.9.0
 
 ### Ruby
 
@@ -202,17 +209,23 @@ Available versions:
 - 3.2.x
 - 3.3.x
 - 3.4.x
+- 4.0.x
 - jruby-9.4.1.0
 
-The default installed Ruby version is 3.4.5.
+The default installed Ruby version is 3.4.9.
 
 ### Rust
 
-- 1.90.0
+- 1.98.1
 
 ### Swiftly
 
-- 1.0.1
+- 1.1.4
+
+### Microsoft .NET SDK and PowerShell
+
+- .NET SDK: 10.0.112
+- PowerShell: 7.6.6
 
 ## See also
 

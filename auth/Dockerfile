@@ -1,7 +1,8 @@
-ARG ALPINE_VERSION="3.20.3"
-ARG ELIXIR_VERSION="1.12.3"
+ARG ALPINE_VERSION="3.23.0"
+ARG ELIXIR_VERSION="1.18.3"
+ARG ERLANG_VERSION="26.2.5.5"
 ARG RUNNER_IMAGE="alpine:${ALPINE_VERSION}"
-ARG BUILDER_IMAGE="hexpm/elixir:${ELIXIR_VERSION}-erlang-24.3.4.17-alpine-${ALPINE_VERSION}"
+ARG BUILDER_IMAGE="hexpm/elixir:${ELIXIR_VERSION}-erlang-${ERLANG_VERSION}-alpine-${ALPINE_VERSION}"
 
 FROM ${BUILDER_IMAGE} AS base
 
@@ -10,7 +11,7 @@ ENV MIX_ENV=$BUILD_ENV
 
 RUN echo "Build for $MIX_ENV environment started"
 
-RUN apk update && apk add --no-cache build-base git python3 curl openssh
+RUN apk update && apk upgrade --no-cache zlib && apk add --no-cache build-base git python3 curl openssh
 
 RUN mix local.hex --force && mix local.rebar --force
 
@@ -53,7 +54,7 @@ ARG BUILD_ENV=prod
 ENV MIX_ENV=$BUILD_ENV
 
 # install runtime dependencies
-RUN apk update && apk add --no-cache libstdc++ openssl ncurses-libs
+RUN apk update && apk upgrade --no-cache zlib && apk add --no-cache libstdc++ openssl ncurses-libs
 
 HEALTHCHECK NONE
 

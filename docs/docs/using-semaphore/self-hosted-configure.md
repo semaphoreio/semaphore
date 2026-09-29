@@ -4,7 +4,7 @@ description: Configure self-hosted agents
 
 # Configure Agents
 
-<Available plans={['Hybrid', 'Enterprise']}/>
+<Available plans={['The Plan']}/>
 
 Self-hosted agents allow you to run Semaphore jobs on your own hardware. This page explains the configuration settings available and how to enable additional features.
 

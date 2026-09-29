@@ -7,27 +7,35 @@
                 </span>
 
                 <div>
-                    <div class="flex items-center">
-                        <%= link @deployment.pipeline.name, class: "b db link dark-gray underline-hover",
-                                to: workflow_path(@conn, :show, @deployment.pipeline.workflow_id,
-                                                    pipeline_id: @deployment.pipeline_id) %>
+                    <%= if @deployment.pipeline && @deployment.hook do %>
+                        <div class="flex items-center">
+                            <%= link @deployment.pipeline.name, class: "b db link dark-gray underline-hover",
+                                    to: workflow_path(@conn, :show, @deployment.pipeline.workflow_id,
+                                                        pipeline_id: @deployment.pipeline_id) %>
 
-                        <%= render FrontWeb.DeploymentsView, "items/__buttons.html", conn: @conn, deployment: @deployment %>
-                    </div>
+                            <%= render FrontWeb.DeploymentsView, "items/__buttons.html", conn: @conn, deployment: @deployment %>
+                        </div>
 
-                    <div class="flex items-center">
-                        <span class="material-symbols-outlined f6"><%= git_ref_icon(@deployment.hook) %></span>
-                        <%= link @deployment.hook.name, to: branch_path(@conn, :show, @deployment.pipeline.branch_id),
-                                class: "ml1 db link dark-gray underline-hover" %>
+                        <div class="flex items-center">
+                            <span class="material-symbols-outlined f6"><%= git_ref_icon(@deployment.hook) %></span>
+                            <%= link @deployment.hook.name, to: branch_path(@conn, :show, @deployment.pipeline.branch_id),
+                                    class: "ml1 db link dark-gray underline-hover" %>
 
-                        <span class="mh1">·</span>
+                            <span class="mh1">·</span>
 
-                        <%= render(FrontWeb.PipelineView, "_env_vars.html", pipeline: @deployment.pipeline) %>
+                            <%= render(FrontWeb.PipelineView, "_env_vars.html", pipeline: @deployment.pipeline) %>
 
-                        <span class="material-symbols-outlined f6">commit</span>
-                        <%= link String.slice(@deployment.hook.head_commit_sha, 0..6), to: commit_url(@deployment.hook),
-                            class: "ml1 link dark-gray underline-hover" %>
-                    </div>
+                            <span class="material-symbols-outlined f6">commit</span>
+                            <%= link String.slice(@deployment.hook.head_commit_sha, 0..6), to: commit_url(@deployment.hook),
+                                class: "ml1 link dark-gray underline-hover" %>
+                        </div>
+                    <% else %>
+                        <div class="flex items-center justify-center tc w-100 pv3 ph2 bg-washed-yellow br2">
+                            <p class="mb0 gray">
+                                This deployment is older than the available history, so pipeline details can't be shown.
+                            </p>
+                        </div>
+                    <% end %>
 
                 </div>
             </div>

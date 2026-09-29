@@ -11,6 +11,7 @@ import { GroupTooltip } from './group_tooltip';
 import { ProjectsChart } from "./projects_chart";
 import { ProjectChart } from "./project_chart";
 import { SpendingGroup } from "./spending_group";
+import { TierSelector } from "./tier_selector";
 import * as Loader from "./loader";
 import * as Charts from "./charts";
 
@@ -28,6 +29,7 @@ export {
   ProjectsChart,
   ProjectChart,
   SpendingGroup,
+  TierSelector,
   Charts,
   Loader
 };

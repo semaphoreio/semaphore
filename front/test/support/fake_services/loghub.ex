@@ -16,6 +16,18 @@ defmodule Support.FakeServices.Loghub do
     )
   end
 
+  def get_log_events(%{job_id: "9e0a1b2c-3d4e-4f5a-8b6c-7d8e9f0a1b2c"}, _stream) do
+    events = [
+      ~s({"event":"cmd_output","timestamp":1739285892,"output":"log-of-the-original-job\\n"})
+    ]
+
+    GetLogEventsResponse.new(
+      status: InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
+      events: events,
+      final: true
+    )
+  end
+
   def get_log_events(req, _stream) do
     events =
       File.read!("test/support/loghub/events")

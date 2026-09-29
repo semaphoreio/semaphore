@@ -9,5 +9,10 @@
 require "grpc"
 require "google/protobuf"
 
+# Generated protobuf files require nested files using paths like
+# `internal_api/response_status_pb`, so make the generated root resolvable.
+generated_path = Rails.root.join("protobuffer/generated").to_s
+$LOAD_PATH.unshift(generated_path) unless $LOAD_PATH.include?(generated_path)
+
 Dir["protobuffer/generated/*.rb"].each { |file| require_relative "../../#{file}" }
 Dir["protobuffer/generated/semaphore/*.rb"].each { |file| require_relative "../../#{file}" }

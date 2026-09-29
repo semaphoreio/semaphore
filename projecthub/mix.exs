@@ -51,6 +51,7 @@ defmodule Projecthub.MixProject do
       {:mix_test_watch, "~> 1.0", only: [:dev, :test], runtime: false},
       {:feature_provider, path: "../feature_provider"},
       {:yaml_elixir, ">= 2.0.0"},
+      {:ymlr, "~> 5.0"},
       {:cachex, ">= 3.0.0"},
       {:quantum, "~> 3.0"}
     ]

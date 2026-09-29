@@ -2,12 +2,22 @@
 # Source: license.proto for package 'InternalApi.License'
 
 require 'grpc'
-require_relative 'license_pb'
+require 'license_pb'
 
 module InternalApi
   module License
     module LicenseService
-      # LicenseService provides license verification functionality
+      # //////////////////////////////////////////////
+      # ------------ LICENSE SERVICE ------------- //
+      # //////////////////////////////////////////////
+      #
+      #
+      # License service
+      #
+      # License service provides RPCs used for verifying license validity
+      # and retrieving license information. It is exposed by the License
+      # Checker service.
+      #
       class Service
 
         include ::GRPC::GenericService
@@ -17,8 +27,11 @@ module InternalApi
         self.service_name = 'InternalApi.License.LicenseService'
 
         #
-        # Operation is called to verify a license.
+        # Verifies if the application has a valid license.
         # Operation is synchronous.
+        #
+        # Consumers:
+        # - all internal services requiring license validation
         #
         rpc :VerifyLicense, ::InternalApi::License::VerifyLicenseRequest, ::InternalApi::License::VerifyLicenseResponse
       end

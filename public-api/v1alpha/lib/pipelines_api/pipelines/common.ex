@@ -17,6 +17,14 @@ defmodule PipelinesAPI.Pipelines.Common do
     respond_(conn, 404, message, encode?)
   end
 
+  def respond({:error, {:forbidden, message}}, conn, encode?) do
+    respond_(conn, 403, message, encode?)
+  end
+
+  def respond({:error, {:unprocessable, message}}, conn, encode?) do
+    respond_(conn, 422, message, encode?)
+  end
+
   def respond({:error, {:internal, message}}, conn, encode?) do
     respond_(conn, 500, message, encode?)
   end

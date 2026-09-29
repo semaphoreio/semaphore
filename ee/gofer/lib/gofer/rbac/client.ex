@@ -11,7 +11,7 @@ defmodule Gofer.RBAC.Client do
   alias Gofer.RBAC.Subject
 
   @metric_prefix "Gofer.deployments.rbac"
-  @default_timeout 3_000
+  @default_timeout 10_000
 
   def check_roles(_subject, []), do: {:ok, %{}}
 

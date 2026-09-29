@@ -1,5 +1,6 @@
 defmodule FrontWeb.DashboardControllerTest do
   use FrontWeb.ConnCase
+  alias Front.DashboardPage.Model
   alias Support.Stubs.DB
 
   import Mock
@@ -15,6 +16,7 @@ defmodule FrontWeb.DashboardControllerTest do
     dashboard = DB.first(:dashboards)
     workflow = DB.first(:workflows)
     pipeline = DB.first(:pipelines)
+    project = DB.first(:projects)
 
     Support.Stubs.Feature.disable_feature(organization.id, :get_started)
 
@@ -28,6 +30,7 @@ defmodule FrontWeb.DashboardControllerTest do
       dashboard: dashboard,
       workflow: workflow,
       pipeline: pipeline,
+      project: project,
       organization: organization,
       user: user
     ]
@@ -96,6 +99,170 @@ defmodule FrontWeb.DashboardControllerTest do
 
       assert html_response(conn, 302) =~ "get_started"
     end
+
+    test "returns 200 and renders timeout error when workflow fetch fails", %{
+      conn: conn,
+      project: project
+    } do
+      with_mocks [
+        {Front.RBAC.Members, [:passthrough],
+         [list_accessible_projects: fn _org_id, _user_id -> {:ok, [project.id]} end]},
+        {Front.Models.Workflow, [:passthrough],
+         [list_keyset: fn _params -> {:error, :timeout} end]}
+      ] do
+        conn =
+          conn
+          |> get("/")
+
+        assert html_response(conn, 200) =~ "Loading workflows timed out"
+      end
+    end
+
+    test "returns 200 and renders timeout error when workflow grpc connection fails", %{
+      conn: conn,
+      project: project
+    } do
+      with_mocks [
+        {Front.RBAC.Members, [:passthrough],
+         [list_accessible_projects: fn _org_id, _user_id -> {:ok, [project.id]} end]},
+        {Front.Clients.Workflow, [:passthrough],
+         [list_keyset: fn _request -> {:error, "Error when opening connection: :timeout"} end]}
+      ] do
+        conn =
+          conn
+          |> get("/?dashboard=everyones-activity")
+
+        assert html_response(conn, 200) =~ "Loading workflows timed out"
+      end
+    end
+
+    test "uses cached workflows when backend times out", %{conn: conn, project: project} do
+      with_mocks [
+        {Front.RBAC.Members, [:passthrough],
+         [list_accessible_projects: fn _org_id, _user_id -> {:ok, [project.id]} end]}
+      ] do
+        conn =
+          conn
+          |> get("/")
+
+        assert html_response(conn, 200)
+      end
+
+      with_mocks [
+        {Front.RBAC.Members, [:passthrough],
+         [list_accessible_projects: fn _org_id, _user_id -> {:ok, [project.id]} end]},
+        {Front.Models.Workflow, [:passthrough],
+         [list_keyset: fn _params -> {:error, :timeout} end]}
+      ] do
+        conn =
+          conn
+          |> get("/")
+
+        assert html_response(conn, 200)
+        refute html_response(conn, 200) =~ "Loading workflows timed out"
+      end
+    end
+
+    test "uses a new cache key when accessible project set changes", %{
+      conn: conn,
+      organization: organization,
+      user: user,
+      project: project
+    } do
+      project_b = Support.Stubs.Project.create(organization, user, name: "project-b-rbac")
+      branch_b = Support.Stubs.Branch.create(project_b, name: "project-b-rbac-branch")
+      hook_b = Support.Stubs.Hook.create(branch_b)
+      workflow_b = Support.Stubs.Workflow.create(hook_b, user)
+      Support.Stubs.Pipeline.create_initial(workflow_b)
+
+      workflow_a = DB.first(:workflows) |> then(&Front.Models.Workflow.find(&1.id))
+      workflow_b = Front.Models.Workflow.find(workflow_b.id)
+
+      {:ok, seq} = Agent.start_link(fn -> 0 end)
+
+      with_mocks [
+        {Front.RBAC.Members, [:passthrough],
+         [
+           list_accessible_projects: fn _org_id, _user_id ->
+             Agent.get_and_update(seq, fn call_idx ->
+               if call_idx == 0 do
+                 {{:ok, [project.id, project_b.id]}, 1}
+               else
+                 {{:ok, [project.id]}, call_idx + 1}
+               end
+             end)
+           end
+         ]},
+        {Front.Models.Workflow, [:passthrough],
+         [
+           list_keyset: fn params ->
+             send(self(), {:list_keyset_project_ids, params[:project_ids]})
+
+             workflows =
+               [workflow_a, workflow_b]
+               |> Enum.filter(fn workflow ->
+                 Enum.member?(params[:project_ids], workflow.project_id)
+               end)
+
+             {workflows, "", ""}
+           end
+         ]}
+      ] do
+        first_conn =
+          conn
+          |> get("/?dashboard=everyones-activity")
+
+        first_response = html_response(first_conn, 200)
+        assert first_response =~ project.name
+        assert first_response =~ project_b.name
+        assert_received {:list_keyset_project_ids, first_project_ids}
+        assert Enum.sort(first_project_ids) == Enum.sort([project.id, project_b.id])
+
+        first_cache_key = cache_key(organization.id, user.id, false, [project.id, project_b.id])
+        assert Cacheman.exists?(:front, first_cache_key)
+
+        second_conn =
+          first_conn
+          |> recycle()
+          |> get("/?dashboard=everyones-activity")
+
+        second_response = html_response(second_conn, 200)
+        assert second_response =~ project.name
+        refute second_response =~ project_b.name
+        assert_received {:list_keyset_project_ids, second_project_ids}
+        assert second_project_ids == [project.id]
+
+        second_cache_key = cache_key(organization.id, user.id, false, [project.id])
+        assert Cacheman.exists?(:front, second_cache_key)
+        refute first_cache_key == second_cache_key
+      end
+    end
+
+    test "force_cold_boot bypasses cache", %{conn: conn, project: project} do
+      with_mocks [
+        {Front.RBAC.Members, [:passthrough],
+         [list_accessible_projects: fn _org_id, _user_id -> {:ok, [project.id]} end]}
+      ] do
+        conn =
+          conn
+          |> get("/")
+
+        assert html_response(conn, 200)
+      end
+
+      with_mocks [
+        {Front.RBAC.Members, [:passthrough],
+         [list_accessible_projects: fn _org_id, _user_id -> {:ok, [project.id]} end]},
+        {Front.Models.Workflow, [:passthrough],
+         [list_keyset: fn _params -> {:error, :timeout} end]}
+      ] do
+        conn =
+          conn
+          |> get("/?force_cold_boot=true")
+
+        assert html_response(conn, 200) =~ "Loading workflows timed out"
+      end
+    end
   end
 
   describe "GET show" do
@@ -146,6 +313,24 @@ defmodule FrontWeb.DashboardControllerTest do
         |> get("/workflows")
 
       assert html_response(conn, 200)
+    end
+
+    test "returns 200 and renders timeout error when workflow fetch fails", %{
+      conn: conn,
+      project: project
+    } do
+      with_mocks [
+        {Front.RBAC.Members, [:passthrough],
+         [list_accessible_projects: fn _org_id, _user_id -> {:ok, [project.id]} end]},
+        {Front.Models.Workflow, [:passthrough],
+         [list_keyset: fn _params -> {:error, :timeout} end]}
+      ] do
+        conn =
+          conn
+          |> get("/workflows")
+
+        assert html_response(conn, 200) =~ "Loading workflows timed out"
+      end
     end
   end
 
@@ -266,5 +451,26 @@ defmodule FrontWeb.DashboardControllerTest do
         refute html_response(conn, 200) =~ "license-expiring-banner"
       end
     end
+  end
+
+  defp cache_key(org_id, user_id, requester, project_ids) do
+    params =
+      struct!(Model.LoadParams,
+        organization_id: org_id,
+        user_id: user_id,
+        requester: requester,
+        project_ids_fingerprint: project_ids_fingerprint(project_ids)
+      )
+
+    Model.cache_key(params)
+  end
+
+  defp project_ids_fingerprint(project_ids) do
+    project_ids
+    |> Enum.uniq()
+    |> Enum.sort()
+    |> Enum.join(",")
+    |> then(&:crypto.hash(:sha256, &1))
+    |> Base.encode16(case: :lower)
   end
 end

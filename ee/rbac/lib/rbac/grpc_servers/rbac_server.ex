@@ -10,12 +10,14 @@ defmodule Rbac.GrpcServers.RbacServer do
   alias Rbac.RoleBindingIdentification, as: RBI
   alias InternalApi.RBAC
 
+  @change_owner_permission "organization.change_owner"
+
   def list_user_permissions(%RBAC.ListUserPermissionsRequest{} = req, _stream) do
     alias Rbac.Store.UserPermissions
 
     Watchman.benchmark("list_user_permissions.duration", fn ->
       [req.user_id, req.org_id] |> validate_uuid!()
-      if req.project_id != "", do: validate_uuid!(req.project_id)
+      if req.project_id != "", do: validate_project!(req.project_id, req.org_id)
 
       {:ok, rbi} =
         RBI.new(
@@ -61,6 +63,22 @@ defmodule Rbac.GrpcServers.RbacServer do
 
       validate_role_assignment_arguments(req.role_assignment)
       authorize!(req.requester_id, org_id, project_id)
+
+      # Project initialization bypasses authorization entirely (see authorize!/3): it is
+      # a system operation with no requester_id, so it must be exempt from every
+      # requester-based check below, not just the held-permissions one.
+      initializing? =
+        project_id != "" and Rbac.Models.Project.project_being_initialized?(project_id)
+
+      if not initializing? and (owner_role?(role_id) or currently_owner?(subject_id, org_id)),
+        do: Rbac.Utils.Grpc.authorize!(@change_owner_permission, req.requester_id, org_id)
+
+      # The Owner role is fully gated by @change_owner_permission above; every other
+      # role must pass the held-permissions check so a requester cannot escalate by
+      # assigning a role that grants permissions they do not hold themselves.
+      unless owner_role?(role_id) or initializing?,
+        do: authorize_holds_role_permissions!(req.requester_id, org_id, project_id, role_id)
+
       {:ok, rbi} = RBI.new(user_id: subject_id, org_id: org_id, project_id: project_id)
 
       case Rbac.RoleManagement.assign_role(rbi, role_id, :manually_assigned) do
@@ -81,7 +99,7 @@ defmodule Rbac.GrpcServers.RbacServer do
         req.role_assignment
 
       [subject_id, org_id] |> validate_uuid!()
-      if project_id != "", do: validate_uuid!(project_id)
+      if project_id != "", do: validate_project!(project_id, org_id)
       if project_id == "", do: raise_error_if_user_is_owner(subject_id, org_id)
       authorize!(req.requester_id, org_id, project_id)
 
@@ -165,7 +183,7 @@ defmodule Rbac.GrpcServers.RbacServer do
   def list_members(%RBAC.ListMembersRequest{} = req, _stream) do
     Watchman.benchmark("list_members.duration", fn ->
       validate_uuid!(req.org_id)
-      if req.project_id != "", do: validate_uuid!(req.project_id)
+      if req.project_id != "", do: validate_project!(req.project_id, req.org_id)
 
       project_id = if req.project_id != "", do: req.project_id, else: :is_nil
       {:ok, rbi} = RBI.new(org_id: req.org_id, project_id: project_id)
@@ -225,20 +243,11 @@ defmodule Rbac.GrpcServers.RbacServer do
     end)
   end
 
-  @first_page 0
-  @page_size 40
   def list_accessible_orgs(%RBAC.ListAccessibleOrgsRequest{user_id: user_id}, _stream) do
     Watchman.benchmark("list_accessible_orgs.duration", fn ->
       validate_uuid!(user_id)
-      {:ok, rbi} = RBI.new(user_id: user_id, project_id: :is_nil)
 
-      {org_role_bindings, _total_pages} =
-        Rbac.RoleManagement.fetch_subject_role_bindings(rbi,
-          page_no: @first_page,
-          page_size: @page_size
-        )
-
-      org_ids = org_role_bindings |> Enum.map(& &1.org_id) |> Enum.uniq()
+      org_ids = Rbac.RoleManagement.accessible_org_ids(user_id)
 
       %RBAC.ListAccessibleOrgsResponse{org_ids: org_ids}
     end)
@@ -295,18 +304,52 @@ defmodule Rbac.GrpcServers.RbacServer do
     end
   end
 
-  defp raise_error_if_user_is_owner(user_id, org_id) do
+  defp owner_role?(role_id) do
+    case Rbac.Repo.RbacRole.get_role_by_id(role_id) do
+      %{name: "Owner"} -> true
+      _ -> false
+    end
+  end
+
+  defp currently_owner?(user_id, org_id) do
     {:ok, rbi} = RBI.new(user_id: user_id, org_id: org_id, project_id: :is_nil)
 
-    is_owner? =
-      Rbac.RoleManagement.fetch_subject_role_bindings(rbi)
-      |> elem(0)
-      |> List.first(%{})
-      |> Map.get(:role_bindings, [])
-      |> Enum.map(&Rbac.Repo.RbacRole.get_role_by_id(&1["role_id"]))
-      |> Enum.any?(&(&1.name == "Owner"))
+    Rbac.RoleManagement.fetch_subject_role_bindings(rbi)
+    |> elem(0)
+    |> List.first(%{})
+    |> Map.get(:role_bindings, [])
+    |> Enum.map(&Rbac.Repo.RbacRole.get_role_by_id(&1["role_id"]))
+    |> Enum.reject(&is_nil/1)
+    |> Enum.any?(&(&1.name == "Owner"))
+  end
 
-    if is_owner?, do: grpc_error!(:invalid_argument, "Owner can not be removed")
+  defp raise_error_if_user_is_owner(user_id, org_id) do
+    if currently_owner?(user_id, org_id),
+      do: grpc_error!(:invalid_argument, "Owner can not be removed")
+  end
+
+  defp authorize_holds_role_permissions!(requester_id, org_id, project_id, role_id) do
+    role = Rbac.Repo.RbacRole.get_role_by_id(role_id)
+
+    # Applies to ALL roles, not just editable ones. Built-in roles are seeded
+    # editable: false, so gating on role.editable would let a requester escalate by
+    # assigning a built-in role (e.g. Admin) granting permissions they do not hold.
+    if role do
+      project = if project_id == "", do: :is_nil, else: project_id
+      {:ok, rbi} = RBI.new(user_id: requester_id, org_id: org_id, project_id: project)
+      held = rbi |> Rbac.Store.UserPermissions.read_user_permissions() |> String.split(",")
+
+      case Enum.map(role.permissions, & &1.name) -- held do
+        [] ->
+          :ok
+
+        missing ->
+          grpc_error!(
+            :permission_denied,
+            "Cannot assign a role granting permissions you do not hold: #{Enum.join(missing, ", ")}"
+          )
+      end
+    end
   end
 
   defp validate_subjects_have_roles_arguments(%{
@@ -316,7 +359,7 @@ defmodule Rbac.GrpcServers.RbacServer do
          project_id: project_id
        }) do
     [subject_id, org_id, role_id] |> validate_uuid!()
-    if project_id != "", do: validate_uuid!(project_id)
+    if project_id != "", do: validate_project!(project_id, org_id)
   end
 
   defp validate_role_assignment_arguments(arg) do
@@ -358,20 +401,36 @@ defmodule Rbac.GrpcServers.RbacServer do
         )
   end
 
-  defp validate_project!(project_id, org_id) do
+  defp validate_project!(project_id, org_id, opts \\ []) do
     validate_uuid!(project_id)
+    source = Keyword.get(opts, :source, :store)
+    do_validate_project!(project_id, org_id, source)
+  end
 
-    project =
-      case Rbac.Models.Project.find(project_id) do
-        {:error, :project_not_found} ->
-          grpc_error!(:failed_precondition, "Project does not exist #{project_id}")
+  defp do_validate_project!(project_id, org_id, :store) do
+    case Rbac.Store.Project.find(project_id) do
+      {:ok, %{org_id: ^org_id}} ->
+        :ok
 
-        {:ok, project} ->
-          project
-      end
+      {:ok, _other_org_project} ->
+        grpc_error!(:failed_precondition, "Project does not belong to the organization")
 
-    if project.org_id != org_id,
-      do: grpc_error!(:failed_precondition, "Project does not belong to the organization")
+      {:error, :project_not_found} ->
+        do_validate_project!(project_id, org_id, :api)
+    end
+  end
+
+  defp do_validate_project!(project_id, org_id, :api) do
+    case Rbac.Models.Project.find(project_id) do
+      {:ok, %{org_id: ^org_id}} ->
+        :ok
+
+      {:ok, _other_org_project} ->
+        grpc_error!(:failed_precondition, "Project does not belong to the organization")
+
+      {:error, :project_not_found} ->
+        grpc_error!(:failed_precondition, "Project does not exist #{project_id}")
+    end
   end
 
   ###

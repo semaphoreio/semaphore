@@ -9,15 +9,42 @@ describe("Agent", () => {
     afterUpdate: () => {}
   }
 
+  describe(".setValidAgentTypes", () => {
+    afterEach(() => {
+      Agent.setupTestAgentTypes()
+    })
+
+    it("supports receiving agent types as a plain array", () => {
+      Agent.setValidAgentTypes([
+        {
+          type: "e1-standard-2",
+          spec: "2 vCPU, 4 GB ram",
+          os_image: "ubuntu2004",
+          platform: "LINUX"
+        },
+        {
+          type: "e1-standard-2",
+          spec: "2 vCPU, 4 GB ram",
+          os_image: "ubuntu2204",
+          platform: "LINUX"
+        }
+      ])
+
+      expect(Agent._validAgentTypes.agent_types).to.have.length(1)
+      expect(Agent._validAgentTypes.agent_types[0].os_image).to.equal("ubuntu2204")
+      expect(Agent._validAgentTypes.default_linux_os_image).to.equal("ubuntu2204")
+    })
+  })
+
   describe("#availableOSImages", () => {
     Agent.setupTestAgentTypes();
 
     it("returns available OS images for agent type", () => {
       let agent = new Agent(dummyParent, {})
 
-      expect(agent.availableOSImages("e1-standard-2")).to.eql(["ubuntu1804", "ubuntu2004"])
-      expect(agent.availableOSImages("e1-standard-4")).to.eql(["ubuntu1804", "ubuntu2004"])
-      expect(agent.availableOSImages("e1-standard-8")).to.eql(["ubuntu1804", "ubuntu2004"])
+      expect(agent.availableOSImages("e1-standard-2")).to.eql(["ubuntu2204", "ubuntu2404"])
+      expect(agent.availableOSImages("e1-standard-4")).to.eql(["ubuntu2204", "ubuntu2404"])
+      expect(agent.availableOSImages("e1-standard-8")).to.eql(["ubuntu2204", "ubuntu2404"])
       expect(agent.availableOSImages("s1-linux")).to.eql([])
       expect(agent.availableOSImages("s1-aws")).to.eql([])
     })
@@ -53,7 +80,7 @@ describe("Agent", () => {
     describe("when the machine type is not defined", () => {
       let ppl = null;
 
-      it("sets it to e1-standard-2 with ubuntu1804", () => {
+      it("sets it to e1-standard-2 with ubuntu2404", () => {
         Agent.setupTestAgentTypes();
         let pipeline1 = yaml.safeDump({
           "version": "1.0",
@@ -63,7 +90,7 @@ describe("Agent", () => {
         let wf = new Workflow({yamls: [pipeline1]})
         ppl = wf.pipelines[0]
         expect(ppl.agent.type).to.equal("e1-standard-2")
-        expect(ppl.agent.osImage).to.equal("ubuntu2004")
+        expect(ppl.agent.osImage).to.equal("ubuntu2404")
       })
 
       it("sets it to empty string if no machine type available", () => {
@@ -227,7 +254,7 @@ describe("Agent", () => {
       })
 
       it("sets the osImage to ubuntu", () => {
-        expect(agent.osImage).to.equal("ubuntu2004")
+        expect(agent.osImage).to.equal("ubuntu2404")
       })
 
       it("sets the machine type to e1-standard-2", () => {
@@ -285,7 +312,7 @@ describe("Agent", () => {
       })
 
       it("sets the osImage", () => {
-        expect(agent.osImage).to.equal("ubuntu2004")
+        expect(agent.osImage).to.equal("ubuntu2404")
       })
 
       it("sets the machine type", () => {
@@ -332,6 +359,68 @@ describe("Agent", () => {
         expect(agent.environmentType()).to.equal(Agent.ENVIRONMENT_TYPE_SELF_HOSTED)
       })
     })
+
+    describe("when e1 and a1 machine types are not available", () => {
+      beforeEach(() => {
+        Agent.setValidAgentTypes({
+          agent_types: [
+            {
+              type: "e2-standard-4",
+              spec: "4 vCPU, 16 GB ram",
+              os_image: "ubuntu2404",
+              platform: "LINUX"
+            },
+            {
+              type: "e2-standard-2",
+              spec: "2 vCPU, 8 GB ram",
+              os_image: "ubuntu2404",
+              platform: "LINUX"
+            },
+            {
+              type: "a2-standard-4",
+              spec: "4 vCPU, 8 GB ram",
+              os_image: "macos-xcode16",
+              platform: "MAC"
+            }
+          ],
+          default_linux_os_image: "ubuntu2404",
+          default_mac_os_image: "macos-xcode16"
+        })
+
+        agent = new Agent(dummyParent, {})
+      })
+
+      afterEach(() => {
+        Agent.setupTestAgentTypes()
+      })
+
+      it("defaults to the smallest available linux machine type", () => {
+        expect(agent.type).to.equal("e2-standard-2")
+        expect(agent.osImage).to.equal("ubuntu2404")
+      })
+
+      it("changing to linux VM picks the smallest available linux machine type", () => {
+        agent.changeEnvironmentType(Agent.ENVIRONMENT_TYPE_LINUX_VM)
+
+        expect(agent.type).to.equal("e2-standard-2")
+        expect(agent.environmentType()).to.equal(Agent.ENVIRONMENT_TYPE_LINUX_VM)
+      })
+
+      it("changing to mac VM picks the smallest available mac machine type", () => {
+        agent.changeEnvironmentType(Agent.ENVIRONMENT_TYPE_MAC_VM)
+
+        expect(agent.type).to.equal("a2-standard-4")
+        expect(agent.osImage).to.equal("macos-xcode16")
+        expect(agent.environmentType()).to.equal(Agent.ENVIRONMENT_TYPE_MAC_VM)
+      })
+
+      it("changing to docker picks the smallest available linux machine type", () => {
+        agent.changeEnvironmentType(Agent.ENVIRONMENT_TYPE_DOCKER)
+
+        expect(agent.type).to.equal("e2-standard-2")
+        expect(agent.environmentType()).to.equal(Agent.ENVIRONMENT_TYPE_DOCKER)
+      })
+    })
   })
 
   describe("#changeMachineType", () => {
@@ -357,7 +446,7 @@ describe("Agent", () => {
       expect(ppl.agent.osImage).to.equal("macos-xcode13")
 
       ppl.agent.changeMachineType("e1-standard-4")
-      expect(ppl.agent.osImage).to.equal("ubuntu2004")
+      expect(ppl.agent.osImage).to.equal("ubuntu2404")
     })
   })
 
@@ -383,7 +472,7 @@ describe("Agent", () => {
         }
       })
 
-      expect(agent.toJson()["machine"]["os_image"]).to.equal("ubuntu2004")
+      expect(agent.toJson()["machine"]["os_image"]).to.equal("ubuntu2404")
     })
 
     it("renders containers", () => {

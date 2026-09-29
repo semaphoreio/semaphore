@@ -2,7 +2,7 @@
 # Source: repository.proto for package 'InternalApi.Repository'
 
 require 'grpc'
-require_relative 'repository_pb'
+require 'repository_pb'
 
 module InternalApi
   module Repository

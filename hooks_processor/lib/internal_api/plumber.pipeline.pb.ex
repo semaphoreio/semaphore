@@ -937,6 +937,19 @@ defmodule InternalApi.Plumber.AfterPipelineEvent do
   field :timestamp, 3, type: Google.Protobuf.Timestamp
 end
 
+defmodule InternalApi.Plumber.PipelineDeleted do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+
+  field :pipeline_id, 1, type: :string, json_name: "pipelineId"
+  field :workflow_id, 2, type: :string, json_name: "workflowId"
+  field :organization_id, 3, type: :string, json_name: "organizationId"
+  field :project_id, 4, type: :string, json_name: "projectId"
+  field :artifact_store_id, 5, type: :string, json_name: "artifactStoreId"
+  field :deleted_at, 6, type: Google.Protobuf.Timestamp, json_name: "deletedAt"
+end
+
 defmodule InternalApi.Plumber.PipelineService.Service do
   @moduledoc false
 

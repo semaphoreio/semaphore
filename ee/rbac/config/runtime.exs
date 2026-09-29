@@ -25,7 +25,12 @@ config :rbac, Rbac.FrontRepo,
   username: System.get_env("POSTGRES_DB_USER") || "postgres",
   password: System.get_env("POSTGRES_DB_PASSWORD") || "the-cake-is-a-lie",
   hostname: System.get_env("POSTGRES_DB_HOST") || "127.0.0.1",
-  pool_size: String.to_integer(System.get_env("POSTGRES_DB_POOL_SIZE") || "1"),
+  # Optional dedicated pool size for the Front repo; falls back to the shared pool size.
+  pool_size:
+    String.to_integer(
+      System.get_env("POSTGRES_FRONT_DB_POOL_SIZE") || System.get_env("POSTGRES_DB_POOL_SIZE") ||
+        "1"
+    ),
   ssl: System.get_env("POSTGRES_DB_SSL") == "true" || false,
   ssl_opts: [verify: :verify_none]
 
@@ -66,5 +71,11 @@ config :rbac, on_prem: System.get_env("ON_PREM") == "true"
 config :rbac, base_domain: System.get_env("BASE_DOMAIN")
 config :rbac, session_secret_key_base: System.get_env("SESSION_SECRET_KEY_BASE")
 config :rbac, session_key: System.get_env("SESSION_COOKIE_NAME")
+
+config :rbac,
+  okta_session_expiration_default_minutes:
+    String.to_integer(System.get_env("OKTA_SESSION_EXPIRATION_DEFAULT_MINUTES") || "20160"),
+  okta_session_expiration_max_minutes:
+    String.to_integer(System.get_env("OKTA_SESSION_EXPIRATION_MAX_MINUTES") || "43200")
 
 config :rbac, ignore_refresh_requests: System.get_env("IGNORE_REFRESH_REQUESTS") == "true"

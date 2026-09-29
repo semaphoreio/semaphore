@@ -15,6 +15,7 @@ defmodule Support.Stubs.Repository do
         &__MODULE__.list_accessible_repositories/2
       )
 
+      GrpcMock.stub(RepositoryMock, :get_file, &__MODULE__.get_file/2)
       GrpcMock.stub(RepositoryMock, :get_files, &__MODULE__.get_files/2)
       GrpcMock.stub(RepositoryMock, :commit, &__MODULE__.commit/2)
     end
@@ -44,6 +45,10 @@ defmodule Support.Stubs.Repository do
         repositories: [remote_repository(), repo_with_existing_project()] ++ repos_to_return,
         next_page_token: next_token
       )
+    end
+
+    def get_file(req, _) do
+      IAR.GetFileResponse.new(file: IAR.File.new(path: req.path, content: ""))
     end
 
     def get_files(_req, _) do

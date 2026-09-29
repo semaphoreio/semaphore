@@ -12,12 +12,13 @@ class Semaphore::GithubApp::Token
     nil
   end
 
-  def self.repository_token(repository_slug)
-    installation = GithubAppInstallation.find_for_repository!(repository_slug)
+  def self.repository_token(repository_slug: nil, repository_remote_id: nil)
+    repository_slug ||= ""
+    installation = GithubAppInstallation.get!(repository_slug: repository_slug, repository_remote_id: repository_remote_id)
 
     installation_token(installation.installation_id)
   rescue ActiveRecord::RecordNotFound
-    Rails.logger.error("[Semaphore::GithubApp::Token] GithubAppInstallation not found for repository: #{repository_slug}")
+    Rails.logger.error("[Semaphore::GithubApp::Token] GithubAppInstallation not found for repository_slug: '#{repository_slug}' repository_remote_id: '#{repository_remote_id}'")
 
     nil
   end
@@ -36,16 +37,21 @@ class Semaphore::GithubApp::Token
     value
   end
 
+  # Resolve the installation id via the app JWT, even when nothing is cached.
+  def self.repository_installation_id(repository_slug)
+    installation_id_from("repos/#{repository_slug}/installation", "repository '#{repository_slug}'")
+  end
+
+  def self.organization_installation_id(organization)
+    installation_id_from("orgs/#{organization}/installation", "organization '#{organization}'")
+  end
+
   # PRIVATE
 
   def self.fetch_token(installation_id)
     response = Excon.post(
       "https://api.github.com/app/installations/#{installation_id}/access_tokens",
-      :headers => {
-        "User-Agent" => "Awesome-Octocat-App",
-        "Authorization" => "Bearer #{generate_jwt}",
-        "Accept" => "application/vnd.github.v3+json"
-      })
+      :headers => app_jwt_headers)
 
     if response.status < 300
       body = JSON.parse(response.data[:body])
@@ -56,6 +62,28 @@ class Semaphore::GithubApp::Token
 
       nil
     end
+  end
+
+  def self.installation_id_from(path, subject)
+    response = Excon.get("https://api.github.com/#{path}", :headers => app_jwt_headers)
+    return unless response.status < 300
+
+    # A 2xx without a positive integer "id" (unexpected shape) must not become 0
+    # and persist a junk installation row downstream.
+    id = JSON.parse(response.data[:body])["id"]
+    id if id.is_a?(Integer) && id.positive?
+  rescue StandardError => e
+    Rails.logger.error("[Semaphore::GithubApp::Token] Failed to resolve installation for #{subject}: #{e.message}")
+
+    nil
+  end
+
+  def self.app_jwt_headers
+    {
+      "User-Agent" => "Awesome-Octocat-App",
+      "Authorization" => "Bearer #{generate_jwt}",
+      "Accept" => "application/vnd.github.v3+json"
+    }
   end
 
   def self.generate_jwt

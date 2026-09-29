@@ -27,6 +27,7 @@ INTERNAL_API_URL_RBAC?="localhost:50051"
 INTERNAL_API_URL_PLUMBER?="localhost:50051"
 INTERNAL_API_URL_REPOSITORY?="localhost:50051"
 INTERNAL_API_URL_HOOKS?="localhost:50051"
+INTERNAL_API_URL_USER?="localhost:50051"
 BASE_DOMAIN?="semaphore.test"
 LOG_LEVEL?=info
 
@@ -46,6 +47,7 @@ CONTAINER_ENV_VARS= \
   -e INTERNAL_API_URL_PLUMBER=$(INTERNAL_API_URL_PLUMBER) \
   -e INTERNAL_API_URL_REPOSITORY=$(INTERNAL_API_URL_REPOSITORY) \
   -e INTERNAL_API_URL_HOOKS=$(INTERNAL_API_URL_HOOKS) \
+  -e INTERNAL_API_URL_USER=$(INTERNAL_API_URL_USER) \
   -e BASE_DOMAIN=$(BASE_DOMAIN) \
   -e CI=$(CI)
 
@@ -88,7 +90,7 @@ check.ruby.code:
 	$(MAKE) check.code LANGUAGE=ruby
 
 check.ruby.deps:
-	$(MAKE) check.deps LANGUAGE=ruby CHECK_DEPS_OPTS="-w app,rt-watchman"
+	$(MAKE) check.deps LANGUAGE=ruby CHECK_DEPS_OPTS="-w app,rt-watchman,grpc"
 
 pb.gen:
 	bash ./protobuffer/regenerate.sh

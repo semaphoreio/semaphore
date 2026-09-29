@@ -54,7 +54,8 @@ defmodule InternalApi.Task.Task.Job do
           scheduled_at: Google.Protobuf.Timestamp.t(),
           started_at: Google.Protobuf.Timestamp.t(),
           finished_at: Google.Protobuf.Timestamp.t(),
-          priority: integer
+          priority: integer,
+          original_job_id: String.t()
         }
   defstruct [
     :id,
@@ -67,7 +68,8 @@ defmodule InternalApi.Task.Task.Job do
     :scheduled_at,
     :started_at,
     :finished_at,
-    :priority
+    :priority,
+    :original_job_id
   ]
 
   field(:id, 1, type: :string)
@@ -81,6 +83,7 @@ defmodule InternalApi.Task.Task.Job do
   field(:started_at, 10, type: Google.Protobuf.Timestamp)
   field(:finished_at, 11, type: Google.Protobuf.Timestamp)
   field(:priority, 12, type: :int32)
+  field(:original_job_id, 13, type: :string)
 end
 
 defmodule InternalApi.Task.Task.Job.State do
@@ -134,7 +137,8 @@ defmodule InternalApi.Task.ScheduleRequest do
           repository_id: String.t(),
           deployment_target_id: String.t(),
           org_id: String.t(),
-          fail_fast: integer
+          fail_fast: integer,
+          original_task_id: String.t()
         }
   defstruct [
     :jobs,
@@ -146,7 +150,8 @@ defmodule InternalApi.Task.ScheduleRequest do
     :repository_id,
     :deployment_target_id,
     :org_id,
-    :fail_fast
+    :fail_fast,
+    :original_task_id
   ]
 
   field(:jobs, 1, repeated: true, type: InternalApi.Task.ScheduleRequest.Job)
@@ -159,6 +164,7 @@ defmodule InternalApi.Task.ScheduleRequest do
   field(:deployment_target_id, 10, type: :string)
   field(:org_id, 6, type: :string)
   field(:fail_fast, 7, type: InternalApi.Task.ScheduleRequest.FailFast, enum: true)
+  field(:original_task_id, 11, type: :string)
 end
 
 defmodule InternalApi.Task.ScheduleRequest.Job do
@@ -176,7 +182,8 @@ defmodule InternalApi.Task.ScheduleRequest.Job do
           epilogue_on_pass_cmds: [String.t()],
           epilogue_on_fail_cmds: [String.t()],
           execution_time_limit: integer,
-          priority: integer
+          priority: integer,
+          original_job_id: String.t()
         }
   defstruct [
     :name,
@@ -189,7 +196,8 @@ defmodule InternalApi.Task.ScheduleRequest.Job do
     :epilogue_on_pass_cmds,
     :epilogue_on_fail_cmds,
     :execution_time_limit,
-    :priority
+    :priority,
+    :original_job_id
   ]
 
   field(:name, 1, type: :string)
@@ -203,6 +211,7 @@ defmodule InternalApi.Task.ScheduleRequest.Job do
   field(:epilogue_on_fail_cmds, 10, repeated: true, type: :string)
   field(:execution_time_limit, 11, type: :int32)
   field(:priority, 12, type: :int32)
+  field(:original_job_id, 13, type: :string)
 end
 
 defmodule InternalApi.Task.ScheduleRequest.Job.Agent do

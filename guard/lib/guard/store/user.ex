@@ -244,7 +244,7 @@ defmodule Guard.Store.User do
       {:ok, _} = __MODULE__.update(user_id, %{blocked_at: nil})
     end
 
-    def delete_with_owned_orgs(user_id) do
+    def delete_user(user_id) do
       result =
         Ecto.Multi.new()
         |> Ecto.Multi.run(:get_user, fn repo, _changes ->
