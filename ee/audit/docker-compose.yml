@@ -70,9 +70,16 @@ services:
       retries: 5
 
   S3:
-    image: adobe/s3mock:3.12.0
+    image: rustfs/rustfs:1.0.0
     environment:
-      initialBuckets: "test-bucket"
+      RUSTFS_ADDRESS: ":9090"
+      RUSTFS_ACCESS_KEY: "audit-key"
+      RUSTFS_SECRET_KEY: "the-cake-is-a-lie-secret"
+      RUSTFS_CHECK_UPDATE: "false"
+      RUSTFS_OBS_LOG_DIRECTORY: ""
+      RUSTFS_CONSOLE_ENABLE: "false"
+    entrypoint: sh
+    command: -c 'mkdir -p /tmp/s3-data/test-bucket && exec /entrypoint.sh /tmp/s3-data'
 
 volumes:
   postgres-data:

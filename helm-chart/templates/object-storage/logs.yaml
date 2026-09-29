@@ -1,0 +1,110 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Values.global.logs.secretName }}
+  namespace: {{ .Release.Namespace }}
+stringData:
+  LOGS_STORAGE_BACKEND: "s3"
+  LOGS_STORAGE_S3_URL: "https://logs.{{.Values.global.domain.name}}"
+  AWS_REGION: {{ .Values.global.logs.region | quote }}
+  S3_BUCKET_NAME: "semaphore-logs"
+  AWS_ACCESS_KEY_ID: {{ .Values.global.logs.username | quote }}
+  AWS_SECRET_ACCESS_KEY: {{ .Values.global.logs.password | quote }}
+{{- if .Values.global.logs.local.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: storage-logs
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: storage-logs
+    product: semaphoreci
+spec:
+  type: ClusterIP
+  ports:
+  - port: 9000
+    targetPort: 9000
+  selector:
+    app: storage-logs
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: storage-logs
+  labels:
+    app: storage-logs
+    product: semaphoreci
+spec:
+  serviceName: storage-logs
+  replicas: 1
+  selector:
+    matchLabels:
+      app: storage-logs
+  template:
+    metadata:
+      labels:
+        app: storage-logs
+        product: semaphoreci
+    spec:
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        fsGroupChangePolicy: OnRootMismatch
+      containers:
+      - name: storage-logs
+        image: "{{ .Values.global.logs.local.image.repository }}:{{ .Values.global.logs.local.image.tag }}"
+        env:
+          - name: RUSTFS_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.global.logs.secretName }}
+                key: AWS_ACCESS_KEY_ID
+          - name: RUSTFS_SECRET_KEY
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.global.logs.secretName }}
+                key: AWS_SECRET_ACCESS_KEY
+          - name: RUSTFS_REGION
+            value: {{ .Values.global.logs.region | quote }}
+          - name: RUSTFS_VOLUMES
+            value: "/data"
+          - name: RUSTFS_CHECK_UPDATE
+            value: "false"
+          - name: RUSTFS_OBS_LOG_DIRECTORY
+            value: ""
+          - name: RUSTFS_CONSOLE_ENABLE
+            value: "false"
+        ports:
+        - containerPort: 9000
+        command: ["sh"]
+        args: ["-c", "mkdir -p /data/semaphore-logs && exec /entrypoint.sh"]
+        resources:
+          {{- toYaml .Values.global.logs.local.resources | nindent 10 }}
+        volumeMounts:
+        - name: data
+          mountPath: "/data"
+        livenessProbe:
+          httpGet:
+            path: /minio/health/live
+            port: 9000
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /minio/health/ready
+            port: 9000
+          initialDelaySeconds: 30
+          periodSeconds: 15
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: {{ .Values.global.logs.local.size }}
+{{- end }}
