@@ -52,11 +52,6 @@ GHSA-rv48-qqj5-crxg
 #   GHSA-hv23-4qp7-8c8r (cowlib, moderate) — SSE CRLF injection. Dead code: no SSE responses.
 #   GHSA-g2wm-735q-3f56 (cowlib, low) — cookie header injection. Dead code: no cookie usage;
 #     no patched release exists (latest 2.16.1 still flagged).
-#   GHSA-j43x-5hjq-rgxf (plug 1.16.1, high) — quadratic-time decoding of nested query/body
-#     params in Plug.Conn.Query. Not exploitable: the decoder runs only via Plug.Parsers or
-#     fetch_query_params, and the health-check router uses neither (match/dispatch, GET-only);
-#     the gRPC handler does not decode params through Plug. Fixed in 1.16.4 (in-range bump).
-GHSA-j43x-5hjq-rgxf
 GHSA-jfc2-q6qh-g5x8
 GHSA-468c-vq7p-gh64
 GHSA-q8x4-x7mp-5vg2
