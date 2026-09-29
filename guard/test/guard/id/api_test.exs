@@ -44,6 +44,17 @@ defmodule Guard.Id.Api.Test do
       :ok
     end
 
+    test "POST /cli/device rejects a urlencoded body nested past the limit" do
+      {:ok, response} =
+        HTTPoison.post(
+          "http://localhost:4003/cli/device",
+          nested_param(33),
+          [{"content-type", "application/x-www-form-urlencoded"} | https_headers()]
+        )
+
+      assert response.status_code >= 400
+    end
+
     test "POST /cli/device (success) is not cacheable" do
       {:ok, response} = send_post_request(path: "/cli/device", body: %{})
 
@@ -1299,6 +1310,22 @@ defmodule Guard.Id.Api.Test do
     end
   end
 
+  describe "deeply nested parameters" do
+    test "query string nested past the limit is rejected" do
+      {:ok, response} =
+        HTTPoison.get("http://localhost:4003/login?#{nested_param(33)}", https_headers())
+
+      assert response.status_code >= 400
+    end
+
+    test "query string nested within the limit is accepted" do
+      {:ok, response} =
+        HTTPoison.get("http://localhost:4003/login?#{nested_param(32)}", https_headers())
+
+      assert response.status_code == 200
+    end
+  end
+
   describe "/login" do
     test "no request parameters" do
       {:ok, response} = send_login_request()
@@ -2269,4 +2296,8 @@ defmodule Guard.Id.Api.Test do
     |> Enum.find(fn {name, _} -> String.downcase(name) == "cache-control" end)
     |> elem(1)
   end
+
+  defp nested_param(depth), do: "a" <> String.duplicate("[a]", depth - 1) <> "=1"
+
+  defp https_headers, do: [{"x-forwarded-proto", "https"}, {"user-agent", "test-agent"}]
 end
