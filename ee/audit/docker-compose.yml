@@ -23,6 +23,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      S3:
+        condition: service_healthy
 
     environment:
       AMQP_URL: "amqp://rabbitmq:5672"
@@ -80,6 +82,10 @@ services:
       RUSTFS_CONSOLE_ENABLE: "false"
     entrypoint: sh
     command: -c 'mkdir -p /tmp/s3-data/test-bucket && exec /entrypoint.sh /tmp/s3-data'
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:9090/minio/health/live"]
+      interval: 5s
+      retries: 12
 
 volumes:
   postgres-data:
