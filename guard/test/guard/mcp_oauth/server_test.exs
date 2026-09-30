@@ -403,6 +403,27 @@ defmodule Guard.McpOAuth.Server.Test do
       assert URI.decode_query(back.query)["client_id"] == client.client_id
     end
 
+    test "prompt=create without authentication redirects to signup, and back" do
+      client = create_test_client()
+      query = authorize_query(client.client_id) <> "&prompt=create"
+
+      {:ok, response} =
+        HTTPoison.get(mcp_oauth_url("/authorize#{query}"), default_headers(),
+          follow_redirect: false
+        )
+
+      assert response.status_code == 302
+
+      location = response |> get_header("location") |> URI.parse()
+
+      assert "#{location.scheme}://#{location.host}#{location.path}" ==
+               "https://id.localhost/signup"
+
+      back = location.query |> URI.decode_query() |> Map.fetch!("redirect_to") |> URI.parse()
+      assert back.path == "/mcp/oauth/authorize"
+      refute URI.decode_query(back.query)["prompt"], "signed up, authorizing asks nothing more"
+    end
+
     test "an x-semaphore-user-id header alone, without a session, redirects to login", %{
       user_id: user_id
     } do

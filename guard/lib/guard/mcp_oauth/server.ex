@@ -497,10 +497,12 @@ defmodule Guard.McpOAuth.Server do
       })
 
     # Login is on id.<domain>, and it reads redirect_to, which it only follows
-    # to an absolute URL on the base domain.
+    # to an absolute URL on the base domain. A client asking for an account to
+    # be made, with OpenID Connect's prompt=create, gets the signup page.
     domain = Application.fetch_env!(:guard, :base_domain)
+    page = if validated_params.prompt == "create", do: "signup", else: "login"
     return_url = "https://#{conn.host}/mcp/oauth/authorize?#{return_params}"
-    login_url = "https://id.#{domain}/login?redirect_to=#{URI.encode_www_form(return_url)}"
+    login_url = "https://id.#{domain}/#{page}?redirect_to=#{URI.encode_www_form(return_url)}"
 
     conn
     |> put_resp_header("location", login_url)

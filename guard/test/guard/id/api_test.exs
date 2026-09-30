@@ -1473,6 +1473,20 @@ defmodule Guard.Id.Api.Test do
       refute response.body =~ "You're already logged in"
     end
 
+    test "keeps redirect_to, so somebody signing up comes back to it" do
+      {:ok, response} =
+        send_login_request(
+          path: "/signup",
+          query: %{redirect_to: "https://mcp.#{domain()}/mcp/oauth/authorize"}
+        )
+
+      assert response.status_code == 200
+
+      assert Enum.any?(response.headers, fn {name, value} ->
+               name == "set-cookie" and value =~ "semaphore_redirect_to="
+             end)
+    end
+
     test "renders signup page correctly when redirect_to param is present" do
       {:ok, response} =
         send_login_request(path: "/signup", query: %{redirect_to: "https://#{domain()}"})

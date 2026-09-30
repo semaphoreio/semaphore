@@ -1632,7 +1632,9 @@ defmodule Guard.Id.Api do
   ###
 
   defp store_redirect_info(conn, _opts) do
-    if conn.request_path =~ "login" or conn.request_path =~ "auth" do
+    path = conn.request_path
+
+    if path =~ "login" or path =~ "auth" or path =~ "signup" do
       conn
       |> Guard.Utils.Http.store_redirect_info()
     else
@@ -1649,7 +1651,7 @@ defmodule Guard.Id.Api do
   defp plug_fetch_query_params(conn, _opts) do
     if conn.request_path =~ "login" or conn.request_path =~ "callback" or
          conn.request_path =~ "auth" or conn.request_path =~ "cli" or
-         conn.request_path =~ "device" do
+         conn.request_path =~ "device" or conn.request_path =~ "signup" do
       conn |> fetch_query_params()
     else
       conn
