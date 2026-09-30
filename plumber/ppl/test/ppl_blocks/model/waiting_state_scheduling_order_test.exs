@@ -206,25 +206,33 @@ defmodule Ppl.PplBlocks.Model.WaitingStateSchedulingOrderTest do
              [:terminate_first, :ready_first, :terminate_first, :ready_first, :terminate_first]
   end
 
-  # With a nested loop and no materialize the planner can rescan a claim
-  # subquery joined in FROM once per outer row, claiming several blocks in one
-  # statement. Steer the planner there and check a claim still takes one.
+  # Joined in FROM, the claim subquery can be rescanned once per outer row of
+  # a nested loop (each rescan skips the rows already locked and claims one
+  # more). Which plan the planner picks depends on table stats, so check the
+  # shape instead: the claim must be an InitPlan, which runs exactly once.
+  test "the claim subquery runs once per statement (InitPlan)" do
+    claim =
+      "SELECT pb.* FROM pipeline_blocks AS pb ORDER BY pb.updated_at LIMIT 1 FOR UPDATE OF pb SKIP LOCKED"
+
+    %{rows: [[[%{"Plan" => plan}]]]} =
+      ("EXPLAIN (FORMAT JSON) " <> WaitingStateScheduling.ready_ppl_block_update_query(claim))
+      |> Repo.query!([NaiveDateTime.utc_now()])
+
+    # One entry per LockRows node: whether it sits under an InitPlan.
+    lock_nodes = lock_rows_nodes(plan, false)
+
+    assert lock_nodes != []
+    assert Enum.all?(lock_nodes)
+  end
+
   for order <- [:terminate_first, :ready_first] do
-    test "a #{order} claim takes exactly one block whatever the plan" do
+    test "a #{order} claim takes exactly one block when several are claimable" do
       ppl_id = running_pipeline()
       stopped = insert_blocks(ppl_id, 3)
       Enum.each(stopped, &set_terminate_request(&1, "stop"))
       insert_blocks(running_pipeline(), 3)
 
-      {:ok, resp} =
-        Repo.transaction(fn ->
-          ~w(enable_hashjoin enable_mergejoin enable_material enable_seqscan)
-          |> Enum.each(&Repo.query!("SET LOCAL #{&1} = off"))
-
-          WaitingStateScheduling.do_get_ready_block(unquote(order))
-        end)
-
-      assert {:ok, [{_, _}]} = resp
+      assert {:ok, [{_, _}]} = WaitingStateScheduling.get_ready_block(unquote(order))
 
       in_scheduling =
         from(b in PplBlocks, where: b.in_scheduling == true, select: count(b.id))
@@ -232,6 +240,62 @@ defmodule Ppl.PplBlocks.Model.WaitingStateSchedulingOrderTest do
 
       assert in_scheduling == 1
     end
+  end
+
+  # With index scans the rows come back in updated_at order even without
+  # ORDER BY. Force sequential scans, where they come back in physical order,
+  # which set_updated_at leaves different from updated_at order.
+  test "claims oldest first without help from index order" do
+    ppl_id = running_pipeline()
+    [r0, r1, r2, t0, t1] = insert_blocks(ppl_id, 5)
+
+    set_updated_at(r0, ~N[2026-01-01 10:00:00.000000])
+    set_updated_at(r1, ~N[2026-01-01 08:00:00.000000])
+    set_updated_at(r2, ~N[2026-01-01 09:00:00.000000])
+    set_updated_at(t0, ~N[2026-01-01 07:00:00.000000])
+    set_updated_at(t1, ~N[2026-01-01 06:00:00.000000])
+    set_terminate_request(t0, "stop")
+    set_terminate_request(t1, "stop")
+
+    claimed =
+      Repo.transaction(fn ->
+        ~w(enable_indexscan enable_bitmapscan enable_indexonlyscan)
+        |> Enum.each(&Repo.query!("SET LOCAL #{&1} = off"))
+
+        for order <- [:terminate_first, :terminate_first, :ready_first, :ready_first, :ready_first] do
+          {:ok, [{_, blk}]} = WaitingStateScheduling.do_get_ready_block(order)
+          blk.id
+        end
+      end)
+
+    assert claimed == {:ok, [t1.id, t0.id, r1.id, r2.id, r0.id]}
+  end
+
+  test "the waiting STM claims by its position in the batch" do
+    alias Ppl.PplBlocks.STMHandler.WaitingState
+
+    stopping_ppl = running_pipeline()
+    [stopped] = insert_blocks(stopping_ppl, 1)
+    ready_ppl = running_pipeline()
+    [ready] = insert_blocks(ready_ppl, 1)
+
+    "update pipelines set state = 'stopping' where ppl_id = $1;"
+    |> Repo.query!([Ecto.UUID.dump!(stopping_ppl)])
+
+    set_updated_at(stopped, ~N[2026-01-01 09:00:00.000000])
+    set_updated_at(ready, ~N[2026-01-01 08:00:00.000000])
+    set_terminate_request(stopped, "stop")
+
+    assert {:ok, {_, %{id: first}}} = WaitingState.enter_scheduling(%{batch_index: 1})
+    assert first == ready.id
+
+    reset_in_scheduling()
+    assert {:ok, {_, %{id: first}}} = WaitingState.enter_scheduling(%{batch_index: 0})
+    assert first == stopped.id
+
+    reset_in_scheduling()
+    assert {:ok, {_, %{id: first}}} = WaitingState.enter_scheduling(%{})
+    assert first == stopped.id
   end
 
   ################### Helpers ###################
@@ -279,6 +343,17 @@ defmodule Ppl.PplBlocks.Model.WaitingStateSchedulingOrderTest do
   defp set_updated_at(blk, updated_at) do
     from(b in PplBlocks, where: b.id == ^blk.id)
     |> Repo.update_all(set: [updated_at: updated_at])
+  end
+
+  defp lock_rows_nodes(node, in_init_plan) do
+    in_init_plan = in_init_plan or String.starts_with?(node["Subplan Name"] || "", "InitPlan")
+    own = if node["Node Type"] == "LockRows", do: [in_init_plan], else: []
+
+    own ++ Enum.flat_map(node["Plans"] || [], &lock_rows_nodes(&1, in_init_plan))
+  end
+
+  defp reset_in_scheduling do
+    PplBlocks |> Repo.update_all(set: [in_scheduling: false])
   end
 
   defp set_terminate_request(blk, request) do
