@@ -126,7 +126,7 @@ func Test__CleanerPurge(t *testing.T) {
 		bucket.Add("/workflows/"+id+"/junit/a.txt", daysAgo(0))
 		bucket.Add("/jobs/"+id+"/junit/b.txt", daysAgo(0))
 
-		assert.NoError(t, privateapi.PurgeArtifactContents(artifact.IdempotencyToken))
+		assert.NoError(t, privateapi.PurgeArtifactContents(artifact.IdempotencyToken, time.Now()))
 
 		request, err := NewCleanRequest(artifact.ID.String())
 		assert.Nil(t, err)
@@ -149,7 +149,7 @@ func Test__CleanerPurge(t *testing.T) {
 
 	t.Run("the mark comes off once the storage is empty", func(t *testing.T) {
 		artifact, _ := createBucketWithRetentionPolicy(t)
-		assert.NoError(t, privateapi.PurgeArtifactContents(artifact.IdempotencyToken))
+		assert.NoError(t, privateapi.PurgeArtifactContents(artifact.IdempotencyToken, time.Now()))
 
 		request, err := NewCleanRequest(artifact.ID.String())
 		assert.Nil(t, err)
@@ -177,7 +177,7 @@ func Test__CleanerPurge(t *testing.T) {
 		policy.LastCleanedAt = &now
 		assert.NoError(t, db.Conn().Save(policy).Error)
 
-		assert.NoError(t, privateapi.PurgeArtifactContents(artifact.IdempotencyToken))
+		assert.NoError(t, privateapi.PurgeArtifactContents(artifact.IdempotencyToken, time.Now()))
 
 		request, err := NewCleanRequest(artifact.ID.String())
 		assert.Nil(t, err)
@@ -190,7 +190,7 @@ func Test__CleanerPurge(t *testing.T) {
 
 	t.Run("a purged storage is destroyed when its project is destroyed", func(t *testing.T) {
 		artifact, _ := createBucketWithRetentionPolicy(t)
-		assert.NoError(t, privateapi.PurgeArtifactContents(artifact.IdempotencyToken))
+		assert.NoError(t, privateapi.PurgeArtifactContents(artifact.IdempotencyToken, time.Now()))
 
 		request, err := NewCleanRequest(artifact.ID.String())
 		assert.Nil(t, err)
@@ -228,7 +228,7 @@ func Test__CleanerPurgeFailures(t *testing.T) {
 		bucket.Add("/jobs/"+id+"/junit/a.txt", daysAgo(10))
 		bucket.DeleteObjectsError = errors.New("failed to delete 1 of 1 objects")
 
-		assert.NoError(t, privateapi.PurgeArtifactContents(artifact.IdempotencyToken))
+		assert.NoError(t, privateapi.PurgeArtifactContents(artifact.IdempotencyToken, time.Now()))
 
 		request, err := NewCleanRequest(artifact.ID.String())
 		assert.Nil(t, err)
@@ -271,7 +271,7 @@ func Test__CleanerPurgeFailures(t *testing.T) {
 
 	t.Run("a completed purge clears its mark", func(t *testing.T) {
 		artifact, _ := createBucketWithRetentionPolicy(t)
-		assert.NoError(t, privateapi.PurgeArtifactContents(artifact.IdempotencyToken))
+		assert.NoError(t, privateapi.PurgeArtifactContents(artifact.IdempotencyToken, time.Now()))
 
 		request, err := NewCleanRequest(artifact.ID.String())
 		assert.Nil(t, err)
@@ -300,7 +300,7 @@ func Test__CleanerPurgeGracePeriod(t *testing.T) {
 
 		bucket.Add("/jobs/"+id+"/junit/a.txt", daysAgo(0))
 
-		require.NoError(t, privateapi.PurgeArtifactContents(artifact.IdempotencyToken))
+		require.NoError(t, privateapi.PurgeArtifactContents(artifact.IdempotencyToken, time.Now()))
 
 		request, err := NewCleanRequest(artifact.ID.String())
 		require.NoError(t, err)
@@ -330,7 +330,7 @@ func Test__CleanerPurgeGracePeriod(t *testing.T) {
 		bucket.Add("/jobs/"+id+"/junit/a.txt", daysAgo(10))
 		bucket.Add("/jobs/"+id+"/junit/b.txt", daysAgo(0))
 
-		require.NoError(t, privateapi.PurgeArtifactContents(artifact.IdempotencyToken))
+		require.NoError(t, privateapi.PurgeArtifactContents(artifact.IdempotencyToken, time.Now()))
 
 		request, err := NewCleanRequest(artifact.ID.String())
 		require.NoError(t, err)
@@ -350,7 +350,7 @@ func Test__CleanerPurgeGracePeriod(t *testing.T) {
 
 		bucket.Add("/jobs/"+id+"/junit/a.txt", daysAgo(0))
 
-		require.NoError(t, privateapi.PurgeArtifactContents(artifact.IdempotencyToken))
+		require.NoError(t, privateapi.PurgeArtifactContents(artifact.IdempotencyToken, time.Now()))
 		require.NoError(t, agePurgeMark(artifact.ID, 73*time.Hour))
 
 		request, err := NewCleanRequest(artifact.ID.String())
@@ -370,8 +370,8 @@ func Test__CleanerPurgeGracePeriod(t *testing.T) {
 
 		bucket.Add("/jobs/"+id+"/junit/a.txt", daysAgo(0))
 
-		require.NoError(t, privateapi.PurgeArtifactContents(artifact.IdempotencyToken))
-		require.NoError(t, privateapi.CancelArtifactPurge(artifact.IdempotencyToken))
+		require.NoError(t, privateapi.PurgeArtifactContents(artifact.IdempotencyToken, time.Now()))
+		require.NoError(t, privateapi.CancelArtifactPurge(artifact.IdempotencyToken, time.Now()))
 
 		// Even long after the window would have closed, because the mark is gone.
 		request, err := NewCleanRequest(artifact.ID.String())

@@ -53,7 +53,8 @@ CREATE TABLE public.artifacts (
     created timestamp with time zone,
     last_cleaned_at timestamp without time zone,
     deleted_at timestamp without time zone,
-    purge_requested_at timestamp without time zone
+    purge_requested_at timestamp without time zone,
+    project_restored_at timestamp without time zone
 );
 
 
@@ -160,7 +161,7 @@ SET row_security = off;
 --
 
 COPY public.schema_migrations (version, dirty) FROM stdin;
-20260916120000	f
+20260930120000	f
 \.
 
 

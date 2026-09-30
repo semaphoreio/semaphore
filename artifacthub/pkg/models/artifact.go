@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	uuid "github.com/satori/go.uuid"
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/db"
@@ -26,6 +27,9 @@ type Artifact struct {
 
 	// Set when this service is told to empty the storage, cleared when it has.
 	PurgeRequestedAt *time.Time
+
+	// Latest restore of the owning project, so a delete handled after it can be ignored.
+	ProjectRestoredAt *time.Time
 }
 
 // IsPurgeMarked reports whether this storage is already spoken for, either by a
@@ -104,6 +108,22 @@ func (a *Artifact) RequestPurge(tx *gorm.DB, timestamp time.Time) error {
 	return nil
 }
 
+// RecordProjectRestored keeps the latest restore time, never moving it back, so a
+// redelivered older restore cannot reopen a window a newer one closed.
+func (a *Artifact) RecordProjectRestored(tx *gorm.DB, at time.Time) error {
+	if a.ProjectRestoredAt != nil && !at.After(*a.ProjectRestoredAt) {
+		return nil
+	}
+
+	if err := tx.Model(a).Update("project_restored_at", at).Error; err != nil {
+		return err
+	}
+
+	a.ProjectRestoredAt = &at
+
+	return nil
+}
+
 // ClearPurgeMark takes the mark off, either because the purge finished or because
 // the project came back. Updates with an explicit map, since Update with a nil
 // value is not a reliable way to write a NULL, and a mark left set has the cleaner
@@ -131,6 +151,21 @@ func FindArtifactByIdempotencyTokenRaw(tx *gorm.DB, idempotencyToken string) (*A
 	var a Artifact
 
 	if err := tx.Where("idempotency_token = ?", idempotencyToken).First(&a).Error; err != nil {
+		return nil, err
+	}
+
+	return &a, nil
+}
+
+// FindArtifactByIdempotencyTokenForUpdate is the raw lookup with the row locked until the
+// transaction ends, so a delete and a restore for one project are applied one at a time.
+func FindArtifactByIdempotencyTokenForUpdate(tx *gorm.DB, idempotencyToken string) (*Artifact, error) {
+	var a Artifact
+
+	err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("idempotency_token = ?", idempotencyToken).
+		First(&a).Error
+	if err != nil {
 		return nil, err
 	}
 

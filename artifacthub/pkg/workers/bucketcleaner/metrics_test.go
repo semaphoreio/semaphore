@@ -32,7 +32,7 @@ func Test__OldestPurgeAge(t *testing.T) {
 		artifact, err := models.CreateArtifact(uuid.NewV4().String(), projectID)
 		require.NoError(t, err)
 
-		require.NoError(t, privateapi.PurgeArtifactContents(projectID))
+		require.NoError(t, privateapi.PurgeArtifactContents(projectID, time.Now()))
 		require.NoError(t, db.Conn().Model(&models.Artifact{}).
 			Where("id = ?", artifact.ID).
 			Update("purge_requested_at", time.Now().Add(-2*time.Hour)).Error)
@@ -51,7 +51,7 @@ func Test__OldestPurgeAge(t *testing.T) {
 		artifact, err := models.CreateArtifact(uuid.NewV4().String(), projectID)
 		require.NoError(t, err)
 
-		require.NoError(t, privateapi.PurgeArtifactContents(projectID))
+		require.NoError(t, privateapi.PurgeArtifactContents(projectID, time.Now()))
 		require.NoError(t, db.Conn().Model(&models.Artifact{}).
 			Where("id = ?", artifact.ID).
 			Update("purge_requested_at", time.Now().Add(-74*time.Hour)).Error)
@@ -70,14 +70,14 @@ func Test__OldestPurgeAge(t *testing.T) {
 		artifact, err := models.CreateArtifact(uuid.NewV4().String(), projectID)
 		require.NoError(t, err)
 
-		require.NoError(t, privateapi.PurgeArtifactContents(projectID))
+		require.NoError(t, privateapi.PurgeArtifactContents(projectID, time.Now()))
 
 		// Ten days old, and called off: not outstanding work.
 		require.NoError(t, db.Conn().Model(&models.Artifact{}).
 			Where("id = ?", artifact.ID).
 			Update("purge_requested_at", time.Now().Add(-240*time.Hour)).Error)
 
-		require.NoError(t, privateapi.CancelArtifactPurge(projectID))
+		require.NoError(t, privateapi.CancelArtifactPurge(projectID, time.Now()))
 
 		age, err := oldestPurgeAgeSeconds()
 		require.NoError(t, err)
