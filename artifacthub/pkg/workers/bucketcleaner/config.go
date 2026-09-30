@@ -21,8 +21,8 @@ const DefaultPurgeGracePeriod = 24 * time.Hour
 const PurgeGracePeriodEnvVar = "ARTIFACT_PURGE_GRACE_PERIOD"
 
 // PurgeGracePeriod is read by the scheduler, to decide what is due, and by the
-// cleaner, to decide what to delete. Both run from the same binary, so main sets it
-// once at startup.
+// cleaner, to decide what to delete. They run as separate deployments, so set it the
+// same on both; if they disagree, the longer value wins.
 var PurgeGracePeriod = DefaultPurgeGracePeriod
 
 // ConfigurePurgeGracePeriod reads the grace period from the environment, falling
