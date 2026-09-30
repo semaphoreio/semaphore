@@ -189,4 +189,125 @@ defmodule Looper.STMTest do
     fn query -> query |> where(id: ^id) end
     |> Looper.STMTest.ExecuteNowTask.execute_now_in_task()
   end
+
+  defmodule BatchOfThree do
+    @moduledoc false
+
+    use Looper.STM,
+      id: __MODULE__,
+      period_ms: 60_000,
+      batch_size: 3,
+      repo: EctoRepo,
+      schema: Items,
+      observed_state: "initializing",
+      allowed_states: ~w(running done),
+      cooling_time_sec: 0,
+      columns_to_log: [:state, :recovery_count]
+
+    def initial_query(), do: Items
+
+    def terminate_request_handler(_tr, _event), do: {:ok, :continue}
+
+    def scheduling_handler(_), do: {:ok, fn _, _ -> {:ok, %{state: "running"}} end}
+  end
+
+  defmodule DefaultBatch do
+    @moduledoc false
+
+    use Looper.STM,
+      id: __MODULE__,
+      period_ms: 60_000,
+      repo: EctoRepo,
+      schema: Items,
+      observed_state: "initializing",
+      allowed_states: ~w(running done),
+      cooling_time_sec: 0,
+      columns_to_log: [:state, :recovery_count]
+
+    def initial_query(), do: Items
+
+    def terminate_request_handler(_tr, _event), do: {:ok, :continue}
+
+    def scheduling_handler(_), do: {:ok, fn _, _ -> {:ok, %{state: "running"}} end}
+  end
+
+  defmodule BatchStopsOnError do
+    @moduledoc false
+
+    use Looper.STM,
+      id: __MODULE__,
+      period_ms: 60_000,
+      batch_size: 3,
+      repo: EctoRepo,
+      schema: Items,
+      observed_state: "initializing",
+      allowed_states: ~w(running done),
+      cooling_time_sec: 0,
+      columns_to_log: [:state, :recovery_count]
+
+    def initial_query(), do: Items
+
+    def terminate_request_handler(_tr, _event), do: {:ok, :continue}
+
+    def scheduling_handler(_), do: {:ok, fn _, _ -> {:error, %{}} end}
+  end
+
+  defp insert_initializing_items(count) do
+    EctoRepo.delete_all(Items)
+
+    for _ <- 1..count do
+      {:ok, _} = %Items{state: "initializing"} |> EctoRepo.insert()
+    end
+  end
+
+  defp count_in_state(state),
+    do: from(p in Items, where: p.state == ^state, select: count(p.id)) |> EctoRepo.one()
+
+  defp wake_up_once(module) do
+    {:ok, pid} = module.start_link()
+    module.execute_now()
+    :timer.sleep(300)
+    GenServer.stop(pid)
+  end
+
+  test "STM with batch_size processes up to batch_size items per wake-up" do
+    insert_initializing_items(5)
+
+    wake_up_once(BatchOfThree)
+
+    assert count_in_state("running") == 3
+    assert count_in_state("initializing") == 2
+  end
+
+  test "STM with batch_size stops when no items are left" do
+    insert_initializing_items(2)
+
+    wake_up_once(BatchOfThree)
+
+    assert count_in_state("running") == 2
+    assert count_in_state("initializing") == 0
+  end
+
+  test "STM without batch_size processes one item per wake-up" do
+    insert_initializing_items(3)
+
+    wake_up_once(DefaultBatch)
+
+    assert count_in_state("running") == 1
+    assert count_in_state("initializing") == 2
+  end
+
+  test "STM with batch_size stops the batch on a failed transition" do
+    insert_initializing_items(3)
+
+    wake_up_once(BatchStopsOnError)
+
+    assert count_in_state("running") == 0
+    assert count_in_state("initializing") == 3
+    # Only the first item was taken; the failed exit leaves it in scheduling.
+    in_scheduling =
+      from(p in Items, where: p.in_scheduling == true, select: count(p.id)) |> EctoRepo.one()
+
+    assert in_scheduling == 1
+  end
 end

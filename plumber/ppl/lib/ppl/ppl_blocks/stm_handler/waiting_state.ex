@@ -23,6 +23,7 @@ defmodule Ppl.PplBlocks.STMHandler.WaitingState do
   use Looper.STM,
     id: __MODULE__,
     period_ms: 1_000,
+    batch_size: 5,
     repo: Ppl.EctoRepo,
     schema: Ppl.PplBlocks.Model.PplBlocks,
     observed_state: "waiting",
