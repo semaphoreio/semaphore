@@ -27,6 +27,9 @@ type BatchCleaner struct {
 	artifactDeleted    bool
 	purgeCompleted     bool
 	pages              int
+
+	// Decided once when the run starts, so every page in it is handled the same way.
+	purging bool
 }
 
 func NewBatchCleaner(c storage.Client, cleanRequest *CleanRequest, pages int) *BatchCleaner {
@@ -84,9 +87,9 @@ func (c *BatchCleaner) Run(tx *gorm.DB) (string, error) {
 	if nextPageToken == "" {
 		c.paginationEnded = true
 
-		// Every page visited and every delete succeeded, since a failed delete stops a
-		// purge, so the storage is empty and the mark comes off here.
-		if c.isPurging() && !c.artifactBucket.IsMarkedForDestruction() {
+		// Only a run that started on the first page has seen the whole bucket. The last
+		// message of a longer chain leaves the mark, and the next pass from page one clears it.
+		if c.isPurging() && !c.artifactBucket.IsMarkedForDestruction() && c.cleanRequest.PaginationToken == "" {
 			if err := c.finishPurge(); err != nil {
 				return "", err
 			}
@@ -129,17 +132,15 @@ func (c *BatchCleaner) loadRecords() error {
 		return err
 	}
 	c.artifactBucket = artifact
+	c.purging = artifact.IsPurgeDue(PurgeGracePeriod)
 
 	return nil
 }
 
 // isPurging reports whether this run deletes everything, rather than applying the
-// retention policy.
-//
-// A storage marked by a project delete is not purged until its grace period is up,
-// so until then this is false and the run applies the retention policy as usual.
+// retention policy. A marked storage is not purged until its grace period is up.
 func (c *BatchCleaner) isPurging() bool {
-	return c.artifactBucket.IsPurgeDue(PurgeGracePeriod)
+	return c.purging
 }
 
 // finishPurge takes the mark off once the storage has been emptied. The storage

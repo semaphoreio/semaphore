@@ -3,6 +3,7 @@ package bucketcleaner
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -186,6 +187,48 @@ func Test__CleanerPurge(t *testing.T) {
 		_, err = cleaner.Run(db.Conn())
 		assert.NoError(t, err)
 		assert.Equal(t, 0, bucket.Size())
+	})
+
+	t.Run("the end of a longer chain leaves the mark for a pass from the first page", func(t *testing.T) {
+		artifact, _ := createBucketWithRetentionPolicy(t)
+		bucket := s.GetBucket(storage.BucketOptions{Name: artifact.BucketName}).(*storage.InMemoryBucket)
+
+		for i := 0; i < 150; i++ {
+			require.NoError(t, bucket.Add(fmt.Sprintf("/jobs/%s/junit/%d.txt", id, i), daysAgo(0)))
+		}
+
+		require.NoError(t, privateapi.PurgeArtifactContents(artifact.IdempotencyToken, time.Now()))
+
+		request, err := NewCleanRequest(artifact.ID.String())
+		require.NoError(t, err)
+
+		// One page per run, so the purge takes a chain of two messages.
+		token, err := NewBatchCleaner(s, request, 1).Run(db.Conn())
+		require.NoError(t, err)
+		require.NotEmpty(t, token)
+
+		request.PaginationToken = token
+		last := NewBatchCleaner(s, request, 1)
+		token, err = last.Run(db.Conn())
+		require.NoError(t, err)
+		require.Empty(t, token)
+
+		// Everything is gone, but a run that began mid-bucket cannot vouch for all of it.
+		assert.Zero(t, bucket.Size())
+		assert.False(t, last.purgeCompleted)
+		stored, err := models.FindArtifactByID(artifact.ID.String())
+		require.NoError(t, err)
+		assert.NotNil(t, stored.PurgeRequestedAt)
+
+		request.PaginationToken = ""
+		check := NewBatchCleaner(s, request, 1)
+		_, err = check.Run(db.Conn())
+		require.NoError(t, err)
+		assert.True(t, check.purgeCompleted)
+
+		stored, err = models.FindArtifactByID(artifact.ID.String())
+		require.NoError(t, err)
+		assert.Nil(t, stored.PurgeRequestedAt)
 	})
 
 	t.Run("a purged storage is destroyed when its project is destroyed", func(t *testing.T) {
