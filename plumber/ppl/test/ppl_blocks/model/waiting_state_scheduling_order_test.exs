@@ -206,6 +206,34 @@ defmodule Ppl.PplBlocks.Model.WaitingStateSchedulingOrderTest do
              [:terminate_first, :ready_first, :terminate_first, :ready_first, :terminate_first]
   end
 
+  # With a nested loop and no materialize the planner can rescan a claim
+  # subquery joined in FROM once per outer row, claiming several blocks in one
+  # statement. Steer the planner there and check a claim still takes one.
+  for order <- [:terminate_first, :ready_first] do
+    test "a #{order} claim takes exactly one block whatever the plan" do
+      ppl_id = running_pipeline()
+      stopped = insert_blocks(ppl_id, 3)
+      Enum.each(stopped, &set_terminate_request(&1, "stop"))
+      insert_blocks(running_pipeline(), 3)
+
+      {:ok, resp} =
+        Repo.transaction(fn ->
+          ~w(enable_hashjoin enable_mergejoin enable_material enable_seqscan)
+          |> Enum.each(&Repo.query!("SET LOCAL #{&1} = off"))
+
+          WaitingStateScheduling.do_get_ready_block(unquote(order))
+        end)
+
+      assert {:ok, [{_, _}]} = resp
+
+      in_scheduling =
+        from(b in PplBlocks, where: b.in_scheduling == true, select: count(b.id))
+        |> Repo.one()
+
+      assert in_scheduling == 1
+    end
+  end
+
   ################### Helpers ###################
 
   defp claim_all(acc) do

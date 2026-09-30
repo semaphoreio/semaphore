@@ -54,12 +54,19 @@ defmodule Ppl.PplBlocks.Model.WaitingStateScheduling do
     |> STM.load(PplBlocks)
   end
 
+  # The claim runs as an uncorrelated scalar subquery (an InitPlan), so it is
+  # evaluated exactly once. Joined in FROM, the planner may put it on the inner
+  # side of a nested loop and rescan it per outer row; each rescan skips the
+  # rows this statement already claimed and claims one more.
+  # `old` is read from the statement snapshot, so it has the pre-update row.
   def ready_ppl_block_update_query(select_query) do "
     UPDATE pipeline_blocks AS ppl_blk
     SET in_scheduling = true, updated_at = $1
-    FROM (#{select_query}) AS subquery
-    WHERE ppl_blk.id = subquery.id and ppl_blk.in_scheduling = false
-    RETURNING ppl_blk.*, subquery.updated_at as old_update_time
+    FROM pipeline_blocks AS old
+    WHERE ppl_blk.id = (SELECT subquery.id FROM (#{select_query}) AS subquery) AND
+      old.id = ppl_blk.id AND
+      ppl_blk.in_scheduling = false
+    RETURNING ppl_blk.*, old.updated_at as old_update_time
   " end
 
   # Uses the partial index pipeline_blocks_waiting_terminate_requested_index.
