@@ -111,31 +111,62 @@ global:
   sidecarEncryptor:
     image: encryptor
 
+  objectStorage:
+    acknowledgeMinioRemoval: false
+
   artifacts:
-    secretName: "minio-artifacts"
-    username: "semaphore"
-    password: "semaphore"
+    secretName: "storage-artifacts"
+    region: "local"
+    username: "semaphore-artifacts-access"
+    password: "semaphore-artifacts-secret"
     local:
       enabled: true
-      version: RELEASE.2021-04-22T15-44-28Z.hotfix.56647434e
+      image:
+        repository: rustfs/rustfs
+        tag: "1.0.0"
       size: 3Gi
+      resources:
+        requests:
+          cpu: 50m
+          memory: 256Mi
+        limits:
+          memory: 2Gi
 
   cache:
-    username: "semaphore"
-    password: "semaphore"
+    secretName: "storage-cache"
+    region: "local"
+    username: "semaphore-cache-access"
+    password: "semaphore-cache-secret"
     local:
       enabled: true
-      version: RELEASE.2021-04-22T15-44-28Z.hotfix.56647434e
+      image:
+        repository: rustfs/rustfs
+        tag: "1.0.0"
       size: 3Gi
+      resources:
+        requests:
+          cpu: 50m
+          memory: 256Mi
+        limits:
+          memory: 2Gi
 
   logs:
-    secretName: "minio-logs"
-    username: "semaphore"
-    password: "semaphore"
+    secretName: "storage-logs"
+    region: "local"
+    username: "semaphore-logs-access"
+    password: "semaphore-logs-secret"
     local:
       enabled: true
-      version: RELEASE.2021-04-22T15-44-28Z.hotfix.56647434e
+      image:
+        repository: rustfs/rustfs
+        tag: "1.0.0"
       size: 3Gi
+      resources:
+        requests:
+          cpu: 50m
+          memory: 256Mi
+        limits:
+          memory: 2Gi
 
   # If secretName is empty, the secrets will be auto-generated.
   # If specified, the secret used must contain the following keys:
