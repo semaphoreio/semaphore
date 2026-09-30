@@ -86,12 +86,7 @@ defmodule Audit.ApiTest do
 
     assert res.previous_page_token == ""
 
-    assert res.next_page_token ==
-             %Audit.Event{
-               operation_id: op3,
-               timestamp: DateTime.from_unix!(45)
-             }
-             |> Paginator.cursor_for_record([:operation_id, :timestamp])
+    assert res.next_page_token == cursor_at(org_id, 45, op3)
 
     # 2nd page, for previous page token to work, we need at least page_size: 2
     request =
@@ -119,19 +114,119 @@ defmodule Audit.ApiTest do
 
     assert Enum.at(res.events, 0).medium == :Web
 
-    assert res.next_page_token ==
-             %Audit.Event{
-               operation_id: op2,
-               timestamp: DateTime.from_unix!(30)
-             }
-             |> Paginator.cursor_for_record([:operation_id, :timestamp])
+    assert res.next_page_token == cursor_at(org_id, 30, op2)
+    assert res.previous_page_token == cursor_at(org_id, 40, op2)
+  end
 
-    assert res.previous_page_token ==
-             %Audit.Event{
-               operation_id: op2,
-               timestamp: DateTime.from_unix!(40)
-             }
-             |> Paginator.cursor_for_record([:operation_id, :timestamp])
+  describe "paginated_list with a time range" do
+    # create_events/1 creates events at unix 0, 20, 30, 40 and 45
+    defp list_timestamps(org_id, opts) do
+      request = InternalApi.Audit.PaginatedListRequest.new([org_id: org_id] ++ opts)
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+
+      case InternalApi.Audit.AuditService.Stub.paginated_list(channel, request) do
+        {:ok, res} -> {:ok, Enum.map(res.events, & &1.timestamp.seconds), res}
+        error -> error
+      end
+    end
+
+    defp ts(seconds), do: Google.Protobuf.Timestamp.new(seconds: seconds)
+
+    test "no range returns every event (old behaviour)" do
+      org_id = Ecto.UUID.generate()
+      create_events(org_id)
+
+      assert {:ok, [45, 40, 30, 20, 0], _} = list_timestamps(org_id, [])
+    end
+
+    test "from is inclusive and to is exclusive" do
+      org_id = Ecto.UUID.generate()
+      create_events(org_id)
+
+      assert {:ok, [40, 30, 20], _} =
+               list_timestamps(org_id, from_timestamp: ts(20), to_timestamp: ts(45))
+    end
+
+    test "open-ended ranges" do
+      org_id = Ecto.UUID.generate()
+      create_events(org_id)
+
+      assert {:ok, [45, 40, 30], _} = list_timestamps(org_id, from_timestamp: ts(30))
+      assert {:ok, [20, 0], _} = list_timestamps(org_id, to_timestamp: ts(30))
+    end
+
+    test "a range with no events returns an empty page" do
+      org_id = Ecto.UUID.generate()
+      create_events(org_id)
+
+      assert {:ok, [], res} = list_timestamps(org_id, from_timestamp: ts(1), to_timestamp: ts(20))
+
+      assert res.next_page_token in [nil, ""]
+    end
+
+    test "the range is applied on every page" do
+      org_id = Ecto.UUID.generate()
+      create_events(org_id)
+
+      range = [from_timestamp: ts(20), to_timestamp: ts(45)]
+
+      assert {:ok, [40], res} = list_timestamps(org_id, range ++ [page_size: 1])
+
+      assert {:ok, [30, 20], res} =
+               list_timestamps(org_id, range ++ [page_size: 2, page_token: res.next_page_token])
+
+      assert res.next_page_token in [nil, ""]
+    end
+
+    test "a range never returns another organization's events" do
+      org_id = Ecto.UUID.generate()
+      other_org_id = Ecto.UUID.generate()
+      create_events(org_id)
+      create_events(other_org_id)
+
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+
+      request =
+        InternalApi.Audit.PaginatedListRequest.new(
+          org_id: org_id,
+          from_timestamp: ts(0),
+          to_timestamp: ts(100)
+        )
+
+      {:ok, res} = InternalApi.Audit.AuditService.Stub.paginated_list(channel, request)
+
+      assert length(res.events) == 5
+      assert Enum.all?(res.events, &(&1.org_id == org_id))
+    end
+
+    test "from after to is rejected" do
+      org_id = Ecto.UUID.generate()
+
+      assert {:error, %GRPC.RPCError{status: status, message: message}} =
+               list_timestamps(org_id, from_timestamp: ts(45), to_timestamp: ts(20))
+
+      assert status == GRPC.Status.invalid_argument()
+      assert message =~ "from_timestamp must be before to_timestamp"
+    end
+
+    test "an empty range (from == to) is rejected" do
+      org_id = Ecto.UUID.generate()
+
+      assert {:error, %GRPC.RPCError{status: status}} =
+               list_timestamps(org_id, from_timestamp: ts(20), to_timestamp: ts(20))
+
+      assert status == GRPC.Status.invalid_argument()
+    end
+
+    test "an out of range timestamp is rejected" do
+      org_id = Ecto.UUID.generate()
+
+      assert {:error, %GRPC.RPCError{status: status, message: message}} =
+               list_timestamps(org_id, to_timestamp: ts(999_999_999_999_999))
+
+      assert status == GRPC.Status.invalid_argument()
+      assert message =~ "to_timestamp is out of range"
+    end
   end
 
   test ".serialize_event" do
@@ -776,6 +871,16 @@ defmodule Audit.ApiTest do
       activity_toggled_at: DateTime.from_unix!(100),
       activity_toggled_by: user_id
     })
+  end
+
+  defp cursor_at(org_id, seconds, operation_id) do
+    Audit.Event
+    |> Audit.Repo.get_by!(
+      org_id: org_id,
+      operation_id: operation_id,
+      timestamp: DateTime.from_unix!(seconds)
+    )
+    |> Paginator.cursor_for_record([:timestamp, :operation_id, :id])
   end
 
   def create_events(org_id) do

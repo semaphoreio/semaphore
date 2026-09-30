@@ -208,15 +208,19 @@ defmodule InternalApi.Audit.PaginatedListRequest do
           org_id: String.t(),
           page_size: integer,
           page_token: String.t(),
-          direction: InternalApi.Audit.PaginatedListRequest.Direction.t()
+          direction: InternalApi.Audit.PaginatedListRequest.Direction.t(),
+          from_timestamp: Google.Protobuf.Timestamp.t() | nil,
+          to_timestamp: Google.Protobuf.Timestamp.t() | nil
         }
 
-  defstruct [:org_id, :page_size, :page_token, :direction]
+  defstruct [:org_id, :page_size, :page_token, :direction, :from_timestamp, :to_timestamp]
 
   field(:org_id, 1, type: :string)
   field(:page_size, 2, type: :int32)
   field(:page_token, 3, type: :string)
   field(:direction, 4, type: InternalApi.Audit.PaginatedListRequest.Direction, enum: true)
+  field(:from_timestamp, 5, type: Google.Protobuf.Timestamp)
+  field(:to_timestamp, 6, type: Google.Protobuf.Timestamp)
 end
 
 defmodule InternalApi.Audit.PaginatedListResponse do
