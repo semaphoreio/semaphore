@@ -13,7 +13,39 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+func Test__EventTime(t *testing.T) {
+	t.Run("uses the time the event carries, not when it is handled", func(t *testing.T) {
+		at := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+		body, err := proto.Marshal(&projecthub.ProjectRestored{ProjectId: "p", Timestamp: timestamppb.New(at)})
+		require.NoError(t, err)
+
+		e, err := decodeRestored(body)
+		require.NoError(t, err)
+		assert.Equal(t, at, e.at)
+	})
+
+	t.Run("drops sub-second precision, so events in the same second tie", func(t *testing.T) {
+		at := time.Date(2026, 1, 2, 3, 4, 5, 900_000_000, time.UTC)
+		body, err := proto.Marshal(&projecthub.ProjectDeleted{ProjectId: "p", Timestamp: timestamppb.New(at)})
+		require.NoError(t, err)
+
+		e, err := decodeDeleted(body)
+		require.NoError(t, err)
+		assert.Equal(t, at.Truncate(time.Second), e.at)
+	})
+
+	t.Run("falls back to now for an event without a time", func(t *testing.T) {
+		body, err := proto.Marshal(&projecthub.ProjectDeleted{ProjectId: "p"})
+		require.NoError(t, err)
+
+		e, err := decodeDeleted(body)
+		require.NoError(t, err)
+		assert.WithinDuration(t, time.Now(), e.at, 2*time.Second)
+	})
+}
 
 func Test__SoftDeleteWorker(t *testing.T) {
 	models.PrepareDatabaseForTests()

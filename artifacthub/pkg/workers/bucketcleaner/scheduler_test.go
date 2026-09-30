@@ -113,7 +113,7 @@ func Test__Scheduler__DuePurgesJumpTheDailyPass(t *testing.T) {
 	t.Run("a storage still inside its grace period waits its turn like any other", func(t *testing.T) {
 		artifact, policy := createBucketWithRetentionPolicy(t)
 
-		require.NoError(t, privateapi.PurgeArtifactContents(artifact.IdempotencyToken))
+		require.NoError(t, privateapi.PurgeArtifactContents(artifact.IdempotencyToken, time.Now()))
 
 		// Cleaned an hour ago, so the daily pass is not due either.
 		changeScheduledForCleaningAtTimestamp(t, policy, -1*time.Hour)
@@ -127,7 +127,7 @@ func Test__Scheduler__DuePurgesJumpTheDailyPass(t *testing.T) {
 	t.Run("a storage past its grace period is picked up", func(t *testing.T) {
 		artifact, policy := createBucketWithRetentionPolicy(t)
 
-		require.NoError(t, privateapi.PurgeArtifactContents(artifact.IdempotencyToken))
+		require.NoError(t, privateapi.PurgeArtifactContents(artifact.IdempotencyToken, time.Now()))
 		require.NoError(t, agePurgeMark(artifact.ID, 73*time.Hour))
 
 		changeScheduledForCleaningAtTimestamp(t, policy, -2*time.Hour)
@@ -143,7 +143,7 @@ func Test__Scheduler__DuePurgesJumpTheDailyPass(t *testing.T) {
 	t.Run("a due purge just published is not published again on the next tick", func(t *testing.T) {
 		artifact, policy := createBucketWithRetentionPolicy(t)
 
-		require.NoError(t, privateapi.PurgeArtifactContents(artifact.IdempotencyToken))
+		require.NoError(t, privateapi.PurgeArtifactContents(artifact.IdempotencyToken, time.Now()))
 		require.NoError(t, agePurgeMark(artifact.ID, 73*time.Hour))
 
 		// Published seconds ago, so the work is already on its way.
