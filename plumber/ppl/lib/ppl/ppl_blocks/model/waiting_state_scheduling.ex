@@ -2,11 +2,14 @@ defmodule Ppl.PplBlocks.Model.WaitingStateScheduling do
   @moduledoc """
   Find ready ppl_block - ppl_block ready for scheduling.
 
-  Blocks with a terminate request are claimed first, so stops are not
-  delayed behind a scheduling backlog. Within each group the block that was
-  least recently updated is claimed first. A ready block that also has a
-  terminate request can still be claimed by the second query; the STM runs
-  the terminate handler for it either way.
+  Two groups compete: blocks with a terminate request and ready blocks.
+  `get_ready_block(:terminate_first)` claims from the terminate group and
+  falls back to ready blocks; `:ready_first` does the opposite. The STM
+  alternates the two within a batch, so stops are not delayed behind a
+  scheduling backlog and a burst of stops cannot starve ready blocks.
+  Within each group the least recently updated block is claimed first.
+  A ready block that also has a terminate request can be claimed from the
+  ready group; the STM runs the terminate handler for it either way.
   """
 
   alias Ppl.Query2Ecto.STM
@@ -14,23 +17,34 @@ defmodule Ppl.PplBlocks.Model.WaitingStateScheduling do
   alias Ppl.EctoRepo, as: Repo
   alias Util.Metrics
 
-  def get_ready_block do
+  def get_ready_block(order \\ :terminate_first) do
     Metrics.benchmark("Ppl.ppl_blk.waiting_STM", "enter_scheduling",  fn ->
-      with {:ok, resp} <- Repo.transaction(&do_get_ready_block/0),
+      with {:ok, resp} <- Repo.transaction(fn -> do_get_ready_block(order) end),
         do: resp
     end)
   end
 
-  def do_get_ready_block do
-    case claim(terminate_requested_ppl_block_query()) do
-      {:ok, []} ->
-        not_ready_ppl_blocks_query()
-        |> ready_ppl_block_query()
-        |> claim()
+  def do_get_ready_block(order \\ :terminate_first)
 
-      resp ->
-        resp
+  def do_get_ready_block(:terminate_first),
+    do: claim_first_of([&claim_terminate_requested/0, &claim_ready/0])
+
+  def do_get_ready_block(:ready_first),
+    do: claim_first_of([&claim_ready/0, &claim_terminate_requested/0])
+
+  defp claim_first_of([claim_fun | rest]) do
+    case claim_fun.() do
+      {:ok, []} when rest != [] -> claim_first_of(rest)
+      resp -> resp
     end
+  end
+
+  defp claim_terminate_requested, do: claim(terminate_requested_ppl_block_query())
+
+  defp claim_ready do
+    not_ready_ppl_blocks_query()
+    |> ready_ppl_block_query()
+    |> claim()
   end
 
   defp claim(select_query) do
@@ -49,8 +63,6 @@ defmodule Ppl.PplBlocks.Model.WaitingStateScheduling do
   " end
 
   # Uses the partial index pipeline_blocks_waiting_terminate_requested_index.
-  # Terminating a waiting block only marks it done, so this group drains fast
-  # and does not hold back ready blocks for long.
   defp terminate_requested_ppl_block_query do "
     SELECT pb.*
     FROM pipeline_blocks AS pb

@@ -107,8 +107,13 @@ defmodule Looper.STM do
         params |> recurring_batch(unquote(batch_size), deadline) |> log()
       end
 
+      # Each iteration sees its 0-based position in the batch as :batch_index,
+      # so an enter_scheduling override can vary what it claims within a batch.
       defp recurring_batch(params, remaining, deadline) do
-        result = recurring_(params)
+        result =
+          params
+          |> Map.put(:batch_index, unquote(batch_size) - remaining)
+          |> recurring_()
 
         if remaining > 1 and item_processed?(result) and
              System.monotonic_time(:millisecond) < deadline do

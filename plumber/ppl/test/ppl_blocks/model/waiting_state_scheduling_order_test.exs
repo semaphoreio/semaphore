@@ -145,6 +145,67 @@ defmodule Ppl.PplBlocks.Model.WaitingStateSchedulingOrderTest do
     assert MapSet.new(claimed) == MapSet.new(blocks, & &1.id)
   end
 
+  test ":ready_first claims a ready block before an older terminate request" do
+    stopping_ppl = running_pipeline()
+    [stopped] = insert_blocks(stopping_ppl, 1)
+    ready_ppl = running_pipeline()
+    [ready] = insert_blocks(ready_ppl, 1)
+    # Only the stopped block's pipeline leaves running, so the stopped block
+    # is not in the ready group and only the terminate group can claim it.
+    "update pipelines set state = 'stopping' where ppl_id = $1;"
+    |> Repo.query!([Ecto.UUID.dump!(stopping_ppl)])
+
+    set_updated_at(stopped, ~N[2026-01-01 08:00:00.000000])
+    set_updated_at(ready, ~N[2026-01-01 09:00:00.000000])
+    set_terminate_request(stopped, "stop")
+
+    assert {:ok, [{_, blk}]} = WaitingStateScheduling.get_ready_block(:ready_first)
+    assert blk.id == ready.id
+  end
+
+  test ":ready_first falls back to terminate requests when nothing is ready" do
+    ppl_id = running_pipeline()
+    [stopped] = insert_blocks(ppl_id, 1)
+    set_terminate_request(stopped, "stop")
+    "update pipelines set state = 'stopping';" |> Repo.query!()
+
+    assert {:ok, [{_, blk}]} = WaitingStateScheduling.get_ready_block(:ready_first)
+    assert blk.id == stopped.id
+  end
+
+  test "a backlog of stops does not starve ready blocks within a batch" do
+    stopping = running_pipeline()
+    stopped = insert_blocks(stopping, 10)
+    Enum.each(stopped, &set_terminate_request(&1, "stop"))
+
+    ready_ppl = running_pipeline()
+    ready = insert_blocks(ready_ppl, 2)
+    # The stopped blocks are also "ready" (their pipeline is running), so make
+    # the real ready blocks the oldest ones in the ready group.
+    Enum.each(ready, &set_updated_at(&1, ~N[2026-01-01 08:00:00.000000]))
+
+    # One wake-up of the waiting STM with batch_size 5.
+    claimed =
+      for batch_index <- 0..4 do
+        order = Ppl.PplBlocks.STMHandler.WaitingState.claim_order(batch_index)
+        {:ok, [{_, blk}]} = WaitingStateScheduling.get_ready_block(order)
+        blk.id
+      end
+
+    ready_ids = MapSet.new(ready, & &1.id)
+    assert claimed |> Enum.filter(&MapSet.member?(ready_ids, &1)) |> length() == 2
+    assert claimed |> Enum.reject(&MapSet.member?(ready_ids, &1)) |> length() == 3
+    # Stops still go first.
+    refute MapSet.member?(ready_ids, hd(claimed))
+  end
+
+  test "claim_order alternates terminate-first and ready-first" do
+    alias Ppl.PplBlocks.STMHandler.WaitingState
+
+    assert Enum.map(0..4, &WaitingState.claim_order/1) ==
+             [:terminate_first, :ready_first, :terminate_first, :ready_first, :terminate_first]
+  end
+
   ################### Helpers ###################
 
   defp claim_all(acc) do

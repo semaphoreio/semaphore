@@ -36,8 +36,12 @@ defmodule Ppl.PplBlocks.STMHandler.WaitingState do
 
 #######################
 
-  def enter_scheduling(_) do
-    with {:ok, [{old, new}]} <- WaitingStateScheduling.get_ready_block(),
+  # Even positions in a batch (and single wake-ups) serve stops first,
+  # odd positions serve ready blocks first, so neither group starves.
+  def enter_scheduling(params) do
+    order = claim_order(Map.get(params, :batch_index, 0))
+
+    with {:ok, [{old, new}]} <- WaitingStateScheduling.get_ready_block(order),
          true                <- ppl_block_in_waiting_state(old)
     do
       {:ok, {old, new}}
@@ -47,6 +51,9 @@ defmodule Ppl.PplBlocks.STMHandler.WaitingState do
       err         -> err |> LT.error("Error in waiting scheduling")
     end
   end
+
+  def claim_order(batch_index) when rem(batch_index, 2) == 1, do: :ready_first
+  def claim_order(_batch_index), do: :terminate_first
 
   defp ppl_block_in_waiting_state(%{state: "waiting"}), do: true
   defp ppl_block_in_waiting_state(ppl) do
