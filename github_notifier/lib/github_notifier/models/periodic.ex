@@ -7,6 +7,10 @@ defmodule GithubNotifier.Models.Periodic do
   @not_found_cache_ttl :timer.seconds(30)
   @unreachable_cache_ttl :timer.seconds(5)
   @rpc_timeout 1_500
+  # gun retries a refused connect 100 times and waits out await_up's fixed 5s
+  # otherwise, which outlives the caller's budget: the lookup is killed before
+  # it can cache the failure, so every event pays the stall again.
+  @connect_opts [retry: 0, connect_timeout: 500]
   # A caller must outlast the RPC deadline, or it kills this process before the
   # failure branch can cache the result and emit its metric.
   @yield_grace 500
@@ -38,7 +42,9 @@ defmodule GithubNotifier.Models.Periodic do
   end
 
   defp describe(id) do
-    case GRPC.Stub.connect(Application.fetch_env!(:github_notifier, :scheduler_grpc_endpoint)) do
+    endpoint = Application.fetch_env!(:github_notifier, :scheduler_grpc_endpoint)
+
+    case GRPC.Stub.connect(endpoint, adapter_opts: @connect_opts) do
       {:ok, channel} -> describe(id, channel)
       {:error, error} -> unreachable(id, error)
     end

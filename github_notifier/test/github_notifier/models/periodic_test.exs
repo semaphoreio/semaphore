@@ -52,6 +52,15 @@ defmodule GithubNotifier.Models.PeriodicTest do
     assert Periodic.find("gone") == nil
   end
 
+  test "gives up on an unreachable endpoint within the lookup budget" do
+    with_unreachable_scheduler(fn ->
+      {elapsed_us, result} = :timer.tc(fn -> Periodic.find("task-1") end)
+
+      assert result == nil
+      assert elapsed_us < Periodic.lookup_budget() * 1_000
+    end)
+  end
+
   test "caches a transport failure only briefly, so an outage does not cost a lookup per event" do
     GrpcMock.stub(SchedulerMock, :describe, fn _, _ -> raise "boom" end)
 
@@ -60,5 +69,17 @@ defmodule GithubNotifier.Models.PeriodicTest do
 
     {:ok, ttl} = Cachex.ttl(:task_policy, "task-1")
     assert ttl <= :timer.seconds(5)
+  end
+
+  # nothing listens on port 1, so the connect itself is what has to give up
+  defp with_unreachable_scheduler(fun) do
+    original = Application.get_env(:github_notifier, :scheduler_grpc_endpoint)
+    Application.put_env(:github_notifier, :scheduler_grpc_endpoint, "127.0.0.1:1")
+
+    try do
+      fun.()
+    after
+      Application.put_env(:github_notifier, :scheduler_grpc_endpoint, original)
+    end
   end
 end
