@@ -4,10 +4,17 @@
       <div>
         <p class="measure-wide mb2 mb0-m">List of all user generated events in the organization.</p>
         <p>Read more in <a href=<%= "https://#{Application.fetch_env!(:front, :docs_domain)}/security/audit-logs" %>>Docs: Audit Logs</a></p>
+        <p class="f6 gray mb0">CSV export dates are in UTC and inclusive. Leave both empty to export everything.</p>
       </div>
 
       <div class="button-group">
-          <%= link "Export as CSV", to: audit_path(@conn, :csv), class: "btn btn-secondary"%>
+          <form action="<%= audit_path(@conn, :csv) %>" method="get" class="flex items-center">
+            <span class="f6 gray mr1">From</span>
+            <input id="audit_csv_from" name="from" type="date" class="form-control w4 mr2">
+            <span class="f6 gray mr1">To</span>
+            <input id="audit_csv_to" name="to" type="date" class="form-control w4 mr2">
+            <button type="submit" class="btn btn-secondary">Export as CSV</button>
+          </form>
 
           <%= if FeatureProvider.feature_enabled?(:audit_streaming, param: @conn.assigns[:organization_id]) do %>
             <%= link "Configure Streaming", to: audit_path(@conn, :show), class: "btn btn-secondary" %>
