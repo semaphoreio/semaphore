@@ -74,6 +74,24 @@ defmodule GithubNotifier.NotifierTest do
       # pays the full stall again
       assert Cachex.get!(:task_policy, "task-1") == :not_found
     end
+
+    test "sends the commit status and caches the failure when the scheduler is unreachable" do
+      stub_services(triggered_by: :SCHEDULE, wf_triggerer_id: "task-1")
+
+      original = Application.get_env(:github_notifier, :scheduler_grpc_endpoint)
+      Application.put_env(:github_notifier, :scheduler_grpc_endpoint, "127.0.0.1:1")
+      on_exit(fn -> Application.put_env(:github_notifier, :scheduler_grpc_endpoint, original) end)
+
+      GithubNotifier.Notifier.notify("asd", "123", "1")
+
+      assert_received {:build_status, request}
+      assert request.suppress == false
+
+      # the connect has to give up inside the caller's budget, or the lookup is
+      # killed before it can cache the failure and every later notification
+      # pays the full stall again
+      assert Cachex.get!(:task_policy, "task-1") == :not_found
+    end
   end
 
   describe "notify/3 across triggers and status levels" do
