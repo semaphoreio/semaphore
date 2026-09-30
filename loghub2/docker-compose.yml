@@ -30,7 +30,7 @@ services:
       GCS_BUCKET: job-logs
       LOGHUB2_PRIVATE_KEY: very-important-and-secret-key
       METRICS_NAMESPACE: ""
-      LOGS_STORAGE_S3_URL: http://s3:9000
+      LOGS_STORAGE_S3_URL: http://s3:9090
       AWS_REGION: "local"
       S3_BUCKET_NAME: "semaphore-cache"
       AWS_ACCESS_KEY_ID: "minioadmin"
@@ -54,12 +54,12 @@ services:
       - 5672:5672
       - 15672:15672
   s3:
-    image: minio/minio:RELEASE.2021-04-22T15-44-28Z.hotfix.56647434e
+    image: adobe/s3mock:3.12.0
     container_name: 's3'
+    environment:
+      initialBuckets: "semaphore-cache"
     ports:
-      - 9000:9000
-    entrypoint: sh
-    command: -c 'mkdir -p /tmp/s3-data/semaphore-cache && minio server /tmp/s3-data'
+      - 9090:9090
   gcs:
     image: fsouza/fake-gcs-server
     container_name: 'gcs'
