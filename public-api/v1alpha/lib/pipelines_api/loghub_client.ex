@@ -10,12 +10,22 @@ defmodule PipelinesAPI.LoghubClient do
 
   defp url(), do: System.get_env("LOGHUB_API_URL")
 
-  @wormhole_timeout Application.compile_env(:pipelines_api, :grpc_timeout, [])
+  # gRPC deadline for loghub calls, kept below the 30s edge timeout so a slow
+  # request gets DEADLINE_EXCEEDED (503) instead of an edge 504. Wormhole's
+  # timeout is set a bit above it, so the deadline fires first.
+  defp loghub_timeout, do: Application.get_env(:pipelines_api, :loghub_stream_timeout, 25_000)
+  defp wormhole_timeout, do: loghub_timeout() + 2_000
+
+  # When the calling process dies (the HTTP client went away), gun closes the
+  # connection after closing_timeout (default 15s); until then loghub keeps
+  # streaming a log nobody reads and holds a fetch slot for it.
+  @connect_opts [adapter_opts: %{http2_opts: %{closing_timeout: 1_000}}]
 
   @unavailable GRPC.Status.unavailable()
   @unimplemented GRPC.Status.unimplemented()
   @unknown GRPC.Status.unknown()
   @data_loss GRPC.Status.data_loss()
+  @deadline_exceeded GRPC.Status.deadline_exceeded()
 
   def get_log_events(job_id) do
     Metrics.benchmark(__MODULE__, ["get_log_events"], fn ->
@@ -36,7 +46,7 @@ defmodule PipelinesAPI.LoghubClient do
       Wormhole.capture(__MODULE__, :do_get_log_events, [request],
         stacktrace: true,
         skip_log: true,
-        timeout_ms: @wormhole_timeout,
+        timeout_ms: wormhole_timeout(),
         ok_tuple: true
       )
 
@@ -70,7 +80,7 @@ defmodule PipelinesAPI.LoghubClient do
       Wormhole.capture(__MODULE__, :do_stream_log_events, [request],
         stacktrace: true,
         skip_log: true,
-        timeout_ms: @wormhole_timeout,
+        timeout_ms: wormhole_timeout(),
         ok_tuple: true
       )
 
@@ -110,11 +120,11 @@ defmodule PipelinesAPI.LoghubClient do
   # it.
   #
   def do_stream_log_events(request) do
-    {:ok, channel} = url() |> GRPC.Stub.connect()
+    {:ok, channel} = url() |> GRPC.Stub.connect(@connect_opts)
 
     try do
       case InternalApi.Loghub.Loghub.Stub.stream_log_events(channel, request,
-             timeout: @wormhole_timeout
+             timeout: loghub_timeout()
            ) do
         {:ok, responses} -> collect_stream(responses)
         # The call failed before loghub sent anything back.
@@ -127,16 +137,27 @@ defmodule PipelinesAPI.LoghubClient do
 
   #
   # Joins the batches into one response. The first response carries the
-  # status. An error anywhere in the stream fails the whole call: the events
-  # received before it are incomplete. A successful stream has at least one
-  # response, so an empty one is an error too.
+  # status, and every response must have the same one: a status change
+  # mid-stream (e.g. OK batches followed by BAD_PARAM) means the batches are
+  # not a whole log. An error anywhere in the stream fails the whole call: the
+  # events received before it are incomplete. A successful stream has at least
+  # one response, so an empty one is an error too.
   #
   def collect_stream(responses) do
     result =
       Enum.reduce_while(responses, nil, fn
-        {:ok, response}, nil -> {:cont, {response, [response.events]}}
-        {:ok, response}, {first, batches} -> {:cont, {first, [response.events | batches]}}
-        {:error, error}, _ -> {:halt, {:error, error}}
+        {:ok, response}, nil ->
+          {:cont, {response, [response.events]}}
+
+        {:ok, %{status: %{code: code}} = response}, {first, batches}
+        when code == first.status.code ->
+          {:cont, {first, [response.events | batches]}}
+
+        {:ok, _response}, _ ->
+          {:halt, {:error, :inconsistent_stream}}
+
+        {:error, error}, _ ->
+          {:halt, {:error, error}}
       end)
 
     case result do
@@ -161,6 +182,11 @@ defmodule PipelinesAPI.LoghubClient do
   defp error_for({:error, :empty_stream}),
     do: ToTuple.unavailable_error("Logs are temporarily unavailable, please retry")
 
+  # loghub didn't finish within the deadline (e.g. busy, or a very slow
+  # archive read); the request can be retried.
+  defp error_for({:error, %GRPC.RPCError{status: @deadline_exceeded}}),
+    do: ToTuple.unavailable_error("Logs are temporarily unavailable, please retry")
+
   # The stored log is corrupt. Retrying won't help, so this stays a 500.
   defp error_for({:error, %GRPC.RPCError{status: @data_loss}}),
     do: ToTuple.internal_error("Internal error")
@@ -168,10 +194,10 @@ defmodule PipelinesAPI.LoghubClient do
   defp error_for(_reason), do: ToTuple.internal_error("Internal error")
 
   def do_get_log_events(request) do
-    {:ok, channel} = url() |> GRPC.Stub.connect()
+    {:ok, channel} = url() |> GRPC.Stub.connect(@connect_opts)
 
     try do
-      InternalApi.Loghub.Loghub.Stub.get_log_events(channel, request, timeout: @wormhole_timeout)
+      InternalApi.Loghub.Loghub.Stub.get_log_events(channel, request, timeout: loghub_timeout())
     after
       GRPC.Stub.disconnect(channel)
     end

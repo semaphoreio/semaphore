@@ -1,6 +1,7 @@
 import Mix.Config
 
 config :pipelines_api, grpc_timeout: 1_000
+config :pipelines_api, loghub_stream_timeout: 1_000
 config :pipelines_api, wormhole_timeout: 1_000
 
 config :watchman,
