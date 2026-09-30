@@ -6,6 +6,7 @@ import Url from "domurl";
 import toggleSpinner from "./spinner";
 import reRenderPage from "./render_response_html";
 import { App } from "../app";
+import { projectUserRowMarkup } from "./user_row";
 
 export var AddToProject = {
   init: function() {
@@ -219,25 +220,12 @@ export var AddToProject = {
     const usersList = document.getElementById('users');
     let assets_path = document.querySelector("meta[name='assets-path']").getAttribute("content")
 
-    newUserDiv=
-    `
-    <div id="${user.id}" class="flex items-center justify-between bg-white shadow-1 mv1 mh1 ph3 pv2 br3">
-      <div class="flex items-center">
-        ${user.subject_type === "service_account"
-          ? `<div class="w2 h2 br-100 mr2 ba b--black-50 flex items-center justify-center bg-light-gray"><span class="material-symbols-outlined f6 gray">smart_toy</span></div>`
-          : user.has_avatar
-            ? `<img src="${user.avatar}" class="w2 h2 br-100 mr2 ba b--black-50">`
-            : `<img src="${assets_path}/images/org-${user.name.charAt(0).toLowerCase()}.svg" class="bg-washed-gray w2 h2 br-100 mr2 ba b--black-50">`
-        }
-        <div class="flex items-center">
-          <div class="b">${escapeHtml(user.name)}</div>
-          ${user.github_login ? `<div class="ml2 f6 gray">@${user.github_login}</div>` : `` }
-        </div>
-      </div>
-      <button class="btn btn-secondary">×</button>
-    </div>
-    `
-    usersList.insertAdjacentHTML('afterbegin', newUserDiv);
+    const newUserDiv = projectUserRowMarkup(user, assets_path)
+
+    // projectUserRowMarkup escapes every interpolation, including assets_path, which is
+    // the DOM read njsscan is tracking here; user_row.spec.js renders the result and
+    // asserts nothing breaks out.
+    usersList.insertAdjacentHTML('afterbegin', newUserDiv); // njsscan-ignore: dom_xss
     const removeUserBtn = document.getElementById(user.id);
     removeUserBtn.onclick = () => this.removeUser(user.id)
   },
