@@ -82,7 +82,7 @@ defmodule Secrethub.OpenIDConnect.JWTClaimTest do
         |> MapSet.new()
 
       expected_aws_tags =
-        MapSet.new(~w(prj_id repo ref_type branch pr_branch repo_slug job_type trg))
+        MapSet.new(~w(prj_id repo ref_type branch pr_branch repo_slug job_type trg tag))
 
       assert MapSet.equal?(aws_tag_claims, expected_aws_tags)
     end
