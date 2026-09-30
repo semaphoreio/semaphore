@@ -1,0 +1,62 @@
+# --- grpc 0.5.0-beta.1 advisories, fixed in 1.0.0 ---
+# Bump to 1.0.0 is a major jump off a beta; it also gates the cowboy/cowlib/plug bumps below,
+# since the beta requires cowboy ~> 2.7.0 (already overridden to 2.9.0 here).
+#
+# Erlpack codec binary_to_term RCE. Not reachable: server default is codecs: [GRPC.Codec.Proto]
+# and secrethub never passes codecs:.
+GHSA-grp7-v8xh-rj7h
+# gzip decompression bomb. Not reachable: default compressors: [], none registered, so
+# grpc-encoding: gzip is rejected by find_compressor.
+GHSA-6ccx-9c9f-327w
+# unbounded read_full_body (DoS on the default path). Reachable only by in-cluster callers of the
+# gRPC port or authenticated users via public-api-gateway; no internet ingress to that port.
+# Temporary; real fix is the grpc upgrade.
+GHSA-q8gf-9rvj-gmgj
+
+# --- cowlib 2.11.0 advisories, fixed in 2.16.1 (pinned via override, entangled with grpc) ---
+#
+# cow_http_te chunked allocation. Reachable only over a direct in-cluster HTTP/1.1 connection;
+# the edge proxy re-frames chunked bodies before they reach Cowboy.
+GHSA-32p9-57cr-4x65
+# SPDY inflate. cow_spdy is unused by cowboy 2.9 and gun 2.
+GHSA-84f2-rp86-235p
+# SSE CRLF injection. secrethub emits no SSE.
+GHSA-hv23-4qp7-8c8r
+# cow_cookie:cookie/1 client cookie encoder. Unused; advisory lists no patched version.
+GHSA-g2wm-735q-3f56
+
+# --- cowboy 2.9.0, fixed in 2.15.0 (blocked by grpc) ---
+# multipart parsing. Nothing calls cowboy_req:read_part.
+GHSA-jfc2-q6qh-g5x8
+
+# --- plug 1.13.6, fixed in 1.15.4 (blocked by grpc) ---
+# multipart parsing. Plug.Parsers is not plugged anywhere (OIDC router:
+# lib/secrethub/open_id_connect/http_server.ex).
+GHSA-468c-vq7p-gh64
+
+# --- plug_cowboy 2.5.2, fixed in 2.8.1 (blocked by grpc) ---
+# HTTP/2 :scheme atom exhaustion. OIDC listener accepts h2c prior-knowledge only on direct
+# connections; the edge proxy speaks HTTP/1.1 upstream, so in-cluster only. The gRPC listener
+# does not use plug_cowboy.
+GHSA-q8x4-x7mp-5vg2
+
+# --- postgrex 0.16.3, fixed in 0.22.2 ---
+# channel-name SQL injection in Notifications.listen/3. Postgrex.Notifications / LISTEN/NOTIFY
+# not used.
+GHSA-r73h-97w8-m54h
+
+# --- decimal 2.0.0, fixed in 3.0.0 (major, blocked by postgrex/ecto versions) ---
+# DoS via unbounded exponent. secrethub never calls Decimal; only decodes numeric columns from
+# its own DB.
+GHSA-rhv4-8758-jx7v
+
+# --- hackney 1.18.1 advisories, fixed in 1.21 / 1.24 / 4.0.1 ---
+# Bump to 4.x is blocked fleet-wide: httpoison requires hackney ~> 1.17. In prod hackney is only
+# the Sentry client calling the fixed DSN host; httpoison is dev/test only. No user-controlled
+# URL, host, domain, path or query reaches hackney.
+GHSA-gp9c-pm5m-5cxr
+GHSA-j9wq-vxxc-94wf
+GHSA-mp55-p8c9-rfw2
+GHSA-pj7v-xfvx-wmjq
+GHSA-vq52-99r9-h5pw
+GHSA-9fm9-hp7p-53mf
