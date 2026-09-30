@@ -224,6 +224,12 @@ func (b *GcsBucket) DeleteObjects(paths []string) error {
 	// so we parallelize the deletion requests to make them faster.
 	processor := parallel.NewParallelProcessor(paths, func(path string) {
 		err := b.BucketHandler.Object(path).Delete(context.Background())
+
+		// Already gone is the outcome we asked for, and other deleters share these paths.
+		if errors.Is(err, gcsstorage.ErrObjectNotExist) {
+			return
+		}
+
 		if err != nil {
 			log.Error("Failed to delete object", zap.String("object", path), zap.Error(err))
 

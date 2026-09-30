@@ -525,6 +525,39 @@ func assertIterator(t *testing.T, iterator PathIterator, wrappedDirectories bool
 	}
 }
 
+func Test__DeleteObjects(t *testing.T) {
+	RunTestForAllBackends(t, func(backend string, client Client) {
+		bucketName, err := client.CreateBucket(context.TODO())
+		assert.Nil(t, err)
+
+		bucket := client.GetBucket(BucketOptions{
+			Name:       bucketName,
+			PathPrefix: TestBucketPathPrefix,
+		})
+
+		assert.Nil(t, SeedBucket(bucket, seedObjects()))
+
+		t.Run(backend+" an object that is already gone does not fail the batch", func(t *testing.T) {
+			err := bucket.DeleteObjects([]string{
+				"artifacts/first/file1.txt",
+				"artifacts/non/existing/path/file.txt",
+			})
+			assert.Nil(t, err)
+
+			isFile, err := bucket.IsFile(context.Background(), "artifacts/first/file1.txt")
+			assert.Nil(t, err)
+			assert.False(t, isFile)
+		})
+
+		t.Run(backend+" deleting the same objects twice is not a failure", func(t *testing.T) {
+			paths := []string{"artifacts/second/file1.txt", "artifacts/second/file2.txt"}
+
+			assert.Nil(t, bucket.DeleteObjects(paths))
+			assert.Nil(t, bucket.DeleteObjects(paths))
+		})
+	})
+}
+
 func seedObjects() []SeedObject {
 	return []SeedObject{
 		{Name: "artifacts/first/file1.txt", Content: "hello"},
