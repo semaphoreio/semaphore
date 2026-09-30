@@ -210,6 +210,74 @@ defmodule PipelinesAPI.LoghubClient.Test do
     end
   end
 
+  describe ".stream_log_events timeouts and consistency" do
+    test "a status change within the stream ([OK, OK, BAD_PARAM]) is an internal error" do
+      GrpcMock.stub(LoghubMock, :stream_log_events, fn _, stream ->
+        for events <- [["a"], ["b"]] do
+          GRPC.Server.send_reply(stream, %InternalApi.Loghub.GetLogEventsResponse{
+            status: ok(),
+            events: events,
+            final: true
+          })
+        end
+
+        GRPC.Server.send_reply(stream, %InternalApi.Loghub.GetLogEventsResponse{
+          status: not_ok("Log not found neither in the archive nor in the virtual machine"),
+          events: [],
+          final: true
+        })
+      end)
+
+      capture_log(fn ->
+        assert LoghubClient.stream_log_events(@job_id) == {:error, {:internal, "Internal error"}}
+      end)
+    end
+
+    test "a stream that outlives the loghub deadline is a retryable error" do
+      GrpcMock.stub(LoghubMock, :stream_log_events, fn _, stream ->
+        GRPC.Server.send_headers(stream, %{})
+        # The test deadline is 1s (config/test.exs).
+        Process.sleep(3_000)
+      end)
+
+      capture_log(fn ->
+        assert LoghubClient.stream_log_events(@job_id) ==
+                 {:error, {:unavailable, "Logs are temporarily unavailable, please retry"}}
+      end)
+    end
+
+    # When the HTTP request goes away, the process calling loghub is killed.
+    # gun then closes the connection only after its closing_timeout (15s by
+    # default), and until then loghub keeps streaming, holding a fetch slot.
+    test "when the caller is killed mid-stream, loghub's handler ends within about 2s" do
+      previous = Application.get_env(:pipelines_api, :loghub_stream_timeout)
+      Application.put_env(:pipelines_api, :loghub_stream_timeout, 60_000)
+      on_exit(fn -> Application.put_env(:pipelines_api, :loghub_stream_timeout, previous) end)
+
+      test = self()
+
+      GrpcMock.stub(LoghubMock, :stream_log_events, fn _, stream ->
+        GRPC.Server.send_reply(stream, %InternalApi.Loghub.GetLogEventsResponse{
+          status: ok(),
+          events: ["first"],
+          final: true
+        })
+
+        send(test, {:first_batch_sent, self()})
+        Process.sleep(60_000)
+      end)
+
+      caller = spawn(fn -> LoghubClient.stream_log_events(@job_id) end)
+
+      assert_receive {:first_batch_sent, handler}, 5_000
+      ref = Process.monitor(handler)
+
+      Process.exit(caller, :kill)
+
+      assert_receive {:DOWN, ^ref, :process, ^handler, _}, 2_500
+    end
+  end
+
   describe ".stream_log_events errors that must not fall back" do
     # What a current loghub does when its handler fails (e.g. the job API is
     # down): headers first, then the error. That must not look like an older
