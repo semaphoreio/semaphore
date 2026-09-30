@@ -108,7 +108,7 @@ defmodule PipelinesAPI.Logs.Get.Test do
     end
 
     test "returns 200 and logs for existing cloud job", ctx do
-      GrpcMock.stub(LoghubMock, :get_log_events, fn _, _ ->
+      stub_loghub(fn _, _ ->
         %InternalApi.Loghub.GetLogEventsResponse{
           final: true,
           events: @events,
@@ -145,7 +145,7 @@ defmodule PipelinesAPI.Logs.Get.Test do
     end
 
     test "returns 404 when loghub reports the logs cannot be found", ctx do
-      GrpcMock.stub(LoghubMock, :get_log_events, fn _, _ ->
+      stub_loghub(fn _, _ ->
         %InternalApi.Loghub.GetLogEventsResponse{
           final: false,
           events: [],
@@ -200,7 +200,7 @@ defmodule PipelinesAPI.Logs.Get.Test do
 
       test_pid = self()
 
-      GrpcMock.stub(LoghubMock, :get_log_events, fn req, _ ->
+      stub_loghub(fn req, _ ->
         send(test_pid, {:loghub_job_id, req.job_id})
 
         %InternalApi.Loghub.GetLogEventsResponse{
@@ -251,8 +251,36 @@ defmodule PipelinesAPI.Logs.Get.Test do
                {"location", location}
     end
 
+    test "returns 503 when loghub reports the logs are temporarily unavailable", ctx do
+      GrpcMock.stub(LoghubMock, :stream_log_events, fn _, stream ->
+        GRPC.Server.send_headers(stream, %{})
+        raise GRPC.RPCError, status: GRPC.Status.unavailable(), message: "unavailable"
+      end)
+
+      capture_log(fn ->
+        assert {503, _, response} = get_logs(ctx.cloud_job.id, ctx.user_id)
+        assert response == "Logs are temporarily unavailable, please retry"
+      end)
+    end
+
+    test "returns 500 when the log stream fails after some events", ctx do
+      GrpcMock.stub(LoghubMock, :stream_log_events, fn _, stream ->
+        GRPC.Server.send_reply(stream, %InternalApi.Loghub.GetLogEventsResponse{
+          final: true,
+          events: Enum.take(@events, 2),
+          status: %InternalApi.ResponseStatus{code: InternalApi.ResponseStatus.Code.value(:OK)}
+        })
+
+        raise GRPC.RPCError, status: GRPC.Status.data_loss(), message: "corrupt"
+      end)
+
+      capture_log(fn ->
+        assert {500, _, "Internal error"} = get_logs(ctx.cloud_job.id, ctx.user_id)
+      end)
+    end
+
     test "returns 500 when loghub throws", ctx do
-      GrpcMock.stub(LoghubMock, :get_log_events, fn _, _ ->
+      stub_loghub(fn _, _ ->
         throw("oops")
       end)
 
@@ -586,7 +614,7 @@ defmodule PipelinesAPI.Logs.Get.Test do
     end
 
     test "ignores malformed artifact_job_logs query value type", ctx do
-      GrpcMock.stub(LoghubMock, :get_log_events, fn _, _ ->
+      stub_loghub(fn _, _ ->
         %InternalApi.Loghub.GetLogEventsResponse{
           final: true,
           events: @events,
@@ -671,7 +699,7 @@ defmodule PipelinesAPI.Logs.Get.Test do
   end
 
   defp stub_loghub_not_found do
-    GrpcMock.stub(LoghubMock, :get_log_events, fn _, _ ->
+    stub_loghub(fn _, _ ->
       %InternalApi.Loghub.GetLogEventsResponse{
         final: false,
         events: [],
@@ -680,6 +708,22 @@ defmodule PipelinesAPI.Logs.Get.Test do
           message: "Log not found neither in the archive nor in the virtual machine"
         }
       }
+    end)
+  end
+
+  # Serves the given response through StreamLogEvents, one event per message,
+  # the way loghub splits a log into batches.
+  defp stub_loghub(fun) do
+    GrpcMock.stub(LoghubMock, :stream_log_events, fn req, stream ->
+      response = fun.(req, stream)
+
+      case response.events do
+        [] ->
+          GRPC.Server.send_reply(stream, response)
+
+        events ->
+          Enum.each(events, &GRPC.Server.send_reply(stream, %{response | events: [&1]}))
+      end
     end)
   end
 
