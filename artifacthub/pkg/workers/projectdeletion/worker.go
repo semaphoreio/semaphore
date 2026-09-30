@@ -1,20 +1,6 @@
-// Package projectdeletion empties a project's artifact storage when the project is
-// deleted, and stops that if the project comes back.
-//
-// Deleting a project used to leave its artifacts in place for the whole 30 day
-// window in which it can still be restored, so a deleted project's objects stayed
-// in storage for a month after the project was gone.
-//
-// The trigger is the events projecthub already publishes, not a call it makes, so
-// every caller of Project.soft_destroy is covered without a change here. The two
-// events are not arbitrated against each other: projecthub refuses to restore a
-// project until it has been deleted for an hour, by which time the purge has
-// finished and cleared its own mark.
-//
-// Forward-looking only. The queue and its binding are declared when the consumer
-// first starts and project_exchange discards what it cannot route, so projects
-// already soft-deleted when this ships keep the old behaviour and are cleaned up by
-// the hard destroy at the end of their 30 day window.
+// Package projectdeletion marks a project's artifact storage for purging when the
+// project is soft-deleted, and clears the mark when it is restored. The two events come
+// on separate queues, so the handlers compare event times and a restore wins either way round.
 package projectdeletion
 
 import (
@@ -29,6 +15,7 @@ import (
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/api/descriptors/projecthub"
 	privateapi "github.com/semaphoreio/semaphore/artifacthub/pkg/api/private"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
@@ -45,6 +32,7 @@ const (
 type event struct {
 	projectID string
 	orgID     string
+	at        time.Time
 }
 
 // Worker consumes one project lifecycle event and applies it to the project's
@@ -54,7 +42,7 @@ type Worker struct {
 	consumer          *tackle.Consumer
 	name              string
 	decode            func(body []byte) (event, error)
-	apply             func(projectID string) error
+	apply             func(projectID string, at time.Time) error
 	successMetric     string
 	failureMetric     string
 	reconnectAttempts int
@@ -98,7 +86,7 @@ type workerConfig struct {
 	service       string
 	routingKey    string
 	decode        func(body []byte) (event, error)
-	apply         func(projectID string) error
+	apply         func(projectID string, at time.Time) error
 	successMetric string
 	failureMetric string
 }
@@ -136,7 +124,7 @@ func decodeDeleted(body []byte) (event, error) {
 		return event{}, err
 	}
 
-	return event{projectID: message.GetProjectId(), orgID: message.GetOrgId()}, nil
+	return event{projectID: message.GetProjectId(), orgID: message.GetOrgId(), at: eventTime(message.GetTimestamp())}, nil
 }
 
 func decodeRestored(body []byte) (event, error) {
@@ -145,7 +133,17 @@ func decodeRestored(body []byte) (event, error) {
 		return event{}, err
 	}
 
-	return event{projectID: message.GetProjectId(), orgID: message.GetOrgId()}, nil
+	return event{projectID: message.GetProjectId(), orgID: message.GetOrgId(), at: eventTime(message.GetTimestamp())}, nil
+}
+
+// eventTime is when the change happened, at the whole-second precision it is published
+// with, so a delete and a restore in the same second tie and the restore wins.
+func eventTime(ts *timestamppb.Timestamp) time.Time {
+	if ts == nil || ts.GetSeconds() == 0 {
+		return time.Now().UTC().Truncate(time.Second)
+	}
+
+	return ts.AsTime().UTC().Truncate(time.Second)
 }
 
 func workerConnName(service string) string {
@@ -213,7 +211,7 @@ func (w *Worker) handleMessage(delivery tackle.Delivery) error {
 		return fmt.Errorf("invalid message, missing projectID")
 	}
 
-	if err := w.apply(e.projectID); err != nil {
+	if err := w.apply(e.projectID, e.at); err != nil {
 		log.Printf("%s Worker: Failed to handle project %s in org %s: %v", w.name, e.projectID, e.orgID, err)
 		w.recordFailure()
 
