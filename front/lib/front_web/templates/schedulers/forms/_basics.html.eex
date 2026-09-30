@@ -42,7 +42,7 @@
         <%= checkbox @form, :skip_manual_run_notifications,
             checked: @scheduler.skip_manual_run_notifications %>
         <%= label @form, :skip_manual_run_notifications,
-            "Don't send status checks for “Run now”", class: "ml2" %>
+            "Don't send status checks for manual runs (Run now, API or CLI)", class: "ml2" %>
     </div>
-    <p class="f6 gray mt1 mb0">Applies to every pipeline this task starts with that trigger, reruns included.</p>
+    <p class="f6 gray mt1 mb0">Applies to every pipeline this task starts with that trigger, reruns and promotions included. Takes up to five minutes to apply.</p>
 </div>

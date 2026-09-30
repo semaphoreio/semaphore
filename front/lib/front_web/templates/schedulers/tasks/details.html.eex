@@ -58,9 +58,9 @@
                 <p class="gray f6 mb0">
                   Not sent for
                   <%= if @scheduler.skip_scheduled_run_notifications and @scheduler.skip_manual_run_notifications do %>
-                    scheduled runs or “Run now”.
+                    scheduled or manual runs.
                   <% else %>
-                    <%= if @scheduler.skip_scheduled_run_notifications do %>scheduled runs.<% else %>“Run now”.<% end %>
+                    <%= if @scheduler.skip_scheduled_run_notifications do %>scheduled runs.<% else %>manual runs.<% end %>
                   <% end %>
                 </p>
               </td>

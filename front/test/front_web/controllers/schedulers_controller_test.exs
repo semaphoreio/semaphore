@@ -371,7 +371,7 @@ defmodule FrontWeb.SchedulersControllerTest do
 
       body = show.(both)
       assert body =~ "Commit statuses:"
-      assert body =~ "scheduled runs or"
+      assert body =~ "scheduled or manual runs"
 
       scheduled_only =
         Support.Stubs.Scheduler.create(project, user,
@@ -382,7 +382,7 @@ defmodule FrontWeb.SchedulersControllerTest do
       body = show.(scheduled_only)
       assert body =~ "Commit statuses:"
       assert body =~ "scheduled runs."
-      refute body =~ "scheduled runs or"
+      refute body =~ "manual runs"
 
       manual_only =
         Support.Stubs.Scheduler.create(project, user,
@@ -392,6 +392,7 @@ defmodule FrontWeb.SchedulersControllerTest do
 
       body = show.(manual_only)
       assert body =~ "Commit statuses:"
+      assert body =~ "manual runs."
       refute body =~ "scheduled runs"
 
       neither = Support.Stubs.Scheduler.create(project, user, name: "nothing silenced")

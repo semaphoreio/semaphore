@@ -154,16 +154,18 @@ You may also trigger a task using the [Semaphore API](../reference/api#tasks)
 
 ## Commit statuses for tasks {#commit-statuses}
 
-Every pipeline Semaphore runs reports a commit status back to your Git provider — the check marks you see next to a commit or on a pull request. A task that runs on a schedule reports against whatever commit is at the head of its branch, so a frequent task can bury a pull request in check marks it never asked for. GitHub also caps a commit at 1000 statuses.
+Every pipeline Semaphore runs reports a commit status back to your Git provider — the check marks you see next to a commit or on a pull request. A task that runs on a schedule reports against whatever commit is at the head of its branch, so a frequent task can bury a pull request in check marks it never asked for. GitHub also caps each commit at 1000 statuses per context.
 
 Each task controls this for itself with two checkboxes in the **Basics** section of the task form:
 
 - **Don't send status checks for scheduled runs** — silences pipelines this task starts on its schedule
-- **Don't send status checks for "Run now"** — silences pipelines this task starts when someone presses **Run now**
+- **Don't send status checks for manual runs** — silences pipelines this task starts when it is run on demand, whether from the **Run now** button, the API, or the CLI
 
 Both are unchecked by default, so tasks send commit statuses unless you say otherwise. The two are independent: you can silence the schedule while keeping statuses for manual runs, or the reverse.
 
-A checked box applies to every pipeline that task starts with that trigger, **reruns included**. Pipelines started by a push, a pull request, or the API are never affected — they always report.
+A checked box applies to every pipeline that task starts with that trigger, **reruns included**, and to any promotion inside those pipelines. Pipelines started by a push or a pull request are never affected — they always report.
+
+Changing a checkbox takes up to five minutes to apply, so a run started right after you save it may still report.
 
 In a project YAML file the same settings appear on each task:
 
