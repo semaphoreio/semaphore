@@ -111,6 +111,9 @@ global:
   sidecarEncryptor:
     image: encryptor
 
+  objectStorage:
+    acknowledgeMinioRemoval: false
+
   artifacts:
     secretName: "storage-artifacts"
     region: "local"
@@ -127,9 +130,10 @@ global:
           cpu: 50m
           memory: 256Mi
         limits:
-          memory: 1Gi
+          memory: 2Gi
 
   cache:
+    secretName: "storage-cache"
     region: "local"
     username: "semaphore-cache-access"
     password: "semaphore-cache-secret"
@@ -144,7 +148,7 @@ global:
           cpu: 50m
           memory: 256Mi
         limits:
-          memory: 1Gi
+          memory: 2Gi
 
   logs:
     secretName: "storage-logs"
@@ -162,7 +166,7 @@ global:
           cpu: 50m
           memory: 256Mi
         limits:
-          memory: 1Gi
+          memory: 2Gi
 
   # If secretName is empty, the secrets will be auto-generated.
   # If specified, the secret used must contain the following keys:
