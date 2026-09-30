@@ -60,12 +60,8 @@ defmodule Audit.Event do
     options = Map.merge(default_opts, options)
 
     %{entries: events, metadata: %{after: next_token, before: prev_token}} =
-      __MODULE__
-      |> filter_by_org_id(params.org_id)
-      |> filter_by_timestamp_from(params.from_timestamp)
-      |> filter_by_timestamp_to(params.to_timestamp)
-      |> bound_by_cursor_timestamp(options.direction, options.page_token)
-      |> order_by([e], desc: e.timestamp, desc: e.operation_id, desc: e.id)
+      params
+      |> paginated_query(options)
       |> Audit.Repo.paginate(
         page_opts(
           options.direction,
@@ -75,6 +71,17 @@ defmodule Audit.Event do
       )
 
     {events, next_token, prev_token}
+  end
+
+  @doc false
+  # The query before Paginator adds its cursor condition and limit.
+  def paginated_query(params, options) do
+    __MODULE__
+    |> filter_by_org_id(params.org_id)
+    |> filter_by_timestamp_from(params.from_timestamp)
+    |> filter_by_timestamp_to(params.to_timestamp)
+    |> bound_by_cursor_timestamp(options.direction, options.page_token)
+    |> order_by([e], desc: e.timestamp, desc: e.operation_id, desc: e.id)
   end
 
   # from_timestamp is inclusive, to_timestamp is exclusive.
@@ -101,8 +108,8 @@ defmodule Audit.Event do
   defp bound_by_cursor_timestamp(query, :NEXT, page_token)
        when is_binary(page_token) and page_token != "" do
     case cursor_timestamp(page_token) do
-      %DateTime{} = timestamp -> query |> where([e], e.timestamp <= ^timestamp)
-      _ -> query
+      nil -> query
+      timestamp -> query |> where([e], e.timestamp <= ^timestamp)
     end
   end
 
@@ -111,7 +118,7 @@ defmodule Audit.Event do
   # Tokens issued before id became a cursor field carry only timestamp and
   # operation_id, and Paginator raises on a missing last cursor field. Give
   # them an id that keeps every event sharing that timestamp and operation_id
-  # in the requested page (at worst a few repeated rows, never lost ones).
+  # in the requested page (rows of that one operation may repeat, none are lost).
   # PREVIOUS reverses the order, so there the widest id is the smallest one.
   @max_id 9_223_372_036_854_775_807
 
@@ -130,11 +137,15 @@ defmodule Audit.Event do
 
   defp upgrade_cursor(_direction, page_token), do: page_token
 
+  # The token is client-supplied: rebuild the DateTime so a crafted struct
+  # can't reach the query. Anything unusable means no bound.
   defp cursor_timestamp(page_token) do
     case Paginator.Cursor.decode(page_token) do
-      %{timestamp: timestamp} -> timestamp
-      [timestamp | _] -> timestamp
-      _ -> nil
+      %{timestamp: %DateTime{} = timestamp} ->
+        timestamp |> DateTime.to_unix() |> DateTime.from_unix!()
+
+      _ ->
+        nil
     end
   rescue
     _ -> nil

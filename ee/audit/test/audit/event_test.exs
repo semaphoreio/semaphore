@@ -193,6 +193,81 @@ defmodule Audit.EventTest do
       assert length(ids) == 4
     end
 
+    test "NEXT pages are bounded by the cursor timestamp (keeps the export linear)" do
+      org_id = Ecto.UUID.generate()
+      event = create_event(org_id, 10)
+      token = Paginator.cursor_for_record(event, [:timestamp, :operation_id, :id])
+
+      {sql, params} =
+        Ecto.Adapters.SQL.to_sql(
+          :all,
+          Audit.Repo,
+          Audit.Event.paginated_query(
+            %{org_id: org_id, from_timestamp: nil, to_timestamp: nil},
+            %{
+              direction: :NEXT,
+              page_token: token
+            }
+          )
+        )
+
+      assert sql =~ ~r/"timestamp" <= \$\d/
+      assert DateTime.from_unix!(10) in params
+
+      {sql, _} =
+        Ecto.Adapters.SQL.to_sql(
+          :all,
+          Audit.Repo,
+          Audit.Event.paginated_query(
+            %{org_id: org_id, from_timestamp: nil, to_timestamp: nil},
+            %{
+              direction: :PREVIOUS,
+              page_token: token
+            }
+          )
+        )
+
+      refute sql =~ ~r/"timestamp" <= /
+    end
+
+    test "a crafted token with a bogus timestamp gets no bound" do
+      token = Paginator.Cursor.encode(%{timestamp: "not a datetime", operation_id: "x", id: 1})
+
+      {sql, _} =
+        Ecto.Adapters.SQL.to_sql(
+          :all,
+          Audit.Repo,
+          Audit.Event.paginated_query(
+            %{org_id: Ecto.UUID.generate(), from_timestamp: nil, to_timestamp: nil},
+            %{direction: :NEXT, page_token: token}
+          )
+        )
+
+      refute sql =~ ~r/"timestamp" <= /
+    end
+
+    test "a token issued before id was a cursor field still pages backward" do
+      org_id = Ecto.UUID.generate()
+      operation_id = Ecto.UUID.generate()
+
+      newer = create_event(org_id, 20)
+      [first | _] = for _ <- 1..3, do: create_event(org_id, 10, operation_id: operation_id)
+
+      legacy_token = Paginator.cursor_for_record(first, [:timestamp, :operation_id])
+
+      {events, _, _} =
+        Audit.Event.paginated(%{org_id: org_id}, %{
+          page_size: 10,
+          page_token: legacy_token,
+          direction: :PREVIOUS
+        })
+
+      ids = Enum.map(events, & &1.id)
+
+      assert newer.id in ids
+      assert length(ids) == 4
+    end
+
     test "walking NEXT pages inside a time range" do
       org_id = Ecto.UUID.generate()
 
