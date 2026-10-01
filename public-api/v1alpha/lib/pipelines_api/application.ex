@@ -16,6 +16,7 @@ defmodule PipelinesAPI.Application do
 
     children =
       [
+        PipelinesAPI.Logs.Limiter,
         {Plug.Cowboy, scheme: :http, plug: PipelinesAPI.Router, options: [port: 4004]},
         %{
           id: :feature_provider_cache,
