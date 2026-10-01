@@ -412,6 +412,8 @@ This Helm command installs the Community Edition. If you want to install the Ent
       --set ingress.ssl.type="google"
     ```
 
+    The chart generates the credentials of the bundled object stores during the install and keeps them across upgrades. If you render the chart outside the cluster, for example with `helm template` or Argo CD, set `global.artifacts.username`, `global.artifacts.password`, and the same two keys under `global.cache` and `global.logs` yourself, because every render would otherwise generate new credentials.
+
 </Steps>
 
   </TabItem>
