@@ -1,0 +1,16 @@
+version: "v1.0"
+name: OIDC tokens too many audiences
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1604-minimal
+blocks:
+  - name: Test
+    task:
+      jobs:
+        - name: Aud list exceeds maxItems 8
+          oidc_tokens:
+            PYPI_OIDC_TOKEN:
+              aud: ["a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "a9"]
+          commands:
+            - echo hi

@@ -1,0 +1,16 @@
+version: "v1.0"
+name: OIDC tokens invalid env var name
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1604-minimal
+blocks:
+  - name: Test
+    task:
+      jobs:
+        - name: Invalid env var name
+          oidc_tokens:
+            lowercase-bad:
+              aud: pypi
+          commands:
+            - echo hi
