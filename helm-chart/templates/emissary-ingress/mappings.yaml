@@ -634,7 +634,7 @@ spec:
   rewrite: ""
   service: secrethub-http.{{ .Release.Namespace }}:4000
   precedence: 100
-{{- if and (eq .Values.global.edition "ee") (index .Values "mcp-server" "enabled") }}
+{{- if (index .Values "mcp-server" "enabled") }}
 ---
 # MCP OAuth 2.1 Protected Resource Metadata (RFC 9728)
 apiVersion: getambassador.io/v3alpha1
@@ -830,7 +830,7 @@ spec:
       retry_on: connect-failure
       num_retries: 3
 {{- end }}
-{{- if and (eq .Values.global.edition "ee") (index .Values "mcp-server" "enabled") }}
+{{- if (index .Values "mcp-server" "enabled") }}
 ---
 apiVersion: getambassador.io/v3alpha1
 kind: Mapping

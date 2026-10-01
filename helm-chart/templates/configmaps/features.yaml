@@ -56,6 +56,12 @@ data:
       quantity: 600
     max_projects_in_org:
       quantity: 10000
+    mcp_server_artifacts_tools:
+      enabled: true
+    mcp_server_read_tools:
+      enabled: true
+    mcp_server_write_tools:
+      enabled: true
     multiple_organizations:
       enabled: false
     okta:
@@ -170,6 +176,12 @@ data:
       quantity: 600
     max_projects_in_org:
       quantity: 10000
+    mcp_server_artifacts_tools:
+      enabled: true
+    mcp_server_read_tools:
+      enabled: true
+    mcp_server_write_tools:
+      enabled: true
     multiple_organizations:
       enabled: false
     okta:
