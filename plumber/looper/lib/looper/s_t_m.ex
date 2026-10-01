@@ -37,6 +37,11 @@ defmodule Looper.STM do
     columns_to_log      = Util.get_mandatory_field(opts, :columns_to_log)
     publisher_cb        = Util.get_optional_field(opts, :publisher_cb, :skip)
     task_supervisor     = Util.get_optional_field(opts, :task_supervisor, :skip)
+    # Max number of items processed per wake-up, one claim transaction each.
+    batch_size          = Util.get_optional_field(opts, :batch_size, 1)
+    # Stop taking new items once a wake-up has run this long. Checked between
+    # items, so keep it well under the Periodic wormhole timeout (16s).
+    batch_budget_ms     = Util.get_optional_field(opts, :batch_budget_ms, 3_000)
 
     quote do
       @behaviour Looper.STM.Behaviour
@@ -96,7 +101,31 @@ defmodule Looper.STM do
         {:noreply, state}
       end
 
-      def recurring(params), do: params |> recurring_() |> log()
+      def recurring(params) do
+        deadline = System.monotonic_time(:millisecond) + unquote(batch_budget_ms)
+
+        params |> recurring_batch(unquote(batch_size), deadline) |> log()
+      end
+
+      # Each iteration sees its 0-based position in the batch as :batch_index,
+      # so an enter_scheduling override can vary what it claims within a batch.
+      defp recurring_batch(params, remaining, deadline) do
+        result =
+          params
+          |> Map.put(:batch_index, unquote(batch_size) - remaining)
+          |> recurring_()
+
+        if remaining > 1 and item_processed?(result) and
+             System.monotonic_time(:millisecond) < deadline do
+          recurring_batch(params, remaining - 1, deadline)
+        else
+          result
+        end
+      end
+
+      defp item_processed?({:ok, :no_item}), do: false
+      defp item_processed?({:ok, _}), do: true
+      defp item_processed?(_), do: false
 
       def enter_scheduling(params) do
         with  {:ok, %{enter_transition: item, select_item: selected}}
