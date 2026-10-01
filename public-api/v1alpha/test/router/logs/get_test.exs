@@ -904,6 +904,164 @@ defmodule PipelinesAPI.Logs.Get.Test do
     end
   end
 
+  describe "GET /logs/:job_id concurrency cap" do
+    alias PipelinesAPI.Logs.Limiter
+
+    # Takes every slot of the app's limiter until the returned pids get :finish.
+    defp fill_limiter do
+      test = self()
+      max = :sys.get_state(Limiter).max
+
+      pids =
+        for _ <- 1..max do
+          pid =
+            spawn(fn ->
+              Limiter.run(fn ->
+                send(test, {:holding, self()})
+
+                receive do
+                  :finish -> :ok
+                end
+              end)
+            end)
+
+          assert_receive {:holding, ^pid}
+          pid
+        end
+
+      on_exit(fn ->
+        Enum.each(pids, &Process.exit(&1, :kill))
+        # The kills free the slots asynchronously (monitor DOWN); the next
+        # test must start with an empty limiter.
+        wait_for_free_slots()
+      end)
+
+      pids
+    end
+
+    defp wait_for_free_slots(tries \\ 100) do
+      cond do
+        Limiter.in_use() == 0 -> :ok
+        tries == 0 -> flunk("#{Limiter.in_use()} slots still taken")
+        true -> Process.sleep(20) && wait_for_free_slots(tries - 1)
+      end
+    end
+
+    defp stub_small_log do
+      GrpcMock.stub(LoghubMock, :stream_log_events, fn _, stream ->
+        GRPC.Server.send_reply(stream, %InternalApi.Loghub.GetLogEventsResponse{
+          status: %InternalApi.ResponseStatus{
+            code: InternalApi.ResponseStatus.Code.value(:OK),
+            message: ""
+          },
+          events: [~s({"n":1})],
+          final: true
+        })
+      end)
+    end
+
+    test "under the cap, requests are served", ctx do
+      stub_small_log()
+
+      for _ <- 1..3 do
+        assert {200, _, ~s({ "events": [{"n":1}] })} =
+                 get_logs(ctx.cloud_job.id, ctx.user_id, false)
+      end
+
+      wait_for_free_slots()
+    end
+
+    test "over the cap, a request gets a 503 without calling loghub", ctx do
+      GrpcMock.stub(LoghubMock, :stream_log_events, fn _, _ -> flunk("must not call loghub") end)
+      holders = fill_limiter()
+
+      assert {503, _, "Logs are temporarily unavailable, please retry"} =
+               get_logs(ctx.cloud_job.id, ctx.user_id)
+
+      Enum.each(holders, &send(&1, :finish))
+      wait_for_free_slots()
+
+      stub_small_log()
+      assert {200, _, _} = get_logs(ctx.cloud_job.id, ctx.user_id, false)
+    end
+
+    test "self-hosted jobs are not capped", ctx do
+      GrpcMock.stub(Loghub2Mock, :generate_token, fn _, _ ->
+        %InternalApi.Loghub2.GenerateTokenResponse{
+          type: InternalApi.Loghub2.TokenType.value(:PULL),
+          token: @token
+        }
+      end)
+
+      fill_limiter()
+
+      assert {302, _, _} = get_logs(ctx.self_hosted_job.id, ctx.user_id, false)
+    end
+
+    test "a client hanging up mid-stream frees its slot", ctx do
+      previous = Application.get_env(:pipelines_api, :logs_commit_bytes)
+      Application.put_env(:pipelines_api, :logs_commit_bytes, 1)
+      timeout = Application.get_env(:pipelines_api, :loghub_stream_timeout)
+      Application.put_env(:pipelines_api, :loghub_stream_timeout, 60_000)
+
+      on_exit(fn ->
+        Application.put_env(:pipelines_api, :loghub_stream_timeout, timeout)
+
+        if previous,
+          do: Application.put_env(:pipelines_api, :logs_commit_bytes, previous),
+          else: Application.delete_env(:pipelines_api, :logs_commit_bytes)
+      end)
+
+      test = self()
+
+      GrpcMock.stub(LoghubMock, :stream_log_events, fn _, stream ->
+        GRPC.Server.send_reply(stream, %InternalApi.Loghub.GetLogEventsResponse{
+          status: %InternalApi.ResponseStatus{
+            code: InternalApi.ResponseStatus.Code.value(:OK),
+            message: ""
+          },
+          events: [~s({"n":1})],
+          final: true
+        })
+
+        send(test, :first_batch_sent)
+        Process.sleep(60_000)
+      end)
+
+      {:ok, socket} = raw_request(ctx.cloud_job.id, ctx.user_id)
+      assert_receive :first_batch_sent, 5_000
+      {:ok, _} = :gen_tcp.recv(socket, 0, 5_000)
+      assert Limiter.in_use() == 1
+
+      :gen_tcp.close(socket)
+      wait_for_free_slots()
+    end
+
+    test "a request that fails after the response started frees its slot", ctx do
+      Application.put_env(:pipelines_api, :logs_commit_bytes, 1)
+      on_exit(fn -> Application.delete_env(:pipelines_api, :logs_commit_bytes) end)
+
+      GrpcMock.stub(LoghubMock, :stream_log_events, fn _, stream ->
+        GRPC.Server.send_reply(stream, %InternalApi.Loghub.GetLogEventsResponse{
+          status: %InternalApi.ResponseStatus{
+            code: InternalApi.ResponseStatus.Code.value(:OK),
+            message: ""
+          },
+          events: [~s({"n":1})],
+          final: true
+        })
+
+        raise GRPC.RPCError, status: GRPC.Status.data_loss(), message: "corrupt"
+      end)
+
+      capture_log(fn ->
+        assert {:ok, %{complete?: false}} = raw_get(ctx.cloud_job.id, ctx.user_id)
+      end)
+
+      wait_for_free_slots()
+    end
+  end
+
   defp header(headers, name) do
     Enum.find_value(headers, fn {key, value} ->
       if String.downcase(key) == name, do: value
