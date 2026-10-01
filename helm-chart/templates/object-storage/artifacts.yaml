@@ -4,6 +4,7 @@
 {{- if hasKey .Values.global.artifacts.local "version" }}
 {{- fail "global.artifacts.local.version was replaced by global.artifacts.local.image.{repository,tag}" }}
 {{- end }}
+{{- $creds := include "semaphore.objectStore.credentials" (dict "root" . "store" .Values.global.artifacts "key" "artifacts") | fromJson }}
 apiVersion: v1
 kind: Secret
 metadata:
@@ -14,8 +15,8 @@ stringData:
   ARTIFACT_STORAGE_S3_URL: "https://artifacts.{{.Values.global.domain.name}}"
   AWS_REGION: {{ .Values.global.artifacts.region | quote }}
   ARTIFACT_STORAGE_S3_BUCKET: "semaphore-artifacts"
-  AWS_ACCESS_KEY_ID: {{ .Values.global.artifacts.username | quote }}
-  AWS_SECRET_ACCESS_KEY: {{ .Values.global.artifacts.password | quote }}
+  AWS_ACCESS_KEY_ID: {{ $creds.accessKey | quote }}
+  AWS_SECRET_ACCESS_KEY: {{ $creds.secretKey | quote }}
 {{- if .Values.global.artifacts.local.enabled }}
 ---
 {{ include "semaphore.objectStore" (dict "root" . "name" "storage-artifacts" "bucket" "semaphore-artifacts" "store" .Values.global.artifacts "extraEnv" (list (dict "name" "RUSTFS_CORS_ALLOWED_ORIGINS" "value" "*"))) }}

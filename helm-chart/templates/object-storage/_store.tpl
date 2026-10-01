@@ -1,3 +1,19 @@
+{{- define "semaphore.objectStore.credentials" -}}
+{{- $existing := lookup "v1" "Secret" .root.Release.Namespace .store.secretName -}}
+{{- $data := dict -}}
+{{- if $existing -}}
+{{- $data = $existing.data | default dict -}}
+{{- end -}}
+{{- $accessKey := .store.username | default (get $data "AWS_ACCESS_KEY_ID" | default "" | b64dec) -}}
+{{- $secretKey := .store.password | default (get $data "AWS_SECRET_ACCESS_KEY" | default "" | b64dec) -}}
+{{- if not .store.local.enabled -}}
+{{- $accessKey = required (printf "global.%s.username is required when global.%s.local.enabled is false" .key .key) $accessKey -}}
+{{- $secretKey = required (printf "global.%s.password is required when global.%s.local.enabled is false" .key .key) $secretKey -}}
+{{- end -}}
+{{- $accessKey = $accessKey | default (randAlphaNum 20) -}}
+{{- $secretKey = $secretKey | default (randAlphaNum 40) -}}
+{{- dict "accessKey" $accessKey "secretKey" $secretKey | toJson -}}
+{{- end -}}
 {{- define "semaphore.objectStore" -}}
 apiVersion: v1
 kind: Service

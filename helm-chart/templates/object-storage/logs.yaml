@@ -4,6 +4,7 @@
 {{- if hasKey .Values.global.logs.local "version" }}
 {{- fail "global.logs.local.version was replaced by global.logs.local.image.{repository,tag}" }}
 {{- end }}
+{{- $creds := include "semaphore.objectStore.credentials" (dict "root" . "store" .Values.global.logs "key" "logs") | fromJson }}
 apiVersion: v1
 kind: Secret
 metadata:
@@ -11,11 +12,11 @@ metadata:
   namespace: {{ .Release.Namespace }}
 stringData:
   LOGS_STORAGE_BACKEND: "s3"
-  LOGS_STORAGE_S3_URL: "https://logs.{{.Values.global.domain.name}}"
+  LOGS_STORAGE_S3_URL: {{ ternary "http://storage-logs:9000" (printf "https://logs.%s" .Values.global.domain.name) .Values.global.logs.local.enabled | quote }}
   AWS_REGION: {{ .Values.global.logs.region | quote }}
   S3_BUCKET_NAME: "semaphore-logs"
-  AWS_ACCESS_KEY_ID: {{ .Values.global.logs.username | quote }}
-  AWS_SECRET_ACCESS_KEY: {{ .Values.global.logs.password | quote }}
+  AWS_ACCESS_KEY_ID: {{ $creds.accessKey | quote }}
+  AWS_SECRET_ACCESS_KEY: {{ $creds.secretKey | quote }}
 {{- if .Values.global.logs.local.enabled }}
 ---
 {{ include "semaphore.objectStore" (dict "root" . "name" "storage-logs" "bucket" "semaphore-logs" "store" .Values.global.logs) }}

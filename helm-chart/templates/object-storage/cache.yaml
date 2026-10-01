@@ -4,15 +4,29 @@
 {{- if hasKey .Values.global.cache.local "version" }}
 {{- fail "global.cache.local.version was replaced by global.cache.local.image.{repository,tag}" }}
 {{- end }}
+{{- $creds := include "semaphore.objectStore.credentials" (dict "root" . "store" .Values.global.cache "key" "cache") | fromJson }}
 apiVersion: v1
 kind: Secret
 metadata:
   name: {{ .Values.global.cache.secretName }}
   namespace: {{ .Release.Namespace }}
 stringData:
-  AWS_ACCESS_KEY_ID: {{ .Values.global.cache.username | quote }}
-  AWS_SECRET_ACCESS_KEY: {{ .Values.global.cache.password | quote }}
+  AWS_ACCESS_KEY_ID: {{ $creds.accessKey | quote }}
+  AWS_SECRET_ACCESS_KEY: {{ $creds.secretKey | quote }}
 {{- if .Values.global.cache.local.enabled }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: job-extra-environment
+  namespace: {{ .Release.Namespace }}
+data:
+  SEMAPHORE_TOOLBOX_VERSION: {{ .Values.toolbox.version | b64enc }}
+  SEMAPHORE_CACHE_BACKEND: {{ printf "s3" | b64enc }}
+  SEMAPHORE_CACHE_S3_URL: {{ printf "http://storage-cache:9000" | b64enc }}
+  SEMAPHORE_CACHE_S3_BUCKET: {{ printf "semaphore-cache" | b64enc }}
+  SEMAPHORE_CACHE_S3_KEY: {{ $creds.accessKey | b64enc }}
+  SEMAPHORE_CACHE_S3_SECRET: {{ $creds.secretKey | b64enc }}
 ---
 {{ include "semaphore.objectStore" (dict "root" . "name" "storage-cache" "bucket" "semaphore-cache" "store" .Values.global.cache) }}
 {{- end }}
