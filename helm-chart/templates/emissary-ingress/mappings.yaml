@@ -815,54 +815,14 @@ spec:
 apiVersion: getambassador.io/v3alpha1
 kind: Mapping
 metadata:
-  name: minio-artifacts-mapping
+  name: storage-artifacts-mapping
   namespace: {{ .Release.Namespace }}
 spec:
   host: "^artifacts\\..*"
   host_regex: true
   prefix: /
   rewrite: ""
-  service: minio-artifacts.{{ .Release.Namespace }}:9000
-  timeout_ms: 30000
-  bypass_auth: true
-  envoy_override:
-    retry_policy:
-      retry_on: connect-failure
-      num_retries: 3
-{{- end }}
-{{- if .Values.global.cache.local.enabled }}
----
-apiVersion: getambassador.io/v3alpha1
-kind: Mapping
-metadata:
-  name: minio-cache-mapping
-  namespace: {{ .Release.Namespace }}
-spec:
-  host: "^cache\\..*"
-  host_regex: true
-  prefix: /
-  rewrite: ""
-  service: minio-cache.{{ .Release.Namespace }}:9000
-  timeout_ms: 30000
-  bypass_auth: true
-  envoy_override:
-    retry_policy:
-      retry_on: connect-failure
-      num_retries: 3
-{{- end }}
-{{- if .Values.global.logs.local.enabled }}
----
-apiVersion: getambassador.io/v3alpha1
-kind: Mapping
-metadata:
-  name: minio-logs-mapping
-  namespace: {{ .Release.Namespace }}
-spec:
-  host: "^logs\\..*"
-  host_regex: true
-  prefix: /
-  rewrite: ""
-  service: minio-logs.{{ .Release.Namespace }}:9000
+  service: storage-artifacts.{{ .Release.Namespace }}:9000
   timeout_ms: 30000
   bypass_auth: true
   envoy_override:
