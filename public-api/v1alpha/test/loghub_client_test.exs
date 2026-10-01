@@ -278,6 +278,75 @@ defmodule PipelinesAPI.LoghubClient.Test do
     end
   end
 
+  describe ".stream_log_events/3" do
+    # gun's own timeout only bounds the wait for each message; a stream that
+    # keeps sending small batches would run on without the watchdog.
+    test "a stream that keeps sending past the deadline is cut at the deadline" do
+      GrpcMock.stub(LoghubMock, :stream_log_events, fn _, stream ->
+        for i <- 1..15 do
+          GRPC.Server.send_reply(stream, %InternalApi.Loghub.GetLogEventsResponse{
+            status: ok(),
+            events: ["line #{i}"],
+            final: true
+          })
+
+          Process.sleep(150)
+        end
+      end)
+
+      capture_log(fn ->
+        # The test deadline is 1s (config/test.exs); the stream takes 2.25s.
+        {elapsed, result} = :timer.tc(fn -> LoghubClient.stream_log_events(@job_id) end)
+
+        assert result ==
+                 {:error, {:unavailable, "Logs are temporarily unavailable, please retry"}}
+
+        assert elapsed < 1_600_000
+      end)
+    end
+
+    test "the loghub connection is closed when the call returns" do
+      GrpcMock.stub(LoghubMock, :stream_log_events, fn _, stream ->
+        GRPC.Server.send_reply(stream, %InternalApi.Loghub.GetLogEventsResponse{
+          status: ok(),
+          events: ["only"],
+          final: true
+        })
+      end)
+
+      before = gun_connections()
+      assert LoghubClient.stream_log_events(@job_id) == {:ok, ["only"]}
+      # gun closes asynchronously.
+      Process.sleep(100)
+      assert gun_connections() == before
+    end
+
+    test "fun can stop the call, which cancels the loghub stream" do
+      test = self()
+
+      GrpcMock.stub(LoghubMock, :stream_log_events, fn _, stream ->
+        for i <- 1..3 do
+          GRPC.Server.send_reply(stream, %InternalApi.Loghub.GetLogEventsResponse{
+            status: ok(),
+            events: ["line #{i}"],
+            final: true
+          })
+        end
+
+        send(test, {:handler, self()})
+        Process.sleep(60_000)
+      end)
+
+      assert LoghubClient.stream_log_events(@job_id, [], fn events, acc ->
+               {:halt, [events | acc]}
+             end) == {:halted, [["line 1"]]}
+
+      assert_receive {:handler, handler}, 2_000
+      ref = Process.monitor(handler)
+      assert_receive {:DOWN, ^ref, :process, ^handler, _}, 1_000
+    end
+  end
+
   describe ".stream_log_events errors that must not fall back" do
     # What a current loghub does when its handler fails (e.g. the job API is
     # down): headers first, then the error. That must not look like an older
@@ -325,6 +394,8 @@ defmodule PipelinesAPI.LoghubClient.Test do
       end)
     end
   end
+
+  defp gun_connections, do: :gun_conns_sup |> Supervisor.which_children() |> length()
 
   defp ok do
     %InternalApi.ResponseStatus{
