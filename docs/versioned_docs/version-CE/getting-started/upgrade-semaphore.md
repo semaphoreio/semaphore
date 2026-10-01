@@ -55,6 +55,27 @@ To upgrade Semaphore, you must re-run the `helm upgrade` command used to install
 
 </Steps>
 
+## Upgrade from a release with MinIO {#minio}
+
+Semaphore stores artifacts, job logs, and the cache in RustFS instead of MinIO. Upgrading from a version that still runs MinIO does not migrate the stored data: artifacts, job logs, and cache entries saved before the upgrade are not available afterwards.
+
+The new stores start with credentials that the chart generates during the upgrade and reuses on every later upgrade, so no credentials appear in the chart. If you render the chart outside the cluster, for example with `helm template`, Argo CD, or Flux, set `global.artifacts.username`, `global.artifacts.password`, and the same two keys under `global.cache` and `global.logs` yourself, because every render would otherwise generate new credentials.
+
+To prevent this data loss from happening by accident, the upgrade stops with an error while the MinIO StatefulSets from the previous version are present. To upgrade anyway, add the following argument to the Helm upgrade command:
+
+```shell title="Acknowledge the removal of MinIO"
+--set global.objectStorage.acknowledgeMinioRemoval=true
+```
+
+The upgrade keeps the persistent volume claims used by MinIO. Once you no longer need their data, delete them:
+
+```shell title="Delete MinIO PVCs"
+kubectl delete pvc \
+  minio-artifacts-storage-minio-artifacts-0 \
+  minio-cache-storage-minio-cache-0 \
+  minio-logs-storage-minio-logs-0
+```
+
 ## See also
 
 - [How to uninstall Semaphore](./uninstall-semaphore)
