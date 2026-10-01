@@ -63,114 +63,203 @@ defmodule PipelinesAPI.LoghubClient do
   defp grpc_call(error), do: error
 
   #
-  # Fetches the events with the StreamLogEvents rpc, so that loghub sends the
-  # log in batches instead of one message holding all of it. Returns the same
-  # result as get_log_events/1. Falls back to GetLogEvents when loghub doesn't
-  # implement the stream yet.
+  # Fetches the whole log with the StreamLogEvents rpc and returns the same
+  # result as get_log_events/1. stream_log_events/3 is the streaming version.
   #
   def stream_log_events(job_id) do
+    case stream_log_events(job_id, [], fn events, batches -> {:cont, [events | batches]} end) do
+      {:ok, batches} -> {:ok, batches |> Enum.reverse() |> Enum.concat()}
+      {:error, error, _batches} -> {:error, error}
+    end
+  end
+
+  @doc """
+  Reads the log of a job with the StreamLogEvents rpc and calls
+  `fun.(events, acc)` with each batch of events, oldest first, as loghub sends
+  it. `fun` returns `{:cont, acc}` to read on, or `{:halt, acc}` to stop (the
+  call is cancelled). Only one batch is held at a time.
+
+  The stream is read in the calling process: the connection delivers the
+  stream's messages to the process that opened it. The call is cancelled
+  (the connection closed) when it ends for any reason, including the caller
+  being killed, so loghub stops streaming a log nobody reads.
+
+  Returns:
+
+    - `{:ok, acc}` - the whole log was read
+    - `{:halted, acc}` - `fun` stopped the call
+    - `{:error, error, acc}` - `error` is what get_log_events/1 would return
+      as `{:error, error}`, e.g. `{:not_found, message}`; `acc` holds what
+      `fun` already got, since the call can fail after some batches
+
+  Falls back to GetLogEvents (the whole log as one batch) when loghub doesn't
+  implement the stream yet.
+  """
+  def stream_log_events(job_id, acc, fun) do
     Metrics.benchmark(__MODULE__, ["stream_log_events"], fn ->
-      form_get_log_events_request(job_id)
-      |> grpc_stream_call()
+      case form_get_log_events_request(job_id) do
+        {:ok, request} -> grpc_stream_call(request, acc, fun)
+        _error -> {:error, {:internal, "Internal error"}, acc}
+      end
     end)
   end
 
-  defp grpc_stream_call({:ok, request}) do
-    result =
-      Wormhole.capture(__MODULE__, :do_stream_log_events, [request],
-        stacktrace: true,
-        skip_log: true,
-        timeout_ms: wormhole_timeout(),
-        ok_tuple: true
-      )
-
-    case result do
-      {:ok, response} ->
-        process_get_log_events_response(response)
-
-      # Wormhole wraps an {:error, _} returned by the function in another one.
-      #
+  defp grpc_stream_call(request, acc, fun) do
+    case stream_call(request, acc, fun) do
       # A loghub without StreamLogEvents rejects the call before sending any
       # response: UNIMPLEMENTED in general, but grpc-elixir 0.5 servers answer
       # an unknown method with UNKNOWN. Either way, use GetLogEvents instead.
-      {:error, {:error, {:rejected, %GRPC.RPCError{status: status} = error}}}
+      {:rejected, %GRPC.RPCError{status: status} = error}
       when status in [@unimplemented, @unknown] ->
         Logger.warning(
           "loghub rejected StreamLogEvents (status #{status}: #{error.message}), falling back to GetLogEvents"
         )
 
         Metrics.increment(__MODULE__, ["stream_log_events_fallback", "status_#{status}"])
-        get_log_events(request.job_id)
 
-      {:error, {:error, {:rejected, error}}} ->
+        case get_log_events(request.job_id) do
+          {:ok, events} -> continue(fun.(events, acc))
+          {:error, error} -> {:error, error, acc}
+        end
+
+      {:rejected, error} ->
         error |> LT.error("loghub service responded with")
-        error_for({:error, error})
+        {:error, error_tuple({:error, error}), acc}
 
-      {:error, reason} ->
+      {:error, reason, acc} ->
         reason |> LT.error("loghub service responded with")
-        error_for(reason)
+        {:error, error_tuple(reason), acc}
+
+      # loghub's own answer, e.g. not found; already an error tuple.
+      {:answered, error, acc} ->
+        {:error, error, acc}
+
+      result ->
+        result
     end
   end
 
-  defp grpc_stream_call(error), do: error
+  defp continue({:cont, acc}), do: {:ok, acc}
+  defp continue({:halt, acc}), do: {:halted, acc}
 
-  #
-  # Connects, reads the whole stream and disconnects, all in this process:
-  # the connection delivers the stream's messages to the process that opened
-  # it.
-  #
-  def do_stream_log_events(request) do
-    {:ok, channel} = url() |> GRPC.Stub.connect(@connect_opts)
-
-    try do
-      case InternalApi.Loghub.Loghub.Stub.stream_log_events(channel, request,
-             timeout: loghub_timeout()
-           ) do
-        {:ok, responses} -> collect_stream(responses)
-        # The call failed before loghub sent anything back.
-        {:error, error} -> {:error, {:rejected, error}}
-      end
-    after
-      GRPC.Stub.disconnect(channel)
-    end
+  defp error_tuple(reason) do
+    {:error, error} = error_for(reason)
+    error
   end
 
   #
-  # Joins the batches into one response. The first response carries the
-  # status, and every response must have the same one: a status change
+  # The deadline is sent to loghub as grpc-timeout, and grpc-elixir servers
+  # end the call with DEADLINE_EXCEEDED when it passes (gun's own timeout only
+  # bounds the wait for each message).
+  #
+  defp stream_call(request, acc, fun) do
+    case GRPC.Stub.connect(url(), @connect_opts) do
+      {:ok, channel} -> stream_call(channel, request, acc, fun)
+      {:error, error} -> {:error, {:error, error}, acc}
+    end
+  end
+
+  # Exceptions raised by fun are not caught: only the caller knows what it
+  # already did with the batches.
+  defp stream_call(channel, request, acc, fun) do
+    case InternalApi.Loghub.Loghub.Stub.stream_log_events(channel, request,
+           timeout: loghub_timeout()
+         ) do
+      {:ok, responses} -> read_stream(responses, acc, fun)
+      # The call failed before loghub sent anything back.
+      {:error, error} -> {:rejected, error}
+    end
+  after
+    # Closes the connection right away, which also cancels a stream that is
+    # still running (GRPC.Stub.disconnect/1 would let it run on for gun's
+    # closing_timeout). If the caller is killed instead, gun closes the
+    # connection closing_timeout (1s, see @connect_opts) after it goes down.
+    :gun.close(channel.adapter_payload.conn_pid)
+  end
+
+  #
+  # Calls fun with the events of each response. The first response carries
+  # the status, and every response must have the same one: a status change
   # mid-stream (e.g. OK batches followed by BAD_PARAM) means the batches are
-  # not a whole log. An error anywhere in the stream fails the whole call: the
-  # events received before it are incomplete. A successful stream has at least
-  # one response, so an empty one is an error too.
+  # not a whole log. A successful stream has at least one response, so an
+  # empty one is an error. Responses are pulled one at a time, so a read that
+  # raises still reports what fun got.
   #
-  def collect_stream(responses) do
-    result =
-      Enum.reduce_while(responses, nil, fn
-        {:ok, response}, nil ->
-          {:cont, {response, [response.events]}}
+  defp read_stream(responses, acc, fun) do
+    # Suspending right away sets the stream up without reading from it.
+    {:suspended, nil, cont} =
+      Enumerable.reduce(responses, {:suspend, nil}, fn response, _ -> {:suspend, response} end)
 
-        {:ok, %{status: %{code: code}} = response}, {first, batches}
-        when code == first.status.code ->
-          {:cont, {first, [response.events | batches]}}
+    read_next(cont, nil, acc, fun)
+  end
 
-        {:ok, _response}, _ ->
-          {:halt, {:error, :inconsistent_stream}}
+  defp read_next(cont, first, acc, fun) do
+    case pull(cont) do
+      {:ok, {:ok, response}, cont} ->
+        case handle_response(response, first, acc, fun) do
+          {:cont, first, acc} ->
+            read_next(cont, first, acc, fun)
 
-        {:error, error}, _ ->
-          {:halt, {:error, error}}
-      end)
+          result ->
+            cont.({:halt, nil})
+            result
+        end
 
-    case result do
-      {:error, error} ->
-        {:error, error}
+      {:ok, {:error, error}, cont} ->
+        cont.({:halt, nil})
+        {:error, {:error, error}, acc}
 
-      nil ->
-        {:error, :empty_stream}
+      {:ok, _other, cont} ->
+        read_next(cont, first, acc, fun)
 
-      {first, batches} ->
-        {:ok, %{first | events: batches |> Enum.reverse() |> Enum.concat()}}
+      :done when first == nil ->
+        {:error, {:error, :empty_stream}, acc}
+
+      :done ->
+        {:ok, acc}
+
+      {:raised, e} ->
+        {:error, {:error, e}, acc}
     end
   end
+
+  defp pull(cont) do
+    case cont.({:cont, nil}) do
+      {:suspended, element, cont} -> {:ok, element, cont}
+      {:done, _} -> :done
+      {:halted, _} -> :done
+    end
+  rescue
+    e -> {:raised, e}
+  end
+
+  # The first response decides: OK starts the log, anything else (e.g.
+  # BAD_PARAM for a log that can't be found) is loghub's answer, sent as the
+  # only response.
+  defp handle_response(%{status: %{code: code}} = response, nil, acc, fun) do
+    if code == ok_code() do
+      call(fun, response.events, code, acc)
+    else
+      {:error, error} = process_get_log_events_response(response)
+      {:answered, error, acc}
+    end
+  end
+
+  defp handle_response(%{status: %{code: code}} = response, first, acc, fun)
+       when code == first,
+       do: call(fun, response.events, first, acc)
+
+  defp handle_response(_response, _first, acc, _fun),
+    do: {:error, {:error, :inconsistent_stream}, acc}
+
+  defp call(fun, events, first, acc) do
+    case fun.(events, acc) do
+      {:cont, acc} -> {:cont, first, acc}
+      {:halt, acc} -> {:halted, acc}
+    end
+  end
+
+  defp ok_code, do: InternalApi.ResponseStatus.Code.value(:OK)
 
   # loghub is up but can't serve the log right now (archive unavailable or
   # too busy); the request can be retried.
