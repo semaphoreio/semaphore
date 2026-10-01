@@ -184,7 +184,12 @@ defmodule Front.Audit.UI.Test do
 
         InternalApi.Audit.PaginatedListResponse.new(
           events: [],
-          next_page_token: if(req.page_token == "", do: "page-2", else: ""),
+          next_page_token:
+            case req.page_token do
+              "" -> "page-2"
+              "page-2" -> "page-3"
+              _ -> ""
+            end,
           previous_page_token: ""
         )
       end)
@@ -232,7 +237,7 @@ defmodule Front.Audit.UI.Test do
       to = DateTime.to_unix(~U[2026-10-01 00:00:00Z])
 
       sent = sent_requests(requests)
-      assert length(sent) == 2
+      assert Enum.map(sent, & &1.page_token) == ["", "page-2", "page-3"]
 
       for req <- sent do
         assert req.from_timestamp.seconds == from
