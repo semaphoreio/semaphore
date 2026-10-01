@@ -117,8 +117,8 @@ global:
   artifacts:
     secretName: "storage-artifacts"
     region: "local"
-    username: "semaphore-artifacts-access"
-    password: "semaphore-artifacts-secret"
+    username: ""
+    password: ""
     local:
       enabled: true
       image:
@@ -135,8 +135,8 @@ global:
   cache:
     secretName: "storage-cache"
     region: "local"
-    username: "semaphore-cache-access"
-    password: "semaphore-cache-secret"
+    username: ""
+    password: ""
     local:
       enabled: true
       image:
@@ -153,8 +153,8 @@ global:
   logs:
     secretName: "storage-logs"
     region: "local"
-    username: "semaphore-logs-access"
-    password: "semaphore-logs-secret"
+    username: ""
+    password: ""
     local:
       enabled: true
       image:
