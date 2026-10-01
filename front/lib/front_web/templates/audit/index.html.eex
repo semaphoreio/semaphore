@@ -4,7 +4,7 @@
       <div>
         <p class="measure-wide mb2 mb0-m">List of all user generated events in the organization.</p>
         <p>Read more in <a href=<%= "https://#{Application.fetch_env!(:front, :docs_domain)}/security/audit-logs" %>>Docs: Audit Logs</a></p>
-        <p class="f6 gray mb0">CSV export dates are in UTC and inclusive. Leave both empty to export everything.</p>
+        <p class="f6 gray mb0">CSV export dates are in UTC and inclusive. Leave both empty to export everything. For very large logs, export a narrower range.</p>
       </div>
 
       <div class="button-group">
