@@ -50,9 +50,9 @@ defmodule PipelinesAPI.Logs.Body do
   Once the 200 was sent, an exception here aborts the response too, since
   the caller can no longer answer with an error.
   """
-  def add(%__MODULE__{} = body, []), do: {:cont, body}
+  def add(body = %__MODULE__{}, []), do: {:cont, body}
 
-  def add(%__MODULE__{sent?: false} = body, events) do
+  def add(body = %__MODULE__{sent?: false}, events) do
     piece = piece(body, events)
 
     body = %{
@@ -67,16 +67,16 @@ defmodule PipelinesAPI.Logs.Body do
       else: {:cont, body}
   end
 
-  def add(%__MODULE__{sent?: true} = body, events) do
+  def add(body = %__MODULE__{sent?: true}, events) do
     after_sent(body, fn -> write(%{body | empty?: false}, piece(body, events)) end)
   end
 
   @doc "Ends a log that was read to the end. Returns the conn."
-  def finish(%__MODULE__{sent?: false} = body) do
+  def finish(body = %__MODULE__{sent?: false}) do
     Conn.send_resp(body.conn, 200, [@prefix, Enum.reverse(body.buffer), @suffix])
   end
 
-  def finish(%__MODULE__{sent?: true} = body) do
+  def finish(body = %__MODULE__{sent?: true}) do
     after_sent(body, fn ->
       {_, body} = write(body, @suffix)
       body.conn

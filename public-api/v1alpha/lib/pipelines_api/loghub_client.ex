@@ -236,7 +236,7 @@ defmodule PipelinesAPI.LoghubClient do
   # The first response decides: OK starts the log, anything else (e.g.
   # BAD_PARAM for a log that can't be found) is loghub's answer, sent as the
   # only response.
-  defp handle_response(%{status: %{code: code}} = response, nil, acc, fun) do
+  defp handle_response(response = %{status: %{code: code}}, nil, acc, fun) do
     if code == ok_code() do
       call(fun, response.events, code, acc)
     else
@@ -245,7 +245,7 @@ defmodule PipelinesAPI.LoghubClient do
     end
   end
 
-  defp handle_response(%{status: %{code: code}} = response, first, acc, fun)
+  defp handle_response(response = %{status: %{code: code}}, first, acc, fun)
        when code == first,
        do: call(fun, response.events, first, acc)
 
