@@ -119,10 +119,12 @@ defmodule Support.Factories do
             wf_id: "3",
             yaml_file_name: yaml_file_name,
             working_directory: working_directory,
+            promotion_of: Keyword.get(opts, :promotion_of, ""),
             triggerer:
               struct(InternalApi.Plumber.Triggerer,
                 wf_triggered_by: Keyword.get(opts, :triggered_by, :HOOK),
-                wf_triggerer_id: Keyword.get(opts, :wf_triggerer_id, "")
+                wf_triggerer_id: Keyword.get(opts, :wf_triggerer_id, ""),
+                ppl_triggered_by: Keyword.get(opts, :ppl_triggered_by, :WORKFLOW)
               )
           ),
         blocks: [

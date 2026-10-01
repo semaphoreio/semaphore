@@ -75,6 +75,29 @@ defmodule GithubNotifier.NotifierTest do
       assert Cachex.get!(:task_policy, "task-1") == :not_found
     end
 
+    test "suppresses a promotion started inside a suppressed pipeline" do
+      stub_services(
+        triggered_by: :SCHEDULE,
+        wf_triggerer_id: "task-1",
+        ppl_triggered_by: :PROMOTION,
+        promotion_of: "ppl-that-was-scheduled"
+      )
+
+      GrpcMock.stub(
+        SchedulerMock,
+        :describe,
+        Support.Factories.periodic_describe_response(skip_scheduled_run_notifications: true)
+      )
+
+      GithubNotifier.Notifier.notify("asd", "123", "1")
+
+      # the decision follows the workflow's trigger, not the pipeline's, so a
+      # promotion of a silenced run stays silenced instead of reporting on the
+      # same commit the run was silenced for
+      assert_received {:build_status, request}
+      assert request.suppress == true
+    end
+
     test "sends the commit status and caches the failure when the scheduler is unreachable" do
       stub_services(triggered_by: :SCHEDULE, wf_triggerer_id: "task-1")
 
