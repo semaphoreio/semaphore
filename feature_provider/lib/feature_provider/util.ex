@@ -34,7 +34,12 @@ defmodule FeatureProvider.Util do
 
   defmacro log_fun(variables_to_log) do
     module = __CALLER__.module
-    fun = __CALLER__.function |> elem(0)
+    fun =
+      case __CALLER__.function do
+        {name, _arity} -> name
+        nil -> nil
+      end
+
     vars = variables_to_log
 
     quote do

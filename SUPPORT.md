@@ -34,7 +34,7 @@ Enterprise and SaaS customers have access to:
 - Private security reporting
 - Custom feature development consultation
 
-Contact enterprise support at: support@semaphoreci.com
+Contact enterprise support at: support@semaphore.io
 
 ### Security Issues
 

@@ -1,6 +1,22 @@
 
 import { Validator, Rule } from "./components/validation"
 import { TargetParams } from '../workflow_view/target_params'
+import {
+  MAX_PARAM_VALUE_LENGTH,
+  MAX_REGEX_PATTERN_LENGTH,
+  patternTooLong,
+  regexMismatch,
+  valueTooLong,
+} from "./limits"
+import { DebouncedRegexCheck } from "./debounced_regex_check"
+
+export {
+  MAX_PARAM_VALUE_LENGTH,
+  MAX_REGEX_PATTERN_LENGTH,
+  patternTooLong,
+  regexMismatch,
+  valueTooLong,
+}
 
 export default class JustRunForm {
   static init(params) {
@@ -17,9 +33,18 @@ export default class JustRunForm {
     this.pipelineFileValidator = new Validator('pipelineFile', params.pipelineFile, [
       new Rule((v) => v.length < 1, 'cannot be empty')
     ])
-    this.parameterValidators = new Map(params.parameters.map(parameter => [parameter.name, new Validator(parameter.name, parameter.value, [
-      new Rule((v) => parameter.required && (!v || v.length < 1), 'cannot be empty')
-    ])]))
+    this.parameterDebouncers = new Map(
+      params.parameters.map(parameter => [parameter.name, new DebouncedRegexCheck(parameter)])
+    )
+    this.parameterValidators = new Map(params.parameters.map(parameter => {
+      const debouncer = this.parameterDebouncers.get(parameter.name)
+      return [parameter.name, new Validator(parameter.name, parameter.value, [
+        new Rule((v) => parameter.required && (!v || v.length < 1), 'cannot be empty'),
+        new Rule((v) => valueTooLong(v), `value exceeds maximum length of ${MAX_PARAM_VALUE_LENGTH} bytes`),
+        new Rule(() => patternTooLong(parameter), `regex pattern exceeds maximum length of ${MAX_REGEX_PATTERN_LENGTH} bytes`),
+        new Rule((v) => debouncer.mismatch(v), 'value does not match required format')
+      ])]
+    }))
 
     this.currentReferenceType = referenceType
     this.handleReferenceTypeChange()
@@ -99,10 +124,20 @@ export default class JustRunForm {
     const parameterValidator = this.parameterValidators.get(parameterName)
     parameterValidator.setValue(parameterValue)
     parameterValidator.render()
+
+    const debouncer = this.parameterDebouncers.get(parameterName)
+    if (debouncer) {
+      debouncer.schedule(parameterValue, () => parameterValidator.render())
+    }
   }
 
   validateForm() {
     const parameterValidators = Array.from(this.parameterValidators.values())
+
+    this.parameterDebouncers.forEach((debouncer, parameterName) => {
+      const validator = this.parameterValidators.get(parameterName)
+      if (validator) { debouncer.flush(validator.getValue()) }
+    })
 
     return this.referenceNameValidator.isValid() &&
       this.pipelineFileValidator.isValid() &&

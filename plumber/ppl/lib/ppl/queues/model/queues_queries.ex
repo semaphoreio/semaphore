@@ -26,8 +26,10 @@ defmodule Ppl.Queues.Model.QueuesQueries do
   Creates new DB record for queue with given params
   """
   def insert_queue(params) do
-    queue_id = UUID.uuid4()
-    params = Map.put(params, :queue_id, queue_id)
+    params =
+      params
+      |> normalize_name()
+      |> Map.put(:queue_id, UUID.uuid4())
 
     %Queues{} |> Queues.changeset(params) |> Repo.insert()
     |> process_response(params)
@@ -46,6 +48,10 @@ defmodule Ppl.Queues.Model.QueuesQueries do
      LT.info("", "QueuesQueries.insert() - There is already queue caled '#{params.name}'"
                 <> "for organization with id '#{params.organization_id}'")
     {:error, {:queue_exists, {params.name, params.organization_id, "organization"}}}
+  end
+  defp process_response({:error, %Ecto.Changeset{valid?: false} = changeset}, params) do
+    LT.error(changeset, "QueuesQueries.insert() - invalid queue with name '#{Map.get(params, :name)}'")
+    {:error, {:invalid_queue, changeset}}
   end
   defp process_response(queue, _params) do
     LT.info(queue, "Queue persisted")
@@ -119,7 +125,9 @@ defmodule Ppl.Queues.Model.QueuesQueries do
   @doc """
   Finds queue with given name for given project or organization
   """
-  def get_by_name_and_id(%{name: name, project_id: pr_id, scope: "project"}) do
+  def get_by_name_and_id(params), do: params |> normalize_name() |> do_get_by_name_and_id()
+
+  defp do_get_by_name_and_id(%{name: name, project_id: pr_id, scope: "project"}) do
     Queues
     |> where([q], q.name == ^name)
     |> where([q], q.scope == "project")
@@ -127,7 +135,7 @@ defmodule Ppl.Queues.Model.QueuesQueries do
     |> Repo.one()
     |> return_tuple("Queue #{name} for project #{pr_id} not found.")
   end
-  def get_by_name_and_id(%{name: name, organization_id: org_id, scope: "organization"}) do
+  defp do_get_by_name_and_id(%{name: name, organization_id: org_id, scope: "organization"}) do
     Queues
     |> where([q], q.name == ^name)
     |> where([q], q.scope == "organization")
@@ -135,7 +143,7 @@ defmodule Ppl.Queues.Model.QueuesQueries do
     |> Repo.one()
     |> return_tuple("Queue #{name} for organization #{org_id} not found.")
   end
-  def get_by_name_and_id(_), do: {:error, "Invalid parameters for getting a queue."}
+  defp do_get_by_name_and_id(_), do: {:error, "Invalid parameters for getting a queue."}
 
   @doc """
   Finds queue by its id
@@ -148,6 +156,14 @@ defmodule Ppl.Queues.Model.QueuesQueries do
   end
 
   # Utility
+
+  # Keep the queue name within the `varchar(255)` column so a long branch/tag
+  # (implicit queue "<label>-<yml_file_path>") does not blow up the insert. Both
+  # the writer (get_or_insert_queue) and the limit-check reader (ScheduleLimits
+  # via get_by_name_and_id) go through here, so they agree on the stored name.
+  defp normalize_name(%{name: name} = params) when is_binary(name),
+    do: %{params | name: Queues.safe_name(name)}
+  defp normalize_name(params), do: params
 
   defp return_tuple(nil, nil_msg), do: ToTuple.error(nil_msg)
   defp return_tuple(value, _),     do: ToTuple.ok(value)

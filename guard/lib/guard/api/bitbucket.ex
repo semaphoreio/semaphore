@@ -8,6 +8,11 @@ defmodule Guard.Api.Bitbucket do
   @api_v2_path "/api/2.0"
   @oauth2_path "/site/oauth2/access_token"
 
+  # Curated response-header subset logged on a refresh failure, to help
+  # identify which edge/CDN/WAF is involved (e.g. an Atlassian identity-proxy
+  # 403). Deliberately does NOT include the response body.
+  @diagnostic_headers ~w(server via x-amz-cf-id cf-ray x-amzn-requestid x-amz-apigw-id)
+
   plug(Tesla.Middleware.BaseUrl, @base_url)
   plug(Tesla.Middleware.JSON)
 
@@ -45,13 +50,29 @@ defmodule Guard.Api.Bitbucket do
   def validate_token(token) do
     client = build_validate_token_client()
 
-    case Tesla.get(client, "/repositories", headers: [{"authorization", "Bearer #{token}"}]) do
+    case Tesla.get(
+           client,
+           "/user/workspaces",
+           query: [pagelen: 1],
+           headers: [{"authorization", "Bearer #{token}"}]
+         ) do
+      {:ok, res} when res.status in 200..299 ->
+        {:ok, true}
+
+      {:ok, res} when res.status in [401, 403] ->
+        {:ok, false}
+
+      {:ok, res} when res.status == 429 or res.status in 500..599 ->
+        Logger.warning("Transient Bitbucket token validation failure (HTTP #{res.status})")
+        {:error, :transient}
+
       {:ok, res} ->
-        {:ok, res.status in 200..299}
+        Logger.warning("Unexpected Bitbucket token validation response (HTTP #{res.status})")
+        {:error, :transient}
 
       {:error, error} ->
         Logger.error("Error validating Bitbucket token: #{inspect(error)}")
-        {:error, :network_error}
+        {:error, :transient}
     end
   end
 
@@ -75,25 +96,30 @@ defmodule Guard.Api.Bitbucket do
       {:ok, %Tesla.Env{status: status, body: body}} when status in 200..299 ->
         OAuth.handle_ok_token_response(repo_host_account, body)
 
-      {:ok, %Tesla.Env{status: status, body: body}} when status in 400..499 ->
-        Logger.warning(
-          "Failed to refresh Bitbucket token (HTTP #{status}): " <>
-            "error=#{inspect(safe_oauth_error(body))} " <>
-            "error_description=#{inspect(safe_oauth_error_description(body))}. " <>
-            "User repo_host_account id: #{repo_host_account.id}"
-        )
+      {:ok, %Tesla.Env{status: status, body: body, headers: headers}} ->
+        log_response_headers(status, headers, repo_host_account.id, repo_host_account.user_id)
 
-        {:error, :revoked}
+        case OAuth.classify_refresh_response(status, body) do
+          :revoked ->
+            Logger.warning(
+              "Failed to refresh Bitbucket token (HTTP #{status}): " <>
+                "error=#{inspect(safe_oauth_error(body))} " <>
+                "error_description=#{inspect(safe_oauth_error_description(body))}. " <>
+                "rha=#{repo_host_account.id} user=#{repo_host_account.user_id}"
+            )
 
-      {:ok, %Tesla.Env{status: status, body: body}} ->
-        Logger.error(
-          "Unexpected response refreshing Bitbucket token (HTTP #{status}): " <>
-            "error=#{inspect(safe_oauth_error(body))} " <>
-            "error_description=#{inspect(safe_oauth_error_description(body))}. " <>
-            "User repo_host_account id: #{repo_host_account.id}"
-        )
+            {:error, :revoked}
 
-        {:error, :failed}
+          :transient ->
+            Logger.warning(
+              "Transient failure refreshing Bitbucket token (HTTP #{status}): " <>
+                "error=#{inspect(safe_oauth_error(body))} " <>
+                "error_description=#{inspect(safe_oauth_error_description(body))}. " <>
+                "rha=#{repo_host_account.id} user=#{repo_host_account.user_id}"
+            )
+
+            {:error, :transient}
+        end
 
       {:error, error} ->
         Logger.error("Error fetching token: #{inspect(error)}")
@@ -101,11 +127,41 @@ defmodule Guard.Api.Bitbucket do
     end
   end
 
+  defp log_response_headers(status, headers, repo_host_account_id, user_id) do
+    curated =
+      headers
+      |> Enum.filter(fn {key, _value} -> String.downcase(key) in @diagnostic_headers end)
+      |> Enum.into(%{})
+
+    Logger.warning(
+      "Bitbucket refresh failure (HTTP #{status}) response headers " <>
+        "for rha=#{repo_host_account_id} user=#{user_id}: #{inspect(curated)}"
+    )
+  end
+
+  # The refresh client has no JSON middleware, so a failure body arrives as a
+  # raw string - decode it to surface the OAuth `error` code, but never log
+  # the body itself (it can carry token material).
   defp safe_oauth_error(body) when is_map(body), do: Map.get(body, "error")
+
+  defp safe_oauth_error(body) when is_binary(body) do
+    case Jason.decode(body) do
+      {:ok, decoded} -> safe_oauth_error(decoded)
+      _ -> nil
+    end
+  end
+
   defp safe_oauth_error(_), do: nil
 
   defp safe_oauth_error_description(body) when is_map(body),
     do: Map.get(body, "error_description")
+
+  defp safe_oauth_error_description(body) when is_binary(body) do
+    case Jason.decode(body) do
+      {:ok, decoded} -> safe_oauth_error_description(decoded)
+      _ -> nil
+    end
+  end
 
   defp safe_oauth_error_description(_), do: nil
 

@@ -35,6 +35,27 @@ defmodule Rbac.Okta.Saml.Api.Test do
     end
   end
 
+  # Plug raises InvalidQueryError past 32 levels; the router has no error handler, so it surfaces as 500.
+  describe "deeply nested params" do
+    test "body is rejected before decoding" do
+      {:ok, response} = post("/okta/auth", nested_key(1_000) <> "=1")
+
+      assert response.status_code == 500
+    end
+
+    test "nesting within the limit reaches the handler" do
+      {:ok, response} = post("/okta/auth", nested_key(10) <> "=1")
+
+      assert response.status_code == 404
+    end
+
+    test "query string is rejected before decoding" do
+      {:ok, response} = post("/okta/auth?" <> nested_key(1_000) <> "=1", "")
+
+      assert response.status_code == 500
+    end
+  end
+
   describe "/okta/auth" do
     setup do
       {:ok, integration} = Support.Factories.OktaIntegration.insert(org_id: @org_id)
@@ -64,6 +85,147 @@ defmodule Rbac.Okta.Saml.Api.Test do
       location = Enum.find(response.headers, fn h -> elem(h, 0) == "location" end)
       assert response.status_code == 302
       assert location == {"location", "https://me.localhost/account/welcome/okta"}
+    end
+
+    test "valid SAML re-adds an existing JIT user who is no longer part of the organization",
+         ctx do
+      alias Rbac.Events.UserJoinedOrganization
+
+      enable_jit_provisioning(ctx.integration)
+
+      with_mocks [{UserJoinedOrganization, [], [publish: fn _, _ -> :ok end]}] do
+        {:ok, saml_jit_user} =
+          Rbac.Repo.SamlJitUser.create(ctx.integration, "denis@example.com", %{
+            "firstName" => ["Denis"],
+            "lastName" => ["Tapia"]
+          })
+
+        {:ok, saml_jit_user} = Rbac.Okta.Saml.JitProvisioner.AddUser.run(saml_jit_user)
+
+        {:ok, rbi} =
+          Rbac.RoleBindingIdentification.new(
+            user_id: saml_jit_user.user_id,
+            org_id: @org_id,
+            project_id: :is_nil
+          )
+
+        {:ok, nil} = Rbac.RoleManagement.retract_roles(rbi)
+
+        refute Rbac.RoleManagement.user_part_of_org?(saml_jit_user.user_id, @org_id)
+
+        {:ok, response} = post("/okta/auth", saml_payload("denis@example.com"))
+
+        assert response.status_code == 302
+        assert Rbac.RoleManagement.user_part_of_org?(saml_jit_user.user_id, @org_id)
+        assert_called_exactly(UserJoinedOrganization.publish(saml_jit_user.user_id, @org_id), 2)
+      end
+    end
+
+    test "valid SAML re-provisions a removed JIT user using current assertion claims, not stale stored ones",
+         ctx do
+      alias Rbac.Events.UserJoinedOrganization
+
+      enable_jit_provisioning(ctx.integration)
+
+      {:ok, admin} = Rbac.Repo.RbacRole.get_role_by_name("Admin", "org_scope", @org_id)
+      {:ok, member} = Rbac.Repo.RbacRole.get_role_by_name("Member", "org_scope", @org_id)
+
+      Support.Factories.IdpGroupMapping.insert(
+        organization_id: @org_id,
+        default_role_id: member.id,
+        role_mapping: [%{idp_role_id: "admins", semaphore_role_id: admin.id}]
+      )
+
+      with_mocks [{UserJoinedOrganization, [], [publish: fn _, _ -> :ok end]}] do
+        # First login: IdP grants an elevated role that maps to Admin.
+        {:ok, saml_jit_user} =
+          Rbac.Repo.SamlJitUser.create(ctx.integration, "denis@example.com", %{
+            "role" => ["admins"]
+          })
+
+        {:ok, saml_jit_user} = Rbac.Okta.Saml.JitProvisioner.AddUser.run(saml_jit_user)
+
+        assert_org_role(saml_jit_user.user_id, @org_id, "Admin")
+
+        # The user is removed from the organization.
+        {:ok, rbi} =
+          Rbac.RoleBindingIdentification.new(
+            user_id: saml_jit_user.user_id,
+            org_id: @org_id,
+            project_id: :is_nil
+          )
+
+        {:ok, nil} = Rbac.RoleManagement.retract_roles(rbi)
+        refute Rbac.RoleManagement.user_part_of_org?(saml_jit_user.user_id, @org_id)
+
+        # Re-login after the IdP downgraded the user (role no longer maps to Admin).
+        {:ok, response} =
+          post("/okta/auth", saml_payload("denis@example.com", :okta, [{"role", "members"}]))
+
+        assert response.status_code == 302
+        assert Rbac.RoleManagement.user_part_of_org?(saml_jit_user.user_id, @org_id)
+
+        # The re-added user gets the CURRENT (downgraded) role, never the stale elevated one.
+        assert_org_role(saml_jit_user.user_id, @org_id, "Member")
+        refute_org_role(saml_jit_user.user_id, @org_id, "Admin")
+
+        # Stored attributes were refreshed from the current assertion before re-provisioning.
+        {:ok, refreshed} =
+          Rbac.Repo.SamlJitUser.find_by_email(ctx.integration, "denis@example.com")
+
+        assert refreshed.attributes == %{"role" => ["members"]}
+      end
+    end
+
+    test "rapid re-add logins do not enqueue duplicate group add requests", ctx do
+      import Ecto.Query
+      alias Rbac.Events.UserJoinedOrganization
+
+      enable_jit_provisioning(ctx.integration)
+
+      {:ok, group1} = Support.Factories.Group.insert(organization_id: @org_id)
+      {:ok, member} = Rbac.Repo.RbacRole.get_role_by_name("Member", "org_scope", @org_id)
+
+      Support.Factories.IdpGroupMapping.insert(
+        organization_id: @org_id,
+        default_role_id: member.id,
+        group_mapping: [%{idp_group_id: "g1", semaphore_group_id: group1.id}]
+      )
+
+      with_mocks [{UserJoinedOrganization, [], [publish: fn _, _ -> :ok end]}] do
+        {:ok, saml_jit_user} =
+          Rbac.Repo.SamlJitUser.create(ctx.integration, "denis@example.com", %{"member" => ["g1"]})
+
+        # Initial provision queues exactly one :add_user request for the group.
+        {:ok, saml_jit_user} = Rbac.Okta.Saml.JitProvisioner.AddUser.run(saml_jit_user)
+
+        {:ok, rbi} =
+          Rbac.RoleBindingIdentification.new(
+            user_id: saml_jit_user.user_id,
+            org_id: @org_id,
+            project_id: :is_nil
+          )
+
+        {:ok, nil} = Rbac.RoleManagement.retract_roles(rbi)
+        refute Rbac.RoleManagement.user_part_of_org?(saml_jit_user.user_id, @org_id)
+
+        # Two rapid re-add logins must not pile on additional :add_user requests.
+        {:ok, r1} =
+          post("/okta/auth", saml_payload("denis@example.com", :okta, [{"member", "g1"}]))
+
+        {:ok, r2} =
+          post("/okta/auth", saml_payload("denis@example.com", :okta, [{"member", "g1"}]))
+
+        assert r1.status_code == 302
+        assert r2.status_code == 302
+
+        add_user_requests =
+          Rbac.Repo.GroupManagementRequest
+          |> where([r], r.user_id == ^saml_jit_user.user_id and r.action == :add_user)
+          |> Rbac.Repo.aggregate(:count)
+
+        assert add_user_requests == 1
+      end
     end
 
     test "valid SAML, okta user exists, but semaphore user does not", ctx do
@@ -295,7 +457,9 @@ defmodule Rbac.Okta.Saml.Api.Test do
     HTTPoison.post("#{@host}#{path}", body, @headers ++ headers, opts)
   end
 
-  defp saml_payload(email, issuer \\ :okta) do
+  defp nested_key(depth), do: "a" <> String.duplicate("[a]", depth)
+
+  defp saml_payload(email, issuer \\ :okta, attributes \\ []) do
     domain = Application.get_env(:rbac, :base_domain)
 
     Support.Okta.Saml.PayloadBuilder.build(
@@ -303,10 +467,31 @@ defmodule Rbac.Okta.Saml.Api.Test do
         recipient: "https://#{@org_username}.#{domain}/okta/auth",
         audience: "https://#{@org_username}.#{domain}",
         issuer: @okta_issuer,
-        email: email
+        email: email,
+        attributes: attributes
       },
       issuer
     )
+  end
+
+  defp assert_org_role(user_id, org_id, role_name),
+    do: assert(org_role_assigned?(user_id, org_id, role_name))
+
+  defp refute_org_role(user_id, org_id, role_name),
+    do: refute(org_role_assigned?(user_id, org_id, role_name))
+
+  defp org_role_assigned?(user_id, org_id, role_name) do
+    import Ecto.Query
+
+    {:ok, role} = Rbac.Repo.RbacRole.get_role_by_name(role_name, "org_scope", org_id)
+
+    Rbac.Repo.SubjectRoleBinding
+    |> where(
+      [s],
+      s.subject_id == ^user_id and s.org_id == ^org_id and s.role_id == ^role.id and
+        is_nil(s.project_id)
+    )
+    |> Rbac.Repo.exists?()
   end
 
   defp reload_okta_user(okta_user_id) do

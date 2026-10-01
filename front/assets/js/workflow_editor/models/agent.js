@@ -249,20 +249,20 @@ export class Agent {
 
     switch(newType) {
       case Agent.ENVIRONMENT_TYPE_LINUX_VM:
-        this.type = "e1-standard-2"
+        this.type = this.defaultMachineTypeFor("LINUX")
         this.osImage = this.defaultOSImage(this.type)
         this.containers = []
         break
 
       case Agent.ENVIRONMENT_TYPE_MAC_VM:
-        this.type = "a1-standard-4"
+        this.type = this.defaultMachineTypeFor("MAC")
         this.osImage = this.defaultOSImage(this.type)
         this.containers = []
         break
 
-      case Agent.ENVIRONMENT_TYPE_DOCKER:
+      case Agent.ENVIRONMENT_TYPE_DOCKER: {
         const isOS = Features.isEnabled("isOS")
-        this.type = isOS ? this.defaultMachineTypeForOS() : "e1-standard-2"
+        this.type = isOS ? this.defaultMachineTypeForOS() : this.defaultMachineTypeFor("LINUX")
         this.osImage = isOS ? "" : this.defaultOSImage(this.type)
         this.containers = [
           new Container(this, {
@@ -271,6 +271,7 @@ export class Agent {
           })
         ]
         break
+      }
       case Agent.ENVIRONMENT_TYPE_SELF_HOSTED:
         this.type = this.availableMachineTypes("SELF_HOSTED")[0]
         this.osImage = ""
@@ -285,11 +286,16 @@ export class Agent {
       return this.defaultMachineTypeForOS()
     }
 
-    if (_.includes(this.availableMachineTypes("LINUX"), "e1-standard-2")) {
-      return "e1-standard-2"
-    }
+    return this.defaultMachineTypeFor("LINUX")
+  }
 
-    return ""
+  defaultMachineTypeFor(platform) {
+    const bySize = _.sortBy(this.availableMachineTypes(platform), (type) => {
+      const size = parseInt(type.split("-").pop(), 10)
+      return _.isNaN(size) ? Number.MAX_SAFE_INTEGER : size
+    })
+
+    return bySize[0] || ""
   }
 
   defaultOSImage(type) {

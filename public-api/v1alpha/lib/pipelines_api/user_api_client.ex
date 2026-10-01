@@ -7,6 +7,8 @@ defmodule PipelinesAPI.UserApiClient do
 
   alias InternalApi.User.DescribeManyRequest
   alias InternalApi.User.DescribeByEmailRequest
+  alias InternalApi.User.DescribeByRepositoryProviderRequest
+  alias InternalApi.User.RepositoryProvider
   alias InternalApi.User.UserService.Stub
   alias PipelinesAPI.Util.{Metrics, ToTuple}
   alias Util.Proto
@@ -60,6 +62,42 @@ defmodule PipelinesAPI.UserApiClient do
 
         {:error, reason} ->
           Logger.error("Error describing user by email: #{inspect(reason)}")
+          ToTuple.internal_error("Internal error")
+      end
+    end)
+  end
+
+  @doc """
+  Resolves a Semaphore user by their SCM provider identity.
+  `provider_type` is an `InternalApi.User.RepositoryProvider.Type` enum integer.
+  Returns `{:ok, user_map}` on success or `{:error, :not_found}` when the person
+  does not have a Semaphore account yet (e.g. a brand-new invitee).
+  """
+  def describe_by_repository_provider(provider_type, login, uid) do
+    Metrics.benchmark(__MODULE__, ["describe_by_repository_provider"], fn ->
+      request =
+        DescribeByRepositoryProviderRequest.new(
+          provider:
+            RepositoryProvider.new(type: provider_type, login: login || "", uid: uid || "")
+        )
+
+      case Wormhole.capture(
+             __MODULE__,
+             :call_api,
+             [request, :describe_by_repository_provider],
+             stacktrace: true,
+             skip_log: true,
+             timeout_ms: @wormhole_timeout,
+             ok_tuple: true
+           ) do
+        {:ok, result} ->
+          Proto.to_map(result)
+
+        {:error, {:error, %{status: @not_found_grpc_status_code}}} ->
+          {:error, :not_found}
+
+        {:error, reason} ->
+          Logger.error("Error describing user by repository provider: #{inspect(reason)}")
           ToTuple.internal_error("Internal error")
       end
     end)

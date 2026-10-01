@@ -15,7 +15,8 @@ defmodule Scheduler.GrpcServer.Test do
     RunNowRequest,
     LatestTriggersRequest,
     HistoryRequest,
-    PersistRequest
+    PersistRequest,
+    BulkUpsertAndPruneRequest
   }
 
   alias Scheduler.Periodics.Model.PeriodicsQueries
@@ -94,7 +95,9 @@ defmodule Scheduler.GrpcServer.Test do
              description: nil,
              required: true,
              options: ["production", "staging"],
-             default_value: "staging"
+             default_value: "staging",
+             regex_pattern: nil,
+             validate_input_format: false
            }
 
     assert jobs = QuantumScheduler.jobs()
@@ -139,7 +142,9 @@ defmodule Scheduler.GrpcServer.Test do
              description: nil,
              required: true,
              options: ["production", "staging"],
-             default_value: "staging"
+             default_value: "staging",
+             regex_pattern: nil,
+             validate_input_format: false
            }
 
     assert nil == id |> String.to_atom() |> QuantumScheduler.find_job()
@@ -689,7 +694,9 @@ defmodule Scheduler.GrpcServer.Test do
              description: nil,
              required: true,
              options: ["production", "staging"],
-             default_value: "staging"
+             default_value: "staging",
+             regex_pattern: nil,
+             validate_input_format: false
            }
 
     assert jobs = QuantumScheduler.jobs()
@@ -731,7 +738,9 @@ defmodule Scheduler.GrpcServer.Test do
              description: nil,
              required: true,
              options: ["production", "staging"],
-             default_value: "staging"
+             default_value: "staging",
+             regex_pattern: nil,
+             validate_input_format: false
            }
 
     assert nil == periodic.id |> String.to_atom() |> QuantumScheduler.find_job()
@@ -770,7 +779,9 @@ defmodule Scheduler.GrpcServer.Test do
              description: nil,
              required: true,
              options: ["production", "staging"],
-             default_value: "staging"
+             default_value: "staging",
+             regex_pattern: nil,
+             validate_input_format: false
            }
 
     assert nil == periodic.id |> String.to_atom() |> QuantumScheduler.find_job()
@@ -2330,4 +2341,73 @@ defmodule Scheduler.GrpcServer.Test do
 
   defp mock_repository_service_response(value),
     do: Application.put_env(:scheduler, :mock_repository_service_response, value)
+
+  test "gRPC bulk_upsert_and_prune() handles state: :UNCHANGED without crashing", ctx do
+    request =
+      BulkUpsertAndPruneRequest.new(
+        organization_id: ctx.ids.org_id,
+        project_id: ctx.ids.pr_id,
+        requester_id: ctx.ids.usr_id,
+        periodics: [
+          BulkUpsertAndPruneRequest.PeriodicDefinition.new(
+            id: "",
+            name: "regression-state-atom",
+            description: "",
+            recurring: true,
+            reference: "refs/heads/master",
+            at: "0 0 * * *",
+            pipeline_file: ".semaphore/cron.yml",
+            parameters: [],
+            state: :UNCHANGED
+          )
+        ]
+      )
+
+    {:ok, channel} = GRPC.Stub.connect("localhost:50050")
+    assert {:ok, response} = PeriodicService.Stub.bulk_upsert_and_prune(channel, request)
+    assert response.status.code == :OK
+    assert length(response.upserted) == 1
+  end
+
+  test "gRPC bulk_upsert_and_prune() round-trips regex_pattern and validate_input_format",
+       ctx do
+    parameter =
+      InternalApi.PeriodicScheduler.Periodic.Parameter.new(
+        name: "VERSION",
+        required: true,
+        description: "",
+        default_value: "v1",
+        options: [],
+        regex_pattern: "^v[0-9]+$",
+        validate_input_format: true
+      )
+
+    request =
+      BulkUpsertAndPruneRequest.new(
+        organization_id: ctx.ids.org_id,
+        project_id: ctx.ids.pr_id,
+        requester_id: ctx.ids.usr_id,
+        periodics: [
+          BulkUpsertAndPruneRequest.PeriodicDefinition.new(
+            id: "",
+            name: "regression-regex-wire",
+            description: "",
+            recurring: true,
+            reference: "refs/heads/master",
+            at: "0 0 * * *",
+            pipeline_file: ".semaphore/cron.yml",
+            parameters: [parameter],
+            state: :UNCHANGED
+          )
+        ]
+      )
+
+    {:ok, channel} = GRPC.Stub.connect("localhost:50050")
+    assert {:ok, response} = PeriodicService.Stub.bulk_upsert_and_prune(channel, request)
+    assert response.status.code == :OK
+    assert [periodic] = response.upserted
+    assert [returned] = periodic.parameters
+    assert returned.regex_pattern == "^v[0-9]+$"
+    assert returned.validate_input_format == true
+  end
 end

@@ -333,11 +333,17 @@ This section describes the available options for change detection. Note that the
 
 The **Skip/Run** section for blocks has three options available.
 
-- **Always run this block**: disables all conditions, always runs the bloc
+- **Always run this block**: disables all conditions, always runs the block
 - **Run this block when conditions are met**: runs the block when the conditions are true
 - **Skip this block when conditions are met**: negated version of the previous option, runs the block when conditions are false
 
 ![Skip Run condition options selector](./img/change-skip-vs-run.jpg)
+
+When using change detection in monorepos, some blocks may be skipped because the underlying component did not change. Use the toggle in the pipeline view to show or hide skipped blocks as needed.
+
+![Pipeline with skipped blocks shown](./img/skipped-blocks-shown.png)
+
+![Pipeline with skipped blocks hidden](./img/skipped-blocks-hidden.png)
 
 </TabItem>
 <TabItem value="yaml" label="YAML">

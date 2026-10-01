@@ -139,4 +139,18 @@ RSpec.describe InternalApi::RepoProxy::PrPayload do
       end.to raise_error(described_class::PrNotMergeableError, /not mergeable/i)
     end
   end
+
+  context "when PR mergeability is still unknown" do
+    before do
+      allow(Semaphore::RepoHost::Hooks::Handler)
+        .to receive(:update_pr_data)
+        .and_return([:mergeable_unknown, { pr: pr }, "mergeability unknown"])
+    end
+
+    it "raises PrNotMergeableError" do
+      expect do
+        described_class.new(ref, number).call(project, user)
+      end.to raise_error(described_class::PrNotMergeableError, /not mergeable/i)
+    end
+  end
 end

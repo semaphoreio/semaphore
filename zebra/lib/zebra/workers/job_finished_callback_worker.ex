@@ -17,19 +17,36 @@ defmodule Zebra.Workers.JobFinishedCallbackWorker do
 
       Zebra.LegacyRepo.transaction(fn ->
         log(job_id, "Looking up job.")
-        {:ok, job} = Job.find(job_id)
-        log(job_id, "Job found.")
 
-        log(job_id, "Transitioning from #{job.aasm_state} -> finished with '#{result}' result.")
+        case Job.find(job_id) do
+          {:ok, job} ->
+            log(job_id, "Job found.")
+            finish(job, result)
 
-        if Job.finished?(job) do
-          log(job_id, "Job already finished")
-        else
-          {:ok, _} = Job.finish(job, result)
-          log(job_id, "Job finished")
+          {:error, :not_found} ->
+            log(job_id, "Job not found, dropping callback.")
         end
       end)
+
+      :ok
     end)
+  end
+
+  defp finish(job, result) do
+    job_id = job.id
+    log(job_id, "Transitioning from #{job.aasm_state} -> finished with '#{result}' result.")
+
+    if Job.finished?(job) do
+      log(job_id, "Job already finished")
+    else
+      case Job.finish(job, result) do
+        {:ok, _} ->
+          log(job_id, "Job finished")
+
+        {:error, reason} ->
+          log(job_id, "Job could not be finished: #{inspect(reason)}, dropping callback.")
+      end
+    end
   end
 
   def extract_result(message) do

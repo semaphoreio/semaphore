@@ -466,9 +466,11 @@ defmodule Router.Deployments.UpdateTest do
 
       assert status_code == 200
 
+      admin_role_id = Support.Stubs.DB.find_by(:rbac_roles, :name, "Admin").id
+
       assert [
                %{"git_login" => "milica-nerlovic", "subject_id" => subject_id, "type" => "USER"},
-               %{"subject_id" => "Admin", "type" => "ROLE"}
+               %{"subject_id" => admin_role_id, "type" => "ROLE"}
              ] == updated_target["subject_rules"]
     end
 

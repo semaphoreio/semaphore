@@ -34,7 +34,12 @@ config :guard, Guard.FrontRepo,
   username: System.get_env("POSTGRES_DB_USER") || "postgres",
   password: System.get_env("POSTGRES_DB_PASSWORD") || "the-cake-is-a-lie",
   hostname: System.get_env("POSTGRES_DB_HOST") || "127.0.0.1",
-  pool_size: String.to_integer(System.get_env("POSTGRES_DB_POOL_SIZE") || "1"),
+  # Optional dedicated pool size for the Front repo; falls back to the shared pool size.
+  pool_size:
+    String.to_integer(
+      System.get_env("POSTGRES_FRONT_DB_POOL_SIZE") || System.get_env("POSTGRES_DB_POOL_SIZE") ||
+        "1"
+    ),
   ssl: System.get_env("POSTGRES_DB_SSL") == "true" || false
 
 if System.get_env("START_INSTANCE_CONFIG") == "true" do
@@ -61,6 +66,10 @@ config :sentry,
 config :guard, base_domain: System.get_env("BASE_DOMAIN")
 config :guard, session_secret_key_base: System.get_env("SESSION_SECRET_KEY_BASE")
 config :guard, session_key: System.get_env("SESSION_COOKIE_NAME")
+
+config :guard,
+  mcp_oauth_access_token_ttl_seconds:
+    String.to_integer(System.get_env("MCP_OAUTH_ACCESS_TOKEN_TTL_SECONDS") || "86400")
 
 config :guard,
   github_app_redirect_url:
@@ -155,6 +164,10 @@ if config_env() == :prod do
     feature_api_endpoint: System.fetch_env!("INTERNAL_API_URL_FEATURE"),
     instance_config_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_INSTANCE_CONFIG"),
     rbac_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_RBAC"),
+    # Backends without a separate Groups deployment never serve GROUP-typed
+    # owner subjects, so the fallback endpoint is never actually called there.
+    groups_grpc_endpoint:
+      System.get_env("INTERNAL_API_URL_GROUPS") || System.fetch_env!("INTERNAL_API_URL_RBAC"),
     okta_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_OKTA")
 end
 

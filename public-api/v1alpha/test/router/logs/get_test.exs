@@ -144,20 +144,111 @@ defmodule PipelinesAPI.Logs.Get.Test do
              }
     end
 
-    test "returns 500 when loghub returns bad status", ctx do
+    test "returns 404 when loghub reports the logs cannot be found", ctx do
       GrpcMock.stub(LoghubMock, :get_log_events, fn _, _ ->
         %InternalApi.Loghub.GetLogEventsResponse{
           final: false,
           events: [],
           status: %InternalApi.ResponseStatus{
             code: InternalApi.ResponseStatus.Code.value(:BAD_PARAM),
+            message: "Log not found neither in the archive nor in the virtual machine"
+          }
+        }
+      end)
+
+      assert {404, _, response} = get_logs(ctx.cloud_job.id, ctx.user_id)
+      assert response == "Log not found neither in the archive nor in the virtual machine"
+    end
+
+    test "returns 404 with the job's failure reason when the job never ran", ctx do
+      failure_reason = "Selected machine type is not available in this organization"
+
+      job =
+        create_finished_without_execution_job(ctx,
+          result: "failed",
+          failure_reason: failure_reason
+        )
+
+      stub_loghub_not_found()
+
+      assert {404, _, response} = get_logs(job.api_model.id, ctx.user_id)
+      assert response == failure_reason
+    end
+
+    test "returns 404 explaining the job never started when it finished without running", ctx do
+      job = create_finished_without_execution_job(ctx, result: "failed")
+      stub_loghub_not_found()
+
+      assert {404, _, response} = get_logs(job.api_model.id, ctx.user_id)
+      assert response == "This job never started, so no logs were produced."
+    end
+
+    test "returns 404 explaining the job was stopped before it started", ctx do
+      job = create_finished_without_execution_job(ctx, result: "stopped")
+      stub_loghub_not_found()
+
+      assert {404, _, response} = get_logs(job.api_model.id, ctx.user_id)
+      assert response == "This job was stopped before it started, so no logs were produced."
+    end
+
+    test "reads the logs of the original job when the job is a reused copy", ctx do
+      reused =
+        Job.create(ctx.ppl.ppl_id, ctx.block.build_req_id,
+          project_id: ctx.cloud_job.project_id,
+          original_job_id: ctx.cloud_job.id
+        )
+
+      test_pid = self()
+
+      GrpcMock.stub(LoghubMock, :get_log_events, fn req, _ ->
+        send(test_pid, {:loghub_job_id, req.job_id})
+
+        %InternalApi.Loghub.GetLogEventsResponse{
+          final: true,
+          events: [~s({"event":"cmd_output","timestamp":1624541916,"output":"from the original"})],
+          status: %InternalApi.ResponseStatus{
+            code: InternalApi.ResponseStatus.Code.value(:OK),
             message: ""
           }
         }
       end)
 
-      assert {500, _, response} = get_logs(ctx.cloud_job.id, ctx.user_id)
-      assert response == "Internal error"
+      assert {200, _, response} = get_logs(reused.api_model.id, ctx.user_id)
+      assert_receive {:loghub_job_id, requested_id}
+
+      assert requested_id == ctx.cloud_job.id
+      assert response["events"] |> hd() |> Map.get("output") == "from the original"
+    end
+
+    test "points a reused self-hosted job at the original job's log stream", ctx do
+      reused =
+        Job.create(ctx.ppl.ppl_id, ctx.block.build_req_id,
+          project_id: ctx.self_hosted_job.project_id,
+          machine_type: "s1-test",
+          machine_os_image: "",
+          self_hosted: true,
+          original_job_id: ctx.self_hosted_job.id
+        )
+
+      test_pid = self()
+
+      GrpcMock.stub(Loghub2Mock, :generate_token, fn req, _ ->
+        send(test_pid, {:loghub2_job_id, req.job_id})
+
+        %InternalApi.Loghub2.GenerateTokenResponse{
+          type: InternalApi.Loghub2.TokenType.value(:PULL),
+          token: @token
+        }
+      end)
+
+      assert {302, headers, _} = get_logs(reused.api_model.id, ctx.user_id, false)
+      assert_receive {:loghub2_job_id, requested_id}
+      assert requested_id == ctx.self_hosted_job.id
+
+      location = "https://localhost/api/v1/logs/#{ctx.self_hosted_job.id}?jwt=#{@token}"
+
+      assert Enum.find(headers, fn {name, _} -> name == "location" end) ==
+               {"location", location}
     end
 
     test "returns 500 when loghub throws", ctx do
@@ -279,6 +370,44 @@ defmodule PipelinesAPI.Logs.Get.Test do
 
       assert Enum.find(headers, fn {name, _} -> name == "location" end) ==
                {"location", txt_url}
+    end
+
+    test "signs and audits a reused job's artifact logs under the original job", ctx do
+      parent = self()
+
+      reused =
+        Job.create(ctx.ppl.ppl_id, ctx.block.build_req_id,
+          project_id: ctx.cloud_job.project_id,
+          original_job_id: ctx.cloud_job.id
+        )
+
+      Support.Stubs.Artifacthub.create(ctx.cloud_job.id,
+        scope: "jobs",
+        path: "agent/job_logs.txt",
+        url: @full_logs_url
+      )
+
+      GrpcMock.stub(ArtifacthubMock, :get_signed_url, fn req, _ ->
+        send(parent, {:signed_path, req.path})
+
+        InternalApi.Artifacthub.GetSignedURLResponse.new(
+          url: "https://localhost:9000/" <> req.path
+        )
+      end)
+
+      log =
+        capture_log(fn ->
+          assert {302, _headers, _response} =
+                   get_logs(reused.api_model.id, ctx.user_id, false, %{
+                     "artifact_job_logs" => "true"
+                   })
+        end)
+
+      assert_receive {:signed_path, signed_path}
+      assert signed_path == "artifacts/jobs/#{ctx.cloud_job.id}/agent/job_logs.txt"
+
+      assert log =~ "artifacts/jobs/#{ctx.cloud_job.id}/agent/job_logs.txt"
+      refute log =~ "artifacts/jobs/#{reused.api_model.id}"
     end
 
     test "returns 400 when artifact job logs listing fails with hard limit", ctx do
@@ -523,6 +652,35 @@ defmodule PipelinesAPI.Logs.Get.Test do
       end
 
     {status_code, response_headers, body}
+  end
+
+  # A cloud job that reached a terminal state without ever starting: started_at
+  # is nil (rendered as "") and the job is FINISHED.
+  defp create_finished_without_execution_job(ctx, opts) do
+    Job.create(UUID.uuid4(), UUID.uuid4(),
+      project_id: ctx.cloud_job.project_id,
+      state: "finished",
+      result: Keyword.fetch!(opts, :result),
+      failure_reason: Keyword.get(opts, :failure_reason, ""),
+      timeline: %{
+        created_at: DateTime.utc_now(),
+        started_at: nil,
+        finished_at: DateTime.utc_now()
+      }
+    )
+  end
+
+  defp stub_loghub_not_found do
+    GrpcMock.stub(LoghubMock, :get_log_events, fn _, _ ->
+      %InternalApi.Loghub.GetLogEventsResponse{
+        final: false,
+        events: [],
+        status: %InternalApi.ResponseStatus{
+          code: InternalApi.ResponseStatus.Code.value(:BAD_PARAM),
+          message: "Log not found neither in the archive nor in the virtual machine"
+        }
+      }
+    end)
   end
 
   defp headers(user_id),

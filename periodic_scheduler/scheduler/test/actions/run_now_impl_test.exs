@@ -1,6 +1,8 @@
 defmodule Scheduler.Actions.RunNowImpl.Test do
   use ExUnit.Case, async: false
 
+  import ExUnit.CaptureLog
+
   alias Scheduler.Actions.RunNowImpl
 
   alias Scheduler.Periodics.Model.PeriodicsQueries, as: PQueries
@@ -206,7 +208,7 @@ defmodule Scheduler.Actions.RunNowImpl.Test do
     end
   end
 
-  describe "merge_values/2" do
+  describe "merge_values/3" do
     test "when optional parameter has no default value and value given then value is used" do
       parameters = [
         %{name: "param1", required: false, default_value: "value1"},
@@ -225,7 +227,7 @@ defmodule Scheduler.Actions.RunNowImpl.Test do
                 %{name: "param1", value: "value"},
                 %{name: "param2", value: "value"},
                 %{name: "param3", value: "value"}
-              ]} = RunNowImpl.merge_values(parameters, request_values)
+              ]} = RunNowImpl.merge_values(parameters, request_values, "test-periodic-id")
     end
 
     test "when optional parameter has default value and no value given then default is used" do
@@ -242,7 +244,7 @@ defmodule Scheduler.Actions.RunNowImpl.Test do
                 %{name: "param1", value: "value"},
                 %{name: "param2", value: "value2"},
                 %{name: "param3", value: "value3"}
-              ]} = RunNowImpl.merge_values(parameters, request_values)
+              ]} = RunNowImpl.merge_values(parameters, request_values, "test-periodic-id")
     end
 
     test "when optional parameter has no default value and no value given then parameters are omitted" do
@@ -255,7 +257,7 @@ defmodule Scheduler.Actions.RunNowImpl.Test do
       request_values = [%{name: "param1", value: "value"}]
 
       assert {:ok, [%{name: "param1", value: "value"}]} =
-               RunNowImpl.merge_values(parameters, request_values)
+               RunNowImpl.merge_values(parameters, request_values, "test-periodic-id")
     end
 
     test "when required parameter has no value given and default value is present then uses default" do
@@ -272,7 +274,7 @@ defmodule Scheduler.Actions.RunNowImpl.Test do
                 %{name: "param1", value: "value1"},
                 %{name: "param2", value: "v"},
                 %{name: "param3", value: "value"}
-              ]} = RunNowImpl.merge_values(parameters, request_values)
+              ]} = RunNowImpl.merge_values(parameters, request_values, "test-periodic-id")
     end
 
     test "when required parameter has no value given and default value is not present then error is returned" do
@@ -285,7 +287,146 @@ defmodule Scheduler.Actions.RunNowImpl.Test do
       request_values = [%{name: "param1", value: "value1"}, %{name: "param2", value: "value"}]
 
       assert {:error, {:INVALID_ARGUMENT, "Parameter 'param3' is required."}} =
-               RunNowImpl.merge_values(parameters, request_values)
+               RunNowImpl.merge_values(parameters, request_values, "test-periodic-id")
+    end
+
+    test "when validate_input_format is on and value matches regex_pattern then value is accepted" do
+      parameters = [
+        %{
+          name: "VERSION",
+          required: true,
+          default_value: "",
+          validate_input_format: true,
+          regex_pattern: "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        }
+      ]
+
+      request_values = [%{name: "VERSION", value: "1.2.3"}]
+
+      assert {:ok, [%{name: "VERSION", value: "1.2.3"}]} =
+               RunNowImpl.merge_values(parameters, request_values, "test-periodic-id")
+    end
+
+    test "when validate_input_format is on and value does not match regex_pattern then error is returned" do
+      parameters = [
+        %{
+          name: "VERSION",
+          required: true,
+          default_value: "",
+          validate_input_format: true,
+          regex_pattern: "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        }
+      ]
+
+      request_values = [%{name: "VERSION", value: "not-a-version"}]
+
+      assert {:error,
+              {:INVALID_ARGUMENT, "Parameter 'VERSION' value does not match required format."}} =
+               RunNowImpl.merge_values(parameters, request_values, "test-periodic-id")
+    end
+
+    test "when validate_input_format is on and default_value does not match regex_pattern then error is returned" do
+      parameters = [
+        %{
+          name: "VERSION",
+          required: false,
+          default_value: "abc",
+          validate_input_format: true,
+          regex_pattern: "^[0-9]+$"
+        }
+      ]
+
+      assert {:error, {:INVALID_ARGUMENT, message}} =
+               RunNowImpl.merge_values(parameters, [], "test-periodic-id")
+
+      assert message =~ "Parameter 'VERSION'"
+      assert message =~ "default value"
+    end
+
+    test "when value exceeds the SafeRegex length cap then error mentions length" do
+      parameters = [
+        %{
+          name: "VERSION",
+          required: true,
+          default_value: "",
+          validate_input_format: true,
+          regex_pattern: "^[a]+$"
+        }
+      ]
+
+      max_len = Util.SafeRegex.max_value_length()
+      oversized = String.duplicate("a", max_len + 1)
+      request_values = [%{name: "VERSION", value: oversized}]
+
+      assert {:error, {:INVALID_ARGUMENT, message}} =
+               RunNowImpl.merge_values(parameters, request_values, "test-periodic-id")
+
+      assert message =~ "Parameter 'VERSION'"
+      assert message =~ "exceeds maximum length"
+    end
+
+    test "when validate_input_format is off then regex_pattern is ignored" do
+      parameters = [
+        %{
+          name: "VERSION",
+          required: true,
+          default_value: "",
+          validate_input_format: false,
+          regex_pattern: "^[0-9]+$"
+        }
+      ]
+
+      request_values = [%{name: "VERSION", value: "abc"}]
+
+      assert {:ok, [%{name: "VERSION", value: "abc"}]} =
+               RunNowImpl.merge_values(parameters, request_values, "test-periodic-id")
+    end
+
+    test "when stored regex_pattern fails to compile at run-now then a triage warning is logged" do
+      parameters = [
+        %{
+          name: "VERSION",
+          required: true,
+          default_value: "",
+          validate_input_format: true,
+          regex_pattern: "["
+        }
+      ]
+
+      request_values = [%{name: "VERSION", value: "anything"}]
+
+      log =
+        capture_log(fn ->
+          assert {:error, {:INVALID_ARGUMENT, message}} =
+                   RunNowImpl.merge_values(parameters, request_values, "periodic-uuid-123")
+
+          assert message =~ "could not be validated"
+        end)
+
+      assert log =~ "Stored regex_pattern rejected at run-now"
+    end
+
+    test "value_too_long does not trigger the regex_pattern triage warning" do
+      parameters = [
+        %{
+          name: "VERSION",
+          required: true,
+          default_value: "",
+          validate_input_format: true,
+          regex_pattern: "^[a]+$"
+        }
+      ]
+
+      oversized = String.duplicate("a", Util.SafeRegex.max_value_length() + 1)
+      request_values = [%{name: "VERSION", value: oversized}]
+
+      log =
+        capture_log(fn ->
+          assert {:error, {:INVALID_ARGUMENT, _}} =
+                   RunNowImpl.merge_values(parameters, request_values, "periodic-uuid-123")
+        end)
+
+      refute log =~ "Stored regex_pattern rejected at run-now"
     end
   end
 

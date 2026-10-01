@@ -83,6 +83,30 @@ module InternalApi
         ::InternalApi::RepositoryIntegrator::InitGithubInstallationResponse.new
       end
 
+      define_rpc :refresh_repositories do |req, logger|
+        result =
+          if req.integration_type != :GITHUB_APP
+            ::Semaphore::GithubApp::RepositoryRefresh::Result.new(
+              :done, "This repository list is always fetched live from the provider."
+            )
+          elsif req.repository_slug.present?
+            ::Semaphore::GithubApp::RepositoryRefresh.targeted(req.user_id, req.repository_slug)
+          elsif req.organization.present?
+            ::Semaphore::GithubApp::RepositoryRefresh.full_for_organization(req.user_id, req.organization)
+          else
+            ::Semaphore::GithubApp::RepositoryRefresh::Result.new(
+              :failed, "Specify a repository or organization to refresh."
+            )
+          end
+
+        logger.info("RefreshRepositories user_id=#{req.user_id} slug=#{req.repository_slug.inspect} org=#{req.organization.inspect} -> #{result.state}")
+
+        InternalApi::RepositoryIntegrator::RefreshRepositoriesResponse.new(
+          :sync_state => result.state.to_s.upcase.to_sym,
+          :message => result.message
+        )
+      end
+
       define_rpc :check_token do |req|
         project = ::Project.find(req.project_id)
 
@@ -95,6 +119,8 @@ module InternalApi
           else
             scope = InternalApi::RepositoryIntegrator::IntegrationScope::NO_CONNECTION
           end
+        elsif ::Semaphore::GuardUserClient.owns?(project.repository.integration_type)
+          valid, scope = guard_connection(project)
         else
           connection = update_revoke_status(project.repo_host_account)
           repository = project.repository
@@ -130,14 +156,38 @@ module InternalApi
 
       private
 
+      # A token guard can hand out is a usable connection. guard normalises the
+      # granted scope to a full one at connect time, so there is no partial
+      # state to report. Any failure is reported as no connection: the token is
+      # revoked, never connected, or guard cannot answer, and in each case the
+      # project cannot reach its repository.
+      def guard_connection(project)
+        ::Semaphore::GuardUserClient.repository_token(
+          project.creator_id,
+          project.repository.integration_type
+        )
+
+        [true, InternalApi::RepositoryIntegrator::IntegrationScope::FULL_CONNECTION]
+      rescue GRPC::BadStatus => e
+        Rails.logger.info(
+          "[CheckToken] guard reports no usable #{project.repository.integration_type} " \
+          "connection for project #{project.id}: #{e.class}"
+        )
+
+        [false, InternalApi::RepositoryIntegrator::IntegrationScope::NO_CONNECTION]
+      rescue StandardError => e
+        Rails.logger.error(
+          "[CheckToken] failed to reach guard for project #{project.id}: #{e.class}"
+        )
+
+        [false, InternalApi::RepositoryIntegrator::IntegrationScope::NO_CONNECTION]
+      end
+
+      # GitHub only: its OAuth tokens do not rotate, so validating one is free.
+      # Providers in GUARD_OWNED_INTEGRATIONS never reach this.
       def update_revoke_status(rha)
         if rha.repo_host == "github"
           rha.update!(:revoked => !::RepoHost::Github::Client.new(rha.token).token_valid?)
-        end
-
-        if rha.repo_host == "bitbucket"
-          token, _ = ::Semaphore::Bitbucket::Token.user_token(rha)
-          rha.update!(:revoked => !::Semaphore::Bitbucket::Token.valid?(token))
         end
 
         rha
@@ -231,6 +281,13 @@ module InternalApi
           raise GRPC::NotFound, "User with id #{req.user_id} not found." unless user
 
           return token_service.bitbucket_oauth_token(user)
+        end
+
+        if req.integration_type == :GITLAB and req.user_id.present?
+          user = ::User.find_by(:id => req.user_id)
+          raise GRPC::NotFound, "User with id #{req.user_id} not found." unless user
+
+          return token_service.gitlab_oauth_token(user)
         end
 
         repository_remote_id = req.repository_remote_id.presence

@@ -5,7 +5,7 @@ defmodule GithubNotifier.Utils.Context.Test do
 
   test "returns default context for new push build" do
     repo_proxy = %GithubNotifier.Models.RepoProxy{
-      git_ref_type: InternalApi.RepoProxy.Hook.Type.value(:BRANCH),
+      git_ref_type: :BRANCH,
       branch_name: "master"
     }
 
@@ -14,7 +14,7 @@ defmodule GithubNotifier.Utils.Context.Test do
 
   test "returns push context for push build when it is gh queue and organization is not whitelisted" do
     repo_proxy = %GithubNotifier.Models.RepoProxy{
-      git_ref_type: InternalApi.RepoProxy.Hook.Type.value(:BRANCH),
+      git_ref_type: :BRANCH,
       branch_name: "gh-readonly-queue/main/pr-20394-703131cc2cc2b296944b7a2d9ddc63cd8c0b19aa"
     }
 
@@ -42,7 +42,7 @@ defmodule GithubNotifier.Utils.Context.Test do
 
     test "returns push context for push build when it is not a gh queue and organization is whitelisted" do
       repo_proxy = %GithubNotifier.Models.RepoProxy{
-        git_ref_type: InternalApi.RepoProxy.Hook.Type.value(:BRANCH),
+        git_ref_type: :BRANCH,
         branch_name: "master"
       }
 
@@ -52,7 +52,7 @@ defmodule GithubNotifier.Utils.Context.Test do
 
     test "returns pr context for push build when it is gh queue and organization is whitelisted" do
       repo_proxy = %GithubNotifier.Models.RepoProxy{
-        git_ref_type: InternalApi.RepoProxy.Hook.Type.value(:BRANCH),
+        git_ref_type: :BRANCH,
         branch_name: "gh-readonly-queue/main/pr-20394-703131cc2cc2b296944b7a2d9ddc63cd8c0b19aa"
       }
 
@@ -63,7 +63,7 @@ defmodule GithubNotifier.Utils.Context.Test do
 
   test "returns default context for tag build" do
     repo_proxy = %GithubNotifier.Models.RepoProxy{
-      git_ref_type: InternalApi.RepoProxy.Hook.Type.value(:TAG),
+      git_ref_type: :TAG,
       branch_name: "master"
     }
 
@@ -72,7 +72,7 @@ defmodule GithubNotifier.Utils.Context.Test do
 
   test "returns default context for pr build" do
     repo_proxy = %GithubNotifier.Models.RepoProxy{
-      git_ref_type: InternalApi.RepoProxy.Hook.Type.value(:PR),
+      git_ref_type: :PR,
       branch_name: "master"
     }
 
@@ -83,7 +83,7 @@ defmodule GithubNotifier.Utils.Context.Test do
     setup_changed_prefix()
 
     repo_proxy = %GithubNotifier.Models.RepoProxy{
-      git_ref_type: InternalApi.RepoProxy.Hook.Type.value(:BRANCH),
+      git_ref_type: :BRANCH,
       branch_name: "master"
     }
 
@@ -94,7 +94,7 @@ defmodule GithubNotifier.Utils.Context.Test do
     setup_changed_prefix()
 
     repo_proxy = %GithubNotifier.Models.RepoProxy{
-      git_ref_type: InternalApi.RepoProxy.Hook.Type.value(:TAG),
+      git_ref_type: :TAG,
       branch_name: "master"
     }
 
@@ -105,7 +105,7 @@ defmodule GithubNotifier.Utils.Context.Test do
     setup_changed_prefix()
 
     repo_proxy = %GithubNotifier.Models.RepoProxy{
-      git_ref_type: InternalApi.RepoProxy.Hook.Type.value(:PR),
+      git_ref_type: :PR,
       branch_name: "master"
     }
 

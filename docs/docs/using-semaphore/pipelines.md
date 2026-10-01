@@ -134,6 +134,8 @@ You can change the agent that runs the initialization job in two ways:
 - **For the organization**: affects all projects in the organization. See [organization init agent](./organizations#init-agent) to learn how to change this setting
 - **For the project**: changes the agent running initialization for a single project. See [project pre-flight checks](./projects#preflight) to learn how to change this setting
 
+If you point initialization jobs at a [self-hosted agent](./self-hosted) type, the job environment must provide Git, Erlang/OTP, and a few other tools. See [initialization job requirements](./self-hosted#init-requirements).
+
 ### How to access init logs {#init-logs}
 
 Semaphore shows an **Initializing** message for pipelines with an initialization job. You can see the log by clicking on the **See log** link at the top of the pipeline.
@@ -148,10 +150,27 @@ Here you can see the how spc evaluated the pipeline and all the actions taken du
 
 When a job in the pipeline fails, the default behavior is to stop the pipeline. You can attempt to re-run the pipeline in two ways:
 
-- Pressing **Rerun** restarts the whole pipeline from the beginning
-- Pressing **Rebuild Pipeline** only re-runs the blocks with failed jobs
+- Pressing **Rerun Workflow** starts a fresh run of the whole workflow from the same commit
+- Pressing **Rerun Failed Jobs** re-runs only what did not pass in that pipeline, keeping the jobs that did — the granularity (failed jobs or their whole blocks) follows the pipeline's rerun settings
 
 ![Location of rerun and rebuild buttons](./img/rerun-pipeline.jpg)
+
+### Job-level partial rerun {#job-level-rerun}
+
+**Rerun Failed Jobs** goes one step further inside each re-run block: jobs that already passed are *reused* instead of being executed again, and only the failed jobs actually re-run.
+
+This is the default rebuild behavior. To keep re-running whole blocks — for the entire pipeline or for individual blocks — set the [`partial_rerun: block`](../reference/pipeline-yaml#partial-rerun) property in the pipeline YAML. Any other value is rejected when the pipeline YAML is validated.
+
+A reused job does not re-execute and does not occupy an agent. It is marked as `reused` in the pipeline and workflow views, and opening it takes you to the job that produced the results — with its logs, artifacts, and test results.
+
+There are two ways a job ends up reused, and the rebuild picks whichever applies:
+
+- **A block that had to be rebuilt** keeps the jobs that already passed instead of running them again. Those are new rows pointing back at the run that executed them, so their page carries a banner naming the original job.
+- **A block whose jobs all passed** is not rebuilt at all, so its rows are the original jobs themselves.
+
+Jobs that re-execute receive `SEMAPHORE_JOB_RERUN=true` and the [`SEMAPHORE_JOB_ORIGINAL_ID`](../reference/env-vars#job-original-id) environment variable pointing at their previous attempt, so CI scripts can fetch the prior run's artifacts or compare test results.
+
+If the original block's job layout cannot be matched safely (for example, the pipeline definition changed between runs), Semaphore falls back to re-running the whole block, which is the same behavior as [`partial_rerun: block`](../reference/pipeline-yaml#partial-rerun).
 
 ## Connecting pipelines with promotions {#connecting-pipelines}
 
@@ -344,6 +363,8 @@ blocks:
 
 The time limit for job execution. Defaults to 1 hour. Jobs running longer that the limit are forcibly terminated.
 
+[After-pipeline jobs](#after-pipeline-job) inherit this limit unless they define their own.
+
 <Tabs groupId="editor-yaml">
 <TabItem value="editor" label="Editor">
 
@@ -534,6 +555,8 @@ blocks:
 You can configure jobs to run once a pipeline stops. After pipeline jobs always run, even when jobs are canceled or have failed.
 
 After-pipeline jobs are executed in parallel. Typical use cases for after-pipeline jobs are sending notifications, collecting [test reports](./tests/test-reports), or submitting metrics to an external server.
+
+After-pipeline jobs inherit the pipeline's [execution time limit](#time-limit) unless they set their own. The limit is measured from the moment each after-pipeline job starts, so it is additional to the time the pipeline itself ran. See the [`after_pipeline` reference](../reference/pipeline-yaml#after_pipeline) for details.
 
 You can add after-pipeline jobs using YAML or the editor.
 
@@ -778,7 +801,7 @@ This section describes the limits that Semaphore applies to pipelines. See [job 
 
 ### Global job duration {#max-job-duration}
 
-All jobs in a pipeline have a *1 hour limit*. Jobs exceeding this limit are terminated.
+All jobs in a pipeline have a *1 hour limit*. Jobs exceeding this limit are terminated. This includes [after-pipeline jobs](#after-pipeline-job), which inherit the pipeline's limit unless they set their own.
 
 You can change the limit up to a maximum value of *24 hours*.
 

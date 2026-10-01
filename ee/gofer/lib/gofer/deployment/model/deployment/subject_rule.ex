@@ -32,8 +32,16 @@ defmodule Gofer.Deployment.Model.Deployment.SubjectRule do
   defp validate_subject_id(:USER, changeset = %Ecto.Changeset{}),
     do: Ecto.Changeset.validate_required(changeset, [:subject_id])
 
-  defp validate_subject_id(:ROLE, changeset = %Ecto.Changeset{}),
-    do: Ecto.Changeset.validate_required(changeset, [:subject_id])
+  defp validate_subject_id(:ROLE, changeset = %Ecto.Changeset{}) do
+    changeset
+    |> Ecto.Changeset.validate_required([:subject_id])
+    |> Ecto.Changeset.validate_change(:subject_id, fn :subject_id, value ->
+      case Ecto.UUID.cast(value) do
+        {:ok, _} -> []
+        :error -> [subject_id: "must be a role id"]
+      end
+    end)
+  end
 
   defp validate_subject_id(:GROUP, changeset = %Ecto.Changeset{}),
     do: Ecto.Changeset.validate_required(changeset, [:subject_id])

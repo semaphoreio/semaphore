@@ -80,6 +80,8 @@ import { DeploymentTargets } from "./deployments";
 
 import { Features } from "./features";
 import { Overlay } from "./overlay";
+import { TurboNavigation } from "./turbo_navigation";
+import { islandRoot, unmountIslands } from "./preact_islands";
 import { RoleForm } from "./roles/role_form.js";
 
 var ace = require('brace');
@@ -95,7 +97,7 @@ window.SelfHostedAgents = SelfHostedAgents
 export var App = {
   agents: function () {
     Agents({
-      dom: document.getElementById("agents-app"),
+      dom: islandRoot(document.getElementById("agents-app")),
       config: InjectedDataByBackend.AgentsConfig,
     })
   },
@@ -203,13 +205,13 @@ export var App = {
   },
   index_new_project: function () {
     ProjectOnboardingCreate({
-      dom: document.getElementById("new-project-app"),
+      dom: islandRoot(document.getElementById("new-project-app")),
       config: window.InjectedDataByBackend.NewProjectConfig,
     });
   },
   index_project_bootstrap: function () {
     ProjectOnboardingWorkflowSetup({
-      dom: document.getElementById("new-project-app"),
+      dom: islandRoot(document.getElementById("new-project-app")),
       config: window.InjectedDataByBackend.NewProjectBootstrapConfig,
     });
   },
@@ -277,14 +279,14 @@ export var App = {
 
     document.querySelectorAll("#deploy-key-config-app").forEach((dom) => {
       DeployKeyConfig({
-        dom: dom,
+        dom: islandRoot(dom),
         config: dom.dataset
       })
     });
 
     document.querySelectorAll("#webhook-config-app").forEach((dom) => {
       WebhookConfig({
-        dom: dom,
+        dom: islandRoot(dom),
         config: dom.dataset
       })
     });
@@ -303,29 +305,29 @@ export var App = {
     const serviceAccountsEl = document.getElementById("service-accounts");
     if (serviceAccountsEl) {
       const config = JSON.parse(serviceAccountsEl.dataset.config);
-      ServiceAccounts({ dom: serviceAccountsEl, config });
+      ServiceAccounts({ dom: islandRoot(serviceAccountsEl), config });
     }
 
     const addPeopleEl = document.getElementById("add-people");
     if (addPeopleEl) {
-      AddPeople({ dom: addPeopleEl, config: addPeopleEl.dataset });
+      AddPeople({ dom: islandRoot(addPeopleEl), config: addPeopleEl.dataset });
     }
 
     const syncPeopleEl = document.querySelector(".app-sync-people");
     if (syncPeopleEl) {
-      SyncPeople({ dom: syncPeopleEl, config: syncPeopleEl.dataset });
+      SyncPeople({ dom: islandRoot(syncPeopleEl), config: syncPeopleEl.dataset });
     }
 
     document.querySelectorAll(".app-edit-person").forEach((editPersonAppRoot) => {
       EditPerson({
-        dom: editPersonAppRoot,
+        dom: islandRoot(editPersonAppRoot),
         config: editPersonAppRoot.dataset
       })
     });
   },
   organization_okta: function () {
     OrganizationOktaGroupMappingApp({
-      dom: document.getElementById("group-mapping-container"),
+      dom: islandRoot(document.getElementById("group-mapping-container")),
       config: window.InjectedDataByBackend.OrganizationOktaConfig
     });
   },
@@ -361,7 +363,7 @@ export var App = {
   testResults: function () {
     Pollman.init({ interval: 4000 })
     TestResults({
-      dom: document.getElementById("test-results"),
+      dom: islandRoot(document.getElementById("test-results")),
       jsonURL: InjectedDataByBackend.jsonArtifactsURL,
       scope: InjectedDataByBackend.scope,
       encodedEmail: InjectedDataByBackend.encodedEmail,
@@ -425,19 +427,19 @@ export var App = {
   },
   organization_health_tab: function () {
     OrganizationHealth({
-      dom: document.getElementById("organization-health-app"),
+      dom: islandRoot(document.getElementById("organization-health-app")),
       config: InjectedDataByBackend.OrganizationHealthConfig,
     });
   },
   flaky_tests_tab: function () {
     FlakyTests({
-      dom: document.getElementById("flaky-tests-app"),
+      dom: islandRoot(document.getElementById("flaky-tests-app")),
       config: InjectedDataByBackend.FlakyTestsConfig,
     });
   },
   insights: function () {
     Insights({
-      dom: document.getElementById("insights-app"),
+      dom: islandRoot(document.getElementById("insights-app")),
       config: InjectedDataByBackend.InsightsConfig,
     })
     new Star();
@@ -464,57 +466,79 @@ export var App = {
   },
   billingDashboard: function () {
     Billing({
-      dom: document.getElementById("billing-app"),
+      dom: islandRoot(document.getElementById("billing-app")),
       config: InjectedDataByBackend.BillingConfig,
     })
   },
   gitIntegration: function () {
     GitIntegration({
-      dom: document.getElementById("git-integration-app"),
+      dom: islandRoot(document.getElementById("git-integration-app")),
       config: InjectedDataByBackend.GitIntegrationConfig,
     })
   },
   organizationOnboarding: function () {
     OrganizationOnboarding({
-      dom: document.getElementById("organization-onboarding-app"),
+      dom: islandRoot(document.getElementById("organization-onboarding-app")),
       config: InjectedDataByBackend.OrganizationOnboardingConfig,
     })
   },
   getStarted: function () {
     GetStarted({
-      dom: document.getElementById("get-started-app"),
+      dom: islandRoot(document.getElementById("get-started-app")),
       config: InjectedDataByBackend.GetStartedConfig,
     })
   },
   report: function() {
     Report({
-      dom: document.getElementById("report-app"),
+      dom: islandRoot(document.getElementById("report-app")),
       config: InjectedDataByBackend.ReportConfig,
     })
   },
-  // App.run() is invoked at the bottom of the body element
-  run: function () {
-    Features.init(InjectedDataByBackend.Features || {});
-
+  //
+  // Bootstrap that must happen exactly once per document.
+  //
+  // Everything here binds to window, document or the custom element registry.
+  // Turbo keeps all three alive across visits, so re-running this would stack
+  // a duplicate scroll handler, click handler or posthog client per navigation.
+  //
+  runOnce: function () {
     Overlay.init();
-    if (InjectedDataByBackend.InitialPlan) {
-      TrialOverlay({
-        dom: document.getElementById("trial-overlay"),
-        config: InjectedDataByBackend.InitialPlan,
-      })
-    }
 
     defineTimeAgoElement()
     managePageHeaderShaddows()
     enableMagicBreadcrumbs()
     maybeEnablePosthog()
 
+    window.Tippy = Tippy;
+
+    $(document).on("click", ".x-select-on-click", function (event) {
+      event.currentTarget.setSelectionRange(0, event.currentTarget.value.length);
+    });
+
+    window.addEventListener("load", initPylonChatDraggable, { once: true });
+  },
+
+  //
+  // Bootstrap that has to happen for every page, including each Turbo visit.
+  //
+  // These either read page specific data out of InjectedDataByBackend, bind to
+  // elements in the current body, or - like Notice - delegate off document.body,
+  // which Turbo replaces wholesale on every render.
+  //
+  runPage: function () {
+    Features.init(InjectedDataByBackend.Features || {});
+
+    if (InjectedDataByBackend.InitialPlan) {
+      TrialOverlay({
+        dom: islandRoot(document.getElementById("trial-overlay")),
+        config: InjectedDataByBackend.InitialPlan,
+      })
+    }
 
     if (InjectedDataByBackend.JumpTo !== undefined) {
       window.jumpTo = JumpTo.init();
     }
 
-    window.Tippy = Tippy;
     Tippy.defaultTip('[data-tippy-content]');
     Tippy.otherDefaultTip('.default-tip');
     Tippy.defaultDropdown('.js-dropdown-menu-trigger');
@@ -523,16 +547,26 @@ export var App = {
 
     window.Notice.init();
 
-
-    $(document).on("click", ".x-select-on-click", function (event) {
-      event.currentTarget.setSelectionRange(0, event.currentTarget.value.length);
-    });
-
     for (const el of document.querySelectorAll('[data-hotkey]')) {
       install(el);
     }
+  },
 
-    window.addEventListener("load", initPylonChatDraggable, { once: true });
+  //
+  // Releases the page that is about to be swapped out by Turbo. Modules that
+  // own timers, polling loops or editor instances have to be stopped here or
+  // they keep running against a body that no longer exists.
+  //
+  teardownPage: function () {
+    Pollman.stop();
+    Timer.stop();
+    DiagramDrag.stop();
+    unmountIslands();
+
+    if (window.FaviconUpdater) {
+      window.FaviconUpdater.stop();
+      window.FaviconUpdater = null;
+    }
   }
 };
 
@@ -622,7 +656,29 @@ function maybeEnablePosthog() {
   }
 }
 
-App.run()
-if (InjectedDataByBackend.JS != "" && InjectedDataByBackend.JS !== undefined) {
-  App[InjectedDataByBackend.JS]();
+//
+// Runs the per-page init function named by the backend, if there is one.
+// InjectedDataByBackend.JS is repopulated by _scripts.html.eex on every render,
+// so this picks up the new page's entry point after each Turbo visit.
+//
+function dispatchPageInit() {
+  const name = InjectedDataByBackend.JS;
+
+  if (name === undefined || name === "" || typeof App[name] !== "function") {
+    return;
+  }
+
+  App[name]();
 }
+
+App.runOnce()
+
+TurboNavigation.start({
+  onPageLoad: function () {
+    App.runPage();
+    dispatchPageInit();
+  },
+  onPageTeardown: function () {
+    App.teardownPage();
+  },
+})

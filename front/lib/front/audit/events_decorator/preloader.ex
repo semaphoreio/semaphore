@@ -18,7 +18,7 @@ defmodule Front.Audit.EventsDecorator.Preloader do
   def preload(events) do
     project_ids = extract_unique_id_list(events, :project_id)
     workflow_ids = extract_unique_id_list(events, :workflow_id)
-    pipeline_ids = extract_unique_id_list(events, :pipeline_id)
+    pipeline_ids = extract_unique_id_list(events, :pipeline_id) |> Enum.filter(&uuid?/1)
     job_ids = extract_unique_id_list(events, :job_id)
 
     projects = Front.Models.Project.find_many_by_ids(project_ids)
@@ -61,6 +61,22 @@ defmodule Front.Audit.EventsDecorator.Preloader do
     |> Enum.map(fn e -> Map.get(e, id_name) end)
     |> Enum.uniq()
   end
+
+  # Audit event metadata is free-form JSON, so the ids in it are not guaranteed
+  # to be well-formed. Plumber rejects the whole DescribeMany batch when a single
+  # id is not a UUID, which would cost us every pipeline link on the page.
+  defp uuid?(id) when is_binary(id) do
+    case UUID.info(id) do
+      {:ok, _} -> true
+      _ -> false
+    end
+  end
+
+  defp uuid?(_id), do: false
+
+  # A lookup can come back as nil (entity gone) or as a whole nil list when the
+  # upstream call failed for the batch. Neither is a linkable entity.
+  defp remove_nils(nil), do: []
 
   defp remove_nils(arr), do: Enum.filter(arr, fn e -> e != nil end)
 

@@ -1,0 +1,108 @@
+# mix_audit allowlist for hooks_processor.
+#
+# Exposure baseline used by every rationale below: hooks_processor has two listeners —
+# an internal gRPC server (InternalApi.RepoProxy.RepoProxyService on :50050, consumed only
+# through the internal-api-urls configmap, no ambassador/ingress mapping) and an HTTP
+# health-check (Plug.Router, GET-only, no Plug.Parsers) on :4000. Webhook payloads arrive
+# via RabbitMQ, not HTTP. Nothing is internet-facing.
+
+# --- grpc 0.9.0 advisories, all first patched in grpc 1.0.0 ---
+# grpc 0.9.0 -> 1.0.0 is a major upgrade (API changes, cascades to gun/cowboy and the
+# generated .pb.ex stubs) tracked separately as the real fix; same acceptance as ee/audit.
+#   GHSA-grp7-v8xh-rj7h (critical) — RCE via Erlpack codec calling :erlang.binary_to_term/1.
+#     Not exploitable: the cowboy handler resolves codecs only among those registered on the
+#     server, and the 0.9.0 default is [Proto, WebText, JSON] (deps/grpc/lib/grpc/server.ex:127).
+#     No `codecs:` option anywhere in lib/, so application/grpc+erlpack is rejected with
+#     "No codec registered" and binary_to_term is never reached.
+#   GHSA-6ccx-9c9f-327w (high) — unbounded gzip decompression. Not exploitable: compressors
+#     default to [] (server.ex:128) and neither Endpoint nor Server sets any, so a
+#     grpc-encoding: gzip request is rejected ("Not found compressor registered") before inflate.
+#   GHSA-q8gf-9rvj-gmgj (high) — unbounded request body accumulation in read_full_body/3.
+#     Reachable, internal-only: requires an in-cluster caller; availability-only, one pod,
+#     supervisor restarts.
+#   GHSA-mwr4-5g34-j5cq (high) — path bindings overridable via query/body. Not exploitable:
+#     bindings exist only under HTTP/JSON transcoding, which is opt-in
+#     (http_transcode defaults false, server.ex:129) and never enabled in lib/.
+GHSA-grp7-v8xh-rj7h
+GHSA-6ccx-9c9f-327w
+GHSA-q8gf-9rvj-gmgj
+GHSA-mwr4-5g34-j5cq
+
+# protobuf 0.13.0 — unbounded recursion in embedded-message decoding (GHSA-rv48-qqj5-crxg,
+# high; fixed 0.16.1). Walked the full type graph of the vendored internal_api modules
+# (425 messages): the only cycle is InternalApi.RBAC.Role (inherited_role/maps_to), which
+# hooks_processor never decodes from attacker-controlled input — it appears only in
+# responses from the internal rbac service. The RepoProxy server request types are acyclic,
+# so no inbound payload can force unbounded recursion. Fix lands with the pb regeneration
+# that accompanies the grpc 1.0.0 migration.
+GHSA-rv48-qqj5-crxg
+
+# --- cowboy / cowlib / plug_cowboy / plug: server-stack advisories ---
+# All are DoS-class and reachable at most from inside the cluster (see baseline above).
+#   GHSA-jfc2-q6qh-g5x8 (cowboy 2.12.0, high) + GHSA-468c-vq7p-gh64 (plug 1.16.1, high) —
+#     multipart-header DoS. Not exploitable: no Plug.Parsers and no multipart reads anywhere;
+#     the health-check router serves GETs only and the gRPC handler never parses multipart.
+#   GHSA-q8x4-x7mp-5vg2 (plug_cowboy 2.7.2, high) — HTTP/2 :scheme atom exhaustion.
+#     Internal-only DoS against the health-check listener; fixed in 2.8.1 (in-range bump,
+#     picked up on next deps.update).
+#   GHSA-32p9-57cr-4x65 (cowlib 2.13.0, high) — chunked transfer-encoding resource
+#     consumption. Internal-only DoS; HTTP/1.1 chunked applies to the health-check listener only.
+#   GHSA-84f2-rp86-235p (cowlib, high) — SPDY decompression bomb. Dead code: cowboy 2.x
+#     never invokes cow_spdy.
+#   GHSA-hv23-4qp7-8c8r (cowlib, moderate) — SSE CRLF injection. Dead code: no SSE responses.
+#   GHSA-g2wm-735q-3f56 (cowlib, low) — cookie header injection. Dead code: no cookie usage;
+#     no patched release exists (latest 2.16.1 still flagged).
+GHSA-jfc2-q6qh-g5x8
+GHSA-468c-vq7p-gh64
+GHSA-q8x4-x7mp-5vg2
+GHSA-32p9-57cr-4x65
+GHSA-84f2-rp86-235p
+GHSA-hv23-4qp7-8c8r
+GHSA-g2wm-735q-3f56
+
+# --- gun 2.1.0 / mint 1.6.2: gRPC client transports ---
+# Both arrive via grpc 0.9.0. Clients (GRPC.Stub.connect, default Gun adapter) talk only to
+# internal Semaphore services from the internal-api-urls configmap; no user-controlled URL,
+# method, or header ever reaches them. Exploitation requires a malicious/compromised
+# internal gRPC server. gun fixes (2.4.0) ride the grpc 1.0.0 migration.
+#   gun: GHSA-2j82-37xg-f9wp (high), GHSA-r53j-fjj5-mv77 (high),
+#        GHSA-36w4-95hv-5vwg (moderate), GHSA-w4f7-4cxr-rv3c (moderate)
+#   mint: GHSA-2p26-p43x-fhp8 (high), GHSA-g586-ccqf-7x4r (high),
+#         GHSA-mjqx-c6f6-7rc2 (moderate), GHSA-2pg6-44cx-c49v (low)
+GHSA-2j82-37xg-f9wp
+GHSA-r53j-fjj5-mv77
+GHSA-36w4-95hv-5vwg
+GHSA-w4f7-4cxr-rv3c
+GHSA-2p26-p43x-fhp8
+GHSA-g586-ccqf-7x4r
+GHSA-mjqx-c6f6-7rc2
+GHSA-2pg6-44cx-c49v
+
+# --- hackney 1.20.1 advisories ---
+# hackney arrives via httpoison (declared but zero call sites in lib/) and is used only by
+# sentry for outbound error reporting to the operator-configured SENTRY_DSN. No
+# user-controlled host/domain/path/query is ever passed to it, so the SSRF/CRLF advisories
+# have no attack surface here. 4.0.1 fixes are blocked by sentry's `hackney ~> 1.8` pin;
+# 1.21/1.24 fixes for the two lows are an in-range bump picked up on next deps.update.
+#   GHSA-gp9c-pm5m-5cxr (high) — ssl:connect post-handshake upgrade timeout
+#   GHSA-j9wq-vxxc-94wf (moderate) — CR/LF injection in query parameter
+#   GHSA-pj7v-xfvx-wmjq (moderate) — SSRF allowlist bypass via percent-encoded host
+#   GHSA-mp55-p8c9-rfw2 (low) — CRLF/header injection via domain/path options
+#   GHSA-vq52-99r9-h5pw (low) — SSRF via redirect target
+#   GHSA-9fm9-hp7p-53mf (low) — connection-pool release leak
+GHSA-gp9c-pm5m-5cxr
+GHSA-j9wq-vxxc-94wf
+GHSA-pj7v-xfvx-wmjq
+GHSA-mp55-p8c9-rfw2
+GHSA-vq52-99r9-h5pw
+GHSA-9fm9-hp7p-53mf
+
+# postgrex 0.19.3 — channel-name SQL injection in Postgrex.Notifications.listen/3
+# (GHSA-r73h-97w8-m54h, high; fixed 0.22.2). Not exploitable: Postgrex.Notifications is
+# never used (no hits in lib/); postgrex serves only Ecto queries.
+GHSA-r73h-97w8-m54h
+
+# decimal 2.3.0 — unbounded exponent DoS in Decimal.new (GHSA-rhv4-8758-jx7v, moderate;
+# fixed 3.0.0). Not exploitable: no Decimal call sites in lib/; present only transitively
+# via postgrex/ecto, and 3.0 cascades an out-of-scope ecto bump.
+GHSA-rhv4-8758-jx7v

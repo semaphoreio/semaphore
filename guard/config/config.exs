@@ -33,6 +33,7 @@ config :guard,
   feature_app_endpoint: "127.0.0.1:50052",
   instance_config_grpc_endpoint: "127.0.0.1:50051",
   rbac_grpc_endpoint: "127.0.0.1:50052",
+  groups_grpc_endpoint: "127.0.0.1:50052",
   okta_grpc_endpoint: "127.0.0.1:50052"
 
 config :guard, Guard.Repo,
@@ -52,7 +53,12 @@ config :guard, Guard.FrontRepo,
   username: System.get_env("POSTGRES_DB_USER") || "postgres",
   password: System.get_env("POSTGRES_DB_PASSWORD") || "the-cake-is-a-lie",
   hostname: System.get_env("POSTGRES_DB_HOST") || "127.0.0.1",
-  pool_size: String.to_integer(System.get_env("POSTGRES_DB_POOL_SIZE") || "1"),
+  # Optional dedicated pool size for the Front repo; falls back to the shared pool size.
+  pool_size:
+    String.to_integer(
+      System.get_env("POSTGRES_FRONT_DB_POOL_SIZE") || System.get_env("POSTGRES_DB_POOL_SIZE") ||
+        "1"
+    ),
   parameters: [application_name: "guard"],
   ssl: System.get_env("POSTGRES_DB_SSL") == "true" || false
 
@@ -81,6 +87,10 @@ config :sentry,
 config :guard, base_domain: System.get_env("BASE_DOMAIN")
 config :guard, session_secret_key_base: System.get_env("SESSION_SECRET_KEY_BASE")
 config :guard, session_key: System.get_env("SESSION_COOKIE_NAME")
+
+config :guard,
+  mcp_oauth_access_token_ttl_seconds:
+    String.to_integer(System.get_env("MCP_OAUTH_ACCESS_TOKEN_TTL_SECONDS") || "86400")
 
 config :guard,
   oidc: [
@@ -129,6 +139,12 @@ config :guard, Guard.McpOAuth.AuthCodeCleaner,
   jobs: [
     # Every 30 minutes
     {"*/30 * * * *", {Guard.McpOAuth.AuthCodeCleaner, :process, []}}
+  ]
+
+config :guard, Guard.CLIAuth.AuthCodeCleaner,
+  jobs: [
+    # Every 30 minutes
+    {"*/30 * * * *", {Guard.CLIAuth.AuthCodeCleaner, :process, []}}
   ]
 
 config :guard, :hard_destroy_grace_period_days, 30

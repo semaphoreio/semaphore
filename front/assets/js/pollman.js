@@ -57,6 +57,13 @@ import $ from "jquery";
 
 export var Pollman = {
   init: function (options) {
+    //
+    // Cancel a looper left over from a previous page. Under Turbo Drive init()
+    // runs again on every visit, and the looper reschedules itself, so without
+    // this each visit would leave another polling chain running forever.
+    //
+    this.cancelLooper();
+
     this.options = _.defaults(options || {}, {
       interval: 2000,
       saveScrollElements: [],
@@ -70,6 +77,10 @@ export var Pollman = {
 
     this.noRefreshCycle = 0;
 
+    // Turbo teardown calls stop() on every visit, so clear the flag here or
+    // the looper started below would never actually poll.
+    this.stopped = false;
+
     if(this.options.startLooper) {
       this.looper();
     }
@@ -81,7 +92,19 @@ export var Pollman = {
 
   stop: function () {
     this.stopped = true;
+    this.cancelLooper();
     this.forgetFetchInProgress();
+  },
+
+  //
+  // Clears the pending looper timeout, if any. stop() on its own only stops
+  // polling; the timeout chain keeps rescheduling itself until it is cleared.
+  //
+  cancelLooper: function () {
+    if (this.looperTimeout) {
+      clearTimeout(this.looperTimeout);
+      this.looperTimeout = null;
+    }
   },
 
   forgetFetchInProgress: function () {
@@ -90,6 +113,13 @@ export var Pollman = {
 
   start: function () {
     this.stopped = false;
+
+    // stop() clears the timeout chain, so resume it here. Scheduling rather
+    // than calling looper() directly keeps the original behaviour of waiting
+    // one interval before the next poll.
+    if (!this.looperTimeout && this.options) {
+      this.looperTimeout = setTimeout(this.looper.bind(this), this.options.interval);
+    }
   },
 
   poll: function (options, callback) {
@@ -149,7 +179,7 @@ export var Pollman = {
       this.poll(this.options);
     }
 
-    setTimeout(this.looper.bind(this), this.options.interval);
+    this.looperTimeout = setTimeout(this.looper.bind(this), this.options.interval);
   },
 
   startForUrl: function (url) {
@@ -194,7 +224,15 @@ export var Pollman = {
       .then((body) => {
         if (Pollman.remembers(newFetch)) {
           this.withScrollSaved(document, () => {
+            if (window.Tippy) {
+              window.Tippy.destroyIn(node);
+            }
+
             $(node).replaceWith(body);
+
+            if (window.Tippy) {
+              window.Tippy.rebind(document);
+            }
           });
         }
       })

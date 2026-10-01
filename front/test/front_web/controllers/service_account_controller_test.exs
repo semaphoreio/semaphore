@@ -85,7 +85,7 @@ defmodule FrontWeb.ServiceAccountControllerTest do
         deactivated: false
       }
 
-      expect(ServiceAccountMock, :describe_many, fn ["sa_123"] ->
+      expect(ServiceAccountMock, :describe_many, fn ["sa_123"], ^org_id ->
         {:ok, [service_account_proto]}
       end)
 
@@ -129,7 +129,7 @@ defmodule FrontWeb.ServiceAccountControllerTest do
         response
       end)
 
-      expect(ServiceAccountMock, :describe_many, fn [] ->
+      expect(ServiceAccountMock, :describe_many, fn [], ^org_id ->
         {:ok, []}
       end)
 
@@ -289,7 +289,7 @@ defmodule FrontWeb.ServiceAccountControllerTest do
     } do
       Support.Stubs.PermissionPatrol.add_permissions(org_id, user_id, ["organization.view"])
 
-      expect(ServiceAccountMock, :describe_many, fn members ->
+      expect(ServiceAccountMock, :describe_many, fn members, ^org_id ->
         service_accounts =
           Enum.map(members, fn member_id ->
             %InternalApi.ServiceAccount.ServiceAccount{
@@ -348,7 +348,10 @@ defmodule FrontWeb.ServiceAccountControllerTest do
         deactivated: false
       }
 
-      expect(ServiceAccountMock, :update, fn "sa_123", "Updated Name", "Updated description" ->
+      expect(ServiceAccountMock, :update, fn "sa_123",
+                                             ^org_id,
+                                             "Updated Name",
+                                             "Updated description" ->
         {:ok, updated_account_proto}
       end)
 
@@ -380,11 +383,38 @@ defmodule FrontWeb.ServiceAccountControllerTest do
     end
 
     test "handles update errors", %{conn: conn} do
-      expect(ServiceAccountMock, :update, fn "sa_123", "", "" ->
+      expect(ServiceAccountMock, :update, fn "sa_123", _org_id, "", "" ->
         {:error, "Service account name cannot be empty"}
       end)
 
       conn = put(conn, "/service_accounts/sa_123", %{})
+
+      assert json_response(conn, 422) == %{
+               "error" => "Failed to update service account or assign role"
+             }
+    end
+
+    test "returns 422 when the service account belongs to another org", %{conn: conn} do
+      foreign_org_id = Ecto.UUID.generate()
+
+      # the service account belongs to a different org
+      expect(ServiceAccountMock, :update, fn "sa_123",
+                                             org_id,
+                                             "Updated Name",
+                                             "Updated description" ->
+        if org_id == foreign_org_id do
+          {:ok, %InternalApi.ServiceAccount.ServiceAccount{id: "sa_123", org_id: foreign_org_id}}
+        else
+          {:error, "Service account not found"}
+        end
+      end)
+
+      conn =
+        put(conn, "/service_accounts/sa_123", %{
+          "name" => "Updated Name",
+          "description" => "Updated description",
+          "role_id" => "role_456"
+        })
 
       assert json_response(conn, 422) == %{
                "error" => "Failed to update service account or assign role"
@@ -413,11 +443,11 @@ defmodule FrontWeb.ServiceAccountControllerTest do
         deactivated: false
       }
 
-      expect(ServiceAccountMock, :describe, fn "sa_123" ->
+      expect(ServiceAccountMock, :describe, fn "sa_123", _org_id ->
         {:ok, service_account_proto}
       end)
 
-      expect(ServiceAccountMock, :delete, fn "sa_123" ->
+      expect(ServiceAccountMock, :delete, fn "sa_123", _org_id ->
         :ok
       end)
 
@@ -427,8 +457,36 @@ defmodule FrontWeb.ServiceAccountControllerTest do
     end
 
     test "handles delete errors", %{conn: conn} do
-      expect(ServiceAccountMock, :describe, fn "sa_123" ->
+      expect(ServiceAccountMock, :describe, fn "sa_123", _org_id ->
         {:error, "Service account not found"}
+      end)
+
+      conn = delete(conn, "/service_accounts/sa_123")
+
+      assert json_response(conn, 422) == %{"error" => "Failed to delete service account"}
+    end
+
+    test "returns 422 when the service account belongs to another org", %{conn: conn} do
+      other_org_id = Ecto.UUID.generate()
+
+      service_account_proto = %InternalApi.ServiceAccount.ServiceAccount{
+        id: "sa_123",
+        name: "Foreign",
+        description: "Belongs to another org",
+        org_id: other_org_id,
+        creator_id: "some_creator",
+        created_at: %Google.Protobuf.Timestamp{seconds: 1_704_103_200},
+        updated_at: %Google.Protobuf.Timestamp{seconds: 1_704_103_200},
+        deactivated: false
+      }
+
+      # the service account belongs to a different org
+      expect(ServiceAccountMock, :describe, fn "sa_123", org_id ->
+        if org_id == service_account_proto.org_id do
+          {:ok, service_account_proto}
+        else
+          {:error, "Service account not found"}
+        end
       end)
 
       conn = delete(conn, "/service_accounts/sa_123")
@@ -458,11 +516,11 @@ defmodule FrontWeb.ServiceAccountControllerTest do
         deactivated: false
       }
 
-      expect(ServiceAccountMock, :describe, fn "sa_123" ->
+      expect(ServiceAccountMock, :describe, fn "sa_123", _org_id ->
         {:ok, service_account_proto}
       end)
 
-      expect(ServiceAccountMock, :regenerate_token, fn "sa_123" ->
+      expect(ServiceAccountMock, :regenerate_token, fn "sa_123", _org_id ->
         {:ok, "new_api_token_456"}
       end)
 
@@ -472,8 +530,36 @@ defmodule FrontWeb.ServiceAccountControllerTest do
     end
 
     test "handles regenerate errors", %{conn: conn} do
-      expect(ServiceAccountMock, :describe, fn "sa_123" ->
+      expect(ServiceAccountMock, :describe, fn "sa_123", _org_id ->
         {:error, "Service account not found"}
+      end)
+
+      conn = post(conn, "/service_accounts/sa_123/regenerate_token")
+
+      assert json_response(conn, 422) == %{
+               "error" => "Failed to regenerate service account token"
+             }
+    end
+
+    test "returns 422 when the service account belongs to another org", %{conn: conn} do
+      service_account_proto = %InternalApi.ServiceAccount.ServiceAccount{
+        id: "sa_123",
+        name: "Foreign",
+        description: "Belongs to another org",
+        org_id: Ecto.UUID.generate(),
+        creator_id: "some_creator",
+        created_at: %Google.Protobuf.Timestamp{seconds: 1_704_103_200},
+        updated_at: %Google.Protobuf.Timestamp{seconds: 1_704_103_200},
+        deactivated: false
+      }
+
+      # the service account belongs to a different org
+      expect(ServiceAccountMock, :describe, fn "sa_123", org_id ->
+        if org_id == service_account_proto.org_id do
+          {:ok, service_account_proto}
+        else
+          {:error, "Service account not found"}
+        end
       end)
 
       conn = post(conn, "/service_accounts/sa_123/regenerate_token")

@@ -120,7 +120,7 @@ defmodule Zebra.Workers.Dispatcher do
   end
 
   def duration_bucket(sec) when sec < 3, do: "from_0s_to_3s"
-  def duration_bucket(sec) when sec >= 3 and sec < 10, do: "from_0s_to_3s"
+  def duration_bucket(sec) when sec >= 3 and sec < 10, do: "from_3s_to_10s"
   def duration_bucket(sec) when sec >= 10 and sec < 30, do: "from_10s_to_30s"
   def duration_bucket(sec) when sec >= 30 and sec < 60, do: "from_30s_to_60s"
   def duration_bucket(sec) when sec >= 60 and sec < 180, do: "from_60s_to_180s"

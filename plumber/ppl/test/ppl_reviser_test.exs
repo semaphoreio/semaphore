@@ -217,4 +217,29 @@ defmodule Ppl.PplsReviser.Test do
     assert queue.project_id == "123"
     assert queue.organization_id == "456"
   end
+
+  test "pipeline without execution_time_limit defaults to 60 minutes, the value after_pipeline jobs inherit" do
+    {:ok, ppl} =
+      %{"label" => "master", "project_id" => "123", "organization_id" => "456"}
+      |> Test.Helpers.schedule_request_factory(:local)
+      |> Actions.schedule()
+
+    assert {:ok, ppl_req} = PplRequestsQueries.get_by_id(ppl.ppl_id)
+
+    assert {:ok, ppl} = PplsReviser.update_ppl(ppl_req, %{}, %{})
+    assert ppl.exec_time_limit_min == 60
+  end
+
+  test "execution_time_limit from yml spec is stored in minutes" do
+    {:ok, ppl} =
+      %{"label" => "master", "project_id" => "123", "organization_id" => "456"}
+      |> Test.Helpers.schedule_request_factory(:local)
+      |> Actions.schedule()
+
+    assert {:ok, ppl_req} = PplRequestsQueries.get_by_id(ppl.ppl_id)
+
+    definition = %{"execution_time_limit" => %{"hours" => 2}}
+    assert {:ok, ppl} = PplsReviser.update_ppl(ppl_req, definition, %{})
+    assert ppl.exec_time_limit_min == 120
+  end
 end

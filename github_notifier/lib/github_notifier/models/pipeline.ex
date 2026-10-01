@@ -15,17 +15,11 @@ defmodule GithubNotifier.Models.Pipeline do
 
   require Logger
 
-  alias InternalApi.Plumber.ResponseStatus.ResponseCode
-  alias InternalApi.Plumber.Pipeline.State, as: PipelineState
-  alias InternalApi.Plumber.Pipeline.Result, as: PipelineResult
-  alias InternalApi.Plumber.Block.State, as: BlockState
-  alias InternalApi.Plumber.Block.Result, as: BlockResult
-
   @spec find(String.t()) :: GithubNotifier.Models.Pipeline | nil
   def find(id) do
     Watchman.benchmark("fetch_pipeline.duration", fn ->
       req =
-        InternalApi.Plumber.DescribeRequest.new(
+        struct(InternalApi.Plumber.DescribeRequest,
           ppl_id: id,
           detailed: true
         )
@@ -45,7 +39,7 @@ defmodule GithubNotifier.Models.Pipeline do
       Logger.debug("Received Pipeline describe response")
       Logger.debug(inspect(describe_response))
 
-      case ResponseCode.key(describe_response.response_status.code) do
+      case describe_response.response_status.code do
         :OK -> construct(describe_response)
         :BAD_PARAM -> nil
       end
@@ -55,8 +49,8 @@ defmodule GithubNotifier.Models.Pipeline do
   defp construct(response) do
     %__MODULE__{
       id: response.pipeline.ppl_id,
-      state: PipelineState.key(response.pipeline.state),
-      result: PipelineResult.key(response.pipeline.result),
+      state: response.pipeline.state,
+      result: response.pipeline.result,
       blocks: construct_blocks(response.blocks),
       project_id: response.pipeline.project_id,
       workflow_id: response.pipeline.wf_id,
@@ -80,8 +74,8 @@ defmodule GithubNotifier.Models.Pipeline do
       %{
         id: block.block_id,
         name: block.name,
-        state: BlockState.key(block.state),
-        result: BlockResult.key(block.result)
+        state: block.state,
+        result: block.result
       }
     end)
   end

@@ -10,13 +10,14 @@ Get notified via Slack or any other webhook-based service when important things 
 
 Send notifications to Slack and other webhook-based services. Notifications are sent when a pipeline finishes running so your team get instant feedback on the result.
 
-To set up a Slack notification, first you need to configure an [incoming webhook](https://slack.com/apps/A0F7XDUAZ-incoming-webhooks) in your Slack workspace.
+To set up a Slack notification, you can configure an endpoint using the [Incoming Webhook](https://slack.com/apps/A0F7XDUAZ-incoming-webhooks) app  or create a custom [Slack app](https://docs.slack.dev/messaging/sending-messages-using-incoming-webhooks/#create-app) in your Slack workspace and use its webhook URL.
 
 :::tip
 
-Always use [Incoming Webhooks app](https://semaphore.slack.com/apps/A0F7XDUAZ-incoming-webhooks) instead of creating your own Endpoint on Slack. If you set up a notification with an endpoint from your custom Slack app, you won't be able to use the channel override feature.
+If you set up a notification with an endpoint from your custom Slack app, you won't be able to use the [channel override feature](https://docs.slack.dev/messaging/sending-messages-using-incoming-webhooks/#advanced_message_formatting).
 
 :::
+
 
 <Tabs groupId="ui-cli">
 <TabItem value="ui" label="UI">

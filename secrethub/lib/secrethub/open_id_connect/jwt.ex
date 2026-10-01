@@ -154,7 +154,8 @@ defmodule Secrethub.OpenIDConnect.JWT do
             "job_type" => [req.job_type],
             "pr_branch" => [req.git_pull_request_branch],
             "repo_slug" => [req.repo_slug],
-            "trg" => [req.triggerer]
+            "trg" => [req.triggerer],
+            "tag" => [req.git_tag]
           },
           "transitive_tag_keys" => [
             "prj_id",
@@ -164,7 +165,8 @@ defmodule Secrethub.OpenIDConnect.JWT do
             "job_type",
             "pr_branch",
             "repo_slug",
-            "trg"
+            "trg",
+            "tag"
           ]
         })
       else

@@ -60,11 +60,33 @@ defmodule Scheduler.Periodics.Model.PeriodicsQueries do
          {:error, %Ecto.Changeset{valid?: false, errors: [], changes: changes}},
          _p
        ) do
-    if Enum.any?(changes.parameters, &(not &1.valid?)),
-      do:
-        {:error,
-         "All parameters need a name. If parameter is required, it also needs a default value."},
-      else: {:error, "Unknown error."}
+    case extract_first_parameter_error(changes) do
+      {:ok, message} -> {:error, message}
+      :none -> {:error, "Unknown error."}
+    end
+  end
+
+  defp extract_first_parameter_error(%{parameters: param_changesets})
+       when is_list(param_changesets) do
+    case Enum.find(param_changesets, &(not &1.valid?)) do
+      nil -> :none
+      changeset -> {:ok, format_parameter_error(changeset)}
+    end
+  end
+
+  defp extract_first_parameter_error(_changes), do: :none
+
+  defp format_parameter_error(changeset) do
+    name = Ecto.Changeset.get_field(changeset, :name)
+    label = if is_binary(name) and name != "", do: "'#{name}'", else: "<unnamed>"
+
+    case changeset.errors do
+      [{field, {message, _opts}} | _] ->
+        "Parameter #{label} #{field} #{message}."
+
+      _ ->
+        "Parameter #{label} is invalid."
+    end
   end
 
   defp process_response(error_response, _params), do: error_response
@@ -319,7 +341,10 @@ defmodule Scheduler.Periodics.Model.PeriodicsQueries do
   defp convert_parameters_to_maps(result), do: result
 
   defp convert_parameter_to_map(parameter) do
-    parameter |> Map.take(~w(name required description default_value options)a)
+    Map.take(
+      parameter,
+      ~w(name required description default_value options regex_pattern validate_input_format)a
+    )
   end
 
   defp preprocess_reference_field(params, "v1.0") do

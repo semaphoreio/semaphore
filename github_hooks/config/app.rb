@@ -15,6 +15,7 @@ class App < Configurable # :nodoc:
   config.plumber_internal_url    = SemaphoreConfig.internal_api_url_plumber
   config.repository_hub_url      = SemaphoreConfig.internal_api_url_repository
   config.hooks_api_url           = SemaphoreConfig.internal_api_url_hooks
+  config.user_api_url            = SemaphoreConfig.internal_api_url_user
   config.instance_config_url     = SemaphoreConfig.internal_api_url_instance_config
   config.encryptor_url           = SemaphoreConfig.encryptor_url
   config.license_checker_url     = SemaphoreConfig.license_checker_url || "license-checker:50051"
@@ -26,6 +27,11 @@ class App < Configurable # :nodoc:
   ]
   config.always_filter_skip_ci = (SemaphoreConfig.always_filter_skip_ci || "false") == "true"
   config.collaborators_api_rate_limit = (SemaphoreConfig.collaborators_api_rate_limit || 4000).to_i
+
+  config.disable_collaborator_webhook_sync =
+    (SemaphoreConfig.disable_collaborator_webhook_sync || "false") == "true"
+  config.use_github_app_to_check_permissions =
+    (SemaphoreConfig.use_github_app_to_check_permissions || "false") == "true"
   config.semaphore_edition = (SemaphoreConfig.semaphore_edition || "").downcase
 
   config.worker_max_retries    = (SemaphoreConfig.worker_max_retries || 10).to_i

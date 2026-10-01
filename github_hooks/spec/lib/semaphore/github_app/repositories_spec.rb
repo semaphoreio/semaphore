@@ -81,6 +81,29 @@ module Semaphore::GithubApp
         end.to raise_error(described_class::IncompleteRepositoryListError, /Fetched 200 repositories, expected 399/)
       end
 
+      it "raises instead of looping when a page advertises next but adds no repositories" do
+        page_1_repos = (1..100).map { |i| { "id" => i, "full_name" => "acme/repo-#{i}" } }
+
+        # Page 2 (and every subsequent stubbed call) returns an empty list while
+        # still advertising a next link — without a guard this loops forever.
+        allow(Excon).to receive(:get).and_return(
+          instance_double(
+            Excon::Response,
+            :data => { :body => JSON.generate({ "total_count" => 399, "repositories" => page_1_repos }) },
+            :headers => { "Link" => '<https://api.github.com/installation/repositories?per_page=100&page=2>; rel="next"' }
+          ),
+          instance_double(
+            Excon::Response,
+            :data => { :body => JSON.generate({ "total_count" => 399, "repositories" => [] }) },
+            :headers => { "Link" => '<https://api.github.com/installation/repositories?per_page=100&page=3>; rel="next"' }
+          )
+        )
+
+        expect do
+          repositories.send(:get_remote_repositories)
+        end.to raise_error(described_class::IncompleteRepositoryListError, %r{pagination stalled at 100/399})
+      end
+
       it "raises when total_count is missing" do
         allow(Excon).to receive(:get).and_return(
           instance_double(
@@ -161,8 +184,16 @@ module Semaphore::GithubApp
         result = described_class.refresh(installation_id)
 
         expect(result).to eq(:ok)
-        expect(Semaphore::GithubApp::Hook).to have_received(:add_repositories).with(installation_id, satisfy { |repositories| repositories.size == 200 })
-        expect(Semaphore::GithubApp::Hook).to have_received(:remove_repositories).with(installation_id, satisfy { |repositories| repositories.size == 200 })
+        expect(Semaphore::GithubApp::Hook).to have_received(:add_repositories).with(installation_id, satisfy { |repositories| repositories.size == 200 }, :sync_collaborators => true)
+        expect(Semaphore::GithubApp::Hook).to have_received(:remove_repositories).with(installation_id, satisfy { |repositories| repositories.size == 200 }, :sync_collaborators => true)
+      end
+
+      it "forwards sync_collaborators: false so the collaborator fan-out is skipped" do
+        result = described_class.refresh(installation_id, :sync_collaborators => false)
+
+        expect(result).to eq(:ok)
+        expect(Semaphore::GithubApp::Hook).to have_received(:add_repositories).with(installation_id, anything, :sync_collaborators => false)
+        expect(Semaphore::GithubApp::Hook).to have_received(:remove_repositories).with(installation_id, anything, :sync_collaborators => false)
       end
 
       context "when a repository slug differs only by letter case" do
@@ -173,8 +204,8 @@ module Semaphore::GithubApp
           result = described_class.refresh(installation_id)
 
           expect(result).to eq(:ok)
-          expect(Semaphore::GithubApp::Hook).to have_received(:add_repositories).with(installation_id, [])
-          expect(Semaphore::GithubApp::Hook).to have_received(:remove_repositories).with(installation_id, [])
+          expect(Semaphore::GithubApp::Hook).to have_received(:add_repositories).with(installation_id, [], :sync_collaborators => true)
+          expect(Semaphore::GithubApp::Hook).to have_received(:remove_repositories).with(installation_id, [], :sync_collaborators => true)
         end
       end
     end

@@ -75,21 +75,58 @@ defmodule Projecthub.Models.PeriodicTaskTest do
                  description: "",
                  required: true,
                  default_value: "default",
-                 options: []
+                 options: [],
+                 regex_pattern: "",
+                 validate_input_format: false
                },
                %{
                  name: "param2",
                  description: "",
                  required: false,
                  default_value: "default",
-                 options: []
+                 options: [],
+                 regex_pattern: "",
+                 validate_input_format: false
                },
                %{
                  name: "param3",
                  description: "",
                  required: false,
                  default_value: "",
-                 options: ["op1", "op2"]
+                 options: ["op1", "op2"],
+                 regex_pattern: "",
+                 validate_input_format: false
+               }
+             ]
+    end
+
+    test "preserves regex_pattern and validate_input_format when set" do
+      periodic =
+        periodic_from_grpc(%{
+          id: "x",
+          name: "task",
+          parameters: [
+            %{
+              name: "VERSION",
+              required: true,
+              default_value: "1.0.0",
+              regex_pattern: "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+              validate_input_format: true
+            }
+          ]
+        })
+
+      assert task = PeriodicTask.construct(periodic, "project_name")
+
+      assert task.parameters == [
+               %{
+                 name: "VERSION",
+                 description: "",
+                 required: true,
+                 default_value: "1.0.0",
+                 options: [],
+                 regex_pattern: "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+                 validate_input_format: true
                }
              ]
     end
@@ -218,152 +255,195 @@ defmodule Projecthub.Models.PeriodicTaskTest do
   end
 
   describe "update_all/3" do
-    setup do
-      FunRegistry.set!(PeriodicService, :apply, fn req, _stream ->
-        API.ApplyResponse.new(
-          status: Status.new(),
-          id:
-            req.yml_definition
-            |> YamlElixir.read_from_string!()
-            |> get_in(["metadata", "id"])
-        )
-      end)
+    test "sends the full desired set to bulk_upsert_and_prune and returns ids", ctx do
+      FunRegistry.set!(PeriodicService, :bulk_upsert_and_prune, fn req, _stream ->
+        assert req.project_id == ctx.project.id
+        assert req.organization_id == ctx.project.organization_id
+        assert req.requester_id == "requester_id"
+        assert length(req.periodics) == 2
 
-      FunRegistry.set!(PeriodicService, :delete, fn req, _stream ->
-        API.DeleteResponse.new(status: Status.new(), id: req.id)
-      end)
-    end
-
-    test "deletes tasks that are not in the new list", ctx do
-      FunRegistry.set!(PeriodicService, :list, fn _req, _stream ->
-        API.ListResponse.new(
+        API.BulkUpsertAndPruneResponse.new(
           status: Status.new(),
-          periodics: [ctx.periodic1, ctx.periodic2, ctx.periodic3]
+          upserted: [
+            API.Periodic.new(id: "1"),
+            API.Periodic.new(id: "4")
+          ],
+          deleted_ids: ["3", "2"]
         )
       end)
 
       new_tasks = [PeriodicTask.construct(ctx.periodic1, "project_name"), periodic_task(id: "4")]
 
-      assert {:ok, upserted: ["4", "1"], deleted: ["3", "2"]} =
+      assert {:ok, upserted: ["1", "4"], deleted: ["3", "2"]} =
                PeriodicTask.update_all(ctx.project, new_tasks, "requester_id")
     end
 
-    test "upserts tasks that are not in the old list", ctx do
-      FunRegistry.set!(PeriodicService, :list, fn _req, _stream ->
-        API.ListResponse.new(status: Status.new(), periodics: [ctx.periodic3])
-      end)
+    test "passes recurring/at/reference/parameters through to the request", ctx do
+      FunRegistry.set!(PeriodicService, :bulk_upsert_and_prune, fn req, _stream ->
+        [first | _] = req.periodics
+        assert first.recurring == true
+        assert first.at == "0 0 * * *"
+        assert first.reference == "refs/heads/master"
+        assert first.pipeline_file == "pipeline.yml"
 
-      new_tasks = [
-        PeriodicTask.construct(ctx.periodic1, "project_name"),
-        PeriodicTask.construct(ctx.periodic2, "project_name"),
-        periodic_task(id: "4")
-      ]
-
-      assert {:ok, upserted: ["4", "2", "1"], deleted: ["3"]} =
-               PeriodicTask.update_all(ctx.project, new_tasks, "requester_id")
-    end
-
-    test "when no tasks are configured then upserts all tasks", ctx do
-      FunRegistry.set!(PeriodicService, :list, fn _req, _stream ->
-        API.ListResponse.new(status: Status.new(), periodics: [ctx.periodic3])
-      end)
-
-      new_tasks = [
-        periodic_task(id: "1"),
-        periodic_task(id: "2"),
-        periodic_task(id: "3")
-      ]
-
-      assert {:ok, upserted: ["3", "2", "1"], deleted: []} =
-               PeriodicTask.update_all(ctx.project, new_tasks, "requester_id")
-    end
-
-    test "when no tasks are given then deletes all tasks", ctx do
-      FunRegistry.set!(PeriodicService, :list, fn _req, _stream ->
-        API.ListResponse.new(
+        API.BulkUpsertAndPruneResponse.new(
           status: Status.new(),
-          periodics: [ctx.periodic1, ctx.periodic2, ctx.periodic3]
+          upserted: [API.Periodic.new(id: first.id)],
+          deleted_ids: []
+        )
+      end)
+
+      assert {:ok, _} = PeriodicTask.update_all(ctx.project, [periodic_task(id: "1")], "requester_id")
+    end
+
+    test "forwards regex_pattern and validate_input_format on parameters", ctx do
+      FunRegistry.set!(PeriodicService, :bulk_upsert_and_prune, fn req, _stream ->
+        [first | _] = req.periodics
+        [param | _] = first.parameters
+        assert param.name == "VERSION"
+        assert param.regex_pattern == "^v[0-9]+$"
+        assert param.validate_input_format == true
+
+        API.BulkUpsertAndPruneResponse.new(
+          status: Status.new(),
+          upserted: [API.Periodic.new(id: first.id)],
+          deleted_ids: []
+        )
+      end)
+
+      task =
+        periodic_task(
+          id: "1",
+          parameters: [
+            %{
+              name: "VERSION",
+              required: true,
+              default_value: "v1",
+              regex_pattern: "^v[0-9]+$",
+              validate_input_format: true
+            }
+          ]
+        )
+
+      assert {:ok, _} = PeriodicTask.update_all(ctx.project, [task], "requester_id")
+    end
+
+    test "empty branch falls back to refs/heads/master on the wire", ctx do
+      FunRegistry.set!(PeriodicService, :bulk_upsert_and_prune, fn req, _stream ->
+        [first | _] = req.periodics
+        assert first.reference == "refs/heads/master"
+
+        API.BulkUpsertAndPruneResponse.new(
+          status: Status.new(),
+          upserted: [API.Periodic.new(id: first.id)],
+          deleted_ids: []
+        )
+      end)
+
+      assert {:ok, _} = PeriodicTask.update_all(ctx.project, [periodic_task(id: "1", branch: "")], "requester_id")
+    end
+
+    test "nil branch falls back to refs/heads/master on the wire", ctx do
+      FunRegistry.set!(PeriodicService, :bulk_upsert_and_prune, fn req, _stream ->
+        [first | _] = req.periodics
+        assert first.reference == "refs/heads/master"
+
+        API.BulkUpsertAndPruneResponse.new(
+          status: Status.new(),
+          upserted: [API.Periodic.new(id: first.id)],
+          deleted_ids: []
+        )
+      end)
+
+      assert {:ok, _} = PeriodicTask.update_all(ctx.project, [periodic_task(id: "1", branch: nil)], "requester_id")
+    end
+
+    test "task status maps to PeriodicDefinition.state on the wire", ctx do
+      FunRegistry.set!(PeriodicService, :bulk_upsert_and_prune, fn req, _stream ->
+        [active, paused, unspecified] = req.periodics
+        assert active.state == :ACTIVE
+        assert paused.state == :PAUSED
+        assert unspecified.state == :UNCHANGED
+
+        API.BulkUpsertAndPruneResponse.new(
+          status: Status.new(),
+          upserted: Enum.map(req.periodics, &API.Periodic.new(id: &1.id)),
+          deleted_ids: []
+        )
+      end)
+
+      tasks = [
+        periodic_task(id: "1", status: :STATUS_ACTIVE),
+        periodic_task(id: "2", status: :STATUS_INACTIVE),
+        periodic_task(id: "3", status: :STATUS_UNSPECIFIED)
+      ]
+
+      assert {:ok, _} = PeriodicTask.update_all(ctx.project, tasks, "requester_id")
+    end
+
+    test "an empty desired set deletes all tasks", ctx do
+      FunRegistry.set!(PeriodicService, :bulk_upsert_and_prune, fn req, _stream ->
+        assert req.periodics == []
+
+        API.BulkUpsertAndPruneResponse.new(
+          status: Status.new(),
+          upserted: [],
+          deleted_ids: ["3", "2", "1"]
         )
       end)
 
       assert {:ok, upserted: [], deleted: ["3", "2", "1"]} = PeriodicTask.update_all(ctx.project, [], "requester_id")
     end
 
-    test "returns an errors tuple when an error from list occurs", ctx do
-      FunRegistry.set!(PeriodicService, :list, fn _req, _stream ->
-        API.ListResponse.new(status: Status.new(code: :INVALID_ARGUMENT, message: "Invalid argument"))
-      end)
+    test "an error from the bulk RPC is surfaced without any local fallback that could lose data",
+         ctx do
+      # Regression test for the original bug: when the periodic_scheduler service
+      # rejects a batch (e.g. invalid cron), projecthub must NOT perform any local
+      # delete-then-upsert sequence — the contract is now a single atomic RPC, so
+      # no projecthub-side data-loss path can exist.
+      test_pid = self()
 
-      assert {:error, %GRPC.RPCError{message: "Invalid argument"}} =
-               PeriodicTask.update_all(ctx.project, [periodic_task(id: "1")], "requester_id")
-    end
-
-    test "returns an errors tuple when an error from apply occurs", ctx do
       FunRegistry.set!(PeriodicService, :list, fn _req, _stream ->
+        send(test_pid, :list_called)
         API.ListResponse.new(status: Status.new(), periodics: [])
       end)
 
-      FunRegistry.set!(PeriodicService, :apply, fn _req, _stream ->
-        API.ApplyResponse.new(status: Status.new(code: :INVALID_ARGUMENT, message: "Invalid argument"))
-      end)
-
-      assert {:error, %GRPC.RPCError{message: "Invalid argument"}} =
-               PeriodicTask.update_all(ctx.project, [periodic_task(id: "1")], "requester_id")
-    end
-
-    test "returns an errors tuple when an error from delete occurs", ctx do
-      FunRegistry.set!(PeriodicService, :list, fn _req, _stream ->
-        API.ListResponse.new(status: Status.new(), periodics: [ctx.periodic2])
-      end)
-
       FunRegistry.set!(PeriodicService, :delete, fn _req, _stream ->
-        API.DeleteResponse.new(status: Status.new(code: :INVALID_ARGUMENT, message: "Invalid argument"))
+        send(test_pid, :delete_called)
+        API.DeleteResponse.new(status: Status.new())
       end)
 
-      assert {:error, %GRPC.RPCError{message: "Invalid argument"}} =
+      FunRegistry.set!(PeriodicService, :bulk_upsert_and_prune, fn _req, _stream ->
+        API.BulkUpsertAndPruneResponse.new(status: Status.new(code: :INVALID_ARGUMENT, message: "Invalid cron"))
+      end)
+
+      assert {:error, %GRPC.RPCError{message: "Invalid cron"}} =
                PeriodicTask.update_all(ctx.project, [periodic_task(id: "1")], "requester_id")
+
+      refute_received :list_called
+      refute_received :delete_called
     end
   end
 
   describe "delete_all/2" do
-    test "deletes all tasks for a project", ctx do
-      FunRegistry.set!(PeriodicService, :list, fn _req, _stream ->
-        API.ListResponse.new(
-          status: Status.new(),
-          periodics: [ctx.periodic1, ctx.periodic2, ctx.periodic3]
-        )
-      end)
+    test "delegates to bulk_upsert_and_prune with an empty desired set", ctx do
+      FunRegistry.set!(PeriodicService, :bulk_upsert_and_prune, fn req, _stream ->
+        assert req.periodics == []
+        assert req.project_id == ctx.project.id
 
-      FunRegistry.set!(PeriodicService, :delete, fn req, _stream ->
-        API.DeleteResponse.new(status: Status.new(), id: req.id)
+        API.BulkUpsertAndPruneResponse.new(
+          status: Status.new(),
+          upserted: [],
+          deleted_ids: ["3", "2", "1"]
+        )
       end)
 
       assert {:ok, ["3", "2", "1"]} = PeriodicTask.delete_all(ctx.project, "requester_id")
     end
 
-    test "returns an errors tuple when an error from list occurs", ctx do
-      FunRegistry.set!(PeriodicService, :list, fn _req, _stream ->
-        API.ListResponse.new(status: Status.new(code: :INVALID_ARGUMENT, message: "Invalid argument"))
-      end)
-
-      FunRegistry.set!(PeriodicService, :delete, fn req, _stream ->
-        API.DeleteResponse.new(status: Status.new(), id: req.id)
-      end)
-
-      assert {:error, %GRPC.RPCError{message: "Invalid argument"}} =
-               PeriodicTask.delete_all(ctx.project, "requester_id")
-    end
-
-    test "returns an errors tuple when an error from delete occurs", ctx do
-      FunRegistry.set!(PeriodicService, :list, fn _req, _stream ->
-        API.ListResponse.new(
-          status: Status.new(),
-          periodics: [ctx.periodic1, ctx.periodic2, ctx.periodic3]
-        )
-      end)
-
-      FunRegistry.set!(PeriodicService, :delete, fn _req, _stream ->
-        API.DeleteResponse.new(status: Status.new(code: :INVALID_ARGUMENT, message: "Invalid argument"))
+    test "returns an error tuple when the bulk RPC fails", ctx do
+      FunRegistry.set!(PeriodicService, :bulk_upsert_and_prune, fn _req, _stream ->
+        API.BulkUpsertAndPruneResponse.new(status: Status.new(code: :INVALID_ARGUMENT, message: "Invalid argument"))
       end)
 
       assert {:error, %GRPC.RPCError{message: "Invalid argument"}} =
@@ -387,7 +467,10 @@ defmodule Projecthub.Models.PeriodicTaskTest do
     parameters =
       Enum.map(
         get_in(params, [:parameters]) || [],
-        &Map.take(&1, ~w(name description required default_value options)a)
+        &Map.take(
+          &1,
+          ~w(name description required default_value options regex_pattern validate_input_format)a
+        )
       )
 
     struct(PeriodicTask, defaults() |> Map.merge(params) |> Map.put(:parameters, parameters))

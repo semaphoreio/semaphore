@@ -41,7 +41,7 @@ defmodule GithubNotifier.Models.PipelineSummary do
           construct(pipeline_summary)
 
         {:ok, _} ->
-          Logger.warn("Pipeline summary not found for a pipeline: #{pipeline_id}")
+          Logger.warning("Pipeline summary not found for a pipeline: #{pipeline_id}")
           nil
 
         error ->
@@ -65,12 +65,12 @@ defmodule GithubNotifier.Models.PipelineSummary do
     }
   end
 
-  def is_failed?(pipeline_summary) do
+  def failed?(pipeline_summary) do
     pipeline_summary.failed + pipeline_summary.error > 0
   end
 
-  def is_passed?(pipeline_summary) do
-    !is_failed?(pipeline_summary) &&
+  def passed?(pipeline_summary) do
+    !failed?(pipeline_summary) &&
       pipeline_summary.passed > 0 &&
       pipeline_summary.total > 0
   end

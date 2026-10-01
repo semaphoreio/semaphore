@@ -60,7 +60,7 @@ For the full list of member permissions, see [organization roles](./user-managem
 
 ### Admin {#org-admin}
 
-Admins can modify settings within the organization or any of its projects. They do not have access to billing information, and they cannot change general organization details, such as the organization name and URL.
+Admins can modify settings within the organization or any of its projects. They cannot change general organization details, such as the organization name and URL.
 
 Only Admins and Owners can invite users to the organization.
 
@@ -86,7 +86,7 @@ To remove an owner, see [how to remove an owner](https://docs.semaphore.io/using
 
 ### Organization groups {#org-groups}
 
-<Available plans={['Enterprise']}/>
+<Available plans={['The Plan']}/>
 
 Your organization can have any number of groups. A group can have exactly one role directly assigned.
 
@@ -145,7 +145,7 @@ Admins have the authority to modify any setting within the projects, including t
 
 ## Custom roles {#custom-roles}
 
-<Available plans={['Enterprise']}/>
+<Available plans={['The Plan']}/>
 
 In addition to the pre-defined roles provided by Semaphore, you can create your own custom roles. Custom roles let you follow the principle of least privilege when managing using permissions.
 

@@ -359,6 +359,68 @@ describe("Agent", () => {
         expect(agent.environmentType()).to.equal(Agent.ENVIRONMENT_TYPE_SELF_HOSTED)
       })
     })
+
+    describe("when e1 and a1 machine types are not available", () => {
+      beforeEach(() => {
+        Agent.setValidAgentTypes({
+          agent_types: [
+            {
+              type: "e2-standard-4",
+              spec: "4 vCPU, 16 GB ram",
+              os_image: "ubuntu2404",
+              platform: "LINUX"
+            },
+            {
+              type: "e2-standard-2",
+              spec: "2 vCPU, 8 GB ram",
+              os_image: "ubuntu2404",
+              platform: "LINUX"
+            },
+            {
+              type: "a2-standard-4",
+              spec: "4 vCPU, 8 GB ram",
+              os_image: "macos-xcode16",
+              platform: "MAC"
+            }
+          ],
+          default_linux_os_image: "ubuntu2404",
+          default_mac_os_image: "macos-xcode16"
+        })
+
+        agent = new Agent(dummyParent, {})
+      })
+
+      afterEach(() => {
+        Agent.setupTestAgentTypes()
+      })
+
+      it("defaults to the smallest available linux machine type", () => {
+        expect(agent.type).to.equal("e2-standard-2")
+        expect(agent.osImage).to.equal("ubuntu2404")
+      })
+
+      it("changing to linux VM picks the smallest available linux machine type", () => {
+        agent.changeEnvironmentType(Agent.ENVIRONMENT_TYPE_LINUX_VM)
+
+        expect(agent.type).to.equal("e2-standard-2")
+        expect(agent.environmentType()).to.equal(Agent.ENVIRONMENT_TYPE_LINUX_VM)
+      })
+
+      it("changing to mac VM picks the smallest available mac machine type", () => {
+        agent.changeEnvironmentType(Agent.ENVIRONMENT_TYPE_MAC_VM)
+
+        expect(agent.type).to.equal("a2-standard-4")
+        expect(agent.osImage).to.equal("macos-xcode16")
+        expect(agent.environmentType()).to.equal(Agent.ENVIRONMENT_TYPE_MAC_VM)
+      })
+
+      it("changing to docker picks the smallest available linux machine type", () => {
+        agent.changeEnvironmentType(Agent.ENVIRONMENT_TYPE_DOCKER)
+
+        expect(agent.type).to.equal("e2-standard-2")
+        expect(agent.environmentType()).to.equal(Agent.ENVIRONMENT_TYPE_DOCKER)
+      })
+    })
   })
 
   describe("#changeMachineType", () => {

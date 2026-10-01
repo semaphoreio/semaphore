@@ -19,4 +19,8 @@ defmodule Support.FakeServices.PeriodicSchedulerService do
   def persist(req, stream) do
     FunRegistry.run!(__MODULE__, :persist, [req, stream])
   end
+
+  def bulk_upsert_and_prune(req, stream) do
+    FunRegistry.run!(__MODULE__, :bulk_upsert_and_prune, [req, stream])
+  end
 end

@@ -3,12 +3,23 @@ defmodule GithubNotifier.Services.BlockFinishedNotifier do
 
   alias GithubNotifier.{Notifier, Utils}
 
+  # ~15 min of redelivery before dead-lettering — rides out provider outages
+  # and busy delivery-guard leases instead of dropping the status.
+  @retry_delay 30
+  @retry_limit 30
+
   use Tackle.Consumer,
     url: Application.get_env(:github_notifier, :amqp_url),
     exchange: "pipeline_block_state_exchange",
     routing_key: "done",
     service: "github_notifier.block_finished_notifier",
-    connection_id: :block_notifier
+    connection_id: :block_notifier,
+    dead_letter_queue: Application.get_env(:github_notifier, :tackle_dead_letter_queue, true),
+    retry_delay: @retry_delay,
+    retry_limit: @retry_limit
+
+  @doc false
+  def retry_config, do: %{retry_delay: @retry_delay, retry_limit: @retry_limit}
 
   def handle_message(message) do
     Watchman.benchmark("block_finished_notifier.duration", fn ->

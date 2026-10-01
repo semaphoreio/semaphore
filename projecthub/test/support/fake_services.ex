@@ -42,5 +42,18 @@ defmodule Support.FakeServices do
     end)
 
     FunRegistry.set!(FS.PeriodicSchedulerService, :list, list_response)
+
+    bulk_upsert_and_prune_response =
+      InternalApi.PeriodicScheduler.BulkUpsertAndPruneResponse.new(
+        status: InternalApi.Status.new(code: Google.Rpc.Code.value(:OK)),
+        upserted: [],
+        deleted_ids: []
+      )
+
+    FunRegistry.set!(
+      FS.PeriodicSchedulerService,
+      :bulk_upsert_and_prune,
+      bulk_upsert_and_prune_response
+    )
   end
 end

@@ -43,6 +43,23 @@ defmodule Ppl.PplBlocks.Model.PplBlockConectionsTest do
     assert String.contains?(description.error_description, "unknown_block_name,")
   end
 
+  @tag :integration
+  test "circular blocks dependencies - fail" do
+    schedule_request =
+      Test.Helpers.schedule_request_factory(:local)
+      |> Map.put("repo_name", "31_cyclic_deps")
+
+    {:ok, description} = schedule_pipeline(schedule_request, "done")
+
+    assert description.state == "done"
+    assert description.result_reason == "malformed"
+
+    assert String.contains?(
+             description.error_description,
+             "Circular dependency between blocks detected:"
+           )
+  end
+
   defp schedule_pipeline(schedule_request, desired_state) do
     {:ok, %{ppl_id: ppl_id}} = Ppl.Actions.schedule(schedule_request)
 

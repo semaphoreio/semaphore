@@ -27,6 +27,18 @@ defmodule Block.Blocks.STMHandler.StoppingState do
     |> determin_state_transition(blk)
   end
 
+  # The task reached a real verdict (passed/failed) before the stop took effect — mirror it
+  # (as RunningState does) instead of forcing "stopped", so passed work is not relabelled.
+  defp determin_state_transition({:ok, %{state: "done", result: result, result_reason: nil}}, _blke)
+       when result in ["passed", "failed"],
+    do: {:ok, fn _, _ -> {:ok, %{state: "done", result: result}} end}
+
+  defp determin_state_transition({:ok, %{state: "done", result: result, result_reason: reason}}, _blke)
+       when result in ["passed", "failed"],
+    do: {:ok, fn _, _ -> {:ok, %{state: "done", result: result, result_reason: reason}} end}
+
+  # Otherwise the task was actually interrupted (stopped/canceled) — record the block as
+  # stopped with the termination reason.
   defp determin_state_transition({:ok, %{state: "done"}}, blke) do
     reason = determin_reason(blke)
     {:ok, fn _, _ -> {:ok, %{state: "done", result: "stopped", result_reason: reason}} end}
