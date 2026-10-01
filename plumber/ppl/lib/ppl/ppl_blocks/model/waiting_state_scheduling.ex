@@ -7,9 +7,9 @@ defmodule Ppl.PplBlocks.Model.WaitingStateScheduling do
   falls back to ready blocks; `:ready_first` does the opposite. The STM
   alternates the two within a batch, so stops are not delayed behind a
   scheduling backlog and a burst of stops cannot starve ready blocks.
+  The groups are disjoint: a block with a terminate request is only claimed
+  from the terminate group, so stops cannot take the ready-first slots.
   Within each group the least recently updated block is claimed first.
-  A ready block that also has a terminate request can be claimed from the
-  ready group; the STM runs the terminate handler for it either way.
   """
 
   alias Ppl.Query2Ecto.STM
@@ -89,6 +89,7 @@ defmodule Ppl.PplBlocks.Model.WaitingStateScheduling do
       ON pb.ppl_id = ppl.ppl_id
     WHERE pb.in_scheduling = false AND
       pb.state = 'waiting' AND
+      pb.terminate_request IS NULL AND
       /* Do not consider pipelines that are stil in state transition. */
       ppl.state = 'running' AND
       NOT EXISTS (#{not_ready_ppl_blocks_query})

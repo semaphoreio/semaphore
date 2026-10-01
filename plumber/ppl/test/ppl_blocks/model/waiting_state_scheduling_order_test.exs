@@ -180,9 +180,10 @@ defmodule Ppl.PplBlocks.Model.WaitingStateSchedulingOrderTest do
 
     ready_ppl = running_pipeline()
     ready = insert_blocks(ready_ppl, 2)
-    # The stopped blocks are also "ready" (their pipeline is running), so make
-    # the real ready blocks the oldest ones in the ready group.
-    Enum.each(ready, &set_updated_at(&1, ~N[2026-01-01 08:00:00.000000]))
+    # The stops belong to a running pipeline and are older than the ready
+    # blocks, so they would also match the ready group if it took them.
+    Enum.each(stopped, &set_updated_at(&1, ~N[2026-01-01 08:00:00.000000]))
+    Enum.each(ready, &set_updated_at(&1, ~N[2026-01-01 09:00:00.000000]))
 
     # One wake-up of the waiting STM with batch_size 5.
     claimed =
@@ -296,6 +297,23 @@ defmodule Ppl.PplBlocks.Model.WaitingStateSchedulingOrderTest do
     reset_in_scheduling()
     assert {:ok, {_, %{id: first}}} = WaitingState.enter_scheduling(%{})
     assert first == stopped.id
+  end
+
+  test ":ready_first never claims a terminate request while ready work exists" do
+    ppl_id = running_pipeline()
+    [stopped, ready] = insert_blocks(ppl_id, 2)
+
+    set_updated_at(stopped, ~N[2026-01-01 08:00:00.000000])
+    set_updated_at(ready, ~N[2026-01-01 09:00:00.000000])
+    set_terminate_request(stopped, "stop")
+
+    assert {:ok, [{_, blk}]} = WaitingStateScheduling.get_ready_block(:ready_first)
+    assert blk.id == ready.id
+
+    # The stop is still claimed, through the terminate group.
+    assert {:ok, [{_, blk}]} = WaitingStateScheduling.get_ready_block(:ready_first)
+    assert blk.id == stopped.id
+    assert {:ok, []} = WaitingStateScheduling.get_ready_block(:ready_first)
   end
 
   ################### Helpers ###################
