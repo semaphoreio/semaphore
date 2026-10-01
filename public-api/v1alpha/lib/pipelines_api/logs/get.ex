@@ -14,6 +14,7 @@ defmodule PipelinesAPI.Logs.Get do
   alias PipelinesAPI.LoghubClient
   alias PipelinesAPI.Loghub2Client
   alias PipelinesAPI.Logs.Body
+  alias PipelinesAPI.Logs.Limiter
   alias PipelinesAPI.Logs.Params, as: LogsParams
   alias PipelinesAPI.Util.{Metrics, RequestMetrics, ToTuple}
   alias Plug.Conn
@@ -83,6 +84,19 @@ defmodule PipelinesAPI.Logs.Get do
   # PipelinesAPI.Logs.Body for how the status is chosen and what happens
   # when the stream fails after the response started).
   defp get_logs(conn, job = %{self_hosted: false}) do
+    case Limiter.run(fn -> stream_logs(conn, job) end) do
+      {:error, :busy} ->
+        RespCommon.respond(
+          ToTuple.unavailable_error("Logs are temporarily unavailable, please retry"),
+          conn
+        )
+
+      conn ->
+        conn
+    end
+  end
+
+  defp stream_logs(conn, job) do
     case LoghubClient.stream_log_events(source_job_id(job), Body.new(conn), &add_events/2) do
       {:ok, body} ->
         Body.finish(body)
