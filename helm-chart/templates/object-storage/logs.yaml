@@ -12,7 +12,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
 stringData:
   LOGS_STORAGE_BACKEND: "s3"
-  LOGS_STORAGE_S3_URL: "https://logs.{{.Values.global.domain.name}}"
+  LOGS_STORAGE_S3_URL: {{ ternary "http://storage-logs:9000" (printf "https://logs.%s" .Values.global.domain.name) .Values.global.logs.local.enabled | quote }}
   AWS_REGION: {{ .Values.global.logs.region | quote }}
   S3_BUCKET_NAME: "semaphore-logs"
   AWS_ACCESS_KEY_ID: {{ $creds.accessKey | quote }}
