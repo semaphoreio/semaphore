@@ -1,4 +1,8 @@
 {{- define "semaphore.objectStore.credentials" -}}
+{{- $former := list "semaphore" (printf "semaphore-%s-access" .key) (printf "semaphore-%s-secret" .key) -}}
+{{- if or (has .store.username $former) (has .store.password $former) -}}
+{{- fail (printf "global.%s.username and global.%s.password are set to the chart's former default credentials; unset them to generate new ones, or set your own" .key .key) -}}
+{{- end -}}
 {{- $existing := lookup "v1" "Secret" .root.Release.Namespace .store.secretName -}}
 {{- $data := dict -}}
 {{- if $existing -}}
@@ -15,6 +19,9 @@
 {{- dict "accessKey" $accessKey "secretKey" $secretKey | toJson -}}
 {{- end -}}
 {{- define "semaphore.objectStore" -}}
+{{- $image := required (printf "global.%s.local.image.repository and global.%s.local.image.tag are required" .key .key) .store.local.image -}}
+{{- $repository := required (printf "global.%s.local.image.repository is required" .key) $image.repository -}}
+{{- $tag := required (printf "global.%s.local.image.tag is required" .key) $image.tag -}}
 apiVersion: v1
 kind: Service
 metadata:
@@ -46,6 +53,8 @@ spec:
       app: {{ .name }}
   template:
     metadata:
+      annotations:
+        checksum/credentials: {{ printf "%s\n%s" .store.username .store.password | sha256sum }}
       labels:
         app: {{ .name }}
         product: semaphoreci
@@ -58,7 +67,7 @@ spec:
         fsGroupChangePolicy: OnRootMismatch
       initContainers:
       - name: prepare-data
-        image: "{{ .store.local.image.repository }}:{{ .store.local.image.tag }}"
+        image: "{{ $repository }}:{{ $tag }}"
         securityContext:
           runAsUser: 0
           runAsGroup: 0
@@ -69,7 +78,7 @@ spec:
           mountPath: "/data"
       containers:
       - name: {{ .name }}
-        image: "{{ .store.local.image.repository }}:{{ .store.local.image.tag }}"
+        image: "{{ $repository }}:{{ $tag }}"
         env:
           - name: RUSTFS_ACCESS_KEY
             valueFrom:
