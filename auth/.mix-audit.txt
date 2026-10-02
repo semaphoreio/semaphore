@@ -8,13 +8,58 @@ GHSA-j9wq-vxxc-94wf
 GHSA-mp55-p8c9-rfw2
 GHSA-pj7v-xfvx-wmjq
 
-# --- protobuf GHSA-rv48-qqj5-crxg (unbounded recursion decoding nested embedded messages) ---
-# First patched in protobuf 0.16.1. auth pulls protobuf transitively via grpc
-# (~> 0.14) and only decodes messages from internal gRPC services, not
+# --- protobuf 0.15.0 GHSA-rv48-qqj5-crxg (unbounded recursion decoding nested
+# embedded messages), first patched in 0.16.1 ---
+# auth pulls protobuf transitively via grpc (~> 0.14) and only decodes messages
+# from internal gRPC services inside the cluster trust boundary, never
 # attacker-supplied payloads, so the recursion DoS is not reachable here.
 # Held at 0.15.x deliberately: 0.16.x adds a per-encode map-coercion
 # deprecation warning that is noisy in hot encode paths, so the bump is
-# deferred pending an explicit-struct sweep of the encode sites.
+# deferred pending an explicit-struct sweep of the encode sites, and is tracked
+# for the dep-bump branch (regenerates stubs fleet-wide).
 GHSA-rv48-qqj5-crxg
 
+# --- gun 2.2.0 advisories, all fixed in gun 2.4.0 ---
+# gun is a transitive dependency of grpc and is used only as the HTTP/2 client
+# transport for gRPC calls to fixed internal cluster endpoints (see
+# Auth.GrpcClient / Auth.FeatureClient). No user-supplied URLs, no external or
+# untrusted servers, no HTTP/1.1 usage. Bump to 2.4.0 (inside grpc's ~> 2.0
+# requirement) tracked for the dep-bump branch.
+#
+# unexpected status code/return value mishandling (requires a malicious server)
+GHSA-2j82-37xg-f9wp
+# gun_http2 origin validation error (requires cross-origin connection reuse;
+# gRPC channels here are single fixed origins)
+GHSA-36w4-95hv-5vwg
+# uncontrolled resource consumption driven by a malicious server
+GHSA-r53j-fjj5-mv77
+# HTTP request/response splitting via crafted headers (HTTP/1.1-shaped; gRPC
+# metadata is internally constructed and HPACK-encoded over HTTP/2)
+GHSA-w4f7-4cxr-rv3c
 
+# --- grpc 0.11.5 advisories, all first patched in grpc 1.0.0 ---
+# All four are server-side, and auth never starts a gRPC server: there is no
+# `use GRPC.Server` and no GRPC.Server.Supervisor anywhere in lib/, and no
+# start_server config. grpc is used purely as a client (GRPC.Stub via
+# Auth.GrpcClient / Auth.FeatureClient) against internal backend services.
+# Same posture as front (see front/.mix-audit.txt); ee/rbac differs because it
+# does serve gRPC (see ee/rbac/.mix-audit.txt). The real fix is grpc 1.0.0, a
+# breaking major shared across the monorepo, tracked as a coordinated
+# migration rather than a patch bump.
+#
+# RCE / atom-table exhaustion via :erlang.binary_to_term in
+# GRPC.Codec.Erlpack.decode/2 (critical). Needs a server that registers the
+# Erlpack codec and accepts application/grpc+erlpack; auth registers no codec
+# (grep for Erlpack, GRPC.Codec and `codecs:` across lib/ and config/ returns
+# nothing) and serves no gRPC endpoint.
+GHSA-grp7-v8xh-rj7h
+# Decompression bomb in GRPC.Compressor.Gzip.decompress/1 (high), fired by
+# frames arriving at a server carrying grpc-encoding: gzip. auth only decodes
+# responses from internal services, which are not attacker-controlled.
+GHSA-6ccx-9c9f-327w
+# Unbounded request-body accumulation in read_full_body/3 (high) — the server
+# request read loop only.
+GHSA-q8gf-9rvj-gmgj
+# Path bindings overridable by query string and request body (high). Requires
+# HTTP transcoding of gRPC path bindings, which auth does not expose.
+GHSA-mwr4-5g34-j5cq
