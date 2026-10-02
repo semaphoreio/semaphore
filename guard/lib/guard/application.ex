@@ -186,6 +186,13 @@ defmodule Guard.Application do
             id: :oauth_refresh_failure_cache
           ),
         active: true
+      },
+      %{
+        worker:
+          Supervisor.child_spec({Cachex, :oauth_revoke_rate_cache},
+            id: :oauth_revoke_rate_cache
+          ),
+        active: true
       }
     ])
   end

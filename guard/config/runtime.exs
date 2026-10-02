@@ -19,6 +19,28 @@ config :watchman,
 
 config :guard, :restricted_org_usernames, System.get_env("RESTRICTED_ORG_USERNAMES", "")
 
+# Maximum distinct accounts guard will revoke for one provider inside the
+# rolling window; above it, revocations are refused and reported as transient.
+# A user-grant problem is per-account, a client-credential problem is
+# fleet-wide, so the rate distinguishes them without matching error strings.
+# An unset, zero or unparseable value falls back to the in-code default.
+case System.get_env("OAUTH_REVOKE_RATE_THRESHOLD") do
+  nil ->
+    :ok
+
+  value ->
+    case Integer.parse(value) do
+      {threshold, ""} when threshold > 0 ->
+        config :guard, :oauth_revoke_rate_threshold, threshold
+
+      _ ->
+        IO.warn(
+          "Ignoring OAUTH_REVOKE_RATE_THRESHOLD=#{inspect(value)}: " <>
+            "expected a positive integer"
+        )
+    end
+end
+
 config :guard, Guard.Repo,
   adapter: Ecto.Adapters.Postgres,
   database: System.get_env("POSTGRES_DB_NAME") || "guard",
