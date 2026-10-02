@@ -169,6 +169,7 @@ defmodule FrontWeb.BillingController do
     conn
     |> put_resp_content_type("text/csv")
     |> put_resp_header("content-disposition", "attachment; filename=\"#{filename}.csv\"")
+    |> put_root_layout(false)
     |> send_resp(200, spending_csv)
   end
 
@@ -194,6 +195,7 @@ defmodule FrontWeb.BillingController do
     conn
     |> put_resp_content_type("text/csv")
     |> put_resp_header("content-disposition", "attachment; filename=\"#{filename}.csv\"")
+    |> put_root_layout(false)
     |> send_resp(200, projects_csv)
   end
 
