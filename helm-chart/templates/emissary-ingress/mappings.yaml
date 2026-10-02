@@ -635,18 +635,6 @@ spec:
   service: public-api-gateway.{{ .Release.Namespace }}:80
   timeout_ms: 30000
   precedence: 100
----
-apiVersion: getambassador.io/v3alpha1
-kind: Mapping
-metadata:
-  name: secrethub-mapping
-  namespace: {{ .Release.Namespace }}
-spec:
-  hostname: "*"
-  prefix: /api/v1alpha/secrets
-  rewrite: ""
-  service: secrethub-http.{{ .Release.Namespace }}:4000
-  precedence: 100
 {{- if (index .Values "mcp-server" "enabled") }}
 ---
 # MCP OAuth 2.1 Protected Resource Metadata (RFC 9728)
