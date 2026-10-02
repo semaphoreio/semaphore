@@ -334,6 +334,17 @@ defmodule Projecthub.Models.Project do
     end
   end
 
+  @doc """
+  Brings a soft-deleted project back.
+
+  Deleting a project tells artifacthub to empty its artifact storage, but that does
+  not happen straight away: the storage sits marked for a grace period first, and the
+  event published here cancels the mark. Restoring inside that window therefore brings
+  the artifacts back along with the project.
+
+  Restoring later brings the project back without its artifacts, which is what
+  deleting it said would happen, and with its retention policy untouched.
+  """
   def restore(project) do
     {:ok, project} = update_record(project, %{deleted_at: nil, deleted_by: nil})
     {:ok, _} = Events.ProjectRestored.publish(project)
