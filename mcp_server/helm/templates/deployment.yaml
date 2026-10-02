@@ -49,7 +49,7 @@ spec:
               path: features.yml
       containers:
         - name: {{ .Chart.Name }}
-          image: "{{ .Values.global.image.registry }}/auth:mcp_{{ .Values.imageTag }}"
+          image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
           volumeMounts:
             - name: features-volume
               mountPath: "/app/features.yml"
