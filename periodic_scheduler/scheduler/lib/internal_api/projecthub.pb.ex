@@ -254,6 +254,12 @@ defmodule InternalApi.Projecthub.Project.Spec.Task do
   field :recurring, 7, type: :bool
   field :parameters, 8, repeated: true, type: InternalApi.Projecthub.Project.Spec.Task.Parameter
   field :description, 9, type: :string
+
+  field :skip_scheduled_run_notifications, 10,
+    type: :bool,
+    json_name: "skipScheduledRunNotifications"
+
+  field :skip_manual_run_notifications, 11, type: :bool, json_name: "skipManualRunNotifications"
 end
 
 defmodule InternalApi.Projecthub.Project.Spec do
