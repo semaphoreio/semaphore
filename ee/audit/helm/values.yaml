@@ -7,6 +7,17 @@ logging: info
 api:
   replicas: 1
   dbPoolSize: 2
+  retention:
+    consumerEnabled: true
+    minRetentionDays: 400
+    gracePeriodDays: 15
+    applierBatchSize: 1000
+    # Staged rollout: let the marker run and observe retention.marked /
+    # retention.backlog for at least one grace period, then enable deletion.
+    deleterEnabled: false
+    deleterSleepPeriodSec: 30
+    deleterDrainPeriodSec: 1
+    deleterBatchSize: 100
   resources:
     limits:
       cpu: "0.2"
