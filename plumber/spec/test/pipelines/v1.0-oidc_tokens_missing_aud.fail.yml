@@ -1,0 +1,15 @@
+version: "v1.0"
+name: OIDC tokens missing aud
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1604-minimal
+blocks:
+  - name: Test
+    task:
+      jobs:
+        - name: Missing aud
+          oidc_tokens:
+            PYPI_OIDC_TOKEN: {}
+          commands:
+            - echo "$PYPI_OIDC_TOKEN"

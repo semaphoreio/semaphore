@@ -1,0 +1,46 @@
+version: "v1.0"
+name: OIDC tokens at max tokens
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1604-minimal
+blocks:
+  - name: Test
+    task:
+      jobs:
+        - name: Exactly 16 tokens
+          oidc_tokens:
+            T01:
+              aud: pypi
+            T02:
+              aud: pypi
+            T03:
+              aud: pypi
+            T04:
+              aud: pypi
+            T05:
+              aud: pypi
+            T06:
+              aud: pypi
+            T07:
+              aud: pypi
+            T08:
+              aud: pypi
+            T09:
+              aud: pypi
+            T10:
+              aud: pypi
+            T11:
+              aud: pypi
+            T12:
+              aud: pypi
+            T13:
+              aud: pypi
+            T14:
+              aud: pypi
+            T15:
+              aud: pypi
+            T16:
+              aud: pypi
+          commands:
+            - echo hi

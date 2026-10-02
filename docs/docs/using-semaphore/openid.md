@@ -377,6 +377,79 @@ vault kv get -field=value secret/data/production/my-secret
 </div>
 </details>
 
+## Custom audiences with `oidc_tokens` {#custom-audiences}
+
+:::caution Coming soon
+
+The `oidc_tokens` block is being added in stages. The yaml schema and validation are available now; runtime injection of the named environment variables is part of a follow-up release. Pipelines using `oidc_tokens` will pass validation, but the env vars will not yet be populated until the runtime wiring lands.
+
+:::
+
+By default, Semaphore injects `SEMAPHORE_OIDC_TOKEN` into every job with the `aud` claim set to your organization URL (`https://<org-name>.semaphoreci.com`). This works for cloud providers like AWS, Google Cloud, and HashiCorp Vault that accept any audience matching the configured identity provider.
+
+Some token consumers — including [PyPI's trusted publishers](https://docs.pypi.org/trusted-publishers/), npm trusted publishing, and other registries — require the OIDC token to carry a specific audience string (e.g. `aud: pypi`). For these cases, declare additional tokens in a per-job `oidc_tokens:` block.
+
+### Example: publishing to PyPI
+
+```yaml
+version: v1.0
+name: Publish to PyPI
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu2004
+blocks:
+  - name: Publish
+    task:
+      jobs:
+        - name: Build and upload
+          oidc_tokens:
+            PYPI_OIDC_TOKEN:
+              aud: pypi
+          commands:
+            - checkout
+            - sem-version python 3.11
+            - python -m pip install --upgrade build twine
+            - python -m build
+            - 'API_TOKEN=$(curl -fsS -X POST https://pypi.org/_/oidc/mint-token \
+                  -H "Content-Type: application/json" \
+                  -d "{\"token\":\"$PYPI_OIDC_TOKEN\"}" | jq -r .token)'
+            - 'TWINE_USERNAME=__token__ TWINE_PASSWORD=$API_TOKEN python -m twine upload dist/*'
+```
+
+### How it works
+
+- Each entry in `oidc_tokens` produces one additional minted token with the requested `aud`. The token is exposed as the named environment variable (the yaml key).
+- The default `SEMAPHORE_OIDC_TOKEN` is still injected with the org-URL audience whenever the OIDC feature is enabled for the organization — your existing AWS / Vault flows continue to work unchanged.
+- All tokens (default + `oidc_tokens` entries) share the same TTL and the same claim set, except for `aud` (per the request) and `jti` (always unique per token).
+
+### Validation rules
+
+The yaml key (the env var name) must match `^[A-Z_][A-Z0-9_]*$`. The reserved name `SEMAPHORE_OIDC_TOKEN` cannot be used as a custom token name (it's the auto-injected default).
+
+`aud` is required and must be either:
+
+- a string (becomes JWT `"aud": "<value>"`), or
+- a list of two or more strings (becomes JWT `"aud": [<values>]`, per [RFC 7519 §4.1.3](https://www.rfc-editor.org/rfc/rfc7519#section-4.1.3)). A single-element list (e.g., `aud: ["pypi"]`) is normalized to a string in the JWT, per RFC 7519's convention for the single-audience case — this is necessary for consumers like PyPI that strictly verify `aud` as a string.
+
+A pipeline that omits `aud`, uses an invalid env var name, or collides with `SEMAPHORE_OIDC_TOKEN` is rejected at submission time.
+
+The schema enforces these limits: up to 16 entries per job, each with an `aud` of up to 8 audiences, each audience up to 256 characters. Pipelines exceeding these limits are rejected at validation time.
+
+### Multiple consumers in one job
+
+You can declare multiple tokens with different audiences in the same job:
+
+```yaml
+oidc_tokens:
+  PYPI_OIDC_TOKEN:
+    aud: pypi
+  NPM_OIDC_TOKEN:
+    aud: ["npm-prod", "npm-staging"]
+  DOCKERHUB_OIDC_TOKEN:
+    aud: registry.hub.docker.com
+```
+
 ## Implementation details
 
 See the [OIDC token reference page](../reference/openid) to learn how the OIDC tokens are created and what fields are available.
