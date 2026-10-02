@@ -476,6 +476,19 @@ spec:
 apiVersion: getambassador.io/v3alpha1
 kind: Mapping
 metadata:
+  name: plumber-public-artifacts-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: "*"
+  prefix: /api/v1alpha/artifacts
+  rewrite: "/artifacts"
+  service: plumber-public.{{ .Release.Namespace }}:4004
+  timeout_ms: 5000
+  precedence: 100
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
   name: plumber-public-artifacts-retention-mapping
   namespace: {{ .Release.Namespace }}
 spec:
