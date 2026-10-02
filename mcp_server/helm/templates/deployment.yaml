@@ -118,6 +118,11 @@ spec:
                 configMapKeyRef:
                   name: {{ .Values.global.internalApi.configMapName }}
                   key: INTERNAL_API_URL_USER
+            - name: INTERNAL_API_URL_SCHEDULER
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.internalApi.configMapName }}
+                  key: INTERNAL_API_URL_SCHEDULER
             - name: AMQP_URL
               valueFrom:
                 secretKeyRef:
