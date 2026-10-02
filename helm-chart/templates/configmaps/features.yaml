@@ -12,6 +12,10 @@ data:
       enabled: false
     artifacts:
       enabled: true
+    artifacts_api:
+      enabled: true
+    artifacts_job_logs:
+      enabled: true
     audit_logs:
       enabled: false
     audit_streaming:
@@ -56,6 +60,12 @@ data:
       quantity: 600
     max_projects_in_org:
       quantity: 10000
+    mcp_server_artifacts_tools:
+      enabled: true
+    mcp_server_read_tools:
+      enabled: true
+    mcp_server_write_tools:
+      enabled: true
     multiple_organizations:
       enabled: false
     okta:
@@ -130,6 +140,10 @@ data:
       enabled: true
     artifacts:
       enabled: true
+    artifacts_api:
+      enabled: true
+    artifacts_job_logs:
+      enabled: true
     audit_logs:
       enabled: true
     audit_streaming:
@@ -170,6 +184,12 @@ data:
       quantity: 600
     max_projects_in_org:
       quantity: 10000
+    mcp_server_artifacts_tools:
+      enabled: true
+    mcp_server_read_tools:
+      enabled: true
+    mcp_server_write_tools:
+      enabled: true
     multiple_organizations:
       enabled: false
     okta:
