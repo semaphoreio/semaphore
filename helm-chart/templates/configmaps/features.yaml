@@ -12,6 +12,10 @@ data:
       enabled: false
     artifacts:
       enabled: true
+    artifacts_api:
+      enabled: true
+    artifacts_job_logs:
+      enabled: true
     audit_logs:
       enabled: false
     audit_streaming:
@@ -135,6 +139,10 @@ data:
     advanced_deployment_targets:
       enabled: true
     artifacts:
+      enabled: true
+    artifacts_api:
+      enabled: true
+    artifacts_job_logs:
       enabled: true
     audit_logs:
       enabled: true
