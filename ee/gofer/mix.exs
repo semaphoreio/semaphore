@@ -53,7 +53,7 @@ defmodule Gofer.Mixfile do
       {:when, github: "renderedtext/when"},
       {:watchman, github: "renderedtext/ex-watchman"},
       {:log_tee, git: "https://github.com/renderedtext/log-tee.git"},
-      {:tackle, github: "renderedtext/ex-tackle"},
+      {:tackle, github: "renderedtext/ex-tackle", tag: "v0.4.1"},
       {:junit_formatter, "~> 3.1", only: [:test]},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
       {:mix_test_watch, "~> 1.1", only: [:dev], runtime: false},
