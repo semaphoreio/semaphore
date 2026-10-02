@@ -68,12 +68,14 @@ module Semaphore::GithubApp
         described_class.new.perform(installation_id)
       end
 
-      it "raises LowRateLimitError when result is :low_rate_limit" do
-        allow(Repositories).to receive(:refresh).and_return(:low_rate_limit)
+      it "re-raises LowRateLimitError so Sidekiq retries with a deferred backoff" do
+        allow(Rails.logger).to receive(:info)
+        allow(Repositories).to receive(:refresh)
+          .and_raise(LowRateLimitError.new("low", :resets_at => Time.zone.at(1_000_000)))
 
         expect do
           described_class.new.perform(installation_id)
-        end.to raise_error(LowRateLimitError, /rate limit too low/i)
+        end.to raise_error(LowRateLimitError)
       end
 
       it "logs and reraises incomplete repository list errors" do
@@ -241,7 +243,8 @@ module Semaphore::GithubApp
           item = Sidekiq::Queue.new("github_app").first.item
 
           # 2. Job fails because of rate limit — lock is NOT released
-          allow(Repositories).to receive(:refresh).and_return(:low_rate_limit)
+          allow(Repositories).to receive(:refresh)
+            .and_raise(LowRateLimitError.new("low", :resets_at => Time.zone.at(1_000_000)))
 
           middleware = SidekiqUniqueJobs::Middleware::Server.new
           expect do
@@ -340,7 +343,8 @@ module Semaphore::GithubApp
       it "does NOT release lock after :low_rate_limit (job will retry)" do
         SidekiqUniqueJobs.use_config(enabled: true) do
           allow(Rails.logger).to receive(:info)
-          allow(Repositories).to receive(:refresh).and_return(:low_rate_limit)
+          allow(Repositories).to receive(:refresh)
+            .and_raise(LowRateLimitError.new("low", :resets_at => Time.zone.at(1_000_000)))
 
           jid = described_class.perform_async(installation_id)
           expect(jid).not_to be_nil
