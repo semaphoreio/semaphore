@@ -1,6 +1,33 @@
 defmodule Guard.Api.OIDC do
   require Logger
 
+  @identity_push_metric "guard.oidc.federated_identity_push"
+
+  # Keycloak 25.x enforces federated-identity uniqueness only within a single
+  # user, so a blind POST can leave two Keycloak users holding the same
+  # (provider, uid) - exactly the state that breaks provider login. Ask who
+  # holds it first.
+  #
+  # An unreadable answer (non-2xx, transport error, or a body that is not a
+  # list of users) proceeds with the push: it leaves behaviour as it was before
+  # this check existed rather than letting a Keycloak hiccup block a legitimate
+  # push. A user entry only counts as a holder when it carries an "id" to
+  # compare against.
+  defp held_by_other?(client, oidc_user_id, %{identityProvider: provider, userId: uid}) do
+    case Tesla.get(client, "/users", query: [idpAlias: provider, idpUserId: uid]) do
+      {:ok, %{status: status, body: body}} when status in 200..299 and is_list(body) ->
+        Enum.any?(body, fn
+          %{"id" => id} when is_binary(id) -> id != oidc_user_id
+          _ -> false
+        end)
+
+      _ ->
+        false
+    end
+  end
+
+  defp held_by_other?(_client, _oidc_user_id, _federated_identity), do: false
+
   def create_oidc_user(client, user, opts \\ []) do
     password_data = Keyword.get(opts, :password_data, [])
 
@@ -61,9 +88,15 @@ defmodule Guard.Api.OIDC do
       {:ok, _} ->
         data.federatedIdentities
         |> Enum.map(fn identity ->
-          do_update_federated_identity(client, oidc_user_id, identity)
+          set_federated_identity(client, oidc_user_id, identity)
         end)
         |> Enum.reduce({:ok, oidc_user_id}, fn
+          # Another Keycloak user holds this identity. Skipping it is the whole
+          # point of the check, so it must not fail the surrounding update -
+          # Guard.User.Actions.change_email/2 turns any error here into a
+          # user-visible failure and rolls back both repos, even though the
+          # email write itself succeeded.
+          {:error, :held_by_other}, acc -> acc
           {:ok, oidc_user_id}, {:ok, _} -> {:ok, oidc_user_id}
           {:ok, _}, {:error, error} -> {:error, error}
           {:error, error}, _ -> {:error, error}
@@ -90,12 +123,33 @@ defmodule Guard.Api.OIDC do
     end
   end
 
-  defp do_update_federated_identity(
+  def set_federated_identity(
+        client,
+        oidc_user_id,
+        %{identityProvider: provider} = federated_identity
+      ) do
+    if held_by_other?(client, oidc_user_id, federated_identity) do
+      Logger.warning(
+        "[OIDC API] Refusing to push #{provider} identity #{federated_identity.userId} to user " <>
+          "#{oidc_user_id}: another Keycloak user already holds it"
+      )
+
+      Watchman.increment({@identity_push_metric, ["held_by_other"]})
+
+      {:error, :held_by_other}
+    else
+      do_set_federated_identity(client, oidc_user_id, federated_identity)
+    end
+  end
+
+  defp do_set_federated_identity(
          client,
          oidc_user_id,
          %{identityProvider: provider} = federated_identity
        ) do
-    Tesla.delete(client, "/users/" <> oidc_user_id <> "/federated-identity/" <> provider)
+    # The identity may or may not already exist in Keycloak; the POST below
+    # is the authoritative operation, so the removal result is ignored.
+    _ = remove_federated_identity(client, oidc_user_id, provider)
 
     case Tesla.post(
            client,
@@ -108,6 +162,43 @@ defmodule Guard.Api.OIDC do
         else
           Logger.error(
             "[OIDC API] Error updating federated identities for user #{oidc_user_id}: #{inspect(res.body)}"
+          )
+
+          {:error, "#{res.body["errorMessage"]}"}
+        end
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  def get_federated_identities(client, oidc_user_id) do
+    case Tesla.get(client, "/users/" <> oidc_user_id <> "/federated-identity") do
+      {:ok, res} ->
+        if res.status in 200..299 do
+          {:ok, res.body}
+        else
+          Logger.error(
+            "[OIDC API] Error fetching federated identities for user #{oidc_user_id}: #{inspect(res.body)}"
+          )
+
+          {:error, "#{res.body["errorMessage"]}"}
+        end
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  def remove_federated_identity(client, oidc_user_id, provider) do
+    case Tesla.delete(client, "/users/" <> oidc_user_id <> "/federated-identity/" <> provider) do
+      {:ok, res} ->
+        # 404 means the identity is already absent; removal is idempotent.
+        if res.status in 200..299 or res.status == 404 do
+          {:ok, oidc_user_id}
+        else
+          Logger.error(
+            "[OIDC API] Error removing #{provider} federated identity for user #{oidc_user_id}: #{inspect(res.body)}"
           )
 
           {:error, "#{res.body["errorMessage"]}"}
@@ -139,8 +230,19 @@ defmodule Guard.Api.OIDC do
       {:ok, list} ->
         list
         |> Enum.map(&%{identityProvider: &1.repo_host, userId: &1.github_uid, userName: &1.login})
+        |> Enum.reject(&pending_claim_sync?/1)
         |> map_federated_identities()
     end
+  end
+
+  # A pending sync request means a claim's identity removals are not yet
+  # confirmed in Keycloak. Pushing the identity now could attach it to two
+  # Keycloak users; the drainer pushes it once the removals are done.
+  defp pending_claim_sync?(identity) do
+    Guard.FrontRepo.FederatedIdentitySyncRequest.pending?(
+      identity.identityProvider,
+      identity.userId
+    )
   end
 
   @spec get_oidc_credential(Keyword.t()) :: map() | nil
