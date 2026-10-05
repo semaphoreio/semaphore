@@ -166,6 +166,8 @@ data:
       enabled: true
     gitlab:
       enabled: true
+    git:
+      enabled: true
     github_oauth_token:
       enabled: false
     email_members:
