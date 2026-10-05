@@ -3,6 +3,10 @@ defmodule HooksProcessor.Hooks.Payload.Git do
   Encapsulates operations on git hooks payload.
   """
 
+  # The post-receive hook forwards git's new revision as the commit sha; git sends
+  # an all-zero revision when the ref was deleted.
+  @null_commit "0000000000000000000000000000000000000000"
+
   @doc """
   Extracts hook type from hook payload.
   """
@@ -14,6 +18,16 @@ defmodule HooksProcessor.Hooks.Payload.Git do
       "refs/tags/" <> _ -> "tag"
       "refs/heads/" <> _ -> "branch"
       _ -> ""
+    end
+  end
+
+  @doc """
+  Used for concluding whether the ref was pushed or deleted via given hook
+  """
+  def ref_action(payload) do
+    case get_in(payload, ["commit", "sha"]) do
+      @null_commit -> "deleted"
+      _ -> "push"
     end
   end
 

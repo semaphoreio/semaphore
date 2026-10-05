@@ -37,4 +37,18 @@ defmodule HooksProcessor.Hooks.Payload.GitTest do
     assert data.commit_author == "Radek"
     assert data.author_email == "radek@example.com"
   end
+
+  test "ref_action() tells a deleted ref from a pushed one" do
+    assert GitHooks.branch() |> GitPayload.ref_action() == "push"
+    assert GitHooks.tag() |> GitPayload.ref_action() == "push"
+    assert GitHooks.deleted_branch() |> GitPayload.ref_action() == "deleted"
+  end
+
+  test "extract_data() keeps the reference of a deleted branch" do
+    data = GitHooks.deleted_branch() |> GitPayload.extract_data("branch")
+    assert data.branch_name == "master"
+    assert data.git_ref == "refs/heads/master"
+    assert data.commit_sha == "0000000000000000000000000000000000000000"
+    assert {:skip_ci, false} = GitPayload.skip_ci_flag?(data)
+  end
 end
