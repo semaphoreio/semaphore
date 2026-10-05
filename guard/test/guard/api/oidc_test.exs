@@ -52,6 +52,9 @@ defmodule Guard.Api.OIDCTest do
       test_pid = self()
 
       Tesla.Mock.mock(fn
+        %{method: :get} ->
+          {:ok, %Tesla.Env{status: 200, body: []}}
+
         %{method: :delete, url: url} ->
           send(test_pid, {:delete, url})
           {:ok, %Tesla.Env{status: 204, body: %{}}}
@@ -76,6 +79,9 @@ defmodule Guard.Api.OIDCTest do
       test_pid = self()
 
       Tesla.Mock.mock(fn
+        %{method: :get} ->
+          {:ok, %Tesla.Env{status: 200, body: []}}
+
         %{method: :delete} ->
           {:ok, %Tesla.Env{status: 500, body: %{"errorMessage" => "boom"}}}
 
@@ -92,11 +98,86 @@ defmodule Guard.Api.OIDCTest do
 
     test "returns error when the post fails" do
       Tesla.Mock.mock(fn
+        %{method: :get} -> {:ok, %Tesla.Env{status: 200, body: []}}
         %{method: :delete} -> {:ok, %Tesla.Env{status: 204, body: %{}}}
         %{method: :post} -> {:ok, %Tesla.Env{status: 500, body: %{"errorMessage" => "boom"}}}
       end)
 
       assert {:error, "boom"} = OIDC.set_federated_identity(client(), @oidc_user_id, @identity)
+    end
+
+    test "refuses to post when another keycloak user already holds the identity" do
+      test_pid = self()
+
+      Tesla.Mock.mock(fn
+        %{method: :get, url: url, query: query} ->
+          send(test_pid, {:get, url, query})
+          {:ok, %Tesla.Env{status: 200, body: [%{"id" => "kc-someone-else"}]}}
+
+        %{method: :delete} ->
+          send(test_pid, :delete)
+          {:ok, %Tesla.Env{status: 204, body: %{}}}
+
+        %{method: :post} ->
+          send(test_pid, :post)
+          {:ok, %Tesla.Env{status: 200, body: %{}}}
+      end)
+
+      assert {:error, :held_by_other} =
+               OIDC.set_federated_identity(client(), @oidc_user_id, @identity)
+
+      assert_received {:get, get_url, query}
+      assert get_url == "#{@base_url}/users"
+      assert query[:idpAlias] == "github"
+      assert query[:idpUserId] == "10001"
+
+      # the whole point: the identity is left where it is
+      refute_received :post
+      refute_received :delete
+    end
+
+    test "posts when the only holder is this same user" do
+      test_pid = self()
+
+      Tesla.Mock.mock(fn
+        %{method: :get} ->
+          {:ok, %Tesla.Env{status: 200, body: [%{"id" => @oidc_user_id}]}}
+
+        %{method: :delete} ->
+          {:ok, %Tesla.Env{status: 204, body: %{}}}
+
+        %{method: :post} ->
+          send(test_pid, :post)
+          {:ok, %Tesla.Env{status: 200, body: %{}}}
+      end)
+
+      assert {:ok, @oidc_user_id} =
+               OIDC.set_federated_identity(client(), @oidc_user_id, @identity)
+
+      assert_received :post
+    end
+
+    test "posts when the holder lookup cannot be read (fails open)" do
+      test_pid = self()
+
+      for body <- [%{"errorMessage" => "boom"}, [%{"identityProvider" => "github"}]] do
+        Tesla.Mock.mock(fn
+          %{method: :get} ->
+            {:ok, %Tesla.Env{status: 500, body: body}}
+
+          %{method: :delete} ->
+            {:ok, %Tesla.Env{status: 204, body: %{}}}
+
+          %{method: :post} ->
+            send(test_pid, :post)
+            {:ok, %Tesla.Env{status: 200, body: %{}}}
+        end)
+
+        assert {:ok, @oidc_user_id} =
+                 OIDC.set_federated_identity(client(), @oidc_user_id, @identity)
+
+        assert_received :post
+      end
     end
   end
 
@@ -120,6 +201,70 @@ defmodule Guard.Api.OIDCTest do
       end)
 
       assert {:error, "boom"} = OIDC.get_federated_identities(client(), @oidc_user_id)
+    end
+  end
+
+  describe "update_oidc_user/4 with a conflicting identity" do
+    test "skips the held identity, still pushes the others, and succeeds" do
+      test_pid = self()
+      user_id = Ecto.UUID.generate()
+
+      {:ok, _github_rha} =
+        Support.Members.insert_repo_host_account(
+          user_id: user_id,
+          repo_host: "github",
+          github_uid: "70001",
+          login: "octocat"
+        )
+
+      {:ok, _gitlab_rha} =
+        Support.Members.insert_repo_host_account(
+          user_id: user_id,
+          repo_host: "gitlab",
+          github_uid: "70002",
+          login: "octocat-gl"
+        )
+
+      Tesla.Mock.mock(fn
+        # only the github identity is held by somebody else
+        %{method: :get, url: url, query: query} ->
+          if url =~ "federated-identity" do
+            {:ok, %Tesla.Env{status: 200, body: []}}
+          else
+            if query[:idpAlias] == "github" do
+              {:ok, %Tesla.Env{status: 200, body: [%{"id" => "kc-someone-else"}]}}
+            else
+              {:ok, %Tesla.Env{status: 200, body: []}}
+            end
+          end
+
+        %{method: :put} ->
+          {:ok, %Tesla.Env{status: 204, body: %{}}}
+
+        %{method: :delete} ->
+          {:ok, %Tesla.Env{status: 204, body: %{}}}
+
+        %{method: :post, url: url, body: body} ->
+          send(test_pid, {:post, url, body})
+          {:ok, %Tesla.Env{status: 200, body: %{}}}
+      end)
+
+      # A pre-existing conflict on one identity must not fail the whole update:
+      # Guard.User.Actions.change_email/2 turns any error here into a
+      # user-visible failure and rolls back both repos.
+      assert {:ok, @oidc_user_id} =
+               OIDC.update_oidc_user(client(), @oidc_user_id, %{
+                 id: user_id,
+                 name: "Octo Cat",
+                 email: "octo@example.com"
+               })
+
+      assert_received {:post, post_url, post_body}
+      assert post_url =~ "/federated-identity/gitlab"
+      assert Jason.decode!(post_body)["userId"] == "70002"
+
+      # the conflicting github identity was never pushed
+      refute_received {:post, _url, _body}
     end
   end
 

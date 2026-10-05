@@ -265,6 +265,63 @@ defmodule Guard.OIDC.FederatedIdentitySyncTest do
       {:ok, loser: loser, claimer: claimer}
     end
 
+    test "a refused push is terminal: not retried, and recorded distinctly", %{
+      claimer: claimer
+    } do
+      test_pid = self()
+
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: url} ->
+          if url =~ "federated-identity" do
+            {:ok, %Tesla.Env{status: 200, body: loser_identities()}}
+          else
+            # the holder lookup: somebody else already has this identity
+            send(test_pid, :holder_lookup)
+            {:ok, %Tesla.Env{status: 200, body: [%{"id" => "kc-someone-else"}]}}
+          end
+
+        %{method: :delete, url: url} ->
+          send(test_pid, {:oidc_delete, url})
+          {:ok, %Tesla.Env{status: 204, body: %{}}}
+
+        %{method: :post, url: url, body: body} ->
+          send(test_pid, {:oidc_post, url, body})
+          {:ok, %Tesla.Env{status: 200, body: %{}}}
+
+        %{method: :put} ->
+          {:ok, %Tesla.Env{status: 200, body: %{}}}
+      end)
+
+      assert {:ok, _} =
+               RepoHostAccount.create(%{
+                 login: "new-login",
+                 github_uid: @claimed_uid,
+                 repo_host: "github",
+                 user_id: claimer.id,
+                 name: "Claimer",
+                 permission_scope: "user:email"
+               })
+
+      Support.Wait.run("sync request to record the refusal", fn ->
+        case Guard.FrontRepo.all(FederatedIdentitySyncRequest) do
+          [request] -> request.attempts >= 1
+          _ -> false
+        end
+      end)
+
+      [request] = Guard.FrontRepo.all(FederatedIdentitySyncRequest)
+
+      # terminal, so with_retries/2 must not have burned its 3 attempts
+      assert request.attempts == 1
+      assert request.last_error == "identity held by another keycloak user"
+
+      assert_received :holder_lookup
+      refute_received :holder_lookup
+
+      # the identity stays where it is
+      refute_received {:oidc_post, _url, _body}
+    end
+
     test "Keycloak failures do not fail the claim, and skip the claimer push", %{
       loser: loser,
       claimer: claimer
