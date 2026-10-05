@@ -243,6 +243,99 @@ defmodule Guard.OIDC.FederatedIdentitySyncTest do
 
       assert FederatedIdentitySyncRequest.pending_count() == 0
     end
+
+    test "a superseded claim pushes to whoever holds the uid now", %{
+      loser: loser,
+      claimer: claimer
+    } do
+      # The claimer lost the uid to a third user. While this row existed,
+      # pending?/2 suppressed that user's identity on every other push path, so
+      # completing without pushing would leave them holding the uid in the
+      # database with no identity in Keycloak.
+      {:ok, new_holder} = Support.Factories.RbacUser.insert()
+      {:ok, _} = Guard.Store.OIDCUser.connect_user("kc-new-holder", new_holder.id)
+
+      {:ok, _} =
+        Support.Members.insert_repo_host_account(
+          user_id: new_holder.id,
+          repo_host: "github",
+          github_uid: @claimed_uid,
+          login: "new-holder-login"
+        )
+
+      request =
+        FederatedIdentitySyncRequest.enqueue(
+          %RepoHostAccount{
+            repo_host: "github",
+            github_uid: @claimed_uid,
+            user_id: claimer.id,
+            login: "new-login"
+          },
+          [loser.id]
+        )
+
+      assert :ok = FederatedIdentitySync.run_request(request)
+
+      assert_receive {:oidc_post, post_url, body}, 5_000
+      assert post_url =~ "kc-new-holder"
+      assert decode_json_body(body)["userName"] == "new-holder-login"
+    end
+  end
+
+  describe "stale removal" do
+    setup do
+      # No Bypass expectations: this path must make no Keycloak call at all,
+      # and stub_oidc_connection/0 would fail verification for a token request
+      # that must never happen.
+      enable_oidc_without_http()
+      setup_tesla_mock()
+
+      {:ok, loser} = Support.Factories.RbacUser.insert()
+      {:ok, _} = Guard.Store.OIDCUser.connect_user("kc-loser", loser.id)
+
+      {:ok, claimer} = Support.Factories.RbacUser.insert()
+      {:ok, _} = Guard.Store.OIDCUser.connect_user("kc-claimer", claimer.id)
+
+      {:ok, loser: loser, claimer: claimer}
+    end
+
+    test "does not strip a released user who has re-acquired the uid", %{
+      loser: loser,
+      claimer: claimer
+    } do
+      # The request was enqueued to take the uid off the loser, but the loser
+      # holds it again by the time it runs. Removing it now would strip the
+      # current owner and hand it to nobody, since the claimer no longer holds
+      # it either.
+      # Revoked on purpose: holds_uid?/3 matches a revoked row (the removal is
+      # skipped) while active_holder/2 does not (nothing is pushed), which
+      # isolates the skip from the superseded-claim push below.
+      {:ok, _} =
+        Support.Members.insert_repo_host_account(
+          user_id: loser.id,
+          repo_host: "github",
+          github_uid: @claimed_uid,
+          login: "previous-owner",
+          revoked: true
+        )
+
+      request =
+        FederatedIdentitySyncRequest.enqueue(
+          %RepoHostAccount{
+            repo_host: "github",
+            github_uid: @claimed_uid,
+            user_id: claimer.id,
+            login: "new-login"
+          },
+          [loser.id]
+        )
+
+      assert :ok = FederatedIdentitySync.run_request(request)
+
+      # the re-acquired link is left alone entirely
+      refute_receive {:oidc_delete, _url}, 200
+      refute_receive {:oidc_post, _url, _body}, 200
+    end
   end
 
   describe "claim resilience" do
