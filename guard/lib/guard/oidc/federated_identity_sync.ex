@@ -141,6 +141,8 @@ defmodule Guard.OIDC.FederatedIdentitySync do
         true ->
           case push_github_identity(account) do
             :ok -> :ok
+            # A string, never the atom: record_failure/2 does String.slice on it.
+            :held_by_other -> {:error, "identity held by another keycloak user"}
             :error -> {:error, "identity push failed"}
           end
       end
@@ -244,6 +246,13 @@ defmodule Guard.OIDC.FederatedIdentitySync do
 
             :ok
 
+          {:error, :held_by_other} ->
+            Logger.error(
+              "[FederatedIdentitySync] Another oidc user already holds github identity #{account.github_uid}; not pushing it to oidc user #{oidc_user.oidc_user_id} (user #{account.user_id})"
+            )
+
+            :held_by_other
+
           {:error, error} ->
             Logger.error(
               "[FederatedIdentitySync] Failed to push github identity #{account.github_uid} to oidc user #{oidc_user.oidc_user_id} (user #{account.user_id}): #{inspect(error)}"
@@ -265,6 +274,12 @@ defmodule Guard.OIDC.FederatedIdentitySync do
     case fun.() do
       {:ok, _} = ok ->
         ok
+
+      # Terminal: another Keycloak user holds the identity. Retrying cannot
+      # change that, and three attempts would burn 1.5s of blocking sleep
+      # before pushing the outbox row into backoff for nothing.
+      {:error, :held_by_other} = terminal ->
+        terminal
 
       {:error, _} = error ->
         if attempt < @max_attempts do
