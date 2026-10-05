@@ -267,7 +267,7 @@ defmodule Ppl.DefinitionReviser.BlocksReviser do
      %{"name" => @workflow_number_env_var_name, "value" => "#{ppl.wf_number}"},
      %{"name" => @workflow_rerun, "value" => rerun?(ppl_req.request_args)},
      %{"name" => @workflow_triggered_by_hook, "value" => hook?(ppl_req.request_args)},
-     %{"name" => @workflow_hook_source, "value" => "github"},
+     %{"name" => @workflow_hook_source, "value" => hook_source(ppl_req.request_args)},
      %{"name" => @workflow_triggered_by_schedule, "value" => schedule?(ppl_req.request_args)},
      %{"name" => @workflow_triggered_by_api, "value" => api?(ppl_req.request_args)},
      %{"name" => @workflow_triggered_by_manual_run, "value" => manual_run?(ppl_req.request_args)},
@@ -292,6 +292,15 @@ defmodule Ppl.DefinitionReviser.BlocksReviser do
   defp hook?(%{"triggered_by" => "schedule"}), do: "false"
   defp hook?(%{"triggered_by" => "api"}), do: "false"
   defp hook?(_), do: "true"
+
+  # The service of the request is the lowercased ScheduleRequest.ServiceType
+  # (see Ppl.Actions.ScheduleImpl.form_params/1). Services that are not a
+  # git host (local, snapshot, listener_proxy) keep the historical value.
+  defp hook_source(%{"service" => "git_hub"}), do: "github"
+  defp hook_source(%{"service" => "bitbucket"}), do: "bitbucket"
+  defp hook_source(%{"service" => "gitlab"}), do: "gitlab"
+  defp hook_source(%{"service" => "git"}), do: "git"
+  defp hook_source(_), do: "github"
 
   defp schedule?(%{"triggered_by" => "schedule"}), do: "true"
   defp schedule?(_), do: "false"
