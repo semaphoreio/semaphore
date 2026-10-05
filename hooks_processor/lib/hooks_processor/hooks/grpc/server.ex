@@ -8,6 +8,7 @@ defmodule HooksProcessor.Hooks.Grpc.Server do
   alias Util.{Metrics, ToTuple}
   alias HooksProcessor.Hooks.Model.HooksQueries
   alias HooksProcessor.Hooks.Payload.Api, as: ApiPayload
+  alias HooksProcessor.Hooks.GitUrl
   alias HooksProcessor.Clients.{UserClient, ProjectHubClient, BranchClient, WorkflowClient, RepositoryClient}
   alias InternalApi.RepoProxy.{CreateResponse, CreateBlankResponse}
 
@@ -148,6 +149,7 @@ defmodule HooksProcessor.Hooks.Grpc.Server do
   defp repo_html_url(:github, repository), do: "https://github.com/#{repository.owner}/#{repository.name}"
   defp repo_html_url(:bitbucket, repository), do: "https://bitbucket.org/#{repository.owner}/#{repository.name}"
   defp repo_html_url(:gitlab, repository), do: "https://gitlab.com/#{repository.owner}/#{repository.name}"
+  defp repo_html_url(:git, repository), do: GitUrl.web_url(repository.url) || ""
   defp repo_html_url(_, _), do: ""
 
   defp form_response(:create, hook) do
