@@ -1,6 +1,33 @@
 defmodule Rbac.Api.OIDC do
   require Logger
 
+  @identity_push_metric "rbac.oidc.federated_identity_push"
+
+  # Keycloak 25.x enforces federated-identity uniqueness only within a single
+  # user, so a blind POST can leave two Keycloak users holding the same
+  # (provider, uid) - exactly the state that breaks provider login. Ask who
+  # holds it first.
+  #
+  # An unreadable answer (non-2xx, transport error, or a body that is not a
+  # list of users) proceeds with the push: it leaves behaviour as it was before
+  # this check existed rather than letting a Keycloak hiccup block a legitimate
+  # push. A user entry only counts as a holder when it carries an "id" to
+  # compare against.
+  defp held_by_other?(client, oidc_user_id, %{identityProvider: provider, userId: uid}) do
+    case Tesla.get(client, "/users", query: [idpAlias: provider, idpUserId: uid]) do
+      {:ok, %{status: status, body: body}} when status in 200..299 and is_list(body) ->
+        Enum.any?(body, fn
+          %{"id" => id} when is_binary(id) -> id != oidc_user_id
+          _ -> false
+        end)
+
+      _ ->
+        false
+    end
+  end
+
+  defp held_by_other?(_client, _oidc_user_id, _federated_identity), do: false
+
   def create_oidc_user(client, user, opts \\ []) do
     password_data = Keyword.get(opts, :password_data, [])
 
@@ -62,6 +89,9 @@ defmodule Rbac.Api.OIDC do
           set_federated_identity(client, oidc_user_id, identity)
         end)
         |> Enum.reduce({:ok, oidc_user_id}, fn
+          # Another Keycloak user holds this identity. Skipping it is the whole
+          # point of the check, so it must not fail the surrounding update.
+          {:error, :held_by_other}, acc -> acc
           {:ok, oidc_user_id}, {:ok, _} -> {:ok, oidc_user_id}
           {:ok, _}, {:error, error} -> {:error, error}
           {:error, error}, _ -> {:error, error}
@@ -93,6 +123,25 @@ defmodule Rbac.Api.OIDC do
         oidc_user_id,
         %{identityProvider: provider} = federated_identity
       ) do
+    if held_by_other?(client, oidc_user_id, federated_identity) do
+      Logger.warning(
+        "[OIDC API] Refusing to push #{provider} identity #{federated_identity.userId} to user " <>
+          "#{oidc_user_id}: another Keycloak user already holds it"
+      )
+
+      Watchman.increment({@identity_push_metric, ["held_by_other"]})
+
+      {:error, :held_by_other}
+    else
+      do_set_federated_identity(client, oidc_user_id, federated_identity)
+    end
+  end
+
+  defp do_set_federated_identity(
+         client,
+         oidc_user_id,
+         %{identityProvider: provider} = federated_identity
+       ) do
     # The identity may or may not already exist in Keycloak; the POST below
     # is the authoritative operation, so the removal result is ignored.
     _ = remove_federated_identity(client, oidc_user_id, provider)
