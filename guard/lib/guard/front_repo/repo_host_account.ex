@@ -706,6 +706,25 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     |> FrontRepo.exists?()
   end
 
+  @doc """
+  The row that actively holds this uid, or nil.
+
+  A sync request names its claimer at enqueue time, and that snapshot goes
+  stale: by the time a delayed request runs, the uid may belong to someone
+  else entirely. Resolving the holder at run time is what keeps a stale
+  request from pushing to - or stripping - the wrong user.
+  """
+  @spec active_holder(String.t(), String.t()) :: t() | nil
+  def active_holder(repo_host, uid) do
+    from(r in __MODULE__,
+      where: r.repo_host == ^repo_host and r.github_uid == ^uid,
+      where: coalesce(r.revoked, false) == false,
+      order_by: [asc: r.created_at],
+      limit: 1
+    )
+    |> FrontRepo.one()
+  end
+
   defp uid_actively_held_by_other?(changeset, repo_host, uid) do
     query =
       from(r in __MODULE__,

@@ -130,13 +130,13 @@ defmodule Guard.OIDC.FederatedIdentitySync do
           {:error, "identity removal failed"}
 
         not RepoHostAccount.holds_uid?(account.repo_host, account.github_uid, account.user_id) ->
-          # A later claim superseded this one; that flow owns the push. The
-          # removals this row required are done, so it is complete.
-          Logger.info(
-            "[FederatedIdentitySync] Skipping github identity push for user #{account.user_id}: no longer the holder of uid #{account.github_uid}"
-          )
-
-          :ok
+          # A later claim superseded this one. Do not just complete: while this
+          # row existed, pending?/2 suppressed the identity on every other push
+          # path, so the current holder may have been starved the whole time -
+          # and if they acquired the uid without releasing anything, they have
+          # no request of their own to push for them. Push to whoever holds it
+          # now, resolved fresh rather than from this row's stale snapshot.
+          push_to_current_holder(account)
 
         true ->
           case push_github_identity(account) do
@@ -168,7 +168,50 @@ defmodule Guard.OIDC.FederatedIdentitySync do
       Watchman.increment({@failure_metric, [@provider]})
   end
 
+  # The claimer named by this request no longer holds the uid. Whoever does
+  # gets the push, so a superseded request still leaves Keycloak consistent
+  # with the database instead of completing and leaving the holder with no
+  # identity at all.
+  defp push_to_current_holder(account) do
+    case RepoHostAccount.active_holder(account.repo_host, account.github_uid) do
+      nil ->
+        Logger.info(
+          "[FederatedIdentitySync] Nobody actively holds uid #{account.github_uid}; nothing to push"
+        )
+
+        :ok
+
+      holder ->
+        Logger.info(
+          "[FederatedIdentitySync] Claim by user #{account.user_id} was superseded; pushing uid #{account.github_uid} to current holder #{holder.user_id}"
+        )
+
+        case push_github_identity(holder) do
+          :ok -> :ok
+          :held_by_other -> {:error, "identity held by another keycloak user"}
+          :error -> {:error, "identity push failed"}
+        end
+    end
+  end
+
   defp remove_github_identity(user_id, account) do
+    if RepoHostAccount.holds_uid?(account.repo_host, account.github_uid, user_id) do
+      # This request was enqueued to take the uid off this user, but they hold
+      # it again now - the claim that created the request has since been undone
+      # or superseded. Removing it here would strip the current owner's link
+      # and hand it to nobody: the push below is skipped for a claimer who no
+      # longer holds the uid, so the identity would simply vanish.
+      Logger.info(
+        "[FederatedIdentitySync] User #{user_id} holds github uid #{account.github_uid} again; skipping stale removal"
+      )
+
+      :ok
+    else
+      do_remove_github_identity(user_id, account)
+    end
+  end
+
+  defp do_remove_github_identity(user_id, account) do
     case Guard.Store.OIDCUser.fetch_by_user_id(user_id) do
       {:ok, oidc_user} ->
         with_retries(fn -> detach_if_holding(oidc_user.oidc_user_id, account) end)

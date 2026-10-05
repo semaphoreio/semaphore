@@ -446,6 +446,108 @@ defmodule Rbac.OIDC.FederatedIdentitySyncTest do
     end
   end
 
+  describe "stale claim requests" do
+    setup do
+      # No Bypass expectations: the stale-removal path must make no Keycloak
+      # call at all, and stub_oidc_connection/0 would fail verification for a
+      # token request that must never happen.
+      enable_oidc_without_http()
+      setup_tesla_mock()
+
+      {:ok, loser} = Support.Factories.RbacUser.insert()
+      {:ok, _} = Rbac.Store.OIDCUser.connect_user("kc-loser", loser.id)
+
+      {:ok, claimer} = Support.Factories.RbacUser.insert()
+      {:ok, _} = Rbac.Store.OIDCUser.connect_user("kc-claimer", claimer.id)
+
+      {:ok, loser: loser, claimer: claimer}
+    end
+
+    test "does not strip a released user who has re-acquired the uid", %{
+      loser: loser,
+      claimer: claimer
+    } do
+      # Revoked on purpose: holds_uid?/3 matches a revoked row (the removal is
+      # skipped) while active_holder/2 does not (nothing is pushed), which
+      # isolates the skip from the superseded-claim push.
+      {:ok, _} =
+        Support.Members.insert_repo_host_account(
+          user_id: loser.id,
+          repo_host: "github",
+          github_uid: @claimed_uid,
+          login: "previous-owner",
+          name: "Previous Owner",
+          permission_scope: "user:email",
+          revoked: true
+        )
+
+      account = %RepoHostAccount{
+        repo_host: "github",
+        github_uid: @claimed_uid,
+        user_id: claimer.id,
+        login: "new-login"
+      }
+
+      assert :ok = FederatedIdentitySync.sync_github_claim(account, [loser.id])
+
+      # the re-acquired link is left alone entirely
+      refute_receive {:oidc_delete, _url}, 300
+      refute_receive {:oidc_post, _url, _body}, 300
+    end
+  end
+
+  describe "superseded claim requests" do
+    setup do
+      # Needs a real Bypass-backed connection: this path DOES call Keycloak,
+      # and the admin token fetch goes through Mint rather than Tesla.Mock.
+      setup_oidc_connection()
+      setup_tesla_mock()
+
+      {:ok, loser} = Support.Factories.RbacUser.insert()
+      {:ok, _} = Rbac.Store.OIDCUser.connect_user("kc-loser", loser.id)
+
+      {:ok, claimer} = Support.Factories.RbacUser.insert()
+      {:ok, _} = Rbac.Store.OIDCUser.connect_user("kc-claimer", claimer.id)
+
+      {:ok, loser: loser, claimer: claimer}
+    end
+
+    test "a superseded claim pushes to whoever holds the uid now", %{
+      loser: loser,
+      claimer: claimer
+    } do
+      # The claimer lost the uid to a third user. While a request for it
+      # existed, pending?/2 suppressed that user's identity on every other push
+      # path, so completing without pushing would leave them holding the uid in
+      # the database with no identity in Keycloak.
+      {:ok, new_holder} = Support.Factories.RbacUser.insert()
+      {:ok, _} = Rbac.Store.OIDCUser.connect_user("kc-new-holder", new_holder.id)
+
+      {:ok, _} =
+        Support.Members.insert_repo_host_account(
+          user_id: new_holder.id,
+          repo_host: "github",
+          github_uid: @claimed_uid,
+          login: "new-holder-login",
+          name: "New Holder",
+          permission_scope: "user:email"
+        )
+
+      account = %RepoHostAccount{
+        repo_host: "github",
+        github_uid: @claimed_uid,
+        user_id: claimer.id,
+        login: "new-login"
+      }
+
+      assert :ok = FederatedIdentitySync.sync_github_claim(account, [loser.id])
+
+      assert_receive {:oidc_post, post_url, body}, 5_000
+      assert post_url =~ "kc-new-holder"
+      assert decode_json_body(body)["userName"] == "new-holder-login"
+    end
+  end
+
   describe "claim atomicity" do
     setup do
       enable_oidc_without_http()
