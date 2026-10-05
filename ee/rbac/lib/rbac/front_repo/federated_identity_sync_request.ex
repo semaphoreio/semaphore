@@ -144,11 +144,15 @@ defmodule Rbac.FrontRepo.FederatedIdentitySyncRequest do
   # claim whose Keycloak side was never reconciled, and that needs a human -
   # but it stops being retried and stops gating identity pushes.
   #
-  # Releasing the gate is the lesser of two harms. Holding it means the
-  # claiming user can never sign in through this provider again. Releasing it
-  # means an identity may be pushed while a losing user still holds it in
-  # Keycloak, which Keycloak itself rejects if it enforces uniqueness for the
-  # provider. A broken login is certain; the duplicate is not.
+  # Releasing the gate is safe because the push is guarded at the API
+  # boundary: Rbac.Api.OIDC.set_federated_identity/3 asks Keycloak who holds
+  # the identity and refuses with {:error, :held_by_other} rather than posting
+  # a duplicate. Holding the gate instead would leave the claiming user unable
+  # to sign in through this provider, permanently and with no recovery path.
+  #
+  # Do not restore the gate without also removing that check. Keycloak 25.x
+  # enforces federated-identity uniqueness only WITHIN a single user, so
+  # nothing below this layer stops two users holding the same (provider, uid).
   defp dead_letter(%__MODULE__{} = request, error) do
     Logger.error(
       "[FederatedIdentitySync] Dead-lettering sync request #{request.id} after " <>
