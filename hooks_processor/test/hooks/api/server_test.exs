@@ -81,6 +81,32 @@ defmodule HooksProcessor.Hooks.Api.Server.Test do
     assert get_in(hook.request, ["repository", "html_url"]) == "https://bitbucket.org/torvalds/linux"
   end
 
+  test "create() for a generic git project derives the repository html_url from its git remote", ctx do
+    ctx = Map.merge(ctx, %{integration_type: :GIT, repository_url: "ssh://git@git.example.com/torvalds/linux.git"})
+
+    mock_projecthub(ctx)
+    mock_repositoryhub(ctx)
+    mock_user_service(ctx)
+    mock_branch_service(ctx)
+    mock_workflow_service(ctx)
+
+    request = %CreateRequest{
+      project_id: ctx.project_id,
+      requester_id: ctx.requester_id,
+      triggered_by: :API,
+      git: %{commit_sha: "", reference: "refs/heads/master"}
+    }
+
+    assert {:ok, channel} = GRPC.Stub.connect("localhost:50050")
+    assert {:ok, response} = channel |> RepoProxyService.Stub.create(request)
+
+    assert response.workflow_id == ctx.wf_id
+    assert response.pipeline_id == ctx.ppl_id
+
+    assert {:ok, hook} = HooksQueries.get_by_id(response.hook_id)
+    assert get_in(hook.request, ["repository", "html_url"]) == "https://git.example.com/torvalds/linux"
+  end
+
   test "create_blank() with proper params creates the workflow on plumber", ctx do
     ctx = Map.put(ctx, :integration_type, :GITHUB_APP)
 
@@ -130,6 +156,7 @@ defmodule HooksProcessor.Hooks.Api.Server.Test do
               id: ctx.repository_id,
               owner: "torvalds",
               name: "linux",
+              url: ctx[:repository_url] || "git@github.com:torvalds/linux.git",
               integration_type: ctx.integration_type || :GITHUB_OAUTH_TOKEN,
               pipeline_file: ".semaphore/semaphore.yml",
               run_on: [:BRANCHES, :TAGS],
