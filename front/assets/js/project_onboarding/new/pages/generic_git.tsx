@@ -347,46 +347,59 @@ const ConnectRepositoryEditor = () => {
 
   const data = `#!/bin/bash
 
-  read oldrev newrev refname
   # === Config ===
   SECRET="${repository.webhookSecret}"
   ENDPOINT="${repository.webhookEndpoint}"
 
-  commit_message=$(git log -1 --pretty=format:%s $newrev)
-  author_name=$(git log -1 --pretty=format:%an $newrev)
-  author_email=$(git log -1 --pretty=format:%ae $newrev)
-  branch_name="\${refname#refs/heads/}"
+  # The payload is signed with HMAC-SHA256, which needs openssl on the git server.
+  if ! command -v openssl >/dev/null 2>&1; then
+    echo "post-receive: openssl is required to sign the Semaphore payload, nothing was sent" >&2
+    exit 1
+  fi
 
-  # === Build JSON payload ===
-  payload_file=$(mktemp)
-  cat > "$payload_file" <<EOF
-  {
-    "event": "deploy",
-    "status": "success",
-    "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
-    "reference": "refs/heads/$branch_name",
-    "commit": {
-      "sha": "$newrev",
-      "message": "$commit_message"
-    },
-    "author": {
-      "name": "$author_name",
-      "email": "$author_email"
+  # git feeds one line per updated ref; a single push can carry several of them.
+  while read oldrev newrev refname; do
+    # A deleted ref has an all-zero new revision: there is nothing to build.
+    if [ "$newrev" = "0000000000000000000000000000000000000000" ]; then
+      continue
+    fi
+
+    commit_message=$(git log -1 --pretty=format:%s $newrev)
+    author_name=$(git log -1 --pretty=format:%an $newrev)
+    author_email=$(git log -1 --pretty=format:%ae $newrev)
+    branch_name="\${refname#refs/heads/}"
+
+    # === Build JSON payload ===
+    payload_file=$(mktemp)
+    cat > "$payload_file" <<EOF
+    {
+      "event": "deploy",
+      "status": "success",
+      "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+      "reference": "refs/heads/$branch_name",
+      "commit": {
+        "sha": "$newrev",
+        "message": "$commit_message"
+      },
+      "author": {
+        "name": "$author_name",
+        "email": "$author_email"
+      }
     }
-  }
   EOF
 
-  # === Sign the payload with HMAC-SHA256 ===
-  SIGNATURE=$(openssl dgst -sha256 -hmac "$SECRET" "$payload_file" | awk '{print $2}' | tr 'A-F' 'a-f')
-  SIGNATURE="sha256=$SIGNATURE"
+    # === Sign the payload with HMAC-SHA256 ===
+    SIGNATURE=$(openssl dgst -sha256 -hmac "$SECRET" "$payload_file" | awk '{print $2}' | tr 'A-F' 'a-f')
+    SIGNATURE="sha256=$SIGNATURE"
 
-  # === Send via curl ===
-  curl "$ENDPOINT" \\
-    -H "Content-Type: application/json" \\
-    -H "X-Hub-Signature: $SIGNATURE" \\
-    --data-binary @"$payload_file"
+    # === Send via curl (stdin redirected so the ref list is left to read) ===
+    curl "$ENDPOINT" \\
+      -H "Content-Type: application/json" \\
+      -H "X-Hub-Signature: $SIGNATURE" \\
+      --data-binary @"$payload_file" </dev/null
 
-  rm -f "$payload_file"
+    rm -f "$payload_file"
+  done
   `;
 
   return <Editor
