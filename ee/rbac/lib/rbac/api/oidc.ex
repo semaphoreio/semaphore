@@ -167,35 +167,6 @@ defmodule Rbac.Api.OIDC do
     end
   end
 
-  def get_federated_identities(client, oidc_user_id) do
-    case Tesla.get(client, "/users/" <> oidc_user_id <> "/federated-identity") do
-      {:ok, res} ->
-        cond do
-          res.status in 200..299 ->
-            {:ok, res.body}
-
-          # The Keycloak user is gone, so it holds no identities - the same
-          # answer as an empty list, and what remove_federated_identity/3
-          # already does with a 404. Returning an error instead strands the
-          # caller: a claim whose loser was deleted in Keycloak can never
-          # complete its removals, so it retries to the attempt ceiling and
-          # dead-letters for something no retry can fix.
-          res.status == 404 ->
-            {:ok, []}
-
-          true ->
-            Logger.error(
-              "[OIDC API] Error fetching federated identities for user #{oidc_user_id}: #{inspect(res.body)}"
-            )
-
-            {:error, "#{res.body["errorMessage"]}"}
-        end
-
-      {:error, error} ->
-        {:error, error}
-    end
-  end
-
   def remove_federated_identity(client, oidc_user_id, provider) do
     case Tesla.delete(client, "/users/" <> oidc_user_id <> "/federated-identity/" <> provider) do
       {:ok, res} ->
