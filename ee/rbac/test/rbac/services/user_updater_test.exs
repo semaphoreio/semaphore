@@ -189,6 +189,10 @@ defmodule Rbac.Services.UserUpdaterTest do
 
       %{method: :delete} ->
         {:ok, %Tesla.Env{status: 204, body: %{}}}
+
+      # holder lookup before an identity push: nobody else holds it here
+      %{method: :get} ->
+        {:ok, %Tesla.Env{status: 200, body: []}}
     end)
   end
 

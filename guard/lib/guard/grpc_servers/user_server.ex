@@ -392,10 +392,11 @@ defmodule Guard.GrpcServers.UserServer do
       ) do
     observe_and_log(
       "grpc.user.create",
+      # No password here: observe_and_log/3 inspects this map at debug on
+      # entry and exit, and at error on any GRPC.RPCError.
       %{
         email: email,
         name: name,
-        password: password,
         repository_providers: providers,
         skip_password_change: skip_password_change
       },
@@ -465,7 +466,9 @@ defmodule Guard.GrpcServers.UserServer do
           "Token for #{user.id} is #{if is_valid, do: "valid", else: "invalid"}. Updating revoke status."
         )
 
-        FrontRepo.RepoHostAccount.update_revoke_status(repo_account, not is_valid)
+        repo_account
+        |> FrontRepo.RepoHostAccount.update_revoke_status(not is_valid)
+        |> keep_revoked_on_uid_conflict(repo_account)
 
       {:error, :transient} ->
         Logger.warning(
@@ -478,6 +481,23 @@ defmodule Guard.GrpcServers.UserServer do
         grpc_error!(:internal, "Error while validating token for #{user.id}.")
     end
   end
+
+  # A valid token cannot re-activate a link whose uid was claimed by another
+  # user while this row sat revoked; keep the row revoked instead of failing
+  # the RPC.
+  defp keep_revoked_on_uid_conflict({:error, %Ecto.Changeset{} = changeset}, repo_account) do
+    if FrontRepo.RepoHostAccount.uid_taken_error?(changeset) do
+      Logger.warning(
+        "Keeping #{repo_account.repo_host} account revoked for user #{repo_account.user_id}: uid is actively held by another user"
+      )
+
+      {:ok, repo_account}
+    else
+      {:error, changeset}
+    end
+  end
+
+  defp keep_revoked_on_uid_conflict(result, _repo_account), do: result
 
   defp handle_delete_user(user_id) do
     case Front.delete_user(user_id) do
