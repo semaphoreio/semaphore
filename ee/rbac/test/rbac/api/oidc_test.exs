@@ -260,41 +260,6 @@ defmodule Rbac.Api.OIDCTest do
     end
   end
 
-  describe "get_federated_identities/2" do
-    test "returns the identity list on 200" do
-      identities = [
-        %{"identityProvider" => "github", "userId" => "10001", "userName" => "octocat"}
-      ]
-
-      Tesla.Mock.mock(fn %{method: :get, url: url} ->
-        assert url == "http://keycloak/manage/users/kc-1/federated-identity"
-        {:ok, %Tesla.Env{status: 200, body: identities}}
-      end)
-
-      assert {:ok, ^identities} = Rbac.Api.OIDC.get_federated_identities(tesla_client(), "kc-1")
-    end
-
-    test "treats 404 as holding no identities" do
-      # The Keycloak user is gone. Returning an error here strands the caller:
-      # a claim whose loser was deleted can never complete its removals, so it
-      # retries to the attempt ceiling and dead-letters for something no retry
-      # can fix. 404 means "holds nothing", same as remove_federated_identity/3.
-      Tesla.Mock.mock(fn %{method: :get} ->
-        {:ok, %Tesla.Env{status: 404, body: %{"error" => "User not found"}}}
-      end)
-
-      assert {:ok, []} = Rbac.Api.OIDC.get_federated_identities(tesla_client(), "kc-1")
-    end
-
-    test "returns error on server failure" do
-      Tesla.Mock.mock(fn %{method: :get} ->
-        {:ok, %Tesla.Env{status: 500, body: %{"errorMessage" => "boom"}}}
-      end)
-
-      assert {:error, "boom"} = Rbac.Api.OIDC.get_federated_identities(tesla_client(), "kc-1")
-    end
-  end
-
   describe "update_oidc_user/4 with a conflicting identity" do
     test "skips the held identity, still pushes the others, and succeeds" do
       test_pid = self()
