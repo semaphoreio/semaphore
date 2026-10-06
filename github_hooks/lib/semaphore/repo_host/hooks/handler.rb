@@ -1,10 +1,6 @@
 # frozen_string_literal: true
 
 class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
-  # How often a PR with unknown mergeability is re-checked, and how many requests
-  # must be left in the rate-limit window for a re-check to be scheduled.
-  MERGEABLE_UNKNOWN_MAX_RETRIES = 3
-  MERGEABLE_UNKNOWN_RATE_LIMIT_RESERVE = 1000
 
   # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength
   def self.run(workflow, logger, hook_payload = "", signature = "", retries = 0)
@@ -224,7 +220,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
         when :mergeable_unknown
           # No merge ref exists until GitHub's async test-merge resolves, so
           # retry rather than treat unknown as a conflict and skip the build.
-          if retries < MERGEABLE_UNKNOWN_MAX_RETRIES && !below_rate_limit_reserve?(meta[:rate_limit_remaining])
+          if retries < App.mergeable_unknown_max_retries && !below_rate_limit_reserve?(meta[:rate_limit_remaining])
             sidekiq_job_id = Semaphore::RepoHost::Hooks::Handler::Worker.perform_in(2.minutes, workflow.id, hook_payload, signature, retries + 1)
             logger.info("pr-mergeable-unknown-rescheduled", :sidekiq_job_id => sidekiq_job_id)
           else
@@ -290,7 +286,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
 
   # A response without a rate-limit header leaves no budget to protect.
   def self.below_rate_limit_reserve?(remaining)
-    !remaining.nil? && remaining < MERGEABLE_UNKNOWN_RATE_LIMIT_RESERVE
+    !remaining.nil? && remaining < App.mergeable_unknown_rate_limit_reserve
   end
 
   #

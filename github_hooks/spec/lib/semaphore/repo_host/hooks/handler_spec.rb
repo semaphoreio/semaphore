@@ -411,10 +411,12 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
         end
 
         context "and GitHub has not finished computing mergeability (mergeable is nil)" do
-          let(:max_retries) { described_class::MERGEABLE_UNKNOWN_MAX_RETRIES }
-          let(:reserve) { described_class::MERGEABLE_UNKNOWN_RATE_LIMIT_RESERVE }
+          let(:max_retries) { 3 }
+          let(:reserve) { 1000 }
 
           before do
+            allow(App).to receive_messages(:mergeable_unknown_max_retries => max_retries,
+                                           :mergeable_unknown_rate_limit_reserve => reserve)
             allow(repo_host).to receive(:validate_token_presence!)
             allow(repo_host).to receive_messages(:pull_request => { :merge_commit_sha => "", :mergeable => nil },
                                                  :last_response_rate_limit_remaining => 5000)
@@ -491,6 +493,15 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
 
           it "reschedules when the response does not report a rate limit" do
             allow(repo_host).to receive(:last_response_rate_limit_remaining).and_return(nil)
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker)
+              .to receive(:perform_in).with(2.minutes, @workflow.id, anything, anything, 1)
+
+            described_class.run(@workflow, @logger)
+          end
+
+          it "never holds a retry back for the rate limit when the reserve is 0" do
+            allow(App).to receive(:mergeable_unknown_rate_limit_reserve).and_return(0)
+            allow(repo_host).to receive(:last_response_rate_limit_remaining).and_return(0)
             expect(Semaphore::RepoHost::Hooks::Handler::Worker)
               .to receive(:perform_in).with(2.minutes, @workflow.id, anything, anything, 1)
 
