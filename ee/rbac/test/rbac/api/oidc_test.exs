@@ -90,6 +90,33 @@ defmodule Rbac.Api.OIDCTest do
     end
   end
 
+  describe "create_oidc_user/3 failure logging" do
+    test "a rejected creation does not log the credential payload" do
+      # The payload carries secretData: the password's argon2id hash and
+      # base64 salt. The parameters are in the source, so logging it makes a
+      # weak password crackable offline.
+      password = "correct-horse-battery-staple"
+      user = %{id: Ecto.UUID.generate(), name: "Octo Cat", email: "octo@example.com"}
+
+      Tesla.Mock.mock(fn %{method: :post} ->
+        {:ok,
+         %Tesla.Env{status: 409, body: %{"errorMessage" => "User exists with same username"}}}
+      end)
+
+      log =
+        ExUnit.CaptureLog.capture_log(fn ->
+          assert {:error, _} =
+                   Rbac.Api.OIDC.create_oidc_user(tesla_client(), user,
+                     password_data: [password: password]
+                   )
+        end)
+
+      assert log =~ "octo@example.com"
+      refute log =~ "secretData"
+      refute log =~ password
+    end
+  end
+
   describe "set_federated_identity/3" do
     test "deletes then posts the identity" do
       test_pid = self()

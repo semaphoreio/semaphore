@@ -2378,6 +2378,32 @@ defmodule Guard.GrpcServers.UserServerTest do
       grpc_error = GRPC.Status.invalid_argument()
       assert {:error, %GRPC.RPCError{status: ^grpc_error}} = ch |> Stub.create(request)
     end
+
+    test "a failed create does not log the password", %{
+      grpc_channel: ch,
+      user: existing_user
+    } do
+      # observe_and_log/3 inspects its request map at error on any
+      # GRPC.RPCError, and every environment logs at info or lower, so that
+      # line is always emitted. A duplicate email is the cheapest way to reach
+      # it; this branch added another (a GitHub uid already taken).
+      password = "correct-horse-battery-staple"
+
+      log =
+        ExUnit.CaptureLog.capture_log(fn ->
+          request =
+            User.CreateRequest.new(
+              email: existing_user.email,
+              name: "New User",
+              password: password
+            )
+
+          grpc_error = GRPC.Status.invalid_argument()
+          assert {:error, %GRPC.RPCError{status: ^grpc_error}} = ch |> Stub.create(request)
+        end)
+
+      refute log =~ password
+    end
   end
 
   describe "describe service accounts" do
