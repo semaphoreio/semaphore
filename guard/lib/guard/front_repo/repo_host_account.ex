@@ -23,12 +23,8 @@ defmodule Guard.FrontRepo.RepoHostAccount do
 
   @uid_taken_message "is already connected to another Semaphore user"
 
-  # A revoked link is not claimable until it has been revoked for this long.
-  # `revoked` is written by token-health checks, so a transient upstream
-  # failure can briefly mark a healthy link revoked; the grace period gives it
-  # time to self-heal or be reconnected before another user can claim (and
-  # thereby delete) it. `updated_at` approximates the revocation time: it is
-  # bumped when the flag flips and revoked rows receive no further writes.
+  # A transient failure can briefly mark a healthy link revoked, so give it
+  # time to self-heal before another user can claim (and delete) it.
   @revoked_claim_grace_seconds 2 * 60 * 60
 
   @type t :: %__MODULE__{
@@ -378,12 +374,8 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     case update_account(params, rha, opts) do
       {:error, %Ecto.Changeset{} = changeset} ->
         if uid_taken_error?(changeset) do
-          # The self-heal is refused because another user actively holds this
-          # uid, but the credentials are still valid and still ours to keep.
-          # Dropping them would be worse than a stale flag: providers rotate
-          # refresh tokens, so the unsaved one is replayed on the next refresh
-          # until the grace window closes and the link dies for good. Persist
-          # without the unrevoke and leave the flag latched.
+          # Keep the credentials: providers rotate refresh tokens, so losing
+          # the new one replays a stale token until the grant dies.
           Logger.warning(
             "Keeping repo_host_account #{rha.id} revoked: uid is actively held by another " <>
               "user. Refreshed credentials are still persisted."
@@ -653,12 +645,8 @@ defmodule Guard.FrontRepo.RepoHostAccount do
 
   def uid_taken_error?(_), do: false
 
-  # A GitHub identity may be actively linked to at most one user. Revoked
-  # links don't block a claim — they are deleted once the claim succeeds
-  # (see release_revoked_uid_rows/1), otherwise the old owner reconnecting
-  # would revive the row and recreate the duplicate. The row being changed
-  # is excluded, so reconnecting the same account for the same user stays
-  # valid.
+  # At most one user per GitHub identity. Revoked links do not block - they
+  # are deleted by release_revoked_uid_rows/1 once the claim succeeds.
   defp validate_github_uid_not_taken(changeset) do
     repo_host = Ecto.Changeset.get_field(changeset, :repo_host)
     uid = Ecto.Changeset.get_field(changeset, :github_uid)
@@ -673,11 +661,8 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     end
   end
 
-  # Re-activating a revoked link must re-check uniqueness: another user may
-  # have actively linked the same account while this row sat revoked. Only a
-  # real true→false transition is checked — writes that don't flip `revoked`
-  # (token refreshes, profile syncs) stay unchecked, so rows that already
-  # share a uid keep working.
+  # Only a true->false transition re-checks uniqueness, so rows that already
+  # share a uid keep working through token refreshes and profile syncs.
   defp maybe_validate_uid_on_unrevoke(changeset) do
     if unrevoke_transition?(changeset) do
       validate_github_uid_not_taken(changeset)
@@ -740,18 +725,10 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     FrontRepo.exists?(query)
   end
 
-  # A claim is one unit of work: the write that takes the uid, the deletion of
-  # the losing rows, and the outbox row that records the Keycloak sync they
-  # need. Committing the write on its own — as happens on the OAuth reconnect
-  # and RefreshRepositoryProvider paths, which carry no ambient transaction —
-  # lets a crash in between leave the uid claimed with the losers still holding
-  # it and nothing queued to reconcile them.
-  #
-  # Keycloak is never called inside the transaction: FederatedIdentitySync
-  # defers while `in_transaction?/0` is true, so only the deferred tasks run
-  # after commit. A caller that already opened a transaction (see
-  # Guard.User.Actions.create/1) owns those deferrals and releases them itself,
-  # so we must not run or drop them on its behalf.
+  # A claim is one unit of work: the uid write, the losers' deletion and the
+  # outbox row. Keycloak stays outside - FederatedIdentitySync defers while
+  # in_transaction?/0, and a caller that opened the transaction owns the
+  # deferrals.
   defp transact_claim(fun) do
     if FrontRepo.in_transaction?() do
       fun.()
@@ -766,8 +743,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
           end)
         rescue
           exception ->
-            # The transaction rolled back, so anything deferred inside it must
-            # not outlive it in the process dictionary.
+            # Rolled back, so the deferrals must not outlive the transaction.
             Guard.OIDC.FederatedIdentitySync.drop_deferred()
             reraise exception, __STACKTRACE__
         end
@@ -802,9 +778,8 @@ defmodule Guard.FrontRepo.RepoHostAccount do
 
   defp release_revoked_uid_rows(account), do: account
 
-  # The sync request is written in the same transaction that deletes the
-  # losing rows: a committed claim always leaves a durable record of the
-  # Keycloak sync it requires, even if the process dies before the sync runs.
+  # Same transaction as the deletion, so a committed claim always leaves a
+  # durable record of the Keycloak work it needs.
   defp release_and_enqueue_sync(account) do
     {:ok, result} =
       FrontRepo.transaction(fn ->
@@ -813,10 +788,8 @@ defmodule Guard.FrontRepo.RepoHostAccount do
             where: r.repo_host == ^account.repo_host and r.github_uid == ^account.github_uid,
             where: r.id != ^account.id,
             where: r.revoked == true,
-            # Exact complement of the blocking predicate above. `updated_at` is
-            # nullable with no backfill, and NULL fails both `>` and `<=`, so
-            # without is_nil/1 such a row would neither block a claim nor be
-            # released by it — leaving a silent duplicate with no sync request.
+            # Exact complement of the blocking predicate. updated_at is
+            # nullable and NULL fails both > and <=, so is_nil/1 is required.
             where:
               is_nil(r.updated_at) or
                 r.updated_at <= ago(^@revoked_claim_grace_seconds, "second"),
