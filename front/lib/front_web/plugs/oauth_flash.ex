@@ -16,13 +16,13 @@ defmodule FrontWeb.Plug.OAuthFlash do
 
   def init(options), do: options
 
-  def call(%Plug.Conn{params: %{"status" => "success"}} = conn, _opts),
+  def call(conn = %Plug.Conn{params: %{"status" => "success"}}, _opts),
     do: put_flash(conn, :notice, OAuthFlashMessage.success())
 
-  def call(%Plug.Conn{params: %{"status" => "error", "code" => code}} = conn, _opts),
+  def call(conn = %Plug.Conn{params: %{"status" => "error", "code" => code}}, _opts),
     do: put_flash(conn, :alert, OAuthFlashMessage.error(code))
 
-  def call(%Plug.Conn{params: %{"status" => "error"}} = conn, _opts),
+  def call(conn = %Plug.Conn{params: %{"status" => "error"}}, _opts),
     do: put_flash(conn, :alert, OAuthFlashMessage.generic())
 
   def call(conn, _opts), do: conn
