@@ -35,6 +35,8 @@ data:
             - "organization.instance_git_integration.manage"
             - "organization.service_accounts.view"
             - "organization.service_accounts.manage"
+            - "organization.computers.view"
+            - "organization.computers.manage"
         - name: "Admin"
           description: "Admins can modify settings within the organization or any of its projects. However, they do not have access to billing information, and they cannot change general organization details, such as the organization name and URL."
           maps_to: "Admin"
@@ -61,6 +63,8 @@ data:
             - "project.delete"
             - "organization.service_accounts.view"
             - "organization.service_accounts.manage"
+            - "organization.computers.view"
+            - "organization.computers.manage"
         - name: "Member"
           description: "Members can access the organization's homepage and the projects they are assigned to. However, they are not able to modify any settings."
           permissions:
@@ -75,6 +79,11 @@ data:
             - "organization.notifications.manage"
             - "organization.dashboards.manage"
             - "organization.dashboards.view"
+            - "organization.computers.view"
+        - name: "Computer Agent"
+          description: "Can use computers in the projects they are given, and nothing else in the organization."
+          permissions:
+            - "organization.computers.view"
       project_scope:
         - name: "Admin"
           description: "Admins have the authority to modify any setting within the projects, including the ability to add new individuals, remove them, or even delete the entire project."
@@ -203,6 +212,8 @@ data:
             - "organization.instance_git_integration.manage"
             - "organization.service_accounts.view"
             - "organization.service_accounts.manage"
+            - "organization.computers.view"
+            - "organization.computers.manage"
         - name: "Admin"
           description: "Admins can modify settings within the organization or any of its projects. However, they do not have access to billing information, and they cannot change general organization details, such as the organization name and URL."
           maps_to: "Admin"
@@ -243,6 +254,8 @@ data:
             - "organization.service_accounts.view"
             - "organization.service_accounts.manage"
             - "project.delete"
+            - "organization.computers.view"
+            - "organization.computers.manage"
         - name: "Member"
           description: "Members can access the organization's homepage and the projects they are assigned to. However, they are not able to modify any settings."
           permissions:
@@ -260,6 +273,11 @@ data:
             - "organization.notifications.manage"
             - "organization.dashboards.manage"
             - "organization.dashboards.view"
+            - "organization.computers.view"
+        - name: "Computer Agent"
+          description: "Can use computers in the projects they are given, and nothing else in the organization."
+          permissions:
+            - "organization.computers.view"
       project_scope:
         - name: "Admin"
           description: "Admins have the authority to modify any setting within the projects, including the ability to add new individuals, remove them, or even delete the entire project."
