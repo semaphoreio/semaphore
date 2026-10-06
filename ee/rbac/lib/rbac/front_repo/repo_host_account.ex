@@ -21,16 +21,6 @@ defmodule Rbac.FrontRepo.RepoHostAccount do
 
   @type repo_host :: :github | :bitbucket
 
-  @uid_taken_message "is already connected to another Semaphore user"
-
-  # A revoked link is not claimable until it has been revoked for this long.
-  # `revoked` is written by token-health checks, so a transient upstream
-  # failure can briefly mark a healthy link revoked; the grace period gives it
-  # time to self-heal or be reconnected before another user can claim (and
-  # thereby delete) it. `updated_at` approximates the revocation time: it is
-  # bumped when the flag flips and revoked rows receive no further writes.
-  @revoked_claim_grace_seconds 2 * 60 * 60
-
   @type t :: %__MODULE__{
           login: String.t(),
           github_uid: String.t(),
@@ -90,15 +80,8 @@ defmodule Rbac.FrontRepo.RepoHostAccount do
         :name,
         :permission_scope
       ])
-      |> validate_github_uid_not_taken()
 
-    result =
-      transact_claim(fn ->
-        with {:ok, account} <- FrontRepo.insert(changeset) do
-          release_revoked_uid_rows(account)
-          {:ok, account}
-        end
-      end)
+    result = FrontRepo.insert(changeset)
 
     case result do
       {:ok, account} ->
@@ -194,201 +177,6 @@ defmodule Rbac.FrontRepo.RepoHostAccount do
     update_account(%{revoked: revoked}, rha)
   end
 
-  @doc """
-  Returns true when the changeset failed because the GitHub account is
-  already connected to another user.
-  """
-  @spec uid_taken_error?(term()) :: boolean()
-  def uid_taken_error?(%Ecto.Changeset{errors: errors}) do
-    Enum.any?(errors, fn
-      {:github_uid, {_msg, opts}} -> opts[:validation] == :unsafe_unique
-      _ -> false
-    end)
-  end
-
-  def uid_taken_error?(_), do: false
-
-  # A GitHub identity may be actively linked to at most one user. Revoked
-  # links don't block a claim — they are deleted once the claim succeeds
-  # (see release_revoked_uid_rows/1), otherwise the old owner reconnecting
-  # would revive the row and recreate the duplicate. The row being changed
-  # is excluded, so reconnecting the same account for the same user stays
-  # valid.
-  defp validate_github_uid_not_taken(changeset) do
-    repo_host = Ecto.Changeset.get_field(changeset, :repo_host)
-    uid = Ecto.Changeset.get_field(changeset, :github_uid)
-
-    if repo_host == "github" and uid not in [nil, ""] and
-         uid_actively_held_by_other?(changeset, repo_host, uid) do
-      Ecto.Changeset.add_error(changeset, :github_uid, @uid_taken_message,
-        validation: :unsafe_unique
-      )
-    else
-      changeset
-    end
-  end
-
-  # Re-activating a revoked link must re-check uniqueness: another user may
-  # have actively linked the same account while this row sat revoked. Only a
-  # real true→false transition is checked — writes that don't flip `revoked`
-  # (token refreshes, profile syncs) stay unchecked, so rows that already
-  # share a uid keep working.
-  defp maybe_validate_uid_on_unrevoke(changeset) do
-    if unrevoke_transition?(changeset) do
-      validate_github_uid_not_taken(changeset)
-    else
-      changeset
-    end
-  end
-
-  defp unrevoke_transition?(changeset) do
-    Ecto.Changeset.get_change(changeset, :revoked) == false and changeset.data.revoked == true
-  end
-
-  @doc """
-  The row that actively holds this uid, or nil.
-
-  A sync request names its claimer at enqueue time, and that snapshot goes
-  stale: by the time a delayed request runs, the uid may belong to someone
-  else entirely. Resolving the holder at run time is what keeps a stale
-  request from pushing to - or stripping - the wrong user.
-  """
-  @spec active_holder(String.t(), String.t()) :: t() | nil
-  def active_holder(repo_host, uid) do
-    from(r in __MODULE__,
-      where: r.repo_host == ^repo_host and r.github_uid == ^uid,
-      where: coalesce(r.revoked, false) == false,
-      order_by: [asc: r.created_at],
-      limit: 1
-    )
-    |> FrontRepo.one()
-  end
-
-  defp uid_actively_held_by_other?(changeset, repo_host, uid) do
-    query =
-      from(r in __MODULE__,
-        where: r.repo_host == ^repo_host and r.github_uid == ^uid,
-        where:
-          coalesce(r.revoked, false) == false or
-            r.updated_at > ago(^@revoked_claim_grace_seconds, "second")
-      )
-
-    query =
-      case changeset.data.id do
-        nil -> query
-        id -> from(r in query, where: r.id != ^id)
-      end
-
-    FrontRepo.exists?(query)
-  end
-
-  @doc """
-  True when `user_id` still owns a link for this uid, revoked or not. False
-  once the link was deleted (claimed away) or points at a different uid.
-  """
-  @spec holds_uid?(String.t(), String.t(), String.t()) :: boolean()
-  def holds_uid?(repo_host, uid, user_id) do
-    from(r in __MODULE__,
-      where: r.repo_host == ^repo_host and r.github_uid == ^uid,
-      where: r.user_id == ^user_id
-    )
-    |> FrontRepo.exists?()
-  end
-
-  # A claim is one unit of work: the write that takes the uid, the deletion of
-  # the losing rows, and the outbox row that records the Keycloak sync they
-  # need. Committing the write on its own lets a crash in between leave the uid
-  # claimed with the losers still holding it and nothing queued to reconcile
-  # them.
-  #
-  # Keycloak is never called inside the transaction: FederatedIdentitySync
-  # defers while `in_transaction?/0` is true, so only the deferred tasks run
-  # after commit. A caller that already opened a transaction owns those
-  # deferrals and releases them itself, so we must not run or drop them on its
-  # behalf.
-  defp transact_claim(fun) do
-    if FrontRepo.in_transaction?() do
-      fun.()
-    else
-      result =
-        try do
-          FrontRepo.transaction(fn ->
-            case fun.() do
-              {:ok, account} -> account
-              {:error, reason} -> FrontRepo.rollback(reason)
-            end
-          end)
-        rescue
-          exception ->
-            # The transaction rolled back, so anything deferred inside it must
-            # not outlive it in the process dictionary.
-            Rbac.OIDC.FederatedIdentitySync.drop_deferred()
-            reraise exception, __STACKTRACE__
-        end
-
-      case result do
-        {:ok, account} ->
-          Rbac.OIDC.FederatedIdentitySync.run_deferred()
-          {:ok, account}
-
-        {:error, reason} ->
-          Rbac.OIDC.FederatedIdentitySync.drop_deferred()
-          {:error, reason}
-      end
-    end
-  end
-
-  defp release_revoked_uid_rows(%__MODULE__{repo_host: "github"} = account) do
-    {count, released_user_ids, request} = release_and_enqueue_sync(account)
-
-    if count > 0 do
-      Watchman.increment({"rbac.repo_host_account.revoked_link_claimed", [account.repo_host]})
-
-      Logger.info(
-        "Released #{count} revoked repo_host_account row(s) for github uid #{account.github_uid} claimed by user #{account.user_id} from users #{inspect(released_user_ids)}"
-      )
-
-      Rbac.OIDC.FederatedIdentitySync.sync_github_claim(account, released_user_ids, request)
-    end
-
-    account
-  end
-
-  defp release_revoked_uid_rows(account), do: account
-
-  # The sync request is written in the same transaction that deletes the
-  # losing rows: a committed claim always leaves a durable record of the
-  # Keycloak sync it requires, even if the process dies before the sync runs.
-  defp release_and_enqueue_sync(account) do
-    {:ok, result} =
-      FrontRepo.transaction(fn ->
-        {count, released_user_ids} =
-          from(r in __MODULE__,
-            where: r.repo_host == ^account.repo_host and r.github_uid == ^account.github_uid,
-            where: r.id != ^account.id,
-            where: r.revoked == true,
-            # Exact complement of the blocking predicate above. `updated_at` is
-            # nullable with no backfill, and NULL fails both `>` and `<=`, so
-            # without is_nil/1 such a row would neither block a claim nor be
-            # released by it — leaving a silent duplicate with no sync request.
-            where:
-              is_nil(r.updated_at) or
-                r.updated_at <= ago(^@revoked_claim_grace_seconds, "second"),
-            select: r.user_id
-          )
-          |> FrontRepo.delete_all()
-
-        request =
-          if count > 0 and Rbac.OIDC.enabled?() do
-            FrontRepo.FederatedIdentitySyncRequest.enqueue(account, released_user_ids)
-          end
-
-        {count, released_user_ids, request}
-      end)
-
-    result
-  end
-
   defp adjust_scope(%{permission_scope: scope} = data, _) when scope in @scopes_in_order, do: data
 
   defp adjust_scope(data, user_id) when is_binary(user_id) and user_id != "",
@@ -470,23 +258,8 @@ defmodule Rbac.FrontRepo.RepoHostAccount do
         ]
       )
       |> Ecto.Changeset.validate_required([:github_uid, :login, :name, :permission_scope])
-      |> maybe_validate_uid_on_unrevoke()
 
-    unrevoke? = unrevoke_transition?(changeset)
-
-    # Only an unrevoke claims a uid, so only that path needs the transaction.
-    # Token refreshes and profile syncs stay a plain UPDATE.
-    result =
-      if unrevoke? do
-        transact_claim(fn ->
-          with {:ok, updated} <- FrontRepo.update(changeset) do
-            release_revoked_uid_rows(updated)
-            {:ok, updated}
-          end
-        end)
-      else
-        FrontRepo.update(changeset)
-      end
+    result = FrontRepo.update(changeset)
 
     case result do
       {:ok, updated} ->
@@ -530,15 +303,8 @@ defmodule Rbac.FrontRepo.RepoHostAccount do
         ]
       )
       |> Ecto.Changeset.validate_required([:github_uid, :login, :name])
-      |> validate_github_uid_not_taken()
 
-    result =
-      transact_claim(fn ->
-        with {:ok, updated} <- FrontRepo.update(changeset) do
-          release_revoked_uid_rows(updated)
-          {:ok, updated}
-        end
-      end)
+    result = FrontRepo.update(changeset)
 
     case result do
       {:ok, updated} ->

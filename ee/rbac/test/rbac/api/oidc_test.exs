@@ -243,7 +243,17 @@ defmodule Rbac.Api.OIDCTest do
 
       # a pending claim sync means the identity removals are not yet
       # confirmed in Keycloak: the identity must not be pushed from here
-      Rbac.FrontRepo.FederatedIdentitySyncRequest.enqueue(github_rha, [Ecto.UUID.generate()])
+      # guard owns the writes to this table; rbac only reads it
+      %Rbac.FrontRepo.FederatedIdentitySyncRequest{
+        repo_host: github_rha.repo_host,
+        uid: github_rha.github_uid,
+        claiming_user_id: github_rha.user_id,
+        released_user_ids: [Ecto.UUID.generate()],
+        login: github_rha.login,
+        attempts: 0,
+        next_attempt_at: DateTime.utc_now() |> DateTime.truncate(:second)
+      }
+      |> Rbac.FrontRepo.insert!()
 
       identities = Rbac.Api.OIDC.get_oidc_federeted_identities(user)
       assert Enum.map(identities, & &1.identityProvider) == ["gitlab"]
