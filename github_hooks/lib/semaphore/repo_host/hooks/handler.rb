@@ -1,6 +1,10 @@
 # frozen_string_literal: true
 
 class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
+  # How often a PR with unknown mergeability is re-checked, and how many requests
+  # must be left in the rate-limit window for a re-check to be scheduled.
+  MERGEABLE_UNKNOWN_MAX_RETRIES = 3
+  MERGEABLE_UNKNOWN_RATE_LIMIT_RESERVE = 1000
 
   # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength
   def self.run(workflow, logger, hook_payload = "", signature = "", retries = 0)
@@ -202,7 +206,8 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
           return
         end
 
-        state, meta, msg = update_pr_data(workflow.project, workflow.pull_request_number, workflow.commit_sha)
+        # Only the first attempt polls; a rescheduled run makes a single request.
+        state, meta, msg = update_pr_data(workflow.project, workflow.pull_request_number, workflow.commit_sha, :poll => retries.zero?)
         case state
         when :not_found
           logger.info("pr-not-found #{msg}")
@@ -219,7 +224,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
         when :mergeable_unknown
           # No merge ref exists until GitHub's async test-merge resolves, so
           # retry rather than treat unknown as a conflict and skip the build.
-          if retries < 10
+          if retries < MERGEABLE_UNKNOWN_MAX_RETRIES && !below_rate_limit_reserve?(meta[:rate_limit_remaining])
             sidekiq_job_id = Semaphore::RepoHost::Hooks::Handler::Worker.perform_in(2.minutes, workflow.id, hook_payload, signature, retries + 1)
             logger.info("pr-mergeable-unknown-rescheduled", :sidekiq_job_id => sidekiq_job_id)
           else
@@ -228,7 +233,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
             # spurious PullRequestUnmergeable event, so only set the terminal
             # state and surface a metric.
             Watchman.increment("hook.processing.pr_mergeable_unknown_giving_up")
-            logger.info("pr-mergeable-unknown-giving-up")
+            logger.info("pr-mergeable-unknown-giving-up", :retries => retries, :rate_limit_remaining => meta[:rate_limit_remaining])
             workflow.update(:state => Workflow::STATE_PR_NON_MERGEABLE)
           end
 
@@ -265,17 +270,17 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
   end
   # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength
 
-  def self.get_pr_data(repo_host, project, number, counter)
+  def self.get_pr_data(repo_host, project, number, counter, poll: true)
     pr = repo_host.pull_request(project.repo_owner_and_name, number)
 
-    if !pr[:mergeable].nil? || counter > 7
+    if !pr[:mergeable].nil? || !poll || counter > 7
       return [pr, pr[:merge_commit_sha], pr[:mergeable], ""]
     end
 
     sleep(1.1**counter)
     get_pr_data(repo_host, project, number, counter + 1)
   rescue RepoHost::RemoteException::NotFound => e
-    if counter > 7
+    if !poll || counter > 7
       return [nil, "", false, e]
     end
 
@@ -283,14 +288,19 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
     get_pr_data(repo_host, project, number, counter + 1)
   end
 
+  # A response without a rate-limit header leaves no budget to protect.
+  def self.below_rate_limit_reserve?(remaining)
+    !remaining.nil? && remaining < MERGEABLE_UNKNOWN_RATE_LIMIT_RESERVE
+  end
+
   #
   # Used also at InternalApi::RepoProxy::PrPayload
   #
-  def self.update_pr_data(project, number, commit_sha = nil, allow_skip = true)
+  def self.update_pr_data(project, number, commit_sha = nil, allow_skip = true, poll: true)
     repo_host = ::RepoHost::Factory.create_from_project(project)
     repo_host.validate_token_presence!
 
-    pr, merge_commit_sha, mergeable, msg = get_pr_data(repo_host, project, number, 0)
+    pr, merge_commit_sha, mergeable, msg = get_pr_data(repo_host, project, number, 0, :poll => poll)
 
     if pr == nil
       return [:not_found, {}, msg]
@@ -300,7 +310,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
     # (unknown) until it finishes — distinct from false (a real conflict).
     # Keep them apart so an unknown result can be retried rather than skipped.
     if mergeable.nil?
-      return [:mergeable_unknown, { :pr => pr }, msg]
+      return [:mergeable_unknown, { :pr => pr, :rate_limit_remaining => repo_host.last_response_rate_limit_remaining }, msg]
     end
 
     unless mergeable

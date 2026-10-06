@@ -34,6 +34,15 @@ module RepoHost::Github
       user_client.rate_limit.remaining()
     end
 
+    # Requests left in the rate-limit window as reported by the last response,
+    # without making a request. nil when there is no such header.
+    def last_response_rate_limit_remaining
+      response = user_client.last_response
+      return nil if response.nil?
+
+      Integer(response.headers["x-ratelimit-remaining"], :exception => false)
+    end
+
     def token_valid?
       validate_token_presence!
 
