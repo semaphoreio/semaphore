@@ -46,6 +46,8 @@ config :guard, trusted_proxies: ["127.0.0.1"]
 config :guard, feature_provider: {Support.StubbedProvider, []}
 config :guard, Guard.OIDC.TokenEncryptor, module: {Guard.FakeEncryptor, []}
 
+config :guard, federated_identity_sync_backoff_ms: 1
+
 config :tesla, adapter: Tesla.Mock
 config :oauth2, adapter: Tesla.Mock
 config :oauth2, debug: true

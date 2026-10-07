@@ -187,10 +187,57 @@ module InternalApi
       # Providers in GUARD_OWNED_INTEGRATIONS never reach this.
       def update_revoke_status(rha)
         if rha.repo_host == "github"
-          rha.update!(:revoked => !::RepoHost::Github::Client.new(rha.token).token_valid?)
+          update_revoked(rha, !::RepoHost::Github::Client.new(rha.token).token_valid?)
         end
 
         rha
+      end
+
+      # Re-activating a revoked GitHub account must not resurrect a duplicate
+      # link: the same uid may have been actively linked to another user while
+      # this row sat revoked.
+      #
+      # When other rows share the uid, re-activating is a claim: guard deletes
+      # the released rows and moves the Keycloak federated identity. This
+      # service has no OIDC configuration and cannot do the second half, so it
+      # hands the whole operation to guard instead of flipping the flag alone.
+      def update_revoked(rha, revoked)
+        if !revoked && rha.revoked? && rha.github_uid.present? && uid_held_by_other?(rha)
+          claim_through_guard(rha)
+        else
+          rha.update!(:revoked => revoked)
+        end
+      end
+
+      # An active holder blocks outright, so guard is only asked when every
+      # other row is revoked and the claim can go through.
+      def claim_through_guard(rha)
+        if uid_actively_held_by_other?(rha)
+          Rails.logger.info(
+            "Keeping repo_host_account #{rha.id} revoked: uid is actively held by another account"
+          )
+        else
+          ::Semaphore::GuardUserClient.refresh_repository_provider(rha.user_id, :GITHUB)
+          rha.reload
+        end
+      rescue GRPC::BadStatus, ActiveRecord::RecordNotFound => e
+        Rails.logger.info(
+          "Keeping repo_host_account #{rha.id} revoked: guard did not re-activate it (#{e.class})"
+        )
+      end
+
+      def uid_held_by_other?(rha)
+        other_uid_rows(rha).exists?
+      end
+
+      def uid_actively_held_by_other?(rha)
+        other_uid_rows(rha).where(:revoked => [false, nil]).exists?
+      end
+
+      def other_uid_rows(rha)
+        ::RepoHostAccount
+          .where(:repo_host => rha.repo_host, :github_uid => rha.github_uid)
+          .where.not(:id => rha.id)
       end
 
       def extract_repository_name(full_name)
