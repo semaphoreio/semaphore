@@ -260,6 +260,55 @@ defmodule Rbac.Api.OIDCTest do
     end
   end
 
+  describe "create_oidc_user/3 with a conflicting identity" do
+    test "creates the user without the identity another keycloak user holds" do
+      test_pid = self()
+      {:ok, user} = Support.Factories.RbacUser.insert()
+
+      {:ok, _} =
+        Support.Members.insert_repo_host_account(
+          login: "octocat",
+          github_uid: "70001",
+          user_id: user.id,
+          repo_host: "github"
+        )
+
+      {:ok, _} =
+        Support.Members.insert_repo_host_account(
+          login: "octocat-gl",
+          github_uid: "70002",
+          user_id: user.id,
+          repo_host: "gitlab"
+        )
+
+      Tesla.Mock.mock(fn
+        %{method: :get, query: query} ->
+          if query[:idpAlias] == "github" do
+            {:ok, %Tesla.Env{status: 200, body: [%{"id" => "kc-someone-else"}]}}
+          else
+            {:ok, %Tesla.Env{status: 200, body: []}}
+          end
+
+        %{method: :post, url: url, body: body} ->
+          send(test_pid, {:post, url, body})
+
+          {:ok,
+           %Tesla.Env{
+             status: 201,
+             headers: [{"location", "http://keycloak/manage/users/kc-1"}],
+             body: %{}
+           }}
+      end)
+
+      assert {:ok, "kc-1"} = Rbac.Api.OIDC.create_oidc_user(tesla_client(), user)
+
+      assert_received {:post, "http://keycloak/manage/users", post_body}
+
+      identities = Jason.decode!(post_body)["federatedIdentities"]
+      assert Enum.map(identities, & &1["identityProvider"]) == ["gitlab"]
+    end
+  end
+
   describe "update_oidc_user/4 with a conflicting identity" do
     test "skips the held identity, still pushes the others, and succeeds" do
       test_pid = self()

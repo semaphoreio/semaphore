@@ -216,6 +216,100 @@ defmodule Guard.Api.OIDCTest do
     end
   end
 
+  describe "create_oidc_user/3 with a conflicting identity" do
+    test "creates the user without the identity another keycloak user holds" do
+      test_pid = self()
+      user_id = Ecto.UUID.generate()
+
+      {:ok, _github_rha} =
+        Support.Members.insert_repo_host_account(
+          user_id: user_id,
+          repo_host: "github",
+          github_uid: "70001",
+          login: "octocat"
+        )
+
+      {:ok, _gitlab_rha} =
+        Support.Members.insert_repo_host_account(
+          user_id: user_id,
+          repo_host: "gitlab",
+          github_uid: "70002",
+          login: "octocat-gl"
+        )
+
+      Tesla.Mock.mock(fn
+        %{method: :get, query: query} ->
+          if query[:idpAlias] == "github" do
+            {:ok, %Tesla.Env{status: 200, body: [%{"id" => "kc-someone-else"}]}}
+          else
+            {:ok, %Tesla.Env{status: 200, body: []}}
+          end
+
+        %{method: :post, url: url, body: body} ->
+          send(test_pid, {:post, url, body})
+
+          {:ok,
+           %Tesla.Env{
+             status: 201,
+             headers: [{"location", "#{@base_url}/users/#{@oidc_user_id}"}],
+             body: %{}
+           }}
+      end)
+
+      assert {:ok, @oidc_user_id} =
+               OIDC.create_oidc_user(client(), %{
+                 id: user_id,
+                 name: "Octo Cat",
+                 email: "octo@example.com"
+               })
+
+      assert_received {:post, post_url, post_body}
+      assert post_url == "#{@base_url}/users"
+
+      identities = Jason.decode!(post_body)["federatedIdentities"]
+      assert Enum.map(identities, & &1["identityProvider"]) == ["gitlab"]
+    end
+
+    test "keeps the identity when the holder lookup cannot be read (fails open)" do
+      test_pid = self()
+      user_id = Ecto.UUID.generate()
+
+      {:ok, _github_rha} =
+        Support.Members.insert_repo_host_account(
+          user_id: user_id,
+          repo_host: "github",
+          github_uid: "70001",
+          login: "octocat"
+        )
+
+      Tesla.Mock.mock(fn
+        %{method: :get} ->
+          {:ok, %Tesla.Env{status: 500, body: %{}}}
+
+        %{method: :post, body: body} ->
+          send(test_pid, {:post, body})
+
+          {:ok,
+           %Tesla.Env{
+             status: 201,
+             headers: [{"location", "#{@base_url}/users/#{@oidc_user_id}"}],
+             body: %{}
+           }}
+      end)
+
+      assert {:ok, @oidc_user_id} =
+               OIDC.create_oidc_user(client(), %{
+                 id: user_id,
+                 name: "Octo Cat",
+                 email: "octo@example.com"
+               })
+
+      assert_received {:post, post_body}
+      identities = Jason.decode!(post_body)["federatedIdentities"]
+      assert Enum.map(identities, & &1["userId"]) == ["70001"]
+    end
+  end
+
   describe "update_oidc_user/4 with a conflicting identity" do
     test "skips the held identity, still pushes the others, and succeeds" do
       test_pid = self()

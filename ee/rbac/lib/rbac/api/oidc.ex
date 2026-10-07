@@ -34,8 +34,29 @@ defmodule Rbac.Api.OIDC do
     data =
       get_oidc_data(user)
       |> maybe_merge_credentials(get_oidc_credential(password_data))
+      |> Map.update!(:federatedIdentities, &reject_held_identities(client, &1))
 
     do_create_oidc_user(client, data)
+  end
+
+  # Identities in the create body bypass set_federated_identity/3, and Keycloak
+  # does not check them across users either. The user does not exist yet, so
+  # any holder is another user.
+  defp reject_held_identities(client, identities) do
+    Enum.reject(identities, fn identity ->
+      held = held_by_other?(client, nil, identity)
+
+      if held do
+        Logger.warning(
+          "[OIDC API] Not creating user with #{identity.identityProvider} identity " <>
+            "#{identity.userId}: another Keycloak user already holds it"
+        )
+
+        Watchman.increment({@identity_push_metric, ["held_by_other"]})
+      end
+
+      held
+    end)
   end
 
   defp do_create_oidc_user(client, data) do
