@@ -3,20 +3,6 @@ defmodule Rbac.FrontRepo.RepoHostAccountTest do
 
   alias Rbac.FrontRepo.RepoHostAccount
 
-  defp create_params(overrides) do
-    Map.merge(
-      %{
-        login: "octocat",
-        github_uid: "10001",
-        repo_host: "github",
-        user_id: Ecto.UUID.generate(),
-        name: "The Octocat",
-        permission_scope: "user:email"
-      },
-      overrides
-    )
-  end
-
   defp insert_full_rha(overrides) do
     defaults = [
       login: "octocat",
