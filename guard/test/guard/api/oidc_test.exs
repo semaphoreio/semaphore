@@ -16,7 +16,8 @@ defmodule Guard.Api.OIDCTest do
       user = %{id: Ecto.UUID.generate(), name: "Octo Cat", email: "octo@example.com"}
 
       Tesla.Mock.mock(fn %{method: :post} ->
-        {:ok, %Tesla.Env{status: 409, body: %{"errorMessage" => "User exists with same username"}}}
+        {:ok,
+         %Tesla.Env{status: 409, body: %{"errorMessage" => "User exists with same username"}}}
       end)
 
       log =
