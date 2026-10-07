@@ -102,6 +102,16 @@ spec:
               value: "true"
             - name: FEATURE_YAML_PATH
               value: "/app/features.yml"
+            - name: CACHE_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.redis.secretName }}
+                  key: host
+            - name: CACHE_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.redis.secretName }}
+                  key: port
             - name: PERIODIC_SCHEDULER_URL
               valueFrom:
                 configMapKeyRef:
