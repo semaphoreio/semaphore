@@ -282,6 +282,108 @@ defmodule Guard.OIDC.FederatedIdentitySyncTest do
     end
   end
 
+  describe "lease" do
+    setup do
+      setup_oidc_connection()
+
+      {:ok, loser} = Support.Factories.RbacUser.insert()
+      {:ok, _} = Guard.Store.OIDCUser.connect_user("kc-loser", loser.id)
+
+      {:ok, claimer} = Support.Factories.RbacUser.insert()
+      {:ok, _} = Guard.Store.OIDCUser.connect_user("kc-claimer", claimer.id)
+
+      {:ok, _} =
+        Support.Members.insert_repo_host_account(
+          user_id: claimer.id,
+          repo_host: "github",
+          github_uid: @claimed_uid,
+          login: "new-login"
+        )
+
+      request =
+        FederatedIdentitySyncRequest.enqueue(
+          %RepoHostAccount{
+            repo_host: "github",
+            github_uid: @claimed_uid,
+            user_id: claimer.id,
+            login: "new-login"
+          },
+          [loser.id]
+        )
+
+      {:ok, request: request}
+    end
+
+    test "renews the lease before each step and completes", %{request: request} do
+      setup_tesla_mock()
+
+      assert :ok = FederatedIdentitySync.run_request(request)
+
+      assert_receive {:oidc_post, _url, _body}, 5_000
+      assert FederatedIdentitySyncRequest.pending_count() == 0
+    end
+
+    test "stops without pushing or recording a failure once another run takes the lease",
+         %{request: request} do
+      test_pid = self()
+      takeover = DateTime.utc_now() |> DateTime.add(600, :second) |> DateTime.truncate(:second)
+
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: url} ->
+          if url =~ "federated-identity" do
+            # another run leases the row while this one is mid-removal
+            {1, _} =
+              from(r in FederatedIdentitySyncRequest, where: r.id == ^request.id)
+              |> Guard.FrontRepo.update_all(set: [next_attempt_at: takeover])
+
+            {:ok, %Tesla.Env{status: 200, body: loser_identities()}}
+          else
+            {:ok, %Tesla.Env{status: 200, body: []}}
+          end
+
+        %{method: :delete, url: url} ->
+          send(test_pid, {:oidc_delete, url})
+          {:ok, %Tesla.Env{status: 204, body: %{}}}
+
+        %{method: :post, url: url, body: body} ->
+          send(test_pid, {:oidc_post, url, body})
+          {:ok, %Tesla.Env{status: 200, body: %{}}}
+      end)
+
+      assert :ok = FederatedIdentitySync.run_request(request)
+
+      refute_receive {:oidc_post, _, _}, 200
+
+      [row] = Guard.FrontRepo.all(FederatedIdentitySyncRequest)
+      assert row.attempts == 0
+      assert row.last_error == nil
+      assert row.next_attempt_at == takeover
+    end
+
+    test "a crash records the failure against the renewed lease", %{request: request} do
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: url} ->
+          if url =~ "federated-identity" do
+            {:ok, %Tesla.Env{status: 200, body: loser_identities()}}
+          else
+            {:ok, %Tesla.Env{status: 200, body: []}}
+          end
+
+        %{method: :delete} ->
+          {:ok, %Tesla.Env{status: 204, body: %{}}}
+
+        %{method: :post} ->
+          raise "keycloak exploded"
+      end)
+
+      assert :ok = FederatedIdentitySync.run_request(request)
+
+      [row] = Guard.FrontRepo.all(FederatedIdentitySyncRequest)
+      assert row.attempts == 1
+      assert row.last_error =~ "keycloak exploded"
+    end
+  end
+
   describe "stale removal" do
     setup do
       # No Bypass expectations: this path must make no Keycloak call at all,

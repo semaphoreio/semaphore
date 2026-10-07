@@ -30,9 +30,9 @@ defmodule Guard.FrontRepo.FederatedIdentitySyncRequest do
   # transient.
   @max_attempts 20
   @dead_letter_metric "guard.federated_identity_sync.dead_letter"
-  # While leased, a row is invisible to other drainers. The lease is taken per
-  # row (see lease/1), so this only has to exceed the worst case processing
-  # time of one row - a few Keycloak calls with retries - not of a whole batch.
+  # While leased, a row is invisible to other drainers. The holder renews it
+  # before each Keycloak step (see renew_lease/1), so this only has to exceed
+  # the worst case of one step with its retries.
   @lease_seconds 300
   @max_error_length 500
 
@@ -61,11 +61,10 @@ defmodule Guard.FrontRepo.FederatedIdentitySyncRequest do
       claiming_user_id: account.user_id,
       released_user_ids: released_user_ids,
       login: account.login,
-      # One lease ahead, not now: the claim starts an in-process sync for this
-      # row immediately, and that task holds no lease. Due-now would let the
-      # next drainer tick pick up a row already in flight and run the Keycloak
-      # move twice. The drainer is the recovery path, so it only sees the row
-      # if the immediate task failed to complete it within one lease.
+      # The insert is the in-process sync's lease: it starts on this row
+      # immediately, and a due-now row would let the next drainer tick run the
+      # same Keycloak move alongside it. The drainer only sees the row once
+      # that task stops renewing.
       next_attempt_at: DateTime.add(now(), @lease_seconds, :second)
     }
     |> FrontRepo.insert!()
@@ -121,23 +120,69 @@ defmodule Guard.FrontRepo.FederatedIdentitySyncRequest do
   @spec record_failure(t() | nil, String.t()) :: :ok
   def record_failure(nil, _error), do: :ok
 
-  def record_failure(%__MODULE__{id: id, attempts: attempts} = request, error) do
-    attempts = attempts + 1
-    retry_at = DateTime.add(now(), retry_delay_seconds(attempts), :second)
+  def record_failure(%__MODULE__{} = request, error) do
+    now = now()
+    # Under the lease nobody else writes attempts, so the stored value is ours.
+    retry_at = DateTime.add(now, retry_delay_seconds(request.attempts + 1), :second)
 
-    if attempts == @max_attempts, do: dead_letter(request, error)
+    {_count, attempts} =
+      leased_by(request)
+      |> select([r], r.attempts)
+      |> FrontRepo.update_all(
+        inc: [attempts: 1],
+        set: [
+          last_error: String.slice(error, 0, @max_error_length),
+          next_attempt_at: retry_at,
+          updated_at: now
+        ]
+      )
 
-    from(r in __MODULE__, where: r.id == ^id)
-    |> FrontRepo.update_all(
-      set: [
-        attempts: attempts,
-        last_error: String.slice(error, 0, @max_error_length),
-        next_attempt_at: retry_at,
-        updated_at: now()
-      ]
-    )
+    case attempts do
+      [@max_attempts] -> dead_letter(request, error)
+      [_] -> :ok
+      [] -> log_lease_lost(request)
+    end
 
     :ok
+  end
+
+  @doc """
+  Extends the lease this caller holds on `request`, returning the row with the
+  new lease, or `:lost` when another run took the row over or it is gone.
+
+  A row's processing time grows with its losers, so the holder renews before
+  each Keycloak step instead of sizing one lease for the whole row.
+  """
+  @spec renew_lease(t() | nil) :: {:ok, t() | nil} | :lost
+  def renew_lease(nil), do: {:ok, nil}
+
+  def renew_lease(%__MODULE__{} = request) do
+    now = now()
+
+    {_count, rows} =
+      leased_by(request)
+      |> select([r], r)
+      |> FrontRepo.update_all(
+        set: [next_attempt_at: DateTime.add(now, @lease_seconds, :second), updated_at: now]
+      )
+
+    case rows do
+      [row] -> {:ok, row}
+      [] -> :lost
+    end
+  end
+
+  # The lease is next_attempt_at itself: whoever last moved it holds the row.
+  # A run that lost it matches nothing, so it cannot overwrite the new holder.
+  defp leased_by(%__MODULE__{id: id, next_attempt_at: held}) do
+    from(r in __MODULE__, where: r.id == ^id and r.next_attempt_at == ^held)
+  end
+
+  defp log_lease_lost(request) do
+    Logger.info(
+      "[FederatedIdentitySync] Sync request #{request.id} is no longer leased by this run; " <>
+        "leaving it to its current holder"
+    )
   end
 
   @doc """

@@ -12,16 +12,22 @@ defmodule Guard.FrontRepo.FederatedIdentitySyncRequestTest do
 
     now = DateTime.utc_now() |> DateTime.truncate(:second)
 
-    {1, _} =
-      from(r in Request, where: r.id == ^request.id)
+    {1, [due]} =
+      from(r in Request, where: r.id == ^request.id, select: r)
       |> Guard.FrontRepo.update_all(set: [next_attempt_at: now])
 
-    request
+    due
   end
 
   # One failure short of the ceiling, so the next record_failure/2 dead-letters.
   defp at_last_attempt(request) do
-    %{request | attempts: Request.max_attempts() - 1}
+    import Ecto.Query
+
+    {1, [row]} =
+      from(r in Request, where: r.id == ^request.id, select: r)
+      |> Guard.FrontRepo.update_all(set: [attempts: Request.max_attempts() - 1])
+
+    row
   end
 
   defp account(overrides \\ %{}) do
@@ -84,13 +90,18 @@ defmodule Guard.FrontRepo.FederatedIdentitySyncRequestTest do
     end
 
     test "truncates oversized errors and caps the backoff" do
+      import Ecto.Query
+
       request = Request.enqueue(account(), [Ecto.UUID.generate()])
-      request = %{request | attempts: 50}
+
+      {1, [request]} =
+        from(r in Request, where: r.id == ^request.id, select: r)
+        |> Guard.FrontRepo.update_all(set: [attempts: 10])
 
       assert :ok = Request.record_failure(request, String.duplicate("x", 2_000))
 
       [reloaded] = Guard.FrontRepo.all(Request)
-      assert reloaded.attempts == 51
+      assert reloaded.attempts == 11
       assert String.length(reloaded.last_error) == 500
 
       max_retry = DateTime.add(DateTime.utc_now(), 3_700, :second)
@@ -99,6 +110,55 @@ defmodule Guard.FrontRepo.FederatedIdentitySyncRequestTest do
 
     test "is a no-op for nil" do
       assert :ok = Request.record_failure(nil, "boom")
+    end
+  end
+
+  describe "lease fencing" do
+    test "renew_lease/1 extends the lease for its holder" do
+      request = Request.enqueue(account(), [Ecto.UUID.generate()]) |> make_due()
+
+      assert {:ok, renewed} = Request.renew_lease(request)
+      assert DateTime.compare(renewed.next_attempt_at, request.next_attempt_at) == :gt
+      assert Request.lease(request.id) == nil
+    end
+
+    test "renew_lease/1 reports a lease another run took over" do
+      request = Request.enqueue(account(), [Ecto.UUID.generate()]) |> make_due()
+      assert %Request{} = Request.lease(request.id)
+
+      assert Request.renew_lease(request) == :lost
+    end
+
+    test "renew_lease/1 reports a completed row as lost" do
+      request = Request.enqueue(account(), [Ecto.UUID.generate()])
+      :ok = Request.complete(request)
+
+      assert Request.renew_lease(request) == :lost
+    end
+
+    test "record_failure/2 from a run that lost the lease leaves the new holder's row alone" do
+      request = Request.enqueue(account(), [Ecto.UUID.generate()]) |> make_due()
+      assert %Request{} = leased = Request.lease(request.id)
+
+      assert :ok = Request.record_failure(request, "late failure")
+
+      [reloaded] = Guard.FrontRepo.all(Request)
+      assert reloaded.attempts == 0
+      assert reloaded.last_error == nil
+      assert reloaded.next_attempt_at == leased.next_attempt_at
+    end
+
+    test "record_failure/2 after complete/1 does not dead-letter" do
+      request = Request.enqueue(account(), [Ecto.UUID.generate()]) |> at_last_attempt()
+      :ok = Request.complete(request)
+
+      log =
+        ExUnit.CaptureLog.capture_log(fn ->
+          assert :ok = Request.record_failure(request, "late failure")
+        end)
+
+      refute log =~ "Dead-lettering"
+      assert Request.dead_letter_count() == 0
     end
   end
 

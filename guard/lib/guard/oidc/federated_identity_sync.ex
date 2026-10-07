@@ -37,6 +37,7 @@ defmodule Guard.OIDC.FederatedIdentitySync do
   @failure_metric "guard.federated_identity_sync.failure"
   @max_attempts 3
   @pdict_key :federated_identity_sync_deferred
+  @lease_key :federated_identity_sync_lease
 
   @spec sync_github_claim(
           RepoHostAccount.t(),
@@ -115,58 +116,103 @@ defmodule Guard.OIDC.FederatedIdentitySync do
   end
 
   defp do_sync(account, released_user_ids, request) do
-    removals_ok =
-      released_user_ids
-      |> Enum.map(&remove_github_identity(&1, account))
-      |> Enum.all?(&(&1 == :ok))
+    Process.put(@lease_key, request)
 
-    result =
-      cond do
-        not removals_ok ->
-          Logger.error(
-            "[FederatedIdentitySync] Skipping github identity push for user #{account.user_id}: not all identity removals succeeded"
-          )
-
-          {:error, "identity removal failed"}
-
-        not RepoHostAccount.holds_uid?(account.repo_host, account.github_uid, account.user_id) ->
-          # A later claim superseded this one. Do not just complete: while this
-          # row existed, pending?/2 suppressed the identity on every other push
-          # path, so the current holder may have been starved the whole time -
-          # and if they acquired the uid without releasing anything, they have
-          # no request of their own to push for them. Push to whoever holds it
-          # now, resolved fresh rather than from this row's stale snapshot.
-          push_to_current_holder(account)
-
-        true ->
-          case push_github_identity(account) do
-            :ok -> :ok
-            # A string, never the atom: record_failure/2 does String.slice on it.
-            :held_by_other -> {:error, "identity held by another keycloak user"}
-            :error -> {:error, "identity push failed"}
-          end
-      end
-
-    case result do
+    case sync_steps(account, released_user_ids) do
       :ok ->
-        FederatedIdentitySyncRequest.complete(request)
+        FederatedIdentitySyncRequest.complete(leased_request())
         Watchman.increment({@success_metric, [@provider]})
 
       {:error, reason} ->
-        FederatedIdentitySyncRequest.record_failure(request, reason)
+        FederatedIdentitySyncRequest.record_failure(leased_request(), reason)
         Watchman.increment({@failure_metric, [@provider]})
+
+      :lost ->
+        Logger.info(
+          "[FederatedIdentitySync] Lost the lease on the sync for github uid #{account.github_uid}; " <>
+            "another run owns it now"
+        )
     end
+
+    :ok
   rescue
     error ->
       log_crash(account, error)
-      FederatedIdentitySyncRequest.record_failure(request, inspect(error))
+      FederatedIdentitySyncRequest.record_failure(leased_request(), inspect(error))
       Watchman.increment({@failure_metric, [@provider]})
+      :ok
   catch
     kind, reason ->
       log_crash(account, {kind, reason})
-      FederatedIdentitySyncRequest.record_failure(request, inspect({kind, reason}))
+      FederatedIdentitySyncRequest.record_failure(leased_request(), inspect({kind, reason}))
       Watchman.increment({@failure_metric, [@provider]})
+      :ok
+  after
+    Process.delete(@lease_key)
   end
+
+  defp sync_steps(account, released_user_ids) do
+    with :ok <- remove_identities(account, released_user_ids),
+         :ok <- renew_lease() do
+      push_identity(account)
+    end
+  end
+
+  # Every removal is attempted even after one fails, as before; only a lost
+  # lease stops early, because the row then belongs to another run.
+  defp remove_identities(account, released_user_ids) do
+    released_user_ids
+    |> Enum.reduce_while(:ok, fn user_id, acc ->
+      case renew_lease() do
+        :ok -> {:cont, remove_result(remove_github_identity(user_id, account), acc)}
+        :lost -> {:halt, :lost}
+      end
+    end)
+    |> tap(fn
+      {:error, _} ->
+        Logger.error(
+          "[FederatedIdentitySync] Skipping github identity push for user #{account.user_id}: not all identity removals succeeded"
+        )
+
+      _ ->
+        :ok
+    end)
+  end
+
+  defp remove_result(:ok, acc), do: acc
+  defp remove_result(:error, _acc), do: {:error, "identity removal failed"}
+
+  defp push_identity(account) do
+    if RepoHostAccount.holds_uid?(account.repo_host, account.github_uid, account.user_id) do
+      push_result(push_github_identity(account))
+    else
+      # A later claim superseded this one. Do not just complete: while this
+      # row existed, pending?/2 suppressed the identity on every other push
+      # path, so the current holder may have been starved the whole time -
+      # and if they acquired the uid without releasing anything, they have
+      # no request of their own to push for them. Push to whoever holds it
+      # now, resolved fresh rather than from this row's stale snapshot.
+      push_to_current_holder(account)
+    end
+  end
+
+  # A string, never the atom: record_failure/2 does String.slice on it.
+  defp push_result(:ok), do: :ok
+  defp push_result(:held_by_other), do: {:error, "identity held by another keycloak user"}
+  defp push_result(:error), do: {:error, "identity push failed"}
+
+  defp renew_lease do
+    case FederatedIdentitySyncRequest.renew_lease(leased_request()) do
+      {:ok, request} ->
+        Process.put(@lease_key, request)
+        :ok
+
+      :lost ->
+        :lost
+    end
+  end
+
+  defp leased_request, do: Process.get(@lease_key)
 
   # The claimer named by this request no longer holds the uid. Whoever does
   # gets the push, so a superseded request still leaves Keycloak consistent
@@ -186,11 +232,7 @@ defmodule Guard.OIDC.FederatedIdentitySync do
           "[FederatedIdentitySync] Claim by user #{account.user_id} was superseded; pushing uid #{account.github_uid} to current holder #{holder.user_id}"
         )
 
-        case push_github_identity(holder) do
-          :ok -> :ok
-          :held_by_other -> {:error, "identity held by another keycloak user"}
-          :error -> {:error, "identity push failed"}
-        end
+        push_result(push_github_identity(holder))
     end
   end
 
