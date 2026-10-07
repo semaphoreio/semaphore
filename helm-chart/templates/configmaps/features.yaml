@@ -137,7 +137,7 @@ data:
     project_page_all_pipelines:
       enabled: true
     public_api_v1:
-      enabled: true
+      enabled: false
     workflow_filtering:
       enabled: true
     github_merge_queues:
@@ -273,7 +273,7 @@ data:
     project_page_all_pipelines:
       enabled: true
     public_api_v1:
-      enabled: true
+      enabled: false
     workflow_filtering:
       enabled: true
     github_merge_queues:
