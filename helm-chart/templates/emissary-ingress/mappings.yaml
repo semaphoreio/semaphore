@@ -314,6 +314,7 @@ spec:
     retry_policy:
       retry_on: gateway-error
       num_retries: 4
+{{- if (index .Values "public-api" "enabled") }}
 ---
 apiVersion: getambassador.io/v3alpha1
 kind: Mapping
@@ -327,6 +328,7 @@ spec:
   service: public-api.{{ .Release.Namespace }}:4004
   timeout_ms: 30000    # increase timeout to 30s from default 3s
   precedence: 100
+{{- end }}
 ---
 apiVersion: getambassador.io/v3alpha1
 kind: Mapping
