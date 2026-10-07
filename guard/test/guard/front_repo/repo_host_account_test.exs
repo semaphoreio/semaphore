@@ -1126,6 +1126,102 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
     end
   end
 
+  describe "terminal compare-and-set fallback and GitHub uid uniqueness" do
+    setup do
+      {_user, rha} =
+        Support.Members.insert_user_with_github_account(
+          github_uid: "10201",
+          token: "stored_token",
+          refresh_token: "stored_refresh",
+          token_expires_at: Support.Members.valid_expires_at()
+        )
+
+      {:ok, rha: rha}
+    end
+
+    defp insert_other_link(rha, attrs) do
+      {:ok, other} =
+        Support.Members.insert_repo_host_account(
+          Keyword.merge(
+            [
+              github_uid: rha.github_uid,
+              login: "other-owner",
+              name: "Other Owner",
+              permission_scope: "user:email"
+            ],
+            attrs
+          )
+        )
+
+      other
+    end
+
+    test "keeps a revoked row revoked when another user actively holds the uid", %{rha: rha} do
+      {:ok, rha} = RepoHostAccount.update_revoke_status(rha, true)
+      holder = insert_other_link(rha, revoked: false)
+
+      stub_repo_update_always_stale!()
+
+      assert {:ok, {"rotated_access", _}} = persist_rotated!(rha)
+
+      :meck.unload(Guard.FrontRepo)
+
+      reloaded = RepoHostAccount.reload(rha)
+      assert reloaded.token == "rotated_access"
+      assert reloaded.refresh_token == "rotated_refresh"
+      assert reloaded.revoked
+      refute RepoHostAccount.reload(holder).revoked
+    end
+
+    test "keeps a revoked row revoked and releases nothing when only a stale revoked link " <>
+           "shares the uid",
+         %{rha: rha} do
+      {:ok, rha} = RepoHostAccount.update_revoke_status(rha, true)
+      stale = insert_other_link(rha, revoked: true)
+      :ok = Support.Members.age_repo_host_account(stale)
+
+      stub_repo_update_always_stale!()
+
+      assert {:ok, {"rotated_access", _}} = persist_rotated!(rha)
+
+      :meck.unload(Guard.FrontRepo)
+
+      reloaded = RepoHostAccount.reload(rha)
+      assert reloaded.token == "rotated_access"
+      assert reloaded.revoked
+      assert %RepoHostAccount{revoked: true} = RepoHostAccount.reload(stale)
+    end
+
+    test "un-revokes a revoked row whose uid is free", %{rha: rha} do
+      {:ok, rha} = RepoHostAccount.update_revoke_status(rha, true)
+
+      stub_repo_update_always_stale!()
+
+      assert {:ok, {"rotated_access", _}} = persist_rotated!(rha)
+
+      :meck.unload(Guard.FrontRepo)
+
+      reloaded = RepoHostAccount.reload(rha)
+      assert reloaded.token == "rotated_access"
+      refute reloaded.revoked
+    end
+
+    test "a pre-existing active duplicate stays active", %{rha: rha} do
+      duplicate = insert_other_link(rha, revoked: false)
+
+      stub_repo_update_always_stale!()
+
+      assert {:ok, {"rotated_access", _}} = persist_rotated!(rha)
+
+      :meck.unload(Guard.FrontRepo)
+
+      reloaded = RepoHostAccount.reload(rha)
+      assert reloaded.token == "rotated_access"
+      refute reloaded.revoked
+      refute RepoHostAccount.reload(duplicate).revoked
+    end
+  end
+
   describe "StaleEntryError translation is scoped to LOCKED writes" do
     setup :create_bitbucket_rha
 

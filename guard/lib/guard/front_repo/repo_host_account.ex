@@ -479,8 +479,17 @@ defmodule Guard.FrontRepo.RepoHostAccount do
         "unrelated write races rha=#{fresh.id} user=#{fresh.user_id} #{fresh.repo_host}"
     )
 
+    unrevoke? = cas_may_unrevoke?(fresh)
+
+    if not unrevoke? do
+      Logger.warning(
+        "Keeping repo_host_account #{fresh.id} revoked on compare-and-set: another account " <>
+          "shares its uid, so un-revoking requires the claim path"
+      )
+    end
+
     case FrontRepo.update_all(credential_cas_query(fresh),
-           set: token_cas_set(token, refresh_token, expires_at)
+           set: token_cas_set(token, refresh_token, expires_at, unrevoke?)
          ) do
       {1, _} ->
         Cachex.del(@oauth_refresh_failure_cache, fresh.id)
@@ -519,14 +528,31 @@ defmodule Guard.FrontRepo.RepoHostAccount do
   defp cas_where(query, field, nil), do: from(r in query, where: is_nil(field(r, ^field)))
   defp cas_where(query, field, value), do: from(r in query, where: field(r, ^field) == ^value)
 
-  # Mirror write_token's put_present semantics: always self-heal `revoked` and
-  # bump `updated_at` (update_all does not touch timestamps automatically);
-  # write token/refresh_token/token_expires_at only when present.
-  defp token_cas_set(token, refresh_token, expires_at) do
-    [revoked: false, updated_at: DateTime.utc_now() |> DateTime.truncate(:second)]
-    |> put_set(:token, token)
-    |> put_set(:refresh_token, refresh_token)
-    |> put_set(:token_expires_at, expires_at)
+  # The CAS bypasses the changeset, so it cannot run the uid check or the claim
+  # an un-revoke implies. While another row shares the uid, leave the flag to
+  # the next changeset-based write.
+  defp cas_may_unrevoke?(%__MODULE__{revoked: true, repo_host: "github", github_uid: uid} = fresh)
+       when uid not in [nil, ""] do
+    not FrontRepo.exists?(
+      from(r in __MODULE__,
+        where: r.repo_host == ^fresh.repo_host and r.github_uid == ^uid and r.id != ^fresh.id
+      )
+    )
+  end
+
+  defp cas_may_unrevoke?(_fresh), do: true
+
+  # Mirror write_token's put_present semantics: bump `updated_at` (update_all
+  # does not touch timestamps automatically); write token/refresh_token/
+  # token_expires_at only when present.
+  defp token_cas_set(token, refresh_token, expires_at, unrevoke?) do
+    set =
+      [updated_at: DateTime.utc_now() |> DateTime.truncate(:second)]
+      |> put_set(:token, token)
+      |> put_set(:refresh_token, refresh_token)
+      |> put_set(:token_expires_at, expires_at)
+
+    if unrevoke?, do: [{:revoked, false} | set], else: set
   end
 
   defp put_set(set, _key, nil), do: set
