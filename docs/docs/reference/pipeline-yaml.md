@@ -258,7 +258,7 @@ The `execution_time_limit` property accepts one of two options:
 
 You can only either `hours` or `minutes`. Not both.
 
-This property is also available on [`blocks`](#blocks) and [`jobs`](#jobs).
+This property is also available on [`blocks`](#blocks) and [`jobs`](#jobs), where a limit longer than the pipeline's is rejected when the pipeline is compiled. Jobs in an [`after_pipeline`](#after_pipeline) task instead inherit the pipeline limit unless they set their own.
 
 ```yaml title="Example"
 version: v1.0
@@ -1283,6 +1283,23 @@ Jobs in the `after_pipeline` task are always executed regardless of the result o
 All `SEMAPHORE_*` environment variables that are injected into regular pipeline jobs are also injected into `after_pipeline` jobs.
 
 Additionally, Semaphore [injects environment variables](./env-vars#after-pipeline-variables) describes the state, result, and duration of the executed pipeline into `after_pipeline` jobs.
+
+Jobs in the `after_pipeline` task inherit the pipeline's [`execution_time_limit`](#execution_time_limit) when they don't define one of their own. Since a pipeline that doesn't set `execution_time_limit` defaults to 1 hour, an `after_pipeline` job without an explicit limit is bounded to 1 hour as well. Set `execution_time_limit` on the job when it needs a different limit.
+
+The limit applies to each `after_pipeline` job on its own, measured from the moment that job starts. It is not reduced by the time the pipeline already used, so a pipeline and its after-pipeline jobs can together run for roughly twice the limit. Time spent waiting for an agent is not counted towards it either. Unlike jobs in [`blocks`](#blocks), an `after_pipeline` job's own limit is independent of the pipeline's and is not required to be shorter.
+
+```yaml title="Example"
+after_pipeline:
+  task:
+    jobs:
+      - name: Publish Tests
+        # highlight-start
+        execution_time_limit:
+          minutes: 15
+        # highlight-end
+        commands:
+          - test-results gen-pipeline-report
+```
 
 :::note
 

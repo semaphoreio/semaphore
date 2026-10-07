@@ -21,9 +21,22 @@ spec:
         product: semaphoreci
     spec:
       automountServiceAccountToken: false
+      volumes:
+        - name: features-volume
+          configMap:
+            defaultMode: 0644
+            name: features
+            items:
+            - key: features.yml
+              path: features.yml
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
+          volumeMounts:
+            - name: features-volume
+              mountPath: "/app/features.yml"
+              readOnly: true
+              subPath: features.yml
           ports:
             - containerPort: 4004
           securityContext:
@@ -64,6 +77,7 @@ spec:
                 configMapKeyRef:
                   name: {{ .Values.global.internalApi.configMapName }}
                   key: INTERNAL_API_URL_GROUPS
+                  optional: true
             - name: INTERNAL_API_URL_SERVICE_ACCOUNT
               valueFrom:
                 configMapKeyRef:
@@ -109,6 +123,11 @@ spec:
                 configMapKeyRef:
                   name: {{ .Values.global.internalApi.configMapName }}
                   key: INTERNAL_API_URL_FEATURE
+            - name: PRE_FLIGHT_CHECKS_GRPC_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.internalApi.configMapName }}
+                  key: INTERNAL_API_URL_PFC
             - name: PROJECTHUB_API_GRPC_URL
               valueFrom:
                 configMapKeyRef:
@@ -134,6 +153,10 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.global.rabbitmq.secretName }}
                   key: amqp-url
+            - name: ON_PREM
+              value: "true"
+            - name: FEATURE_YAML_PATH
+              value: "/app/features.yml"
 {{- if eq .Values.global.edition "ee" }}
             - name: AUDIT_LOGGING
               value: "true"

@@ -901,6 +901,17 @@ defmodule Guard.GrpcServers.UserServer do
     grpc_error!(:unavailable, "Token temporarily unavailable, please retry.")
   end
 
+  # A lost optimistic-lock race on the token write is a retry, never a
+  # disconnect. This is currently unreachable (the OAuth layer maps :stale to
+  # :transient), but pin it explicitly so it can never fall through to the
+  # catch-all below, which returns the NOT_FOUND ("... not found") string that
+  # repository_hub treats as a permanent disconnect.
+  defp handle_token_error(:stale, provider, user_id) do
+    Logger.warning("Stale token write race for User: '#{user_id}' and '#{provider}'.")
+
+    grpc_error!(:unavailable, "Token temporarily unavailable, please retry.")
+  end
+
   defp handle_token_error(reason, provider, user_id) do
     Logger.error(
       "Unexpected error (#{inspect(reason)}) fetching token for User: '#{user_id}' and '#{provider}'."

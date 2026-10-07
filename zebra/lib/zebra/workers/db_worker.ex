@@ -155,7 +155,18 @@ defmodule Zebra.Workers.DbWorker do
           from(r in worker.schema,
             where: field(r, ^worker.state_field) == ^worker.state_value,
             where: like(field(r, ^worker.machine_type_field), @self_hosted_prefix),
-            order_by: [{^order_dir, ^order_by}],
+            windows: [
+              per_org: [
+                partition_by: [r.organization_id, field(r, ^worker.machine_type_field)],
+                order_by: [
+                  {^order_dir, field(r, ^order_by)},
+                  {:desc_nulls_last, r.priority},
+                  {:asc, r.id}
+                ]
+              ]
+            ],
+            order_by: [asc: over(row_number(), :per_org)],
+            order_by: [{^order_dir, field(r, ^order_by)}],
             select: r.id,
             limit: ^records_per_tick
           )

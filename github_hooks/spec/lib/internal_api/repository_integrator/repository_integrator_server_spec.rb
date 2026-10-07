@@ -561,44 +561,155 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
         end
       end
     end
+
+    # guard owns the Bitbucket/GitLab OAuth lifecycle, so the connection state
+    # is whatever guard says it is, and nothing here may reach the provider.
+    %w[bitbucket gitlab].each do |integration_type|
+      context "for #{integration_type} integration" do
+        before do
+          user = FactoryBot.create(:user)
+          repository = FactoryBot.create(:repository, :integration_type => integration_type)
+          @project = FactoryBot.create(:project, :creator => user, :repository => repository)
+
+          @req = InternalApi::RepositoryIntegrator::CheckTokenRequest.new(
+            :project_id => @project.id
+          )
+        end
+
+        context "when guard hands out a token" do
+          before do
+            allow(Semaphore::GuardUserClient).to receive(:repository_token)
+              .and_return(["token", nil])
+          end
+
+          it "reports a full connection" do
+            response = server.check_token(@req, call)
+
+            expect(response.valid).to be(true)
+            expect(response.integration_scope).to eq(:FULL_CONNECTION)
+          end
+
+          it "asks guard about the project creator and this integration" do
+            server.check_token(@req, call)
+
+            expect(Semaphore::GuardUserClient).to have_received(:repository_token)
+              .with(@project.creator_id, integration_type)
+          end
+
+          it "never talks to the provider" do
+            expect(Excon).not_to receive(:post)
+            expect(Excon).not_to receive(:get)
+
+            server.check_token(@req, call)
+          end
+        end
+
+        context "when guard reports the connection revoked" do
+          before do
+            allow(Semaphore::GuardUserClient).to receive(:repository_token)
+              .and_raise(GRPC::NotFound.new("Token for not found."))
+          end
+
+          it "reports no connection" do
+            response = server.check_token(@req, call)
+
+            expect(response.valid).to be(false)
+            expect(response.integration_scope).to eq(:NO_CONNECTION)
+          end
+        end
+
+        context "when guard cannot answer" do
+          before do
+            allow(Semaphore::GuardUserClient).to receive(:repository_token)
+              .and_raise(GRPC::Unavailable.new("Token temporarily unavailable, please retry."))
+          end
+
+          it "reports no connection rather than raising" do
+            response = server.check_token(@req, call)
+
+            expect(response.valid).to be(false)
+            expect(response.integration_scope).to eq(:NO_CONNECTION)
+          end
+        end
+
+        context "when guard is unreachable" do
+          before do
+            allow(Semaphore::GuardUserClient).to receive(:repository_token).and_raise(StandardError, "boom")
+          end
+
+          it "reports no connection rather than raising" do
+            response = server.check_token(@req, call)
+
+            expect(response.valid).to be(false)
+            expect(response.integration_scope).to eq(:NO_CONNECTION)
+          end
+        end
+      end
+    end
   end
 
   describe "#update_revoke_status" do
-    let(:bitbucket_account) { FactoryBot.create(:bitbucket_account, :revoked => revoked) }
-    let(:revoked) { false }
+    context "for a bitbucket connection" do
+      let(:bitbucket_account) { FactoryBot.create(:bitbucket_account, :revoked => revoked) }
 
-    before do
-      allow(Semaphore::Bitbucket::Token).to receive(:user_token).with(bitbucket_account).and_return(["token", nil])
-      allow(Semaphore::Bitbucket::Token).to receive(:validation_state).with("token").and_return(validation_state)
-    end
+      # guard is the only component that refreshes Bitbucket tokens, and it
+      # owns `revoked`.
+      context "when the connection is healthy" do
+        let(:revoked) { false }
 
-    context "when token is valid" do
-      let(:revoked) { true }
-      let(:validation_state) { :valid }
+        it "leaves the revoked status untouched" do
+          server.send(:update_revoke_status, bitbucket_account)
+          expect(bitbucket_account.reload.revoked).to be(false)
+        end
+      end
 
-      it "marks connection as not revoked" do
-        server.send(:update_revoke_status, bitbucket_account)
-        expect(bitbucket_account.reload.revoked).to be(false)
+      context "when guard has marked the connection revoked" do
+        let(:revoked) { true }
+
+        it "leaves the revoked status untouched" do
+          server.send(:update_revoke_status, bitbucket_account)
+          expect(bitbucket_account.reload.revoked).to be(true)
+        end
+      end
+
+      context "regardless of the stored revoked status" do
+        let(:revoked) { false }
+
+        it "never talks to bitbucket" do
+          expect(Excon).not_to receive(:post)
+          expect(Excon).not_to receive(:get)
+
+          server.send(:update_revoke_status, bitbucket_account)
+        end
       end
     end
 
-    context "when token is invalid" do
+    context "for a github connection" do
+      let(:github_account) { FactoryBot.create(:repo_host_account, :revoked => revoked) }
       let(:revoked) { false }
-      let(:validation_state) { :invalid }
 
-      it "marks connection as revoked" do
-        server.send(:update_revoke_status, bitbucket_account)
-        expect(bitbucket_account.reload.revoked).to be(true)
+      before do
+        allow_any_instance_of(RepoHost::Github::Client).to receive(:token_valid?) { token_valid }
       end
-    end
 
-    context "when token check is transient" do
-      let(:revoked) { false }
-      let(:validation_state) { :transient }
+      context "when the token is still valid" do
+        let(:revoked) { true }
+        let(:token_valid) { true }
 
-      it "keeps the existing revoked status" do
-        server.send(:update_revoke_status, bitbucket_account)
-        expect(bitbucket_account.reload.revoked).to be(false)
+        it "marks connection as not revoked" do
+          server.send(:update_revoke_status, github_account)
+          expect(github_account.reload.revoked).to be(false)
+        end
+      end
+
+      context "when the token is no longer valid" do
+        let(:revoked) { false }
+        let(:token_valid) { false }
+
+        it "marks connection as revoked" do
+          server.send(:update_revoke_status, github_account)
+          expect(github_account.reload.revoked).to be(true)
+        end
       end
     end
   end

@@ -27,6 +27,14 @@ spec:
 {{- end }}
 {{- end }}
       automountServiceAccountToken: false
+      volumes:
+        - name: features-volume
+          configMap:
+            defaultMode: 0644
+            name: features
+            items:
+            - key: features.yml
+              path: features.yml
       initContainers:
 {{ include "initContainers.all" . | indent 8 }}
       containers:
@@ -34,6 +42,11 @@ spec:
           image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
           command: ["/bin/sh", "-c"]
           args: ["bin/ppl eval \"Ppl.ReleaseTasks.migrate()\" && bin/ppl start"]
+          volumeMounts:
+            - name: features-volume
+              mountPath: "/app/features.yml"
+              readOnly: true
+              subPath: features.yml
           ports:
           - name: grpc
             containerPort: 50053
@@ -48,6 +61,8 @@ spec:
             - configMapRef:
                 name: {{ .Values.global.internalApi.configMapName }}
           env:
+            - name: FEATURE_YAML_PATH
+              value: "/app/features.yml"
 {{- if eq .Values.global.edition "ce" }}
             - name: SKIP_PFC
               value: "true"

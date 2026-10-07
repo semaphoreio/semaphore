@@ -283,7 +283,7 @@ The actions with enabled checkbox are allowed for that role.
 
 ### How to create custom roles {#custom}
 
-<Available plans={['Enterprise']}/>
+<Available plans={['The Plan']}/>
 
 Create custom roles to give your users the precise permissions they need. 
 

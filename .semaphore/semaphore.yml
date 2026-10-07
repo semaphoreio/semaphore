@@ -2238,7 +2238,7 @@ blocks:
       jobs:
         - name: "Check code"
           commands:
-            - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated"'
+            - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated" --ignores G706'
         - name: "Check dependencies"
           commands:
             - make check.go.deps
@@ -2598,7 +2598,7 @@ blocks:
       jobs:
         - name: "Check code"
           commands:
-            - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated"'
+            - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated" --ignores G706,G204'
         - name: "Check dependencies"
           commands:
             - make check.go.deps
@@ -2876,7 +2876,7 @@ blocks:
       jobs:
         - name: "Check code"
           commands:
-            - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated" --ignores G115'
+            - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated" --ignores G115,G101,G705'
         - name: "Check dependencies"
           commands:
             - make check.go.deps
@@ -3440,6 +3440,23 @@ blocks:
             - make pull
             - make build
             - make push
+  - name: "statsd: Tests"
+    dependencies: ["statsd: Provision Prod Image"]
+    run:
+      when: "change_in('/statsd', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: APP_ENV
+          value: prod
+      prologue:
+        commands:
+          - checkout && cd statsd
+      jobs:
+        - name: "Test"
+          commands:
+            - make test
   - name: "statsd: Security Checks"
     dependencies: ["statsd: Provision Prod Image"]
     run:

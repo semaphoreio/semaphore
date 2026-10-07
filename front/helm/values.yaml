@@ -22,7 +22,7 @@ projectPage:
       memory: 700Mi
     requests:
       cpu: '0.2'
-      memory: 300Mi
+      memory: 512Mi
 
 jobPage:
   replicas: 1
