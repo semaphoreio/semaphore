@@ -15,6 +15,7 @@ import { LiveSettings } from "./components/live_settings"
 import { EventsFetcher } from "./events_fetcher"
 import { Render } from "./render"
 import { SleepDetector } from "../sleep_detector"
+import { Events } from "./events"
 
 export class JobLogs {
   static init() {
@@ -29,12 +30,35 @@ export class JobLogs {
     return new JobLogs(config)
   }
 
+  //
+  // Releases everything this page owns, so a Turbo visit does not leave a log
+  // stream, a render loop or a sleep detector running against a body that has
+  // been swapped out. The click handlers are delegated off document.body,
+  // which Turbo replaces, so they go away on their own.
+  //
+  static stop() {
+    if (JobLogs.pendingTimeout) {
+      clearTimeout(JobLogs.pendingTimeout)
+      JobLogs.pendingTimeout = null
+    }
+
+    EventsFetcher.stop()
+    Render.stop()
+    SleepDetector.stop()
+    Live.disconnect()
+    Highlight.disconnect()
+    Timer.stop()
+    Events.reset()
+  }
+
   constructor(config) {
     this.slept = false
     this.config = config
     this.startTime = performance.now();
     this.metricTags = [];
 
+    // Module level singletons that outlive the page under Turbo.
+    JobLogs.stop()
     State.init(config.logState)
 
     SleepDetector.init(() => {
@@ -47,7 +71,7 @@ export class JobLogs {
 
   start() {
     if (State.get("state") == "pending") {
-      setTimeout(this.start.bind(this), 5000)
+      JobLogs.pendingTimeout = setTimeout(this.start.bind(this), 5000)
       return
     }
 

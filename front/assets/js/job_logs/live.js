@@ -2,6 +2,13 @@ import { State } from "./state"
 import { Scroll } from "./scroll"
 
 export var Live = {
+  disconnect() {
+    if (this.observer) {
+      this.observer.disconnect()
+      this.observer = null
+    }
+  },
+
   init(containerSelector) {
     const container = document.querySelector(containerSelector)
     const config = { childList: true, subtree: true }
@@ -18,9 +25,13 @@ export var Live = {
       }
     };
 
-    const observer = new MutationObserver(callback);
+    // Kept on the module so the Turbo teardown can disconnect it. The observed
+    // node lives in the body and goes away with it, but an observer nothing
+    // holds a reference to can never be stopped explicitly.
+    this.disconnect()
+    this.observer = new MutationObserver(callback);
 
-    observer.observe(container, config);
+    this.observer.observe(container, config);
 
     // https://stackoverflow.com/a/31223774/3887547
     let lastScrollTop = 0;
