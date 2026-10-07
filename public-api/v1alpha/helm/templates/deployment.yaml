@@ -93,6 +93,11 @@ spec:
                 configMapKeyRef:
                   name: {{ .Values.global.internalApi.configMapName }}
                   key: INTERNAL_API_URL_GOFER
+            - name: INTERNAL_API_URL_VELOCITY
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.internalApi.configMapName }}
+                  key: INTERNAL_API_URL_VELOCITY
             - name: PERIODIC_SCHEDULER_URL
               valueFrom:
                 configMapKeyRef:

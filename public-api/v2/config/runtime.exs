@@ -35,3 +35,24 @@ config :public_api,
   self_hosted_hub_grpc_endpoint: System.get_env("SELF_HOSTED_HUB_URL") || "127.0.0.1:50052",
   notifications_grpc_endpoint: System.get_env("NOTIFICATIONS_GRPC_URL") || "127.0.0.1:50052",
   projecthub_grpc_endpoint: System.get_env("PROJECTHUB_GRPC_URL") || "127.0.0.1:50052"
+
+on_prem? = System.get_env("ON_PREM") == "true"
+
+config :public_api, on_prem?: on_prem?
+
+feature_provider =
+  if on_prem? do
+    {FeatureProvider.YamlProvider,
+     [
+       yaml_path: System.get_env("FEATURE_YAML_PATH") || "/app/features.yml",
+       agent_name: :feature_provider_public_api_agent
+     ]}
+  else
+    {InternalClients.Feature,
+     [
+       cache:
+         {FeatureProvider.CachexCache, name: :feature_provider_cache, ttl_ms: :timer.hours(6)}
+     ]}
+  end
+
+config :public_api, feature_provider: feature_provider

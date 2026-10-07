@@ -42,6 +42,19 @@ defmodule Router.Projects.ListTest do
       assert list_res == []
     end
 
+    test "projects that build draft pull requests are listed", ctx do
+      project_id = UUID.uuid4()
+
+      Support.Stubs.Project.create(%{id: ctx.org_id}, %{id: ctx.user_id},
+        id: project_id,
+        run_on: ["branches", "draft_pull_requests"]
+      )
+
+      assert {200, _headers, list_res} = list_projects(ctx, page_size: 20)
+      assert projects_in_schema(list_res)
+      assert Enum.any?(list_res, &(get_in(&1, ["metadata", "id"]) == project_id))
+    end
+
     test "one of the projects not owned by request organization", ctx do
       wrong_org = UUID.uuid4()
 
