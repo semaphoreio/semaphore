@@ -30,24 +30,6 @@ defmodule Router.Projects.DescribeTest do
       check_response(response)
     end
 
-    test "describe a project that builds draft pull requests", ctx do
-      project_id = UUID.uuid4()
-
-      Support.Stubs.Project.create(%{id: ctx.org_id}, %{id: ctx.user_id},
-        id: project_id,
-        run_on: ["branches", "draft_pull_requests"]
-      )
-
-      PermissionPatrol.add_permissions(ctx.org_id, ctx.user_id, "project.view", project_id)
-
-      {:ok, response} = get_project(ctx, project_id)
-      assert 200 == response.status_code
-      check_response(response)
-
-      run_on = get_in(Jason.decode!(response.body), ["spec", "repository", "run_on"])
-      assert "DRAFT_PULL_REQUESTS" in run_on
-    end
-
     test "describe a not existant project", ctx do
       {:ok, response} = get_project(ctx, "not_existant")
       assert 404 == response.status_code

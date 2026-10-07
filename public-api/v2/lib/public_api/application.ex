@@ -13,14 +13,10 @@ defmodule PublicAPI.Application do
     provider = Application.fetch_env!(:public_api, :feature_provider)
     FeatureProvider.init(provider)
 
-    children =
-      children(Application.get_env(:public_api, :environment)) ++
-        if Application.get_env(:public_api, :on_prem?, false), do: [provider], else: []
-
     # See http://elixir-lang.org/docs/stable/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: PublicAPI.Supervisor, max_restarts: 1000]
-    Supervisor.start_link(children, opts)
+    Supervisor.start_link(children(Application.get_env(:public_api, :environment)), opts)
   end
 
   def children(:test) do

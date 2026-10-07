@@ -17,22 +17,9 @@ spec:
         product: semaphoreci
     spec:
       automountServiceAccountToken: false
-      volumes:
-        - name: features-volume
-          configMap:
-            defaultMode: 0644
-            name: features
-            items:
-            - key: features.yml
-              path: features.yml
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
-          volumeMounts:
-            - name: features-volume
-              mountPath: "/app/features.yml"
-              readOnly: true
-              subPath: features.yml
           ports:
             - containerPort: 4004
           securityContext:
@@ -98,20 +85,6 @@ spec:
                 configMapKeyRef:
                   name: {{ .Values.global.internalApi.configMapName }}
                   key: INTERNAL_API_URL_FEATURE
-            - name: ON_PREM
-              value: "true"
-            - name: FEATURE_YAML_PATH
-              value: "/app/features.yml"
-            - name: CACHE_HOST
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.global.redis.secretName }}
-                  key: host
-            - name: CACHE_PORT
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.global.redis.secretName }}
-                  key: port
             - name: PERIODIC_SCHEDULER_URL
               valueFrom:
                 configMapKeyRef:
