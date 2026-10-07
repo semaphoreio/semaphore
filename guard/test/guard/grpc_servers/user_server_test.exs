@@ -1638,6 +1638,43 @@ defmodule Guard.GrpcServers.UserServerTest do
       assert reloaded.revoked == true
     end
 
+    test "refresh_repository_provider returns not_found when a claim deleted the link mid-request",
+         %{grpc_channel: channel, user: user, repo_host_account: rha} do
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          json(%{"valid" => "valid"})
+
+        %{method: :get, url: "https://api.github.com/user/184065"} ->
+          json(%{"id" => 184_065, "login" => "radwo", "name" => "radwo"})
+      end)
+
+      {:ok, _} = Guard.FrontRepo.RepoHostAccount.update_revoke_status(rha, true)
+
+      :meck.new(Guard.FrontRepo, [:passthrough])
+      on_exit(fn -> :meck.unload() end)
+
+      :meck.expect(Guard.FrontRepo, :update, fn changeset ->
+        Ecto.Adapters.SQL.query!(
+          Guard.FrontRepo,
+          "DELETE FROM repo_host_accounts WHERE id::text = $1",
+          [rha.id]
+        )
+
+        :meck.passthrough([changeset])
+      end)
+
+      request =
+        User.RefreshRepositoryProviderRequest.new(
+          user_id: user.id,
+          type: User.RepositoryProvider.Type.value(:GITHUB)
+        )
+
+      not_found = GRPC.Status.not_found()
+
+      assert {:error, %GRPC.RPCError{status: ^not_found}} =
+               channel |> Stub.refresh_repository_provider(request)
+    end
+
     test "refresh_repository_provider syncs the github login when it changed upstream",
          %{grpc_channel: channel, user: user, repo_host_account: rha} do
       new_login = "#{rha.login}-renamed"

@@ -169,6 +169,100 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
     end
   end
 
+  describe "writes to a row a claim deleted after it was read" do
+    setup do
+      {user, rha} =
+        Support.Members.insert_user_with_github_account(
+          github_uid: "10301",
+          permission_scope: "repo,user:email"
+        )
+
+      {:ok, user: user, rha: rha}
+    end
+
+    # The caller reads the row, then a claim deletes it before the write. The
+    # delete is committed up front and the read is served the stale row.
+    defp serve_stale_read!(rha) do
+      FrontRepo.delete!(rha)
+      mock_front_repo!()
+
+      :meck.expect(Guard.FrontRepo, :one, fn query ->
+        if Process.get(:stale_read_served) do
+          :meck.passthrough([query])
+        else
+          Process.put(:stale_read_served, true)
+          rha
+        end
+      end)
+    end
+
+    defp oauth_data(rha) do
+      %{
+        github_uid: rha.github_uid,
+        login: rha.login,
+        name: rha.name,
+        token: "reconnected-token",
+        permission_scope: "repo,user:email"
+      }
+    end
+
+    test "update_repo_host_account/4 reports the uid as taken when the claimer holds it",
+         %{user: user, rha: rha} do
+      {:ok, _claimer} =
+        Support.Members.insert_repo_host_account(
+          github_uid: rha.github_uid,
+          login: "claimer",
+          name: "Claimer",
+          permission_scope: "user:email"
+        )
+
+      serve_stale_read!(rha)
+
+      assert {:error, %Ecto.Changeset{} = changeset} =
+               RepoHostAccount.update_repo_host_account(user.id, :github, oauth_data(rha),
+                 reset: false
+               )
+
+      assert RepoHostAccount.uid_taken_error?(changeset)
+    end
+
+    test "update_repo_host_account/4 recreates the link when the uid is free",
+         %{user: user, rha: rha} do
+      {:ok, rha} = RepoHostAccount.update_revoke_status(rha, true)
+
+      serve_stale_read!(rha)
+
+      assert {:ok, account} =
+               RepoHostAccount.update_repo_host_account(user.id, :github, oauth_data(rha),
+                 reset: false
+               )
+
+      :meck.unload(Guard.FrontRepo)
+
+      assert account.id != rha.id
+      assert account.user_id == user.id
+      assert account.github_uid == rha.github_uid
+      refute account.revoked
+    end
+
+    test "update_repo_host_account/4 handles the row vanishing under a uid reset",
+         %{user: user, rha: rha} do
+      serve_stale_read!(rha)
+
+      assert {:ok, account} =
+               RepoHostAccount.update_repo_host_account(
+                 user.id,
+                 :github,
+                 %{oauth_data(rha) | github_uid: "10302"},
+                 reset: true
+               )
+
+      :meck.unload(Guard.FrontRepo)
+
+      assert account.github_uid == "10302"
+    end
+  end
+
   describe "GitHub account uniqueness" do
     setup do
       {user, rha} = Support.Members.insert_user_with_github_account(github_uid: "10001")
@@ -1238,19 +1332,13 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
                )
     end
 
-    test "an UNLOCKED write does NOT return {:error, :stale} - it re-raises, so the " <>
-           "unlocked callers' changeset contract is preserved",
+    test "an UNLOCKED write to a deleted row returns {:error, :not_found}, not :stale",
          %{rha: rha} do
-      # update_revoke_status/2 (and update_existing_account/3) are unlocked. They
-      # pattern-match {:ok, _} | {:error, changeset}; leaking an undeclared
-      # {:error, :stale} would be mishandled downstream (e.g. actions.ex does
-      # changeset.errors). The rescue must NOT translate for them - it re-raises
-      # exactly as before this PR.
+      # A claim deletes other users' revoked rows, so an unlocked writer can
+      # lose its row between read and write. That is not a lost lock race.
       FrontRepo.delete!(rha)
 
-      assert_raise Ecto.StaleEntryError, fn ->
-        RepoHostAccount.update_revoke_status(rha, true)
-      end
+      assert {:error, :not_found} = RepoHostAccount.update_revoke_status(rha, true)
     end
   end
 

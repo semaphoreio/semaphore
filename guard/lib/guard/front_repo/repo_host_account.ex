@@ -646,13 +646,23 @@ defmodule Guard.FrontRepo.RepoHostAccount do
 
     case get_for_user_by_repo_host(user_id, repo_host) do
       {:ok, account} ->
-        update_existing_account(account, data, opts)
+        case update_existing_account(account, data, opts) do
+          # A claim deleted the row after it was read. Creating it again runs
+          # the uid check, so a claimed uid still comes back as taken.
+          {:error, :not_found} ->
+            create(data |> Map.merge(%{user_id: user_id, repo_host: repo_host}))
+
+          result ->
+            result
+        end
 
       {:error, :not_found} ->
         create(data |> Map.merge(%{user_id: user_id, repo_host: repo_host}))
     end
   end
 
+  @spec update_revoke_status(t(), boolean()) ::
+          {:ok, t()} | {:error, :not_found | Ecto.Changeset.t()}
   def update_revoke_status(rha, revoked) do
     update_account(%{revoked: revoked}, rha)
   end
@@ -975,14 +985,10 @@ defmodule Guard.FrontRepo.RepoHostAccount do
         {:error, error}
     end
   rescue
-    error in [Ecto.StaleEntryError] ->
-      # Only the locked callers (token write, unrotated revoke) expect and
-      # handle {:error, :stale}. An UNLOCKED write raises StaleEntryError only
-      # when the row was deleted between read and write; converting that to
-      # {:error, :stale} here would hand every unlocked caller
-      # (update_revoke_status, update_existing_account) an undeclared error they
-      # pattern-match as a changeset. Scope the translation to the locked path
-      # and re-raise otherwise, preserving those callers' contract.
+    Ecto.StaleEntryError ->
+      # Only the locked callers (token write, unrotated revoke) expect
+      # {:error, :stale}. An UNLOCKED write raises StaleEntryError only when
+      # the row was deleted between read and write - a claim releasing it.
       if Keyword.get(opts, :lock, false) do
         Logger.warning(
           "Lost optimistic-lock race writing token for rha=#{account.id} user=#{account.user_id} #{account.repo_host}; discarding stale response"
@@ -990,8 +996,16 @@ defmodule Guard.FrontRepo.RepoHostAccount do
 
         {:error, :stale}
       else
-        reraise error, __STACKTRACE__
+        log_vanished(account)
+        {:error, :not_found}
       end
+  end
+
+  defp log_vanished(account) do
+    Logger.warning(
+      "RepoHostAccount rha=#{account.id} user=#{account.user_id} #{account.repo_host} " <>
+        "was deleted before the write; another user claimed its uid"
+    )
   end
 
   # update_account/2 is the single write chokepoint for both self-heal
@@ -1059,6 +1073,10 @@ defmodule Guard.FrontRepo.RepoHostAccount do
 
         {:error, error}
     end
+  rescue
+    Ecto.StaleEntryError ->
+      log_vanished(account)
+      {:error, :not_found}
   end
 
   def skip_credentials?(_, ""), do: true

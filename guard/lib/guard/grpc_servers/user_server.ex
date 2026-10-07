@@ -436,6 +436,9 @@ defmodule Guard.GrpcServers.UserServer do
         {:ok, updated_account} ->
           map_provider(updated_account)
 
+        {:error, :not_found} ->
+          grpc_error!(:not_found, "Repository provider for #{user.id} is no longer connected.")
+
         {:error, _} ->
           grpc_error!(:internal, "Error while updating repository provider for #{user.id}.")
 
