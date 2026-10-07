@@ -3287,7 +3287,7 @@ GET <organization-url>.semaphoreci.com/api/v1alpha/projects/{project_id}/insight
 
 Query parameters: same as [Performance](#performance) (`pipeline_file` required, `branch`, `from`, `to`, `aggregate`).
 
-Accuracy note: `failed_count` includes pipelines that were STOPPED in addition to those that failed. This means the pass rate may appear lower than the true failure rate in projects that frequently cancel runs.
+Pipelines stopped by a user (UI, CLI or API) or cancelled by an [`auto_cancel`](./pipeline-yaml#auto-cancel) strategy are excluded from all counts, so they do not lower the pass rate. Pipelines stopped for any other reason, such as an [execution time limit](./pipeline-yaml#execution_time_limit) or an internal error, are counted in `failed_count`.
 
 Response:
 

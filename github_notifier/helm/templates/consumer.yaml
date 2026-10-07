@@ -48,6 +48,8 @@ spec:
             - configMapRef:
                 name: {{ .Values.global.internalApi.configMapName }}
           env:
+            - name: FEATURE_YAML_PATH
+              value: "/app/features.yml"
             - name: START_CONSUMERS
               value: "true"
             - name: START_API

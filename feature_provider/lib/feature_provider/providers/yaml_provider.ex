@@ -4,8 +4,13 @@ defmodule FeatureProvider.YamlProvider do
 
   @type yaml_feature :: {feature_name :: atom(), feature_setup :: map() | nil}
 
+  @default_reader {YamlElixir, :read_from_file!}
+
   @doc """
   Reads a features yaml file, parses it and starts an agent holding the features
+
+  Options: `:yaml_path` and `:agent_name` (required), and `:reader`, a `{module, function}`
+  that takes the path and returns the decoded YAML (default `{YamlElixir, :read_from_file!}`).
   """
   def start_link(opts \\ []) do
     yaml_path =
@@ -20,7 +25,7 @@ defmodule FeatureProvider.YamlProvider do
 
     features =
       yaml_path
-      |> features_from_file()
+      |> features_from_file(Keyword.get(opts, :reader, @default_reader))
 
     Agent.start_link(fn -> features end, name: agent_name)
   end
@@ -61,10 +66,10 @@ defmodule FeatureProvider.YamlProvider do
     {:ok, []}
   end
 
-  @spec features_from_file(String.t()) :: [Feature.t()]
-  defp features_from_file(feature_file_path) do
-    feature_file_path
-    |> YamlElixir.read_from_file!()
+  @spec features_from_file(String.t(), {module(), atom()}) :: [Feature.t()]
+  defp features_from_file(feature_file_path, {reader_module, reader_function}) do
+    reader_module
+    |> apply(reader_function, [feature_file_path])
     |> Enum.map(&parse_yaml_feature/1)
   end
 
