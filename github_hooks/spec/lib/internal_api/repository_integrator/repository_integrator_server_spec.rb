@@ -487,79 +487,90 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
             :repo_host => @project.repo_host_account.repo_host,
             :github_uid => @project.repo_host_account.github_uid
           )
+
+          allow(Semaphore::GuardUserClient).to receive(:refresh_repository_provider)
         end
 
-        it "keeps the account revoked and returns no connection", :aggregate_failures do
+        it "keeps the account revoked without asking guard", :aggregate_failures do
           response = server.check_token(@req, call)
 
           expect(@project.repo_host_account.reload.revoked).to be(true)
           expect(response.valid).to be(false)
           expect(response.integration_scope).to eq(:NO_CONNECTION)
+          expect(Semaphore::GuardUserClient).not_to have_received(:refresh_repository_provider)
         end
       end
 
-      context "when a revoked account's uid is held by a recently revoked account" do
+      # Re-activating releases the other revoked rows and moves the Keycloak
+      # identity. Only guard can do that, so the claim is handed to it.
+      context "when a revoked account's uid is held only by revoked accounts" do
         let(:token_valid) { true }
         let(:permission_scope) { "repo,user:email" }
 
         before do
-          @project.repo_host_account.update!(:revoked => true)
-
-          FactoryBot.create(
-            :repo_host_account,
-            :repo_host => @project.repo_host_account.repo_host,
-            :github_uid => @project.repo_host_account.github_uid,
-            :revoked => true
-          )
-        end
-
-        it "keeps the account revoked while the other link is inside the grace period", :aggregate_failures do
-          response = server.check_token(@req, call)
-
-          expect(@project.repo_host_account.reload.revoked).to be(true)
-          expect(response.valid).to be(false)
-          expect(response.integration_scope).to eq(:NO_CONNECTION)
-        end
-      end
-
-      # Releasing a long-revoked competing link is a claim: it must delete that
-      # row and move the Keycloak identity. This service cannot do that, so it
-      # declines rather than flipping the flag and leaving Keycloak behind.
-      context "when a revoked account's uid is held by a long-revoked account" do
-        let(:token_valid) { true }
-        let(:permission_scope) { "repo,user:email" }
-
-        before do
-          @project.repo_host_account.update!(:revoked => true)
+          @rha = @project.repo_host_account
+          @rha.update!(:revoked => true)
 
           @competitor = FactoryBot.create(
             :repo_host_account,
-            :repo_host => @project.repo_host_account.repo_host,
-            :github_uid => @project.repo_host_account.github_uid,
+            :repo_host => @rha.repo_host,
+            :github_uid => @rha.github_uid,
             :revoked => true,
             :updated_at => 3.hours.ago
           )
-
-          # Round-trip through the database: the in-memory value carries
-          # nanoseconds, the column stores microseconds.
-          @competitor_updated_at = @competitor.reload.updated_at
         end
 
-        it "keeps the account revoked and defers the claim to guard", :aggregate_failures do
-          response = server.check_token(@req, call)
+        context "and guard performs the claim" do
+          before do
+            allow(Semaphore::GuardUserClient).to receive(:refresh_repository_provider) do
+              @competitor.destroy!
+              @rha.update!(:revoked => false)
+            end
+          end
 
-          expect(@project.repo_host_account.reload.revoked).to be(true)
-          expect(response.valid).to be(false)
-          expect(response.integration_scope).to eq(:NO_CONNECTION)
+          it "asks guard to re-validate the account's owner", :aggregate_failures do
+            server.check_token(@req, call)
+
+            expect(Semaphore::GuardUserClient).to have_received(:refresh_repository_provider)
+              .with(@rha.user_id, :GITHUB)
+          end
+
+          it "reports the connection guard re-activated", :aggregate_failures do
+            response = server.check_token(@req, call)
+
+            expect(response.valid).to be(true)
+            expect(response.integration_scope).to eq(:FULL_CONNECTION)
+          end
         end
 
-        it "leaves the competing link untouched", :aggregate_failures do
-          server.check_token(@req, call)
+        context "and guard keeps the account revoked" do
+          before do
+            allow(Semaphore::GuardUserClient).to receive(:refresh_repository_provider)
+          end
 
-          @competitor.reload
+          it "returns no connection and leaves the competing link alone", :aggregate_failures do
+            response = server.check_token(@req, call)
 
-          expect(@competitor.revoked).to be(true)
-          expect(@competitor.updated_at).to eq(@competitor_updated_at)
+            expect(@rha.reload.revoked).to be(true)
+            expect(@competitor.reload.revoked).to be(true)
+            expect(response.valid).to be(false)
+            expect(response.integration_scope).to eq(:NO_CONNECTION)
+          end
+        end
+
+        context "and guard is unreachable" do
+          before do
+            allow(Semaphore::GuardUserClient).to receive(:refresh_repository_provider)
+              .and_raise(GRPC::Unavailable)
+          end
+
+          it "keeps the account revoked and returns no connection", :aggregate_failures do
+            response = server.check_token(@req, call)
+
+            expect(@rha.reload.revoked).to be(true)
+            expect(response.valid).to be(false)
+            expect(response.integration_scope).to eq(:NO_CONNECTION)
+          end
         end
       end
 
