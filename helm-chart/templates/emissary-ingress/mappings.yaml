@@ -331,20 +331,6 @@ spec:
 apiVersion: getambassador.io/v3alpha1
 kind: Mapping
 metadata:
-  name: docs-api-spec-mapping
-  namespace: {{ .Release.Namespace }}
-spec:
-  hostname: "*"
-  prefix: /api/v2/api-spec/openapi.json
-  rewrite: "/api-spec/openapi.json"
-  service: public-api.{{ .Release.Namespace }}:4004
-  timeout_ms: 30000
-  precedence: 102
-  bypass_auth: true
----
-apiVersion: getambassador.io/v3alpha1
-kind: Mapping
-metadata:
   name: plumber-public-mapping
   namespace: {{ .Release.Namespace }}
 spec:
