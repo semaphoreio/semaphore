@@ -314,6 +314,7 @@ spec:
     retry_policy:
       retry_on: gateway-error
       num_retries: 4
+{{- if (index .Values "public-api" "enabled") }}
 ---
 apiVersion: getambassador.io/v3alpha1
 kind: Mapping
@@ -327,6 +328,7 @@ spec:
   service: public-api.{{ .Release.Namespace }}:4004
   timeout_ms: 30000    # increase timeout to 30s from default 3s
   precedence: 100
+{{- end }}
 ---
 apiVersion: getambassador.io/v3alpha1
 kind: Mapping
@@ -567,6 +569,19 @@ spec:
 apiVersion: getambassador.io/v3alpha1
 kind: Mapping
 metadata:
+  name: plumber-public-role-bindings-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: "*"
+  prefix: /api/v1alpha/role_bindings
+  rewrite: "/role_bindings"
+  service: plumber-public.{{ .Release.Namespace }}:4004
+  timeout_ms: 30000
+  precedence: 100
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
   name: plumber-public-permissions-mapping
   namespace: {{ .Release.Namespace }}
 spec:
@@ -622,6 +637,40 @@ spec:
   timeout_ms: 30000
   precedence: 100
 ---
+{{- if eq .Values.global.edition "ee" }}
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: plumber-public-insights-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: "*"
+  prefix: "/api/v1alpha/projects/[^/]+/insights(/.*)?$"
+  prefix_regex: true
+  regex_rewrite:
+    pattern: "/api/v1alpha/(.*)"
+    substitution: "/\\1"
+  service: plumber-public.{{ .Release.Namespace }}:4004
+  timeout_ms: 30000
+  precedence: 200
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: plumber-public-test-results-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: "*"
+  prefix: "/api/v1alpha/projects/[^/]+/test_results(/.*)?$"
+  prefix_regex: true
+  regex_rewrite:
+    pattern: "/api/v1alpha/(.*)"
+    substitution: "/\\1"
+  service: plumber-public.{{ .Release.Namespace }}:4004
+  timeout_ms: 30000
+  precedence: 200
+---
+{{- end }}
 apiVersion: getambassador.io/v3alpha1
 kind: Mapping
 metadata:
