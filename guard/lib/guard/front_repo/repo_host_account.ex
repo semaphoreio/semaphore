@@ -89,7 +89,6 @@ defmodule Guard.FrontRepo.RepoHostAccount do
         :name,
         :permission_scope
       ])
-      |> validate_github_uid_not_taken()
 
     result =
       claim_uid(changeset, fn changeset ->
@@ -697,16 +696,6 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     end
   end
 
-  # Only a true->false transition re-checks uniqueness, so rows that already
-  # share a uid keep working through token refreshes and profile syncs.
-  defp maybe_validate_uid_on_unrevoke(changeset) do
-    if unrevoke_transition?(changeset) do
-      validate_github_uid_not_taken(changeset)
-    else
-      changeset
-    end
-  end
-
   defp unrevoke_transition?(changeset) do
     Ecto.Changeset.get_change(changeset, :revoked) == false and changeset.data.revoked == true
   end
@@ -991,7 +980,6 @@ defmodule Guard.FrontRepo.RepoHostAccount do
         ]
       )
       |> Ecto.Changeset.validate_required(required_now)
-      |> maybe_validate_uid_on_unrevoke()
 
     unrevoke? = unrevoke_transition?(changeset)
 
@@ -1094,7 +1082,6 @@ defmodule Guard.FrontRepo.RepoHostAccount do
         ]
       )
       |> Ecto.Changeset.validate_required([:github_uid, :login, :name])
-      |> validate_github_uid_not_taken()
 
     result =
       claim_uid(changeset, fn changeset ->
