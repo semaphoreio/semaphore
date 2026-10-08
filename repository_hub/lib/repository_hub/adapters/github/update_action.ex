@@ -17,7 +17,10 @@ defimpl RepositoryHub.Server.UpdateAction, for: RepositoryHub.GithubAdapter do
 
   @impl true
   def execute(adapter, request) do
-    with {:ok, adapter_context} <- GithubAdapter.context(adapter, request.repository_id) do
+    with {:ok, adapter_context} <- GithubAdapter.context(adapter, request.repository_id),
+         {:ok, target_git_repository} <- Model.GitRepository.from_github(request.url),
+         {:ok, target_token} <-
+           GithubAdapter.token(adapter, adapter_context.project.metadata.owner_id, target_git_repository) do
       Multi.new()
       |> Multi.put(:repository, adapter_context.repository)
       |> Multi.put(:github_token, adapter_context.github_token)
@@ -26,7 +29,7 @@ defimpl RepositoryHub.Server.UpdateAction, for: RepositoryHub.GithubAdapter do
       end)
       |> Multi.run(:update_repository_url, fn _repo, context ->
         context.connector
-        |> GithubConnector.update_repository_url(request.url)
+        |> GithubConnector.update_repository_url(request.url, target_token)
       end)
       |> Multi.run(:updated_repository, fn _repo, context ->
         params =

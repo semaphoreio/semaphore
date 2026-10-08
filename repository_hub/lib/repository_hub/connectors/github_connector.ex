@@ -33,7 +33,7 @@ defmodule RepositoryHub.GithubConnector do
     end)
   end
 
-  def update_repository_url(connector, url) do
+  def update_repository_url(connector, url, target_token) do
     connector.git_repository
     |> Model.GitRepository.equal?(url)
     |> unwrap(fn
@@ -49,13 +49,13 @@ defmodule RepositoryHub.GithubConnector do
 
           false ->
             connector
-            |> can_change_url?(url)
-            |> update_repository_url_impl(url)
+            |> can_change_url?(url, target_token)
+            |> update_repository_url_impl(url, target_token)
         end)
     end)
   end
 
-  defp can_change_url?(connector, url) do
+  defp can_change_url?(connector, url, _target_token) do
     Model.GitRepository.from_github(url)
     |> unwrap(fn git_repository ->
       GithubClient.find_repository(
@@ -78,7 +78,7 @@ defmodule RepositoryHub.GithubConnector do
     end)
   end
 
-  defp update_repository_url_impl(connector, url) do
+  defp update_repository_url_impl(connector, url, _target_token) do
     connector
     |> unwrap(fn connector ->
       Multi.new()
