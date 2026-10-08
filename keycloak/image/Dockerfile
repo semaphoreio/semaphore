@@ -1,5 +1,5 @@
-ARG KEYCLOAK_VERSION=25.0.6
-ARG BASE_IMAGE=registry.access.redhat.com/ubi9:9.5
+ARG KEYCLOAK_VERSION=26.8.0
+ARG BASE_IMAGE=registry.access.redhat.com/ubi9:9.8
 ARG BUILDER_IMAGE=quay.io/keycloak/keycloak:${KEYCLOAK_VERSION}
 ARG RUNNER_IMAGE=quay.io/keycloak/keycloak:${KEYCLOAK_VERSION}
 
