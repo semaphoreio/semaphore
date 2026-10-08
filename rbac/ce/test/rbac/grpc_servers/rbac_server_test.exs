@@ -18,9 +18,9 @@ defmodule Rbac.GrpcServers.RbacServerTest do
 
       {:ok, response} = Stub.list_roles(channel, request)
 
-      assert length(response.roles) == 3
+      assert length(response.roles) == 4
 
-      [owner_role, admin_role, member_role] = response.roles
+      [owner_role, admin_role, member_role, agent_role] = response.roles
 
       assert owner_role.name == "Owner"
       assert owner_role.maps_to == nil
@@ -46,6 +46,11 @@ defmodule Rbac.GrpcServers.RbacServerTest do
 
       assert member_role.description =~
                "Members can access the organization's homepage and the projects they are assigned to."
+
+      assert agent_role.name == "Computer Agent"
+      assert agent_role.maps_to == nil
+      assert agent_role.inherited_role == nil
+      assert agent_role.permissions == ["organization.computers.view"]
     end
 
     test "Should return an invalid_argument grpc error for project roles", %{channel: channel} do
