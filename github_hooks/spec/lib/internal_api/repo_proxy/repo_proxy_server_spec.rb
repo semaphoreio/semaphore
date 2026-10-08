@@ -331,6 +331,19 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
       end
     end
 
+    context "when GitHub throttles the request" do
+      before do
+        allow(InternalApi::RepoProxy::PayloadFactory).to receive(:create)
+          .and_raise(RepoHost::RemoteException::TooManyRequests.new("rate limit exceeded"))
+      end
+
+      it "raises GRPC::ResourceExhausted rather than escaping unhandled" do
+        expect do
+          server.create_blank(req, call)
+        end.to raise_error(GRPC::ResourceExhausted, /rate limit exceeded/)
+      end
+    end
+
     context "when unknown error occurs" do
       before do
         allow(Semaphore::RepoHost::Hooks::Recorder).to receive(:record_hook)
@@ -456,6 +469,43 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
       expect do
         server.create(@req, call)
       end.to raise_error(GRPC::Unknown)
+    end
+
+    context "when GitHub throttles the request" do
+      before do
+        allow(InternalApi::RepoProxy::PayloadFactory).to receive(
+          :create
+        ).and_raise(RepoHost::RemoteException::TooManyRequests, "rate limit exceeded")
+      end
+
+      it "raises GRPC::ResourceExhausted rather than escaping unhandled" do
+        expect do
+          server.create(@req, call)
+        end.to raise_error(GRPC::ResourceExhausted, /rate limit exceeded/)
+      end
+    end
+
+    # PayloadFactory.create and the payload builder both run before
+    # record_hook assigns `workflow`, so these rescues have to survive a nil
+    # one instead of turning the real error into a NoMethodError.
+    context "when the failure happens before the workflow exists" do
+      [
+        [InternalApi::RepoProxy::PayloadFactory::InvalidReferenceError, "Invalid ref",
+         GRPC::InvalidArgument, /Invalid ref/],
+        [InternalApi::RepoProxy::PrPayload::PrNotMergeableError, "PR not mergeable",
+         GRPC::Aborted, /PR not mergeable/],
+        [RepoHost::RemoteException::NotFound, "gone",
+         GRPC::NotFound, /Reference not found/]
+      ].each do |raised, message, expected, matcher|
+        it "maps #{raised} to #{expected}" do
+          allow(InternalApi::RepoProxy::PayloadFactory).to receive(:create)
+            .and_raise(raised, message)
+
+          expect do
+            server.create(@req, call)
+          end.to raise_error(expected, matcher)
+        end
+      end
     end
   end
 
