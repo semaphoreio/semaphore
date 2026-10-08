@@ -5,11 +5,7 @@ defmodule PipelinesAPI.Application do
 
   use Application
 
-  alias PipelinesAPI.Util.Config
-
   def start(_type, _args) do
-    "K8S_NAMESPACE" |> Config.set_watchman_prefix("ppl-api") |> Config.restart_app()
-
     provider = Application.fetch_env!(:pipelines_api, :feature_provider)
     FeatureProvider.init(provider)
     on_prem? = Application.fetch_env!(:pipelines_api, :on_prem?)
