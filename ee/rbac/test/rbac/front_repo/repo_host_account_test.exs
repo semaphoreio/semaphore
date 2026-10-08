@@ -21,6 +21,62 @@ defmodule Rbac.FrontRepo.RepoHostAccountTest do
     |> Enum.join("\n")
   end
 
+  describe "GitHub uid uniqueness" do
+    # rbac's OIDC signup reaches update_repo_host_account directly, so guard's
+    # check on its own write paths does not cover it.
+    test "refuses to point a link at a uid another user actively holds" do
+      {:ok, theirs} = insert_full_rha(github_uid: "30001", user_id: Ecto.UUID.generate())
+
+      assert {:error, :uid_taken} =
+               RepoHostAccount.update_repo_host_account(
+                 Ecto.UUID.generate(),
+                 :github,
+                 %{github_uid: theirs.github_uid, login: "claimer", name: "Claimer"},
+                 reset: true
+               )
+    end
+
+    test "allows the same user to keep their own uid" do
+      user_id = Ecto.UUID.generate()
+      {:ok, mine} = insert_full_rha(github_uid: "30002", user_id: user_id)
+
+      assert {:ok, _} =
+               RepoHostAccount.update_repo_host_account(
+                 user_id,
+                 :github,
+                 %{github_uid: mine.github_uid, login: "octocat", name: "The Octocat"},
+                 reset: true
+               )
+    end
+
+    test "a revoked link still blocks while it is inside the grace window" do
+      {:ok, theirs} =
+        insert_full_rha(github_uid: "30003", user_id: Ecto.UUID.generate(), revoked: true)
+
+      assert theirs.revoked
+
+      assert {:error, :uid_taken} =
+               RepoHostAccount.update_repo_host_account(
+                 Ecto.UUID.generate(),
+                 :github,
+                 %{github_uid: theirs.github_uid, login: "claimer", name: "Claimer"},
+                 reset: true
+               )
+    end
+
+    test "a non-github provider is not gated on the uid" do
+      {:ok, theirs} = insert_full_rha(github_uid: "30004", user_id: Ecto.UUID.generate())
+
+      assert {:ok, _} =
+               RepoHostAccount.update_repo_host_account(
+                 Ecto.UUID.generate(),
+                 :bitbucket,
+                 %{github_uid: theirs.github_uid, login: "claimer", name: "Claimer"},
+                 reset: true
+               )
+    end
+  end
+
   describe "logging" do
     import ExUnit.CaptureLog
 

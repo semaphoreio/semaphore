@@ -7,6 +7,10 @@ defmodule Rbac.FrontRepo.RepoHostAccount do
 
   alias Rbac.FrontRepo
 
+  # Mirrors guard's @revoked_claim_grace_seconds: a transient failure can
+  # briefly latch a healthy link revoked, so it keeps blocking for a while.
+  @revoked_claim_grace_seconds 2 * 60 * 60
+
   @register_scope "user:email"
   @public_scope "public_repo,user:email"
   @private_scope "repo,user:email"
@@ -164,6 +168,42 @@ defmodule Rbac.FrontRepo.RepoHostAccount do
       "Updating RepoHostAccount for #{user_id} #{repo_host} with fields #{inspect(Map.keys(data))} and opts #{inspect(opts)}"
     )
 
+    if uid_actively_held_by_other?(user_id, repo_host, data[:github_uid]) do
+      Logger.warning(
+        "Refusing to point #{repo_host} uid for #{user_id} at an identity another user holds"
+      )
+
+      {:error, :uid_taken}
+    else
+      do_update_repo_host_account(user_id, repo_host, data, opts)
+    end
+  end
+
+  # guard enforces one user per GitHub identity on its own write paths, but
+  # rbac's OIDC signup is the main account-creation path on Enterprise and
+  # reaches this function instead, so the same rule has to hold here or that
+  # path still creates the duplicate.
+  #
+  # Only guard releases losing rows, so this refuses rather than claiming. A
+  # revoked row stops blocking once it has been quiet for the same grace guard
+  # uses, so a link latched revoked by a transient failure is not given away
+  # while it may still self-heal.
+  defp uid_actively_held_by_other?(_user_id, _repo_host, uid) when uid in [nil, ""], do: false
+
+  defp uid_actively_held_by_other?(user_id, "github" = repo_host, uid) do
+    from(r in __MODULE__,
+      where: r.repo_host == ^repo_host and r.github_uid == ^uid,
+      where: r.user_id != ^user_id,
+      where:
+        coalesce(r.revoked, false) == false or
+          r.updated_at > ago(^@revoked_claim_grace_seconds, "second")
+    )
+    |> FrontRepo.exists?()
+  end
+
+  defp uid_actively_held_by_other?(_user_id, _repo_host, _uid), do: false
+
+  defp do_update_repo_host_account(user_id, repo_host, data, opts) do
     case get_for_user_by_repo_host(user_id, repo_host) do
       {:ok, account} ->
         update_existing_account(account, data, opts)
