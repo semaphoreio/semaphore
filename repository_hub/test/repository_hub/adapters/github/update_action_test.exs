@@ -119,6 +119,11 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
       assert updated_repository.remote_id == "12345"
       assert updated_repository.private == true
 
+      [{:ok, created_webhook}] =
+        for {_pid, {GithubClient, :create_webhook, _args}, result} <- :meck.history(GithubClient), do: result
+
+      assert updated_repository.hook_id == created_webhook.id
+
       assert_called(GithubClient.find_repository(%{repo_owner: "new-org", repo_name: "repository"}, token: "new-tok"))
       assert_called(GithubClient.remove_webhook(%{repo_owner: "old-org", repo_name: "repository"}, token: "old-tok"))
       assert_called(GithubClient.remove_deploy_key(%{repo_owner: "old-org", repo_name: "repository"}, token: "old-tok"))
