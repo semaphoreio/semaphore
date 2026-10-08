@@ -191,6 +191,43 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
       assert_not_called(GithubClient.find_repository(:_, :_))
     end
 
+    test "moves a repository when the old GitHub App installation is gone", %{github_app_adapter: adapter} do
+      repository =
+        RepositoryModelFactory.githubapp_repo(
+          owner: "old-org",
+          url: "git@github.com:old-org/repository.git",
+          remote_id: "999"
+        )
+
+      {:ok, old_deploy_key} =
+        DeployKeysModelFactory.create_deploy_key(project_id: repository.project_id, repository_id: repository.id)
+
+      request =
+        InternalApiFactory.update_request(
+          repository_id: repository.id,
+          url: "git@github.com:new-org/repository.git"
+        )
+
+      with_mock RepositoryIntegratorClient, [:passthrough],
+        get_token: fn
+          _integration_type, "old-org/repository", _remote_id -> {:ok, ""}
+          _integration_type, "new-org/repository", _remote_id -> {:ok, "new-tok"}
+        end do
+        assert %UpdateResponse{} = UpdateAction.execute(adapter, request)
+      end
+
+      {:ok, updated_repository} = RepositoryHub.Model.RepositoryQuery.get_by_id(repository.id)
+      assert updated_repository.url == "git@github.com:new-org/repository.git"
+
+      {:ok, new_deploy_key} = RepositoryHub.Model.DeployKeyQuery.get_by_repository_id(repository.id)
+      assert new_deploy_key.id != old_deploy_key.id
+
+      assert_not_called(GithubClient.remove_webhook(:_, :_))
+      assert_not_called(GithubClient.remove_deploy_key(:_, :_))
+      assert_called(GithubClient.create_webhook(%{repo_owner: "new-org", repo_name: "repository"}, token: "new-tok"))
+      assert_called(GithubClient.create_deploy_key(%{repo_owner: "new-org", repo_name: "repository"}, token: "new-tok"))
+    end
+
     test "changes the url of an oauth repository using the user token for lookup and create", %{
       github_oauth_adapter: adapter
     } do
