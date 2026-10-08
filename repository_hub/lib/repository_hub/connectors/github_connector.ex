@@ -57,14 +57,21 @@ defmodule RepositoryHub.GithubConnector do
 
   defp can_change_url?(connector, url, target_token) do
     Model.GitRepository.from_github(url)
-    |> unwrap(fn git_repository ->
-      GithubClient.find_repository(
-        %{
-          repo_owner: git_repository.owner,
-          repo_name: git_repository.repo
-        },
-        token: target_token
-      )
+    |> unwrap(fn
+      git_repository when target_token == "" and connector.repository.integration_type == "github_app" ->
+        fail_with(
+          :precondition,
+          "Semaphore GitHub App is not installed on #{git_repository.owner}, or it has no access to #{git_repository.repo}."
+        )
+
+      git_repository ->
+        GithubClient.find_repository(
+          %{
+            repo_owner: git_repository.owner,
+            repo_name: git_repository.repo
+          },
+          token: target_token
+        )
     end)
     |> unwrap(fn
       %{with_admin_access?: true} = github_repository ->

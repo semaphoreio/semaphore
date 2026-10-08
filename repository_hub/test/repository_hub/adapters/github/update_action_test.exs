@@ -126,6 +126,71 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
       assert_called(GithubClient.create_deploy_key(%{repo_owner: "new-org", repo_name: "repository"}, token: "new-tok"))
     end
 
+    test "fails with a clear error when the GitHub App has no access to the target repository", %{
+      github_app_adapter: adapter
+    } do
+      repository =
+        RepositoryModelFactory.githubapp_repo(
+          owner: "old-org",
+          url: "git@github.com:old-org/repository.git",
+          remote_id: "999"
+        )
+
+      DeployKeysModelFactory.create_deploy_key(project_id: repository.project_id, repository_id: repository.id)
+
+      request =
+        InternalApiFactory.update_request(
+          repository_id: repository.id,
+          url: "git@github.com:new-org/repository.git"
+        )
+
+      with_mock RepositoryIntegratorClient, [:passthrough],
+        get_token: fn
+          _integration_type, "old-org/repository", _remote_id -> {:ok, "old-tok"}
+          _integration_type, "new-org/repository", _remote_id -> {:ok, ""}
+        end do
+        assert {:error, %{message: message}} = UpdateAction.execute(adapter, request)
+
+        assert message ==
+                 "Semaphore GitHub App is not installed on new-org, or it has no access to repository."
+      end
+
+      {:ok, unchanged_repository} = RepositoryHub.Model.RepositoryQuery.get_by_id(repository.id)
+      assert unchanged_repository.url == "git@github.com:old-org/repository.git"
+      assert unchanged_repository.remote_id == "999"
+      assert unchanged_repository.hook_id == repository.hook_id
+
+      assert_not_called(GithubClient.find_repository(:_, :_))
+      assert_not_called(GithubClient.remove_webhook(:_, :_))
+      assert_not_called(GithubClient.remove_deploy_key(:_, :_))
+    end
+
+    test "saves settings when the url did not change even if no target token is available", %{
+      github_app_adapter: adapter
+    } do
+      repository = RepositoryModelFactory.githubapp_repo(remote_id: "999")
+
+      request =
+        InternalApiFactory.update_request(
+          repository_id: repository.id,
+          url: "git@github.com:dummy/repository.git",
+          pipeline_file: ".semaphore/semaphore-2.yml"
+        )
+
+      with_mock RepositoryIntegratorClient, [:passthrough],
+        get_token: fn
+          _integration_type, _slug, "999" -> {:ok, "old-tok"}
+          _integration_type, _slug, "" -> {:ok, ""}
+        end do
+        assert %UpdateResponse{} = UpdateAction.execute(adapter, request)
+      end
+
+      {:ok, updated_repository} = RepositoryHub.Model.RepositoryQuery.get_by_id(repository.id)
+      assert updated_repository.pipeline_file == ".semaphore/semaphore-2.yml"
+
+      assert_not_called(GithubClient.find_repository(:_, :_))
+    end
+
     test "changes the url of an oauth repository using the user token for lookup and create", %{
       github_oauth_adapter: adapter
     } do
