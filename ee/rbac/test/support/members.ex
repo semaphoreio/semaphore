@@ -1,5 +1,33 @@
 defmodule Support.Members do
+  import Ecto.Query
+
   alias Rbac.FrontRepo
+
+  @doc """
+  Clears a repo_host_account's updated_at, reproducing rows written before the
+  timestamps migration, which added the column with no backfill.
+  """
+  def clear_repo_host_account_timestamp(rha) do
+    {1, _} =
+      from(r in FrontRepo.RepoHostAccount, where: r.id == ^rha.id)
+      |> FrontRepo.update_all(set: [updated_at: nil])
+
+    :ok
+  end
+
+  @doc """
+  Backdates a repo_host_account's updated_at so a revoked row falls outside
+  the claim grace period.
+  """
+  def age_repo_host_account(rha, seconds \\ 3 * 60 * 60) do
+    stale = DateTime.utc_now() |> DateTime.add(-seconds) |> DateTime.truncate(:second)
+
+    {1, _} =
+      from(r in FrontRepo.RepoHostAccount, where: r.id == ^rha.id)
+      |> FrontRepo.update_all(set: [updated_at: stale])
+
+    :ok
+  end
 
   def insert_member(params) do
     default = [
