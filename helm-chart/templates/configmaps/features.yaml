@@ -108,8 +108,6 @@ data:
       enabled: false
     test_explorer:
       enabled: false
-    test_results:
-      enabled: false
     tmp_rbac_test:
       enabled: false
     toggle_skipped_blocks:
@@ -243,8 +241,6 @@ data:
     superjerry_tests:
       enabled: false
     test_explorer:
-      enabled: false
-    test_results:
       enabled: false
     tmp_rbac_test:
       enabled: false

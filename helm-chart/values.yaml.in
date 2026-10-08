@@ -297,3 +297,6 @@ controller:
 
 mcp-server:
   enabled: true
+
+public-api:
+  enabled: false
