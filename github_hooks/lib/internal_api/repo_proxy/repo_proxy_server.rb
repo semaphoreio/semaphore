@@ -204,18 +204,21 @@ module InternalApi
           raise GRPC::InvalidArgument, "The Plumber returned #{response.status.inspect}"
         end
 
+      # workflow is only assigned once record_hook returns, and every one of
+      # these can be raised before that - PayloadFactory.create and the payload
+      # builder both run first - so the state write has to tolerate nil.
       rescue ::InternalApi::RepoProxy::PrPayload::PrNotMergeableError => e
-        workflow.update(:state => Workflow::STATE_PR_NON_MERGEABLE)
+        workflow&.update(:state => Workflow::STATE_PR_NON_MERGEABLE)
         raise GRPC::Aborted, e.message
       rescue ::InternalApi::RepoProxy::PayloadFactory::InvalidReferenceError => e
-        workflow.update(:state => Workflow::STATE_LAUNCHING_FAILED)
+        workflow&.update(:state => Workflow::STATE_LAUNCHING_FAILED)
         raise GRPC::InvalidArgument, e.message
       rescue ::RepoHost::RemoteException::NotFound
-        workflow.update(:state => Workflow::STATE_NOT_FOUND_REPO)
+        workflow&.update(:state => Workflow::STATE_NOT_FOUND_REPO)
         raise GRPC::NotFound, "Reference not found on GitHub #{req.git.reference} #{req.git.commit_sha}"
       rescue ::RepoHost::RemoteException::TooManyRequests => e
-        # No state write: throttling is transient and the raise can happen
-        # before `workflow` exists, unlike the rescues below it.
+        # No state write at all: throttling is transient, so flagging the
+        # workflow as failed would misreport a retryable condition.
         raise GRPC::ResourceExhausted, e.message
       rescue ::RepoHost::RemoteException::Unknown => e
         logger.error("Unknown error", error: e.message)
