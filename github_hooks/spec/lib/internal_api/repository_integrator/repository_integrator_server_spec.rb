@@ -475,6 +475,19 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
         end
       end
 
+      context "when GitHub throttles the token check" do
+        before do
+          allow_any_instance_of(RepoHost::Github::Client).to receive(:token_valid?)
+            .and_raise(RepoHost::RemoteException::TooManyRequests, "rate limit exceeded")
+        end
+
+        it "raises GRPC::ResourceExhausted rather than escaping unhandled" do
+          expect do
+            server.check_token(@req, call)
+          end.to raise_error(GRPC::ResourceExhausted, /rate limit exceeded/)
+        end
+      end
+
       context "when there is no project" do
         it "returns project not found error" do
           req = InternalApi::RepositoryIntegrator::CheckTokenRequest.new(
