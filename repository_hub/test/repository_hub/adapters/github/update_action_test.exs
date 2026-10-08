@@ -90,7 +90,12 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
       github_app_adapter: adapter
     } do
       repository =
-        RepositoryModelFactory.githubapp_repo(owner: "old-org", url: "git@github.com:old-org/repository.git")
+        RepositoryModelFactory.githubapp_repo(
+          owner: "old-org",
+          url: "git@github.com:old-org/repository.git",
+          remote_id: "999",
+          private: false
+        )
 
       DeployKeysModelFactory.create_deploy_key(project_id: repository.project_id, repository_id: repository.id)
 
@@ -111,6 +116,8 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
       {:ok, updated_repository} = RepositoryHub.Model.RepositoryQuery.get_by_id(repository.id)
       assert updated_repository.owner == "new-org"
       assert updated_repository.url == "git@github.com:new-org/repository.git"
+      assert updated_repository.remote_id == "12345"
+      assert updated_repository.private == true
 
       assert_called(GithubClient.find_repository(%{repo_owner: "new-org", repo_name: "repository"}, token: "new-tok"))
       assert_called(GithubClient.remove_webhook(%{repo_owner: "old-org", repo_name: "repository"}, token: "old-tok"))

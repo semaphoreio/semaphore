@@ -50,7 +50,7 @@ defmodule RepositoryHub.GithubConnector do
           false ->
             connector
             |> can_change_url?(url, target_token)
-            |> update_repository_url_impl(url, target_token)
+            |> unwrap(&update_repository_url_impl(connector, url, target_token, &1))
         end)
     end)
   end
@@ -67,59 +67,58 @@ defmodule RepositoryHub.GithubConnector do
       )
     end)
     |> unwrap(fn
-      %{with_admin_access?: true} ->
-        wrap(connector)
+      %{with_admin_access?: true} = github_repository ->
+        wrap(github_repository)
 
-      _ when connector.repository.integration_type == "github_app" ->
-        wrap(connector)
+      github_repository when connector.repository.integration_type == "github_app" ->
+        wrap(github_repository)
 
       _ ->
         fail_with(:precondition, "Admin permissions are required on the repository to add the project to Semaphore")
     end)
   end
 
-  defp update_repository_url_impl(connector, url, target_token) do
-    connector
-    |> unwrap(fn connector ->
-      Multi.new()
-      |> Multi.run(:new_git_repository, fn _, _ ->
-        Model.GitRepository.from_github(url)
-      end)
-      |> Multi.run(:updated_repository, fn _, context ->
-        Model.RepositoryQuery.update(
-          connector.repository,
-          %{
-            name: context.new_git_repository.repo,
-            owner: context.new_git_repository.owner,
-            url: context.new_git_repository.ssh_git_url
-          },
-          returning: true
-        )
-      end)
-      |> Multi.run(:remove_old_webhook, fn _, _context ->
-        connector
-        |> remove_webhook()
-      end)
-      |> Multi.run(:remove_old_deploy_key, fn _, _context ->
-        connector
-        |> remove_deploy_key()
-      end)
-      |> Multi.run(:create_new_webhook, fn _, context ->
-        context.updated_repository
-        |> create_webhook(context.new_git_repository, target_token)
-      end)
-      |> Multi.run(:create_deploy_key, fn _, context ->
-        context.updated_repository
-        |> create_deploy_key(context.new_git_repository, target_token)
-      end)
-      |> Multi.run(:new_repository, fn _, _context ->
-        Model.RepositoryQuery.get_by_id(connector.repository.id)
-      end)
-      |> RepositoryHub.Repo.transaction()
-      |> unwrap(fn context ->
-        %{connector | repository: context.new_repository, git_repository: context.new_git_repository}
-        |> wrap()
-      end)
+  defp update_repository_url_impl(connector, url, target_token, github_repository) do
+    Multi.new()
+    |> Multi.run(:new_git_repository, fn _, _ ->
+      Model.GitRepository.from_github(url)
+    end)
+    |> Multi.run(:updated_repository, fn _, context ->
+      Model.RepositoryQuery.update(
+        connector.repository,
+        %{
+          name: context.new_git_repository.repo,
+          owner: context.new_git_repository.owner,
+          url: context.new_git_repository.ssh_git_url,
+          remote_id: github_repository.id,
+          private: github_repository.is_private?
+        },
+        returning: true
+      )
+    end)
+    |> Multi.run(:remove_old_webhook, fn _, _context ->
+      connector
+      |> remove_webhook()
+    end)
+    |> Multi.run(:remove_old_deploy_key, fn _, _context ->
+      connector
+      |> remove_deploy_key()
+    end)
+    |> Multi.run(:create_new_webhook, fn _, context ->
+      context.updated_repository
+      |> create_webhook(context.new_git_repository, target_token)
+    end)
+    |> Multi.run(:create_deploy_key, fn _, context ->
+      context.updated_repository
+      |> create_deploy_key(context.new_git_repository, target_token)
+    end)
+    |> Multi.run(:new_repository, fn _, _context ->
+      Model.RepositoryQuery.get_by_id(connector.repository.id)
+    end)
+    |> RepositoryHub.Repo.transaction()
+    |> unwrap(fn context ->
+      %{connector | repository: context.new_repository, git_repository: context.new_git_repository}
+      |> wrap()
     end)
   end
 
