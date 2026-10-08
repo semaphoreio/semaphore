@@ -9,6 +9,7 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
   alias RepositoryHub.{
     GithubClient,
     GithubClientFactory,
+    RepositoryIntegratorClient,
     DeployKeysModelFactory,
     RepositoryModelFactory
   }
@@ -69,10 +70,53 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
       assert updated_repository.name == "repository-2"
       assert updated_repository.url == "git@github.com:dummy/repository-2.git"
 
-      assert_called(GithubClient.remove_webhook(%{repo_owner: "dummy", repo_name: "repository"}, :_))
-      assert_called(GithubClient.remove_deploy_key(%{repo_owner: "dummy", repo_name: "repository"}, :_))
-      assert_called(GithubClient.create_webhook(%{repo_owner: "dummy", repo_name: "repository-2"}, :_))
-      assert_called(GithubClient.create_deploy_key(%{repo_owner: "dummy", repo_name: "repository-2"}, :_))
+      old_token = "gha-#{repository.remote_id}"
+      target_token = "gha-"
+
+      assert_called(
+        GithubClient.find_repository(%{repo_owner: "dummy", repo_name: "repository-2"}, token: target_token)
+      )
+
+      assert_called(GithubClient.remove_webhook(%{repo_owner: "dummy", repo_name: "repository"}, token: old_token))
+      assert_called(GithubClient.remove_deploy_key(%{repo_owner: "dummy", repo_name: "repository"}, token: old_token))
+      assert_called(GithubClient.create_webhook(%{repo_owner: "dummy", repo_name: "repository-2"}, token: target_token))
+
+      assert_called(
+        GithubClient.create_deploy_key(%{repo_owner: "dummy", repo_name: "repository-2"}, token: target_token)
+      )
+    end
+
+    test "moves a github_app repository to an organization served by another installation", %{
+      github_app_adapter: adapter
+    } do
+      repository =
+        RepositoryModelFactory.githubapp_repo(owner: "old-org", url: "git@github.com:old-org/repository.git")
+
+      DeployKeysModelFactory.create_deploy_key(project_id: repository.project_id, repository_id: repository.id)
+
+      request =
+        InternalApiFactory.update_request(
+          repository_id: repository.id,
+          url: "git@github.com:new-org/repository.git"
+        )
+
+      with_mock RepositoryIntegratorClient, [:passthrough],
+        get_token: fn
+          _integration_type, "old-org/repository", _remote_id -> {:ok, "old-tok"}
+          _integration_type, "new-org/repository", _remote_id -> {:ok, "new-tok"}
+        end do
+        assert %UpdateResponse{} = UpdateAction.execute(adapter, request)
+      end
+
+      {:ok, updated_repository} = RepositoryHub.Model.RepositoryQuery.get_by_id(repository.id)
+      assert updated_repository.owner == "new-org"
+      assert updated_repository.url == "git@github.com:new-org/repository.git"
+
+      assert_called(GithubClient.find_repository(%{repo_owner: "new-org", repo_name: "repository"}, token: "new-tok"))
+      assert_called(GithubClient.remove_webhook(%{repo_owner: "old-org", repo_name: "repository"}, token: "old-tok"))
+      assert_called(GithubClient.remove_deploy_key(%{repo_owner: "old-org", repo_name: "repository"}, token: "old-tok"))
+      assert_called(GithubClient.create_webhook(%{repo_owner: "new-org", repo_name: "repository"}, token: "new-tok"))
+      assert_called(GithubClient.create_deploy_key(%{repo_owner: "new-org", repo_name: "repository"}, token: "new-tok"))
     end
 
     test "changes the url of an oauth repository using the user token for lookup and create", %{

@@ -55,7 +55,7 @@ defmodule RepositoryHub.GithubConnector do
     end)
   end
 
-  defp can_change_url?(connector, url, _target_token) do
+  defp can_change_url?(connector, url, target_token) do
     Model.GitRepository.from_github(url)
     |> unwrap(fn git_repository ->
       GithubClient.find_repository(
@@ -63,7 +63,7 @@ defmodule RepositoryHub.GithubConnector do
           repo_owner: git_repository.owner,
           repo_name: git_repository.repo
         },
-        token: connector.token
+        token: target_token
       )
     end)
     |> unwrap(fn
@@ -78,7 +78,7 @@ defmodule RepositoryHub.GithubConnector do
     end)
   end
 
-  defp update_repository_url_impl(connector, url, _target_token) do
+  defp update_repository_url_impl(connector, url, target_token) do
     connector
     |> unwrap(fn connector ->
       Multi.new()
@@ -106,11 +106,11 @@ defmodule RepositoryHub.GithubConnector do
       end)
       |> Multi.run(:create_new_webhook, fn _, context ->
         context.updated_repository
-        |> create_webhook(context.new_git_repository, connector.token)
+        |> create_webhook(context.new_git_repository, target_token)
       end)
       |> Multi.run(:create_deploy_key, fn _, context ->
         context.updated_repository
-        |> create_deploy_key(context.new_git_repository, connector.token)
+        |> create_deploy_key(context.new_git_repository, target_token)
       end)
       |> Multi.run(:new_repository, fn _, _context ->
         Model.RepositoryQuery.get_by_id(connector.repository.id)
