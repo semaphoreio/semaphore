@@ -149,15 +149,24 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
           url: "git@github.com:new-org/repository.git"
         )
 
-      with_mock RepositoryIntegratorClient, [:passthrough],
-        get_token: fn
-          _integration_type, "old-org/repository", _remote_id -> {:ok, "old-tok"}
-          _integration_type, "new-org/repository", _remote_id -> {:ok, ""}
-        end do
+      :meck.expect(GithubClient, :find_repository, fn _params, _opts ->
+        {:error, %{status: GRPC.Status.failed_precondition(), message: "Error while looking up repository"}}
+      end)
+
+      with_mocks([
+        {RepositoryIntegratorClient, [:passthrough],
+         get_token: fn
+           _integration_type, "old-org/repository", _remote_id -> {:ok, "old-tok"}
+           _integration_type, "new-org/repository", _remote_id -> {:ok, ""}
+         end},
+        {Watchman, [:passthrough], []}
+      ]) do
         assert {:error, %{message: message}} = UpdateAction.execute(adapter, request)
 
         assert message ==
                  "Semaphore GitHub App is not installed on new-org, or it has no access to repository."
+
+        assert_called(Watchman.increment({"github_app.update_url.target_token_fallback", ["error"]}))
       end
 
       {:ok, unchanged_repository} = RepositoryHub.Model.RepositoryQuery.get_by_id(repository.id)
@@ -165,9 +174,48 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
       assert unchanged_repository.remote_id == "999"
       assert unchanged_repository.hook_id == repository.hook_id
 
-      assert_not_called(GithubClient.find_repository(:_, :_))
+      assert_called(GithubClient.find_repository(%{repo_owner: "new-org", repo_name: "repository"}, token: "old-tok"))
       assert_not_called(GithubClient.remove_webhook(:_, :_))
       assert_not_called(GithubClient.remove_deploy_key(:_, :_))
+    end
+
+    test "renames a repository with the current token when the new name is not known to the installation yet", %{
+      github_app_adapter: adapter
+    } do
+      repository =
+        RepositoryModelFactory.githubapp_repo(
+          owner: "old-org",
+          url: "git@github.com:old-org/repository.git",
+          remote_id: "999"
+        )
+
+      DeployKeysModelFactory.create_deploy_key(project_id: repository.project_id, repository_id: repository.id)
+
+      request =
+        InternalApiFactory.update_request(
+          repository_id: repository.id,
+          url: "git@github.com:old-org/renamed.git"
+        )
+
+      with_mocks([
+        {RepositoryIntegratorClient, [:passthrough],
+         get_token: fn
+           _integration_type, _slug, "999" -> {:ok, "old-tok"}
+           _integration_type, "old-org/renamed", "" -> {:ok, ""}
+         end},
+        {Watchman, [:passthrough], []}
+      ]) do
+        assert %UpdateResponse{} = UpdateAction.execute(adapter, request)
+
+        assert_called(Watchman.increment({"github_app.update_url.target_token_fallback", ["ok"]}))
+      end
+
+      {:ok, updated_repository} = RepositoryHub.Model.RepositoryQuery.get_by_id(repository.id)
+      assert updated_repository.url == "git@github.com:old-org/renamed.git"
+
+      assert_called(GithubClient.find_repository(%{repo_owner: "old-org", repo_name: "renamed"}, token: "old-tok"))
+      assert_called(GithubClient.create_webhook(%{repo_owner: "old-org", repo_name: "renamed"}, token: "old-tok"))
+      assert_called(GithubClient.create_deploy_key(%{repo_owner: "old-org", repo_name: "renamed"}, token: "old-tok"))
     end
 
     test "saves settings when the url did not change even if no target token is available", %{

@@ -48,30 +48,40 @@ defmodule RepositoryHub.GithubConnector do
             fail_with(:precondition, "Changing git host is not supported yet.")
 
           false ->
+            fallback? = target_token == "" and connector.repository.integration_type == "github_app"
+            token = if fallback?, do: connector.token, else: target_token
+
             connector
-            |> can_change_url?(url, target_token)
-            |> unwrap(&update_repository_url_impl(connector, url, target_token, &1))
+            |> can_change_url?(url, token, fallback?)
+            |> unwrap(&update_repository_url_impl(connector, url, token, &1))
         end)
     end)
   end
 
-  defp can_change_url?(connector, url, target_token) do
+  defp can_change_url?(connector, url, token, fallback?) do
     Model.GitRepository.from_github(url)
-    |> unwrap(fn
-      git_repository when target_token == "" and connector.repository.integration_type == "github_app" ->
-        fail_with(
-          :precondition,
-          "Semaphore GitHub App is not installed on #{git_repository.owner}, or it has no access to #{git_repository.repo}."
-        )
+    |> unwrap(fn git_repository ->
+      GithubClient.find_repository(
+        %{
+          repo_owner: git_repository.owner,
+          repo_name: git_repository.repo
+        },
+        token: token
+      )
+      |> tap(fn result ->
+        if fallback?,
+          do: Watchman.increment({"github_app.update_url.target_token_fallback", [to_string(elem(result, 0))]})
+      end)
+      |> unwrap_error(fn
+        _ when fallback? ->
+          fail_with(
+            :precondition,
+            "Semaphore GitHub App is not installed on #{git_repository.owner}, or it has no access to #{git_repository.repo}."
+          )
 
-      git_repository ->
-        GithubClient.find_repository(
-          %{
-            repo_owner: git_repository.owner,
-            repo_name: git_repository.repo
-          },
-          token: target_token
-        )
+        error ->
+          error(error)
+      end)
     end)
     |> unwrap(fn
       %{with_admin_access?: true} = github_repository ->
