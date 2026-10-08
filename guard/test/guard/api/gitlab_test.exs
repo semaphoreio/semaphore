@@ -100,6 +100,21 @@ defmodule Guard.Api.GitlabTest do
       assert {:ok, true} = Gitlab.validate_token("token")
     end
 
+    test "returns invalid when a 2xx carries an expiry that is not live" do
+      # The 2xx clause is the only one that decides validity from the body, so
+      # without this the clause could return a constant true and stay green.
+      for expires_in <- [nil, 0, -3600, 60] do
+        body = if expires_in, do: %{"expires_in" => expires_in}, else: %{}
+
+        Tesla.Mock.mock_global(fn
+          %{method: :get, url: "https://gitlab.com/oauth/token/info"} ->
+            {:ok, %Tesla.Env{status: 200, body: body}}
+        end)
+
+        assert {:ok, false} = Gitlab.validate_token("token")
+      end
+    end
+
     test "returns invalid only for auth errors" do
       for status <- [401, 403] do
         Tesla.Mock.mock_global(fn
