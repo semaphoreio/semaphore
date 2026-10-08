@@ -49,15 +49,17 @@ defmodule Scouter.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:credo, "~> 1.5", only: [:dev, :test]},
-      {:ecto, "~> 3.12"},
-      {:ecto_sql, "~> 3.0"},
-      {:postgrex, ">= 0.0.0"},
+      {:credo, "~> 1.7", only: [:dev, :test]},
+      {:ecto, "~> 3.14"},
+      {:ecto_sql, "~> 3.14"},
+      {:postgrex, "~> 0.22"},
       {:watchman, github: "renderedtext/ex-watchman"},
       {:excoveralls, "~> 0.18", only: :test},
-      {:grpc, "~> 0.6"},
-      {:protobuf, "~> 0.11"},
-      {:junit_formatter, "~> 3.1", only: [:test]}
+      {:grpc, "~> 1.0"},
+      {:grpc_server, "~> 1.0"},
+      {:gun, "~> 2.4", only: :test},
+      {:protobuf, "~> 0.17"},
+      {:junit_formatter, "~> 3.4", only: [:test]}
     ]
   end
 end
