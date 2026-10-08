@@ -102,6 +102,8 @@ module InternalApi
         raise GRPC::InvalidArgument, e.message
       rescue ::RepoHost::RemoteException::NotFound
         raise GRPC::NotFound, "Reference not found on GitHub #{req.git.reference} #{req.git.commit_sha}"
+      rescue ::RepoHost::RemoteException::TooManyRequests => e
+        raise GRPC::ResourceExhausted, e.message
       rescue ::RepoHost::RemoteException::Unknown => e
         logger.error("Unknown error", error: e.message)
         raise GRPC::Internal, "Unknown error"
@@ -211,6 +213,10 @@ module InternalApi
       rescue ::RepoHost::RemoteException::NotFound
         workflow.update(:state => Workflow::STATE_NOT_FOUND_REPO)
         raise GRPC::NotFound, "Reference not found on GitHub #{req.git.reference} #{req.git.commit_sha}"
+      rescue ::RepoHost::RemoteException::TooManyRequests => e
+        # No state write: throttling is transient and the raise can happen
+        # before `workflow` exists, unlike the rescues below it.
+        raise GRPC::ResourceExhausted, e.message
       rescue ::RepoHost::RemoteException::Unknown => e
         logger.error("Unknown error", error: e.message)
         raise GRPC::Unknown, "Unknown error"

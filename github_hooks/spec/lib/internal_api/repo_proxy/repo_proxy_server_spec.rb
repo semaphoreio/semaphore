@@ -331,6 +331,19 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
       end
     end
 
+    context "when GitHub throttles the request" do
+      before do
+        allow(InternalApi::RepoProxy::PayloadFactory).to receive(:create)
+          .and_raise(RepoHost::RemoteException::TooManyRequests.new("rate limit exceeded"))
+      end
+
+      it "raises GRPC::ResourceExhausted rather than escaping unhandled" do
+        expect do
+          server.create_blank(req, call)
+        end.to raise_error(GRPC::ResourceExhausted, /rate limit exceeded/)
+      end
+    end
+
     context "when unknown error occurs" do
       before do
         allow(Semaphore::RepoHost::Hooks::Recorder).to receive(:record_hook)
@@ -456,6 +469,20 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
       expect do
         server.create(@req, call)
       end.to raise_error(GRPC::Unknown)
+    end
+
+    context "when GitHub throttles the request" do
+      before do
+        allow(InternalApi::RepoProxy::PayloadFactory).to receive(
+          :create
+        ).and_raise(RepoHost::RemoteException::TooManyRequests, "rate limit exceeded")
+      end
+
+      it "raises GRPC::ResourceExhausted rather than escaping unhandled" do
+        expect do
+          server.create(@req, call)
+        end.to raise_error(GRPC::ResourceExhausted, /rate limit exceeded/)
+      end
     end
   end
 
