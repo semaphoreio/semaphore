@@ -1,1 +1,10 @@
 CVE-2024-34156
+
+# Ignored for the 1.6 release on 2026-10-08. Each entry is unreachable in this service as
+# deployed; the dependency bumps follow under the dependency-update process.
+#
+# repohub serves internal gRPC only, reachable from sibling services inside the cluster.
+
+# google.golang.org/grpc v1.83.1 — 1 (HIGH), fixed in 1.83.2. Not reachable: the gRPC endpoints face in-cluster peers only and xDS is not used.
+#   CVE-2026-84445 — google.golang.org/grpc: gRPC-Go: Denial of Service via malformed RPC requests
+CVE-2026-84445

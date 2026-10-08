@@ -1,28 +1,36 @@
-# Advisories ignored here are transitive, unreachable in this app, and only fixable
-# by an out-of-scope major bump of a core dependency. task_api_referent is an internal
-# gRPC reference app used by plumber tests — no public HTTP surface. gun/cowboy/cowlib
-# are pinned by grpc 0.3.1 (`gun ~> 1.2`, `cowboy ~> 2.5`); bumping any of them forces
-# a cowboy/cowlib/ranch/gun stack bump on the old grpc adapter. The real fix —
-# upgrading the plumber gRPC stack — is tracked in semaphoreio/semaphore#1134.
+# Advisories ignored here are documented individually below. Each entry is either not
+# reachable in this app as deployed or only fixable by an out-of-scope major dependency
+# migration that is tracked separately. Ignored for the 1.6 release on 2026-10-08; the
+# dependency bumps follow under the dependency-update process.
+#
+# task_api_referent is the Task API reference mock used by plumber's test suite. It is
+# not deployed anywhere.
 
-# cowboy 2.5.0 — unbounded buffer accumulation in multipart header parsing causes DoS
-# (high). Patched in cowboy 2.15.0. The internal gRPC server does not parse multipart
-# HTTP request bodies.
+# grpc 0.3.1 — 1 advisory (high), patched in 1.0.0. Not reachable:
+# the gRPC endpoints are reachable only from in-cluster services; the fix is grpc 1.0.0, a
+# breaking major shared across the monorepo and tracked as a coordinated migration
+# (plumber part: semaphoreio/semaphore#1134).
+#   GHSA-q8gf-9rvj-gmgj — gRPC Erlang package has unbounded request body accumulation in `read_full_body/3`
+GHSA-q8gf-9rvj-gmgj
+
+# cowboy 2.5.0 — 1 advisory (high), patched in 2.15.0. Not reachable:
+# the mock runs no HTTP server; cowboy comes in as grpc's server-side dependency.
+#   GHSA-jfc2-q6qh-g5x8 — Unbounded buffer accumulation in multipart header parsing causes denial of service
 GHSA-jfc2-q6qh-g5x8
 
-# cowlib 2.6.0 — three advisories, all patched in cowlib 2.16.1. None of the affected
-# code paths are exercised by the internal gRPC server:
-#   GHSA-32p9-57cr-4x65 — cow_http_te chunked Transfer-Encoding resource use
-#   GHSA-84f2-rp86-235p — cow_spdy decompression bomb (SPDY is not used)
-#   GHSA-hv23-4qp7-8c8r — CRLF injection / SSE event splitting (no SSE)
+# cowlib 2.6.0 — 3 advisories (high/moderate), patched in 2.16.1. Not reachable:
+# none of the affected code paths run here: no chunked request bodies are read, SPDY is
+# unused and no SSE is served.
+#   GHSA-32p9-57cr-4x65 — cowlib cow_http_te module: Uncontrolled Resource Consumption vulnerability
+#   GHSA-84f2-rp86-235p — Decompression Bomb in cow_spdy:inflate/2 Allows Memory Exhaustion via Crafted SPDY
+#   GHSA-hv23-4qp7-8c8r — ninenines cowlib: Improper Neutralization of CRLF Sequences ('CRLF Injection')
 GHSA-32p9-57cr-4x65
 GHSA-84f2-rp86-235p
 GHSA-hv23-4qp7-8c8r
 
-# gun 1.3.0 — two advisories, patched in gun 2.4.0. gun is the gRPC client transport
-# for internal-service calls only; no user-controlled URLs, hosts, or request lines
-# reach it.
-#   GHSA-r53j-fjj5-mv77 — uncontrolled resource consumption, fixed in 2.4.0
-#   GHSA-w4f7-4cxr-rv3c — HTTP request/response splitting (shared cowboy/gun advisory)
+# gun 1.3.0 — 2 advisories (high/moderate), patched in 2.4.0. Not reachable:
+# gun is the client transport for in-test gRPC calls; no user-controlled URLs reach it.
+#   GHSA-r53j-fjj5-mv77 — gun has an Uncontrolled Resource Consumption vulnerability
+#   GHSA-w4f7-4cxr-rv3c — cowboy and gun affected by an HTTP Request/Response Splitting vulnerability
 GHSA-r53j-fjj5-mv77
 GHSA-w4f7-4cxr-rv3c

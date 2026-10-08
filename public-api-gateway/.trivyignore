@@ -1,0 +1,52 @@
+# Ignored for the 1.6 release on 2026-10-08. Each entry is unreachable in this service as
+# deployed; the dependency bumps follow under the dependency-update process.
+#
+# public-api-gateway proxies the public API behind the ingress auth service. amqp091-go talks
+# to the in-cluster RabbitMQ broker only, so the TLS configuration and credential items need a
+# hostile broker or configuration.
+
+# github.com/rabbitmq/amqp091-go v1.9.0 — 10 (CRITICAL/HIGH), fixed in 1.13.0. Not reachable: the broker is our own in-cluster RabbitMQ.
+#   CVE-2026-77403 — github.com/rabbitmq/amqp091-go: RabbitMQ amqp091-go: Denial of Service via AMQP frame size
+#   CVE-2026-77404 — github.com/rabbitmq/amqp091-go: RabbitMQ amqp091-go: Connection configuration overwrite vi
+#   CVE-2026-77405 — RabbitMQ amqp091-go is a Go AMQP 0.9.1 client. Prior to 1.13.0, tlsCon 
+#   CVE-2026-77406 — github.com/rabbitmq/amqp091-go: RabbitMQ amqp091-go: Denial of Service via signed-to-unsig
+#   CVE-2026-77407 — github.com/rabbitmq/amqp091-go: RabbitMQ amqp091-go: Plaintext Credential Exposure via Exp
+#   CVE-2026-77408 — RabbitMQ amqp091-go is a Go AMQP 0.9.1 client. Prior to 1.13.0, the wr 
+#   CVE-2026-77410 — github.com/rabbitmq/amqp091-go: RabbitMQ amqp091-go: Denial of Service via unbounded body 
+#   CVE-2026-77411 — RabbitMQ amqp091-go is a Go AMQP 0.9.1 client. Prior to 1.13.0, readLo 
+#   CVE-2026-77412 — github.com/rabbitmq/amqp091-go: RabbitMQ amqp091-go: Denial of Service via Malicious AMQP 
+#   CVE-2026-79921 — github.com/rabbitmq/amqp091-go: amqp091-go: Denial of Service via oversized AMQP payloads
+CVE-2026-77403
+CVE-2026-77404
+CVE-2026-77405
+CVE-2026-77406
+CVE-2026-77407
+CVE-2026-77408
+CVE-2026-77410
+CVE-2026-77411
+CVE-2026-77412
+CVE-2026-79921
+
+# golang.org/x/net v0.48.0 — 5 (HIGH), fixed in 0.53.0, 0.55.0, 0.56.0. Not reachable: no HTML is parsed, and HTTP/2 and DNS handling only face in-cluster peers.
+#   CVE-2026-25681 — golang.org/x/net/html: golang.org/x/net/html: Arbitrary code execution via Cross-Site Scri
+#   CVE-2026-27136 — golang.org/x/net/html: golang: golang.org/x/net/html: Cross-Site Scripting via HTML parsin
+#   CVE-2026-33814 — net/http/internal/http2: golang: golang.org/x/net: Go HTTP/2: Denial of Service via malfor
+#   CVE-2026-39821 — golang.org/x/net/idna: golang: net/http: golang.org/x/net/idna: Privilege escalation via i
+#   CVE-2026-46600 — golang.org/x/net/dns/dnsmessage: golang.org/x/net/dns/dnsmessage: Denial of Service via in
+CVE-2026-25681
+CVE-2026-27136
+CVE-2026-33814
+CVE-2026-39821
+CVE-2026-46600
+
+# golang.org/x/text v0.32.0 — 1 (HIGH), fixed in 0.39.0. Not reachable: the invalid-UTF-8 input path is only fed by our own services.
+#   CVE-2026-56852 — golang.org/x/text: golang.org/x/text: Denial of Service via invalid UTF-8 input
+CVE-2026-56852
+
+# google.golang.org/grpc v1.79.3 — 3 (HIGH), fixed in 1.82.1, 1.82.2, 1.83.1. Not reachable: the gRPC endpoints face in-cluster peers only and xDS is not used.
+#   CVE-2026-84304 — google.golang.org/grpc: gRPC-Go: Denial of Service via HTTP/2 DATA Frame Fragmentation
+#   CVE-2026-84445 — google.golang.org/grpc: gRPC-Go: Denial of Service via malformed RPC requests
+#   GHSA-hrxh-6v49-42gf — gRPC-Go: xDS RBAC and HTTP/2 Vulnerabilities
+CVE-2026-84304
+CVE-2026-84445
+GHSA-hrxh-6v49-42gf
