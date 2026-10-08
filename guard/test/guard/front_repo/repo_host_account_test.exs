@@ -463,6 +463,29 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
       assert updated.token == "refreshed-token"
     end
 
+    test "a claim holds an advisory lock on its (repo_host, uid) for the transaction" do
+      uid = "20002"
+
+      Guard.FrontRepo.transaction(fn ->
+        {:ok, _} =
+          RepoHostAccount.create(%{
+            login: "locker",
+            github_uid: uid,
+            repo_host: "github",
+            user_id: Ecto.UUID.generate(),
+            name: "Locker",
+            permission_scope: "user:email"
+          })
+
+        %{rows: [[count]]} =
+          Guard.FrontRepo.query!(
+            "SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' AND pid = pg_backend_pid()"
+          )
+
+        assert count > 0
+      end)
+    end
+
     test "uid_taken_error?/1 is false for other changeset errors" do
       changeset =
         %RepoHostAccount{}

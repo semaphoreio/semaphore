@@ -92,7 +92,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
       |> validate_github_uid_not_taken()
 
     result =
-      transact_claim(fn ->
+      claim_uid(changeset, fn changeset ->
         with {:ok, account} <- FrontRepo.insert(changeset) do
           release_revoked_uid_rows(account)
           {:ok, account}
@@ -761,6 +761,52 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     FrontRepo.exists?(query)
   end
 
+  # Serialises every claim on one (repo_host, uid). The uniqueness check is an
+  # exists query, so without this two claimers both read "free" under READ
+  # COMMITTED and both write. The lock is taken inside the transaction and
+  # released on commit or rollback, and the check is re-run under it - running
+  # it only outside, as the changeset builders do, decides on a stale read.
+  defp claim_uid(changeset, fun) do
+    transact_claim(fn ->
+      case lock_uid(changeset) do
+        :locked ->
+          case recheck_uid(changeset) do
+            %Ecto.Changeset{valid?: true} = checked -> fun.(checked)
+            invalid -> {:error, invalid}
+          end
+
+        :not_a_uid_claim ->
+          fun.(changeset)
+      end
+    end)
+  end
+
+  defp lock_uid(changeset) do
+    repo_host = Ecto.Changeset.get_field(changeset, :repo_host)
+    uid = Ecto.Changeset.get_field(changeset, :github_uid)
+
+    if repo_host == "github" and uid not in [nil, ""] do
+      FrontRepo.query!("SELECT pg_advisory_xact_lock($1)", [uid_lock_key(repo_host, uid)])
+      :locked
+    else
+      :not_a_uid_claim
+    end
+  end
+
+  # Advisory locks are keyed by a bigint, so the pair has to be hashed. Done
+  # here rather than with the undocumented hashtext() so the key does not
+  # depend on a Postgres internal, and with sha256 rather than :erlang.phash2
+  # so it stays identical across OTP versions during a rolling deploy.
+  defp uid_lock_key(repo_host, uid) do
+    <<key::signed-integer-64, _rest::binary>> = :crypto.hash(:sha256, "#{repo_host}:#{uid}")
+    key
+  end
+
+  # An already-invalid changeset keeps its errors; re-running the check would
+  # only duplicate them.
+  defp recheck_uid(%Ecto.Changeset{valid?: false} = changeset), do: changeset
+  defp recheck_uid(changeset), do: validate_github_uid_not_taken(changeset)
+
   # A claim is one unit of work: the uid write, the losers' deletion and the
   # outbox row. Keycloak stays outside - FederatedIdentitySync defers while
   # in_transaction?/0, and a caller that opened the transaction owns the
@@ -958,7 +1004,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     # Token refreshes and profile syncs stay a plain UPDATE.
     result =
       if unrevoke? do
-        transact_claim(fn ->
+        claim_uid(changeset, fn changeset ->
           with {:ok, account} <- FrontRepo.update(changeset) do
             release_revoked_uid_rows(account)
             {:ok, account}
@@ -1051,7 +1097,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
       |> validate_github_uid_not_taken()
 
     result =
-      transact_claim(fn ->
+      claim_uid(changeset, fn changeset ->
         with {:ok, account} <- FrontRepo.update(changeset) do
           release_revoked_uid_rows(account)
           {:ok, account}
