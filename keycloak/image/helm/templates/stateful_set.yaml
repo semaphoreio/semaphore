@@ -29,9 +29,9 @@ spec:
           env:
             - name: BASE_DOMAIN
               valueFrom: { configMapKeyRef: { name: {{ .Values.global.domain.configMapName }}, key: BASE_DOMAIN } }
-            - name: KEYCLOAK_ADMIN
+            - name: KC_BOOTSTRAP_ADMIN_USERNAME
               valueFrom: { secretKeyRef: { name: {{ include "secrets.authentication.name" . }}, key: KC_ADMIN_LOGIN } }
-            - name: KEYCLOAK_ADMIN_PASSWORD
+            - name: KC_BOOTSTRAP_ADMIN_PASSWORD
               valueFrom: { secretKeyRef: { name: {{ include "secrets.authentication.name" . }}, key: KC_ADMIN_PASSWORD } }
             - name: KC_PROXY_HEADERS
               value: "xforwarded"
