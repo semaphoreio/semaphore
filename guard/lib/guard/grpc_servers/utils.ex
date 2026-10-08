@@ -7,6 +7,12 @@ defmodule Guard.GrpcServers.Utils do
 
   @doc """
   Observes and logs GRPC service calls with benchmarking and metrics.
+
+  `request` is inspected into the log at debug on entry and exit, and at error
+  on any `GRPC.RPCError`. Every environment logs at info or lower, so the error
+  line is always emitted. It must therefore never carry credentials - no
+  password, token, secret or key. Pass identifiers and let the handler look up
+  what it needs.
   """
   def observe_and_log(name, request, f) do
     Watchman.benchmark(name, fn ->
