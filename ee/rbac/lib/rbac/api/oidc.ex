@@ -70,7 +70,11 @@ defmodule Rbac.Api.OIDC do
 
           {:ok, oidc_user_id}
         else
-          Logger.error("[OIDC API] Error creating user #{inspect(data)}: #{inspect(res.body)}")
+          # Email only: `data` carries secretData with the password's argon2id
+          # hash and salt, which is crackable offline for a weak password.
+          Logger.error(
+            "[OIDC API] Error creating user #{inspect(data[:email])}: #{inspect(res.body)}"
+          )
 
           {:error, "#{res.body["errorMessage"]}"}
         end
