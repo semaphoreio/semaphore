@@ -150,7 +150,7 @@ defmodule Rbac.FrontRepo.RepoHostAccount do
 
   @spec update_repo_host_account(String.t() | nil, repo_host, map(), Keyword.t()) ::
           {:ok, Rbac.FrontRepo.RepoHostAccount.t()}
-          | {:error, :invalid_data | Ecto.Changeset.t()}
+          | {:error, :invalid_data | :uid_taken | Ecto.Changeset.t()}
   def update_repo_host_account(user_id, _, %{github_uid: uid, login: login}, _opts)
       when is_nil(uid) or is_nil(login) do
     missing = for {key, nil} <- [github_uid: uid, login: login], do: key
@@ -172,6 +172,10 @@ defmodule Rbac.FrontRepo.RepoHostAccount do
       Logger.warning(
         "Refusing to point #{repo_host} uid for #{user_id} at an identity another user holds"
       )
+
+      # The OIDC caller discards this result, so without the counter a refused
+      # link is invisible. Mirrors guard's guard.repo_host_account.account_taken.
+      Watchman.increment({"rbac.repo_host_account.account_taken", [repo_host, "oidc_sync"]})
 
       {:error, :uid_taken}
     else

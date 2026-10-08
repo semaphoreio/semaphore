@@ -64,6 +64,26 @@ defmodule Rbac.FrontRepo.RepoHostAccountTest do
                )
     end
 
+    test "a refusal is counted, since the OIDC caller discards the result" do
+      import Mock
+
+      {:ok, theirs} = insert_full_rha(github_uid: "30005", user_id: Ecto.UUID.generate())
+
+      with_mock Watchman, increment: fn _ -> :ok end do
+        assert {:error, :uid_taken} =
+                 RepoHostAccount.update_repo_host_account(
+                   Ecto.UUID.generate(),
+                   :github,
+                   %{github_uid: theirs.github_uid, login: "claimer", name: "Claimer"},
+                   reset: true
+                 )
+
+        assert_called(
+          Watchman.increment({"rbac.repo_host_account.account_taken", ["github", "oidc_sync"]})
+        )
+      end
+    end
+
     test "a non-github provider is not gated on the uid" do
       {:ok, theirs} = insert_full_rha(github_uid: "30004", user_id: Ecto.UUID.generate())
 
