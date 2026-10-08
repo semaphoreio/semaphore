@@ -27,3 +27,10 @@ GHSA-hv23-4qp7-8c8r
 #   GHSA-w4f7-4cxr-rv3c — HTTP request/response splitting (shared cowboy/gun advisory)
 GHSA-r53j-fjj5-mv77
 GHSA-w4f7-4cxr-rv3c
+
+# grpc 0.3.1 — 1 advisory (high), patched in 1.0.0. Not reachable:
+# this library is a gRPC client and runs no gRPC server; the fix is grpc 1.0.0, a
+# breaking major shared across the monorepo and tracked as a coordinated migration
+# (plumber part: semaphoreio/semaphore#1134).
+#   GHSA-q8gf-9rvj-gmgj — gRPC Erlang package has unbounded request body accumulation in `read_full_body/3`
+GHSA-q8gf-9rvj-gmgj

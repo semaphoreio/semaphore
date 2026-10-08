@@ -17,5 +17,10 @@ defmodule Badges.SvgTest do
     test "when style doesn't exists => returns error" do
       {:error, :badge_not_found} = Svg.render(:pending, "foo")
     end
+
+    test "when style is a path => returns error" do
+      {:error, :badge_not_found} = Svg.render(:pending, "../badges/semaphore")
+      {:error, :badge_not_found} = Svg.render(:pending, "semaphore/../semaphore")
+    end
   end
 end
