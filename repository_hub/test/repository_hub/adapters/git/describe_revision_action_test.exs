@@ -23,13 +23,11 @@ defmodule RepositoryHub.Server.Git.DescribeRevisionActionTest do
   end
 
   describe "Git DescribeRevisionAction" do
-    test "resolves a reference and describes its commit", %{adapter: adapter, repository: repository} do
+    test "describes a fully qualified reference with a single fetch", %{adapter: adapter, repository: repository} do
       with_mock GitCliClient,
-        get_reference: fn %{url: @url, reference: "refs/heads/main"}, opts ->
+        get_reference: fn _, _ -> flunk("a fully qualified reference is fetched directly") end,
+        get_commit: fn %{url: @url, revision: "refs/heads/main"}, opts ->
           assert opts[:private_key] =~ "BEGIN OPENSSH PRIVATE KEY"
-          {:ok, %{type: "branch", reference: "refs/heads/main", sha: @sha}}
-        end,
-        get_commit: fn %{url: @url, revision: @sha}, _opts ->
           {:ok, %{sha: @sha, message: "Fix the thing", author_name: "Ada", author_email: "ada@example.com"}}
         end do
         request = request(repository, reference: "refs/heads/main", commit_sha: "")
@@ -41,6 +39,45 @@ defmodule RepositoryHub.Server.Git.DescribeRevisionActionTest do
         assert commit.author_name == "Ada"
         assert commit.author_uuid == ""
         assert commit.author_avatar_url == ""
+      end
+    end
+
+    test "resolves a bare name before describing its commit", %{adapter: adapter, repository: repository} do
+      with_mock GitCliClient,
+        get_reference: fn %{url: @url, reference: "main"}, _opts ->
+          {:ok, %{type: "branch", reference: "refs/heads/main", sha: @sha}}
+        end,
+        get_commit: fn %{url: @url, revision: @sha}, _opts ->
+          {:ok, %{sha: @sha, message: "Fix the thing", author_name: "Ada", author_email: "ada@example.com"}}
+        end do
+        request = request(repository, reference: "main", commit_sha: "")
+
+        assert {:ok, %DescribeRevisionResponse{commit: commit}} = DescribeRevisionAction.execute(adapter, request)
+        assert commit.sha == @sha
+        assert commit.msg == "Fix the thing"
+      end
+    end
+
+    test "falls back to resolving the reference when the direct fetch fails", %{
+      adapter: adapter,
+      repository: repository
+    } do
+      with_mock GitCliClient,
+        get_reference: fn %{url: @url, reference: "refs/heads/main"}, _opts ->
+          {:ok, %{type: "branch", reference: "refs/heads/main", sha: @sha}}
+        end,
+        get_commit: fn
+          %{revision: "refs/heads/main"}, _opts ->
+            {:error, %{status: GRPC.Status.not_found(), message: "refused"}}
+
+          %{revision: @sha}, _opts ->
+            {:ok, %{sha: @sha, message: "By sha", author_name: "Ada", author_email: "ada@example.com"}}
+        end do
+        request = request(repository, reference: "refs/heads/main", commit_sha: "")
+
+        assert {:ok, %DescribeRevisionResponse{commit: commit}} = DescribeRevisionAction.execute(adapter, request)
+        assert commit.sha == @sha
+        assert commit.msg == "By sha"
       end
     end
 
@@ -76,7 +113,9 @@ defmodule RepositoryHub.Server.Git.DescribeRevisionActionTest do
 
       with_mock GitCliClient,
         get_reference: fn _, _ -> {:error, %{status: not_found, message: "Reference 'refs/heads/nope' not found."}} end,
-        get_commit: fn _, _ -> flunk("nothing to fetch for an unknown reference") end do
+        get_commit: fn %{revision: "refs/heads/nope"}, _ ->
+          {:error, %{status: not_found, message: "couldn't find remote ref"}}
+        end do
         request = request(repository, reference: "refs/heads/nope", commit_sha: "")
 
         assert {:error, %{status: ^not_found}} = DescribeRevisionAction.execute(adapter, request)

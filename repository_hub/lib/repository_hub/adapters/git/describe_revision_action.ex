@@ -62,10 +62,26 @@ defimpl RepositoryHub.Server.DescribeRevisionAction, for: RepositoryHub.GitAdapt
     fetch_commit(url, commit_sha, private_key)
   end
 
+  # A fully qualified reference (what plumber and the scheduler send) is fetched
+  # directly: the fetch resolves it and reads its commit over a single SSH
+  # connection. Every connection costs about a second on some servers, and plumber
+  # gives the whole call 5 s. Any failure falls back to resolving the reference
+  # first, which also tells an unknown reference apart from a refused fetch.
+  defp describe(url, %{reference: "refs/" <> _ = reference}, private_key) do
+    case fetch_commit(url, reference, private_key) do
+      {:ok, _} = ok -> ok
+      {:error, _} -> describe_by_listing(url, reference, private_key)
+    end
+  end
+
+  defp describe(url, %{reference: reference}, private_key) do
+    describe_by_listing(url, reference, private_key)
+  end
+
   # Without a sha, the reference is resolved first so that an unknown branch or tag
   # is reported as such. The commit metadata is best effort: a server refusing the
   # fetch still lets the workflow start on the right sha.
-  defp describe(url, %{reference: reference}, private_key) do
+  defp describe_by_listing(url, reference, private_key) do
     with {:ok, resolved} <- GitCliClient.get_reference(%{url: url, reference: reference}, private_key: private_key) do
       case fetch_commit(url, resolved.sha, private_key) do
         {:ok, _} = ok ->
