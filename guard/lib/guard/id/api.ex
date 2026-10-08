@@ -1462,9 +1462,7 @@ defmodule Guard.Id.Api do
 
   defp update_redirect(conn, :existing), do: conn
 
-  # A new user goes to Semaphore's onboarding, unless they signed up in the
-  # middle of authorizing an OAuth client, such as semaphore.computer's web UI:
-  # they go back to finish that.
+  # New users go to onboarding, unless they are signing up mid-OAuth authorization.
   defp update_redirect(conn, _) do
     if oauth_authorization?(Guard.Utils.Http.fetch_redirect_value(conn, "")) do
       conn

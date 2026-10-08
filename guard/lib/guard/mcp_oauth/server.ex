@@ -17,7 +17,7 @@ defmodule Guard.McpOAuth.Server do
 
   use Plug.Router
 
-  alias Guard.McpOAuth.{Authorize, Computers, Metadata, Register, Token}
+  alias Guard.McpOAuth.{Authorize, Computers, JWT, Metadata, Register, Token}
   alias Guard.Store.{McpOAuthAuthCode, McpOAuthClient}
 
   # Note: Plug.Parsers is NOT used here because Guard.Id.Api already parses
@@ -94,14 +94,12 @@ defmodule Guard.McpOAuth.Server do
 
   # ====================
   # JWKS Endpoint (for OIDC compatibility)
-  # Note: We use HS256 (symmetric HMAC) for token signing.
-  # HS256 keys cannot be exposed via JWKS (would leak the secret).
-  # Token validation is done server-side by the resource server.
+  # Note: MCP tokens are HS256 (symmetric HMAC), and validated server-side by
+  # the resource server; their keys cannot be exposed via JWKS (would leak the
+  # secret). Only the RS256 key of semaphore.computer's tokens is published.
   # ====================
 
   get "/jwks" do
-    # MCP tokens are HS256 and checked by auth, so their key is not here. The
-    # public key semaphore.computer's tokens are signed with is.
     jwks = %{
       "keys" => Computers.jwks()
     }
@@ -172,8 +170,6 @@ defmodule Guard.McpOAuth.Server do
         case get_authenticated_user(conn) do
           {:ok, user} ->
             if Computers.client?(validated_params.client_id) do
-              # semaphore.computer is first-party: people sign in to it with
-              # their own account, so there is nothing to consent to.
               issue_code(conn, user.id, validated_params)
             else
               render_grant_selection(conn, validated_params, user)
@@ -438,8 +434,6 @@ defmodule Guard.McpOAuth.Server do
     end
   end
 
-  # Creates a single-use authorization code for a validated request, and sends
-  # the browser back to the client with it.
   defp issue_code(conn, user_id, params) do
     code = McpOAuthAuthCode.generate_code()
 
@@ -496,12 +490,9 @@ defmodule Guard.McpOAuth.Server do
         "state" => validated_params.state || ""
       })
 
-    # Login is on id.<domain>, and it reads redirect_to, which it only follows
-    # to an absolute URL on the base domain. A client asking for an account to
-    # be made, with OpenID Connect's prompt=create, gets the signup page.
     domain = Application.fetch_env!(:guard, :base_domain)
     page = if validated_params.prompt == "create", do: "signup", else: "login"
-    return_url = "https://#{conn.host}/mcp/oauth/authorize?#{return_params}"
+    return_url = "#{JWT.issuer()}/authorize?#{return_params}"
     login_url = "https://id.#{domain}/#{page}?redirect_to=#{URI.encode_www_form(return_url)}"
 
     conn

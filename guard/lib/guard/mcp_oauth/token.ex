@@ -20,6 +20,7 @@ defmodule Guard.McpOAuth.Token do
     - code (required): Authorization code
     - redirect_uri (required): Must match the original request
     - client_id (required): Client identifier
+    - client_secret: Required for semaphore.computer's client
     - code_verifier (required): PKCE verifier
 
   ## Returns
@@ -28,7 +29,8 @@ defmodule Guard.McpOAuth.Token do
   """
   @spec exchange(map()) :: {:ok, map()} | {:error, map()}
   def exchange(params) do
-    with :ok <- validate_grant_type(params) do
+    with :ok <- validate_grant_type(params),
+         :ok <- authenticate_client(params) do
       exchange_in_transaction(params)
     end
   end
@@ -63,6 +65,15 @@ defmodule Guard.McpOAuth.Token do
            "unsupported_grant_type",
            "grant_type must be 'authorization_code', got '#{other}'"
          )}
+    end
+  end
+
+  defp authenticate_client(params) do
+    if Computers.client?(params["client_id"]) and
+         not Computers.valid_secret?(params["client_secret"]) do
+      {:error, error_response("invalid_client", "Client authentication failed")}
+    else
+      :ok
     end
   end
 
@@ -120,8 +131,6 @@ defmodule Guard.McpOAuth.Token do
     end
   end
 
-  # semaphore.computer's client gets a token for its API; every other client
-  # gets an MCP token.
   defp issue(auth_code) do
     if Computers.client?(auth_code.client_id) do
       with {:ok, token} <- Computers.create_token(auth_code.user_id) do
