@@ -281,6 +281,25 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
       assert_called(GithubClient.create_deploy_key(%{repo_owner: "new-org", repo_name: "repository"}, token: "new-tok"))
     end
 
+    test "changes the url and creates a deploy key when the project has none", %{github_app_adapter: adapter} do
+      repository = RepositoryModelFactory.githubapp_repo()
+
+      request =
+        InternalApiFactory.update_request(
+          repository_id: repository.id,
+          url: "git@github.com:dummy/repository-2.git"
+        )
+
+      assert %UpdateResponse{} = UpdateAction.execute(adapter, request)
+
+      {:ok, updated_repository} = RepositoryHub.Model.RepositoryQuery.get_by_id(repository.id)
+      assert updated_repository.url == "git@github.com:dummy/repository-2.git"
+      assert {:ok, _} = RepositoryHub.Model.DeployKeyQuery.get_by_repository_id(repository.id)
+
+      assert_not_called(GithubClient.remove_deploy_key(:_, :_))
+      assert_called(GithubClient.create_deploy_key(%{repo_owner: "dummy", repo_name: "repository-2"}, :_))
+    end
+
     test "changes the url of an oauth repository using the user token for lookup and create", %{
       github_oauth_adapter: adapter
     } do

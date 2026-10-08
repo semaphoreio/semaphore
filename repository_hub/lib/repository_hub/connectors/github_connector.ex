@@ -139,35 +139,32 @@ defmodule RepositoryHub.GithubConnector do
     end)
   end
 
-  def remove_deploy_key(%{token: ""} = connector) do
-    log_warn([
-      "no token for #{connector.git_repository.owner}/#{connector.git_repository.repo}, skipping deploy key removal on GitHub"
-    ])
-
-    Model.DeployKeyQuery.get_by_repository_id(connector.repository.id)
-    |> unwrap(fn deploy_key ->
-      Model.DeployKeyQuery.delete(deploy_key.id)
-    end)
-  end
-
   def remove_deploy_key(connector) do
     Model.DeployKeyQuery.get_by_repository_id(connector.repository.id)
-    |> unwrap(fn deploy_key ->
-      GithubClient.remove_deploy_key(
-        %{
-          repo_owner: connector.git_repository.owner,
-          repo_name: connector.git_repository.repo,
-          key_id: deploy_key.remote_id
-        },
-        token: connector.token
-      )
-      |> unwrap(fn _ ->
-        wrap(deploy_key)
-      end)
-    end)
-    |> unwrap(fn deploy_key ->
-      Model.DeployKeyQuery.delete(deploy_key.id)
-    end)
+    |> case do
+      {:error, _} ->
+        wrap(:not_found)
+
+      {:ok, deploy_key} when connector.token == "" ->
+        log_warn([
+          "no token for #{connector.git_repository.owner}/#{connector.git_repository.repo}, skipping deploy key removal on GitHub"
+        ])
+
+        Model.DeployKeyQuery.delete(deploy_key.id)
+
+      {:ok, deploy_key} ->
+        GithubClient.remove_deploy_key(
+          %{
+            repo_owner: connector.git_repository.owner,
+            repo_name: connector.git_repository.repo,
+            key_id: deploy_key.remote_id
+          },
+          token: connector.token
+        )
+        |> unwrap(fn _ ->
+          Model.DeployKeyQuery.delete(deploy_key.id)
+        end)
+    end
   end
 
   def remove_webhook(%{token: ""} = connector) do
