@@ -318,6 +318,27 @@ RSpec.describe RepoHost::Github::Client do
       end
     end
 
+    context "check is rate limited with a bare 429" do
+      before do
+        # Octokit only maps a 403 body to a throttling class; a plain 429 is a
+        # ClientError, which is not in GITHUB_EXCEPTION and used to escape raw.
+        error = Octokit::Error.from_response(
+          :status => 429,
+          :body => { :message => "Too Many Requests" }.to_json,
+          :response_headers => { "content-type" => "application/json" }
+        )
+
+        allow_any_instance_of(Octokit::Client).to receive(:check_application_authorization)
+          .and_raise(error)
+      end
+
+      it "raises instead of classifying the token as invalid" do
+        expect do
+          @client.token_valid?
+        end.to raise_error(RepoHost::RemoteException::TooManyRequests)
+      end
+    end
+
     # Raising the subclass directly would skip Octokit's own 403-body
     # classification, which is what decides the class in production. These go
     # through from_response so the mapping is exercised too.
