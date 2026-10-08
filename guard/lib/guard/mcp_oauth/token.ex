@@ -9,7 +9,7 @@ defmodule Guard.McpOAuth.Token do
 
   alias Guard.Repo
   alias Guard.Store.McpOAuthAuthCode
-  alias Guard.McpOAuth.{JWT, PKCE}
+  alias Guard.McpOAuth.{Computers, JWT, PKCE}
 
   @doc """
   Exchanges an authorization code for an access token.
@@ -20,6 +20,7 @@ defmodule Guard.McpOAuth.Token do
     - code (required): Authorization code
     - redirect_uri (required): Must match the original request
     - client_id (required): Client identifier
+    - client_secret: Required for semaphore.computer's client
     - code_verifier (required): PKCE verifier
 
   ## Returns
@@ -28,7 +29,8 @@ defmodule Guard.McpOAuth.Token do
   """
   @spec exchange(map()) :: {:ok, map()} | {:error, map()}
   def exchange(params) do
-    with :ok <- validate_grant_type(params) do
+    with :ok <- validate_grant_type(params),
+         :ok <- authenticate_client(params) do
       exchange_in_transaction(params)
     end
   end
@@ -39,8 +41,8 @@ defmodule Guard.McpOAuth.Token do
            :ok <- validate_pkce(auth_code, params),
            :ok <- validate_redirect_uri(auth_code, params),
            {:ok, _} <- McpOAuthAuthCode.mark_code_used(auth_code),
-           {:ok, token} <- create_token(auth_code) do
-        build_response(token)
+           {:ok, response} <- issue(auth_code) do
+        response
       else
         {:error, error_map} -> Repo.rollback(error_map)
       end
@@ -63,6 +65,15 @@ defmodule Guard.McpOAuth.Token do
            "unsupported_grant_type",
            "grant_type must be 'authorization_code', got '#{other}'"
          )}
+    end
+  end
+
+  defp authenticate_client(params) do
+    if Computers.client?(params["client_id"]) and
+         not Computers.valid_secret?(params["client_secret"]) do
+      {:error, error_response("invalid_client", "Client authentication failed")}
+    else
+      :ok
     end
   end
 
@@ -120,16 +131,24 @@ defmodule Guard.McpOAuth.Token do
     end
   end
 
-  defp create_token(auth_code) do
-    JWT.create_token(%{user_id: auth_code.user_id})
+  defp issue(auth_code) do
+    if Computers.client?(auth_code.client_id) do
+      with {:ok, token} <- Computers.create_token(auth_code.user_id) do
+        {:ok, build_response(token, Computers.ttl_seconds(), Computers.scope())}
+      end
+    else
+      with {:ok, token} <- JWT.create_token(%{user_id: auth_code.user_id}) do
+        {:ok, build_response(token, JWT.default_token_ttl_seconds(), "mcp")}
+      end
+    end
   end
 
-  defp build_response(token) do
+  defp build_response(token, ttl_seconds, scope) do
     %{
       "access_token" => token,
       "token_type" => "Bearer",
-      "expires_in" => JWT.default_token_ttl_seconds(),
-      "scope" => "mcp"
+      "expires_in" => ttl_seconds,
+      "scope" => scope
     }
   end
 

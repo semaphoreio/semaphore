@@ -1462,8 +1462,16 @@ defmodule Guard.Id.Api do
 
   defp update_redirect(conn, :existing), do: conn
 
-  defp update_redirect(conn, _),
-    do: Guard.Utils.Http.store_redirect_info(conn, default_register_redirect())
+  # New users go to onboarding, unless they are signing up mid-OAuth authorization.
+  defp update_redirect(conn, _) do
+    if oauth_authorization?(Guard.Utils.Http.fetch_redirect_value(conn, "")) do
+      conn
+    else
+      Guard.Utils.Http.store_redirect_info(conn, default_register_redirect())
+    end
+  end
+
+  defp oauth_authorization?(url), do: URI.parse(url).path == "/mcp/oauth/authorize"
 
   defp find_or_create_user(user_data) do
     case Guard.OIDC.User.find_user_by_oidc_id(user_data[:oidc_user_id]) do
@@ -1622,7 +1630,9 @@ defmodule Guard.Id.Api do
   ###
 
   defp store_redirect_info(conn, _opts) do
-    if conn.request_path =~ "login" or conn.request_path =~ "auth" do
+    path = conn.request_path
+
+    if path =~ "login" or path =~ "auth" or path =~ "signup" do
       conn
       |> Guard.Utils.Http.store_redirect_info()
     else
@@ -1639,7 +1649,7 @@ defmodule Guard.Id.Api do
   defp plug_fetch_query_params(conn, _opts) do
     if conn.request_path =~ "login" or conn.request_path =~ "callback" or
          conn.request_path =~ "auth" or conn.request_path =~ "cli" or
-         conn.request_path =~ "device" do
+         conn.request_path =~ "device" or conn.request_path =~ "signup" do
       conn |> fetch_query_params()
     else
       conn
