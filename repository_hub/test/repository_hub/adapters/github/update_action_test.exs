@@ -380,7 +380,8 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
       request =
         InternalApiFactory.update_request(
           repository_id: repository.id,
-          url: "git@github.com:other-owner/other-repository.git"
+          url: "git@github.com:other-owner/other-repository.git",
+          user_id: "requester-user-id"
         )
 
       assert %UpdateResponse{} = UpdateAction.execute(adapter, request)
@@ -399,6 +400,13 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
 
       assert String.ends_with?(lookup_token, "-github_oauth_token")
       assert create_token == lookup_token
+
+      assert_called(
+        GithubClient.repository_permissions(
+          %{repo_owner: "other-owner", repo_name: "other-repository", username: "radwo"},
+          token: lookup_token
+        )
+      )
     end
   end
 
@@ -574,6 +582,55 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
       assert_called(GithubClient.find_repository(%{repo_owner: "new-org", repo_name: "repository"}, token: "old-tok"))
       assert_not_called(GithubClient.find_repository(:_, token: "new-tok"))
       assert_not_called(GithubClient.remove_webhook(:_, :_))
+      assert_not_called(GithubClient.create_webhook(:_, :_))
+    end
+
+    test "rejects an oauth url change when the requester is not an admin of the target repository", %{
+      github_oauth_adapter: adapter
+    } do
+      repository = RepositoryModelFactory.github_repo()
+      DeployKeysModelFactory.create_deploy_key(project_id: repository.project_id, repository_id: repository.id)
+
+      request =
+        InternalApiFactory.update_request(
+          repository_id: repository.id,
+          url: "git@github.com:other-owner/other-repository.git",
+          user_id: "requester-user-id"
+        )
+
+      :meck.expect(GithubClient, :repository_permissions, fn _params, _opts ->
+        {:ok, %{"admin" => false, "push" => true, "pull" => true}}
+      end)
+
+      assert {:error, %{message: message}} = UpdateAction.execute(adapter, request)
+      assert message == "Admin permissions are required on the repository to change the project's repository URL."
+
+      {:ok, unchanged_repository} = RepositoryHub.Model.RepositoryQuery.get_by_id(repository.id)
+      assert unchanged_repository.url == repository.url
+
+      assert_not_called(GithubClient.remove_webhook(:_, :_))
+      assert_not_called(GithubClient.create_webhook(:_, :_))
+    end
+
+    test "rejects an oauth url change requested by a service account", %{github_oauth_adapter: adapter} do
+      repository = RepositoryModelFactory.github_repo()
+
+      request =
+        InternalApiFactory.update_request(
+          repository_id: repository.id,
+          url: "git@github.com:other-owner/other-repository.git",
+          user_id: "service-account-user-id"
+        )
+
+      assert {:error, %{message: message}} = UpdateAction.execute(adapter, request)
+
+      assert message ==
+               "Service accounts can't change the repository URL of a project connected with a GitHub OAuth token."
+
+      {:ok, unchanged_repository} = RepositoryHub.Model.RepositoryQuery.get_by_id(repository.id)
+      assert unchanged_repository.url == repository.url
+
+      assert_not_called(GithubClient.find_repository(:_, :_))
       assert_not_called(GithubClient.create_webhook(:_, :_))
     end
   end

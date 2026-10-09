@@ -49,11 +49,6 @@ defmodule RepositoryHub.GithubConnector do
           true ->
             fail_with(:precondition, "Changing git host is not supported yet.")
 
-          false when connector.repository.integration_type != "github_app" ->
-            connector
-            |> can_change_url?(url, target_token, false)
-            |> unwrap(&update_repository_url_impl(connector, url, target_token, &1))
-
           false when user_id == "" ->
             fail_with(:precondition, "Changing the repository URL requires a known requester.")
 
@@ -64,7 +59,12 @@ defmodule RepositoryHub.GithubConnector do
     end)
   end
 
-  defp change_url_as_requester(connector, url, _target_token, %{user: %{creation_source: :SERVICE_ACCOUNT}}) do
+  defp change_url_as_requester(
+         %{repository: %{integration_type: "github_app"}} = connector,
+         url,
+         _target_token,
+         %{user: %{creation_source: :SERVICE_ACCOUNT}}
+       ) do
     connector
     |> can_change_url?(url, connector.token, false)
     |> unwrap_error(fn _ ->
@@ -76,13 +76,26 @@ defmodule RepositoryHub.GithubConnector do
     |> unwrap(&update_repository_url_impl(connector, url, connector.token, &1))
   end
 
+  defp change_url_as_requester(_connector, _url, _target_token, %{user: %{creation_source: :SERVICE_ACCOUNT}}) do
+    fail_with(
+      :precondition,
+      "Service accounts can't change the repository URL of a project connected with a GitHub OAuth token."
+    )
+  end
+
   defp change_url_as_requester(connector, url, target_token, requester) do
-    fallback? = target_token == ""
+    github_app? = connector.repository.integration_type == "github_app"
+    fallback? = github_app? and target_token == ""
     token = if fallback?, do: connector.token, else: target_token
+
+    {permission, denied_message} =
+      if github_app?,
+        do: {"push", "Write permissions are required on the repository to change the project's repository URL."},
+        else: {"admin", "Admin permissions are required on the repository to change the project's repository URL."}
 
     with {:ok, github_repository} <- can_change_url?(connector, url, token, fallback?),
          {:ok, git_repository} <- Model.GitRepository.from_github(url),
-         {:ok, %{"push" => true}} <-
+         {:ok, %{^permission => true}} <-
            GithubAdapter.repository_permissions(
              requester.user_id,
              %{repo_owner: git_repository.owner, repo_name: git_repository.repo},
@@ -92,10 +105,7 @@ defmodule RepositoryHub.GithubConnector do
       update_repository_url_impl(connector, url, token, github_repository)
     else
       {:ok, _permissions} ->
-        fail_with(
-          :precondition,
-          "Write permissions are required on the repository to change the project's repository URL."
-        )
+        fail_with(:precondition, denied_message)
 
       error ->
         error
