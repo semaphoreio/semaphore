@@ -2681,7 +2681,19 @@ defmodule Projecthub.Api.GrpcServerTest do
             )
         )
 
-      {:ok, response} = Stub.update(channel, request)
+      response =
+        with_mock Projecthub.RepositoryHubClient, [:passthrough], [] do
+          {:ok, response} = Stub.update(channel, request)
+
+          [update_request] =
+            for {_pid, {Projecthub.RepositoryHubClient, :update, [params | _]}, _result} <-
+                  :meck.history(Projecthub.RepositoryHubClient),
+                do: params
+
+          assert update_request.user_id == "12345678-1234-5678-1234-567812345678"
+
+          response
+        end
 
       assert response.metadata.status ==
                InternalApi.Projecthub.ResponseMeta.Status.new(code: :OK)
@@ -3243,10 +3255,7 @@ defmodule Projecthub.Api.GrpcServerTest do
   end
 
   describe ".github_app_switch" do
-    @tag :skip
-    test "when project exists -> switch it to github_app" do
-      alias Projecthub.Models.Repository
-
+    test "when project exists -> switches it to github_app as the requester" do
       {:ok, channel} =
         GRPC.Stub.connect("localhost:50051",
           interceptors: [
@@ -3256,15 +3265,7 @@ defmodule Projecthub.Api.GrpcServerTest do
           ]
         )
 
-      {:ok, project} = Support.Factories.Project.create()
-
-      {:ok, repository} =
-        Support.Factories.Repository.create(%{
-          project_id: project.id
-        })
-
-      refute repository.hook_id == nil
-      assert repository.integration_type == :GITHUB_OAUTH_TOKEN
+      {:ok, project} = Support.Factories.Project.create_with_repo()
 
       req =
         InternalApi.Projecthub.GithubAppSwitchRequest.new(
@@ -3274,26 +3275,26 @@ defmodule Projecthub.Api.GrpcServerTest do
               kind: "",
               req_id: "",
               org_id: project.organization_id,
-              user_id: Ecto.UUID.generate()
+              user_id: "12345678-1234-5678-1234-567812345678"
             ),
           id: project.id
         )
 
-      with_mocks([
-        {Tentacat.Hooks, [],
-         [
-           remove: fn _, _, _, _ -> {204, nil, nil} end
-         ]}
-      ]) do
+      with_mock Projecthub.RepositoryHubClient, [:passthrough], [] do
         {:ok, response} = Stub.github_app_switch(channel, req)
-
-        {:ok, repo} = Repository.find_for_project(project.id)
-
-        refute repository.hook_id == nil
-        assert repo.integration_type == "github_app"
 
         assert response.metadata.status ==
                  InternalApi.Projecthub.ResponseMeta.Status.new(code: :OK)
+
+        [update_request] =
+          for {_pid, {Projecthub.RepositoryHubClient, :update, [params | _]}, _result} <-
+                :meck.history(Projecthub.RepositoryHubClient),
+              do: params
+
+        assert update_request.integration_type ==
+                 InternalApi.RepositoryIntegrator.IntegrationType.value(:GITHUB_APP)
+
+        assert update_request.user_id == "12345678-1234-5678-1234-567812345678"
       end
     end
   end

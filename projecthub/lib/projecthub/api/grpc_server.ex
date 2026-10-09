@@ -689,7 +689,8 @@ defmodule Projecthub.Api.GrpcServer do
       with {:ok, project} <- find_project(req),
            {:ok, _} <-
              Repository.update(project.repository, %{
-               integration_type: InternalApi.RepositoryIntegrator.IntegrationType.value(:GITHUB_APP)
+               integration_type: InternalApi.RepositoryIntegrator.IntegrationType.value(:GITHUB_APP),
+               user_id: req.metadata.user_id
              }) do
         GithubAppSwitchResponse.new(metadata: status_ok(req))
       else
@@ -879,7 +880,8 @@ defmodule Projecthub.Api.GrpcServer do
         owner: repository.owner,
         pipeline_file: repository.pipeline_file,
         commit_status: status,
-        whitelist: whitelist
+        whitelist: whitelist,
+        user_id: requester_id
       })
 
     case Project.update(
