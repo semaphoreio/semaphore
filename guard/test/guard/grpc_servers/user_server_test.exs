@@ -2344,6 +2344,25 @@ defmodule Guard.GrpcServers.UserServerTest do
       grpc_error = GRPC.Status.invalid_argument()
       assert {:error, %GRPC.RPCError{status: ^grpc_error}} = ch |> Stub.create(request)
     end
+
+    test "a failed create does not log the password", %{grpc_channel: ch, user: existing_user} do
+      password = "correct-horse-battery-staple"
+
+      log =
+        ExUnit.CaptureLog.capture_log(fn ->
+          request =
+            User.CreateRequest.new(
+              email: existing_user.email,
+              name: "New User",
+              password: password
+            )
+
+          grpc_error = GRPC.Status.invalid_argument()
+          assert {:error, %GRPC.RPCError{status: ^grpc_error}} = ch |> Stub.create(request)
+        end)
+
+      refute log =~ password
+    end
   end
 
   describe "describe service accounts" do
