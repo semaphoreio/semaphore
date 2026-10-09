@@ -84,6 +84,57 @@ defmodule Rbac.FrontRepo.RepoHostAccountTest do
       end
     end
 
+    test "an owner's own re-sync survives someone else's duplicate row" do
+      # Production already has rows sharing a uid. Gating every write would
+      # refuse the legitimate owner's routine OIDC re-sync, silently, because
+      # the caller discards the result.
+      uid = "30006"
+      owner_id = Ecto.UUID.generate()
+      {:ok, _owner_row} = insert_full_rha(github_uid: uid, user_id: owner_id)
+      {:ok, _duplicate} = insert_full_rha(github_uid: uid, user_id: Ecto.UUID.generate())
+
+      assert {:ok, _} =
+               RepoHostAccount.update_repo_host_account(
+                 owner_id,
+                 :github,
+                 %{github_uid: uid, login: "octocat", name: "The Octocat"},
+                 reset: true
+               )
+    end
+
+    test "switching an existing link to a uid someone else holds is still refused" do
+      mover_id = Ecto.UUID.generate()
+      {:ok, _mine} = insert_full_rha(github_uid: "30007", user_id: mover_id)
+      {:ok, theirs} = insert_full_rha(github_uid: "30008", user_id: Ecto.UUID.generate())
+
+      assert {:error, :uid_taken} =
+               RepoHostAccount.update_repo_host_account(
+                 mover_id,
+                 :github,
+                 %{github_uid: theirs.github_uid, login: "claimer", name: "Claimer"},
+                 reset: true
+               )
+    end
+
+    test "a claim holds an advisory lock on its (repo_host, uid)" do
+      Rbac.FrontRepo.transaction(fn ->
+        assert {:ok, _} =
+                 RepoHostAccount.update_repo_host_account(
+                   Ecto.UUID.generate(),
+                   :github,
+                   %{github_uid: "30009", login: "locker", name: "Locker"},
+                   reset: true
+                 )
+
+        %{rows: [[count]]} =
+          Rbac.FrontRepo.query!(
+            "SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' AND pid = pg_backend_pid()"
+          )
+
+        assert count > 0
+      end)
+    end
+
     test "a non-github provider is not gated on the uid" do
       {:ok, theirs} = insert_full_rha(github_uid: "30004", user_id: Ecto.UUID.generate())
 

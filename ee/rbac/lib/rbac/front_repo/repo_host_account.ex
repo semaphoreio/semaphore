@@ -168,20 +168,72 @@ defmodule Rbac.FrontRepo.RepoHostAccount do
       "Updating RepoHostAccount for #{user_id} #{repo_host} with fields #{inspect(Map.keys(data))} and opts #{inspect(opts)}"
     )
 
-    if uid_actively_held_by_other?(user_id, repo_host, data[:github_uid]) do
-      Logger.warning(
-        "Refusing to point #{repo_host} uid for #{user_id} at an identity another user holds"
-      )
+    existing = get_for_user_by_repo_host(user_id, repo_host)
 
-      # The OIDC caller discards this result, so without the counter a refused
-      # link is invisible. Mirrors guard's guard.repo_host_account.account_taken.
-      Watchman.increment({"rbac.repo_host_account.account_taken", [repo_host, "oidc_sync"]})
-
-      {:error, :uid_taken}
+    if claiming_new_uid?(existing, data) do
+      claim_uid(user_id, repo_host, data, existing, opts)
     else
-      do_update_repo_host_account(user_id, repo_host, data, opts)
+      write_account(existing, user_id, repo_host, data, opts)
     end
   end
+
+  # Pointing a user at a uid they do not already hold is a claim; re-syncing
+  # the uid they already have is not. guard draws the same line by checking
+  # only on create, an un-revoke and a reset, never on a refresh. Without it an
+  # existing duplicate would make the legitimate owner's routine re-sync fail.
+  defp claiming_new_uid?(_existing, data) when not is_map_key(data, :github_uid), do: false
+
+  defp claiming_new_uid?(_existing, %{github_uid: uid}) when uid in [nil, ""], do: false
+
+  defp claiming_new_uid?({:error, :not_found}, _data), do: true
+  defp claiming_new_uid?({:ok, account}, %{github_uid: uid}), do: account.github_uid != uid
+
+  # Same lock and key derivation as guard's claim_uid/2: the check is an exists
+  # query, so without it two rbac syncs of one uid both read "free" and both
+  # write.
+  defp claim_uid(user_id, repo_host, data, existing, opts) do
+    FrontRepo.transaction(fn ->
+      lock_uid(repo_host, data[:github_uid])
+
+      if uid_actively_held_by_other?(user_id, repo_host, data[:github_uid]) do
+        Logger.warning(
+          "Refusing to point #{repo_host} uid for #{user_id} at an identity another user holds"
+        )
+
+        # The OIDC caller discards this result, so without the counter a
+        # refused link is invisible. Mirrors guard's
+        # guard.repo_host_account.account_taken.
+        Watchman.increment({"rbac.repo_host_account.account_taken", [repo_host, "oidc_sync"]})
+
+        FrontRepo.rollback(:uid_taken)
+      else
+        case write_account(existing, user_id, repo_host, data, opts) do
+          {:ok, account} -> account
+          {:error, reason} -> FrontRepo.rollback(reason)
+        end
+      end
+    end)
+  end
+
+  defp lock_uid("github", uid) when uid not in [nil, ""] do
+    FrontRepo.query!("SELECT pg_advisory_xact_lock($1)", [uid_lock_key("github", uid)])
+    :ok
+  end
+
+  defp lock_uid(_repo_host, _uid), do: :ok
+
+  # Must match guard's derivation exactly - the two services claim the same
+  # uids in the same database, so a different key would not exclude them.
+  defp uid_lock_key(repo_host, uid) do
+    <<key::signed-integer-64, _rest::binary>> = :crypto.hash(:sha256, "#{repo_host}:#{uid}")
+    key
+  end
+
+  defp write_account({:ok, account}, _user_id, _repo_host, data, opts),
+    do: update_existing_account(account, data, opts)
+
+  defp write_account({:error, :not_found}, user_id, repo_host, data, _opts),
+    do: create(data |> Map.merge(%{user_id: user_id, repo_host: repo_host}))
 
   # guard enforces one user per GitHub identity on its own write paths, but
   # rbac's OIDC signup is the main account-creation path on Enterprise and
@@ -206,16 +258,6 @@ defmodule Rbac.FrontRepo.RepoHostAccount do
   end
 
   defp uid_actively_held_by_other?(_user_id, _repo_host, _uid), do: false
-
-  defp do_update_repo_host_account(user_id, repo_host, data, opts) do
-    case get_for_user_by_repo_host(user_id, repo_host) do
-      {:ok, account} ->
-        update_existing_account(account, data, opts)
-
-      {:error, :not_found} ->
-        create(data |> Map.merge(%{user_id: user_id, repo_host: repo_host}))
-    end
-  end
 
   def update_revoke_status(rha, revoked) do
     update_account(%{revoked: revoked}, rha)
