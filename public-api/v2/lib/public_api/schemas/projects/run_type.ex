@@ -7,6 +7,6 @@ defmodule PublicAPI.Schemas.Projects.RunType do
   OpenApiSpex.schema(%{
     title: "Projects.RunType",
     type: :string,
-    enum: ~w(BRANCHES TAGS PULL_REQUESTS FORKED_PULL_REQUESTS)
+    enum: ~w(BRANCHES TAGS PULL_REQUESTS FORKED_PULL_REQUESTS DRAFT_PULL_REQUESTS)
   })
 end
