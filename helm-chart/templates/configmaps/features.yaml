@@ -18,6 +18,8 @@ data:
       enabled: true
     audit_logs:
       enabled: false
+    audit_logs_retention:
+      enabled: false
     audit_streaming:
       enabled: false
     badges:
@@ -154,6 +156,8 @@ data:
       enabled: true
     audit_logs:
       enabled: true
+    audit_logs_retention:
+      enabled: false
     audit_streaming:
       enabled: true
     badges:
