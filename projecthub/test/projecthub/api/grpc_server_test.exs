@@ -102,7 +102,8 @@ defmodule Projecthub.Api.GrpcServerTest do
                                  tags: []
                                ),
                              public: true,
-                             connected: true
+                             connected: true,
+                             pull_request_commit: :MERGE_COMMIT
                            ),
                          private: true,
                          public: false,
@@ -213,7 +214,8 @@ defmodule Projecthub.Api.GrpcServerTest do
                                  tags: []
                                ),
                              public: true,
-                             connected: true
+                             connected: true,
+                             pull_request_commit: :MERGE_COMMIT
                            ),
                          schedulers: [],
                          private: true,
@@ -357,7 +359,8 @@ defmodule Projecthub.Api.GrpcServerTest do
                                  tags: []
                                ),
                              public: true,
-                             connected: true
+                             connected: true,
+                             pull_request_commit: :MERGE_COMMIT
                            ),
                          schedulers: [
                            InternalApi.Projecthub.Project.Spec.Scheduler.new(
@@ -543,7 +546,8 @@ defmodule Projecthub.Api.GrpcServerTest do
                                  tags: []
                                ),
                              public: true,
-                             connected: true
+                             connected: true,
+                             pull_request_commit: :MERGE_COMMIT
                            ),
                          tasks: [
                            InternalApi.Projecthub.Project.Spec.Task.new(
@@ -3226,6 +3230,145 @@ defmodule Projecthub.Api.GrpcServerTest do
                    message: "oops"
                  )
       end
+    end
+  end
+
+  describe "pull_request_commit" do
+    alias InternalApi.Projecthub.Project.Spec.Repository
+
+    @head_commit_error "Building pull requests on their head commit is supported only for GitHub projects"
+
+    setup do
+      {:ok, channel} =
+        GRPC.Stub.connect("localhost:50051",
+          interceptors: [
+            Projecthub.Util.GRPC.ClientRequestIdInterceptor,
+            Projecthub.Util.GRPC.ClientLoggerInterceptor,
+            Projecthub.Util.GRPC.ClientRunAsyncInterceptor
+          ]
+        )
+
+      {:ok, channel: channel}
+    end
+
+    test "create without it => builds merge commits", %{channel: channel} do
+      {:ok, response} = Stub.create(channel, pr_commit_create_request(Repository.new(url: "repo_url")))
+
+      assert response.metadata.status.code == :OK
+      assert response.project.spec.repository.pull_request_commit == :MERGE_COMMIT
+      assert {:ok, %{pull_request_commit: "merge_commit"}} = Project.find(response.project.metadata.id)
+    end
+
+    test "create with HEAD_COMMIT on a GitHub project => builds head commits", %{channel: channel} do
+      repository = Repository.new(url: "repo_url", integration_type: :GITHUB_APP, pull_request_commit: :HEAD_COMMIT)
+      {:ok, response} = Stub.create(channel, pr_commit_create_request(repository))
+
+      assert response.metadata.status.code == :OK
+      assert response.project.spec.repository.pull_request_commit == :HEAD_COMMIT
+      assert {:ok, %{pull_request_commit: "head_commit"}} = Project.find(response.project.metadata.id)
+    end
+
+    test "create with HEAD_COMMIT on a Bitbucket project => fails and creates nothing", %{channel: channel} do
+      repository = Repository.new(url: "repo_url", integration_type: :BITBUCKET, pull_request_commit: :HEAD_COMMIT)
+      request = pr_commit_create_request(repository)
+      {:ok, response} = Stub.create(channel, request)
+
+      assert response.metadata.status.code == :FAILED_PRECONDITION
+      assert response.metadata.status.message == @head_commit_error
+
+      assert {:error, :not_found} = Project.find_by_name(request.project.metadata.name, request.metadata.org_id)
+    end
+
+    test "update without it => keeps the stored value", %{channel: channel} do
+      {:ok, project} = Support.Factories.Project.create_with_repo(%{pull_request_commit: "head_commit"})
+
+      {:ok, response} = Stub.update(channel, pr_commit_update_request(project, Repository.new(url: "repo_url")))
+
+      assert response.metadata.status.code == :OK
+      assert response.project.spec.repository.pull_request_commit == :HEAD_COMMIT
+      assert {:ok, %{pull_request_commit: "head_commit"}} = Project.find(project.id)
+    end
+
+    test "update with a value => stores it", %{channel: channel} do
+      {:ok, project} = Support.Factories.Project.create_with_repo()
+
+      head = Repository.new(url: "repo_url", pull_request_commit: :HEAD_COMMIT)
+      {:ok, response} = Stub.update(channel, pr_commit_update_request(project, head))
+
+      assert response.metadata.status.code == :OK
+      assert response.project.spec.repository.pull_request_commit == :HEAD_COMMIT
+
+      merge = Repository.new(url: "repo_url", pull_request_commit: :MERGE_COMMIT)
+      {:ok, response} = Stub.update(channel, pr_commit_update_request(project, merge))
+
+      assert response.metadata.status.code == :OK
+      assert response.project.spec.repository.pull_request_commit == :MERGE_COMMIT
+      assert {:ok, %{pull_request_commit: "merge_commit"}} = Project.find(project.id)
+    end
+
+    test "update with HEAD_COMMIT on a non-GitHub project => fails and keeps the stored value", %{
+      channel: channel
+    } do
+      {:ok, project} = Support.Factories.Project.create_with_repo()
+      bitbucket = %{project | repository: %{project.repository | integration_type: :BITBUCKET}}
+
+      with_mock Project, [:passthrough], find_in_org: fn _org_id, _id -> {:ok, bitbucket} end do
+        head = Repository.new(url: "repo_url", pull_request_commit: :HEAD_COMMIT)
+        {:ok, response} = Stub.update(channel, pr_commit_update_request(project, head))
+
+        assert response.metadata.status.code == :FAILED_PRECONDITION
+        assert response.metadata.status.message == @head_commit_error
+
+        merge = Repository.new(url: "repo_url", pull_request_commit: :MERGE_COMMIT)
+        {:ok, response} = Stub.update(channel, pr_commit_update_request(project, merge))
+
+        assert response.metadata.status.code == :OK
+      end
+
+      assert {:ok, %{pull_request_commit: "merge_commit"}} = Project.find(project.id)
+    end
+
+    defp pr_commit_create_request(repository) do
+      org_id = Ecto.UUID.generate()
+
+      org_response =
+        InternalApi.Organization.DescribeResponse.new(
+          status: InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
+          organization: InternalApi.Organization.Organization.new(org_username: "organization", org_id: org_id)
+        )
+
+      FunRegistry.set!(Support.FakeServices.OrganizationService, :describe, org_response)
+
+      InternalApi.Projecthub.CreateRequest.new(
+        metadata:
+          InternalApi.Projecthub.RequestMeta.new(org_id: org_id, user_id: "12345678-1234-5678-1234-567812345678"),
+        project:
+          InternalApi.Projecthub.Project.new(
+            metadata: InternalApi.Projecthub.Project.Metadata.new(name: "pr-commit-project"),
+            spec: InternalApi.Projecthub.Project.Spec.new(repository: repository)
+          )
+      )
+    end
+
+    defp pr_commit_update_request(project, repository) do
+      InternalApi.Projecthub.UpdateRequest.new(
+        metadata:
+          InternalApi.Projecthub.RequestMeta.new(
+            org_id: project.organization_id,
+            user_id: "12345678-1234-5678-1234-567812345678"
+          ),
+        project:
+          InternalApi.Projecthub.Project.new(
+            metadata:
+              InternalApi.Projecthub.Project.Metadata.new(
+                name: project.name,
+                id: project.id,
+                org_id: project.organization_id
+              ),
+            spec: InternalApi.Projecthub.Project.Spec.new(repository: repository, schedulers: [])
+          ),
+        omit_schedulers_and_tasks: true
+      )
     end
   end
 

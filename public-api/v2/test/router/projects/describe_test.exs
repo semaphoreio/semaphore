@@ -50,6 +50,31 @@ defmodule Router.Projects.DescribeTest do
       {:ok, response} = get_project(ctx, ctx.project_id)
       assert 404 == response.status_code
     end
+
+    test "pull_request_commit is encoded for every value projecthub can return", ctx do
+      for {stored, expected} <- [
+            PULL_REQUEST_COMMIT_UNSPECIFIED: "MERGE_COMMIT",
+            MERGE_COMMIT: "MERGE_COMMIT",
+            HEAD_COMMIT: "HEAD_COMMIT"
+          ] do
+        project_id = UUID.uuid4()
+
+        Support.Stubs.Project.create(%{id: ctx.org_id}, %{id: ctx.user_id},
+          id: project_id,
+          pull_request_commit: stored
+        )
+
+        PermissionPatrol.add_permissions(ctx.org_id, ctx.user_id, "project.view", project_id)
+
+        {:ok, response} = get_project(ctx, project_id)
+
+        assert 200 == response.status_code
+        check_response(response)
+
+        assert Jason.decode!(response.body)["spec"]["repository"]["pull_request_commit"] ==
+                 expected
+      end
+    end
   end
 
   describe "unauthorized users" do

@@ -109,8 +109,17 @@ defmodule InternalClients.Projecthub.RequestFormatter do
       },
       run_on: Enum.map(from_params(params.spec.repository, :run_on, []), &String.to_atom/1),
       pipeline_file: from_params(params.spec.repository, :pipeline_file, ""),
-      status: repo_status(params)
+      status: repo_status(params),
+      pull_request_commit: repo_pull_request_commit(params)
     }
+  end
+
+  # Omitted is UNSPECIFIED, which projecthub reads as "keep the stored value" on
+  # update and as MERGE_COMMIT on create.
+  defp repo_pull_request_commit(params) do
+    params.spec.repository
+    |> from_params(:pull_request_commit, "PULL_REQUEST_COMMIT_UNSPECIFIED")
+    |> String.to_atom()
   end
 
   defp repo_forked_pull_requests(params) do

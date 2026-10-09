@@ -120,10 +120,16 @@ defmodule InternalClients.Projecthub.ResponseFormatter do
         status: %{
           pipeline_files:
             Enum.map(spec.repository.status.pipeline_files, &pipeline_file_from_pb/1)
-        }
+        },
+        pull_request_commit: pull_request_commit_from_pb(spec.repository.pull_request_commit)
       }
     }
   end
+
+  # UNSPECIFIED comes from a projecthub that predates the setting, and such a
+  # projecthub builds the merge commit.
+  defp pull_request_commit_from_pb(:HEAD_COMMIT), do: "HEAD_COMMIT"
+  defp pull_request_commit_from_pb(_), do: "MERGE_COMMIT"
 
   defp whitelist_from_pb(nil), do: %{branches: [], tags: []}
 

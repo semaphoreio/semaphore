@@ -115,6 +115,12 @@ defmodule PublicAPI.Schemas.Projects.Project do
                 description:
                   "Which event will trigger the pipelines for this project. In most cases it is useful set to [\"BRANCHES\"]"
               },
+              pull_request_commit: %Schema{
+                type: :string,
+                enum: ~w(MERGE_COMMIT HEAD_COMMIT),
+                description:
+                  "Which commit pull request workflows build. HEAD_COMMIT builds the latest commit of the pull request branch without waiting for GitHub's merge; GitHub projects only. Omit to keep the current value on update; defaults to MERGE_COMMIT."
+              },
               pipeline_file: %Schema{
                 type: :string,
                 description: "Path to the pipeline file to run the projec pipelines with",

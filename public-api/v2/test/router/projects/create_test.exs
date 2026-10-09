@@ -47,6 +47,90 @@ defmodule Router.Projects.CreateTest do
 
       assert 422 == response.status_code
     end
+
+    test "pull_request_commit is sent to projecthub and returned", ctx do
+      capture_create_requests()
+
+      for value <- ~w(HEAD_COMMIT MERGE_COMMIT) do
+        project =
+          construct_project()
+          |> update_repository(&Map.put(&1, :pull_request_commit, value))
+
+        {:ok, response} = create_project(ctx, project)
+
+        assert 200 == response.status_code
+        assert_received {:create_request, req}
+        assert req.project.spec.repository.pull_request_commit == String.to_atom(value)
+
+        assert Jason.decode!(response.body)["spec"]["repository"]["pull_request_commit"] ==
+                 value
+      end
+    end
+
+    test "a create without pull_request_commit leaves the default to projecthub", ctx do
+      capture_create_requests()
+
+      project =
+        construct_project()
+        |> update_repository(&Map.delete(&1, :pull_request_commit))
+
+      {:ok, response} = create_project(ctx, project)
+
+      assert 200 == response.status_code
+      assert_received {:create_request, req}
+      assert req.project.spec.repository.pull_request_commit == :PULL_REQUEST_COMMIT_UNSPECIFIED
+
+      assert Jason.decode!(response.body)["spec"]["repository"]["pull_request_commit"] ==
+               "MERGE_COMMIT"
+    end
+
+    test "an unknown pull_request_commit is rejected before projecthub is called", ctx do
+      capture_create_requests()
+
+      for value <- ["head_commit", "PULL_REQUEST_COMMIT_UNSPECIFIED", "", nil] do
+        project =
+          construct_project()
+          |> update_repository(&Map.put(&1, :pull_request_commit, value))
+
+        {:ok, response} = create_project(ctx, project)
+
+        assert 422 == response.status_code
+
+        assert [%{"source" => %{"pointer" => "/spec/repository/pull_request_commit"}}] =
+                 Jason.decode!(response.body)["errors"]
+      end
+
+      refute_received {:create_request, _}
+    end
+
+    test "a FAILED_PRECONDITION answer from projecthub is returned with its message", ctx do
+      GrpcMock.stub(ProjecthubMock, :create, fn _req, _ ->
+        alias InternalApi.Projecthub.ResponseMeta
+
+        status = %ResponseMeta.Status{
+          code: ResponseMeta.Code.value(:FAILED_PRECONDITION),
+          message: "head_commit is available only for GitHub projects"
+        }
+
+        %InternalApi.Projecthub.CreateResponse{metadata: %ResponseMeta{status: status}}
+      end)
+
+      on_exit(&Support.Stubs.Project.Grpc.Projecthub.init/0)
+
+      project =
+        construct_project()
+        |> update_repository(
+          &Map.merge(&1, %{integration_type: "BITBUCKET", pull_request_commit: "HEAD_COMMIT"})
+        )
+
+      {:ok, response} = create_project(ctx, project)
+
+      assert 400 == response.status_code
+
+      assert Jason.decode!(response.body) == %{
+               "message" => "head_commit is available only for GitHub projects"
+             }
+    end
   end
 
   describe "unauthorized users" do
@@ -81,6 +165,21 @@ defmodule Router.Projects.CreateTest do
     default = OpenApiSpex.Schema.example(PublicAPI.Schemas.Projects.Project.schema())
 
     Map.put(default, :spec, Map.put(default.spec, :name, name))
+  end
+
+  defp update_repository(project, fun) do
+    Map.update!(project, :spec, fn spec -> Map.update!(spec, :repository, fun) end)
+  end
+
+  defp capture_create_requests do
+    test_pid = self()
+
+    GrpcMock.stub(ProjecthubMock, :create, fn req, stream ->
+      send(test_pid, {:create_request, req})
+      Support.Stubs.Project.Grpc.Projecthub.create(req, stream)
+    end)
+
+    on_exit(&Support.Stubs.Project.Grpc.Projecthub.init/0)
   end
 
   defp create_project(ctx, project) do

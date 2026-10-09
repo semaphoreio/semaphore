@@ -241,9 +241,11 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
           return
         when :without_reference
           logger.info("without-reference")
-          workflow.update(:commit_author => meta[:commit_author])
+          attributes = { :commit_author => meta[:commit_author] }
+          attributes[:git_ref] = meta[:ref] if meta[:ref]
+          workflow.update(attributes)
         else
-          workflow.update(:commit_author => meta[:commit_author], :commit_sha => meta[:merge_commit_sha], :git_ref => meta[:ref])
+          workflow.update(:commit_author => meta[:commit_author], :commit_sha => meta[:commit_sha], :git_ref => meta[:ref])
         end
       rescue RepoHost::RemoteException::Unknown => e
         logger.error("Unknown error", error: e.message)
@@ -296,6 +298,8 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
     repo_host = ::RepoHost::Factory.create_from_project(project)
     repo_host.validate_token_presence!
 
+    return update_pr_head_data(repo_host, project, number, commit_sha, allow_skip) if project.pull_request_head_commit?
+
     pr, merge_commit_sha, mergeable, msg = get_pr_data(repo_host, project, number, 0, :poll => poll)
 
     if pr == nil
@@ -326,9 +330,44 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
       ref = "refs/semaphoreci/#{merge_commit_sha}"
       ensure_ref(repo_host, project.repo_owner_and_name, ref, merge_commit_sha)
 
-      [:ok, { :pr => pr, :ref => ref, :merge_commit_sha => merge_commit_sha, :mergeable => mergeable, :commit_author => commit_author }, msg]
+      [:ok, { :pr => pr, :ref => ref, :commit_sha => merge_commit_sha, :mergeable => mergeable, :commit_author => commit_author }, msg]
     rescue RepoHost::RemoteException::Unauthorized, RepoHost::RemoteException::NotFound
       [:without_reference, { :mergeable => mergeable, :commit_author => commit_author }, ""]
+    end
+  end
+
+  # Head builds don't use GitHub's test merge, so they never read or wait for
+  # mergeability, and PRs with conflicts build too. Mergeability is recorded as
+  # true so the branch page shows no conflict and no unmergeable event fires.
+  def self.update_pr_head_data(repo_host, project, number, head_sha, allow_skip)
+    pr = nil
+
+    if head_sha.nil?
+      begin
+        pr = repo_host.pull_request(project.repo_owner_and_name, number)
+      rescue RepoHost::RemoteException::NotFound => e
+        return [:not_found, {}, e]
+      end
+
+      head_sha = pr[:head][:sha]
+    end
+
+    commit = repo_host.commit(project.repo_owner_and_name, head_sha)
+    commit_author = commit.try(:author).try(:login)
+    commit_message = commit.try(:commit).try(:message).to_s
+
+    if allow_skip && ::Semaphore::SkipCi.new.call(commit_message)
+      return [:skip_ci, { :pr => pr, :mergeable => true }, ""]
+    end
+
+    begin
+      ref = "refs/semaphoreci/#{head_sha}"
+      ensure_ref(repo_host, project.repo_owner_and_name, ref, head_sha)
+
+      [:ok, { :pr => pr, :ref => ref, :commit_sha => head_sha, :mergeable => true, :commit_author => commit_author }, ""]
+    rescue RepoHost::RemoteException::Unauthorized, RepoHost::RemoteException::NotFound
+      # The recorded ref is GitHub's merge ref, which a conflicting PR doesn't have.
+      [:without_reference, { :pr => pr, :ref => "refs/pull/#{number}/head", :mergeable => true, :commit_author => commit_author }, ""]
     end
   end
 

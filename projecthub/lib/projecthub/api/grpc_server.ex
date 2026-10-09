@@ -283,6 +283,7 @@ defmodule Projecthub.Api.GrpcServer do
       with {:ok, user} <- Task.yield(fetch_user),
            {:ok, org} <- Task.yield(fetch_org),
            :ok <- require_owner_project(user, org, repo, integration_type),
+           :ok <- validate_pull_request_commit(repo.pull_request_commit, repo.integration_type),
            {:ok, project} <-
              attempt_creation(
                user,
@@ -358,7 +359,12 @@ defmodule Projecthub.Api.GrpcServer do
 
       with org <- find_org(req),
            {:ok, project} <- Project.find_in_org(req.metadata.org_id, project_id),
-           :ok <- ParamsChecker.run(project_spec, org.open_source) do
+           :ok <- ParamsChecker.run(project_spec, org.open_source),
+           :ok <-
+             validate_pull_request_commit(
+               project_spec.repository.pull_request_commit,
+               project_integration_type(project)
+             ) do
         attempt_update(project, project_metadata, project_spec, req)
       else
         {:error, :not_found} ->
@@ -785,6 +791,7 @@ defmodule Projecthub.Api.GrpcServer do
         attach = attach_settings(project_spec)
         debug = debug_settings(project_spec)
         run_on = run_settings(project_spec)
+        pull_request_commit = pull_request_commit_settings(project_spec)
         forked_pull_requests = forked_pull_requests_settings(project_spec)
         visibility = project_visibility_settings(org, project_spec)
         schedulers = Scheduler.construct_list(project_spec.schedulers)
@@ -801,6 +808,7 @@ defmodule Projecthub.Api.GrpcServer do
           |> Map.merge(attach)
           |> Map.merge(debug)
           |> Map.merge(run_on)
+          |> Map.merge(pull_request_commit)
           |> Map.merge(forked_pull_requests)
           |> Map.merge(visibility)
 
@@ -879,6 +887,7 @@ defmodule Projecthub.Api.GrpcServer do
     attach = attach_settings(project_spec)
     debug = debug_settings(project_spec)
     run_on = run_settings(project_spec)
+    pull_request_commit = pull_request_commit_settings(project_spec)
     forked_pull_requests = forked_pull_requests_settings(project_spec)
 
     project_params =
@@ -887,6 +896,7 @@ defmodule Projecthub.Api.GrpcServer do
       |> Map.merge(attach)
       |> Map.merge(debug)
       |> Map.merge(run_on)
+      |> Map.merge(pull_request_commit)
       |> Map.merge(forked_pull_requests)
 
     status = project_spec.repository.status
@@ -1001,6 +1011,34 @@ defmodule Projecthub.Api.GrpcServer do
       build_draft_pr: Enum.member?(run_on, :DRAFT_PULL_REQUESTS)
     }
   end
+
+  # An unspecified value leaves the stored setting alone, so clients that don't
+  # know the field (older CLIs, manifests applied as written) never reset it.
+  defp pull_request_commit_settings(project_spec) do
+    case project_spec.repository.pull_request_commit do
+      :MERGE_COMMIT -> %{pull_request_commit: "merge_commit"}
+      :HEAD_COMMIT -> %{pull_request_commit: "head_commit"}
+      _ -> %{}
+    end
+  end
+
+  defp validate_pull_request_commit(:HEAD_COMMIT, integration_type) do
+    if github_integration?(integration_type) do
+      :ok
+    else
+      {:error, ["Building pull requests on their head commit is supported only for GitHub projects"]}
+    end
+  end
+
+  defp validate_pull_request_commit(_, _), do: :ok
+
+  defp project_integration_type(%{repository: %{integration_type: type}}), do: type
+  defp project_integration_type(_), do: nil
+
+  defp github_integration?(type) when is_integer(type),
+    do: github_integration?(InternalApi.RepositoryIntegrator.IntegrationType.key(type))
+
+  defp github_integration?(type), do: type in [:GITHUB_APP, :GITHUB_OAUTH_TOKEN]
 
   defp forked_pull_requests_settings(project_spec) do
     forked_pull_requests = project_spec.repository.forked_pull_requests
@@ -1267,9 +1305,16 @@ defmodule Projecthub.Api.GrpcServer do
       public: !project.repository.private,
       integration_type: project.repository.integration_type,
       default_branch: project.repository.default_branch,
-      connected: project.repository.connected
+      connected: project.repository.connected,
+      pull_request_commit: project_pull_request_commit(project)
     )
   end
+
+  defp project_pull_request_commit(%{pull_request_commit: "head_commit"}),
+    do: InternalApi.Projecthub.Project.Spec.Repository.PullRequestCommit.value(:HEAD_COMMIT)
+
+  defp project_pull_request_commit(_),
+    do: InternalApi.Projecthub.Project.Spec.Repository.PullRequestCommit.value(:MERGE_COMMIT)
 
   defp project_visibility(true), do: Visibility.value(:PUBLIC)
   defp project_visibility(false), do: Visibility.value(:PRIVATE)

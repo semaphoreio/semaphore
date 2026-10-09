@@ -84,7 +84,8 @@ defmodule Projecthub.HttpApi do
     org_id = conn.assigns.org_id
 
     with true <- Auth.has_permissions?(org_id, user_id, "organization.projects.create"),
-         :ok <- validate_notification_flags(conn) do
+         :ok <- validate_notification_flags(conn),
+         {:ok, pull_request_commit} <- parse_pull_request_commit(conn) do
       spec = conn.body_params["spec"]
       repository = spec["repository"]
 
@@ -121,7 +122,8 @@ defmodule Projecthub.HttpApi do
                           repository["integration_type"],
                           repository["url"],
                           conn.assigns.org_id
-                        )
+                        ),
+                      pull_request_commit: pull_request_commit
                     ),
                   schedulers: schedulers,
                   tasks: tasks,
@@ -171,6 +173,7 @@ defmodule Projecthub.HttpApi do
 
     with true <- Auth.has_permissions?(org_id, user_id, project_id, @update_permissions),
          :ok <- validate_notification_flags(conn),
+         {:ok, pull_request_commit} <- parse_pull_request_commit(conn),
          {:ok, stored_flags} <- stored_notification_flags(conn) do
       metadata = conn.body_params["metadata"]
       spec = conn.body_params["spec"]
@@ -205,7 +208,8 @@ defmodule Projecthub.HttpApi do
                       pipeline_file:
                         conn.body_params["spec"]["repository"]["pipeline_file"] || "",
                       status: status_map(repository["status"]),
-                      whitelist: whitelist_map(repository["whitelist"])
+                      whitelist: whitelist_map(repository["whitelist"]),
+                      pull_request_commit: pull_request_commit
                     ),
                   schedulers: schedulers,
                   tasks: tasks,
@@ -493,7 +497,8 @@ defmodule Projecthub.HttpApi do
         "pipeline_file" => p.spec.repository.pipeline_file,
         "status" => encode_status(p.spec.repository.status),
         "whitelist" => encode_whitelist(p.spec.repository.whitelist),
-        "integration_type" => encode_inegration_type(p.spec.repository.integration_type)
+        "integration_type" => encode_inegration_type(p.spec.repository.integration_type),
+        "pull_request_commit" => encode_pull_request_commit(p.spec.repository.pull_request_commit)
       },
       "schedulers" => encode_schedulers(p.spec.schedulers),
       "tasks" => encode_tasks(p.spec.tasks),
@@ -515,6 +520,15 @@ defmodule Projecthub.HttpApi do
   defp encode_inegration_type(3), do: "gitlab"
   defp encode_inegration_type(4), do: "git"
   defp encode_inegration_type(_), do: ""
+
+  @head_commit InternalApi.Projecthub.Project.Spec.Repository.PullRequestCommit.value(
+                 :HEAD_COMMIT
+               )
+
+  # UNSPECIFIED comes from a projecthub that predates the setting, and such a
+  # projecthub builds the merge commit.
+  defp encode_pull_request_commit(@head_commit), do: "head_commit"
+  defp encode_pull_request_commit(_), do: "merge_commit"
 
   defp encode_whitelist(nil), do: %{"branches" => [], "tags" => []}
 
@@ -738,6 +752,20 @@ defmodule Projecthub.HttpApi do
     |> case do
       [] -> :ok
       [key | _] -> {:invalid, "#{key} must be true or false"}
+    end
+  end
+
+  # An omitted or null value is UNSPECIFIED, which projecthub reads as "keep the
+  # stored value" on update and as MERGE_COMMIT on create, so clients that predate
+  # the setting can still send the whole project without resetting it.
+  defp parse_pull_request_commit(conn) do
+    alias InternalApi.Projecthub.Project.Spec.Repository.PullRequestCommit
+
+    case conn.body_params["spec"]["repository"]["pull_request_commit"] do
+      nil -> {:ok, PullRequestCommit.value(:PULL_REQUEST_COMMIT_UNSPECIFIED)}
+      "merge_commit" -> {:ok, PullRequestCommit.value(:MERGE_COMMIT)}
+      "head_commit" -> {:ok, PullRequestCommit.value(:HEAD_COMMIT)}
+      _ -> {:invalid, ~s(pull_request_commit must be "merge_commit" or "head_commit")}
     end
   end
 

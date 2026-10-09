@@ -37,6 +37,7 @@ defmodule Projecthub.Models.Project do
     field(:build_pr, :boolean, default: false)
     field(:build_forked_pr, :boolean, default: false)
     field(:build_draft_pr, :boolean, default: true)
+    field(:pull_request_commit, :string, default: "merge_commit")
 
     field(:allowed_secrets, :string, default: "")
     field(:allowed_contributors, :string, default: "")
@@ -226,6 +227,7 @@ defmodule Projecthub.Models.Project do
       :build_pr,
       :build_forked_pr,
       :build_draft_pr,
+      :pull_request_commit,
       :allowed_secrets,
       :allowed_contributors,
       :public,
@@ -250,6 +252,7 @@ defmodule Projecthub.Models.Project do
       :deleted_by
     ])
     |> validate_required([:name, :organization_id, :creator_id])
+    |> validate_inclusion(:pull_request_commit, ["merge_commit", "head_commit"])
     |> validate_format(:name, ~r/\A[\w\-\.]+\z/,
       message: "Project name can have only alphanumeric characters, underscore and dash"
     )

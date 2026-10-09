@@ -52,6 +52,18 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
       end
     end
 
+    context "when the hook is a pull request" do
+      it "returns the base commit of the pull request" do
+        payload = File.read(Rails.root.join("fixtures/github_payloads/post_receive_hook_pull_request.json").to_s)
+        hook = FactoryBot.create(:workflow_with_branch, :request => ActionController::Parameters.new("payload" => payload))
+
+        response = server.describe(InternalApi::RepoProxy::DescribeRequest.new(:hook_id => hook.id), call)
+
+        expect(response.hook.git_ref_type).to eq(:PR)
+        expect(response.hook.pr_base_sha).to eq("1ddd006407eda6ea5ca0e0b538ba7d4914c08611")
+      end
+    end
+
     context "when pusher is not present" do
       it "return empty repo_host_username, and empty repo_host_email" do
         @hook = FactoryBot.create(:workflow_with_branch)
@@ -251,7 +263,7 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
     let(:payload_hash) do
       {
         "commit_author" => "dev@example.com",
-        "merge_commit_sha" => "abc123",
+        "commit_sha" => "abc123",
         "semaphore_ref" => "refs/merge"
       }
     end

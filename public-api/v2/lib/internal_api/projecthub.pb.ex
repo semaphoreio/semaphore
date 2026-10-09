@@ -42,6 +42,16 @@ defmodule InternalApi.Projecthub.Project.Spec.Repository.RunType do
   field(:DRAFT_PULL_REQUESTS, 4)
 end
 
+defmodule InternalApi.Projecthub.Project.Spec.Repository.PullRequestCommit do
+  @moduledoc false
+
+  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:PULL_REQUEST_COMMIT_UNSPECIFIED, 0)
+  field(:MERGE_COMMIT, 1)
+  field(:HEAD_COMMIT, 2)
+end
+
 defmodule InternalApi.Projecthub.Project.Spec.Repository.Status.PipelineFile.Level do
   @moduledoc false
 
@@ -239,6 +249,12 @@ defmodule InternalApi.Projecthub.Project.Spec.Repository do
   field(:connected, 12, type: :bool)
   field(:id, 13, type: :string)
   field(:default_branch, 14, type: :string, json_name: "defaultBranch")
+
+  field(:pull_request_commit, 15,
+    type: InternalApi.Projecthub.Project.Spec.Repository.PullRequestCommit,
+    json_name: "pullRequestCommit",
+    enum: true
+  )
 end
 
 defmodule InternalApi.Projecthub.Project.Spec.Scheduler do
@@ -282,6 +298,13 @@ defmodule InternalApi.Projecthub.Project.Spec.Task do
   field(:recurring, 7, type: :bool)
   field(:parameters, 8, repeated: true, type: InternalApi.Projecthub.Project.Spec.Task.Parameter)
   field(:description, 9, type: :string)
+
+  field(:skip_scheduled_run_notifications, 10,
+    type: :bool,
+    json_name: "skipScheduledRunNotifications"
+  )
+
+  field(:skip_manual_run_notifications, 11, type: :bool, json_name: "skipManualRunNotifications")
 end
 
 defmodule InternalApi.Projecthub.Project.Spec do
