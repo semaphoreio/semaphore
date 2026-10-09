@@ -4,9 +4,17 @@ defmodule Ppl.DefinitionReviser do
   """
 
   alias Ppl.DefinitionReviser.{
-    BlocksGodfather, BlocksReviser, JobsGodfather, Task2Build,
-    TaskFileProperty, ImplicitDependency, WhenValidator,
-    MaxTimeLimitChecker, ParallelismValidator, JobMatrixValidator
+    BlocksGodfather,
+    BlocksReviser,
+    JobsGodfather,
+    Task2Build,
+    TaskFileProperty,
+    ImplicitDependency,
+    WhenValidator,
+    MaxTimeLimitChecker,
+    ParallelismValidator,
+    JobMatrixValidator,
+    OIDCTokensValidator
   }
 
   def revise_definition(definition, ppl_req) do
@@ -19,6 +27,7 @@ defmodule Ppl.DefinitionReviser do
          {:ok, definition} <- BlocksReviser.revise_blocks_definition(definition, ppl_req),
          {:ok, definition} <- ParallelismValidator.validate(definition),
          {:ok, definition} <- JobMatrixValidator.validate(definition),
-    do: ImplicitDependency.convert_to_explicit(definition)
+         {:ok, definition} <- OIDCTokensValidator.validate(definition),
+         do: ImplicitDependency.convert_to_explicit(definition)
   end
 end

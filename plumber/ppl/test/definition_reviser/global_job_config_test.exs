@@ -31,16 +31,8 @@ defmodule Ppl.DefinitionReviser.BlocksReviser.GlobalJobConfig.Test do
     Test.Support.GrpcServerHelper.setup_service_url(@url_env_name_2, project_port)
 
     on_exit(fn ->
-      # The env vars may have been unset before this test ran (depends on test
-      # ordering/sharding), so guard against restoring a nil value, which
-      # System.put_env/2 rejects.
-      if old_artifact_url,
-        do: System.put_env(@url_env_name, old_artifact_url),
-        else: System.delete_env(@url_env_name)
-
-      if old_project_url,
-        do: System.put_env(@url_env_name_2, old_project_url),
-        else: System.delete_env(@url_env_name_2)
+      restore_env(@url_env_name, old_artifact_url)
+      restore_env(@url_env_name_2, old_project_url)
     end)
 
     Test.Helpers.truncate_db()
@@ -141,4 +133,7 @@ defmodule Ppl.DefinitionReviser.BlocksReviser.GlobalJobConfig.Test do
       }
     }
   end
+
+  defp restore_env(name, nil), do: System.delete_env(name)
+  defp restore_env(name, value), do: System.put_env(name, value)
 end
