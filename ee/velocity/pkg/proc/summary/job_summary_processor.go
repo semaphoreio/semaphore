@@ -30,6 +30,7 @@ type JobSummarySetupOptions struct {
 
 type JobSummaryProcessor struct {
 	amqp                tackle.Options
+	publisher           *tackle.Publisher
 	serverFarmClient    service.ServerFarmClient
 	projectHubClient    service.ProjectHubClient
 	reportFetcherClient service.ReportFetcherClient
@@ -109,14 +110,27 @@ func (p *JobSummaryProcessor) Process(delivery tackle.Delivery) (err error) {
 		Exchange:   p.amqp.RemoteExchange,
 	}
 
-	return tackle.PublishMessage(&params)
+	return publish(p.publisher, &params)
 }
 
 func StartJobSummaryProcessor(o *JobSummarySetupOptions) {
 	log.Println("starting job summary processor")
 
+	var publisher *tackle.Publisher
+
+	err := retry.WithConstantWait("RabbitMQ connection", 20, 2*time.Second, func() error {
+		var err error
+		publisher, err = openPublisher(o.OutOptions)
+		return err
+	})
+
+	if err != nil {
+		log.Fatalf("failed to open publisher for job summary processor: %v", err)
+	}
+
 	processor := &JobSummaryProcessor{
 		amqp:                o.OutOptions,
+		publisher:           publisher,
 		serverFarmClient:    o.FarmClient,
 		projectHubClient:    o.ProjectClient,
 		reportFetcherClient: o.ReportFetcherClient,
@@ -124,7 +138,7 @@ func StartJobSummaryProcessor(o *JobSummarySetupOptions) {
 
 	consumer := tackle.NewConsumer()
 
-	err := retry.WithConstantWait("RabbitMQ connection", 20, 2*time.Second, func() error {
+	err = retry.WithConstantWait("RabbitMQ connection", 20, 2*time.Second, func() error {
 		return consumer.Start(&o.InOptions, processor.Process)
 	})
 
