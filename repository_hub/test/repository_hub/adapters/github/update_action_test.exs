@@ -281,6 +281,35 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
       assert_called(GithubClient.create_deploy_key(%{repo_owner: "new-org", repo_name: "repository"}, token: "new-tok"))
     end
 
+    test "keeps the webhook and deploy key when the url points to the same repository under a new name", %{
+      github_app_adapter: adapter
+    } do
+      repository = RepositoryModelFactory.githubapp_repo(remote_id: "12345", connected: false)
+      DeployKeysModelFactory.create_deploy_key(project_id: repository.project_id, repository_id: repository.id)
+      {:ok, deploy_key} = RepositoryHub.Model.DeployKeyQuery.get_by_repository_id(repository.id)
+
+      request =
+        InternalApiFactory.update_request(
+          repository_id: repository.id,
+          url: "git@github.com:dummy/renamed.git"
+        )
+
+      assert %UpdateResponse{} = UpdateAction.execute(adapter, request)
+
+      {:ok, updated_repository} = RepositoryHub.Model.RepositoryQuery.get_by_id(repository.id)
+      assert updated_repository.url == "git@github.com:dummy/renamed.git"
+      assert updated_repository.name == "renamed"
+      assert updated_repository.connected
+      assert updated_repository.hook_id == repository.hook_id
+      assert {:ok, %{id: deploy_key_id}} = RepositoryHub.Model.DeployKeyQuery.get_by_repository_id(repository.id)
+      assert deploy_key_id == deploy_key.id
+
+      assert_not_called(GithubClient.remove_webhook(:_, :_))
+      assert_not_called(GithubClient.remove_deploy_key(:_, :_))
+      assert_not_called(GithubClient.create_webhook(:_, :_))
+      assert_not_called(GithubClient.create_deploy_key(:_, :_))
+    end
+
     test "changes the url and creates a deploy key when the project has none", %{github_app_adapter: adapter} do
       repository = RepositoryModelFactory.githubapp_repo()
 

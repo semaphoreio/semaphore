@@ -108,26 +108,34 @@ defmodule RepositoryHub.GithubConnector do
           owner: context.new_git_repository.owner,
           url: context.new_git_repository.ssh_git_url,
           remote_id: github_repository.id,
-          private: github_repository.is_private?
+          private: github_repository.is_private?,
+          connected: true
         },
         returning: true
       )
     end)
-    |> Multi.run(:remove_old_webhook, fn _, _context ->
-      connector
-      |> remove_webhook()
-    end)
-    |> Multi.run(:remove_old_deploy_key, fn _, _context ->
-      connector
-      |> remove_deploy_key()
-    end)
-    |> Multi.run(:create_new_webhook, fn _, context ->
-      context.updated_repository
-      |> create_webhook(context.new_git_repository, target_token)
-    end)
-    |> Multi.run(:create_deploy_key, fn _, context ->
-      context.updated_repository
-      |> create_deploy_key(context.new_git_repository, target_token)
+    |> then(fn
+      multi when github_repository.id == connector.repository.remote_id ->
+        multi
+
+      multi ->
+        multi
+        |> Multi.run(:remove_old_webhook, fn _, _context ->
+          connector
+          |> remove_webhook()
+        end)
+        |> Multi.run(:remove_old_deploy_key, fn _, _context ->
+          connector
+          |> remove_deploy_key()
+        end)
+        |> Multi.run(:create_new_webhook, fn _, context ->
+          context.updated_repository
+          |> create_webhook(context.new_git_repository, target_token)
+        end)
+        |> Multi.run(:create_deploy_key, fn _, context ->
+          context.updated_repository
+          |> create_deploy_key(context.new_git_repository, target_token)
+        end)
     end)
     |> Multi.run(:new_repository, fn _, _context ->
       Model.RepositoryQuery.get_by_id(connector.repository.id)
