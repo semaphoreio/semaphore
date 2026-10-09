@@ -31,6 +31,15 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
     end)
   end
 
+  defp advisory_lock_count do
+    %{rows: [[count]]} =
+      Guard.FrontRepo.query!(
+        "SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' AND pid = pg_backend_pid()"
+      )
+
+    count
+  end
+
   defp persist_rotated!(rha) do
     RepoHostAccount.persist_refreshed_token(
       rha,
@@ -1348,6 +1357,21 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
       assert reloaded.refresh_token == "rotated_refresh"
       assert reloaded.revoked
       refute RepoHostAccount.reload(holder).revoked
+    end
+
+    test "a compare-and-set that is not un-revoking takes no uid lock" do
+      # The refresh hot path must stay lock-free.
+      {_user, rha} = Support.Members.insert_user_with_github_account(github_uid: "50002")
+      refute rha.revoked
+
+      stub_repo_update_always_stale!()
+
+      Guard.FrontRepo.transaction(fn ->
+        before = advisory_lock_count()
+        assert {:ok, {"rotated_access", _}} = persist_rotated!(rha)
+
+        assert advisory_lock_count() == before
+      end)
     end
 
     test "keeps a revoked row revoked and releases nothing when only a stale revoked link " <>

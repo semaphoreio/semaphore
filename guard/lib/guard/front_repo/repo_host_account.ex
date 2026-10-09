@@ -478,6 +478,31 @@ defmodule Guard.FrontRepo.RepoHostAccount do
         "unrelated write races rha=#{fresh.id} user=#{fresh.user_id} #{fresh.repo_host}"
     )
 
+    # Only an un-revoke can hand this row a uid another account holds, and
+    # cas_may_unrevoke?/1 is an exists query - read outside a lock it decides on
+    # a claim that may commit a moment later, leaving two active links. Take the
+    # same lock claim_uid/2 takes, and only for that case: a refresh that is not
+    # un-revoking cannot create a duplicate, so the hot path stays lock-free.
+    if cas_claims_uid?(fresh) do
+      {:ok, result} =
+        FrontRepo.transaction(fn ->
+          lock_uid_values(fresh.repo_host, fresh.github_uid)
+          persist_rotated_cas(fresh, token, refresh_token, expires_at)
+        end)
+
+      result
+    else
+      persist_rotated_cas(fresh, token, refresh_token, expires_at)
+    end
+  end
+
+  defp cas_claims_uid?(%__MODULE__{revoked: true, repo_host: "github", github_uid: uid})
+       when uid not in [nil, ""],
+       do: true
+
+  defp cas_claims_uid?(_fresh), do: false
+
+  defp persist_rotated_cas(fresh, token, refresh_token, expires_at) do
     unrevoke? = cas_may_unrevoke?(fresh)
 
     if not unrevoke? do
@@ -840,11 +865,16 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     uid = Ecto.Changeset.get_field(changeset, :github_uid)
 
     if repo_host == "github" and uid not in [nil, ""] do
-      FrontRepo.query!("SELECT pg_advisory_xact_lock($1)", [uid_lock_key(repo_host, uid)])
+      lock_uid_values(repo_host, uid)
       :locked
     else
       :not_a_uid_claim
     end
+  end
+
+  defp lock_uid_values(repo_host, uid) do
+    FrontRepo.query!("SELECT pg_advisory_xact_lock($1)", [uid_lock_key(repo_host, uid)])
+    :ok
   end
 
   # Advisory locks are keyed by a bigint, so the pair has to be hashed. Done
