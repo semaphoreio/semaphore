@@ -59,28 +59,8 @@ defmodule RepositoryHub.GithubConnector do
     end)
   end
 
-  defp change_url_as_requester(
-         %{repository: %{integration_type: "github_app"}} = connector,
-         url,
-         _target_token,
-         %{user: %{creation_source: :SERVICE_ACCOUNT}}
-       ) do
-    connector
-    |> can_change_url?(url, connector.token, false)
-    |> unwrap_error(fn _ ->
-      fail_with(
-        :precondition,
-        "Service accounts can only change the repository URL to a repository that the project's current GitHub App installation can access."
-      )
-    end)
-    |> unwrap(&update_repository_url_impl(connector, url, connector.token, &1))
-  end
-
   defp change_url_as_requester(_connector, _url, _target_token, %{user: %{creation_source: :SERVICE_ACCOUNT}}) do
-    fail_with(
-      :precondition,
-      "Service accounts can't change the repository URL of a project connected with a GitHub OAuth token."
-    )
+    fail_with(:precondition, "Service accounts can't change the repository URL.")
   end
 
   defp change_url_as_requester(connector, url, target_token, requester) do
