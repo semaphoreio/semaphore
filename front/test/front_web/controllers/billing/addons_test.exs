@@ -92,6 +92,38 @@ defmodule FrontWeb.BillingController.AddonsTest do
       assert response["ok"] == true
     end
 
+    test "passes a failed-precondition reason through to the page", %{conn: conn} do
+      GrpcMock.stub(BillingMock, :update_addon, fn _, _ ->
+        raise GRPC.RPCError,
+          status: 9,
+          message: "This tier is not available for self-service. Contact support to change it."
+      end)
+
+      conn =
+        conn
+        |> put_req_header("content-type", "application/json")
+        |> post("/billing/update_addon.json", %{addon_name: "support-tier-3", enabled: true})
+
+      assert json_response(conn, 422) == %{
+               "ok" => false,
+               "error" =>
+                 "This tier is not available for self-service. Contact support to change it."
+             }
+    end
+
+    test "hides other errors behind a generic message", %{conn: conn} do
+      GrpcMock.stub(BillingMock, :update_addon, fn _, _ ->
+        raise GRPC.RPCError, status: 2, message: "Internal Server Error"
+      end)
+
+      conn =
+        conn
+        |> put_req_header("content-type", "application/json")
+        |> post("/billing/update_addon.json", %{addon_name: "support-tier-3", enabled: true})
+
+      assert json_response(conn, 422) == %{"ok" => false, "error" => "Failed to update addon."}
+    end
+
     test "disables an addon", %{conn: conn} do
       conn =
         conn
