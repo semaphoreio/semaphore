@@ -43,6 +43,15 @@ defmodule Support.Members do
     FrontRepo.insert(member)
   end
 
+  # A claim validates a revoked sharer's token with the provider before it
+  # releases that row, so a test that sets up a claimable loser has to say the
+  # loser's token is dead. 401 is what GitHub answers for a revoked grant.
+  def stub_dead_github_token do
+    Tesla.Mock.mock_global(fn %{method: :get, url: "https://api.github.com" <> _} ->
+      {:ok, %Tesla.Env{status: 401, body: %{}}}
+    end)
+  end
+
   def insert_repo_host_account(params) do
     default = [
       login: "",

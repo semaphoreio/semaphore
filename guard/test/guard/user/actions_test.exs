@@ -104,6 +104,8 @@ defmodule Guard.User.ActionsTest do
     end
 
     test "with github account held by a revoked link it claims the uid for the new user" do
+      Support.Members.stub_dead_github_token()
+
       with_mock Guard.Events.UserCreated, publish: fn _, _ -> :ok end do
         {other_user, other_rha} =
           Support.Members.insert_user_with_github_account(github_uid: "30003", revoked: true)

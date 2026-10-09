@@ -39,6 +39,10 @@ defmodule Guard.FederatedIdentitySyncDrainerTest do
 
       # Keycloak is down: the claim commits, the immediate sync fails
       Tesla.Mock.mock_global(fn
+        # The loser's token is dead - that is what makes its row claimable.
+        %{method: :get, url: "https://api.github.com" <> _} ->
+          {:ok, %Tesla.Env{status: 401, body: %{}}}
+
         %{method: :get} ->
           {:ok, %Tesla.Env{status: 500, body: %{"errorMessage" => "kc down"}}}
 

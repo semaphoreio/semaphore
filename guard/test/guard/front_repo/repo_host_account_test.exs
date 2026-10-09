@@ -285,6 +285,8 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
 
     test "create/1 claims the uid and deletes the stale link when the existing one is revoked",
          %{rha: rha} do
+      Support.Members.stub_dead_github_token()
+
       {:ok, _} = RepoHostAccount.update_revoke_status(rha, true)
       :ok = Support.Members.age_repo_host_account(rha)
 
@@ -326,6 +328,8 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
     # so before the is_nil/1 guard such a row neither blocked a claim nor was
     # released by it, leaving a duplicate with no sync request enqueued.
     test "a revoked link with no updated_at is claimable and is released", %{rha: rha} do
+      Support.Members.stub_dead_github_token()
+
       {:ok, _} = RepoHostAccount.update_revoke_status(rha, true)
 
       :ok = Support.Members.clear_repo_host_account_timestamp(rha)
@@ -347,6 +351,8 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
     test "create/1 rejects the uid once it has been claimed away from a revoked link", %{
       rha: rha
     } do
+      Support.Members.stub_dead_github_token()
+
       {:ok, _} = RepoHostAccount.update_revoke_status(rha, true)
       :ok = Support.Members.age_repo_host_account(rha)
 
@@ -377,6 +383,8 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
     test "update_repo_host_account/4 with reset claims a uid held only by a revoked link", %{
       rha: rha
     } do
+      Support.Members.stub_dead_github_token()
+
       {:ok, _} = RepoHostAccount.update_revoke_status(rha, true)
       :ok = Support.Members.age_repo_host_account(rha)
 
@@ -486,6 +494,56 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
       end)
     end
 
+    test "a revoked link whose token still works is not released" do
+      # `revoked` carries false positives latched by an older write path on any
+      # 4xx, and those rows still hold working credentials. Deleting one would
+      # strand a live account, so a claim must refuse instead.
+      {_owner, live} = Support.Members.insert_user_with_github_account(github_uid: "40001")
+      {:ok, live} = RepoHostAccount.update_revoke_status(live, true)
+      :ok = Support.Members.age_repo_host_account(live)
+
+      Tesla.Mock.mock_global(fn %{method: :get, url: "https://api.github.com" <> _} ->
+        {:ok, %Tesla.Env{status: 200, body: %{}}}
+      end)
+
+      assert {:error, %Ecto.Changeset{} = changeset} =
+               RepoHostAccount.create(%{
+                 login: "claimer",
+                 github_uid: "40001",
+                 repo_host: "github",
+                 user_id: Ecto.UUID.generate(),
+                 name: "Claimer",
+                 permission_scope: "user:email"
+               })
+
+      assert RepoHostAccount.uid_taken_error?(changeset)
+      assert RepoHostAccount.reload(live)
+    end
+
+    test "a revoked link is not released when the provider answer is transient" do
+      {_owner, unknown} = Support.Members.insert_user_with_github_account(github_uid: "40002")
+      {:ok, unknown} = RepoHostAccount.update_revoke_status(unknown, true)
+      :ok = Support.Members.age_repo_host_account(unknown)
+
+      # 500 and 403 both classify as transient; neither confirms a dead grant.
+      Tesla.Mock.mock_global(fn %{method: :get, url: "https://api.github.com" <> _} ->
+        {:ok, %Tesla.Env{status: 500, body: %{}}}
+      end)
+
+      assert {:error, %Ecto.Changeset{} = changeset} =
+               RepoHostAccount.create(%{
+                 login: "claimer",
+                 github_uid: "40002",
+                 repo_host: "github",
+                 user_id: Ecto.UUID.generate(),
+                 name: "Claimer",
+                 permission_scope: "user:email"
+               })
+
+      assert RepoHostAccount.uid_taken_error?(changeset)
+      assert RepoHostAccount.reload(unknown)
+    end
+
     test "uid_taken_error?/1 is false for other changeset errors" do
       changeset =
         %RepoHostAccount{}
@@ -534,6 +592,8 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
     test "update_revoke_status/2 re-activation claims a uid held only by revoked links", %{
       rha: rha
     } do
+      Support.Members.stub_dead_github_token()
+
       {:ok, revoked} = RepoHostAccount.update_revoke_status(rha, true)
 
       {:ok, stale} =
@@ -1293,6 +1353,8 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
     test "keeps a revoked row revoked and releases nothing when only a stale revoked link " <>
            "shares the uid",
          %{rha: rha} do
+      Support.Members.stub_dead_github_token()
+
       {:ok, rha} = RepoHostAccount.update_revoke_status(rha, true)
       stale = insert_other_link(rha, revoked: true)
       :ok = Support.Members.age_repo_host_account(stale)

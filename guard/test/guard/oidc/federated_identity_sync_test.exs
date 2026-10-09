@@ -73,6 +73,10 @@ defmodule Guard.OIDC.FederatedIdentitySyncTest do
       test_pid = self()
 
       Tesla.Mock.mock_global(fn
+        # The loser's token is dead - that is what makes its row claimable.
+        %{method: :get, url: "https://api.github.com" <> _} ->
+          {:ok, %Tesla.Env{status: 401, body: %{}}}
+
         %{method: :get, url: url} ->
           if url =~ "federated-identity" do
             {:ok,
@@ -329,6 +333,10 @@ defmodule Guard.OIDC.FederatedIdentitySyncTest do
       takeover = DateTime.utc_now() |> DateTime.add(600, :second) |> DateTime.truncate(:second)
 
       Tesla.Mock.mock_global(fn
+        # The loser's token is dead - that is what makes its row claimable.
+        %{method: :get, url: "https://api.github.com" <> _} ->
+          {:ok, %Tesla.Env{status: 401, body: %{}}}
+
         %{method: :get, url: url} ->
           if url =~ "federated-identity" do
             # another run leases the row while this one is mid-removal
@@ -362,6 +370,10 @@ defmodule Guard.OIDC.FederatedIdentitySyncTest do
 
     test "a crash records the failure against the renewed lease", %{request: request} do
       Tesla.Mock.mock_global(fn
+        # The loser's token is dead - that is what makes its row claimable.
+        %{method: :get, url: "https://api.github.com" <> _} ->
+          {:ok, %Tesla.Env{status: 401, body: %{}}}
+
         %{method: :get, url: url} ->
           if url =~ "federated-identity" do
             {:ok, %Tesla.Env{status: 200, body: loser_identities()}}
@@ -466,6 +478,10 @@ defmodule Guard.OIDC.FederatedIdentitySyncTest do
       test_pid = self()
 
       Tesla.Mock.mock_global(fn
+        # The loser's token is dead - that is what makes its row claimable.
+        %{method: :get, url: "https://api.github.com" <> _} ->
+          {:ok, %Tesla.Env{status: 401, body: %{}}}
+
         %{method: :get, url: url} ->
           if url =~ "federated-identity" do
             {:ok, %Tesla.Env{status: 200, body: loser_identities()}}
@@ -524,6 +540,10 @@ defmodule Guard.OIDC.FederatedIdentitySyncTest do
       test_pid = self()
 
       Tesla.Mock.mock_global(fn
+        # The loser's token is dead - that is what makes its row claimable.
+        %{method: :get, url: "https://api.github.com" <> _} ->
+          {:ok, %Tesla.Env{status: 401, body: %{}}}
+
         %{method: :get, url: url} ->
           send(test_pid, {:oidc_get, url})
           {:ok, %Tesla.Env{status: 200, body: loser_identities()}}
@@ -581,6 +601,10 @@ defmodule Guard.OIDC.FederatedIdentitySyncTest do
       counter = :counters.new(1, [:atomics])
 
       Tesla.Mock.mock_global(fn
+        # The loser's token is dead - that is what makes its row claimable.
+        %{method: :get, url: "https://api.github.com" <> _} ->
+          {:ok, %Tesla.Env{status: 401, body: %{}}}
+
         %{method: :get, url: _url} ->
           {:ok, %Tesla.Env{status: 200, body: loser_identities()}}
 
@@ -713,6 +737,10 @@ defmodule Guard.OIDC.FederatedIdentitySyncTest do
       test_pid = self()
 
       Tesla.Mock.mock_global(fn
+        # The loser's token is dead - that is what makes its row claimable.
+        %{method: :get, url: "https://api.github.com" <> _} ->
+          {:ok, %Tesla.Env{status: 401, body: %{}}}
+
         %{method: :delete, url: url} ->
           send(test_pid, {:oidc_delete, url})
           {:ok, %Tesla.Env{status: 204, body: %{}}}
@@ -906,6 +934,10 @@ defmodule Guard.OIDC.FederatedIdentitySyncTest do
     test_pid = self()
 
     Tesla.Mock.mock_global(fn
+      # The loser's token is dead - that is what makes its row claimable.
+      %{method: :get, url: "https://api.github.com" <> _} ->
+        {:ok, %Tesla.Env{status: 401, body: %{}}}
+
       %{method: :get, url: url} ->
         if url =~ "federated-identity" do
           {:ok, %Tesla.Env{status: 200, body: loser_identities()}}

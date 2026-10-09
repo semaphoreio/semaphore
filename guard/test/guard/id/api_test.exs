@@ -1110,6 +1110,10 @@ defmodule Guard.Id.Api.Test do
 
         %{method: :get, url: "https://api.github.com/user/emails"} ->
           json([])
+
+        # The previous owner's token is dead - that is what makes its row claimable.
+        %{method: :get, url: "https://api.github.com" <> _} ->
+          {:ok, %Tesla.Env{status: 401, body: %{}}}
       end)
 
       query = run_github_oauth_round_trip(user_id)
