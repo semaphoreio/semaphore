@@ -57,8 +57,13 @@ defmodule RepositoryHub.GithubClient do
     repo = params.repo_name
 
     with_client(opts[:token], owner, :find_repository, fn client ->
-      Tentacat.Repositories.repo_get(client, owner, repo)
-      |> case do
+      response =
+        case Integer.parse(params[:remote_id] || "") do
+          {id, ""} when id > 0 -> Tentacat.get("repositories/#{id}", client)
+          _ -> Tentacat.Repositories.repo_get(client, owner, repo)
+        end
+
+      case response do
         {200, payload, _} ->
           %{
             id: Integer.to_string(payload["id"]),

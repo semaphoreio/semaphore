@@ -42,8 +42,9 @@ defmodule RepositoryHub.GitClient do
           provider: String.t()
         }
   @type find_repository_request :: %{
-          repo_owner: String.t(),
-          repo_name: String.t()
+          required(:repo_owner) => String.t(),
+          required(:repo_name) => String.t(),
+          optional(:remote_id) => String.t()
         }
 
   @type find_deploy_key_response :: %{}
