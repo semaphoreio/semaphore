@@ -21,6 +21,12 @@ defmodule Guard.FrontRepo.RepoHostAccount do
 
   @type repo_host :: :github | :bitbucket | :gitlab
 
+  @uid_taken_message "is already connected to another Semaphore user"
+
+  # A transient failure can briefly mark a healthy link revoked, so give it
+  # time to self-heal before another user can claim (and delete) it.
+  @revoked_claim_grace_seconds 2 * 60 * 60
+
   @type t :: %__MODULE__{
           login: String.t(),
           github_uid: String.t(),
@@ -62,7 +68,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     do: from(r in __MODULE__, where: r.user_id == ^user_id) |> FrontRepo.aggregate(:count, :id)
 
   def create(data) do
-    result =
+    changeset =
       %__MODULE__{}
       |> Ecto.Changeset.cast(data, [
         :login,
@@ -83,7 +89,14 @@ defmodule Guard.FrontRepo.RepoHostAccount do
         :name,
         :permission_scope
       ])
-      |> FrontRepo.insert()
+
+    result =
+      claim_uid(changeset, fn changeset, releasable ->
+        with {:ok, account} <- FrontRepo.insert(changeset) do
+          release_revoked_uid_rows(account, releasable)
+          {:ok, account}
+        end
+      end)
 
     case result do
       {:ok, account} ->
@@ -357,7 +370,24 @@ defmodule Guard.FrontRepo.RepoHostAccount do
       |> put_present(:refresh_token, refresh_token)
       |> put_present(:token_expires_at, expires_at)
 
-    update_account(params, rha, opts)
+    case update_account(params, rha, opts) do
+      {:error, %Ecto.Changeset{} = changeset} ->
+        if uid_taken_error?(changeset) do
+          # Keep the credentials: providers rotate refresh tokens, so losing
+          # the new one replays a stale token until the grant dies.
+          Logger.warning(
+            "Keeping repo_host_account #{rha.id} revoked: uid is actively held by another " <>
+              "user. Refreshed credentials are still persisted."
+          )
+
+          update_account(Map.delete(params, :revoked), rha, opts)
+        else
+          {:error, changeset}
+        end
+
+      result ->
+        result
+    end
   end
 
   # Bound the re-apply retries so a pathological stream of unrelated writes
@@ -448,8 +478,42 @@ defmodule Guard.FrontRepo.RepoHostAccount do
         "unrelated write races rha=#{fresh.id} user=#{fresh.user_id} #{fresh.repo_host}"
     )
 
+    # Only an un-revoke can hand this row a uid another account holds, and
+    # cas_may_unrevoke?/1 is an exists query - read outside a lock it decides on
+    # a claim that may commit a moment later, leaving two active links. Take the
+    # same lock claim_uid/2 takes, and only for that case: a refresh that is not
+    # un-revoking cannot create a duplicate, so the hot path stays lock-free.
+    if cas_claims_uid?(fresh) do
+      {:ok, result} =
+        FrontRepo.transaction(fn ->
+          lock_uid_values(fresh.repo_host, fresh.github_uid)
+          persist_rotated_cas(fresh, token, refresh_token, expires_at)
+        end)
+
+      result
+    else
+      persist_rotated_cas(fresh, token, refresh_token, expires_at)
+    end
+  end
+
+  defp cas_claims_uid?(%__MODULE__{revoked: true, repo_host: "github", github_uid: uid})
+       when uid not in [nil, ""],
+       do: true
+
+  defp cas_claims_uid?(_fresh), do: false
+
+  defp persist_rotated_cas(fresh, token, refresh_token, expires_at) do
+    unrevoke? = cas_may_unrevoke?(fresh)
+
+    if not unrevoke? do
+      Logger.warning(
+        "Keeping repo_host_account #{fresh.id} revoked on compare-and-set: another account " <>
+          "shares its uid, so un-revoking requires the claim path"
+      )
+    end
+
     case FrontRepo.update_all(credential_cas_query(fresh),
-           set: token_cas_set(token, refresh_token, expires_at)
+           set: token_cas_set(token, refresh_token, expires_at, unrevoke?)
          ) do
       {1, _} ->
         Cachex.del(@oauth_refresh_failure_cache, fresh.id)
@@ -488,14 +552,31 @@ defmodule Guard.FrontRepo.RepoHostAccount do
   defp cas_where(query, field, nil), do: from(r in query, where: is_nil(field(r, ^field)))
   defp cas_where(query, field, value), do: from(r in query, where: field(r, ^field) == ^value)
 
-  # Mirror write_token's put_present semantics: always self-heal `revoked` and
-  # bump `updated_at` (update_all does not touch timestamps automatically);
-  # write token/refresh_token/token_expires_at only when present.
-  defp token_cas_set(token, refresh_token, expires_at) do
-    [revoked: false, updated_at: DateTime.utc_now() |> DateTime.truncate(:second)]
-    |> put_set(:token, token)
-    |> put_set(:refresh_token, refresh_token)
-    |> put_set(:token_expires_at, expires_at)
+  # The CAS bypasses the changeset, so it cannot run the uid check or the claim
+  # an un-revoke implies. While another row shares the uid, leave the flag to
+  # the next changeset-based write.
+  defp cas_may_unrevoke?(%__MODULE__{revoked: true, repo_host: "github", github_uid: uid} = fresh)
+       when uid not in [nil, ""] do
+    not FrontRepo.exists?(
+      from(r in __MODULE__,
+        where: r.repo_host == ^fresh.repo_host and r.github_uid == ^uid and r.id != ^fresh.id
+      )
+    )
+  end
+
+  defp cas_may_unrevoke?(_fresh), do: true
+
+  # Mirror write_token's put_present semantics: bump `updated_at` (update_all
+  # does not touch timestamps automatically); write token/refresh_token/
+  # token_expires_at only when present.
+  defp token_cas_set(token, refresh_token, expires_at, unrevoke?) do
+    set =
+      [updated_at: DateTime.utc_now() |> DateTime.truncate(:second)]
+      |> put_set(:token, token)
+      |> put_set(:refresh_token, refresh_token)
+      |> put_set(:token_expires_at, expires_at)
+
+    if unrevoke?, do: [{:revoked, false} | set], else: set
   end
 
   defp put_set(set, _key, nil), do: set
@@ -589,15 +670,311 @@ defmodule Guard.FrontRepo.RepoHostAccount do
 
     case get_for_user_by_repo_host(user_id, repo_host) do
       {:ok, account} ->
-        update_existing_account(account, data, opts)
+        case update_existing_account(account, data, opts) do
+          # A claim deleted the row after it was read. Creating it again runs
+          # the uid check, so a claimed uid still comes back as taken.
+          {:error, :not_found} ->
+            create(data |> Map.merge(%{user_id: user_id, repo_host: repo_host}))
+
+          result ->
+            result
+        end
 
       {:error, :not_found} ->
         create(data |> Map.merge(%{user_id: user_id, repo_host: repo_host}))
     end
   end
 
+  @spec update_revoke_status(t(), boolean()) ::
+          {:ok, t()} | {:error, :not_found | Ecto.Changeset.t()}
   def update_revoke_status(rha, revoked) do
     update_account(%{revoked: revoked}, rha)
+  end
+
+  @doc """
+  Returns true when the changeset failed because the GitHub account is
+  already connected to another user.
+  """
+  @spec uid_taken_error?(term()) :: boolean()
+  def uid_taken_error?(%Ecto.Changeset{errors: errors}) do
+    Enum.any?(errors, fn
+      {:github_uid, {_msg, opts}} -> opts[:validation] == :unsafe_unique
+      _ -> false
+    end)
+  end
+
+  def uid_taken_error?(_), do: false
+
+  # At most one user per GitHub identity. Revoked links do not block - they
+  # are deleted by release_revoked_uid_rows/1 once the claim succeeds.
+  defp validate_github_uid_not_taken(changeset, releasable_ids) do
+    repo_host = Ecto.Changeset.get_field(changeset, :repo_host)
+    uid = Ecto.Changeset.get_field(changeset, :github_uid)
+
+    if repo_host == "github" and uid not in [nil, ""] and
+         uid_actively_held_by_other?(changeset, repo_host, uid, releasable_ids) do
+      Ecto.Changeset.add_error(changeset, :github_uid, @uid_taken_message,
+        validation: :unsafe_unique
+      )
+    else
+      changeset
+    end
+  end
+
+  defp unrevoke_transition?(changeset) do
+    Ecto.Changeset.get_change(changeset, :revoked) == false and changeset.data.revoked == true
+  end
+
+  @doc """
+  True when `user_id` still owns a link for this uid, revoked or not. False
+  once the link was deleted (claimed away) or points at a different uid.
+  """
+  @spec holds_uid?(String.t(), String.t(), String.t()) :: boolean()
+  def holds_uid?(repo_host, uid, user_id) do
+    from(r in __MODULE__,
+      where: r.repo_host == ^repo_host and r.github_uid == ^uid,
+      where: r.user_id == ^user_id
+    )
+    |> FrontRepo.exists?()
+  end
+
+  @doc """
+  The row that actively holds this uid, or nil.
+
+  A sync request names its claimer at enqueue time, and that snapshot goes
+  stale: by the time a delayed request runs, the uid may belong to someone
+  else entirely. Resolving the holder at run time is what keeps a stale
+  request from pushing to - or stripping - the wrong user.
+  """
+  @spec active_holder(String.t(), String.t()) :: t() | nil
+  def active_holder(repo_host, uid) do
+    from(r in __MODULE__,
+      where: r.repo_host == ^repo_host and r.github_uid == ^uid,
+      where: coalesce(r.revoked, false) == false,
+      order_by: [asc: r.created_at],
+      limit: 1
+    )
+    |> FrontRepo.one()
+  end
+
+  defp uid_actively_held_by_other?(changeset, repo_host, uid, releasable_ids) do
+    query =
+      from(r in __MODULE__,
+        where: r.repo_host == ^repo_host and r.github_uid == ^uid,
+        where: r.id not in ^releasable_ids
+      )
+
+    query =
+      case changeset.data.id do
+        nil -> query
+        id -> from(r in query, where: r.id != ^id)
+      end
+
+    FrontRepo.exists?(query)
+  end
+
+  # The rows a claim is allowed to take: revoked, quiet for the grace period,
+  # AND confirmed dead by the provider. `revoked` alone is not evidence of
+  # abandonment - the column carries a backlog of false positives latched by an
+  # older write path on any 4xx, and those rows still hold working credentials
+  # (see get_github_token/1). Deleting one strands a live account.
+  #
+  # Anything other than a definite "this token is rejected" keeps the row:
+  # a working token, a transient provider failure, an unreadable answer.
+  #
+  # Runs before the transaction opens. The provider call must not happen under
+  # the advisory lock, where a slow GitHub would stall every other claimant of
+  # the uid. A row that heals in between is still safe: the delete re-checks
+  # revoked and the grace under the lock, and self-healing clears both.
+  defp confirmed_dead_sharers(changeset) do
+    repo_host = Ecto.Changeset.get_field(changeset, :repo_host)
+    uid = Ecto.Changeset.get_field(changeset, :github_uid)
+
+    if repo_host == "github" and uid not in [nil, ""] do
+      changeset
+      |> stale_revoked_sharers(repo_host, uid)
+      |> Enum.filter(&token_confirmed_dead?/1)
+      |> Enum.map(& &1.id)
+    else
+      []
+    end
+  end
+
+  defp stale_revoked_sharers(changeset, repo_host, uid) do
+    query =
+      from(r in __MODULE__,
+        where: r.repo_host == ^repo_host and r.github_uid == ^uid,
+        where: r.revoked == true,
+        where:
+          is_nil(r.updated_at) or
+            r.updated_at <= ago(^@revoked_claim_grace_seconds, "second"),
+        select: %{id: r.id, token: r.token}
+      )
+
+    query =
+      case changeset.data.id do
+        nil -> query
+        id -> from(r in query, where: r.id != ^id)
+      end
+
+    FrontRepo.all(query)
+  end
+
+  defp token_confirmed_dead?(%{token: token}) do
+    case Guard.Api.Github.validate_token(token) do
+      {:ok, false} ->
+        true
+
+      {:ok, true} ->
+        Logger.warning("Keeping a revoked github link: its token still works")
+        false
+
+      {:error, reason} ->
+        Logger.warning(
+          "Keeping a revoked github link: could not confirm its token is dead (#{inspect(reason)})"
+        )
+
+        false
+    end
+  end
+
+  # Serialises every claim on one (repo_host, uid). The uniqueness check is an
+  # exists query, so without this two claimers both read "free" under READ
+  # COMMITTED and both write. The lock is taken inside the transaction and
+  # released on commit or rollback, and the check is re-run under it - running
+  # it only outside, as the changeset builders do, decides on a stale read.
+  defp claim_uid(changeset, fun) do
+    releasable = confirmed_dead_sharers(changeset)
+
+    transact_claim(fn ->
+      case lock_uid(changeset) do
+        :locked ->
+          case recheck_uid(changeset, releasable) do
+            %Ecto.Changeset{valid?: true} = checked -> fun.(checked, releasable)
+            invalid -> {:error, invalid}
+          end
+
+        :not_a_uid_claim ->
+          fun.(changeset, [])
+      end
+    end)
+  end
+
+  defp lock_uid(changeset) do
+    repo_host = Ecto.Changeset.get_field(changeset, :repo_host)
+    uid = Ecto.Changeset.get_field(changeset, :github_uid)
+
+    if repo_host == "github" and uid not in [nil, ""] do
+      lock_uid_values(repo_host, uid)
+      :locked
+    else
+      :not_a_uid_claim
+    end
+  end
+
+  defp lock_uid_values(repo_host, uid) do
+    FrontRepo.query!("SELECT pg_advisory_xact_lock($1)", [uid_lock_key(repo_host, uid)])
+    :ok
+  end
+
+  # Advisory locks are keyed by a bigint, so the pair has to be hashed. Done
+  # here rather than with the undocumented hashtext() so the key does not
+  # depend on a Postgres internal, and with sha256 rather than :erlang.phash2
+  # so it stays identical across OTP versions during a rolling deploy.
+  defp uid_lock_key(repo_host, uid) do
+    <<key::signed-integer-64, _rest::binary>> = :crypto.hash(:sha256, "#{repo_host}:#{uid}")
+    key
+  end
+
+  # An already-invalid changeset keeps its errors; re-running the check would
+  # only duplicate them.
+  defp recheck_uid(%Ecto.Changeset{valid?: false} = changeset, _releasable), do: changeset
+
+  defp recheck_uid(changeset, releasable),
+    do: validate_github_uid_not_taken(changeset, releasable)
+
+  # A claim is one unit of work: the uid write, the losers' deletion and the
+  # outbox row. Keycloak stays outside - FederatedIdentitySync defers while
+  # in_transaction?/0, and a caller that opened the transaction owns the
+  # deferrals.
+  defp transact_claim(fun) do
+    if FrontRepo.in_transaction?() do
+      fun.()
+    else
+      result =
+        try do
+          FrontRepo.transaction(fn ->
+            case fun.() do
+              {:ok, account} -> account
+              {:error, reason} -> FrontRepo.rollback(reason)
+            end
+          end)
+        rescue
+          exception ->
+            # Rolled back, so the deferrals must not outlive the transaction.
+            Guard.OIDC.FederatedIdentitySync.drop_deferred()
+            reraise exception, __STACKTRACE__
+        end
+
+      case result do
+        {:ok, account} ->
+          Guard.OIDC.FederatedIdentitySync.run_deferred()
+          {:ok, account}
+
+        {:error, reason} ->
+          Guard.OIDC.FederatedIdentitySync.drop_deferred()
+          {:error, reason}
+      end
+    end
+  end
+
+  defp release_revoked_uid_rows(%__MODULE__{repo_host: "github"} = account, releasable_ids) do
+    {count, released_user_ids, request} = release_and_enqueue_sync(account, releasable_ids)
+
+    if count > 0 do
+      Watchman.increment({"guard.repo_host_account.revoked_link_claimed", [account.repo_host]})
+
+      Logger.info(
+        "Released #{count} revoked repo_host_account row(s) for github uid #{account.github_uid} claimed by user #{account.user_id} from users #{inspect(released_user_ids)}"
+      )
+
+      Guard.OIDC.FederatedIdentitySync.sync_github_claim(account, released_user_ids, request)
+    end
+
+    account
+  end
+
+  defp release_revoked_uid_rows(account, _releasable_ids), do: account
+
+  # Same transaction as the deletion, so a committed claim always leaves a
+  # durable record of the Keycloak work it needs.
+  defp release_and_enqueue_sync(account, releasable_ids) do
+    {:ok, result} =
+      FrontRepo.transaction(fn ->
+        {count, released_user_ids} =
+          from(r in __MODULE__,
+            where: r.repo_host == ^account.repo_host and r.github_uid == ^account.github_uid,
+            where: r.id != ^account.id,
+            where: r.id in ^releasable_ids,
+            where: r.revoked == true,
+            # Exact complement of the blocking predicate. updated_at is
+            # nullable and NULL fails both > and <=, so is_nil/1 is required.
+            where:
+              is_nil(r.updated_at) or
+                r.updated_at <= ago(^@revoked_claim_grace_seconds, "second"),
+            select: r.user_id
+          )
+          |> FrontRepo.delete_all()
+
+        request =
+          if count > 0 and Guard.OIDC.enabled?() do
+            FrontRepo.FederatedIdentitySyncRequest.enqueue(account, released_user_ids)
+          end
+
+        {count, released_user_ids, request}
+      end)
+
+    result
   end
 
   defp adjust_scope(%{permission_scope: scope} = data, _) when scope in @scopes_in_order, do: data
@@ -702,12 +1079,28 @@ defmodule Guard.FrontRepo.RepoHostAccount do
       )
       |> Ecto.Changeset.validate_required(required_now)
 
+    unrevoke? = unrevoke_transition?(changeset)
+
     changeset =
       if Keyword.get(opts, :lock, false),
         do: maybe_lock_on_updated_at(changeset),
         else: changeset
 
-    case FrontRepo.update(changeset) do
+    # Only an unrevoke claims a uid, so only that path needs the transaction.
+    # Token refreshes and profile syncs stay a plain UPDATE.
+    result =
+      if unrevoke? do
+        claim_uid(changeset, fn changeset, releasable ->
+          with {:ok, account} <- FrontRepo.update(changeset) do
+            release_revoked_uid_rows(account, releasable)
+            {:ok, account}
+          end
+        end)
+      else
+        FrontRepo.update(changeset)
+      end
+
+    case result do
       {:ok, account} ->
         Logger.info(
           "Successfully updated RepoHostAccount rha=#{account.id} user=#{account.user_id} #{account.repo_host} login=#{account.login}"
@@ -724,14 +1117,10 @@ defmodule Guard.FrontRepo.RepoHostAccount do
         {:error, error}
     end
   rescue
-    error in [Ecto.StaleEntryError] ->
-      # Only the locked callers (token write, unrotated revoke) expect and
-      # handle {:error, :stale}. An UNLOCKED write raises StaleEntryError only
-      # when the row was deleted between read and write; converting that to
-      # {:error, :stale} here would hand every unlocked caller
-      # (update_revoke_status, update_existing_account) an undeclared error they
-      # pattern-match as a changeset. Scope the translation to the locked path
-      # and re-raise otherwise, preserving those callers' contract.
+    Ecto.StaleEntryError ->
+      # Only the locked callers (token write, unrotated revoke) expect
+      # {:error, :stale}. An UNLOCKED write raises StaleEntryError only when
+      # the row was deleted between read and write - a claim releasing it.
       if Keyword.get(opts, :lock, false) do
         Logger.warning(
           "Lost optimistic-lock race writing token for rha=#{account.id} user=#{account.user_id} #{account.repo_host}; discarding stale response"
@@ -739,8 +1128,16 @@ defmodule Guard.FrontRepo.RepoHostAccount do
 
         {:error, :stale}
       else
-        reraise error, __STACKTRACE__
+        log_vanished(account)
+        {:error, :not_found}
       end
+  end
+
+  defp log_vanished(account) do
+    Logger.warning(
+      "RepoHostAccount rha=#{account.id} user=#{account.user_id} #{account.repo_host} " <>
+        "was deleted before the write; another user claimed its uid"
+    )
   end
 
   # update_account/2 is the single write chokepoint for both self-heal
@@ -767,7 +1164,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
   end
 
   defp reset_account(account, data, _opts) do
-    result =
+    changeset =
       account
       |> Ecto.Changeset.cast(
         data,
@@ -783,7 +1180,14 @@ defmodule Guard.FrontRepo.RepoHostAccount do
         ]
       )
       |> Ecto.Changeset.validate_required([:github_uid, :login, :name])
-      |> FrontRepo.update()
+
+    result =
+      claim_uid(changeset, fn changeset, releasable ->
+        with {:ok, account} <- FrontRepo.update(changeset) do
+          release_revoked_uid_rows(account, releasable)
+          {:ok, account}
+        end
+      end)
 
     case result do
       {:ok, account} ->
@@ -800,6 +1204,10 @@ defmodule Guard.FrontRepo.RepoHostAccount do
 
         {:error, error}
     end
+  rescue
+    Ecto.StaleEntryError ->
+      log_vanished(account)
+      {:error, :not_found}
   end
 
   def skip_credentials?(_, ""), do: true

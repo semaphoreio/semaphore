@@ -475,16 +475,191 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
         end
       end
 
-      context "when GitHub throttles the token check" do
+      context "when a revoked account's uid is actively held by another account" do
+        let(:token_valid) { true }
+        let(:permission_scope) { "repo,user:email" }
+
         before do
-          allow_any_instance_of(RepoHost::Github::Client).to receive(:token_valid?)
-            .and_raise(RepoHost::RemoteException::TooManyRequests, "rate limit exceeded")
+          @project.repo_host_account.update!(:revoked => true)
+
+          FactoryBot.create(
+            :repo_host_account,
+            :repo_host => @project.repo_host_account.repo_host,
+            :github_uid => @project.repo_host_account.github_uid
+          )
+
+          allow(Semaphore::GuardUserClient).to receive(:refresh_repository_provider)
         end
 
-        it "raises GRPC::ResourceExhausted rather than escaping unhandled" do
+        it "keeps the account revoked without asking guard", :aggregate_failures do
+          response = server.check_token(@req, call)
+
+          expect(@project.repo_host_account.reload.revoked).to be(true)
+          expect(response.valid).to be(false)
+          expect(response.integration_scope).to eq(:NO_CONNECTION)
+          expect(Semaphore::GuardUserClient).not_to have_received(:refresh_repository_provider)
+        end
+      end
+
+      # Re-activating releases the other revoked rows and moves the Keycloak
+      # identity. Only guard can do that, so the claim is handed to it.
+      context "when a revoked account's uid is held only by revoked accounts" do
+        let(:token_valid) { true }
+        let(:permission_scope) { "repo,user:email" }
+
+        before do
+          @rha = @project.repo_host_account
+          @rha.update!(:revoked => true)
+
+          @competitor = FactoryBot.create(
+            :repo_host_account,
+            :repo_host => @rha.repo_host,
+            :github_uid => @rha.github_uid,
+            :revoked => true,
+            :updated_at => 3.hours.ago
+          )
+        end
+
+        context "and guard performs the claim" do
+          before do
+            allow(Semaphore::GuardUserClient).to receive(:refresh_repository_provider) do
+              @competitor.destroy!
+              @rha.update!(:revoked => false)
+            end
+          end
+
+          it "asks guard to re-validate the account's owner", :aggregate_failures do
+            server.check_token(@req, call)
+
+            expect(Semaphore::GuardUserClient).to have_received(:refresh_repository_provider)
+              .with(@rha.user_id, :GITHUB)
+          end
+
+          it "reports the connection guard re-activated", :aggregate_failures do
+            response = server.check_token(@req, call)
+
+            expect(response.valid).to be(true)
+            expect(response.integration_scope).to eq(:FULL_CONNECTION)
+          end
+        end
+
+        context "and guard keeps the account revoked" do
+          before do
+            allow(Semaphore::GuardUserClient).to receive(:refresh_repository_provider)
+          end
+
+          it "returns no connection and leaves the competing link alone", :aggregate_failures do
+            response = server.check_token(@req, call)
+
+            expect(@rha.reload.revoked).to be(true)
+            expect(@competitor.reload.revoked).to be(true)
+            expect(response.valid).to be(false)
+            expect(response.integration_scope).to eq(:NO_CONNECTION)
+          end
+        end
+
+        context "and guard is unreachable" do
+          before do
+            allow(Semaphore::GuardUserClient).to receive(:refresh_repository_provider)
+              .and_raise(GRPC::Unavailable)
+          end
+
+          it "keeps the account revoked and returns no connection", :aggregate_failures do
+            response = server.check_token(@req, call)
+
+            expect(@rha.reload.revoked).to be(true)
+            expect(response.valid).to be(false)
+            expect(response.integration_scope).to eq(:NO_CONNECTION)
+          end
+        end
+      end
+
+      # The repo_host filter is load-bearing: bitbucket stores its uid in the
+      # same github_uid column, so without it a bitbucket row would block a
+      # github un-revoke.
+      context "when the same uid exists under a different repo_host" do
+        let(:token_valid) { true }
+        let(:permission_scope) { "repo,user:email" }
+
+        before do
+          @project.repo_host_account.update!(:revoked => true)
+
+          FactoryBot.create(
+            :repo_host_account,
+            :repo_host => "bitbucket",
+            :github_uid => @project.repo_host_account.github_uid,
+            :revoked => true
+          )
+        end
+
+        it "un-revokes the account", :aggregate_failures do
+          response = server.check_token(@req, call)
+
+          expect(@project.repo_host_account.reload.revoked).to be(false)
+          expect(response.valid).to be(true)
+          expect(response.integration_scope).to eq(:FULL_CONNECTION)
+        end
+      end
+
+      # A blank uid cannot be matched against other rows, so the gate must not
+      # apply: without the .present? short-circuit every legacy blank-uid row
+      # would be permanently un-revokable.
+      context "when the revoked account has no github_uid" do
+        let(:token_valid) { true }
+        let(:permission_scope) { "repo,user:email" }
+
+        before do
+          @project.repo_host_account.update!(:revoked => true, :github_uid => nil)
+
+          FactoryBot.create(
+            :repo_host_account,
+            :repo_host => @project.repo_host_account.repo_host,
+            :github_uid => nil,
+            :revoked => true
+          )
+        end
+
+        it "un-revokes the account", :aggregate_failures do
+          response = server.check_token(@req, call)
+
+          expect(@project.repo_host_account.reload.revoked).to be(false)
+          expect(response.valid).to be(true)
+          expect(response.integration_scope).to eq(:FULL_CONNECTION)
+        end
+      end
+
+      context "when a revoked account's uid is free" do
+        let(:token_valid) { true }
+        let(:permission_scope) { "repo,user:email" }
+
+        before do
+          @project.repo_host_account.update!(:revoked => true)
+        end
+
+        it "un-revokes the account", :aggregate_failures do
+          response = server.check_token(@req, call)
+
+          expect(@project.repo_host_account.reload.revoked).to be(false)
+          expect(response.valid).to be(true)
+          expect(response.integration_scope).to eq(:FULL_CONNECTION)
+        end
+      end
+
+      context "when the token check is rate limited" do
+        let(:permission_scope) { "repo,user:email" }
+
+        before do
+          allow_any_instance_of(RepoHost::Github::Client).to receive(:token_valid?)
+            .and_raise(RepoHost::RemoteException::TooManyRequests)
+        end
+
+        it "reports it as resource exhausted and keeps the revoke status unchanged",
+           :aggregate_failures do
           expect do
             server.check_token(@req, call)
-          end.to raise_error(GRPC::ResourceExhausted, /rate limit exceeded/)
+          end.to raise_error(GRPC::ResourceExhausted)
+
+          expect(@project.repo_host_account.reload.revoked).to be(false)
         end
       end
 
