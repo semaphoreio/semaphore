@@ -238,6 +238,33 @@ RSpec.describe RepoHost::Github::Client do
     end
   end
 
+  describe "#last_response_rate_limit_remaining" do
+    def stub_pull_request(headers)
+      stub_request(:get, "https://api.github.com/repos/owner/repo/pulls/1")
+        .to_return(:status => 200, :body => "{}", :headers => { "Content-Type" => "application/json" }.merge(headers))
+    end
+
+    it "is nil before any request is made" do
+      expect(@client.last_response_rate_limit_remaining).to be_nil
+    end
+
+    it "reads the remaining requests from the last response" do
+      stub_pull_request("X-RateLimit-Remaining" => "4321")
+
+      @client.pull_request("owner/repo", 1)
+
+      expect(@client.last_response_rate_limit_remaining).to eq(4321)
+    end
+
+    it "is nil when the last response has no rate-limit header" do
+      stub_pull_request({})
+
+      @client.pull_request("owner/repo", 1)
+
+      expect(@client.last_response_rate_limit_remaining).to be_nil
+    end
+  end
+
   describe "#compare" do
     it "fetches the comparison through a non-paginating client" do
       non_paginating = instance_double(Octokit::Client)

@@ -279,6 +279,17 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
             expect(described_class.run(@workflow, @logger)).to be_nil
           end
 
+          it "builds on a rescheduled run with a single pull request fetch" do
+            allow(repo_host).to receive(:create_ref)
+            allow(repo_host).to receive(:commit).with("renderedtext/plakatt",
+                                                      "97114836a47ff614e70e863df819f908877ee1c9").and_return(RepoHost::Github::Responses::Commit.commit)
+            expect(described_class).to receive(:launch_pipeline)
+
+            described_class.run(@workflow, @logger, "", "", 1)
+
+            expect(repo_host).to have_received(:pull_request).once
+          end
+
           it "treats ReferenceAlreadyExists as success and still proceeds" do
             # When the ref already exists in GitHub, `create_ref` raises
             # ReferenceAlreadyExists. `ensure_ref` rescues it (mirroring
@@ -400,9 +411,15 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
         end
 
         context "and GitHub has not finished computing mergeability (mergeable is nil)" do
+          let(:max_retries) { 3 }
+          let(:reserve) { 1000 }
+
           before do
+            allow(App).to receive_messages(:mergeable_unknown_max_retries => max_retries,
+                                           :mergeable_unknown_rate_limit_reserve => reserve)
             allow(repo_host).to receive(:validate_token_presence!)
-            allow(repo_host).to receive(:pull_request).and_return(:merge_commit_sha => "", :mergeable => nil)
+            allow(repo_host).to receive_messages(:pull_request => { :merge_commit_sha => "", :mergeable => nil },
+                                                 :last_response_rate_limit_remaining => 5000)
             allow(described_class).to receive(:sleep) # skip get_pr_data poll backoff
           end
 
@@ -417,11 +434,30 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
             expect(@workflow.reload.state).not_to eq(Workflow::STATE_PR_NON_MERGEABLE)
           end
 
+          it "polls the pull request on the first run" do
+            allow(Semaphore::RepoHost::Hooks::Handler::Worker).to receive(:perform_in)
+
+            described_class.run(@workflow, @logger)
+
+            expect(repo_host).to have_received(:pull_request).exactly(9).times
+            expect(described_class).to have_received(:sleep).exactly(8).times
+          end
+
+          it "fetches the pull request once, without polling, on a rescheduled run" do
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker)
+              .to receive(:perform_in).with(2.minutes, @workflow.id, anything, anything, 2)
+
+            described_class.run(@workflow, @logger, "", "", 1)
+
+            expect(repo_host).to have_received(:pull_request).once
+            expect(described_class).not_to have_received(:sleep)
+          end
+
           it "still reschedules on the last attempt before the budget is exhausted" do
             expect(Semaphore::RepoHost::Hooks::Handler::Worker)
-              .to receive(:perform_in).with(2.minutes, @workflow.id, anything, anything, 10)
+              .to receive(:perform_in).with(2.minutes, @workflow.id, anything, anything, max_retries)
 
-            described_class.run(@workflow, @logger, "", "", 9)
+            described_class.run(@workflow, @logger, "", "", max_retries - 1)
 
             expect(@workflow.reload.state).not_to eq(Workflow::STATE_PR_NON_MERGEABLE)
           end
@@ -429,11 +465,47 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
           it "gives up once retries are exhausted without emitting a spurious unmergeable event" do
             expect(Semaphore::RepoHost::Hooks::Handler::Worker).not_to receive(:perform_in)
             expect(described_class).not_to receive(:update_pull_request_mergeable)
-            expect(@logger).to receive(:info).with("pr-mergeable-unknown-giving-up")
+            expect(@logger).to receive(:info).with("pr-mergeable-unknown-giving-up", hash_including(:retries => max_retries))
 
-            described_class.run(@workflow, @logger, "", "", 10)
+            described_class.run(@workflow, @logger, "", "", max_retries)
 
             expect(@workflow.reload.state).to eq(Workflow::STATE_PR_NON_MERGEABLE)
+          end
+
+          it "gives up instead of rescheduling when the rate limit is below the reserve" do
+            allow(repo_host).to receive(:last_response_rate_limit_remaining).and_return(reserve - 1)
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker).not_to receive(:perform_in)
+            expect(described_class).not_to receive(:update_pull_request_mergeable)
+            expect(@logger).to receive(:info).with("pr-mergeable-unknown-giving-up", hash_including(:rate_limit_remaining => reserve - 1))
+
+            described_class.run(@workflow, @logger)
+
+            expect(@workflow.reload.state).to eq(Workflow::STATE_PR_NON_MERGEABLE)
+          end
+
+          it "reschedules when exactly the reserve is left" do
+            allow(repo_host).to receive(:last_response_rate_limit_remaining).and_return(reserve)
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker)
+              .to receive(:perform_in).with(2.minutes, @workflow.id, anything, anything, 1)
+
+            described_class.run(@workflow, @logger)
+          end
+
+          it "reschedules when the response does not report a rate limit" do
+            allow(repo_host).to receive(:last_response_rate_limit_remaining).and_return(nil)
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker)
+              .to receive(:perform_in).with(2.minutes, @workflow.id, anything, anything, 1)
+
+            described_class.run(@workflow, @logger)
+          end
+
+          it "never holds a retry back for the rate limit when the reserve is 0" do
+            allow(App).to receive(:mergeable_unknown_rate_limit_reserve).and_return(0)
+            allow(repo_host).to receive(:last_response_rate_limit_remaining).and_return(0)
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker)
+              .to receive(:perform_in).with(2.minutes, @workflow.id, anything, anything, 1)
+
+            described_class.run(@workflow, @logger)
           end
         end
       end
