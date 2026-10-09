@@ -32,9 +32,10 @@ defmodule Gofer.DeploymentTrigger.Model.DeploymentTriggerQueriesTest do
 
     test "when target has some triggers then return n latest triggers", ctx do
       all_triggers =
-        for _ <- 1..25 do
+        for i <- 1..25 do
           {:ok, [trigger: trigger]} =
             insert_trigger(ctx, %{
+              triggered_at: DateTime.add(ctx.triggered_at, i),
               switch_trigger_id: UUID.uuid4(),
               request_token: UUID.uuid4(),
               pipeline_id: UUID.uuid4(),
@@ -48,7 +49,7 @@ defmodule Gofer.DeploymentTrigger.Model.DeploymentTriggerQueriesTest do
 
       lastest_trigger_ids =
         all_triggers
-        |> Enum.sort_by(& &1.triggered_at, DateTime)
+        |> Enum.sort_by(& &1.triggered_at, {:desc, DateTime})
         |> Enum.take(10)
         |> Enum.map(& &1.id)
 
