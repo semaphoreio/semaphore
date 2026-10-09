@@ -635,5 +635,22 @@ defmodule Gofer.Deployment.GuardianUnavailableTest do
       |> not_granted?(ctx.triggerer)
       |> not_granted?(ctx.random_triggerer)
     end
+
+    test "when role assignments are given then they are used instead of RBAC", ctx do
+      role_id = List.first(ctx.role_ids)
+      deployment = with_subject_rules(ctx[:deployment], ROLE: role_id, USER: UUID.uuid4())
+
+      deployment
+      |> check_subject_access(role_assignments: %{role_id => true})
+      |> granted?(ctx.triggerer)
+
+      deployment
+      |> check_subject_access(role_assignments: %{role_id => false})
+      |> not_granted?(ctx.triggerer)
+
+      deployment
+      |> check_subject_access(role_assignments: %{})
+      |> not_granted?(ctx.triggerer)
+    end
   end
 end

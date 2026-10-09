@@ -28,6 +28,9 @@ defmodule Gofer.Deployment.Guardian do
     - deployment_name     - deployment target name
     - triggerer           - user ID (for manual promotion)
                             or "Pipeline Done request" (for auto-promotions)
+
+    Options:
+    - role_assignments    - %{role_id => boolean} already fetched from RBAC
   """
   def verify(deployment, switch, triggerer, opts \\ [])
 
@@ -109,9 +112,16 @@ defmodule Gofer.Deployment.Guardian do
   defp role_rules_apply?(rules, subject, opts) do
     role_ids = Enum.map(rules, & &1.subject_id)
 
-    case RBAC.check_roles(subject, role_ids, opts) do
+    case check_roles(subject, role_ids, opts) do
       {:ok, assignments} -> Enum.any?(assignments, &elem(&1, 1))
       {:error, _reason} -> false
+    end
+  end
+
+  defp check_roles(subject, role_ids, opts) do
+    case Keyword.fetch(opts, :role_assignments) do
+      {:ok, assignments} -> {:ok, Map.take(assignments, role_ids)}
+      :error -> RBAC.check_roles(subject, role_ids, opts)
     end
   end
 
