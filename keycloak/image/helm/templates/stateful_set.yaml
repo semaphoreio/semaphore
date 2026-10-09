@@ -41,8 +41,6 @@ spec:
               value: "id.$(BASE_DOMAIN)"
             - name: KC_CACHE_STACK
               value: "kubernetes"
-            - name: KC_HOSTNAME_ADMIN
-              value: "https://id.$(BASE_DOMAIN)"
             - name: KC_HOSTNAME_DEBUG
               value: "true"
             - name: KC_LOG
