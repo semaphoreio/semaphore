@@ -653,10 +653,11 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
             .and_raise(RepoHost::RemoteException::TooManyRequests)
         end
 
-        it "raises and keeps the revoke status unchanged", :aggregate_failures do
+        it "reports it as resource exhausted and keeps the revoke status unchanged",
+           :aggregate_failures do
           expect do
             server.check_token(@req, call)
-          end.to raise_error(RepoHost::RemoteException::TooManyRequests)
+          end.to raise_error(GRPC::ResourceExhausted)
 
           expect(@project.repo_host_account.reload.revoked).to be(false)
         end

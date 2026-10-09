@@ -150,6 +150,12 @@ module InternalApi
           :valid => valid,
           :integration_scope => scope
         )
+      rescue ::RepoHost::RemoteException::TooManyRequests => e
+        # update_revoke_status raises this rather than guessing at a revoke
+        # while GitHub is throttling. Without this it leaves the RPC as an
+        # unexpected error, which notifies the error tracker and reports
+        # UNKNOWN; the caller cannot tell it apart from a real fault.
+        raise GRPC::ResourceExhausted, e.message
       rescue ActiveRecord::RecordNotFound
         raise GRPC::NotFound, "Project with id #{req.project_id} not found."
       end
