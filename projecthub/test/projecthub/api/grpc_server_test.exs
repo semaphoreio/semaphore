@@ -2681,7 +2681,19 @@ defmodule Projecthub.Api.GrpcServerTest do
             )
         )
 
-      {:ok, response} = Stub.update(channel, request)
+      response =
+        with_mock Projecthub.RepositoryHubClient, [:passthrough], [] do
+          {:ok, response} = Stub.update(channel, request)
+
+          [update_request] =
+            for {_pid, {Projecthub.RepositoryHubClient, :update, [params | _]}, _result} <-
+                  :meck.history(Projecthub.RepositoryHubClient),
+                do: params
+
+          assert update_request.user_id == "12345678-1234-5678-1234-567812345678"
+
+          response
+        end
 
       assert response.metadata.status ==
                InternalApi.Projecthub.ResponseMeta.Status.new(code: :OK)
