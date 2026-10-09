@@ -24,11 +24,8 @@ module Semaphore::GithubApp
                       :retry => App.worker_max_retries,
                       :dead => false
 
-      sidekiq_retry_in do |count, _exception, _jobhash|
-        delay = App.worker_base_delay * (2**count)
-        jitter = rand(0..App.worker_jitter_max)
-
-        [delay + jitter, App.worker_max_delay].min
+      sidekiq_retry_in do |count, exception, _jobhash|
+        Semaphore::GithubApp::RateLimit.retry_delay(count, exception)
       end
 
       sidekiq_retries_exhausted do |job, exception|
@@ -55,16 +52,14 @@ module Semaphore::GithubApp
           log(installation_id, slug, "Token not found")
         when :no_repository
           log(installation_id, slug, "Repository not accessible to the installation")
-        when :low_rate_limit
-          log(installation_id, slug, "Low Rate Limit — raising to trigger retry with backoff")
-          raise LowRateLimitError, "GitHub App API rate limit too low for installation #{installation_id}"
         else
           log(installation_id, slug, "Unknown result: #{result.inspect}")
         end
 
         delete_unique_lock([installation_id, slug])
       rescue LowRateLimitError
-        # Retryable: keep the lock and let Sidekiq retry with backoff.
+        # Keep the lock so Sidekiq retries.
+        log(installation_id, slug, "Low Rate Limit — deferring retry until the bucket resets")
         raise
       rescue *RETRYABLE_ERRORS => e
         # Transient: keep the lock and re-raise so Sidekiq retries with backoff
