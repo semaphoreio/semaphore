@@ -29,7 +29,7 @@ defimpl RepositoryHub.Server.UpdateAction, for: RepositoryHub.GithubAdapter do
       end)
       |> Multi.run(:update_repository_url, fn _repo, context ->
         context.connector
-        |> GithubConnector.update_repository_url(request.url, target_token)
+        |> GithubConnector.update_repository_url(request.url, target_token, request.user_id)
       end)
       |> Multi.run(:updated_repository, fn _repo, context ->
         params =

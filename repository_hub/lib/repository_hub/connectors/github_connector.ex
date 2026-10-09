@@ -10,7 +10,9 @@ defmodule RepositoryHub.GithubConnector do
   alias RepositoryHub.{
     Model,
     Toolkit,
-    GithubClient
+    GithubClient,
+    GithubAdapter,
+    UserClient
   }
 
   alias Ecto.Multi
@@ -33,7 +35,7 @@ defmodule RepositoryHub.GithubConnector do
     end)
   end
 
-  def update_repository_url(connector, url, target_token) do
+  def update_repository_url(connector, url, target_token, user_id) do
     connector.git_repository
     |> Model.GitRepository.equal?(url)
     |> unwrap(fn
@@ -47,15 +49,57 @@ defmodule RepositoryHub.GithubConnector do
           true ->
             fail_with(:precondition, "Changing git host is not supported yet.")
 
-          false ->
-            fallback? = target_token == "" and connector.repository.integration_type == "github_app"
-            token = if fallback?, do: connector.token, else: target_token
-
+          false when connector.repository.integration_type != "github_app" ->
             connector
-            |> can_change_url?(url, token, fallback?)
-            |> unwrap(&update_repository_url_impl(connector, url, token, &1))
+            |> can_change_url?(url, target_token, false)
+            |> unwrap(&update_repository_url_impl(connector, url, target_token, &1))
+
+          false when user_id == "" ->
+            fail_with(:precondition, "Changing the repository URL requires a known requester.")
+
+          false ->
+            UserClient.describe(user_id)
+            |> unwrap(&change_url_as_requester(connector, url, target_token, &1))
         end)
     end)
+  end
+
+  defp change_url_as_requester(connector, url, _target_token, %{user: %{creation_source: :SERVICE_ACCOUNT}}) do
+    connector
+    |> can_change_url?(url, connector.token, false)
+    |> unwrap_error(fn _ ->
+      fail_with(
+        :precondition,
+        "Service accounts can only change the repository URL to a repository that the project's current GitHub App installation can access."
+      )
+    end)
+    |> unwrap(&update_repository_url_impl(connector, url, connector.token, &1))
+  end
+
+  defp change_url_as_requester(connector, url, target_token, requester) do
+    fallback? = target_token == ""
+    token = if fallback?, do: connector.token, else: target_token
+
+    with {:ok, github_repository} <- can_change_url?(connector, url, token, fallback?),
+         {:ok, git_repository} <- Model.GitRepository.from_github(url),
+         {:ok, %{"push" => true}} <-
+           GithubAdapter.repository_permissions(
+             requester.user_id,
+             %{repo_owner: git_repository.owner, repo_name: git_repository.repo},
+             token,
+             "Connect your GitHub account to Semaphore to change the repository URL."
+           ) do
+      update_repository_url_impl(connector, url, token, github_repository)
+    else
+      {:ok, _permissions} ->
+        fail_with(
+          :precondition,
+          "Write permissions are required on the repository to change the project's repository URL."
+        )
+
+      error ->
+        error
+    end
   end
 
   defp can_change_url?(connector, url, token, fallback?) do

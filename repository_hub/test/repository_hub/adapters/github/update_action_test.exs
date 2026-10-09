@@ -10,6 +10,7 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
     GithubClient,
     GithubClientFactory,
     RepositoryIntegratorClient,
+    UserClient,
     DeployKeysModelFactory,
     RepositoryModelFactory
   }
@@ -25,7 +26,20 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
            {:error, %{status: GRPC.Status.not_found(), message: "Webhook not found"}}
          end
        ] ++ mocks}
-    end
+    end ++
+      [
+        {UserClient, [:passthrough],
+         [
+           describe: fn
+             "service-account-user-id" = user_id ->
+               {:ok, %{user_id: user_id, user: %{creation_source: :SERVICE_ACCOUNT}}}
+
+             user_id ->
+               {:ok, %{user_id: user_id, user: %{creation_source: :NOT_SET}}}
+           end,
+           get_repository_provider_logins: fn :GITHUB, _user_id -> {:ok, ["radwo"]} end
+         ]}
+      ]
   ) do
     %{github_app_adapter: Adapters.github_app(), github_oauth_adapter: Adapters.github_oauth()}
   end
@@ -50,6 +64,7 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
       assert_not_called(GithubClient.find_repository(:_, :_))
       assert_not_called(GithubClient.remove_webhook(:_, :_))
       assert_not_called(GithubClient.create_webhook(:_, :_))
+      assert_not_called(UserClient.describe(:_))
     end
 
     test "renames a github_app repository within the same installation", %{github_app_adapter: adapter} do
@@ -59,7 +74,8 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
       request =
         InternalApiFactory.update_request(
           repository_id: repository.id,
-          url: "git@github.com:dummy/repository-2.git"
+          url: "git@github.com:dummy/repository-2.git",
+          user_id: "requester-user-id"
         )
 
       assert %UpdateResponse{repository: response_repository} = UpdateAction.execute(adapter, request)
@@ -102,7 +118,8 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
       request =
         InternalApiFactory.update_request(
           repository_id: repository.id,
-          url: "git@github.com:new-org/repository.git"
+          url: "git@github.com:new-org/repository.git",
+          user_id: "requester-user-id"
         )
 
       with_mock RepositoryIntegratorClient, [:passthrough],
@@ -125,6 +142,14 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
       assert updated_repository.hook_id == created_webhook.id
 
       assert_called(GithubClient.find_repository(%{repo_owner: "new-org", repo_name: "repository"}, token: "new-tok"))
+
+      assert_called(
+        GithubClient.repository_permissions(
+          %{repo_owner: "new-org", repo_name: "repository", username: "radwo"},
+          token: "new-tok"
+        )
+      )
+
       assert_called(GithubClient.remove_webhook(%{repo_owner: "old-org", repo_name: "repository"}, token: "old-tok"))
       assert_called(GithubClient.remove_deploy_key(%{repo_owner: "old-org", repo_name: "repository"}, token: "old-tok"))
       assert_called(GithubClient.create_webhook(%{repo_owner: "new-org", repo_name: "repository"}, token: "new-tok"))
@@ -146,7 +171,8 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
       request =
         InternalApiFactory.update_request(
           repository_id: repository.id,
-          url: "git@github.com:new-org/repository.git"
+          url: "git@github.com:new-org/repository.git",
+          user_id: "requester-user-id"
         )
 
       :meck.expect(GithubClient, :find_repository, fn _params, _opts ->
@@ -194,7 +220,8 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
       request =
         InternalApiFactory.update_request(
           repository_id: repository.id,
-          url: "git@github.com:old-org/renamed.git"
+          url: "git@github.com:old-org/renamed.git",
+          user_id: "requester-user-id"
         )
 
       with_mocks([
@@ -214,6 +241,14 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
       assert updated_repository.url == "git@github.com:old-org/renamed.git"
 
       assert_called(GithubClient.find_repository(%{repo_owner: "old-org", repo_name: "renamed"}, token: "old-tok"))
+
+      assert_called(
+        GithubClient.repository_permissions(
+          %{repo_owner: "old-org", repo_name: "renamed", username: "radwo"},
+          token: "old-tok"
+        )
+      )
+
       assert_called(GithubClient.create_webhook(%{repo_owner: "old-org", repo_name: "renamed"}, token: "old-tok"))
       assert_called(GithubClient.create_deploy_key(%{repo_owner: "old-org", repo_name: "renamed"}, token: "old-tok"))
     end
@@ -258,7 +293,8 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
       request =
         InternalApiFactory.update_request(
           repository_id: repository.id,
-          url: "git@github.com:new-org/repository.git"
+          url: "git@github.com:new-org/repository.git",
+          user_id: "requester-user-id"
         )
 
       with_mock RepositoryIntegratorClient, [:passthrough],
@@ -291,7 +327,8 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
       request =
         InternalApiFactory.update_request(
           repository_id: repository.id,
-          url: "git@github.com:dummy/renamed.git"
+          url: "git@github.com:dummy/renamed.git",
+          user_id: "requester-user-id"
         )
 
       assert %UpdateResponse{} = UpdateAction.execute(adapter, request)
@@ -303,6 +340,10 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
       assert updated_repository.hook_id == repository.hook_id
       assert {:ok, %{id: deploy_key_id}} = RepositoryHub.Model.DeployKeyQuery.get_by_repository_id(repository.id)
       assert deploy_key_id == deploy_key.id
+
+      assert_called(
+        GithubClient.repository_permissions(%{repo_owner: "dummy", repo_name: "renamed", username: "radwo"}, :_)
+      )
 
       assert_not_called(GithubClient.remove_webhook(:_, :_))
       assert_not_called(GithubClient.remove_deploy_key(:_, :_))
@@ -316,7 +357,8 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
       request =
         InternalApiFactory.update_request(
           repository_id: repository.id,
-          url: "git@github.com:dummy/repository-2.git"
+          url: "git@github.com:dummy/repository-2.git",
+          user_id: "requester-user-id"
         )
 
       assert %UpdateResponse{} = UpdateAction.execute(adapter, request)
@@ -357,6 +399,182 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
 
       assert String.ends_with?(lookup_token, "-github_oauth_token")
       assert create_token == lookup_token
+    end
+  end
+
+  describe "Github UpdateAction requester check" do
+    test "rejects a url change without a requester", %{github_app_adapter: adapter} do
+      repository = RepositoryModelFactory.githubapp_repo()
+
+      request =
+        InternalApiFactory.update_request(
+          repository_id: repository.id,
+          url: "git@github.com:dummy/repository-2.git"
+        )
+
+      assert {:error, %{status: status, message: message}} = UpdateAction.execute(adapter, request)
+      assert status == GRPC.Status.failed_precondition()
+      assert message == "Changing the repository URL requires a known requester."
+
+      {:ok, unchanged_repository} = RepositoryHub.Model.RepositoryQuery.get_by_id(repository.id)
+      assert unchanged_repository.url == repository.url
+
+      assert_not_called(UserClient.describe(:_))
+      assert_not_called(GithubClient.find_repository(:_, :_))
+      assert_not_called(GithubClient.create_webhook(:_, :_))
+    end
+
+    test "rejects a url change when the requester cannot push to the target repository", %{
+      github_app_adapter: adapter
+    } do
+      repository =
+        RepositoryModelFactory.githubapp_repo(
+          owner: "old-org",
+          url: "git@github.com:old-org/repository.git",
+          remote_id: "999"
+        )
+
+      DeployKeysModelFactory.create_deploy_key(project_id: repository.project_id, repository_id: repository.id)
+
+      request =
+        InternalApiFactory.update_request(
+          repository_id: repository.id,
+          url: "git@github.com:new-org/repository.git",
+          user_id: "requester-user-id"
+        )
+
+      :meck.expect(GithubClient, :repository_permissions, fn _params, _opts ->
+        {:ok, %{"admin" => false, "push" => false, "pull" => true}}
+      end)
+
+      with_mock RepositoryIntegratorClient, [:passthrough],
+        get_token: fn
+          _integration_type, "old-org/repository", _remote_id -> {:ok, "old-tok"}
+          _integration_type, "new-org/repository", _remote_id -> {:ok, "new-tok"}
+        end do
+        assert {:error, %{message: message}} = UpdateAction.execute(adapter, request)
+
+        assert message ==
+                 "Write permissions are required on the repository to change the project's repository URL."
+      end
+
+      {:ok, unchanged_repository} = RepositoryHub.Model.RepositoryQuery.get_by_id(repository.id)
+      assert unchanged_repository.url == "git@github.com:old-org/repository.git"
+      assert unchanged_repository.hook_id == repository.hook_id
+
+      assert_not_called(GithubClient.remove_webhook(:_, :_))
+      assert_not_called(GithubClient.remove_deploy_key(:_, :_))
+      assert_not_called(GithubClient.create_webhook(:_, :_))
+      assert_not_called(GithubClient.create_deploy_key(:_, :_))
+    end
+
+    test "rejects a url change when the requester has no GitHub account connected", %{
+      github_app_adapter: adapter
+    } do
+      repository = RepositoryModelFactory.githubapp_repo()
+
+      request =
+        InternalApiFactory.update_request(
+          repository_id: repository.id,
+          url: "git@github.com:dummy/repository-2.git",
+          user_id: "requester-user-id"
+        )
+
+      :meck.expect(UserClient, :get_repository_provider_logins, fn :GITHUB, _user_id -> {:ok, []} end)
+
+      assert {:error, %{message: message}} = UpdateAction.execute(adapter, request)
+      assert message == "Connect your GitHub account to Semaphore to change the repository URL."
+
+      {:ok, unchanged_repository} = RepositoryHub.Model.RepositoryQuery.get_by_id(repository.id)
+      assert unchanged_repository.url == repository.url
+
+      assert_not_called(GithubClient.repository_permissions(:_, :_))
+      assert_not_called(GithubClient.create_webhook(:_, :_))
+    end
+
+    test "lets a service account change the url within the current installation using the current token", %{
+      github_app_adapter: adapter
+    } do
+      repository =
+        RepositoryModelFactory.githubapp_repo(
+          owner: "old-org",
+          url: "git@github.com:old-org/repository.git",
+          remote_id: "999"
+        )
+
+      DeployKeysModelFactory.create_deploy_key(project_id: repository.project_id, repository_id: repository.id)
+
+      request =
+        InternalApiFactory.update_request(
+          repository_id: repository.id,
+          url: "git@github.com:old-org/other.git",
+          user_id: "service-account-user-id"
+        )
+
+      with_mock RepositoryIntegratorClient, [:passthrough],
+        get_token: fn
+          _integration_type, "old-org/repository", _remote_id -> {:ok, "old-tok"}
+          _integration_type, "old-org/other", _remote_id -> {:ok, "target-tok"}
+        end do
+        assert %UpdateResponse{} = UpdateAction.execute(adapter, request)
+      end
+
+      {:ok, updated_repository} = RepositoryHub.Model.RepositoryQuery.get_by_id(repository.id)
+      assert updated_repository.url == "git@github.com:old-org/other.git"
+
+      assert_called(GithubClient.find_repository(%{repo_owner: "old-org", repo_name: "other"}, token: "old-tok"))
+      assert_called(GithubClient.create_webhook(%{repo_owner: "old-org", repo_name: "other"}, token: "old-tok"))
+      assert_called(GithubClient.create_deploy_key(%{repo_owner: "old-org", repo_name: "other"}, token: "old-tok"))
+      assert_not_called(GithubClient.repository_permissions(:_, :_))
+
+      tokens =
+        for {_pid, {GithubClient, _function, [_params, opts]}, _result} <- :meck.history(GithubClient), do: opts[:token]
+
+      refute "target-tok" in tokens
+    end
+
+    test "rejects a service account moving the url outside the current installation", %{
+      github_app_adapter: adapter
+    } do
+      repository =
+        RepositoryModelFactory.githubapp_repo(
+          owner: "old-org",
+          url: "git@github.com:old-org/repository.git",
+          remote_id: "999"
+        )
+
+      DeployKeysModelFactory.create_deploy_key(project_id: repository.project_id, repository_id: repository.id)
+
+      request =
+        InternalApiFactory.update_request(
+          repository_id: repository.id,
+          url: "git@github.com:new-org/repository.git",
+          user_id: "service-account-user-id"
+        )
+
+      :meck.expect(GithubClient, :find_repository, fn
+        params, [token: "new-tok"] = opts -> GithubClientFactory.find_repository_mock(params, opts)
+        _params, _opts -> {:error, %{status: GRPC.Status.failed_precondition(), message: "Repository not found."}}
+      end)
+
+      with_mock RepositoryIntegratorClient, [:passthrough],
+        get_token: fn
+          _integration_type, "old-org/repository", _remote_id -> {:ok, "old-tok"}
+          _integration_type, "new-org/repository", _remote_id -> {:ok, "new-tok"}
+        end do
+        assert {:error, %{message: message}} = UpdateAction.execute(adapter, request)
+
+        assert message ==
+                 "Service accounts can only change the repository URL to a repository that the project's current GitHub App installation can access."
+      end
+
+      {:ok, unchanged_repository} = RepositoryHub.Model.RepositoryQuery.get_by_id(repository.id)
+      assert unchanged_repository.url == "git@github.com:old-org/repository.git"
+
+      assert_called(GithubClient.find_repository(%{repo_owner: "new-org", repo_name: "repository"}, token: "old-tok"))
+      assert_not_called(GithubClient.find_repository(:_, token: "new-tok"))
+      assert_not_called(GithubClient.remove_webhook(:_, :_))
+      assert_not_called(GithubClient.create_webhook(:_, :_))
     end
   end
 end
