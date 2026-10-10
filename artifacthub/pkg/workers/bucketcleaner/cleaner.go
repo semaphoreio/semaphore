@@ -136,7 +136,9 @@ func (c *BatchCleaner) loadRecords() error {
 		return err
 	}
 	c.artifactBucket = artifact
-	c.purging = artifact.IsPurgeDue(PurgeGracePeriod)
+
+	// A project delete's mark is honoured only while purging is enabled; destruction always is.
+	c.purging = artifact.IsMarkedForDestruction() || (PurgeEnabled && artifact.IsPurgeDue(PurgeGracePeriod))
 
 	return nil
 }
