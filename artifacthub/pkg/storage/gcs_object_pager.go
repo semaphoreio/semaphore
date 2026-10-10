@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"errors"
 	"time"
 
 	gcsstorage "cloud.google.com/go/storage"
@@ -14,6 +15,10 @@ type GcsObjectPager struct {
 func (i *GcsObjectPager) NextPage() ([]*Object, string, error) {
 	rawObjects := []*gcsstorage.ObjectAttrs{}
 	nextPageToken, err := i.pager.NextPage(&rawObjects)
+	if errors.Is(err, gcsstorage.ErrBucketNotExist) {
+		return []*Object{}, "", ErrBucketGone
+	}
+
 	if err != nil {
 		return []*Object{}, "", err
 	}
