@@ -125,6 +125,17 @@ func Test__RestoreWorker(t *testing.T) {
 	})
 }
 
+// A database outage must not dead-letter a restore within minutes and let the purge run.
+func Test__RetryWindow(t *testing.T) {
+	for _, newWorker := range []func(string) (*Worker, error){NewSoftDeleteWorker, NewRestoreWorker} {
+		worker, err := newWorker("amqp://unused")
+		require.NoError(t, err)
+
+		window := time.Duration(worker.amqpOptions.GetRetryLimit()*worker.amqpOptions.GetRetryDelay()) * time.Second
+		assert.GreaterOrEqual(t, window, 3*time.Hour, worker.name)
+	}
+}
+
 func publish(t *testing.T, routingKey string, event proto.Message) {
 	body, err := proto.Marshal(event)
 	require.NoError(t, err)
