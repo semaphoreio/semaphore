@@ -17,7 +17,7 @@ import (
 func Test__OldestPurgeAge(t *testing.T) {
 	withGracePeriod(t, 72*time.Hour)
 
-	t.Run("an idle fleet reads zero", func(t *testing.T) {
+	t.Run("reads zero when nothing is due", func(t *testing.T) {
 		models.PrepareDatabaseForTests()
 
 		age, err := oldestPurgeAgeSeconds()

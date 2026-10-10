@@ -14,11 +14,8 @@ type InMemoryBucket struct {
 	Name    string
 	Objects []*PathItem
 
-	// When set, DeleteObjects reports this instead of deleting, which is how a
-	// storage that refuses to be emptied is reproduced. GCS deletes really do fail,
-	// on an object hold or a missing permission, and the caller's behaviour in that
-	// case is the difference between a purge that retries and one that quietly
-	// pretends to have finished.
+	// When set, DeleteObjects returns this instead of deleting, to test a storage that
+	// cannot be emptied, as with an object hold or a missing permission.
 	DeleteObjectsError error
 }
 
