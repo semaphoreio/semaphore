@@ -521,6 +521,41 @@ func countObjects(t *testing.T, bucket storage.Bucket) int {
 	}
 }
 
+// Turning the feature off has to stop purges already marked, not only new marks.
+func Test__CleanerPurgeDisabled(t *testing.T) {
+	models.PrepareDatabaseForTests()
+	s := storage.NewInMemoryStorage()
+
+	withGracePeriod(t, time.Hour)
+	withPurgeEnabled(t, false)
+
+	t.Run("a due purge deletes nothing and keeps its mark", func(t *testing.T) {
+		artifact, _ := createBucketWithRetentionPolicy(t)
+		bucket := s.GetBucket(storage.BucketOptions{Name: artifact.BucketName}).(*storage.InMemoryBucket)
+		bucket.Add("/jobs/a/junit/a.txt", daysAgo(0))
+
+		require.NoError(t, privateapi.PurgeArtifactContents(artifact.IdempotencyToken, time.Now().Add(-2*time.Hour)))
+
+		assert.False(t, runCleaner(t, s, artifact).purgeCompleted)
+		assert.Equal(t, 1, bucket.Size())
+
+		stored, err := models.FindArtifactByID(artifact.ID.String())
+		require.NoError(t, err)
+		assert.NotNil(t, stored.PurgeRequestedAt)
+	})
+
+	t.Run("destruction still goes ahead", func(t *testing.T) {
+		artifact, _ := createBucketWithRetentionPolicy(t)
+		bucket := s.GetBucket(storage.BucketOptions{Name: artifact.BucketName}).(*storage.InMemoryBucket)
+		bucket.Add("/jobs/a/junit/a.txt", daysAgo(0))
+
+		require.NoError(t, privateapi.DestroyArtifact(context.TODO(), s, artifact.ID.String()))
+
+		runCleaner(t, s, artifact)
+		assert.Zero(t, bucket.Size())
+	})
+}
+
 // On GCS every storage has a bucket of its own, so one whose bucket is gone holds nothing.
 func Test__CleanerBucketGone(t *testing.T) {
 	models.PrepareDatabaseForTests()
