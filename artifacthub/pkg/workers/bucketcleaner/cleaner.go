@@ -2,6 +2,7 @@ package bucketcleaner
 
 import (
 	"context"
+	"errors"
 	"log"
 	"time"
 
@@ -30,6 +31,9 @@ type BatchCleaner struct {
 
 	// Decided once when the run starts, so every page in it is handled the same way.
 	purging bool
+
+	// Set when the storage's own bucket no longer exists, so there is nothing to delete.
+	bucketGone bool
 }
 
 func NewBatchCleaner(c storage.Client, cleanRequest *CleanRequest, pages int) *BatchCleaner {
@@ -212,9 +216,12 @@ func (c *BatchCleaner) destroyArtifact() error {
 	ctx, cancelFunc := context.WithTimeout(context.Background(), time.Minute)
 	defer cancelFunc()
 
-	if err := c.client.DestroyBucket(ctx, options); err != nil {
-		log.Printf("Error deleting bucket %s for %s: %v", c.artifactBucket.BucketName, c.artifactBucket.ID.String(), err)
-		return err
+	// A bucket that is already gone leaves only the row to remove.
+	if !c.bucketGone {
+		if err := c.client.DestroyBucket(ctx, options); err != nil {
+			log.Printf("Error deleting bucket %s for %s: %v", c.artifactBucket.BucketName, c.artifactBucket.ID.String(), err)
+			return err
+		}
 	}
 
 	if err := c.artifactBucket.Destroy(); err != nil {
@@ -230,6 +237,14 @@ func (c *BatchCleaner) destroyArtifact() error {
 func (c *BatchCleaner) cleanupOnePage() (string, error) {
 	_ = watchman.Increment("bucketcleaner.worker.page_visits")
 	objects, nextPageToken, err := c.pager.NextPage()
+
+	// A storage whose own bucket is gone holds nothing, so it reads as an empty last page.
+	if errors.Is(err, storage.ErrBucketGone) {
+		log.Printf("Bucket %s of artifact storage %s no longer exists", c.artifactBucket.BucketName, c.artifactBucket.ID.String())
+		c.bucketGone = true
+		objects, nextPageToken, err = nil, "", nil
+	}
+
 	if err != nil {
 		return "", err
 	}

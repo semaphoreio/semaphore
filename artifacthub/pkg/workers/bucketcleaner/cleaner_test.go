@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -518,6 +519,79 @@ func countObjects(t *testing.T, bucket storage.Bucket) int {
 			return count
 		}
 	}
+}
+
+// On GCS every storage has a bucket of its own, so one whose bucket is gone holds nothing.
+func Test__CleanerBucketGone(t *testing.T) {
+	models.PrepareDatabaseForTests()
+	withGracePeriod(t, time.Hour)
+
+	gcs, err := storage.NewGcsClient("")
+	require.NoError(t, err)
+
+	goneStorage := func(t *testing.T) *models.Artifact {
+		artifact, err := models.CreateArtifact("gone-"+uuid.NewV4().String(), uuid.NewV4().String())
+		require.NoError(t, err)
+
+		return artifact
+	}
+
+	t.Run("a purge finishes and clears its mark", func(t *testing.T) {
+		artifact := goneStorage(t)
+		require.NoError(t, privateapi.PurgeArtifactContents(artifact.IdempotencyToken, time.Now().Add(-2*time.Hour)))
+
+		assert.True(t, runCleaner(t, gcs, artifact).purgeCompleted)
+
+		stored, err := models.FindArtifactByID(artifact.ID.String())
+		require.NoError(t, err)
+		assert.Nil(t, stored.PurgeRequestedAt)
+	})
+
+	t.Run("a destruction removes the row", func(t *testing.T) {
+		artifact := goneStorage(t)
+		require.NoError(t, privateapi.DestroyArtifact(context.TODO(), gcs, artifact.ID.String()))
+
+		assert.True(t, runCleaner(t, gcs, artifact).artifactDeleted)
+
+		_, err := models.FindArtifactByIdempotencyTokenRaw(db.Conn(), artifact.IdempotencyToken)
+		assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
+	})
+
+	// On S3 one bucket holds every storage, so a missing one is a configuration error.
+	t.Run("a missing S3 bucket keeps failing", func(t *testing.T) {
+		s3, err := storage.NewS3Client(storage.S3Options{
+			URL:             os.Getenv("ARTIFACT_STORAGE_S3_URL"),
+			BucketName:      "missing-" + uuid.NewV4().String(),
+			AccessKeyID:     os.Getenv("AWS_ACCESS_KEY_ID"),
+			SecretAccessKey: os.Getenv("AWS_SECRET_ACCESS_KEY"),
+			Region:          os.Getenv("AWS_REGION"),
+		})
+		require.NoError(t, err)
+
+		artifact := goneStorage(t)
+		require.NoError(t, privateapi.PurgeArtifactContents(artifact.IdempotencyToken, time.Now().Add(-2*time.Hour)))
+
+		request, err := NewCleanRequest(artifact.ID.String())
+		require.NoError(t, err)
+
+		_, err = NewBatchCleaner(s3, request, 10).Run(db.Conn())
+		assert.Error(t, err)
+
+		stored, err := models.FindArtifactByID(artifact.ID.String())
+		require.NoError(t, err)
+		assert.NotNil(t, stored.PurgeRequestedAt)
+	})
+}
+
+func runCleaner(t *testing.T, client storage.Client, artifact *models.Artifact) *BatchCleaner {
+	request, err := NewCleanRequest(artifact.ID.String())
+	require.NoError(t, err)
+
+	cleaner := NewBatchCleaner(client, request, 10)
+	_, err = cleaner.Run(db.Conn())
+	require.NoError(t, err)
+
+	return cleaner
 }
 
 // withGracePeriod sets the package-wide grace period for one test and puts it back
