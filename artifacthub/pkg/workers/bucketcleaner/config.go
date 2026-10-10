@@ -20,6 +20,10 @@ const PurgeGracePeriodEnvVar = "ARTIFACT_PURGE_GRACE_PERIOD"
 // set it on both; the cleaner's value is the one that protects a restore.
 var PurgeGracePeriod = DefaultPurgeGracePeriod
 
+// PurgeEnabled is whether this process empties storages that a project delete marked. Off
+// unless the feature is enabled here, so turning it off stops purges at once.
+var PurgeEnabled = false
+
 // ConfigurePurgeGracePeriod reads the grace period from the environment. A value that
 // does not parse is logged and replaced by the default rather than stopping the service.
 func ConfigurePurgeGracePeriod() {

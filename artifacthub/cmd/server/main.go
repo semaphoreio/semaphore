@@ -199,6 +199,11 @@ func main() {
 	// decides what to delete, and they must agree.
 	bucketcleaner.ConfigurePurgeGracePeriod()
 
+	// One switch for the consumers and for the cleaner's purging, so that turning the
+	// feature off also stops purges that are already marked.
+	projectDeletion := os.Getenv("START_PROJECT_DELETION_WORKER") == "yes"
+	bucketcleaner.PurgeEnabled = projectDeletion
+
 	storageClient, err := storage.New()
 	if err != nil {
 		log.Error("Failed to connect to storage", zap.Error(err))
@@ -235,9 +240,7 @@ func main() {
 		go workflowDeletionWorker(storageClient)
 	}
 
-	// Gates the consumers only: storages already marked are still emptied when due. To
-	// hold those back, raise ARTIFACT_PURGE_GRACE_PERIOD where the bucket cleaner runs.
-	if os.Getenv("START_PROJECT_DELETION_WORKER") == "yes" {
+	if projectDeletion {
 		go projectDeletionWorkers()
 	}
 
