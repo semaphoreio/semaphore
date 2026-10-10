@@ -448,10 +448,7 @@ func Test__Destroy(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, a.DeletedAt)
 
-		// The configured rules survive. Destroying a storage is driven
-		// by the artifact's own mark, so there is no reason to overwrite them, and a
-		// restored project would otherwise keep losing its new artifacts to a rule
-		// nobody set.
+		// The configured rules survive: destruction is driven by the artifact's own mark.
 		r, err := models.FindRetentionPolicy(a.ID)
 		assert.NoError(t, err)
 		if assert.NotNil(t, r) {

@@ -127,9 +127,7 @@ defmodule Projecthub.Workers.ProjectInitTest do
           deleted_at: DateTime.utc_now() |> DateTime.truncate(:second)
         })
 
-      # Declined, rather than set up. Going on used to ask artifacthub for a storage
-      # after the deletion had already gone past it, leaving a storage nothing would
-      # ever purge and no live project pointing at it.
+      # Declined: setting it up now would create a storage that nothing ever purges.
       assert lock_and_process(project.id) == {:ok, :deleted}
 
       {:ok, deleted} = Projecthub.Models.Project.find(project.id, true)

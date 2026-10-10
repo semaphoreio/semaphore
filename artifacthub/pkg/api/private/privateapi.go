@@ -37,12 +37,8 @@ func CreateArtifact(ctx context.Context, client storage.Client, idempotencyToken
 }
 
 // DestroyArtifact marks an artifact so the bucket cleaners empty it and then remove
-// the storage itself.
-//
-// Buckets can hold more files than one request can delete, so the work is
-// asynchronous: the mark is enough. This used to overwrite all three retention
-// policies with a delete-everything rule to express it, which threw away the rules
-// the project had configured and kept deleting a restored project's new artifacts.
+// the storage itself. The work is asynchronous because a bucket can hold more files
+// than one request can delete; the configured retention rules are left untouched.
 func DestroyArtifact(ctx context.Context, client storage.Client, artifactID string) error {
 	return db.Conn().Transaction(func(tx *gorm.DB) error {
 		a, err := models.FindArtifactByIDWithTx(tx, artifactID)

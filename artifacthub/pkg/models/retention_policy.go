@@ -111,17 +111,9 @@ func UpdateRetentionPolicyWithTx(tx *gorm.DB, artifactID uuid.UUID, project, wor
 	return r, nil
 }
 
-// ScheduleForCleaningWithTx makes an artifact due for the bucket cleaner on the
-// scheduler's next pass.
-//
-// It creates the retention policy row when there is none, which is the point of
-// the function. The scheduler's batch is a query over retention_policies, so an
-// artifact with no row is never visited at all, and a project whose owner never
-// configured retention has no row. Without this, marking such a storage for
-// purging would do nothing, forever.
-//
-// The row it creates carries no rules, so it changes nothing about what the
-// cleaner deletes under a policy. Purging is driven by the artifact's own flags.
+// ScheduleForCleaningWithTx makes an artifact due on the scheduler's next pass. The
+// scheduler only visits artifacts with a policy row, so one without is given an empty
+// row, which changes nothing about what the cleaner deletes under a policy.
 func ScheduleForCleaningWithTx(tx *gorm.DB, artifactID uuid.UUID) error {
 	policy, err := FindRetentionPolicyWithTx(tx, artifactID)
 	if err != nil {

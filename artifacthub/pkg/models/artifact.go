@@ -40,12 +40,8 @@ func (a *Artifact) IsPurgeMarked() bool {
 }
 
 // IsPurgeDue reports whether every object in this storage is to be deleted now,
-// whatever the retention policy says.
-//
-// A project delete asks for the purge but does not get it immediately. The storage
-// is kept for the grace period, so restoring the project inside that window brings
-// its artifacts back with it. Destruction is not held back, because the project has
-// already served its own 30 day grace period by the time it is destroyed.
+// whatever the retention policy says: after the grace period for a project delete,
+// at once for a destruction, whose project has already served its own grace period.
 func (a *Artifact) IsPurgeDue(grace time.Duration) bool {
 	if a.DeletedAt != nil {
 		return true
@@ -124,10 +120,8 @@ func (a *Artifact) RecordProjectRestored(tx *gorm.DB, at time.Time) error {
 	return nil
 }
 
-// ClearPurgeMark takes the mark off, either because the purge finished or because
-// the project came back. Updates with an explicit map, since Update with a nil
-// value is not a reliable way to write a NULL, and a mark left set has the cleaner
-// deleting a live project's artifacts day after day.
+// ClearPurgeMark takes the mark off once the purge is done or the project is back. The
+// NULL is written through a map, since Update with a nil value does not write it reliably.
 func (a *Artifact) ClearPurgeMark(tx *gorm.DB) error {
 	err := tx.Model(a).Updates(map[string]interface{}{"purge_requested_at": nil}).Error
 	if err != nil {
@@ -143,10 +137,9 @@ func findArtifactByIdempotencyToken(idempotencyToken string) (*Artifact, error) 
 	return FindArtifactByIdempotencyTokenRaw(db.Conn(), idempotencyToken)
 }
 
-// FindArtifactByIdempotencyTokenRaw passes the database error through untouched.
-// The wrapping variants relabel every failure as NotFound, so a caller that has to
-// tell "no storage for this project", which is nothing to do, apart from "database
-// unreachable", which has to be retried, cannot use them.
+// FindArtifactByIdempotencyTokenRaw passes the database error through untouched, for
+// callers that must tell a missing row from a failing database; the wrapping finders
+// report every failure as NotFound.
 func FindArtifactByIdempotencyTokenRaw(tx *gorm.DB, idempotencyToken string) (*Artifact, error) {
 	var a Artifact
 

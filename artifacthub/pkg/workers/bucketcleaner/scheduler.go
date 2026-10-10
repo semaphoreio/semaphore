@@ -107,9 +107,8 @@ func (s *Scheduler) scheduleWork() error {
 
 	published := s.publishBatch(ids)
 
-	// Only what reached the broker is marked. Marking the whole batch put an artifact
-	// whose publish failed out of reach for a day, with nothing left to retry it, and
-	// for a purge that is a day of storage nobody asked to keep.
+	// Only what reached the broker is marked as scheduled, so a failed publish stays due
+	// and is retried on the next tick.
 	if len(published) < len(ids) {
 		_ = watchman.IncrementBy("bucketcleaner.scheduler.publish_failures", len(ids)-len(published))
 	}
@@ -129,19 +128,13 @@ const dueForRetention = `
 	AND (retention_policies.last_cleaned_at IS NULL
 		OR retention_policies.last_cleaned_at < now() - interval '1 day')`
 
-// purgeRetryInterval paces a purge that is due but not getting done, so a failure
-// retries in minutes rather than on every 60 second tick or once a day.
-//
-// It also bounds how long a due purge waits to be picked up at all, because the
-// previous daily pass may have set scheduled_for_cleaning_at moments before the grace
-// period ran out. That wait is exactly what bucketcleaner.oldest_purge_age measures,
-// so this has to stay well under the threshold that gauge is alerted on.
+// purgeRetryInterval paces a due purge: a failure retries in minutes rather than every
+// tick, and it bounds how long a newly due purge waits, so it has to stay well under
+// the threshold bucketcleaner.oldest_purge_age is alerted on.
 const purgeRetryInterval = "10 minutes"
 
-// dueForPurge is a storage whose grace period is up, or one being destroyed.
-//
-// It does not wait for the daily pass, which would let artifacts outlive their grace
-// period by up to another day.
+// dueForPurge is a storage whose grace period is up, or one being destroyed. It does
+// not wait for the daily pass, which would keep artifacts up to a day past their grace.
 const dueForPurge = `
 	(artifacts.deleted_at IS NOT NULL
 		OR artifacts.purge_requested_at < now() - CAST(? AS interval))

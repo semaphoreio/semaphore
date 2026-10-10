@@ -277,10 +277,8 @@ func (c *BatchCleaner) cleanupOnePage() (string, error) {
 			return "", err
 		}
 
-		// Routine retention carries on, since the next pass tries again and one bad
-		// object must not stop a whole bucket being cleaned. That is what GCS did
-		// before, which reported nothing here at all, and relaxes the S3 backend,
-		// which failed the run.
+		// Routine retention carries on: the next pass tries again, and one bad object
+		// must not stop a whole bucket being cleaned.
 		log.Printf("Failed to delete some objects in bucket %s: %v", c.artifactBucket.BucketName, err)
 	}
 

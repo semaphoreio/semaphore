@@ -207,14 +207,8 @@ func (b *GcsBucket) CreatedAt(ctx context.Context, path string) (time.Time, erro
 	return a.Created, nil
 }
 
-// DeleteObjects deletes the given objects and reports whether any of them
-// survived.
-//
-// It used to log each failure and return nil regardless. That made a delete that
-// never happened look exactly like one that did, which matters most where the
-// caller uses the result to decide that a storage is empty. The S3 implementation
-// has always returned the error, so this is the two backends agreeing rather than
-// a new contract.
+// DeleteObjects returns an error when any of the objects survived, as the S3
+// implementation does, since a caller relies on it to decide that a storage is empty.
 func (b *GcsBucket) DeleteObjects(paths []string) error {
 	var mu sync.Mutex
 	var failed int

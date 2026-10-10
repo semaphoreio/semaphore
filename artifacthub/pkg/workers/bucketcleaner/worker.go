@@ -60,14 +60,8 @@ func (w *Worker) Start() {
 	log.Printf("BucketCleaner: Starting consumer for exchange=%s routing_key=%s",
 		BucketCleanerExchange, BucketCleanerRoutingKey)
 
-	// Retries the initial connect, like every other worker in this package.
-	//
-	// This used to be a bare `go w.consumer.Start(...)`, discarding the error. Every
-	// consumer here loses its first connect attempt to the broker and recovers on a
-	// retry, so the cleaner lost that race and then stayed dead for the life of the
-	// pod, saying nothing: no start log, no error, just a queue filling up while the
-	// scheduler kept publishing to it. Retention policies then stop being applied
-	// fleet-wide and nothing reports it.
+	// Retries the initial connect, like the other workers. Without it, one failed first
+	// attempt leaves the cleaner with no consumer until the process restarts.
 	go func() {
 		for {
 			err := w.consumer.Start(w.amqpOptions, w.handleMessage)
