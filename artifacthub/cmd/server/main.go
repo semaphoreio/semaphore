@@ -235,6 +235,8 @@ func main() {
 		go workflowDeletionWorker(storageClient)
 	}
 
+	// Gates the consumers only: storages already marked are still emptied when due. To
+	// hold those back, raise ARTIFACT_PURGE_GRACE_PERIOD where the bucket cleaner runs.
 	if os.Getenv("START_PROJECT_DELETION_WORKER") == "yes" {
 		go projectDeletionWorkers()
 	}
