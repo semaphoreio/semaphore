@@ -234,11 +234,18 @@ defmodule FrontWeb.SharedHelpers do
       :BITBUCKET ->
         "https://bitbucket.org/#{project.repo_owner}/#{project.repo_name}"
 
+      :GIT ->
+        Front.GitUrl.web_url(project.repo_url) || ""
+
       _ ->
         "https://github.com/#{project.repo_owner}/#{project.repo_name}"
     end
   end
 
+  # Generic git projects link to the repository itself: branch, tag and pull
+  # request pages have no path shared by all git servers (Forgejo and Gitea use
+  # /src/branch/<name>, GitLab /-/tree/<name>), while the repository and its
+  # commits (/commit/<sha>) are served at the same path everywhere.
   def human_accessible_repository_url(project, branch),
     do: human_accessible_repository_url(project, branch.type, branch)
 
@@ -249,6 +256,9 @@ defmodule FrontWeb.SharedHelpers do
 
       :BITBUCKET ->
         "#{human_accessible_repository_url(project)}/src/#{tag.display_name}"
+
+      :GIT ->
+        human_accessible_repository_url(project)
 
       _ ->
         "#{human_accessible_repository_url(project)}/tree/#{tag.name}"
@@ -263,6 +273,9 @@ defmodule FrontWeb.SharedHelpers do
       :BITBUCKET ->
         "#{human_accessible_repository_url(project)}/src/#{branch.display_name}"
 
+      :GIT ->
+        human_accessible_repository_url(project)
+
       _ ->
         "#{human_accessible_repository_url(project)}/tree/#{branch.name}"
     end
@@ -273,6 +286,9 @@ defmodule FrontWeb.SharedHelpers do
     case project.integration_type do
       :BITBUCKET ->
         "#{human_accessible_repository_url(project)}/pull-requests/#{branch.pr_number}"
+
+      :GIT ->
+        human_accessible_repository_url(project)
 
       _ ->
         "#{human_accessible_repository_url(project)}/pull/#{branch.pr_number}"
