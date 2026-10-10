@@ -449,6 +449,77 @@ func Test__CleanerPurgeGracePeriod(t *testing.T) {
 	})
 }
 
+// On S3 every project shares one bucket, and only the path prefix keeps them apart.
+func Test__CleanerStaysInsideItsProject(t *testing.T) {
+	models.PrepareDatabaseForTests()
+	withGracePeriod(t, time.Hour)
+
+	storage.RunTestForAllBackends(t, func(backend string, client storage.Client) {
+		t.Run(backend, func(t *testing.T) {
+			objects := []storage.SeedObject{
+				{Name: "artifacts/jobs/a/file.txt", Content: "a"},
+				{Name: "artifacts/workflows/b/file.txt", Content: "b"},
+			}
+
+			// One token is a string prefix of the other, which pins the boundary between them.
+			deletedToken := uuid.NewV4().String()
+			keptToken := deletedToken + "-other"
+
+			seed := func(token string) (*models.Artifact, storage.Bucket) {
+				bucketName, err := client.CreateBucket(context.TODO())
+				require.NoError(t, err)
+
+				artifact, err := models.CreateArtifact(bucketName, token)
+				require.NoError(t, err)
+
+				bucket := client.GetBucket(storage.BucketOptions{Name: bucketName, PathPrefix: token})
+				require.NoError(t, storage.SeedBucket(bucket, objects))
+
+				return artifact, bucket
+			}
+
+			deleted, deletedBucket := seed(deletedToken)
+			_, keptBucket := seed(keptToken)
+
+			run := func() *BatchCleaner {
+				request, err := NewCleanRequest(deleted.ID.String())
+				require.NoError(t, err)
+
+				cleaner := NewBatchCleaner(client, request, 10)
+				_, err = cleaner.Run(db.Conn())
+				require.NoError(t, err)
+
+				return cleaner
+			}
+
+			require.NoError(t, privateapi.PurgeArtifactContents(deletedToken, time.Now().Add(-2*time.Hour)))
+			assert.True(t, run().purgeCompleted)
+			assert.Zero(t, countObjects(t, deletedBucket))
+			assert.Equal(t, len(objects), countObjects(t, keptBucket))
+
+			require.NoError(t, privateapi.DestroyArtifact(context.TODO(), client, deleted.ID.String()))
+			assert.True(t, run().artifactDeleted)
+			assert.Equal(t, len(objects), countObjects(t, keptBucket))
+		})
+	})
+}
+
+func countObjects(t *testing.T, bucket storage.Bucket) int {
+	pager, err := bucket.ListObjectsWithPagination(storage.ListOptions{Path: "artifacts/"})
+	require.NoError(t, err)
+
+	count := 0
+	for {
+		objects, next, err := pager.NextPage()
+		require.NoError(t, err)
+
+		count += len(objects)
+		if next == "" {
+			return count
+		}
+	}
+}
+
 // withGracePeriod sets the package-wide grace period for one test and puts it back
 // afterwards, since the cleaner and the scheduler both read it.
 func withGracePeriod(t *testing.T, grace time.Duration) {
