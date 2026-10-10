@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"sync/atomic"
 	"time"
 
 	tackle "github.com/renderedtext/go-tackle"
@@ -46,12 +45,10 @@ type Worker struct {
 	successMetric     string
 	failureMetric     string
 	reconnectAttempts int
-
-	// Keeps an intentional shutdown out of the consumer_exited counter.
-	stopping atomic.Bool
 }
 
-// NewSoftDeleteWorker empties the artifact storage of a deleted project.
+// NewSoftDeleteWorker marks a deleted project's artifact storage to be emptied once
+// the grace period is up.
 func NewSoftDeleteWorker(amqpURL string) (*Worker, error) {
 	return newWorker(workerConfig{
 		amqpURL:       amqpURL,
@@ -65,8 +62,8 @@ func NewSoftDeleteWorker(amqpURL string) (*Worker, error) {
 	})
 }
 
-// NewRestoreWorker stops that emptying when the project is restored. Whatever has
-// already been deleted is gone; this protects what the project uploads next.
+// NewRestoreWorker cancels that when the project is restored, so a restore inside the
+// grace period brings the artifacts back. Anything already emptied stays gone.
 func NewRestoreWorker(amqpURL string) (*Worker, error) {
 	return newWorker(workerConfig{
 		amqpURL:       amqpURL,
@@ -174,12 +171,6 @@ func (w *Worker) Start() {
 				continue
 			}
 
-			// A consumer that stops by itself is a queue nobody is draining. Not counted
-			// when we asked it to stop, so this does not fire on every deploy.
-			if !w.stopping.Load() {
-				_ = watchman.Increment("retention.project_lifecycle.consumer_exited")
-			}
-
 			log.Printf("%s Worker: consumer returned, go-tackle owns reconnection from here", w.name)
 
 			return
@@ -188,7 +179,6 @@ func (w *Worker) Start() {
 }
 
 func (w *Worker) Stop() {
-	w.stopping.Store(true)
 	w.consumer.Stop()
 }
 
