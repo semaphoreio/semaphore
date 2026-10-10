@@ -27,6 +27,13 @@ const (
 	RestoredRoutingKey  = "restored"
 )
 
+// A restore that is never applied lets the purge go ahead, so a failing event is retried
+// every minute for three hours, outlasting a database outage, before it is dead-lettered.
+const (
+	retryDelaySeconds = 60
+	retryLimit        = 180
+)
+
 // event is the part of a project lifecycle message these workers act on.
 type event struct {
 	projectID string
@@ -99,6 +106,8 @@ func newWorker(config workerConfig) (*Worker, error) {
 		RemoteExchange: ProjectExchange,
 		Service:        config.service,
 		RoutingKey:     config.routingKey,
+		RetryDelay:     retryDelaySeconds,
+		RetryLimit:     retryLimit,
 	}
 
 	// No dead-queue callback: the pinned tackle version has none and bumping it
@@ -182,9 +191,8 @@ func (w *Worker) Stop() {
 	w.consumer.Stop()
 }
 
-// handleMessage applies the event. Returning an error is how the work gets retried:
-// tackle redelivers ten times before parking the message in the dead queue, which is
-// what carries a purge across a database blip.
+// handleMessage applies the event. Returning an error is how the work gets retried, on
+// the schedule set by retryDelaySeconds and retryLimit.
 func (w *Worker) handleMessage(delivery tackle.Delivery) error {
 	e, err := w.decode(delivery.Body())
 	if err != nil {
