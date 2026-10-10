@@ -8,26 +8,20 @@ import (
 )
 
 // DefaultPurgeGracePeriod is how long a deleted project's artifacts are kept before
-// the storage is emptied.
-//
-// The wait is what makes the delete reversible: restoring the project inside the
-// window cancels the purge, so the artifacts come back with it. Emptying the storage
-// as soon as the delete arrives leaves nothing to restore.
+// the storage is emptied. Restoring the project inside it brings the artifacts back.
 const DefaultPurgeGracePeriod = 24 * time.Hour
 
-// PurgeGracePeriodEnvVar holds a Go duration, for example "24h", "90m" or "0".
-// Zero means purge as soon as the delete is seen, which is the behaviour this grace
-// period replaced.
+// PurgeGracePeriodEnvVar holds a Go duration such as "24h" or "90m". Zero empties the
+// storage as soon as the delete is seen.
 const PurgeGracePeriodEnvVar = "ARTIFACT_PURGE_GRACE_PERIOD"
 
-// PurgeGracePeriod is read by the scheduler, to decide what is due, and by the
-// cleaner, to decide what to delete. They run as separate deployments, so set it the
-// same on both; if they disagree, the longer value wins.
+// PurgeGracePeriod is read by the scheduler, to pick due storages, and by the cleaner,
+// which never empties one before its own value is up. They are separate deployments, so
+// set it on both; the cleaner's value is the one that protects a restore.
 var PurgeGracePeriod = DefaultPurgeGracePeriod
 
-// ConfigurePurgeGracePeriod reads the grace period from the environment, falling
-// back to the default when it is unset or unparseable. A bad value must not stop the
-// service from starting, and the fallback errs towards keeping artifacts.
+// ConfigurePurgeGracePeriod reads the grace period from the environment. A value that
+// does not parse is logged and replaced by the default rather than stopping the service.
 func ConfigurePurgeGracePeriod() {
 	raw, set := os.LookupEnv(PurgeGracePeriodEnvVar)
 	if !set || raw == "" {
