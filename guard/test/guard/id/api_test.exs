@@ -1473,6 +1473,20 @@ defmodule Guard.Id.Api.Test do
       refute response.body =~ "You're already logged in"
     end
 
+    test "keeps redirect_to, so somebody signing up comes back to it" do
+      {:ok, response} =
+        send_login_request(
+          path: "/signup",
+          query: %{redirect_to: "https://mcp.#{domain()}/mcp/oauth/authorize"}
+        )
+
+      assert response.status_code == 200
+
+      assert Enum.any?(response.headers, fn {name, value} ->
+               name == "set-cookie" and value =~ "semaphore_redirect_to="
+             end)
+    end
+
     test "renders signup page correctly when redirect_to param is present" do
       {:ok, response} =
         send_login_request(path: "/signup", query: %{redirect_to: "https://#{domain()}"})
@@ -2038,6 +2052,64 @@ defmodule Guard.Id.Api.Test do
 
       assert cookie =~ "secure; HttpOnly"
       assert location == "https://me.localhost?signup=true"
+    end
+
+    test "a new user in the middle of an OAuth authorization goes back to it", %{
+      bypass: bypass,
+      client_id: client_id
+    } do
+      oidc_user_id = Ecto.UUID.generate()
+      url = "#{Application.get_env(:guard, :oidc)[:manage_url]}/users/#{oidc_user_id}"
+      authorize_url = "https://mcp.#{domain()}/mcp/oauth/authorize?client_id=semaphore-computer"
+
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com/user/184065"} ->
+          json(%{"id" => 184_065, "login" => "radwo"})
+
+        %{method: :get, url: ^url} ->
+          json(%{
+            "id" => oidc_user_id,
+            "email" => "new@example.com",
+            "firstName" => "New",
+            "lastName" => "User",
+            "federatedIdentities" => [
+              %{"identityProvider" => "github", "userId" => "184065", "userName" => "radwo"}
+            ]
+          })
+      end)
+
+      {token, _claims} =
+        Guard.Mocks.OpenIDConnect.generate_openid_connect_token(%{client_id: client_id}, %{
+          id: oidc_user_id,
+          name: "New User",
+          email: "new@example.com"
+        })
+
+      Guard.Mocks.OpenIDConnect.expect_fetch_token(bypass, %{
+        "token_type" => "Bearer",
+        "id_token" => token,
+        "access_token" => "MY_ACCESS_TOKEN",
+        "refresh_token" => "OTHER_REFRESH_TOKEN",
+        "expires_in" => 300
+      })
+
+      {:ok, response} =
+        send_login_request(path: "/oidc/login", query: %{redirect_to: authorize_url})
+
+      cookies =
+        Enum.filter(response.headers, fn h -> elem(h, 0) == "set-cookie" end)
+        |> Enum.map(fn {_, cookie} -> {"cookie", cookie} end)
+
+      {:ok, state} = extract_state_from_body(response.body)
+
+      {:ok, response} =
+        send_login_request(path: "/oidc/callback", headers: cookies, query: %{state: state})
+
+      assert response.status_code == 302
+      assert {:ok, _} = Guard.Store.RbacUser.fetch_by_oidc_id(oidc_user_id)
+
+      {_, location} = Enum.find(response.headers, fn h -> elem(h, 0) == "location" end)
+      assert location == authorize_url
     end
 
     test "when the user is blocked", %{bypass: bypass, client_id: client_id} do
