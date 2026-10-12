@@ -130,6 +130,9 @@ defmodule RepositoryHub.GithubConnector do
   end
 
   defp update_repository_url_impl(connector, url, target_token, github_repository) do
+    move? = github_repository.id != connector.repository.remote_id
+    old_resources = if move?, do: capture_old_resources(connector), else: nil
+
     Multi.new()
     |> Multi.run(:new_git_repository, fn _, _ ->
       Model.GitRepository.from_github(url)
@@ -143,25 +146,18 @@ defmodule RepositoryHub.GithubConnector do
           url: context.new_git_repository.ssh_git_url,
           remote_id: github_repository.id,
           private: github_repository.is_private?,
+          default_branch: github_repository.default_branch,
           connected: true
         },
         returning: true
       )
     end)
     |> then(fn
-      multi when github_repository.id == connector.repository.remote_id ->
+      multi when not move? ->
         multi
 
       multi ->
         multi
-        |> Multi.run(:remove_old_webhook, fn _, _context ->
-          connector
-          |> remove_webhook()
-        end)
-        |> Multi.run(:remove_old_deploy_key, fn _, _context ->
-          connector
-          |> remove_deploy_key()
-        end)
         |> Multi.run(:create_new_webhook, fn _, context ->
           context.updated_repository
           |> create_webhook(context.new_git_repository, target_token)
@@ -176,61 +172,70 @@ defmodule RepositoryHub.GithubConnector do
     end)
     |> RepositoryHub.Repo.transaction()
     |> unwrap(fn context ->
+      if move?, do: remove_old_resources(old_resources)
+
       %{connector | repository: context.new_repository, git_repository: context.new_git_repository}
       |> wrap()
     end)
   end
 
-  def remove_deploy_key(connector) do
-    Model.DeployKeyQuery.get_by_repository_id(connector.repository.id)
-    |> case do
-      {:error, _} ->
-        wrap(:not_found)
+  defp capture_old_resources(connector) do
+    old_deploy_key =
+      case Model.DeployKeyQuery.get_by_repository_id(connector.repository.id) do
+        {:ok, deploy_key} -> %{id: deploy_key.id, remote_id: deploy_key.remote_id}
+        {:error, _} -> nil
+      end
 
-      {:ok, deploy_key} when connector.token == "" ->
-        log_warn([
-          "no token for #{connector.git_repository.owner}/#{connector.git_repository.repo}, skipping deploy key removal on GitHub"
-        ])
-
-        Model.DeployKeyQuery.delete(deploy_key.id)
-
-      {:ok, deploy_key} ->
-        GithubClient.remove_deploy_key(
-          %{
-            repo_owner: connector.git_repository.owner,
-            repo_name: connector.git_repository.repo,
-            key_id: deploy_key.remote_id
-          },
-          token: connector.token
-        )
-        |> unwrap(fn _ ->
-          Model.DeployKeyQuery.delete(deploy_key.id)
-        end)
-    end
+    %{
+      owner: connector.git_repository.owner,
+      repo: connector.git_repository.repo,
+      token: connector.token,
+      hook_id: connector.repository.hook_id,
+      deploy_key: old_deploy_key
+    }
   end
 
-  def remove_webhook(%{token: ""} = connector) do
-    log_warn([
-      "no token for #{connector.git_repository.owner}/#{connector.git_repository.repo}, skipping webhook removal on GitHub"
-    ])
-
-    connector.repository
-    |> Model.RepositoryQuery.update(%{hook_id: ""})
+  defp remove_old_resources(old) do
+    remove_old_webhook(old)
+    remove_old_deploy_key(old)
+    :ok
   end
 
-  def remove_webhook(connector) do
+  defp remove_old_webhook(%{token: ""}), do: :ok
+
+  defp remove_old_webhook(old) do
     GithubClient.remove_webhook(
-      %{
-        repo_owner: connector.git_repository.owner,
-        repo_name: connector.git_repository.repo,
-        webhook_id: connector.repository.hook_id
-      },
-      token: connector.token
+      %{repo_owner: old.owner, repo_name: old.repo, webhook_id: old.hook_id},
+      token: old.token
     )
-    |> unwrap(fn _ ->
-      connector.repository
-      |> Model.RepositoryQuery.update(%{hook_id: ""})
-    end)
+    |> unwrap_error(&log_old_removal_failure("webhook", old, &1))
+  rescue
+    error -> log_old_removal_failure("webhook", old, error)
+  end
+
+  defp remove_old_deploy_key(%{deploy_key: nil}), do: :ok
+
+  defp remove_old_deploy_key(%{deploy_key: deploy_key, token: ""}) do
+    Model.DeployKeyQuery.delete(deploy_key.id)
+  end
+
+  defp remove_old_deploy_key(%{deploy_key: deploy_key} = old) do
+    try do
+      GithubClient.remove_deploy_key(
+        %{repo_owner: old.owner, repo_name: old.repo, key_id: deploy_key.remote_id},
+        token: old.token
+      )
+      |> unwrap_error(&log_old_removal_failure("deploy_key", old, &1))
+    rescue
+      error -> log_old_removal_failure("deploy_key", old, error)
+    end
+
+    Model.DeployKeyQuery.delete(deploy_key.id)
+  end
+
+  defp log_old_removal_failure(kind, old, reason) do
+    log_warn(["failed to remove old #{kind} for #{old.owner}/#{old.repo} after url change: #{inspect(reason)}"])
+    Watchman.increment({"github_app.update_url.old_#{kind}_removal_failed", []})
   end
 
   def create_webhook(repository, git_repository, token) do
@@ -242,27 +247,21 @@ defmodule RepositoryHub.GithubConnector do
     }
 
     GithubClient.find_webhook(params, token: token)
-    |> unwrap_error(fn _ ->
-      {:ok, {secret, secret_enc}} = Model.Repositories.generate_hook_secret(repository)
-
-      params
-      |> Map.put(:secret, secret)
-      |> GithubClient.create_webhook(token: token)
-      |> case do
-        {:ok, webhook} ->
-          Model.RepositoryQuery.update(repository, %{
-            hook_secret_enc: secret_enc
-          })
-          |> unwrap(fn _ -> wrap(webhook) end)
-
-        error ->
-          error
-      end
+    |> unwrap(fn existing ->
+      GithubClient.remove_webhook(Map.put(params, :webhook_id, existing.id), token: token)
     end)
+
+    {:ok, {secret, secret_enc}} = Model.Repositories.generate_hook_secret(repository)
+
+    params
+    |> Map.put(:secret, secret)
+    |> GithubClient.create_webhook(token: token)
     |> unwrap(fn webhook ->
       Model.RepositoryQuery.update(repository, %{
+        hook_secret_enc: secret_enc,
         hook_id: webhook.id
       })
+      |> unwrap(fn _ -> wrap(webhook) end)
     end)
   end
 
