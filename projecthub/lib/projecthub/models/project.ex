@@ -372,6 +372,16 @@ defmodule Projecthub.Models.Project do
     |> Repo.aggregate(:count, :id)
   end
 
+  def github_app_project_exists_for_owner?(org_id, owner) do
+    owner = String.downcase(owner)
+
+    Project
+    |> join(:inner, [p], r in assoc(p, :sql_repository), as: :repository)
+    |> where([p], p.organization_id == ^org_id and is_nil(p.deleted_at))
+    |> where([repository: r], r.integration_type == "github_app" and fragment("lower(?)", r.owner) == ^owner)
+    |> Repo.exists?()
+  end
+
   def list_per_page(org_id, page, page_size, options \\ []) do
     defaults = [
       owner_id: nil,
