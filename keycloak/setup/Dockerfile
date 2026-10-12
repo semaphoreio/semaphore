@@ -1,4 +1,4 @@
-ARG TERRAFORM_VERSION=1.9.8
+ARG TERRAFORM_VERSION=1.16.5
 FROM hashicorp/terraform:${TERRAFORM_VERSION} AS runner
 
 # This is needed to connect the GitHub Container Registry package with our repository.
@@ -8,7 +8,7 @@ HEALTHCHECK NONE
 
 WORKDIR /terraform
 
-RUN apk add --no-cache curl
+RUN apk --no-cache upgrade && apk add --no-cache curl
 
 RUN adduser -D default -h /terraform
 USER default
