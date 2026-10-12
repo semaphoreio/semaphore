@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	uuid "github.com/satori/go.uuid"
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/db"
@@ -23,6 +24,39 @@ type Artifact struct {
 	Created          time.Time
 	LastCleanedAt    time.Time
 	DeletedAt        *time.Time
+
+	// Set when this service is told to empty the storage, cleared when it has.
+	PurgeRequestedAt *time.Time
+
+	// Latest restore of the owning project, so a delete handled after it can be ignored.
+	ProjectRestoredAt *time.Time
+}
+
+// IsPurgeMarked reports whether this storage is already spoken for, either by a
+// project delete or by the hard destroy 30 days later. Re-marking it would push the
+// grace period back, so callers check this before asking for a purge.
+func (a *Artifact) IsPurgeMarked() bool {
+	return a.PurgeRequestedAt != nil || a.DeletedAt != nil
+}
+
+// IsPurgeDue reports whether every object in this storage is to be deleted now,
+// whatever the retention policy says: after the grace period for a project delete,
+// at once for a destruction, whose project has already served its own grace period.
+func (a *Artifact) IsPurgeDue(grace time.Duration) bool {
+	if a.DeletedAt != nil {
+		return true
+	}
+
+	if a.PurgeRequestedAt == nil {
+		return false
+	}
+
+	return time.Since(*a.PurgeRequestedAt) >= grace
+}
+
+// IsMarkedForDestruction reports whether the storage itself goes once it is empty.
+func (a *Artifact) IsMarkedForDestruction() bool {
+	return a.DeletedAt != nil
 }
 
 // CreateArtifact inserts a new artifact object to the database given by all its values.
@@ -60,11 +94,71 @@ func (a *Artifact) UpdateDeleteAt(tx *gorm.DB, timestamp time.Time) error {
 	return tx.Model(&a).Update("DeletedAt", timestamp).Error
 }
 
+func (a *Artifact) RequestPurge(tx *gorm.DB, timestamp time.Time) error {
+	if err := tx.Model(a).Update("PurgeRequestedAt", timestamp).Error; err != nil {
+		return err
+	}
+
+	a.PurgeRequestedAt = &timestamp
+
+	return nil
+}
+
+// RecordProjectRestored keeps the latest restore time, never moving it back, so a
+// redelivered older restore cannot reopen a window a newer one closed.
+func (a *Artifact) RecordProjectRestored(tx *gorm.DB, at time.Time) error {
+	if a.ProjectRestoredAt != nil && !at.After(*a.ProjectRestoredAt) {
+		return nil
+	}
+
+	if err := tx.Model(a).Update("project_restored_at", at).Error; err != nil {
+		return err
+	}
+
+	a.ProjectRestoredAt = &at
+
+	return nil
+}
+
+// ClearPurgeMark takes the mark off once the purge is done or the project is back. The
+// NULL is written through a map, since Update with a nil value does not write it reliably.
+func (a *Artifact) ClearPurgeMark(tx *gorm.DB) error {
+	err := tx.Model(a).Updates(map[string]interface{}{"purge_requested_at": nil}).Error
+	if err != nil {
+		return err
+	}
+
+	a.PurgeRequestedAt = nil
+	return nil
+}
+
 // findArtifactByIdempotencyToken returns an artifact by its idempotency token, or an error.
 func findArtifactByIdempotencyToken(idempotencyToken string) (*Artifact, error) {
+	return FindArtifactByIdempotencyTokenRaw(db.Conn(), idempotencyToken)
+}
+
+// FindArtifactByIdempotencyTokenRaw passes the database error through untouched, for
+// callers that must tell a missing row from a failing database; the wrapping finders
+// report every failure as NotFound.
+func FindArtifactByIdempotencyTokenRaw(tx *gorm.DB, idempotencyToken string) (*Artifact, error) {
 	var a Artifact
 
-	if err := db.Conn().Where("idempotency_token = ?", idempotencyToken).First(&a).Error; err != nil {
+	if err := tx.Where("idempotency_token = ?", idempotencyToken).First(&a).Error; err != nil {
+		return nil, err
+	}
+
+	return &a, nil
+}
+
+// FindArtifactByIdempotencyTokenForUpdate is the raw lookup with the row locked until the
+// transaction ends, so a delete and a restore for one project are applied one at a time.
+func FindArtifactByIdempotencyTokenForUpdate(tx *gorm.DB, idempotencyToken string) (*Artifact, error) {
+	var a Artifact
+
+	err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("idempotency_token = ?", idempotencyToken).
+		First(&a).Error
+	if err != nil {
 		return nil, err
 	}
 

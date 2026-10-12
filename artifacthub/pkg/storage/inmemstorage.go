@@ -13,6 +13,10 @@ type InMemoryStorage struct {
 type InMemoryBucket struct {
 	Name    string
 	Objects []*PathItem
+
+	// When set, DeleteObjects returns this instead of deleting, to test a storage that
+	// cannot be emptied, as with an object hold or a missing permission.
+	DeleteObjectsError error
 }
 
 type InMemoryObjectIterator struct {
@@ -83,6 +87,10 @@ func (b *InMemoryBucket) ListObjectsWithPagination(options ListOptions) (ObjectP
 }
 
 func (b *InMemoryBucket) DeleteObjects(paths []string) error {
+	if b.DeleteObjectsError != nil {
+		return b.DeleteObjectsError
+	}
+
 	for i := 0; i < len(b.Objects); i++ {
 		if b.Objects[i] == nil {
 			continue

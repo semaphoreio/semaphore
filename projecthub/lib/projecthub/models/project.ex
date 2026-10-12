@@ -334,11 +334,17 @@ defmodule Projecthub.Models.Project do
     end
   end
 
+  @doc """
+  Brings a soft-deleted project back. Its event cancels the pending purge of the project's
+  artifacts, so the restore is rolled back, and raises, when the event cannot be published.
+  """
   def restore(project) do
-    {:ok, project} = update_record(project, %{deleted_at: nil, deleted_by: nil})
-    {:ok, _} = Events.ProjectRestored.publish(project)
+    Repo.transaction(fn ->
+      {:ok, project} = update_record(project, %{deleted_at: nil, deleted_by: nil})
+      {:ok, _} = Events.ProjectRestored.publish(project)
 
-    {:ok, project}
+      project
+    end)
   end
 
   def find_candidates_for_hard_destroy() do
