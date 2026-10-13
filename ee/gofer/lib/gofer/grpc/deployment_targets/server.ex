@@ -106,9 +106,11 @@ defmodule Gofer.Grpc.DeploymentTargets.Server do
       do: raise_error(:invalid_argument, "Missing argument: project_id")
 
     targets = DeploymentQueries.list_by_project_with_last_triggers(request.project_id)
-    extra = %{requester_id: request.requester_id}
 
-    warm_roles_cache(targets, request.requester_id)
+    extra = %{
+      requester_id: request.requester_id,
+      role_assignments: fetch_role_assignments(targets, request.requester_id)
+    }
 
     API.ListResponse.new(targets: Enum.map(targets, &target_from_model(&1, extra)))
   end
@@ -276,7 +278,7 @@ defmodule Gofer.Grpc.DeploymentTargets.Server do
     end
   end
 
-  defp warm_roles_cache(targets, requester_id)
+  defp fetch_role_assignments(targets, requester_id)
        when is_binary(requester_id) and requester_id != "" do
     role_ids =
       targets
@@ -295,15 +297,23 @@ defmodule Gofer.Grpc.DeploymentTargets.Server do
       }
 
       case RBAC.check_roles(subject, role_ids, cached?: true) do
-        {:ok, _} -> :ok
-        {:error, reason} -> Logger.warning("[DT] Failed to warm roles cache: #{inspect(reason)}")
+        {:ok, assignments} ->
+          assignments
+
+        {:error, reason} ->
+          Logger.warning("[DT] Failed to fetch role assignments: #{inspect(reason)}")
+          %{}
       end
+    else
+      %{}
     end
   rescue
-    e -> Logger.warning("[DT] Failed to warm roles cache: #{inspect(e)}")
+    e ->
+      Logger.warning("[DT] Failed to fetch role assignments: #{inspect(e)}")
+      %{}
   end
 
-  defp warm_roles_cache(_targets, _requester_id), do: :ok
+  defp fetch_role_assignments(_targets, _requester_id), do: %{}
 
   # helpers
 
@@ -391,7 +401,7 @@ defmodule Gofer.Grpc.DeploymentTargets.Server do
 
     if trigger && deployment && switch && requester_id do
       can_requester_rerun? =
-        case Guardian.verify(deployment, switch, requester_id, cached?: true) do
+        case Guardian.verify(deployment, switch, requester_id, verify_opts(args)) do
           {:ok, _metadata} -> true
           {:error, _reason} -> false
         end
@@ -412,6 +422,9 @@ defmodule Gofer.Grpc.DeploymentTargets.Server do
       )
     end
   end
+
+  defp verify_opts(%{role_assignments: assignments}), do: [role_assignments: assignments]
+  defp verify_opts(_args), do: [cached?: true]
 
   defp deployment_state_from_model(%Trigger{state: :INITIALIZING}), do: :PENDING
   defp deployment_state_from_model(%Trigger{state: :TRIGGERING}), do: :PENDING

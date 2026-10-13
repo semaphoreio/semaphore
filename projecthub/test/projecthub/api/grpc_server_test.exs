@@ -2547,6 +2547,274 @@ defmodule Projecthub.Api.GrpcServerTest do
     end
   end
 
+  describe ".create github_app owner validation" do
+    def integration_create_request(org_id, url, integration_type) do
+      InternalApi.Projecthub.CreateRequest.new(
+        metadata:
+          InternalApi.Projecthub.RequestMeta.new(
+            api_version: "",
+            kind: "",
+            req_id: "",
+            org_id: org_id,
+            user_id: "12345678-1234-5678-1234-567812345678"
+          ),
+        project:
+          InternalApi.Projecthub.Project.new(
+            metadata:
+              InternalApi.Projecthub.Project.Metadata.new(
+                name: "new_project",
+                id: "12345678-1234-5678-1234-567812345678",
+                owner_id: "12345678-1234-5678-1234-567812345678",
+                org_id: org_id,
+                description: "A repo for testing SemaphoreCI features"
+              ),
+            spec:
+              InternalApi.Projecthub.Project.Spec.new(
+                repository:
+                  InternalApi.Projecthub.Project.Spec.Repository.new(
+                    url: url,
+                    name: "new_repo",
+                    owner: "",
+                    integration_type: integration_type
+                  )
+              )
+          )
+      )
+    end
+
+    def stub_service_account_user do
+      response =
+        InternalApi.User.DescribeResponse.new(
+          status: InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
+          user_id: Ecto.UUID.generate(),
+          name: "automation",
+          github_token: Support.FakeServices.github_token(),
+          user: InternalApi.User.User.new(creation_source: :SERVICE_ACCOUNT)
+        )
+
+      FunRegistry.set!(Support.FakeServices.UserService, :describe, response)
+    end
+
+    test "succeeds when the organization already has a github_app project for the owner" do
+      org_id = Ecto.UUID.generate()
+      stub_service_account_user()
+
+      {:ok, _existing} =
+        Support.Factories.Project.create_with_repo(
+          %{organization_id: org_id, name: "existing_project"},
+          %{owner: "acme", integration_type: "github_app"}
+        )
+
+      request = integration_create_request(org_id, "https://github.com/acme/another-repo", :GITHUB_APP)
+
+      response = GrpcServer.create(request, nil)
+
+      assert response.metadata.status ==
+               InternalApi.Projecthub.ResponseMeta.Status.new(
+                 code: InternalApi.Projecthub.ResponseMeta.Code.value(:OK),
+                 message: ""
+               )
+    end
+
+    test "is rejected when the organization has no project for the owner" do
+      org_id = Ecto.UUID.generate()
+      stub_service_account_user()
+
+      request = integration_create_request(org_id, "https://github.com/acme/another-repo", :GITHUB_APP)
+
+      response = GrpcServer.create(request, nil)
+
+      assert response.metadata.status.code ==
+               InternalApi.Projecthub.ResponseMeta.Code.value(:FAILED_PRECONDITION)
+
+      assert response.metadata.status.message =~ "owned by acme"
+      assert Repo.aggregate(Project, :count, :id) == 0
+    end
+
+    test "is rejected when the organization only has a project for a different owner" do
+      org_id = Ecto.UUID.generate()
+      stub_service_account_user()
+
+      {:ok, _existing} =
+        Support.Factories.Project.create_with_repo(
+          %{organization_id: org_id, name: "existing_project"},
+          %{owner: "globex", integration_type: "github_app"}
+        )
+
+      request = integration_create_request(org_id, "https://github.com/acme/another-repo", :GITHUB_APP)
+
+      response = GrpcServer.create(request, nil)
+
+      assert response.metadata.status.code ==
+               InternalApi.Projecthub.ResponseMeta.Code.value(:FAILED_PRECONDITION)
+
+      assert response.metadata.status.message =~ "owned by acme"
+    end
+
+    test "allows a regular user to create the first project for a new owner" do
+      org_id = Ecto.UUID.generate()
+
+      request = integration_create_request(org_id, "https://github.com/acme/another-repo", :GITHUB_APP)
+
+      response = GrpcServer.create(request, nil)
+
+      assert response.metadata.status ==
+               InternalApi.Projecthub.ResponseMeta.Status.new(
+                 code: InternalApi.Projecthub.ResponseMeta.Code.value(:OK),
+                 message: ""
+               )
+    end
+
+    test "does not apply the check to a github_oauth_token project" do
+      org_id = Ecto.UUID.generate()
+      stub_service_account_user()
+
+      request = integration_create_request(org_id, "https://github.com/acme/another-repo", :GITHUB_OAUTH_TOKEN)
+
+      response = GrpcServer.create(request, nil)
+
+      assert response.metadata.status ==
+               InternalApi.Projecthub.ResponseMeta.Status.new(
+                 code: InternalApi.Projecthub.ResponseMeta.Code.value(:OK),
+                 message: ""
+               )
+    end
+
+    test "matches the owner case-insensitively" do
+      org_id = Ecto.UUID.generate()
+      stub_service_account_user()
+
+      {:ok, _existing} =
+        Support.Factories.Project.create_with_repo(
+          %{organization_id: org_id, name: "existing_project"},
+          %{owner: "Foo", integration_type: "github_app"}
+        )
+
+      request = integration_create_request(org_id, "https://github.com/foo/bar", :GITHUB_APP)
+
+      response = GrpcServer.create(request, nil)
+
+      assert response.metadata.status ==
+               InternalApi.Projecthub.ResponseMeta.Status.new(
+                 code: InternalApi.Projecthub.ResponseMeta.Code.value(:OK),
+                 message: ""
+               )
+    end
+  end
+
+  describe ".fork_and_create github_app owner validation" do
+    def fork_request(org_id, url, integration_type) do
+      InternalApi.Projecthub.ForkAndCreateRequest.new(
+        metadata:
+          InternalApi.Projecthub.RequestMeta.new(
+            api_version: "",
+            kind: "",
+            req_id: "",
+            org_id: org_id,
+            user_id: "12345678-1234-5678-1234-567812345678"
+          ),
+        project:
+          InternalApi.Projecthub.Project.new(
+            metadata:
+              InternalApi.Projecthub.Project.Metadata.new(
+                name: "forked_project",
+                id: "12345678-1234-5678-1234-567812345678",
+                owner_id: "12345678-1234-5678-1234-567812345678",
+                org_id: org_id,
+                description: "A repo for testing SemaphoreCI features"
+              ),
+            spec:
+              InternalApi.Projecthub.Project.Spec.new(
+                repository:
+                  InternalApi.Projecthub.Project.Spec.Repository.new(
+                    url: url,
+                    name: "forked_repo",
+                    owner: "",
+                    integration_type: integration_type
+                  )
+              )
+          )
+      )
+    end
+
+    def forked_repo_response do
+      InternalApi.Repository.ForkResponse.new(
+        remote_repository: InternalApi.Repository.RemoteRepository.new(url: "https://github.com/acme/forked-repo")
+      )
+    end
+
+    test "succeeds when the organization already has a github_app project for the source owner" do
+      org_id = Ecto.UUID.generate()
+      stub_service_account_user()
+
+      {:ok, _existing} =
+        Support.Factories.Project.create_with_repo(
+          %{organization_id: org_id, name: "existing_project"},
+          %{owner: "acme", integration_type: "github_app"}
+        )
+
+      request = fork_request(org_id, "https://github.com/acme/source-repo", :GITHUB_APP)
+
+      with_mock Projecthub.RepositoryHubClient, [:passthrough], fork: fn _ -> {:ok, forked_repo_response()} end do
+        response = GrpcServer.fork_and_create(request, nil)
+
+        assert response.metadata.status ==
+                 InternalApi.Projecthub.ResponseMeta.Status.new(
+                   code: InternalApi.Projecthub.ResponseMeta.Code.value(:OK),
+                   message: ""
+                 )
+      end
+    end
+
+    test "is rejected when the organization has no project for the source owner" do
+      org_id = Ecto.UUID.generate()
+      stub_service_account_user()
+
+      request = fork_request(org_id, "https://github.com/acme/source-repo", :GITHUB_APP)
+
+      response = GrpcServer.fork_and_create(request, nil)
+
+      assert response.metadata.status.code ==
+               InternalApi.Projecthub.ResponseMeta.Code.value(:FAILED_PRECONDITION)
+
+      assert response.metadata.status.message =~ "owned by acme"
+      assert Repo.aggregate(Project, :count, :id) == 0
+    end
+
+    test "allows a regular user to fork for a new owner" do
+      org_id = Ecto.UUID.generate()
+
+      request = fork_request(org_id, "https://github.com/acme/source-repo", :GITHUB_APP)
+
+      with_mock Projecthub.RepositoryHubClient, [:passthrough], fork: fn _ -> {:ok, forked_repo_response()} end do
+        response = GrpcServer.fork_and_create(request, nil)
+
+        assert response.metadata.status ==
+                 InternalApi.Projecthub.ResponseMeta.Status.new(
+                   code: InternalApi.Projecthub.ResponseMeta.Code.value(:OK),
+                   message: ""
+                 )
+      end
+    end
+
+    test "does not apply the check to a github_oauth_token fork" do
+      org_id = Ecto.UUID.generate()
+      stub_service_account_user()
+
+      request = fork_request(org_id, "https://github.com/acme/source-repo", :GITHUB_OAUTH_TOKEN)
+
+      with_mock Projecthub.RepositoryHubClient, [:passthrough], fork: fn _ -> {:ok, forked_repo_response()} end do
+        response = GrpcServer.fork_and_create(request, nil)
+
+        assert response.metadata.status ==
+                 InternalApi.Projecthub.ResponseMeta.Status.new(
+                   code: InternalApi.Projecthub.ResponseMeta.Code.value(:OK),
+                   message: ""
+                 )
+      end
+    end
+  end
+
   describe ".update" do
     test "returns FAILED_PRECONDITION when the stored task settings cannot be read" do
       {:ok, channel} =
