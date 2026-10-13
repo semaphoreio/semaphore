@@ -1,20 +1,30 @@
 defmodule GithubNotifier.Utils.SkipPolicy do
   @moduledoc """
-  Decides whether a commit status should be suppressed, based on what
-  triggered the pipeline's workflow and the notification skip flags of the
-  scheduler task behind it.
+  Decides whether a commit status should be suppressed.
 
-  A flag applies to every pipeline started by that task with that trigger,
-  reruns included: "don't send" means don't send. Pipelines started by a hook
-  or the API are never suppressed, and a task that can't be resolved never
-  suppresses.
+  A run canceled by the pipeline strategy never reached a verdict, and the
+  newer run that superseded it writes the same check, so reporting it would
+  replace that run's result with one that stands for nothing.
+
+  Otherwise the notification skip flags of the scheduler task behind the
+  workflow decide. A flag applies to every pipeline started by that task with
+  that trigger, reruns included: "don't send" means don't send. A task that
+  can't be resolved never suppresses.
 
   The answer is a request flag, not a local drop: repository_hub resolves it
   under the row lock that already serializes delivery for the check, so a
   suppressed terminal state is still delivered when a PENDING is outstanding.
   """
 
+  @canceled [:CANCELED, :STOPPED]
+
   def suppress?(pipeline, task \\ nil)
+
+  # Decided before the task, which a hook-triggered run never has: the
+  # strategy cancels runs whatever started them.
+  def suppress?(%{result: result, result_reason: :STRATEGY}, _task)
+      when result in @canceled,
+      do: true
 
   def suppress?(_pipeline, nil), do: false
 
