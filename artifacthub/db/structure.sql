@@ -108,6 +108,13 @@ ALTER TABLE ONLY public.schema_migrations
 
 
 --
+-- Name: idx_artifacts_purge_marks; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_artifacts_purge_marks ON public.artifacts USING btree (deleted_at, purge_requested_at) WHERE ((deleted_at IS NOT NULL) OR (purge_requested_at IS NOT NULL));
+
+
+--
 -- Name: uix_artifacts_idempotency_token; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -161,7 +168,7 @@ SET row_security = off;
 --
 
 COPY public.schema_migrations (version, dirty) FROM stdin;
-20260916120000	f
+20261012120000	f
 \.
 
 
