@@ -17,6 +17,7 @@ defmodule GithubNotifier.Models.PipelineTest do
                state: response.pipeline.state,
                result: response.pipeline.result,
                result_reason: response.pipeline.result_reason,
+               queue_type: :IMPLICIT,
                sha: "1234567",
                project_id: "1",
                workflow_id: "3",
@@ -85,6 +86,16 @@ defmodule GithubNotifier.Models.PipelineTest do
 
       assert pipeline.result == :CANCELED
       assert pipeline.result_reason == :STRATEGY
+    end
+
+    test "carries the queue type, and leaves it nil when there is no queue yet" do
+      response = Support.Factories.pipeline_describe_response(queue_type: :USER_GENERATED)
+      GrpcMock.stub(PipelineMock, :describe, response)
+      assert Pipeline.find("1").queue_type == :USER_GENERATED
+
+      response = put_in(response.pipeline.queue, nil)
+      GrpcMock.stub(PipelineMock, :describe, response)
+      assert Pipeline.find("1").queue_type == nil
     end
 
     test "when the triggerer is missing => falls back to hook defaults" do

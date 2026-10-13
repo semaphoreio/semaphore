@@ -5,6 +5,7 @@ defmodule GithubNotifier.Models.Pipeline do
     :state,
     :result,
     :result_reason,
+    :queue_type,
     :blocks,
     :project_id,
     :sha,
@@ -55,6 +56,7 @@ defmodule GithubNotifier.Models.Pipeline do
       state: response.pipeline.state,
       result: response.pipeline.result,
       result_reason: response.pipeline.result_reason,
+      queue_type: queue_type(response.pipeline.queue),
       blocks: construct_blocks(response.blocks),
       project_id: response.pipeline.project_id,
       workflow_id: response.pipeline.wf_id,
@@ -71,6 +73,11 @@ defmodule GithubNotifier.Models.Pipeline do
 
   defp triggerer_field(nil, _field, default), do: default
   defp triggerer_field(triggerer, field, default), do: Map.get(triggerer, field) || default
+
+  # Left nil when the pipeline has no queue yet, which keeps callers that read
+  # it from treating an unknown queue as an implicit one.
+  defp queue_type(nil), do: nil
+  defp queue_type(queue), do: queue.type
 
   def yaml_file_path(".", file_name), do: file_name
 

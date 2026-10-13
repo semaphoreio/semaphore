@@ -30,6 +30,16 @@ defmodule GithubNotifier.Utils.SkipPolicyTest do
       refute SkipPolicy.suppress?(canceled(:HOOK, :PASSED, :STRATEGY))
       refute SkipPolicy.suppress?(canceled(:HOOK, :FAILED, :STRATEGY))
     end
+
+    # A named queue is shared across refs and projects, so the run that
+    # cancelled this one reports somewhere else and this ref would be left
+    # with no answer at all. Reporting the cancellation is the lesser evil.
+    test "does not suppress outside an implicit queue" do
+      for queue_type <- [:USER_GENERATED, nil] do
+        refute SkipPolicy.suppress?(canceled(:HOOK, :CANCELED, :STRATEGY, queue_type)),
+               "queue_type #{inspect(queue_type)} must still report"
+      end
+    end
   end
 
   describe "suppress?/2" do
@@ -72,10 +82,15 @@ defmodule GithubNotifier.Utils.SkipPolicyTest do
     %{triggered_by: triggered_by, scheduler_task_id: "task-1"}
   end
 
-  defp canceled(triggered_by, result, result_reason) do
+  defp canceled(triggered_by, result, result_reason, queue_type \\ :IMPLICIT) do
     triggered_by
     |> pipeline()
-    |> Map.merge(%{state: :DONE, result: result, result_reason: result_reason})
+    |> Map.merge(%{
+      state: :DONE,
+      result: result,
+      result_reason: result_reason,
+      queue_type: queue_type
+    })
   end
 
   defp task(opts) do

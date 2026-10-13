@@ -112,6 +112,11 @@ defmodule Support.Factories do
             state: Keyword.get(opts, :state, :RUNNING),
             result: Keyword.get(opts, :result, :PASSED),
             result_reason: Keyword.get(opts, :result_reason, :TEST),
+            queue:
+              struct(InternalApi.Plumber.Queue,
+                queue_id: "queue-1",
+                type: Keyword.get(opts, :queue_type, :IMPLICIT)
+              ),
             created_at: %Google.Protobuf.Timestamp{nanos: 0, seconds: 0},
             pending_at: %Google.Protobuf.Timestamp{nanos: 0, seconds: 0},
             queuing_at: %Google.Protobuf.Timestamp{nanos: 0, seconds: 0},

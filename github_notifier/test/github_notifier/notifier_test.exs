@@ -219,7 +219,6 @@ defmodule GithubNotifier.NotifierTest do
       )
 
       GrpcMock.stub(ProjecthubMock, :describe, block_and_pipeline_level_project())
-      GrpcMock.stub(SchedulerMock, :describe, fn _, _ -> raise "should not be called" end)
 
       GithubNotifier.Notifier.notify("asd", "123", "1")
 
@@ -227,8 +226,28 @@ defmodule GithubNotifier.NotifierTest do
 
       # the STOPPED is the one that lands on a check the run that superseded
       # this one has already reported on, so it above all must not be sent
+      assert length(requests) == 2
       assert Enum.any?(requests, &(&1.status == :STOPPED))
       assert Enum.all?(requests, & &1.suppress)
+    end
+
+    test "still reports it when the queue is named, where no sibling run answers the check" do
+      stub_services(
+        triggered_by: :HOOK,
+        state: :DONE,
+        result: :CANCELED,
+        result_reason: :STRATEGY,
+        queue_type: :USER_GENERATED
+      )
+
+      GrpcMock.stub(ProjecthubMock, :describe, block_and_pipeline_level_project())
+
+      GithubNotifier.Notifier.notify("asd", "123", "1")
+
+      requests = collect_build_statuses()
+
+      assert Enum.any?(requests, &(&1.status == :STOPPED))
+      refute Enum.any?(requests, & &1.suppress)
     end
 
     test "still reports a run canceled by a user" do

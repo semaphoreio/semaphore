@@ -2,9 +2,12 @@ defmodule GithubNotifier.Utils.SkipPolicy do
   @moduledoc """
   Decides whether a commit status should be suppressed.
 
-  A run canceled by the pipeline strategy never reached a verdict, and the
-  newer run that superseded it writes the same check, so reporting it would
-  replace that run's result with one that stands for nothing.
+  A run canceled by the pipeline strategy never reached a verdict, so
+  reporting it would replace a result with one that stands for nothing. Only
+  in an implicit queue, though: that queue holds one ref and one pipeline
+  file, so the run that cancelled it reports the same check and the check
+  still gets an answer. A named queue is shared across refs and projects, and
+  dropping the status there would leave a ref with no answer at all.
 
   Otherwise the notification skip flags of the scheduler task behind the
   workflow decide. A flag applies to every pipeline started by that task with
@@ -16,14 +19,17 @@ defmodule GithubNotifier.Utils.SkipPolicy do
   suppressed terminal state is still delivered when a PENDING is outstanding.
   """
 
-  @canceled [:CANCELED, :STOPPED]
+  @interrupted [:CANCELED, :STOPPED]
 
   def suppress?(pipeline, task \\ nil)
 
   # Decided before the task, which a hook-triggered run never has: the
   # strategy cancels runs whatever started them.
-  def suppress?(%{result: result, result_reason: :STRATEGY}, _task)
-      when result in @canceled,
+  def suppress?(
+        %{state: :DONE, result: result, result_reason: :STRATEGY, queue_type: :IMPLICIT},
+        _task
+      )
+      when result in @interrupted,
       do: true
 
   def suppress?(_pipeline, nil), do: false
