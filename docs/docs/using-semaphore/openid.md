@@ -343,6 +343,10 @@ Configure a policy that grants access to specific paths that will be accessed by
 2. Create a role to access the Vault resources
     - Replace `<REPOSITORY>` with your repository
     - Replace `<BRANCH>` with the branch that can access the Vault
+    - `user_claim` uses the [`actor`](../reference/openid) claim, so Vault creates a separate
+      identity (entity alias) for each distinct user who triggers or promotes a pipeline.
+      `actor` is empty for debug jobs and for users without a username. To get one identity
+      per project instead, use a claim such as `prj_id`
 
     ```shell title="Creating a role"
     vault write auth/jwt/role/example-role -<<EOF
