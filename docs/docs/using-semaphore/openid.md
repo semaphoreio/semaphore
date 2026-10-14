@@ -345,9 +345,8 @@ Configure a policy that grants access to specific paths that will be accessed by
     - Replace `<BRANCH>` with the branch that can access the Vault
     - `user_claim` uses the [`actor`](../reference/openid) claim, so Vault creates a separate
       identity (entity alias) for each distinct user who triggers a workflow. `actor` is empty
-      for debug jobs, generic Git repositories, and users without an account on the
-      repository's provider. To get one identity per project instead, use a claim such as
-      `prj_id`
+      for debug jobs and for users without an account on the repository's provider. To get
+      one identity per project instead, use a claim such as `prj_id`
 
     ```shell title="Creating a role"
     vault write auth/jwt/role/example-role -<<EOF
