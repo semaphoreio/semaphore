@@ -69,78 +69,57 @@ defmodule Zebra.Workers.JobRequestFactory.OpenIDConnectTest do
       assert req.git_branch_name == "main"
     end
 
-    test "sends the workflow triggerer as user_id for hook-triggered pipelines", ctx do
+    test "sends the workflow triggerer's provider login as user_id", ctx do
       spec_env_vars =
         ctx.spec_env_vars ++
           [
-            JobRequest.env_var("SEMAPHORE_WORKFLOW_TRIGGERED_BY", "pusher"),
-            JobRequest.env_var("SEMAPHORE_PIPELINE_PROMOTION", "false"),
-            JobRequest.env_var("SEMAPHORE_PIPELINE_PROMOTED_BY", "")
+            JobRequest.env_var("SEMAPHORE_WORKFLOW_TRIGGERED_BY", "stored-login"),
+            JobRequest.env_var("SEMAPHORE_WORKFLOW_TRIGGERED_BY_PROVIDER_LOGIN", "pusher")
           ]
 
       assert load_user_id(ctx, spec_env_vars) == "pusher"
     end
 
-    test "sends the promoter as user_id for manual promotions", ctx do
-      spec_env_vars =
-        ctx.spec_env_vars ++
-          [
-            JobRequest.env_var("SEMAPHORE_WORKFLOW_TRIGGERED_BY", "pusher"),
-            JobRequest.env_var("SEMAPHORE_PIPELINE_PROMOTION", "true"),
-            JobRequest.env_var("SEMAPHORE_PIPELINE_PROMOTED_BY", "promoter")
-          ]
+    test "sends the workflow triggerer, not the promoter, for promotions", ctx do
+      for promoted_by <- ["promoter", "auto-promotion"] do
+        spec_env_vars =
+          ctx.spec_env_vars ++
+            [
+              JobRequest.env_var("SEMAPHORE_WORKFLOW_TRIGGERED_BY_PROVIDER_LOGIN", "pusher"),
+              JobRequest.env_var("SEMAPHORE_PIPELINE_PROMOTION", "true"),
+              JobRequest.env_var("SEMAPHORE_PIPELINE_PROMOTED_BY", promoted_by)
+            ]
 
-      assert load_user_id(ctx, spec_env_vars) == "promoter"
+        assert load_user_id(ctx, spec_env_vars) == "pusher"
+      end
     end
 
-    test "sends the workflow triggerer as user_id for auto-promotions", ctx do
+    test "sends an empty user_id when the provider login is missing", ctx do
       spec_env_vars =
         ctx.spec_env_vars ++
-          [
-            JobRequest.env_var("SEMAPHORE_WORKFLOW_TRIGGERED_BY", "pusher"),
-            JobRequest.env_var("SEMAPHORE_PIPELINE_PROMOTION", "true"),
-            JobRequest.env_var("SEMAPHORE_PIPELINE_PROMOTED_BY", "auto-promotion")
-          ]
+          [JobRequest.env_var("SEMAPHORE_WORKFLOW_TRIGGERED_BY", "stored-login")]
 
-      assert load_user_id(ctx, spec_env_vars) == "pusher"
+      assert load_user_id(ctx, spec_env_vars) == ""
     end
 
     test "sends an empty user_id for debug jobs", ctx do
       spec_env_vars =
         ctx.spec_env_vars ++
-          [
-            JobRequest.env_var("SEMAPHORE_WORKFLOW_TRIGGERED_BY", "pusher"),
-            JobRequest.env_var("SEMAPHORE_PIPELINE_PROMOTION", "true"),
-            JobRequest.env_var("SEMAPHORE_PIPELINE_PROMOTED_BY", "promoter")
-          ]
+          [JobRequest.env_var("SEMAPHORE_WORKFLOW_TRIGGERED_BY_PROVIDER_LOGIN", "pusher")]
 
       assert load_user_id(ctx, spec_env_vars, :debug_job) == ""
       assert load_user_id(ctx, spec_env_vars, :project_debug_job) == ""
     end
 
     test "ignores user-supplied duplicates appended after the platform env vars", ctx do
-      triggered_spec_env_vars =
+      spec_env_vars =
         ctx.spec_env_vars ++
           [
-            JobRequest.env_var("SEMAPHORE_WORKFLOW_TRIGGERED_BY", "pusher"),
-            JobRequest.env_var("SEMAPHORE_PIPELINE_PROMOTION", "false"),
-            JobRequest.env_var("SEMAPHORE_PIPELINE_PROMOTED_BY", ""),
-            JobRequest.env_var("SEMAPHORE_WORKFLOW_TRIGGERED_BY", "spoofed"),
-            JobRequest.env_var("SEMAPHORE_PIPELINE_PROMOTION", "true"),
-            JobRequest.env_var("SEMAPHORE_PIPELINE_PROMOTED_BY", "spoofed")
+            JobRequest.env_var("SEMAPHORE_WORKFLOW_TRIGGERED_BY_PROVIDER_LOGIN", "pusher"),
+            JobRequest.env_var("SEMAPHORE_WORKFLOW_TRIGGERED_BY_PROVIDER_LOGIN", "spoofed")
           ]
 
-      promoted_spec_env_vars =
-        ctx.spec_env_vars ++
-          [
-            JobRequest.env_var("SEMAPHORE_WORKFLOW_TRIGGERED_BY", "pusher"),
-            JobRequest.env_var("SEMAPHORE_PIPELINE_PROMOTION", "true"),
-            JobRequest.env_var("SEMAPHORE_PIPELINE_PROMOTED_BY", "promoter"),
-            JobRequest.env_var("SEMAPHORE_PIPELINE_PROMOTED_BY", "spoofed")
-          ]
-
-      assert load_user_id(ctx, triggered_spec_env_vars) == "pusher"
-      assert load_user_id(ctx, promoted_spec_env_vars) == "promoter"
+      assert load_user_id(ctx, spec_env_vars) == "pusher"
     end
   end
 

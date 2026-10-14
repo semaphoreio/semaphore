@@ -154,15 +154,8 @@ defmodule Zebra.Workers.JobRequestFactory.OpenIDConnect do
        when job_type in [:debug_job, :project_debug_job],
        do: ""
 
-  defp fetch_pipeline_actor(env_vars, _job_type) do
-    promoted_by = find_env_var(env_vars, "SEMAPHORE_PIPELINE_PROMOTED_BY")
-
-    if ppl_promotion?(env_vars) and promoted_by != @auto_promotion do
-      promoted_by
-    else
-      find_env_var(env_vars, "SEMAPHORE_WORKFLOW_TRIGGERED_BY")
-    end
-  end
+  defp fetch_pipeline_actor(env_vars, _job_type),
+    do: find_env_var(env_vars, "SEMAPHORE_WORKFLOW_TRIGGERED_BY_PROVIDER_LOGIN")
 
   defp true_env_var?(env_vars, name), do: true?(find_env_var(env_vars, name))
 
