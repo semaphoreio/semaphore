@@ -245,6 +245,19 @@ Holds `true` if the workflow is a rerun of a previously-ran workflow.
 
 Determines the GitHub or BitBucket username for the individual who ran the workflow.
 
+### Workflow triggered by provider login {#workflow-triggered-by-provider-login}
+
+- **Environment variable**: `SEMAPHORE_WORKFLOW_TRIGGERED_BY_PROVIDER_LOGIN`
+- **Example**: `torvalds`
+
+The login, on the repository's Git provider, of the individual who triggered the workflow. Promoted pipelines and partial rebuilds keep the workflow's value. A rerun of a push or pull request workflow also keeps it; any other rerun names the user who reran it.
+
+- **Push or pull request**: the login from the provider's webhook
+- **API, scheduled, or manual run**: the login of the requesting user's account on the repository's provider. For scheduled runs, that is whoever last saved the task
+- **Generic Git repositories**: always empty
+
+It is empty when the user has no account on the repository's provider. The job's [OIDC token](./openid) carries the same value in its `actor` claim.
+
 ### Workflow is triggered by API {#workflow-triggered-by-api}
 
 - **Environment variable**: `SEMAPHORE_WORKFLOW_TRIGGERED_BY_API`
