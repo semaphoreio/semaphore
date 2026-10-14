@@ -130,22 +130,46 @@ defmodule Ppl.DefinitionReviser.BlocksReviser do
   end
   defp promoted_by?(_), do: {:ok, ""}
 
-  defp triggered_by?(%{request_args: %{"requester_id" => requester_id}})
-       when is_binary(requester_id) and requester_id != "" do
-    case UserClient.describe(requester_id) do
-      {:ok, user} -> {:ok, user.github_login}
+  defp requester(%{"requester_id" => requester_id})
+       when is_binary(requester_id) and requester_id != "",
+       do: UserClient.describe(requester_id)
+  defp requester(_request_args), do: {:ok, nil}
+
+  # Generic Git keeps resolving the requester from the hook body's email.
+  defp triggered_by?(ppl_req = %{request_args: args = %{"service" => "git"}}) do
+    case requester(args) do
+      {:ok, nil} -> {:ok, webhook_login(ppl_req)}
+      {:ok, requester} -> {:ok, requester.github_login}
       error -> error
     end
   end
-  defp triggered_by?(%{source_args: source_args}) when is_map(source_args) do
-    repo_host_username = Map.get(source_args, "repo_host_username", "")
-    commit_author = Map.get(source_args, "repo_host_username", "")
 
-    if repo_host_username != "",
-      do: {:ok, repo_host_username},
-      else: {:ok, commit_author}
+  # Outside hooks, source_args holds the requester's display name, not a provider login.
+  defp triggered_by?(%{request_args: args = %{"triggered_by" => trigger}})
+       when trigger in ["api", "schedule", "manual_run"] do
+    with {:ok, requester} <- requester(args),
+      do: {:ok, requester_provider_login(requester, provider_type(args["service"]))}
   end
-  defp triggered_by?(_ppl_req), do: {:ok, ""}
+
+  defp triggered_by?(ppl_req), do: {:ok, webhook_login(ppl_req)}
+
+  defp webhook_login(%{source_args: source_args}) when is_map(source_args),
+    do: Map.get(source_args, "repo_host_username", "")
+  defp webhook_login(_ppl_req), do: ""
+
+  defp requester_provider_login(nil, _type), do: ""
+  defp requester_provider_login(_requester, nil), do: ""
+  defp requester_provider_login(requester, type) do
+    requester
+    |> Map.get(:repository_providers, [])
+    |> Enum.find(%{}, fn provider -> provider.type == type end)
+    |> Map.get(:login, "")
+  end
+
+  defp provider_type("git_hub"), do: :GITHUB
+  defp provider_type("gitlab"), do: :GITLAB
+  defp provider_type("bitbucket"), do: :BITBUCKET
+  defp provider_type(_service), do: nil
 
   defp set_agent(block_def, ppl_def) do
     block_def
