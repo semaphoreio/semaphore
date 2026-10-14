@@ -52,7 +52,7 @@ defmodule Ppl.TaskClient.AfterPipelineTest do
   # zebra signs the OIDC actor and trg claims from the first match of these names,
   # so the platform values must precede block and job duplicates.
   @claim_env_vars ~w(
-    SEMAPHORE_WORKFLOW_TRIGGERED_BY_PROVIDER_LOGIN
+    SEMAPHORE_WORKFLOW_TRIGGERED_BY
     SEMAPHORE_WORKFLOW_TRIGGERED_BY_API
     SEMAPHORE_WORKFLOW_TRIGGERED_BY_HOOK
     SEMAPHORE_WORKFLOW_TRIGGERED_BY_SCHEDULE

@@ -26,7 +26,6 @@ defmodule Ppl.DefinitionReviser.BlocksReviser do
   @workflow_triggered_by_api "SEMAPHORE_WORKFLOW_TRIGGERED_BY_API"
   @workflow_triggered_by_manual_run "SEMAPHORE_WORKFLOW_TRIGGERED_BY_MANUAL_RUN"
   @workflow_triggered_by "SEMAPHORE_WORKFLOW_TRIGGERED_BY"
-  @workflow_triggered_by_provider_login "SEMAPHORE_WORKFLOW_TRIGGERED_BY_PROVIDER_LOGIN"
   @git_commit_author "SEMAPHORE_GIT_COMMIT_AUTHOR"
   @git_committer "SEMAPHORE_GIT_COMMITTER"
   @organization_id "SEMAPHORE_ORGANIZATION_ID"
@@ -117,10 +116,8 @@ defmodule Ppl.DefinitionReviser.BlocksReviser do
   def set_ppl_env_vars(block_def, ppl_def, ppl_req) do
     with {:ok, ppl}        <- PplsQueries.get_by_id(ppl_req.id),
          {:ok, promoter}   <- promoted_by?(ppl_req.request_args),
-         {:ok, requester}  <- requester(ppl_req.request_args),
-         {:ok, triggerer}  <- triggered_by?(ppl_req, requester),
-         triggerer_login   <- triggerer_provider_login(ppl_req, requester),
-    do: set_ppl_env_vars_(block_def, ppl_def, ppl_req, ppl, promoter, {triggerer, triggerer_login})
+         {:ok, triggerer}  <- triggered_by?(ppl_req),
+    do: set_ppl_env_vars_(block_def, ppl_def, ppl_req, ppl, promoter, triggerer)
   end
 
   defp promoted_by?(%{"auto_promoted" => true}), do: {:ok, "auto-promotion"}
@@ -138,32 +135,27 @@ defmodule Ppl.DefinitionReviser.BlocksReviser do
        do: UserClient.describe(requester_id)
   defp requester(_request_args), do: {:ok, nil}
 
-  defp triggered_by?(%{request_args: %{"service" => service}}, requester = %{})
-       when service in ["gitlab", "bitbucket"],
-       do: {:ok, requester_provider_login(requester, provider_type(service))}
-  defp triggered_by?(_ppl_req, requester = %{}), do: {:ok, requester.github_login}
-  defp triggered_by?(%{source_args: source_args}, nil) when is_map(source_args) do
-    repo_host_username = Map.get(source_args, "repo_host_username", "")
-    commit_author = Map.get(source_args, "repo_host_username", "")
-
-    if repo_host_username != "",
-      do: {:ok, repo_host_username},
-      else: {:ok, commit_author}
+  # Generic Git keeps resolving the requester from the hook body's email.
+  defp triggered_by?(ppl_req = %{request_args: args = %{"service" => "git"}}) do
+    case requester(args) do
+      {:ok, nil} -> {:ok, webhook_login(ppl_req)}
+      {:ok, requester} -> {:ok, requester.github_login}
+      error -> error
+    end
   end
-  defp triggered_by?(_ppl_req, _requester), do: {:ok, ""}
-
-  # The generic Git hook body is written by the sender, so it can't name anyone.
-  defp triggerer_provider_login(%{request_args: %{"service" => "git"}}, _requester), do: ""
 
   # Outside hooks, source_args holds the requester's display name, not a provider login.
-  defp triggerer_provider_login(%{request_args: args = %{"triggered_by" => trigger}}, requester)
-       when trigger in ["api", "schedule", "manual_run"],
-       do: requester_provider_login(requester, provider_type(args["service"]))
+  defp triggered_by?(%{request_args: args = %{"triggered_by" => trigger}})
+       when trigger in ["api", "schedule", "manual_run"] do
+    with {:ok, requester} <- requester(args),
+      do: {:ok, requester_provider_login(requester, provider_type(args["service"]))}
+  end
 
-  defp triggerer_provider_login(%{source_args: source_args}, _requester) when is_map(source_args),
+  defp triggered_by?(ppl_req), do: {:ok, webhook_login(ppl_req)}
+
+  defp webhook_login(%{source_args: source_args}) when is_map(source_args),
     do: Map.get(source_args, "repo_host_username", "")
-
-  defp triggerer_provider_login(_ppl_req, _requester), do: ""
+  defp webhook_login(_ppl_req), do: ""
 
   defp requester_provider_login(nil, _type), do: ""
   defp requester_provider_login(_requester, nil), do: ""
@@ -289,7 +281,7 @@ defmodule Ppl.DefinitionReviser.BlocksReviser do
     list ++ prev_ids_env_vars
   end
 
-  defp basic_env_vars(ppl_req, ppl_def, ppl, promoter, {triggerer, triggerer_login}, block_def) do
+  defp basic_env_vars(ppl_req, ppl_def, ppl, promoter, triggerer, block_def) do
     snapshot_id = get_snapshot_id(ppl_req.request_args)
     block_name = get_block_name(block_def)
     organization_id = get_organization_id(ppl_req.request_args)
@@ -311,7 +303,6 @@ defmodule Ppl.DefinitionReviser.BlocksReviser do
      %{"name" => @pipeline_promotion, "value" => promotion?(ppl.extension_of)},
      %{"name" => @pipeline_promoted_by, "value" => promoter},
      %{"name" => @workflow_triggered_by, "value" => triggerer},
-     %{"name" => @workflow_triggered_by_provider_login, "value" => triggerer_login},
      %{"name" => @git_commit_author, "value" => commit_author(ppl_req.source_args)},
      %{"name" => @git_committer, "value" => committer(ppl_req.source_args)},
      %{"name" => @organization_id, "value" => organization_id},
