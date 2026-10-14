@@ -69,13 +69,9 @@ defmodule Zebra.Workers.JobRequestFactory.OpenIDConnectTest do
       assert req.git_branch_name == "main"
     end
 
-    test "sends the workflow triggerer's provider login as user_id", ctx do
+    test "sends the workflow triggerer as user_id", ctx do
       spec_env_vars =
-        ctx.spec_env_vars ++
-          [
-            JobRequest.env_var("SEMAPHORE_WORKFLOW_TRIGGERED_BY", "stored-login"),
-            JobRequest.env_var("SEMAPHORE_WORKFLOW_TRIGGERED_BY_PROVIDER_LOGIN", "pusher")
-          ]
+        ctx.spec_env_vars ++ [JobRequest.env_var("SEMAPHORE_WORKFLOW_TRIGGERED_BY", "pusher")]
 
       assert load_user_id(ctx, spec_env_vars) == "pusher"
     end
@@ -85,7 +81,7 @@ defmodule Zebra.Workers.JobRequestFactory.OpenIDConnectTest do
         spec_env_vars =
           ctx.spec_env_vars ++
             [
-              JobRequest.env_var("SEMAPHORE_WORKFLOW_TRIGGERED_BY_PROVIDER_LOGIN", "pusher"),
+              JobRequest.env_var("SEMAPHORE_WORKFLOW_TRIGGERED_BY", "pusher"),
               JobRequest.env_var("SEMAPHORE_PIPELINE_PROMOTION", "true"),
               JobRequest.env_var("SEMAPHORE_PIPELINE_PROMOTED_BY", promoted_by)
             ]
@@ -94,18 +90,10 @@ defmodule Zebra.Workers.JobRequestFactory.OpenIDConnectTest do
       end
     end
 
-    test "sends an empty user_id when the provider login is missing", ctx do
-      spec_env_vars =
-        ctx.spec_env_vars ++
-          [JobRequest.env_var("SEMAPHORE_WORKFLOW_TRIGGERED_BY", "stored-login")]
-
-      assert load_user_id(ctx, spec_env_vars) == ""
-    end
-
     test "sends an empty user_id for debug jobs", ctx do
       spec_env_vars =
         ctx.spec_env_vars ++
-          [JobRequest.env_var("SEMAPHORE_WORKFLOW_TRIGGERED_BY_PROVIDER_LOGIN", "pusher")]
+          [JobRequest.env_var("SEMAPHORE_WORKFLOW_TRIGGERED_BY", "pusher")]
 
       assert load_user_id(ctx, spec_env_vars, :debug_job) == ""
       assert load_user_id(ctx, spec_env_vars, :project_debug_job) == ""
@@ -115,8 +103,8 @@ defmodule Zebra.Workers.JobRequestFactory.OpenIDConnectTest do
       spec_env_vars =
         ctx.spec_env_vars ++
           [
-            JobRequest.env_var("SEMAPHORE_WORKFLOW_TRIGGERED_BY_PROVIDER_LOGIN", "pusher"),
-            JobRequest.env_var("SEMAPHORE_WORKFLOW_TRIGGERED_BY_PROVIDER_LOGIN", "spoofed")
+            JobRequest.env_var("SEMAPHORE_WORKFLOW_TRIGGERED_BY", "pusher"),
+            JobRequest.env_var("SEMAPHORE_WORKFLOW_TRIGGERED_BY", "spoofed")
           ]
 
       assert load_user_id(ctx, spec_env_vars) == "pusher"
