@@ -32,7 +32,7 @@ defmodule Secrethub.OpenIDConnect.JWT do
     "job_id",
     # repository name
     "repo",
-    # username of who triggered the pipeline, or the promoter for manual promotions
+    # provider login of whoever triggered the workflow
     "actor",
     # the git tag that triggered the pipeline
     "tag",
