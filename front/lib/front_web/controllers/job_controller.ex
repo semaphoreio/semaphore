@@ -507,31 +507,43 @@ defmodule FrontWeb.JobController do
   defp debug_or_attach("failed"), do: "debug"
   defp debug_or_attach("stopped"), do: "debug"
 
+  # Nothing invalidates these entries when project permissions change, so a denial expires
+  # quickly and a newly granted permission shows up on the next poll. Attach permission
+  # also depends on the user's deployment target access, so entries are per user.
+  @debug_permission_ttl Application.compile_env(:front, :debug_permission_ttl,
+                          allowed: :timer.minutes(5),
+                          denied: :timer.seconds(10)
+                        )
+
   defp can_debug?(_, user_id, _) when is_nil(user_id) or user_id == "", do: {:ok, false}
 
-  defp can_debug?(job_id, user_id, action = "debug") do
-    {:ok, encoded} =
-      Cacheman.fetch(:front, cache_key(action, job_id, user_id), [ttl: :timer.hours(1)], fn ->
-        {:ok, allowed, _} = Front.Models.Job.can_debug?(job_id, user_id)
-        {:ok, encode(allowed)}
-      end)
+  defp can_debug?(job_id, user_id, action) do
+    key = cache_key(action, job_id, user_id)
 
-    {:ok, decode(encoded)}
+    case Cacheman.get(:front, key) do
+      {:ok, nil} ->
+        {:ok, allowed, _} = check_debug_permission(action, job_id, user_id)
+        Cacheman.put(:front, key, encode(allowed), ttl: debug_permission_ttl(allowed))
+
+        {:ok, allowed}
+
+      {:ok, encoded} ->
+        {:ok, decode(encoded)}
+    end
   end
 
-  defp can_debug?(job_id, user_id, action = "attach") do
-    {:ok, encoded} =
-      Cacheman.fetch(:front, cache_key(action, job_id, user_id), [ttl: :timer.hours(1)], fn ->
-        {:ok, allowed, _} = Front.Models.Job.can_attach?(job_id, user_id)
-        {:ok, encode(allowed)}
-      end)
+  defp check_debug_permission("debug", job_id, user_id),
+    do: Front.Models.Job.can_debug?(job_id, user_id)
 
-    {:ok, decode(encoded)}
-  end
+  defp check_debug_permission("attach", job_id, user_id),
+    do: Front.Models.Job.can_attach?(job_id, user_id)
+
+  defp debug_permission_ttl(true), do: @debug_permission_ttl[:allowed]
+  defp debug_permission_ttl(false), do: @debug_permission_ttl[:denied]
 
   defp encode(model), do: :erlang.term_to_binary(model)
   defp decode(model), do: Plug.Crypto.non_executable_binary_to_term(model, [:safe])
-  defp cache_key(action, job_id, _user_id), do: "debug_permission/#{action}/#{job_id}"
+  defp cache_key(action, job_id, user_id), do: "debug_permission/#{action}/#{job_id}/#{user_id}"
 
   defp inject_nonce(data, %{"nonce" => nonce}),
     do: Keyword.merge([script_src_nonce: nonce], data)
