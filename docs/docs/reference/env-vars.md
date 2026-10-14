@@ -243,7 +243,7 @@ Holds `true` if the workflow is a rerun of a previously-ran workflow.
 - **Environment variable**: `SEMAPHORE_WORKFLOW_TRIGGERED_BY`
 - **Example**: `torvalds`
 
-Determines the GitHub or BitBucket username for the individual who ran the workflow.
+Determines the username, on the repository's Git provider (GitHub, GitLab, or Bitbucket), of the individual who ran the workflow.
 
 ### Workflow triggered by provider login {#workflow-triggered-by-provider-login}
 
