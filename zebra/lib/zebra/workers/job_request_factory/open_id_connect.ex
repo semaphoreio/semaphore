@@ -6,6 +6,7 @@ defmodule Zebra.Workers.JobRequestFactory.OpenIDConnect do
   alias Zebra.Workers.JobRequestFactory.JobRequest
 
   @rpc_opts [timeout: 30_000]
+  @auto_promotion "auto-promotion"
 
   def enabled?(org_id) do
     Application.get_env(:zebra, :environment) == :test ||
@@ -42,6 +43,7 @@ defmodule Zebra.Workers.JobRequestFactory.OpenIDConnect do
             org_username: org.org_username,
             job_type: to_string(job_type),
             repo_slug: find_env_var(repo_env_vars, "SEMAPHORE_GIT_REPO_SLUG"),
+            user_id: fetch_pipeline_actor(spec_env_vars, job_type),
             triggerer: construct_triggerer(wf_id, ppl_id, job.id, spec_env_vars, job_type)
           )
 
@@ -136,16 +138,24 @@ defmodule Zebra.Workers.JobRequestFactory.OpenIDConnect do
 
   defp ppl_triggerer(env_vars) do
     promoted_by = find_env_var(env_vars, "SEMAPHORE_PIPELINE_PROMOTED_BY")
-    is_promotion = true_env_var?(env_vars, "SEMAPHORE_PIPELINE_PROMOTION")
 
-    case {promoted_by, is_promotion} do
-      {"auto-promotion", true} -> "u"
+    case {promoted_by, ppl_promotion?(env_vars)} do
+      {@auto_promotion, true} -> "u"
       {_, true} -> "n"
       _ -> "i"
     end
   end
 
   defp ppl_rerun?(env_vars), do: true_env_var?(env_vars, "SEMAPHORE_PIPELINE_RERUN")
+
+  defp ppl_promotion?(env_vars), do: true_env_var?(env_vars, "SEMAPHORE_PIPELINE_PROMOTION")
+
+  defp fetch_pipeline_actor(_env_vars, job_type)
+       when job_type in [:debug_job, :project_debug_job],
+       do: ""
+
+  defp fetch_pipeline_actor(env_vars, _job_type),
+    do: find_env_var(env_vars, "SEMAPHORE_WORKFLOW_TRIGGERED_BY_PROVIDER_LOGIN")
 
   defp true_env_var?(env_vars, name), do: true?(find_env_var(env_vars, name))
 
