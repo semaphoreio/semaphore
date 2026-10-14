@@ -138,6 +138,9 @@ defmodule Ppl.DefinitionReviser.BlocksReviser do
        do: UserClient.describe(requester_id)
   defp requester(_request_args), do: {:ok, nil}
 
+  defp triggered_by?(%{request_args: %{"service" => service}}, requester = %{})
+       when service in ["gitlab", "bitbucket"],
+       do: {:ok, requester_provider_login(requester, provider_type(service))}
   defp triggered_by?(_ppl_req, requester = %{}), do: {:ok, requester.github_login}
   defp triggered_by?(%{source_args: source_args}, nil) when is_map(source_args) do
     repo_host_username = Map.get(source_args, "repo_host_username", "")

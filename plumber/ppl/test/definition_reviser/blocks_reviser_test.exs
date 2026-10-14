@@ -247,6 +247,37 @@ defmodule Ppl.DefinitionReviser.BlocksReviser.Test do
     GrpcMock.verify!(UserServiceMock)
   end
 
+  describe "SEMAPHORE_WORKFLOW_TRIGGERED_BY" do
+    test "names GitLab and Bitbucket account holders by their login on that provider", ctx do
+      stub_requester([provider(:GITHUB, "github-login"), provider(:GITLAB, "gitlab-login"),
+                      provider(:BITBUCKET, "bitbucket-login")])
+
+      for {service, trigger, login} <- [{"gitlab", "hook", "gitlab-login"},
+                                        {"bitbucket", "api", "bitbucket-login"}] do
+        ppl_req = with_request_args(ctx.ppl_req, %{"service" => service, "triggered_by" => trigger,
+                                                    "requester_id" => "user_id_1"})
+
+        assert env_value(ctx.ppl_def, ppl_req, @workflow_triggered_by) == login
+      end
+    end
+
+    test "is empty when the requester has no account on the GitLab or Bitbucket repo's provider", ctx do
+      stub_requester([provider(:GITHUB, "github-login")])
+      ppl_req = with_request_args(ctx.ppl_req, %{"service" => "gitlab", "triggered_by" => "hook",
+                                                  "requester_id" => "user_id_1"})
+
+      assert env_value(ctx.ppl_def, ppl_req, @workflow_triggered_by) == ""
+    end
+
+    test "keeps the stored GitHub login for GitHub repos", ctx do
+      stub_requester([provider(:GITHUB, "github-login")])
+      ppl_req = with_request_args(ctx.ppl_req, %{"service" => "git_hub", "triggered_by" => "hook",
+                                                  "requester_id" => "user_id_1"})
+
+      assert env_value(ctx.ppl_def, ppl_req, @workflow_triggered_by) == "stored-login"
+    end
+  end
+
   describe "SEMAPHORE_WORKFLOW_TRIGGERED_BY_PROVIDER_LOGIN" do
     test "hook pushes name the webhook's pusher, not the requester's stored login", ctx do
       stub_requester([provider(:GITHUB, "stored-login")])
@@ -310,12 +341,15 @@ defmodule Ppl.DefinitionReviser.BlocksReviser.Test do
   defp with_request_args(ppl_req, args),
     do: Map.update!(ppl_req, :request_args, &Map.merge(&1, args))
 
-  defp provider_login_env(ppl_def, ppl_req) do
+  defp provider_login_env(ppl_def, ppl_req),
+    do: env_value(ppl_def, ppl_req, @workflow_triggered_by_provider_login)
+
+  defp env_value(ppl_def, ppl_req, name) do
     assert {:ok, %{"blocks" => [block | _]}} = BlocksReviser.revise_blocks_definition(ppl_def, ppl_req)
 
     block
     |> get_in(["build", "ppl_env_variables"])
-    |> Enum.find(fn env_var -> env_var["name"] == @workflow_triggered_by_provider_login end)
+    |> Enum.find(fn env_var -> env_var["name"] == name end)
     |> Map.get("value")
   end
 
