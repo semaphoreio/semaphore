@@ -141,6 +141,7 @@ defmodule Ppl.PplBlocks.STMHandler.WaitingState.Test do
                     %{"name" => "SEMAPHORE_PIPELINE_PROMOTION", "value" => "false"},
                     %{"name" => "SEMAPHORE_PIPELINE_PROMOTED_BY", "value" => ""},
                     %{"name" => "SEMAPHORE_WORKFLOW_TRIGGERED_BY", "value" => ""},
+                    %{"name" => "SEMAPHORE_WORKFLOW_TRIGGERED_BY_PROVIDER_LOGIN", "value" => ""},
                     %{"name" => "SEMAPHORE_GIT_COMMIT_AUTHOR", "value" => ""},
                     %{"name" => "SEMAPHORE_GIT_COMMITTER", "value" => ""},
                     %{"name" => "SEMAPHORE_ORGANIZATION_ID", "value" => req_args["organization_id"]},
