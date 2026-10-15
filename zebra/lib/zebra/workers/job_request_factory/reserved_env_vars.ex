@@ -88,11 +88,13 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVars do
   # failure_reason is a varchar(255) column
   @max_message_length 255
 
+  # Names are compared case-insensitively because Windows env vars are case-insensitive.
   def reserved?(name), do: zebra_owned?(name) or plumber_owned?(name)
 
-  def zebra_owned?(name), do: MapSet.member?(@zebra_owned, name)
+  defp zebra_owned?(name), do: MapSet.member?(@zebra_owned, String.upcase(name))
 
-  def plumber_owned?(name) do
+  defp plumber_owned?(name) do
+    name = String.upcase(name)
     MapSet.member?(@plumber_owned, name) or Regex.match?(@plumber_owned_pattern, name)
   end
 
@@ -121,12 +123,12 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVars do
 
   defp spec_violations(_job_type, env_vars) do
     names = Enum.map(env_vars, & &1["name"])
-    counts = Enum.frequencies(names)
+    counts = names |> Enum.map(&String.upcase/1) |> Enum.frequencies()
 
     names
-    |> Enum.uniq()
+    |> Enum.uniq_by(&String.upcase/1)
     |> Enum.filter(fn name ->
-      zebra_owned?(name) or (plumber_owned?(name) and counts[name] > 1)
+      zebra_owned?(name) or (plumber_owned?(name) and counts[String.upcase(name)] > 1)
     end)
     |> Enum.map(&{&1, :spec, "job env_vars"})
   end
