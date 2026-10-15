@@ -16,6 +16,7 @@ defmodule Zebra.Workers.JobRequestFactory do
     Project,
     RepoProxy,
     Repository,
+    ReservedEnvVars,
     Secrets,
     Spec,
     TestResults,
@@ -90,6 +91,7 @@ defmodule Zebra.Workers.JobRequestFactory do
          {:ok, cache_files} <- Cache.files(job, cache),
          {:ok, cache_env_vars} <- Cache.env_vars(job, cache, org_id),
          {:ok, all_secrets} <- Task.await(find_secrets),
+         :ok <- ReservedEnvVars.validate(job, job_type, spec, spec_env_vars, all_secrets),
          {:ok, artifact_env_var} <- Task.await(find_artifact_token),
          {:ok, loghub2_token} <- Task.await(generate_token),
          {:ok, open_id_token_env_vars} <-
