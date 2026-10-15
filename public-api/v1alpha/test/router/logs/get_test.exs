@@ -108,7 +108,7 @@ defmodule PipelinesAPI.Logs.Get.Test do
     end
 
     test "returns 200 and logs for existing cloud job", ctx do
-      GrpcMock.stub(LoghubMock, :get_log_events, fn _, _ ->
+      stub_loghub(fn _, _ ->
         %InternalApi.Loghub.GetLogEventsResponse{
           final: true,
           events: @events,
@@ -145,7 +145,7 @@ defmodule PipelinesAPI.Logs.Get.Test do
     end
 
     test "returns 404 when loghub reports the logs cannot be found", ctx do
-      GrpcMock.stub(LoghubMock, :get_log_events, fn _, _ ->
+      stub_loghub(fn _, _ ->
         %InternalApi.Loghub.GetLogEventsResponse{
           final: false,
           events: [],
@@ -200,7 +200,7 @@ defmodule PipelinesAPI.Logs.Get.Test do
 
       test_pid = self()
 
-      GrpcMock.stub(LoghubMock, :get_log_events, fn req, _ ->
+      stub_loghub(fn req, _ ->
         send(test_pid, {:loghub_job_id, req.job_id})
 
         %InternalApi.Loghub.GetLogEventsResponse{
@@ -251,8 +251,36 @@ defmodule PipelinesAPI.Logs.Get.Test do
                {"location", location}
     end
 
+    test "returns 503 when loghub reports the logs are temporarily unavailable", ctx do
+      GrpcMock.stub(LoghubMock, :stream_log_events, fn _, stream ->
+        GRPC.Server.send_headers(stream, %{})
+        raise GRPC.RPCError, status: GRPC.Status.unavailable(), message: "unavailable"
+      end)
+
+      capture_log(fn ->
+        assert {503, _, response} = get_logs(ctx.cloud_job.id, ctx.user_id)
+        assert response == "Logs are temporarily unavailable, please retry"
+      end)
+    end
+
+    test "returns 500 when the log stream fails after some events", ctx do
+      GrpcMock.stub(LoghubMock, :stream_log_events, fn _, stream ->
+        GRPC.Server.send_reply(stream, %InternalApi.Loghub.GetLogEventsResponse{
+          final: true,
+          events: Enum.take(@events, 2),
+          status: %InternalApi.ResponseStatus{code: InternalApi.ResponseStatus.Code.value(:OK)}
+        })
+
+        raise GRPC.RPCError, status: GRPC.Status.data_loss(), message: "corrupt"
+      end)
+
+      capture_log(fn ->
+        assert {500, _, "Internal error"} = get_logs(ctx.cloud_job.id, ctx.user_id)
+      end)
+    end
+
     test "returns 500 when loghub throws", ctx do
-      GrpcMock.stub(LoghubMock, :get_log_events, fn _, _ ->
+      stub_loghub(fn _, _ ->
         throw("oops")
       end)
 
@@ -586,7 +614,7 @@ defmodule PipelinesAPI.Logs.Get.Test do
     end
 
     test "ignores malformed artifact_job_logs query value type", ctx do
-      GrpcMock.stub(LoghubMock, :get_log_events, fn _, _ ->
+      stub_loghub(fn _, _ ->
         %InternalApi.Loghub.GetLogEventsResponse{
           final: true,
           events: @events,
@@ -606,6 +634,487 @@ defmodule PipelinesAPI.Logs.Get.Test do
     test "returns 404 for job that does not exist", ctx do
       non_existing_job_id = UUID.uuid4()
       assert {404, _, _} = get_logs(non_existing_job_id, ctx.user_id, false)
+    end
+  end
+
+  describe "GET /logs/:job_id streaming" do
+    # GrpcMock stubs outlive the test, and other tests rely on GetLogEvents
+    # having none (a fallback must fail there).
+    setup do
+      on_exit(fn ->
+        GrpcMock.stub(LoghubMock, :get_log_events, fn _, _ -> raise "no GetLogEvents stub" end)
+      end)
+    end
+
+    # What the endpoint has always returned: the events, as loghub stores
+    # them, joined into one JSON document.
+    defp expected_body(events), do: ~s({ "events": [) <> Enum.join(events, ",") <> "] }"
+
+    defp ok_status,
+      do: %InternalApi.ResponseStatus{
+        code: InternalApi.ResponseStatus.Code.value(:OK),
+        message: ""
+      }
+
+    defp stub_batches(batches) do
+      GrpcMock.stub(LoghubMock, :stream_log_events, fn _, stream ->
+        for events <- batches do
+          GRPC.Server.send_reply(stream, %InternalApi.Loghub.GetLogEventsResponse{
+            status: ok_status(),
+            events: events,
+            final: true
+          })
+        end
+      end)
+    end
+
+    defp put_commit_bytes(bytes) do
+      previous = Application.get_env(:pipelines_api, :logs_commit_bytes)
+      Application.put_env(:pipelines_api, :logs_commit_bytes, bytes)
+
+      on_exit(fn ->
+        if previous,
+          do: Application.put_env(:pipelines_api, :logs_commit_bytes, previous),
+          else: Application.delete_env(:pipelines_api, :logs_commit_bytes)
+      end)
+    end
+
+    defp put_loghub_timeout(ms) do
+      previous = Application.get_env(:pipelines_api, :loghub_stream_timeout)
+      Application.put_env(:pipelines_api, :loghub_stream_timeout, ms)
+      on_exit(fn -> Application.put_env(:pipelines_api, :loghub_stream_timeout, previous) end)
+    end
+
+    @batches [[], [~s({"event":"job_started"}), ~s({"n":1})], [], [~s({"n":2})], [~s({"n":3})]]
+
+    test "a log under the commit size is one response with a Content-Length, same bytes", ctx do
+      stub_batches(@batches)
+
+      assert {200, headers, body} = get_logs(ctx.cloud_job.id, ctx.user_id, false)
+      assert body == expected_body(List.flatten(@batches))
+      assert header(headers, "content-length") == "#{byte_size(body)}"
+      assert header(headers, "transfer-encoding") == nil
+      assert header(headers, "content-type") =~ "application/json"
+    end
+
+    test "a log over the commit size is sent in chunks, same bytes", ctx do
+      put_commit_bytes(1)
+      stub_batches(@batches)
+
+      assert {200, headers, body} = get_logs(ctx.cloud_job.id, ctx.user_id, false)
+      assert body == expected_body(List.flatten(@batches))
+      assert header(headers, "transfer-encoding") == "chunked"
+      assert header(headers, "content-type") =~ "application/json"
+
+      # And as more than one chunk: the batches went out as they arrived.
+      assert {:ok, %{chunks: chunks, complete?: true}} = raw_get(ctx.cloud_job.id, ctx.user_id)
+      assert length(chunks) > 1
+      assert Enum.join(chunks) == expected_body(List.flatten(@batches))
+    end
+
+    test "an empty log is the same body either way", ctx do
+      stub_batches([[]])
+      assert {200, _, body} = get_logs(ctx.cloud_job.id, ctx.user_id, false)
+      assert body == expected_body([])
+
+      put_commit_bytes(1)
+      assert {200, _, ^body} = get_logs(ctx.cloud_job.id, ctx.user_id, false)
+    end
+
+    test "a failure after the response started aborts it, so no client gets a partial log",
+         ctx do
+      put_commit_bytes(1)
+
+      GrpcMock.stub(LoghubMock, :stream_log_events, fn _, stream ->
+        GRPC.Server.send_reply(stream, %InternalApi.Loghub.GetLogEventsResponse{
+          status: ok_status(),
+          events: [~s({"n":1})],
+          final: true
+        })
+
+        raise GRPC.RPCError, status: GRPC.Status.data_loss(), message: "corrupt"
+      end)
+
+      capture_log(fn ->
+        assert {:ok, %{status: 200, chunks: chunks, complete?: false}} =
+                 raw_get(ctx.cloud_job.id, ctx.user_id)
+
+        assert Enum.join(chunks) == ~s({ "events": [{"n":1})
+      end)
+    end
+
+    test "over HTTP/2, a failure after the response started resets the stream", ctx do
+      put_commit_bytes(1)
+
+      GrpcMock.stub(LoghubMock, :stream_log_events, fn _, stream ->
+        GRPC.Server.send_reply(stream, %InternalApi.Loghub.GetLogEventsResponse{
+          status: ok_status(),
+          events: [~s({"n":1})],
+          final: true
+        })
+
+        raise GRPC.RPCError, status: GRPC.Status.data_loss(), message: "corrupt"
+      end)
+
+      capture_log(fn ->
+        {:ok, conn} = :gun.open(~c"localhost", 4004, %{protocols: [:http2]})
+        {:ok, :http2} = :gun.await_up(conn)
+
+        ref =
+          :gun.get(conn, "/logs/#{ctx.cloud_job.id}", [
+            {"x-semaphore-user-id", ctx.user_id},
+            {"x-semaphore-org-id", Support.Stubs.Organization.default_org_id()}
+          ])
+
+        assert {:response, :nofin, 200, _headers} = :gun.await(conn, ref, 5_000)
+        assert {:error, {:stream_error, _}} = :gun.await_body(conn, ref, 5_000)
+        :gun.close(conn)
+      end)
+    end
+
+    test "a status change after the response started aborts it", ctx do
+      put_commit_bytes(1)
+
+      GrpcMock.stub(LoghubMock, :stream_log_events, fn _, stream ->
+        GRPC.Server.send_reply(stream, %InternalApi.Loghub.GetLogEventsResponse{
+          status: ok_status(),
+          events: [~s({"n":1})],
+          final: true
+        })
+
+        GRPC.Server.send_reply(stream, %InternalApi.Loghub.GetLogEventsResponse{
+          status: %InternalApi.ResponseStatus{
+            code: InternalApi.ResponseStatus.Code.value(:BAD_PARAM),
+            message: "gone"
+          },
+          events: [],
+          final: true
+        })
+      end)
+
+      capture_log(fn ->
+        assert {:ok, %{status: 200, complete?: false}} = raw_get(ctx.cloud_job.id, ctx.user_id)
+      end)
+    end
+
+    test "a failure before the commit size still gets its own status", ctx do
+      GrpcMock.stub(LoghubMock, :stream_log_events, fn _, stream ->
+        GRPC.Server.send_reply(stream, %InternalApi.Loghub.GetLogEventsResponse{
+          status: ok_status(),
+          events: [~s({"n":1})],
+          final: true
+        })
+
+        raise GRPC.RPCError, status: GRPC.Status.unavailable(), message: "busy"
+      end)
+
+      capture_log(fn ->
+        assert {503, _, "Logs are temporarily unavailable, please retry"} =
+                 get_logs(ctx.cloud_job.id, ctx.user_id)
+      end)
+    end
+
+    test "a loghub that is too slow to start is a 503, not a fallback", ctx do
+      GrpcMock.stub(LoghubMock, :stream_log_events, fn _, _ ->
+        # The test deadline is 1s (config/test.exs).
+        Process.sleep(3_000)
+      end)
+
+      GrpcMock.stub(LoghubMock, :get_log_events, fn _, _ -> flunk("must not fall back") end)
+
+      log =
+        capture_log(fn ->
+          assert {503, _, _} = get_logs(ctx.cloud_job.id, ctx.user_id)
+        end)
+
+      refute log =~ "falling back"
+    end
+
+    test "a stream that outlives the deadline after the response started is aborted", ctx do
+      put_commit_bytes(1)
+
+      GrpcMock.stub(LoghubMock, :stream_log_events, fn _, stream ->
+        GRPC.Server.send_reply(stream, %InternalApi.Loghub.GetLogEventsResponse{
+          status: ok_status(),
+          events: [~s({"n":1})],
+          final: true
+        })
+
+        Process.sleep(3_000)
+      end)
+
+      capture_log(fn ->
+        {elapsed, result} = :timer.tc(fn -> raw_get(ctx.cloud_job.id, ctx.user_id) end)
+        assert {:ok, %{status: 200, complete?: false}} = result
+        # The 1s test deadline, not the 3s the handler sleeps.
+        assert elapsed < 2_500_000
+      end)
+    end
+
+    test "the GetLogEvents fallback is streamed the same way", ctx do
+      put_commit_bytes(1)
+
+      GrpcMock.stub(LoghubMock, :stream_log_events, fn _, _ ->
+        raise GRPC.RPCError, status: GRPC.Status.unimplemented(), message: "unimplemented"
+      end)
+
+      GrpcMock.stub(LoghubMock, :get_log_events, fn _, _ ->
+        %InternalApi.Loghub.GetLogEventsResponse{
+          status: ok_status(),
+          events: [~s({"n":1}), ~s({"n":2})],
+          final: true
+        }
+      end)
+
+      capture_log(fn ->
+        assert {200, headers, body} = get_logs(ctx.cloud_job.id, ctx.user_id, false)
+        assert body == expected_body([~s({"n":1}), ~s({"n":2})])
+        assert header(headers, "transfer-encoding") == "chunked"
+      end)
+    end
+
+    # The leak behind the OOM: a client that gives up must not leave loghub
+    # (and this service) working on a log nobody reads.
+    test "a client hanging up mid-stream cancels the loghub stream within about a second",
+         ctx do
+      put_commit_bytes(1)
+      put_loghub_timeout(60_000)
+      test = self()
+
+      GrpcMock.stub(LoghubMock, :stream_log_events, fn _, stream ->
+        GRPC.Server.send_reply(stream, %InternalApi.Loghub.GetLogEventsResponse{
+          status: ok_status(),
+          events: [~s({"n":1})],
+          final: true
+        })
+
+        send(test, {:first_batch_sent, self()})
+        Process.sleep(60_000)
+      end)
+
+      {:ok, socket} = raw_request(ctx.cloud_job.id, ctx.user_id)
+      assert_receive {:first_batch_sent, handler}, 5_000
+      ref = Process.monitor(handler)
+
+      # Wait for the start of the body, then hang up.
+      {:ok, _} = :gen_tcp.recv(socket, 0, 5_000)
+      :gen_tcp.close(socket)
+
+      assert_receive {:DOWN, ^ref, :process, ^handler, _}, 2_000
+    end
+  end
+
+  describe "GET /logs/:job_id concurrency cap" do
+    alias PipelinesAPI.Logs.Limiter
+
+    # Takes every slot of the app's limiter until the returned pids get :finish.
+    defp fill_limiter do
+      test = self()
+      max = :sys.get_state(Limiter).max
+
+      pids =
+        for _ <- 1..max do
+          pid =
+            spawn(fn ->
+              Limiter.run(fn ->
+                send(test, {:holding, self()})
+
+                receive do
+                  :finish -> :ok
+                end
+              end)
+            end)
+
+          assert_receive {:holding, ^pid}
+          pid
+        end
+
+      on_exit(fn ->
+        Enum.each(pids, &Process.exit(&1, :kill))
+        # The kills free the slots asynchronously (monitor DOWN); the next
+        # test must start with an empty limiter.
+        wait_for_free_slots()
+      end)
+
+      pids
+    end
+
+    defp wait_for_free_slots(tries \\ 100) do
+      cond do
+        Limiter.in_use() == 0 -> :ok
+        tries == 0 -> flunk("#{Limiter.in_use()} slots still taken")
+        true -> Process.sleep(20) && wait_for_free_slots(tries - 1)
+      end
+    end
+
+    defp stub_small_log do
+      GrpcMock.stub(LoghubMock, :stream_log_events, fn _, stream ->
+        GRPC.Server.send_reply(stream, %InternalApi.Loghub.GetLogEventsResponse{
+          status: %InternalApi.ResponseStatus{
+            code: InternalApi.ResponseStatus.Code.value(:OK),
+            message: ""
+          },
+          events: [~s({"n":1})],
+          final: true
+        })
+      end)
+    end
+
+    test "under the cap, requests are served", ctx do
+      stub_small_log()
+
+      for _ <- 1..3 do
+        assert {200, _, ~s({ "events": [{"n":1}] })} =
+                 get_logs(ctx.cloud_job.id, ctx.user_id, false)
+      end
+
+      wait_for_free_slots()
+    end
+
+    test "over the cap, a request gets a 503 without calling loghub", ctx do
+      GrpcMock.stub(LoghubMock, :stream_log_events, fn _, _ -> flunk("must not call loghub") end)
+      holders = fill_limiter()
+
+      assert {503, _, "Logs are temporarily unavailable, please retry"} =
+               get_logs(ctx.cloud_job.id, ctx.user_id)
+
+      Enum.each(holders, &send(&1, :finish))
+      wait_for_free_slots()
+
+      stub_small_log()
+      assert {200, _, _} = get_logs(ctx.cloud_job.id, ctx.user_id, false)
+    end
+
+    test "self-hosted jobs are not capped", ctx do
+      GrpcMock.stub(Loghub2Mock, :generate_token, fn _, _ ->
+        %InternalApi.Loghub2.GenerateTokenResponse{
+          type: InternalApi.Loghub2.TokenType.value(:PULL),
+          token: @token
+        }
+      end)
+
+      fill_limiter()
+
+      assert {302, _, _} = get_logs(ctx.self_hosted_job.id, ctx.user_id, false)
+    end
+
+    test "a client hanging up mid-stream frees its slot", ctx do
+      previous = Application.get_env(:pipelines_api, :logs_commit_bytes)
+      Application.put_env(:pipelines_api, :logs_commit_bytes, 1)
+      timeout = Application.get_env(:pipelines_api, :loghub_stream_timeout)
+      Application.put_env(:pipelines_api, :loghub_stream_timeout, 60_000)
+
+      on_exit(fn ->
+        Application.put_env(:pipelines_api, :loghub_stream_timeout, timeout)
+
+        if previous,
+          do: Application.put_env(:pipelines_api, :logs_commit_bytes, previous),
+          else: Application.delete_env(:pipelines_api, :logs_commit_bytes)
+      end)
+
+      test = self()
+
+      GrpcMock.stub(LoghubMock, :stream_log_events, fn _, stream ->
+        GRPC.Server.send_reply(stream, %InternalApi.Loghub.GetLogEventsResponse{
+          status: %InternalApi.ResponseStatus{
+            code: InternalApi.ResponseStatus.Code.value(:OK),
+            message: ""
+          },
+          events: [~s({"n":1})],
+          final: true
+        })
+
+        send(test, :first_batch_sent)
+        Process.sleep(60_000)
+      end)
+
+      {:ok, socket} = raw_request(ctx.cloud_job.id, ctx.user_id)
+      assert_receive :first_batch_sent, 5_000
+      {:ok, _} = :gen_tcp.recv(socket, 0, 5_000)
+      assert Limiter.in_use() == 1
+
+      :gen_tcp.close(socket)
+      wait_for_free_slots()
+    end
+
+    test "a request that fails after the response started frees its slot", ctx do
+      Application.put_env(:pipelines_api, :logs_commit_bytes, 1)
+      on_exit(fn -> Application.delete_env(:pipelines_api, :logs_commit_bytes) end)
+
+      GrpcMock.stub(LoghubMock, :stream_log_events, fn _, stream ->
+        GRPC.Server.send_reply(stream, %InternalApi.Loghub.GetLogEventsResponse{
+          status: %InternalApi.ResponseStatus{
+            code: InternalApi.ResponseStatus.Code.value(:OK),
+            message: ""
+          },
+          events: [~s({"n":1})],
+          final: true
+        })
+
+        raise GRPC.RPCError, status: GRPC.Status.data_loss(), message: "corrupt"
+      end)
+
+      capture_log(fn ->
+        assert {:ok, %{complete?: false}} = raw_get(ctx.cloud_job.id, ctx.user_id)
+      end)
+
+      wait_for_free_slots()
+    end
+  end
+
+  defp header(headers, name) do
+    Enum.find_value(headers, fn {key, value} ->
+      if String.downcase(key) == name, do: value
+    end)
+  end
+
+  defp raw_request(job_id, user_id) do
+    {:ok, socket} = :gen_tcp.connect(~c"localhost", 4004, [:binary, active: false])
+
+    request =
+      "GET /logs/#{job_id} HTTP/1.1\r\nhost: localhost\r\nconnection: close\r\n" <>
+        "x-semaphore-user-id: #{user_id}\r\n" <>
+        "x-semaphore-org-id: #{Support.Stubs.Organization.default_org_id()}\r\n\r\n"
+
+    :ok = :gen_tcp.send(socket, request)
+    {:ok, socket}
+  end
+
+  # Reads a whole response off the socket and decodes its chunks. complete?
+  # is whether the body ended with the last (empty) chunk.
+  defp raw_get(job_id, user_id) do
+    {:ok, socket} = raw_request(job_id, user_id)
+    data = read_all(socket, "")
+    [head, body] = String.split(data, "\r\n\r\n", parts: 2)
+    [status_line | _] = String.split(head, "\r\n")
+    [_, status | _] = String.split(status_line, " ")
+    {chunks, complete?} = decode_chunks(body, [])
+    {:ok, %{status: String.to_integer(status), chunks: chunks, complete?: complete?}}
+  end
+
+  defp read_all(socket, acc) do
+    case :gen_tcp.recv(socket, 0, 10_000) do
+      {:ok, data} -> read_all(socket, acc <> data)
+      {:error, :closed} -> acc
+    end
+  end
+
+  defp decode_chunks(data, chunks) do
+    with [size_line, rest] <- String.split(data, "\r\n", parts: 2),
+         {size, ""} <- Integer.parse(size_line, 16) do
+      case {size, rest} do
+        {0, "\r\n"} ->
+          {Enum.reverse(chunks), true}
+
+        {size, rest} when byte_size(rest) >= size + 2 ->
+          <<chunk::binary-size(size), "\r\n", rest::binary>> = rest
+          decode_chunks(rest, [chunk | chunks])
+
+        _ ->
+          {Enum.reverse(chunks), false}
+      end
+    else
+      _ -> {Enum.reverse(chunks), false}
     end
   end
 
@@ -671,7 +1180,7 @@ defmodule PipelinesAPI.Logs.Get.Test do
   end
 
   defp stub_loghub_not_found do
-    GrpcMock.stub(LoghubMock, :get_log_events, fn _, _ ->
+    stub_loghub(fn _, _ ->
       %InternalApi.Loghub.GetLogEventsResponse{
         final: false,
         events: [],
@@ -680,6 +1189,22 @@ defmodule PipelinesAPI.Logs.Get.Test do
           message: "Log not found neither in the archive nor in the virtual machine"
         }
       }
+    end)
+  end
+
+  # Serves the given response through StreamLogEvents, one event per message,
+  # the way loghub splits a log into batches.
+  defp stub_loghub(fun) do
+    GrpcMock.stub(LoghubMock, :stream_log_events, fn req, stream ->
+      response = fun.(req, stream)
+
+      case response.events do
+        [] ->
+          GRPC.Server.send_reply(stream, response)
+
+        events ->
+          Enum.each(events, &GRPC.Server.send_reply(stream, %{response | events: [&1]}))
+      end
     end)
   end
 

@@ -17,6 +17,11 @@ config :pipelines_api, :audit_logging, System.get_env("AUDIT_LOGGING") == "true"
 
 config :pipelines_api, :amqp_url, System.get_env("AMQP_URL")
 
+# Job logs streamed at once per pod (see PipelinesAPI.Logs.Limiter).
+config :pipelines_api,
+       :logs_max_concurrent,
+       String.to_integer(System.get_env("LOGS_MAX_CONCURRENT") || "4")
+
 if System.get_env("AMQP_URL") != nil do
   config :amqp,
     connections: [

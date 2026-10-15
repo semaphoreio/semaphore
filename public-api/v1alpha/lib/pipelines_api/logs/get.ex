@@ -13,6 +13,8 @@ defmodule PipelinesAPI.Logs.Get do
   alias PipelinesAPI.ArtifactHubClient
   alias PipelinesAPI.LoghubClient
   alias PipelinesAPI.Loghub2Client
+  alias PipelinesAPI.Logs.Body
+  alias PipelinesAPI.Logs.Limiter
   alias PipelinesAPI.Logs.Params, as: LogsParams
   alias PipelinesAPI.Util.{Metrics, RequestMetrics, ToTuple}
   alias Plug.Conn
@@ -78,26 +80,56 @@ defmodule PipelinesAPI.Logs.Get do
     end
   end
 
+  # Streams the log through to the client as loghub sends it (see
+  # PipelinesAPI.Logs.Body for how the status is chosen and what happens
+  # when the stream fails after the response started).
   defp get_logs(conn, job = %{self_hosted: false}) do
-    case LoghubClient.get_log_events(source_job_id(job)) do
-      {:ok, events} ->
+    case Limiter.run(fn -> stream_logs(conn, job) end) do
+      {:error, :busy} ->
+        RespCommon.respond(
+          ToTuple.unavailable_error("Logs are temporarily unavailable, please retry"),
+          conn
+        )
+
+      conn ->
         conn
-        |> put_resp_content_type("application/json")
-        |> send_resp(200, prepare_response(events))
+    end
+  end
 
-      # The job produced no logs. If zebra recorded why it never ran (e.g. an
-      # invalid machine type), surface that reason instead of a bare not-found.
-      {:error, {:not_found, message}} ->
-        RespCommon.respond({:error, {:not_found, missing_logs_message(job, message)}}, conn)
+  defp stream_logs(conn, job) do
+    case LoghubClient.stream_log_events(source_job_id(job), Body.new(conn), &add_events/2) do
+      {:ok, body} ->
+        Body.finish(body)
 
-      e ->
-        RespCommon.respond(e, conn)
+      # The client went away.
+      {:halted, body} ->
+        body.conn
+
+      {:error, error, body} ->
+        if Body.sent?(body) do
+          Logger.error(
+            "Log stream for #{job.id} failed after the response started: #{inspect(error)}"
+          )
+
+          Body.abort(body)
+        else
+          respond_error(error, job, conn)
+        end
     end
   rescue
     e ->
       Logger.error("Error getting logs for #{job.id}: #{inspect(e)}")
       RespCommon.respond(e, conn)
   end
+
+  defp add_events(events, body), do: Body.add(body, events)
+
+  # The job produced no logs. If zebra recorded why it never ran (e.g. an
+  # invalid machine type), surface that reason instead of a bare not-found.
+  defp respond_error({:not_found, message}, job, conn),
+    do: RespCommon.respond({:error, {:not_found, missing_logs_message(job, message)}}, conn)
+
+  defp respond_error(error, _job, conn), do: RespCommon.respond({:error, error}, conn)
 
   # Mirrors the UI's behaviour of showing why a job produced no logs in place of
   # the logs themselves (see FrontWeb.JobView.missing_logs_message/1). Falls back
@@ -263,10 +295,6 @@ defmodule PipelinesAPI.Logs.Get do
       error ->
         error
     end
-  end
-
-  defp prepare_response(events) do
-    Enum.join(['{ "events": [', Enum.join(events, ","), "] }"], "")
   end
 
   defp build_loghub2_url(conn, job_id, token) do
