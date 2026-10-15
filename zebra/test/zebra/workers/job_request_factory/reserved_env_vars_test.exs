@@ -1,0 +1,230 @@
+defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVarsTest do
+  use ExUnit.Case, async: true
+
+  import ExUnit.CaptureLog
+
+  alias Semaphore.Jobs.V1alpha.Job.Spec
+  alias Zebra.Workers.JobRequestFactory.{JobRequest, ReservedEnvVars, Secrets}
+
+  @job %Zebra.Models.Job{id: Ecto.UUID.generate(), organization_id: Ecto.UUID.generate()}
+
+  @no_secrets %Secrets{job_secrets: [], image_pull_secrets: [], container_secrets: []}
+
+  defp spec(containers \\ []) do
+    Spec.new(agent: Spec.Agent.new(containers: containers))
+  end
+
+  defp env_vars(names), do: Enum.map(names, &JobRequest.env_var(&1, "value"))
+
+  defp secret(name, env_var_names),
+    do: %Secrets.Secret{name: name, env_vars: env_vars(env_var_names), files: []}
+
+  defp validate(job_type, spec_env_var_names, opts \\ []) do
+    secrets = Keyword.get(opts, :secrets, @no_secrets)
+    spec = Keyword.get(opts, :spec, spec())
+
+    capture_log(fn ->
+      send(
+        self(),
+        {:result,
+         ReservedEnvVars.validate(@job, job_type, spec, env_vars(spec_env_var_names), secrets)}
+      )
+    end)
+
+    assert_received {:result, result}
+    result
+  end
+
+  describe "reserved?/1" do
+    test "matches zebra-owned, plumber-owned and artefact-id names" do
+      assert ReservedEnvVars.reserved?("SEMAPHORE_GIT_BRANCH")
+      assert ReservedEnvVars.reserved?("SEMAPHORE_WORKFLOW_TRIGGERED_BY_API")
+      assert ReservedEnvVars.reserved?("SEMAPHORE_PIPELINE_3_ARTEFACT_ID")
+      assert ReservedEnvVars.reserved?("SEMAPHORE")
+    end
+
+    test "does not match names users are documented to set" do
+      refute ReservedEnvVars.reserved?("SEMAPHORE_CACHE_BACKEND")
+      refute ReservedEnvVars.reserved?("SEMAPHORE_CACHE_URL")
+      refute ReservedEnvVars.reserved?("SEMAPHORE_CACHE_USERNAME")
+      refute ReservedEnvVars.reserved?("SEMAPHORE_CACHE_PRIVATE_KEY_PATH")
+      refute ReservedEnvVars.reserved?("SEMAPHORE_GIT_CLONE_SLOW_RETRY")
+      refute ReservedEnvVars.reserved?("SEMAPHORE_GIT_DEPTH")
+      refute ReservedEnvVars.reserved?("SEMAPHORE_JOB_RESULT")
+      refute ReservedEnvVars.reserved?("SEMAPHORE_PIPELINE_X_ARTEFACT_ID")
+      refute ReservedEnvVars.reserved?("IGOR")
+    end
+  end
+
+  describe "validate/5 for pipeline jobs" do
+    test "accepts plumber-owned names present once" do
+      names = [
+        "SEMAPHORE_WORKFLOW_ID",
+        "SEMAPHORE_WORKFLOW_TRIGGERED_BY_API",
+        "SEMAPHORE_PIPELINE_0_ARTEFACT_ID",
+        "SEMAPHORE_PIPELINE_1_ARTEFACT_ID",
+        "SEMAPHORE_CACHE_BACKEND",
+        "IGOR"
+      ]
+
+      assert validate(:pipeline_job, names) == :ok
+      assert validate(:debug_job, names) == :ok
+    end
+
+    test "rejects a plumber-owned name present more than once" do
+      names = [
+        "SEMAPHORE_WORKFLOW_TRIGGERED_BY_API",
+        "IGOR",
+        "SEMAPHORE_WORKFLOW_TRIGGERED_BY_API"
+      ]
+
+      assert validate(:pipeline_job, names) ==
+               {:stop_job_processing,
+                "Reserved environment variables cannot be set: SEMAPHORE_WORKFLOW_TRIGGERED_BY_API (job env_vars)"}
+    end
+
+    test "rejects a duplicated artefact-id name" do
+      names = ["SEMAPHORE_PIPELINE_2_ARTEFACT_ID", "SEMAPHORE_PIPELINE_2_ARTEFACT_ID"]
+
+      assert {:stop_job_processing, _} = validate(:debug_job, names)
+    end
+
+    test "rejects a zebra-owned name present once" do
+      assert validate(:pipeline_job, ["SEMAPHORE_GIT_BRANCH"]) ==
+               {:stop_job_processing,
+                "Reserved environment variables cannot be set: SEMAPHORE_GIT_BRANCH (job env_vars)"}
+    end
+  end
+
+  describe "validate/5 for jobs outside a pipeline" do
+    test "rejects any reserved name" do
+      assert validate(:project_debug_job, ["SEMAPHORE_WORKFLOW_TRIGGERED_BY_API"]) ==
+               {:stop_job_processing,
+                "Reserved environment variables cannot be set: SEMAPHORE_WORKFLOW_TRIGGERED_BY_API (job env_vars)"}
+    end
+
+    test "accepts non-reserved names" do
+      assert validate(:project_debug_job, ["IGOR", "SEMAPHORE_GIT_DEPTH"]) == :ok
+    end
+  end
+
+  describe "validate/5 for secrets and containers" do
+    test "rejects a reserved name in a job secret" do
+      secrets = %{@no_secrets | job_secrets: [secret("deploy", ["A", "SEMAPHORE_GIT_SHA"])]}
+
+      assert validate(:pipeline_job, [], secrets: secrets) ==
+               {:stop_job_processing,
+                "Reserved environment variables cannot be set: SEMAPHORE_GIT_SHA (secret 'deploy')"}
+    end
+
+    test "rejects a plumber-owned name in a secret even when the spec has none" do
+      secrets = %{
+        @no_secrets
+        | job_secrets: [secret("deploy", ["SEMAPHORE_PIPELINE_PROMOTED_BY"])]
+      }
+
+      assert {:stop_job_processing, _} = validate(:pipeline_job, [], secrets: secrets)
+    end
+
+    test "rejects a reserved name in a container secret" do
+      secrets = %{@no_secrets | container_secrets: [[], [secret("db", ["SEMAPHORE_JOB_ID"])]]}
+
+      assert validate(:pipeline_job, [], secrets: secrets) ==
+               {:stop_job_processing,
+                "Reserved environment variables cannot be set: SEMAPHORE_JOB_ID (secret 'db')"}
+    end
+
+    test "rejects a reserved name in an image pull secret" do
+      secrets = %{
+        @no_secrets
+        | image_pull_secrets: [secret("registry", ["SEMAPHORE_OIDC_TOKEN"])]
+      }
+
+      assert validate(:pipeline_job, [], secrets: secrets) ==
+               {:stop_job_processing,
+                "Reserved environment variables cannot be set: SEMAPHORE_OIDC_TOKEN (image pull secret 'registry')"}
+    end
+
+    test "rejects a reserved name in container env_vars" do
+      container =
+        Spec.Agent.Container.new(
+          name: "main",
+          env_vars: [Spec.EnvVar.new(name: "SEMAPHORE_WORKFLOW_TRIGGERED_BY", value: "nobody")]
+        )
+
+      assert validate(:pipeline_job, [], spec: spec([container])) ==
+               {:stop_job_processing,
+                "Reserved environment variables cannot be set: SEMAPHORE_WORKFLOW_TRIGGERED_BY (container 'main' env_vars)"}
+    end
+
+    test "accepts secrets and containers without reserved names" do
+      secrets = %{@no_secrets | job_secrets: [secret("deploy", ["A", "SEMAPHORE_CACHE_URL"])]}
+
+      container =
+        Spec.Agent.Container.new(name: "db", env_vars: [Spec.EnvVar.new(name: "PG", value: "1")])
+
+      assert validate(:pipeline_job, [], secrets: secrets, spec: spec([container])) == :ok
+    end
+  end
+
+  describe "validate/5 rejection message" do
+    test "lists each violation once" do
+      secrets = %{
+        @no_secrets
+        | job_secrets: [secret("deploy", ["SEMAPHORE_GIT_SHA", "SEMAPHORE_GIT_SHA"])]
+      }
+
+      assert validate(:pipeline_job, [], secrets: secrets) ==
+               {:stop_job_processing,
+                "Reserved environment variables cannot be set: SEMAPHORE_GIT_SHA (secret 'deploy')"}
+    end
+
+    test "fits in 255 characters when there are many violations" do
+      names = [
+        "SEMAPHORE_GIT_PROVIDER",
+        "SEMAPHORE_GIT_URL",
+        "SEMAPHORE_GIT_REPO_NAME",
+        "SEMAPHORE_GIT_DIR",
+        "SEMAPHORE_GIT_SHA",
+        "SEMAPHORE_GIT_REPO_SLUG",
+        "SEMAPHORE_GIT_REF",
+        "SEMAPHORE_GIT_COMMIT_RANGE",
+        "SEMAPHORE_GIT_BRANCH",
+        "SEMAPHORE_GIT_WORKING_BRANCH"
+      ]
+
+      assert {:stop_job_processing, message} = validate(:pipeline_job, names)
+      assert String.length(message) <= 255
+      assert message =~ "SEMAPHORE_GIT_PROVIDER (job env_vars)"
+      assert message =~ ~r/ and \d+ more$/
+    end
+
+    test "fits in 255 characters when a single entry is too long" do
+      secrets = %{
+        @no_secrets
+        | job_secrets: [secret(String.duplicate("s", 300), ["SEMAPHORE_GIT_SHA"])]
+      }
+
+      assert {:stop_job_processing, message} = validate(:pipeline_job, [], secrets: secrets)
+      assert String.length(message) == 255
+    end
+
+    test "logs names only, never values" do
+      log =
+        capture_log(fn ->
+          ReservedEnvVars.validate(
+            @job,
+            :pipeline_job,
+            spec(),
+            [JobRequest.env_var("SEMAPHORE_GIT_BRANCH", "very-secret-value")],
+            @no_secrets
+          )
+        end)
+
+      assert log =~ "names=SEMAPHORE_GIT_BRANCH"
+      assert log =~ "job_id=#{@job.id}"
+      refute log =~ "very-secret-value"
+      refute log =~ Base.encode64("very-secret-value")
+    end
+  end
+end
