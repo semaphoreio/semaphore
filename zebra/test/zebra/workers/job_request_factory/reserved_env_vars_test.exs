@@ -56,6 +56,97 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVarsTest do
     end
   end
 
+  @plumber_base_names [
+    "SEMAPHORE_WORKFLOW_ID",
+    "SEMAPHORE_WORKFLOW_NUMBER",
+    "SEMAPHORE_WORKFLOW_RERUN",
+    "SEMAPHORE_WORKFLOW_TRIGGERED_BY_HOOK",
+    "SEMAPHORE_WORKFLOW_HOOK_SOURCE",
+    "SEMAPHORE_WORKFLOW_TRIGGERED_BY_SCHEDULE",
+    "SEMAPHORE_WORKFLOW_TRIGGERED_BY_API",
+    "SEMAPHORE_WORKFLOW_TRIGGERED_BY_MANUAL_RUN",
+    "SEMAPHORE_PIPELINE_ARTEFACT_ID",
+    "SEMAPHORE_PIPELINE_ID",
+    "SEMAPHORE_PIPELINE_NAME",
+    "SEMAPHORE_BLOCK_NAME",
+    "SEMAPHORE_PIPELINE_RERUN",
+    "SEMAPHORE_PIPELINE_PROMOTION",
+    "SEMAPHORE_PIPELINE_PROMOTED_BY",
+    "SEMAPHORE_WORKFLOW_TRIGGERED_BY",
+    "SEMAPHORE_GIT_COMMIT_AUTHOR",
+    "SEMAPHORE_GIT_COMMITTER",
+    "SEMAPHORE_ORGANIZATION_ID",
+    "SEMAPHORE_SNAPSHOT_ID",
+    "SEMAPHORE_PIPELINE_0_ARTEFACT_ID",
+    "SEMAPHORE_PIPELINE_1_ARTEFACT_ID",
+    "SEMAPHORE_PIPELINE_2_ARTEFACT_ID"
+  ]
+
+  describe "validate/5 with the env vars Plumber sends" do
+    test "accepts a parallel, rerun job of a promoted pipeline" do
+      names =
+        @plumber_base_names ++
+          ["DEPLOY_TARGET", "GLOBAL_VAR", "BLOCK_VAR", "JOB_VAR"] ++
+          ["SEMAPHORE_JOB_COUNT", "SEMAPHORE_JOB_INDEX"] ++
+          ["SEMAPHORE_JOB_RERUN", "SEMAPHORE_JOB_ORIGINAL_ID"]
+
+      assert validate(:pipeline_job, names) == :ok
+      assert validate(:debug_job, names) == :ok
+    end
+
+    test "accepts an after_pipeline job" do
+      names =
+        @plumber_base_names ++
+          [
+            "SEMAPHORE_PIPELINE_TOTAL_DURATION",
+            "SEMAPHORE_PIPELINE_INIT_DURATION",
+            "SEMAPHORE_PIPELINE_QUEUEING_DURATION",
+            "SEMAPHORE_PIPELINE_RUNNING_DURATION",
+            "SEMAPHORE_PIPELINE_CREATED_AT",
+            "SEMAPHORE_PIPELINE_STARTED_AT",
+            "SEMAPHORE_PIPELINE_DONE_AT",
+            "SEMAPHORE_PIPELINE_RESULT",
+            "SEMAPHORE_PIPELINE_RESULT_REASON"
+          ]
+
+      assert validate(:pipeline_job, names) == :ok
+    end
+
+    test "accepts a pipeline initialization job" do
+      assert validate(:pipeline_job, @plumber_base_names ++ ["SEMAPHORE_YAML_FILE_PATH"]) == :ok
+    end
+
+    test "rejects a promotion parameter that repeats a platform name" do
+      names = @plumber_base_names ++ ["SEMAPHORE_WORKFLOW_TRIGGERED_BY"]
+
+      assert validate(:pipeline_job, names) ==
+               {:stop_job_processing,
+                "Reserved environment variables cannot be set: SEMAPHORE_WORKFLOW_TRIGGERED_BY (job env_vars)"}
+    end
+  end
+
+  describe "validate/5 name casing" do
+    test "rejects a differently-cased repeat of a plumber-owned name" do
+      names = ["SEMAPHORE_WORKFLOW_TRIGGERED_BY_API", "semaphore_workflow_triggered_by_api"]
+
+      assert validate(:pipeline_job, names) ==
+               {:stop_job_processing,
+                "Reserved environment variables cannot be set: SEMAPHORE_WORKFLOW_TRIGGERED_BY_API (job env_vars)"}
+    end
+
+    test "rejects a lowercase zebra-owned name" do
+      assert validate(:pipeline_job, ["semaphore_git_branch"]) ==
+               {:stop_job_processing,
+                "Reserved environment variables cannot be set: semaphore_git_branch (job env_vars)"}
+    end
+
+    test "rejects mixed-case reserved names in secrets and artefact ids" do
+      assert ReservedEnvVars.reserved?("Semaphore_Oidc_Token")
+      assert ReservedEnvVars.reserved?("semaphore_pipeline_4_artefact_id")
+      refute ReservedEnvVars.reserved?("semaphore_cache_backend")
+    end
+  end
+
   describe "validate/5 for pipeline jobs" do
     test "accepts plumber-owned names present once" do
       names = [
