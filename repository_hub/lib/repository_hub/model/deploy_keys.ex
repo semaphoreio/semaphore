@@ -34,6 +34,7 @@ defmodule RepositoryHub.Model.DeployKeys do
     File.rm("ssh_key.pub")
 
     # generate an ssh key pair, with no passphrase and no comment
+    # git hosts reject newly added RSA keys shorter than 3072 bits
     {_, 0} =
       System.cmd("ssh-keygen", [
         "-f",
@@ -41,7 +42,7 @@ defmodule RepositoryHub.Model.DeployKeys do
         "-t",
         "rsa",
         "-b",
-        "2048",
+        "4096",
         "-P",
         "#{""}",
         "-C",
