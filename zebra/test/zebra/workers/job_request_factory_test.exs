@@ -1484,7 +1484,10 @@ defmodule Zebra.Workers.JobRequestFactoryTest do
       "SEMAPHORE_CACHE_URL",
       "SEMAPHORE_CACHE_USERNAME",
       "SEMAPHORE_CACHE_PRIVATE_KEY_PATH",
-      "SEMAPHORE_GIT_CLONE_SLOW_RETRY"
+      "SEMAPHORE_GIT_CLONE_SLOW_RETRY",
+      "SEMAPHORE_CACHE_ARCHIVE_METHOD",
+      "SEMAPHORE_TOOLBOX_METRICS_ENABLED",
+      "SEMAPHORE_TEST_RESULTS_NO_TRIM"
     ]
 
     for machine_type <- ["e1-standard-2", "s1-test-1"] do
