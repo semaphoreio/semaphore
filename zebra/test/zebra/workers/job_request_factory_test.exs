@@ -1319,6 +1319,71 @@ defmodule Zebra.Workers.JobRequestFactoryTest do
     assert job.failure_reason == "Secret aws-secrets not found"
   end
 
+  test "when a secret sets a reserved env var => force fails the job" do
+    GrpcMock.stub(Support.FakeServers.SecretsApi, :checkout_many, fn _, _ ->
+      InternalApi.Secrethub.CheckoutManyResponse.new(
+        secrets: [
+          InternalApi.Secrethub.Secret.new(
+            metadata: InternalApi.Secrethub.Secret.Metadata.new(name: "aws-secrets"),
+            data:
+              InternalApi.Secrethub.Secret.Data.new(
+                env_vars: [
+                  InternalApi.Secrethub.Secret.EnvVar.new(
+                    name: "SEMAPHORE_GIT_BRANCH",
+                    value: "main"
+                  )
+                ]
+              )
+          )
+        ]
+      )
+    end)
+
+    {:ok, task} = Support.Factories.Task.create()
+    {:ok, job} = Support.Factories.Job.create(:pending, %{spec: @job_spec, build_id: task.id})
+
+    capture_log(fn -> send(self(), {:result, Worker.process(job)}) end)
+    assert_received {:result, {:ok, job}}
+
+    assert Job.finished?(job)
+    assert Job.failed?(job)
+
+    assert job.failure_reason ==
+             "Reserved environment variables cannot be set: SEMAPHORE_GIT_BRANCH (secret 'aws-secrets')"
+  end
+
+  test "when the spec overrides a platform env var => force fails the job without an OIDC token" do
+    test_pid = self()
+
+    GrpcMock.stub(Support.FakeServers.SecretsApi, :generate_open_id_connect_token, fn _, _ ->
+      send(test_pid, :oidc_token_generated)
+      InternalApi.Secrethub.GenerateOpenIDConnectTokenResponse.new(token: @oidc_token_value)
+    end)
+
+    spec =
+      Map.update!(@job_spec, "env_vars", fn env_vars ->
+        env_vars ++
+          [
+            %{"name" => "SEMAPHORE_WORKFLOW_TRIGGERED_BY_API", "value" => "false"},
+            %{"name" => "SEMAPHORE_WORKFLOW_TRIGGERED_BY_API", "value" => "true"}
+          ]
+      end)
+
+    {:ok, task} = Support.Factories.Task.create()
+    {:ok, job} = Support.Factories.Job.create(:pending, %{spec: spec, build_id: task.id})
+
+    capture_log(fn -> send(self(), {:result, Worker.process(job)}) end)
+    assert_received {:result, {:ok, job}}
+
+    assert Job.finished?(job)
+    assert Job.failed?(job)
+
+    assert job.failure_reason ==
+             "Reserved environment variables cannot be set: SEMAPHORE_WORKFLOW_TRIGGERED_BY_API (job env_vars)"
+
+    refute_received :oidc_token_generated
+  end
+
   test "when the organization service raises an exception => doesn't process the job" do
     GrpcMock.stub(Support.FakeServers.OrganizationApi, :describe, fn _, _ ->
       raise "i refuse to return"
