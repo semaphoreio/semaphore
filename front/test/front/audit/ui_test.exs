@@ -174,4 +174,149 @@ defmodule Front.Audit.UI.Test do
       get(conn, "/audit/csv")
     end
   end
+
+  describe "GET /audit/csv with a date range" do
+    setup do
+      {:ok, requests} = Agent.start_link(fn -> [] end)
+
+      GrpcMock.stub(AuditMock, :paginated_list, fn req, _ ->
+        Agent.update(requests, &[req | &1])
+
+        InternalApi.Audit.PaginatedListResponse.new(
+          events: [],
+          next_page_token:
+            case req.page_token do
+              "" -> "page-2"
+              "page-2" -> "page-3"
+              _ -> ""
+            end,
+          previous_page_token: ""
+        )
+      end)
+
+      [requests: requests]
+    end
+
+    defp sent_requests(requests), do: requests |> Agent.get(& &1) |> Enum.reverse()
+
+    test "no range sends no bounds (old behaviour)", %{conn: conn, requests: requests} do
+      conn = get(conn, "/audit/csv")
+
+      assert conn.status == 200
+
+      assert get_resp_header(conn, "content-disposition") == [
+               ~s(attachment; filename="audit.csv")
+             ]
+
+      for req <- sent_requests(requests) do
+        assert req.from_timestamp == nil
+        assert req.to_timestamp == nil
+      end
+    end
+
+    test "empty params are the same as no range", %{conn: conn, requests: requests} do
+      conn = get(conn, "/audit/csv", %{"from" => "", "to" => ""})
+
+      assert conn.status == 200
+      assert [%{from_timestamp: nil, to_timestamp: nil} | _] = sent_requests(requests)
+    end
+
+    test "sends the range as UTC day bounds on every page, 'to' day inclusive", %{
+      conn: conn,
+      requests: requests
+    } do
+      conn = get(conn, "/audit/csv", %{"from" => "2026-09-01", "to" => "2026-09-30"})
+
+      assert conn.status == 200
+
+      assert get_resp_header(conn, "content-disposition") == [
+               ~s(attachment; filename="audit_2026-09-01_2026-09-30.csv")
+             ]
+
+      from = DateTime.to_unix(~U[2026-09-01 00:00:00Z])
+      to = DateTime.to_unix(~U[2026-10-01 00:00:00Z])
+
+      sent = sent_requests(requests)
+      assert Enum.map(sent, & &1.page_token) == ["", "page-2", "page-3"]
+
+      for req <- sent do
+        assert req.from_timestamp.seconds == from
+        assert req.to_timestamp.seconds == to
+      end
+    end
+
+    test "a single day covers that whole day", %{conn: conn, requests: requests} do
+      conn = get(conn, "/audit/csv", %{"from" => "2026-02-28", "to" => "2026-02-28"})
+
+      assert conn.status == 200
+      [req | _] = sent_requests(requests)
+      assert req.from_timestamp.seconds == DateTime.to_unix(~U[2026-02-28 00:00:00Z])
+      assert req.to_timestamp.seconds == DateTime.to_unix(~U[2026-03-01 00:00:00Z])
+    end
+
+    test "open-ended ranges", %{conn: conn, requests: requests} do
+      conn = get(conn, "/audit/csv", %{"from" => "2026-09-01"})
+      assert conn.status == 200
+
+      assert get_resp_header(conn, "content-disposition") == [
+               ~s(attachment; filename="audit_2026-09-01_now.csv")
+             ]
+
+      [req | _] = sent_requests(requests)
+      assert req.from_timestamp.seconds == DateTime.to_unix(~U[2026-09-01 00:00:00Z])
+      assert req.to_timestamp == nil
+
+      Agent.update(requests, fn _ -> [] end)
+
+      conn = get(conn, "/audit/csv", %{"to" => "2026-09-01"})
+      assert conn.status == 200
+      [req | _] = sent_requests(requests)
+      assert req.from_timestamp == nil
+      assert req.to_timestamp.seconds == DateTime.to_unix(~U[2026-09-02 00:00:00Z])
+    end
+
+    test "'from' after 'to' is a 400 and never calls the audit service", %{
+      conn: conn,
+      requests: requests
+    } do
+      conn = get(conn, "/audit/csv", %{"from" => "2026-09-30", "to" => "2026-09-01"})
+
+      assert conn.status == 400
+      assert conn.resp_body =~ "must not be after"
+      assert get_resp_header(conn, "content-disposition") == []
+      assert sent_requests(requests) == []
+    end
+
+    test "malformed dates are a 400", %{conn: conn, requests: requests} do
+      for params <- [
+            %{"from" => "yesterday"},
+            %{"to" => "2026-13-01"},
+            %{"from" => "2026-09-01T00:00:00Z"},
+            %{"from" => ["2026-09-01"]},
+            %{"to" => "2026-09-01\r\nX-Injected: 1"},
+            %{"to" => "9999-12-31"},
+            %{"from" => "1969-12-31"}
+          ] do
+        conn = get(conn, "/audit/csv", params)
+
+        assert conn.status == 400, "expected 400 for #{inspect(params)}"
+        assert get_resp_header(conn, "content-disposition") == []
+      end
+
+      assert sent_requests(requests) == []
+    end
+
+    test "INVALID_ARGUMENT from the audit service is a 400, not a 502", %{conn: conn} do
+      GrpcMock.stub(AuditMock, :paginated_list, fn _req, _ ->
+        raise GRPC.RPCError,
+          status: GRPC.Status.invalid_argument(),
+          message: "to_timestamp is out of range"
+      end)
+
+      conn = get(conn, "/audit/csv", %{"to" => "2026-09-01"})
+
+      assert conn.status == 400
+      assert conn.resp_body =~ "to_timestamp is out of range"
+    end
+  end
 end
