@@ -27,15 +27,13 @@ defmodule RepositoryHub.Application do
         {{Task.Supervisor, name: RepositoryHub.SentryEventSupervisor}, true},
         {{RepositoryHub.Repo, []}, true},
         {{RepositoryHub.MaxStatusesCache, []}, true},
+        {%{id: FeatureProvider.Cachex, start: {Cachex, :start_link, [:feature_provider_cache, []]}}, true},
+        {{feature_provider_module, feature_provider_opts}, feature_provider_module == FeatureProvider.YamlProvider},
         {{GRPC.Server.Supervisor, endpoint: RepositoryHub.Server.Endpoint, port: grpc_port, start_server: true}, true},
         {{RepositoryHub.RemoteRepositoryChangedConsumer, []}, true},
         {{RepositoryHub.RemoteIdSyncWorker, remote_id_sync_worker_opts}, remote_id_sync_worker_enabled},
-        {{RepositoryHub.BuildStatusGuardCleanupWorker, []}, guard_cleanup_worker_enabled},
-        {{feature_provider_module, feature_provider_opts}, feature_provider_module == FeatureProvider.YamlProvider}
-      ]) ++
-        [
-          %{id: FeatureProvider.Cachex, start: {Cachex, :start_link, [:feature_provider_cache, []]}}
-        ]
+        {{RepositoryHub.BuildStatusGuardCleanupWorker, []}, guard_cleanup_worker_enabled}
+      ])
 
     opts = [strategy: :one_for_one, name: RepositoryHub.Supervisor, max_restarts: 1000]
 
