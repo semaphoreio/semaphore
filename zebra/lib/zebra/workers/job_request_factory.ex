@@ -16,6 +16,7 @@ defmodule Zebra.Workers.JobRequestFactory do
     Project,
     RepoProxy,
     Repository,
+    ReservedEnvVars,
     Secrets,
     Spec,
     TestResults,
@@ -92,6 +93,7 @@ defmodule Zebra.Workers.JobRequestFactory do
          {:ok, all_secrets} <- Task.await(find_secrets),
          {:ok, artifact_env_var} <- Task.await(find_artifact_token),
          {:ok, loghub2_token} <- Task.await(generate_token),
+         :ok <- ReservedEnvVars.validate(job, job_type, spec, spec_env_vars, all_secrets),
          {:ok, open_id_token_env_vars} <-
            OpenIDConnect.load(job, repo_env_vars, organization, project, job_type, spec_env_vars),
          {:ok, callback_token} <- CallbackToken.generate(job) do
