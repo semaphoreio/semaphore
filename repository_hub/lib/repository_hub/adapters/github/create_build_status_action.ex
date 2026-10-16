@@ -98,7 +98,8 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
         repo_owner: context.repository.owner,
         repo_name: context.repository.name,
         commit_sha: request.commit_sha,
-        name: request.context
+        name: request.context,
+        external_id: external_id(request)
       },
       token: context.github_token
     )
@@ -130,6 +131,7 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
         repo_name: context.repository.name,
         name: request.context,
         head_sha: request.commit_sha,
+        external_id: external_id(request),
         status: "in_progress",
         details_url: request.url
       },
@@ -158,6 +160,7 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
         repo_name: context.repository.name,
         name: request.context,
         head_sha: request.commit_sha,
+        external_id: external_id(request),
         status: "completed",
         conclusion: check_run_conclusion(terminal),
         details_url: request.url
@@ -176,6 +179,11 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
     Watchman.increment("set_check_run.failure")
     result
   end
+
+  # Marks runs as ours and ties them to one pipeline (source_id is the
+  # pipeline id), so a rebuild of the same commit gets its own run and one
+  # pipeline's result never completes another pipeline's run.
+  defp external_id(request), do: "semaphore:#{request.source_id}"
 
   defp check_run_conclusion(:SUCCESS), do: "success"
   defp check_run_conclusion(:FAILURE), do: "failure"

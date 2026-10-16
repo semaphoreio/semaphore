@@ -19,6 +19,7 @@ defmodule RepositoryHub.GithubChecksClient do
         head_sha: params.head_sha,
         status: params.status
       }
+      |> maybe_put(:external_id, Map.get(params, :external_id))
       |> maybe_put(:details_url, Map.get(params, :details_url))
       |> maybe_put(:conclusion, Map.get(params, :conclusion))
       |> maybe_put(:started_at, Map.get(params, :started_at))
@@ -49,17 +50,25 @@ defmodule RepositoryHub.GithubChecksClient do
     |> handle_response(:update_check_run, params)
   end
 
+  @doc """
+  Finds the latest check-run with the given name and `external_id` on a commit.
+
+  Matching on `external_id` (set by `create_check_run/2`) keeps the lookup to
+  runs this service created, so a same-named run from another GitHub App,
+  which we could not update, is never picked.
+  """
   def find_check_run(params, opts \\ []) do
     opts[:token]
     |> client()
     |> Tesla.get(
       "/repos/#{params.repo_owner}/#{params.repo_name}/commits/#{params.commit_sha}/check-runs",
-      query: [check_name: params.name]
+      query: [check_name: params.name, per_page: 100]
     )
     |> handle_response(:find_check_run, params)
     |> unwrap(fn body ->
       body
       |> Map.get("check_runs", [])
+      |> Enum.filter(&(&1["external_id"] == params.external_id))
       |> case do
         [] ->
           fail_with(:not_found, "No check-run named #{params.name} on #{params.commit_sha}")

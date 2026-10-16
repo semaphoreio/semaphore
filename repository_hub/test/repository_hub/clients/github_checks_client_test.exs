@@ -9,6 +9,7 @@ defmodule RepositoryHub.GithubChecksClientTest do
   @repo "semaphore"
   @sha "9bc99381f3242e0d4c0b1b2c3d4e5f6071829304"
   @name "ci/semaphoreci/push: build"
+  @external_id "semaphore:ppl-1"
 
   describe "create_check_run/2" do
     test "posts an in_progress check-run and returns the decoded body on 201" do
@@ -99,16 +100,17 @@ defmodule RepositoryHub.GithubChecksClientTest do
       mock(fn %{method: :get, url: url, query: query} ->
         assert url == "https://api.github.com/repos/#{@owner}/#{@repo}/commits/#{@sha}/check-runs"
         assert query[:check_name] == @name
+        assert query[:per_page] == 100
 
         json(
-          %{"total_count" => 1, "check_runs" => [%{"id" => 99, "name" => @name}]},
+          %{"total_count" => 1, "check_runs" => [%{"id" => 99, "name" => @name, "external_id" => @external_id}]},
           status: 200
         )
       end)
 
       assert {:ok, %{"id" => 99}} =
                GithubChecksClient.find_check_run(
-                 %{repo_owner: @owner, repo_name: @repo, commit_sha: @sha, name: @name},
+                 %{repo_owner: @owner, repo_name: @repo, commit_sha: @sha, name: @name, external_id: @external_id},
                  token: "ghs_installation_token"
                )
     end
@@ -120,7 +122,7 @@ defmodule RepositoryHub.GithubChecksClientTest do
 
       assert {:error, %{status: status, message: message}} =
                GithubChecksClient.find_check_run(
-                 %{repo_owner: @owner, repo_name: @repo, commit_sha: @sha, name: "missing"},
+                 %{repo_owner: @owner, repo_name: @repo, commit_sha: @sha, name: "missing", external_id: @external_id},
                  token: "ghs_installation_token"
                )
 
@@ -134,9 +136,9 @@ defmodule RepositoryHub.GithubChecksClientTest do
           %{
             "total_count" => 3,
             "check_runs" => [
-              %{"id" => 7, "name" => @name},
-              %{"id" => 99, "name" => @name},
-              %{"id" => 42, "name" => @name}
+              %{"id" => 7, "name" => @name, "external_id" => @external_id},
+              %{"id" => 99, "name" => @name, "external_id" => @external_id},
+              %{"id" => 42, "name" => @name, "external_id" => @external_id}
             ]
           },
           status: 200
@@ -145,9 +147,45 @@ defmodule RepositoryHub.GithubChecksClientTest do
 
       assert {:ok, %{"id" => 99}} =
                GithubChecksClient.find_check_run(
-                 %{repo_owner: @owner, repo_name: @repo, commit_sha: @sha, name: @name},
+                 %{repo_owner: @owner, repo_name: @repo, commit_sha: @sha, name: @name, external_id: @external_id},
                  token: "ghs_installation_token"
                )
+    end
+
+    test "ignores runs created by other apps or pipelines" do
+      mock(fn %{method: :get} ->
+        json(
+          %{
+            "check_runs" => [
+              %{"id" => 7, "name" => @name, "external_id" => @external_id},
+              %{"id" => 99, "name" => @name, "external_id" => "another-app"},
+              %{"id" => 98, "name" => @name, "external_id" => "semaphore:ppl-2"},
+              %{"id" => 97, "name" => @name}
+            ]
+          },
+          status: 200
+        )
+      end)
+
+      assert {:ok, %{"id" => 7}} =
+               GithubChecksClient.find_check_run(
+                 %{repo_owner: @owner, repo_name: @repo, commit_sha: @sha, name: @name, external_id: @external_id},
+                 token: "ghs_installation_token"
+               )
+    end
+
+    test "returns not_found when only other apps have a run with the name" do
+      mock(fn %{method: :get} ->
+        json(%{"check_runs" => [%{"id" => 99, "name" => @name, "external_id" => "another-app"}]}, status: 200)
+      end)
+
+      assert {:error, %{status: status}} =
+               GithubChecksClient.find_check_run(
+                 %{repo_owner: @owner, repo_name: @repo, commit_sha: @sha, name: @name, external_id: @external_id},
+                 token: "ghs_installation_token"
+               )
+
+      assert status == GRPC.Status.not_found()
     end
   end
 end

@@ -79,13 +79,18 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
           repository_id: repository.id,
           status: :PENDING
         )
+        |> Map.put(:source_id, "ppl-1")
 
       with_mocks([
         {FeatureProvider, [], [feature_enabled?: fn _, _ -> true end]},
         {GithubChecksClient, [],
          [
-           find_check_run: fn _params, _opts -> {:error, %{status: GRPC.Status.not_found(), message: "not found"}} end,
+           find_check_run: fn params, _opts ->
+             assert params.external_id == "semaphore:ppl-1"
+             {:error, %{status: GRPC.Status.not_found(), message: "not found"}}
+           end,
            create_check_run: fn params, _opts ->
+             assert params.external_id == "semaphore:ppl-1"
              assert params.status == "in_progress"
              assert params.name == request.context
              assert params.head_sha == request.commit_sha
