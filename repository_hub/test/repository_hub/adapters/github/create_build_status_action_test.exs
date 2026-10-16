@@ -93,6 +93,7 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
            create_check_run: fn params, _opts ->
              assert params.external_id == "semaphore:ppl-1"
              assert params.status == "in_progress"
+             assert params.output == %{title: request.description, summary: request.description}
              assert params.name == request.context
              assert params.head_sha == request.commit_sha
              {:ok, %{"id" => 1}}
@@ -192,6 +193,7 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
              assert params.status == "completed"
              assert params.conclusion == "success"
              assert params.check_run_id == 7
+             assert params.output == %{title: request.description, summary: request.description}
              {:ok, %{"id" => 7, "conclusion" => "success"}}
            end
          ]}

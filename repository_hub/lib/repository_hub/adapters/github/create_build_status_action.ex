@@ -132,7 +132,8 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
       %{
         repo_owner: context.repository.owner,
         repo_name: context.repository.name,
-        details_url: request.url
+        details_url: request.url,
+        output: %{title: request.description, summary: request.description}
       }
       |> Map.merge(check_run_state(request.status))
 
