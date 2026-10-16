@@ -1420,6 +1420,29 @@ defmodule Zebra.Workers.JobRequestFactoryTest do
              "Reserved environment variables cannot be set: SEMAPHORE_GIT_BRANCH (job env_vars)"
   end
 
+  test "when a container with a multi-codepoint name sets a reserved env var => stores a fitting failure_reason" do
+    name = "x" <> String.duplicate("\u0301", 300)
+
+    spec =
+      put_in(@job_spec_with_containers, ["agent", "containers"], [
+        %{
+          "name" => name,
+          "image" => "ruby:2.6.1",
+          "env_vars" => [%{"name" => "SEMAPHORE_JOB_ID", "value" => "x"}]
+        }
+      ])
+
+    {:ok, task} = Support.Factories.Task.create()
+    {:ok, job} = Support.Factories.Job.create(:pending, %{spec: spec, build_id: task.id})
+
+    capture_log(fn -> send(self(), {:result, Worker.process(job)}) end)
+    assert_received {:result, {:ok, job}}
+
+    assert Job.failed?(job)
+    assert job.failure_reason =~ "SEMAPHORE_JOB_ID (container 'x"
+    assert job.failure_reason |> String.codepoints() |> length() <= 255
+  end
+
   test "when a container secret sets a reserved env var => force fails the job" do
     GrpcMock.stub(Support.FakeServers.SecretsApi, :checkout_many, fn _, _ ->
       InternalApi.Secrethub.CheckoutManyResponse.new(

@@ -293,14 +293,49 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVarsTest do
       assert message =~ ~r/ and \d+ more$/
     end
 
-    test "fits in 255 characters when a single entry is too long" do
+    test "clips long secret names" do
       secrets = %{
         @no_secrets
         | job_secrets: [secret(String.duplicate("s", 300), ["SEMAPHORE_GIT_SHA"])]
       }
 
-      assert {:stop_job_processing, message} = validate(:pipeline_job, [], secrets: secrets)
-      assert String.length(message) == 255
+      assert validate(:pipeline_job, [], secrets: secrets) ==
+               {:stop_job_processing,
+                "Reserved environment variables cannot be set: SEMAPHORE_GIT_SHA (secret '#{String.duplicate("s", 40)}')"}
+    end
+
+    test "fits in 255 codepoints when names are made of multi-codepoint graphemes" do
+      combining = "x" <> String.duplicate("\u0301", 300)
+      zwj_family = String.duplicate("\u{1F468}\u200D\u{1F469}\u200D\u{1F467}", 60)
+
+      container =
+        Spec.Agent.Container.new(
+          name: combining,
+          env_vars: [Spec.EnvVar.new(name: "SEMAPHORE_JOB_ID", value: "x")]
+        )
+
+      secrets = %{
+        @no_secrets
+        | job_secrets: [secret(zwj_family, ["SEMAPHORE_GIT_SHA", "SEMAPHORE_GIT_BRANCH"])],
+          image_pull_secrets: [secret(combining, ["SEMAPHORE_OIDC_TOKEN"])]
+      }
+
+      assert {:stop_job_processing, message} =
+               validate(:pipeline_job, [], secrets: secrets, spec: spec([container]))
+
+      assert String.valid?(message)
+      assert message |> String.codepoints() |> length() <= 255
+    end
+
+    test "drops invalid UTF-8 from names in the message" do
+      secrets = %{
+        @no_secrets
+        | job_secrets: [secret(<<"bad", 0xFF, 0xFE>>, ["SEMAPHORE_GIT_SHA"])]
+      }
+
+      assert validate(:pipeline_job, [], secrets: secrets) ==
+               {:stop_job_processing,
+                "Reserved environment variables cannot be set: SEMAPHORE_GIT_SHA (secret 'bad')"}
     end
 
     test "logs names only, never values" do
