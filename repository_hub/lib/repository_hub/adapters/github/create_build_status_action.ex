@@ -64,6 +64,11 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
     )
   end
 
+  # Known rollout gap, accepted: the API is chosen per request, so a pipeline
+  # running while the flag or the installation's Checks permission changes
+  # can send its PENDING as a commit status and its result as a check-run
+  # (or the reverse). The same-named pending commit status then stays on the
+  # commit and can keep a required check pending until the next push.
   defp report_build_status(%{integration_type: "github_app"}, request, context) do
     if FeatureProvider.feature_enabled?(:github_checks_api, param: context.project.metadata.org_id) do
       request
