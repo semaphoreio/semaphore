@@ -6,30 +6,14 @@ description: Environment variables defined by Semaphore
 
 ## Reserved variables {#reserved-variables}
 
-Semaphore sets the variables on this page for every job. Their names are reserved: pipeline `env_vars`, promotion parameters, [secrets](../using-semaphore/secrets), and container `env_vars` can't set them. A job that tries to set a reserved variable fails before it starts, and the job page shows which variable caused the failure.
+The `SEMAPHORE_` prefix is reserved for Semaphore. Don't define your own variables with it, except for these settings, which you can set to configure the [cache](../using-semaphore/cache), the [checkout](../using-semaphore/jobs), and the toolbox:
 
-The reserved names are:
+- `SEMAPHORE_CACHE_ARCHIVE_METHOD`, `SEMAPHORE_CACHE_BACKEND`, `SEMAPHORE_CACHE_GCS_BUCKET`, `SEMAPHORE_CACHE_PRIVATE_KEY_PATH`, `SEMAPHORE_CACHE_S3_BUCKET`, `SEMAPHORE_CACHE_URL`, `SEMAPHORE_CACHE_USERNAME`
+- `SEMAPHORE_GIT_CACHE_AGE`, `SEMAPHORE_GIT_CACHE_KEEP`, `SEMAPHORE_GIT_CLONE_SLOW_RETRY`, `SEMAPHORE_GIT_DEPTH`
+- `SEMAPHORE_TEST_RESULTS_NO_TRIM`, `SEMAPHORE_TOOLBOX_METRICS_ENABLED`
+- `SEMAPHORE_AGENT_UPLOAD_JOB_LOGS`
 
-- `SEMAPHORE`
-- `SEMAPHORE_AGENT_MACHINE_ENVIRONMENT_TYPE`, `SEMAPHORE_AGENT_MACHINE_OS_IMAGE`, `SEMAPHORE_AGENT_MACHINE_TYPE`
-- `SEMAPHORE_ARTIFACT_TOKEN`, `SEMAPHORE_OIDC_TOKEN`
-- `SEMAPHORE_BLOCK_NAME`
-- `SEMAPHORE_GIT_BRANCH`, `SEMAPHORE_GIT_COMMIT_AUTHOR`, `SEMAPHORE_GIT_COMMIT_RANGE`, `SEMAPHORE_GIT_COMMITTER`, `SEMAPHORE_GIT_DIR`, `SEMAPHORE_GIT_PROVIDER`, `SEMAPHORE_GIT_REF`, `SEMAPHORE_GIT_REF_TYPE`, `SEMAPHORE_GIT_REPO_NAME`, `SEMAPHORE_GIT_REPO_SLUG`, `SEMAPHORE_GIT_SHA`, `SEMAPHORE_GIT_TAG_NAME`, `SEMAPHORE_GIT_URL`, `SEMAPHORE_GIT_WORKING_BRANCH`
-- `SEMAPHORE_GIT_PR_BRANCH`, `SEMAPHORE_GIT_PR_NAME`, `SEMAPHORE_GIT_PR_NUMBER`, `SEMAPHORE_GIT_PR_SHA`, `SEMAPHORE_GIT_PR_SLUG`
-- `SEMAPHORE_JOB_COUNT`, `SEMAPHORE_JOB_CREATION_TIME`, `SEMAPHORE_JOB_ID`, `SEMAPHORE_JOB_INDEX`, `SEMAPHORE_JOB_NAME`, `SEMAPHORE_JOB_ORIGINAL_ID`, `SEMAPHORE_JOB_RERUN`, `SEMAPHORE_JOB_TYPE`
-- `SEMAPHORE_ORGANIZATION_ID`, `SEMAPHORE_ORGANIZATION_URL`, `SEMAPHORE_PROJECT_ID`, `SEMAPHORE_PROJECT_NAME`
-- `SEMAPHORE_PIPELINE_ARTEFACT_ID`, `SEMAPHORE_PIPELINE_<n>_ARTEFACT_ID`, `SEMAPHORE_PIPELINE_ID`, `SEMAPHORE_PIPELINE_NAME`, `SEMAPHORE_PIPELINE_PROMOTED_BY`, `SEMAPHORE_PIPELINE_PROMOTION`, `SEMAPHORE_PIPELINE_RERUN`
-- `SEMAPHORE_PIPELINE_CREATED_AT`, `SEMAPHORE_PIPELINE_DONE_AT`, `SEMAPHORE_PIPELINE_INIT_DURATION`, `SEMAPHORE_PIPELINE_QUEUEING_DURATION`, `SEMAPHORE_PIPELINE_RESULT`, `SEMAPHORE_PIPELINE_RESULT_REASON`, `SEMAPHORE_PIPELINE_RUNNING_DURATION`, `SEMAPHORE_PIPELINE_STARTED_AT`, `SEMAPHORE_PIPELINE_TOTAL_DURATION`
-- `SEMAPHORE_SNAPSHOT_ID`, `SEMAPHORE_YAML_FILE_PATH`
-- `SEMAPHORE_WORKFLOW_HOOK_SOURCE`, `SEMAPHORE_WORKFLOW_ID`, `SEMAPHORE_WORKFLOW_NUMBER`, `SEMAPHORE_WORKFLOW_RERUN`, `SEMAPHORE_WORKFLOW_TRIGGERED_BY`, `SEMAPHORE_WORKFLOW_TRIGGERED_BY_API`, `SEMAPHORE_WORKFLOW_TRIGGERED_BY_HOOK`, `SEMAPHORE_WORKFLOW_TRIGGERED_BY_MANUAL_RUN`, `SEMAPHORE_WORKFLOW_TRIGGERED_BY_SCHEDULE`
-
-Variables that configure the [cache](../using-semaphore/cache) backend, the [checkout](../using-semaphore/jobs), or toolbox behavior, such as `SEMAPHORE_CACHE_BACKEND`, `SEMAPHORE_CACHE_URL`, `SEMAPHORE_CACHE_ARCHIVE_METHOD`, `SEMAPHORE_GIT_DEPTH`, `SEMAPHORE_GIT_CLONE_SLOW_RETRY`, `SEMAPHORE_TEST_RESULTS_NO_TRIM`, or `SEMAPHORE_TOOLBOX_METRICS_ENABLED`, are not reserved and can still be set.
-
-## Variable names {#variable-names}
-
-Variable names must be valid shell identifiers: letters, digits, and underscores, not starting with a digit. A job whose pipeline `env_vars`, secrets, or container `env_vars` include any other name fails before it starts, and the job page shows the name under `Invalid environment variable names`.
-
-Secrets saved before this rule was enforced can hold names that no longer pass, such as a name with a trailing newline. Every job that uses such a secret fails until you edit the secret and save the variable again with a valid name.
+A job fails before it starts if its pipeline `env_vars`, promotion or task parameters, [secrets](../using-semaphore/secrets), or container `env_vars` set a variable that Semaphore provides for that job, or use a name that isn't a valid identifier (letters, digits, and `_`, not starting with a digit). The job page shows which variable caused the failure.
 
 ## Semaphore variables {#semaphore-variables}
 
