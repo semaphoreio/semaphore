@@ -203,13 +203,8 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVarsTest do
                {:stop_job_processing, "Invalid environment variable names: 'A?B' (job env_vars)"}
     end
 
-    test "rejects invalid names in secrets and containers" do
-      secrets = %{
-        @no_secrets
-        | job_secrets: [secret("deploy", ["OK", "BAD NAME"])],
-          container_secrets: [[secret("db", ["db-pass"])]],
-          image_pull_secrets: [secret("registry", ["X;Y"])]
-      }
+    test "rejects invalid names in containers before looking at secrets" do
+      secrets = %{@no_secrets | job_secrets: [secret("deploy", ["BAD NAME"])]}
 
       container =
         Spec.Agent.Container.new(
@@ -219,9 +214,21 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVarsTest do
 
       assert validate(:pipeline_job, [], secrets: secrets, spec: spec([container])) ==
                {:stop_job_processing,
+                "Invalid environment variable names: '1ST' (container 'main' env_vars)"}
+    end
+
+    test "rejects invalid names in secrets" do
+      secrets = %{
+        @no_secrets
+        | job_secrets: [secret("deploy", ["OK", "BAD NAME"])],
+          container_secrets: [[secret("db", ["db-pass"])]],
+          image_pull_secrets: [secret("registry", ["X;Y"])]
+      }
+
+      assert validate(:pipeline_job, [], secrets: secrets) ==
+               {:stop_job_processing,
                 "Invalid environment variable names: 'BAD NAME' (secret 'deploy'), " <>
-                  "'db-pass' (secret 'db'), 'X;Y' (image pull secret 'registry'), " <>
-                  "'1ST' (container 'main' env_vars)"}
+                  "'db-pass' (secret 'db'), 'X;Y' (image pull secret 'registry')"}
     end
 
     test "logs escaped names" do
@@ -358,6 +365,57 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVarsTest do
         Spec.Agent.Container.new(name: "db", env_vars: [Spec.EnvVar.new(name: "PG", value: "1")])
 
       assert validate(:pipeline_job, [], secrets: secrets, spec: spec([container])) == :ok
+    end
+  end
+
+  describe "validate_spec/4 and validate_secrets/2" do
+    test "validate_spec/4 rejects spec and container names" do
+      container =
+        Spec.Agent.Container.new(
+          name: "db",
+          env_vars: [Spec.EnvVar.new(name: "SEMAPHORE_JOB_ID", value: "x")]
+        )
+
+      assert ReservedEnvVars.validate_spec(
+               @job,
+               :pipeline_job,
+               spec([container]),
+               env_vars(["SEMAPHORE_GIT_BRANCH"])
+             ) ==
+               {:stop_job_processing,
+                "Reserved environment variables cannot be set: SEMAPHORE_GIT_BRANCH (job env_vars), " <>
+                  "SEMAPHORE_JOB_ID (container 'db' env_vars)"}
+    end
+
+    test "validate_spec/4 accepts a clean spec" do
+      assert ReservedEnvVars.validate_spec(@job, :pipeline_job, spec(), env_vars(["IGOR"])) == :ok
+    end
+
+    test "validate_secrets/2 rejects reserved and invalid names in secrets" do
+      reserved = %{@no_secrets | job_secrets: [secret("deploy", ["SEMAPHORE_GIT_SHA"])]}
+      invalid = %{@no_secrets | image_pull_secrets: [secret("registry", ["X;Y"])]}
+
+      assert ReservedEnvVars.validate_secrets(@job, reserved) ==
+               {:stop_job_processing,
+                "Reserved environment variables cannot be set: SEMAPHORE_GIT_SHA (secret 'deploy')"}
+
+      assert ReservedEnvVars.validate_secrets(@job, invalid) ==
+               {:stop_job_processing,
+                "Invalid environment variable names: 'X;Y' (image pull secret 'registry')"}
+    end
+
+    test "validate_secrets/2 accepts clean secrets" do
+      secrets = %{@no_secrets | job_secrets: [secret("deploy", ["A", "SEMAPHORE_CACHE_URL"])]}
+
+      assert ReservedEnvVars.validate_secrets(@job, secrets) == :ok
+    end
+
+    test "validate/5 reports spec violations without reading secrets" do
+      secrets = %{@no_secrets | job_secrets: [secret("deploy", ["SEMAPHORE_GIT_SHA"])]}
+
+      assert validate(:pipeline_job, ["SEMAPHORE_GIT_BRANCH"], secrets: secrets) ==
+               {:stop_job_processing,
+                "Reserved environment variables cannot be set: SEMAPHORE_GIT_BRANCH (job env_vars)"}
     end
   end
 

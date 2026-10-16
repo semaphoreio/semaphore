@@ -291,6 +291,38 @@ defmodule Zebra.Workers.JobRequestFactory.SecretsTest do
                 }}
     end
 
+    test "uses the first SEMAPHORE_PIPELINE_ID and SEMAPHORE_WORKFLOW_ID in checkout metadata" do
+      pipeline_id = Ecto.UUID.generate()
+      workflow_id = Ecto.UUID.generate()
+      env_var = &Semaphore.Jobs.V1alpha.Job.Spec.EnvVar.new(name: &1, value: &2)
+
+      job_spec =
+        Semaphore.Jobs.V1alpha.Job.Spec.new(
+          project_id: @project_id,
+          agent: Semaphore.Jobs.V1alpha.Job.Spec.Agent.new(),
+          secrets: [Semaphore.Jobs.V1alpha.Job.Spec.Secret.new(name: "aws-secrets")],
+          env_vars: [
+            env_var.("SEMAPHORE_PIPELINE_ID", pipeline_id),
+            env_var.("SEMAPHORE_WORKFLOW_ID", workflow_id),
+            env_var.("SEMAPHORE_PIPELINE_ID", "spoofed"),
+            env_var.("SEMAPHORE_WORKFLOW_ID", "spoofed")
+          ]
+        )
+
+      test_pid = self()
+
+      GrpcMock.stub(Support.FakeServers.SecretsApi, :checkout_many, fn req, _ ->
+        send(test_pid, {:checkout_metadata, req.checkout_metadata})
+        InternalApi.Secrethub.CheckoutManyResponse.new(secrets: [])
+      end)
+
+      Secrets.load(@org_id, @job_id, job_spec, @project, @hook)
+
+      assert_received {:checkout_metadata, meta}
+      assert meta.pipeline_id == pipeline_id
+      assert meta.workflow_id == workflow_id
+    end
+
     test "when there are several requested secrets => fetches them from API" do
       job_spec =
         Semaphore.Jobs.V1alpha.Job.Spec.new(

@@ -104,9 +104,31 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVars do
   def valid_name?(_name), do: false
 
   def validate(job, job_type, spec, spec_env_vars, all_secrets) do
-    case invalid_names(spec, spec_env_vars, all_secrets) do
+    with :ok <- validate_spec(job, job_type, spec, spec_env_vars) do
+      validate_secrets(job, all_secrets)
+    end
+  end
+
+  @doc """
+  Checks the names Zebra already holds, so a rejected job never checks out a secret
+  or mints a token.
+  """
+  def validate_spec(job, job_type, spec, spec_env_vars) do
+    names = spec_names(spec_env_vars) ++ container_names(spec)
+
+    validate_names(job, names, fn ->
+      spec_violations(job_type, spec_env_vars) ++ container_violations(spec)
+    end)
+  end
+
+  def validate_secrets(job, all_secrets) do
+    validate_names(job, secret_names(all_secrets), fn -> secret_violations(all_secrets) end)
+  end
+
+  defp validate_names(job, names, violations) do
+    case invalid_names(names) do
       [] ->
-        validate_reserved(job, job_type, spec, spec_env_vars, all_secrets)
+        validate_reserved(job, violations.())
 
       invalid ->
         report_invalid(job, invalid)
@@ -114,12 +136,7 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVars do
     end
   end
 
-  defp validate_reserved(job, job_type, spec, spec_env_vars, all_secrets) do
-    violations =
-      spec_violations(job_type, spec_env_vars) ++
-        secret_violations(all_secrets) ++
-        container_violations(spec)
-
+  defp validate_reserved(job, violations) do
     case Enum.uniq(violations) do
       [] ->
         :ok
@@ -130,9 +147,25 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVars do
     end
   end
 
-  defp invalid_names(spec, spec_env_vars, all_secrets) do
-    spec_names = Enum.map(spec_env_vars, &{&1["name"], :spec, "job env_vars"})
+  defp invalid_names(names) do
+    names
+    |> Enum.reject(fn {name, _kind, _label} -> valid_name?(name) end)
+    |> Enum.uniq()
+  end
 
+  defp spec_names(spec_env_vars),
+    do: Enum.map(spec_env_vars, &{&1["name"], :spec, "job env_vars"})
+
+  defp container_names(spec) do
+    Enum.flat_map(spec.agent.containers, fn c ->
+      Enum.map(
+        c.env_vars,
+        &{&1.name, :container, "container '#{FailureReason.clip(c.name)}' env_vars"}
+      )
+    end)
+  end
+
+  defp secret_names(all_secrets) do
     secret_names =
       Enum.flat_map(
         all_secrets.job_secrets ++ List.flatten(all_secrets.container_secrets),
@@ -149,17 +182,7 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVars do
         )
       end)
 
-    container_names =
-      Enum.flat_map(spec.agent.containers, fn c ->
-        Enum.map(
-          c.env_vars,
-          &{&1.name, :container, "container '#{FailureReason.clip(c.name)}' env_vars"}
-        )
-      end)
-
-    (spec_names ++ secret_names ++ pull_secret_names ++ container_names)
-    |> Enum.reject(fn {name, _kind, _label} -> valid_name?(name) end)
-    |> Enum.uniq()
+    secret_names ++ pull_secret_names
   end
 
   defp spec_violations(:project_debug_job, env_vars) do
