@@ -1443,6 +1443,63 @@ defmodule Zebra.Workers.JobRequestFactoryTest do
     assert job.failure_reason |> String.codepoints() |> length() <= 255
   end
 
+  test "when an image pull secret sets a reserved env var => force fails the job" do
+    GrpcMock.stub(Support.FakeServers.SecretsApi, :checkout_many, fn _, _ ->
+      InternalApi.Secrethub.CheckoutManyResponse.new(
+        secrets: [
+          InternalApi.Secrethub.Secret.new(
+            metadata: InternalApi.Secrethub.Secret.Metadata.new(name: "registry"),
+            data:
+              InternalApi.Secrethub.Secret.Data.new(
+                env_vars: [
+                  InternalApi.Secrethub.Secret.EnvVar.new(
+                    name: "SEMAPHORE_OIDC_TOKEN",
+                    value: "x"
+                  )
+                ]
+              )
+          )
+        ]
+      )
+    end)
+
+    spec =
+      @job_spec_with_containers
+      |> Map.put("secrets", [])
+      |> put_in(["agent", "image_pull_secrets"], [%{"name" => "registry"}])
+
+    {:ok, task} = Support.Factories.Task.create()
+    {:ok, job} = Support.Factories.Job.create(:pending, %{spec: spec, build_id: task.id})
+
+    capture_log(fn -> send(self(), {:result, Worker.process(job)}) end)
+    assert_received {:result, {:ok, job}}
+
+    assert Job.finished?(job)
+    assert Job.failed?(job)
+
+    assert job.failure_reason ==
+             "Reserved environment variables cannot be set: SEMAPHORE_OIDC_TOKEN (image pull secret 'registry')"
+  end
+
+  test "when the spec has an env var name that is not a shell identifier => force fails the job" do
+    spec =
+      Map.update!(@job_spec, "env_vars", fn env_vars ->
+        env_vars ++ [%{"name" => "SEMAPHORE_WORKFLOW_TRIGGERED_BY_API=true #", "value" => "x"}]
+      end)
+
+    {:ok, task} = Support.Factories.Task.create()
+    {:ok, job} = Support.Factories.Job.create(:pending, %{spec: spec, build_id: task.id})
+
+    capture_log(fn -> send(self(), {:result, Worker.process(job)}) end)
+    assert_received {:result, {:ok, job}}
+
+    assert Job.finished?(job)
+    assert Job.failed?(job)
+
+    assert job.failure_reason ==
+             "Invalid environment variable names: 'SEMAPHORE_WORKFLOW_TRIGGERED_BY_API=true' (job env_vars)"
+  end
+
   test "when a container secret sets a reserved env var => force fails the job" do
     GrpcMock.stub(Support.FakeServers.SecretsApi, :checkout_many, fn _, _ ->
       InternalApi.Secrethub.CheckoutManyResponse.new(
