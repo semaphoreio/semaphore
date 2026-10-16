@@ -4,6 +4,17 @@ description: Environment variables defined by Semaphore
 
 # Environment variables
 
+## Reserved variables {#reserved-variables}
+
+The `SEMAPHORE_` prefix is reserved for Semaphore. Don't define your own variables with it, except for these settings, which you can set to configure the [cache](../using-semaphore/cache), the [checkout](../using-semaphore/jobs), and the toolbox:
+
+- `SEMAPHORE_CACHE_ARCHIVE_METHOD`, `SEMAPHORE_CACHE_BACKEND`, `SEMAPHORE_CACHE_GCS_BUCKET`, `SEMAPHORE_CACHE_PRIVATE_KEY_PATH`, `SEMAPHORE_CACHE_S3_BUCKET`, `SEMAPHORE_CACHE_URL`, `SEMAPHORE_CACHE_USERNAME`
+- `SEMAPHORE_GIT_CACHE_AGE`, `SEMAPHORE_GIT_CACHE_KEEP`, `SEMAPHORE_GIT_CLONE_SLOW_RETRY`, `SEMAPHORE_GIT_DEPTH`
+- `SEMAPHORE_TEST_RESULTS_NO_TRIM`, `SEMAPHORE_TOOLBOX_METRICS_ENABLED`
+- `SEMAPHORE_AGENT_UPLOAD_JOB_LOGS`
+
+A job fails before it starts if its pipeline `env_vars`, promotion or task parameters, [secrets](../using-semaphore/secrets), or container `env_vars` set a variable that Semaphore provides for that job, or use a name that isn't a valid identifier (letters, digits, and `_`, not starting with a digit). The job page shows which variable caused the failure.
+
 ## Semaphore variables {#semaphore-variables}
 
 These variables describe various aspects of Semaphore workings.
