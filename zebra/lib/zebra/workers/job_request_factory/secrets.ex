@@ -5,7 +5,7 @@ defmodule Zebra.Workers.JobRequestFactory.Secrets do
   alias InternalApi.Secrethub.RequestMeta, as: Meta
   alias InternalApi.Secrethub.CheckoutMetadata
   alias InternalApi.Secrethub.SecretService.Stub
-  alias Zebra.Workers.JobRequestFactory.JobRequest
+  alias Zebra.Workers.JobRequestFactory.{FailureReason, JobRequest}
 
   defstruct [
     :job_secrets,
@@ -108,7 +108,8 @@ defmodule Zebra.Workers.JobRequestFactory.Secrets do
       else
         msg =
           missing_secret_names
-          |> Enum.map_join(", ", fn name -> "Secret #{name} not found" end)
+          |> Enum.map(fn name -> "Secret #{FailureReason.clip(name)} not found" end)
+          |> FailureReason.join()
 
         {:stop_job_processing, msg}
       end
