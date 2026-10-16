@@ -1,13 +1,23 @@
 export var SleepDetector = {
   init: function(callback) {
+    // Drop the interval from a previous page before starting another one.
+    this.stop()
+
     this.callback = callback
     this.lastTime = this.getTime()
 
     this.tick()
   },
 
+  stop: function() {
+    if (this.ticker) {
+      clearInterval(this.ticker)
+      this.ticker = null
+    }
+  },
+
   tick: function() {
-    setInterval(function() {
+    this.ticker = setInterval(function() {
       var currentTime = this.getTime()
 
       if(this.justWokeUp()) {

@@ -3,12 +3,16 @@ defmodule FrontWeb.LayoutView do
   alias Front.Async
 
   #
-  # Pages that own long lived client state - Monaco and ace in the workflow
-  # editor, the streaming log viewer on a job - and would have to tear it all
-  # down to survive a Turbo render. They are cheap to opt out of, so navigating
-  # to one performs a normal full page load instead.
+  # Pages that own long lived client state and would have to tear it all down to
+  # survive a Turbo render. The workflow editor holds Monaco and ace, which have
+  # no teardown path here, so navigating to it performs a normal full page load.
   #
-  @turbo_full_reload_pages ~w(workflow_editor logs)
+  # The job log page used to be listed here too. It now releases its log stream,
+  # render loop and sleep detector from JobLogs.stop/0, so it renders through
+  # Turbo like any other page - which matters because reaching a job from the
+  # workflow graph is one of the most travelled paths in the app.
+  #
+  @turbo_full_reload_pages ~w(workflow_editor)
 
   def turbo_full_reload_page?(conn) do
     to_string(conn.assigns[:js]) in @turbo_full_reload_pages

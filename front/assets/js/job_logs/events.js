@@ -4,6 +4,19 @@ let running = true;
 let items = [];
 
 export var Events = {
+  //
+  // Returns the module to its initial state.
+  //
+  // Both `running` and `items` are module level, so under Turbo Drive they
+  // survive the visit. Without this, arriving at a second job page would
+  // inherit `running == false` from the previous finished job, and Render.tick
+  // would exit immediately and never draw a line.
+  //
+  reset() {
+    running = true
+    items = []
+  },
+
   stop() {
     running = false
   },
