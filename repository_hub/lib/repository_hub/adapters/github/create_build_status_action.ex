@@ -84,6 +84,13 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
     if status == GRPC.Status.permission_denied() do
       Watchman.increment("set_check_run.fallback_to_status")
 
+      log_warn([
+        "GitHub App installation is missing the Checks permission, falling back to commit status",
+        "org_id: #{context.project.metadata.org_id}",
+        "project_id: #{context.project.metadata.id}",
+        "repo: #{context.repository.owner}/#{context.repository.name}"
+      ])
+
       create_build_status(request, context.repository, context.github_token)
     else
       error
