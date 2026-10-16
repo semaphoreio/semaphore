@@ -107,6 +107,24 @@ defmodule Ppl.DefinitionReviser.BlocksReviser.Test do
     end)
   end
 
+  test "BlocksReviser sets the hook source env var from the service of the request", ctx do
+    expected = %{"git_hub" => "github", "bitbucket" => "bitbucket", "gitlab" => "gitlab", "git" => "git",
+                 "local" => "github", "snapshot" => "github"}
+
+    Enum.each(expected, fn {service, hook_source} ->
+      request_args = ctx.ppl_req.request_args |> Map.put("service", service)
+      request = ctx.ppl_req |> Map.put(:request_args, request_args)
+
+      assert {:ok, %{"blocks" => blocks}} = BlocksReviser.revise_blocks_definition(ctx.ppl_def, request)
+
+      Enum.each(blocks, fn block ->
+        env_vars = get_in(block, ["build", "ppl_env_variables"])
+        assert %{"name" => @workflow_hook_source, "value" => hook_source} ==
+          Enum.find(env_vars, fn env_var -> env_var["name"] == @workflow_hook_source end)
+      end)
+    end)
+  end
+
   test "BlocksReviser correctly sets ppl_env_vars when there are env vars in request", ctx do
     request_args = ctx.ppl_req.request_args
                    |> Map.merge(%{"env_vars" => [%{"name" => "TEST", "value" => "VALUE"}]})
