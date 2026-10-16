@@ -47,7 +47,25 @@ defmodule Secrethub.Model.EnvVarTest do
     end
 
     test "with env variable names that are not shell identifiers" do
-      for name <- ["FOO\n", "\nFOO", "FOO\nBAR", "1FOO", "FOO-BAR", "FOO BAR", "FOO=1", "ÉCOLE"] do
+      names = [
+        "FOO\n",
+        "\nFOO",
+        "FOO\nBAR",
+        "FOO\r",
+        "FOO\t",
+        "FOO\0",
+        "FOO\u00A0",
+        "FOO\u200B",
+        "1FOO",
+        "FOO-BAR",
+        "FOO.BAR",
+        "FOO/BAR",
+        "FOO BAR",
+        "FOO=1",
+        "ÉCOLE"
+      ]
+
+      for name <- names do
         assert %Ecto.Changeset{
                  changes: %{env_vars: [%Ecto.Changeset{valid?: false}]},
                  valid?: false
