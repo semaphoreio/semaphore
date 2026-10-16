@@ -1385,6 +1385,56 @@ defmodule Zebra.Workers.JobRequestFactoryTest do
     refute_received :oidc_token_generated
   end
 
+  test "when the spec sets a reserved env var => fails before checking out secrets or minting tokens" do
+    test_pid = self()
+
+    GrpcMock.stub(Support.FakeServers.SecretsApi, :checkout_many, fn _, _ ->
+      send(test_pid, :secrets_checked_out)
+      InternalApi.Secrethub.CheckoutManyResponse.new(secrets: [])
+    end)
+
+    GrpcMock.stub(Support.FakeServers.ArtifactApi, :generate_token, fn _, _ ->
+      send(test_pid, :artifact_token_generated)
+      %InternalApi.Artifacthub.GenerateTokenResponse{token: @artifact_token}
+    end)
+
+    GrpcMock.stub(Support.FakeServers.Loghub2Api, :generate_token, fn _, _ ->
+      send(test_pid, :loghub2_token_generated)
+
+      InternalApi.Loghub2.GenerateTokenResponse.new(
+        token: "very-sensitive-jwt-token",
+        type: InternalApi.Loghub2.TokenType.value(:PUSH)
+      )
+    end)
+
+    spec =
+      Map.update!(@job_spec, "env_vars", fn env_vars ->
+        env_vars ++ [%{"name" => "SEMAPHORE_GIT_BRANCH", "value" => "main"}]
+      end)
+
+    {:ok, task} = Support.Factories.Task.create()
+
+    {:ok, job} =
+      Support.Factories.Job.create(:pending, %{
+        spec: spec,
+        build_id: task.id,
+        machine_type: "s1-test-1"
+      })
+
+    capture_log(fn -> send(self(), {:result, Worker.process(job)}) end)
+    assert_received {:result, {:ok, job}}
+
+    assert Job.finished?(job)
+    assert Job.failed?(job)
+
+    assert job.failure_reason ==
+             "Reserved environment variables cannot be set: SEMAPHORE_GIT_BRANCH (job env_vars)"
+
+    refute_received :secrets_checked_out
+    refute_received :artifact_token_generated
+    refute_received :loghub2_token_generated
+  end
+
   test "when a job outside a pipeline sets a plumber-owned env var => force fails the job" do
     {:ok, job} = Support.Factories.Job.create(:pending, %{spec: @job_spec, build_id: nil})
 

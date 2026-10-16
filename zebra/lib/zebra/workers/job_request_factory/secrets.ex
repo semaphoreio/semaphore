@@ -276,17 +276,15 @@ defmodule Zebra.Workers.JobRequestFactory.Secrets do
     from_env ++ from_repo ++ [job_id: job_id]
   end
 
-  # extracts pipeline_id and workflow_id from job spec env_vars
+  # Plumber's copy comes first in the spec; a later repeat must not replace it.
   defp get_checkout_meta_from_env(vars) do
-    vars
-    |> Enum.filter(fn v ->
-      Enum.member?(["SEMAPHORE_PIPELINE_ID", "SEMAPHORE_WORKFLOW_ID"], v.name)
+    [pipeline_id: "SEMAPHORE_PIPELINE_ID", workflow_id: "SEMAPHORE_WORKFLOW_ID"]
+    |> Enum.flat_map(fn {key, name} ->
+      case Enum.find(vars, &(&1.name == name)) do
+        nil -> []
+        var -> [{key, var.value}]
+      end
     end)
-    |> Enum.map(
-      &if &1.name == "SEMAPHORE_PIPELINE_ID",
-        do: {:pipeline_id, &1.value},
-        else: {:workflow_id, &1.value}
-    )
   end
 
   defp get_checkout_meta_from_repo(nil), do: []
