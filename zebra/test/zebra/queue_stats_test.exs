@@ -217,7 +217,8 @@ defmodule Zebra.QueueStatsTest do
           name: nil,
           compute: compute,
           refresh_after_ms: 0,
-          refresh_timeout_ms: 50
+          refresh_timeout_ms: 50,
+          backoff_base_ms: 10
         )
 
       QueueStats.get(pid)
@@ -225,9 +226,95 @@ defmodule Zebra.QueueStatsTest do
       ref = Process.monitor(task_pid)
       assert_receive {:DOWN, ^ref, :process, _, _}, 500
 
-      # A new refresh can start once the stuck one is gone.
+      # A new refresh can start once the stuck one is gone and the backoff passed.
+      Process.sleep(30)
       QueueStats.get(pid)
       assert_receive {:started, _}, 500
+    end
+
+    test "backs off after a failed refresh, then retries" do
+      parent = self()
+
+      compute = fn ->
+        send(parent, :computed)
+        {:error, :db_down}
+      end
+
+      {:ok, pid} =
+        QueueStats.start_link(
+          name: nil,
+          compute: compute,
+          refresh_after_ms: 0,
+          backoff_base_ms: 200,
+          backoff_max_ms: 1_000
+        )
+
+      assert QueueStats.get(pid) == {:error, :not_ready}
+      assert_receive :computed
+
+      # Requests inside the backoff window start no new refresh.
+      Process.sleep(20)
+      for _ <- 1..5, do: QueueStats.get(pid)
+      refute_receive :computed, 100
+
+      # After the backoff, the next request retries.
+      Process.sleep(150)
+      QueueStats.get(pid)
+      assert_receive :computed, 500
+    end
+
+    test "the backoff grows and is capped" do
+      {:ok, agent} = Agent.start_link(fn -> [] end)
+      parent = self()
+
+      compute = fn ->
+        Agent.update(agent, &[System.monotonic_time(:millisecond) | &1])
+        send(parent, :computed)
+        {:error, :db_down}
+      end
+
+      {:ok, pid} =
+        QueueStats.start_link(
+          name: nil,
+          compute: compute,
+          refresh_after_ms: 0,
+          backoff_base_ms: 40,
+          backoff_max_ms: 100
+        )
+
+      # Poll steadily; refreshes happen only when the backoff allows.
+      for _ <- 1..60 do
+        QueueStats.get(pid)
+        Process.sleep(10)
+      end
+
+      times = agent |> Agent.get(& &1) |> Enum.reverse()
+      gaps = times |> Enum.chunk_every(2, 1, :discard) |> Enum.map(fn [a, b] -> b - a end)
+
+      assert length(times) >= 4
+      # 40, 80, then capped at 100 (allow scheduling slack).
+      assert Enum.at(gaps, 0) >= 40
+      assert Enum.at(gaps, 1) >= 80
+      assert Enum.all?(gaps, &(&1 < 160))
+    end
+
+    test "a successful refresh resets the backoff" do
+      {:ok, agent} = Agent.start_link(fn -> {:error, :db_down} end)
+      compute = fn -> Agent.get(agent, & &1) end
+
+      {:ok, pid} =
+        QueueStats.start_link(
+          name: nil,
+          compute: compute,
+          refresh_after_ms: 0,
+          backoff_base_ms: 5_000
+        )
+
+      assert {:error, :not_ready} = QueueStats.refresh_sync(pid)
+      Agent.update(agent, fn _ -> {:ok, [%QueueStats.Queue{waiting: 1}]} end)
+      assert {:ok, %{queues: [%{waiting: 1}]}, _} = QueueStats.refresh_sync(pid)
+      assert :sys.get_state(pid).failures == 0
+      assert :sys.get_state(pid).retry_at_ms == nil
     end
 
     test "answers not ready when the server is not running" do

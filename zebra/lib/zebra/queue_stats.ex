@@ -8,7 +8,9 @@ defmodule Zebra.QueueStats do
   The snapshot is refreshed lazily: `get/1` always answers from the last snapshot
   and, when it is older than the refresh interval, starts one background refresh.
   At most one refresh runs at a time and it is killed after a timeout, so callers
-  never wait on the database. The query runs with a statement timeout.
+  never wait on the database. The query runs with a statement timeout. After a
+  failed refresh the next one waits an exponential backoff (0.5s doubling up to
+  8s), so a struggling database is not queried on every request.
   """
 
   use GenServer
@@ -21,6 +23,8 @@ defmodule Zebra.QueueStats do
   @refresh_after_ms 1_000
   @refresh_timeout_ms 3_000
   @statement_timeout_ms 500
+  @backoff_base_ms 500
+  @backoff_max_ms 8_000
   @self_hosted_prefix "s1-"
 
   defmodule Queue do
@@ -173,7 +177,12 @@ defmodule Zebra.QueueStats do
        task_sup: task_sup,
        compute: Keyword.get(opts, :compute, &__MODULE__.compute/0),
        refresh_after_ms: Keyword.get(opts, :refresh_after_ms, @refresh_after_ms),
-       refresh_timeout_ms: Keyword.get(opts, :refresh_timeout_ms, @refresh_timeout_ms)
+       refresh_timeout_ms: Keyword.get(opts, :refresh_timeout_ms, @refresh_timeout_ms),
+       backoff_base_ms: Keyword.get(opts, :backoff_base_ms, @backoff_base_ms),
+       backoff_max_ms: Keyword.get(opts, :backoff_max_ms, @backoff_max_ms),
+       failures: 0,
+       # Monotonic time can be negative, so "no backoff" is nil, not 0.
+       retry_at_ms: nil
      }}
   end
 
@@ -197,20 +206,20 @@ defmodule Zebra.QueueStats do
   def handle_info({:DOWN, ref, :process, _, reason}, state = %{task: %Task{ref: ref}}) do
     Logger.error("Queue stats refresh crashed: #{inspect(reason)}")
     Watchman.increment("queue_stats.refresh_error")
-    {:noreply, %{state | task: nil}}
+    {:noreply, back_off(%{state | task: nil})}
   end
 
   def handle_info({:refresh_timeout, ref}, state = %{task: task = %Task{ref: ref}}) do
     Task.shutdown(task, :brutal_kill)
     Logger.error("Queue stats refresh timed out")
     Watchman.increment("queue_stats.refresh_timeout")
-    {:noreply, %{state | task: nil}}
+    {:noreply, back_off(%{state | task: nil})}
   end
 
   def handle_info(_msg, state), do: {:noreply, state}
 
   defp maybe_refresh(state = %{task: nil}) do
-    if stale?(state) do
+    if stale?(state) and backoff_over?(state) do
       task = Task.Supervisor.async_nolink(state.task_sup, state.compute)
       Process.send_after(self(), {:refresh_timeout, task.ref}, state.refresh_timeout_ms)
       %{state | task: task}
@@ -236,13 +245,24 @@ defmodule Zebra.QueueStats do
       computed_at_ms: now_ms()
     }
 
-    %{state | snapshot: snapshot}
+    %{state | snapshot: snapshot, failures: 0, retry_at_ms: nil}
   end
 
   defp store(state, {:error, reason}) do
     Logger.error("Queue stats refresh failed: #{inspect(reason)}")
     Watchman.increment("queue_stats.refresh_error")
-    state
+    back_off(state)
+  end
+
+  defp backoff_over?(%{retry_at_ms: nil}), do: true
+  defp backoff_over?(state), do: now_ms() >= state.retry_at_ms
+
+  defp back_off(state) do
+    failures = state.failures + 1
+    delay = min(state.backoff_base_ms * Integer.pow(2, failures - 1), state.backoff_max_ms)
+    Watchman.submit("queue_stats.refresh_backoff_ms", delay)
+
+    %{state | failures: failures, retry_at_ms: now_ms() + delay}
   end
 
   defp reply(nil), do: {:error, :not_ready}
