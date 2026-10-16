@@ -44,6 +44,28 @@ defmodule Zebra.Workers.JobRequestFactory.FailureReasonTest do
       assert reason =~ ~r/ and \d+ more$/
     end
 
+    test "uses the full 255 codepoints before dropping an entry" do
+      long = String.duplicate("e", 240)
+
+      assert FailureReason.join([long, String.duplicate("y", 10)], "P: ") ==
+               "P: " <> long <> ", " <> String.duplicate("y", 10)
+
+      assert FailureReason.join([long, String.duplicate("y", 11)], "P: ") ==
+               "P: " <> long <> " and 1 more"
+    end
+
+    test "truncates when not even one entry fits after the prefix" do
+      prefix = String.duplicate("p", 300)
+
+      assert FailureReason.join(["a", "b"], prefix) == String.duplicate("p", 255)
+    end
+
+    test "truncates a single oversized entry after the prefix" do
+      reason = FailureReason.join([String.duplicate("e", 300)], "P: ")
+
+      assert reason == "P: " <> String.duplicate("e", 252)
+    end
+
     test "fits entries made of multi-codepoint graphemes" do
       entry = "x" <> String.duplicate("́", 300)
 
