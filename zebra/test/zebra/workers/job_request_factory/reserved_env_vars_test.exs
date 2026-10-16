@@ -150,6 +150,98 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVarsTest do
     end
   end
 
+  describe "valid_name?/1" do
+    test "accepts shell identifiers" do
+      assert ReservedEnvVars.valid_name?("MY_VAR")
+      assert ReservedEnvVars.valid_name?("_private1")
+      assert ReservedEnvVars.valid_name?("a")
+    end
+
+    test "rejects names the agent would not export as a single identifier" do
+      refute ReservedEnvVars.valid_name?("")
+      refute ReservedEnvVars.valid_name?("1VAR")
+      refute ReservedEnvVars.valid_name?("MY-VAR")
+      refute ReservedEnvVars.valid_name?("SEMAPHORE_WORKFLOW_TRIGGERED_BY_API=true #")
+      refute ReservedEnvVars.valid_name?("X=1; id; Y")
+      refute ReservedEnvVars.valid_name?("A\nB")
+      refute ReservedEnvVars.valid_name?("A B")
+      refute ReservedEnvVars.valid_name?("ÜBER")
+      refute ReservedEnvVars.valid_name?(nil)
+    end
+  end
+
+  describe "validate/5 with invalid names" do
+    test "rejects a name that would inject shell code" do
+      assert validate(:pipeline_job, ["X=1; id; Y"]) ==
+               {:stop_job_processing,
+                "Invalid environment variable names: 'X=1; id; Y' (job env_vars)"}
+    end
+
+    test "rejects an assignment hidden in a name, before checking reserved names" do
+      names = ["SEMAPHORE_GIT_BRANCH", "SEMAPHORE_JOB_ID=1 #"]
+
+      assert validate(:pipeline_job, names) ==
+               {:stop_job_processing,
+                "Invalid environment variable names: 'SEMAPHORE_JOB_ID=1 #' (job env_vars)"}
+    end
+
+    test "rejects an empty name" do
+      assert validate(:project_debug_job, [""]) ==
+               {:stop_job_processing, "Invalid environment variable names: '' (job env_vars)"}
+    end
+
+    test "shows control characters as ? in the reason" do
+      assert validate(:pipeline_job, ["A\nB"]) ==
+               {:stop_job_processing, "Invalid environment variable names: 'A?B' (job env_vars)"}
+    end
+
+    test "rejects invalid names in secrets and containers" do
+      secrets = %{
+        @no_secrets
+        | job_secrets: [secret("deploy", ["OK", "BAD NAME"])],
+          container_secrets: [[secret("db", ["db-pass"])]],
+          image_pull_secrets: [secret("registry", ["X;Y"])]
+      }
+
+      container =
+        Spec.Agent.Container.new(
+          name: "main",
+          env_vars: [Spec.EnvVar.new(name: "1ST", value: "x")]
+        )
+
+      assert validate(:pipeline_job, [], secrets: secrets, spec: spec([container])) ==
+               {:stop_job_processing,
+                "Invalid environment variable names: 'BAD NAME' (secret 'deploy'), " <>
+                  "'db-pass' (secret 'db'), 'X;Y' (image pull secret 'registry'), " <>
+                  "'1ST' (container 'main' env_vars)"}
+    end
+
+    test "logs escaped names" do
+      log =
+        capture_log(fn ->
+          ReservedEnvVars.validate(
+            @job,
+            :pipeline_job,
+            spec(),
+            [JobRequest.env_var("A\nB", "very-secret-value")],
+            @no_secrets
+          )
+        end)
+
+      assert log =~ ~s(Invalid env var names rejected job_id=#{@job.id})
+      assert log =~ ~s(names=["A?B"])
+      refute log =~ "A\nB"
+      refute log =~ "very-secret-value"
+    end
+  end
+
+  describe "validate/5 known limitation" do
+    test "accepts a single copy of a conditional plumber-owned name in a pipeline job" do
+      # Zebra cannot tell this copy apart from one Plumber added for a parallel or rerun job.
+      assert validate(:pipeline_job, @plumber_base_names ++ ["SEMAPHORE_JOB_COUNT"]) == :ok
+    end
+  end
+
   describe "validate/5 for pipeline jobs" do
     test "accepts plumber-owned names present once" do
       names = [

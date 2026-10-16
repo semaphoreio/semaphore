@@ -1,6 +1,7 @@
 defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVars do
   @moduledoc """
-  Rejects jobs whose secrets, containers or spec set platform-reserved env vars.
+  Rejects jobs whose secrets, containers or spec set platform-reserved env vars,
+  or env vars whose names are not valid shell identifiers.
 
   Zebra-owned names never arrive in the spec, so any occurrence is an override.
   Plumber emits its names at most once per pipeline job, so a repeat is an override;
@@ -84,6 +85,10 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVars do
   @plumber_owned_pattern ~r/^SEMAPHORE_PIPELINE_\d+_ARTEFACT_ID$/
 
   @message_prefix "Reserved environment variables cannot be set: "
+  @invalid_message_prefix "Invalid environment variable names: "
+
+  # Same rule as Secrethub; the agent writes names unquoted into `export NAME=value`.
+  @valid_name ~r/^[a-zA-Z_][a-zA-Z0-9_]*$/
 
   # Names are compared case-insensitively because Windows env vars are case-insensitive.
   def reserved?(name), do: zebra_owned?(name) or plumber_owned?(name)
@@ -95,7 +100,21 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVars do
     MapSet.member?(@plumber_owned, name) or Regex.match?(@plumber_owned_pattern, name)
   end
 
+  def valid_name?(name) when is_binary(name), do: Regex.match?(@valid_name, name)
+  def valid_name?(_name), do: false
+
   def validate(job, job_type, spec, spec_env_vars, all_secrets) do
+    case invalid_names(spec, spec_env_vars, all_secrets) do
+      [] ->
+        validate_reserved(job, job_type, spec, spec_env_vars, all_secrets)
+
+      invalid ->
+        report_invalid(job, invalid)
+        {:stop_job_processing, invalid_message(invalid)}
+    end
+  end
+
+  defp validate_reserved(job, job_type, spec, spec_env_vars, all_secrets) do
     violations =
       spec_violations(job_type, spec_env_vars) ++
         secret_violations(all_secrets) ++
@@ -109,6 +128,38 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVars do
         report(job, violations)
         {:stop_job_processing, message(violations)}
     end
+  end
+
+  defp invalid_names(spec, spec_env_vars, all_secrets) do
+    spec_names = Enum.map(spec_env_vars, &{&1["name"], :spec, "job env_vars"})
+
+    secret_names =
+      Enum.flat_map(
+        all_secrets.job_secrets ++ List.flatten(all_secrets.container_secrets),
+        fn s ->
+          Enum.map(s.env_vars, &{&1["name"], :secret, "secret '#{FailureReason.clip(s.name)}'"})
+        end
+      )
+
+    pull_secret_names =
+      Enum.flat_map(all_secrets.image_pull_secrets, fn s ->
+        Enum.map(
+          s.env_vars,
+          &{&1["name"], :image_pull_secret, "image pull secret '#{FailureReason.clip(s.name)}'"}
+        )
+      end)
+
+    container_names =
+      Enum.flat_map(spec.agent.containers, fn c ->
+        Enum.map(
+          c.env_vars,
+          &{&1.name, :container, "container '#{FailureReason.clip(c.name)}' env_vars"}
+        )
+      end)
+
+    (spec_names ++ secret_names ++ pull_secret_names ++ container_names)
+    |> Enum.reject(fn {name, _kind, _label} -> valid_name?(name) end)
+    |> Enum.uniq()
   end
 
   defp spec_violations(:project_debug_job, env_vars) do
@@ -183,6 +234,32 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVars do
       "Reserved env vars rejected job_id=#{job.id} org_id=#{job.organization_id} names=#{Enum.join(names, ",")}"
     )
   end
+
+  defp report_invalid(job, invalid) do
+    invalid
+    |> Enum.map(fn {_name, kind, _label} -> kind end)
+    |> Enum.uniq()
+    |> Enum.each(fn kind ->
+      Watchman.increment(
+        {"job_request_factory.invalid_env_var_names.rejected", [to_string(kind)]}
+      )
+    end)
+
+    names = invalid |> Enum.map(fn {name, _kind, _label} -> display(name) end) |> Enum.uniq()
+
+    Logger.warning(
+      "Invalid env var names rejected job_id=#{job.id} org_id=#{job.organization_id} names=#{inspect(names)}"
+    )
+  end
+
+  defp invalid_message(invalid) do
+    invalid
+    |> Enum.map(fn {name, _kind, label} -> "'#{display(name)}' (#{label})" end)
+    |> FailureReason.join(@invalid_message_prefix)
+  end
+
+  defp display(name) when is_binary(name), do: FailureReason.clip(name)
+  defp display(name), do: FailureReason.clip(inspect(name))
 
   defp message(violations) do
     violations
