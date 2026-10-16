@@ -9,6 +9,8 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVars do
 
   require Logger
 
+  alias Zebra.Workers.JobRequestFactory.FailureReason
+
   @zebra_owned MapSet.new([
                  "SEMAPHORE",
                  "SEMAPHORE_PROJECT_NAME",
@@ -82,9 +84,6 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVars do
   @plumber_owned_pattern ~r/^SEMAPHORE_PIPELINE_\d+_ARTEFACT_ID$/
 
   @message_prefix "Reserved environment variables cannot be set: "
-  # failure_reason is a varchar(255) column, and Postgres counts codepoints, not graphemes
-  @max_message_length 255
-  @max_name_length 40
 
   # Names are compared case-insensitively because Windows env vars are case-insensitive.
   def reserved?(name), do: zebra_owned?(name) or plumber_owned?(name)
@@ -135,14 +134,19 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVars do
     container_secrets = List.flatten(all_secrets.container_secrets)
 
     Enum.flat_map(all_secrets.job_secrets ++ container_secrets, fn secret ->
-      reserved_names(secret.env_vars, & &1["name"], :secret, "secret '#{clip(secret.name)}'")
+      reserved_names(
+        secret.env_vars,
+        & &1["name"],
+        :secret,
+        "secret '#{FailureReason.clip(secret.name)}'"
+      )
     end) ++
       Enum.flat_map(all_secrets.image_pull_secrets, fn secret ->
         reserved_names(
           secret.env_vars,
           & &1["name"],
           :image_pull_secret,
-          "image pull secret '#{clip(secret.name)}'"
+          "image pull secret '#{FailureReason.clip(secret.name)}'"
         )
       end)
   end
@@ -153,7 +157,7 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVars do
         container.env_vars,
         & &1.name,
         :container,
-        "container '#{clip(container.name)}' env_vars"
+        "container '#{FailureReason.clip(container.name)}' env_vars"
       )
     end)
   end
@@ -181,30 +185,8 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVars do
   end
 
   defp message(violations) do
-    entries = Enum.map(violations, fn {name, _kind, label} -> "#{clip(name)} (#{label})" end)
-    total = length(entries)
-
-    total..1//-1
-    |> Enum.map(&render(Enum.take(entries, &1), total - &1))
-    |> Enum.find(&(codepoint_length(&1) <= @max_message_length))
-    |> case do
-      nil -> entries |> Enum.take(1) |> render(total - 1) |> take_codepoints(@max_message_length)
-      message -> message
-    end
+    violations
+    |> Enum.map(fn {name, _kind, label} -> "#{FailureReason.clip(name)} (#{label})" end)
+    |> FailureReason.join(@message_prefix)
   end
-
-  defp clip(text), do: take_codepoints(text, @max_name_length)
-
-  defp take_codepoints(text, count) do
-    text
-    |> String.codepoints()
-    |> Enum.filter(&String.valid?/1)
-    |> Enum.take(count)
-    |> Enum.join()
-  end
-
-  defp codepoint_length(text), do: text |> String.codepoints() |> length()
-
-  defp render(entries, 0), do: @message_prefix <> Enum.join(entries, ", ")
-  defp render(entries, remaining), do: render(entries, 0) <> " and #{remaining} more"
 end
