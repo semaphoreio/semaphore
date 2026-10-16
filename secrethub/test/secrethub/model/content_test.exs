@@ -39,6 +39,23 @@ defmodule Secrethub.Model.EnvVarTest do
              } = Content.changeset(%Content{}, %{env_vars: [%{name: "", value: "bar"}]})
     end
 
+    test "with env variable names that are shell identifiers" do
+      for name <- ["FOO", "_foo", "FOO_1"] do
+        assert %Ecto.Changeset{valid?: true} =
+                 Content.changeset(%Content{}, %{env_vars: [%{name: name, value: "bar"}]})
+      end
+    end
+
+    test "with env variable names that are not shell identifiers" do
+      for name <- ["FOO\n", "\nFOO", "FOO\nBAR", "1FOO", "FOO-BAR", "FOO BAR", "FOO=1", "ÉCOLE"] do
+        assert %Ecto.Changeset{
+                 changes: %{env_vars: [%Ecto.Changeset{valid?: false}]},
+                 valid?: false
+               } = Content.changeset(%Content{}, %{env_vars: [%{name: name, value: "bar"}]}),
+               "expected #{inspect(name)} to be rejected"
+      end
+    end
+
     test "with empty env variable value" do
       assert %Ecto.Changeset{
                changes: %{env_vars: [%Ecto.Changeset{valid?: false}]},
