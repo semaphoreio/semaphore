@@ -59,21 +59,21 @@ if config_env() == :prod do
 
   config :repository_hub, RepositoryHub.BuildStatusGuardCleanupWorker,
     enabled: System.get_env("BUILD_STATUS_GUARD_CLEANUP_ENABLED") != "false"
+
+  feature_provider =
+    case System.get_env("FEATURE_YAML_PATH") do
+      nil ->
+        {RepositoryHub.FeatureHubProvider,
+         [
+           cache: {FeatureProvider.CachexCache, name: :feature_provider_cache, ttl_ms: :timer.minutes(10)}
+         ]}
+
+      path ->
+        {FeatureProvider.YamlProvider, [yaml_path: path, agent_name: :feature_provider_agent]}
+    end
+
+  config FeatureProvider, :provider, feature_provider
 end
 
 on_prem? = if(System.get_env("ON_PREM") == "true", do: true, else: false)
 config :repository_hub, :on_prem?, on_prem?
-
-feature_provider =
-  case System.get_env("FEATURE_YAML_PATH") do
-    nil ->
-      {RepositoryHub.FeatureHubProvider,
-       [
-         cache: {FeatureProvider.CachexCache, name: :feature_provider_cache, ttl_ms: :timer.minutes(10)}
-       ]}
-
-    path ->
-      {FeatureProvider.YamlProvider, [yaml_path: path, agent_name: :feature_provider_agent]}
-  end
-
-config FeatureProvider, :provider, feature_provider
