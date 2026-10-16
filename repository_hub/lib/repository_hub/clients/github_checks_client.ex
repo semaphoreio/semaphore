@@ -94,16 +94,17 @@ defmodule RepositoryHub.GithubChecksClient do
   @doc """
   Finds the latest check-run with the given name and `external_id` on a commit.
 
-  Matching on `external_id` (set by `create_check_run/2`) keeps the lookup to
-  runs this service created, so a same-named run from another GitHub App,
-  which we could not update, is never picked.
+  `app_id` limits the lookup to Semaphore's GitHub App on GitHub's side, so a
+  same-named run from another app, which we could not update, is never
+  picked. `external_id` (set by `create_check_run/2`) then selects the run of
+  one pipeline.
   """
   def find_check_run(params, opts \\ []) do
     opts[:token]
     |> client()
     |> Tesla.get(
       "/repos/#{params.repo_owner}/#{params.repo_name}/commits/#{params.commit_sha}/check-runs",
-      query: [check_name: params.name, per_page: 100]
+      query: [check_name: params.name, app_id: params.app_id, per_page: 100]
     )
     |> handle_response(:find_check_run, params)
     |> unwrap(fn body ->

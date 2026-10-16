@@ -93,6 +93,7 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
            check_rate_limit: fn _params, _opts -> :ok end,
            find_check_run: fn params, _opts ->
              assert params.external_id == "semaphore:ppl-1"
+             assert params.app_id == "90709"
              {:error, %{status: GRPC.Status.not_found(), message: "not found"}}
            end,
            create_check_run: fn params, _opts ->

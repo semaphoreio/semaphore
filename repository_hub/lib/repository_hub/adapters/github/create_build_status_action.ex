@@ -2,7 +2,7 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
   alias RepositoryHub.Toolkit
   alias RepositoryHub.Validator
 
-  alias RepositoryHub.{GithubAdapter, GithubClient, GithubChecksClient}
+  alias RepositoryHub.{GithubAdapter, GithubAppId, GithubClient, GithubChecksClient}
   alias InternalApi.Repository.CreateBuildStatusResponse
 
   import Toolkit
@@ -111,7 +111,8 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
     result =
       with :ok <-
              GithubChecksClient.check_rate_limit(%{repo_owner: repo_owner}, token: context.github_token),
-           {:ok, existing} <- find_existing_check_run(request, context) do
+           {:ok, app_id} <- GithubAppId.get(),
+           {:ok, existing} <- find_existing_check_run(request, context, app_id) do
         upsert_check_run(request, existing, context)
       end
 
@@ -120,7 +121,7 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
 
   # Only a confirmed "no such run" means create. Any other lookup failure must
   # fail the request, otherwise we'd create a duplicate run.
-  defp find_existing_check_run(request, context) do
+  defp find_existing_check_run(request, context, app_id) do
     not_found = GRPC.Status.not_found()
 
     GithubChecksClient.find_check_run(
@@ -129,6 +130,7 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
         repo_name: context.repository.name,
         commit_sha: request.commit_sha,
         name: request.context,
+        app_id: app_id,
         external_id: external_id(request)
       },
       token: context.github_token
@@ -183,9 +185,9 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
     result
   end
 
-  # Marks runs as ours and ties them to one pipeline (source_id is the
-  # pipeline id), so a rebuild of the same commit gets its own run and one
-  # pipeline's result never completes another pipeline's run.
+  # Ties a run to one pipeline (source_id is the pipeline id), so a rebuild of
+  # the same commit gets its own run and one pipeline's result never completes
+  # another pipeline's run.
   defp external_id(request), do: "semaphore:#{request.source_id}"
 
   defp check_run_conclusion(:SUCCESS), do: "success"

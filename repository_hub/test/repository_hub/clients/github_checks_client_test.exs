@@ -10,6 +10,7 @@ defmodule RepositoryHub.GithubChecksClientTest do
   @sha "9bc99381f3242e0d4c0b1b2c3d4e5f6071829304"
   @name "ci/semaphoreci/push: build"
   @external_id "semaphore:ppl-1"
+  @app_id "90709"
 
   describe "create_check_run/2" do
     test "posts an in_progress check-run and returns the decoded body on 201" do
@@ -156,6 +157,7 @@ defmodule RepositoryHub.GithubChecksClientTest do
         assert url == "https://api.github.com/repos/#{@owner}/#{@repo}/commits/#{@sha}/check-runs"
         assert query[:check_name] == @name
         assert query[:per_page] == 100
+        assert query[:app_id] == @app_id
 
         json(
           %{"total_count" => 1, "check_runs" => [%{"id" => 99, "name" => @name, "external_id" => @external_id}]},
@@ -165,7 +167,14 @@ defmodule RepositoryHub.GithubChecksClientTest do
 
       assert {:ok, %{"id" => 99}} =
                GithubChecksClient.find_check_run(
-                 %{repo_owner: @owner, repo_name: @repo, commit_sha: @sha, name: @name, external_id: @external_id},
+                 %{
+                   repo_owner: @owner,
+                   repo_name: @repo,
+                   commit_sha: @sha,
+                   name: @name,
+                   external_id: @external_id,
+                   app_id: @app_id
+                 },
                  token: "ghs_installation_token"
                )
     end
@@ -177,7 +186,14 @@ defmodule RepositoryHub.GithubChecksClientTest do
 
       assert {:error, %{status: status, message: message}} =
                GithubChecksClient.find_check_run(
-                 %{repo_owner: @owner, repo_name: @repo, commit_sha: @sha, name: "missing", external_id: @external_id},
+                 %{
+                   repo_owner: @owner,
+                   repo_name: @repo,
+                   commit_sha: @sha,
+                   name: "missing",
+                   external_id: @external_id,
+                   app_id: @app_id
+                 },
                  token: "ghs_installation_token"
                )
 
@@ -202,7 +218,14 @@ defmodule RepositoryHub.GithubChecksClientTest do
 
       assert {:ok, %{"id" => 99}} =
                GithubChecksClient.find_check_run(
-                 %{repo_owner: @owner, repo_name: @repo, commit_sha: @sha, name: @name, external_id: @external_id},
+                 %{
+                   repo_owner: @owner,
+                   repo_name: @repo,
+                   commit_sha: @sha,
+                   name: @name,
+                   external_id: @external_id,
+                   app_id: @app_id
+                 },
                  token: "ghs_installation_token"
                )
     end
@@ -224,7 +247,14 @@ defmodule RepositoryHub.GithubChecksClientTest do
 
       assert {:ok, %{"id" => 7}} =
                GithubChecksClient.find_check_run(
-                 %{repo_owner: @owner, repo_name: @repo, commit_sha: @sha, name: @name, external_id: @external_id},
+                 %{
+                   repo_owner: @owner,
+                   repo_name: @repo,
+                   commit_sha: @sha,
+                   name: @name,
+                   external_id: @external_id,
+                   app_id: @app_id
+                 },
                  token: "ghs_installation_token"
                )
     end
@@ -236,7 +266,14 @@ defmodule RepositoryHub.GithubChecksClientTest do
 
       assert {:error, %{status: status}} =
                GithubChecksClient.find_check_run(
-                 %{repo_owner: @owner, repo_name: @repo, commit_sha: @sha, name: @name, external_id: @external_id},
+                 %{
+                   repo_owner: @owner,
+                   repo_name: @repo,
+                   commit_sha: @sha,
+                   name: @name,
+                   external_id: @external_id,
+                   app_id: @app_id
+                 },
                  token: "ghs_installation_token"
                )
 

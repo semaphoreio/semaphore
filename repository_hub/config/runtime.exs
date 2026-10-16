@@ -28,7 +28,9 @@ if config_env() == :prod do
     repository_integrator_grpc_server: System.get_env("REPOSITORY_INTEGRATOR_GRPC_URL"),
     organization_grpc_endpoint: System.get_env("ORGANIZATION_GRPC_URL"),
     webhook_host: System.get_env("HOOKS_HOST") || "example.com/hooks",
-    feature_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_FEATURE")
+    feature_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_FEATURE"),
+    instance_config_grpc_endpoint: System.get_env("INTERNAL_API_URL_INSTANCE_CONFIG"),
+    github_application_id: System.get_env("GITHUB_APPLICATION_ID")
 
   log_level =
     System.get_env("LOG_LEVEL", "info")
