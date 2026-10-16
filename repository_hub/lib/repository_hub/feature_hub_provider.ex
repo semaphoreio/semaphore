@@ -120,7 +120,6 @@ defmodule RepositoryHub.FeatureHubProvider do
 
   defp state_from_availability(%Availability{state: state}) do
     state
-    |> Availability.State.key()
     |> case do
       :ENABLED -> :enabled
       :HIDDEN -> :disabled
