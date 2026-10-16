@@ -52,6 +52,21 @@ defmodule RepositoryHub.GithubChecksClientTest do
 
       assert message =~ "403"
     end
+
+    test "returns an unavailable error on a 5xx response" do
+      mock(fn %{method: :post} ->
+        json(%{"message" => "Server Error"}, status: 502)
+      end)
+
+      assert {:error, %{status: status, message: message}} =
+               GithubChecksClient.create_check_run(
+                 %{repo_owner: @owner, repo_name: @repo, head_sha: @sha, name: @name, status: "in_progress"},
+                 token: "ghs_installation_token"
+               )
+
+      assert status == GRPC.Status.unavailable()
+      assert message =~ "502"
+    end
   end
 
   describe "update_check_run/2" do
@@ -103,12 +118,13 @@ defmodule RepositoryHub.GithubChecksClientTest do
         json(%{"total_count" => 0, "check_runs" => []}, status: 200)
       end)
 
-      assert {:error, %{message: message}} =
+      assert {:error, %{status: status, message: message}} =
                GithubChecksClient.find_check_run(
                  %{repo_owner: @owner, repo_name: @repo, commit_sha: @sha, name: "missing"},
                  token: "ghs_installation_token"
                )
 
+      assert status == GRPC.Status.not_found()
       assert message =~ "No check-run"
     end
 

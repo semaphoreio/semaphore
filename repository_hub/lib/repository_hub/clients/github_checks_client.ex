@@ -89,6 +89,21 @@ defmodule RepositoryHub.GithubChecksClient do
     wrap(body)
   end
 
+  # The write may still have landed on GitHub. Report unavailable so callers
+  # don't treat it as a definitive rejection.
+  defp handle_response({:ok, %Tesla.Env{status: status, body: body}}, purpose, params)
+       when status >= 500 do
+    log_error([
+      "github checks api error",
+      "purpose: #{purpose}",
+      "repo: #{params.repo_owner}/#{params.repo_name}",
+      "status: #{status}",
+      "body: #{inspect(body)}"
+    ])
+
+    fail_with(:unavailable, "GitHub Checks API #{purpose} failed (status #{status}): #{message_from(body)}")
+  end
+
   defp handle_response({:ok, %Tesla.Env{status: status, body: body}}, purpose, params) do
     log_error([
       "github checks api error",
