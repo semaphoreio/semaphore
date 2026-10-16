@@ -99,7 +99,7 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
       with :ok <-
              GithubChecksClient.check_rate_limit(%{repo_owner: repo_owner}, token: context.github_token),
            {:ok, existing} <- find_existing_check_run(request, context) do
-        upsert_check_run(request.status, existing, request, context)
+        upsert_check_run(request, existing, context)
       end
 
     record_check_run(result, repo_owner, repo_name, request.context)
@@ -127,64 +127,36 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
     end
   end
 
-  defp upsert_check_run(:PENDING, %{"id" => id, "status" => status}, request, context)
-       when status != "completed" do
-    GithubChecksClient.update_check_run(
+  defp upsert_check_run(request, existing, context) do
+    params =
       %{
         repo_owner: context.repository.owner,
         repo_name: context.repository.name,
-        check_run_id: id,
-        status: "in_progress",
         details_url: request.url
-      },
-      token: context.github_token
-    )
+      }
+      |> Map.merge(check_run_state(request.status))
+
+    case run_to_update(request.status, existing) do
+      nil ->
+        params
+        |> Map.merge(%{name: request.context, head_sha: request.commit_sha, external_id: external_id(request)})
+        |> GithubChecksClient.create_check_run(token: context.github_token)
+
+      id ->
+        params
+        |> Map.put(:check_run_id, id)
+        |> GithubChecksClient.update_check_run(token: context.github_token)
+    end
   end
 
-  defp upsert_check_run(:PENDING, _existing, request, context) do
-    GithubChecksClient.create_check_run(
-      %{
-        repo_owner: context.repository.owner,
-        repo_name: context.repository.name,
-        name: request.context,
-        head_sha: request.commit_sha,
-        external_id: external_id(request),
-        status: "in_progress",
-        details_url: request.url
-      },
-      token: context.github_token
-    )
-  end
+  # A completed run is never reopened: a PENDING after completion (a rebuild)
+  # starts a fresh run.
+  defp run_to_update(:PENDING, %{"status" => "completed"}), do: nil
+  defp run_to_update(_status, %{"id" => id}), do: id
+  defp run_to_update(_status, nil), do: nil
 
-  defp upsert_check_run(terminal, %{"id" => id}, request, context) do
-    GithubChecksClient.update_check_run(
-      %{
-        repo_owner: context.repository.owner,
-        repo_name: context.repository.name,
-        check_run_id: id,
-        status: "completed",
-        conclusion: check_run_conclusion(terminal),
-        details_url: request.url
-      },
-      token: context.github_token
-    )
-  end
-
-  defp upsert_check_run(terminal, nil, request, context) do
-    GithubChecksClient.create_check_run(
-      %{
-        repo_owner: context.repository.owner,
-        repo_name: context.repository.name,
-        name: request.context,
-        head_sha: request.commit_sha,
-        external_id: external_id(request),
-        status: "completed",
-        conclusion: check_run_conclusion(terminal),
-        details_url: request.url
-      },
-      token: context.github_token
-    )
-  end
+  defp check_run_state(:PENDING), do: %{status: "in_progress"}
+  defp check_run_state(terminal), do: %{status: "completed", conclusion: check_run_conclusion(terminal)}
 
   defp record_check_run({:ok, _} = result, _repo_owner, _repo_name, _name) do
     Watchman.increment("set_check_run.success")
