@@ -12,6 +12,47 @@ defmodule RepositoryHub.GithubChecksClient do
   @api_url "https://api.github.com"
   @api_version "2022-11-28"
 
+  # Same reserve as GithubClient's :create_build_status, so status reporting
+  # never drains the quota other GitHub calls need.
+  @rate_limit_reserve 1000
+
+  @doc """
+  Returns `:ok` when the token has more than #{@rate_limit_reserve} API calls
+  left, `{:error, :rate_limit}` otherwise. Mirrors `GithubClient`'s gate: when
+  the limit can't be read it is assumed to be low.
+  """
+  def check_rate_limit(params, opts \\ []) do
+    opts[:token]
+    |> client()
+    |> Tesla.get("/rate_limit")
+    |> case do
+      {:ok, %Tesla.Env{status: 200, body: %{"rate" => %{"remaining" => remaining}}}} ->
+        rate_limit_decision(remaining, params.repo_owner)
+
+      {:ok, %Tesla.Env{status: 401}} ->
+        fail_with(:precondition, "GitHub Checks API token is not authorized")
+
+      other ->
+        log_error("Failed to get the rate limit for #{params.repo_owner}: #{inspect(other)}")
+        rate_limit_decision(0, params.repo_owner)
+    end
+  end
+
+  defp rate_limit_decision(remaining, owner) when remaining > @rate_limit_reserve do
+    Watchman.increment({"github_api.rate_limit.ok", [owner]})
+    :ok
+  end
+
+  defp rate_limit_decision(remaining, owner) do
+    Watchman.increment({"github_api.rate_limit.error", [owner]})
+
+    log_error(
+      "Failed to connect to GitHub. purpose=check_run owner=#{owner} limit=#{@rate_limit_reserve} remaining_rate_limit=#{remaining}"
+    )
+
+    {:error, :rate_limit}
+  end
+
   def create_check_run(params, opts \\ []) do
     body =
       %{

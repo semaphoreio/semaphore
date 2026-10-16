@@ -70,6 +70,32 @@ defmodule RepositoryHub.GithubChecksClientTest do
     end
   end
 
+  describe "check_rate_limit/2" do
+    defp rate_limit_response(remaining) do
+      json(%{"rate" => %{"remaining" => remaining}}, status: 200)
+    end
+
+    test "ok when remaining is above the reserve" do
+      mock(fn %{method: :get, url: "https://api.github.com/rate_limit"} -> rate_limit_response(1001) end)
+
+      assert :ok = GithubChecksClient.check_rate_limit(%{repo_owner: @owner}, token: "ghs_installation_token")
+    end
+
+    test "rate_limit error when remaining is at or below the reserve" do
+      mock(fn %{method: :get} -> rate_limit_response(1000) end)
+
+      assert {:error, :rate_limit} =
+               GithubChecksClient.check_rate_limit(%{repo_owner: @owner}, token: "ghs_installation_token")
+    end
+
+    test "rate_limit error when the limit can't be read" do
+      mock(fn %{method: :get} -> json(%{"message" => "Server Error"}, status: 500) end)
+
+      assert {:error, :rate_limit} =
+               GithubChecksClient.check_rate_limit(%{repo_owner: @owner}, token: "ghs_installation_token")
+    end
+  end
+
   describe "update_check_run/2" do
     test "patches the run to completed with a conclusion" do
       mock(fn %{method: :patch, url: url, body: body} ->
