@@ -84,7 +84,7 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
         {FeatureProvider, [], [feature_enabled?: fn _, _ -> true end]},
         {GithubChecksClient, [],
          [
-           find_check_run: fn _params, _opts -> {:error, %{message: "not found"}} end,
+           find_check_run: fn _params, _opts -> {:error, %{status: GRPC.Status.not_found(), message: "not found"}} end,
            create_check_run: fn params, _opts ->
              assert params.status == "in_progress"
              assert params.name == request.context
@@ -208,7 +208,7 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
         {FeatureProvider, [], [feature_enabled?: fn _, _ -> true end]},
         {GithubChecksClient, [],
          [
-           find_check_run: fn _params, _opts -> {:error, %{message: "not found"}} end,
+           find_check_run: fn _params, _opts -> {:error, %{status: GRPC.Status.not_found(), message: "not found"}} end,
            create_check_run: fn params, _opts ->
              assert params.status == "completed"
              assert params.conclusion == "success"
@@ -260,13 +260,43 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
         {FeatureProvider, [], [feature_enabled?: fn _, _ -> true end]},
         {GithubChecksClient, [],
          [
-           find_check_run: fn _params, _opts -> {:error, %{message: "not found"}} end,
+           find_check_run: fn _params, _opts -> {:error, %{status: GRPC.Status.not_found(), message: "not found"}} end,
            create_check_run: fn _params, _opts ->
              {:error, %{status: 500, message: "x"}}
            end
          ]}
       ]) do
         assert {:error, _} = CreateBuildStatusAction.execute(adapter, request)
+      end
+    end
+
+    for status <- [:PENDING, :SUCCESS] do
+      test "flag ON + #{status}, lookup fails (not a not_found) → fails without writing", %{
+        adapter: adapter,
+        repository: repository
+      } do
+        request =
+          InternalApiFactory.create_build_status_request(
+            repository_id: repository.id,
+            status: unquote(status)
+          )
+
+        with_mocks([
+          {FeatureProvider, [], [feature_enabled?: fn _, _ -> true end]},
+          {GithubChecksClient, [],
+           [
+             find_check_run: fn _params, _opts ->
+               {:error, %{status: GRPC.Status.unavailable(), message: "GitHub Checks API find_check_run failed"}}
+             end,
+             create_check_run: fn _params, _opts -> {:ok, %{"id" => 1}} end,
+             update_check_run: fn _params, _opts -> {:ok, %{"id" => 1}} end
+           ]}
+        ]) do
+          assert {:error, %{status: status}} = CreateBuildStatusAction.execute(adapter, request)
+          assert status == GRPC.Status.unavailable()
+          refute called(GithubChecksClient.create_check_run(:_, :_))
+          refute called(GithubChecksClient.update_check_run(:_, :_))
+        end
       end
     end
   end

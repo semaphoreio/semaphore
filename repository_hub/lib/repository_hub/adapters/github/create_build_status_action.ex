@@ -80,23 +80,36 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
     repo_owner = context.repository.owner
     repo_name = context.repository.name
 
-    existing =
-      GithubChecksClient.find_check_run(
-        %{
-          repo_owner: repo_owner,
-          repo_name: repo_name,
-          commit_sha: request.commit_sha,
-          name: request.context
-        },
-        token: context.github_token
-      )
+    result =
+      with {:ok, existing} <- find_existing_check_run(request, context) do
+        upsert_check_run(request.status, existing, request, context)
+      end
 
-    request.status
-    |> upsert_check_run(existing, request, context)
-    |> record_check_run(repo_owner, repo_name, request.context)
+    record_check_run(result, repo_owner, repo_name, request.context)
   end
 
-  defp upsert_check_run(:PENDING, {:ok, %{"id" => id, "status" => status}}, request, context)
+  # Only a confirmed "no such run" means create. Any other lookup failure must
+  # fail the request, otherwise we'd create a duplicate run.
+  defp find_existing_check_run(request, context) do
+    not_found = GRPC.Status.not_found()
+
+    GithubChecksClient.find_check_run(
+      %{
+        repo_owner: context.repository.owner,
+        repo_name: context.repository.name,
+        commit_sha: request.commit_sha,
+        name: request.context
+      },
+      token: context.github_token
+    )
+    |> case do
+      {:ok, run} -> {:ok, run}
+      {:error, %{status: ^not_found}} -> {:ok, nil}
+      error -> error
+    end
+  end
+
+  defp upsert_check_run(:PENDING, %{"id" => id, "status" => status}, request, context)
        when status != "completed" do
     GithubChecksClient.update_check_run(
       %{
@@ -124,7 +137,7 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
     )
   end
 
-  defp upsert_check_run(terminal, {:ok, %{"id" => id}}, request, context) do
+  defp upsert_check_run(terminal, %{"id" => id}, request, context) do
     GithubChecksClient.update_check_run(
       %{
         repo_owner: context.repository.owner,
@@ -138,7 +151,7 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
     )
   end
 
-  defp upsert_check_run(terminal, _existing, request, context) do
+  defp upsert_check_run(terminal, nil, request, context) do
     GithubChecksClient.create_check_run(
       %{
         repo_owner: context.repository.owner,
