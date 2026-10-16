@@ -139,6 +139,25 @@ defmodule RepositoryHub.GithubChecksClient do
     wrap(body)
   end
 
+  # The installation hasn't granted the Checks permission. Callers fall back
+  # to the Commit Status API on permission_denied.
+  defp handle_response(
+         {:ok, %Tesla.Env{status: 403, body: %{"message" => "Resource not accessible by integration"}}},
+         purpose,
+         params
+       ) do
+    log_warn([
+      "github checks api permission missing",
+      "purpose: #{purpose}",
+      "repo: #{params.repo_owner}/#{params.repo_name}"
+    ])
+
+    error(%{
+      status: GRPC.Status.permission_denied(),
+      message: "GitHub App installation is missing the Checks permission"
+    })
+  end
+
   # The write may still have landed on GitHub. Report unavailable so callers
   # don't treat it as a definitive rejection.
   defp handle_response({:ok, %Tesla.Env{status: status, body: body}}, purpose, params)

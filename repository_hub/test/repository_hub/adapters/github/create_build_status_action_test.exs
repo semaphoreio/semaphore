@@ -282,6 +282,31 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
       end
     end
 
+    test "flag ON, installation lacks the Checks permission → falls back to commit status", %{
+      adapter: adapter,
+      repository: repository
+    } do
+      request = InternalApiFactory.create_build_status_request(repository_id: repository.id, status: :PENDING)
+
+      with_mocks([
+        {FeatureProvider, [], [feature_enabled?: fn _, _ -> true end]},
+        {GithubChecksClient, [],
+         [
+           check_rate_limit: fn _params, _opts -> :ok end,
+           find_check_run: fn _params, _opts ->
+             {:error, %{status: GRPC.Status.permission_denied(), message: "missing Checks permission"}}
+           end,
+           create_check_run: fn _params, _opts -> {:ok, %{"id" => 1}} end,
+           update_check_run: fn _params, _opts -> {:ok, %{"id" => 1}} end
+         ]}
+      ]) do
+        assert {:ok, _} = CreateBuildStatusAction.execute(adapter, request)
+        assert called(GithubClient.create_build_status(:_, :_))
+        refute called(GithubChecksClient.create_check_run(:_, :_))
+        refute called(GithubChecksClient.update_check_run(:_, :_))
+      end
+    end
+
     test "flag ON, rate limit below reserve → fails without calling GitHub", %{
       adapter: adapter,
       repository: repository

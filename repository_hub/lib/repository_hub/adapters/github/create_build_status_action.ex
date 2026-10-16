@@ -66,7 +66,9 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
 
   defp report_build_status(%{integration_type: "github_app"}, request, context) do
     if FeatureProvider.feature_enabled?(:github_checks_api, param: context.project.metadata.owner_id) do
-      report_via_check_run(request, context)
+      request
+      |> report_via_check_run(context)
+      |> fallback_to_status_when_checks_forbidden(request, context)
     else
       create_build_status(request, context.repository, context.github_token)
     end
@@ -75,6 +77,19 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
   defp report_build_status(_adapter, request, context) do
     create_build_status(request, context.repository, context.github_token)
   end
+
+  # An installation without the Checks permission gets a 403 on every call.
+  # Nothing was written, so report through the Commit Status API instead.
+  defp fallback_to_status_when_checks_forbidden({:error, %{status: status}} = error, request, context) do
+    if status == GRPC.Status.permission_denied() do
+      Watchman.increment("set_check_run.fallback_to_status")
+      create_build_status(request, context.repository, context.github_token)
+    else
+      error
+    end
+  end
+
+  defp fallback_to_status_when_checks_forbidden(result, _request, _context), do: result
 
   defp report_via_check_run(request, context) do
     repo_owner = context.repository.owner

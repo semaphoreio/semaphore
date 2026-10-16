@@ -42,16 +42,45 @@ defmodule RepositoryHub.GithubChecksClientTest do
 
     test "returns a precondition error on a 4xx response" do
       mock(fn %{method: :post} ->
+        json(%{"message" => "Validation Failed"}, status: 422)
+      end)
+
+      assert {:error, %{status: status, message: message}} =
+               GithubChecksClient.create_check_run(
+                 %{repo_owner: @owner, repo_name: @repo, head_sha: @sha, name: @name, status: "in_progress"},
+                 token: "ghs_installation_token"
+               )
+
+      assert status == GRPC.Status.failed_precondition()
+      assert message =~ "422"
+    end
+
+    test "returns permission_denied when the installation lacks the Checks permission" do
+      mock(fn %{method: :post} ->
         json(%{"message" => "Resource not accessible by integration"}, status: 403)
       end)
 
-      assert {:error, %{message: message}} =
+      assert {:error, %{status: status}} =
                GithubChecksClient.create_check_run(
                  %{repo_owner: @owner, repo_name: @repo, head_sha: @sha, name: @name, status: "in_progress"},
-                 token: "oauth_token_cannot_do_checks"
+                 token: "ghs_installation_token"
                )
 
-      assert message =~ "403"
+      assert status == GRPC.Status.permission_denied()
+    end
+
+    test "any other 403 stays a precondition error" do
+      mock(fn %{method: :post} ->
+        json(%{"message" => "API rate limit exceeded"}, status: 403)
+      end)
+
+      assert {:error, %{status: status}} =
+               GithubChecksClient.create_check_run(
+                 %{repo_owner: @owner, repo_name: @repo, head_sha: @sha, name: @name, status: "in_progress"},
+                 token: "ghs_installation_token"
+               )
+
+      assert status == GRPC.Status.failed_precondition()
     end
 
     test "returns an unavailable error on a 5xx response" do
