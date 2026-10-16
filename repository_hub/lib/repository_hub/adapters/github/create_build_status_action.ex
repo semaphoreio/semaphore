@@ -65,7 +65,7 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
   end
 
   defp report_build_status(%{integration_type: "github_app"}, request, context) do
-    if FeatureProvider.feature_enabled?(:github_checks_api, param: context.project.metadata.owner_id) do
+    if FeatureProvider.feature_enabled?(:github_checks_api, param: context.project.metadata.org_id) do
       request
       |> report_via_check_run(context)
       |> fallback_to_status_when_checks_forbidden(request, context)
@@ -83,6 +83,7 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
   defp fallback_to_status_when_checks_forbidden({:error, %{status: status}} = error, request, context) do
     if status == GRPC.Status.permission_denied() do
       Watchman.increment("set_check_run.fallback_to_status")
+
       create_build_status(request, context.repository, context.github_token)
     else
       error

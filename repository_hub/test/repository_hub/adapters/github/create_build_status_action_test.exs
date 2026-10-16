@@ -82,7 +82,12 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
         |> Map.put(:source_id, "ppl-1")
 
       with_mocks([
-        {FeatureProvider, [], [feature_enabled?: fn _, _ -> true end]},
+        {FeatureProvider, [],
+         [
+           feature_enabled?: fn :github_checks_api, [param: org_id] ->
+             org_id == RepositoryHub.Stub.ProjectHub.org_id()
+           end
+         ]},
         {GithubChecksClient, [],
          [
            check_rate_limit: fn _params, _opts -> :ok end,
@@ -119,7 +124,12 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
         )
 
       with_mocks([
-        {FeatureProvider, [], [feature_enabled?: fn _, _ -> true end]},
+        {FeatureProvider, [],
+         [
+           feature_enabled?: fn :github_checks_api, [param: org_id] ->
+             org_id == RepositoryHub.Stub.ProjectHub.org_id()
+           end
+         ]},
         {GithubChecksClient, [],
          [
            check_rate_limit: fn _params, _opts -> :ok end,
@@ -151,7 +161,12 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
         )
 
       with_mocks([
-        {FeatureProvider, [], [feature_enabled?: fn _, _ -> true end]},
+        {FeatureProvider, [],
+         [
+           feature_enabled?: fn :github_checks_api, [param: org_id] ->
+             org_id == RepositoryHub.Stub.ProjectHub.org_id()
+           end
+         ]},
         {GithubChecksClient, [],
          [
            check_rate_limit: fn _params, _opts -> :ok end,
@@ -182,7 +197,12 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
         )
 
       with_mocks([
-        {FeatureProvider, [], [feature_enabled?: fn _, _ -> true end]},
+        {FeatureProvider, [],
+         [
+           feature_enabled?: fn :github_checks_api, [param: org_id] ->
+             org_id == RepositoryHub.Stub.ProjectHub.org_id()
+           end
+         ]},
         {GithubChecksClient, [],
          [
            check_rate_limit: fn _params, _opts -> :ok end,
@@ -216,7 +236,12 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
         )
 
       with_mocks([
-        {FeatureProvider, [], [feature_enabled?: fn _, _ -> true end]},
+        {FeatureProvider, [],
+         [
+           feature_enabled?: fn :github_checks_api, [param: org_id] ->
+             org_id == RepositoryHub.Stub.ProjectHub.org_id()
+           end
+         ]},
         {GithubChecksClient, [],
          [
            check_rate_limit: fn _params, _opts -> :ok end,
@@ -270,7 +295,12 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
         )
 
       with_mocks([
-        {FeatureProvider, [], [feature_enabled?: fn _, _ -> true end]},
+        {FeatureProvider, [],
+         [
+           feature_enabled?: fn :github_checks_api, [param: org_id] ->
+             org_id == RepositoryHub.Stub.ProjectHub.org_id()
+           end
+         ]},
         {GithubChecksClient, [],
          [
            check_rate_limit: fn _params, _opts -> :ok end,
@@ -291,7 +321,12 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
       request = InternalApiFactory.create_build_status_request(repository_id: repository.id, status: :PENDING)
 
       with_mocks([
-        {FeatureProvider, [], [feature_enabled?: fn _, _ -> true end]},
+        {FeatureProvider, [],
+         [
+           feature_enabled?: fn :github_checks_api, [param: org_id] ->
+             org_id == RepositoryHub.Stub.ProjectHub.org_id()
+           end
+         ]},
         {GithubChecksClient, [],
          [
            check_rate_limit: fn _params, _opts -> :ok end,
@@ -316,7 +351,12 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
       request = InternalApiFactory.create_build_status_request(repository_id: repository.id, status: :PENDING)
 
       with_mocks([
-        {FeatureProvider, [], [feature_enabled?: fn _, _ -> true end]},
+        {FeatureProvider, [],
+         [
+           feature_enabled?: fn :github_checks_api, [param: org_id] ->
+             org_id == RepositoryHub.Stub.ProjectHub.org_id()
+           end
+         ]},
         {GithubChecksClient, [],
          [
            check_rate_limit: fn _params, _opts -> {:error, :rate_limit} end,
@@ -345,7 +385,12 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
           )
 
         with_mocks([
-          {FeatureProvider, [], [feature_enabled?: fn _, _ -> true end]},
+          {FeatureProvider, [],
+           [
+             feature_enabled?: fn :github_checks_api, [param: org_id] ->
+               org_id == RepositoryHub.Stub.ProjectHub.org_id()
+             end
+           ]},
           {GithubChecksClient, [],
            [
              check_rate_limit: fn _params, _opts -> :ok end,
