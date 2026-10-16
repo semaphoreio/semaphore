@@ -164,6 +164,8 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVarsTest do
       refute ReservedEnvVars.valid_name?("SEMAPHORE_WORKFLOW_TRIGGERED_BY_API=true #")
       refute ReservedEnvVars.valid_name?("X=1; id; Y")
       refute ReservedEnvVars.valid_name?("A\nB")
+      refute ReservedEnvVars.valid_name?("FOO\n")
+      refute ReservedEnvVars.valid_name?("\nFOO")
       refute ReservedEnvVars.valid_name?("A B")
       refute ReservedEnvVars.valid_name?("ÜBER")
       refute ReservedEnvVars.valid_name?(nil)
@@ -188,6 +190,12 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVarsTest do
     test "rejects an empty name" do
       assert validate(:project_debug_job, [""]) ==
                {:stop_job_processing, "Invalid environment variable names: '' (job env_vars)"}
+    end
+
+    test "rejects a reserved name followed by a trailing newline" do
+      assert validate(:pipeline_job, ["SEMAPHORE_WORKFLOW_TRIGGERED_BY_API\n"]) ==
+               {:stop_job_processing,
+                "Invalid environment variable names: 'SEMAPHORE_WORKFLOW_TRIGGERED_BY_API?' (job env_vars)"}
     end
 
     test "shows control characters as ? in the reason" do

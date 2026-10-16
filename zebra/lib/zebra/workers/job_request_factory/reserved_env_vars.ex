@@ -82,13 +82,13 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVars do
                    "SEMAPHORE_JOB_ORIGINAL_ID"
                  ])
 
-  @plumber_owned_pattern ~r/^SEMAPHORE_PIPELINE_\d+_ARTEFACT_ID$/
+  @plumber_owned_pattern ~r/\ASEMAPHORE_PIPELINE_\d+_ARTEFACT_ID\z/
 
   @message_prefix "Reserved environment variables cannot be set: "
   @invalid_message_prefix "Invalid environment variable names: "
 
   # Same rule as Secrethub; the agent writes names unquoted into `export NAME=value`.
-  @valid_name ~r/^[a-zA-Z_][a-zA-Z0-9_]*$/
+  @valid_name ~r/\A[a-zA-Z_][a-zA-Z0-9_]*\z/
 
   # Names are compared case-insensitively because Windows env vars are case-insensitive.
   def reserved?(name), do: zebra_owned?(name) or plumber_owned?(name)
