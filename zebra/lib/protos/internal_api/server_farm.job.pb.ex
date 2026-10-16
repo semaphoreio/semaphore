@@ -402,6 +402,70 @@ defmodule InternalApi.ServerFarm.Job.CountByStateResponse.CountByState do
   field(:count, 2, type: :int32)
 end
 
+defmodule InternalApi.ServerFarm.Job.GetQueueStatsRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          environment: integer
+        }
+  defstruct [:environment]
+
+  field(:environment, 1,
+    type: InternalApi.ServerFarm.Job.GetQueueStatsRequest.Environment,
+    enum: true
+  )
+end
+
+defmodule InternalApi.ServerFarm.Job.GetQueueStatsRequest.Environment do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+
+  field(:ALL, 0)
+  field(:CLOUD, 1)
+  field(:SELF_HOSTED, 2)
+end
+
+defmodule InternalApi.ServerFarm.Job.GetQueueStatsResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          generated_at: Google.Protobuf.Timestamp.t(),
+          age_ms: integer,
+          queues: [InternalApi.ServerFarm.Job.GetQueueStatsResponse.MachineQueue.t()]
+        }
+  defstruct [:generated_at, :age_ms, :queues]
+
+  field(:generated_at, 1, type: Google.Protobuf.Timestamp)
+  field(:age_ms, 2, type: :int64)
+
+  field(:queues, 3,
+    repeated: true,
+    type: InternalApi.ServerFarm.Job.GetQueueStatsResponse.MachineQueue
+  )
+end
+
+defmodule InternalApi.ServerFarm.Job.GetQueueStatsResponse.MachineQueue do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          machine_type: String.t(),
+          os_image: String.t(),
+          waiting: integer,
+          oldest_wait_seconds: integer,
+          waiting_orgs: integer
+        }
+  defstruct [:machine_type, :os_image, :waiting, :oldest_wait_seconds, :waiting_orgs]
+
+  field(:machine_type, 1, type: :string)
+  field(:os_image, 2, type: :string)
+  field(:waiting, 3, type: :int32)
+  field(:oldest_wait_seconds, 4, type: :int64)
+  field(:waiting_orgs, 5, type: :int32)
+end
+
 defmodule InternalApi.ServerFarm.Job.TotalExecutionTimeRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3
@@ -825,6 +889,12 @@ defmodule InternalApi.ServerFarm.Job.JobService.Service do
     :Create,
     InternalApi.ServerFarm.Job.CreateRequest,
     InternalApi.ServerFarm.Job.CreateResponse
+  )
+
+  rpc(
+    :GetQueueStats,
+    InternalApi.ServerFarm.Job.GetQueueStatsRequest,
+    InternalApi.ServerFarm.Job.GetQueueStatsResponse
   )
 end
 

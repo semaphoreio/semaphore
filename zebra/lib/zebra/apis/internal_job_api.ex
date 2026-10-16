@@ -224,6 +224,51 @@ defmodule Zebra.Apis.InternalJobApi do
     end)
   end
 
+  def get_queue_stats(req, _) do
+    Watchman.benchmark("internal_job_api.get_queue_stats.duration", fn ->
+      alias InternalApi.ServerFarm.Job.GetQueueStatsRequest.Environment
+      alias InternalApi.ServerFarm.Job.GetQueueStatsResponse, as: Resp
+
+      case Zebra.QueueStats.get() do
+        {:ok, snapshot, age_ms} ->
+          now = DateTime.utc_now()
+
+          queues =
+            snapshot.queues
+            |> Zebra.QueueStats.filter(environment_key(Environment, req.environment))
+            |> Enum.map(fn q ->
+              Resp.MachineQueue.new(
+                machine_type: q.machine_type,
+                os_image: q.os_image,
+                waiting: q.waiting,
+                oldest_wait_seconds: Zebra.QueueStats.oldest_wait_seconds(q, now),
+                waiting_orgs: q.waiting_orgs
+              )
+            end)
+
+          Resp.new(
+            generated_at:
+              Google.Protobuf.Timestamp.new(seconds: DateTime.to_unix(snapshot.generated_at)),
+            age_ms: age_ms,
+            queues: queues
+          )
+
+        {:error, :not_ready} ->
+          raise GRPC.RPCError, status: :unavailable, message: "Queue stats are not ready yet"
+      end
+    end)
+  end
+
+  defp environment_key(_enum, env) when is_atom(env), do: env
+
+  defp environment_key(enum, env) when is_integer(env) do
+    enum.key(env)
+  rescue
+    _ -> :ALL
+  end
+
+  defp environment_key(_enum, _), do: :ALL
+
   def describe(req, _) do
     Watchman.benchmark("internal_job_api.describe.duration", fn ->
       alias Zebra.Apis.InternalJobApi.Serializer, as: Serializer

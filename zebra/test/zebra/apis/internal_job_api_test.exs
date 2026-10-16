@@ -349,6 +349,79 @@ defmodule Zebra.Api.InternalJobApiTest do
     end
   end
 
+  describe ".get_queue_stats" do
+    alias InternalApi.ServerFarm.Job.GetQueueStatsRequest, as: Request
+    alias InternalApi.ServerFarm.Job.GetQueueStatsRequest.Environment
+    alias InternalApi.ServerFarm.Job.JobService.Stub, as: Stub
+
+    setup do
+      Mox.allow(Support.MockedProvider, self(), Process.whereis(Zebra.QueueStats))
+      :ok
+    end
+
+    test "returns waiting jobs per machine type and image" do
+      other_org = Ecto.UUID.generate()
+
+      {:ok, _} = Support.Factories.Job.create(:scheduled, %{machine_type: "f1-standard-2"})
+
+      {:ok, _} =
+        Support.Factories.Job.create(:scheduled, %{
+          machine_type: "f1-standard-2",
+          organization_id: other_org
+        })
+
+      {:ok, _} = Support.Factories.Job.create(:started, %{machine_type: "f1-standard-2"})
+      {:ok, _} = Support.Factories.Job.create(:enqueued, %{machine_type: "f1-standard-2"})
+      {:ok, _} = Support.Factories.Job.create(:enqueued, %{machine_type: "f1-standard-4"})
+
+      {:ok, _, _} = Zebra.QueueStats.refresh_sync()
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+
+      {:ok, res} = Stub.get_queue_stats(channel, Request.new())
+
+      assert [queue] = res.queues
+      assert queue.machine_type == "f1-standard-2"
+      assert queue.os_image == "ubuntu1804"
+      assert queue.waiting == 2
+      assert queue.waiting_orgs == 2
+      assert queue.oldest_wait_seconds >= 0
+      assert res.age_ms >= 0
+      assert res.generated_at.seconds > 0
+    end
+
+    test "does not expose jobs held before scheduling" do
+      {:ok, _} = Support.Factories.Job.create(:enqueued, %{machine_type: "f1-standard-2"})
+      {:ok, _} = Support.Factories.Job.create(:pending, %{machine_type: "f1-standard-2"})
+
+      {:ok, _, _} = Zebra.QueueStats.refresh_sync()
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+
+      {:ok, res} = Stub.get_queue_stats(channel, Request.new())
+
+      assert res.queues == []
+    end
+
+    test "filters by environment" do
+      {:ok, _} = Support.Factories.Job.create(:scheduled, %{machine_type: "f1-standard-2"})
+      {:ok, _} = Support.Factories.Job.create(:scheduled, %{machine_type: "s1-my-agents"})
+
+      {:ok, _, _} = Zebra.QueueStats.refresh_sync()
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+
+      {:ok, all} = Stub.get_queue_stats(channel, Request.new())
+
+      {:ok, cloud} =
+        Stub.get_queue_stats(channel, Request.new(environment: Environment.value(:CLOUD)))
+
+      {:ok, self_hosted} =
+        Stub.get_queue_stats(channel, Request.new(environment: Environment.value(:SELF_HOSTED)))
+
+      assert Enum.map(all.queues, & &1.machine_type) == ["f1-standard-2", "s1-my-agents"]
+      assert Enum.map(cloud.queues, & &1.machine_type) == ["f1-standard-2"]
+      assert Enum.map(self_hosted.queues, & &1.machine_type) == ["s1-my-agents"]
+    end
+  end
+
   describe ".count_by_state" do
     alias InternalApi.ServerFarm.Job.Job
     alias InternalApi.ServerFarm.Job.CountByStateRequest, as: Request

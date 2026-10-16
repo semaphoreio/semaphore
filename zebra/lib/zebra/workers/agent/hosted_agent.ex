@@ -124,82 +124,19 @@ defmodule Zebra.Workers.Agent.HostedAgent do
 
   @spec translate_machine(job :: Zebra.Models.Job.t()) :: {String.t(), String.t()}
   defp translate_machine(job) do
-    original_type = job.machine_type || ""
-    original_os_image = job.machine_os_image || ""
+    {machine_type, machine_os_image, translated?} =
+      Zebra.Machines.Translation.translate(
+        job.machine_type,
+        job.machine_os_image,
+        job.organization_id
+      )
 
-    cond do
-      e1_family?(original_type) and e1_to_f1_migration_enabled?(job.organization_id) ->
-        {new_type, new_os_image} = attempt_mapping_to_f1(original_type, original_os_image)
-
-        Watchman.increment(
-          {"zebra.occupy.translation", [original_type, new_type, job.organization_id]}
-        )
-
-        {new_type, new_os_image}
-
-      e2_family?(original_type) and e2_to_f1_migration_enabled?(job.organization_id) ->
-        {new_type, new_os_image} = attempt_mapping_to_f1(original_type, original_os_image)
-
-        Watchman.increment(
-          {"zebra.occupy.translation", [original_type, new_type, job.organization_id]}
-        )
-
-        {new_type, new_os_image}
-
-      true ->
-        {original_type, original_os_image}
+    if translated? do
+      Watchman.increment(
+        {"zebra.occupy.translation", [job.machine_type || "", machine_type, job.organization_id]}
+      )
     end
-  end
 
-  @spec attempt_mapping_to_f1(String.t(), String.t()) :: {String.t(), String.t()}
-  defp attempt_mapping_to_f1(original_type, original_os_image) do
-    original_type
-    |> case do
-      "e1-standard-2" ->
-        {"f1-standard-2", original_os_image}
-
-      "e1-standard-4" ->
-        {"f1-standard-2", original_os_image}
-
-      "e1-standard-8" ->
-        {"f1-standard-4", original_os_image}
-
-      "e2-standard-2" ->
-        {"f1-standard-2", original_os_image}
-
-      "e2-standard-4" ->
-        {"f1-standard-4", original_os_image}
-
-      _ ->
-        {original_type, original_os_image}
-    end
-  end
-
-  @spec e1_to_f1_migration_enabled?(nil | String.t()) :: boolean()
-  defp e1_to_f1_migration_enabled?(nil), do: false
-
-  defp e1_to_f1_migration_enabled?(org_id) do
-    FeatureProvider.feature_enabled?("e1_to_f1_migration", param: org_id)
-  end
-
-  @spec e1_family?(String.t()) :: boolean()
-  defp e1_family?(machine_type) when is_binary(machine_type) do
-    String.starts_with?(machine_type, "e1-")
-  end
-
-  defp e1_family?(_), do: false
-
-  @spec e2_family?(String.t()) :: boolean()
-  defp e2_family?(machine_type) when is_binary(machine_type) do
-    String.starts_with?(machine_type, "e2-")
-  end
-
-  defp e2_family?(_), do: false
-
-  @spec e2_to_f1_migration_enabled?(nil | String.t()) :: boolean()
-  defp e2_to_f1_migration_enabled?(nil), do: false
-
-  defp e2_to_f1_migration_enabled?(org_id) do
-    FeatureProvider.feature_enabled?("e2_to_f1_migration", param: org_id)
+    {machine_type, machine_os_image}
   end
 end
