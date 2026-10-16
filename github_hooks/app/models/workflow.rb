@@ -42,7 +42,7 @@ class Workflow < ActiveRecord::Base
   scope :created_after, -> (datetime) { where(Workflow.arel_table[:created_at].gt(datetime)) }
 
   delegate :author_avatar_url, :author_email, :author_name, :pull_request_name,
-    :pull_request_number, :name, :commit_message, :repo_url,
+    :pull_request_number, :name, :commit_message,
     :author_uid, :branch_name, :to => :payload
 
   def self.created_before_with_limit(datetime, limit)
@@ -56,9 +56,36 @@ class Workflow < ActiveRecord::Base
     @payload ||= build_payload
   end
 
+  # Generic git hooks carry no repository information, so the web URL and the
+  # slug of the repository are derived from the remote configured on the
+  # project instead of the payload.
+  def repo_url
+    payload.repo_url.presence || generic_git_repo_url
+  end
+
+  def repo_slug
+    payload.repo_name.presence || generic_git_repo_slug
+  end
+
   paginates_per 100
 
   private
+
+  def generic_git?
+    provider == "git" && project&.repository.present?
+  end
+
+  def generic_git_repo_url
+    return "" unless generic_git?
+
+    ::RepoHost::Git::WebUrl.derive(project.repository.url).to_s
+  end
+
+  def generic_git_repo_slug
+    return "" unless generic_git?
+
+    project.repo_owner_and_name.to_s
+  end
 
   def build_payload
     case provider
