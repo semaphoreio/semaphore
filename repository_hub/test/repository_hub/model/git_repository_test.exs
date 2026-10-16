@@ -144,6 +144,34 @@ defmodule RepositoryHub.Model.GitRepositoryTest do
     end
   end
 
+  describe ".from_generic" do
+    test "SSH URL => ✅" do
+      assert {:ok, repository} = GitRepository.from_generic("ssh://git@git.example.com/owner/repo.git")
+      assert %{host: "git.example.com", owner: "owner", repo: "repo"} = repository
+      assert repository.ssh_git_url == "ssh://git@git.example.com/owner/repo.git"
+    end
+
+    test "SSH URL with a port => ✅, the port is kept in the url" do
+      assert {:ok, repository} = GitRepository.from_generic("ssh://git@git.example.com:2222/owner/repo.git")
+      assert %{host: "git.example.com", owner: "owner", repo: "repo"} = repository
+      assert repository.ssh_git_url == "ssh://git@git.example.com:2222/owner/repo.git"
+    end
+
+    test "SSH URL with a port and a nested path => ✅" do
+      assert {:ok, %{owner: "owner", repo: "repo"}} =
+               GitRepository.from_generic("ssh://git@git.example.com:2222/group/owner/repo.git")
+    end
+
+    test "non numeric port => ❌" do
+      assert {:error, _} = GitRepository.from_generic("ssh://git@git.example.com:abc/owner/repo.git")
+    end
+
+    test "scp-like or https URL => ❌" do
+      assert {:error, _} = GitRepository.from_generic("git@git.example.com:owner/repo.git")
+      assert {:error, _} = GitRepository.from_generic("https://git.example.com/owner/repo.git")
+    end
+  end
+
   describe ".equal?" do
     test "when the new url is valid and equal => return truthy tuple" do
       {:ok, git_repository} =
