@@ -119,6 +119,14 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVarsTest do
       assert validate(:pipeline_job, @plumber_base_names ++ ["SEMAPHORE_YAML_FILE_PATH"]) == :ok
     end
 
+    test "rejects a repeated conditional plumber-owned name" do
+      names = @plumber_base_names ++ ["SEMAPHORE_JOB_INDEX", "SEMAPHORE_JOB_INDEX"]
+
+      assert validate(:pipeline_job, names) ==
+               {:stop_job_processing,
+                "Reserved environment variables cannot be set: SEMAPHORE_JOB_INDEX (job env_vars)"}
+    end
+
     test "rejects a promotion parameter that repeats a platform name" do
       names = @plumber_base_names ++ ["SEMAPHORE_WORKFLOW_TRIGGERED_BY"]
 
@@ -168,6 +176,15 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVarsTest do
       refute ReservedEnvVars.valid_name?("\nFOO")
       refute ReservedEnvVars.valid_name?("A B")
       refute ReservedEnvVars.valid_name?("ÜBER")
+      refute ReservedEnvVars.valid_name?("FOO\0")
+      refute ReservedEnvVars.valid_name?("FOO\r")
+      refute ReservedEnvVars.valid_name?("FOO\t")
+      refute ReservedEnvVars.valid_name?("FOO\u200B")
+      refute ReservedEnvVars.valid_name?("FOO\u00A0BAR")
+      refute ReservedEnvVars.valid_name?("SEMAPHORE_JOB_İD")
+      refute ReservedEnvVars.valid_name?("ſEMAPHORE")
+      refute ReservedEnvVars.valid_name?("FOO.BAR")
+      refute ReservedEnvVars.valid_name?("FOO/BAR")
       refute ReservedEnvVars.valid_name?(nil)
     end
   end
@@ -304,6 +321,23 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVarsTest do
                 "Reserved environment variables cannot be set: SEMAPHORE_WORKFLOW_TRIGGERED_BY_API (job env_vars)"}
     end
 
+    test "rejects artefact-id names present once" do
+      names = ["SEMAPHORE_PIPELINE_ARTEFACT_ID", "SEMAPHORE_PIPELINE_1_ARTEFACT_ID"]
+
+      assert validate(:project_debug_job, names) ==
+               {:stop_job_processing,
+                "Reserved environment variables cannot be set: SEMAPHORE_PIPELINE_ARTEFACT_ID (job env_vars), " <>
+                  "SEMAPHORE_PIPELINE_1_ARTEFACT_ID (job env_vars)"}
+    end
+
+    test "rejects a plumber-owned name in a secret" do
+      secrets = %{@no_secrets | job_secrets: [secret("deploy", ["SEMAPHORE_WORKFLOW_ID"])]}
+
+      assert validate(:project_debug_job, [], secrets: secrets) ==
+               {:stop_job_processing,
+                "Reserved environment variables cannot be set: SEMAPHORE_WORKFLOW_ID (secret 'deploy')"}
+    end
+
     test "accepts non-reserved names" do
       assert validate(:project_debug_job, ["IGOR", "SEMAPHORE_GIT_DEPTH"]) == :ok
     end
@@ -356,6 +390,29 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVarsTest do
       assert validate(:pipeline_job, [], spec: spec([container])) ==
                {:stop_job_processing,
                 "Reserved environment variables cannot be set: SEMAPHORE_WORKFLOW_TRIGGERED_BY (container 'main' env_vars)"}
+    end
+
+    test "lists the same reserved name from two secrets separately" do
+      secrets = %{
+        @no_secrets
+        | job_secrets: [
+            secret("deploy", ["SEMAPHORE_GIT_SHA"]),
+            secret("db", ["SEMAPHORE_GIT_SHA"])
+          ]
+      }
+
+      assert validate(:pipeline_job, [], secrets: secrets) ==
+               {:stop_job_processing,
+                "Reserved environment variables cannot be set: SEMAPHORE_GIT_SHA (secret 'deploy'), " <>
+                  "SEMAPHORE_GIT_SHA (secret 'db')"}
+    end
+
+    test "rejects a differently-cased plumber-owned name in a secret next to the spec copy" do
+      secrets = %{@no_secrets | job_secrets: [secret("deploy", ["semaphore_workflow_id"])]}
+
+      assert validate(:pipeline_job, ["SEMAPHORE_WORKFLOW_ID"], secrets: secrets) ==
+               {:stop_job_processing,
+                "Reserved environment variables cannot be set: semaphore_workflow_id (secret 'deploy')"}
     end
 
     test "accepts secrets and containers without reserved names" do
