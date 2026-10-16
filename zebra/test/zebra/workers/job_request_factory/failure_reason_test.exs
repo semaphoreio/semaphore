@@ -15,6 +15,10 @@ defmodule Zebra.Workers.JobRequestFactory.FailureReasonTest do
       assert codepoints(FailureReason.clip("x" <> String.duplicate("́", 300))) == 40
     end
 
+    test "replaces control characters" do
+      assert FailureReason.clip("a\nb\rc\td") == "a?b?c?d"
+    end
+
     test "drops invalid UTF-8" do
       assert FailureReason.clip(<<"bad", 0xFF, 0xFE, "name">>) == "badname"
     end
