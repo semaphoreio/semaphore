@@ -20,7 +20,7 @@ defmodule Secrethub.Model.EnvVar do
   defp validate_env_var_name(changeset) do
     name = Ecto.Changeset.get_field(changeset, :name) || ""
 
-    if String.match?(name, ~r/^[a-zA-Z_][a-zA-Z0-9_]*$/) do
+    if String.match?(name, ~r/\A[a-zA-Z_][a-zA-Z0-9_]*\z/) do
       changeset
     else
       Ecto.Changeset.add_error(changeset, :name, "of enviorment variable is invalid")
