@@ -4,13 +4,14 @@ import _ from "lodash";
 import { Notice } from "../notice"
 
 export class Model {
-  constructor(starred, projects, dashboards) {
+  constructor(starred, projects, dashboards, current) {
     this.items = _.concat(this.injectType(starred, "starred"), this.injectType(projects, "project"), this.injectType(dashboards, "dashboard"))
 
+    this.current = current || {}
     this.filter = ""
     this.filtering = false
-    this.selectedIndex = 0
     this.results = this.items
+    this.selectedIndex = this.defaultSelectedIndex()
   }
 
   injectType(items, type) {
@@ -19,6 +20,46 @@ export class Model {
 
       return item
     })
+  }
+
+  //
+  // The results in the order the template lays them out: a flat alphabetical
+  // list while filtering, otherwise grouped starred → projects → dashboards.
+  //
+  // selectedIndex is an offset into this list, so anything that computes or
+  // resolves a selection has to go through here.
+  //
+  orderedResults() {
+    let sorted = _.sortBy(this.results, (r) => r.name.toLocaleLowerCase())
+
+    if(this.filtering) {
+      return sorted
+    }
+
+    let groups = _.groupBy(sorted, (item) => item.kind)
+
+    return _.concat(groups.starred || [], groups.project || [], groups.dashboard || [])
+  }
+
+  //
+  // Start the selection on the item the user is currently looking at, so that
+  // the highlight matches the page instead of always pointing at the first
+  // starred item. Falls back to the top of the list off a project page.
+  //
+  defaultSelectedIndex() {
+    let index = this.orderedResults().findIndex((item) => this.isCurrent(item))
+
+    return index === -1 ? 0 : index
+  }
+
+  isCurrent(item) {
+    if(this.current.id) {
+      return item.id === this.current.id
+    }
+
+    let path = this.current.path
+
+    return !!path && (path === item.path || path.startsWith(`${item.path}/`))
   }
 
   addStar(kind, id) {
@@ -37,7 +78,6 @@ export class Model {
   removeStar(kind, id) {
     let req = this.updateStar("unstar", id, kind)
     this.transferItem(kind, id, kind)
-    this.selectedIndex = 0
     this.changeFilter(this.filter)
 
     req.fail(() => {
@@ -58,10 +98,10 @@ export class Model {
   changeFilter(filter) {
     this.filter = filter
     this.filtering = filter.length > 0
-    this.selectedIndex = 0
     this.results = this.items.filter(item => {
       return item.name.toLowerCase().includes(filter.toLowerCase())
     })
+    this.selectedIndex = this.filtering ? 0 : this.defaultSelectedIndex()
 
     this.afterUpdate()
   }

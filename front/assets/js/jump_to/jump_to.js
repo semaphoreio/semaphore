@@ -11,7 +11,18 @@ export class JumpTo {
     let config = {
       starred: window.InjectedDataByBackend.JumpTo.Starred,
       projects: InjectedDataByBackend.JumpTo.Projects,
-      dashboards: InjectedDataByBackend.JumpTo.Dashboards
+      dashboards: InjectedDataByBackend.JumpTo.Dashboards,
+
+      //
+      // The page the user is on, used to pre-select the matching entry.
+      // The project id is authoritative - it also covers workflow and job
+      // pages, whose URLs say nothing about the project. The path is the
+      // fallback that catches dashboards.
+      //
+      current: {
+        id: InjectedDataByBackend.JumpTo.CurrentProjectId,
+        path: window.location.pathname
+      }
     }
 
     return new JumpTo(config)
@@ -26,7 +37,7 @@ export class JumpTo {
   }
 
   setUpModelComponentEventLoop() {
-    this.model = new Model(this.config.starred, this.config.projects, this.config.dashboards)
+    this.model = new Model(this.config.starred, this.config.projects, this.config.dashboards, this.config.current)
 
     let divs = {
       results: "#jump-to-results",
