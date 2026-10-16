@@ -8,9 +8,14 @@ defmodule Zebra.Workers.JobRequestFactory.FailureReason do
   @max_name_length 40
 
   @doc """
-  Shortens a user-chosen name to #{@max_name_length} codepoints and drops invalid UTF-8.
+  Shortens a user-chosen name to #{@max_name_length} codepoints, drops invalid UTF-8
+  and replaces control characters such as newlines with "?".
   """
-  def clip(name), do: take_codepoints(name, @max_name_length)
+  def clip(name) do
+    name
+    |> take_codepoints(@max_name_length)
+    |> String.replace(~r/[[:cntrl:]]/u, "?")
+  end
 
   @doc """
   Joins as many entries as fit after the prefix, ending with "and N more" when some are left out.
