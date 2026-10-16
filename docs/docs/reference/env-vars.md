@@ -245,7 +245,7 @@ Holds `true` if the workflow is a rerun of a previously-ran workflow.
 
 The login, on the repository's Git provider (GitHub, GitLab, or Bitbucket), of the individual who triggered the workflow. Promoted pipelines and partial rebuilds keep the workflow's value. A rerun of a push or pull request workflow also keeps it; any other rerun names the user who reran it.
 
-- **Push or pull request**: the login from the provider's webhook
+- **Push or pull request**: the login from the provider's webhook. For pushes made through Semaphore's GitHub App, such as workflow editor commits, it is the GitHub account matched to the commit's author email
 - **API, scheduled, or manual run**: the login of the requesting user's account on the repository's provider. For scheduled runs, that is whoever last saved the task. Empty when the user has no account on that provider
 - **Generic Git repositories**: the GitHub login of the organization member whose email the hook sends, or the hook's author name when no member matches. Both come from the hook body
 
