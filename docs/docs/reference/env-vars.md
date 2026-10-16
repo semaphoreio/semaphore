@@ -25,6 +25,12 @@ The reserved names are:
 
 Variables that configure the [cache](../using-semaphore/cache) backend, the [checkout](../using-semaphore/jobs), or toolbox behavior, such as `SEMAPHORE_CACHE_BACKEND`, `SEMAPHORE_CACHE_URL`, `SEMAPHORE_CACHE_ARCHIVE_METHOD`, `SEMAPHORE_GIT_DEPTH`, `SEMAPHORE_GIT_CLONE_SLOW_RETRY`, `SEMAPHORE_TEST_RESULTS_NO_TRIM`, or `SEMAPHORE_TOOLBOX_METRICS_ENABLED`, are not reserved and can still be set.
 
+## Variable names {#variable-names}
+
+Variable names must be valid shell identifiers: letters, digits, and underscores, not starting with a digit. A job whose pipeline `env_vars`, secrets, or container `env_vars` include any other name fails before it starts, and the job page shows the name under `Invalid environment variable names`.
+
+Secrets saved before this rule was enforced can hold names that no longer pass, such as a name with a trailing newline. Every job that uses such a secret fails until you edit the secret and save the variable again with a valid name.
+
 ## Semaphore variables {#semaphore-variables}
 
 These variables describe various aspects of Semaphore workings.
