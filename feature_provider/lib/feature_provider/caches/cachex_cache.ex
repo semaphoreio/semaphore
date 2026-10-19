@@ -6,12 +6,16 @@ defmodule FeatureProvider.CachexCache do
 
   @default_ttl_ms :timer.minutes(15)
   @default_soft_ttl_ms 0
+  @default_stale_ttl_ms 0
 
   @typedoc """
   - `ttl_ms` - time to live in milliseconds. Defaults to `#{@default_ttl_ms}`
+  - `stale_ttl_ms` - how long after `ttl_ms` the last known value is kept to be
+    served when a reload fails. Defaults to `#{@default_stale_ttl_ms}` (disabled)
   """
   @type set_opts :: [
           ttl_ms: non_neg_integer(),
+          stale_ttl_ms: non_neg_integer(),
           cache_name: any()
         ]
 
@@ -19,9 +23,11 @@ defmodule FeatureProvider.CachexCache do
   - `ttl_ms` - time to live in milliseconds. Defaults to `#{@default_ttl_ms}`
   - `use_cache?` - if set to `false`, the cache won't be used. Defaults to `true`
   - `soft_ttl_ms` - soft time to live in milliseconds. Defaults to `#{@default_soft_ttl_ms}`
+  - `stale_ttl_ms` - see `t:set_opts/0`
   """
   @type fetch_opts :: [
           ttl_ms: non_neg_integer(),
+          stale_ttl_ms: non_neg_integer(),
           cache_name: any()
         ]
 
@@ -105,6 +111,7 @@ defmodule FeatureProvider.CachexCache do
       result ->
         unwrap(result, fn result ->
           {:ok, _} = Cachex.put(cache, key, result, ttl: ttl_ms)
+          put_last_known(key, result, opts)
         end)
 
         result
@@ -123,6 +130,9 @@ defmodule FeatureProvider.CachexCache do
   - `reload` - if set to `true`, the callback will be executed and the result will be stored in the cache. Defaults to `false`
   - `invalidate` - if set to `true`, the cache will be invalidated and the callback will not be executed. Defaults to `false`
   - `ttl_ms` - time to live in milliseconds. Defaults to `#{@default_ttl_ms}`
+  - `stale_ttl_ms` - when set, a failed (or raising) callback returns the last
+    known value instead of `:not_found`, for up to `ttl_ms + stale_ttl_ms`
+    after it was stored. Defaults to `#{@default_stale_ttl_ms}` (disabled)
 
 
   # Examples
@@ -151,6 +161,20 @@ defmodule FeatureProvider.CachexCache do
       "my_value"
       iex> fetch(:my_key, "my_other_value", [name: :my_cache])
       "my_other_value"
+
+  With `stale_ttl_ms`, the last known value outlives `ttl_ms` and is served
+  while the callback fails:
+      iex> fetch(:my_key, "my_value", [ttl_ms: 50, stale_ttl_ms: 1_000, name: :my_cache])
+      "my_value"
+      iex> Process.sleep(110)
+      iex> get(:my_key, name: :my_cache)
+      :not_found
+      iex> fetch(:my_key, fn -> {:error, "provider down"} end, [ttl_ms: 50, stale_ttl_ms: 1_000, name: :my_cache])
+      "my_value"
+      iex> fetch(:my_key, fn -> raise "provider down" end, [ttl_ms: 50, stale_ttl_ms: 1_000, name: :my_cache])
+      "my_value"
+      iex> fetch(:my_key, "my_other_value", [ttl_ms: 50, stale_ttl_ms: 1_000, name: :my_cache])
+      "my_other_value"
   """
   @spec fetch(key(), callback() | value(), fetch_opts()) :: value() | :not_found
   def fetch(_, _, opts \\ [])
@@ -160,10 +184,11 @@ defmodule FeatureProvider.CachexCache do
     invalidate = Keyword.get(opts, :invalidate, false)
 
     put = fn default ->
-      set(key, callback, opts)
+      key
+      |> load(callback, opts)
       |> case do
         {:ok, value} -> value
-        _ -> default
+        error -> last_known_or_default(key, error, default, opts)
       end
     end
 
@@ -191,8 +216,57 @@ defmodule FeatureProvider.CachexCache do
 
   def fetch(key, value, opts), do: fetch(key, fn -> {:ok, value} end, opts)
 
+  # A raising callback is only turned into an error when a last known value
+  # can stand in for it; otherwise the exception propagates as before.
+  defp load(key, callback, opts) do
+    set(key, callback, opts)
+  rescue
+    e ->
+      if last_known(key, opts) == :not_found do
+        reraise e, __STACKTRACE__
+      else
+        {:error, {:exception, e}}
+      end
+  end
+
+  defp last_known_or_default(key, error, default, opts) do
+    case last_known(key, opts) do
+      :not_found ->
+        default
+
+      value ->
+        Logger.warning("[FeatureProvider.CachexCache] serving last known value for #{inspect(key)}: #{inspect(error)}")
+
+        value
+    end
+  end
+
+  defp put_last_known(key, value, opts) do
+    case Keyword.get(opts, :stale_ttl_ms, @default_stale_ttl_ms) do
+      stale_ttl_ms when stale_ttl_ms > 0 ->
+        ttl_ms = Keyword.get(opts, :ttl_ms, @default_ttl_ms)
+        {:ok, _} = Cachex.put(Keyword.get(opts, :name), last_known_key(key), value, ttl: ttl_ms + stale_ttl_ms)
+
+      _ ->
+        :ok
+    end
+  end
+
+  defp last_known(key, opts) do
+    if Keyword.get(opts, :stale_ttl_ms, @default_stale_ttl_ms) > 0 do
+      get(last_known_key(key), opts)
+    else
+      :not_found
+    end
+  end
+
+  defp last_known_key(key), do: {__MODULE__, :last_known, key}
+
   @doc """
   Removes a key from the cache.
+
+  The last known value kept for `stale_ttl_ms` is not removed, so a reload
+  after an invalidation can still fall back to it. Use `clear/1` to drop it.
 
   ## Examples
 
