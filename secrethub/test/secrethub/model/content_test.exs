@@ -39,6 +39,68 @@ defmodule Secrethub.Model.EnvVarTest do
              } = Content.changeset(%Content{}, %{env_vars: [%{name: "", value: "bar"}]})
     end
 
+    test "with env variable names that are shell identifiers" do
+      for name <- ["FOO", "_foo", "FOO_1"] do
+        assert %Ecto.Changeset{valid?: true} =
+                 Content.changeset(%Content{}, %{env_vars: [%{name: name, value: "bar"}]})
+      end
+    end
+
+    test "with env variable names that are not shell identifiers" do
+      names = [
+        "FOO\n",
+        "\nFOO",
+        "FOO\nBAR",
+        "FOO\r",
+        "FOO\t",
+        "FOO\0",
+        "FOO\u00A0",
+        "FOO\u200B",
+        "1FOO",
+        "FOO-BAR",
+        "FOO.BAR",
+        "FOO/BAR",
+        "FOO BAR",
+        "FOO=1",
+        "ÉCOLE"
+      ]
+
+      for name <- names do
+        assert %Ecto.Changeset{
+                 changes: %{env_vars: [%Ecto.Changeset{valid?: false}]},
+                 valid?: false
+               } = Content.changeset(%Content{}, %{env_vars: [%{name: name, value: "bar"}]}),
+               "expected #{inspect(name)} to be rejected"
+      end
+    end
+
+    test "with env variable names reserved for Semaphore" do
+      for name <- ["SEMAPHORE_GIT_BRANCH", "semaphore_workflow_triggered_by_api", "SEMAPHORE"] do
+        changeset = Content.changeset(%Content{}, %{env_vars: [%{name: name, value: "x"}]})
+
+        assert %Ecto.Changeset{
+                 changes: %{env_vars: [%Ecto.Changeset{valid?: false, errors: errors}]},
+                 valid?: false
+               } = changeset
+
+        assert [name: {message, []}] = errors
+        assert message =~ "#{name} is reserved for Semaphore."
+        assert message =~ "export it in the job commands"
+        assert message =~ "Reserved variables"
+      end
+    end
+
+    test "with Semaphore settings users are allowed to set" do
+      for name <- [
+            "SEMAPHORE_CACHE_BACKEND",
+            "SEMAPHORE_GIT_DEPTH",
+            "SEMAPHORE_AGENT_UPLOAD_JOB_LOGS"
+          ] do
+        assert %Ecto.Changeset{valid?: true} =
+                 Content.changeset(%Content{}, %{env_vars: [%{name: name, value: "x"}]})
+      end
+    end
+
     test "with empty env variable value" do
       assert %Ecto.Changeset{
                changes: %{env_vars: [%Ecto.Changeset{valid?: false}]},
