@@ -13,11 +13,13 @@ The `SEMAPHORE_` prefix is reserved for Semaphore. Don't define your own variabl
 - `SEMAPHORE_TEST_RESULTS_NO_TRIM`, `SEMAPHORE_TOOLBOX_METRICS_ENABLED`
 - `SEMAPHORE_AGENT_UPLOAD_JOB_LOGS`
 
-A pipeline fails to start if its YAML or its promotion or task parameters set a variable that Semaphore provides. A job fails before it starts if a [secret](../using-semaphore/secrets) it uses, or a job created through the API, sets one. The pipeline or job page shows which variable caused the failure.
+A pipeline fails to start if its YAML or its promotion or task parameters set a variable that Semaphore provides, and a job created through the API fails before it starts if it sets one. The pipeline or job page shows which variable caused the failure.
+
+[Secrets](../using-semaphore/secrets) can't be saved with these names. A secret saved earlier that sets one makes every job that uses it fail before it starts, until you edit the secret and rename or remove the variable.
 
 ## Variable names {#variable-names}
 
-Variable names must be valid shell identifiers: letters, digits, and underscores, not starting with a digit. A pipeline whose YAML or parameters use any other name fails to start, and a job whose secrets use one fails before it starts. The page shows the name under `Invalid environment variable names`.
+Variable names must be valid shell identifiers: letters, digits, and underscores, not starting with a digit. A pipeline whose YAML or parameters use any other name fails to start, a job created through the API with one fails before it starts, and secrets can't be saved with one. The page shows the name under `Invalid environment variable names`.
 
 Environment variables of [service containers](../using-semaphore/containers) can also contain dots and dashes after the first character, such as `discovery.type` or `node-version`.
 
