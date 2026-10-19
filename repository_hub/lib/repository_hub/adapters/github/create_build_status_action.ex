@@ -70,17 +70,48 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
   # (or the reverse). The same-named pending commit status then stays on the
   # commit and can keep a required check pending until the next push.
   defp report_build_status(%{integration_type: "github_app"}, request, context) do
-    if FeatureProvider.feature_enabled?(:github_checks_api, param: context.project.metadata.org_id) do
-      request
-      |> report_via_check_run(context)
-      |> fallback_to_status_when_checks_forbidden(request, context)
-    else
-      create_build_status(request, context.repository, context.github_token)
+    case checks_api_enabled?(context) do
+      {:ok, true} ->
+        request
+        |> report_via_check_run(context)
+        |> fallback_to_status_when_checks_forbidden(request, context)
+
+      {:ok, false} ->
+        create_build_status(request, context.repository, context.github_token)
+
+      error ->
+        error
     end
   end
 
   defp report_build_status(_adapter, request, context) do
     create_build_status(request, context.repository, context.github_token)
+  end
+
+  # A flag that can't be evaluated fails the request so the notifier retries.
+  # Reading it as "disabled" would send this status as a commit status while
+  # the pipeline's earlier ones went out as a check-run, leaving the run
+  # in_progress. Only a flag that doesn't exist counts as disabled.
+  defp checks_api_enabled?(context) do
+    org_id = context.project.metadata.org_id
+
+    case FeatureProvider.find_feature(:github_checks_api, param: org_id) do
+      {:ok, feature} ->
+        {:ok, FeatureProvider.Feature.enabled?(feature)}
+
+      {:error, {:not_found, _}} ->
+        {:ok, false}
+
+      {:error, reason} ->
+        log_error([
+          "Can't evaluate the github_checks_api feature flag",
+          "org_id: #{org_id}",
+          "project_id: #{context.project.metadata.id}",
+          "reason: #{inspect(reason)}"
+        ])
+
+        fail_with(:unavailable, "Can't evaluate the github_checks_api feature flag")
+    end
   end
 
   # An installation without the Checks permission gets a 403 on every call.
@@ -105,16 +136,13 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
   defp fallback_to_status_when_checks_forbidden(result, _request, _context), do: result
 
   defp report_via_check_run(request, context) do
-    repo_owner = context.repository.owner
-    repo_name = context.repository.name
-
     result =
       with {:ok, app_id} <- GithubAppId.get(),
            {:ok, existing} <- find_existing_check_run(request, context, app_id) do
         upsert_check_run(request, existing, context)
       end
 
-    record_check_run(result, repo_owner, repo_name, request.context)
+    record_check_run(result, request, context)
   end
 
   # Only a confirmed "no such run" means create. Any other lookup failure must
@@ -172,13 +200,21 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
   defp check_run_state(:PENDING), do: %{status: "in_progress"}
   defp check_run_state(terminal), do: %{status: "completed", conclusion: check_run_conclusion(terminal)}
 
-  defp record_check_run({:ok, _} = result, _repo_owner, _repo_name, _name) do
+  defp record_check_run({:ok, _} = result, _request, _context) do
     Watchman.increment("set_check_run.success")
     result
   end
 
-  defp record_check_run({:error, _} = result, repo_owner, repo_name, name) do
-    log_error("GitHub Checks API write failed for #{repo_owner}/#{repo_name} #{name}")
+  defp record_check_run({:error, _} = result, request, context) do
+    log_error([
+      "GitHub Checks API write failed",
+      "org_id: #{context.project.metadata.org_id}",
+      "project_id: #{context.project.metadata.id}",
+      "source_id: #{request.source_id}",
+      "repo: #{context.repository.owner}/#{context.repository.name}",
+      "context: #{request.context}"
+    ])
+
     Watchman.increment("set_check_run.failure")
     result
   end

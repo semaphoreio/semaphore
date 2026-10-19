@@ -84,8 +84,8 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
       with_mocks([
         {FeatureProvider, [],
          [
-           feature_enabled?: fn :github_checks_api, [param: org_id] ->
-             org_id == RepositoryHub.Stub.ProjectHub.org_id()
+           find_feature: fn :github_checks_api, [param: org_id] ->
+             {:ok, checks_api_feature(org_id == RepositoryHub.Stub.ProjectHub.org_id())}
            end
          ]},
         {GithubChecksClient, [],
@@ -126,8 +126,8 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
       with_mocks([
         {FeatureProvider, [],
          [
-           feature_enabled?: fn :github_checks_api, [param: org_id] ->
-             org_id == RepositoryHub.Stub.ProjectHub.org_id()
+           find_feature: fn :github_checks_api, [param: org_id] ->
+             {:ok, checks_api_feature(org_id == RepositoryHub.Stub.ProjectHub.org_id())}
            end
          ]},
         {GithubChecksClient, [],
@@ -162,8 +162,8 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
       with_mocks([
         {FeatureProvider, [],
          [
-           feature_enabled?: fn :github_checks_api, [param: org_id] ->
-             org_id == RepositoryHub.Stub.ProjectHub.org_id()
+           find_feature: fn :github_checks_api, [param: org_id] ->
+             {:ok, checks_api_feature(org_id == RepositoryHub.Stub.ProjectHub.org_id())}
            end
          ]},
         {GithubChecksClient, [],
@@ -197,8 +197,8 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
       with_mocks([
         {FeatureProvider, [],
          [
-           feature_enabled?: fn :github_checks_api, [param: org_id] ->
-             org_id == RepositoryHub.Stub.ProjectHub.org_id()
+           find_feature: fn :github_checks_api, [param: org_id] ->
+             {:ok, checks_api_feature(org_id == RepositoryHub.Stub.ProjectHub.org_id())}
            end
          ]},
         {GithubChecksClient, [],
@@ -235,8 +235,8 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
       with_mocks([
         {FeatureProvider, [],
          [
-           feature_enabled?: fn :github_checks_api, [param: org_id] ->
-             org_id == RepositoryHub.Stub.ProjectHub.org_id()
+           find_feature: fn :github_checks_api, [param: org_id] ->
+             {:ok, checks_api_feature(org_id == RepositoryHub.Stub.ProjectHub.org_id())}
            end
          ]},
         {GithubChecksClient, [],
@@ -263,7 +263,7 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
       request = InternalApiFactory.create_build_status_request(repository_id: repository.id)
 
       with_mocks([
-        {FeatureProvider, [], [feature_enabled?: fn _, _ -> false end]},
+        {FeatureProvider, [], [find_feature: fn _, _ -> {:ok, checks_api_feature(false)} end]},
         {GithubChecksClient, [],
          [
            create_check_run: fn _params, _opts -> {:ok, %{}} end,
@@ -276,6 +276,39 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
         refute called(GithubChecksClient.create_check_run(:_, :_))
         refute called(GithubChecksClient.find_check_run(:_, :_))
         refute called(GithubChecksClient.update_check_run(:_, :_))
+      end
+    end
+
+    test "flag not registered → legacy status only", %{
+      adapter: adapter,
+      repository: repository
+    } do
+      request = InternalApiFactory.create_build_status_request(repository_id: repository.id)
+
+      with_mocks([
+        {FeatureProvider, [], [find_feature: fn type, _ -> {:error, {:not_found, type}} end]},
+        {GithubChecksClient, [], [find_check_run: fn _params, _opts -> {:ok, %{"id" => 1}} end]}
+      ]) do
+        assert {:ok, _} = CreateBuildStatusAction.execute(adapter, request)
+        assert called(GithubClient.create_build_status(:_, :_))
+        refute called(GithubChecksClient.find_check_run(:_, :_))
+      end
+    end
+
+    test "flag can't be evaluated → fails as unavailable without writing", %{
+      adapter: adapter,
+      repository: repository
+    } do
+      request = InternalApiFactory.create_build_status_request(repository_id: repository.id)
+
+      with_mocks([
+        {FeatureProvider, [], [find_feature: fn _, _ -> {:error, %GRPC.RPCError{status: 14}} end]},
+        {GithubChecksClient, [], [find_check_run: fn _params, _opts -> {:ok, %{"id" => 1}} end]}
+      ]) do
+        assert {:error, %{status: status}} = CreateBuildStatusAction.execute(adapter, request)
+        assert status == GRPC.Status.unavailable()
+        refute called(GithubClient.create_build_status(:_, :_))
+        refute called(GithubChecksClient.find_check_run(:_, :_))
       end
     end
 
@@ -292,8 +325,8 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
       with_mocks([
         {FeatureProvider, [],
          [
-           feature_enabled?: fn :github_checks_api, [param: org_id] ->
-             org_id == RepositoryHub.Stub.ProjectHub.org_id()
+           find_feature: fn :github_checks_api, [param: org_id] ->
+             {:ok, checks_api_feature(org_id == RepositoryHub.Stub.ProjectHub.org_id())}
            end
          ]},
         {GithubChecksClient, [],
@@ -317,8 +350,8 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
       with_mocks([
         {FeatureProvider, [],
          [
-           feature_enabled?: fn :github_checks_api, [param: org_id] ->
-             org_id == RepositoryHub.Stub.ProjectHub.org_id()
+           find_feature: fn :github_checks_api, [param: org_id] ->
+             {:ok, checks_api_feature(org_id == RepositoryHub.Stub.ProjectHub.org_id())}
            end
          ]},
         {GithubChecksClient, [],
@@ -346,8 +379,8 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
       with_mocks([
         {FeatureProvider, [],
          [
-           feature_enabled?: fn :github_checks_api, [param: org_id] ->
-             org_id == RepositoryHub.Stub.ProjectHub.org_id()
+           find_feature: fn :github_checks_api, [param: org_id] ->
+             {:ok, checks_api_feature(org_id == RepositoryHub.Stub.ProjectHub.org_id())}
            end
          ]},
         {GithubChecksClient, [],
@@ -378,8 +411,8 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
         with_mocks([
           {FeatureProvider, [],
            [
-             feature_enabled?: fn :github_checks_api, [param: org_id] ->
-               org_id == RepositoryHub.Stub.ProjectHub.org_id()
+             find_feature: fn :github_checks_api, [param: org_id] ->
+               {:ok, checks_api_feature(org_id == RepositoryHub.Stub.ProjectHub.org_id())}
              end
            ]},
           {GithubChecksClient, [],
@@ -407,5 +440,9 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
         CreateBuildStatusAction.execute(Adapters.universal(), request)
       end
     end
+  end
+
+  defp checks_api_feature(enabled?) do
+    %FeatureProvider.Feature{type: "github_checks_api", state: if(enabled?, do: :enabled, else: :disabled)}
   end
 end
