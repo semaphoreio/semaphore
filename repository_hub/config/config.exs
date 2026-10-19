@@ -37,6 +37,8 @@ config :repository_hub,
   user_grpc_server: "127.0.0.1:50051",
   repository_integrator_grpc_server: "127.0.0.1:50051",
   organization_grpc_endpoint: "127.0.0.1:50051",
+  feature_grpc_endpoint: "0.0.0.0:50052",
+  instance_config_grpc_endpoint: "0.0.0.0:50053",
   grpc_stubs: [
     RepositoryHub.Stub.ProjectHub,
     RepositoryHub.Stub.RepositoryIntegrator,
