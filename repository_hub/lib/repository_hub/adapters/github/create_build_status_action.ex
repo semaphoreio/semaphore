@@ -104,6 +104,8 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
         {:ok, false}
 
       {:error, reason} ->
+        Watchman.increment("set_check_run.flag_unavailable")
+
         log_error([
           "Can't evaluate the github_checks_api feature flag",
           "org_id: #{org_id}",

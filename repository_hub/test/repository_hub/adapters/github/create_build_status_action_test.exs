@@ -302,6 +302,7 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
       request = InternalApiFactory.create_build_status_request(repository_id: repository.id)
 
       with_mocks([
+        {Watchman, [:passthrough], []},
         {FeatureProvider, [], [find_feature: fn _, _ -> {:error, %GRPC.RPCError{status: 14}} end]},
         {GithubChecksClient, [], [find_check_run: fn _params, _opts -> {:ok, %{"id" => 1}} end]}
       ]) do
@@ -309,6 +310,7 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
         assert status == GRPC.Status.unavailable()
         refute called(GithubClient.create_build_status(:_, :_))
         refute called(GithubChecksClient.find_check_run(:_, :_))
+        assert called(Watchman.increment("set_check_run.flag_unavailable"))
       end
     end
 
