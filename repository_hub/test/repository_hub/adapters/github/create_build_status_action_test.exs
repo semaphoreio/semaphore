@@ -5,11 +5,12 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
   alias RepositoryHub.Adapters
   alias RepositoryHub.Server.CreateBuildStatusAction
   alias RepositoryHub.{InternalApiFactory, GithubClientFactory, RepositoryModelFactory}
-  alias RepositoryHub.{GithubChecksClient, GithubClient}
+  alias RepositoryHub.{CheckRunCache, GithubAppId, GithubChecksClient, GithubClient}
 
   import Mock
 
   setup do
+    CheckRunCache.clear()
     [github_repo, githubapp_repo, bitbucket_repo | _] = RepositoryModelFactory.seed_repositories()
 
     %{github_repo: github_repo, githubapp_repo: githubapp_repo, bitbucket_repo: bitbucket_repo}
@@ -463,6 +464,145 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
         refute called(GithubChecksClient.create_check_run(:_, :_))
         refute called(GithubChecksClient.update_check_run(:_, :_))
         refute called(GithubClient.create_build_status(:_, :_))
+      end
+    end
+
+    test "flag ON, GitHub App id can't be resolved → fails without looking up or writing", %{
+      adapter: adapter,
+      repository: repository
+    } do
+      request = InternalApiFactory.create_build_status_request(repository_id: repository.id, status: :PENDING)
+
+      with_mocks([
+        {FeatureProvider, [],
+         [
+           find_feature: fn :github_checks_api, [param: org_id] ->
+             {:ok, checks_api_feature(org_id == RepositoryHub.Stub.ProjectHub.org_id())}
+           end
+         ]},
+        {GithubAppId, [],
+         [get: fn -> {:error, %{status: GRPC.Status.unavailable(), message: "Can't fetch the GitHub App id"}} end]},
+        {GithubChecksClient, [],
+         [
+           find_check_run: fn _params, _opts -> {:ok, %{"id" => 1, "status" => "in_progress"}} end,
+           create_check_run: fn _params, _opts -> {:ok, %{"id" => 1}} end,
+           update_check_run: fn _params, _opts -> {:ok, %{"id" => 1}} end
+         ]}
+      ]) do
+        assert {:error, %{status: status}} = CreateBuildStatusAction.execute(adapter, request)
+        assert status == GRPC.Status.unavailable()
+        refute called(GithubChecksClient.find_check_run(:_, :_))
+        refute called(GithubChecksClient.create_check_run(:_, :_))
+        refute called(GithubChecksClient.update_check_run(:_, :_))
+        refute called(GithubClient.create_build_status(:_, :_))
+      end
+    end
+
+    test "flag ON, the pipeline's run is cached → later statuses update it without a lookup", %{
+      adapter: adapter,
+      repository: repository
+    } do
+      pending =
+        InternalApiFactory.create_build_status_request(
+          repository_id: repository.id,
+          status: :PENDING,
+          source_id: "ppl-1"
+        )
+
+      with_mocks([
+        {Watchman, [:passthrough], []},
+        {FeatureProvider, [],
+         [
+           find_feature: fn :github_checks_api, [param: org_id] ->
+             {:ok, checks_api_feature(org_id == RepositoryHub.Stub.ProjectHub.org_id())}
+           end
+         ]},
+        {GithubChecksClient, [],
+         [
+           find_check_run: fn _params, _opts -> {:error, %{status: GRPC.Status.not_found(), message: "not found"}} end,
+           create_check_run: fn _params, _opts -> {:ok, %{"id" => 11, "status" => "in_progress"}} end,
+           update_check_run: fn params, _opts ->
+             assert params.check_run_id == 11
+             {:ok, %{"id" => 11, "status" => params.status}}
+           end
+         ]}
+      ]) do
+        assert {:ok, _} = CreateBuildStatusAction.execute(adapter, pending)
+        assert {:ok, _} = CreateBuildStatusAction.execute(adapter, pending)
+        assert {:ok, _} = CreateBuildStatusAction.execute(adapter, %{pending | status: :SUCCESS})
+
+        assert_called_exactly(GithubChecksClient.find_check_run(:_, :_), 1)
+        assert_called_exactly(GithubChecksClient.create_check_run(:_, :_), 1)
+        assert_called_exactly(GithubChecksClient.update_check_run(:_, :_), 2)
+        assert called(Watchman.increment("set_check_run.cache_hit"))
+
+        # The cache now knows the run completed, so a stale PENDING is skipped.
+        assert {:ok, _} = CreateBuildStatusAction.execute(adapter, pending)
+        assert_called_exactly(GithubChecksClient.update_check_run(:_, :_), 2)
+        assert called(Watchman.increment("set_check_run.skipped_stale_pending"))
+      end
+    end
+
+    test "flag ON, a failed update of a cached run drops it → the retry looks the run up again", %{
+      adapter: adapter,
+      repository: repository
+    } do
+      request =
+        InternalApiFactory.create_build_status_request(
+          repository_id: repository.id,
+          status: :PENDING,
+          source_id: "ppl-1"
+        )
+
+      CheckRunCache.put(CheckRunCache.key(request, repository), 11, "in_progress")
+
+      with_mocks([
+        {FeatureProvider, [],
+         [
+           find_feature: fn :github_checks_api, [param: org_id] ->
+             {:ok, checks_api_feature(org_id == RepositoryHub.Stub.ProjectHub.org_id())}
+           end
+         ]},
+        {GithubChecksClient, [],
+         [
+           find_check_run: fn _params, _opts -> {:ok, %{"id" => 12, "status" => "in_progress"}} end,
+           update_check_run: fn
+             %{check_run_id: 11}, _opts -> {:error, %{status: GRPC.Status.failed_precondition(), message: "Not Found"}}
+             %{check_run_id: 12}, _opts -> {:ok, %{"id" => 12, "status" => "in_progress"}}
+           end
+         ]}
+      ]) do
+        assert {:error, _} = CreateBuildStatusAction.execute(adapter, request)
+        refute called(GithubChecksClient.find_check_run(:_, :_))
+
+        assert {:ok, _} = CreateBuildStatusAction.execute(adapter, request)
+        assert_called_exactly(GithubChecksClient.find_check_run(:_, :_), 1)
+        assert {:ok, %{"id" => 12}} = CheckRunCache.get(CheckRunCache.key(request, repository))
+      end
+    end
+
+    test "flag ON, a request without source_id is never cached", %{
+      adapter: adapter,
+      repository: repository
+    } do
+      request = InternalApiFactory.create_build_status_request(repository_id: repository.id, status: :PENDING)
+
+      with_mocks([
+        {FeatureProvider, [],
+         [
+           find_feature: fn :github_checks_api, [param: org_id] ->
+             {:ok, checks_api_feature(org_id == RepositoryHub.Stub.ProjectHub.org_id())}
+           end
+         ]},
+        {GithubChecksClient, [],
+         [
+           find_check_run: fn _params, _opts -> {:ok, %{"id" => 5, "status" => "in_progress"}} end,
+           update_check_run: fn _params, _opts -> {:ok, %{"id" => 5, "status" => "in_progress"}} end
+         ]}
+      ]) do
+        assert {:ok, _} = CreateBuildStatusAction.execute(adapter, request)
+        assert {:ok, _} = CreateBuildStatusAction.execute(adapter, request)
+        assert_called_exactly(GithubChecksClient.find_check_run(:_, :_), 2)
       end
     end
 

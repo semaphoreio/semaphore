@@ -2,7 +2,7 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
   alias RepositoryHub.Toolkit
   alias RepositoryHub.Validator
 
-  alias RepositoryHub.{GithubAdapter, GithubAppId, GithubClient, GithubChecksClient}
+  alias RepositoryHub.{CheckRunCache, GithubAdapter, GithubAppId, GithubClient, GithubChecksClient}
   alias InternalApi.Repository.CreateBuildStatusResponse
 
   import Toolkit
@@ -139,13 +139,43 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
   defp fallback_to_status_when_checks_forbidden(result, _request, _context), do: result
 
   defp report_via_check_run(request, context) do
+    cache_key = CheckRunCache.key(request, context.repository)
+
     result =
-      with {:ok, app_id} <- GithubAppId.get(),
-           {:ok, existing} <- find_existing_check_run(request, context, app_id) do
+      with {:ok, existing} <- existing_check_run(request, context, cache_key) do
         upsert_check_run(request, existing, context)
       end
+      |> remember_check_run(cache_key)
 
     record_check_run(result, request, context)
+  end
+
+  # A cached run skips the lookup, so an update costs one GitHub call.
+  defp existing_check_run(request, context, cache_key) do
+    case CheckRunCache.get(cache_key) do
+      {:ok, run} ->
+        Watchman.increment("set_check_run.cache_hit")
+        {:ok, run}
+
+      :miss ->
+        with {:ok, app_id} <- GithubAppId.get() do
+          find_existing_check_run(request, context, app_id)
+        end
+    end
+  end
+
+  # Any failure drops the entry, so the retry looks the run up again instead
+  # of trusting an id GitHub may have rejected (e.g. a deleted run).
+  defp remember_check_run({:ok, %{"id" => id, "status" => status}} = result, cache_key) do
+    CheckRunCache.put(cache_key, id, status)
+    result
+  end
+
+  defp remember_check_run({:ok, _} = result, _cache_key), do: result
+
+  defp remember_check_run(error, cache_key) do
+    CheckRunCache.delete(cache_key)
+    error
   end
 
   # Only a confirmed "no such run" means create. Any other lookup failure must
