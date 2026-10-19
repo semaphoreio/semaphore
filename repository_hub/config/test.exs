@@ -4,7 +4,12 @@ config :repository_hub, environment: :test
 
 config :logger, level: :debug
 
-config :repository_hub, RepositoryHub.Repo, pool: Ecto.Adapters.SQL.Sandbox
+# Each async test holds a sandbox connection for its whole run, so the pool
+# must cover the async tests ExUnit runs at once (max_cases defaults to
+# 2 * schedulers). With the default pool of 1 they queue and get dropped.
+config :repository_hub, RepositoryHub.Repo,
+  pool: Ecto.Adapters.SQL.Sandbox,
+  pool_size: System.schedulers_online() * 2
 
 config :junit_formatter,
   automatic_create_dir?: true,
