@@ -47,9 +47,24 @@ defmodule RepositoryHub.GithubAppId do
   end
 
   defp fetch_from_instance_config do
+    case Application.get_env(:repository_hub, :instance_config_grpc_endpoint) do
+      endpoint when endpoint in [nil, ""] ->
+        log_error("GitHub App id is not configured: set GITHUB_APPLICATION_ID or INTERNAL_API_URL_INSTANCE_CONFIG")
+
+        fail_with(
+          :precondition,
+          "GitHub App id is not configured: set GITHUB_APPLICATION_ID or INTERNAL_API_URL_INSTANCE_CONFIG"
+        )
+
+      endpoint ->
+        fetch_from_instance_config(endpoint)
+    end
+  end
+
+  defp fetch_from_instance_config(endpoint) do
     request = %ListConfigsRequest{types: [:CONFIG_TYPE_GITHUB_APP]}
 
-    with {:ok, channel} <- GRPC.Stub.connect(Application.fetch_env!(:repository_hub, :instance_config_grpc_endpoint)),
+    with {:ok, channel} <- GRPC.Stub.connect(endpoint),
          {:ok, response} <- InstanceConfigService.Stub.list_configs(channel, request, timeout: 3_000) do
       response.configs
       |> Enum.find(&(&1.type == :CONFIG_TYPE_GITHUB_APP and &1.state == :STATE_CONFIGURED))

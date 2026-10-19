@@ -9,10 +9,12 @@ defmodule RepositoryHub.GithubAppIdTest do
 
   setup do
     previous = Application.get_env(:repository_hub, :github_application_id)
+    previous_endpoint = Application.get_env(:repository_hub, :instance_config_grpc_endpoint)
     Cachex.clear(:github_app_id_cache)
 
     on_exit(fn ->
       Application.put_env(:repository_hub, :github_application_id, previous)
+      Application.put_env(:repository_hub, :instance_config_grpc_endpoint, previous_endpoint)
       Cachex.clear(:github_app_id_cache)
     end)
   end
@@ -63,6 +65,17 @@ defmodule RepositoryHub.GithubAppIdTest do
       with_mocks(instance_config_mocks(fn _, _, _ -> {:ok, response} end)) do
         assert {:error, %{status: status}} = GithubAppId.get()
         assert status == GRPC.Status.failed_precondition()
+      end
+    end
+
+    test "fails with a clear message when neither the env nor instance_config is configured" do
+      Application.put_env(:repository_hub, :instance_config_grpc_endpoint, nil)
+
+      with_mocks(instance_config_mocks(fn _, _, _ -> raise "must not be called" end)) do
+        assert {:error, %{status: status, message: message}} = GithubAppId.get()
+        assert status == GRPC.Status.failed_precondition()
+        assert message =~ "GITHUB_APPLICATION_ID"
+        refute called(GRPC.Stub.connect(:_))
       end
     end
 
