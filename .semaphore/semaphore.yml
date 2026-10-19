@@ -3865,7 +3865,6 @@ blocks:
             - make test
             - cache store deps-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock) deps
             - cache store build-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock) _build
-promotions:
   - name: "Env Var Policy: QA"
     dependencies: []
     run:
@@ -3889,6 +3888,7 @@ promotions:
               value: "1.13"
           commands:
             - make format
+promotions:
   - name: Generate Helm Chart
     pipeline_file: generate-helm-chart.yml
     deployment_target: github-packages
