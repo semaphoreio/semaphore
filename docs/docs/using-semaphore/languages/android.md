@@ -193,48 +193,6 @@ There are Docker images for each recent version of Android. There are also varia
 - `android:<version>-node`: basic image extended with Node.js
 - `android:<version>-flutter`: basic image extended with Flutter toolchain
 
-## Android SDK images {#sdks}
-
-These are the pre-built Android images available:
-
-
-- `android:36`
-- `android:36-node`
-- `android:36-flutter`
-- `android:35`
-- `android:35-node`
-- `android:35-flutter`
-- `android:34`
-- `android:34-node`
-- `android:34-flutter`
-- `android:33`
-- `android:33-node`
-- `android:33-flutter`
-- `android:31`
-- `android:31-node`
-- `android:31-flutter`
-- `android:30`
-- `android:30-node`
-- `android:30-flutter`
-- `android:29`
-- `android:29-node`
-- `android:29-flutter`
-- `android:28`
-- `android:28-node`
-- `android:28-flutter`
-- `android:27`
-- `android:27-node`
-- `android:27-flutter`
-- `android:26`
-- `android:26-node`
-- `android:26-flutter`
-- `android:25`
-- `android:25-node`
-- `android:25-flutter`
-- `android:24`
-- `android:24-node`
-- `android:23`
-- `android:23-node`
 
 ## Pre-installed software {#software}
 
