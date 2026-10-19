@@ -12,6 +12,7 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVars do
 
   alias Zebra.Workers.JobRequestFactory.FailureReason
 
+  # Keep in sync with Ppl.DefinitionReviser.ReservedEnvVarsValidator in plumber.
   @zebra_owned MapSet.new([
                  "SEMAPHORE",
                  "SEMAPHORE_PROJECT_NAME",
