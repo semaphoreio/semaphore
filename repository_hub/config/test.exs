@@ -7,9 +7,10 @@ config :logger, level: :debug
 # Each async test holds a sandbox connection for its whole run, so the pool
 # must cover the async tests ExUnit runs at once (max_cases defaults to
 # 2 * schedulers). With the default pool of 1 they queue and get dropped.
+# Capped so a many-core machine stays under Postgres' max_connections (100).
 config :repository_hub, RepositoryHub.Repo,
   pool: Ecto.Adapters.SQL.Sandbox,
-  pool_size: System.schedulers_online() * 2
+  pool_size: min(System.schedulers_online() * 2, 40)
 
 config :junit_formatter,
   automatic_create_dir?: true,

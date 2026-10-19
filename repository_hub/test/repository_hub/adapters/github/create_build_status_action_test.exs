@@ -294,6 +294,75 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
       end
     end
 
+    for {status, conclusion} <- [SUCCESS: "success", FAILURE: "failure", STOPPED: "cancelled"] do
+      test "flag ON + #{status}, existing run → completes it as #{conclusion}", %{
+        adapter: adapter,
+        repository: repository
+      } do
+        request =
+          InternalApiFactory.create_build_status_request(
+            repository_id: repository.id,
+            status: unquote(status)
+          )
+
+        with_mocks([
+          {FeatureProvider, [],
+           [
+             find_feature: fn :github_checks_api, [param: org_id] ->
+               {:ok, checks_api_feature(org_id == RepositoryHub.Stub.ProjectHub.org_id())}
+             end
+           ]},
+          {GithubChecksClient, [],
+           [
+             find_check_run: fn _params, _opts -> {:ok, %{"id" => 7, "status" => "in_progress"}} end,
+             update_check_run: fn params, _opts ->
+               assert params.check_run_id == 7
+               assert params.status == "completed"
+               assert params.conclusion == unquote(conclusion)
+               {:ok, %{"id" => 7, "status" => "completed"}}
+             end
+           ]}
+        ]) do
+          assert {:ok, _} = CreateBuildStatusAction.execute(adapter, request)
+          assert called(GithubChecksClient.update_check_run(:_, :_))
+          refute called(GithubChecksClient.create_check_run(:_, :_))
+        end
+      end
+
+      test "flag ON + #{status}, no existing run → creates it completed as #{conclusion}", %{
+        adapter: adapter,
+        repository: repository
+      } do
+        request =
+          InternalApiFactory.create_build_status_request(
+            repository_id: repository.id,
+            status: unquote(status)
+          )
+
+        with_mocks([
+          {FeatureProvider, [],
+           [
+             find_feature: fn :github_checks_api, [param: org_id] ->
+               {:ok, checks_api_feature(org_id == RepositoryHub.Stub.ProjectHub.org_id())}
+             end
+           ]},
+          {GithubChecksClient, [],
+           [
+             find_check_run: fn _params, _opts -> {:error, %{status: GRPC.Status.not_found(), message: "not found"}} end,
+             create_check_run: fn params, _opts ->
+               assert params.status == "completed"
+               assert params.conclusion == unquote(conclusion)
+               {:ok, %{"id" => 9, "status" => "completed"}}
+             end
+           ]}
+        ]) do
+          assert {:ok, _} = CreateBuildStatusAction.execute(adapter, request)
+          assert called(GithubChecksClient.create_check_run(:_, :_))
+          refute called(GithubChecksClient.update_check_run(:_, :_))
+        end
+      end
+    end
+
     test "flag OFF → legacy status only", %{
       adapter: adapter,
       repository: repository
