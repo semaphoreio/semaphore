@@ -109,9 +109,7 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
     repo_name = context.repository.name
 
     result =
-      with :ok <-
-             GithubChecksClient.check_rate_limit(%{repo_owner: repo_owner}, token: context.github_token),
-           {:ok, app_id} <- GithubAppId.get(),
+      with {:ok, app_id} <- GithubAppId.get(),
            {:ok, existing} <- find_existing_check_run(request, context, app_id) do
         upsert_check_run(request, existing, context)
       end

@@ -90,7 +90,6 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
          ]},
         {GithubChecksClient, [],
          [
-           check_rate_limit: fn _params, _opts -> :ok end,
            find_check_run: fn params, _opts ->
              assert params.external_id == "semaphore:ppl-1"
              assert params.app_id == "90709"
@@ -133,7 +132,6 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
          ]},
         {GithubChecksClient, [],
          [
-           check_rate_limit: fn _params, _opts -> :ok end,
            find_check_run: fn _params, _opts ->
              {:ok, %{"id" => 5, "status" => "in_progress"}}
            end,
@@ -170,7 +168,6 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
          ]},
         {GithubChecksClient, [],
          [
-           check_rate_limit: fn _params, _opts -> :ok end,
            find_check_run: fn _params, _opts ->
              {:ok, %{"id" => 5, "status" => "completed"}}
            end,
@@ -206,7 +203,6 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
          ]},
         {GithubChecksClient, [],
          [
-           check_rate_limit: fn _params, _opts -> :ok end,
            find_check_run: fn _params, _opts ->
              {:ok, %{"id" => 7, "status" => "in_progress"}}
            end,
@@ -245,7 +241,6 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
          ]},
         {GithubChecksClient, [],
          [
-           check_rate_limit: fn _params, _opts -> :ok end,
            find_check_run: fn _params, _opts -> {:error, %{status: GRPC.Status.not_found(), message: "not found"}} end,
            create_check_run: fn params, _opts ->
              assert params.status == "completed"
@@ -271,7 +266,6 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
         {FeatureProvider, [], [feature_enabled?: fn _, _ -> false end]},
         {GithubChecksClient, [],
          [
-           check_rate_limit: fn _params, _opts -> :ok end,
            create_check_run: fn _params, _opts -> {:ok, %{}} end,
            find_check_run: fn _params, _opts -> {:ok, %{"id" => 1}} end,
            update_check_run: fn _params, _opts -> {:ok, %{}} end
@@ -304,7 +298,6 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
          ]},
         {GithubChecksClient, [],
          [
-           check_rate_limit: fn _params, _opts -> :ok end,
            find_check_run: fn _params, _opts -> {:error, %{status: GRPC.Status.not_found(), message: "not found"}} end,
            create_check_run: fn _params, _opts ->
              {:error, %{status: 500, message: "x"}}
@@ -330,7 +323,6 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
          ]},
         {GithubChecksClient, [],
          [
-           check_rate_limit: fn _params, _opts -> :ok end,
            find_check_run: fn _params, _opts ->
              {:error, %{status: GRPC.Status.permission_denied(), message: "missing Checks permission"}}
            end,
@@ -345,7 +337,7 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
       end
     end
 
-    test "flag ON, rate limit below reserve → fails without calling GitHub", %{
+    test "flag ON, rate limited lookup → fails without writing", %{
       adapter: adapter,
       repository: repository
     } do
@@ -360,14 +352,12 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
          ]},
         {GithubChecksClient, [],
          [
-           check_rate_limit: fn _params, _opts -> {:error, :rate_limit} end,
-           find_check_run: fn _params, _opts -> {:ok, %{"id" => 1, "status" => "in_progress"}} end,
+           find_check_run: fn _params, _opts -> {:error, :rate_limit} end,
            create_check_run: fn _params, _opts -> {:ok, %{"id" => 1}} end,
            update_check_run: fn _params, _opts -> {:ok, %{"id" => 1}} end
          ]}
       ]) do
         assert {:error, :rate_limit} = CreateBuildStatusAction.execute(adapter, request)
-        refute called(GithubChecksClient.find_check_run(:_, :_))
         refute called(GithubChecksClient.create_check_run(:_, :_))
         refute called(GithubChecksClient.update_check_run(:_, :_))
         refute called(GithubClient.create_build_status(:_, :_))
@@ -394,7 +384,6 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
            ]},
           {GithubChecksClient, [],
            [
-             check_rate_limit: fn _params, _opts -> :ok end,
              find_check_run: fn _params, _opts ->
                {:error, %{status: GRPC.Status.unavailable(), message: "GitHub Checks API find_check_run failed"}}
              end,

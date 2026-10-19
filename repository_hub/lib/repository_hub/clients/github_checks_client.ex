@@ -1,6 +1,6 @@
 defmodule RepositoryHub.GithubChecksClient do
   @moduledoc """
-  Tesla client for the GitHub Checks API (check-runs).
+  Client for the GitHub Checks API (check-runs), built on `RepositoryHub.GithubApi`.
 
   Only usable with a GitHub App installation token (the `github_app`
   integration type). OAuth user tokens cannot create check-runs and receive a
@@ -9,49 +9,7 @@ defmodule RepositoryHub.GithubChecksClient do
   """
   import RepositoryHub.Toolkit
 
-  @api_url "https://api.github.com"
-  @api_version "2022-11-28"
-
-  # Same reserve as GithubClient's :create_build_status, so status reporting
-  # never drains the quota other GitHub calls need.
-  @rate_limit_reserve 1000
-
-  @doc """
-  Returns `:ok` when the token has more than #{@rate_limit_reserve} API calls
-  left, `{:error, :rate_limit}` otherwise. Mirrors `GithubClient`'s gate: when
-  the limit can't be read it is assumed to be low.
-  """
-  def check_rate_limit(params, opts \\ []) do
-    opts[:token]
-    |> client()
-    |> Tesla.get("/rate_limit")
-    |> case do
-      {:ok, %Tesla.Env{status: 200, body: %{"rate" => %{"remaining" => remaining}}}} ->
-        rate_limit_decision(remaining, params.repo_owner)
-
-      {:ok, %Tesla.Env{status: 401}} ->
-        fail_with(:precondition, "GitHub Checks API token is not authorized")
-
-      other ->
-        log_error("Failed to get the rate limit for #{params.repo_owner}: #{inspect(other)}")
-        rate_limit_decision(0, params.repo_owner)
-    end
-  end
-
-  defp rate_limit_decision(remaining, owner) when remaining > @rate_limit_reserve do
-    Watchman.increment({"github_api.rate_limit.ok", [owner]})
-    :ok
-  end
-
-  defp rate_limit_decision(remaining, owner) do
-    Watchman.increment({"github_api.rate_limit.error", [owner]})
-
-    log_error(
-      "Failed to connect to GitHub. purpose=check_run owner=#{owner} limit=#{@rate_limit_reserve} remaining_rate_limit=#{remaining}"
-    )
-
-    {:error, :rate_limit}
-  end
+  alias RepositoryHub.GithubApi
 
   def create_check_run(params, opts \\ []) do
     body =
@@ -67,10 +25,11 @@ defmodule RepositoryHub.GithubChecksClient do
       |> maybe_put(:completed_at, Map.get(params, :completed_at))
       |> maybe_put(:output, Map.get(params, :output))
 
-    opts[:token]
-    |> client()
-    |> Tesla.post("/repos/#{params.repo_owner}/#{params.repo_name}/check-runs", body)
-    |> handle_response(:create_check_run, params)
+    GithubApi.with_client(opts[:token], params.repo_owner, :create_check_run, fn client ->
+      client
+      |> Tesla.post("/repos/#{params.repo_owner}/#{params.repo_name}/check-runs", body)
+      |> GithubApi.handle_response(:create_check_run, params)
+    end)
   end
 
   def update_check_run(params, opts \\ []) do
@@ -82,13 +41,11 @@ defmodule RepositoryHub.GithubChecksClient do
       |> maybe_put(:details_url, Map.get(params, :details_url))
       |> maybe_put(:output, Map.get(params, :output))
 
-    opts[:token]
-    |> client()
-    |> Tesla.patch(
-      "/repos/#{params.repo_owner}/#{params.repo_name}/check-runs/#{params.check_run_id}",
-      body
-    )
-    |> handle_response(:update_check_run, params)
+    GithubApi.with_client(opts[:token], params.repo_owner, :update_check_run, fn client ->
+      client
+      |> Tesla.patch("/repos/#{params.repo_owner}/#{params.repo_name}/check-runs/#{params.check_run_id}", body)
+      |> GithubApi.handle_response(:update_check_run, params)
+    end)
   end
 
   @doc """
@@ -100,13 +57,14 @@ defmodule RepositoryHub.GithubChecksClient do
   one pipeline.
   """
   def find_check_run(params, opts \\ []) do
-    opts[:token]
-    |> client()
-    |> Tesla.get(
-      "/repos/#{params.repo_owner}/#{params.repo_name}/commits/#{params.commit_sha}/check-runs",
-      query: [check_name: params.name, app_id: params.app_id, per_page: 100]
-    )
-    |> handle_response(:find_check_run, params)
+    GithubApi.with_client(opts[:token], params.repo_owner, :find_check_run, fn client ->
+      client
+      |> Tesla.get(
+        "/repos/#{params.repo_owner}/#{params.repo_name}/commits/#{params.commit_sha}/check-runs",
+        query: [check_name: params.name, app_id: params.app_id, per_page: 100]
+      )
+      |> GithubApi.handle_response(:find_check_run, params)
+    end)
     |> unwrap(fn body ->
       body
       |> Map.get("check_runs", [])
@@ -120,88 +78,6 @@ defmodule RepositoryHub.GithubChecksClient do
       end
     end)
   end
-
-  defp client(token) do
-    Tesla.client([
-      {Tesla.Middleware.BaseUrl, @api_url},
-      {Tesla.Middleware.Headers,
-       [
-         {"authorization", "Bearer #{token}"},
-         {"accept", "application/vnd.github+json"},
-         {"x-github-api-version", @api_version},
-         {"user-agent", "SemaphoreCI-RepositoryHub"}
-       ]},
-      Tesla.Middleware.JSON
-    ])
-  end
-
-  defp handle_response({:ok, %Tesla.Env{status: status, body: body}}, _purpose, _params)
-       when status in 200..299 do
-    wrap(body)
-  end
-
-  # The installation hasn't granted the Checks permission. Callers fall back
-  # to the Commit Status API on permission_denied.
-  defp handle_response(
-         {:ok, %Tesla.Env{status: 403, body: %{"message" => "Resource not accessible by integration"}}},
-         purpose,
-         params
-       ) do
-    log_warn([
-      "github checks api permission missing",
-      "purpose: #{purpose}",
-      "repo: #{params.repo_owner}/#{params.repo_name}"
-    ])
-
-    error(%{
-      status: GRPC.Status.permission_denied(),
-      message: "GitHub App installation is missing the Checks permission"
-    })
-  end
-
-  # The write may still have landed on GitHub. Report unavailable so callers
-  # don't treat it as a definitive rejection.
-  defp handle_response({:ok, %Tesla.Env{status: status, body: body}}, purpose, params)
-       when status >= 500 do
-    log_error([
-      "github checks api error",
-      "purpose: #{purpose}",
-      "repo: #{params.repo_owner}/#{params.repo_name}",
-      "status: #{status}",
-      "body: #{inspect(body)}"
-    ])
-
-    fail_with(:unavailable, "GitHub Checks API #{purpose} failed (status #{status}): #{message_from(body)}")
-  end
-
-  defp handle_response({:ok, %Tesla.Env{status: status, body: body}}, purpose, params) do
-    log_error([
-      "github checks api error",
-      "purpose: #{purpose}",
-      "repo: #{params.repo_owner}/#{params.repo_name}",
-      "status: #{status}",
-      "body: #{inspect(body)}"
-    ])
-
-    fail_with(
-      :precondition,
-      "GitHub Checks API #{purpose} failed (status #{status}): #{message_from(body)}"
-    )
-  end
-
-  defp handle_response({:error, reason}, purpose, params) do
-    log_error([
-      "github checks api transport error",
-      "purpose: #{purpose}",
-      "repo: #{params.repo_owner}/#{params.repo_name}",
-      "reason: #{inspect(reason)}"
-    ])
-
-    fail_with(:unavailable, "GitHub Checks API #{purpose} transport error")
-  end
-
-  defp message_from(%{"message" => message}) when is_binary(message), do: message
-  defp message_from(_), do: "unknown error"
 
   defp maybe_put(map, _key, nil), do: map
   defp maybe_put(map, key, value), do: Map.put(map, key, value)
