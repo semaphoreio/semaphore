@@ -32,6 +32,9 @@ defmodule RepositoryHub.GithubApi do
       {:ok, remaining_rate_limit} ->
         limit = Map.fetch!(@limits, purpose)
 
+        # Mirrors GithubClient.with_client/4 on purpose, so both clients gate
+        # the same way until the Tentacat client is retired.
+        # credo:disable-for-next-line Credo.Check.Design.DuplicatedCode
         if remaining_rate_limit > limit do
           Watchman.increment({"github_api.rate_limit.ok", [owner]})
           fun.(client)
