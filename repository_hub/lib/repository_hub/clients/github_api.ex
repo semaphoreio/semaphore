@@ -61,8 +61,9 @@ defmodule RepositoryHub.GithubApi do
     (the GitHub App installation lacks a permission)
   - 5xx or a transport error → `unavailable` (a write may still have landed,
     so callers must not treat it as a definitive rejection)
-  - 429, or a 403 from a primary or secondary rate limit → `unavailable`
-    (transient, so the caller retries)
+  - 429, or a 403 from a primary or secondary rate limit → `{:error, :rate_limit}`,
+    the same result as the pre-call reserve check: GitHub didn't write
+    anything, so the delivery lease is released and the notifier retries
   - any other status → `failed_precondition`
   """
   def handle_response({:ok, %Tesla.Env{status: status, body: body}}, _purpose, _params)
@@ -96,7 +97,8 @@ defmodule RepositoryHub.GithubApi do
     log_response_error(status, body, purpose, params)
 
     if rate_limited?(env) do
-      fail_with(:unavailable, "GitHub API #{purpose} rate limited (status #{status}): #{message_from(body)}")
+      Watchman.increment({"github_api.rate_limit.error", [params.repo_owner]})
+      {:error, :rate_limit}
     else
       fail_with(:precondition, "GitHub API #{purpose} failed (status #{status}): #{message_from(body)}")
     end

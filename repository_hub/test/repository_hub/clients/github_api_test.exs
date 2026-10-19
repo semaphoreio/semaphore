@@ -88,7 +88,7 @@ defmodule RepositoryHub.GithubApiTest do
       assert status == GRPC.Status.failed_precondition()
     end
 
-    test "maps a primary rate limit 403 to unavailable" do
+    test "maps a primary rate limit 403 to rate_limit" do
       mock_github(remaining(5000), fn _ ->
         %Tesla.Env{
           status: 403,
@@ -97,31 +97,27 @@ defmodule RepositoryHub.GithubApiTest do
         }
       end)
 
-      assert {:error, %{status: status}} = call()
-      assert status == GRPC.Status.unavailable()
+      assert {:error, :rate_limit} = call()
     end
 
-    test "maps a secondary rate limit 403 to unavailable" do
+    test "maps a secondary rate limit 403 to rate_limit" do
       mock_github(remaining(5000), fn _ ->
         %Tesla.Env{status: 403, headers: [{"retry-after", "60"}], body: %{"message" => "Forbidden"}}
       end)
 
-      assert {:error, %{status: status}} = call()
-      assert status == GRPC.Status.unavailable()
+      assert {:error, :rate_limit} = call()
     end
 
-    test "maps a 403 with a rate limit message to unavailable" do
+    test "maps a 403 with a rate limit message to rate_limit" do
       respond(403, %{"message" => "You have exceeded a secondary rate limit. Please wait a few minutes."})
 
-      assert {:error, %{status: status}} = call()
-      assert status == GRPC.Status.unavailable()
+      assert {:error, :rate_limit} = call()
     end
 
-    test "maps 429 to unavailable" do
+    test "maps 429 to rate_limit" do
       respond(429, %{"message" => "Too Many Requests"})
 
-      assert {:error, %{status: status}} = call()
-      assert status == GRPC.Status.unavailable()
+      assert {:error, :rate_limit} = call()
     end
 
     test "maps 4xx to failed_precondition" do
