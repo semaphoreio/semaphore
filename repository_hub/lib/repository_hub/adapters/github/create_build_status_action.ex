@@ -171,6 +171,17 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
     end
   end
 
+  # The run is this pipeline's own (matched by external_id), so a PENDING
+  # after it completed is stale: delivering it would leave a fresh run
+  # in_progress with nothing left to complete it. Without a source_id every
+  # pipeline shares one external_id, so there the PENDING may be a new
+  # pipeline and gets a fresh run (run_to_update/2).
+  defp upsert_check_run(%{status: :PENDING, source_id: source_id}, %{"status" => "completed"} = run, _context)
+       when source_id != "" do
+    Watchman.increment("set_check_run.skipped_stale_pending")
+    {:ok, run}
+  end
+
   defp upsert_check_run(request, existing, context) do
     params =
       %{
@@ -194,8 +205,8 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
     end
   end
 
-  # A completed run is never reopened: a PENDING after completion (a rebuild)
-  # starts a fresh run.
+  # A completed run is never reopened: a PENDING after completion without a
+  # source_id (possibly another pipeline) starts a fresh run.
   defp run_to_update(:PENDING, %{"status" => "completed"}), do: nil
   defp run_to_update(_status, %{"id" => id}), do: id
   defp run_to_update(_status, nil), do: nil

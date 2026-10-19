@@ -149,7 +149,44 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
       end
     end
 
-    test "flag ON + PENDING, existing completed run (rebuild) → creates fresh (no un-complete)", %{
+    test "flag ON + PENDING after this pipeline's run completed → stale, no write", %{
+      adapter: adapter,
+      repository: repository
+    } do
+      request =
+        InternalApiFactory.create_build_status_request(
+          repository_id: repository.id,
+          status: :PENDING,
+          source_id: "ppl-1"
+        )
+
+      with_mocks([
+        {Watchman, [:passthrough], []},
+        {FeatureProvider, [],
+         [
+           find_feature: fn :github_checks_api, [param: org_id] ->
+             {:ok, checks_api_feature(org_id == RepositoryHub.Stub.ProjectHub.org_id())}
+           end
+         ]},
+        {GithubChecksClient, [],
+         [
+           find_check_run: fn params, _opts ->
+             assert params.external_id == "semaphore:ppl-1"
+             {:ok, %{"id" => 5, "status" => "completed", "conclusion" => "success"}}
+           end,
+           create_check_run: fn _params, _opts -> {:ok, %{"id" => 6}} end,
+           update_check_run: fn _params, _opts -> {:ok, %{"id" => 5}} end
+         ]}
+      ]) do
+        assert {:ok, _} = CreateBuildStatusAction.execute(adapter, request)
+        refute called(GithubChecksClient.create_check_run(:_, :_))
+        refute called(GithubChecksClient.update_check_run(:_, :_))
+        refute called(GithubClient.create_build_status(:_, :_))
+        assert called(Watchman.increment("set_check_run.skipped_stale_pending"))
+      end
+    end
+
+    test "flag ON + PENDING without source_id, existing completed run → creates fresh (no un-complete)", %{
       adapter: adapter,
       repository: repository
     } do
