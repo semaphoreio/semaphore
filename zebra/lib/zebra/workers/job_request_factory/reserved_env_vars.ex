@@ -90,6 +90,9 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVars do
 
   # Same rule as Secrethub; the agent writes names unquoted into `export NAME=value`.
   @valid_name ~r/\A[a-zA-Z_][a-zA-Z0-9_]*\z/
+  # Service container env vars go into the docker-compose file instead, where dotted
+  # names like `discovery.type` are common.
+  @valid_container_name ~r/\A[a-zA-Z_][a-zA-Z0-9_.-]*\z/
 
   # Names are compared case-insensitively because Windows env vars are case-insensitive.
   def reserved?(name), do: zebra_owned?(name) or plumber_owned?(name)
@@ -103,6 +106,11 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVars do
 
   def valid_name?(name) when is_binary(name), do: Regex.match?(@valid_name, name)
   def valid_name?(_name), do: false
+
+  def valid_container_name?(name) when is_binary(name),
+    do: Regex.match?(@valid_container_name, name)
+
+  def valid_container_name?(_name), do: false
 
   def validate(job, job_type, spec, spec_env_vars, all_secrets) do
     with :ok <- validate_spec(job, job_type, spec, spec_env_vars) do
@@ -150,7 +158,10 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVars do
 
   defp invalid_names(names) do
     names
-    |> Enum.reject(fn {name, _kind, _label} -> valid_name?(name) end)
+    |> Enum.reject(fn
+      {name, :container, _label} -> valid_container_name?(name)
+      {name, _kind, _label} -> valid_name?(name)
+    end)
     |> Enum.uniq()
   end
 
