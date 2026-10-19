@@ -91,7 +91,8 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
   # A flag that can't be evaluated fails the request so the notifier retries.
   # Reading it as "disabled" would send this status as a commit status while
   # the pipeline's earlier ones went out as a check-run, leaving the run
-  # in_progress. Only a flag that doesn't exist counts as disabled.
+  # in_progress. Only a flag that doesn't exist counts as disabled: a provider
+  # failure behind the cache also comes back as {:not_found, {fun, org_id}}.
   defp checks_api_enabled?(context) do
     org_id = context.project.metadata.org_id
 
@@ -99,7 +100,7 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
       {:ok, feature} ->
         {:ok, FeatureProvider.Feature.enabled?(feature)}
 
-      {:error, {:not_found, _}} ->
+      {:error, {:not_found, :github_checks_api}} ->
         {:ok, false}
 
       {:error, reason} ->

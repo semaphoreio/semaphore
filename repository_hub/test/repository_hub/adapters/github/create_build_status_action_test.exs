@@ -312,6 +312,36 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
       end
     end
 
+    test "flag provider fails behind the cache → fails as unavailable without writing", %{
+      adapter: adapter,
+      repository: repository
+    } do
+      request = InternalApiFactory.create_build_status_request(repository_id: repository.id)
+
+      # The real FeatureProvider + CachexCache stack turns a provider error
+      # into {:not_found, {:provide_features, org_id}}, not the provider's error.
+      provider = Application.get_env(FeatureProvider, :provider)
+
+      Application.put_env(
+        FeatureProvider,
+        :provider,
+        {__MODULE__.UnavailableFeatureProvider,
+         [cache: {FeatureProvider.CachexCache, name: :feature_provider_cache, ttl_ms: :timer.minutes(10)}]}
+      )
+
+      on_exit(fn -> Application.put_env(FeatureProvider, :provider, provider) end)
+      Cachex.clear(:feature_provider_cache)
+
+      with_mocks([
+        {GithubChecksClient, [], [find_check_run: fn _params, _opts -> {:ok, %{"id" => 1}} end]}
+      ]) do
+        assert {:error, %{status: status}} = CreateBuildStatusAction.execute(adapter, request)
+        assert status == GRPC.Status.unavailable()
+        refute called(GithubClient.create_build_status(:_, :_))
+        refute called(GithubChecksClient.find_check_run(:_, :_))
+      end
+    end
+
     test "checks client error fails the action", %{
       adapter: adapter,
       repository: repository
@@ -444,5 +474,15 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
 
   defp checks_api_feature(enabled?) do
     %FeatureProvider.Feature{type: "github_checks_api", state: if(enabled?, do: :enabled, else: :disabled)}
+  end
+
+  defmodule UnavailableFeatureProvider do
+    use FeatureProvider.Provider
+
+    @impl FeatureProvider.Provider
+    def provide_features(_org_id, _opts), do: {:error, %GRPC.RPCError{status: GRPC.Status.unavailable()}}
+
+    @impl FeatureProvider.Provider
+    def provide_machines(_org_id, _opts), do: {:ok, []}
   end
 end
