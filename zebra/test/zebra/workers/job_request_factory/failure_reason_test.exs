@@ -10,9 +10,14 @@ defmodule Zebra.Workers.JobRequestFactory.FailureReasonTest do
       assert FailureReason.clip("deploy-creds") == "deploy-creds"
     end
 
-    test "keeps at most 40 codepoints" do
-      assert FailureReason.clip(String.duplicate("a", 100)) == String.duplicate("a", 40)
-      assert codepoints(FailureReason.clip("x" <> String.duplicate("́", 300))) == 40
+    test "keeps at most 64 codepoints" do
+      assert FailureReason.clip(String.duplicate("a", 100)) == String.duplicate("a", 64)
+      assert codepoints(FailureReason.clip("x" <> String.duplicate("́", 300))) == 64
+    end
+
+    test "keeps every reserved name whole" do
+      assert FailureReason.clip("SEMAPHORE_WORKFLOW_TRIGGERED_BY_MANUAL_RUN") ==
+               "SEMAPHORE_WORKFLOW_TRIGGERED_BY_MANUAL_RUN"
     end
 
     test "replaces control characters" do

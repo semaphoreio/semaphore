@@ -1547,7 +1547,29 @@ defmodule Zebra.Workers.JobRequestFactoryTest do
     assert Job.failed?(job)
 
     assert job.failure_reason ==
-             "Invalid environment variable names: 'SEMAPHORE_WORKFLOW_TRIGGERED_BY_API=true' (job env_vars)"
+             "Invalid environment variable names: 'SEMAPHORE_WORKFLOW_TRIGGERED_BY_API=true #' (job env_vars)"
+  end
+
+  test "when a service container uses a dotted env var name => creates job req" do
+    spec =
+      put_in(@job_spec_with_containers, ["agent", "containers"], [
+        %{"name" => "main", "image" => "ruby:2.6.1"},
+        %{
+          "name" => "es",
+          "image" => "elasticsearch:8.15.0",
+          "env_vars" => [%{"name" => "discovery.type", "value" => "single-node"}]
+        }
+      ])
+
+    {:ok, task} = Support.Factories.Task.create()
+    {:ok, job} = Support.Factories.Job.create(:pending, %{spec: spec, build_id: task.id})
+
+    {:ok, job} = Worker.process(job)
+
+    assert job.aasm_state == "enqueued"
+
+    [_main, es] = job.request["compose"]["containers"]
+    assert Enum.any?(es["env_vars"], &(&1["name"] == "discovery.type"))
   end
 
   test "when a container secret sets a reserved env var => force fails the job" do

@@ -158,6 +158,21 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVarsTest do
     end
   end
 
+  describe "valid_container_name?/1" do
+    test "accepts the dotted and dashed names service containers use" do
+      for name <- ["discovery.type", "xpack.security.enabled", "node-version", "MY_VAR", "_a.b"] do
+        assert ReservedEnvVars.valid_container_name?(name), "expected #{name} to be valid"
+      end
+    end
+
+    test "rejects names that would break the docker-compose environment line" do
+      for name <- ["", "1ST", ".hidden", "A B", "A=B", "A:B", "A#B", "A\nB", "FOO\n", nil] do
+        refute ReservedEnvVars.valid_container_name?(name),
+               "expected #{inspect(name)} to be invalid"
+      end
+    end
+  end
+
   describe "valid_name?/1" do
     test "accepts shell identifiers" do
       assert ReservedEnvVars.valid_name?("MY_VAR")
@@ -218,6 +233,34 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVarsTest do
     test "shows control characters as ? in the reason" do
       assert validate(:pipeline_job, ["A\nB"]) ==
                {:stop_job_processing, "Invalid environment variable names: 'A?B' (job env_vars)"}
+    end
+
+    test "accepts dotted names in service container env_vars" do
+      container =
+        Spec.Agent.Container.new(
+          name: "es",
+          env_vars: [Spec.EnvVar.new(name: "discovery.type", value: "single-node")]
+        )
+
+      assert validate(:pipeline_job, [], spec: spec([container])) == :ok
+    end
+
+    test "still rejects dotted names in job env_vars" do
+      assert validate(:pipeline_job, ["discovery.type"]) ==
+               {:stop_job_processing,
+                "Invalid environment variable names: 'discovery.type' (job env_vars)"}
+    end
+
+    test "rejects container env var names that would break the compose file" do
+      container =
+        Spec.Agent.Container.new(
+          name: "es",
+          env_vars: [Spec.EnvVar.new(name: "a=b", value: "x")]
+        )
+
+      assert validate(:pipeline_job, [], spec: spec([container])) ==
+               {:stop_job_processing,
+                "Invalid environment variable names: 'a=b' (container 'es' env_vars)"}
     end
 
     test "rejects invalid names in containers before looking at secrets" do
@@ -508,6 +551,17 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVarsTest do
       assert message =~ ~r/ and \d+ more$/
     end
 
+    test "shows long reserved names in full" do
+      names = [
+        "SEMAPHORE_WORKFLOW_TRIGGERED_BY_MANUAL_RUN",
+        "SEMAPHORE_WORKFLOW_TRIGGERED_BY_MANUAL_RUN"
+      ]
+
+      assert validate(:pipeline_job, names) ==
+               {:stop_job_processing,
+                "Reserved environment variables cannot be set: SEMAPHORE_WORKFLOW_TRIGGERED_BY_MANUAL_RUN (job env_vars)"}
+    end
+
     test "clips long secret names" do
       secrets = %{
         @no_secrets
@@ -516,7 +570,7 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVarsTest do
 
       assert validate(:pipeline_job, [], secrets: secrets) ==
                {:stop_job_processing,
-                "Reserved environment variables cannot be set: SEMAPHORE_GIT_SHA (secret '#{String.duplicate("s", 40)}')"}
+                "Reserved environment variables cannot be set: SEMAPHORE_GIT_SHA (secret '#{String.duplicate("s", 64)}')"}
     end
 
     test "fits in 255 codepoints when names are made of multi-codepoint graphemes" do
