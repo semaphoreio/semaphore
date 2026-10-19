@@ -55,13 +55,17 @@ defmodule RepositoryHub.GithubChecksClient do
   same-named run from another app, which we could not update, is never
   picked. `external_id` (set by `create_check_run/2`) then selects the run of
   one pipeline.
+
+  `filter: "all"` is required: GitHub's default (`latest`) returns only the
+  most recent run per name, so the run of a pipeline that overlaps with
+  another one on the same commit would not be found and would be duplicated.
   """
   def find_check_run(params, opts \\ []) do
     GithubApi.with_client(opts[:token], params.repo_owner, :find_check_run, fn client ->
       client
       |> Tesla.get(
         "/repos/#{params.repo_owner}/#{params.repo_name}/commits/#{params.commit_sha}/check-runs",
-        query: [check_name: params.name, app_id: params.app_id, per_page: 100]
+        query: [check_name: params.name, app_id: params.app_id, filter: "all", per_page: 100]
       )
       |> GithubApi.handle_response(:find_check_run, params)
     end)

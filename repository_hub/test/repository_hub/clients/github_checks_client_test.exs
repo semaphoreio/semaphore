@@ -95,6 +95,7 @@ defmodule RepositoryHub.GithubChecksClientTest do
         assert query[:check_name] == @name
         assert query[:per_page] == 100
         assert query[:app_id] == @app_id
+        assert query[:filter] == "all"
 
         json(
           %{"total_count" => 1, "check_runs" => [%{"id" => 99, "name" => @name, "external_id" => @external_id}]},
