@@ -74,6 +74,30 @@ defmodule Secrethub.Model.EnvVarTest do
       end
     end
 
+    test "with env variable names reserved for Semaphore" do
+      for name <- ["SEMAPHORE_GIT_BRANCH", "semaphore_workflow_triggered_by_api", "SEMAPHORE"] do
+        changeset = Content.changeset(%Content{}, %{env_vars: [%{name: name, value: "x"}]})
+
+        assert %Ecto.Changeset{
+                 changes: %{env_vars: [%Ecto.Changeset{valid?: false, errors: errors}]},
+                 valid?: false
+               } = changeset
+
+        assert errors == [name: {"#{name} is reserved for Semaphore", []}]
+      end
+    end
+
+    test "with Semaphore settings users are allowed to set" do
+      for name <- [
+            "SEMAPHORE_CACHE_BACKEND",
+            "SEMAPHORE_GIT_DEPTH",
+            "SEMAPHORE_AGENT_UPLOAD_JOB_LOGS"
+          ] do
+        assert %Ecto.Changeset{valid?: true} =
+                 Content.changeset(%Content{}, %{env_vars: [%{name: name, value: "x"}]})
+      end
+    end
+
     test "with empty env variable value" do
       assert %Ecto.Changeset{
                changes: %{env_vars: [%Ecto.Changeset{valid?: false}]},
