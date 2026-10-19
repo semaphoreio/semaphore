@@ -48,5 +48,35 @@ defmodule ProvidersTest do
       assert {:ok, _} = FeatureProvider.find_feature("a-feature-type", reload: true, provider: provider)
       assert {:ok, _} = FeatureProvider.find_feature("a-feature-type", provider: provider)
     end
+
+    test "serves the last known features while the provider fails, with `stale_ttl_ms`" do
+      provider =
+        {MockedProvider,
+         [cache: {FeatureProvider.CachexCache, name: :mocked_provider_cache, ttl_ms: 50, stale_ttl_ms: 1_000}]}
+
+      MockedProvider
+      |> expect(:provide_features, fn _args, _opts -> {:ok, FeatureFactory.build_features(["a-feature-type"])} end)
+      |> expect(:provide_features, fn _args, _opts -> {:error, :unavailable} end)
+      |> expect(:provide_features, fn _args, _opts -> {:error, :unavailable} end)
+
+      assert {:ok, _} = FeatureProvider.find_feature("a-feature-type", param: "org-1", provider: provider)
+      Process.sleep(100)
+      assert {:ok, _} = FeatureProvider.find_feature("a-feature-type", param: "org-1", provider: provider)
+
+      assert {:ok, _} =
+               FeatureProvider.find_feature("a-feature-type", param: "org-1", reload: true, provider: provider)
+    end
+
+    test "fails once the provider fails and nothing was ever loaded, with `stale_ttl_ms`" do
+      provider =
+        {MockedProvider,
+         [cache: {FeatureProvider.CachexCache, name: :mocked_provider_cache, ttl_ms: 50, stale_ttl_ms: 1_000}]}
+
+      MockedProvider
+      |> expect(:provide_features, fn _args, _opts -> {:error, :unavailable} end)
+
+      assert {:error, {:not_found, _}} =
+               FeatureProvider.find_feature("a-feature-type", param: "org-2", provider: provider)
+    end
   end
 end
