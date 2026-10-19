@@ -94,6 +94,7 @@ defmodule RepositoryHub.GithubChecksClientTest do
         assert url == "https://api.github.com/repos/#{@owner}/#{@repo}/commits/#{@sha}/check-runs"
         assert query[:check_name] == @name
         assert query[:per_page] == 100
+        assert query[:page] == 1
         assert query[:app_id] == @app_id
         assert query[:filter] == "all"
 
@@ -195,6 +196,84 @@ defmodule RepositoryHub.GithubChecksClientTest do
                  },
                  token: "ghs_installation_token"
                )
+    end
+
+    test "follows pages until a short one and finds a run on a later page" do
+      other_runs = fn from -> Enum.map(from..(from + 99), &%{"id" => &1, "external_id" => "semaphore:other"}) end
+
+      mock_github(fn %{method: :get, query: query} ->
+        case query[:page] do
+          1 -> json(%{"check_runs" => other_runs.(1)}, status: 200)
+          2 -> json(%{"check_runs" => other_runs.(101)}, status: 200)
+          3 -> json(%{"check_runs" => [%{"id" => 500, "external_id" => @external_id}]}, status: 200)
+        end
+      end)
+
+      assert {:ok, %{"id" => 500}} =
+               GithubChecksClient.find_check_run(
+                 %{
+                   repo_owner: @owner,
+                   repo_name: @repo,
+                   commit_sha: @sha,
+                   name: @name,
+                   external_id: @external_id,
+                   app_id: @app_id
+                 },
+                 token: "ghs_installation_token"
+               )
+    end
+
+    test "stops after 10 full pages" do
+      test_pid = self()
+
+      mock_github(fn %{method: :get, query: query} ->
+        send(test_pid, {:page, query[:page]})
+        json(%{"check_runs" => Enum.map(1..100, &%{"id" => &1, "external_id" => "semaphore:other"})}, status: 200)
+      end)
+
+      assert {:error, %{status: status}} =
+               GithubChecksClient.find_check_run(
+                 %{
+                   repo_owner: @owner,
+                   repo_name: @repo,
+                   commit_sha: @sha,
+                   name: @name,
+                   external_id: @external_id,
+                   app_id: @app_id
+                 },
+                 token: "ghs_installation_token"
+               )
+
+      assert status == GRPC.Status.not_found()
+      assert_received {:page, 10}
+      refute_received {:page, 11}
+    end
+
+    test "fails when a later page fails, without returning a partial lookup" do
+      mock_github(fn %{method: :get, query: query} ->
+        case query[:page] do
+          1 ->
+            json(%{"check_runs" => Enum.map(1..100, &%{"id" => &1, "external_id" => "semaphore:other"})}, status: 200)
+
+          2 ->
+            json(%{"message" => "Server Error"}, status: 502)
+        end
+      end)
+
+      assert {:error, %{status: status}} =
+               GithubChecksClient.find_check_run(
+                 %{
+                   repo_owner: @owner,
+                   repo_name: @repo,
+                   commit_sha: @sha,
+                   name: @name,
+                   external_id: @external_id,
+                   app_id: @app_id
+                 },
+                 token: "ghs_installation_token"
+               )
+
+      assert status == GRPC.Status.unavailable()
     end
 
     test "returns not_found when only other apps have a run with the name" do

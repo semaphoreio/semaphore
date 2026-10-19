@@ -11,6 +11,9 @@ defmodule RepositoryHub.GithubChecksClient do
 
   alias RepositoryHub.GithubApi
 
+  @per_page 100
+  @max_pages 10
+
   def create_check_run(params, opts \\ []) do
     body =
       %{
@@ -59,19 +62,17 @@ defmodule RepositoryHub.GithubChecksClient do
   `filter: "all"` is required: GitHub's default (`latest`) returns only the
   most recent run per name, so the run of a pipeline that overlaps with
   another one on the same commit would not be found and would be duplicated.
+
+  Pages are followed until a short page, up to `@max_pages`. GitHub keeps at
+  most 1000 same-named runs per check suite, and the `app_id` filter limits
+  the lookup to Semaphore's suite, so that covers every run.
   """
   def find_check_run(params, opts \\ []) do
     GithubApi.with_client(opts[:token], params.repo_owner, :find_check_run, fn client ->
-      client
-      |> Tesla.get(
-        "/repos/#{params.repo_owner}/#{params.repo_name}/commits/#{params.commit_sha}/check-runs",
-        query: [check_name: params.name, app_id: params.app_id, filter: "all", per_page: 100]
-      )
-      |> GithubApi.handle_response(:find_check_run, params)
+      list_check_runs(client, params, 1, [])
     end)
-    |> unwrap(fn body ->
-      body
-      |> Map.get("check_runs", [])
+    |> unwrap(fn runs ->
+      runs
       |> Enum.filter(&(&1["external_id"] == params.external_id))
       |> case do
         [] ->
@@ -79,6 +80,24 @@ defmodule RepositoryHub.GithubChecksClient do
 
         runs ->
           runs |> Enum.max_by(&(&1["id"] || 0)) |> wrap()
+      end
+    end)
+  end
+
+  defp list_check_runs(client, params, page, acc) do
+    client
+    |> Tesla.get(
+      "/repos/#{params.repo_owner}/#{params.repo_name}/commits/#{params.commit_sha}/check-runs",
+      query: [check_name: params.name, app_id: params.app_id, filter: "all", per_page: @per_page, page: page]
+    )
+    |> GithubApi.handle_response(:find_check_run, params)
+    |> unwrap(fn body ->
+      runs = Map.get(body, "check_runs", [])
+
+      if length(runs) < @per_page or page >= @max_pages do
+        wrap(acc ++ runs)
+      else
+        list_check_runs(client, params, page + 1, acc ++ runs)
       end
     end)
   end
