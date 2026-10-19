@@ -5,17 +5,8 @@ defmodule Zebra.Workers.JobRequestFactory.FailureReason do
 
   # failure_reason is a varchar(255) column, and Postgres counts codepoints, not graphemes
   @max_length 255
-  @max_name_length 64
 
-  @doc """
-  Shortens a user-chosen name to #{@max_name_length} codepoints, drops invalid UTF-8
-  and replaces control characters such as newlines with "?".
-  """
-  def clip(name) do
-    name
-    |> take_codepoints(@max_name_length)
-    |> String.replace(~r/[[:cntrl:]]/u, "?")
-  end
+  defdelegate clip(name), to: EnvVarPolicy
 
   @doc """
   Joins as many entries as fit after the prefix, ending with "and N more" when some are left out.
