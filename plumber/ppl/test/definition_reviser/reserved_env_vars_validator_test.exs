@@ -69,6 +69,22 @@ defmodule Ppl.DefinitionReviser.ReservedEnvVarsValidator.Test do
     end
   end
 
+  describe "valid_container_name?/1" do
+    test "accepts the dotted and dashed names service containers use" do
+      for name <- ["discovery.type", "xpack.security.enabled", "node-version", "MY_VAR"] do
+        assert ReservedEnvVarsValidator.valid_container_name?(name),
+               "expected #{name} to be valid"
+      end
+    end
+
+    test "rejects names that would break the docker-compose environment line" do
+      for name <- ["", "1ST", ".hidden", "A B", "A=B", "A:B", "A#B", "A\nB", "FOO\n", nil] do
+        refute ReservedEnvVarsValidator.valid_container_name?(name),
+               "expected #{inspect(name)} to be invalid"
+      end
+    end
+  end
+
   describe "valid_name?/1" do
     test "accepts shell identifiers" do
       assert ReservedEnvVarsValidator.valid_name?("MY_VAR")
@@ -213,13 +229,51 @@ defmodule Ppl.DefinitionReviser.ReservedEnvVarsValidator.Test do
                )
     end
 
+    test "accepts dotted names in pipeline and block service container env_vars" do
+      container = %{
+        "name" => "es",
+        "env_vars" => [env_var("discovery.type"), env_var("xpack.security.enabled")]
+      }
+
+      definition =
+        definition(block_agent: %{"containers" => [container]})
+        |> put_in(["agent", "containers"], [container])
+
+      assert ReservedEnvVarsValidator.validate(definition, @ppl_req) == {:ok, definition}
+    end
+
+    test "still rejects dotted names outside containers" do
+      definition = definition(job_env_vars: [env_var("discovery.type")])
+
+      assert ReservedEnvVarsValidator.validate(definition, @ppl_req) ==
+               invalid("'discovery.type' (block 'Build', job 'Test')")
+    end
+
+    test "rejects container env var names that would break the compose file" do
+      definition =
+        put_in(definition(), ["agent", "containers"], [
+          %{"name" => "es", "env_vars" => [env_var("a=b")]}
+        ])
+
+      assert ReservedEnvVarsValidator.validate(definition, @ppl_req) ==
+               invalid("'a=b' (agent container 'es')")
+    end
+
+    test "shows long reserved names in full" do
+      definition =
+        definition(job_env_vars: [env_var("SEMAPHORE_WORKFLOW_TRIGGERED_BY_MANUAL_RUN")])
+
+      assert ReservedEnvVarsValidator.validate(definition, @ppl_req) ==
+               reserved("SEMAPHORE_WORKFLOW_TRIGGERED_BY_MANUAL_RUN (block 'Build', job 'Test')")
+    end
+
     test "clips long names and replaces control characters in the message" do
       long = String.duplicate("a", 100) <> "-"
       definition = definition(job_env_vars: [env_var(long), env_var("A\tB")])
 
       assert ReservedEnvVarsValidator.validate(definition, @ppl_req) ==
                invalid(
-                 "'#{String.duplicate("a", 40)}' (block 'Build', job 'Test'), " <>
+                 "'#{String.duplicate("a", 64)}' (block 'Build', job 'Test'), " <>
                    "'A?B' (block 'Build', job 'Test')"
                )
     end
