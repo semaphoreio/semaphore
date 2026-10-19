@@ -82,10 +82,46 @@ defmodule RepositoryHub.GithubApiTest do
     end
 
     test "maps any other 403 to failed_precondition" do
-      respond(403, %{"message" => "API rate limit exceeded"})
+      respond(403, %{"message" => "Must have admin rights to Repository."})
 
       assert {:error, %{status: status}} = call()
       assert status == GRPC.Status.failed_precondition()
+    end
+
+    test "maps a primary rate limit 403 to unavailable" do
+      mock_github(remaining(5000), fn _ ->
+        %Tesla.Env{
+          status: 403,
+          headers: [{"x-ratelimit-remaining", "0"}],
+          body: %{"message" => "Forbidden"}
+        }
+      end)
+
+      assert {:error, %{status: status}} = call()
+      assert status == GRPC.Status.unavailable()
+    end
+
+    test "maps a secondary rate limit 403 to unavailable" do
+      mock_github(remaining(5000), fn _ ->
+        %Tesla.Env{status: 403, headers: [{"retry-after", "60"}], body: %{"message" => "Forbidden"}}
+      end)
+
+      assert {:error, %{status: status}} = call()
+      assert status == GRPC.Status.unavailable()
+    end
+
+    test "maps a 403 with a rate limit message to unavailable" do
+      respond(403, %{"message" => "You have exceeded a secondary rate limit. Please wait a few minutes."})
+
+      assert {:error, %{status: status}} = call()
+      assert status == GRPC.Status.unavailable()
+    end
+
+    test "maps 429 to unavailable" do
+      respond(429, %{"message" => "Too Many Requests"})
+
+      assert {:error, %{status: status}} = call()
+      assert status == GRPC.Status.unavailable()
     end
 
     test "maps 4xx to failed_precondition" do

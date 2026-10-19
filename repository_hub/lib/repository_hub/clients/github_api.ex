@@ -61,6 +61,8 @@ defmodule RepositoryHub.GithubApi do
     (the GitHub App installation lacks a permission)
   - 5xx or a transport error → `unavailable` (a write may still have landed,
     so callers must not treat it as a definitive rejection)
+  - 429, or a 403 from a primary or secondary rate limit → `unavailable`
+    (transient, so the caller retries)
   - any other status → `failed_precondition`
   """
   def handle_response({:ok, %Tesla.Env{status: status, body: body}}, _purpose, _params)
@@ -90,9 +92,14 @@ defmodule RepositoryHub.GithubApi do
     fail_with(:unavailable, "GitHub API #{purpose} failed (status #{status}): #{message_from(body)}")
   end
 
-  def handle_response({:ok, %Tesla.Env{status: status, body: body}}, purpose, params) do
+  def handle_response({:ok, %Tesla.Env{status: status, body: body} = env}, purpose, params) do
     log_response_error(status, body, purpose, params)
-    fail_with(:precondition, "GitHub API #{purpose} failed (status #{status}): #{message_from(body)}")
+
+    if rate_limited?(env) do
+      fail_with(:unavailable, "GitHub API #{purpose} rate limited (status #{status}): #{message_from(body)}")
+    else
+      fail_with(:precondition, "GitHub API #{purpose} failed (status #{status}): #{message_from(body)}")
+    end
   end
 
   def handle_response({:error, reason}, purpose, params) do
@@ -145,6 +152,19 @@ defmodule RepositoryHub.GithubApi do
         {:ok, 100}
     end
   end
+
+  # GitHub signals both primary and secondary rate limits with a 403 or 429,
+  # marked by an exhausted x-ratelimit-remaining, a retry-after header or the
+  # message. See https://docs.github.com/en/rest/using-the-rest-api/troubleshooting-the-rest-api#rate-limit-errors
+  defp rate_limited?(%Tesla.Env{status: 429}), do: true
+
+  defp rate_limited?(%Tesla.Env{status: 403, body: body} = env) do
+    Tesla.get_header(env, "x-ratelimit-remaining") == "0" or
+      Tesla.get_header(env, "retry-after") != nil or
+      message_from(body) =~ ~r/rate limit/i
+  end
+
+  defp rate_limited?(_env), do: false
 
   defp message_from(%{"message" => message}) when is_binary(message), do: message
   defp message_from(_), do: "unknown error"
