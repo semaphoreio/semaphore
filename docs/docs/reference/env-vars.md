@@ -19,6 +19,8 @@ A pipeline fails to start if its YAML or its promotion or task parameters set a 
 
 Variable names must be valid shell identifiers: letters, digits, and underscores, not starting with a digit. A pipeline whose YAML or parameters use any other name fails to start, and a job whose secrets use one fails before it starts. The page shows the name under `Invalid environment variable names`.
 
+Environment variables of [service containers](../using-semaphore/containers) can also contain dots and dashes after the first character, such as `discovery.type` or `node-version`.
+
 Secrets saved before this rule was enforced can hold names that no longer pass, such as a name with a trailing newline. Every job that uses such a secret fails until you edit the secret and save the variable again with a valid name.
 
 ## Semaphore variables {#semaphore-variables}
