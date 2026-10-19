@@ -78,10 +78,13 @@ defmodule Ppl.DefinitionReviser.ReservedEnvVarsValidator do
 
   # Same rule as Secrethub and Zebra; the agent writes names unquoted into `export NAME=value`.
   @valid_name ~r/\A[a-zA-Z_][a-zA-Z0-9_]*\z/
+  # Service container env vars go into the docker-compose file instead, where dotted
+  # names like `discovery.type` are common.
+  @valid_container_name ~r/\A[a-zA-Z_][a-zA-Z0-9_.-]*\z/
 
   @reserved_prefix "Reserved environment variables cannot be set: "
   @invalid_prefix "Invalid environment variable names: "
-  @max_name_length 40
+  @max_name_length 64
 
   # Names are compared case-insensitively because Windows env vars are case-insensitive.
   def reserved?(name) when is_binary(name) do
@@ -94,13 +97,18 @@ defmodule Ppl.DefinitionReviser.ReservedEnvVarsValidator do
   def valid_name?(name) when is_binary(name), do: Regex.match?(@valid_name, name)
   def valid_name?(_name), do: false
 
+  def valid_container_name?(name) when is_binary(name),
+    do: Regex.match?(@valid_container_name, name)
+
+  def valid_container_name?(_name), do: false
+
   def validate(definition, ppl_req) do
     names = Enum.uniq(definition_names(definition) ++ parameter_names(ppl_req))
 
-    case Enum.reject(names, fn {name, _location} -> valid_name?(name) end) do
+    case Enum.reject(names, &valid_entry?/1) do
       [] ->
         names
-        |> Enum.filter(fn {name, _location} -> reserved?(name) end)
+        |> Enum.filter(fn {name, _location, _rule} -> reserved?(name) end)
         |> result(definition, @reserved_prefix, &"#{display(&1)} (#{&2})")
 
       invalid ->
@@ -110,8 +118,11 @@ defmodule Ppl.DefinitionReviser.ReservedEnvVarsValidator do
 
   defp result([], definition, _prefix, _format), do: ToTuple.ok(definition)
 
+  defp valid_entry?({name, _location, :container}), do: valid_container_name?(name)
+  defp valid_entry?({name, _location, :shell}), do: valid_name?(name)
+
   defp result(violations, _definition, prefix, format) do
-    entries = Enum.map(violations, fn {name, location} -> format.(name, location) end)
+    entries = Enum.map(violations, fn {name, location, _rule} -> format.(name, location) end)
     {:error, {:malformed, prefix <> Enum.join(entries, ", ")}}
   end
 
@@ -165,23 +176,29 @@ defmodule Ppl.DefinitionReviser.ReservedEnvVarsValidator do
 
   defp container_names(containers, label) when is_list(containers) do
     Enum.flat_map(containers, fn container ->
-      env_var_names(container["env_vars"], "#{label} container '#{display(container["name"])}'")
+      env_var_names(
+        container["env_vars"],
+        "#{label} container '#{display(container["name"])}'",
+        :container
+      )
     end)
   end
 
   defp container_names(_containers, _label), do: []
 
   defp matrix_names(matrix, label) when is_list(matrix) do
-    for %{"env_var" => name} <- matrix, do: {name, label}
+    for %{"env_var" => name} <- matrix, do: {name, label, :shell}
   end
 
   defp matrix_names(_matrix, _label), do: []
 
-  defp env_var_names(env_vars, label) when is_list(env_vars) do
-    for %{"name" => name} <- env_vars, do: {name, label}
+  defp env_var_names(env_vars, label, rule \\ :shell)
+
+  defp env_var_names(env_vars, label, rule) when is_list(env_vars) do
+    for %{"name" => name} <- env_vars, do: {name, label, rule}
   end
 
-  defp env_var_names(_env_vars, _label), do: []
+  defp env_var_names(_env_vars, _label, _rule), do: []
 
   defp display(text) when is_binary(text) do
     text
