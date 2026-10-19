@@ -67,7 +67,11 @@ if config_env() == :prod do
       nil ->
         {RepositoryHub.FeatureHubProvider,
          [
-           cache: {FeatureProvider.CachexCache, name: :feature_provider_cache, ttl_ms: :timer.minutes(10)}
+           # stale_ttl_ms keeps serving the last known flags while FeatureHub
+           # is down, so a FeatureHub outage doesn't stop status delivery.
+           cache:
+             {FeatureProvider.CachexCache,
+              name: :feature_provider_cache, ttl_ms: :timer.minutes(10), stale_ttl_ms: :timer.hours(24)}
          ]}
 
       path ->
