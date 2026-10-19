@@ -6,101 +6,12 @@ defmodule Ppl.DefinitionReviser.ReservedEnvVarsValidator do
 
   alias Util.ToTuple
 
-  # Keep in sync with Zebra.Workers.JobRequestFactory.ReservedEnvVars.
-  @reserved MapSet.new([
-              "SEMAPHORE",
-              "SEMAPHORE_AGENT_MACHINE_ENVIRONMENT_TYPE",
-              "SEMAPHORE_AGENT_MACHINE_OS_IMAGE",
-              "SEMAPHORE_AGENT_MACHINE_TYPE",
-              "SEMAPHORE_ARTIFACT_TOKEN",
-              "SEMAPHORE_BLOCK_NAME",
-              "SEMAPHORE_GIT_BRANCH",
-              "SEMAPHORE_GIT_COMMITTER",
-              "SEMAPHORE_GIT_COMMIT_AUTHOR",
-              "SEMAPHORE_GIT_COMMIT_RANGE",
-              "SEMAPHORE_GIT_DIR",
-              "SEMAPHORE_GIT_PROVIDER",
-              "SEMAPHORE_GIT_PR_BRANCH",
-              "SEMAPHORE_GIT_PR_NAME",
-              "SEMAPHORE_GIT_PR_NUMBER",
-              "SEMAPHORE_GIT_PR_SHA",
-              "SEMAPHORE_GIT_PR_SLUG",
-              "SEMAPHORE_GIT_REF",
-              "SEMAPHORE_GIT_REF_TYPE",
-              "SEMAPHORE_GIT_REPO_NAME",
-              "SEMAPHORE_GIT_REPO_SLUG",
-              "SEMAPHORE_GIT_SHA",
-              "SEMAPHORE_GIT_TAG_NAME",
-              "SEMAPHORE_GIT_URL",
-              "SEMAPHORE_GIT_WORKING_BRANCH",
-              "SEMAPHORE_JOB_COUNT",
-              "SEMAPHORE_JOB_CREATION_TIME",
-              "SEMAPHORE_JOB_ID",
-              "SEMAPHORE_JOB_INDEX",
-              "SEMAPHORE_JOB_NAME",
-              "SEMAPHORE_JOB_ORIGINAL_ID",
-              "SEMAPHORE_JOB_RERUN",
-              "SEMAPHORE_JOB_TYPE",
-              "SEMAPHORE_OIDC_TOKEN",
-              "SEMAPHORE_ORGANIZATION_ID",
-              "SEMAPHORE_ORGANIZATION_URL",
-              "SEMAPHORE_PIPELINE_ARTEFACT_ID",
-              "SEMAPHORE_PIPELINE_CREATED_AT",
-              "SEMAPHORE_PIPELINE_DONE_AT",
-              "SEMAPHORE_PIPELINE_ID",
-              "SEMAPHORE_PIPELINE_INIT_DURATION",
-              "SEMAPHORE_PIPELINE_NAME",
-              "SEMAPHORE_PIPELINE_PROMOTED_BY",
-              "SEMAPHORE_PIPELINE_PROMOTION",
-              "SEMAPHORE_PIPELINE_QUEUEING_DURATION",
-              "SEMAPHORE_PIPELINE_RERUN",
-              "SEMAPHORE_PIPELINE_RESULT",
-              "SEMAPHORE_PIPELINE_RESULT_REASON",
-              "SEMAPHORE_PIPELINE_RUNNING_DURATION",
-              "SEMAPHORE_PIPELINE_STARTED_AT",
-              "SEMAPHORE_PIPELINE_TOTAL_DURATION",
-              "SEMAPHORE_PROJECT_ID",
-              "SEMAPHORE_PROJECT_NAME",
-              "SEMAPHORE_SNAPSHOT_ID",
-              "SEMAPHORE_WORKFLOW_HOOK_SOURCE",
-              "SEMAPHORE_WORKFLOW_ID",
-              "SEMAPHORE_WORKFLOW_NUMBER",
-              "SEMAPHORE_WORKFLOW_RERUN",
-              "SEMAPHORE_WORKFLOW_TRIGGERED_BY",
-              "SEMAPHORE_WORKFLOW_TRIGGERED_BY_API",
-              "SEMAPHORE_WORKFLOW_TRIGGERED_BY_HOOK",
-              "SEMAPHORE_WORKFLOW_TRIGGERED_BY_MANUAL_RUN",
-              "SEMAPHORE_WORKFLOW_TRIGGERED_BY_SCHEDULE",
-              "SEMAPHORE_YAML_FILE_PATH"
-            ])
-
-  @reserved_pattern ~r/\ASEMAPHORE_PIPELINE_\d+_ARTEFACT_ID\z/
-
-  # Same rule as Secrethub and Zebra; the agent writes names unquoted into `export NAME=value`.
-  @valid_name ~r/\A[a-zA-Z_][a-zA-Z0-9_]*\z/
-  # Service container env vars go into the docker-compose file instead, where dotted
-  # names like `discovery.type` are common.
-  @valid_container_name ~r/\A[a-zA-Z_][a-zA-Z0-9_.-]*\z/
-
   @reserved_prefix "Reserved environment variables cannot be set: "
   @invalid_prefix "Invalid environment variable names: "
-  @max_name_length 64
 
-  # Names are compared case-insensitively because Windows env vars are case-insensitive.
-  def reserved?(name) when is_binary(name) do
-    name = String.upcase(name)
-    MapSet.member?(@reserved, name) or Regex.match?(@reserved_pattern, name)
-  end
-
-  def reserved?(_name), do: false
-
-  def valid_name?(name) when is_binary(name), do: Regex.match?(@valid_name, name)
-  def valid_name?(_name), do: false
-
-  def valid_container_name?(name) when is_binary(name),
-    do: Regex.match?(@valid_container_name, name)
-
-  def valid_container_name?(_name), do: false
+  defdelegate reserved?(name), to: EnvVarPolicy
+  defdelegate valid_name?(name), to: EnvVarPolicy
+  defdelegate valid_container_name?(name), to: EnvVarPolicy
 
   def validate(definition, ppl_req) do
     names = Enum.uniq(definition_names(definition) ++ parameter_names(ppl_req))
@@ -200,14 +111,7 @@ defmodule Ppl.DefinitionReviser.ReservedEnvVarsValidator do
 
   defp env_var_names(_env_vars, _label, _rule), do: []
 
-  defp display(text) when is_binary(text) do
-    text
-    |> String.codepoints()
-    |> Enum.filter(&String.valid?/1)
-    |> Enum.take(@max_name_length)
-    |> Enum.join()
-    |> String.replace(~r/[[:cntrl:]]/u, "?")
-  end
+  defp display(text) when is_binary(text), do: EnvVarPolicy.clip(text)
 
   defp display(nil), do: ""
   defp display(other), do: other |> inspect() |> display()
