@@ -8,6 +8,7 @@ defmodule Ppl.DefinitionReviser.ReservedEnvVarsValidator do
 
   @reserved_prefix "Reserved environment variables cannot be set: "
   @invalid_prefix "Invalid environment variable names: "
+  @max_listed 20
 
   defdelegate reserved?(name), to: EnvVarPolicy
   defdelegate valid_name?(name), to: EnvVarPolicy
@@ -16,25 +17,43 @@ defmodule Ppl.DefinitionReviser.ReservedEnvVarsValidator do
   def validate(definition, ppl_req) do
     names = Enum.uniq(definition_names(definition) ++ parameter_names(ppl_req))
 
+    with :ok <- check(names), do: ToTuple.ok(definition)
+  end
+
+  @doc """
+  Checks only the request parameters, for paths that run jobs before the
+  definition is revised, such as the initialization job.
+  """
+  def validate_parameters(ppl_req), do: ppl_req |> parameter_names() |> Enum.uniq() |> check()
+
+  defp check(names) do
     case Enum.reject(names, &valid_entry?/1) do
       [] ->
         names
         |> Enum.filter(fn {name, _location, _rule} -> reserved?(name) end)
-        |> result(definition, @reserved_prefix, &"#{display(&1)} (#{&2})")
+        |> result(@reserved_prefix, &"#{display(&1)} (#{&2})")
 
       invalid ->
-        result(invalid, definition, @invalid_prefix, &"'#{display(&1)}' (#{&2})")
+        result(invalid, @invalid_prefix, &"'#{display(&1)}' (#{&2})")
     end
   end
-
-  defp result([], definition, _prefix, _format), do: ToTuple.ok(definition)
 
   defp valid_entry?({name, _location, :container}), do: valid_container_name?(name)
   defp valid_entry?({name, _location, :shell}), do: valid_name?(name)
 
-  defp result(violations, _definition, prefix, format) do
+  defp result([], _prefix, _format), do: :ok
+
+  defp result(violations, prefix, format) do
     entries = Enum.map(violations, fn {name, location, _rule} -> format.(name, location) end)
-    {:error, {:malformed, prefix <> Enum.join(entries, ", ")}}
+    {:error, {:malformed, prefix <> join(entries)}}
+  end
+
+  defp join(entries) when length(entries) <= @max_listed,
+    do: Enum.join(entries, ", ")
+
+  defp join(entries) do
+    listed = entries |> Enum.take(@max_listed) |> Enum.join(", ")
+    listed <> " and #{length(entries) - @max_listed} more"
   end
 
   defp definition_names(definition) do

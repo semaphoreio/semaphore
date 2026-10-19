@@ -279,6 +279,50 @@ defmodule Ppl.DefinitionReviser.ReservedEnvVarsValidator.Test do
     end
   end
 
+  describe "validate_parameters/1" do
+    test "accepts requests without reserved or invalid parameter names" do
+      assert ReservedEnvVarsValidator.validate_parameters(%{
+               request_args: %{"env_vars" => [env_var("DEPLOY_ENV")]}
+             }) == :ok
+
+      assert ReservedEnvVarsValidator.validate_parameters(%{request_args: %{}}) == :ok
+      assert ReservedEnvVarsValidator.validate_parameters(%{request_args: nil}) == :ok
+    end
+
+    test "rejects reserved and invalid parameter names" do
+      assert ReservedEnvVarsValidator.validate_parameters(%{
+               request_args: %{"env_vars" => [env_var("SEMAPHORE_PIPELINE_RESULT")]}
+             }) == reserved("SEMAPHORE_PIPELINE_RESULT (parameters)")
+
+      assert ReservedEnvVarsValidator.validate_parameters(%{
+               request_args: %{"env_vars" => [env_var("deploy-env")]}
+             }) == invalid("'deploy-env' (parameters)")
+    end
+  end
+
+  describe "validate/2 message length" do
+    test "lists at most 20 violations and counts the rest" do
+      names = Enum.map(1..25, &"BAD-#{&1}")
+      definition = definition(job_env_vars: Enum.map(names, &env_var/1))
+
+      assert {:error, {:malformed, message}} =
+               ReservedEnvVarsValidator.validate(definition, @ppl_req)
+
+      assert message =~ "'BAD-20' (block 'Build', job 'Test') and 5 more"
+      refute message =~ "'BAD-21'"
+    end
+
+    test "lists all violations when there are 20 or fewer" do
+      definition = definition(job_env_vars: Enum.map(1..20, &env_var("BAD-#{&1}")))
+
+      assert {:error, {:malformed, message}} =
+               ReservedEnvVarsValidator.validate(definition, @ppl_req)
+
+      assert message =~ "'BAD-20' (block 'Build', job 'Test')"
+      refute message =~ "more"
+    end
+  end
+
   describe "DefinitionReviser.revise_definition/2" do
     test "fails the pipeline as malformed when the YAML sets a reserved name" do
       definition =
