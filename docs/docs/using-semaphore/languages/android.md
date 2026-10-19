@@ -33,7 +33,7 @@ To use an Android container in your pipeline, follow these steps:
 1. Open the pipeline
 2. Select "Docker Containers" in **Environment Type**
 3. Choose a machine
-4. Type the name of the **Image**. Use one of the available [Android SDK images](#sdks)
+4. Type the name of the **Image**. Use one of the available [Semaphore Container Registry](../containers/container-registry).
 
     ![Selecting an Android image](./img/android-container.jpg)
 
@@ -75,7 +75,7 @@ To configure your Android container using YAML, follow these steps:
                 - checkout
     ```
 
-4. The first item `name: main` and in `image` select one of the available [Android SDK images](#sdks)
+4. The first item `name: main` and in `image` select one of the available in the [Semaphore Container Registry](../containers/container-registry).
 5. Save the file and push it to the repository
 
 </Steps>
