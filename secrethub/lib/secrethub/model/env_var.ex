@@ -25,7 +25,13 @@ defmodule Secrethub.Model.EnvVar do
         Ecto.Changeset.add_error(changeset, :name, "of enviorment variable is invalid")
 
       EnvVarPolicy.reserved?(name) ->
-        Ecto.Changeset.add_error(changeset, :name, "#{name} is reserved for Semaphore")
+        Ecto.Changeset.add_error(
+          changeset,
+          :name,
+          "#{name} is reserved for Semaphore. To use a different value, export it in " <>
+            "the job commands instead; see Reserved variables in the environment " <>
+            "variables reference"
+        )
 
       true ->
         changeset

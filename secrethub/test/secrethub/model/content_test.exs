@@ -83,7 +83,10 @@ defmodule Secrethub.Model.EnvVarTest do
                  valid?: false
                } = changeset
 
-        assert errors == [name: {"#{name} is reserved for Semaphore", []}]
+        assert [name: {message, []}] = errors
+        assert message =~ "#{name} is reserved for Semaphore."
+        assert message =~ "export it in the job commands"
+        assert message =~ "Reserved variables"
       end
     end
 
