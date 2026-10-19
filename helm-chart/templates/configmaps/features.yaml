@@ -140,6 +140,8 @@ data:
       enabled: true
     job_level_partial_rerun:
       enabled: true
+    github_checks_api:
+      enabled: false
 {{- else }}
   features.yml: |-
     activity_monitor:
@@ -272,4 +274,6 @@ data:
       enabled: true
     job_level_partial_rerun:
       enabled: true
+    github_checks_api:
+      enabled: false
 {{- end }}
