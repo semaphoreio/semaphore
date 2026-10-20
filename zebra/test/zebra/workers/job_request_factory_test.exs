@@ -1435,4 +1435,13 @@ defmodule Zebra.Workers.JobRequestFactoryTest do
 
     assert job.aasm_state == "pending"
   end
+
+  test "init reads the concurrency settings from config" do
+    assert %Zebra.Workers.DbWorker{
+             concurrency_mode: :continuous,
+             parallelism: 10,
+             records_per_tick: 100,
+             process_timeout: 15_000
+           } = Worker.init()
+  end
 end

@@ -145,6 +145,8 @@ spec:
               value: "true"
             - name: START_JOB_REQUEST_FACTORY
               value: "true"
+            - name: JOB_REQUEST_FACTORY_PARALLELISM
+              value: {{ .Values.publicApi.jobRequestFactoryParallelism | quote }}
             - name: START_MONITOR
               value: "false"
             - name: START_JOB_STOPPER

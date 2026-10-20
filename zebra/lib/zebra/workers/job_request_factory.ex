@@ -31,6 +31,17 @@ defmodule Zebra.Workers.JobRequestFactory do
       order_by: :created_at,
       order_direction: :asc,
       naptime: 1000,
+      # Every pod reads the same oldest pending rows, so most rows in a tick
+      # are already taken by another pod. Continuous mode keeps the slots
+      # busy with the rows this pod does win.
+      #
+      # Each in-flight row holds a DB connection for its whole transaction,
+      # so POSTGRES_DB_POOL_SIZE must leave room for `parallelism` plus the
+      # other workers running in the same pod.
+      concurrency_mode: :continuous,
+      parallelism: Zebra.Config.fetch!(__MODULE__, :parallelism),
+      records_per_tick: Zebra.Config.fetch!(__MODULE__, :records_per_tick),
+      process_timeout: Zebra.Config.fetch!(__MODULE__, :process_timeout),
       processor: &process/1
     }
   end

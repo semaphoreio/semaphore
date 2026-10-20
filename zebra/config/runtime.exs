@@ -27,7 +27,10 @@ config :zebra, Zebra.LegacyRepo,
 
 config :zebra, Zebra.Workers.JobRequestFactory,
   broker_url: System.get_env("JOB_CALLBACK_BROKER_URL") || "s2-callback.semaphoretest.xyz",
-  timeout: 1_000
+  timeout: 1_000,
+  parallelism: String.to_integer(System.get_env("JOB_REQUEST_FACTORY_PARALLELISM") || "10"),
+  records_per_tick: String.to_integer(System.get_env("JOB_REQUEST_FACTORY_RECORDS_PER_TICK") || "100"),
+  process_timeout: String.to_integer(System.get_env("JOB_REQUEST_FACTORY_PROCESS_TIMEOUT_MS") || "15000")
 
 config :zebra, Zebra.Workers.WaitingJobTerminator,
   max_scheduled_time_in_seconds: System.get_env("MAX_SCHEDULED_TIME_IN_SECONDS") || "86400"

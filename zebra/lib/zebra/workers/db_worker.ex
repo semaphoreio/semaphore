@@ -1,5 +1,6 @@
 defmodule Zebra.Workers.DbWorker do
   import Ecto.Query
+  require Logger
   alias Zebra.LegacyRepo, as: Repo
 
   @self_hosted_prefix "s1-%"
@@ -20,8 +21,26 @@ defmodule Zebra.Workers.DbWorker do
     # how many objects to process in parallel during a tick
     :parallelism,
     :records_per_tick,
-    :isolate_machine_types
+    :isolate_machine_types,
+    # :batches (default) processes rows in chunks of `parallelism` and waits
+    # for the whole chunk before starting the next one. It supports halting
+    # a tick by returning {:halt, _} from the processor.
+    #
+    # :continuous keeps `parallelism` rows in flight at all times: as soon as
+    # one row is done, the next one starts. Rows that lose the lock to another
+    # pod finish in milliseconds, so they no longer leave slots idle while the
+    # slowest row of a chunk is still running. {:halt, _} is not supported.
+    :concurrency_mode,
+    # :continuous mode only: how long one row may take, in milliseconds. It is
+    # also the row's transaction timeout, so the DB checkout deadline and the
+    # task kill agree. A row that runs past it is killed or loses its
+    # connection, its transaction is rolled back, and it is retried on a
+    # later tick without aborting the rest of the tick. External calls the
+    # processor already made are not undone.
+    :process_timeout
   ]
+
+  @default_process_timeout 15_000
 
   def start_link(worker) do
     pid =
@@ -59,10 +78,72 @@ defmodule Zebra.Workers.DbWorker do
 
     parallelism = worker.parallelism || 10
 
-    Zebra.Parallel.in_batches(rows, [batch_size: parallelism], fn r ->
-      process(worker, r)
+    case worker.concurrency_mode || :batches do
+      :batches ->
+        Zebra.Parallel.in_batches(rows, [batch_size: parallelism], fn r ->
+          process(worker, r)
+        end)
+
+      :continuous ->
+        process_continuously(worker, rows, parallelism)
+
+      other ->
+        raise ArgumentError,
+              "#{worker.metric_name}: unknown concurrency_mode #{inspect(other)}, " <>
+                "expected :batches or :continuous"
+    end
+  end
+
+  defp process_continuously(worker, rows, parallelism) do
+    rows
+    |> Zebra.Parallel.stream(
+      [
+        max_concurrency: parallelism,
+        timeout: process_timeout(worker),
+        metadata: [worker: worker.metric_name]
+      ],
+      fn r -> process_or_skip(worker, r) end
+    )
+    |> Enum.map(fn
+      {_id, {:ok, {:halt, _} = result}} ->
+        Logger.warning("#{worker.metric_name}: {:halt, _} is ignored in :continuous mode")
+        result
+
+      {_id, {:ok, result}} ->
+        result
+
+      {_id, {:error, :timeout}} ->
+        Watchman.increment("#{worker.metric_name}.process.timeout")
+        {:error, :timeout}
     end)
   end
+
+  # DBConnection raises this when the checkout waits too long in the pool
+  # queue, when the transaction outlives its timeout, or when the connection
+  # drops. The transaction is already rolled back or gone by then, so skip
+  # the row, which is retried on a later tick, instead of crashing the tick.
+  defp process_or_skip(worker, id) do
+    process(worker, id)
+  rescue
+    e in DBConnection.ConnectionError ->
+      reason = to_string(e.reason)
+
+      Watchman.increment({"#{worker.metric_name}.process.db_connection_error", [reason]})
+
+      Logger.warning(
+        "#{worker.metric_name}: DB connection error for #{id}, reason=#{reason}: " <>
+          Exception.message(e)
+      )
+
+      {:error, :db_connection}
+  end
+
+  defp process_timeout(worker), do: worker.process_timeout || @default_process_timeout
+
+  defp transaction_opts(%{concurrency_mode: :continuous} = worker),
+    do: [timeout: process_timeout(worker)]
+
+  defp transaction_opts(_worker), do: []
 
   defp submit_batch_size(name, v, nil), do: Watchman.submit("#{name}.batch_size", v)
 
@@ -71,22 +152,25 @@ defmodule Zebra.Workers.DbWorker do
 
   def process(worker, id) do
     Watchman.benchmark("#{worker.metric_name}.process.duration", fn ->
-      Repo.transaction(fn ->
-        row =
-          worker.schema
-          |> where([r], field(r, ^worker.state_field) == ^worker.state_value)
-          |> where([r], r.id == ^id)
-          |> lock("FOR UPDATE SKIP LOCKED")
-          |> Repo.one()
+      Repo.transaction(
+        fn ->
+          row =
+            worker.schema
+            |> where([r], field(r, ^worker.state_field) == ^worker.state_value)
+            |> where([r], r.id == ^id)
+            |> lock("FOR UPDATE SKIP LOCKED")
+            |> Repo.one()
 
-        if is_nil(row) do
-          Watchman.increment("#{worker.metric_name}.process.lock_missed")
-        else
-          Watchman.increment("#{worker.metric_name}.process.lock_obtained")
+          if is_nil(row) do
+            Watchman.increment("#{worker.metric_name}.process.lock_missed")
+          else
+            Watchman.increment("#{worker.metric_name}.process.lock_obtained")
 
-          worker.processor.(row)
-        end
-      end)
+            worker.processor.(row)
+          end
+        end,
+        transaction_opts(worker)
+      )
       |> case do
         {:ok, v} ->
           v
