@@ -172,7 +172,7 @@ defmodule Secrethub.OpenIDConnect.JWTClaim do
       },
       "actor" => %__MODULE__{
         name: "actor",
-        description: "User ID who triggered the promotion (can be NULL)",
+        description: "Provider login of whoever triggered the workflow (can be empty)",
         is_system_claim: true,
         is_aws_tag: false,
         is_mandatory: false,

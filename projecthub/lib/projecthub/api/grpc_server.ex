@@ -201,6 +201,7 @@ defmodule Projecthub.Api.GrpcServer do
 
       with {:ok, user} <- Task.yield(fetch_user),
            {:ok, org} <- Task.yield(fetch_org),
+           :ok <- require_owner_project(user, org, repo, integration_type),
            {:ok, response} <-
              RepositoryHubClient.fork(%{
                user_id: user.id,
@@ -281,6 +282,7 @@ defmodule Projecthub.Api.GrpcServer do
 
       with {:ok, user} <- Task.yield(fetch_user),
            {:ok, org} <- Task.yield(fetch_org),
+           :ok <- require_owner_project(user, org, repo, integration_type),
            {:ok, project} <-
              attempt_creation(
                user,
@@ -327,6 +329,24 @@ defmodule Projecthub.Api.GrpcServer do
   defp error_fork_and_create_response(req, message) do
     ForkAndCreateResponse.new(metadata: status_failed_precondition(req, message))
   end
+
+  defp require_owner_project(%User{service_account?: true}, org, repo, "github_app") do
+    case Projecthub.RepoUrl.validate(repo.url) do
+      {:ok, %{owner: owner}} ->
+        if Project.github_app_project_exists_for_owner?(org.id, owner) do
+          :ok
+        else
+          {:error,
+           "This organization has no project for a repository owned by #{owner}. " <>
+             "Add a project owned by #{owner} first."}
+        end
+
+      {:error, _} ->
+        :ok
+    end
+  end
+
+  defp require_owner_project(_user, _org, _repo, _integration_type), do: :ok
 
   def update(req, _) do
     Watchman.benchmark("projecthub_api.update.duration", fn ->
