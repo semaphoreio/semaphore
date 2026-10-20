@@ -151,6 +151,15 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
         return
       end
 
+      if (include_secrets_requested || enable_cache_requested) &&
+         !Semaphore::FeatureFlags.enabled?(:sem_approve_options, workflow.project.organization_id)
+        logger.info("pr-approval-options-feature-disabled",
+                    :include_secrets_requested => include_secrets_requested,
+                    :enable_cache_requested => enable_cache_requested)
+        Watchman.increment("hooks.pr_approval.options_feature_disabled")
+        return
+      end
+
       include_secrets_enabled = approval_option_enabled?(workflow.project, :allow_sem_approve_include_secrets)
       enable_cache_enabled = approval_enable_cache_option_enabled?(workflow.project)
 
