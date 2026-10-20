@@ -16,9 +16,7 @@ export const TierSelector = ({ group, updating, onUpdate }: Props) => {
   const [selected, setSelected] = useState<string | null>(currentValue);
 
   const onCooldown =
-    currentAddon !== undefined && !currentAddon.modifiable && !!currentAddon.price;
-  const disablingIsFinal =
-    currentAddon !== undefined && group.addons.every((a) => a.enabled || !a.price);
+    currentAddon !== undefined && !currentAddon.modifiable && currentAddon.selfService;
   const hasChanged = selected !== currentValue;
   const isDisabling = currentAddon && !selected;
   const selectedAddon = group.addons.find((a) => a.name === selected);
@@ -136,7 +134,7 @@ export const TierSelector = ({ group, updating, onUpdate }: Props) => {
                 {addon.description && (
                   <div className="f6 gray mt1">{addon.description}</div>
                 )}
-                {!addon.price && !isCurrent && (
+                {!addon.selfService && !isCurrent && (
                   <div className="f6 orange mt1">
                     Contact support to switch to this tier.
                   </div>
@@ -155,7 +153,7 @@ export const TierSelector = ({ group, updating, onUpdate }: Props) => {
                 <span>
                   Disable <span className="b">{currentAddon.displayName}</span>?
                   <span className="ml1 gray">
-                    {disablingIsFinal
+                    {group.disablingIsFinal
                       ? `You will need to contact support to enable it again.`
                       : `You wont be able to select an add-on for the next 24 hours.`}
                   </span>

@@ -11,6 +11,7 @@ defmodule Front.Models.Billing.AddonGroupTest do
         display_name: "Support",
         description: "Support tiers",
         type: :ADDON_GROUP_TYPE_EXCLUSIVE,
+        disabling_is_final: true,
         addons: [
           %{
             name: "support-tier-1",
@@ -19,6 +20,7 @@ defmodule Front.Models.Billing.AddonGroupTest do
             price: "$ 0.00",
             enabled: true,
             modifiable: true,
+            self_service: false,
             last_modified_at: nil
           }
         ]
@@ -30,6 +32,7 @@ defmodule Front.Models.Billing.AddonGroupTest do
       assert result.display_name == "Support"
       assert result.description == "Support tiers"
       assert result.type == :exclusive
+      assert result.disabling_is_final == true
       assert length(result.addons) == 1
 
       addon = hd(result.addons)
@@ -38,6 +41,7 @@ defmodule Front.Models.Billing.AddonGroupTest do
       assert addon.price == "$ 0.00"
       assert addon.enabled == true
       assert addon.modifiable == true
+      assert addon.self_service == false
     end
 
     test "maps regular group type" do
@@ -46,7 +50,8 @@ defmodule Front.Models.Billing.AddonGroupTest do
         display_name: "Extras",
         description: "",
         type: :ADDON_GROUP_TYPE_REGULAR,
-        addons: []
+        addons: [],
+        disabling_is_final: false
       }
 
       result = AddonGroup.from_grpc(grpc_group)
@@ -59,7 +64,8 @@ defmodule Front.Models.Billing.AddonGroupTest do
         display_name: "Other",
         description: "",
         type: :ADDON_GROUP_TYPE_UNSPECIFIED,
-        addons: []
+        addons: [],
+        disabling_is_final: false
       }
 
       result = AddonGroup.from_grpc(grpc_group)
@@ -74,6 +80,7 @@ defmodule Front.Models.Billing.AddonGroupTest do
         display_name: "Support",
         description: "Support tiers",
         type: :exclusive,
+        disabling_is_final: true,
         addons: [
           %Addon{
             name: "tier-1",
@@ -81,7 +88,8 @@ defmodule Front.Models.Billing.AddonGroupTest do
             description: "Basic support",
             price: "$ 10.00",
             enabled: true,
-            modifiable: true
+            modifiable: true,
+            self_service: false
           }
         ]
       }
@@ -92,6 +100,7 @@ defmodule Front.Models.Billing.AddonGroupTest do
       assert json.display_name == "Support"
       assert json.description == "Support tiers"
       assert json.type == "exclusive"
+      assert json.disabling_is_final == true
       assert length(json.addons) == 1
 
       addon_json = hd(json.addons)
@@ -100,6 +109,7 @@ defmodule Front.Models.Billing.AddonGroupTest do
       assert addon_json.price == "$ 10.00"
       assert addon_json.enabled == true
       assert addon_json.modifiable == true
+      assert addon_json.self_service == false
     end
   end
 
@@ -112,6 +122,7 @@ defmodule Front.Models.Billing.AddonGroupTest do
         price: "$ 0.00",
         enabled: false,
         modifiable: true,
+        self_service: true,
         last_modified_at: %{seconds: 1_700_000_000}
       }
 
@@ -127,6 +138,7 @@ defmodule Front.Models.Billing.AddonGroupTest do
         price: "$ 0.00",
         enabled: false,
         modifiable: true,
+        self_service: true,
         last_modified_at: nil
       }
 
@@ -142,6 +154,7 @@ defmodule Front.Models.Billing.AddonGroupTest do
         price: "$ 0.00",
         enabled: false,
         modifiable: true,
+        self_service: true,
         last_modified_at: %{seconds: 0}
       }
 

@@ -30,6 +30,7 @@ defmodule FrontWeb.BillingController.AddonsTest do
       assert support_group["display_name"] == "Support"
       assert support_group["description"] == "Choose a support tier for your organization."
       assert support_group["type"] == "exclusive"
+      assert support_group["disabling_is_final"] == true
       assert length(support_group["addons"]) == 4
 
       first_addon = hd(support_group["addons"])
@@ -38,6 +39,7 @@ defmodule FrontWeb.BillingController.AddonsTest do
       assert first_addon["price"] == "$ 0.00"
       assert first_addon["enabled"] == true
       assert first_addon["modifiable"] == true
+      assert first_addon["self_service"] == true
 
       enterprise_addon = List.last(support_group["addons"])
       assert enterprise_addon["name"] == "support-tier-4"
@@ -53,6 +55,7 @@ defmodule FrontWeb.BillingController.AddonsTest do
       success_group = Enum.find(groups, &(&1["name"] == "success"))
       assert success_group["display_name"] == "Success"
       assert success_group["type"] == "exclusive"
+      assert success_group["disabling_is_final"] == false
       assert length(success_group["addons"]) == 4
 
       first_addon = hd(success_group["addons"])
