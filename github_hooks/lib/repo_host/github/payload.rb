@@ -64,6 +64,13 @@ module RepoHost::Github
         pr_approval_option?(:enable_cache)
     end
 
+    # Fork head an earlier /sem-approve bound this workflow to; nil if it was
+    # never approved.
+    def approved_pr_head_sha
+      record = @data["semaphore_approval"]
+      record["approved_head_sha"].presence if record.is_a?(Hash)
+    end
+
     def comment_author
       return nil unless pr_comment?
 

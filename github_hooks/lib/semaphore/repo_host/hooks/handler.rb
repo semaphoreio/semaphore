@@ -205,6 +205,12 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
       )
       return unless options_persisted
 
+    elsif workflow.payload.pull_request_forked_repo? && workflow.payload.approved_pr_head_sha.present?
+      # A rescheduled run (e.g. mergeability still unknown) of a workflow that
+      # /sem-approve already unblocked; keep the approval instead of filtering again.
+      logger.info("pr-approval-resumed", :workflow_id => workflow.id)
+      approved_head_sha = workflow.payload.approved_pr_head_sha
+
     elsif workflow.payload.pull_request_within_repo?
       # Check if project members can run pull-request workflows for this organization.
       # Note that we do not need to check if non-members can run pull-request workflows,
@@ -492,18 +498,12 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
   end
 
   def self.mark_workflow_with_pr_approval_options(workflow, include_secrets: false, enable_cache: false, approver: nil, approver_uid: nil, approved_head_sha: nil, approved_at: nil, comment_id: nil, logger: nil) # rubocop:disable Metrics/ParameterLists
-    return true unless include_secrets || enable_cache
-
     payload = JSON.parse(workflow.request["payload"])
 
-    # Back-compat boolean markers, still consumed by RepoHost::Github::Payload,
-    # the repo_proxy Describe response, and zebra's secret/cache gating.
-    payload["semaphore_approval_include_secrets"] = true if include_secrets
-    payload["semaphore_approval_enable_cache"] = true if enable_cache
-
-    # Typed, auditable approval record: who approved (login + immutable uid),
-    # the reviewed fork head the grant is bound to, when, and the source
-    # comment id.
+    # Written on every approval, false included, so a bare /sem-approve clears
+    # options left by an earlier approval that never launched.
+    payload["semaphore_approval_include_secrets"] = include_secrets
+    payload["semaphore_approval_enable_cache"] = enable_cache
     payload["semaphore_approval"] = {
       "include_secrets" => include_secrets,
       "enable_cache" => enable_cache,
