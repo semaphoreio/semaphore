@@ -235,6 +235,123 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
         expect(record["approved_at"]).to eq(approval_comment_time)
       end
 
+      context "when an approved workflow did not launch on the first attempt" do
+        def mark_approved(workflow, include_secrets: false, enable_cache: false)
+          payload = JSON.parse(workflow.request["payload"]).merge(
+            "semaphore_approval_include_secrets" => include_secrets,
+            "semaphore_approval_enable_cache" => enable_cache,
+            "semaphore_approval" => {
+              "include_secrets" => include_secrets,
+              "enable_cache" => enable_cache,
+              "approver" => "first-maintainer",
+              "approved_head_sha" => workflow.commit_sha
+            }
+          )
+          workflow.update(:request => workflow.request.merge("payload" => payload.to_json))
+          Workflow.find(workflow.id)
+        end
+
+        def approval_payload(workflow)
+          JSON.parse(Workflow.find(workflow.id).request["payload"])
+        end
+
+        before do
+          allow(@logger).to receive(:info)
+          allow(Watchman).to receive(:increment)
+        end
+
+        it "clears options left by an earlier approval when the next approval is bare" do
+          workflow = mark_approved(
+            build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1),
+            :include_secrets => true,
+            :enable_cache => true
+          )
+
+          allow(@workflow.payload).to receive_messages(
+            issue_number: 1,
+            pr_approval?: true,
+            comment_author: "maintainer",
+            comment_author_uid: 4242,
+            comment_created_at: approval_comment_time
+          )
+          allow(described_class).to receive_messages(
+            can_approve_forked_pr?: true,
+            update_pr_data: ok_pr_data(workflow)
+          )
+
+          expect(described_class).to receive(:launch_pipeline).with(kind_of(Branch), workflow, @logger)
+
+          described_class.run(@workflow, @logger)
+
+          payload = approval_payload(workflow)
+          expect(payload["semaphore_approval_include_secrets"]).to be(false)
+          expect(payload["semaphore_approval_enable_cache"]).to be(false)
+          expect(payload["semaphore_approval"]).to include(
+            "include_secrets" => false,
+            "enable_cache" => false,
+            "approver" => "maintainer",
+            "approver_uid" => 4242
+          )
+          expect(RepoHost::Github::Payload.new(Workflow.find(workflow.id).request["payload"]).pr_approval_include_secrets?).to be(false)
+        end
+
+        it "records a bare approval with the approved head" do
+          workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+
+          allow(@workflow.payload).to receive_messages(
+            issue_number: 1,
+            pr_approval?: true,
+            comment_author: "maintainer",
+            comment_created_at: approval_comment_time
+          )
+          allow(described_class).to receive_messages(
+            can_approve_forked_pr?: true,
+            update_pr_data: ok_pr_data(workflow)
+          )
+
+          described_class.run(@workflow, @logger)
+
+          expect(approval_payload(workflow)["semaphore_approval"]).to include(
+            "approver" => "maintainer",
+            "approved_head_sha" => workflow.commit_sha
+          )
+        end
+
+        it "resumes a rescheduled approved workflow instead of filtering it again" do
+          workflow = mark_approved(build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1))
+          allow(workflow.project).to receive_messages(build_forked_pr: true, allowed_contributors: "radwo")
+          allow(described_class).to receive(:update_pr_data).and_return(ok_pr_data(workflow))
+
+          expect(@logger).not_to receive(:info).with("skip-filtered-contributor")
+          expect(described_class).to receive(:launch_pipeline).with(kind_of(Branch), workflow, @logger)
+
+          described_class.run(workflow, @logger, "", "", 1)
+        end
+
+        it "fails closed when a rescheduled approved workflow's fork head moved" do
+          workflow = mark_approved(build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1))
+          allow(workflow.project).to receive_messages(build_forked_pr: true, allowed_contributors: "radwo")
+          allow(described_class).to receive(:update_pr_data).and_return(ok_pr_data(workflow, head_sha: "pushed-after-approval"))
+
+          expect(described_class).not_to receive(:launch_pipeline)
+
+          described_class.run(workflow, @logger, "", "", 1)
+
+          expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_PR_APPROVAL_STALE)
+        end
+
+        it "still filters a rescheduled workflow that was never approved" do
+          workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+          allow(workflow.project).to receive_messages(build_forked_pr: true, allowed_contributors: "radwo")
+
+          expect(described_class).not_to receive(:launch_pipeline)
+
+          described_class.run(workflow, @logger, "", "", 1)
+
+          expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR)
+        end
+      end
+
       it "fails closed (no launch, no marker) when a requested option is disabled at project level" do
         workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
 
