@@ -90,6 +90,34 @@ RSpec.describe RepoHost::Github::ApprovalCommand do
       expect(described_class.present?("/sem-approve --include-secrets --nope")).to be(false)
     end
 
+    it "accepts every token in OPTIONS" do
+      described_class::OPTIONS.each_key do |token|
+        expect(described_class.present?("/sem-approve #{token}")).to be(true), token
+      end
+    end
+
+    it "is false for abbreviated or short forms of an option" do
+      ["--include-s", "--include", "--enable", "--e", "-e", "-s"].each do |token|
+        expect(described_class.present?("/sem-approve #{token}")).to be(false), token
+      end
+    end
+
+    it "is false for an option given a value" do
+      expect(described_class.present?("/sem-approve --include-secrets=1")).to be(false)
+    end
+
+    it "is false for help, version and end-of-options tokens" do
+      ["--help", "-h", "--version", "--"].each do |token|
+        expect(described_class.present?("/sem-approve #{token}")).to be(false), token
+      end
+      expect(described_class.present?("/sem-approve -- --include-secrets")).to be(false)
+    end
+
+    it "is false when options differ only in case" do
+      expect(described_class.present?("/sem-approve --Include-Secrets")).to be(false)
+      expect(described_class.present?("/SEM-APPROVE")).to be(false)
+    end
+
     it "is false with trailing prose after a valid option" do
       expect(described_class.present?("/sem-approve --include-secrets please")).to be(false)
     end
@@ -101,17 +129,25 @@ RSpec.describe RepoHost::Github::ApprovalCommand do
   end
 
   describe ".options" do
-    it "returns the recognized options" do
-      expect(described_class.options("/sem-approve --include-secrets --enable-cache"))
-        .to contain_exactly("--include-secrets", "--enable-cache")
+    it "returns no options for a bare command" do
+      expect(described_class.options("/sem-approve")).to eq([])
     end
 
-    it "normalizes the --include-cache alias to --enable-cache" do
-      expect(described_class.options("/sem-approve --include-cache")).to eq(["--enable-cache"])
+    it "returns the canonical option symbols" do
+      expect(described_class.options("/sem-approve --include-secrets --enable-cache"))
+        .to contain_exactly(:include_secrets, :enable_cache)
+    end
+
+    it "maps the --include-cache alias to :enable_cache" do
+      expect(described_class.options("/sem-approve --include-cache")).to eq([:enable_cache])
     end
 
     it "de-duplicates alias + canonical to a single option" do
-      expect(described_class.options("/sem-approve --include-cache --enable-cache")).to eq(["--enable-cache"])
+      expect(described_class.options("/sem-approve --include-cache --enable-cache")).to eq([:enable_cache])
+    end
+
+    it "de-duplicates a repeated option" do
+      expect(described_class.options("/sem-approve --include-secrets --include-secrets")).to eq([:include_secrets])
     end
 
     it "returns [] when the comment is not a bare command" do
