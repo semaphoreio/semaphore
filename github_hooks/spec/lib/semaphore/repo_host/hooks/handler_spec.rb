@@ -146,7 +146,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
         expect(@workflow.reload.state).to eq(Workflow::STATE_PR_APPROVAL)
       end
 
-      it "denies approval and does not launch when the requestor lacks project.job.rerun" do
+      it "denies approval and does not launch when the requestor lacks the required permission" do
         build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 45)
 
         allow(@logger).to receive(:info)
@@ -154,7 +154,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
         allow(@workflow.payload).to receive_messages(issue_number: 45, pr_approval?: true, comment_author: "octocat")
         allow(described_class).to receive(:can_approve_forked_pr?).and_return(false)
 
-        expect(@logger).to receive(:info).with("pr-approval-denied", :requestor => "octocat")
+        expect(@logger).to receive(:info).with("pr-approval-denied", :requestor => "octocat", :required_permission => "project.view")
         expect(Watchman).to receive(:increment).with("hooks.pr_approval.denied")
         expect(described_class).not_to receive(:launch_pipeline)
 
@@ -183,8 +183,21 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
         allow(@workflow.payload).to receive_messages(issue_number: 45, pr_approval?: true, comment_author: "maintainer", comment_author_uid: 4242, comment_created_at: approval_comment_time)
 
         expect(described_class).to receive(:can_approve_forked_pr?)
-          .with(@workflow.project, 4242, @logger)
+          .with(@workflow.project, 4242, @logger, :permission => "project.view")
           .and_return(false)
+
+        described_class.run(@workflow, @logger)
+      end
+
+      it "requires project.job.rerun when the approval requests an option" do
+        build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 45)
+
+        allow(@workflow.payload).to receive_messages(issue_number: 45, pr_approval?: true, pr_approval_enable_cache?: true, comment_author: "maintainer", comment_author_uid: 4242, comment_created_at: approval_comment_time)
+
+        expect(described_class).to receive(:can_approve_forked_pr?)
+          .with(@workflow.project, 4242, @logger, :permission => "project.job.rerun")
+          .and_return(false)
+        expect(described_class).not_to receive(:launch_pipeline)
 
         described_class.run(@workflow, @logger)
       end
@@ -1135,10 +1148,17 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
         expect(described_class.can_approve_forked_pr?(project, maintainer_uid)).to be(true)
       end
 
-      it "returns false when the user only has project.view" do
+      it "defaults to requiring project.job.rerun" do
         stub_permissions(["project.view"])
 
         expect(described_class.can_approve_forked_pr?(project, maintainer_uid)).to be(false)
+      end
+
+      it "checks the requested permission" do
+        stub_permissions(["project.view"])
+
+        expect(described_class.can_approve_forked_pr?(project, maintainer_uid, :permission => "project.view")).to be(true)
+        expect(described_class.can_approve_forked_pr?(project, maintainer_uid, :permission => "project.job.rerun")).to be(false)
       end
 
       it "resolves by immutable uid, not by the (reusable) login" do
