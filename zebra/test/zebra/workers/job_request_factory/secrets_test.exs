@@ -620,7 +620,8 @@ defmodule Zebra.Workers.JobRequestFactory.SecretsTest do
                 InternalApi.Projecthub.Project.Spec.Repository.new(
                   forked_pull_requests:
                     InternalApi.Projecthub.Project.Spec.Repository.ForkedPullRequests.new(
-                      allowed_secrets: ["secret-secrets"]
+                      allowed_secrets: ["secret-secrets"],
+                      allow_sem_approve_include_secrets: true
                     )
                 )
             )
@@ -680,7 +681,8 @@ defmodule Zebra.Workers.JobRequestFactory.SecretsTest do
                 InternalApi.Projecthub.Project.Spec.Repository.new(
                   forked_pull_requests:
                     InternalApi.Projecthub.Project.Spec.Repository.ForkedPullRequests.new(
-                      allowed_secrets: ["secret-secrets"]
+                      allowed_secrets: ["secret-secrets"],
+                      allow_sem_approve_include_secrets: true
                     )
                 )
             )
@@ -745,7 +747,8 @@ defmodule Zebra.Workers.JobRequestFactory.SecretsTest do
                 InternalApi.Projecthub.Project.Spec.Repository.new(
                   forked_pull_requests:
                     InternalApi.Projecthub.Project.Spec.Repository.ForkedPullRequests.new(
-                      allowed_secrets: ["secret-secrets"]
+                      allowed_secrets: ["secret-secrets"],
+                      allow_sem_approve_include_secrets: true
                     )
                 )
             )
@@ -812,7 +815,8 @@ defmodule Zebra.Workers.JobRequestFactory.SecretsTest do
                 InternalApi.Projecthub.Project.Spec.Repository.new(
                   forked_pull_requests:
                     InternalApi.Projecthub.Project.Spec.Repository.ForkedPullRequests.new(
-                      allowed_secrets: ["secret-secrets"]
+                      allowed_secrets: ["secret-secrets"],
+                      allow_sem_approve_include_secrets: true
                     )
                 )
             )
@@ -837,6 +841,55 @@ defmodule Zebra.Workers.JobRequestFactory.SecretsTest do
                "aws-secrets",
                "secret-secrets"
              ]
+    end
+
+    test "approval include-secrets is ignored once the project setting is turned off" do
+      enable_feature("sem_approve_options")
+
+      job_spec =
+        Semaphore.Jobs.V1alpha.Job.Spec.new(
+          agent:
+            Semaphore.Jobs.V1alpha.Job.Spec.Agent.new(
+              machine:
+                Semaphore.Jobs.V1alpha.Job.Spec.Agent.Machine.new(
+                  type: "e1-standard-2",
+                  os_image: "ubuntu1804"
+                )
+            ),
+          secrets: [
+            Semaphore.Jobs.V1alpha.Job.Spec.Secret.new(name: "aws-secrets"),
+            Semaphore.Jobs.V1alpha.Job.Spec.Secret.new(name: "secret-secrets")
+          ]
+        )
+
+      hook =
+        InternalApi.RepoProxy.Hook.new(
+          git_ref_type: InternalApi.RepoProxy.Hook.Type.value(:PR),
+          pr_slug: "foo/bar",
+          repo_slug: "bar/bar",
+          approval_include_secrets: true
+        )
+
+      api_project =
+        InternalApi.Projecthub.Project.new(
+          metadata: InternalApi.Projecthub.Project.Metadata.new(),
+          spec:
+            InternalApi.Projecthub.Project.Spec.new(
+              repository:
+                InternalApi.Projecthub.Project.Spec.Repository.new(
+                  forked_pull_requests:
+                    InternalApi.Projecthub.Project.Spec.Repository.ForkedPullRequests.new(
+                      allowed_secrets: ["secret-secrets"],
+                      allow_sem_approve_include_secrets: false
+                    )
+                )
+            )
+        )
+
+      project = Zebra.Models.Project.from_api(api_project)
+
+      assert {:ok, secrets} = Secrets.load(@org_id, @job_id, job_spec, project, hook)
+      assert Enum.map(secrets.job_secrets, & &1.name) == ["secret-secrets"]
     end
 
     test "when secrets are not found" do

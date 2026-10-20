@@ -255,7 +255,7 @@ defmodule Zebra.Workers.JobRequestFactory.Secrets do
   defp filter_names(names, _, nil, _job_type, _org_id), do: names
 
   defp filter_names(names, project, repo_proxy, job_type, org_id) do
-    if should_filter_forked_pr_secrets?(repo_proxy, job_type, org_id) do
+    if should_filter_forked_pr_secrets?(repo_proxy, project, job_type, org_id) do
       allowed = project.forked_pull_requests.allowed_secrets
       MapSet.intersection(MapSet.new(names), MapSet.new(allowed)) |> Enum.into([])
     else
@@ -263,9 +263,9 @@ defmodule Zebra.Workers.JobRequestFactory.Secrets do
     end
   end
 
-  defp should_filter_forked_pr_secrets?(repo_proxy, job_type, org_id) do
+  defp should_filter_forked_pr_secrets?(repo_proxy, project, job_type, org_id) do
     forked_pr?(repo_proxy) and
-      (job_type == :debug_job or !approval_include_secrets?(repo_proxy, org_id))
+      (job_type == :debug_job or !approval_include_secrets?(repo_proxy, project, org_id))
   end
 
   defp forked_pr?(repo_proxy) do
@@ -273,13 +273,18 @@ defmodule Zebra.Workers.JobRequestFactory.Secrets do
       repo_proxy.pr_slug != repo_proxy.repo_slug
   end
 
-  # The `--include-secrets` approval only takes effect when the
-  # `sem_approve_options` feature is enabled for the organization. Otherwise
-  # forked-PR secret filtering applies as usual.
-  defp approval_include_secrets?(repo_proxy, org_id) do
+  # Re-checked per job so reruns of an approved workflow lose the grant once
+  # the project setting or the org feature is turned off.
+  defp approval_include_secrets?(repo_proxy, project, org_id) do
     Map.get(repo_proxy, :approval_include_secrets, false) and
+      project_allows?(project, :allow_sem_approve_include_secrets) and
       FeatureProvider.feature_enabled?(:sem_approve_options, param: org_id)
   end
+
+  defp project_allows?(%{forked_pull_requests: %{} = settings}, option),
+    do: Map.get(settings, option) == true
+
+  defp project_allows?(_project, _option), do: false
 
   defp prepare_checkout_metadata(job_id, spec, repo_proxy) do
     from_env = get_checkout_meta_from_env(spec.env_vars)
