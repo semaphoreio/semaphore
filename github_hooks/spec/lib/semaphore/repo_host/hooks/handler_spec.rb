@@ -81,6 +81,10 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
     end
 
     context "PR approval" do
+      before do
+        allow(Semaphore::FeatureFlags).to receive(:enabled?).with(:sem_approve_options, anything).and_return(true)
+      end
+
       # Fixed timeline used by the approval tests. In the normal case a blocked
       # forked-PR workflow is created *before* the maintainer's approval comment
       # (the PR event arrives, is blocked, then a maintainer comments). Tests
@@ -288,6 +292,79 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
         expect(Watchman).to receive(:increment).with("hooks.pr_approval.option_not_enabled")
 
         described_class.run(@workflow, @logger)
+      end
+
+      context "when the sem_approve_options feature is disabled for the organization" do
+        before do
+          allow(Semaphore::FeatureFlags).to receive(:enabled?).with(:sem_approve_options, anything).and_return(false)
+          allow(@logger).to receive(:info)
+          allow(Watchman).to receive(:increment)
+        end
+
+        it "fails closed for a requested option even when the project setting is on" do
+          workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+
+          allow(@workflow.payload).to receive_messages(
+            issue_number: 1,
+            pr_approval?: true,
+            pr_approval_include_secrets?: true,
+            comment_author: "maintainer",
+            comment_created_at: approval_comment_time
+          )
+          allow(described_class).to receive_messages(
+            approval_option_enabled?: true,
+            can_approve_forked_pr?: true,
+            update_pr_data: ok_pr_data(workflow)
+          )
+
+          expect(described_class).not_to receive(:launch_pipeline)
+          expect(Watchman).to receive(:increment).with("hooks.pr_approval.options_feature_disabled")
+
+          described_class.run(@workflow, @logger)
+
+          reloaded = Workflow.find(workflow.id)
+          expect(reloaded.state).to eq(Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR)
+          expect(JSON.parse(reloaded.request["payload"])).not_to include("semaphore_approval", "semaphore_approval_include_secrets")
+        end
+
+        it "checks the flag for the project's organization" do
+          build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+
+          allow(@workflow.payload).to receive_messages(
+            issue_number: 1,
+            pr_approval?: true,
+            pr_approval_enable_cache?: true,
+            comment_author: "maintainer",
+            comment_created_at: approval_comment_time
+          )
+          allow(described_class).to receive(:can_approve_forked_pr?).and_return(true)
+
+          expect(Semaphore::FeatureFlags).to receive(:enabled?)
+            .with(:sem_approve_options, @workflow.project.organization_id)
+            .and_return(false)
+
+          described_class.run(@workflow, @logger)
+        end
+
+        it "still launches a bare approval without looking up the flag" do
+          workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+
+          allow(@workflow.payload).to receive_messages(
+            issue_number: 1,
+            pr_approval?: true,
+            comment_author: "maintainer",
+            comment_created_at: approval_comment_time
+          )
+          allow(described_class).to receive_messages(
+            can_approve_forked_pr?: true,
+            update_pr_data: ok_pr_data(workflow)
+          )
+
+          expect(Semaphore::FeatureFlags).not_to receive(:enabled?)
+          expect(described_class).to receive(:launch_pipeline).with(kind_of(Branch), workflow, @logger)
+
+          described_class.run(@workflow, @logger)
+        end
       end
 
       it "fails closed (STATE_PR_APPROVAL_STALE, no launch) when the fork head moved after approval" do
