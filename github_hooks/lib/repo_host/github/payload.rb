@@ -10,12 +10,6 @@ module RepoHost::Github
     PULL_REQUEST_CLOSED = "closed"
     PULL_REQUEST_COMMIT = "synchronize"
     PULL_REQUEST_READY_FOR_REVIEW = "ready_for_review"
-    # Command/option vocabulary lives in the shared parser so the payload and
-    # the webhook filter can never disagree about what counts as an approval.
-    PR_APPROVE_COMMAND = ApprovalCommand::COMMAND
-    PR_INCLUDE_SECRETS_OPTION = ApprovalCommand::INCLUDE_SECRETS_OPTION
-    PR_ENABLE_CACHE_OPTION = ApprovalCommand::ENABLE_CACHE_OPTION
-    PR_APPROVAL_OPTIONS = ApprovalCommand::KNOWN_OPTIONS
 
     def initialize(payload)
       @data = JSON.parse(payload)
@@ -62,12 +56,12 @@ module RepoHost::Github
 
     def pr_approval_include_secrets?
       @data["semaphore_approval_include_secrets"] == true ||
-        pr_approval_option?(PR_INCLUDE_SECRETS_OPTION)
+        pr_approval_option?(:include_secrets)
     end
 
     def pr_approval_enable_cache?
       @data["semaphore_approval_enable_cache"] == true ||
-        pr_approval_option?(PR_ENABLE_CACHE_OPTION)
+        pr_approval_option?(:enable_cache)
     end
 
     def comment_author

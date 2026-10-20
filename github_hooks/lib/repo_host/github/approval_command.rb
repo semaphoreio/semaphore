@@ -28,52 +28,39 @@ module RepoHost
     module ApprovalCommand
       COMMAND = "/sem-approve"
 
-      INCLUDE_SECRETS_OPTION = "--include-secrets"
-      ENABLE_CACHE_OPTION = "--enable-cache"
-
-      # Backwards-compatible alias for --enable-cache (older docs/task spec used
-      # `--include-cache`); normalized to the canonical spelling.
-      ENABLE_CACHE_ALIAS = "--include-cache"
-      OPTION_ALIASES = { ENABLE_CACHE_ALIAS => ENABLE_CACHE_OPTION }.freeze
-
-      KNOWN_OPTIONS = [INCLUDE_SECRETS_OPTION, ENABLE_CACHE_OPTION].freeze
-      # Tokens accepted after the command (canonical options + aliases).
-      RECOGNIZED_TOKENS = (KNOWN_OPTIONS + OPTION_ALIASES.keys).freeze
+      # Every accepted token, mapped to its canonical option. Aliases map to the
+      # same symbol as the option they stand for.
+      OPTIONS = {
+        "--include-secrets" => :include_secrets,
+        "--enable-cache" => :enable_cache,
+        "--include-cache" => :enable_cache
+      }.freeze
 
       module_function
 
-      # True only when the whole comment is exactly an approval command.
       def present?(body)
-        !command_tokens(body).nil?
+        !option_tokens(body).nil?
       end
 
-      # Canonicalized, de-duplicated options requested by the command (empty
-      # unless present?). Alias + canonical (e.g. --include-cache + --enable-cache)
-      # collapse to a single canonical option.
+      # Canonical, de-duplicated option symbols; empty unless present?.
       def options(body)
-        (command_tokens(body) || []).drop(1).uniq
+        (option_tokens(body) || []).map { |token| OPTIONS.fetch(token) }.uniq
       end
 
-      # Returns [COMMAND, *canonical_options] when the entire comment body is
-      # exactly the command line, or nil otherwise. Any non-blank line other
-      # than that single command line (prose, a code fence, an HTML comment, a
-      # second command) makes the comment non-triggering.
-      def command_tokens(body)
+      # Tokens after the command when the whole comment is exactly one
+      # column-zero command line with only known options; nil otherwise.
+      def option_tokens(body)
         content_lines = body.to_s.split(/\r?\n/).map(&:rstrip).reject(&:empty?)
         return nil unless content_lines.length == 1
 
         line = content_lines.first
-        # The command must start at column zero: a leading space/tab means
-        # indented (Markdown code) content, not a deliberate command.
         return nil if line != line.lstrip
 
-        tokens = line.split(/[ \t]+/)
-        return nil unless tokens.first == COMMAND
+        command, *given_options = line.split(/[ \t]+/)
+        return nil unless command == COMMAND
+        return nil unless given_options.all? { |token| OPTIONS.key?(token) }
 
-        given_options = tokens.drop(1)
-        return nil unless given_options.all? { |token| RECOGNIZED_TOKENS.include?(token) }
-
-        [COMMAND, *given_options.map { |token| OPTION_ALIASES.fetch(token, token) }]
+        given_options
       end
     end
   end
