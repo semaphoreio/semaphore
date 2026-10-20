@@ -9,6 +9,11 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
   # worker; GRPC::DeadlineExceeded is caught below and treated as a denial.
   PR_APPROVAL_RBAC_DEADLINE_SECONDS = 5
 
+  # A bare /sem-approve keeps the long-standing project.view bar; options that
+  # hand secrets or cache to fork code need the pipeline-start permission.
+  PR_APPROVAL_PERMISSION = "project.view"
+  PR_APPROVAL_OPTIONS_PERMISSION = "project.job.rerun"
+
   # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength
   def self.run(workflow, logger, hook_payload = "", signature = "", retries = 0)
     # stops hooks from deleted projects from generating exceptions
@@ -100,11 +105,15 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
       approved_at = workflow.payload.respond_to?(:comment_created_at) ? workflow.payload.comment_created_at : nil
       issue_number = workflow.payload.issue_number
 
-      # Approving a forked PR triggers a privileged workflow run (optionally
-      # with secrets/cache), so it requires the permission to start/rerun a
-      # pipeline (project.job.rerun) — not mere read access. Fails closed.
-      unless can_approve_forked_pr?(workflow.project, requestor_uid, logger)
-        logger.info("pr-approval-denied", :requestor => requestor)
+      required_permission =
+        if include_secrets_requested || enable_cache_requested
+          PR_APPROVAL_OPTIONS_PERMISSION
+        else
+          PR_APPROVAL_PERMISSION
+        end
+
+      unless can_approve_forked_pr?(workflow.project, requestor_uid, logger, :permission => required_permission)
+        logger.info("pr-approval-denied", :requestor => requestor, :required_permission => required_permission)
         Watchman.increment("hooks.pr_approval.denied")
         return
       end
@@ -572,16 +581,9 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
     payload.respond_to?(:pr_approval_enable_cache?) && payload.pr_approval_enable_cache?
   end
 
-  # Authorization gate for /sem-approve. Approving a forked PR starts a
-  # privileged pipeline run, so it requires the same permission as
-  # starting/rerunning a pipeline (project.job.rerun) rather than plain
-  # read access (project.view). Any failure (unknown user, RBAC error)
-  # fails closed.
-  #
-  # The commenter is resolved by immutable GitHub UID, not by login: logins
-  # are renameable and reusable, so keying off the login could authorize a
-  # different Semaphore account than the one that actually commented.
-  def self.can_approve_forked_pr?(project, github_uid, logger = nil)
+  # Resolves the commenter by immutable GitHub uid (logins are renameable and
+  # reusable). Any failure, unknown user or RBAC error, denies.
+  def self.can_approve_forked_pr?(project, github_uid, logger = nil, permission: PR_APPROVAL_OPTIONS_PERMISSION)
     return false if github_uid.blank?
 
     repo = RepoHostAccount.github.find_by(:github_uid => github_uid)
@@ -595,7 +597,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
     )
 
     client.list_user_permissions(req, :deadline => Time.now + PR_APPROVAL_RBAC_DEADLINE_SECONDS)
-          .permissions.include?("project.job.rerun")
+          .permissions.include?(permission)
   rescue StandardError => e
     logger&.error(
       "pr-approval-permission-check-failed",
