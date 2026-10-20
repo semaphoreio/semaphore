@@ -74,21 +74,62 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
     end
 
     context "when hook is forked pull request" do
-      before do
-        payload = JSON.parse(RepoHost::Github::Responses::Payload.post_receive_hook_pull_request)
-
-        @hook = FactoryBot.create(
+      def describe_pr_hook(markers = {})
+        payload = JSON.parse(RepoHost::Github::Responses::Payload.post_receive_hook_pull_request).merge(markers)
+        hook = FactoryBot.create(
           :workflow,
           :request => ActionController::Parameters.new("payload" => payload.to_json)
         )
-        @req = InternalApi::RepoProxy::DescribeRequest.new(:hook_id => @hook.id)
+
+        server.describe(InternalApi::RepoProxy::DescribeRequest.new(:hook_id => hook.id), call).hook
       end
 
       it "keeps pull request slug untouched" do
-        response = server.describe(@req, call)
+        hook = describe_pr_hook
 
-        expect(response.hook.git_ref_type).to eq(:PR)
-        expect(response.hook.pr_slug).not_to eq(response.hook.repo_slug)
+        expect(hook.git_ref_type).to eq(:PR)
+        expect(hook.pr_slug).not_to eq(hook.repo_slug)
+      end
+
+      it "reports no approval options when the hook carries no approval markers" do
+        hook = describe_pr_hook
+
+        expect(hook.approval_include_secrets).to be(false)
+        expect(hook.approval_enable_cache).to be(false)
+      end
+
+      it "reports both approval options from the persisted approval markers" do
+        hook = describe_pr_hook(
+          "semaphore_approval_include_secrets" => true,
+          "semaphore_approval_enable_cache" => true
+        )
+
+        expect(hook.approval_include_secrets).to be(true)
+        expect(hook.approval_enable_cache).to be(true)
+      end
+
+      it "reports each approval option independently" do
+        secrets_only = describe_pr_hook("semaphore_approval_include_secrets" => true)
+        cache_only = describe_pr_hook("semaphore_approval_enable_cache" => true)
+
+        expect([secrets_only.approval_include_secrets, secrets_only.approval_enable_cache]).to eq([true, false])
+        expect([cache_only.approval_include_secrets, cache_only.approval_enable_cache]).to eq([false, true])
+      end
+    end
+
+    context "when a non-pull-request hook carries approval markers" do
+      it "does not report approval options" do
+        hook = FactoryBot.create(:workflow_with_branch)
+        payload = JSON.parse(hook.request["payload"]).merge(
+          "semaphore_approval_include_secrets" => true,
+          "semaphore_approval_enable_cache" => true
+        )
+        hook.update(:request => hook.request.merge("payload" => payload.to_json))
+
+        response = server.describe(InternalApi::RepoProxy::DescribeRequest.new(:hook_id => hook.id), call)
+
+        expect(response.hook.approval_include_secrets).to be(false)
+        expect(response.hook.approval_enable_cache).to be(false)
       end
     end
 
