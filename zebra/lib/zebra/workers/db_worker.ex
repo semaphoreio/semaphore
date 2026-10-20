@@ -105,7 +105,7 @@ defmodule Zebra.Workers.DbWorker do
       fn r -> process_or_skip(worker, r) end
     )
     |> Enum.map(fn
-      {_id, {:ok, {:halt, _} = result}} ->
+      {_id, {:ok, result = {:halt, _}}} ->
         Logger.warning("#{worker.metric_name}: {:halt, _} is ignored in :continuous mode")
         result
 
@@ -140,7 +140,7 @@ defmodule Zebra.Workers.DbWorker do
 
   defp process_timeout(worker), do: worker.process_timeout || @default_process_timeout
 
-  defp transaction_opts(%{concurrency_mode: :continuous} = worker),
+  defp transaction_opts(worker = %{concurrency_mode: :continuous}),
     do: [timeout: process_timeout(worker)]
 
   defp transaction_opts(_worker), do: []
