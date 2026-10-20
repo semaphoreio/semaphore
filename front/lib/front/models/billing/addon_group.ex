@@ -5,7 +5,8 @@ defmodule Front.Models.Billing.AddonGroup do
             display_name: "",
             description: "",
             type: :unspecified,
-            addons: []
+            addons: [],
+            disabling_is_final: false
 
   @type group_type :: :unspecified | :exclusive | :regular
 
@@ -14,7 +15,8 @@ defmodule Front.Models.Billing.AddonGroup do
           display_name: String.t(),
           description: String.t(),
           type: group_type(),
-          addons: [AddonGroup.Addon.t()]
+          addons: [AddonGroup.Addon.t()],
+          disabling_is_final: boolean()
         }
 
   def from_grpc(group) do
@@ -23,7 +25,8 @@ defmodule Front.Models.Billing.AddonGroup do
       display_name: group.display_name,
       description: group.description,
       type: type_from_grpc(group.type),
-      addons: Enum.map(group.addons, &AddonGroup.Addon.from_grpc/1)
+      addons: Enum.map(group.addons, &AddonGroup.Addon.from_grpc/1),
+      disabling_is_final: group.disabling_is_final
     }
   end
 
@@ -33,7 +36,8 @@ defmodule Front.Models.Billing.AddonGroup do
       display_name: group.display_name,
       description: group.description,
       type: Atom.to_string(group.type),
-      addons: Enum.map(group.addons, &AddonGroup.Addon.to_json/1)
+      addons: Enum.map(group.addons, &AddonGroup.Addon.to_json/1),
+      disabling_is_final: group.disabling_is_final
     }
   end
 
@@ -53,6 +57,7 @@ defmodule Front.Models.Billing.AddonGroup.Addon do
             price: "",
             enabled: false,
             modifiable: true,
+            self_service: true,
             last_modified_at: nil
 
   @type t :: %Addon{
@@ -62,6 +67,7 @@ defmodule Front.Models.Billing.AddonGroup.Addon do
           price: String.t(),
           enabled: boolean(),
           modifiable: boolean(),
+          self_service: boolean(),
           last_modified_at: DateTime.t() | nil
         }
 
@@ -73,6 +79,7 @@ defmodule Front.Models.Billing.AddonGroup.Addon do
       price: addon.price,
       enabled: addon.enabled,
       modifiable: addon.modifiable,
+      self_service: addon.self_service,
       last_modified_at: parse_timestamp(addon.last_modified_at)
     }
   end
@@ -84,7 +91,8 @@ defmodule Front.Models.Billing.AddonGroup.Addon do
       description: addon.description,
       price: addon.price,
       enabled: addon.enabled,
-      modifiable: addon.modifiable
+      modifiable: addon.modifiable,
+      self_service: addon.self_service
     }
   end
 

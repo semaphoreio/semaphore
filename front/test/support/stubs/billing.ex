@@ -1120,6 +1120,7 @@ defmodule Support.Stubs.Billing do
             name: "support",
             display_name: "Support",
             description: "Choose a support tier for your organization.",
+            disabling_is_final: true,
             type: AddonGroupType.value(:ADDON_GROUP_TYPE_EXCLUSIVE),
             addons: [
               Addon.new(
@@ -1128,7 +1129,8 @@ defmodule Support.Stubs.Billing do
                 description: "Community support via forums and documentation.",
                 price: "$ 0.00",
                 enabled: true,
-                modifiable: true
+                modifiable: true,
+                self_service: true
               ),
               Addon.new(
                 name: "support-tier-2",
@@ -1136,7 +1138,8 @@ defmodule Support.Stubs.Billing do
                 description: "Email support with 48h response time.",
                 price: "$ 49.00",
                 enabled: false,
-                modifiable: true
+                modifiable: true,
+                self_service: true
               ),
               Addon.new(
                 name: "support-tier-3",
@@ -1144,7 +1147,8 @@ defmodule Support.Stubs.Billing do
                 description: "Priority email and chat support with 4h response time.",
                 price: "$ 199.00",
                 enabled: false,
-                modifiable: true
+                modifiable: true,
+                self_service: true
               ),
               Addon.new(
                 name: "support-tier-4",
@@ -1152,7 +1156,8 @@ defmodule Support.Stubs.Billing do
                 description: "Dedicated support engineer with 1h response time and SLA.",
                 price: "$ 499.00",
                 enabled: false,
-                modifiable: true
+                modifiable: true,
+                self_service: true
               )
             ]
           ),
@@ -1168,7 +1173,8 @@ defmodule Support.Stubs.Billing do
                 description: "Access to documentation and guides.",
                 price: "$ 0.00",
                 enabled: false,
-                modifiable: true
+                modifiable: true,
+                self_service: true
               ),
               Addon.new(
                 name: "success-tier-2",
@@ -1176,7 +1182,8 @@ defmodule Support.Stubs.Billing do
                 description: "Quarterly business reviews and onboarding assistance.",
                 price: "$ 99.00",
                 enabled: false,
-                modifiable: true
+                modifiable: true,
+                self_service: true
               ),
               Addon.new(
                 name: "success-tier-3",
@@ -1184,7 +1191,8 @@ defmodule Support.Stubs.Billing do
                 description: "Dedicated success manager with monthly reviews.",
                 price: "$ 299.00",
                 enabled: false,
-                modifiable: true
+                modifiable: true,
+                self_service: true
               ),
               Addon.new(
                 name: "success-tier-4",
@@ -1192,7 +1200,8 @@ defmodule Support.Stubs.Billing do
                 description: "Strategic partnership with executive sponsorship.",
                 price: "$ 599.00",
                 enabled: false,
-                modifiable: true
+                modifiable: true,
+                self_service: true
               )
             ]
           )
