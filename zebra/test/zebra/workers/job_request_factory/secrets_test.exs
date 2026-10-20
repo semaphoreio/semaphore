@@ -605,6 +605,35 @@ defmodule Zebra.Workers.JobRequestFactory.SecretsTest do
     end
   end
 
+  describe ".load when many or long secret names are missing" do
+    test "keeps the failure reason within 255 codepoints" do
+      names = Enum.map(1..20, &"missing-secret-with-a-long-name-#{&1}")
+
+      job_spec =
+        Semaphore.Jobs.V1alpha.Job.Spec.new(
+          agent:
+            Semaphore.Jobs.V1alpha.Job.Spec.Agent.new(
+              machine:
+                Semaphore.Jobs.V1alpha.Job.Spec.Agent.Machine.new(
+                  type: "e1-standard-2",
+                  os_image: "ubuntu1804"
+                )
+            ),
+          secrets:
+            Enum.map(names ++ ["x" <> String.duplicate("\u0301", 300)], fn name ->
+              Semaphore.Jobs.V1alpha.Job.Spec.Secret.new(name: name)
+            end)
+        )
+
+      assert {:stop_job_processing, reason} =
+               Secrets.load(@org_id, @job_id, job_spec, @project, @hook)
+
+      assert String.valid?(reason)
+      assert reason |> String.codepoints() |> length() <= 255
+      assert reason =~ ~r/ and \d+ more$/
+    end
+  end
+
   describe ".can_use_secret?" do
     test "when there are no secrets used in job => returns true" do
       job_spec =
