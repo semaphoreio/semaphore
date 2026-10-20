@@ -300,7 +300,7 @@ defmodule FrontWeb.BillingController do
           case error do
             %GRPC.RPCError{status: 9, message: message}
             when is_binary(message) and message != "" ->
-              message
+              URI.decode(message)
 
             _ ->
               "Failed to update addon."
