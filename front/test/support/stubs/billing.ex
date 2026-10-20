@@ -1165,6 +1165,7 @@ defmodule Support.Stubs.Billing do
             name: "success",
             display_name: "Success",
             description: "Choose a success tier for your organization.",
+            on_cooldown: true,
             type: AddonGroupType.value(:ADDON_GROUP_TYPE_EXCLUSIVE),
             addons: [
               Addon.new(

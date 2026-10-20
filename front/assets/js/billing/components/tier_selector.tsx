@@ -15,8 +15,7 @@ export const TierSelector = ({ group, updating, onUpdate }: Props) => {
   const currentValue = currentAddon?.name ?? null;
   const [selected, setSelected] = useState<string | null>(currentValue);
 
-  const onCooldown =
-    currentAddon !== undefined && !currentAddon.modifiable && currentAddon.selfService;
+  const onCooldown = group.onCooldown;
   const hasChanged = selected !== currentValue;
   const isDisabling = currentAddon && !selected;
   const selectedAddon = group.addons.find((a) => a.name === selected);
@@ -40,8 +39,8 @@ export const TierSelector = ({ group, updating, onUpdate }: Props) => {
         )}
         {onCooldown && (
           <div className="f6 orange mt1">
-            Selection locked for 24 hours. You can still disable the current
-            add-on.
+            Selection locked for 24 hours.
+            {currentAddon && ` You can still disable the current add-on.`}
           </div>
         )}
       </div>

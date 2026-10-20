@@ -12,6 +12,7 @@ defmodule Front.Models.Billing.AddonGroupTest do
         description: "Support tiers",
         type: :ADDON_GROUP_TYPE_EXCLUSIVE,
         disabling_is_final: true,
+        on_cooldown: true,
         addons: [
           %{
             name: "support-tier-1",
@@ -33,6 +34,7 @@ defmodule Front.Models.Billing.AddonGroupTest do
       assert result.description == "Support tiers"
       assert result.type == :exclusive
       assert result.disabling_is_final == true
+      assert result.on_cooldown == true
       assert length(result.addons) == 1
 
       addon = hd(result.addons)
@@ -51,7 +53,8 @@ defmodule Front.Models.Billing.AddonGroupTest do
         description: "",
         type: :ADDON_GROUP_TYPE_REGULAR,
         addons: [],
-        disabling_is_final: false
+        disabling_is_final: false,
+        on_cooldown: false
       }
 
       result = AddonGroup.from_grpc(grpc_group)
@@ -65,7 +68,8 @@ defmodule Front.Models.Billing.AddonGroupTest do
         description: "",
         type: :ADDON_GROUP_TYPE_UNSPECIFIED,
         addons: [],
-        disabling_is_final: false
+        disabling_is_final: false,
+        on_cooldown: false
       }
 
       result = AddonGroup.from_grpc(grpc_group)
@@ -81,6 +85,7 @@ defmodule Front.Models.Billing.AddonGroupTest do
         description: "Support tiers",
         type: :exclusive,
         disabling_is_final: true,
+        on_cooldown: true,
         addons: [
           %Addon{
             name: "tier-1",
@@ -101,6 +106,7 @@ defmodule Front.Models.Billing.AddonGroupTest do
       assert json.description == "Support tiers"
       assert json.type == "exclusive"
       assert json.disabling_is_final == true
+      assert json.on_cooldown == true
       assert length(json.addons) == 1
 
       addon_json = hd(json.addons)

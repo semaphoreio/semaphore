@@ -1622,9 +1622,18 @@ defmodule InternalApi.Billing.AddonGroup do
           description: String.t(),
           type: integer,
           addons: [InternalApi.Billing.Addon.t()],
-          disabling_is_final: boolean
+          disabling_is_final: boolean,
+          on_cooldown: boolean
         }
-  defstruct [:name, :display_name, :description, :type, :addons, :disabling_is_final]
+  defstruct [
+    :name,
+    :display_name,
+    :description,
+    :type,
+    :addons,
+    :disabling_is_final,
+    :on_cooldown
+  ]
 
   field(:name, 1, type: :string)
   field(:display_name, 2, type: :string)
@@ -1632,6 +1641,7 @@ defmodule InternalApi.Billing.AddonGroup do
   field(:type, 4, type: InternalApi.Billing.AddonGroupType, enum: true)
   field(:addons, 5, repeated: true, type: InternalApi.Billing.Addon)
   field(:disabling_is_final, 6, type: :bool)
+  field(:on_cooldown, 7, type: :bool)
 end
 
 defmodule InternalApi.Billing.UpdateAddonRequest do

@@ -31,6 +31,7 @@ defmodule FrontWeb.BillingController.AddonsTest do
       assert support_group["description"] == "Choose a support tier for your organization."
       assert support_group["type"] == "exclusive"
       assert support_group["disabling_is_final"] == true
+      assert support_group["on_cooldown"] == false
       assert length(support_group["addons"]) == 4
 
       first_addon = hd(support_group["addons"])
@@ -56,6 +57,7 @@ defmodule FrontWeb.BillingController.AddonsTest do
       assert success_group["display_name"] == "Success"
       assert success_group["type"] == "exclusive"
       assert success_group["disabling_is_final"] == false
+      assert success_group["on_cooldown"] == true
       assert length(success_group["addons"]) == 4
 
       first_addon = hd(success_group["addons"])

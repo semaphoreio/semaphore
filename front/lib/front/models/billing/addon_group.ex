@@ -6,7 +6,8 @@ defmodule Front.Models.Billing.AddonGroup do
             description: "",
             type: :unspecified,
             addons: [],
-            disabling_is_final: false
+            disabling_is_final: false,
+            on_cooldown: false
 
   @type group_type :: :unspecified | :exclusive | :regular
 
@@ -16,7 +17,8 @@ defmodule Front.Models.Billing.AddonGroup do
           description: String.t(),
           type: group_type(),
           addons: [AddonGroup.Addon.t()],
-          disabling_is_final: boolean()
+          disabling_is_final: boolean(),
+          on_cooldown: boolean()
         }
 
   def from_grpc(group) do
@@ -26,7 +28,8 @@ defmodule Front.Models.Billing.AddonGroup do
       description: group.description,
       type: type_from_grpc(group.type),
       addons: Enum.map(group.addons, &AddonGroup.Addon.from_grpc/1),
-      disabling_is_final: group.disabling_is_final
+      disabling_is_final: group.disabling_is_final,
+      on_cooldown: group.on_cooldown
     }
   end
 
@@ -37,7 +40,8 @@ defmodule Front.Models.Billing.AddonGroup do
       description: group.description,
       type: Atom.to_string(group.type),
       addons: Enum.map(group.addons, &AddonGroup.Addon.to_json/1),
-      disabling_is_final: group.disabling_is_final
+      disabling_is_final: group.disabling_is_final,
+      on_cooldown: group.on_cooldown
     }
   end
 
