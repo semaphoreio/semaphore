@@ -20,10 +20,21 @@ defmodule Secrethub.Model.EnvVar do
   defp validate_env_var_name(changeset) do
     name = Ecto.Changeset.get_field(changeset, :name) || ""
 
-    if String.match?(name, ~r/^[a-zA-Z_][a-zA-Z0-9_]*$/) do
-      changeset
-    else
-      Ecto.Changeset.add_error(changeset, :name, "of enviorment variable is invalid")
+    cond do
+      not EnvVarPolicy.valid_name?(name) ->
+        Ecto.Changeset.add_error(changeset, :name, "of enviorment variable is invalid")
+
+      EnvVarPolicy.reserved?(name) ->
+        Ecto.Changeset.add_error(
+          changeset,
+          :name,
+          "#{name} is reserved for Semaphore. To use a different value, export it in " <>
+            "the job commands instead; see Reserved variables in the environment " <>
+            "variables reference"
+        )
+
+      true ->
+        changeset
     end
   end
 end
