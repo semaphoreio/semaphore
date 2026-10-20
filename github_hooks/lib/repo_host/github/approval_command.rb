@@ -44,21 +44,21 @@ module RepoHost
 
       # Canonical, de-duplicated option symbols; empty unless present?.
       def options(body)
-        (option_tokens(body) || []).map { |token| OPTIONS.fetch(token) }.uniq
+        Array(option_tokens(body)).map { |token| OPTIONS.fetch(token) }.uniq
       end
 
       # Tokens after the command when the whole comment is exactly one
       # column-zero command line with only known options; nil otherwise.
       def option_tokens(body)
         content_lines = body.to_s.split(/\r?\n/).map(&:rstrip).reject(&:empty?)
-        return nil unless content_lines.length == 1
+        return unless content_lines.length == 1
 
         line = content_lines.first
-        return nil if line != line.lstrip
+        return if line != line.lstrip
 
         command, *given_options = line.split(/[ \t]+/)
-        return nil unless command == COMMAND
-        return nil unless given_options.all? { |token| OPTIONS.key?(token) }
+        return unless command == COMMAND
+        return unless given_options.all? { |token| OPTIONS.key?(token) }
 
         given_options
       end
