@@ -1474,4 +1474,19 @@ defmodule Zebra.Workers.JobRequestFactoryTest do
 
     assert job.aasm_state == "pending"
   end
+
+  test "init uses continuous mode with parallelism fitted to the DB pool" do
+    pool_size = Application.fetch_env!(:zebra, Zebra.LegacyRepo)[:pool_size]
+
+    worker = Worker.init()
+
+    assert %Zebra.Workers.DbWorker{
+             concurrency_mode: :continuous,
+             records_per_tick: 100,
+             process_timeout: 15_000
+           } = worker
+
+    assert worker.parallelism ==
+             Zebra.Workers.JobRequestFactory.Settings.fit_to_pool(10, pool_size)
+  end
 end
