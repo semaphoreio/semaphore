@@ -5,10 +5,32 @@ defmodule FrontWeb.WorkflowView do
     "Push: #{assigns.hook.commit_message} - Semaphore"
   end
 
-  def render("map.json", %{workflow: workflow}) do
+  def render("map.json", %{workflow: workflow, conn: conn}) do
+    permissions = conn.assigns.permissions
+    anonymous? = FrontWeb.PipelineView.anonymous?(conn)
+
+    rebuild? =
+      FeatureProvider.feature_enabled?(:ui_partial_ppl_rebuild, param: conn.assigns.organization_id)
+
     %{
       root_pipeline_id: workflow.root_pipeline_id,
-      pipelines: Enum.map(workflow.pipelines, &map_pipeline/1)
+      pipelines:
+        Enum.map(workflow.pipelines, fn pipeline ->
+          pipeline
+          |> map_pipeline()
+          |> Map.merge(%{
+            stop_url:
+              if(!anonymous? && permissions["project.job.stop"] &&
+                   FrontWeb.PipelineView.pipeline_stoppable?(pipeline),
+                 do: pipeline_stop_path(conn, :stop, workflow.id, pipeline.id)
+               ),
+            rebuild_url:
+              if(!anonymous? && rebuild? && permissions["project.job.rerun"] &&
+                   FrontWeb.PipelineView.pipeline_rebuildable?(pipeline),
+                 do: pipeline_rebuild_path(conn, :rebuild, workflow.id, pipeline.id)
+               )
+          })
+        end)
     }
   end
 
@@ -45,11 +67,9 @@ defmodule FrontWeb.WorkflowView do
     %{
       workflowUrl: workflow_path(conn, :map, workflow_id),
       pipelineUrl: pipeline_path(conn, :map, workflow_id, "__PIPELINE_ID__"),
-      switchUrl: pipeline_path(conn, :switch, workflow_id, "__PIPELINE_ID__", "__SWITCH_ID__"),
       elkWorkerUrl: static_path(conn, "/projects/assets/workers/elk-worker.min.js"),
       selectedPipelineId: selected_pipeline_id,
-      pollInterval: 4000,
-      nonce: conn.assigns[:script_src_nonce]
+      pollInterval: 4000
     }
     |> Poison.encode!(escape: :html_safe)
   end

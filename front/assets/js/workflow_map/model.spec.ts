@@ -15,6 +15,8 @@ const apiPipeline = (id: string, overrides: Partial<ApiPipeline> = {}): ApiPipel
   created_at: 1,
   running_at: 10,
   done_at: 20,
+  stop_url: null,
+  rebuild_url: null,
   ...overrides,
 });
 
@@ -75,6 +77,7 @@ describe(`buildWorkflow`, () => {
       result: `PASSED`,
       error_description: ``,
       done: true,
+      promotions: [],
       blocks: [
         { name: `Build`, dependencies: [], jobs: [job(`compile`)] },
         { name: `Unit`, dependencies: [`Build`], jobs: [job(`unit 1`), job(`unit 2`, `failed`)] },
@@ -91,6 +94,43 @@ describe(`buildWorkflow`, () => {
     expect(blocks[3].deps.map((b) => b.name)).to.deep.eq([`Unit`, `Lint`]);
     expect(wf.jobs.get(`ci/Unit#1`).status).to.eq(`failed`);
     expect(wf.blocks.get(`ci/Lint`).pipeline).to.eq(wf.root);
+  });
+});
+
+describe(`buildWorkflow promotions`, () => {
+  test(`links each promotion to the pipelines it triggered and flags unprocessed ones`, () => {
+    const promotion = (name: string, events: ApiPipelineDetail[`promotions`][number][`events`]) => ({
+      name,
+      trigger_url: `/promote/${name}`,
+      can_promote: true,
+      deployment: null,
+      parameters: [],
+      events,
+    });
+    const detail: ApiPipelineDetail = {
+      id: `ci`,
+      state: `DONE`,
+      result: `PASSED`,
+      error_description: ``,
+      done: true,
+      blocks: [],
+      after_jobs: [],
+      promotions: [
+        promotion(`Staging`, [{ pipeline_id: `staging-1`, processed: true, result: `PASSED`, auto: true, triggered_at: 1, author: null }]),
+        promotion(`Production`, [{ pipeline_id: null, processed: false, result: ``, auto: false, triggered_at: 2, author: `Ana` }]),
+      ],
+    };
+
+    const wf = buildWorkflow(
+      { root_pipeline_id: `ci`, pipelines: [apiPipeline(`ci`), apiPipeline(`staging-1`, { parent_id: `ci`, trigger: `AUTO_PROMOTION` })] },
+      { ci: detail }
+    );
+    const [staging, production] = wf.root.promotions;
+
+    expect(staging.pipelines.map((p) => p.id)).to.deep.eq([`staging-1`]);
+    expect(staging.starting).to.eq(false);
+    expect(production.pipelines).to.deep.eq([]);
+    expect(production.starting).to.eq(true);
   });
 });
 

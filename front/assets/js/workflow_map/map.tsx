@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
-import { signal } from "@preact/signals";
+import { computed, signal } from "@preact/signals";
 import { BaseEdge, Background, Controls, Edge, EdgeProps, Handle, MiniMap, Node, NodeProps, Panel, Position, ReactFlow, ReactFlowProvider, useReactFlow, useStore } from "@xyflow/react";
-import { STATUS_LABEL, Status, Workflow, blockStatus, countJobs, pipelineJobs } from "./model";
-import { focus, hits, loadError, selected, workflow } from "./store";
-import { MapLayout, Point, layoutMap } from "./layout";
+import { Pipeline, STATUS_LABEL, Status, Workflow, blockStatus, countJobs, pipelineJobs } from "./model";
+import { focus, hits, loadError, rerunPipeline, selected, stopPipeline, workflow } from "./store";
+import { MapLayout, Point, layoutMap, promotedFrom, promotionsNodeId } from "./layout";
+import { promoting } from "./promote";
 import { BlockCard, Counts, Duration, Highlight, PipelineTitle, StatusBar, StatusIcon } from "./ui";
 
 const CARD = { w: 300, h: 72 };
@@ -11,11 +12,32 @@ const BLOCK = { w: 230, h: 74 };
 const OPEN_BLOCK_W = 260;
 const JOB_ROW_H = 23;
 const BLOCK_HEAD_H = 40;
+const PROMOTIONS_W = 290;
+const PROMOTIONS_HEAD_H = 36;
+const PROMOTION_ROW_H = 56;
 
 const CLICKABLE = { pointerEvents: `all` as const };
 
 export const openPipelines = signal<Set<string>>(new Set());
 export const openBlocks = signal<Set<string>>(new Set());
+const hovered = signal<string | null>(null);
+
+const lineage = computed(() => {
+  const start = hovered.value && workflow.value?.blocks.get(hovered.value);
+  if (!start) return null;
+  const chain = new Set<string>([start.id]);
+  const up = (b: typeof start) =>
+    b.deps.forEach((d) => {
+      if (!chain.has(d.id)) chain.add(d.id), up(d);
+    });
+  const down = (b: typeof start) =>
+    b.pipeline.blocks.forEach((next) => {
+      if (next.deps.includes(b) && !chain.has(next.id)) chain.add(next.id), down(next);
+    });
+  up(start);
+  down(start);
+  return { chain, pipelineId: start.pipeline.id };
+});
 
 interface Target { id: string, how: `fit` | `center` | `all`, job?: number, }
 let target: Target | null = null;
@@ -30,20 +52,51 @@ const toggle = (s: typeof openPipelines, id: string, on?: boolean) => {
   s.value = next;
 };
 
+const PipelineActions = ({ p }: { p: Pipeline, }) => {
+  const [busy, setBusy] = useState<`stop` | `rerun` | null>(null);
+  if (!p.stopUrl && !p.rebuildUrl) return null;
+  const run = async (kind: `stop` | `rerun`) => {
+    setBusy(kind);
+    const error = await (kind === `stop` ? stopPipeline(p) : rerunPipeline(p));
+    setBusy(null);
+    const notice = (window as unknown as { Notice?: { notice: (m: string) => void, error: (m: string) => void, }, }).Notice;
+    if (error) notice?.error(error);
+    else notice?.notice(kind === `stop` ? `${p.name} will be stopped shortly.` : `Rerunning the failed jobs of ${p.name}.`);
+  };
+  return (
+    <span className="wf-map-actions" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+      {p.stopUrl && (
+        <button className="btn btn-secondary btn-tiny" disabled={busy !== null} onClick={() => void run(`stop`)}>
+          {busy === `stop` ? `Stopping…` : `Stop`}
+        </button>
+      )}
+      {p.rebuildUrl && (
+        <button className="btn btn-secondary btn-tiny" disabled={busy !== null} title="Reruns only the jobs that did not pass, keeping the ones that did" onClick={() => void run(`rerun`)}>
+          {busy === `rerun` ? `Rerunning…` : `Rerun failed`}
+        </button>
+      )}
+    </span>
+  );
+};
+
 const CardNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
   const p = workflow.value?.pipelineById.get(data.id);
   const h = hits.value;
   if (!p) return null;
   const n = h.perPipeline.get(p) ?? 0;
   const jobs = pipelineJobs(p);
+  const open = () => {
+    selected.value = p.id;
+    aim({ id: p.id, how: `fit` });
+    toggle(openPipelines, p.id, true);
+  };
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       className={`wf-map-card ${selected.value === p.id ? `selected` : ``} ${h.active && !n ? `dim` : ``}`}
-      onClick={() => {
-        selected.value = p.id;
-        aim({ id: p.id, how: `fit` });
-        toggle(openPipelines, p.id, true);
-      }}
+      onClick={open}
+      onKeyDown={(e) => (e.key === `Enter` || e.key === ` `) && (e.preventDefault(), open())}
     >
       <Handle type="target" id="in" position={Position.Left} isConnectable={false}/>
       <span className="wf-map-card-row">
@@ -51,6 +104,7 @@ const CardNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
         <span className="wf-map-card-title">
           <PipelineTitle p={p}/>
         </span>
+        <PipelineActions p={p}/>
         <Duration start={p.runningAt} end={p.doneAt} running={p.status === `running`}/>
       </span>
       {p.blocks ? <StatusBar jobs={jobs}/> : <span className="wf-map-bar loading"/>}
@@ -67,7 +121,7 @@ const CardNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
         {h.active ? <span className={`wf-map-match ${n ? `` : `zero`}`}>{n} matching</span> : <Counts jobs={jobs}/>}
       </span>
       <Handle type="source" id="out" position={Position.Right} isConnectable={false}/>
-    </button>
+    </div>
   );
 };
 
@@ -98,8 +152,62 @@ const PipelineNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
         <span className="wf-map-pipeline-meta">{p.yamlFile}</span>
         <Duration start={p.runningAt} end={p.doneAt} running={p.status === `running`}/>
         <Counts jobs={pipelineJobs(p)}/>
+        <PipelineActions p={p}/>
       </div>
       <Handle type="source" id="out" position={Position.Right} isConnectable={false} style={{ top: 34 }}/>
+    </div>
+  );
+};
+
+const PromotionsNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
+  const p = workflow.value?.pipelineById.get(data.id);
+  if (!p?.promotions) return null;
+  return (
+    <div className="wf-map-promotions">
+      <Handle type="target" id="in" position={Position.Left} isConnectable={false} style={{ top: PROMOTIONS_HEAD_H / 2 }}/>
+      <div className="wf-map-promotions-head">Promotions</div>
+      {p.promotions.map((promotion, i) => {
+        const latest = promotion.events.reduce((a, e) => (!a || e.triggered_at > a.triggered_at ? e : a), null);
+        const note = promotion.starting
+          ? `Starting promotion…`
+          : !latest
+            ? `Not promoted yet`
+            : latest.processed && latest.result === `FAILED`
+              ? `Failed to promote`
+              : `${promotion.events.length > 1 ? `${promotion.events.length}× · ` : ``}${latest.auto ? `auto-promoted` : `by ${latest.author ?? `someone`}`}`;
+        const blocked = promotion.deployment && !promotion.deployment.allowed;
+        const why = blocked ? promotion.deployment.message ?? `Blocked by the ${promotion.deployment.name} deployment target` : `You don't have permission to promote`;
+        return (
+          <div key={promotion.name} className="wf-map-promotion" style={{ height: PROMOTION_ROW_H }}>
+            <span className="material-symbols-outlined wf-map-promotion-icon" aria-hidden="true">
+              {promotion.deployment ? (promotion.deployment.allowed ? `lock_open` : `lock`) : `rocket_launch`}
+            </span>
+            <span className="wf-map-promotion-text">
+              <span className="wf-map-promotion-name">{promotion.name}</span>
+              <span className={`wf-map-promotion-note ${latest?.result === `FAILED` ? `failed` : ``}`}>{blocked ? promotion.deployment.name : note}</span>
+            </span>
+            <button
+              className="btn btn-secondary btn-small"
+              disabled={!promotion.can_promote || promotion.starting}
+              title={promotion.can_promote ? `Promote ${p.name} to ${promotion.name}` : why}
+              onClick={(e) => {
+                e.stopPropagation();
+                promoting.value = { pipeline: p, promotion };
+              }}
+            >
+              Promote
+            </button>
+            <Handle
+              type="source"
+              id={`row:${i}`}
+              position={Position.Right}
+              isConnectable={false}
+              style={{ top: PROMOTIONS_HEAD_H + i * PROMOTION_ROW_H + PROMOTION_ROW_H / 2 }}
+            />
+          </div>
+        );
+      })}
+      <Handle type="source" id="out" position={Position.Right} isConnectable={false} style={{ top: PROMOTIONS_HEAD_H / 2 }}/>
     </div>
   );
 };
@@ -119,8 +227,14 @@ const BlockNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
     aim({ id: b.id, how: `center` });
     toggle(openBlocks, b.id);
   };
+  const l = lineage.value;
+  const inChain = l?.chain.has(b.id);
   return (
-    <div className={`wf-map-node ${h.active && !h.blocks.has(b) ? `dim` : ``}`}>
+    <div
+      className={`wf-map-node ${h.active && !h.blocks.has(b) ? `dim` : ``} ${inChain ? `lit` : l?.pipelineId === b.pipeline.id ? `faded` : ``} ${hovered.value === b.id ? `hovered` : ``}`}
+      onMouseEnter={() => (hovered.value = b.id)}
+      onMouseLeave={() => hovered.value === b.id && (hovered.value = null)}
+    >
       <Handle type="target" position={Position.Left} isConnectable={false}/>
       {openBlocks.value.has(b.id) ? (
         <BlockCard block={b} onHeaderClick={flip}/>
@@ -159,9 +273,13 @@ function rounded(pts: Point[], r = 10) {
   return `${d} L${last.x},${last.y}`;
 }
 
-const RouteEdge = ({ id, data }: EdgeProps<Edge<{ points: Point[], }>>) => <BaseEdge id={id} path={rounded(data.points)}/>;
+const RouteEdge = ({ id, data, source, target }: EdgeProps<Edge<{ points: Point[], }>>) => {
+  const l = lineage.value;
+  const state = !l || !source.startsWith(`${l.pipelineId}/`) ? `` : l.chain.has(source) && l.chain.has(target) ? `wf-map-edge-lit` : `wf-map-edge-faded`;
+  return <BaseEdge id={id} path={rounded(data.points)} className={state}/>;
+};
 
-const nodeTypes = { card: CardNode, pipeline: PipelineNode, block: BlockNode };
+const nodeTypes = { card: CardNode, pipeline: PipelineNode, block: BlockNode, promotions: PromotionsNode };
 const edgeTypes = { route: RouteEdge };
 
 function build(wf: Workflow, L: MapLayout) {
@@ -182,9 +300,22 @@ function build(wf: Workflow, L: MapLayout) {
         }
       }
     }
+    const promotionsBox = L.promotions.get(promotionsNodeId(p.id));
+    if (promotionsBox) {
+      nodes.push({ id: promotionsNodeId(p.id), type: `promotions`, position: { x: promotionsBox.x, y: promotionsBox.y }, width: promotionsBox.w, height: promotionsBox.h, style: CLICKABLE, data: { id: p.id }, draggable: false, selectable: false });
+      const id = `${p.id}=>${promotionsNodeId(p.id)}`;
+      edges.push({ id, type: `route`, source: p.id, sourceHandle: `out`, target: promotionsNodeId(p.id), targetHandle: `in`, className: `promo auto`, focusable: false, data: { points: L.routes.get(id) ?? [] } });
+    }
     if (p.parent && L.pipelines.has(p.parent.id)) {
-      const id = `${p.parent.id}=>${p.id}`;
-      edges.push({ id, type: `route`, source: p.parent.id, sourceHandle: `out`, target: p.id, targetHandle: `in`, className: `promo ${p.trigger === `AUTO_PROMOTION` ? `auto` : p.trigger === `PIPELINE_PARTIAL_RERUN` ? `rerun` : `manual`}`, focusable: false, data: { points: L.routes.get(id) ?? [] } });
+      const source = promotedFrom(p);
+      const kind = p.trigger === `AUTO_PROMOTION` ? `auto` : p.trigger === `PIPELINE_PARTIAL_RERUN` ? `rerun` : `manual`;
+      const id = `${source}=>${p.id}`;
+      if (source === p.parent.id) {
+        edges.push({ id, type: `route`, source, sourceHandle: `out`, target: p.id, targetHandle: `in`, className: `promo ${kind}`, focusable: false, data: { points: L.routes.get(id) ?? [] } });
+      } else {
+        const row = p.parent.promotions.findIndex((promotion) => promotion.pipelines.includes(p));
+        edges.push({ id, type: `smoothstep`, source, sourceHandle: row < 0 ? `out` : `row:${row}`, target: p.id, targetHandle: `in`, className: `promo ${kind}`, focusable: false });
+      }
     }
   }
   return { nodes, edges };
@@ -194,7 +325,8 @@ function structureKey(wf: Workflow, open: Set<string>, openB: Set<string>) {
   return wf.pipelines
     .map((p) => {
       const blocks = open.has(p.id) && p.blocks ? p.blocks.map((b) => `${b.name}:${b.deps.length}:${openB.has(b.id) ? b.jobs.length : `-`}`).join(`,`) : `closed`;
-      return `${p.id}<${p.parent?.id ?? ``}>${blocks}`;
+      const promotions = p.promotions?.map((promotion) => `${promotion.name}:${promotion.pipelines.length}`).join(`,`) ?? ``;
+      return `${p.id}<${p.parent?.id ?? ``}>${blocks}[${promotions}]`;
     })
     .join(`|`);
 }
@@ -255,7 +387,8 @@ const WorkflowMap = () => {
       wf,
       (p) => P.has(p.id),
       (b) => (B.has(b.id) ? { w: OPEN_BLOCK_W, h: BLOCK_HEAD_H + b.jobs.length * JOB_ROW_H + 8 } : BLOCK),
-      CARD
+      CARD,
+      (p) => ({ w: PROMOTIONS_W, h: PROMOTIONS_HEAD_H + p.promotions.length * PROMOTION_ROW_H + 6 })
     )
       .then((L) => alive && setLayout(L))
       .catch(() => {

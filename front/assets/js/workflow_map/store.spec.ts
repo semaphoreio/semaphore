@@ -10,6 +10,7 @@ const detail = (id: string, blocks: ApiPipelineDetail[`blocks`]): ApiPipelineDet
   result: `PASSED`,
   error_description: ``,
   done: true,
+  promotions: [],
   blocks,
   after_jobs: [],
 });
@@ -28,6 +29,8 @@ const pipeline = (id: string, name: string, parent_id: string | null) => ({
   created_at: 1,
   running_at: 1,
   done_at: 2,
+  stop_url: null,
+  rebuild_url: null,
 });
 
 describe(`workflow map store`, () => {
@@ -105,11 +108,9 @@ describe(`refresh`, () => {
   const config: Config = {
     workflowUrl: `/wf/map`,
     pipelineUrl: `/ppl/__PIPELINE_ID__/map`,
-    switchUrl: ``,
     elkWorkerUrl: ``,
     selectedPipelineId: `ci`,
     pollInterval: 4000,
-    nonce: ``,
   };
   const realFetch = globalThis.fetch;
   let requested: string[];
@@ -141,6 +142,28 @@ describe(`refresh`, () => {
 
     expect(requested.filter((u) => u === `/ppl/ci/map`).length).to.eq(3);
     expect(details.value.ci.done).to.eq(true);
+  });
+
+  test(`fetches a finished pipeline again when a new promoted pipeline appears under it`, async () => {
+    responses[`/ppl/ci/map`] = detail(`ci`, []);
+    await refresh(config);
+    await refresh(config);
+    responses[`/wf/map`] = { root_pipeline_id: `ci`, pipelines: [pipeline(`ci`, `Build & test`, null), pipeline(`e2e`, `E2E`, `ci`)] };
+    responses[`/ppl/e2e/map`] = detail(`e2e`, []);
+    await refresh(config);
+
+    expect(requested.filter((u) => u === `/ppl/ci/map`).length).to.eq(2);
+  });
+
+  test(`keeps fetching a finished pipeline while one of its promotions is starting`, async () => {
+    responses[`/ppl/ci/map`] = {
+      ...detail(`ci`, []),
+      promotions: [{ name: `Staging`, trigger_url: `/promote`, can_promote: true, deployment: null, parameters: [], events: [{ pipeline_id: null, processed: false, result: ``, auto: false, triggered_at: 1, author: null }] }],
+    };
+    await refresh(config);
+    await refresh(config);
+
+    expect(requested.filter((u) => u === `/ppl/ci/map`).length).to.eq(2);
   });
 
   test(`drops the results of a refresh started before the page was left`, async () => {

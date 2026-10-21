@@ -126,6 +126,45 @@ defmodule FrontWeb.PipelineViewTest do
       refute json.done
     end
 
+    test "lists promotions with parameters, deployment access and history" do
+      pipeline = map_pipeline(:DONE, []) |> Map.merge(%{workflow_id: "wf-1"})
+
+      switch = %{
+        id: "sw-1",
+        targets: [
+          %{
+            name: "Production",
+            parameters: [
+              %{name: "REGION", description: "Where", required: true, options: ["eu", "us"], default_value: "eu"}
+            ],
+            deployment: %{
+              name: "prod",
+              allowed?: false,
+              message: "You can't deploy to %{deployment_target}"
+            },
+            events: [
+              %{pipeline_id: "ppl-2", processed: true, result: :PASSED, auto_triggered: false, triggered_at: 10, author: %{name: "Ana"}},
+              %{pipeline_id: "", processed: false, result: :FAILED, auto_triggered: true, triggered_at: 20, author: nil}
+            ]
+          }
+        ]
+      }
+
+      [promotion] =
+        PipelineView.render("map.json", %{pipeline: pipeline, switch: switch, can_promote?: true, conn: build_conn()}).promotions
+
+      assert promotion.name == "Production"
+      assert promotion.trigger_url == "/workflows/wf-1/pipelines/ppl-1/swithes/sw-1/targets/Production"
+      refute promotion.can_promote
+      assert promotion.deployment == %{name: "prod", allowed: false, message: "You can't deploy to prod Deployment Target"}
+      assert [%{name: "REGION", required: true, options: ["eu", "us"], default_value: "eu"}] = promotion.parameters
+      assert [%{pipeline_id: "ppl-2", author: "Ana", auto: false}, %{pipeline_id: nil, processed: false, auto: true}] = promotion.events
+    end
+
+    test "has no promotions without a switch" do
+      assert render_map(map_pipeline(:DONE, [])).promotions == []
+    end
+
     test "is done once the pipeline and its after pipeline jobs are done" do
       after_job = %{
         id: "a1",

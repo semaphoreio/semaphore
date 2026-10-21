@@ -19,7 +19,6 @@
   </div>
   <%= if workflow_map? do %>
     <div id="workflow-map" class="wf-map nh3 nh4-m bt b--lighter-gray"></div>
-    <div id="workflow-map-promotions" class="wf-map-promotions"></div>
     <script nonce="<%= @conn.assigns[:script_src_nonce] %>">
       window.InjectedDataByBackend.WorkflowMap = <%= raw workflow_map_config(@conn, @workflow_id, @selected_pipeline_id) %>;
     </script>
