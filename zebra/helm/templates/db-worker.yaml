@@ -76,7 +76,7 @@ spec:
             - name: START_JOB_REQUEST_FACTORY
               value: "true"
             - name: JOB_REQUEST_FACTORY_PARALLELISM
-              value: {{ .Values.dbWorker.jobRequestFactoryParallelism | quote }}
+              value: {{ .Values.dbWorker.jobRequestFactoryParallelism | default 3 | quote }}
             - name: START_GRPC_HEALTH_CHECK
               value: "true"
             - name: START_WAITING_JOB_TERMINATOR

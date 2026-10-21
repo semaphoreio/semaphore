@@ -172,6 +172,27 @@ defmodule Zebra.Workers.DbWorkerTest do
     end
   end
 
+  describe "process/2 in continuous mode" do
+    test "uses process_timeout as the transaction timeout" do
+      [job] = create_pending_jobs(1)
+
+      # Sleeps past the 200ms budget while holding the connection, then writes.
+      # With the repo's default 15s timeout the write would succeed.
+      processor = fn job ->
+        :timer.sleep(600)
+        mark_enqueued(job)
+      end
+
+      worker = worker(processor, concurrency_mode: :continuous, process_timeout: 200)
+
+      capture_log(fn ->
+        assert_raise DBConnection.ConnectionError, fn -> DbWorker.process(worker, job.id) end
+      end)
+
+      assert Job.reload(job).aasm_state == Job.state_pending()
+    end
+  end
+
   describe "batches mode" do
     test "stays the default and still halts the tick" do
       create_pending_jobs(4)
