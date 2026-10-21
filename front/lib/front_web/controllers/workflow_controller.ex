@@ -34,8 +34,8 @@ defmodule FrontWeb.WorkflowController do
   plug(PutProjectAssigns)
   plug(FetchPermissions, scope: "project")
 
-  plug(PublicPageAccess when action in [:show, :status])
-  plug(PageAccess, [permissions: "project.view"] when action not in [:show, :status])
+  plug(PublicPageAccess when action in [:show, :status, :map])
+  plug(PageAccess, [permissions: "project.view"] when action not in [:show, :status, :map])
   plug(PageAccess, [permissions: "project.workflow.manage"] when action in [:edit])
   plug(PageAccess, [permissions: "project.job.rerun"] when action in [:rebuild])
 

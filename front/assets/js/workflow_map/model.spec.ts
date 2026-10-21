@@ -74,6 +74,7 @@ describe(`buildWorkflow`, () => {
       state: `DONE`,
       result: `PASSED`,
       error_description: ``,
+      done: true,
       blocks: [
         { name: `Build`, dependencies: [], jobs: [job(`compile`)] },
         { name: `Unit`, dependencies: [`Build`], jobs: [job(`unit 1`), job(`unit 2`, `failed`)] },

@@ -51,6 +51,7 @@ export interface ApiPipelineDetail {
   state: string;
   result: string;
   error_description: string;
+  done: boolean;
   blocks: ApiBlock[];
   after_jobs: ApiJob[];
 }
@@ -243,13 +244,4 @@ export function formatDuration(total: number): string {
   if (days) return `${days}d ${two(hours)}:${two(minutes)}:${two(rest)}`;
   if (hours) return `${two(hours)}:${two(minutes)}:${two(rest)}`;
   return `${two(minutes)}:${two(rest)}`;
-}
-
-export const elapsed = (start: number | null, end: number | null, now: number): number | null =>
-  start ? (end ?? now) - start : null;
-
-export function pathTo(p: Pipeline): Pipeline[] {
-  const out: Pipeline[] = [];
-  for (let cur: Pipeline | null = p; cur; cur = cur.parent) out.unshift(cur);
-  return out;
 }

@@ -950,20 +950,21 @@ defmodule Mix.Tasks.Dev.Server do
 
     seed_huge_pipeline(root, @huge_workflow_templates.ci, :passed)
 
-    Enum.reduce(@huge_workflow_promotions, %{"ci" => root}, fn {key, name, parent, trigger,
-                                                                template, outcome},
-                                                               pipelines ->
-      pipeline =
-        Stubs.Pipeline.create(workflow,
-          name: name,
-          organization_id: org.id,
-          promotion_of: pipelines[parent].id,
-          triggerer: promotion_triggerer(workflow, trigger)
-        )
+    _pipelines =
+      Enum.reduce(@huge_workflow_promotions, %{"ci" => root}, fn {key, name, parent, trigger,
+                                                                  template, outcome},
+                                                                 pipelines ->
+        pipeline =
+          Stubs.Pipeline.create(workflow,
+            name: name,
+            organization_id: org.id,
+            promotion_of: pipelines[parent].id,
+            triggerer: promotion_triggerer(workflow, trigger)
+          )
 
-      seed_huge_pipeline(pipeline, @huge_workflow_templates[template], outcome)
-      Map.put(pipelines, key, pipeline)
-    end)
+        seed_huge_pipeline(pipeline, @huge_workflow_templates[template], outcome)
+        Map.put(pipelines, key, pipeline)
+      end)
 
     project
   end

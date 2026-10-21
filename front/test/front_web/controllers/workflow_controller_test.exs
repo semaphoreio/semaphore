@@ -449,6 +449,24 @@ defmodule FrontWeb.WorkflowControllerTest do
 
       assert conn.status == 404
     end
+
+    test "serves guests of a public project", %{
+      conn: conn,
+      organization: organization,
+      project: project,
+      workflow: workflow,
+      pipeline: pipeline
+    } do
+      Support.Stubs.Feature.enable_feature(organization.id, :ui_workflow_map)
+      Support.Stubs.Project.switch_project_visibility(project, "public")
+      PermissionPatrol.remove_all_permissions()
+
+      assert conn |> get("/workflows/#{workflow.id}/map") |> json_response(200)
+
+      assert conn
+             |> get("/workflows/#{workflow.id}/pipelines/#{pipeline.id}/map")
+             |> json_response(200)
+    end
   end
 
   describe "show with ui_workflow_map" do

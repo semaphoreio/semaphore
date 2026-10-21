@@ -28,10 +28,11 @@ export interface FocusTarget { kind: `pipeline` | `block` | `job`, id: string, s
 export const focus = signal<FocusTarget | null>(null);
 
 let seq = 0;
+let generation = 0;
+
 export function focusOn(kind: FocusTarget[`kind`], id: string) {
   const wf = workflow.value;
-  if (!wf) return;
-  const pipelineId = kind === `pipeline` ? id : kind === `block` ? wf.blocks.get(id)?.pipeline.id : wf.jobs.get(id)?.block.pipeline.id;
+  const pipelineId = kind === `pipeline` ? id : kind === `block` ? wf?.blocks.get(id)?.pipeline.id : wf?.jobs.get(id)?.block.pipeline.id;
   if (!pipelineId) return;
   selected.value = pipelineId;
   focus.value = { kind, id, seq: ++seq };
@@ -107,6 +108,7 @@ export const results = computed<SearchResult[]>(() => {
 });
 
 export function resetState(selectedPipelineId: string) {
+  generation++;
   tree.value = null;
   details.value = {};
   loadError.value = null;
@@ -147,7 +149,9 @@ async function fetchJson<T>(url: string): Promise<T | null> {
 }
 
 export async function refresh(config: Config) {
+  const started = generation;
   const nextTree = await fetchJson<ApiWorkflow>(config.workflowUrl);
+  if (started !== generation) return;
   if (!nextTree) {
     loadError.value = `Couldn't load this workflow's pipelines. Retrying.`;
     return;
@@ -156,7 +160,7 @@ export async function refresh(config: Config) {
   tree.value = nextTree;
 
   const known = details.value;
-  const due = nextTree.pipelines.filter((p) => !known[p.id] || known[p.id].state !== `DONE` || p.state !== `DONE`);
+  const due = nextTree.pipelines.filter((p) => !known[p.id]?.done || p.state !== `DONE`);
   const fetched: Record<string, ApiPipelineDetail> = {};
   const queue = [...due];
   const worker = async () => {
@@ -166,5 +170,5 @@ export async function refresh(config: Config) {
     }
   };
   await Promise.all(Array.from({ length: Math.min(DETAIL_CONCURRENCY, queue.length) }, worker));
-  if (Object.keys(fetched).length) details.value = { ...details.value, ...fetched };
+  if (started === generation && Object.keys(fetched).length) details.value = { ...details.value, ...fetched };
 }

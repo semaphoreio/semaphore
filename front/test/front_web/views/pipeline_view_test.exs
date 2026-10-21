@@ -58,7 +58,7 @@ defmodule FrontWeb.PipelineViewTest do
       assert Enum.at(jobs, 0).id == "job-ENQUEUED-PASSED"
     end
 
-    test "marks jobs that never started by block and pipeline state" do
+    test "marks jobs that never started as skipped or not started" do
       topology_jobs = [%{name: "build"}]
 
       blocks = [
@@ -67,13 +67,11 @@ defmodule FrontWeb.PipelineViewTest do
         %{name: "Waiting", dependencies: ["Skipped"], skipped?: false, jobs: topology_jobs}
       ]
 
-      statuses = fn pipeline_state ->
-        render_map(map_pipeline(pipeline_state, blocks)).blocks
+      statuses =
+        render_map(map_pipeline(:DONE, blocks)).blocks
         |> Enum.map(fn block -> hd(block.jobs).status end)
-      end
 
-      assert statuses.(:RUNNING) == [:skipped, :stopped, :pending]
-      assert statuses.(:DONE) == [:skipped, :stopped, :stopped]
+      assert statuses == [:skipped, :pending, :pending]
     end
 
     test "links reused jobs to the original job" do
@@ -125,6 +123,24 @@ defmodule FrontWeb.PipelineViewTest do
              ]
 
       assert hd(json.after_jobs).finished_at == 20
+      refute json.done
+    end
+
+    test "is done once the pipeline and its after pipeline jobs are done" do
+      after_job = %{
+        id: "a1",
+        name: "cleanup",
+        running?: false,
+        failed?: false,
+        stopped?: false,
+        passed?: true,
+        done?: true,
+        started_at: 10,
+        done_at: 20
+      }
+
+      assert render_map(map_pipeline(:DONE, [], [after_job])).done
+      refute render_map(map_pipeline(:RUNNING, [], [])).done
     end
   end
 
