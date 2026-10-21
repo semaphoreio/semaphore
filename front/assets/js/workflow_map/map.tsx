@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { signal } from "@preact/signals";
 import { BaseEdge, Background, Controls, Edge, EdgeProps, Handle, MiniMap, Node, NodeProps, Panel, Position, ReactFlow, ReactFlowProvider, useReactFlow, useStore } from "@xyflow/react";
-import { Workflow, blockStatus, pipelineJobs } from "./model";
-import { focus, hits, selected, workflow } from "./store";
+import { STATUS_LABEL, Status, Workflow, blockStatus, countJobs, pipelineJobs } from "./model";
+import { focus, hits, loadError, selected, workflow } from "./store";
 import { MapLayout, Point, layoutMap } from "./layout";
-import { BlockCard, Counts, Duration, Highlight, PipelineTitle, StatusBar, StatusIcon, jobSummary } from "./ui";
+import { BlockCard, Counts, Duration, Highlight, PipelineTitle, StatusBar, StatusIcon } from "./ui";
 
 const CARD = { w: 300, h: 72 };
 const BLOCK = { w: 230, h: 74 };
@@ -17,16 +17,18 @@ const CLICKABLE = { pointerEvents: `all` as const };
 export const openPipelines = signal<Set<string>>(new Set());
 export const openBlocks = signal<Set<string>>(new Set());
 
-interface Target { id: string, how: `fit` | `center`, job?: number, }
-let pending: Target | null = null;
+interface Target { id: string, how: `fit` | `center` | `all`, job?: number, }
+let target: Target | null = null;
+
+export const aim = (next: Target | null) => {
+  target = next;
+};
 
 const toggle = (s: typeof openPipelines, id: string, on?: boolean) => {
   const next = new Set(s.value);
   (on ?? !next.has(id)) ? next.add(id) : next.delete(id);
   s.value = next;
 };
-
-const edgeKind = (trigger: string) => (trigger === `AUTO_PROMOTION` ? `auto` : trigger === `PIPELINE_PARTIAL_RERUN` ? `rerun` : `manual`);
 
 const CardNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
   const p = workflow.value?.pipelineById.get(data.id);
@@ -39,7 +41,7 @@ const CardNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
       className={`wf-map-card ${selected.value === p.id ? `selected` : ``} ${h.active && !n ? `dim` : ``}`}
       onClick={() => {
         selected.value = p.id;
-        pending = { id: p.id, how: `fit` };
+        aim({ id: p.id, how: `fit` });
         toggle(openPipelines, p.id, true);
       }}
     >
@@ -83,7 +85,7 @@ const PipelineNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
           title="Collapse to a card"
           onClick={(e) => {
             e.stopPropagation();
-            pending = { id: p.id, how: `center` };
+            aim({ id: p.id, how: `center` });
             toggle(openPipelines, p.id, false);
           }}
         >
@@ -108,8 +110,13 @@ const BlockNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
   const f = focus.value;
   if (!b) return null;
   const st = blockStatus(b);
+  const c = countJobs(b.jobs);
+  const summary = [
+    `${b.jobs.length} ${b.jobs.length === 1 ? `job` : `jobs`}`,
+    ...([`failed`, `running`, `queued`, `stopped`] as Status[]).filter((s) => c[s]).map((s) => `${c[s]} ${STATUS_LABEL[s].toLowerCase()}`),
+  ].join(` · `);
   const flip = () => {
-    pending = { id: b.id, how: `center` };
+    aim({ id: b.id, how: `center` });
     toggle(openBlocks, b.id);
   };
   return (
@@ -126,7 +133,7 @@ const BlockNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
             </span>
           </span>
           <StatusBar jobs={b.jobs}/>
-          <span className="wf-map-summary-meta">{jobSummary(b.jobs)}</span>
+          <span className="wf-map-summary-meta">{summary}</span>
         </button>
       )}
       <Handle type="source" position={Position.Right} isConnectable={false}/>
@@ -177,7 +184,7 @@ function build(wf: Workflow, L: MapLayout) {
     }
     if (p.parent && L.pipelines.has(p.parent.id)) {
       const id = `${p.parent.id}=>${p.id}`;
-      edges.push({ id, type: `route`, source: p.parent.id, sourceHandle: `out`, target: p.id, targetHandle: `in`, className: `promo ${edgeKind(p.trigger)}`, focusable: false, data: { points: L.routes.get(id) ?? [] } });
+      edges.push({ id, type: `route`, source: p.parent.id, sourceHandle: `out`, target: p.id, targetHandle: `in`, className: `promo ${p.trigger === `AUTO_PROMOTION` ? `auto` : p.trigger === `PIPELINE_PARTIAL_RERUN` ? `rerun` : `manual`}`, focusable: false, data: { points: L.routes.get(id) ?? [] } });
     }
   }
   return { nodes, edges };
@@ -212,10 +219,16 @@ const WorkflowMap = () => {
   const vw = useStore((s) => s.width);
   const vh = useStore((s) => s.height);
   const [layout, setLayout] = useState<MapLayout | null>(null);
-  const initialFit = useRef(false);
+  const handledSeq = useRef(0);
   const key = wf ? structureKey(wf, P, B) : ``;
 
   const go = (L: MapLayout, t: Target) => {
+    const p = wf.pipelineById.get(t.id);
+    if (t.how === `all` || (!p && !wf.blocks.has(t.id))) {
+      void rf.fitView({ padding: 0.06, maxZoom: 1, duration: 400 });
+      return true;
+    }
+    if (p && P.has(p.id) && (p.blocks === null || (p.blocks.length && !L.pipelines.get(p.id)?.open))) return false;
     const b = boxOf(wf, L, t.id);
     if (!b || (t.job !== undefined && b.h < BLOCK_HEAD_H + t.job * JOB_ROW_H)) return false;
     const cx = b.x + b.w / 2;
@@ -224,22 +237,30 @@ const WorkflowMap = () => {
     } else if (t.job !== undefined) {
       void rf.setCenter(cx, b.y + BLOCK_HEAD_H + t.job * JOB_ROW_H + 11, { zoom: Math.max(rf.getZoom(), 1), duration: 450 });
     } else {
-      const pad = L.pipelines.has(t.id) ? 1.12 : 1.6;
+      const pad = p ? 1.12 : 1.6;
       const z = Math.max(0.1, Math.min(1, vw / (b.w * pad), vh / (b.h * pad)));
       void rf.setViewport({ x: vw / 2 - cx * z, y: vh / 2 - (b.y + b.h / 2) * z, zoom: z }, { duration: 450 });
     }
     return true;
   };
 
+  const settle = (L: MapLayout) => {
+    if (target && go(L, target)) target = null;
+  };
+
   useEffect(() => {
     if (!wf) return;
     let alive = true;
-    void layoutMap(
+    layoutMap(
       wf,
       (p) => P.has(p.id),
       (b) => (B.has(b.id) ? { w: OPEN_BLOCK_W, h: BLOCK_HEAD_H + b.jobs.length * JOB_ROW_H + 8 } : BLOCK),
       CARD
-    ).then((L) => alive && setLayout(L));
+    )
+      .then((L) => alive && setLayout(L))
+      .catch(() => {
+        if (alive) loadError.value = `Couldn't lay out this workflow. Reload the page to try again.`;
+      });
     return () => {
       alive = false;
     };
@@ -248,39 +269,24 @@ const WorkflowMap = () => {
   const graph = useMemo(() => (layout && wf ? build(wf, layout) : null), [layout]);
 
   useEffect(() => {
-    if (!graph || !layout) return;
-    const t = pending;
-    pending = null;
-    requestAnimationFrame(() => {
-      if (t) {
-        go(layout, t);
-      } else if (!initialFit.current) {
-        const sel = wf.pipelineById.get(selected.value);
-        if (!sel || sel.blocks !== null) {
-          initialFit.current = true;
-          if (!go(layout, { id: selected.value, how: `fit` })) void rf.fitView({ padding: 0.06, maxZoom: 1 });
-        }
-      }
-    });
+    if (graph && layout) requestAnimationFrame(() => settle(layout));
   }, [graph]);
 
   useEffect(() => {
-    if (!f || !wf) return;
+    if (!f || !wf || f.seq === handledSeq.current) return;
     const blockId = f.kind === `job` ? wf.jobs.get(f.id)?.block.id : f.kind === `block` ? f.id : null;
     const p = blockId ? wf.blocks.get(blockId)?.pipeline : wf.pipelineById.get(f.id);
     if (!p) return;
-    const needP = !P.has(p.id);
-    const needB = f.kind === `job` && !B.has(blockId);
+    handledSeq.current = f.seq;
     const job = f.kind === `job` ? wf.jobs.get(f.id).block.jobs.findIndex((j) => j.key === f.id) : undefined;
-    pending = { id: blockId ?? p.id, how: `fit`, job };
-    if (needP) toggle(openPipelines, p.id, true);
-    if (needB) toggle(openBlocks, blockId, true);
-    if (!needP && !needB && layout && go(layout, pending)) pending = null;
-  }, [f?.seq]);
+    aim({ id: blockId ?? p.id, how: `fit`, job });
+    if (!P.has(p.id)) toggle(openPipelines, p.id, true);
+    if (f.kind === `job` && !B.has(blockId)) toggle(openBlocks, blockId, true);
+    if (layout) settle(layout);
+  }, [f?.seq, wf]);
 
   const openMatches = () => {
-    pending = null;
-    initialFit.current = false;
+    aim({ id: ``, how: `all` });
     openPipelines.value = new Set([...P, ...[...h.pipelines].map((p) => p.id)]);
     if (h.ordered.length <= 40) openBlocks.value = new Set([...B, ...[...h.blocks].map((b) => b.id)]);
   };
@@ -321,10 +327,10 @@ const WorkflowMap = () => {
           <button className="btn btn-secondary btn-small" onClick={() => void rf.fitView({ duration: 400, padding: 0.06 })}>
             Fit workflow
           </button>
-          <button className="btn btn-secondary btn-small" onClick={() => ((pending = null), (openPipelines.value = new Set(wf.pipelines.map((p) => p.id))))}>
+          <button className="btn btn-secondary btn-small" onClick={() => (aim({ id: ``, how: `all` }), (openPipelines.value = new Set(wf.pipelines.map((p) => p.id))))}>
             Open all
           </button>
-          <button className="btn btn-secondary btn-small" onClick={() => ((pending = null), (openPipelines.value = new Set()), (openBlocks.value = new Set()))}>
+          <button className="btn btn-secondary btn-small" onClick={() => (aim({ id: ``, how: `all` }), (openPipelines.value = new Set()), (openBlocks.value = new Set()))}>
             Close all
           </button>
           {h.active && (

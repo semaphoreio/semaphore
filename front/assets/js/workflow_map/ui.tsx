@@ -1,4 +1,4 @@
-import { Block, Job, Pipeline, STATUSES, STATUS_LABEL, Status, blockStatus, countJobs, elapsed, formatDuration } from "./model";
+import { Block, Job, Pipeline, STATUSES, STATUS_LABEL, Status, blockStatus, countJobs, formatDuration } from "./model";
 import { focus, hits, now, query } from "./store";
 
 export const StatusIcon = ({ status, size = 16 }: { status: Status, size?: number, }) => {
@@ -47,7 +47,7 @@ export const Highlight = ({ text }: { text: string, }) => {
 };
 
 export const Duration = ({ start, end, running }: { start: number | null, end: number | null, running: boolean, }) => {
-  const seconds = elapsed(start, end, running ? now.value : end ?? start);
+  const seconds = start ? (end ?? (running ? now.value : start)) - start : null;
   return <span className="wf-map-time">{seconds === null ? `--:--` : formatDuration(seconds)}</span>;
 };
 
@@ -87,13 +87,6 @@ export const StatusBar = ({ jobs }: { jobs: Job[], }) => {
     </span>
   );
 };
-
-export function jobSummary(jobs: Job[]): string {
-  const c = countJobs(jobs);
-  const parts = [`${jobs.length} ${jobs.length === 1 ? `job` : `jobs`}`];
-  for (const s of [`failed`, `running`, `queued`, `stopped`] as Status[]) if (c[s]) parts.push(`${c[s]} ${STATUS_LABEL[s].toLowerCase()}`);
-  return parts.join(` · `);
-}
 
 export const BlockCard = ({ block, onHeaderClick }: { block: Block, onHeaderClick?: () => void, }) => {
   const h = hits.value;

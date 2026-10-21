@@ -3,12 +3,11 @@ import { useEffect } from "preact/hooks";
 import { effect } from "@preact/signals";
 import { Config, focusOn, loadError, now, refresh, resetState, selected, workflow } from "./store";
 import { initLayout } from "./layout";
-import { MapCanvas, openBlocks, openPipelines } from "./map";
+import { MapCanvas, aim, openBlocks, openPipelines } from "./map";
 import { Toolbar } from "./toolbar";
 
 export interface SelectedPipeline {
   id: string;
-  name: string;
   switchId: string | null;
 }
 
@@ -31,7 +30,7 @@ const App = ({ config, onSelect }: { config: Config, onSelect: (p: SelectedPipel
       const p = workflow.value?.pipelineById.get(selected.value);
       if (!p || `${p.id}:${p.switchId}` === last) return;
       last = `${p.id}:${p.switchId}`;
-      onSelect({ id: p.id, name: p.name, switchId: p.switchId });
+      onSelect({ id: p.id, switchId: p.switchId });
     });
 
     return () => {
@@ -57,6 +56,7 @@ export default function WorkflowMap({ dom, config, onSelect }: { dom: HTMLElemen
   initLayout(config.elkWorkerUrl);
   resetState(config.selectedPipelineId);
   openPipelines.value = new Set([config.selectedPipelineId]);
+  aim({ id: config.selectedPipelineId, how: `fit` });
   openBlocks.value = new Set();
   render(<App config={config} onSelect={onSelect}/>, dom);
 }

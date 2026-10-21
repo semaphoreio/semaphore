@@ -27,6 +27,7 @@ const innerCache = new Map<string, Promise<ElkNode>>();
 
 export function initLayout(workerUrl: string) {
   if (!elk) elk = new ElkConstructor({ workerUrl });
+  innerCache.clear();
 }
 
 function inner(p: Pipeline, size: (b: Block) => { w: number, h: number, }) {
@@ -34,24 +35,23 @@ function inner(p: Pipeline, size: (b: Block) => { w: number, h: number, }) {
   const sizes = blocks.map(size);
   const key = `${p.id}|${blocks.map((b, i) => `${b.name}:${b.deps.map((d) => d.name).join(`+`)}:${sizes[i].w}x${sizes[i].h}`).join(`,`)}`;
   if (!innerCache.has(key)) {
-    innerCache.set(
-      key,
-      elk.layout({
-        id: p.id,
-        layoutOptions: {
-          "elk.algorithm": `layered`,
-          "elk.direction": `RIGHT`,
-          "elk.edgeRouting": `ORTHOGONAL`,
-          "elk.spacing.nodeNode": `24`,
-          "elk.spacing.edgeNode": `14`,
-          "elk.layered.spacing.nodeNodeBetweenLayers": `64`,
-          "elk.layered.nodePlacement.bk.fixedAlignment": `BALANCED`,
-          "elk.padding": `[top=${PIPE_PAD.top},left=${PIPE_PAD.side},bottom=${PIPE_PAD.bottom},right=${PIPE_PAD.side}]`,
-        },
-        children: blocks.map((b, i) => ({ id: b.id, width: sizes[i].w, height: sizes[i].h })),
-        edges: blocks.flatMap((b) => b.deps.map((d) => ({ id: `${d.id}->${b.id}`, sources: [d.id], targets: [b.id] }))),
-      })
-    );
+    const layout = elk.layout({
+      id: p.id,
+      layoutOptions: {
+        "elk.algorithm": `layered`,
+        "elk.direction": `RIGHT`,
+        "elk.edgeRouting": `ORTHOGONAL`,
+        "elk.spacing.nodeNode": `24`,
+        "elk.spacing.edgeNode": `14`,
+        "elk.layered.spacing.nodeNodeBetweenLayers": `64`,
+        "elk.layered.nodePlacement.bk.fixedAlignment": `BALANCED`,
+        "elk.padding": `[top=${PIPE_PAD.top},left=${PIPE_PAD.side},bottom=${PIPE_PAD.bottom},right=${PIPE_PAD.side}]`,
+      },
+      children: blocks.map((b, i) => ({ id: b.id, width: sizes[i].w, height: sizes[i].h })),
+      edges: blocks.flatMap((b) => b.deps.map((d) => ({ id: `${d.id}->${b.id}`, sources: [d.id], targets: [b.id] }))),
+    });
+    layout.catch(() => innerCache.delete(key));
+    innerCache.set(key, layout);
   }
   return innerCache.get(key);
 }

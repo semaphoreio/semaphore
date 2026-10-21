@@ -18,7 +18,7 @@ defmodule FrontWeb.PipelineController do
 
   plug(:put_layout, false)
 
-  @public_endpoints ~w(path status show poll switch)a
+  @public_endpoints ~w(path status show poll switch map)a
   plug(PutProjectAssigns)
   plug(FetchPermissions, scope: "project")
 
@@ -26,6 +26,8 @@ defmodule FrontWeb.PipelineController do
   plug(PageAccess, [permissions: "project.view"] when action not in @public_endpoints)
   plug(PageAccess, [permissions: "project.job.stop"] when action == :stop)
   plug(PageAccess, [permissions: "project.job.rerun"] when action == :rebuild)
+
+  plug(FeatureEnabled, [:ui_workflow_map] when action in [:map])
 
   plug(:assign_pipeline_with_blocks when action in [:show, :poll, :map])
   plug(:assign_pipeline_without_blocks when action in [:status, :switch, :stop, :rebuild])
@@ -35,8 +37,6 @@ defmodule FrontWeb.PipelineController do
     FeatureEnabled,
     [:ui_partial_ppl_rebuild] when action in [:rebuild]
   )
-
-  plug(FeatureEnabled, [:ui_workflow_map] when action in [:map])
 
   def path(conn, params) do
     organization_id = conn.assigns.organization_id

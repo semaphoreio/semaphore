@@ -1,15 +1,10 @@
 import { Fragment } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { STATUSES, STATUS_LABEL } from "./model";
+import { STATUSES, STATUS_LABEL, countJobs } from "./model";
 import { SearchResult, clearFilters, cursor, focusOn, hits, query, results, scope, selected, statuses, step, toggleStatus, workflow } from "./store";
 import { Highlight, PipelineTitle, StatusIcon } from "./ui";
 
 const MAX_RESULTS = 60;
-
-const isTyping = (e: KeyboardEvent) => {
-  const t = e.target as HTMLElement;
-  return t.tagName === `INPUT` || t.tagName === `TEXTAREA` || t.tagName === `SELECT` || t.isContentEditable;
-};
 
 const Search = () => {
   const [open, setOpen] = useState(false);
@@ -21,7 +16,8 @@ const Search = () => {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (isTyping(e) || e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target as HTMLElement;
+      if ([`INPUT`, `TEXTAREA`, `SELECT`].includes(t.tagName) || t.isContentEditable || e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.key === `/`) {
         e.preventDefault();
         input.current?.focus();
@@ -141,9 +137,7 @@ const Stepper = () => {
 };
 
 const Chips = () => {
-  const wf = workflow.value;
-  const c = Object.fromEntries(STATUSES.map((s) => [s, 0]));
-  for (const j of wf?.jobs.values() ?? []) c[j.status]++;
+  const c = countJobs([...(workflow.value?.jobs.values() ?? [])]);
   return (
     <div className="wf-map-chips" role="group" aria-label="Show jobs with status">
       {STATUSES.filter((s) => c[s]).map((s) => (

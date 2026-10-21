@@ -582,20 +582,21 @@ defmodule FrontWeb.PipelineView do
       state: pipeline.state,
       result: pipeline.result,
       error_description: pipeline.error_description,
-      blocks: Enum.map(pipeline.blocks, &map_block(&1, pipeline.state)),
+      done: pipeline_poll_state(pipeline) == "done",
+      blocks: Enum.map(pipeline.blocks, &map_block/1),
       after_jobs: Enum.map(pipeline.after_task.jobs, &map_after_job/1)
     }
   end
 
-  defp map_block(block, pipeline_state) do
+  defp map_block(block) do
     %{
       name: block.name,
       dependencies: block.dependencies,
-      jobs: Enum.map(block.jobs, &map_job(&1, block, pipeline_state))
+      jobs: Enum.map(block.jobs, &map_job(&1, block))
     }
   end
 
-  defp map_job(job = %{state: state}, block, _pipeline_state) do
+  defp map_job(job = %{state: state}, block) do
     %{
       id: job_link_id(job),
       name: job.name,
@@ -606,11 +607,11 @@ defmodule FrontWeb.PipelineView do
     }
   end
 
-  defp map_job(job, block, pipeline_state) do
+  defp map_job(job, block) do
     %{
       id: nil,
       name: job.name,
-      status: map_unstarted_job_status(block, pipeline_state),
+      status: if(block.skipped?, do: :skipped, else: :pending),
       started_at: nil,
       finished_at: nil,
       reused: false
@@ -623,11 +624,6 @@ defmodule FrontWeb.PipelineView do
   defp map_job_status(:FINISHED, :FAILED), do: :failed
   defp map_job_status(:FINISHED, :STOPPED), do: :stopped
   defp map_job_status(_, _), do: :pending
-
-  defp map_unstarted_job_status(%{skipped?: true}, _), do: :skipped
-  defp map_unstarted_job_status(%{state: :DONE}, _), do: :stopped
-  defp map_unstarted_job_status(_, :DONE), do: :stopped
-  defp map_unstarted_job_status(_, _), do: :pending
 
   defp map_after_job(job) do
     %{

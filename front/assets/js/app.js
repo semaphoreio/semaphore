@@ -215,6 +215,7 @@ export var App = {
           InteractivePipelineTree.selectPipeline(pipeline.id);
         }
         promotions.replaceChildren();
+        Pollman.start();
         if (!pipeline.switchId) return;
 
         const panel = document.createElement("div");
@@ -222,7 +223,7 @@ export var App = {
         panel.setAttribute("data-poll-state", "poll");
         panel.setAttribute("data-poll-param-nonce", mapConfig.nonce);
         promotions.appendChild(panel);
-        Pollman.pollNow();
+        Pollman.fetchAndReplace(panel);
       }
     });
     InteractivePipelineTree.init({

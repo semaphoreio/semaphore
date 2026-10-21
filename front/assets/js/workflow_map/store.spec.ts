@@ -1,14 +1,15 @@
 import { expect } from "chai";
-import { beforeEach, describe, test } from "mocha";
+import { afterEach, beforeEach, describe, test } from "mocha";
 
 import { ApiPipelineDetail } from "./model";
-import { cursor, details, focus, hits, query, resetState, results, scope, selected, statuses, step, toggleStatus, tree } from "./store";
+import { Config, cursor, details, focus, focusOn, hits, query, refresh, resetState, results, scope, selected, statuses, step, toggleStatus, tree } from "./store";
 
 const detail = (id: string, blocks: ApiPipelineDetail[`blocks`]): ApiPipelineDetail => ({
   id,
   state: `DONE`,
   result: `PASSED`,
   error_description: ``,
+  done: true,
   blocks,
   after_jobs: [],
 });
@@ -89,5 +90,65 @@ describe(`workflow map store`, () => {
 
     expect(results.value.map((r) => r.label)).to.deep.eq([`shard 2`]);
     expect(statuses.value.has(`passed`)).to.eq(true);
+  });
+
+  test(`selecting a pipeline before the first load keeps the selection`, () => {
+    resetState(`ci`);
+    focusOn(`pipeline`, `e2e`);
+
+    expect(selected.value).to.eq(`e2e`);
+    expect(focus.value.id).to.eq(`e2e`);
+  });
+});
+
+describe(`refresh`, () => {
+  const config: Config = {
+    workflowUrl: `/wf/map`,
+    pipelineUrl: `/ppl/__PIPELINE_ID__/map`,
+    switchUrl: ``,
+    elkWorkerUrl: ``,
+    selectedPipelineId: `ci`,
+    pollInterval: 4000,
+    nonce: ``,
+  };
+  const realFetch = globalThis.fetch;
+  let requested: string[];
+  let responses: Record<string, unknown>;
+
+  beforeEach(() => {
+    resetState(`ci`);
+    requested = [];
+    responses = {
+      "/wf/map": { root_pipeline_id: `ci`, pipelines: [pipeline(`ci`, `Build & test`, null)] },
+      "/ppl/ci/map": { ...detail(`ci`, []), done: false },
+    };
+    globalThis.fetch = ((url: string) => {
+      requested.push(url);
+      return Promise.resolve(new Response(JSON.stringify(responses[url]), { status: 200 }));
+    }) as typeof fetch;
+  });
+
+  afterEach(() => {
+    globalThis.fetch = realFetch;
+  });
+
+  test(`keeps fetching a finished pipeline until its after pipeline jobs are done`, async () => {
+    await refresh(config);
+    await refresh(config);
+    responses[`/ppl/ci/map`] = detail(`ci`, []);
+    await refresh(config);
+    await refresh(config);
+
+    expect(requested.filter((u) => u === `/ppl/ci/map`).length).to.eq(3);
+    expect(details.value.ci.done).to.eq(true);
+  });
+
+  test(`drops the results of a refresh started before the page was left`, async () => {
+    const pending = refresh(config);
+    resetState(`other`);
+    await pending;
+
+    expect(tree.value).to.eq(null);
+    expect(details.value).to.deep.eq({});
   });
 });

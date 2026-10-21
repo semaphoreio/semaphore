@@ -28,10 +28,10 @@ defmodule FrontWeb.WorkflowView do
     }
   end
 
-  defp map_parent_id(%{promotion_of: parent_id}) when parent_id not in [nil, ""], do: parent_id
-
   defp map_parent_id(%{partial_rerun_of: parent_id}) when parent_id not in [nil, ""],
     do: parent_id
+
+  defp map_parent_id(%{promotion_of: parent_id}) when parent_id not in [nil, ""], do: parent_id
 
   defp map_parent_id(_), do: nil
 
