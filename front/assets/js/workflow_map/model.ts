@@ -24,6 +24,8 @@ export interface ApiPipeline {
   created_at: number | null;
   running_at: number | null;
   done_at: number | null;
+  stop_url: string | null;
+  rebuild_url: string | null;
 }
 
 export interface ApiWorkflow {
@@ -46,6 +48,32 @@ export interface ApiBlock {
   jobs: ApiJob[];
 }
 
+export interface ApiPromotionEvent {
+  pipeline_id: string | null;
+  processed: boolean;
+  result: string;
+  auto: boolean;
+  triggered_at: number;
+  author: string | null;
+}
+
+export interface ApiPromotionParameter {
+  name: string;
+  description: string;
+  required: boolean;
+  options: string[];
+  default_value: string;
+}
+
+export interface ApiPromotion {
+  name: string;
+  trigger_url: string;
+  can_promote: boolean;
+  deployment: { name: string, allowed: boolean, message: string | null, } | null;
+  parameters: ApiPromotionParameter[];
+  events: ApiPromotionEvent[];
+}
+
 export interface ApiPipelineDetail {
   id: string;
   state: string;
@@ -54,6 +82,7 @@ export interface ApiPipelineDetail {
   done: boolean;
   blocks: ApiBlock[];
   after_jobs: ApiJob[];
+  promotions: ApiPromotion[];
 }
 
 export interface Job {
@@ -75,6 +104,11 @@ export interface Block {
   pipeline: Pipeline;
 }
 
+export interface Promotion extends ApiPromotion {
+  pipelines: Pipeline[];
+  starting: boolean;
+}
+
 export interface Pipeline {
   id: string;
   name: string;
@@ -83,6 +117,8 @@ export interface Pipeline {
   done: boolean;
   trigger: string;
   switchId: string | null;
+  stopUrl: string | null;
+  rebuildUrl: string | null;
   createdAt: number | null;
   runningAt: number | null;
   doneAt: number | null;
@@ -91,6 +127,7 @@ export interface Pipeline {
   depth: number;
   attempt: number;
   blocks: Block[] | null;
+  promotions: Promotion[] | null;
   errorDescription: string;
 }
 
@@ -164,6 +201,8 @@ export function buildWorkflow(tree: ApiWorkflow, details: Record<string, ApiPipe
       done: a.state === `DONE`,
       trigger: a.trigger,
       switchId: a.switch_id,
+      stopUrl: a.stop_url,
+      rebuildUrl: a.rebuild_url,
       createdAt: a.created_at,
       runningAt: a.running_at,
       doneAt: a.done_at,
@@ -172,6 +211,7 @@ export function buildWorkflow(tree: ApiWorkflow, details: Record<string, ApiPipe
       depth: 0,
       attempt: 1,
       blocks: null,
+      promotions: null,
       errorDescription: ``,
     });
   }
@@ -207,6 +247,11 @@ export function buildWorkflow(tree: ApiWorkflow, details: Record<string, ApiPipe
     if (detail) {
       p.blocks = buildBlocks(p, detail, wf);
       p.errorDescription = detail.error_description;
+      p.promotions = detail.promotions.map((promotion) => ({
+        ...promotion,
+        pipelines: promotion.events.map((e) => pipelineById.get(e.pipeline_id)).filter(Boolean),
+        starting: promotion.events.some((e) => !e.processed),
+      }));
     }
   }
   return wf;

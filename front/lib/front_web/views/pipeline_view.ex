@@ -576,7 +576,7 @@ defmodule FrontWeb.PipelineView do
   def pipeline_status_icon_name(:DONE, :STOPPED), do: "icn-stopped"
   def pipeline_status_icon_name(:DONE, :CANCELED), do: "icn-skipped"
 
-  def render("map.json", %{pipeline: pipeline}) do
+  def render("map.json", assigns = %{pipeline: pipeline}) do
     %{
       id: pipeline.id,
       state: pipeline.state,
@@ -584,7 +584,60 @@ defmodule FrontWeb.PipelineView do
       error_description: pipeline.error_description,
       done: pipeline_poll_state(pipeline) == "done",
       blocks: Enum.map(pipeline.blocks, &map_block/1),
-      after_jobs: Enum.map(pipeline.after_task.jobs, &map_after_job/1)
+      after_jobs: Enum.map(pipeline.after_task.jobs, &map_after_job/1),
+      promotions: map_promotions(assigns)
+    }
+  end
+
+  defp map_promotions(%{switch: switch, conn: conn, pipeline: pipeline, can_promote?: can_promote?})
+       when not is_nil(switch) do
+    Enum.map(switch.targets, fn target ->
+      %{
+        name: target.name,
+        trigger_url:
+          target_path(conn, :trigger, pipeline.workflow_id, pipeline.id, switch.id, target.name),
+        can_promote: can_promote? and (is_nil(target.deployment) or target.deployment.allowed?),
+        deployment: map_deployment(target.deployment),
+        parameters:
+          Enum.map(target.parameters, fn param ->
+            %{
+              name: param.name,
+              description: param.description,
+              required: param.required,
+              options: param.options,
+              default_value: param.default_value
+            }
+          end),
+        events:
+          Enum.map(target.events, fn event ->
+            %{
+              pipeline_id: if(event.pipeline_id in [nil, ""], do: nil, else: event.pipeline_id),
+              processed: event.processed,
+              result: event.result,
+              auto: event.auto_triggered,
+              triggered_at: event.triggered_at,
+              author: event.author && event.author.name
+            }
+          end)
+      }
+    end)
+  end
+
+  defp map_promotions(_), do: []
+
+  defp map_deployment(nil), do: nil
+
+  defp map_deployment(deployment) do
+    %{
+      name: deployment.name,
+      allowed: deployment.allowed?,
+      message:
+        deployment.message &&
+          String.replace(
+            deployment.message,
+            "%{deployment_target}",
+            "#{deployment.name} Deployment Target"
+          )
     }
   end
 

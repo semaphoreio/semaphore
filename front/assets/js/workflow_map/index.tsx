@@ -1,43 +1,41 @@
 import { render } from "preact";
 import { useEffect } from "preact/hooks";
-import { effect } from "@preact/signals";
-import { Config, focusOn, loadError, now, refresh, resetState, selected, workflow } from "./store";
+import { Config, loadError, now, onNudge, refresh, resetState } from "./store";
 import { initLayout } from "./layout";
 import { MapCanvas, aim, openBlocks, openPipelines } from "./map";
+import { PromoteDialog, promoting } from "./promote";
 import { Toolbar } from "./toolbar";
 
-export interface SelectedPipeline {
-  id: string;
-  switchId: string | null;
-}
-
-const App = ({ config, onSelect }: { config: Config, onSelect: (p: SelectedPipeline) => void, }) => {
+const App = ({ config }: { config: Config, }) => {
   useEffect(() => {
     let stopped = false;
+    let running = false;
+    let again = false;
     let timer: number;
     const loop = async () => {
+      window.clearTimeout(timer);
+      if (running) {
+        again = true;
+        return;
+      }
+      running = true;
       try {
         if (!document.hidden) await refresh(config);
       } finally {
-        if (!stopped) timer = window.setTimeout(() => void loop(), config.pollInterval);
+        running = false;
+        if (!stopped) timer = window.setTimeout(() => void loop(), again ? 0 : config.pollInterval);
+        again = false;
       }
     };
+    onNudge(() => void loop());
     void loop();
     const clock = window.setInterval(() => (now.value = Math.floor(Date.now() / 1000)), 1000);
 
-    let last = ``;
-    const stopSync = effect(() => {
-      const p = workflow.value?.pipelineById.get(selected.value);
-      if (!p || `${p.id}:${p.switchId}` === last) return;
-      last = `${p.id}:${p.switchId}`;
-      onSelect({ id: p.id, switchId: p.switchId });
-    });
-
     return () => {
       stopped = true;
+      onNudge(() => undefined);
       window.clearTimeout(timer);
       window.clearInterval(clock);
-      stopSync();
     };
   }, []);
 
@@ -48,19 +46,19 @@ const App = ({ config, onSelect }: { config: Config, onSelect: (p: SelectedPipel
       <div className="wf-map-canvas">
         <MapCanvas/>
       </div>
+      <PromoteDialog/>
     </div>
   );
 };
 
-export default function WorkflowMap({ dom, config, onSelect }: { dom: HTMLElement, config: Config, onSelect: (p: SelectedPipeline) => void, }) {
+export default function WorkflowMap({ dom, config }: { dom: HTMLElement, config: Config, }) {
   initLayout(config.elkWorkerUrl, () => {
     loadError.value = `Couldn't start the map's layout engine. Reload the page to try again.`;
   });
   resetState(config.selectedPipelineId);
+  promoting.value = null;
   openPipelines.value = new Set([config.selectedPipelineId]);
   aim({ id: config.selectedPipelineId, how: `fit` });
   openBlocks.value = new Set();
-  render(<App config={config} onSelect={onSelect}/>, dom);
+  render(<App config={config}/>, dom);
 }
-
-export const selectPipeline = (id: string) => focusOn(`pipeline`, id);

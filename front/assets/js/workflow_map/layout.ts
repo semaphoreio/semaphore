@@ -15,9 +15,15 @@ export interface Point {
 
 export interface MapLayout {
   pipelines: Map<string, Box & { open: boolean, }>;
+  promotions: Map<string, Box>;
   blocks: Map<string, Box>;
   routes: Map<string, Point[]>;
 }
+
+export const promotionsNodeId = (pipelineId: string) => `promotions:${pipelineId}`;
+
+export const promotedFrom = (p: Pipeline) =>
+  p.parent.promotions?.length && p.trigger !== `PIPELINE_PARTIAL_RERUN` ? promotionsNodeId(p.parent.id) : p.parent.id;
 
 const PIPE_PAD = { top: 72, side: 28, bottom: 28 };
 const MIN_OPEN_W = 460;
@@ -71,7 +77,8 @@ export async function layoutMap(
   wf: Workflow,
   isOpen: (p: Pipeline) => boolean,
   blockSize: (b: Block) => { w: number, h: number, },
-  closed: { w: number, h: number, }
+  closed: { w: number, h: number, },
+  promotionsSize: (p: Pipeline) => { w: number, h: number, }
 ): Promise<MapLayout> {
   const inners = await Promise.all(wf.pipelines.map((p) => (isOpen(p) && p.blocks?.length ? inner(p, blockSize) : null)));
   const outer = await elk.layout({
@@ -85,15 +92,27 @@ export async function layoutMap(
       "elk.layered.considerModelOrder.strategy": `NODES_AND_EDGES`,
       "elk.layered.nodePlacement.strategy": `BRANDES_KOEPF`,
     },
-    children: wf.pipelines.map((p, i) => {
+    children: wf.pipelines.flatMap((p, i) => {
       const g = inners[i];
-      return { id: p.id, width: g ? Math.max(MIN_OPEN_W, g.width) : closed.w, height: g ? g.height : closed.h };
+      const node = { id: p.id, width: g ? Math.max(MIN_OPEN_W, g.width) : closed.w, height: g ? g.height : closed.h };
+      if (!p.promotions?.length) return [node];
+      const size = promotionsSize(p);
+      return [node, { id: promotionsNodeId(p.id), width: size.w, height: size.h }];
     }),
-    edges: wf.pipelines.filter((p) => p.parent).map((p) => ({ id: `${p.parent.id}=>${p.id}`, sources: [p.parent.id], targets: [p.id] })),
+    edges: [
+      ...wf.pipelines
+        .filter((p) => p.promotions?.length)
+        .map((p) => ({ id: `${p.id}=>${promotionsNodeId(p.id)}`, sources: [p.id], targets: [promotionsNodeId(p.id)] })),
+      ...wf.pipelines.filter((p) => p.parent).map((p) => ({ id: `${promotedFrom(p)}=>${p.id}`, sources: [promotedFrom(p)], targets: [p.id] })),
+    ],
   });
 
-  const layout: MapLayout = { pipelines: new Map(), blocks: new Map(), routes: new Map() };
-  for (const c of outer.children ?? []) layout.pipelines.set(c.id, { x: c.x, y: c.y, w: c.width, h: c.height, open: false });
+  const layout: MapLayout = { pipelines: new Map(), promotions: new Map(), blocks: new Map(), routes: new Map() };
+  for (const c of outer.children ?? []) {
+    const box = { x: c.x, y: c.y, w: c.width, h: c.height };
+    if (c.id.startsWith(promotionsNodeId(``))) layout.promotions.set(c.id, box);
+    else layout.pipelines.set(c.id, { ...box, open: false });
+  }
   for (const e of outer.edges ?? []) layout.routes.set(e.id, sectionPoints(e, 0, 0));
   inners.forEach((g, i) => {
     if (!g) return;

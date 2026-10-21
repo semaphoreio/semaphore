@@ -433,6 +433,8 @@ defmodule FrontWeb.WorkflowControllerTest do
 
       assert id == pipeline.id
       assert is_binary(switch_id)
+      assert hd(json["pipelines"])["stop_url"] == "/workflows/#{workflow.id}/pipelines/#{id}/stop"
+      assert hd(json["pipelines"])["rebuild_url"] == nil
     end
 
     test "returns 404 when the user isn't authorized", %{
@@ -461,7 +463,8 @@ defmodule FrontWeb.WorkflowControllerTest do
       Support.Stubs.Project.switch_project_visibility(project, "public")
       PermissionPatrol.remove_all_permissions()
 
-      assert conn |> get("/workflows/#{workflow.id}/map") |> json_response(200)
+      json = conn |> get("/workflows/#{workflow.id}/map") |> json_response(200)
+      assert hd(json["pipelines"])["stop_url"] == nil
 
       assert conn
              |> get("/workflows/#{workflow.id}/pipelines/#{pipeline.id}/map")
@@ -487,6 +490,7 @@ defmodule FrontWeb.WorkflowControllerTest do
       assert html =~ "window.InjectedDataByBackend.WorkflowMap"
       assert html =~ "/workflows/#{workflow.id}/map"
       refute html =~ ~s(id="diagram")
+      refute html =~ ~s(data-poll-href="/workflows/#{workflow.id}/status")
     end
 
     test "renders the diagram when the feature is disabled", %{

@@ -338,6 +338,12 @@ defmodule FrontWeb.PipelineControllerTest do
       assert Enum.map(jobs, & &1["name"]) == ["job 1", "job 2", "job 3"]
       assert Enum.all?(jobs, &(&1["status"] == "queued" and is_binary(&1["id"])))
       assert json["after_jobs"] == []
+
+      assert [production, staging] = json["promotions"]
+      assert {production["name"], staging["name"]} == {"production", "staging"}
+      assert production["trigger_url"] =~ "/pipelines/#{pipeline_id}/swithes/"
+      assert production["can_promote"]
+      assert production["events"] == []
     end
 
     test "returns 404 when organization_id mismatches", %{

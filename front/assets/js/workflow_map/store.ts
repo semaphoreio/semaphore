@@ -1,15 +1,13 @@
 import { computed, signal } from "@preact/signals";
 import * as APIRequest from "js/toolbox/api_request";
-import { ApiPipelineDetail, ApiWorkflow, Block, Job, Pipeline, Status, blockStatus, buildWorkflow } from "./model";
+import { ApiPipelineDetail, ApiWorkflow, Block, Job, Pipeline, Promotion, Status, blockStatus, buildWorkflow } from "./model";
 
 export interface Config {
   workflowUrl: string;
   pipelineUrl: string;
-  switchUrl: string;
   elkWorkerUrl: string;
   selectedPipelineId: string;
   pollInterval: number;
-  nonce: string;
 }
 
 export const tree = signal<ApiWorkflow | null>(null);
@@ -29,6 +27,12 @@ export const focus = signal<FocusTarget | null>(null);
 
 let seq = 0;
 let generation = 0;
+const stale = new Set<string>();
+let nudge = () => undefined;
+
+export const onNudge = (fn: () => void) => {
+  nudge = fn;
+};
 
 export function focusOn(kind: FocusTarget[`kind`], id: string) {
   const wf = workflow.value;
@@ -109,6 +113,7 @@ export const results = computed<SearchResult[]>(() => {
 
 export function resetState(selectedPipelineId: string) {
   generation++;
+  stale.clear();
   tree.value = null;
   details.value = {};
   loadError.value = null;
@@ -156,11 +161,21 @@ export async function refresh(config: Config) {
     loadError.value = `Couldn't load this workflow's pipelines. Retrying.`;
     return;
   }
+  const children = (t: ApiWorkflow | null, id: string) => t?.pipelines.filter((p) => p.parent_id === id).length ?? 0;
+  const previous = tree.value;
   loadError.value = null;
   tree.value = nextTree;
 
   const known = details.value;
-  const due = nextTree.pipelines.filter((p) => !known[p.id]?.done || p.state !== `DONE`);
+  const due = nextTree.pipelines.filter(
+    (p) =>
+      !known[p.id]?.done ||
+      p.state !== `DONE` ||
+      stale.has(p.id) ||
+      known[p.id].promotions.some((promotion) => promotion.events.some((e) => !e.processed)) ||
+      children(nextTree, p.id) > children(previous, p.id)
+  );
+  due.forEach((p) => stale.delete(p.id));
   const fetched: Record<string, ApiPipelineDetail> = {};
   const queue = [...due];
   const worker = async () => {
@@ -171,4 +186,36 @@ export async function refresh(config: Config) {
   };
   await Promise.all(Array.from({ length: Math.min(DETAIL_CONCURRENCY, queue.length) }, worker));
   if (started === generation && Object.keys(fetched).length) details.value = { ...details.value, ...fetched };
+}
+
+interface ActionResult {
+  message?: string;
+  error?: string;
+  pipeline_id?: string;
+}
+
+export async function promote(pipeline: Pipeline, promotion: Promotion, values: Record<string, string>): Promise<string | null> {
+  const response = await APIRequest.post(promotion.trigger_url, { parameters: values });
+  if (response.error) return response.error;
+  stale.add(pipeline.id);
+  nudge();
+  return null;
+}
+
+export async function stopPipeline(pipeline: Pipeline): Promise<string | null> {
+  const response = await APIRequest.post<ActionResult>(pipeline.stopUrl);
+  const error = response.error ?? response.data?.error;
+  if (error) return error;
+  stale.add(pipeline.id);
+  nudge();
+  return null;
+}
+
+export async function rerunPipeline(pipeline: Pipeline): Promise<string | null> {
+  const response = await APIRequest.post<ActionResult>(pipeline.rebuildUrl);
+  const error = response.error ?? response.data?.error;
+  if (error) return error;
+  if (response.data?.pipeline_id) focusOn(`pipeline`, response.data.pipeline_id);
+  nudge();
+  return null;
 }

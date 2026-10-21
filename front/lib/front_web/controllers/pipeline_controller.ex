@@ -115,7 +115,16 @@ defmodule FrontWeb.PipelineController do
     Watchman.benchmark("pipeline_controller.map", fn ->
       pipeline = Front.WorkflowPage.Diagram.load(conn.assigns.pipeline)
 
-      render(conn, "map.json", pipeline: pipeline)
+      switch =
+        if pipeline.switch_id not in [nil, ""] do
+          pipeline.switch_id |> Switch.find(conn.assigns[:user_id]) |> Switch.preload_users()
+        end
+
+      render(conn, "map.json",
+        pipeline: pipeline,
+        switch: switch,
+        can_promote?: conn.assigns.permissions["project.job.rerun"] || false
+      )
     end)
   end
 
