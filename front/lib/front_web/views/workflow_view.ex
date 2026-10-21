@@ -46,7 +46,7 @@ defmodule FrontWeb.WorkflowView do
       workflowUrl: workflow_path(conn, :map, workflow_id),
       pipelineUrl: pipeline_path(conn, :map, workflow_id, "__PIPELINE_ID__"),
       switchUrl: pipeline_path(conn, :switch, workflow_id, "__PIPELINE_ID__", "__SWITCH_ID__"),
-      elkWorkerUrl: static_path(conn, "/projects/assets/elk-worker.min.js"),
+      elkWorkerUrl: static_path(conn, "/projects/assets/workers/elk-worker.min.js"),
       selectedPipelineId: selected_pipeline_id,
       pollInterval: 4000,
       nonce: conn.assigns[:script_src_nonce]

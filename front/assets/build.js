@@ -52,7 +52,7 @@ const copyAssets = async () => {
   // Copy fonts and images
   fs.copySync('fonts', path.join(outputDir, 'fonts'), { overwrite: true })
   fs.copySync('images', path.join(outputDir, 'images'), { overwrite: true })
-  fs.copySync('node_modules/elkjs/lib/elk-worker.min.js', path.join(outputDir, 'elk-worker.min.js'), { overwrite: true })
+  fs.copySync('node_modules/elkjs/lib/elk-worker.min.js', path.join(outputDir, 'workers', 'elk-worker.min.js'), { overwrite: true })
 
   console.log('Assets copied successfully')
 }
