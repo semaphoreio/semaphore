@@ -49,7 +49,7 @@ defmodule Zebra.Workers.JobRequestFactory do
 
     gen_rsa =
       Task.async(fn ->
-        if Job.self_hosted?(job.machine_type), do: {:ok, nil}, else: {:ok, Zebra.RSA.generate()}
+        if Job.self_hosted?(job.machine_type), do: {:ok, nil}, else: {:ok, generate_rsa()}
       end)
 
     generate_token =
@@ -62,14 +62,14 @@ defmodule Zebra.Workers.JobRequestFactory do
     with :ok <- Machine.validate(org_id, job),
          {:ok, hook_id} <- RepoProxy.extract_hook_id(job, job_type),
          find_repo_proxy <- Task.async(fn -> RepoProxy.find(hook_id) end),
-         {:ok, rsa} <- Task.await(gen_rsa),
-         {:ok, project} <- Task.await(find_project),
+         {:ok, rsa} <- await(gen_rsa, :rsa),
+         {:ok, project} <- await(find_project, :project),
          find_repository <- Task.async(fn -> Repository.find(project.repository_id) end),
          find_artifact_token <-
            Task.async(fn ->
              Artifacthub.generate_token(project.artifact_store_id, job.id, project.id, spec)
            end),
-         {:ok, repo_proxy} <- Task.await(find_repo_proxy),
+         {:ok, repo_proxy} <- await(find_repo_proxy, :repo_proxy),
          find_cache <-
            Task.async(fn ->
              if Job.self_hosted?(job.machine_type),
@@ -78,20 +78,20 @@ defmodule Zebra.Workers.JobRequestFactory do
            end),
          find_secrets <-
            Task.async(fn -> Secrets.load(org_id, job.id, spec, project, repo_proxy) end),
-         {:ok, repository, private_git_key} <- Task.await(find_repository),
+         {:ok, repository, private_git_key} <- await(find_repository, :repository),
          {:ok, repo_files} <- Repository.files(private_git_key),
          {:ok, repo_env_vars} <- Repository.env_vars(repository, repo_proxy, job_type),
          {:ok, spec_env_vars} <- Spec.env_vars(spec),
          {:ok, spec_files} <- Spec.files(spec),
          {:ok, spec_commands} <- Spec.commands(spec),
          {:ok, epilogue} <- Spec.epilogue(spec),
-         {:ok, organization} <- Task.await(find_org),
-         {:ok, cache} <- Task.await(find_cache),
+         {:ok, organization} <- await(find_org, :organization),
+         {:ok, cache} <- await(find_cache, :cache),
          {:ok, cache_files} <- Cache.files(job, cache),
          {:ok, cache_env_vars} <- Cache.env_vars(job, cache, org_id),
-         {:ok, all_secrets} <- Task.await(find_secrets),
-         {:ok, artifact_env_var} <- Task.await(find_artifact_token),
-         {:ok, loghub2_token} <- Task.await(generate_token),
+         {:ok, all_secrets} <- await(find_secrets, :secrets),
+         {:ok, artifact_env_var} <- await(find_artifact_token, :artifact_token),
+         {:ok, loghub2_token} <- await(generate_token, :loghub2_token),
          {:ok, open_id_token_env_vars} <-
            OpenIDConnect.load(job, repo_env_vars, organization, project, job_type, spec_env_vars),
          {:ok, callback_token} <- CallbackToken.generate(job) do
@@ -155,6 +155,30 @@ defmodule Zebra.Workers.JobRequestFactory do
         Logger.error("Error while processing #{job.id}, #{inspect(e)}")
         e
     end
+  end
+
+  # Waits for one of the helper tasks above. A task still running after the
+  # timeout is killed and the row is skipped with an error instead of
+  # crashing the whole tick. The row writes nothing before Job.enqueue/3, so
+  # it stays pending and is retried on a later tick.
+  defp await(task, step) do
+    case Task.yield(task, await_timeout()) || Task.shutdown(task, :brutal_kill) do
+      {:ok, result} ->
+        result
+
+      nil ->
+        Watchman.increment({"job_request_factory.await.timeout", [Atom.to_string(step)]})
+        {:error, {:timeout, step}}
+
+      {:exit, reason} ->
+        {:error, {:exit, step, reason}}
+    end
+  end
+
+  defp await_timeout, do: Application.get_env(:zebra, :job_request_factory_await_timeout, 5_000)
+
+  defp generate_rsa do
+    Watchman.benchmark("job_request_factory.rsa_generate.duration", &Zebra.RSA.generate/0)
   end
 
   def submit_metrics(job) do
