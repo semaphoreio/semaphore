@@ -576,6 +576,79 @@ defmodule FrontWeb.PipelineView do
   def pipeline_status_icon_name(:DONE, :STOPPED), do: "icn-stopped"
   def pipeline_status_icon_name(:DONE, :CANCELED), do: "icn-skipped"
 
+  def render("map.json", %{pipeline: pipeline}) do
+    %{
+      id: pipeline.id,
+      state: pipeline.state,
+      result: pipeline.result,
+      error_description: pipeline.error_description,
+      blocks: Enum.map(pipeline.blocks, &map_block(&1, pipeline.state)),
+      after_jobs: Enum.map(pipeline.after_task.jobs, &map_after_job/1)
+    }
+  end
+
+  defp map_block(block, pipeline_state) do
+    %{
+      name: block.name,
+      dependencies: block.dependencies,
+      jobs: Enum.map(block.jobs, &map_job(&1, block, pipeline_state))
+    }
+  end
+
+  defp map_job(job = %{state: state}, block, _pipeline_state) do
+    %{
+      id: job_link_id(job),
+      name: job.name,
+      status: map_job_status(state, job.result),
+      started_at: timestamp_seconds(job.started_at),
+      finished_at: timestamp_seconds(job.finished_at),
+      reused: reused_job?(job) or reused_block?(block)
+    }
+  end
+
+  defp map_job(job, block, pipeline_state) do
+    %{
+      id: nil,
+      name: job.name,
+      status: map_unstarted_job_status(block, pipeline_state),
+      started_at: nil,
+      finished_at: nil,
+      reused: false
+    }
+  end
+
+  defp map_job_status(:ENQUEUED, _), do: :queued
+  defp map_job_status(:RUNNING, _), do: :running
+  defp map_job_status(:FINISHED, :PASSED), do: :passed
+  defp map_job_status(:FINISHED, :FAILED), do: :failed
+  defp map_job_status(:FINISHED, :STOPPED), do: :stopped
+  defp map_job_status(_, _), do: :pending
+
+  defp map_unstarted_job_status(%{skipped?: true}, _), do: :skipped
+  defp map_unstarted_job_status(%{state: :DONE}, _), do: :stopped
+  defp map_unstarted_job_status(_, :DONE), do: :stopped
+  defp map_unstarted_job_status(_, _), do: :pending
+
+  defp map_after_job(job) do
+    %{
+      id: job.id,
+      name: job.name,
+      status: map_after_job_status(job),
+      started_at: job.started_at,
+      finished_at: job.done_at,
+      reused: false
+    }
+  end
+
+  defp map_after_job_status(%{running?: true}), do: :running
+  defp map_after_job_status(%{failed?: true}), do: :failed
+  defp map_after_job_status(%{stopped?: true}), do: :stopped
+  defp map_after_job_status(%{passed?: true}), do: :passed
+  defp map_after_job_status(_), do: :pending
+
+  defp timestamp_seconds(%{seconds: seconds}), do: seconds
+  defp timestamp_seconds(_), do: nil
+
   def reused_job?(job), do: Map.get(job, :original_job_id, "") not in [nil, ""]
 
   def reused_block?(block), do: Map.get(block, :reused_from, "") not in [nil, ""]

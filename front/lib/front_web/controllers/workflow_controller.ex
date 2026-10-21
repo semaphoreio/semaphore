@@ -23,6 +23,7 @@ defmodule FrontWeb.WorkflowController do
   alias Front.Audit
 
   alias FrontWeb.Plugs.{
+    FeatureEnabled,
     FetchPermissions,
     Header,
     PageAccess,
@@ -39,6 +40,7 @@ defmodule FrontWeb.WorkflowController do
   plug(PageAccess, [permissions: "project.job.rerun"] when action in [:rebuild])
 
   plug(Header when action in [:show, :edit])
+  plug(FeatureEnabled, [:ui_workflow_map] when action in [:map])
 
   def edit(conn, _params) do
     Watchman.benchmark("workflow.edit.duration", fn ->
@@ -431,6 +433,12 @@ defmodule FrontWeb.WorkflowController do
       conn
       |> put_layout(false)
       |> render("_status.html", data)
+    end)
+  end
+
+  def map(conn, _params) do
+    Watchman.benchmark("map.duration", fn ->
+      render(conn, "map.json", workflow: conn.assigns.workflow)
     end)
   end
 

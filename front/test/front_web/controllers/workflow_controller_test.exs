@@ -396,6 +396,111 @@ defmodule FrontWeb.WorkflowControllerTest do
     end
   end
 
+  describe "map" do
+    test "returns 404 when the ui_workflow_map feature is disabled", %{
+      conn: conn,
+      workflow: workflow
+    } do
+      conn = get(conn, "/workflows/#{workflow.id}/map")
+
+      assert conn.status == 404
+    end
+
+    test "returns the workflow's pipelines", %{
+      conn: conn,
+      organization: organization,
+      workflow: workflow,
+      pipeline: pipeline
+    } do
+      Support.Stubs.Feature.enable_feature(organization.id, :ui_workflow_map)
+
+      json =
+        conn
+        |> get("/workflows/#{workflow.id}/map")
+        |> json_response(200)
+
+      assert json["root_pipeline_id"] == pipeline.id
+
+      assert [
+               %{
+                 "id" => id,
+                 "name" => "Build & Test",
+                 "parent_id" => nil,
+                 "trigger" => "INITIAL_WORKFLOW",
+                 "switch_id" => switch_id
+               }
+             ] = json["pipelines"]
+
+      assert id == pipeline.id
+      assert is_binary(switch_id)
+    end
+
+    test "returns 404 when the user isn't authorized", %{
+      conn: conn,
+      organization: organization,
+      user: user,
+      workflow: workflow
+    } do
+      Support.Stubs.Feature.enable_feature(organization.id, :ui_workflow_map)
+      PermissionPatrol.remove_all_permissions()
+      PermissionPatrol.allow_everything_except(organization.id, user.id, "project.view")
+
+      conn = get(conn, "/workflows/#{workflow.id}/map")
+
+      assert conn.status == 404
+    end
+  end
+
+  describe "show with ui_workflow_map" do
+    test "renders the map instead of the diagram when the feature is enabled", %{
+      conn: conn,
+      organization: organization,
+      workflow: workflow,
+      pipeline: pipeline
+    } do
+      Support.Stubs.Feature.enable_feature(organization.id, :ui_workflow_map)
+
+      html =
+        conn
+        |> get("/workflows/#{workflow.id}?pipeline_id=#{pipeline.id}")
+        |> html_response(200)
+
+      assert html =~ ~s(id="workflow-map")
+      assert html =~ "window.InjectedDataByBackend.WorkflowMap"
+      assert html =~ "/workflows/#{workflow.id}/map"
+      refute html =~ ~s(id="diagram")
+    end
+
+    test "renders the diagram when the feature is disabled", %{
+      conn: conn,
+      workflow: workflow,
+      pipeline: pipeline
+    } do
+      html =
+        conn
+        |> get("/workflows/#{workflow.id}?pipeline_id=#{pipeline.id}")
+        |> html_response(200)
+
+      assert html =~ ~s(id="diagram")
+      refute html =~ ~s(id="workflow-map")
+    end
+
+    test "escapes the selected pipeline id in the injected config", %{
+      conn: conn,
+      organization: organization,
+      workflow: workflow
+    } do
+      Support.Stubs.Feature.enable_feature(organization.id, :ui_workflow_map)
+
+      html =
+        conn
+        |> get("/workflows/#{workflow.id}", pipeline_id: "</script><script>alert(1)</script>")
+        |> html_response(200)
+
+      refute html =~ "</script><script>alert(1)"
+    end
+  end
+
   describe "show" do
     test "when the user is authorized to view the workflow, it returns 200", %{
       conn: conn,

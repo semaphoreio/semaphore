@@ -56,7 +56,8 @@ defmodule Mix.Tasks.Dev.Server do
           :test_results_debug,
           :after_pipeline,
           :bitbucket,
-          :generic_git
+          :generic_git,
+          :huge_workflow
         ]
 
       projects ->
@@ -847,5 +848,187 @@ defmodule Mix.Tasks.Dev.Server do
     )
 
     project
+  end
+
+  @huge_workflow_templates %{
+    ci: [
+      {"Bootstrap", [], 1},
+      {"Lint", ["Bootstrap"], 5},
+      {"Build api", ["Bootstrap"], 2},
+      {"Build web", ["Bootstrap"], 1},
+      {"Build worker", ["Bootstrap"], 1},
+      {"Helm lint", ["Bootstrap"], 1},
+      {"Unit api", ["Build api"], 12},
+      {"Unit web", ["Build web"], 20},
+      {"Unit worker", ["Build worker"], 8},
+      {"Integration", ["Build api", "Build worker"], 6},
+      {"Contract tests", ["Build api", "Build web"], 3},
+      {"Security scan", ["Build api", "Build web", "Build worker"], 4},
+      {"Docker images",
+       [
+         "Lint",
+         "Unit api",
+         "Unit web",
+         "Unit worker",
+         "Integration",
+         "Contract tests",
+         "Security scan"
+       ], 3},
+      {"Release notes", ["Docker images", "Helm lint"], 1}
+    ],
+    env: [
+      {"Provision", [], 2},
+      {"Database", ["Provision"], 3},
+      {"Deploy services", ["Provision"], 4},
+      {"Wait for rollout", ["Deploy services", "Database"], 1},
+      {"Health checks", ["Wait for rollout"], 3}
+    ],
+    e2e: [
+      {"Prepare", [], 2},
+      {"Playwright", ["Prepare"], 16},
+      {"Visual regression", ["Prepare"], 4},
+      {"API smoke", ["Prepare"], 3},
+      {"Report", ["Playwright", "Visual regression", "API smoke"], 2}
+    ],
+    load: [{"Prepare", [], 1}, {"k6 ramp", ["Prepare"], 10}, {"Analyze", ["k6 ramp"], 2}],
+    teardown: [{"Collect logs", [], 1}, {"Destroy", ["Collect logs"], 2}],
+    staging: [
+      {"Pre-flight", [], 2},
+      {"Migrations", ["Pre-flight"], 1},
+      {"Deploy", ["Migrations"], 4},
+      {"Verify", ["Deploy"], 2}
+    ],
+    smoke: [{"Smoke", [], 6}, {"Notify", ["Smoke"], 1}],
+    canary: [{"Approvals", [], 1}, {"Canary 5%", ["Approvals"], 3}, {"Observe", ["Canary 5%"], 3}],
+    rollout: [
+      {"Pre-flight", [], 1},
+      {"Deploy 25%", ["Pre-flight"], 4},
+      {"Deploy 100%", ["Deploy 25%"], 4},
+      {"Post-deploy checks", ["Deploy 100%"], 2}
+    ],
+    sdk: [{"Build SDK", [], 3}, {"Test SDK", ["Build SDK"], 6}, {"Publish", ["Test SDK"], 3}],
+    docs: [
+      {"Build docs", [], 1},
+      {"Link check", ["Build docs"], 1},
+      {"Publish docs", ["Link check"], 1}
+    ]
+  }
+
+  @huge_workflow_promotions [
+    {"env-eu", "Preview env eu-1", "ci", :auto, :env, :passed},
+    {"e2e-eu-1", "E2E eu-1", "env-eu", :auto, :e2e, {:failed, 1}},
+    {"e2e-eu-2", "E2E eu-1", "env-eu", :manual, :e2e, {:running, 1}},
+    {"load-eu", "Load test eu-1", "env-eu", :manual, :load, :passed},
+    {"env-us", "Preview env us-1", "ci", :auto, :env, :passed},
+    {"e2e-us", "E2E us-1", "env-us", :auto, :e2e, :passed},
+    {"load-us", "Load test us-1", "env-us", :manual, :load, {:failed, 2}},
+    {"teardown-us", "Teardown us-1", "env-us", :manual, :teardown, :passed},
+    {"env-ap-1", "Preview env ap-1", "ci", :auto, :env, {:failed, 0}},
+    {"env-ap-2", "Preview env ap-1", "ci", :manual, :env, :passed},
+    {"e2e-ap", "E2E ap-1", "env-ap-2", :auto, :e2e, {:running, 1}},
+    {"staging", "Staging deploy", "ci", :auto, :staging, :passed},
+    {"smoke", "Staging smoke", "staging", :auto, :smoke, :passed},
+    {"canary", "Production canary", "staging", :manual, :canary, :passed},
+    {"prod-eu", "Prod rollout eu", "canary", :auto, :rollout, {:running, 2}},
+    {"prod-us", "Prod rollout us", "canary", :auto, :rollout, {:running, 0}},
+    {"prod-ap", "Prod rollout ap", "canary", :manual, :rollout, {:failed, 1}},
+    {"sdk", "Publish SDK", "ci", :auto, :sdk, :passed},
+    {"docs", "Docs site", "ci", :auto, :docs, :passed}
+  ]
+
+  defp create_project(:huge_workflow, org, user) do
+    project = Stubs.Project.create(org, user, name: "huge-workflow")
+    branch = Stubs.Branch.create(project)
+    hook = Stubs.Hook.create(branch)
+    workflow = Stubs.Workflow.create(hook, user)
+
+    root = Stubs.Pipeline.create_initial(workflow, name: "Build & Test", organization_id: org.id)
+
+    switch = Stubs.Pipeline.add_switch(root)
+    Stubs.Switch.add_target(switch, name: "Preview env eu-1")
+    Stubs.Switch.add_target(switch, name: "Staging deploy")
+
+    seed_huge_pipeline(root, @huge_workflow_templates.ci, :passed)
+
+    Enum.reduce(@huge_workflow_promotions, %{"ci" => root}, fn {key, name, parent, trigger,
+                                                                template, outcome},
+                                                               pipelines ->
+      pipeline =
+        Stubs.Pipeline.create(workflow,
+          name: name,
+          organization_id: org.id,
+          promotion_of: pipelines[parent].id,
+          triggerer: promotion_triggerer(workflow, trigger)
+        )
+
+      seed_huge_pipeline(pipeline, @huge_workflow_templates[template], outcome)
+      Map.put(pipelines, key, pipeline)
+    end)
+
+    project
+  end
+
+  defp promotion_triggerer(workflow, trigger) do
+    alias InternalApi.Plumber.{TriggeredBy, Triggerer}
+
+    Triggerer.new(
+      wf_triggered_by: workflow.api_model.triggered_by,
+      wf_triggerer_id: workflow.api_model.hook_id,
+      ppl_triggered_by:
+        TriggeredBy.value(if(trigger == :auto, do: :AUTO_PROMOTION, else: :PROMOTION)),
+      ppl_triggerer_user_id: workflow.api_model.requester_id
+    )
+  end
+
+  defp seed_huge_pipeline(pipeline, blocks, outcome) do
+    blocks
+    |> Enum.with_index()
+    |> Enum.each(fn {{name, deps, job_count}, index} ->
+      job_names =
+        if job_count == 1,
+          do: [name],
+          else: Enum.map(1..job_count, &"#{String.downcase(name)} #{&1}/#{job_count}")
+
+      block =
+        Stubs.Pipeline.add_block(pipeline, %{name: name, dependencies: deps, job_names: job_names})
+
+      seed_huge_jobs(block, outcome, index)
+    end)
+
+    Stubs.Pipeline.change_state(
+      pipeline.id,
+      case outcome do
+        :passed -> :passed
+        {:failed, _} -> :failed
+        {:running, _} -> :running
+      end
+    )
+  end
+
+  defp seed_huge_jobs(block, :passed, _index), do: finish_huge_jobs(block, [])
+  defp seed_huge_jobs(_block, {_, active}, index) when index > active, do: :ok
+
+  defp seed_huge_jobs(block, {_, active}, index) when index < active,
+    do: finish_huge_jobs(block, [])
+
+  defp seed_huge_jobs(block, {:failed, _}, _index), do: finish_huge_jobs(block, [0])
+
+  defp seed_huge_jobs(block, {:running, _}, _index) do
+    %{api_model: %{jobs: jobs}} = Stubs.Task.create(block)
+    Enum.each(jobs, &Stubs.Task.change_job_state(&1, :running))
+  end
+
+  defp finish_huge_jobs(block, failed_indexes) do
+    %{api_model: %{jobs: jobs}} = Stubs.Task.create(block)
+
+    jobs
+    |> Enum.with_index()
+    |> Enum.each(fn {job, index} ->
+      Stubs.Task.change_job_state(
+        job,
+        :finished,
+        if(index in failed_indexes, do: :failed, else: :passed)
+      )
+    end)
   end
 end
