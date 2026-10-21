@@ -1,6 +1,7 @@
+<% workflow_map? = FeatureProvider.feature_enabled?(:ui_workflow_map, param: @conn.assigns[:organization_id]) %>
 <div class="relative">
   <div class="absolute flex top-0 right-0 nt3 z-2">
-    <%= if FeatureProvider.feature_enabled?(:toggle_skipped_blocks, param: @conn.assigns[:organization_id]) do %>
+    <%= if !workflow_map? && FeatureProvider.feature_enabled?(:toggle_skipped_blocks, param: @conn.assigns[:organization_id]) do %>
       <div class="bg-white ph2 nr2 nb2">
         <input type="checkbox" name="showSkippedBlocks" class="dn" />
         <button class="btn btn-secondary" name="toggleSkippedBlocks">
@@ -16,17 +17,25 @@
       <% end %>
     </div>
   </div>
-  <div id="diagram" class="overflow-x-scroll overflow-y-none nowrap pl3 pl4-m pt4 pr6 pb6 nh3 nh4-m bt b--lighter-gray">
-    <div id="diagram-container" class="flex">
-      <div
-        class="dib v-top"
-        data-poll-href="<%= pipeline_path(@conn, :path, @workflow_id, @selected_pipeline_id) %>"
-        data-poll-param-nonce="<%= @conn.assigns[:script_src_nonce] %>"
-        data-poll-state="poll">
-        <div class="c-pipeline-phase">&nbsp;</div>
+  <%= if workflow_map? do %>
+    <div id="workflow-map" class="wf-map nh3 nh4-m bt b--lighter-gray"></div>
+    <div id="workflow-map-promotions" class="wf-map-promotions"></div>
+    <script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+      window.InjectedDataByBackend.WorkflowMap = <%= raw workflow_map_config(@conn, @workflow_id, @selected_pipeline_id) %>;
+    </script>
+  <% else %>
+    <div id="diagram" class="overflow-x-scroll overflow-y-none nowrap pl3 pl4-m pt4 pr6 pb6 nh3 nh4-m bt b--lighter-gray">
+      <div id="diagram-container" class="flex">
+        <div
+          class="dib v-top"
+          data-poll-href="<%= pipeline_path(@conn, :path, @workflow_id, @selected_pipeline_id) %>"
+          data-poll-param-nonce="<%= @conn.assigns[:script_src_nonce] %>"
+          data-poll-state="poll">
+          <div class="c-pipeline-phase">&nbsp;</div>
+        </div>
       </div>
     </div>
-  </div>
+  <% end %>
 </div>
 <script nonce="<%= @conn.assigns[:script_src_nonce] %>">
   window.InjectedDataByBackend.pipelineStatusUrl = "<%= pipeline_path(@conn, :status, @workflow_id, @selected_pipeline_id) %>";

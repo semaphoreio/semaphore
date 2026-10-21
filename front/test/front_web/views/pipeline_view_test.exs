@@ -5,6 +5,129 @@ defmodule FrontWeb.PipelineViewTest do
   alias FrontWeb.PipelineView
   alias Support.Factories
 
+  describe "render map.json" do
+    defp map_pipeline(state, blocks, after_jobs \\ []) do
+      %{
+        id: "ppl-1",
+        state: state,
+        result: :PASSED,
+        error_description: "",
+        blocks: blocks,
+        after_task: %{jobs: after_jobs}
+      }
+    end
+
+    defp task_job(state, result, extra \\ %{}) do
+      Map.merge(
+        %{
+          id: "job-#{state}-#{result}",
+          name: "#{state} #{result}",
+          state: state,
+          result: result,
+          started_at: %{seconds: 100},
+          finished_at: %{seconds: 160}
+        },
+        extra
+      )
+    end
+
+    defp render_map(pipeline),
+      do: PipelineView.render("map.json", %{pipeline: pipeline})
+
+    test "maps task job states and results to statuses" do
+      block = %{
+        name: "Tests",
+        dependencies: [],
+        state: :RUNNING,
+        skipped?: false,
+        jobs: [
+          task_job(:ENQUEUED, :PASSED, %{started_at: nil, finished_at: nil}),
+          task_job(:RUNNING, :PASSED, %{finished_at: nil}),
+          task_job(:FINISHED, :PASSED),
+          task_job(:FINISHED, :FAILED),
+          task_job(:FINISHED, :STOPPED)
+        ]
+      }
+
+      [%{jobs: jobs}] = render_map(map_pipeline(:RUNNING, [block])).blocks
+
+      assert Enum.map(jobs, & &1.status) == [:queued, :running, :passed, :failed, :stopped]
+      assert Enum.at(jobs, 1).started_at == 100
+      assert Enum.at(jobs, 1).finished_at == nil
+      assert Enum.at(jobs, 2).finished_at == 160
+      assert Enum.at(jobs, 0).id == "job-ENQUEUED-PASSED"
+    end
+
+    test "marks jobs that never started by block and pipeline state" do
+      topology_jobs = [%{name: "build"}]
+
+      blocks = [
+        %{name: "Skipped", dependencies: [], state: :DONE, skipped?: true, jobs: topology_jobs},
+        %{name: "Canceled", dependencies: [], state: :DONE, skipped?: false, jobs: topology_jobs},
+        %{name: "Waiting", dependencies: ["Skipped"], skipped?: false, jobs: topology_jobs}
+      ]
+
+      statuses = fn pipeline_state ->
+        render_map(map_pipeline(pipeline_state, blocks)).blocks
+        |> Enum.map(fn block -> hd(block.jobs).status end)
+      end
+
+      assert statuses.(:RUNNING) == [:skipped, :stopped, :pending]
+      assert statuses.(:DONE) == [:skipped, :stopped, :stopped]
+    end
+
+    test "links reused jobs to the original job" do
+      block = %{
+        name: "Tests",
+        dependencies: [],
+        state: :DONE,
+        skipped?: false,
+        jobs: [task_job(:FINISHED, :PASSED, %{id: "new", original_job_id: "original"})]
+      }
+
+      [%{jobs: [job]}] = render_map(map_pipeline(:DONE, [block])).blocks
+
+      assert job.id == "original"
+      assert job.reused
+    end
+
+    test "includes after pipeline jobs" do
+      after_jobs = [
+        %{
+          id: "a1",
+          name: "cleanup",
+          running?: false,
+          failed?: true,
+          stopped?: false,
+          passed?: false,
+          done?: true,
+          started_at: 10,
+          done_at: 20
+        },
+        %{
+          id: "a2",
+          name: "notify",
+          running?: false,
+          failed?: false,
+          stopped?: false,
+          passed?: false,
+          done?: false,
+          started_at: nil,
+          done_at: nil
+        }
+      ]
+
+      json = render_map(map_pipeline(:DONE, [], after_jobs))
+
+      assert Enum.map(json.after_jobs, &{&1.name, &1.status}) == [
+               {"cleanup", :failed},
+               {"notify", :pending}
+             ]
+
+      assert hd(json.after_jobs).finished_at == 20
+    end
+  end
+
   describe ".format_triggerer" do
     test "for an initial workflow" do
       pipeline =

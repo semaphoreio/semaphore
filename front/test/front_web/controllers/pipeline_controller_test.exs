@@ -309,6 +309,70 @@ defmodule FrontWeb.PipelineControllerTest do
     end
   end
 
+  describe "map" do
+    test "returns 404 when the ui_workflow_map feature is disabled", %{
+      conn: conn,
+      workflow_id: workflow_id,
+      pipeline_id: pipeline_id
+    } do
+      conn = get(conn, "/workflows/#{workflow_id}/pipelines/#{pipeline_id}/map")
+
+      assert conn.status == 404
+    end
+
+    test "returns blocks with dependencies and job statuses", %{
+      conn: conn,
+      workflow_id: workflow_id,
+      pipeline_id: pipeline_id
+    } do
+      org = DB.first(:organizations)
+      Support.Stubs.Feature.enable_feature(org.id, :ui_workflow_map)
+
+      json =
+        conn
+        |> get("/workflows/#{workflow_id}/pipelines/#{pipeline_id}/map")
+        |> json_response(200)
+
+      assert json["id"] == pipeline_id
+      assert [%{"name" => "Block 1", "dependencies" => [], "jobs" => jobs}] = json["blocks"]
+      assert Enum.map(jobs, & &1["name"]) == ["job 1", "job 2", "job 3"]
+      assert Enum.all?(jobs, &(&1["status"] == "queued" and is_binary(&1["id"])))
+      assert json["after_jobs"] == []
+    end
+
+    test "returns 404 when organization_id mismatches", %{
+      conn: conn,
+      workflow_id: workflow_id,
+      pipeline_id: pipeline_id
+    } do
+      org = DB.first(:organizations)
+      Support.Stubs.Feature.enable_feature(org.id, :ui_workflow_map)
+
+      conn =
+        conn
+        |> Plug.Conn.put_req_header("x-semaphore-org-id", Ecto.UUID.generate())
+        |> get("/workflows/#{workflow_id}/pipelines/#{pipeline_id}/map")
+
+      assert conn.status == 404
+    end
+
+    test "returns 404 when user does not have access to the project", %{
+      conn: conn,
+      workflow_id: workflow_id,
+      pipeline_id: pipeline_id
+    } do
+      org = DB.first(:organizations)
+      user = DB.first(:users)
+      Support.Stubs.Feature.enable_feature(org.id, :ui_workflow_map)
+      Support.Stubs.PermissionPatrol.remove_all_permissions()
+      Support.Stubs.PermissionPatrol.allow_everything_except(org.id, user.id, "project.view")
+
+      conn = get(conn, "/workflows/#{workflow_id}/pipelines/#{pipeline_id}/map")
+
+      assert conn.status == 404
+    end
+  end
+
   describe "rebuild => with ui_partial_ppl_rebuild feature flag" do
     test "returns 404 when feature flag is disabled", %{
       conn: conn,

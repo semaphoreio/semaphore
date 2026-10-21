@@ -27,7 +27,7 @@ defmodule FrontWeb.PipelineController do
   plug(PageAccess, [permissions: "project.job.stop"] when action == :stop)
   plug(PageAccess, [permissions: "project.job.rerun"] when action == :rebuild)
 
-  plug(:assign_pipeline_with_blocks when action in [:show, :poll])
+  plug(:assign_pipeline_with_blocks when action in [:show, :poll, :map])
   plug(:assign_pipeline_without_blocks when action in [:status, :switch, :stop, :rebuild])
   plug(:preload_switch when action in [:show, :poll, :switch])
 
@@ -35,6 +35,8 @@ defmodule FrontWeb.PipelineController do
     FeatureEnabled,
     [:ui_partial_ppl_rebuild] when action in [:rebuild]
   )
+
+  plug(FeatureEnabled, [:ui_workflow_map] when action in [:map])
 
   def path(conn, params) do
     organization_id = conn.assigns.organization_id
@@ -106,6 +108,14 @@ defmodule FrontWeb.PipelineController do
 
       {:ok, pipeline_status} = PipelineStatus.Model.load(pipeline.id)
       text(conn, pipeline_status)
+    end)
+  end
+
+  def map(conn, _params) do
+    Watchman.benchmark("pipeline_controller.map", fn ->
+      pipeline = Front.WorkflowPage.Diagram.load(conn.assigns.pipeline)
+
+      render(conn, "map.json", pipeline: pipeline)
     end)
   end
 

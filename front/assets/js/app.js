@@ -24,6 +24,7 @@ import { Diagram } from "./workflow_view/diagram";
 import { ForkExplanation } from "./workflow_view/fork_explanation";
 import { FaviconUpdater } from "./workflow_view/favicon_updater";
 import { DiagramDrag } from "./workflow_view/diagram_drag";
+import { default as WorkflowMap, selectPipeline as selectMapPipeline } from "./workflow_map";
 import { WorkflowEditor } from "./workflow_editor/editor.js";
 import { JobLogs } from "./job_logs/logs.js";
 import { GeneralSettings } from "./project_settings/general.js";
@@ -194,11 +195,44 @@ export var App = {
     Pollman.init({ interval: 4000, forceRefreshCycle: 10, saveScrollElements: ["#workflow-tree-container", "#diagram"] });
     Timer.init();
     Switch.init();
-    InteractivePipelineTree.init();
-    TriggerEvent.init();
     WorkflowTips.init();
     ForkExplanation.init();
-    DiagramDrag.init();
+
+    const mapConfig = window.InjectedDataByBackend.WorkflowMap;
+    if (!mapConfig) {
+      InteractivePipelineTree.init();
+      TriggerEvent.init();
+      DiagramDrag.init();
+      return;
+    }
+
+    const promotions = document.getElementById("workflow-map-promotions");
+    WorkflowMap({
+      dom: islandRoot(document.getElementById("workflow-map")),
+      config: mapConfig,
+      onSelect: (pipeline) => {
+        if (document.getElementById("workflow-tree-container")) {
+          InteractivePipelineTree.selectPipeline(pipeline.id);
+        }
+        promotions.replaceChildren();
+        if (!pipeline.switchId) return;
+
+        const panel = document.createElement("div");
+        panel.setAttribute("data-poll-href", mapConfig.switchUrl.replace("__PIPELINE_ID__", pipeline.id).replace("__SWITCH_ID__", pipeline.switchId));
+        panel.setAttribute("data-poll-state", "poll");
+        panel.setAttribute("data-poll-param-nonce", mapConfig.nonce);
+        promotions.appendChild(panel);
+        Pollman.pollNow();
+      }
+    });
+    InteractivePipelineTree.init({
+      onWorkflowTreeItemClick: (event) => selectMapPipeline($(event.currentTarget).data("pipeline-id"))
+    });
+    $("body").on("click", "#workflow-map-promotions [data-trigger-event-processed]", (event) => {
+      const triggered = $(event.currentTarget).data("triggered-pipeline");
+      if (triggered) selectMapPipeline(triggered);
+      return false;
+    });
   },
   new_project: function () {
     Fork.init(window.InjectedDataByBackend.Fork.DefaultProvider);
