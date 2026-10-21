@@ -17,12 +17,15 @@ defmodule Zebra.Workers.JobRequestFactory do
     RepoProxy,
     Repository,
     Secrets,
+    Settings,
     Spec,
     TestResults,
     ToolboxInstall
   }
 
   def init do
+    settings = Settings.load!()
+
     %Zebra.Workers.DbWorker{
       schema: Zebra.Models.Job,
       state_field: :aasm_state,
@@ -31,6 +34,16 @@ defmodule Zebra.Workers.JobRequestFactory do
       order_by: :created_at,
       order_direction: :asc,
       naptime: 1000,
+      # Every pod reads the same oldest pending rows, so most rows in a tick
+      # are already taken by another pod. Continuous mode keeps the slots
+      # busy with the rows this pod does win.
+      #
+      # Each in-flight row holds a DB connection for its whole transaction.
+      # Settings.load!/0 keeps `parallelism` below the pool size.
+      concurrency_mode: :continuous,
+      parallelism: settings.parallelism,
+      records_per_tick: settings.records_per_tick,
+      process_timeout: settings.process_timeout,
       processor: &process/1
     }
   end
