@@ -25,8 +25,16 @@ const MIN_OPEN_W = 460;
 let elk: ELK | null = null;
 const innerCache = new Map<string, Promise<ElkNode>>();
 
-export function initLayout(workerUrl: string) {
-  if (!elk) elk = new ElkConstructor({ workerUrl });
+export function initLayout(workerUrl: string, onWorkerError: () => void) {
+  elk?.terminateWorker();
+  elk = new ElkConstructor({
+    workerUrl,
+    workerFactory: (url) => {
+      const worker = new Worker(url);
+      worker.addEventListener(`error`, onWorkerError);
+      return worker;
+    },
+  });
   innerCache.clear();
 }
 

@@ -53,7 +53,9 @@ const App = ({ config, onSelect }: { config: Config, onSelect: (p: SelectedPipel
 };
 
 export default function WorkflowMap({ dom, config, onSelect }: { dom: HTMLElement, config: Config, onSelect: (p: SelectedPipeline) => void, }) {
-  initLayout(config.elkWorkerUrl);
+  initLayout(config.elkWorkerUrl, () => {
+    loadError.value = `Couldn't start the map's layout engine. Reload the page to try again.`;
+  });
   resetState(config.selectedPipelineId);
   openPipelines.value = new Set([config.selectedPipelineId]);
   aim({ id: config.selectedPipelineId, how: `fit` });
