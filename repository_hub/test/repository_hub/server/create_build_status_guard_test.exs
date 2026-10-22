@@ -5,6 +5,7 @@ defmodule RepositoryHub.Server.CreateBuildStatusGuardTest do
 
   alias RepositoryHub.{
     BuildStatusGuard,
+    GithubChecksClient,
     GithubClient,
     GithubClientFactory,
     InternalApiFactory,
@@ -27,7 +28,12 @@ defmodule RepositoryHub.Server.CreateBuildStatusGuardTest do
   end
 
   describe "create_build_status/2 with a source_id" do
-    setup_with_mocks(GithubClientFactory.mocks(), context) do
+    # The flag is off, so a terminal status also looks for a same-named
+    # check-run to mirror to; the commit has none.
+    setup_with_mocks(
+      GithubClientFactory.mocks() ++ [{GithubChecksClient, [], [list_check_runs: fn _params, _opts -> {:ok, []} end]}],
+      context
+    ) do
       context
     end
 

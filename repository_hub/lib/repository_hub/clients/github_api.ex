@@ -18,7 +18,8 @@ defmodule RepositoryHub.GithubApi do
   @limits %{
     create_check_run: 1000,
     update_check_run: 1000,
-    find_check_run: 1000
+    find_check_run: 1000,
+    find_commit_status: 1000
   }
 
   @err_not_authorized "It looks like you haven't authorized Semaphore with GitHub, please visit https://docs.semaphoreci.com/using-semaphore/connect-github#troubleshooting-guide to read more."

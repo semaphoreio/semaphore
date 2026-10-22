@@ -276,6 +276,26 @@ defmodule RepositoryHub.GithubChecksClientTest do
       assert status == GRPC.Status.unavailable()
     end
 
+    test "list_check_runs/2 returns every same-named run, whatever its external_id" do
+      mock_github(fn %{method: :get} ->
+        json(
+          %{
+            "check_runs" => [
+              %{"id" => 7, "name" => @name, "external_id" => @external_id},
+              %{"id" => 98, "name" => @name, "external_id" => "semaphore:ppl-2"}
+            ]
+          },
+          status: 200
+        )
+      end)
+
+      assert {:ok, [%{"id" => 7}, %{"id" => 98}]} =
+               GithubChecksClient.list_check_runs(
+                 %{repo_owner: @owner, repo_name: @repo, commit_sha: @sha, name: @name, app_id: @app_id},
+                 token: "ghs_installation_token"
+               )
+    end
+
     test "returns not_found when only other apps have a run with the name" do
       mock_github(fn %{method: :get} ->
         json(%{"check_runs" => [%{"id" => 99, "name" => @name, "external_id" => "another-app"}]}, status: 200)

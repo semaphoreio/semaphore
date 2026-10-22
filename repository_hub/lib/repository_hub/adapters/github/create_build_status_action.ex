@@ -2,7 +2,15 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
   alias RepositoryHub.Toolkit
   alias RepositoryHub.Validator
 
-  alias RepositoryHub.{CheckRunCache, GithubAdapter, GithubAppId, GithubClient, GithubChecksClient}
+  alias RepositoryHub.{
+    CheckRunCache,
+    GithubAdapter,
+    GithubAppId,
+    GithubClient,
+    GithubChecksClient,
+    GithubCommitStatusClient
+  }
+
   alias InternalApi.Repository.CreateBuildStatusResponse
 
   import Toolkit
@@ -64,23 +72,23 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
     )
   end
 
-  # Known rollout gap, accepted: the API is chosen per request, so a pipeline
-  # running while the flag or the installation's Checks permission changes
-  # can send its PENDING as a commit status and its result as a check-run
-  # (or the reverse). The same-named pending commit status then stays on the
-  # commit and can keep a required check pending until the next push.
+  # The API is chosen per request, so one commit can end up with a check-run
+  # and a commit status of the same name: the flag is switched on or off, a
+  # FeatureHub outage reads it as off, or a commit is rebuilt after the switch.
+  # GitHub requires both to pass, so a stale one blocks the PR. A terminal
+  # status therefore also goes to the other API whenever the commit already
+  # has a same-named entry there (mirror_to_commit_status/3,
+  # mirror_to_check_run/3), and the newest result wins on both.
   defp report_build_status(%{integration_type: "github_app"}, request, context) do
-    case checks_api_enabled?(context) do
-      {:ok, true} ->
-        request
-        |> report_via_check_run(context)
-        |> fallback_to_status_when_checks_forbidden(request, context)
-
-      {:ok, false} ->
-        create_build_status(request, context.repository, context.github_token)
-
-      error ->
-        error
+    if checks_api_enabled?(context) do
+      request
+      |> report_via_check_run(context)
+      |> mirror_to_commit_status(request, context)
+      |> fallback_to_status_when_checks_forbidden(request, context)
+    else
+      request
+      |> create_build_status(context.repository, context.github_token)
+      |> mirror_to_check_run(request, context)
     end
   end
 
@@ -88,34 +96,141 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
     create_build_status(request, context.repository, context.github_token)
   end
 
-  # A flag that can't be evaluated fails the request so the notifier retries.
-  # Reading it as "disabled" would send this status as a commit status while
-  # the pipeline's earlier ones went out as a check-run, leaving the run
-  # in_progress. Only a flag that doesn't exist counts as disabled: a provider
-  # failure behind the cache also comes back as {:not_found, {fun, org_id}}.
+  # A flag that can't be evaluated counts as off, so a FeatureHub outage
+  # doesn't stop status delivery for orgs that never had it on. For an org
+  # that has it on, the mirroring in report_build_status/3 completes whatever
+  # the pipeline already sent as a check-run. A provider failure behind the
+  # cache comes back as {:not_found, {fun, org_id}}, not as the flag missing.
   defp checks_api_enabled?(context) do
     org_id = context.project.metadata.org_id
 
     case FeatureProvider.find_feature(:github_checks_api, param: org_id) do
       {:ok, feature} ->
-        {:ok, FeatureProvider.Feature.enabled?(feature)}
+        FeatureProvider.Feature.enabled?(feature)
 
       {:error, {:not_found, :github_checks_api}} ->
-        {:ok, false}
+        false
 
       {:error, reason} ->
         Watchman.increment("set_check_run.flag_unavailable")
 
-        log_error([
-          "Can't evaluate the github_checks_api feature flag",
+        log_warn([
+          "Can't evaluate the github_checks_api feature flag, reporting as a commit status",
           "org_id: #{org_id}",
           "project_id: #{context.project.metadata.id}",
           "reason: #{inspect(reason)}"
         ])
 
-        fail_with(:unavailable, "Can't evaluate the github_checks_api feature flag")
+        false
     end
   end
+
+  # Check-run path: the commit got a same-named commit status before the
+  # switch (or while the flag couldn't be read), so the result is written
+  # there too. A failed lookup or write fails the request: the check-run
+  # write is an idempotent update on retry, and only orgs with the flag on
+  # get here.
+  defp mirror_to_commit_status({:ok, _} = result, %{status: status} = request, context) when status != :PENDING do
+    GithubCommitStatusClient.find_commit_status(
+      %{
+        repo_owner: context.repository.owner,
+        repo_name: context.repository.name,
+        commit_sha: request.commit_sha,
+        context: request.context
+      },
+      token: context.github_token
+    )
+    |> case do
+      {:ok, _status} ->
+        Watchman.increment("set_check_run.mirrored_to_status")
+
+        with {:ok, _} <- create_build_status(request, context.repository, context.github_token) do
+          result
+        end
+
+      {:error, %{status: status} = error} ->
+        if status == GRPC.Status.not_found(), do: result, else: {:error, error}
+
+      error ->
+        error
+    end
+  end
+
+  defp mirror_to_commit_status(result, _request, _context), do: result
+
+  # Commit-status path: the commit has a same-named check-run from Semaphore,
+  # left by this pipeline (flag turned off or unreadable mid-pipeline) or an
+  # earlier one (a rebuild after the flag was turned off). The result is
+  # written to this pipeline's run, created if needed, so it is the newest
+  # run of that name. Best effort: the status itself is delivered, and every
+  # App repo gets here, so a failure is logged rather than retried.
+  defp mirror_to_check_run({:ok, _} = result, %{status: status, source_id: source_id} = request, context)
+       when status != :PENDING and source_id != "" do
+    case GithubAppId.get() do
+      {:ok, app_id} ->
+        write_to_check_run(request, context, app_id)
+        result
+
+      # No app id means no check-run was ever created.
+      _ ->
+        result
+    end
+  end
+
+  defp mirror_to_check_run(result, _request, _context), do: result
+
+  defp write_to_check_run(request, context, app_id) do
+    cache_key = CheckRunCache.key(request, context.repository)
+    permission_denied = GRPC.Status.permission_denied()
+
+    with {:ok, run} <- check_run_to_mirror(request, context, app_id, cache_key),
+         {:ok, _} = written <- upsert_check_run(request, run, context) do
+      remember_check_run(written, cache_key)
+      Watchman.increment("set_check_run.mirrored_to_check_run")
+    else
+      :none ->
+        :ok
+
+      # The installation can't use the Checks API, so it has no check-runs.
+      {:error, %{status: ^permission_denied}} ->
+        :ok
+
+      error ->
+        CheckRunCache.delete(cache_key)
+        Watchman.increment("set_check_run.mirror_failure")
+
+        log_warn([
+          "Can't write the build status to the commit's check-run",
+          "org_id: #{context.project.metadata.org_id}",
+          "project_id: #{context.project.metadata.id}",
+          "source_id: #{request.source_id}",
+          "repo: #{context.repository.owner}/#{context.repository.name}",
+          "context: #{request.context}",
+          "reason: #{inspect(error)}"
+        ])
+    end
+  end
+
+  # {:ok, run} for this pipeline's run, {:ok, nil} when only other pipelines
+  # have a same-named run, :none when the commit has none.
+  defp check_run_to_mirror(request, context, app_id, cache_key) do
+    case CheckRunCache.get(cache_key) do
+      {:ok, run} ->
+        {:ok, run}
+
+      :miss ->
+        params = check_run_lookup_params(request, context, app_id)
+
+        case GithubChecksClient.list_check_runs(params, token: context.github_token) do
+          {:ok, []} -> :none
+          {:ok, runs} -> runs |> GithubChecksClient.latest_run(params) |> own_run()
+          error -> error
+        end
+    end
+  end
+
+  defp own_run({:ok, run}), do: {:ok, run}
+  defp own_run({:error, _}), do: {:ok, nil}
 
   # An installation without the Checks permission gets a 403 on every call.
   # Nothing was written, so report through the Commit Status API instead.
@@ -183,22 +298,25 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
   defp find_existing_check_run(request, context, app_id) do
     not_found = GRPC.Status.not_found()
 
-    GithubChecksClient.find_check_run(
-      %{
-        repo_owner: context.repository.owner,
-        repo_name: context.repository.name,
-        commit_sha: request.commit_sha,
-        name: request.context,
-        app_id: app_id,
-        external_id: external_id(request)
-      },
-      token: context.github_token
-    )
+    request
+    |> check_run_lookup_params(context, app_id)
+    |> GithubChecksClient.find_check_run(token: context.github_token)
     |> case do
       {:ok, run} -> {:ok, run}
       {:error, %{status: ^not_found}} -> {:ok, nil}
       error -> error
     end
+  end
+
+  defp check_run_lookup_params(request, context, app_id) do
+    %{
+      repo_owner: context.repository.owner,
+      repo_name: context.repository.name,
+      commit_sha: request.commit_sha,
+      name: request.context,
+      app_id: app_id,
+      external_id: external_id(request)
+    }
   end
 
   # The run is this pipeline's own (matched by external_id), so a PENDING

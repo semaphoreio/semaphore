@@ -68,23 +68,37 @@ defmodule RepositoryHub.GithubChecksClient do
   the lookup to Semaphore's suite, so that covers every run.
   """
   def find_check_run(params, opts \\ []) do
-    GithubApi.with_client(opts[:token], params.repo_owner, :find_check_run, fn client ->
-      list_check_runs(client, params, 1, [])
-    end)
-    |> unwrap(fn runs ->
-      runs
-      |> Enum.filter(&(&1["external_id"] == params.external_id))
-      |> case do
-        [] ->
-          fail_with(:not_found, "No check-run named #{params.name} on #{params.commit_sha}")
+    params
+    |> list_check_runs(opts)
+    |> unwrap(&latest_run(&1, params))
+  end
 
-        runs ->
-          runs |> Enum.max_by(&(&1["id"] || 0)) |> wrap()
-      end
+  @doc """
+  Lists every check-run with the given name on a commit created by `app_id`,
+  across pipelines. The lookup behind `find_check_run/2`.
+  """
+  def list_check_runs(params, opts \\ []) do
+    GithubApi.with_client(opts[:token], params.repo_owner, :find_check_run, fn client ->
+      list_pages(client, params, 1, [])
     end)
   end
 
-  defp list_check_runs(client, params, page, acc) do
+  @doc """
+  Picks the latest run with `params.external_id` from `runs`, or `not_found`.
+  """
+  def latest_run(runs, params) do
+    runs
+    |> Enum.filter(&(&1["external_id"] == params.external_id))
+    |> case do
+      [] ->
+        fail_with(:not_found, "No check-run named #{params.name} on #{params.commit_sha}")
+
+      runs ->
+        runs |> Enum.max_by(&(&1["id"] || 0)) |> wrap()
+    end
+  end
+
+  defp list_pages(client, params, page, acc) do
     client
     |> Tesla.get(
       "/repos/#{params.repo_owner}/#{params.repo_name}/commits/#{params.commit_sha}/check-runs",
@@ -97,7 +111,7 @@ defmodule RepositoryHub.GithubChecksClient do
       if length(runs) < @per_page or page >= @max_pages do
         wrap(acc ++ runs)
       else
-        list_check_runs(client, params, page + 1, acc ++ runs)
+        list_pages(client, params, page + 1, acc ++ runs)
       end
     end)
   end
