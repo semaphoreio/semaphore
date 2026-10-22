@@ -68,7 +68,9 @@ if config_env() == :prod do
         {RepositoryHub.FeatureHubProvider,
          [
            # stale_ttl_ms keeps serving the last known flags while FeatureHub
-           # is down, so a FeatureHub outage doesn't stop status delivery.
+           # is down, instead of reading the flag as off. The option comes
+           # with feature_provider's last-known cache (semaphoreio/semaphore#1362);
+           # before that, CachexCache ignores it.
            cache:
              {FeatureProvider.CachexCache,
               name: :feature_provider_cache, ttl_ms: :timer.minutes(10), stale_ttl_ms: :timer.hours(24)}
