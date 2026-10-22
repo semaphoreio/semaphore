@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { computed, signal } from "@preact/signals";
-import { BaseEdge, Background, Controls, Edge, EdgeProps, Handle, MiniMap, Node, NodeProps, Panel, Position, ReactFlow, ReactFlowProvider, useReactFlow, useStore } from "@xyflow/react";
+import { BaseEdge, Background, Controls, Edge, EdgeProps, Handle, MiniMap, Node, NodeProps, Panel, Position, ReactFlow, ReactFlowProvider, getSmoothStepPath, useReactFlow, useStore } from "@xyflow/react";
 import { Pipeline, STATUS_LABEL, Status, Workflow, blockStatus, countJobs, pipelineJobs } from "./model";
 import { focus, hits, loadError, rerunPipeline, selected, stopPipeline, workflow } from "./store";
 import { MapLayout, Point, layoutMap, promotedFrom, promotionsNodeId } from "./layout";
@@ -273,14 +273,26 @@ function rounded(pts: Point[], r = 10) {
   return `${d} L${last.x},${last.y}`;
 }
 
+const flowing = (target: string) => {
+  const wf = workflow.value;
+  const b = wf?.blocks.get(target);
+  const st = b ? blockStatus(b) : wf?.pipelineById.get(target)?.status;
+  return st === `running` || st === `queued` ? `wf-map-edge-${st}` : ``;
+};
+
 const RouteEdge = ({ id, data, source, target }: EdgeProps<Edge<{ points: Point[], }>>) => {
   const l = lineage.value;
   const state = !l || !source.startsWith(`${l.pipelineId}/`) ? `` : l.chain.has(source) && l.chain.has(target) ? `wf-map-edge-lit` : `wf-map-edge-faded`;
-  return <BaseEdge id={id} path={rounded(data.points)} className={state}/>;
+  return <BaseEdge id={id} path={rounded(data.points)} className={`${state} ${flowing(target)}`}/>;
+};
+
+const StepEdge = ({ id, target, sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition }: EdgeProps) => {
+  const [path] = getSmoothStepPath({ sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition });
+  return <BaseEdge id={id} path={path} className={flowing(target)}/>;
 };
 
 const nodeTypes = { card: CardNode, pipeline: PipelineNode, block: BlockNode, promotions: PromotionsNode };
-const edgeTypes = { route: RouteEdge };
+const edgeTypes = { route: RouteEdge, step: StepEdge };
 
 function build(wf: Workflow, L: MapLayout) {
   const nodes: Node[] = [];
@@ -314,7 +326,7 @@ function build(wf: Workflow, L: MapLayout) {
         edges.push({ id, type: `route`, source, sourceHandle: `out`, target: p.id, targetHandle: `in`, className: `promo ${kind}`, focusable: false, data: { points: L.routes.get(id) ?? [] } });
       } else {
         const row = p.parent.promotions.findIndex((promotion) => promotion.pipelines.includes(p));
-        edges.push({ id, type: `smoothstep`, source, sourceHandle: row < 0 ? `out` : `row:${row}`, target: p.id, targetHandle: `in`, className: `promo ${kind}`, focusable: false });
+        edges.push({ id, type: `step`, source, sourceHandle: row < 0 ? `out` : `row:${row}`, target: p.id, targetHandle: `in`, className: `promo ${kind}`, focusable: false });
       }
     }
   }
@@ -340,6 +352,17 @@ function boxOf(wf: Workflow, L: MapLayout, id: string) {
   return p && bb && { x: p.x + bb.x, y: p.y + bb.y, w: bb.w, h: bb.h };
 }
 
+const canvasInset = () => {
+  const card = document.querySelector(`.wf-canvas-head`);
+  const pane = document.querySelector(`.wf-map-canvas`);
+  return card && pane ? Math.max(0, card.getBoundingClientRect().bottom - pane.getBoundingClientRect().top) : 0;
+};
+
+const fitPadding = () => {
+  const top = canvasInset();
+  return top ? { top: `${top + 16}px` as const, x: 0.06, bottom: 0.06 } : 0.06;
+};
+
 const WorkflowMap = () => {
   const rf = useReactFlow();
   const wf = workflow.value;
@@ -357,7 +380,7 @@ const WorkflowMap = () => {
   const go = (L: MapLayout, t: Target) => {
     const p = wf.pipelineById.get(t.id);
     if (t.how === `all` || (!p && !wf.blocks.has(t.id))) {
-      void rf.fitView({ padding: 0.06, maxZoom: 1, duration: 400 });
+      void rf.fitView({ padding: fitPadding(), maxZoom: 1, duration: 400 });
       return true;
     }
     if (p && P.has(p.id) && (p.blocks === null || (p.blocks.length && !L.pipelines.get(p.id)?.open))) return false;
@@ -369,9 +392,10 @@ const WorkflowMap = () => {
     } else if (t.job !== undefined) {
       void rf.setCenter(cx, b.y + BLOCK_HEAD_H + t.job * JOB_ROW_H + 11, { zoom: Math.max(rf.getZoom(), 1), duration: 450 });
     } else {
+      const top = canvasInset();
       const pad = p ? 1.12 : 1.6;
-      const z = Math.max(0.1, Math.min(1, vw / (b.w * pad), vh / (b.h * pad)));
-      void rf.setViewport({ x: vw / 2 - cx * z, y: vh / 2 - (b.y + b.h / 2) * z, zoom: z }, { duration: 450 });
+      const z = Math.max(0.1, Math.min(1, vw / (b.w * pad), (vh - top) / (b.h * pad)));
+      void rf.setViewport({ x: vw / 2 - cx * z, y: top + (vh - top) / 2 - (b.y + b.h / 2) * z, zoom: z }, { duration: 450 });
     }
     return true;
   };
@@ -457,7 +481,7 @@ const WorkflowMap = () => {
       />
       <Panel position="top-right">
         <div className="wf-map-tools">
-          <button className="btn btn-secondary btn-small" onClick={() => void rf.fitView({ duration: 400, padding: 0.06 })}>
+          <button className="btn btn-secondary btn-small" onClick={() => void rf.fitView({ duration: 400, padding: fitPadding() })}>
             Fit workflow
           </button>
           <button className="btn btn-secondary btn-small" onClick={() => (aim({ id: ``, how: `all` }), (openPipelines.value = new Set(wf.pipelines.map((p) => p.id))))}>
