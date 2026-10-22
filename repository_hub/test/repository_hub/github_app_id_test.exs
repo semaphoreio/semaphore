@@ -29,7 +29,8 @@ defmodule RepositoryHub.GithubAppIdTest do
 
   defp instance_config_mocks(list_configs) do
     [
-      {GRPC.Stub, [:passthrough], [connect: fn _endpoint -> {:ok, :channel} end]},
+      {GRPC.Stub, [:passthrough],
+       [connect: fn _endpoint -> {:ok, :channel} end, disconnect: fn channel -> {:ok, channel} end]},
       {Stub, [], [list_configs: list_configs]}
     ]
   end
@@ -56,6 +57,7 @@ defmodule RepositoryHub.GithubAppIdTest do
         assert {:ok, "456"} = GithubAppId.get()
         assert {:ok, "456"} = GithubAppId.get()
         assert_called_exactly(Stub.list_configs(:_, :_, :_), 1)
+        assert_called_exactly(GRPC.Stub.disconnect(:channel), 1)
       end
     end
 
@@ -85,6 +87,7 @@ defmodule RepositoryHub.GithubAppIdTest do
         assert status == GRPC.Status.unavailable()
         assert {:error, _} = GithubAppId.get()
         assert_called_exactly(Stub.list_configs(:_, :_, :_), 2)
+        assert_called_exactly(GRPC.Stub.disconnect(:channel), 2)
       end
     end
   end

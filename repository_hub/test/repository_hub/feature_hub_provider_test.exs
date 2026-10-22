@@ -30,7 +30,8 @@ defmodule RepositoryHub.FeatureHubProviderTest do
     }
 
     with_mocks([
-      {GRPC.Stub, [:passthrough], [connect: fn _endpoint -> {:ok, :channel} end]},
+      {GRPC.Stub, [:passthrough],
+       [connect: fn _endpoint -> {:ok, :channel} end, disconnect: fn channel -> {:ok, channel} end]},
       {Stub, [], [list_organization_features: fn _channel, _request, _opts -> {:ok, response} end]}
     ]) do
       assert {:ok, features} = FeatureHubProvider.provide_features(Ecto.UUID.generate())
@@ -39,6 +40,7 @@ defmodule RepositoryHub.FeatureHubProviderTest do
       assert states["github_checks_api"] == :enabled
       assert states["zero"] == :zero_state
       refute Map.has_key?(states, "hidden")
+      assert_called_exactly(GRPC.Stub.disconnect(:channel), 1)
     end
   end
 end

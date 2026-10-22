@@ -65,7 +65,7 @@ defmodule RepositoryHub.GithubAppId do
     request = %ListConfigsRequest{types: [:CONFIG_TYPE_GITHUB_APP]}
 
     with {:ok, channel} <- GRPC.Stub.connect(endpoint),
-         {:ok, response} <- InstanceConfigService.Stub.list_configs(channel, request, timeout: 3_000) do
+         {:ok, response} <- list_configs(channel, request) do
       response.configs
       |> Enum.find(&(&1.type == :CONFIG_TYPE_GITHUB_APP and &1.state == :STATE_CONFIGURED))
       |> app_id_field()
@@ -74,6 +74,12 @@ defmodule RepositoryHub.GithubAppId do
         log_error("Failed to fetch the GitHub App config from instance_config: #{inspect(error)}")
         fail_with(:unavailable, "Can't fetch the GitHub App id from instance_config")
     end
+  end
+
+  defp list_configs(channel, request) do
+    InstanceConfigService.Stub.list_configs(channel, request, timeout: 3_000)
+  after
+    GRPC.Stub.disconnect(channel)
   end
 
   defp app_id_field(nil), do: fail_with(:precondition, "GitHub App is not configured")

@@ -62,7 +62,8 @@ defmodule RepositoryHub.FeatureHubProvider do
       {:ok, channel} ->
         request = %InternalApi.Feature.ListOrganizationFeaturesRequest{org_id: org_id}
 
-        Stub.list_organization_features(channel, request, opts)
+        try do: Stub.list_organization_features(channel, request, opts),
+            after: GRPC.Stub.disconnect(channel)
 
       error ->
         error
@@ -77,7 +78,8 @@ defmodule RepositoryHub.FeatureHubProvider do
       {:ok, channel} ->
         request = %InternalApi.Feature.ListFeaturesRequest{}
 
-        Stub.list_features(channel, request, opts)
+        try do: Stub.list_features(channel, request, opts),
+            after: GRPC.Stub.disconnect(channel)
 
       error ->
         error
