@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { computed, signal } from "@preact/signals";
-import { BaseEdge, Background, Controls, Edge, EdgeProps, Handle, MiniMap, Node, NodeProps, Panel, Position, ReactFlow, ReactFlowProvider, getSmoothStepPath, useReactFlow, useStore } from "@xyflow/react";
+import { BaseEdge, Background, Controls, Edge, EdgeLabelRenderer, EdgeProps, Handle, MiniMap, Node, NodeProps, Panel, Position, ReactFlow, ReactFlowProvider, useReactFlow, useStore } from "@xyflow/react";
 import { Pipeline, STATUS_LABEL, Status, Workflow, blockStatus, countJobs, pipelineJobs } from "./model";
 import { focus, hits, loadError, rerunPipeline, selected, stopPipeline, workflow } from "./store";
-import { MapLayout, Point, layoutMap, promotedFrom, promotionsNodeId } from "./layout";
-import { promoting } from "./promote";
+import { MapLayout, Point, layoutMap, promotionLabel } from "./layout";
+import { PromoteButton, promoteMenu } from "./promote";
 import { BlockCard, Counts, Duration, Highlight, PipelineTitle, StatusBar, StatusIcon } from "./ui";
 
 const CARD = { w: 300, h: 72 };
@@ -12,9 +12,6 @@ const BLOCK = { w: 230, h: 74 };
 const OPEN_BLOCK_W = 260;
 const JOB_ROW_H = 23;
 const BLOCK_HEAD_H = 40;
-const PROMOTIONS_W = 290;
-const PROMOTIONS_HEAD_H = 36;
-const PROMOTION_ROW_H = 56;
 
 const CLICKABLE = { pointerEvents: `all` as const };
 
@@ -54,7 +51,7 @@ const toggle = (s: typeof openPipelines, id: string, on?: boolean) => {
 
 const PipelineActions = ({ p }: { p: Pipeline, }) => {
   const [busy, setBusy] = useState<`stop` | `rerun` | null>(null);
-  if (!p.stopUrl && !p.rebuildUrl) return null;
+  if (!p.stopUrl && !p.rebuildUrl && !p.promotions?.length) return null;
   const run = async (kind: `stop` | `rerun`) => {
     setBusy(kind);
     const error = await (kind === `stop` ? stopPipeline(p) : rerunPipeline(p));
@@ -75,6 +72,7 @@ const PipelineActions = ({ p }: { p: Pipeline, }) => {
           {busy === `rerun` ? `Rerunning…` : `Rerun failed`}
         </button>
       )}
+      <PromoteButton p={p}/>
     </span>
   );
 };
@@ -159,59 +157,6 @@ const PipelineNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
   );
 };
 
-const PromotionsNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
-  const p = workflow.value?.pipelineById.get(data.id);
-  if (!p?.promotions) return null;
-  return (
-    <div className="wf-map-promotions">
-      <Handle type="target" id="in" position={Position.Left} isConnectable={false} style={{ top: PROMOTIONS_HEAD_H / 2 }}/>
-      <div className="wf-map-promotions-head">Promotions</div>
-      {p.promotions.map((promotion, i) => {
-        const latest = promotion.events.reduce((a, e) => (!a || e.triggered_at > a.triggered_at ? e : a), null);
-        const note = promotion.starting
-          ? `Starting promotion…`
-          : !latest
-            ? `Not promoted yet`
-            : latest.processed && latest.result === `FAILED`
-              ? `Failed to promote`
-              : `${promotion.events.length > 1 ? `${promotion.events.length}× · ` : ``}${latest.auto ? `auto-promoted` : `by ${latest.author ?? `someone`}`}`;
-        const blocked = promotion.deployment && !promotion.deployment.allowed;
-        const why = blocked ? promotion.deployment.message ?? `Blocked by the ${promotion.deployment.name} deployment target` : `You don't have permission to promote`;
-        return (
-          <div key={promotion.name} className="wf-map-promotion" style={{ height: PROMOTION_ROW_H }}>
-            <span className="material-symbols-outlined wf-map-promotion-icon" aria-hidden="true">
-              {promotion.deployment ? (promotion.deployment.allowed ? `lock_open` : `lock`) : `rocket_launch`}
-            </span>
-            <span className="wf-map-promotion-text">
-              <span className="wf-map-promotion-name">{promotion.name}</span>
-              <span className={`wf-map-promotion-note ${latest?.result === `FAILED` ? `failed` : ``}`}>{blocked ? promotion.deployment.name : note}</span>
-            </span>
-            <button
-              className="btn btn-secondary btn-small"
-              disabled={!promotion.can_promote || promotion.starting}
-              title={promotion.can_promote ? `Promote ${p.name} to ${promotion.name}` : why}
-              onClick={(e) => {
-                e.stopPropagation();
-                promoting.value = { pipeline: p, promotion };
-              }}
-            >
-              Promote
-            </button>
-            <Handle
-              type="source"
-              id={`row:${i}`}
-              position={Position.Right}
-              isConnectable={false}
-              style={{ top: PROMOTIONS_HEAD_H + i * PROMOTION_ROW_H + PROMOTION_ROW_H / 2 }}
-            />
-          </div>
-        );
-      })}
-      <Handle type="source" id="out" position={Position.Right} isConnectable={false} style={{ top: PROMOTIONS_HEAD_H / 2 }}/>
-    </div>
-  );
-};
-
 const BlockNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
   const b = workflow.value?.blocks.get(data.id);
   const h = hits.value;
@@ -280,19 +225,25 @@ const flowing = (target: string) => {
   return st === `running` || st === `queued` ? `wf-map-edge-${st}` : ``;
 };
 
-const RouteEdge = ({ id, data, source, target }: EdgeProps<Edge<{ points: Point[], }>>) => {
+const RouteEdge = ({ id, data, source, target }: EdgeProps<Edge<{ points: Point[], label?: string, labelAt?: Point, }>>) => {
   const l = lineage.value;
   const state = !l || !source.startsWith(`${l.pipelineId}/`) ? `` : l.chain.has(source) && l.chain.has(target) ? `wf-map-edge-lit` : `wf-map-edge-faded`;
-  return <BaseEdge id={id} path={rounded(data.points)} className={`${state} ${flowing(target)}`}/>;
+  return (
+    <>
+      <BaseEdge id={id} path={rounded(data.points)} className={`${state} ${flowing(target)}`}/>
+      {data.label && data.labelAt && (
+        <EdgeLabelRenderer>
+          <div className="wf-map-edge-label" style={{ transform: `translate(-50%, -50%) translate(${data.labelAt.x}px, ${data.labelAt.y}px)` }}>
+            {data.label}
+          </div>
+        </EdgeLabelRenderer>
+      )}
+    </>
+  );
 };
 
-const StepEdge = ({ id, target, sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition }: EdgeProps) => {
-  const [path] = getSmoothStepPath({ sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition });
-  return <BaseEdge id={id} path={path} className={flowing(target)}/>;
-};
-
-const nodeTypes = { card: CardNode, pipeline: PipelineNode, block: BlockNode, promotions: PromotionsNode };
-const edgeTypes = { route: RouteEdge, step: StepEdge };
+const nodeTypes = { card: CardNode, pipeline: PipelineNode, block: BlockNode };
+const edgeTypes = { route: RouteEdge };
 
 function build(wf: Workflow, L: MapLayout) {
   const nodes: Node[] = [];
@@ -312,22 +263,20 @@ function build(wf: Workflow, L: MapLayout) {
         }
       }
     }
-    const promotionsBox = L.promotions.get(promotionsNodeId(p.id));
-    if (promotionsBox) {
-      nodes.push({ id: promotionsNodeId(p.id), type: `promotions`, position: { x: promotionsBox.x, y: promotionsBox.y }, width: promotionsBox.w, height: promotionsBox.h, style: CLICKABLE, data: { id: p.id }, draggable: false, selectable: false });
-      const id = `${p.id}=>${promotionsNodeId(p.id)}`;
-      edges.push({ id, type: `route`, source: p.id, sourceHandle: `out`, target: promotionsNodeId(p.id), targetHandle: `in`, className: `promo auto`, focusable: false, data: { points: L.routes.get(id) ?? [] } });
-    }
     if (p.parent && L.pipelines.has(p.parent.id)) {
-      const source = promotedFrom(p);
       const kind = p.trigger === `AUTO_PROMOTION` ? `auto` : p.trigger === `PIPELINE_PARTIAL_RERUN` ? `rerun` : `manual`;
-      const id = `${source}=>${p.id}`;
-      if (source === p.parent.id) {
-        edges.push({ id, type: `route`, source, sourceHandle: `out`, target: p.id, targetHandle: `in`, className: `promo ${kind}`, focusable: false, data: { points: L.routes.get(id) ?? [] } });
-      } else {
-        const row = p.parent.promotions.findIndex((promotion) => promotion.pipelines.includes(p));
-        edges.push({ id, type: `step`, source, sourceHandle: row < 0 ? `out` : `row:${row}`, target: p.id, targetHandle: `in`, className: `promo ${kind}`, focusable: false });
-      }
+      const id = `${p.parent.id}=>${p.id}`;
+      edges.push({
+        id,
+        type: `route`,
+        source: p.parent.id,
+        sourceHandle: `out`,
+        target: p.id,
+        targetHandle: `in`,
+        className: `promo ${kind}`,
+        focusable: false,
+        data: { points: L.routes.get(id) ?? [], label: promotionLabel(p), labelAt: L.labels.get(id) },
+      });
     }
   }
   return { nodes, edges };
@@ -411,8 +360,7 @@ const WorkflowMap = () => {
       wf,
       (p) => P.has(p.id),
       (b) => (B.has(b.id) ? { w: OPEN_BLOCK_W, h: BLOCK_HEAD_H + b.jobs.length * JOB_ROW_H + 8 } : BLOCK),
-      CARD,
-      (p) => ({ w: PROMOTIONS_W, h: PROMOTIONS_HEAD_H + p.promotions.length * PROMOTION_ROW_H + 6 })
+      CARD
     )
       .then((L) => alive && setLayout(L))
       .catch(() => {
@@ -449,6 +397,7 @@ const WorkflowMap = () => {
   };
 
   if (!graph) return <div className="wf-map-loading">Loading the workflow…</div>;
+  const pageLayout = document.querySelector(`.wf-canvas-page`) ? `canvas` : document.querySelector(`.wf-compact-head`) ? `compact` : null;
   return (
     <ReactFlow
       nodes={graph.nodes}
@@ -462,6 +411,7 @@ const WorkflowMap = () => {
       nodesDraggable={false}
       elementsSelectable={false}
       zoomOnDoubleClick={false}
+      onMoveStart={() => (promoteMenu.value = null)}
     >
       <Background gap={32} size={1.2}/>
       <Controls showInteractive={false} position="bottom-left"/>
@@ -494,6 +444,25 @@ const WorkflowMap = () => {
             <button className="btn btn-secondary btn-small" onClick={openMatches} disabled={!h.pipelines.size}>
               Open matches
             </button>
+          )}
+          {pageLayout && (
+            <span className="wf-map-layout" role="group" aria-label="Page layout">
+              {([`compact`, `canvas`] as const).map((l) => (
+                <button
+                  key={l}
+                  className={`btn btn-secondary btn-small ${pageLayout === l ? `active` : ``}`}
+                  aria-pressed={pageLayout === l}
+                  onClick={() => {
+                    document.cookie = `wf_map_layout=${l}; path=/; max-age=31536000; SameSite=Lax`;
+                    const url = new URL(window.location.href);
+                    url.searchParams.delete(`layout`);
+                    window.location.assign(url.toString());
+                  }}
+                >
+                  {l === `compact` ? `Compact` : `Canvas`}
+                </button>
+              ))}
+            </span>
           )}
           <span className="wf-map-zoom">{Math.round(zoom * 100)}%</span>
         </div>

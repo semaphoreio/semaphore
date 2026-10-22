@@ -15,15 +15,19 @@ export interface Point {
 
 export interface MapLayout {
   pipelines: Map<string, Box & { open: boolean, }>;
-  promotions: Map<string, Box>;
   blocks: Map<string, Box>;
   routes: Map<string, Point[]>;
+  labels: Map<string, Point>;
 }
 
-export const promotionsNodeId = (pipelineId: string) => `promotions:${pipelineId}`;
-
-export const promotedFrom = (p: Pipeline) =>
-  p.parent.promotions?.length && p.trigger !== `PIPELINE_PARTIAL_RERUN` ? promotionsNodeId(p.parent.id) : p.parent.id;
+export function promotionLabel(p: Pipeline) {
+  const promotion = p.trigger === `PIPELINE_PARTIAL_RERUN` ? null : p.parent?.promotions?.find((x) => x.pipelines.includes(p));
+  if (!promotion) return null;
+  const event = promotion.events.find((e) => e.pipeline_id === p.id);
+  const name = promotion.name.toLowerCase() === p.name.toLowerCase() ? null : promotion.name;
+  const by = event && !event.auto && event.author ? `by ${event.author}` : null;
+  return [name, by].filter(Boolean).join(` · `) || null;
+}
 
 const PIPE_PAD = { top: 72, side: 28, bottom: 28 };
 const MIN_OPEN_W = 460;
@@ -77,8 +81,7 @@ export async function layoutMap(
   wf: Workflow,
   isOpen: (p: Pipeline) => boolean,
   blockSize: (b: Block) => { w: number, h: number, },
-  closed: { w: number, h: number, },
-  promotionsSize: (p: Pipeline) => { w: number, h: number, }
+  closed: { w: number, h: number, }
 ): Promise<MapLayout> {
   const inners = await Promise.all(wf.pipelines.map((p) => (isOpen(p) && p.blocks?.length ? inner(p, blockSize) : null)));
   const outer = await elk.layout({
@@ -92,28 +95,30 @@ export async function layoutMap(
       "elk.layered.considerModelOrder.strategy": `NODES_AND_EDGES`,
       "elk.layered.nodePlacement.strategy": `BRANDES_KOEPF`,
     },
-    children: wf.pipelines.flatMap((p, i) => {
+    children: wf.pipelines.map((p, i) => {
       const g = inners[i];
-      const node = { id: p.id, width: g ? Math.max(MIN_OPEN_W, g.width) : closed.w, height: g ? g.height : closed.h };
-      if (!p.promotions?.length) return [node];
-      const size = promotionsSize(p);
-      return [node, { id: promotionsNodeId(p.id), width: size.w, height: size.h }];
+      return { id: p.id, width: g ? Math.max(MIN_OPEN_W, g.width) : closed.w, height: g ? g.height : closed.h };
     }),
-    edges: [
-      ...wf.pipelines
-        .filter((p) => p.promotions?.length)
-        .map((p) => ({ id: `${p.id}=>${promotionsNodeId(p.id)}`, sources: [p.id], targets: [promotionsNodeId(p.id)] })),
-      ...wf.pipelines.filter((p) => p.parent).map((p) => ({ id: `${promotedFrom(p)}=>${p.id}`, sources: [promotedFrom(p)], targets: [p.id] })),
-    ],
+    edges: wf.pipelines
+      .filter((p) => p.parent)
+      .map((p): ElkExtendedEdge => {
+        const label = promotionLabel(p);
+        return {
+          id: `${p.parent.id}=>${p.id}`,
+          sources: [p.parent.id],
+          targets: [p.id],
+          labels: label ? [{ text: label, width: label.length * 6.5 + 18, height: 20 }] : [],
+        };
+      }),
   });
 
-  const layout: MapLayout = { pipelines: new Map(), promotions: new Map(), blocks: new Map(), routes: new Map() };
-  for (const c of outer.children ?? []) {
-    const box = { x: c.x, y: c.y, w: c.width, h: c.height };
-    if (c.id.startsWith(promotionsNodeId(``))) layout.promotions.set(c.id, box);
-    else layout.pipelines.set(c.id, { ...box, open: false });
+  const layout: MapLayout = { pipelines: new Map(), blocks: new Map(), routes: new Map(), labels: new Map() };
+  for (const c of outer.children ?? []) layout.pipelines.set(c.id, { x: c.x, y: c.y, w: c.width, h: c.height, open: false });
+  for (const e of outer.edges ?? []) {
+    layout.routes.set(e.id, sectionPoints(e, 0, 0));
+    const l = e.labels?.[0];
+    if (l) layout.labels.set(e.id, { x: l.x + l.width / 2, y: l.y + l.height / 2 });
   }
-  for (const e of outer.edges ?? []) layout.routes.set(e.id, sectionPoints(e, 0, 0));
   inners.forEach((g, i) => {
     if (!g) return;
     const box = layout.pipelines.get(wf.pipelines[i].id);
