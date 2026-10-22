@@ -18,7 +18,7 @@ defmodule RepositoryHub.GithubCommitStatusClient do
   until the context is found or a short page, up to `@max_pages`.
   """
   def find_commit_status(params, opts \\ []) do
-    GithubApi.with_client(opts[:token], params.repo_owner, :find_commit_status, fn client ->
+    GithubApi.with_client_from(opts, params.repo_owner, :find_commit_status, fn client ->
       find_in_pages(client, params, 1)
     end)
   end

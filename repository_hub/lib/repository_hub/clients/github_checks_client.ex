@@ -28,7 +28,7 @@ defmodule RepositoryHub.GithubChecksClient do
       |> maybe_put(:completed_at, Map.get(params, :completed_at))
       |> maybe_put(:output, Map.get(params, :output))
 
-    GithubApi.with_client(opts[:token], params.repo_owner, :create_check_run, fn client ->
+    GithubApi.with_client_from(opts, params.repo_owner, :create_check_run, fn client ->
       client
       |> Tesla.post("/repos/#{params.repo_owner}/#{params.repo_name}/check-runs", body)
       |> GithubApi.handle_response(:create_check_run, params)
@@ -44,7 +44,7 @@ defmodule RepositoryHub.GithubChecksClient do
       |> maybe_put(:details_url, Map.get(params, :details_url))
       |> maybe_put(:output, Map.get(params, :output))
 
-    GithubApi.with_client(opts[:token], params.repo_owner, :update_check_run, fn client ->
+    GithubApi.with_client_from(opts, params.repo_owner, :update_check_run, fn client ->
       client
       |> Tesla.patch("/repos/#{params.repo_owner}/#{params.repo_name}/check-runs/#{params.check_run_id}", body)
       |> GithubApi.handle_response(:update_check_run, params)
@@ -78,7 +78,7 @@ defmodule RepositoryHub.GithubChecksClient do
   across pipelines. The lookup behind `find_check_run/2`.
   """
   def list_check_runs(params, opts \\ []) do
-    GithubApi.with_client(opts[:token], params.repo_owner, :find_check_run, fn client ->
+    GithubApi.with_client_from(opts, params.repo_owner, :find_check_run, fn client ->
       list_pages(client, params, 1, [])
     end)
   end

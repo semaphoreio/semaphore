@@ -63,6 +63,15 @@ defmodule RepositoryHub.GithubApiTest do
 
       assert {:ok, _} = call()
     end
+
+    test "bounds each call with connect and receive timeouts" do
+      mock_github(remaining(5000), fn env ->
+        assert env.opts[:adapter] == [connect_timeout: 5_000, recv_timeout: 10_000]
+        json(%{"id" => 1})
+      end)
+
+      assert {:ok, _} = call()
+    end
   end
 
   describe "handle_response/3" do

@@ -14,8 +14,11 @@ defmodule RepositoryHub.GithubChecksClientTest do
 
   # Every call first reads /rate_limit (GithubApi.with_client/4).
   defp mock_github(handler, remaining \\ 5000) do
+    test = self()
+
     mock(fn
       %{method: :get, url: "https://api.github.com/rate_limit"} ->
+        send(test, {:rate_limit_checked})
         json(%{"rate" => %{"remaining" => remaining}})
 
       env ->
@@ -31,6 +34,22 @@ defmodule RepositoryHub.GithubChecksClientTest do
                %{repo_owner: @owner, repo_name: @repo, head_sha: @sha, name: @name, status: "in_progress"},
                token: "ghs_installation_token"
              )
+  end
+
+  test "reuses a client passed in opts without checking the rate limit again" do
+    mock_github(fn
+      %{method: :post} -> json(%{"id" => 1, "status" => "in_progress"}, status: 201)
+    end)
+
+    client = Tesla.client([Tesla.Middleware.JSON])
+
+    assert {:ok, %{"id" => 1}} =
+             GithubChecksClient.create_check_run(
+               %{repo_owner: @owner, repo_name: @repo, head_sha: @sha, name: @name, status: "in_progress"},
+               client: client
+             )
+
+    refute_received {:rate_limit_checked}
   end
 
   describe "create_check_run/2" do

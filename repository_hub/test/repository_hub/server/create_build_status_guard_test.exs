@@ -34,6 +34,10 @@ defmodule RepositoryHub.Server.CreateBuildStatusGuardTest do
       GithubClientFactory.mocks() ++ [{GithubChecksClient, [], [list_check_runs: fn _params, _opts -> {:ok, []} end]}],
       context
     ) do
+      Tesla.Mock.mock(fn %{method: :get, url: "https://api.github.com/rate_limit"} ->
+        Tesla.Mock.json(%{"rate" => %{"remaining" => 5000}})
+      end)
+
       context
     end
 

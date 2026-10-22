@@ -40,6 +40,8 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
         [{GithubCommitStatusClient, [], [find_commit_status: fn _params, _opts -> not_found_error() end]}],
       context
     ) do
+      mock_rate_limit(5000)
+
       %{
         repository: context[:githubapp_repo],
         adapter: Adapters.github_app()
@@ -683,6 +685,76 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
       end
     end
 
+    test "flag ON + SUCCESS → one rate-limit check for the lookup, the write and the mirror lookup", %{
+      adapter: adapter,
+      repository: repository
+    } do
+      request = InternalApiFactory.create_build_status_request(repository_id: repository.id, status: :SUCCESS)
+
+      with_mocks([
+        {FeatureProvider, [], [find_feature: fn _, _ -> {:ok, checks_api_feature(true)} end]},
+        {GithubChecksClient, [],
+         [
+           find_check_run: fn _params, opts ->
+             assert %Tesla.Client{} = opts[:client]
+             {:ok, %{"id" => 7, "status" => "in_progress"}}
+           end,
+           update_check_run: fn _params, opts ->
+             assert %Tesla.Client{} = opts[:client]
+             {:ok, %{"id" => 7, "status" => "completed"}}
+           end
+         ]}
+      ]) do
+        assert {:ok, _} = CreateBuildStatusAction.execute(adapter, request)
+        assert called(GithubCommitStatusClient.find_commit_status(:_, :_))
+        assert_received {:rate_limit_checked}
+        refute_received {:rate_limit_checked}
+      end
+    end
+
+    test "flag ON, at the rate-limit reserve → fails without looking up or writing", %{
+      adapter: adapter,
+      repository: repository
+    } do
+      mock_rate_limit(1000)
+      request = InternalApiFactory.create_build_status_request(repository_id: repository.id, status: :SUCCESS)
+
+      with_mocks([
+        {FeatureProvider, [], [find_feature: fn _, _ -> {:ok, checks_api_feature(true)} end]},
+        {GithubChecksClient, [], [find_check_run: fn _params, _opts -> {:ok, %{"id" => 7}} end]}
+      ]) do
+        assert {:error, :rate_limit} = CreateBuildStatusAction.execute(adapter, request)
+        refute called(GithubChecksClient.find_check_run(:_, :_))
+        refute called(GithubCommitStatusClient.find_commit_status(:_, :_))
+        refute called(GithubClient.create_build_status(:_, :_))
+      end
+    end
+
+    test "flag OFF + SUCCESS, at the rate-limit reserve → status delivered, mirror skipped", %{
+      adapter: adapter,
+      repository: repository
+    } do
+      mock_rate_limit(1000)
+
+      request =
+        InternalApiFactory.create_build_status_request(
+          repository_id: repository.id,
+          status: :SUCCESS,
+          source_id: "ppl-1"
+        )
+
+      with_mocks([
+        {Watchman, [:passthrough], []},
+        {FeatureProvider, [], [find_feature: fn _, _ -> {:ok, checks_api_feature(false)} end]},
+        {GithubChecksClient, [:passthrough], [list_check_runs: fn _params, _opts -> {:ok, []} end]}
+      ]) do
+        assert {:ok, _} = CreateBuildStatusAction.execute(adapter, request)
+        assert called(GithubClient.create_build_status(:_, :_))
+        refute called(GithubChecksClient.list_check_runs(:_, :_))
+        assert called(Watchman.increment("set_check_run.mirror_failure"))
+      end
+    end
+
     test "flag OFF + PENDING → doesn't look up check-runs", %{
       adapter: adapter,
       repository: repository
@@ -993,6 +1065,17 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
         CreateBuildStatusAction.execute(Adapters.universal(), request)
       end
     end
+  end
+
+  # GithubApi.with_client/4 reads /rate_limit before the GitHub calls of a
+  # path; each read is reported to the test process.
+  defp mock_rate_limit(remaining) do
+    test = self()
+
+    Tesla.Mock.mock(fn %{method: :get, url: "https://api.github.com/rate_limit"} ->
+      send(test, {:rate_limit_checked})
+      Tesla.Mock.json(%{"rate" => %{"remaining" => remaining}})
+    end)
   end
 
   defp build_statuses_written do

@@ -5,6 +5,7 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
   alias RepositoryHub.{
     CheckRunCache,
     GithubAdapter,
+    GithubApi,
     GithubAppId,
     GithubClient,
     GithubChecksClient,
@@ -81,9 +82,12 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
   # mirror_to_check_run/3), and the newest result wins on both.
   defp report_build_status(%{integration_type: "github_app"}, request, context) do
     if checks_api_enabled?(context) do
-      request
-      |> report_via_check_run(context)
-      |> mirror_to_commit_status(request, context)
+      context
+      |> with_github_client(:create_check_run, fn context ->
+        request
+        |> report_via_check_run(context)
+        |> mirror_to_commit_status(request, context)
+      end)
       |> fallback_to_status_when_checks_forbidden(request, context)
     else
       request
@@ -138,7 +142,7 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
         commit_sha: request.commit_sha,
         context: request.context
       },
-      token: context.github_token
+      client: context.github_client
     )
     |> case do
       {:ok, _status} ->
@@ -168,7 +172,10 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
        when status != :PENDING and source_id != "" do
     case GithubAppId.get() do
       {:ok, app_id} ->
-        write_to_check_run(request, context, app_id)
+        context
+        |> with_github_client(:find_check_run, &write_to_check_run(request, &1, app_id))
+        |> log_mirror_failure(request, context)
+
         result
 
       # No app id means no check-run was ever created.
@@ -187,6 +194,7 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
          {:ok, _} = written <- upsert_check_run(request, run, context) do
       remember_check_run(written, cache_key)
       Watchman.increment("set_check_run.mirrored_to_check_run")
+      :ok
     else
       :none ->
         :ok
@@ -197,18 +205,33 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
 
       error ->
         CheckRunCache.delete(cache_key)
-        Watchman.increment("set_check_run.mirror_failure")
-
-        log_warn([
-          "Can't write the build status to the commit's check-run",
-          "org_id: #{context.project.metadata.org_id}",
-          "project_id: #{context.project.metadata.id}",
-          "source_id: #{request.source_id}",
-          "repo: #{context.repository.owner}/#{context.repository.name}",
-          "context: #{request.context}",
-          "reason: #{inspect(error)}"
-        ])
+        error
     end
+  end
+
+  defp log_mirror_failure(:ok, _request, _context), do: :ok
+
+  defp log_mirror_failure(error, request, context) do
+    Watchman.increment("set_check_run.mirror_failure")
+
+    log_warn([
+      "Can't write the build status to the commit's check-run",
+      "org_id: #{context.project.metadata.org_id}",
+      "project_id: #{context.project.metadata.id}",
+      "source_id: #{request.source_id}",
+      "repo: #{context.repository.owner}/#{context.repository.name}",
+      "context: #{request.context}",
+      "reason: #{inspect(error)}"
+    ])
+  end
+
+  # One rate-limit check for all the GitHub calls of one path: fun gets the
+  # context with a checked client, which the Checks and commit-status clients
+  # reuse. Every purpose has the same reserve.
+  defp with_github_client(context, purpose, fun) do
+    GithubApi.with_client(context.github_token, context.repository.owner, purpose, fn client ->
+      context |> Map.put(:github_client, client) |> fun.()
+    end)
   end
 
   # {:ok, run} for this pipeline's run, {:ok, nil} when only other pipelines
@@ -221,7 +244,7 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
       :miss ->
         params = check_run_lookup_params(request, context, app_id)
 
-        case GithubChecksClient.list_check_runs(params, token: context.github_token) do
+        case GithubChecksClient.list_check_runs(params, client: context.github_client) do
           {:ok, []} -> :none
           {:ok, runs} -> runs |> GithubChecksClient.latest_run(params) |> own_run()
           error -> error
@@ -300,7 +323,7 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
 
     request
     |> check_run_lookup_params(context, app_id)
-    |> GithubChecksClient.find_check_run(token: context.github_token)
+    |> GithubChecksClient.find_check_run(client: context.github_client)
     |> case do
       {:ok, run} -> {:ok, run}
       {:error, %{status: ^not_found}} -> {:ok, nil}
@@ -344,12 +367,12 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
       nil ->
         params
         |> Map.merge(%{name: request.context, head_sha: request.commit_sha, external_id: external_id(request)})
-        |> GithubChecksClient.create_check_run(token: context.github_token)
+        |> GithubChecksClient.create_check_run(client: context.github_client)
 
       id ->
         params
         |> Map.put(:check_run_id, id)
-        |> GithubChecksClient.update_check_run(token: context.github_token)
+        |> GithubChecksClient.update_check_run(client: context.github_client)
     end
   end
 

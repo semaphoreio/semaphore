@@ -12,6 +12,12 @@ defmodule RepositoryHub.GithubApi do
   @api_url "https://api.github.com"
   @api_version "2022-11-28"
 
+  # A status delivery can make several GitHub calls in a row, and
+  # github_notifier gives the whole gRPC call 30 s. Bounded per call so one
+  # slow response fails fast and the notifier retries.
+  @connect_timeout_ms 5_000
+  @recv_timeout_ms 10_000
+
   # Calls are refused when the token has this many API calls left or fewer,
   # so they never drain the quota other GitHub calls need. Check-runs use the
   # same reserve as GithubClient's :create_build_status.
@@ -51,6 +57,20 @@ defmodule RepositoryHub.GithubApi do
 
       e ->
         e
+    end
+  end
+
+  @doc """
+  Runs `fun` with `opts[:client]` when the caller already holds a client from
+  `with_client/4`, so several calls in one request share one rate-limit check.
+  Otherwise checks the rate limit for `opts[:token]` first, as `with_client/4`.
+  """
+  @spec with_client_from(keyword(), String.t(), atom(), (Tesla.Client.t() -> result)) :: result | {:error, any}
+        when result: var
+  def with_client_from(opts, owner, purpose, fun) do
+    case opts[:client] do
+      nil -> with_client(opts[:token], owner, purpose, fun)
+      client -> fun.(client)
     end
   end
 
@@ -136,6 +156,7 @@ defmodule RepositoryHub.GithubApi do
          {"x-github-api-version", @api_version},
          {"user-agent", "SemaphoreCI-RepositoryHub"}
        ]},
+      {Tesla.Middleware.Opts, adapter: [connect_timeout: @connect_timeout_ms, recv_timeout: @recv_timeout_ms]},
       Tesla.Middleware.JSON
     ])
   end
