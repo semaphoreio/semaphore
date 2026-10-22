@@ -82,7 +82,7 @@ export const StatusBar = ({ jobs }: { jobs: Job[], }) => {
   return (
     <span className="wf-map-bar" role="img" aria-label={present.map((s) => `${c[s]} ${STATUS_LABEL[s].toLowerCase()}`).join(`, `)}>
       {present.map((s) => (
-        <span key={s} style={{ flexGrow: c[s], background: `var(--wf-map-${s})` }}/>
+        <span key={s} className={`wf-map-bar-${s}`} style={{ flexGrow: c[s], backgroundColor: `var(--wf-map-${s})` }}/>
       ))}
     </span>
   );

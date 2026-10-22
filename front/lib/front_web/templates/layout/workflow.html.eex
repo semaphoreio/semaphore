@@ -9,7 +9,7 @@
         <div class="wf-canvas-float wf-canvas-head">
           <%= render "workflow/_map_summary.html", assigns %>
           <%= render "workflow/_map_actions.html", assigns %>
-          <div id="wf-map-toolbar-slot"></div>
+          <div id="wf-map-toolbar-slot" class="wf-map"></div>
         </div>
         <div class="wf-canvas-float wf-canvas-tabs">
           <div class="tabs"><%= render "workflow/_tabs.html", assigns %></div>
