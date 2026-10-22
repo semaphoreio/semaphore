@@ -234,10 +234,15 @@
   color: #495358;
 }
 
+.wf-map-app {
+  display: flex;
+  flex-direction: column;
+}
+
 .wf-map-canvas {
   position: relative;
-  height: 70vh;
-  min-height: 520px;
+  flex: 1;
+  min-height: 0;
   border-top: 1px solid #E5E8EA;
   border-bottom: 1px solid #E5E8EA;
   background: #F5F8F9;
@@ -766,4 +771,115 @@ a.wf-map-job:hover {
     animation: none !important;
     transition: none !important;
   }
+}
+
+.wf-head-summary {
+  min-width: 0;
+}
+
+.wf-head-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wf-head-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 14px;
+  color: #677278;
+  white-space: nowrap;
+}
+
+.wf-head-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+
+.wf-compact-head {
+  padding: 10px 16px 0;
+  border-bottom: 1px solid #D3DADE;
+}
+
+.wf-compact-head .wf-head-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+}
+
+.wf-compact-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 2px;
+}
+
+.wf-compact-row .tabs::after {
+  display: none;
+}
+
+.wf-compact-head + .relative .wf-map {
+  border-top: 0;
+}
+
+.wf-canvas-page {
+  position: relative;
+}
+
+.wf-canvas-page .wf-map {
+  margin-left: 0;
+  margin-right: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.wf-canvas-page .wf-map-canvas {
+  border-top: 0;
+}
+
+.wf-canvas-float {
+  position: absolute;
+  z-index: 10;
+  top: 12px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: var(--wf-map-shadow, 0 1px 3px 0 rgba(0, 0, 0, .16), 0 0 0 1px rgba(0, 0, 0, .08));
+}
+
+.wf-canvas-head {
+  left: 12px;
+  width: min(620px, calc(100% - 24px));
+  padding: 10px 12px 12px;
+}
+
+.wf-canvas-head .wf-head-actions {
+  margin-top: 8px;
+}
+
+.wf-canvas-head .wf-map-toolbar {
+  padding: 10px 0 0;
+  margin-top: 10px;
+  border-top: 1px solid #E5E8EA;
+}
+
+.wf-canvas-tabs {
+  right: 12px;
+  padding: 0 8px;
+}
+
+.wf-canvas-tabs .tabs::after {
+  display: none;
+}
+
+.wf-canvas-page .react-flow__panel.top.right {
+  top: 52px;
 }
