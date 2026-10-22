@@ -110,6 +110,52 @@ defmodule Zebra.Workers.SchedulerTest do
              |> Enum.all?(&(Zebra.Models.Job.reload(&1).aasm_state == "scheduled"))
     end
 
+    test "racing passes and finishing jobs never push a machine type over its quota" do
+      org_id = Ecto.UUID.generate()
+      quota = 5
+      stub_quotas(%{org_id => [total: 100, e2: quota, e4: 2, e8: 0, a4: 8, a8: 0]})
+
+      for _ <- 1..60, do: create_job(org_id, :enqueued)
+
+      test = self()
+      sampler = spawn_link(fn -> sample_running(org_id, "e1-standard-2", 0, test) end)
+
+      for _round <- 1..15 do
+        finishing =
+          Task.async(fn ->
+            Zebra.Models.Job
+            |> where([j], j.organization_id == ^org_id and j.aasm_state == "scheduled")
+            |> limit(2)
+            |> Zebra.LegacyRepo.all()
+            |> Enum.each(fn j -> Zebra.Models.Job.finish(j, "passed") end)
+          end)
+
+        passes =
+          for _ <- 1..8 do
+            Task.async(fn -> Zebra.Workers.Scheduler.lock_and_process(org_id) end)
+          end
+
+        for _ <- 1..8, do: Zebra.Workers.Scheduler.lock_and_process_async(org_id)
+        Zebra.Workers.Scheduler.tick()
+
+        Enum.each([finishing | passes], &Task.await(&1, 10_000))
+      end
+
+      :timer.sleep(1_000)
+      send(sampler, {:stop, test})
+      assert_receive {:max_running, max_running}, 5_000
+
+      assert max_running <= quota
+      # and it did keep scheduling as jobs finished
+      assert Zebra.LegacyRepo.aggregate(
+               from(j in Zebra.Models.Job,
+                 where: j.organization_id == ^org_id and j.aasm_state == "finished"
+               ),
+               :count,
+               :id
+             ) > 10
+    end
+
     test "a request while another pass holds the lock is not lost" do
       org_id = Ecto.UUID.generate()
       stub_quotas(%{org_id => [total: 3, e2: 3, e4: 2, e8: 0, a4: 8, a8: 0]})
@@ -164,6 +210,22 @@ defmodule Zebra.Workers.SchedulerTest do
       Zebra.Workers.Scheduler.Trigger.request(org_id, :no_trigger_running_here)
 
       assert eventually(fn -> Zebra.Models.Job.reload(job).aasm_state == "scheduled" end)
+    end
+  end
+
+  defp sample_running(org_id, machine_type, max_seen, test) do
+    receive do
+      {:stop, ^test} -> send(test, {:max_running, max_seen})
+    after
+      2 ->
+        %{rows: [[n]]} =
+          Ecto.Adapters.SQL.query!(
+            Zebra.LegacyRepo,
+            "SELECT count(*) FROM jobs WHERE organization_id = $1 AND machine_type = $2 AND aasm_state IN ('scheduled', 'started')",
+            [Ecto.UUID.dump!(org_id), machine_type]
+          )
+
+        sample_running(org_id, machine_type, max(n, max_seen), test)
     end
   end
 
