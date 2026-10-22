@@ -140,6 +140,9 @@ data:
       enabled: true
     job_level_partial_rerun:
       enabled: true
+    # Reports build status for GitHub App repositories as check-runs instead of
+    # commit statuses. Needs the GitHub App id: GITHUB_APPLICATION_ID, or a GitHub
+    # App configured in instance config (not deployed with minimalDeployment).
     github_checks_api:
       enabled: false
 {{- else }}
@@ -274,6 +277,9 @@ data:
       enabled: true
     job_level_partial_rerun:
       enabled: true
+    # Reports build status for GitHub App repositories as check-runs instead of
+    # commit statuses. Needs the GitHub App id: GITHUB_APPLICATION_ID, or a GitHub
+    # App configured in instance config (not deployed with minimalDeployment).
     github_checks_api:
       enabled: false
 {{- end }}
