@@ -108,6 +108,73 @@ defmodule Zebra.Workers.Scheduler.SelectorTest do
       assert {:ok, {:ok, %Postgrex.Result{num_rows: 2}}} = updated
     end
 
+    test "priority order is kept across machine types" do
+      stub_org_call(total: 3, e2: 5, e4: 5, e8: 0, a4: 8, a8: 0)
+
+      {:ok, oldest_no_priority} = create_job(:enqueued, "e1-standard-2", nil)
+      {:ok, mid} = create_job(:enqueued, "e1-standard-2", 50)
+      {:ok, _} = create_job(:enqueued, "e1-standard-4", nil)
+      {:ok, newest_high} = create_job(:enqueued, "e1-standard-4", 90)
+      {:ok, mid_e4} = create_job(:enqueued, "e1-standard-4", 50)
+
+      result = Selector.select(@org_id)
+
+      assert result.for_scheduling == [newest_high.id, mid.id, mid_e4.id]
+      refute oldest_no_priority.id in result.for_scheduling
+      assert result.no_capacity["e1-standard-2"] == 1
+      assert result.no_capacity["e1-standard-4"] == 1
+    end
+
+    test "when the organization is full => forbidden jobs are still force finished" do
+      stub_org_call(total: 2, e2: 5, e4: 5, e8: 0, a4: 8, a8: 0)
+
+      {:ok, _} = create_job(:started, "e1-standard-2")
+      {:ok, _} = create_job(:scheduled, "e1-standard-4")
+      {:ok, _} = create_job(:enqueued, "e1-standard-2")
+      {:ok, forbidden} = create_job(:enqueued, "e1-standard-8")
+      {:ok, _} = create_job(:enqueued, "e1-standard-4")
+      {:ok, bad_image} = create_job(:enqueued, "e1-standard-2", nil, "ubuntu1604")
+
+      result = Selector.select(@org_id)
+
+      assert result.for_scheduling == []
+      assert result.for_force_finish == [forbidden.id, bad_image.id]
+      assert result.no_capacity["e1-standard-2"] == 1
+      assert result.no_capacity["e1-standard-4"] == 1
+    end
+
+    test "a big backlog => only the jobs that fit in the organization quota are read" do
+      stub_org_call(total: 100, e2: 500, e4: 500, e8: 0, a4: 8, a8: 0)
+
+      insert_jobs(@org_id, "started", 98, "e1-standard-2")
+      insert_jobs(@org_id, "enqueued", 300, "e1-standard-2")
+      insert_jobs(@org_id, "enqueued", 300, "e1-standard-4")
+
+      {result, rows} = count_rows_read(fn -> Selector.select(@org_id) end)
+
+      assert length(result.for_scheduling) == 2
+      assert result.no_capacity["e1-standard-2"] + result.no_capacity["e1-standard-4"] == 598
+
+      # one row per machine type for the grouped counts, the running counts,
+      # and at most 2 candidates per machine type
+      assert rows <= 2 + 1 + 4
+    end
+
+    test "a big backlog on a full machine type => only jobs of machine types with room are read" do
+      stub_org_call(total: 500, e2: 3, e4: 5, e8: 0, a4: 8, a8: 0)
+
+      insert_jobs(@org_id, "started", 3, "e1-standard-2")
+      insert_jobs(@org_id, "enqueued", 300, "e1-standard-2", 90)
+      {:ok, e4_1} = create_job(:enqueued, "e1-standard-4", 10)
+      {:ok, e4_2} = create_job(:enqueued, "e1-standard-4", 10)
+
+      {result, rows} = count_rows_read(fn -> Selector.select(@org_id) end)
+
+      assert result.for_scheduling == [e4_1.id, e4_2.id]
+      assert result.no_capacity["e1-standard-2"] == 300
+      assert rows <= 2 + 1 + 2
+    end
+
     test "when the organization is suspended => it returns all jobs for force finish" do
       stub_suspended_org()
 
@@ -509,6 +576,72 @@ defmodule Zebra.Workers.Scheduler.SelectorTest do
       assert {:ok, _org} = Org.load(org_id)
 
       assert Org.machine_quota(org_id, "w1-windows-2") == 0
+    end
+  end
+
+  def insert_jobs(org_id, state, count, machine_type, priority \\ nil) do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+    spec = Zebra.Models.Job.encode_spec(Support.Factories.Job.spec())
+
+    rows =
+      for i <- 1..count do
+        %{
+          id: Ecto.UUID.generate(),
+          organization_id: org_id,
+          project_id: Ecto.UUID.generate(),
+          index: 0,
+          name: "job",
+          spec: spec,
+          aasm_state: state,
+          machine_type: machine_type,
+          machine_os_image: "ubuntu1804",
+          priority: priority,
+          created_at: now,
+          updated_at: now,
+          enqueued_at: Timex.shift(now, days: -3, seconds: i)
+        }
+      end
+
+    Zebra.LegacyRepo.insert_all(Zebra.Models.Job, rows)
+  end
+
+  #
+  # Runs the function and returns its result together with the number of rows
+  # the queries it issued returned.
+  #
+  def count_rows_read(fun) do
+    parent = self()
+    handler = "rows-read-#{inspect(parent)}"
+
+    :telemetry.attach(
+      handler,
+      [:zebra, :legacy_repo, :query],
+      fn _, _, meta, _ ->
+        if self() == parent do
+          case meta.result do
+            {:ok, %{num_rows: n}} when is_integer(n) -> send(parent, {:rows_read, n})
+            _ -> :ok
+          end
+        end
+      end,
+      nil
+    )
+
+    result =
+      try do
+        fun.()
+      after
+        :telemetry.detach(handler)
+      end
+
+    {result, collect_rows_read(0)}
+  end
+
+  defp collect_rows_read(acc) do
+    receive do
+      {:rows_read, n} -> collect_rows_read(acc + n)
+    after
+      0 -> acc
     end
   end
 

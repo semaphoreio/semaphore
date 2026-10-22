@@ -4,12 +4,14 @@ defmodule Zebra.Workers.Scheduler.Selector do
 
   alias Zebra.Workers.Scheduler.Org
 
+  alias __MODULE__.{Result, State}
+
   @doc """
-  Returns an instance of Result that has two fields:
+  Returns an instance of Result that has three fields:
 
     - for_scheduling: list of job ids that are ready for scheduling
-    - for_force_fail: list of jobs that needs to be failed immidiately
-    - no_capacity: list of jobs that don't fit in the current quota
+    - for_force_finish: list of jobs that needs to be failed immidiately
+    - no_capacity: number of jobs per machine type that don't fit in the current quota
 
   There are several outcomes of job selection:
 
@@ -17,100 +19,243 @@ defmodule Zebra.Workers.Scheduler.Selector do
     - When organization is suspended => we select all jobs for force fail
     - When MAX_PARALLEL_JOBS_ON_<machine_type> is 0 => we force fail the job
     - When there is room for scheduling => we select the job for scheduling
+
+  Jobs are considered in priority order (highest first, no priority last, then
+  oldest first). A job is scheduled when both the organization quota and the
+  quota of its machine type have room; otherwise it is skipped and the next
+  one is considered.
+
+  The selection never reads more enqueued jobs than can be scheduled. The
+  jobs of one machine type that end up scheduled are always a prefix (in
+  priority order) of that machine type's enqueued jobs, no longer than the
+  free room of the organization or of the machine type. Loading only that
+  prefix per machine type and merging them in priority order gives the same
+  result as walking the whole backlog.
   """
   def select(org_id) do
     Watchman.benchmark("scheduler.selection", fn ->
-      jobs =
-        Watchman.benchmark("scheduler.selection.loading_jobs", fn ->
-          Zebra.Models.Job.enqueued()
-          |> where([j], j.organization_id == ^org_id)
-          |> order_by([j], fragment("? DESC NULLS LAST, ? ASC", j.priority, j.enqueued_at))
-          |> select([j], [:id, :machine_type, :machine_os_image])
-          |> Zebra.LegacyRepo.all()
-        end)
+      {:ok, org} = Org.load(org_id)
 
-      {:ok, org} = Zebra.Workers.Scheduler.Org.load(org_id)
+      result = Result.new(org)
+      max_running_jobs = Org.max_running_jobs(org_id)
 
-      state = __MODULE__.State.initialize_from_db(org_id)
+      result =
+        if max_running_jobs == 0 or org.suspended == true do
+          #
+          # This organization can run no jobs, of any kind. We force finish all
+          # the jobs immediately.
+          #
+          ids =
+            Watchman.benchmark("scheduler.selection.loading_jobs", fn ->
+              load_ids(org_id, :all)
+            end)
 
-      result = __MODULE__.Result.new(org)
+          Result.add_for_force_finish(result, ids)
+        else
+          select_within_quota(org, max_running_jobs, result)
+        end
 
-      Watchman.benchmark("scheduler.selection.filtering", fn ->
-        select(jobs, org, state, result) |> __MODULE__.Result.finalize()
-      end)
+      Result.finalize(result)
     end)
   end
 
-  defp select([], _, _, result), do: result
+  defp select_within_quota(org, max_running_jobs, result) do
+    groups =
+      Watchman.benchmark("scheduler.selection.loading_jobs", fn ->
+        load_groups(org.id)
+      end)
+      |> Enum.map(fn group ->
+        Map.put(group, :quota, get_machine_quota_for_job(group, org.id))
+      end)
 
-  defp select(jobs = [job | rest], org, state, result) do
-    alias __MODULE__.{State, Result}
+    #
+    # Jobs whose machine type (or OS image) is not available can't run, ever.
+    # We force finish them, whether or not the organization has free room.
+    #
+    {forbidden, allowed} = Enum.split_with(groups, fn group -> group.quota == 0 end)
 
-    running_jobs_for_machine_type = State.running_jobs(state, job.machine_type)
-    machine_quota = get_machine_quota_for_job(job, org.id)
-    org_id = org.id
+    result = Result.add_for_force_finish(result, load_ids(org.id, forbidden))
+
+    state = State.initialize_from_db(org.id)
+
+    candidates =
+      Watchman.benchmark("scheduler.selection.loading_candidates", fn ->
+        load_candidates(org.id, allowed, max_running_jobs, state)
+      end)
+
+    quotas = Map.new(allowed, fn g -> {{g.machine_type, g.machine_os_image}, g.quota} end)
+
+    {final_state, result} =
+      Watchman.benchmark("scheduler.selection.filtering", fn ->
+        schedule(candidates, max_running_jobs, quotas, state, result)
+      end)
+
+    record_no_capacity(result, allowed, state, final_state)
+  end
+
+  defp schedule([], _, _, state, result), do: {state, result}
+
+  defp schedule([job | rest], max_running_jobs, quotas, state, result) do
+    machine_quota = Map.fetch!(quotas, {job.machine_type, job.machine_os_image})
 
     cond do
-      Org.max_running_jobs(org_id) == 0 ->
+      reached?(State.running_jobs(state, :all), max_running_jobs) ->
         #
-        # This organization can run no jobs, of any kind. We force finish all
-        # the jobs immediately.
+        # The organization is full, nothing else can be scheduled.
         #
-        # There is no need to continue the selection further. Returning the
-        # result.
-        #
-        job_ids = Enum.map(jobs, fn j -> j.id end)
-        result = Result.add_for_force_finish(result, job_ids)
+        {state, result}
 
-        result
-
-      org.suspended == true ->
-        #
-        # This organization is supended and can run no jobs, of any kind.
-        # We force finish all the jobs immediately.
-        #
-        # There is no need to continue the selection further. Returning the
-        # result.
-        #
-        job_ids = Enum.map(jobs, fn j -> j.id end)
-        result = Result.add_for_force_finish(result, job_ids)
-
-        result
-
-      machine_quota == 0 ->
-        #
-        # Can't run this job, ever. We need to force finish it.
-        #
-        result = Result.add_for_force_finish(result, job.id)
-
-        select(rest, org, state, result)
-
-      State.running_jobs(state, :all) >= Org.max_running_jobs(org_id) ->
-        #
-        # Can't run this job, continuing selection on the rest of the jobs.
-        #
-        # At this point, we could also stop the selection because no other job
-        # can be scheduled, however we continue in order to look up all the jobs
-        # that need to be force finished.
-        #
-        result = Result.add_no_capacity(result, job.machine_type)
-        select(rest, org, state, result)
-
-      running_jobs_for_machine_type < machine_quota ->
+      below?(State.running_jobs(state, job.machine_type), machine_quota) ->
         # there is room for this job! schedule it, and update the state.
         state = State.record(state, job)
         result = Result.add_for_scheduling(result, job.id)
 
-        select(rest, org, state, result)
-
-      running_jobs_for_machine_type >= machine_quota ->
-        # Can't run this job, continue selection on the rest of the jobs.
-        result = Result.add_no_capacity(result, job.machine_type)
-        select(rest, org, state, result)
+        schedule(rest, max_running_jobs, quotas, state, result)
 
       true ->
-        raise "Unrecognized job scheduling condition"
+        # No room on this machine type, continue with the rest of the jobs.
+        schedule(rest, max_running_jobs, quotas, state, result)
     end
+  end
+
+  #
+  # Every enqueued job that was neither scheduled nor force finished has no
+  # capacity. Counted per machine type from the grouped counts, so the jobs
+  # don't have to be loaded.
+  #
+  defp record_no_capacity(result, allowed, initial_state, final_state) do
+    allowed
+    |> Enum.reduce(%{}, fn group, acc ->
+      Map.update(acc, group.machine_type, group.count, &(&1 + group.count))
+    end)
+    |> Enum.reduce(result, fn {machine_type, enqueued}, result ->
+      scheduled =
+        State.running_jobs(final_state, machine_type) -
+          State.running_jobs(initial_state, machine_type)
+
+      Result.add_no_capacity(result, machine_type, enqueued - scheduled)
+    end)
+  end
+
+  #
+  # Quotas that are not integers impose no limit. This mirrors how the
+  # comparisons behaved when they were done against the raw values.
+  #
+  defp reached?(running, quota) when is_integer(quota), do: running >= quota
+  defp reached?(_running, _quota), do: false
+
+  defp below?(running, quota) when is_integer(quota), do: running < quota
+  defp below?(_running, _quota), do: true
+
+  defp room(quota, running) when is_integer(quota), do: max(quota - running, 0)
+  defp room(_quota, _running), do: :infinity
+
+  #
+  # Queries. The state is a literal (not a parameter) so partial indexes on
+  # aasm_state stay usable with generic plans.
+  #
+
+  defp enqueued_in_org(org_id) do
+    from(j in Zebra.Models.Job,
+      where: j.organization_id == ^org_id,
+      where: j.aasm_state == "enqueued"
+    )
+  end
+
+  defp in_priority_order(query) do
+    query
+    |> order_by([j], fragment("? DESC NULLS LAST, ? ASC, ? ASC", j.priority, j.enqueued_at, j.id))
+  end
+
+  defp load_groups(org_id) do
+    enqueued_in_org(org_id)
+    |> group_by([j], [j.machine_type, j.machine_os_image])
+    |> select([j], %{
+      machine_type: j.machine_type,
+      machine_os_image: j.machine_os_image,
+      count: count(j.id)
+    })
+    |> Zebra.LegacyRepo.all()
+  end
+
+  defp load_ids(_org_id, []), do: []
+
+  defp load_ids(org_id, :all) do
+    enqueued_in_org(org_id)
+    |> in_priority_order()
+    |> select([j], j.id)
+    |> Zebra.LegacyRepo.all()
+  end
+
+  defp load_ids(org_id, groups) do
+    matches_any_group =
+      groups
+      |> Enum.map(&matches_group/1)
+      |> Enum.reduce(fn condition, acc -> dynamic([j], ^acc or ^condition) end)
+
+    enqueued_in_org(org_id)
+    |> where(^matches_any_group)
+    |> in_priority_order()
+    |> select([j], j.id)
+    |> Zebra.LegacyRepo.all()
+  end
+
+  defp load_candidates(org_id, groups, max_running_jobs, state) do
+    org_room = room(max_running_jobs, State.running_jobs(state, :all))
+
+    groups
+    |> Enum.flat_map(fn group ->
+      machine_room = room(group.quota, State.running_jobs(state, group.machine_type))
+
+      case min(org_room, machine_room) do
+        0 ->
+          []
+
+        limit ->
+          enqueued_in_org(org_id)
+          |> where(^matches_group(group))
+          |> in_priority_order()
+          |> limit_to(limit)
+          |> select([j], %{
+            id: j.id,
+            machine_type: j.machine_type,
+            machine_os_image: j.machine_os_image,
+            priority: j.priority,
+            enqueued_at: j.enqueued_at
+          })
+          |> Zebra.LegacyRepo.all()
+      end
+    end)
+    |> Enum.sort_by(&priority_order_key/1)
+  end
+
+  defp limit_to(query, :infinity), do: query
+  defp limit_to(query, n), do: limit(query, ^n)
+
+  defp matches_group(group) do
+    dynamic(
+      [j],
+      ^field_equals(:machine_type, group.machine_type) and
+        ^field_equals(:machine_os_image, group.machine_os_image)
+    )
+  end
+
+  defp field_equals(field_name, nil), do: dynamic([j], is_nil(field(j, ^field_name)))
+  defp field_equals(field_name, value), do: dynamic([j], field(j, ^field_name) == ^value)
+
+  #
+  # Same order as in_priority_order/1: priority DESC NULLS LAST,
+  # enqueued_at ASC (NULLS LAST), id ASC.
+  #
+  defp priority_order_key(job) do
+    priority = if is_nil(job.priority), do: {1, 0}, else: {0, -job.priority}
+
+    enqueued_at =
+      if is_nil(job.enqueued_at),
+        do: {1, 0},
+        else: {0, DateTime.to_unix(job.enqueued_at, :microsecond)}
+
+    {priority, enqueued_at, job.id}
   end
 
   def get_machine_quota_for_job(job, org_id) do
@@ -184,9 +329,13 @@ defmodule Zebra.Workers.Scheduler.Selector do
       }
     end
 
-    def add_no_capacity(result, machine_type) do
+    def add_no_capacity(result, machine_type, count \\ 1)
+
+    def add_no_capacity(result, _machine_type, count) when count <= 0, do: result
+
+    def add_no_capacity(result, machine_type, count) do
       no_capacity =
-        Map.merge(result.no_capacity, %{machine_type => 1}, fn _, v1, v2 ->
+        Map.merge(result.no_capacity, %{machine_type => count}, fn _, v1, v2 ->
           (v1 || 0) + v2
         end)
 
