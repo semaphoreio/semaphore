@@ -26,7 +26,11 @@ config :zebra, Zebra.Workers.Monitor, timeout: 60_000
 
 config :zebra, Zebra.Workers.Scheduler,
   cooldown_period: 1_000,
-  batch_size: 3
+  batch_size: 3,
+  # requests from job transitions, see Zebra.Workers.Scheduler.Trigger
+  async_delay: 100,
+  async_max_concurrency: 3,
+  lock_wait_timeout: 2_000
 
 config :zebra, domain: "semaphore.#{Atom.to_string(config_env())}"
 

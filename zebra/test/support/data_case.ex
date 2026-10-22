@@ -48,6 +48,9 @@ defmodule Zebra.DataCase do
 
     Mox.stub_with(Support.MockedProvider, Support.StubbedProvider)
 
+    # don't let scheduling passes requested by the previous test run in this one
+    Zebra.Workers.Scheduler.Trigger.await_idle()
+
     # using truncate strategy instead of sandboxes
     assert {:ok, _} = Ecto.Adapters.SQL.query(Zebra.LegacyRepo, "truncate table jobs cascade;")
     assert {:ok, _} = Ecto.Adapters.SQL.query(Zebra.LegacyRepo, "truncate table builds;")

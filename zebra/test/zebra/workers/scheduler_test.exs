@@ -83,6 +83,128 @@ defmodule Zebra.Workers.SchedulerTest do
     assert Zebra.Models.Job.reload(j4).aasm_state == "enqueued"
   end
 
+  describe "concurrent scheduling requests" do
+    test "never schedule more jobs than the quota allows" do
+      org_id = Ecto.UUID.generate()
+      stub_quotas(%{org_id => [total: 3, e2: 10, e4: 2, e8: 0, a4: 8, a8: 0]})
+
+      jobs = for _ <- 1..10, do: elem(create_job(org_id, :enqueued), 1)
+
+      for _ <- 1..20, do: Zebra.Workers.Scheduler.lock_and_process_async(org_id)
+
+      1..20
+      |> Enum.map(fn i ->
+        mode = if rem(i, 2) == 0, do: :try, else: {:wait, 2_000}
+        Task.async(fn -> Zebra.Workers.Scheduler.lock_and_process(org_id, mode) end)
+      end)
+      |> Enum.each(&Task.await(&1, 10_000))
+
+      :timer.sleep(1_000)
+
+      states = jobs |> Enum.map(&Zebra.Models.Job.reload(&1).aasm_state) |> Enum.frequencies()
+      assert states == %{"scheduled" => 3, "enqueued" => 7}
+
+      # the three oldest
+      assert jobs
+             |> Enum.take(3)
+             |> Enum.all?(&(Zebra.Models.Job.reload(&1).aasm_state == "scheduled"))
+    end
+
+    test "a request while another pass holds the lock is not lost" do
+      org_id = Ecto.UUID.generate()
+      stub_quotas(%{org_id => [total: 3, e2: 3, e4: 2, e8: 0, a4: 8, a8: 0]})
+
+      holder = hold_scheduling_lock(org_id)
+
+      {:ok, job} = create_job(org_id, :enqueued)
+      Zebra.Workers.Scheduler.lock_and_process_async(org_id)
+
+      # the first attempt loses the lock and waits for it
+      :timer.sleep(400)
+      assert Zebra.Models.Job.reload(job).aasm_state == "enqueued"
+
+      release_scheduling_lock(holder)
+
+      assert eventually(fn -> Zebra.Models.Job.reload(job).aasm_state == "scheduled" end)
+    end
+
+    test "waiting for the lock gives up after the timeout" do
+      org_id = Ecto.UUID.generate()
+      stub_quotas(%{org_id => [total: 3, e2: 3, e4: 2, e8: 0, a4: 8, a8: 0]})
+
+      holder = hold_scheduling_lock(org_id)
+      {:ok, job} = create_job(org_id, :enqueued)
+
+      assert {:error, :lock_timeout} ==
+               Zebra.Workers.Scheduler.lock_and_process(org_id, {:wait, 200})
+
+      assert Zebra.Models.Job.reload(job).aasm_state == "enqueued"
+
+      release_scheduling_lock(holder)
+    end
+
+    test "waiting for a free lock schedules right away" do
+      org_id = Ecto.UUID.generate()
+      stub_quotas(%{org_id => [total: 3, e2: 3, e4: 2, e8: 0, a4: 8, a8: 0]})
+
+      {:ok, job} = create_job(org_id, :enqueued)
+
+      assert {:ok, {:lock_obtained, _}} =
+               Zebra.Workers.Scheduler.lock_and_process(org_id, {:wait, 200})
+
+      assert Zebra.Models.Job.reload(job).aasm_state == "scheduled"
+    end
+
+    test "without a running trigger, requests still schedule" do
+      org_id = Ecto.UUID.generate()
+      stub_quotas(%{org_id => [total: 3, e2: 3, e4: 2, e8: 0, a4: 8, a8: 0]})
+
+      {:ok, job} = create_job(org_id, :enqueued)
+
+      Zebra.Workers.Scheduler.Trigger.request(org_id, :no_trigger_running_here)
+
+      assert eventually(fn -> Zebra.Models.Job.reload(job).aasm_state == "scheduled" end)
+    end
+  end
+
+  # Holds the organization's scheduling lock in another transaction, like a
+  # pass running in another node.
+  defp hold_scheduling_lock(org_id) do
+    test = self()
+
+    holder =
+      spawn(fn ->
+        Zebra.LegacyRepo.transaction(fn ->
+          Zebra.LegacyRepo.query!("SELECT pg_advisory_xact_lock(#{:erlang.crc32(org_id)})")
+          send(test, :lock_held)
+
+          receive do
+            :release -> :ok
+          after
+            10_000 -> :ok
+          end
+        end)
+
+        send(test, :lock_released)
+      end)
+
+    assert_receive :lock_held, 5_000
+    holder
+  end
+
+  defp release_scheduling_lock(holder) do
+    send(holder, :release)
+    assert_receive :lock_released, 5_000
+  end
+
+  defp eventually(fun, attempts \\ 50) do
+    cond do
+      fun.() -> true
+      attempts == 0 -> false
+      true -> :timer.sleep(50) && eventually(fun, attempts - 1)
+    end
+  end
+
   def stub_quotas(org_quotas) do
     alias Support.FakeServers.OrganizationApi, as: OrgApi
 

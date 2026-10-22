@@ -78,26 +78,25 @@ defmodule Zebra.Workers.Scheduler do
   end
 
   #
-  # This method is called from Job.enqueue and Job.finished to trigger a
-  # scheduling call for the organization asynchroniously.
+  # This method is called from Job.enqueue, Job.finish, Job.stop and
+  # Job.force_finish to trigger a scheduling pass for the organization
+  # asynchronously. Requests are coalesced per organization, see
+  # Zebra.Workers.Scheduler.Trigger.
   #
   def lock_and_process_async(org_id) do
-    spawn(fn ->
-      #
-      # The timeout is not really necessary
-      # but it can act as a safeguard to avoid race conditions with
-      # transactions blocks from the caller.
-      #
-      :timer.sleep(100)
-
-      Zebra.Workers.Scheduler.lock_and_process(org_id)
-    end)
+    Zebra.Workers.Scheduler.Trigger.request(org_id)
   end
 
-  def lock_and_process(org_id) do
+  @doc """
+  Runs a scheduling pass for the organization under its advisory lock.
+
+  With the default :try mode, the pass is skipped when another pass holds
+  the lock. With {:wait, timeout_ms}, it waits for that pass to finish.
+  """
+  def lock_and_process(org_id, mode \\ :try) do
     Watchman.benchmark("scheduler.process.duration", fn ->
       Zebra.LegacyRepo.transaction(fn ->
-        Zebra.Lock.advisory(org_id, fn ->
+        with_lock(org_id, mode, fn ->
           result = Zebra.Workers.Scheduler.Selector.select(org_id)
 
           Logger.info("[#{org_id}] No capacity: #{inspect(result.no_capacity)}")
@@ -116,6 +115,11 @@ defmodule Zebra.Workers.Scheduler do
       end)
     end)
   end
+
+  defp with_lock(org_id, :try, fun), do: Zebra.Lock.advisory(org_id, fun)
+
+  defp with_lock(org_id, {:wait, timeout_ms}, fun),
+    do: Zebra.Lock.advisory_wait(org_id, timeout_ms, fun)
 
   def submit_no_capacity_metrics(scheduling_result) do
     spawn(fn ->

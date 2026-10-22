@@ -40,7 +40,10 @@ defmodule Zebra.Application do
         {provider, System.get_env("FEATURE_YAML_PATH") != nil},
         {Supervisor.child_spec({Cachex, :zebra_cache}, id: :zebra_cache), true},
         {Supervisor.child_spec({Cachex, :feature_provider_cache}, id: :feature_provider_cache),
-         true}
+         true},
+        # job transitions request scheduling passes in every deployment
+        {{Task.Supervisor, name: Zebra.Workers.Scheduler.TaskSupervisor}, true},
+        {Zebra.Workers.Scheduler.Trigger, true}
       ])
 
     workers =
