@@ -135,7 +135,13 @@ defmodule FrontWeb.PipelineViewTest do
           %{
             name: "Production",
             parameters: [
-              %{name: "REGION", description: "Where", required: true, options: ["eu", "us"], default_value: "eu"}
+              %{
+                name: "REGION",
+                description: "Where",
+                required: true,
+                options: ["eu", "us"],
+                default_value: "eu"
+              }
             ],
             deployment: %{
               name: "prod",
@@ -143,22 +149,55 @@ defmodule FrontWeb.PipelineViewTest do
               message: "You can't deploy to %{deployment_target}"
             },
             events: [
-              %{pipeline_id: "ppl-2", processed: true, result: :PASSED, auto_triggered: false, triggered_at: 10, author: %{name: "Ana"}},
-              %{pipeline_id: "", processed: false, result: :FAILED, auto_triggered: true, triggered_at: 20, author: nil}
+              %{
+                pipeline_id: "ppl-2",
+                processed: true,
+                result: :PASSED,
+                auto_triggered: false,
+                triggered_at: 10,
+                author: %{name: "Ana"}
+              },
+              %{
+                pipeline_id: "",
+                processed: false,
+                result: :FAILED,
+                auto_triggered: true,
+                triggered_at: 20,
+                author: nil
+              }
             ]
           }
         ]
       }
 
       [promotion] =
-        PipelineView.render("map.json", %{pipeline: pipeline, switch: switch, can_promote?: true, conn: build_conn()}).promotions
+        PipelineView.render("map.json", %{
+          pipeline: pipeline,
+          switch: switch,
+          can_promote?: true,
+          conn: build_conn()
+        }).promotions
 
       assert promotion.name == "Production"
-      assert promotion.trigger_url == "/workflows/wf-1/pipelines/ppl-1/swithes/sw-1/targets/Production"
+
+      assert promotion.trigger_url ==
+               "/workflows/wf-1/pipelines/ppl-1/swithes/sw-1/targets/Production"
+
       refute promotion.can_promote
-      assert promotion.deployment == %{name: "prod", allowed: false, message: "You can't deploy to prod Deployment Target"}
-      assert [%{name: "REGION", required: true, options: ["eu", "us"], default_value: "eu"}] = promotion.parameters
-      assert [%{pipeline_id: "ppl-2", author: "Ana", auto: false}, %{pipeline_id: nil, processed: false, auto: true}] = promotion.events
+
+      assert promotion.deployment == %{
+               name: "prod",
+               allowed: false,
+               message: "You can't deploy to prod Deployment Target"
+             }
+
+      assert [%{name: "REGION", required: true, options: ["eu", "us"], default_value: "eu"}] =
+               promotion.parameters
+
+      assert [
+               %{pipeline_id: "ppl-2", author: "Ana", auto: false},
+               %{pipeline_id: nil, processed: false, auto: true}
+             ] = promotion.events
     end
 
     test "has no promotions without a switch" do

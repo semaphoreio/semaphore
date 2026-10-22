@@ -10,7 +10,9 @@ defmodule FrontWeb.WorkflowView do
     anonymous? = FrontWeb.PipelineView.anonymous?(conn)
 
     rebuild? =
-      FeatureProvider.feature_enabled?(:ui_partial_ppl_rebuild, param: conn.assigns.organization_id)
+      FeatureProvider.feature_enabled?(:ui_partial_ppl_rebuild,
+        param: conn.assigns.organization_id
+      )
 
     %{
       root_pipeline_id: workflow.root_pipeline_id,
@@ -20,15 +22,17 @@ defmodule FrontWeb.WorkflowView do
           |> map_pipeline()
           |> Map.merge(%{
             stop_url:
-              if(!anonymous? && permissions["project.job.stop"] &&
-                   FrontWeb.PipelineView.pipeline_stoppable?(pipeline),
-                 do: pipeline_stop_path(conn, :stop, workflow.id, pipeline.id)
-               ),
+              if(
+                !anonymous? && permissions["project.job.stop"] &&
+                  FrontWeb.PipelineView.pipeline_stoppable?(pipeline),
+                do: pipeline_stop_path(conn, :stop, workflow.id, pipeline.id)
+              ),
             rebuild_url:
-              if(!anonymous? && rebuild? && permissions["project.job.rerun"] &&
-                   FrontWeb.PipelineView.pipeline_rebuildable?(pipeline),
-                 do: pipeline_rebuild_path(conn, :rebuild, workflow.id, pipeline.id)
-               )
+              if(
+                !anonymous? && rebuild? && permissions["project.job.rerun"] &&
+                  FrontWeb.PipelineView.pipeline_rebuildable?(pipeline),
+                do: pipeline_rebuild_path(conn, :rebuild, workflow.id, pipeline.id)
+              )
           })
         end)
     }
