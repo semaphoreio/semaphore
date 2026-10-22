@@ -4,7 +4,7 @@ import { useEffect, useRef } from "preact/hooks";
 import { Config, loadError, now, onNudge, refresh, resetState } from "./store";
 import { initLayout } from "./layout";
 import { MapCanvas, aim, openBlocks, openPipelines } from "./map";
-import { PromoteDialog, promoting } from "./promote";
+import { PromoteDialog, PromoteMenu, promoteMenu, promoting } from "./promote";
 import { Toolbar } from "./toolbar";
 
 const App = ({ config, toolbarSlot }: { config: Config, toolbarSlot: HTMLElement | null, }) => {
@@ -59,6 +59,7 @@ const App = ({ config, toolbarSlot }: { config: Config, toolbarSlot: HTMLElement
       <div className="wf-map-canvas">
         <MapCanvas/>
       </div>
+      <PromoteMenu/>
       <PromoteDialog/>
     </div>
   );
@@ -70,6 +71,7 @@ export default function WorkflowMap({ dom, config }: { dom: HTMLElement, config:
   });
   resetState(config.selectedPipelineId);
   promoting.value = null;
+  promoteMenu.value = null;
   openPipelines.value = new Set([config.selectedPipelineId]);
   aim({ id: config.selectedPipelineId, how: `fit` });
   openBlocks.value = new Set();

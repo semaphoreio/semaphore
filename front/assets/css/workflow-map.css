@@ -643,31 +643,25 @@ a.wf-map-job:hover {
   opacity: .4;
 }
 
-.wf-map-promotions {
-  width: 100%;
-  height: 100%;
-  border: 1.5px dashed #B5BCC0;
-  border-radius: 10px;
+.wf-map-menu {
+  position: fixed;
+  z-index: 40;
+  width: 340px;
+  overflow: auto;
+  padding: 4px 0;
   background: #fff;
-}
-
-.wf-map-promotions-head {
-  height: 36px;
-  display: flex;
-  align-items: center;
-  padding: 0 12px;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: .05em;
-  text-transform: uppercase;
-  color: #677278;
+  border-radius: 8px;
+  box-shadow: var(--wf-map-pop);
 }
 
 .wf-map-promotion {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 10px 0 12px;
+  padding: 8px 10px 8px 12px;
+}
+
+.wf-map-promotion + .wf-map-promotion {
   border-top: 1px solid #E5E8EA;
 }
 
@@ -703,17 +697,41 @@ a.wf-map-job:hover {
   color: var(--wf-map-failed);
 }
 
+.wf-map-promotion-note.fresh {
+  color: #202B30;
+  font-weight: 500;
+}
+
+.wf-map-promote-count {
+  display: inline-block;
+  min-width: 16px;
+  margin-left: 4px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #202B30;
+  color: #fff;
+  font-size: 11px;
+  line-height: 16px;
+  text-align: center;
+}
+
+.wf-map-edge-label {
+  position: absolute;
+  padding: 1px 8px;
+  border: 1px solid #D3DADE;
+  border-radius: 10px;
+  background: #fff;
+  color: #495358;
+  font-size: 11px;
+  line-height: 16px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
 .wf-map-actions {
   display: inline-flex;
   gap: 4px;
   flex: none;
-}
-
-.wf-map .react-flow__minimap-node.wf-map-mm-promotions {
-  fill: #fff;
-  stroke: #B5BCC0;
-  stroke-width: 4;
-  stroke-dasharray: 8 6;
 }
 
 .wf-map-dialog-backdrop {
@@ -929,4 +947,18 @@ a.wf-map-job:hover {
   .wf-map-bar-queued {
     animation: none;
   }
+}
+
+.wf-map-layout {
+  display: inline-flex;
+}
+
+.wf-map-layout .btn + .btn {
+  margin-left: -1px;
+}
+
+.wf-map-layout .btn.active {
+  background: #202B30;
+  border-color: #202B30;
+  color: #fff;
 }
