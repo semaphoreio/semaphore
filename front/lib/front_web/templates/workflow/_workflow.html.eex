@@ -1,7 +1,8 @@
 <% workflow_map? = FeatureProvider.feature_enabled?(:ui_workflow_map, param: @conn.assigns[:organization_id]) %>
 <div class="relative">
+  <%= unless workflow_map? do %>
   <div class="absolute flex top-0 right-0 nt3 z-2">
-    <%= if !workflow_map? && FeatureProvider.feature_enabled?(:toggle_skipped_blocks, param: @conn.assigns[:organization_id]) do %>
+    <%= if FeatureProvider.feature_enabled?(:toggle_skipped_blocks, param: @conn.assigns[:organization_id]) do %>
       <div class="bg-white ph2 nr2 nb2">
         <input type="checkbox" name="showSkippedBlocks" class="dn" />
         <button class="btn btn-secondary" name="toggleSkippedBlocks">
@@ -17,8 +18,9 @@
       <% end %>
     </div>
   </div>
+  <% end %>
   <%= if workflow_map? do %>
-    <div id="workflow-map" class="wf-map nh3 nh4-m bt b--lighter-gray"></div>
+    <div id="workflow-map" class="wf-map nh3 nh4-m nb3 nb4-m bt b--lighter-gray"></div>
     <script nonce="<%= @conn.assigns[:script_src_nonce] %>">
       window.InjectedDataByBackend.WorkflowMap = <%= raw workflow_map_config(@conn, @workflow_id, @selected_pipeline_id) %>;
     </script>

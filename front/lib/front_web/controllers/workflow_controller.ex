@@ -393,6 +393,7 @@ defmodule FrontWeb.WorkflowController do
         alert: alert,
         permissions: conn.assigns.permissions,
         showForkExplanation?: fork && !close_fork_explanation,
+        map_layout: if(conn.params["layout"] == "canvas", do: :canvas, else: :compact),
         js: :workflow_view
       }
       |> put_layout_assigns(conn, template)
