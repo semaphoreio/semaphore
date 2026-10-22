@@ -386,7 +386,6 @@ defmodule Zebra.Api.InternalJobApiTest do
       assert queue.waiting_orgs == 2
       assert queue.oldest_wait_seconds >= 0
       assert res.age_ms >= 0
-      assert res.generated_at.seconds > 0
     end
 
     test "does not expose jobs held before scheduling" do
@@ -413,12 +412,8 @@ defmodule Zebra.Api.InternalJobApiTest do
       {:ok, cloud} =
         Stub.get_queue_stats(channel, Request.new(environment: Environment.value(:CLOUD)))
 
-      {:ok, self_hosted} =
-        Stub.get_queue_stats(channel, Request.new(environment: Environment.value(:SELF_HOSTED)))
-
       assert Enum.map(all.queues, & &1.machine_type) == ["f1-standard-2", "s1-my-agents"]
       assert Enum.map(cloud.queues, & &1.machine_type) == ["f1-standard-2"]
-      assert Enum.map(self_hosted.queues, & &1.machine_type) == ["s1-my-agents"]
     end
   end
 

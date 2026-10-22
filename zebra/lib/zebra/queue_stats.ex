@@ -39,7 +39,7 @@ defmodule Zebra.QueueStats do
 
   defmodule Snapshot do
     @moduledoc false
-    defstruct queues: [], generated_at: nil, computed_at_ms: 0
+    defstruct queues: [], computed_at_ms: 0
   end
 
   def start_link(opts \\ []) do
@@ -66,10 +66,9 @@ defmodule Zebra.QueueStats do
   end
 
   @doc """
-  Filters a snapshot's queues by environment: `:ALL`, `:CLOUD` or `:SELF_HOSTED`.
+  Filters a snapshot's queues by environment: `:ALL` or `:CLOUD`.
   """
   def filter(queues, :CLOUD), do: Enum.reject(queues, & &1.self_hosted)
-  def filter(queues, :SELF_HOSTED), do: Enum.filter(queues, & &1.self_hosted)
   def filter(queues, _), do: queues
 
   @doc """
@@ -89,18 +88,38 @@ defmodule Zebra.QueueStats do
   Reads waiting jobs and aggregates them. Returns `{:ok, queues}` or `{:error, reason}`.
   """
   def compute do
-    result =
+    case timed_query() do
+      {:ok, rows} ->
+        queues = aggregate(rows)
+        Watchman.submit("queue_stats.refresh.rows", length(rows))
+        Watchman.submit("queue_stats.refresh.queues", length(queues))
+        {:ok, queues}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  rescue
+    e -> {:error, e}
+  end
+
+  # The query's duration is submitted whether it succeeds, fails or raises
+  # (a statement timeout raises). A refresh killed by the refresh timeout
+  # submits nothing; queue_stats.refresh_timeout counts those.
+  defp timed_query do
+    started = System.monotonic_time(:millisecond)
+
+    try do
       Zebra.LegacyRepo.transaction(fn ->
         Zebra.LegacyRepo.query!("SET LOCAL statement_timeout = #{@statement_timeout_ms}")
         Zebra.LegacyRepo.all(waiting_query())
       end)
-
-    case result do
-      {:ok, rows} -> {:ok, aggregate(rows)}
-      {:error, reason} -> {:error, reason}
+    after
+      Watchman.submit(
+        "queue_stats.refresh.duration",
+        System.monotonic_time(:millisecond) - started,
+        :timing
+      )
     end
-  rescue
-    e -> {:error, e}
   end
 
   defp waiting_query do
@@ -241,7 +260,6 @@ defmodule Zebra.QueueStats do
 
     snapshot = %Snapshot{
       queues: queues,
-      generated_at: DateTime.utc_now(),
       computed_at_ms: now_ms()
     }
 

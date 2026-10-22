@@ -247,8 +247,6 @@ defmodule Zebra.Apis.InternalJobApi do
             end)
 
           Resp.new(
-            generated_at:
-              Google.Protobuf.Timestamp.new(seconds: DateTime.to_unix(snapshot.generated_at)),
             age_ms: age_ms,
             queues: queues
           )

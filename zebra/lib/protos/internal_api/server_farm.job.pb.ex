@@ -423,7 +423,6 @@ defmodule InternalApi.ServerFarm.Job.GetQueueStatsRequest.Environment do
 
   field(:ALL, 0)
   field(:CLOUD, 1)
-  field(:SELF_HOSTED, 2)
 end
 
 defmodule InternalApi.ServerFarm.Job.GetQueueStatsResponse do
@@ -431,13 +430,11 @@ defmodule InternalApi.ServerFarm.Job.GetQueueStatsResponse do
   use Protobuf, syntax: :proto3
 
   @type t :: %__MODULE__{
-          generated_at: Google.Protobuf.Timestamp.t(),
           age_ms: integer,
           queues: [InternalApi.ServerFarm.Job.GetQueueStatsResponse.MachineQueue.t()]
         }
-  defstruct [:generated_at, :age_ms, :queues]
+  defstruct [:age_ms, :queues]
 
-  field(:generated_at, 1, type: Google.Protobuf.Timestamp)
   field(:age_ms, 2, type: :int64)
 
   field(:queues, 3,

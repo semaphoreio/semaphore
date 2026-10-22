@@ -1,6 +1,8 @@
 defmodule Zebra.QueueStatsTest do
   use Zebra.DataCase
 
+  import Mock
+
   alias Support.Factories
   alias Zebra.QueueStats
 
@@ -77,7 +79,6 @@ defmodule Zebra.QueueStatsTest do
       {:ok, _} = Factories.Job.create(:scheduled, %{machine_type: "f1-standard-2"})
 
       assert {:ok, queues} = QueueStats.compute()
-      assert [%{machine_type: "s1-my-agents"}] = QueueStats.filter(queues, :SELF_HOSTED)
       assert [%{machine_type: "f1-standard-2"}] = QueueStats.filter(queues, :CLOUD)
       assert length(QueueStats.filter(queues, :ALL)) == 2
     end
@@ -152,6 +153,62 @@ defmodule Zebra.QueueStatsTest do
       rows = [{"e1-standard-2", "img", "org-a", 1, @now}]
 
       assert [%{machine_type: "e1-standard-2", waiting: 1}] = QueueStats.aggregate(rows)
+    end
+  end
+
+  describe ".compute metrics" do
+    defp watchman_mock do
+      {Watchman, [:passthrough],
+       [submit: fn _name, _value -> :ok end, submit: fn _name, _value, _type -> :ok end]}
+    end
+
+    test "submits the query duration and the rows and queues it aggregated" do
+      other_org = Ecto.UUID.generate()
+      {:ok, _} = Factories.Job.create(:scheduled, %{machine_type: "f1-standard-2"})
+
+      {:ok, _} =
+        Factories.Job.create(:scheduled, %{
+          machine_type: "f1-standard-2",
+          organization_id: other_org
+        })
+
+      with_mocks [watchman_mock()] do
+        assert {:ok, [_queue]} = QueueStats.compute()
+
+        assert_called(Watchman.submit("queue_stats.refresh.duration", :_, :timing))
+        assert_called(Watchman.submit("queue_stats.refresh.rows", 2))
+        assert_called(Watchman.submit("queue_stats.refresh.queues", 1))
+      end
+    end
+
+    test "a failed query still submits its duration and returns the error" do
+      with_mocks [
+        watchman_mock(),
+        {Zebra.LegacyRepo, [:passthrough], [transaction: fn _fun -> {:error, :rollback} end]}
+      ] do
+        assert {:error, :rollback} = QueueStats.compute()
+
+        assert_called(Watchman.submit("queue_stats.refresh.duration", :_, :timing))
+        assert_not_called(Watchman.submit("queue_stats.refresh.rows", :_))
+        assert_not_called(Watchman.submit("queue_stats.refresh.queues", :_))
+      end
+    end
+
+    test "a query that raises, as a statement timeout does, still submits its duration" do
+      with_mocks [
+        watchman_mock(),
+        {Zebra.LegacyRepo, [:passthrough],
+         [
+           transaction: fn _fun ->
+             raise DBConnection.ConnectionError, "canceling statement due to statement timeout"
+           end
+         ]}
+      ] do
+        assert {:error, %DBConnection.ConnectionError{}} = QueueStats.compute()
+
+        assert_called(Watchman.submit("queue_stats.refresh.duration", :_, :timing))
+        assert_not_called(Watchman.submit("queue_stats.refresh.rows", :_))
+      end
     end
   end
 
