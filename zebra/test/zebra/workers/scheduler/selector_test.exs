@@ -65,6 +65,49 @@ defmodule Zebra.Workers.Scheduler.SelectorTest do
       assert result.for_force_finish == [j2.id]
     end
 
+    test "does not row-lock the enqueued jobs it reads" do
+      stub_org_call(total: 1, e2: 1, e4: 1, e8: 1, a4: 1, a8: 0)
+
+      {:ok, j1} = create_job(:enqueued)
+      {:ok, j2} = create_job(:enqueued)
+
+      parent = self()
+
+      selecting =
+        Task.async(fn ->
+          Zebra.LegacyRepo.transaction(fn ->
+            result = Selector.select(@org_id)
+            send(parent, {:selected, result})
+
+            receive do
+              :release -> :ok
+            after
+              5_000 -> :ok
+            end
+          end)
+        end)
+
+      assert_receive {:selected, result}, 5_000
+      assert result.for_scheduling == [j1.id]
+
+      # While the selecting transaction is still open, another transaction can
+      # update both the selected and the skipped job without waiting.
+      updated =
+        Zebra.LegacyRepo.transaction(fn ->
+          Zebra.LegacyRepo.query!("SET LOCAL lock_timeout = '300ms'")
+
+          Zebra.LegacyRepo.query(
+            "UPDATE jobs SET updated_at = now() WHERE id = ANY($1)",
+            [[Ecto.UUID.dump!(j1.id), Ecto.UUID.dump!(j2.id)]]
+          )
+        end)
+
+      send(selecting.pid, :release)
+      Task.await(selecting)
+
+      assert {:ok, {:ok, %Postgrex.Result{num_rows: 2}}} = updated
+    end
+
     test "when the organization is suspended => it returns all jobs for force finish" do
       stub_suspended_org()
 

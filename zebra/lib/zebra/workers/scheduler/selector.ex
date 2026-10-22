@@ -26,7 +26,6 @@ defmodule Zebra.Workers.Scheduler.Selector do
           |> where([j], j.organization_id == ^org_id)
           |> order_by([j], fragment("? DESC NULLS LAST, ? ASC", j.priority, j.enqueued_at))
           |> select([j], [:id, :machine_type, :machine_os_image])
-          |> lock("FOR UPDATE")
           |> Zebra.LegacyRepo.all()
         end)
 

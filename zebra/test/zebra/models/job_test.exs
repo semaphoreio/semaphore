@@ -261,6 +261,29 @@ defmodule Zebra.Models.JobTest do
 
       assert_fully_sanitized(Job.reload(job).request)
     end
+
+    test "does not touch jobs that already left the enqueued state" do
+      {:ok, enqueued} = Support.Factories.Job.create(:enqueued)
+      {:ok, stopped} = Support.Factories.Job.create(:finished, %{result: "stopped"})
+      {:ok, scheduled} = Support.Factories.Job.create(:scheduled)
+
+      Zebra.Models.Job.bulk_force_finish(
+        [enqueued.id, stopped.id, scheduled.id],
+        "They were bad"
+      )
+
+      enqueued = Job.reload(enqueued)
+      assert enqueued.aasm_state == "finished"
+      assert enqueued.result == "failed"
+      assert enqueued.failure_reason == "They were bad"
+
+      stopped = Job.reload(stopped)
+      assert stopped.aasm_state == "finished"
+      assert stopped.result == "stopped"
+      assert is_nil(stopped.failure_reason)
+
+      assert Job.reload(scheduled).aasm_state == "scheduled"
+    end
   end
 
   describe ".enqueue" do
@@ -359,6 +382,23 @@ defmodule Zebra.Models.JobTest do
 
       assert job2.aasm_state == "scheduled"
       refute is_nil(job2.scheduled_at)
+    end
+
+    test "only schedules jobs that are still enqueued" do
+      {:ok, enqueued} = Support.Factories.Job.create(:enqueued)
+      {:ok, stopped} = Support.Factories.Job.create(:finished, %{result: "stopped"})
+      {:ok, started} = Support.Factories.Job.create(:started)
+
+      assert {1, _} = Zebra.Models.Job.bulk_schedule([enqueued.id, stopped.id, started.id])
+
+      assert Zebra.Models.Job.reload(enqueued).aasm_state == "scheduled"
+
+      stopped_after = Zebra.Models.Job.reload(stopped)
+      assert stopped_after.aasm_state == "finished"
+      assert stopped_after.result == "stopped"
+      assert stopped_after.scheduled_at == stopped.scheduled_at
+
+      assert Zebra.Models.Job.reload(started).aasm_state == "started"
     end
   end
 

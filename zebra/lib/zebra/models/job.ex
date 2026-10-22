@@ -337,12 +337,21 @@ defmodule Zebra.Models.Job do
 
   def bulk_force_finish([], _), do: []
 
+  #
+  # The scheduler no longer row-locks the enqueued jobs it reads, so a job
+  # selected for force finishing can be stopped in the meantime. Only enqueued
+  # jobs are force finished, and they are locked until the transaction ends so
+  # a concurrent stop can't be overwritten.
+  #
   def bulk_force_finish(job_ids, reason) do
-    import Ecto.Query, only: [select: 2, where: 3]
+    import Ecto.Query, only: [select: 2, where: 3, lock: 2]
 
     now = DateTime.utc_now() |> DateTime.truncate(:second)
 
     Zebra.Models.Job
+    |> where([j], j.id in ^job_ids)
+    |> where([j], j.aasm_state == "enqueued")
+    |> lock("FOR UPDATE")
     |> select([
       :id,
       :name,
@@ -353,7 +362,6 @@ defmodule Zebra.Models.Job do
       :spec,
       :request
     ])
-    |> where([j], j.id in ^job_ids)
     |> Zebra.LegacyRepo.all()
     |> Enum.each(fn j ->
       params = %{
@@ -390,10 +398,20 @@ defmodule Zebra.Models.Job do
 
   def bulk_schedule([]), do: []
 
+  #
+  # Only enqueued jobs are moved to scheduled. The scheduler serializes per
+  # organization with an advisory lock but does not row-lock the jobs it
+  # selected, so a job that was stopped after selection must stay finished.
+  #
   def bulk_schedule(job_ids) do
     import Ecto.Query, only: [from: 2]
 
-    query = from(j in Zebra.Models.Job, where: j.id in ^job_ids)
+    query =
+      from(j in Zebra.Models.Job,
+        where: j.id in ^job_ids,
+        where: j.aasm_state == "enqueued"
+      )
+
     now = DateTime.utc_now() |> DateTime.truncate(:second)
 
     Zebra.LegacyRepo.update_all(query,
