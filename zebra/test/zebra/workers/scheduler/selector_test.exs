@@ -382,6 +382,7 @@ defmodule Zebra.Workers.Scheduler.SelectorTest do
 
       res = Selector.Result.add_for_scheduling(res, job1_id)
       res = Selector.Result.add_for_scheduling(res, job2_id)
+      res = Selector.Result.finalize(res)
 
       assert res.for_scheduling == [job1_id, job2_id]
       assert res.for_force_finish == []
@@ -395,9 +396,42 @@ defmodule Zebra.Workers.Scheduler.SelectorTest do
 
       res = Selector.Result.add_for_force_finish(res, job1_id)
       res = Selector.Result.add_for_force_finish(res, job2_id)
+      res = Selector.Result.finalize(res)
 
       assert res.for_scheduling == []
       assert res.for_force_finish == [job1_id, job2_id]
+    end
+
+    test "mixing single and bulk force finish keeps the order" do
+      res = Selector.Result.new(%{id: Ecto.UUID.generate(), username: "test-org"})
+
+      res =
+        res
+        |> Selector.Result.add_for_force_finish("a")
+        |> Selector.Result.add_for_force_finish(["b", "c"])
+        |> Selector.Result.add_for_force_finish("d")
+        |> Selector.Result.add_for_scheduling("x")
+        |> Selector.Result.add_for_scheduling("y")
+        |> Selector.Result.finalize()
+
+      assert res.for_force_finish == ["a", "b", "c", "d"]
+      assert res.for_scheduling == ["x", "y"]
+    end
+
+    test "scheduling a large number of jobs is linear" do
+      res = Selector.Result.new(%{id: Ecto.UUID.generate(), username: "test-org"})
+      ids = Enum.to_list(1..50_000)
+
+      {us, res} =
+        :timer.tc(fn ->
+          ids
+          |> Enum.reduce(res, fn id, acc -> Selector.Result.add_for_scheduling(acc, id) end)
+          |> Selector.Result.finalize()
+        end)
+
+      assert res.for_scheduling == ids
+      # appending with ++ takes tens of seconds for 50k ids
+      assert us < 2_000_000
     end
   end
 

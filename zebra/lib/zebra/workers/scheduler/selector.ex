@@ -36,7 +36,7 @@ defmodule Zebra.Workers.Scheduler.Selector do
       result = __MODULE__.Result.new(org)
 
       Watchman.benchmark("scheduler.selection.filtering", fn ->
-        select(jobs, org, state, result)
+        select(jobs, org, state, result) |> __MODULE__.Result.finalize()
       end)
     end)
   end
@@ -143,7 +143,9 @@ defmodule Zebra.Workers.Scheduler.Selector do
       - org_username: username of the org
 
     During the selection process, these values are updated with the
-    'add_for_scheduling' and 'add_for_force_finish' functions.
+    'add_for_scheduling' and 'add_for_force_finish' functions. They prepend,
+    so a selection that schedules thousands of jobs stays linear; 'finalize'
+    puts the lists back in selection order and must be called once at the end.
     """
 
     defstruct [:for_scheduling, :for_force_finish, :no_capacity, :org_username]
@@ -163,15 +165,23 @@ defmodule Zebra.Workers.Scheduler.Selector do
     end
 
     def add_for_scheduling(result, job_id) do
-      %{result | for_scheduling: result.for_scheduling ++ [job_id]}
+      %{result | for_scheduling: [job_id | result.for_scheduling]}
     end
 
     def add_for_force_finish(result, job_id) when not is_list(job_id) do
-      %{result | for_force_finish: result.for_force_finish ++ [job_id]}
+      %{result | for_force_finish: [job_id | result.for_force_finish]}
     end
 
     def add_for_force_finish(result, job_ids) when is_list(job_ids) do
-      %{result | for_force_finish: result.for_force_finish ++ job_ids}
+      %{result | for_force_finish: Enum.reverse(job_ids, result.for_force_finish)}
+    end
+
+    def finalize(result) do
+      %{
+        result
+        | for_scheduling: Enum.reverse(result.for_scheduling),
+          for_force_finish: Enum.reverse(result.for_force_finish)
+      }
     end
 
     def add_no_capacity(result, machine_type) do
