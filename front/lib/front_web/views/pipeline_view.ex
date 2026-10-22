@@ -589,7 +589,12 @@ defmodule FrontWeb.PipelineView do
     }
   end
 
-  defp map_promotions(%{switch: switch, conn: conn, pipeline: pipeline, can_promote?: can_promote?})
+  defp map_promotions(%{
+         switch: switch,
+         conn: conn,
+         pipeline: pipeline,
+         can_promote?: can_promote?
+       })
        when not is_nil(switch) do
     Enum.map(switch.targets, fn target ->
       %{
