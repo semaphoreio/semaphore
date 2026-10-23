@@ -41,6 +41,8 @@ class App < Configurable # :nodoc:
   config.worker_jitter_max     = (SemaphoreConfig.worker_jitter_max || 300).to_i
   config.worker_max_delay      = (SemaphoreConfig.worker_max_delay || 7_200).to_i
 
+  config.pr_approval_fresh_head_window = (SemaphoreConfig.pr_approval_fresh_head_window_seconds || 30).to_i
+
   # How often a PR with unknown mergeability is re-checked, and how many requests must
   # be left in the GitHub rate-limit window to schedule a re-check (0 never blocks).
   config.mergeable_unknown_max_retries        = (SemaphoreConfig.mergeable_unknown_max_retries.presence || 10).to_i
