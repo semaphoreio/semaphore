@@ -107,25 +107,34 @@ describe(`workflow map store`, () => {
 describe(`refresh`, () => {
   const config: Config = {
     workflowUrl: `/wf/map`,
-    pipelineUrl: `/ppl/__PIPELINE_ID__/map`,
+    pipelinesUrl: `/wf/map/pipelines`,
     elkWorkerUrl: ``,
     selectedPipelineId: `ci`,
     pollInterval: 4000,
   };
+  const starting = { name: `Staging`, trigger_url: `/promote`, can_promote: true, deployment: null, parameters: [], events: [{ pipeline_id: null, processed: false, result: ``, auto: false, triggered_at: 1, author: null }] };
   const realFetch = globalThis.fetch;
-  let requested: string[];
-  let responses: Record<string, unknown>;
+  let batches: { ids: string[], promotions: string[], }[];
+  let workflow: unknown;
+  let pipelines: Record<string, ApiPipelineDetail>;
+
+  const fetchedTimes = (id: string) => batches.filter((b) => b.ids.includes(id)).length;
 
   beforeEach(() => {
     resetState(`ci`);
-    requested = [];
-    responses = {
-      "/wf/map": { root_pipeline_id: `ci`, pipelines: [pipeline(`ci`, `Build & test`, null)] },
-      "/ppl/ci/map": { ...detail(`ci`, []), done: false },
-    };
+    batches = [];
+    workflow = { root_pipeline_id: `ci`, pipelines: [pipeline(`ci`, `Build & test`, null)] };
+    pipelines = { ci: { ...detail(`ci`, []), done: false } };
     globalThis.fetch = ((url: string) => {
-      requested.push(url);
-      return Promise.resolve(new Response(JSON.stringify(responses[url]), { status: 200 }));
+      const { pathname, searchParams } = new URL(url, `http://localhost`);
+      let body: unknown = workflow;
+      if (pathname === config.pipelinesUrl) {
+        const ids = searchParams.get(`ids`).split(`,`);
+        const promotions = searchParams.get(`promotions`).split(`,`);
+        batches.push({ ids, promotions });
+        body = { pipelines: ids.map((id) => ({ ...pipelines[id], promotions: promotions.includes(id) ? pipelines[id].promotions : null })) };
+      }
+      return Promise.resolve(new Response(JSON.stringify(body), { status: 200 }));
     }) as typeof fetch;
   });
 
@@ -133,37 +142,64 @@ describe(`refresh`, () => {
     globalThis.fetch = realFetch;
   });
 
+  test(`fetches every due pipeline in one request`, async () => {
+    workflow = { root_pipeline_id: `ci`, pipelines: [pipeline(`ci`, `Build & test`, null), { ...pipeline(`e2e`, `E2E`, `ci`), state: `RUNNING` }] };
+    pipelines.e2e = { ...detail(`e2e`, []), done: false };
+    await refresh(config);
+
+    expect(batches).to.deep.eq([{ ids: [`ci`, `e2e`], promotions: [`ci`, `e2e`] }]);
+  });
+
   test(`keeps fetching a finished pipeline until its after pipeline jobs are done`, async () => {
     await refresh(config);
     await refresh(config);
-    responses[`/ppl/ci/map`] = detail(`ci`, []);
+    pipelines.ci = detail(`ci`, []);
     await refresh(config);
     await refresh(config);
 
-    expect(requested.filter((u) => u === `/ppl/ci/map`).length).to.eq(3);
+    expect(fetchedTimes(`ci`)).to.eq(3);
     expect(details.value.ci.done).to.eq(true);
   });
 
-  test(`fetches a finished pipeline again when a new promoted pipeline appears under it`, async () => {
-    responses[`/ppl/ci/map`] = detail(`ci`, []);
+  test(`skips the promotions of a running pipeline it already knows and keeps the last ones`, async () => {
+    workflow = { root_pipeline_id: `ci`, pipelines: [{ ...pipeline(`ci`, `Build & test`, null), state: `RUNNING` }] };
+    pipelines.ci = { ...pipelines.ci, promotions: [{ ...starting, events: [] }] };
     await refresh(config);
-    await refresh(config);
-    responses[`/wf/map`] = { root_pipeline_id: `ci`, pipelines: [pipeline(`ci`, `Build & test`, null), pipeline(`e2e`, `E2E`, `ci`)] };
-    responses[`/ppl/e2e/map`] = detail(`e2e`, []);
     await refresh(config);
 
-    expect(requested.filter((u) => u === `/ppl/ci/map`).length).to.eq(2);
+    expect(batches.map((b) => b.promotions)).to.deep.eq([[`ci`], [``]]);
+    expect(details.value.ci.promotions.map((p) => p.name)).to.deep.eq([`Staging`]);
+  });
+
+  test(`fetches a finished pipeline again when a new promoted pipeline appears under it`, async () => {
+    pipelines.ci = detail(`ci`, []);
+    await refresh(config);
+    await refresh(config);
+    workflow = { root_pipeline_id: `ci`, pipelines: [pipeline(`ci`, `Build & test`, null), pipeline(`e2e`, `E2E`, `ci`)] };
+    pipelines.e2e = detail(`e2e`, []);
+    await refresh(config);
+
+    expect(fetchedTimes(`ci`)).to.eq(2);
+    expect(batches.at(-1).promotions).to.deep.eq([`ci`, `e2e`]);
   });
 
   test(`keeps fetching a finished pipeline while one of its promotions is starting`, async () => {
-    responses[`/ppl/ci/map`] = {
-      ...detail(`ci`, []),
-      promotions: [{ name: `Staging`, trigger_url: `/promote`, can_promote: true, deployment: null, parameters: [], events: [{ pipeline_id: null, processed: false, result: ``, auto: false, triggered_at: 1, author: null }] }],
-    };
+    pipelines.ci = { ...detail(`ci`, []), promotions: [starting] };
     await refresh(config);
     await refresh(config);
 
-    expect(requested.filter((u) => u === `/ppl/ci/map`).length).to.eq(2);
+    expect(fetchedTimes(`ci`)).to.eq(2);
+  });
+
+  test(`reports whether anything changed`, async () => {
+    expect(await refresh(config)).to.eq(true);
+    expect(await refresh(config)).to.eq(false);
+    pipelines.ci = { ...pipelines.ci, result: `FAILED` };
+    expect(await refresh(config)).to.eq(true);
+    pipelines.ci = detail(`ci`, []);
+    await refresh(config);
+    expect(await refresh(config)).to.eq(false);
+    expect(batches.length).to.eq(4);
   });
 
   test(`drops the results of a refresh started before the page was left`, async () => {

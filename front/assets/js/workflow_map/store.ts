@@ -4,7 +4,7 @@ import { ApiPipelineDetail, ApiWorkflow, Block, Job, Pipeline, Promotion, Status
 
 export interface Config {
   workflowUrl: string;
-  pipelineUrl: string;
+  pipelinesUrl: string;
   elkWorkerUrl: string;
   selectedPipelineId: string;
   pollInterval: number;
@@ -146,46 +146,48 @@ export function step(dir: 1 | -1) {
   focusOn(`job`, list[next].key);
 }
 
-const DETAIL_CONCURRENCY = 4;
-
 async function fetchJson<T>(url: string): Promise<T | null> {
   const response = await APIRequest.get<T>(url);
   return response.error ? null : response.data;
 }
 
-export async function refresh(config: Config) {
+type FetchedDetail = Omit<ApiPipelineDetail, `promotions`> & { promotions: ApiPipelineDetail[`promotions`] | null, };
+
+export async function refresh(config: Config): Promise<boolean> {
   const started = generation;
   const nextTree = await fetchJson<ApiWorkflow>(config.workflowUrl);
-  if (started !== generation) return;
+  if (started !== generation) return false;
   if (!nextTree) {
     loadError.value = `Couldn't load this workflow's pipelines. Retrying.`;
-    return;
+    return false;
   }
   const children = (t: ApiWorkflow | null, id: string) => t?.pipelines.filter((p) => p.parent_id === id).length ?? 0;
   const previous = tree.value;
+  const treeChanged = JSON.stringify(nextTree) !== JSON.stringify(previous);
   loadError.value = null;
-  tree.value = nextTree;
+  if (treeChanged) tree.value = nextTree;
 
   const known = details.value;
-  const due = nextTree.pipelines.filter(
-    (p) =>
-      !known[p.id]?.done ||
-      p.state !== `DONE` ||
-      stale.has(p.id) ||
-      known[p.id].promotions.some((promotion) => promotion.events.some((e) => !e.processed)) ||
-      children(nextTree, p.id) > children(previous, p.id)
-  );
+  const fresh = (id: string) =>
+    !known[id] ||
+    stale.has(id) ||
+    known[id].promotions.some((promotion) => promotion.events.some((e) => !e.processed)) ||
+    children(nextTree, id) > children(previous, id);
+  const due = nextTree.pipelines.filter((p) => fresh(p.id) || p.state !== `DONE` || !known[p.id].done);
+  if (!due.length) return treeChanged;
+  const params = new URLSearchParams({
+    ids: due.map((p) => p.id).join(`,`),
+    promotions: due.filter((p) => fresh(p.id) || p.state === `DONE`).map((p) => p.id).join(`,`),
+  });
   due.forEach((p) => stale.delete(p.id));
+
+  const response = await fetchJson<{ pipelines: FetchedDetail[], }>(`${config.pipelinesUrl}?${params.toString()}`);
+  if (started !== generation || !response) return treeChanged;
   const fetched: Record<string, ApiPipelineDetail> = {};
-  const queue = [...due];
-  const worker = async () => {
-    for (let p = queue.shift(); p; p = queue.shift()) {
-      const detail = await fetchJson<ApiPipelineDetail>(config.pipelineUrl.replace(`__PIPELINE_ID__`, p.id));
-      if (detail) fetched[p.id] = detail;
-    }
-  };
-  await Promise.all(Array.from({ length: Math.min(DETAIL_CONCURRENCY, queue.length) }, worker));
-  if (started === generation && Object.keys(fetched).length) details.value = { ...details.value, ...fetched };
+  for (const d of response.pipelines) fetched[d.id] = { ...d, promotions: d.promotions ?? known[d.id]?.promotions ?? [] };
+  const detailsChanged = Object.values(fetched).some((d) => JSON.stringify(d) !== JSON.stringify(known[d.id]));
+  if (detailsChanged) details.value = { ...details.value, ...fetched };
+  return treeChanged || detailsChanged;
 }
 
 interface ActionResult {

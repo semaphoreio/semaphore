@@ -18,7 +18,7 @@ defmodule FrontWeb.PipelineController do
 
   plug(:put_layout, false)
 
-  @public_endpoints ~w(path status show poll switch map)a
+  @public_endpoints ~w(path status show poll switch)a
   plug(PutProjectAssigns)
   plug(FetchPermissions, scope: "project")
 
@@ -27,9 +27,7 @@ defmodule FrontWeb.PipelineController do
   plug(PageAccess, [permissions: "project.job.stop"] when action == :stop)
   plug(PageAccess, [permissions: "project.job.rerun"] when action == :rebuild)
 
-  plug(FeatureEnabled, [:ui_workflow_map] when action in [:map])
-
-  plug(:assign_pipeline_with_blocks when action in [:show, :poll, :map])
+  plug(:assign_pipeline_with_blocks when action in [:show, :poll])
   plug(:assign_pipeline_without_blocks when action in [:status, :switch, :stop, :rebuild])
   plug(:preload_switch when action in [:show, :poll, :switch])
 
@@ -108,23 +106,6 @@ defmodule FrontWeb.PipelineController do
 
       {:ok, pipeline_status} = PipelineStatus.Model.load(pipeline.id)
       text(conn, pipeline_status)
-    end)
-  end
-
-  def map(conn, _params) do
-    Watchman.benchmark("pipeline_controller.map", fn ->
-      pipeline = Front.WorkflowPage.Diagram.load(conn.assigns.pipeline)
-
-      switch =
-        if pipeline.switch_id not in [nil, ""] do
-          pipeline.switch_id |> Switch.find(conn.assigns[:user_id]) |> Switch.preload_users()
-        end
-
-      render(conn, "map.json",
-        pipeline: pipeline,
-        switch: switch,
-        can_promote?: conn.assigns.permissions["project.job.rerun"] || false
-      )
     end)
   end
 

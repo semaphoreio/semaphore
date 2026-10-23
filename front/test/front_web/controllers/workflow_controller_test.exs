@@ -466,9 +466,116 @@ defmodule FrontWeb.WorkflowControllerTest do
       json = conn |> get("/workflows/#{workflow.id}/map") |> json_response(200)
       assert hd(json["pipelines"])["stop_url"] == nil
 
-      assert conn
-             |> get("/workflows/#{workflow.id}/pipelines/#{pipeline.id}/map")
-             |> json_response(200)
+      assert %{"pipelines" => [%{"id" => id}]} =
+               conn
+               |> get("/workflows/#{workflow.id}/map/pipelines?ids=#{pipeline.id}")
+               |> json_response(200)
+
+      assert id == pipeline.id
+    end
+  end
+
+  describe "map_pipelines" do
+    test "returns 404 when the ui_workflow_map feature is disabled", %{
+      conn: conn,
+      workflow: workflow,
+      pipeline: pipeline
+    } do
+      conn = get(conn, "/workflows/#{workflow.id}/map/pipelines?ids=#{pipeline.id}")
+
+      assert conn.status == 404
+    end
+
+    test "returns blocks with dependencies, job statuses and the requested promotions", %{
+      conn: conn,
+      organization: organization,
+      workflow: workflow,
+      pipeline: pipeline
+    } do
+      Support.Stubs.Feature.enable_feature(organization.id, :ui_workflow_map)
+
+      assert %{"pipelines" => [json]} =
+               conn
+               |> get(
+                 "/workflows/#{workflow.id}/map/pipelines?ids=#{pipeline.id}&promotions=#{pipeline.id}"
+               )
+               |> json_response(200)
+
+      assert json["id"] == pipeline.id
+      assert [%{"name" => "Block 1", "dependencies" => [], "jobs" => jobs}] = json["blocks"]
+      assert Enum.map(jobs, & &1["name"]) == ["job 1", "job 2", "job 3"]
+      assert Enum.all?(jobs, &(&1["status"] == "queued" and is_binary(&1["id"])))
+      assert json["after_jobs"] == []
+
+      assert [production, staging] = json["promotions"]
+      assert {production["name"], staging["name"]} == {"production", "staging"}
+      assert production["trigger_url"] =~ "/pipelines/#{pipeline.id}/swithes/"
+      assert production["can_promote"]
+      assert production["events"] == []
+    end
+
+    test "leaves promotions out unless they're requested", %{
+      conn: conn,
+      organization: organization,
+      workflow: workflow,
+      pipeline: pipeline
+    } do
+      Support.Stubs.Feature.enable_feature(organization.id, :ui_workflow_map)
+
+      assert %{"pipelines" => [json]} =
+               conn
+               |> get("/workflows/#{workflow.id}/map/pipelines?ids=#{pipeline.id}")
+               |> json_response(200)
+
+      assert json["promotions"] == nil
+      assert [%{"name" => "Block 1"}] = json["blocks"]
+    end
+
+    test "ignores pipelines from other workflows", %{
+      conn: conn,
+      organization: organization,
+      workflow: workflow
+    } do
+      Support.Stubs.Feature.enable_feature(organization.id, :ui_workflow_map)
+
+      json =
+        conn
+        |> get("/workflows/#{workflow.id}/map/pipelines?ids=#{Ecto.UUID.generate()}")
+        |> json_response(200)
+
+      assert json == %{"pipelines" => []}
+    end
+
+    test "returns 404 when the organization doesn't match", %{
+      conn: conn,
+      organization: organization,
+      workflow: workflow,
+      pipeline: pipeline
+    } do
+      Support.Stubs.Feature.enable_feature(organization.id, :ui_workflow_map)
+
+      conn =
+        conn
+        |> put_req_header("x-semaphore-org-id", Ecto.UUID.generate())
+        |> get("/workflows/#{workflow.id}/map/pipelines?ids=#{pipeline.id}")
+
+      assert conn.status == 404
+    end
+
+    test "returns 404 when the user isn't authorized", %{
+      conn: conn,
+      organization: organization,
+      user: user,
+      workflow: workflow,
+      pipeline: pipeline
+    } do
+      Support.Stubs.Feature.enable_feature(organization.id, :ui_workflow_map)
+      PermissionPatrol.remove_all_permissions()
+      PermissionPatrol.allow_everything_except(organization.id, user.id, "project.view")
+
+      conn = get(conn, "/workflows/#{workflow.id}/map/pipelines?ids=#{pipeline.id}")
+
+      assert conn.status == 404
     end
   end
 
