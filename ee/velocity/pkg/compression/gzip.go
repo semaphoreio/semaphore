@@ -82,7 +82,7 @@ func (lgr *LimitedGzipReader) Read(p []byte) (int, error) {
 		// Size limit reached, return custom error
 		return n, ErrSizeLimitReached
 	}
-	return n, nil
+	return n, err
 }
 
 func (lgr *LimitedGzipReader) Close() error {
