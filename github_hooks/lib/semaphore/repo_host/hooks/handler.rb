@@ -113,7 +113,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
         end
 
       unless can_approve_forked_pr?(workflow.project, requestor_uid, logger, :permission => required_permission)
-        logger.info("pr-approval-denied", :requestor => requestor, :required_permission => required_permission)
+        logger.info("pr-approval-denied", :requestor => requestor, :required_permission => required_permission, :project_id => workflow.project_id)
         Watchman.increment("hooks.pr_approval.denied")
         return
       end
@@ -128,7 +128,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
       # establish when the comment was written.
       approval_comment_time = parse_approval_comment_time(approved_at)
       if approval_comment_time.nil?
-        logger.info("pr-approval-missing-comment-timestamp", :requestor => requestor)
+        logger.info("pr-approval-missing-comment-timestamp", :requestor => requestor, :project_id => workflow.project_id)
         Watchman.increment("hooks.pr_approval.missing_comment_time")
         return
       end
@@ -174,6 +174,8 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
       if (include_secrets_requested || enable_cache_requested) &&
          !Semaphore::FeatureFlags.enabled?(:sem_approve_options, workflow.project.organization_id)
         logger.info("pr-approval-options-feature-disabled",
+                    :workflow_id => workflow.id,
+                    :project_id => workflow.project_id,
                     :include_secrets_requested => include_secrets_requested,
                     :enable_cache_requested => enable_cache_requested)
         Watchman.increment("hooks.pr_approval.options_feature_disabled")
@@ -206,6 +208,8 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
       # option is rejected by the parser.
       if (include_secrets_requested && !include_secrets) || (enable_cache_requested && !enable_cache)
         logger.info("pr-approval-option-not-enabled",
+                    :workflow_id => workflow.id,
+                    :project_id => workflow.project_id,
                     :include_secrets_requested => include_secrets_requested,
                     :enable_cache_requested => enable_cache_requested)
         Watchman.increment("hooks.pr_approval.option_not_enabled")
@@ -395,6 +399,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
         when :without_reference
           if approved_head_sha.present? && !approved_pr_head_unchanged?(meta, approved_head_sha)
             logger.info("pr-approval-stale-head",
+                        :workflow_id => workflow.id,
                         :approved_head_sha => approved_head_sha,
                         :live_head_sha => meta[:head_sha])
             Watchman.increment("hooks.pr_approval.stale_head")
@@ -420,6 +425,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
           # secrets/cache) if the fork pushed a new commit since approval.
           if approved_head_sha.present? && !approved_pr_head_unchanged?(meta, approved_head_sha)
             logger.info("pr-approval-stale-head",
+                        :workflow_id => workflow.id,
                         :approved_head_sha => approved_head_sha,
                         :live_head_sha => meta[:head_sha])
             Watchman.increment("hooks.pr_approval.stale_head")

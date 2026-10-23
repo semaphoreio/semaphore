@@ -154,7 +154,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
         allow(@workflow.payload).to receive_messages(issue_number: 45, pr_approval?: true, comment_author: "octocat")
         allow(described_class).to receive(:can_approve_forked_pr?).and_return(false)
 
-        expect(@logger).to receive(:info).with("pr-approval-denied", :requestor => "octocat", :required_permission => "project.view")
+        expect(@logger).to receive(:info).with("pr-approval-denied", :requestor => "octocat", :required_permission => "project.view", :project_id => @workflow.project_id)
         expect(Watchman).to receive(:increment).with("hooks.pr_approval.denied")
         expect(described_class).not_to receive(:launch_pipeline)
 
@@ -386,6 +386,10 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
 
         expect(described_class).not_to receive(:launch_pipeline)
         expect(Watchman).to receive(:increment).with("hooks.pr_approval.option_not_enabled")
+        expect(@logger).to receive(:info).with(
+          "pr-approval-option-not-enabled",
+          hash_including(:workflow_id => workflow.id, :project_id => workflow.project_id)
+        )
 
         described_class.run(@workflow, @logger)
 
@@ -449,6 +453,10 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
 
           expect(described_class).not_to receive(:launch_pipeline)
           expect(Watchman).to receive(:increment).with("hooks.pr_approval.options_feature_disabled")
+          expect(@logger).to receive(:info).with(
+            "pr-approval-options-feature-disabled",
+            hash_including(:workflow_id => workflow.id, :project_id => workflow.project_id)
+          )
 
           described_class.run(@workflow, @logger)
 
@@ -659,7 +667,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
         expect(described_class).not_to receive(:launch_pipeline)
         expect(@logger).to receive(:info).with(
           "pr-approval-stale-head",
-          hash_including(:approved_head_sha => workflow.commit_sha, :live_head_sha => "attacker-pushed-sha")
+          hash_including(:workflow_id => workflow.id, :approved_head_sha => workflow.commit_sha, :live_head_sha => "attacker-pushed-sha")
         )
         expect(Watchman).to receive(:increment).with("hooks.pr_approval.stale_head")
 
