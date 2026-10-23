@@ -88,9 +88,8 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
       logger.info("pr-approval")
       workflow.update(:state => Workflow::STATE_PR_APPROVAL)
 
-      include_secrets_requested = workflow.payload.respond_to?(:pr_approval_include_secrets?) &&
-                                  workflow.payload.pr_approval_include_secrets?
-      enable_cache_requested = pr_approval_enable_cache_requested?(workflow.payload)
+      include_secrets_requested = workflow.payload.pr_approval_include_secrets?
+      enable_cache_requested = workflow.payload.pr_approval_enable_cache?
 
       # Capture the approver identity and comment metadata from the *comment*
       # workflow before we reassign `workflow` to the blocked forked-PR
@@ -101,9 +100,9 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
       # reusable, so a stale/renamed account could otherwise map a commenter to
       # a different Semaphore user who happens to hold that login.
       requestor = workflow.payload.comment_author
-      requestor_uid = workflow.payload.respond_to?(:comment_author_uid) ? workflow.payload.comment_author_uid : nil
-      comment_id = workflow.payload.respond_to?(:comment_id) ? workflow.payload.comment_id : nil
-      approved_at = workflow.payload.respond_to?(:comment_created_at) ? workflow.payload.comment_created_at : nil
+      requestor_uid = workflow.payload.comment_author_uid
+      comment_id = workflow.payload.comment_id
+      approved_at = workflow.payload.comment_created_at
       issue_number = workflow.payload.issue_number
 
       required_permission =
@@ -594,22 +593,16 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
   end
 
   def self.report_pr_approval_option_persist_failure(workflow, logger, reason)
-    workflow_id = workflow.respond_to?(:id) ? workflow.id : nil
-
-    logger&.error("pr-approval-option-persist-failed", :reason => reason, :workflow_id => workflow_id)
+    logger&.error("pr-approval-option-persist-failed", :reason => reason, :workflow_id => workflow.id)
     Watchman.increment("hooks.pr_approval.option_persist_failed")
   end
 
   def self.approval_option_enabled?(project, option)
-    project.respond_to?(option) && project.public_send(option) == true
+    project.public_send(option) == true
   end
 
   def self.approval_enable_cache_option_enabled?(project)
     approval_option_enabled?(project, :allow_sem_approve_enable_cache)
-  end
-
-  def self.pr_approval_enable_cache_requested?(payload)
-    payload.respond_to?(:pr_approval_enable_cache?) && payload.pr_approval_enable_cache?
   end
 
   # Resolves the commenter by immutable GitHub uid (logins are renameable and
