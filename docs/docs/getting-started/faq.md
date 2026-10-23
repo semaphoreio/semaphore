@@ -517,7 +517,14 @@ This can happen in self-hosted versions of Semaphore. The problem is that the ag
 
 ### Can I approve blocked workflow triggers? {#sem-approve}
 
-If you are using a [filter for contributors](../using-semaphore/workflows#project-triggers), you can still review and approve blocked pull requests by commenting with a `/sem-approve` message. Anyone who can run a forked pull request can also approve one.
+If you are using a [filter for contributors](../using-semaphore/workflows#project-triggers), you can still review and approve blocked pull requests by commenting with a `/sem-approve` message. Any Semaphore user with access to the project, whose GitHub account is connected to Semaphore, can approve one.
+
+You can also allow extra options for approved runs in **Project settings > General > Forked pull requests**:
+
+- `/sem-approve --include-secrets`
+- `/sem-approve --enable-cache`
+
+These options work only when the corresponding project settings are enabled, and only for approvers who can start pipelines in the project (`project.job.rerun`).
 
 Approving forked pull requests is limited to new comments only and is not possible for comment edits. Due to security concerns, `/sem-approve` will work only once. Subsequent pushes to the forked pull request must be approved again.
 
