@@ -20,13 +20,20 @@ defmodule RepositoryHub.Application do
     guard_cleanup_worker = Application.get_env(:repository_hub, RepositoryHub.BuildStatusGuardCleanupWorker, [])
     guard_cleanup_worker_enabled = Keyword.get(guard_cleanup_worker, :enabled, false)
 
+    {feature_provider_module, feature_provider_opts} = Application.get_env(FeatureProvider, :provider)
+
     children =
       filter_enabled([
         {{Task.Supervisor, name: RepositoryHub.SentryEventSupervisor}, true},
         {{RepositoryHub.Repo, []}, true},
         {{RepositoryHub.MaxStatusesCache, []}, true},
+        {%{id: FeatureProvider.Cachex, start: {Cachex, :start_link, [:feature_provider_cache, []]}}, true},
+        {{feature_provider_module, feature_provider_opts}, feature_provider_module == FeatureProvider.YamlProvider},
+        {{RepositoryHub.GithubAppId, []}, true},
+        {{RepositoryHub.CheckRunCache, []}, true},
         {{GRPC.Server.Supervisor, endpoint: RepositoryHub.Server.Endpoint, port: grpc_port, start_server: true}, true},
         {{RepositoryHub.RemoteRepositoryChangedConsumer, []}, true},
+        {{RepositoryHub.FeatureProviderInvalidatorWorker, []}, true},
         {{RepositoryHub.RemoteIdSyncWorker, remote_id_sync_worker_opts}, remote_id_sync_worker_enabled},
         {{RepositoryHub.BuildStatusGuardCleanupWorker, []}, guard_cleanup_worker_enabled}
       ])
