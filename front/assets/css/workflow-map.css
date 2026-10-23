@@ -900,8 +900,12 @@ a.wf-map-job:hover {
   min-width: 96px;
 }
 
+.wf-map-actions .btn-tiny {
+  display: inline-flex;
+  align-items: center;
+}
+
 .wf-map-actions .btn-tiny .material-symbols-outlined {
-  display: block;
   font-size: 16px;
   line-height: 1;
 }
