@@ -644,6 +644,7 @@ defmodule FrontWeb.Router do
 
     get("/workflows/:workflow_id/status", WorkflowController, :status)
     get("/workflows/:workflow_id/map", WorkflowController, :map)
+    get("/workflows/:workflow_id/map/pipelines", WorkflowController, :map_pipelines)
     get("/workflows/:workflow_id/summary", TestResultsController, :pipeline_summary)
     get("/workflows/:workflow_id/report", ReportController, :workflow)
     get("/workflows/:workflow_id/summary/:pipeline_id", TestResultsController, :details)
@@ -651,7 +652,6 @@ defmodule FrontWeb.Router do
     get("/workflows/:workflow_id/pipelines/:pipeline_id/poll", PipelineController, :poll)
     get("/workflows/:workflow_id/pipelines/:pipeline_id/path", PipelineController, :path)
     get("/workflows/:workflow_id/pipelines/:pipeline_id/status", PipelineController, :status)
-    get("/workflows/:workflow_id/pipelines/:pipeline_id/map", PipelineController, :map)
 
     get(
       "/workflows/:workflow_id/pipelines/:pipeline_id/switches/:switch_id",

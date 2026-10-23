@@ -1,10 +1,13 @@
 import { render } from "preact";
 import { useEffect, useRef } from "preact/hooks";
-import { Config, loadError, now, onNudge, refresh, resetState } from "./store";
+import { Config, loadError, now, onNudge, refresh, resetState, tree } from "./store";
 import { initLayout } from "./layout";
 import { MapCanvas, aim, openBlocks, openPipelines } from "./map";
 import { PromoteDialog, PromoteMenu, promoteMenu, promoting } from "./promote";
 import { Toolbar } from "./toolbar";
+
+const MAX_POLL_RUNNING = 15000;
+const MAX_POLL_DONE = 30000;
 
 const App = ({ config }: { config: Config, }) => {
   const root = useRef<HTMLDivElement>(null);
@@ -24,6 +27,7 @@ const App = ({ config }: { config: Config, }) => {
     let running = false;
     let again = false;
     let timer: number;
+    let delay = config.pollInterval;
     const loop = async () => {
       window.clearTimeout(timer);
       if (running) {
@@ -31,21 +35,36 @@ const App = ({ config }: { config: Config, }) => {
         return;
       }
       running = true;
+      let changed = false;
       try {
-        if (!document.hidden) await refresh(config);
+        if (!document.hidden) changed = await refresh(config);
       } finally {
         running = false;
-        if (!stopped) timer = window.setTimeout(() => void loop(), again ? 0 : config.pollInterval);
+        const max = tree.value?.pipelines.every((p) => p.state === `DONE`) ? MAX_POLL_DONE : MAX_POLL_RUNNING;
+        delay = changed || again ? config.pollInterval : Math.min(delay * 2, max);
+        if (!stopped) timer = window.setTimeout(() => void loop(), again ? 0 : delay);
         again = false;
       }
     };
-    onNudge(() => void loop());
+    const wake = () => {
+      if (document.hidden || delay === config.pollInterval) return;
+      delay = config.pollInterval;
+      void loop();
+    };
+    onNudge(() => {
+      delay = config.pollInterval;
+      void loop();
+    });
+    document.addEventListener(`visibilitychange`, wake);
+    window.addEventListener(`focus`, wake);
     void loop();
     const clock = window.setInterval(() => (now.value = Math.floor(Date.now() / 1000)), 1000);
 
     return () => {
       stopped = true;
       onNudge(() => undefined);
+      document.removeEventListener(`visibilitychange`, wake);
+      window.removeEventListener(`focus`, wake);
       window.clearTimeout(timer);
       window.clearInterval(clock);
     };

@@ -589,6 +589,8 @@ defmodule FrontWeb.PipelineView do
     }
   end
 
+  defp map_promotions(%{switch: :unchanged}), do: nil
+
   defp map_promotions(%{
          switch: switch,
          conn: conn,

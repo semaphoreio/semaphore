@@ -38,6 +38,20 @@ defmodule FrontWeb.WorkflowView do
     }
   end
 
+  def render("map_pipelines.json", %{pipelines: pipelines, conn: conn, can_promote?: can_promote?}) do
+    %{
+      pipelines:
+        Enum.map(pipelines, fn %{pipeline: pipeline, switch: switch} ->
+          FrontWeb.PipelineView.render("map.json", %{
+            conn: conn,
+            pipeline: pipeline,
+            switch: switch,
+            can_promote?: can_promote?
+          })
+        end)
+    }
+  end
+
   defp map_pipeline(pipeline) do
     %{
       id: pipeline.id,
@@ -70,7 +84,7 @@ defmodule FrontWeb.WorkflowView do
   def workflow_map_config(conn, workflow_id, selected_pipeline_id) do
     %{
       workflowUrl: workflow_path(conn, :map, workflow_id),
-      pipelineUrl: pipeline_path(conn, :map, workflow_id, "__PIPELINE_ID__"),
+      pipelinesUrl: workflow_path(conn, :map_pipelines, workflow_id),
       elkWorkerUrl: static_path(conn, "/projects/assets/workers/elk-worker.min.js"),
       selectedPipelineId: selected_pipeline_id,
       pollInterval: 4000
