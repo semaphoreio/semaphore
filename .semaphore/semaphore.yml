@@ -1459,7 +1459,7 @@ blocks:
   - name: "TaskApiMock: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/plumber', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in(['/plumber', '/env_var_policy'], {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1729,7 +1729,7 @@ blocks:
   - name: "RepoProxyRef: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/plumber', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in(['/plumber', '/env_var_policy'], {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1747,7 +1747,7 @@ blocks:
   - name: "Ppl: Provision Test Image"
     dependencies: []
     run:
-      when: "change_in('/plumber', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in(['/plumber', '/env_var_policy'], {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
       env_vars:
         - name: SERVICE_NAME
@@ -1767,7 +1767,7 @@ blocks:
   - name: "Ppl: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/plumber', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in(['/plumber', '/env_var_policy'], {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1785,7 +1785,7 @@ blocks:
   - name: "Ppl: Deployment Preconditions"
     dependencies: ["Ppl: Provision Prod Image"]
     run:
-      when: "change_in('/plumber', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in(['/plumber', '/env_var_policy'], {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1809,7 +1809,7 @@ blocks:
   - name: "Ppl: QA"
     dependencies: ["Ppl: Provision Test Image"]
     run:
-      when: "change_in('/plumber', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in(['/plumber', '/env_var_policy'], {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1840,7 +1840,7 @@ blocks:
         "TaskApiMock: Provision Prod Image",
       ]
     run:
-      when: "change_in('/plumber', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in(['/plumber', '/env_var_policy'], {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -2910,7 +2910,7 @@ blocks:
   - name: "Secrethub: Provision Test Image"
     dependencies: []
     run:
-      when: "change_in('/secrethub', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in(['/secrethub', '/env_var_policy'], {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -2928,7 +2928,7 @@ blocks:
   - name: "Secrethub: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/secrethub', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in(['/secrethub', '/env_var_policy'], {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -2947,7 +2947,7 @@ blocks:
   - name: "Secrethub: Deployment Preconditions"
     dependencies: ["Secrethub: Provision Prod Image"]
     run:
-      when: "change_in('/secrethub', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in(['/secrethub', '/env_var_policy'], {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -2974,7 +2974,7 @@ blocks:
   - name: "Secrethub: QA"
     dependencies: ["Secrethub: Provision Test Image"]
     run:
-      when: "change_in('/secrethub', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in(['/secrethub', '/env_var_policy'], {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -3557,7 +3557,7 @@ blocks:
   - name: "Zebra: Provision Test Image"
     dependencies: []
     run:
-      when: "change_in('/zebra', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in(['/zebra', '/env_var_policy'], {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -3575,7 +3575,7 @@ blocks:
   - name: "Zebra: Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/zebra', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in(['/zebra', '/env_var_policy'], {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -3594,7 +3594,7 @@ blocks:
   - name: "Zebra: Deployment Preconditions"
     dependencies: ["Zebra: Provision Prod Image"]
     run:
-      when: "change_in('/zebra', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in(['/zebra', '/env_var_policy'], {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -3621,7 +3621,7 @@ blocks:
   - name: "Zebra: QA"
     dependencies: ["Zebra: Provision Test Image"]
     run:
-      when: "change_in('/zebra', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in(['/zebra', '/env_var_policy'], {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -3865,6 +3865,29 @@ blocks:
             - make test
             - cache store deps-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock) deps
             - cache store build-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock) _build
+  - name: "Env Var Policy: QA"
+    dependencies: []
+    run:
+      when: "change_in('/env_var_policy', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      prologue:
+        commands:
+          - sem-version erlang 24
+          - sem-version elixir $ELIXIR_VERSION
+          - checkout && cd env_var_policy
+      jobs:
+        - name: Test
+          matrix:
+            - env_var: ELIXIR_VERSION
+              values: ["1.11", "1.13"]
+          commands:
+            - make test
+        - name: Format
+          env_vars:
+            - name: ELIXIR_VERSION
+              value: "1.13"
+          commands:
+            - make format
 promotions:
   - name: Generate Helm Chart
     pipeline_file: generate-helm-chart.yml

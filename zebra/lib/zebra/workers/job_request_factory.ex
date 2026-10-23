@@ -16,6 +16,7 @@ defmodule Zebra.Workers.JobRequestFactory do
     Project,
     RepoProxy,
     Repository,
+    ReservedEnvVars,
     Secrets,
     Settings,
     Spec,
@@ -65,14 +66,15 @@ defmodule Zebra.Workers.JobRequestFactory do
         if Job.self_hosted?(job.machine_type), do: {:ok, nil}, else: {:ok, generate_rsa()}
       end)
 
-    generate_token =
-      Task.async(fn ->
-        if Job.self_hosted?(job.machine_type),
-          do: Loghub2.generate_token(job.id),
-          else: {:ok, nil}
-      end)
-
     with :ok <- Machine.validate(org_id, job),
+         {:ok, spec_env_vars} <- Spec.env_vars(spec),
+         :ok <- ReservedEnvVars.validate_spec(job, job_type, spec, spec_env_vars),
+         generate_token <-
+           Task.async(fn ->
+             if Job.self_hosted?(job.machine_type),
+               do: Loghub2.generate_token(job.id),
+               else: {:ok, nil}
+           end),
          {:ok, hook_id} <- RepoProxy.extract_hook_id(job, job_type),
          find_repo_proxy <- Task.async(fn -> RepoProxy.find(hook_id) end),
          {:ok, rsa} <- await(gen_rsa, :rsa),
@@ -94,7 +96,6 @@ defmodule Zebra.Workers.JobRequestFactory do
          {:ok, repository, private_git_key} <- await(find_repository, :repository),
          {:ok, repo_files} <- Repository.files(private_git_key),
          {:ok, repo_env_vars} <- Repository.env_vars(repository, repo_proxy, job_type),
-         {:ok, spec_env_vars} <- Spec.env_vars(spec),
          {:ok, spec_files} <- Spec.files(spec),
          {:ok, spec_commands} <- Spec.commands(spec),
          {:ok, epilogue} <- Spec.epilogue(spec),
@@ -105,6 +106,7 @@ defmodule Zebra.Workers.JobRequestFactory do
          {:ok, all_secrets} <- await(find_secrets, :secrets),
          {:ok, artifact_env_var} <- await(find_artifact_token, :artifact_token),
          {:ok, loghub2_token} <- await(generate_token, :loghub2_token),
+         :ok <- ReservedEnvVars.validate_secrets(job, all_secrets),
          {:ok, open_id_token_env_vars} <-
            OpenIDConnect.load(job, repo_env_vars, organization, project, job_type, spec_env_vars),
          {:ok, callback_token} <- CallbackToken.generate(job) do

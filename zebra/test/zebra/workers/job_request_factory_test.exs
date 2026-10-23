@@ -6,6 +6,7 @@ defmodule Zebra.Workers.JobRequestFactoryTest do
 
   alias Zebra.Models.Job
   alias Zebra.Workers.JobRequestFactory, as: Worker
+  alias Zebra.Workers.JobRequestFactory.ReservedEnvVars
 
   @artifact_token "asdfg"
   @project_id Ecto.UUID.generate()
@@ -1356,6 +1357,372 @@ defmodule Zebra.Workers.JobRequestFactoryTest do
     assert Job.finished?(job)
     assert Job.failed?(job)
     assert job.failure_reason == "Secret aws-secrets not found"
+  end
+
+  test "when a secret sets a reserved env var => force fails the job" do
+    GrpcMock.stub(Support.FakeServers.SecretsApi, :checkout_many, fn _, _ ->
+      InternalApi.Secrethub.CheckoutManyResponse.new(
+        secrets: [
+          InternalApi.Secrethub.Secret.new(
+            metadata: InternalApi.Secrethub.Secret.Metadata.new(name: "aws-secrets"),
+            data:
+              InternalApi.Secrethub.Secret.Data.new(
+                env_vars: [
+                  InternalApi.Secrethub.Secret.EnvVar.new(
+                    name: "SEMAPHORE_GIT_BRANCH",
+                    value: "main"
+                  )
+                ]
+              )
+          )
+        ]
+      )
+    end)
+
+    {:ok, task} = Support.Factories.Task.create()
+    {:ok, job} = Support.Factories.Job.create(:pending, %{spec: @job_spec, build_id: task.id})
+
+    capture_log(fn -> send(self(), {:result, Worker.process(job)}) end)
+    assert_received {:result, {:ok, job}}
+
+    assert Job.finished?(job)
+    assert Job.failed?(job)
+
+    assert job.failure_reason ==
+             "Reserved environment variables cannot be set: SEMAPHORE_GIT_BRANCH (secret 'aws-secrets')"
+  end
+
+  test "when the spec overrides a platform env var => force fails the job without an OIDC token" do
+    test_pid = self()
+
+    GrpcMock.stub(Support.FakeServers.SecretsApi, :generate_open_id_connect_token, fn _, _ ->
+      send(test_pid, :oidc_token_generated)
+      InternalApi.Secrethub.GenerateOpenIDConnectTokenResponse.new(token: @oidc_token_value)
+    end)
+
+    spec =
+      Map.update!(@job_spec, "env_vars", fn env_vars ->
+        env_vars ++
+          [
+            %{"name" => "SEMAPHORE_WORKFLOW_TRIGGERED_BY_API", "value" => "false"},
+            %{"name" => "SEMAPHORE_WORKFLOW_TRIGGERED_BY_API", "value" => "true"}
+          ]
+      end)
+
+    {:ok, task} = Support.Factories.Task.create()
+    {:ok, job} = Support.Factories.Job.create(:pending, %{spec: spec, build_id: task.id})
+
+    capture_log(fn -> send(self(), {:result, Worker.process(job)}) end)
+    assert_received {:result, {:ok, job}}
+
+    assert Job.finished?(job)
+    assert Job.failed?(job)
+
+    assert job.failure_reason ==
+             "Reserved environment variables cannot be set: SEMAPHORE_WORKFLOW_TRIGGERED_BY_API (job env_vars)"
+
+    refute_received :oidc_token_generated
+  end
+
+  test "when the spec sets a reserved env var => fails before checking out secrets or minting tokens" do
+    test_pid = self()
+
+    GrpcMock.stub(Support.FakeServers.SecretsApi, :checkout_many, fn _, _ ->
+      send(test_pid, :secrets_checked_out)
+      InternalApi.Secrethub.CheckoutManyResponse.new(secrets: [])
+    end)
+
+    GrpcMock.stub(Support.FakeServers.ArtifactApi, :generate_token, fn _, _ ->
+      send(test_pid, :artifact_token_generated)
+      %InternalApi.Artifacthub.GenerateTokenResponse{token: @artifact_token}
+    end)
+
+    GrpcMock.stub(Support.FakeServers.Loghub2Api, :generate_token, fn _, _ ->
+      send(test_pid, :loghub2_token_generated)
+
+      InternalApi.Loghub2.GenerateTokenResponse.new(
+        token: "very-sensitive-jwt-token",
+        type: InternalApi.Loghub2.TokenType.value(:PUSH)
+      )
+    end)
+
+    spec =
+      Map.update!(@job_spec, "env_vars", fn env_vars ->
+        env_vars ++ [%{"name" => "SEMAPHORE_GIT_BRANCH", "value" => "main"}]
+      end)
+
+    {:ok, task} = Support.Factories.Task.create()
+
+    {:ok, job} =
+      Support.Factories.Job.create(:pending, %{
+        spec: spec,
+        build_id: task.id,
+        machine_type: "s1-test-1"
+      })
+
+    capture_log(fn -> send(self(), {:result, Worker.process(job)}) end)
+    assert_received {:result, {:ok, job}}
+
+    assert Job.finished?(job)
+    assert Job.failed?(job)
+
+    assert job.failure_reason ==
+             "Reserved environment variables cannot be set: SEMAPHORE_GIT_BRANCH (job env_vars)"
+
+    refute_received :secrets_checked_out
+    refute_received :artifact_token_generated
+    refute_received :loghub2_token_generated
+  end
+
+  test "when a job outside a pipeline sets a plumber-owned env var => force fails the job" do
+    {:ok, job} = Support.Factories.Job.create(:pending, %{spec: @job_spec, build_id: nil})
+
+    capture_log(fn -> send(self(), {:result, Worker.process(job)}) end)
+    assert_received {:result, {:ok, job}}
+
+    assert Job.finished?(job)
+    assert Job.failed?(job)
+
+    assert job.failure_reason ==
+             "Reserved environment variables cannot be set: SEMAPHORE_WORKFLOW_TRIGGERED_BY_HOOK (job env_vars)"
+  end
+
+  test "when a debug job sets a zebra-owned env var => force fails the job" do
+    {:ok, task} = Support.Factories.Task.create()
+    {:ok, job} = Support.Factories.Job.create(:finished, %{spec: @job_spec, build_id: task.id})
+
+    spec =
+      Map.update!(@job_spec, "env_vars", fn env_vars ->
+        env_vars ++ [%{"name" => "SEMAPHORE_GIT_BRANCH", "value" => "main"}]
+      end)
+
+    {:ok, debug_job} = Support.Factories.Job.create(:pending, %{spec: spec, build_id: nil})
+    {:ok, _debug} = Support.Factories.Debug.create_for_job(job.id, debug_job.id)
+
+    capture_log(fn -> send(self(), {:result, Worker.process(debug_job)}) end)
+    assert_received {:result, {:ok, debug_job}}
+
+    assert Job.finished?(debug_job)
+    assert Job.failed?(debug_job)
+
+    assert debug_job.failure_reason ==
+             "Reserved environment variables cannot be set: SEMAPHORE_GIT_BRANCH (job env_vars)"
+  end
+
+  test "when a container with a multi-codepoint name sets a reserved env var => stores a fitting failure_reason" do
+    name = "x" <> String.duplicate("\u0301", 300)
+
+    spec =
+      put_in(@job_spec_with_containers, ["agent", "containers"], [
+        %{
+          "name" => name,
+          "image" => "ruby:2.6.1",
+          "env_vars" => [%{"name" => "SEMAPHORE_JOB_ID", "value" => "x"}]
+        }
+      ])
+
+    {:ok, task} = Support.Factories.Task.create()
+    {:ok, job} = Support.Factories.Job.create(:pending, %{spec: spec, build_id: task.id})
+
+    capture_log(fn -> send(self(), {:result, Worker.process(job)}) end)
+    assert_received {:result, {:ok, job}}
+
+    assert Job.failed?(job)
+    assert job.failure_reason =~ "SEMAPHORE_JOB_ID (container 'x"
+    assert job.failure_reason |> String.codepoints() |> length() <= 255
+  end
+
+  test "when an image pull secret sets a reserved env var => force fails the job" do
+    GrpcMock.stub(Support.FakeServers.SecretsApi, :checkout_many, fn _, _ ->
+      InternalApi.Secrethub.CheckoutManyResponse.new(
+        secrets: [
+          InternalApi.Secrethub.Secret.new(
+            metadata: InternalApi.Secrethub.Secret.Metadata.new(name: "registry"),
+            data:
+              InternalApi.Secrethub.Secret.Data.new(
+                env_vars: [
+                  InternalApi.Secrethub.Secret.EnvVar.new(
+                    name: "SEMAPHORE_OIDC_TOKEN",
+                    value: "x"
+                  )
+                ]
+              )
+          )
+        ]
+      )
+    end)
+
+    spec =
+      @job_spec_with_containers
+      |> Map.put("secrets", [])
+      |> put_in(["agent", "image_pull_secrets"], [%{"name" => "registry"}])
+
+    {:ok, task} = Support.Factories.Task.create()
+    {:ok, job} = Support.Factories.Job.create(:pending, %{spec: spec, build_id: task.id})
+
+    capture_log(fn -> send(self(), {:result, Worker.process(job)}) end)
+    assert_received {:result, {:ok, job}}
+
+    assert Job.finished?(job)
+    assert Job.failed?(job)
+
+    assert job.failure_reason ==
+             "Reserved environment variables cannot be set: SEMAPHORE_OIDC_TOKEN (image pull secret 'registry')"
+  end
+
+  test "when the spec has an env var name that is not a shell identifier => force fails the job" do
+    spec =
+      Map.update!(@job_spec, "env_vars", fn env_vars ->
+        env_vars ++ [%{"name" => "SEMAPHORE_WORKFLOW_TRIGGERED_BY_API=true #", "value" => "x"}]
+      end)
+
+    {:ok, task} = Support.Factories.Task.create()
+    {:ok, job} = Support.Factories.Job.create(:pending, %{spec: spec, build_id: task.id})
+
+    capture_log(fn -> send(self(), {:result, Worker.process(job)}) end)
+    assert_received {:result, {:ok, job}}
+
+    assert Job.finished?(job)
+    assert Job.failed?(job)
+
+    assert job.failure_reason ==
+             "Invalid environment variable names: 'SEMAPHORE_WORKFLOW_TRIGGERED_BY_API=true #' (job env_vars)"
+  end
+
+  test "when a service container uses a dotted env var name => creates job req" do
+    spec =
+      put_in(@job_spec_with_containers, ["agent", "containers"], [
+        %{"name" => "main", "image" => "ruby:2.6.1"},
+        %{
+          "name" => "es",
+          "image" => "elasticsearch:8.15.0",
+          "env_vars" => [%{"name" => "discovery.type", "value" => "single-node"}]
+        }
+      ])
+
+    {:ok, task} = Support.Factories.Task.create()
+    {:ok, job} = Support.Factories.Job.create(:pending, %{spec: spec, build_id: task.id})
+
+    {:ok, job} = Worker.process(job)
+
+    assert job.aasm_state == "enqueued"
+
+    [_main, es] = job.request["compose"]["containers"]
+    assert Enum.any?(es["env_vars"], &(&1["name"] == "discovery.type"))
+  end
+
+  test "when a container secret sets a reserved env var => force fails the job" do
+    GrpcMock.stub(Support.FakeServers.SecretsApi, :checkout_many, fn _, _ ->
+      InternalApi.Secrethub.CheckoutManyResponse.new(
+        secrets: [
+          InternalApi.Secrethub.Secret.new(
+            metadata: InternalApi.Secrethub.Secret.Metadata.new(name: "db-secrets"),
+            data:
+              InternalApi.Secrethub.Secret.Data.new(
+                env_vars: [
+                  InternalApi.Secrethub.Secret.EnvVar.new(name: "SEMAPHORE_JOB_ID", value: "x")
+                ]
+              )
+          )
+        ]
+      )
+    end)
+
+    spec =
+      @job_spec_with_containers
+      |> Map.put("secrets", [])
+      |> put_in(["agent", "containers"], [
+        %{"name" => "main", "image" => "ruby:2.6.1", "secrets" => [%{"name" => "db-secrets"}]}
+      ])
+
+    {:ok, task} = Support.Factories.Task.create()
+    {:ok, job} = Support.Factories.Job.create(:pending, %{spec: spec, build_id: task.id})
+
+    capture_log(fn -> send(self(), {:result, Worker.process(job)}) end)
+    assert_received {:result, {:ok, job}}
+
+    assert Job.finished?(job)
+    assert Job.failed?(job)
+
+    assert job.failure_reason ==
+             "Reserved environment variables cannot be set: SEMAPHORE_JOB_ID (secret 'db-secrets')"
+  end
+
+  describe "platform env vars injected by zebra" do
+    setup do
+      flagged = [
+        "cache_cli_parallel_archive_method",
+        "test_results_no_trim",
+        "git_clone_slow_retry"
+      ]
+
+      Mox.stub(Support.MockedProvider, :provide_features, fn _, _ ->
+        {:ok, features} = Support.StubbedProvider.provide_features()
+
+        {:ok,
+         Enum.map(features, fn feature ->
+           if feature.type in flagged,
+             do: %{feature | quantity: 1, state: :enabled},
+             else: feature
+         end)}
+      end)
+
+      :ok
+    end
+
+    @user_settable [
+      "SEMAPHORE_CACHE_BACKEND",
+      "SEMAPHORE_CACHE_URL",
+      "SEMAPHORE_CACHE_USERNAME",
+      "SEMAPHORE_CACHE_PRIVATE_KEY_PATH",
+      "SEMAPHORE_GIT_CLONE_SLOW_RETRY",
+      "SEMAPHORE_CACHE_ARCHIVE_METHOD",
+      "SEMAPHORE_TOOLBOX_METRICS_ENABLED",
+      "SEMAPHORE_TEST_RESULTS_NO_TRIM"
+    ]
+
+    for machine_type <- ["e1-standard-2", "s1-test-1"] do
+      test "are all reserved or documented as user-settable on #{machine_type}" do
+        {:ok, task} = Support.Factories.Task.create()
+
+        {:ok, job} =
+          Support.Factories.Job.create(:pending, %{
+            spec: @job_spec,
+            build_id: task.id,
+            machine_type: unquote(machine_type)
+          })
+
+        {:ok, job} = Worker.process(job)
+        assert job.aasm_state == "enqueued"
+
+        user_names = Enum.map(@job_spec["env_vars"], & &1["name"])
+
+        injected =
+          job.request["env_vars"]
+          |> Enum.map(& &1["name"])
+          |> Enum.filter(&String.starts_with?(&1, "SEMAPHORE"))
+          |> Enum.reject(&(&1 in user_names))
+
+        assert "SEMAPHORE_OIDC_TOKEN" in injected
+        assert "SEMAPHORE_TEST_RESULTS_NO_TRIM" in injected
+
+        unreserved =
+          Enum.reject(injected, &(ReservedEnvVars.reserved?(&1) or &1 in @user_settable))
+
+        assert unreserved == []
+      end
+    end
+
+    test "include the flag-gated hosted-only ones" do
+      {:ok, task} = Support.Factories.Task.create()
+      {:ok, job} = Support.Factories.Job.create(:pending, %{spec: @job_spec, build_id: task.id})
+
+      {:ok, job} = Worker.process(job)
+      names = Enum.map(job.request["env_vars"], & &1["name"])
+
+      assert "SEMAPHORE_CACHE_ARCHIVE_METHOD" in names
+      assert "SEMAPHORE_GIT_CLONE_SLOW_RETRY" in names
+    end
   end
 
   test "when the organization service raises an exception => doesn't process the job" do
