@@ -760,9 +760,12 @@ defmodule Zebra.Workers.DispatcherTest do
 
         assert_called(
           Watchman.increment(
-            {"job.dispatching.histogram", [job.organization_id, "s1-local-testing-", :_]}
+            {"job.dispatching.self_hosted.histogram",
+             [job.organization_id, "s1-local-testing-", "from_3s_to_10s"]}
           )
         )
+
+        assert_not_called(Watchman.increment({"job.dispatching.histogram", :_}))
       end
     end
 
@@ -783,6 +786,46 @@ defmodule Zebra.Workers.DispatcherTest do
 
         assert_not_called(Watchman.submit(:_, :_, :_))
         assert_not_called(Watchman.increment(:_))
+      end
+    end
+  end
+
+  describe "self-hosted dispatch latency through .process" do
+    test "legacy SHH returning the agent => job starts and the self-hosted latency is emitted" do
+      {:ok, job} = Support.Factories.Job.create(:scheduled, %{machine_type: "s1-testing"})
+
+      GrpcMock.stub(Support.FakeServers.SelfHosted, :occupy_agent, fn _, _ ->
+        %InternalApi.SelfHosted.OccupyAgentResponse{agent_id: @agent_id, agent_name: "a"}
+      end)
+
+      with_mock Watchman, [:passthrough],
+        submit: fn _, _, _ -> nil end,
+        increment: fn _ -> nil end do
+        Worker.process(job)
+
+        assert Job.started?(Job.reload(job))
+        assert_called(Watchman.submit("job.dispatching.self_hosted.duration", :_, :timing))
+        assert_called(Watchman.increment({"job.dispatching.self_hosted.histogram", :_}))
+        assert_not_called(Watchman.submit("job.dispatching.duration", :_, :_))
+        assert_not_called(Watchman.increment({"job.dispatching.histogram", :_}))
+      end
+    end
+
+    test "current SHH (no agent in the response) => job waits and nothing is emitted yet" do
+      {:ok, job} = Support.Factories.Job.create(:scheduled, %{machine_type: "s1-testing"})
+
+      GrpcMock.stub(Support.FakeServers.SelfHosted, :occupy_agent, fn _, _ ->
+        %InternalApi.SelfHosted.OccupyAgentResponse{agent_id: "", agent_name: ""}
+      end)
+
+      with_mock Watchman, [:passthrough],
+        submit: fn _, _, _ -> nil end,
+        increment: fn _ -> nil end do
+        Worker.process(job)
+
+        assert Job.waiting_for_agent?(Job.reload(job))
+        assert_not_called(Watchman.submit("job.dispatching.self_hosted.duration", :_, :_))
+        assert_not_called(Watchman.increment({"job.dispatching.self_hosted.histogram", :_}))
       end
     end
   end

@@ -129,7 +129,7 @@ defmodule Zebra.Workers.Scheduler.SelectorTest do
       assert result.for_scheduling == [j1.id]
       assert result.no_capacity["e1-standard-2"] == 1
       assert result.no_capacity_by_reason[{"e1-standard-2", :org_ceiling}] == 1
-      assert result.no_capacity_by_reason[{"e1-standard-2", :machine_quota}] == 0
+      refute Map.has_key?(result.no_capacity_by_reason, {"e1-standard-2", :machine_quota})
     end
 
     test "no_capacity_by_reason records machine_quota when the machine type limit is hit" do
@@ -144,7 +144,7 @@ defmodule Zebra.Workers.Scheduler.SelectorTest do
       assert result.for_scheduling == [j1.id, j2.id]
       assert result.no_capacity["e1-standard-2"] == 1
       assert result.no_capacity_by_reason[{"e1-standard-2", :machine_quota}] == 1
-      assert result.no_capacity_by_reason[{"e1-standard-2", :org_ceiling}] == 0
+      refute Map.has_key?(result.no_capacity_by_reason, {"e1-standard-2", :org_ceiling})
     end
 
     test "combined max_limit and machine limits" do

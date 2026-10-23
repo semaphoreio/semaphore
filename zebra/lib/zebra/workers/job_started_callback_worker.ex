@@ -39,6 +39,7 @@ defmodule Zebra.Workers.JobStartedCallbackWorker do
               })
 
             onprem_metrics(job)
+            self_hosted_metrics(job)
 
             log(job_id, "Job started")
         end
@@ -48,6 +49,15 @@ defmodule Zebra.Workers.JobStartedCallbackWorker do
 
   def log(job_id, message) do
     Logger.info("[JOB STARTED CALLBACK WORKER][job_id: #{job_id}] #{message}")
+  end
+
+  # For self-hosted jobs this is the real scheduled -> started moment: current
+  # SHH parks the job in waiting-for-agent at dispatch time and reports the
+  # start through this callback.
+  defp self_hosted_metrics(job) do
+    if Job.self_hosted?(job.machine_type) do
+      Zebra.Workers.Dispatcher.submit_self_hosted_metrics(job)
+    end
   end
 
   defp onprem_metrics(job) do

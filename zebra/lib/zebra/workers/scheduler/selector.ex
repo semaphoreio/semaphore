@@ -61,7 +61,8 @@ defmodule Zebra.Workers.Scheduler.Selector do
   end
 
   @doc """
-  Utilization of an org's parallelism ceiling, as a percentage (0..100).
+  Utilization of an org's parallelism ceiling, as a percentage. Not clamped:
+  it can exceed 100 when the ceiling drops below the jobs already running.
 
   An org whose ceiling is 0 (or unknown) while it has running jobs is maximally
   saturated, so it reports 100 rather than 0 - otherwise a saturation alert
@@ -134,6 +135,9 @@ defmodule Zebra.Workers.Scheduler.Selector do
         # can be scheduled, however we continue in order to look up all the jobs
         # that need to be force finished.
         #
+        # When both the org ceiling and the machine quota are reached, the job
+        # is attributed to the org ceiling.
+        #
         result = Result.add_no_capacity(result, job.machine_type, :org_ceiling)
         select(rest, org, state, result)
 
@@ -198,23 +202,17 @@ defmodule Zebra.Workers.Scheduler.Selector do
     @no_capacity_reasons [:org_ceiling, :machine_quota]
 
     def new(org) do
-      types = Zebra.Machines.machine_types(org.id)
-
       init_no_capacity =
-        types
+        Zebra.Machines.machine_types(org.id)
         |> Enum.map(fn type -> {type, 0} end)
         |> Enum.into(%{})
-
-      init_no_capacity_by_reason =
-        for type <- types, reason <- @no_capacity_reasons, into: %{} do
-          {{type, reason}, 0}
-        end
 
       %__MODULE__{
         for_scheduling: [],
         for_force_finish: [],
         no_capacity: init_no_capacity,
-        no_capacity_by_reason: init_no_capacity_by_reason,
+        # Only (machine_type, reason) pairs that actually blocked a job.
+        no_capacity_by_reason: %{},
         org_username: org.username
       }
     end
@@ -238,9 +236,7 @@ defmodule Zebra.Workers.Scheduler.Selector do
         end)
 
       no_capacity_by_reason =
-        Map.merge(result.no_capacity_by_reason, %{{machine_type, reason} => 1}, fn _, v1, v2 ->
-          (v1 || 0) + v2
-        end)
+        Map.update(result.no_capacity_by_reason, {machine_type, reason}, 1, &(&1 + 1))
 
       %{result | no_capacity: no_capacity, no_capacity_by_reason: no_capacity_by_reason}
     end

@@ -12,43 +12,48 @@ defmodule Zebra.Monitor do
   def count_pending_jobs do
     Logger.info("Submiting pending jobs count")
 
-    cloud_count = LegacyRepo.aggregate(Job.cloud_pending(), :count, :id)
-    self_hosted_count = LegacyRepo.aggregate(Job.self_hosted_pending(), :count, :id)
-    total = cloud_count + self_hosted_count
-
-    # Keep the pre-existing total series unchanged (internal untagged metric +
-    # external state tag), so existing dashboards/alerts keep measuring the same
-    # thing.
-    internal_metric = "monitor.jobs.pending"
-    external_metric = {"state", [state: "pending"]}
-    Watchman.submit([internal: internal_metric, external: external_metric], total)
-
-    # Additional per-tier breakdown.
-    Watchman.submit({"monitor.jobs.pending", ["cloud"]}, cloud_count)
-    Watchman.submit({"monitor.jobs.pending", ["self_hosted"]}, self_hosted_count)
-
-    {cloud_count, self_hosted_count}
+    submit_counts_by_tier("pending", Job.pending())
   end
 
   def count_enqueued_jobs do
     Logger.info("Submiting enqueued jobs count")
 
-    cloud_count = LegacyRepo.aggregate(Job.cloud_enqueued(), :count, :id)
-    self_hosted_count = LegacyRepo.aggregate(Job.self_hosted_enqueued(), :count, :id)
-    total = cloud_count + self_hosted_count
+    submit_counts_by_tier("enqueued", Job.enqueued())
+  end
 
-    # Keep the pre-existing total series unchanged (internal untagged metric +
-    # external state tag), so existing dashboards/alerts keep measuring the same
-    # thing.
-    internal_metric = "monitor.jobs.enqueued"
-    external_metric = {"state", [state: "enqueued"]}
-    Watchman.submit([internal: internal_metric, external: external_metric], total)
+  defp submit_counts_by_tier(state, query) do
+    {cloud_count, self_hosted_count} = count_by_tier(query)
 
-    # Additional per-tier breakdown.
-    Watchman.submit({"monitor.jobs.enqueued", ["cloud"]}, cloud_count)
-    Watchman.submit({"monitor.jobs.enqueued", ["self_hosted"]}, self_hosted_count)
+    # The pre-existing total series (internal untagged metric + external state
+    # tag) keeps counting every job in the state, so existing dashboards and
+    # alerts keep measuring the same thing.
+    internal_metric = "monitor.jobs.#{state}"
+    external_metric = {"state", [state: state]}
+
+    Watchman.submit(
+      [internal: internal_metric, external: external_metric],
+      cloud_count + self_hosted_count
+    )
+
+    # Per-tier breakdown under a distinct name, so a wildcard over the total's
+    # tag positions does not double count.
+    Watchman.submit({"monitor.jobs.#{state}_by_tier", ["cloud"]}, cloud_count)
+    Watchman.submit({"monitor.jobs.#{state}_by_tier", ["self_hosted"]}, self_hosted_count)
 
     {cloud_count, self_hosted_count}
+  end
+
+  # One query per state. Self-hosted machine types start with "s1-"; anything
+  # else (including a NULL machine_type) counts as cloud.
+  defp count_by_tier(query) do
+    query
+    |> group_by([j], fragment("? LIKE 's1-%'", j.machine_type))
+    |> select([j], {fragment("? LIKE 's1-%'", j.machine_type), count(j.id)})
+    |> LegacyRepo.all()
+    |> Enum.reduce({0, 0}, fn
+      {true, n}, {cloud, self_hosted} -> {cloud, self_hosted + n}
+      {_, n}, {cloud, self_hosted} -> {cloud + n, self_hosted}
+    end)
   end
 
   def count_scheduled_jobs do

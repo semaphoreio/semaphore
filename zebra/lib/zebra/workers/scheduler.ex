@@ -119,11 +119,21 @@ defmodule Zebra.Workers.Scheduler do
 
   def submit_no_capacity_metrics(scheduling_result) do
     spawn(fn ->
+      scheduling_result.no_capacity
+      |> Enum.each(fn {machine_type, value} ->
+        tags = [scheduling_result.org_username, machine_type]
+
+        Watchman.submit({"scheduler.no_capacity", tags}, value, :timing)
+      end)
+
+      # Breakdown by the limit that blocked the jobs. Only non-zero pairs are
+      # sent: the series above already carries the zeros, and sending every
+      # (machine_type, reason) pair would double the timer count per pass.
       scheduling_result.no_capacity_by_reason
       |> Enum.each(fn {{machine_type, reason}, value} ->
         tags = [scheduling_result.org_username, machine_type, to_string(reason)]
 
-        Watchman.submit({"scheduler.no_capacity", tags}, value, :timing)
+        Watchman.submit({"scheduler.no_capacity_by_reason", tags}, value, :timing)
       end)
     end)
   end
