@@ -6,7 +6,7 @@ import { promote, workflow } from "./store";
 export const promoting = signal<{ pipeline: Pipeline, promotion: Promotion, } | null>(null);
 export const promoteMenu = signal<{ id: string, x: number, y: number, } | null>(null);
 
-export const PromoteButton = ({ p }: { p: Pipeline, }) => {
+export const PromoteButton = ({ p, compact }: { p: Pipeline, compact?: boolean, }) => {
   if (!p.promotions?.length) return null;
   const fresh = p.promotions.filter((promotion) => !promotion.events.length).length;
   return (
@@ -14,13 +14,15 @@ export const PromoteButton = ({ p }: { p: Pipeline, }) => {
       className="btn btn-secondary btn-tiny wf-map-promote"
       aria-haspopup="menu"
       aria-expanded={promoteMenu.value?.id === p.id}
+      aria-label={compact ? `Promote ${p.name}` : undefined}
       title={fresh ? `${fresh} of ${p.promotions.length} promotions not run yet` : `${p.promotions.length} promotions`}
       onClick={(e) => {
         const r = e.currentTarget.getBoundingClientRect();
         promoteMenu.value = promoteMenu.value?.id === p.id ? null : { id: p.id, x: r.left, y: r.bottom + 4 };
       }}
     >
-      Promote ▾{fresh > 0 && <span className="wf-map-promote-count">{fresh}</span>}
+      {compact ? <span className="material-symbols-outlined" aria-hidden="true">rocket_launch</span> : `Promote ▾`}
+      {fresh > 0 && <span className="wf-map-promote-count">{fresh}</span>}
     </button>
   );
 };
