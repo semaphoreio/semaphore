@@ -126,7 +126,8 @@ describe(`refresh`, () => {
     workflow = { root_pipeline_id: `ci`, pipelines: [pipeline(`ci`, `Build & test`, null)] };
     pipelines = { ci: { ...detail(`ci`, []), done: false } };
     globalThis.fetch = ((url: string) => {
-      const { pathname, searchParams } = new URL(url, `http://localhost`);
+      const [pathname, query] = url.split(`?`);
+      const searchParams = new URLSearchParams(query);
       let body: unknown = workflow;
       if (pathname === config.pipelinesUrl) {
         const ids = searchParams.get(`ids`).split(`,`);
