@@ -497,6 +497,77 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
         end
       end
 
+      context "when no Semaphore ref can be created (without_reference)" do
+        def without_reference_data(workflow, head_sha: nil)
+          [:without_reference, { :mergeable => true, :commit_author => "octocat", :head_sha => head_sha || workflow.commit_sha }, ""]
+        end
+
+        def approve(**options)
+          allow(@workflow.payload).to receive_messages(
+            issue_number: 1,
+            pr_approval?: true,
+            comment_author: "maintainer",
+            comment_created_at: approval_comment_time,
+            **options
+          )
+        end
+
+        before do
+          allow(@logger).to receive(:info)
+          allow(Watchman).to receive(:increment)
+          allow(described_class).to receive_messages(approval_option_enabled?: true, can_approve_forked_pr?: true)
+        end
+
+        it "refuses to launch an approval that grants options" do
+          workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+          approve(pr_approval_include_secrets?: true)
+          allow(described_class).to receive(:update_pr_data).and_return(without_reference_data(workflow))
+
+          expect(described_class).not_to receive(:launch_pipeline)
+          expect(Watchman).to receive(:increment).with("hooks.pr_approval.options_without_reference")
+
+          described_class.run(@workflow, @logger)
+        end
+
+        it "fails closed when the fork head moved since approval" do
+          workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+          approve
+          allow(described_class).to receive(:update_pr_data).and_return(without_reference_data(workflow, head_sha: "pushed-after-approval"))
+
+          expect(described_class).not_to receive(:launch_pipeline)
+
+          described_class.run(@workflow, @logger)
+
+          expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_PR_APPROVAL_STALE)
+        end
+
+        it "still launches a bare approval whose fork head is unchanged" do
+          workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+          approve
+          allow(described_class).to receive(:update_pr_data).and_return(without_reference_data(workflow))
+
+          expect(described_class).to receive(:launch_pipeline).with(kind_of(Branch), workflow, @logger)
+
+          described_class.run(@workflow, @logger)
+        end
+
+        it "refuses a rescheduled approved workflow that carries options" do
+          workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+          payload = JSON.parse(workflow.request["payload"]).merge(
+            "semaphore_approval_include_secrets" => true,
+            "semaphore_approval" => { "include_secrets" => true, "approved_head_sha" => workflow.commit_sha }
+          )
+          workflow.update(:request => workflow.request.merge("payload" => payload.to_json))
+          workflow = Workflow.find(workflow.id)
+          allow(workflow.project).to receive_messages(build_forked_pr: true, allowed_contributors: "radwo")
+          allow(described_class).to receive(:update_pr_data).and_return(without_reference_data(workflow))
+
+          expect(described_class).not_to receive(:launch_pipeline)
+
+          described_class.run(workflow, @logger, "", "", 1)
+        end
+      end
+
       it "fails closed (STATE_PR_APPROVAL_STALE, no launch) when the fork head moved after approval" do
         workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
 

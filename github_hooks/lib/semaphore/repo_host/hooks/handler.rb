@@ -79,6 +79,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
     # path; used further down to fail closed if the fork pushes a new commit
     # between approval and launch (TOCTOU protection).
     approved_head_sha = nil
+    approved_options_granted = false
 
     if workflow.payload.pr_approval?
       # NOTE: We don't check the organization workflow restrictions here
@@ -201,6 +202,8 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
         return
       end
 
+      approved_options_granted = include_secrets || enable_cache
+
       options_persisted = mark_workflow_with_pr_approval_options(
         workflow,
         :include_secrets => include_secrets,
@@ -219,6 +222,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
       # /sem-approve already unblocked; keep the approval instead of filtering again.
       logger.info("pr-approval-resumed", :workflow_id => workflow.id)
       approved_head_sha = workflow.payload.approved_pr_head_sha
+      approved_options_granted = workflow.payload.pr_approval_include_secrets? || workflow.payload.pr_approval_enable_cache?
 
     elsif workflow.payload.pull_request_within_repo?
       # Check if project members can run pull-request workflows for this organization.
@@ -379,9 +383,25 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
 
           return
         when :without_reference
-          # No semaphoreci ref was created, so the launch runs the recorded
-          # fork head (approved_head_sha) directly rather than a freshly
-          # resolved merge commit — no TOCTOU window to guard here.
+          if approved_head_sha.present? && !approved_pr_head_unchanged?(meta, approved_head_sha)
+            logger.info("pr-approval-stale-head",
+                        :approved_head_sha => approved_head_sha,
+                        :live_head_sha => meta[:head_sha])
+            Watchman.increment("hooks.pr_approval.stale_head")
+            workflow.update(:state => Workflow::STATE_PR_APPROVAL_STALE)
+
+            return
+          end
+
+          # Jobs check out refs/pull/N/merge, which the fork can move after
+          # this check, so never hand secrets or cache to it.
+          if approved_options_granted
+            logger.info("pr-approval-options-without-reference", :workflow_id => workflow.id)
+            Watchman.increment("hooks.pr_approval.options_without_reference")
+
+            return
+          end
+
           logger.info("without-reference")
           workflow.update(:commit_author => meta[:commit_author])
         else
@@ -487,7 +507,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
 
       [:ok, { :pr => pr, :ref => ref, :merge_commit_sha => merge_commit_sha, :mergeable => mergeable, :commit_author => commit_author, :head_sha => head_sha }, msg]
     rescue RepoHost::RemoteException::Unauthorized, RepoHost::RemoteException::NotFound
-      [:without_reference, { :mergeable => mergeable, :commit_author => commit_author }, ""]
+      [:without_reference, { :mergeable => mergeable, :commit_author => commit_author, :head_sha => head_sha }, ""]
     end
   end
 
