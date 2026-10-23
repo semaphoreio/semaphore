@@ -45,7 +45,9 @@ defmodule Zebra.Workers.JobRequestFactory.RepoProxy do
   def find(nil), do: {:ok, nil}
 
   def find(hook_id) do
-    case Zebra.Cache.fetch!("repo_proxy-#{hook_id}", @cache_timeout, &find_/1) do
+    key = "repo_proxy-#{hook_id}"
+
+    case Zebra.Cache.fetch!(key, @cache_timeout, fn -> find_(key) end) do
       {:stop_job_processing, message} -> {:stop_job_processing, message}
       :error -> {:error, :communication_error}
       value -> {:ok, value}
