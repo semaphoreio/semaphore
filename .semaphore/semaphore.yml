@@ -3805,7 +3805,7 @@ blocks:
               value: "24"
           matrix:
             - env_var: ELIXIR_VERSION
-              values: ["1.11", "1.12", "1.13", "1.14"]
+              values: ["1.12", "1.13", "1.14"]
           commands:
             - make test
             - cache store deps-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock) deps
@@ -3816,7 +3816,7 @@ blocks:
               value: "25"
           matrix:
             - env_var: ELIXIR_VERSION
-              values: ["1.15", "1.16", "1.17", "1.18"]
+              values: ["1.16", "1.17", "1.18"]
           commands:
             - make test
             - cache store deps-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock) deps
@@ -3827,7 +3827,7 @@ blocks:
               value: "26"
           matrix:
             - env_var: ELIXIR_VERSION
-              values: ["1.15", "1.16", "1.17", "1.18"]
+              values: ["1.16", "1.17", "1.18"]
           commands:
             - make test
             - cache store deps-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock) deps
