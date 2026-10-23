@@ -33,6 +33,8 @@ RUN set -x \
   && echo "keycloak:x:10001:" >> /etc/group \
   && chown -R keycloak:keycloak /opt/keycloak
 
+COPY --from=base /etc/pki/ca-trust/extracted/ /etc/pki/ca-trust/extracted/
+
 COPY --chown=keycloak:keycloak --from=base /usr/bin/createdb /usr/bin/createdb
 
 # libs needed for above libs
