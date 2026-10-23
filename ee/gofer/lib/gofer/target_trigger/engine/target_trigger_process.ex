@@ -15,8 +15,6 @@ defmodule Gofer.TargetTrigger.Engine.TargetTriggerProcess do
   alias Util.ToTuple
   alias LogTee, as: LT
 
-  @time_to_live 40_000
-
   def start_link(params = {switch_trigger_id, target_name}) do
     ttp_id = switch_trigger_id <> target_name
     GenServer.start_link(__MODULE__, params, name: {:global, ttp_id})
@@ -115,7 +113,7 @@ defmodule Gofer.TargetTrigger.Engine.TargetTriggerProcess do
   defp calcualte_deadline(triggered_at) do
     triggered_at
     |> DateTime.to_naive()
-    |> NaiveDateTime.add(@time_to_live, :millisecond)
+    |> NaiveDateTime.add(target_trigger_ttl_ms(), :millisecond)
     |> DateTime.from_naive("Etc/UTC")
   end
 
@@ -226,4 +224,6 @@ defmodule Gofer.TargetTrigger.Engine.TargetTriggerProcess do
 
   defp to_str(term) when is_binary(term), do: term
   defp to_str(term), do: inspect(term)
+
+  defp target_trigger_ttl_ms, do: Application.get_env(:gofer, :target_trigger_ttl_ms, 40_000)
 end
