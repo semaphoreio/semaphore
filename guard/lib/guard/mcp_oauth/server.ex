@@ -271,50 +271,72 @@ defmodule Guard.McpOAuth.Server do
 
   defp get_authenticated_user(conn) do
     # Identity for the OAuth grant is taken from guard's authenticated web-login
-    # session. This mirrors Guard.GrpcServers.AuthServer's session resolution and
-    # is independent of any x-semaphore-user-id request header. An unauthenticated
-    # request is redirected to the OIDC login by the caller.
-    case session_user_id(conn) do
-      {:ok, user_id} ->
-        case Guard.Store.RbacUser.fetch(user_id) do
-          user when not is_nil(user) -> {:ok, user}
-          nil -> {:error, :not_authenticated}
-        end
-
-      :error ->
-        {:error, :not_authenticated}
+    # session and then resolved against the active-user store, so a blocked or
+    # deactivated account, or a warden session whose salt no longer matches
+    # (password reset / sign-out-everywhere), is rejected even with a live
+    # cookie. Mirrors Guard.GrpcServers.AuthServer.get_user/1 and is independent
+    # of any x-semaphore-user-id request header. An unauthenticated request is
+    # redirected to the OIDC login by the caller.
+    with {:ok, identity} <- session_identity(conn),
+         {:ok, user} <- resolve_active_user(identity) do
+      {:ok, user}
+    else
+      _ -> {:error, :not_authenticated}
     end
   end
 
-  # Resolves the logged-in user id from the authenticated session cookie.
+  # Resolves the session identity from the authenticated session cookie.
   # Mirrors Guard.GrpcServers.AuthServer: an OIDC web sign-in stores
-  # id_provider="OIDC" plus an oidc_session_id backed by a DB session row; a
-  # legacy Devise/warden sign-in stores the user id in warden.user.user.key.
-  # Both live inside the signed and encrypted session cookie. Anything else is
+  # id_provider="OIDC" plus an oidc_session_id backed by a DB session row and
+  # yields the user id; a legacy Devise/warden sign-in stores [[user.id],
+  # user.salt] in warden.user.user.key and yields the id plus the salt. Both
+  # live inside the signed and encrypted session cookie. Anything else is
   # treated as unauthenticated.
-  defp session_user_id(conn) do
+  defp session_identity(conn) do
     case get_session(conn, "id_provider") do
-      "OIDC" -> oidc_session_user_id(conn)
-      _ -> warden_session_user_id(conn)
+      "OIDC" -> oidc_session_identity(conn)
+      _ -> warden_session_identity(conn)
     end
   end
 
-  defp oidc_session_user_id(conn) do
+  defp oidc_session_identity(conn) do
+    # valid_for_auth?/1 gates on BOTH expiry and a present refresh token. The MCP
+    # flow consumes the session as identity but never refreshes it, so a revoked
+    # session (refresh_token_enc nulled, expires_at still in the future) must be
+    # rejected here exactly as Guard.GrpcServers.AuthServer.process_session/3
+    # rejects it. Sharing the predicate keeps the two from drifting.
     with session_id when is_binary(session_id) and session_id != "" <-
            get_session(conn, "oidc_session_id"),
          {:ok, session} <- Guard.Store.OIDCSession.get(session_id),
-         false <- Guard.Store.OIDCSession.expired?(session) do
-      {:ok, session.user_id}
+         true <- Guard.Store.OIDCSession.valid_for_auth?(session) do
+      {:ok, {:id, session.user_id}}
     else
       _ -> :error
     end
   end
 
-  defp warden_session_user_id(conn) do
+  defp warden_session_identity(conn) do
     case get_session(conn, "warden.user.user.key") do
-      [[user_id], _salt] when is_binary(user_id) and user_id != "" -> {:ok, user_id}
-      _ -> :error
+      [[user_id], salt] when is_binary(user_id) and user_id != "" and is_binary(salt) ->
+        {:ok, {:id_and_salt, user_id, salt}}
+
+      _ ->
+        :error
     end
+  end
+
+  # Resolves the session identity to an ACTIVE front user. Both
+  # active_user_by_id/1 and active_user_by_id_and_salt/2 filter out
+  # blocked_at / deactivated accounts (and the salt variant secure-compares the
+  # session salt against the stored one), so a blocked, deactivated or
+  # salt-revoked account resolves to {:error, :not_found}. Mirrors
+  # Guard.GrpcServers.AuthServer.get_user/1.
+  defp resolve_active_user({:id, user_id}) do
+    Guard.FrontRepo.User.active_user_by_id(user_id)
+  end
+
+  defp resolve_active_user({:id_and_salt, user_id, salt}) do
+    Guard.FrontRepo.User.active_user_by_id_and_salt(user_id, salt)
   end
 
   # sobelow_skip ["XSS.SendResp"]
