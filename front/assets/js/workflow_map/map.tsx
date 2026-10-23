@@ -49,7 +49,7 @@ const toggle = (s: typeof openPipelines, id: string, on?: boolean) => {
   s.value = next;
 };
 
-const PipelineActions = ({ p }: { p: Pipeline, }) => {
+const PipelineActions = ({ p, compact }: { p: Pipeline, compact?: boolean, }) => {
   const [busy, setBusy] = useState<`stop` | `rerun` | null>(null);
   if (!p.stopUrl && !p.rebuildUrl && !p.promotions?.length) return null;
   const run = async (kind: `stop` | `rerun`) => {
@@ -63,16 +63,22 @@ const PipelineActions = ({ p }: { p: Pipeline, }) => {
   return (
     <span className="wf-map-actions" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
       {p.stopUrl && (
-        <button className="btn btn-secondary btn-tiny" disabled={busy !== null} onClick={() => void run(`stop`)}>
-          {busy === `stop` ? `Stopping…` : `Stop`}
+        <button className="btn btn-secondary btn-tiny" disabled={busy !== null} aria-label={compact ? `Stop ${p.name}` : undefined} title={compact ? `Stop` : undefined} onClick={() => void run(`stop`)}>
+          {compact ? <span className="material-symbols-outlined" aria-hidden="true">stop</span> : busy === `stop` ? `Stopping…` : `Stop`}
         </button>
       )}
       {p.rebuildUrl && (
-        <button className="btn btn-secondary btn-tiny" disabled={busy !== null} title="Reruns only the jobs that did not pass, keeping the ones that did" onClick={() => void run(`rerun`)}>
-          {busy === `rerun` ? `Rerunning…` : `Rerun failed`}
+        <button
+          className="btn btn-secondary btn-tiny"
+          disabled={busy !== null}
+          aria-label={compact ? `Rerun the failed jobs of ${p.name}` : undefined}
+          title={compact ? `Rerun failed: reruns only the jobs that did not pass` : `Reruns only the jobs that did not pass, keeping the ones that did`}
+          onClick={() => void run(`rerun`)}
+        >
+          {compact ? <span className="material-symbols-outlined" aria-hidden="true">replay</span> : busy === `rerun` ? `Rerunning…` : `Rerun failed`}
         </button>
       )}
-      <PromoteButton p={p}/>
+      <PromoteButton p={p} compact={compact}/>
     </span>
   );
 };
@@ -102,7 +108,7 @@ const CardNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
         <span className="wf-map-card-title">
           <PipelineTitle p={p}/>
         </span>
-        <PipelineActions p={p}/>
+        <PipelineActions p={p} compact/>
         <Duration start={p.runningAt} end={p.doneAt} running={p.status === `running`}/>
       </span>
       {p.blocks ? <StatusBar jobs={jobs}/> : <span className="wf-map-bar loading"/>}
