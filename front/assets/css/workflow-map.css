@@ -849,59 +849,6 @@ a.wf-map-job:hover {
   border-top: 0;
 }
 
-.wf-canvas-page {
-  position: relative;
-}
-
-.wf-canvas-page .wf-map {
-  margin-left: 0;
-  margin-right: 0;
-  padding-top: 0;
-  border-top: 0;
-}
-
-.wf-canvas-page .wf-map-canvas {
-  border-top: 0;
-}
-
-.wf-canvas-float {
-  position: absolute;
-  z-index: 10;
-  top: 12px;
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: var(--wf-map-shadow, 0 1px 3px 0 rgba(0, 0, 0, .16), 0 0 0 1px rgba(0, 0, 0, .08));
-}
-
-.wf-canvas-head {
-  left: 12px;
-  width: min(620px, calc(100% - 24px));
-  padding: 10px 12px 12px;
-}
-
-.wf-canvas-head .wf-head-actions {
-  margin-top: 8px;
-}
-
-.wf-canvas-head .wf-map-toolbar {
-  padding: 10px 0 0;
-  margin-top: 10px;
-  border-top: 1px solid #E5E8EA;
-}
-
-.wf-canvas-tabs {
-  right: 12px;
-  padding: 0 8px;
-}
-
-.wf-canvas-tabs .tabs::after {
-  display: none;
-}
-
-.wf-canvas-page .react-flow__panel.top.right {
-  top: 52px;
-}
-
 .wf-map .react-flow .react-flow__edge .react-flow__edge-path.wf-map-edge-running,
 .wf-map .react-flow .react-flow__edge .react-flow__edge-path.wf-map-edge-queued {
   stroke-width: 2;
@@ -947,18 +894,4 @@ a.wf-map-job:hover {
   .wf-map-bar-queued {
     animation: none;
   }
-}
-
-.wf-map-layout {
-  display: inline-flex;
-}
-
-.wf-map-layout .btn + .btn {
-  margin-left: -1px;
-}
-
-.wf-map-layout .btn.active {
-  background: #202B30;
-  border-color: #202B30;
-  color: #fff;
 }
