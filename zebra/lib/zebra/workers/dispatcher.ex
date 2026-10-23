@@ -83,7 +83,13 @@ defmodule Zebra.Workers.Dispatcher do
 
   def dispatch_self_hosted_job(job) do
     with {:ok, agent} <- SelfHostedAgent.occupy(job),
-         {:ok, _} <- update_job(job, agent) do
+         {:ok, updated_job} <- update_job(job, agent) do
+      # Only legacy SHH versions return the agent here and start the job
+      # directly. Current SHH parks the job in waiting-for-agent (started_at is
+      # nil, so this is a no-op) and the latency is emitted by
+      # JobStartedCallbackWorker when the job actually starts.
+      submit_self_hosted_metrics(updated_job)
+
       :ok
     else
       e ->
@@ -102,9 +108,24 @@ defmodule Zebra.Workers.Dispatcher do
   end
 
   def submit_metrics(job) do
+    submit_dispatching_metrics("job.dispatching.duration", "job.dispatching.histogram", job)
+  end
+
+  # Self-hosted latency goes to distinct metric names so it never mixes into the
+  # cloud-only `job.dispatching.duration` and `job.dispatching.histogram` series
+  # (which existing dashboards read as-is).
+  def submit_self_hosted_metrics(job) do
+    submit_dispatching_metrics(
+      "job.dispatching.self_hosted.duration",
+      "job.dispatching.self_hosted.histogram",
+      job
+    )
+  end
+
+  defp submit_dispatching_metrics(duration_metric, histogram_metric, job) do
     case Zebra.Time.datetime_diff_in_ms(job.started_at, job.scheduled_at) do
       {:ok, ms} ->
-        Watchman.submit("job.dispatching.duration", ms, :timing)
+        Watchman.submit(duration_metric, ms, :timing)
 
         tags = [
           job.organization_id,
@@ -112,7 +133,7 @@ defmodule Zebra.Workers.Dispatcher do
           duration_bucket(ms / 1000)
         ]
 
-        Watchman.increment({"job.dispatching.histogram", tags})
+        Watchman.increment({histogram_metric, tags})
 
       _ ->
         nil
