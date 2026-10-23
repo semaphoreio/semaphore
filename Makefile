@@ -327,7 +327,7 @@ registry.configure:
 	@printf "%s" "$(GITHUB_TOKEN)" | docker login ghcr.io -u "$(GITHUB_USERNAME)" --password-stdin
 
 registry.helm.configure:
-	@printf "%s" "$(GITHUB_TOKEN)" | helm registry login ghcr.io/semaphoreio --username "$(GITHUB_USERNAME)" --password-stdin
+	@printf "%s" "$(GITHUB_TOKEN)" | helm registry login ghcr.io --username "$(GITHUB_USERNAME)" --password-stdin
 
 cosign.install:
 	curl -O -L "https://github.com/sigstore/cosign/releases/download/v2.4.1/cosign-linux-amd64" && \
