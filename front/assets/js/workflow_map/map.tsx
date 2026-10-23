@@ -301,17 +301,6 @@ function boxOf(wf: Workflow, L: MapLayout, id: string) {
   return p && bb && { x: p.x + bb.x, y: p.y + bb.y, w: bb.w, h: bb.h };
 }
 
-const canvasInset = () => {
-  const card = document.querySelector(`.wf-canvas-head`);
-  const pane = document.querySelector(`.wf-map-canvas`);
-  return card && pane ? Math.max(0, card.getBoundingClientRect().bottom - pane.getBoundingClientRect().top) : 0;
-};
-
-const fitPadding = () => {
-  const top = canvasInset();
-  return top ? { top: `${top + 16}px` as const, x: 0.06, bottom: 0.06 } : 0.06;
-};
-
 const WorkflowMap = () => {
   const rf = useReactFlow();
   const wf = workflow.value;
@@ -329,7 +318,7 @@ const WorkflowMap = () => {
   const go = (L: MapLayout, t: Target) => {
     const p = wf.pipelineById.get(t.id);
     if (t.how === `all` || (!p && !wf.blocks.has(t.id))) {
-      void rf.fitView({ padding: fitPadding(), maxZoom: 1, duration: 400 });
+      void rf.fitView({ padding: 0.06, maxZoom: 1, duration: 400 });
       return true;
     }
     if (p && P.has(p.id) && (p.blocks === null || (p.blocks.length && !L.pipelines.get(p.id)?.open))) return false;
@@ -341,10 +330,9 @@ const WorkflowMap = () => {
     } else if (t.job !== undefined) {
       void rf.setCenter(cx, b.y + BLOCK_HEAD_H + t.job * JOB_ROW_H + 11, { zoom: Math.max(rf.getZoom(), 1), duration: 450 });
     } else {
-      const top = canvasInset();
       const pad = p ? 1.12 : 1.6;
-      const z = Math.max(0.1, Math.min(1, vw / (b.w * pad), (vh - top) / (b.h * pad)));
-      void rf.setViewport({ x: vw / 2 - cx * z, y: top + (vh - top) / 2 - (b.y + b.h / 2) * z, zoom: z }, { duration: 450 });
+      const z = Math.max(0.1, Math.min(1, vw / (b.w * pad), vh / (b.h * pad)));
+      void rf.setViewport({ x: vw / 2 - cx * z, y: vh / 2 - (b.y + b.h / 2) * z, zoom: z }, { duration: 450 });
     }
     return true;
   };
@@ -397,7 +385,6 @@ const WorkflowMap = () => {
   };
 
   if (!graph) return <div className="wf-map-loading">Loading the workflow…</div>;
-  const pageLayout = document.querySelector(`.wf-canvas-page`) ? `canvas` : document.querySelector(`.wf-compact-head`) ? `compact` : null;
   return (
     <ReactFlow
       nodes={graph.nodes}
@@ -431,7 +418,7 @@ const WorkflowMap = () => {
       />
       <Panel position="top-right">
         <div className="wf-map-tools">
-          <button className="btn btn-secondary btn-small" onClick={() => void rf.fitView({ duration: 400, padding: fitPadding() })}>
+          <button className="btn btn-secondary btn-small" onClick={() => void rf.fitView({ duration: 400, padding: 0.06 })}>
             Fit workflow
           </button>
           <button className="btn btn-secondary btn-small" onClick={() => (aim({ id: ``, how: `all` }), (openPipelines.value = new Set(wf.pipelines.map((p) => p.id))))}>
@@ -444,25 +431,6 @@ const WorkflowMap = () => {
             <button className="btn btn-secondary btn-small" onClick={openMatches} disabled={!h.pipelines.size}>
               Open matches
             </button>
-          )}
-          {pageLayout && (
-            <span className="wf-map-layout" role="group" aria-label="Page layout">
-              {([`compact`, `canvas`] as const).map((l) => (
-                <button
-                  key={l}
-                  className={`btn btn-secondary btn-small ${pageLayout === l ? `active` : ``}`}
-                  aria-pressed={pageLayout === l}
-                  onClick={() => {
-                    document.cookie = `wf_map_layout=${l}; path=/; max-age=31536000; SameSite=Lax`;
-                    const url = new URL(window.location.href);
-                    url.searchParams.delete(`layout`);
-                    window.location.assign(url.toString());
-                  }}
-                >
-                  {l === `compact` ? `Compact` : `Canvas`}
-                </button>
-              ))}
-            </span>
           )}
           <span className="wf-map-zoom">{Math.round(zoom * 100)}%</span>
         </div>

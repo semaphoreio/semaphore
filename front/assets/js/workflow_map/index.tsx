@@ -1,5 +1,4 @@
 import { render } from "preact";
-import { createPortal } from "preact/compat";
 import { useEffect, useRef } from "preact/hooks";
 import { Config, loadError, now, onNudge, refresh, resetState } from "./store";
 import { initLayout } from "./layout";
@@ -7,7 +6,7 @@ import { MapCanvas, aim, openBlocks, openPipelines } from "./map";
 import { PromoteDialog, PromoteMenu, promoteMenu, promoting } from "./promote";
 import { Toolbar } from "./toolbar";
 
-const App = ({ config, toolbarSlot }: { config: Config, toolbarSlot: HTMLElement | null, }) => {
+const App = ({ config }: { config: Config, }) => {
   const root = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -54,7 +53,7 @@ const App = ({ config, toolbarSlot }: { config: Config, toolbarSlot: HTMLElement
 
   return (
     <div className="wf-map-app" ref={root}>
-      {toolbarSlot ? createPortal(<Toolbar/>, toolbarSlot) : <Toolbar/>}
+      <Toolbar/>
       {loadError.value && <div className="wf-map-alert">{loadError.value}</div>}
       <div className="wf-map-canvas">
         <MapCanvas/>
@@ -75,5 +74,5 @@ export default function WorkflowMap({ dom, config }: { dom: HTMLElement, config:
   openPipelines.value = new Set([config.selectedPipelineId]);
   aim({ id: config.selectedPipelineId, how: `fit` });
   openBlocks.value = new Set();
-  render(<App config={config} toolbarSlot={document.getElementById(`wf-map-toolbar-slot`)}/>, dom);
+  render(<App config={config}/>, dom);
 }

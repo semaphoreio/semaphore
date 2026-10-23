@@ -4,7 +4,7 @@
   <% else %>
     <button class="btn btn-secondary btn-small" disabled>Rerun Workflow</button>
   <% end %>
-  <%= if assigns[:map_layout] do %>
+  <%= if assigns[:edit_workflow?] do %>
     <%= link to: "/workflows/#{@workflow.id}/edit" do %>
       <button id="editWorkflow" class="btn btn-secondary btn-small" <%= if !assigns[:permissions]["project.workflow.manage"], do: "disabled" %>>Edit Workflow</button>
     <% end %>

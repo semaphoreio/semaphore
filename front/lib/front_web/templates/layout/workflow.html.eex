@@ -2,30 +2,15 @@
   <%= if @showForkExplanation? do %>
     <%= render "workflow/_fork_explanation.html", project: @project %>
   <% end %>
-  <% map_header? = FeatureProvider.feature_enabled?(:ui_workflow_map, param: @conn.assigns[:organization_id]) %>
-  <%= cond do %>
-    <% map_header? and assigns[:map_layout] == :canvas -> %>
-      <div class="wf-canvas-page nh3 nh4-m nt3 nt4-m">
-        <div class="wf-canvas-float wf-canvas-head">
-          <%= render "workflow/_map_summary.html", assigns %>
-          <%= render "workflow/_map_actions.html", assigns %>
-          <div id="wf-map-toolbar-slot" class="wf-map"></div>
-        </div>
-        <div class="wf-canvas-float wf-canvas-tabs">
-          <div class="tabs"><%= render "workflow/_tabs.html", assigns %></div>
-        </div>
-        <%= Map.get(assigns, :nested_layout) || @inner_content %>
+  <%= if FeatureProvider.feature_enabled?(:ui_workflow_map, param: @conn.assigns[:organization_id]) do %>
+    <div class="wf-compact-head nh3 nh4-m nt3 nt4-m">
+      <%= render "workflow/_map_summary.html", assigns %>
+      <div class="wf-compact-row">
+        <div class="tabs"><%= render "workflow/_tabs.html", assigns %></div>
+        <%= render "workflow/_map_actions.html", assigns %>
       </div>
-    <% map_header? -> %>
-      <div class="wf-compact-head nh3 nh4-m nt3 nt4-m">
-        <%= render "workflow/_map_summary.html", assigns %>
-        <div class="wf-compact-row">
-          <div class="tabs"><%= render "workflow/_tabs.html", assigns %></div>
-          <%= render "workflow/_map_actions.html", assigns %>
-        </div>
-      </div>
-      <%= Map.get(assigns, :nested_layout) || @inner_content %>
-    <% true -> %>
+    </div>
+  <% else %>
   <div class="bb b--lighter-gray nt3-m pb3">
     <div class="flex-l items-end nh3">
       <div class="ph3">
@@ -96,7 +81,7 @@
       <%= render "workflow/_tabs.html", assigns %>
     </div>
   </div>
-  <%= Map.get(assigns, :nested_layout) || @inner_content %>
   <% end %>
+  <%= Map.get(assigns, :nested_layout) || @inner_content %>
   <%= render "workflow/_cli_popup.html", workflow: @workflow, organization: @organization %>
 <% end %>
