@@ -487,3 +487,8 @@ sem-popover {
 
 .job-reused { opacity: 0.55; }
 .job-reused:hover { opacity: 0.85; }
+
+.job-visibility-button:focus-visible {
+  outline: 2px solid #3b4148;
+  outline-offset: 3px;
+}

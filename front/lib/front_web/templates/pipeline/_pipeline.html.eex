@@ -15,6 +15,8 @@
     <% @pipeline.state == :INITIALIZING -> %>
       <%= render FrontWeb.PipelineView, "pipeline/_waiting_for_diagram.html" %>
     <% true -> %>
+      <% counts = job_counts(@pipeline.blocks) %>
+      <sem-pipeline-job-filter props="<%= Poison.encode!(%{pipelineId: @pipeline.id, counts: %{currentRun: counts.current_run, reused: counts.reused, skipped: counts.skipped}}) %>"></sem-pipeline-job-filter>
       <%= render FrontWeb.PipelineView, "pipeline/_waiting_for_quota.html", pipeline: @pipeline, conn: @conn %>
       <%= render FrontWeb.PipelineView, "pipeline/_diagram.html", pipeline: @pipeline, conn: @conn %>
   <% end %>

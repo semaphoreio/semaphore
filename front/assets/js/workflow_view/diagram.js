@@ -2,6 +2,7 @@ import $ from "jquery"
 import { graphlib, render } from 'dagre-d3'
 import { select } from 'd3-selection'
 import { curveBasis } from 'd3-shape'
+import { filterReusedJobs, getJobVisibility } from './job_visibility'
 
 export var Diagram = {
   html: function(html) {
@@ -41,7 +42,7 @@ export var Diagram = {
       if (showSkipped || !node.skipped) {
         g.setNode(node.name, {
           labelType: "html",
-          label: node.html,
+          label: filterReusedJobs(node.html, getJobVisibility(pipeline_id)),
           padding: -12
         });
       }
