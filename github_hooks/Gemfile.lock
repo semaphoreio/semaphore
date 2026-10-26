@@ -498,7 +498,7 @@ DEPENDENCIES
   bunny
   concurrent-ruby (>= 1.3.7)
   connection_pool (< 3)
-  crass (~> 1.0, >= 1.0.7)
+  crass (~> 1.0, >= 1.0.8)
   database_cleaner
   dotenv (~> 3.0)
   erb (>= 6.0.4)
