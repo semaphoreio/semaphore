@@ -1443,6 +1443,30 @@ defmodule Guard.GrpcServers.UserServerTest do
              } == response
     end
 
+    test "get_repository_token reports a released link in the shape repository_hub disconnects on",
+         %{grpc_channel: channel} do
+      # A claim deletes the losing rows, so the user can have no link at all.
+      # repository_hub's GithubAdapter.SyncRepositoryAction disconnect_error?/1
+      # string-matches this reply to mark the repository not-connected; if the
+      # message changes here, it silently stays connected with a dead token.
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      request =
+        User.GetRepositoryTokenRequest.new(
+          user_id: user.id,
+          integration_type:
+            InternalApi.RepositoryIntegrator.IntegrationType.value(:GITHUB_OAUTH_TOKEN)
+        )
+
+      {:error, response} = channel |> Stub.get_repository_token(request)
+
+      assert %GRPC.RPCError{
+               status: GRPC.Status.not_found(),
+               message: "Integration 'GITHUB_OAUTH_TOKEN' not found."
+             } == response
+    end
+
     test "get_repository_token should return a valid github repository token",
          %{grpc_channel: channel, user: user} do
       Tesla.Mock.mock_global(fn
