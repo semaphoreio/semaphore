@@ -3243,6 +3243,74 @@ defmodule Projecthub.Api.GrpcServerTest do
       assert preserved.allow_sem_approve_enable_cache == true
     end
 
+    for {label, run_on, contributors} <- [
+          {"forked pull requests are disabled", [:BRANCHES], ["trusted-user"]},
+          {"trusted contributors are removed", [:BRANCHES, :FORKED_PULL_REQUESTS], []}
+        ] do
+      test "clears stored sem-approve options when #{label} while the feature is disabled" do
+        {:ok, channel} =
+          GRPC.Stub.connect("localhost:50051",
+            interceptors: [
+              Projecthub.Util.GRPC.ClientRequestIdInterceptor,
+              Projecthub.Util.GRPC.ClientLoggerInterceptor,
+              Projecthub.Util.GRPC.ClientRunAsyncInterceptor
+            ]
+          )
+
+        {:ok, project} =
+          Support.Factories.Project.create_with_repo(%{
+            allow_sem_approve_include_secrets: true,
+            allow_sem_approve_enable_cache: true
+          })
+
+        request =
+          InternalApi.Projecthub.UpdateRequest.new(
+            metadata:
+              InternalApi.Projecthub.RequestMeta.new(
+                org_id: project.organization_id,
+                user_id: "12345678-1234-5678-1234-567812345678"
+              ),
+            project:
+              InternalApi.Projecthub.Project.new(
+                metadata:
+                  InternalApi.Projecthub.Project.Metadata.new(
+                    name: "organization",
+                    id: project.id,
+                    owner_id: project.creator_id,
+                    org_id: project.organization_id,
+                    description: "A repo for testing SemaphoreCI features"
+                  ),
+                spec:
+                  InternalApi.Projecthub.Project.Spec.new(
+                    repository:
+                      InternalApi.Projecthub.Project.Spec.Repository.new(
+                        url: "git@github.com:myorg/hello-world.git",
+                        run_on: unquote(run_on),
+                        forked_pull_requests:
+                          InternalApi.Projecthub.Project.Spec.Repository.ForkedPullRequests.new(
+                            allowed_contributors: unquote(contributors),
+                            allow_sem_approve_include_secrets: true,
+                            allow_sem_approve_enable_cache: true
+                          )
+                      ),
+                    schedulers: []
+                  )
+              )
+          )
+
+        FunRegistry.set!(Support.FakeServices.FeatureService, :list_organization_features, fn _req, _ ->
+          InternalApi.Feature.ListOrganizationFeaturesResponse.new(organization_features: [])
+        end)
+
+        {:ok, response} = Stub.update(channel, request)
+        assert response.metadata.status.code == :OK
+
+        {:ok, cleared} = Projecthub.Models.Project.find(project.id)
+        assert cleared.allow_sem_approve_include_secrets == false
+        assert cleared.allow_sem_approve_enable_cache == false
+      end
+    end
+
     test "when the project can't be found => returns not found" do
       {:ok, channel} =
         GRPC.Stub.connect("localhost:50051",

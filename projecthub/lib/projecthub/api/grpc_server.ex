@@ -1028,6 +1028,8 @@ defmodule Projecthub.Api.GrpcServer do
     forked_pull_requests = project_spec.repository.forked_pull_requests
     sem_approve_options_enabled = sem_approve_options_enabled?(org_id)
 
+    existing_project = if sem_approve_prerequisites_met?(project_spec.repository), do: existing_project
+
     if forked_pull_requests do
       %{
         allowed_secrets: Enum.join(forked_pull_requests.allowed_secrets, ","),
@@ -1082,6 +1084,15 @@ defmodule Projecthub.Api.GrpcServer do
 
   defp sem_approve_option_value(false, _requested, existing_project, key),
     do: Map.get(existing_project, key, false)
+
+  # A preserved grant must not outlive the forked-PR and trusted-contributor
+  # settings it was validated against.
+  defp sem_approve_prerequisites_met?(repository) do
+    forked_pull_requests = repository.forked_pull_requests
+
+    Enum.member?(repository.run_on, :FORKED_PULL_REQUESTS) and forked_pull_requests != nil and
+      Enum.any?(forked_pull_requests.allowed_contributors, &(String.trim(&1) != ""))
+  end
 
   # The sem-approve command options are only honored/persisted when the
   # `sem_approve_options` feature is enabled for the organization.
