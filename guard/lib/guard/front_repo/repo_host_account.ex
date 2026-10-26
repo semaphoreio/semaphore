@@ -707,12 +707,12 @@ defmodule Guard.FrontRepo.RepoHostAccount do
 
   # At most one user per GitHub identity. Revoked links do not block - they
   # are deleted by release_revoked_uid_rows/1 once the claim succeeds.
-  defp validate_github_uid_not_taken(changeset, releasable_ids) do
+  defp validate_github_uid_not_taken(changeset) do
     repo_host = Ecto.Changeset.get_field(changeset, :repo_host)
     uid = Ecto.Changeset.get_field(changeset, :github_uid)
 
     if repo_host == "github" and uid not in [nil, ""] and
-         uid_actively_held_by_other?(changeset, repo_host, uid, releasable_ids) do
+         uid_actively_held_by_other?(changeset, repo_host, uid) do
       Ecto.Changeset.add_error(changeset, :github_uid, @uid_taken_message,
         validation: :unsafe_unique
       )
@@ -757,11 +757,20 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     |> FrontRepo.one()
   end
 
-  defp uid_actively_held_by_other?(changeset, repo_host, uid, releasable_ids) do
+  # Blocking and releasing answer different questions. This one is only "may
+  # this row be active?", so a sharer blocks when it is active or still inside
+  # the grace window. A revoked, past-grace sharer does not block even when its
+  # token works - otherwise two revoked rows on one uid, which a bare 403 still
+  # produces, block each other's un-revoke forever and both users are stuck at
+  # no connection. It is not released either: see release_and_enqueue_sync/2,
+  # which only takes rows the provider confirmed dead.
+  defp uid_actively_held_by_other?(changeset, repo_host, uid) do
     query =
       from(r in __MODULE__,
         where: r.repo_host == ^repo_host and r.github_uid == ^uid,
-        where: r.id not in ^releasable_ids
+        where:
+          coalesce(r.revoked, false) == false or
+            r.updated_at > ago(^@revoked_claim_grace_seconds, "second")
       )
 
     query =
@@ -844,12 +853,18 @@ defmodule Guard.FrontRepo.RepoHostAccount do
   # released on commit or rollback, and the check is re-run under it - running
   # it only outside, as the changeset builders do, decides on a stale read.
   defp claim_uid(changeset, fun) do
-    releasable = confirmed_dead_sharers(changeset)
+    dead = confirmed_dead_sharers(changeset)
 
     transact_claim(fn ->
       case lock_uid(changeset) do
         :locked ->
-          case recheck_uid(changeset, releasable) do
+          # The provider answer was read before the lock, so a row it found
+          # dead may have un-revoked since. Narrow the set under the lock and
+          # let both the gate and the release work from that - using the
+          # pre-lock list directly would skip a row that is active again.
+          releasable = still_releasable(changeset, dead)
+
+          case recheck_uid(changeset) do
             %Ecto.Changeset{valid?: true} = checked -> fun.(checked, releasable)
             invalid -> {:error, invalid}
           end
@@ -858,6 +873,24 @@ defmodule Guard.FrontRepo.RepoHostAccount do
           fun.(changeset, [])
       end
     end)
+  end
+
+  defp still_releasable(_changeset, []), do: []
+
+  defp still_releasable(changeset, dead) do
+    repo_host = Ecto.Changeset.get_field(changeset, :repo_host)
+    uid = Ecto.Changeset.get_field(changeset, :github_uid)
+
+    from(r in __MODULE__,
+      where: r.repo_host == ^repo_host and r.github_uid == ^uid,
+      where: r.id in ^dead,
+      where: r.revoked == true,
+      where:
+        is_nil(r.updated_at) or
+          r.updated_at <= ago(^@revoked_claim_grace_seconds, "second"),
+      select: r.id
+    )
+    |> FrontRepo.all()
   end
 
   defp lock_uid(changeset) do
@@ -888,10 +921,8 @@ defmodule Guard.FrontRepo.RepoHostAccount do
 
   # An already-invalid changeset keeps its errors; re-running the check would
   # only duplicate them.
-  defp recheck_uid(%Ecto.Changeset{valid?: false} = changeset, _releasable), do: changeset
-
-  defp recheck_uid(changeset, releasable),
-    do: validate_github_uid_not_taken(changeset, releasable)
+  defp recheck_uid(%Ecto.Changeset{valid?: false} = changeset), do: changeset
+  defp recheck_uid(changeset), do: validate_github_uid_not_taken(changeset)
 
   # A claim is one unit of work: the uid write, the losers' deletion and the
   # outbox row. Keycloak stays outside - FederatedIdentitySync defers while
@@ -955,13 +986,9 @@ defmodule Guard.FrontRepo.RepoHostAccount do
           from(r in __MODULE__,
             where: r.repo_host == ^account.repo_host and r.github_uid == ^account.github_uid,
             where: r.id != ^account.id,
+            # still_releasable/2 already applied revoked and the grace under
+            # the lock; re-checking here would only duplicate it.
             where: r.id in ^releasable_ids,
-            where: r.revoked == true,
-            # Exact complement of the blocking predicate. updated_at is
-            # nullable and NULL fails both > and <=, so is_nil/1 is required.
-            where:
-              is_nil(r.updated_at) or
-                r.updated_at <= ago(^@revoked_claim_grace_seconds, "second"),
             select: r.user_id
           )
           |> FrontRepo.delete_all()

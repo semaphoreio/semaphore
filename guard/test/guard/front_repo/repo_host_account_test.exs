@@ -515,7 +515,10 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
         {:ok, %Tesla.Env{status: 200, body: %{}}}
       end)
 
-      assert {:error, %Ecto.Changeset{} = changeset} =
+      # The claim goes through - a revoked, past-grace row does not block, or two
+      # revoked rows on one uid would deadlock (B6). What must not happen is the
+      # deletion: this row's token works, so it keeps its credentials.
+      assert {:ok, _claimer} =
                RepoHostAccount.create(%{
                  login: "claimer",
                  github_uid: "40001",
@@ -525,8 +528,7 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
                  permission_scope: "user:email"
                })
 
-      assert RepoHostAccount.uid_taken_error?(changeset)
-      assert RepoHostAccount.reload(live)
+      assert %RepoHostAccount{revoked: true} = RepoHostAccount.reload(live)
     end
 
     test "a revoked link is not released when the provider answer is transient" do
@@ -539,7 +541,7 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
         {:ok, %Tesla.Env{status: 500, body: %{}}}
       end)
 
-      assert {:error, %Ecto.Changeset{} = changeset} =
+      assert {:ok, _claimer} =
                RepoHostAccount.create(%{
                  login: "claimer",
                  github_uid: "40002",
@@ -549,8 +551,61 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
                  permission_scope: "user:email"
                })
 
+      assert %RepoHostAccount{revoked: true} = RepoHostAccount.reload(unknown)
+    end
+
+    test "two revoked links on one uid do not block each other forever" do
+      # A bare 403 still latches revoked, so a pair can end up revoked with
+      # working tokens. If each blocked the other's un-revoke, both users would
+      # sit at no connection with no way out.
+      {_a, first} = Support.Members.insert_user_with_github_account(github_uid: "60001")
+      {_b, second} = Support.Members.insert_user_with_github_account(github_uid: "60001")
+
+      {:ok, first} = RepoHostAccount.update_revoke_status(first, true)
+      {:ok, second} = RepoHostAccount.update_revoke_status(second, true)
+      :ok = Support.Members.age_repo_host_account(first)
+      :ok = Support.Members.age_repo_host_account(second)
+
+      # Both tokens still work, so neither row is releasable - which is exactly
+      # the state that used to deadlock.
+      Tesla.Mock.mock_global(fn %{method: :get, url: "https://api.github.com" <> _} ->
+        {:ok, %Tesla.Env{status: 200, body: %{}}}
+      end)
+
+      assert {:ok, _} = RepoHostAccount.update_revoke_status(first, false)
+      refute RepoHostAccount.reload(first).revoked
+
+      # The loser keeps its row: first is active now, so it blocks.
+      assert {:error, changeset} = RepoHostAccount.update_revoke_status(second, false)
       assert RepoHostAccount.uid_taken_error?(changeset)
-      assert RepoHostAccount.reload(unknown)
+      assert RepoHostAccount.reload(second)
+    end
+
+    test "a sharer that un-revoked after the provider was asked blocks the claim" do
+      # confirmed_dead_sharers/1 reads the provider before the lock, so its
+      # verdict can be stale. The gate does not trust it: it re-reads revoked
+      # under the lock, so a row that healed in the window still blocks.
+      {_owner, healed} = Support.Members.insert_user_with_github_account(github_uid: "60002")
+      {:ok, healed} = RepoHostAccount.update_revoke_status(healed, true)
+      :ok = Support.Members.age_repo_host_account(healed)
+
+      Support.Members.stub_dead_github_token()
+
+      # Stand in for the race: the row is active again by the time the lock is held.
+      {:ok, healed} = RepoHostAccount.update_revoke_status(healed, false)
+
+      assert {:error, %Ecto.Changeset{} = changeset} =
+               RepoHostAccount.create(%{
+                 login: "claimer",
+                 github_uid: "60002",
+                 repo_host: "github",
+                 user_id: Ecto.UUID.generate(),
+                 name: "Claimer",
+                 permission_scope: "user:email"
+               })
+
+      assert RepoHostAccount.uid_taken_error?(changeset)
+      refute RepoHostAccount.reload(healed).revoked
     end
 
     test "uid_taken_error?/1 is false for other changeset errors" do
