@@ -645,6 +645,22 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
         end
       end
 
+      context "when the creator's link was released by a claim" do
+        before do
+          # guard's claim deletes the losing rows outright, so the project is
+          # left pointing at a creator with no repo_host_account at all.
+          @project.creator.repo_host_accounts.destroy_all
+          @project.creator.reload
+        end
+
+        it "reports no connection instead of failing the RPC", :aggregate_failures do
+          response = server.check_token(@req, call)
+
+          expect(response.valid).to be(false)
+          expect(response.integration_scope).to eq(:NO_CONNECTION)
+        end
+      end
+
       context "when the token check is rate limited" do
         let(:permission_scope) { "repo,user:email" }
 

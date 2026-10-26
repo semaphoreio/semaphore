@@ -121,6 +121,13 @@ module InternalApi
           end
         elsif ::Semaphore::GuardUserClient.owns?(project.repository.integration_type)
           valid, scope = guard_connection(project)
+        elsif project.repo_host_account.nil?
+          # A claim releases the losing rows outright, so the creator of a
+          # project can end up with no link at all. That is exactly no
+          # connection - reporting it beats dereferencing the nil and failing
+          # the RPC as an unexpected error.
+          valid = false
+          scope = InternalApi::RepositoryIntegrator::IntegrationScope::NO_CONNECTION
         else
           connection = update_revoke_status(project.repo_host_account)
           repository = project.repository
