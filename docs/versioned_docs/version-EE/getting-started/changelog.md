@@ -1,12 +1,12 @@
 ---
-description: Semaphore change log for Semaphore CE.
+description: Semaphore change log for Semaphore EE.
 ---
 
 # Change Log
 
 Thank you for using Semaphore!
 
-This page shows changes in all Semaphore CE versions.
+This page shows changes in all Semaphore EE versions.
 
 ## Version 1.6.0
 
