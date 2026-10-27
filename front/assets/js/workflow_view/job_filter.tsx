@@ -31,7 +31,7 @@ export const JobFilter = ({ pipelineId, counts }: JobFilterProps) => {
       <div role="group" aria-label="Job visibility" className="job-visibility-pill" data-visibility={visibility}>
         <button
           type="button"
-          className="job-visibility-button"
+          className="job-visibility-button btn-small"
           aria-pressed={visibility === `all`}
           onClick={() => select(`all`)}
         >
@@ -39,7 +39,7 @@ export const JobFilter = ({ pipelineId, counts }: JobFilterProps) => {
         </button>
         <button
           type="button"
-          className="job-visibility-button"
+          className="job-visibility-button btn-small"
           aria-pressed={visibility === `current`}
           onClick={() => select(`current`)}
         >

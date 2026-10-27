@@ -8,7 +8,10 @@ per-block counts while keeping block headers and dependency edges. Returning
 to All jobs restores the original rows and job links.
 
 The controls are native buttons with an exposed selected state, a visible
-keyboard focus indicator, and a concise status announcement. Choices are
+keyboard focus indicator, and a screen-reader status announcement. They share
+a rounded segmented track and Semaphore's existing small-button typography.
+The selected surface slides over 160ms; reduced-motion preferences disable
+the transition. Choices are
 independent per pipeline, survive polling replacements, and reset when leaving
 the workflow. The existing skipped-block control continues to work.
 
