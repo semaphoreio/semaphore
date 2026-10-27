@@ -36,8 +36,9 @@ module RepoHost
         "--include-cache" => :enable_cache
       }.freeze
 
-      # Abbreviated or full lowercase commit SHA naming the reviewed fork head.
-      SHA_PATTERN = /\A[0-9a-f]{7,40}\z/
+      # Lowercase commit SHA naming the reviewed fork head. At least 12 hex
+      # characters, so a fork can't cheaply grind a commit sharing the prefix.
+      SHA_PATTERN = /\A[0-9a-f]{12,40}\z/
 
       module_function
 

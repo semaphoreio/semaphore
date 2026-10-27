@@ -142,13 +142,21 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
         return
       end
 
-      blocked_workflows = Workflow
+      pr_workflows = Workflow
         .in_project(workflow.project_id)
-        .blocked_by_contributor
         .pr_number_in_git_ref(issue_number)
         .created_before(approval_comment_time)
-      blocked_workflows = blocked_workflows.with_commit_sha_prefix(approval_sha) if approval_sha
       project_id = workflow.project_id
+
+      # A prefix shared by two fork heads may be a ground collision.
+      if approval_sha && pr_workflows.with_commit_sha_prefix(approval_sha).distinct.count(:commit_sha) > 1
+        logger.info("pr-approval-sha-ambiguous", :project_id => project_id, :approval_sha => approval_sha)
+        Watchman.increment("hooks.pr_approval.sha_ambiguous")
+        return
+      end
+
+      blocked_workflows = pr_workflows.blocked_by_contributor
+      blocked_workflows = blocked_workflows.with_commit_sha_prefix(approval_sha) if approval_sha
       workflow = blocked_workflows.recent(1).first
 
       unless workflow
@@ -468,9 +476,14 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
       end
     end
 
-    branch = find_or_create_branch(workflow, logger)
-    if workflow.payload.pull_request?
-      update_pull_request_mergeable(workflow, meta[:mergeable])
+    begin
+      branch = find_or_create_branch(workflow, logger)
+      if workflow.payload.pull_request?
+        update_pull_request_mergeable(workflow, meta[:mergeable])
+      end
+    rescue StandardError
+      release_pr_approval(workflow)
+      raise
     end
 
     launch_pipeline(branch, workflow, logger)

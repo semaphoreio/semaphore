@@ -83,10 +83,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
     context "PR approval" do
       before do
         allow(Semaphore::FeatureFlags).to receive(:enabled?).with(:sem_approve_options, anything).and_return(true)
-        # By default the approver names the head of the newest blocked workflow.
-        allow(@workflow.payload).to receive(:pr_approval_sha) do
-          Workflow.blocked_by_contributor.order(:created_at => :desc).pick(:commit_sha)
-        end
+        allow(@workflow.payload).to receive(:pr_approval_sha).and_return(nil)
       end
 
       # Fixed timeline used by the approval tests. In the normal case a blocked
@@ -222,6 +219,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
           issue_number: 1,
           pr_approval?: true,
           pr_approval_include_secrets?: true,
+          pr_approval_sha: workflow.commit_sha,
           pr_approval_enable_cache?: true,
           comment_author: "maintainer",
           comment_author_uid: 4242,
@@ -444,6 +442,17 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
             expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR)
           end
 
+          it "releases the claim and re-raises when preparing the launch fails" do
+            workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+            approve_bare
+            allow(described_class).to receive(:update_pr_data).and_return(ok_pr_data(workflow))
+            allow(described_class).to receive(:find_or_create_branch).and_raise(ActiveRecord::RecordInvalid)
+
+            expect { described_class.run(@workflow, @logger) }.to raise_error(ActiveRecord::RecordInvalid)
+
+            expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR)
+          end
+
           it "releases the claim when the approval cannot be persisted" do
             workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
             approve_bare
@@ -478,6 +487,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
           issue_number: 1,
           pr_approval?: true,
           pr_approval_include_secrets?: true,
+          pr_approval_sha: workflow.commit_sha,
           pr_approval_enable_cache?: true,
           comment_author: "maintainer",
           comment_created_at: approval_comment_time
@@ -506,7 +516,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
       end
 
       it "fails closed when only one of the requested options is disabled" do
-        build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+        blocked = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
 
         allow(@logger).to receive(:info)
         allow(Watchman).to receive(:increment)
@@ -514,6 +524,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
           issue_number: 1,
           pr_approval?: true,
           pr_approval_include_secrets?: true,
+          pr_approval_sha: blocked.commit_sha,
           pr_approval_enable_cache?: true,
           comment_author: "maintainer",
           comment_created_at: approval_comment_time
@@ -546,6 +557,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
             issue_number: 1,
             pr_approval?: true,
             pr_approval_include_secrets?: true,
+            pr_approval_sha: workflow.commit_sha,
             comment_author: "maintainer",
             comment_created_at: approval_comment_time
           )
@@ -570,12 +582,13 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
         end
 
         it "checks the flag for the project's organization" do
-          build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+          blocked = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
 
           allow(@workflow.payload).to receive_messages(
             issue_number: 1,
             pr_approval?: true,
             pr_approval_enable_cache?: true,
+            pr_approval_sha: blocked.commit_sha,
             comment_author: "maintainer",
             comment_created_at: approval_comment_time
           )
@@ -661,7 +674,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
         it "approves the workflow for the named commit, not the newest blocked one" do
           reviewed = blocked_at(reviewed_sha, before_comment - 1.hour)
           blocked_at(pushed_sha, before_comment)
-          approve(:sha => reviewed_sha[0, 7], :pr_approval_include_secrets? => true)
+          approve(:sha => reviewed_sha[0, 12], :pr_approval_include_secrets? => true)
           allow(described_class).to receive(:update_pr_data).and_return(ok_pr_data(reviewed))
 
           expect(described_class).to receive(:launch_pipeline).with(kind_of(Branch), reviewed, @logger)
@@ -687,7 +700,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
 
         it "does nothing when no blocked workflow matches the SHA" do
           workflow = blocked_at(reviewed_sha, before_comment)
-          approve(:sha => "ccccccc", :pr_approval_include_secrets? => true)
+          approve(:sha => "cccccccccccc", :pr_approval_include_secrets? => true)
 
           expect(described_class).not_to receive(:launch_pipeline)
           expect(Watchman).to receive(:increment).with("hooks.pr_approval.sha_not_found")
@@ -695,6 +708,53 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
           described_class.run(@workflow, @logger)
 
           expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR)
+        end
+
+        it "refuses a SHA prefix shared by two fork heads" do
+          reviewed = blocked_at(reviewed_sha, before_comment - 1.hour)
+          colliding = blocked_at("#{reviewed_sha[0, 12]}#{"f" * 28}", before_comment)
+          approve(:sha => reviewed_sha[0, 12], :pr_approval_include_secrets? => true)
+
+          expect(described_class).not_to receive(:update_pr_data)
+          expect(described_class).not_to receive(:launch_pipeline)
+          expect(Watchman).to receive(:increment).with("hooks.pr_approval.sha_ambiguous")
+
+          described_class.run(@workflow, @logger)
+
+          expect([reviewed, colliding].map { |wf| Workflow.find(wf.id).state }).to all(eq(Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR))
+        end
+
+        it "counts a colliding head that is no longer blocked as ambiguous" do
+          blocked_at(reviewed_sha, before_comment - 1.hour)
+          blocked_at("#{reviewed_sha[0, 12]}#{"f" * 28}", before_comment).update(:state => Workflow::STATE_PR_APPROVAL_STALE)
+          approve(:sha => reviewed_sha[0, 12], :pr_approval_include_secrets? => true)
+
+          expect(described_class).not_to receive(:launch_pipeline)
+          expect(Watchman).to receive(:increment).with("hooks.pr_approval.sha_ambiguous")
+
+          described_class.run(@workflow, @logger)
+        end
+
+        it "approves the full SHA even when a colliding prefix exists" do
+          reviewed = blocked_at(reviewed_sha, before_comment - 1.hour)
+          blocked_at("#{reviewed_sha[0, 12]}#{"f" * 28}", before_comment)
+          approve(:sha => reviewed_sha, :pr_approval_include_secrets? => true)
+          allow(described_class).to receive(:update_pr_data).and_return(ok_pr_data(reviewed))
+
+          expect(described_class).to receive(:launch_pipeline).with(kind_of(Branch), reviewed, @logger)
+
+          described_class.run(@workflow, @logger)
+        end
+
+        it "treats the same commit pushed twice as one head" do
+          blocked_at(reviewed_sha, before_comment - 1.hour)
+          latest = blocked_at(reviewed_sha, before_comment)
+          approve(:sha => reviewed_sha[0, 12], :pr_approval_include_secrets? => true)
+          allow(described_class).to receive(:update_pr_data).and_return(ok_pr_data(latest))
+
+          expect(described_class).to receive(:launch_pipeline).with(kind_of(Branch), latest, @logger)
+
+          described_class.run(@workflow, @logger)
         end
 
         def approval_record(workflow)
@@ -750,7 +810,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
 
         it "refuses to launch an approval that grants options" do
           workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
-          approve(pr_approval_include_secrets?: true)
+          approve(pr_approval_include_secrets?: true, pr_approval_sha: workflow.commit_sha)
           allow(described_class).to receive(:update_pr_data).and_return(without_reference_data(workflow))
 
           expect(described_class).not_to receive(:launch_pipeline)
@@ -815,6 +875,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
           issue_number: 1,
           pr_approval?: true,
           pr_approval_include_secrets?: true,
+          pr_approval_sha: workflow.commit_sha,
           comment_author: "maintainer",
           comment_created_at: approval_comment_time
         )
@@ -919,6 +980,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
           issue_number: 7,
           pr_approval?: true,
           pr_approval_include_secrets?: true,
+          pr_approval_sha: reviewed.commit_sha,
           comment_author: "maintainer",
           comment_created_at: approval_comment_time
         )
