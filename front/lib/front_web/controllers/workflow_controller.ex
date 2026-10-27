@@ -469,23 +469,20 @@ defmodule FrontWeb.WorkflowController do
           ids,
           fn id ->
             pipeline = id |> Pipeline.find(detailed: true) |> Front.WorkflowPage.Diagram.load()
+            switch? = pipeline.switch_id not in [nil, ""]
 
             switch =
-              cond do
-                pipeline.switch_id in [nil, ""] ->
-                  nil
+              switch? and id in with_promotions and Switch.find(pipeline.switch_id, user_id)
 
-                id in with_promotions ->
-                  case Switch.find(pipeline.switch_id, user_id) do
-                    nil -> :unchanged
-                    switch -> Switch.preload_users(switch)
-                  end
-
-                true ->
-                  :unchanged
-              end
-
-            %{pipeline: pipeline, switch: switch}
+            %{
+              pipeline: pipeline,
+              switch:
+                cond do
+                  not switch? -> nil
+                  switch -> Switch.preload_users(switch)
+                  true -> :unchanged
+                end
+            }
           end,
           max_concurrency: 8,
           timeout: 30_000,
