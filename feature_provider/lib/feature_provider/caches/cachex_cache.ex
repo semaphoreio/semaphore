@@ -139,9 +139,11 @@ defmodule FeatureProvider.CachexCache do
     instead of `:not_found`, for up to `ttl_ms + stale_ttl_ms` after it was
     stored. The callback fails when it returns `{:error, _}` (or `:error`),
     raises, exits or throws. Defaults to `#{@default_stale_ttl_ms}` (disabled)
-  - `breaker` - name of a running `FeatureProvider.CircuitBreaker`. While it is
-    open, the callback is not executed (even with `reload`) and the last known
-    value, or `:not_found`, is returned. Defaults to `nil` (no breaker)
+  - `breaker` - name of a running `FeatureProvider.CircuitBreaker`. It opens
+    after the callback returns `{:error, :unavailable}` or
+    `{:error, {:unavailable, reason}}` a few times in a row. While it is open,
+    the callback is not executed (even with `reload`) and the last known value,
+    or `:not_found`, is returned. Defaults to `nil` (no breaker)
 
 
   # Examples
@@ -227,24 +229,27 @@ defmodule FeatureProvider.CachexCache do
         value -> value
       end
     else
-      case load(key, callback, opts) do
-        {:ok, value} ->
-          if breaker, do: CircuitBreaker.record_success(breaker)
+      result = load(key, callback, opts)
+      if breaker, do: record(breaker, result, fn -> load(key, callback, opts) end)
 
-          value
-
-        failure ->
-          if breaker, do: CircuitBreaker.record_failure(breaker, fn -> load(key, callback, opts) end)
-
-          last_known_or_default(key, failure, default, opts)
+      case result do
+        {:ok, value} -> value
+        failure -> last_known_or_default(key, failure, default, opts)
       end
     end
   end
 
+  defp record(breaker, result, probe) do
+    if CircuitBreaker.unavailable?(result),
+      do: CircuitBreaker.record_unavailable(breaker, probe),
+      else: CircuitBreaker.record_available(breaker)
+  end
+
   # Turns a raising, exiting or throwing callback into a failure, so it can be
-  # counted by the breaker and replaced by the last known value.
+  # counted by the breaker and replaced by the last known value. `set/3` returns
+  # the callback's result as is, so a bare value is wrapped into `{:ok, value}`.
   defp load(key, callback, opts) do
-    set(key, callback, opts)
+    key |> set(callback, opts) |> wrap()
   catch
     kind, reason -> {:caught, kind, reason, __STACKTRACE__}
   end

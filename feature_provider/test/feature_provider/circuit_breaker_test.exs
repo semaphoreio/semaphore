@@ -2,6 +2,8 @@ defmodule FeatureProvider.CircuitBreakerTest do
   use ExUnit.Case
   doctest FeatureProvider.CircuitBreaker, import: true
 
+  import ExUnit.CaptureLog
+
   alias FeatureProvider.CircuitBreaker
 
   @breaker :test_breaker
@@ -26,15 +28,15 @@ defmodule FeatureProvider.CircuitBreakerTest do
       refute CircuitBreaker.open?(@breaker)
     end
 
-    test "opens after `failure_threshold` failures in a row" do
+    test "opens after `failure_threshold` unavailable loads in a row" do
       fail(3, probe_failing())
 
       assert CircuitBreaker.open?(@breaker)
     end
 
-    test "a success resets the count of failures in a row" do
+    test "an answer from the provider resets the count of unavailable loads in a row" do
       fail(2, probe_failing())
-      CircuitBreaker.record_success(@breaker)
+      CircuitBreaker.record_available(@breaker)
       fail(2, probe_failing())
 
       refute CircuitBreaker.open?(@breaker)
@@ -77,9 +79,9 @@ defmodule FeatureProvider.CircuitBreakerTest do
       assert CircuitBreaker.open?(@breaker)
     end
 
-    test "a probe returning `:error` or a non-`{:ok, _}` value counts as failed" do
+    test "only an unavailable probe counts as failed, any other result closes the breaker" do
       test_pid = self()
-      results = Agent.start_link(fn -> [:error, :whatever, {:ok, :back}] end) |> elem(1)
+      {:ok, results} = Agent.start_link(fn -> [{:error, :unavailable}, {:error, {:unavailable, :timeout}}, :error] end)
 
       probe = fn ->
         send(test_pid, :probed)
@@ -95,21 +97,15 @@ defmodule FeatureProvider.CircuitBreakerTest do
       eventually(fn -> refute CircuitBreaker.open?(@breaker) end)
     end
 
-    test "a raising, exiting or throwing probe counts as failed and doesn't crash the breaker" do
-      test_pid = self()
+    test "a raising, exiting or throwing probe closes the breaker without crashing it" do
       pid = Process.whereis(@breaker)
 
-      fail(3, fn ->
-        send(test_pid, :probed)
-        raise "provider down"
-      end)
+      for probe <- [fn -> raise "bug" end, fn -> exit(:bug) end, fn -> throw(:bug) end] do
+        fail(3, probe)
+        assert CircuitBreaker.open?(@breaker)
+        eventually(fn -> refute CircuitBreaker.open?(@breaker) end)
+      end
 
-      assert_receive :probed, 500
-      fail(1, fn -> exit(:provider_down) end)
-      fail(1, fn -> throw(:provider_down) end)
-
-      Process.sleep(150)
-      assert CircuitBreaker.open?(@breaker)
       assert Process.alive?(pid)
     end
 
@@ -128,13 +124,33 @@ defmodule FeatureProvider.CircuitBreakerTest do
       assert CircuitBreaker.open?(@breaker)
     end
 
+    test "logs a failed probe with its result" do
+      log =
+        capture_log(fn ->
+          fail(3, fn -> {:error, {:unavailable, :econnrefused}} end)
+          Process.sleep(100)
+        end)
+
+      assert log =~ "probe failed: {:error, {:unavailable, :econnrefused}}"
+    end
+
+    test "logs a probe that hangs as timed out" do
+      log =
+        capture_log(fn ->
+          fail(3, fn -> Process.sleep(:infinity) end)
+          Process.sleep(200)
+        end)
+
+      assert log =~ "probe failed: timed out after 100ms"
+    end
+
     test "opening again while open keeps the current round of probes and its backoff" do
       fail(3, probe_failing())
       assert_receive :probed, 500
       assert_receive :probed, 500
       eventually(fn -> assert :sys.get_state(@breaker).attempt >= 2 end)
 
-      CircuitBreaker.record_success(@breaker)
+      CircuitBreaker.record_available(@breaker)
       fail(3, probe_failing())
 
       assert :sys.get_state(@breaker).attempt >= 2
@@ -142,12 +158,27 @@ defmodule FeatureProvider.CircuitBreakerTest do
     end
   end
 
+  describe "start_link/1" do
+    @describetag :not_started
+
+    for threshold <- [0, -1, 1.5, "3", nil] do
+      test "rejects `failure_threshold: #{inspect(threshold)}`" do
+        capture_log(fn ->
+          assert {:error, reason} =
+                   start_supervised({CircuitBreaker, Keyword.put(@opts, :failure_threshold, unquote(threshold))})
+
+          assert inspect(reason) =~ "failure_threshold must be a positive integer"
+        end)
+      end
+    end
+  end
+
   describe "when it isn't running" do
     @describetag :not_started
 
     test "is reported as closed and ignores successes and failures" do
-      assert :ok = CircuitBreaker.record_failure(@breaker, probe_failing())
-      assert :ok = CircuitBreaker.record_success(@breaker)
+      assert :ok = CircuitBreaker.record_unavailable(@breaker, probe_failing())
+      assert :ok = CircuitBreaker.record_available(@breaker)
       refute CircuitBreaker.open?(@breaker)
     end
   end
@@ -188,10 +219,10 @@ defmodule FeatureProvider.CircuitBreakerTest do
   end
 
   defp fail(times, probe) do
-    for _ <- 1..times, do: CircuitBreaker.record_failure(@breaker, probe)
+    for _ <- 1..times, do: CircuitBreaker.record_unavailable(@breaker, probe)
   end
 
-  defp probe_failing, do: probe_returning({:error, :provider_down})
+  defp probe_failing, do: probe_returning({:error, :unavailable})
 
   defp probe_returning(result, message \\ :probed) do
     test_pid = self()

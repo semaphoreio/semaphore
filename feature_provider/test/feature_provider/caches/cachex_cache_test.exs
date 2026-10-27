@@ -143,13 +143,49 @@ defmodule FeatureProvider.CachexCacheTest do
       refute_received :called
     end
 
-    test "counts raises, exits and throws as failures", %{opts: opts} do
+    test "serves the last known value for other errors, raises, exits and throws, without opening", %{opts: opts} do
       load_and_expire(:key, "known", opts)
 
-      assert CachexCache.fetch(:key, fn -> raise "provider down" end, opts) == "known"
-      assert CachexCache.fetch(:key, fn -> exit(:provider_down) end, opts) == "known"
+      capture_log(fn ->
+        assert CachexCache.fetch(:key, fn -> {:error, :not_found} end, opts) == "known"
+        assert CachexCache.fetch(:key, fn -> :error end, opts) == "known"
+        assert CachexCache.fetch(:key, fn -> raise "bug" end, opts) == "known"
+        assert CachexCache.fetch(:key, fn -> exit(:bug) end, opts) == "known"
+        assert CachexCache.fetch(:key, fn -> throw(:bug) end, opts) == "known"
+      end)
 
+      refute CircuitBreaker.open?(:my_breaker)
+    end
+
+    test "a key the provider keeps rejecting doesn't open the breaker for other keys", %{opts: opts} do
+      for _ <- 1..5 do
+        assert CachexCache.fetch(:unknown_org, fn -> {:error, :not_found} end, opts) == :not_found
+      end
+
+      refute CircuitBreaker.open?(:my_breaker)
+      assert CachexCache.fetch(:other_org, "loaded", opts) == "loaded"
+    end
+
+    test "an error other than unavailable resets the count of unavailable loads in a row", %{opts: opts} do
+      CachexCache.fetch(:key, failing_callback(), opts)
+      CachexCache.fetch(:key, fn -> {:error, :not_found} end, opts)
+      CachexCache.fetch(:key, failing_callback(), opts)
+
+      refute CircuitBreaker.open?(:my_breaker)
+    end
+
+    test "a probe that gets another error closes the breaker", %{opts: opts} do
+      {:ok, provider} = Agent.start_link(fn -> {:error, :unavailable} end)
+      callback = fn -> Agent.get(provider, & &1) end
+
+      CachexCache.fetch(:key, callback, opts)
+      CachexCache.fetch(:key, callback, opts)
       assert CircuitBreaker.open?(:my_breaker)
+
+      Agent.update(provider, fn _ -> {:error, :not_found} end)
+
+      eventually(fn -> refute CircuitBreaker.open?(:my_breaker) end)
+      assert CachexCache.get(:key, name: :my_cache) == :not_found
     end
 
     test "a successful load resets the count of failures in a row", %{opts: opts} do
@@ -162,9 +198,19 @@ defmodule FeatureProvider.CachexCacheTest do
       refute CircuitBreaker.open?(:my_breaker)
     end
 
+    test "a callback returning a bare value counts as a success", %{opts: opts} do
+      log =
+        capture_log(fn ->
+          for _ <- 1..3, do: assert(CachexCache.fetch(:key, fn -> "bare" end, [reload: true] ++ opts) == "bare")
+        end)
+
+      refute CircuitBreaker.open?(:my_breaker)
+      refute log =~ "serving last known value"
+    end
+
     test "a successful probe closes the breaker and stores its result", %{opts: opts} do
       load_and_expire(:key, "known", opts)
-      {:ok, provider} = Agent.start_link(fn -> {:error, :provider_down} end)
+      {:ok, provider} = Agent.start_link(fn -> {:error, :unavailable} end)
       callback = fn -> Agent.get(provider, & &1) end
 
       CachexCache.fetch(:key, callback, opts)
@@ -204,8 +250,8 @@ defmodule FeatureProvider.CachexCacheTest do
   end
 
   defp open_breaker(opts) do
-    CachexCache.fetch(:opener, fn -> {:error, :provider_down} end, opts)
-    CachexCache.fetch(:opener, fn -> {:error, :provider_down} end, opts)
+    CachexCache.fetch(:opener, fn -> {:error, :unavailable} end, opts)
+    CachexCache.fetch(:opener, fn -> {:error, {:unavailable, :timeout}} end, opts)
     assert CircuitBreaker.open?(:my_breaker)
   end
 
@@ -214,7 +260,7 @@ defmodule FeatureProvider.CachexCacheTest do
 
     fn ->
       send(test_pid, :called)
-      {:error, :provider_down}
+      {:error, :unavailable}
     end
   end
 

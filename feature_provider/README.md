@@ -210,10 +210,23 @@ children = [
 ]
 ```
 
-1. **Closed**: cache misses call the provider. Each failed load is still served from the last known value; failed loads in a row are counted, and a successful load resets the count.
-2. **Open**: after `failure_threshold` (default 3) failed loads in a row, cache misses stop calling the provider. They get the last known value, or fail straight away for a key that has none. Fresh values in the cache are served as usual. `reload: true` doesn't call the provider either.
-3. **Probing**: while open, the breaker re-runs the failed load that opened it, in the background; requests never wait for it. The first probe runs after `probe_base_ms` (default 5s), and each failed probe doubles the delay up to `probe_max_ms` (default 60s). Each delay is picked at random between half and all of that value, so pods don't probe the provider at the same moment. A probe still running after `probe_timeout_ms` (default 30s) is killed and counts as failed.
-4. A successful probe closes the breaker and stores its result in the cache. Other keys are refreshed on their next cache miss.
+1. **Closed**: cache misses call the provider. Each failed load is still served from the last known value. Loads that find the provider unavailable (see below) are counted, and any other result resets the count.
+2. **Open**: after `failure_threshold` (default 3) unavailable loads in a row, cache misses stop calling the provider. They get the last known value, or fail straight away for a key that has none. Fresh values in the cache are served as usual. `reload: true` doesn't call the provider either.
+3. **Probing**: while open, the breaker re-runs the load that opened it, in the background; requests never wait for it. The first probe runs after `probe_base_ms` (default 5s), and each unavailable probe doubles the delay up to `probe_max_ms` (default 60s). Each delay is picked at random between half and all of that value, so pods don't probe the provider at the same moment. A probe still running after `probe_timeout_ms` (default 30s) is killed and counts as failed.
+4. Any other probe result closes the breaker, because the provider answered. A successful probe also stores its result in the cache. Other keys are refreshed on their next cache miss.
+
+Only `{:error, :unavailable}` and `{:error, {:unavailable, reason}}` count as the provider being unavailable. Return them from your provider for errors that mean it can't be reached, such as a gRPC `UNAVAILABLE` or `DEADLINE_EXCEEDED`, a refused connection or a timeout:
+
+```elixir
+case Stub.list_features(channel, request, timeout: 3_000) do
+  {:ok, response} -> {:ok, to_features(response)}
+  # 14 is UNAVAILABLE, 4 is DEADLINE_EXCEEDED
+  {:error, %GRPC.RPCError{status: status} = error} when status in [14, 4] -> {:error, {:unavailable, error}}
+  {:error, error} -> {:error, error}
+end
+```
+
+Any other error, and a raise, exit or throw, is an answer about that key: it falls back to the last known value, but doesn't count towards opening the breaker. Otherwise a key that the provider keeps rejecting, such as an unknown organization, would open the breaker for every key.
 
 The breaker logs when it opens, when a probe fails and when it closes, instead of logging every lookup. Its state is kept in an ETS table, so lookups don't go through the breaker process. Each pod has its own breaker.
 
