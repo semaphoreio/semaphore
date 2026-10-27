@@ -8,8 +8,8 @@ defmodule Ppl.PplBlocks.Beholder do
   After that pipeline's block is stuck.
   """
 
-  alias Ppl.PplBlocks.STMHandler.Common
   alias Looper.STM.Publisher
+  alias Ppl.PplBlocks.STMHandler.{Common, WaitingState}
 
   @period_sec Application.compile_env!(:ppl, :beholder_ppl_blk_sleep_period_sec)
   @threshold_sec Application.compile_env!(:ppl, :beholder_ppl_blk_threshold_sec)
@@ -30,6 +30,9 @@ defmodule Ppl.PplBlocks.Beholder do
     callback: fn ppl_blk -> apply(__MODULE__, :post_proccessing, [ppl_blk]) end
 
     def post_proccessing(ppl_blk) do
+      # Blocks that depend on the aborted one can be canceled now
+      WaitingState.execute_now_for_pipeline(ppl_blk.ppl_id)
+
       Publisher.publish(Map.take(ppl_blk, [:ppl_id, :block_id]),
                         "done",
                         fn params -> Common.publisher_callback(params) end)
