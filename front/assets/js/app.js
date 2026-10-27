@@ -21,6 +21,8 @@ import { Switch } from "./workflow_view/switch";
 import { InteractivePipelineTree } from "./workflow_view/interactive_pipeline_tree";
 import { TriggerEvent } from "./workflow_view/trigger_event";
 import { Diagram } from "./workflow_view/diagram";
+import { defineJobFilter } from "./workflow_view/job_filter";
+import { resetJobVisibility } from "./workflow_view/job_visibility";
 import { ForkExplanation } from "./workflow_view/fork_explanation";
 import { FaviconUpdater } from "./workflow_view/favicon_updater";
 import { DiagramDrag } from "./workflow_view/diagram_drag";
@@ -505,6 +507,7 @@ export var App = {
     Overlay.init();
 
     defineTimeAgoElement()
+    defineJobFilter();
     managePageHeaderShaddows()
     enableMagicBreadcrumbs()
     maybeEnablePosthog()
@@ -562,6 +565,7 @@ export var App = {
     Timer.stop();
     DiagramDrag.stop();
     unmountIslands();
+    resetJobVisibility();
 
     if (window.FaviconUpdater) {
       window.FaviconUpdater.stop();
