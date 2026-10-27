@@ -10,7 +10,10 @@
 
 @import "github-markdown-css/github-markdown-light.css";
 
+@import "@xyflow/react/dist/style.css";
+
 /* Main CSS entry point - combines all CSS files */
 @import "./app-semaphore.css";
 @import "./app.css";
 @import "./pylon-chat.css";
+@import "./workflow-map.css";
