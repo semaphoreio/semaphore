@@ -78,5 +78,32 @@ defmodule ProvidersTest do
       assert {:error, {:not_found, _}} =
                FeatureProvider.find_feature("a-feature-type", param: "org-2", provider: provider)
     end
+
+    test "stops calling the provider once the breaker opens, with `breaker`" do
+      start_supervised!({FeatureProvider.CircuitBreaker, name: :mocked_provider_breaker, failure_threshold: 2})
+
+      provider =
+        {MockedProvider,
+         [
+           cache:
+             {FeatureProvider.CachexCache,
+              name: :mocked_provider_cache, ttl_ms: 50, stale_ttl_ms: 1_000, breaker: :mocked_provider_breaker}
+         ]}
+
+      MockedProvider
+      |> expect(:provide_features, fn _args, _opts -> {:ok, FeatureFactory.build_features(["a-feature-type"])} end)
+      |> expect(:provide_features, 2, fn _args, _opts -> {:error, :unavailable} end)
+
+      assert {:ok, _} = FeatureProvider.find_feature("a-feature-type", param: "org-1", provider: provider)
+      Process.sleep(100)
+
+      # Two failed loads open the breaker; the provider isn't called after that.
+      for _ <- 1..5 do
+        assert {:ok, _} = FeatureProvider.find_feature("a-feature-type", param: "org-1", provider: provider)
+      end
+
+      assert {:error, {:not_found, _}} =
+               FeatureProvider.find_feature("a-feature-type", param: "org-2", provider: provider)
+    end
   end
 end
