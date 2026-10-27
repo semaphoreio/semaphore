@@ -33,6 +33,7 @@ describe(`JobFilter`, () => {
     expect(buttons.length).to.equal(2);
     expect(buttons[0].textContent).to.equal(`All jobs (100)`);
     expect(buttons[0].getAttribute(`aria-pressed`)).to.equal(`true`);
+    expect(container.querySelector(`[role="group"]`).getAttribute(`data-visibility`)).to.equal(`all`);
     expect(buttons[1].textContent).to.equal(`This run (2)`);
     expect(buttons[1].getAttribute(`type`)).to.equal(`button`);
     expect(buttons[1].getAttribute(`aria-pressed`)).to.equal(`false`);
@@ -45,6 +46,7 @@ describe(`JobFilter`, () => {
     await act(() => current.click());
 
     expect(current.getAttribute(`aria-pressed`)).to.equal(`true`);
+    expect(container.querySelector(`[role="group"]`).getAttribute(`data-visibility`)).to.equal(`current`);
     expect(document.activeElement).to.equal(current);
     expect(getJobVisibility(`pipeline-1`)).to.equal(`current`);
     expect(getJobVisibility(`pipeline-2`)).to.equal(`all`);

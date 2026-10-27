@@ -488,7 +488,66 @@ sem-popover {
 .job-reused { opacity: 0.55; }
 .job-reused:hover { opacity: 0.85; }
 
+.job-visibility-pill {
+  position: relative;
+  display: inline-grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid #dfe3e6;
+  border-radius: 10px;
+  background: #e9ecef;
+}
+
+.job-visibility-pill::before {
+  content: "";
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc((100% - 8px) / 2);
+  border-radius: 7px;
+  background: white;
+  box-shadow: 0 1px 3px #0000001f;
+  pointer-events: none;
+  transform: translateX(0);
+  transition: transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.job-visibility-pill[data-visibility="current"]::before {
+  transform: translateX(calc(100% + 2px));
+}
+
+.job-visibility-button {
+  position: relative;
+  min-height: 32px;
+  padding: 4px 12px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #576565;
+  font: inherit;
+  font-size: 13px;
+  line-height: 20px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.job-visibility-button:hover {
+  color: #3b4148;
+}
+
+.job-visibility-button[aria-pressed="true"] {
+  color: #3b4148;
+}
+
 .job-visibility-button:focus-visible {
   outline: 2px solid #3b4148;
-  outline-offset: 3px;
+  outline-offset: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .job-visibility-pill::before {
+    transition: none;
+  }
 }
