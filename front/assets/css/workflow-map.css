@@ -383,6 +383,27 @@
   color: var(--wf-map-failed);
 }
 
+.wf-map-error-detail {
+  padding: 8px 12px;
+}
+
+.wf-map-error-log {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+.wf-map-init-log {
+  flex: none;
+  font-size: 13px;
+  color: #677278;
+  white-space: nowrap;
+}
+
+.wf-map-init-log.failed {
+  color: var(--wf-map-failed);
+}
+
 .wf-map-card {
   display: flex;
   flex-direction: column;

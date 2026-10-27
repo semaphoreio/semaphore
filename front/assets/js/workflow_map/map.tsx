@@ -2,9 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { computed, signal } from "@preact/signals";
 import { BaseEdge, Background, Controls, Edge, EdgeLabelRenderer, EdgeProps, Handle, MiniMap, Node, NodeProps, Panel, Position, ReactFlow, ReactFlowProvider, useReactFlow, useStore } from "@xyflow/react";
 import { Pipeline, STATUS_LABEL, Status, Workflow, blockStatus, countJobs, pipelineJobs } from "./model";
-import { focus, hits, loadError, rerunPipeline, selected, stopPipeline, workflow } from "./store";
+import { focus, hits, layoutError, popover, rerunPipeline, selected, stopPipeline, togglePopover, workflow } from "./store";
 import { MapLayout, Point, layoutMap, promotionLabel } from "./layout";
-import { PromoteButton, promoteMenu } from "./promote";
+import { PromoteButton } from "./promote";
 import { BlockCard, Counts, Duration, Highlight, PipelineTitle, StatusBar, StatusIcon } from "./ui";
 
 const CARD = { w: 300, h: 72 };
@@ -89,8 +89,9 @@ const CardNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
   if (!p) return null;
   const n = h.perPipeline.get(p) ?? 0;
   const jobs = pipelineJobs(p);
-  const open = () => {
+  const open = (card: Element) => {
     selected.value = p.id;
+    if (p.errorHtml) return togglePopover(`error`, p.id, card);
     aim({ id: p.id, how: `fit` });
     toggle(openPipelines, p.id, true);
   };
@@ -98,9 +99,10 @@ const CardNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
     <div
       role="button"
       tabIndex={0}
+      data-popover-trigger={p.errorHtml ? `` : undefined}
       className={`wf-map-card ${selected.value === p.id ? `selected` : ``} ${h.active && !n ? `dim` : ``}`}
-      onClick={open}
-      onKeyDown={(e) => (e.key === `Enter` || e.key === ` `) && (e.preventDefault(), open())}
+      onClick={(e) => open(e.currentTarget)}
+      onKeyDown={(e) => (e.key === `Enter` || e.key === ` `) && (e.preventDefault(), open(e.currentTarget))}
     >
       <Handle type="target" id="in" position={Position.Left} isConnectable={false}/>
       <span className="wf-map-card-row">
@@ -113,14 +115,21 @@ const CardNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
       </span>
       {p.blocks ? <StatusBar jobs={jobs}/> : <span className="wf-map-bar loading"/>}
       <span className="wf-map-card-row wf-map-card-meta">
-        {p.errorDescription ? (
-          <span className="wf-map-error">Pipeline failed to start</span>
-        ) : p.blocks ? (
+        {p.errorHtml ? (
+          <span className="wf-map-error">Pipeline failed to start · see why</span>
+        ) : !p.blocks ? (
+          <span>Loading blocks…</span>
+        ) : !p.blocks.length && p.initJob ? (
+          <span>
+            {p.initJob.status === `running` || p.initJob.status === `pending` ? `Initializing` : `Initialization`} ·{` `}
+            <a href={p.initJob.url} onClick={(e) => e.stopPropagation()}>
+              log
+            </a>
+          </span>
+        ) : (
           <span>
             {p.blocks.length} blocks · {jobs.length} jobs
           </span>
-        ) : (
-          <span>Loading blocks…</span>
         )}
         {h.active ? <span className={`wf-map-match ${n ? `` : `zero`}`}>{n} matching</span> : <Counts jobs={jobs}/>}
       </span>
@@ -154,6 +163,11 @@ const PipelineNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
           <PipelineTitle p={p}/>
         </span>
         <span className="wf-map-pipeline-meta">{p.yamlFile}</span>
+        {p.initJob && (
+          <a className={`wf-map-init-log ${p.initJob.status}`} href={p.initJob.url} onClick={(e) => e.stopPropagation()}>
+            Initialization log
+          </a>
+        )}
         <Duration start={p.runningAt} end={p.doneAt} running={p.status === `running`}/>
         <Counts jobs={pipelineJobs(p)}/>
         <PipelineActions p={p}/>
@@ -358,7 +372,7 @@ const WorkflowMap = () => {
     )
       .then((L) => alive && setLayout(L))
       .catch(() => {
-        if (alive) loadError.value = `Couldn't lay out this workflow. Reload the page to try again.`;
+        if (alive) layoutError.value = `Couldn't lay out this workflow. Reload the page to try again.`;
       });
     return () => {
       alive = false;
@@ -404,7 +418,7 @@ const WorkflowMap = () => {
       nodesDraggable={false}
       elementsSelectable={false}
       zoomOnDoubleClick={false}
-      onMoveStart={() => (promoteMenu.value = null)}
+      onMoveStart={() => (popover.value = null)}
     >
       <Background gap={32} size={1.2}/>
       <Controls showInteractive={false} position="bottom-left"/>

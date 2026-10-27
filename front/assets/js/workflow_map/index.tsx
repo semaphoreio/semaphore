@@ -1,9 +1,10 @@
 import { render } from "preact";
 import { useEffect, useRef } from "preact/hooks";
-import { Config, loadError, now, onNudge, refresh, resetState, tree } from "./store";
+import { Config, layoutError, loadError, now, onNudge, refresh, resetState, tree } from "./store";
 import { initLayout } from "./layout";
 import { MapCanvas, aim, openBlocks, openPipelines } from "./map";
-import { PromoteDialog, PromoteMenu, promoteMenu, promoting } from "./promote";
+import { Popover } from "./popover";
+import { PromoteDialog, promoting } from "./promote";
 import { Toolbar } from "./toolbar";
 
 const MAX_POLL_RUNNING = 15000;
@@ -73,11 +74,11 @@ const App = ({ config }: { config: Config, }) => {
   return (
     <div className="wf-map-app" ref={root}>
       <Toolbar/>
-      {loadError.value && <div className="wf-map-alert">{loadError.value}</div>}
+      {(layoutError.value ?? loadError.value) && <div className="wf-map-alert">{layoutError.value ?? loadError.value}</div>}
       <div className="wf-map-canvas">
         <MapCanvas/>
       </div>
-      <PromoteMenu/>
+      <Popover/>
       <PromoteDialog/>
     </div>
   );
@@ -85,11 +86,10 @@ const App = ({ config }: { config: Config, }) => {
 
 export default function WorkflowMap({ dom, config }: { dom: HTMLElement, config: Config, }) {
   initLayout(config.elkWorkerUrl, () => {
-    loadError.value = `Couldn't start the map's layout engine. Reload the page to try again.`;
+    layoutError.value = `Couldn't start the map's layout engine. Reload the page to try again.`;
   });
   resetState(config.selectedPipelineId);
   promoting.value = null;
-  promoteMenu.value = null;
   openPipelines.value = new Set([config.selectedPipelineId]);
   aim({ id: config.selectedPipelineId, how: `fit` });
   openBlocks.value = new Set();

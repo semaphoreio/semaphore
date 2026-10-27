@@ -13,6 +13,8 @@ export interface Config {
 export const tree = signal<ApiWorkflow | null>(null);
 export const details = signal<Record<string, ApiPipelineDetail>>({});
 export const loadError = signal<string | null>(null);
+export const layoutError = signal<string | null>(null);
+export const popover = signal<{ kind: `promote` | `error`, id: string, x: number, y: number, } | null>(null);
 export const workflow = computed(() => (tree.value ? buildWorkflow(tree.value, details.value) : null));
 export const now = signal(Math.floor(Date.now() / 1000));
 
@@ -117,12 +119,20 @@ export function resetState(selectedPipelineId: string) {
   tree.value = null;
   details.value = {};
   loadError.value = null;
+  layoutError.value = null;
+  popover.value = null;
   query.value = ``;
   statuses.value = new Set();
   scope.value = `all`;
   cursor.value = -1;
   focus.value = null;
   selected.value = selectedPipelineId;
+}
+
+export function togglePopover(kind: `promote` | `error`, id: string, anchor: Element) {
+  const open = popover.value;
+  const r = anchor.getBoundingClientRect();
+  popover.value = open?.kind === kind && open.id === id ? null : { kind, id, x: r.left, y: r.bottom + 4 };
 }
 
 export function toggleStatus(s: Status) {
@@ -175,14 +185,15 @@ export async function refresh(config: Config): Promise<boolean> {
     children(nextTree, id) > children(previous, id);
   const due = nextTree.pipelines.filter((p) => fresh(p.id) || p.state !== `DONE` || !known[p.id].done);
   if (!due.length) return treeChanged;
-  const params = new URLSearchParams({
-    ids: due.map((p) => p.id).join(`,`),
-    promotions: due.filter((p) => fresh(p.id) || p.state === `DONE`).map((p) => p.id).join(`,`),
-  });
+  const withPromotions = due.filter((p) => fresh(p.id) || p.state === `DONE`).map((p) => p.id);
+  const params = new URLSearchParams({ ids: due.map((p) => p.id).join(`,`), promotions: withPromotions.join(`,`) });
   due.forEach((p) => stale.delete(p.id));
 
   const response = await fetchJson<{ pipelines: FetchedDetail[], }>(`${config.pipelinesUrl}?${params.toString()}`);
-  if (started !== generation || !response) return treeChanged;
+  if (started !== generation) return treeChanged;
+  const returned = new Map(response?.pipelines.map((d) => [d.id, d]));
+  withPromotions.filter((id) => !returned.get(id)?.promotions).forEach((id) => stale.add(id));
+  if (!response) return treeChanged;
   const fetched: Record<string, ApiPipelineDetail> = {};
   for (const d of response.pipelines) fetched[d.id] = { ...d, promotions: d.promotions ?? known[d.id]?.promotions ?? [] };
   const detailsChanged = Object.values(fetched).some((d) => JSON.stringify(d) !== JSON.stringify(known[d.id]));

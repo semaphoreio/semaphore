@@ -461,6 +461,7 @@ defmodule FrontWeb.WorkflowController do
         |> Map.get("ids", "")
         |> String.split(",", trim: true)
         |> Enum.filter(&MapSet.member?(in_workflow, &1))
+        |> Enum.uniq()
 
       pipelines =
         TaskSupervisor
@@ -475,9 +476,10 @@ defmodule FrontWeb.WorkflowController do
                   nil
 
                 id in with_promotions ->
-                  pipeline.switch_id
-                  |> Switch.find(user_id)
-                  |> Switch.preload_users()
+                  case Switch.find(pipeline.switch_id, user_id) do
+                    nil -> :unchanged
+                    switch -> Switch.preload_users(switch)
+                  end
 
                 true ->
                   :unchanged

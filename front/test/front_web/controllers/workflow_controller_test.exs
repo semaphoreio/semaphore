@@ -531,6 +531,44 @@ defmodule FrontWeb.WorkflowControllerTest do
       assert [%{"name" => "Block 1"}] = json["blocks"]
     end
 
+    test "loads each requested pipeline once", %{
+      conn: conn,
+      organization: organization,
+      workflow: workflow,
+      pipeline: pipeline
+    } do
+      Support.Stubs.Feature.enable_feature(organization.id, :ui_workflow_map)
+
+      assert %{"pipelines" => [%{"id" => id}]} =
+               conn
+               |> get(
+                 "/workflows/#{workflow.id}/map/pipelines?ids=#{pipeline.id},#{pipeline.id},#{pipeline.id}"
+               )
+               |> json_response(200)
+
+      assert id == pipeline.id
+    end
+
+    test "leaves promotions unchanged when they can't be loaded", %{
+      conn: conn,
+      organization: organization,
+      workflow: workflow,
+      pipeline: pipeline
+    } do
+      Support.Stubs.Feature.enable_feature(organization.id, :ui_workflow_map)
+      Application.put_env(:front, :hide_promotions, true)
+      on_exit(fn -> Application.delete_env(:front, :hide_promotions) end)
+
+      assert %{"pipelines" => [json]} =
+               conn
+               |> get(
+                 "/workflows/#{workflow.id}/map/pipelines?ids=#{pipeline.id}&promotions=#{pipeline.id}"
+               )
+               |> json_response(200)
+
+      assert json["promotions"] == nil
+    end
+
     test "ignores pipelines from other workflows", %{
       conn: conn,
       organization: organization,

@@ -2,13 +2,14 @@ import { expect } from "chai";
 import { afterEach, beforeEach, describe, test } from "mocha";
 
 import { ApiPipelineDetail } from "./model";
-import { Config, cursor, details, focus, focusOn, hits, query, refresh, resetState, results, scope, selected, statuses, step, toggleStatus, tree } from "./store";
+import { Config, cursor, details, focus, focusOn, hits, promote, query, refresh, resetState, results, scope, selected, statuses, step, toggleStatus, tree, workflow } from "./store";
 
 const detail = (id: string, blocks: ApiPipelineDetail[`blocks`]): ApiPipelineDetail => ({
   id,
   state: `DONE`,
   result: `PASSED`,
-  error_description: ``,
+  error_html: null,
+  init_job: null,
   done: true,
   promotions: [],
   blocks,
@@ -115,24 +116,27 @@ describe(`refresh`, () => {
   const starting = { name: `Staging`, trigger_url: `/promote`, can_promote: true, deployment: null, parameters: [], events: [{ pipeline_id: null, processed: false, result: ``, auto: false, triggered_at: 1, author: null }] };
   const realFetch = globalThis.fetch;
   let batches: { ids: string[], promotions: string[], }[];
-  let workflow: unknown;
+  let served: unknown;
   let pipelines: Record<string, ApiPipelineDetail>;
+  let failDetails: boolean;
 
   const fetchedTimes = (id: string) => batches.filter((b) => b.ids.includes(id)).length;
 
   beforeEach(() => {
     resetState(`ci`);
     batches = [];
-    workflow = { root_pipeline_id: `ci`, pipelines: [pipeline(`ci`, `Build & test`, null)] };
+    served = { root_pipeline_id: `ci`, pipelines: [pipeline(`ci`, `Build & test`, null)] };
     pipelines = { ci: { ...detail(`ci`, []), done: false } };
+    failDetails = false;
     globalThis.fetch = ((url: string) => {
       const [pathname, query] = url.split(`?`);
       const searchParams = new URLSearchParams(query);
-      let body: unknown = workflow;
+      let body: unknown = served;
       if (pathname === config.pipelinesUrl) {
         const ids = searchParams.get(`ids`).split(`,`);
         const promotions = searchParams.get(`promotions`).split(`,`);
         batches.push({ ids, promotions });
+        if (failDetails) return Promise.resolve(new Response(`{}`, { status: 500 }));
         body = { pipelines: ids.map((id) => ({ ...pipelines[id], promotions: promotions.includes(id) ? pipelines[id].promotions : null })) };
       }
       return Promise.resolve(new Response(JSON.stringify(body), { status: 200 }));
@@ -144,7 +148,7 @@ describe(`refresh`, () => {
   });
 
   test(`fetches every due pipeline in one request`, async () => {
-    workflow = { root_pipeline_id: `ci`, pipelines: [pipeline(`ci`, `Build & test`, null), { ...pipeline(`e2e`, `E2E`, `ci`), state: `RUNNING` }] };
+    served = { root_pipeline_id: `ci`, pipelines: [pipeline(`ci`, `Build & test`, null), { ...pipeline(`e2e`, `E2E`, `ci`), state: `RUNNING` }] };
     pipelines.e2e = { ...detail(`e2e`, []), done: false };
     await refresh(config);
 
@@ -163,7 +167,7 @@ describe(`refresh`, () => {
   });
 
   test(`skips the promotions of a running pipeline it already knows and keeps the last ones`, async () => {
-    workflow = { root_pipeline_id: `ci`, pipelines: [{ ...pipeline(`ci`, `Build & test`, null), state: `RUNNING` }] };
+    served = { root_pipeline_id: `ci`, pipelines: [{ ...pipeline(`ci`, `Build & test`, null), state: `RUNNING` }] };
     pipelines.ci = { ...pipelines.ci, promotions: [{ ...starting, events: [] }] };
     await refresh(config);
     await refresh(config);
@@ -176,7 +180,7 @@ describe(`refresh`, () => {
     pipelines.ci = detail(`ci`, []);
     await refresh(config);
     await refresh(config);
-    workflow = { root_pipeline_id: `ci`, pipelines: [pipeline(`ci`, `Build & test`, null), pipeline(`e2e`, `E2E`, `ci`)] };
+    served = { root_pipeline_id: `ci`, pipelines: [pipeline(`ci`, `Build & test`, null), pipeline(`e2e`, `E2E`, `ci`)] };
     pipelines.e2e = detail(`e2e`, []);
     await refresh(config);
 
@@ -190,6 +194,31 @@ describe(`refresh`, () => {
     await refresh(config);
 
     expect(fetchedTimes(`ci`)).to.eq(2);
+  });
+
+  test(`asks again for promotions that didn't come back`, async () => {
+    pipelines.ci = { ...detail(`ci`, []), promotions: null };
+    await refresh(config);
+    pipelines.ci = { ...detail(`ci`, []), promotions: [{ ...starting, events: [] }] };
+    await refresh(config);
+    await refresh(config);
+
+    expect(batches.map((b) => b.promotions)).to.deep.eq([[`ci`], [`ci`]]);
+    expect(details.value.ci.promotions.map((p) => p.name)).to.deep.eq([`Staging`]);
+  });
+
+  test(`keeps the refresh after a promote when the request fails`, async () => {
+    pipelines.ci = { ...detail(`ci`, []), promotions: [{ ...starting, events: [] }] };
+    await refresh(config);
+    const ci = workflow.value.pipelineById.get(`ci`);
+    await promote(ci, ci.promotions[0], {});
+    failDetails = true;
+    await refresh(config);
+    failDetails = false;
+    await refresh(config);
+    await refresh(config);
+
+    expect(fetchedTimes(`ci`)).to.eq(3);
   });
 
   test(`reports whether anything changed`, async () => {

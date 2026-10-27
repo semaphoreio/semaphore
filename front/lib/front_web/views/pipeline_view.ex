@@ -581,13 +581,28 @@ defmodule FrontWeb.PipelineView do
       id: pipeline.id,
       state: pipeline.state,
       result: pipeline.result,
-      error_description: pipeline.error_description,
+      error_html:
+        if(Front.WorkflowPage.Errors.has_errors?(pipeline),
+          do:
+            Phoenix.View.render_to_string(__MODULE__, "pipeline/_error.html", pipeline: pipeline)
+        ),
+      init_job: map_init_job(pipeline.compile_task),
       done: pipeline_poll_state(pipeline) == "done",
       blocks: Enum.map(pipeline.blocks, &map_block/1),
       after_jobs: Enum.map(pipeline.after_task.jobs, &map_after_job/1),
       promotions: map_promotions(assigns)
     }
   end
+
+  defp map_init_job(%{present?: true, job_log_path: url} = task) when is_binary(url),
+    do: %{url: url, status: map_init_job_status(task)}
+
+  defp map_init_job(_), do: nil
+
+  defp map_init_job_status(%{running?: true}), do: :running
+  defp map_init_job_status(%{failed?: true}), do: :failed
+  defp map_init_job_status(%{done?: true}), do: :passed
+  defp map_init_job_status(_), do: :pending
 
   defp map_promotions(%{switch: :unchanged}), do: nil
 

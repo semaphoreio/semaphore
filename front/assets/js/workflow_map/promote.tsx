@@ -1,10 +1,9 @@
 import { signal } from "@preact/signals";
 import { useEffect, useState } from "preact/hooks";
 import { Pipeline, Promotion } from "./model";
-import { promote, workflow } from "./store";
+import { popover, promote, togglePopover } from "./store";
 
 export const promoting = signal<{ pipeline: Pipeline, promotion: Promotion, } | null>(null);
-export const promoteMenu = signal<{ id: string, x: number, y: number, } | null>(null);
 
 export const PromoteButton = ({ p, compact }: { p: Pipeline, compact?: boolean, }) => {
   if (!p.promotions?.length) return null;
@@ -12,14 +11,12 @@ export const PromoteButton = ({ p, compact }: { p: Pipeline, compact?: boolean, 
   return (
     <button
       className="btn btn-secondary btn-tiny wf-map-promote"
+      data-popover-trigger=""
       aria-haspopup="menu"
-      aria-expanded={promoteMenu.value?.id === p.id}
+      aria-expanded={popover.value?.kind === `promote` && popover.value.id === p.id}
       aria-label={compact ? `Promote ${p.name}` : undefined}
       title={fresh ? `${fresh} of ${p.promotions.length} promotions not run yet` : `${p.promotions.length} promotions`}
-      onClick={(e) => {
-        const r = e.currentTarget.getBoundingClientRect();
-        promoteMenu.value = promoteMenu.value?.id === p.id ? null : { id: p.id, x: r.left, y: r.bottom + 4 };
-      }}
+      onClick={(e) => togglePopover(`promote`, p.id, e.currentTarget)}
     >
       {compact ? <span className="material-symbols-outlined" aria-hidden="true">rocket_launch</span> : `Promote ▾`}
       {fresh > 0 && <span className="wf-map-promote-count">{fresh}</span>}
@@ -27,64 +24,44 @@ export const PromoteButton = ({ p, compact }: { p: Pipeline, compact?: boolean, 
   );
 };
 
-export const PromoteMenu = () => {
-  const menu = promoteMenu.value;
-  const p = menu && workflow.value?.pipelineById.get(menu.id);
-
-  useEffect(() => {
-    if (!menu) return;
-    const close = (e: Event) => {
-      const outside = e instanceof KeyboardEvent ? e.key === `Escape` : !(e.target as Element).closest?.(`.wf-map-menu, .wf-map-promote`);
-      if (outside) promoteMenu.value = null;
-    };
-    document.addEventListener(`pointerdown`, close);
-    document.addEventListener(`keydown`, close);
-    return () => {
-      document.removeEventListener(`pointerdown`, close);
-      document.removeEventListener(`keydown`, close);
-    };
-  }, [menu?.id]);
-
-  if (!p?.promotions) return null;
-  return (
-    <div className="wf-map-menu" role="menu" aria-label={`Promotions of ${p.name}`} style={{ left: Math.min(menu.x, window.innerWidth - 356), top: menu.y, maxHeight: window.innerHeight - menu.y - 16 }}>
-      {p.promotions.map((promotion) => {
-        const latest = promotion.events.reduce((a, e) => (!a || e.triggered_at > a.triggered_at ? e : a), null);
-        const note = promotion.starting
-          ? `Starting promotion…`
-          : !latest
-            ? `Not promoted yet`
-            : latest.processed && latest.result === `FAILED`
-              ? `Failed to promote`
-              : `${promotion.events.length > 1 ? `${promotion.events.length}× · ` : ``}${latest.auto ? `auto-promoted` : `by ${latest.author ?? `someone`}`}`;
-        const blocked = promotion.deployment && !promotion.deployment.allowed;
-        const why = blocked ? promotion.deployment.message ?? `Blocked by the ${promotion.deployment.name} deployment target` : `You don't have permission to promote`;
-        return (
-          <div key={promotion.name} className="wf-map-promotion" role="menuitem">
-            <span className="material-symbols-outlined wf-map-promotion-icon" aria-hidden="true">
-              {promotion.deployment ? (promotion.deployment.allowed ? `lock_open` : `lock`) : `rocket_launch`}
-            </span>
-            <span className="wf-map-promotion-text">
-              <span className="wf-map-promotion-name">{promotion.name}</span>
-              <span className={`wf-map-promotion-note ${latest?.result === `FAILED` ? `failed` : ``} ${latest ? `` : `fresh`}`}>{blocked ? promotion.deployment.name : note}</span>
-            </span>
-            <button
-              className="btn btn-secondary btn-small"
-              disabled={!promotion.can_promote || promotion.starting}
-              title={promotion.can_promote ? `Promote ${p.name} to ${promotion.name}` : why}
-              onClick={() => {
-                promoteMenu.value = null;
-                promoting.value = { pipeline: p, promotion };
-              }}
-            >
-              Promote
-            </button>
-          </div>
-        );
-      })}
-    </div>
-  );
-};
+export const Promotions = ({ p }: { p: Pipeline, }) => (
+  <div role="menu" aria-label={`Promotions of ${p.name}`}>
+    {p.promotions?.map((promotion) => {
+      const latest = promotion.events.reduce((a, e) => (!a || e.triggered_at > a.triggered_at ? e : a), null);
+      const note = promotion.starting
+        ? `Starting promotion…`
+        : !latest
+          ? `Not promoted yet`
+          : latest.processed && latest.result === `FAILED`
+            ? `Failed to promote`
+            : `${promotion.events.length > 1 ? `${promotion.events.length}× · ` : ``}${latest.auto ? `auto-promoted` : `by ${latest.author ?? `someone`}`}`;
+      const blocked = promotion.deployment && !promotion.deployment.allowed;
+      const why = blocked ? promotion.deployment.message ?? `Blocked by the ${promotion.deployment.name} deployment target` : `You don't have permission to promote`;
+      return (
+        <div key={promotion.name} className="wf-map-promotion" role="menuitem">
+          <span className="material-symbols-outlined wf-map-promotion-icon" aria-hidden="true">
+            {promotion.deployment ? (promotion.deployment.allowed ? `lock_open` : `lock`) : `rocket_launch`}
+          </span>
+          <span className="wf-map-promotion-text">
+            <span className="wf-map-promotion-name">{promotion.name}</span>
+            <span className={`wf-map-promotion-note ${latest?.result === `FAILED` ? `failed` : ``} ${latest ? `` : `fresh`}`}>{blocked ? promotion.deployment.name : note}</span>
+          </span>
+          <button
+            className="btn btn-secondary btn-small"
+            disabled={!promotion.can_promote || promotion.starting}
+            title={promotion.can_promote ? `Promote ${p.name} to ${promotion.name}` : why}
+            onClick={() => {
+              popover.value = null;
+              promoting.value = { pipeline: p, promotion };
+            }}
+          >
+            Promote
+          </button>
+        </div>
+      );
+    })}
+  </div>
+);
 
 const PromoteForm = ({ pipeline, promotion }: { pipeline: Pipeline, promotion: Promotion, }) => {
   const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(promotion.parameters.map((p) => [p.name, p.default_value ?? ``])));
@@ -107,7 +84,8 @@ const PromoteForm = ({ pipeline, promotion }: { pipeline: Pipeline, promotion: P
     const missing = promotion.parameters.filter((p) => p.required && !values[p.name]?.trim()).map((p) => p.name);
     if (missing.length) return setError(`Fill in ${missing.join(`, `)} first.`);
     setSending(true);
-    const failure = await promote(pipeline, promotion, values);
+    const sent = promotion.parameters.filter((p) => values[p.name] !== `` || !p.options.length).map((p): [string, string] => [p.name, values[p.name]]);
+    const failure = await promote(pipeline, promotion, Object.fromEntries(sent));
     setSending(false);
     if (failure) setError(failure);
     else close();
@@ -133,10 +111,15 @@ const PromoteForm = ({ pipeline, promotion }: { pipeline: Pipeline, promotion: P
               </div>
               {param.options.length ? (
                 <select id={id} className="form-control form-control-small w-100" value={values[param.name]} onChange={(e) => set(e.currentTarget.value)}>
-                  {[...new Set([param.default_value ?? ``, ...param.options])].map((option) => (
+                  {!param.default_value && (
+                    <option value="" disabled>
+                      Select an option
+                    </option>
+                  )}
+                  {[...new Set([param.default_value, ...param.options].filter(Boolean))].map((option) => (
                     <option key={option} value={option}>
-                      {option === `` ? `(empty)` : option}
-                      {option === param.default_value && option !== `` ? ` (default)` : ``}
+                      {option}
+                      {option === param.default_value ? ` (default)` : ``}
                     </option>
                   ))}
                 </select>

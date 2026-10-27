@@ -12,6 +12,7 @@ defmodule FrontWeb.PipelineViewTest do
         state: state,
         result: :PASSED,
         error_description: "",
+        compile_task: %{present?: false},
         blocks: blocks,
         after_task: %{jobs: after_jobs}
       }
@@ -33,6 +34,42 @@ defmodule FrontWeb.PipelineViewTest do
 
     defp render_map(pipeline),
       do: PipelineView.render("map.json", %{pipeline: pipeline})
+
+    test "renders the classic error, escaped, for a pipeline that failed to start" do
+      pipeline = %{map_pipeline(:DONE, []) | error_description: "bad <script>alert(1)</script>"}
+
+      json = render_map(pipeline)
+
+      assert json.error_html =~ "Unprocessable YAML file."
+      assert json.error_html =~ "bad &lt;script&gt;alert(1)&lt;/script&gt;"
+      refute json.error_html =~ "<script>"
+      assert render_map(map_pipeline(:DONE, [])).error_html == nil
+    end
+
+    test "links the initialization job with its status" do
+      init = fn task -> %{map_pipeline(:RUNNING, []) | compile_task: task} end
+
+      task = %{
+        present?: true,
+        job_log_path: "/jobs/init-1",
+        running?: false,
+        failed?: true,
+        done?: true
+      }
+
+      assert render_map(init.(task)).init_job == %{url: "/jobs/init-1", status: :failed}
+
+      assert render_map(init.(%{task | failed?: false})).init_job == %{
+               url: "/jobs/init-1",
+               status: :passed
+             }
+
+      assert render_map(init.(%{task | running?: true, done?: false, failed?: false})).init_job ==
+               %{url: "/jobs/init-1", status: :running}
+
+      assert render_map(init.(%{present?: true, job_log_path: nil})).init_job == nil
+      assert render_map(map_pipeline(:RUNNING, [])).init_job == nil
+    end
 
     test "maps task job states and results to statuses" do
       block = %{

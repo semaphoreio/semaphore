@@ -74,11 +74,17 @@ export interface ApiPromotion {
   events: ApiPromotionEvent[];
 }
 
+export interface InitJob {
+  url: string;
+  status: Status;
+}
+
 export interface ApiPipelineDetail {
   id: string;
   state: string;
   result: string;
-  error_description: string;
+  error_html: string | null;
+  init_job: InitJob | null;
   done: boolean;
   blocks: ApiBlock[];
   after_jobs: ApiJob[];
@@ -128,7 +134,8 @@ export interface Pipeline {
   attempt: number;
   blocks: Block[] | null;
   promotions: Promotion[] | null;
-  errorDescription: string;
+  errorHtml: string | null;
+  initJob: InitJob | null;
 }
 
 export interface Workflow {
@@ -212,7 +219,8 @@ export function buildWorkflow(tree: ApiWorkflow, details: Record<string, ApiPipe
       attempt: 1,
       blocks: null,
       promotions: null,
-      errorDescription: ``,
+      errorHtml: null,
+      initJob: null,
     });
   }
   const root = pipelineById.get(tree.root_pipeline_id) ?? [...pipelineById.values()][0];
@@ -246,7 +254,8 @@ export function buildWorkflow(tree: ApiWorkflow, details: Record<string, ApiPipe
     const detail = details[p.id];
     if (detail) {
       p.blocks = buildBlocks(p, detail, wf);
-      p.errorDescription = detail.error_description;
+      p.errorHtml = detail.error_html;
+      p.initJob = detail.init_job;
       p.promotions = detail.promotions.map((promotion) => ({
         ...promotion,
         pipelines: promotion.events.map((e) => pipelineById.get(e.pipeline_id)).filter(Boolean),
