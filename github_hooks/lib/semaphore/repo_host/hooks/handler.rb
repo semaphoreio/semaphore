@@ -133,14 +133,31 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
         return
       end
 
-      workflow = Workflow
+      # Options must name the reviewed commit; otherwise a fork pushing right
+      # after a refused approval gets its unreviewed head picked by the re-post.
+      approval_sha = workflow.payload.pr_approval_sha
+      if (include_secrets_requested || enable_cache_requested) && approval_sha.nil?
+        logger.info("pr-approval-options-missing-sha", :project_id => workflow.project_id)
+        Watchman.increment("hooks.pr_approval.options_missing_sha")
+        return
+      end
+
+      blocked_workflows = Workflow
         .in_project(workflow.project_id)
         .blocked_by_contributor
         .pr_number_in_git_ref(issue_number)
         .created_before(approval_comment_time)
-        .recent(1).first
+      blocked_workflows = blocked_workflows.with_commit_sha_prefix(approval_sha) if approval_sha
+      project_id = workflow.project_id
+      workflow = blocked_workflows.recent(1).first
 
-      return unless workflow
+      unless workflow
+        if approval_sha
+          logger.info("pr-approval-sha-not-found", :project_id => project_id, :approval_sha => approval_sha)
+          Watchman.increment("hooks.pr_approval.sha_not_found")
+        end
+        return
+      end
 
       # SHA binding (TOCTOU): pin the approval to the fork head that was
       # present when /sem-approve was processed. `commit_sha` on a blocked

@@ -64,6 +64,10 @@ module RepoHost::Github
         pr_approval_option?(:enable_cache)
     end
 
+    def pr_approval_sha
+      ApprovalCommand.sha(pr_comment_body)
+    end
+
     # Fork head an earlier /sem-approve bound this workflow to; nil if it was
     # never approved.
     def approved_pr_head_sha

@@ -155,5 +155,36 @@ RSpec.describe RepoHost::Github::ApprovalCommand do
       expect(described_class.options("/sem-approve --nope")).to eq([])
       expect(described_class.options("```\n/sem-approve --include-secrets\n```")).to eq([])
     end
+
+    it "does not treat the SHA as an option" do
+      expect(described_class.options("/sem-approve 1a2b3c4 --include-secrets")).to eq([:include_secrets])
+    end
+  end
+
+  describe ".sha" do
+    let(:full_sha) { "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b" }
+
+    it "returns nil when no SHA is given" do
+      expect(described_class.sha("/sem-approve --include-secrets")).to be_nil
+    end
+
+    it "returns an abbreviated or full SHA in any position among the options" do
+      expect(described_class.sha("/sem-approve 1a2b3c4 --include-secrets")).to eq("1a2b3c4")
+      expect(described_class.sha("/sem-approve --include-secrets #{full_sha}")).to eq(full_sha)
+      expect(described_class.sha("/sem-approve #{full_sha}")).to eq(full_sha)
+    end
+
+    it "rejects the whole command for a malformed or repeated SHA" do
+      ["1a2b3c", "1A2B3C4", "#{full_sha}0", "1a2b3cz", "1a2b3c4 5d6e7f8"].each do |token|
+        body = "/sem-approve #{token} --include-secrets"
+
+        expect(described_class.present?(body)).to be(false), token
+        expect(described_class.sha(body)).to be_nil, token
+      end
+    end
+
+    it "returns nil when the comment is not a bare command" do
+      expect(described_class.sha("LGTM\n/sem-approve 1a2b3c4")).to be_nil
+    end
   end
 end

@@ -36,6 +36,9 @@ module RepoHost
         "--include-cache" => :enable_cache
       }.freeze
 
+      # Abbreviated or full lowercase commit SHA naming the reviewed fork head.
+      SHA_PATTERN = /\A[0-9a-f]{7,40}\z/
+
       module_function
 
       def present?(body)
@@ -44,11 +47,17 @@ module RepoHost
 
       # Canonical, de-duplicated option symbols; empty unless present?.
       def options(body)
-        Array(option_tokens(body)).map { |token| OPTIONS.fetch(token) }.uniq
+        Array(option_tokens(body)).filter_map { |token| OPTIONS[token] }.uniq
+      end
+
+      # The commit SHA given with the command, or nil.
+      def sha(body)
+        Array(option_tokens(body)).find { |token| SHA_PATTERN.match?(token) }
       end
 
       # Tokens after the command when the whole comment is exactly one
-      # column-zero command line with only known options; nil otherwise.
+      # column-zero command line with only known options and at most one SHA;
+      # nil otherwise.
       def option_tokens(body)
         content_lines = body.to_s.split(/\r?\n/).map(&:rstrip).reject(&:empty?)
         return unless content_lines.length == 1
@@ -58,7 +67,10 @@ module RepoHost
 
         command, *given_options = line.split(/[ \t]+/)
         return unless command == COMMAND
-        return unless given_options.all? { |token| OPTIONS.key?(token) }
+
+        shas, flags = given_options.partition { |token| SHA_PATTERN.match?(token) }
+        return if shas.length > 1
+        return unless flags.all? { |token| OPTIONS.key?(token) }
 
         given_options
       end

@@ -83,6 +83,10 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
     context "PR approval" do
       before do
         allow(Semaphore::FeatureFlags).to receive(:enabled?).with(:sem_approve_options, anything).and_return(true)
+        # By default the approver names the head of the newest blocked workflow.
+        allow(@workflow.payload).to receive(:pr_approval_sha) do
+          Workflow.blocked_by_contributor.order(:created_at => :desc).pick(:commit_sha)
+        end
       end
 
       # Fixed timeline used by the approval tests. In the normal case a blocked
@@ -602,6 +606,99 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
           expect(described_class).to receive(:launch_pipeline).with(kind_of(Branch), workflow, @logger)
 
           described_class.run(@workflow, @logger)
+        end
+      end
+
+      context "when the approval names the reviewed commit" do
+        let(:reviewed_sha) { "aaaaaaa111111111111111111111111111111111" }
+        let(:pushed_sha) { "bbbbbbb222222222222222222222222222222222" }
+
+        def approve(sha:, **options)
+          allow(@workflow.payload).to receive_messages(
+            issue_number: 1,
+            pr_approval?: true,
+            pr_approval_sha: sha,
+            comment_author: "maintainer",
+            comment_created_at: approval_comment_time,
+            **options
+          )
+        end
+
+        def blocked_at(sha, created_at)
+          workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1, created_at: created_at)
+          workflow.update(:commit_sha => sha)
+          workflow
+        end
+
+        before do
+          allow(@logger).to receive(:info)
+          allow(Watchman).to receive(:increment)
+          allow(described_class).to receive_messages(approval_option_enabled?: true, can_approve_forked_pr?: true)
+        end
+
+        it "refuses options when no SHA is given" do
+          workflow = blocked_at(reviewed_sha, before_comment)
+          approve(:sha => nil, :pr_approval_include_secrets? => true)
+
+          expect(described_class).not_to receive(:update_pr_data)
+          expect(described_class).not_to receive(:launch_pipeline)
+          expect(Watchman).to receive(:increment).with("hooks.pr_approval.options_missing_sha")
+
+          expect { described_class.run(@workflow, @logger) }
+            .not_to(change { Workflow.find(workflow.id).attributes.slice("state", "request") })
+        end
+
+        it "still launches a bare approval without a SHA" do
+          workflow = blocked_at(reviewed_sha, before_comment)
+          approve(:sha => nil)
+          allow(described_class).to receive(:update_pr_data).and_return(ok_pr_data(workflow))
+
+          expect(described_class).to receive(:launch_pipeline).with(kind_of(Branch), workflow, @logger)
+
+          described_class.run(@workflow, @logger)
+        end
+
+        it "approves the workflow for the named commit, not the newest blocked one" do
+          reviewed = blocked_at(reviewed_sha, before_comment - 1.hour)
+          blocked_at(pushed_sha, before_comment)
+          approve(:sha => reviewed_sha[0, 7], :pr_approval_include_secrets? => true)
+          allow(described_class).to receive(:update_pr_data).and_return(ok_pr_data(reviewed))
+
+          expect(described_class).to receive(:launch_pipeline).with(kind_of(Branch), reviewed, @logger)
+
+          described_class.run(@workflow, @logger)
+
+          expect(approval_record(reviewed)).to include("approved_head_sha" => reviewed_sha, "include_secrets" => true)
+        end
+
+        it "does not hand options to a head the fork pushed after the reviewed commit" do
+          reviewed = blocked_at(reviewed_sha, before_comment - 1.hour)
+          pushed = blocked_at(pushed_sha, before_comment)
+          approve(:sha => reviewed_sha, :pr_approval_include_secrets? => true)
+          allow(described_class).to receive(:update_pr_data).and_return(ok_pr_data(reviewed, head_sha: pushed_sha))
+
+          expect(described_class).not_to receive(:launch_pipeline)
+
+          described_class.run(@workflow, @logger)
+
+          expect(Workflow.find(reviewed.id).state).to eq(Workflow::STATE_PR_APPROVAL_STALE)
+          expect(Workflow.find(pushed.id).state).to eq(Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR)
+        end
+
+        it "does nothing when no blocked workflow matches the SHA" do
+          workflow = blocked_at(reviewed_sha, before_comment)
+          approve(:sha => "ccccccc", :pr_approval_include_secrets? => true)
+
+          expect(described_class).not_to receive(:launch_pipeline)
+          expect(Watchman).to receive(:increment).with("hooks.pr_approval.sha_not_found")
+
+          described_class.run(@workflow, @logger)
+
+          expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR)
+        end
+
+        def approval_record(workflow)
+          JSON.parse(Workflow.find(workflow.id).request["payload"])["semaphore_approval"]
         end
       end
 

@@ -27,6 +27,11 @@ RSpec.describe RepoHost::Github::Payload do
       expect(payload.pr_approval_enable_cache?).to be(false)
     end
 
+    it "exposes the commit SHA given with the command" do
+      expect(comment_payload(body: "/sem-approve 1a2b3c4 --include-secrets").pr_approval_sha).to eq("1a2b3c4")
+      expect(comment_payload(body: "/sem-approve --include-secrets").pr_approval_sha).to be_nil
+    end
+
     it "recognizes /sem-approve --include-secrets option" do
       payload = comment_payload(body: "/sem-approve --include-secrets")
 

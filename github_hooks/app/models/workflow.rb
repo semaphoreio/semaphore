@@ -45,6 +45,7 @@ class Workflow < ActiveRecord::Base
   scope :recent, ->(limit) { order(:created_at => :desc).limit(limit) }
   scope :pr_number_in_git_ref, ->(number) { where(:git_ref => "refs/pull/#{number}/merge") }
   scope :initial_state, -> { where(:state => STATE_PROCESSING) }
+  scope :with_commit_sha_prefix, ->(sha) { where("commit_sha LIKE ?", "#{sanitize_sql_like(sha)}%") }
   scope :created_before, -> (datetime) { where(Workflow.arel_table[:created_at].lt(datetime)) }
   scope :created_after, -> (datetime) { where(Workflow.arel_table[:created_at].gt(datetime)) }
 
