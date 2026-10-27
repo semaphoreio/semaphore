@@ -218,6 +218,12 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
 
       approved_options_granted = include_secrets || enable_cache
 
+      unless claim_for_pr_approval(workflow)
+        logger.info("pr-approval-already-claimed", :workflow_id => workflow.id, :project_id => workflow.project_id)
+        Watchman.increment("hooks.pr_approval.already_claimed")
+        return
+      end
+
       options_persisted = mark_workflow_with_pr_approval_options(
         workflow,
         :include_secrets => include_secrets,
@@ -229,11 +235,20 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
         :comment_id => comment_id,
         :logger => logger
       )
-      return unless options_persisted
+      unless options_persisted
+        release_pr_approval(workflow)
+        return
+      end
 
     elsif workflow.payload.pull_request_forked_repo? && workflow.payload.approved_pr_head_sha.present?
       # A rescheduled run (e.g. mergeability still unknown) of a workflow that
       # /sem-approve already unblocked; keep the approval instead of filtering again.
+      unless workflow.state == Workflow::STATE_PR_APPROVAL_IN_PROGRESS && workflow.ppl_id.blank?
+        logger.info("pr-approval-resume-skipped", :workflow_id => workflow.id, :state => workflow.state)
+        Watchman.increment("hooks.pr_approval.resume_skipped")
+        return
+      end
+
       logger.info("pr-approval-resumed", :workflow_id => workflow.id)
       approved_head_sha = workflow.payload.approved_pr_head_sha
       approved_options_granted = workflow.payload.pr_approval_include_secrets? || workflow.payload.pr_approval_enable_cache?
@@ -413,6 +428,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
           if approved_options_granted
             logger.info("pr-approval-options-without-reference", :workflow_id => workflow.id)
             Watchman.increment("hooks.pr_approval.options_without_reference")
+            release_pr_approval(workflow)
 
             return
           end
@@ -438,7 +454,11 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
         end
       rescue RepoHost::RemoteException::Unknown => e
         logger.error("Unknown error", error: e.message)
+        release_pr_approval(workflow)
         raise e.class, e.message
+      rescue StandardError
+        release_pr_approval(workflow)
+        raise
       end
     end
 
@@ -575,6 +595,22 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
   rescue StandardError => e
     report_pr_approval_option_persist_failure(workflow, logger, e.message)
     false
+  end
+
+  # Compare-and-set so concurrent approvals and late reschedules can't both
+  # act on the same blocked workflow.
+  def self.claim_for_pr_approval(workflow)
+    claimed = Workflow
+      .where(:id => workflow.id, :state => Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR)
+      .update_all(:state => Workflow::STATE_PR_APPROVAL_IN_PROGRESS, :updated_at => Time.current) == 1
+    workflow.reload if claimed
+    claimed
+  end
+
+  def self.release_pr_approval(workflow)
+    Workflow
+      .where(:id => workflow.id, :state => Workflow::STATE_PR_APPROVAL_IN_PROGRESS)
+      .update_all(:state => Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR, :updated_at => Time.current)
   end
 
   def self.approved_sem_approve_option(requested:, enabled:, option:, logger:)

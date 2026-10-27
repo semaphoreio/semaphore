@@ -10,6 +10,8 @@ class Workflow < ActiveRecord::Base
   # SHA. We fail closed here rather than run unreviewed code (potentially
   # with granted secrets/cache) — the approver must re-issue /sem-approve.
   STATE_PR_APPROVAL_STALE = "pr_approval_stale"
+  # A /sem-approve claimed this blocked workflow and is processing it.
+  STATE_PR_APPROVAL_IN_PROGRESS = "pr_approval_in_progress"
   STATE_SKIP_CI = "skip_ci"
   STATE_DELETING_BRANCH = "deleting_branch"
   STATE_SKIP_PR = "skip_pr"

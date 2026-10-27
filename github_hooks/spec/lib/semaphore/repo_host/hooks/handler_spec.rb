@@ -249,7 +249,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
       end
 
       context "when an approved workflow did not launch on the first attempt" do
-        def mark_approved(workflow, include_secrets: false, enable_cache: false)
+        def mark_approved(workflow, include_secrets: false, enable_cache: false, state: Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR)
           payload = JSON.parse(workflow.request["payload"]).merge(
             "semaphore_approval_include_secrets" => include_secrets,
             "semaphore_approval_enable_cache" => enable_cache,
@@ -260,7 +260,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
               "approved_head_sha" => workflow.commit_sha
             }
           )
-          workflow.update(:request => workflow.request.merge("payload" => payload.to_json))
+          workflow.update(:request => workflow.request.merge("payload" => payload.to_json), :state => state)
           Workflow.find(workflow.id)
         end
 
@@ -331,7 +331,10 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
         end
 
         it "resumes a rescheduled approved workflow instead of filtering it again" do
-          workflow = mark_approved(build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1))
+          workflow = mark_approved(
+            build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1),
+            :state => Workflow::STATE_PR_APPROVAL_IN_PROGRESS
+          )
           allow(workflow.project).to receive_messages(build_forked_pr: true, allowed_contributors: "radwo")
           allow(described_class).to receive(:update_pr_data).and_return(ok_pr_data(workflow))
 
@@ -342,7 +345,10 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
         end
 
         it "fails closed when a rescheduled approved workflow's fork head moved" do
-          workflow = mark_approved(build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1))
+          workflow = mark_approved(
+            build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1),
+            :state => Workflow::STATE_PR_APPROVAL_IN_PROGRESS
+          )
           allow(workflow.project).to receive_messages(build_forked_pr: true, allowed_contributors: "radwo")
           allow(described_class).to receive(:update_pr_data).and_return(ok_pr_data(workflow, head_sha: "pushed-after-approval"))
 
@@ -351,6 +357,100 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
           described_class.run(workflow, @logger, "", "", 1)
 
           expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_PR_APPROVAL_STALE)
+        end
+
+        context "when claiming the blocked workflow" do
+          def approve_bare
+            allow(@workflow.payload).to receive_messages(
+              issue_number: 1,
+              pr_approval?: true,
+              comment_author: "maintainer",
+              comment_author_uid: 4242,
+              comment_created_at: approval_comment_time
+            )
+            allow(described_class).to receive(:can_approve_forked_pr?).and_return(true)
+          end
+
+          it "holds the claim while launching" do
+            workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+            approve_bare
+            allow(described_class).to receive(:update_pr_data).and_return(ok_pr_data(workflow))
+
+            state_at_launch = nil
+            allow(described_class).to receive(:launch_pipeline) { |_branch, wf, _logger| state_at_launch = Workflow.find(wf.id).state }
+
+            described_class.run(@workflow, @logger)
+
+            expect(state_at_launch).to eq(Workflow::STATE_PR_APPROVAL_IN_PROGRESS)
+          end
+
+          it "backs off without touching the workflow when a concurrent approval claimed it first" do
+            workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+            approve_bare
+            original_payload = workflow.request["payload"]
+            allow(described_class).to receive(:approved_sem_approve_option).and_wrap_original do |method, **kwargs|
+              Workflow.find(workflow.id).update(:state => Workflow::STATE_PR_APPROVAL_IN_PROGRESS)
+              method.call(**kwargs)
+            end
+
+            expect(described_class).not_to receive(:update_pr_data)
+            expect(described_class).not_to receive(:launch_pipeline)
+            expect(Watchman).to receive(:increment).with("hooks.pr_approval.already_claimed")
+
+            described_class.run(@workflow, @logger)
+
+            expect(Workflow.find(workflow.id).request["payload"]).to eq(original_payload)
+          end
+
+          it "keeps the claim across a mergeable_unknown reschedule" do
+            workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+            approve_bare
+            allow(described_class).to receive(:update_pr_data).and_return([:mergeable_unknown, { :rate_limit_remaining => 5000 }, ""])
+
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker).to receive(:perform_in).with(2.minutes, workflow.id, anything, anything, 1)
+
+            described_class.run(@workflow, @logger)
+
+            expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_PR_APPROVAL_IN_PROGRESS)
+          end
+
+          it "ignores a late reschedule once the workflow was launched by another approval" do
+            workflow = mark_approved(
+              build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1),
+              :state => Workflow::STATE_LAUNCHING
+            )
+            workflow.update(:ppl_id => SecureRandom.uuid, :git_ref => "refs/semaphoreci/#{workflow.commit_sha}")
+            workflow = Workflow.find(workflow.id)
+
+            expect(described_class).not_to receive(:update_pr_data)
+            expect(described_class).not_to receive(:launch_pipeline)
+            expect(Watchman).to receive(:increment).with("hooks.pr_approval.resume_skipped")
+
+            expect { described_class.run(workflow, @logger, "", "", 1) }
+              .not_to(change { Workflow.find(workflow.id).attributes.slice("state", "commit_sha", "git_ref") })
+          end
+
+          it "releases the claim and re-raises when fetching the PR fails" do
+            workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+            approve_bare
+            allow(described_class).to receive(:update_pr_data).and_raise(RepoHost::RemoteException::Unknown, "boom")
+
+            expect { described_class.run(@workflow, @logger) }.to raise_error(RepoHost::RemoteException::Unknown)
+
+            expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR)
+          end
+
+          it "releases the claim when the approval cannot be persisted" do
+            workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+            approve_bare
+            allow(described_class).to receive(:mark_workflow_with_pr_approval_options).and_return(false)
+
+            expect(described_class).not_to receive(:launch_pipeline)
+
+            described_class.run(@workflow, @logger)
+
+            expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR)
+          end
         end
 
         it "still filters a rescheduled workflow that was never approved" do
@@ -603,6 +703,8 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
           expect(Watchman).to receive(:increment).with("hooks.pr_approval.options_without_reference")
 
           described_class.run(@workflow, @logger)
+
+          expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR)
         end
 
         it "fails closed when the fork head moved since approval" do
@@ -633,14 +735,20 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
             "semaphore_approval_include_secrets" => true,
             "semaphore_approval" => { "include_secrets" => true, "approved_head_sha" => workflow.commit_sha }
           )
-          workflow.update(:request => workflow.request.merge("payload" => payload.to_json))
+          workflow.update(
+            :request => workflow.request.merge("payload" => payload.to_json),
+            :state => Workflow::STATE_PR_APPROVAL_IN_PROGRESS
+          )
           workflow = Workflow.find(workflow.id)
           allow(workflow.project).to receive_messages(build_forked_pr: true, allowed_contributors: "radwo")
           allow(described_class).to receive(:update_pr_data).and_return(without_reference_data(workflow))
 
           expect(described_class).not_to receive(:launch_pipeline)
+          expect(Watchman).to receive(:increment).with("hooks.pr_approval.options_without_reference")
 
           described_class.run(workflow, @logger, "", "", 1)
+
+          expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR)
         end
       end
 
