@@ -75,11 +75,16 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
 
     context "when hook is forked pull request" do
       def describe_pr_hook(markers = {})
+        describe_hook_with_ref(markers, :pinned => true)
+      end
+
+      def describe_hook_with_ref(markers, pinned:)
         payload = JSON.parse(RepoHost::Github::Responses::Payload.post_receive_hook_pull_request).merge(markers)
         hook = FactoryBot.create(
           :workflow,
           :request => ActionController::Parameters.new("payload" => payload.to_json)
         )
+        hook.update(:git_ref => "refs/semaphoreci/#{hook.commit_sha}") if pinned
 
         server.describe(InternalApi::RepoProxy::DescribeRequest.new(:hook_id => hook.id), call).hook
       end
@@ -114,6 +119,15 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
 
         expect([secrets_only.approval_include_secrets, secrets_only.approval_enable_cache]).to eq([true, false])
         expect([cache_only.approval_include_secrets, cache_only.approval_enable_cache]).to eq([false, true])
+      end
+
+      it "does not report approval options while the hook still points at the movable PR merge ref" do
+        markers = { "semaphore_approval_include_secrets" => true, "semaphore_approval_enable_cache" => true }
+        hook = describe_hook_with_ref(markers, :pinned => false)
+
+        expect(hook.git_ref).to match(%r{\Arefs/pull/\d+/merge\z})
+        expect(hook.approval_include_secrets).to be(false)
+        expect(hook.approval_enable_cache).to be(false)
       end
     end
 

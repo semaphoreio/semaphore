@@ -309,7 +309,8 @@ module InternalApi
           data[:user_id] = user.id
           data[:semaphore_email] = user.email
         end
-        if hook.payload.pull_request?
+        # Approval options never ride on a ref the fork can still move.
+        if hook.payload.pull_request? && hook.git_ref == "refs/semaphoreci/#{hook.commit_sha}"
           data[:approval_include_secrets] = hook.payload.pr_approval_include_secrets?
           data[:approval_enable_cache] = hook.payload.pr_approval_enable_cache?
         end
