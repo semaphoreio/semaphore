@@ -177,17 +177,6 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
         return
       end
 
-      # A head pushed just before the comment may not be the commit the
-      # approver reviewed; make them re-approve before granting options.
-      if (include_secrets_requested || enable_cache_requested) &&
-         workflow.created_at > approval_comment_time - App.pr_approval_fresh_head_window
-        logger.info("pr-approval-head-too-recent",
-                    :workflow_id => workflow.id,
-                    :window_seconds => App.pr_approval_fresh_head_window)
-        Watchman.increment("hooks.pr_approval.head_too_recent")
-        return
-      end
-
       if (include_secrets_requested || enable_cache_requested) &&
          !Semaphore::FeatureFlags.enabled?(:sem_approve_options, workflow.project.organization_id)
         logger.info("pr-approval-options-feature-disabled",

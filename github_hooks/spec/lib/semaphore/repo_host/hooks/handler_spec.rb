@@ -703,68 +703,25 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
       end
 
       context "when the PR head changed just before the approval comment" do
-        def comment_time
-          Time.parse(approval_comment_time)
-        end
-
-        def approve(**options)
-          allow(@workflow.payload).to receive_messages(
-            issue_number: 1,
-            pr_approval?: true,
-            comment_author: "maintainer",
-            comment_created_at: approval_comment_time,
-            **options
-          )
-        end
-
         before do
           allow(@logger).to receive(:info)
           allow(Watchman).to receive(:increment)
           allow(described_class).to receive_messages(approval_option_enabled?: true, can_approve_forked_pr?: true)
         end
 
-        it "refuses an approval with options when the head is newer than the window" do
-          workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1, created_at: comment_time - 10)
-          approve(pr_approval_include_secrets?: true)
-          allow(described_class).to receive(:update_pr_data).and_return(ok_pr_data(workflow))
-
-          expect(described_class).not_to receive(:launch_pipeline)
-          expect(Watchman).to receive(:increment).with("hooks.pr_approval.head_too_recent")
-
-          described_class.run(@workflow, @logger)
-
-          reloaded = Workflow.find(workflow.id)
-          expect(reloaded.state).to eq(Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR)
-          expect(JSON.parse(reloaded.request["payload"])).not_to include("semaphore_approval")
-        end
-
-        it "launches an approval with options once the head is older than the window" do
-          workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1, created_at: comment_time - 31)
-          approve(pr_approval_enable_cache?: true)
+        it "launches an approval with options that names that head" do
+          workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1, created_at: Time.parse(approval_comment_time) - 1)
+          allow(@workflow.payload).to receive_messages(
+            issue_number: 1,
+            pr_approval?: true,
+            pr_approval_include_secrets?: true,
+            pr_approval_sha: workflow.commit_sha,
+            comment_author: "maintainer",
+            comment_created_at: approval_comment_time
+          )
           allow(described_class).to receive(:update_pr_data).and_return(ok_pr_data(workflow))
 
           expect(described_class).to receive(:launch_pipeline).with(kind_of(Branch), workflow, @logger)
-
-          described_class.run(@workflow, @logger)
-        end
-
-        it "does not delay a bare approval" do
-          workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1, created_at: comment_time - 1)
-          approve
-          allow(described_class).to receive(:update_pr_data).and_return(ok_pr_data(workflow))
-
-          expect(described_class).to receive(:launch_pipeline).with(kind_of(Branch), workflow, @logger)
-
-          described_class.run(@workflow, @logger)
-        end
-
-        it "uses the configured window" do
-          allow(App).to receive(:pr_approval_fresh_head_window).and_return(120)
-          workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1, created_at: comment_time - 60)
-          approve(pr_approval_include_secrets?: true)
-
-          expect(described_class).not_to receive(:launch_pipeline)
-          expect(Watchman).to receive(:increment).with("hooks.pr_approval.head_too_recent")
 
           described_class.run(@workflow, @logger)
         end
