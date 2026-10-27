@@ -521,10 +521,10 @@ If you are using a [filter for contributors](../using-semaphore/workflows#projec
 
 You can also allow extra options for approved runs in **Project settings > General > Forked pull requests**:
 
-- `/sem-approve --include-secrets`
-- `/sem-approve --enable-cache`
+- `/sem-approve <sha> --include-secrets`
+- `/sem-approve <sha> --enable-cache`
 
-These options work only when the corresponding project settings are enabled, and only for approvers who can start pipelines in the project (`project.job.rerun`).
+These options work only when the corresponding project settings are enabled, and only for approvers who can start pipelines in the project (`project.job.rerun`). `<sha>` is the fork commit you reviewed (at least 7 characters); if the fork pushes a new commit, review it and approve again with the new SHA.
 
 Approving forked pull requests is limited to new comments only and is not possible for comment edits. Due to security concerns, `/sem-approve` will work only once. Subsequent pushes to the forked pull request must be approved again.
 

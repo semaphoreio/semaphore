@@ -256,17 +256,19 @@ Project maintainers can allow extra `/sem-approve` options in **Project settings
 - **Allow `/sem-approve --include-secrets`**: approved runs receive **all** project secrets referenced by the workflow, bypassing the forked-PR allowed-secrets list (still limited to the secrets the project is allowed to access). Use with care — it exposes those secrets to externally-authored fork code.
 - **Allow `/sem-approve --enable-cache`**: enables approved runs to use cache. The fork run gets read/write access to the project cache, so treat cache entries it writes as untrusted. (`--include-cache` is accepted as an alias for `--enable-cache`.)
 
-When these settings are enabled, an authorized approver can approve with:
+When these settings are enabled, an authorized approver can approve with the SHA of the fork commit they reviewed (abbreviated to at least 7 characters, or in full):
 
-- `/sem-approve --include-secrets`
-- `/sem-approve --enable-cache`
-- `/sem-approve --include-secrets --enable-cache`
+- `/sem-approve <sha> --include-secrets`
+- `/sem-approve <sha> --enable-cache`
+- `/sem-approve <sha> --include-secrets --enable-cache`
+
+The SHA is required whenever an option is used. A comment with options but no SHA is not treated as an approval, and the run only starts if the named commit is still the head of the pull request. A plain `/sem-approve` can also be given a SHA to approve that specific commit.
 
 If a `/sem-approve` comment requests an option that is **not available** — either an unrecognized option (a typo) or one the project has not enabled — the command is **not** treated as an approval, rather than silently approving without it. The blocked workflow is left untouched, so you can enable the option (or fix the spelling) and re-issue the command.
 
 These options are currently available for GitHub pull request approvals.
 
-Approving forked pull requests is limited to newly created comments: editing an existing comment does not trigger — or re-trigger — an approval. An approval is bound to the fork commit that was present when the comment was written: if the fork pushes a new commit before the run starts, the run is not executed and a fresh `/sem-approve` is required. Due to security concerns, `/sem-approve` will work only once. Subsequent pushes to the forked pull request must be approved again.
+Approving forked pull requests is limited to newly created comments: editing an existing comment does not trigger — or re-trigger — an approval. An approval is bound to the fork commit that was present when the comment was written, or to the commit named by its SHA: if the fork pushes a new commit before the run starts, the run is not executed. Review the new commit, then approve it again with its SHA. Due to security concerns, `/sem-approve` will work only once. Subsequent pushes to the forked pull request must be approved again.
 
 ## How to skip commits {#skip}
 
