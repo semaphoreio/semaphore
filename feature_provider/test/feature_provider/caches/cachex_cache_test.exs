@@ -13,6 +13,17 @@ defmodule FeatureProvider.CachexCacheTest do
     :ok
   end
 
+  describe "fetch/3 without `stale_ttl_ms` or `breaker`" do
+    test "returns the default for a callback that returns a bare value, as before" do
+      assert CachexCache.fetch(:key, fn -> "bare" end, name: :my_cache) == :not_found
+      assert CachexCache.get(:key, name: :my_cache) == "bare"
+    end
+
+    test "returns the default for a callback that returns `:error`" do
+      assert CachexCache.fetch(:key, fn -> :error end, name: :my_cache) == :not_found
+    end
+  end
+
   describe "fetch/3 with `stale_ttl_ms`" do
     test "serves the last known value when the callback exits or throws" do
       load_and_expire(:key, "known")
@@ -32,24 +43,27 @@ defmodule FeatureProvider.CachexCacheTest do
     end
 
     test "returns `:not_found` once `ttl_ms + stale_ttl_ms` has passed" do
-      opts = [name: :my_cache, ttl_ms: 20, stale_ttl_ms: 30]
+      # The last known value expires at 200ms; the first check runs at 60ms.
+      opts = [name: :my_cache, ttl_ms: 50, stale_ttl_ms: 150]
       assert CachexCache.fetch(:key, "known", opts) == "known"
 
-      Process.sleep(30)
+      Process.sleep(60)
       assert CachexCache.fetch(:key, fn -> {:error, :provider_down} end, opts) == "known"
 
-      Process.sleep(40)
+      Process.sleep(150)
       assert CachexCache.fetch(:key, fn -> {:error, :provider_down} end, opts) == :not_found
     end
 
     test "each successful load restarts the `ttl_ms + stale_ttl_ms` window" do
-      opts = [name: :my_cache, ttl_ms: 20, stale_ttl_ms: 40]
+      # "first" expires at 200ms, "second" at 350ms or later; the check runs
+      # at 250ms.
+      opts = [name: :my_cache, ttl_ms: 50, stale_ttl_ms: 150]
       assert CachexCache.fetch(:key, "first", opts) == "first"
 
-      Process.sleep(40)
+      Process.sleep(150)
       assert CachexCache.fetch(:key, "second", opts) == "second"
 
-      Process.sleep(40)
+      Process.sleep(100)
       assert CachexCache.fetch(:key, fn -> {:error, :provider_down} end, opts) == "second"
     end
 

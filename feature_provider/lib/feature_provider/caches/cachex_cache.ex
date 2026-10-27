@@ -223,19 +223,28 @@ defmodule FeatureProvider.CachexCache do
   defp load_or_fallback(key, callback, default, opts) do
     breaker = Keyword.get(opts, :breaker)
 
-    if breaker && CircuitBreaker.open?(breaker) do
-      case last_known(key, opts) do
-        :not_found -> default
-        value -> value
-      end
-    else
-      result = load(key, callback, opts)
-      if breaker, do: record(breaker, result, fn -> load(key, callback, opts) end)
+    cond do
+      # With neither option set, it behaves exactly as before they were added.
+      is_nil(breaker) and stale_ttl_ms(opts) == 0 ->
+        case set(key, callback, opts) do
+          {:ok, value} -> value
+          _ -> default
+        end
 
-      case result do
-        {:ok, value} -> value
-        failure -> last_known_or_default(key, failure, default, opts)
-      end
+      breaker && CircuitBreaker.open?(breaker) ->
+        case last_known(key, opts) do
+          :not_found -> default
+          value -> value
+        end
+
+      true ->
+        result = load(key, callback, opts)
+        if breaker, do: record(breaker, result, fn -> load(key, callback, opts) end)
+
+        case result do
+          {:ok, value} -> value
+          failure -> last_known_or_default(key, failure, default, opts)
+        end
     end
   end
 

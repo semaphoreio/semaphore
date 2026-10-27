@@ -171,6 +171,26 @@ defmodule FeatureProvider.CircuitBreakerTest do
         end)
       end
     end
+
+    for key <- [:probe_base_ms, :probe_max_ms, :probe_timeout_ms], value <- [0, -1, 1.5, "100", nil] do
+      test "rejects `#{key}: #{inspect(value)}`" do
+        capture_log(fn ->
+          assert {:error, reason} =
+                   start_supervised({CircuitBreaker, Keyword.put(@opts, unquote(key), unquote(value))})
+
+          assert inspect(reason) =~ "#{unquote(key)} must be a positive integer"
+        end)
+      end
+    end
+
+    test "rejects `probe_max_ms` less than `probe_base_ms`" do
+      capture_log(fn ->
+        assert {:error, reason} =
+                 start_supervised({CircuitBreaker, Keyword.merge(@opts, probe_base_ms: 100, probe_max_ms: 50)})
+
+        assert inspect(reason) =~ "probe_max_ms must not be less than probe_base_ms"
+      end)
+    end
   end
 
   describe "when it isn't running" do

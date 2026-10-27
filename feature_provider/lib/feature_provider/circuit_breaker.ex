@@ -56,10 +56,12 @@ defmodule FeatureProvider.CircuitBreaker do
   - `name` - (required) an atom, used for the process and its ETS table
   - `failure_threshold` - unavailable loads in a row that open the breaker, a
     positive integer. Defaults to `#{@default_failure_threshold}`
-  - `probe_base_ms` - delay before the first probe. Defaults to `#{@default_probe_base_ms}`
-  - `probe_max_ms` - maximum delay between probes. Defaults to `#{@default_probe_max_ms}`
+  - `probe_base_ms` - delay before the first probe, a positive integer.
+    Defaults to `#{@default_probe_base_ms}`
+  - `probe_max_ms` - maximum delay between probes, a positive integer not less
+    than `probe_base_ms`. Defaults to `#{@default_probe_max_ms}`
   - `probe_timeout_ms` - a probe still running after this long is killed and
-    counted as failed. Defaults to `#{@default_probe_timeout_ms}`
+    counted as failed, a positive integer. Defaults to `#{@default_probe_timeout_ms}`
   """
   use GenServer
 
@@ -174,7 +176,18 @@ defmodule FeatureProvider.CircuitBreaker do
   @impl GenServer
   def init(opts) do
     name = Keyword.fetch!(opts, :name)
-    failure_threshold = failure_threshold!(opts)
+    # With anything else, `update_counter/3` never returns it and the breaker
+    # never opens.
+    failure_threshold = positive_integer!(opts, :failure_threshold, @default_failure_threshold)
+    # With anything else, scheduling a probe crashes the breaker when it opens.
+    probe_base_ms = positive_integer!(opts, :probe_base_ms, @default_probe_base_ms)
+    probe_max_ms = positive_integer!(opts, :probe_max_ms, @default_probe_max_ms)
+    probe_timeout_ms = positive_integer!(opts, :probe_timeout_ms, @default_probe_timeout_ms)
+
+    if probe_max_ms < probe_base_ms do
+      raise ArgumentError,
+            "probe_max_ms must not be less than probe_base_ms, got: #{probe_max_ms} < #{probe_base_ms}"
+    end
 
     :ets.new(name, [:named_table, :public, :set, read_concurrency: true, write_concurrency: true])
     :ets.insert(name, [{:state, :closed}, {:failures, 0}, {:failure_threshold, failure_threshold}])
@@ -183,9 +196,9 @@ defmodule FeatureProvider.CircuitBreaker do
      %{
        name: name,
        failure_threshold: failure_threshold,
-       probe_base_ms: Keyword.get(opts, :probe_base_ms, @default_probe_base_ms),
-       probe_max_ms: Keyword.get(opts, :probe_max_ms, @default_probe_max_ms),
-       probe_timeout_ms: Keyword.get(opts, :probe_timeout_ms, @default_probe_timeout_ms),
+       probe_base_ms: probe_base_ms,
+       probe_max_ms: probe_max_ms,
+       probe_timeout_ms: probe_timeout_ms,
        probe: nil,
        attempt: 0,
        running: nil
@@ -265,15 +278,13 @@ defmodule FeatureProvider.CircuitBreaker do
   defp format_failure(:killed, state), do: "timed out after #{state.probe_timeout_ms}ms"
   defp format_failure(reason, _state), do: inspect(reason)
 
-  # With anything else, `update_counter/3` never returns it and the breaker
-  # never opens.
-  defp failure_threshold!(opts) do
-    case Keyword.get(opts, :failure_threshold, @default_failure_threshold) do
-      threshold when is_integer(threshold) and threshold > 0 ->
-        threshold
+  defp positive_integer!(opts, key, default) do
+    case Keyword.get(opts, key, default) do
+      value when is_integer(value) and value > 0 ->
+        value
 
       other ->
-        raise ArgumentError, "failure_threshold must be a positive integer, got: #{inspect(other)}"
+        raise ArgumentError, "#{key} must be a positive integer, got: #{inspect(other)}"
     end
   end
 
