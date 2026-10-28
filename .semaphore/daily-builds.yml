@@ -3511,7 +3511,13 @@ blocks:
         - name: Erlang 24, Elixir 1.11
           commands:
             - cd feature_provider
+            # Own keys, so this job never restores a _build compiled by a
+            # sem-version cell for another OTP 24 patch release.
+            - cache restore docker-deps-24-1.11-$(checksum mix.lock)
+            - cache restore docker-build-24-1.11-$(checksum mix.lock)
             - docker run --rm -v "$PWD":/app -w /app -e CI=true -e MIX_ENV=test hexpm/elixir:1.11.4-erlang-24.3.4.13-ubuntu-jammy-20230126 sh -c "mix local.hex --force && mix local.rebar --force && mix do deps.get, test"
+            - cache store docker-deps-24-1.11-$(checksum mix.lock) deps
+            - cache store docker-build-24-1.11-$(checksum mix.lock) _build
 promotions:
   - name: Generate Helm Chart
     pipeline_file: generate-helm-chart.yml
