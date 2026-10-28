@@ -38,13 +38,23 @@ defmodule FrontWeb.TargetControllerTest do
     %{workflow: workflow_id, switch: switch_id, pipeline: ppl_id}
   end
 
+  # The static Factories.Gofer.describe_response/0 fixture carries its own
+  # unrelated ppl_id. Pin it to the pipeline actually under test so the
+  # switch-to-pipeline resolution that TargetController performs succeeds,
+  # the same way it would for a switch that genuinely belongs to that
+  # pipeline.
+  defp describe_response_for(ppl_id) do
+    %{Factories.Gofer.describe_response() | ppl_id: ppl_id}
+  end
+
   describe ".trigger" do
     test "when trigger succeeds => it return 200", %{conn: conn} do
-      GrpcMock.stub(GoferMock, :describe, Factories.Gofer.describe_response())
+      %{workflow: wf_id, pipeline: ppl_id, switch: switch_id} = ids()
+
+      GrpcMock.stub(GoferMock, :describe, describe_response_for(ppl_id))
       GrpcMock.stub(GoferMock, :trigger, Factories.Gofer.succeeded_trigger_response())
 
       name = URI.encode("Deploy to Prod")
-      %{workflow: wf_id, pipeline: ppl_id, switch: switch_id} = ids()
 
       conn =
         conn
@@ -54,14 +64,15 @@ defmodule FrontWeb.TargetControllerTest do
     end
 
     test "when user cant run jobs => . returns 404", %{conn: conn} do
-      GrpcMock.stub(GoferMock, :describe, Factories.Gofer.describe_response())
+      %{workflow: wf_id, pipeline: ppl_id, switch: switch_id} = ids()
+
+      GrpcMock.stub(GoferMock, :describe, describe_response_for(ppl_id))
       GrpcMock.stub(GoferMock, :trigger, Factories.Gofer.succeeded_trigger_response())
 
       PermissionPatrol.remove_all_permissions()
       PermissionPatrol.allow_everything_except(@org_id, @user_id, "project.job.rerun")
 
       name = URI.encode("Deploy to Prod")
-      %{workflow: wf_id, pipeline: ppl_id, switch: switch_id} = ids()
 
       conn =
         conn
@@ -71,7 +82,9 @@ defmodule FrontWeb.TargetControllerTest do
     end
 
     test "sends the current user as trigger author", %{conn: conn} do
-      GrpcMock.stub(GoferMock, :describe, Factories.Gofer.describe_response())
+      %{workflow: wf_id, pipeline: ppl_id, switch: switch_id} = ids()
+
+      GrpcMock.stub(GoferMock, :describe, describe_response_for(ppl_id))
 
       GrpcMock.stub(GoferMock, :trigger, fn request, _ ->
         assert request.triggered_by == "a8114608-be8a-465a-b9cd-81970fb802c6"
@@ -79,7 +92,6 @@ defmodule FrontWeb.TargetControllerTest do
         Factories.Gofer.succeeded_trigger_response()
       end)
 
-      %{workflow: wf_id, pipeline: ppl_id, switch: switch_id} = ids()
       name = URI.encode("Deploy to Prod")
 
       conn =
@@ -90,17 +102,53 @@ defmodule FrontWeb.TargetControllerTest do
     end
 
     test "when the target triggering fails => it returns 500", %{conn: conn} do
-      GrpcMock.stub(GoferMock, :describe, Factories.Gofer.describe_response())
+      %{workflow: wf_id, pipeline: ppl_id, switch: switch_id} = ids()
+
+      GrpcMock.stub(GoferMock, :describe, describe_response_for(ppl_id))
       GrpcMock.stub(GoferMock, :trigger, Factories.Gofer.failed_trigger_response())
 
       name = URI.encode("Deploy to Prod")
-      %{workflow: wf_id, pipeline: ppl_id, switch: switch_id} = ids()
 
       conn =
         conn
         |> post("/workflows/#{wf_id}/pipelines/#{ppl_id}/swithes/#{switch_id}/targets/#{name}")
 
       assert conn.status == 500
+    end
+
+    test "when the switch belongs to a different pipeline => it returns 404", %{conn: conn} do
+      %{workflow: wf_id, pipeline: ppl_id, switch: switch_id} = ids()
+
+      GrpcMock.stub(GoferMock, :describe, describe_response_for("some-other-pipeline-id"))
+      GrpcMock.stub(GoferMock, :trigger, Factories.Gofer.succeeded_trigger_response())
+
+      name = URI.encode("Deploy to Prod")
+
+      conn =
+        conn
+        |> post("/workflows/#{wf_id}/pipelines/#{ppl_id}/swithes/#{switch_id}/targets/#{name}")
+
+      assert conn.status == 404
+    end
+
+    test "when the pipeline in the URL belongs to a different workflow => it returns 404", %{
+      conn: conn
+    } do
+      %{pipeline: ppl_id, switch: switch_id} = ids()
+
+      GrpcMock.stub(GoferMock, :describe, describe_response_for(ppl_id))
+      GrpcMock.stub(GoferMock, :trigger, Factories.Gofer.succeeded_trigger_response())
+
+      other_workflow = Support.Stubs.Workflow.create(DB.first(:hooks), DB.first(:users))
+      name = URI.encode("Deploy to Prod")
+
+      conn =
+        conn
+        |> post(
+          "/workflows/#{other_workflow.id}/pipelines/#{ppl_id}/swithes/#{switch_id}/targets/#{name}"
+        )
+
+      assert conn.status == 404
     end
   end
 end
