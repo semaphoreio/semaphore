@@ -3875,7 +3875,7 @@ blocks:
         # install on the agent image, so run the tests in plumber's builder image.
         - name: Erlang 24, Elixir 1.11
           commands:
-            - cd feature_provider
+            - checkout && cd feature_provider
             # Own keys, so this job never restores a _build compiled by a
             # sem-version cell for another OTP 24 patch release.
             - cache restore docker-deps-24-1.11-$(checksum mix.lock)
