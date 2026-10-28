@@ -101,23 +101,65 @@ defmodule FeatureProvider.CachexCacheTest do
 
       assert log =~ ~s(serving last known value for {:provide_features, "org-1"}: {:error, :unavailable})
 
+      load_and_expire({:provide_features, "org-2"}, "known")
+
       log =
         capture_log(fn ->
-          CachexCache.fetch({:provide_features, "org-1"}, fn -> raise "provider down" end, @stale)
+          CachexCache.fetch({:provide_features, "org-2"}, fn -> raise "provider down" end, @stale)
         end)
 
       assert log =~ "** (RuntimeError) provider down"
       assert log =~ "cachex_cache_test.exs"
     end
 
-    for stale_ttl_ms <- [nil, :infinity, "1000", -1, 0, 1.5] do
-      test "is disabled, without crashing, for `stale_ttl_ms: #{inspect(stale_ttl_ms)}`" do
-        opts = [name: :my_cache, ttl_ms: 20, stale_ttl_ms: unquote(Macro.escape(stale_ttl_ms))]
+    test "warns once per key, and again after that key loads successfully" do
+      load_and_expire(:a, "a")
+      load_and_expire(:b, "b")
+      failing = fn -> {:error, :provider_down} end
 
-        assert CachexCache.fetch(:key, "known", opts) == "known"
-        Process.sleep(30)
+      log =
+        capture_log(fn ->
+          for _ <- 1..5, do: assert(CachexCache.fetch(:a, failing, @stale) == "a")
+          assert CachexCache.fetch(:b, failing, @stale) == "b"
+        end)
 
-        assert CachexCache.fetch(:key, fn -> {:error, :provider_down} end, opts) == :not_found
+      assert warnings(log, :a) == 1
+      assert warnings(log, :b) == 1
+
+      assert CachexCache.fetch(:a, "a again", [reload: true] ++ @stale) == "a again"
+
+      log =
+        capture_log(fn ->
+          for _ <- 1..5, do: assert(CachexCache.fetch(:a, failing, [reload: true] ++ @stale) == "a again")
+          assert CachexCache.fetch(:b, failing, @stale) == "b"
+        end)
+
+      assert warnings(log, :a) == 1
+      assert warnings(log, :b) == 0
+    end
+
+    test "is disabled by `stale_ttl_ms: 0`" do
+      opts = [name: :my_cache, ttl_ms: 20, stale_ttl_ms: 0]
+
+      assert CachexCache.fetch(:key, "known", opts) == "known"
+      Process.sleep(30)
+
+      assert CachexCache.fetch(:key, fn -> {:error, :provider_down} end, opts) == :not_found
+    end
+
+    for stale_ttl_ms <- [nil, :infinity, "1000", -1, 1.5] do
+      test "raises for `stale_ttl_ms: #{inspect(stale_ttl_ms)}`, on cache hits too" do
+        stale_ttl_ms = unquote(Macro.escape(stale_ttl_ms))
+        opts = [name: :my_cache, stale_ttl_ms: stale_ttl_ms]
+        message = "stale_ttl_ms must be a non-negative integer, got: #{inspect(stale_ttl_ms)}"
+        assert CachexCache.set(:cached, "cached", name: :my_cache) == {:ok, "cached"}
+
+        assert_raise ArgumentError, message, fn -> CachexCache.fetch(:cached, "other", opts) end
+        assert_raise ArgumentError, message, fn -> CachexCache.fetch(:missing, "other", opts) end
+        assert_raise ArgumentError, message, fn -> CachexCache.set(:cached, "other", opts) end
+
+        assert CachexCache.get(:cached, name: :my_cache) == "cached"
+        assert CachexCache.get(:missing, name: :my_cache) == :not_found
       end
     end
   end
@@ -237,7 +279,7 @@ defmodule FeatureProvider.CachexCacheTest do
       assert CachexCache.get(:key, name: :my_cache) == "back"
     end
 
-    test "logs once per failed load before opening, not on every lookup while open", %{opts: opts} do
+    test "logs the fallback once, not on every failed load or lookup while open", %{opts: opts} do
       load_and_expire(:key, "known", opts)
 
       log =
@@ -245,7 +287,7 @@ defmodule FeatureProvider.CachexCacheTest do
           for _ <- 1..10, do: CachexCache.fetch(:key, failing_callback(), opts)
         end)
 
-      assert log |> String.split("serving last known value") |> length() == 3
+      assert warnings(log, :key) == 1
     end
 
     test "logs the key and the result that opened the breaker", %{opts: opts} do
@@ -278,6 +320,10 @@ defmodule FeatureProvider.CachexCacheTest do
     CachexCache.fetch(:opener, fn -> {:error, :unavailable} end, opts)
     CachexCache.fetch(:opener, fn -> {:error, {:unavailable, :timeout}} end, opts)
     assert CircuitBreaker.open?(:my_breaker)
+  end
+
+  defp warnings(log, key) do
+    log |> String.split("serving last known value for #{inspect(key)}:") |> length() |> Kernel.-(1)
   end
 
   defp failing_callback do

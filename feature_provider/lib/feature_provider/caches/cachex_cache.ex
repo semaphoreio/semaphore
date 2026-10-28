@@ -9,12 +9,14 @@ defmodule FeatureProvider.CachexCache do
   @default_ttl_ms :timer.minutes(15)
   @default_soft_ttl_ms 0
   @default_stale_ttl_ms 0
+  @stale_warning_interval_ms :timer.minutes(1)
 
   @typedoc """
   - `ttl_ms` - time to live in milliseconds. Defaults to `#{@default_ttl_ms}`
   - `stale_ttl_ms` - how long after `ttl_ms` the last known value is kept to be
-    served when a reload fails. A positive integer enables it; anything else
-    disables it. Defaults to `#{@default_stale_ttl_ms}` (disabled)
+    served when a reload fails. A positive integer enables it and `0` disables
+    it; any other value raises an `ArgumentError`. Defaults to
+    `#{@default_stale_ttl_ms}` (disabled)
   """
   @type set_opts :: [
           ttl_ms: non_neg_integer(),
@@ -108,6 +110,9 @@ defmodule FeatureProvider.CachexCache do
   def set(key, callback, opts \\ [])
 
   def set(key, callback, opts) when is_function(callback, 0) do
+    # Validated before the callback runs, so an invalid value doesn't leave
+    # the value stored without its last known copy.
+    stale_ttl_ms!(opts)
     cache = Keyword.get(opts, :name)
     ttl_ms = Keyword.get(opts, :ttl_ms, @default_ttl_ms)
 
@@ -138,7 +143,10 @@ defmodule FeatureProvider.CachexCache do
   - `stale_ttl_ms` - when set, a failed callback returns the last known value
     instead of `:not_found`, for up to `ttl_ms + stale_ttl_ms` after it was
     stored. The callback fails when it returns `{:error, _}` (or `:error`),
-    raises, exits or throws. Defaults to `#{@default_stale_ttl_ms}` (disabled)
+    raises, exits or throws. Serving it logs a warning, at most once a minute
+    per key and again after the next successful load of that key. A positive
+    integer enables it and `0` disables it; any other value raises an
+    `ArgumentError`. Defaults to `#{@default_stale_ttl_ms}` (disabled)
   - `breaker` - name of a running `FeatureProvider.CircuitBreaker`. It opens
     after the callback returns `{:error, :unavailable}` or
     `{:error, {:unavailable, reason}}` a few times in a row. While it is open,
@@ -191,6 +199,9 @@ defmodule FeatureProvider.CachexCache do
   def fetch(_, _, opts \\ [])
 
   def fetch(key, callback, opts) when is_function(callback, 0) do
+    # Validated on cache hits too, so an invalid value fails on the first
+    # lookup instead of only once the provider is down.
+    stale_ttl_ms!(opts)
     reload = Keyword.get(opts, :reload, false)
     invalidate = Keyword.get(opts, :invalidate, false)
 
@@ -225,7 +236,7 @@ defmodule FeatureProvider.CachexCache do
 
     cond do
       # With neither option set, it behaves exactly as before they were added.
-      is_nil(breaker) and stale_ttl_ms(opts) == 0 ->
+      is_nil(breaker) and stale_ttl_ms!(opts) == 0 ->
         case set(key, callback, opts) do
           {:ok, value} -> value
           _ -> default
@@ -273,11 +284,23 @@ defmodule FeatureProvider.CachexCache do
         default
 
       {value, _} ->
-        Logger.warning(
-          "[FeatureProvider.CachexCache] serving last known value for #{inspect(key)}: #{format_failure(failure)}"
-        )
+        warn_serving_last_known(key, failure, opts)
 
         value
+    end
+  end
+
+  # A last known value isn't stored back under `key`, so every lookup of `key`
+  # falls back to it until a load succeeds. Warning on each one would log once
+  # per request, so it warns once per key per interval instead. Two lookups
+  # racing past the check can both warn, which is fine.
+  defp warn_serving_last_known(key, failure, opts) do
+    if get(stale_warned_key(key), opts) == :not_found do
+      {:ok, _} = Cachex.put(Keyword.get(opts, :name), stale_warned_key(key), true, ttl: @stale_warning_interval_ms)
+
+      Logger.warning(
+        "[FeatureProvider.CachexCache] serving last known value for #{inspect(key)}: #{format_failure(failure)}"
+      )
     end
   end
 
@@ -285,31 +308,38 @@ defmodule FeatureProvider.CachexCache do
   defp format_failure(error), do: inspect(error)
 
   defp put_last_known(key, value, opts) do
-    case stale_ttl_ms(opts) do
+    case stale_ttl_ms!(opts) do
       0 ->
         :ok
 
       stale_ttl_ms ->
+        cache = Keyword.get(opts, :name)
         ttl_ms = Keyword.get(opts, :ttl_ms, @default_ttl_ms)
-        {:ok, _} = Cachex.put(Keyword.get(opts, :name), last_known_key(key), value, ttl: ttl_ms + stale_ttl_ms)
+        {:ok, _} = Cachex.put(cache, last_known_key(key), value, ttl: ttl_ms + stale_ttl_ms)
+        # The next failure is a new outage for this key, so it warns again.
+        Cachex.del(cache, stale_warned_key(key))
     end
   end
 
   defp last_known(key, opts) do
-    case stale_ttl_ms(opts) do
+    case stale_ttl_ms!(opts) do
       0 -> :not_found
       _ -> get(last_known_key(key), opts)
     end
   end
 
-  defp stale_ttl_ms(opts) do
+  defp stale_ttl_ms!(opts) do
     case Keyword.get(opts, :stale_ttl_ms, @default_stale_ttl_ms) do
-      stale_ttl_ms when is_integer(stale_ttl_ms) and stale_ttl_ms > 0 -> stale_ttl_ms
-      _ -> 0
+      stale_ttl_ms when is_integer(stale_ttl_ms) and stale_ttl_ms >= 0 ->
+        stale_ttl_ms
+
+      other ->
+        raise ArgumentError, "stale_ttl_ms must be a non-negative integer, got: #{inspect(other)}"
     end
   end
 
   defp last_known_key(key), do: {__MODULE__, :last_known, key}
+  defp stale_warned_key(key), do: {__MODULE__, :stale_warned, key}
 
   @doc """
   Removes a key from the cache.
