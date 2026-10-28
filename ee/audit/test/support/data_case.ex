@@ -34,6 +34,26 @@ defmodule Support.DataCase do
 
         GrpcMock.stub(FeatureMock, :list_organization_features, response)
       end
+
+      def stub_retention_feature(enabled? \\ true) do
+        state = if enabled?, do: :ENABLED, else: :HIDDEN
+
+        response =
+          IA.Feature.ListOrganizationFeaturesResponse.new(
+            organization_features: [
+              IA.Feature.OrganizationFeature.new(
+                feature: IA.Feature.Feature.new(type: "audit_logs_retention"),
+                availability:
+                  IA.Feature.Availability.new(
+                    state: IA.Feature.Availability.State.value(state),
+                    quantity: 1
+                  )
+              )
+            ]
+          )
+
+        GrpcMock.stub(FeatureMock, :list_organization_features, response)
+      end
     end
   end
 
