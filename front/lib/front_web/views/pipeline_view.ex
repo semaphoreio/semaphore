@@ -595,6 +595,21 @@ defmodule FrontWeb.PipelineView do
   def job_status_color(:FINISHED, :STOPPED), do: "gray"
   def job_status_color(:FINISHED, :FAILED), do: "red"
 
+  def job_counts(blocks) do
+    Enum.reduce(blocks, %{current_run: 0, reused: 0, skipped: 0}, fn block, counts ->
+      if block.skipped? do
+        Map.update!(counts, :skipped, &(&1 + length(block.jobs)))
+      else
+        Enum.reduce(block.jobs, counts, fn job, acc ->
+          reused? = Map.has_key?(job, :state) and (reused_block?(block) or reused_job?(job))
+
+          source = if reused?, do: :reused, else: :current_run
+          Map.update!(acc, source, &(&1 + 1))
+        end)
+      end
+    end)
+  end
+
   def nodes(blocks, conn) do
     blocks
     |> Enum.map(fn block ->

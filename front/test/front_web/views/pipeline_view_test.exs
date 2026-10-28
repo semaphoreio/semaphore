@@ -474,6 +474,55 @@ defmodule FrontWeb.PipelineViewTest do
     render_to_string(PipelineView, "_block.html", block: block, conn: conn)
   end
 
+  describe ".job_counts" do
+    test "separates current-run successes and pending jobs from individual reused jobs" do
+      block =
+        graph_block(%{
+          jobs: [
+            graph_job(%{result: :PASSED}),
+            graph_job(%{state: :RUNNING}),
+            %{name: "Not started"},
+            graph_job(%{original_job_id: "original-job"})
+          ]
+        })
+
+      assert PipelineView.job_counts([block]) == %{current_run: 3, reused: 1, skipped: 0}
+    end
+
+    test "counts every job in a reused block exactly once" do
+      block =
+        graph_block(%{
+          reused_from: "original-pipeline",
+          jobs: [graph_job(%{}), graph_job(%{original_job_id: "original-job"})]
+        })
+
+      assert PipelineView.job_counts([block]) == %{current_run: 0, reused: 2, skipped: 0}
+    end
+
+    test "counts skipped jobs separately and handles an empty pipeline" do
+      assert PipelineView.job_counts([graph_block(%{skipped?: true})]) ==
+               %{current_run: 0, reused: 0, skipped: 1}
+
+      assert PipelineView.job_counts([]) == %{current_run: 0, reused: 0, skipped: 0}
+    end
+
+    test "keeps topology placeholders in this run until job data is available" do
+      block = graph_block(%{reused_from: "original-pipeline", jobs: [%{name: "Not started"}]})
+
+      assert PipelineView.job_counts([block]) == %{current_run: 1, reused: 0, skipped: 0}
+    end
+
+    test "accumulates counts across mixed blocks" do
+      blocks = [
+        graph_block(%{jobs: [graph_job(%{}), %{name: "Pending"}]}),
+        graph_block(%{reused_from: "original-pipeline"}),
+        graph_block(%{skipped?: true})
+      ]
+
+      assert PipelineView.job_counts(blocks) == %{current_run: 2, reused: 1, skipped: 1}
+    end
+  end
+
   describe "_block.html reused-block rendering" do
     test "every job of a reused block gets the reused treatment, the block itself stays plain" do
       html =
