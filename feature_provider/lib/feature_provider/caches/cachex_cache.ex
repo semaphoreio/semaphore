@@ -239,7 +239,7 @@ defmodule FeatureProvider.CachexCache do
 
       true ->
         result = load(key, callback, opts)
-        if breaker, do: record(breaker, result, fn -> load(key, callback, opts) end)
+        if breaker, do: record(breaker, key, result, fn -> load(key, callback, opts) end)
 
         case result do
           {:ok, value} -> value
@@ -248,9 +248,9 @@ defmodule FeatureProvider.CachexCache do
     end
   end
 
-  defp record(breaker, result, probe) do
+  defp record(breaker, key, result, probe) do
     if CircuitBreaker.unavailable?(result),
-      do: CircuitBreaker.record_unavailable(breaker, probe),
+      do: CircuitBreaker.record_unavailable(breaker, key, result, probe),
       else: CircuitBreaker.record_available(breaker)
   end
 

@@ -248,8 +248,19 @@ defmodule FeatureProvider.CachexCacheTest do
       assert log |> String.split("serving last known value") |> length() == 3
     end
 
+    test "logs the key and the result that opened the breaker", %{opts: opts} do
+      log =
+        capture_log(fn ->
+          open_breaker(opts)
+          :sys.get_state(:my_breaker)
+        end)
+
+      assert log =~
+               ":my_breaker opened after 2 unavailable loads in a row, the last for :opener: {:error, {:unavailable, :timeout}}"
+    end
+
     test "behaves as without a breaker when the breaker isn't running", %{opts: opts} do
-      :ok = stop_supervised(CircuitBreaker)
+      :ok = stop_supervised(:my_breaker)
       load_and_expire(:key, "known", opts)
 
       for _ <- 1..5, do: assert(CachexCache.fetch(:key, failing_callback(), opts) == "known")

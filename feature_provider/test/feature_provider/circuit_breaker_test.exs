@@ -124,6 +124,19 @@ defmodule FeatureProvider.CircuitBreakerTest do
       assert CircuitBreaker.open?(@breaker)
     end
 
+    test "logs the key and the result that opened it" do
+      log =
+        capture_log(fn ->
+          CircuitBreaker.record_unavailable(@breaker, :key_1, {:error, :unavailable}, probe_failing())
+          CircuitBreaker.record_unavailable(@breaker, :key_2, {:error, :unavailable}, probe_failing())
+          CircuitBreaker.record_unavailable(@breaker, :key_3, {:error, {:unavailable, :timeout}}, probe_failing())
+          :sys.get_state(@breaker)
+        end)
+
+      assert log =~
+               ":test_breaker opened after 3 unavailable loads in a row, the last for :key_3: {:error, {:unavailable, :timeout}}"
+    end
+
     test "logs a failed probe with its result" do
       log =
         capture_log(fn ->
@@ -131,7 +144,7 @@ defmodule FeatureProvider.CircuitBreakerTest do
           Process.sleep(100)
         end)
 
-      assert log =~ "probe failed: {:error, {:unavailable, :econnrefused}}"
+      assert log =~ "probe for :my_key failed: {:error, {:unavailable, :econnrefused}}"
     end
 
     test "logs a probe that hangs as timed out" do
@@ -141,7 +154,7 @@ defmodule FeatureProvider.CircuitBreakerTest do
           Process.sleep(200)
         end)
 
-      assert log =~ "probe failed: timed out after 100ms"
+      assert log =~ "probe for :my_key failed: timed out after 100ms"
     end
 
     test "opening again while open keeps the current round of probes and its backoff" do
@@ -197,8 +210,36 @@ defmodule FeatureProvider.CircuitBreakerTest do
     @describetag :not_started
 
     test "is reported as closed and ignores successes and failures" do
-      assert :ok = CircuitBreaker.record_unavailable(@breaker, probe_failing())
+      assert :ok = CircuitBreaker.record_unavailable(@breaker, :my_key, {:error, :unavailable}, probe_failing())
       assert :ok = CircuitBreaker.record_available(@breaker)
+      refute CircuitBreaker.open?(@breaker)
+    end
+  end
+
+  describe "when it stops" do
+    test "kills a running probe" do
+      test_pid = self()
+
+      fail(3, fn ->
+        send(test_pid, {:probed, self()})
+        Process.sleep(:infinity)
+      end)
+
+      assert_receive {:probed, probe_pid}, 500
+      ref = Process.monitor(probe_pid)
+
+      :ok = stop_supervised(@breaker)
+
+      assert_receive {:DOWN, ^ref, :process, ^probe_pid, _}, 500
+    end
+  end
+
+  describe "child_spec/1" do
+    test "uses the name as the id, so breakers with different names can run side by side" do
+      start_supervised!({CircuitBreaker, Keyword.put(@opts, :name, :other_breaker)})
+
+      CircuitBreaker.record_unavailable(:other_breaker, :my_key, {:error, :unavailable}, probe_failing())
+      assert :sys.get_state(:other_breaker).name == :other_breaker
       refute CircuitBreaker.open?(@breaker)
     end
   end
@@ -208,7 +249,7 @@ defmodule FeatureProvider.CircuitBreakerTest do
       fail(3, probe_failing())
       assert CircuitBreaker.open?(@breaker)
 
-      :ok = stop_supervised(CircuitBreaker)
+      :ok = stop_supervised(@breaker)
       refute CircuitBreaker.open?(@breaker)
 
       start_supervised!({CircuitBreaker, @opts})
@@ -239,7 +280,7 @@ defmodule FeatureProvider.CircuitBreakerTest do
   end
 
   defp fail(times, probe) do
-    for _ <- 1..times, do: CircuitBreaker.record_unavailable(@breaker, probe)
+    for _ <- 1..times, do: CircuitBreaker.record_unavailable(@breaker, :my_key, {:error, :unavailable}, probe)
   end
 
   defp probe_failing, do: probe_returning({:error, :unavailable})

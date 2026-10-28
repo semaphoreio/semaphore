@@ -89,6 +89,14 @@ defmodule FeatureProvider.CircuitBreaker do
   def unavailable?({:error, {:unavailable, _}}), do: true
   def unavailable?(_), do: false
 
+  # The id is the name, so a service can run more than one breaker under the
+  # same supervisor.
+  def child_spec(opts) do
+    opts
+    |> super()
+    |> Map.put(:id, Keyword.fetch!(opts, :name))
+  end
+
   @spec start_link(Keyword.t()) :: GenServer.on_start()
   def start_link(opts) do
     name = Keyword.fetch!(opts, :name)
@@ -134,23 +142,24 @@ defmodule FeatureProvider.CircuitBreaker do
   end
 
   @doc """
-  Counts a load that found the provider unavailable. When the count reaches
-  `failure_threshold`, opens the breaker and starts probing with `probe`, which
-  closes the breaker unless its result is `unavailable?/1`.
+  Counts a load of `key` that found the provider unavailable with `result`.
+  When the count reaches `failure_threshold`, opens the breaker and starts
+  probing with `probe`, which closes the breaker unless its result is
+  `unavailable?/1`. `key` and `result` are only logged.
 
   ## Examples
 
-      iex> record_unavailable(:not_started_breaker, fn -> {:ok, :value} end)
+      iex> record_unavailable(:not_started_breaker, :my_key, {:error, :unavailable}, fn -> {:ok, :value} end)
       :ok
   """
-  @spec record_unavailable(name(), probe()) :: :ok
-  def record_unavailable(name, probe) when is_function(probe, 0) do
+  @spec record_unavailable(name(), any(), any(), probe()) :: :ok
+  def record_unavailable(name, key, result, probe) when is_function(probe, 0) do
     [{:failure_threshold, failure_threshold}] = :ets.lookup(name, :failure_threshold)
 
     # `update_counter` returns each count once, so only one caller opens it.
     if :ets.update_counter(name, :failures, 1) == failure_threshold do
       true = :ets.insert(name, {:state, :open})
-      GenServer.cast(name, {:opened, probe})
+      GenServer.cast(name, {:opened, key, result, probe})
     end
 
     :ok
@@ -167,7 +176,8 @@ defmodule FeatureProvider.CircuitBreaker do
   # of it.
   @spec probe_delay(non_neg_integer(), pos_integer(), pos_integer()) :: pos_integer()
   def probe_delay(attempt, base_ms, max_ms) do
-    backoff = min(max_ms, base_ms * Integer.pow(2, min(attempt, 20)))
+    # Not `Integer.pow/2`, which needs Elixir 1.12.
+    backoff = min(max_ms, base_ms * :erlang.bsl(1, min(attempt, 20)))
     half = div(backoff, 2)
 
     half + :rand.uniform(backoff - half)
@@ -192,6 +202,11 @@ defmodule FeatureProvider.CircuitBreaker do
     :ets.new(name, [:named_table, :public, :set, read_concurrency: true, write_concurrency: true])
     :ets.insert(name, [{:state, :closed}, {:failures, 0}, {:failure_threshold, failure_threshold}])
 
+    # Probes are linked, so they die with the breaker instead of outliving the
+    # timer that would kill them. Trapping exits keeps a probe's exit from
+    # taking the breaker down; the `:DOWN` message reports its result.
+    Process.flag(:trap_exit, true)
+
     {:ok,
      %{
        name: name,
@@ -200,29 +215,30 @@ defmodule FeatureProvider.CircuitBreaker do
        probe_max_ms: probe_max_ms,
        probe_timeout_ms: probe_timeout_ms,
        probe: nil,
+       probe_key: nil,
        attempt: 0,
        running: nil
      }}
   end
 
   @impl GenServer
-  def handle_cast({:opened, probe}, %{probe: nil} = state) do
+  def handle_cast({:opened, key, result, probe}, %{probe: nil} = state) do
     Logger.warning(
-      "[FeatureProvider.CircuitBreaker] #{inspect(state.name)} opened after #{state.failure_threshold} unavailable loads in a row"
+      "[FeatureProvider.CircuitBreaker] #{inspect(state.name)} opened after #{state.failure_threshold} unavailable loads in a row, the last for #{inspect(key)}: #{inspect(result)}"
     )
 
-    {:noreply, schedule_probe(%{state | probe: probe, attempt: 0})}
+    {:noreply, schedule_probe(%{state | probe: probe, probe_key: key, attempt: 0})}
   end
 
   # Opened again by failures that were already in flight: keep the current
   # round of probes and its backoff.
-  def handle_cast({:opened, probe}, state) do
-    {:noreply, %{state | probe: probe}}
+  def handle_cast({:opened, key, _result, probe}, state) do
+    {:noreply, %{state | probe: probe, probe_key: key}}
   end
 
   @impl GenServer
   def handle_info(:probe, %{probe: probe, running: nil} = state) when is_function(probe, 0) do
-    {pid, ref} = spawn_monitor(fn -> exit({:probe_result, run_probe(probe)}) end)
+    {pid, ref} = :erlang.spawn_opt(fn -> exit({:probe_result, run_probe(probe)}) end, [:link, :monitor])
     timer = Process.send_after(self(), {:probe_timeout, ref}, state.probe_timeout_ms)
 
     {:noreply, %{state | running: {pid, ref, timer}}}
@@ -240,7 +256,7 @@ defmodule FeatureProvider.CircuitBreaker do
           :ets.insert(state.name, [{:state, :closed}, {:failures, 0}])
           Logger.info("[FeatureProvider.CircuitBreaker] #{inspect(state.name)} closed, the provider is back")
 
-          {:noreply, %{state | probe: nil, attempt: 0}}
+          {:noreply, %{state | probe: nil, probe_key: nil, attempt: 0}}
         end
 
       # Killed after `probe_timeout_ms`.
@@ -268,7 +284,7 @@ defmodule FeatureProvider.CircuitBreaker do
 
   defp probe_failed(reason, state) do
     Logger.warning(
-      "[FeatureProvider.CircuitBreaker] #{inspect(state.name)} probe failed: #{format_failure(reason, state)}"
+      "[FeatureProvider.CircuitBreaker] #{inspect(state.name)} probe for #{inspect(state.probe_key)} failed: #{format_failure(reason, state)}"
     )
 
     {:noreply, schedule_probe(%{state | attempt: state.attempt + 1})}
