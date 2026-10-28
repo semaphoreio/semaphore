@@ -445,14 +445,6 @@ GEM
     spring (4.4.0)
     spring-commands-rspec (1.0.4)
       spring (>= 0.9.1)
-    sprockets (4.4.1)
-      concurrent-ruby (~> 1.1)
-      logger
-      rack (>= 2.2.4, < 4)
-    sprockets-rails (3.5.2)
-      actionpack (>= 6.1)
-      activesupport (>= 6.1)
-      sprockets (>= 3.0.0)
     thin (2.0.1)
       daemons (~> 1.0, >= 1.0.9)
       eventmachine (~> 1.0, >= 1.0.4)
@@ -552,8 +544,6 @@ DEPENDENCIES
   sidekiq-unique-jobs (~> 8.0)
   spring (~> 4.1)
   spring-commands-rspec
-  sprockets (>= 3)
-  sprockets-rails
   thin
   timecop
   uri (~> 1.0, >= 1.0.4)
