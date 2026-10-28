@@ -5,6 +5,7 @@ defmodule Zebra.Workers.JobRequestFactory.CacheTest do
   import ExUnit.CaptureLog
 
   alias Zebra.Workers.JobRequestFactory.Cache
+  alias InternalApi.ResponseStatus
 
   @org_id Ecto.UUID.generate()
   @cache_id Ecto.UUID.generate()
@@ -121,6 +122,21 @@ defmodule Zebra.Workers.JobRequestFactory.CacheTest do
     test "false when repo proxy is nil" do
       refute Cache.forked_pr?(nil)
     end
+
+    test "approved enable-cache lifts the forked PR status only while the project allows it" do
+      enable_feature("sem_approve_options")
+
+      repo =
+        InternalApi.RepoProxy.Hook.new(
+          repo_slug: "test-org/test-repo",
+          pr_slug: "fork-org/test-repo",
+          approval_enable_cache: true
+        )
+
+      refute Cache.forked_pr?(repo, @org_id, project_allowing_cache(true))
+      assert Cache.forked_pr?(repo, @org_id, project_allowing_cache(false))
+      assert Cache.forked_pr?(repo, @org_id)
+    end
   end
 
   describe ".env_vars" do
@@ -161,6 +177,112 @@ defmodule Zebra.Workers.JobRequestFactory.CacheTest do
     end
   end
 
+  describe ".find with forked PR approval options" do
+    test "forked PR with disable_forked_pr_cache enabled skips cache loading" do
+      enable_feature("disable_forked_pr_cache")
+
+      GrpcMock.stub(Support.FakeServers.CacheApi, :describe, fn _, _ ->
+        raise "cache should not be queried for forked pull requests"
+      end)
+
+      repo = %{pr_slug: "contributor/repo", repo_slug: "org/repo"}
+
+      assert Cache.find(@cache_id, repo, @org_id) == {:ok, nil}
+    end
+
+    test "approval enable-cache bypasses forked PR cache restriction" do
+      enable_features(["disable_forked_pr_cache", "sem_approve_options"])
+
+      GrpcMock.stub(Support.FakeServers.CacheApi, :describe, fn req, _ ->
+        InternalApi.Cache.DescribeResponse.new(
+          status: ResponseStatus.new(code: ResponseStatus.Code.value(:OK)),
+          cache:
+            InternalApi.Cache.Cache.new(
+              id: req.cache_id,
+              credential: "--BEGIN....lalalala...cache_key...END---",
+              url: "localhost:29920"
+            )
+        )
+      end)
+
+      repo = %{pr_slug: "contributor/repo", repo_slug: "org/repo", approval_enable_cache: true}
+
+      assert {:ok, cache} =
+               Cache.find(@cache_id, repo, @org_id, :pipeline_job, project_allowing_cache(true))
+
+      assert cache.id == @cache_id
+    end
+
+    test "approval enable-cache is ignored once the project setting is turned off" do
+      enable_features(["disable_forked_pr_cache", "sem_approve_options"])
+
+      GrpcMock.stub(Support.FakeServers.CacheApi, :describe, fn _, _ ->
+        raise "cache should not be queried when the project disallows --enable-cache"
+      end)
+
+      repo = %{pr_slug: "contributor/repo", repo_slug: "org/repo", approval_enable_cache: true}
+
+      assert Cache.find(@cache_id, repo, @org_id, :pipeline_job, project_allowing_cache(false)) ==
+               {:ok, nil}
+
+      assert Cache.find(@cache_id, repo, @org_id, :pipeline_job, nil) == {:ok, nil}
+    end
+
+    test "approval enable-cache is ignored when sem_approve_options feature is disabled" do
+      enable_feature("disable_forked_pr_cache")
+
+      GrpcMock.stub(Support.FakeServers.CacheApi, :describe, fn _, _ ->
+        raise "cache should not be queried when sem_approve_options is disabled"
+      end)
+
+      repo = %{pr_slug: "contributor/repo", repo_slug: "org/repo", approval_enable_cache: true}
+
+      assert Cache.find(@cache_id, repo, @org_id, :pipeline_job, project_allowing_cache(true)) ==
+               {:ok, nil}
+    end
+
+    test "debug job on forked PR skips cache even when approval enable-cache is set" do
+      enable_features(["disable_forked_pr_cache", "sem_approve_options"])
+
+      GrpcMock.stub(Support.FakeServers.CacheApi, :describe, fn _, _ ->
+        raise "cache should not be queried for debug jobs on forked pull requests"
+      end)
+
+      repo = %{pr_slug: "contributor/repo", repo_slug: "org/repo", approval_enable_cache: true}
+
+      assert Cache.find(@cache_id, repo, @org_id, :debug_job, project_allowing_cache(true)) ==
+               {:ok, nil}
+    end
+
+    test "debug job on forked PR uses cache when disable_forked_pr_cache is disabled" do
+      GrpcMock.stub(Support.FakeServers.CacheApi, :describe, fn req, _ ->
+        InternalApi.Cache.DescribeResponse.new(
+          status: ResponseStatus.new(code: ResponseStatus.Code.value(:OK)),
+          cache:
+            InternalApi.Cache.Cache.new(
+              id: req.cache_id,
+              credential: "--BEGIN....lalalala...cache_key...END---",
+              url: "localhost:29920"
+            )
+        )
+      end)
+
+      repo = %{pr_slug: "contributor/repo", repo_slug: "org/repo", approval_enable_cache: true}
+
+      assert {:ok, cache} = Cache.find(@cache_id, repo, @org_id, :debug_job)
+      assert cache.id == @cache_id
+    end
+  end
+
+  defp project_allowing_cache(allowed) do
+    %Zebra.Models.Project{
+      forked_pull_requests:
+        InternalApi.Projecthub.Project.Spec.Repository.ForkedPullRequests.new(
+          allow_sem_approve_enable_cache: allowed
+        )
+    }
+  end
+
   defp expected_envs(new_method_enabled) do
     vars = [
       %{
@@ -196,5 +318,22 @@ defmodule Zebra.Workers.JobRequestFactory.CacheTest do
     else
       vars
     end
+  end
+
+  defp enable_feature(type), do: enable_features(List.wrap(type))
+
+  defp enable_features(types) do
+    Mox.stub(Support.MockedProvider, :provide_features, fn _, _ ->
+      features =
+        Support.StubbedProvider.provide_features()
+        |> case do
+          {:ok, features} -> features
+          {:error, _} -> []
+        end
+
+      extra_features = Enum.map(types, &Support.StubbedProvider.feature(&1, [:enabled]))
+
+      {:ok, extra_features ++ features}
+    end)
   end
 end

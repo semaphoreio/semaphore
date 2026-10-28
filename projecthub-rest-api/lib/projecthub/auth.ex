@@ -1,9 +1,9 @@
 defmodule Projecthub.Auth do
   require Logger
 
-  alias InternalApi.RBAC.RBAC.Stub
   alias InternalApi.RBAC.ListAccessibleProjectsRequest
   alias InternalApi.RBAC.ListUserPermissionsRequest
+  alias InternalApi.RBAC.RBAC.Stub
 
   def has_permissions?(org_id, user_id, permission) do
     has_permissions?(org_id, user_id, "", permission)
