@@ -42,6 +42,44 @@ defmodule FeatureProvider.CircuitBreakerTest do
       refute CircuitBreaker.open?(@breaker)
     end
 
+    # The probe is delayed past the end of the test, so only the callers below
+    # touch the count.
+    @tag breaker_opts: [probe_base_ms: 60_000, probe_max_ms: 60_000]
+    test "only one of many callers failing at the same time opens it" do
+      breaker = Process.whereis(@breaker)
+      test_pid = self()
+      # The second `{:opened, ...}` clause ignores a duplicate, so count the
+      # casts the breaker receives instead of the logs or its state.
+      :erlang.trace(breaker, true, [:receive])
+
+      callers =
+        for i <- 1..100 do
+          spawn_link(fn ->
+            receive do
+              :go -> :ok
+            end
+
+            CircuitBreaker.record_unavailable(@breaker, {:key, i}, {:error, :unavailable}, fn -> {:error, :unavailable} end)
+            send(test_pid, {:done, self()})
+          end)
+        end
+
+      capture_log(fn ->
+        Enum.each(callers, &send(&1, :go))
+        for caller <- callers, do: assert_receive({:done, ^caller}, 1_000)
+
+        :sys.get_state(@breaker)
+      end)
+
+      ref = :erlang.trace_delivered(breaker)
+      assert_receive {:trace_delivered, ^breaker, ^ref}, 1_000
+
+      assert :ets.lookup(@breaker, :failures) == [{:failures, 100}]
+      assert CircuitBreaker.open?(@breaker)
+      assert_received {:trace, ^breaker, :receive, {:"$gen_cast", {:opened, _, _, _}}}
+      refute_received {:trace, ^breaker, :receive, {:"$gen_cast", {:opened, _, _, _}}}
+    end
+
     @tag breaker_opts: [failure_threshold: 1]
     test "opens on the first failure with `failure_threshold: 1`" do
       fail(1, probe_failing())
