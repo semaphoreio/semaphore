@@ -6,7 +6,7 @@ gem "bundler", ">= 1.8.4"
 gem "pg", "~> 1.1"
 gem "rails", ">= 8.1.0", "< 8.2"
 gem "rack", ">= 3.0", "< 4"
-gem "sprockets-rails"
+# gem "sprockets-rails"
 
 gem "excon", "~> 1.5"
 gem "app"
@@ -42,7 +42,6 @@ gem "sentry-ruby"
 gem "sentry-rails"
 gem "sentry-sidekiq"
 
-gem "sprockets", ">= 3"
 gem "nokogiri", "~> 1.19.4"
 gem "uri", "~> 1.0", ">= 1.0.4"
 
