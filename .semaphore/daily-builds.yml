@@ -3442,7 +3442,7 @@ blocks:
               value: "24"
           matrix:
             - env_var: ELIXIR_VERSION
-              values: ["1.11", "1.12", "1.13", "1.14"]
+              values: ["1.12", "1.13", "1.14"]
           commands:
             - make test
             - cache store deps-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock) deps
@@ -3453,7 +3453,7 @@ blocks:
               value: "25"
           matrix:
             - env_var: ELIXIR_VERSION
-              values: ["1.15", "1.16", "1.17", "1.18"]
+              values: ["1.14", "1.18"]
           commands:
             - make test
             - cache store deps-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock) deps
@@ -3464,7 +3464,7 @@ blocks:
               value: "26"
           matrix:
             - env_var: ELIXIR_VERSION
-              values: ["1.15", "1.16", "1.17", "1.18"]
+              values: ["1.15", "1.16", "1.18"]
           commands:
             - make test
             - cache store deps-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock) deps
@@ -3502,6 +3502,22 @@ blocks:
             - make test
             - cache store deps-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock) deps
             - cache store build-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock) _build
+  - name: "Feature Provider: QA (Elixir 1.11)"
+    dependencies: []
+    task:
+      jobs:
+        # Plumber (ppl) still builds with Elixir 1.11, which sem-version can't
+        # install on the agent image, so run the tests in plumber's builder image.
+        - name: Erlang 24, Elixir 1.11
+          commands:
+            - cd feature_provider
+            # Own keys, so this job never restores a _build compiled by a
+            # sem-version cell for another OTP 24 patch release.
+            - cache restore docker-deps-24-1.11-$(checksum mix.lock)
+            - cache restore docker-build-24-1.11-$(checksum mix.lock)
+            - docker run --rm -v "$PWD":/app -w /app -e CI=true -e MIX_ENV=test hexpm/elixir:1.11.4-erlang-24.3.4.13-ubuntu-jammy-20230126 sh -c "mix local.hex --force && mix local.rebar --force && mix do deps.get, test"
+            - cache store docker-deps-24-1.11-$(checksum mix.lock) deps
+            - cache store docker-build-24-1.11-$(checksum mix.lock) _build
 promotions:
   - name: Generate Helm Chart
     pipeline_file: generate-helm-chart.yml
