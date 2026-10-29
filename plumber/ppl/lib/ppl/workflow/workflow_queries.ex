@@ -580,6 +580,16 @@ defmodule Ppl.WorkflowQueries do
 
   defp filter_by_label_and_git_ref_types(query, :skip, :skip), do: query
 
+  # A scalar comparison lets the planner read the project/ref-type index in
+  # order and stop at the page limit; `= ANY($n)` forces reading every match.
+  defp filter_by_label_and_git_ref_types(query, :skip, [git_ref_type]) do
+    query
+    |> where(
+      [p],
+      fragment("?->>?", p.source_args, "git_ref_type") == ^git_ref_type
+    )
+  end
+
   defp filter_by_label_and_git_ref_types(query, :skip, git_ref_types) do
     query
     |> where(
