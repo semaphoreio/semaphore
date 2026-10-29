@@ -1,6 +1,7 @@
 defmodule EnvVarPolicy do
   @moduledoc """
-  Names of the environment variables Semaphore supplies to jobs, and the rules
+  Names of the environment variables users can't set, either because Semaphore
+  supplies them to jobs or because bash runs code from them, and the rules
   user-defined variable names must follow.
   """
 
@@ -21,7 +22,6 @@ defmodule EnvVarPolicy do
                  "SEMAPHORE_GIT_PROVIDER",
                  "SEMAPHORE_GIT_URL",
                  "SEMAPHORE_GIT_REPO_NAME",
-                 "SEMAPHORE_GIT_DIR",
                  "SEMAPHORE_GIT_SHA",
                  "SEMAPHORE_GIT_REPO_SLUG",
                  "SEMAPHORE_GIT_REF",
@@ -76,6 +76,10 @@ defmodule EnvVarPolicy do
 
   @plumber_owned_pattern ~r/\ASEMAPHORE_PIPELINE_\d+_ARTEFACT_ID\z/
 
+  # Read by every bash the agent starts, including `bash <pre-job hook>`, so a job
+  # could run code before the hook or skip it.
+  @shell_startup MapSet.new(["BASH_ENV", "SHELLOPTS"])
+
   # The agent writes job env var names unquoted into `export NAME=value`.
   @valid_name ~r/\A[a-zA-Z_][a-zA-Z0-9_]*\z/
   # Service container env vars go into the docker-compose file instead, where dotted
@@ -85,11 +89,16 @@ defmodule EnvVarPolicy do
   @max_name_length 64
 
   @doc """
-  Whether Semaphore supplies a variable with this name.
+  Whether users can't set this name: Semaphore supplies it, or bash runs code from it.
 
-  Names are compared case-insensitively because Windows env vars are case-insensitive.
+  Semaphore names are compared case-insensitively because Windows env vars are
+  case-insensitive. Bash startup names are compared exactly, as bash reads them.
   """
-  def reserved?(name), do: zebra_owned?(name) or plumber_owned?(name)
+  def reserved?(name), do: zebra_owned?(name) or plumber_owned?(name) or shell_startup?(name)
+
+  @doc "Whether bash reads this name at startup to run code or set options."
+  def shell_startup?(name) when is_binary(name), do: MapSet.member?(@shell_startup, name)
+  def shell_startup?(_name), do: false
 
   @doc "Whether Zebra injects this name into every job it builds."
   def zebra_owned?(name) when is_binary(name),

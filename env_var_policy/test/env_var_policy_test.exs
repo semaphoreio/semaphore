@@ -26,6 +26,9 @@ defmodule EnvVarPolicyTest do
             "SEMAPHORE_CACHE_S3_BUCKET",
             "SEMAPHORE_CACHE_GCS_BUCKET",
             "SEMAPHORE_GIT_DEPTH",
+            "SEMAPHORE_GIT_DIR",
+            "SEMAPHORE_API_TOKEN",
+            "SEMAPHORE_HOST",
             "SEMAPHORE_GIT_CACHE_AGE",
             "SEMAPHORE_GIT_CACHE_KEEP",
             "SEMAPHORE_GIT_CLONE_SLOW_RETRY",
@@ -43,6 +46,23 @@ defmodule EnvVarPolicyTest do
     test "is false for non-binary names" do
       refute EnvVarPolicy.reserved?(nil)
       refute EnvVarPolicy.reserved?(1)
+    end
+
+    test "matches the bash startup variables exactly" do
+      assert EnvVarPolicy.reserved?("BASH_ENV")
+      assert EnvVarPolicy.reserved?("SHELLOPTS")
+      refute EnvVarPolicy.reserved?("bash_env")
+      refute EnvVarPolicy.reserved?("ENV")
+    end
+  end
+
+  describe "shell_startup?/1" do
+    test "splits the bash startup names from the Semaphore ones" do
+      assert EnvVarPolicy.shell_startup?("BASH_ENV")
+      refute EnvVarPolicy.zebra_owned?("BASH_ENV")
+      refute EnvVarPolicy.plumber_owned?("BASH_ENV")
+      refute EnvVarPolicy.shell_startup?("SEMAPHORE_GIT_SHA")
+      refute EnvVarPolicy.shell_startup?(nil)
     end
   end
 

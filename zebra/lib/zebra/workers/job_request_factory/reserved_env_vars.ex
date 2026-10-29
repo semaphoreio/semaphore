@@ -118,7 +118,7 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVars do
     names
     |> Enum.uniq_by(&String.upcase/1)
     |> Enum.filter(fn name ->
-      EnvVarPolicy.zebra_owned?(name) or
+      EnvVarPolicy.zebra_owned?(name) or EnvVarPolicy.shell_startup?(name) or
         (EnvVarPolicy.plumber_owned?(name) and counts[String.upcase(name)] > 1)
     end)
     |> Enum.map(&{&1, :spec, "job env_vars"})

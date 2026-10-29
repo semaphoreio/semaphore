@@ -355,6 +355,18 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVarsTest do
                {:stop_job_processing,
                 "Reserved environment variables cannot be set: SEMAPHORE_GIT_BRANCH (job env_vars)"}
     end
+
+    test "rejects a bash startup name present once" do
+      assert validate(:pipeline_job, ["BASH_ENV"]) ==
+               {:stop_job_processing,
+                "Reserved environment variables cannot be set: BASH_ENV (job env_vars)"}
+
+      assert {:stop_job_processing, _} = validate(:debug_job, ["SHELLOPTS"])
+    end
+
+    test "accepts SEMAPHORE_GIT_DIR, which only sets the checkout path" do
+      assert validate(:pipeline_job, ["SEMAPHORE_GIT_DIR"]) == :ok
+    end
   end
 
   describe "validate/5 for jobs outside a pipeline" do
@@ -536,7 +548,7 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVarsTest do
         "SEMAPHORE_GIT_PROVIDER",
         "SEMAPHORE_GIT_URL",
         "SEMAPHORE_GIT_REPO_NAME",
-        "SEMAPHORE_GIT_DIR",
+        "SEMAPHORE_GIT_TAG_NAME",
         "SEMAPHORE_GIT_SHA",
         "SEMAPHORE_GIT_REPO_SLUG",
         "SEMAPHORE_GIT_REF",
