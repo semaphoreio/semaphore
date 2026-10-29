@@ -10,7 +10,7 @@ export const PromoteButton = ({ p, compact }: { p: Pipeline, compact?: boolean, 
   const fresh = p.promotions.filter((promotion) => !promotion.events.length).length;
   return (
     <button
-      className="btn btn-primary btn-tiny wf-map-promote"
+      className="btn btn-secondary btn-tiny wf-map-outline wf-map-outline-blue wf-map-promote"
       data-popover-trigger=""
       aria-haspopup="menu"
       aria-expanded={popover.value?.kind === `promote` && popover.value.id === p.id}

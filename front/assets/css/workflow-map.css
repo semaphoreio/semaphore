@@ -733,8 +733,8 @@ a.wf-map-job:hover {
   margin-left: 4px;
   padding: 0 4px;
   border-radius: 8px;
-  background: #fff;
-  color: #00359f;
+  background: #00359f;
+  color: #fff;
   font-size: 11px;
   line-height: 16px;
   text-align: center;
@@ -923,6 +923,39 @@ a.wf-map-job:hover {
 
 .wf-map-card-title {
   min-width: 96px;
+}
+
+.wf-map-outline-blue {
+  --wf-map-outline: #00359f;
+  --wf-map-outline-text: #00359f;
+  --wf-map-outline-hover: #eef3ff;
+  --wf-map-outline-active: #dde7ff;
+}
+
+.wf-map-outline-red {
+  --wf-map-outline: #e53935;
+  --wf-map-outline-text: #b71c1c;
+  --wf-map-outline-hover: #fdecea;
+  --wf-map-outline-active: #fbd5d2;
+}
+
+.btn.wf-map-outline {
+  color: var(--wf-map-outline-text);
+  box-shadow: 0 0 0 1px var(--wf-map-outline);
+}
+
+.btn.wf-map-outline:hover {
+  background-color: var(--wf-map-outline-hover);
+  box-shadow: 0 0 0 1px var(--wf-map-outline);
+}
+
+.btn.wf-map-outline:focus {
+  box-shadow: 0 0 0 2px var(--wf-map-outline);
+}
+
+.btn.wf-map-outline:active {
+  background-color: var(--wf-map-outline-active);
+  box-shadow: 0 0 0 1px var(--wf-map-outline);
 }
 
 .wf-map-actions .btn-tiny {

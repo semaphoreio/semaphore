@@ -75,7 +75,7 @@ const PipelineActions = ({ p, compact }: { p: Pipeline, compact?: boolean, }) =>
       )}
       {p.rebuildUrl && (
         <button
-          className="btn btn-primary btn-tiny"
+          className="btn btn-secondary btn-tiny wf-map-outline wf-map-outline-red"
           disabled={busy !== null}
           aria-label={compact ? `Rerun the failed jobs of ${p.name}` : undefined}
           data-tippy-content="Reruns only the jobs in this pipeline that did not pass, keeping the ones that did"
