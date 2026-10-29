@@ -258,8 +258,6 @@ When building the head commit, the workflow doesn't test your changes combined w
 
 The setting applies to every pull request workflow of the project: workflows started by pull request events from GitHub, by [`/sem-approve`](#sem-approve) on forked pull requests, and for a pull request reference through the [API](../reference/api) or the command line. If GitHub can't keep a reference to the commit, for example for some pull requests from forks, Semaphore builds the pull request's head reference instead, so a re-run can build a newer commit than the original run.
 
-You can also change it with the [`pull_request_commit`](../reference/project-yaml#pull-request-commit-in-repository) property in the project YAML.
-
 With the head commit option, [`/sem-approve`](#sem-approve) runs the commit that was approved, and refuses to run if the pull request head changed after the approval.
 
 In both modes, pull request jobs get these environment variables:
