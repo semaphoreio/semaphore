@@ -1,7 +1,7 @@
 import { Fragment } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { STATUSES, STATUS_LABEL, countJobs } from "./model";
-import { SearchResult, clearFilters, cursor, focusOn, hits, query, queryJobs, results, scope, selected, statuses, step, toggleStatus, workflow } from "./store";
+import { SearchResult, clearFilters, cursor, focusOn, hits, query, queryJobs, results, scope, selected, showSkipped, statuses, step, toggleStatus, workflow } from "./store";
 import { Highlight, PipelineTitle, StatusIcon } from "./ui";
 
 const MAX_RESULTS = 60;
@@ -156,5 +156,10 @@ export const Toolbar = () => (
     <Search/>
     <Stepper/>
     <Chips/>
+    {workflow.value?.skippedBlocks > 0 && (
+      <button className="btn btn-secondary btn-small" onClick={() => (showSkipped.value = !showSkipped.value)}>
+        {showSkipped.value ? `Hide skipped blocks` : `Show skipped blocks`}
+      </button>
+    )}
   </div>
 );

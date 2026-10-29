@@ -15,7 +15,8 @@ export const details = signal<Record<string, ApiPipelineDetail>>({});
 export const loadError = signal<string | null>(null);
 export const layoutError = signal<string | null>(null);
 export const popover = signal<{ kind: `promote` | `error`, id: string, x: number, y: number, } | null>(null);
-export const workflow = computed(() => (tree.value ? buildWorkflow(tree.value, details.value) : null));
+export const showSkipped = signal(false);
+export const workflow = computed(() => (tree.value ? buildWorkflow(tree.value, details.value, !showSkipped.value) : null));
 export const now = signal(Math.floor(Date.now() / 1000));
 
 export const query = signal(``);
@@ -128,6 +129,7 @@ export function resetState(selectedPipelineId: string) {
   popover.value = null;
   query.value = ``;
   statuses.value = new Set();
+  showSkipped.value = false;
   scope.value = `all`;
   cursor.value = -1;
   focus.value = null;

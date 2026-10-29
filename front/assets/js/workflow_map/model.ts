@@ -144,6 +144,7 @@ export interface Workflow {
   pipelineById: Map<string, Pipeline>;
   blocks: Map<string, Block>;
   jobs: Map<string, Job>;
+  skippedBlocks: number;
 }
 
 export const AFTER_PIPELINE = `After pipeline`;
@@ -155,26 +156,31 @@ const pipelineStatus = (state: string, result: string): Status => {
   return state === `RUNNING` || state === `STOPPING` ? `running` : `queued`;
 };
 
-function buildBlocks(p: Pipeline, detail: ApiPipelineDetail, wf: Workflow): Block[] {
+function buildBlocks(p: Pipeline, detail: ApiPipelineDetail, wf: Workflow, hideSkipped: boolean): Block[] {
   const byName = new Map<string, Block>();
-  const blocks = detail.blocks.map((b) => {
+  const all = detail.blocks.map((b) => {
     const block: Block = { id: `${p.id}/${b.name}`, name: b.name, deps: [], jobs: [], pipeline: p };
     byName.set(b.name, block);
     return block;
   });
   detail.blocks.forEach((b, i) => {
-    blocks[i].deps = b.dependencies.map((d) => byName.get(d)).filter(Boolean);
-    blocks[i].jobs = b.jobs.map((j, n) => ({
-      key: `${blocks[i].id}#${n}`,
+    all[i].deps = b.dependencies.map((d) => byName.get(d)).filter(Boolean);
+    all[i].jobs = b.jobs.map((j, n) => ({
+      key: `${all[i].id}#${n}`,
       id: j.id,
       name: j.name,
       status: j.status,
       startedAt: j.started_at,
       finishedAt: j.finished_at,
       reused: j.reused,
-      block: blocks[i],
+      block: all[i],
     }));
   });
+  const skipped = new Set(all.filter((b) => b.jobs.length > 0 && blockStatus(b) === `skipped`));
+  wf.skippedBlocks += skipped.size;
+  const through = (b: Block): Block[] => (skipped.has(b) ? b.deps.flatMap(through) : [b]);
+  const blocks = hideSkipped ? all.filter((b) => !skipped.has(b)) : all;
+  if (hideSkipped) for (const b of blocks) b.deps = [...new Set(b.deps.flatMap(through))];
   if (detail.after_jobs.length) {
     const sinks = blocks.filter((b) => !blocks.some((other) => other.deps.includes(b)));
     const after: Block = { id: `${p.id}/${AFTER_PIPELINE}`, name: AFTER_PIPELINE, deps: sinks, jobs: [], pipeline: p };
@@ -197,7 +203,7 @@ function buildBlocks(p: Pipeline, detail: ApiPipelineDetail, wf: Workflow): Bloc
   return blocks;
 }
 
-export function buildWorkflow(tree: ApiWorkflow, details: Record<string, ApiPipelineDetail>): Workflow | null {
+export function buildWorkflow(tree: ApiWorkflow, details: Record<string, ApiPipelineDetail>, hideSkipped = false): Workflow | null {
   const pipelineById = new Map<string, Pipeline>();
   for (const a of tree.pipelines) {
     pipelineById.set(a.id, {
@@ -235,7 +241,7 @@ export function buildWorkflow(tree: ApiWorkflow, details: Record<string, ApiPipe
     }
   }
 
-  const wf: Workflow = { root, pipelines: [], pipelineById, blocks: new Map(), jobs: new Map() };
+  const wf: Workflow = { root, pipelines: [], pipelineById, blocks: new Map(), jobs: new Map(), skippedBlocks: 0 };
   const walk = (p: Pipeline, depth: number) => {
     p.depth = depth;
     wf.pipelines.push(p);
@@ -253,7 +259,7 @@ export function buildWorkflow(tree: ApiWorkflow, details: Record<string, ApiPipe
   for (const p of wf.pipelines) {
     const detail = details[p.id];
     if (detail) {
-      p.blocks = buildBlocks(p, detail, wf);
+      p.blocks = buildBlocks(p, detail, wf, hideSkipped);
       p.errorHtml = detail.error_html;
       p.initJob = detail.init_job;
       p.promotions = detail.promotions.map((promotion) => ({

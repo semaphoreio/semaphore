@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { afterEach, beforeEach, describe, test } from "mocha";
 
 import { ApiPipelineDetail } from "./model";
-import { Config, cursor, details, focus, focusOn, hits, promote, query, queryJobs, refresh, resetState, results, scope, selected, statuses, step, toggleStatus, tree, workflow } from "./store";
+import { Config, cursor, details, focus, focusOn, hits, promote, query, queryJobs, refresh, resetState, results, scope, selected, showSkipped, statuses, step, toggleStatus, tree, workflow } from "./store";
 
 const detail = (id: string, blocks: ApiPipelineDetail[`blocks`]): ApiPipelineDetail => ({
   id,
@@ -16,7 +16,7 @@ const detail = (id: string, blocks: ApiPipelineDetail[`blocks`]): ApiPipelineDet
   after_jobs: [],
 });
 
-const job = (name: string, status: `passed` | `failed` = `passed`) => ({ id: `${name}-id`, name, status, started_at: 1, finished_at: 2, reused: false });
+const job = (name: string, status: `passed` | `failed` | `skipped` = `passed`) => ({ id: `${name}-id`, name, status, started_at: 1, finished_at: 2, reused: false });
 
 const pipeline = (id: string, name: string, parent_id: string | null) => ({
   id,
@@ -68,6 +68,28 @@ describe(`workflow map store`, () => {
 
     toggleStatus(`failed`);
     expect(queryJobs.value.map((j) => j.name)).to.deep.eq([`shard 1`, `shard 2`]);
+  });
+
+  test(`skipped blocks are hidden by default, their dependencies folded, and the toggle brings them back`, () => {
+    details.value = {
+      ...details.value,
+      ci: detail(`ci`, [
+        { name: `Build`, dependencies: [], jobs: [job(`compile`)] },
+        { name: `Optional`, dependencies: [`Build`], jobs: [job(`lint`, `skipped`), job(`audit`, `skipped`)] },
+        { name: `Deploy`, dependencies: [`Optional`], jobs: [job(`ship`)] },
+      ]),
+    };
+
+    expect(workflow.value.pipelineById.get(`ci`).blocks.map((b) => b.name)).to.deep.eq([`Build`, `Deploy`]);
+    expect(workflow.value.pipelineById.get(`ci`).blocks[1].deps.map((b) => b.name)).to.deep.eq([`Build`]);
+    expect(workflow.value.skippedBlocks).to.eq(1);
+    expect(queryJobs.value.map((j) => j.name)).to.not.include(`lint`);
+
+    showSkipped.value = true;
+
+    expect(workflow.value.pipelineById.get(`ci`).blocks.map((b) => b.name)).to.deep.eq([`Build`, `Optional`, `Deploy`]);
+    expect(workflow.value.pipelineById.get(`ci`).blocks[2].deps.map((b) => b.name)).to.deep.eq([`Optional`]);
+    expect(queryJobs.value.map((j) => j.name)).to.include(`lint`);
   });
 
   test(`stepping through matches wraps around and focuses each job`, () => {
