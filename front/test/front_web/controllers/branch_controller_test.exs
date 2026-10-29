@@ -239,6 +239,7 @@ defmodule FrontWeb.BranchControllerTest do
     DB.update(:hooks, hook)
     workflow = Support.Stubs.Workflow.create(hook, Support.Stubs.User.default())
     Support.Stubs.Pipeline.create_initial(workflow)
+    DB.delete(:workflows, fn w -> w.id != workflow.id end)
 
     branch
   end
