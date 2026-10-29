@@ -652,16 +652,20 @@ a.wf-map-job:hover {
 
 .wf-map-card.dim,
 .wf-map-pipeline.dim {
-  opacity: .35;
+  opacity: .55;
 }
 
 .wf-map-node.dim,
 .wf-map-block.dim {
-  opacity: .25;
+  opacity: .45;
 }
 
 .wf-map-job.dim {
-  opacity: .4;
+  opacity: .5;
+}
+
+.dim .dim {
+  opacity: 1;
 }
 
 .wf-map-menu {
