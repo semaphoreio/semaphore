@@ -3670,16 +3670,16 @@ defmodule Projecthub.Api.GrpcServerTest do
     end
 
     defp set_pr_head_builds(enabled) do
+      availability = InternalApi.Feature.Availability.new(state: :ENABLED, quantity: 10)
+
       features =
         if enabled do
           [
-            [
-              feature: %{type: "pr_head_builds"},
-              availability: InternalApi.Feature.Availability.new(state: :ENABLED, quantity: 1)
-            ]
+            [feature: %{type: "max_projects_in_org"}, availability: availability],
+            [feature: %{type: "pr_head_builds"}, availability: availability]
           ]
         else
-          []
+          [[feature: %{type: "max_projects_in_org"}, availability: availability]]
         end
 
       FunRegistry.set!(Support.FakeServices.FeatureService, :list_organization_features, fn _req, _ ->
