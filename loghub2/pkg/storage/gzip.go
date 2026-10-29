@@ -72,6 +72,8 @@ func compressFile(ctx context.Context, srcName, dstName string) (err error) {
 // error, so it never outlives the call.
 func gzipStream(w io.Writer, r io.Reader) error {
 	writer := kgzip.NewWriter(w)
+	// klauspost writes a zero ModTime as a 2042 timestamp; write 0 like stdlib.
+	writer.ModTime = time.Unix(0, 0)
 
 	if _, err := io.Copy(writer, r); err != nil {
 		_ = writer.Close()

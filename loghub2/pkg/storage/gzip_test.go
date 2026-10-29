@@ -217,3 +217,19 @@ func Test__GzipStreamDoesNotLeakGoroutinesOnFailure(t *testing.T) {
 	after := settledGoroutines()
 	assert.LessOrEqual(t, after, before+2, "goroutines grew from %d to %d", before, after)
 }
+
+func Test__GzipStreamWritesZeroModTime(t *testing.T) {
+	var out bytes.Buffer
+	err := gzipStream(&out, bytes.NewReader([]byte("log line")))
+	assert.Nil(t, err)
+
+	raw := out.Bytes()
+	assert.Equal(t, []byte{0, 0, 0, 0}, raw[4:8], "MTIME header field must be 0")
+
+	reader, err := gzip.NewReader(bytes.NewReader(raw))
+	assert.Nil(t, err)
+	assert.True(t, reader.Header.ModTime.IsZero() || reader.Header.ModTime.Unix() == 0)
+	decompressed, err := io.ReadAll(reader)
+	assert.Nil(t, err)
+	assert.Equal(t, "log line", string(decompressed))
+}
