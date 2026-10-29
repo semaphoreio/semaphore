@@ -80,7 +80,18 @@ defmodule Support.Factories.Gofer do
     InternalApi.Gofer.TriggerResponse.new(
       response_status:
         InternalApi.Gofer.ResponseStatus.new(
-          code: InternalApi.Gofer.ResponseStatus.ResponseCode.value(:BAD_PARAM)
+          code: InternalApi.Gofer.ResponseStatus.ResponseCode.value(:BAD_PARAM),
+          message: "Promotion request is invalid."
+        )
+    )
+  end
+
+  def refused_trigger_response(message \\ "Promotion request was refused.") do
+    InternalApi.Gofer.TriggerResponse.new(
+      response_status:
+        InternalApi.Gofer.ResponseStatus.new(
+          code: InternalApi.Gofer.ResponseStatus.ResponseCode.value(:REFUSED),
+          message: message
         )
     )
   end

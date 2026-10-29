@@ -37,6 +37,12 @@ config :gofer, auto_trigger_deadline: 300
 # Time to wait betwween two metric reports of engine process counts
 config :gofer, engine_metrics_pool_period: 50_000
 
+# How long target trigger can wait in queue before it is marked as failed (milliseconds)
+config :gofer, target_trigger_ttl_ms: 40_000
+
+# Maximum number of pending promotion requests per switch target (0 disables queue limit)
+config :gofer, target_trigger_queue_limit: 50
+
 # This configuration is loaded before any dependency and is restricted
 # to this project. If another project depends on this project, this
 # file won't be loaded nor affect the parent project. For this reason,
