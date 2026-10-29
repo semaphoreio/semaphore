@@ -8,7 +8,9 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"runtime"
 	"testing"
+	"time"
 
 	assert "github.com/stretchr/testify/assert"
 )
@@ -165,4 +167,53 @@ func Test__GzipLargeInputRoundTripsWithStdlibAndPgzip(t *testing.T) {
 	viaStdlib, err := io.ReadAll(stdReader)
 	assert.Nil(t, err)
 	assert.True(t, bytes.Equal(buf.Bytes(), viaStdlib))
+}
+
+type failingWriter struct{ after int }
+
+func (f *failingWriter) Write(p []byte) (int, error) {
+	if f.after <= 0 {
+		return 0, fmt.Errorf("no space left on device")
+	}
+	f.after -= len(p)
+	return len(p), nil
+}
+
+type endlessReader struct{ ctx context.Context }
+
+func (e *endlessReader) Read(p []byte) (int, error) {
+	for i := range p {
+		p[i] = byte(i * 31)
+	}
+	return len(p), nil
+}
+
+func settledGoroutines() int {
+	var n int
+	for i := 0; i < 20; i++ {
+		runtime.GC()
+		time.Sleep(50 * time.Millisecond)
+		n = runtime.NumGoroutine()
+	}
+	return n
+}
+
+func Test__GzipStreamDoesNotLeakGoroutinesOnFailure(t *testing.T) {
+	before := settledGoroutines()
+
+	for i := 0; i < 30; i++ {
+		// write failure, e.g. full disk
+		err := gzipStream(&failingWriter{after: 1 << 10}, &endlessReader{})
+		assert.NotNil(t, err)
+
+		// cancelled mid-copy
+		ctx, cancel := context.WithCancel(context.Background())
+		reader := &contextReader{ctx: ctx, r: &endlessReader{}}
+		go func() { time.Sleep(5 * time.Millisecond); cancel() }()
+		err = gzipStream(io.Discard, reader)
+		assert.Equal(t, context.Canceled, err)
+	}
+
+	after := settledGoroutines()
+	assert.LessOrEqual(t, after, before+2, "goroutines grew from %d to %d", before, after)
 }
