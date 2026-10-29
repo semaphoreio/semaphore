@@ -575,27 +575,32 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
       end
 
       # The repo_host filter is load-bearing: bitbucket stores its uid in the
-      # same github_uid column, so without it a bitbucket row would block a
-      # github un-revoke.
+      # same github_uid column, so without it this active bitbucket row would
+      # read as an active holder and guard would never be asked.
       context "when the same uid exists under a different repo_host" do
         let(:token_valid) { true }
         let(:permission_scope) { "repo,user:email" }
 
         before do
-          @project.repo_host_account.update!(:revoked => true)
+          @rha = @project.repo_host_account
+          @rha.update!(:revoked => true)
 
           FactoryBot.create(
             :repo_host_account,
             :repo_host => "bitbucket",
-            :github_uid => @project.repo_host_account.github_uid,
-            :revoked => true
+            :github_uid => @rha.github_uid,
+            :revoked => false
           )
+
+          allow(Semaphore::GuardUserClient).to receive(:refresh_repository_provider) do
+            @rha.update!(:revoked => false)
+          end
         end
 
         it "un-revokes the account", :aggregate_failures do
           response = server.check_token(@req, call)
 
-          expect(@project.repo_host_account.reload.revoked).to be(false)
+          expect(@rha.reload.revoked).to be(false)
           expect(response.valid).to be(true)
           expect(response.integration_scope).to eq(:FULL_CONNECTION)
         end
@@ -628,20 +633,46 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
         end
       end
 
+      # A free uid is not evidence that the uid is free: a competing claim is
+      # invisible here until it commits, so this read can be stale by the time
+      # the write lands. Writing `revoked` directly on the strength of it is
+      # what produced two active links on one uid, so the uncontended case
+      # goes through guard's lock like every other.
       context "when a revoked account's uid is free" do
         let(:token_valid) { true }
         let(:permission_scope) { "repo,user:email" }
 
         before do
-          @project.repo_host_account.update!(:revoked => true)
+          @rha = @project.repo_host_account
+          @rha.update!(:revoked => true)
+
+          allow(Semaphore::GuardUserClient).to receive(:refresh_repository_provider) do
+            @rha.update!(:revoked => false)
+          end
         end
 
-        it "un-revokes the account", :aggregate_failures do
+        it "hands the un-revoke to guard rather than writing it here", :aggregate_failures do
           response = server.check_token(@req, call)
 
-          expect(@project.repo_host_account.reload.revoked).to be(false)
+          expect(Semaphore::GuardUserClient).to have_received(:refresh_repository_provider)
+            .with(@rha.user_id, :GITHUB)
+          expect(@rha.reload.revoked).to be(false)
           expect(response.valid).to be(true)
           expect(response.integration_scope).to eq(:FULL_CONNECTION)
+        end
+
+        context "and guard does not re-activate it" do
+          before do
+            allow(Semaphore::GuardUserClient).to receive(:refresh_repository_provider)
+          end
+
+          it "leaves the account revoked", :aggregate_failures do
+            response = server.check_token(@req, call)
+
+            expect(@rha.reload.revoked).to be(true)
+            expect(response.valid).to be(false)
+            expect(response.integration_scope).to eq(:NO_CONNECTION)
+          end
         end
       end
 
@@ -899,6 +930,12 @@ RSpec.describe InternalApi::RepositoryIntegrator::RepositoryIntegratorServer do
       context "when the token is still valid" do
         let(:revoked) { true }
         let(:token_valid) { true }
+
+        before do
+          allow(Semaphore::GuardUserClient).to receive(:refresh_repository_provider) do
+            github_account.update!(:revoked => false)
+          end
+        end
 
         it "marks connection as not revoked" do
           server.send(:update_revoke_status, github_account)

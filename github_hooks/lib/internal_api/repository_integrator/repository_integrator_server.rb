@@ -206,24 +206,26 @@ module InternalApi
         rha
       end
 
-      # Re-activating a revoked GitHub account must not resurrect a duplicate
-      # link: the same uid may have been actively linked to another user while
-      # this row sat revoked.
+      # Re-activating a revoked GitHub account is a claim, and guard owns
+      # claims: it takes the advisory lock on the uid, deletes the rows it
+      # releases and moves the Keycloak federated identity, which this service
+      # has no OIDC configuration to do.
       #
-      # When other rows share the uid, re-activating is a claim: guard deletes
-      # the released rows and moves the Keycloak federated identity. This
-      # service has no OIDC configuration and cannot do the second half, so it
-      # hands the whole operation to guard instead of flipping the flag alone.
+      # It hands over even when no other row shares the uid. A competing claim
+      # is uncommitted until it lands, and READ COMMITTED hides it, so an
+      # unlocked "the uid is free" read here can be stale by the time this
+      # write commits - leaving two active links on one uid.
       def update_revoked(rha, revoked)
-        if !revoked && rha.revoked? && rha.github_uid.present? && uid_held_by_other?(rha)
+        if !revoked && rha.revoked? && rha.github_uid.present?
           claim_through_guard(rha)
         else
           rha.update!(:revoked => revoked)
         end
       end
 
-      # An active holder blocks outright, so guard is only asked when every
-      # other row is revoked and the claim can go through.
+      # An active holder blocks outright, so guard is spared a call it would
+      # only refuse. A stale read is safe here in a way it is not above: it can
+      # only hold the row revoked, and guard re-decides under the lock.
       def claim_through_guard(rha)
         if uid_actively_held_by_other?(rha)
           Rails.logger.info(
@@ -237,10 +239,6 @@ module InternalApi
         Rails.logger.info(
           "Keeping repo_host_account #{rha.id} revoked: guard did not re-activate it (#{e.class})"
         )
-      end
-
-      def uid_held_by_other?(rha)
-        other_uid_rows(rha).exists?
       end
 
       def uid_actively_held_by_other?(rha)
