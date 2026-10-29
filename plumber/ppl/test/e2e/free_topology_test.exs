@@ -145,6 +145,36 @@ defmodule Ppl.E2E.FreeTopology.Test do
     assert ppl.result == "failed"
   end
 
+  @tag :integration
+  test "fail_fast = stop cancels blocks waiting on stopped ones without periodic scheduling" do
+    # Waiting blocks can be scheduled only when their pipeline is triggered
+    original_period = Application.get_env(:ppl, :ppl_blk_waiting_sp)
+    Application.put_env(:ppl, :ppl_blk_waiting_sp, 1_000_000)
+    on_exit(fn -> Application.put_env(:ppl, :ppl_blk_waiting_sp, original_period) end)
+
+    {:ok, %{ppl_id: ppl_id}} =
+      %{"repo_name" => "19_fail_fast_stop"}
+      |> Test.Helpers.schedule_request_factory(:local)
+      |> Actions.schedule()
+
+    loopers = Test.Helpers.start_all_loopers()
+
+    {:ok, _ppl} = Test.Helpers.wait_for_ppl_state(ppl_id, "running", 10_000)
+
+    # D depends only on A, so it can be canceled only after stopped A is done
+    {:ok, _} =
+      Test.Helpers.assert_finished_for_less_than( __MODULE__, :do_wait_block_status, [ppl_id,
+      %{"A" => [state: "done", result: "stopped"],  "B" => [state: "done", result: "stopped"],
+        "C" => [state: "done", result: "failed"], "D" => [state: "done", result: "canceled"],
+        "E" => [state: "done", result: "canceled"]}], 15_000)
+
+    {:ok, ppl} =  Test.Helpers.wait_for_ppl_state(ppl_id, "done", 10_000)
+
+    Test.Helpers.stop_all_loopers(loopers)
+
+    assert ppl.result == "failed"
+  end
+
   defp check_result(blocks, block_name, expected_result) do
     Enum.find(blocks, fn block -> block.name == block_name end)
     |> do_check_result(expected_result)
