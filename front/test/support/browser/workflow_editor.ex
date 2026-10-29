@@ -56,7 +56,15 @@ defmodule Support.Browser.WorkflowEditor do
   def select_block(session, block_name) do
     query = Query.css("#workflow-editor-diagram [data-type=block]", text: block_name)
 
-    click(session, query)
+    #
+    # The editor re-renders the diagram after an edit, so the element click/2
+    # resolves can detach before the click lands. That is a stale reference
+    # rather than a missing element, so it needs a retry rather than a longer
+    # wait - Wallaby will happily find the old node again.
+    #
+    Support.Browser.retry_on_stale(fn -> click(session, query) end)
+
+    session
   end
 
   def change_agent_env_type_for_pipeline(page, type) do
@@ -97,10 +105,15 @@ defmodule Support.Browser.WorkflowEditor do
   def select_pipeline(session, name) do
     query = Query.css("#workflow-editor-diagram [data-type=pipeline]", text: name)
 
-    session
-    |> find(query, fn e ->
-      e |> Wallaby.Element.click()
+    # Same re-render race as select_block/2 above.
+    Support.Browser.retry_on_stale(fn ->
+      session
+      |> find(query, fn e ->
+        e |> Wallaby.Element.click()
+      end)
     end)
+
+    session
   end
 
   def select_first_pipeline(page) do
