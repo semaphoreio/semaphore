@@ -6,6 +6,7 @@ import { MapCanvas, aim, openBlocks, openPipelines } from "./map";
 import { Popover } from "./popover";
 import { PromoteDialog, promoting } from "./promote";
 import { Toolbar } from "./toolbar";
+import { bindTooltips } from "./tooltips";
 
 const MAX_POLL_RUNNING = 15000;
 const MAX_POLL_DONE = 30000;
@@ -21,6 +22,15 @@ const App = ({ config }: { config: Config, }) => {
     fill();
     window.addEventListener(`resize`, fill);
     return () => window.removeEventListener(`resize`, fill);
+  }, []);
+
+  useEffect(() => {
+    const el = root.current;
+    const bind = () => bindTooltips(el, (window as unknown as { tippy?: Parameters<typeof bindTooltips>[1], }).tippy);
+    const observer = new MutationObserver(() => window.requestAnimationFrame(bind));
+    observer.observe(el, { childList: true, subtree: true, attributes: true, attributeFilter: [`data-tippy-content`] });
+    bind();
+    return () => observer.disconnect();
   }, []);
 
   useEffect(() => {

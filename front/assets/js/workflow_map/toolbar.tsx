@@ -122,11 +122,11 @@ const Stepper = () => {
   if (!h.active) return null;
   return (
     <div className="wf-map-stepper">
-      <button className="btn btn-secondary btn-small" aria-label="Previous match" onClick={() => step(-1)} disabled={!h.ordered.length}>
+      <button className="btn btn-secondary btn-small" aria-label="Previous match" data-tippy-content="Previous match (Shift+N)" onClick={() => step(-1)} disabled={!h.ordered.length}>
         ‹
       </button>
       <span className="wf-map-stepper-count">{h.ordered.length ? `${cursor.value < 0 ? `–` : cursor.value + 1} of ${h.ordered.length} jobs` : `No matching jobs`}</span>
-      <button className="btn btn-secondary btn-small" aria-label="Next match" onClick={() => step(1)} disabled={!h.ordered.length}>
+      <button className="btn btn-secondary btn-small" aria-label="Next match" data-tippy-content="Next match (N)" onClick={() => step(1)} disabled={!h.ordered.length}>
         ›
       </button>
       <button className="wf-map-link" onClick={clearFilters}>

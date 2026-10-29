@@ -95,7 +95,7 @@ export const BlockCard = ({ block, onHeaderClick }: { block: Block, onHeaderClic
   const st = blockStatus(block);
   return (
     <div className={`wf-map-block ${h.active && !h.blocks.has(block) ? `dim` : ``} ${focused ? `focused` : ``}`}>
-      <button className="wf-map-block-head" onClick={onHeaderClick} title="Collapse block">
+      <button className="wf-map-block-head" onClick={onHeaderClick} data-tippy-content="Collapse block">
         <StatusIcon status={st}/>
         <span className="wf-map-block-name">
           <Highlight text={block.name}/>

@@ -10,12 +10,12 @@ export const PromoteButton = ({ p, compact }: { p: Pipeline, compact?: boolean, 
   const fresh = p.promotions.filter((promotion) => !promotion.events.length).length;
   return (
     <button
-      className="btn btn-secondary btn-tiny wf-map-promote"
+      className="btn btn-primary btn-tiny wf-map-promote"
       data-popover-trigger=""
       aria-haspopup="menu"
       aria-expanded={popover.value?.kind === `promote` && popover.value.id === p.id}
       aria-label={compact ? `Promote ${p.name}` : undefined}
-      title={fresh ? `${fresh} of ${p.promotions.length} promotions not run yet` : `${p.promotions.length} promotions`}
+      data-tippy-content={fresh ? `Promote: ${fresh} of ${p.promotions.length} promotions not run yet` : `Promote: all ${p.promotions.length} promotions have run`}
       onClick={(e) => togglePopover(`promote`, p.id, e.currentTarget)}
     >
       {compact ? <span className="material-symbols-outlined" aria-hidden="true">rocket_launch</span> : `Promote ▾`}

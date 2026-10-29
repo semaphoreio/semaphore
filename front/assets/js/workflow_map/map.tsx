@@ -63,16 +63,22 @@ const PipelineActions = ({ p, compact }: { p: Pipeline, compact?: boolean, }) =>
   return (
     <span className="wf-map-actions" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
       {p.stopUrl && (
-        <button className="btn btn-secondary btn-tiny" disabled={busy !== null} aria-label={compact ? `Stop ${p.name}` : undefined} title={compact ? `Stop` : undefined} onClick={() => void run(`stop`)}>
+        <button
+          className="btn btn-secondary btn-tiny"
+          disabled={busy !== null}
+          aria-label={compact ? `Stop ${p.name}` : undefined}
+          data-tippy-content="Stops this pipeline"
+          onClick={() => void run(`stop`)}
+        >
           {compact ? <span className="material-symbols-outlined" aria-hidden="true">stop</span> : busy === `stop` ? `Stopping…` : `Stop`}
         </button>
       )}
       {p.rebuildUrl && (
         <button
-          className="btn btn-secondary btn-tiny"
+          className="btn btn-primary btn-tiny"
           disabled={busy !== null}
           aria-label={compact ? `Rerun the failed jobs of ${p.name}` : undefined}
-          title={compact ? `Rerun failed: reruns only the jobs that did not pass` : `Reruns only the jobs that did not pass, keeping the ones that did`}
+          data-tippy-content="Reruns only the jobs in this pipeline that did not pass, keeping the ones that did"
           onClick={() => void run(`rerun`)}
         >
           {compact ? <span className="material-symbols-outlined" aria-hidden="true">replay</span> : busy === `rerun` ? `Rerunning…` : `Rerun failed`}
@@ -149,7 +155,7 @@ const PipelineNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
         <button
           className="wf-map-collapse"
           aria-label={`Collapse ${p.name}`}
-          title="Collapse to a card"
+          data-tippy-content="Collapse to a card"
           onClick={(e) => {
             e.stopPropagation();
             aim({ id: p.id, how: `center` });
