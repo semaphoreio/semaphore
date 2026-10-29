@@ -195,7 +195,8 @@ defmodule Ppl.Ppls.Termination.Test do
     {:ok, pid2} = Ppl.Ppls.STMHandler.QueuingState.start_link()
     {:ok, pid3} = Ppl.PplBlocks.STMHandler.InitializingState.start_link()
     {:ok, pid4} = Ppl.PplBlocks.STMHandler.WaitingState.start_link()
-    args = [ppl, {"running", nil, nil}, [pid, pid2, pid3, pid4]]
+    drain_pids = Helpers.start_waiting_drain() |> Enum.map(fn {:ok, pid} -> pid end)
+    args = [ppl, {"running", nil, nil}, [pid, pid2, pid3, pid4] ++ drain_pids]
     Helpers.assert_finished_for_less_than(__MODULE__, :check_state?, args, 5_000)
 
     ppl = Repo.get(Ppls, ppl.id)
@@ -237,6 +238,7 @@ defmodule Ppl.Ppls.Termination.Test do
     []
     |> Enum.concat([Ppl.Ppls.STMHandler.StoppingState.start_link()])
     # PplBlocks Loopers
+    |> Enum.concat(Helpers.start_waiting_drain())
     |> Enum.concat([Ppl.PplBlocks.STMHandler.WaitingState.start_link()])
     |> Enum.concat([Ppl.PplBlocks.STMHandler.RunningState.start_link()])
     |> Enum.concat([Ppl.PplBlocks.STMHandler.StoppingState.start_link()])

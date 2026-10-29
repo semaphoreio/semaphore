@@ -324,6 +324,105 @@ defmodule FrontWeb.ProjectSettingsControllerTest do
     end
   end
 
+  describe "sem-approve options" do
+    @forked_pr_params %{
+      run: "true",
+      build_forked_prs: "true",
+      filter_contributors: "true",
+      allowed_contributors: "alice",
+      allow_sem_approve_include_secrets: "true",
+      allow_sem_approve_enable_cache: "true"
+    }
+
+    defp put_general_settings(conn, project_name, params) do
+      alias InternalApi.Projecthub.ResponseMeta
+
+      GrpcMock.expect(ProjecthubMock, :update, fn req, _ ->
+        DB.update(:projects, %{
+          id: req.project.metadata.id,
+          name: req.project.metadata.name,
+          org_id: req.project.metadata.org_id,
+          api_model: req.project
+        })
+
+        InternalApi.Projecthub.UpdateResponse.new(
+          metadata:
+            ResponseMeta.new(status: ResponseMeta.Status.new(code: ResponseMeta.Code.value(:OK))),
+          project: req.project
+        )
+      end)
+
+      conn = put(conn, project_settings_path(conn, :update, project_name), %{project: params})
+      assert get_flash(conn, :notice) == "Project has been updated."
+
+      DB.find_by(:projects, :name, project_name).api_model.spec.repository.forked_pull_requests
+    end
+
+    test "sends both options when forked PRs are restricted to trusted contributors", %{
+      conn: conn,
+      project_name: project_name
+    } do
+      forked_pull_requests = put_general_settings(conn, project_name, @forked_pr_params)
+
+      assert forked_pull_requests.allow_sem_approve_include_secrets == true
+      assert forked_pull_requests.allow_sem_approve_enable_cache == true
+    end
+
+    test "sends each option independently", %{conn: conn, project_name: project_name} do
+      forked_pull_requests =
+        put_general_settings(
+          conn,
+          project_name,
+          Map.put(@forked_pr_params, :allow_sem_approve_enable_cache, "false")
+        )
+
+      assert forked_pull_requests.allow_sem_approve_include_secrets == true
+      assert forked_pull_requests.allow_sem_approve_enable_cache == false
+    end
+
+    for {field, label} <- [
+          filter_contributors: "the contributor filter is off",
+          build_forked_prs: "forked PRs are not built",
+          run: "the project does not run workflows"
+        ] do
+      test "clears both options when #{label}", %{conn: conn, project_name: project_name} do
+        params = Map.put(@forked_pr_params, unquote(field), "false")
+        forked_pull_requests = put_general_settings(conn, project_name, params)
+
+        assert forked_pull_requests.allow_sem_approve_include_secrets == false
+        assert forked_pull_requests.allow_sem_approve_enable_cache == false
+      end
+    end
+
+    test "GET general shows the options when sem_approve_options is enabled", %{
+      conn: conn,
+      project_name: project_name,
+      org_id: org_id
+    } do
+      Feature.enable_feature(org_id, :sem_approve_options)
+
+      html =
+        conn |> get(project_settings_path(conn, :general, project_name)) |> html_response(200)
+
+      assert html =~ "Allow /sem-approve --include-secrets"
+      assert html =~ "Allow /sem-approve --enable-cache"
+    end
+
+    test "GET general hides the options when sem_approve_options is disabled", %{
+      conn: conn,
+      project_name: project_name,
+      org_id: org_id
+    } do
+      Feature.disable_feature(org_id, :sem_approve_options)
+
+      html =
+        conn |> get(project_settings_path(conn, :general, project_name)) |> html_response(200)
+
+      refute html =~ "sem-approve-options"
+      refute html =~ "Allow /sem-approve --include-secrets"
+    end
+  end
+
   describe "POST submit_delete" do
     test "when all requirments are met, it notifies and redirects to home", %{
       conn: conn,

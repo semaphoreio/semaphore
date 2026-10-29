@@ -197,16 +197,20 @@ export var GeneralSettings = {
   registerContributorsSwitchHandler() {
     if($('input[name="project[filter_contributors]"][checked]').val() == "true") {
       $("#allowed-contributors").show();
+      $("#sem-approve-options").show();
     } else {
       $("#allowed-contributors").hide();
+      $("#sem-approve-options").hide();
     }
 
     this.settings.on("click", "[data-action=openContributors]", (e) => {
       $("#allowed-contributors").hide();
+      $("#sem-approve-options").hide();
     })
 
     this.settings.on("click", "[data-action=filterContributors]", (e) => {
       $("#allowed-contributors").show();
+      $("#sem-approve-options").show();
     })
   },
 

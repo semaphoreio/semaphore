@@ -50,6 +50,8 @@ defmodule InternalApi.RepoProxy.Hook do
           pr_sha: String.t(),
           pr_mergeable: boolean,
           pr_branch_name: String.t(),
+          approval_include_secrets: boolean,
+          approval_enable_cache: boolean,
           pr_base_sha: String.t(),
           tag_name: String.t(),
           branch_name: String.t()
@@ -76,6 +78,8 @@ defmodule InternalApi.RepoProxy.Hook do
     :pr_sha,
     :pr_mergeable,
     :pr_branch_name,
+    :approval_include_secrets,
+    :approval_enable_cache,
     :pr_base_sha,
     :tag_name,
     :branch_name
@@ -102,7 +106,9 @@ defmodule InternalApi.RepoProxy.Hook do
   field(:pr_sha, 19, type: :string)
   field(:pr_mergeable, 22, type: :bool)
   field(:pr_branch_name, 23, type: :string)
-  field(:pr_base_sha, 26, type: :string)
+  field(:approval_include_secrets, 26, type: :bool)
+  field(:approval_enable_cache, 27, type: :bool)
+  field(:pr_base_sha, 28, type: :string)
   field(:tag_name, 14, type: :string)
   field(:branch_name, 16, type: :string)
 end
