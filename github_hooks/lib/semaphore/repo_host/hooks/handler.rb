@@ -577,7 +577,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
   end
 
   def self.merge_commit_of_heads?(repo_host, repo_slug, merge_commit_sha, head_shas)
-    parents = repo_host.commit(repo_slug, merge_commit_sha)&.[](:parents) || []
+    parents = repo_host.git_commit(repo_slug, merge_commit_sha)&.[](:parents) || []
     (head_shas - parents.map { |parent| parent[:sha] }).empty?
   rescue RepoHost::RemoteException::Unauthorized, RepoHost::RemoteException::NotFound
     false

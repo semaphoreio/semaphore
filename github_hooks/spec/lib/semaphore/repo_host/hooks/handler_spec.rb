@@ -1232,7 +1232,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
             allow(repo_host).to receive(:commit).with("renderedtext/plakatt",
                                                       "97114836a47ff614e70e863df819f908877ee1c9").and_return(RepoHost::Github::Responses::Commit.commit)
             merge_commit = { :parents => [{ :sha => "base" }, { :sha => @workflow.payload.pr_head_sha }] }
-            allow(repo_host).to receive(:commit).with("renderedtext/plakatt", "foo").and_return(merge_commit)
+            allow(repo_host).to receive(:git_commit).with("renderedtext/plakatt", "foo").and_return(merge_commit)
 
             expect(described_class.run(@workflow, @logger)).to be_nil
           end
@@ -1362,7 +1362,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
 
           it "builds it when the merge commit has the PR head as a parent" do
             merge_commit = { :parents => [{ :sha => "base" }, { :sha => head_sha }] }
-            allow(repo_host).to receive(:commit).with("renderedtext/plakatt", merge_sha).and_return(merge_commit)
+            allow(repo_host).to receive(:git_commit).with("renderedtext/plakatt", merge_sha).and_return(merge_commit)
             expect(described_class).to receive(:launch_pipeline)
 
             described_class.run(@workflow, @logger)
@@ -1372,7 +1372,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
 
           it "reschedules instead of building a merge commit left over from an earlier head" do
             merge_commit = { :parents => [{ :sha => "base" }, { :sha => "previous-head" }] }
-            allow(repo_host).to receive(:commit).with("renderedtext/plakatt", merge_sha).and_return(merge_commit)
+            allow(repo_host).to receive(:git_commit).with("renderedtext/plakatt", merge_sha).and_return(merge_commit)
             expect(described_class).not_to receive(:launch_pipeline)
             expect(Semaphore::RepoHost::Hooks::Handler::Worker)
               .to receive(:perform_in).with(2.minutes, @workflow.id, anything, anything, 1)
@@ -1384,7 +1384,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
           end
 
           it "treats a merge commit without parents as stale" do
-            allow(repo_host).to receive(:commit).with("renderedtext/plakatt", merge_sha).and_return({})
+            allow(repo_host).to receive(:git_commit).with("renderedtext/plakatt", merge_sha).and_return({})
             expect(described_class).not_to receive(:launch_pipeline)
             expect(Semaphore::RepoHost::Hooks::Handler::Worker)
               .to receive(:perform_in).with(2.minutes, @workflow.id, anything, anything, 1)
@@ -1396,7 +1396,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
             allow(repo_host).to receive(:pull_request)
               .and_return({ :merge_commit_sha => merge_sha, :mergeable => true, :head => { :sha => "previous-head" } })
             merge_commit = { :parents => [{ :sha => "base" }, { :sha => "previous-head" }] }
-            allow(repo_host).to receive(:commit).with("renderedtext/plakatt", merge_sha).and_return(merge_commit)
+            allow(repo_host).to receive(:git_commit).with("renderedtext/plakatt", merge_sha).and_return(merge_commit)
             expect(described_class).not_to receive(:launch_pipeline)
             expect(Semaphore::RepoHost::Hooks::Handler::Worker)
               .to receive(:perform_in).with(2.minutes, @workflow.id, anything, anything, 1)
@@ -1406,16 +1406,17 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
 
           it "checks against the webhook head even after commit_sha was set to the merge commit" do
             @workflow.update(:commit_sha => merge_sha)
+            allow(repo_host).to receive(:commit).with("renderedtext/plakatt", merge_sha).and_return(RepoHost::Github::Responses::Commit.commit)
             merge_commit = { :parents => [{ :sha => "base" }, { :sha => head_sha }] }
-            allow(repo_host).to receive(:commit).with("renderedtext/plakatt", merge_sha).and_return(merge_commit)
+            allow(repo_host).to receive(:git_commit).with("renderedtext/plakatt", merge_sha).and_return(merge_commit)
             expect(described_class).to receive(:launch_pipeline)
 
             described_class.run(@workflow, @logger)
           end
 
           it "reschedules instead of failing the repository when the merge commit lookup is not found" do
-            allow(repo_host).to receive(:commit).with("renderedtext/plakatt", merge_sha)
-                                                .and_raise(::RepoHost::RemoteException::NotFound, "gone")
+            allow(repo_host).to receive(:git_commit).with("renderedtext/plakatt", merge_sha)
+                                                    .and_raise(::RepoHost::RemoteException::NotFound, "gone")
             expect(described_class).not_to receive(:launch_pipeline)
             expect(Semaphore::RepoHost::Hooks::Handler::Worker)
               .to receive(:perform_in).with(2.minutes, @workflow.id, anything, anything, 1)
@@ -1428,7 +1429,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
           it "does not look up the merge commit when the ref is new" do
             allow(repo_host).to receive(:create_ref)
               .with("renderedtext/plakatt", "refs/semaphoreci/#{merge_sha}", merge_sha)
-            expect(repo_host).not_to receive(:commit).with("renderedtext/plakatt", merge_sha)
+            expect(repo_host).not_to receive(:git_commit).with("renderedtext/plakatt", merge_sha)
             expect(described_class).to receive(:launch_pipeline)
 
             described_class.run(@workflow, @logger)
