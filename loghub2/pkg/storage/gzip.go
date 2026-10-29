@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"compress/gzip"
 	"io"
 	"log"
 	"os"
@@ -61,7 +60,7 @@ func compressFile(ctx context.Context, srcName, dstName string) (err error) {
 		}
 	}()
 
-	writer := gzip.NewWriter(dst)
+	writer := pgzip.NewWriter(dst)
 	if _, err = io.Copy(writer, &contextReader{ctx: ctx, r: src}); err != nil {
 		return err
 	}
