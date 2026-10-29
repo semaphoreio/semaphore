@@ -240,6 +240,7 @@ Selecting **Run on** allows you to configure what triggers are enabled for the p
 - Enabling **Pull requests** option allows Semaphore to run workflows on pull requests originating in the same repository
 - The **Forked pull request** works the same for pull requests originating from forked pull requests. [To prevent security leaks](#pr), you can configure a list of allowed secrets and GitHub/BitBucket/GitLab usernames that can trigger workflows in this way
 - When either pull request option is enabled, **Commit to build for pull requests** selects whether pull request workflows build the merge commit or the head commit. See [commit to build for pull requests](#pr-commit)
+
 ![Pull request triggers](./img/project-general-settings-3.jpg)
 
 ### Commit to build for pull requests {#pr-commit}
@@ -255,15 +256,17 @@ When building the head commit, the workflow doesn't test your changes combined w
 
 :::
 
-The setting applies to every pull request workflow of the project: workflows started by pull request events from GitHub, by [`/sem-approve`](#sem-approve) on forked pull requests, and for a pull request reference through the [API](../reference/api) or the command line. Re-running a workflow builds the same commit as the original run.
+The setting applies to every pull request workflow of the project: workflows started by pull request events from GitHub, by [`/sem-approve`](#sem-approve) on forked pull requests, and for a pull request reference through the [API](../reference/api) or the command line. If GitHub can't keep a reference to the commit, for example for some pull requests from forks, Semaphore builds the pull request's head reference instead, so a re-run can build a newer commit than the original run.
 
-You can also change it with the [`pull_request_commit`](../reference/project-yaml#pull-request-commit-in-repository) property in the project YAML or with [`sem-ai project update`](../reference/sem-ai-cli#project-update).
+You can also change it with the [`pull_request_commit`](../reference/project-yaml#pull-request-commit-in-repository) property in the project YAML.
+
+With the head commit option, [`/sem-approve`](#sem-approve) runs the commit that was approved, and refuses to run if the pull request head changed after the approval.
 
 In both modes, pull request jobs get these environment variables:
 
 - [`SEMAPHORE_GIT_SHA`](../reference/env-vars#commit-sha): the commit being built
 - [`SEMAPHORE_GIT_PR_SHA`](../reference/env-vars#pr-sha): the head commit of the pull request
-- [`SEMAPHORE_GIT_PR_BASE_SHA`](../reference/env-vars#pr-base-sha): the commit of the base branch reported with the pull request event. It can be behind the current tip of the base branch
+- [`SEMAPHORE_GIT_PR_BASE_SHA`](../reference/env-vars#pr-base-sha): the commit of the base branch reported with the pull request event, available only for GitHub projects. It can be behind the current tip of the base branch
 
 With enough Git history in the job, for example after a [full clone](../reference/toolbox#full-clone), you can use them to list the files changed by the pull request, or merge `SEMAPHORE_GIT_PR_BASE_SHA` to test the changes combined with the base branch. For example:
 
