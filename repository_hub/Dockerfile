@@ -65,7 +65,8 @@ ENV APP_NAME=${APP_NAME}
 ENV MIX_ENV="prod"
 
 # install runtime dependencies
-RUN apk update && apk add --no-cache libstdc++ openssl ncurses-libs openssh-keygen
+# git and the ssh client are needed to describe revisions of Generic Git repositories
+RUN apk update && apk add --no-cache libstdc++ openssl ncurses-libs openssh-keygen openssh-client git
 
 WORKDIR /app
 
