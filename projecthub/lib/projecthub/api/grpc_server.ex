@@ -299,6 +299,7 @@ defmodule Projecthub.Api.GrpcServer do
                sem_approve_options_enabled?(org.id)
              ),
            :ok <- validate_pull_request_commit(repo.pull_request_commit, repo.integration_type),
+           :ok <- validate_pr_head_builds(repo.pull_request_commit, nil, org.id),
            {:ok, project} <-
              attempt_creation(
                user,
@@ -384,6 +385,12 @@ defmodule Projecthub.Api.GrpcServer do
              validate_pull_request_commit(
                project_spec.repository.pull_request_commit,
                project_integration_type(project)
+             ),
+           :ok <-
+             validate_pr_head_builds(
+               project_spec.repository.pull_request_commit,
+               project.pull_request_commit,
+               org.id
              ) do
         attempt_update(project, project_metadata, project_spec, req)
       else
@@ -1057,6 +1064,16 @@ defmodule Projecthub.Api.GrpcServer do
   end
 
   defp validate_pull_request_commit(_, _), do: :ok
+
+  defp validate_pr_head_builds(:HEAD_COMMIT, stored, org_id) do
+    if stored == "head_commit" or pr_head_builds_enabled?(org_id) do
+      :ok
+    else
+      {:error, ["Building pull requests on their head commit is not available for this organization"]}
+    end
+  end
+
+  defp validate_pr_head_builds(_, _, _), do: :ok
 
   defp project_integration_type(%{repository: %{integration_type: type}}), do: type
   defp project_integration_type(_), do: nil

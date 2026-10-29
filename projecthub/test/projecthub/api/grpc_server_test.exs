@@ -3529,6 +3529,7 @@ defmodule Projecthub.Api.GrpcServerTest do
     alias InternalApi.Projecthub.Project.Spec.Repository
 
     @head_commit_error "Building pull requests on their head commit is supported only for GitHub projects"
+    @head_builds_error "Building pull requests on their head commit is not available for this organization"
 
     setup do
       {:ok, channel} =
@@ -3622,14 +3623,38 @@ defmodule Projecthub.Api.GrpcServerTest do
       assert {:ok, %{pull_request_commit: "merge_commit"}} = Project.find(project.id)
     end
 
-    test "create with HEAD_COMMIT while pr_head_builds is off => builds merge commits", %{channel: channel} do
+    test "create with HEAD_COMMIT while pr_head_builds is off => fails and creates nothing", %{channel: channel} do
       set_pr_head_builds(false)
       repository = Repository.new(url: "repo_url", integration_type: :GITHUB_APP, pull_request_commit: :HEAD_COMMIT)
-      {:ok, response} = Stub.create(channel, pr_commit_create_request(repository))
+      request = pr_commit_create_request(repository)
+      {:ok, response} = Stub.create(channel, request)
+
+      assert response.metadata.status.code == :FAILED_PRECONDITION
+      assert response.metadata.status.message == @head_builds_error
+      assert {:error, :not_found} = Project.find_by_name(request.project.metadata.name, request.metadata.org_id)
+    end
+
+    test "update to HEAD_COMMIT while pr_head_builds is off => fails and keeps the stored value", %{channel: channel} do
+      set_pr_head_builds(false)
+      {:ok, project} = Support.Factories.Project.create_with_repo()
+
+      head = Repository.new(url: "repo_url", pull_request_commit: :HEAD_COMMIT)
+      {:ok, response} = Stub.update(channel, pr_commit_update_request(project, head))
+
+      assert response.metadata.status.code == :FAILED_PRECONDITION
+      assert response.metadata.status.message == @head_builds_error
+      assert {:ok, %{pull_request_commit: "merge_commit"}} = Project.find(project.id)
+    end
+
+    test "update keeping HEAD_COMMIT while pr_head_builds is off => succeeds", %{channel: channel} do
+      set_pr_head_builds(false)
+      {:ok, project} = Support.Factories.Project.create_with_repo(%{pull_request_commit: "head_commit"})
+
+      head = Repository.new(url: "repo_url", pull_request_commit: :HEAD_COMMIT)
+      {:ok, response} = Stub.update(channel, pr_commit_update_request(project, head))
 
       assert response.metadata.status.code == :OK
-      assert response.project.spec.repository.pull_request_commit == :MERGE_COMMIT
-      assert {:ok, %{pull_request_commit: "merge_commit"}} = Project.find(response.project.metadata.id)
+      assert {:ok, %{pull_request_commit: "head_commit"}} = Project.find(project.id)
     end
 
     test "update with a value while pr_head_builds is off => keeps the stored value", %{channel: channel} do
