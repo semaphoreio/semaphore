@@ -2,8 +2,10 @@ package storage
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -135,4 +137,32 @@ func Test__GzipStopsWhenContextIsCancelledDuringCompression(t *testing.T) {
 	n, err = reader.Read(buf)
 	assert.Equal(t, context.Canceled, err)
 	assert.Equal(t, 0, n)
+}
+
+func Test__GzipLargeInputRoundTripsWithStdlibAndPgzip(t *testing.T) {
+	// several MB of non-trivial data, so compression spans multiple blocks
+	var buf bytes.Buffer
+	for i := 0; buf.Len() < 5<<20; i++ {
+		fmt.Fprintf(&buf, "line %d: some log output %d\n", i, i*7919%104729)
+	}
+
+	tempFile, _ := ioutil.TempFile("", "*")
+	tempFile.Write(buf.Bytes())
+	tempFile.Close()
+	defer os.Remove(tempFile.Name() + ".gz")
+
+	assert.Nil(t, Gzip(context.Background(), tempFile.Name()))
+
+	compressed, err := ioutil.ReadFile(tempFile.Name() + ".gz")
+	assert.Nil(t, err)
+
+	viaPgzip, err := Gunzip(compressed)
+	assert.Nil(t, err)
+	assert.True(t, bytes.Equal(buf.Bytes(), viaPgzip))
+
+	stdReader, err := gzip.NewReader(bytes.NewReader(compressed))
+	assert.Nil(t, err)
+	viaStdlib, err := io.ReadAll(stdReader)
+	assert.Nil(t, err)
+	assert.True(t, bytes.Equal(buf.Bytes(), viaStdlib))
 }
