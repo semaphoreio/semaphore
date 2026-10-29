@@ -52,6 +52,40 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
       end
     end
 
+    context "when the hook comes from a generic git repository" do
+      let(:sha) { "273b85fbebf7a9493af8c4102d40eb059c9fc6e7" }
+
+      before do
+        repository = FactoryBot.build(:repository, :owner => "acme", :name => "app", :provider => "git",
+                                                   :url => "ssh://git@git.example.com/acme/app.git")
+        project = FactoryBot.create(:project, :repository => repository)
+
+        request = {
+          "reference" => "refs/heads/main",
+          "commit" => { "sha" => sha, "message" => "Add generic git links" },
+          "author" => { "name" => "Jane", "email" => "jane@example.com" }
+        }
+
+        # The generic git payload has no repository information, see RepoHost::Git::Payload.
+        @hook = FactoryBot.build(:workflow, :project => project, :provider => "git", :request => request,
+                                            :commit_sha => sha, :git_ref => "refs/heads/main")
+        @hook.save!
+
+        @req = InternalApi::RepoProxy::DescribeRequest.new(:hook_id => @hook.id)
+      end
+
+      it "derives the repository web URL and slug from the git remote of the project" do
+        response = server.describe(@req, call)
+        hook = response.hook
+
+        expect(hook.repo_host_url).to eq("https://git.example.com/acme/app")
+        expect(hook.repo_slug).to eq(@hook.project.reload.repo_owner_and_name)
+        expect(hook.head_commit_sha).to eq(sha)
+        expect(hook.git_ref_type).to eq(:BRANCH)
+        expect(hook.branch_name).to eq("main")
+      end
+    end
+
     context "when pusher is not present" do
       it "return empty repo_host_username, and empty repo_host_email" do
         @hook = FactoryBot.create(:workflow_with_branch)
