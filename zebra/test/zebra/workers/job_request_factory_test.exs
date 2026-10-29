@@ -1260,6 +1260,45 @@ defmodule Zebra.Workers.JobRequestFactoryTest do
     assert job.aasm_state == "pending"
   end
 
+  describe "when a helper task is slower than the await timeout" do
+    setup do
+      Application.put_env(:zebra, :job_request_factory_await_timeout, 200)
+      on_exit(fn -> Application.delete_env(:zebra, :job_request_factory_await_timeout) end)
+    end
+
+    test "slow key generation => skips the job and leaves it pending" do
+      {:ok, task} = Support.Factories.Task.create()
+      {:ok, job} = Support.Factories.Job.create(:pending, %{spec: @job_spec, build_id: task.id})
+
+      with_mock Zebra.RSA, generate: fn -> :timer.sleep(2_000) end do
+        capture_log(fn ->
+          assert {:error, {:timeout, :rsa}} = Worker.process(job)
+        end)
+      end
+
+      assert Job.reload(job).aasm_state == "pending"
+    end
+
+    test "slow project api => skips the job and leaves it pending" do
+      GrpcMock.stub(Support.FakeServers.ProjecthubApi, :describe, fn _, _ ->
+        :timer.sleep(2_000)
+        raise "too late"
+      end)
+
+      {:ok, task} = Support.Factories.Task.create()
+      {:ok, job} = Support.Factories.Job.create(:pending, %{spec: @job_spec, build_id: task.id})
+
+      with_mock Zebra.RSA,
+        generate: fn -> %Zebra.RSA{private_key: "private", public_key: "public"} end do
+        capture_log(fn ->
+          assert {:error, {:timeout, :project}} = Worker.process(job)
+        end)
+      end
+
+      assert Job.reload(job).aasm_state == "pending"
+    end
+  end
+
   test "when we can't connect to loghub2 api => doesn't process self-hosted job" do
     GrpcMock.stub(Support.FakeServers.Loghub2Api, :generate_token, fn _, _ ->
       raise "muahhahaaha"
@@ -1434,5 +1473,20 @@ defmodule Zebra.Workers.JobRequestFactoryTest do
     assert {:error, :communication_error} = Worker.process(job)
 
     assert job.aasm_state == "pending"
+  end
+
+  test "init uses continuous mode with parallelism fitted to the DB pool" do
+    pool_size = Application.fetch_env!(:zebra, Zebra.LegacyRepo)[:pool_size]
+
+    worker = Worker.init()
+
+    assert %Zebra.Workers.DbWorker{
+             concurrency_mode: :continuous,
+             records_per_tick: 100,
+             process_timeout: 15_000
+           } = worker
+
+    assert worker.parallelism ==
+             Zebra.Workers.JobRequestFactory.Settings.fit_to_pool(10, pool_size)
   end
 end
