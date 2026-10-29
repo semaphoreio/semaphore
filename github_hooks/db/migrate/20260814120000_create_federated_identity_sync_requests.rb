@@ -6,7 +6,9 @@ class CreateFederatedIdentitySyncRequests < ActiveRecord::Migration[8.0]
       t.string :uid, :null => false, :limit => 255
       t.uuid :claiming_user_id, :null => false
       t.uuid :released_user_ids, :array => true, :null => false, :default => []
-      t.string :login, :null => false, :limit => 255
+      # repo_host_accounts.login is nullable and Keycloak userName is optional;
+      # a legacy row with no login must not blow up enqueue mid-claim.
+      t.string :login, :limit => 255
       t.integer :attempts, :null => false, :default => 0
       t.text :last_error
       t.datetime :next_attempt_at, :null => false, :precision => 0

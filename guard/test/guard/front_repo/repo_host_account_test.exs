@@ -531,7 +531,10 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
       assert %RepoHostAccount{revoked: true} = RepoHostAccount.reload(live)
     end
 
-    test "a revoked link is not released when the provider answer is transient" do
+    test "a claim is refused when the provider cannot classify a sharer" do
+      # Letting it through would commit the claim, keep the row and never
+      # enqueue the Keycloak move, with nothing to retry it. uid_taken is
+      # retryable, so the unknown case blocks.
       {_owner, unknown} = Support.Members.insert_user_with_github_account(github_uid: "40002")
       {:ok, unknown} = RepoHostAccount.update_revoke_status(unknown, true)
       :ok = Support.Members.age_repo_host_account(unknown)
@@ -541,7 +544,7 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
         {:ok, %Tesla.Env{status: 500, body: %{}}}
       end)
 
-      assert {:ok, _claimer} =
+      assert {:error, %Ecto.Changeset{} = changeset} =
                RepoHostAccount.create(%{
                  login: "claimer",
                  github_uid: "40002",
@@ -551,6 +554,7 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
                  permission_scope: "user:email"
                })
 
+      assert RepoHostAccount.uid_taken_error?(changeset)
       assert %RepoHostAccount{revoked: true} = RepoHostAccount.reload(unknown)
     end
 
@@ -589,10 +593,20 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
       {:ok, healed} = RepoHostAccount.update_revoke_status(healed, true)
       :ok = Support.Members.age_repo_host_account(healed)
 
-      Support.Members.stub_dead_github_token()
+      # Un-revoke from inside the mock: validate_token runs before the
+      # transaction opens, so this is the real window - the verdict is formed
+      # while the row is revoked and is already stale when the lock is taken.
+      test_pid = self()
 
-      # Stand in for the race: the row is active again by the time the lock is held.
-      {:ok, healed} = RepoHostAccount.update_revoke_status(healed, false)
+      Tesla.Mock.mock_global(fn %{method: :get, url: "https://api.github.com" <> _} ->
+        if Process.get(:healed) == nil do
+          Process.put(:healed, true)
+          {:ok, _} = RepoHostAccount.update_revoke_status(healed, false)
+          send(test_pid, :healed_mid_flight)
+        end
+
+        {:ok, %Tesla.Env{status: 401, body: %{}}}
+      end)
 
       assert {:error, %Ecto.Changeset{} = changeset} =
                RepoHostAccount.create(%{
@@ -604,6 +618,8 @@ defmodule Guard.FrontRepo.RepoHostAccountTest do
                  permission_scope: "user:email"
                })
 
+      # Prove the race actually happened rather than the mock never firing.
+      assert_received :healed_mid_flight
       assert RepoHostAccount.uid_taken_error?(changeset)
       refute RepoHostAccount.reload(healed).revoked
     end

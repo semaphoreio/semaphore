@@ -8,7 +8,8 @@ defmodule Guard.FrontRepo.Migrations.CreateFederatedIdentitySyncRequests do
       add(:uid, :string, null: false)
       add(:claiming_user_id, :binary_id, null: false)
       add(:released_user_ids, {:array, :binary_id}, null: false, default: [])
-      add(:login, :string, null: false)
+      # nullable: repo_host_accounts.login is, and Keycloak userName is optional
+      add(:login, :string)
       add(:attempts, :integer, null: false, default: 0)
       add(:last_error, :text)
       add(:next_attempt_at, :utc_datetime, null: false)
