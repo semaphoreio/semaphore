@@ -461,7 +461,7 @@ Present only for builds where `SEMAPHORE_GIT_REF_TYPE=pull-request`
 - **Environment variable**: `SEMAPHORE_GIT_PR_BASE_SHA`
 - **Example**: `3b18e512dba79e4c8300dd08aeb37f8e728b8dad`
 
-The Git SHA of the base branch commit reported with the pull request event. It can be behind the current tip of the base branch. It's set whether the project builds the [merge commit or the head commit](../using-semaphore/workflows#pr-commit) of pull requests.
+The Git SHA of the base branch commit reported with the pull request event. It can be behind the current tip of the base branch. It's set whether the project builds the [merge commit or the head commit](../using-semaphore/workflows#pr-commit) of pull requests. For pull request runs started through the API or the command line, it's the tip of the base branch when the run started.
 
 For example, to list the files changed by the pull request, run `git diff --name-only "$SEMAPHORE_GIT_PR_BASE_SHA...$SEMAPHORE_GIT_PR_SHA"`. The job needs enough Git history to include both commits, for example after a [full clone](./toolbox#full-clone).
 
