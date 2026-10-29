@@ -499,7 +499,7 @@ defmodule Ppl.WorkflowQueries do
   defp list_keyset_(params, keyset_params) do
     page =
       params
-      |> keyset_query()
+      |> keyset_query(keyset_params)
       |> paginate(keyset_params)
 
     {:ok,
@@ -510,16 +510,27 @@ defmodule Ppl.WorkflowQueries do
      }}
   end
 
-  # One scalar-filtered branch per ref type: each reads the project/ref-type
-  # index in order, so Postgres can merge them and stop at the page limit.
-  # A single `= ANY($n)` makes it fetch and sort every matching row.
-  defp keyset_query(params = %{label: :skip, git_ref_types: [_, _ | _] = git_ref_types}) do
+  # One page per ref type, each read in order from the project/ref-type index
+  # and limited inside its own subquery, then merged. Postgres does not push
+  # an outer ORDER BY/LIMIT into UNION ALL branches that have WHERE clauses,
+  # and `= ANY($n)` makes it fetch and sort every matching row.
+  defp keyset_query(
+         params = %{label: :skip, git_ref_types: [_, _ | _] = git_ref_types},
+         keyset_params
+       ) do
+    page_config = keyset_params |> paginator_opts() |> Paginator.Config.new()
+
     [first | rest] =
       Enum.map(git_ref_types, fn git_ref_type ->
-        params
-        |> keyset_base_query()
-        |> filter_by_label_and_git_ref_types(:skip, [git_ref_type])
-        |> select_workflow_details()
+        page =
+          params
+          |> keyset_base_query()
+          |> filter_by_label_and_git_ref_types(:skip, [git_ref_type])
+          |> order_by([p], desc: p.inserted_at, desc: p.id)
+          |> select_workflow_details()
+          |> Paginator.Ecto.Query.paginate(page_config)
+
+        from(w in subquery(page))
       end)
 
     union = Enum.reduce(rest, first, fn query, acc -> union_all(acc, ^query) end)
@@ -527,7 +538,7 @@ defmodule Ppl.WorkflowQueries do
     from(w in subquery(union), order_by: [desc: w.inserted_at, desc: w.id])
   end
 
-  defp keyset_query(params) do
+  defp keyset_query(params, _keyset_params) do
     params
     |> keyset_base_query()
     |> filter_by_label_and_git_ref_types(params.label, params.git_ref_types)
@@ -549,26 +560,28 @@ defmodule Ppl.WorkflowQueries do
     |> filter_by_inserted_at(params.created_after, :after)
   end
 
-  def paginate(query, params, cursor_fields \\ [:inserted_at, :id])
+  def paginate(query, params, cursor_fields \\ [:inserted_at, :id]) do
+    Repo.paginate_keyset(query, paginator_opts(params, cursor_fields))
+  end
 
-  def paginate(query, params = %{direction: :NEXT}, cursor_fields) do
-    query
-    |> Repo.paginate_keyset(
+  defp paginator_opts(params, cursor_fields \\ [:inserted_at, :id])
+
+  defp paginator_opts(params = %{direction: :NEXT}, cursor_fields) do
+    [
       cursor_fields: cursor_fields,
       limit: params.page_size,
       after: params.page_token,
       sort_direction: :desc
-    )
+    ]
   end
 
-  def paginate(query, params = %{direction: :PREVIOUS}, cursor_fields) do
-    query
-    |> Repo.paginate_keyset(
+  defp paginator_opts(params = %{direction: :PREVIOUS}, cursor_fields) do
+    [
       cursor_fields: cursor_fields,
       limit: params.page_size,
       before: params.page_token,
       sort_direction: :desc
-    )
+    ]
   end
 
   defp filter_by_organization_id(query, :skip), do: query

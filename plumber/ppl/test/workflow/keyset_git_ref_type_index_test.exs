@@ -45,6 +45,11 @@ defmodule Ppl.WorkflowQueries.KeysetGitRefTypeIndexTest do
 
     assert length(Regex.scan(~r/->>'git_ref_type' = \$\d+/, sql)) == 3, sql
     assert length(Regex.scan(~r/UNION ALL/, sql)) == 2, sql
+
+    assert length(Regex.scan(~r/ORDER BY \w+\."inserted_at" DESC, \w+\."id" DESC LIMIT/, sql)) ==
+             4,
+           sql
+
     refute sql =~ "ANY", sql
     assert Enum.all?(["branch", "pr", "tag"], &(&1 in params))
   end
@@ -110,7 +115,29 @@ defmodule Ppl.WorkflowQueries.KeysetGitRefTypeIndexTest do
     assert keys == Enum.sort(keys, :desc)
   end
 
-  defp list(project_id, git_ref_types, page_token \\ nil) do
+  test "multiple ref types page back to the same entries" do
+    project_id = UUID.uuid4()
+
+    {first_page, back_page} =
+      in_rolled_back_tx(fn ->
+        seed(project_id, branch: 12, pr: 12, tag: 5)
+
+        {:ok, %{workflows: first_page, next_page_token: next_token}} =
+          list(project_id, ["branch", "pr"])
+
+        {:ok, %{previous_page_token: previous_token}} =
+          list(project_id, ["branch", "pr"], next_token)
+
+        {:ok, %{workflows: back_page}} =
+          list(project_id, ["branch", "pr"], previous_token, :PREVIOUS)
+
+        {first_page, back_page}
+      end)
+
+    assert Enum.map(back_page, & &1.id) == Enum.map(first_page, & &1.id)
+  end
+
+  defp list(project_id, git_ref_types, page_token \\ nil, direction \\ :NEXT) do
     params = %{
       org_id: :skip,
       projects: :skip,
@@ -127,7 +154,7 @@ defmodule Ppl.WorkflowQueries.KeysetGitRefTypeIndexTest do
 
     keyset_params = %{
       order: :BY_CREATION_TIME_DESC,
-      direction: :NEXT,
+      direction: direction,
       page_token: page_token,
       page_size: @page_size
     }
