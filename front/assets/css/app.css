@@ -487,6 +487,8 @@ sem-popover {
 
 /* Dim with color, not opacity: opacity inside the diagram's SVG foreignObject mis-positions rows in Safari. */
 .job-reused { color: rgba(32, 43, 48, .55); }
+.job-reused .gray { color: rgba(103, 114, 120, .55); }
 .job-reused svg { fill-opacity: .55; }
 .job-reused:hover { color: rgba(32, 43, 48, .85); }
+.job-reused:hover .gray { color: rgba(103, 114, 120, .85); }
 .job-reused:hover svg { fill-opacity: .85; }
