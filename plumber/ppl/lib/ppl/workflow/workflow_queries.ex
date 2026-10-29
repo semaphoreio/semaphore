@@ -9,6 +9,8 @@ defmodule Ppl.WorkflowQueries do
   alias Ppl.Ppls.Model.Ppls
   alias Ppl.LatestWfs.Model.LatestWfs
   alias Ppl.EctoRepo, as: Repo
+  alias Paginator.Config
+  alias Paginator.Ecto.Query, as: PageQuery
   alias Util.{Metrics, ToTuple}
 
   @doc """
@@ -499,6 +501,7 @@ defmodule Ppl.WorkflowQueries do
   defp list_keyset_(params, keyset_params) do
     page =
       params
+      |> uniq_git_ref_types()
       |> keyset_query(keyset_params)
       |> paginate(keyset_params)
 
@@ -510,6 +513,11 @@ defmodule Ppl.WorkflowQueries do
      }}
   end
 
+  defp uniq_git_ref_types(params = %{git_ref_types: git_ref_types}) when is_list(git_ref_types),
+    do: %{params | git_ref_types: Enum.uniq(git_ref_types)}
+
+  defp uniq_git_ref_types(params), do: params
+
   # One page per ref type, each read in order from the project/ref-type index
   # and limited inside its own subquery, then merged. Postgres does not push
   # an outer ORDER BY/LIMIT into UNION ALL branches that have WHERE clauses,
@@ -518,7 +526,7 @@ defmodule Ppl.WorkflowQueries do
          params = %{label: :skip, git_ref_types: [_, _ | _] = git_ref_types},
          keyset_params
        ) do
-    page_config = keyset_params |> paginator_opts() |> Paginator.Config.new()
+    page_config = keyset_params |> paginator_opts() |> Config.new()
 
     [first | rest] =
       Enum.map(git_ref_types, fn git_ref_type ->
@@ -528,7 +536,7 @@ defmodule Ppl.WorkflowQueries do
           |> filter_by_label_and_git_ref_types(:skip, [git_ref_type])
           |> order_by([p], desc: p.inserted_at, desc: p.id)
           |> select_workflow_details()
-          |> Paginator.Ecto.Query.paginate(page_config)
+          |> PageQuery.paginate(page_config)
 
         from(w in subquery(page))
       end)

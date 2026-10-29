@@ -37,6 +37,29 @@ defmodule Ppl.WorkflowQueries.KeysetGitRefTypeTest do
     assert Enum.all?(["branch", "pr", "tag"], &(&1 in params))
   end
 
+  test "duplicate ref types are queried once" do
+    %{sql: sql} = keyset_query(["pr", "pr"])
+    refute sql =~ "UNION", sql
+
+    %{sql: sql} = keyset_query(["branch", "pr", "branch"])
+    assert length(Regex.scan(~r/UNION ALL/, sql)) == 1, sql
+  end
+
+  test "duplicate ref types do not repeat entries" do
+    project_id = UUID.uuid4()
+
+    workflows =
+      in_rolled_back_tx(fn ->
+        seed(project_id, branch: 3, pr: 3)
+
+        {:ok, %{workflows: workflows}} = list(project_id, ["branch", "pr", "branch"])
+        workflows
+      end)
+
+    assert length(workflows) == 6
+    assert workflows |> Enum.map(& &1.id) |> Enum.uniq() |> length() == 6
+  end
+
   test "single ref type returns only that type, newest first" do
     project_id = UUID.uuid4()
 
@@ -146,10 +169,8 @@ defmodule Ppl.WorkflowQueries.KeysetGitRefTypeTest do
   end
 
   defp keyset_query(git_ref_types) do
-    [query] =
-      capture_queries(fn -> {:ok, _} = list(UUID.uuid4(), git_ref_types) end)
-      |> Enum.filter(&String.contains?(&1.sql, ~s("pipeline_requests")))
-
+    queries = capture_queries(fn -> {:ok, _} = list(UUID.uuid4(), git_ref_types) end)
+    [query] = Enum.filter(queries, &String.contains?(&1.sql, ~s("pipeline_requests")))
     query
   end
 
