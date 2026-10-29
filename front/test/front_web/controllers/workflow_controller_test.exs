@@ -396,6 +396,278 @@ defmodule FrontWeb.WorkflowControllerTest do
     end
   end
 
+  describe "map" do
+    test "returns 404 when the ui_workflow_map feature is disabled", %{
+      conn: conn,
+      workflow: workflow
+    } do
+      conn = get(conn, "/workflows/#{workflow.id}/map")
+
+      assert conn.status == 404
+    end
+
+    test "returns the workflow's pipelines", %{
+      conn: conn,
+      organization: organization,
+      workflow: workflow,
+      pipeline: pipeline
+    } do
+      Support.Stubs.Feature.enable_feature(organization.id, :ui_workflow_map)
+
+      json =
+        conn
+        |> get("/workflows/#{workflow.id}/map")
+        |> json_response(200)
+
+      assert json["root_pipeline_id"] == pipeline.id
+
+      assert [
+               %{
+                 "id" => id,
+                 "name" => "Build & Test",
+                 "parent_id" => nil,
+                 "trigger" => "INITIAL_WORKFLOW",
+                 "switch_id" => switch_id
+               }
+             ] = json["pipelines"]
+
+      assert id == pipeline.id
+      assert is_binary(switch_id)
+      assert hd(json["pipelines"])["stop_url"] == "/workflows/#{workflow.id}/pipelines/#{id}/stop"
+      assert hd(json["pipelines"])["rebuild_url"] == nil
+    end
+
+    test "returns 404 when the user isn't authorized", %{
+      conn: conn,
+      organization: organization,
+      user: user,
+      workflow: workflow
+    } do
+      Support.Stubs.Feature.enable_feature(organization.id, :ui_workflow_map)
+      PermissionPatrol.remove_all_permissions()
+      PermissionPatrol.allow_everything_except(organization.id, user.id, "project.view")
+
+      conn = get(conn, "/workflows/#{workflow.id}/map")
+
+      assert conn.status == 404
+    end
+
+    test "serves guests of a public project", %{
+      conn: conn,
+      organization: organization,
+      project: project,
+      workflow: workflow,
+      pipeline: pipeline
+    } do
+      Support.Stubs.Feature.enable_feature(organization.id, :ui_workflow_map)
+      Support.Stubs.Project.switch_project_visibility(project, "public")
+      PermissionPatrol.remove_all_permissions()
+
+      json = conn |> get("/workflows/#{workflow.id}/map") |> json_response(200)
+      assert hd(json["pipelines"])["stop_url"] == nil
+
+      assert %{"pipelines" => [%{"id" => id}]} =
+               conn
+               |> get("/workflows/#{workflow.id}/map/pipelines?ids=#{pipeline.id}")
+               |> json_response(200)
+
+      assert id == pipeline.id
+    end
+  end
+
+  describe "map_pipelines" do
+    test "returns 404 when the ui_workflow_map feature is disabled", %{
+      conn: conn,
+      workflow: workflow,
+      pipeline: pipeline
+    } do
+      conn = get(conn, "/workflows/#{workflow.id}/map/pipelines?ids=#{pipeline.id}")
+
+      assert conn.status == 404
+    end
+
+    test "returns blocks with dependencies, job statuses and the requested promotions", %{
+      conn: conn,
+      organization: organization,
+      workflow: workflow,
+      pipeline: pipeline
+    } do
+      Support.Stubs.Feature.enable_feature(organization.id, :ui_workflow_map)
+
+      assert %{"pipelines" => [json]} =
+               conn
+               |> get(
+                 "/workflows/#{workflow.id}/map/pipelines?ids=#{pipeline.id}&promotions=#{pipeline.id}"
+               )
+               |> json_response(200)
+
+      assert json["id"] == pipeline.id
+      assert [%{"name" => "Block 1", "dependencies" => [], "jobs" => jobs}] = json["blocks"]
+      assert Enum.map(jobs, & &1["name"]) == ["job 1", "job 2", "job 3"]
+      assert Enum.all?(jobs, &(&1["status"] == "queued" and is_binary(&1["id"])))
+      assert json["after_jobs"] == []
+
+      assert [production, staging] = json["promotions"]
+      assert {production["name"], staging["name"]} == {"production", "staging"}
+      assert production["trigger_url"] =~ "/pipelines/#{pipeline.id}/swithes/"
+      assert production["can_promote"]
+      assert production["events"] == []
+    end
+
+    test "leaves promotions out unless they're requested", %{
+      conn: conn,
+      organization: organization,
+      workflow: workflow,
+      pipeline: pipeline
+    } do
+      Support.Stubs.Feature.enable_feature(organization.id, :ui_workflow_map)
+
+      assert %{"pipelines" => [json]} =
+               conn
+               |> get("/workflows/#{workflow.id}/map/pipelines?ids=#{pipeline.id}")
+               |> json_response(200)
+
+      assert json["promotions"] == nil
+      assert [%{"name" => "Block 1"}] = json["blocks"]
+    end
+
+    test "loads each requested pipeline once", %{
+      conn: conn,
+      organization: organization,
+      workflow: workflow,
+      pipeline: pipeline
+    } do
+      Support.Stubs.Feature.enable_feature(organization.id, :ui_workflow_map)
+
+      assert %{"pipelines" => [%{"id" => id}]} =
+               conn
+               |> get(
+                 "/workflows/#{workflow.id}/map/pipelines?ids=#{pipeline.id},#{pipeline.id},#{pipeline.id}"
+               )
+               |> json_response(200)
+
+      assert id == pipeline.id
+    end
+
+    test "leaves promotions unchanged when they can't be loaded", %{
+      conn: conn,
+      organization: organization,
+      workflow: workflow,
+      pipeline: pipeline
+    } do
+      Support.Stubs.Feature.enable_feature(organization.id, :ui_workflow_map)
+      Application.put_env(:front, :hide_promotions, true)
+      on_exit(fn -> Application.delete_env(:front, :hide_promotions) end)
+
+      assert %{"pipelines" => [json]} =
+               conn
+               |> get(
+                 "/workflows/#{workflow.id}/map/pipelines?ids=#{pipeline.id}&promotions=#{pipeline.id}"
+               )
+               |> json_response(200)
+
+      assert json["promotions"] == nil
+    end
+
+    test "ignores pipelines from other workflows", %{
+      conn: conn,
+      organization: organization,
+      workflow: workflow
+    } do
+      Support.Stubs.Feature.enable_feature(organization.id, :ui_workflow_map)
+
+      json =
+        conn
+        |> get("/workflows/#{workflow.id}/map/pipelines?ids=#{Ecto.UUID.generate()}")
+        |> json_response(200)
+
+      assert json == %{"pipelines" => []}
+    end
+
+    test "returns 404 when the organization doesn't match", %{
+      conn: conn,
+      organization: organization,
+      workflow: workflow,
+      pipeline: pipeline
+    } do
+      Support.Stubs.Feature.enable_feature(organization.id, :ui_workflow_map)
+
+      conn =
+        conn
+        |> put_req_header("x-semaphore-org-id", Ecto.UUID.generate())
+        |> get("/workflows/#{workflow.id}/map/pipelines?ids=#{pipeline.id}")
+
+      assert conn.status == 404
+    end
+
+    test "returns 404 when the user isn't authorized", %{
+      conn: conn,
+      organization: organization,
+      user: user,
+      workflow: workflow,
+      pipeline: pipeline
+    } do
+      Support.Stubs.Feature.enable_feature(organization.id, :ui_workflow_map)
+      PermissionPatrol.remove_all_permissions()
+      PermissionPatrol.allow_everything_except(organization.id, user.id, "project.view")
+
+      conn = get(conn, "/workflows/#{workflow.id}/map/pipelines?ids=#{pipeline.id}")
+
+      assert conn.status == 404
+    end
+  end
+
+  describe "show with ui_workflow_map" do
+    test "renders the map instead of the diagram when the feature is enabled", %{
+      conn: conn,
+      organization: organization,
+      workflow: workflow,
+      pipeline: pipeline
+    } do
+      Support.Stubs.Feature.enable_feature(organization.id, :ui_workflow_map)
+
+      html =
+        conn
+        |> get("/workflows/#{workflow.id}?pipeline_id=#{pipeline.id}")
+        |> html_response(200)
+
+      assert html =~ ~s(id="workflow-map")
+      assert html =~ "window.InjectedDataByBackend.WorkflowMap"
+      assert html =~ "/workflows/#{workflow.id}/map"
+      refute html =~ ~s(id="diagram")
+      refute html =~ ~s(data-poll-href="/workflows/#{workflow.id}/status")
+    end
+
+    test "renders the diagram when the feature is disabled", %{
+      conn: conn,
+      workflow: workflow,
+      pipeline: pipeline
+    } do
+      html =
+        conn
+        |> get("/workflows/#{workflow.id}?pipeline_id=#{pipeline.id}")
+        |> html_response(200)
+
+      assert html =~ ~s(id="diagram")
+      refute html =~ ~s(id="workflow-map")
+    end
+
+    test "escapes the selected pipeline id in the injected config", %{
+      conn: conn,
+      organization: organization,
+      workflow: workflow
+    } do
+      Support.Stubs.Feature.enable_feature(organization.id, :ui_workflow_map)
+
+      html =
+        conn
+        |> get("/workflows/#{workflow.id}", pipeline_id: "</script><script>alert(1)</script>")
+        |> html_response(200)
+
+      refute html =~ "</script><script>alert(1)"
+    end
+  end
+
   describe "show" do
     test "when the user is authorized to view the workflow, it returns 200", %{
       conn: conn,
