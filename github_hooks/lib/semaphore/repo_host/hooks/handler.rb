@@ -389,7 +389,8 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
         end
 
         # Only the first attempt polls; a rescheduled run makes a single request.
-        state, meta, msg = update_pr_data(workflow.project, workflow.pull_request_number, workflow.commit_sha, :poll => retries.zero?)
+        state, meta, msg = update_pr_data(workflow.project, workflow.pull_request_number, workflow.commit_sha,
+                                          :poll => retries.zero?, :webhook_head_sha => workflow.payload.pr_head_sha)
         case state
         when :not_found
           logger.info("pr-not-found #{msg}")
@@ -522,7 +523,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
   #
   # Used also at InternalApi::RepoProxy::PrPayload
   #
-  def self.update_pr_data(project, number, commit_sha = nil, allow_skip = true, poll: true)
+  def self.update_pr_data(project, number, commit_sha = nil, allow_skip = true, poll: true, webhook_head_sha: nil) # rubocop:disable Metrics/ParameterLists
     repo_host = ::RepoHost::Factory.create_from_project(project)
     repo_host.validate_token_presence!
 
@@ -558,12 +559,28 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
 
     begin
       ref = "refs/semaphoreci/#{merge_commit_sha}"
-      ensure_ref(repo_host, project.repo_owner_and_name, ref, merge_commit_sha)
-
-      [:ok, { :pr => pr, :ref => ref, :merge_commit_sha => merge_commit_sha, :mergeable => mergeable, :commit_author => commit_author, :head_sha => head_sha }, msg]
+      ref_created = ensure_ref(repo_host, project.repo_owner_and_name, ref, merge_commit_sha)
     rescue RepoHost::RemoteException::Unauthorized, RepoHost::RemoteException::NotFound
-      [:without_reference, { :mergeable => mergeable, :commit_author => commit_author, :head_sha => head_sha }, ""]
+      return [:without_reference, { :mergeable => mergeable, :commit_author => commit_author, :head_sha => head_sha }, ""]
     end
+
+    # A reused merge SHA may be GitHub's test-merge of a previous head. GitHub's
+    # PR head can lag too, so the webhook's head must also be a parent.
+    expected_head_shas = [head_sha, webhook_head_sha].select(&:present?).uniq
+    if !ref_created && expected_head_shas.any? && !merge_commit_of_heads?(repo_host, project.repo_owner_and_name, merge_commit_sha, expected_head_shas)
+      Watchman.increment("hook.processing.pr_stale_merge_commit")
+      Logman.info("pr-stale-merge-commit repo=#{project.repo_owner_and_name} pr=#{number} head_sha=#{head_sha} webhook_head_sha=#{webhook_head_sha} merge_commit_sha=#{merge_commit_sha}")
+      return [:mergeable_unknown, { :pr => pr, :rate_limit_remaining => repo_host.last_response_rate_limit_remaining }, msg]
+    end
+
+    [:ok, { :pr => pr, :ref => ref, :merge_commit_sha => merge_commit_sha, :mergeable => mergeable, :commit_author => commit_author, :head_sha => head_sha }, msg]
+  end
+
+  def self.merge_commit_of_heads?(repo_host, repo_slug, merge_commit_sha, head_shas)
+    parents = repo_host.git_commit(repo_slug, merge_commit_sha)&.[](:parents) || []
+    (head_shas - parents.map { |parent| parent[:sha] }).empty?
+  rescue RepoHost::RemoteException::Unauthorized, RepoHost::RemoteException::NotFound
+    false
   end
 
   def self.ensure_ref(repo_host, repo_slug, ref, sha)
@@ -575,10 +592,11 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
     # Skipping the probe `repo_host.reference(...)` saves one GitHub API
     # request per PR processed. Do not re-introduce a pre-check GET here.
     repo_host.create_ref(repo_slug, ref, sha)
+    true
   rescue ::RepoHost::RemoteException::ReferenceAlreadyExists
     Watchman.increment("github_hooks.ensure_ref.ref_already_exists")
     Logman.info("github_hooks.ensure_ref ref_already_exists repo=#{repo_slug} ref=#{ref} sha=#{sha}")
-    nil
+    false
   end
 
   def self.mark_workflow_with_pr_approval_options(workflow, include_secrets: false, enable_cache: false, approver: nil, approver_uid: nil, approved_head_sha: nil, approved_at: nil, comment_id: nil, logger: nil) # rubocop:disable Metrics/ParameterLists
