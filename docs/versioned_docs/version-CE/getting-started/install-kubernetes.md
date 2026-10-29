@@ -399,7 +399,7 @@ This Helm command installs the Community Edition. If you want to install the Ent
     ```shell title="Install Semaphore"
     helm upgrade --install semaphore "oci://ghcr.io/semaphoreio/semaphore" \
       --debug \
-      --version v1.5.0 \
+      --version v1.6.0 \
       --timeout 40m \
       --set global.domain.ip="${IP_ADDRESS}" \
       --set global.domain.name="${DOMAIN}" \
@@ -440,7 +440,7 @@ This Helm command installs the Community Edition. If you want to install the Ent
     ```shell title="Install Semaphore"
     helm upgrade --install semaphore oci://ghcr.io/semaphoreio/semaphore \
       --debug \
-      --version v1.5.0 \
+      --version v1.6.0 \
       --timeout 40m \
       --set global.domain.name="${DOMAIN}" \
       --set ingress.ssl.certName="${CERT_NAME}" \

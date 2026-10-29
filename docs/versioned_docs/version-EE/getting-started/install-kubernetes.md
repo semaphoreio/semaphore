@@ -413,7 +413,7 @@ This Helm command installs the Enterprise Edition. If you want to install the En
     ```shell title="Install Semaphore"
     helm upgrade --install semaphore "oci://ghcr.io/semaphoreio/semaphore" \
       --debug \
-      --version v1.5.0 \
+      --version v1.6.0 \
       --timeout 40m \
       --set global.edition=ee \
       --set global.license="$(cat ${LICENSE_FILE})"\
@@ -456,7 +456,7 @@ This Helm command installs the Enterprise Edition. If you want to install the En
     ```shell title="Install Semaphore"
     helm upgrade --install semaphore oci://ghcr.io/semaphoreio/semaphore \
       --debug \
-      --version v1.5.0 \
+      --version v1.6.0 \
       --timeout 40m \
       --set global.edition=ee \
       --set global.license="$(cat ${LICENSE_FILE})"\
