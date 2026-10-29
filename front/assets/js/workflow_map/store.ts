@@ -119,6 +119,21 @@ export const results = computed<SearchResult[]>(() => {
   return out;
 });
 
+export function ensureSelection(): string | null {
+  const t = tree.value;
+  if (!t || t.pipelines.some((p) => p.id === selected.value)) return null;
+  selected.value = t.root_pipeline_id;
+  return selected.value;
+}
+
+export function writePipelineId(id: string, rootId: string, loc: { href: string, }, hist: { state: unknown, replaceState: (state: unknown, title: string, url: string) => void, }) {
+  if (!id || !rootId) return;
+  const url = new URL(loc.href);
+  if ((url.searchParams.get(`pipeline_id`) ?? rootId) === id) return;
+  url.searchParams.set(`pipeline_id`, id);
+  hist.replaceState(hist.state, ``, url.toString());
+}
+
 export function resetState(selectedPipelineId: string) {
   generation++;
   stale.clear();

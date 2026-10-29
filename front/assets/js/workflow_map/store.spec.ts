@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { afterEach, beforeEach, describe, test } from "mocha";
 
 import { ApiPipelineDetail } from "./model";
-import { Config, cursor, details, focus, focusOn, hits, promote, query, queryJobs, refresh, resetState, results, scope, selected, showSkipped, statuses, step, toggleStatus, tree, workflow } from "./store";
+import { Config, cursor, details, ensureSelection, focus, focusOn, hits, promote, query, queryJobs, refresh, resetState, results, scope, selected, showSkipped, statuses, step, toggleStatus, tree, workflow, writePipelineId } from "./store";
 
 const detail = (id: string, blocks: ApiPipelineDetail[`blocks`]): ApiPipelineDetail => ({
   id,
@@ -90,6 +90,51 @@ describe(`workflow map store`, () => {
     expect(workflow.value.pipelineById.get(`ci`).blocks.map((b) => b.name)).to.deep.eq([`Build`, `Optional`, `Deploy`]);
     expect(workflow.value.pipelineById.get(`ci`).blocks[2].deps.map((b) => b.name)).to.deep.eq([`Optional`]);
     expect(queryJobs.value.map((j) => j.name)).to.include(`lint`);
+  });
+
+  test(`a pipeline id from the page url stays selected, and one that is not in the workflow falls back to the root`, () => {
+    resetState(`e2e`);
+    tree.value = { root_pipeline_id: `ci`, pipelines: [pipeline(`ci`, `Build & test`, null), pipeline(`e2e`, `E2E`, `ci`)] };
+
+    expect(ensureSelection()).to.eq(null);
+    expect(selected.value).to.eq(`e2e`);
+
+    resetState(`gone`);
+    tree.value = { root_pipeline_id: `ci`, pipelines: [pipeline(`ci`, `Build & test`, null)] };
+
+    expect(ensureSelection()).to.eq(`ci`);
+    expect(selected.value).to.eq(`ci`);
+  });
+
+  test(`nothing is replaced before the workflow has loaded`, () => {
+    resetState(`gone`);
+    tree.value = null;
+
+    expect(ensureSelection()).to.eq(null);
+    expect(selected.value).to.eq(`gone`);
+  });
+
+  test(`selecting a pipeline rewrites only pipeline_id in the url, without a new history entry`, () => {
+    const calls: string[] = [];
+    const hist = { state: { keep: 1 }, replaceState: (_s: unknown, _t: string, url: string) => calls.push(url) };
+
+    writePipelineId(`e2e`, `ci`, { href: `https://h/workflows/wf?a=1&pipeline_id=ci#top` }, hist);
+    writePipelineId(`e2e`, `ci`, { href: `https://h/workflows/wf` }, hist);
+
+    expect(calls).to.deep.eq([`https://h/workflows/wf?a=1&pipeline_id=e2e#top`, `https://h/workflows/wf?pipeline_id=e2e`]);
+  });
+
+  test(`the url is left alone when it already says the selected pipeline, or the root by default`, () => {
+    const calls: string[] = [];
+    const hist = { state: null, replaceState: (_s: unknown, _t: string, url: string) => calls.push(url) };
+
+    writePipelineId(`e2e`, `ci`, { href: `https://h/workflows/wf?pipeline_id=e2e` }, hist);
+    writePipelineId(`ci`, `ci`, { href: `https://h/workflows/wf` }, hist);
+    writePipelineId(`e2e`, ``, { href: `https://h/workflows/wf` }, hist);
+    writePipelineId(``, `ci`, { href: `https://h/workflows/wf` }, hist);
+    writePipelineId(`ci`, `ci`, { href: `https://h/workflows/wf?pipeline_id=e2e` }, hist);
+
+    expect(calls).to.deep.eq([`https://h/workflows/wf?pipeline_id=ci`]);
   });
 
   test(`stepping through matches wraps around and focuses each job`, () => {

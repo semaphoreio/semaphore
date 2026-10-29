@@ -1,6 +1,7 @@
 import { render } from "preact";
 import { useEffect, useRef } from "preact/hooks";
-import { Config, layoutError, loadError, now, onNudge, refresh, resetState, tree } from "./store";
+import { effect } from "@preact/signals";
+import { Config, ensureSelection, layoutError, loadError, now, onNudge, refresh, resetState, selected, tree, writePipelineId } from "./store";
 import { initLayout } from "./layout";
 import { MapCanvas, aim, openBlocks, openPipelines } from "./map";
 import { Popover } from "./popover";
@@ -33,6 +34,11 @@ const App = ({ config }: { config: Config, }) => {
     return () => observer.disconnect();
   }, []);
 
+  useEffect(
+    () => effect(() => writePipelineId(selected.value, tree.value?.root_pipeline_id ?? ``, window.location, window.history)),
+    [],
+  );
+
   useEffect(() => {
     let stopped = false;
     let running = false;
@@ -49,6 +55,11 @@ const App = ({ config }: { config: Config, }) => {
       let changed = false;
       try {
         if (!document.hidden) changed = await refresh(config);
+        const root = ensureSelection();
+        if (root) {
+          openPipelines.value = new Set([root]);
+          aim({ id: root, how: `fit` });
+        }
       } finally {
         running = false;
         const max = tree.value?.pipelines.every((p) => p.state === `DONE`) ? MAX_POLL_DONE : MAX_POLL_RUNNING;
