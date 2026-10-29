@@ -1538,6 +1538,55 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
     end
   end
 
+  describe ".update_pr_data with a merge commit that was already referenced", :aggregate_failures do
+    let(:project) { instance_double(Project, :repo_owner_and_name => "owner/repo") }
+    let(:repo_host) { double(::RepoHost::Github::Client.new("token")) }
+    let(:head_sha) { "5517b255368df24b92d320dd7adbb0ccc1e01207" }
+    let(:merge_sha) { "654a86776e4d491bb71dee2eb40866e21a3553b7" }
+
+    before do
+      allow(::RepoHost::Factory).to receive(:create_from_project).and_return(repo_host)
+      allow(Watchman).to receive(:increment)
+      allow(repo_host).to receive(:validate_token_presence!)
+      allow(repo_host).to receive_messages(:pull_request => { :merge_commit_sha => merge_sha, :mergeable => true, :head => { :sha => head_sha } },
+                                           :last_response_rate_limit_remaining => 5000)
+      allow(repo_host).to receive(:commit).with("owner/repo", head_sha).and_return({})
+      allow(repo_host).to receive(:create_ref).and_raise(::RepoHost::RemoteException::ReferenceAlreadyExists)
+    end
+
+    def stub_merge_parents(*parent_shas)
+      parents = parent_shas.map { |sha| { :sha => sha } }
+      allow(repo_host).to receive(:git_commit).with("owner/repo", merge_sha).and_return({ :parents => parents })
+    end
+
+    it "returns :mergeable_unknown for a stale merge when no webhook head is given, as from PrPayload" do
+      stub_merge_parents("base", "previous-head")
+
+      state, meta, = described_class.update_pr_data(project, 1, nil, false)
+
+      expect(state).to eq(:mergeable_unknown)
+      expect(meta[:pr][:merge_commit_sha]).to eq(merge_sha)
+    end
+
+    it "returns :ok when the merge contains GitHub's head and no webhook head is given" do
+      stub_merge_parents("base", head_sha)
+
+      state, meta, = described_class.update_pr_data(project, 1, nil, false)
+
+      expect(state).to eq(:ok)
+      expect(meta[:merge_commit_sha]).to eq(merge_sha)
+    end
+
+    it "returns :mergeable_unknown for a hook overtaken by a newer push" do
+      stub_merge_parents("base", head_sha)
+
+      state, = described_class.update_pr_data(project, 1, nil, false, :webhook_head_sha => "older-push-head")
+
+      expect(state).to eq(:mergeable_unknown)
+      expect(Watchman).to have_received(:increment).with("hook.processing.pr_stale_merge_commit")
+    end
+  end
+
   describe ".approved_sem_approve_option" do
     it "records dropped options when the project setting is disabled" do
       expect(@logger).to receive(:info).with(
