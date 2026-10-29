@@ -155,6 +155,8 @@ defmodule Ppl.E2E.LooperExecuteNow.Test do
     Application.put_env(:ppl, :ppl_pending_ct, 1_000)
     Application.put_env(:ppl, :ppl_blk_initializing_ct, 1_000)
     Application.put_env(:ppl, :ppl_blk_waiting_ct, 1_000)
+    # waiting blocks have to be scheduled by draining triggered pipelines
+    Application.put_env(:ppl, :ppl_blk_waiting_sp, 1_000_000)
     Application.put_env(:ppl, :ppl_sub_init_created_ct, 1_000)
     Application.put_env(:ppl, :ppl_sub_init_regular_init_ct, 1_000)
 

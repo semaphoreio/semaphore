@@ -25,6 +25,80 @@ defmodule Ppl.PplBlocks.Model.WaitingStateSchedulingTest do
     IO.puts ">>>>>>>>>>>>> Stuck counter: #{StuckPplCounter.get()}"
   end
 
+  test "get_ready_block/1 returns only ready blocks of given pipeline" do
+    generate_blocks_from_multiple_pipelines(3)
+
+    [ppl_id | other_ppl_ids] = pipeline_ids()
+
+    do_test_for_pipeline(ppl_id, true)
+
+    assert waiting_count(ppl_id) == 0
+    for other <- other_ppl_ids, do: assert(waiting_count(other) > 0)
+  end
+
+  test "get_ready_block/1 returns blocks with termination request when pipeline is not running" do
+    generate_blocks_from_multiple_pipelines(2)
+
+    [ppl_id, other_ppl_id] = pipeline_ids()
+
+    "update pipelines set state = 'stopping'" |> Repo.query()
+    assert {:ok, []} = WaitingStateScheduling.get_ready_block(ppl_id)
+
+    "update pipeline_blocks set terminate_request = 'cancel' where ppl_id = '#{ppl_id}'"
+    |> Repo.query()
+
+    assert {:ok, [{_, ppl_block}]} = WaitingStateScheduling.get_ready_block(ppl_id)
+    assert ppl_block.ppl_id == ppl_id
+    assert ppl_block.in_scheduling
+
+    assert {:ok, []} = WaitingStateScheduling.get_ready_block(other_ppl_id)
+  end
+
+  test "get_ready_block/1 does not return block that is already in scheduling" do
+    generate_blocks_from_multiple_pipelines(1)
+    [ppl_id] = pipeline_ids()
+
+    "delete from pipeline_block_connections" |> Repo.query()
+
+    count = waiting_count(ppl_id)
+    picked =
+      1..(count + 1)
+      |> Enum.map(fn _ -> WaitingStateScheduling.get_ready_block(ppl_id) end)
+
+    ids = for {:ok, [{_, blk}]} <- picked, do: blk.id
+
+    assert length(ids) == count
+    assert ids |> Enum.uniq() |> length() == count
+    assert List.last(picked) == {:ok, []}
+  end
+
+  defp do_test_for_pipeline(_ppl_id, _in_progress = false), do: :end
+  defp do_test_for_pipeline(ppl_id, _in_progress = true) do
+    case WaitingStateScheduling.get_ready_block(ppl_id) do
+      # Random dependencies can form a cycle, break it like in behavioural test
+      {:ok, []} ->
+        for b <- waiting_blocks(ppl_id), do: assert(waiting_block_has_unfulfilled_dependencies?(b))
+        ppl_id |> waiting_blocks() |> hd() |> PplBlocks.changeset(%{state: "done"}) |> Repo.update()
+
+      {:ok, [{_, ppl_block}]} ->
+        assert ppl_block.ppl_id == ppl_id
+        assert(all_dependencies_are_done?(ppl_block.id))
+        mark_block_done(ppl_block.id)
+    end
+
+    do_test_for_pipeline(ppl_id, waiting_count(ppl_id) > 0)
+  end
+
+  defp pipeline_ids do
+    Repo.all(from(b in PplBlocks, distinct: true, select: b.ppl_id))
+  end
+
+  defp waiting_count(ppl_id), do: ppl_id |> waiting_blocks() |> length()
+
+  defp waiting_blocks(ppl_id) do
+    Repo.all(from(b in PplBlocks, where: b.ppl_id == ^ppl_id, where: b.state == "waiting"))
+  end
+
   defp do_test(_in_progreess=false), do: :end
   defp do_test(_in_progreess=true) do
     get_ready_block()
