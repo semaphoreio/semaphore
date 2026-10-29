@@ -162,7 +162,9 @@ export const TierSelector = ({ group, updating, onUpdate }: Props) => {
                   Switch to{` `}
                   <span className="b">{selectedAddon?.displayName}</span>?
                   <span className="ml1 gray">
-                    This may affect your billing.
+                    {currentAddon && !currentAddon.selfService
+                      ? `This cannot be undone. You will need to contact support to switch back to ${currentAddon.displayName}.`
+                      : `This may affect your billing.`}
                   </span>
                 </span>
               )}

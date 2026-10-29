@@ -81,6 +81,27 @@ describe(`TierSelector`, () => {
     expect(root.textContent).to.not.contain(`for the next 24 hours`);
   });
 
+  test(`warns that switching away from a tier that cannot be self-selected cannot be undone`, async () => {
+    await mount(group({
+      addons: [
+        addon(`Custom`, { price: ``, enabled: true, modifiable: false, self_service: false }),
+        addon(`Priority`, {}),
+      ],
+    }));
+    await choose(`Priority`);
+
+    expect(root.textContent).to.contain(`This cannot be undone. You will need to contact support to switch back to Custom.`);
+    expect(root.textContent).to.not.contain(`This may affect your billing.`);
+  });
+
+  test(`only says billing may change when switching away from a self-service tier`, async () => {
+    await mount(group({ addons: [addon(`Basic`, { enabled: true }), addon(`Priority`, {})] }));
+    await choose(`Priority`);
+
+    expect(root.textContent).to.contain(`This may affect your billing.`);
+    expect(root.textContent).to.not.contain(`cannot be undone`);
+  });
+
   test(`explains the cooldown when a tier is selected`, async () => {
     await mount(group({
       on_cooldown: true,
