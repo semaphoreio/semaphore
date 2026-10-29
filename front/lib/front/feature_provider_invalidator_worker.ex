@@ -52,6 +52,7 @@ defmodule Front.FeatureProviderInvalidatorWorker do
     {:ok, _} = FeatureProvider.list_features(reload: true, param: event.org_id)
     Front.Clients.Billing.invalidate_cache(:current_spending, %{org_id: event.org_id})
     Front.Clients.Billing.invalidate_cache(:list_spendings, %{org_id: event.org_id})
+    Front.Clients.Billing.invalidate_cache(:list_addons, %{org_id: event.org_id})
     :ok
   end
 
