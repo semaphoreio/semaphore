@@ -4,6 +4,8 @@ defmodule Ppl.DefinitionReviser.ReservedEnvVarsValidator do
   are not valid shell identifiers or are reserved for platform-supplied values.
   """
 
+  require Logger
+
   alias Util.ToTuple
 
   @reserved_prefix "Reserved environment variables cannot be set: "
@@ -17,35 +19,57 @@ defmodule Ppl.DefinitionReviser.ReservedEnvVarsValidator do
   def validate(definition, ppl_req) do
     names = Enum.uniq(definition_names(definition) ++ parameter_names(ppl_req))
 
-    with :ok <- check(names), do: ToTuple.ok(definition)
+    with :ok <- check(names, ppl_req), do: ToTuple.ok(definition)
   end
 
   @doc """
   Checks only the request parameters, for paths that run jobs before the
   definition is revised, such as the initialization job.
   """
-  def validate_parameters(ppl_req), do: ppl_req |> parameter_names() |> Enum.uniq() |> check()
+  def validate_parameters(ppl_req),
+    do: ppl_req |> parameter_names() |> Enum.uniq() |> check(ppl_req)
 
-  defp check(names) do
+  defp check(names, ppl_req) do
     case Enum.reject(names, &valid_entry?/1) do
       [] ->
         names
         |> Enum.filter(fn {name, _location, _rule} -> reserved?(name) end)
-        |> result(@reserved_prefix, &"#{display(&1)} (#{&2})")
+        |> result(:reserved, ppl_req)
 
       invalid ->
-        result(invalid, @invalid_prefix, &"'#{display(&1)}' (#{&2})")
+        result(invalid, :invalid, ppl_req)
     end
   end
 
   defp valid_entry?({name, _location, :container}), do: valid_container_name?(name)
   defp valid_entry?({name, _location, :shell}), do: valid_name?(name)
 
-  defp result([], _prefix, _format), do: :ok
+  defp result([], _kind, _ppl_req), do: :ok
 
-  defp result(violations, prefix, format) do
-    entries = Enum.map(violations, fn {name, location, _rule} -> format.(name, location) end)
-    {:error, {:malformed, prefix <> join(entries)}}
+  defp result(violations, kind, ppl_req) do
+    report(violations, kind, ppl_req)
+    entries = Enum.map(violations, fn {name, location, _rule} -> entry(kind, name, location) end)
+    {:error, {:malformed, prefix(kind) <> join(entries)}}
+  end
+
+  defp entry(:reserved, name, location), do: "#{display(name)} (#{location})"
+  defp entry(:invalid, name, location), do: "'#{display(name)}' (#{location})"
+
+  defp prefix(:reserved), do: @reserved_prefix
+  defp prefix(:invalid), do: @invalid_prefix
+
+  defp report(violations, kind, ppl_req) do
+    Watchman.increment({"ppl.reserved_env_vars.rejected", [kind]})
+
+    names =
+      violations |> Enum.map(fn {name, _location, _rule} -> display(name) end) |> Enum.uniq()
+
+    request_args = Map.get(ppl_req, :request_args) || %{}
+
+    Logger.warning(
+      "Env vars rejected kind=#{kind} ppl_id=#{Map.get(ppl_req, :id)} " <>
+        "org_id=#{request_args["organization_id"]} names=#{inspect(names)}"
+    )
   end
 
   defp join(entries) when length(entries) <= @max_listed,

@@ -1,6 +1,8 @@
 defmodule Ppl.DefinitionReviser.ReservedEnvVarsValidator.Test do
   use ExUnit.Case, async: true
 
+  import ExUnit.CaptureLog
+
   alias Ppl.DefinitionReviser
   alias Ppl.DefinitionReviser.ReservedEnvVarsValidator
 
@@ -54,6 +56,7 @@ defmodule Ppl.DefinitionReviser.ReservedEnvVarsValidator.Test do
             "SEMAPHORE_CACHE_PRIVATE_KEY_PATH",
             "SEMAPHORE_CACHE_ARCHIVE_METHOD",
             "SEMAPHORE_GIT_DEPTH",
+            "SEMAPHORE_GIT_DIR",
             "SEMAPHORE_GIT_CLONE_SLOW_RETRY",
             "SEMAPHORE_TEST_RESULTS_NO_TRIM",
             "SEMAPHORE_TOOLBOX_METRICS_ENABLED",
@@ -297,6 +300,32 @@ defmodule Ppl.DefinitionReviser.ReservedEnvVarsValidator.Test do
       assert ReservedEnvVarsValidator.validate_parameters(%{
                request_args: %{"env_vars" => [env_var("deploy-env")]}
              }) == invalid("'deploy-env' (parameters)")
+    end
+
+    test "rejects bash startup variables" do
+      assert ReservedEnvVarsValidator.validate_parameters(%{
+               request_args: %{"env_vars" => [env_var("BASH_ENV"), env_var("SHELLOPTS")]}
+             }) == reserved("BASH_ENV (parameters), SHELLOPTS (parameters)")
+    end
+
+    test "logs the rejected names with the pipeline and organization ids" do
+      ppl_req = %{
+        id: "ppl-1",
+        request_args: %{"organization_id" => "org-1", "env_vars" => [env_var("SEMAPHORE_JOB_ID")]}
+      }
+
+      log = capture_log(fn -> ReservedEnvVarsValidator.validate_parameters(ppl_req) end)
+
+      assert log =~
+               ~s(Env vars rejected kind=reserved ppl_id=ppl-1 org_id=org-1 names=["SEMAPHORE_JOB_ID"])
+    end
+
+    test "logs invalid names escaped" do
+      ppl_req = %{id: "ppl-1", request_args: %{"env_vars" => [env_var("A\nB")]}}
+
+      log = capture_log(fn -> ReservedEnvVarsValidator.validate_parameters(ppl_req) end)
+
+      assert log =~ ~s(kind=invalid ppl_id=ppl-1 org_id= names=["A?B"])
     end
   end
 
