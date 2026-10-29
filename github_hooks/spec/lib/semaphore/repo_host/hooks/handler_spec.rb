@@ -1509,6 +1509,16 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
         expect(meta).to include(:commit_sha => head_sha, :ref => "refs/semaphoreci/#{head_sha}", :mergeable => true)
       end
 
+      it "keeps the commit when the head ref can't be pinned" do
+        allow(repo_host).to receive(:pull_request).and_return(:head => { :sha => head_sha }, :mergeable => nil)
+        allow(repo_host).to receive(:create_ref).and_raise(::RepoHost::RemoteException::NotFound, "Not Found")
+
+        state, meta, = described_class.update_pr_data(project, 7, nil, false)
+
+        expect(state).to eq(:without_reference)
+        expect(meta).to include(:commit_sha => head_sha, :head_sha => head_sha, :ref => "refs/pull/7/head")
+      end
+
       it "reports a pull request that doesn't exist" do
         allow(repo_host).to receive(:pull_request).and_raise(::RepoHost::RemoteException::NotFound, "Not Found")
 

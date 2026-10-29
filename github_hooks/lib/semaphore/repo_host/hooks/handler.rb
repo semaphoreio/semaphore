@@ -601,7 +601,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
       [:ok, { :pr => pr, :ref => ref, :commit_sha => head_sha, :mergeable => true, :commit_author => commit_author, :head_sha => head_sha }, ""]
     rescue RepoHost::RemoteException::Unauthorized, RepoHost::RemoteException::NotFound
       # The recorded ref is GitHub's merge ref, which a conflicting PR doesn't have.
-      [:without_reference, { :pr => pr, :ref => "refs/pull/#{number}/head", :mergeable => true, :commit_author => commit_author, :head_sha => head_sha }, ""]
+      [:without_reference, { :pr => pr, :ref => "refs/pull/#{number}/head", :commit_sha => head_sha, :mergeable => true, :commit_author => commit_author, :head_sha => head_sha }, ""]
     end
   end
 

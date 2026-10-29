@@ -86,6 +86,23 @@ RSpec.describe InternalApi::RepoProxy::PrPayload do
     end
   end
 
+  describe "#call when the head ref can't be pinned" do
+    subject(:payload) { described_class.new(ref, number).call(project, user) }
+
+    let(:meta) { { pr: pr, ref: "refs/pull/1/head", commit_sha: "abc123", head_sha: "abc123", commit_author: "Alice" } }
+
+    before do
+      allow(Semaphore::RepoHost::Hooks::Handler)
+        .to receive(:update_pr_data)
+        .and_return([:without_reference, meta, ""])
+    end
+
+    it "carries the head commit and the pull request head ref" do
+      expect(payload["commit_sha"]).to eq("abc123")
+      expect(payload["semaphore_ref"]).to eq("refs/pull/1/head")
+    end
+  end
+
   describe "#call with user without github connection" do
     subject(:payload) { described_class.new(ref, number).call(project, user_without_connection) }
 

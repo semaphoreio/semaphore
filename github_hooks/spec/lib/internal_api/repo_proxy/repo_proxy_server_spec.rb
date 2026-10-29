@@ -377,6 +377,30 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
       expect(repo.repository_id).to eq(repository.id)
     end
 
+    context "when the pull request payload is built from the head commit" do
+      let(:payload_hash) do
+        {
+          "commit_author" => "dev@example.com",
+          "commit_sha" => "head-sha",
+          "semaphore_ref" => "refs/pull/1/head"
+        }
+      end
+
+      before do
+        allow(workflow).to receive(:payload).and_return(double(pull_request?: true))
+      end
+
+      it "stores the head commit on the workflow" do
+        expect(workflow).to receive(:update).with(
+          commit_author: "dev@example.com",
+          commit_sha: "head-sha",
+          git_ref: "refs/pull/1/head"
+        )
+
+        server.create_blank(req, call)
+      end
+    end
+
     context "when pull request is not mergeable" do
       before do
         allow(InternalApi::RepoProxy::PayloadFactory).to receive(:create).and_raise(
