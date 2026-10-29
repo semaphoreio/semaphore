@@ -1519,6 +1519,27 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
         expect(meta).to include(:commit_sha => head_sha, :head_sha => head_sha, :ref => "refs/pull/7/head")
       end
 
+      it "reports the live head, not the requested commit, when the head ref can't be pinned" do
+        pushed_sha = "b" * 40
+        allow(repo_host).to receive(:pull_request).and_return(:head => { :sha => pushed_sha }, :mergeable => nil)
+        allow(repo_host).to receive(:create_ref).and_raise(::RepoHost::RemoteException::NotFound, "Not Found")
+
+        state, meta, = described_class.update_pr_data(project, 7, head_sha, false)
+
+        expect(state).to eq(:without_reference)
+        expect(meta).to include(:commit_sha => head_sha, :head_sha => pushed_sha)
+        expect(described_class.approved_pr_head_unchanged?(meta, head_sha)).to be(false)
+      end
+
+      it "reports a pull request that vanished while the head ref couldn't be pinned" do
+        allow(repo_host).to receive(:pull_request).and_raise(::RepoHost::RemoteException::NotFound, "Not Found")
+        allow(repo_host).to receive(:create_ref).and_raise(::RepoHost::RemoteException::NotFound, "Not Found")
+
+        state, = described_class.update_pr_data(project, 7, head_sha, false)
+
+        expect(state).to eq(:not_found)
+      end
+
       it "reports a pull request that doesn't exist" do
         allow(repo_host).to receive(:pull_request).and_raise(::RepoHost::RemoteException::NotFound, "Not Found")
 

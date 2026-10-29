@@ -600,8 +600,15 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
 
       [:ok, { :pr => pr, :ref => ref, :commit_sha => head_sha, :mergeable => true, :commit_author => commit_author, :head_sha => head_sha }, ""]
     rescue RepoHost::RemoteException::Unauthorized, RepoHost::RemoteException::NotFound
-      # The recorded ref is GitHub's merge ref, which a conflicting PR doesn't have.
-      [:without_reference, { :pr => pr, :ref => "refs/pull/#{number}/head", :commit_sha => head_sha, :mergeable => true, :commit_author => commit_author, :head_sha => head_sha }, ""]
+      # The recorded ref is the PR head ref, which moves with the fork, so the
+      # live head is what the approval check has to compare against.
+      begin
+        pr ||= repo_host.pull_request(project.repo_owner_and_name, number)
+      rescue RepoHost::RemoteException::NotFound => e
+        return [:not_found, {}, e]
+      end
+
+      [:without_reference, { :pr => pr, :ref => "refs/pull/#{number}/head", :commit_sha => head_sha, :mergeable => true, :commit_author => commit_author, :head_sha => pr[:head][:sha] }, ""]
     end
   end
 
