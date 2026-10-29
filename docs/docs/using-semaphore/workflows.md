@@ -199,7 +199,7 @@ Semaphore starts a workflow for every push to a pull request originating from a 
 
 :::note
 
-Instead of pushing the HEAD commit to the pull request, Semaphore uses the MERGE commit between the source and the upstream branch. You can find the SHA of the HEAD commit of the Pull Request in the [`SEMAPHORE_GIT_PR_SHA`](../reference/env-vars#pr-sha) environment variable.
+By default, instead of building the HEAD commit of the pull request, Semaphore uses the MERGE commit between the source and the upstream branch. On GitHub projects, you can [build the HEAD commit instead](#pr-commit). You can find the SHA of the HEAD commit of the Pull Request in the [`SEMAPHORE_GIT_PR_SHA`](../reference/env-vars#pr-sha) environment variable.
 
 :::
 
@@ -239,8 +239,38 @@ Selecting **Run on** allows you to configure what triggers are enabled for the p
 
 - Enabling **Pull requests** option allows Semaphore to run workflows on pull requests originating in the same repository
 - The **Forked pull request** works the same for pull requests originating from forked pull requests. [To prevent security leaks](#pr), you can configure a list of allowed secrets and GitHub/BitBucket/GitLab usernames that can trigger workflows in this way
+- When either pull request option is enabled, **Commit to build for pull requests** selects whether pull request workflows build the merge commit or the head commit. See [commit to build for pull requests](#pr-commit)
 
 ![Pull request triggers](./img/project-general-settings-3.jpg)
+
+### Commit to build for pull requests {#pr-commit}
+
+On projects connected to GitHub, with the [GitHub App](./connect-github) or a [GitHub OAuth token](./connect-github-oauth), you can choose which commit pull request workflows build. Change it in the [project settings](#project-triggers) under **Commit to build for pull requests**, shown when the **Pull requests** or **Forked pull requests** option is enabled.
+
+- **Merge commit** (default): the pull request merged into its base branch, as prepared by GitHub. Semaphore waits for GitHub to prepare the merge, so pull requests with merge conflicts are not built
+- **Head commit**: the latest commit on the pull request branch. Workflows start right away without waiting for GitHub's mergeability check, and pull requests with merge conflicts are built too (GitHub still blocks merging them)
+
+:::note
+
+When building the head commit, the workflow doesn't test your changes combined with the base branch. Teams usually pair this option with a merge queue or with a branch protection rule that requires branches to be up to date before merging.
+
+:::
+
+The setting applies to every pull request workflow of the project: workflows started by pull request events from GitHub, by [`/sem-approve`](#sem-approve) on forked pull requests, and for a pull request reference through the [API](../reference/api) or the command line. If GitHub can't keep a reference to the commit, for example for some pull requests from forks, Semaphore builds the pull request's head reference instead, so a re-run can build a newer commit than the original run.
+
+With the head commit option, [`/sem-approve`](#sem-approve) runs the commit that was approved, and refuses to run if the pull request head changed after the approval.
+
+In both modes, pull request jobs get these environment variables:
+
+- [`SEMAPHORE_GIT_SHA`](../reference/env-vars#commit-sha): the commit being built
+- [`SEMAPHORE_GIT_PR_SHA`](../reference/env-vars#pr-sha): the head commit of the pull request
+- [`SEMAPHORE_GIT_PR_BASE_SHA`](../reference/env-vars#pr-base-sha): the commit of the base branch reported with the pull request event, available only for GitHub projects. It can be behind the current tip of the base branch
+
+With enough Git history in the job, for example after a [full clone](../reference/toolbox#full-clone), you can use them to list the files changed by the pull request, or merge `SEMAPHORE_GIT_PR_BASE_SHA` to test the changes combined with the base branch. For example:
+
+```shell
+git diff --name-only "$SEMAPHORE_GIT_PR_BASE_SHA...$SEMAPHORE_GIT_PR_SHA"
+```
 
 ### Approving PRs with `/sem-approve` {#sem-approve}
 
