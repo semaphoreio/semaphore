@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"time"
 
+	kgzip "github.com/klauspost/compress/gzip"
 	pgzip "github.com/klauspost/pgzip"
 
 	"github.com/renderedtext/go-watchman"
@@ -60,16 +61,24 @@ func compressFile(ctx context.Context, srcName, dstName string) (err error) {
 		}
 	}()
 
-	writer := pgzip.NewWriter(dst)
-	if _, err = io.Copy(writer, &contextReader{ctx: ctx, r: src}); err != nil {
-		return err
-	}
-
-	if err = writer.Close(); err != nil {
+	if err = gzipStream(dst, &contextReader{ctx: ctx, r: src}); err != nil {
 		return err
 	}
 
 	return dst.Close()
+}
+
+// gzipStream compresses r into w. The gzip writer is always closed, also on
+// error, so it never outlives the call.
+func gzipStream(w io.Writer, r io.Reader) error {
+	writer := kgzip.NewWriter(w)
+
+	if _, err := io.Copy(writer, r); err != nil {
+		_ = writer.Close()
+		return err
+	}
+
+	return writer.Close()
 }
 
 // contextReader stops reading once ctx is done, so a cancelled or timed
