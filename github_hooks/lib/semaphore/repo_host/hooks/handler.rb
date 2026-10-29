@@ -389,7 +389,8 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
         end
 
         # Only the first attempt polls; a rescheduled run makes a single request.
-        state, meta, msg = update_pr_data(workflow.project, workflow.pull_request_number, workflow.commit_sha, :poll => retries.zero?)
+        state, meta, msg = update_pr_data(workflow.project, workflow.pull_request_number, workflow.commit_sha,
+                                          :poll => retries.zero?, :webhook_head_sha => workflow.payload.pr_head_sha)
         case state
         when :not_found
           logger.info("pr-not-found #{msg}")
@@ -522,7 +523,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
   #
   # Used also at InternalApi::RepoProxy::PrPayload
   #
-  def self.update_pr_data(project, number, commit_sha = nil, allow_skip = true, poll: true)
+  def self.update_pr_data(project, number, commit_sha = nil, allow_skip = true, poll: true, webhook_head_sha: nil) # rubocop:disable Metrics/ParameterLists
     repo_host = ::RepoHost::Factory.create_from_project(project)
     repo_host.validate_token_presence!
 
@@ -563,20 +564,23 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
       return [:without_reference, { :mergeable => mergeable, :commit_author => commit_author, :head_sha => head_sha }, ""]
     end
 
-    # GitHub can report a PR as mergeable while still serving the test-merge
-    # of a previous head. Only a reused merge SHA can be such a leftover.
-    if !ref_created && head_sha.present? && !merge_commit_of_head?(repo_host, project.repo_owner_and_name, merge_commit_sha, head_sha)
+    # A reused merge SHA may be GitHub's test-merge of a previous head. GitHub's
+    # PR head can lag too, so the webhook's head must also be a parent.
+    expected_head_shas = [head_sha, webhook_head_sha].select(&:present?).uniq
+    if !ref_created && expected_head_shas.any? && !merge_commit_of_heads?(repo_host, project.repo_owner_and_name, merge_commit_sha, expected_head_shas)
       Watchman.increment("hook.processing.pr_stale_merge_commit")
-      Logman.info("pr-stale-merge-commit repo=#{project.repo_owner_and_name} pr=#{number} head_sha=#{head_sha} merge_commit_sha=#{merge_commit_sha}")
+      Logman.info("pr-stale-merge-commit repo=#{project.repo_owner_and_name} pr=#{number} head_sha=#{head_sha} webhook_head_sha=#{webhook_head_sha} merge_commit_sha=#{merge_commit_sha}")
       return [:mergeable_unknown, { :pr => pr, :rate_limit_remaining => repo_host.last_response_rate_limit_remaining }, msg]
     end
 
     [:ok, { :pr => pr, :ref => ref, :merge_commit_sha => merge_commit_sha, :mergeable => mergeable, :commit_author => commit_author, :head_sha => head_sha }, msg]
   end
 
-  def self.merge_commit_of_head?(repo_host, repo_slug, merge_commit_sha, head_sha)
+  def self.merge_commit_of_heads?(repo_host, repo_slug, merge_commit_sha, head_shas)
     parents = repo_host.commit(repo_slug, merge_commit_sha)&.[](:parents) || []
-    parents.any? { |parent| parent[:sha] == head_sha }
+    (head_shas - parents.map { |parent| parent[:sha] }).empty?
+  rescue RepoHost::RemoteException::Unauthorized, RepoHost::RemoteException::NotFound
+    false
   end
 
   def self.ensure_ref(repo_host, repo_slug, ref, sha)
