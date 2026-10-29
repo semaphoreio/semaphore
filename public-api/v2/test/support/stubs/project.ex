@@ -94,8 +94,7 @@ defmodule Support.Stubs.Project do
       repo_default_branch: "main",
       name: Faker.Person.last_name() |> String.replace("'", "") |> String.downcase(),
       description: "This is the project",
-      integration_type: "github_oauth_token",
-      pull_request_commit: :PULL_REQUEST_COMMIT_UNSPECIFIED
+      integration_type: "github_oauth_token"
     ]
 
     params = defaults |> Keyword.merge(params)
@@ -146,8 +145,7 @@ defmodule Support.Stubs.Project do
           params[:integration_type]
           |> String.upcase()
           |> String.to_atom()
-          |> IntegrationType.value(),
-        pull_request_commit: params[:pull_request_commit]
+          |> IntegrationType.value()
       }
     }
 

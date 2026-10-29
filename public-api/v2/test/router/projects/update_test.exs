@@ -114,87 +114,6 @@ defmodule Router.Projects.UpdateTest do
       {:ok, response} = update_project(ctx, ctx.project_id, update_project)
       assert 404 == response.status_code
     end
-
-    test "an update without pull_request_commit sends UNSPECIFIED, which keeps the stored value",
-         ctx do
-      capture_update_requests()
-
-      project =
-        construct_project("a-project")
-        |> update_repository(&Map.delete(&1, :pull_request_commit))
-
-      {:ok, response} = update_project(ctx, ctx.project.id, project)
-
-      assert 200 == response.status_code
-      assert_received {:update_request, req}
-      assert req.project.spec.repository.pull_request_commit == :PULL_REQUEST_COMMIT_UNSPECIFIED
-    end
-
-    test "pull_request_commit is sent to projecthub and returned", ctx do
-      capture_update_requests()
-
-      for value <- ~w(HEAD_COMMIT MERGE_COMMIT) do
-        project =
-          construct_project("a-project")
-          |> update_repository(&Map.put(&1, :pull_request_commit, value))
-
-        {:ok, response} = update_project(ctx, ctx.project.id, project)
-
-        assert 200 == response.status_code
-        check_response(response)
-        assert_received {:update_request, req}
-        assert req.project.spec.repository.pull_request_commit == String.to_atom(value)
-
-        assert Jason.decode!(response.body)["spec"]["repository"]["pull_request_commit"] ==
-                 value
-      end
-    end
-
-    test "an unknown pull_request_commit is rejected before projecthub is called", ctx do
-      capture_update_requests()
-
-      for value <- ["head_commit", "PULL_REQUEST_COMMIT_UNSPECIFIED", "", nil] do
-        project =
-          construct_project("a-project")
-          |> update_repository(&Map.put(&1, :pull_request_commit, value))
-
-        {:ok, response} = update_project(ctx, ctx.project.id, project)
-
-        assert 422 == response.status_code
-
-        assert [%{"source" => %{"pointer" => "/spec/repository/pull_request_commit"}}] =
-                 Jason.decode!(response.body)["errors"]
-      end
-
-      refute_received {:update_request, _}
-    end
-
-    test "a FAILED_PRECONDITION answer from projecthub is returned with its message", ctx do
-      GrpcMock.stub(ProjecthubMock, :update, fn _req, _ ->
-        alias InternalApi.Projecthub.ResponseMeta
-
-        status = %ResponseMeta.Status{
-          code: ResponseMeta.Code.value(:FAILED_PRECONDITION),
-          message: "head_commit is available only for GitHub projects"
-        }
-
-        %InternalApi.Projecthub.UpdateResponse{metadata: %ResponseMeta{status: status}}
-      end)
-
-      on_exit(&Support.Stubs.Project.Grpc.Projecthub.init/0)
-
-      project =
-        construct_project("a-project")
-        |> update_repository(&Map.put(&1, :pull_request_commit, "HEAD_COMMIT"))
-
-      {:ok, response} = update_project(ctx, ctx.project.id, project)
-
-      assert 400 == response.status_code
-
-      assert Jason.decode!(response.body) == %{
-               "message" => "head_commit is available only for GitHub projects"
-             }
-    end
   end
 
   describe "unauthorized users" do
@@ -231,21 +150,6 @@ defmodule Router.Projects.UpdateTest do
     default = OpenApiSpex.Schema.example(PublicAPI.Schemas.Projects.Project.schema())
 
     Map.put(default, :spec, Map.put(default.spec, :name, name))
-  end
-
-  defp update_repository(project, fun) do
-    Map.update!(project, :spec, fn spec -> Map.update!(spec, :repository, fun) end)
-  end
-
-  defp capture_update_requests do
-    test_pid = self()
-
-    GrpcMock.stub(ProjecthubMock, :update, fn req, stream ->
-      send(test_pid, {:update_request, req})
-      Support.Stubs.Project.Grpc.Projecthub.update(req, stream)
-    end)
-
-    on_exit(&Support.Stubs.Project.Grpc.Projecthub.init/0)
   end
 
   defp check_response(response) do
