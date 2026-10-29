@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { afterEach, beforeEach, describe, test } from "mocha";
 
 import { ApiPipelineDetail } from "./model";
-import { Config, cursor, details, focus, focusOn, hits, promote, query, refresh, resetState, results, scope, selected, statuses, step, toggleStatus, tree, workflow } from "./store";
+import { Config, cursor, details, focus, focusOn, hits, promote, query, queryJobs, refresh, resetState, results, scope, selected, statuses, step, toggleStatus, tree, workflow } from "./store";
 
 const detail = (id: string, blocks: ApiPipelineDetail[`blocks`]): ApiPipelineDetail => ({
   id,
@@ -58,6 +58,16 @@ describe(`workflow map store`, () => {
     query.value = `playwright`;
 
     expect(hits.value.ordered.map((j) => j.name)).to.deep.eq([`shard 1`, `shard 2`]);
+  });
+
+  test(`the jobs counted by the status chips follow the search, not the status filter`, () => {
+    expect(queryJobs.value).to.have.length(4);
+
+    query.value = `playwright`;
+    expect(queryJobs.value.map((j) => j.name)).to.deep.eq([`shard 1`, `shard 2`]);
+
+    toggleStatus(`failed`);
+    expect(queryJobs.value.map((j) => j.name)).to.deep.eq([`shard 1`, `shard 2`]);
   });
 
   test(`stepping through matches wraps around and focuses each job`, () => {

@@ -55,6 +55,13 @@ export interface Hits {
 
 const includes = (name: string, q: string) => name.toLowerCase().includes(q);
 
+const named = (p: Pipeline, b: Block, j: Job, q: string) => !q || includes(p.name, q) || includes(b.name, q) || includes(j.name, q);
+
+export const queryJobs = computed<Job[]>(() => {
+  const q = query.value.trim().toLowerCase();
+  return (workflow.value?.pipelines ?? []).flatMap((p) => (p.blocks ?? []).flatMap((b) => b.jobs.filter((j) => named(p, b, j, q))));
+});
+
 export const hits = computed<Hits>(() => {
   const wf = workflow.value;
   const q = query.value.trim().toLowerCase();
@@ -62,12 +69,10 @@ export const hits = computed<Hits>(() => {
   const out: Hits = { active: q.length > 0 || st.size > 0, jobs: new Set(), blocks: new Set(), pipelines: new Set(), perPipeline: new Map(), ordered: [] };
   if (!out.active || !wf) return out;
   for (const p of wf.pipelines) {
-    const pName = includes(p.name, q);
     for (const b of p.blocks ?? []) {
-      const bName = includes(b.name, q);
       for (const j of b.jobs) {
         if (st.size && !st.has(j.status)) continue;
-        if (q && !pName && !bName && !includes(j.name, q)) continue;
+        if (!named(p, b, j, q)) continue;
         out.jobs.add(j);
         out.blocks.add(b);
         out.pipelines.add(p);

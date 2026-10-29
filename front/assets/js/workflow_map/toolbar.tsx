@@ -1,7 +1,7 @@
 import { Fragment } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { STATUSES, STATUS_LABEL, countJobs } from "./model";
-import { SearchResult, clearFilters, cursor, focusOn, hits, query, results, scope, selected, statuses, step, toggleStatus, workflow } from "./store";
+import { SearchResult, clearFilters, cursor, focusOn, hits, query, queryJobs, results, scope, selected, statuses, step, toggleStatus, workflow } from "./store";
 import { Highlight, PipelineTitle, StatusIcon } from "./ui";
 
 const MAX_RESULTS = 60;
@@ -137,10 +137,10 @@ const Stepper = () => {
 };
 
 const Chips = () => {
-  const c = countJobs([...(workflow.value?.jobs.values() ?? [])]);
+  const c = countJobs(queryJobs.value);
   return (
     <div className="wf-map-chips" role="group" aria-label="Show jobs with status">
-      {STATUSES.filter((s) => c[s]).map((s) => (
+      {STATUSES.filter((s) => c[s] || statuses.value.has(s)).map((s) => (
         <button key={s} className={`wf-map-chip ${statuses.value.has(s) ? `on` : ``}`} aria-pressed={statuses.value.has(s)} onClick={() => toggleStatus(s)}>
           <StatusIcon status={s} size={14}/>
           {STATUS_LABEL[s]}
