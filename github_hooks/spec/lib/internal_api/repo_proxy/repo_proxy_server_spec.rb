@@ -387,7 +387,7 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
       end
 
       before do
-        allow(workflow).to receive(:payload).and_return(double(pull_request?: true))
+        allow(workflow).to receive(:payload).and_return(instance_double(RepoHost::Github::Payload, pull_request?: true))
       end
 
       it "stores the head commit on the workflow" do
@@ -411,7 +411,7 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
 
     context "when the project builds merge commits and the payload is a pull request" do
       before do
-        allow(workflow).to receive(:payload).and_return(double(pull_request?: true))
+        allow(workflow).to receive(:payload).and_return(instance_double(RepoHost::Github::Payload, pull_request?: true))
       end
 
       it "records the branch as mergeable" do
