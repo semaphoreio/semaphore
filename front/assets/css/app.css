@@ -485,5 +485,8 @@ sem-popover {
 .material-symbols-outlined.md-36 { font-size: 36px; }
 .material-symbols-outlined.md-48 { font-size: 48px; }
 
-.job-reused { opacity: 0.55; }
-.job-reused:hover { opacity: 0.85; }
+/* Dim with color, not opacity: opacity inside the diagram's SVG foreignObject mis-positions rows in Safari. */
+.job-reused { color: rgba(32, 43, 48, .55); }
+.job-reused svg { fill-opacity: .55; }
+.job-reused:hover { color: rgba(32, 43, 48, .85); }
+.job-reused:hover svg { fill-opacity: .85; }
