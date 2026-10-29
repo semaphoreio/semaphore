@@ -6,7 +6,7 @@ description: Environment variables defined by Semaphore
 
 ## Reserved variables {#reserved-variables}
 
-The `SEMAPHORE_` prefix is reserved for Semaphore. Don't define your own variables with it, except for these settings, which you can set to configure the [cache](../using-semaphore/cache), the [checkout](../using-semaphore/jobs), and the toolbox:
+The `SEMAPHORE_` prefix is reserved for Semaphore. Don't define your own variables with it, except for these settings, which configure the [cache](../using-semaphore/cache), the [checkout](../using-semaphore/jobs), the toolbox, and Semaphore's CLI tools:
 
 - `SEMAPHORE_CACHE_ARCHIVE_METHOD`, `SEMAPHORE_CACHE_BACKEND`, `SEMAPHORE_CACHE_GCS_BUCKET`, `SEMAPHORE_CACHE_PRIVATE_KEY_PATH`, `SEMAPHORE_CACHE_S3_BUCKET`, `SEMAPHORE_CACHE_URL`, `SEMAPHORE_CACHE_USERNAME`
 - `SEMAPHORE_GIT_CACHE_AGE`, `SEMAPHORE_GIT_CACHE_KEEP`, `SEMAPHORE_GIT_CLONE_SLOW_RETRY`, `SEMAPHORE_GIT_DEPTH`, `SEMAPHORE_GIT_DIR`
