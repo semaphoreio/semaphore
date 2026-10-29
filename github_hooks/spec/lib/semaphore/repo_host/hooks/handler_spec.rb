@@ -1445,8 +1445,21 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
 
           before do
             @workflow.project.update!(:pull_request_commit => "head_commit")
+            allow(Semaphore::FeatureFlags).to receive(:enabled?).with(:pr_head_builds, anything).and_return(true)
             allow(repo_host).to receive(:validate_token_presence!)
             allow(repo_host).to receive(:commit).with("renderedtext/plakatt", head_sha).and_return(RepoHost::Github::Responses::Commit.commit)
+          end
+
+          it "builds the merge commit when pr_head_builds is turned off" do
+            allow(Semaphore::FeatureFlags).to receive(:enabled?).with(:pr_head_builds, anything).and_return(false)
+            allow(repo_host).to receive(:pull_request).and_return(:merge_commit_sha => "foo", :mergeable => true)
+            allow(repo_host).to receive(:create_ref)
+            expect(described_class).to receive(:launch_pipeline)
+
+            described_class.run(@workflow, @logger)
+
+            expect(@workflow.reload.commit_sha).to eq("foo")
+            expect(@workflow.git_ref).to eq("refs/semaphoreci/foo")
           end
 
           it "pins and builds the head commit without reading mergeability" do
@@ -1504,6 +1517,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
 
       before do
         project.update!(:pull_request_commit => "head_commit")
+        allow(Semaphore::FeatureFlags).to receive(:enabled?).with(:pr_head_builds, anything).and_return(true)
         allow(::RepoHost::Factory).to receive(:create_from_project).and_return(repo_host)
         allow(repo_host).to receive(:validate_token_presence!)
         allow(repo_host).to receive(:commit).and_return(RepoHost::Github::Responses::Commit.commit)

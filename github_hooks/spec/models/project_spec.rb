@@ -88,8 +88,20 @@ RSpec.describe Project, :type => :model do
       expect(FactoryBot.create(:project).pull_request_head_commit?).to be(false)
     end
 
-    it "is true when the project builds pull request head commits" do
-      expect(FactoryBot.create(:project, :pull_request_commit => "head_commit").pull_request_head_commit?).to be(true)
+    context "when the project builds pull request head commits" do
+      let(:project) { FactoryBot.create(:project, :pull_request_commit => "head_commit") }
+
+      it "is true while pr_head_builds is enabled for the organization" do
+        allow(Semaphore::FeatureFlags).to receive(:enabled?).with(:pr_head_builds, project.organization_id).and_return(true)
+
+        expect(project.pull_request_head_commit?).to be(true)
+      end
+
+      it "is false once pr_head_builds is turned off" do
+        allow(Semaphore::FeatureFlags).to receive(:enabled?).with(:pr_head_builds, project.organization_id).and_return(false)
+
+        expect(project.pull_request_head_commit?).to be(false)
+      end
     end
   end
 

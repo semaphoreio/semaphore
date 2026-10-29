@@ -811,7 +811,7 @@ defmodule Projecthub.Api.GrpcServer do
         attach = attach_settings(project_spec)
         debug = debug_settings(project_spec)
         run_on = run_settings(project_spec)
-        pull_request_commit = pull_request_commit_settings(project_spec)
+        pull_request_commit = pull_request_commit_settings(project_spec, org.id)
         forked_pull_requests = forked_pull_requests_settings(project_spec, org.id)
         visibility = project_visibility_settings(org, project_spec)
         schedulers = Scheduler.construct_list(project_spec.schedulers)
@@ -907,7 +907,7 @@ defmodule Projecthub.Api.GrpcServer do
     attach = attach_settings(project_spec)
     debug = debug_settings(project_spec)
     run_on = run_settings(project_spec)
-    pull_request_commit = pull_request_commit_settings(project_spec)
+    pull_request_commit = pull_request_commit_settings(project_spec, project.organization_id)
     # Pass the existing project so that, when the feature is disabled, stored
     # sem-approve settings are preserved rather than wiped (see helper).
     forked_pull_requests = forked_pull_requests_settings(project_spec, project.organization_id, project)
@@ -1036,11 +1036,15 @@ defmodule Projecthub.Api.GrpcServer do
 
   # An unspecified value leaves the stored setting alone, so clients that don't
   # know the field (older CLIs, manifests applied as written) never reset it.
-  defp pull_request_commit_settings(project_spec) do
-    case project_spec.repository.pull_request_commit do
-      :MERGE_COMMIT -> %{pull_request_commit: "merge_commit"}
-      :HEAD_COMMIT -> %{pull_request_commit: "head_commit"}
-      _ -> %{}
+  defp pull_request_commit_settings(project_spec, org_id) do
+    if pr_head_builds_enabled?(org_id) do
+      case project_spec.repository.pull_request_commit do
+        :MERGE_COMMIT -> %{pull_request_commit: "merge_commit"}
+        :HEAD_COMMIT -> %{pull_request_commit: "head_commit"}
+        _ -> %{}
+      end
+    else
+      %{}
     end
   end
 
@@ -1136,6 +1140,10 @@ defmodule Projecthub.Api.GrpcServer do
   # `sem_approve_options` feature is enabled for the organization.
   defp sem_approve_options_enabled?(org_id) do
     FeatureProvider.feature_enabled?(:sem_approve_options, param: org_id)
+  end
+
+  defp pr_head_builds_enabled?(org_id) do
+    FeatureProvider.feature_enabled?(:pr_head_builds, param: org_id)
   end
 
   defp project_metadata_settings(project_metadata) do

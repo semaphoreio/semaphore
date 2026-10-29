@@ -3540,6 +3540,8 @@ defmodule Projecthub.Api.GrpcServerTest do
           ]
         )
 
+      set_pr_head_builds(true)
+
       {:ok, channel: channel}
     end
 
@@ -3618,6 +3620,46 @@ defmodule Projecthub.Api.GrpcServerTest do
       end
 
       assert {:ok, %{pull_request_commit: "merge_commit"}} = Project.find(project.id)
+    end
+
+    test "create with HEAD_COMMIT while pr_head_builds is off => builds merge commits", %{channel: channel} do
+      set_pr_head_builds(false)
+      repository = Repository.new(url: "repo_url", integration_type: :GITHUB_APP, pull_request_commit: :HEAD_COMMIT)
+      {:ok, response} = Stub.create(channel, pr_commit_create_request(repository))
+
+      assert response.metadata.status.code == :OK
+      assert response.project.spec.repository.pull_request_commit == :MERGE_COMMIT
+      assert {:ok, %{pull_request_commit: "merge_commit"}} = Project.find(response.project.metadata.id)
+    end
+
+    test "update with a value while pr_head_builds is off => keeps the stored value", %{channel: channel} do
+      set_pr_head_builds(false)
+      {:ok, project} = Support.Factories.Project.create_with_repo(%{pull_request_commit: "head_commit"})
+
+      merge = Repository.new(url: "repo_url", pull_request_commit: :MERGE_COMMIT)
+      {:ok, response} = Stub.update(channel, pr_commit_update_request(project, merge))
+
+      assert response.metadata.status.code == :OK
+      assert response.project.spec.repository.pull_request_commit == :HEAD_COMMIT
+      assert {:ok, %{pull_request_commit: "head_commit"}} = Project.find(project.id)
+    end
+
+    defp set_pr_head_builds(enabled) do
+      features =
+        if enabled do
+          [
+            [
+              feature: %{type: "pr_head_builds"},
+              availability: InternalApi.Feature.Availability.new(state: :ENABLED, quantity: 1)
+            ]
+          ]
+        else
+          []
+        end
+
+      FunRegistry.set!(Support.FakeServices.FeatureService, :list_organization_features, fn _req, _ ->
+        InternalApi.Feature.ListOrganizationFeaturesResponse.new(organization_features: features)
+      end)
     end
 
     defp pr_commit_create_request(repository) do

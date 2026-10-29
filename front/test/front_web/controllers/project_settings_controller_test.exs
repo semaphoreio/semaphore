@@ -557,7 +557,9 @@ defmodule FrontWeb.ProjectSettingsControllerTest do
     end
 
     test "GET general - for a GitHub project => offers the pull request commit, merge commit by default",
-         %{conn: conn, project_name: project_name} do
+         %{conn: conn, project_name: project_name, org_id: org_id} do
+      Feature.enable_feature(org_id, :pr_head_builds)
+
       html =
         conn
         |> get(project_settings_path(conn, :general, project_name))
@@ -566,6 +568,17 @@ defmodule FrontWeb.ProjectSettingsControllerTest do
       assert html =~ ~s(id="pull-request-commit-options")
       assert html =~ ~s(<input checked id="project_pull_request_commit_merge_commit")
       refute html =~ ~s(<input checked id="project_pull_request_commit_head_commit")
+    end
+
+    test "GET general - without pr_head_builds => does not offer the pull request commit",
+         %{conn: conn, project_name: project_name} do
+      html =
+        conn
+        |> get(project_settings_path(conn, :general, project_name))
+        |> html_response(200)
+
+      assert html =~ "Set up the project basics"
+      refute html =~ "pull-request-commit-options"
     end
 
     test "GET general - for a project that is not on GitHub => does not offer the pull request commit",

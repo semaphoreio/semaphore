@@ -158,6 +158,7 @@
             </div>
             <% end %>
           </div>
+          <%= if FeatureProvider.feature_enabled?(:pr_head_builds, param: @conn.assigns[:organization_id]) || @project.pull_request_commit == "head_commit" do %>
           <div id="pull-request-commit-options" class="ml3 mv2 pv2 ph3 ba b--lighter-gray bg-white br2">
             <p class="f5 b mb1">Commit to build for pull requests</p>
             <div class="flex items-center">
@@ -170,6 +171,7 @@
             </div>
             <p class="f6 mt1 mb0">Head commit builds start right away without waiting for GitHub to prepare the merge, but they don't test the changes combined with the base branch.</p>
           </div>
+          <% end %>
         <% end %>
         <div class="mt3 pt3 bt b--lighter-gray">
           <div class="db f5 b mb1">Pipeline file location</div>

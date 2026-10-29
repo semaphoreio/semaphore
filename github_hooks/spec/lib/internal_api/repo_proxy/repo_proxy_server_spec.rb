@@ -402,6 +402,7 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
 
       it "does not record the branch as mergeable" do
         project.update!(pull_request_commit: "head_commit")
+        allow(Semaphore::FeatureFlags).to receive(:enabled?).with(:pr_head_builds, anything).and_return(true)
         expect(branch).not_to receive(:update).with(pull_request_mergeable: true)
 
         server.create_blank(req, call)
