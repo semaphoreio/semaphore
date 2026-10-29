@@ -1340,6 +1340,66 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
           end
         end
 
+        context "and GitHub returns a merge commit that was already referenced" do
+          let(:head_sha) { "5517b255368df24b92d320dd7adbb0ccc1e01207" }
+          let(:merge_sha) { "654a86776e4d491bb71dee2eb40866e21a3553b7" }
+
+          before do
+            allow(App).to receive_messages(:mergeable_unknown_max_retries => 3,
+                                           :mergeable_unknown_rate_limit_reserve => 0)
+            allow(Watchman).to receive(:increment)
+            allow(repo_host).to receive(:validate_token_presence!)
+            allow(repo_host).to receive_messages(:pull_request => { :merge_commit_sha => merge_sha, :mergeable => true, :head => { :sha => head_sha } },
+                                                 :last_response_rate_limit_remaining => 5000)
+            allow(repo_host).to receive(:create_ref)
+              .with("renderedtext/plakatt", "refs/semaphoreci/#{merge_sha}", merge_sha)
+              .and_raise(::RepoHost::RemoteException::ReferenceAlreadyExists)
+            allow(repo_host).to receive(:commit).with("renderedtext/plakatt",
+                                                      "97114836a47ff614e70e863df819f908877ee1c9").and_return(RepoHost::Github::Responses::Commit.commit)
+          end
+
+          it "builds it when the merge commit has the PR head as a parent" do
+            merge_commit = { :parents => [{ :sha => "base" }, { :sha => head_sha }] }
+            allow(repo_host).to receive(:commit).with("renderedtext/plakatt", merge_sha).and_return(merge_commit)
+            expect(described_class).to receive(:launch_pipeline)
+
+            described_class.run(@workflow, @logger)
+
+            expect(@workflow.reload.commit_sha).to eq(merge_sha)
+          end
+
+          it "reschedules instead of building a merge commit left over from an earlier head" do
+            merge_commit = { :parents => [{ :sha => "base" }, { :sha => "previous-head" }] }
+            allow(repo_host).to receive(:commit).with("renderedtext/plakatt", merge_sha).and_return(merge_commit)
+            expect(described_class).not_to receive(:launch_pipeline)
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker)
+              .to receive(:perform_in).with(2.minutes, @workflow.id, anything, anything, 1)
+
+            described_class.run(@workflow, @logger)
+
+            expect(Watchman).to have_received(:increment).with("hook.processing.pr_stale_merge_commit")
+            expect(@workflow.reload.commit_sha).not_to eq(merge_sha)
+          end
+
+          it "treats a merge commit without parents as stale" do
+            allow(repo_host).to receive(:commit).with("renderedtext/plakatt", merge_sha).and_return({})
+            expect(described_class).not_to receive(:launch_pipeline)
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker)
+              .to receive(:perform_in).with(2.minutes, @workflow.id, anything, anything, 1)
+
+            described_class.run(@workflow, @logger)
+          end
+
+          it "does not look up the merge commit when the ref is new" do
+            allow(repo_host).to receive(:create_ref)
+              .with("renderedtext/plakatt", "refs/semaphoreci/#{merge_sha}", merge_sha)
+            expect(repo_host).not_to receive(:commit).with("renderedtext/plakatt", merge_sha)
+            expect(described_class).to receive(:launch_pipeline)
+
+            described_class.run(@workflow, @logger)
+          end
+        end
+
         context "and GitHub has not finished computing mergeability (mergeable is nil)" do
           let(:max_retries) { 3 }
           let(:reserve) { 1000 }

@@ -558,12 +558,25 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
 
     begin
       ref = "refs/semaphoreci/#{merge_commit_sha}"
-      ensure_ref(repo_host, project.repo_owner_and_name, ref, merge_commit_sha)
-
-      [:ok, { :pr => pr, :ref => ref, :merge_commit_sha => merge_commit_sha, :mergeable => mergeable, :commit_author => commit_author, :head_sha => head_sha }, msg]
+      ref_created = ensure_ref(repo_host, project.repo_owner_and_name, ref, merge_commit_sha)
     rescue RepoHost::RemoteException::Unauthorized, RepoHost::RemoteException::NotFound
-      [:without_reference, { :mergeable => mergeable, :commit_author => commit_author, :head_sha => head_sha }, ""]
+      return [:without_reference, { :mergeable => mergeable, :commit_author => commit_author, :head_sha => head_sha }, ""]
     end
+
+    # GitHub can report a PR as mergeable while still serving the test-merge
+    # of a previous head. Only a reused merge SHA can be such a leftover.
+    if !ref_created && head_sha.present? && !merge_commit_of_head?(repo_host, project.repo_owner_and_name, merge_commit_sha, head_sha)
+      Watchman.increment("hook.processing.pr_stale_merge_commit")
+      Logman.info("pr-stale-merge-commit repo=#{project.repo_owner_and_name} pr=#{number} head_sha=#{head_sha} merge_commit_sha=#{merge_commit_sha}")
+      return [:mergeable_unknown, { :pr => pr, :rate_limit_remaining => repo_host.last_response_rate_limit_remaining }, msg]
+    end
+
+    [:ok, { :pr => pr, :ref => ref, :merge_commit_sha => merge_commit_sha, :mergeable => mergeable, :commit_author => commit_author, :head_sha => head_sha }, msg]
+  end
+
+  def self.merge_commit_of_head?(repo_host, repo_slug, merge_commit_sha, head_sha)
+    parents = repo_host.commit(repo_slug, merge_commit_sha)&.[](:parents) || []
+    parents.any? { |parent| parent[:sha] == head_sha }
   end
 
   def self.ensure_ref(repo_host, repo_slug, ref, sha)
@@ -575,10 +588,11 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
     # Skipping the probe `repo_host.reference(...)` saves one GitHub API
     # request per PR processed. Do not re-introduce a pre-check GET here.
     repo_host.create_ref(repo_slug, ref, sha)
+    true
   rescue ::RepoHost::RemoteException::ReferenceAlreadyExists
     Watchman.increment("github_hooks.ensure_ref.ref_already_exists")
     Logman.info("github_hooks.ensure_ref ref_already_exists repo=#{repo_slug} ref=#{ref} sha=#{sha}")
-    nil
+    false
   end
 
   def self.mark_workflow_with_pr_approval_options(workflow, include_secrets: false, enable_cache: false, approver: nil, approver_uid: nil, approved_head_sha: nil, approved_at: nil, comment_id: nil, logger: nil) # rubocop:disable Metrics/ParameterLists
