@@ -29,21 +29,24 @@ defmodule Ppl.WorkflowQueries.KeysetGitRefTypeIndexTest do
     assert valid?(@index)
   end
 
-  # Under a generic plan `= ANY($n)` cannot use the index ordering, so Postgres
-  # reads every row of that ref type and sorts; a scalar `= $n` stops at the limit.
+  # With the index, a generic plan for `= ANY($n)` fetches and sorts every
+  # matching row of the project; scalar `= $n` scans stop at the page limit.
   test "single ref type is compared as a scalar" do
     %{sql: sql, params: params} = keyset_query(["pr"])
 
     assert sql =~ ~r/p0\."source_args"->>'git_ref_type' = \$\d+/, sql
     refute sql =~ "ANY", sql
+    refute sql =~ "UNION", sql
     assert "pr" in params
   end
 
-  test "multiple ref types are compared as an array" do
-    %{sql: sql, params: params} = keyset_query(["branch", "pr"])
+  test "multiple ref types are a union of scalar comparisons" do
+    %{sql: sql, params: params} = keyset_query(["branch", "pr", "tag"])
 
-    assert sql =~ ~r/p0\."source_args"->>'git_ref_type' = ANY\(\$\d+\)/, sql
-    assert ["branch", "pr"] in params
+    assert length(Regex.scan(~r/->>'git_ref_type' = \$\d+/, sql)) == 3, sql
+    assert length(Regex.scan(~r/UNION ALL/, sql)) == 2, sql
+    refute sql =~ "ANY", sql
+    assert Enum.all?(["branch", "pr", "tag"], &(&1 in params))
   end
 
   test "single ref type returns only that type, newest first" do
@@ -79,7 +82,35 @@ defmodule Ppl.WorkflowQueries.KeysetGitRefTypeIndexTest do
     refute Enum.any?(workflows, &String.starts_with?(&1.branch_name, "refs/tags/"))
   end
 
-  defp list(project_id, git_ref_types) do
+  test "multiple ref types paginate newest first without gaps or duplicates" do
+    project_id = UUID.uuid4()
+
+    {first_page, second_page, last_token} =
+      in_rolled_back_tx(fn ->
+        seed(project_id, branch: 8, pr: 8, tag: 5)
+
+        {:ok, %{workflows: first_page, next_page_token: token}} =
+          list(project_id, ["branch", "pr"])
+
+        {:ok, %{workflows: second_page, next_page_token: last_token}} =
+          list(project_id, ["branch", "pr"], token)
+
+        {first_page, second_page, last_token}
+      end)
+
+    workflows = first_page ++ second_page
+
+    assert length(first_page) == @page_size
+    assert length(second_page) == 6
+    assert last_token == ""
+    assert workflows |> Enum.map(& &1.id) |> Enum.uniq() |> length() == 16
+    refute Enum.any?(workflows, &String.starts_with?(&1.branch_name, "refs/tags/"))
+
+    keys = Enum.map(workflows, &{NaiveDateTime.to_iso8601(&1.inserted_at), &1.id})
+    assert keys == Enum.sort(keys, :desc)
+  end
+
+  defp list(project_id, git_ref_types, page_token \\ nil) do
     params = %{
       org_id: :skip,
       projects: :skip,
@@ -97,7 +128,7 @@ defmodule Ppl.WorkflowQueries.KeysetGitRefTypeIndexTest do
     keyset_params = %{
       order: :BY_CREATION_TIME_DESC,
       direction: :NEXT,
-      page_token: nil,
+      page_token: page_token,
       page_size: @page_size
     }
 

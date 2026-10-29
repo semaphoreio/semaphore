@@ -498,20 +498,8 @@ defmodule Ppl.WorkflowQueries do
 
   defp list_keyset_(params, keyset_params) do
     page =
-      PplRequests
-      |> where([p], p.initial_request)
-      |> filter_by_organization_id(params.org_id)
-      |> filter_by_projects(params.projects)
-      |> filter_by_project_id(params.project_id)
-      |> filter_by_requesters(params.requesters)
-      |> filter_by_requester_id(params.requester_id)
-      |> filter_by_branch(params.branch_name)
-      |> filter_by_label_and_git_ref_types(params.label, params.git_ref_types)
-      |> filter_by_triggerers(params.triggerers)
-      |> filter_by_inserted_at(params.created_before, :before)
-      |> filter_by_inserted_at(params.created_after, :after)
-      |> order_by([p], desc: p.inserted_at, desc: p.id)
-      |> select_workflow_details()
+      params
+      |> keyset_query()
       |> paginate(keyset_params)
 
     {:ok,
@@ -520,6 +508,45 @@ defmodule Ppl.WorkflowQueries do
        next_page_token: page.metadata.after || "",
        previous_page_token: page.metadata.before || ""
      }}
+  end
+
+  # One scalar-filtered branch per ref type: each reads the project/ref-type
+  # index in order, so Postgres can merge them and stop at the page limit.
+  # A single `= ANY($n)` makes it fetch and sort every matching row.
+  defp keyset_query(params = %{label: :skip, git_ref_types: [_, _ | _] = git_ref_types}) do
+    [first | rest] =
+      Enum.map(git_ref_types, fn git_ref_type ->
+        params
+        |> keyset_base_query()
+        |> filter_by_label_and_git_ref_types(:skip, [git_ref_type])
+        |> select_workflow_details()
+      end)
+
+    union = Enum.reduce(rest, first, fn query, acc -> union_all(acc, ^query) end)
+
+    from(w in subquery(union), order_by: [desc: w.inserted_at, desc: w.id])
+  end
+
+  defp keyset_query(params) do
+    params
+    |> keyset_base_query()
+    |> filter_by_label_and_git_ref_types(params.label, params.git_ref_types)
+    |> order_by([p], desc: p.inserted_at, desc: p.id)
+    |> select_workflow_details()
+  end
+
+  defp keyset_base_query(params) do
+    PplRequests
+    |> where([p], p.initial_request)
+    |> filter_by_organization_id(params.org_id)
+    |> filter_by_projects(params.projects)
+    |> filter_by_project_id(params.project_id)
+    |> filter_by_requesters(params.requesters)
+    |> filter_by_requester_id(params.requester_id)
+    |> filter_by_branch(params.branch_name)
+    |> filter_by_triggerers(params.triggerers)
+    |> filter_by_inserted_at(params.created_before, :before)
+    |> filter_by_inserted_at(params.created_after, :after)
   end
 
   def paginate(query, params, cursor_fields \\ [:inserted_at, :id])
@@ -580,8 +607,6 @@ defmodule Ppl.WorkflowQueries do
 
   defp filter_by_label_and_git_ref_types(query, :skip, :skip), do: query
 
-  # A scalar comparison lets the planner read the project/ref-type index in
-  # order and stop at the page limit; `= ANY($n)` forces reading every match.
   defp filter_by_label_and_git_ref_types(query, :skip, [git_ref_type]) do
     query
     |> where(
