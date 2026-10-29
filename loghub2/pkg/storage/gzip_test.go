@@ -89,7 +89,7 @@ func Test__GzipFailsForCancelledContext(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func Test__GzipKeepsArchiveWhenRemovingOriginalFails(t *testing.T) {
+func Test__GzipSucceedsAndKeepsArchiveWhenRemovingOriginalFails(t *testing.T) {
 	tempFile, _ := ioutil.TempFile("", "*")
 	tempFile.Write([]byte("some logs"))
 	tempFile.Close()
@@ -107,7 +107,7 @@ func Test__GzipKeepsArchiveWhenRemovingOriginalFails(t *testing.T) {
 	defer func() { removeFile = originalRemove }()
 
 	err := Gzip(context.Background(), tempFile.Name())
-	assert.Equal(t, unlinkErr, err)
+	assert.Nil(t, err)
 
 	// the complete archive survives and is readable
 	compressedFile, err := ioutil.ReadFile(tempFile.Name() + ".gz")

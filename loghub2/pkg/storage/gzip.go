@@ -3,9 +3,10 @@ package storage
 import (
 	"bufio"
 	"bytes"
-	"compress/gzip"
 	"context"
+	"compress/gzip"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -20,8 +21,9 @@ var removeFile = os.Remove
 
 // Gzip compresses fileName into fileName.gz and removes the original,
 // matching the behavior of the gzip command line tool. A partially written
-// archive is removed on failure. Once the archive is complete it is always
-// kept, even if removing the original fails; that error is returned.
+// archive is removed on failure. Once the archive is complete it is kept and
+// Gzip succeeds, even if removing the original fails: that error is only
+// logged, since failing here would leave both files behind for nothing.
 func Gzip(ctx context.Context, fileName string) error {
 	defer watchman.Benchmark(time.Now(), "logs.compress")
 
@@ -33,7 +35,11 @@ func Gzip(ctx context.Context, fileName string) error {
 		return err
 	}
 
-	return removeFile(fileName)
+	if err := removeFile(fileName); err != nil {
+		log.Printf("Failed to remove %s after compressing it: %v", filepath.Base(fileName), err)
+	}
+
+	return nil
 }
 
 func compressFile(ctx context.Context, srcName, dstName string) (err error) {
